@@ -63,6 +63,9 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 74 | OPEN | The first triangle census (§77's `meshIntegrity`): **3,233 zero-area triangles across 125 of 568 geometries**, catalogued by cause — `alarmArrestCross` 1,160 collinear, `chainRun` 1,040 collapsed, the `ringExtrude` fleet's 4/8-sliver pattern across 85+ consumers, lathe cap fans on the fusee/pillars/studs. Fixes are per BUILDER and each moves the fingerprint; the census numbers may only go DOWN
 | 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
 | 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
+| 78 | CLOSED | §54's `checkSlenderness` was exported and NEVER REGISTERED in `CHECKS` — `start()` answered "unknown check", so it had not run once since §52, its waiver waived rows in a report nothing produced, and three different λ values for one mesh accumulated in `main.js`. Second instance of the class (TODO 29 was the first), so `ci-battery` now GATES `CHECK_NAMES` (read from the page) against `BATTERY`. It also measured stock length, not free length: meshes may now declare `userData.bearings` and λ is taken per free length, an overhang scaled by `SLENDER_OVERHANG_K` = ∛16. Report (§40): **9 rows over ceiling, 7 unwaived and untriaged** |
+| 79 | OPEN | The alarm link's lay shaft has a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. Implies the transfer may be **rod-end-limited at ≈3.3 mN**, below the 5–50 mN detent band, against §137 Landing 2's "tail-limited at ≈48 mN" — first-order, NOT yet a measured load path. Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
+| 80 | OPEN | `weldGeometry` returns a fresh `BufferGeometry` and does not copy `userData`, and `weldTree` assigns it at the end of boot — so a `geometry.userData.subBodies` declared on a non-indexed geometry is silently deleted before any check runs, reporting `declaredGeometries: 0`. §77's shipped tables survive by construction (`mergeGeos` declares after welding, and its output is indexed), which nothing states anywhere |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -1923,6 +1926,16 @@ this class everywhere rather than only where someone happens to look. The
 alarm link would be its first customer; the winding-train hangers
 (0.075 mm × 4.7 u) are probably its second.
 
+**DELIVERED, in two halves, seven years of § numbers apart.** §54 built
+`checkSlenderness` and shipped the L/t half. It did **not** ship the *per
+segment* half this paragraph asked for — it measured each MESH's bounding box
+end to end, which for a shaft running in bushes is not a free length at all —
+and it was never registered in `inspect.js`'s `CHECKS`, so `start()` answered
+"unknown check" and the instrument had not executed once since §52. Every λ
+quoted about this item was hand-run and then went stale in place. TODO 78
+registered it, gave it the per-segment measurement this paragraph specified,
+and re-took the numbers below.
+
 ### FIXED — sections derived from §54's budget; one item deliberately left
 
 **The pillar move was investigated and REJECTED on evidence.** Probing
@@ -1938,6 +1951,10 @@ by the same number §54 measures them against:
 | member | was | now |
 |---|---|---|
 | `alarmLinkShaft` | 0.09 mm, λ 100.5, **21 N/m** at the drive end | 0.335 mm, λ 27, **4075 N/m** |
+<!-- TODO 78: the "now" column is a plan that was reverted on the same day
+     (see the postscript below and §137 Landing 2). The shipped shaft is
+     r 0.1233 → 0.0934 mm section, λₑ 127.6 measured, 2807 N/m at the drive
+     end and 21.2 N/m at the ROD end. -->
 | `alarmLinkBeakTail` | 0.12 mm square, λ 83.7, **10.2 N/m** | 0.12 × 0.372 mm blade, λ 27, **305 N/m** |
 
 The tail is now a **blade, not a fatter square**: the load is vertical, so
@@ -2026,6 +2043,41 @@ STATION**, which is position space, probed the same way the existing two
 were. That is a layout change to file, not a section to re-argue — and it
 is now a measured impossibility rather than a re-argued one, which is the
 whole point of having taken the measurement.
+
+> **TODO 78 re-took this paragraph with the instrument actually running, and
+> the span it names is not the one that governs.** `checkSlenderness` had
+> never executed (unregistered in `CHECKS`), and it measured each mesh end to
+> end, so "λ over the 19.55 u bush-to-bush span" was a hand calculation the
+> check did not perform. Registered and taught this shaft's two bushes, it
+> measures three free lengths:
+>
+> | free length | L | λ raw | λ effective | k |
+> |---|---|---|---|---|
+> | overhang, rod end | 12.487 u / 4.732 mm | 50.6 | **127.6** | **21.2 N/m** |
+> | span, bush to bush | 19.550 u / 7.408 mm | 79.3 | 79.3 | 150 N/m |
+> | overhang, fork end | 1.350 u / 0.512 mm | 5.5 | 13.8 | 28479 N/m |
+>
+> (λ effective applies `SLENDER_OVERHANG_K` = ∛16 to an overhang — a
+> cantilever is sixteen times the compliance of a span of the same length;
+> the derivation is at the constant. k is by πr⁴/4, comparable with the
+> 2518/2807 N/m figures above; the check's own column uses the rectangular
+> ac³/12 and so reads 1.7× stiffer for a round shaft.)
+>
+> So a third bush splitting the 19.550 span moves the reported λ by **nothing**,
+> and the shortfall is not 0.041: λ ≤ 30 on the rod-end overhang wants
+> **r ≥ 0.5244** against the corridor's 0.2850. The waiver stands — at
+> **λ 127.6**, not 135.4 — and the roadmap entry needs re-deriving around the
+> overhang rather than the span.
+>
+> **And that overhang is a regression, not a design.** Item 16's own "Move the
+> pillars" prescription asked for "a long span and short overhangs at both
+> ends", and t 2.45 / 22 delivered exactly that on the chord that existed then
+> (a shaft running ±12.06). §112 re-solved the rod site and the chord grew
+> ≈ 9 u; the two station literals did not travel with it. The 4.5 mm / 21 N/m
+> cantilever this item condemned at the fork end came back at the ROD end, at
+> 4.73 mm / 21.2 N/m — the same defect, the same number, the other end, and no
+> instrument said so because the only one that could had never run. Filed as
+> **TODO 79**.
 
 **Still open, deliberately: the 36:1 beak lever.** Shortening the tail arm
 means re-siting the rod, whose plate bores are literals carrying drift
@@ -8344,3 +8396,201 @@ Do not widen a budget to green these rows, and do not re-solve the phase to
 chase them — the phase is already right. When §136 lands, re-run the
 measurement above; if the overlap does not go to zero, the profile is
 still not conjugate and this item is the number that says so.
+
+## 78. CLOSED — §54's ceiling had never been measured: the check was never registered, and it measured stock, not free length
+
+Two defects in one instrument, both of the same class as TODO 29's: an
+audit that exists, is exported, reads convincingly in the source — and does
+not run.
+
+### Half one: it was never registered
+
+`checkSlenderness` shipped with §54 and was never added to `inspect.js`'s
+`CHECKS`. `start(clock, 'slenderness')` answered `unknown check`, so it was
+absent from `BATTERY` too and had not executed once since §52 put the
+battery in CI. The consequences accumulated quietly:
+
+- **`SLENDER_WAIVERS['Alarm link'] = 'TODO 16'` waived a row in a report
+  nothing produced**, and its comment still cited a premise `src/main.js`
+  declares dead in capitals ("two attempts to thicken it were rejected by
+  CI" — the pair it names has been 13.32 u apart since §112).
+- **Three different λ values for one mesh** accumulated in `src/main.js` —
+  100.5, 135.4, and 139.1 in a parenthesis — none of them produced by a run.
+- `docs/BUILT.md` §54's Result table recorded 8 rows over ceiling and 6
+  unwaived. Registered today the movement measures **9 over, 7 unwaived**;
+  nobody had looked in between.
+
+This is the **second** instance (§48's `restoring` was the first, closed by
+TODO 29), and the symptom both times is the worst available: a green battery
+that had simply not run the instrument, which is indistinguishable from
+coverage. `assertCosts` could not see it — it holds `BATTERY` against
+`COSTS`, and a check absent from both is consistent with both. So the fix
+carries a **closure gate**: `ci-battery.mjs` reads `window.__I.CHECK_NAMES`
+from the page (§127's slice-gate idiom — never a second declaration in the
+harness) and fails if any registered check has no battery row, excepting a
+named `NOT_IN_BATTERY` map where each exclusion states why it is not a gate.
+An empty roster fails too.
+
+### Half two: λ measured stock length, not free length
+
+`checkSlenderness` read each MESH's bounding box end to end. For a shaft
+running in bushes that is not a free length at all, and the gap was not
+theoretical: TODO 16's own "general lesson" paragraph had asked for a check
+that reports **L/t per segment**, and §54 shipped only the L/t half.
+
+A mesh may now declare where it is held:
+
+```js
+mesh.userData.bearings = { axis: 'x'|'y'|'z', stations: [ … ] }
+```
+
+Geometry-local coordinates on the declared axis — the frame
+`computeBoundingBox()` measures in, so no pose, parent rotation or group
+azimuth can move a station off the metal it names. On the **mesh**, never
+the geometry: `weldGeometry` returns a fresh `BufferGeometry` without
+copying `userData`, so a geometry-level declaration would be silently
+deleted by `weldTree` at the end of boot. (That hazard is latent for §77's
+`subBodies` too — filed as **TODO 80**.)
+
+An overhang is not a span, so it is not judged as one.
+`SLENDER_OVERHANG_K = ∛16 = 2.5198` comes from 48EI/L³ (simply supported,
+load at midspan) against 3EI/L³ (cantilever, load at the tip), each free
+length judged at its own most compliant load point; equal compliance means
+equal L³/coefficient, so the equivalent length is the cube root of the
+ratio. **The datum is the span**, because that is what `SLENDER_MAX` was
+calibrated on — so declaring bearings can only ever make a part read
+*worse* than its undeclared whole-stock λ, and a declaration can never
+launder a number.
+
+Without that multiplier the measure ranks the alarm link's own segments
+backwards (raw λ 79.3 span vs 50.6 overhang, against 150 N/m vs 21.2 N/m) —
+the exact failure §54 exists to fix one level up.
+
+### What is gated, and what is not
+
+A REPORT (§40), like `meshIntegrity` and for the same reason: 7 unwaived
+rows land red on arrival, and arriving as a gate is how a check gets
+switched off. Gated: the synthetic control, `0 malformed` and
+`0 unsupported` bearing declarations. **"Unsupported" is §48's no-spring
+rule made geometric** — `auditOscillators` proves a declared spring's *name*
+is in the scene; for a bearing the stronger test exists and is the one that
+matters, so a declared station with no mesh at it fails.
+
+### Also fixed here, free
+
+`checkSlenderness` used a bare `traverse` and so had no
+`userData.schematic` prune. §71's plate occluder FILLS are real Meshes
+parented inside labelled units, so two of them (three-quarter plate, dial)
+were in its population — `counted` 617 → 615, measured, and no row moved.
+It is now a recursive walk, because a `traverse` callback cannot prune a
+subtree. Fourth copy of that idiom; consolidating them stays TODO 4's.
+
+### What it found
+
+| unit / mesh | λ | ceiling | k | waived |
+|---|---|---|---|---|
+| `Alarm link` / `alarmLinkShaft` | **127.6** | 30 | 36 N/m | TODO 16 |
+| `Alarm release lifter` / `alarmLifterRun` | 71.3 | 30 | 16.5 N/m | — |
+| `Hack rod` / (unnamed) | 65.0 | 30 | 48.4 N/m | — |
+| `Reset rod` / (unnamed) | 48.8 | 30 | 114.4 N/m | — |
+| `Keyless works` / (unnamed) | 40.4 | 30 | 190.9 N/m | — |
+| `Hack rod` / (unnamed) | 37.7 | 30 | 248.1 N/m | — |
+| `Alarm crown` / (unnamed) | 35.4 | 30 | 359.3 N/m | — |
+| `Alarm release feeler` / (unnamed) | 35.1 | 30 | 43.7 N/m | — |
+| `Alarm link` / `alarmLinkRod` | 31.4 | 30 | 367.3 N/m | TODO 16 |
+
+**Seven unwaived rows are open debt this item does not close** — §50's arc
+says report, triage, then gate, and nobody has looked at these. Six of the
+nine cannot even be named: their meshes are anonymous, so the report
+addresses them positionally. Do not add waivers to green this.
+
+Probe: `tools/probe-slenderness-bearings.mjs`.
+
+## 79. The alarm link's rod-end overhang is a chord-growth regression, and it is TODO 16's own condemned cantilever returned
+
+TODO 16 diagnosed the lay shaft with **both bushes clustered at one end**
+and a **4.5 mm / 21 N/m cantilever** carrying the drive, and prescribed
+"stations near t≈2 and t≈22 [to] give a long span and short overhangs at
+both ends". §68 did exactly that, and on the chord that then existed
+(a shaft running ±12.06, so 24.12 u) it worked: overhangs 2.45 and 2.12.
+
+Then §112 re-solved the rod site. The chord grew ≈ 9 u to 34.487 and
+**the two station literals did not travel with it.** Measured today
+(`tools/probe-slenderness-bearings.mjs`):
+
+| free length | L | k (πr⁴/4) |
+|---|---|---|
+| overhang, fork end | 1.350 u / 0.512 mm | 28 479 N/m |
+| span, bush to bush | 19.550 u / 7.408 mm | 150 N/m |
+| **overhang, rod end** | **12.487 u / 4.732 mm** | **21.2 N/m** |
+
+**That is TODO 16's condemned cantilever, to two significant figures, at
+the other end of the same shaft** — and it carries `alarmLinkCrankRim` and
+the rod drive at its free tip. Nothing reported it because §54's check was
+unregistered until TODO 78 and measured stock length anyway.
+
+### Why it matters beyond λ
+
+§137 Landing 2 sized the section against the **fork-end** overhang
+(0.9286 mm of load path → 2807 N/m) and concluded the transfer is
+**tail-limited at ≈ 48 mN**, inside the 5–50 mN detent band. The rod end is
+a second compliance in the same series, ~130× softer: **21.2 N/m over the
+rod's 0.158 mm travel stalls at ≈ 3.3 mN**, below the band. If that holds
+under a proper load-path measurement, the chain is **rod-end-limited**, not
+tail-limited, and §137 Landing 2's conclusion and TODO 63's headline both
+need re-taking a third time.
+
+**That arithmetic is first-order and is NOT yet measured as a load path** —
+it is the free length from the geometry times the repo's own cantilever
+formula. Take it properly before acting on it.
+
+### The fix is position space, and it is not a third bush
+
+The roadmap's third-bush entry (§156) proposes splitting the 19.550 span.
+That moves the reported λ by nothing and does not touch this. What this
+needs is **station two moved outward**, or a station added out where the
+load is — `src/main.js`'s own honest-band scan records t 16.75–24 as clean,
+so t 22 sits well inside a band with room above it, and t > 24 has never
+been probed at all. Re-probe the way §68 did, then re-derive the section
+against whatever overhang survives. §54's doctrine holds: shorten the free
+length, do not fatten the member.
+
+### The class, which is the part worth keeping
+
+**A station literal measured along a solved length is a desync waiting for
+the solve to move.** `ALARM_LINK_BUSH_T` is now one declaration feeding both
+the hangers and the §54 bearing declaration (TODO 78), so those two can no
+longer drift from each other — but neither is tied to `fullChordLen`, so
+the chord can still move out from under both. The general fix is to derive
+at least the outboard station from the chord (an end-relative station, not
+an origin-relative one), which is a design change this item does not make
+because the honest bands are absolute positions in the movement, not
+fractions of a chord. Whoever re-sites this shaft should read that tension
+before choosing.
+
+## 80. `weldGeometry` drops `geometry.userData`, and §77's sub-body declarations ride on it
+
+`weldGeometry` (`src/geometry.js`) builds `const out = new
+THREE.BufferGeometry()` and copies attributes and the index — but not
+`userData`. `weldTree` then assigns `o.geometry = welded` at the end of
+boot.
+
+So any builder that sets `geometry.userData.subBodies` on a **non-indexed**
+geometry has it silently deleted before a single check runs, and the
+symptom is `declaredGeometries: 0` — a clean report of work that did not
+happen, the failure mode §127's slice gates exist for.
+
+§77's shipped declarations survive by luck of construction, not by design:
+`mergeGeos` sets `out.userData.subBodies` *after* calling `weldGeometry`,
+and its output is indexed. Nothing states that requirement anywhere, and
+the next builder to declare a sub-body table has no reason to know it.
+
+TODO 78 sidestepped it for bearings by declaring on the **mesh**
+(`mesh.userData.bearings`) — correct there for an independent reason
+(which bearings hold a shaft is a per-instance installation fact), so it is
+not a precedent for sub-bodies, which are genuinely a geometry fact.
+
+Fix: copy `userData` in `weldGeometry`, and add the rule to
+`docs/MODELING.md` beside rule 7. Cheap; the reason it is filed rather than
+done is that copying `userData` changes what every welded geometry carries,
+which wants its own report diff.

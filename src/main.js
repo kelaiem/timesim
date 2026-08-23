@@ -18476,6 +18476,12 @@ const ALARM_LINK_CHORD_LEN = Math.hypot(
 // what a real fix needs — the jumper's swept envelope measured first, so the
 // next attempt is sized against the thing that actually blocks it.
 //
+// (TODO 78: that λ 100.5 is the THIRD figure this file has quoted for one
+// mesh — 100.5 here, 135.4 below, 139.1 in its parenthesis — and none of them
+// was ever produced by a run, because §54's check was exported and never
+// registered. It reports λ 127.6 now, over the free length that governs. Three
+// numbers for one part is what quoting an instrument nobody runs looks like.)
+//
 // §137 — THE ENVELOPE IS MEASURED NOW (tools/probe-137-jumper-envelope.mjs),
 // AND THE PREMISE ABOVE IS DEAD. §112 re-solved the rod site and the drive
 // tab's azimuth jointly ONE DAY after the paragraphs above were written, so
@@ -18510,9 +18516,17 @@ const ALARM_LINK_CHORD_LEN = Math.hypot(
 // tools/probe-137-jumper-envelope.mjs), so this spends 2.31× less than it
 // may. It is deliberately the force FLOOR and not more: §54's ceiling is met
 // by shortening spans, not by fattening members, and the span shortening is
-// §154's third bush station — which, when it lands, re-derives THIS number
-// against its own halved cantilever. The two move together; neither is a
-// free parameter.
+// the roadmap's third-bush-station entry (§156; it was filed as §154 and
+// renumbered when the public repo shipped a §154 of its own — cite it by
+// title if in doubt) — which, when it lands, re-derives THIS number against
+// its own halved cantilever. The two move together; neither is a free
+// parameter.
+//
+// TODO 78 — AND THE SPAN IT WOULD SHORTEN IS NOT THE ONE THAT GOVERNS. With
+// §54's check finally registered and taught the shaft's two bushes, the
+// governing free length is the ROD-END OVERHANG (12.487 u, λₑ 127.6), not the
+// 19.550 u bush-to-bush span (λₑ 79.3). Splitting the span leaves the reported
+// λ where it is. See the bearing declaration at the shaft build below.
 const ALARM_LINK_SHAFT_R = 0.1233;
 const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unchanged: the cranks sit on the NECKS
 // The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
@@ -18708,6 +18722,18 @@ const alarmLinkParts = {};
   const ALARM_FORK_GROOVE_MID_REST = new THREE.Vector3(0, 0, 0).applyMatrix4(alarmSelRing.matrixWorld).z;
   const innerEnd = { x: ALARM_LINK_INNER_XY.x + u.x * ALARM_FORK_RETREAT, y: ALARM_LINK_INNER_XY.y + u.y * ALARM_FORK_RETREAT };
   const chordLen = fullChordLen - ALARM_FORK_RETREAT;
+  // THE BUSH STATIONS, ONE DECLARATION. The hanger loop below cuts the metal
+  // from this array and the shaft's §54 bearing declaration is DERIVED from
+  // it, so a station cannot move in one place and stay put in the other —
+  // standing rule 1, and the bore-vs-shaft desync §137 Landing 2 fixed twenty
+  // lines from here is what a second copy of a number costs.
+  //
+  // The values come from §68's pose-swept column re-scan (the long comment at
+  // the loop): the honest bands for a hanger COLUMN are t 2.25-2.6 and
+  // 16.75-24, and these take each band's measured peak. They are chord
+  // parameter t from ALARM_LINK_INNER_XY, which is NOT the shaft's own
+  // parameter space — the metal starts at t = ALARM_FORK_RETREAT.
+  const ALARM_LINK_BUSH_T = [2.45, 22];
   const shaft = new THREE.Group();
   shaft.position.set((innerEnd.x + ALARM_LINK_ROD_XY.x) / 2, (innerEnd.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
   shaft.rotation.order = 'ZYX'; // the tick's rotation.x (crank roll) must turn ABOUT THE SHAFT'S LENGTH — 'XYZ' would roll about world-x and tilt the arbor end-over-end
@@ -18751,10 +18777,37 @@ const alarmLinkParts = {};
   // binding wall — the alarm setting idler, 89 stations of it — tops out at
   // r 0.2850. That is 0.041 short, so NO section legal in this chord meets
   // the ceiling and retiring SLENDER_WAIVERS['Alarm link'] needs a THIRD
-  // BUSH STATION: position space, FILED as roadmap §154. λ 135.4 is
-  // reported meanwhile (139.1 before Landing 2's section), which is the
-  // honest state — the waiver stands until §154's station lands, and
-  // this landing deliberately did not chase the ceiling with metal.
+  // BUSH STATION: position space, FILED as roadmap §156 (filed as §154 and
+  // renumbered after the public repo shipped its own §154).
+  //
+  // TODO 78 — EVERY NUMBER IN THAT PARAGRAPH IS SIZED AGAINST THE WRONG
+  // LENGTH, and the λ 135.4 it used to quote here was never produced by a
+  // run: §54's checkSlenderness was exported and never registered in
+  // inspect.js's CHECKS, so it had not executed once since §52. Registered
+  // (TODO 78) and taught this shaft's two bushes, it reports:
+  //
+  //   overhang  rod end     12.487 u   λ raw 50.6  λₑ 127.6   ← GOVERNS
+  //   span      bush-bush   19.550 u   λ raw 79.3  λₑ  79.3
+  //   overhang  fork end     1.350 u   λ raw  5.5  λₑ  13.8
+  //
+  // (λₑ applies SLENDER_OVERHANG_K = ∛16 to an overhang, because a cantilever
+  // is sixteen times the compliance of a span of the same length; the
+  // derivation is at the constant.) So splitting the 19.550 span moves the
+  // reported λ by NOTHING, and the ceiling's real shortfall is far worse than
+  // 0.041: at these stations λₑ ≤ 30 on the rod end wants 2r ≥ 12.487·K/30,
+  // i.e. r ≥ 0.5244 against a corridor of 0.2850. The waiver stands, at
+  // λ 127.6 rather than the quoted 135.4, and the roadmap entry needs
+  // re-deriving around the overhang — a joint re-solve of ALL the stations
+  // and the section, not a third bush in the middle of the wrong span.
+  //
+  // WHERE THE OVERHANG CAME FROM, since it is not a design decision anyone
+  // took: TODO 16 asked for stations giving "a long span and short overhangs
+  // at both ends", and t 2.45 / 22 delivered exactly that on the chord that
+  // existed then. §112 re-solved the rod site and the chord grew ≈ 9 u; the
+  // two station literals did not travel with it, so the 4.5 mm cantilever
+  // TODO 16 condemned at the fork end reappeared, at 4.73 mm, at the rod end.
+  // Its stiffness by πr⁴/4 is 21.2 N/m against TODO 16's condemned 21 N/m —
+  // and against the 2807 N/m this same block solves for at the other end.
   //
   // (One correction the sweep forced, kept because it is the kind that
   // hides: this block used to record a hand probe's "tightest non-contact
@@ -18766,6 +18819,33 @@ const alarmLinkParts = {};
   // declared working contact, not an obstruction.)
   const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, chordLen, 8), MATS.steel);
   shaftRod.name = 'alarmLinkShaft';   // §54: a slenderness row that cannot name its member is not actionable
+  // §54 / TODO 78 — WHERE THIS SHAFT IS HELD. λ is a FREE-LENGTH measure and
+  // this rod's free lengths are not its stock length: it runs in two hanger
+  // bushes, so 33.387 u of metal is 1.350 + 19.550 + 12.487. Until this
+  // declaration existed checkSlenderness measured the whole rod and reported
+  // λ 135.4 — a number no bush could move, which is why the roadmap's third-
+  // bush entry (§156) proposed
+  // splitting the middle span to retire a waiver it could not have retired.
+  //
+  // Stated in GEOMETRY-LOCAL y because that is the frame computeBoundingBox
+  // reads. Neither rotation.z below (which turns geometry +y into the group's
+  // -x) nor the group's chord azimuth nor any pose can move a station off the
+  // metal it names. It goes on the MESH, not the geometry: weldGeometry
+  // returns a fresh BufferGeometry without copying userData, so weldTree would
+  // silently delete a geometry-level declaration at the end of boot.
+  //
+  // The map from chord t to geometry y, derived once rather than transcribed:
+  // the rod is centred on the midpoint of the METAL, which spans chord
+  // t in [ALARM_FORK_RETREAT, fullChordLen]; rotation.z = pi/2 sends geometry
+  // +y to the group's -x, and group +x runs WITH t (the rim key sits at
+  // +chordLen/2, the far end). So y = shaftMidT - t, which reverses the
+  // array's order — hence the sort, which derives the ordering the validator
+  // requires instead of trusting a future third station to arrive in it.
+  const shaftMidT = (ALARM_FORK_RETREAT + fullChordLen) / 2;
+  shaftRod.userData.bearings = {
+    axis: 'y',
+    stations: ALARM_LINK_BUSH_T.map((t) => shaftMidT - t).sort((a, b) => a - b),
+  };
   shaftRod.rotation.z = Math.PI / 2;
   shaft.add(shaftRod);
   // TODO 20 — each drive sits in its own KEY: a wrapper whose rotation
@@ -19126,7 +19206,7 @@ const alarmLinkParts = {};
   // stiffness bound tightens rather than being spent on the corridor.
   // Station TWO keeps t 22 (measured room 2.77, in the outboard run the
   // reserve cluster never reaches).
-  for (const t of [2.45, 22]) {
+  for (const t of ALARM_LINK_BUSH_T) {
     const hx = ALARM_LINK_INNER_XY.x + u.x * t, hy = ALARM_LINK_INNER_XY.y + u.y * t;
     // §54: the bore follows the shaft, with a running clearance; the wall is
     // stock-floor so the bush is itself a real part. Both stations sit inside

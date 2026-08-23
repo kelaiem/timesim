@@ -268,7 +268,9 @@ alarm linkage), `checkAlarmHandoffs` (does each claimed contact of the §35
 arming run actually *close* — signed gap-or-burial at both toggle parities,
 with out-of-band rows carried as waived debt citing their TODO items),
 `checkSweptOverlap` against a swept-volume registry, `checkStockFloor` and
-`checkSlenderness` (a part can be thick enough and still be a noodle),
+`slenderness` (a part can be thick enough and still be a noodle — measured
+per FREE length, so a shaft that declares its bearings is judged on the spans
+between them and on its overhangs, not on its stock),
 `checkLowCorridor`, `auditOscillators`, `stockCensus` and `fingerprint` for
 determinism, plus the three that answer the blind spots below —
 `intraUnit` (all three pair classes inside a unit — movers vs fixtures,

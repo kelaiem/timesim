@@ -236,6 +236,12 @@ const COSTS = {
   'windArrestHandoff': 1,
   'stemClutchHandoff': 1,
   'stockFloor': 6,
+  // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
+  // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no
+  // pose sweep. TODO 78's bearing walk adds a handful of Box3.setFromObject
+  // calls inside one unit. 1 is this column's floor for sub-second checks;
+  // --report refreshes it like every row.
+  'slenderness': 1,
   'meshIntegrity': 10,
   'intraUnit': 6,
   'assembly': 4,
@@ -859,6 +865,7 @@ try {
   // and the check that moved is the bug, not the harness.
   const results = new Map();  // task key → { result, ms } — merged to check name below
   const axisMeta = [];        // §127 — window.__I.AXES as the page reports it, read once
+  const checkRoster = [];     // TODO 78 — window.__I.CHECK_NAMES, likewise: the page's roster, not this file's
   // Each shard catches its own failure instead of rejecting: one shard dying
   // must not throw away what the others measured, because the surviving
   // reports are how you tell a broken harness from a broken build.
@@ -880,6 +887,7 @@ try {
       // is: it is a property of the tree, not of the shard.
       if (i === 0) {
         axisMeta.push(...await page.evaluate(() => window.__I.AXES.map((a) => ({ name: a.name, n: a.n }))));
+        checkRoster.push(...await page.evaluate(() => window.__I.CHECK_NAMES.slice()));
       }
       // The fingerprint is read on shard 0 only. It is not a per-shard property
       // — it is the identity build's hash, and shard 0's boot is as virgin as
@@ -937,6 +945,41 @@ try {
   //   · every slice must have produced a payload. A shard that died takes its
   //     slices with it, and a union of the survivors is a report that gates
   //     green on a sweep that did not happen.
+  // TODO 78 — THE ROSTER IS CLOSED. Twice a check has been written, exported
+  // and never registered in inspect.js's CHECKS: §48's `restoring` (found by
+  // TODO 29, after shipping unrun) and §54's `slenderness` (found by TODO 78,
+  // after shipping unrun since §52 while its waiver table and three quoted λ
+  // values accumulated in the source). Both times the symptom was the worst
+  // one available — a green battery that had simply not run the instrument,
+  // which is indistinguishable from coverage. Neither `paths-ignore` nor
+  // assertCosts could see it: assertCosts holds BATTERY against COSTS, and a
+  // check absent from BOTH is consistent with both.
+  //
+  // So: every check the PAGE registers must have a BATTERY row, except the
+  // ones named here, each of which is not a gate for a stated reason. Read
+  // from the page for §127's reason — a second declaration of the roster in
+  // this file would be the thing that drifts. An empty roster fails too: it
+  // intersects nothing and would otherwise pass for that reason alone, the
+  // same hole the paths-ignore gate closes.
+  const NOT_IN_BATTERY = new Map([
+    ['freeAnnulus', 'a LAYOUT tool — it answers "where is there room", it does not judge'],
+    ['sweptRegistry', 'the §36 registry other checks consume; sweptOverlap gates what it produces'],
+    ['lowCorridor', 'a REPORT of the low band\'s occupancy, read while siting a part'],
+    ['focused', 'the convenience entry point — it runs other checks over named units'],
+  ]);
+  {
+    const inBattery = new Set(BATTERY.map((e) => e.name));
+    const unrun = checkRoster.filter((n) => !inBattery.has(n) && !NOT_IN_BATTERY.has(n));
+    const phantom = BATTERY.map((e) => e.name).filter((n) => !checkRoster.includes(n));
+    const staleExcuse = [...NOT_IN_BATTERY.keys()].filter((n) => !checkRoster.includes(n));
+    gate('every registered check has a battery row', [
+      ...(checkRoster.length ? [] : [{ error: 'shard 0 never reported window.__I.CHECK_NAMES' }]),
+      ...unrun.map((n) => ({ registeredButNeverRun: n })),
+      ...phantom.map((n) => ({ batteryRowNamesNoCheck: n })),
+      ...staleExcuse.map((n) => ({ excusedCheckNoLongerExists: n })),
+    ]);
+  }
+
   if (SPLIT) {
     const roster = axisMeta.map((a) => a.name);
     for (const e of BATTERY) {
