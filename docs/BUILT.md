@@ -16165,7 +16165,7 @@ consumers, values unmoved).
 | click detent | **14.7 mN** peak at the nose flank | ψ(OUT)−ψ(SEAT) through the blade at bearFrac·L — INSIDE the declared window, which is the anchoring the window's declaration promised |
 | pawl at the saw root | **13.8 mN** per indexing press | the click torque paid back at the saw's own outermost radius (ratchetPoly); against the 1–5 N finger band the chain starves at the SHAFT, never the input |
 | silence finger | **≈51 mN** | the feeler bias blade's k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot; the lifter carries aF/aP of it |
-| lay shaft delivery | **≈6 mN** at the drive tab | the tail's stall through the crank pair at the measured stroke ratio, TAIL-limited — INSIDE the window near its floor, so the seed waiver retired (the first cut quoted TODO 63's 22 N/m, a stiffness for the retired pre-§68 span — see the two-sessions note below) |
+| lay shaft delivery | **≈0.42 mN** at the drive tab | the SOFTEST series member's stall through the crank pair at the measured stroke ratio — the shaft's rod-end overhang (TODO 79), an order softer than the tail. Under the floor, waived citing TODO 79. Three numbers died getting here; see below |
 | elbow bends | see below | the beam-column pair, both rods |
 
 Two published numbers moved by being computed against the live build, one
@@ -16235,24 +16235,49 @@ reaches, so retirement is a THIRD BUSH STATION — position space, filed as
 roadmap §156 — and the staleness gate guarantees the entry cannot outlive
 that landing.
 
-### Two sessions, one §
+### Two sessions, one §, and a stall number that took four takes
 
-This entry landed twice in one day, from opposite ends. A parallel
-session scoped the §137 plan, built the two probes, corrected TODO 63's
-span arithmetic in comments (Landings 1–2, including the shaft's
-force-floor section); this session built the declared AUDIT — the idiom
-vocabulary, the rows, the gates — and corrected the OTHER stale number
-(the tail's plan stroke). The two converged everywhere they overlapped
-(click ≈15 mN both ways, reset e = 0 both ways, idler wall 0.285 ≡
-0.434 − CLEAR_MARGIN, jumper-not-the-blocker both ways), which is what
-measurement-first buys: two independent instruments agreeing is the
-strongest verification either landing got. The one §-number collision
-(§154, minted twice) was caught and renumbered to §156 on the roadmap.
+This entry landed across two sessions working the same day from opposite
+ends. One scoped the §137 plan, built the two probes, corrected TODO 63's
+span arithmetic and put the shaft on its force floor (Landings 1–2), then
+registered §54's never-run check and found the rod-end overhang (TODO
+78/79). The other built the declared AUDIT — the idiom vocabulary, the
+rows, the gates — and corrected the tail's plan stroke. They converged
+everywhere they overlapped independently: click ≈15 mN both ways, reset
+rod e = 0 both ways, the idler wall at 0.285 ≡ 0.434 − CLEAR_MARGIN,
+jumper-not-the-blocker both ways, and — after the audit derived the
+overhang from `ALARM_LINK_BUSH_T` rather than quoting it — 12.487 u and
+21.2 N/m to the digit against the other session's probe. Two instruments
+agreeing without consulting each other is better verification than either
+landing had alone. The one §-number collision (§154, minted twice) was
+caught and renumbered to §156 on the roadmap.
+
+**The arming chain's stall took four takes, and the sequence is the
+lesson**, because each take was honest arithmetic on an incomplete
+inventory:
+
+| take | figure | what was wrong with it |
+|---|---|---|
+| TODO 16 | ≈1.5 mN, shaft-limited | pre-§68 lever and span |
+| TODO 63 | ≈1.6 mN, shaft-limited | 22 N/m was the pre-§68 4.5 mm overhang |
+| §137 Landing 2 | ≈48 mN, tail-limited | multiplied by the retired 0.42-unit plan stroke |
+| the audit's first cut | ≈6 mN, tail-limited, in-window | omitted the rod-end overhang entirely |
+| **now** | **≈0.42 mN, rod-end-limited** | first-order, and TODO 79 says take it properly |
+
+Nothing in that column is a mistake anyone could have avoided by being
+more careful with the same information — each take added a member or
+retired a constant the previous one had no way to see, and the only
+reason the last one exists is that TODO 78 made an unregistered
+instrument run. **The waiver made the same round trip**: filed against
+TODO 16, deleted when the chain briefly read in-window, restored citing
+TODO 79 when the soft member appeared. The staleness tier polices that in
+both directions — a waiver with nothing left to waive fails, and so does
+a missing one, by the envelope tier — which is why the deletion and the
+restoration were both forced rather than remembered.
 
 **Verified.** Boot silent; 13 transfer rows — 0 malformed, 0 stale,
-0 mismatched, 0 unwaived envelope misses, 0 stale waivers (the waiver
-table is EMPTY, and emptily gated), control PASS; slenderness 9 over /
-7 unwaived / 0 stale waivers, shaft λ 135.4 at Landing 2's section;
-identity geometry untouched by the audit itself (declarations and mesh
-names only — Landing 2's radius bump is that landing's own fingerprint
-move).
+0 mismatched, 0 unwaived envelope misses, 0 stale waivers, control PASS,
+1 waived (the lay shaft, citing TODO 79); slenderness 9 over / 7 unwaived
+/ 0 stale waivers, shaft λ 127.6 over its governing free length;
+identity geometry untouched by the audit itself — declarations and mesh
+names only.

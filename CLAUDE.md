@@ -225,8 +225,10 @@ it into prose either.
    declared windows — the 5–50 mN detent band is a CONSTANT now, never
    forkable. A waived row cites its TODO and a waiver naming a site with
    no envelope miss is itself a failure — the seed waiver, the lay
-   shaft's ≈1.6 mN, retired that way when §137's span and stroke
-   corrections put the chain's delivered ≈6 mN back inside the window),
+   shaft's, made a round trip on that rule: retired when §137's span and
+   stroke corrections read the chain in-window, then restored citing
+   TODO 79 when the shaft's rod-end overhang turned out to be a second
+   series compliance an order softer than the tail),
    and `slenderness` **0 stale waivers** (§54's report, reachable at last —
    its rows stay a REPORT by §54's own covenant and the unwaived residue is
    TODO 78's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a

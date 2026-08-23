@@ -19535,13 +19535,34 @@ const alarmLinkParts = {};
   //
   // The LAY SHAFT'S CRANK PAIR: the rod's fall arrives on the rim crank,
   // rolls the shaft, and leaves on the centre crank's pin in the fork's
-  // groove. With the shaft at its Landing-2 force floor (≈2.8 kN/m) the
-  // WEAK member is the tail upstream, so what the chain can deliver at the
-  // drive tab is the tail's stall carried through the crank pair at the
+  // groove. What the chain can DELIVER at the drive tab is set by the
+  // SOFTEST member in the series, carried through the crank pair at the
   // measured stroke ratio (force transforms as d_rod/d_ring for a rigid
-  // pair): tailStall × |rodTravel| / ALARM_SEL_TRAVEL. That number must sit
-  // INSIDE the detent envelope — the claim TODO 16 was opened over, judged
-  // here on live metal at every boot instead of in any record's prose.
+  // pair). Two members act at the rod and so are directly comparable, both
+  // stalling at k × |rodTravel|:
+  //
+  //   · the beak TAIL, §54-sectioned, k above;
+  //   · the shaft's ROD-END OVERHANG — TODO 79. Not the fork-end cantilever
+  //     Landing 2 sized the section against (0.929 mm, 2807 N/m): §68 sited
+  //     the bushes for short overhangs at BOTH ends on the 24.12 u chord that
+  //     then existed, §112 grew the chord ≈9 u, and the station literals did
+  //     not travel with it. The rod end now hangs the whole way from the
+  //     outer bush to the metal's end, carrying alarmLinkCrankRim and the rod
+  //     drive at its free tip. Derived here from the same ALARM_LINK_BUSH_T
+  //     the bearings declaration and the hangers read, so the three cannot
+  //     drift: L = fullChordLen − max(stations).
+  //
+  // The overhang is an order softer than the tail, so it BINDS, and the
+  // delivered figure lands below the detent envelope's floor — the row is
+  // waived citing TODO 79. Two records had this wrong in opposite
+  // directions and both are superseded here: TODO 63's ≈1.6 mN used a
+  // pre-§68 span, and this row's own first cut omitted the overhang
+  // entirely and read the chain as tail-limited and in-window. NEITHER this
+  // nor TODO 79's ≈3.3 mN is a measured load path — both are the geometry's
+  // free length times the repo's own cantilever formula, and TODO 79 says
+  // in terms to take it properly before acting on it. What the row asserts
+  // is only the comparison: the rod end is the soft member, and the chain
+  // does not demonstrably clear its window.
   {
     const kTail = cantileverK_N_per_m(STOCK_MIN_U, ALARM_LINK_TAIL_H, tailLen);
     const rodTravelU = Math.abs(alarmLinkParts.forward.rodTravel);
@@ -19553,14 +19574,24 @@ const alarmLinkParts = {};
       quantities: { armIn_u: beakLen, armOut_u: tailLen, ratio: tailLen / beakLen },
       why: 'a pivoted lever with two designed arms about the beak post — the built arms measure the displacement gain TODO 63 re-took (7.1×, not the 36.5× the old record assumed)',
     });
-    const deliveredMN = tailStallMN * rodTravelU / ALARM_SEL_TRAVEL;
+    // The rod-end overhang, from the bush declaration rather than a quoted
+    // number: 3EI/L³ on the round section (I = πr⁴/4, the same model §137's
+    // force budget uses — NOT the slenderness column's rectangular ac³/12).
+    const overhangU = fullChordLen - Math.max(...ALARM_LINK_BUSH_T);
+    const _m = UNIT_MM / 1000;
+    const kRodEnd = 3 * STEEL_E_PA * (Math.PI * (ALARM_LINK_SHAFT_R * _m) ** 4 / 4)
+      / (overhangU * _m) ** 3;                                   // N/m
+    const rodEndStallMN = kRodEnd * rodTravelU * UNIT_MM;
+    const bindingStallMN = Math.min(tailStallMN, rodEndStallMN);
+    const deliveredMN = bindingStallMN * rodTravelU / ALARM_SEL_TRAVEL;
     declareTransfer('alarm arming: lay shaft cranks (rod foot → ring drive tab)', {
       unit: 'Alarm link', meshes: ['alarmLinkShaft', 'alarmLinkCrankRim', 'alarmLinkCrankCentre'], idiom: 'crank',
       load: { value: deliveredMN, unit: 'mN',
-        source: 'the tail\'s stall carried through the rigid crank pair at the measured |rodTravel|/ALARM_SEL_TRAVEL stroke ratio — TAIL-limited since Landing 2 put the shaft on its force floor; the old 22 N/m shaft figure was the retired pre-§68 span' },
-      quantities: { armIn_u: ALARM_LINK_CRANK_OFF, armOut_u: ALARM_FORK_PIN_ARM_R, ratio: ALARM_FORK_PIN_ARM_R / ALARM_LINK_CRANK_OFF },
+        source: 'the SOFTEST series member\'s stall (tail blade vs the shaft\'s TODO 79 rod-end overhang, both at |rodTravel|) carried through the rigid crank pair at the measured stroke ratio — first-order, not a measured load path' },
+      quantities: { armIn_u: ALARM_LINK_CRANK_OFF, armOut_u: ALARM_FORK_PIN_ARM_R, ratio: ALARM_FORK_PIN_ARM_R / ALARM_LINK_CRANK_OFF,
+        overhang_u: overhangU, kRodEnd_N_per_m: kRodEnd, kTail_N_per_m: kTail, bindingStall_mN: bindingStallMN },
       envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: deliveredMN },
-      why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right, and since the span correction the chain\'s delivered stall sits INSIDE its detent window: the claim TODO 16 was opened over, now measured green on live metal',
+      why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right and then undone by a chord that grew under it: the rod-end overhang is the soft member and the delivered stall misses the detent window, waived citing TODO 79 (position space, and NOT the third bush — that splits a span which does not govern)',
     });
   }
   // bushes: hangers from the base plate's underside, at the two chord

@@ -7326,17 +7326,25 @@ export const TRANSFER_ENVELOPES = {
   CASE_PUSHER_INPUT_N,         // N at the cap — what a finger delivers
 };
 // Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
-// EMPTY, and the empty table is a record: the seed waiver — the lay shaft's
-// "≈1.6 mN against a 5 mN floor" — retired when two stale numbers died in
-// one week. The 22 N/m shaft compliance was a stiffness for the pre-§68
-// 4.5 mm overhang (§137 Landing 1's correction: the measured cantilever is
-// 0.929 mm, and Landing 2 put the section on its 2800 N/m force floor), and
-// the tail's 0.158 mm stroke was the retired 0.42-unit plan constant (the
-// registration solve's own |rodTravel| reads ≈0.038 mm). On live metal the
-// chain delivers ≈6 mN at the drive tab, tail-limited, INSIDE the window —
-// so the row measures green and a waiver here would be the standing excuse
-// the staleness tier below exists to catch.
+//
+// THE SEED WAIVER SURVIVED A ROUND TRIP, and the round trip is the record.
+// It was filed against TODO 16's "≈1.6 mN against a 5 mN floor"; that number
+// was a stiffness for the PRE-§68 4.5 mm overhang, which §137 Landing 1
+// retired. With the shaft on Landing 2's force floor the chain then read
+// ≈6 mN at the tab — tail-limited, inside the window — and this entry was
+// briefly deleted on that basis. TODO 78 registering §54's check found the
+// omission: the shaft's ROD-END overhang (TODO 79 — the chord grew ≈9 u
+// under two station literals that did not travel with it) is a second
+// series compliance an order softer than the tail, and it BINDS. So the
+// delivered figure lands under the floor again, by a different member than
+// the one the waiver was opened over, and the entry comes back citing the
+// item that owns the overhang.
+//
+// It cites TODO 79 rather than TODO 16 deliberately: 16 owns the section,
+// 79 owns the station, and the fix is 79's — position space, and NOT the
+// roadmap's third bush, which splits the span that does not govern.
 export const TRANSFER_WAIVERS = {
+  'alarm arming: lay shaft cranks (rod foot → ring drive tab)': 'TODO 79',
 };
 export function checkTransfers(clock) {
   const payload = clock.transfers;
