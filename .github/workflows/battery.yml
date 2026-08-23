@@ -351,4 +351,16 @@ jobs:
           # hidden-file exclusion, so the incremental baseline was never
           # broken by this.
           include-hidden-files: true
+          #
+          # AND `if-no-files-found: error`, which is what stops it recurring.
+          # The default is `warn`, and a warning inside a PASSING job is
+          # invisible — that is the only reason the bug above survived every
+          # run since §152. This is the repo's own "a clean report of work
+          # that did not happen", one layer out from the battery, so it gets
+          # the repo's own answer: an instrument that produced nothing FAILS
+          # rather than passes quietly. Nothing on a CI path may legitimately
+          # upload zero files — the harness writes the report before this step
+          # on every path that reaches it, and `--spec-only`, which writes
+          # none, is not a path CI takes.
+          if-no-files-found: error
           retention-days: 14

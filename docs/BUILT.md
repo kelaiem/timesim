@@ -13539,8 +13539,111 @@ guard fired on the degraded container — the guard was not resized, per its
 own doctrine), with `meshIntegrity`'s report tier exempted by TODO 81's
 citation.
 
+### Tier 3 Landing A — the assembly half stops caring where its payloads were measured
+
+The entry's costed table says a second HOST is worth −41% of job wall for +17%
+of runner-minutes, but only with the sweeps sliced — and tier 2a shipped that.
+What stood between the table and the matrix was that `ci-battery.mjs` was one
+process from preflight to report. **Landing A moves that seam and nothing
+else**: no workflow change, no matrix, no CI. All of the correctness risk lives
+in the seam and all of it is locally provable, so it is proven before anything
+touches how CI runs. Landing B (the `battery.yml` matrix, sized on CI) and
+Landing C (spreading the spec-boot tier) are separate.
+
+**The seam was already there, at the line where task payloads are produced.**
+Everything above it is browser work; everything below — the slice merge, §152's
+union, the gates, the spec-boot verdicts, the `paths-ignore` module-graph walk
+(pure Node: it reads the repo, never the page) and `--report` — is arithmetic
+over payloads whose ORIGIN does not matter. Two flags beside the existing
+single-process path, which stays the reference exactly as `--shards 1` and
+`--no-split` are:
+
+- **`--matrix i/N --tasks-out FILE`** — a WORKER. It partitions over
+  `N × SHARDS` groups and runs the shards `[i·SHARDS, (i+1)·SHARDS)` that are
+  its own, then writes its task payloads, its shards' boot warns and errors
+  under their GLOBAL indices, the §152 preflight decision it derived, and —
+  worker 0 only — the anchors. **It evaluates no gates and writes no report.**
+- **`--collect FILE…`** — the COLLECTOR. It launches no browser at all and runs
+  the assembly half verbatim: the same gates, in the same order, with the same
+  note lines, and `--report`.
+
+**No coordination, and that is what makes it a matrix.** `buildTasks` and
+`partition` are pure functions of in-repo data, so every worker derives the
+identical partition independently — and so does the collector, which is exactly
+what lets it name work that never arrived. Worker 0 owns everything indivisible
+because the code already treated shard 0 as the tree's representative: the axis
+and check rosters (read from the page, not from this file), fingerprint A,
+boot B with the digest-determinism pair, and — until Landing C — the spec-boot
+tier. §152 composes untouched: every worker restores the same baseline cache
+entry and runs the same preflight, so each derives the same changed-unit set,
+which is sound for the reason the digest-determinism gate already holds.
+
+**The refactor discipline is that the downstream half is CALLED by both paths,
+never copied.** A second copy of the gate loop is `tools/payload.sh`'s
+two-lists drift one level up — the harness would then hold two definitions of
+what standing rule 4 is. `assemble()` takes everything it needs as an argument
+and reads no mutable module state, including its own gate list.
+
+**The failure this landing exists to refuse is a healthy-looking smaller run.**
+Every gate reports only whether its failure list is empty, so work that
+silently never happened passes all of them. Three disciplines were already
+built for exactly that shape and this extends them rather than reinventing:
+§127's `every slice produced a payload`, the gate loop's `neverRan` (which
+names the check rather than dying on `undefined`), and §152's `every restricted
+check was unioned back` — the last of which exists because `mergeInspection`
+dropped a restriction record once and a restricted `inspection` gated green on
+3 contacting pairs against a full run's 81. The new floor is one level up:
+because the collector derives the global shard set by name, a worker file that
+never arrives fails the gate **every expected shard was collected**, naming the
+shard and every task on it. In one process the shard list IS what ran, there is
+nothing to compare, and the gate does not appear — so the reference run's gate
+count is unchanged. Beside it, six things throw rather than gate, because each
+means the files are not one run to begin with: a worker file that is unreadable
+or at the wrong format version (**not** `readJsonOr` — that convention exists
+so a missing baseline costs a full run instead of a crash, and a collector has
+no "more work" to fall back to), files that disagree about the run's shape, a
+worker whose claimed shards are not the ones this tree's partition gives it, a
+shard or a task key that arrives twice, workers that restricted to different
+unit sets, and a baseline present on one side of the seam and not the other —
+that last being §152's stale green with an extra process in the way.
+
+Two deviations from the plan, both recorded because they are visible. The
+browser work that used to sit below the gates (boot B, the digest read, the
+spec tier) moved ABOVE them so the collector can gate with no browser at all;
+gate order, note lines and the report are unchanged, proven by a `--spec-only`
+diff across the change. And `--only NAME[,NAME]` was added — a probe flag CI
+never passes — narrowing a run to named checks or `check:axis` slices so the
+assembly half is exercisable in minutes; its legal key space is every DECLARED
+check and every slice a check declares — read from `BATTERY`, not `COSTS`,
+because since §122 the `clearances:*` and `expectedContacts:*` slices carry no
+`COSTS` row at all — and it throws on anything else, `resolveAxes`' precedent. It is held
+OUT of the two roster claims, which are about the battery the repo declares
+rather than what one invocation chose to run.
+
+**`tools/probe-127-matrix.mjs` is the acceptance**, `probe-127-split.mjs`'s
+shape and its argument: cross-process assembly is a merge, and a merge only
+exercisable by running the whole battery cannot be iterated on. It drives
+`ci-battery.mjs` as a CHILD process (the file runs its main flow at module
+scope, so an import IS a run) over `graph,support,clearances:crown,clearances:alarmToggle`
+— two whole checks and two slices of one split check, the pair being what makes
+the two-worker case meaningful, since at K=1 per worker they land in different
+shards and the collector is what puts `clearances` back together. Four browser
+runs of that selection, ~11 min on a dev container. All three identities:
+
+- one worker collected reports what a single process reports, **byte for byte**;
+- two workers collected report the same, **byte for byte**;
+- a WITHHELD worker file makes the collect exit 1, naming every shard and task
+  it carried (`shardNeverCollected: 1` · `neverRan: "graph"` ·
+  `sliceNeverRan: "alarmToggle"`) — not a green smaller run.
+
+Deliberately not done here: no `battery.yml` change, no guard or cap
+re-derived (`CHECK_TIMEOUT_MS` and the 50-minute job cap stay where tier 1 left
+them), and no claim about the matrix's value — that is Landing B's, measured on
+CI, because this section's own K=4 revert is the worked example of a dev
+container predicting the wrong sign.
+
 What remains of this section is unchanged in kind: tier 2b (the index-range
-slice, which `alarmToggle` still refuses) and tier 3 (the job matrix), both
+slice, which `alarmToggle` still refuses) and tier 3's Landings B and C, all
 still in the roadmap entry.
 
 ## §129 — the alarm's stop-work counts the WIND: a spider differential subtracts the two barrel members

@@ -469,6 +469,32 @@ that did not happen), and the merged payload is byte-identical to a whole
 run's — `tools/probe-127-split.mjs` proves that on two axes in about a minute,
 which is the loop to use while iterating.
 
+**And since §127 tier 3 the harness can ASSEMBLE ACROSS PROCESSES.**
+`--matrix i/N --tasks-out FILE` runs the browser half for the shards worker `i`
+owns and writes what it measured, evaluating no gates and writing no report;
+`--collect FILE…` runs the assembly half over those files — the same gates in
+the same order, `--report`, and no browser at all. Nothing coordinates them:
+`buildTasks` and `partition` are pure functions of in-repo data, so every
+worker and the collector derive the identical partition independently, which
+is what lets the collector NAME work that never arrived. The failure to keep
+refusing is a healthy-looking smaller run, and it is refused three ways —
+`every expected shard was collected` (a new gate that exists only under
+`--collect`; in one process the shard list IS what ran, so the reference run's
+gate count is unchanged), six THROWS for files that are not one run (wrong
+format version, disagreeing shape, shards a worker was not owed, a shard or
+task key arriving twice, workers restricted to different unit sets, a baseline
+on one side of the seam only), and worker 0 alone carrying the indivisible
+anchors — fingerprint A, boot B with the digest pair, the two rosters, and
+(until Landing C) the spec-boot tier. **The single-process path is the
+reference and must stay untouched**, exactly as `--shards 1` and `--no-split`
+are, and the assembly half is CALLED by both paths rather than copied — a
+second gate loop would be two definitions of standing rule 4.
+`tools/probe-127-matrix.mjs` proves the three identities in ~11 min via
+`--only`, a probe flag CI never passes (its key space is every declared check
+and every slice a check declares — read from `BATTERY`, since a projected slice
+has no `COSTS` row — and it throws on anything else). No workflow uses any of this yet: the matrix itself
+is Landing B, to be sized on CI rather than on a dev container.
+
 **What makes slicing legal at all is TODO 54's canonical axis entry.** A slice
 runs in its own browser context and starts from `resetInputs()`, so it can only
 match a whole run if entering an axis reproduces that axis's poses whatever ran
