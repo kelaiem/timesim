@@ -13613,8 +13613,10 @@ spec tier) moved ABOVE them so the collector can gate with no browser at all;
 gate order, note lines and the report are unchanged, proven by a `--spec-only`
 diff across the change. And `--only NAME[,NAME]` was added — a probe flag CI
 never passes — narrowing a run to named checks or `check:axis` slices so the
-assembly half is exercisable in minutes; its legal key space is `COSTS`' key
-space and it throws on anything else, `resolveAxes`' precedent. It is held
+assembly half is exercisable in minutes; its legal key space is every DECLARED
+check and every slice a check declares — read from `BATTERY`, not `COSTS`,
+because since §122 the `clearances:*` and `expectedContacts:*` slices carry no
+`COSTS` row at all — and it throws on anything else, `resolveAxes`' precedent. It is held
 OUT of the two roster claims, which are about the battery the repo declares
 rather than what one invocation chose to run.
 
@@ -16002,3 +16004,108 @@ says so with all four numbers.
 `paintSubdialFace` takes the ground as an argument for this, and
 `paintWell` now names it once (`wellGround`) instead of computing the same
 expression for the fill and again for the paint.
+
+## §122 — the verdict tier was half the battery; two exact cuts and one honest semantics change halve the wall — and the parity ray was caught lying
+
+**Roadmap §122, shipped whole.** Filed 2026-08-15 from §108's census;
+built 2026-08-23 after the §136 pricing gate made it urgent (the
+cycloidal profile's vertex cost lands exactly on this tier, and the
+owner sequenced this entry first rather than coarsening that one).
+
+**The census was re-measured first, per the entry's own instruction, and
+the shape had changed since filing.** On the current tree the verdict
+tier — `sampledVerdict`, the arbitration pass double-checking every
+near-zero and positive the BVH reports — cost **2,175 s of ~4,600 s of
+check time (47%)**: `clearances` 961 calls at **1023 ms each** (984 s —
+it was the 63-call footnote in the filing), `inspection` 144,364 calls at
+8.2 ms (1,181 s — nearly its whole exact tier), `expectedContacts` a
+10 s afterthought against its 708 s non-verdict exact tier.
+
+### Fix one — two cuts, each provable from its own condition
+
+`_sampledVerdictInner` ran a parity raycast and an unbounded-start
+closest-point query for EVERY vertex and edge midpoint of both meshes,
+refutation or not. Both cuts test the sample against the dst TREE's
+bounding box (from `tree.getBoundingBox` — deliberately not
+`geometry.boundingBox`, because `bvhFor` caches per geometry and never
+invalidates, so the tree's own box is exactly as fresh as the verdict
+already is):
+
+- **Distance**: box distance is a true lower bound of mesh distance, so a
+  sample whose box distance already reaches `best` cannot lower it. The
+  final sampled minimum is bit-identical — held over **7,042,573 samples
+  across 681 near pairs with zero counterexamples**
+  (`tools/probe-122-verdict.mjs`, the dissection kept as an instrument).
+- **Parity**: a sample outside the box cannot be inside the mesh, so its
+  raycast is skipped. Exact with respect to truth — and dissecting it
+  produced the landing's finding.
+
+**The finding: the baseline's parity ray was lying.** The fixed oblique
+ray returns ODD for samples up to **13 u OUTSIDE** the other mesh's
+bounds — grazing-count false positives, the third measured lying mode in
+this instrument family after the two §82 vendor patches. Measured
+consequence in the A/B: `Escape wheel ⇄ Three-quarter plate` read **0**
+(a phantom contact) where the true sampled distance is 2.7866.
+
+**Acceptance, on the entry's own envelope.** Full battery, `--report`
+diff against base: **19 of 20 payloads byte-identical**. The one moved
+row — `assembly`'s fusee `CylinderGeometry#11`, `separation` 0 → 0.0057
+(report-tier, out of `ASSEMBLY_SCOPE`, no gate reads it) — carries a
+complete witness: at full sample density, **all 166 parity-odd samples
+on that pair sit ≈4.51 u outside the lathe's bounds, zero genuine** —
+the oblique ray grazing a `LatheGeometry`'s coaxial walls, the exact
+fragility the code's own comment feared axis-aligned rays would have.
+The baseline number was built entirely of lies; the moved number is the
+truth. "No verdict may move" lands as §82's precedent did: byte-identity
+except where the baseline provably lied, every moved row owing its boxD
+witness, and `probe-122-verdict.mjs --unit … --mesh …` reproduces it.
+
+### Fix two — inspection stops re-proving the expected
+
+Whether a pair is EXPECTED is a declaration known before the sweep, and
+only FORBIDDEN findings gate. The classification hoists to a per-pair
+matrix computed once; the first-confirmed flag is ZERO new state — a
+(pair, axis) with a recorded pose necessarily had its first contact
+arbitrated by the full path — and the remaining poses of that axis take
+the raw BVH boolean. FORBIDDEN and undeclared pairs keep full
+arbitration at every pose. Slice-safe by construction (§127 runs one
+axis per context); `mergeInspection` re-derives the payload mark the way
+it re-derives `summary`, inserted before it so merged rows match a whole
+run's byte for byte — `probe-127-split.mjs`: IDENTICAL.
+
+**The documented semantics change, enumerated:** every EXPECTED row now
+carries `coverage: 'raw-after-first-confirmed'`; 8 of 81 rows gained a
+net 102 poses (raw positives the verdict used to refute — pose-coverage
+lists, not gates); `verdictCalls` fell 144,364 → 10,932 (7.6%). Nothing
+else moved: FORBIDDEN rows are byte-identical by construction and there
+are none in a green battery.
+
+### What it bought, measured
+
+| | baseline | fix one | + fix two |
+|---|---|---|---|
+| wall | 2465.3 s | 1284.2 s | **1260.5 s** |
+| checks | 4554.7 s | 2648.8 s | **2455.8 s** |
+| inspection ms | 1,488,148 | — | 312,648 (×0.21) |
+| clearances ms | 1,976,471 | — | 996,919 (×0.50) |
+
+Both columns are one container, same day, full battery either side — a
+controlled ratio, not a CI absolute. The tree they were taken on predates
+§127 tier 2a, which landed on `main` while this was open and made a whole
+run refine a superset of its old intervals: the fixes' RATIOS survive that
+(they remove work per verdict call, whatever calls them), the absolute
+seconds do not, and `clearances` in particular now costs more than the
+996,919 ms above. Do not read this table as the current wall; read it as
+what the two fixes are worth.
+
+The cost column moved with it — each entry the old CI-calibrated value
+scaled by its measured local ratio (the column's job is the relative
+partition; local absolutes are not CI's) — and the new partition
+estimates ~7-minute shards against the old ~12. `CHECK_TIMEOUT_MS` is
+untouched: the wall dropped.
+
+**Residue, named:** the parity ray is still trusted for samples INSIDE
+the box, where the same grazing mode could in principle lie undetected —
+TODO 83 carries it, with `probe-122-verdict.mjs` as its instrument. And
+§136's fold — the entry this one was sequenced ahead of — re-prices its
+vertex cost against this new baseline.

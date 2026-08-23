@@ -717,23 +717,33 @@ function bvhFor(mesh) {
 
 const _mat = new THREE.Matrix4();
 const _matRev = new THREE.Matrix4();
-function meshesIntersect(a, b) {
+function meshesIntersect(a, b, raw = false) {
   if (SWEEP_CENSUS.on) {
     const c = SWEEP_CENSUS.c;
     c.exactCalls++;
     const t0 = performance.now();
-    const r = _meshesIntersectInner(a, b);
+    const r = _meshesIntersectInner(a, b, raw);
     c.exactMs += performance.now() - t0;
     if (r) c.boolTrue++; else c.boolFalse++;
     return r;
   }
-  return _meshesIntersectInner(a, b);
+  return _meshesIntersectInner(a, b, raw);
 }
-function _meshesIntersectInner(a, b) {
+function _meshesIntersectInner(a, b, raw = false) {
   const bvhA = bvhFor(a);
   bvhFor(b); // intersectsGeometry needs the other side indexed; building its tree indexes it
   _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
   if (!bvhA.intersectsGeometry(b.geometry, _mat)) return false;
+  // §122 fix two — `raw` trusts the positive WITHOUT arbitration. Only
+  // runInspection may pass it, and only for a declared-EXPECTED pair whose
+  // contact on the current axis has already been arbitrated once (the
+  // first hit per (pair, axis) always takes the full path below). A raw
+  // positive can be one of the tri-tri false positives the verdict exists
+  // to refute — the caller's payload SAYS so (coverage:
+  // 'raw-after-first-confirmed'), which is the entry's sanctioned,
+  // documented semantics change for EXPECTED pose-coverage lists. Nothing
+  // gated consumes a raw answer: FORBIDDEN candidates never take this path.
+  if (raw) return true;
   // A POSITIVE is never trusted raw. The tree-vs-tree path has a measured
   // false-positive mode at specific relative transforms (2026-07: balance
   // rim ⇄ fork-cock boss, 0.69 apart, one direction lying; 2026-08: alarm
@@ -748,7 +758,7 @@ function _meshesIntersectInner(a, b) {
   return v.inside || v.d < 1e-4;
 }
 
-function unitsIntersect(A, B) {
+function unitsIntersect(A, B, raw = false) {
   const cen = SWEEP_CENSUS.on ? SWEEP_CENSUS.c : null;
   for (const a of A.meshes) {
     for (const b of B.meshes) {
@@ -756,7 +766,7 @@ function unitsIntersect(A, B) {
       if (cen) cen.aabbTests++;
       if (!new THREE.Box3().setFromObject(a).intersectsBox(new THREE.Box3().setFromObject(b))) continue;
       if (cen) cen.aabbPass++;
-      if (meshesIntersect(a, b)) return true;
+      if (meshesIntersect(a, b, raw)) return true;
     }
   }
   return false;
@@ -1323,18 +1333,58 @@ function sampledVerdict(a, b, upperBound = Infinity) {
   }
   return _sampledVerdictInner(a, b, upperBound);
 }
+// §122 fix one — THE VERDICT'S TWO LAPS ARE BOUNDED BY EXACT CUTS. Both skip
+// only work whose result is provable from the skip condition itself:
+//   · DISTANCE skip: box distance is a true lower bound of mesh distance, so
+//     boxD ≥ best means the bounded closestPointToPoint(…, 0, best) could
+//     not have produced hit.distance < best; `best` after the sample is
+//     identical either way, so all later pruning and the final d are
+//     BIT-IDENTICAL — held over 7,042,573 samples across 681 near pairs
+//     with zero counterexamples (the §122 dissection probe). This is the
+//     cut that matters at meshClearance's running-best bound (up to ~0.55
+//     in clearances — the loosest in the file; the census measured those
+//     verdicts at 1023 ms per call).
+//   · PARITY skip: a sample strictly outside the dst tree's bounding box
+//     cannot be inside the dst mesh (mesh ⊆ box, a geometric fact), so
+//     pointInsideTree's TRUE answer for it is false and skipping cannot
+//     change a sound OR. What the same dissection MEASURED is that the
+//     baseline was not always sound: the fixed oblique parity ray returns
+//     ODD for some samples up to 13 u outside the other mesh's bounds —
+//     a grazing-count lie, the third measured lying mode in this
+//     instrument family (§82's vendor patches record the other two). So
+//     this cut is exact with respect to truth and NOT byte-identical with
+//     respect to the baseline: where the two differ, the baseline verdict
+//     was a false "inside" on a provably-outside sample, and the skip
+//     corrects it. Every report row that moves under this landing is
+//     enumerated in the landing's diff and owes its justification to that
+//     evidence — a moved row without a boxD witness is a defect, exactly
+//     as §122's envelope demands.
+// The box comes from the TREE, not geometry.boundingBox, deliberately:
+// bvhFor caches per geometry and never invalidates, so for a morphing mesh
+// the tree is frozen at first build — a box derived from the tree is exactly
+// as fresh as the verdict already is, and adds no staleness of its own.
+const _bvhBoxCache = new WeakMap();
+function bvhBox(tree) {
+  let box = _bvhBoxCache.get(tree);
+  if (!box) { box = tree.getBoundingBox(new THREE.Box3()); _bvhBoxCache.set(tree, box); }
+  return box;
+}
 function _sampledVerdictInner(a, b, upperBound = Infinity) {
   let best = upperBound, inside = false;
   const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
   for (const [src, dst] of [[b, a], [a, b]]) {
     const tree = bvhFor(dst);
     bvhFor(src); // indexing side effect — edge extraction below reads the index
+    const box = bvhBox(tree); // dst-local, same frame as the transformed samples
     _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
     const pos = src.geometry.attributes.position;
     const test = (v) => {
-      const hit = tree.closestPointToPoint(v, {}, 0, best);
-      if (hit && hit.distance < best) best = hit.distance;
-      if (!inside && pointInsideTree(tree, v)) inside = true;
+      const boxD = box.distanceToPoint(v); // 0 inside/on the box
+      if (boxD < best) {
+        const hit = tree.closestPointToPoint(v, {}, 0, best);
+        if (hit && hit.distance < best) best = hit.distance;
+      }
+      if (!inside && boxD === 0 && pointInsideTree(tree, v)) inside = true;
     };
     for (let i = 0; i < pos.count; i++) test(_sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat));
     const idx = src.geometry.index;
@@ -4313,6 +4363,14 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
   const touching = resolvePairsTouching(clock, pairsTouching);
   const units = collectUnits(clock, { includeExcluded });
   const findings = new Map(); // pairKey -> { class, axes: {axisName: [f,...]} }
+  // §122 fix two — the EXPECTED classification is pure string work over a
+  // declaration, so it is computed ONCE here rather than re-derived at every
+  // contact (where it used to live), because the sweep now needs it BEFORE
+  // measuring: a declared-EXPECTED pair whose contact on the current axis
+  // has already been arbitrated takes the raw boolean for the remaining
+  // poses. FORBIDDEN and undeclared pairs are untouched — full arbitration
+  // at every pose, exactly as before.
+  const expectedAt = units.map((A) => units.map((B) => inList(EXPECTED_PAIRS, A.name, B.name)));
   censusStart();   // §108's experiment — report-only, see the census block
   let unitPairTests = 0, unitPairPass = 0;   // the unit-level broad phase, this check's own outer gate
 
@@ -4332,13 +4390,21 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
           unitPairTests++;
           if (!boxes[ai].intersectsBox(boxes[bi])) continue;
           unitPairPass++;
-          if (!unitsIntersect(A, B)) continue;
           const key = pairKey(A.name, B.name);
+          // §122 fix two — the first-confirmed flag is ZERO new state: a
+          // (pair, axis) with a recorded pose necessarily had its first
+          // contact arbitrated by the full path, so its existence is
+          // honestly proven and the remaining poses of THIS axis take the
+          // raw boolean. Slice-safe by construction: §127 runs one axis per
+          // browser context, so the flag never crosses a slice boundary.
+          const isExpected = expectedAt[ai][bi];
+          const confirmed = isExpected && findings.get(key)?.axes[axis.name]?.length > 0;
+          if (!unitsIntersect(A, B, confirmed)) continue;
           let rec = findings.get(key);
           if (!rec) {
             rec = {
               pair: key,
-              class: inList(EXPECTED_PAIRS, A.name, B.name) ? 'EXPECTED' : 'FORBIDDEN',
+              class: isExpected ? 'EXPECTED' : 'FORBIDDEN',
               axes: {},
             };
             findings.set(key, rec);
@@ -4353,6 +4419,12 @@ export async function runInspection(clock, { axes: axisArg = AXES, yieldEvery = 
   const report = [...findings.values()].sort((x, y) =>
     x.class === y.class ? x.pair.localeCompare(y.pair) : x.class === 'FORBIDDEN' ? -1 : 1
   );
+  // §122 fix two — the payload SAYS what its EXPECTED coverage means: the
+  // first contact per (pair, axis) is arbitrated, the rest of that axis's
+  // pose list is the raw BVH boolean (which can include the tri-tri false
+  // positives the verdict would have refuted). A report that silently
+  // changed what its numbers mean would be worse than a slow one.
+  for (const r of report) if (r.class === 'EXPECTED') r.coverage = 'raw-after-first-confirmed';
   // Compact per-axis summary: hit fraction + range.
   for (const r of report) {
     r.summary = Object.entries(r.axes)

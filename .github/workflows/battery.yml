@@ -326,28 +326,41 @@ jobs:
       # The report is worth having on a red run too — CLAUDE.md makes a
       # --report diff the acceptance for anything that could move a number, and
       # a failed run is exactly when someone wants to read one.
-      #
-      # TWO THINGS HERE ARE A FIX, AND THE SECOND IS THE ONE THAT MATTERS.
-      # `.battery-out/` is a DOT directory, and `upload-artifact@v4` excludes
-      # hidden files by default — so from the day §152 added this step it
-      # uploaded NOTHING and said so as a `##[warning]`, on every green run,
-      # for exactly the instrument CLAUDE.md names as the acceptance for a
-      # performance change. `include-hidden-files` makes the path work.
-      #
-      # `if-no-files-found: error` is what stops it recurring. The default is
-      # `warn`, and a warning inside a passing job is invisible: this is the
-      # repo's own "clean report of work that did not happen", one layer out
-      # from the battery, and the answer is the same one the harness gives
-      # everywhere else — an instrument that produced nothing must FAIL rather
-      # than pass quietly. Nothing else here may upload zero files: the
-      # harness writes the report before this step on every path that reaches
-      # it, and `--spec-only` (which writes none) is not a path CI takes.
       - name: Upload the report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: battery-report-${{ github.run_id }}
           path: .battery-out/
+          # REQUIRED because the path is dot-prefixed. upload-artifact@v4
+          # defaults include-hidden-files to false, so `.battery-out/` matched
+          # nothing and every run since §152 added this step logged
+          # "No files were found with the provided path" and uploaded NOTHING
+          # — while the step itself stayed green, which is why it survived.
+          # The report is the acceptance instrument CLAUDE.md names ("--report
+          # diffed against the base is the acceptance, not the PASS/FAIL
+          # column"), so this silently withheld the one artifact a reviewer
+          # needs on exactly the runs they need it.
+          #
+          # Not renaming the directory instead: that would touch four path
+          # references (the run step's --report and --digests, the baseline
+          # copy, this upload) and need a new .gitignore entry, since
+          # `.battery-out` is un-ignored today and stays invisible only by
+          # being dot-prefixed. §152's `.battery-baseline` is unaffected
+          # either way — it travels by actions/cache, which has no
+          # hidden-file exclusion, so the incremental baseline was never
+          # broken by this.
           include-hidden-files: true
+          #
+          # AND `if-no-files-found: error`, which is what stops it recurring.
+          # The default is `warn`, and a warning inside a PASSING job is
+          # invisible — that is the only reason the bug above survived every
+          # run since §152. This is the repo's own "a clean report of work
+          # that did not happen", one layer out from the battery, so it gets
+          # the repo's own answer: an instrument that produced nothing FAILS
+          # rather than passes quietly. Nothing on a CI path may legitimately
+          # upload zero files — the harness writes the report before this step
+          # on every path that reaches it, and `--spec-only`, which writes
+          # none, is not a path CI takes.
           if-no-files-found: error
           retention-days: 14

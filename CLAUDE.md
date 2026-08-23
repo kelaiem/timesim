@@ -490,8 +490,9 @@ reference and must stay untouched**, exactly as `--shards 1` and `--no-split`
 are, and the assembly half is CALLED by both paths rather than copied — a
 second gate loop would be two definitions of standing rule 4.
 `tools/probe-127-matrix.mjs` proves the three identities in ~11 min via
-`--only`, a probe flag CI never passes (its key space is `COSTS`', and it
-throws on anything else). No workflow uses any of this yet: the matrix itself
+`--only`, a probe flag CI never passes (its key space is every declared check
+and every slice a check declares — read from `BATTERY`, since a projected slice
+has no `COSTS` row — and it throws on anything else). No workflow uses any of this yet: the matrix itself
 is Landing B, to be sized on CI rather than on a dev container.
 
 **What makes slicing legal at all is TODO 54's canonical axis entry.** A slice
