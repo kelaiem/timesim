@@ -10704,47 +10704,79 @@ const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
 // stage two's module then derives from the TRUE w1→station distance.
 // swing = 0 keeps every original expression verbatim (the a+(b−a)≠b rule).
 const rsvW1TipR = (rsvModule0 * (rsvTeethW1 + 2)) / 2;
+// §136 — THIS SOLVE USED TO CLEAR THE WRONG WHEEL, AND ONLY ITS OWN SLICE.
+// Two independent misses, both of which §136's +0.224 on p1 walked straight
+// into (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN at every
+// pose of four axes, against the cap corner's DOWN-pointing bevel):
+//
+//   · it bounded `rsvW1TipR` alone, while p1 shares the arbor and is 1.62
+//     BIGGER — a fact this file already states 140 lines below, where the pair
+//     group's comment records that "the 300° step-up made p1 the pair's larger
+//     member, so the combined silhouette stopped being w1's". The swing solve
+//     was never brought into line with it;
+//   · it scanned w1's z-band only, [Z_RSV ± (0.5 + margin)]. p1's plane is a
+//     whole RSV_Z_STEP deeper, so the bevel cone's lower half — the metal p1
+//     actually reaches — sat outside the slab entirely.
+//
+// It is now a FIXED POINT, because the member being cleared is sized by the
+// quantity the swing sets: swing → w1's station → the true w1→pivot distance →
+// rsvModule1 → p1's tip. Each candidate recomputes that chain and both members
+// are held off the traverse, each over its OWN band. p1's reach comes from
+// gearOuterR, not the nominal (m·(N+2))/2 — §115 exists because the nominal
+// tip circle under-reads a built body.
 const rsvSwing = (() => {
   // The wall is MEASURED, not modelled: a cone-radius model of the corner
-  // gears under-read the metal (the bevel bodies trail off the corner
-  // points along their shafts), so the scan reads the BUILT keyless
-  // traverse's vertices inside w1's own z-band and holds the wheel's tip
-  // circle off every one of them.
-  const zLo = Z_RSV - 0.5 - CLEAR_MARGIN, zHi = Z_RSV + 0.5 + CLEAR_MARGIN;
+  // gears under-read the metal (the bevel bodies trail off the corner points
+  // along their shafts), so the scan reads the BUILT keyless traverse's
+  // vertices and holds each wheel's tip circle off every one of them.
+  //
+  // Vertices AND triangle-edge midpoints: the traverse gears are coarse
+  // extrudes, and a facet's midpoint sags inside its endpoints — measured, the
+  // vertex-only wall under-read the nearest bevel flank by ~0.06 and accepted a
+  // swing the face metric refuses.
   const pts = [];
   keyless.updateMatrixWorld(true);
-  const _kv = new THREE.Vector3();
-  // Vertices AND triangle-edge midpoints: the traverse gears are coarse
-  // extrudes, and a facet's midpoint sags inside its endpoints — measured,
-  // the vertex-only wall under-read the nearest bevel flank by ~0.06 and
-  // accepted a swing the face metric refuses.
-  const _kv2 = new THREE.Vector3();
+  const _kv = new THREE.Vector3(), _kv2 = new THREE.Vector3();
   keyless.traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position) return;
     const pos = o.geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       _kv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-      if (_kv.z >= zLo && _kv.z <= zHi) pts.push([_kv.x, _kv.y]);
+      pts.push([_kv.x, _kv.y, _kv.z]);
       if (i + 1 < pos.count) {
         _kv2.fromBufferAttribute(pos, i + 1).applyMatrix4(o.matrixWorld);
-        const mz = (_kv.z + _kv2.z) / 2;
-        if (mz >= zLo && mz <= zHi) pts.push([(_kv.x + _kv2.x) / 2, (_kv.y + _kv2.y) / 2]);
+        pts.push([(_kv.x + _kv2.x) / 2, (_kv.y + _kv2.y) / 2, (_kv.z + _kv2.z) / 2]);
       }
     }
   });
+  // half-thickness + one margin, per member: w1 is cut 1.0 thick, p1 1.2
+  const w1Lo = Z_RSV - 0.5 - CLEAR_MARGIN, w1Hi = Z_RSV + 0.5 + CLEAR_MARGIN;
+  const p1Z = Z_RSV - RSV_Z_STEP;
+  const p1Lo = p1Z - 0.6 - CLEAR_MARGIN, p1Hi = p1Z + 0.6 + CLEAR_MARGIN;
   const clearAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
-    const wx = P.barrel.x + (rsvU.x * cs - rsvU.y * sn) * rsvD0;
-    const wy = P.barrel.y + (rsvU.x * sn + rsvU.y * cs) * rsvD0;
+    const ux = rsvU.x * cs - rsvU.y * sn, uy = rsvU.x * sn + rsvU.y * cs;
+    const wx = P.barrel.x + ux * rsvD0, wy = P.barrel.y + uy * rsvD0;
+    // the fixed point: this candidate's own stage-two module, hence p1's reach
+    const m1 = (2 * Math.hypot(rsvPivotXY.x - wx, rsvPivotXY.y - wy))
+      / (rsvTeethP1 + rsvTeethW2);
+    if (!(m1 > 0)) return -Infinity;
+    const p1TipR = G.gearOuterR({ module: m1, teeth: rsvTeethP1,
+      mates: [rsvTeethW2], thickness: 1.2 });
     let c = Infinity;
-    for (const q of pts) c = Math.min(c, Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR);
+    for (const q of pts) {
+      const d = Math.hypot(wx - q[0], wy - q[1]);
+      if (q[2] >= w1Lo && q[2] <= w1Hi) c = Math.min(c, d - rsvW1TipR);
+      if (q[2] >= p1Lo && q[2] <= p1Hi) c = Math.min(c, d - p1TipR);
+    }
     return c;
   };
   if (clearAt(0) >= CLEAR_MARGIN) return 0;
   for (let d = 1; d <= 30; d++)
     for (const sgn of [1, -1])
       if (clearAt(sgn * d * DEG2RAD) >= CLEAR_MARGIN) return sgn * d * DEG2RAD;
-  console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse — keeping the line; the battery judges it');
+  console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse '
+    + 'for BOTH w1 and p1 — keeping the line; the battery judges it');
   return 0;
 })();
 const rsvW1U = rsvSwing === 0 ? rsvU
