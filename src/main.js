@@ -4102,10 +4102,18 @@ function makeElbowRodMesh(len, f, e) {
   const g = new THREE.Group();
   const a = { x: 0, y: -len / 2 }, b = { x: 0, y: len / 2 };
   const E = { x: e, y: -len / 2 + f * len };
-  for (const [p, q] of [[a, E], [E, b]]) {
+  // §137: the two segments are named for the END EACH CARRIES, not with one
+  // shared name. A row's identity is (unit, tier, meshes), so two segments
+  // sharing a name COLLAPSE two distinct reported pairs into one — measured
+  // against the base report, `intraUnit`'s out-of-scope list silently fell
+  // 186 → 184 for exactly that reason. A report that shrinks because two
+  // members became indistinguishable is worse than the unnamed geometry
+  // labels it replaced. In/Out follow the direction the transfer row
+  // declares (post → tail), matching the bevel corners' own convention.
+  for (const [i, [p, q]] of [[a, E], [E, b]].entries()) {
     const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy);
     const seg = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, L, 8), MATS.steel);
-    seg.name = 'rodSeg';        // §137: the transfer rows name their members
+    seg.name = i === 0 ? 'rodSegIn' : 'rodSegOut';
     seg.position.set((p.x + q.x) / 2, (p.y + q.y) / 2, 0);
     seg.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
     g.add(seg);
@@ -4187,7 +4195,7 @@ registerLabel('Reset rod', resetRod);
   const p0 = tailPostWorldAt(0), p1 = tailPostWorldAt(1);
   const price = priceRigidBentLink(RESET_ROD_ELBOW, RESET_ROD_LEN, Math.hypot(p1.x - p0.x, p1.y - p0.y));
   declareTransfer('reset linkage: elbow rod (setting-lever post → hammer tail)', {
-    unit: 'Reset rod', meshes: ['rodSeg', 'rodKnuckle'], idiom: 'rigidBentLink',
+    unit: 'Reset rod', meshes: ['rodSegIn', 'rodSegOut', 'rodKnuckle'], idiom: 'rigidBentLink',
     load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
       source: 'the detent envelope\'s ceiling as the bounding axial load — nothing in the finger-driven low linkage is designed to deliver more' },
     quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
@@ -4822,7 +4830,7 @@ registerLabel('Hack rod', hackRod);
 {
   const price = priceRigidBentLink(HACK_ROD_ELBOW, HACK_ROD_LEN, POST_STROKE);
   declareTransfer('stop work: elbow rod (setting-lever pin → stop-crank tail)', {
-    unit: 'Hack rod', meshes: ['rodSeg', 'rodKnuckle'], idiom: 'rigidBentLink',
+    unit: 'Hack rod', meshes: ['rodSegIn', 'rodSegOut', 'rodKnuckle'], idiom: 'rigidBentLink',
     load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
       source: 'the detent envelope\'s ceiling as the bounding axial load — the same bound the reset rod is priced at' },
     quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
