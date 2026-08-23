@@ -622,14 +622,51 @@ export function minGearTeeth(module, boreR = 1, mates = null) {
 // them — a bound that re-derives its subject from a copy goes stale the moment
 // the subject moves, which is the drift this whole function exists to catch.
 const gearBevel = (module, thickness, on) => (on ? Math.min(thickness * 0.18, module * 0.22) : 0);
+// §136 — THE BEVEL'S MITER, which TIP_RELIEF used to hide. The extrude offsets
+// the outline outward by `bevel` PERPENDICULAR TO EACH EDGE, so at a convex
+// vertex the offset point lands on the bisector at `bevel / sin(θ/2)`, not at
+// `bevel`. On an arc that excess is nil; at the corner where the tip land meets
+// the epicycloid face it is not. The trapezoid never had to care: its bound
+// carried TIP_RELIEF = 1.02, a ~0.145 cushion on the governor wheel that
+// swallowed a ~0.0006 miter whole. A cycloidal face ends ON its tip circle, so
+// the cushion is gone and the miter is what §115 reads as metal past the
+// declaration — measured, exactly the 7.2924-vs-7.293 it reported.
+//
+// Computed from the SAME outline the builder cuts, so the bound cannot drift
+// from its subject, and memoised because the station solves call it in loops.
+const _reachCache = new Map();
+const gearTrueReach = (spec, bevel) => {
+  const key = `${spec.module}|${spec.teeth}|${spec.faceGenR}|${spec.addendum}|${bevel}`;
+  let r = _reachCache.get(key);
+  if (r !== undefined) return r;
+  const pts = cycloidalGearShape(spec).getPoints(1);
+  r = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[(i - 1 + pts.length) % pts.length], b = pts[i], c = pts[(i + 1) % pts.length];
+    let ux = b.x - a.x, uy = b.y - a.y, vx = c.x - b.x, vy = c.y - b.y;
+    const lu = Math.hypot(ux, uy) || 1, lv = Math.hypot(vx, vy) || 1;
+    ux /= lu; uy /= lu; vx /= lv; vy /= lv;
+    // outward edge normals (the outline runs counter-clockwise)
+    let nx = uy - vy, ny = vx - ux;          // sum of the two outward normals
+    const ln = Math.hypot(nx, ny);
+    // half-angle between the edges; sin(θ/2) falls out of the normal sum
+    const sinHalf = ln / 2 || 1;
+    const off = ln > 1e-9 ? bevel / Math.max(sinHalf, 0.2) : bevel;   // clamped: a cusp is not infinite metal
+    const bx = b.x + (ln > 1e-9 ? (nx / ln) * off : 0), by = b.y + (ln > 1e-9 ? (ny / ln) * off : 0);
+    r = Math.max(r, Math.hypot(bx, by));
+  }
+  _reachCache.set(key, r);
+  return r;
+};
 export function gearOuterR({ module, teeth, thickness, bevel: bevelOn = true, mates }) {
   // §136 — the tip is the SPEC's tip. It used to be `pitchR + 0.95·m` scaled by
   // TIP_RELIEF, because the trapezoid's tip round bulged past the tip circle by
   // that factor; a cycloidal face ends ON its tip circle, so the 1.02 is gone
   // from this bound (TIP_RELIEF itself stays — `gearOutlineShape` still cuts
   // the two members left on the trapezoid, and it is that outline's constant).
-  return gearToothSpec({ module, teeth, mates: gearMates(mates, teeth, 'gearOuterR') }).tipR
-    + gearBevel(module, thickness, bevelOn);
+  const spec = gearToothSpec({ module, teeth, mates: gearMates(mates, teeth, 'gearOuterR') });
+  const bevel = gearBevel(module, thickness, bevelOn);
+  return Math.max(spec.tipR + bevel, gearTrueReach(spec, bevel));
 }
 
 export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
