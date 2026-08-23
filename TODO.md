@@ -17,6 +17,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 84 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
 | 83 | OPEN | The parity ray is still trusted inside the box; §122 silenced the measured outside-box lying population (166/166 on the fusee pair) but the same grazing mode could lie inside, where it would manufacture a contact. probe-122-verdict's genuineInside bucket is the tripwire |
@@ -8941,3 +8942,205 @@ re-cast when hit counts include distances within 1e-6 of each other
 (the grazing signature). Do not widen anything to work around a lie —
 §82's rule: patch the instrument, then let the corrected verdicts land
 with their witnesses.
+
+## 84. The alarm toggle's press is not in the pose net, and its declarations answer for the wrong members
+
+Reported by eye in one sitting, four symptoms: the pawl phases through the
+column wheel; there is not enough force to toggle the selector; the pusher
+looks unsupported; and the arbors carrying the wheel's turn into the selector
+look unsupported. All four survive measurement. They are filed as ONE item
+because they are not four independent defects — three of them fall out of two
+causes, and either cause moves several symptoms at once:
+
+- **The press STROKE is not a pose anything sweeps.** `resetInputs` and
+  `setPose` both zero `alarmPusherT`, no axis varies it, and every sweep in the
+  battery therefore samples the pawl PARKED. The hand-off row says so about
+  itself in as many words (grep `pusher pawl ⇄ ratchet skirt`).
+- **Every declaration in this group is keyed on a UNIT**, so one row routinely
+  answers for a member it does not describe — `restoring` answers for
+  `Alarm switch` with the CLICK's blade, and one `INTRA_UNIT_CONTACTS` row
+  excuses the pawl against all three of the wheel's meshes at any depth.
+
+**The group, and the two mechanisms it is not.** The action group is
+pusher → pawl → column wheel, and then three outputs off the same
+castellations: the §35 run (link beak → rod → lay shaft → cranks → selector
+ring) that ARMS, the lock lever that brakes the striking train, and the click
+that banks each tooth. What the pusher does NOT drive is the §45 chain —
+collar → release lifter → release sleeve → silence rocker → release feeler —
+which SILENCES a ringing alarm off `alarmCrownPullT`. TODO 63's standing
+correction, restated because this item was scoped to cover both: *"They are
+different mechanisms and conflating them will send a fix to the wrong one."*
+The §45 chain's own open debt is TODO 64's (no axis sweeps its input), and this
+item does not annex it; it appears below only where the two touch.
+
+### 1. The pawl drives on after the wheel has stopped
+
+`alarmPusherPawl` is a rigid child of `alarmPusherGroup`: its transform is set
+once at build (grep `ALARM_PAWL_KISS_S`) and never written again, and the group
+translates by `ALARM_PUSH_TRAVEL · alarmPusherT`. The tick clamps what the pawl
+carries at one tooth and then latches (grep `alarmColLatched`), so the wheel
+stops while the head keeps travelling. From the shipped constants:
+
+| quantity | value |
+|---|---|
+| press travel (`ALARM_PUSH_TRAVEL`) | 2.686 u / **1.018 mm** |
+| moment arm (`ALARM_PAWL_ARM`) | 4.370 u |
+| one press carries (`ALARM_PAWL_SWEEP`) | **0.6147 rad** |
+| one tooth (`ALARM_COL_STEP`) | 0.5236 rad |
+| delivered | **117.4%** of a tooth |
+| travel arriving AFTER the latch | **0.398 u = 0.151 mm** (14.8% of the stroke) |
+
+The overrun is larger than `CLEAR_MARGIN`, and it goes into the tooth the pawl
+has just banked, because nothing in the pawl can yield. **The 117% is asserted
+as a FLOOR and bounded from above by nothing**: the boot check reads
+`if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)`, which is the right constraint for
+"the pawl must finish a tooth" and says nothing about what the surplus does.
+That is rule 1's shape — a one-sided derivation whose other side was never
+written — and the surplus is not free, it is displacement into metal.
+
+**The return stroke is the second half, and the source already describes a
+motion the part cannot make.** The build comment beside `ALARM_PAWL_KISS_S`
+prices the back flank at 67.4° off radial and calls it *"the ramp the pawl cams
+back over on the return stroke"*. There is no degree of freedom in which to cam
+back over anything: no pivot, no spring, no lift. A rigid bar translating on a
+straight line cannot follow a tooth travelling on an arc.
+
+**Why no instrument reports it, three times over.** `alarmPusherT` does not
+appear anywhere in `inspect.js`, so the stroke is not in the pose net at all —
+it exists only in live frames, which is exactly where it was seen. The
+`pusher pawl ⇄ ratchet skirt` hand-off measures the PARK and carries its own
+note saying the index stroke is a transient static poses cannot reach (its
+quoted `0.7` / `~0.84 tooth arc` figures are stale twice over — the travel has
+been derived since TODO 20). And the `INTRA_UNIT_CONTACTS` row for
+`alarmColWheel ⇄ alarmPusherPawl` is consulted BEFORE any measurement, so it is
+a depth-free excuse rather than a budget — worse, `traverse` puts the name
+`alarmColWheel` on the base disc, the castellations AND the ratchet skirt, so
+that single row waives three pairs. This is item 5's class after its own fix:
+the tier enumerates the pair correctly (pawl and wheel are in different motion
+frames) and then discards it on a declaration.
+
+### 2. The force is an order light, and it starves downstream — not at the pusher
+
+Named here so the symptom is not chased to the wrong end. The INPUT side is
+healthy and computed: the pusher's transfer row needs ≈**9.4 mN** at the pawl
+to overcome the click's detent, against the **1–5 N** a finger delivers
+(`CASE_PUSHER_INPUT_N`) — three orders of headroom, and the row says so.
+
+What starves is the shaft: TODO 82 computed the pusher→ring stall at
+**1.58 mN** against `SELECTOR_DETENT_WINDOW_MN`'s **5–50 mN**, rod-end-limited,
+with the rod-end overhang carrying **72.4%** of the whole chain's compliance
+and the fork end the section was sized against carrying **0.1%**. The
+`alarm arming: lay shaft cranks` row misses its envelope and is waived citing
+TODO 79. **This item does not re-open TODO 16, 79 or 82, or roadmap §156** — it
+records that the owner's "not enough force to toggle the selector" is that
+filed debt, visible on screen, and that a fix aimed at the pusher or the
+column wheel would be aimed at the wrong member.
+
+### 3. The pusher's only bearing is one boss, and the one row naming it calls it a spring
+
+There is exactly one guide member (grep `Guide boss at the plate rim`), and its
+own comment is honest about its status: it is the bearing *"until §3's case
+takes over"*, and §3 is unbuilt. Three consequences, none of them currently
+declared as debt:
+
+- **One station cannot restrain a cantilever.** The boss sits at
+  `plateR - 1.2`; the cap stands ~2.8 u outboard of the plate rim into empty
+  air (BUILT §43 recorded the head **2.22 mm proud**, with no case to bore for
+  it). A single point bearing fixes position, not tilt.
+- **The bore is smaller than the stem.** The boss is a torus of ring radius
+  0.36 and tube 0.12, so its hole is **0.24** against `ALARM_PUSH_STEM_R`
+  **0.32** — a **0.08 u = 0.030 mm** interference at every pose, in a joint
+  whose whole job is to slide.
+- **And the row that covers it describes a part that does not exist.** The
+  `INTRA_UNIT_CONTACTS` entry pairing the stem with that torus reads *"the
+  return coil seated round the pusher stem"*. There is no return coil: the
+  return is `ALARM_RETURN_S` in the tick, a settling time with no metal behind
+  it. So a bearing interference is waived under the name of a spring, and the
+  spring the row claims would also have satisfied §48 if anyone had gone
+  looking for it.
+
+### 4. `restoring` answers for the click, so the pusher's return is never asked about
+
+`declareRestoring('Alarm switch', 'spring', …, 'switchClickSpring')` is true and
+is about the CLICK ARM. The pusher is a second reciprocator inside the same
+unit, and its return is the rate constant above. §48's audit takes one answer
+per unit, so `Alarm switch` passes on the strength of a member that is not the
+one in question.
+
+**This is a third shape of the same failure, and it is worth naming apart from
+the other two.** TODO 29 and TODO 64 are POPULATION gaps — no axis moves the
+part, so the audit never asks. This is a GRANULARITY gap: the axis question
+does not arise, because one declaration per unit cannot answer for two
+reciprocators. Rule 4's warning covers the first; nothing covers this one.
+
+### 5. "Unsupported" and `support` 0 failures are both correct
+
+`checkSupportGeometry` walks declared UNIT→UNIT edges and measures a gap ≤ tol.
+It answers *is there metal under this unit*; it has never answered *is this
+member restrained against its load*. What the group declares: `Alarm switch` →
+the three-quarter plate, for the column wheel's stud (nothing about the
+pusher); `Alarm link` → the plate, for the rod's bores and the lay shaft's two
+hanger bushes; `Alarm selector` → the dial, for the ring's three guide posts.
+
+Restraint truth lives in `userData.bearings` (§78's free-length declaration),
+and **exactly one mesh in the movement declares it** — the lay shaft, two
+stations, which is what exposes the **12.487 u** rod-end overhang item 79 owns.
+The vertical rod runs through bores in both plates and declares nothing; the
+pusher stem passes through its boss and a plate slot and declares nothing. So
+the eye is reading something real that no check is looking for, and the answer
+is not to widen `support` — it is that the group's members have never stated
+where they are held.
+
+### The group's other two outputs, recorded rather than re-filed
+
+**The lock brake** is genuinely column-driven (`['Alarm switch', 'Alarm lock']`
+is a drive edge) and §102 gave it the return blade TODO 31 prescribed, so the
+lever is honest in both directions. Its remaining gap is upstream of this
+group: the RELEASE — follower nose into the heart's notch — reaches the lever
+through no linkage at all, which `MECH_GRAPH.todo` already declares (*"no
+physical linkage carries the drop"*, with the co-rotation constraint and the
+roadmap entry that owns the design). Named here so a reader auditing this group
+finds it, not re-filed.
+
+**The §45 silence chain** is crown-driven and out of this group. Its one
+overlap with the work below: an axis that pulls and releases the alarm crown is
+TODO 64's prerequisite, and an axis that presses the pusher is this item's, and
+both are the same kind of change to `setPose`. Whoever writes the first should
+read the other, because the second is then nearly free.
+
+### What closing this looks like — the first step gates the rest
+
+1. **An axis that sweeps the press.** `setPose` must accept `alarmPusherT`
+   instead of zeroing it, and the axis must run 0 → 1 → 0 across the latch (a
+   monotonic ramp sweeps the same volume as a part that only moves one way —
+   TODO 29 paid for that lesson). Costs to expect, so they are not discovered:
+   the axis joins `axisEntry`'s ordered pairs (TODO 54), joins `digestPoses`
+   (§152), and must declare its slice (§127); and `restoring`'s population will
+   MOVE, to be accepted per row against a `--report` diff, never re-based.
+2. **Then measure, rather than argue.** A probe that steps the shipped tick
+   through one press and reports the pawl ⇄ tooth minimum every frame, both
+   strokes. `tools/probe-59-click.mjs` (a rider swept through a whole pitch)
+   and `tools/probe-82-alarm-stall.mjs` (a force chain re-derived by posing the
+   built tree) are the two templates.
+3. **Give the pawl the freedom a pawl has** — a pivot and a return spring, the
+   `switchClickSpring` construction one member over — or give the overrun
+   somewhere to go. This is P0/P2 inside the group, so it is spent in mechanism
+   space and never on a widened budget; and the cam-out travel derives from the
+   flank angle the source has already computed (67.4° off radial), not from
+   whatever clears.
+4. **Split the blanket, and correct the two false rows.** Name the wheel's
+   three meshes apart so one declaration cannot excuse three pairs; then either
+   re-declare the boss as the bearing it is, with a running fit someone would
+   design (`PIVOT_BORE_CLEAR` = 0.05 is the repo's other one, against this
+   joint's −0.08), or build the return coil its row already claims.
+5. **Declare the pusher's return honestly** — a second `declareRestoring` is
+   the cheap half; the spring in metal is the half that makes the declaration
+   true. §48's geometry guard will demand the mesh, which is the right pressure.
+
+**What this item measured and what it computed.** Findings 1 and 3 are
+arithmetic on the shipped constants — the derivations are above and re-run from
+`ALARM_PUSH_TRAVEL`, `ALARM_PAWL_ARM`, `ALARM_COL_STEP`, `ALARM_PUSH_STEM_R`
+and the boss's own torus parameters. They are NOT measurements of the built
+mesh, and step 2 is what promotes them. Finding 2's numbers are TODO 82's,
+measured. Taken 2026-08-23; per TODO 20's own history note, quote a measurement
+with the tree it came from or expect to re-take it.
