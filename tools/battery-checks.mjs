@@ -100,12 +100,19 @@ export const BATTERY = [
   // synthetic control, and every declared bearing table's validity (malformed,
   // and a declared support with no metal at it — the INTRA_UNIT_CONTACTS
   // stale-selector precedent, and §48's no-spring rule made geometric).
+  // §137 adds one more gateable tier to the same list: WAIVER STALENESS. A
+  // SLENDER_WAIVERS entry naming a unit with no over-ceiling row is a standing
+  // excuse whose debt was already paid, waiting for a new offender to hide
+  // under — so deleting a fix's waiver becomes structurally part of the fix.
+  // It gates without touching §54's report covenant, because it judges the
+  // TABLE rather than the λ rows.
   { name: 'slenderness', opts: {},
-    gate: 'control PASS, 0 malformed and 0 unsupported bearing declarations — the λ rows are a REPORT (§40)',
+    gate: 'control PASS, 0 malformed and 0 unsupported bearing declarations, 0 stale waivers — the λ rows are a REPORT (§40)',
     fails: (r) => [
       ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
       ...r.bearings.malformed,
       ...r.bearings.unsupported,
+      ...(r.staleWaivers || []),
     ],
     note: (r) => `${r.counted} meshes, ${r.exemptByKind} exempt by kind; ${r.over} over ceiling `
       + `(${r.unwaived} unwaived — untriaged, §40); ${r.bearings.declaredMeshes} declare `
@@ -187,6 +194,22 @@ export const BATTERY = [
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
       + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
+  // §137 — the transfer audit. Same shape as `restoring`: the rows are the
+  // product (`ok` is always true), and the gate holds what CAN be held — a
+  // declaration that is malformed, names a part that no longer exists, whose
+  // own arithmetic no longer recomputes, or that busts its declared envelope
+  // without a cited TODO. The control is gated for the same reason as §48's:
+  // a classifier that quietly stops catching bad rows is a dead instrument.
+  { name: 'transfers', opts: {},
+    gate: '0 malformed, 0 stale, 0 mismatched, 0 unwaived envelope misses, 0 stale waivers, control PASS',
+    fails: (r) => [
+      ...r.malformed, ...r.stale, ...r.mismatched, ...r.unwaived,
+      ...(r.staleWaivers || []),
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+    ],
+    note: (r) => `${r.population} transfers (`
+      + Object.entries(r.byIdiom).map(([k, n]) => `${n} ${k}`).join(', ')
+      + `), ${r.waived.length} waived (accepted debt)` },
   { name: 'inspection', opts: { includeExcluded: true, yieldEvery: YIELD_EVERY },
     slices: INSPECTION_SLICES, merge: mergeInspection,   // §127 — divisible along its axis loop
     gate: '0 FORBIDDEN pairs',

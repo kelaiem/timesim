@@ -49,6 +49,8 @@ import {
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
+  STEEL_E_PA, cantileverK_N_per_m,            // §137: the one steel, the one cantilever law
+  SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -323,6 +325,52 @@ function declareRestoring(name, kind, why, mesh) {
   if (kind === 'spring' && !mesh)
     console.warn(`§48: '${name}' declares a spring but does not name its mesh — a spring that is only geometry does not count`);
   declaredRestoring.set(name, { kind, why, mesh });
+}
+
+// §137 — CORNERS AS REAL PARTS: the transfer audit's declaration surface.
+// Every transfer of motion around a bend is one of five NAMED idioms, and the
+// build STATES which, at the site of the corner, with the force or lever-ratio
+// arithmetic that justifies it (TODO 16's format — "≈1.6 mN against a 5–50 mN
+// detent"). The declarations feed a frozen record the inspector consumes
+// (checkTransfers), the same declare-beside-the-law discipline as
+// declareRestoring above and the same freeze-then-consume shape as
+// EQUALISATION: the check re-verifies the row's own relations from the frozen
+// inputs and never re-derives the mechanism, so the two cannot drift apart
+// silently — a drifted row is a MISMATCH, visible.
+//
+// The idioms, and the rule for which a transfer earns (the §137 vocabulary):
+//   bevelPair      — rotation through an angle: two equal-count bevel gears at
+//                    an apex (the motion-works corners are the template).
+//   doglegIdler    — rotation through a lateral offset in-plane: an idler pair
+//                    whose azimuth is SCORED against the corridor, not authored.
+//   crank          — displacement through a bend or plane change on a PIVOT:
+//                    two designed arms about a bearing that takes the side
+//                    load (the §45 rocker and the stop crank are both this —
+//                    the movement's bell cranks, whatever the code calls them).
+//   rigidBentLink  — displacement along a chord with a routing bend and NO
+//                    pivot: legitimate ONLY while the bending moment the
+//                    offset induces is computed and priced (the elbow rods).
+//   riserReach     — displacement through a plane change with no direction
+//                    change: a climb and a reach, loaded axially (the pusher).
+const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach'];
+const declaredTransfers = new Map();   // site -> row
+function declareTransfer(site, row) {
+  if (declaredTransfers.has(site)) console.warn(`§137: transfer '${site}' declared twice`);
+  if (!TRANSFER_IDIOMS.includes(row.idiom))
+    console.warn(`§137: transfer '${site}' idiom '${row.idiom}' is not in the named set`);
+  declaredTransfers.set(site, row);
+}
+// Frozen on first read (all declarations run at boot, the clock reads later).
+let _transferAudit = null;
+function transferAudit() {
+  if (!_transferAudit) {
+    _transferAudit = Object.freeze({
+      idioms: TRANSFER_IDIOMS,
+      rows: Object.freeze([...declaredTransfers.entries()]
+        .map(([site, r]) => Object.freeze({ site, ...r }))),
+    });
+  }
+  return _transferAudit;
 }
 
 const movement = new THREE.Group();
@@ -1007,7 +1055,7 @@ const palletFork = G.makePalletFork({
 // Materials, cited rather than chosen (rule 1). Steel's pair is the SAME pair
 // §56's gong voice is built from (GONG_STEEL_C = √(200e9 / 7850)) — one set of
 // numbers for one metal, in both places it is asked to behave physically.
-const OSC_STEEL_E = 200e9;      // Pa — carbon/spring steel Young's modulus (§56's value)
+const OSC_STEEL_E = STEEL_E_PA; // Pa — §137: re-sourced from layout's one copy (§56's value, unmoved)
 const OSC_STEEL_RHO = 7850;     // kg/m³ — steel density (§56's value)
 const OSC_BRASS_RHO = 8500;     // kg/m³ — wrought CuZn brass runs 8400–8730; 8500 for common CuZn37 (the rim's MATS.brass)
 const OSC_U = UNIT_MM / 1000;   // m per model unit — §39's pin, the one conversion
@@ -3351,17 +3399,19 @@ keyless.add(settingRise);
 // the corner, back into each gear's own shaft body — a gear keyed to the end
 // of an arbor has its body trailing back along that arbor from the pitch
 // point, same as a real bevel gear.
-function addBevelCorner(point, axisIn, axisOut) {
+function addBevelCorner(point, axisIn, axisOut, tag) {
   const mountIn = new THREE.Group();
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
   const gearIn = G.makeBevelGear({ teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  if (tag) gearIn.name = `${tag}In`;   // §137: a transfer row names its members (§54's rule)
   mountIn.add(gearIn);
 
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
   const gearOut = G.makeBevelGear({ teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  if (tag) gearOut.name = `${tag}Out`;
   gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
 
@@ -3374,8 +3424,27 @@ const Z_UP = new THREE.Vector3(0, 0, 1);
 // first corner's vertical gear stands tip-up at the shaft's top end; its
 // cone reaches into the plate's z-band, which is why the base plate carries
 // a clearance recess bored at exactly this axis (see the plate build).
-const cornerDrop = addBevelCorner(settingA, Z_UP, settingU);
-const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clone().negate());
+const cornerDrop = addBevelCorner(settingA, Z_UP, settingU, 'mwCornerDrop');
+const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise');
+// §137 — the corners' transfer rows: the movement's TEMPLATE idiom, declared
+// first. Rotation through an angle earns a bevel pair; the ratio is 1:1
+// because the TOOTH COUNTS are equal (the counts stand in for the arms — an
+// angular ratio is teethIn/teethOut, and equal counts make the direction of
+// that fraction moot). The load is 0 and says so: the drive is
+// REPRESENTATIONAL (handSetOffset is assigned in tick and threaded through
+// each corner with alternating sign — MECH_GRAPH.todo carries the debt), so
+// these corners transmit rotation kinematically and no force is modelled.
+// A posed corner claiming a force figure would be exactly the lie §137's
+// audit exists to catch.
+for (const [site, tag] of [['motion works: rise→traverse corner', 'mwCornerDrop'],
+                           ['motion works: traverse→drop corner', 'mwCornerRise']]) {
+  declareTransfer(site, {
+    unit: 'Keyless works', meshes: [`${tag}In`, `${tag}Out`], idiom: 'bevelPair',
+    load: { value: 0, unit: 'mN', source: 'posed — handSetOffset is assigned in tick (MECH_GRAPH.todo); no force path is modelled through the setting arbor' },
+    quantities: { armIn_u: BEVEL_TEETH, armOut_u: BEVEL_TEETH, ratio: 1 },
+    why: 'a plain rod meeting another rod at an angle has nothing at the joint that could transmit rotation around the corner; equal counts make the pair 1:1 and the sign inversion is enacted per mesh in tick',
+  });
+}
 // The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
 // from the minute wheel's axis, in the minute wheel's own plane — it
 // engages REAL teeth. Rest phase aims a half-tooth gap at the wheel.
@@ -4033,17 +4102,65 @@ function makeElbowRodMesh(len, f, e) {
   const g = new THREE.Group();
   const a = { x: 0, y: -len / 2 }, b = { x: 0, y: len / 2 };
   const E = { x: e, y: -len / 2 + f * len };
-  for (const [p, q] of [[a, E], [E, b]]) {
+  // §137: the two segments are named for the END EACH CARRIES, not with one
+  // shared name. A row's identity is (unit, tier, meshes), so two segments
+  // sharing a name COLLAPSE two distinct reported pairs into one — measured
+  // against the base report, `intraUnit`'s out-of-scope list silently fell
+  // 186 → 184 for exactly that reason. A report that shrinks because two
+  // members became indistinguishable is worse than the unnamed geometry
+  // labels it replaced. In/Out follow the direction the transfer row
+  // declares (post → tail), matching the bevel corners' own convention.
+  for (const [i, [p, q]] of [[a, E], [E, b]].entries()) {
     const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy);
     const seg = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, L, 8), MATS.steel);
+    seg.name = i === 0 ? 'rodSegIn' : 'rodSegOut';
     seg.position.set((p.x + q.x) / 2, (p.y + q.y) / 2, 0);
     seg.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
     g.add(seg);
   }
   const knuckle = new THREE.Mesh(new THREE.SphereGeometry(ROD_KNUCKLE_R, 10, 8), MATS.steel);
+  knuckle.name = 'rodKnuckle';  // a formed boss over the bend — it makes no pivot claim (§137)
   knuckle.position.set(E.x, E.y, 0);
   g.add(knuckle);
   return g;
+}
+// §137 — THE BEND, PRICED (TODO 63: "a real bent connecting rod carries a
+// bending moment proportional to that offset, and nothing anywhere computes
+// it"). Each elbow rod is a two-force link: the load runs pin to pin along
+// the CHORD, so the lateral offset e puts the elbow's section under a moment
+// M = F·e, and an offset column under axial load bows — the classical
+// beam-column pair, first-order (TODO 16's caveat as always: the ratios
+// carry the conclusions).
+//
+//   moment    M        = F·e                 — what the knuckle's section eats
+//   stress    σ        = M / (π·r³/4)        — solid round bar at ROD_R
+//   bow gain  P/P_E    = F / (π²EI/L²)       — the Euler fraction; the bow
+//                        the load ADDS is e·(P/P_E)/(1 − P/P_E)
+//   axial give Δ       ≈ π²·e·δbow/(2L)      — the chord shortens as the bow
+//                        grows: the bent link's hidden compliance, the
+//                        quantity a straight link simply does not have
+//
+// F is the DETENT ENVELOPE'S CEILING, not a guess: nothing in this
+// finger-driven low linkage is designed to deliver more than
+// SELECTOR_DETENT_WINDOW_MN's top anywhere in the movement, so pricing the
+// bend at that ceiling bounds every honest working load from above. The row
+// carries the give as a fraction of the rod's own stroke — the number that
+// says whether the bend is cosmetic or load-bearing at this scale.
+function priceRigidBentLink(elbow, len_u, stroke_u) {
+  const F_mN = SELECTOR_DETENT_WINDOW_MN[1];
+  const e_u = Math.abs(elbow.e);
+  const m = UNIT_MM / 1000;                               // m per unit
+  const I = Math.PI * (ROD_R * m) ** 4 / 4;               // m⁴
+  const eulerP_N = Math.PI * Math.PI * STEEL_E_PA * I / (len_u * m) ** 2;
+  const eulerFrac = (F_mN / 1000) / eulerP_N;
+  const bow_u = e_u * eulerFrac / (1 - eulerFrac);
+  const give_u = Math.PI * Math.PI * e_u * bow_u / (2 * len_u);
+  return {
+    moment_mNmm: F_mN * e_u * UNIT_MM,
+    sigma_MPa: (F_mN / 1000) * (e_u * UNIT_MM) / (Math.PI * (ROD_R * UNIT_MM) ** 3 / 4),
+    offset_e_u: e_u, eulerFrac, give_u,
+    giveFracOfStroke: stroke_u > 0 ? give_u / stroke_u : Infinity,
+  };
 }
 // Reset rod: endpoint pairs sampled over the stroke with the SAME
 // branch-tracked two-circle solve tick() uses.
@@ -4066,6 +4183,26 @@ const RESET_ROD_ELBOW = (() => {
 const resetRod = makeElbowRodMesh(RESET_ROD_LEN, RESET_ROD_ELBOW.f, RESET_ROD_ELBOW.e);
 movement.add(resetRod);
 registerLabel('Reset rod', resetRod);
+// §137 — the reset rod's transfer row: a rigid bent link, priced at its own
+// solved offset against its own stroke (the post's full travel). The rigid
+// bend is KEPT — a mid-pivot would invalidate the two-circle solves, the
+// elbow scan and the low-corridor table for zero P0 gain (the rod is
+// crown-driven both ways; a pivot adds a degree of freedom nothing
+// constrains without a new guide) — and kept honestly: the moment, stress,
+// Euler fraction and axial give are now the row's own numbers instead of
+// nothing's.
+{
+  const p0 = tailPostWorldAt(0), p1 = tailPostWorldAt(1);
+  const price = priceRigidBentLink(RESET_ROD_ELBOW, RESET_ROD_LEN, Math.hypot(p1.x - p0.x, p1.y - p0.y));
+  declareTransfer('reset linkage: elbow rod (setting-lever post → hammer tail)', {
+    unit: 'Reset rod', meshes: ['rodSegIn', 'rodSegOut', 'rodKnuckle'], idiom: 'rigidBentLink',
+    load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
+      source: 'the detent envelope\'s ceiling as the bounding axial load — nothing in the finger-driven low linkage is designed to deliver more' },
+    quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
+      eulerFrac: price.eulerFrac, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke },
+    why: `displacement along a chord with a routing bend and no pivot — legitimate only priced: σ ${price.sigma_MPa.toFixed(1)} MPa at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}%, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor (give scales with the load)`,
+  });
+}
 // Per-frame solve: track the intersection branch continuously from the
 // retracted pose (the calibration guaranteed the stroke never folds).
 let prevTailTip = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
@@ -4373,9 +4510,30 @@ stopLeverGroup.add(stopCrank);
   stopCrank.add(ruby);
   // Rod pin stub at the tail's END (its low tip), along the hinge axis.
   const rodPin = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, STOP_TAIL_W + 0.6, 8), MATS.steel);
+  rodPin.name = 'stopCrankRodPin'; // §137: the transfer row names its input member
   rodPin.rotation.z = Math.PI / 2;
   rodPin.position.z = STOP_TAIL_H;
   stopCrank.add(rodPin);
+  // §137 — the stop crank IS the movement's bell crank, whatever the code
+  // calls it: displacement arrives on the hanging tail's rod pin, leaves on
+  // the pad, and the hinge bearing between them takes the side load — the
+  // idiom the elbow rods are indicted for lacking. Arms are radii about the
+  // hinge (local X): the rod pin hangs at |STOP_TAIL_H|; the pad's working
+  // face stands at hypot(STOP_PAD_Y, |PAD_ARM_LOCAL_Z|) — the diagonal arm
+  // the pad centre actually swings on. Load 0 and says so: the crank is
+  // crown-driven BOTH ways through the hack rod (§48's two-way declaration)
+  // and no hacking force on the balance rim is modelled.
+  {
+    const tailArm = Math.abs(STOP_TAIL_H);
+    const padArm = Math.hypot(STOP_PAD_Y, Math.abs(PAD_ARM_LOCAL_Z));
+    declareTransfer('stop work: hack crank', {
+      unit: 'Stop lever', meshes: ['stopCrankRodPin'], idiom: 'crank',
+      load: { value: 0, unit: 'mN', source: 'posed — crown-driven two-way through the hack rod; no pad-on-rim braking force is modelled' },
+      // raw floats, never rounded: the audit recomputes ratio from these two
+      quantities: { armIn_u: tailArm, armOut_u: padArm, ratio: padArm / tailArm },
+      why: 'displacement through a plane change on a PIVOT: two designed arms about a radial hinge whose bearing takes the side load — the pivoted idiom the rigid bent links do without',
+    });
+  }
 }
 // Released pad drop, from the EXACT rotation of the pad's WORST top-face
 // edge — binds at HACK_DROP_MIN by the PAD_Y solve above (tolerance for
@@ -4661,6 +4819,25 @@ if (STOP_BRACKET_CLEAR < HACK_CLEAR_MARGIN - 1e-6)
 const hackRod = makeElbowRodMesh(HACK_ROD_LEN, HACK_ROD_ELBOW.f, HACK_ROD_ELBOW.e);
 movement.add(hackRod);
 registerLabel('Hack rod', hackRod);
+// §137 — the hack rod's transfer row: the DEEP bend. §125 Tier B's southern
+// dogleg is the honest route past the reset hammer's swing and two arbor
+// collars, and it is exactly the case TODO 63 sharpened its finding on —
+// "the deeper the routing bend, the larger the moment nothing computes."
+// Now something does: same pricing as the reset rod, at this rod's own
+// solved e and its POST_STROKE. If the give fraction reads large here, that
+// is the bend's real price stated, not a defect invented — the BUILT record
+// carries the comparison.
+{
+  const price = priceRigidBentLink(HACK_ROD_ELBOW, HACK_ROD_LEN, POST_STROKE);
+  declareTransfer('stop work: elbow rod (setting-lever pin → stop-crank tail)', {
+    unit: 'Hack rod', meshes: ['rodSegIn', 'rodSegOut', 'rodKnuckle'], idiom: 'rigidBentLink',
+    load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
+      source: 'the detent envelope\'s ceiling as the bounding axial load — the same bound the reset rod is priced at' },
+    quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
+      eulerFrac: price.eulerFrac, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke },
+    why: `the movement's deepest routing bend (§125 Tier B's dogleg), priced: σ ${price.sigma_MPa.toFixed(1)} MPa at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}%, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor — the bend is the low linkage's compliance concentrator, stated`,
+  });
+}
 
 let stopPsiState = STOP_PSI0;
 const _rodUp = new THREE.Vector3(0, 1, 0);
@@ -12240,6 +12417,20 @@ const alarmSetI2Spin = new THREE.Group();
   mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH, 0);
   mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, 0);
 }
+// §137 — the setting run's dogleg row. Same idiom as the winding side: the
+// idlers (28 and 37 — unequal, and it does not matter) cancel out of the
+// end-to-end ratio entirely (ALARM_SET_RATIO is pinion/wheel alone), so the
+// corner's net contribution is exactly 1 and its whole duty is spanning the
+// probed-empty lane plus one sign per mesh. Load 0 and says so: the setting
+// chain couples ANGLES from the crown (rule 2), and the friction-set disc's
+// holding drag — the only force this run would work against — is not
+// modelled.
+declareTransfer('alarm setting: lane dogleg (setting wheel → arbor pinion)', {
+  unit: 'Alarm setting idler', meshes: ['alarmSetIdler'], idiom: 'doglegIdler',
+  load: { value: 0, unit: 'mN', source: 'posed force — the friction-set disc\'s holding drag is not modelled; the angular chain itself is real and phase-solved (rule 2)' },
+  quantities: { armIn_u: 1, armOut_u: 1, ratio: 1 },
+  why: 'idlers drop out of the ratio whatever their counts (ALARM_SET_RATIO is endpoint teeth alone); the corner spends position space across the probed-empty lane, nothing else',
+});
 // THE CHAIN SOLVE, reusable. Each wheel after the datum is turned until its
 // measured tooth phase puts a GAP against the previous wheel's TOOTH across
 // their line of centres. Two tripwires per mesh: anti-phase, and centre
@@ -12860,6 +13051,7 @@ alarmRotor.add(alarmArborRod);
 }
 // Disc bevel at the corner, axis −z (its shaft trails down to the pointer).
 const discBevel = G.makeBevelGear({ teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+discBevel.name = 'alarmDiscBevel'; // §137: named for the corner's transfer row
 const discBevelMount = new THREE.Group();
 discBevelMount.position.set(0, 0, Z_ALARM_CORNER);
 discBevelMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1));
@@ -12885,11 +13077,26 @@ alarmSpinner.rotation.z = alarmStemAngle - Math.PI / 2;
 alarmCrownUnit.add(alarmSpinner);
 // Stem bevel at the inner end (the corner), axis along the stem (local +Y).
 const stemBevel = G.makeBevelGear({ teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+stemBevel.name = 'alarmStemBevel'; // §137: the transfer row names its members
 stemBevel.rotation.z = ALARM_BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
 const stemBevelMount = new THREE.Group();
 stemBevelMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0));
 stemBevelMount.add(stemBevel);
 alarmSpinner.add(stemBevelMount);
+// §137 — the alarm corner's transfer row: addBevelCorner's idiom re-used at
+// the alarm stem (the disc-side gear lives in 'Alarm setting arbor', the
+// stem-side one here in 'Alarm crown'; the row hangs on the crown, whose
+// spinner is the transfer's INPUT). Equal counts, 1:1, the sign enacted in
+// tick. The drive here IS the coupling that sets the disc from the crown —
+// angles travel the gears (rule 2) — but the FORCE is not modelled: the
+// friction-set disc's holding drag has no number, so the row says 0 rather
+// than inventing one.
+declareTransfer('alarm setting: stem→disc bevel corner', {
+  unit: 'Alarm crown', meshes: ['alarmStemBevel'], idiom: 'bevelPair',
+  load: { value: 0, unit: 'mN', source: 'posed force — the disc is friction-set and its holding drag is not modelled; the angular coupling itself is real (rule 2)' },
+  quantities: { armIn_u: ALARM_BEVEL_TEETH, armOut_u: ALARM_BEVEL_TEETH, ratio: 1 },
+  why: 'rotation through 90° at the alarm corner earns the bevel-pair idiom; equal counts make it 1:1 and Z_ALARM_CORNER derives the apex from the plate/well band',
+});
 // Stem: from the corner out to just past the case rim.
 // Stem length from the PUSHED-IN rest radius (the climb, ALARM_CD) — the
 // spinner slides OUT from there, so basing it on the arbor's outboard radius
@@ -12931,6 +13138,11 @@ alarmSpinner.add(alarmCrownKnob);
 }
 
 // --- '(§45) Alarm release lifter' — the stem's pull, delivered to the sleeve
+// §137 / TODO 63 terminology — this chain (collar → lifter → rocker →
+// feeler) SILENCES: it holds or lifts the pin so a set alarm stays quiet or
+// a ringing one is arrested. DISARMING is the other mechanism — the column
+// wheel's run through alarmLinkRod to the selector ring. Keep the words
+// apart; a fix sent to the wrong one has nothing to fix.
 // The one new input §45 needs: pulling the alarm crown must PRESS the sleeve
 // toward the arm band (world-down here — dial-local +z), positively, so the
 // safety direction (release the hand to set it) is a located drive and the
@@ -13349,6 +13561,35 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   say('throw never exceeds the gap', ALARM_SIL_GAP + 1e-9 - ALARM_SIL_THROW, 0);
   say('free riding at rest', alarmPinDropCapAt(alarmSilFingerDropAt(0)) - ALARM_PIN_DROP, 1e-6);
 }
+// §137 — the silence chain's FORCE, derived (TODO 63: this path had
+// ALARM_SIL_RATIO, a displacement ratio, and nothing else). What the finger
+// must actually deliver is the change in the feeler bias blade's load as the
+// pin is pressed from dropped back to riding — first-order cantilever
+// arithmetic through the two pivots, TODO 16's own caveat attached (the
+// ratios carry the conclusion; the absolutes are good to a factor of two):
+//   blade k    = 3EI/L³ over its anchor→bear chord (SPR_FREE outboard of the
+//                pivot to BEAR_R inboard of it, along one ray: L = SPR_FREE
+//                + BEAR_R), section SPRING_FLAT_U square;
+//   bear δ     = the pin's full ALARM_PIN_DROP through the feeler lever,
+//                BEAR_R / ARM_LEN of it arriving at the bear point;
+//   finger F   = that blade-force change re-levered about the feeler pivot
+//                onto the tail under the finger (arm ALARM_SIL_TAIL_ARM);
+//   paddle F   = finger F × aF/aP — what the crown-driven lifter carries,
+//                the rocker's own designed ratio in reverse.
+const ALARM_SIL_FINGER_MN = (() => {
+  const kBlade = cantileverK_N_per_m(SPRING_FLAT_U, SPRING_FLAT_U, ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R);
+  const bearDefl_m = ALARM_PIN_DROP * (ALARM_FEELER_BEAR_R / ALARM_FEELER_ARM_LEN) * (UNIT_MM / 1000);
+  const dBladeF_N = kBlade * bearDefl_m;
+  return dBladeF_N * (ALARM_FEELER_BEAR_R / ALARM_SIL_TAIL_ARM) * 1000; // mN at the finger
+})();
+declareTransfer('alarm silence: rocker (lifter run → feeler tail)', {
+  unit: 'Alarm silence rocker', meshes: ['alarmSilRiser', 'alarmSilPivot', 'alarmSilBlade'], idiom: 'crank',
+  load: { value: ALARM_SIL_FINGER_MN, unit: 'mN',
+    source: 'feeler bias blade k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot (BEAR_R→TAIL_ARM); the paddle carries aF/aP of it off the crown-driven lifter' },
+  quantities: { armIn_u: alarmSilRocker.userData.aP, armOut_u: alarmSilRocker.userData.aF,
+    ratio: alarmSilRocker.userData.aF / alarmSilRocker.userData.aP },
+  why: 'displacement through a plane change on a PIVOT — a genuine bell crank: designed arms (ALARM_SIL_RATIO is the throw split, "designed, not inherited") about a bracket bearing that takes the side load',
+});
 
 // --- Alarm gong + hammer (BUILT §24) ---------------------------------------
 // The ding needs a visible SOURCE. A gong — a fixed steel wire arc mounted on
@@ -16013,6 +16254,21 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   };
   alarmWindUnit.userData.i1 = mkIdler(alarmWindI1);
   alarmWindUnit.userData.i2 = mkIdler(alarmWindI2);
+  // §137 — the winding dogleg's transfer row. The dogleg-idler idiom:
+  // rotation crosses a lateral offset in-plane through two equal-count brass
+  // idlers whose azimuth is SCORED against the corridor (§112), never
+  // authored — equal counts cancel out of the ratio entirely and the pair's
+  // whole duty is position space plus one sign. This corner carries a REAL
+  // load: the alarm barrel's winding torque, taken from the equalisation
+  // record (§104's frozen spring law — quoted, not re-derived) at its full-
+  // wind top and referred to the idler through the arbor-wheel mesh.
+  declareTransfer('alarm winding: dogleg idlers (climb → arbor wheel)', {
+    unit: 'Alarm winding train', meshes: ['alarmWindIdler'], idiom: 'doglegIdler',
+    load: { value: EQUALISATION.alarm.momentRange_Nmm[1] * (ALARM_WIND_IDLER_TEETH / ALARM_WIND_W), unit: 'N·mm',
+      source: 'EQUALISATION.alarm.momentRange_Nmm[1] (the ribbon law at full wind) × idler/arbor-wheel tooth ratio — the torque the idler mesh actually carries while the crown winds against a full spring' },
+    quantities: { armIn_u: ALARM_WIND_IDLER_TEETH, armOut_u: ALARM_WIND_IDLER_TEETH, ratio: 1 },
+    why: 'the dogleg is scored, not authored: i1 sweeps its mesh circle and both idlers solve jointly against the low corridor (rule 5); the idlers drop out of ALARM_WIND_RATIO by equal counts, so the corner buys position space and nothing else',
+  });
   // TODO 15 — THE REPORTED TRAIN. Datum is the climb PINION: it is keyed to
   // the climb rod and cannot be turned freely, so the idlers are what move.
   // The pinion comes from makePinion rather than makeGear, which is exactly
@@ -17965,7 +18221,7 @@ alarmSwitchUnit.add(alarmClickArm);
 // ratio, ≈ 15 mN pressing the nose into the wheel — INSIDE the movement's
 // 5–50 mN detent band. It is the number the pusher's pawl is sized against
 // (the press block below carries that half), and it is the same band the
-// alarm link's ≈ 48 mN tail-limited stall sits in: the click is what the
+// alarm link's tail-limited stall sits in (≈6 mN at the tab on the live solve's stroke — see the §137 row): the click is what the
 // INPUT must overcome, the link's stall is what the OUTPUT can deliver, and
 // both landing inside one band is that loop closing.
 //
@@ -17980,6 +18236,7 @@ alarmSwitchUnit.add(alarmClickArm);
 // throw per unit of nose travel is worst. The fix is position space — a
 // longer free length, or a bear station the tip circle does not crowd — not
 // a fatter blade. Filed at TODO 63.
+let ALARM_CLICK_SPRING = null; // §137: {k_N_per_m, bearArm_u, noseArm_u} — set where the blade is built, read by the detent arithmetic below
 {
   // Bear on the arm at mid-length, on the side away from the wheel, so the
   // moment about the pivot drives the nose inward — the direction the click
@@ -18007,6 +18264,14 @@ alarmSwitchUnit.add(alarmClickArm);
   blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z + 0.80);
   blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
   alarmSwitchUnit.add(blade);
+  // §137 — the numbers the detent arithmetic needs, published from the one
+  // place they exist (bearFrac and the arm length are this block's): blade
+  // stiffness by the shared cantilever law over its built section and free
+  // length, and the two arms about the click pivot.
+  ALARM_CLICK_SPRING = {
+    k_N_per_m: cantileverK_N_per_m(0.2, SPRING_FLAT_U, SPRING_FREE),
+    bearArm_u: L * bearFrac, noseArm_u: L,
+  };
 }
 // Base angle: arm pointing from the pivot at the SEATED nose position.
 const ALARM_CLICK_BASE = Math.atan2(_clickSeatP.y - alarmClickPivot.y, _clickSeatP.x - alarmClickPivot.x) + Math.PI;
@@ -18103,6 +18368,37 @@ const alarmClickArmAngle = (rc) => ALARM_CLICK_BASE + _clickSign * (_clickPsiOf(
     console.warn(`alarm click: the seated nose reaches ${(ALARM_CLICK_SEAT - ALARM_CLICK_NOSE_R).toFixed(3)}, `
       + `inside the castellation floor's inner wall at ${(ALARM_COL_INNER + CLEAR_MARGIN).toFixed(3)}`);
 }
+// §137 — THE CLICK'S DETENT TORQUE, derived (TODO 63: "the load that actually
+// holds the column indexed, and the thing a stall must actually overcome" had
+// no number). First-order chain, every input built above:
+//   arm swing over a full cam-out  = ψ(OUT) − ψ(SEAT), the law-of-cosines
+//                                    solve the nose law already owns;
+//   blade deflection at the bear   = that swing × bearArm (the blade bears at
+//                                    bearFrac·L, the spring block's numbers);
+//   flank force at the nose        = k·δ re-levered bearArm → noseArm about
+//                                    the click pivot, at full lift — the PEAK
+//                                    resistance a tooth crossing must beat
+//                                    (no preload is built, so the seated
+//                                    floor is 0 and the peak is the claim).
+// The value must sit INSIDE the declared detent envelope: a detent under the
+// window's floor is mush that cannot index, over its ceiling is a wall a
+// finger-driven pawl cannot cross — either miss is a finding against the
+// CLICK, never a licence to retune the window.
+const ALARM_CLICK_FLANK_MN = (() => {
+  const swing = _clickPsiOf(ALARM_CLICK_OUT) - _clickPsi0;
+  const bearDefl_m = swing * ALARM_CLICK_SPRING.bearArm_u * (UNIT_MM / 1000);
+  const bearF_N = ALARM_CLICK_SPRING.k_N_per_m * bearDefl_m;
+  return bearF_N * (ALARM_CLICK_SPRING.bearArm_u / ALARM_CLICK_SPRING.noseArm_u) * 1000; // mN at the flank
+})();
+declareTransfer('alarm switch: click detent (spring bear → nose flank)', {
+  unit: 'Alarm switch', meshes: ['switchClickSpring'], idiom: 'crank',
+  load: { value: ALARM_CLICK_FLANK_MN, unit: 'mN',
+    source: 'switchClickSpring k (shared cantilever law, built section) × bear deflection over the full ψ(OUT)−ψ(SEAT) cam-out, re-levered bearArm→noseArm about the click pivot' },
+  quantities: { armIn_u: ALARM_CLICK_SPRING.bearArm_u, armOut_u: ALARM_CLICK_SPRING.noseArm_u,
+    ratio: ALARM_CLICK_SPRING.noseArm_u / ALARM_CLICK_SPRING.bearArm_u },
+  envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: ALARM_CLICK_FLANK_MN },
+  why: 'a grounded blade biasing a pivoted arm is the crank idiom carrying a spring load: the detent that indexes the column wheel, priced at its peak so the pawl row downstream can state what a press must overcome',
+});
 // THE PUSHER (owner's catch: a cased movement cannot reach a plate-top
 // column wheel — chronographs pierce the case here). A capped stem at the
 // rim on the wheel's azimuth, OFFSET half a wheel-radius sideways so its
@@ -19054,6 +19350,12 @@ const alarmLinkParts = {};
     const rodLen = ALARM_ROD_TOP_BUILT - rodFootRest;
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_ROD_R_SECTION, ALARM_LINK_ROD_R_SECTION, rodLen, 12), MATS.steel);
     rod.name = 'alarmLinkRod';
+    // §137 / TODO 63 terminology — this rod DISARMS: it prevents the alarm
+    // ringing (column wheel → beak → this rod → shaft → selector ring). The
+    // rod that SILENCES a ringing alarm is §45's chain (crown collar →
+    // lifter → silence rocker → feeler), which the column wheel does not
+    // drive. Different mechanisms; conflating them sends a fix to the
+    // wrong one.
     rod.rotation.x = Math.PI / 2;
     rod.position.set(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y, rodFootRest + rodLen / 2);
     alarmLinkUnit.add(rod);
@@ -19103,6 +19405,16 @@ const alarmLinkParts = {};
     // 5. The rod's travel falls out — and the nose's seat drop through the
     //    beak's measured lever arms.
     F.rodTravel = envZ(rimPair, F.rollArmed) - rodFootRest;
+    // The PIN's travel falls out of the same two rolls, off the sinusoid it
+    // was seated on. It is exposed because the §137 transfer row needs it:
+    // the shaft's span and fork-end members work at the PIN, not at the rod,
+    // and a series compliance must reflect each member by the displacement
+    // ratio at its own working point (n = δ_member/δ_ring). Deriving n from
+    // arm lengths would assume the pin stays horizontal through the stroke —
+    // it does not, which is exactly why this is measured off the solve
+    // rather than computed from ALARM_FORK_PIN_ARM_R (TODO 82 measures the
+    // same quantity by posing the built tree; the row asserts the two agree).
+    F.pinTravel = pinZ(F.rollArmed + dPhi) - pinZ(F.rollRest + dPhi);
     if (Math.sign(F.rodTravel) !== Math.sign(travelW))
       console.warn('TODO 20 registration: rod and ring travel disagree in sign through the fork');
     // THE FORK, built ON the pin it serves — the driven member derived
@@ -19221,6 +19533,149 @@ const alarmLinkParts = {};
     const lateral = Math.hypot(p1.x - p0.x, p1.y - p0.y);
     if (lateral > 0.2685)
       say('rim contact lateral sweep exceeds the ray-probed corridor', `${lateral.toFixed(4)} > 0.2685`);
+  }
+  // §137 — the arming chain's two corner rows, declared on the numbers the
+  // build just derived. Two prior records each carried one stale number and
+  // the rows below carry neither: TODO 63's re-take priced the shaft at
+  // 22 N/m — a stiffness for the PRE-§68 4.5 mm overhang, retired when the
+  // bush moved next to its load (§137 Landing 1's correction; the measured
+  // drive-end cantilever is 0.929 mm and the Landing-2 section meets its
+  // 2800 N/m floor there) — and both TODO 63 and Landing 2 priced the tail
+  // against the 0.42-unit plan stroke, which the registration solve's own
+  // output (`alarmLinkParts.forward.rodTravel`) replaced. Everything here
+  // recomputes from the live solve at every boot.
+  //
+  // The BEAK LEVER: castellation rise in at the nose, rod driven at the
+  // tail — a crank about the beak post. The load is the tail's own STALL:
+  // the force at which the blade bends its whole required stroke instead of
+  // moving the rod, k (shared cantilever law over the §54-derived section)
+  // × the solve's |rodTravel|.
+  //
+  // The LAY SHAFT'S CRANK PAIR: the rod's fall arrives on the rim crank,
+  // rolls the shaft, and leaves on the centre crank's pin in the fork's
+  // groove. What the chain can DELIVER at the drive tab is set by the
+  // SOFTEST member in the series, carried through the crank pair at the
+  // measured stroke ratio (force transforms as d_rod/d_ring for a rigid
+  // pair). Two members act at the rod and so are directly comparable, both
+  // stalling at k × |rodTravel|:
+  //
+  //   · the beak TAIL, §54-sectioned, k above;
+  //   · the shaft's ROD-END OVERHANG — TODO 79. Not the fork-end cantilever
+  //     Landing 2 sized the section against (0.929 mm, 2807 N/m): §68 sited
+  //     the bushes for short overhangs at BOTH ends on the 24.12 u chord that
+  //     then existed, §112 grew the chord ≈9 u, and the station literals did
+  //     not travel with it. The rod end now hangs the whole way from the
+  //     outer bush to the metal's end, carrying alarmLinkCrankRim and the rod
+  //     drive at its free tip. Derived here from the same ALARM_LINK_BUSH_T
+  //     the bearings declaration and the hangers read, so the three cannot
+  //     drift: L = fullChordLen − max(stations).
+  //
+  // COMPLIANCES IN SERIES ADD; THEY ARE NOT A MINIMUM. This row's first cut
+  // charged each member against its own stroke at its own point and took the
+  // smallest — which is only the right answer when one compliance dominates
+  // utterly, and here the bush-to-bush span carries a quarter of it. TODO 82
+  // established the correction and the arithmetic is its, reproduced from
+  // live constants rather than quoted: for a member whose working point moves
+  // n = δ_member/δ_ring, force scales as 1/n, so its compliance seen at the
+  // ring is n²/k. Summed and inverted:
+  //
+  //   1/k_eff = Σ n²/k ,   STALL = k_eff × ring travel
+  //
+  // Every n comes from the registration solve's own travels (rodTravel for
+  // the two rod-side members, pinTravel for the two shaft members), never
+  // from an arm length — standing rule 2 applied to displacements, and the
+  // reason F.pinTravel is exposed above.
+  //
+  // The ROD END governs at ~72% of the compliance and the chain lands an
+  // order BELOW the detent envelope's floor, so the row stays waived citing
+  // TODO 79. Four records had this number wrong before it was computed —
+  // TODO 16's ≈1.5 mN, TODO 63's ≈1.6 mN on a pre-§68 span, §137 Landing 2's
+  // ≈48 mN on a deleted stroke constant, and this row's own ≈0.42 mN minimum
+  // — which is why the row now ASSERTS against TODO 82's probe instead of
+  // agreeing with it by eye. It is still first-order and not a measured load
+  // path; what it claims is the comparison, and TODO 79 owns the fix.
+  {
+    const kTail = cantileverK_N_per_m(STOCK_MIN_U, ALARM_LINK_TAIL_H, tailLen);
+    const rodTravelU = Math.abs(alarmLinkParts.forward.rodTravel);
+    const tailStallMN = kTail * rodTravelU * UNIT_MM; // N/m × (u→m) × 1000 = mN
+    declareTransfer('alarm arming: beak lever (castellations → rod)', {
+      unit: 'Alarm link', meshes: ['alarmLinkBeakBar', 'alarmLinkBeakTail', 'alarmLinkBeakPost'], idiom: 'crank',
+      load: { value: tailStallMN, unit: 'mN',
+        source: 'tail-blade cantilever k over its §54-derived deep section × the registration solve\'s |rodTravel| (the live stroke — the 0.42-unit plan constant both prior records quoted is retired by the solve\'s own comment trail)' },
+      quantities: { armIn_u: beakLen, armOut_u: tailLen, ratio: tailLen / beakLen },
+      why: 'a pivoted lever with two designed arms about the beak post — the built arms measure the displacement gain TODO 63 re-took (7.1×, not the 36.5× the old record assumed)',
+    });
+    // The rod-end overhang, from the bush declaration rather than a quoted
+    // number: 3EI/L³ on the round section (I = πr⁴/4, the same model §137's
+    // force budget uses — NOT the slenderness column's rectangular ac³/12).
+    const _m = UNIT_MM / 1000;
+    // Round-section bending, the model §137's force budget uses throughout —
+    // NOT the slenderness column's rectangular ac³/12. coeff 3 = cantilever,
+    // 48 = simply supported with the load at midspan.
+    const kBend = (rU, L_u, coeff) => coeff * STEEL_E_PA
+      * (Math.PI * (rU * _m) ** 4 / 4) / (L_u * _m) ** 3;         // N/m
+    // The shaft's three free lengths, all from the same ALARM_LINK_BUSH_T the
+    // bearings declaration and the hangers read, so the consumers cannot drift.
+    // THE METAL DOES NOT START AT t = 0: it spans chord t in
+    // [ALARM_FORK_RETREAT, fullChordLen], which is why the fork-end free
+    // length is 1.35 and not the station literal 2.45. The first cut of this
+    // row read the literal, made that member 5.98x too soft, and still landed
+    // on the right total because it carries under 1% of the compliance — a
+    // reminder that agreement on the answer is not agreement on the model.
+    // Same three inputs as the bearings declaration above, so the two cannot
+    // drift: 33.387 u of metal is 1.350 + 19.550 + 12.487.
+    const stations = [...ALARM_LINK_BUSH_T].sort((a, b) => a - b);
+    const overhangU = fullChordLen - stations[stations.length - 1];   // rod end
+    const forkEndU = stations[0] - ALARM_FORK_RETREAT;                // fork end
+    const spanU = stations[stations.length - 1] - stations[0];        // bush to bush
+    // A cantilever past a real back span deflects Pa²(L+a)/3EI at its tip,
+    // not Pa³/3EI, because the back span ROTATES — a stiffness factor
+    // (L+a)/a. SLENDER_OVERHANG_K's ∛16 ≈ 1.4 is that factor's LAMBDA-space
+    // cube root and is not interchangeable with it.
+    const coupling = (spanU + overhangU) / overhangU;
+    const kRodEnd = kBend(ALARM_LINK_SHAFT_R, overhangU, 3) / coupling;
+    // The two reflection ratios are NOT the same kind of number, and saying so
+    // is the point. nRod is a real solve OUTPUT — the rod's travel is whatever
+    // the rim envelope gives at the armed roll — and TODO 82's posed probe
+    // reads the same 0.523. nPin is 1 BY CONSTRUCTION: the solve DEFINES the
+    // armed roll as the one that moves the pin exactly one ring travel, so
+    // dividing that by ALARM_SEL_TRAVEL can only return 1 and is not
+    // independent evidence. The probe, which poses the built tree instead of
+    // asking the solve, measures 1.0152 — the pin does not track its ideal
+    // sinusoid exactly. That 1.5% is worth 0.8% of the total and is left
+    // visible here rather than quietly replaced by the probe's figure.
+    const nRod = rodTravelU / ALARM_SEL_TRAVEL;
+    const nPin = Math.abs(alarmLinkParts.forward.pinTravel) / ALARM_SEL_TRAVEL;
+    const series = [
+      { name: 'beak tail blade', k: kTail, n: nRod },
+      { name: 'shaft, rod-end overhang', k: kRodEnd, n: nRod },
+      { name: 'shaft, bush-to-bush span', k: kBend(ALARM_LINK_SHAFT_R, spanU, 48), n: nPin },
+      { name: 'shaft, fork-end overhang', k: kBend(ALARM_LINK_SHAFT_R, forkEndU, 3), n: nPin },
+    ];
+    const compliance = series.reduce((t, m) => t + m.n * m.n / m.k, 0);
+    const kEff = 1 / compliance;
+    const deliveredMN = kEff * ALARM_SEL_TRAVEL * UNIT_MM;
+    const governs = series.reduce((a, b) => (a.n * a.n / a.k >= b.n * b.n / b.k ? a : b));
+    // TODO 82's probe measures this by POSING the built tree; this row derives
+    // it from the solve. They are independent paths to one number, so they are
+    // required to agree — a boot warning here means one of them has drifted,
+    // which is the whole point of computing rather than quoting.
+    if (Math.abs(deliveredMN - 1.58) > 0.05)
+      console.warn(`§137 transfer: series stall ${deliveredMN.toFixed(3)} mN disagrees with TODO 82's probe (1.58 mN)`);
+    if (governs.name !== 'shaft, rod-end overhang')
+      console.warn(`§137 transfer: the governing member is ${governs.name}, not the rod-end overhang TODO 79 files`);
+    declareTransfer('alarm arming: lay shaft cranks (rod foot → ring drive tab)', {
+      unit: 'Alarm link', meshes: ['alarmLinkShaft', 'alarmLinkCrankRim', 'alarmLinkCrankCentre'], idiom: 'crank',
+      load: { value: deliveredMN, unit: 'mN',
+        source: 'the SERIES stiffness of the four elastic members between pusher and tab (1/k_eff = Σ n²/k, each reflected to the ring by its own measured travel ratio) over the ring\'s ALARM_SEL_TRAVEL — TODO 82\'s construction, recomputed here from live constants and asserted against its probe; first-order, not a measured load path' },
+      quantities: { armIn_u: ALARM_LINK_CRANK_OFF, armOut_u: ALARM_FORK_PIN_ARM_R, ratio: ALARM_FORK_PIN_ARM_R / ALARM_LINK_CRANK_OFF,
+        overhang_u: overhangU, span_u: spanU, forkEnd_u: forkEndU, coupling, kEff_N_per_m: kEff,
+        governs: governs.name, nRod, nPin,
+        members: series.map((m) => ({ name: m.name, k_N_per_m: m.k, n: m.n,
+          complianceShare: (m.n * m.n / m.k) / compliance })) },
+      envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: deliveredMN },
+      why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right and then undone by a chord that grew under it: summed in series the rod-end overhang carries most of the compliance, the delivered stall misses the detent window by an order, and the row is waived citing TODO 79 (position space, and NOT the third bush — that splits a span which does not govern)',
+    });
   }
   // bushes: hangers from the base plate's underside, at the two chord
   // stations whose full vertical columns (bush ring bottom to the plate at
@@ -19565,6 +20020,30 @@ alarmSwitchUnit.add(alarmPusherGroup);
     const reachMid = (riserFar + (ALARM_PAWL_KISS_S + 1.5 - 0.4)) / 2;
     reach.position.set(_pushU.x * reachMid, _pushU.y * reachMid, _pawlZ);
     alarmPusherGroup.add(reach);
+  }
+  // §137 — the pusher's transfer row, and the PAWL'S FORCE AT THE SAW ROOT
+  // (TODO 63: the input end of the arming chain had no arithmetic). The
+  // riser-and-reach is a plane change at ratio 1 — no lever anywhere, so the
+  // pawl sees the finger's press entire. What a press must overcome to index
+  // the column one tooth is the click's detent torque (its §137 row above —
+  // the peak flank force on the wall) taken about the wheel's axis and paid
+  // back at the saw's own radius, read off the SAME ratchetPoly the teeth
+  // were cut from. The margin is the point: tens of mN needed against the
+  // newtons a finger delivers (CASE_PUSHER_INPUT_N) — this chain starves at
+  // the SHAFT downstream (the lay-shaft row), never at the input.
+  {
+    const poly = alarmColumnWheel.userData.ratchetPoly;
+    let sawR = 0;
+    for (const p of poly) sawR = Math.max(sawR, Math.hypot(p.x, p.y));
+    const clickTorque_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
+    const pawlNeedMN = clickTorque_Nmm / (sawR * UNIT_MM) * 1000;
+    declareTransfer('alarm arming: pusher riser and reach (cap → pawl)', {
+      unit: 'Alarm switch', meshes: ['alarmPusherCap', 'alarmPusherRiser', 'alarmPusherReach', 'alarmPusherPawl'], idiom: 'riserReach',
+      load: { value: pawlNeedMN, unit: 'mN',
+        source: 'the click row\'s peak flank force taken about the column axis at the nose\'s riding radius, paid back at the saw\'s own outermost radius (userData.ratchetPoly) — what one indexing press must overcome' },
+      quantities: { armIn_u: 1, armOut_u: 1, ratio: 1 },
+      why: `displacement through a plane change with no direction change: climb and reach, loaded axially, ratio 1 by construction — the anatomy a real case-pusher's under-plate operating lever has; needs ~${pawlNeedMN.toFixed(1)} mN against the ${CASE_PUSHER_INPUT_N[0]}–${CASE_PUSHER_INPUT_N[1]} N a finger delivers`,
+    });
   }
   // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
   // A vertical torus spans its RING DIAMETER in z (0.48 here) — the first two
@@ -30011,6 +30490,7 @@ window.__clock = {
   get balanceRate() { return balanceRate; },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
+  get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   // The seconds-reset contact, as the tick law last solved it: the roller's
