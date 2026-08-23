@@ -19,6 +19,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 |---|---|---|
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
+| 77 | OPEN | The reserve train's two meshes interpenetrate (0.279 / 0.621 mm, measured). Now in `INTRA_TIER_SCOPE` and waived against this item, so the debt is declared and new interference fails; the fix is roadmap §136's conjugate profile, not a tolerance |
 | 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; item 41's closure seeded `Dial ⇄ Power reserve`; `Power reserve ⇄ Power-reserve train` is still unseeded) |
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
@@ -8291,3 +8292,55 @@ whether 0.24 u of joint burial is acceptable display fiction or debt worth
 that work is an owner's call. Until then this item is the number: re-run
 the probe after any chain-frame change, and if the max span GROWS, the
 fiction deepened and this item's figures are stale.
+
+## 77. The reserve train's two meshes interpenetrate — up to 0.62 mm, reported by the battery and gated by nothing
+
+Owner-reported: the gears behind the power reserve "phase through each
+other". They do, and the movement's own instruments have been saying so in
+every green battery.
+
+**Measured.** Radial overlap of one gear's vertices inside the other's
+outline (silhouette test about each gear's own axis, 4096 bins), swept
+over 41 wind states:
+
+| mesh | worst overlap | at tension | vs tooth height (2.25·m) |
+|---|---|---|---|
+| p0 ⇄ w1 | 0.737 u = **0.279 mm** | 0.20 | ~96% |
+| p1 ⇄ w2 | 1.637 u = **0.621 mm** | 0.475 | ~67% |
+
+Radial overlap is an UPPER BOUND on the minimum-translation penetration
+depth, not that depth itself — the honest reading is "a tooth stands
+almost entirely inside the tooth it should be rolling against", which is
+what the render shows.
+
+**Why: the profile cannot do anything else.** `gearOutlineShape` cuts
+straight-chord flanks with no pressure angle at `curveSegments: 3`. TODO 61
+closed the documentation half — all three sites now say plainly that no
+conjugate action is modelled — and roadmap §136 is the metal half, filed
+and unbuilt. Two non-conjugate outlines placed at their correct centre
+distance and correct phase MUST interfere through the mesh cycle; the
+phase solve (TODO 48, `probe-reserve-mesh`, 0.07% of a pitch off
+anti-phase) is measuring the right thing and cannot prevent this one.
+
+**Why nothing caught it.** `intraUnit`'s MM tier DID catch it, both rows,
+at `beat f=0` — and filed them under `outOfScope`, which is
+`live.filter(v => !inGate(v))`: measured intersections outside
+`INTRA_TIER_SCOPE`. That scope is the alarm complex, so the reserve train's
+rows joined the 188 reported-and-untriaged. This is item 5's named
+remainder arriving as a concrete fault rather than as a statistic, and it
+is the second time the pattern has bitten (§129's own scope comment
+predicted it: the tier goes red on the shipped fault the moment the unit is
+in scope).
+
+**What this landing did.** Put `'Power-reserve train'` in
+`INTRA_TIER_SCOPE` and waived the two rows against this item. The fault is
+now DECLARED debt, visible in the report and cited, and any *new*
+interference in that unit fails the gate — which is the whole difference
+between this and where it sat before.
+
+**The fix is roadmap §136**, not a scope or tolerance change: cut flanks
+with conjugate action and the interference goes away as a consequence.
+Do not widen a budget to green these rows, and do not re-solve the phase to
+chase them — the phase is already right. When §136 lands, re-run the
+measurement above; if the overlap does not go to zero, the profile is
+still not conjugate and this item is the number that says so.
