@@ -19405,6 +19405,16 @@ const alarmLinkParts = {};
     // 5. The rod's travel falls out — and the nose's seat drop through the
     //    beak's measured lever arms.
     F.rodTravel = envZ(rimPair, F.rollArmed) - rodFootRest;
+    // The PIN's travel falls out of the same two rolls, off the sinusoid it
+    // was seated on. It is exposed because the §137 transfer row needs it:
+    // the shaft's span and fork-end members work at the PIN, not at the rod,
+    // and a series compliance must reflect each member by the displacement
+    // ratio at its own working point (n = δ_member/δ_ring). Deriving n from
+    // arm lengths would assume the pin stays horizontal through the stroke —
+    // it does not, which is exactly why this is measured off the solve
+    // rather than computed from ALARM_FORK_PIN_ARM_R (TODO 82 measures the
+    // same quantity by posing the built tree; the row asserts the two agree).
+    F.pinTravel = pinZ(F.rollArmed + dPhi) - pinZ(F.rollRest + dPhi);
     if (Math.sign(F.rodTravel) !== Math.sign(travelW))
       console.warn('TODO 20 registration: rod and ring travel disagree in sign through the fork');
     // THE FORK, built ON the pin it serves — the driven member derived
@@ -19560,17 +19570,30 @@ const alarmLinkParts = {};
   //     the bearings declaration and the hangers read, so the three cannot
   //     drift: L = fullChordLen − max(stations).
   //
-  // The overhang is an order softer than the tail, so it BINDS, and the
-  // delivered figure lands below the detent envelope's floor — the row is
-  // waived citing TODO 79. Two records had this wrong in opposite
-  // directions and both are superseded here: TODO 63's ≈1.6 mN used a
-  // pre-§68 span, and this row's own first cut omitted the overhang
-  // entirely and read the chain as tail-limited and in-window. NEITHER this
-  // nor TODO 79's ≈3.3 mN is a measured load path — both are the geometry's
-  // free length times the repo's own cantilever formula, and TODO 79 says
-  // in terms to take it properly before acting on it. What the row asserts
-  // is only the comparison: the rod end is the soft member, and the chain
-  // does not demonstrably clear its window.
+  // COMPLIANCES IN SERIES ADD; THEY ARE NOT A MINIMUM. This row's first cut
+  // charged each member against its own stroke at its own point and took the
+  // smallest — which is only the right answer when one compliance dominates
+  // utterly, and here the bush-to-bush span carries a quarter of it. TODO 82
+  // established the correction and the arithmetic is its, reproduced from
+  // live constants rather than quoted: for a member whose working point moves
+  // n = δ_member/δ_ring, force scales as 1/n, so its compliance seen at the
+  // ring is n²/k. Summed and inverted:
+  //
+  //   1/k_eff = Σ n²/k ,   STALL = k_eff × ring travel
+  //
+  // Every n comes from the registration solve's own travels (rodTravel for
+  // the two rod-side members, pinTravel for the two shaft members), never
+  // from an arm length — standing rule 2 applied to displacements, and the
+  // reason F.pinTravel is exposed above.
+  //
+  // The ROD END governs at ~72% of the compliance and the chain lands an
+  // order BELOW the detent envelope's floor, so the row stays waived citing
+  // TODO 79. Four records had this number wrong before it was computed —
+  // TODO 16's ≈1.5 mN, TODO 63's ≈1.6 mN on a pre-§68 span, §137 Landing 2's
+  // ≈48 mN on a deleted stroke constant, and this row's own ≈0.42 mN minimum
+  // — which is why the row now ASSERTS against TODO 82's probe instead of
+  // agreeing with it by eye. It is still first-order and not a measured load
+  // path; what it claims is the comparison, and TODO 79 owns the fix.
   {
     const kTail = cantileverK_N_per_m(STOCK_MIN_U, ALARM_LINK_TAIL_H, tailLen);
     const rodTravelU = Math.abs(alarmLinkParts.forward.rodTravel);
@@ -19585,21 +19608,73 @@ const alarmLinkParts = {};
     // The rod-end overhang, from the bush declaration rather than a quoted
     // number: 3EI/L³ on the round section (I = πr⁴/4, the same model §137's
     // force budget uses — NOT the slenderness column's rectangular ac³/12).
-    const overhangU = fullChordLen - Math.max(...ALARM_LINK_BUSH_T);
     const _m = UNIT_MM / 1000;
-    const kRodEnd = 3 * STEEL_E_PA * (Math.PI * (ALARM_LINK_SHAFT_R * _m) ** 4 / 4)
-      / (overhangU * _m) ** 3;                                   // N/m
-    const rodEndStallMN = kRodEnd * rodTravelU * UNIT_MM;
-    const bindingStallMN = Math.min(tailStallMN, rodEndStallMN);
-    const deliveredMN = bindingStallMN * rodTravelU / ALARM_SEL_TRAVEL;
+    // Round-section bending, the model §137's force budget uses throughout —
+    // NOT the slenderness column's rectangular ac³/12. coeff 3 = cantilever,
+    // 48 = simply supported with the load at midspan.
+    const kBend = (rU, L_u, coeff) => coeff * STEEL_E_PA
+      * (Math.PI * (rU * _m) ** 4 / 4) / (L_u * _m) ** 3;         // N/m
+    // The shaft's three free lengths, all from the same ALARM_LINK_BUSH_T the
+    // bearings declaration and the hangers read, so the consumers cannot drift.
+    // THE METAL DOES NOT START AT t = 0: it spans chord t in
+    // [ALARM_FORK_RETREAT, fullChordLen], which is why the fork-end free
+    // length is 1.35 and not the station literal 2.45. The first cut of this
+    // row read the literal, made that member 5.98x too soft, and still landed
+    // on the right total because it carries under 1% of the compliance — a
+    // reminder that agreement on the answer is not agreement on the model.
+    // Same three inputs as the bearings declaration above, so the two cannot
+    // drift: 33.387 u of metal is 1.350 + 19.550 + 12.487.
+    const stations = [...ALARM_LINK_BUSH_T].sort((a, b) => a - b);
+    const overhangU = fullChordLen - stations[stations.length - 1];   // rod end
+    const forkEndU = stations[0] - ALARM_FORK_RETREAT;                // fork end
+    const spanU = stations[stations.length - 1] - stations[0];        // bush to bush
+    // A cantilever past a real back span deflects Pa²(L+a)/3EI at its tip,
+    // not Pa³/3EI, because the back span ROTATES — a stiffness factor
+    // (L+a)/a. SLENDER_OVERHANG_K's ∛16 ≈ 1.4 is that factor's LAMBDA-space
+    // cube root and is not interchangeable with it.
+    const coupling = (spanU + overhangU) / overhangU;
+    const kRodEnd = kBend(ALARM_LINK_SHAFT_R, overhangU, 3) / coupling;
+    // The two reflection ratios are NOT the same kind of number, and saying so
+    // is the point. nRod is a real solve OUTPUT — the rod's travel is whatever
+    // the rim envelope gives at the armed roll — and TODO 82's posed probe
+    // reads the same 0.523. nPin is 1 BY CONSTRUCTION: the solve DEFINES the
+    // armed roll as the one that moves the pin exactly one ring travel, so
+    // dividing that by ALARM_SEL_TRAVEL can only return 1 and is not
+    // independent evidence. The probe, which poses the built tree instead of
+    // asking the solve, measures 1.0152 — the pin does not track its ideal
+    // sinusoid exactly. That 1.5% is worth 0.8% of the total and is left
+    // visible here rather than quietly replaced by the probe's figure.
+    const nRod = rodTravelU / ALARM_SEL_TRAVEL;
+    const nPin = Math.abs(alarmLinkParts.forward.pinTravel) / ALARM_SEL_TRAVEL;
+    const series = [
+      { name: 'beak tail blade', k: kTail, n: nRod },
+      { name: 'shaft, rod-end overhang', k: kRodEnd, n: nRod },
+      { name: 'shaft, bush-to-bush span', k: kBend(ALARM_LINK_SHAFT_R, spanU, 48), n: nPin },
+      { name: 'shaft, fork-end overhang', k: kBend(ALARM_LINK_SHAFT_R, forkEndU, 3), n: nPin },
+    ];
+    const compliance = series.reduce((t, m) => t + m.n * m.n / m.k, 0);
+    const kEff = 1 / compliance;
+    const deliveredMN = kEff * ALARM_SEL_TRAVEL * UNIT_MM;
+    const governs = series.reduce((a, b) => (a.n * a.n / a.k >= b.n * b.n / b.k ? a : b));
+    // TODO 82's probe measures this by POSING the built tree; this row derives
+    // it from the solve. They are independent paths to one number, so they are
+    // required to agree — a boot warning here means one of them has drifted,
+    // which is the whole point of computing rather than quoting.
+    if (Math.abs(deliveredMN - 1.58) > 0.05)
+      console.warn(`§137 transfer: series stall ${deliveredMN.toFixed(3)} mN disagrees with TODO 82's probe (1.58 mN)`);
+    if (governs.name !== 'shaft, rod-end overhang')
+      console.warn(`§137 transfer: the governing member is ${governs.name}, not the rod-end overhang TODO 79 files`);
     declareTransfer('alarm arming: lay shaft cranks (rod foot → ring drive tab)', {
       unit: 'Alarm link', meshes: ['alarmLinkShaft', 'alarmLinkCrankRim', 'alarmLinkCrankCentre'], idiom: 'crank',
       load: { value: deliveredMN, unit: 'mN',
-        source: 'the SOFTEST series member\'s stall (tail blade vs the shaft\'s TODO 79 rod-end overhang, both at |rodTravel|) carried through the rigid crank pair at the measured stroke ratio — first-order, not a measured load path' },
+        source: 'the SERIES stiffness of the four elastic members between pusher and tab (1/k_eff = Σ n²/k, each reflected to the ring by its own measured travel ratio) over the ring\'s ALARM_SEL_TRAVEL — TODO 82\'s construction, recomputed here from live constants and asserted against its probe; first-order, not a measured load path' },
       quantities: { armIn_u: ALARM_LINK_CRANK_OFF, armOut_u: ALARM_FORK_PIN_ARM_R, ratio: ALARM_FORK_PIN_ARM_R / ALARM_LINK_CRANK_OFF,
-        overhang_u: overhangU, kRodEnd_N_per_m: kRodEnd, kTail_N_per_m: kTail, bindingStall_mN: bindingStallMN },
+        overhang_u: overhangU, span_u: spanU, forkEnd_u: forkEndU, coupling, kEff_N_per_m: kEff,
+        governs: governs.name, nRod, nPin,
+        members: series.map((m) => ({ name: m.name, k_N_per_m: m.k, n: m.n,
+          complianceShare: (m.n * m.n / m.k) / compliance })) },
       envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: deliveredMN },
-      why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right and then undone by a chord that grew under it: the rod-end overhang is the soft member and the delivered stall misses the detent window, waived citing TODO 79 (position space, and NOT the third bush — that splits a span which does not govern)',
+      why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right and then undone by a chord that grew under it: summed in series the rod-end overhang carries most of the compliance, the delivered stall misses the detent window by an order, and the row is waived citing TODO 79 (position space, and NOT the third bush — that splits a span which does not govern)',
     });
   }
   // bushes: hangers from the base plate's underside, at the two chord
