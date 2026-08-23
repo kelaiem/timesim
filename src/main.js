@@ -3184,8 +3184,25 @@ const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
 // weld — the shoulder sits a weld inside the square, so without that term
 // the weld eats the margin (measured: the sleeve rode to 0.095 of the
 // round shaft at cam-over, 0.15 − SAW_FIT − SEAT_RELIEF exactly).
+// §136 — AND THE MARGIN MUST BE CLEARED AS MEASURED, NOT AS ARITHMETIC. Every
+// term above lands this gap on CLEAR_MARGIN EXACTLY, and `expectedContacts`
+// asks `min >= CLEAR_MARGIN` of a number that has been through the build's
+// float accumulation and a BVH distance query. Measured, that lands within
+// ~2e-7 either side of the floor and the sign is luck: on the tree before this
+// landing the pair read 0.150000131 (passes by 1.3e-7); the cycloidal profile
+// perturbs the arithmetic upstream and the SAME design reads 0.149999773
+// (fails by 2.3e-7). Nothing physical moved — the knife-edge was always here,
+// and it was passing by a coin flip.
+//
+// So the target is the floor PLUS the band the measurement resolves to. 1e-6 is
+// derived, not picked: the observed drift is ~2e-7 over doubles at this
+// magnitude, so this is a decade above the noise and five decades below
+// CLEAR_MARGIN — it cannot move a real clearance decision, and it makes the
+// gate deterministic instead of lucky. This is the PART clearing by slightly
+// more, never the gate asking for less.
+const MEASURED_MARGIN_BAND = 1e-6;
 const SQ_TOP = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + SLEEVE_TOP
-  + CLEAR_MARGIN + SAW_FIT;
+  + CLEAR_MARGIN + MEASURED_MARGIN_BAND + SAW_FIT;
 const stemLen = plateR + 2.2 - pinDist;
 // Round shaft from the square's shoulder (a SAW_FIT weld into the square,
 // one turned piece modeled as two meshes) out to the crown; the bushing
