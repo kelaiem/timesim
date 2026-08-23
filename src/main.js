@@ -26,7 +26,7 @@ import {
   // names are retired.
   TRAIN,
   KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
-  minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH,
+  minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH, SETTING_CAP_TEETH,
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
@@ -354,7 +354,7 @@ const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid (dec
 // (the drum body itself — makeBarrel — is built at the drumGroup assembly
 // further down: its arbor is sized to reach the plate's mid-thickness,
 // which isn't known yet here)
-const greatWheel = G.makeGear({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth, thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
+const greatWheel = G.makeGear({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.teeth, mates: [TRAIN.barrel.pinion], thickness: 1.4, boreR: 1.4, spokes: 5, material: MATS.brass });
 const barrelR_actual = greatWheel.userData.r || barrelR;
 // FLAT cone (tornado): height squashed 8.5 → 4.5 with the same 3.75 wrap
 // turns at a tighter groove pitch, seated just above the winding spur.
@@ -811,25 +811,25 @@ const fusee = G.makeFusee({
 });
 
 // --- Center arbor: pinion (meshed by barrel) + center wheel --------------
-const centerPinion = G.makePinion({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.pinion, thickness: 1.6, material: MATS.steel });
+const centerPinion = G.makePinion({ module: TRAIN.barrel.module, teeth: TRAIN.barrel.pinion, mates: [TRAIN.barrel.teeth], thickness: 1.6, material: MATS.steel });
 const centerPinionR = centerPinion.userData.r;
 
-const centerWheel = G.makeGear({ module: TRAIN.center.module, teeth: TRAIN.center.teeth, thickness: 1.0, boreR: 1.2, spokes: 5, material: MATS.brass });
+const centerWheel = G.makeGear({ module: TRAIN.center.module, teeth: TRAIN.center.teeth, mates: [TRAIN.center.pinion], thickness: 1.0, boreR: 1.2, spokes: 5, material: MATS.brass });
 const centerWheelR = centerWheel.userData.r;
 
 // --- Third arbor: pinion (meshed by center wheel) + third wheel ----------
-const thirdPinion = G.makePinion({ module: TRAIN.center.module, teeth: TRAIN.center.pinion, thickness: 1.6, material: MATS.steel });
+const thirdPinion = G.makePinion({ module: TRAIN.center.module, teeth: TRAIN.center.pinion, mates: [TRAIN.center.teeth], thickness: 1.6, material: MATS.steel });
 const thirdPinionR = thirdPinion.userData.r;
 
-const thirdWheel = G.makeGear({ module: TRAIN.third.module, teeth: TRAIN.third.teeth, thickness: 0.9, boreR: 1, spokes: 4, material: MATS.brass });
+const thirdWheel = G.makeGear({ module: TRAIN.third.module, teeth: TRAIN.third.teeth, mates: [TRAIN.third.pinion], thickness: 0.9, boreR: 1, spokes: 4, material: MATS.brass });
 const thirdWheelR = thirdWheel.userData.r;
 
 // --- Fourth arbor: pinion (meshed by third wheel) + fourth wheel ---------
-const fourthPinion = G.makePinion({ module: TRAIN.third.module, teeth: TRAIN.third.pinion, thickness: 1.6, material: MATS.steel });
+const fourthPinion = G.makePinion({ module: TRAIN.third.module, teeth: TRAIN.third.pinion, mates: [TRAIN.third.teeth], thickness: 1.6, material: MATS.steel });
 const fourthPinionR = fourthPinion.userData.r;
 
 const FOURTH_WHEEL_T = 0.8;
-const fourthWheel = G.makeGear({ module: TRAIN.fourth.module, teeth: TRAIN.fourth.teeth, thickness: FOURTH_WHEEL_T, boreR: 0.9, spokes: 5, material: MATS.brass });
+const fourthWheel = G.makeGear({ module: TRAIN.fourth.module, teeth: TRAIN.fourth.teeth, mates: [TRAIN.fourth.pinion], thickness: FOURTH_WHEEL_T, boreR: 0.9, spokes: 5, material: MATS.brass });
 const fourthWheelR = fourthWheel.userData.r;
 
 // --- Escape arbor: pinion (meshed by fourth wheel) + escape wheel --------
@@ -847,7 +847,7 @@ const fourthWheelR = fourthWheel.userData.r;
 const fourthWheelBevel = Math.min(FOURTH_WHEEL_T * 0.18, TRAIN.fourth.module * 0.22); // = makeGear's bevel
 const escPinionBevel = TRAIN.fourth.module * 0.2; // = makePinion's bevel (module·0.2 governs; thickness·0.15 is larger)
 const ESC_PINION_T = FOURTH_WHEEL_T + 2 * fourthWheelBevel + 2 * CLEAR_MARGIN - 2 * escPinionBevel;
-const escapePinion = G.makePinion({ module: TRAIN.fourth.module, teeth: TRAIN.fourth.pinion, thickness: ESC_PINION_T, material: MATS.steel });
+const escapePinion = G.makePinion({ module: TRAIN.fourth.module, teeth: TRAIN.fourth.pinion, mates: [TRAIN.fourth.teeth], thickness: ESC_PINION_T, material: MATS.steel });
 const escapePinionR = escapePinion.userData.r;
 
 const escapeWheel = G.makeEscapeWheel({ teeth: 15, radius: 4.5, thickness: 0.8 });
@@ -1475,7 +1475,12 @@ const Z_RATCHET_BOT = 0.15; // world: one margin above the plate's top face
 // Hub-less like the transfer wheel it meshes: the band under the great
 // wheel is ~1.2 tall and makeGear's stock hub ring (1.5·thickness) would
 // eat both gaps.
-const windSpur = G.makeGear({ module: KW_MODULE, teeth: WIND_SPUR_TEETH, thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+const windSpur = G.makeGear({ module: KW_MODULE, teeth: WIND_SPUR_TEETH, mates: [windIdler
+  // §136 — the DIRECT keyless branch has no idler (layout.js solveKeyless),
+  // so the spur meshes the transfer wheel itself. The mate is a function of
+  // the routing, not a constant, and both operands are the solve's own.
+  ? { teeth: windIdler.teeth, mates: [crownWheelTeeth, WIND_SPUR_TEETH] }
+  : { teeth: crownWheelTeeth, mates: [WIND_SPUR_TEETH] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
 windSpur.name = 'windSpur';
 const windSpurBase = Math.PI / WIND_SPUR_TEETH; // half-tooth phase so spur and transfer teeth interlace at rest (crownWheelBase convention)
 // makeGear extrudes CENTERED (unlike the old ratchet builder's 0-based
@@ -2075,7 +2080,7 @@ const ALARM_UNDER_FOOTPRINT = [
   // makeGear's addendum is 0.95·module and its tooth tip is RELIEVED past the
   // tip circle; gearOuterR is that builder's own bound, so the declaration
   // and the metal cannot drift again (the derivation is at its definition).
-  { name: 'striking wheel', x: alarmSwPos.x, y: alarmSwPos.y, r: G.gearOuterR({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_WIND_WHEEL_T }) },
+  { name: 'striking wheel', x: alarmSwPos.x, y: alarmSwPos.y, r: G.gearOuterR({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, mates: [ALARM_GOV_PINION_TEETH], thickness: ALARM_WIND_WHEEL_T }) },
   { name: 'barrel', x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_BARREL_TIP_R },
   { name: 'click', x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_RATCHET_R * 1.28 + 1.2 }, // the click: pivot registration + pawl/spring reach
   { name: 'governor saw', x: alarmGovPos.x, y: alarmGovPos.y, r: ALARM_GOV_SAW_R + ALARM_GEAR_BEVEL },
@@ -3049,14 +3054,16 @@ registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 // what it was when the crown wheel meshed the ratchet directly (the
 // middle wheel telescopes out of the ratio), and the path still has TWO
 // meshes, so the winding sense is unchanged too.
-const crownWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+const crownWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, mates: [windPinionTeeth], thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
 const crownWheelBase = Math.PI / crownWheelTeeth; // half-tooth phase into the spur
 crownWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
 keyless.add(crownWheel);
 // Transfer wheel: hub-less — its band between plate top and great-wheel
 // underside is only ~1.2 tall, and the stock hub ring would eat both gaps.
 const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the winding spur
-const transferWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+const transferWheel = G.makeGear({ module: KW_MODULE, teeth: crownWheelTeeth, mates: [windIdler
+  ? { teeth: windIdler.teeth, mates: [crownWheelTeeth, WIND_SPUR_TEETH] }
+  : { teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
 transferWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_TRANSFER);
 keyless.add(transferWheel);
 const transferArbor = new THREE.Mesh(
@@ -3072,7 +3079,10 @@ keyless.add(transferArbor);
 // sense, so the spin below carries the extra negation.
 let windIdlerWheel = null;
 if (windIdler) {
-  windIdlerWheel = G.makeGear({ module: KW_MODULE, teeth: windIdler.teeth, thickness: RATCHET_T, boreR: 0.55, spokes: 0, material: MATS.steel, hub: false });
+  windIdlerWheel = G.makeGear({ module: KW_MODULE, teeth: windIdler.teeth, mates: [
+    { teeth: crownWheelTeeth, mates: [windIdler.teeth] },
+    { teeth: WIND_SPUR_TEETH, mates: [windIdler.teeth] },
+  ], thickness: RATCHET_T, boreR: 0.55, spokes: 0, material: MATS.steel, hub: false });
   windIdlerWheel.name = 'kwWindIdler'; // §33 step 2 — instruments couple by string
   windIdlerWheel.position.set(windIdler.x, windIdler.y, Z_TRANSFER);
   keyless.add(windIdlerWheel);
@@ -3107,7 +3117,7 @@ keyless.add(windPinionGroup);
 // this fixed pinion loose (the square spans the pinion's station at every
 // pull — the stem is a turned part and its round journal starts outboard),
 // the way a real winding pinion rides its stem without being keyed to it.
-const windPinion = G.makePinion({ module: KW_MODULE, teeth: windPinionTeeth, thickness: WIND_PINION_T,
+const windPinion = G.makePinion({ module: KW_MODULE, teeth: windPinionTeeth, mates: [{ teeth: crownWheelTeeth, mates: [windPinionTeeth] }], thickness: WIND_PINION_T,
   material: MATS.steel, boreR: 0.6 }); // past the square's half-diagonal AND the extrude bevel's inward bite — loose over the square, never keyed
 windPinion.name = 'windingPinion';
 windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the stem
@@ -3165,7 +3175,7 @@ const SLEEVE_BOT = SAW_RING_ROOT + CLEAR_MARGIN;
 const SLEEVE_TOP = Math.min(
   CLUTCH_RIM_T / 2 - SAW_FIT,
   (windPinionR * 0.55 + settingWheelR)
-    - G.gearOuterR({ module: KW_MODULE, teeth: settingWheelTeeth, thickness: 1.1 })  // 1.1 = the setting wheel's thickness (its build)
+    - G.gearOuterR({ module: KW_MODULE, teeth: settingWheelTeeth, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }, { teeth: windPinionTeeth, mates: [settingWheelTeeth] }], thickness: 1.1 })  // 1.1 = the setting wheel's thickness (its build)
     - CLEAR_MARGIN - SEAT_RELIEF);  // the tick parks the clutch SEAT_RELIEF farther out than the closed-form stack
 const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
 // The square's top carries the sleeve's whole reach (home + cam-over lift
@@ -3255,7 +3265,10 @@ windSpinner.add(crown);
 // representational hop across the plate/dial gap, same convention already
 // used for the power-reserve arbor, not a literal continuous mesh into the
 // dial's flipped coordinate frame.
-const settingWheel = G.makeGear({ module: KW_MODULE, teeth: settingWheelTeeth, thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+const settingWheel = G.makeGear({ module: KW_MODULE, teeth: settingWheelTeeth, mates: [
+    { teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] },
+    { teeth: windPinionTeeth, mates: [settingWheelTeeth] },   // the clutch rim, when pulled
+  ], thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
 // TODO 50 — named so the clutch pair's floors row can EXCLUDE the pulled
 // setting mesh by contact selector (makeGear returns a group; the selector
 // matches mesh names).
@@ -3264,9 +3277,13 @@ const settingWheelBase = Math.PI / settingWheelTeeth;
 settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
 keyless.add(settingWheel);
 
-const minuteWheel = G.makeGear({ module: KW_MODULE, teeth: minuteWheelTeeth, thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
+const minuteWheel = G.makeGear({ module: KW_MODULE, teeth: minuteWheelTeeth, mates: [
+    { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
+    { teeth: SETTING_CAP_TEETH, mates: [minuteWheelTeeth] },
+  ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
 const minuteWheelBase = Math.PI / minuteWheelTeeth;
-const minutePinion = G.makePinion({ module: 0.28, teeth: minutePinionTeeth, thickness: 1.3, material: MATS.steel });
+const minutePinion = G.makePinion({ module: 0.28, teeth: minutePinionTeeth, mates: [minutePinionTeeth], // §136: meshes NOTHING (see above) — self-Willis display form, not a mesh claim
+  thickness: 1.3, material: MATS.steel });
 // Pinion steps toward the DIAL below the wheel (same side as before the
 // move, keeping the compound stack's read direction): 1.8 rather than the
 // old 2.0 so the pinion's underside holds one margin over the dial face —
@@ -3332,7 +3349,6 @@ const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING
 // world −x. The cap pinion sits one mesh distance from its axis, on the
 // keyless side so the traverse is the short way in.
 const MW_WORLD = { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
-const SETTING_CAP_TEETH = 8;
 const capMeshD = (MW_MODULE_1 * (SETTING_CAP_TEETH + MW_MINUTE_TEETH)) / 2;
 const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborXY.y - MW_WORLD.y).normalize();
 const SETTING_CAP_XY = { x: MW_WORLD.x + toKeyless.x * capMeshD, y: MW_WORLD.y + toKeyless.y * capMeshD };
@@ -3379,7 +3395,7 @@ const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clon
 // The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
 // from the minute wheel's axis, in the minute wheel's own plane — it
 // engages REAL teeth. Rest phase aims a half-tooth gap at the wheel.
-const settingCap = G.makePinion({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1.6, material: MATS.steel });
+const settingCap = G.makePinion({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
 settingCap.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_CANNON_PINION);
 const SETTING_CAP_PHASE =
   Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
@@ -3640,7 +3656,7 @@ windClutchMount.add(windClutch);
   // bevel bites, and the movement's SAW_FIT spare (measured: nominal
   // 0.72 put the lip 0.122 off the square's corners). The spine's 0.75
   // still overlaps the bitten lip — the weld the body needs.
-  const rim = G.makeGear({ module: KW_MODULE, teeth: windPinionTeeth, thickness: CLUTCH_RIM_T,
+  const rim = G.makeGear({ module: KW_MODULE, teeth: windPinionTeeth, mates: [{ teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] }], thickness: CLUTCH_RIM_T,
     boreR: STEM_R * 0.98 + CLEAR_MARGIN + 2 * KW_GEAR_BEVEL + SAW_FIT, spokes: 0, material: MATS.steel, hub: false });
   // makeGear returns a GROUP — the floors row's contact selector matches
   // MESH names, so the name goes on the meshes, not (only) the wrapper.
@@ -10119,7 +10135,7 @@ const MW_TOP = MW_Z2 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);
 // so the chain can deepen again without anyone re-counting leaves.
 const CANNON_T = -0.5 - (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) - 0.1);
 const CANNON_END = -0.5 - CANNON_T;
-const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: CANNON_T, material: MATS.steel });
+const cannonPinion = G.makePinion({ module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [MW_MINUTE_TEETH], thickness: CANNON_T, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
 dialFace.add(cannonPinion);
 // …and the new floor that derivation creates: the leaves now reach PAST the
@@ -10156,11 +10172,11 @@ registerLabel('Motion works', motionWorks);
 const mwArbor = new THREE.Group();
 mwArbor.position.set(MW_STUD.x, MW_STUD.y, 0);
 const mwMinuteWheel = G.makeGear({
-  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, thickness: 0.8, boreR: 0.5, spokes: 4, material: MATS.brass,
+  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth], thickness: 0.8, boreR: 0.5, spokes: 4, material: MATS.brass,
 });
 mwMinuteWheel.position.z = MW_Z1;
 const mwMinutePinion = G.makePinion({
-  module: MW_MODULE_2, teeth: MW_PINION_TEETH, thickness: 1.0, material: MATS.steel,
+  module: MW_MODULE_2, teeth: MW_PINION_TEETH, mates: [MW_HOUR_TEETH], thickness: 1.0, material: MATS.steel,
 });
 mwMinutePinion.traverse((o) => { if (o.isMesh) o.name = 'mwMinutePinion'; }); // TODO 6 contact-floor selector
 mwMinutePinion.position.z = MW_Z2;
@@ -10188,7 +10204,7 @@ const hourWheelGroup = new THREE.Group();
 dialFace.add(hourWheelGroup);
 registerLabel('Hour wheel', hourWheelGroup);
 const mwHourWheel = G.makeGear({
-  module: MW_MODULE_2, teeth: MW_HOUR_TEETH, thickness: 0.8,
+  module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH], thickness: 0.8,
   boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
 });
 mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 6 contact-floor selector
@@ -10254,7 +10270,14 @@ const STAR_BOT = _mwSliceBot + CLEAR_MARGIN;        // 0-based extrude sits here
 const STAR_MID = STAR_BOT + STAR_T / 2;
 // Radius inside the minute wheel's root circle (the star must never be
 // the mesh).
-const STAR_R = (MW_MODULE_1 * MW_MINUTE_TEETH) / 2 - MW_MODULE_1 * 1.15 - 0.35;
+// §136 — the star must stay inside the minute wheel's ROOT circle so it never
+// becomes the mesh, and that root is no longer `pitchR − 1.15·m`: it is the
+// cut spec's own, which follows the mate graph. This line re-stated the old
+// factor by hand and would have gone silently stale — it never called
+// gearOuterR, so nothing downstream would have caught it.
+const STAR_R = G.gearToothSpec({
+  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth],
+}).rootR - 0.35;
 // Tooth depth DERIVED from the pitch, not styled. STAR_POINTS is forced to
 // 180 by the motion works (one point per minute-hand minute), so at this
 // radius the pitch arc is only ~0.13 — a depth styled for "slender visible
@@ -10794,10 +10817,10 @@ const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
 };
 for (const m of rsvTrainWarnsAt(RESERVE_LOCAL, reserveWellR, rsvModule1)) console.warn(m);
 
-const reservePinion0 = G.makePinion({ module: rsvModule0, teeth: rsvTeethP0, thickness: 1.2, material: MATS.steel });
-const rsvWheel1 = G.makeGear({ module: rsvModule0, teeth: rsvTeethW1, thickness: 1.0, boreR: 0.5, spokes: 4, material: MATS.brass });
-const reservePinion1 = G.makePinion({ module: rsvModule1, teeth: rsvTeethP1, thickness: 1.2, material: MATS.steel });
-const rsvWheel2 = G.makeGear({ module: rsvModule1, teeth: rsvTeethW2, thickness: 1.0, boreR: 0.5, spokes: 0, material: MATS.brass });
+const reservePinion0 = G.makePinion({ module: rsvModule0, teeth: rsvTeethP0, mates: [rsvTeethW1], thickness: 1.2, material: MATS.steel });
+const rsvWheel1 = G.makeGear({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: 0.5, spokes: 4, material: MATS.brass });
+const reservePinion1 = G.makePinion({ module: rsvModule1, teeth: rsvTeethP1, mates: [rsvTeethW2], thickness: 1.2, material: MATS.steel });
+const rsvWheel2 = G.makeGear({ module: rsvModule1, teeth: rsvTeethW2, mates: [rsvTeethP1], thickness: 1.0, boreR: 0.5, spokes: 0, material: MATS.brass });
 // (TODO 48 — the `Math.PI / teeth` half-pitch idiom that used to sit here
 // phased each wheel against its OWN local +x, with no reference to the line
 // of centres to its neighbour; measured, both meshes sat 47–49% of a pitch
@@ -11680,7 +11703,7 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // CRISP (bevel: false): the gap to the dial sheet is 0.05 and the extrude
   // bevel would expand the face 0.045 toward it — the full sweep caught the
   // idler's beveled twin actually touching the sheet (MODELING.md rule 1).
-  const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
+  const wheel = G.makeGear({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, mates: [{ teeth: ALARM_SET_I1_TEETH, mates: [ALARM_SET_WHEEL_TEETH, ALARM_SET_I2_TEETH] }], thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
   wheel.position.z = -(0.05 + ALARM_SET_T / 2); // band −0.05..−0.23 (dialFace local; ALARM_SET_Z is this plane in world)
   alarmSetWheelMesh = wheel;   // TODO 15: the chain solve's datum
   alarmSetWheelGroup.add(wheel);
@@ -12225,9 +12248,13 @@ const alignGear = (mesh, target, N, gauge = mesh) => {
 const alarmSetI1Spin = new THREE.Group();
 const alarmSetI2Spin = new THREE.Group();
 {
-  const mk = (spin, pos, teeth, phase) => {
+  // §136 — `mates` is a PARAMETER here, not a constant in the body: this helper
+  // cuts two different wheels. i1 meshes the setting wheel and i2; i2 meshes i1
+  // and the arbor pinion. Same count would not have saved it either — see the
+  // winding idlers below, where the counts ARE equal and the graphs still differ.
+  const mk = (spin, pos, teeth, mates, phase) => {
     spin.position.set(pos.x, pos.y, ALARM_SET_Z);
-    const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth, thickness: ALARM_SET_T, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp + hub-less: the dial-sheet budget (see the setting wheel)
+    const idler = G.makeGear({ module: ALARM_SET_MODULE, teeth, mates, thickness: ALARM_SET_T, boreR: 0.5, spokes: 4, material: MATS.brass, bevel: false, hub: false }); // crisp + hub-less: the dial-sheet budget (see the setting wheel)
     idler.traverse((o) => { if (o.isMesh) o.name = 'alarmSetIdler'; }); // §121: the i1⇄i2 mesh is a declared intraUnit working contact
     idler.rotation.z = phase;
     spin.add(idler);
@@ -12237,8 +12264,14 @@ const alarmSetI2Spin = new THREE.Group();
     stud.position.set(pos.x, pos.y, (-2 + ALARM_SET_Z + ALARM_SET_T / 2) / 2);
     alarmIdlerGroup.add(stud);
   };
-  mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH, 0);
-  mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, 0);
+  mk(alarmSetI1Spin, ALARM_SET_I1, ALARM_SET_I1_TEETH, [
+    { teeth: ALARM_SET_WHEEL_TEETH, mates: [ALARM_SET_I1_TEETH] },
+    { teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] },
+  ], 0);
+  mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, [
+    { teeth: ALARM_SET_I1_TEETH, mates: [ALARM_SET_WHEEL_TEETH, ALARM_SET_I2_TEETH] },
+    { teeth: ALARM_SET_PINION_TEETH, mates: [ALARM_SET_I2_TEETH] },
+  ], 0);
 }
 // THE CHAIN SOLVE, reusable. Each wheel after the datum is turned until its
 // measured tooth phase puts a GAP against the previous wheel's TOOTH across
@@ -12422,7 +12455,7 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
   alarmDiscGroup.add(hub);
   // Body + rim teeth in one crisp gear (bevel: false — the band budget is
   // margin-exact on both faces, same rule as the setting lane).
-  const body = G.makeGear({ module: ALARM_BRANCH_MODULE, teeth: ALARM_DISC_TEETH, thickness: ALARM_DISC_BODY_T, boreR: HOUR_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.steel, bevel: false });
+  const body = G.makeGear({ module: ALARM_BRANCH_MODULE, teeth: ALARM_DISC_TEETH, mates: [ALARM_SET_I1_TEETH], thickness: ALARM_DISC_BODY_T, boreR: HOUR_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.steel, bevel: false });
   body.traverse((o) => { if (o.isMesh) o.name = 'alarmDiscBody'; });
   body.position.z = ALARM_DISC_BOT + ALARM_DISC_BODY_T / 2;
   alarmDiscGroup.add(body);
@@ -12451,7 +12484,7 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 // is DERIVED from the closure (m = 2·DW1/(28+30)), so the mesh cannot
 // fail to close, and the whole j problem evaporates.
 {
-  const i1b = G.makeGear({ module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, thickness: ALARM_DISC_BODY_T, boreR: 0.5, spokes: 4, hub: false, material: MATS.brass, bevel: false });
+  const i1b = G.makeGear({ module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, mates: [ALARM_DISC_TEETH], thickness: ALARM_DISC_BODY_T, boreR: 0.5, spokes: 4, hub: false, material: MATS.brass, bevel: false });
   i1b.rotation.z = Math.PI / ALARM_SET_I1_TEETH;
   i1b.position.z = ALARM_BAND_Z - ALARM_SET_Z;
   alarmSetI1Spin.add(i1b);
@@ -12808,7 +12841,7 @@ alarmRotor.add(alarmArborRod);
 // The setting pinion — overhung on the rod's end in the gear lane, meshing
 // the idler. Same module as the whole train (see ALARM_SET_MODULE).
 {
-  const pin = G.makePinion({ module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, thickness: ALARM_SET_T, material: MATS.steel });
+  const pin = G.makePinion({ module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, mates: [{ teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] }], thickness: ALARM_SET_T, material: MATS.steel });
   pin.position.z = ALARM_SET_Z;
   alarmRotor.add(pin);
 }
@@ -14196,7 +14229,7 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   sleeve.position.z = (sleeveZ0 + sleeveZ1) / 2;
   alarmStrikeRotor.add(sleeve);
   const pinion = G.makePinion({
-    module: ALARM_TRAIN_MODULE, teeth: ALARM_STRIKE_PINION_TEETH, thickness: ALARM_PINION_T });
+    module: ALARM_TRAIN_MODULE, teeth: ALARM_STRIKE_PINION_TEETH, mates: [ALARM_BARREL_TEETH], thickness: ALARM_PINION_T });
   pinion.traverse((o) => { if (o.isMesh) o.name = 'alarmStrikePinion'; }); // §112: the placement gate selects it by name
   pinion.position.z = ALARM_BARREL_Z;
   alarmStrikeRotor.add(pinion);
@@ -14361,11 +14394,25 @@ const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
   // LARGER: its toothed wall and the arbor's own wind wheel. Both from
   // gearOuterR rather than the nominal tip circle, because §115's relieved
   // tooth stands proud of it.
-  const onAxis = Math.max(
-    G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_BARREL_TEETH, thickness: ALARM_BARREL_H }),
-    G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, thickness: ALARM_WIND_WHEEL_T }));
+  // §136 — THE ARBOR WHEEL'S MATE IS WHAT THIS SOLVE IS SOLVING FOR. Its tip is
+  // now a function of the mate graph, and that mate is the leg pinion whose
+  // count the loop picks: naming SUB_LEG_TEETH here would read it out of the
+  // very destructure this IIFE feeds — a temporal dead zone, and main.js:14102's
+  // scar records that this fault presents as a SILENT boot.
+  //
+  // So the wheel's term moves INSIDE the loop, where the candidate count is
+  // known and the tip can be its true one. A range-wide worst case was tried
+  // first and is wrong twice over: it inflates the bound with a tip no chosen
+  // geometry has, and measured, it left NO legal leg count at all. The barrel's
+  // term stays hoisted — its mates are settled before this runs.
+  const barrelTip = G.gearOuterR({
+    module: ALARM_TRAIN_MODULE, teeth: ALARM_BARREL_TEETH,
+    mates: [ALARM_STRIKE_PINION_TEETH], thickness: ALARM_BARREL_H });
   for (let leg = ARREST_PINION_TEETH; leg <= ALARM_WIND_W; leg++) {
     const meshCD = (ALARM_TRAIN_MODULE * (ALARM_WIND_W + leg)) / 2;
+    const onAxis = Math.max(barrelTip, G.gearOuterR({
+      module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, mates: [leg],
+      thickness: ALARM_WIND_WHEEL_T }));
     const besideR = meshCD - onAxis - CLEAR_MARGIN;
     const spec = G.spiderSpec({
       arborR: PIVOT_MIN_U, stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
@@ -14377,7 +14424,9 @@ const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
     + `${ARREST_PINION_TEETH} and ${ALARM_WIND_W} leaves room beside the barrel for a `
     + 'differential with cuttable teeth — a LAYOUT finding, not a number to widen');
   const meshCD = (ALARM_TRAIN_MODULE * (ALARM_WIND_W + ARREST_PINION_TEETH)) / 2;
-  const besideR = meshCD - onAxis - CLEAR_MARGIN;
+  const besideR = meshCD - Math.max(barrelTip, G.gearOuterR({
+    module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, mates: [ARREST_PINION_TEETH],
+    thickness: ALARM_WIND_WHEEL_T })) - CLEAR_MARGIN;
   return { legTeeth: ARREST_PINION_TEETH, besideR, meshCD,
     spec: G.spiderSpec({ arborR: PIVOT_MIN_U, stockMin: STOCK_MIN_U,
       margin: CLEAR_MARGIN, thickness: ALARM_WIND_WHEEL_T }) };
@@ -14523,7 +14572,7 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
   // (declared joint); ratchet on a filed square, across-corners = the
   // arbor's own diameter (the set-up ratchet's convention).
   const windWheel = G.makeGear({
-    module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, thickness: ALARM_WIND_WHEEL_T,
+    module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, mates: [SUB_LEG_TEETH], thickness: ALARM_WIND_WHEEL_T,
     boreR: ALARM_BARREL_ARBOR_R, spokes: 5, material: MATS.steel,
   });
   windWheel.traverse((o) => { if (o.isMesh) o.name = 'alarmArborWheel'; });
@@ -15281,7 +15330,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   alarmGovAnchorUnit.add(anchStud);   // §107: the anchor's own station travels with the anchor's unit
 
   // The governor rotor: pinion in the wheel's band, saw above, one arbor.
-  const pinion = G.makePinion({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_PINION_TEETH, thickness: ALARM_GOV_PINION_T });
+  const pinion = G.makePinion({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_PINION_TEETH, mates: [ALARM_GOV_WHEEL_TEETH], thickness: ALARM_GOV_PINION_T });
   pinion.traverse((o) => { if (o.isMesh) o.name = 'alarmGovPinion'; });
   // TODO 62 — this was the `Math.PI / teeth` idiom claiming to interleave
   // the 64T wheel's teeth; half of the pinion's OWN pitch says nothing
@@ -15464,7 +15513,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // The strike arbor's new top: the 64T wheel, the sleeve that carries it,
   // and the stud's second length behind both.
   const wheel = G.makeGear({
-    module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_GOV_WHEEL_T,
+    module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, mates: [ALARM_GOV_PINION_TEETH], thickness: ALARM_GOV_WHEEL_T,
     boreR: 0.75, spokes: 6, material: MATS.brass });
   wheel.traverse((o) => { if (o.isMesh) o.name = 'alarmGovWheel'; });
   wheel.position.z = ALARM_GOV_WHEEL_Z;
@@ -15488,7 +15537,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     // past the tip circle) — so the assert guarding this wheel against the
     // barrel arbor was measuring a wheel slightly smaller than the one that
     // ships. Same expression as the footprint row above, one source.
-    const tip = G.gearOuterR({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, thickness: ALARM_GOV_WHEEL_T });
+    const tip = G.gearOuterR({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, mates: [ALARM_GOV_PINION_TEETH], thickness: ALARM_GOV_WHEEL_T });
     const nearEdge = ALARM_TRAIN_CD - ALARM_BARREL_ARBOR_R;
     if (tip > nearEdge - CLEAR_MARGIN)
       console.warn(`§112: the 64T wheel reaches ${tip.toFixed(2)} — the barrel arbor's near edge ${nearEdge.toFixed(2)} leaves less than the margin`);
@@ -15871,7 +15920,7 @@ const ALARM_WIND_IDLER_MIN = Math.ceil(
 // movement's proven idler stock — reads clean, as do 20 and 24. Until
 // the gauge itself learns small wheels, no chain-solved wheel goes
 // below the size the movement already proves readable.
-const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5), KW_WIND_IDLER_TEETH);
+const ALARM_WIND_IDLER_TEETH = Math.max(ALARM_WIND_IDLER_MIN, G.minGearTeeth(ALARM_TRAIN_MODULE, 0.5, [ALARM_WIND_PINION_TEETH]), KW_WIND_IDLER_TEETH);
 const ALARM_WIND_RATIO = ALARM_WIND_PINION_TEETH / ALARM_WIND_W; // §99: ARBOR turns per crown turn — idlers drop out; value unchanged from the rim era (W = the rim's count)
 const alarmWindUnit = new THREE.Group();
 movement.add(alarmWindUnit);
@@ -15985,7 +16034,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   cMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1));
   cMount.add(contrate);
   climb.add(cMount);
-  const pin = G.makePinion({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_PINION_TEETH, thickness: 0.8, material: MATS.steel });
+  const pin = G.makePinion({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_PINION_TEETH, mates: [{ teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_PINION_TEETH, ALARM_WIND_IDLER_TEETH] }], thickness: 0.8, material: MATS.steel });
   pin.traverse((o) => { if (o.isMesh) o.name = 'alarmClimbPinion'; }); // §121: its mesh into i1 is a declared intraUnit working contact
   pin.position.z = ALARM_WIND_TIER_Z;
   climb.add(pin);
@@ -15993,10 +16042,15 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   // Idlers: brass wheels on plate-top studs, spinning at the arbor tier
   // (§99 — one mesh plane for the whole last leg, ALARM_WIND_TIER_Z's
   // derivation at the barrel; §25 C's plane sat in the body's tooth band).
-  const mkIdler = (pos) => {
+  // §136 — both idlers carry ALARM_WIND_IDLER_TEETH and they are NOT the same
+  // wheel: idler 1 meshes the climb pinion and idler 2; idler 2 meshes idler 1
+  // and the arbor wheel. The profile follows the mate graph, not the count, so
+  // `mates` is a parameter — a table keyed by tooth count would cut both alike
+  // and one of them wrong.
+  const mkIdler = (pos, mates) => {
     const spin = new THREE.Group();
     spin.position.set(pos.x, pos.y, ALARM_WIND_TIER_Z);
-    const w = G.makeGear({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_IDLER_TEETH, thickness: 0.8, boreR: 0.5, spokes: 4, material: MATS.brass });
+    const w = G.makeGear({ module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_IDLER_TEETH, mates, thickness: 0.8, boreR: 0.5, spokes: 4, material: MATS.brass });
     w.traverse((o) => { if (o.isMesh) o.name = 'alarmWindIdler' }); // §99: named so the winding pair's floors row can select the mesh (the couple-by-string trap: the intraUnit idler-on-stud rows re-labelled with it)
     // TODO 15: phase left at zero — the chain solve below sets it. The old
     // `Math.PI / teeth` here was half of this wheel's OWN pitch and said
@@ -16011,8 +16065,14 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     alarmWindUnit.add(stud);
     return spin;
   };
-  alarmWindUnit.userData.i1 = mkIdler(alarmWindI1);
-  alarmWindUnit.userData.i2 = mkIdler(alarmWindI2);
+  alarmWindUnit.userData.i1 = mkIdler(alarmWindI1, [
+    { teeth: ALARM_WIND_PINION_TEETH, mates: [ALARM_WIND_IDLER_TEETH] },
+    { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_IDLER_TEETH, ALARM_WIND_W] },
+  ]);
+  alarmWindUnit.userData.i2 = mkIdler(alarmWindI2, [
+    { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_PINION_TEETH, ALARM_WIND_IDLER_TEETH] },
+    { teeth: ALARM_WIND_W, mates: [ALARM_WIND_IDLER_TEETH, SUB_LEG_TEETH] },
+  ]);
   // TODO 15 — THE REPORTED TRAIN. Datum is the climb PINION: it is keyed to
   // the climb rod and cannot be turned freely, so the idlers are what move.
   // The pinion comes from makePinion rather than makeGear, which is exactly
@@ -16576,16 +16636,32 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   const PIN_BAND = [ARREST_PIN_Z - ALARM_WIND_WHEEL_T / 2, ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2];
   // each piece at its OWN radius; the consumer adds the margin, never the table
   const T = ALARM_WIND_WHEEL_T;
-  const tip = (teeth) => G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth, thickness: T });
+  // §136 — mates is a parameter: leg A meshes the arbor wind wheel, leg B the
+  // subtractor idler, and the search's candidate idlers mesh the barrel. Same
+  // count (SUB_LEG_TEETH) on both legs, different graphs — so a count-keyed
+  // bound would size one of them against the wrong wheel.
+  const tip = (teeth, mates) => G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth, mates, thickness: T });
+  // §136 — leg B meshes the subtractor idler, whose count THIS SOLVE picks, so
+  // it cannot be named here (temporal dead zone). Bounded over the same
+  // candidate range the search will walk: the pinion's tip spans 1.7094 (mate
+  // 12) to 2.0506 (mate 10) at module 0.30, so this runs up to 0.34 generous. A
+  // keep-out that is too large costs a worse station, never a wrong one — and if
+  // it costs the station outright that is a LAYOUT finding, not a number to widen.
+  const LEG_B_REACH = (() => {
+    let t = 0;
+    for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_SPEC.arborR + 0.05, [ALARM_BARREL_TEETH]));
+      z <= ALARM_BARREL_TEETH; z++) t = Math.max(t, tip(SUB_LEG_TEETH, [z]));
+    return t;
+  })();
   // (the spider's reach is its SWEPT radius, off the spec — a cone's rim stands
   // one tip radius off the cage's axis as well as one out along its own)
   // each piece at its OWN radius; the consumer adds the margin, never the table
   const NEED = {
-    legA: tip(SUB_LEG_TEETH) + M,
-    legB: tip(SUB_LEG_TEETH) + M,
+    legA: tip(SUB_LEG_TEETH, [ALARM_WIND_W]) + M,
+    legB: LEG_B_REACH + M,
     spider: SUB_SPEC.sweptR + M,
-    out: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }) + M,
-    fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }) + M,
+    out: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, mates: [SUB_FINGER_TEETH], thickness: T }) + M,
+    fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, mates: [SUB_OUT_TEETH], thickness: T }) + M,
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR + M,   // the pin sweeps a FULL circle
     cross: ARREST_SPEC.b + M,
     arbor: ARREST_SPEC.arborR + M,
@@ -16824,11 +16900,11 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // overlap: the idler's pinion with leg B, and the cage's wheel with the
   // finger's pinion.
   const reach = {
-    legA: tip(SUB_LEG_TEETH), legB: tip(SUB_LEG_TEETH), spider: SUB_SPEC.tipR,
+    legA: tip(SUB_LEG_TEETH, [ALARM_WIND_W]), legB: LEG_B_REACH, spider: SUB_SPEC.tipR,
     spiderSwept: SUB_SPEC.sweptR, col: ARREST_SPEC.arborR,
-    outW: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, thickness: T }),
+    outW: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, mates: [SUB_FINGER_TEETH], thickness: T }),
     idlerBody: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U,
-    fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, thickness: T }),
+    fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, mates: [SUB_OUT_TEETH], thickness: T }),
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR,
     cross: ARREST_SPEC.b, stud: ARREST_SPEC.studR,
   };
@@ -16857,7 +16933,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // this is what a fold is ALLOWED to spend — corners and idlers are
   // position-space, and the line spec is what proves this one carries no ratio.
   const IDLER_COUNTS = [];
-  for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_SPEC.arborR + 0.05));
+  for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_SPEC.arborR + 0.05, [ALARM_BARREL_TEETH]));
     z <= ALARM_BARREL_TEETH; z++) IDLER_COUNTS.push(z);
 
   let best = null;
@@ -16946,7 +17022,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
         const ia = a + geo.daz;
         const ix = alarmBarrelPos.x + Math.cos(ia) * geo.rimCD;
         const iy = alarmBarrelPos.y + Math.sin(ia) * geo.rimCD;
-        const idlerReach = tip(idlerTeeth);
+        const idlerReach = tip(idlerTeeth, [ALARM_BARREL_TEETH]);
         const idler = [
           clear("the idler's wheel", IDL_W[0], IDL_W[1], ix, iy, idlerReach + M, 'rim'),
           clear("the idler's pinion", IDL_P[0], IDL_P[1], ix, iy, idlerReach + M, null),
@@ -17259,7 +17335,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   const spin = new THREE.Group();
   spin.position.set(arrestPos.x, arrestPos.y, ARREST_PIN_Z);
   const pinA = G.makePinion({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH,
+    module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH, mates: [{ teeth: ALARM_WIND_W, mates: [SUB_LEG_TEETH, ALARM_WIND_IDLER_TEETH] }],
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
   pinA.traverse((o) => { if (o.isMesh) o.name = 'alarmArrestPinion'; });
@@ -17275,7 +17351,8 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   // --- THE SPIDER, on the same arbor, apex on top of leg A ------------------
   subDiff = G.makeSpiderDifferential({
     spec: SUB_SPEC, material: MATS.steel,
-    outModule: SUB_OUT_MODULE, outTeeth: SUB_OUT_TEETH, thickness: ALARM_WIND_WHEEL_T,
+    outModule: SUB_OUT_MODULE, outTeeth: SUB_OUT_TEETH, outMates: [SUB_FINGER_TEETH],
+    thickness: ALARM_WIND_WHEEL_T,
   });
   subDiff.position.set(arrestPos.x, arrestPos.y, SUB_CAGE_Z);
   alarmArrestUnit.add(subDiff);
@@ -17284,7 +17361,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   const pinBSpin = new THREE.Group();
   pinBSpin.position.set(arrestPos.x, arrestPos.y, SUB_PIN_B_Z);
   const pinB = G.makePinion({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH,
+    module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH, mates: [{ teeth: SUB_IDLER_SOLVED, mates: [ALARM_BARREL_TEETH, SUB_LEG_TEETH] }],
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
   pinB.traverse((o) => { if (o.isMesh) o.name = 'subLegBPinion'; });
@@ -17328,14 +17405,14 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   const idlerSpin = new THREE.Group();
   idlerSpin.position.set(subIdlerPos.x, subIdlerPos.y, 0);
   const idlerW = G.makeGear({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_SOLVED, thickness: ALARM_WIND_WHEEL_T,
+    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_SOLVED, mates: [{ teeth: ALARM_BARREL_TEETH, mates: [ALARM_STRIKE_PINION_TEETH, SUB_IDLER_SOLVED] }], thickness: ALARM_WIND_WHEEL_T,
     boreR: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U, spokes: 4, material: MATS.brass,
   });
   idlerW.traverse((o) => { if (o.isMesh && !o.name) o.name = 'subIdlerWheel'; });
   idlerW.position.z = SUB_IDLER_W_Z;
   idlerSpin.add(idlerW);
   const idlerP = G.makePinion({
-    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_SOLVED,
+    module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_SOLVED, mates: [SUB_LEG_TEETH],
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
   idlerP.traverse((o) => { if (o.isMesh) o.name = 'subIdlerPinion'; });
@@ -17354,7 +17431,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   const fpSpin = new THREE.Group();
   fpSpin.position.set(arrestFingerPos.x, arrestFingerPos.y, SUB_OUT_Z);
   const fPin = G.makePinion({
-    module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH,
+    module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, mates: [SUB_OUT_TEETH],
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
   fPin.traverse((o) => { if (o.isMesh) o.name = 'subFingerPinion'; });
@@ -17461,7 +17538,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
     if (SUB_SPEC.hubR > SUB_BESIDE_R + 1e-9)
       console.warn(`alarm arrest: the cage's hub reaches ${SUB_SPEC.hubR.toFixed(3)} where the `
         + `barrel leaves ${SUB_BESIDE_R.toFixed(3)}`);
-    const outTip = G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: SUB_OUT_TEETH,
+    const outTip = G.gearOuterR({ module: ALARM_TRAIN_MODULE, teeth: SUB_OUT_TEETH, mates: [SUB_FINGER_TEETH],
       thickness: ALARM_WIND_WHEEL_T });
     if (SUB_OUT_Z - ALARM_WIND_WHEEL_T / 2 < ALARM_BARREL_TOP + CLEAR_MARGIN
         && outTip > SUB_BESIDE_R)
