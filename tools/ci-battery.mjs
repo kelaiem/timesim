@@ -280,6 +280,16 @@ const COSTS = {
   // column's job is the relative partition. Checks the fixes cannot touch
   // (expectedContacts' exact tier, sweptOverlap, penetration) measured
   // 0.97–1.09 — inside the noise band — and keep their rows.
+  //
+  // MEASURED BEFORE §127 TIER 2A, which landed on main while this branch was
+  // open and made a whole run refine a SUPERSET of the intervals it used to
+  // (the refinement reference went per-axis). That is strictly more work in
+  // this sweep, so `clearances` here is a LOWER bound on what the check now
+  // costs, and it is also the projection base the 13 new `clearances:*` slices
+  // divide by pose count. Left as measured rather than guessed upward: this
+  // column balances shards and nothing else, so an under-estimate costs wall
+  // clock and never a verdict (the header's own rule), and the first sliced
+  // run's `--report` replaces every row of it with a measured one.
   'inspection': 160,
   'clearances': 273,
   'sweptOverlap': 260,

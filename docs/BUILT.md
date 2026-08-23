@@ -15986,6 +15986,15 @@ are none in a green battery.
 | inspection ms | 1,488,148 | — | 312,648 (×0.21) |
 | clearances ms | 1,976,471 | — | 996,919 (×0.50) |
 
+Both columns are one container, same day, full battery either side — a
+controlled ratio, not a CI absolute. The tree they were taken on predates
+§127 tier 2a, which landed on `main` while this was open and made a whole
+run refine a superset of its old intervals: the fixes' RATIOS survive that
+(they remove work per verdict call, whatever calls them), the absolute
+seconds do not, and `clearances` in particular now costs more than the
+996,919 ms above. Do not read this table as the current wall; read it as
+what the two fixes are worth.
+
 The cost column moved with it — each entry the old CI-calibrated value
 scaled by its measured local ratio (the column's job is the relative
 partition; local absolutes are not CI's) — and the new partition
