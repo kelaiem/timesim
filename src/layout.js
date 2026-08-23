@@ -630,6 +630,14 @@ export const D4 = 18.777750373095056;
 // well, scale, needle, reduction train, and the alarm corner's neighbour
 // clearances — is bit-identical to the shipped tree. ?rsvr= still overrides.
 export const RESERVE_STATION_R = 15.500000000000002;
+// §136 — THE RESERVE TRAIN'S PLAN-SPACE COUNTS, hoisted from main.js because
+// the SETTING TRAVERSE now has to be sited against this train and is built
+// ~7000 lines earlier. They are plan-space facts (counts and a module), which
+// is what this file is for; the train's own build still owns everything
+// derived from them. w2 = reserveHours/5 keeps the 300° sweep an integer.
+export const rsvTeethP0 = 8, rsvTeethW1 = 28, rsvTeethP1 = 10;
+export const rsvModule0 = 0.34;
+export const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
 // §125 step 1 — THE ALARM CORNER'S DESIGN RADIUS. Until §125 the corner's
 // default read dialRadius·0.39 — a FACE proportion carrying a dimension whose
 // real constraint is the winding CLUTCH: §74 tier B proved the corner cannot

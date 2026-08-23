@@ -27,6 +27,7 @@ import {
   TRAIN,
   KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
   minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH, SETTING_CAP_TEETH,
+  rsvTeethP0, rsvTeethW1, rsvTeethP1, rsvModule0, rsvD0,
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
@@ -3351,7 +3352,60 @@ const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING
 const MW_WORLD = { x: P.dial.x - MW_CENTER_D, y: P.dial.y };
 const capMeshD = (MW_MODULE_1 * (SETTING_CAP_TEETH + MW_MINUTE_TEETH)) / 2;
 const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborXY.y - MW_WORLD.y).normalize();
-const SETTING_CAP_XY = { x: MW_WORLD.x + toKeyless.x * capMeshD, y: MW_WORLD.y + toKeyless.y * capMeshD };
+// §136 — THE CORNER YIELDS, BECAUSE IT IS THE ONE THAT CAN. The reserve's p1
+// grew +0.224 under the cycloidal profile and its cap corner's DOWN-pointing
+// bevel is what it reaches (the 45° taper drags that cone from z −3.4 to
+// −5.86, into p1's plane at −5.7). The reserve cannot solve this from its own
+// side: swinging w1 lengthens the w1→pivot span, which RAISES rsvModule1 and
+// grows p1 — measured, the swing chases its own tail and breaks even only at
+// the ±30° edge of its scan, which is why that solve now refuses outright.
+// Deepening the stratum is blocked too: it wants RSV_Z_STEP ≥ 2.6, and the
+// settingCap already sits in the band below at +0.09.
+//
+// So the OBSTACLE moves, which is the P3 ladder's own instruction — resolve in
+// position space, never by thinning the member. This cap's BEARING about the
+// minute wheel is free exactly the way w1's about the barrel is: the mesh
+// distance is fixed, the azimuth is not, and everything downstream (the
+// traverse rod, both corner bevels via settingU, the rise) is derived from
+// this point and follows it.
+//
+// Solved against the reserve's COLLINEAR geometry — the swing solve's own
+// fallback, and its worst case — so the reserve needs no swing of its own and
+// the two solves cannot chase each other. Acyclic by construction: the corner
+// yields first, then the reserve's scan runs against the built traverse.
+const CAP_BEARING = (() => {
+  // the reserve's collinear station: w1 and p1 share this arbor
+  const pivot = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
+  const spanD = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
+  const u = { x: (pivot.x - P.barrel.x) / spanD, y: (pivot.y - P.barrel.y) / spanD };
+  const st = { x: P.barrel.x + u.x * rsvD0, y: P.barrel.y + u.y * rsvD0 };
+  const w2 = SPEC.reserveHours / 5;
+  const m1 = (2 * (spanD - rsvD0)) / (rsvTeethP1 + w2);
+  // the pair's reach is the LARGER member's — p1's since the 300° step-up
+  const reachRsv = Math.max(
+    G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 }),
+    G.gearOuterR({ module: m1, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 }));
+  // and the corner's is its bevel, the widest thing on this arbor in that band
+  const reachCap = (BEVEL_MODULE * BEVEL_TEETH) / 2 + BEVEL_MODULE * 0.85;
+  const need = reachRsv + reachCap + CLEAR_MARGIN;
+  const at = (dl) => {
+    const cs = Math.cos(dl), sn = Math.sin(dl);
+    const x = MW_WORLD.x + (toKeyless.x * cs - toKeyless.y * sn) * capMeshD;
+    const y = MW_WORLD.y + (toKeyless.x * sn + toKeyless.y * cs) * capMeshD;
+    return Math.hypot(x - st.x, y - st.y);
+  };
+  if (at(0) >= need) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
+  for (let d = 1; d <= 60; d++)
+    for (const sgn of [1, -1])
+      if (at(sgn * d * DEG2RAD) >= need) return sgn * d * DEG2RAD;
+  console.warn(`setting traverse: no cap bearing within ±60° clears the reserve pair `
+    + `(need ${need.toFixed(3)}, best ${Math.max(at(60 * DEG2RAD), at(-60 * DEG2RAD)).toFixed(3)}) `
+    + '— keeping the short way in; the battery judges it');
+  return 0;
+})();
+const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(CAP_BEARING),
+               y: toKeyless.x * Math.sin(CAP_BEARING) + toKeyless.y * Math.cos(CAP_BEARING) };
+const SETTING_CAP_XY = { x: MW_WORLD.x + capU.x * capMeshD, y: MW_WORLD.y + capU.y * capMeshD };
 const settingB = new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_SETTING);
 const settingU = settingB.clone().sub(settingA).normalize();
 keyless.add(makeRodSegment(settingA, settingB, 0.35));
@@ -10686,14 +10740,11 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 // p1 = 10 that is w2 = h/5 — integer while the spec keeps h a multiple
 // of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
 // does not). At the 30 h default: w2 = 6.
-const rsvTeethP0 = 8, rsvTeethW1 = 28, rsvTeethP1 = 10;
 const rsvTeethW2 = SPEC.reserveHours / 5;
 const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
 const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
 // Split the barrel→pivot span into the two mesh centre-distances by solving
 // the second stage's module: d0 = m0·(P0+W1)/2, d1 = span − d0 = m1·(P1+W2)/2.
-const rsvModule0 = 0.34;
-const rsvD0 = (rsvModule0 * (rsvTeethP0 + rsvTeethW1)) / 2;
 // §125 Tier B — W1'S BEARING SWINGS OFF THE LINE when the line is occupied.
 // The mirrored setting traverse's cap corner stands where the collinear w1
 // rim ran (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN;
