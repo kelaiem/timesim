@@ -274,6 +274,234 @@ function gearOutlineShape(teeth, rootR, pitchR, tipR, opts = {}) {
   return shape;
 }
 
+// ---------------------------------------------------------------------------
+// §136 — THE CYCLOIDAL TOOTH, DERIVED (Landing 1: the generator exists and is
+// proven in free space by tools/probe-136-roll.mjs; nothing consumes it until
+// Landing 2 folds the movement onto it).
+//
+// The per-member Willis law, which is what makes every constant below a
+// derivation rather than a choice. In a mesh (X, Y), the circle of radius
+// R_X/2 — half of X's OWN pitch radius — rolling inside X's pitch circle
+// generates X's flank as a hypocycloid that DEGENERATES TO A STRAIGHT RADIUS;
+// that degeneracy is the Willis constraint and the reason R_X/2 is not a free
+// number. The same circle rolling outside Y's pitch circle generates Y's
+// addendum face as the epicycloid conjugate to X's radial flank. So:
+//   · every member's flanks are RADIAL, unconditionally — the flank is
+//     mesh-independent and conflict-free;
+//   · all mate-dependence lives in the FACE, whose generating radius is
+//     m·N_mate/4 (half the mate's pitch radius);
+//   · wheel⇄wheel meshes are the same law, not a special case, and no tooth
+//     needs different profiles on its two sides — conjugacy is a property of
+//     the surface pair, and reversing drive only swaps which flank works.
+//
+// THE NINE CONSTRAINTS, each with its formula (rule 1 at profile scale):
+//  1 FLANK — a radial segment, root circle → pitch circle (the degeneracy).
+//  2 FACE_GEN_R = m·min(mates' teeth)/4 — the MIN-MATES rule, and it is
+//    derived, not chosen: near its cusp an epicycloid retreats from the
+//    radial line as ~h^1.5/√ρ, so the SMALLEST mate's circle cuts the
+//    THINNEST face, which lies strictly inside every larger mate's exact
+//    conjugate — every non-smallest mesh errs on the CLEARANCE side and
+//    interference is impossible by construction (probe-136-profile verifies
+//    this numerically over the movement's eleven multi-mate cases;
+//    pitch-line clearances measure 0.0002–0.065 u).
+//  3 ADDENDUM from arc of action, wheel-face-first: the contact arc must
+//    cover CR_TARGET·p where p = π·m and CR_TARGET = 1 + 0.02 + 2ε/p — the
+//    1 is carry-before-release, the 0.02 is solveGearChain's own residual
+//    bar (main.js, TODO 15's tripwire), the 2ε is the tessellation's spend.
+//    One face's contribution, capped by its height h: the contact point
+//    rides the generating circle held tangent at the pitch point, so
+//      arc = ρ·acos( ((R+ρ)² + ρ² − (R+h)²) / (2ρ(R+ρ)) ).
+//    The larger member's face grows first — recess-first in the power
+//    direction, the classical low-friction split; two-way trains accept
+//    approach action in their second direction exactly as real trains do.
+//  4 ADDENDUM FLOOR — h ≥ 0.05 + ε: a mesh green on the centre-distance
+//    tripwire (±0.05 u) must still be engaged.
+//  5 THICKNESS/BACKLASH — t = p/2 − B/2 with B = 0.02·p + 2ε. Deliberately
+//    NOT CLEAR_MARGIN: 0.15 u would be a quarter of a pitch at the train's
+//    modules — backlash is a MESH clearance, scaled by the mesh's own module
+//    and anchored to what the phase instrument can guarantee, and rule 1
+//    forbids a second structural margin anyway.
+//  6 DEDENDUM — d = max(mates' addenda) + c, root clearance c = 0.05 + ε
+//    (a mesh inside the tripwire cannot bottom). Replaces 1.15·m.
+//  7 ROOT FILLET — radius c, tangent to the radial flank and the root
+//    circle; it lives inside the clearance crescent the mate's tip can
+//    never enter, so it needs no conjugacy argument.
+//  8 TIP — the face is truncated at R+h; a face pair that would meet in a
+//    point is capped where the remaining land just holds a representable
+//    round (radius 2ε). A mesh whose CR_TARGET is unreachable even at the
+//    cap warns at boot (rule 6): that is a design finding — too few teeth
+//    for the module — not something to absorb.
+//  9 TESSELLATION — chord error ε = 0.01·π·m, HALF the phase instrument's
+//    guaranteed slack: chords of a convex face lie INSIDE the metal, so
+//    tessellation errs clearance-side and spends only backlash, which is
+//    why the budget is instrument-anchored rather than collision-anchored.
+//    Faces are emitted as computed polylines (sagitta-checked), and the
+//    root land as an arc whose edges each span under π/(2N) of azimuth —
+//    aimed at measuredToothPhase's outline filter, which discards edges
+//    spanning ≥ π/N and once cost a 12-tooth wheel its gap outlines (§112).
+//
+// LOCALITY, stated. `mates` is an array of descriptors {teeth, mates} — one
+// level deep — because a member's dedendum must clear each mate's SOLVED
+// addendum, and a mate's addendum can be driven by its own third mesh (the
+// alarm arbor wheel's face is sized by the arrest leg it drives, and the
+// winding idler that also meshes it must clear THAT face). One level is
+// exact for every addendum/dedendum in the movement; the only approximation
+// is a grand-mate's floor-arc share of a mate's CR solve, bounded well under
+// the root clearance c and stated here rather than hidden. A bare number n
+// in `mates` is shorthand for {teeth: n, mates: [own teeth]} — exact for
+// members whose mate has no other mesh.
+const cyEps = (m) => 0.01 * Math.PI * m;
+const cyBacklash = (m) => 0.02 * Math.PI * m + 2 * cyEps(m);
+const cyClear = (m) => 0.05 + cyEps(m);
+const cyHFloor = (m) => 0.05 + cyEps(m);
+const cyCRTarget = (m) => 1 + 0.02 + (2 * cyEps(m)) / (Math.PI * m);
+// Epicycloid of a circle rho rolling outside a pitch circle R, cusp at
+// azimuth 0 on the pitch circle; psi is the rolling centre's angle.
+const cyEpi = (R, rho, psi) => {
+  const k = (R + rho) / rho;
+  const x = (R + rho) * Math.cos(psi) - rho * Math.cos(k * psi);
+  const y = (R + rho) * Math.sin(psi) - rho * Math.sin(k * psi);
+  return [x, y, Math.hypot(x, y) - R, Math.atan2(y, x)];
+};
+const cyPsiAtH = (R, rho, h) => {
+  if (h <= 0) return 0;
+  let lo = 0, hi = (Math.PI * rho) / (R + rho);
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (cyEpi(R, rho, mid)[2] < h) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+};
+const cyRetreat = (R, rho, h) => cyEpi(R, rho, cyPsiAtH(R, rho, h))[3];
+const cyArc = (R, rho, h) => {
+  if (h <= 0) return 0;
+  const c = ((R + rho) ** 2 + rho ** 2 - (R + h) ** 2) / (2 * rho * (R + rho));
+  if (c <= -1) return rho * Math.PI;
+  if (c >= 1) return 0;
+  return rho * Math.acos(c);
+};
+// The pair solve: both members' faces on the PAIR's exact conjugate circles,
+// larger member first. Returns the two addenda.
+const cyPairSolve = (m, Na, Nb) => {
+  const mk = (N, mate) => {
+    const Rp = (m * N) / 2, rho = (m * mate) / 4;
+    const halfThick = ((Math.PI * m) / 2 - cyBacklash(m) / 2) / 2 / Rp;
+    // pointed-tip cap, less the land a 2ε round needs
+    let lo = 0, hi = 2 * rho;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      const land = halfThick - cyRetreat(Rp, rho, mid) - (2 * cyEps(m)) / (Rp + mid);
+      if (land > 0) lo = mid; else hi = mid;
+    }
+    return { N, Rp, rho, hCap: (lo + hi) / 2, h: Math.min(cyHFloor(m), (lo + hi) / 2) };
+  };
+  const A = mk(Na, Nb), B = mk(Nb, Na);
+  const [W, P] = A.N >= B.N ? [A, B] : [B, A];
+  const target = cyCRTarget(m) * Math.PI * m;
+  const arc = () => cyArc(W.Rp, W.rho, W.h) + cyArc(P.Rp, P.rho, P.h);
+  for (const G of [W, P]) {
+    if (arc() >= target) break;
+    let lo = G.h, hi = G.hCap;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2; G.h = mid;
+      if (arc() < target) lo = mid; else hi = mid;
+    }
+    G.h = Math.min(hi, G.hCap);
+  }
+  return { hA: A.h, hB: B.h, cr: arc() / (Math.PI * m), feasible: arc() >= target - 1e-9 };
+};
+// The spec: everything a builder (or a bound, or a probe) needs, derived.
+export function gearToothSpec({ module: m, teeth, mates }) {
+  const norm = mates.map((x) => (typeof x === 'number' ? { teeth: x, mates: [teeth] } : x));
+  const Rp = (m * teeth) / 2;
+  const faceGenR = (m * Math.min(...norm.map((x) => x.teeth))) / 4;
+  // my addendum: the max my own pair-solves assign me
+  let h = cyHFloor(m), infeasible = [];
+  for (const mate of norm) {
+    const pair = cyPairSolve(m, teeth, mate.teeth);
+    h = Math.max(h, pair.hA);
+    if (!pair.feasible) infeasible.push(mate.teeth);
+  }
+  // each mate's own solved addendum (its pair-solves over ITS mates), for my root
+  let mateH = cyHFloor(m);
+  for (const mate of norm) {
+    let hm = cyHFloor(m);
+    for (const mm of mate.mates) hm = Math.max(hm, cyPairSolve(m, mate.teeth, mm).hA);
+    mateH = Math.max(mateH, hm);
+  }
+  const ded = mateH + cyClear(m);
+  return {
+    module: m, teeth, pitchR: Rp, faceGenR,
+    addendum: h, dedendum: ded, tipR: Rp + h, rootR: Rp - ded,
+    halfThickAng: ((Math.PI * m) / 2 - cyBacklash(m) / 2) / 2 / Rp,
+    backlash: cyBacklash(m), clearance: cyClear(m), chordErr: cyEps(m),
+    infeasible,
+  };
+}
+// The outline: computed polylines only (no curveSegments dependence), the
+// root land arc sampled under π/(2N) per edge for the phase gauge.
+export function cycloidalGearShape(spec) {
+  const { teeth: N, pitchR: Rp, faceGenR: rho, addendum: h, rootR, tipR,
+    halfThickAng: th, clearance: c, chordErr: eps, module: m } = spec;
+  if (spec.infeasible.length)
+    console.warn(`§136 tooth spec ${N}t m${m}: contact ratio unreachable against mate(s) `
+      + `${spec.infeasible.join(', ')} even at the pointed-tip cap — too few teeth for the module`);
+  const psiTop = cyPsiAtH(Rp, rho, h);
+  // face sampling: double until every chord's sagitta ≤ ε
+  let faceSegs = 2;
+  for (; faceSegs <= 64; faceSegs *= 2) {
+    let ok = true;
+    for (let i = 0; i < faceSegs; i++) {
+      const a = cyEpi(Rp, rho, (psiTop * i) / faceSegs);
+      const b = cyEpi(Rp, rho, (psiTop * (i + 1)) / faceSegs);
+      const mid = cyEpi(Rp, rho, (psiTop * (i + 0.5)) / faceSegs);
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const L = Math.hypot(dx, dy) || 1;
+      if (Math.abs((mid[0] - a[0]) * dy - (mid[1] - a[1]) * dx) / L > eps) { ok = false; break; }
+    }
+    if (ok) break;
+  }
+  faceSegs = Math.min(faceSegs, 64);
+  const topAz = cyRetreat(Rp, rho, h);
+  const filletAz = c / Rp;             // fillet's azimuthal reach at the root
+  const pts = [];
+  const put = (r, a) => pts.push([r * Math.cos(a), r * Math.sin(a)]);
+  const pitch = (2 * Math.PI) / N;
+  for (let i = 0; i < N; i++) {
+    const cAz = i * pitch;
+    // right side of the tooth (lower azimuth): fillet, flank, face up
+    put(rootR, cAz - th - filletAz);
+    put(rootR + c, cAz - th);
+    for (let k = 1; k <= faceSegs; k++) {
+      const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
+      // flank is the radial segment root→pitch; the face starts AT the pitch
+      // point, so k = 0 (the cusp) is the flank's top and needs no echo.
+      if (k === 1) put(Rp, cAz - th);
+      put(Rp + e[2], cAz - th + e[3]);
+    }
+    // tip land between the two face ends (the cap guarantees it holds a 2ε round)
+    put(tipR, cAz - th + topAz);
+    put(tipR, cAz + th - topAz);
+    // left side down (mirror)
+    for (let k = faceSegs; k >= 1; k--) {
+      const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
+      put(Rp + e[2], cAz + th - e[3]);
+      if (k === 1) put(Rp, cAz + th);
+    }
+    put(rootR + c, cAz + th);
+    put(rootR, cAz + th + filletAz);
+    // root land arc to the next tooth, each edge under π/(2N) of azimuth
+    const a0 = cAz + th + filletAz, a1 = cAz + pitch - th - filletAz;
+    const segs = Math.max(1, Math.ceil((a1 - a0) / (Math.PI / (2 * N))));
+    for (let k = 1; k < segs; k++) put(rootR, a0 + ((a1 - a0) * k) / segs);
+  }
+  const shape = new THREE.Shape();
+  shape.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
+  shape.closePath();
+  return shape;
+}
+
 // Punch a central bore plus `spokes` crescent (annular-sector) cutouts into a
 // wheel shape — the classic clock-wheel crossing. innerR/outerR bound the arms.
 // armFrac is the fraction of the circumference kept as arm material: 0.15

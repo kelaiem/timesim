@@ -19,6 +19,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 |---|---|---|
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
+| 83 | OPEN | The parity ray is still trusted inside the box; §122 silenced the measured outside-box lying population (166/166 on the fusee pair) but the same grazing mode could lie inside, where it would manufacture a contact. probe-122-verdict's genuineInside bucket is the tripwire |
 | 77 | OPEN | The reserve train's two meshes interpenetrate (0.279 / 0.621 mm, measured). Now in `INTRA_TIER_SCOPE` and waived against this item, so the debt is declared and new interference fails; the fix is roadmap §136's conjugate profile, not a tolerance |
 | 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; item 41's closure seeded `Dial ⇄ Power reserve`; `Power reserve ⇄ Power-reserve train` is still unseeded) |
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
@@ -8861,3 +8862,28 @@ Circular, `I = πr⁴/4`, because the shaft is round and §137's 2807 N/m is
 circular. `checkSlenderness`'s column is **rectangular** (`ac³/12`) and reads
 `64/12π = 1.6977×` stiffer for a round bar. Mixing them is what put two wrong
 rows in TODO 79's table; both are corrected there.
+
+## 83. The parity ray still lies inside the box — §122 silenced only the provably-outside calls
+
+§122's dissection measured the verdict family's third lying mode: the
+fixed oblique parity ray (`pointInsideTree`) returns ODD for samples up
+to 13 u OUTSIDE the other mesh's bounds — grazing-count false positives,
+worst on `LatheGeometry` coaxial walls (166 of 166 odd samples on the
+fusee's `CylinderGeometry#11 ⇄ LatheGeometry#3` pair were outside-box
+lies; the phantom `Escape wheel ⇄ Three-quarter plate` contact at 0 was
+another). The §122 cut removes every parity call whose sample is
+provably outside the box, which silences that entire measured
+population — but a sample INSIDE the box gets the same ray with the same
+grazing fragility, and nothing guards it. The dissection saw zero
+genuine inside-box odd samples in its populations, which bounds the
+exposure but does not close it: a lie there would manufacture a contact
+(`inside: true` → d = 0) that no instrument would question.
+
+`tools/probe-122-verdict.mjs` is the instrument — its broad mode counts
+inside-box odd samples (the `genuineInside` bucket) and any growth there
+should be treated as this item firing. Candidate fixes, unmeasured:
+multi-ray voting (2-of-3 oblique directions), or an epsilon-nudged
+re-cast when hit counts include distances within 1e-6 of each other
+(the grazing signature). Do not widen anything to work around a lie —
+§82's rule: patch the instrument, then let the corrected verdicts land
+with their witnesses.
