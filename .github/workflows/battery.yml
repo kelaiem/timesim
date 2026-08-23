@@ -332,4 +332,23 @@ jobs:
         with:
           name: battery-report-${{ github.run_id }}
           path: .battery-out/
+          # REQUIRED because the path is dot-prefixed. upload-artifact@v4
+          # defaults include-hidden-files to false, so `.battery-out/` matched
+          # nothing and every run since §152 added this step logged
+          # "No files were found with the provided path" and uploaded NOTHING
+          # — while the step itself stayed green, which is why it survived.
+          # The report is the acceptance instrument CLAUDE.md names ("--report
+          # diffed against the base is the acceptance, not the PASS/FAIL
+          # column"), so this silently withheld the one artifact a reviewer
+          # needs on exactly the runs they need it.
+          #
+          # Not renaming the directory instead: that would touch four path
+          # references (the run step's --report and --digests, the baseline
+          # copy, this upload) and need a new .gitignore entry, since
+          # `.battery-out` is un-ignored today and stays invisible only by
+          # being dot-prefixed. §152's `.battery-baseline` is unaffected
+          # either way — it travels by actions/cache, which has no
+          # hidden-file exclusion, so the incremental baseline was never
+          # broken by this.
+          include-hidden-files: true
           retention-days: 14
