@@ -216,7 +216,32 @@ it into prose either.
    that exercises it, or this passes it in silence. That is not theoretical:
    before TODO 29 no axis anywhere varied `alarmOn`, and the alarm lock —
    the movement's clearest no-spring case — was invisible for exactly that
-   reason).
+   reason),
+   and `transfers` **0 malformed, 0 stale, 0 mismatched, 0 unwaived
+   envelope misses, control PASS** (§137 — every corner is one of five
+   named idioms declared beside its metal with its force arithmetic, in
+   TODO 16's format; the check re-verifies each row's own relations from
+   the frozen payload and holds envelope membership against layout.js's
+   declared windows — the 5–50 mN detent band is a CONSTANT now, never
+   forkable. A waived row cites its TODO and a waiver naming a site with
+   no envelope miss is itself a failure — the seed waiver, the lay
+   shaft's, made a round trip on that rule: retired when §137's span and
+   stroke corrections read the chain in-window, then restored citing
+   TODO 79 when the shaft's rod-end overhang turned out to be a second
+   series compliance an order softer than the tail. **A row whose figure
+   an instrument also computes must ASSERT against it, not resemble it**:
+   the same site then had its arithmetic corrected a second time — a
+   minimum where series compliances ADD, reflected by n²/k — and now
+   re-derives TODO 82's sum from live constants with a boot warning if the
+   two paths part or a different member governs. Four earlier records of
+   that one number were each honest on the inventory they had; the fifth
+   had the whole inventory and combined it wrongly, which is the failure
+   an assert catches and a careful reader does not),
+   and `slenderness` **0 stale waivers** (§54's report, reachable at last —
+   its rows stay a REPORT by §54's own covenant and the unwaived residue is
+   TODO 78's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a
+   unit with no over-ceiling row, so deleting a fix's waiver is
+   structurally part of the fix).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved

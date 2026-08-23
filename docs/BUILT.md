@@ -16110,6 +16110,197 @@ TODO 83 carries it, with `probe-122-verdict.mjs` as its instrument. And
 §136's fold — the entry this one was sequenced ahead of — re-prices its
 vertex cost against this new baseline.
 
+## §137 — Corners as real parts: the transfer audit
+
+**Where this came from.** The battery's gates were all SPATIAL — collisions,
+clearances, contact closure — so no instrument asked whether a corner
+actually TRANSMITS what it claims. That is the hole §35 fell through (a
+36.5× lever "nobody asked for" behind green gates), and TODO 63's dogleg
+audit named its standing instance: the elbow rods, rigid two-segment links
+whose bend has no pivot and whose bending moment nothing computed — "a
+straight two-force link and a link with units of offset are the same object
+to every instrument in this repo."
+
+### The vocabulary, and where a row lives
+
+Five named idioms, with the rule for which a transfer earns
+(`TRANSFER_IDIOMS`, main.js): **bevelPair** (rotation through an angle —
+equal counts at an apex, the motion-works corners the template),
+**doglegIdler** (rotation across a lateral offset — idlers whose azimuth is
+SCORED against the corridor, never authored, and which cancel out of the
+ratio), **crank** (displacement through a bend or plane change on a PIVOT —
+two designed arms about a bearing that takes the side load),
+**rigidBentLink** (a routing bend with NO pivot — legitimate only while the
+moment its offset induces is computed and priced), and **riserReach**
+(a plane change with no direction change, loaded axially).
+
+Rows are declared BESIDE the metal — `declareTransfer(site, row)` is
+`declareRestoring`'s discipline — because every quantity a row needs (the
+solved elbow `e`, `bearFrac`, crank arms, the rocker's `aF/aP`) is a
+module-local const of `main.js`, unreachable from a static table in
+`inspect.js`. The declarations freeze into `clock.transfers`
+(EQUALISATION's shape), and `checkTransfers` consumes the payload without
+re-deriving anything: it re-verifies each row's OWN relations (ratio ≡
+armOut/armIn; a bent link's moment ≡ load·e·UNIT_MM), holds every name
+verbatim against the scene (stale detection — inspect.js couples by
+string), classifies malformed rows, and tests envelope membership. Tiers
+are `restoring`'s: `ok` is always true, the rows are the product, the
+battery gates the gateable subsets plus a positive control pushed through
+the same classifier.
+
+**Two numbers stopped being prose.** TODO 16's "a detented selector ring
+plausibly needs 5–50 mN" had never been anyone's constant — it lived in the
+item's text and CLAUDE.md quoted it forward. It is
+`SELECTOR_DETENT_WINDOW_MN` in layout.js now, an envelope in the
+design-priority sense (never forkable), and rows name their envelope so
+none can carry a private budget. `CASE_PUSHER_INPUT_N` (1–5 N, measured
+chronograph-pusher actuation) declares the input end. Young's modulus
+collapsed to one copy the same day (`STEEL_E_PA` + `cantileverK_N_per_m`,
+with inspect.js's and the oscillator's private copies re-sourced as
+consumers, values unmoved).
+
+### The arithmetic that landed (TODO 63's five paths, all closed)
+
+| path | number | note |
+|---|---|---|
+| click detent | **14.7 mN** peak at the nose flank | ψ(OUT)−ψ(SEAT) through the blade at bearFrac·L — INSIDE the declared window, which is the anchoring the window's declaration promised |
+| pawl at the saw root | **13.8 mN** per indexing press | the click torque paid back at the saw's own outermost radius (ratchetPoly); against the 1–5 N finger band the chain starves at the SHAFT, never the input |
+| silence finger | **≈51 mN** | the feeler bias blade's k·δ over the full ALARM_PIN_DROP, re-levered pivot-to-pivot; the lifter carries aF/aP of it |
+| lay shaft delivery | **≈1.588 mN** at the drive tab | the SERIES stiffness of all four elastic members, each reflected to the ring by n²/k (TODO 82's construction, recomputed live and asserted against its probe). Rod-end-limited at 73% of the compliance, an order under the floor, waived citing TODO 79. Four numbers died getting here; see below |
+| elbow bends | see below | the beam-column pair, both rods |
+
+Two published numbers moved by being computed against the live build, one
+per prior record. TODO 63's ≈1.6 mN "shaft-limited" headline was 22 N/m —
+the compliance of the PRE-§68 4.5 mm overhang, retired when the bush moved
+next to its load (Landing 1's correction; the measured cantilever is
+0.929 mm, where Landing 2's section meets its 2800 N/m floor). And both
+TODO 63 and Landing 2 multiplied the tail's 305 N/m by the 0.158 mm plan
+stroke — the retired 0.42-unit constant the solve output replaced; the
+live |rodTravel| is 0.0376 mm, so the tail stalls at ≈ **11.5 mN** and the
+chain delivers ≈ **6 mN** at the tab through the crank pair's measured
+stroke ratio. TAIL-limited, inside the 5–50 mN window near its floor — the
+claim TODO 16 was opened over, now measured green on live metal at every
+boot, and the rows recompute it rather than quoting any record.
+
+### The elbows: rigid bend kept, and priced
+
+A mid-pivot buys zero P0 — both rods are crown-driven both ways, and a pivot
+adds a degree of freedom nothing constrains without a new guide — at the
+cost of invalidating both two-circle solves and their calibrations, the
+elbow scan, `LOW_LINKAGE_OBSTACLES`, and the tick laws. So the bend stays
+and is priced (`priceRigidBentLink`): M = F·e at the elbow's section,
+σ = M/(πr³/4), the Euler fraction, and the AXIAL GIVE the amplified bow
+costs — the bent link's hidden compliance, the quantity a straight link
+does not have. F is the detent window's ceiling as a declared bound, the
+floor-scaled figure stated beside it.
+
+Measured, the two rods split exactly as the vocabulary predicts. The reset
+rod's solved offset is **zero** — the least-bend objective found a straight
+line legal, so its row prices a bend that does not exist. The hack rod
+carries §125 Tier B's southern dogleg at **e ≈ 11.6**: σ ≈ 120 MPa at the
+ceiling, Euler fraction ≈ 6.5%, axial give **≈ 32% of its stroke at the
+ceiling and ≈ 3% at the window floor** — the honest working regime. (The
+row computes these from the live solve every boot; the merge that landed
+§151 moved the corridor and the solve re-landed at 11.6 from 11.4, which
+is the point of deriving rather than quoting.) The bend is the
+low linkage's compliance concentrator, and its row says so. The knuckle
+sphere is a formed boss over the bend; it makes no pivot claim and needed
+no geometry change.
+
+**The bell crank was never missing.** The filing said the repo had none;
+it has two in substance — `stopCrank` (a see-saw on a radial hinge) and
+§45's `alarmSilRocker` (designed arms, "designed, not inherited") — and the
+vocabulary names them `crank` rather than inventing a part.
+
+### The slenderness report, reachable — and the waiver, held honestly
+
+`checkSlenderness` was exported and registered NOWHERE (the restoring
+defect, found a second time); it is in `CHECKS` and the battery now. Its
+rows stay a REPORT by §54's own covenant — seven unwaived over-ceiling
+members exist and are TODO 78's catalogue — and what gates is WAIVER
+STALENESS, on both waiver tables alike: an entry naming a unit (or a
+transfer site) with nothing left to waive fails, so deleting a fix's
+waiver is structurally part of the fix.
+
+The jumper-envelope probe took TODO 16's named prerequisite and retired
+the waiver's RATIONALE without retiring the debt: **the minute jumper
+never comes anywhere near the shaft** (13.32 u — §68 flipped the chord
+and §112 moved the alarm module after the CI rejections, and the
+radius-insensitivity of those rejections, 0.312 vs 0.310, was the tell).
+The live binder is the corridor: the setting idler caps the legal section
+at r 0.285 over 89 probed stations. The FORCE half closed there — Landing
+2's r 0.1233 meets the 2800 N/m floor with 2.3× of corridor to spare —
+and what the waiver still covers is §54's ceiling alone: λ 30 wants
+r 0.3258 over the bush-to-bush span, which no corridor-legal section
+reaches, so retirement is a THIRD BUSH STATION — position space, filed as
+roadmap §156 — and the staleness gate guarantees the entry cannot outlive
+that landing.
+
+### Two sessions, one §, and a stall number that took four takes
+
+This entry landed across two sessions working the same day from opposite
+ends. One scoped the §137 plan, built the two probes, corrected TODO 63's
+span arithmetic and put the shaft on its force floor (Landings 1–2), then
+registered §54's never-run check and found the rod-end overhang (TODO
+78/79). The other built the declared AUDIT — the idiom vocabulary, the
+rows, the gates — and corrected the tail's plan stroke. They converged
+everywhere they overlapped independently: click ≈15 mN both ways, reset
+rod e = 0 both ways, the idler wall at 0.285 ≡ 0.434 − CLEAR_MARGIN,
+jumper-not-the-blocker both ways, and — after the audit derived the
+overhang from `ALARM_LINK_BUSH_T` rather than quoting it — 12.487 u and
+21.2 N/m to the digit against the other session's probe. Two instruments
+agreeing without consulting each other is better verification than either
+landing had alone. The one §-number collision (§154, minted twice) was
+caught and renumbered to §156 on the roadmap.
+
+**The arming chain's stall took FIVE takes, and the sequence is the
+lesson**, because every one was honest arithmetic on an incomplete
+inventory — four missing a member, the fifth missing the way members
+combine:
+
+| take | figure | what was wrong with it |
+|---|---|---|
+| TODO 16 | ≈1.5 mN, shaft-limited | pre-§68 lever and span |
+| TODO 63 | ≈1.6 mN, shaft-limited | 22 N/m was the pre-§68 4.5 mm overhang |
+| §137 Landing 2 | ≈48 mN, tail-limited | multiplied by the retired 0.42-unit plan stroke |
+| the audit's first cut | ≈6 mN, tail-limited, in-window | omitted the rod-end overhang entirely |
+| the audit's second cut | ≈0.42 mN, rod-end-limited | had every member, and still took the SOFTEST one as the answer |
+| **now** | **≈1.588 mN, rod-end-limited** | first-order, and TODO 79 says take it properly |
+
+The first four are not mistakes anyone could have avoided by being more
+careful with the same information — each added a member or retired a
+constant the previous one had no way to see, and the only reason the
+fourth exists is that TODO 78 made an unregistered instrument run. **The
+fifth is a different kind**, and worth separating: it had the whole
+inventory and still combined it wrongly, taking a minimum where series
+compliances ADD (reflected to a common point by n²/k). TODO 82 caught it
+from the other side. The row now computes the sum from live constants and
+asserts against 82's posed probe at boot — 1.588 against 1.580 — so the
+two paths are held together rather than left to agree by inspection.
+
+Two things that correction exposed, both kept because the total hid them.
+The shaft's metal does NOT start at chord t 0 (it spans
+`[ALARM_FORK_RETREAT, fullChordLen]`), so the fork-end free length is 1.35
+and not the station literal 2.45 — that member was 5.98× too soft and the
+answer still landed right, because it carries under 1% of the compliance.
+And the two reflection ratios are not the same kind of number: the rod's is
+a solve OUTPUT the probe confirms at 0.523, while the pin's is 1 BY
+CONSTRUCTION — the solve defines the armed roll as the one moving the pin
+one ring travel — against the probe's posed 1.0152. Agreement on a total is
+not agreement on a model. **The waiver made the same round trip**: filed against
+TODO 16, deleted when the chain briefly read in-window, restored citing
+TODO 79 when the soft member appeared. The staleness tier polices that in
+both directions — a waiver with nothing left to waive fails, and so does
+a missing one, by the envelope tier — which is why the deletion and the
+restoration were both forced rather than remembered.
+
+**Verified.** Boot silent; 13 transfer rows — 0 malformed, 0 stale,
+0 mismatched, 0 unwaived envelope misses, 0 stale waivers, control PASS,
+1 waived (the lay shaft, citing TODO 79); slenderness 9 over / 7 unwaived
+/ 0 stale waivers, shaft λ 127.6 over its governing free length;
+identity geometry untouched by the audit itself — declarations and mesh
+names only.
+
 ## §136 — real cycloidal teeth, and the three derivations that had only ever been accidentally sufficient
 
 Every gear in the movement except the escape wheel's was cut by one generator,
