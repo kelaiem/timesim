@@ -25,7 +25,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
 | 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
-| 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%) and the chain is TAIL-limited at ≈48 mN. `SLENDER_WAIVERS['Alarm link']` cannot be retired by ANY legal section — §54's ceiling wants r 0.326 — so what remains is a third bush station, in position space |
+| 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%). **TODO 82 re-took the chain: ROD-END-limited at ≈1.58 mN, not tail-limited at ≈48 mN — the stroke every earlier figure used was a deleted constant, and "in series" was a minimum. This item's ORIGINAL verdict (short by one to two orders of magnitude) is restored.** `SLENDER_WAIVERS['Alarm link']` cannot be retired by ANY legal section — §54's ceiling wants r 0.326 — so what remains is a third bush station, in position space |
 | 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
@@ -51,7 +51,7 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
 | 61 | CLOSED | All three sites say what is cut (a trapezoidal stand-in, no conjugate action modelled, the escape wheel's club teeth the one designed surface); real cycloidal teeth stay roadmap §136. CI's fingerprint proved the comments-only claim (hash identical to main) |
 | 62 | PART DONE | The GOING TRAIN is solved (backward from the escapement, pair groups per arbor, four runs at four modules) and the striking 64T ⇄ governor mesh with it. Remains: the four keyless runtime bases (two tick-driven chains, a TODO-48-sized solve each), the bevel sites (beyond the planar gauge — §135's instrument question), and §129's tower pinion |
-| 63 | PART DONE | Stall re-taken from the built metal and then CORRECTED (§137): lever gain 7.1×, tail blade 305 N/m, and the 1.6 mN "shaft-limited" headline was a stiffness for a span §68 retired — at the measured 0.9286 mm overhang the shaft is 2518 N/m and the chain is TAIL-limited at ≈48 mN, inside the 5–50 mN band. The elbows' bending is COMPUTED (Gate A: rigid bend defensible at the derived sub-mN loads, δ ≤ 0.6% of stroke even at `ELBOW_E_MAX`) and all five force paths are priced in place. Remains: the click's return blade is over-strained (≈2.2 GPa at full ride — position-space fix), TODO 16's third bush station, and §137's own idiom record |
+| 63 | PART DONE | Stall re-taken from the built metal and then CORRECTED (§137): lever gain 7.1×, tail blade 305 N/m, and the 1.6 mN "shaft-limited" headline was a stiffness for a span §68 retired — at the measured 0.9286 mm overhang the shaft is 2518 N/m. **RE-TAKEN AGAIN by TODO 82 and this time computed rather than quoted: ROD-END-limited at ≈1.58 mN, BELOW the 5–50 mN band — the 48 mN rested on a deleted stroke constant and a minimum where compliances add.** The elbows' bending is COMPUTED (Gate A: rigid bend defensible at the derived sub-mN loads, δ ≤ 0.6% of stroke even at `ELBOW_E_MAX`) and all five force paths are priced in place. Remains: the click's return blade is over-strained (≈2.2 GPa at full ride — position-space fix), TODO 16's third bush station, and §137's own idiom record |
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
@@ -64,8 +64,10 @@ refreshed 2026-08-21 — items with work left first, with what remains:
 | 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
 | 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
 | 78 | CLOSED | §54's `checkSlenderness` was exported and NEVER REGISTERED in `CHECKS` — `start()` answered "unknown check", so it had not run once since §52, its waiver waived rows in a report nothing produced, and three different λ values for one mesh accumulated in `main.js`. Second instance of the class (TODO 29 was the first), so `ci-battery` now GATES `CHECK_NAMES` (read from the page) against `BATTERY`. It also measured stock length, not free length: meshes may now declare `userData.bearings` and λ is taken per free length, an overhang scaled by `SLENDER_OVERHANG_K` = ∛16. Report (§40): **9 rows over ceiling, 7 unwaived and untriaged** |
-| 79 | OPEN | The alarm link's lay shaft has a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. Implies the transfer may be **rod-end-limited at ≈3.3 mN**, below the 5–50 mN detent band, against §137 Landing 2's "tail-limited at ≈48 mN" — first-order, NOT yet a measured load path. Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
+| 79 | OPEN | The alarm link's lay shaft has a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. **MEASURED by TODO 82: the transfer IS rod-end-limited, at ≈1.58 mN — below the 5–50 mN band, and the rod-end overhang carries 72.4% of the whole chain's compliance while the fork-end the section was sized against carries 0.1%.** (The 3.3 mN first filed here was the free-cantilever value against a stroke that was itself a deleted constant; both are corrected in TODO 82.) Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
 | 80 | OPEN | `weldGeometry` returns a fresh `BufferGeometry` and does not copy `userData`, and `weldTree` assigns it at the end of boot — so a `geometry.userData.subBodies` declared on a non-indexed geometry is silently deleted before any check runs, reporting `declaredGeometries: 0`. §77's shipped tables survive by construction (`mergeGeos` declares after welding, and its output is indexed), which nothing states anywhere |
+| 81 | OPEN | `meshIntegrity`'s sub-body census is a function of the SHARD SCHEDULE — 136/0 against 50/134 on one tree. Found by §127 tier 2a's landing, not caused by it: it is the RUNTIME half of item 80, whose boot-time half is `weldGeometry` dropping `geometry.userData`. Never compare this tier's counts across runs with different task partitions; a `--report` diff that does must cite this item |
+| 82 | CLOSED | The pusher→ring stall had been written down four times (1.5 / 1.6 / 48 / 3.3 mN) and never computed. Two errors, same direction: the stroke every figure used was **`ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `main.js` deletes as "referenced nowhere, and wrong"** (measured 0.09932 u = 0.0376 mm, 4.2× smaller, taken two ways that agree to five decimals); and "in series" was implemented as a **minimum** over members charged against different strokes, where compliances add as `n²/k` reflected to the ring. Computed: **k_eff 21.89 N/m, stall 1.58 mN** — ROD-END-limited, an order of magnitude BELOW the 5–50 mN band, restoring TODO 16's original verdict and refuting §137 Landing 2's 48 mN. The rod-end overhang is **72.4%** of the compliance; the fork-end the section was sized against is **0.1%**. `tools/probe-82-alarm-stall.mjs` |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -1977,6 +1979,19 @@ waived rows **57 → 53**.
 
 **Force transfer, restored:** stall force ≈ **1.5 mN → ≈ 48 mN**
 (tail-limited), which is in the plausible band for a detented ring rather
+
+> **RE-TAKEN AND REFUTED BY TODO 82.** Every figure in this passage rests on
+> two errors that push the same way: the "0.158 mm" rod travel is
+> `ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `src/main.js` deletes as
+> *"referenced nowhere, and wrong"* (measured: **0.09932 u = 0.0376 mm**), and
+> "in series … with the weakest member setting it" is a MINIMUM over members
+> charged against different strokes, where reflected compliances add as
+> `n²/k`. Computed properly: **k_eff 21.89 N/m, stall ≈ 1.58 mN,
+> ROD-END-limited, an order of magnitude BELOW the 5–50 mN band.** The
+> rod-end overhang carries 72.4% of the compliance and appears in none of
+> these paragraphs; the fork-end cantilever they are all sized against
+> carries 0.1%. `tools/probe-82-alarm-stall.mjs`.
+
 than one to two orders below it.
 
 > **CORRECTION (TODO 63's re-take, 2026-08-20): the shaft half of this fix
@@ -2033,6 +2048,19 @@ back, and four of them were not what the two reverts assumed:
    **r 0.1232 (+2.7%) meets it outright**, against a corridor that permits
    0.285. Re-derived at the real span, the chain is **TAIL-limited at
    ≈ 48 mN** (see TODO 63's correction), inside the 5–50 mN band.
+
+> **RE-TAKEN AND REFUTED BY TODO 82.** Every figure in this passage rests on
+> two errors that push the same way: the "0.158 mm" rod travel is
+> `ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `src/main.js` deletes as
+> *"referenced nowhere, and wrong"* (measured: **0.09932 u = 0.0376 mm**), and
+> "in series … with the weakest member setting it" is a MINIMUM over members
+> charged against different strokes, where reflected compliances add as
+> `n²/k`. Computed properly: **k_eff 21.89 N/m, stall ≈ 1.58 mN,
+> ROD-END-limited, an order of magnitude BELOW the 5–50 mN band.** The
+> rod-end overhang carries 72.4% of the compliance and appears in none of
+> these paragraphs; the fork-end cantilever they are all sized against
+> carries 0.1%. `tools/probe-82-alarm-stall.mjs`.
+
 
 **What this leaves, and it is why the waiver stays.** §54's ceiling wants
 λ ≤ 30 over the 19.55 u bush-to-bush span, i.e. **r 0.3258**, and the
@@ -7596,7 +7624,7 @@ An instrument that would catch a wrong count or a wrong phase is filed as
 roadmap §135; **no such instrument exists today**, and `inspect.js` has no
 concept of a gear mesh as a pair at all.
 
-## 63. PART DONE — the stall is re-taken (≈48 mN, TAIL-limited), the elbows' bending is computed and the five force paths are priced; an over-strained blade and the §137 record remain
+## 63. PART DONE — the stall is re-taken (≈48 mN, TAIL-limited — SINCE REFUTED: TODO 82 computes ≈1.58 mN, ROD-END-limited), the elbows' bending is computed and the five force paths are priced; an over-strained blade and the §137 record remain
 
 **Re-taken 2026-08-20, from the built metal, in TODO 16's own first-order
 format.** The current chain: beak lever nose 1.395 u / tail 9.95 u —
@@ -7624,6 +7652,17 @@ corrected (TODO 20 closed that debt).
 > not one-to-two orders under it. Both halves are now written at the
 > section block in `src/main.js` (grep `2800`). Anyone sizing against
 > "≈ 1.6 mN, shaft-limited" is sizing against a retired span.
+> **RE-TAKEN AND REFUTED BY TODO 82.** Every figure in this passage rests on
+> two errors that push the same way: the "0.158 mm" rod travel is
+> `ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `src/main.js` deletes as
+> *"referenced nowhere, and wrong"* (measured: **0.09932 u = 0.0376 mm**), and
+> "in series … with the weakest member setting it" is a MINIMUM over members
+> charged against different strokes, where reflected compliances add as
+> `n²/k`. Computed properly: **k_eff 21.89 N/m, stall ≈ 1.58 mN,
+> ROD-END-limited, an order of magnitude BELOW the 5–50 mN band.** The
+> rod-end overhang carries 72.4% of the compliance and appears in none of
+> these paragraphs; the fork-end cantilever they are all sized against
+> carries 0.1%. `tools/probe-82-alarm-stall.mjs`.
 
 **The elbows' bending is COMPUTED** (§137 Gate A, at the elbow-rod block —
 grep `§137 GATE A`). Loads derived from the driven members by virtual work
@@ -8518,11 +8557,27 @@ Then §112 re-solved the rod site. The chord grew ≈ 9 u to 34.487 and
 **the two station literals did not travel with it.** Measured today
 (`tools/probe-slenderness-bearings.mjs`):
 
-| free length | L | k (πr⁴/4) |
+| free length | L | k, circular πr⁴/4 |
 |---|---|---|
-| overhang, fork end | 1.350 u / 0.512 mm | 28 479 N/m |
-| span, bush to bush | 19.550 u / 7.408 mm | 150 N/m |
+| overhang, fork end | 1.350 u / 0.512 mm | 16 778 N/m |
+| span, bush to bush | 19.550 u / 7.408 mm | 88.4 N/m |
 | **overhang, rod end** | **12.487 u / 4.732 mm** | **21.2 N/m** |
+
+> **CORRECTED (TODO 82).** As first filed this table was captioned `k (πr⁴/4)`
+> and **only its last row was**: the first two came from `checkSlenderness`'s
+> **rectangular** column (`I = ac³/12`, which reads `64/12π = 1.6977×` stiffer
+> for a round bar) and printed 28 479 and 150. The values above are all
+> circular, so the column is now one model throughout and comparable with
+> §137's own 2807 N/m. The headline never depended on the two bad rows — 21.2
+> against 2807 was always apples-to-apples — but the table was not reusable as
+> printed, and `tools/probe-82-alarm-stall.mjs` reproduces these figures.
+>
+> The rod-end row is also the FREE-cantilever value. In the working series it
+> is softer still: a cantilever past a real back span deflects `Pa²(L+a)/3EI`
+> because the back span rotates, so the coupled stiffness is
+> `21.2 ÷ (L+a)/a = 21.2 ÷ 2.566 = 8.3 N/m`. Note that `(L+a)/a` is the
+> **stiffness** factor; `SLENDER_OVERHANG_K`'s ≈1.4 is its λ-space cube root
+> and is not interchangeable with it.
 
 **That is TODO 16's condemned cantilever, to two significant figures, at
 the other end of the same shaft** — and it carries `alarmLinkCrankRim` and
@@ -8544,16 +8599,59 @@ need re-taking a third time.
 it is the free length from the geometry times the repo's own cantilever
 formula. Take it properly before acting on it.
 
+> **TAKEN, by TODO 82 — the direction holds, the number does not.** The
+> transfer IS rod-end-limited, and the rod-end overhang carries **72.4% of the
+> whole chain's compliance** while the fork-end §137 sized the section against
+> carries **0.1%**. But the stall is **≈1.58 mN, not 3.3**, because the 3.3
+> above shares both of the errors it was meant to correct: it multiplies by
+> the same deleted `ALARM_LINK_ROD_TRAVEL = 0.42` stroke (measured: 0.09932 u),
+> and it uses the FREE-cantilever 21.2 N/m rather than the coupled 8.3 N/m.
+> `k_eff = 21.89 N/m` over the ring's measured 0.19 u. §137 Landing 2's
+> conclusion and TODO 63's headline are re-taken there.
+
 ### The fix is position space, and it is not a third bush
 
 The roadmap's third-bush entry (§156) proposes splitting the 19.550 span.
 That moves the reported λ by nothing and does not touch this. What this
 needs is **station two moved outward**, or a station added out where the
-load is — `src/main.js`'s own honest-band scan records t 16.75–24 as clean,
-so t 22 sits well inside a band with room above it, and t > 24 has never
-been probed at all. Re-probe the way §68 did, then re-derive the section
-against whatever overhang survives. §54's doctrine holds: shorten the free
-length, do not fatten the member.
+load is. Re-probe the way §68 did, then re-derive the section against
+whatever overhang survives. §54's doctrine holds: shorten the free length,
+do not fatten the member.
+
+> **CORRECTED (TODO 82) — and the correction makes the job bigger.** This
+> paragraph first read: *"`src/main.js`'s own honest-band scan records
+> t 16.75–24 as clean, so t 22 sits well inside a band with room above it,
+> and t > 24 has never been probed at all."* That inherits a retired
+> measurement. §68's scan was taken on §68's chord, whose plate bores
+> `docs/BUILT.md` records at **(−9.80, 26.97)**; today's asserted bores are
+> **(34.32, 16.89)**, because §112 re-solved *both* ends (the rod site **and**
+> the tab azimuth that sets `ALARM_LINK_INNER_XY`). A chord parameter t is
+> only an absolute position given a fixed chord, and this chord moved — so
+> the bands `t 2.25–2.6` / `16.75–24`, the rooms **0.587** and **2.77**, and
+> the wall names ("motion works' wheel inboard, reserve sector's inner edge
+> outboard") are all facts about a line that no longer exists.
+>
+> **No hanger station on today's chord has ever been column-scanned** —
+> not t 22, and not t 2.45 either. So the fix is not "extend the scan past
+> t 24"; it is re-derive both bands on today's chord, which also re-judges
+> station one.
+>
+> What is NOT at risk, so this stays proportionate: the battery is the real
+> backstop for labelled units and is what caught §68's own t 12 (FORBIDDEN at
+> 41/61 reserve poses). Today's stations are green across the pose net, so
+> they are not silently fouling the reserve cluster or anything else the
+> sweep can see. The residue is that the *room* figures are unverifiable
+> prose, and that the base plate is **not a labelled unit** (`registerLabel`
+> names only `'Three-quarter plate'`), so `collectUnits` never sees it and
+> the pair sweep structurally cannot report a hanger fouling it.
+>
+> §68's column scan also exists nowhere in the repo as code — only as that
+> prose — so re-deriving the bands means writing it. It must avoid the
+> artifact §68 named: a vertex-cloud scan reads a wheel's *web* as empty and
+> falsely green-lit t 12 and t 5.5. The machinery is already there —
+> `buildSweptRegistry`'s `kind: 'revolve'` volumes carry a real `rBand`/
+> `zBand` annulus measured across poses, which is exactly §68's "held to
+> their annulus footprint, not their vertex cloud".
 
 ### The class, which is the part worth keeping
 
@@ -8664,3 +8762,102 @@ a rebuild entry point), or read the declarations from a source a rebuild
 cannot drop. Until then, treat cross-schedule diffs in this tier's counts as
 expected — a `--report` diff across runs with different task partitions must
 cite this item — and never compare its rows across partitions.
+
+## 82. CLOSED — the alarm transfer's stall was prose, and its stroke was a constant the file had deleted
+
+The pusher→ring force budget has been written down four times — TODO 16's
+**1.5 mN**, TODO 63's **1.6 mN**, §137 Landing 2's **48 mN**, TODO 79's
+**3.3 mN** — and never once computed. It lived as one prose paragraph in
+`src/main.js` (`WHAT THE CHAIN STALLS AT`). There is now a probe:
+`tools/probe-82-alarm-stall.mjs`.
+
+### Error one: the stroke was a deleted constant
+
+Every one of those four figures multiplies a stiffness by *"the rod's
+0.158 mm travel"*. That is 0.42 u — `ALARM_LINK_ROD_TRAVEL`, which
+`src/main.js` **deletes**, forty lines from the paragraph that depends on it:
+
+> *"is DELETED: defined for the life of §35, referenced nowhere, and **wrong**
+> (the tick moved the rod 0.19). The rod's travel is now a registration-solve
+> OUTPUT, `alarmLinkParts.forward.rodTravel`."*
+
+The `0.19` in that parenthesis is itself pre-TODO-20 (posed, not solved), and
+TODO 20's own comment says *"the rod's travel is NOT the ring's"* — so the
+stroke was not determinable from source at all. **Measured: 0.09932 u =
+0.0376 mm**, 4.2× smaller than the figure in use.
+
+Taken two ways and required to agree, per `probe-137-elbow`'s rule
+(*agreement is the evidence; either number alone is a claim*): a `setPose`
+sweep over the disarmed/armed parities, and a real `step(dt)` run driven from
+`pressAlarmPusher` through the button — the only public door to the primitive.
+Both give 0.09932 u, and all six measured travels agree to five decimals. That
+matters here because `setPose` ticks with zero dt so an eased input cannot move
+under it, and the registration solve's `solveEnv` is a bisection seeded from
+the previous state.
+
+### Error two: "in series" was implemented as a minimum
+
+The paragraph charged each member against its **own** stroke at its **own**
+point and took the smallest, with no lever ratio referring them to a common
+point. Nothing in the repo computed `1/k_eff = Σ 1/k_i`. Compliances in series
+add, and they must be *reflected*: for a member whose working point moves
+`n = δ_member/δ_ring` per unit of ring travel, force scales as `1/n`, so its
+compliance seen at the ring is `n²/k`. Every `n` is **measured** between the
+two poses rather than derived from arm lengths — standing rule 2's habit
+applied to displacements.
+
+| member | k (N/m, circular) | n | share of compliance |
+|---|---|---|---|
+| beak tail blade | 304.8 | 0.523 | 2.0% |
+| **shaft, ROD-END overhang** | **8.3** | 0.523 | **72.4%** |
+| shaft, bush-to-bush span | 88.4 | 1.015 | 25.5% |
+| shaft, fork-end overhang | 16 775 | 1.015 | 0.1% |
+
+`k_eff = 21.89 N/m` over the ring's measured 0.19 u (0.072 mm) ⇒
+**stall 1.58 mN**, against the movement's 5–50 mN detent band.
+
+### What that means
+
+- **The transfer is ROD-END-LIMITED and an order of magnitude below the band.**
+  It does not sit inside it at 48 mN. TODO 16's original verdict — *"short by
+  one to two orders of magnitude"* — is **restored**, and §137 Landing 2's
+  correction that overturned it was the one in error. (The numerical
+  coincidence with TODO 16's 1.5 mN is exactly that: its arithmetic used a
+  10.2 N/m tail that has since been fixed to 305 N/m.)
+- **The section is sized against the member that contributes 0.1%.**
+  `ALARM_LINK_SHAFT_R = 0.1233` was solved to put 2807 N/m into the *fork-end*
+  cantilever. Do **not** re-derive it against these numbers before TODO 79's
+  stations are re-solved — that would spend metal on the wrong member twice.
+- The rod-end figure is the **coupled** stiffness, `21.2 ÷ (L+a)/a = 8.3 N/m`,
+  not the free cantilever. `(L+a)/a = 2.566` is the stiffness factor;
+  `SLENDER_OVERHANG_K`'s ≈1.4 is its λ-space cube root and is not
+  interchangeable.
+
+### Things measured in passing, worth keeping
+
+- **The shaft's roll is 0.34616 rad**, and `ALARM_FORK_PIN_ARM_R`'s own
+  derivation requires *"span ≤ 0.35 rad"*. It holds, with 1% to spare —
+  measured for the first time rather than asserted.
+- The implied pin arm `ring/roll = 0.5489` against the declared
+  `ALARM_FORK_PIN_ARM_R = 0.56` — 2%, the pin not staying exactly horizontal
+  through the stroke. The implied rim arm `rod/roll = 0.2869` against
+  `rimTipD = 0.425` is **not** a discrepancy: `rimTipD` is a radius, and the
+  rod sees only the vertical component of the finger's arc.
+
+### Checked and NOT filed
+
+The two input-side contacts (`beak tail ⇄ rod top`, `rod foot ⇄ rim crank`)
+are both unilateral, so it is fair to ask what pushes the rod **up** on the arm
+stroke. `restoring` already classifies `Alarm link` as `twoWayDriven` with
+fanout 2, so it is not an open no-spring row and no item is filed. The residual
+question — whether two-way *driving* is physical across two compression-only
+contacts, or is a modelled convenience — is the modelled-vs-simulated gap
+CLAUDE.md names, and establishing it either way is more work than this item
+did. Stated here rather than filed as a claim.
+
+### One section model throughout
+
+Circular, `I = πr⁴/4`, because the shaft is round and §137's 2807 N/m is
+circular. `checkSlenderness`'s column is **rectangular** (`ac³/12`) and reads
+`64/12π = 1.6977×` stiffer for a round bar. Mixing them is what put two wrong
+rows in TODO 79's table; both are corrected there.

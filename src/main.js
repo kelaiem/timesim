@@ -18763,14 +18763,55 @@ const alarmLinkParts = {};
   // same formula gives 80,124 N/m. The force budget is not what binds this
   // shaft, and has not been since §68 moved the bush.
   //
-  // WHAT THE CHAIN STALLS AT, in TODO 16's format and with the weakest
-  // member setting it: the shaft's 2807 N/m over the selector's 0.071 mm
-  // stroke stalls at 199 mN, while the beak tail's surviving 305 N/m blade
-  // over the rod's 0.158 mm travel stalls at 48 mN. So the transfer is
-  // TAIL-LIMITED at ≈ 48 mN against the movement's 5–50 mN detent band —
-  // inside it, at the top. (TODO 63's ≈1.6 mN headline is the same
-  // arithmetic on the retired 4.5 mm span, 22 N/m × 0.071 mm; it is
-  // corrected there.)
+  // WHAT THE CHAIN STALLS AT — SUPERSEDED, twice over, by TODO 82. Kept
+  // because how it was wrong is the lesson. It read:
+  //
+  //   "in TODO 16's format and with the weakest member setting it: the
+  //    shaft's 2807 N/m over the selector's 0.071 mm stroke stalls at
+  //    199 mN, while the beak tail's surviving 305 N/m blade over the rod's
+  //    0.158 mm travel stalls at 48 mN. So the transfer is TAIL-LIMITED at
+  //    ≈ 48 mN against the movement's 5–50 mN detent band — inside it, at
+  //    the top."
+  //
+  // Two independent errors, and they push the same way.
+  //
+  // THE STROKE WAS A DELETED CONSTANT. "the rod's 0.158 mm travel" is
+  // 0.42 u = ALARM_LINK_ROD_TRAVEL, which this file deletes forty lines
+  // below with the words "referenced nowhere, and WRONG". MEASURED off the
+  // built tree (tools/probe-82-alarm-stall.mjs), the rod travels
+  // 0.09932 u = 0.0376 mm — 4.2x smaller. Both a posed sweep and a real
+  // step(dt) run driven from pressAlarmPusher give that figure to five
+  // decimals, which is what makes it a measurement rather than a claim.
+  //
+  // "IN SERIES" WAS IMPLEMENTED AS A MINIMUM. Each member was charged
+  // against its OWN stroke at its OWN point and the smallest taken, with no
+  // lever ratio referring them to a common point. Compliances in series ADD:
+  // for a member whose working point moves n = d_member/d_ring per unit of
+  // ring travel, force scales as 1/n, so its compliance seen at the ring is
+  // n^2/k. Summed and inverted, with every n MEASURED between the two poses:
+  //
+  //   member                      k N/m        n      share of compliance
+  //   beak tail blade              304.8    0.523            2.0%
+  //   shaft, ROD-END overhang        8.3    0.523           72.4%   <-- governs
+  //   shaft, bush-to-bush span      88.4    1.015           25.5%
+  //   shaft, fork-end overhang   16775.4    1.015            0.1%
+  //
+  //   k_eff = 21.89 N/m over the ring's measured 0.19 u (0.072 mm)
+  //   STALL = 1.58 mN, against the movement's 5-50 mN detent band.
+  //
+  // So the transfer is ROD-END-LIMITED and lands an order of magnitude BELOW
+  // the band — it does not sit inside it at 48 mN. TODO 16's original
+  // verdict ("short by one to two orders of magnitude") is restored; the
+  // §137 Landing 2 correction that overturned it was the one in error.
+  //
+  // THE SECTION ABOVE IS SIZED AGAINST THE MEMBER THAT CONTRIBUTES 0.1%.
+  // r 0.1233 was solved to put 2807 N/m into the fork-end cantilever. That
+  // member is not in play; the rod-end overhang is, at 8.3 N/m after the
+  // coupling factor (L+a)/a = 2.566 that SLENDER_OVERHANG_K's own comment
+  // names. Fixing this is position space, not section — TODO 79 owns it, and
+  // the shaft is soft here because a station literal did not travel with a
+  // chord that grew. Do NOT re-derive r against these numbers before the
+  // stations are re-solved: it would spend metal on the wrong member twice.
   //
   // WHAT REMAINS IS GEOMETRY, NOT FORCE. §54's ceiling wants λ ≤ 30 over
   // the 19.55 u bush-to-bush span, i.e. r 0.3258, and the corridor's
