@@ -64,6 +64,16 @@
 //                           inherits for the pairs nobody touched
 //         --no-incremental  run everything whatever the digests say — the
 //                           reference an incremental run must agree with
+//         --matrix i/N --tasks-out FILE   (§127 tier 3) run worker i of N:
+//                           the BROWSER half only, for the global shards this
+//                           worker owns, written to FILE. Evaluates no gates
+//                           and writes no report.
+//         --collect FILE…   the ASSEMBLY half over those files — the same
+//                           gates in the same order, and --report. Launches
+//                           no browser.
+//         --only NAME[,NAME]  a probe/iteration flag CI never passes: narrow
+//                           the run to these checks (or `check:axis` slices)
+//                           so the assembly half is exercisable in minutes.
 // Exits 0 only when every gate passes; failing gates dump their payloads.
 
 import { spawn } from 'node:child_process';
@@ -424,6 +434,134 @@ const SPEC_ONLY = argv.includes('--spec-only');
 // report that moves under either is a bug in the check that moved.
 const SPLIT = !argv.includes('--no-split');
 
+// §127 tier 3 — THE SAME RUN ACROSS PROCESSES.
+//
+// The seam is where `shardOut` is produced: everything above it is browser
+// work, everything below is assembly over payloads whose ORIGIN is irrelevant.
+// `--matrix i/N --tasks-out FILE` runs the browser half for one worker and
+// writes what it measured; `--collect FILE…` runs the assembly half over the
+// workers' files and is the only side that gates. The single-process path is
+// untouched and stays the reference, exactly as `--shards 1` and `--no-split`
+// are: a run with neither flag must report byte for byte what it reports today.
+//
+// NO COORDINATION, and that is the whole reason this can be a matrix at all:
+// `buildTasks` and `partition` are pure functions of in-repo data, so every
+// worker derives the IDENTICAL global partition from nothing but the tree.
+// Worker i runs global shards [i*SHARDS, (i+1)*SHARDS) of
+// partition(tasks, N*SHARDS) — an ownership rule with no message passing in it,
+// which is what lets the collector name work that never arrived.
+//
+// Landing A is the harness change and its local proof. No workflow change, no
+// matrix in CI, and no claim about wall clock — that is Landing B's, measured
+// on the runner, because BUILT §127's K=4 revert is the worked example of a
+// dev container predicting the wrong sign.
+const MATRIX = (() => {
+  const raw = argOf('--matrix');
+  if (raw === null) return null;
+  // Parsed as strictly as `--shards` is, and for a sharper version of the same
+  // reason: `--matrix 1/tow` silently running worker 0 would produce a green
+  // report of half the battery, which is this landing's whole hazard.
+  const m = /^(\d+)\/(\d+)$/.exec(String(raw).trim());
+  if (!m) throw new Error(`--matrix wants i/N, got "${raw}"`);
+  const i = Number(m[1]);
+  const n = Number(m[2]);
+  if (n < 1) throw new Error(`--matrix ${raw}: N must be at least 1`);
+  if (i >= n) throw new Error(`--matrix ${raw}: worker index must be 0 ≤ i < N`);
+  return { i, n };
+})();
+const TASKS_OUT = argOf('--tasks-out');
+// Variadic: every argument up to the next flag. An empty list is refused for
+// readJsonOr's reason turned inside out — a collector with nothing to collect
+// would assemble an empty battery and report it as a clean one.
+const COLLECT = (() => {
+  const at = argv.indexOf('--collect');
+  if (at === -1) return null;
+  const files = [];
+  for (let i = at + 1; i < argv.length && !argv[i].startsWith('--'); i++) files.push(argv[i]);
+  if (!files.length) throw new Error('--collect wants at least one worker file');
+  return files;
+})();
+// A PROBE AND ITERATION FLAG, and CI never passes it: it narrows the run to the
+// named checks (or the named `check:axis` slices) so the ASSEMBLY half can be
+// exercised end to end in minutes instead of an hour. It is not a second gate
+// and it is not a way to land less — every gate a narrowed run evaluates is
+// evaluated over what it actually ran, and a full run is what standing rule 4
+// names. Unknown names THROW, the `resolveAxes` / `pairsTouching` discipline: a
+// name that matches nothing would otherwise report a green battery of no work.
+//
+// The spec-boot tier is narrowed with it, to its own identity control. The tier
+// is 26 boots and none of them is a check, so keeping all of them would dominate
+// the wall of a run whose point is the merge — and dropping the tier entirely
+// would take its two gates out of the path the probe is proving.
+const ONLY = (() => {
+  const raw = argOf('--only');
+  if (raw === null) return null;
+  const keys = String(raw).split(',').map((s) => s.trim()).filter(Boolean);
+  if (!keys.length) throw new Error('--only wants at least one check or slice key');
+  // The legal key space is exactly COSTS' — a check, or a slice of one.
+  const legal = new Set();
+  for (const e of BATTERY) {
+    legal.add(e.name);
+    for (const s of e.slices ?? []) legal.add(`${e.name}:${s.axis}`);
+  }
+  const unknown = keys.filter((k) => !legal.has(k));
+  if (unknown.length) throw new Error(`--only names ${unknown.join(', ')}, which is no check and no slice of one`);
+  if (!SPLIT && keys.some((k) => k.includes(':'))) {
+    throw new Error('--only names a slice under --no-split, which runs the whole check — say the check instead');
+  }
+  return new Set(keys);
+})();
+
+// The flag combinations that cannot mean anything, refused rather than
+// resolved: every one of them would run or report something OTHER than what
+// was asked for, which is the failure this landing exists to make impossible.
+if (MATRIX && !TASKS_OUT) throw new Error('--matrix wants --tasks-out FILE to write what it measured');
+if (TASKS_OUT && !MATRIX) throw new Error('--tasks-out is what a --matrix worker writes; there is no worker here');
+if (MATRIX && COLLECT) throw new Error('--matrix runs the browser half and --collect the assembly half; run them separately');
+if (MATRIX && REPORT_PATH) throw new Error('a worker evaluates no gates, so it has no report to write — pass --report to the --collect');
+if ((MATRIX || COLLECT) && SPEC_ONLY) throw new Error('--spec-only is one process\'s worth of work; there is nothing to distribute');
+// The collector takes the run's SHAPE from the worker files, because that is
+// the only source that can be right about what was supposed to run. A shape
+// flag on this side could disagree with the workers, and a collector that
+// disagrees with its workers about the task list is the one thing that must
+// never be resolved silently.
+if (COLLECT) {
+  for (const flag of ['--digests', '--digests-base']) {
+    if (argOf(flag) !== null) throw new Error(`${flag} is the §152 preflight's, which runs in each worker`);
+  }
+  for (const flag of ['--shards', '--only']) {
+    if (argOf(flag) !== null) throw new Error(`${flag} describes what the WORKERS ran; --collect reads it from their files`);
+  }
+  if (!SPLIT) throw new Error('--no-split describes what the WORKERS ran; --collect reads it from their files');
+}
+
+// `--only` applied to the battery table. A bare check name takes the whole
+// check (every slice it declares); a `check:axis` key takes that slice alone,
+// and the entry's slice list is narrowed WITH it — the "declared slices are
+// the page's axes" gate compares the two lists, so narrowing one and not the
+// other would report the flag's own selection as an axis nobody swept.
+//
+// The roster gate below deliberately keeps reading the WHOLE table: "every
+// check the page registers has a battery row" is a claim about the declared
+// battery, not about what this invocation chose to run.
+function selectBattery(entries, only) {
+  if (!only) return entries;
+  const out = [];
+  for (const e of entries) {
+    const whole = only.has(e.name);
+    const slices = e.slices?.filter((s) => whole || only.has(`${e.name}:${s.axis}`));
+    if (!whole && !slices?.length) continue;
+    out.push(e.slices ? { ...e, slices } : e);
+  }
+  return out;
+}
+// The axes a narrowed run covers — the roster its slice gates and merges are
+// held against. null (the whole page's roster) whenever `--only` is absent.
+function selectedAxes(entries, only) {
+  if (!only) return null;
+  return new Set(entries.flatMap((e) => (e.slices ?? []).map((s) => s.axis)));
+}
+
 // §152 — THE INCREMENTAL INPUTS AND OUTPUTS.
 //
 // The prize is not making a check faster; it is not running one that provably
@@ -739,198 +877,70 @@ async function specBoot(browser, base, q) {
   }
 }
 
-const gates = [];
-const gate = (name, failures, note) => {
-  const pass = failures.length === 0;
-  gates.push({ name, pass, failures, note });
-  console.log(`  gate ${pass ? 'PASS' : 'FAIL'}  ${name}${note ? `  (${note})` : ''}`);
-  if (!pass) console.log(JSON.stringify(failures, null, 2));
-};
+// ---- THE ASSEMBLY HALF -------------------------------------------------
+//
+// §127 tier 3 — everything from here to the report is arithmetic over payloads
+// whose ORIGIN does not matter: the gates, the slice merge, §152's union, the
+// spec-boot verdicts, the paths-ignore module-graph walk (pure Node — it reads
+// the repo, never the page) and `--report`. One process computes those payloads
+// itself; `--collect` reads them off disk. Both call THIS function, because a
+// second copy of the gate loop is the two-lists drift tools/payload.sh's header
+// names, one level up — the harness would then have two definitions of what
+// standing rule 4 is.
+//
+// Everything it needs arrives as an argument. It reads no mutable module state
+// — including its own `gates` list, which is local so that "what did this
+// assembly decide" is the return value rather than a global someone else may
+// already have written to.
+function assemble({
+  battery,          // the BATTERY rows this run evaluated (--only narrows it)
+  results,          // Map: task key → { result, ms }; the merge writes check names in beside them
+  shardRows,        // [{ shard, warns, error? }] tagged with GLOBAL shard index, in that order
+  shardCount,       // how many shards the partition produced, whoever ran them
+  expectedShards,   // [{ shard, keys }] a collector expects, or null in one process (see the gate)
+  axisMeta, checkRoster,
+  fpA, fpB, digestsB,
+  spec,             // { rows, ms } from the spec-boot tier
+  headDigests, restriction, baseline,
+  split, specOnly,
+  t0,
+}) {
+  const gates = [];
+  const gate = (name, failures, note) => {
+    const pass = failures.length === 0;
+    gates.push({ name, pass, failures, note });
+    console.log(`  gate ${pass ? 'PASS' : 'FAIL'}  ${name}${note ? `  (${note})` : ''}`);
+    if (!pass) console.log(JSON.stringify(failures, null, 2));
+  };
 
-let server, browser;
-const stateDir = mkdtempSync(join(tmpdir(), 'timesim-ci-'));
-try {
-  const port = await freePort();
-  const base = `http://127.0.0.1:${port}`;
-  // TMPDIR points at a private fresh dir so /__state starts absent and a
-  // developer's real saved state is never read or clobbered by a CI run.
-  server = spawn('python3', [join(ROOT, 'dev_server.py'), String(port)],
-    { cwd: ROOT, env: { ...process.env, TMPDIR: stateDir }, stdio: 'ignore' });
-  await waitForServer(`${base}/index.html`, 15000);
-
-  browser = await chromium.launch({ args: [
-    // An automated pane throttles setTimeout(0) to ~1s, turning the sweeps'
-    // cooperative yields into hours of idle (the CLAUDE.md trap). These keep
-    // the headless page foreground-scheduled so a yield costs what it says.
-    '--disable-background-timer-throttling',
-    '--disable-backgrounding-occluded-windows',
-    '--disable-renderer-backgrounding',
-  ] });
-
-  // ---- §152 PREFLIGHT: the key, and the decision it licenses ---------------
-  //
-  // One extra VIRGIN boot, taken only when digests were asked for. It costs
-  // 8 s here and ~26 s on CI against the four sweeps' 51 min, and it has to
-  // come before the partition because what a shard is asked to run depends on
-  // what it establishes.
-  //
-  // Nothing about this boot is special except its timing: the digests are read
-  // the way every check is read, through page.evaluate, off a page whose state
-  // file has just been deleted.
-  let headDigests = null;      // this tree's per-unit key
-  let restriction = null;      // the changed-unit list every sweep narrows to, or null for a full run
-  let baseline = null;         // the baseline --report the union draws its inherited rows from
-  if ((DIGESTS_OUT || DIGESTS_BASE || BASELINE_PATH) && !SPEC_ONLY) {
-    // The side-inputs are files, so they are read before anything boots: a
-    // baseline that cannot be read costs a full run, and finding that out
-    // after a boot would just be a slower way to learn it.
-    const baseDigests = atReportFormat(readJsonOr(DIGESTS_BASE, 'base digests'), 'base digests');
-    baseline = atReportFormat(readJsonOr(BASELINE_PATH, 'baseline report'), 'baseline report');
-
-    console.log('§152 preflight boot (virgin)…');
-    const P = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
-    headDigests = await P.page.evaluate(() => window.__I.unitDigests(window.__clock));
-    headDigests.checkCode = checkCodeDigest();
-    headDigests.formatVersion = REPORT_FORMAT_VERSION;
-    // The changed set is computed ON THIS PAGE, by inspect.js's own
-    // digestChangedUnits, rather than by a second implementation here. The
-    // rule that a unit missing from either tree counts as changed, and that
-    // the two always-changed lists are UNIONED, is one definition in the
-    // module that owns the key — not a Node copy of it that drifts.
-    const changed = (!NO_INCREMENTAL && baseDigests && baseline
-      && JSON.stringify(baseDigests.checkCode) === JSON.stringify(headDigests.checkCode))
-      ? await P.page.evaluate(([b, h]) => window.__I.digestChangedUnits(b, h), [baseDigests, headDigests])
-      : null;
-    await P.context.close();
-    console.log(`  digests: ${headDigests.unitCount} units over ${headDigests.poseCount} poses`);
-    if (DIGESTS_OUT) {
-      writeFileSync(resolve(DIGESTS_OUT), `${JSON.stringify(headDigests, null, 2)}\n`);
-      console.log(`  digests written to ${resolve(DIGESTS_OUT)}`);
-    }
-
-    // EVERY BRANCH THAT IS NOT "restrict" SAYS WHY. A feature whose failure
-    // mode is a stale green does not get to be quiet about declining to use
-    // itself, and "the battery looked fast today" must never be something a
-    // reader has to reverse-engineer from a wall clock.
-    if (NO_INCREMENTAL) {
-      console.log('  --no-incremental: running everything (the reference an incremental run must agree with)');
-    } else if (!baseDigests || !baseline) {
-      console.log('  no usable baseline: running everything');
-    } else if (JSON.stringify(baseDigests.checkCode) !== JSON.stringify(headDigests.checkCode)) {
-      const moved = CHECK_CODE_FILES.filter((f) => baseDigests.checkCode?.[f] !== headDigests.checkCode[f]);
-      console.log(`  CHECK CODE moved (${moved.join(', ')}): every stored verdict is void — running everything`);
-    } else if (!changed.length) {
-      // Not a hypothetical: a docs-and-workflow PR that the paths filter did
-      // not take out reaches here. It still runs every cheap check, and it
-      // still unions, so the report it writes describes the whole movement.
-      console.log('  0 units changed: the sweeps have nothing to measure on this tree');
-      restriction = changed;
-    } else {
-      restriction = changed;
-      const n = headDigests.unitCount;
-      const k = changed.length;
-      const pairs = k * (n - k) + (k * (k - 1)) / 2;
-      const all = (n * (n - 1)) / 2;
-      console.log(`  ${k} unit(s) changed: ${changed.join(', ')}`);
-      console.log(`  restricting the four sweeps to ${pairs} of ${all} pairs `
-        + `(${(100 * pairs / all).toFixed(1)}%); every other check runs whole`);
-    }
-  }
-
-  const t0 = Date.now();
-  const tasks = buildTasks(BATTERY, SPLIT, COSTS);
-  // §152 — the restriction reaches the checks the way every other option does,
-  // as an opt on the task. Only the four SWEEPS take it: the cheap checks sum
-  // to ~76 s and are where a key mistake would hide, so they always run whole.
-  if (restriction) {
-    for (const t of tasks) {
-      if (RESTRICTABLE.has(t.name)) t.opts = { ...t.opts, pairsTouching: restriction };
-    }
-  }
-  const shards = SPEC_ONLY ? [] : partition(tasks, Math.min(SHARDS, tasks.length));
-  if (SPEC_ONLY) console.log('--spec-only: skipping the sweeps and the fingerprint anchor.');
-  const bootInTurn = serialiser();
-  console.log(`${tasks.length} task(s)${SPLIT ? '' : ' (--no-split)'} across ${shards.length} shard(s), partitioned by cost:`);
-  shards.forEach((s, i) => console.log(
-    `  shard ${i}  ~${Math.round(s.cost / 60)} min  ${s.entries.map((e) => e.key).join(' ')}`));
-
-  // Every shard is a VIRGIN boot running a subset of the battery, and that is
-  // sound for exactly one reason, which is worth stating because the whole
-  // tranche rests on it: `start()` in inspect.js calls `clock.resetInputs()`
-  // before every check, so a check's result cannot depend on which checks ran
-  // before it on that page. (It has to — some of what setPose writes is
-  // CUMULATIVE, §80's finding at walkPoses.) Sharding therefore changes the
-  // GROUPING of checks and nothing a check can observe. If a report ever
-  // moves between `--shards 1` and `--shards 2`, that invariant has broken
-  // and the check that moved is the bug, not the harness.
-  const results = new Map();  // task key → { result, ms } — merged to check name below
-  const axisMeta = [];        // §127 — window.__I.AXES as the page reports it, read once
-  const checkRoster = [];     // TODO 78 — window.__I.CHECK_NAMES, likewise: the page's roster, not this file's
-  // Each shard catches its own failure instead of rejecting: one shard dying
-  // must not throw away what the others measured, because the surviving
-  // reports are how you tell a broken harness from a broken build.
-  const shardOut = await Promise.all(shards.map(async (shard, i) => {
-    const tag = shards.length > 1 ? `[shard ${i}] ` : '';
-    let context = null;
-    try {
-      const boot = await bootInTurn(async () => {
-        console.log(`${tag}boot (virgin)…`);
-        const p = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
-        console.log(`${tag}  __clock up at ${secs(Date.now() - t0)}`);
-        return p;
-      });
-      context = boot.context;
-      const page = boot.page;
-      const warns = await prepPage(page);
-      // §127 — the axis roster, from the page rather than from this file's
-      // declaration of it. Read on shard 0 for the same reason the fingerprint
-      // is: it is a property of the tree, not of the shard.
-      if (i === 0) {
-        axisMeta.push(...await page.evaluate(() => window.__I.AXES.map((a) => ({ name: a.name, n: a.n }))));
-        checkRoster.push(...await page.evaluate(() => window.__I.CHECK_NAMES.slice()));
-      }
-      // The fingerprint is read on shard 0 only. It is not a per-shard property
-      // — it is the identity build's hash, and shard 0's boot is as virgin as
-      // any other. Reading it here rather than on its own boot keeps the boot
-      // count at shards + 1, which is what the double-boot anchor needs.
-      const fp = i === 0
-        ? await page.evaluate(() => window.__I.fingerprint(window.__clock))
-        : null;
-      for (const { key, name, opts } of shard.entries) {
-        const t = Date.now();
-        const { result, ms } = await runCheck(page, name, opts, CHECK_TIMEOUT_MS);
-        results.set(key, { result, ms });
-        console.log(`${tag}${key}… ${secs(ms)} (at ${secs(t - t0 + ms)})`);
-      }
-      return { warns, fp };
-    } catch (err) {
-      console.error(`${tag}shard FAILED: ${err.message}`);
-      return { warns: [], fp: null, error: String(err.message) };
-    } finally {
-      await context?.close().catch(() => {});
-    }
-  }));
-
-  // Declared OUTSIDE the !SPEC_ONLY block that sets it, because --report reads
-  // it after that block closes: as a `const` in there, every --report run died
-  // on `fpA is not defined` AFTER printing its gate verdicts. CI never passes
-  // --report, so nothing caught it — and CLAUDE.md makes this the file a
-  // performance change is accepted against, so the instrument was broken for
-  // exactly the use it exists for. null under --spec-only, which has no
-  // fingerprint to report.
-  let fpA = null;
   let checkMs = 0;   // §127 — task time, summed before slices are merged (see below)
-  // Declared out here for the reason the comment above gives about fpA: the
-  // --report block below reads it, and CI never passes --report, so a `const`
-  // inside the !SPEC_ONLY block would break the instrument for exactly the use
-  // it exists for and nothing in CI would notice.
   const sliceMs = new Map();   // check name → { axis: ms }, for the cost column
   // Boot silence is gated on EVERY shard, not just the first: each is a real
   // virgin boot of the same tree, so a warning that only some boots produce is
   // a nondeterminism this gate should not be able to miss.
-  if (!SPEC_ONLY) {
-  gate('boot silent (rule 6)', shardOut.flatMap((s, i) => s.warns.map((w) => ({ shard: i, warn: w }))));
-  gate('every shard completed', shardOut.flatMap((s, i) => (s.error ? [{ shard: i, error: s.error }] : [])));
+  if (!specOnly) {
+  gate('boot silent (rule 6)', shardRows.flatMap((s) => s.warns.map((w) => ({ shard: s.shard, warn: w }))));
+  gate('every shard completed', shardRows.flatMap((s) => (s.error ? [{ shard: s.shard, error: s.error }] : [])));
+
+  // §127 tier 3 — AND ACROSS PROCESSES, A SHARD THAT NEVER ARRIVED IS SILENT.
+  // In one process the shard list IS what ran, so there is nothing to compare
+  // and this gate does not appear. A collector derives the same partition its
+  // workers derived — both from in-repo data alone — so it knows the global
+  // shard set by name, and a worker file that never arrives would otherwise
+  // assemble into a clean report of less work. That is the shape this landing
+  // exists to refuse, and it is the third floor of a discipline already built
+  // twice below: §127's `every slice produced a payload`, the gate loop's
+  // `neverRan` (which names the check rather than dying on undefined), and
+  // §152's `every restricted check was unioned back` — the last of which exists
+  // because mergeInspection dropped a restriction record once and a restricted
+  // `inspection` gated green on 3 contacting pairs against a full run's 81.
+  if (expectedShards) {
+    const present = new Set(shardRows.map((s) => s.shard));
+    gate('every expected shard was collected',
+      expectedShards.filter((s) => !present.has(s.shard))
+        .map((s) => ({ shardNeverCollected: s.shard, tasks: s.keys })),
+      `${present.size}/${expectedShards.length} shards`);
+  }
 
   // Summed BEFORE the merge writes a whole-check entry beside its slices —
   // afterwards every split check would be counted twice.
@@ -961,6 +971,10 @@ try {
   // this file would be the thing that drifts. An empty roster fails too: it
   // intersects nothing and would otherwise pass for that reason alone, the
   // same hole the paths-ignore gate closes.
+  //
+  // Held against the WHOLE table, never `--only`'s selection: this is a claim
+  // about the battery the repo declares, not about what one invocation chose
+  // to run.
   const NOT_IN_BATTERY = new Map([
     ['freeAnnulus', 'a LAYOUT tool — it answers "where is there room", it does not judge'],
     ['sweptRegistry', 'the §36 registry other checks consume; sweptOverlap gates what it produces'],
@@ -980,9 +994,9 @@ try {
     ]);
   }
 
-  if (SPLIT) {
+  if (split) {
     const roster = axisMeta.map((a) => a.name);
-    for (const e of BATTERY) {
+    for (const e of battery) {
       if (!e.slices) continue;
       const declared = e.slices.map((s) => s.axis);
       const missing = roster.filter((n) => !declared.includes(n));
@@ -1019,7 +1033,6 @@ try {
     }
   }
 
-  fpA = shardOut[0].fp;
   if (fpA) console.log(`  fingerprint A: ${fpA.hash} (${fpA.units} units, ${fpA.poseCount} poses)`);
 
   // §152 — UNION BEFORE GATING. A restricted payload describes only the pairs
@@ -1072,26 +1085,30 @@ try {
   // Gates are evaluated in canonical BATTERY order regardless of which shard
   // produced which result, so the log a human reads (and a report diff) does
   // not depend on the partition.
-  for (const { name, gate: gateDesc, fails, note } of BATTERY) {
+  for (const { name, gate: gateDesc, fails, note } of battery) {
     const got = results.get(name);
     // A shard that dies takes its remaining checks with it. Say which ones
     // rather than throwing on the first missing payload: a battery that
     // reports "sweptOverlap never ran" is diagnosable, and one that dies with
     // a TypeError reading `result` of undefined is not.
-    if (!got) { gate(`${name}: ${gateDesc}`, [{ neverRan: name, reason: 'its shard failed before reaching it' }]); continue; }
+    // The two ways a payload can be absent are different findings, and a
+    // diagnosable failure says which: in one process the shard died partway;
+    // across processes the shard's worker never arrived at all (the gate above
+    // names it). Same row, honest reason — the point of `neverRan` over a
+    // TypeError on `undefined` is that it tells you where to look.
+    if (!got) {
+      gate(`${name}: ${gateDesc}`, [{ neverRan: name,
+        reason: expectedShards ? 'no worker file carried the shard it was on' : 'its shard failed before reaching it' }]);
+      continue;
+    }
     gate(`${name}: ${gateDesc}`, fails(got.result), note?.(got.result));
   }
 
   // Determinism anchor: a SECOND virgin boot must reproduce the hash exactly.
   // Deliberately NOT sharded — its whole content is that two virgin contexts
   // of this tree agree, so it stays one boot after the shards have closed.
-  if (!SPEC_ONLY) {
-  console.log('boot B (virgin, fresh context)…');
-  const B = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
-  const fpB = await B.page.evaluate(() => window.__I.fingerprint(window.__clock));
-  console.log(`  fingerprint B: ${fpB.hash}`);
   gate('fingerprint deterministic across virgin boots',
-    fpA && fpA.hash === fpB.hash && fpA.units === fpB.units ? [] : [{ bootA: fpA, bootB: fpB }],
+    fpA && fpB && fpA.hash === fpB.hash && fpA.units === fpB.units ? [] : [{ bootA: fpA, bootB: fpB }],
     `hash ${fpA ? fpA.hash : 'shard 0 never reported one'}`);
 
   // §152 — THE SAME ANCHOR FOR THE KEY, and it is the property the whole
@@ -1101,76 +1118,37 @@ try {
   // because that is already a second virgin context of this tree — the
   // fingerprint's own reason for being read there.
   //
+  // It is also what makes §127 tier 3's independent preflights sound: every
+  // worker boots its own tree and derives its own changed-unit set, and this
+  // is the gate that says two virgin boots of one tree agree about the key.
+  //
   // The gate names the ROWS that differ rather than the fact that they do:
   // a nondeterministic unit is a specific part with a specific cause (a lazily
   // re-tessellated mesh, an unseeded random, a pose-history leak resetInputs
   // does not cover), and the row is what points at it.
   if (headDigests) {
-    const dB = await B.page.evaluate(() => window.__I.unitDigests(window.__clock));
-    const drift = Object.keys(headDigests.units).filter((n) => headDigests.units[n].key !== dB.units[n]?.key);
+    const drift = Object.keys(headDigests.units).filter((n) => headDigests.units[n].key !== digestsB?.units[n]?.key);
     gate('unit digests deterministic across virgin boots',
-      drift.map((n) => ({ unit: n, bootA: headDigests.units[n], bootB: dB.units[n] ?? null })),
+      drift.map((n) => ({ unit: n, bootA: headDigests.units[n], bootB: digestsB?.units[n] ?? null })),
       `${headDigests.unitCount} units, ${headDigests.poseCount} poses, place quantum ${headDigests.placeQ}`);
-  }
-  await B.context.close();
   }
   }
 
-  // TODO 36 tier one — every declared spec point must BUILD. Runs after the
-  // shards so it never competes with them for cores; the boots are ~15 s each
-  // and concurrent (?trial=1 pages share no state), so the whole set costs a
-  // fraction of one sweep. A point that WARNS passes and its count is data;
-  // only a point that fails to produce a __clock is a failure.
-  console.log(`spec boots (${SPEC_POINTS.length} declared points)…`);
-  const specT0 = Date.now();
-  // A BOUNDED POOL, not Promise.all — §104's landing measured why. The old
-  // "concurrent, ~15 s each" note assumed boots stayed cheap; unbounded, all
-  // 26 points boot at once on the runner's 4 vCPUs and each boot's wall
-  // stretches ~6×. That margin was real until boots grew: §104's alarm
-  // set-up doubled the ribbon's wind frames (61 → 124 k-solves at boot),
-  // and the two heaviest points — reserveh=48, the deepest fusee groove
-  // stack — crossed BOOT_TIMEOUT_MS on CI (run #335: both DEAD, no page
-  // errors, alive solo and alive locally). The pool pins per-boot
-  // contention to the SHARDS rationale above (4 vCPU, single-threaded
-  // pages): 4 concurrent boots keep each boot's wall within ~2× of solo,
-  // so the 120 s timeout keeps its honest meaning — "one roughly
-  // uncontended boot must build" — instead of being widened to cover a
-  // pile-up the harness itself created. Wall for the tier stays in the
-  // same band (26 boots / 4 lanes vs 26-way thrash).
-  const SPEC_BOOT_POOL = 4;
-  const specRows = new Array(SPEC_POINTS.length);
-  {
-    let next = 0;
-    await Promise.all(Array.from({ length: Math.min(SPEC_BOOT_POOL, SPEC_POINTS.length) }, async () => {
-      for (;;) {
-        const i = next++;
-        if (i >= SPEC_POINTS.length) return;
-        const pt = SPEC_POINTS[i];
-        const r = await specBoot(browser, base, pt.q);
-        specRows[i] = { ...pt, ...r };
-      }
-    }));
-  }
-  for (const r of specRows) {
-    const how = r.alive ? (r.warns.length ? `builds, ${r.warns.length} warn(s)` : 'builds, silent')
-      : r.wedged ? 'WEDGED' : 'DEAD';
-    console.log(`  ${r.alive ? '·' : '✗'} ${r.name.padEnd(16)} ${how}`);
-  }
   // The failure list is liveness only. The control is held tighter — identity
   // warning would mean the trial harness itself is lying, since every gate
   // above boots that same spec and found it silent.
   gate('spec boots: every declared spec point builds',
-    specRows.filter((r) => !r.alive).map((r) => ({
+    spec.rows.filter((r) => !r.alive).map((r) => ({
       spec: r.name, why: r.why, outcome: r.wedged ? 'wedged' : 'never produced a __clock',
       fatal: r.fatal ? r.fatal.message : null,
       warnsBeforeDeath: r.warns ? r.warns.length : 'none recorded (main.js did not reach its first lines)',
       pageErrors: r.errors.slice(0, 3),
     })),
-    `${specRows.filter((r) => r.alive).length}/${specRows.length} build`
-    + `, ${specRows.filter((r) => r.alive && r.warns.length).length} of them with warnings (expected — a moved station warns)`
-    + ` · ${secs(Date.now() - specT0)}`);
+    `${spec.rows.filter((r) => r.alive).length}/${spec.rows.length} build`
+    + `, ${spec.rows.filter((r) => r.alive && r.warns.length).length} of them with warnings (expected — a moved station warns)`
+    + ` · ${secs(spec.ms)}`);
   gate('spec boots: the identity control is silent',
-    specRows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
+    spec.rows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
       .map((r) => ({ spec: r.name, warns: r.warns, note: 'the default spec is what every other gate boots — if it warns here, the trial path differs from the real one' })));
 
   // ---- §95 tier two: the SKIP LIST is held true --------------------------
@@ -1194,7 +1172,9 @@ try {
   // It is safe to run in-process and costs milliseconds, and it belongs HERE
   // rather than in its own workflow because editing the list touches
   // .github/workflows/**, which the list deliberately does not ignore — so the
-  // change that could break this always runs the job that checks it.
+  // change that could break this always runs the job that checks it. It reads
+  // the repo and never the page, which is why it assembles with the rest of
+  // this function rather than needing a browser (§127 tier 3).
   {
     const ymlPath = join(ROOT, '.github/workflows/battery.yml');
     const yml = existsSync(ymlPath) ? readFileSync(ymlPath, 'utf8') : null;
@@ -1257,7 +1237,7 @@ try {
   const failed = gates.filter((g) => !g.pass);
   const totalMs = Date.now() - t0;
   console.log(`\n${gates.length - failed.length}/${gates.length} gates pass · total ${secs(totalMs)}`
-    + ` (checks ${secs(checkMs)} across ${shards.length} shard(s))`);
+    + ` (checks ${secs(checkMs)} across ${shardCount} shard(s))`);
 
   if (REPORT_PATH) {
     // Sorted keys and 2-space JSON so two runs diff line-for-line. `ms` is
@@ -1272,6 +1252,9 @@ try {
       // whole verdict from an inherited one without reading the log.
       ...(headDigests ? { digests: headDigests } : {}),
       ...(restriction ? { restrictedTo: restriction } : {}),
+      // The WHOLE table, never `--only`'s selection: a row this run did not
+      // run reads `neverRan`, which is what a narrowed run's report should say
+      // about the rest of the battery rather than omitting it.
       checks: Object.fromEntries(BATTERY.map(({ name }) =>
         [name, results.has(name)
           // §127 — `sliceMs` appears only on a SPLIT run of a split check, and
@@ -1290,8 +1273,467 @@ try {
     console.error(`FAILED: ${failed.map((g) => g.name).join(' · ')}`);
     process.exitCode = 1;
   }
+  return gates;
+}
+
+// ---- THE BROWSER HALF ---------------------------------------------------
+
+// One process's share of the global partition. `group` is [{ shard, index }]
+// with the GLOBAL index, which is what every row it returns is tagged with:
+// a worker's second shard is shard 4 of the run, and a boot warning filed
+// under a local 1 would point at another worker's boot.
+async function runShardGroup({ browser, base, group, shardCount, axisFilter, t0 }) {
+  // Every shard is a VIRGIN boot running a subset of the battery, and that is
+  // sound for exactly one reason, which is worth stating because the whole
+  // tranche rests on it: `start()` in inspect.js calls `clock.resetInputs()`
+  // before every check, so a check's result cannot depend on which checks ran
+  // before it on that page. (It has to — some of what setPose writes is
+  // CUMULATIVE, §80's finding at walkPoses.) Sharding therefore changes the
+  // GROUPING of checks and nothing a check can observe. If a report ever
+  // moves between `--shards 1` and `--shards 2`, that invariant has broken
+  // and the check that moved is the bug, not the harness. §127 tier 3 spreads
+  // the same grouping across PROCESSES, which a check can observe no better.
+  const results = new Map();  // task key → { result, ms } — merged to check name in the assembly
+  const axisMeta = [];        // §127 — window.__I.AXES as the page reports it, read once
+  const checkRoster = [];     // TODO 78 — window.__I.CHECK_NAMES, likewise: the page's roster, not this file's
+  let fpA = null;
+  // Per PROCESS, which is all it has to be: a worker owns its own dev server
+  // and its own TMPDIR, so the /__state file two shards would race over is not
+  // shared with any other worker.
+  const bootInTurn = serialiser();
+  // Each shard catches its own failure instead of rejecting: one shard dying
+  // must not throw away what the others measured, because the surviving
+  // reports are how you tell a broken harness from a broken build.
+  const shardRows = await Promise.all(group.map(async ({ shard, index }) => {
+    const tag = shardCount > 1 ? `[shard ${index}] ` : '';
+    let context = null;
+    try {
+      const boot = await bootInTurn(async () => {
+        console.log(`${tag}boot (virgin)…`);
+        const p = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
+        console.log(`${tag}  __clock up at ${secs(Date.now() - t0)}`);
+        return p;
+      });
+      context = boot.context;
+      const page = boot.page;
+      const warns = await prepPage(page);
+      // §127 — the axis roster, from the page rather than from this file's
+      // declaration of it. Read on shard 0 for the same reason the fingerprint
+      // is: it is a property of the tree, not of the shard. (§127 tier 3: the
+      // GLOBAL shard 0, so exactly one worker reads it.)
+      if (index === 0) {
+        const axes = await page.evaluate(() => window.__I.AXES.map((a) => ({ name: a.name, n: a.n })));
+        axisMeta.push(...(axisFilter ? axes.filter((a) => axisFilter.has(a.name)) : axes));
+        checkRoster.push(...await page.evaluate(() => window.__I.CHECK_NAMES.slice()));
+      }
+      // The fingerprint is read on shard 0 only. It is not a per-shard property
+      // — it is the identity build's hash, and shard 0's boot is as virgin as
+      // any other. Reading it here rather than on its own boot keeps the boot
+      // count at shards + 1, which is what the double-boot anchor needs.
+      if (index === 0) fpA = await page.evaluate(() => window.__I.fingerprint(window.__clock));
+      for (const { key, name, opts } of shard.entries) {
+        const t = Date.now();
+        const { result, ms } = await runCheck(page, name, opts, CHECK_TIMEOUT_MS);
+        results.set(key, { result, ms });
+        console.log(`${tag}${key}… ${secs(ms)} (at ${secs(t - t0 + ms)})`);
+      }
+      return { shard: index, warns };
+    } catch (err) {
+      console.error(`${tag}shard FAILED: ${err.message}`);
+      return { shard: index, warns: [], error: String(err.message) };
+    } finally {
+      await context?.close().catch(() => {});
+    }
+  }));
+  return { results, axisMeta, checkRoster, shardRows, fpA };
+}
+
+// The determinism anchors, both of them, on one second virgin boot. Its
+// verdicts are gated in the assembly; what happens here is only the reading.
+async function anchorBootB(browser, base, headDigests) {
+  console.log('boot B (virgin, fresh context)…');
+  const B = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
+  const fpB = await B.page.evaluate(() => window.__I.fingerprint(window.__clock));
+  console.log(`  fingerprint B: ${fpB.hash}`);
+  const digestsB = headDigests
+    ? await B.page.evaluate(() => window.__I.unitDigests(window.__clock))
+    : null;
+  await B.context.close();
+  return { fpB, digestsB };
+}
+
+// TODO 36 tier one — every declared spec point must BUILD. Runs after the
+// shards so it never competes with them for cores; the boots are ~15 s each
+// and concurrent (?trial=1 pages share no state), so the whole set costs a
+// fraction of one sweep. A point that WARNS passes and its count is data;
+// only a point that fails to produce a __clock is a failure.
+async function runSpecTier(browser, base, points) {
+  console.log(`spec boots (${points.length} declared points)…`);
+  const specT0 = Date.now();
+  // A BOUNDED POOL, not Promise.all — §104's landing measured why. The old
+  // "concurrent, ~15 s each" note assumed boots stayed cheap; unbounded, all
+  // 26 points boot at once on the runner's 4 vCPUs and each boot's wall
+  // stretches ~6×. That margin was real until boots grew: §104's alarm
+  // set-up doubled the ribbon's wind frames (61 → 124 k-solves at boot),
+  // and the two heaviest points — reserveh=48, the deepest fusee groove
+  // stack — crossed BOOT_TIMEOUT_MS on CI (run #335: both DEAD, no page
+  // errors, alive solo and alive locally). The pool pins per-boot
+  // contention to the SHARDS rationale above (4 vCPU, single-threaded
+  // pages): 4 concurrent boots keep each boot's wall within ~2× of solo,
+  // so the 120 s timeout keeps its honest meaning — "one roughly
+  // uncontended boot must build" — instead of being widened to cover a
+  // pile-up the harness itself created. Wall for the tier stays in the
+  // same band (26 boots / 4 lanes vs 26-way thrash).
+  const SPEC_BOOT_POOL = 4;
+  const rows = new Array(points.length);
+  {
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(SPEC_BOOT_POOL, points.length) }, async () => {
+      for (;;) {
+        const i = next++;
+        if (i >= points.length) return;
+        const pt = points[i];
+        const r = await specBoot(browser, base, pt.q);
+        rows[i] = { ...pt, ...r };
+      }
+    }));
+  }
+  for (const r of rows) {
+    const how = r.alive ? (r.warns.length ? `builds, ${r.warns.length} warn(s)` : 'builds, silent')
+      : r.wedged ? 'WEDGED' : 'DEAD';
+    console.log(`  ${r.alive ? '·' : '✗'} ${r.name.padEnd(16)} ${how}`);
+  }
+  return { rows, ms: Date.now() - specT0 };
+}
+
+// ---- §127 tier 3: THE COLLECTOR -----------------------------------------
+//
+// No browser, no dev server: every payload it needs was measured by a worker.
+// What it does instead is DERIVE the partition its workers derived — from
+// `buildTasks` and `partition` over in-repo data, the same pure functions,
+// with no message from any worker involved — and hold the files it was given
+// against it. Everything that could make the assembled run smaller than the
+// declared one throws or gates by name; nothing about it is resolved by
+// taking the collector's word or a worker's word alone.
+if (COLLECT) {
+  const t0 = Date.now();
+  const files = COLLECT.map((path) => {
+    // NOT readJsonOr: that convention exists so a missing baseline costs a
+    // full run instead of a crash, and there is no "more work" for a collector
+    // to fall back to — a worker file it cannot read is work it cannot
+    // assemble, and the only safe reading of that is a hard stop.
+    const obj = JSON.parse(readFileSync(resolve(path), 'utf8'));
+    if (obj.formatVersion !== REPORT_FORMAT_VERSION) {
+      throw new Error(`${path}: worker file at format v${obj.formatVersion ?? 'unversioned'} `
+        + `against this harness's v${REPORT_FORMAT_VERSION}`);
+    }
+    return { path, ...obj };
+  });
+
+  // ONE RUN, OR IT IS NOT A RUN. The workers derived their groups from the
+  // shape below; two files that disagree about it were partitioning different
+  // batteries, and their union is not the battery either of them ran.
+  const shapeOf = (f) => JSON.stringify({ n: f.matrix.n, shards: f.shards, split: f.split, only: f.only });
+  const shapes = new Map(files.map((f) => [shapeOf(f), f.path]));
+  if (shapes.size > 1) {
+    throw new Error(`the worker files disagree about the run's shape:\n  ${[...shapes]
+      .map(([s, p]) => `${p}: ${s}`).join('\n  ')}`);
+  }
+  const { n } = files[0].matrix;
+  const perWorker = files[0].shards;
+  const only = files[0].only ? new Set(files[0].only) : null;
+  const split = files[0].split;
+
+  // The partition, re-derived here exactly as each worker derived it.
+  const battery = selectBattery(BATTERY, only);
+  const tasks = buildTasks(battery, split, COSTS);
+  const parts = partition(tasks, Math.min(n * perWorker, tasks.length));
+  const expectedShards = parts.map((s, i) => ({ shard: i, keys: s.entries.map((e) => e.key) }));
+  console.log(`--collect: ${files.length} worker file(s) of ${n} · ${tasks.length} task(s) `
+    + `across ${expectedShards.length} shard(s)${split ? '' : ' (--no-split)'}${only ? ` (--only ${[...only].join(',')})` : ''}`);
+
+  // Ownership is arithmetic, so a worker's claim about what it owned is
+  // checkable rather than trusted: worker i owns [i*SHARDS, (i+1)*SHARDS) of
+  // the shards the partition actually produced. A file that claims otherwise
+  // was built from a different tree or a different flag set, and assembling it
+  // would silently mix two runs.
+  const seen = new Map();   // global shard index → the file that carried it
+  for (const f of files) {
+    const owed = expectedShards.map((s) => s.shard)
+      .filter((s) => s >= f.matrix.i * perWorker && s < (f.matrix.i + 1) * perWorker);
+    if (JSON.stringify(owed) !== JSON.stringify(f.ownedShards)) {
+      throw new Error(`${f.path}: worker ${f.matrix.i}/${n} carries shards [${f.ownedShards}] `
+        + `where this tree's partition gives it [${owed}]`);
+    }
+    for (const s of f.ownedShards) {
+      if (seen.has(s)) throw new Error(`shard ${s} arrives twice: ${seen.get(s)} and ${f.path}`);
+      seen.set(s, f.path);
+    }
+  }
+
+  // §152 composes only if every worker narrowed to the SAME changed set. Each
+  // derived it independently from its own preflight boot, which is sound
+  // because the digest-determinism gate below holds that two virgin boots of
+  // one tree agree — but "sound" is not "assumed", and a union run against
+  // inconsistent restrictions would inherit baseline rows for pairs another
+  // worker never swept.
+  const restrictions = new Map(files.map((f) => [JSON.stringify(f.preflight.restriction ?? null), f.path]));
+  if (restrictions.size > 1) {
+    throw new Error(`the workers restricted to different unit sets:\n  ${[...restrictions]
+      .map(([r, p]) => `${p}: ${r}`).join('\n  ')}`);
+  }
+  const restriction = files[0].preflight.restriction ?? null;
+  const baseline = atReportFormat(readJsonOr(BASELINE_PATH, 'baseline report'), 'baseline report');
+  // The union is what puts a restricted payload back to a whole-movement one,
+  // and it happens HERE — so a collector without the baseline its workers
+  // restricted against would skip it, and every restricted payload would gate
+  // on its own partial rows. That is §152's stale green with an extra process
+  // in the way, so it is refused rather than reported.
+  if (!!baseline !== !!files[0].preflight.baselineUsable) {
+    throw new Error(files[0].preflight.baselineUsable
+      ? '--collect has no usable --baseline, and its workers restricted against one'
+      : '--collect was given a baseline its workers did not use');
+  }
+
+  const anchored = files.filter((f) => f.anchors && f.spec);
+  if (anchored.length !== 1) {
+    throw new Error(`exactly one worker carries the anchors (fingerprints, digests, rosters, spec boots); `
+      + `${anchored.length} of ${files.length} do`);
+  }
+  const [anchor] = anchored;
+  if (anchor.matrix.i !== 0) throw new Error(`${anchor.path}: worker ${anchor.matrix.i} carries the anchors, which are worker 0's`);
+
+  // The task payloads themselves, keyed as the partition keys them. A key that
+  // arrives twice is two measurements of one task, and there is no rule for
+  // choosing between them that is not arbitrary — so it stops here rather than
+  // letting whichever file was listed last decide the verdict.
+  const results = new Map();
+  const carriedBy = new Map();
+  for (const f of files) {
+    for (const [key, got] of Object.entries(f.tasks)) {
+      if (results.has(key)) throw new Error(`task ${key} arrives twice: ${carriedBy.get(key)} and ${f.path}`);
+      results.set(key, got);
+      carriedBy.set(key, f.path);
+    }
+  }
+
+  assemble({
+    battery,
+    results,
+    shardRows: files.flatMap((f) => f.shardRows).sort((a, b) => a.shard - b.shard),
+    shardCount: expectedShards.length,
+    expectedShards,
+    axisMeta: anchor.anchors.axisMeta,
+    checkRoster: anchor.anchors.checkRoster,
+    fpA: anchor.anchors.fpA,
+    fpB: anchor.anchors.fpB,
+    digestsB: anchor.anchors.digestsB,
+    spec: anchor.spec,
+    headDigests: anchor.preflight.headDigests,
+    restriction,
+    baseline,
+    split,
+    specOnly: false,
+    t0,
+  });
+} else {
+// ---- ONE PROCESS: the browser half, and what it does with what it measured
+//
+// The single-process run and a `--matrix` worker are the SAME path — they
+// differ only in how many shards the partition is cut into and which of them
+// this process takes. Without --matrix it takes all of them and assembles its
+// own payloads; with it, it takes its own and writes them out for a collector.
+
+let server, browser;
+const stateDir = mkdtempSync(join(tmpdir(), 'timesim-ci-'));
+try {
+  const port = await freePort();
+  const base = `http://127.0.0.1:${port}`;
+  // TMPDIR points at a private fresh dir so /__state starts absent and a
+  // developer's real saved state is never read or clobbered by a CI run.
+  server = spawn('python3', [join(ROOT, 'dev_server.py'), String(port)],
+    { cwd: ROOT, env: { ...process.env, TMPDIR: stateDir }, stdio: 'ignore' });
+  await waitForServer(`${base}/index.html`, 15000);
+
+  browser = await chromium.launch({ args: [
+    // An automated pane throttles setTimeout(0) to ~1s, turning the sweeps'
+    // cooperative yields into hours of idle (the CLAUDE.md trap). These keep
+    // the headless page foreground-scheduled so a yield costs what it says.
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+  ] });
+
+  // ---- §152 PREFLIGHT: the key, and the decision it licenses ---------------
+  //
+  // One extra VIRGIN boot, taken only when digests were asked for. It costs
+  // 8 s here and ~26 s on CI against the four sweeps' 51 min, and it has to
+  // come before the partition because what a shard is asked to run depends on
+  // what it establishes.
+  //
+  // Nothing about this boot is special except its timing: the digests are read
+  // the way every check is read, through page.evaluate, off a page whose state
+  // file has just been deleted.
+  //
+  // §127 tier 3 — EVERY WORKER RUNS IT, and none of them coordinates: each
+  // restores the same baseline cache entry and boots its own tree, so each
+  // derives the same changed set. What makes that sound is the
+  // digest-determinism gate in the assembly, and what makes it CHECKED is the
+  // collector holding the workers' restrictions JSON-equal.
+  let headDigests = null;      // this tree's per-unit key
+  let restriction = null;      // the changed-unit list every sweep narrows to, or null for a full run
+  let baseline = null;         // the baseline --report the union draws its inherited rows from
+  if ((DIGESTS_OUT || DIGESTS_BASE || BASELINE_PATH) && !SPEC_ONLY) {
+    // The side-inputs are files, so they are read before anything boots: a
+    // baseline that cannot be read costs a full run, and finding that out
+    // after a boot would just be a slower way to learn it.
+    const baseDigests = atReportFormat(readJsonOr(DIGESTS_BASE, 'base digests'), 'base digests');
+    baseline = atReportFormat(readJsonOr(BASELINE_PATH, 'baseline report'), 'baseline report');
+
+    console.log('§152 preflight boot (virgin)…');
+    const P = await virginBoot(browser, base, BOOT_TIMEOUT_MS);
+    headDigests = await P.page.evaluate(() => window.__I.unitDigests(window.__clock));
+    headDigests.checkCode = checkCodeDigest();
+    headDigests.formatVersion = REPORT_FORMAT_VERSION;
+    // The changed set is computed ON THIS PAGE, by inspect.js's own
+    // digestChangedUnits, rather than by a second implementation here. The
+    // rule that a unit missing from either tree counts as changed, and that
+    // the two always-changed lists are UNIONED, is one definition in the
+    // module that owns the key — not a Node copy of it that drifts.
+    const changed = (!NO_INCREMENTAL && baseDigests && baseline
+      && JSON.stringify(baseDigests.checkCode) === JSON.stringify(headDigests.checkCode))
+      ? await P.page.evaluate(([b, h]) => window.__I.digestChangedUnits(b, h), [baseDigests, headDigests])
+      : null;
+    await P.context.close();
+    console.log(`  digests: ${headDigests.unitCount} units over ${headDigests.poseCount} poses`);
+    if (DIGESTS_OUT) {
+      writeFileSync(resolve(DIGESTS_OUT), `${JSON.stringify(headDigests, null, 2)}\n`);
+      console.log(`  digests written to ${resolve(DIGESTS_OUT)}`);
+    }
+
+    // EVERY BRANCH THAT IS NOT "restrict" SAYS WHY. A feature whose failure
+    // mode is a stale green does not get to be quiet about declining to use
+    // itself, and "the battery looked fast today" must never be something a
+    // reader has to reverse-engineer from a wall clock.
+    if (NO_INCREMENTAL) {
+      console.log('  --no-incremental: running everything (the reference an incremental run must agree with)');
+    } else if (!baseDigests || !baseline) {
+      console.log('  no usable baseline: running everything');
+    } else if (JSON.stringify(baseDigests.checkCode) !== JSON.stringify(headDigests.checkCode)) {
+      const moved = CHECK_CODE_FILES.filter((f) => baseDigests.checkCode?.[f] !== headDigests.checkCode[f]);
+      console.log(`  CHECK CODE moved (${moved.join(', ')}): every stored verdict is void — running everything`);
+    } else if (!changed.length) {
+      // Not a hypothetical: a docs-and-workflow PR that the paths filter did
+      // not take out reaches here. It still runs every cheap check, and it
+      // still unions, so the report it writes describes the whole movement.
+      console.log('  0 units changed: the sweeps have nothing to measure on this tree');
+      restriction = changed;
+    } else {
+      restriction = changed;
+      const n = headDigests.unitCount;
+      const k = changed.length;
+      const pairs = k * (n - k) + (k * (k - 1)) / 2;
+      const all = (n * (n - 1)) / 2;
+      console.log(`  ${k} unit(s) changed: ${changed.join(', ')}`);
+      console.log(`  restricting the four sweeps to ${pairs} of ${all} pairs `
+        + `(${(100 * pairs / all).toFixed(1)}%); every other check runs whole`);
+    }
+  }
+
+  const t0 = Date.now();
+  const battery = selectBattery(BATTERY, ONLY);
+  const axisFilter = selectedAxes(battery, ONLY);
+  const tasks = buildTasks(battery, SPLIT, COSTS);
+  // §152 — the restriction reaches the checks the way every other option does,
+  // as an opt on the task. Only the four SWEEPS take it: the cheap checks sum
+  // to ~76 s and are where a key mistake would hide, so they always run whole.
+  if (restriction) {
+    for (const t of tasks) {
+      if (RESTRICTABLE.has(t.name)) t.opts = { ...t.opts, pairsTouching: restriction };
+    }
+  }
+  // §127 tier 3 — the partition is over N × SHARDS groups, and this worker runs
+  // the SHARDS of them that are its own. N is 1 without --matrix, so the single
+  // process takes every shard and the arithmetic is the one it has always done.
+  // The Math.min clamp against the task count can leave the last workers with
+  // NOTHING to run, which is a legitimate outcome and not an error — what the
+  // collector holds is that every shard the partition DID produce arrives
+  // exactly once, not that every worker had work.
+  const workers = MATRIX ? MATRIX.n : 1;
+  const shards = SPEC_ONLY ? [] : partition(tasks, Math.min(workers * SHARDS, tasks.length));
+  const group = shards.map((shard, index) => ({ shard, index }))
+    .filter(({ index }) => !MATRIX || (index >= MATRIX.i * SHARDS && index < (MATRIX.i + 1) * SHARDS));
+  const ownsAnchors = !MATRIX || MATRIX.i === 0;
+  if (SPEC_ONLY) console.log('--spec-only: skipping the sweeps and the fingerprint anchor.');
+  console.log(`${tasks.length} task(s)${SPLIT ? '' : ' (--no-split)'} across ${shards.length} shard(s), partitioned by cost:`);
+  shards.forEach((s, i) => console.log(
+    `  shard ${i}  ~${Math.round(s.cost / 60)} min  ${s.entries.map((e) => e.key).join(' ')}`
+    + (MATRIX ? (Math.floor(i / SHARDS) === MATRIX.i ? '   ← this worker' : `   (worker ${Math.floor(i / SHARDS)})`) : '')));
+
+  const ran = await runShardGroup({ browser, base, group, shardCount: shards.length, axisFilter, t0 });
+
+  // The anchors are worker 0's, because the code above already treats shard 0
+  // as the tree's representative — the fingerprint, the axis roster and the
+  // check roster are properties of the tree, and reading them twice would only
+  // create two answers to hold against each other. Under --matrix the spec-boot
+  // tier rides with them until a later landing spreads it.
+  const { fpB, digestsB } = (!SPEC_ONLY && ownsAnchors)
+    ? await anchorBootB(browser, base, headDigests)
+    : { fpB: null, digestsB: null };
+  // `--only` narrows this tier to its own control point: the tier stays in the
+  // run (with both its gates) at one boot instead of 26.
+  const spec = ownsAnchors
+    ? await runSpecTier(browser, base, ONLY ? SPEC_POINTS.filter((p) => p.name === 'identity') : SPEC_POINTS)
+    : null;
+
+  if (MATRIX) {
+    // A worker evaluates NOTHING. It writes what it measured — its task
+    // payloads, its shards' boot warns and errors under their GLOBAL indices,
+    // the preflight decision it derived, and (worker 0) the anchors — and the
+    // collector is the only side that turns any of it into a verdict.
+    writeFileSync(resolve(TASKS_OUT), `${JSON.stringify({
+      formatVersion: REPORT_FORMAT_VERSION,
+      matrix: MATRIX,
+      shards: SHARDS,
+      split: SPLIT,
+      only: ONLY ? [...ONLY] : null,
+      ownedShards: group.map((g) => g.index),
+      tasks: Object.fromEntries(ran.results),
+      shardRows: ran.shardRows,
+      preflight: { headDigests, restriction, baselineUsable: !!baseline },
+      anchors: ownsAnchors
+        ? { fpA: ran.fpA, fpB, digestsB, axisMeta: ran.axisMeta, checkRoster: ran.checkRoster }
+        : null,
+      spec,
+    })}\n`);
+    console.log(`worker ${MATRIX.i}/${MATRIX.n}: ${ran.results.size} task payload(s) from shard(s) `
+      + `[${group.map((g) => g.index).join(', ')}]${ownsAnchors ? ' + the anchors' : ''} `
+      + `written to ${resolve(TASKS_OUT)} · ${secs(Date.now() - t0)}`);
+  } else {
+    assemble({
+      battery,
+      results: ran.results,
+      shardRows: ran.shardRows,
+      shardCount: shards.length,
+      expectedShards: null,
+      axisMeta: ran.axisMeta,
+      checkRoster: ran.checkRoster,
+      fpA: ran.fpA,
+      fpB,
+      digestsB,
+      spec,
+      headDigests,
+      restriction,
+      baseline,
+      split: SPLIT,
+      specOnly: SPEC_ONLY,
+      t0,
+    });
+  }
 } finally {
   await browser?.close();
   server?.kill();
   rmSync(stateDir, { recursive: true, force: true });
 }
+
+}   // ---- end of the browser path
