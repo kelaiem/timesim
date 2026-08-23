@@ -646,10 +646,28 @@ const gearTrueReach = (spec, bevel) => {
     let ux = b.x - a.x, uy = b.y - a.y, vx = c.x - b.x, vy = c.y - b.y;
     const lu = Math.hypot(ux, uy) || 1, lv = Math.hypot(vx, vy) || 1;
     ux /= lu; uy /= lu; vx /= lv; vy /= lv;
-    // outward edge normals (the outline runs counter-clockwise)
-    let nx = uy - vy, ny = vx - ux;          // sum of the two outward normals
+    // THIS IS NOT THE MITER, AND THE COMMENT SAYS SO ON PURPOSE — TODO 86.
+    // The outline runs counter-clockwise, so an edge (dx, dy) has outward normal
+    // (dy, −dx) and the true offset direction is the SUM of the two, whose
+    // length is 2·sin(θ/2) for the interior angle θ. What is computed here is a
+    // DIFFERENCE: a direction 90° off that bisector, scaled by the sine of the
+    // TURN angle rather than of the half interior angle. The consequence is an
+    // OVER-estimate — measured on the keyless setting wheel, 4.1451 against the
+    // 3.9424 the correct construction gives — so `gearOuterR` still bounds the
+    // metal and §115's declared-versus-cut assert still holds; it simply holds
+    // over more room than the tooth needs.
+    //
+    // It is left wrong rather than fixed here because correcting it is not a
+    // profile change. `gearOuterR` feeds station solves, and the 0.2027 it
+    // returns to the setting wheel un-binds `SLEEVE_TOP`'s setting-wheel cap in
+    // src/main.js — at which point the clutch sleeve reaches to the rim cap
+    // instead and `expectedContacts` measures `clutchSleeve ⇄ settingWheel` at
+    // 0.1278 against a 0.15 floor. That is its own finding: the cap has been
+    // passing on slack this error was lending it, and re-deriving it needs the
+    // real closest-approach geometry rather than the sphere-about-the-centre
+    // the current cap assumes. TODO 86 carries both halves.
+    let nx = uy - vy, ny = vx - ux;
     const ln = Math.hypot(nx, ny);
-    // half-angle between the edges; sin(θ/2) falls out of the normal sum
     const sinHalf = ln / 2 || 1;
     const off = ln > 1e-9 ? bevel / Math.max(sinHalf, 0.2) : bevel;   // clamped: a cusp is not infinite metal
     const bx = b.x + (ln > 1e-9 ? (nx / ln) * off : 0), by = b.y + (ln > 1e-9 ? (ny / ln) * off : 0);

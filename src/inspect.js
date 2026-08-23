@@ -2379,19 +2379,27 @@ export const INTRA_UNIT_WAIVERS = [
   // stub. The instrument measures the repair (0 rows).
   //
   // TODO 77 — the reserve train's two working meshes, the first rows this
-  // tier gates outside the alarm complex. Both interpenetrate because
-  // `gearOutlineShape` cuts straight-chord flanks with no pressure angle:
-  // two non-conjugate outlines at their correct centre distance and correct
-  // phase MUST interfere through the cycle, so this is the PROFILE's debt
-  // (roadmap §136), not a placement error the phase solve could fix — TODO
-  // 48's solve measures 0.07% of a pitch off anti-phase, which is right.
-  // Measured radial overlap, swept over 41 wind states: 0.279 mm on stage
-  // one, 0.621 mm on stage two. Waived rather than silenced so the unit can
-  // be GATED: any interference here that is not these two rows now fails.
+  // tier gates outside the alarm complex. The waivers stay after §136 and
+  // their reason has changed, which is the part worth reading. The flanks are
+  // no longer the suspect: probe-136-roll builds all 24 of the movement's gear
+  // meshes from the real generator, at their real centre distances, and rolls
+  // them a full pitch at the conjugate ratio with ZERO penetration and
+  // backlash to spare — both of these among them. What still interferes is
+  // what the EXTRUDE does afterwards: `bevelSize` offsets the contour outward
+  // by more than the tooth thickness reserved as backlash (0.0748 against
+  // 0.0427 at module 0.34, per flank), so the shipped tooth is fatter than the
+  // one the generator cut. That is TODO 84, it is general to every gear in the
+  // movement, and no phase or centre-distance solve can pay for it — TODO 48's
+  // solve measures 0.07% of a pitch off anti-phase and is right. Measured
+  // polygon-against-polygon at the movement's own phases: 0.118 mm on stage
+  // one; stage two is refused by the probe rather than reported, its own
+  // reconstruction limit at a 6-tooth wheel. Waived rather than silenced so
+  // the unit can be GATED: any interference here that is not these two rows
+  // now fails.
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#0', b: 'ExtrudeGeometry#2',
-    debt: 'TODO 77: p0 ⇄ w1, the stage-one mesh — trapezoidal flanks cannot roll conjugate (roadmap §136); 0.279 mm radial overlap, measured' },
+    debt: 'TODO 77: p0 ⇄ w1, the stage-one mesh — the profile rolls conjugate, the extrude bevel grows it past its backlash (TODO 84); 0.118 mm, measured' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'ExtrudeGeometry#6',
-    debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same profile debt (roadmap §136); 0.621 mm radial overlap, measured' },
+    debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same extrude debt (TODO 84); depth refused by the probe at a 6-tooth wheel, not measured' },
 ];
 
 // §121 — the units whose FF and MM tiers are GATED: the population this

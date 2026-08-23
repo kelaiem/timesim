@@ -16109,3 +16109,157 @@ the box, where the same grazing mode could in principle lie undetected —
 TODO 83 carries it, with `probe-122-verdict.mjs` as its instrument. And
 §136's fold — the entry this one was sequenced ahead of — re-prices its
 vertex cost against this new baseline.
+
+## §136 — real cycloidal teeth, and the three derivations that had only ever been accidentally sufficient
+
+Every gear in the movement except the escape wheel's was cut by one generator,
+`gearOutlineShape`: straight-chord flanks, a quadratic tip relief, no pressure
+angle, tessellated at `curveSegments: 3`. Two of those rolling together have no
+conjugate action at all — correctly-placed outlines, not gears. TODO 61 made the
+documents admit it; TODO 77 measured the consequence in the reserve train.
+
+`makeGear` and `makePinion` now cut from `gearToothSpec` + `cycloidalGearShape`.
+The per-member Willis law is what makes the profile tractable: the generating
+circle of radius `R_X/2` rolling INSIDE X's pitch circle generates X's flank as
+a hypocycloid that DEGENERATES to a straight radius — so **every member's flanks
+are radial, unconditionally, and mesh-independent**. All mate-dependence lives in
+the addendum FACE, an epicycloid from `m·min(mates)/4`. The pinion therefore
+loses its separate proportions entirely: conjugacy is a property of the PAIR, so
+a leaf's face is the epicycloid the wheel's pitch circle generates, and there is
+no second set of numbers to keep in step.
+
+**`mates` is declared at every call site and loudly missing otherwise** — 42
+builder sites, 11 `gearOuterR` bounds, 4 `minGearTeeth` guards. The face and the
+root are both functions of the mate graph, so a wrong mate list is a wrong
+SURFACE rather than a cosmetic difference. `gearMates` warns rather than throws:
+that fails CI's boot-silence gate while still producing an inspectable wheel, and
+the self-Willis fallback is a display form, not a mesh claim. Never a transcribed
+literal — the going train's counts are `RATE_TABLE`-derived, so a copied `80`
+would silently break the §22 respec.
+
+### What it cost was not the teeth
+
+35 of 38 tips SHRANK (−0.07 to −0.34); three grew. That moved three derivations
+that had only ever been ACCIDENTALLY sufficient, and each is a better finding
+than the profile change:
+
+**The reserve's swing solve cleared the wrong wheel.** `rsvSwing` exists to swing
+w1's bearing until the pair clears the built setting traverse — its own comment
+says "both bevel-corner cones and the connecting rod". It bounded `rsvW1TipR`
+alone, over w1's z-band alone, while `rsvP1` shares the arbor, is 1.62 BIGGER,
+and sits a whole `RSV_Z_STEP` deeper — so the bevel cone's lower half, the metal
+p1 actually reaches, sat outside the scanned slab. **`src/main.js` already stated
+the fact that invalidated it**, 140 lines below, where the pair group records
+that "the 300° step-up made p1 the pair's larger member, so the combined
+silhouette stopped being w1's". p1's +0.224 walked straight in. It is now a FIXED
+POINT — candidate swing → w1's station → the true w1→pivot distance →
+`rsvModule1` → p1's tip, recomputed per candidate — and made honest it REFUSES
+every bearing in ±30°, where it had been returning +11° and calling that cleared.
+
+**So the obstacle yielded, not the mechanism.** Swing cannot solve it from the
+reserve's side: swinging w1 lengthens the w1→pivot span, raises `rsvModule1` and
+GROWS p1, so it chases its own tail (+11° −0.33, +18° −0.04, break-even only at
+the ±30° edge). Deepening the stratum is blocked too — it wants `RSV_Z_STEP ≥
+2.6` and `settingCap` already sits in the band below at +0.09. The setting cap's
+BEARING about the minute wheel is free exactly the way w1's about the barrel is,
+and it is the better payer because it feeds back into no module. Solved against
+the reserve's collinear geometry — the swing solve's own fallback and its worst
+case — so the two solves are acyclic by construction. P3 resolved in position
+space: no addendum shrunk, no budget widened.
+
+**The stem square cleared its margin by luck.** `SQ_TOP` lands
+`clutchSleeve ⇄ windStem` on `CLEAR_MARGIN` EXACTLY — the `SAW_FIT` term in it
+was itself added because the weld "eats the margin" — and `expectedContacts` asks
+`min >= CLEAR_MARGIN` of a float that has been through the build and a BVH
+query. Measured both sides: `main` 0.150000131 (passes by 1.3e-7), the same
+design under the new profile 0.149999773 (fails by 2.3e-7). Nothing physical
+moved. The knife-edge was always there and was passing by a coin flip, which is
+worse than failing — a gate whose verdict is luck is not a gate. The target now
+carries the band the measurement resolves to (1e-6: a decade above the observed
+drift, five decades below `CLEAR_MARGIN`), which is the PART clearing by slightly
+more, never the gate asking for less.
+
+A fourth, smaller one: `TIP_RELIEF = 1.02` had been inflating `gearOuterR` by
+~0.145 on the governor wheel, a cushion that silently swallowed the extrude
+bevel's MITER at the tip corner. A cycloidal face ends ON its tip circle, so
+removing the 1.02 was correct and left the bound tight enough for §115 to catch a
+0.0006 overrun. `gearOuterR` now derives that miter from the same outline the
+builder cuts — over-conservatively, which is its own story below.
+
+### The cost, measured
+
+The pricing gate that forced §122 to land first now passes at **0.98×** wall
+(1569.5 → 1542.3 s; every check 0.86–1.05) against the owner's ~+15% ceiling,
+where the same ×2-vertex proxy measured **1.78×** before §122. The census carries
+the transferable reason: the EXACT tier is BVH-query bound, so its cost is
+~O(log n) in vertices and does not move when the outline doubles (ratio 1.00);
+the VERDICT tier is the vertex-proportional one, and §122 cut it from 47% of
+check time to ~3% (78 s of 2701 s). Doubling gear vertices grows ~0.2% of the
+wall.
+
+### What did NOT ship, and why
+
+`makeBarrel` and `makeBevelGear` keep `gearOutlineShape`. The barrel's root GROWS
+0.226 and its cavity moves 1:1 — `drumInnerR`'s `max()` floor is dead code there,
+the first arm winning by 3.6 — which walks the alarm ribbon's section,
+`ALARM_GOV_K` and the cadence into §104's 0.5% gate. That is a mechanism
+re-solve, and it must not hide inside a geometry change. Bevels stay excluded by
+the owner's scope decision: `makeBevelGear` shears a flat outline into a cone,
+and a sheared planar cycloid is not a real bevel tooth. `TIP_RELIEF` stays with
+them. TODO 85 carries both.
+
+### Why TODO 77 does not close, and what measuring it properly found
+
+The waivers stay — `intraUnit` still matches both rows — and the reason turned
+out not to be the one the item had been written around.
+
+The profile is fine. `probe-136-roll` builds all 24 gear meshes from the real
+generator, at their real centre distances, and rolls each a full pitch at the
+conjugate ratio: **24/24 at zero penetration**, backlash to spare, both reserve
+meshes among them. So the reserve train's residual interference had to come
+from somewhere between `cycloidalGearShape` and the mesh, and it does. three.js
+extrudes with `bevelSize` by offsetting the contour OUTWARD, so the shipped
+tooth is the cut tooth grown all round by `gearBevel` — 0.0748 u per flank at
+module 0.34 against a designed backlash of 0.0427 u for the whole pair. Every
+gear in the movement is extruded this way; the reserve train is only the unit
+whose rows are gated. **TODO 84** carries it, with the three candidate fixes and
+the note that none of them may be paid for by widening `cyBacklash`.
+
+Finding that required three instruments, and the second and third exist because
+the one before could not answer. The silhouette measure TODO 77 was written on
+runs a ray from the mate's centre — and a cycloidal pinion's flank below the
+pitch circle is RADIAL, so the ray lies IN the surface it is meant to cross and
+the reading inflates. Its pre- and post-§136 numbers are not comparable and must
+not be subtracted. `probe-reserve-mesh-overlap` now adds a perpendicular column
+and, past that, an EXACT one: the generator's outline grown by the bevel,
+registered against the shipped mesh on its tip lattice, polygon against polygon
+at the movement's own centres and phases, no bins. It is believed only where the
+reconstruction lands on the mesh's own measured tip radius. On stage one it does
+— 5.2756 u against 5.2756 — and reads **0.118 mm**. On stage two it does not,
+and the row is REFUSED rather than reported.
+
+That reconstruction is also what caught the landing's own bug. `gearTrueReach`
+ships here computing its bisector from a DIFFERENCE of the two outward edge
+normals where the SUM is meant: 90° off the bisector, with a length that is the
+sine of the turn angle instead of the half interior angle, so a nearly straight
+run reads as a cusp and a cusp reads as straight. It stays green because
+`gearOuterR` takes `max(tipR + bevel, gearTrueReach)` and the misdirected offset
+grows the radius less than the inflated length does — the bound still bounds,
+over a reach it never actually computed, and §115's assert passes on the first
+term.
+
+**It ships wrong on purpose, with the comment saying so.** The fix was written
+and reverted: correcting it returns 0.2027 to the keyless setting wheel
+(4.1451 → 3.9424), and that slack is consumed by `SLEEVE_TOP`'s second cap,
+which stops binding — the clutch spine then reaches to the rim cap instead and
+`expectedContacts` measures `clutchSleeve ⇄ settingWheel` at 0.1278 against the
+0.15 floor. Which is the more useful finding of the two: that cap has been
+passing on slack the error was lending it, and its stated argument (a sphere of
+radius `gearOuterR` about the wheel's centre) is not the governing distance at
+the failing pose. Re-deriving it belongs in the same landing as the miter fix,
+because `gearOuterR` feeds station solves across the movement. TODO 86 carries
+both halves, and the probe already carries the correct construction.
+
+The claim in "modelled/simulated" terms is exact — the teeth are now MODELLED as
+conjugate geometry; the wheels are still POSED by tooth-count arithmetic, not
+driven.
