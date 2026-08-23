@@ -226,7 +226,7 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 // the pair does NOT let anyone do is quietly keep a projection while believing
 // it was measured.
 const COSTS = {
-  'support': 15,
+  'support': 7,
   'graph': 1,
   'axisEntry': 2,
   // §111 raised this from 17 (the governor row's 449 phases); §113's stubby
@@ -243,8 +243,8 @@ const COSTS = {
   // --report refreshes it like every row.
   'slenderness': 1,
   'meshIntegrity': 10,
-  'intraUnit': 6,
-  'assembly': 4,
+  'intraUnit': 3,
+  'assembly': 3,
   // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
   // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair
   // loop is quadratic in exactly that. Measured, unscaled, on the container
@@ -270,29 +270,39 @@ const COSTS = {
   'equalisation': 16,
   'chainLength': 1,
   'restoring': 3,
-  'inspection': 762,
-  'clearances': 545,
+  // §122 — the verdict tier's two fixes moved this column's three largest
+  // rows, and every moved entry here is the OLD CI-calibrated value scaled
+  // by its measured local before/after ratio (one container, same-day runs,
+  // full battery both sides: clearances ×0.50, inspection ×0.21 with slices
+  // ×0.17–0.28, support ×0.47, intraUnit ×0.56, assembly ×0.69). Scaling
+  // rather than transplanting keeps the header's own lesson: local absolute
+  // times are not CI's, but a measured RATIO on one box transfers, and this
+  // column's job is the relative partition. Checks the fixes cannot touch
+  // (expectedContacts' exact tier, sweptOverlap, penetration) measured
+  // 0.97–1.09 — inside the noise band — and keep their rows.
+  'inspection': 160,
+  'clearances': 273,
   'sweptOverlap': 260,
 
   // §127 — the per-axis walls of the one split check, in MILLISECONDS
   // (`--report`'s `sliceMs`). A slice with no row here is projected from its
   // pose count and labelled `projected` until a sliced run measures it.
-  'inspection:beat': 54109,
-  'inspection:crown': 24335,
-  'inspection:reserve': 22954,
-  'inspection:wind': 261735,
+  'inspection:beat': 9840,
+  'inspection:crown': 4430,
+  'inspection:reserve': 6390,
+  'inspection:wind': 68040,
   // TODO 71 — seeded from stemSlip's measured cost (same n, and nearly every
   // pose rebuilds the chain); --report refreshes it like every row.
-  'inspection:arrest': 55000,
-  'inspection:train': 66580,
-  'inspection:jumperEngage': 70719,
-  'inspection:handSet': 65625,
-  'inspection:alarm': 55597,
-  'inspection:alarmStrike': 59415,
-  'inspection:alarmWind': 76736,
-  'inspection:alarmToggle': 32844,
+  'inspection:arrest': 12690,
+  'inspection:train': 11620,
+  'inspection:jumperEngage': 11940,
+  'inspection:handSet': 11840,
+  'inspection:alarm': 9550,
+  'inspection:alarmStrike': 10030,
+  'inspection:alarmWind': 14770,
+  'inspection:alarmToggle': 6440,
   // TODO 50 — measured on a dev container battery run.
-  'inspection:stemSlip': 55000,
+  'inspection:stemSlip': 9640,
 };
 
 // DECLARED HERE, ASSERTED AGAINST THE BATTERY IT DESCRIBES — both ways, and it
