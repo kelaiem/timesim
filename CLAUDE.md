@@ -452,7 +452,14 @@ the battery's wall.
 **Since §127 the atom is a TASK, not a check** — a check whose outer loop is
 `for (const axis of AXES)` declares `slices` and is scheduled as one task per
 axis, so the wall is no longer floored by the slowest single check.
-`inspection` is split today; `--no-split` runs it whole and is the reference
+`inspection`, `clearances` and `expectedContacts` are split today (the two
+extrema sweeps since §127 tier 2a landed alongside §152: their merge is a
+per-row MINIMUM that keeps the winning slice's row verbatim, first axis
+winning a tie — not `inspection`'s union — and what made them sliceable at
+all is that the sweep engine's refinement decision now reads a per-axis
+minimum rather than the cross-axis one, TODO 54's rule applied to the
+engine's last cross-axis coupling; the query bound stays cumulative because
+pruning is sound). `--no-split` runs each whole and is the reference
 the split must agree with, exactly as `--shards 1` is for the grouping. Three
 things hold it up, and all three are gates rather than conventions: the
 declared slice list is asserted to BE the page's `AXES` (an axis nobody sliced

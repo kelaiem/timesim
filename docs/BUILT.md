@@ -13443,6 +13443,106 @@ closely than this harness's documented 1.66x same-tree spread would predict —
 1474.8 s and 1483.7 s wall, 3627.9 s and 3695.6 s of check time. That is two
 points, not a tail, and the guards still wait for more.
 
+
+### Tier 2a, landed after §152 — the extrema sweeps slice, and the engine sheds its last cross-axis coupling
+
+`clearances` and `expectedContacts` now split along the axis loop the way
+`inspection` has since this section's tiers 0/1 — thirteen tasks each, the
+generic roster/payload/merge gates unchanged — and the argument for doing it
+grew teeth the entry did not have when it was filed: `clearances` had become
+the battery's long pole everywhere (53% of a §152 incremental run even
+restricted, because `Chain` is unconditionally changed and pairs against the
+74,678-triangle plate), and on a degraded dev container it fired the 35-minute
+per-check guard three times in one day at 1697–2290 s. The guard is per TASK,
+so slicing dissolves that class without touching the guard's number — which
+its own header says must never be resized from one machine's bad day.
+
+**The merge is a per-row MINIMUM, not `inspection`'s union** — the entry's own
+phrase, "each merge is a per-row minimum that must carry which slice won".
+`mergeExtrema` (`battery-split.mjs`) asserts row count and per-index pair
+identity across slices (the unit-list precedent), takes the WINNING slice's
+row verbatim — smallest numeric min, capped rows as infinity, strict `<` in
+`AXES` order so the earliest axis keeps a tie, exactly the whole run's
+first-axis-records rule — sums the census the way `mergeInspection` does, and
+re-derives `violations`/`waivedCount` from the merged rows. The §152
+restriction record is asserted equal across slices and CARRIED, because
+dropping that record once before produced a restricted `inspection` gating on
+3 pairs instead of 81 with every gate green.
+
+**What made the extrema sweeps sliceable at all is a tier-0 engine fix that is
+an honesty improvement in its own right.** `sweepClearances`' refinement
+decision — which coarse intervals get densified — read the CROSS-AXIS
+cumulative minimum, so a slice starting fresh refined a SUPERSET of intervals
+and could legitimately find a lower minimum than the whole run's heuristic:
+sliced-vs-whole byte-identity was impossible on the old engine, and the
+whole run was the less thorough of the two. The decision now reads a per-axis
+minimum (`_axisMin`, reset with the axis's scratch) — TODO 54's canonical-
+entry rule applied to the engine's last piece of cross-axis state. The query
+BOUND deliberately stays cumulative: pruning is sound (a pruned query returns
+at least the bound, and anything below it comes back exact, so it can never
+hide a lower minimum) and is pure speed. Consequence, stated rather than
+buried: a whole run now refines a superset of what it used to, so reported
+minima can only stay or DROP; measured on this landing's full run, no row
+moved.
+
+**Proved at iteration scale before battery scale** (`tools/probe-127-extrema.mjs`,
+the `probe-127-split.mjs` shape): on two axes, both sweeps merge back to
+their whole runs byte for byte — with the CENSUS COUNTS identical too, the
+stronger outcome (the sliced and whole runs did identical work, not merely
+reached the same verdict); the same identity holds under a §152
+`pairsTouching` restriction with the record carried; and a synthetic tie
+asserts the first-axis rule, because that rule is one `<` away from silently
+misattributing every tied pose. Sliced timing on the probe's two axes:
+`clearances` whole 203.4 s against slices of 93.1 + 93.8 (largest 93.8), so
+summing costs ~0–4% and the wall gains the whole difference.
+
+One residual cross-axis path remains and is documented at the code: the
+cumulative bound can prune a later axis's SAMPLES that a slice measures
+exactly, which feeds the per-axis minimum — in principle a slice could refine
+an interval a whole run skips, reachable only when every whole-run sample of
+an axis prunes at the tighter bound while the true minimum dips more than
+`refineBand` inside one coarse interval. It did not occur on any probe
+comparison (census counts identical), and if a full `--split` vs `--no-split`
+comparison ever shows a moved row, this is the mechanism and the fix is to
+make the coarse bound read `_axisMin` too, at some speed cost.
+
+**The full-scale acceptance caught two things the two-axis probe could not,
+which is what running both scales is for.** First, a real merge bug: the
+merge compared the rows' ROUNDED minima (four decimals), so two axes tying
+at display precision resolved by the first-axis rule where the whole run's
+raw floats had a strict order — one row's 0.16 attributed to `beat f=0`
+against the whole run's `alarmStrike f=0.6972`, verdict unchanged, pose
+wrong. Sliced payloads now carry `rawMins` (raw floats, capped rows as null
+since Infinity does not survive JSON), the merge REFUSES a slice without
+them and decides on raw, and the probe gained the near-tie case — same
+rounded minimum, raw strictly lower on the later axis, later axis must win.
+Second, a latent instrument finding, filed as public TODO 81: repartitioning
+the battery moved `meshIntegrity`'s sub-body census wholesale (39 tested /
+136 declared / 0 interior → 527 / 50 / 134 on one tree, each exactly
+reproducible under its own schedule) — the report tier observes the page's
+check history, which §81's invariant forbids; its gated fields are
+schedule-independent and did not move. The rebase onto §54's landing gave the
+item a third reading that names the variable: a 56-task partition that moved
+checks between shards but left `meshIntegrity`'s own PREDECESSORS unchanged
+reproduced the 55-task census to the count, so the carrier is page
+co-tenancy, not the partition. **The mechanism is TODO 80's, one
+level later**: `weldGeometry` does not copy `geometry.userData`, so a
+declared sub-body table does not survive being rebuilt into a fresh
+`BufferGeometry` — TODO 80 catches that at boot, and the chain's lazy
+path-dependent re-tessellation loses the same declarations at runtime, which
+is why whether a chain rebuild preceded the check on that page changes what
+it reports. The plate rows that hypothesis does not cover are the open part,
+and TODO 81 carries the two measurements that would decide it. The final acceptance: 32/32 gates,
+every check's payload byte-identical to its whole-run baseline
+(`clearances` proven against a standalone whole run after the per-check
+guard fired on the degraded container — the guard was not resized, per its
+own doctrine), with `meshIntegrity`'s report tier exempted by TODO 81's
+citation.
+
+What remains of this section is unchanged in kind: tier 2b (the index-range
+slice, which `alarmToggle` still refuses) and tier 3 (the job matrix), both
+still in the roadmap entry.
+
 ## §129 — the alarm's stop-work counts the WIND: a spider differential subtracts the two barrel members
 
 TODO 55 closed. §106 built a Maltese stop-work for the alarm barrel and geared

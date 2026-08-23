@@ -32,7 +32,7 @@
 // from `opts` would make two name-keyed tables someone keeps in step, which is
 // the failure tools/payload.sh's header names. A rare `note` edit voids the
 // key.
-import { INSPECTION_SLICES, mergeInspection } from './battery-split.mjs';
+import { INSPECTION_SLICES, CLEARANCE_SLICES, EXPECTED_CONTACT_SLICES, mergeInspection, mergeExtrema } from './battery-split.mjs';
 
 // Why yieldEvery 64: measured, not guessed — see CLAUDE.md's yield-throttling
 // trap. The default 16 is tuned for a human-visible tab; 384 wedged a tab.
@@ -140,6 +140,7 @@ export const BATTERY = [
     note: (r) => `${r.rowsChecked} split rigid groups over ${r.poses} poses, `
       + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt)` },
   { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY },
+    slices: EXPECTED_CONTACT_SLICES, merge: mergeExtrema,   // §127 tier 2a — same axis loop, rows merged as extrema
     gate: '0 unwaived floor rows, 0 unmatched contact selectors',
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
@@ -192,6 +193,7 @@ export const BATTERY = [
     fails: (r) => r.report.filter((row) => row.class === 'FORBIDDEN'),
     note: (r) => `${r.units.length} units, ${r.report.length} contacting pairs` },
   { name: 'clearances', opts: { yieldEvery: YIELD_EVERY },
+    slices: CLEARANCE_SLICES, merge: mergeExtrema,   // §127 tier 2a — the battery's long pole, divided by axis
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },

@@ -8594,3 +8594,73 @@ Fix: copy `userData` in `weldGeometry`, and add the rule to
 `docs/MODELING.md` beside rule 7. Cheap; the reason it is filed rather than
 done is that copying `userData` changes what every welded geometry carries,
 which wants its own report diff.
+
+## 81. `meshIntegrity`'s sub-body census is a function of the SHARD SCHEDULE — 136/0 against 50/134 on one tree, and TODO 80 is why
+
+**Found by §127 tier 2a's landing (2026-08-22), not caused by it. The runtime
+half of TODO 80, which is the boot-time half of the same root.**
+
+Repartitioning the battery — 31 tasks against 55, once `clearances` and
+`expectedContacts` sliced — changed which checks share `meshIntegrity`'s
+browser page, and its sub-body pair census moved wholesale on the SAME tree:
+
+| schedule | checks before it on its page | tested | declared (skipped) | interior |
+|---|---|---|---|---|
+| 31 tasks | `axisEntry`, `penetration` | 39 | 136 | 0 |
+| 55 tasks | `support`, `axisEntry`, `stemClutchHandoff` | 527 | 50 | 134 |
+| 56 tasks | `support`, `axisEntry`, `stemClutchHandoff` | 527 | 50 | 134 |
+
+Each is exactly reproducible under its own schedule (two runs of each agree
+byte for byte), so this is not noise — **and the third row is what names the
+variable**. Adding a check (§54's `slenderness`) re-partitioned 55 tasks into
+56 and moved several checks between shards, but left `meshIntegrity`'s own
+PREDECESSORS unchanged — and the census did not move by a single count. So
+the carrier is not the task count, the shard count, or the partition: it is
+**which checks ran before it on its page**, which is §81's invariant named
+exactly. The tier's report is deterministic
+*given the page's check history*, which is precisely what §81's invariant says
+a check must never observe — "`start()` calls `resetInputs()` before every
+check, so no check can observe which ones ran before it." The GATED fields
+(the synthetic controls, malformed declarations) are schedule-independent and
+did not move; every row that moved is in the REPORT tier.
+
+**The mechanism is TODO 80's, one level later.** That item records that
+`weldGeometry` does not copy `geometry.userData`, so a declared
+`userData.subBodies` table does not survive being rebuilt into a fresh
+`BufferGeometry`. TODO 80 catches it at BOOT (`weldTree` replacing a
+non-indexed geometry); this catches the same loss at RUNTIME. `updateChain`
+re-tessellates lazily and path-dependently — the reason `fingerprint` and
+§152's digests both exclude `Chain` by name — and the rebuilt geometry arrives
+without the declarations the old one carried. Whether a chain rebuild has
+happened before `meshIntegrity` runs is a function of which checks preceded it
+on that page, which is exactly the schedule dependence measured above. The
+recorded rows name `Chain` / `chainRun` sub-bodies (`link#20` ⇄ `link#23`
+and 133 more), and declared-skips falling 136 → 50 is the right shape and
+roughly the right size for the chain's table going missing.
+
+**What that does NOT explain, and it is the open part**: the 55-task run also
+reports interior rows on the **Three-quarter plate**, whose geometry nothing
+re-tessellates. Either a second carrier exists, or losing the chain's
+declarations changes which pairs survive pruning far enough to reach the
+plate — the two are distinguishable and the measurement below says how.
+
+**The measurement that would close it**, in order of cost:
+
+1. BISECT THE PREDECESSORS, which the third row above makes cheap: the two
+   sets differ by `penetration` on one side against `support` and
+   `stemClutchHandoff` on the other. Run `meshIntegrity` on a fresh page after
+   each of those three alone and diff the per-unit candidate lists. If only
+   `Chain` moves, the chain is the whole story and the plate rows are
+   downstream of pruning.
+2. Land TODO 80's fix (copy `userData` in `weldGeometry`) and re-run both
+   schedules. If the two censuses converge, both items close together; if the
+   plate rows persist, this item has its own carrier and keeps its number.
+
+**Fix path for this half.** The tier should measure CANONICAL geometry rather
+than whatever the page's history left installed: capture its sub-body
+population at first run and assert stability, or force the known
+path-dependent meshes to a canonical rebuild before measuring (the chain owns
+a rebuild entry point), or read the declarations from a source a rebuild
+cannot drop. Until then, treat cross-schedule diffs in this tier's counts as
+expected — a `--report` diff across runs with different task partitions must
+cite this item — and never compare its rows across partitions.

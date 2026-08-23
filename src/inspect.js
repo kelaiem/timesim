@@ -1520,6 +1520,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
       const cap = pr.refineFloor !== undefined ? pr.refineFloor + refineBand : Infinity;
       const bound = Math.min(refined ? st.min : st.min + refineBand, cap);
       const { d, pair: meshPair } = unitClearance(pr.A, pr.B, bound, pr.exclude);
+      if (d < pr._axisMin) pr._axisMin = d;   // §127 tier 2a — the refinement reference, per axis (see the axis loop)
       if (d < st.min) {
         st.min = d; st.at = { axis: axis.name, f: +f.toFixed(4) };
         // TODO 10 — carry WHICH SURFACES set the minimum, not just which
@@ -1533,7 +1534,26 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
     const live = pairs.some((pr) => !pr.axes || pr.axes.includes(axis.name));
     if (!live) continue;
     enterAxis(clock);   // TODO 54 — canonical entry; this sweep is clearances + expectedContacts
-    for (const pr of pairs) pr._samples = {};
+    // §127 tier 2a — THE REFINEMENT DECISION MAY READ ONLY THIS AXIS'S OWN
+    // STATE. A slice of this sweep runs one axis in its own browser context,
+    // so it can only reproduce a whole run's rows if it refines the same
+    // intervals — and until here the two decisions below consulted the
+    // CUMULATIVE per-pair minimum, which earlier axes had already lowered. A
+    // slice starting fresh therefore qualified a SUPERSET of intervals and
+    // could find a genuinely lower minimum the whole run's heuristic skipped,
+    // which is a report that moves with the partition. TODO 54 established
+    // exactly this rule for POSES (enterAxis, above); `_axisMin` is the same
+    // rule for the refinement heuristic — the sweep's last cross-axis
+    // coupling. The query BOUND below stays cumulative on purpose: it is pure
+    // speed and it is sound either way, since a pruned query returns a value
+    // ≥ the bound ≥ the running minimum and anything below the bound comes
+    // back exact, so pruning can never hide a lower true minimum.
+    //
+    // Consequence, stated because it moves numbers: a WHOLE run now refines a
+    // superset of what it used to, so a reported minimum can only stay or
+    // DROP. A row that moves is increased accuracy — the old heuristic was
+    // skipping that interval — not a regression.
+    for (const pr of pairs) { pr._samples = {}; pr._axisMin = Infinity; }
     // Coarse pass (always includes both endpoints).
     const coarseIdx = [];
     for (let i = 0; i <= axis.n; i += coarse) coarseIdx.push(i);
@@ -1553,10 +1573,12 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
       for (let p = 0; p < pairs.length; p++) {
         const pr = pairs[p];
         if (pr.axes && !pr.axes.includes(axis.name)) continue;
-        if (pr.refineFloor !== undefined && state[p].min > pr.refineFloor + refineBand) continue;
+        // Both tests read `pr._axisMin`, never the cumulative `state[p].min` —
+        // §127 tier 2a's rule, argued at the reset above.
+        if (pr.refineFloor !== undefined && pr._axisMin > pr.refineFloor + refineBand) continue;
         for (const i of coarseIdx) {
           const d = pr._samples[i];
-          if (d === undefined || d > state[p].min + refineBand) continue;
+          if (d === undefined || d > pr._axisMin + refineBand) continue;
           for (let j = Math.max(0, i - coarse + 1); j < Math.min(axis.n, i + coarse); j++) {
             if (pr._samples[j] === undefined) fine.add(j);
           }
@@ -1567,7 +1589,7 @@ export async function sweepClearances(clock, pairs, { axes = AXES, coarse = 4, r
         if (poseCount % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
       }
     }
-    for (const pr of pairs) delete pr._samples;
+    for (const pr of pairs) { delete pr._samples; delete pr._axisMin; }
   }
   return { state, poseCount };
 }
@@ -1984,6 +2006,8 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
     violations: results.filter((r) => !r.ok && !r.waived),
     waivedCount: results.filter((r) => !r.ok && r.waived).length,
     unmatched, results, census,
+    // §127 tier 2a — raw minima on a narrowed run only; see checkClearances.
+    ...(resolveAxes(axes).length < AXES.length ? { rawMins: state.map((st) => (isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}),
   };
 }
@@ -2937,7 +2961,20 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
     };
   });
   console.table(results);
+  // §127 tier 2a — a SLICE carries its raw minima beside the formatted rows.
+  // The row's `min` is rounded to four decimals for the report, and the whole
+  // run's own winner is decided on RAW floats (strict `<` at record time), so
+  // a merge comparing formatted rows resolves display-precision ties by the
+  // first-axis rule where the whole run had a strict raw order — caught at
+  // full scale on the first 13-axis run: same 0.16 at `beat f=0` and
+  // `alarmStrike f=0.6972`, wrong pose attributed. Only a narrowed run
+  // carries the field, so a whole run's payload is byte-identical to what it
+  // was; the merge REQUIRES it and deletes it from the merged payload.
+  // Infinity does not survive JSON (page.evaluate serialises it to null), so
+  // capped rows are carried as null and the merge reads null as Infinity.
+  const sliced = resolveAxes(axes).length < AXES.length;
   return { violations: results.filter((r) => !r.ok), results, census,
+    ...(sliced ? { rawMins: state.map((st) => (isFinite(st.min) ? st.min : null)) } : {}),
     ...(touching ? { restriction: restrictionRecord(touching, keptIndices) } : {}) };
 }
 
