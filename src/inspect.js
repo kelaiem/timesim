@@ -1323,18 +1323,58 @@ function sampledVerdict(a, b, upperBound = Infinity) {
   }
   return _sampledVerdictInner(a, b, upperBound);
 }
+// §122 fix one — THE VERDICT'S TWO LAPS ARE BOUNDED BY EXACT CUTS. Both skip
+// only work whose result is provable from the skip condition itself:
+//   · DISTANCE skip: box distance is a true lower bound of mesh distance, so
+//     boxD ≥ best means the bounded closestPointToPoint(…, 0, best) could
+//     not have produced hit.distance < best; `best` after the sample is
+//     identical either way, so all later pruning and the final d are
+//     BIT-IDENTICAL — held over 7,042,573 samples across 681 near pairs
+//     with zero counterexamples (the §122 dissection probe). This is the
+//     cut that matters at meshClearance's running-best bound (up to ~0.55
+//     in clearances — the loosest in the file; the census measured those
+//     verdicts at 1023 ms per call).
+//   · PARITY skip: a sample strictly outside the dst tree's bounding box
+//     cannot be inside the dst mesh (mesh ⊆ box, a geometric fact), so
+//     pointInsideTree's TRUE answer for it is false and skipping cannot
+//     change a sound OR. What the same dissection MEASURED is that the
+//     baseline was not always sound: the fixed oblique parity ray returns
+//     ODD for some samples up to 13 u outside the other mesh's bounds —
+//     a grazing-count lie, the third measured lying mode in this
+//     instrument family (§82's vendor patches record the other two). So
+//     this cut is exact with respect to truth and NOT byte-identical with
+//     respect to the baseline: where the two differ, the baseline verdict
+//     was a false "inside" on a provably-outside sample, and the skip
+//     corrects it. Every report row that moves under this landing is
+//     enumerated in the landing's diff and owes its justification to that
+//     evidence — a moved row without a boxD witness is a defect, exactly
+//     as §122's envelope demands.
+// The box comes from the TREE, not geometry.boundingBox, deliberately:
+// bvhFor caches per geometry and never invalidates, so for a morphing mesh
+// the tree is frozen at first build — a box derived from the tree is exactly
+// as fresh as the verdict already is, and adds no staleness of its own.
+const _bvhBoxCache = new WeakMap();
+function bvhBox(tree) {
+  let box = _bvhBoxCache.get(tree);
+  if (!box) { box = tree.getBoundingBox(new THREE.Box3()); _bvhBoxCache.set(tree, box); }
+  return box;
+}
 function _sampledVerdictInner(a, b, upperBound = Infinity) {
   let best = upperBound, inside = false;
   const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
   for (const [src, dst] of [[b, a], [a, b]]) {
     const tree = bvhFor(dst);
     bvhFor(src); // indexing side effect — edge extraction below reads the index
+    const box = bvhBox(tree); // dst-local, same frame as the transformed samples
     _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
     const pos = src.geometry.attributes.position;
     const test = (v) => {
-      const hit = tree.closestPointToPoint(v, {}, 0, best);
-      if (hit && hit.distance < best) best = hit.distance;
-      if (!inside && pointInsideTree(tree, v)) inside = true;
+      const boxD = box.distanceToPoint(v); // 0 inside/on the box
+      if (boxD < best) {
+        const hit = tree.closestPointToPoint(v, {}, 0, best);
+        if (hit && hit.distance < best) best = hit.distance;
+      }
+      if (!inside && boxD === 0 && pointInsideTree(tree, v)) inside = true;
     };
     for (let i = 0; i < pos.count; i++) test(_sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat));
     const idx = src.geometry.index;
