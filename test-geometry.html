@@ -56,8 +56,8 @@ const dl = new THREE.DirectionalLight(0xffffff, 2.5); dl.position.set(60, -80, 1
 }
 
 const builds = [
-  ['makeGear',        () => G.makeGear({ module: 1, teeth: 60, thickness: 2 })],
-  ['makePinion',      () => G.makePinion({ module: 1, teeth: 10, thickness: 3 })],
+  ['makeGear',        () => G.makeGear({ module: 1, teeth: 60, mates: [60], thickness: 2 })],
+  ['makePinion',      () => G.makePinion({ module: 1, teeth: 10, mates: [10], thickness: 3 })],
   ['makeEscapeWheel', () => G.makeEscapeWheel({ radius: 15, thickness: 1.5 })],
   ['makePalletFork',  () => G.makePalletFork({ span: 14, leverLength: 18, thickness: 1.5 })],
   ['makeBalanceWheel',() => G.makeBalanceWheel({ radius: 16, thickness: 2 })],

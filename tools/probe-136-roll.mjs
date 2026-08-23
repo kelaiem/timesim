@@ -41,7 +41,12 @@ const ROWS = [
   { name: 'third ⇄ fourthP', m: 0.24, a: { teeth: 80, mates: [10] }, b: { teeth: 10, mates: [80] } },
   { name: 'fourth ⇄ escapeP', m: 0.21, a: { teeth: 80, mates: [8] }, b: { teeth: 8, mates: [80] } },
   { name: 'rsv p0 ⇄ w1', m: 0.34, a: { teeth: 8, mates: [28] }, b: { teeth: 28, mates: [8] } },
-  { name: 'rsv p1 ⇄ w2', m: 1.0902, a: { teeth: 10, mates: [6] }, b: { teeth: 6, mates: [10] } },
+  // Stage two's module is not a chosen number: `main.js` derives it from the
+  // solved w1 bearing as 2*centre/(10+6), so it MOVES when that solve moves.
+  // It did — the §136 landing corrected `rsvSwing` to bound both members of
+  // the arbor rather than w1 alone, and the centre came in from 8.7216 to
+  // 8.530594310965839. Re-read it from the movement after any change there.
+  { name: 'rsv p1 ⇄ w2', m: 1.0663242888707298, a: { teeth: 10, mates: [6] }, b: { teeth: 6, mates: [10] } },
   { name: 'crown ⇄ windP', m: 0.34,
     a: { teeth: 20, mates: [{ teeth: 8, mates: [20] }, { teeth: 18, mates: [20, 24] }, { teeth: 20, mates: [20] }, { teeth: 24, mates: [18] }] },
     b: { teeth: 8, mates: [20] } },

@@ -13,14 +13,17 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-21 — items with work left first, with what remains:
+refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
+| 84 | OPEN | Every gear ships fatter than it was cut: three.js's `bevelSize` offsets the outline OUTWARD by more than the backlash the generator reserved (0.0748 u per flank against 0.0427 u for the pair at module 0.34). General to the movement; visible only where a unit is gated. Three candidate fixes in the item, none of them widening `cyBacklash` |
+| 85 | OPEN | §136's residue: `makeBevelGear` and `makeBarrel` still cut trapezoids. The barrel's conversion is a §104 re-solve, not a geometry change; the bevels need a bevel spec. Also records the rule the mistake bought — a tooth-count floor must match the generator that cuts the member |
+| 86 | OPEN | `gearTrueReach`'s miter takes a DIFFERENCE of the outward edge normals where the SUM is meant, and scales by the sine of the turn rather than of the half interior angle. Over-estimates, so the bound still bounds — 4.1451 against 3.9424 on the setting wheel. Correcting it un-binds `SLEEVE_TOP`'s setting-wheel cap and drops `clutchSleeve ⇄ settingWheel` to 0.1278 against 0.15, so the cap must be re-derived in the same landing |
 | 83 | OPEN | The parity ray is still trusted inside the box; §122 silenced the measured outside-box lying population (166/166 on the fusee pair) but the same grazing mode could lie inside, where it would manufacture a contact. probe-122-verdict's genuineInside bucket is the tripwire |
-| 77 | OPEN | The reserve train's two meshes interpenetrate (0.279 / 0.621 mm, measured). Now in `INTRA_TIER_SCOPE` and waived against this item, so the debt is declared and new interference fails; the fix is roadmap §136's conjugate profile, not a tolerance |
+| 77 | OPEN | The reserve train's two meshes still interpenetrate after §136 — 0.118 mm on stage one, measured polygon-against-polygon at the movement's own phases; stage two refused by the probe. The profile is NOT the cause (24/24 meshes roll at zero penetration in free space); the extrude's bevel is, which is item 84. Both rows stay waived in `INTRA_TIER_SCOPE`, so the debt is declared and new interference fails |
 | 6 | MOSTLY CLOSED | An EXPECTED pair without an `EXPECTED_CONTACT_FLOORS` row still gets the blanket excuse (§94 tier A seeded the SMALL-SECONDS station's three pairs; item 41's closure seeded `Dial ⇄ Power reserve`; `Power reserve ⇄ Power-reserve train` is still unseeded) |
 | 7 | OPEN | Sampling cannot BOUND motion — every sweep-based gate inherits this |
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
@@ -8439,7 +8442,7 @@ that work is an owner's call. Until then this item is the number: re-run
 the probe after any chain-frame change, and if the max span GROWS, the
 fiction deepened and this item's figures are stale.
 
-## 77. The reserve train's two meshes interpenetrate — up to 0.62 mm, reported by the battery and gated by nothing
+## 77. The reserve train's two meshes interpenetrate — 0.118 mm after §136 cut them conjugate, because the extrude fattens what the generator cut
 
 Owner-reported: the gears behind the power reserve "phase through each
 other". They do, and the movement's own instruments have been saying so in
@@ -8484,12 +8487,71 @@ now DECLARED debt, visible in the report and cited, and any *new*
 interference in that unit fails the gate — which is the whole difference
 between this and where it sat before.
 
-**The fix is roadmap §136**, not a scope or tolerance change: cut flanks
-with conjugate action and the interference goes away as a consequence.
-Do not widen a budget to green these rows, and do not re-solve the phase to
-chase them — the phase is already right. When §136 lands, re-run the
-measurement above; if the overlap does not go to zero, the profile is
-still not conjugate and this item is the number that says so.
+**§136 landed, and the overlap did not go to zero — so this item stays open,
+with both waivers kept.** What it did do is take the profile out of the
+suspect list, and the measurement that says so is worth more than the number.
+
+**The profile is now conjugate, and that is proven where it can be proven.**
+`probe-136-roll` builds every one of the movement's 24 gear meshes from the
+real generator, places them at their real centre distances and rolls them
+through a full pitch at the conjugate ratio: **24/24 at ZERO penetration**,
+with backlash left over (0.043 u on stage one, 0.134 on stage two). Both
+reserve meshes are in that set. Whatever is still interfering in the
+movement, it is not the flank shape.
+
+**It is the EXTRUDE.** `makeGear` and `makePinion` extrude with
+`bevelSize: bevel`, and three.js offsets the contour OUTWARD by that much
+perpendicular to every edge — the fact §115 and §136 wrote `gearOuterR` and
+`gearTrueReach` around. So the shipped tooth is the cut tooth grown all
+round, and the growth is larger than the backlash the generator designed
+into it:
+
+| member | cut tip | bevel | shipped tip | designed backlash |
+|---|---|---|---|---|
+| p0, 8t, m 0.34 | 1.4207 | 0.0748 | 1.5167 | 0.0427 |
+| w1, 28t, m 0.34 | 5.2003 | 0.0748 | 5.2756 | 0.0427 |
+| p1, 10t, m 1.066 | 6.5896 | 0.2065 | 6.8441 | 0.134 |
+| w2, 6t, m 1.066 | 3.8789 | 0.18 | 4.1053 | 0.134 |
+
+Both flanks of a mesh grow, so the pair loses about twice the bevel against a
+backlash that is smaller than one of them. A conjugate profile cannot survive
+that, and no phase or centre-distance solve can pay for it. **That is
+TODO 84**, and it is general — every gear in the movement is cut this way, not
+just these two.
+
+**Re-measured, both trees, one instrument.** `probe-reserve-mesh-overlap` now
+carries three columns, because §136 pushed the fault under the resolution of
+the one it had:
+
+| mesh | radial (main) | radial (§136) | perpendicular (main) | perpendicular (§136) | exact (§136) |
+|---|---|---|---|---|---|
+| p0 ⇄ w1 | 0.279 mm | 0.187 mm | 0.102 mm | 0.046 mm | **0.118 mm** |
+| p1 ⇄ w2 | 0.621 mm | 0.563 mm | 0.356 mm | 0.123 mm | refused |
+
+Three things about that table, all of them limits rather than results.
+**The radial columns are not comparable across §136** and must not be
+subtracted: that measure runs along a ray from the mate's centre, and a
+cycloidal pinion's flank below the pitch circle is RADIAL, so the ray lies in
+the surface it is meant to cross and the reading inflates. The bias changed
+when the profile did. **The perpendicular column** (distance to the boundary
+polyline) drops that bias but still reads a binned silhouette, and at 3–17% of
+bins carrying a sample the interpolation is worth about what it is measuring.
+**The exact column** drops the bins: it rebuilds each member from the
+generator, grows it by the extrude's bevel, registers it against the shipped
+mesh on the tip lattice and measures polygon against polygon. It is believed
+only when the reconstruction lands on the mesh's own measured tip radius —
+which it does on stage one (5.2756 against 5.2756 on the wheel) and does not
+on stage two, where a 6-tooth wheel at module 1.07 has corners sharp enough
+that the probe's clamped miter and three.js's own handling part company by
+0.105 u. Stage two is REFUSED rather than reported: the probe's limit, not a
+finding.
+
+**Do not widen a budget to green these rows, and do not re-solve the phase to
+chase them** — TODO 48's solve measures 0.07% of a pitch off anti-phase and is
+right. The fix is TODO 84: stop shipping teeth fatter than the generator cut
+them. When that lands, re-run `probe-reserve-mesh-overlap` and expect the exact
+column to go to the tessellation floor, which is what `probe-136-roll` already
+reads in free space.
 
 ## 78. CLOSED — §54's ceiling had never been measured: the check was never registered, and it measured stock, not free length
 
@@ -8941,3 +9003,159 @@ re-cast when hit counts include distances within 1e-6 of each other
 (the grazing signature). Do not widen anything to work around a lie —
 §82's rule: patch the instrument, then let the corrected verdicts land
 with their witnesses.
+
+## 84. Every gear ships fatter than it was cut: the extrude's bevel grows the tooth by more than its own backlash
+
+§136 cut conjugate flanks and proved them: `probe-136-roll` builds all 24 of
+the movement's gear meshes from the real generator, places them at their real
+centre distances and rolls them a full pitch at the conjugate ratio, and
+measures **zero penetration on every one**, with backlash left over. In the
+movement, two of those same meshes still interfere (TODO 77's rows, still
+waived). The difference is not the profile. It is what happens between
+`cycloidalGearShape` and the mesh.
+
+**The mechanism.** `makeGear` and `makePinion` extrude with
+`bevelEnabled: true, bevelSize: bevel`, and three.js offsets the contour
+OUTWARD by `bevelSize` perpendicular to every edge — the fact §115's
+declared-versus-cut assert exists to bound and §136's `gearTrueReach` computes
+the miter for. So the body a mesh check sees is the cut outline grown all
+round by `gearBevel(module, thickness) = min(thickness·0.18, module·0.22)`,
+while the tooth thickness it was cut with reserves only
+`cyBacklash(module)` for the pair. Measured on the reserve train, where both
+numbers are in hand:
+
+| member | cut tip | bevel | shipped tip | pair backlash |
+|---|---|---|---|---|
+| p0, 8t, m 0.34 | 1.4207 | 0.0748 | 1.5167 | 0.0427 |
+| w1, 28t, m 0.34 | 5.2003 | 0.0748 | 5.2756 | 0.0427 |
+| p1, 10t, m 1.066 | 6.5896 | 0.2065 | 6.8441 | 0.134 |
+| w2, 6t, m 1.066 | 3.8789 | 0.18 | 4.1053 | 0.134 |
+
+Both flanks of a mesh grow, so a pair spends roughly **2·bevel** out of a
+backlash smaller than one bevel. At module 0.34 that is 0.15 u of growth
+against 0.043 u of clearance — three and a half times over. The generator is
+not being ignored; it is being overruled downstream by a finish parameter.
+
+**Why it is general.** Every gear in the movement is extruded this way, so
+every mesh is in the same position; the reserve train is simply the only unit
+whose rows are GATED (`INTRA_TIER_SCOPE`, TODO 77) and therefore the only one
+where it is visible rather than reported. Expect it to be the reason behind
+any other mesh-on-mesh row in the untriaged `outOfScope` population.
+
+**Measured.** `probe-reserve-mesh-overlap`'s exact column — the generator's
+outline grown by the bevel, registered against the shipped mesh on its tip
+lattice, polygon against polygon at the movement's own centres and phases —
+reads **0.31116 u = 0.118 mm** on the stage-one mesh. The reconstruction is
+believed there because it reproduces the shipped wheel's measured tip radius
+to four decimals (5.2756 against 5.2756).
+
+**What the fix is, and what it is not.** It is NOT widening `cyBacklash` to
+swallow the bevel: backlash is a share of the pitch with a reason, and sizing
+it around a finish parameter would be rule 1 backwards. Three candidates, in
+the order they should be tried:
+
+1. **Cut the shape inset by the bevel**, so the grown body lands on the profile
+   the generator designed. The offset is the same miter construction
+   `gearTrueReach` already computes, run inward — the honest version, because
+   what is then cut is what was designed.
+2. **Extrude gears without a bevel** (`bevelOn: false` is already a parameter).
+   Correct immediately and free, at a cost in finish (P4) — the bevel is what
+   keeps a tooth from reading as a laser cut.
+3. **Derive the bevel from the backlash** rather than from module and
+   thickness — `bevel ≤ backlash/2` per member — which keeps a chamfer but
+   makes it answer to the mesh instead of to the stock.
+
+Whichever lands, every `gearOuterR` consumer moves with it: the bound feeds
+station solves across the movement, so this is a landing with a battery run
+in it, not an edit.
+
+**Related debt already closed by measuring this.** `gearTrueReach` shipped in
+§136 with its bisector wrong — a DIFFERENCE of the two outward edge normals
+where the SUM is meant, which points 90° off the bisector, and a length that
+is the sine of the turn angle rather than of the half interior angle. It
+stayed green because `gearOuterR` takes `max(tipR + bevel, gearTrueReach)` and
+the misdirected offset grew the radius less than the inflated length did, so
+the bound stayed conservative over a reach it had not actually computed.
+Fixed in the same landing that found it; the corrected construction is what
+lets the probe above reproduce the shipped tip radius exactly, which is how it
+was found.
+
+## 85. §136's residue: two builders still cut trapezoids, and one of them is the barrel
+
+§136 converted `makeGear` and `makePinion` to the cycloidal generator. Two
+builders were deliberately left on `gearOutlineShape`, and the reasons are not
+the same:
+
+- **`makeBevelGear`.** The spider differential's sides and planets are BEVEL
+  wheels, and `gearToothSpec` describes a spur tooth — a cycloidal spur
+  profile on a bevel is a different lie from a trapezoid on one, not a smaller
+  one. The right fix is a bevel spec (a crown/octoid tooth on a cone), which
+  is its own piece of work. Until then `minGearTeeth`'s cycloidal floor must
+  NOT be applied to these members: it was, once, during §136, and it demanded
+  11 teeth where the trapezoid needs 10 and killed the arrest station's solve.
+  **The floor must match the generator that cuts the member** — that is the
+  rule the mistake bought.
+- **`makeBarrel`.** Converting it moves the barrel's cavity by +0.226 u, which
+  lands squarely in §104's equalisation solve — the going spring's torque law
+  is derived from its ribbon and the fusee cut against it, and the alarm half's
+  wind ceiling is measured against the same metal. So the conversion is not a
+  builder change, it is a re-solve of §104, and it belongs in its own landing
+  with `equalisation` re-run rather than bolted onto the profile work.
+
+Neither is gated, and neither should be waived into looking finished: the
+movement's two remaining trapezoidal tooth forms are debt, and this item is
+where they are counted.
+
+## 86. `gearTrueReach`'s miter is not a miter, and the setting wheel's clearance has been living on the error
+
+§136 added `gearTrueReach` so `gearOuterR` could bound the metal an extrude's
+bevel puts past the tip circle — the miter at the corner where the tip land
+meets the epicycloidal face, which `TIP_RELIEF`'s 1.02 cushion used to swallow.
+The construction it ships with is wrong in two places at once.
+
+**What it computes.** The outline runs counter-clockwise, so an edge `(dx, dy)`
+has outward normal `(dy, −dx)`, and the offset point leaves along the SUM of the
+two edges' normals — a vector whose length is `2·sin(θ/2)` for the interior
+angle θ, which is exactly the miter's denominator. The code takes a DIFFERENCE
+instead. That is a direction 90° off the bisector, scaled by the sine of the
+TURN angle rather than of the half interior angle — so a nearly straight run
+(θ → π, which is most of a face) is treated as a cusp, and a real cusp as a
+straight run.
+
+**Why nothing caught it.** `gearOuterR` returns
+`max(spec.tipR + bevel, gearTrueReach(spec, bevel))`, and the misdirected offset
+grows the radius less than the inflated length does. The net is an
+OVER-estimate, so the bound still bounds and §115's declared-versus-cut assert
+still passes — over a reach it never actually computed. Measured on the keyless
+setting wheel (20t, module 0.34, thickness 1.1): **4.1451 as shipped against
+3.9424 from the correct construction**, a 0.2027 cushion nobody asked for.
+
+**The second half, which is the reason this is filed rather than fixed.**
+Correcting it was tried and reverted. `gearOuterR` feeds station solves, and
+that 0.2027 is consumed by `SLEEVE_TOP`'s second cap in `src/main.js` — the one
+that holds the clutch spine clear of the setting wheel at full pull. With the
+honest bound, that cap loosens by 0.2027, stops binding, and the spine reaches
+to the rim cap (`CLUTCH_RIM_T/2 − SAW_FIT` = 0.5) instead. `expectedContacts`
+then measures `Winding clutch ⇄ Keyless works` / `clutchSleeve ⇄ settingWheel`
+at **0.1278 against the 0.15 floor**, at `handSet f=0.9333` — a real violation,
+in a battery that is otherwise 33/33.
+
+So the cap has been passing on slack this error was lending it. Its stated
+argument bounds the wheel by a sphere of radius `gearOuterR` about the wheel's
+centre and the spine by `SLEEVE_TOP` along the stem, and neither is the
+governing distance: measured at the failing pose, the closest metal is nowhere
+near the wheel's rim. **Re-deriving that cap from the real closest approach is
+the work**, and it must happen in the same landing as the miter fix or the fix
+lands a red gate. Do not pay for it by shortening the spine to a number that
+happens to work, and do not widen the floor — `CLEAR_MARGIN` is the one
+clearance margin.
+
+**Order of work.** Fix the bisector and the half-angle together (both are
+one-line corrections and the probe that found them,
+`tools/probe-reserve-mesh-overlap.mjs`, already carries the correct
+construction — it reproduces the shipped 28-tooth reserve wheel's measured tip
+radius to four decimals, 5.2756 against 5.2756, which is how the error was
+found). Then re-derive `SLEEVE_TOP`'s setting-wheel cap against the real
+geometry, and run the battery: `gearOuterR` moves for every gear in the
+movement, so the blast radius is every station solve that consumes it, not just
+this one.
