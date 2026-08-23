@@ -321,6 +321,76 @@
     </div>
   </details>
 
+  <!-- ===================== GEAR TEETH ===================== -->
+  <details class="mech" id="gear-teeth">
+    <summary>Gear teeth &mdash; cycloidal, and derived rather than drawn<span class="where">every train &middot; src/geometry.js &sect;136</span></summary>
+    <div class="mech-body">
+      <p>Until &sect;136 every wheel and pinion in the movement was cut with straight-chord
+      flanks and no pressure angle &mdash; correctly placed outlines rather than gears. Two of
+      those rolling together have no conjugate action at all, which is why the power-reserve
+      train's wheels were visibly passing through each other. The teeth are now CYCLOIDAL,
+      which is what a watch of this kind uses and not an arbitrary choice: a cycloidal pair
+      tolerates the varying centre distance and the very low leaf counts a watch train
+      actually runs (this movement has a seven-leaf pinion), where an involute pinion of that
+      count undercuts badly.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One tooth, and where each part of it comes from</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 760 200" width="760" height="200" role="img" aria-label="A cycloidal tooth: radial flank below the pitch circle, epicycloidal face above it, root land clearing the mate's addendum">
+            <line x1="40" y1="120" x2="720" y2="120" stroke="var(--muted)" stroke-width="1" stroke-dasharray="6 4"/>
+            <text class="val" x="40" y="112">pitch circle</text>
+            <line x1="40" y1="60" x2="720" y2="60" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 5"/>
+            <text class="val" x="40" y="52">tip circle</text>
+            <line x1="40" y1="168" x2="720" y2="168" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 5"/>
+            <text class="val" x="40" y="186">root land</text>
+            <polyline points="300,168 300,120" fill="none" stroke="var(--steel)" stroke-width="2.2"/>
+            <polyline points="300,120 306,110 314,98 326,84 338,72 352,62 408,62 422,72 434,84 446,98 454,110 460,120" fill="none" stroke="var(--brass)" stroke-width="2.2"/>
+            <polyline points="460,120 460,168" fill="none" stroke="var(--steel)" stroke-width="2.2"/>
+            <text class="lbl lbl-strong" x="196" y="146">flank</text>
+            <text class="val" x="150" y="160">radial &mdash; the Willis degeneracy</text>
+            <text class="lbl lbl-strong" x="500" y="80">face</text>
+            <text class="val" x="500" y="94">epicycloid of a circle m&middot;min(mates)/4</text>
+            <text class="val" x="500" y="150">root clears the mate's SOLVED addendum</text>
+          </svg>
+        </div>
+        <figcaption>The flank below the pitch circle is a straight radial line &mdash; that is
+        not a simplification but the Willis convention's own consequence: take the describing
+        circle as half the mating pinion's pitch circle and the hypocycloid it traces
+        degenerates to a radius. Above the pitch circle the face is an epicycloid of that same
+        describing circle. The root is cut to clear whatever addendum the mate was itself
+        solved to, plus clearance &mdash; not to a house factor.</figcaption>
+      </figure>
+      <p>Four quantities are DERIVED here rather than chosen, each from a constraint that is
+      written beside it in the source. The describing circle is <code>m&middot;min(mates)/4</code>
+      &mdash; half the smallest mate's pitch radius, so the pinion it is most likely to be
+      driving gets radial flanks. The two addenda come from a pair solve that targets a contact
+      ratio above one, capped where the tip would come to a point. Backlash is a share of the
+      pitch, <code>0.02&middot;&pi;&middot;m + 2&epsilon;</code>, and root clearance is
+      <code>0.05 + &epsilon;</code>. The tessellation budget &epsilon; is
+      <code>0.01&middot;&pi;&middot;m</code>, set at half the phase instrument's guaranteed
+      slack: the chords of a convex face lie INSIDE the metal, so tessellating errs on the
+      clearance side and spends only backlash.</p>
+      <p>That the flanks genuinely roll is measured, not asserted.
+      <code>tools/probe-136-roll.mjs</code> builds all twenty-four of the movement's gear
+      meshes from the same generator the builders call, places each at its real centre
+      distance and rolls it through a full tooth pitch at the conjugate ratio: twenty-four of
+      twenty-four at zero penetration, with backlash left over.</p>
+      <p class="note">What this does NOT yet claim. The teeth are MODELLED as conjugate
+      geometry; the wheels are still POSED by tooth-count arithmetic rather than driven by
+      contact, so nothing here transmits a force. And the shipped metal is not quite the metal
+      that was cut: the extrusion adds a bevel by offsetting the outline outward, and that
+      offset is larger than the backlash the generator reserved &mdash; so two mating teeth
+      still overlap slightly in the built scene even though their profiles roll cleanly. TODO
+      84 carries it, with the reserve train's two rows waived against TODO 77 until it lands.
+      The bound that measures how far past its tip circle a tooth reaches is over-generous for
+      a related reason of its own (TODO 86).
+      Two builders also still cut the old trapezoid: the barrel, because converting it moves
+      its cavity and that is a re-solve of the equalisation work rather than a geometry
+      change, and the differential's bevel wheels, because a sheared planar cycloid is not a
+      bevel tooth. TODO 85 counts both.</p>
+    </div>
+  </details>
+
   <!-- ===================== MAINSPRING ===================== -->
   <details class="mech" id="mainspring">
     <summary>Mainspring — one length of steel, redistributed<span class="where">power · src/geometry.js, src/main.js</span></summary>
