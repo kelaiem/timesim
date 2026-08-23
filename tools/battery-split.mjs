@@ -79,6 +79,22 @@ export const INSPECTION_SLICES = [
 //
 // The census's two MS fields are wall-clock, so they sum but do not compare
 // between runs — the same exemption `ms` has in the report.
+//
+// §108's census is a report of WORK DONE, so every slice's counters add: the
+// slices between them did the whole run's poses. Shared by both merges below
+// rather than written twice, because "how a census reassembles" is one answer
+// and a second copy of it is a second thing to keep in step.
+function sumCensus(parts) {
+  const census = JSON.parse(JSON.stringify(parts[0].result.census));
+  for (const p of parts.slice(1)) for (const k of Object.keys(census)) {
+    if (k === 'out') for (const kk of Object.keys(census.out)) census.out[kk] += p.result.census.out[kk];
+    else census[k] += p.result.census[k];
+  }
+  census.exactMs = +census.exactMs.toFixed(1);
+  census.verdictMs = +census.verdictMs.toFixed(1);
+  return census;
+}
+
 export function mergeInspection(parts, axisMeta) {
   const order = axisMeta.map((a) => a.name);
   const nOf = new Map(axisMeta.map((a) => [a.name, a.n]));
@@ -108,13 +124,7 @@ export function mergeInspection(parts, axisMeta) {
       .map(([ax, fs]) => `${ax}: ${fs.length}/${nOf.get(ax) + 1} poses (f ${Math.min(...fs)}–${Math.max(...fs)})`)
       .join('; ');
   }
-  const census = JSON.parse(JSON.stringify(parts[0].result.census));
-  for (const p of parts.slice(1)) for (const k of Object.keys(census)) {
-    if (k === 'out') for (const kk of Object.keys(census.out)) census.out[kk] += p.result.census.out[kk];
-    else census[k] += p.result.census[k];
-  }
-  census.exactMs = +census.exactMs.toFixed(1);
-  census.verdictMs = +census.verdictMs.toFixed(1);
+  const census = sumCensus(parts);
   const swept = new Set(parts.map((p) => p.slice));
   // §152 — CARRY THE RESTRICTION THROUGH. Every slice of one run was given the
   // same `pairsTouching`, so they all carry the same record; dropping it here
@@ -133,6 +143,181 @@ export function mergeInspection(parts, axisMeta) {
   return { units, report, axes: order.filter((n) => swept.has(n)), census,
     ...(restriction ? { restriction } : {}) };
 }
+
+// §127 tier 2a — THE OTHER TWO SWEEPS DIVIDE ALONG THE SAME LOOP, but their
+// rows are EXTREMA rather than a union: `clearances` and `expectedContacts`
+// each report one row per declared table entry, carrying the smallest
+// clearance found anywhere in pose space and WHERE it was found. So the merge
+// does not combine rows — it PICKS one, and the picked row is the winning
+// slice's verbatim, because that slice measured it at the pose it names.
+//
+// What makes the pick reproduce a whole run exactly is `sweepClearances`'
+// per-axis refinement reference (§127 tier 2a in inspect.js): before it, a
+// slice refined a superset of a whole run's intervals and could return a
+// lower minimum, so the winner would have been a function of the partition.
+//
+// THE TIE RULE IS THE WHOLE RUN'S OWN. The engine records a new minimum on a
+// strict `d < st.min`, so when two poses reach the same value the FIRST one
+// swept keeps the row — and axes are swept in AXES order. Hence: strict `<`
+// over parts walked in axis order, so the earliest axis keeps a tie. One `>=`
+// here and every tied row would silently be attributed to the wrong pose,
+// with every gate still green.
+//
+// A CAPPED row is not a number: the check writes `"≥ x.xx"` when every query
+// for that pair was pruned at its cap — the bound proven, no minimum measured
+// (see checkClearances' own note). Capped therefore sorts as Infinity, and a
+// row capped in EVERY slice takes the first part's row: the string is derived
+// from the row's floor and the band, so it is constant across slices, which is
+// asserted rather than assumed.
+//
+// A DEAD AXIS is legal and costs milliseconds: `sweepClearances` skips an axis
+// no live pair names, so that slice returns every row capped and merges away.
+export function mergeExtrema(parts, axisMeta) {
+  const order = axisMeta.map((a) => a.name);
+  const at = (name) => {
+    const i = order.indexOf(name);
+    if (i < 0) throw new Error(`slice ${name} names no axis in AXES — the merge cannot order it`);
+    return i;
+  };
+  // Parts arrive in slice-declaration order, which IS AXES order (assertSlices
+  // holds that). Sorted anyway, because the tie rule is the only thing keeping
+  // a tied row's pose attribution true and it must not depend on the order the
+  // harness happened to hand them over in.
+  parts = [...parts].sort((x, y) => at(x.slice) - at(y.slice));
+  for (let i = 1; i < parts.length; i++) {
+    if (parts[i].slice === parts[i - 1].slice) throw new Error(`axis ${parts[i].slice} was swept by two slices`);
+  }
+  const rows0 = parts[0].result.results;
+  for (const p of parts) {
+    const rows = p.result.results;
+    if (rows.length !== rows0.length) {
+      throw new Error(`slice ${p.slice} reported ${rows.length} rows and ${parts[0].slice} reported ${rows0.length}`
+        + ' — the two ran against different tables, so their rows cannot be compared by index');
+    }
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i].pair !== rows0[i].pair) {
+        throw new Error(`row ${i} is ${rows[i].pair} in slice ${p.slice} and ${rows0[i].pair} in ${parts[0].slice}`);
+      }
+    }
+  }
+  // THE WINNER IS DECIDED ON RAW FLOATS, NOT ON THE ROW'S `min`. The row's
+  // number is rounded to four decimals for the report, and the whole run's
+  // own recording rule is strict `<` on raw values — so a merge that compares
+  // rounded rows resolves DISPLAY-PRECISION TIES by the first-axis rule where
+  // the whole run had a strict raw order. Not theoretical: the first 13-axis
+  // run attributed a floor row's 0.16 to `beat f=0` where the whole run's raw
+  // minimum was at `alarmStrike f=0.6972`, one report line of drift with the
+  // verdict unchanged. Every slice therefore carries `rawMins` (a narrowed
+  // run's field — see checkClearances), the merge REFUSES a slice without it,
+  // and the field is dropped from the merged payload so its shape stays a
+  // whole run's. A capped row travels as null (Infinity does not survive
+  // page.evaluate's JSON), read back as Infinity here.
+  for (const p of parts) {
+    if (!Array.isArray(p.result.rawMins) || p.result.rawMins.length !== rows0.length) {
+      throw new Error(`slice ${p.slice} carries no rawMins — merging on the rows' rounded minima would `
+        + 'mis-attribute every display-precision tie, so the merge refuses rather than guesses');
+    }
+  }
+  const raw = (p, i) => (p.result.rawMins[i] === null ? Infinity : p.result.rawMins[i]);
+  const results = rows0.map((_, i) => {
+    let best = parts[0];
+    let capped = typeof best.result.results[i].min === 'string' ? best.result.results[i].min : null;
+    for (const p of parts.slice(1)) {
+      const row = p.result.results[i];
+      if (typeof row.min === 'string') {
+        if (capped !== null && row.min !== capped) {
+          throw new Error(`row ${i} (${row.pair}) is capped at ${capped} in one slice and ${row.min} in ${p.slice}`
+            + ' — the cap is the row\'s own floor plus the band and cannot differ between slices');
+        }
+        capped ??= row.min;
+      }
+      if (raw(p, i) < raw(best, i)) best = p;   // strict on RAW: the earliest axis keeps a true tie
+    }
+    return best.result.results[i];
+  });
+  const census = sumCensus(parts);
+  // §152 — CARRY THE RESTRICTION THROUGH, for mergeInspection's reason above:
+  // a merged payload that loses this record looks like a WHOLE run to the
+  // union step, which then returns it untouched and gates a restricted sweep
+  // on its own partial rows. Every slice of one run was given the same
+  // `pairsTouching`, so `keptIndices` is identical across them by
+  // construction; a disagreement is a harness bug and throws.
+  const restriction = parts[0].result.restriction;
+  for (const p of parts) {
+    if (JSON.stringify(p.result.restriction) !== JSON.stringify(restriction)) {
+      throw new Error(`slice ${p.slice} was restricted differently than ${parts[0].slice}`);
+    }
+  }
+  // The derived fields are RE-DERIVED from the merged rows, never carried: a
+  // slice's own `violations` list judges only its axis. These two expressions
+  // are the checks' own, and their twins live in battery-union.mjs's
+  // unionCheck — edit one and the other is the second place to look.
+  //
+  // The payload's KEY ORDER is part of the acceptance, so each shape is built
+  // exactly as its check's return statement builds it (checkClearances and
+  // checkExpectedContacts in inspect.js). `unmatched` is what tells the two
+  // apart here — the merge is handed no check name — and it is a property of
+  // the TABLE, not of the pose net, so every slice computes the same list and
+  // a disagreement is a bug rather than something to union.
+  if (parts[0].result.unmatched !== undefined) {
+    const unmatched = parts[0].result.unmatched;
+    for (const p of parts) {
+      if (JSON.stringify(p.result.unmatched) !== JSON.stringify(unmatched)) {
+        throw new Error(`slice ${p.slice} reported different unmatched contact selectors than ${parts[0].slice}`
+          + ' — that list is read off the declared table, so it cannot depend on which axis ran');
+      }
+    }
+    return {
+      violations: results.filter((r) => !r.ok && !r.waived),
+      waivedCount: results.filter((r) => !r.ok && r.waived).length,
+      unmatched, results, census,
+      ...(restriction ? { restriction } : {}),
+    };
+  }
+  return { violations: results.filter((r) => !r.ok), results, census,
+    ...(restriction ? { restriction } : {}) };
+}
+
+// The two extrema sweeps' rosters. Same axes as INSPECTION_SLICES above and
+// the same FACT per row (`poses` = n + 1, asserted against the page), because
+// there is one axis list and three checks that walk it — the assert catches an
+// axis added to inspect.js and sliced nowhere, which would simply never be
+// swept by that check.
+//
+// Declared separately rather than sharing one array: a check's roster is a
+// claim about THAT check's loop, and the day one of them stops sweeping an
+// axis, the roster that has to change is its own.
+export const CLEARANCE_SLICES = [
+  { axis: 'beat', poses: 97 },
+  { axis: 'crown', poses: 49 },
+  { axis: 'reserve', poses: 61 },
+  { axis: 'wind', poses: 721 },
+  { axis: 'arrest', poses: 97 },
+  { axis: 'train', poses: 97 },
+  { axis: 'jumperEngage', poses: 121 },
+  { axis: 'handSet', poses: 121 },
+  { axis: 'alarm', poses: 97 },
+  { axis: 'alarmStrike', poses: 110 },
+  { axis: 'alarmWind', poses: 110 },
+  { axis: 'alarmToggle', poses: 49 },
+  { axis: 'stemSlip', poses: 97 },
+];
+
+export const EXPECTED_CONTACT_SLICES = [
+  { axis: 'beat', poses: 97 },
+  { axis: 'crown', poses: 49 },
+  { axis: 'reserve', poses: 61 },
+  { axis: 'wind', poses: 721 },
+  { axis: 'arrest', poses: 97 },
+  { axis: 'train', poses: 97 },
+  { axis: 'jumperEngage', poses: 121 },
+  { axis: 'handSet', poses: 121 },
+  { axis: 'alarm', poses: 97 },
+  { axis: 'alarmStrike', poses: 110 },
+  { axis: 'alarmWind', poses: 110 },
+  { axis: 'alarmToggle', poses: 49 },
+  { axis: 'stemSlip', poses: 97 },
+];
 
 // §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.
 //
