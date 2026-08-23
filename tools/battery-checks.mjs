@@ -89,6 +89,27 @@ export const BATTERY = [
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
+  // §54 / TODO 78 — §50's floor and this ceiling are one pair, and this half
+  // had never run in CI: `checkSlenderness` was exported and never registered
+  // in inspect.js's CHECKS, so every λ in the source was a hand number and
+  // SLENDER_WAIVERS waived rows in a report nothing produced. A REPORT (§40),
+  // and for the same reason meshIntegrity is: docs/BUILT.md §54 records 8 rows
+  // over the ceiling and 6 unwaived at its own landing, so gating `unwaived`
+  // on arrival would land CI red on day one — which §54's banner names as how
+  // a check gets switched off. What IS gated is what can be held: the
+  // synthetic control, and every declared bearing table's validity (malformed,
+  // and a declared support with no metal at it — the INTRA_UNIT_CONTACTS
+  // stale-selector precedent, and §48's no-spring rule made geometric).
+  { name: 'slenderness', opts: {},
+    gate: 'control PASS, 0 malformed and 0 unsupported bearing declarations — the λ rows are a REPORT (§40)',
+    fails: (r) => [
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...r.bearings.malformed,
+      ...r.bearings.unsupported,
+    ],
+    note: (r) => `${r.counted} meshes, ${r.exemptByKind} exempt by kind; ${r.over} over ceiling `
+      + `(${r.unwaived} unwaived — untriaged, §40); ${r.bearings.declaredMeshes} declare `
+      + `${r.bearings.stations} bearings, overhang K ${r.overhangK}` },
   // §77 tiers 0+1 — a REPORT (§40): the zeroArea and inverted rows land red
   // by design (3,233 zero-area triangles and 4 inverted bodies measured on
   // arrival, triaged into TODO.md) and are NOT gated; what is gated is what

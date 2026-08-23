@@ -4471,6 +4471,46 @@ the movement), a pose sweep that never moved the column wheel, and the
 tail's AABB *floor*, which is pinned at the pivot end no matter how the
 lever swings. The tip is what moves; measure the thing that moves.
 
+### §54 postscript 4 — the check was never registered, and it measured the wrong length (TODO 78)
+
+Everything above is a true account of what was BUILT and a false account of
+what has since been MEASURED, because `checkSlenderness` was exported and
+never added to `inspect.js`'s `CHECKS`. `start(clock, 'slenderness')` answered
+*unknown check*; it never got a `BATTERY` row; **it did not execute once
+between §54 and TODO 78.** The Result table above, the "8 rows over ceiling, 6
+unwaived", the 4 ms over 454 meshes — all of it is the landing's own hand run,
+after which nothing re-took it. `SLENDER_WAIVERS` went on waiving a row in a
+report nobody produced, and three different λ values for one mesh (100.5,
+135.4, 139.1) accumulated in `src/main.js`, none of them from a run.
+
+This is the second instance of the class — §48's `restoring` was the first
+(TODO 29) — so the fix is not only the missing line. `ci-battery.mjs` now
+reads `window.__I.CHECK_NAMES` from the page and **gates every registered
+check against `BATTERY`**, excepting a named map where each exclusion says why
+it is not a gate. `assertCosts` could never have caught this: it holds
+`BATTERY` against `COSTS`, and a check absent from both is consistent with
+both.
+
+The second half is a measurement error the banner argued itself into. §54
+measured each MESH's bounding box end to end. For a shaft running in bushes
+that is not a free length, and TODO 16's own "general lesson" had asked for
+L/t **per segment** — §54 shipped only the L/t half. Meshes may now declare
+`userData.bearings = { axis, stations }` and λ is taken per free length, an
+overhang scaled by `SLENDER_OVERHANG_K` = ∛16 (48EI/L³ against 3EI/L³; the
+datum is the span, so declaring can only ever make a part read worse).
+
+Registered and re-run, the movement measures **9 rows over ceiling, 7 unwaived
+and untriaged** — §50's arc, at the start of it. The alarm link's lay shaft
+reads **λ 127.6**, and its governing free length is not the bush-to-bush span
+this section and TODO 16 both size against but the **rod-end overhang**,
+12.487 u at 21.2 N/m — TODO 16's own condemned cantilever, returned at the far
+end after §112 grew the chord and the station literals did not follow
+(TODO 79).
+
+One more thing fixed in passing: this check used a bare `traverse` and so had
+no `userData.schematic` prune, putting §71's three-quarter-plate and dial
+occluder fills in its population. `counted` 617 → 615, measured; no row moved.
+
 ## §55. The inspection route — a tour for the instrument that actually finds things
 
 `TOUR_STEPS` is a **showcase**: it narrates the movement to a visitor and

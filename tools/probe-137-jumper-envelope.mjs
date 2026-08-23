@@ -405,6 +405,14 @@ await page.evaluate(() => {
       // §54's OTHER derivation — the geometry budget the section note quotes
       // beside the force one. λ = len / (second-smallest extent), so the
       // ceiling is a bound on the DIAMETER over an unsupported span.
+      // TODO 78 — READ THE SPAN NAMES CAREFULLY, they are two different things.
+      // `driveOverhang` here is bushes[0], i.e. chord t 0 → 2.45: the LOAD
+      // PATH from the fork's mid-plane, which is the right length for the
+      // force budget and is where §137's 2807 N/m comes from. The shaft's
+      // METAL starts at t = ALARM_FORK_RETREAT, so its fork-end overhang is
+      // 1.350 u, and that is what §54's registered check measures. Likewise
+      // `rodOverhang` is chordFull - bushes[1] = 12.487, which IS the metal's
+      // and is the free length that governs λ (TODO 79).
       slenderness: (() => {
         shaftRod.geometry.computeBoundingBox();
         const bb = shaftRod.geometry.boundingBox;

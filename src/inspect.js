@@ -6104,6 +6104,19 @@ export const STOCK_KIND_BY_MESH = {
 // REPORT, NOT A GATE — §40's rule, and §50's own history. §50 reported, was
 // triaged over four tranches, and only then gated. Arriving as a gate is how
 // a check gets switched off. `ok` is always true; the rows are the product.
+//
+// TODO 78 — AND UNTIL TODO 78 IT WAS NEITHER, because it was never registered
+// in CHECKS below: `start(clock, 'slenderness')` answered "unknown check", so
+// it had no BATTERY row either and had not executed once since §52 put the
+// battery in CI. Everything the paragraphs above promise was true of code
+// nobody ran. What IS gated now is what can be held on day one — the
+// synthetic control and every declared bearing table's validity — and the λ
+// rows stay a report, 7 of them unwaived and untriaged.
+//
+// It also measured the wrong LENGTH: each mesh's bounding box end to end,
+// which for a shaft running in bushes is not a free length. TODO 16's own
+// "general lesson" had asked for L/t PER SEGMENT and §54 shipped only the L/t
+// half. See userData.bearings and SLENDER_OVERHANG_K below.
 export const SLENDER_MAX = SLENDER_MAX_U;   // layout.js owns it: geometry derives from the same number
 export const SLENDER_BASIS =
   'real watch arbors and levers run L/t of roughly 5–20; 30 is generous headroom, '
@@ -6120,10 +6133,22 @@ export const SLENDER_MAX_BY_KIND = {
 const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // Accepted debt, citing the item that owns it — the STOCK_WAIVERS convention.
 // A waived row is still reported; the waiver records that someone has looked.
-// The alarm link's SHAFT is accepted debt: two attempts to thicken it were
-// rejected by CI (Alarm link ⇄ Minute jumper, overlap 0.312 then 0.310 — the
-// radius barely moved it, so section is not the lever). Its beak tail WAS
-// fixed and is off this report on merit. TODO 16 carries the rest.
+// The alarm link's SHAFT is accepted debt. TODO 16 carries it.
+//
+// THE PREMISE THIS WAIVER USED TO CITE IS DEAD, and it stood here for two
+// entries after src/main.js said so in capitals. It read: "two attempts to
+// thicken it were rejected by CI (Alarm link ⇄ Minute jumper, overlap 0.312
+// then 0.310), so section is not the lever". §112 re-solved the rod chord and
+// that pair has been 13.32 u apart ever since; §137 measured the real wall
+// (the alarm setting idler, max legal r 0.2850 over 89 stations) and took the
+// section to its force floor.
+//
+// WHAT KEEPS IT WAIVED TODAY, measured rather than argued (TODO 78 registered
+// the check that measures it): the governing free length is the ROD-END
+// OVERHANG, 12.487 u at λₑ 127.6, and λ ≤ 30 there wants r ≥ 0.5244 against a
+// corridor of 0.2850. The waiver also covers `alarmLinkRod` at λ 31.4. Its
+// beak tail WAS fixed and is off this report on merit. TODO 79 owns the
+// overhang, which is a chord-growth regression rather than a design.
 export const SLENDER_WAIVERS = {
   'Alarm link': 'TODO 16',
 };
@@ -6132,13 +6157,203 @@ export const SLENDER_WAIVERS = {
 // stiffness column is INFORMATIONAL: a first-order cantilever estimate, good
 // to a factor of two, included because "λ = 84" means less to a reader than
 // "10 N/m — it bends a tenth of a millimetre under a milligram-ish load".
+//
+// I IS THE RECTANGULAR SECOND MOMENT, ac³/12, for every part — this check reads
+// a bounding box and a box cannot tell a round shaft from a square bar. For a
+// cylinder that overstates I by 64/12π = 1.70×, so a round member's number here
+// reads 1.7× STIFFER than it is. Inside the stated factor of two, and named
+// because the alarm link's lay shaft is round and §137's force budget derives
+// its own figures from πr⁴/4: the two are not the same number and neither is
+// wrong (TODO 78 — the rod-end overhang is 36 N/m by this column and 21.2 N/m
+// by πr⁴/4, which is the one comparable to §137's 2807 N/m drive end).
 const SLENDER_E_PA = 200e9;
+
+// §54 / TODO 78 — AN OVERHANG IS NOT A SPAN, and this is how much not.
+//
+// λ is a proxy for BENDING COMPLIANCE, and compliance goes as L³ over a
+// coefficient that the END CONDITIONS set, not the length:
+//
+//   simply supported, load at midspan   k = 48EI/L³   ← between two bearings
+//   cantilever, load at the free tip    k =  3EI/L³   ← past the last bearing
+//
+// Each free length is judged at its own most compliant load point, so the
+// ratio is 48/3 = 16: an overhang is SIXTEEN times as flexible as a span of
+// the same length. Equal compliance means equal L³/coefficient, so the length
+// that makes an overhang as stiff as a span is the CUBE ROOT of that ratio.
+//
+// THE DATUM IS THE SPAN, because that is what SLENDER_MAX was calibrated on —
+// SLENDER_BASIS' "real watch arbors and levers run L/t of roughly 5–20" is
+// quoted pivot to pivot. Taking the cantilever as datum would instead DISCOUNT
+// declared spans, and a rule that lets a part improve its number by declaring
+// bearings is a laundering device. This one can only ever make a part read
+// WORSE than its undeclared whole-stock λ, and that asymmetry is what makes a
+// declaration safe to trust.
+//
+// WHY A MULTIPLIER AT ALL, when the banner above insists the measure stays
+// geometric: without it the measure ranks the lengths BACKWARDS, which is the
+// exact failure §54 exists to fix one level up. Measured on the alarm link's
+// lay shaft (tools/probe-slenderness-bearings.mjs):
+//
+//   span     19.550 u   raw λ 79.3    88.4 N/m
+//   overhang 12.487 u   raw λ 50.6    21.2 N/m   ← 4× the compliance
+//
+// Raw λ calls the span the problem; the stiffness column calls the overhang
+// the problem. With K the overhang reads λ 127.6 and the two agree.
+//
+// IT IS A SIMPLIFICATION, AND IT ERRS THE SAFE WAY. A cantilever hanging past
+// a simple support with a real back span deflects Pa²(L+a)/3EI at its tip, not
+// Pa³/3EI, because the back span rotates — worse than this rule by a further
+// ≈1.4× on this shaft. §54's charter is to under-report rather than cry wolf,
+// so the simpler LOCAL rule is the right one: it judges each free length on
+// its own terms, which is also what lets the validator judge a declaration
+// without knowing its neighbours. A reader who computes the coupled figure
+// should find that choice written here rather than meet it as a discrepancy.
+//
+// NOT the Euler column factors (K = 1 pinned-pinned, 2 fixed-free): this is a
+// BENDING measure, not a buckling one — the stiffness column says which —
+// and importing buckling's K would be a second, unrelated derivation wearing
+// the same symbol.
+export const SLENDER_OVERHANG_K = Math.cbrt(48 / 3);   // 2.5198
+
+// "On the surface counts" — §77's INTERIOR_EPS value, for the same reason: a
+// bearing sitting exactly on the metal's end face is a real construction (a
+// plate bush at an arbor's very end), not a station off the part.
+const SLENDER_BEARING_EPS = 1e-6;
+
+// A mesh may DECLARE where it is held:
+//
+//   mesh.userData.bearings = { axis: 'x'|'y'|'z', stations: [ … ] }
+//
+// `stations` are GEOMETRY-LOCAL coordinates on that axis — the frame
+// computeBoundingBox() measures in — so no pose, no parent rotation and no
+// group azimuth can move a station off the metal it names.
+//
+// It rides the MESH, never the geometry, for two reasons and the second is
+// load-bearing: which bearings hold a shaft is an INSTALLATION fact (two
+// meshes can share one CylinderGeometry and be borne differently), and
+// weldGeometry returns a fresh BufferGeometry without copying `userData`, so a
+// geometry-level declaration would be silently deleted by weldTree at the end
+// of boot — a clean report of work that did not happen.
+//
+// The axis is DECLARED and then validated against the box's longest extent
+// rather than derived from it: deriving silently would hide a builder naming
+// the wrong direction, validating makes it a failure. A malformed declaration
+// is a GATED failure AND the mesh falls back to its whole-stock reading — a
+// bad declaration must never quietly buy the shorter measurement. §77's
+// sub-body tables are the precedent for both halves.
+function validateBearings(decl, ext, longAxis, box) {
+  const bad = (why) => ({ ok: false, why });
+  if (!decl || typeof decl !== 'object' || Array.isArray(decl)) return bad('bearings is not an object');
+  const { axis, stations } = decl;
+  if (axis !== 'x' && axis !== 'y' && axis !== 'z') return bad(`axis ${JSON.stringify(axis)} is not x, y or z`);
+  if (axis !== longAxis)
+    return bad(`axis '${axis}' is not the mesh's longest extent ('${longAxis}' is: ${ext[axis].toFixed(4)} vs ${ext[longAxis].toFixed(4)})`);
+  if (!Array.isArray(stations) || !stations.length || !stations.every((s) => Number.isFinite(s)))
+    return bad('stations is not a non-empty array of finite numbers');
+  // Strictly ascending catches unsorted AND duplicated in one test.
+  for (let i = 1; i < stations.length; i++)
+    if (!(stations[i] > stations[i - 1]))
+      return bad(`stations are not strictly ascending: ${stations[i]} follows ${stations[i - 1]}`);
+  const lo = box.min[axis], hi = box.max[axis];
+  for (const s of stations)
+    if (s < lo - SLENDER_BEARING_EPS || s > hi + SLENDER_BEARING_EPS)
+      return bad(`bearing at ${axis} ${s.toFixed(4)} is outside the mesh's own extent (${lo.toFixed(4)} … ${hi.toFixed(4)})`);
+  return { ok: true, axis, stations, lo, hi };
+}
+
+// The free lengths a declaration cuts the metal into, with the end conditions
+// that set each one's effective length. A zero-length end (a bearing sitting
+// on the end face) is not an overhang and is dropped rather than reported as
+// a length of nothing.
+function slenderSegments(lo, hi, stations) {
+  const cuts = [lo, ...stations, hi];
+  const out = [];
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const L = cuts[i + 1] - cuts[i];
+    if (!(L > SLENDER_BEARING_EPS)) continue;
+    const kind = (i === 0 || i === cuts.length - 2) ? 'overhang' : 'span';
+    out.push({ kind, from: cuts[i], to: cuts[i + 1], L,
+      effectiveL: kind === 'overhang' ? L * SLENDER_OVERHANG_K : L });
+  }
+  return out;
+}
+
+// POSITIVE CONTROL, synthetic and in-check — §77's rule, and ci-battery's own
+// note beside `restoring`: a control that quietly stops passing is how this
+// class of check dies. A 40 × 1 × 1 bar driven through the SAME
+// validateBearings and slenderSegments the scene walk uses, because a control
+// that exercises a copy proves nothing. It cannot be deleted by fixing the
+// scene (TODO 27's lesson, cited in checkMeshIntegrity's own control).
+function slendernessControl() {
+  const fails = [];
+  const box = new THREE.Box3(new THREE.Vector3(-20, -0.5, -0.5), new THREE.Vector3(20, 0.5, 0.5));
+  const ext = { x: 40, y: 1, z: 1 };
+  const near = (a, b) => Math.abs(a - b) <= 1e-9;
+
+  // A bearing sitting exactly ON an end face is a real construction (a plate
+  // bush at an arbor's very end) and must produce no zero-length overhang —
+  // the case that would otherwise report a free length of nothing.
+  {
+    const e = validateBearings({ axis: 'x', stations: [-20, 10] }, ext, 'x', box);
+    if (!e.ok) fails.push(`a bearing on the end face was rejected: ${e.why}`);
+    else {
+      const segs = slenderSegments(box.min.x, box.max.x, e.stations);
+      if (segs.length !== 2) fails.push(`an end-face bearing produced ${segs.length} free lengths, expected 2`);
+      else if (segs[0].kind !== 'span' || !near(segs[0].L, 30) || segs[1].kind !== 'overhang' || !near(segs[1].L, 10))
+        fails.push('an end-face bearing mis-classified its free lengths');
+    }
+  }
+
+  // Two bearings at ±10 cut 10 / 20 / 10 — and the 10-long OVERHANG must
+  // outrank the 20-long span, which is the whole point of the multiplier and
+  // the exact reversal this landing exists to surface.
+  const v = validateBearings({ axis: 'x', stations: [-10, 10] }, ext, 'x', box);
+  if (!v.ok) fails.push(`a valid declaration was rejected: ${v.why}`);
+  else {
+    const segs = slenderSegments(box.min.x, box.max.x, v.stations);
+    if (segs.length !== 3) fails.push(`expected 3 free lengths, got ${segs.length}`);
+    else {
+      const worst = segs.reduce((a, b) => (b.effectiveL > a.effectiveL ? b : a));
+      if (worst.kind !== 'overhang') fails.push('the 20-long span outranked a 10-long overhang — SLENDER_OVERHANG_K is not being applied');
+      if (!near(worst.effectiveL, 10 * SLENDER_OVERHANG_K)) fails.push(`governing effective length ${worst.effectiveL} is not 10·K`);
+      if (!near(segs[1].effectiveL, 20)) fails.push('a span was scaled — K must apply to overhangs only');
+    }
+  }
+
+  // Every rejection the validator owes, each one a defect someone could ship.
+  const rejects = [
+    [{ axis: 'x', stations: [25] }, 'a station outside the extent'],
+    [{ axis: 'x', stations: [10, -10] }, 'unsorted stations'],
+    [{ axis: 'x', stations: [10, 10] }, 'duplicate stations'],
+    [{ axis: 'y', stations: [0] }, 'an axis that is not the longest extent'],
+    [{ axis: 'q', stations: [0] }, 'an axis that is not x, y or z'],
+    [{ axis: 'x', stations: [] }, 'empty stations'],
+    [{ axis: 'x', stations: [0, NaN] }, 'a non-finite station'],
+    [[-10, 10], 'an array where an object is required'],
+  ];
+  for (const [decl, why] of rejects)
+    if (validateBearings(decl, ext, 'x', box).ok) fails.push(`accepted ${why}`);
+
+  return fails.length ? `FAIL — ${fails.join('; ')}` : `PASS (${rejects.length + 5} cases)`;
+}
+
+const _slBoxPt = new THREE.Vector3(), _slBox = new THREE.Box3();
 
 export function checkSlenderness(clock, opts = {}) {
   const max = opts.max || SLENDER_MAX;
+  // supportAt below reads matrixWorld to place a declared station in the
+  // scene, and start()'s resetInputs may have moved parts since the last
+  // paint — a check must not depend on a frame having been drawn.
+  clock.scene.updateMatrixWorld(true);
   // Nearest-ancestor dedupe — §40's rule. Units nest, so without it a mesh
   // inside two labelled subtrees is reported twice and the second row is not
   // a duplicate but a FALSE attribution: it names a part that does not move.
+  // Plus collectUnits' schematic-subtree prune (§71), which this check did
+  // NOT have until TODO 78: it used a bare traverse, so §71's plate occluder
+  // FILLS — real Meshes, parented inside labelled units — sat in its
+  // population. A fourth copy of both idioms; consolidating the walks is
+  // filed in TODO 4. (A traverse callback cannot prune a subtree, which is
+  // why this is a recursive walk and not a traverse with a guard.)
   const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
   const hops = (mesh, name) => {
     const target = unitObj.get(name);
@@ -6147,37 +6362,122 @@ export function checkSlenderness(clock, opts = {}) {
     return Infinity;
   };
   const byMesh = new Map();
-  for (const e of clock.labelEntries) {
-    e.obj.traverse((m) => {
-      if (!m.isMesh || !m.geometry?.attributes?.position) return;
-      const prev = byMesh.get(m);
-      if (!prev || hops(m, e.name) < hops(m, prev.unit)) byMesh.set(m, { unit: e.name, mesh: m });
-    });
-  }
+  const walk = (o, unitName) => {
+    if (o.userData && o.userData.schematic) return;
+    if (o.isMesh && o.geometry?.attributes?.position) {
+      const prev = byMesh.get(o);
+      if (!prev || hops(o, unitName) < hops(o, prev.unit)) byMesh.set(o, { unit: unitName, mesh: o });
+    }
+    for (const c of o.children) walk(c, unitName);
+  };
+  for (const e of clock.labelEntries) walk(e.obj, e.name);
 
-  const rows = [], exempt = [];
+  // §48's no-spring guard, made GEOMETRIC. auditOscillators proves a declared
+  // spring's NAME is in the scene; for a bearing the stronger test exists and
+  // is the one that matters — is there METAL at the station. Restricted to the
+  // declaring mesh's own unit: a bush is part of the part it holds, and a
+  // neighbouring unit that happens to overlap the point is not a bearing.
+  // Single-pose and box-wise, the mode every instrument in this file runs in.
+  const supportAt = (mesh, unitName, axis, s) => {
+    _slBoxPt.set(0, 0, 0);
+    _slBoxPt[axis] = s;
+    _slBoxPt.applyMatrix4(mesh.matrixWorld);
+    const root = unitObj.get(unitName);
+    let found = null;
+    const seek = (o) => {
+      if (found || (o.userData && o.userData.schematic)) return;
+      if (o.isMesh && o !== mesh && o.geometry?.attributes?.position) {
+        _slBox.setFromObject(o);
+        if (_slBox.containsPoint(_slBoxPt)) { found = o; return; }
+      }
+      for (const c of o.children) seek(c);
+    };
+    if (root) seek(root);
+    return found;
+  };
+
+  const rows = [], exempt = [], malformed = [], unsupported = [];
+  let declaredMeshes = 0, declaredStations = 0;
   for (const { unit, mesh } of byMesh.values()) {
     const name = mesh.name || '(unnamed)';
     const kind = STOCK_KIND_BY_MESH[name] || STOCK_KIND_BY_PART[unit] || 'wheel';
     if (SLENDER_EXEMPT_KINDS.has(kind)) { exempt.push({ unit, mesh: name, kind }); continue; }
     mesh.geometry.computeBoundingBox();
     const b = mesh.geometry.boundingBox;
-    const d = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z].sort((x, y) => x - y);
+    const ext = { x: b.max.x - b.min.x, y: b.max.y - b.min.y, z: b.max.z - b.min.z };
+    const d = [ext.x, ext.y, ext.z].sort((x, y) => x - y);
     const [tMin, tMid, len] = d;
     if (!(tMid > 1e-9) || !(len > 1e-9)) continue;          // degenerate: §50's business, not this one
-    const lambda = len / tMid;
     const ceiling = SLENDER_MAX_BY_KIND[kind] || max;
-    if (lambda <= ceiling) continue;
-    // Stiffness about the STIFF axis, so a flagged part is flagged at its best.
-    const a = tMin * UNIT_MM * 1e-3, c = tMid * UNIT_MM * 1e-3, L = len * UNIT_MM * 1e-3;
+    const a = tMin * UNIT_MM * 1e-3, c = tMid * UNIT_MM * 1e-3;
     const I = (a * c * c * c) / 12;
+    const kOf = (L_u, coeff) => +(coeff * SLENDER_E_PA * I / (L_u * UNIT_MM * 1e-3) ** 3).toFixed(1);
+
+    const decl = mesh.userData && mesh.userData.bearings;
+    if (!decl) {
+      // UNDECLARED: today's statements exactly, with the segment machinery
+      // skipped entirely rather than reproduced — a part nobody declared
+      // cannot move because this landing exists.
+      const lambda = len / tMid;
+      if (lambda <= ceiling) continue;
+      rows.push({
+        unit, mesh: name, kind,
+        lambda: +lambda.toFixed(1), ceiling,
+        thin_mm: +(tMin * UNIT_MM).toFixed(4),
+        section_mm: +(tMid * UNIT_MM).toFixed(4),
+        length_mm: +(len * UNIT_MM).toFixed(3),
+        cantileverStiffness_N_per_m: kOf(len, 3),
+        waived: SLENDER_WAIVERS[unit] || null,
+      });
+      continue;
+    }
+
+    const longAxis = ext.x === len ? 'x' : ext.y === len ? 'y' : 'z';
+    const v = validateBearings(decl, ext, longAxis, b);
+    if (!v.ok) {
+      malformed.push({ unit, mesh: name, why: v.why });
+      const lambda = len / tMid;                    // fall back to whole stock
+      if (lambda > ceiling) rows.push({
+        unit, mesh: name, kind,
+        lambda: +lambda.toFixed(1), ceiling,
+        thin_mm: +(tMin * UNIT_MM).toFixed(4),
+        section_mm: +(tMid * UNIT_MM).toFixed(4),
+        length_mm: +(len * UNIT_MM).toFixed(3),
+        cantileverStiffness_N_per_m: kOf(len, 3),
+        waived: SLENDER_WAIVERS[unit] || null,
+        declarationRejected: v.why,
+      });
+      continue;
+    }
+    declaredMeshes++;
+    declaredStations += v.stations.length;
+    for (const s of v.stations) {
+      const held = supportAt(mesh, unit, v.axis, s);
+      if (!held) unsupported.push({ unit, mesh: name, axis: v.axis, station: +s.toFixed(4),
+        why: 'a declared bearing with no mesh at it — a support that does not exist as metal' });
+    }
+    const segs = slenderSegments(v.lo, v.hi, v.stations);
+    const worst = segs.reduce((x, y) => (y.effectiveL > x.effectiveL ? y : x));
+    const lambda = worst.effectiveL / tMid;
+    if (lambda <= ceiling) continue;
     rows.push({
       unit, mesh: name, kind,
       lambda: +lambda.toFixed(1), ceiling,
       thin_mm: +(tMin * UNIT_MM).toFixed(4),
       section_mm: +(tMid * UNIT_MM).toFixed(4),
-      length_mm: +(len * UNIT_MM).toFixed(3),
-      cantileverStiffness_N_per_m: +(3 * SLENDER_E_PA * I / (L * L * L)).toFixed(1),
+      length_mm: +(worst.L * UNIT_MM).toFixed(3),   // the GOVERNING free length
+      stock_mm: +(len * UNIT_MM).toFixed(3),        // …of this much metal
+      lambdaWholeStock: +(len / tMid).toFixed(1),   // what it would read undeclared
+      bearings: v.stations.length,
+      governing: { kind: worst.kind, L_u: +worst.L.toFixed(4), effectiveL_u: +worst.effectiveL.toFixed(4) },
+      stiffnessModel: worst.kind === 'span' ? '48EI/L³' : '3EI/L³',
+      cantileverStiffness_N_per_m: kOf(worst.L, worst.kind === 'span' ? 48 : 3),
+      segments: segs.map((s) => ({
+        kind: s.kind, from: +s.from.toFixed(4), to: +s.to.toFixed(4),
+        L_u: +s.L.toFixed(4), L_mm: +(s.L * UNIT_MM).toFixed(4),
+        lambdaRaw: +(s.L / tMid).toFixed(1), lambdaEffective: +(s.effectiveL / tMid).toFixed(1),
+        stiffness_N_per_m: kOf(s.L, s.kind === 'span' ? 48 : 3),
+      })),
       waived: SLENDER_WAIVERS[unit] || null,
     });
   }
@@ -6185,10 +6485,14 @@ export function checkSlenderness(clock, opts = {}) {
   const unwaived = rows.filter((r) => !r.waived);
   return {
     ok: true,                       // §40 rule: a REPORT. Nothing here can fail.
+    gate: 'control PASS, 0 malformed and 0 unsupported bearing declarations — the λ rows are a REPORT (§40)',
+    control: slendernessControl(),
     max, basis: SLENDER_BASIS,
-    measuredAgainst: 'the SECOND-smallest extent — the stiffest section dimension available',
+    measuredAgainst: 'the SECOND-smallest extent — the stiffest section dimension available — over the longest FREE length, which is the whole mesh unless it declares userData.bearings',
+    overhangK: +SLENDER_OVERHANG_K.toFixed(4),
     counted: byMesh.size, exemptByKind: exempt.length,
     over: rows.length, unwaived: unwaived.length,
+    bearings: { declaredMeshes, stations: declaredStations, malformed, unsupported },
     rows,
   };
 }
@@ -7025,6 +7329,15 @@ const CHECKS = {
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   axisEntry: (clock, opts) => checkAxisEntry(clock, opts),               // TODO 54 — canonical axis entry holds over every ordered pair; the leak the sweeps used to carry is measured beside it
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
+  // §54's slenderness ceiling. It was EXPORTED AND NEVER REGISTERED HERE, so
+  // `start(clock, 'slenderness')` answered "unknown check", every λ quoted in
+  // the source was a hand-run number nothing reproduced, and SLENDER_WAIVERS
+  // waived rows in a report that was never produced. The `restoring` entry
+  // below is the same bug, found first (TODO 29); this is the second instance,
+  // which is why ci-battery now gates CHECKS against BATTERY rather than
+  // trusting that someone remembers. §50's floor and this ceiling are one
+  // pair — half of it had been running in CI since §52 and half had not.
+  slenderness: (clock, opts) => checkSlenderness(clock, opts),
   meshIntegrity: (clock, opts) => checkMeshIntegrity(clock, opts),       // §77 tiers 0+1 — a mesh's own triangles: zeroArea + inverted bodies, a REPORT; gates its controls and the sub-body tables only
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
   equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 (closed by §104) — both springs' derived laws hold; the alarm's cadence is measured against its law
@@ -7040,6 +7353,15 @@ const CHECKS = {
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };
+
+// The roster, so the harness can hold ITSELF to it. Twice now a check has been
+// written, exported and never registered above — §48's `restoring` (TODO 29)
+// and §54's `slenderness` (TODO 78) — and both times the symptom was the worst
+// kind: a clean battery that had simply not run the instrument. A missing
+// registration is invisible from inside this file, so the closure gate lives in
+// ci-battery.mjs and reads the roster from the PAGE, the way §127's slice gate
+// reads AXES rather than trusting a second declaration of them.
+export const CHECK_NAMES = Object.keys(CHECKS);
 
 export function start(clock, name, opts = {}) {
   const jobs = (window.__checks ||= {});
