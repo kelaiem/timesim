@@ -26841,7 +26841,26 @@ for (const ev of ['pointerup', 'pointercancel']) {
 // --- step 5: the spec is a document -----------------------------------
 // Named variants persist ONLY the spec-tier params, under their own key —
 // never the pose, never the boot default (§26's DisplayState untouched).
-const SPEC_URL_KEYS = ['vph', 'reserveh', 'crownaz', 'stemaz', 'alarmaz', 'alarmmod', 'barrelstep', 'escstep', 'balstep', 'd4', 'rsvr', 'alarmr', 'subdialr'];
+// §161 — ONE DECLARATION, and it belongs to the READER. This used to be a
+// hand-typed copy of index.html's pre-module spec table, and it had already
+// fallen two keys behind it (`alarmbarrelaz` §129, `dialr` §125 were added
+// there and never here), so every saved variant and every reset silently
+// dropped them. The fix is LOCALES' shape rather than two more strings: the
+// table that READS the params publishes what it read, and this consumes it.
+//
+// No fallback list. A fallback would BE the second declaration, and the empty
+// case is a real regression — a document that did not run the spec table, i.e.
+// a stale index.html against a fresh main.js — so it warns per rule 6 instead
+// of quietly working with a roster nobody can see is wrong.
+const SPEC_URL_KEYS = Object.freeze(globalThis.__WATCH_SPEC_KEYS ? [...globalThis.__WATCH_SPEC_KEYS] : []);
+if (!SPEC_URL_KEYS.length) console.warn('§161: __WATCH_SPEC_KEYS is empty or absent — index.html did not publish its spec roster, so variants and the share link carry 0 of the geometry-tier knobs');
+// A MODE is not a design, and the share link's contract depends on that staying
+// true: `?reconf=1` and `?trial=1` are how a session says which workbench it is
+// standing at, so a roster that swallowed either would put the workbench in
+// every link a viewer sends. Nothing but this stops the table growing one.
+for (const mode of ['reconf', 'trial']) {
+  if (SPEC_URL_KEYS.includes(mode)) console.warn(`§161: '${mode}' is a MODE, not a spec knob — index.html's spec table must not claim it, or the share link starts carrying the workbench instead of the watch`);
+}
 const VARIANTS_KEY = 'watchSpecVariants.v1';
 function readVariants() { try { return JSON.parse(localStorage.getItem(VARIANTS_KEY)) || {}; } catch { return {}; } }
 function writeVariants(v) { localStorage.setItem(VARIANTS_KEY, JSON.stringify(v)); }
@@ -27913,6 +27932,22 @@ function currentViewLink() {
   if (selectedUnit !== 'All') p.set('unit', selectedUnit);
   if (explodeAmount > 0) p.set('explode', explodeAmount.toFixed(CAM_LINK_DP));
   if (crownOut) p.set('crown', 'out');
+  // §161 — THE DESIGN TRAVELS, not just the view. Reconfigure mode's Apply is a
+  // navigation (`location.search`, so back is undo), which means the spec a
+  // viewer has DESIGNED lives in the query string and nowhere else — and a link
+  // built from a fresh URLSearchParams therefore carried the IDENTITY movement,
+  // silently, at the one moment the viewer had most to send.
+  //
+  // This is the same "only non-default travels" rule the toggles above follow,
+  // and it needs no per-key comparison to obey it: at the geometry tier ABSENCE
+  // is the default (index.html sets a field only when its param is present), so
+  // the params that are there ARE the ones that differ.
+  //
+  // What it does NOT carry is a DRAG that has not been applied — §21's "do not
+  // fake it" again. The candidate lives under the pointer, not in the URL, and a
+  // link is a claim about a watch that exists. Nor `?reconf=1`: that is a MODE,
+  // and a recipient should receive the watch rather than the workbench.
+  for (const [k, v] of Object.entries(currentSpecParams())) p.set(k, v);
   // URLSearchParams percent-encodes the commas in cam/look (%2C). They are
   // sub-delims and perfectly legal raw in a query, and this link exists to be
   // pasted into a message — so put them back. Nothing else is touched, so
