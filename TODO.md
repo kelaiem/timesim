@@ -12516,3 +12516,137 @@ derivation guarantees because the stem is itself a 10-gon whose facet midpoints
 sit at 0.3044; the guarantee is the floor, not the reading.
 
 The `intraUnit` waiver is **deleted, not renewed**.
+
+## 90. The band has no radial bores, so both stems pass through solid case metal
+
+Filed from the case branch's first clean measurement (2026-08-24). It was
+invisible until it wasn't: `makeCase` shipped five bodies as open surfaces,
+the parity raycast read them as solid everywhere behind the missing faces,
+and `inspection` returned four FORBIDDEN pairs of which most rows were
+phantoms. With those bodies closed the phantoms cleared and this stayed —
+which is the whole reason a false positive is expensive, not merely noisy.
+
+`makeCase` declares the debt in its own comment ("the band's radial bores
+they pass through are the same CSG debt as the thread grooves"), so this
+item is the measurement it never had, and item 27's family is where it
+belongs.
+
+Measured at beat f=0, world cylindrical coordinates, units:
+
+| mesh | r span | z span |
+|---|---|---|
+| `caseMiddle` | 40.28–48.20 | −19.65–16.09 |
+| Keyless works / `windStem` | 31.95–**54.18** | −4.55–−3.65 |
+| Alarm crown / (unnamed cylinder) | 15.40–**54.18** | −4.52–−3.68 |
+
+Both stems run from inside the movement to 54.18 — past `R_OUT` = 48.20,
+as they must, since a crown is gripped outside its case. The band occupies
+`R_IN` 45.56 to `R_OUT` 48.20 at **every** azimuth, so each stem crosses
+2.64 u of metal that should not be there. `sweptOverlap` confirms both:
+Case ⇄ Keyless works 0.900, Alarm crown ⇄ Case 0.103.
+
+The tubes themselves are no longer part of this. They sleeve their stems
+correctly now — capped annular sleeves, bore `r`, wall 0.3 mm — and their
+collars are bored. What is missing is the hole in the band the tube is
+pressed into.
+
+**The aperture, if it is cut round.** Tube outer radius is r + wall =
+3.43 u (1.3 mm), so the window is ±asin(3.43/45.56) = **±4.32°** at `R_IN`
+and ±4.08° at `R_OUT`, over z = stemZ ± 3.43 u — for the winding stem at
+`Z_KEYLESS` = −4.1 that is z ∈ [−7.53, −0.67].
+
+**Note the coupling with item 91**: that z window straddles the plate seat
+(`zSeatBot` −4.112 to `zSeatTop` −2), so cutting this bore already removes
+the seat ledge at the crown azimuths. The two items want the same cut and
+should be solved together, not twice.
+
+**What is missing to fix it is a construction, not a decision.** Nothing in
+the repo builds a partial revolution — `phiStart`/`phiLength` appear
+nowhere, and every lathe here is a full turn. A sector-lathe helper (side
+surface over an azimuth range, plus the two end faces triangulated from the
+profile polygon) is the piece both this and item 91 need. An honest
+approximation is available and should be declared if taken: a constant
+angular window over the radial run cuts a slightly conical hole rather than
+a cylindrical one, over-cut at `R_OUT` by 0.24° of the 4.32°.
+
+Do NOT resolve this by declaring the pairs EXPECTED. A stem in a crown tube
+touches the TUBE, by design, with clearance; it does not touch the band.
+An `EXPECTED_PAIRS` row here would claim design-intent contact for
+metal-through-metal and would blanket-excuse the pair for everything else
+it might ever foul — the exact shape of excuse item 6 exists to narrow.
+
+## 91. The plate seat ledge projects into the dial-side keyless works
+
+Filed alongside item 90, from the same first clean measurement, and it is
+the more serious of the two: item 90 is a hole nobody cut, this is two
+groups of parts claiming one volume.
+
+The case middle's plate seat is turned to `R_SH` = `plateR` − 1 mm =
+**40.28 u** (plateR 42.923) and stands from `zSeatBot` −4.112 to `zSeatTop`
+−2, the 0.8 mm step whose top face carries the plate's dial-side rim. That
+ledge is a continuous annulus. But since the keyless works moved to the
+dial side, five bodies stand inside its footprint:
+
+| unit / mesh | r span | z span |
+|---|---|---|
+| Keyless works / `settingWheel` | 33.16–41.00 | −4.72–−3.48 |
+| Keyless works / (extrude) | 33.25–42.44 | −4.67–−3.53 |
+| Keyless works / (torus) | 40.91–41.97 | −5.70–−2.50 |
+| Keyless works / (box) | 40.35–42.54 | −4.10–−1.40 |
+| Alarm crown / (torus) | 40.45–41.41 | −5.55–−2.65 |
+
+Every one of them overlaps the ledge in both r and z. The deepest reach is
+r 42.54 against a ledge starting at 40.28 — **2.26 u (0.86 mm) of radial
+interference**, and the movement could not be cased.
+
+**There is no clearance to find by trimming.** The furthest part stands at
+r 42.54 against `plateR` 42.923: the keyless works already runs to within
+0.38 u (0.14 mm) of the plate's own edge. Any continuous seat under that
+rim fouls it. So the fix is not a smaller number, it is a different shape.
+
+**The real answer is the real answer: the seat is interrupted.** A case
+seat is not obliged to be a full ring, and on a caliber with dial-side
+keyless works it is not one — the bearing is cut away over the works and
+the plate lands on the arcs that remain. That is a position-space
+resolution in CLAUDE.md's sense (P3): the mechanism keeps every dimension,
+the housing gives way.
+
+**The relief is two arcs, and they are measured.** Counting the vertices
+that stand inside the ledge's own window (r ∈ [`R_SH`, `R_OUT`], z ∈
+[−4.112, −2.000], the band read off `caseMiddle` rather than restated):
+
+| cluster | mesh | azimuth | span | deepest |
+|---|---|---|---|---|
+| keyless | (extrude) | 128.4° | 10.4° | 42.44 |
+| keyless | `settingWheel` | 142.2° | 5.4° | 41.00 |
+| keyless | (torus) | 142.8° | 4.4° | 41.97 |
+| keyless | (box) | 143.4° | 3.1° | 42.54 |
+| alarm | (torus) | 358.0° | 4.1° | 41.41 |
+
+Two arcs, not one: **128.4°–147.6° (19.2°)** at the keyless station and
+**358.0°–2.1° (4.1°)** at the alarm crown's. Add `CLEAR_MARGIN` to each.
+The second is nearly free — it sits on the alarm stem's own azimuth, so
+item 90's bore there (±4.32°) already removes it, which is the coupling
+that argues for cutting both items in one pass.
+
+`Setting lever` and `Alarm switch` have vertices near the ledge but land
+in the flange's band, not the seat's, and neither pair reports contact —
+they are not part of this. (The first cut of this measurement conflated
+the two: `R_SH` and `R_FL` agree to 1e-3, so "the case's innermost radius"
+selects the flange as readily as the seat. Derive the band from
+`BACK_PLATE_Z`/`BACK_PLATE_T` and the 0.8 mm step, not from the mesh.)
+
+What still has to be decided, by someone who owns the case design:
+
+- **What the remaining bearing has to carry.** The seat exists to support
+  the plate; cutting an arc out of it is only free if what is left still
+  does. This wants the P1 arithmetic — bearing arc length against plate
+  weight and case-screw preload — filed in item 16's format, and it is
+  the number that decides whether a relief is enough or whether the seat
+  has to move to a different radius entirely.
+- **Whether item 90's bores land inside the same relief.** At the crown
+  azimuths they do (see item 90); if the relief spans them, part of that
+  cut is already paid for.
+
+Both this and item 90 are blocked on the same missing sector-lathe
+construction, and both should be cut in one pass once it exists.
