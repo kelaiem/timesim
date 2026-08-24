@@ -30688,6 +30688,28 @@ function tick(t) {
       // completes, the CLICK banks it and the parity changes as a
       // consequence. Nothing here has a time constant — the only rate in the
       // chain is how fast the finger presses.
+      // §163 — THE PRESS FRACTION ADVANCES HERE, above the carry that reads it.
+      // It used to be advanced 380 lines further down, so the wheel was turned
+      // with the PREVIOUS tick's fraction and lagged the head by exactly one
+      // frame: measured on the shipped trace, the head reached full travel at
+      // 2.68606 with the wheel at 0.518383 of its 0.523599 tooth, and the wheel
+      // only completed on the next frame, with the head already returning. The
+      // lag predates this section — finding 1's 117.39% was measured through it
+      // — but "the wheel goes exactly where its pawl has pushed it" is the claim
+      // §163 makes, and one frame of lag falsifies it at the frame scale.
+      //
+      // Safe to move because the pose path does not come through here at all:
+      // setPose assigns alarmPusherT directly, so no sweep in the battery can
+      // see this ordering. The two readers between the old site and this one
+      // are both this section's own — the click's re-arm and the driver's pose.
+      // The head's own mesh station stays where it was, below, with the rest of
+      // the pusher's frame work.
+      if (rawDt > 0) {
+        if (alarmPusherHeld || alarmPusherStroke) {
+          alarmPusherT = Math.min(1, alarmPusherT + rawDt / ALARM_PRESS_S);
+          if (alarmPusherT >= 1) alarmPusherStroke = false;     // bottomed; the spring takes it back
+        } else alarmPusherT = Math.max(0, alarmPusherT - rawDt / ALARM_RETURN_S);
+      }
       // §163 — the carry is the COUPLING's, not a lever ratio. alarmDriverCarry
       // is the azimuth the pin has swept about the arbor since it left its rest
       // station, and the driver's angle IS that azimuth, so the wheel goes
@@ -31077,12 +31099,9 @@ function tick(t) {
     // because its law is multiplicative in rawDt, so a zero-dt tick cannot
     // move it. The press law is a branch rather than an ease, so it says the
     // same thing explicitly instead.
-    if (rawDt > 0) {
-      if (alarmPusherHeld || alarmPusherStroke) {
-        alarmPusherT = Math.min(1, alarmPusherT + rawDt / ALARM_PRESS_S);
-        if (alarmPusherT >= 1) alarmPusherStroke = false;       // bottomed; the spring takes it back
-      } else alarmPusherT = Math.max(0, alarmPusherT - rawDt / ALARM_RETURN_S);
-    }
+    // §163 — the ADVANCE moved up, to just above the carry it feeds. See the
+    // block there: this used to run 380 lines after the wheel had already been
+    // turned with the PREVIOUS tick's fraction.
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived

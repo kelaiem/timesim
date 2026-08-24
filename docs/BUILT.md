@@ -17021,6 +17021,35 @@ and that is why the choice is a scan and the verdict is `intraUnit`.
 - **The reach bar's section went to §50's floor.** It was 0.30 × 0.24, under the
   floor in both directions.
 
+### The one-tick lag, found by the acceptance probe
+
+`probe-87-press` steps the shipped tick through two presses, and getting it to
+answer §163's question turned up a defect older than §163. `alarmPusherT` was
+advanced **380 lines below** the carry block that reads it, so the wheel was
+always turned with the PREVIOUS tick's fraction. Measured on the trace: the head
+reached full travel 2.68606 with the wheel at 0.518383 of its 0.523599 tooth,
+and the wheel only completed on the next frame, with the head already returning.
+
+The lag predates this landing — finding 1's 117.39% was measured through it —
+but *"the wheel goes exactly where its pawl has pushed it"* is what TODO 20 and
+this section both claim, and one frame of lag falsifies it at the frame scale.
+The advance moved above the carry. It cannot move a battery report, and that is
+structural rather than hopeful: `setPose` assigns `alarmPusherT` directly, so no
+sweep in the battery comes through this path at all. Verified by diffing a full
+`--report` across the change.
+
+With all three fixed the probe reads **100% of a tooth and 0 u after the latch**,
+at 1/120 and 1/480, on both presses — against the 117.4% and 0.398 the item was
+filed with.
+
+**Two of the three were the probe's own model, not the mechanism's:** it measured
+travel off the PAWL (whose displacement was the press travel only while the pawl
+was rigid on the head), and it took the latch travel as arm × tooth (exact for a
+constant arm, meaningless for a coupling whose arm varies 7.18%). Travel and the
+return are read off the head now, the latch is interpolated off the trajectory,
+and the delivered tooth is read off the WHEEL — the one quantity in the run that
+no assumption about the coupling touches.
+
 ### What this does NOT close
 
 TODO 87 step 5's second half: the pusher's own return still has no metal, and

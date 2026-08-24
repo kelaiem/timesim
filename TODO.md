@@ -9303,6 +9303,38 @@ frames) and then discards it on a declaration.
 > their endpoints and disagree everywhere between, which is half the poses the
 > `alarmPressCycle` axis visits — the middle of the press is where the wheel
 > now stands somewhere different.
+>
+> **MEASURED, on the shipped tick** (`tools/probe-87-press.mjs`, the same probe
+> that took the 117.39%): **100% of a tooth and 0 u after the latch**, at 1/120
+> and 1/480, on both presses. Against the filing's 117.4% and 0.398.
+>
+> Getting there took two corrections to the probe and one to the tick, and the
+> tick's is a defect of its own:
+>
+> - **It measured travel off the PAWL.** With the pawl rigid on the head its
+>   displacement WAS the press travel and its return WAS the head's; §163's pawl
+>   rotates on a driver and its position is the output of a seat solve, so the
+>   two questions came apart and the probe reported "the head never came back to
+>   its seat" four times. Travel and the return are read off `alarmPusherCap`
+>   now; contact still off the nose.
+> - **It took the latch travel as arm × tooth.** That is exact for a constant
+>   arm and meaningless for a pin in a radial slot, whose arm runs 5.012 at the
+>   foot to 5.372 at either end — so the "overrun" moved with the step rate
+>   (0.134 at 1/120 against 0.022 at 1/480), the probe reporting its own model.
+>   The latch travel is INTERPOLATED off the trajectory now, and the delivered
+>   tooth is read off the WHEEL rather than off a travel divided by an arm,
+>   which assumes nothing about the coupling.
+> - **And the wheel lagged the head by exactly one tick.** `alarmPusherT` was
+>   advanced 380 lines BELOW the carry block that reads it, so the wheel was
+>   always turned with the previous tick's fraction: measured, the head reached
+>   full travel 2.68606 with the wheel at 0.518383 of its 0.523599 tooth, and
+>   the wheel only completed on the next frame with the head already returning.
+>   The lag PREDATES this item — the 117.39% was measured through it — but "the
+>   wheel goes exactly where its pawl has pushed it" is what TODO 20 and §163
+>   both claim, and one frame of lag falsifies it at the frame scale. The
+>   advance moved above the carry. It cannot move a battery report: `setPose`
+>   assigns `alarmPusherT` directly, so no sweep comes through this path —
+>   verified by diffing a full `--report` across the change.
 
 ### 2. The force is an order light, and it starves downstream — not at the pusher
 
