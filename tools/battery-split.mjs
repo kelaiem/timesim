@@ -59,6 +59,9 @@ export const INSPECTION_SLICES = [
   // TODO 50 — the stem clutch's own reversal (one coupling pitch, cycled).
   // poses = n 96 plus the endpoint, the same accounting as every row above.
   { axis: 'stemSlip', poses: 97 },
+  // TODO 87 — the alarm pusher's press, one whole actuation (in, then out).
+  // poses = n 64 plus the endpoint, the same accounting as every row above.
+  { axis: 'alarmPress', poses: 65 },
 ];
 
 // §127 — reassemble a sliced `inspection` into the payload a whole run
@@ -308,6 +311,9 @@ export const CLEARANCE_SLICES = [
   { axis: 'alarmWind', poses: 110 },
   { axis: 'alarmToggle', poses: 49 },
   { axis: 'stemSlip', poses: 97 },
+  // TODO 87 — the alarm pusher's press, one whole actuation (in, then out).
+  // poses = n 64 plus the endpoint, the same accounting as every row above.
+  { axis: 'alarmPress', poses: 65 },
 ];
 
 export const EXPECTED_CONTACT_SLICES = [
@@ -324,6 +330,9 @@ export const EXPECTED_CONTACT_SLICES = [
   { axis: 'alarmWind', poses: 110 },
   { axis: 'alarmToggle', poses: 49 },
   { axis: 'stemSlip', poses: 97 },
+  // TODO 87 — the alarm pusher's press, one whole actuation (in, then out).
+  // poses = n 64 plus the endpoint, the same accounting as every row above.
+  { axis: 'alarmPress', poses: 65 },
 ];
 
 // §152 — THE COSTS TABLE IS AN INPUT, AND IT IS CHECKED BEFORE IT IS USED.

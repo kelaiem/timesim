@@ -17,7 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — step 2 done, step 1 still owed because a probe is not a gate). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened |
+| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
 | 84 | OPEN | Every gear ships fatter than it was cut: three.js's `bevelSize` offsets the outline OUTWARD by more than the backlash the generator reserved (0.0748 u per flank against 0.0427 u for the pair at module 0.34). General to the movement; visible only where a unit is gated. Three candidate fixes in the item, none of them widening `cyBacklash` |
@@ -9351,6 +9351,42 @@ the eye is reading something real that no check is looking for, and the answer
 is not to widen `support` — it is that the group's members have never stated
 where they are held.
 
+### 6. The reach bar carries through the ratchet skirt — found by the axis, on its first run
+
+**The press axis's first act was to fail a gate**, at a pose no sweep in the
+movement's history had ever stood in. `intraUnit` MM, `Alarm switch`:
+`alarmColWheel ⇄ alarmPusherReach`, at `alarmPress f = 0.5`. Not the pawl — the
+CARRIER.
+
+Mapped across the cycle, the bar is inside the skirt from **f 0.30 to 0.75**,
+the middle half of the stroke, 12 sampled vertices at the bottom:
+
+| what | value |
+|---|---|
+| reported depth | **0.03833**, flat at every pose — and NOT the number to read |
+| why it is flat | the bar's 0.24 of z sits inside the skirt's 0.3166 band with 0.0383 to each face, so `closestPointToPoint` answers to a FACE (finding 1's cap, at a second member) |
+| the in-plane figure | the bar's leading end starts **1.1 u** behind the pawl's kiss against a **2.686 u** stroke, so at the bottom it stands **~1.586 u** past the kiss, inside the tooth circle |
+
+**The source said this could not happen.** The build comment by the carrier read
+*"the PAWL, on its dropped carrier below the disc, is the only member that
+reaches the teeth"*, and a second one said *"Only the pawl still lives at the
+skirt band"*. Both are true of the STEM — which is what TODO 22 actually fixed —
+and false of the reach bar, which shares the pawl's band by construction. Both
+are corrected in place beside the metal, with the measurement.
+
+This is item 22's class returned at a different member: two parts of one action
+group occupying the same matter, invisible to every inter-unit sweep because
+they live in one unit, and invisible to `intraUnit` too until an axis moved the
+pusher. **That is the whole argument for step 1 in one row** — the gate did not
+become stricter, the mechanism became reachable.
+
+**The fix is position space, and it is its own landing** (P2: never paid for by
+opening a contact or widening a budget). The carrier wants to leave the skirt's
+z band with the pawl hung from a dropper — the anatomy the source comment
+already describes and the metal does not yet have. Waived in
+`INTRA_UNIT_WAIVERS` citing this item, deliberately not silenced, so `Alarm
+switch` stays GATED: any other interference in that unit now fails.
+
 ### The group's other two outputs, recorded rather than re-filed
 
 **The lock brake** is genuinely column-driven (`['Alarm switch', 'Alarm lock']`
@@ -9370,13 +9406,27 @@ read the other, because the second is then nearly free.
 
 ### What closing this looks like — the first step gates the rest
 
-1. **An axis that sweeps the press.** `setPose` must accept `alarmPusherT`
-   instead of zeroing it, and the axis must run 0 → 1 → 0 across the latch (a
-   monotonic ramp sweeps the same volume as a part that only moves one way —
-   TODO 29 paid for that lesson). Costs to expect, so they are not discovered:
-   the axis joins `axisEntry`'s ordered pairs (TODO 54), joins `digestPoses`
-   (§152), and must declare its slice (§127); and `restoring`'s population will
-   MOVE, to be accepted per row against a `--report` diff, never re-based.
+1. **DONE (§160) — the `alarmPress` axis.** The stroke is in the pose net: the
+   tick's press law is a NO-OP at zero dt (it used to hard-assign, `: 1` while
+   stroking and `else … = 0` otherwise, so every posed stroke was flattened to
+   the seat AFTER the carry block had already turned the wheel with it — that
+   clobber was the whole blocker), and `setPose` takes `alarmPressCycle`,
+   spanning a whole actuation: 0 → 1 the head goes in, 1 → 2 its spring returns
+   it. The bank is DERIVED from the cycle, never accumulated, which is what
+   makes this axis index-sliceable where `alarmToggle` is not — proven, not
+   asserted: visiting the axis's indices out of order without re-entering
+   reproduces the forward walk exactly, and entering fresh at any index does
+   too. **One key, not two, because the head at half travel is two different
+   machines depending on its direction** — coming back, the wheel stands a
+   whole tooth on from where it went in.
+
+   Measured on the built tree as the axis walks it: travel peaks at
+   `ALARM_PUSH_TRAVEL` (2.68606) mid-cycle and returns to 0, the wheel banks
+   exactly one `ALARM_COL_STEP` (0.523599), parity flips once. The costs the
+   filing predicted all landed — `axisEntry` 156 → **182** ordered pairs,
+   `digestPoses` 39 → **43**, three slice rosters declared, swept poses
+   1827 → **1892** — and the live path is untouched: `probe-87-press.mjs`'s
+   trace is byte-identical before and after the tick change.
 2. **DONE — `tools/probe-87-press.mjs`.** It steps the shipped tick through two
    presses and reports the pawl ⇄ skirt reading every frame, both strokes, and
    it confirmed finding 1's arithmetic to five figures (the blockquote above

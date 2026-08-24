@@ -74,7 +74,7 @@ const failed = [];
 const canon = (r) => {
   const c = { ...r };
   delete c.census;
-  // The probe's "whole" runs are themselves narrowed (two axes of thirteen),
+  // The probe's "whole" runs are themselves narrowed (two axes of fourteen),
   // so they carry rawMins like any slice; the merge drops the field so a
   // merged payload keeps a whole run's shape. Exempt here, asserted absent
   // from the merge's output in the tie section below.

@@ -240,9 +240,10 @@ never shadowed by a cache.
 
 ## Realism inspector
 
-`src/inspect.js` sweeps the mechanism deterministically through nine phase
-axes — `beat`, `crown`, `reserve`, `train`, `jumperEngage`, `handSet`, `alarm`,
-`alarmStrike`, `alarmToggle` — via `__clock.setPose()` and reports every pair of functional
+`src/inspect.js` sweeps the mechanism deterministically through fourteen phase
+axes — `beat`, `crown`, `reserve`, `wind`, `arrest`, `stemSlip`, `train`,
+`jumperEngage`, `handSet`, `alarm`, `alarmStrike`, `alarmWind`, `alarmToggle`,
+`alarmPress` — via `__clock.setPose()` and reports every pair of functional
 units whose meshes intersect (exact triangle tests via the vendored
 `three-mesh-bvh`). Pairs with intended mechanical contact (gear meshes, pallet
 lock, chain-on-cone…) are classified EXPECTED and reported separately;

@@ -102,7 +102,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // §80 took it to 3.5 s and the whole hull phase (registry + all 59,216 pair
 // tests) to 3.6 s, which moved the check to ~1755 s. The other 96.5% is the
 // CONFIRM TIER: 15 raw hull overlaps, each re-measured by an uncapped
-// `measureClearance` BVH sweep over all 9 axes, and TODO 27's chain is on two
+// `measureClearance` BVH sweep over all 14 axes, and TODO 27's chain is on two
 // of them. Roadmap §82 still owns that tier and has not landed.
 //
 // §81 SHARDED THE HARNESS AND THIS GUARD DID NOT MOVE, which took two wrong
@@ -296,7 +296,7 @@ const COSTS = {
   // open and made a whole run refine a SUPERSET of the intervals it used to
   // (the refinement reference went per-axis). That is strictly more work in
   // this sweep, so `clearances` here is a LOWER bound on what the check now
-  // costs, and it is also the projection base the 13 new `clearances:*` slices
+  // costs, and it is also the projection base the 14 new `clearances:*` slices
   // divide by pose count. Left as measured rather than guessed upward: this
   // column balances shards and nothing else, so an under-estimate costs wall
   // clock and never a verdict (the header's own rule), and the first sliced
