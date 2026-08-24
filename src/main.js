@@ -1819,6 +1819,10 @@ const CASE_R_OUT = CASE_R_IN + CASE_BAND_T;  // 1 mm band wall
 const CASE_LUG_SPAN = 18 / UNIT_MM;          // 18 mm — period-typical for a ~36 mm case, under the 20 mm cap
 if (CASE_R_OUT > CASE_WIDTH_MAX)
   console.warn(`case: band Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap — the movement outgrew its housing budget`);
+// Width across the lug TIPS is the number a calliper actually reads: band
+// radius + 2.5 mm reach − 0.8 mm root (geometry.js's lug derivation).
+if (CASE_R_OUT + 1.7 / UNIT_MM > CASE_WIDTH_MAX)
+  console.warn(`case: ${(2 * (CASE_R_OUT + 1.7 / UNIT_MM) * UNIT_MM).toFixed(2)} mm across the lugs breaks the 40 mm owner cap`);
 if (CASE_LUG_SPAN > CASE_LUG_SPAN_MAX)
   console.warn(`case: lug span ${(CASE_LUG_SPAN * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap`);
 const BACK_PLATE_HOLES = [
@@ -26321,13 +26325,16 @@ const SCHEMATIC = { proxies: [], on: false };
     for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
       const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
       const zLug = zSeatTop + 1.5 / UNIT_MM + 0.5 / UNIT_MM; // the solid lugs' own station
-      for (const s of [-1, 1])                     // the two lug flanks
-        put(new THREE.Line(seg(
-          u.clone().multiplyScalar(R_OUT - 1).addScaledVector(p, s * LUG_SPAN / 2).setZ(zLug),
-          u.clone().multiplyScalar(R_OUT + 2.5).addScaledVector(p, s * LUG_SPAN / 2).setZ(zLug)), rim));
-      put(new THREE.Line(seg(                       // the spring bar itself
-        u.clone().multiplyScalar(R_OUT + 2).addScaledVector(p, -LUG_SPAN / 2).setZ(zLug),
-        u.clone().multiplyScalar(R_OUT + 2).addScaledVector(p, LUG_SPAN / 2).setZ(zLug)), rim));
+      for (const s of [-1, 1]) {                   // the two lug flanks: each rooted
+        const off = s * LUG_SPAN / 2;              // 0.8 mm past the chord-depth
+        const root = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0)) - 0.8 / UNIT_MM; // surface at its
+        put(new THREE.Line(seg(                    // own station, tip at the
+          u.clone().multiplyScalar(root).addScaledVector(p, off).setZ(zLug),   // solid's own
+          u.clone().multiplyScalar(R_OUT + 1.7 / UNIT_MM).addScaledVector(p, off).setZ(zLug)), rim)); // station
+      }
+      put(new THREE.Line(seg(                       // the spring bar itself, at the
+        u.clone().multiplyScalar(R_OUT + 1.4 / UNIT_MM).addScaledVector(p, -LUG_SPAN / 2).setZ(zLug),   // solid bar's own
+        u.clone().multiplyScalar(R_OUT + 1.4 / UNIT_MM).addScaledVector(p, LUG_SPAN / 2).setZ(zLug)), rim)); // radius
     }
 
     caseGroup.visible = restoredCaseLines;
