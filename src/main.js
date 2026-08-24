@@ -318,14 +318,42 @@ function declareTravel(name, rad, why) {
 // exists only as geometry is decoration, not a mechanism, so an unnamed or
 // non-existent mesh is reported as a MALFORMED declaration rather than
 // counted as a restoring element.
-const declaredRestoring = new Map();   // unit name -> { kind, why, mesh }
-function declareRestoring(name, kind, why, mesh) {
-  if (declaredRestoring.has(name)) console.warn(`§48: '${name}' restoring element declared twice`);
+//
+// §162 (TODO 87 finding 4) — AND IT NAMES THE MEMBER IT ANSWERS FOR. This map
+// was keyed by UNIT, one answer each, and warned on a second call. A unit with
+// two reciprocators therefore passed the audit on whichever one was declared
+// first: 'Alarm switch' answered for the pusher — whose return is a rate
+// constant with no metal behind it — with the CLICK ARM's blade, and there was
+// no call that could have said so. That is a GRANULARITY gap, distinct from
+// TODO 29/64's population gaps (no axis moves the part, so the audit never
+// asks): here the axis question does not arise, because one declaration per
+// unit cannot answer for two bodies.
+//
+// So the key is (unit, member) and `member` is a MESH NAME belonging to the
+// reciprocating body this declaration answers for — not to the spring, which
+// `mesh` already names. The audit clusters each unit's reversing meshes into
+// rigid frames and asks which frame each declaration lands in, so a unit may
+// now hold as many declarations as it has reciprocators.
+//
+// `'*'` is a legal member and means exactly what the old key meant: this
+// answers for the WHOLE unit. It is not a loophole, it is the honest way to
+// carry the declarations that predate this change — a unit whose reversing
+// meshes are unnamed cannot be refined until they are named (§54's lesson,
+// and the reason RESTORING_WAIVERS' Dial row has stood open). The audit
+// REPORTS every '*' as an unrefined answer and GATES only the units in
+// RESTORING_MEMBER_SCOPE, §121's convention for a tier landing on a movement
+// that has not been triaged for it.
+const declaredRestoring = new Map();   // `unit\u0000member` -> { unit, member, kind, why, mesh }
+function declareRestoring(name, member, kind, why, mesh) {
+  const key = `${name}\u0000${member}`;
+  if (declaredRestoring.has(key)) console.warn(`§48: '${name}' restoring element for member '${member}' declared twice`);
+  if (typeof member !== 'string' || !member)
+    console.warn(`§48: '${name}' does not name the MEMBER its restoring element answers for — use a mesh name, or '*' for the whole unit`);
   if (!['two-way', 'spring', 'gravity'].includes(kind))
     console.warn(`§48: '${name}' restoring kind '${kind}' is not two-way, spring or gravity`);
   if (kind === 'spring' && !mesh)
     console.warn(`§48: '${name}' declares a spring but does not name its mesh — a spring that is only geometry does not count`);
-  declaredRestoring.set(name, { kind, why, mesh });
+  declaredRestoring.set(key, { unit: name, member, kind, why, mesh });
 }
 
 // §137 — CORNERS AS REAL PARTS: the transfer audit's declaration surface.
@@ -975,9 +1003,9 @@ const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI *
 // performs the cycle — a full wind from empty and the run back down, within
 // ONE axis so the reversal is the part's own motion, not a boundary jump —
 // and both parts reciprocate under the §105 confirm tier's 4× re-sampling.
-declareRestoring('Fusee & great wheel', 'two-way',
+declareRestoring('Fusee & great wheel', '*', 'two-way',
   'mainspring drives it while running; the keyless works drives it the other way while winding — the wind axis performs both strokes');
-declareRestoring('Power reserve', 'two-way',
+declareRestoring('Power reserve', 'reserveShaft', 'two-way',
   'the slip-coupled arbor is driven up by winding and down by running — both directions are driven, and both are now swept');
 // The wind axis's first FIND, minutes after it existed: the reserve TRAIN —
 // the gearing between the slip-coupled arbor and the hand — entered the §48
@@ -988,9 +1016,9 @@ declareRestoring('Power reserve', 'two-way',
 // waiver. TODO 29's alarm-lock story, re-run in miniature: a part no axis
 // MOVES is a part the audit cannot judge — and the day the axis shipped,
 // the audit judged.
-declareRestoring('Power-reserve train', 'two-way',
+declareRestoring('Power-reserve train', '*', 'two-way',
   'geared between the slip-coupled arbor and the reserve hand — winding drives the whole path up, running drives it down');
-declareRestoring('Chain', 'two-way',
+declareRestoring('Chain', 'chainRun', 'two-way',
   'the barrel hauls it one way and the fusee the other; winding swaps which end is pulling');
 declareTravel('Balance', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'balanceTheta swings +/-AMPLITUDE_VISUAL_DEG');
 declareTravel('Hairspring', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'rides the balance arbor');
@@ -1004,7 +1032,7 @@ const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 r
 // Something pushes it each way, so it needs no return spring, and a real
 // lever escapement has none. If the audit ever files the fork as
 // restored-by-nothing, the audit is wrong, not the fork.
-declareRestoring('Pallet fork', 'two-way',
+declareRestoring('Pallet fork', '*', 'two-way',
   'escape-wheel teeth impulse the entry and exit pallets alternately; draw holds it banked between');
 // RETIRED (TODO 43): 'Escape wheel' and 'Third wheel' left the §36
 // population with the detector fixes — measured monotone in every axis at
@@ -1023,10 +1051,10 @@ declareRestoring('Pallet fork', 'two-way',
 // explicitly out of this entry. The sinusoid is the hairspring's restoring
 // law in closed form; its FREQUENCY comes from the beat rate rather than
 // from the spring's geometry, and that gap is TODO.md's business.
-declareRestoring('Balance', 'spring',
+declareRestoring('Balance', '*', 'spring',
   'the hairspring restores it; balanceTheta is that harmonic law in closed form (rate from beat, not stiffness)',
   'hairspringCoil');
-declareRestoring('Hairspring', 'spring',
+declareRestoring('Hairspring', '*', 'spring',
   'it IS the restoring element — it reverses because the balance arbor it is pinned to does',
   'hairspringCoil');
 declareTravel('Pallet fork', 2 * (FORK_BANK_DEG + FORK_RECOIL_DEG) * DEG2RAD,
@@ -3868,10 +3896,10 @@ if (!(STEM_SAW_SPEC.toothH + CLEAR_MARGIN <= CLUTCH_TRAVEL))
 // reseats it; the YOKE swings out with it (and with the pull) and the same
 // blade brings it home — one spring, two declarations, because the audit
 // judges units and both units genuinely reverse under the stemSlip axis.
-declareRestoring('Winding clutch', 'spring',
+declareRestoring('Winding clutch', 'clutchSleeve', 'spring',
   'a backward crown cams the clutch out over the pinion\'s saw ring, one snap per leaf; the yoke spring re-seats it through the fork — the blade is real metal on its own post, and the drive faces need no spring (the crown and the run-down close them from either side)',
   'yokeSpring');
-declareRestoring('Yoke', 'spring',
+declareRestoring('Yoke', 'yokeProng', 'spring',
   'the pull drives the fork both ways through the setting lever, but a cam-over lifts it with no crown motion at all — the blade about its own pivot is what brings that stroke home',
   'yokeSpring');
 
@@ -5169,7 +5197,7 @@ const mainspring = barrel.getObjectByName('spring').userData.mainspring;
 // the file's convention. What drives it the other way is the winding path —
 // the same two-way drive already declared on 'Chain' and
 // 'Fusee & great wheel', arriving through the chain onto this drum.
-declareRestoring('Mainspring drum', 'spring',
+declareRestoring('Mainspring drum', 'mainspringRibbon', 'spring',
   'the ribbon IS the restoring element — it reverses because the drum wall its outer end is hooked to does, and the winding path (keyless → fusee → chain) is what carries it back the other way',
   'mainspringRibbon');
 const drumGroup = new THREE.Group();
@@ -9703,9 +9731,9 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // (Before the collapse they moved on no axis at all, so the audit could
   // not judge them: §121's rule, met by a part becoming visible rather than
   // by a waiver.)
-  declareRestoring('Keyless works', 'two-way',
+  declareRestoring('Keyless works', '*', 'two-way',
     'the crown drives the winding wheels forward through the clutch\'s saw coupling into the fixed winding pinion (TODO 50\'s split); the mainspring back-drives the same teeth through the fusee arbor and its spur as the watch runs down — the reversal is two drives, not a spring; the coupling\'s own one-way lives on the CLUTCH unit, whose spring is declared there');
-  declareRestoring('Winding arrest', 'spring',
+  declareRestoring('Winding arrest', 'windArrestPawl', 'spring',
     'the blade re-seats the finger on its bank pin when the coil leaves the pad — a real torsion arc about the stud, its fixed end on its own post under the bracket; the ARREST hold is the chain pressing the pad, not the spring',
     'windArrestSpring');
 
@@ -14169,10 +14197,10 @@ const ALARM_DRAW_RAD = 3 * ALARM_STRIKE_AMP;
 // preloaded seat it can never reach, and the cam obstructs. Naming the mesh is
 // required — §48 rejects a spring that is only geometry, which is exactly what
 // all three were when the audit first ran.
-declareRestoring('Alarm release feeler', 'spring',
+declareRestoring('Alarm release feeler', 'alarmPawlBeak', 'spring',
   'the blade is grounded on its own stud and drives the arm to a seat one CLEAR_MARGIN past the banking stop; the pin obstructs',
   'alarmFeelerSpring');
-declareRestoring('Minute jumper', 'spring',
+declareRestoring('Minute jumper', 'jumperBeak', 'spring',
   'the click spring seats the beak past the valley floor and the star obstructs — the ride is a limit, not a placement',
   'jumperClickSpring');
 // The STAR's own reversal, which is the same blade acting on the other side
@@ -14206,7 +14234,7 @@ declareRestoring('Minute jumper', 'spring',
 // stays truthfully declared on 'Minute jumper', whose beak genuinely
 // reciprocates in pose space; the star-side physics (jumper indexes the
 // star) is real, ease-tier, and uninstrumented — TODO 29's class.
-declareRestoring('Maintaining detent', 'spring',
+declareRestoring('Maintaining detent', 'click', 'spring',
   'the detent spring seats the beak one CLEAR_MARGIN past the ring root; the saw teeth obstruct',
   'maintSpring');
 // RETIRED (TODO 43): 'Alarm setting arbor' and 'Alarm crown' left the §36
@@ -14222,7 +14250,7 @@ declareRestoring('Maintaining detent', 'spring',
 // still turns both of them either way — mechanism truth the pose net never
 // performs (both spin monotone under every axis) — so the stale rule
 // retires the declarations until an axis turns them out-and-back.
-declareRestoring('Alarm disc', 'two-way',
+declareRestoring('Alarm disc', '*', 'two-way',
   'geared to the alarm setting arbor, so the crown drives it both ways');
 // §48 — THE CASE THAT PROMPTED THE ENTRY, and it does not resolve the way
 // §25 implied. The lift is the cam profile, but the FALL is not: the free
@@ -14233,19 +14261,19 @@ declareRestoring('Alarm disc', 'two-way',
 // reports it as MALFORMED precisely because that mesh does not exist —
 // which is the honest finding: the law asserts a spring the watch lacks.
 // Modelling it is TODO.md's business, per this entry's scope guard.
-declareRestoring('Alarm hammer', 'spring',
+declareRestoring('Alarm hammer', 'alarmHammerArm', 'spring',
   'alarmHammerAngle() falls as cos(ALARM_HAMMER_W t) with decay — a spring-and-inertia law; the blade is grounded to its own stud and bears on the tail (TODO 14)',
   'alarmHammerSpring');
 // TODO 29 — the parity axis made these three RECIPROCATE for the first time.
 // None of them is new geometry; what is new is that a sweep finally moves
 // them, so the §48 audit can ask the question it exists to ask. Each answer
 // below is the mechanism that was already there, now stated.
-declareRestoring('Alarm switch', 'spring',
+declareRestoring('Alarm switch', 'switchClickArm', 'spring',
   'the click arm is held to the castellations by its own blade — a real flat spring, grounded to its stud and bearing on the arm (TODO 11 sized it to flat-spring stock)',
   'switchClickSpring');
-declareRestoring('Alarm link', 'two-way',
+declareRestoring('Alarm link', '*', 'two-way',
   'TODO 20 second pass: the centre pin rides the drive tab\'s GROOVE at its ±0.01 working clearance, so the chain is pushed and pulled — which is exactly what retired the phantom bias spring the first build needed');
-declareRestoring('Alarm selector', 'two-way',
+declareRestoring('Alarm selector', 'alarmSelRing', 'two-way',
   'driven both ways by the link\'s centre pin in the forked tab (the same TODO 20 solve); the ring has no bias spring because it needs none');
 declareTravel('Alarm hammer', 2 * ALARM_DRAW_RAD, 'lift law spans [-ALARM_DRAW_RAD, +ALARM_DRAW_RAD]');
 // Where the tail rests. Measured out from the pivot⇄wheel bearing: the larger
@@ -14964,7 +14992,7 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
 // — alarm crown → climb → idlers → the arbor's own wheel (§99; the rim before
 // it) — the same both-ways drive the going train's chain and fusee carry,
 // arriving at an arbor now exactly as the going side's does.
-declareRestoring('Alarm barrel', 'spring',
+declareRestoring('Alarm barrel', 'mainspringRibbon', 'spring',
   'the ribbon IS the restoring element — its inner end is hooked to the wound arbor and its outer end to the body, so their relative travel winds it; the winding train carries the arbor back through its wheel, and the §99 click holds what the hand banked',
   'mainspringRibbon');
 
@@ -16041,7 +16069,7 @@ declareTravel('Alarm governor anchor', ALARM_GOV_PHI, 'the anchor swings ±h (th
 // tooth faces drive the anchor BOTH ways (that is what "unsprung recoil
 // anchor" means — a runaway by design), so there is nothing to declare but
 // the drive. The poising ring is inertia, not a spring.
-declareRestoring('Alarm governor anchor', 'two-way',
+declareRestoring('Alarm governor anchor', 'alarmGovAnchor', 'two-way',
   'the saw\'s tooth tips drive the anchor both ways at the contacts, alternately by each pallet, and it DWELLS through each drop arc (§113 — nothing touches it there, and nothing needs to: the next landing reverses it) — the pallet fork\'s class; the poising ring is solved inertia, not a restoring element');
 // --- TODO 32: THE EQUALISATION, NOW A RECORD — AND SINCE §104, HELD WHOLE --
 // The OSCILLATOR block's twin, sited here because it needs BOTH ribbons
@@ -16820,7 +16848,7 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
 }
 declareTravel('Alarm click', 0.35,
   'the beak rides the saw between root and tip: lift ≈ 0.2·R/lever ≈ 0.25 rad plus the seat preload — the registry\'s containment assert widens this if the built ride exceeds it');
-declareRestoring('Alarm click', 'spring',
+declareRestoring('Alarm click', 'alarmClickPawl', 'spring',
   'the click spring re-seats the beak after each tooth cams it out — a real blade on its own post, bearing on the click\'s flank; the HOLD is the saw face\'s own closing geometry, not the spring',
   'alarmClickSpring');
 
@@ -18294,7 +18322,7 @@ const ALARM_COL_POS = {
   blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
   alarmLockUnit.add(blade);
 }
-declareRestoring('Alarm lock', 'spring',
+declareRestoring('Alarm lock', 'alarmLockPad', 'spring',
   'the return blade biases the lever toward LIFTED (beak into the gap, pad off the collar) and the column presses it ENGAGED against this spring — a real blade on its own stud, bearing on the arm\'s flank; the HOLD when braked is the column\'s, not the spring\'s',
   'alarmLockSpring');
 // The rounded nose every rider presents to the castellations. HOISTED here
@@ -18379,9 +18407,11 @@ alarmSwitchUnit.add(alarmClickArm);
   post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + clickPostLen / 2 - 0.01);
   alarmSwitchUnit.add(post);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top click arm, free upward
+  arm.name = 'switchClickArm';   // §162: the §48 member key selects the RECIPROCATOR by name, and BoxGeometry#4 is not a name
   arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the seat point
   alarmClickArm.add(arm);
   const nose = new THREE.Mesh(new THREE.SphereGeometry(ALARM_CLICK_NOSE_R, 12, 8), MATS.steel);
+  nose.name = 'switchClickNose'; // §162, and SphereGeometry#5 was the only handle three declarations had on it
   nose.position.x = -ALARM_CLICK_L;
   alarmClickArm.add(nose);
 }
@@ -20085,6 +20115,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const stemOuterS = 1.6 + plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4; // the as-built case-band end
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
+  stem.name = 'alarmPusherStem';  // §162: the pusher body's own name, so the §48 member key and the joint rows stop selecting it as CylinderGeometry#9
   stem.rotation.z = ALARM_PUSH_AZ - Math.PI / 2; // cylinder +Y → outward along the push azimuth
   stem.position.set(_pushU.x * (ALARM_PUSH_INNER + stemLen / 2), _pushU.y * (ALARM_PUSH_INNER + stemLen / 2), 0);
   alarmPusherGroup.add(stem);

@@ -16677,3 +16677,115 @@ loop is a claim about ROUTES, not panels, and it was and is true.
   `?scale=`, then the session restore writes the persisted slider back over it.
   The spec tier cannot be hit by it — `index.html` reads those pre-module — so
   it is a pose-tier precedence question and is filed rather than fixed here.
+
+## §162 — §48's audit asks per BODY: restoring declarations keyed by member, and the bodies derived rather than listed
+
+TODO 87 finding 4, and the half of its step 5 that turned out not to be
+"cheap". `declaredRestoring` was a `Map` keyed by UNIT NAME whose first line
+warned on a second call, so a unit with two reciprocators passed §48's audit on
+whichever one happened to be declared first. `Alarm switch` was the worked
+example: it answers with `switchClickSpring`, which is a real blade really
+restoring the CLICK ARM, while the pusher — a second reciprocator in the same
+unit, whose return is `ALARM_RETURN_S`, a settling time in the tick with no
+metal behind it — was never asked about. There was no call that could have said
+so.
+
+That is a third shape of the same failure and it is worth naming apart from the
+other two. TODO 29 and TODO 64 are POPULATION gaps: no axis moves the part, so
+the audit never asks. This is a GRANULARITY gap: the axis question does not
+arise, because one declaration per unit cannot answer for two bodies. Rule 4's
+warning about the §36 `reversed` population covers the first; nothing covered
+this one.
+
+### The key, and why the bodies are derived
+
+`declareRestoring(unit, member, kind, why, mesh)` — `member` is a mesh name
+belonging to the RECIPROCATING BODY the declaration answers for, not to the
+spring, which `mesh` already names. The map is keyed `(unit, member)`, so a unit
+may hold as many declarations as it has reciprocators.
+
+The bodies are not a list. Each unit's reversing meshes cluster into rigid
+frames by the same world-motion signature `checkAssembly` and `checkIntraUnit`'s
+MM tier already use — `clusterByFrame`, one predicate with three consumers now —
+with a morph always its own frame for §121's reason: a mesh that swaps geometry
+moves its surfaces without moving its matrix, so the matrix trace alone would
+merge two still morphs into one body. A declaration lands in the frame that
+contains its member mesh.
+
+The audit's own walk is deliberately coarse — three samples per axis, matrices
+only, no BVH and no vertices. Clustering has to tell bodies APART, which the
+endpoints and the middle of every axis already do; it is not measuring travel,
+and the registry that decided which meshes reverse did that at its own rate.
+
+### What it measured on its first run
+
+**40 reciprocating bodies across 24 units**, where the unit-keyed audit saw 24
+answers.
+
+| verdict | bodies | what it means |
+|---|---|---|
+| `declared` | 16 | a declaration names a member inside this frame |
+| `unit-wide` | 20 | the unit answers `'*'` — exactly what every declaration meant before the re-key |
+| `undeclared` | 4 | nothing answers for this body at all |
+
+`Alarm switch` splits into precisely the two the finding names:
+`switchClickArm` + `switchClickNose`, answered by `switchClickSpring`; and
+`alarmPusherStem` + `alarmPusherCap` + `alarmPusherPawl` + `alarmPusherRiser` +
+`alarmPusherReach`, answered by nothing.
+
+The other three undeclared bodies are `Mainspring drum`'s hook stack,
+`Alarm hammer`'s own blade (a spring that reverses because it bends — a report
+row, not a defect) and an unnamed box in `Minute jumper`. `Fusee & great wheel`
+resolves its two maintaining pawls as two separate bodies, which is the
+clustering doing exactly what it is for.
+
+### `'*'` is an answer's honest predecessor, not a loophole
+
+A `'*'` member means "this answers for the whole unit" — the old key, carried
+forward. It is REPORTED as its own weaker verdict and never counted as
+coverage, because reading it as coverage would make the re-key look complete on
+the day it landed.
+
+Twenty rows sit there, and most of them are a NAMING problem rather than a
+mechanism one: a declaration can only refine to a member the metal has a name
+for, and whole units reverse as unnamed `ExtrudeGeometry` — `Keyless works`,
+`Pallet fork`, `Balance`, `Power-reserve train`, most of `Fusee & great wheel`.
+§54's lesson arriving at a second instrument: a row that cannot name its member
+is not actionable. Naming those meshes is the fix and it costs no geometry —
+this landing named three (`switchClickArm`, `switchClickNose`,
+`alarmPusherStem`) to put `Alarm switch` in scope, and the fingerprint did not
+move (480940272 either side). Seven `INTRA_UNIT_CONTACTS` rows stopped selecting
+those meshes as `BoxGeometry#4` / `SphereGeometry#5` / `CylinderGeometry#9` in
+the same change, which is a second reason to do it.
+
+### What gates, and what only reports
+
+§48's covenant stands: `ok` is always true and the rows are the product. The
+tier gates `RESTORING_MEMBER_SCOPE` — one unit, `Alarm switch` — and REPORTS
+everywhere else, which is §121's convention for a tier arriving on a movement
+nobody has triaged for it. Gating all 40 at once would have opened two dozen
+rows nobody has looked at, and that is how a gate becomes a wall of waivers.
+
+Two things are held everywhere, not only in scope:
+
+- **a member selector that resolves to no mesh in its unit** —
+  `INTRA_UNIT_CONTACTS`' rule, because a declaration pointing at metal that is
+  not there reads as an answer and is not one. Resolution is unit-scoped, since
+  two units carry a mesh called `mainspringRibbon` and a scene-wide lookup would
+  hand both declarations the same one.
+- **a waiver naming a body that IS answered** — §137's rule, and the reason
+  deleting a waiver is structurally part of a fix.
+
+`RESTORING_MEMBER_WAIVERS` opens with exactly one row, the pusher's, citing
+TODO 87. It is keyed by a mesh in the uncovered frame, so if that mesh stops
+reversing the row disappears and the waiver goes stale — held the same way
+`SLENDER_WAIVERS` is.
+
+### What this does NOT close
+
+The pusher's return still has no metal. That is TODO 87 step 5's second half —
+a fixed abutment from the plate's underside inboard of a collar on the stem,
+blade between them — and this landing does not build it. What changed is that
+the instrument now says so: before §162 the movement's clearest missing return
+was invisible behind a real spring answering for the wrong body, and it is a
+gated row now that fails the moment its waiver is deleted.
