@@ -42,7 +42,7 @@ const out = await page.evaluate(async (steps) => {
     if (o.userData && o.userData.schematic) return;
     if (!o.isMesh) return;
     if (o.geometry.type === 'SphereGeometry') nose = o;
-    if (o.name === 'alarmColWheel') pillars.push(o);
+    if (o.name === 'alarmColCastellations') pillars.push(o);   // TODO 87 step 4 named the wheel's three bodies apart
   });
   if (!nose) return { error: 'no nose sphere found in Alarm switch' };
 
