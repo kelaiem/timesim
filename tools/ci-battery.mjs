@@ -238,6 +238,10 @@ const BOOT_TIMEOUT_MS = 120 * 1000;
 const COSTS = {
   'support': 7,
   'graph': 1,
+  // §161 — 12 fixtures over throwaway objects, no scene and no poses. 1 is
+  // this column's floor for sub-second checks (see `slenderness` below);
+  // `--report` refreshes it like every row.
+  'aestheticsMerge': 1,
   'axisEntry': 2,
   // §111 raised this from 17 (the governor row's 449 phases); §113's stubby
   // pallets halved the row's mesh work — measured 21 s.
