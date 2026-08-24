@@ -49,11 +49,11 @@
 //   stray frame swallows a 0.24 s press between two evaluate() calls. The whole
 //   trace therefore runs inside ONE page.evaluate with beginSweepHold() up.
 //
-// · Three meshes share the name `alarmColWheel` (item 87's own finding — one
-//   INTRA_UNIT_CONTACTS row waives all three). getObjectByName returns
-//   whichever is first, so the skirt is identified GEOMETRICALLY and asserted:
-//   it is the ExtrudeGeometry lying entirely below the base disc's mid-plane,
-//   and the only mesh reaching past ALARM_COL_BASE_R.
+// · The wheel's three bodies used to share one name `alarmColWheel` (item 87's
+//   own finding — one INTRA_UNIT_CONTACTS row waived all three). Step 4 named
+//   them apart at the builder, so the skirt is selected by name; the geometric
+//   test that used to do the selecting is kept as a CHECK on the name, because
+//   a name is a claim and the geometry can settle it.
 //
 // · A sampling rate can manufacture an extremum. The ramp is linear in dt, so
 //   a finer step should sample the same trajectory — asserted, not assumed, by
@@ -92,30 +92,38 @@ const V = await page.evaluate(async () => {
     if (o.userData && o.userData.schematic) return;   // §71: flagged display is not metal
     if (!o.isMesh) return;
     if (o.name === 'alarmPusherPawl') pawl = o;
-    if (o.name === 'alarmColWheel') wheelMeshes.push(o);
+    if (/^alarmCol(Base|Castellations|Skirt)$/.test(o.name)) wheelMeshes.push(o);
   });
   if (!pawl) fail.push('no mesh named `alarmPusherPawl`');
-  if (wheelMeshes.length !== 3) fail.push(`expected 3 meshes named alarmColWheel, found ${wheelMeshes.length}`);
+  if (wheelMeshes.length !== 3) fail.push(`expected the wheel's 3 named bodies, found ${wheelMeshes.length}`);
 
-  // The skirt, identified geometrically and cross-checked, because the name
-  // cannot tell the three bodies apart (item 87 fix step 4).
+  // TODO 87 step 4 named the three bodies apart, so the skirt is SELECTED by
+  // name — and then the geometric test that used to do the selecting is kept
+  // as a CHECK on the name. A name is a claim about which body this is; the
+  // geometry can settle it, so it does, and a mis-named body fails here
+  // rather than being measured as if it were the right one.
   const described = wheelMeshes.map((m) => {
     m.geometry.computeBoundingBox();
     const bb = m.geometry.boundingBox;
     let rMax = 0;
     const p = m.geometry.attributes.position;
     for (let i = 0; i < p.count; i++) rMax = Math.max(rMax, Math.hypot(p.getX(i), p.getY(i)));
-    return { m, type: m.geometry.type, zMin: bb.min.z, zMax: bb.max.z, rMax,
+    return { m, name: m.name, type: m.geometry.type, zMin: bb.min.z, zMax: bb.max.z, rMax,
              tris: (m.geometry.index ? m.geometry.index.count : p.count) / 3 };
   });
+  const named = described.find((d) => d.name === 'alarmColSkirt') || null;
   const belowAll = described.filter((d) => d.zMax <= 1e-6);            // entirely under the disc's mid-plane
   const widest = described.reduce((a, b) => (a.rMax >= b.rMax ? a : b)); // the saw's tips overhang the disc
   const buffers = described.filter((d) => d.type === 'BufferGeometry'); // the castellations, hand-emitted
+  if (!named) fail.push('no mesh named `alarmColSkirt`');
   if (belowAll.length !== 1) fail.push(`skirt test A ambiguous: ${belowAll.length} meshes lie entirely below z=0`);
-  if (belowAll.length === 1 && belowAll[0].m !== widest.m)
-    fail.push('skirt tests DISAGREE: the mesh below the disc is not the mesh reaching furthest out');
-  if (buffers.length !== 1) fail.push(`expected exactly 1 BufferGeometry (the castellations), found ${buffers.length}`);
-  const skirt = belowAll.length === 1 ? belowAll[0] : null;
+  if (named && belowAll.length === 1 && belowAll[0].m !== named.m)
+    fail.push('the mesh NAMED alarmColSkirt is not the one lying under the disc — the builder named the wrong body');
+  if (named && widest.m !== named.m)
+    fail.push('the mesh NAMED alarmColSkirt is not the one reaching furthest out — the builder named the wrong body');
+  if (buffers.length !== 1 || buffers[0].name !== 'alarmColCastellations')
+    fail.push('the hand-emitted BufferGeometry is not the mesh named alarmColCastellations');
+  const skirt = named;
   if (!skirt) fail.push('could not identify the ratchet skirt');
   if (fail.length) return { fail, described: described.map(({ m, ...d }) => ({ ...d, z: [round(d.zMin), round(d.zMax)] })) };
 

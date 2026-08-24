@@ -2227,7 +2227,14 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#6', why: 'lock lever on its pivot post (index moved 4→6 when TODO 24 added the beak riser+nose to the lever)' },
   { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#6', why: 'lever tail on the same post' },
   { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'alarmLockSpring', why: '§102: the return blade\'s tip pressing the arm\'s wheel-side flank — the §48-declared spring contact (a 0.05 preload overlap at the lifted pose, deeper as the column presses the lever engaged)' },
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'CylinderGeometry#3', why: 'column wheel on its stud' },
+  // TODO 87 step 4 — ONE ROW WAS ANSWERING TWO QUESTIONS. While all three
+  // bodies answered to `alarmColWheel` this was a single row reading "column
+  // wheel on its stud", and splitting the names showed it had been covering
+  // the BASE's bore and the SKIRT's alike. Both are real joints and both are
+  // declared now; the castellations stand at colInner, clear of the stud, and
+  // so get no row — which is the difference a blanket cannot express.
+  { unit: 'Alarm switch', a: 'alarmColBase', b: 'CylinderGeometry#3', why: 'the base disc\'s bore on the column wheel\'s stud' },
+  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'CylinderGeometry#3', why: 'the ratchet skirt\'s bore on the same stud — one arbor, two seated bodies' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
   { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
@@ -2270,7 +2277,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
   { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'alarmPusherPawl', why: 'the pawl PARKS ON the kiss — its leading face is derived onto the saw outline (ratchetPoly) and alarmHandoffs asserts the kiss every run' },
+  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmPusherPawl', why: 'the pawl PARKS ON the kiss — its leading face is derived onto the saw outline (ratchetPoly) and alarmHandoffs asserts the kiss every run' },
   // Surfaced the moment the signature above started reading geometry swaps
   // (TODO 1). Both are the hairspring's two ends, and both were always there:
   // the breathing spiral is a mover by morph, and the parts it is pinned
@@ -2323,10 +2330,18 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'CylinderGeometry#7', why: '§121: the detent post and its second turned step — one post, two diameters' },
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'switchClickSpring', why: '§121: the switch click spring anchored on the detent post (kiss)' },
   { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'alarmPusherRiser', why: '§121: the riser lapped onto the pusher stem (0.5 of the riser 0.21 into the stem — the joint that carries the push)' },
-  { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'TorusGeometry#14', why: '§121: the return coil seated round the pusher stem (§33\'s handle return)' },
+  // TODO 87 finding 3 — THIS ROW USED TO NAME A PART THAT DOES NOT EXIST.
+  // It read "the return coil seated round the pusher stem", and there is no
+  // return coil: the pusher's return is ALARM_RETURN_S, a settling time in
+  // the tick with no metal behind it. What the row actually covered was the
+  // stem inside its GUIDE BOSS — and covered a 0.08 interference there,
+  // because the bore was a literal 0.24 against a 0.32 stem. The bore is
+  // derived from the stem now (main.js, ALARM_PUSH_GUIDE_BORE), so this is a
+  // running fit and the row says which joint it is.
+  { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'alarmPusherGuide', why: 'the pusher stem running in its guide boss — a sliding bearing at PIVOT_BORE_CLEAR, the plate pivots\' own fit' },
   { unit: 'Alarm switch', a: 'alarmPusherPawl', b: 'alarmPusherReach', why: '§121: the pawl lapped on the reach bar (flush faces, deep 0)' },
   { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser lapped on the reach bar — the pusher\'s own three-piece assembly' },
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'BoxGeometry#4', why: '§121: the detent arm riding the column wheel (kiss) — §28\'s column work; a working contact, bounded by the TODO 59 read assert at the click build and swept through a whole pitch by tools/probe-59-click' },
+  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'BoxGeometry#4', why: '§121: the detent arm riding the column wheel\'s castellations (kiss) — §28\'s column work; a working contact, bounded by the TODO 59 read assert at the click build and swept through a whole pitch by tools/probe-59-click' },
   // TODO 59: this row USED to say "its budget the switch's own asserts", and no
   // such assert had ever been written — a declaration pointing at a check that
   // does not exist reads as triaged, which is worse than an admitted gap. The
@@ -2336,7 +2351,7 @@ export const INTRA_UNIT_CONTACTS = [
   // measured by probe-59-click: 0 buried samples of 121 across a full pitch,
   // worst clearance 0.0052, against 30 of 121 and a worst burial of 0.699 under
   // the height-as-radius law this replaced.
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'SphereGeometry#5', why: '§121: the detent BALL on the column wheel\'s ramps (kiss) — the star detent that indexes the column; TODO 59 re-derived its radius from the wall and the top corner it rides, and probe-59-click sweeps the pitch' },
+  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'SphereGeometry#5', why: '§121: the detent BALL on the castellations\' ramps (kiss) — the star detent that indexes the column; TODO 59 re-derived its radius from the wall and the top corner it rides, and probe-59-click sweeps the pitch' },
   // Alarm link — §45's corner stations and the crank:
   { unit: 'Alarm link', a: 'LatheGeometry#9', b: 'BoxGeometry#10', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'LatheGeometry#11', b: 'BoxGeometry#12', why: '§121: the second corner, same construction' },
@@ -2450,7 +2465,7 @@ export const INTRA_UNIT_WAIVERS = [
   // 'Alarm switch' now fails. The fix is P2 mechanism space and its own
   // landing — the carrier wants to leave the skirt's z band and hang the pawl
   // from a dropper, which is what the source already claims it does.
-  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'alarmPusherReach',
+  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmPusherReach',
     debt: 'TODO 87 finding 6: the reach bar carries through the ratchet skirt over the middle half of the press — depth z-capped at 0.03833, in-plane ~1.586 u at the bottom of the stroke' },
 ];
 
@@ -3532,7 +3547,7 @@ const PENETRATION_BUDGETS = [
     nSamples: 150,
     selectA(unit) {
       const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmColWheel') out.push(o); });
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmColCastellations') out.push(o); });
       return out;
     },
     selectB(unit) {
@@ -4116,7 +4131,7 @@ const ALARM_HANDOFFS = [
     // cannot reach; TODO 20's status block files that gap, and §43's
     // direction assert remains its only guard.
     label: 'pusher pawl ⇄ ratchet skirt',
-    unitA: 'Alarm switch', meshA: 'alarmColWheel',
+    unitA: 'Alarm switch', meshA: 'alarmColSkirt',   // TODO 87 step 4: the SKIRT, named apart — this row used to select all three wheel bodies and take the nearest
     unitB: 'Alarm switch', meshB: 'alarmPusherPawl',
   },
   {
@@ -4139,7 +4154,7 @@ const ALARM_HANDOFFS = [
     // face at the disarmed parity and hangs over gap air armed — the link
     // beak's row, mirrored to the lock side.
     label: 'column outer face ⇄ lock beak',
-    unitA: 'Alarm switch', meshA: 'alarmColWheel',
+    unitA: 'Alarm switch', meshA: 'alarmColCastellations',   // TODO 87 step 4
     unitB: 'Alarm lock', meshB: 'alarmLockBeak',
     expect: { disarmed: 'contact', armed: 'free' },
   },
@@ -4149,7 +4164,7 @@ const ALARM_HANDOFFS = [
     // and armed it hangs at the seat over the gap — DESIGNED free, the
     // classic column-wheel beak ride. UNWAIVED both ways.
     label: 'column relief ⇄ beak nose',
-    unitA: 'Alarm switch', meshA: 'alarmColWheel',
+    unitA: 'Alarm switch', meshA: 'alarmColCastellations',   // TODO 87 step 4
     unitB: 'Alarm link', meshB: 'alarmLinkBeak',
     expect: { disarmed: 'contact', armed: 'free' },
   },
@@ -6848,8 +6863,10 @@ export async function checkMeshIntegrity(clock, opts = {}) {
   // lathe, every knurl ridge one cylinder) would otherwise repeat identical
   // findings per instance. A geometry row carries its instance count and
   // its distinct unit attributions; the representative mesh is the nearest-
-  // hop one, which is what keeps alarmColWheel's three same-named meshes
-  // three distinct rows (three geometries), not one.
+  // hop one. (Until TODO 87 step 4 the column wheel's three bodies all
+  // answered to `alarmColWheel`, and this dedupe by GEOMETRY is what kept
+  // them three distinct rows anyway; they are named apart now, so the
+  // example is history rather than the load-bearing case it was.)
   const byGeo = new Map();      // geometry -> { unit, mesh, instances, units:Set }
   for (const [mesh, unit] of byMesh) {
     const rec = byGeo.get(mesh.geometry);

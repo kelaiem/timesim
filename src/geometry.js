@@ -1369,7 +1369,14 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
 export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28 }) {
   const mat = material || MATS.blueSteel;
   const g = new THREE.Group();
+  // TODO 87 step 4 — THE THREE BODIES ARE NAMED APART. They used to be
+  // nameless, and main.js's traverse gave all three the single name
+  // `alarmColWheel`, so ONE declaration excused the pawl against the base
+  // disc, the castellations and the ratchet skirt alike — a depth-free
+  // blanket over three different questions. Named here, at the builder that
+  // knows which is which, rather than guessed at by geometry type downstream.
   const base = new THREE.Mesh(ringExtrude(baseR, boreR, baseH, 48), mat);
+  base.name = 'alarmColBase';
   g.add(base);
   const pitch = (Math.PI * 2) / columns;
   // TODO 28 — DUTY AND FLANK ARE DERIVED NOW. Both were bare literals
@@ -1501,7 +1508,9 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     colGeo.setIndex(idx);
     colGeo.computeVertexNormals();
     colGeo.translate(0, 0, baseH / 2);
-    g.add(new THREE.Mesh(colGeo, mat));
+    const colMesh = new THREE.Mesh(colGeo, mat);
+    colMesh.name = 'alarmColCastellations';   // TODO 87 step 4
+    g.add(colMesh);
   }
   // Lower RATCHET skirt — one saw tooth per STEP (2 per column): what the
   // case pusher's pawl indexes. Real column wheels are driven exactly here.
@@ -1527,7 +1536,9 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     shape.holes.push(hole);
     const geo = new THREE.ExtrudeGeometry(shape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 2 }); // TODO 11 tail: the pusher's pawl indexes here — floor stock, growing downward where the call site's raised seat left a full margin
     geo.translate(0, 0, -baseH / 2 - STOCK_MIN_U);
-    g.add(new THREE.Mesh(geo, mat));
+    const skirtMesh = new THREE.Mesh(geo, mat);
+    skirtMesh.name = 'alarmColSkirt';         // TODO 87 step 4 — what the pawl indexes
+    g.add(skirtMesh);
     // §33 (pusher handle) — the saw's OUTLINE, exported the way profileAt
     // is: the caller derives the pawl's park by casting against this same
     // polygon, so the parked kiss cannot drift from the cut teeth (the

@@ -9307,17 +9307,23 @@ declared as debt:
   `plateR - 1.2`; the cap stands ~2.8 u outboard of the plate rim into empty
   air (BUILT §43 recorded the head **2.22 mm proud**, with no case to bore for
   it). A single point bearing fixes position, not tilt.
-- **The bore is smaller than the stem.** The boss is a torus of ring radius
-  0.36 and tube 0.12, so its hole is **0.24** against `ALARM_PUSH_STEM_R`
-  **0.32** — a **0.08 u = 0.030 mm** interference at every pose, in a joint
-  whose whole job is to slide.
-- **And the row that covers it describes a part that does not exist.** The
-  `INTRA_UNIT_CONTACTS` entry pairing the stem with that torus reads *"the
-  return coil seated round the pusher stem"*. There is no return coil: the
-  return is `ALARM_RETURN_S` in the tick, a settling time with no metal behind
-  it. So a bearing interference is waived under the name of a spring, and the
-  spring the row claims would also have satisfied §48 if anyone had gone
-  looking for it.
+- **The bore was smaller than the stem — FIXED, and now measured.** The boss
+  was a torus of ring radius 0.36 and tube 0.12, so its hole read **0.24**
+  against `ALARM_PUSH_STEM_R` **0.32**: a **0.08 u = 0.030 mm** interference at
+  every pose, in a joint whose whole job is to slide. Two literals that had
+  never been checked against each other. The bore is derived from the stem now
+  (`ALARM_PUSH_GUIDE_BORE = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR`) and the ring
+  radius follows it, so growing the fit grows the torus rather than eating the
+  stem. Measured across the press axis afterwards: **0 samples inside at every
+  fraction, gap 0.05 at each** — the running fit, at every pose.
+- **And the row that covered it described a part that does not exist —
+  CORRECTED.** The `INTRA_UNIT_CONTACTS` entry pairing the stem with that torus
+  read *"the return coil seated round the pusher stem"*. There is no return
+  coil: the return is `ALARM_RETURN_S` in the tick, a settling time with no
+  metal behind it. So a bearing interference was waived under the name of a
+  spring. The row now names the joint it is (`alarmPusherGuide`, the boss being
+  named for the first time) and describes the running fit. The missing spring
+  is step 5's, and step 5 turns out not to be cheap — see there.
 
 ### 4. `restoring` answers for the click, so the pusher's return is never asked about
 
@@ -9380,10 +9386,33 @@ they live in one unit, and invisible to `intraUnit` too until an axis moved the
 pusher. **That is the whole argument for step 1 in one row** — the gate did not
 become stricter, the mechanism became reachable.
 
-**The fix is position space, and it is its own landing** (P2: never paid for by
-opening a contact or widening a budget). The carrier wants to leave the skirt's
-z band with the pawl hung from a dropper — the anatomy the source comment
-already describes and the metal does not yet have. Waived in
+**The prescribed fix does not fit, and that is measured now rather than
+assumed.** This item first said the carrier "wants to leave the skirt's z band
+with the pawl hung from a dropper — the anatomy the source comment already
+describes". Measured on the built tree, that band is CLOSED at this station:
+
+| | z |
+|---|---|
+| three-quarter plate, top | **8.9945** |
+| ratchet skirt, bottom | **9.1345** |
+| free band between them | **0.140** |
+| a 0.24-thick bar with a `CLEAR_MARGIN` each side needs | **0.540** |
+
+Short by 0.4, and the bar cannot thin its way in either: its 0.24 of z is
+already under the 0.317 stock floor (TODO 11's residue). So the carrier has
+nowhere to go in z here.
+
+**And the deeper reason is that renaming the member would not help.** The riser
+stands just outside the saw's tip circle at full press by its own derivation
+(`ALARM_PUSH_INNER` carries `+ ALARM_PUSH_TRAVEL` for exactly that), while the
+pawl's leading face is ~1.97 inside it. Whatever spans those two stations is
+inside the tooth circle at the bottom of the stroke — calling it "pawl" instead
+of "reach bar" moves the label, not the metal.
+
+**So the real fix is step 3, not a re-route**: a pawl that can LIFT out of the
+tooth circle, with its carrier lifting with it, is the only arrangement that
+clears the teeth on the return without moving the station or re-stratifying the
+band (§51's machinery, if it comes to that). Until then the row is waived in
 `INTRA_UNIT_WAIVERS` citing this item, deliberately not silenced, so `Alarm
 switch` stays GATED: any other interference in that unit now fails.
 
@@ -9442,14 +9471,40 @@ read the other, because the second is then nearly free.
    space and never on a widened budget; and the cam-out travel derives from the
    flank angle the source has already computed (67.4° off radial), not from
    whatever clears.
-4. **Split the blanket, and correct the two false rows.** Name the wheel's
-   three meshes apart so one declaration cannot excuse three pairs; then either
-   re-declare the boss as the bearing it is, with a running fit someone would
-   design (`PIVOT_BORE_CLEAR` = 0.05 is the repo's other one, against this
-   joint's −0.08), or build the return coil its row already claims.
-5. **Declare the pusher's return honestly** — a second `declareRestoring` is
-   the cheap half; the spring in metal is the half that makes the declaration
-   true. §48's geometry guard will demand the mesh, which is the right pressure.
+4. **DONE — the blanket is split and both false rows are corrected.** The
+   wheel's three bodies are named at the builder (`alarmColBase`,
+   `alarmColCastellations`, `alarmColSkirt`), so the selectors say which body
+   they mean: the stud carries the base, the pawl parks on the skirt, the click
+   and the two beaks ride the castellations. **Splitting it immediately found a
+   second joint the blanket had been covering** — the SKIRT's bore rides the
+   same stud as the base's, which one row reading "column wheel on its stud"
+   could not say and now two rows do. The castellations stand at `colInner`,
+   clear of the stud, and get no row: the difference a blanket cannot express.
+
+   The boss is a bearing now rather than a "return coil": `ALARM_PUSH_GUIDE_BORE
+   = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR`, with the ring radius following the
+   bore instead of leading it. Measured after: **0 samples inside at every press
+   fraction and a 0.05 gap at each**, where the literal pair bored 0.24 against
+   a 0.32 stem. That also promotes finding 3's first half from arithmetic to
+   measurement; its second half — the single bearing station and the cantilever
+   past it — is untouched.
+5. **Declare the pusher's return honestly — and the "cheap half" this step
+   used to describe DOES NOT EXIST.** It read "a second `declareRestoring` is
+   the cheap half". There is no second declaration: `declaredRestoring` is a
+   Map keyed by unit NAME and its first line is
+   `if (declaredRestoring.has(name)) console.warn('§48: … declared twice')`,
+   so a second call for `Alarm switch` is boot noise, not a declaration. The
+   audit structurally admits ONE restoring answer per unit.
+
+   That is finding 4's granularity gap in the code rather than in prose, and it
+   means the step has two real halves, neither cheap: **§48's model has to key
+   by MEMBER, not by unit** (a change to the audit's data shape, its ~18
+   existing declarations and its check), and **the pusher's return has to exist
+   as metal** — today it is `ALARM_RETURN_S`, a settling time. The geometry is
+   sited: a fixed abutment hanging from the plate's underside inboard of a
+   collar on the stem, blade between them, which is how a case pusher's return
+   actually works and what the stem's long free run between the riser (s ≈ 7.9)
+   and the guide boss (s = `plateR − 1.2`) has room for.
 
 **What this item measured and what it computed.** As filed, findings 1 and 3
 were arithmetic on the shipped constants — re-run from `ALARM_PUSH_TRAVEL`,

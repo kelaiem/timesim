@@ -18305,7 +18305,19 @@ declareRestoring('Alarm lock', 'spring',
 // binding one.
 const ALARM_CLICK_NOSE_R = 0.28;
 const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel, riderNoseR: ALARM_CLICK_NOSE_R }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier); TODO 28: the nose sets the flat top
-alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'alarmColWheel'; }); // §35: the link beak's budget selects the castellations by name
+// TODO 87 step 4 — the three bodies are NAMED AT THE BUILDER now
+// (alarmColBase / alarmColCastellations / alarmColSkirt), because one name
+// over all three made a single INTRA_UNIT_CONTACTS row a depth-free blanket
+// across three different questions. This traverse used to apply that one
+// name; it now asserts the builder did its job, since every selector
+// downstream couples by string and a nameless body would silently match
+// nothing rather than fail loudly.
+{
+  const unnamed = [];
+  alarmColumnWheel.traverse((o) => { if (o.isMesh && !o.name) unnamed.push(o.geometry.type); });
+  if (unnamed.length)
+    console.warn(`TODO 87: the column wheel has ${unnamed.length} unnamed mesh(es) (${unnamed.join(', ')}) — every selector couples by string, so name them at makeColumnWheel`);
+}
 const alarmColSpin = new THREE.Group();
 alarmColSpin.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_LOCK_Z + ALARM_COL_SPIN_REL);
 // Phase the wheel so the BEAK's azimuth (from the wheel toward the lock tail,
@@ -20030,7 +20042,23 @@ const _pushBase = {
 // AXIS_REL stays lock-relative for its consumers; it is simply negative
 // now (the axis sits below ALARM_LOCK_Z instead of above the stack).
 const ALARM_PUSH_STEM_R = 0.32;
-const ALARM_PUSH_GUIDE_HALF = 0.36 + 0.12;   // guide torus: ring r + tube r — its z half-span
+// TODO 87 finding 3 — THE BORE FOLLOWS THE STEM NOW. The guide was a torus of
+// ring radius 0.36 and tube 0.12, so its hole measured 0.24 against a 0.32
+// stem: a 0.08 u = 0.030 mm INTERFERENCE at every pose, in the one joint whose
+// whole job is to slide. It was a pair of literals that had never been checked
+// against each other, and the only declaration mentioning the boss called it a
+// return coil (corrected below), so nothing was watching. The bore is derived
+// from what runs in it, with the repo's own running fit — PIVOT_BORE_CLEAR,
+// the plate pivots' — and the ring radius follows the bore rather than leading
+// it. Growing the ring grows the torus's z half-span, which is what sets the
+// press axis's depth two lines down; the pawl's own station is derived AGAINST
+// that depth, so it rides the skirt band wherever the axis lands.
+const ALARM_PUSH_GUIDE_TUBE = 0.12;                                        // ring stock (§50 floor)
+const ALARM_PUSH_GUIDE_BORE = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR;        // a running fit, not a press fit
+const ALARM_PUSH_GUIDE_RING = ALARM_PUSH_GUIDE_BORE + ALARM_PUSH_GUIDE_TUBE;
+const ALARM_PUSH_GUIDE_HALF = ALARM_PUSH_GUIDE_RING + ALARM_PUSH_GUIDE_TUBE; // a vertical torus spans its OUTER radius in z
+if (ALARM_PUSH_GUIDE_BORE <= ALARM_PUSH_STEM_R)
+  console.warn(`TODO 87: the guide bore ${ALARM_PUSH_GUIDE_BORE} does not clear the stem ${ALARM_PUSH_STEM_R} — the pusher cannot slide in its own bearing`);
 const ALARM_PUSH_AXIS_REL = (TQ_BOT_Z - CLEAR_MARGIN - ALARM_PUSH_GUIDE_HALF) - ALARM_LOCK_Z;
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
@@ -20238,7 +20266,8 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // Guide boss at the plate rim — the pusher's bearing until §3's case takes over.
   // A vertical torus spans its RING DIAMETER in z (0.48 here) — the first two
   // sizings buried its underside in the plate by forgetting that.
-  const boss = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.12, 8, 16), MATS.nickel);
+  const boss = new THREE.Mesh(new THREE.TorusGeometry(ALARM_PUSH_GUIDE_RING, ALARM_PUSH_GUIDE_TUBE, 8, 16), MATS.nickel);
+  boss.name = 'alarmPusherGuide';   // TODO 87: named, so a declaration can say what it IS
   boss.rotation.z = ALARM_PUSH_AZ; boss.rotation.y = Math.PI / 2; boss.rotation.order = 'ZYX';
   const bossD = plateR - 1.2;
   boss.position.set(
