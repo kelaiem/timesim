@@ -526,7 +526,7 @@ match a whole run if entering an axis reproduces that axis's poses whatever ran
 before it. `setPose` assigns ONLY the keys a pose names, so before TODO 54 each
 axis inherited the tail of the axis declared above it and every sweep's
 coverage was a function of `AXES`' order. Every sweep now calls `enterAxis`
-before each axis; the `axisEntry` check gates that over all 110 ordered pairs
+before each axis; the `axisEntry` check gates that over all 182 ordered pairs
 and REPORTS, beside it, what used to ride through.
 
 **Since §152 a PR run can be INCREMENTAL, and the rule is that a check runs
@@ -534,8 +534,8 @@ only when it can change its answer.** A sweep's verdict is
 `f(geometry, pose net, check code)`. `unitDigests()` measures the first per
 unit — SHAPE over the position/index bytes, PLACE over the per-mesh world
 matrices, both at `digestPoses()`: a set DERIVED from `AXES` (every axis at
-f ∈ {0, 0.5, 1}, unioned with the 11 canonical poses for the combined states,
-39 total) rather than borrowed from the fingerprint — measured, the borrowed
+f ∈ {0, 0.5, 1}, unioned with the 12 canonical poses for the combined states,
+43 total) rather than borrowed from the fingerprint — measured, the borrowed
 set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
 `tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
 units install a different geometry at a different pose, which is why every
