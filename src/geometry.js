@@ -7071,7 +7071,16 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     [R_OUT, zBezelOuter], [R_OUT, z0],
   ]), material);
   middle.name = 'caseMiddle';
-  g.add(middle);
+  const middleAsm = new THREE.Group();
+  middleAsm.name = 'caseMiddleAssembly';
+  middleAsm.add(middle);
+  g.add(middleAsm);
+  const backAsm = new THREE.Group();
+  backAsm.name = 'caseBackAssembly';
+  g.add(backAsm);
+  const frontAsm = new THREE.Group();
+  frontAsm.name = 'caseCrystalAssembly';
+  g.add(frontAsm);
 
   // Screw-down back: cap with floor + threaded rim, outer face flush with
   // the band's back face; the opener key's 8 teeth stand proud of it.
@@ -7081,7 +7090,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     [0, zCapFloorIn],
   ]), material);
   back.name = 'caseBack';
-  g.add(back);
+  backAsm.add(back);
   // The thread: helical ridge tangent to BOTH flanks (tube r = half the
   // radial gap), 3 turns at the stated pitch, starting one lead-in chamfer
   // (0.5 mm) in from the back face.
@@ -7096,7 +7105,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helixPts), 64 * threadTurns,
       (R_IN - R_CAP) / 2, 8, false), material);
   thread.name = 'caseBackThread';
-  g.add(thread);
+  backAsm.add(thread);
   // Opener-key teeth: 8 raised lugs standing 0.3 mm proud of the back face.
   const toothGeo = new THREE.BoxGeometry(1.2 / UNIT_MM, 1.6 / UNIT_MM, 0.6 / UNIT_MM);
   for (let i = 0; i < 8; i++) {
@@ -7105,7 +7114,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     t.position.set(Math.cos(a) * (R_CAP - 1.2 / UNIT_MM), Math.sin(a) * (R_CAP - 1.2 / UNIT_MM), z0 + 0.3 / UNIT_MM);
     t.rotation.z = a;
     t.name = 'caseKeyTooth';
-    g.add(t);
+    backAsm.add(t);
   }
   // Gasket: the cord in the gland, 20% squeeze between the cap's land and
   // the band's gland floor (the stack that makes the rating claim honest).
@@ -7114,14 +7123,14 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
       gasketD / 2 * 0.8, 10, 96), MATS.dark);
   gasket.name = 'caseGasket';
   gasket.position.z = (zLandTop + zGlandFloor) / 2;
-  g.add(gasket);
+  backAsm.add(gasket);
 
   // Crystal: flat mineral disc with relieved edge, seated on the ledge.
   const crystal = new THREE.Mesh(lathe([
     [0, zCrystInner], [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter], [0, zCrystOuter],
   ]), crystalMaterial);
   crystal.name = 'caseCrystal';
-  g.add(crystal);
+  frontAsm.add(crystal);
 
   // Crown tubes (Ø2.0 mm) and the flush alarm-pusher bore (Ø1.2 mm), each AT
   // ITS STEM'S OWN Z (a tube at mid-band would sleeve nothing): from inside
@@ -7147,7 +7156,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     const grp = new THREE.Group();
     grp.add(pivot);
     grp.name = name;
-    g.add(grp);
+    middleAsm.add(grp);
     return grp;
   };
   tubeAt(stemAz, tubeD, stemZ, 'caseCrownTube');
@@ -7171,7 +7180,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
                        zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
       lug.rotation.z = lugAz - Math.PI / 2;
       lug.name = 'caseLug';
-      g.add(lug);
+      middleAsm.add(lug);
     }
     const bar = new THREE.Mesh(
       new THREE.CylinderGeometry(0.75 / UNIT_MM, 0.75 / UNIT_MM, lugSpan - lugT, 12), material);
@@ -7181,7 +7190,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     bar.position.set(u.x * (R_OUT + lugH - 0.6 / UNIT_MM), u.y * (R_OUT + lugH - 0.6 / UNIT_MM),
                      zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
     bar.name = 'caseSpringBar';
-    g.add(bar);
+    middleAsm.add(bar);
   }
 
   // The §62 keep sweep enrolls any mesh whose box crosses the three-quarter
@@ -7191,5 +7200,6 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // made, rather than in the check, which stays generic.
   g.traverse((o) => { if (o.isMesh) o.userData.casePart = true; });
   g.userData.r = R_OUT;
+  g.userData.assemblies = { middle: middleAsm, back: backAsm, front: frontAsm };
   return g;
 }
