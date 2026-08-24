@@ -38,6 +38,11 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
+  // Backlog (watch case): the schematic-tier case's dimensions — caps and
+  // real hardware sizes, all derived in layout.js at the §39 pin.
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T,
+  CASE_THREAD_PITCH, CASE_THREAD_TURNS, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
+  CASE_TUBE_D, CASE_PUSHER_D,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -23283,6 +23288,7 @@ let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
 let restoredSound = false; // sound toggle, applied once the UI exists
 let restoredSchematic = true; // §69: the schematic tier is the boot DEFAULT — a save can only turn it off
+let restoredCaseLines = true; // case line-drawing within the tier — same default-ON convention
 let restoredFocus = null;  // §69: tap-focus unit name, applied once the scene + drive graph exist
 
 // A beat (one lock-to-lock swing) is 1/(2·F_BALANCE) ≈ 0.2 s here; contact
@@ -23413,6 +23419,7 @@ let mmPerPxCal = null;
   // before the field existed (and a fresh visitor's absent state) both mean
   // ON; only an explicit saved false turns it off.
   restoredSchematic = savedState.schematic ?? true;
+  restoredCaseLines = savedState.caseLines ?? true; // ?? true, not !! — same reason as schematic above
   restoredFocus = typeof savedState.focusUnit === 'string' ? savedState.focusUnit : null;
   restoredSound = !!savedState.soundOn;
   alarmCrownRotation = savedState.alarmCrownRotation ?? 0; // ?? — states saved before §24 have no such field
@@ -24070,6 +24077,10 @@ viewHud.innerHTML = `
   <div class="row">
     <span class="label-small">Schematic</span>
     <button id="btn-schematic">Off</button>
+  </div>
+  <div class="row">
+    <span class="label-small">Case</span>
+    <button id="btn-case">On</button>
   </div>
   <div class="row">
     <span class="label-small">Labels</span>
@@ -24965,6 +24976,7 @@ function askTour(onProceed) {
     ['C', 'Crown pull / push', click('btn-crown', 'Crown')],
     ['A', 'Alarm arm / disarm', click('btn-alarm', 'Alarm')],
     ['S', 'Schematic view', click('btn-schematic', 'Schematic')],
+    ['W', 'Case lines', click('btn-case', 'Case')],
     ['X', 'X-ray plate', click('btn-xray', 'X-ray')],
     ['L', 'Part labels', click('btn-labels', 'Labels')],
     ['F', 'Tap-focus mode', click('btn-focus', 'Focus')],
@@ -25011,7 +25023,7 @@ function askTour(onProceed) {
   ]);
   // shortcut hints on the buttons they drive (title = discoverability)
   for (const [id, key] of [['btn-pause', 'Space'], ['btn-wind', 'W'], ['btn-crown', 'C'],
-    ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-xray', 'X'], ['btn-labels', 'L'],
+    ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-case', 'W'], ['btn-xray', 'X'], ['btn-labels', 'L'],
     ['btn-focus', 'F'], ['btn-sound', 'M'], ['btn-hud', 'D'],
     ['chrome-t-ui', 'H'], ['chrome-t-view', 'V'], ['chrome-t-hud', 'D']]) {
     const b = document.getElementById(id);
@@ -26141,6 +26153,109 @@ const SCHEMATIC = { proxies: [], on: false };
     wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
     SCHEMATIC.baseFills.push(wall);
   }
+
+  // Backlog (watch case) — THE CASE, drawn as the housing the movement's own
+  // dimensions prove: a screw-down-back dress case under the owner's hard
+  // caps (<40 mm wide, ≤20 mm lugs — layout.js's CASE_WIDTH_MAX /
+  // CASE_LUG_SPAN_MAX). Line-tier only, and LINES only — no fills: a case
+  // occluder would hide the very movement this tier exists to explain, so
+  // the housing draws as hairlines and reads as glass. Every radius is
+  // plateR plus a derived layout constant; the crystal plane is MEASURED
+  // from the tallest hand, because a constant there lies the moment a hand
+  // grows. Not a MECH_GRAPH part: it is drawing, not metal — the real
+  // case's constructability rules live in the backlog entry for the solid
+  // tier, and the instruments skip userData.schematic by standing rule.
+  {
+    const R_IN = plateR + CASE_CLEAR;              // 1 mm movement-ring clearance
+    const R_OUT = R_IN + CASE_BAND_T;              // 1 mm band wall
+    if (R_OUT > CASE_WIDTH_MAX)
+      console.warn(`case: band Ø${(2 * R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap — the movement outgrew its housing budget`);
+    const rim = SCHEMATIC.rimMat;
+    const seg = (a, b) => new THREE.BufferGeometry().setFromPoints([a, b]);
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const caseGroup = new THREE.Group();
+    caseGroup.name = 'caseLines';
+    const put = (o) => { o.userData.schematic = true; o.layers.set(1); caseGroup.add(o); return o; };
+
+    // Z span: the band stands 1 mm off the plate's back face (the movement
+    // ring's seat); the crystal's underside is measured off the tallest hand.
+    const z0 = BACK_PLATE_Z - BACK_PLATE_T / 2 - CASE_CLEAR;
+    const handTop = Math.max(
+      hourHand.position.z + hourHand.userData.topRise * hourHand.scale.z,
+      minuteHand.position.z + minuteHand.userData.topRise * minuteHand.scale.z);
+    const zCrystBot = handTop + CASE_CRYSTAL_CLEAR;
+    const zCrystTop = zCrystBot + CASE_CRYSTAL_T;
+    const zBezelTop = zCrystTop + 0.3 / UNIT_MM;   // bezel lip over the crystal edge
+    const zBandTop = zCrystBot - 0.3 / UNIT_MM;    // bezel seats on the band; 0.3 mm step
+
+    // The bezel opening COVERS the dial/plate join (layout.js §125: "the
+    // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
+    const R_BEZEL_IN = dialRadius - 1 / UNIT_MM;
+    const R_CRYST = R_BEZEL_IN + 0.5 / UNIT_MM;    // crystal edge trapped under the lip
+
+    for (const [r, z] of [[R_OUT, z0], [R_OUT, zBandTop], [R_IN, z0], [R_IN, zBandTop],
+                          [R_CRYST, zCrystBot], [R_CRYST, zCrystTop],
+                          [R_BEZEL_IN, zBezelTop], [R_OUT, zBezelTop]]) {
+      const c = new THREE.Line(circGeo(r, 96), rim); c.position.z = z; put(c);
+    }
+    // Band walls: four generators at the cardinal azimuths.
+    for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2])
+      put(new THREE.Line(seg(V3(Math.cos(a) * R_OUT, Math.sin(a) * R_OUT, z0),
+                             V3(Math.cos(a) * R_OUT, Math.sin(a) * R_OUT, zBandTop)), rim));
+
+    // Screw-down back (owner call): the REAL thread, drawn as the 3-turn
+    // helix it is, at the band's back bore; the cap's edge and the opener
+    // key's 8 teeth at z0.
+    const R_TH = R_IN - 0.15 / UNIT_MM;            // thread depth 0.15 mm into the band
+    const helix = [];
+    for (let i = 0; i <= 96 * CASE_THREAD_TURNS; i++) {
+      const t = i / 96, a = t * Math.PI * 2;
+      helix.push(V3(Math.cos(a) * R_TH, Math.sin(a) * R_TH, z0 + 0.5 / UNIT_MM + t * CASE_THREAD_PITCH));
+    }
+    put(new THREE.Line(new THREE.BufferGeometry().setFromPoints(helix), rim));
+    const capEdge = new THREE.Line(circGeo(R_IN, 96), rim); capEdge.position.z = z0; put(capEdge);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;             // opener-key teeth, 0.6 mm deep notches
+      put(new THREE.Line(seg(V3(Math.cos(a) * R_IN, Math.sin(a) * R_IN, z0),
+                             V3(Math.cos(a) * (R_IN + 0.6 / UNIT_MM), Math.sin(a) * (R_IN + 0.6 / UNIT_MM), z0)), rim));
+    }
+
+    // Crown tubes and the alarm pusher: the stems ALREADY reach the as-built
+    // band (the alarm pusher's stemOuterS is literally "the as-built
+    // case-band end"); the case answers with a Ø2.0 mm tube per crown and a
+    // Ø1.2 mm pusher bore, flush — "discreet" was the owner's word.
+    const tube = (az, d) => {
+      const u = V3(Math.cos(az), Math.sin(az), 0), p = V3(-Math.sin(az), Math.cos(az), 0);
+      for (const s of [-1, 1])
+        put(new THREE.Line(seg(
+          u.clone().multiplyScalar(R_IN).addScaledVector(p, s * d / 2).setZ((z0 + zBandTop) / 2 - 0.4 / UNIT_MM),
+          u.clone().multiplyScalar(R_OUT).addScaledVector(p, s * d / 2).setZ((z0 + zBandTop) / 2 - 0.4 / UNIT_MM)), rim));
+    };
+    tube(stemAngle, CASE_TUBE_D);
+    tube(alarmStemAngle, CASE_TUBE_D);
+    tube(ALARM_PUSH_AZ, CASE_PUSHER_D);
+
+    // Lugs at 12 and 6: 18 mm spring-bar span — period-typical for a ~36 mm
+    // case, inside the owner's 20 mm cap (the cap itself is the assert).
+    const LUG_SPAN = 18 / UNIT_MM;
+    if (LUG_SPAN > CASE_LUG_SPAN_MAX)
+      console.warn(`case: lug span ${(LUG_SPAN * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap`);
+    for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
+      const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
+      const zLug = (z0 + zBandTop) / 2;
+      for (const s of [-1, 1])                     // the two lug flanks
+        put(new THREE.Line(seg(
+          u.clone().multiplyScalar(R_OUT - 1).addScaledVector(p, s * LUG_SPAN / 2).setZ(zLug),
+          u.clone().multiplyScalar(R_OUT + 2.5).addScaledVector(p, s * LUG_SPAN / 2).setZ(zLug)), rim));
+      put(new THREE.Line(seg(                       // the spring bar itself
+        u.clone().multiplyScalar(R_OUT + 2).addScaledVector(p, -LUG_SPAN / 2).setZ(zLug),
+        u.clone().multiplyScalar(R_OUT + 2).addScaledVector(p, LUG_SPAN / 2).setZ(zLug)), rim));
+    }
+
+    caseGroup.visible = restoredCaseLines;
+    movement.add(caseGroup);
+    SCHEMATIC.caseGroup = caseGroup;
+  }
 }
 function setSchematic(on) {
   SCHEMATIC.on = on;
@@ -26165,6 +26280,18 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
   // or leaving the mode would silently undo the click just made.
   if (reconfOn) reconfSchematicWas = SCHEMATIC.on;
 });
+
+// Backlog (watch case) — the case line-drawing's own toggle. Tier furniture
+// with no tick-law visibility, so the mesh.visible invariant does not apply
+// (same standing as the §71 occluders).
+let caseLinesOn = restoredCaseLines;
+function setCaseLines(on) {
+  caseLinesOn = on;
+  if (SCHEMATIC.caseGroup) SCHEMATIC.caseGroup.visible = on;
+  const b = document.getElementById('btn-case');
+  if (b) { setBtnState(b, on); b.classList.toggle('active', on); }
+}
+document.getElementById('btn-case').addEventListener('click', () => setCaseLines(!caseLinesOn));
 
 // §66 part two — the per-unit vocabulary a generic traverse cannot derive.
 // LEVERS as pivot-to-contact lines, attached to the moving groups the tick
@@ -30361,6 +30488,7 @@ function captureState() {
     // interrupted; persisting the override would let a 5-second autosave
     // taken mid-drag quietly become the viewer's saved choice of view.
     schematic: reconfOn && reconfSchematicWas !== null ? reconfSchematicWas : SCHEMATIC.on,
+    caseLines: caseLinesOn,
     focusUnit: focusName,    // §69: tap-focus selection, null when none
     soundOn,
     alarmOn,
@@ -31884,6 +32012,7 @@ function applyDeepLink() {
 // default synchronously, ?focus=<unit> lands after the restored focus because
 // both sequence FIFO on the same ensureExploreDrive promise).
 if (restoredSchematic) setSchematic(true);
+setCaseLines(restoredCaseLines); // applies the persisted preference; the group was built with it
 if (restoredFocus) setFocus(restoredFocus);
 // The control HUD is ON by default: §57 built it (and the ?hud link) for the
 // arrival that wants the watch driveable immediately; the default extends
