@@ -781,7 +781,7 @@ function unitsIntersect(A, B, raw = false) {
 // value, so every axis pins the others to a fixed default." The first half was
 // true and the second was false, which is the worst pairing — a comment that
 // names the hazard and then claims it is handled. setPose accepts twelve keys;
-// six of the eleven axes below name four of them; and no sweep reset between
+// six of the fourteen axes below name four of them; and no sweep reset between
 // axes (start() resets once per CHECK). So each axis inherited the tail pose of
 // the axis DECLARED ABOVE IT: handSet's setPathRot rode into all four alarm
 // axes, and alarmToggle — whose whole subject is the parity — swept it with the
@@ -1043,6 +1043,34 @@ export const AXES = [
       alarmOn: f > 0.25 && f < 0.75 ? 1 : 0,
     }),
   },
+  {
+    // TODO 87 step 1 — THE PRESS STROKE, IN THE POSE NET AT LAST. Every axis
+    // above samples the pawl PARKED: `resetInputs` and `setPose` both zeroed
+    // `alarmPusherT`, nothing varied it, and the `pusher pawl ⇄ ratchet skirt`
+    // hand-off row says of itself that it measures the park only. So the one
+    // thing the pusher does — carry the wheel a tooth and then keep travelling
+    // after the click banks it — was reachable only in live frames, which is
+    // where a viewer saw it and where `tools/probe-87-press.mjs` measured it
+    // (117.39% of a tooth delivered, 0.39794 u of travel arriving after the
+    // latch). An axis is what makes that a REGRESSION gate rather than a
+    // reading somebody has to remember to take.
+    //
+    // ONE WHOLE ACTUATION, not a ramp: in on the first half, out on the
+    // second. alarmToggle's comment gives the swept-volume reason (a monotonic
+    // 0→1 sweeps the same volume as a part that only moves one way, so nothing
+    // reverses and §48 cannot judge it). Here there is a second reason on top
+    // of it — the head at half travel is two different machines depending on
+    // its direction, because coming back the wheel stands a whole tooth on
+    // from where it went in. `alarmPressCycle` spans both halves and setPose
+    // derives the bank from it, so the pose is a function of f alone and this
+    // axis is index-sliceable where alarmToggle is not.
+    name: 'alarmPress',
+    n: 64,
+    pose: (f) => ({
+      tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
+      alarmPressCycle: f * 2,
+    }),
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1226,7 +1254,7 @@ export function checkAxisEntry(clock, { axes = AXES, fractions = [0, 1] } = {}) 
 
   // Which units the leak actually moved, and how far at worst — the compact
   // form of "what was the movement worth", so the report answers the question
-  // without anyone re-deriving it from 220 rows.
+  // without anyone re-deriving it from 364 rows.
   //
   // The CAP is named rather than hidden: this ranks over each row's five
   // worst-displaced units (`moved`), so a unit that is never in a hand-off's
@@ -3105,13 +3133,22 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
   const fromAlarm = reachable(MECH_GRAPH.drive, 'Alarm crown'); // §24 alarm force source
   const fromAlarmSpring = reachable(MECH_GRAPH.drive, 'alarm mainspring'); // §25 striking-works force source
   const undriven = [];
+  // TODO 87 — the press axis's force is a FINGER ON THE PUSHER HEAD, and it
+  // has no source NODE because the pusher is metal inside the 'Alarm switch'
+  // unit rather than a unit of its own: a bare 'pusher' node would land in
+  // missingFromScene above, which is the gate doing its job. So the entry
+  // point is named as the unit the force enters at. Same documentary standing
+  // as the alarm-crown rows beside it while reachable() is undirected.
+  const fromPusher = reachable(MECH_GRAPH.drive, 'Alarm switch');
   const sourceFor = (name) => (name === 'crown' ? fromCrown
     : name === 'alarm' || name === 'alarmWind' ? fromAlarm // §99: the wind axis's force is the alarm crown's hand (documentary while reachable() is undirected — every set is the connected component — but the honest source the day it grows a direction)
     : name === 'alarmStrike' ? fromAlarmSpring
+    : name === 'alarmPress' ? fromPusher
     : fromSpring);
   const forceFor = (name) => (name === 'crown' ? 'crown'
     : name === 'alarm' || name === 'alarmWind' ? 'Alarm crown'
     : name === 'alarmStrike' ? 'alarm mainspring'
+    : name === 'alarmPress' ? 'a finger on the pusher head'
     : 'mainspring');
   for (const axis of axes) {
     const source = sourceFor(axis.name);
@@ -7829,6 +7866,14 @@ const FINGERPRINT_POSES = [
   //   any pose above reaches, and the wind path's refactors go unguarded
   //   without it (the list's own rule).
   { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmBarrelWind: 1.75 },
+  // — TODO 87: the press MID-STROKE, past the latch. `alarmPressCycle` is a
+  //   force input the movement did not have until step 1 (setPose zeroed the
+  //   stroke), and the list's own rule is a pose per input or that path's
+  //   refactors go unguarded. 0.93 puts the head past the click's bank
+  //   (latch at 0.8518 of the travel) with the pawl overrunning a stopped
+  //   wheel — the configuration no pose above can reach, since every one of
+  //   them stands the pawl parked.
+  { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmPressCycle: 0.93 },
 ];
 
 // A stable string-hash (FNV-1a-ish, unsigned 32-bit) — no crypto dependency,

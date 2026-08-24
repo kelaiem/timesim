@@ -3,7 +3,7 @@
 // The incremental battery keys every skip on unitDigests(), whose verdict is a
 // claim about geometry across poses. It sampled the eleven FINGERPRINT_POSES —
 // a list chosen for a different instrument — while the sweeps it gates run
-// 1827 poses across the thirteen AXES. The gap is a POSE-LAW change: an
+// 1892 poses across the fourteen AXES. The gap is a POSE-LAW change: an
 // easing, a solver constant, a derived angle law in main.js/layout.js/state.js
 // that leaves the sampled points fixed and moves geometry between them. Same
 // key, different verdicts — a stale green.

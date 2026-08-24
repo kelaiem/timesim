@@ -16454,3 +16454,101 @@ both halves, and the probe already carries the correct construction.
 The claim in "modelled/simulated" terms is exact — the teeth are now MODELLED as
 conjugate geometry; the wheels are still POSED by tooth-count arithmetic, not
 driven.
+
+## §160 — the press stroke joins the pose net: one whole actuation as an axis, and the zero-dt clobber that made it impossible
+
+TODO 87 step 1, and the item's own prerequisite: until the stroke was a pose
+the overrun it names could only be *taken* by a probe, never *gated*. §160 is
+the axis that makes it a regression.
+
+**The blocker was one clobber, and it was invisible because it fired in the
+right order to look harmless.** The pusher's state machine is split across one
+`tick()` — the column's carry reads `alarmPusherT` (the wheel turns by
+`travel · T / arm`, latching at one tooth), and ~360 lines later the press law
+recomputes `alarmPusherT` and poses the head. That law used to hard-assign
+whenever `rawDt === 0`: `: 1` while stroking, `else … = 0` otherwise. `setPose`
+ticks with zero dt. So a posed stroke turned the wheel in the first block and
+was then flattened to the seat in the second — a pose whose wheel had moved and
+whose pawl was parked, which is the one state the mechanism cannot be in.
+
+The fix is the convention one screen up: `crownPullT` survives a pose because
+its law is multiplicative in `rawDt`, so a zero-dt tick cannot move it. The
+press law is a branch rather than an ease, so it now says the same thing
+explicitly — **at zero dt it is a no-op.** Proven rather than argued:
+`tools/probe-87-press.mjs`'s live-stepped trace is BYTE-IDENTICAL before and
+after, so the change did nothing to the path a finger drives.
+
+### One key, because half travel is two different machines
+
+`setPose` takes `alarmPressCycle`, spanning a whole actuation — 0 → 1 the head
+goes in under the finger, 1 → 2 its spring returns it.
+
+A key naming only the travel could not work, and the reason is mechanical
+rather than notational: at `T = 0.5` on the way IN the wheel is part-carried
+and unbanked; at `T = 0.5` on the way OUT the click has banked a tooth and the
+wheel stands a whole `ALARM_COL_STEP` on from where it started. Those are
+different states of the movement, and an axis that could not tell them apart
+would sweep half the mechanism — the same reason `alarmToggle` runs 0 → 1 → 0
+rather than 0 → 1, with a second reason stacked on top of the swept-volume one.
+
+**Everything else is DERIVED from the cycle, never accumulated.** The bank, the
+latch bit, the parity, the held angle and the partial carry are all functions of
+`alarmPressCycle` alone. That is `alarmWindRotation`'s rule — *"assigned rather
+than integrated because a sweep revisits fractions non-monotonically"* — and
+here it is load-bearing twice over:
+
+- the coarse/refine engine jumps from `f = 1` back to `f ≈ 0.02` mid-axis with
+  no reset, so an accumulating pose would double-latch; and
+- `alarmOn`'s idiom NUDGES `alarmColSteps` toward a requested parity, which is
+  exactly why the wheel's ANGLE under `alarmToggle` is a function of how many
+  flips came before it, and why §127 slices between axes and never inside one.
+
+**So this axis is index-sliceable where `alarmToggle` is not**, and that was
+measured before it landed: visiting the axis's indices out of order without
+re-entering reproduces the forward walk exactly (0 rows differ), and entering
+fresh at any index reproduces it too (0 rows differ).
+
+### What the axis walks, measured
+
+| quantity | measured as the axis walks |
+|---|---|
+| travel at mid-cycle | **2.68606** = `ALARM_PUSH_TRAVEL`, and 0 at both ends |
+| wheel banked over the cycle | exactly one `ALARM_COL_STEP` = **0.523599 rad** |
+| parity flips | **1** |
+| latch point | 0.8518 of the travel, `(ALARM_COL_STEP · ALARM_PAWL_ARM) / ALARM_PUSH_TRAVEL` |
+
+`n = 64`, so ~9 of the 65 poses sit in the overrun band past the latch — the
+region TODO 87 finding 1 is about, which no pose in the movement's history had
+ever visited.
+
+### The costs the filing predicted, all of them
+
+TODO 87 step 1 listed what an axis would drag with it, and the list was right:
+
+| | before | after |
+|---|---|---|
+| axes | 13 | **14** |
+| swept poses, Σ(n+1) | 1827 | **1892** |
+| `axisEntry` ordered pairs (quadratic) | 156 | **182** |
+| `digestPoses` | 39 | **43** |
+| slice rosters declared | 13 rows × 3 | **14 rows × 3** |
+
+`FINGERPRINT_POSES` gains a twelfth entry by its own rule — a pose per force
+input, or that path's refactors go unguarded — at `alarmPressCycle: 0.93`, past
+the latch, the configuration every other pose in that list structurally cannot
+reach because all of them stand the pawl parked.
+
+The graph's `sourceFor`/`forceFor` name the press's force honestly: **a finger
+on the pusher head**, entering at `Alarm switch`. There is deliberately no
+`'pusher'` source NODE — the pusher is metal inside that unit rather than a unit
+of its own, and a bare node would land in the graph's own `missingFromScene`
+list, which is that gate doing its job.
+
+### What this does NOT close
+
+Item 87's findings 3, 4 and 5 stand, and one of them is sharpened by having the
+axis: `restoring` still answers for `Alarm switch` with the CLICK's blade, so
+the pusher's own spring-less return is *still* not asked about. That is the
+GRANULARITY gap the item names — one declaration per unit cannot answer for two
+reciprocators — and an axis cannot fix it, which is worth stating plainly here
+so the axis is not mistaken for the whole repair.

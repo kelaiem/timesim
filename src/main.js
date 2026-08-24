@@ -30220,12 +30220,23 @@ function tick(t) {
     // TODO 20: the head TRAVELS in — it used to snap to 1, which left the
     // pawl nothing to carry the wheel through. Held or stroking, it advances
     // at the finger's rate; released, its spring returns it over
-    // ALARM_RETURN_S and STOPS at the seat. A zero-dt pose lands it exactly,
-    // so setPose stays deterministic.
-    if (alarmPusherHeld || alarmPusherStroke) {
-      alarmPusherT = rawDt > 0 ? Math.min(1, alarmPusherT + rawDt / ALARM_PRESS_S) : 1;
-      if (alarmPusherT >= 1) alarmPusherStroke = false;         // bottomed; the spring takes it back
-    } else if (rawDt > 0) alarmPusherT = Math.max(0, alarmPusherT - rawDt / ALARM_RETURN_S); else alarmPusherT = 0;
+    // ALARM_RETURN_S and STOPS at the seat.
+    // TODO 87 step 1 — A ZERO-DT TICK IS A NO-OP FOR THE STROKE, which is what
+    // lets a pose hold an intermediate one. This branch used to hard-assign at
+    // rawDt === 0 (`: 1` while stroking, `else … = 0` otherwise), and setPose
+    // ticks with zero dt — so every posed stroke was flattened to the seat
+    // AFTER the carry block above had already turned the wheel with it. That
+    // clobber was the whole of why the press could not be swept, and the fix
+    // is the ease's own convention one screen up: crownPullT survives a pose
+    // because its law is multiplicative in rawDt, so a zero-dt tick cannot
+    // move it. The press law is a branch rather than an ease, so it says the
+    // same thing explicitly instead.
+    if (rawDt > 0) {
+      if (alarmPusherHeld || alarmPusherStroke) {
+        alarmPusherT = Math.min(1, alarmPusherT + rawDt / ALARM_PRESS_S);
+        if (alarmPusherT >= 1) alarmPusherStroke = false;       // bottomed; the spring takes it back
+      } else alarmPusherT = Math.max(0, alarmPusherT - rawDt / ALARM_RETURN_S);
+    }
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived
@@ -30931,6 +30942,52 @@ window.__clock = {
       alarmColHeldA = alarmColSteps * ALARM_COL_STEP;
       alarmColShownA = alarmColHeldA;
       alarmPusherStroke = false; alarmColLatched = false; alarmPusherT = 0;
+    }
+    // TODO 87 step 1 — ONE WHOLE PRESS, AS A PURE FUNCTION OF ITS INPUT.
+    // `alarmPressCycle` spans a complete actuation: 0 → 1 the head goes in
+    // under the finger, 1 → 2 its spring returns it. The state this leaves —
+    // how far the pawl has carried the wheel, whether the click has banked a
+    // tooth, which parity the wheel now stands at — is DERIVED here, never
+    // accumulated, because a sweep revisits fractions non-monotonically
+    // (alarmWindRotation's rule, one branch below) and the coarse/refine
+    // engine jumps from f = 1 back to f ≈ 0.02 mid-axis with no reset.
+    //
+    // WHY IT IS ONE KEY AND NOT TWO. The head at half travel is two different
+    // machines depending on which way it is going: on the way in the wheel is
+    // part-carried and unbanked, on the way out it stands a whole tooth on
+    // from where it started. A key that named only the travel could not tell
+    // them apart, and an axis built on it would sweep half the mechanism —
+    // the same reason alarmToggle runs 0 → 1 → 0 rather than 0 → 1.
+    //
+    // WHY NOT alarmOn's IDIOM. That branch NUDGES alarmColSteps one step
+    // toward a requested parity, so the wheel's ANGLE is a function of how
+    // many flips came before it (the residue inspect.js names at enterAxis,
+    // and why §127 slices between axes and never inside one). Deriving the
+    // bank from the cycle instead is what makes this axis index-sliceable.
+    if (p.alarmPressCycle !== undefined) {
+      const s = clamp(p.alarmPressCycle, 0, 2);
+      const T = s <= 1 ? s : 2 - s;                       // in on the first half, out on the second
+      // The travel at which the tooth completes, from the same three constants
+      // the carry uses: carried = travel·T/arm reaches ALARM_COL_STEP here.
+      const latchT = (ALARM_COL_STEP * ALARM_PAWL_ARM) / ALARM_PUSH_TRAVEL;
+      const banked = s >= latchT ? 1 : 0;                 // once the click drops it never gives the tooth back
+      alarmPusherT = T;
+      // No stroke is in flight after a pose, and no finger is on the head:
+      // the tick's press law is a no-op at zero dt (TODO 87), so these two
+      // decide only what the NEXT live tick does — a released head, which is
+      // what a pose of a static instant means.
+      alarmPusherStroke = false; alarmPusherHeld = false;
+      // `alarmColLatched` is the click sitting behind a banked tooth, which is
+      // true only while the head is still off its seat. At the ends of the
+      // cycle it must read false or the next tick would refuse to carry.
+      alarmColLatched = banked === 1 && T > 1e-6;
+      alarmColSteps = banked;
+      alarmOn = alarmColSteps % 2 === 1;
+      alarmColHeldA = alarmColSteps * ALARM_COL_STEP;
+      // The partial carry belongs to the un-banked half only; once banked the
+      // wheel stands at its held angle and the pawl is overrunning it, which
+      // is the finding this axis exists to put in the pose net.
+      alarmColShownA = alarmColHeldA + (banked ? 0 : Math.min(ALARM_COL_STEP, (ALARM_PUSH_TRAVEL * T) / ALARM_PAWL_ARM));
     }
     // §106 — THE HOLE THE ARREST EXISTS TO CLOSE. This branch was the one path
     // that could pose a wind the metal forbids: tick() clamped, the restore
