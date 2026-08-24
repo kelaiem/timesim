@@ -7027,14 +7027,16 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
 //
 // Parts: the case middle (band + seat + bezel, ONE lathe profile — the bore,
 // plate seat, gasket gland, crystal seat and bezel lip come off the same
-// turning, which is how a real case middle is made), the screw-down back
-// (cap with a REAL 3-turn 0.5 mm-pitch helical thread standing tangent
+// turning, which is how a real case middle is made), the screw-down
+// EXHIBITION back (owner call over the solid cap: the ring keeps the REAL
+// 3-turn 0.5 mm-pitch helical thread standing tangent
 // between cap rim and band bore — contact on both flanks, the engagement
 // itself, without CSG-cut grooves; the grooves it meshes with are declared
 // debt: the case unit is deliberately outside INTRA_TIER_SCOPE until a
 // CSG-free bore/groove approach lands), the gasket cord in its gland, the
-// crystal, lugs and spring bars, crown tubes and the flush alarm-pusher
-// bore. Every face capped; each part its own named mesh so the unit labels
+// front crystal, the exhibition back crystal (pressed into the cap ring
+// against the turned retaining lip), lugs and spring bars, crown tubes and
+// the flush alarm-pusher bore. Every face capped; each part its own named mesh so the unit labels
 // and fingerprints like any other.
 // dims — all measured/derived by the caller (main.js); nothing recomputed.
 // ---------------------------------------------------------------------------
@@ -7043,7 +7045,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_CAP,
     z0, zLandTop, zGlandFloor, zCapFloorIn,
     zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
-    threadPitch, threadTurns, gasketD, tubeD, pusherD,
+    threadPitch, threadTurns, gasketD, tubeD, pusherD, crystT,
     stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ,
     lugSpan,
   } = dims;
@@ -7084,13 +7086,31 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
 
   // Screw-down back: cap with floor + threaded rim, outer face flush with
   // the band's back face; the opener key's 8 teeth stand proud of it.
+  // Exhibition back: the cap is a RING — thread land, gasket gland and key
+  // teeth as before, but the floor only reaches in to the window bore,
+  // where a second crystal is pressed in from inside and held by the
+  // retaining lip turned into the ring's back face (the standard
+  // exhibition-back stack: crystal against the lip, its edge on the bore).
+  const R_WIN = R_CAP - 4 / UNIT_MM;   // window radius — leaves 4 mm of ring
+  const lipW = 1.2 / UNIT_MM;          // retaining-lip radial width
+  const lipT = 0.6 / UNIT_MM;          // retaining-lip thickness
+  const zCrystOut = z0 - lipT;         // back crystal outer face, lip-flush
+  const zCrystIn = zCrystOut - crystT;
   const back = new THREE.Mesh(lathe([
-    [0, z0], [R_CAP, z0], [R_CAP, zLandTop],
+    [R_WIN - lipW, z0], [R_CAP, z0], [R_CAP, zLandTop],
     [R_CAP - 0.6 / UNIT_MM, zLandTop], [R_CAP - 0.6 / UNIT_MM, zCapFloorIn],
-    [0, zCapFloorIn],
+    [R_WIN, zCapFloorIn], [R_WIN, zCrystOut], [R_WIN - lipW, zCrystOut],
+    [R_WIN - lipW, z0],
   ]), material);
   back.name = 'caseBack';
   backAsm.add(back);
+  // The back crystal itself — same stock as the front (CASE_CRYSTAL_T),
+  // seated against the lip; it travels WITH the cap in the explode.
+  const backCrystal = new THREE.Mesh(lathe([
+    [0, zCrystIn], [R_WIN, zCrystIn], [R_WIN, zCrystOut], [0, zCrystOut],
+  ]), crystalMaterial);
+  backCrystal.name = 'caseBackCrystal';
+  backAsm.add(backCrystal);
   // The thread: helical ridge tangent to BOTH flanks (tube r = half the
   // radial gap), 3 turns at the stated pitch, starting one lead-in chamfer
   // (0.5 mm) in from the back face.

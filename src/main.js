@@ -26126,7 +26126,7 @@ const CASE_DIMS = (() => {
     zBezelOuter: zCrystOuter - 0.3 / UNIT_MM,  // bezel lip over the crystal edge
     zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
     threadPitch: CASE_THREAD_PITCH, threadTurns: CASE_THREAD_TURNS,
-    gasketD: CASE_GASKET_D,
+    gasketD: CASE_GASKET_D, crystT: CASE_CRYSTAL_T,
     tubeD: CASE_TUBE_D, pusherD: CASE_PUSHER_D,
     stemAz: stemAngle, alarmAz: alarmStemAngle, pusherAz: ALARM_PUSH_AZ,
     // The tubes sleeve their stems at the stems' OWN z — a tube at mid-band
@@ -26298,6 +26298,10 @@ const SCHEMATIC = { proxies: [], on: false };
     }
     put(new THREE.Line(new THREE.BufferGeometry().setFromPoints(helix), rim));
     const capEdge = new THREE.Line(circGeo(R_IN, 96), rim); capEdge.position.z = z0; put(capEdge);
+    // Exhibition window (owner call): the cap is a ring; the glaze line is
+    // the solid's R_WIN = R_CAP − 4 mm, and R_CAP is R_IN − 0.15 mm from the
+    // thread derivation just above — same stations, no new numbers.
+    const winEdge = new THREE.Line(circGeo(R_IN - 4.15 / UNIT_MM, 96), rim); winEdge.position.z = z0; put(winEdge);
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;             // opener-key teeth, 0.6 mm deep notches
       put(new THREE.Line(seg(V3(Math.cos(a) * R_IN, Math.sin(a) * R_IN, z0),
