@@ -6582,7 +6582,7 @@ const tqSlots = [];
 // CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
 // derive long after this plate is cut — and the pusher build asserts the
 // derived track equals this slot (the §35/§68 tripwire pattern).
-tqSlots.push({ ax: 30.40, ay: 0.86, bx: 33.04, by: 1.32, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module)
+tqSlots.push({ ax: 29.77, ay: -0.02, bx: 32.41, by: 0.44, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module; §163 re-froze it when ALARM_PUSH_CHORD stopped being a literal and the whole press line moved out to the root circle)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -18204,11 +18204,30 @@ const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06
 // three-quarter plate runs under the wheel, and the collar-bound lever z
 // hung the old skirt below the plate's top face. The whole wheel stack now
 // rides up exactly far enough that the ratchet skirt's underside clears
-// the plate top by one CLEAR_MARGIN; the taller stud (seated in the plate,
-// tip inside the bore) is the bridge, and every rider z-station derives
+// the plate top by the DRIVER'S OWN STRATUM; the taller stud (seated in the
+// plate, tip inside the bore) is the bridge, and every rider z-station derives
 // from ALARM_COL_SPIN_REL so the cluster rides up as one.
+//
+// §163 — WHAT THE BAND HAS TO HOLD CHANGED, so the constraint did. It used to
+// be one CLEAR_MARGIN, which is the right floor when nothing runs under the
+// skirt. TODO 87 step 3's driver DOES run under it — pivoted on the wheel's own
+// arbor, its body sweeping a whole tooth back on every return — so the band now
+// has to pass a member at floor stock with a margin on each face. Measured
+// before the change: 0.140 free, against the 0.617 a driver needs.
+//
+// The cost is stated rather than hidden: this raises the cluster by
+// STOCK_MIN_U + CLEAR_MARGIN = 0.467, and because every rider derives from
+// ALARM_COL_SPIN_REL the alarm link's beak tail — the movement's tallest member
+// at 11.871 — rides all of it. That is the movement's ceiling moving 0.467
+// (0.177 mm), accepted deliberately: the three coplanar alternatives were each
+// measured and each fails (probe-163-driver/puller/lever), and the two cheaper
+// dodges are forbidden — over-the-top spends the castellation height three
+// riders read, and shortening the tier pays a P3 packaging cost out of two P0
+// contacts, which CLAUDE.md names as a forbidden resolution.
+const ALARM_COL_DRIVER_T = STOCK_MIN_U;   // the driver runs at §50's floor, like every blade here
 const ALARM_COL_RAISE = Math.max(0,
-  (TQ_TOP_Z + CLEAR_MARGIN) - ((ALARM_LOCK_Z + 0.22) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U));
+  (TQ_TOP_Z + CLEAR_MARGIN + ALARM_COL_DRIVER_T + CLEAR_MARGIN)
+    - ((ALARM_LOCK_Z + 0.22) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U));
 const ALARM_COL_SPIN_REL = 0.22 + ALARM_COL_RAISE; // the spin plane above ALARM_LOCK_Z
 const ALARM_COL_INNER = ALARM_COL_BASE_R * (0.95 / 1.5); // the original proportion, kept
 const ALARM_COL_POS = {
@@ -18221,8 +18240,9 @@ const ALARM_COL_POS = {
   if (reach > plateR - CLEAR_MARGIN + 1e-6)
     console.warn(`§68: wheel saw tips reach r ${reach.toFixed(2)}, plate-edge bound ${(plateR - CLEAR_MARGIN).toFixed(2)}`);
   const skirtBot = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U;
-  if (skirtBot < TQ_TOP_Z + CLEAR_MARGIN - 1e-6)
-    console.warn(`§68: ratchet skirt bottom ${skirtBot.toFixed(2)} inside the plate-top margin (top ${TQ_TOP_Z.toFixed(2)} + ${CLEAR_MARGIN})`);
+  const bandNeed = CLEAR_MARGIN + ALARM_COL_DRIVER_T + CLEAR_MARGIN;   // §163: the driver runs in here
+  if (skirtBot < TQ_TOP_Z + bandNeed - 1e-6)
+    console.warn(`§163: ratchet skirt bottom ${skirtBot.toFixed(3)} leaves ${(skirtBot - TQ_TOP_Z).toFixed(3)} over the plate top ${TQ_TOP_Z.toFixed(3)} — the driver's stratum needs ${bandNeed.toFixed(3)}`);
 }
 // Steel, not blued (owner's finish call), bore 0.30 over a 0.24 stud (0.06
 // running clearance — the first build had bore = stud and the post punched
@@ -20010,11 +20030,26 @@ const _pushPerp = { x: -_pushU.y, y: _pushU.x };
 // to be driven −z — measured +0.619 against a −30°/press index, i.e. the pawl
 // dragging the wheel backwards, which a pawl cannot do. Now derived from the
 // teeth themselves and asserted below.
-const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5);
 // One press must sweep one ratchet tooth: the tooth pitch arc at the saw's
 // root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
 // throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
 const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM_COL_BASE_R);
+// §163 — THE OFFSET IS THE MOMENT ARM, SO IT IS DERIVED FROM THE INDEX.
+// This was `ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5)` = 4.37, and the
+// 1.15 was a bare literal — rule 1's "a number that appears because it looked
+// right". For a line of action the perpendicular offset IS the moment arm, so
+// the offset that carries exactly one tooth is travel ÷ one tooth. Both are
+// already in the source and both come from the same place: the travel is the
+// pitch arc AT THE SAW'S ROOT CIRCLE, so the quotient IS that root circle,
+// 0.9 · ALARM_COL_BASE_R = 5.13.
+//
+// That single substitution is TODO 87 finding 1. The old 4.37 against the
+// derived 5.13 is 85.2%, so the press delivered 1/0.852 = 117.39% of a tooth —
+// the over-carry finding 1 measured off the built tree to five figures. It was
+// never a surplus to absorb in a spring; it was exactly the ratio of a guessed
+// number to a derived one, and deriving it makes the overrun cease to exist
+// rather than be budgeted.
+const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * (ALARM_PUSH_TRAVEL / ALARM_COL_STEP);
 // TODO 20 — WHAT THE PAWL CARRIES, so the tick can turn the wheel BY ITS
 // PAWL instead of easing it toward a counter. The pusher translates along
 // −û with its pawl standing ALARM_PUSH_CHORD off the wheel's axis, and for
@@ -20025,8 +20060,22 @@ const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM
 // throw (the old hand-set 0.7 carried 83% of a tooth).
 const ALARM_PAWL_ARM = Math.abs(ALARM_PUSH_CHORD);
 const ALARM_PAWL_SWEEP = ALARM_PUSH_TRAVEL / ALARM_PAWL_ARM;
-if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)
-  console.warn(`TODO 20: one press carries ${ALARM_PAWL_SWEEP.toFixed(4)} rad but the wheel indexes ${ALARM_COL_STEP.toFixed(4)} — the pawl cannot complete a tooth`);
+// §163 — AN EQUALITY, WHERE THIS WAS A FLOOR. The old test was
+// `if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)`, which is the right constraint for
+// "the pawl must finish a tooth" and says NOTHING about what the surplus does.
+// TODO 87 finding 1 is exactly that missing half: the surplus was 117.39% of a
+// tooth, measured, and it is not free — it is displacement into metal after the
+// click has banked and the wheel has stopped. Rule 1's shape, a one-sided
+// derivation whose other side was never written.
+//
+// With the offset derived from the index above, the two sides are the same
+// number by construction, so the honest test is that they agree to float noise.
+// Both directions are named because they fail differently: under-sweep leaves
+// the pawl on a flank mid-index, over-sweep drives into a banked tooth.
+if (Math.abs(ALARM_PAWL_SWEEP - ALARM_COL_STEP) > 1e-12)
+  console.warn(`§163: one press carries ${ALARM_PAWL_SWEEP.toFixed(6)} rad against a ${ALARM_COL_STEP.toFixed(6)} tooth `
+    + `(${(100 * ALARM_PAWL_SWEEP / ALARM_COL_STEP).toFixed(2)}%) — ${ALARM_PAWL_SWEEP < ALARM_COL_STEP
+      ? 'the pawl runs out of flank mid-index' : 'the surplus is displacement into a tooth that has stopped'}`);
 // A finger's press stroke. This is the ONLY rate left in the chain: the
 // wheel used to carry its own 0.10 s ease toward the counter, and with the
 // pawl driving there is nothing left to ease — the wheel goes exactly where
