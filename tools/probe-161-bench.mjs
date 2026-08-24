@@ -10,8 +10,11 @@
 //      consumes it, and a copied link reproduces a DESIGNED movement — the
 //      defect §161 was filed for (13 keys against a 15-key reader).
 //   B. THE ROUTE. Every stop is entered, every derived framing RESOLVED (a
-//      frameOn miss returns null and only warns), the View HUD stays reachable
-//      while #clock-ui hides, and the run ENDS inside reconfigure mode.
+//      frameOn miss returns null and only warns), BOTH panels go down for the
+//      run and come back after (§165 — this used to read "the View HUD stays
+//      reachable while #clock-ui hides", which was §118's guarantee until §165
+//      spent it), and the run ENDS inside reconfigure mode with the view panel
+//      already given back to it.
 //   C. BOOT IS SILENT on the identity spec, with the bench table built eagerly.
 //
 // Run: node tools/probe-161-bench.mjs
