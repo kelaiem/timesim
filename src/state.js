@@ -77,6 +77,9 @@ const defaultState = {
   // through sanitize() or main.js's `savedState.schematic ?? true` can never
   // see a false and the default is unturnoffable (TODO 65).
   schematic: true,
+  // Case line-drawing visibility WITHIN the schematic tier (backlog: watch
+  // case). Default-ON, same absent-means-true convention as schematic above.
+  caseLines: true,
   // §69 tap-focus selection; null means "no unit focused", the same
   // absent-means-none convention as camera below.
   focusUnit: null,
@@ -107,6 +110,7 @@ function sanitize(state) {
     quality: state.quality,
     showBeat: state.showBeat,
     schematic: state.schematic,   // §69/TODO 65: emitted by captureState, so it must survive here
+    caseLines: state.caseLines,   // emitted by captureState beside schematic; must round-trip the same way
     focusUnit: state.focusUnit,   // §69/TODO 65: likewise — dropping it made restoredFocus dead
     camera: state.camera,
     mmPerPx: state.mmPerPx,   // §60: the display's measured pixel pitch, asked once
