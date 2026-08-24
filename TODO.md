@@ -12979,6 +12979,14 @@ approximation is available and should be declared if taken: a constant
 angular window over the radial run cuts a slightly conical hole rather than
 a cylindrical one, over-cut at `R_OUT` by 0.24° of the 4.32°.
 
+**A third body crosses the band, and only at one pose.** `inspection` sweeps
+the pose net, so it sees what a single-pose probe cannot: `alarmPusherStem`
+reaches r 30.21–48.00 at `alarmPress` f=0.5, which puts its outer end 2.44 u
+inside the band annulus (`R_IN` 45.56 – `R_OUT` 48.20). At rest it is clear,
+which is why the pair reports on `alarmPress` and on no other axis. Same
+cause, same fix, one more station: the pusher bore needs its aperture too,
+at `pusherAz`, Ø1.2 mm + wall.
+
 Do NOT resolve this by declaring the pairs EXPECTED. A stem in a crown tube
 touches the TUBE, by design, with clearance; it does not touch the band.
 An `EXPECTED_PAIRS` row here would claim design-intent contact for
@@ -13058,5 +13066,46 @@ What still has to be decided, by someone who owns the case design:
   azimuths they do (see item 90); if the relief spans them, part of that
   cut is already paid for.
 
+**A sixth body reaches the ledge, and only with the crown pulled.** The five
+above were measured at `beat` f=0, where the movement is at rest. Over the
+pose net `inspection` also reports `Case ⇄ Setting lever`, on the `crown`
+axis alone, 21 poses across f 0.0625–0.4792 — the pull-out stroke. Measured
+at `crown` f=0.25, the lever's post stands at r 40.05–40.95, z −5.10–1.42:
+0.67 u past `R_SH`, through the same ledge. It is not a sixth cause, it is
+the fifth one at a pose the rest position hides, and the relief arc has to
+be sized against the lever's swept azimuth, not its resting one.
+
 Both this and item 90 are blocked on the same missing sector-lathe
 construction, and both should be cut in one pass once it exists.
+
+## 92. The alarm pusher's cap has no stop, and the flush bore is what exposed it
+
+Filed 2026-08-24, and honestly attributed: this is a consequence of the
+flush-bore correction in the same landing, not a defect that predated it.
+
+The pusher head was placed against the case's pusher COLLAR — `stemOuterS`
+puts its inner face at `R_OUT` + 1 mm, which is exactly where the collar
+began. The two interpenetrated over 0.5 mm of the pusher's axis, constantly,
+which is why the pair reported contact at every pose on every axis and
+nothing about the stroke could be read. Removing the collar (a flush bore
+has no flange to carry one — see the landing that closed the case's open
+bodies) narrowed `Alarm switch ⇄ Case` from ~1900 poses to **11**, all of
+them on `alarmPress`, f 0.4219–0.5781.
+
+What those 11 poses say: at `alarmPress` f=0.5 the cap stands at r
+47.80–49.90 against a band whose outer wall is `R_OUT` = 48.20. The cap is
+**0.40 u (0.15 mm) inside the case's outer face** at mid-press. It cannot
+be anywhere else — the head is Ø2 mm and the bore is Ø1.2 mm, so the cap
+can never enter the bore; the press has to be absorbed by the stem sliding
+inside it, with the cap standing off the band by the stroke at rest and
+arriving flush at full press. Today it simply travels through.
+
+The fix is a derivation, not a nudge, and it belongs to the pusher's own
+action group rather than to the case: the head's rest radius is
+`R_OUT` + stroke, and the stroke is the one §43/TODO 87 already own — the
+throw that indexes the column wheel one castellation. Deriving it here, from
+the case, would be standing rule 2 backwards. Whoever takes it should also
+say what the cap lands ON at full press: bare band face, or a turned seat.
+
+Note for whoever measures it: the resting pose is clear, so a single-pose
+probe reports nothing. This wants `alarmPress`, mid-stroke.
