@@ -11984,6 +11984,13 @@ runs, so the run is not viewed through the panel. The Tour/Demo/Inspect
 buttons used to go with it — a running script's own Stop control, hidden by
 the script starting. They now live in the panel that stays up.
 
+> **REVERSED by §165 (2026-08-24).** That last sentence is no longer true: a
+> guided run now hides BOTH panels, because the one that stayed up is also a
+> 238 px box in the top-right corner of every framing the run chooses — the
+> complaint this paragraph accepted for `#clock-ui`, made again one panel over.
+> The Stop button goes with it. What that costs, and why the side effect above
+> turned out not to be load-bearing, is §165's to argue; read them together.
+
 ## §119 — The pad's targets, and the crowns' gestures
 
 Four complaints from one session, all of them about controls a finger
@@ -16789,3 +16796,81 @@ blade between them — and this landing does not build it. What changed is that
 the instrument now says so: before §162 the movement's clearest missing return
 was invisible behind a real spring answering for the wrong body, and it is a
 gated row now that fails the moment its waiver is deleted.
+
+## §165 — a guided run hides both panels, not one
+
+**The ask, in one sentence:** a route launched from the View panel should put
+that panel away, because it is in the shot.
+
+It is the same complaint the §118-era code had already accepted for the other
+panel, made one panel over. `hidePanelForScript()` collapsed `#clock-ui`
+because "the coupling show framed on the DIAL CENTRE sits partly behind the
+240px panel at desktop widths too — the panel overlaps whatever the preset
+centres, at any width." Every word of that is true of `#view-hud`, which is a
+238 px box pinned to the top-right corner of every framing a route chooses —
+and, since §118, the panel the guided buttons launch from.
+
+### What this reverses, and why it turned out not to be load-bearing
+
+§118 recorded, as "an improvement nobody asked for", that moving Guided into
+the view panel had rescued a running script's own Stop control from being
+hidden by the script starting. **That side effect is now spent** — the Stop
+button goes down with the panel — and §118's paragraph carries a note pointing
+here rather than being left to read as current.
+
+Three things make that acceptable, and none of them is new:
+
+- **The Stop button was never the only way out, or the main one.** `scriptAbort`
+  has taken any `pointerdown`, `keydown` or `wheel` anywhere on the window since
+  §5, with a single exception for `.script-ctrl` (a click on a Guided button is
+  the viewer talking TO the script, not taking over). The whole screen is the
+  stop control; the button is a labelled instance of it.
+- **The chrome bar is a THIRD root and is not hidden.** `HUD_ROOTS` is
+  `[panel, viewHud, chromeBar]`, and only the first two collapse here — so both
+  panels stay one click from returning, and that click also stops the run, which
+  is what someone reaching for a panel mid-route wants.
+- **Two of the four routes already say so.** `INSPECT_STEPS` and `BENCH_STEPS`
+  open with "Click anywhere to stop.", and `INSPECT_STEPS` carries the reason in
+  place: a caption naming a control the viewer cannot see is worse than no step.
+
+### Each panel guards on its own prior state
+
+`hidePanelForScript` keeps two flags, not one. A viewer who had already
+collapsed `#clock-ui` and left the view panel up gets exactly that back —
+not both, and not neither. Restoring in that order matters below the
+two-panel width: `setPanelHidden(false)` evicts the view panel when the two
+cannot share the screen, so `#clock-ui` is restored first and the view panel
+second, and the eviction rule decides only when both were up.
+
+### A mode takes the panel back, and that rule already existed
+
+`BENCH_STEPS` ends by ENTERING reconfigure mode rather than describing where
+its button is (§161), so its closing captions name Reconfigure, Trial boot and
+Copy view while the panel that holds them is hidden. §93 had already solved the
+shape of this one level down: entering the mode force-opens the collapsed
+`<details>`, because a mode whose status, Apply and variant rows are shut in a
+drawer is a "you cannot carry on". A mode entered while a script has hidden the
+whole panel is the same problem one level up, so `setReconf(true)` now calls
+`unhideViewHudForMode()` first — which clears the script's claim on it, so the
+run's own restore does not fight the mode for the panel afterwards.
+
+**The instrument moved with the behaviour.** `tools/probe-161-bench.mjs`
+asserted "the View HUD stays on screen — Reconfigure and Copy view are
+reachable", which was §118's guarantee. It now asserts the inverse (hidden
+during the run), plus two things that did not need saying while the panel stayed
+up: that the chrome bar is still there with its View toggle reading `off`, and
+that the panel is back **before** the run ends rather than after — because if
+that ever reads false, the bench route's closing captions are naming controls
+that are not on screen.
+
+### The residue, named rather than engineered around
+
+`TOUR_STEPS` and `DEMO_STEPS` do not state the stop gesture in their opening
+caption, so on those two routes it is now unshown as well as unstated. The
+cheap fix is one sentence in each opening caption; it is deliberately **not**
+taken here, because editing an English caption invalidates its five
+translations by design and this change does not otherwise touch caption text.
+Demo is four steps and about five seconds, so it barely raises the question;
+Tour is the one that would benefit, and a landing that re-records its captions
+(the tour re-record is filed on the roadmap) should pick it up there rather
+than pay the translation bill twice.
