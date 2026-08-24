@@ -7051,7 +7051,31 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   } = dims;
   const g = new THREE.Group();
   g.name = 'case';
+  // A lathe is a SURFACE of revolution, so it is a SOLID only if its profile
+  // closes in the r–z half-plane: either the last point returns to the first,
+  // or both ends sit on the axis (r = 0), where the revolution closes itself.
+  // Anything else leaves an open annulus where the contour should have shut.
+  //
+  // That is not a cosmetic defect. `meshClearance` guards its BVH near-zeros
+  // with `sampledVerdict`, a PARITY RAYCAST — it counts crossings, so it
+  // assumes a closed solid (CLAUDE.md's trap list; TODO 27 measured the same
+  // failure on the chain's opened rivets). Through a missing face the count
+  // goes odd and the body reads as solid everywhere behind it: the first cut
+  // of this builder shipped `caseMiddle` and `caseBack` open, and `inspection`
+  // duly called four pairs FORBIDDEN — the movement's setting wheel, three
+  // extrusions, a torus and a box all "inside" a band whose bore they sit a
+  // clear millimetre inside of.
+  //
+  // The guard is here, at the helper, rather than in the check: the check
+  // stays generic, and the next lathe body cannot ship open in silence.
   const lathe = (pts, seg = 96) => {
+    const [rA, zA] = pts[0], [rB, zB] = pts[pts.length - 1];
+    const closed = (Math.abs(rA - rB) < 1e-9 && Math.abs(zA - zB) < 1e-9)
+      || (rA === 0 && rB === 0);
+    if (!closed)
+      console.warn(`makeCase: lathe profile is OPEN — ends (${rA.toFixed(3)}, ${zA.toFixed(3)}) and `
+        + `(${rB.toFixed(3)}, ${zB.toFixed(3)}) neither coincide nor both sit on the axis (r = 0); `
+        + `the parity raycast will read this body as solid behind the missing face`);
     const geo = new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), seg);
     geo.rotateX(Math.PI / 2); // lathe axis Y → +Z, house convention
     return geo;
@@ -7076,6 +7100,9 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     [R_G - 0.35 / UNIT_MM, zMidBack - gasketSeat / 2],
     [R_G - 0.35 / UNIT_MM, zMidBack],
     [R_FL, zMidBack], [R_FL, zFlangeIn],
+    [R_IN, zFlangeIn],   // ...and back to the start along the flange's INNER
+                         // annular face, the one the movement passes through:
+                         // the turning's last cut, and what shuts the contour
   ]), material);
   middle.name = 'caseMiddle';
   const middleAsm = new THREE.Group();
@@ -7108,6 +7135,9 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const back = new THREE.Mesh(lathe([
     [R_WIN - lipW, z0], [R_PLATE, z0], [R_PLATE, zSeat],
     [R_WIN, zSeat], [R_WIN, zCrystOut], [R_WIN - lipW, zCrystOut],
+    [R_WIN - lipW, z0],  // the retaining lip's own BORE, back up to the outer
+                         // face — the window's edge is metal, and it is what
+                         // closes this contour
   ]), material);
   back.name = 'caseBack';
   backAsm.add(back);
@@ -7160,22 +7190,59 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // the bore to 1.5 mm proud of the band, with a 0.5 mm collar. The band's
   // radial bores they pass through are the same CSG debt as the thread
   // grooves.
-  const tubeAt = (az, d, z, name) => {
+  // The tube's own metal. COLLAR_PROUD is the flange's radius over the bore
+  // and predates this; TUBE_WALL is derived FROM it by the constraint that a
+  // flange has to stand proud of the wall it flanges — 0.3 mm of wall under a
+  // 0.4 mm collar leaves 0.1 mm of shoulder, and 0.3 mm is ordinary tube stock
+  // for a Ø2.0 mm bore. Assert rather than assume: swap the two and the collar
+  // silently becomes a groove.
+  const COLLAR_PROUD = 0.4 / UNIT_MM;
+  const TUBE_WALL = 0.3 / UNIT_MM;
+  if (TUBE_WALL >= COLLAR_PROUD)
+    console.warn(`makeCase: tube wall ${(TUBE_WALL * UNIT_MM).toFixed(2)} mm is not under the collar's `
+      + `${(COLLAR_PROUD * UNIT_MM).toFixed(2)} mm proud radius — the collar is no longer a flange`);
+  // `flush` is the pusher's case, and it is the difference between a crown
+  // TUBE and a pusher BORE — the two things this builder was making the same
+  // way. A crown tube stands 1.5 mm proud and carries a collar, because a
+  // crown has to be gripped clear of the band; a flush bore stops AT the band
+  // and has neither, which is what "discreet" (the owner's word, layout.js)
+  // means in metal. Built proud, its collar landed inside the §43 pusher head
+  // — a 2 mm cap whose inner face is at R_OUT + 1 mm, exactly where the collar
+  // began — so the two occupied the same 0.5 mm of the pusher's axis.
+  const tubeAt = (az, d, z, name, flush = false) => {
     const r = d / 2;
-    const len = R_OUT + 1.5 / UNIT_MM - (R_IN - 1 / UNIT_MM);
+    const outboard = flush ? R_OUT : R_OUT + 1.5 / UNIT_MM;
+    const len = outboard - (R_IN - 1 / UNIT_MM);
     // The stems' own convention (windSpinner et al.): cylinder axis Y, the
     // pivot's z-rotation maps +Y outboard along the azimuth. No intermediate
     // holder — a rotated frame would throw the radial offsets into z.
     const pivot = new THREE.Group();
     pivot.rotation.z = az - Math.PI / 2;
     pivot.position.z = z;
-    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 20, 1, true), material);
-    cyl.position.y = (R_IN - 1 / UNIT_MM) + len / 2;
-    pivot.add(cyl);
-    // collar: the tube's outer flange, 0.5 mm tall, 0.4 mm proud radius
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.4 / UNIT_MM, r + 0.4 / UNIT_MM, 0.5 / UNIT_MM, 20), material);
-    collar.position.y = R_OUT + 1.25 / UNIT_MM;
-    pivot.add(collar);
+    // A CAPPED SLEEVE, not a bore surface. This was an open-ended cylinder at
+    // the bore radius: a wall of no thickness, open at both ends — which is a
+    // SURFACE, and `d` is the tube's BORE (layout.js), so the metal it stands
+    // for was never modelled at all. The parity raycast reads an unclosed body
+    // as solid behind it, so all three of these read as fouling the stems they
+    // are supposed to sleeve. ringExtrude caps both ends by construction.
+    const sleeve = new THREE.Mesh(ringExtrude(r + TUBE_WALL, r, len, 20), material);
+    sleeve.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
+    sleeve.position.y = (R_IN - 1 / UNIT_MM) + len / 2;
+    sleeve.name = `${name}Sleeve`;
+    pivot.add(sleeve);
+    // Collar: the tube's outer flange, 0.5 mm tall, 0.4 mm proud radius —
+    // BORED to the same r as the sleeve it flanges. It was a solid disc, so
+    // the stem it exists to sleeve ran through its metal: a flange on a tube
+    // is an annulus, and the bore does not stop because the wall got thicker.
+    // A flush bore has no flange at all — there is nothing standing proud for
+    // one to sit on.
+    if (!flush) {
+      const collar = new THREE.Mesh(ringExtrude(r + COLLAR_PROUD, r, 0.5 / UNIT_MM, 20), material);
+      collar.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
+      collar.position.y = R_OUT + 1.25 / UNIT_MM;
+      collar.name = `${name}Collar`;
+      pivot.add(collar);
+    }
     const grp = new THREE.Group();
     grp.add(pivot);
     grp.name = name;
@@ -7184,7 +7251,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   };
   tubeAt(stemAz, tubeD, stemZ, 'caseCrownTube');
   tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
-  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore');
+  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true);   // flush — a bore, not a tube
 
   // Lugs at 12 and 6, spring-bar span per dims; each lug a prism
   // chord-tangent to the band and ROOTED 0.8 mm into it (the brazed
