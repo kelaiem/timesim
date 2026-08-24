@@ -114,6 +114,13 @@ export const MECH_GRAPH = {
                                              // (free-sprung: the stud carrier is the spring's ONLY fixture)
     ['Chain', 'Mainspring drum'],            // hooked to the drum wall
     ['Chain', 'Fusee & great wheel'],        // hooked to the cone
+    // Backlog (watch case): the case unit — band/back/bezel/crystal/lugs/
+    // tubes/movement ring, one labelled group. The support arrow points
+    // INWARD because the sim's ground is the plate: in the metal the case
+    // is the world's fixture and the ring clamps the plate into the band,
+    // but a graph rooted at the plate can only hang the housing off it.
+    // Static fixture — no drive path to declare.
+    ['Case', 'plate'],
     ['Keyless works', 'plate'],              // stem-bushing foot hung from the plate's BACK face
                                              // + the winding transfer arbor running in its bore:
                                              // the whole keyless works lives on the DIAL side now
