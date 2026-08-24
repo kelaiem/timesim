@@ -21873,7 +21873,41 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // this station and no longer does, so it goes.
   const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN; // saw tip circle (geometry.js) + the one margin
   const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
-  const stemOuterS = CASE_R_OUT + 1.0 / UNIT_MM - Math.hypot(_pushBase.x, _pushBase.y); // through the pusher bore, the head 1 mm proud — flush enough to be "discreet"
+  // THE HEAD MUST CLEAR THE CASE AT FULL PRESS, and until now nothing said so.
+  // Two things were wrong with the hand-set "1 mm proud":
+  //
+  // It measured from the wrong quantity. `_pushBase` is the pawl's base and
+  // the push axis is a CHORD — ALARM_PUSH_CHORD offsets it from the movement's
+  // centre precisely so the pawl has a moment arm — so the head's distance
+  // from the CASE axis is its projection along û, not the magnitude of the
+  // base vector. `hypot(_pushBase)` is the same number only for a pusher
+  // aimed at the centre, which this one deliberately is not: measured, the
+  // two differ by 0.3495 u.
+  //
+  // And 1 mm was not enough to begin with. The throw is ALARM_PUSH_TRAVEL
+  // (2.686 u — one ratchet tooth, mechanism, derived above and untouched
+  // here), so a 2.6385 u standoff is already short of the stroke before the
+  // chord error. Measured over the alarmPress axis, the head reached 0.397 u
+  // INSIDE the band at full press (f = 0.5, the deepest point of the cycle),
+  // and it cannot go there: the case has no recess for it, and the head is
+  // Ø2 mm against its own Ø1.2 mm bore, so it can never enter the bore either.
+  //
+  // At full press the group stands TRAVEL in along −û, so the head's nearest
+  // point to the case axis is `_pushBaseS + stemOuterS − ALARM_PUSH_TRAVEL`.
+  // Requiring THAT to clear R_OUT by CLEAR_MARGIN is the constraint, and it
+  // is what this now solves. The case never limits the stroke — the throw
+  // stays the mechanism's, which is standing rule 2's direction of travel.
+  //
+  // What it costs: the head rests CLEAR_MARGIN + TRAVEL = 2.836 u = 1.075 mm
+  // proud, against the 1.0 mm that was asserted before. "Discreet" survives,
+  // and is now a consequence of the throw rather than a number chosen to look
+  // like one.
+  // Solved with the across-axis term dropped, which is the CONSERVATIVE
+  // reading — see the measurement after the head is built, which carries the
+  // exact figure and the boot assert.
+  const _pushBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;  // the base, ON the push axis
+  const _pushOffAxis = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;  // ...and ACROSS it (the chord)
+  const stemOuterS = CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL - _pushBaseS;
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
   stem.name = 'alarmPusherStem';  // §162: the pusher body's own name, so the §48 member key and the joint rows stop selecting it as CylinderGeometry#9
@@ -21912,6 +21946,26 @@ alarmSwitchUnit.add(alarmPusherGroup);
   alarmPusherGroup.add(cap);
   if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
+  // TODO 92 — WHAT THE HEAD ACTUALLY CLEARS AT FULL PRESS, measured off the
+  // built numbers rather than trusted from the solve above.
+  //
+  // stemOuterS solves the standoff as if the head's nearest point to the case
+  // axis lay straight along û. It does not: the push axis stands off that axis
+  // by the chord, and where that offset exceeds the head's own radius the
+  // nearest point is a RIM point, whose distance is the hypotenuse — strictly
+  // larger. The solve is therefore CONSERVATIVE, never optimistic, which is
+  // the safe direction and why it is left in its simple form.
+  //
+  // But "conservative" is a claim, so this measures the real figure: the head's
+  // in-plane footprint is a rectangle (±LEN/2 along û, ±HEAD_R across), and the
+  // nearest point of a rectangle to a point outside it clamps per axis.
+  const _capAlongU = _pushBaseS + stemOuterS - ALARM_PUSH_TRAVEL;       // inner face, at full press
+  const _capAcross = Math.max(0, Math.abs(_pushOffAxis) - PUSHER_HEAD_R); // 0 while the axis passes under the head
+  const _capNearest = Math.hypot(_capAlongU, _capAcross);
+  if (_capNearest < CASE_R_OUT + CLEAR_MARGIN - 1e-9)
+    console.warn(`TODO 92: the pusher head closes to ${_capNearest.toFixed(4)} u at full press, inside the `
+      + `${(CASE_R_OUT + CLEAR_MARGIN).toFixed(4)} u its stroke needs (R_OUT ${CASE_R_OUT.toFixed(4)} + `
+      + `CLEAR_MARGIN ${CLEAR_MARGIN}) — the case would limit the throw, or take it`);
   // P1, TODO 16's format (§137) — WHAT THE FINGER BRINGS, against what the
   // chain asks of it. The head is 2 mm across precisely so a fingertip can
   // locate and press it, and a fingertip on a cap that size delivers 1–10 N
@@ -26079,6 +26133,12 @@ const CASE_DIMS = (() => {
     screwN: CASE_BACK_SCREWS, screwShaftD: CASE_SCREW_SHAFT_D, screwHeadD: CASE_SCREW_HEAD_D,
     tubeD: CASE_TUBE_D, pusherD: CASE_PUSHER_D,
     stemAz: stemAngle, alarmAz: alarmStemAngle, pusherAz: ALARM_PUSH_AZ,
+    // An azimuth locates a RADIUS; the pusher runs on a line PARALLEL to one.
+    // ALARM_PUSH_CHORD steps its base off the movement's centre to give the
+    // pawl a moment arm, so the case has to be told the offset or it drills
+    // the hole beside the pusher — which it did, by 4.37 u. Both crowns ARE
+    // radial and pass 0 by omission.
+    pusherOff: _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y,
     // The tubes sleeve their stems at the stems' OWN z — a tube at mid-band
     // would sleeve nothing.
     stemZ: Z_KEYLESS, alarmZ: alarmSpinner.position.z, pusherZ: alarmPusherGroup.position.z,
