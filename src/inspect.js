@@ -36,6 +36,14 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // default and should not add a fourth copy of the number.
 import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N } from './layout.js'; // §137: the one steel + the declared envelopes
+// §161 — the override merge, for the fixture check at the foot of this file.
+// Same class of import as layout.js above: a pure function and the schema it
+// merges into, not the app — this file still reads the RUNNING scene rather
+// than importing what built it, which is what lets it be loaded from a console
+// against any deployed build. Module instances are shared, so `aesthetics.js`
+// is the one main.js already evaluated: importing it here re-runs no boot
+// handshake and arms no marker.
+import { aesthetics, mergeAesthetics } from './aesthetics.js';
 
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
 THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
@@ -7638,8 +7646,133 @@ export function checkChainLength(clock, { n = 41, divisions = 4000, waiver = nul
   };
 }
 
+// ---------------------------------------------------------------------------
+// §161 — THE OVERRIDE MERGE'S OWN GUARANTEES, as a check rather than as prose.
+//
+// `mergeAesthetics` is the one hardened door a tuned value enters through, and
+// everything that makes it safe — the type anchor, the `_bounds` clamp, the
+// unknown-key refusal — was asserted only by a paragraph in docs/BUILT.md and
+// by four numbers in it (1.6 → 1.0, 0.001 → 2). A paragraph does not fail. It
+// matters more now than it did: with an import button and a link, the payload
+// stops coming from the viewer's own slider and starts arriving from a file or
+// a stranger, and every one of these refusals is what stands between that and
+// the build.
+//
+// A PURE-FUNCTION CHECK, the first in this file: no scene, no poses, no clock.
+// It takes the `clock` argument every entry in CHECKS takes and ignores it,
+// rather than being special-cased in the dispatch — the roster gate
+// (ci-battery.mjs, TODO 78) requires a registered check to have a battery row,
+// and a check with a bespoke calling convention is how the next instrument
+// ends up exported and never run.
+//
+// The CONTROL row is not decoration. This check shares a page with the running
+// build, and `aesthetics` is a live singleton every builder read at boot: an
+// instrument that perturbed it would move the geometry fingerprint from inside
+// the battery that reads it. So it snapshots the schema, runs every fixture
+// against throwaway objects, and asserts the snapshot back — the check proving
+// it cannot disturb what it shares the page with.
+const AESTHETICS_MERGE_FIXTURES = [
+  // The type anchor, three ways. A number leaf is the common case; the third
+  // row is the §23 regression that named the rule — a planted NaN serialises
+  // to JSON null, which is not typeof 'number', so it used to sail past the
+  // finite check below and write null into the exposure.
+  { name: 'string into a number leaf is refused',
+    dst: { toneMappingExposure: 1.0 }, src: { toneMappingExposure: '2.4' },
+    want: { applied: [], refused: [{ path: 'toneMappingExposure', why: 'type' }], clamped: [], values: { toneMappingExposure: 1.0 } } },
+  { name: 'boolean into a number leaf is refused',
+    dst: { toneMappingExposure: 1.0 }, src: { toneMappingExposure: true },
+    want: { applied: [], refused: [{ path: 'toneMappingExposure', why: 'type' }], clamped: [], values: { toneMappingExposure: 1.0 } } },
+  { name: 'null (a serialised NaN) into a number leaf is refused',
+    dst: { toneMappingExposure: 1.0 }, src: JSON.parse('{"toneMappingExposure":null}'),
+    want: { applied: [], refused: [{ path: 'toneMappingExposure', why: 'type' }], clamped: [], values: { toneMappingExposure: 1.0 } } },
+  // Infinity survives a hand-edit where NaN does not (JSON.parse refuses the
+  // literal, but a caller can hand us a live object), so the finite check is
+  // load-bearing separately from the anchor above.
+  { name: 'a non-finite number is refused',
+    dst: { intensity: 2.4 }, src: { intensity: Infinity },
+    want: { applied: [], refused: [{ path: 'intensity', why: 'nonfinite' }], clamped: [], values: { intensity: 2.4 } } },
+  // The two clamps docs/BUILT.md records by value.
+  { name: 'a stale over-limit value clamps to the ceiling (1.6 -> 1.0)',
+    dst: { widthUnits: 0.6, _bounds: { widthUnits: [0.4, 1.0] } }, src: { widthUnits: 1.6 },
+    want: { applied: ['widthUnits'], refused: [], clamped: [{ path: 'widthUnits', from: 1.6, to: 1.0 }], values: { widthUnits: 1.0, _bounds: { widthUnits: [0.4, 1.0] } } } },
+  { name: 'a stale under-limit value clamps to the floor (0.001 -> 2)',
+    dst: { dotsPerUnit: 6, _bounds: { dotsPerUnit: [2, 40] } }, src: { dotsPerUnit: 0.001 },
+    want: { applied: ['dotsPerUnit'], refused: [], clamped: [{ path: 'dotsPerUnit', from: 0.001, to: 2 }], values: { dotsPerUnit: 2, _bounds: { dotsPerUnit: [2, 40] } } } },
+  { name: 'an in-bounds value is applied and NOT reported as clamped',
+    dst: { widthUnits: 0.6, _bounds: { widthUnits: [0.4, 1.0] } }, src: { widthUnits: 0.8 },
+    want: { applied: ['widthUnits'], refused: [], clamped: [], values: { widthUnits: 0.8, _bounds: { widthUnits: [0.4, 1.0] } } } },
+  // What makes a payload written against an older or newer file usable: the
+  // leaves that still exist apply, the rest are refused BY NAME. Reported as
+  // 'unknown' rather than 'type' because the two mean different things to
+  // whoever sent the file.
+  { name: 'a key the schema does not have is refused as unknown',
+    dst: { intensity: 2.4 }, src: { intensity: 3.0, retiredKnob: 7 },
+    want: { applied: ['intensity'], refused: [{ path: 'retiredKnob', why: 'unknown' }], clamped: [], values: { intensity: 3.0 } } },
+  { name: 'a whole subtree the schema does not have is refused, not created',
+    dst: { keyLight: { intensity: 2.4 } }, src: { rimSpot: { intensity: 1.0 } },
+    want: { applied: [], refused: [{ path: 'rimSpot', why: 'unknown' }], clamped: [], values: { keyLight: { intensity: 2.4 } } } },
+  // Prose is not a parameter. `_labels`/`_bounds`/`_comment` ride along in
+  // anything Copy JSON produced before the replacer existed, and in any file a
+  // human edited by hand from the schema.
+  { name: 'meta keys are ignored, not merged',
+    dst: { arcDeg: 90, _bounds: { arcDeg: [25, 120] }, _labels: { arcDeg: 'Gong arc (degrees)' } },
+    src: { arcDeg: 100, _bounds: { arcDeg: [0, 999] }, _labels: { arcDeg: 'pwned' }, _comment: 'x' },
+    want: { applied: ['arcDeg'], refused: [], clamped: [], values: { arcDeg: 100, _bounds: { arcDeg: [25, 120] }, _labels: { arcDeg: 'Gong arc (degrees)' } } } },
+  // Nested paths report their full dot path, which is what an import report
+  // and a share link both key on.
+  { name: 'nested leaves merge and report their dot path',
+    dst: { keyLight: { color: '#fff1de', intensity: 2.4 } }, src: { keyLight: { color: '#112233' } },
+    want: { applied: ['keyLight.color'], refused: [], clamped: [], values: { keyLight: { color: '#112233', intensity: 2.4 } } } },
+  // A colour carries no _bounds deliberately — a colour has no interval to
+  // bound (AESTHETICS.md). So any string of the right type applies, and the
+  // real constraint on it is the contrast floor asserted at build and on every
+  // recolour, which WARNS rather than refuses. Fixed here so that stays a
+  // stated property of the merge rather than an accident of it.
+  { name: 'a colour applies unbounded — legibility is the contrast floor, not a bound',
+    dst: { color: '#e7e5dd' }, src: { color: '#e7e5de' },
+    want: { applied: ['color'], refused: [], clamped: [], values: { color: '#e7e5de' } } },
+];
+
+export function checkAestheticsMerge() {
+  const norm = (o) => JSON.stringify(o);
+  const before = norm(aesthetics);
+  const rows = [], failures = [];
+  let applied = 0, refused = 0, clamped = 0;
+  for (const f of AESTHETICS_MERGE_FIXTURES) {
+    const dst = JSON.parse(JSON.stringify(f.dst));
+    // Infinity does not survive the structuredClone-by-JSON above, and the
+    // non-finite fixture needs it live — so that one src is used as authored.
+    const got = mergeAesthetics(dst, f.src);
+    applied += got.applied.length; refused += got.refused.length; clamped += got.clamped.length;
+    const mismatch = [];
+    for (const k of ['applied', 'refused', 'clamped']) {
+      if (norm(got[k]) !== norm(f.want[k])) mismatch.push({ field: k, want: f.want[k], got: got[k] });
+    }
+    if (norm(dst) !== norm(f.want.values)) mismatch.push({ field: 'values', want: f.want.values, got: dst });
+    const row = { fixture: f.name, ok: mismatch.length === 0 };
+    rows.push(row);
+    if (mismatch.length) failures.push({ fixture: f.name, mismatch });
+  }
+  // The control: the live schema every builder read at boot is untouched, so
+  // this check cannot move the fingerprint the battery reads on the same boot.
+  const control = before === norm(aesthetics) ? 'PASS — live schema unmoved' : 'FAIL — the check mutated aesthetics';
+  if (control.startsWith('FAIL')) failures.push({ control });
+  console.table(rows);
+  return {
+    fixtures: AESTHETICS_MERGE_FIXTURES.length,
+    rows, failures, control,
+    applied, refused, clamped,
+    gate: 'GATING — every fixture matches exactly (the type anchor, the _bounds clamp, '
+      + 'the unknown-key refusal and the meta-key skip), and the live schema is unmoved. '
+      + 'These are the guarantees an imported file and a shared link both rest on',
+  };
+}
+
 const CHECKS = {
   clearances: (clock, opts) => checkClearances(clock, opts),
+  // §161 — a pure-function check: it takes `clock` like every sibling and
+  // ignores it, so the dispatch stays uniform (see the fixture table above).
+  aestheticsMerge: () => checkAestheticsMerge(),
   freeAnnulus: (clock, opts) => findFreeAnnulus(clock, opts),
   sweptRegistry: (clock, opts) => buildSweptRegistry(clock, opts),
   sweptOverlap: (clock, opts) => checkSweptOverlap(clock, opts),

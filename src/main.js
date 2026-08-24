@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MATS, applyDecorationFromAesthetics } from './materials.js';
-import { aesthetics, confirmAestheticsBoot } from './aesthetics.js';
+import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
@@ -22223,7 +22223,7 @@ function askTour(onProceed) {
   ribPitch.addEventListener('input', () => {
     aesthetics.decoration.ribbing.widthUnits = Number(ribPitch.value);
     applyDecorationFromAesthetics();
-    try { localStorage.setItem('aestheticsOverrides', JSON.stringify(aesthetics, (k, v) => k.startsWith('_') ? undefined : v)); } catch {}
+    writeOverrides(aesthetics);
   });
 
   // §23 — THE GENERATED PANEL. Walk aesthetics.json, emit a control per
@@ -22384,7 +22384,7 @@ function askTour(onProceed) {
         if (fn) fn(r.path);
         // Persist so ⟳-tier knobs (consumed at build) actually take effect on
         // the reload they ask for. Comments stripped: they are prose.
-        try { localStorage.setItem('aestheticsOverrides', JSON.stringify(aesthetics, (k, v) => k.startsWith('_') ? undefined : v)); } catch {}
+        writeOverrides(aesthetics);
       });
       row.appendChild(input);
       advBody.appendChild(row);
@@ -22403,13 +22403,13 @@ function askTour(onProceed) {
     for (const f of advFilterables) f.row.style.display = (!q || f.hay.includes(q)) ? '' : 'none';
   });
   document.getElementById('btn-reset-aesthetics').addEventListener('click', () => {
-    localStorage.removeItem('aestheticsOverrides');
+    clearOverrides();
     location.reload();
   });
   document.getElementById('btn-copy-aesthetics').addEventListener('click', () => {
     // The tuned state travels back to the FILE — the schema stays the single
     // source and a good tuning session ends in a commit, not in localStorage.
-    navigator.clipboard.writeText(JSON.stringify(aesthetics, (k, v) => k.startsWith('_') ? undefined : v, 2));
+    navigator.clipboard.writeText(serializeOverrides(aesthetics));
   });
 
   // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open

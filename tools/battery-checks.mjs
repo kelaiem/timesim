@@ -55,6 +55,18 @@ export const BATTERY = [
     fails: (r) => Object.entries(r)
       .filter(([k]) => k !== 'todo')
       .flatMap(([k, v]) => (Array.isArray(v) && v.length ? [{ [k]: v }] : [])) },
+  // §161 — the override merge's guarantees, over a fixture table. First in the
+  // report because it is the cheapest thing here and the only one that needs
+  // no scene: a pure function against throwaway objects, with a control row
+  // asserting it left the live schema (and therefore the fingerprint read on
+  // this same boot) untouched. It gates what an imported file and a shared
+  // link will both rest on — the type anchor, the `_bounds` clamp and the
+  // unknown-key refusal — which until now were asserted only by a paragraph.
+  { name: 'aestheticsMerge', opts: {},
+    gate: 'every fixture matches exactly, and the live schema is unmoved',
+    fails: (r) => r.failures,
+    note: (r) => `${r.fixtures} fixtures — ${r.applied} applied, ${r.refused} refused, `
+      + `${r.clamped} clamped; control ${r.control}` },
   // TODO 54 — the pose contract every sweep below rests on, so it reads early:
   // if canonical axis entry does not hold, the sweeps' findings are a function
   // of AXES' declaration order and §127's partition is measuring a different
