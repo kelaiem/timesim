@@ -91,10 +91,13 @@ const V = await page.evaluate(async () => {
   unit.obj.traverse((o) => {
     if (o.userData && o.userData.schematic) return;   // §71: flagged display is not metal
     if (!o.isMesh) return;
-    if (o.name === 'alarmPusherPawl') pawl = o;
+    // §163 — the driving member left the pusher. It is a shaped, sprung pawl on
+    // a driver pivoted on the wheel's own arbor, and the body that TOUCHES the
+    // saw is its NOSE, which is what this probe was reading the pusher's bar for.
+    if (o.name === 'alarmColPawlNose') pawl = o;
     if (/^alarmCol(Base|Castellations|Skirt)$/.test(o.name)) wheelMeshes.push(o);
   });
-  if (!pawl) fail.push('no mesh named `alarmPusherPawl`');
+  if (!pawl) fail.push('no mesh named `alarmColPawlNose` — §163 moved the driving member off the pusher');
   if (wheelMeshes.length !== 3) fail.push(`expected the wheel's 3 named bodies, found ${wheelMeshes.length}`);
 
   // TODO 87 step 4 named the three bodies apart, so the skirt is SELECTED by

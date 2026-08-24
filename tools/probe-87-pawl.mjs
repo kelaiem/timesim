@@ -44,12 +44,21 @@ const out = await p.evaluate(async () => {
   const clock = window.__clock;
   const axis = I.AXES.find((a) => a.name === 'alarmPress');
   const unit = clock.labelEntries.find((e) => e.name === 'Alarm switch');
-  let pawl = null, skirt = null, wheelGroup = null;
+  // §163 — the pawl is no longer one box on the pusher. It is a shaped member
+  // on the driver, and it ships as three bodies plus a nose disc: the arm is
+  // CLIPPED off its own pivot bore (a post wider than a 2w arm would otherwise
+  // pass through the arm's flanks whatever hole was cut), so tail and arm are
+  // separate solids lapped inside the boss. The acceptance test is over ALL of
+  // them, because a member that clears the saw in three pieces and fouls it in
+  // a fourth has not cleared it.
+  const bodies = [];
+  let skirt = null, wheelGroup = null, nose = null;
   unit.obj.traverse((o) => {
     if (o.userData?.schematic || !o.isMesh) return;
-    if (o.name === 'alarmPusherPawl') pawl = o;
+    if (/^alarmColPawl/.test(o.name)) { bodies.push(o); if (o.name === 'alarmColPawlNose') nose = o; }
     if (o.name === 'alarmColSkirt') { skirt = o; wheelGroup = o.parent; }
   });
+  if (!bodies.length) return { err: 'no alarmColPawl* meshes — §163 renamed the member' };
   const poly = wheelGroup.userData.ratchetPoly;
   if (!poly) return { err: 'no ratchetPoly on the wheel group' };
   // point-in-polygon and distance-to-polygon, in the wheel's local 2D
@@ -77,27 +86,30 @@ const out = await p.evaluate(async () => {
     const f = i / 48;
     I.enterAxis(clock); clock.setPose(axis.pose(f)); clock.scene.updateMatrixWorld(true);
     // the pawl's corners, in the WHEEL's local frame (where ratchetPoly lives)
-    pawl.updateWorldMatrix(true, false); wheelGroup.updateWorldMatrix(true, false);
-    const toWheel = wheelGroup.matrixWorld.clone().invert().multiply(pawl.matrixWorld);
-    const pos = pawl.geometry.attributes.position;
-    let deepest = 0, insideN = 0, n = 0, minGap = Infinity;
-    for (let k = 0; k < pos.count; k++) {
-      v.fromBufferAttribute(pos, k).applyMatrix4(toWheel);
-      n++;
-      const d = distToPoly(v.x, v.y);
-      if (inPoly(v.x, v.y)) { insideN++; if (d > deepest) deepest = d; }
-      else if (d < minGap) minGap = d;
-    }
-    // and the pawl's own radius from the wheel's axis — the number that says
-    // whether it is at the teeth or inside the disc
+    wheelGroup.updateWorldMatrix(true, false);
+    const inv = wheelGroup.matrixWorld.clone().invert();
+    let deepest = 0, insideN = 0, n = 0, minGap = Infinity, noseGap = null, noseIn = 0;
     let rMin = Infinity, rMax = 0;
-    for (let k = 0; k < pos.count; k++) {
-      v.fromBufferAttribute(pos, k).applyMatrix4(toWheel);
-      const r = Math.hypot(v.x, v.y);
-      rMin = Math.min(rMin, r); rMax = Math.max(rMax, r);
+    for (const body of bodies) {
+      body.updateWorldMatrix(true, false);
+      const toWheel = inv.clone().multiply(body.matrixWorld);
+      const pos = body.geometry.attributes.position;
+      for (let k = 0; k < pos.count; k++) {
+        v.fromBufferAttribute(pos, k).applyMatrix4(toWheel);
+        n++;
+        const r = Math.hypot(v.x, v.y);
+        rMin = Math.min(rMin, r); rMax = Math.max(rMax, r);
+        const d = distToPoly(v.x, v.y), isIn = inPoly(v.x, v.y);
+        // the NOSE is the declared contact — it is meant to sit in a corner, so
+        // its readings are reported apart rather than counted as penetration
+        if (body === nose) { if (isIn) noseIn++; else if (noseGap === null || d < noseGap) noseGap = d; continue; }
+        if (isIn) { insideN++; if (d > deepest) deepest = d; }
+        else if (d < minGap) minGap = d;
+      }
     }
     rows.push({ f: +f.toFixed(3), insideN, n, inPlaneDepth: +deepest.toFixed(4),
                 gap: minGap === Infinity ? null : +minGap.toFixed(4),
+                noseGap: noseGap === null ? null : +noseGap.toFixed(4), noseIn,
                 rMin: +rMin.toFixed(3), rMax: +rMax.toFixed(3),
                 colA: +clock.alarmDebug.alarmColShownA.toFixed(4) });
   }
@@ -108,11 +120,21 @@ const out = await p.evaluate(async () => {
 await b.close(); srv.kill();
 if (out.err) { console.log(out.err); process.exit(1); }
 console.log(`  saw: ${out.teeth} outline points, root circle ${out.rootR}, tip circle ${out.tipR}\n`);
-console.log('  f      colA     inside/n   IN-PLANE depth   gap      pawl r');
+console.log('  f      colA     inside/n   IN-PLANE depth   gap      pawl r          nose');
 for (const r of out.rows)
   console.log(`  ${String(r.f).padStart(5)}  ${String(r.colA).padStart(7)}  ${String(r.insideN).padStart(3)}/${r.n}`
     + `      ${String(r.inPlaneDepth).padStart(8)}   ${String(r.gap ?? '-').padStart(7)}`
     + `   ${String(r.rMin).padStart(6)}..${r.rMax}`
+    + `   ${String(r.noseIn ? `in×${r.noseIn}` : (r.noseGap ?? '-')).padStart(7)}`
     + (r.inPlaneDepth > 0.15 ? '  ← past CLEAR_MARGIN' : ''));
 const worst = out.rows.reduce((a, b2) => (b2.inPlaneDepth > a.inPlaneDepth ? b2 : a));
 console.log(`\n  worst in-plane penetration ${worst.inPlaneDepth} at f=${worst.f} (${worst.insideN} of ${worst.n} vertices inside the saw)`);
+
+// §163's acceptance, in the terms this probe was written to answer: every body
+// of the pawl BUT its nose clears the saw at every pose, and the nose is where
+// the contact is. A nose reading `in×N` is the seat itself — the disc is
+// solved to touch, and a corner it sits in reads a vertex or two inside by the
+// tessellation's own width.
+const worstGap = out.rows.reduce((a, b2) => ((b2.gap ?? Infinity) < (a.gap ?? Infinity) ? b2 : a));
+console.log(`  the bodies' worst clearance to the saw ${worstGap.gap} at f=${worstGap.f}`);
+process.exit(out.rows.every((r) => r.insideN === 0) ? 0 : 1);

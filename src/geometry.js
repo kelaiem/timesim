@@ -2788,28 +2788,70 @@ export function makeColumnDriver({ boreR, hubR, arms, slot,
 // region was mapped with — change it and the map no longer describes it.
 export function makeColumnPawl({ nodes, pivot, nose, w, noseR, boreR, bossR, thickness,
                                  material = MATS.blueSteel, name = 'columnPawl' }) {
-  const body = thickenPolyline(nodes, w, name);
-  const shape = new THREE.Shape();
-  body.forEach(([x, y], i) => (i === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y)));
-  shape.closePath();
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
-  const mesh = new THREE.Mesh(geo, material);
-  mesh.name = name;
-  mesh.userData.outline = body;
-  mesh.userData.centreline = nodes;
-  // The pivot boss and the nose are DISCS ON the centreline, not ends of it:
-  // the nose's centre is where the free region was mapped with a disc of noseR,
-  // and the body's last node is wherever that map's corridor ended. They have
-  // to overlap or the pawl is two parts.
+  // The PIVOT BORE is cut, not declared. The repo's older convention is to let
+  // a lever's metal swallow its stud and name the overlap in
+  // INTRA_UNIT_CONTACTS, and that is a real convention with rows behind it —
+  // but here the joint's own running clearance is the number the §137 row
+  // quotes, so a solid pawl would have the arithmetic claiming a fit the metal
+  // does not have.
+  //
+  // Which means the ARM cannot run through the pivot. It is 2w across and the
+  // post is wider than that, so a centreline through the origin puts the post
+  // through the arm's flanks whatever hole is cut in it. The boss is the member
+  // that carries the bore; the arm is CLIPPED off a disc of boreR + w around
+  // the pivot, so its metal starts exactly where the bore ends, and the runs on
+  // either side (the tail, and the arm proper) become their own bodies — still
+  // one part, because each still laps well inside the boss.
+  const clipR = boreR + w;
+  const dOf = (q) => Math.hypot(q[0] - pivot[0], q[1] - pivot[1]);
+  const runs = [];
+  let cur = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const inHere = dOf(nodes[i]) >= clipR;
+    if (inHere) cur.push(nodes[i]);
+    if (i + 1 === nodes.length) break;
+    const inNext = dOf(nodes[i + 1]) >= clipR;
+    if (inHere === inNext) continue;
+    // bisect the crossing so the clipped end lands ON the disc
+    let a = nodes[i], b = nodes[i + 1];
+    for (let k = 0; k < 24; k++) {
+      const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      if ((dOf(m) >= clipR) === inHere) a = m; else b = m;
+    }
+    const cut = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    if (inHere) { cur.push(cut); runs.push(cur); cur = []; } else cur = [cut];
+  }
+  if (cur.length > 1) runs.push(cur);
+  const bodies = runs.filter((r) => r.length > 1).map((r, i) => {
+    const outline = thickenPolyline(r, w, `${name}#${i}`);
+    const sh = new THREE.Shape();
+    outline.forEach(([x, y], k) => (k === 0 ? sh.moveTo(x, y) : sh.lineTo(x, y)));
+    sh.closePath();
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: thickness, bevelEnabled: false }), material);
+    m.name = i === 0 ? `${name}Tail` : name;
+    m.userData.outline = outline;
+    m.userData.centreline = r;
+    return m;
+  });
+  if (bodies.length !== 2)
+    console.warn(`§163: ${name}'s centreline clipped into ${bodies.length} runs around its bore, not the tail and the arm — the spring has nothing to bear on, or the arm is severed`);
   const end = nodes[nodes.length - 1];
   if (Math.hypot(nose[0] - end[0], nose[1] - end[1]) > w + noseR)
     console.warn(`§163: ${name}'s nose at (${nose}) is ${Math.hypot(nose[0] - end[0], nose[1] - end[1]).toFixed(3)} from its body's last node — more than w + noseR ${(w + noseR).toFixed(3)}, so the nose is not attached`);
-  const disc = (r, at, nm) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, thickness, 16), material);
-    m.name = nm; m.rotation.x = Math.PI / 2; m.position.set(at[0], at[1], thickness / 2);
-    return m;
-  };
-  return { mesh, boss: disc(bossR, pivot, `${name}Boss`), nose: disc(noseR, nose, `${name}Nose`), bore: boreR };
+  if (bossR <= clipR)
+    console.warn(`§163: ${name}'s boss ${bossR.toFixed(3)} does not reach its clipped arms at ${clipR.toFixed(3)} — the pawl is three parts`);
+  const bossShape = new THREE.Shape();
+  bossShape.absarc(pivot[0], pivot[1], bossR, 0, Math.PI * 2, false);
+  const hole = new THREE.Path();
+  hole.absarc(pivot[0], pivot[1], boreR, 0, Math.PI * 2, true);
+  bossShape.holes.push(hole);
+  const boss = new THREE.Mesh(new THREE.ExtrudeGeometry(bossShape, { depth: thickness, bevelEnabled: false }), material);
+  boss.name = `${name}Boss`;
+  const noseM = new THREE.Mesh(new THREE.CylinderGeometry(noseR, noseR, thickness, 16), material);
+  noseM.name = `${name}Nose`;
+  noseM.rotation.x = Math.PI / 2;
+  noseM.position.set(nose[0], nose[1], thickness / 2);
+  return { bodies, mesh: bodies[bodies.length - 1], tail: bodies[0], boss, nose: noseM, bore: boreR };
 }
 
 // `reverse` mirrors the saw (teeth lean the other way): a ratchet's

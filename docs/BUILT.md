@@ -16789,3 +16789,206 @@ blade between them — and this landing does not build it. What changed is that
 the instrument now says so: before §162 the movement's clearest missing return
 was invisible behind a real spring answering for the wrong body, and it is a
 gated row now that fails the moment its waiver is deleted.
+
+## §163 — the column wheel's driver: a pawl on the wheel's own arbor, reached by a pin in a radial slot
+
+TODO 87 step 3, and the third of the item's findings to close with it. Before
+this landing the member said to be driving the column wheel sat **0.7615 inside
+the saw** at the bottom of the stroke (finding 7) and the wheel's angle was
+computed beside it as `travel / arm` — a drive with no contact, which is §35's
+original audit finding one member further upstream than TODO 20 reached.
+
+### The number that chose the architecture
+
+Four pivots were measured before anything was built, and one number decides all
+four: **how far the pawl's pivot advances in azimuth ABOUT THE WHEEL over the
+stroke**, against the 30° the wheel must turn.
+
+| pivot carried by | advance | verdict |
+|---|---|---|
+| the riser (a straight line) | 11° of 30° | the arm supplies the rest by SWINGING — 53.4° off radial at rest, 95.5° at the bottom. Past ~66° it lies along a tooth flank; worst clearance −0.15 from f ≈ 0.25 on, and seating the nose at the very tip still reads −0.044 |
+| a fixed post outside the wheel, pulling | 0° of 30° | the nose slides off the cliff face |
+| an operating lever on its own arc | 0.09–9.86° of 30° | never completes the cycle |
+| **the wheel's own arbor** | **30° of 30°** | **works** |
+
+The arbor wins for one reason: on the drive stroke the driver and the wheel turn
+about the same axis TOGETHER, so relative to the teeth the driver does not move
+and there is nothing to phase through. Every other pivot has to make up the
+missing rotation by swinging its arm, and the swing is what kills them.
+
+The return is the other half, and it is not free — there the driver does sweep a
+whole tooth backwards relative to the wheel. It survives because the driver's
+BODY lives below the ratchet skirt, passing UNDER the teeth, and only the pawl
+reaches up into their band on a post standing outside the tip circle. That is a
+click's duty, which this movement already performs twice, and it now falls
+entirely in the UNLOADED half of the cycle.
+
+### The coupling, and why the offset moved twice
+
+The pusher slides in a straight line under the plate; the driver turns. What
+joins them is a **pin in a radial slot** — the pin is the riser's own top, so
+the coupling adds no member.
+
+A radial slot makes the driver's angle the pin's **azimuth** about the arbor.
+That is a different kinematics from a lever, and it fixes the offset:
+
+    d = travel / (2·tan(step/2)) = 5.01226
+
+with the stroke **straddling the foot of the perpendicular** — the pin at
+azimuth 75° at rest, 105° pressed, sliding 5.0123 → 5.1891 and back in its slot.
+
+Stage one of this landing had derived the offset as `travel ÷ step` = 5.13,
+which is the saw's own root circle and is correct **for a rigid pawl on the end
+of an arm**: there the perpendicular offset IS the moment arm. That derivation
+is what made TODO 87 finding 1 cease to exist rather than be absorbed — the
+built 4.37 was 85.2% of it, so the press delivered 117.39% of a tooth, exactly
+the ratio of a guessed number to a derived one. But the pawl is not rigid on the
+pusher any more, so 5.13 is now an **intermediate**: the moment arm of a member
+this section deletes. Cutting the pin there instead is not a placement to
+shuffle out of — minimised over EVERY start position it would want 2.74916 of
+travel where 2.68606 exists, and each press would deliver 29.3415° of the
+30.000° a tooth needs.
+
+`pinInSlot` joins §137's named vocabulary because the corner it makes is none of
+the other five: the slot lets the pin's radius change, so its moment arm is not
+one number. By virtual work it is `(d² + s²)/d` — **5.01226 at the foot rising
+to 5.37213 at either end**, a 7.18% swing which is the velocity ratio's
+variation read the other way. Torque is greatest at the ends, which is where the
+pawl picks a tooth up and where it seats it.
+
+### The stratum this needed, and what it cost
+
+A driver at floor stock wants `CLEAR_MARGIN + STOCK_MIN_U + CLEAR_MARGIN` =
+**0.6166** between the plate top and the ratchet skirt, where §68's raise had
+put exactly one margin. `ALARM_COL_RAISE` is the same already-derived constant
+with a stricter constraint written in its comment, and the raise grows by
+**0.467**.
+
+That is real movement height, and it was priced before it was spent. The link's
+beak arm derives from `ALARM_COL_TOP_Z`, so the whole rider cluster goes up with
+the wheel — §68's own comment says every rider z-station derives from
+`ALARM_COL_SPIN_REL` "so the cluster rides up as one", which is both the
+mechanism and the bill. The two alternatives were measured and both fail:
+sinking the column below the backplate has 0.19 of largest gap among 60 meshes
+against the 2.417 it needs, and shortening the 1.4 castellation tier would spend
+two P0 contacts to buy at most 0.26.
+
+### Finding 6 closes in position space, not by deletion
+
+The plan for this landing said the reach bar would cease to exist. It does not —
+it changes **stratum**. The pin has to sit within ±travel/2 of the foot, which
+puts it at radius 5.01–5.19 from the arbor, INSIDE the saw's tip circle in plan;
+the round stem cannot go there, so a flat bar runs inboard at the stem's own z,
+**under the three-quarter plate**, where the plate itself stands between it and
+the driver. Measured over the whole stroke (`tools/probe-163-pin.mjs`) its
+nearest neighbour is that plate at **0.61**, and the next thing in the movement
+is **1.95**.
+
+That probe also corrected this finding's own arithmetic. Its "0.140 free band"
+was read off a vertex at z 8.9945 belonging to `screwSlots` — standing 0.01
+proud, and whose nearest vertex to the column wheel is **30.48 away**. The plate
+top is `threeQuarterPlate` at 8.9845, which is `TQ_TOP_Z`, so the band was
+**0.150** all along. The conclusion it supported survives; the number quoted for
+it did not, which is how a sound conclusion acquires a false witness.
+
+### The pawl: a mapped member, not a bar
+
+A straight bar cannot do the return at any workable pivot radius — measured, it
+fouls at every one. `tools/probe-163-driver.mjs` therefore maps the swept FREE
+REGION in the pawl's own frame and flood-fills it, and two corrections to that
+instrument are the reason the shipped outline is trustworthy:
+
+- **A BFS path is not a shape.** The flood fill walks grid cells; a member
+  somebody cuts is straight segments, and a straight segment cuts the corner the
+  staircase went round. Hand-simplifying it fouled by 0.1645. The probe now
+  straightens greedily and VERIFIES each run against the same sweep.
+- **Intersection is not clearance.** The region required only that the metal
+  miss the saw, and the outline that came out ran **0.0174** off a tooth tip.
+  Re-mapped requiring `w + CLEAR_MARGIN` everywhere but the nose's own working
+  zone, it still admits a member (5.195 u²), and that is the one the build cuts.
+
+The post's radius is a **constraint, not a scan**: it rises through the skirt's
+own z-band, so its SURFACE must clear the tips by one margin —
+`tip + CLEAR_MARGIN + STOCK_MIN_R10` = **6.70048**. Scanned for whichever radius
+measured best the probe answers 6.6, which stands a post of that stock 0.0495
+off the tips, a third of the margin. At the derived radius the return is
+STRONGER: free region 6.304 u² against 5.288.
+
+The build re-sweeps the outline it actually cut through the whole return and
+asserts **0.1645** worst clearance — §120's saw⇄pallet cycle sweep as precedent:
+the pose net covers the class, the group's own assert keeps the tight instance.
+
+The pawl's angle is solved against `ratchetPoly` at every pose, and the solve is
+**stateless by construction**. A tracking solve is what a probe can do and a tick
+cannot: `setPose` visits poses in any order, so a pose-dependent answer would
+make the wheel's stance a function of pose history — the residue TODO 54 exists
+to keep out. It anchors at the spring's free angle, a fixed feature of the part
+derived a full working stroke inside the metal, and scans outward to the first
+free angle, which is the most-closed one. On the drive that lands bottomed in a
+corner; on the return it rides out over a tip and drops into the next; and no
+branch anywhere says which is happening.
+
+### The spring, and the first cut that proved it had to be solved
+
+Choosing the blade's length and where it bore measured a return drag of
+**3.89e-1 N·mm** against the click's **3.34e-2 N·mm** detent — 11.6× over. That
+is not a margin to trim: it is a spring that would drag the wheel back on every
+release. Both dimensions are solved instead.
+
+**Where it bears** was solved first from the blade's own strain and answered
+0.1137 — *inside* the pawl's pivot boss, where a blade bears on the boss's rim
+and works at the boss's radius instead, making every number downstream of it a
+fiction. The boss governs: the blade reaches past it and no further, since the
+drag grows as the SQUARE of this arm.
+
+**How long it is** is then bounded from both sides, and the two are floors on
+the same quantity — a blade can always be longer than either needs:
+
+    drag budget:  L³ = E·a·c³·U²·stroke·bearArm² / (2·noseArm·Fmax)   → 3.669
+    its strain:   L² = 3·stroke·c·bearArm / SPRING_STRAIN_MAX          → 4.065
+
+The first solve wrote these as a simultaneous PAIR and got a closed form for L,
+which is what you do when both are equalities. They are not — the strain one is
+a limit. The strain governs here, so the drag lands at **4.08×** the detent
+rather than the 3× minimum, which is what a governing constraint always buys.
+
+The headroom itself is 3, and the earlier reasoning for 10 was wrong in an
+instructive way: it argued that a 2× margin sits inside the arithmetic's error.
+That applies layout.js's ABSOLUTE caveat to a RATIO, and layout.js says the
+opposite in its own words — "the RATIOS are what conclusions rest on". Both
+sides of this comparison come off the same modulus and the same cantilever law.
+The mistake costs a real blade: 10× wants 5.49 u of free length against 4.07,
+with the anchor half again as far out.
+
+### Where the post sits on the driver is a P3 choice at a 30° quantum
+
+The seats sit at fixed azimuths in the wheel, so the pawl's pivot can trail any
+of them and the branches are one tooth apart. The compact branch puts the post
+**8.6° from the click's own detent post at nearly the same radius**, and sweeps
+straight through it — caught by `intraUnit`, five violations.
+
+The build now sweeps the pawl through its whole return on EVERY branch and takes
+the one standing furthest off the metal already in that band. That is position
+space at a quantum the saw itself supplies, which is exactly the currency P3
+allows. The scan sees what is built at that point in the unit, which is not all
+of it — and that is why the choice is a scan and the verdict is `intraUnit`.
+
+### Two smaller things the gates found
+
+- **The pawl's arm is CLIPPED off its own pivot bore.** The bore is cut rather
+  than declared, because the §137 row quotes this joint's running clearance and
+  a solid pawl would have the arithmetic claiming a fit the metal did not have.
+  But a 2w arm is narrower than the post, so a centreline through the origin
+  puts the post through the arm's flanks whatever hole is cut. The centreline is
+  clipped against a disc of `boreR + w`, and the runs either side — the tail and
+  the arm proper — become their own bodies, still one part because each laps
+  well inside the boss.
+- **The reach bar's section went to §50's floor.** It was 0.30 × 0.24, under the
+  floor in both directions.
+
+### What this does NOT close
+
+TODO 87 step 5's second half: the pusher's own return still has no metal, and
+`RESTORING_MEMBER_WAIVERS` still carries its one row citing that item. The
+pawl's spring is a different member answering for a different body — §162's
+whole point.
