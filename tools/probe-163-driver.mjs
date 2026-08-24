@@ -307,20 +307,46 @@ const out = await p.evaluate(async () => {
     const su = Math.round((0 - U0) / DU), sv = Math.round((0 - V0) / DU);
     const tu = Math.round((L - U0) / DU), tv = sv;
     if (!okCell[idx(su, sv)]) return { reachable: false, why: 'the PIVOT itself is not free through the return' };
-    const seen = new Uint8Array(NU * NV); const stack = [[su, sv]]; seen[idx(su, sv)] = 1;
-    let hit = false, area = 0;
-    while (stack.length) {
-      const [iu, iv] = stack.pop(); area++;
-      if (Math.abs(iu - tu) <= 2 && Math.abs(iv - tv) <= 2) hit = true;
+    // BREADTH-FIRST, keeping parents — because "a shaped member exists" is only
+    // half an answer. The build needs the SHAPE, and guessing an outline is
+    // exactly the kind of number rule 1 forbids. A BFS through cells that
+    // already require w of clearance yields a centreline a bar of half-width w
+    // can follow, so the pawl's outline is DERIVED from the swept free region
+    // rather than drawn to look right.
+    const seen = new Int32Array(NU * NV).fill(-1);
+    const q = [idx(su, sv)]; seen[idx(su, sv)] = idx(su, sv);
+    let hit = -1, area = 0;
+    for (let h = 0; h < q.length; h++) {
+      const cur = q[h], iu = Math.floor(cur / NV), iv = cur % NV; area++;
+      if (hit < 0 && Math.abs(iu - tu) <= 2 && Math.abs(iv - tv) <= 2) hit = cur;
       for (const [du, dv] of [[1,0],[-1,0],[0,1],[0,-1]]) {
         const ju = iu + du, jv = iv + dv;
         if (ju < 0 || jv < 0 || ju >= NU || jv >= NV) continue;
-        if (seen[idx(ju, jv)] || !okCell[idx(ju, jv)]) continue;
-        seen[idx(ju, jv)] = 1; stack.push([ju, jv]);
+        const n = idx(ju, jv);
+        if (seen[n] >= 0 || !okCell[n]) continue;
+        seen[n] = cur; q.push(n);
       }
     }
-    return { reachable: hit, area: +(area * DU * DU).toFixed(3),
-             why: hit ? 'pivot and nose lie in ONE connected free region — a shaped member exists'
+    let path = null;
+    if (hit >= 0) {
+      const pts = [];
+      for (let c = hit; ; c = seen[c]) {
+        pts.push([+(U0 + Math.floor(c / NV) * DU).toFixed(3), +(V0 + (c % NV) * DU).toFixed(3)]);
+        if (seen[c] === c) break;
+      }
+      pts.reverse();
+      // thin it to a readable polyline: keep a node whenever the direction turns
+      const keep = [pts[0]];
+      for (let i = 1; i < pts.length - 1; i++) {
+        const a = keep[keep.length - 1], b = pts[i], c2 = pts[i + 1];
+        const cross = (b[0] - a[0]) * (c2[1] - a[1]) - (b[1] - a[1]) * (c2[0] - a[0]);
+        if (Math.abs(cross) > 1e-9) keep.push(b);
+      }
+      keep.push(pts[pts.length - 1]);
+      path = keep;
+    }
+    return { reachable: hit >= 0, area: +(area * DU * DU).toFixed(3), path,
+             why: hit >= 0 ? 'pivot and nose lie in ONE connected free region — a shaped member exists'
                       : 'the free region around the pivot does not reach the nose' };
   }
   const shaped = [];
@@ -375,6 +401,11 @@ if (asCut && asCut.reachable) {
   console.log(`\nAT THE SAW AS CUT (depth ${asCut.depth.toFixed(3)}): Rq ${asCut.Rq}, pivot ${asCut.offDeg}\u00b0 off the seat, `
     + `lift ${r.lift.toFixed(3)} against ${r.needLift.toFixed(3)} needed, free region ${asCut.area} u\u00b2.`);
   console.log('The driver-on-the-arbor architecture SURVIVES its return stroke, and the saw needs no re-cutting.');
+  if (asCut.path) {
+    console.log(`\n  the pawl's centreline through that region, in the PAWL's own frame`);
+    console.log(`  (u along pivot→nose, v across; pivot at 0,0, nose at ${r.L ?? '?'},0) — ${asCut.path.length} nodes:`);
+    console.log('   ' + asCut.path.map(([u, v]) => `(${u}, ${v})`).join(' → '));
+  }
   console.log('A STRAIGHT bar does not fit \u2014 the pawl must be shaped, which is what a real pawl is.');
 } else {
   console.log('\nAt the saw as cut the architecture does NOT survive its return stroke.');
