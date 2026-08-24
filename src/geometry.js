@@ -6314,7 +6314,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     z0, zMidBack, zFlangeIn,
     zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     gasketD, gasketSeat, crystT, screwN, screwShaftD, screwHeadD, tubeD, pusherD,
-    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ,
+    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff,
     lugSpan,
   } = dims;
   const g = new THREE.Group();
@@ -6477,16 +6477,36 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // means in metal. Built proud, its collar landed inside the §43 pusher head
   // — a 2 mm cap whose inner face is at R_OUT + 1 mm, exactly where the collar
   // began — so the two occupied the same 0.5 mm of the pusher's axis.
-  const tubeAt = (az, d, z, name, flush = false) => {
+  // `off` is the opening's PERPENDICULAR offset from the case centre, and it
+  // is the difference between an azimuth and a LINE. A crown is mounted on a
+  // radius, so for both crown tubes off = 0 and the two are the same thing.
+  // The alarm pusher is not: ALARM_PUSH_CHORD offsets its line from the
+  // movement's centre precisely so the pawl has a moment arm, so it travels
+  // along a line PARALLEL to the radius at `pusherAz` and 4.37 u (1.66 mm)
+  // to one side of it. Told only the azimuth, this builder drilled the hole
+  // on the radius and the pusher came out through solid band beside it —
+  // visible as a bare ring with the head standing next to it, which is how
+  // it was found.
+  //
+  // With an offset axis the tube no longer meets the wall at radius: it
+  // crosses R at sqrt(R² − off²) along its own line, so the ends derive from
+  // the offset rather than being read straight off R_IN/R_OUT.
+  const tubeAt = (az, d, z, name, flush = false, off = 0) => {
     const r = d / 2;
-    const outboard = flush ? R_OUT : R_OUT + 1.5 / UNIT_MM;
-    const len = outboard - (R_IN - 1 / UNIT_MM);
+    const alongAt = (R) => Math.sqrt(Math.max(0, R * R - off * off));
+    const outboard = flush ? alongAt(R_OUT) : alongAt(R_OUT) + 1.5 / UNIT_MM;
+    const inboard = alongAt(R_IN) - 1 / UNIT_MM;
+    const len = outboard - inboard;
     // The stems' own convention (windSpinner et al.): cylinder axis Y, the
     // pivot's z-rotation maps +Y outboard along the azimuth. No intermediate
     // holder — a rotated frame would throw the radial offsets into z.
     const pivot = new THREE.Group();
     pivot.rotation.z = az - Math.PI / 2;
     pivot.position.z = z;
+    // ...and step the whole pivot sideways onto the opening's real line. The
+    // rotation above already maps +Y outboard, so +X is the perpendicular.
+    pivot.position.x = -Math.sin(az) * off;
+    pivot.position.y = Math.cos(az) * off;
     // A CAPPED SLEEVE, not a bore surface. This was an open-ended cylinder at
     // the bore radius: a wall of no thickness, open at both ends — which is a
     // SURFACE, and `d` is the tube's BORE (layout.js), so the metal it stands
@@ -6495,7 +6515,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     // are supposed to sleeve. ringExtrude caps both ends by construction.
     const sleeve = new THREE.Mesh(ringExtrude(r + TUBE_WALL, r, len, 20), material);
     sleeve.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
-    sleeve.position.y = (R_IN - 1 / UNIT_MM) + len / 2;
+    sleeve.position.y = inboard + len / 2;
     sleeve.name = `${name}Sleeve`;
     pivot.add(sleeve);
     // Collar: the tube's outer flange, 0.5 mm tall, 0.4 mm proud radius —
@@ -6507,7 +6527,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     if (!flush) {
       const collar = new THREE.Mesh(ringExtrude(r + COLLAR_PROUD, r, 0.5 / UNIT_MM, 20), material);
       collar.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
-      collar.position.y = R_OUT + 1.25 / UNIT_MM;
+      collar.position.y = alongAt(R_OUT) + 1.25 / UNIT_MM;   // on the tube's own line, like the sleeve
       collar.name = `${name}Collar`;
       pivot.add(collar);
     }
@@ -6519,7 +6539,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   };
   tubeAt(stemAz, tubeD, stemZ, 'caseCrownTube');
   tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
-  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true);   // flush — a bore, not a tube
+  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff);  // flush, and OFF the radius — a bore, not a tube
 
   // Lugs at 12 and 6, spring-bar span per dims; each lug a prism
   // chord-tangent to the band and ROOTED 0.8 mm into it (the brazed

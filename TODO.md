@@ -9673,13 +9673,14 @@ approximation is available and should be declared if taken: a constant
 angular window over the radial run cuts a slightly conical hole rather than
 a cylindrical one, over-cut at `R_OUT` by 0.24° of the 4.32°.
 
-**A third body crosses the band, and only at one pose.** `inspection` sweeps
-the pose net, so it sees what a single-pose probe cannot: `alarmPusherStem`
-reaches r 30.21–48.00 at `alarmPress` f=0.5, which puts its outer end 2.44 u
-inside the band annulus (`R_IN` 45.56 – `R_OUT` 48.20). At rest it is clear,
-which is why the pair reports on `alarmPress` and on no other axis. Same
-cause, same fix, one more station: the pusher bore needs its aperture too,
-at `pusherAz`, Ø1.2 mm + wall.
+**The pusher is NOT a third station, and the first version of this entry said
+it was.** `alarmPusherStem` did read as crossing the band at `alarmPress`
+f = 0.5, and that reading was quoted here as one more aperture to cut. It was
+a symptom of two different defects in the pusher's own placement — the head's
+standoff and the bore's azimuth, both since fixed (see item 92) — and with
+those closed, `inspection` reports `Alarm switch ⇄ Case` clear at all 65
+`alarmPress` poses. The pusher bore is real, is drilled, and needs nothing
+from this item. Two crown stems remain.
 
 Do NOT resolve this by declaring the pairs EXPECTED. A stem in a crown tube
 touches the TUBE, by design, with clearance; it does not touch the band.
@@ -9772,7 +9773,7 @@ be sized against the lever's swept azimuth, not its resting one.
 Both this and item 90 are blocked on the same missing sector-lathe
 construction, and both should be cut in one pass once it exists.
 
-## 92. The alarm pusher's cap has no stop, and the flush bore is what exposed it
+## 92. CLOSED — the case treated a chord-mounted pusher as a radial one, twice
 
 Filed 2026-08-24, and honestly attributed: this is a consequence of the
 flush-bore correction in the same landing, not a defect that predated it.
@@ -9794,12 +9795,35 @@ can never enter the bore; the press has to be absorbed by the stem sliding
 inside it, with the cap standing off the band by the stroke at rest and
 arriving flush at full press. Today it simply travels through.
 
-The fix is a derivation, not a nudge, and it belongs to the pusher's own
-action group rather than to the case: the head's rest radius is
-`R_OUT` + stroke, and the stroke is the one §43/TODO 87 already own — the
-throw that indexes the column wheel one castellation. Deriving it here, from
-the case, would be standing rule 2 backwards. Whoever takes it should also
-say what the cap lands ON at full press: bare band face, or a turned seat.
+**CLOSED, and the second half is the more interesting one.** Both faults were
+the same wrong assumption in two places: that a pusher on azimuth `pusherAz`
+lies on the RADIUS at that azimuth. It does not — `ALARM_PUSH_CHORD` steps
+its line 4.37 u (1.66 mm) off the movement's centre so the pawl has a moment
+arm — and an azimuth locates a radius, not a line.
 
-Note for whoever measures it: the resting pose is clear, so a single-pose
-probe reports nothing. This wants `alarmPress`, mid-stroke.
+**Depth.** `stemOuterS` read `CASE_R_OUT + 1.0/UNIT_MM − hypot(_pushBase)`.
+The magnitude of the base vector is its projection on the push axis only for
+a radial pusher, so the term was wrong by that same 0.3495 u; and 1 mm of
+standoff was under the 2.686 u throw regardless. Now solved from the
+constraint — `CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL − _pushBaseS` —
+so the head clears the band by 0.181 u at full press instead of standing
+0.397 u inside it, and rests 1.086 mm proud. The throw is untouched: the
+case does not get to limit the stroke.
+
+**Position.** `makeCase`'s `tubeAt` built every opening on a radius, so the
+pusher bore was drilled 4.37 u to one side of the pusher. It was visible from
+the moment the head stopped burying itself: a bare ring on the band with the
+button standing in unbroken metal beside it — which is how it was actually
+caught, by eye, not by a gate. `tubeAt` now takes the opening's perpendicular
+offset, and an offset tube meets the wall at sqrt(R² − off²) along its own
+line rather than at R, so its ends derive from the offset too. Both crowns
+pass 0 and are unchanged.
+
+**What no instrument said.** Every gate was green on the misplaced bore, and
+would have stayed green: it is Case ⇄ Case, and the case unit sits outside
+`INTRA_TIER_SCOPE` by its own declaration, so no pair check compares a hole
+to the thing meant to go through it. The nearest thing to a gate here is that
+`Alarm switch ⇄ Case` was FORBIDDEN for the OTHER reason, and clearing it is
+what left the hole standing on its own to be seen. Worth a check that asks
+whether each declared opening contains its part — filed as its own question
+rather than pretended to here.

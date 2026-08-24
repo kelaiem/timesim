@@ -40,7 +40,7 @@ const res = await page.evaluate(async () => {
       const bA = new THREE.Box3().setFromObject(A), bB = new THREE.Box3().setFromObject(B);
       if (!bA.intersectsBox(bB)) continue;
       const d = I.meshClearance(A, B, Infinity);
-      if (d > 0.001) continue;
+      if (d > 0.001) { out.push(`  (clear ${d.toFixed(4)}) ${A.name || A.geometry.type} ⇄ ${B.name || B.geometry.type}`); continue; }
       any = true;
       out.push(`  ${A.name || A.geometry.type} ⇄ ${B.name || B.geometry.type}`);
       out.push(`      case  ${extent(A)}`);
