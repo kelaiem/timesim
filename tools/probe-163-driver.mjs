@@ -252,6 +252,110 @@ const out = await p.evaluate(async () => {
   }
   setDepth(tip - rr0);
 
+  // ——— THE POST'S RADIUS IS DERIVED, NOT SCANNED ———
+  // §163: the pawl's pivot post rises through the SKIRT'S OWN z-band to reach
+  // the teeth, so its SURFACE — not its centreline — must stand one CLEAR_MARGIN
+  // outside the tip circle:
+  //     Rq = tip + CLEAR_MARGIN + postR
+  // The scan above reports whichever Rq measures best, which is a different
+  // question and lands 6.6 — a centreline that puts a STOCK_MIN_R10 post's
+  // surface 0.0495 from the tips, a third of the margin. What the build can
+  // actually use is this one value, so it is measured on its own row rather
+  // than read off a scan that was never asked the question.
+  const CLEAR_MARGIN_G = 0.15, STOCK_MIN_R10_G = 0.16648151883772563;
+  const RQ_DERIVED = tip + CLEAR_MARGIN_G + STOCK_MIN_R10_G;
+  let derivedRow = null;
+  {
+    const seat = seatFor(rn);
+    const azSeat = Math.atan2(seat.y, seat.x);
+    for (const offDeg of [8, 16, 24, 28, 32, 36, 40, 44, 50, 56]) {
+      const azq0 = azSeat + returnDir * (offDeg * Math.PI / 180);
+      const L = Math.hypot(seat.x - RQ_DERIVED * Math.cos(azq0), seat.y - RQ_DERIVED * Math.sin(azq0));
+      const r = sweep(RQ_DERIVED, azq0, L, rn, w);
+      const cleared = !r.lost && r.lift >= r.needLift - 1e-3 && r.landed <= 0.05;
+      const row = { depth: tip - rr0, Rq: RQ_DERIVED, offDeg, L: +L.toFixed(4), ...r, cleared, ok: cleared && r.worstBar >= MARGIN };
+      if (!derivedRow || (row.cleared && !derivedRow.cleared)
+          || (row.cleared === derivedRow.cleared && row.worstBar > derivedRow.worstBar)) derivedRow = row;
+    }
+  }
+
+  // ——— AND DOES THE OUTLINE THE BUILD ACTUALLY CUTS SURVIVE IT? ———
+  // freeRegion answers "does SOME member exist" with a flood fill, and a BFS
+  // path is a staircase through grid cells — not a shape anybody would cut.
+  // The build turns it into a few straight segments, and a straight segment
+  // CUTS CORNERS the staircase went round. That is a different claim and it
+  // gets its own measurement: thicken the proposed centreline to half-width w
+  // (a capsule is the union of discs of radius w along it, so requiring w of
+  // clearance at every sample IS the capsule test) and sweep it through the
+  // same tracked return the free region was mapped from.
+  function returnPoses(Rq, azq0, L, rn) {
+    const seat = seatFor(rn);
+    const phi0 = Math.atan2(seat.y - Rq * Math.sin(azq0), seat.x - Rq * Math.cos(azq0)) - azq0;
+    const poses = [];
+    let phi = phi0;
+    for (let st = 0; st <= STEPS; st++) {
+      const az = azq0 + returnDir * PITCH * (st / STEPS);
+      const qx = Rq * Math.cos(az), qy = Rq * Math.sin(az);
+      const theta = phi + az;
+      const at = (th) => ({ nx: qx + L * Math.cos(th), ny: qy + L * Math.sin(th) });
+      const free = (th) => { const n = at(th); return clearOf(n.nx, n.ny) >= rn - 1e-4; };
+      const rAt = (th) => { const n = at(th); return Math.hypot(n.nx, n.ny); };
+      const inward = rAt(theta + 1e-4) < rAt(theta - 1e-4) ? 1 : -1;
+      let th = theta;
+      if (!free(theta)) {
+        for (let k = 1; k * DTH <= SCAN; k++) { const t2 = theta - inward * k * DTH; if (free(t2)) { th = t2; break; } }
+      } else {
+        for (let k = 1; k * DTH <= SCAN; k++) { const t2 = theta + inward * k * DTH; if (!free(t2)) break; th = t2; }
+      }
+      phi = th - az;
+      poses.push({ qx, qy, th });
+    }
+    return poses;
+  }
+  // Worst slack of a THICKENED CENTRELINE over the whole tracked return. A
+  // capsule of half-width w is the union of discs of radius w along its spine,
+  // so requiring w of clearance at every sample IS the capsule test.
+  function slackOf(poses, L, rn, w, nodes, pad = 0) {
+    const pts = [];
+    for (let i = 0; i + 1 < nodes.length; i++) {
+      const [u0, v0] = nodes[i], [u1, v1] = nodes[i + 1];
+      const n = Math.max(2, Math.ceil(Math.hypot(u1 - u0, v1 - v0) / 0.02));
+      for (let k = 0; k <= n; k++) pts.push([u0 + (u1 - u0) * k / n, v0 + (v1 - v0) * k / n]);
+    }
+    let worst = Infinity, worstAt = null;
+    for (const P2 of poses) {
+      const c = Math.cos(P2.th), sn = Math.sin(P2.th);
+      for (const [u, v] of pts) {
+        const nearNose = Math.hypot(u - L, v) < rn + w;
+        const need = nearNose ? rn * 0.5 : w + pad;
+        const x = P2.qx + u * c - v * sn, y = P2.qy + u * sn + v * c;
+        const slack = clearOf(x, y) - need;
+        if (slack < worst) { worst = slack; worstAt = [+u.toFixed(3), +v.toFixed(3)]; }
+      }
+    }
+    return { worst: +worst.toFixed(4), worstAt, ok: worst >= 0 };
+  }
+  // A BFS path is a staircase through grid cells — not a shape anybody would
+  // cut. Straightening it is a DIFFERENT claim than the flood fill's, because a
+  // straight segment cuts the corner the staircase went round (measured: the
+  // first hand-simplification fouled by 0.1645 at u 2.40). So the simplification
+  // is greedy and VERIFIED: take the longest straight run from each node that
+  // still clears, never a run that does not.
+  function simplifyPath(poses, L, rn, w, path, pad = 0) {
+    if (!path || path.length < 2) return null;
+    const outNodes = [path[0]];
+    let i = 0;
+    while (i < path.length - 1) {
+      let bestJ = i + 1;
+      for (let j = path.length - 1; j > i + 1; j--) {
+        if (slackOf(poses, L, rn, w, [path[i], path[j]], pad).ok) { bestJ = j; break; }
+      }
+      outNodes.push(path[bestJ]);
+      i = bestJ;
+    }
+    return outNodes;
+  }
+
   // ——— IS THERE A SHAPED MEMBER AT ALL? ———
   // Every sweep above models the pawl as a STRAIGHT bar from pivot to nose, and
   // that is a proxy: a real pawl is shaped — out over the tip circle, then a
@@ -263,7 +367,7 @@ const out = await p.evaluate(async () => {
   // the driver returns; it is usable iff it clears the metal at EVERY step. Map
   // that region, then flood-fill from the pivot: if the nose is reachable
   // within it, a member can be shaped to join them and the architecture lives.
-  function freeRegion(Rq, azq0, L, rn, w) {
+  function freeRegion(Rq, azq0, L, rn, w, pad = 0) {
     const seat = seatFor(rn);
     const phi0 = Math.atan2(seat.y - Rq * Math.sin(azq0), seat.x - Rq * Math.cos(azq0)) - azq0;
     // re-run the tracked return, recording the pose at every step
@@ -297,7 +401,7 @@ const out = await p.evaluate(async () => {
       for (const P2 of poses) {
         const c = Math.cos(P2.th), sn = Math.sin(P2.th);
         const x = P2.qx + u * c - v * sn, y = P2.qy + u * sn + v * c;
-        const need = nearNose ? rn * 0.5 : w;
+        const need = nearNose ? rn * 0.5 : w + pad;
         if (clearOf(x, y) < need) { good = false; break; }
       }
       okCell[iu * NV + iv] = good ? 1 : 0;
@@ -358,8 +462,31 @@ const out = await p.evaluate(async () => {
     shaped.push({ depth: r.depth, Rq: r.Rq, offDeg: r.offDeg, ...freeRegion(r.Rq, azq0, r.L, rn, w) });
   }
   setDepth(tip - rr0);
+  let derivedShaped = null, derivedOutline = null;
+  if (derivedRow && derivedRow.cleared) {
+    const seat = seatFor(rn); const azSeat = Math.atan2(seat.y, seat.x);
+    const azq0 = azSeat + returnDir * (derivedRow.offDeg * Math.PI / 180);
+    derivedShaped = { Rq: derivedRow.Rq, offDeg: derivedRow.offDeg, ...freeRegion(derivedRow.Rq, azq0, derivedRow.L, rn, w) };
+    // THE BUILD'S OWN CENTRELINE — the free region's path, straightened into
+    // segments a drawing could hold, each one verified rather than eyeballed.
+    //
+    // AND PADDED. The flood fill above asks only whether the member's metal
+    // INTERSECTS the saw; a member that answers yes can still run 0.017 off a
+    // tooth tip, which is a hair, not a clearance. The build's own region is
+    // re-mapped requiring w + CLEAR_MARGIN everywhere except the nose's own
+    // working zone, so what comes out is a member that keeps the movement's one
+    // structural margin from every surface it is not supposed to touch.
+    const L2 = derivedRow.L;
+    const poses = returnPoses(derivedRow.Rq, azq0, L2, rn);
+    const padded = freeRegion(derivedRow.Rq, azq0, L2, rn, w, CLEAR_MARGIN_G);
+    const simple = padded.reachable ? simplifyPath(poses, L2, rn, w, padded.path, CLEAR_MARGIN_G) : null;
+    derivedOutline = simple
+      ? { nodes: simple, pad: CLEAR_MARGIN_G, area: padded.area, ...slackOf(poses, L2, rn, w, simple, CLEAR_MARGIN_G) }
+      : { nodes: null, pad: CLEAR_MARGIN_G, area: padded.area, ok: false, why: padded.why };
+  }
+  setDepth(tip - rr0);
   return {
-    rr, tip, PITCH, drive, returnDir, teeth: N / 2,
+    rr, tip, PITCH, drive, returnDir, teeth: N / 2, derivedRow, derivedShaped, derivedOutline, RQ_DERIVED,
     cornerInteriorDeg: +(seatFor(0.2).half * 180 / Math.PI).toFixed(2),
     seatR: +Math.hypot(seatFor(0.2).x, seatFor(0.2).y).toFixed(4),
     rn, w, MARGIN, rows, shaped,
@@ -410,4 +537,29 @@ if (asCut && asCut.reachable) {
 } else {
   console.log('\nAt the saw as cut the architecture does NOT survive its return stroke.');
 }
-process.exit(asCut && asCut.reachable ? 0 : 1);
+// ——— THE ROW THE BUILD CONSUMES ———
+console.log(`\nTHE POST RADIUS THE BUILD MUST USE, derived rather than scanned:`);
+console.log(`  Rq = tip ${out.tip.toFixed(3)} + CLEAR_MARGIN 0.150 + post STOCK_MIN_R10 0.166 = ${out.RQ_DERIVED.toFixed(5)}`);
+if (!out.derivedRow || !out.derivedRow.cleared) {
+  console.log('  at that radius the nose does NOT index — the architecture needs re-siting, not a smaller margin.');
+} else {
+  const d = out.derivedRow;
+  console.log(`  pivot ${d.offDeg}° off the seat, arm L ${d.L}, lift ${d.lift.toFixed(3)} against ${d.needLift.toFixed(3)} needed`);
+  console.log(`  free region ${out.derivedShaped?.area ?? '—'} u² — ${out.derivedShaped?.reachable ? 'SHAPED MEMBER EXISTS' : 'NO SHAPED MEMBER'}`);
+  if (out.derivedShaped?.path) {
+    console.log(`  centreline in the pawl's own frame (pivot 0,0 → nose ${d.L},0), ${out.derivedShaped.path.length} nodes:`);
+    console.log('   ' + out.derivedShaped.path.map(([u, v]) => `(${u}, ${v})`).join(' → '));
+  }
+}
+
+if (out.derivedOutline) {
+  const o = out.derivedOutline;
+  console.log(`\n  THE OUTLINE THE BUILD CUTS — half-width ${out.w}, and the region re-mapped`);
+  console.log(`  requiring w + CLEAR_MARGIN ${o.pad} everywhere but the nose's working zone (free area ${o.area ?? '—'} u\u00b2):`);
+  if (!o.nodes) { console.log(`   NO MEMBER SURVIVES THE PADDED REGION \u2014 ${o.why}`); }
+  else console.log('   ' + o.nodes.map(([u, v]) => `(${u}, ${v})`).join(' \u2192 '));
+  if (o.nodes) console.log(`  worst slack over the whole return: ${(o.worst >= 0 ? '+' : '') + o.worst}`
+    + ` at (${o.worstAt?.join(', ')}) \u2014 ${o.ok ? 'THE CUT OUTLINE CLEARS' : 'THE CUT OUTLINE FOULS \u2014 the straight segments cut a corner the staircase went round'}`);
+}
+
+process.exit(asCut && asCut.reachable && out.derivedShaped?.reachable && out.derivedOutline?.ok ? 0 : 1);
