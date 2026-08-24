@@ -2429,6 +2429,29 @@ export const INTRA_UNIT_WAIVERS = [
     debt: 'TODO 77: p0 ⇄ w1, the stage-one mesh — the profile rolls conjugate, the extrude bevel grows it past its backlash (TODO 84); 0.118 mm, measured' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'ExtrudeGeometry#6',
     debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same extrude debt (TODO 84); depth refused by the probe at a 6-tooth wheel, not measured' },
+  // TODO 87 finding 6 — THE FIRST THING THE PRESS AXIS FOUND, on its first
+  // run, in the state no pose in the movement's history had ever reached. The
+  // pusher's REACH BAR — the carrier, not the pawl — is inside the ratchet
+  // skirt over the middle half of the stroke (f 0.30 to 0.75 of the cycle,
+  // 12 sampled vertices at the bottom). The build's own comment three lines
+  // above the carrier says "the PAWL, on its dropped carrier below the disc,
+  // is the only member that reaches the teeth"; that is what this row
+  // falsifies, and the comment is corrected in place beside the metal.
+  //
+  // The DEPTH is not the number to read. It reports a flat 0.03833 at every
+  // pose because the bar's 0.24 of z sits inside the skirt's 0.3166 band with
+  // 0.0383 to each face, so closestPointToPoint answers to a FACE — the same
+  // cap TODO 87's probe documents for the pawl. The in-plane figure is the
+  // real one: the bar's leading end starts 1.1 u behind the pawl's kiss and
+  // the stroke is 2.686, so at the bottom it stands ~1.586 u past the kiss,
+  // inside the tooth circle.
+  //
+  // Waived, not silenced, so the unit stays GATED: any other interference in
+  // 'Alarm switch' now fails. The fix is P2 mechanism space and its own
+  // landing — the carrier wants to leave the skirt's z band and hang the pawl
+  // from a dropper, which is what the source already claims it does.
+  { unit: 'Alarm switch', a: 'alarmColWheel', b: 'alarmPusherReach',
+    debt: 'TODO 87 finding 6: the reach bar carries through the ratchet skirt over the middle half of the press — depth z-capped at 0.03833, in-plane ~1.586 u at the bottom of the stroke' },
 ];
 
 // §121 — the units whose FF and MM tiers are GATED: the population this
@@ -7718,8 +7741,20 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§126 + TODO 51 — the winding arrest and its accommodation;
-// 53 units, 11 poses):
+// Baseline (§160 — TODO 87's press axis; 55 units, 12 poses):
+// 1207183716
+//   moved from 459839237 (main's MEASURED value at 55 units, 11 poses) and
+//   NOT by moving geometry: §160 adds a twelfth pose to the list below
+//   ({alarmPressCycle: 0.93}, the head past the click's bank), and the hash
+//   is taken over every pose, so one more pose is one more contribution. No
+//   unit's boxes changed at any pose the old list held — the press law's
+//   zero-dt clobber went away, which is a pose-path fix, and the live tick's
+//   own trace is byte-identical before and after (tools/probe-87-press.mjs).
+//   NOTE the record below had gone stale by TWO UNITS on its own (53
+//   recorded, 55 measured on main before this change), which is the §99 note
+//   repeating itself and the reason this constant is worth keeping honest.
+// Previous baseline (§126 + TODO 51 — the winding arrest and its
+// accommodation; 53 units recorded, 11 poses):
 // 3145260817
 //   moved from 2414545422 deliberately: TODO 51 re-solves where the arrest's
 //   members STAND, without adding or removing one. The finger's plate drops

@@ -20021,8 +20021,10 @@ const _pushBase = {
 //     axis z = TQ_BOT_Z − CLEAR_MARGIN − bossHalf.
 // The pose-swept chord under the plate measured EMPTY from the riser
 // station to the rim (the gong post crosses this chord only ABOVE the
-// plate; the setting lever only below the base plate). Only the pawl
-// still lives at the skirt band: a RISER at the stem's inner end climbs
+// plate; the setting lever only below the base plate). The pawl lives at
+// the skirt band — and so, TODO 87's press axis measured, does the REACH
+// BAR that carries it, which this comment used to deny: a RISER at the
+// stem's inner end climbs
 // through a SLOT in the plate (tqSlots literal at the plate build,
 // tripwired below — the §35/§68 rod-bore pattern) to the reach bar.
 // AXIS_REL stays lock-relative for its consumers; it is simply negative
@@ -20035,10 +20037,21 @@ alarmSwitchUnit.add(alarmPusherGroup);
 {
   // TODO 22 closed: the stem ENDS clear of the wheel. Its chord enters the
   // saw-tip circle at s = sqrt((tip+margin)² − chord²); the rest station
-  // adds the full press travel so the pressed stem still stops there — the
-  // PAWL, on its dropped carrier below the disc, is the only member that
-  // reaches the teeth. (The first cut's hand-set 1.6 ended 0.9 from the
-  // wheel AXIS, inside the disc band at every pose.)
+  // adds the full press travel so the pressed stem still stops there. (The
+  // first cut's hand-set 1.6 ended 0.9 from the wheel AXIS, inside the disc
+  // band at every pose.)
+  //
+  // WHAT THIS USED TO CLAIM, AND WHAT TODO 87 MEASURED. The sentence here
+  // read "the PAWL, on its dropped carrier below the disc, is the only
+  // member that reaches the teeth" — true of the STEM, which is what TODO 22
+  // fixed, and false of the carrier. The reach bar shares the pawl's z band
+  // by construction and its leading end starts only 1.1 u behind the pawl's
+  // kiss, so a 2.686 u stroke drives it ~1.586 u inside the tooth circle:
+  // measured on the first run of the alarmPress axis, at poses nothing could
+  // reach before it existed. It is TODO 87 finding 6, waived in
+  // INTRA_UNIT_WAIVERS with the arithmetic, and the fix is position space —
+  // the carrier out of the skirt's band, the pawl hung from a dropper, which
+  // is the anatomy this comment already describes.
   const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16; // saw tip circle (geometry.js) + margin + the dropper's own radius
   const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
   const stemOuterS = 1.6 + plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4; // the as-built case-band end

@@ -9351,6 +9351,42 @@ the eye is reading something real that no check is looking for, and the answer
 is not to widen `support` — it is that the group's members have never stated
 where they are held.
 
+### 6. The reach bar carries through the ratchet skirt — found by the axis, on its first run
+
+**The press axis's first act was to fail a gate**, at a pose no sweep in the
+movement's history had ever stood in. `intraUnit` MM, `Alarm switch`:
+`alarmColWheel ⇄ alarmPusherReach`, at `alarmPress f = 0.5`. Not the pawl — the
+CARRIER.
+
+Mapped across the cycle, the bar is inside the skirt from **f 0.30 to 0.75**,
+the middle half of the stroke, 12 sampled vertices at the bottom:
+
+| what | value |
+|---|---|
+| reported depth | **0.03833**, flat at every pose — and NOT the number to read |
+| why it is flat | the bar's 0.24 of z sits inside the skirt's 0.3166 band with 0.0383 to each face, so `closestPointToPoint` answers to a FACE (finding 1's cap, at a second member) |
+| the in-plane figure | the bar's leading end starts **1.1 u** behind the pawl's kiss against a **2.686 u** stroke, so at the bottom it stands **~1.586 u** past the kiss, inside the tooth circle |
+
+**The source said this could not happen.** The build comment by the carrier read
+*"the PAWL, on its dropped carrier below the disc, is the only member that
+reaches the teeth"*, and a second one said *"Only the pawl still lives at the
+skirt band"*. Both are true of the STEM — which is what TODO 22 actually fixed —
+and false of the reach bar, which shares the pawl's band by construction. Both
+are corrected in place beside the metal, with the measurement.
+
+This is item 22's class returned at a different member: two parts of one action
+group occupying the same matter, invisible to every inter-unit sweep because
+they live in one unit, and invisible to `intraUnit` too until an axis moved the
+pusher. **That is the whole argument for step 1 in one row** — the gate did not
+become stricter, the mechanism became reachable.
+
+**The fix is position space, and it is its own landing** (P2: never paid for by
+opening a contact or widening a budget). The carrier wants to leave the skirt's
+z band with the pawl hung from a dropper — the anatomy the source comment
+already describes and the metal does not yet have. Waived in
+`INTRA_UNIT_WAIVERS` citing this item, deliberately not silenced, so `Alarm
+switch` stays GATED: any other interference in that unit now fails.
+
 ### The group's other two outputs, recorded rather than re-filed
 
 **The lock brake** is genuinely column-driven (`['Alarm switch', 'Alarm lock']`
