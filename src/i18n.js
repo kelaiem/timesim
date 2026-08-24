@@ -147,7 +147,7 @@ const DE = {
   'beats/s': 'Halbschw./s', 'slow': 'langsam',
   // -- Camera section
   'Escapement': 'Hemmung', 'Train': 'Räderwerk', 'Dial': 'Zifferblatt', 'Setting': 'Zeigerstellung', 'Free': 'Frei',
-  'Guided': 'Geführt', 'Tour': 'Tour', 'Demo': 'Demo', 'Inspect': 'Inspektion',
+  'Guided': 'Geführt', 'Tour': 'Tour', 'Demo': 'Demo', 'Inspect': 'Inspektion', 'Bench': 'Werkbank',
   'Life size': 'Lebensgröße', 'Exit': 'Verlassen', 'Calibrate': 'Kalibrieren',
   'Share': 'Teilen', 'Copy view': 'Ansicht kopieren', 'Copied': 'Kopiert', 'Copy failed': 'Kopieren fehlgeschlagen',
   'Copy this view link:': 'Diesen Ansichts-Link kopieren:',
@@ -192,6 +192,11 @@ const DE = {
   'tall': 'hoch', 'h reserve': 'h Reserve',
   // -- Alarm section
   'Cycle': 'Zyklus',
+  // §161 — the RUNNING face of every .script-ctrl button. It was written as a
+  // bare literal at both sites that set it, so a route started in German put an
+  // English 'Stop' on screen for the whole run; the idle face was fine because
+  // SCRIPT_BTN_IDLE captures it from the DOM after localizeTree.
+  'Stop': 'Stopp',
   'Toggle the alarm on and off repeatedly, without moving the camera': 'Den Wecker wiederholt ein- und ausschalten, ohne die Kamera zu bewegen',
   'Rings at': 'Klingelt um', 'Pull to set': 'Ziehen zum Stellen', 'Push to wind': 'Drücken zum Aufziehen',
   'Coupling': 'Kupplung', 'Show': 'Zeigen', 'The link': 'Das Gestänge', 'Trace': 'Verfolgen',
@@ -377,6 +382,24 @@ Object.assign(DE, {
   '8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.': '8/9 Der Hammer. Sein Fall ist ein Federgesetz, also drückt jetzt eine echte Feder auf den Schwanz — am Stift geerdet, am Arm beweglich.',
   '9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.': '9/9 Der Auslösefühler, Zifferblattseite. Seine Rückstellfeder ist am Bock verankert, NICHT am Arm — sie soll stillhalten, während der Arm wippt, und den Arm auf seinen Nocken drücken, statt dass der Arm am Profil klebt.',
   'End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.': 'Ende der Route. Alles, was hier falsch aussah, ist meldenswert — die Batterie sieht diese Klasse nicht.',
+  // §161 — the BENCH route's captions. Same contract as the tour's above:
+  // keyed by the English caption verbatim, so BENCH_STEPS never changes and
+  // t() resolves at the display site. Horological register throughout — this
+  // route's reader is someone who works on watches, and the English side was
+  // written to match the vocabulary these tables already had.
+  'BENCH ROUTE — the movement as work: what each mechanism is for, and what this one has not earned. Click anywhere to stop.': 'WERKBANK-ROUTE — das Werk als Arbeit: wofür jeder Mechanismus da ist, und was dieses hier noch nicht verdient hat. Zum Anhalten irgendwohin klicken.',
+  'A mainspring pulls hardest when it is full. Amplitude follows the torque it is given, and rate follows amplitude — so a bare spring runs fast wound and slow spent. That is the problem the next two stops answer.': 'Eine Zugfeder zieht am stärksten, wenn sie voll ist. Die Amplitude folgt dem Moment, das sie bekommt, und der Gang folgt der Amplitude — eine blanke Feder läuft aufgezogen vor und abgelaufen nach. Das ist das Problem, das die nächsten zwei Stationen lösen.',
+  'The fusee is the answer in metal: the chain climbs a cut cone, so leverage grows exactly as the spring weakens. The cut holds spring torque × radius level across the whole thirty-hour reserve.': 'Die Schnecke ist die Antwort in Metall: Die Kette klettert einen geschnittenen Konus hinauf, der Hebel wächst also genau so, wie die Feder nachlässt. Der Schnitt hält Federmoment × Radius über die ganze 30-Stunden-Reserve konstant.',
+  'Winding lifts the chain off the cone — taking the drive away at the one moment you are adding it. Maintaining power is the fusee’s answer: cone, base ratchet, pawls, maintaining spring, great wheel, and the train never stops.': 'Das Aufziehen hebt die Kette vom Konus — es nimmt den Antrieb genau in dem Moment weg, in dem man ihn zuführt. Die Hilfsfeder ist die Antwort der Schnecke: Konus, Bodensperrrad, Klinken, Hilfsfeder, Schneckenrad — und das Räderwerk bleibt nie stehen.',
+  'Nothing here is given a speed. 80/10, 75/10, 80/10, 80/8 multiply out, so the fourth wheel turns once a minute because the teeth say so — and the seconds hand rides that wheel’s own axis, not a number copied onto a dial.': 'Nichts hier bekommt eine Geschwindigkeit zugewiesen. 80/10, 75/10, 80/10, 80/8 multiplizieren sich aus, also dreht das Sekundenrad einmal pro Minute, weil die Zähne es so sagen — und der Sekundenzeiger sitzt auf dessen eigener Achse, nicht auf einer aufs Zifferblatt geschriebenen Zahl.',
+  'One answer to two problems: the train must be released a tooth at a time, and the balance must be given back what friction takes. Lock, draw, impulse, drop — fifteen club teeth, twelve degrees a beat, slowed right down.': 'Eine Antwort auf zwei Probleme: Das Räderwerk muss Zahn für Zahn freigegeben werden, und die Unruh muss zurückbekommen, was die Reibung ihr nimmt. Ruhe, Zug, Impuls, Fall — fünfzehn Keulenzähne, zwölf Grad je Halbschwingung, stark verlangsamt.',
+  '2.5 Hz, 18,000 beats an hour. The spring is cut TO the balance: its section is solved from the wheel’s own measured inertia so that √(k/I) lands on the beat — never the beat re-targeted to fit a spring that was easier to draw.': '2,5 Hz, 18.000 Halbschwingungen pro Stunde. Die Spirale wird ZUR Unruh geschnitten: Ihr Querschnitt wird aus dem gemessenen Trägheitsmoment des Reifs gelöst, sodass √(k/I) genau auf die Frequenz fällt — nie umgekehrt die Frequenz an eine bequemere Spirale angepasst.',
+  'Every hand-set goes the long way round. Pull the crown and the setting lever’s pin rides the stem collar; its tail presses the hack spring, whose ruby pad lands on the balance rim, and only then do the hands come free.': 'Jedes Zeigerstellen geht den langen Weg. Krone ziehen: Der Stift des Stellhebels läuft im Bund der Welle, sein Schwanz drückt die Sekundenstoppfeder, deren Rubinpalette auf den Unruhreif fällt — und erst dann sind die Zeiger frei.',
+  'Push home and it runs on. There is no path from a control to a hand that does not go through that train — which is why the hands can be trusted to say what the movement is actually doing.': 'Hineindrücken, und die Uhr läuft weiter. Es gibt keinen Weg von einer Bedienung zu einem Zeiger, der nicht durch dieses Räderwerk führt — deshalb darf man den Zeigern glauben, was das Werk tatsächlich tut.',
+  'Scale here is not a style choice. One movement unit is 0.379 mm, fixed by a real fusee chain’s 0.72 mm link pitch — so every clearance and section on this route is a number you could take to a bench.': 'Der Maßstab ist hier keine Stilfrage. Eine Werkeinheit sind 0,379 mm, festgelegt durch die Teilung einer echten Schneckenkette von 0,72 mm — jedes Spiel und jeder Querschnitt auf dieser Route ist also eine Zahl, die man an die Werkbank mitnehmen kann.',
+  'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': 'Und das Schuldbuch, offen: Das ganze Weckerwerk ist aus Material von 0,015–0,10 mm geschnitten, gegen eine Untergrenze von 0,12 mm — ein Viertel bis die Hälfte der echten Stärke. Das Werk führt das gegen sich selbst, statt es zu verbergen.',
+  'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': 'Jetzt die Werkbank. „Umkonfigurieren“ legt neun Stationen einen Ring an, und jeder Ring ist einer, den man versetzen kann. Zieh daran, und das Layout wird unter dem Zeiger neu gelöst — es verweigert eine Lage, in der das Räderwerk nicht schließt, und nennt die Wand, an die es stößt.',
+  'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': '„Teststart“ baut deinen Entwurf im Hintergrund und meldet, was seine echten strukturellen Prüfungen sagen — in etwa fünfzehn Sekunden. „Ansicht kopieren“ trägt jetzt den Entwurf mit, nicht nur die Ansicht. Die Ringe gehören dir.',
 });
 
 // ---------------------------------------------------------------------------
@@ -400,7 +423,7 @@ const ZH = {
   'catching up to the wall clock': '正在追上真实时间',
   'beats/s': '次/秒', 'slow': '倍慢',
   'Escapement': '擒纵机构', 'Train': '轮系', 'Dial': '表盘', 'Setting': '拨针', 'Free': '自由',
-  'Guided': '导览', 'Tour': '巡览', 'Demo': '演示', 'Inspect': '检视',
+  'Guided': '导览', 'Tour': '巡览', 'Demo': '演示', 'Inspect': '检视', 'Bench': '工作台',
   'Life size': '实物大小', 'Exit': '退出', 'Calibrate': '校准',
   'Share': '分享', 'Copy view': '复制视角', 'Copied': '已复制', 'Copy failed': '复制失败',
   'Copy this view link:': '复制此视角链接：',
@@ -442,6 +465,7 @@ const ZH = {
   'ticks': '刻度', 'long': '长', 'arm': '臂长', 'plate': '夹板', 'deep': '厚',
   'tall': '高', 'h reserve': '小时动储',
   'Cycle': '循环',
+  'Stop': '停止',
   'Toggle the alarm on and off repeatedly, without moving the camera': '反复开关闹铃而不移动视角',
   'Rings at': '响铃时刻', 'Pull to set': '拔出定时', 'Push to wind': '推入上链',
   'Coupling': '联轴', 'Show': '演示', 'The link': '联动杆', 'Trace': '追踪',
@@ -604,6 +628,24 @@ Object.assign(ZH, {
   '8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.': '8/9 闹铃锤。它的落下由弹簧定律决定，现在有真实的弹簧压在尾部 — 固定于柱销，作用于摆臂。',
   '9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.': '9/9 表盘侧的释放探杆。它的回位簧片固定在支架上，而非摆臂上 — 摆臂摆动时它应保持不动，把摆臂压向凸轮，而不是摆臂粘在轮廓上。',
   'End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.': '路线结束。这里任何看着不对的地方都值得报告 — 检测组看不到这一类缺陷。',
+  // §161 — the BENCH route's captions. Same contract as the tour's above:
+  // keyed by the English caption verbatim, so BENCH_STEPS never changes and
+  // t() resolves at the display site. Horological register throughout — this
+  // route's reader is someone who works on watches, and the English side was
+  // written to match the vocabulary these tables already had.
+  'BENCH ROUTE — the movement as work: what each mechanism is for, and what this one has not earned. Click anywhere to stop.': '工作台路线 — 把机芯当成活儿来看：每个机构是干什么用的，以及这一枚还没有挣得什么。点任意处即可停止。',
+  'A mainspring pulls hardest when it is full. Amplitude follows the torque it is given, and rate follows amplitude — so a bare spring runs fast wound and slow spent. That is the problem the next two stops answer.': '发条满的时候拉力最强。摆幅跟着它得到的扭矩走，走时又跟着摆幅走 — 所以裸发条上满时走快、放尽时走慢。这就是接下来两站要回答的问题。',
+  'The fusee is the answer in metal: the chain climbs a cut cone, so leverage grows exactly as the spring weakens. The cut holds spring torque × radius level across the whole thirty-hour reserve.': '宝塔轮就是把答案做成金属：链条爬上一个切削出来的锥体，杠杆正好随着发条变弱而变长。这道切削让发条扭矩 × 半径在整整三十小时的动力储存中保持不变。',
+  'Winding lifts the chain off the cone — taking the drive away at the one moment you are adding it. Maintaining power is the fusee’s answer: cone, base ratchet, pawls, maintaining spring, great wheel, and the train never stops.': '上链会把链条从锥体上提起 — 正好在你加入动力的那一刻把动力拿走。维持动力就是宝塔轮的答案：锥体、底部棘轮、棘爪、维持发条、大钢轮 — 轮系从不停止。',
+  'Nothing here is given a speed. 80/10, 75/10, 80/10, 80/8 multiply out, so the fourth wheel turns once a minute because the teeth say so — and the seconds hand rides that wheel’s own axis, not a number copied onto a dial.': '这里没有任何一件被指定速度。80/10、75/10、80/10、80/8 相乘，所以四番车每分钟转一圈，是因为齿数这么说 — 而秒针就骑在那个轮自己的轴上，不是抄到表盘上的一个数字。',
+  'One answer to two problems: the train must be released a tooth at a time, and the balance must be given back what friction takes. Lock, draw, impulse, drop — fifteen club teeth, twelve degrees a beat, slowed right down.': '一个答案，两个问题：轮系必须一齿一齿地被放行，摆轮必须拿回摩擦拿走的东西。锁住、拉引、冲击、落下 — 十五枚棒齿，每半振动十二度，大幅放慢。',
+  '2.5 Hz, 18,000 beats an hour. The spring is cut TO the balance: its section is solved from the wheel’s own measured inertia so that √(k/I) lands on the beat — never the beat re-targeted to fit a spring that was easier to draw.': '2.5 Hz，每小时 18,000 次振动。游丝是为摆轮而切的：它的截面由轮圈实测的惯量解出，让 √(k/I) 正好落在振频上 — 绝不反过来为了好画的游丝去改振频。',
+  'Every hand-set goes the long way round. Pull the crown and the setting lever’s pin rides the stem collar; its tail presses the hack spring, whose ruby pad lands on the balance rim, and only then do the hands come free.': '每一次拨针都走远路。拉出表冠，拨针杆的销子在柄轴的槽里走，它的尾端压住停秒簧，簧上的红宝石垫落在摆轮外圈上 — 到这时指针才松开。',
+  'Push home and it runs on. There is no path from a control to a hand that does not go through that train — which is why the hands can be trusted to say what the movement is actually doing.': '推回去，表就继续走。从任何一个操作到任何一根指针，没有一条路不经过那组轮系 — 所以指针说的，就是机芯真正在做的事。',
+  'Scale here is not a style choice. One movement unit is 0.379 mm, fixed by a real fusee chain’s 0.72 mm link pitch — so every clearance and section on this route is a number you could take to a bench.': '这里的比例不是风格选择。一个机芯单位是 0.379 mm，由真实宝塔轮链条 0.72 mm 的节距定死 — 所以这条路线上每一个间隙和截面，都是你可以带到工作台上的数字。',
+  'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': '还有账，说出口：整组闹响机构是用 0.015–0.10 mm 的料切出来的，下限是 0.12 mm — 只有实际厚度的四分之一到二分之一。机芯把这笔记在自己头上，而不是藏起来。',
+  'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': '现在是工作台。「重新布局」给九个工位各套上一个环，每个环都是你可以移动的工位。拖它，布局就在指针底下重新求解 — 它会拒绝轮系无法闭合的位置，并告诉你撞到了哪一道墙。',
+  'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': '「试运行」在后台把你的方案建起来，用大约十五秒回报它真正的结构断言怎么说。「复制视角」现在连设计一起带走，不只是视角。这些环是你的。',
 });
 
 // ---------------------------------------------------------------------------
@@ -659,6 +701,7 @@ const FR = {
   ['Tour']: 'Visite',
   ['Demo']: 'Démo',
   ['Inspect']: 'Inspecter',
+  ['Bench']: 'Établi',
   ['Life size']: 'Taille réelle',
   ['Exit']: 'Quitter',
   ['Calibrate']: 'Calibrer',
@@ -733,6 +776,7 @@ const FR = {
   ['tall']: 'haut',
   ['h reserve']: 'h de réserve',
   ['Cycle']: 'Cycler',
+  ['Stop']: 'Arrêter',
   ['Toggle the alarm on and off repeatedly, without moving the camera']: 'Active et désactive le réveil en boucle, sans bouger la caméra',
   ['Rings at']: 'Sonne à',
   ['Pull to set']: 'Tirer pour régler',
@@ -998,6 +1042,24 @@ const FR = {
   ['8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.']: '8/9 Le marteau. Sa chute obéit à une loi de ressort, aussi un vrai ressort porte-t-il désormais sur sa queue — ancré au tenon, mobile au bras.',
   ['9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.']: '9/9 Le palpeur de déclenchement du réveil, côté cadran. Sa lame de rappel est ancrée à la potence, PAS au bras — elle doit rester en place pendant que le bras bascule, et presser le bras contre sa came plutôt que le bras soit collé au profil.',
   ['End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.']: 'Fin de la route. Tout ce qui vous a paru anormal ici mérite d’être signalé — le banc d’essai ne voit pas cette catégorie.',
+  // §161 — the BENCH route's captions. Same contract as the tour's above:
+  // keyed by the English caption verbatim, so BENCH_STEPS never changes and
+  // t() resolves at the display site. Horological register throughout — this
+  // route's reader is someone who works on watches, and the English side was
+  // written to match the vocabulary these tables already had.
+  ['BENCH ROUTE — the movement as work: what each mechanism is for, and what this one has not earned. Click anywhere to stop.']: 'ROUTE D’ÉTABLI — le mouvement comme travail : à quoi sert chaque mécanisme, et ce que celui-ci n’a pas encore mérité. Cliquez n’importe où pour arrêter.',
+  ['A mainspring pulls hardest when it is full. Amplitude follows the torque it is given, and rate follows amplitude — so a bare spring runs fast wound and slow spent. That is the problem the next two stops answer.']: 'Un ressort de barillet tire le plus fort quand il est plein. L’amplitude suit le couple qu’on lui donne, et la marche suit l’amplitude — un ressort nu avance armé et retarde épuisé. C’est le problème que résolvent les deux étapes suivantes.',
+  ['The fusee is the answer in metal: the chain climbs a cut cone, so leverage grows exactly as the spring weakens. The cut holds spring torque × radius level across the whole thirty-hour reserve.']: 'La fusée est la réponse en métal : la chaîne grimpe un cône taillé, donc le bras de levier croît exactement à mesure que le ressort faiblit. La taille maintient couple × rayon constant sur les trente heures de réserve.',
+  ['Winding lifts the chain off the cone — taking the drive away at the one moment you are adding it. Maintaining power is the fusee’s answer: cone, base ratchet, pawls, maintaining spring, great wheel, and the train never stops.']: 'Le remontage soulève la chaîne du cône — il retire la force motrice au moment précis où on l’ajoute. La force constante est la réponse de la fusée : cône, rochet de fond, cliquets, ressort de force constante, grande roue — et le rouage ne s’arrête jamais.',
+  ['Nothing here is given a speed. 80/10, 75/10, 80/10, 80/8 multiply out, so the fourth wheel turns once a minute because the teeth say so — and the seconds hand rides that wheel’s own axis, not a number copied onto a dial.']: 'Rien ici ne reçoit une vitesse. 80/10, 75/10, 80/10, 80/8 se multiplient, donc la roue de seconde fait un tour par minute parce que les dents le disent — et l’aiguille des secondes tourne sur l’axe même de cette roue, pas sur un chiffre recopié au cadran.',
+  ['One answer to two problems: the train must be released a tooth at a time, and the balance must be given back what friction takes. Lock, draw, impulse, drop — fifteen club teeth, twelve degrees a beat, slowed right down.']: 'Une réponse à deux problèmes : le rouage doit être libéré dent par dent, et le balancier doit recevoir ce que le frottement lui prend. Repos, tirage, impulsion, chute — quinze dents à massue, douze degrés par alternance, fortement ralenti.',
+  ['2.5 Hz, 18,000 beats an hour. The spring is cut TO the balance: its section is solved from the wheel’s own measured inertia so that √(k/I) lands on the beat — never the beat re-targeted to fit a spring that was easier to draw.']: '2,5 Hz, 18 000 alternances par heure. Le spiral est taillé POUR le balancier : sa section est résolue à partir de l’inertie mesurée de la serge, de sorte que √(k/I) tombe sur la fréquence — jamais la fréquence redéfinie pour accommoder un spiral plus commode.',
+  ['Every hand-set goes the long way round. Pull the crown and the setting lever’s pin rides the stem collar; its tail presses the hack spring, whose ruby pad lands on the balance rim, and only then do the hands come free.']: 'Toute mise à l’heure passe par le chemin long. Tirez la couronne : le doigt de la bascule court dans la gorge de la tige, sa queue presse le ressort d’arrêt dont la palette de rubis se pose sur la serge du balancier — et alors seulement les aiguilles sont libres.',
+  ['Push home and it runs on. There is no path from a control to a hand that does not go through that train — which is why the hands can be trusted to say what the movement is actually doing.']: 'Repoussez, et la montre repart. Aucun chemin ne va d’une commande à une aiguille sans traverser ce rouage — c’est pourquoi on peut croire les aiguilles sur ce que le mouvement fait réellement.',
+  ['Scale here is not a style choice. One movement unit is 0.379 mm, fixed by a real fusee chain’s 0.72 mm link pitch — so every clearance and section on this route is a number you could take to a bench.']: 'L’échelle n’est pas ici une affaire de style. Une unité de mouvement vaut 0,379 mm, fixée par le pas de 0,72 mm d’une vraie chaîne de fusée — chaque jeu et chaque section de cette route est donc un nombre qu’on peut emporter à l’établi.',
+  ['And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.']: 'Et le passif, dit tout haut : tout l’ensemble du réveil est taillé dans une matière de 0,015–0,10 mm contre un plancher de 0,12 mm — du quart à la moitié de l’épaisseur réelle. Le mouvement l’inscrit contre lui-même plutôt que de le cacher.',
+  ['Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.']: 'Maintenant l’établi. « Reconfigurer » cercle neuf stations, et chaque anneau en est une que vous pouvez déplacer. Tirez-le : le plan se résout à nouveau sous le pointeur — il refuse une position où le rouage ne ferme pas, et nomme le mur qu’il a touché.',
+  ['Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.']: '« Démarrage d’essai » construit votre candidat en arrière-plan et rapporte ce que disent ses vraies assertions structurelles, en une quinzaine de secondes. « Copier la vue » emporte désormais la conception, pas seulement la vue. Les anneaux sont à vous.',
 };
 
 // ---------------------------------------------------------------------------
@@ -1054,6 +1116,7 @@ const JA = {
   ['Tour']: 'ツアー',
   ['Demo']: 'デモ',
   ['Inspect']: '点検',
+  ['Bench']: '作業台',
   ['Life size']: '実物大',
   ['Exit']: '終了',
   ['Calibrate']: '校正',
@@ -1128,6 +1191,7 @@ const JA = {
   ['tall']: '高さ',
   ['h reserve']: '時間リザーブ',
   ['Cycle']: '繰り返し',
+  ['Stop']: '停止',
   ['Toggle the alarm on and off repeatedly, without moving the camera']: 'カメラを動かさずにアラームを繰り返しオン・オフする',
   ['Rings at']: '鳴る時刻',
   ['Pull to set']: '引いて時刻合わせ',
@@ -1393,6 +1457,24 @@ const JA = {
   ['8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.']: '8/9 ハンマー。その落下はばねの法則に従うので、いまは実物のばねが尾に当たっています — スタッドで固定され、腕で動きます。',
   ['9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.']: '9/9 アラーム解除の感知レバー、文字板側。その戻り板はブラケットに固定されていて、腕にではありません — 腕が揺れる間そこに留まり、腕をカムへ押し付けるべきで、腕が輪郭に貼り付いているのではいけません。',
   ['End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.']: 'ルートは以上です。ここで不自然に見えたものは報告する価値があります — 検査バッテリーはこの種の欠陥を見られません。',
+  // §161 — the BENCH route's captions. Same contract as the tour's above:
+  // keyed by the English caption verbatim, so BENCH_STEPS never changes and
+  // t() resolves at the display site. Horological register throughout — this
+  // route's reader is someone who works on watches, and the English side was
+  // written to match the vocabulary these tables already had.
+  ['BENCH ROUTE — the movement as work: what each mechanism is for, and what this one has not earned. Click anywhere to stop.']: '作業台ルート — 機械を仕事として見る：それぞれの機構が何のためにあり、この機械がまだ何を勝ち得ていないか。止めるにはどこかをクリック。',
+  ['A mainspring pulls hardest when it is full. Amplitude follows the torque it is given, and rate follows amplitude — so a bare spring runs fast wound and slow spent. That is the problem the next two stops answer.']: 'ぜんまいは満巻のときに最も強く引きます。振り角は与えられたトルクに従い、歩度は振り角に従う — 裸のぜんまいは巻けば進み、ほどければ遅れます。次の二つの停留所が答えるのは、この問題です。',
+  ['The fusee is the answer in metal: the chain climbs a cut cone, so leverage grows exactly as the spring weakens. The cut holds spring torque × radius level across the whole thirty-hour reserve.']: 'フュジーはその答えを金属にしたものです。チェーンが削り出した円錐を登るので、ぜんまいが弱るのとちょうど同じだけ、てこが伸びます。この削りは、ぜんまいトルク×半径を三十時間の持続すべてにわたって一定に保ちます。',
+  ['Winding lifts the chain off the cone — taking the drive away at the one moment you are adding it. Maintaining power is the fusee’s answer: cone, base ratchet, pawls, maintaining spring, great wheel, and the train never stops.']: '巻上げはチェーンを円錐から持ち上げます — 動力を加えるその瞬間に、動力を奪ってしまうのです。維持動力がフュジーの答えです：円錐、底の爪車、爪、維持ばね、大輪 — そして輪列は決して止まりません。',
+  ['Nothing here is given a speed. 80/10, 75/10, 80/10, 80/8 multiply out, so the fourth wheel turns once a minute because the teeth say so — and the seconds hand rides that wheel’s own axis, not a number copied onto a dial.']: 'ここでは何ひとつ速さを与えられていません。80/10、75/10、80/10、80/8 が掛け合わさるので、四番車は歯がそう言うから毎分一回転します — そして秒針はその車自身の軸に乗っており、文字盤に書き写された数字ではありません。',
+  ['One answer to two problems: the train must be released a tooth at a time, and the balance must be given back what friction takes. Lock, draw, impulse, drop — fifteen club teeth, twelve degrees a beat, slowed right down.']: '二つの問題への一つの答えです：輪列は一歯ずつ解放されねばならず、テンプは摩擦が奪う分を返されねばならない。ロック、ドロー、インパルス、ドロップ — クラブ歯十五枚、一振動あたり十二度、大きく減速して。',
+  ['2.5 Hz, 18,000 beats an hour. The spring is cut TO the balance: its section is solved from the wheel’s own measured inertia so that √(k/I) lands on the beat — never the beat re-targeted to fit a spring that was easier to draw.']: '2.5 Hz、毎時 18,000 振動。ひげぜんまいはテンプに合わせて切られています：その断面は輪の実測慣性から解かれ、√(k/I) がちょうど振動数に落ちる — 描きやすいひげぜんまいに合わせて振動数を取り直すことは決してありません。',
+  ['Every hand-set goes the long way round. Pull the crown and the setting lever’s pin rides the stem collar; its tail presses the hack spring, whose ruby pad lands on the balance rim, and only then do the hands come free.']: '針合わせはすべて遠回りをします。りゅうずを引くと、おしどりのピンが巻真の溝を走り、その尾がハック機構のばねを押して、そのルビーのパッドがテンプの輪に触れます — そこで初めて針が自由になります。',
+  ['Push home and it runs on. There is no path from a control to a hand that does not go through that train — which is why the hands can be trusted to say what the movement is actually doing.']: '押し込めば、時計は動き続けます。操作から針まで、この輪列を通らない道はひとつもありません — だからこそ、機械が実際に何をしているかを針に語らせて信じてよいのです。',
+  ['Scale here is not a style choice. One movement unit is 0.379 mm, fixed by a real fusee chain’s 0.72 mm link pitch — so every clearance and section on this route is a number you could take to a bench.']: 'ここでの縮尺は好みの問題ではありません。ムーブメント一単位は 0.379 mm、実物のフュジーチェーンの 0.72 mm ピッチで決まっています — このルート上のすべての隙間と断面は、作業台へ持って行ける数字です。',
+  ['And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.']: 'そして負債を声に出して：目覚まし機構一式は 0.015–0.10 mm の材から切られており、下限は 0.12 mm — 実寸の四分の一から半分です。機械はそれを隠さず、自らに対して記帳しています。',
+  ['Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.']: 'さて作業台です。「再配置」は九つのステーションに輪をかけ、その輪はどれも動かせるものです。引いてみると、レイアウトはポインタの下で解き直されます — 輪列が閉じない配置は拒み、どの壁に当たったかを告げます。',
+  ['Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.']: '「試験起動」はあなたの案を背後で組み立て、その本物の構造アサートが何と言うかを、およそ十五秒で報告します。「ビューをコピー」は今や視点だけでなく設計も運びます。輪はあなたのものです。',
 };
 
 // ---------------------------------------------------------------------------
@@ -1448,6 +1530,7 @@ const ZH_HANT = {
   ['Tour']: '導覽行程',
   ['Demo']: '展示',
   ['Inspect']: '檢視',
+  ['Bench']: '工作檯',
   ['Life size']: '實際大小',
   ['Exit']: '離開',
   ['Calibrate']: '校準',
@@ -1522,6 +1605,7 @@ const ZH_HANT = {
   ['tall']: '高',
   ['h reserve']: '小時儲存',
   ['Cycle']: '循環',
+  ['Stop']: '停止',
   ['Toggle the alarm on and off repeatedly, without moving the camera']: '反覆開關鬧鈴，且不移動視角',
   ['Rings at']: '響鈴於',
   ['Pull to set']: '拉出撥針',
@@ -1787,6 +1871,24 @@ const ZH_HANT = {
   ['8/9 The hammer. Its fall is a spring law, so a real spring now bears on the tail — grounded at the stud, moving at the arm.']: '8/9 錘子。它的落下遵守彈簧定律，所以現在真有一根彈簧壓在它的尾部 — 固定在柱子上，隨手臂而動。',
   ['9/9 The alarm release feeler, dial side. Its return blade is anchored to the bracket, NOT to the arm — it should stay put while the arm rocks, and press the arm onto its cam rather than the arm being glued to the profile.']: '9/9 鬧鈴釋放感測桿，錶盤側。它的回位簧片錨定在支架上，而不是在手臂上 — 手臂搖動時它應該保持不動，並把手臂壓向凸輪，而不是手臂被黏在輪廓上。',
   ['End of route. Anything that looked wrong here is worth reporting — the battery cannot see this class.']: '路線結束。這裡任何看起來不對的地方都值得回報 — 檢測組看不到這一類缺陷。',
+  // §161 — the BENCH route's captions. Same contract as the tour's above:
+  // keyed by the English caption verbatim, so BENCH_STEPS never changes and
+  // t() resolves at the display site. Horological register throughout — this
+  // route's reader is someone who works on watches, and the English side was
+  // written to match the vocabulary these tables already had.
+  ['BENCH ROUTE — the movement as work: what each mechanism is for, and what this one has not earned. Click anywhere to stop.']: '工作檯路線 — 把機芯當成工作來看：每個機構是為了什麼，以及這一枚還沒有掙得什麼。點任何地方即可停止。',
+  ['A mainspring pulls hardest when it is full. Amplitude follows the torque it is given, and rate follows amplitude — so a bare spring runs fast wound and slow spent. That is the problem the next two stops answer.']: '發條滿的時候拉力最強。擺幅跟著它得到的扭矩走，走時又跟著擺幅走 — 所以裸發條上滿時走快、放盡時走慢。這就是接下來兩站要回答的問題。',
+  ['The fusee is the answer in metal: the chain climbs a cut cone, so leverage grows exactly as the spring weakens. The cut holds spring torque × radius level across the whole thirty-hour reserve.']: '寶塔輪就是把答案做成金屬：鏈條爬上一個切削出來的錐體，槓桿正好隨著發條變弱而變長。這道切削讓發條扭矩 × 半徑在整整三十小時的動力儲存中保持不變。',
+  ['Winding lifts the chain off the cone — taking the drive away at the one moment you are adding it. Maintaining power is the fusee’s answer: cone, base ratchet, pawls, maintaining spring, great wheel, and the train never stops.']: '上鏈會把鏈條從錐體上提起 — 正好在你加入動力的那一刻把動力拿走。維持動力就是寶塔輪的答案：錐體、底部棘輪、棘爪、維持發條、大鋼輪 — 輪系從不停止。',
+  ['Nothing here is given a speed. 80/10, 75/10, 80/10, 80/8 multiply out, so the fourth wheel turns once a minute because the teeth say so — and the seconds hand rides that wheel’s own axis, not a number copied onto a dial.']: '這裡沒有任何一件被指定速度。80/10、75/10、80/10、80/8 相乘，所以四番車每分鐘轉一圈，是因為齒數這麼說 — 而秒針就騎在那個輪自己的軸上，不是抄到面盤上的一個數字。',
+  ['One answer to two problems: the train must be released a tooth at a time, and the balance must be given back what friction takes. Lock, draw, impulse, drop — fifteen club teeth, twelve degrees a beat, slowed right down.']: '一個答案，兩個問題：輪系必須一齒一齒地被放行，擺輪必須拿回摩擦拿走的東西。鎖住、拉引、衝擊、落下 — 十五枚棒齒，每半振動十二度，大幅放慢。',
+  ['2.5 Hz, 18,000 beats an hour. The spring is cut TO the balance: its section is solved from the wheel’s own measured inertia so that √(k/I) lands on the beat — never the beat re-targeted to fit a spring that was easier to draw.']: '2.5 Hz，每小時 18,000 次振動。游絲是為擺輪而切的：它的截面由輪圈實測的慣性解出，讓 √(k/I) 正好落在振頻上 — 絕不反過來為了好畫的游絲去改振頻。',
+  ['Every hand-set goes the long way round. Pull the crown and the setting lever’s pin rides the stem collar; its tail presses the hack spring, whose ruby pad lands on the balance rim, and only then do the hands come free.']: '每一次撥針都走遠路。拉出錶冠，撥針桿的銷子在柄軸的溝裡走，它的尾端壓住停秒簧，簧上的紅寶石墊落在擺輪外圈上 — 到這時指針才鬆開。',
+  ['Push home and it runs on. There is no path from a control to a hand that does not go through that train — which is why the hands can be trusted to say what the movement is actually doing.']: '推回去，錶就繼續走。從任何一個操作到任何一根指針，沒有一條路不經過那組輪系 — 所以指針說的，就是機芯真正在做的事。',
+  ['Scale here is not a style choice. One movement unit is 0.379 mm, fixed by a real fusee chain’s 0.72 mm link pitch — so every clearance and section on this route is a number you could take to a bench.']: '這裡的比例不是風格選擇。一個機芯單位是 0.379 mm，由真實寶塔輪鏈條 0.72 mm 的節距定死 — 所以這條路線上每一個間隙和截面，都是你可以帶到工作檯上的數字。',
+  ['And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.']: '還有帳，說出口：整組鬧響機構是用 0.015–0.10 mm 的料切出來的，下限是 0.12 mm — 只有實際厚度的四分之一到二分之一。機芯把這筆記在自己頭上，而不是藏起來。',
+  ['Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.']: '現在是工作檯。「重新配置」給九個工位各套上一個環，每個環都是你可以移動的工位。拖它，佈局就在指標底下重新求解 — 它會拒絕輪系無法閉合的位置，並告訴你撞到了哪一道牆。',
+  ['Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.']: '「試跑啟動」在背景裡把你的方案建起來，用大約十五秒回報它真正的結構斷言怎麼說。「複製視圖」現在連設計一起帶走，不只是視角。這些環是你的。',
 };
 
 // ---------------------------------------------------------------------------

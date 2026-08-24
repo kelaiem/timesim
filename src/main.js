@@ -21236,7 +21236,7 @@ viewHud.innerHTML = `
         <button data-cam="Setting">Setting</button>
         <button data-cam="Free">Free</button><!-- data-cam is the canonical key; the FACE localizes (§73) -->
       </div>
-      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button></span></div>
+      <div class="row label-small"><span>Guided</span><span class="guided-btns"><button id="btn-tour" class="script-ctrl">Tour</button><button id="btn-demo" class="script-ctrl">Demo</button><button id="btn-inspect" class="script-ctrl">Inspect</button><button id="btn-bench" class="script-ctrl">Bench</button></span></div>
       <div class="row label-small"><span>Life size</span><span class="guided-btns"><button id="btn-lifesize">Life size</button><button id="btn-lifesize-cal">Calibrate</button></span></div>
       <div class="row label-small"><span>Share</span><button id="btn-copy-view">Copy view</button></div>
     </div>
@@ -24828,7 +24828,7 @@ document.getElementById('btn-alarm-cycle').addEventListener('click', (e) => {
   alarmCycleOn = !alarmCycleOn;
   alarmCycleT = 0;
   e.currentTarget.classList.toggle('on', alarmCycleOn);
-  e.currentTarget.textContent = alarmCycleOn ? 'Stop' : 'Cycle';
+  e.currentTarget.textContent = t(alarmCycleOn ? 'Stop' : 'Cycle'); // §73 — both faces, not just the one the DOM shipped with
 });
 document.getElementById('btn-coupling').addEventListener('click', (e) => {
   const btn = e.currentTarget;
@@ -28056,6 +28056,26 @@ function scriptEnterStep(i) {
   if (s.powerflow !== undefined) setPowerFlow(s.powerflow);
   if (s.sound !== undefined) setSound(s.sound);
   if (s.unit !== undefined) { unitSelect.value = s.unit; selectedUnit = s.unit; }
+  // §161 — `focus` as a step verb. setFocus/clearFocus already existed and were
+  // reachable only from ?focus= and a tap, so a stop could FRAME a mechanism and
+  // never ISOLATE one — and framing alone leaves the rest of the movement in the
+  // shot, which is the wrong picture for the commonest sentence a route says.
+  // `null` clears, matching the vocabulary the reset steps already use.
+  //
+  // AFTER powerflow deliberately. The two are exclusive (setFocus turns power
+  // flow off; both write applyGhosting's channel), so a step naming both is a
+  // contradiction and this decides it — focus wins, as the more specific claim
+  // about what the viewer is meant to be looking at.
+  //
+  // No settle gate: setFocus resolves through ensureExploreDrive(), so ghosting
+  // lands a frame or two late. Every dwell is >= 1 s and the fade is what the
+  // viewer watches anyway — a gate here would police something nobody can see.
+  if (s.focus !== undefined) { if (s.focus) setFocus(s.focus); else clearFocus(); }
+  // §161 — `reconf` as a step verb, so a route can LEAVE the viewer standing at
+  // the workbench instead of describing where it is. scriptStop is "STOP, don't
+  // undo", so a mode entered on the last step is still on when the run ends and
+  // the panel comes back — which is the whole point of ending there.
+  if (s.reconf !== undefined) setReconf(s.reconf);
   scriptExplodeTarget = (s.explode !== undefined) ? s.explode : null;
   if (s.preset) goToPreset(s.preset);
   // §37 — a literal pose in a step, tweened exactly as a preset is (same
@@ -28207,7 +28227,10 @@ function scriptStart(steps, btn) {
   scriptSteps = steps;
   scriptIdx = 0;
   scriptBtn = btn || null;
-  if (scriptBtn) { scriptBtn.classList.add('active'); scriptBtn.textContent = 'Stop'; }
+  // §73: through t(), not a literal. The IDLE face is restored from
+  // SCRIPT_BTN_IDLE, which captures the DOM after localizeTree — so this was the
+  // one face on the button that stayed English, for the whole length of a run.
+  if (scriptBtn) { scriptBtn.classList.add('active'); scriptBtn.textContent = t('Stop'); }
   captionEl.style.display = 'block';
   captionEl.classList.remove('show');
   // Two frames so the opacity transition fires from the display:none→block edge.
@@ -28522,6 +28545,87 @@ document.getElementById('btn-inspect').addEventListener('click', (e) => {
   if (scriptBtn === btn) scriptStop(); else scriptStart(INSPECT_STEPS, btn);
 });
 
+// ---------------------------------------------------------------------------
+// §161 — THE BENCH ROUTE. The third register, and the reason there are three.
+//
+// TOUR_STEPS narrates the movement to a VISITOR: what happens, in order, with
+// the camera doing the work. INSPECT_STEPS is a route to the places defects
+// live, and it speaks this repository's language — "§48's control case", "an
+// inverted lever" — because its reader is a contributor holding the source.
+//
+// Neither is written for someone who WORKS ON WATCHES. That reader wants the
+// problem before the mechanism (a fusee is an answer; you cannot judge an
+// answer you have not been told the question to), the part named the way a
+// person says it rather than the way a selector spells it, and the debts owned
+// out loud — a watchmaker is exactly the reader who will notice a claim this
+// movement has not earned, so hiding one costs more here than anywhere else.
+//
+// Four rules the captions below keep, each derived from something already true
+// in this file rather than chosen as a style:
+//
+//   1. HOROLOGICAL ENGLISH, NOT SELECTORS — and the split is free, because
+//      frameOn resolves its target through labelEntries before falling back to
+//      scene.getObjectByName. A stop AIMS by the registered name and SPEAKS by
+//      another. (The German captions have had the register all along:
+//      Ankerhemmung, Unruh, Schneckenkonus. Only the English lacked it.)
+//   2. PROBLEM BEFORE MECHANISM. README's own fusee and maintaining-power
+//      paragraphs are written in that order; this reuses that register instead
+//      of inventing a second one.
+//   3. MODELLED VS SIMULATED SAID PRECISELY, and the debt named. Stop 10 exists
+//      for that alone and quotes TODO 11's measured stock.
+//   4. END AT A CONTROL THE VIEWER CAN REACH. Every control this route names —
+//      Reconfigure, Trial boot, Copy view — lives in the VIEW HUD, which
+//      hidePanelForScript() does not touch (it hides #clock-ui only). Measured,
+//      not assumed: that is the same reason §118 moved the Camera section
+//      there. And the last stop does not point at Reconfigure, it ENTERS it.
+//
+// No engine work. Every verb below already existed or is the one line §161
+// added beside it (`focus`, `reconf`).
+const BENCH_STEPS = [
+  { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false,
+    powerflow: false, sound: false, unit: 'All', alarm: false, schematic: false,
+    focus: null, reconf: false,
+    caption: 'BENCH ROUTE — the movement as work: what each mechanism is for, and what this one has not earned. Click anywhere to stop.', dwell: 4.2 },
+
+  // --- the fusee: state the problem, then show the answer in metal
+  { camera: frameOn('Mainspring drum', [0.45, -0.35, 0.8], 5.2), xray: true, scale: 1,
+    caption: 'A mainspring pulls hardest when it is full. Amplitude follows the torque it is given, and rate follows amplitude — so a bare spring runs fast wound and slow spent. That is the problem the next two stops answer.', dwell: 7.0 },
+  { camera: frameOn('Fusee & great wheel', [0.4, -0.4, 0.8], 4.4), wind: 7, xray: true,
+    caption: 'The fusee is the answer in metal: the chain climbs a cut cone, so leverage grows exactly as the spring weakens. The cut holds spring torque × radius level across the whole thirty-hour reserve.', dwell: 7.5 },
+  { camera: frameOn('Maintaining detent', [0.4, -0.35, 0.85], 4.6), xray: true,
+    caption: 'Winding lifts the chain off the cone — taking the drive away at the one moment you are adding it. Maintaining power is the fusee’s answer: cone, base ratchet, pawls, maintaining spring, great wheel, and the train never stops.', dwell: 7.5 },
+
+  // --- the train: nothing here is assigned a speed
+  { preset: 'Train', powerflow: true, xray: false,
+    caption: 'Nothing here is given a speed. 80/10, 75/10, 80/10, 80/8 multiply out, so the fourth wheel turns once a minute because the teeth say so — and the seconds hand rides that wheel’s own axis, not a number copied onto a dial.', dwell: 8.0 },
+
+  // --- the escapement and its oscillator: one answer to two problems
+  { preset: 'Escapement', powerflow: false, scale: 0.04,
+    caption: 'One answer to two problems: the train must be released a tooth at a time, and the balance must be given back what friction takes. Lock, draw, impulse, drop — fifteen club teeth, twelve degrees a beat, slowed right down.', dwell: 8.5 },
+  { focus: 'Balance', scale: 0.04,
+    caption: '2.5 Hz, 18,000 beats an hour. The spring is cut TO the balance: its section is solved from the wheel’s own measured inertia so that √(k/I) lands on the beat — never the beat re-targeted to fit a spring that was easier to draw.', dwell: 8.0 },
+
+  // --- the keyless works: the only path a hand is allowed to take
+  { focus: null, camera: frameOn('Setting lever', [0.5, -0.35, 0.8], 5.0), scale: 0.3, xray: true, crown: 'out',
+    caption: 'Every hand-set goes the long way round. Pull the crown and the setting lever’s pin rides the stem collar; its tail presses the hack spring, whose ruby pad lands on the balance rim, and only then do the hands come free.', dwell: 8.0 },
+  { crown: 'in', scale: 1, xray: false,
+    caption: 'Push home and it runs on. There is no path from a control to a hand that does not go through that train — which is why the hands can be trusted to say what the movement is actually doing.', dwell: 5.5 },
+
+  // --- scale, and the ledger
+  { preset: 'Free',
+    caption: 'Scale here is not a style choice. One movement unit is 0.379 mm, fixed by a real fusee chain’s 0.72 mm link pitch — so every clearance and section on this route is a number you could take to a bench.', dwell: 7.0 },
+  { caption: 'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.', dwell: 7.5 },
+
+  // --- the workbench. ENTERS the mode; does not describe where the button is.
+  { reconf: true,
+    caption: 'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.', dwell: 9.0 },
+  { caption: 'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.', dwell: 8.0 },
+];
+document.getElementById('btn-bench').addEventListener('click', (e) => {
+  const btn = e.currentTarget;
+  if (scriptBtn === btn) scriptStop(); else scriptStart(BENCH_STEPS, btn);
+});
+
 document.getElementById('btn-demo').addEventListener('click', (e) => {
   const btn = e.currentTarget;
   if (scriptBtn === btn) scriptStop(); else scriptStart(DEMO_STEPS, btn);
@@ -28614,6 +28718,10 @@ function applyDeepLink() {
   // tool reached deliberately, it makes no sound, and anyone typing this
   // parameter has already asked for exactly what it does.
   if (params.has('inspect')) { scriptStart(INSPECT_STEPS, document.getElementById('btn-inspect')); return; }
+  // §161 — same shape as ?inspect, and deliberately NOT gated behind askTour's
+  // confirm: that gate exists because ?tour=1 lands a first-time visitor in a
+  // moving camera they did not ask for. Somebody who typed ?bench=1 asked.
+  if (params.has('bench')) { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); return; }
   // `?cycle=1` — the alarm cycler on arrival, for pairing with ?cam/?look:
   // aim at a linkage and watch it work without touching the page.
   if (params.has('cycle')) document.getElementById('btn-alarm-cycle').click();
@@ -31023,6 +31131,7 @@ window.__clock = {
   viewLink() { return currentViewLink(); },                                                            // §37 — what the share button copies, without the clipboard
   goToPose(pos, look, opts) { goToPose(new THREE.Vector3(...pos), new THREE.Vector3(...look), opts); }, // §37 — the primitive, for review sessions (this is what §35 lacked)
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
+  startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
   get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionEl.textContent } : null; },
   // Deterministic per-frame advance for verification (rAF is paused when the
   // automation pane is backgrounded, so the guided demo/tour can't be watched
