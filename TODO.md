@@ -17,7 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened |
+| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — step 2 done, step 1 still owed because a probe is not a gate). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
 | 84 | OPEN | Every gear ships fatter than it was cut: three.js's `bevelSize` offsets the outline OUTWARD by more than the backlash the generator reserved (0.0748 u per flank against 0.0427 u for the pair at module 0.34). General to the movement; visible only where a unit is gated. Three candidate fixes in the item, none of them widening `cyBacklash` |
@@ -9208,6 +9208,29 @@ stops while the head keeps travelling. From the shipped constants:
 | delivered | **117.4%** of a tooth |
 | travel arriving AFTER the latch | **0.398 u = 0.151 mm** (14.8% of the stroke) |
 
+> **MEASURED, and the arithmetic holds** (`tools/probe-87-press.mjs`,
+> 2026-08-24, on the tree at `8bdb730`). Step 2 below, run: the shipped tick
+> stepped through two presses at 1/480 with `beginSweepHold` up, every quantity
+> taken off the built tree rather than re-quoted. The moment arm measures
+> **4.370 u** as d(travel)/d(angle) while the pawl still carries; one tooth
+> measures **0.523599 rad**, agreeing with the public `clickLaw.pitch / 2`; one
+> press carries **0.61466 rad = 117.39%** of a tooth; and the travel arriving
+> after the latch is **0.39794 u**. Both presses give the same figures, and
+> 1/120 agrees with 1/480 to 2e-5, so the extremum is the trajectory's and not
+> the sampling's.
+>
+> **Two things the probe had to get right to be worth quoting.** The latch
+> falls BETWEEN frames, so the first frame at the final angle is already past
+> it — snapping to the frame grid reads 0.30778 and understates the overrun by
+> exactly one frame of travel; the latch point is taken as arm × tooth instead,
+> both measured. And the containment depth is **capped at 0.0383** by geometry
+> that has nothing to do with this finding: the pawl's 0.24 of z sits inside the
+> skirt's band with 0.0383 to each face, so `closestPointToPoint` answers to a
+> FACE and can never report more, however far the pawl advances in plane.
+> Reading that number as a penetration depth would understate the overrun by an
+> order. The pawl shares space with the skirt in **96 of 116 frames**, which is
+> the qualitative claim; the in-plane advance is the 0.39794.
+
 The overrun is larger than `CLEAR_MARGIN`, and it goes into the tooth the pawl
 has just banked, because nothing in the pawl can yield. **The 117% is asserted
 as a FLOOR and bounded from above by nothing**: the boot check reads
@@ -9335,11 +9358,15 @@ read the other, because the second is then nearly free.
    the axis joins `axisEntry`'s ordered pairs (TODO 54), joins `digestPoses`
    (§152), and must declare its slice (§127); and `restoring`'s population will
    MOVE, to be accepted per row against a `--report` diff, never re-based.
-2. **Then measure, rather than argue.** A probe that steps the shipped tick
-   through one press and reports the pawl ⇄ tooth minimum every frame, both
-   strokes. `tools/probe-59-click.mjs` (a rider swept through a whole pitch)
-   and `tools/probe-82-alarm-stall.mjs` (a force chain re-derived by posing the
-   built tree) are the two templates.
+2. **DONE — `tools/probe-87-press.mjs`.** It steps the shipped tick through two
+   presses and reports the pawl ⇄ skirt reading every frame, both strokes, and
+   it confirmed finding 1's arithmetic to five figures (the blockquote above
+   carries the numbers and the two methodological traps it had to clear). It
+   needs no axis: `#btn-alarm` is the public door to `pressAlarmPusher`, and
+   `step(dt)` feeds a real `rawDt` where `setPose` feeds zero. That does NOT
+   retire step 1 — a probe measures one trajectory on demand, where an axis puts
+   the stroke in the pose net so every sweep in the battery sees it, which is
+   what makes the finding a REGRESSION gate rather than a one-off reading.
 3. **Give the pawl the freedom a pawl has** — a pivot and a return spring, the
    `switchClickSpring` construction one member over — or give the overrun
    somewhere to go. This is P0/P2 inside the group, so it is spent in mechanism
@@ -9355,10 +9382,15 @@ read the other, because the second is then nearly free.
    the cheap half; the spring in metal is the half that makes the declaration
    true. §48's geometry guard will demand the mesh, which is the right pressure.
 
-**What this item measured and what it computed.** Findings 1 and 3 are
-arithmetic on the shipped constants — the derivations are above and re-run from
-`ALARM_PUSH_TRAVEL`, `ALARM_PAWL_ARM`, `ALARM_COL_STEP`, `ALARM_PUSH_STEM_R`
-and the boss's own torus parameters. They are NOT measurements of the built
-mesh, and step 2 is what promotes them. Finding 2's numbers are TODO 82's,
-measured. Taken 2026-08-23; per TODO 20's own history note, quote a measurement
+**What this item measured and what it computed.** As filed, findings 1 and 3
+were arithmetic on the shipped constants — re-run from `ALARM_PUSH_TRAVEL`,
+`ALARM_PAWL_ARM`, `ALARM_COL_STEP`, `ALARM_PUSH_STEM_R` and the boss's own
+torus parameters — and not measurements of the built mesh. **Finding 1 is now
+MEASURED** (`tools/probe-87-press.mjs`, the blockquote in §1): 117.39% and
+0.39794 u off the tree, against 117.4% and 0.398 computed, which is the
+agreement this repo counts as evidence. **Finding 3 is still arithmetic** — the
+0.08 u bore interference and the boss's single station have not been measured
+on the built mesh, and saying so is the difference between this item and one
+that quietly promotes everything because one number came back. Finding 2's
+numbers are TODO 82's, measured there. Taken 2026-08-23; per TODO 20's own history note, quote a measurement
 with the tree it came from or expect to re-take it.
