@@ -16552,3 +16552,128 @@ the pusher's own spring-less return is *still* not asked about. That is the
 GRANULARITY gap the item names — one declaration per unit cannot answer for two
 reciprocators — and an axis cannot fix it, which is worth stating plainly here
 so the axis is not mistaken for the whole repair.
+
+## §161 — a bench route for someone who works on watches, and a link that carries the design
+
+**Filed as roadmap item 161; this is what shipped, reconciled against it.** The
+entry was scoped by asking what the product offers a practising watchmaker, and
+the audit inverted the expected answer: the prototyping loop is largely BUILT
+and unnamed by anything the viewer is shown, while the communicating half was
+one broken link. Two of the entry's supporting claims turned out to be wrong,
+and the corrections are below rather than quietly dropped — one of them
+refutes another roadmap entry's premise.
+
+### The link that dropped the design, and the roster behind it
+
+`currentViewLink()` built a **fresh** `URLSearchParams` and set only view-tier
+keys. Reconfigure the movement, trial-boot it, Apply, save it as a variant —
+then press Copy view, and the recipient loaded the identity watch. Nothing
+warned. The function was otherwise scrupulous about what travels and why (the
+reserve is excluded *with a written reason*), so the spec tier was not excluded;
+it was absent.
+
+Behind it sat the real defect. `index.html` reads **fifteen** geometry-tier
+params before any module loads; `SPEC_URL_KEYS` in `main.js` was a hand-typed
+copy listing **thirteen**. `alarmbarrelaz` (§129) and `dialr` (§125) had been
+added to the reader and never to the copy, so every saved variant and every "As
+designed" reset had already been dropping them.
+
+**The fix is `LOCALES`' shape, not two more strings.** `index.html`'s reader is
+now a param→field table, which makes the list it reads the list it PUBLISHES
+(`__WATCH_SPEC_KEYS`), and `main.js` consumes that. There is deliberately **no
+fallback list**: a fallback would BE the second declaration. The empty case —
+a stale document against a fresh `main.js` — is a real regression, so it warns
+per rule 6 rather than working quietly with a roster nobody can see is wrong.
+
+A second warn holds the line the link depends on: `reconf` and `trial` are
+MODES, and a roster that swallowed either would put the workbench into every
+link a viewer sends. Nothing else stops that table growing one.
+
+The link now carries the spec, and needs no per-key default to keep "only
+non-default travels": at the geometry tier **absence is the default**, so the
+params present are exactly the ones that differ. It does not carry an unapplied
+drag — §21's do-not-fake-it, the candidate is under the pointer, not in the URL
+— nor `?reconf=1`.
+
+### The bench route
+
+A third narrator beside `TOUR_STEPS` and `INSPECT_STEPS`, over the shipped
+script engine: a `BENCH_STEPS` table and its button, exactly how §55 added the
+inspection route. No engine work beyond two step verbs.
+
+The register is the point. The tour narrates *what happens* to a visitor; the
+inspection route discusses mechanism quality but in this repository's language
+("§48's control case", "an inverted lever", "TODO 16") — right route, wrong
+audience. Thirteen stops, four rules, each derived from something already true
+in the file:
+
+- **Horological English, not selectors** — free, because `frameOn` resolves
+  through `labelEntries` before falling back to `scene.getObjectByName`, so a
+  stop AIMS by the registered name and SPEAKS by another. The German captions
+  had the register all along (`Ankerhemmung`, `Unruh`, `Schneckenkonus`); only
+  the English lacked it.
+- **Problem before mechanism** — `README.md`'s own fusee and maintaining-power
+  paragraphs are already written in that order.
+- **Modelled vs simulated said precisely, and the debt named.** One stop exists
+  for that alone and quotes TODO 11's measured 0.015–0.10 mm alarm stock against
+  the 0.12 mm floor. A watchmaker is the reader who notices an unearned claim,
+  so hiding one costs more on this route than anywhere else.
+- **End at a control the viewer can reach** — see the correction below.
+
+Two verbs, one line each: **`focus`** (`setFocus`/`clearFocus` existed but were
+reachable only from `?focus=` and a tap, so no stop could ISOLATE a mechanism,
+only frame one — placed AFTER `powerflow` deliberately, since the two are
+exclusive and both write `applyGhosting`'s channel, so focus wins as the more
+specific claim) and **`reconf`** (so the route ENDS at the workbench;
+`scriptStop` is "STOP, don't undo", so a mode entered on the last step survives
+the run ending and the panel returning).
+
+### Two corrections to the filing
+
+**The panel claim was wrong, and it takes roadmap item 146's premise with it.**
+The entry said item 146 hides `#clock-ui`, "which is where the reconfigure row
+lives", and that the same panel holds the only in-app link to `primer.html`.
+Measured: `btn-reconf`, `btn-reconf-trial`, `btn-copy-view` and the single
+`primer.html` link all live in `viewHud` (`main.js:21181–21372`). `#clock-ui`
+(`:21059–21149`) holds Time, wind, crown, sync, reserve and Alarm — and
+`hidePanelForScript()` touches only that one, which is the same reason §118
+moved the Camera section into the View HUD in the first place.
+
+So none of those controls is hidden, by a script run or by item 146. Two
+consequences, both taken: the route names them **and** enters reconfigure mode
+rather than describing where a button is; and item 146's discoverability
+argument needs re-deriving against what `#clock-ui` actually holds, which is
+filed back to the roadmap rather than left standing.
+
+**The entry's own argument survives it.** That no route names the reconfigure
+loop is a claim about ROUTES, not panels, and it was and is true.
+
+### The residue, named
+
+- **No pause state.** Any `pointerdown`/`keydown`/`wheel` still aborts the run,
+  as it does for every other route. A bench reader stops to look more than a
+  visitor does, so this route wants roadmap item 142's pause more than the tour
+  does — but that work is filed there and was not re-filed here.
+- **The route runs in SOLIDS end to end**, which makes it the most expensive
+  thing to drive under software GL: measured on the CI-class container, the
+  boot-default schematic tier renders at ~3 ms a frame and solids at ~206 ms.
+  `tools/probe-161-bench.mjs` records that measurement because it is what sets
+  the probe's step size — the walk is render-bound, so a COARSER `dt` is
+  cheaper, not dearer, which inverts the usual advice about `advanceFrame`.
+- **The authoring stops are desktop content, and that is where the guided
+  buttons already lived.** Measured: `layoutChrome()` drops `#view-hud` entirely
+  below ~700 px (`display:none` at 520, `block` at 700), and that panel holds
+  the Bench button along with Reconfigure, Trial boot and Copy view. So a phone
+  viewer cannot START this route from the UI at all — the same as Tour, Demo and
+  Inspect, which is a property of where the guided buttons live rather than of
+  this route — and the only way on is `?bench=1`, a typed request. The residue
+  is that the last two stops then name controls that viewer cannot see. The
+  route mitigates the important half by ENTERING reconfigure mode rather than
+  telling anyone to press a button, so the rings appear regardless; naming Trial
+  boot and Copy view is what stays desktop-only. `probe-161-bench.mjs` asserts
+  the reachability at 760 px and REPORTS the breakpoint rather than gating it.
+- **`?scale` is clobbered by state restore.** Found while probing the link and
+  measured identical on `main`, so it predates this: `applyDeepLink` applies
+  `?scale=`, then the session restore writes the persisted slider back over it.
+  The spec tier cannot be hit by it — `index.html` reads those pre-module — so
+  it is a pose-tier precedence question and is filed rather than fixed here.
