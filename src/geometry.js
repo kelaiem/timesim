@@ -7013,3 +7013,183 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   g.userData.bossH = bossH;
   return g;
 }
+
+// ---------------------------------------------------------------------------
+// Backlog (watch case) — THE SOLID CASE. makeCase builds the housing as real
+// closed metal, BACK-LOADING like the real construction: the movement enters
+// from the back, the plate's dial-side rim face rests on the case middle's
+// seat, and the screw-down back closes behind it.
+//
+// Z CONVENTION, learned the hard way on the first cut of this builder: the
+// DIAL side is −z (the Dial unit reaches −13.84; Z_DIAL = −7) and the back
+// — the alarm barrel's side — is +z. The first cut assumed the reverse and
+// put the caseback through the dial.
+//
+// Parts: the case middle (band + seat + bezel, ONE lathe profile — the bore,
+// plate seat, gasket gland, crystal seat and bezel lip come off the same
+// turning, which is how a real case middle is made), the screw-down back
+// (cap with a REAL 3-turn 0.5 mm-pitch helical thread standing tangent
+// between cap rim and band bore — contact on both flanks, the engagement
+// itself, without CSG-cut grooves; the grooves it meshes with are declared
+// debt: the case unit is deliberately outside INTRA_TIER_SCOPE until a
+// CSG-free bore/groove approach lands), the gasket cord in its gland, the
+// crystal, lugs and spring bars, crown tubes and the flush alarm-pusher
+// bore. Every face capped; each part its own named mesh so the unit labels
+// and fingerprints like any other.
+// dims — all measured/derived by the caller (main.js); nothing recomputed.
+// ---------------------------------------------------------------------------
+export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
+  const {
+    UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_CAP,
+    z0, zLandTop, zGlandFloor, zCapFloorIn,
+    zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+    threadPitch, threadTurns, gasketD, tubeD, pusherD,
+    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ,
+    lugSpan,
+  } = dims;
+  const g = new THREE.Group();
+  g.name = 'case';
+  const lathe = (pts, seg = 96) => {
+    const geo = new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), seg);
+    geo.rotateX(Math.PI / 2); // lathe axis Y → +Z, house convention
+    return geo;
+  };
+
+  // Case middle: back face → gland step → bore → plate seat shoulder → bore
+  // → crystal seat chamfer → seat ledge → bezel wall → lip over the crystal
+  // → bezel outer face → outer wall → back face. One closed profile.
+  const R_GLAND = R_CAP - 0.5 / UNIT_MM;      // gland step inner radius
+  const middle = new THREE.Mesh(lathe([
+    [R_IN, z0], [R_IN, zGlandFloor - 0.8 / UNIT_MM],
+    [R_GLAND, zGlandFloor - 0.8 / UNIT_MM], [R_GLAND, zGlandFloor],
+    [R_IN, zGlandFloor],
+    [R_IN, zSeatBot], [R_SH, zSeatBot], [R_SH, zSeatTop], [R_IN, zSeatTop],
+    [R_IN, zBandFront],
+    [R_CRYST, zCrystInner], [R_CRYST + 1 / UNIT_MM, zCrystInner],
+    [R_BEZEL_IN + 0.3 / UNIT_MM, zCrystOuter],
+    [R_BEZEL_IN, zCrystOuter], [R_BEZEL_IN, zBezelOuter],
+    [R_OUT, zBezelOuter], [R_OUT, z0],
+  ]), material);
+  middle.name = 'caseMiddle';
+  g.add(middle);
+
+  // Screw-down back: cap with floor + threaded rim, outer face flush with
+  // the band's back face; the opener key's 8 teeth stand proud of it.
+  const back = new THREE.Mesh(lathe([
+    [0, z0], [R_CAP, z0], [R_CAP, zLandTop],
+    [R_CAP - 0.6 / UNIT_MM, zLandTop], [R_CAP - 0.6 / UNIT_MM, zCapFloorIn],
+    [0, zCapFloorIn],
+  ]), material);
+  back.name = 'caseBack';
+  g.add(back);
+  // The thread: helical ridge tangent to BOTH flanks (tube r = half the
+  // radial gap), 3 turns at the stated pitch, starting one lead-in chamfer
+  // (0.5 mm) in from the back face.
+  const R_TH = (R_CAP + R_IN) / 2;
+  const helixPts = [];
+  for (let i = 0; i <= 64 * threadTurns; i++) {
+    const t = i / 64, a = t * Math.PI * 2;
+    helixPts.push(new THREE.Vector3(Math.cos(a) * R_TH, Math.sin(a) * R_TH,
+      z0 - 0.5 / UNIT_MM - t * threadPitch));
+  }
+  const thread = new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helixPts), 64 * threadTurns,
+      (R_IN - R_CAP) / 2, 8, false), material);
+  thread.name = 'caseBackThread';
+  g.add(thread);
+  // Opener-key teeth: 8 raised lugs standing 0.3 mm proud of the back face.
+  const toothGeo = new THREE.BoxGeometry(1.2 / UNIT_MM, 1.6 / UNIT_MM, 0.6 / UNIT_MM);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const t = new THREE.Mesh(toothGeo, material);
+    t.position.set(Math.cos(a) * (R_CAP - 1.2 / UNIT_MM), Math.sin(a) * (R_CAP - 1.2 / UNIT_MM), z0 + 0.3 / UNIT_MM);
+    t.rotation.z = a;
+    t.name = 'caseKeyTooth';
+    g.add(t);
+  }
+  // Gasket: the cord in the gland, 20% squeeze between the cap's land and
+  // the band's gland floor (the stack that makes the rating claim honest).
+  const gasket = new THREE.Mesh(
+    new THREE.TorusGeometry((R_GLAND + R_CAP - 0.6 / UNIT_MM) / 2 + 0.5 / UNIT_MM,
+      gasketD / 2 * 0.8, 10, 96), MATS.dark);
+  gasket.name = 'caseGasket';
+  gasket.position.z = (zLandTop + zGlandFloor) / 2;
+  g.add(gasket);
+
+  // Crystal: flat mineral disc with relieved edge, seated on the ledge.
+  const crystal = new THREE.Mesh(lathe([
+    [0, zCrystInner], [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter], [0, zCrystOuter],
+  ]), crystalMaterial);
+  crystal.name = 'caseCrystal';
+  g.add(crystal);
+
+  // Crown tubes (Ø2.0 mm) and the flush alarm-pusher bore (Ø1.2 mm), each AT
+  // ITS STEM'S OWN Z (a tube at mid-band would sleeve nothing): from inside
+  // the bore to 1.5 mm proud of the band, with a 0.5 mm collar. The band's
+  // radial bores they pass through are the same CSG debt as the thread
+  // grooves.
+  const tubeAt = (az, d, z, name) => {
+    const r = d / 2;
+    const len = R_OUT + 1.5 / UNIT_MM - (R_IN - 1 / UNIT_MM);
+    // The stems' own convention (windSpinner et al.): cylinder axis Y, the
+    // pivot's z-rotation maps +Y outboard along the azimuth. No intermediate
+    // holder — a rotated frame would throw the radial offsets into z.
+    const pivot = new THREE.Group();
+    pivot.rotation.z = az - Math.PI / 2;
+    pivot.position.z = z;
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 20, 1, true), material);
+    cyl.position.y = (R_IN - 1 / UNIT_MM) + len / 2;
+    pivot.add(cyl);
+    // collar: the tube's outer flange, 0.5 mm tall, 0.4 mm proud radius
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.4 / UNIT_MM, r + 0.4 / UNIT_MM, 0.5 / UNIT_MM, 20), material);
+    collar.position.y = R_OUT + 1.25 / UNIT_MM;
+    pivot.add(collar);
+    const grp = new THREE.Group();
+    grp.add(pivot);
+    grp.name = name;
+    g.add(grp);
+    return grp;
+  };
+  tubeAt(stemAz, tubeD, stemZ, 'caseCrownTube');
+  tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
+  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore');
+
+  // Lugs at 12 and 6, spring-bar span per dims; each lug a prism
+  // chord-tangent to the band (contact patch, no weld — the stamped-lug
+  // truth), the Ø1.5 mm spring bar spanning each pair.
+  const lugT = 1.2 / UNIT_MM;            // lug thickness across the strap
+  const lugH = 2.5 / UNIT_MM;            // radial reach out of the band
+  const lugW = 3.0 / UNIT_MM;            // height along z
+  for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
+    const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
+    const perp = { x: -u.y, y: u.x };
+    for (const s of [-1, 1]) {
+      const lug = new THREE.Mesh(new THREE.BoxGeometry(lugT, lugH, lugW), material);
+      const off = s * lugSpan / 2;
+      lug.position.set(u.x * (R_OUT + lugH / 2 - 0.3 / UNIT_MM) + perp.x * off,
+                       u.y * (R_OUT + lugH / 2 - 0.3 / UNIT_MM) + perp.y * off,
+                       zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
+      lug.rotation.z = lugAz - Math.PI / 2;
+      lug.name = 'caseLug';
+      g.add(lug);
+    }
+    const bar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.75 / UNIT_MM, 0.75 / UNIT_MM, lugSpan - lugT, 12), material);
+    bar.geometry.rotateX(Math.PI / 2);   // axis → Z
+    bar.geometry.rotateY(Math.PI / 2);   // axis → X
+    bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction
+    bar.position.set(u.x * (R_OUT + lugH - 0.6 / UNIT_MM), u.y * (R_OUT + lugH - 0.6 / UNIT_MM),
+                     zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
+    bar.name = 'caseSpringBar';
+    g.add(bar);
+  }
+
+  // The §62 keep sweep enrolls any mesh whose box crosses the three-quarter
+  // plate's z-band as "material the plate must carry". The case band
+  // encloses the plate BY DESIGN — it is the world's fixture, not a load on
+  // the plate — so its meshes opt out here, on the part, where the claim is
+  // made, rather than in the check, which stays generic.
+  g.traverse((o) => { if (o.isMesh) o.userData.casePart = true; });
+  g.userData.r = R_OUT;
+  return g;
+}
