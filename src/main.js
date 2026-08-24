@@ -23219,6 +23219,14 @@ const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.steel, crystalMat
 caseSolid.visible = restoredCaseLines;
 movement.add(caseSolid);
 registerLabel('Case', caseSolid);
+// Explode choreography: the case comes apart the way it comes apart — the
+// back unscrews OUT THE BACK (+z, past the alarm gong's stratum 11), the
+// crystal lifts off the front (−z, past the dial's own stage), and the
+// middle stays put as the reference body the movement sits in. The cap's
+// gasket, thread and key teeth ride with it (backAsm), the tubes and lugs
+// stay with the band (middleAsm).
+registerExplode(caseSolid.userData.assemblies.back, 0, 13, 1);
+registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
 
 const SCHEMATIC = { proxies: [], on: false };
 {
