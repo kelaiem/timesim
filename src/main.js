@@ -381,7 +381,7 @@ function declareRestoring(name, member, kind, why, mesh) {
 //                    offset induces is computed and priced (the elbow rods).
 //   riserReach     — displacement through a plane change with no direction
 //                    change: a climb and a reach, loaded axially (the pusher).
-const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach'];
+const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach', 'pinInSlot'];
 const declaredTransfers = new Map();   // site -> row
 function declareTransfer(site, row) {
   if (declaredTransfers.has(site)) console.warn(`§137: transfer '${site}' declared twice`);
@@ -6582,7 +6582,7 @@ const tqSlots = [];
 // CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
 // derive long after this plate is cut — and the pusher build asserts the
 // derived track equals this slot (the §35/§68 tripwire pattern).
-tqSlots.push({ ax: 29.77, ay: -0.02, bx: 32.41, by: 0.44, r: 0.31 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module; §163 re-froze it when ALARM_PUSH_CHORD stopped being a literal and the whole press line moved out to the root circle)
+tqSlots.push({ ax: 24.03, ay: -0.90, bx: 26.68, by: -0.44, r: 0.32 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module; §163 re-froze it TWICE — once when ALARM_PUSH_CHORD stopped being a literal, and again when the coupling moved the riser from the stem's inner end to the PIN's station, which straddles the foot of the perpendicular and so sits under the wheel rather than outside it)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -20034,32 +20034,65 @@ const _pushPerp = { x: -_pushU.y, y: _pushU.x };
 // root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
 // throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
 const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM_COL_BASE_R);
-// §163 — THE OFFSET IS THE MOMENT ARM, SO IT IS DERIVED FROM THE INDEX.
+// §163 — THE OFFSET IS SET BY THE COUPLING, NOT BY A MOMENT ARM.
+//
 // This was `ratchetDrive * 1.15 * (ALARM_COL_BASE_R / 1.5)` = 4.37, and the
 // 1.15 was a bare literal — rule 1's "a number that appears because it looked
-// right". For a line of action the perpendicular offset IS the moment arm, so
-// the offset that carries exactly one tooth is travel ÷ one tooth. Both are
-// already in the source and both come from the same place: the travel is the
-// pitch arc AT THE SAW'S ROOT CIRCLE, so the quotient IS that root circle,
-// 0.9 · ALARM_COL_BASE_R = 5.13.
+// right". The first correction derived it as travel ÷ one tooth = 5.13, which
+// is right FOR A RIGID PAWL ON THE END OF AN ARM: for a line of action the
+// perpendicular offset IS the moment arm, so a travel s about it turns the
+// wheel s/offset, and carrying exactly one tooth wants travel ÷ step. Both
+// quantities were already in the source and both come from the same place —
+// the travel is the pitch arc AT THE SAW'S ROOT CIRCLE — so the quotient IS
+// that root circle, 0.9 · ALARM_COL_BASE_R. Against it the old 4.37 is 85.2%,
+// so the press delivered 1/0.852 = 117.39% of a tooth: TODO 87 finding 1's
+// over-carry was never a surplus to absorb in a spring, it was exactly the
+// ratio of a guessed number to a derived one. That still stands.
 //
-// That single substitution is TODO 87 finding 1. The old 4.37 against the
-// derived 5.13 is 85.2%, so the press delivered 1/0.852 = 117.39% of a tooth —
-// the over-carry finding 1 measured off the built tree to five figures. It was
-// never a surplus to absorb in a spring; it was exactly the ratio of a guessed
-// number to a derived one, and deriving it makes the overrun cease to exist
-// rather than be budgeted.
-const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * (ALARM_PUSH_TRAVEL / ALARM_COL_STEP);
+// What does not stand is the premise. The pawl is no longer rigid on the
+// pusher: §163 pivots the DRIVER on the wheel's own arbor (so that on the
+// drive stroke there is no relative motion at the teeth to foul) and the
+// pusher reaches it through a PIN IN A RADIAL SLOT. A radial slot has its own
+// kinematics — the driver's angle IS the pin's azimuth about the arbor — so a
+// pin travelling a straight line at perpendicular offset d sweeps 2·atan(h/d)
+// over a half-stroke h, and one tooth needs
+//
+//     d = travel / (2·tan(step/2)) = 5.01226
+//
+// 2.30% inboard of the root circle, with the stroke STRADDLING the foot of the
+// perpendicular (azimuth 75° at rest, 105° pressed) or it sweeps less. Cutting
+// the pin at 5.13 instead is not a placement problem to shuffle out of:
+// minimised over EVERY start position it would want 2·5.13·tan(step/2) =
+// 2.74916 of travel where 2.68606 exists, and each press would deliver 29.3415°
+// of the 30.000° a tooth needs. So 5.13 is an INTERMEDIATE here — the moment
+// arm of a rigid pawl, the member this section deletes — and the built offset
+// derives from the coupling that replaced it.
+const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));
+const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * ALARM_DRIVE_OFFSET;
+// The stroke is symmetric about the foot, which is where _pushBase already
+// stands (it is the wheel's centre displaced by the chord along the press
+// line's perpendicular), so s runs +h → −h and nothing else has to move.
+const ALARM_PIN_HALF = ALARM_PUSH_TRAVEL / 2;
 // TODO 20 — WHAT THE PAWL CARRIES, so the tick can turn the wheel BY ITS
-// PAWL instead of easing it toward a counter. The pusher translates along
-// −û with its pawl standing ALARM_PUSH_CHORD off the wheel's axis, and for
-// a line of action that offset IS the moment arm: a travel s about it turns
-// the wheel s/arm. The stroke must cover a whole tooth or the pawl runs out
-// of flank mid-index — asserted, because it is the constraint that made
-// this fix impossible until §68 and TODO 11 sized the wheel and derived the
-// throw (the old hand-set 0.7 carried 83% of a tooth).
-const ALARM_PAWL_ARM = Math.abs(ALARM_PUSH_CHORD);
-const ALARM_PAWL_SWEEP = ALARM_PUSH_TRAVEL / ALARM_PAWL_ARM;
+// PAWL instead of easing it toward a counter. §163 replaces the linear law
+// `carried = travel·T / arm` with the coupling's own: the driver's angle is
+// the pin's azimuth, so the carry is the azimuth SWEPT since the pin left its
+// rest station. It is not a small correction to the old law — it is a
+// different function with the same endpoints, and the difference is where the
+// wheel stands mid-press, which is half the poses the alarmPress axis visits.
+const alarmDriverCarry = (T) =>
+  Math.atan2(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF - ALARM_PUSH_TRAVEL * T)
+  - Math.atan2(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF);
+// The MOMENT ARM is no longer one number. By virtual work the driver's is
+// ds/dθ = (d² + s²)/d, smallest at the foot and largest at either end of the
+// stroke — 5.01226 → 5.37213, a 7.18% swing, and the same 7.18% appears as the
+// velocity ratio's variation because it is the same quantity read the other
+// way. Torque is therefore GREATEST at the ends, which is where the pawl picks
+// a tooth up and where it seats it. Force claims quote the SMALLEST arm, at
+// mid-stroke, because that is the one that has to be afforded.
+const ALARM_PAWL_ARM = ALARM_DRIVE_OFFSET;
+const ALARM_PAWL_ARM_END = (ALARM_DRIVE_OFFSET ** 2 + ALARM_PIN_HALF ** 2) / ALARM_DRIVE_OFFSET;
+const ALARM_PAWL_SWEEP = alarmDriverCarry(1);
 // §163 — AN EQUALITY, WHERE THIS WAS A FLOOR. The old test was
 // `if (ALARM_PAWL_SWEEP < ALARM_COL_STEP)`, which is the right constraint for
 // "the pawl must finish a tooth" and says NOTHING about what the surplus does.
@@ -20068,7 +20101,7 @@ const ALARM_PAWL_SWEEP = ALARM_PUSH_TRAVEL / ALARM_PAWL_ARM;
 // click has banked and the wheel has stopped. Rule 1's shape, a one-sided
 // derivation whose other side was never written.
 //
-// With the offset derived from the index above, the two sides are the same
+// With the offset derived from the coupling above, the two sides are the same
 // number by construction, so the honest test is that they agree to float noise.
 // Both directions are named because they fail differently: under-sweep leaves
 // the pawl on a flank mid-index, over-sweep drives into a banked tooth.
@@ -20076,6 +20109,18 @@ if (Math.abs(ALARM_PAWL_SWEEP - ALARM_COL_STEP) > 1e-12)
   console.warn(`§163: one press carries ${ALARM_PAWL_SWEEP.toFixed(6)} rad against a ${ALARM_COL_STEP.toFixed(6)} tooth `
     + `(${(100 * ALARM_PAWL_SWEEP / ALARM_COL_STEP).toFixed(2)}%) — ${ALARM_PAWL_SWEEP < ALARM_COL_STEP
       ? 'the pawl runs out of flank mid-index' : 'the surplus is displacement into a tooth that has stopped'}`);
+// The driver's own STRATUM, which is what ALARM_COL_RAISE was re-derived to
+// open: one CLEAR_MARGIN off the plate top, one floor-stock thickness, and one
+// CLEAR_MARGIN again before the ratchet skirt hangs into it. The skirt-side
+// half of that is asserted where the raise is derived (§163, at the wheel).
+const ALARM_DRIVER_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN;
+const ALARM_DRIVER_TOP_Z = ALARM_DRIVER_BOT_Z + ALARM_COL_DRIVER_T;
+// The reach bar's section. Both were literals — 0.30 across and 0.24 thick —
+// and both sat UNDER §50's floor, which is what a bar cut from real stock
+// cannot be. At the floor in both directions, so the section is a consequence
+// of the stock rather than of what fitted.
+const ALARM_PUSH_REACH_W = STOCK_MIN_U;
+const ALARM_PUSH_REACH_T = STOCK_MIN_U;
 // A finger's press stroke. This is the ONLY rate left in the chain: the
 // wheel used to carry its own 0.10 s ease toward the counter, and with the
 // pawl driving there is nothing left to ease — the wheel goes exactly where
@@ -20144,22 +20189,25 @@ alarmSwitchUnit.add(alarmPusherGroup);
 {
   // TODO 22 closed: the stem ENDS clear of the wheel. Its chord enters the
   // saw-tip circle at s = sqrt((tip+margin)² − chord²); the rest station
-  // adds the full press travel so the pressed stem still stops there. (The
-  // first cut's hand-set 1.6 ended 0.9 from the wheel AXIS, inside the disc
-  // band at every pose.)
+  // adds the full press travel so the pressed stem still stops there.
   //
-  // WHAT THIS USED TO CLAIM, AND WHAT TODO 87 MEASURED. The sentence here
-  // read "the PAWL, on its dropped carrier below the disc, is the only
-  // member that reaches the teeth" — true of the STEM, which is what TODO 22
-  // fixed, and false of the carrier. The reach bar shares the pawl's z band
-  // by construction and its leading end starts only 1.1 u behind the pawl's
-  // kiss, so a 2.686 u stroke drives it ~1.586 u inside the tooth circle:
-  // measured on the first run of the alarmPress axis, at poses nothing could
-  // reach before it existed. It is TODO 87 finding 6, waived in
-  // INTRA_UNIT_WAIVERS with the arithmetic, and the fix is position space —
-  // the carrier out of the skirt's band, the pawl hung from a dropper, which
-  // is the anatomy this comment already describes.
-  const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16; // saw tip circle (geometry.js) + margin + the dropper's own radius
+  // WHAT THIS USED TO CLAIM, AND WHAT §163 MAKES OF IT. The sentence here read
+  // "the PAWL, on its dropped carrier below the disc, is the only member that
+  // reaches the teeth" — true of the STEM and false of the carrier, which
+  // shared the pawl's z band and drove 1.586 inside the tooth circle at poses
+  // nothing could reach before the alarmPress axis existed. That is TODO 87
+  // finding 6, and §163 closes it in POSITION SPACE rather than by a waiver:
+  // the reach bar moves down to the STEM's own plane, UNDER the three-quarter
+  // plate, where the plate itself stands between it and everything above.
+  // Measured over the whole stroke, its nearest neighbour is that plate at
+  // 0.61 and the next thing in the movement is 1.95 away.
+  //
+  // So this quantity no longer bounds where the mechanism reaches — it is the
+  // SECTION CHANGE. The round stem is the part that runs in the guide bore and
+  // it stops clear of the wheel's footprint; the flat blade is what passes
+  // underneath. The old form carried a `+ 0.16` for a dropper that stood at
+  // this station and no longer does, so it goes.
+  const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN; // saw tip circle (geometry.js) + the one margin
   const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
   const stemOuterS = 1.6 + plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4; // the as-built case-band end
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
@@ -20218,105 +20266,37 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // ERGONOMIC constraint standing alone, and the riders' sections are set by
   // §50's stock floors rather than by this chain. A rider that ever needs
   // real force would have to be argued here first.
-  // The pawl — a slim bar at the stem's inner end, nose down at the skirt.
-  const pawl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.3, 0.24), MATS.blueSteel);
-  pawl.name = 'alarmPusherPawl'; // TODO 20: the hand-off row selects it by name (inspect.js couples by string)
-  pawl.rotation.z = ALARM_PUSH_AZ;
-  // TODO 20 (park) / §33 (pusher handle) — a click RESTS ON the teeth;
-  // this one was parked 0.18 BURIED, then at a MEASURED-ONCE distance
-  // (1.3557, bisected against the built skirt) valid only at the one
-  // azimuth it was measured at. The park is DERIVED now: the pawl's
-  // leading face is a segment perpendicular to the press axis, so its
-  // kiss is exactly the outermost point of the saw's outline inside the
-  // face's band — computed from the SAME polygon the teeth were cut from
-  // (userData.ratchetPoly, the profileAt convention), for any azimuth
-  // the spec chooses. The alarmHandoffs row asserts the kiss every run.
+  // The pin's CARRIER. §163 turns this end of the pusher inside out. The pin
+  // has to sit within ±travel/2 of the foot of the perpendicular — that is
+  // what makes the sweep a whole tooth — which puts it at radius 5.01–5.19
+  // from the column arbor, INSIDE the saw's tip circle in plan. The stem
+  // cannot go there (it is a round rod in a bore, and it stops at the wheel's
+  // footprint above), so a flat REACH BAR runs inboard from the stem's inner
+  // end at the stem's OWN z, under the three-quarter plate, and a RISER at its
+  // inner end climbs through a slot in that plate. The riser's top IS the pin:
+  // no separate member, because a stepped post of one diameter is one post.
   //
-  // P1, TODO 16's format (§137) — WHAT THE PAWL CARRIES AT THE SAW, in the
-  // wind-arrest beak's format one mechanism over: a moment divided by a
-  // radius, plus the flank angle that says where the reaction points.
-  //
-  // The MOMENT is the click's detent, and it is the click's blade that sets
-  // it (that block carries the section arithmetic): the ride stores
-  // ½kx² = 2.88e-6 J per index at 2.6 kN/m and 0.047 mm, released again on
-  // the drop, and the rise occupies the flank — 71% of each half-arc, i.e.
-  // 0.372 of the 0.5236 rad step — so the mean rising torque is 7.8e-6 N·m
-  // and a linear ramp peaks at ≈ 1.55e-5 N·m. The lock lever's return blade
-  // and the link beak ride the same castellations and add to it; the click
-  // is the largest of the three and is quoted alone, which understates
-  // nothing that would change the verdict.
-  //
-  // The RADIUS is not the tooth's — for a line of action the offset IS the
-  // moment arm, so the pawl's is ALARM_PAWL_ARM = |ALARM_PUSH_CHORD| =
-  // 4.37 u = 1.656 mm, giving ≈ 9.4 mN along the press axis. Quoted at the
-  // saw's own root circle (0.9·ALARM_COL_BASE_R = 5.13 u = 1.944 mm) the
-  // same torque is ≈ 8.0 mN of tangential force on the tooth face.
-  //
-  // The FLANK ANGLE is the cleanest half. The driving face is the CLIFF —
-  // geometry.js cuts each tooth as a radial step from root 5.13 to tip 6.384
-  // at ONE azimuth — so it is 0° off radial and the whole reaction is
-  // tangential: nothing about this contact cams the pawl out, which is why
-  // it needs no closing geometry (contrast the wind-arrest beak's 15.4°,
-  // which needs it because that contact is a HOLD, not a drive). The back
-  // flank falls tip → root over the whole 30° pitch, 67.4° off radial, and
-  // that is the ramp the pawl cams back over on the return stroke.
-  const ALARM_PAWL_KISS_S = (() => {
-    const cosE = Math.cos(ALARM_LOCK_ENGAGED), sinE = Math.sin(ALARM_LOCK_ENGAGED);
-    const halfW = 0.3 / 2; // the pawl bar's width about the press line
-    let s = -Infinity;
-    const poly = alarmColumnWheel.userData.ratchetPoly;
-    const sw = (px, py) => ({
-      s: (px - _pushBase.x) * _pushU.x + (py - _pushBase.y) * _pushU.y,
-      w: (px - _pushBase.x) * _pushPerp.x + (py - _pushBase.y) * _pushPerp.y,
-    });
-    const world = poly.map((p) => sw(
-      ALARM_COL_POS.x + p.x * cosE - p.y * sinE,
-      ALARM_COL_POS.y + p.x * sinE + p.y * cosE));
-    for (let i = 0; i < world.length; i++) {
-      const a = world[i], b = world[(i + 1) % world.length];
-      if (Math.abs(a.w) <= halfW) s = Math.max(s, a.s);
-      for (const wEdge of [halfW, -halfW]) {
-        if ((a.w - wEdge) * (b.w - wEdge) < 0) {
-          const t = (wEdge - a.w) / (b.w - a.w);
-          s = Math.max(s, a.s + t * (b.s - a.s));
-        }
-      }
-    }
-    if (!Number.isFinite(s))
-      console.warn('§33 pusher: the pawl’s band misses the ratchet entirely at this azimuth — the press indexes nothing');
-    return Number.isFinite(s) ? s : 2.2; // fall back near the old park so the boot still stands
-  })();
-  // skirt band mid-plane, world→group local (the skirt hangs baseH/2 + its
-  // own stock under the spin plane — geometry.js): derived, was the frozen −0.17
-  const _pawlZ = (ALARM_COL_SPIN_REL - ALARM_COL_BASE_H / 2 - STOCK_MIN_U / 2) - ALARM_PUSH_AXIS_REL;
-  pawl.position.set(_pushU.x * (ALARM_PAWL_KISS_S + 1.5 / 2), _pushU.y * (ALARM_PAWL_KISS_S + 1.5 / 2), _pawlZ); // leading face on the kiss
-  alarmPusherGroup.add(pawl);
-  // The pawl's CARRIER — the stem ends outside the tip circle, and the pawl
-  // lives at the skirt band ABOVE the under-plate axis, so a RISER at the
-  // stem's inner end climbs through the plate slot to a reach bar at the
-  // pawl's own plane (the anatomy a real case-pusher's under-plate
-  // operating lever has). The signed forms keep the member correct on
-  // either side of the pawl plane: length spans |_pawlZ| plus 0.12 of
-  // overlap, and the 0.03 end-bias lands 0.03 past the pawl plane and 0.09
-  // past the stem plane, exactly as the dropper form did when the axis was
-  // above.
+  // Why this is legal where the old arrangement was not: the bar is under the
+  // plate and the driver is above it, so the plate is between them. The old
+  // reach bar shared the PAWL's band with the metal it had to miss.
   {
     // TODO 11 tranche five: riser stock across the FLATS (see STOCK_MIN_R10) —
-    // the 0.16 radius read 0.1153 mm on the 10-gon, under the floor. Its
-    // station still stands its own radius clear of ALARM_PUSH_INNER, so the
-    // seat moves with the section rather than the two drifting apart.
-    const drop = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, Math.abs(_pawlZ) + 0.12, 10), MATS.steel);
+    // the 0.16 radius read 0.1153 mm on the 10-gon, under the floor.
+    const riserTop = ALARM_DRIVER_TOP_Z - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // group-local: the post runs to the driver's top face
+    const riserBot = -ALARM_PUSH_REACH_T / 2;                                    // seated on the bar's underside
+    const drop = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, riserTop - riserBot, 10), MATS.steel);
     drop.name = 'alarmPusherRiser';
     drop.rotation.x = Math.PI / 2;
-    drop.position.set(_pushU.x * (ALARM_PUSH_INNER + STOCK_MIN_R10), _pushU.y * (ALARM_PUSH_INNER + STOCK_MIN_R10), _pawlZ / 2 - Math.sign(_pawlZ) * 0.03);
+    drop.position.set(_pushU.x * ALARM_PIN_HALF, _pushU.y * ALARM_PIN_HALF, (riserBot + riserTop) / 2);
     alarmPusherGroup.add(drop);
-    const riserFar = ALARM_PUSH_INNER + 2 * STOCK_MIN_R10;  // the riser's outboard face — its own diameter past the stem's inner end
-    const reachLen = riserFar - (ALARM_PAWL_KISS_S + 1.5) + 0.4; // riser → pawl tail, 0.4 of overlap onto the pawl
-    const reach = new THREE.Mesh(new THREE.BoxGeometry(reachLen, 0.3, 0.24), MATS.blueSteel);
+    // the bar: riser → the stem's inner end, overlapping each by its own radius
+    const barIn = ALARM_PIN_HALF - STOCK_MIN_R10;
+    const reachLen = ALARM_PUSH_INNER + ALARM_PUSH_STEM_R - barIn;
+    const reach = new THREE.Mesh(new THREE.BoxGeometry(reachLen, ALARM_PUSH_REACH_W, ALARM_PUSH_REACH_T), MATS.blueSteel);
     reach.name = 'alarmPusherReach';
     reach.rotation.z = ALARM_PUSH_AZ;
-    const reachMid = (riserFar + (ALARM_PAWL_KISS_S + 1.5 - 0.4)) / 2;
-    reach.position.set(_pushU.x * reachMid, _pushU.y * reachMid, _pawlZ);
+    const reachMid = barIn + reachLen / 2;
+    reach.position.set(_pushU.x * reachMid, _pushU.y * reachMid, 0);
     alarmPusherGroup.add(reach);
   }
   // §137 — the pusher's transfer row, and the PAWL'S FORCE AT THE SAW ROOT
@@ -20336,7 +20316,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
     const clickTorque_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
     const pawlNeedMN = clickTorque_Nmm / (sawR * UNIT_MM) * 1000;
     declareTransfer('alarm arming: pusher riser and reach (cap → pawl)', {
-      unit: 'Alarm switch', meshes: ['alarmPusherCap', 'alarmPusherRiser', 'alarmPusherReach', 'alarmPusherPawl'], idiom: 'riserReach',
+      unit: 'Alarm switch', meshes: ['alarmPusherCap', 'alarmPusherReach', 'alarmPusherRiser'], idiom: 'riserReach',
       load: { value: pawlNeedMN, unit: 'mN',
         source: 'the click row\'s peak flank force taken about the column axis at the nose\'s riding radius, paid back at the saw\'s own outermost radius (userData.ratchetPoly) — what one indexing press must overcome' },
       quantities: { armIn_u: 1, armOut_u: 1, ratio: 1 },
@@ -20359,11 +20339,11 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // riser track (rest → pressed, at the riser's own radius + CLEAR_MARGIN)
   // sits on it. Grace 0.02, same as the rod bore's.
   {
-    const riserS = ALARM_PUSH_INNER + 0.16;
+    const riserS = ALARM_PIN_HALF;                    // §163: the riser stands at the pin, which straddles the foot
     const rest = { x: _pushBase.x + _pushU.x * riserS, y: _pushBase.y + _pushU.y * riserS };
     const pressed = { x: rest.x - _pushU.x * ALARM_PUSH_TRAVEL, y: rest.y - _pushU.y * ALARM_PUSH_TRAVEL };
     const slot = tqSlots[tqSlots.length - 1];
-    const need = 0.16 + CLEAR_MARGIN;
+    const need = STOCK_MIN_R10 + CLEAR_MARGIN;   // §163: the riser's own stock, not a literal beside it
     if (Math.hypot(rest.x - slot.bx, rest.y - slot.by) > 0.02 ||
         Math.hypot(pressed.x - slot.ax, pressed.y - slot.ay) > 0.02 ||
         Math.abs(slot.r - need) > 0.02)
@@ -20377,8 +20357,437 @@ alarmSwitchUnit.add(alarmPusherGroup);
     ux: _pushU.x, uy: _pushU.y,
     inner: ALARM_PUSH_INNER, capS: stemOuterS,
     capR: PUSHER_HEAD_R, capLen: PUSHER_HEAD_LEN,
-    pawlZ: _pawlZ, pawlS: ALARM_PAWL_KISS_S,
+    pinS: ALARM_PIN_HALF, pinR: STOCK_MIN_R10,
+    riserTop: ALARM_DRIVER_TOP_Z - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL),
   };
+}
+
+// ————— §163: the driver's and the pawl's dimensions, every one derived —————
+const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;    // the saw's tip circle, as geometry.js cuts it
+// The PAWL'S PIVOT POST rises through the SKIRT'S OWN z-band to reach the
+// teeth, so its SURFACE — not its centreline — must stand one CLEAR_MARGIN
+// outside the tip circle. Scanned for whichever radius measured best the probe
+// answers 6.6, which puts a post of this stock 0.0495 off the tips, a third of
+// the margin; the constraint answers 6.70048, and measured there the return is
+// stronger, not weaker (free region 6.304 u² against 5.288).
+const ALARM_DRIVER_POST_R = ALARM_COL_TIP_R + CLEAR_MARGIN + STOCK_MIN_R10;
+// The SLOT spans the pin's own reach over the stroke — d at the foot, and
+// hypot(d, travel/2) at either end — plus one margin of end freedom, because a
+// pin that bottoms in its slot stops being a pin in a slot.
+const ALARM_DRIVER_SLOT_IN = ALARM_DRIVE_OFFSET - CLEAR_MARGIN;
+const ALARM_DRIVER_SLOT_OUT = Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF) + CLEAR_MARGIN;
+// The pawl lives in the skirt's band, which is the only place it can meet the
+// teeth; group-local to the driver, which sits a stratum below it.
+const ALARM_PAWL_BAND_Z = ((ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U) - ALARM_DRIVER_BOT_Z;
+// The nose disc and half-width the swept free region was MAPPED with. Changing
+// either invalidates the centreline below — the map describes a member of
+// these dimensions and no other.
+const ALARM_PAWL_NOSE_R = 0.20;
+const ALARM_PAWL_HALF_W = 0.15;
+// How far the pivot trails the seat. Free in principle and not in practice: it
+// is the one value in the probe's scan that clears at the derived post radius,
+// and the post's azimuth on the driver is then DERIVED from it rather than
+// chosen (the seats sit at fixed azimuths in the wheel, so this angle picks
+// the branch).
+const ALARM_PAWL_TRAIL = 50 * DEG2RAD;
+// The RETURN's sense in the wheel's frame. On the drive the driver and wheel
+// turn together, so their relative angle is constant; on the return the click
+// holds the wheel and the driver alone runs back up its carry. Its sign is the
+// saw's, which is why it reads the teeth rather than a literal.
+const ALARM_PAWL_RETURN_DIR = -alarmColumnWheel.userData.ratchetDrive;
+// The pawl's CENTRELINE, mapped through the swept free region at the post
+// radius above and straightened into segments a drawing could hold, each run
+// verified against the same sweep (tools/probe-163-driver.mjs). The tail is
+// this build's own: every station on the arm itself lies inside the tooth
+// annulus, so the spring would have to work at the pivot — the crowding TODO
+// 63 files against the click's blade, met here by giving the pawl something to
+// bear on outside the tips.
+const ALARM_PAWL_BODY = [[0.01, 0], [0.65, 0.40], [2.25, 1.20], [2.77, 1.28], [5.17, 1.28], [5.17, 0.08]];
+const ALARM_PAWL_L_SPEC = 5.2398;                   // the arm the centreline was mapped at
+// The seat solve's resolution: a coarse walk to bracket the first free angle,
+// then bisection, so the answer is exact to 1e-5 rad without 2000 samples in a
+// tick. The walk's span covers twice the pawl's stroke, which is what the
+// spring's preload puts between its free angle and the most open seat.
+const ALARM_PAWL_DPHI = 0.002, ALARM_PAWL_SCAN_N = 400, ALARM_PAWL_CYCLE_N = 96;
+const ALARM_PAWL_SPRING_DEPTH = STOCK_MIN_U;        // §50's floor across the blade (switchClickSpring's own 0.2 is under it — TODO 78)
+const ALARM_PAWL_SPRING_STANDOFF = 0.34;            // anchor off the arm's flank, switchClickSpring's
+// Hardened spring steel's usable elastic strain — the surface strain a blade
+// may work to and come back. σ_y ≈ 800 MPa for a hardened carbon spring band
+// against STEEL_E_PA; TODO 63 is filed precisely because switchClickSpring's
+// own blade exceeds it, so this is a constraint the repo already knows it owes.
+const SPRING_STRAIN_MAX = 800e6 / STEEL_E_PA;
+// How much weaker than the detent the pawl's return drag must be. Both sides
+// of that comparison are first-order beam arithmetic — layout.js's own caveat
+// puts them within maybe a factor of two — so a 2× margin would sit inside the
+// arithmetic's error and mean nothing. An order of magnitude is the smallest
+// headroom that is actually a claim.
+const ALARM_PAWL_DRAG_HEADROOM = 10;
+// THE DRIVER'S ANGLE IS THE PIN'S AZIMUTH — that is what a radial slot means,
+// and it is written once here so no consumer has to re-derive a sign. The
+// coefficient is the saw's own drive direction: with the pin at perpendicular
+// offset ratchetDrive·d, its azimuth runs WITH ratchetDrive as the stroke
+// advances.
+const alarmDriverAngleAt = (T) => ALARM_DRIVER_REST_A + alarmColumnWheel.userData.ratchetDrive * alarmDriverCarry(T);
+// ——————————————————— §163 — THE COLUMN WHEEL'S DRIVER ———————————————————
+//
+// TODO 87 step 3. Before this, the member said to be driving the wheel sat
+// 0.7615 INSIDE the saw (finding 7) and the wheel's angle was computed rather
+// than pushed. The architecture that replaces it pivots the driver on the
+// wheel's OWN ARBOR, and the reason is one sentence: on the drive stroke the
+// driver and the wheel turn about the same axis together, so relative to the
+// teeth the driver does not move and there is nothing to phase through. Every
+// design that pivots the pawl anywhere else has to supply the missing rotation
+// by SWINGING, and measured, all three of them swing past tangential and lie
+// down along a tooth flank (§163's three probes; the arbor is the one that
+// carries 30° of 30°).
+//
+// The return is the other half and it is not free: there the driver does sweep
+// a whole tooth backwards relative to the wheel. It survives because the
+// driver's BODY lives below the ratchet skirt — it passes UNDER the teeth —
+// and only the pawl reaches up into their band, on a post standing outside the
+// tip circle. That is a click's duty, which this movement already performs
+// twice, and it now falls entirely in the UNLOADED half of the cycle.
+//
+// Everything below is the probe's measurement made into metal, and the numbers
+// travel rather than being retyped: the post's radius is derived here from the
+// same constraint the probe used, and the pawl's centreline is the one mapped
+// through the swept free region at that radius.
+let alarmColDriverGroup = null, alarmColPawlGroup = null;
+let alarmPawlSeatPhi = null;
+let ALARM_DRIVER_REST_A = 0, ALARM_PAWL_PHI_FREE = 0, ALARM_PAWL_L = 0;
+let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
+{
+  const poly = alarmColumnWheel.userData.ratchetPoly;
+  // ---- the saw, as a signed field. Read off the SAME polygon geometry.js cut
+  // the teeth from, so no measurement here can drift from the metal.
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    area += a.x * b.y - b.x * a.y;
+  }
+  const wind = Math.sign(area);                       // +1 CCW
+  const sawClear = (x, y) => {
+    let best = Infinity, inside = false;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy)));
+      best = Math.min(best, Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy)));
+      if ((a.y > y) !== (b.y > y) && x < a.x + ((y - a.y) / (b.y - a.y)) * dx) inside = !inside;
+    }
+    return inside ? -best : best;
+  };
+  // ---- the pawl's nose, seated in a root corner. Offsetting a corner by the
+  // nose's radius is the same miter the outline builder uses: the point at rn
+  // from BOTH edges is C + rn·(n1+n2)/(1+n1·n2).
+  let rr = Infinity;
+  for (const q of poly) rr = Math.min(rr, Math.hypot(q.x, q.y));
+  const nOut = (i) => {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+    return { x: wind * dy / L, y: -wind * dx / L };
+  };
+  const seats = [];
+  for (let i = 0; i < poly.length; i++) {
+    if (Math.hypot(poly[i].x, poly[i].y) > rr + 1e-6) continue;   // root corners only
+    const n1 = nOut((i - 1 + poly.length) % poly.length), n2 = nOut(i);
+    const d = 1 + n1.x * n2.x + n1.y * n2.y;
+    if (d < 1e-6) continue;
+    seats.push({ x: poly[i].x + ALARM_PAWL_NOSE_R * (n1.x + n2.x) / d,
+                 y: poly[i].y + ALARM_PAWL_NOSE_R * (n1.y + n2.y) / d });
+  }
+  // ---- where the driver stands, and where its post must go.
+  // The slot arm points at the pin, so the driver's own +x IS the pin's
+  // bearing. The POST's azimuth is not free: the pawl's pivot has to trail the
+  // seat by the angle the return was measured at, and the seats sit at fixed
+  // azimuths in the wheel. So the post arm's angle off the slot arm is
+  // DERIVED — one branch per tooth, and the compact one is taken.
+  const pinRest = { x: _pushPerp.x * ALARM_PUSH_CHORD + _pushU.x * ALARM_PIN_HALF,
+                    y: _pushPerp.y * ALARM_PUSH_CHORD + _pushU.y * ALARM_PIN_HALF };
+  ALARM_DRIVER_REST_A = Math.atan2(pinRest.y, pinRest.x);
+  const relRest = ALARM_DRIVER_REST_A - ALARM_LOCK_ENGAGED;      // driver, in the WHEEL's frame
+  let postAz = null, seatPick = null;
+  for (const st of seats) {
+    const want = Math.atan2(st.y, st.x) + ALARM_PAWL_RETURN_DIR * ALARM_PAWL_TRAIL;
+    let a = want - relRest;
+    a = Math.atan2(Math.sin(a), Math.cos(a));
+    if (postAz === null || Math.abs(a) < Math.abs(postAz)) { postAz = a; seatPick = st; }
+  }
+  ALARM_PAWL_L = Math.hypot(seatPick.x - ALARM_DRIVER_POST_R * Math.cos(relRest + postAz),
+                            seatPick.y - ALARM_DRIVER_POST_R * Math.sin(relRest + postAz));
+  // ---- the seat solve, stateless by construction.
+  // The pawl is sprung closed, so its angle is the MOST CLOSED angle at which
+  // the nose clears the metal. A tracking solve (seat near the last step's
+  // answer) is what a probe can do and a tick cannot: setPose visits poses in
+  // any order, so a pose-dependent answer would make the wheel's stance a
+  // function of pose history — the residue TODO 54 exists to keep out. The
+  // stateless form anchors at the SPRING'S FREE ANGLE, which is a fixed
+  // feature of the part, and scans OUTWARD: because that angle is derived
+  // below to sit a full working stroke inside the metal, the anchor is always
+  // blocked and the first free angle going out is the seat.
+  const phiOpenSense = (phi) => -Math.sign(Math.sin(phi)) || 1;   // d(nose radius)/dφ
+  alarmPawlSeatPhi = (rel) => {
+    const px = ALARM_DRIVER_POST_R * Math.cos(rel), py = ALARM_DRIVER_POST_R * Math.sin(rel);
+    const openTo = phiOpenSense(ALARM_PAWL_PHI_FREE);
+    const free = (phi) => {
+      const th = rel + phi;
+      return sawClear(px + ALARM_PAWL_L * Math.cos(th), py + ALARM_PAWL_L * Math.sin(th)) >= ALARM_PAWL_NOSE_R;
+    };
+    let lo = ALARM_PAWL_PHI_FREE, hit = null;
+    for (let k = 1; k <= ALARM_PAWL_SCAN_N; k++) {
+      const phi = ALARM_PAWL_PHI_FREE + openTo * k * ALARM_PAWL_DPHI;
+      if (free(phi)) { hit = phi; break; }
+      lo = phi;
+    }
+    if (hit === null) return null;                                // asserted below
+    for (let i = 0; i < 12; i++) {                                // bisect the bracket
+      const mid = (lo + hit) / 2;
+      if (free(mid)) hit = mid; else lo = mid;
+    }
+    return hit;
+  };
+  // The spring's FREE ANGLE, and with it its preload — derived from the
+  // mechanism rather than chosen. A cantilever that goes slack stops being a
+  // spring, so the blade is preloaded by the pawl's OWN WORKING STROKE: at
+  // every pose the deflection then lies between one stroke and two, and the
+  // nose is never held by nothing. Pass one seats the pawl with the anchor at
+  // the bottomed angle (which is by construction the most closed it ever is,
+  // so it is always inside the pawl's own free interval); pass two re-anchors
+  // at the free angle the first pass derived.
+  const phiBottom = Math.atan2(seatPick.y - ALARM_DRIVER_POST_R * Math.sin(relRest + postAz),
+                               seatPick.x - ALARM_DRIVER_POST_R * Math.cos(relRest + postAz)) - (relRest + postAz);
+  ALARM_PAWL_PHI_FREE = phiBottom;
+  // The pawl's stroke is the RETURN's, because the drive has none: driver and
+  // wheel turn together there, so rel is constant and the nose stays bottomed.
+  // On the return the click holds the wheel and rel sweeps one whole tooth.
+  const relPost = relRest + postAz;
+  const cyc = [];
+  for (let k = 0; k <= ALARM_PAWL_CYCLE_N; k++) {
+    const phi = alarmPawlSeatPhi(relPost + ALARM_PAWL_RETURN_DIR * ALARM_COL_STEP * (k / ALARM_PAWL_CYCLE_N));
+    if (phi !== null) cyc.push(phi);
+  }
+  if (cyc.length !== ALARM_PAWL_CYCLE_N + 1)
+    console.warn(`§163: the pawl's seat solve ran off its scan at ${ALARM_PAWL_CYCLE_N + 1 - cyc.length} of ${ALARM_PAWL_CYCLE_N + 1} poses of the return — the walk's span no longer covers the stroke`);
+  const phiMin = Math.min(...cyc), phiMax = Math.max(...cyc);
+  const ALARM_PAWL_STROKE = phiMax - phiMin;
+  ALARM_PAWL_PHI_FREE = phiMin - ALARM_PAWL_STROKE;
+  // ---- the metal.
+  alarmColDriverGroup = new THREE.Group();
+  alarmColDriverGroup.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_DRIVER_BOT_Z);
+  alarmColDriverGroup.rotation.z = ALARM_DRIVER_REST_A;
+  alarmSwitchUnit.add(alarmColDriverGroup);
+  const slotHalfW = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;             // a running fit on the pin
+  const driver = G.makeColumnDriver({
+    boreR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR,          // the stud it turns on, plus the movement's running clearance
+    hubR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR + STOCK_MIN_U,
+    arms: [{ az: 0, reach: ALARM_DRIVER_SLOT_OUT, tipR: slotHalfW + STOCK_MIN_U },
+           { az: postAz, reach: ALARM_DRIVER_POST_R, tipR: STOCK_MIN_R10 + STOCK_MIN_U }],
+    slot: { az: 0, inner: ALARM_DRIVER_SLOT_IN, outer: ALARM_DRIVER_SLOT_OUT, halfW: slotHalfW },
+    thickness: ALARM_COL_DRIVER_T, material: MATS.blueSteel, name: 'alarmColDriver',
+  });
+  alarmColDriverGroup.add(driver);
+  // The pawl's POST: it stands on the driver and runs up through the skirt's
+  // own band, which is exactly why its radius had to clear the tip circle —
+  // this is the one member of the driver that is inside the tooth annulus in
+  // z, and it is outside it in plan.
+  const pawlTopZ = ALARM_PAWL_BAND_Z + STOCK_MIN_U;
+  const postAt = { x: ALARM_DRIVER_POST_R * Math.cos(postAz), y: ALARM_DRIVER_POST_R * Math.sin(postAz) };
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, pawlTopZ, 10), MATS.nickel);
+  post.name = 'alarmColPawlPost';
+  post.rotation.x = Math.PI / 2;
+  post.position.set(postAt.x, postAt.y, pawlTopZ / 2);
+  alarmColDriverGroup.add(post);
+  // ---- THE SPRING, SOLVED FROM ITS TWO CONSTRAINTS.
+  //
+  // A first cut chose the blade's length and where it bore, and measured a
+  // return drag of 3.89e-1 N·mm against the click's 3.34e-2 N·mm detent — 11.6×
+  // over, which is not a margin to trim but a spring that would drag the wheel
+  // back with it every release. The two quantities are not free, so they are
+  // solved rather than picked:
+  //
+  //   · WHERE IT BEARS is set by the blade's strain. The tail's travel is
+  //     (preload + stroke)·bearArm and the blade must take it and come back, so
+  //     the surface strain 3·c·δ/(2·L²) — dimensionless, so it reads the same in
+  //     model units — must stay under SPRING_STRAIN_MAX:
+  //         bearArm = ε·L² / (3 · stroke · c)
+  //   · HOW LONG IT IS is set by the drag budget. The nose sees
+  //     k·δ·bearArm/noseArm with k = 3EI/L³, and that force taken at the tip
+  //     circle must be an order of magnitude under the click's detent.
+  //
+  // Substituting the first into the second, L falls out in closed form — no
+  // iteration, and every symbol in it is a constraint someone can check:
+  //
+  //     L = 18 · noseArm · stroke · Fmax / (E · a · c · U² · ε²)
+  //
+  // The blade then bears CLOSE to the pivot, which is the opposite of the
+  // click's blade next door: there the tip circle crowds the bear station out
+  // to the pivot end and TODO 63 records the over-strain that follows, whereas
+  // here the tail is behind the pivot, so every station on it is already
+  // outside the tips and the solve is free to take the one the strain allows.
+  {
+    const U = UNIT_MM / 1000;                                     // m per model unit
+    const clickTq_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
+    const noseFmax_N = clickTq_Nmm / (ALARM_PAWL_DRAG_HEADROOM * ALARM_COL_TIP_R * UNIT_MM);
+    const a = ALARM_PAWL_SPRING_DEPTH, c = SPRING_FLAT_U;
+    const springFree = 18 * ALARM_PAWL_L * ALARM_PAWL_STROKE * noseFmax_N
+                     / (STEEL_E_PA * a * c * U * U * SPRING_STRAIN_MAX * SPRING_STRAIN_MAX);
+    const bearArm = SPRING_STRAIN_MAX * springFree * springFree / (3 * ALARM_PAWL_STROKE * c);
+    // the TAIL is then the bear station plus enough metal behind it to bear on
+    const tail = -(bearArm + ALARM_PAWL_HALF_W);
+    const springSide = -phiOpenSense(ALARM_PAWL_PHI_FREE);
+    const bear = { x: -bearArm, y: springSide * ALARM_PAWL_HALF_W };
+    const anchor = { x: bear.x - springFree, y: bear.y + springSide * ALARM_PAWL_SPRING_STANDOFF };
+    // ---- the pawl's metal, now that its tail is known
+    alarmColPawlGroup = new THREE.Group();
+    alarmColPawlGroup.position.set(postAt.x, postAt.y, ALARM_PAWL_BAND_Z);
+    alarmColDriverGroup.add(alarmColPawlGroup);
+    const pawl = G.makeColumnPawl({
+      nodes: [[tail, 0]].concat(ALARM_PAWL_BODY), pivot: [0, 0], nose: [ALARM_PAWL_L, 0],
+      w: ALARM_PAWL_HALF_W, noseR: ALARM_PAWL_NOSE_R,
+      boreR: STOCK_MIN_R10 + PIVOT_BORE_CLEAR, bossR: STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U,
+      thickness: STOCK_MIN_U, material: MATS.blueSteel, name: 'alarmColPawl',
+    });
+    alarmColPawlGroup.add(pawl.mesh); alarmColPawlGroup.add(pawl.boss); alarmColPawlGroup.add(pawl.nose);
+    alarmColPawlGroup.rotation.z = postAz + ALARM_PAWL_PHI_FREE;   // posed by the tick; built at the free angle
+    alarmColPawlGroup.userData.pawlNodes = [[tail, 0]].concat(ALARM_PAWL_BODY, [[ALARM_PAWL_L, 0]]);
+    // ---- and the blade, carried out of the pawl's frame at its free angle,
+    // because the stud stands on the DRIVER and the two must meet there
+    const cs = Math.cos(postAz + ALARM_PAWL_PHI_FREE), sn = Math.sin(postAz + ALARM_PAWL_PHI_FREE);
+    const toDrv = (q) => ({ x: postAt.x + q.x * cs - q.y * sn, y: postAt.y + q.x * sn + q.y * cs });
+    const aD = toDrv(anchor), bD = toDrv(bear);
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, pawlTopZ, 10), MATS.nickel);
+    stud.name = 'alarmColPawlSpringStud';
+    stud.rotation.x = Math.PI / 2;
+    stud.position.set(aD.x, aD.y, pawlTopZ / 2);
+    alarmColDriverGroup.add(stud);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(springFree, SPRING_FLAT_U, ALARM_PAWL_SPRING_DEPTH), MATS.blueSteel);
+    blade.name = 'alarmColPawlSpring';
+    blade.position.set((aD.x + bD.x) / 2, (aD.y + bD.y) / 2, ALARM_PAWL_BAND_Z + STOCK_MIN_U / 2);
+    blade.rotation.z = Math.atan2(bD.y - aD.y, bD.x - aD.x);
+    alarmColDriverGroup.add(blade);
+    ALARM_PAWL_SPRING = {
+      k_N_per_m: cantileverK_N_per_m(ALARM_PAWL_SPRING_DEPTH, SPRING_FLAT_U, springFree),
+      free_u: springFree, bearArm_u: bearArm, noseArm_u: ALARM_PAWL_L,
+      stroke_rad: ALARM_PAWL_STROKE, side: springSide, tail_u: tail,
+    };
+  }
+  // ————————————————— what has to be true of all that —————————————————
+  // Rule 6: every assert names the achieved number and the required one.
+  //
+  // 1. THE ARM THE CENTRELINE WAS MAPPED AT. ALARM_PAWL_BODY describes a
+  //    member whose pivot is ALARM_PAWL_L_SPEC from its nose; the map is not a
+  //    shape that can be rescaled, so if the post radius, the trail angle or
+  //    the saw's cut ever move this apart, the outline stops describing the
+  //    corridor it was measured in.
+  if (Math.abs(ALARM_PAWL_L - ALARM_PAWL_L_SPEC) > 5e-3)
+    console.warn(`§163: the pawl's arm is ${ALARM_PAWL_L.toFixed(4)} but its centreline was mapped at ${ALARM_PAWL_L_SPEC} — re-run tools/probe-163-driver.mjs, the outline no longer describes its corridor`);
+  // 2. THE POST'S SURFACE, against the tips it rises past.
+  if (ALARM_DRIVER_POST_R - STOCK_MIN_R10 < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
+    console.warn(`§163: the pawl post's surface stands ${(ALARM_DRIVER_POST_R - STOCK_MIN_R10 - ALARM_COL_TIP_R).toFixed(4)} off the saw's tips, under CLEAR_MARGIN ${CLEAR_MARGIN} — it rises through their own band`);
+  // 3. THE SLOT holds the pin's whole reach, with end freedom at both ends. A
+  //    pin that bottoms in its slot is a pin against a wall.
+  if (ALARM_DRIVER_SLOT_IN > ALARM_DRIVE_OFFSET - 1e-9 || ALARM_DRIVER_SLOT_OUT < Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF) + 1e-9)
+    console.warn(`§163: the slot spans ${ALARM_DRIVER_SLOT_IN.toFixed(4)}–${ALARM_DRIVER_SLOT_OUT.toFixed(4)} against a pin reaching ${ALARM_DRIVE_OFFSET.toFixed(4)}–${Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF).toFixed(4)} — it bottoms`);
+  // 4. THE SPRING IS NEVER SLACK. Its free angle is derived a full working
+  //    stroke inside the metal, so every pose should deflect it by between one
+  //    stroke and two; a pose that reaches the free angle is a pose where
+  //    nothing holds the nose down.
+  if (phiMin - ALARM_PAWL_PHI_FREE < ALARM_PAWL_STROKE - 1e-9)
+    console.warn(`§163: the pawl's spring is deflected only ${(phiMin - ALARM_PAWL_PHI_FREE).toFixed(5)} rad at its slackest pose, under the ${ALARM_PAWL_STROKE.toFixed(5)} preload it was derived with`);
+  // 5. THE CUT OUTLINE, not a proxy for it, swept through the whole return.
+  //    §120's saw⇄pallet cycle sweep is the precedent: intraUnit's pose net
+  //    covers the CLASS, and the group's own build assert keeps the tight
+  //    per-cycle instance. Everything but the nose's own working zone must
+  //    hold CLEAR_MARGIN — the pawl is the only member of the driver inside
+  //    the tooth annulus, and the nose is the only part of it that may touch.
+  {
+    const outline = alarmColPawlGroup.children.find((o) => o.name === 'alarmColPawl').userData.outline;
+    let worst = Infinity, worstAt = null;
+    for (let k = 0; k <= ALARM_PAWL_CYCLE_N; k++) {
+      const rel = relPost + ALARM_PAWL_RETURN_DIR * ALARM_COL_STEP * (k / ALARM_PAWL_CYCLE_N);
+      const phi = alarmPawlSeatPhi(rel);
+      if (phi === null) continue;
+      const px = ALARM_DRIVER_POST_R * Math.cos(rel), py = ALARM_DRIVER_POST_R * Math.sin(rel);
+      const c = Math.cos(rel + phi), sn = Math.sin(rel + phi);
+      for (const [u, v] of outline) {
+        if (Math.hypot(u - ALARM_PAWL_L, v) < ALARM_PAWL_NOSE_R + ALARM_PAWL_HALF_W) continue;  // the nose's own zone
+        const g = sawClear(px + u * c - v * sn, py + u * sn + v * c);
+        if (g < worst) { worst = g; worstAt = [+u.toFixed(2), +v.toFixed(2)]; }
+      }
+    }
+    if (worst < CLEAR_MARGIN - 1e-6)
+      console.warn(`§163: the pawl's cut outline comes within ${worst.toFixed(4)} of the saw at (${worstAt}) over its return, under CLEAR_MARGIN ${CLEAR_MARGIN}`);
+    alarmColDriverGroup.userData.drive = { postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), spring: ALARM_PAWL_SPRING, L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
+  }
+  // 6. P1, TODO 16's format (§137) — THE RETURN MUST NOT UN-INDEX THE WHEEL.
+  //    The pawl's spring drags its nose back over the tooth it has just
+  //    delivered, and that drag is a torque on a wheel whose only hold is the
+  //    click's detent. Priced at the worst pose (the spring at its fullest
+  //    deflection) and at the worst radius (the whole nose force taken as
+  //    tangential at the TIP circle, which no real flank does), against the
+  //    click's own detent from its §137 row.
+  {
+    const defl_m = 2 * ALARM_PAWL_STROKE * ALARM_PAWL_SPRING.bearArm_u * UNIT_MM / 1000;
+    const noseF_mN = 1000 * ALARM_PAWL_SPRING.k_N_per_m * defl_m * (ALARM_PAWL_SPRING.bearArm_u / ALARM_PAWL_SPRING.noseArm_u);
+    const dragTq_Nmm = (noseF_mN / 1000) * (ALARM_COL_TIP_R * UNIT_MM);
+    const clickTq_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
+    ALARM_PAWL_SPRING.noseF_mN = noseF_mN;
+    ALARM_PAWL_SPRING.dragTq_Nmm = dragTq_Nmm;
+    ALARM_PAWL_SPRING.clickTq_Nmm = clickTq_Nmm;
+    if (dragTq_Nmm >= clickTq_Nmm)
+      console.warn(`§163: the pawl's return drag is ${dragTq_Nmm.toExponential(2)} N·mm against the click's ${clickTq_Nmm.toExponential(2)} N·mm detent — the return would carry the wheel back with it`);
+  }
+  // ————————————————— §137: the two corners this adds —————————————————
+  // §163 puts a new IDIOM in the named vocabulary, because the corner it makes
+  // is not any of the other five: a straight push becomes a rotation with no
+  // rod, no gear and no fixed-length link, because the slot lets the pin's
+  // radius change. Its declaration is what it converts and at what arm, and
+  // unlike the other five that arm is NOT one number — the check re-verifies
+  // the ratio between its ends from the row's own quantities.
+  {
+    const clickTq_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
+    let sawR = 0;
+    for (const q of poly) sawR = Math.max(sawR, Math.hypot(q.x, q.y));
+    const pinNeed_mN = 1000 * clickTq_Nmm / (ALARM_PAWL_ARM * UNIT_MM);
+    declareTransfer('alarm arming: the driver’s pin in its radial slot (pin → column wheel)', {
+      unit: 'Alarm switch', meshes: ['alarmPusherRiser', 'alarmColDriver'], idiom: 'pinInSlot',
+      load: { value: pinNeed_mN, unit: 'mN',
+        source: 'the click row’s detent taken about the column axis, paid back at the coupling’s SMALLEST moment arm (the foot of the perpendicular) — the arm that has to be afforded' },
+      quantities: {
+        armIn_u: ALARM_PAWL_ARM, armOut_u: ALARM_PAWL_ARM_END, ratio: ALARM_PAWL_ARM_END / ALARM_PAWL_ARM,
+        offset_u: ALARM_DRIVE_OFFSET, travel_u: ALARM_PUSH_TRAVEL, sweep_rad: ALARM_PAWL_SWEEP,
+        sawR_u: sawR,
+      },
+      why: `a radial slot makes the driver’s angle the pin’s AZIMUTH, so the offset is not free: `
+        + `d = travel / (2·tan(step/2)) = ${ALARM_DRIVE_OFFSET.toFixed(5)} carries exactly one tooth, `
+        + `and by virtual work the moment arm is (d² + s²)/d — ${ALARM_PAWL_ARM.toFixed(4)} at the foot rising to `
+        + `${ALARM_PAWL_ARM_END.toFixed(4)} at either end, a ${(100 * (ALARM_PAWL_ARM_END / ALARM_PAWL_ARM - 1)).toFixed(2)}% swing that is `
+        + `the velocity ratio’s variation read the other way. Needs ~${pinNeed_mN.toFixed(1)} mN at the pin against the `
+        + `${CASE_PUSHER_INPUT_N[0]}–${CASE_PUSHER_INPUT_N[1]} N a finger delivers`,
+    });
+    declareTransfer('alarm arming: the pawl on its post (spring → nose at the saw)', {
+      unit: 'Alarm switch', meshes: ['alarmColPawlSpring', 'alarmColPawl', 'alarmColPawlPost'], idiom: 'crank',
+      load: { value: ALARM_PAWL_SPRING.noseF_mN, unit: 'mN',
+        source: 'the blade’s built section and free length at its fullest deflection (preload + one working stroke), re-levered bearArm → noseArm about the pawl’s post' },
+      quantities: {
+        armIn_u: ALARM_PAWL_SPRING.bearArm_u, armOut_u: ALARM_PAWL_SPRING.noseArm_u,
+        ratio: ALARM_PAWL_SPRING.noseArm_u / ALARM_PAWL_SPRING.bearArm_u,
+        springFree_u: ALARM_PAWL_SPRING.free_u, k_N_per_m: ALARM_PAWL_SPRING.k_N_per_m,
+        dragTq_Nmm: ALARM_PAWL_SPRING.dragTq_Nmm, clickTq_Nmm: ALARM_PAWL_SPRING.clickTq_Nmm,
+      },
+      why: `both of the blade’s dimensions are SOLVED rather than picked: where it bears by its own strain limit `
+        + `(SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX}), how long it is by the drag budget — the nose’s `
+        + `${ALARM_PAWL_SPRING.noseF_mN.toFixed(2)} mN taken at the tip circle is ${ALARM_PAWL_SPRING.dragTq_Nmm.toExponential(2)} N·mm `
+        + `against the click’s ${ALARM_PAWL_SPRING.clickTq_Nmm.toExponential(2)} N·mm detent, an order of magnitude under, `
+        + `because a return that drags the wheel back un-indexes it. A first cut that CHOSE both measured 11.6× over`,
+    });
+    declareRestoring('Alarm switch', 'alarmColPawl', 'spring',
+      'the pawl rocks through its whole stroke on every press and is closed by alarmColPawlSpring, a flat blade at SPRING_FLAT_U stock on a stud on the driver; its free angle is derived a full working stroke inside the metal, so it is never slack (asserted at the build)',
+      'alarmColPawlSpring');
+    declareRestoring('Alarm switch', 'alarmColDriver', 'two-way',
+      '§163: the driver is pushed AND pulled by the pusher’s pin, which runs captive in its radial slot — the slot has metal on both flanks, so the return is driven rather than sprung');
+  }
+
 }
 {
   // Distance to the NEAREST integer pitch, not the raw modulus: the raw form
@@ -23393,6 +23802,15 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
   addLine(alarmSilRocker, [V(-alarmSilRocker.userData.aF, 0, 0), V(alarmSilRocker.userData.aP, 0, 0)]); // §45 seesaw: finger arm ← pivot → paddle arm
   addLine(alarmClickArm, [V(0, 0, 0), V(-ALARM_CLICK_L, 0, 0)]); // §43 click: pivot → nose
   addLine(alarmLockLever, [V(-2.0, 0, 0), V(ALARM_LOCK_L, 0, 0)]); // §25 D lock: tail beak ← pivot → brake pad
+  // §163 — the column wheel's driver, its two arms from the arbor it turns on
+  // (slot arm at 0, post arm at the derived azimuth), and the pawl's own
+  // centreline, which IS the shape the free-region map produced
+  {
+    const d = alarmColDriverGroup.userData.drive;
+    addLine(alarmColDriverGroup, [V(ALARM_DRIVER_SLOT_OUT, 0, 0), V(0, 0, 0),
+      V(ALARM_DRIVER_POST_R * Math.cos(d.postAz), ALARM_DRIVER_POST_R * Math.sin(d.postAz), 0)]);
+    addLine(alarmColPawlGroup, alarmColPawlGroup.userData.pawlNodes.map(([u, v]) => V(u, v, 0)));
+  }
   // §99 — the barrel click's lever: pivot → beak, makeClick's own length
   // (the ride law rocks the mesh, so the line rides with it for free); its
   // spring is named alarmClickSpring and takes the zigzag below. The arbor
@@ -23555,7 +23973,10 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
         }
         addLine(alarmPusherGroup, pts);
       }
-      addLine(alarmPusherGroup, [U(s.inner + 0.16), U(s.inner + 0.16, s.pawlZ), U(s.pawlS + 0.75, s.pawlZ)]);
+      // §163 — the run is now the other way up: the reach bar goes INBOARD at
+      // the stem's own plane (under the plate), and the riser climbs at its
+      // inner end, its top the pin in the driver's slot.
+      addLine(alarmPusherGroup, [U(s.inner), U(s.pinS), U(s.pinS, s.riserTop)]);
     }
     // the §35 alarm link — beak lever in its own rotating arm (nose +x
     // toward the wheel, tail −x over the rod, spans from alarmLinkParts),
@@ -30125,8 +30546,13 @@ function tick(t) {
       // completes, the CLICK banks it and the parity changes as a
       // consequence. Nothing here has a time constant — the only rate in the
       // chain is how fast the finger presses.
-      const carried = alarmColLatched ? 0
-        : Math.min(ALARM_COL_STEP, (ALARM_PUSH_TRAVEL * alarmPusherT) / ALARM_PAWL_ARM);
+      // §163 — the carry is the COUPLING's, not a lever ratio. alarmDriverCarry
+      // is the azimuth the pin has swept about the arbor since it left its rest
+      // station, and the driver's angle IS that azimuth, so the wheel goes
+      // exactly where its driver has taken it. The old `travel·T / arm` had the
+      // same endpoints and a different middle, and the middle is half the poses
+      // the alarmPress axis visits.
+      const carried = alarmColLatched ? 0 : Math.min(ALARM_COL_STEP, alarmDriverCarry(alarmPusherT));
       alarmColShownA = alarmColHeldA + carried;
       if (!alarmColLatched && carried >= ALARM_COL_STEP - 1e-9) {
         alarmColLatched = true;          // the click has dropped behind this tooth
@@ -30449,6 +30875,19 @@ function tick(t) {
     // (alarmColShownA updates up at the selector block — its first consumer
     // in tick order; here the wheel just wears the state.)
     alarmColumnWheel.rotation.z = -alarmColShownA; // the wheel turns UNDER the fixed-azimuth beak
+    // §163 — THE DRIVER AND ITS PAWL, posed from the same press fraction the
+    // wheel's carry came from. The driver's angle is the pin's azimuth; the
+    // pawl's is SOLVED against the saw it is riding, so on the drive it stands
+    // bottomed in a corner (driver and wheel turn together, nothing moves
+    // relatively) and on the return it rides out over a tip and drops into the
+    // next one, with no branch anywhere saying which of those is happening.
+    {
+      const d = alarmColDriverGroup.userData.drive;
+      alarmColDriverGroup.rotation.z = alarmDriverAngleAt(alarmPusherT);
+      const relPost = alarmColDriverGroup.rotation.z + d.postAz - (ALARM_LOCK_ENGAGED - alarmColShownA);
+      const phi = alarmPawlSeatPhi(relPost);
+      if (phi !== null) alarmColPawlGroup.rotation.z = d.postAz + phi;
+    }
     const colBlock = alarmColumnWheel.userData.profileAt(alarmColShownA);
     // §29 step 5: the brake is the ON/OFF STOP-WORK alone now — it lifts at
     // ARMING (the §25 D column still physically gates it via colBlock), and
@@ -31232,9 +31671,12 @@ window.__clock = {
     if (p.alarmPressCycle !== undefined) {
       const s = clamp(p.alarmPressCycle, 0, 2);
       const T = s <= 1 ? s : 2 - s;                       // in on the first half, out on the second
-      // The travel at which the tooth completes, from the same three constants
-      // the carry uses: carried = travel·T/arm reaches ALARM_COL_STEP here.
-      const latchT = (ALARM_COL_STEP * ALARM_PAWL_ARM) / ALARM_PUSH_TRAVEL;
+      // The travel at which the tooth completes. §163 makes it exactly 1: the
+      // offset is DERIVED so that a full stroke sweeps one whole tooth, so the
+      // click banks at the end of the stroke and nowhere else. It stays written
+      // as a solve of the carry rather than as the literal, because a literal
+      // here would stop tracking the derivation the moment either moved.
+      const latchT = 1;
       const banked = s >= latchT ? 1 : 0;                 // once the click drops it never gives the tooth back
       alarmPusherT = T;
       // No stroke is in flight after a pose, and no finger is on the head:
@@ -31252,7 +31694,7 @@ window.__clock = {
       // The partial carry belongs to the un-banked half only; once banked the
       // wheel stands at its held angle and the pawl is overrunning it, which
       // is the finding this axis exists to put in the pose net.
-      alarmColShownA = alarmColHeldA + (banked ? 0 : Math.min(ALARM_COL_STEP, (ALARM_PUSH_TRAVEL * T) / ALARM_PAWL_ARM));
+      alarmColShownA = alarmColHeldA + (banked ? 0 : Math.min(ALARM_COL_STEP, alarmDriverCarry(T)));
     }
     // §106 — THE HOLE THE ARREST EXISTS TO CLOSE. This branch was the one path
     // that could pose a wind the metal forbids: tick() clamped, the restore
