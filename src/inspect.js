@@ -7758,7 +7758,17 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§160 — TODO 87's press axis; 55 units, 12 poses):
+// Baseline (TODO 87 step 4 — the guide bore derived; 55 units, 12 poses):
+// 480940272
+//   moved from 1207183716 deliberately, and this time geometry DID move: the
+//   pusher's guide boss was a torus whose 0.24 hole ran a 0.32 stem, and its
+//   bore now follows the stem at PIVOT_BORE_CLEAR. The ring radius follows the
+//   bore, the torus's z half-span follows the ring, and the press axis's depth
+//   follows that half-span — so the whole pusher sits ~0.13 lower and the
+//   riser spans that much further to the pawl, whose own station is derived
+//   against the axis and therefore still rides the skirt band. Nothing else
+//   in the movement moved. Measured by the battery's own double-boot gate.
+// Previous baseline (§160 — TODO 87's press axis; 55 units, 12 poses):
 // 1207183716
 //   moved from 459839237 (main's MEASURED value at 55 units, 11 poses) and
 //   NOT by moving geometry: §160 adds a twelfth pose to the list below
