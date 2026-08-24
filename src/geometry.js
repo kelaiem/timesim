@@ -7042,7 +7042,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
 // ---------------------------------------------------------------------------
 export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const {
-    UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_FL, R_SCR, R_G, R_WIN, R_PLATE,
+    UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_FL, R_SCR, R_G, R_WIN, R_PLATE, plateR,
     z0, zMidBack, zFlangeIn,
     zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     gasketD, gasketSeat, crystT, screwN, screwShaftD, screwHeadD, tubeD, pusherD,
@@ -7227,8 +7227,27 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     const r = d / 2;
     const alongAt = (R) => Math.sqrt(Math.max(0, R * R - off * off));
     const outboard = flush ? alongAt(R_OUT) : alongAt(R_OUT) + 1.5 / UNIT_MM;
-    const inboard = alongAt(R_IN) - 1 / UNIT_MM;
+    // The inboard end has to STOP SHORT OF THE MOVEMENT, and that wants
+    // deriving rather than arriving at. It read `R_IN − 1 mm`, and since R_IN
+    // is `plateR + CASE_CLEAR` with CASE_CLEAR = 1 mm, that expression IS
+    // plateR: the tube ended exactly on the plate's rim, tangent, with 0.003 u
+    // to spare — coincidence standing in for clearance. A radial tube gets
+    // away with it because a cylinder meets a cylinder at one line; the moment
+    // the pusher's tube moved onto its own offset line, its inner rim swung
+    // 1.995 u across the axis (the offset less the tube's outer radius) and
+    // went 0.16 u INTO the three-quarter plate.
+    //
+    // So: the rim's nearest point clears plateR by CLEAR_MARGIN. For a radial
+    // tube the across-term is 0 and this reduces to plateR + CLEAR_MARGIN —
+    // 0.15 u shorter than before, which is the margin it should always have
+    // had.
+    const rimAcross = Math.max(0, Math.abs(off) - (r + TUBE_WALL));
+    const inboard = Math.sqrt(Math.max(0,
+      (plateR + CLEAR_MARGIN) * (plateR + CLEAR_MARGIN) - rimAcross * rimAcross));
     const len = outboard - inboard;
+    if (len <= 0)
+      console.warn(`makeCase: ${name} has no length — its inboard standoff (${inboard.toFixed(3)}) `
+        + `has passed its outboard end (${outboard.toFixed(3)}); the opening is off the band`);
     // The stems' own convention (windSpinner et al.): cylinder axis Y, the
     // pivot's z-rotation maps +Y outboard along the azimuth. No intermediate
     // holder — a rotated frame would throw the radial offsets into z.
