@@ -17,7 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
+| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
 | 84 | OPEN | Every gear ships fatter than it was cut: three.js's `bevelSize` offsets the outline OUTWARD by more than the backlash the generator reserved (0.0748 u per flank against 0.0427 u for the pair at module 0.34). General to the movement; visible only where a unit is gated. Three candidate fixes in the item, none of them widening `cyBacklash` |
@@ -9339,6 +9339,41 @@ part, so the audit never asks. This is a GRANULARITY gap: the axis question
 does not arise, because one declaration per unit cannot answer for two
 reciprocators. Rule 4's warning covers the first; nothing covers this one.
 
+> **CLOSED as a blind spot by §162, and the pusher's own row is now the debt.**
+> `declaredRestoring` is keyed `(unit, member)`, so a unit may hold as many
+> declarations as it has reciprocators, and the audit derives the bodies rather
+> than taking a list: each unit's reversing meshes cluster into rigid frames by
+> the same `clusterByFrame` signature `checkAssembly` and `intraUnit`'s MM tier
+> use — one predicate, three consumers now.
+>
+> Measured on the first run, the movement holds **40 reciprocating bodies
+> across 24 units**, where the unit-keyed audit saw 24 answers. `Alarm switch`
+> splits into exactly the two this finding names: `switchClickArm` +
+> `switchClickNose`, answered by `switchClickSpring`; and
+> `alarmPusherStem` + `alarmPusherCap` + `alarmPusherPawl` + `alarmPusherRiser`
+> + `alarmPusherReach`, answered by **nothing** — waived in
+> `RESTORING_MEMBER_WAIVERS` citing this item, which is what step 5's second
+> half exists to retire.
+>
+> **The residue is named and counted rather than triaged in one go**, §121's
+> convention: the tier GATES `RESTORING_MEMBER_SCOPE` (`Alarm switch`) and
+> REPORTS everywhere else — **20 bodies answered `'*'`** (a unit-wide claim,
+> which is exactly what every declaration meant before the re-key) and **4
+> answered by nothing** (`Mainspring drum`'s hook stack, `Alarm hammer`'s own
+> blade, `Minute jumper`'s unnamed box, and — the one that is plainly a real
+> body — the pusher). Two things are held everywhere, not only in scope: a
+> member selector resolving to no mesh in its unit, and a waiver naming a body
+> that turns out to be answered.
+>
+> **`'*'` is mostly a NAMING problem, and that is the next tranche's shape.** A
+> declaration can only refine to a member the metal has a name for, and whole
+> units reverse as unnamed `ExtrudeGeometry` — `Keyless works`, `Pallet fork`,
+> `Balance`, `Power-reserve train`, most of `Fusee & great wheel`. §54's lesson,
+> arriving at a second instrument: a row that cannot name its member is not
+> actionable. Naming those meshes is the fix, and it is free of geometry —
+> §162 named three (`switchClickArm`, `switchClickNose`, `alarmPusherStem`) to
+> put `Alarm switch` in scope and the fingerprint did not move.
+
 ### 5. "Unsupported" and `support` 0 failures are both correct
 
 `checkSupportGeometry` walks declared UNIT→UNIT edges and measures a gap ≤ tol.
@@ -9558,6 +9593,19 @@ read the other, because the second is then nearly free.
    collar on the stem, blade between them, which is how a case pusher's return
    actually works and what the stem's long free run between the riser (s ≈ 7.9)
    and the guide boss (s = `plateR − 1.2`) has room for.
+
+   **Tier one is DONE (§162) — the audit asks per BODY now.** The key is
+   `(unit, member)`, the bodies are derived by `clusterByFrame` rather than
+   listed, and the movement measures 40 of them against the 24 answers the
+   unit-keyed map held. The pusher is one of the four with no answer at all,
+   waived citing this item, and `Alarm switch` is the tier's gated scope — so
+   the second half is no longer a thing the instrument is silent about, it is a
+   row that fails the moment its waiver is deleted. Finding 4 carries the
+   numbers and the residue.
+
+   **Tier two — the metal — is what remains**, and it is unchanged: the
+   abutment, the collar and the blade, at the station above. Deleting
+   `RESTORING_MEMBER_WAIVERS`' one row is structurally part of building it.
 
 **What this item measured and what it computed.** As filed, findings 1 and 3
 were arithmetic on the shipped constants — re-run from `ALARM_PUSH_TRAVEL`,

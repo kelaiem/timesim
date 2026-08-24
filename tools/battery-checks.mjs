@@ -196,16 +196,34 @@ export const BATTERY = [
   // reversing part either has a restoring element, is driven both ways, or is
   // waived against a filed TODO. The control is gated too: a positive control
   // that quietly stops passing is how this class of check dies.
+  //
+  // §162 (TODO 87 finding 4) adds the MEMBER tier beside it. The unit gate
+  // above cannot see a unit with two reciprocators answering with one of them,
+  // which is how 'Alarm switch' passed on the click arm's blade while the
+  // pusher's return stayed a rate constant with no metal. The tier derives the
+  // bodies (clusterByFrame over each unit's reversing meshes) and asks the
+  // question per body — REPORTED movement-wide, GATED inside
+  // RESTORING_MEMBER_SCOPE, §121's convention for a tier arriving on a
+  // movement nobody has triaged for it. Two things are held everywhere, not
+  // just in scope: a member selector that resolves to no mesh in its unit
+  // (INTRA_UNIT_CONTACTS' rule — a declaration pointing at absent metal reads
+  // as an answer and is not one), and a waiver naming a body that IS answered.
   { name: 'restoring', opts: { yieldEvery: YIELD_EVERY },
-    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS',
+    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS; member tier: 0 unwaived in scope, 0 unmatched selectors, 0 stale waivers',
     fails: (r) => [
       ...r.unwaived,
       ...r.malformedDeclarations,
       ...r.staleDeclarations,
+      ...(r.memberUnwaived || []),
+      ...(r.unmatchedMemberSelectors || []),
+      ...(r.memberStaleWaivers || []).map((k) => ({ staleMemberWaiver: k })),
       ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
-      + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)` },
+      + `${r.restoredByDeclaredElement.length} sprung, ${r.waived.length} waived (accepted debt)`
+      + `; members ${(r.memberRows || []).length} bodies (${r.memberUnitWide} unit-wide, `
+      + `${r.memberUndeclared} undeclared — REPORTED, §121's convention), `
+      + `scope ${(r.memberScope || []).join('/')}: ${(r.memberWaived || []).length} waived` },
   // §137 — the transfer audit. Same shape as `restoring`: the rows are the
   // product (`ok` is always true), and the gate holds what CAN be held — a
   // declaration that is malformed, names a part that no longer exists, whose

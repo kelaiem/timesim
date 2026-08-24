@@ -2243,9 +2243,9 @@ export const INTRA_UNIT_CONTACTS = [
   // so get no row — which is the difference a blanket cannot express.
   { unit: 'Alarm switch', a: 'alarmColBase', b: 'CylinderGeometry#3', why: 'the base disc\'s bore on the column wheel\'s stud' },
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'CylinderGeometry#3', why: 'the ratchet skirt\'s bore on the same stud — one arbor, two seated bodies' },
-  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
-  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
-  { unit: 'Alarm switch', a: 'BoxGeometry#4', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
+  { unit: 'Alarm switch', a: 'switchClickArm', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
+  { unit: 'Alarm switch', a: 'switchClickArm', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
+  { unit: 'Alarm switch', a: 'switchClickArm', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
   // Both were 'CylinderGeometry#0' until TODO 11 tranche five named the post
   // (see the strike sleeve above for why that stales a row).
   { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkBeakPost', why: 'beak lever on its pivot post' },
@@ -2337,7 +2337,7 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm switch — §28/§33's column work and pusher:
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'CylinderGeometry#7', why: '§121: the detent post and its second turned step — one post, two diameters' },
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'switchClickSpring', why: '§121: the switch click spring anchored on the detent post (kiss)' },
-  { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'alarmPusherRiser', why: '§121: the riser lapped onto the pusher stem (0.5 of the riser 0.21 into the stem — the joint that carries the push)' },
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherRiser', why: '§121: the riser lapped onto the pusher stem (0.5 of the riser 0.21 into the stem — the joint that carries the push)' },
   // TODO 87 finding 3 — THIS ROW USED TO NAME A PART THAT DOES NOT EXIST.
   // It read "the return coil seated round the pusher stem", and there is no
   // return coil: the pusher's return is ALARM_RETURN_S, a settling time in
@@ -2346,10 +2346,10 @@ export const INTRA_UNIT_CONTACTS = [
   // because the bore was a literal 0.24 against a 0.32 stem. The bore is
   // derived from the stem now (main.js, ALARM_PUSH_GUIDE_BORE), so this is a
   // running fit and the row says which joint it is.
-  { unit: 'Alarm switch', a: 'CylinderGeometry#9', b: 'alarmPusherGuide', why: 'the pusher stem running in its guide boss — a sliding bearing at PIVOT_BORE_CLEAR, the plate pivots\' own fit' },
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherGuide', why: 'the pusher stem running in its guide boss — a sliding bearing at PIVOT_BORE_CLEAR, the plate pivots\' own fit' },
   { unit: 'Alarm switch', a: 'alarmPusherPawl', b: 'alarmPusherReach', why: '§121: the pawl lapped on the reach bar (flush faces, deep 0)' },
   { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser lapped on the reach bar — the pusher\'s own three-piece assembly' },
-  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'BoxGeometry#4', why: '§121: the detent arm riding the column wheel\'s castellations (kiss) — §28\'s column work; a working contact, bounded by the TODO 59 read assert at the click build and swept through a whole pitch by tools/probe-59-click' },
+  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'switchClickArm', why: '§121: the detent arm riding the column wheel\'s castellations (kiss) — §28\'s column work; a working contact, bounded by the TODO 59 read assert at the click build and swept through a whole pitch by tools/probe-59-click' },
   // TODO 59: this row USED to say "its budget the switch's own asserts", and no
   // such assert had ever been written — a declaration pointing at a check that
   // does not exist reads as triaged, which is worse than an admitted gap. The
@@ -2359,7 +2359,7 @@ export const INTRA_UNIT_CONTACTS = [
   // measured by probe-59-click: 0 buried samples of 121 across a full pitch,
   // worst clearance 0.0052, against 30 of 121 and a worst burial of 0.699 under
   // the height-as-radius law this replaced.
-  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'SphereGeometry#5', why: '§121: the detent BALL on the castellations\' ramps (kiss) — the star detent that indexes the column; TODO 59 re-derived its radius from the wall and the top corner it rides, and probe-59-click sweeps the pitch' },
+  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'switchClickNose', why: '§121: the detent BALL on the castellations\' ramps (kiss) — the star detent that indexes the column; TODO 59 re-derived its radius from the wall and the top corner it rides, and probe-59-click sweeps the pitch' },
   // Alarm link — §45's corner stations and the crank:
   { unit: 'Alarm link', a: 'LatheGeometry#9', b: 'BoxGeometry#10', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'LatheGeometry#11', b: 'BoxGeometry#12', why: '§121: the second corner, same construction' },
@@ -8648,6 +8648,33 @@ export const RESTORING_WAIVERS = {
   Dial: 'TODO 29',
 };
 
+// §162 (TODO 87 finding 4) — THE MEMBER TIER'S SCOPE, and it is small on
+// purpose. Re-keying declarations by (unit, member) makes the audit ask a
+// strictly harder question — every reciprocating BODY, not every unit — and
+// asking it of the whole movement at once would open thirty-odd rows nobody
+// has triaged, which is how a gate becomes a wall of waivers. §121's tier
+// landed the same way: gate a named scope, REPORT everywhere else, and let
+// the report be the catalogue the next landing works from.
+//
+// A unit in scope may not answer with '*': every rigid frame among its
+// reversing meshes must be covered by a declaration naming a member IN that
+// frame, or waived below citing a TODO with a fix path.
+export const RESTORING_MEMBER_SCOPE = ['Alarm switch'];
+// Keyed `unit\u0000<a mesh name in the uncovered frame>`. The frame is named
+// by the mesh the report names it by, so a waiver cannot drift off the body it
+// excuses: if that mesh stops reversing, the row disappears and the waiver
+// goes stale — held by the same rule SLENDER_WAIVERS is (§54).
+export const RESTORING_MEMBER_WAIVERS = {
+  // TODO 87 finding 4, in one row. The pusher is the second reciprocator in
+  // 'Alarm switch' and its return is `ALARM_RETURN_S` — a settling time in the
+  // tick with no metal behind it. Before this tier the unit passed on the
+  // CLICK ARM's blade, which is a real spring answering for a body it does not
+  // touch. TODO 87 step 5 owns the fix and sites it: a fixed abutment hanging
+  // from the plate's underside inboard of a collar on the stem, blade between
+  // them, in the long free run between the riser and the guide boss.
+  'Alarm switch\u0000alarmPusherStem': 'TODO 87',
+};
+
 // How load-bearing a part is: how much of the movement is downstream of it in
 // MECH_GRAPH.drive, transitively. A missing return on the pallet fork would
 // mis-state the whole train below it; a missing return on a dial-side flag
@@ -8702,19 +8729,32 @@ export async function auditOscillators(clock, opts = {}) {
   // The reversal set, per UNIT. A unit reverses if any of its OWN meshes does
   // — the restoring element is declared against the part, not the mesh.
   const reversingUnits = new Map();
+  const reversingMeshes = new Map();   // unit -> [mesh], §162's member tier works on these
   for (const v of deduped) {
     if (!v.reversed) continue;
-    if (!reversingUnits.has(v.unit)) reversingUnits.set(v.unit, []);
+    if (!reversingUnits.has(v.unit)) { reversingUnits.set(v.unit, []); reversingMeshes.set(v.unit, []); }
     reversingUnits.get(v.unit).push(
       `${v.meshName || v.mesh?.name || v.kind}${v.reason ? '/' + v.reason : ''}:${v.reversedVia || '?'}`);
+    if (v.mesh) reversingMeshes.get(v.unit).push(v.mesh);
   }
 
   const declared = clock.declaredRestoring || new Map();
   const scene = clock.scene;
   const twoWay = [], restored = [], unrestored = [], malformed = [];
 
+  // §162 — DECLARATIONS BY UNIT, in declaration order. The map is keyed
+  // (unit, member) since TODO 87 finding 4, so a unit may hold several. The
+  // UNIT tier below reads the first, which is the one the unit-keyed map used
+  // to hold and keeps every existing row exactly where it was; the MEMBER tier
+  // further down reads them all, which is the point of the re-key.
+  const declaredByUnit = new Map();
+  for (const d of declared.values()) {
+    if (!declaredByUnit.has(d.unit)) declaredByUnit.set(d.unit, []);
+    declaredByUnit.get(d.unit).push(d);
+  }
+
   for (const [unit, kinds] of reversingUnits) {
-    const d = declared.get(unit);
+    const d = (declaredByUnit.get(unit) || [])[0];
     const row = {
       unit,
       fanout: driveFanout(unit),
@@ -8749,11 +8789,115 @@ export async function auditOscillators(clock, opts = {}) {
   // re-posed, stops reciprocating, and the declaration outlives the reason
   // for it. Report those too.
   const stale = [];
-  for (const [unit] of declared) if (!reversingUnits.has(unit)) stale.push(unit);
+  for (const [unit] of declaredByUnit) if (!reversingUnits.has(unit)) stale.push(unit);
 
   const bySeverity = (a, b) => b.fanout - a.fanout || a.unit.localeCompare(b.unit);
   unrestored.sort(bySeverity); twoWay.sort(bySeverity);
   restored.sort(bySeverity); malformed.sort(bySeverity);
+
+  // ——— §162: THE MEMBER TIER (TODO 87 finding 4) ———
+  //
+  // The unit tier above asks "does anything bring this UNIT back", which a
+  // unit with two reciprocators answers with whichever one was declared
+  // first. This tier asks it of every reciprocating BODY.
+  //
+  // The bodies are DERIVED, not listed: each unit's reversing meshes cluster
+  // into rigid frames by the same world-motion signature checkAssembly and
+  // checkIntraUnit's MM tier use (`clusterByFrame`, one predicate now with
+  // three consumers), with a morph always its own frame for §121's reason —
+  // a mesh that swaps geometry moves its surfaces without moving its matrix,
+  // so the matrix trace alone would merge two still morphs into one body.
+  //
+  // The walk is this check's own and is deliberately COARSE: three samples per
+  // axis, matrices only, no BVH and no vertices. Clustering has to tell bodies
+  // APART, which the endpoints and the middle of every axis already do; it is
+  // not measuring travel, and the registry that decided which meshes reverse
+  // did that at its own rate.
+  const memberRows = [], unmatchedMembers = [];
+  {
+    const wanted = new Set();
+    for (const list of reversingMeshes.values()) for (const m of list) wanted.add(m);
+    // Resolve each declaration's member NAME inside its own unit's subtree.
+    // Unit-scoped, because two units carry a mesh called `mainspringRibbon`
+    // and a scene-wide getObjectByName would hand both declarations the same
+    // one. A name that resolves nowhere is an unmatched SELECTOR — a failure
+    // in its own right, INTRA_UNIT_CONTACTS' rule, because a declaration
+    // pointing at metal that is not there reads as an answer and is not one.
+    const unitObj2 = new Map((clock.labelEntries || []).map((e) => [e.name, e.obj]));
+    const memberMesh = new Map();   // declaration -> mesh (absent for '*' and for misses)
+    for (const d of declared.values()) {
+      if (d.member === '*') continue;
+      const root = unitObj2.get(d.unit);
+      let hit = null;
+      if (root) root.traverse((o) => { if (!hit && o.isMesh && o.name === d.member) hit = o; });
+      if (!hit) { unmatchedMembers.push({ unit: d.unit, member: d.member, kind: d.kind }); continue; }
+      memberMesh.set(d, hit);
+      wanted.add(hit);
+    }
+    if (wanted.size) {
+      const meshes = [...wanted];
+      const worldBase = new Map(), baseGeoId = new Map();
+      const trace = new Map(), morphed = new Set();
+      const _mm = new THREE.Matrix4();
+      enterAxis(clock);   // TODO 54 — the base pose is canonical too, or every delta is measured from session history
+      clock.setPose(AXES[0].pose(0, clock));
+      for (const m of meshes) {
+        worldBase.set(m, m.matrixWorld.clone().invert());
+        baseGeoId.set(m, m.geometry.id);
+        trace.set(m, []);
+      }
+      let n = 0;
+      for (const axis of AXES) {
+        enterAxis(clock);                       // TODO 54 — canonical entry per axis
+        for (const f of [0, 0.5, 1]) {
+          clock.setPose(axis.pose(f, clock));
+          for (const m of meshes) {
+            _mm.copy(m.matrixWorld).multiply(worldBase.get(m));
+            const acc = trace.get(m);
+            for (let i = 0; i < 16; i++) acc.push(_mm.elements[i]);
+            if (m.geometry.id !== baseGeoId.get(m)) morphed.add(m);
+          }
+          if (++n % 8 === 0) await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+      const nameOf = (m) => m.name || `(unnamed ${m.geometry?.type || '?'})`;
+      for (const [unit, list] of reversingMeshes) {
+        const decls = declaredByUnit.get(unit) || [];
+        const wide = decls.filter((d) => d.member === '*');
+        const groups = clusterByFrame(list, trace, morphed);
+        for (const g of groups) {
+          const covering = decls.filter((d) => memberMesh.has(d) && g.meshes.includes(memberMesh.get(d)));
+          const names = g.meshes.map(nameOf);
+          const key = `${unit}\u0000${names.find((x) => !x.startsWith('(')) || names[0]}`;
+          memberRows.push({
+            unit, fanout: driveFanout(unit),
+            frame: names,
+            // A frame is ANSWERED when a declaration names a member inside it.
+            // '*' is carried as its own, weaker verdict rather than being
+            // counted as an answer: it is what every declaration meant before
+            // this tier existed, and reading it as coverage would make the
+            // re-key look complete on the day it landed.
+            answeredBy: covering.map((d) => `${d.member} (${d.kind})`),
+            unitWide: wide.length ? wide.map((d) => d.kind) : undefined,
+            state: covering.length ? 'declared' : wide.length ? 'unit-wide' : 'undeclared',
+            inScope: RESTORING_MEMBER_SCOPE.includes(unit),
+            key,
+            waiver: RESTORING_MEMBER_WAIVERS[key],
+          });
+        }
+      }
+      memberRows.sort(bySeverity);
+    }
+  }
+  // GATED inside RESTORING_MEMBER_SCOPE only (§121's convention). In scope a
+  // '*' is not an answer either, which is why `state !== 'declared'` is the
+  // test rather than `state === 'undeclared'`.
+  const memberUnwaived = memberRows.filter((r) => r.inScope && r.state !== 'declared' && !r.waiver);
+  const memberWaived = memberRows.filter((r) => r.inScope && r.state !== 'declared' && r.waiver);
+  // A waiver naming a frame that IS answered is itself a failure — §137's
+  // rule, and the reason deleting a waiver is structurally part of a fix.
+  const memberStaleWaivers = Object.keys(RESTORING_MEMBER_WAIVERS)
+    .filter((k) => !memberRows.some((r) => r.key === k && r.inScope && r.state !== 'declared'));
 
   // The control case, asserted rather than hoped for.
   const control = twoWay.some((r) => r.unit === 'Pallet fork')
@@ -8781,6 +8925,18 @@ export async function auditOscillators(clock, opts = {}) {
       .map((r) => ({ ...r, waiver: RESTORING_WAIVERS[r.unit] })),
     malformedDeclarations: malformed,
     staleDeclarations: stale,
+    // §162's member tier. `memberRows` is the catalogue — every reciprocating
+    // body in the movement with the declaration that answers for it, or none —
+    // and it is a REPORT, §48's covenant. What GATES is the scoped residue,
+    // the unmatched selectors and the stale waivers.
+    memberScope: RESTORING_MEMBER_SCOPE,
+    memberRows,
+    memberUnitWide: memberRows.filter((r) => r.state === 'unit-wide').length,
+    memberUndeclared: memberRows.filter((r) => r.state === 'undeclared').length,
+    memberUnwaived,
+    memberWaived,
+    memberStaleWaivers,
+    unmatchedMemberSelectors: unmatchedMembers,
   };
 }
 
