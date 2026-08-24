@@ -16660,6 +16660,18 @@ loop is a claim about ROUTES, not panels, and it was and is true.
   `tools/probe-161-bench.mjs` records that measurement because it is what sets
   the probe's step size — the walk is render-bound, so a COARSER `dt` is
   cheaper, not dearer, which inverts the usual advice about `advanceFrame`.
+- **The authoring stops are desktop content, and that is where the guided
+  buttons already lived.** Measured: `layoutChrome()` drops `#view-hud` entirely
+  below ~700 px (`display:none` at 520, `block` at 700), and that panel holds
+  the Bench button along with Reconfigure, Trial boot and Copy view. So a phone
+  viewer cannot START this route from the UI at all — the same as Tour, Demo and
+  Inspect, which is a property of where the guided buttons live rather than of
+  this route — and the only way on is `?bench=1`, a typed request. The residue
+  is that the last two stops then name controls that viewer cannot see. The
+  route mitigates the important half by ENTERING reconfigure mode rather than
+  telling anyone to press a button, so the rings appear regardless; naming Trial
+  boot and Copy view is what stays desktop-only. `probe-161-bench.mjs` asserts
+  the reachability at 760 px and REPORTS the breakpoint rather than gating it.
 - **`?scale` is clobbered by state restore.** Found while probing the link and
   measured identical on `main`, so it predates this: `applyDeepLink` applies
   `?scale=`, then the session restore writes the persisted slider back over it.
