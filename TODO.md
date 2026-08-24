@@ -17,7 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened |
+| 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answers for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return is never asked about — a GRANULARITY gap where TODO 29/64 are population ones. The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
 | 84 | OPEN | Every gear ships fatter than it was cut: three.js's `bevelSize` offsets the outline OUTWARD by more than the backlash the generator reserved (0.0748 u per flank against 0.0427 u for the pair at module 0.34). General to the movement; visible only where a unit is gated. Three candidate fixes in the item, none of them widening `cyBacklash` |
@@ -9416,6 +9416,49 @@ band (§51's machinery, if it comes to that). Until then the row is waived in
 `INTRA_UNIT_WAIVERS` citing this item, deliberately not silenced, so `Alarm
 switch` stays GATED: any other interference in that unit now fails.
 
+### 7. The pawl is inside the ratchet, not on it — and that re-scopes step 3
+
+**Finding 1's depth was never the depth.** `probe-87-press` reports a
+containment figure capped at 0.03833 by the z bands, and says so; the number
+that matters — how far into the metal, in the wheel's own plane — had never
+been taken. `tools/probe-87-pawl.mjs` takes it, projecting both members into
+the wheel's frame and testing the pawl's vertices against the SAME
+`userData.ratchetPoly` the teeth were cut from.
+
+| pose | pawl's radius from the wheel axis | vertices inside the saw | in-plane depth |
+|---|---|---|---|
+| rest (f = 0) | 5.884 .. 7.197 — straddling the tip circle | 6 / 24 | **0** (the declared kiss) |
+| bottom of stroke (f = 0.5) | **4.451 .. 5.378** | **24 / 24** | **0.7615** |
+
+The saw's root circle is **5.13** and its tip circle 6.384. At the bottom of
+the stroke the pawl's whole leading end stands INSIDE the root circle: it is
+not fouling the teeth, it is ploughing through the body of the ratchet. Past
+`CLEAR_MARGIN` from f 0.23 to f 0.96 — most of the cycle — and **20× the
+z-capped figure, 5× the margin.**
+
+**So the drive contact is not a contact.** The wheel's angle is computed
+kinematically (`travel / arm`, TODO 20's carry) while the member said to be
+driving it is buried inside it. That is §35's original audit finding — "every
+hand-off is a contact" turning out to be false when measured — one member
+further upstream than TODO 20 reached, and it is why the pawl⇄skirt row in
+`INTRA_UNIT_CONTACTS` is not the excuse it looks like: the row says "the pawl
+PARKS ON the kiss", which is true at rest and says nothing about the 2.686 u
+that follow.
+
+**What this does to step 3.** The step read "give the pawl the freedom a pawl
+has — a pivot and a return spring, so it can cam over the teeth". That is
+necessary and not sufficient: a pivot lets a NOSE ride a tooth back, and this
+pawl is a 1.5-long box travelling 2.686 u along a straight chord through an
+annulus. The redesign is a real drive contact — a short nose on a sprung,
+pivoted lever whose engagement is SOLVED against `ratchetPoly` the way TODO
+59's click nose is solved against `profileAt`, with the wheel's carry then
+being the consequence of where that contact sits rather than a formula
+evaluated beside it.
+
+`probe-87-pawl.mjs` is that work's acceptance test, and it is written to be
+one: a pawl that drives through a real contact reads **0 vertices inside at
+every pose except the declared kiss, where it reads depth 0.**
+
 ### The group's other two outputs, recorded rather than re-filed
 
 **The lock brake** is genuinely column-driven (`['Alarm switch', 'Alarm lock']`
@@ -9465,12 +9508,22 @@ read the other, because the second is then nearly free.
    retire step 1 — a probe measures one trajectory on demand, where an axis puts
    the stroke in the pose net so every sweep in the battery sees it, which is
    what makes the finding a REGRESSION gate rather than a one-off reading.
-3. **Give the pawl the freedom a pawl has** — a pivot and a return spring, the
-   `switchClickSpring` construction one member over — or give the overrun
-   somewhere to go. This is P0/P2 inside the group, so it is spent in mechanism
-   space and never on a widened budget; and the cam-out travel derives from the
-   flank angle the source has already computed (67.4° off radial), not from
-   whatever clears.
+3. **RE-SCOPED by finding 7 — the drive contact has to become one.** This read
+   "give the pawl the freedom a pawl has — a pivot and a return spring". That
+   is necessary and nowhere near sufficient: measured in the wheel's own plane,
+   the pawl stands **inside the root circle** at the bottom of the stroke with
+   every vertex in the saw and 0.7615 u of depth, so there is no contact to
+   give freedom TO. The work is a real drive contact — a short NOSE on a
+   sprung, pivoted lever, its engagement SOLVED against `ratchetPoly` the way
+   TODO 59's click nose is solved against `profileAt`, and the wheel's carry
+   then a consequence of where that contact sits rather than `travel / arm`
+   evaluated beside it. P0 and P2 inside the group, so it is spent in mechanism
+   space and never on a widened budget; the cam-out travel derives from the
+   flank the source has already priced (67.4° off radial). **Its acceptance
+   test exists**: `tools/probe-87-pawl.mjs` must read 0 vertices inside at
+   every pose but the declared kiss, and depth 0 there. Closing it also closes
+   finding 6, since a nose that stays on the saw needs no carrier inside the
+   tooth circle.
 4. **DONE — the blanket is split and both false rows are corrected.** The
    wheel's three bodies are named at the builder (`alarmColBase`,
    `alarmColCastellations`, `alarmColSkirt`), so the selectors say which body
