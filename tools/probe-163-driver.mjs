@@ -252,18 +252,25 @@ const out = await p.evaluate(async () => {
   }
   setDepth(tip - rr0);
 
-  // ——— THE POST'S RADIUS IS DERIVED, NOT SCANNED ———
-  // §163: the pawl's pivot post rises through the SKIRT'S OWN z-band to reach
-  // the teeth, so its SURFACE — not its centreline — must stand one CLEAR_MARGIN
-  // outside the tip circle:
-  //     Rq = tip + CLEAR_MARGIN + postR
+  // ——— THE PIVOT'S RADIUS IS DERIVED, NOT SCANNED — AND FROM THE RIGHT MEMBER ———
+  // §163: the pawl's pivot rises through the SKIRT'S OWN z-band to reach the
+  // teeth, so what stands there must clear the tip circle by one CLEAR_MARGIN.
   // The scan above reports whichever Rq measures best, which is a different
-  // question and lands 6.6 — a centreline that puts a STOCK_MIN_R10 post's
-  // surface 0.0495 from the tips, a third of the margin. What the build can
-  // actually use is this one value, so it is measured on its own row rather
-  // than read off a scan that was never asked the question.
+  // question and lands 6.6 — a centreline that buries the pivot in the teeth.
+  //
+  // CORRECTED ONCE MORE. The first correction derived the radius against the
+  // POST (STOCK_MIN_R10) and answered 6.70048, and the built pawl then measured
+  // 0.0956 INSIDE the saw at f 0.604 — because the largest thing centred on
+  // that pivot is not the post, it is the BOSS the post runs in, and a boss is
+  // bore + wall:
+  //     Rq = tip + CLEAR_MARGIN + (STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U)
+  // Deriving a clearance against the wrong member of a joint is exactly TODO 87
+  // finding 6's mistake at a different station: the constraint was right and the
+  // face it was measured from was not.
   const CLEAR_MARGIN_G = 0.15, STOCK_MIN_R10_G = 0.16648151883772563;
-  const RQ_DERIVED = tip + CLEAR_MARGIN_G + STOCK_MIN_R10_G;
+  const PIVOT_BORE_CLEAR_G = 0.05, STOCK_MIN_U_G = 0.3166226912928759;
+  const BOSS_R_G = STOCK_MIN_R10_G + PIVOT_BORE_CLEAR_G + STOCK_MIN_U_G;
+  const RQ_DERIVED = tip + CLEAR_MARGIN_G + BOSS_R_G;
   let derivedRow = null;
   {
     const seat = seatFor(rn);
@@ -538,8 +545,8 @@ if (asCut && asCut.reachable) {
   console.log('\nAt the saw as cut the architecture does NOT survive its return stroke.');
 }
 // ——— THE ROW THE BUILD CONSUMES ———
-console.log(`\nTHE POST RADIUS THE BUILD MUST USE, derived rather than scanned:`);
-console.log(`  Rq = tip ${out.tip.toFixed(3)} + CLEAR_MARGIN 0.150 + post STOCK_MIN_R10 0.166 = ${out.RQ_DERIVED.toFixed(5)}`);
+console.log(`\nTHE PIVOT RADIUS THE BUILD MUST USE, derived rather than scanned:`);
+console.log(`  Rq = tip ${out.tip.toFixed(3)} + CLEAR_MARGIN 0.150 + the pawl's BOSS (bore + wall) 0.533 = ${out.RQ_DERIVED.toFixed(5)}`);
 if (!out.derivedRow || !out.derivedRow.cleared) {
   console.log('  at that radius the nose does NOT index — the architecture needs re-siting, not a smaller margin.');
 } else {

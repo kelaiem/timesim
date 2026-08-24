@@ -9573,8 +9573,9 @@ every pose except the declared kiss, where it reads depth 0.**
 > `userData.ratchetPoly` with the pawl's angle carried in the DRIVER's frame,
 > the seat tracked from step to step rather than searched globally, and a
 > positive control that lands at 2.66e-15. At the derived post radius —
-> `tip + CLEAR_MARGIN + STOCK_MIN_R10` = 6.70048, since the post rises through
-> the skirt's own band and its SURFACE is what must clear the tips — the pawl
+> `tip + CLEAR_MARGIN + the pawl's BOSS` = 7.06710 — the pivot rises through the
+> skirt's own band, so what stands there must clear the tips, and the largest
+> thing on that pivot is the boss, not the post inside it — the pawl
 > lifts 1.225 against the 1.224 it needs and the swept free region is 6.304 u².
 >
 > **A straight bar does not fit, and neither does a flood fill's path.** The
@@ -9669,16 +9670,51 @@ read the other, because the second is then nearly free.
      on every release. Its bear station is the pivot boss's edge (a strain solve
      answered 0.1137, INSIDE the boss, where a blade would work at the boss's
      radius and make every number downstream a fiction), and its length is the
-     greater of two floors — the drag budget's 3.669 and its own strain limit's
-     4.065. The strain governs, so the drag lands at 4.08× the detent rather
+     greater of two floors — the drag budget's 3.987 and its own strain limit's
+     4.287. The strain governs, so the drag lands at 3.73× the detent rather
      than the 3× minimum: what a governing constraint always buys.
-   - **The post's azimuth on the driver is a P3 choice at a 30° quantum.** The
-     seats sit at fixed azimuths in the wheel, so the branch is one tooth apart
-     and the compact one puts the pawl's post 8.6° from the CLICK's own detent
-     post at nearly the same radius, sweeping straight through it. The build
-     sweeps the pawl through its whole return on every branch and takes the one
-     standing furthest off the metal already in that band — position space, at
-     the quantum the saw itself supplies.
+   - **The pivot's azimuth on the driver is a P3 choice at a 30° quantum.** The
+     seats sit at fixed azimuths in the wheel, so the branches are one tooth
+     apart, and three of the twelve foul the metal already standing in the
+     pawl's band. Measured, at the derived pivot radius:
+
+     | branch | clearance |
+     |---|---|
+     | +9.35° | **−0.5216** |
+     | −20.65° | **−0.4891** |
+     | +39.35° | **−0.0957** |
+     | **−50.65°** | **+2.9566** ← built |
+     | the other eight | nothing within reach |
+
+     The build sweeps the pawl through its whole return on EVERY branch and
+     takes the most compact one that clears amply — position space, at the
+     quantum the saw itself supplies. Clearance decides and compactness breaks
+     the tie, because ranking eight equally-unreachable branches by distance
+     picks whichever the polygon listed first, which is a choice made by
+     iteration order.
+
+   **And the two instruments that were agreeing with themselves.** Both were
+   caught by measurement, and both are the same shape of error:
+
+   - **The pivot's radius was derived against the POST** — `tip + CLEAR_MARGIN
+     + STOCK_MIN_R10` = 6.70048 — when the largest thing centred on that pivot
+     is the BOSS the post runs in. The built pawl measured **0.0956 inside the
+     saw** at f 0.604. What let it through is that the build's own outline
+     sweep swept the pawl's two body outlines and not its boss: a sweep that
+     does not cover a member cannot see that member. Deriving a clearance from
+     the wrong member of a joint is finding 6's own mistake at a different
+     station. Re-derived at 7.06710, the return is *stronger* — free region
+     7.136 u² against 6.304 — and the acceptance test reads 0 vertices inside
+     at every pose.
+   - **The branch scan was measuring air.** It collected obstacle vertices
+     lying INSIDE the pawl's 0.317 band, and a post that crosses that band has
+     vertices only at its two ends, both outside it — MODELING.md rule 5's trap,
+     in the instrument rather than in a sweep. Every branch read equally clear
+     and the "choice" was the polygon's listing order. It reads z RANGES now,
+     an empty scan is itself a warning ("no obstacles" and "no measurement"
+     look identical from outside), and the wheel's own bodies are excluded
+     because the nose is *meant* to be in the teeth — left in, the saw
+     saturates every branch at 0 and the scan chooses nothing.
 
    **Its acceptance test moved with it.** `tools/probe-87-pawl.mjs` selected one
    mesh named `alarmPusherPawl`; the pawl now ships as three bodies plus a nose

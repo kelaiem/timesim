@@ -88,7 +88,13 @@ const out = await p.evaluate(async () => {
     // the pawl's corners, in the WHEEL's local frame (where ratchetPoly lives)
     wheelGroup.updateWorldMatrix(true, false);
     const inv = wheelGroup.matrixWorld.clone().invert();
-    let deepest = 0, insideN = 0, n = 0, minGap = Infinity, noseGap = null, noseIn = 0;
+    let deepest = 0, insideN = 0, n = 0, minGap = Infinity, noseGap = null, noseIn = 0, worstBody = null, worstAt = null, gapBody = null, gapAt = null, noseCtr = null;
+    // the nose's CENTRE in the wheel's frame — the build's assert excludes an
+    // (noseR + w) disc around it as the working zone, so the probe measures the
+    // same exclusion and the two become comparable instead of merely different
+    nose.updateWorldMatrix(true, false);
+    { const c = new THREE.Vector3().applyMatrix4(inv.clone().multiply(nose.matrixWorld)); noseCtr = [c.x, c.y]; }
+    let gapOut = Infinity, gapOutBody = null, gapOutAt = null;
     let rMin = Infinity, rMax = 0;
     for (const body of bodies) {
       body.updateWorldMatrix(true, false);
@@ -103,14 +109,18 @@ const out = await p.evaluate(async () => {
         // the NOSE is the declared contact — it is meant to sit in a corner, so
         // its readings are reported apart rather than counted as penetration
         if (body === nose) { if (isIn) noseIn++; else if (noseGap === null || d < noseGap) noseGap = d; continue; }
-        if (isIn) { insideN++; if (d > deepest) deepest = d; }
-        else if (d < minGap) minGap = d;
+        const fromNose = Math.hypot(v.x - noseCtr[0], v.y - noseCtr[1]);
+        if (!isIn && fromNose >= 0.35 && d < gapOut) { gapOut = d; gapOutBody = body.name; gapOutAt = [+v.x.toFixed(3), +v.y.toFixed(3)]; }
+        if (isIn) { insideN++; if (d > deepest) { deepest = d; worstBody = body.name; worstAt = [+v.x.toFixed(3), +v.y.toFixed(3)]; } }
+        else if (d < minGap) { minGap = d; gapBody = body.name; gapAt = [+v.x.toFixed(3), +v.y.toFixed(3)]; gapFromNose = null; }
       }
     }
     rows.push({ f: +f.toFixed(3), insideN, n, inPlaneDepth: +deepest.toFixed(4),
                 gap: minGap === Infinity ? null : +minGap.toFixed(4),
                 noseGap: noseGap === null ? null : +noseGap.toFixed(4), noseIn,
-                rMin: +rMin.toFixed(3), rMax: +rMax.toFixed(3),
+                worstBody, worstAt, gapBody, gapAt,
+                gapFromNose: (gapAt && noseCtr) ? +Math.hypot(gapAt[0] - noseCtr[0], gapAt[1] - noseCtr[1]).toFixed(3) : null,
+                gapOut: gapOut === Infinity ? null : +gapOut.toFixed(4), gapOutBody, gapOutAt, rMin: +rMin.toFixed(3), rMax: +rMax.toFixed(3),
                 colA: +clock.alarmDebug.alarmColShownA.toFixed(4) });
   }
   let pr=0; for(const q of poly) pr=Math.max(pr,Math.hypot(q.x,q.y));
@@ -128,6 +138,7 @@ for (const r of out.rows)
     + `   ${String(r.noseIn ? `in×${r.noseIn}` : (r.noseGap ?? '-')).padStart(7)}`
     + (r.inPlaneDepth > 0.15 ? '  ← past CLEAR_MARGIN' : ''));
 const worst = out.rows.reduce((a, b2) => (b2.inPlaneDepth > a.inPlaneDepth ? b2 : a));
+if (worst.worstBody) console.log(`  deepest body: ${worst.worstBody} at wheel-frame (${worst.worstAt}), r ${Math.hypot(...worst.worstAt).toFixed(3)}`);
 console.log(`\n  worst in-plane penetration ${worst.inPlaneDepth} at f=${worst.f} (${worst.insideN} of ${worst.n} vertices inside the saw)`);
 
 // §163's acceptance, in the terms this probe was written to answer: every body
@@ -136,5 +147,9 @@ console.log(`\n  worst in-plane penetration ${worst.inPlaneDepth} at f=${worst.f
 // solved to touch, and a corner it sits in reads a vertex or two inside by the
 // tessellation's own width.
 const worstGap = out.rows.reduce((a, b2) => ((b2.gap ?? Infinity) < (a.gap ?? Infinity) ? b2 : a));
-console.log(`  the bodies' worst clearance to the saw ${worstGap.gap} at f=${worstGap.f}`);
+console.log(`  the bodies' worst clearance to the saw ${worstGap.gap} at f=${worstGap.f}`
+  + ` — ${worstGap.gapBody} at (${worstGap.gapAt}), ${worstGap.gapFromNose} from the nose's centre`);
+const wOut = out.rows.reduce((a, b2) => ((b2.gapOut ?? Infinity) < (a.gapOut ?? Infinity) ? b2 : a));
+console.log(`  OUTSIDE the nose's (noseR + w) working zone — the same exclusion the build's own`);
+console.log(`  sweep applies — the worst is ${wOut.gapOut} at f=${wOut.f} (${wOut.gapOutBody} at ${wOut.gapOutAt})`);
 process.exit(out.rows.every((r) => r.insideN === 0) ? 0 : 1);

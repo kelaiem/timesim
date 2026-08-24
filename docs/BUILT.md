@@ -16907,16 +16907,30 @@ instrument are the reason the shipped outline is trustworthy:
   Re-mapped requiring `w + CLEAR_MARGIN` everywhere but the nose's own working
   zone, it still admits a member (5.195 u²), and that is the one the build cuts.
 
-The post's radius is a **constraint, not a scan**: it rises through the skirt's
-own z-band, so its SURFACE must clear the tips by one margin —
-`tip + CLEAR_MARGIN + STOCK_MIN_R10` = **6.70048**. Scanned for whichever radius
-measured best the probe answers 6.6, which stands a post of that stock 0.0495
-off the tips, a third of the margin. At the derived radius the return is
-STRONGER: free region 6.304 u² against 5.288.
+The pivot's radius is a **constraint, not a scan**, and it took two goes to name
+the right member. It rises through the skirt's own z-band, so what stands there
+must clear the tips by one margin. Scanned for whichever radius measured best
+the probe answers 6.6, which buries the pivot in the teeth outright. Derived
+against the POST it answers `tip + CLEAR_MARGIN + STOCK_MIN_R10` = 6.70048 —
+and the built pawl then measured **0.0956 INSIDE the saw** at f 0.604, because
+the largest thing centred on that pivot is not the post, it is the BOSS the post
+runs in. Deriving a clearance against the wrong member of a joint is finding 6's
+own mistake at a different station: the constraint was right and the face it was
+measured from was not.
 
-The build re-sweeps the outline it actually cut through the whole return and
-asserts **0.1645** worst clearance — §120's saw⇄pallet cycle sweep as precedent:
-the pose net covers the class, the group's own assert keeps the tight instance.
+    Rq = tip + CLEAR_MARGIN + (bore + wall) = 6.384 + 0.150 + 0.533 = 7.06710
+
+At the corrected radius the return is STRONGER: free region **7.136 u²** against
+6.304, and the pivot trails the seat by 40° on a 4.543 arm.
+
+**What let the first radius through is worth as much as the fix.** The build's
+own outline sweep swept the pawl's two body outlines and not its BOSS — a sweep
+that does not cover a member cannot see that member, so the build agreed with
+itself while the acceptance probe read 0.0956. Both cover every body now, and
+they agree: the build asserts **0.1513** worst clearance over the whole return
+(§120's saw⇄pallet cycle sweep as precedent — the pose net covers the class, the
+group's own assert keeps the tight instance), and outside the nose's own working
+zone `probe-87-pawl` reads 0.151 at the same member.
 
 The pawl's angle is solved against `ratchetPoly` at every pose, and the solve is
 **stateless by construction**. A tracking solve is what a probe can do and a tick
@@ -16944,12 +16958,12 @@ drag grows as the SQUARE of this arm.
 **How long it is** is then bounded from both sides, and the two are floors on
 the same quantity — a blade can always be longer than either needs:
 
-    drag budget:  L³ = E·a·c³·U²·stroke·bearArm² / (2·noseArm·Fmax)   → 3.669
-    its strain:   L² = 3·stroke·c·bearArm / SPRING_STRAIN_MAX          → 4.065
+    drag budget:  L³ = E·a·c³·U²·stroke·bearArm² / (2·noseArm·Fmax)   → 3.987
+    its strain:   L² = 3·stroke·c·bearArm / SPRING_STRAIN_MAX          → 4.287
 
 The first solve wrote these as a simultaneous PAIR and got a closed form for L,
 which is what you do when both are equalities. They are not — the strain one is
-a limit. The strain governs here, so the drag lands at **4.08×** the detent
+a limit. The strain governs here, so the drag lands at **3.73×** the detent
 rather than the 3× minimum, which is what a governing constraint always buys.
 
 The headroom itself is 3, and the earlier reasoning for 10 was wrong in an
@@ -16957,21 +16971,42 @@ instructive way: it argued that a 2× margin sits inside the arithmetic's error.
 That applies layout.js's ABSOLUTE caveat to a RATIO, and layout.js says the
 opposite in its own words — "the RATIOS are what conclusions rest on". Both
 sides of this comparison come off the same modulus and the same cantilever law.
-The mistake costs a real blade: 10× wants 5.49 u of free length against 4.07,
+The mistake costs a real blade: 10× wants 6.18 u of free length against 4.29,
 with the anchor half again as far out.
 
 ### Where the post sits on the driver is a P3 choice at a 30° quantum
 
 The seats sit at fixed azimuths in the wheel, so the pawl's pivot can trail any
-of them and the branches are one tooth apart. The compact branch puts the post
-**8.6° from the click's own detent post at nearly the same radius**, and sweeps
-straight through it — caught by `intraUnit`, five violations.
+of them and the branches are one tooth apart. Three of the twelve foul the metal
+already standing in the pawl's band — `intraUnit` caught the first arrangement
+with five violations, three of them that one fault. Measured at the derived
+pivot radius:
 
-The build now sweeps the pawl through its whole return on EVERY branch and takes
-the one standing furthest off the metal already in that band. That is position
-space at a quantum the saw itself supplies, which is exactly the currency P3
-allows. The scan sees what is built at that point in the unit, which is not all
-of it — and that is why the choice is a scan and the verdict is `intraUnit`.
+| branch | clearance |
+|---|---|
+| +9.35° | **−0.5216** |
+| −20.65° | **−0.4891** |
+| +39.35° | **−0.0957** |
+| **−50.65°** | **+2.9566** ← built |
+| the other eight | nothing within reach |
+
+The build sweeps the pawl through its whole return on EVERY branch and takes the
+most compact one that clears amply. Clearance decides; compactness breaks the
+tie, because ranking eight equally-unreachable branches by a distance that is
+effectively infinite picks whichever the polygon listed first — a choice made by
+iteration order, which is the class of thing TODO 54 exists to keep out.
+
+**That scan was itself measuring air the first time.** It collected obstacle
+vertices lying INSIDE the pawl's 0.317 band, and a post that crosses that band
+has vertices only at its two ends, both outside it — MODELING.md rule 5's trap,
+in the instrument rather than in a sweep. Every branch read equally clear. It
+reads z RANGES now; an empty scan is itself a warning, because "no obstacles"
+and "no measurement" look identical from outside; and the wheel's own bodies are
+excluded, because the nose is *meant* to be in the teeth and left in the saw
+saturates every branch at 0.
+
+The scan sees what is built at that point in the unit, which is not all of it —
+and that is why the choice is a scan and the verdict is `intraUnit`.
 
 ### Two smaller things the gates found
 

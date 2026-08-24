@@ -20364,13 +20364,25 @@ alarmSwitchUnit.add(alarmPusherGroup);
 
 // ————— §163: the driver's and the pawl's dimensions, every one derived —————
 const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;    // the saw's tip circle, as geometry.js cuts it
-// The PAWL'S PIVOT POST rises through the SKIRT'S OWN z-band to reach the
-// teeth, so its SURFACE — not its centreline — must stand one CLEAR_MARGIN
-// outside the tip circle. Scanned for whichever radius measured best the probe
-// answers 6.6, which puts a post of this stock 0.0495 off the tips, a third of
-// the margin; the constraint answers 6.70048, and measured there the return is
-// stronger, not weaker (free region 6.304 u² against 5.288).
-const ALARM_DRIVER_POST_R = ALARM_COL_TIP_R + CLEAR_MARGIN + STOCK_MIN_R10;
+// The pawl's PIVOT BOSS — bore plus wall, both at their own floors. Named here
+// because it is the member the pivot's radius has to be derived against, and it
+// is the one a first pass got wrong.
+const ALARM_PAWL_BOSS_R = STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U;
+// THE PAWL'S PIVOT rises through the SKIRT'S OWN z-band to reach the teeth, so
+// what stands there must clear the tip circle by one CLEAR_MARGIN. Scanned for
+// whichever radius measured best the probe answers 6.6, which buries the pivot
+// in the teeth outright.
+//
+// CORRECTED TWICE, and the second correction is the instructive one. The first
+// derived this against the POST — `tip + CLEAR_MARGIN + STOCK_MIN_R10` = 6.70048
+// — and the built pawl then measured 0.0956 INSIDE the saw at f 0.604, because
+// the largest thing centred on that pivot is not the post, it is the BOSS the
+// post runs in. Deriving a clearance against the wrong member of a joint is
+// TODO 87 finding 6's own mistake at a different station: the constraint was
+// right and the face it was measured from was not. What caught it was
+// probe-87-pawl, the acceptance test — the build's own sweep swept the pawl's
+// two body outlines and not its boss, so it agreed with itself.
+const ALARM_DRIVER_POST_R = ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_PAWL_BOSS_R;
 // The SLOT spans the pin's own reach over the stroke — d at the foot, and
 // hypot(d, travel/2) at either end — plus one margin of end freedom, because a
 // pin that bottoms in its slot stops being a pin in a slot.
@@ -20389,7 +20401,7 @@ const ALARM_PAWL_HALF_W = 0.15;
 // and the post's azimuth on the driver is then DERIVED from it rather than
 // chosen (the seats sit at fixed azimuths in the wheel, so this angle picks
 // the branch).
-const ALARM_PAWL_TRAIL = 50 * DEG2RAD;
+const ALARM_PAWL_TRAIL = 40 * DEG2RAD;
 // The RETURN's sense in the wheel's frame. On the drive the driver and wheel
 // turn together, so their relative angle is constant; on the return the click
 // holds the wheel and the driver alone runs back up its carry. Its sign is the
@@ -20402,8 +20414,8 @@ const ALARM_PAWL_RETURN_DIR = -alarmColumnWheel.userData.ratchetDrive;
 // annulus, so the spring would have to work at the pivot — the crowding TODO
 // 63 files against the click's blade, met here by giving the pawl something to
 // bear on outside the tips.
-const ALARM_PAWL_BODY = [[0.01, 0], [0.65, 0.40], [2.25, 1.20], [2.77, 1.28], [5.17, 1.28], [5.17, 0.08]];
-const ALARM_PAWL_L_SPEC = 5.2398;                   // the arm the centreline was mapped at
+const ALARM_PAWL_BODY = [[0.01, 0], [2.21, 0.84], [2.45, 0.88], [4.45, 0.88], [4.45, 0.08]];
+const ALARM_PAWL_L_SPEC = 4.5430;                   // the arm the centreline was mapped at
 // The seat solve's resolution: a coarse walk to bracket the first free angle,
 // then bisection, so the answer is exact to 1e-5 rad without 2000 samples in a
 // tick. The walk's span covers twice the pawl's stroke, which is what the
@@ -20591,8 +20603,7 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
   // work at the boss's radius instead, making every number downstream of it a
   // fiction. The boss governs: the blade reaches past it and no further, since
   // the drag grows as the SQUARE of this arm.
-  const springBoss = STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U;
-  const bearArm = springBoss + ALARM_PAWL_HALF_W;
+  const bearArm = ALARM_PAWL_BOSS_R + ALARM_PAWL_HALF_W;
   // HOW LONG IT IS is then bounded from BOTH sides, and the two bounds are
   // floors on the same quantity — a blade can always be longer than either
   // needs, never shorter than the greater:
@@ -20620,6 +20631,7 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
   if (springStrain > SPRING_STRAIN_MAX + 1e-12)
     console.warn(`§163: the pawl spring works to ${springStrain.toExponential(3)} surface strain, over SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX.toExponential(3)}`);
   const springTail = -(bearArm + ALARM_PAWL_HALF_W);
+  const branchScan = [];
   // ---- WHICH BRANCH, measured against the metal already standing in the
   // pawl's own z-band. The pawl is the only member of the driver inside the
   // tooth annulus, and the band it works in is the skirt's, which the click's
@@ -20636,18 +20648,33 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
     const bandLo = ALARM_DRIVER_BOT_Z + ALARM_PAWL_BAND_Z, bandHi = bandLo + STOCK_MIN_U;
     const obst = [];
     {
+      // A mesh COUNTS if its own z RANGE overlaps the band — not if it has a
+      // vertex inside it. A post that crosses this band has vertices only at
+      // its two ends, both outside, and the first cut of this scan collected
+      // nothing and reported every branch equally clear: MODELING.md rule 5's
+      // trap, in the instrument rather than in a sweep. An empty scan is
+      // asserted below, because "no obstacles" and "no measurement" look
+      // identical from the outside.
       const v = new THREE.Vector3();
       movement.updateWorldMatrix(true, true);
       alarmSwitchUnit.traverse((o) => {
         if (!o.isMesh || o.userData.schematic) return;
+        // The WHEEL is not an obstacle to its own pawl — the nose is meant to
+        // be in the teeth, and that pair is held by the outline sweep below,
+        // which knows which part of the pawl is allowed to touch. Left in, the
+        // saw saturates every branch at 0 and the scan chooses nothing.
+        if (/^alarmCol(Base|Castellations|Skirt)$/.test(o.name)) return;
         const pos = o.geometry.getAttribute('position'); if (!pos) return;
+        const pts = [];
+        let zLo = Infinity, zHi = -Infinity;
         for (let i = 0; i < pos.count; i++) {
           v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-          if (v.z < bandLo - 1e-9 || v.z > bandHi + 1e-9) continue;
+          zLo = Math.min(zLo, v.z); zHi = Math.max(zHi, v.z);
           const dx = v.x - ALARM_COL_POS.x, dy = v.y - ALARM_COL_POS.y;
-          if (Math.hypot(dx, dy) > ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) continue;
-          obst.push([dx, dy]);
+          if (Math.hypot(dx, dy) <= ALARM_DRIVER_POST_R + ALARM_PAWL_L + 1) pts.push([dx, dy]);
         }
+        if (zHi < bandLo - 1e-9 || zLo > bandHi + 1e-9) return;   // the RANGE, not a vertex
+        for (const q of pts) obst.push(q);
       });
     }
     // the pawl's own reach, as segments in its frame plus its two discs
@@ -20671,7 +20698,7 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
         for (const [ox, oy] of obst) {
           if (Math.hypot(ox + ALARM_COL_POS.x - px, oy + ALARM_COL_POS.y - py) > ALARM_PAWL_L + 1.5) continue;
           const qx = ox + ALARM_COL_POS.x, qy = oy + ALARM_COL_POS.y;
-          let d = Math.hypot(qx - px, qy - py) - springBoss;                 // the pivot boss
+          let d = Math.hypot(qx - px, qy - py) - ALARM_PAWL_BOSS_R;          // the pivot boss
           d = Math.min(d, Math.hypot(qx - P2[P2.length - 1][0], qy - P2[P2.length - 1][1]) - ALARM_PAWL_NOSE_R);
           for (let i = 0; i + 1 < P2.length; i++)
             d = Math.min(d, segDist(qx, qy, P2[i][0], P2[i][1], P2[i + 1][0], P2[i + 1][1]) - ALARM_PAWL_HALF_W);
@@ -20680,12 +20707,27 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
       }
       return worst;
     };
-    let best = -Infinity;
+    // Clearance decides, and where it does not, COMPACTNESS does. Most branches
+    // have nothing within reach at all, so ranking them by a distance that is
+    // effectively infinite picks whichever the polygon happened to list first —
+    // a choice made by iteration order, which is the class of thing TODO 54
+    // exists to keep out of this repo. The score is capped an order above
+    // CLEAR_MARGIN: past that the branch is amply clear and the shorter arm on
+    // the driver is the better part.
+    const AMPLE = 10 * CLEAR_MARGIN;
+    let best = -Infinity, bestAz = Infinity;
     for (const b of branches) {
       const c = clearanceOf(b.postAz);
-      if (c > best) { best = c; postAz = b.postAz; seatPick = b.seat; }
+      branchScan.push({ deg: +(b.postAz * 180 / Math.PI).toFixed(2), clear: Number.isFinite(c) ? +c.toFixed(4) : 'nothing in reach' });
+      const score = Math.min(c, AMPLE);
+      if (score > best + 1e-9 || (Math.abs(score - best) <= 1e-9 && Math.abs(b.postAz) < bestAz)) {
+        best = score; bestAz = Math.abs(b.postAz); postAz = b.postAz; seatPick = b.seat;
+      }
     }
+    branchScan.sort((x, y) => Math.abs(x.deg) - Math.abs(y.deg));
     ALARM_DRIVER_BRANCH_CLEAR = best;
+    if (!obst.length)
+      console.warn('§163: the driver\'s branch scan found no metal at all in the pawl\'s band — "no obstacles" and "no measurement" look identical from outside, and this is the second');
     if (best < CLEAR_MARGIN)
       console.warn(`§163: the best of the ${branches.length} post branches stands ${best.toFixed(4)} off the metal already in the pawl's band, under CLEAR_MARGIN ${CLEAR_MARGIN} — the driver needs re-siting, not a smaller margin`);
   }
@@ -20734,7 +20776,7 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
     const pawl = G.makeColumnPawl({
       nodes: [[tail, 0]].concat(ALARM_PAWL_BODY), pivot: [0, 0], nose: [ALARM_PAWL_L, 0],
       w: ALARM_PAWL_HALF_W, noseR: ALARM_PAWL_NOSE_R,
-      boreR: STOCK_MIN_R10 + PIVOT_BORE_CLEAR, bossR: springBoss,
+      boreR: STOCK_MIN_R10 + PIVOT_BORE_CLEAR, bossR: ALARM_PAWL_BOSS_R,
       thickness: STOCK_MIN_U, material: MATS.blueSteel, name: 'alarmColPawl',
     });
     for (const m of pawl.bodies) alarmColPawlGroup.add(m);
@@ -20774,8 +20816,8 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
   if (Math.abs(ALARM_PAWL_L - ALARM_PAWL_L_SPEC) > 5e-3)
     console.warn(`§163: the pawl's arm is ${ALARM_PAWL_L.toFixed(4)} but its centreline was mapped at ${ALARM_PAWL_L_SPEC} — re-run tools/probe-163-driver.mjs, the outline no longer describes its corridor`);
   // 2. THE POST'S SURFACE, against the tips it rises past.
-  if (ALARM_DRIVER_POST_R - STOCK_MIN_R10 < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
-    console.warn(`§163: the pawl post's surface stands ${(ALARM_DRIVER_POST_R - STOCK_MIN_R10 - ALARM_COL_TIP_R).toFixed(4)} off the saw's tips, under CLEAR_MARGIN ${CLEAR_MARGIN} — it rises through their own band`);
+  if (ALARM_DRIVER_POST_R - ALARM_PAWL_BOSS_R < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
+    console.warn(`§163: the pawl's BOSS reaches ${(ALARM_DRIVER_POST_R - ALARM_PAWL_BOSS_R).toFixed(4)} from the arbor against the saw's tips at ${ALARM_COL_TIP_R.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN} — the boss is what sweeps those tips, not the post inside it`);
   // 3. THE SLOT holds the pin's whole reach, with end freedom at both ends. A
   //    pin that bottoms in its slot is a pin against a wall.
   if (ALARM_DRIVER_SLOT_IN > ALARM_DRIVE_OFFSET - 1e-9 || ALARM_DRIVER_SLOT_OUT < Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF) + 1e-9)
@@ -20793,7 +20835,15 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
   //    hold CLEAR_MARGIN — the pawl is the only member of the driver inside
   //    the tooth annulus, and the nose is the only part of it that may touch.
   {
+    // EVERY body of the pawl, not just the two the centreline made. The first
+    // cut of this assert swept the arm and the tail and agreed with itself
+    // while the BOSS ran 0.0956 inside the saw — a sweep that does not cover a
+    // member cannot see that member.
     const outline = alarmColPawlGroup.children.filter((o) => o.userData && o.userData.outline).flatMap((o) => o.userData.outline);
+    for (let k = 0; k < 24; k++) {                     // the boss, as its own rim
+      const a = (k / 24) * Math.PI * 2;
+      outline.push([ALARM_PAWL_BOSS_R * Math.cos(a), ALARM_PAWL_BOSS_R * Math.sin(a)]);
+    }
     let worst = Infinity, worstAt = null;
     for (let k = 0; k <= ALARM_PAWL_CYCLE_N; k++) {
       const rel = relPost + ALARM_PAWL_RETURN_DIR * ALARM_COL_STEP * (k / ALARM_PAWL_CYCLE_N);
@@ -20809,7 +20859,7 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
     }
     if (worst < CLEAR_MARGIN - 1e-6)
       console.warn(`§163: the pawl's cut outline comes within ${worst.toFixed(4)} of the saw at (${worstAt}) over its return, under CLEAR_MARGIN ${CLEAR_MARGIN}`);
-    alarmColDriverGroup.userData.drive = { postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), spring: ALARM_PAWL_SPRING, clickPivotAz: Math.atan2(alarmClickPivot.y - ALARM_COL_POS.y, alarmClickPivot.x - ALARM_COL_POS.x), clickPivotR: Math.hypot(alarmClickPivot.y - ALARM_COL_POS.y, alarmClickPivot.x - ALARM_COL_POS.x), seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
+    alarmColDriverGroup.userData.drive = { postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), branchClear: +ALARM_DRIVER_BRANCH_CLEAR.toFixed(4), postAzDeg: +(postAz * 180 / Math.PI).toFixed(2), branchScan, spring: ALARM_PAWL_SPRING, clickPivotAz: Math.atan2(alarmClickPivot.y - ALARM_COL_POS.y, alarmClickPivot.x - ALARM_COL_POS.x), clickPivotR: Math.hypot(alarmClickPivot.y - ALARM_COL_POS.y, alarmClickPivot.x - ALARM_COL_POS.x), seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
   }
   // 6. P1, TODO 16's format (§137) — THE RETURN MUST NOT UN-INDEX THE WHEEL.
   //    The pawl's spring drags its nose back over the tooth it has just
