@@ -7025,27 +7025,27 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
 // — the alarm barrel's side — is +z. The first cut assumed the reverse and
 // put the caseback through the dial.
 //
-// Parts: the case middle (band + seat + bezel, ONE lathe profile — the bore,
-// plate seat, gasket gland, crystal seat and bezel lip come off the same
-// turning, which is how a real case middle is made), the screw-down
-// EXHIBITION back (owner call over the solid cap: the ring keeps the REAL
-// 3-turn 0.5 mm-pitch helical thread standing tangent
-// between cap rim and band bore — contact on both flanks, the engagement
-// itself, without CSG-cut grooves; the grooves it meshes with are declared
-// debt: the case unit is deliberately outside INTRA_TIER_SCOPE until a
-// CSG-free bore/groove approach lands), the gasket cord in its gland, the
-// front crystal, the exhibition back crystal (pressed into the cap ring
-// against the turned retaining lip), lugs and spring bars, crown tubes and
-// the flush alarm-pusher bore. Every face capped; each part its own named mesh so the unit labels
-// and fingerprints like any other.
+// Parts: the case middle (band + seat + bezel + back-wall flange, ONE lathe
+// profile — the bore, plate seat, gasket groove, crystal seat, bezel lip
+// and screw flange come off the same turning, which is how a real case
+// middle is made), the screw-fixed EXHIBITION back (owner call over the
+// screw-down: a flat plate on the back face, six screws into the flange,
+// the window glazed from inside against the turned retaining lip; the
+// plate's screw holes and the flange's threads are declared debt, same
+// CSG-free family as the band's radial bores: the case unit is
+// deliberately outside INTRA_TIER_SCOPE until that approach lands), the
+// gasket cord half-seated in its back-face groove, the front crystal, the
+// exhibition back crystal, lugs and spring bars, crown tubes and the flush
+// alarm-pusher bore. Every face capped; each part its own named mesh so
+// the unit labels and fingerprints like any other.
 // dims — all measured/derived by the caller (main.js); nothing recomputed.
 // ---------------------------------------------------------------------------
 export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const {
-    UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_CAP,
-    z0, zLandTop, zGlandFloor, zCapFloorIn,
+    UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_FL, R_SCR, R_G, R_WIN, R_PLATE,
+    z0, zMidBack, zFlangeIn,
     zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
-    threadPitch, threadTurns, gasketD, tubeD, pusherD, crystT,
+    gasketD, gasketSeat, crystT, screwN, screwShaftD, screwHeadD, tubeD, pusherD,
     stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ,
     lugSpan,
   } = dims;
@@ -7057,20 +7057,25 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     return geo;
   };
 
-  // Case middle: back face → gland step → bore → plate seat shoulder → bore
-  // → crystal seat chamfer → seat ledge → bezel wall → lip over the crystal
-  // → bezel outer face → outer wall → back face. One closed profile.
-  const R_GLAND = R_CAP - 0.5 / UNIT_MM;      // gland step inner radius
+  // Case middle: bore from the flange's inner face → plate seat shoulder →
+  // bore → crystal seat chamfer → seat ledge → bezel wall → lip over the
+  // crystal → bezel outer face → outer wall → back face (with the gasket
+  // groove) → the back-wall flange that carries the back screws. One closed
+  // profile, one turning — which is how a real case middle comes off the
+  // lathe.
   const middle = new THREE.Mesh(lathe([
-    [R_IN, z0], [R_IN, zGlandFloor - 0.8 / UNIT_MM],
-    [R_GLAND, zGlandFloor - 0.8 / UNIT_MM], [R_GLAND, zGlandFloor],
-    [R_IN, zGlandFloor],
+    [R_IN, zFlangeIn],
     [R_IN, zSeatBot], [R_SH, zSeatBot], [R_SH, zSeatTop], [R_IN, zSeatTop],
     [R_IN, zBandFront],
     [R_CRYST, zCrystInner], [R_CRYST + 1 / UNIT_MM, zCrystInner],
     [R_BEZEL_IN + 0.3 / UNIT_MM, zCrystOuter],
     [R_BEZEL_IN, zCrystOuter], [R_BEZEL_IN, zBezelOuter],
-    [R_OUT, zBezelOuter], [R_OUT, z0],
+    [R_OUT, zBezelOuter], [R_OUT, zMidBack],
+    [R_G + 0.35 / UNIT_MM, zMidBack],
+    [R_G + 0.35 / UNIT_MM, zMidBack - gasketSeat / 2],
+    [R_G - 0.35 / UNIT_MM, zMidBack - gasketSeat / 2],
+    [R_G - 0.35 / UNIT_MM, zMidBack],
+    [R_FL, zMidBack], [R_FL, zFlangeIn],
   ]), material);
   middle.name = 'caseMiddle';
   const middleAsm = new THREE.Group();
@@ -7084,65 +7089,63 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   frontAsm.name = 'caseCrystalAssembly';
   g.add(frontAsm);
 
-  // Screw-down back: cap with floor + threaded rim, outer face flush with
-  // the band's back face; the opener key's 8 teeth stand proud of it.
-  // Exhibition back: the cap is a RING — thread land, gasket gland and key
-  // teeth as before, but the floor only reaches in to the window bore,
-  // where a second crystal is pressed in from inside and held by the
-  // retaining lip turned into the ring's back face (the standard
-  // exhibition-back stack: crystal against the lip, its edge on the bore).
-  const R_WIN = R_CAP - 4 / UNIT_MM;   // window radius — leaves 4 mm of ring
+  // Screw-fixed exhibition back (owner call, over the thread: simpler bench
+  // work — no thread to single-point, no wrench teeth, and the axial stack
+  // the thread needed is simply gone). A flat plate sitting ON the middle's
+  // back face, 1.2 mm thick = lip (0.6) + crystal (0.6), the window glazed
+  // from inside against the retaining lip — the standard exhibition stack.
+  // The screw holes through the plate and the threads in the flange are
+  // declared CSG debt, same family as the band's radial bores.
   const lipW = 1.2 / UNIT_MM;          // retaining-lip radial width
   const lipT = 0.6 / UNIT_MM;          // retaining-lip thickness
   const zCrystOut = z0 - lipT;         // back crystal outer face, lip-flush
-  const zCrystIn = zCrystOut - crystT;
+  const zCrystIn = zCrystOut - crystT; // ≈ zMidBack: flush with the plate's underside
+  const SEAT_EMBED = 0.01 / UNIT_MM;   // the plate's underside sinks a
+  // hundredth into the back face — exact-coplanar contact faces z-fight
+  // (the front crystal escapes this because its seat ledge never overlaps
+  // it radially); a sub-visible embed is the press-contact idiom.
+  const zSeat = zMidBack - SEAT_EMBED;
   const back = new THREE.Mesh(lathe([
-    [R_WIN - lipW, z0], [R_CAP, z0], [R_CAP, zLandTop],
-    [R_CAP - 0.6 / UNIT_MM, zLandTop], [R_CAP - 0.6 / UNIT_MM, zCapFloorIn],
-    [R_WIN, zCapFloorIn], [R_WIN, zCrystOut], [R_WIN - lipW, zCrystOut],
-    [R_WIN - lipW, z0],
+    [R_WIN - lipW, z0], [R_PLATE, z0], [R_PLATE, zSeat],
+    [R_WIN, zSeat], [R_WIN, zCrystOut], [R_WIN - lipW, zCrystOut],
   ]), material);
   back.name = 'caseBack';
   backAsm.add(back);
   // The back crystal itself — same stock as the front (CASE_CRYSTAL_T),
-  // seated against the lip; it travels WITH the cap in the explode.
+  // seated against the lip; it travels WITH the plate in the explode.
   const backCrystal = new THREE.Mesh(lathe([
     [0, zCrystIn], [R_WIN, zCrystIn], [R_WIN, zCrystOut], [0, zCrystOut],
   ]), crystalMaterial);
   backCrystal.name = 'caseBackCrystal';
   backAsm.add(backCrystal);
-  // The thread: helical ridge tangent to BOTH flanks (tube r = half the
-  // radial gap), 3 turns at the stated pitch, starting one lead-in chamfer
-  // (0.5 mm) in from the back face.
-  const R_TH = (R_CAP + R_IN) / 2;
-  const helixPts = [];
-  for (let i = 0; i <= 64 * threadTurns; i++) {
-    const t = i / 64, a = t * Math.PI * 2;
-    helixPts.push(new THREE.Vector3(Math.cos(a) * R_TH, Math.sin(a) * R_TH,
-      z0 - 0.5 / UNIT_MM - t * threadPitch));
+  // The screws: heads flush in a 0.4 mm counterbore, shafts through the
+  // plate and 0.7 mm of thread engagement in the 1.0 mm flange. They hold
+  // the plate, so they travel with it.
+  const headT = 0.4 / UNIT_MM;
+  const screwEng = 0.7 / UNIT_MM;
+  for (let i = 0; i < screwN; i++) {
+    const a = (i / screwN) * Math.PI * 2;
+    const head = new THREE.Mesh(
+      new THREE.CylinderGeometry(screwHeadD / 2, screwHeadD / 2, headT, 20), material);
+    head.geometry.rotateX(Math.PI / 2);            // axis → Z
+    head.position.set(Math.cos(a) * R_SCR, Math.sin(a) * R_SCR, z0 - headT / 2);
+    head.name = 'caseBackScrew';
+    backAsm.add(head);
+    const shaftTop = z0 - headT, shaftBot = zMidBack - screwEng;
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(screwShaftD / 2, screwShaftD / 2, shaftTop - shaftBot, 12), material);
+    shaft.geometry.rotateX(Math.PI / 2);
+    shaft.position.set(Math.cos(a) * R_SCR, Math.sin(a) * R_SCR, (shaftTop + shaftBot) / 2);
+    shaft.name = 'caseBackScrew';
+    backAsm.add(shaft);
   }
-  const thread = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helixPts), 64 * threadTurns,
-      (R_IN - R_CAP) / 2, 8, false), material);
-  thread.name = 'caseBackThread';
-  backAsm.add(thread);
-  // Opener-key teeth: 8 raised lugs standing 0.3 mm proud of the back face.
-  const toothGeo = new THREE.BoxGeometry(1.2 / UNIT_MM, 1.6 / UNIT_MM, 0.6 / UNIT_MM);
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2;
-    const t = new THREE.Mesh(toothGeo, material);
-    t.position.set(Math.cos(a) * (R_CAP - 1.2 / UNIT_MM), Math.sin(a) * (R_CAP - 1.2 / UNIT_MM), z0 + 0.3 / UNIT_MM);
-    t.rotation.z = a;
-    t.name = 'caseKeyTooth';
-    backAsm.add(t);
-  }
-  // Gasket: the cord in the gland, 20% squeeze between the cap's land and
-  // the band's gland floor (the stack that makes the rating claim honest).
+  // Gasket: the cord half-seated in the back-face groove, the plate
+  // squeezing it to the stated 20% (the stack that makes the rating claim
+  // honest — compression now comes from the screws, not a thread).
   const gasket = new THREE.Mesh(
-    new THREE.TorusGeometry((R_GLAND + R_CAP - 0.6 / UNIT_MM) / 2 + 0.5 / UNIT_MM,
-      gasketD / 2 * 0.8, 10, 96), MATS.dark);
+    new THREE.TorusGeometry(R_G, gasketD / 2 * 0.8, 10, 96), MATS.dark);
   gasket.name = 'caseGasket';
-  gasket.position.z = (zLandTop + zGlandFloor) / 2;
+  gasket.position.z = zMidBack;
   backAsm.add(gasket);
 
   // Crystal: flat mineral disc with relieved edge, seated on the ledge.

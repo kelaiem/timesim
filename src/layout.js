@@ -331,22 +331,26 @@ export const CASE_LUG_SPAN_MAX = 20 / UNIT_MM;    // 52.77 units across the spri
 // under it).
 export const CASE_CLEAR = 1 / UNIT_MM;            // 2.64 units
 export const CASE_BAND_T = 1 / UNIT_MM;           // 2.64 units
-// Screw-down back (owner call, over snap/exhibition): a REAL thread. 0.5 mm
-// pitch is the horological standard for case-back threads; 3 full turns of
-// engagement is the watchmaking rule of thumb for a back that seals against
-// its gasket without cross-threading on a half-engaged start.
-export const CASE_THREAD_PITCH = 0.5 / UNIT_MM;   // 1.32 units per turn
-export const CASE_THREAD_TURNS = 3;
-// The gasket gland: 0.5 mm gasket cord in a 0.4 mm deep seat — 20%
-// compression, the usual O-ring squeeze for a static face seal.
+// Screw-fixed exhibition back (owner call, over the screw-down: "simpler,
+// fixed with individual screws" — no thread to single-point, no wrench
+// teeth, and the axial stack the thread needed is simply gone). Six
+// screws: six is the period-common count for a back this size — even
+// compression on the gasket with a screwdriver's worth of bench work.
+export const CASE_BACK_SCREWS = 6;
+export const CASE_SCREW_SHAFT_D = 1.0 / UNIT_MM;  // Ø1.0 mm shaft
+export const CASE_SCREW_HEAD_D = 1.8 / UNIT_MM;   // Ø1.8 mm head, flush in its counterbore
+// The gasket: 0.5 mm cord in a 0.2 mm groove in the middle's back face,
+// standing 0.2 mm proud — the plate squeezes it to 0.4 mm, the usual 20%
+// O-ring squeeze for a static face seal.
 export const CASE_GASKET_D = 0.5 / UNIT_MM;
 export const CASE_GASKET_SEAT = 0.4 / UNIT_MM;
-// Crystal: 0.8 mm mineral flat, seated before the bezel traps it; hand to
-// underside clearance 0.4 mm (the crystal plane itself is MEASURED from the
-// tallest hand in main.js — a constant here would lie the moment a hand
-// grows).
-export const CASE_CRYSTAL_T = 0.8 / UNIT_MM;
-export const CASE_CRYSTAL_CLEAR = 0.4 / UNIT_MM;
+// Crystal: 0.6 mm flat (owner: very aggressive on thickness — 0.6 mm is
+// thin but stock sapphire/mineral), seated before the bezel traps it; hand
+// to underside clearance 0.3 mm (the crystal plane itself is MEASURED from
+// the tallest hand in main.js — a constant here would lie the moment a
+// hand grows).
+export const CASE_CRYSTAL_T = 0.6 / UNIT_MM;
+export const CASE_CRYSTAL_CLEAR = 0.3 / UNIT_MM;
 // Crown tube and alarm pusher: standard Ø2.0 mm tube bore for the winding
 // stem, Ø1.2 mm for the pusher; the pusher sits flush — "discreet" is the
 // owner's word for it.
