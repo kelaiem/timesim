@@ -6432,19 +6432,33 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore');
 
   // Lugs at 12 and 6, spring-bar span per dims; each lug a prism
-  // chord-tangent to the band (contact patch, no weld — the stamped-lug
-  // truth), the Ø1.5 mm spring bar spanning each pair.
+  // chord-tangent to the band and ROOTED 0.8 mm into it (the brazed
+  // stamped-lug truth — a watchmaker solders the lug foot to the band,
+  // so the prism must visibly sink into the wall, not kiss it; the
+  // first-cut 0.3 mm embed read as a floating gap at screen scale and
+  // let the tips breach the 40 mm width cap). The Ø1.5 mm spring bar
+  // spans each pair.
   const lugT = 1.2 / UNIT_MM;            // lug thickness across the strap
   const lugH = 2.5 / UNIT_MM;            // radial reach out of the band
   const lugW = 3.0 / UNIT_MM;            // height along z
+  const LUG_ROOT = 0.8 / UNIT_MM;        // embed into the band at the lug's own station
   for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
     const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
     const perp = { x: -u.y, y: u.x };
     for (const s of [-1, 1]) {
-      const lug = new THREE.Mesh(new THREE.BoxGeometry(lugT, lugH, lugW), material);
       const off = s * lugSpan / 2;
-      lug.position.set(u.x * (R_OUT + lugH / 2 - 0.3 / UNIT_MM) + perp.x * off,
-                       u.y * (R_OUT + lugH / 2 - 0.3 / UNIT_MM) + perp.y * off,
+      // The pair's lugs stay PARALLEL (the strap's sides are parallel), but
+      // each one stands ±lugSpan/2 off the pair axis, where the band has
+      // fallen away from R_OUT to the chord depth sqrt(R_OUT² − off²) —
+      // 6+ units at an 18 mm span. Root the foot 0.8 mm past THAT surface
+      // (the brazed stamped-lug truth: the foot is bent to the band radius
+      // and soldered), keep the tip at R_OUT + lugH − LUG_ROOT (52.7 u ≈
+      // 39.9 mm across — inside the 40 mm cap), and let the length derive.
+      const surfR = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0));
+      const root = surfR - LUG_ROOT, tip = R_OUT + lugH - LUG_ROOT;
+      const lug = new THREE.Mesh(new THREE.BoxGeometry(lugT, tip - root, lugW), material);
+      lug.position.set(u.x * (root + tip) / 2 + perp.x * off,
+                       u.y * (root + tip) / 2 + perp.y * off,
                        zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
       lug.rotation.z = lugAz - Math.PI / 2;
       lug.name = 'caseLug';
@@ -6455,7 +6469,8 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     bar.geometry.rotateX(Math.PI / 2);   // axis → Z
     bar.geometry.rotateY(Math.PI / 2);   // axis → X
     bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction
-    bar.position.set(u.x * (R_OUT + lugH - 0.6 / UNIT_MM), u.y * (R_OUT + lugH - 0.6 / UNIT_MM),
+    bar.position.set(u.x * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
+                     u.y * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
                      zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
     bar.name = 'caseSpringBar';
     middleAsm.add(bar);
