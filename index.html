@@ -57,12 +57,28 @@
       alarmr: 'alarmr',                 // §98 — the alarm corner's radius, in movement units (§76's pin)
       subdialr: 'subdialr',             // §97 — the shared sub-dial well radius, in movement units
       dialr: 'dialr',                   // §125 — the dial's radius, in movement units (null = the movement's own diameter)
+      // §36 Apply — a committed route, and the bush stations frozen with it.
+      // These are the tier's first NON-NUMERIC knobs, which is why the rows
+      // below carry a parse: a route is a polyline, not a quantity. Shape is
+      // layout.js's business (ROUTE_SPEC validates and refuses); this table's
+      // job is only to say the key exists and how to read it off the URL.
+      route: { field: 'routeSpec', parse: String },          // x,y,z;x,y,z;… movement units, two decimals
+      routebush: { field: 'routeBushSpec', parse: String },  // i,t;… segment index and fraction, frozen at Apply
     };
     const s = {};
-    // Every knob at this tier is a number, and ABSENCE is its default — which
-    // is what lets the roster double as "only non-default travels" for the
-    // share link, with no per-key default to compare against.
-    for (const k in SPEC_FIELDS) if (p.has(k)) s[SPEC_FIELDS[k]] = Number(p.get(k));
+    // ABSENCE is every knob's default at this tier — which is what lets the
+    // roster double as "only non-default travels" for the share link, with no
+    // per-key default to compare against. A knob is a NUMBER unless its row
+    // says otherwise: a bare string is the numeric field it feeds, and an
+    // object names its field and how to parse it. §36's route keys are the
+    // first that are not numbers, and adding them as a second parsed-elsewhere
+    // list would rebuild exactly the two-copy drift §161 deleted.
+    for (const k in SPEC_FIELDS) {
+      if (!p.has(k)) continue;
+      const d = SPEC_FIELDS[k];
+      if (typeof d === 'string') s[d] = Number(p.get(k));
+      else s[d.field] = d.parse(p.get(k));
+    }
     globalThis.__WATCH_SPEC_KEYS = Object.freeze(Object.keys(SPEC_FIELDS));
     if (Object.keys(s).length) globalThis.__WATCH_SPEC = s;
   })();
