@@ -76,7 +76,26 @@ const out = await p.evaluate(async () => {
       insideMax = Math.max(insideMax, inside);
       n = n2;
     }
-    rows.push({ alarmOn, worstDepth: +worst.toFixed(4), at: worstAt, insideMax, sampled: n });
+    // AT REST is what a viewer sees between presses, and it is where the
+    // parity can show: the saw has 12 teeth to the castellations' 6 columns,
+    // so the SAW repeats every press while the LOCK — which reads columns —
+    // alternates. A worst-over-the-cycle reading averages that away, which is
+    // why the first cut of this probe found both parities identical.
+    I.enterAxis(clock);
+    clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+                    alarmOn, alarmPressCycle: 0 });
+    clock.scene.updateMatrixWorld(true);
+    wheelGroup.updateWorldMatrix(true, false); riser.updateWorldMatrix(true, false);
+    {
+      const inv2 = wheelGroup.matrixWorld.clone().invert();
+      const t2 = inv2.clone().multiply(riser.matrixWorld);
+      const a2 = new THREE.Vector3().setFromMatrixPosition(t2);
+      const rR2 = riser.geometry.parameters.radiusTop;
+      const in2 = inPoly(a2.x, a2.y), d2 = distToPoly(a2.x, a2.y);
+      rows.push({ alarmOn, worstDepth: +worst.toFixed(4), at: worstAt, insideMax, sampled: n,
+        restDepth: +(in2 ? d2 + rR2 : Math.max(0, rR2 - d2)).toFixed(4),
+        restInside: in2, restR: +Math.hypot(a2.x, a2.y).toFixed(4) });
+    }
   }
   return {
     riserBand: [+rb.min.z.toFixed(4), +rb.max.z.toFixed(4)],
@@ -90,6 +109,6 @@ console.log(`riser z ${out.riserBand[0]} .. ${out.riserBand[1]}`);
 console.log(`skirt z ${out.skirtBand[0]} .. ${out.skirtBand[1]}`);
 console.log(`they share ${out.zOverlap} of z — so the riser passes THROUGH the saw's band\n`);
 for (const r of out.rows)
-  console.log(`  alarmOn=${r.alarmOn}: worst in-plane depth ${String(r.worstDepth).padStart(8)} at cycle ${r.at}`
-    + `  ·  up to ${r.insideMax} of ${r.sampled} band vertices inside the saw`);
+  console.log(`  alarmOn=${r.alarmOn}: worst over the press ${String(r.worstDepth).padStart(8)} at cycle ${r.at}`
+    + `   ·   AT REST ${String(r.restDepth).padStart(8)} (axis ${r.restInside ? 'INSIDE' : 'outside'} the saw, r ${r.restR})`);
 await b.close(); srv.kill();
