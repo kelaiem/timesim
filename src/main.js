@@ -19460,7 +19460,27 @@ const alarmLinkParts = {};
   const wr = { x: ALARM_LINK_ROD_XY.x - ALARM_COL_POS.x, y: ALARM_LINK_ROD_XY.y - ALARM_COL_POS.y };
   const wrLen = Math.hypot(wr.x, wr.y);
   const uwr = { x: wr.x / wrLen, y: wr.y / wrLen };
-  const pivDist = ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16 + 0.04; // post r 0.16 fully clear of the wheel's skirt
+  // §172 (TODO 90 finding 2) — THE POST'S RADIUS, AGAINST THE FACE THAT SWEEPS IT.
+  //
+  // This read `ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16 + 0.04` = 6.05, and its
+  // own comment said what it meant to do: "post r 0.16 fully clear of the
+  // wheel's SKIRT". The skirt is the ratchet saw, whose teeth reach
+  // ALARM_COL_TIP_R = 1.12·baseR = 6.384 — so the clearance was taken from the
+  // BASE DISC at 5.7, a face 0.684 inboard of the one the post actually has to
+  // pass. The post stood 0.334 INSIDE the tip circle and threaded the tooth
+  // gaps for the whole 3.66 of its height: eye-reported as a collision, and
+  // correctly, even though it measured 0.0929 clear at the tightest.
+  //
+  // That is TODO 87 finding 6's mistake for the third time — the constraint
+  // right, the face it was measured from wrong. §163 made it against the pawl's
+  // post, §169 against the pawl's BOSS, and here against the wheel's own skirt.
+  // The 0.04 was an unexplained addition on top; it goes, because a margin that
+  // needs a supplement is not the margin.
+  //
+  // Same rule §171 gave the lock beak's riser one tier up, and the same reason:
+  // anything crossing the saw's z band clears the tip circle by one
+  // CLEAR_MARGIN, measured from its own outer face rather than its axis.
+  const pivDist = ALARM_COL_TIP_R + CLEAR_MARGIN + STOCK_MIN_R10;   // 6.701, was 6.05
   const beakPiv = { x: ALARM_COL_POS.x + uwr.x * pivDist, y: ALARM_COL_POS.y + uwr.y * pivDist };
   const beakArm = new THREE.Group();
   // §54 postscript — THE SAME EULER-ORDER TRAP THE SHAFT ALREADY CARRIES A FIX
@@ -19488,19 +19508,80 @@ const alarmLinkParts = {};
   // column top plane at the disarmed parity — the plane the flank cut
   // (geometry.js) rises to: spin z + base top + column height.
   const ALARM_COL_TOP_Z = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H; // base top + tier — rides the TODO 11 resize and the §68 raise
-  const ALARM_BEAK_NOSE_H = 0.22;
-  beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_COL_TOP_Z + ALARM_BEAK_NOSE_H / 2);
-  const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
-  beakArm.rotation.z = beakAim;
+  // §172, the second half of finding 2 — THE ARM CLEARS THE COLUMNS; ONLY THE
+  // NOSE READS THEM.
+  //
+  // TODO 20 derived this station so the NOSE's underside rests on the column
+  // top plane, which is right and is the declared contact. But it centred the
+  // whole arm on the nose, and the BAR is STOCK_MIN_U deep against the nose's
+  // 0.22 — so the bar hung 0.0483 BELOW the plane its own nose stands on, and
+  // measured meshClearance 0 against the castellations. The lever BODY was
+  // riding the columns alongside the finger that is supposed to be the only
+  // thing touching them, and nothing declared it: INTRA_UNIT_CONTACTS carries
+  // alarmLinkBeakBar only as "beak lever on its pivot post".
+  //
+  // So the arm is stationed by the BAR's underside — one CLEAR_MARGIN over the
+  // column tops — and the nose becomes what its name says, a beak hanging off
+  // that underside down to the plane it reads. Its height is therefore DERIVED
+  // (the drop it has to cover, plus the bar it is let into) rather than the
+  // 0.22 literal it was.
+  // The nose's radius and the arm that reaches it are hoisted above the sweep
+  // below, which needs beakLen to turn the nose's fall into the arm's tilt.
+  // Both are pure functions of pivDist and the wheel's own radii.
   const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
   const beakLen = pivDist - noseR;
+  //
+  // AND THE GAP IS SWEPT, NOT ASSUMED — §120's precedent, because a static
+  // CLEAR_MARGIN over the column top plane is NOT enough here and the first cut
+  // of this fix proved it: built at exactly one margin the bar measured 0.1283
+  // over the toggle. Two things eat into it that a plane-to-plane figure cannot
+  // see. The arm TILTS as the nose falls (rotation.y = noseDrop/beakLen), which
+  // dips every point of the bar in proportion to its distance from the pivot;
+  // and the bar is STOCK_MIN_U WIDE against the nose's 0.18, so its corners
+  // overhang azimuths where the flank has not dropped as far as it has under
+  // the nose. Both are functions of the cut profile, so the profile answers:
+  // this steps the wheel through a whole pitch, at every radius the columns
+  // occupy and at both edges of the bar, and takes the height the worst of them
+  // demands. The number is a consequence of geometry.js's own profileAt — the
+  // mesh's single source, the same function alarmLinkReadClean consults — and
+  // it re-derives if the columns, the tier height or the bar's section move.
+  const _beakBarLift = (() => {
+    const p = alarmColumnWheel.userData.profileAt;
+    const colH = ALARM_COL_H;
+    const halfW = STOCK_MIN_U / 2;
+    let need = CLEAR_MARGIN;                       // the floor, with no tilt and no width
+    const STEPS = 240;
+    for (let i = 0; i < STEPS; i++) {
+      const phi = (i / STEPS) * (2 * ALARM_COL_STEP);        // one whole column pitch
+      const drop = colH * (1 - p(phi + ALARM_LINK_BEAK_OFF)); // the nose's fall — the tick's own law
+      const tilt = drop / beakLen;
+      for (let r = ALARM_COL_INNER; r <= ALARM_COL_BASE_R + 1e-9; r += (ALARM_COL_BASE_R - ALARM_COL_INNER) / 12) {
+        const x = pivDist - r;                      // arm-local distance from the pivot
+        if (x < 0 || x > beakLen) continue;
+        const dAz = Math.atan2(halfW, r);           // what the bar's corner overhangs in azimuth
+        for (const e of [-dAz, 0, dAz]) {
+          const surf = colH * p(phi + ALARM_LINK_BEAK_OFF + e);   // column height under that corner
+          need = Math.max(need, surf - colH + CLEAR_MARGIN + x * tilt);
+        }
+      }
+    }
+    return need;
+  })();
+  const ALARM_BEAK_NOSE_H = _beakBarLift + STOCK_MIN_U;   // the swept gap, plus the bar the nose is let into
+  beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_COL_TOP_Z + _beakBarLift + STOCK_MIN_U / 2);
+  const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
+  beakArm.rotation.z = beakAim;
   const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock BOTH ways — plate-top lever, free upward and sideways (first pass thickened z only and the census promptly made width the new thin dimension)
   beakBar.name = 'alarmLinkBeakBar';  // §54
   beakBar.position.x = beakLen / 2;
   beakArm.add(beakBar);
   const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, ALARM_BEAK_NOSE_H), MATS.steel);
   beakNose.name = 'alarmLinkBeak';
-  beakNose.position.x = beakLen;
+  // Hung from the bar rather than centred on the arm: its TOP is the bar's top
+  // (fully let in, no half-thickness tab) and its BOTTOM lands exactly on the
+  // column top plane — the same contact TODO 20 derived, now carried by the one
+  // member that is allowed to make it.
+  beakNose.position.set(beakLen, 0, STOCK_MIN_U / 2 - ALARM_BEAK_NOSE_H / 2);
   beakArm.add(beakNose);
   // tail: the other way, ending above the rod (collinear ⇒ length is the remainder)
   const tailLen = wrLen - pivDist;
@@ -19538,6 +19619,30 @@ const alarmLinkParts = {};
   beakPost.rotation.x = Math.PI / 2;
   beakPost.position.set(beakPiv.x, beakPiv.y, postBase + postLen / 2);
   alarmLinkUnit.add(beakPost);
+  // §172, rule 6 — the three things finding 2 measured, each asserted with its
+  // achieved and required number so none of them can quietly come back.
+  {
+    // 1. the post's OUTER FACE against the saw's tips (not its axis: the face
+    //    is what sweeps the teeth, §169's correction applied here).
+    const postFace = pivDist - STOCK_MIN_R10;
+    if (postFace < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
+      console.warn(`§172: the link beak's post reaches ${postFace.toFixed(4)} from the wheel's arbor against the saw's tips at ${ALARM_COL_TIP_R.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN}`);
+    // 2. the BAR's underside over the column tops — the row nothing declared.
+    const barUnder = beakArm.position.z - STOCK_MIN_U / 2;
+    if (barUnder < ALARM_COL_TOP_Z + _beakBarLift - 1e-9)
+      console.warn(`§172: the link beak's bar runs ${(barUnder - ALARM_COL_TOP_Z).toFixed(4)} over the column tops at ${ALARM_COL_TOP_Z.toFixed(4)}, against the ${_beakBarLift.toFixed(4)} the pitch sweep says it needs (CLEAR_MARGIN ${CLEAR_MARGIN} plus the arm's tilt and the bar's own overhang)`);
+    // 3. and the NOSE still lands ON that plane — TODO 20's contact, which the
+    //    other two must not have moved. This is the one that has to stay ZERO.
+    const noseUnder = beakArm.position.z + (STOCK_MIN_U / 2 - ALARM_BEAK_NOSE_H / 2) - ALARM_BEAK_NOSE_H / 2;
+    if (Math.abs(noseUnder - ALARM_COL_TOP_Z) > 1e-9)
+      console.warn(`§172: the link beak's nose rests at ${noseUnder.toFixed(4)} against the column top plane ${ALARM_COL_TOP_Z.toFixed(4)} — TODO 20's declared read is off by ${(noseUnder - ALARM_COL_TOP_Z).toFixed(4)}`);
+    // 4. the tail's §54 section still clears §50's floor. tailLen SHRANK by the
+    //    post's move (the pivot walked toward the rod), and its height is
+    //    tailLen/SLENDER_TARGET — so the ceiling and the floor now approach each
+    //    other from opposite ends and the gap between them is worth naming.
+    if (ALARM_LINK_TAIL_H < STOCK_MIN_U - 1e-9)
+      console.warn(`§172: the beak tail's derived depth ${ALARM_LINK_TAIL_H.toFixed(4)} (tailLen ${tailLen.toFixed(3)} / SLENDER_TARGET ${SLENDER_TARGET}) is under the ${STOCK_MIN_U.toFixed(4)} stock floor — the §54 ceiling and the §50 floor have met and the section needs solving, not scaling`);
+  }
   alarmLinkUnit.add(beakArm);
   alarmLinkParts.beakArm = beakArm;
   alarmLinkParts.beakAim = beakAim;
