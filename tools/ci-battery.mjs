@@ -871,6 +871,21 @@ const SPEC_POINTS = [
   // §22's two knobs, at both ends of their clamped ranges.
   { name: 'vph=28800', q: 'vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
   { name: 'reserveh=48', q: 'reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
+  // §36 Apply — THE CANONICAL ROUTE, and it is a spec point rather than a
+  // probe's private fixture because that is what keeps it honest: every
+  // battery run boots it, so a change that stops a route applying is caught
+  // by the same gate that catches a change that stops the alarm corner
+  // building. Two legs meeting at a bend, crossing the back plate once and
+  // carrying one bush — the least route that exercises every part of the
+  // solve: a bore, a knuckle, a bearing declaration, and a free span shorter
+  // than its own leg.
+  { name: 'route=2-leg', q: 'route=20,20,-6;20,20,2;26,20,2&routebush=0,0.6', expect: 'silent',
+    why: '§36 Apply — a committed route becomes metal: one back-plate bore, one knuckle, one footed bush' },
+  // The refusal, asserted as a WARNING rather than a silence: a route that
+  // meets a plate edge-on is a channel through it, and Apply must say so and
+  // build the identity instead of quietly cutting a slot nobody designed.
+  { name: 'route=channel', q: 'route=10,20,-1;30,20,-0.9', expect: 'any',
+    why: '§36 Apply — a leg almost in the plate plane is refused, and the movement builds as designed' },
 ];
 
 // A spec boot. Deliberately NOT virginBoot: that one imports inspect.js and

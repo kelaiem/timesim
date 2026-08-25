@@ -52,6 +52,7 @@ import {
   sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
   STEEL_E_PA, cantileverK_N_per_m,            // §137: the one steel, the one cantilever law
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
+  ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -1846,6 +1847,111 @@ const TQ_BOT_Z = Math.max(TQ_MEASURED_MAX, TQ_DESIGN_MAX) + CLEAR_MARGIN;
 const TQ_T = 0.8;
 const TQ_TOP_Z = TQ_BOT_Z + TQ_T;
 const TQ_MID_Z = TQ_BOT_Z + TQ_T / 2;
+
+// §36 APPLY — THE SOLVE. This is the earliest line at which BOTH plate slabs
+// are known ([BACK_PLATE_Z ± T/2] above, [TQ_BOT_Z, TQ_TOP_Z] here), and a
+// route's bores have to be pushed into BACK_PLATE_HOLES before the back plate
+// is cut. So the whole route is solved ONCE, here, and the hole pushes, the
+// builder and the boot asserts all read this one frozen object — the §35
+// lesson that a pushed literal and the built metal must not be two
+// derivations of the same number.
+//
+// SECTIONS ARE SIZED BY §54's CEILING, and that is the only honest bound
+// available. This is STATIC MODELLED STOCK: nothing drives it, so there is no
+// load path to derive a section from, and inventing one would be exactly the
+// coefficient-because-it-looked-right that rule 1 exists to refuse. What can
+// be stated is that a rod unsupported over a length has a slenderness, and
+// §54 fixes the ceiling — so each leg is as thin as its own longest FREE span
+// allows, with §50's floor arriving through STOCK_MIN_U.
+//
+// FREE span, not leg length: TODO 78 corrected checkSlenderness to measure
+// between declared bearings, so a leg carrying a bush station is two shorter
+// spans and may legitimately be thinner than its length alone would allow.
+// The arbors declare those stations (userData.bearings, on the MESH — see the
+// builder), which is also why the bushes must belong to the route's own unit:
+// supportAt seeks a sibling mesh whose box contains the station, and a bush
+// parented to the plate would read as a bearing with no metal at it.
+const ROUTE_FLATS_N = 8;   // the census reads FLATS, so the octagon's flats carry the floor
+const routeApplySolve = (() => {
+  if (!ROUTE_SPEC) return null;
+  const refuse = (why) => {
+    console.warn(`§36 route refused (${why}) — building the identity movement`);
+    return null;
+  };
+  const P = ROUTE_SPEC.points;
+  const slabs = [
+    { name: 'back', lo: BACK_PLATE_Z - BACK_PLATE_T / 2, hi: BACK_PLATE_Z + BACK_PLATE_T / 2, t: BACK_PLATE_T },
+    { name: 'tq', lo: TQ_BOT_Z, hi: TQ_TOP_Z, t: TQ_T },
+  ];
+  const legs = [], bores = { back: [], tq: [] };
+  for (let i = 0; i < P.length - 1; i++) {
+    const a = P[i], b = P[i + 1];
+    const d = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
+    const len = Math.hypot(d.x, d.y, d.z);
+    if (!(len > 1e-6)) return refuse(`leg ${i} has zero length`);
+    // The leg's own stations split it; the longest gap is what §54 measures.
+    const ts = ROUTE_SPEC.bushes.filter((s) => s.i === i).map((s) => s.t).sort((x, y) => x - y);
+    let free = 0, prev = 0;
+    for (const t of [...ts, 1]) { free = Math.max(free, (t - prev) * len); prev = t; }
+    const thick = Math.max(free / SLENDER_TARGET, STOCK_MIN_U);
+    const r = flatsR(thick, ROUTE_FLATS_N);
+    legs.push({ i, a, b, dir: { x: d.x / len, y: d.y / len, z: d.z / len }, len, free, thick, r, stations: ts });
+    // Where this leg crosses a slab it needs a BORE, and the bore is this
+    // route's alone to compute: the swept registry samples only registered
+    // units and the back plate is not one, so checkRoute structurally cannot
+    // have reported it. Analytic crossing, not a sample.
+    for (const s of slabs) {
+      if (Math.abs(d.z) < 1e-9) continue;                    // parallel to the slab: no crossing
+      const t0 = (s.lo - a.z) / d.z, t1 = (s.hi - a.z) / d.z;
+      const enter = Math.max(0, Math.min(t0, t1)), exit = Math.min(1, Math.max(t0, t1));
+      if (!(exit > enter)) continue;                          // crosses the plane outside this leg
+      // Obliquity: a cylinder through a slab at θ off the plate's NORMAL
+      // sweeps an opening longer than its own diameter by (T/2)·tanθ. Below
+      // ~15° to the plate PLANE that opening stops being a bore and becomes a
+      // channel through the metal, which is a different part and a different
+      // conversation — so it is refused rather than widened into one.
+      const theta = Math.acos(Math.min(1, Math.abs(d.z) / len));
+      if (theta > (75 * Math.PI) / 180)
+        return refuse(`leg ${i} meets the ${s.name} plate at ${(90 - (theta * 180) / Math.PI).toFixed(1)}° — a channel, not a bore`);
+      const mid = (enter + exit) / 2;
+      bores[s.name].push({
+        x: a.x + d.x * mid, y: a.y + d.y * mid,
+        r: Math.max(r + CLEAR_MARGIN, 0.45) + (s.t / 2) * Math.tan(theta),
+        leg: i,
+      });
+    }
+  }
+  // The stations, in world space, from the same legs the arbors are cut from.
+  const bushes = ROUTE_SPEC.bushes.map(({ i, t }) => {
+    const L = legs[i];
+    return {
+      i, t,
+      pos: { x: L.a.x + (L.b.x - L.a.x) * t, y: L.a.y + (L.b.y - L.a.y) * t, z: L.a.z + (L.b.z - L.a.z) * t },
+      boreR: L.r + 0.02,                       // §35's running fit
+      outerR: L.r + 0.02 + STOCK_MIN_U,        // wall at §50's floor
+    };
+  });
+  // v1 foots hangers on the BACK plate only, so a station whose column would
+  // cross the three-quarter slab is not emitted — that is a second bore and a
+  // second support story, and EXPECTED_PAIRS would have to learn about both.
+  for (const b of bushes)
+    if (b.pos.z > TQ_BOT_Z) return refuse(`bush on leg ${b.i} stands above the three-quarter plate — v1 foots on the back plate only`);
+  // SUPPORT HAS TO BE REAL. The graph row will claim the plate holds this
+  // unit, and the support check measures that claim against metal within
+  // SUPPORT_TOL. A route that neither passes through the back plate nor foots
+  // a station on it is a rod floating in the movement, so it is refused here
+  // rather than declared and caught.
+  if (!bores.back.length && !bushes.length)
+    return refuse('nothing holds it — no back-plate bore and no footed station');
+  return Object.freeze({ legs, bores, bushes });
+})();
+// The back plate's bores go in HERE, one line from the solve that produced
+// them and long before makeBackPlate reads the list. §35's own selector-rod
+// bore is the cautionary case in view: it is a hand-written literal that has
+// to be kept equal to the built rod's station by an assert, because the two
+// were derived separately. These are not — the builder consumes the same
+// frozen `bores`, so there is nothing to keep in step.
+if (routeApplySolve) for (const h of routeApplySolve.bores.back) BACK_PLATE_HOLES.push({ x: h.x, y: h.y, r: h.r });
 
 // --- Upper pivots. The counterpart of addLowerPivot below: each arbor's
 // staff is continued UP from its own topmost geometry to the plate's
@@ -6412,6 +6518,12 @@ const tqHoles = tqPivots.map((p) => ({
   x: p.x, y: p.y, r: p.jewelR ? tqOpeningR(p) : p.boreR,
   poly: !!p.chaton,   // §132: drawn as part of a merged outline, not as this circle
 }));
+// §36 Apply — an applied route's crossings of THIS slab, pushed immediately
+// after the declaration and before anything reads the list. That position is
+// the point: the window solve, the rib keep-outs and the web-width scan all
+// consume tqHoles downstream, so a route's bore is avoided by every one of
+// them for free rather than by teaching each about routes.
+if (routeApplySolve) for (const h of routeApplySolve.bores.tq) tqHoles.push({ x: h.x, y: h.y, r: h.r });
 // §132 — THE CHATON SEATS. A chaton's screw head laps its rim: the inboard
 // edge over the gold, the rest of it biting the plate outside the
 // counterbore. The plate was cut through at exactly the chaton's radius, so the
@@ -31374,6 +31486,78 @@ window.__clock = {
   // a number the battery can read rather than a claim in a comment.
   get weldCensus() { return WELD_CENSUS; },
 };
+
+// §36 APPLY — THE METAL. Everything above is the movement; this is the route
+// the viewer drew, cut as real parts and hung on the plate it bored.
+//
+// WHAT THIS IS, said plainly because the vocabulary matters: static MODELLED
+// stock. Nothing drives it, no drive edge is declared for it, and its bends
+// transmit NOTHING. §137's corner idioms describe force paths, so none of
+// them applies here — a knuckle over a bend in this unit is a formed boss
+// that makes no pivot claim, the `rigidBentLink` precedent used for its
+// SHAPE and explicitly not for its mechanics. Giving an applied route a real
+// force path later is per-corner design work under §137's vocabulary; it is
+// not something routing hands over.
+if (routeApplySolve) {
+  const S = routeApplySolve;
+  const routeUnit = new THREE.Group();
+  movement.add(routeUnit);
+  registerLabel(ROUTE_UNIT_NAME, routeUnit);   // the ONE name — layout.js owns the string, the graph row imports the same one
+  registerExplode(routeUnit, 0, 3);
+  const _up = new THREE.Vector3(0, 1, 0), _dir = new THREE.Vector3(), _mid = new THREE.Vector3();
+  for (const L of S.legs) {
+    // The arbor: a plain octagonal bar on the leg, its flats carrying §50's
+    // floor. CylinderGeometry runs along +Y, so it is aimed by quaternion
+    // from +Y to the leg's own direction rather than by Euler angles nobody
+    // can check.
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(L.r, L.r, L.len, ROUTE_FLATS_N), MATS.steel);
+    bar.name = `routeArbor${L.i}`;             // §54 needs a NAME, and a shared one collapses report rows (§137's rodSeg lesson)
+    _dir.set(L.dir.x, L.dir.y, L.dir.z);
+    bar.quaternion.setFromUnitVectors(_up, _dir);
+    _mid.set((L.a.x + L.b.x) / 2, (L.a.y + L.b.y) / 2, (L.a.z + L.b.z) / 2);
+    bar.position.copy(_mid);
+    // §54 / TODO 78 — WHERE THIS BAR IS HELD. Stated in GEOMETRY-LOCAL y
+    // because that is the frame computeBoundingBox reads, and the bar's local
+    // +y runs from −len/2 at point a to +len/2 at point b, so a station at
+    // fraction t sits at (t − 1/2)·len. On the MESH, never the geometry:
+    // weldGeometry returns a fresh BufferGeometry without copying userData,
+    // so a geometry-level declaration is deleted by weldTree at the end of
+    // boot — silently, and the check would then measure the whole bar.
+    if (L.stations.length) {
+      bar.userData.bearings = {
+        axis: 'y',
+        stations: L.stations.map((t) => (t - 0.5) * L.len).sort((a, b) => a - b),
+      };
+    }
+    routeUnit.add(bar);
+  }
+  // The knuckle: a formed boss over each bend, 1.15× the fatter of the two
+  // arbors it laps (the elbow rod's proportion). It exists so the corner is
+  // METAL rather than two bars ending in the same place — and it is closed
+  // stock, because an open body reads as a colliding one to the parity
+  // raycast (TODO 27's measured trap).
+  for (let i = 1; i < S.legs.length; i++) {
+    const rk = 1.15 * Math.max(S.legs[i - 1].r, S.legs[i].r);
+    const k = new THREE.Mesh(new THREE.SphereGeometry(rk, 10, 8), MATS.steel);
+    k.name = `routeKnuckle${i}`;
+    k.position.set(S.legs[i].a.x, S.legs[i].a.y, S.legs[i].a.z);
+    routeUnit.add(k);
+  }
+  // The bushes: hangers the arbor runs in, in THIS unit so that supportAt
+  // finds them as siblings of the bar whose stations they hold. Footed on the
+  // back plate — v1's single support story, which the solve enforced.
+  for (const b of S.bushes) {
+    const bush = new THREE.Mesh(
+      new THREE.CylinderGeometry(b.outerR, b.outerR, STOCK_MIN_U * 2, 12),
+      MATS.nickel,
+    );
+    bush.name = `routeBush${b.i}_${String(b.t).replace('.', 'p')}`;
+    const L = S.legs[b.i];
+    bush.quaternion.setFromUnitVectors(_up, _dir.set(L.dir.x, L.dir.y, L.dir.z));
+    bush.position.set(b.pos.x, b.pos.y, b.pos.z);
+    routeUnit.add(bush);
+  }
+}
 
 // §81 tranche A — weld the scene, once, after every builder has run and before
 // the first frame. Placed here rather than inside the builders because there
