@@ -5,16 +5,25 @@
 // that under-reported, because it spends other people's time. So this probe
 // does not ask the patched instrument anything it could confirm about itself.
 //
-// For each newly-reported mesh pair it prints three INDEPENDENT numbers:
-//   raw       three-mesh-bvh's own closestPointToGeometry, unwrapped — the
-//             library's verdict, reached without sampledVerdict at all
-//   sampled   barycentric samples of one surface measured against the other's
-//             tree: a sound UPPER BOUND on the true surface distance
+// !! READ THIS BEFORE TRUSTING THE `raw` COLUMN. An earlier version of this
+// file argued that `raw ≈ 0` PROVES a pair touches, and that is wrong. BUILT
+// §82 records the vendor's tri-tri test emitting FALSE ZEROS, and measured on
+// main at one pose it does so freely — `raw 0.0000` for pairs meshClearance
+// puts 8 to 10 units apart (probe-95-passthrough enumerates them). `raw` is
+// therefore a CANDIDATE signal, never a witness, and the `Math.max` guard in
+// _meshClearanceInner exists precisely to suppress it.
+//
+// What this probe prints:
+//   raw       the library's unwrapped verdict — a candidate, not evidence
+//   sampled   barycentric samples of one surface against the other's tree: a
+//             sound UPPER bound, but one-directional and coarse, so a nonzero
+//             value does NOT clear a pair either
 //   mc        meshClearance, the patched wrapper
 //
-// The witness only RESTORES the library's answer, it never manufactures one,
-// so raw ≈ 0 on every row is the proof that nothing was invented. A row where
-// raw is large and mc is 0 would be a false positive and the patch's bug.
+// To actually PROVE a pair interpenetrates, use probe-93-grid.mjs, which
+// samples space and asks whether a point lies inside BOTH solids — an argument
+// that depends on neither the tri-tri test nor on segmentPierces, and so can
+// validate the TODO 93 fix without circularity.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -97,9 +106,10 @@ const res = await page.evaluate(async () => {
     out.push(`    raw     ${raw ? raw.distance.toFixed(4) : 'null'}`);
     out.push(`    sampled ${Number.isFinite(s1) ? s1.toFixed(4) : 'n/a'}`);
     out.push(`    mc      ${best.toFixed(4)}`);
-    const verdict = raw && raw.distance <= 0.001 && best <= 0.001 ? 'TRUE POSITIVE — library agrees independently'
-      : best <= 0.001 ? '*** SUSPECT: mc says contact, library does not ***'
-      : 'apart';
+    const verdict = raw && raw.distance <= 0.001 && best <= 0.001
+        ? 'candidate — both signals low; PROVE it with probe-93-grid before acting'
+      : best <= 0.001 ? 'mc reports contact where the library does not — check with probe-93-grid'
+      : 'apart on both signals';
     out.push(`    → ${verdict}`);
     out.push('');
   }
