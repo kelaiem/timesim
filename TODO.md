@@ -13269,12 +13269,33 @@ inside anything, so `sampledVerdict` found no witness and
 `_meshClearanceInner` published the sampled distance instead of the
 intersection.
 
-**Each row is validated, not merely reported.** `tools/probe-93-validate.mjs`
-prints three independent numbers per pair — the raw vendor
-`closestPointToGeometry`, barycentric surface sampling, and `meshClearance` —
-and every row below has the LIBRARY independently at 0.0000. The patched
-wrapper restored the library's answer; it did not manufacture one. Re-run that
-probe before spending time on any of these.
+**Each row is PROVEN, and the first attempt to prove them was unsound.** That
+attempt rested on the raw vendor `closestPointToGeometry` reading 0.0000, which
+is not evidence: §82 records the tri-tri test emitting FALSE ZEROS, and
+`probe-95-passthrough.mjs` enumerates them on main at one pose — `raw 0.0000`
+for pairs `meshClearance` puts 8 to 10 units apart. The `Math.max` guard in
+`_meshClearanceInner` exists to suppress exactly that, and it is doing far more
+real work than the first pass credited.
+
+The witness that does hold is `tools/probe-93-grid.mjs`: it grids the two
+meshes' AABB intersection and asks whether any point lies inside BOTH solids,
+deciding containment by majority vote over five oblique parity rays. It depends
+on neither the tri-tri test nor on `segmentPierces`, so it can validate the
+TODO 93 fix without circularity. All five rows below are proven that way — 409,
+4329, 914, 1378 and 2929 shared points respectively. It is a ONE-SIDED
+instrument: a shared point proves contact, no shared point proves only that the
+grid missed.
+
+**A caveat it turned up about `caseMiddle` specifically.** The pusher row's
+first shared point sits at r 35.823, which is inside the case's BORE — metal at
+that z runs 45.56 to 48.20 — so that point cannot really be inside
+`caseMiddle`, and its parity is demonstrably unreliable. That is the
+non-simple lathe profile from item 93 doing damage after all, just not the
+damage item 93 originally accused it of. The pusher row does not depend on it:
+that one is independently proven by four clean axis crossings
+(48.20 → 45.55 in, 45.55 → 48.18 out) and by barycentric surface sampling at
+0.0003. Rows that rest on `caseMiddle` parity ALONE should be re-proven once
+the profile is fixed.
 
 | pair | worst mesh pair | tier |
 |---|---|---|
