@@ -10,8 +10,11 @@
 //      consumes it, and a copied link reproduces a DESIGNED movement — the
 //      defect §161 was filed for (13 keys against a 15-key reader).
 //   B. THE ROUTE. Every stop is entered, every derived framing RESOLVED (a
-//      frameOn miss returns null and only warns), the View HUD stays reachable
-//      while #clock-ui hides, and the run ENDS inside reconfigure mode.
+//      frameOn miss returns null and only warns), BOTH panels go down for the
+//      run and come back after (§165 — this used to read "the View HUD stays
+//      reachable while #clock-ui hides", which was §118's guarantee until §165
+//      spent it), and the run ENDS inside reconfigure mode with the view panel
+//      already given back to it.
 //   C. BOOT IS SILENT on the identity spec, with the bench table built eagerly.
 //
 // Run: node tools/probe-161-bench.mjs
@@ -129,15 +132,25 @@ await pg.evaluate(() => window.__clock.startBench());
 ok('the run started', await pg.evaluate(() => window.__clock.scriptState !== null));
 ok('the running button face is localized, not a literal',
   (await pg.evaluate(() => document.getElementById('btn-bench').textContent)) === 'Stop');
-ok(`the View HUD stays on screen at ${VIEWPORT.width}px — Reconfigure and Copy view are reachable`,
-  await pg.evaluate(() => getComputedStyle(document.getElementById('view-hud')).display !== 'none'));
-// REPORTED, not gated: below HUD_MIN_W the whole View HUD goes, which takes the
-// guided buttons with it — so the only way onto this route on a phone is
-// ?bench=1, and its last two stops name controls that viewer cannot see. That is
-// a property of where the guided buttons live, not of this route, and it is
-// recorded in docs/BUILT.md §161 rather than papered over here.
+// §165 INVERTED THIS. It used to assert the View HUD stayed up during a run —
+// §118's side effect, that the guided buttons lived in the panel a script did
+// not hide. §165 hides it too, because a 238px box in the top-right corner is
+// in every framing the run chooses. The panel is still reachable (the chrome
+// bar is a third root and is not hidden) and any click still stops the run.
+ok('the View HUD is hidden while a route runs — §165',
+  await pg.evaluate(() => getComputedStyle(document.getElementById('view-hud')).display === 'none'));
+ok('the chrome bar stays up, so both panels are one click from returning',
+  await pg.evaluate(() => getComputedStyle(document.getElementById('chrome-bar')).display !== 'none'
+    && document.getElementById('chrome-t-view').dataset.state === 'off'));
+// REPORTED, not gated, and it is a DIFFERENT fact from the two gates above.
+// Those say the run hides the view panel and gives it back for the reconfigure
+// stop (§165). This says that below HUD_MIN_W the panel is not there to hide or
+// give back at all — layoutChrome drops it, which takes the guided buttons with
+// it, so the only way onto this route on a phone is ?bench=1 and the give-back
+// lands on nothing. A property of where the guided buttons live rather than of
+// this route; recorded in docs/BUILT.md §161.
 console.log(`      (view-hud is display:none below ~${HUD_MIN_W}px — the route's authoring stops are desktop content)`);
-ok('#clock-ui is the one hidePanelForScript hides',
+ok('#clock-ui is hidden too — hidePanelForScript takes both panels since §165',
   await pg.evaluate(() => getComputedStyle(document.getElementById('clock-ui')).display === 'none'));
 
 // The walk runs IN PAGE, in CHUNKS. In page because advanceFrame is
@@ -196,13 +209,19 @@ const end = await pg.evaluate(() => ({
   reconfBtn: document.getElementById('btn-reconf').dataset.state,
   rowShown: getComputedStyle(document.getElementById('reconf-row')).display !== 'none',
   panelBack: getComputedStyle(document.getElementById('clock-ui')).display !== 'none',
+  viewBack: getComputedStyle(document.getElementById('view-hud')).display !== 'none',
   benchIdle: document.getElementById('btn-bench').textContent,
   link: window.__clock.viewLink(),
 }));
 ok('the route ENDED inside reconfigure mode, not pointing at it',
   end.reconfParam && end.reconfBtn === 'on' && end.rowShown,
   `param=${end.reconfParam} btn=${end.reconfBtn} row=${end.rowShown}`);
-ok('the panel came back when the run stopped', end.panelBack);
+ok('#clock-ui came back when the run stopped', end.panelBack);
+// The view panel must be back BEFORE the run ends, not after: the bench route's
+// last stop enters reconfigure mode, and §165 has that mode take the panel back
+// (§93's rule one level up). If this ever reads false, the closing captions are
+// naming controls that are not on screen.
+ok('the View HUD came back for the reconfigure stop', end.viewBack);
 ok('the button returned to its idle face', end.benchIdle === 'Bench', end.benchIdle);
 ok('the link offered at the end still excludes ?reconf',
   !new URL(end.link).searchParams.has('reconf'));

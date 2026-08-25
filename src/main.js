@@ -22498,23 +22498,61 @@ layoutChrome();
 // already the cheapest thing this app does per event.
 window.addEventListener('resize', layoutChrome);
 
-// While a guided script (Demo/Tour/Coupling) runs, collapse the fixed control
-// panel to the ☰ chip and restore it after. This used to gate on a narrow
-// viewport (the phone-overlap case), but the coupling show framed on the DIAL
-// CENTRE sits partly behind the 240px panel at desktop widths too — the
-// panel overlaps whatever the preset centres, at any width. The chip brings
-// it straight back, and a panel the user had ALREADY collapsed stays
-// collapsed with no restore claimed.
+// While a guided script (Demo/Tour/Inspect/Bench/Coupling) runs, collapse BOTH
+// fixed panels and restore them after. This used to gate on a narrow viewport
+// (the phone-overlap case), but the coupling show framed on the DIAL CENTRE
+// sits partly behind the 240px panel at desktop widths too — a panel overlaps
+// whatever the preset centres, at any width. The chrome bar brings either
+// straight back, and a panel the user had ALREADY collapsed stays collapsed
+// with no restore claimed.
+//
+// §165 — THE VIEW PANEL GOES TOO, and that REVERSES a side effect §118 recorded
+// as an improvement. Read that entry with this one. §118 moved Camera (and with
+// it Guided) into the view panel and noted that a running script's own Stop
+// control had until then been hidden by the script starting; living in the
+// panel that stayed up fixed that for free. But the panel that stays up is also
+// a 238px box in the top-right corner of every framing the run chooses, and
+// that is the complaint this answers — the same complaint, one panel over, that
+// the paragraph above already accepted for #clock-ui.
+//
+// What keeps it honest is that the Stop BUTTON was never the only way out and
+// never the main one: scriptAbort takes any pointerdown, keydown or wheel
+// anywhere on the window, and has since §5. The chrome bar is a third root and
+// is NOT hidden here, so the panel is one click from returning — and that click
+// stops the run, which is exactly what someone reaching for the panel wants.
+//
+// The residue, named rather than engineered around: INSPECT_STEPS and
+// BENCH_STEPS open by saying "Click anywhere to stop." and TOUR_STEPS and
+// DEMO_STEPS do not, so on those two the gesture is now unstated as well as
+// unshown. The cheap fix is their opening captions (one sentence, five locales
+// each); it is not taken here because editing an English caption invalidates
+// its translations by design, and this change does not otherwise touch them.
 let panelForcedHiddenByScript = false;
+let viewHudForcedHiddenByScript = false;
 function hidePanelForScript() {
-  if (panel.style.display === 'none') return; // already collapsed by the user — leave it, and claim no restore
-  setPanelHidden(true);
-  panelForcedHiddenByScript = true;
+  // Each panel guards on its OWN prior state: a viewer who had collapsed one
+  // and left the other up gets exactly that back, not both or neither.
+  if (panel.style.display !== 'none') { setPanelHidden(true); panelForcedHiddenByScript = true; }
+  if (viewHud.style.display !== 'none') { setViewHudHidden(true); viewHudForcedHiddenByScript = true; }
 }
 function restorePanelAfterScript() {
-  if (!panelForcedHiddenByScript) return;
-  panelForcedHiddenByScript = false;
-  setPanelHidden(false);
+  // Order matters below the two-panel width: setPanelHidden(false) evicts the
+  // view panel when both cannot fit, so restoring #clock-ui first and the view
+  // panel second would undo the first restore. Restore the view panel LAST only
+  // if it is the one that was up; otherwise the eviction rule decides, which is
+  // what it is for.
+  if (panelForcedHiddenByScript) { panelForcedHiddenByScript = false; setPanelHidden(false); }
+  if (viewHudForcedHiddenByScript) { viewHudForcedHiddenByScript = false; setViewHudHidden(false); }
+}
+// §165 — and a mode that needs the panel takes it back. §93 already force-opens
+// the collapsed <details> when reconfigure mode is entered, because a mode whose
+// status, Apply and variant rows are shut in a drawer is a "you cannot carry
+// on". A mode entered while a script has hidden the whole panel is the same
+// problem one level up, and BENCH_STEPS' last stop is exactly that case.
+function unhideViewHudForMode() {
+  if (!viewHudForcedHiddenByScript) return;
+  viewHudForcedHiddenByScript = false;
+  setViewHudHidden(false);
 }
 
 // Guided-script caption banner (BUILT §5, §17) — created up front, shown only
@@ -27971,6 +28009,10 @@ function setReconf(on) {
     // a deep link would otherwise come back with its status, Apply and
     // variant rows shut in a drawer: the same "you cannot carry on" this
     // section exists to fix, one level up. Ancestors too, for a nested one.
+    // §165 — the panel itself, before its drawers: a script may have hidden the
+    // whole thing, and opening a <details> inside a display:none panel is the
+    // same "you cannot carry on" this block exists to fix, one level up.
+    unhideViewHudForMode();
     for (let d = document.getElementById('reconf-row').closest('details'); d;
       d = d.parentElement && d.parentElement.closest('details')) d.open = true;
     ensureReconfGhost(); ensureReconfRings(); refreshVariantSelect(); reconfShowStatus();
