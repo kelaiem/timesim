@@ -16,3 +16,8 @@ version.json
 
 # §52: the CI battery harness installs its pinned Playwright here
 tools/node_modules/
+
+# Probe OUTPUT, not source. tools/probe-87-press.mjs rewrites this on every run
+# (2456 lines of per-frame trace), so a committed copy is churn that says
+# nothing — it leaked in once through an over-broad `git add -A tools/`.
+tools/press-trace.json
