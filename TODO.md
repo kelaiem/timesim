@@ -17,6 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Finding 1 is MEASURED: `alarmLockBeakRiser` passes through the ratchet skirt's band (0.6167 of shared z) with its axis **0.2144 inside** the polygon the teeth were cut from (0.14 at rest, the SAME at both parities — it sits in the teeth rather than moving through them, so the repair is radial: 6.674 needed against 6.15 built, by §163's own post derivation) — invisible because `Alarm lock ⇄ Alarm switch` is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, which is TODO 6's named residue arriving as a real defect. Four more questions filed unmeasured: whether the suppressor's hold is a modelled friction brake or a posed angle, the three riders' contacts priced as §137 rows against the column's own drive torque, whether the selector ring's detent exists as metal, and the riser class (`alarmLinkBeakPost` reads 0.0929 to the skirt) |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's. **A third shape found 2026-08-25 (§169): the tiers gate on `intersectsGeometry`, so a FLUSH FACE is invisible** — two solids sharing exactly one plane do not intersect, and the alarm pawl ran 0.000 from the column wheel's base disc over the whole area it sweeps under it, at every pose, with every gate green. Overlap is not the only way metal can be wrong; see item 87 findings 8 and 9 for both this and the excuse a false `INTRA_UNIT_CONTACTS` row grants |
@@ -10218,3 +10219,112 @@ it; never size the min to the defect.
   `makeStarWheel`/`makeJumper` — the whole mechanism grew outside the
   architecture contract. Fold it in. The README's feature list omits
   the quick-set; one line.
+
+## 90. What the column wheel DRIVES has never been audited the way what drives IT has
+
+TODO 87 rebuilt the input side of the alarm toggle — the pusher, the driver,
+the pawl and its spring — through three sections and eleven findings. **The
+output side has had none of that.** The wheel's castellations carry three
+riders (the LOCK beak, which is the alarm's suppressor; the CLICK, which
+indexes and reads the state; the LINK beak, which arms the selector ring), and
+each of those carries a chain onward. This item is that audit, opened with one
+finding already measured.
+
+### Finding 1 (2026-08-25, MEASURED) — the lock beak's riser is inside the saw
+
+Eye-reported as *"a phantom / vestigial steel arm that collides with the column
+wheel every other toggle"*. Measured off the built tree with
+`tools/probe-colwheel-foul.mjs` and `tools/probe-lockriser-depth.mjs`:
+
+| | |
+|---|---|
+| `alarmLockBeakRiser` | ⌀ 0.28 rod, z **9.4028 .. 12.0374** |
+| `alarmColSkirt` (the saw) | z **10.4407 .. 11.0574** |
+| shared z | **0.6167** — the rod passes clean through the tooth band |
+| worst in-plane depth, against `ratchetPoly` | **0.2144**, at press cycle 0.958 |
+| parities | the same at `alarmOn` 0 and 1 |
+
+The riser's AXIS crosses inside the polygon the teeth were cut from, so this is
+not a graze — the rod occupies the saw's metal. It is a **cross-unit** pair
+(`Alarm lock ⇄ Alarm switch`), so `intraUnit` never looks at it; and that pair
+is **EXPECTED**, because the beak genuinely is meant to touch the castellations.
+That grants the blanket excuse to *every* mesh in both units — which is
+**TODO 6's named residue, arriving as a real defect**: an EXPECTED pair with no
+`EXPECTED_CONTACT_FLOORS` row excuses metal that has no business anywhere near
+the other unit. Seeding a floors row for this pair, with the beak⇄castellation
+meshes named as the declared contact, is the fix that also closes the hole.
+
+**Two method notes, because both cost a measurement here.** The riser is a
+`CylinderGeometry` with `heightSegments 1`, so every vertex it owns sits at one
+of the two end rings and NONE inside the saw's band: the first cut of the depth
+probe read `0 of 0 vertices` and would have reported the defect as absent —
+MODELING.md rule 5, in the instrument rather than the model, for the second time
+this month (§169's `probe-87-pawl` fix was the first). The rod's footprint is a
+DISC about its axis and that is what must be tested. And `meshClearance` clamps
+at 0, so it cannot tell *touching* from *buried* — the depth had to be taken
+against `ratchetPoly` in the wheel's own frame, `probe-87-pawl`'s method.
+
+**Established since (same day), and it decides the fix.** The worst-over-the-
+press reading is identical at both parities, and so is the reading AT REST —
+which is the one that matters, because it is what a viewer sees between
+presses, and because the saw has 12 teeth to the castellations' 6 columns, so
+the SAW repeats every press while the LOCK, which reads columns, alternates. If
+anything alternated it would show there. Nothing does:
+
+| | alarmOn = 0 | alarmOn = 1 |
+|---|---|---|
+| worst over the press | 0.2144 | 0.2144 |
+| **at rest** | **0.14**, axis INSIDE the saw at r 6.15 | **0.14**, axis INSIDE at r 6.15 |
+
+So it **sits** in the teeth rather than moving through them, continuously, in
+both alarm states. What the eye reads as "every other toggle" is the lock's own
+swing making the same interpenetration more and less conspicuous — the defect
+is not periodic and the repair is not a timing one.
+
+**Which makes the fix radial, and §163 already wrote its derivation.** The riser
+must cross the saw's z band — its beak is above the castellations and its pivot
+below the skirt, so there is no stratum that avoids it. The only free direction
+is radius, and the constraint is the one §163 derived for the pawl's own post:
+
+```
+riser radius ≥ ALARM_COL_TIP_R + CLEAR_MARGIN + its own radius
+             = 6.384 + 0.15 + 0.14 = 6.674     against 6.15 today
+```
+
+0.524 outboard. The beak still has to reach the columns at ≈5.98, so it
+overhangs INBOARD from a riser standing outside the tips — which is exactly the
+anatomy §163 gave the driver's pawl (a post outside the tip circle carrying a
+member that reaches in). Whatever this costs is a lock-lever geometry change,
+so it is P0/P1 work on the `Alarm lock` group rather than a nudge.
+
+### The rest of the audit, unmeasured
+
+Each of these is the same question TODO 87 asked of the input side, and none
+has been asked of the output side. Filed as questions rather than findings
+because none is measured yet:
+
+1. **Is the suppressor's hold real?** The lock's pad bears on `alarmLockCollar`
+   as a friction brake (the stop-lever-on-balance-rim precedent). §163's note
+   says "the HOLD when braked is the column's, not the spring's" — so what
+   stops the alarm train when the brake is on: a modelled friction force, or a
+   posed angle? If the latter it is a simulation fiction in the README's sense
+   and belongs in this file's main business.
+2. **The three riders' contacts, priced.** `alarmHandoffs` asserts the lock
+   beak's contact closes. Nothing prices what the castellation must PUSH
+   against — the lock's spring, the click's detent, the link's chain — as a
+   §137 transfer row. TODO 16's format; the column's own drive torque is the
+   budget they all come out of, and it has never been summed.
+3. **The selector ring's detent.** `declareRestoring('Alarm selector', …)`
+   answers `two-way` honestly — the link's centre pin drives the fork both
+   ways. But TODO 16's 5–50 mN detent envelope describes a ring that INDEXES,
+   and it is worth establishing whether a detent exists as metal or only as
+   the envelope the arithmetic is checked against.
+4. **The riser class.** `alarmLockBeakRiser` is one of at least three rods that
+   climb between strata near the wheel (`alarmLinkBeakPost` reads 0.0929 to the
+   skirt, inside `CLEAR_MARGIN`). Whatever fix finding 1 takes should be checked
+   against the others rather than applied to one.
+
+The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
+and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
+each offender's unit, and `probe-colwheel-id` identifies them — geometry,
+material, parent chain, whether they are NAMED, and per-parity behaviour.

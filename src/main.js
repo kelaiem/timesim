@@ -6728,7 +6728,7 @@ const tqSlots = [];
 // CLEAR_MARGIN. LITERALS, like the rod bore above — the pusher's constants
 // derive long after this plate is cut — and the pusher build asserts the
 // derived track equals this slot (the §35/§68 tripwire pattern).
-tqSlots.push({ ax: 24.03, ay: -0.90, bx: 26.68, by: -0.44, r: 0.32 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module; §163 re-froze it TWICE — once when ALARM_PUSH_CHORD stopped being a literal, and again when the coupling moved the riser from the stem's inner end to the PIN's station, which straddles the foot of the perpendicular and so sits under the wheel rather than outside it)
+tqSlots.push({ ax: 23.00, ay: -0.70, bx: 25.68, by: -0.78, r: 0.32 }); // pressed → rest, frozen from the derived track (tripwire at the pusher build; §112 re-froze it at the rotated module; §163 re-froze it TWICE — once when ALARM_PUSH_CHORD stopped being a literal, and again when the coupling moved the riser from the stem's inner end to the PIN's station, which straddles the foot of the perpendicular and so sits under the wheel rather than outside it; §170 re-froze it a fourth time when the press line was rotated to pass through the movement's centre — the slot is nearly TANGENTIAL to the old one, which is the point: the track's own direction turned by Δ)
 
 // --- Balance cock. Its jewel placement is untouched (the staff's upper pivot
 // must sit exactly on the balance axis); what is new is that the cock has a
@@ -20290,21 +20290,6 @@ const alarmLinkParts = {};
 // below stays azimuth-invariant (that work is what makes the module
 // rotation free), and the §43 saw-direction assert holds because the
 // chord's sign rotates with the module.
-const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x);
-const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
-const _pushPerp = { x: -_pushU.y, y: _pushU.x };
-// Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
-// scaled with the wheel). Its SIGN is the drive direction, not a placement
-// taste: with the pawl at chord·perp + 0.85·û from the wheel centre, the
-// tangential component of its inward press works out to exactly the chord
-// (the û·perp cross-term vanishes), so
-//
-//     sign(ALARM_PUSH_CHORD) === the z-direction the pawl can drive
-//
-// Built positive, it pushed +z (CCW) while the wheel's own saw teeth are cut
-// to be driven −z — measured +0.619 against a −30°/press index, i.e. the pawl
-// dragging the wheel backwards, which a pawl cannot do. Now derived from the
-// teeth themselves and asserted below.
 // One press must sweep one ratchet tooth: the tooth pitch arc at the saw's
 // root circle (0.9·baseR, geometry.js) — 2.69 u = 1.02 mm, a real pusher's
 // throw. The old hand-set 0.7 under-swept even the old wheel (0.99 arc).
@@ -20343,6 +20328,58 @@ const ALARM_PUSH_TRAVEL = (Math.PI * 2 / (ALARM_COL_COLUMNS * 2)) * (0.9 * ALARM
 // arm of a rigid pawl, the member this section deletes — and the built offset
 // derives from the coupling that replaced it.
 const ALARM_DRIVE_OFFSET = ALARM_PUSH_TRAVEL / (2 * Math.tan(ALARM_COL_STEP / 2));
+//
+// §170 — AND THE LINE GOES THROUGH THE MOVEMENT'S CENTRE, which is where a
+// case pusher's tube is bored. This was `atan2(ALARM_COL_POS.y, .x)`: the
+// press DIRECTION was already radial, but the LINE was that radius displaced
+// sideways by ALARM_PUSH_CHORD, so its axis missed the centre by 5.01226 and
+// crossed the case band 6.213° off the band's own normal — a tube bored
+// askew, which no cased watch has.
+//
+// The coupling wants exactly one thing from this line: perpendicular offset
+// ALARM_DRIVE_OFFSET from the WHEEL's centre, with the stroke straddling the
+// foot. It does not care where the line otherwise runs — `pinRest` and
+// `_pushBase` below are both written in the (û, perp) frame, so the whole
+// pin-in-slot construction is already blind to which azimuth û points. So the
+// same offset is available by ROTATING the line instead of translating it,
+// and a line through the origin achieves it at
+//
+//     Δ = asin(ALARM_DRIVE_OFFSET / |ALARM_COL_POS|) = 11.6307°
+//
+// taken WITH the saw's own drive sign, so the line stays on the side of the
+// wheel the teeth are cut for and §43's assert below is untouched. Nothing in
+// the mechanism's spec moves: the offset, the travel and the one-tooth
+// equality are the same numbers. It is a fold in position space, which is the
+// only currency P3 allows.
+//
+// `_pushBase = wheel + CHORD·perp` needs no edit and that is not luck: with
+// the azimuth above, (wheel + CHORD·perp)·perp = R·sin(θw − θs) + drive·d = 0
+// exactly, so the foot of the perpendicular lands ON the line through the
+// origin by construction.
+const _colR = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y);
+// A wheel closer to the centre than the offset its own coupling needs has NO
+// radial line at that offset — a geometric impossibility rather than a tight
+// fit, so it is named with both numbers rather than silently clamped to a
+// tangent (asin would return NaN and every station downstream would follow).
+const _colSinDelta = ALARM_DRIVE_OFFSET / _colR;
+if (!(Math.abs(_colSinDelta) <= 1))
+  console.warn(`§170: the column wheel stands ${_colR.toFixed(4)} from the movement's centre against the ${ALARM_DRIVE_OFFSET.toFixed(4)} its coupling needs — no line through the centre passes it at that offset, so the press axis cannot be radial at this station`);
+const ALARM_PUSH_AZ = Math.atan2(ALARM_COL_POS.y, ALARM_COL_POS.x)
+  + alarmColumnWheel.userData.ratchetDrive * Math.asin(Math.max(-1, Math.min(1, _colSinDelta)));
+const _pushU = { x: Math.cos(ALARM_PUSH_AZ), y: Math.sin(ALARM_PUSH_AZ) };
+const _pushPerp = { x: -_pushU.y, y: _pushU.x };
+// Lateral offset — the pawl's line grazes the ratchet tangentially (the skirt
+// scaled with the wheel). Its SIGN is the drive direction, not a placement
+// taste: with the pawl at chord·perp + 0.85·û from the wheel centre, the
+// tangential component of its inward press works out to exactly the chord
+// (the û·perp cross-term vanishes), so
+//
+//     sign(ALARM_PUSH_CHORD) === the z-direction the pawl can drive
+//
+// Built positive, it pushed +z (CCW) while the wheel's own saw teeth are cut
+// to be driven −z — measured +0.619 against a −30°/press index, i.e. the pawl
+// dragging the wheel backwards, which a pawl cannot do. Now derived from the
+// teeth themselves and asserted below.
 const ALARM_PUSH_CHORD = alarmColumnWheel.userData.ratchetDrive * ALARM_DRIVE_OFFSET;
 // The stroke is symmetric about the foot, which is where _pushBase already
 // stands (it is the wheel's centre displaced by the chord along the press

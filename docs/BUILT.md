@@ -17643,3 +17643,109 @@ rather than trusted. `oscillator`, `equalisation`, `chainLength`, `axisEntry`,
   and the solve reads that rather than πDn. The two differ by 8.6e-5 — the
   chord error of a polygonal coil — and the assert holds them within a chord
   rather than exactly equal, which is the honest claim about a sweep.
+
+## §170 — the press line goes through the movement's centre, where a pusher is bored
+
+Eye-reported: *"can we make the alarm toggle pusher radiate out incidental to
+the circumference so that the stem would project through the center (like other
+stems)?"* — and the reading behind the question was exactly right.
+
+The press **direction** was already radial: `_pushU` is the unit vector at the
+column wheel's own azimuth. The **line** was not. It was that radius displaced
+sideways by `ALARM_PUSH_CHORD` = 5.01226, so its axis missed the movement's
+centre by that much and crossed the case band **6.213° off the band's own
+normal**. A case-maker would have had to bore the pusher tube askew, which no
+cased watch has, and which is visible at the band.
+
+### The offset is a requirement on the line, not a placement of it
+
+The pin-in-slot coupling §163 built wants exactly one thing here: perpendicular
+offset `ALARM_DRIVE_OFFSET` from the WHEEL's centre, with the stroke straddling
+the foot of that perpendicular. It does not care where the line otherwise runs.
+So the same offset is available by ROTATING the line instead of translating it,
+and a line through the origin achieves it at
+
+```
+Δ = asin(ALARM_DRIVE_OFFSET / |ALARM_COL_POS|) = asin(5.01226 / 24.862) = 11.6307°
+```
+
+taken WITH the saw's own drive sign, so the line stays on the side of the wheel
+the teeth are cut for and §43's direction assert is untouched. **Nothing in the
+mechanism's spec moves** — same offset, same travel, same one-tooth equality —
+which makes this a fold in position space, the only currency P3 allows.
+
+### `_pushBase` needed no edit, and that is not luck
+
+`pinRest` and `_pushBase` are both written in the `(û, perp)` frame, so the
+entire pin-in-slot construction is already blind to which azimuth `û` points.
+§33's comment claimed as much — *"the tangent construction stays
+azimuth-invariant (that work is what makes the module rotation free)"* — and
+that property, written for `?alarmmod=`, is exactly what this change needed.
+With the azimuth above,
+
+```
+(wheel + CHORD·perp) · perp = R·sin(θw − θs) + drive·d = 0     exactly
+```
+
+so the foot of the perpendicular lands ON the line through the origin by
+construction rather than by adjustment.
+
+### Measured off the built metal
+
+| | before | after |
+|---|---|---|
+| the line misses the movement's centre by | 5.01226 | **0** |
+| stem axis vs the radius through its cap | 6.213° | **0°** |
+| perpendicular offset from the wheel | 5.01226 | **5.01226** |
+| one press carries | one tooth, 0 overrun | one tooth, 0 overrun |
+
+### Two things the change had to pay for
+
+**The plate's riser slot is a frozen literal, and boot caught it at once.**
+`tqSlots` is built long before these constants exist, so the convention is
+frozen-literal-plus-tripwire (§43's, the §35/§68 rod-bore pattern):
+
+```
+§43: the plate's riser slot is off the derived track —
+  literal (24.03, -0.90)→(26.68, -0.44) vs derived (23.00, -0.70)→(25.68, -0.78)
+```
+
+Re-frozen — the fourth time this slot has been, after §112's module rotation
+and §163's two. The new one is nearly **tangential** to the old, which is the
+point: the track's own direction turned by Δ.
+
+**The degenerate case is named rather than clamped.** A wheel closer to the
+centre than the offset its own coupling needs has NO radial line at that offset
+— a geometric impossibility rather than a tight fit — and `asin` would return
+NaN and poison every station downstream in silence. It warns with both numbers.
+
+### The instrument was rewritten to measure rather than compute
+
+`probe-radial-pusher`'s first cut derived the bore angle as `asin(d / capR)`
+from the old construction and printed it as a fact. That would have kept
+printing a plausible number after the fix while measuring nothing — the failure
+this repo keeps finding in its own instruments (§169's `probe-87-pawl` band
+filter, TODO 90's vertex test on a `heightSegments 1` cylinder). It now reads
+the stem's own axis off its world quaternion and takes the angle against the
+radius through its cap.
+
+### What the report says
+
+Battery **35/35**, boot silent. The `--report` diff against the base is ten
+differing leaves and every one is accounted for:
+
+- `inspection.census.*` (×5) — broad-phase counters. `unitPairPass` rises
+  637419 → 640001: more pairs prune early, which is more clearance, not less.
+- `stockFloor.waived.{17,18,38}.where` — three `where` strings only, the
+  torsion coil, the pusher's return spring and the guide boss at their new
+  stations. Every row's `mm`, `kind`, `part` and `debt` unchanged: no new debt.
+- `transfers.rows.14.quantities.devLen_u` — 11.53462311503601 →
+  11.534623115036013. **Three parts in 10¹⁵**, last-bit noise from building the
+  coil on rotated trig inputs, four orders under §169's 1e-3 chord tolerance.
+  Named rather than passed over, because a moved report is the acceptance.
+- `fingerprint.hash` — the metal moved.
+
+**Not one gate-relevant list changed**: no violations, no unwaived rows, no
+CONFIRMED overlaps, no FORBIDDEN pairs. `alarmHandoffs` does not appear in the
+diff at all, so all 13 declared contacts are byte-identical. The stem swings
+about 5.4° round the band and crosses nothing.
