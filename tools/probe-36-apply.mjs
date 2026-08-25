@@ -36,7 +36,7 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 
-const ROUTE = process.argv[2] || '26,0,-6;26,0,3;31,0,3';
+const ROUTE = process.argv[2] || '-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3';
 const BUSH = process.argv[3] ?? '0,0.33';
 const port = process.env.PORT || '8471';
 const root = process.env.ROOT || '..';
