@@ -879,7 +879,15 @@ const SPEC_POINTS = [
   // carrying one bush — the least route that exercises every part of the
   // solve: a bore, a knuckle, a bearing declaration, and a free span shorter
   // than its own leg.
-  { name: 'route=2-leg', q: 'route=20,20,-6;20,20,2;26,20,2&routebush=0,0.6', expect: 'silent',
+  //
+  // ITS COORDINATES WERE SOLVED, NOT CHOSEN. The first canonical here was
+  // hand-typed and ran straight through the alarm barrel — and it BOOTED
+  // SILENT, because nothing at boot checks a route against the movement:
+  // that is the sketch surface's job, and a hand-typed URL never passes
+  // through it. probe-36-apply caught it as FORBIDDEN at every pose. This
+  // one came out of checkRoute itself, run over a ring of candidate
+  // stations at clearance 0.6, which is what routing is FOR.
+  { name: 'route=2-leg', q: 'route=26,0,-6;26,0,3;31,0,3&routebush=0,0.33', expect: 'silent',
     why: '§36 Apply — a committed route becomes metal: one back-plate bore, one knuckle, one footed bush' },
   // The refusal, asserted as a WARNING rather than a silence: a route that
   // meets a plate edge-on is a channel through it, and Apply must say so and

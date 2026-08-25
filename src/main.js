@@ -53,6 +53,7 @@ import {
   STEEL_E_PA, cantileverK_N_per_m,            // §137: the one steel, the one cantilever law
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
+  SLENDER_OVERHANG_K,                         // §54: an overhang's effective length — §36 sizes against what the check MEASURES
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
@@ -1889,13 +1890,28 @@ const routeApplySolve = (() => {
     const d = { x: b.x - a.x, y: b.y - a.y, z: b.z - a.z };
     const len = Math.hypot(d.x, d.y, d.z);
     if (!(len > 1e-6)) return refuse(`leg ${i} has zero length`);
-    // The leg's own stations split it; the longest gap is what §54 measures.
+    // The leg's own stations split it, and what §54 measures is not the raw
+    // gap but the EFFECTIVE one: a length past the last bearing bends like a
+    // cantilever, so it is charged SLENDER_OVERHANG_K. Sizing against the raw
+    // gap therefore lands the built bar OVER the ceiling it was sized by — the
+    // probe measured exactly that, λ 35.3 against 27, on a leg whose two
+    // overhangs are the only lengths it has. Size against the same measure the
+    // check applies, and the result is λ ≤ SLENDER_TARGET by construction: the
+    // ceiling binds at effL/27, and where §50's floor binds instead the bar is
+    // thicker than the ceiling asked for, so λ can only come in under it.
     const ts = ROUTE_SPEC.bushes.filter((s) => s.i === i).map((s) => s.t).sort((x, y) => x - y);
-    let free = 0, prev = 0;
-    for (const t of [...ts, 1]) { free = Math.max(free, (t - prev) * len); prev = t; }
-    const thick = Math.max(free / SLENDER_TARGET, STOCK_MIN_U);
+    const cuts = [0, ...ts, 1].map((t) => t * len);
+    let free = 0, effL = 0;
+    for (let k = 0; k < cuts.length - 1; k++) {
+      const gap = cuts[k + 1] - cuts[k];
+      if (!(gap > 1e-9)) continue;
+      const overhang = k === 0 || k === cuts.length - 2;
+      free = Math.max(free, gap);
+      effL = Math.max(effL, overhang ? gap * SLENDER_OVERHANG_K : gap);
+    }
+    const thick = Math.max(effL / SLENDER_TARGET, STOCK_MIN_U);
     const r = flatsR(thick, ROUTE_FLATS_N);
-    legs.push({ i, a, b, dir: { x: d.x / len, y: d.y / len, z: d.z / len }, len, free, thick, r, stations: ts });
+    legs.push({ i, a, b, dir: { x: d.x / len, y: d.y / len, z: d.z / len }, len, free, effL, thick, r, stations: ts });
     // Where this leg crosses a slab it needs a BORE, and the bore is this
     // route's alone to compute: the swept registry samples only registered
     // units and the back plate is not one, so checkRoute structurally cannot

@@ -394,6 +394,15 @@ export const SLENDER_MAX = 30;
 // 10% headroom, so a part that drifts slightly still passes and one that
 // drifts a lot still fails.
 export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
+// An OVERHANG past the last bearing bends like a cantilever, and §54 charges
+// it a length multiplier for that — ∛(48/3), the ratio of a midspan-loaded
+// simple beam's stiffness to a tip-loaded cantilever's, taken into LAMBDA
+// space. The full derivation, and why it is a bending measure rather than
+// buckling's K, is written at checkSlenderness in inspect.js, which is where
+// a reader of the CHECK meets it. It lives here because it is not only the
+// check's: anything SIZED against §54's ceiling has to size against what §54
+// actually measures, and §36's applied arbors do (see routeApplySolve).
+export const SLENDER_OVERHANG_K = Math.cbrt(48 / 3);   // 2.5198
 // FLAT-SPRING stock. §50's spring floor is 0.03 mm and its own basis says why
 // that is a floor and not a target: "real hairsprings run 0.02-0.04 mm; flat
 // springs THICKER". A click detent or a feeler return is a flat blade, not a
