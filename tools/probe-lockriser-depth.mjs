@@ -1,4 +1,20 @@
-// HOW DEEP is alarmLockBeakRiser in the ratchet skirt, and does it alternate?
+// HOW DEEP is a RISER in the ratchet skirt, and does it alternate?
+//
+// §171 widened this from one rod to the CLASS, because TODO 90's item 4 asks
+// for exactly that: `alarmLockBeakRiser` is one of at least three rods that
+// climb between strata beside the wheel, and a fix applied to one of them and
+// not measured against the others is a fix that will be re-discovered. Every
+// rod named in RODS below is measured the same way, in the same run.
+//
+// AND THE POLYGON TEST NOW HAS A CHAPERONE, because widening it exposed a way
+// it can cry wolf. `inPoly` is a crossing test, so an axis that lands ON a cut
+// edge resolves arbitrarily — and when it resolves INSIDE with an edge distance
+// of 0, the depth formula `dEdge + rR` returns the rod's own radius as if it
+// were a penetration. That is exactly what `alarmLinkBeakPost` produced: 0.1665
+// "deep", which is its radius to four places. Two independent readings are
+// printed beside it now — `meshClearance` against the skirt, and the in-plane
+// distance from the axis to the nearest SKIRT VERTEX inside the shared z band —
+// and a row where they disagree says so instead of being believed.
 //
 // meshClearance clamps at 0, so "touching" and "buried" are the same reading.
 // This measures in the WHEEL's own frame against userData.ratchetPoly — the
@@ -23,7 +39,8 @@ const out = await p.evaluate(async () => {
   const I = await import('./src/inspect.js');
   const clock = window.__clock;
   const find = (n) => { let r = null; clock.scene.traverse((o) => { if (o.name === n) r = o; }); return r; };
-  const riser = find('alarmLockBeakRiser'), skirt = find('alarmColSkirt');
+  const RODS = ['alarmLockBeakRiser', 'alarmLinkBeakPost'];
+  const skirt = find('alarmColSkirt');
   const wheelGroup = skirt.parent;
   const poly = wheelGroup.userData.ratchetPoly;
   if (!poly) return { err: 'no ratchetPoly' };
@@ -41,10 +58,15 @@ const out = await p.evaluate(async () => {
 
   clock.resetInputs(); clock.scene.updateMatrixWorld(true);
   const sb = new THREE.Box3().setFromObject(skirt);
+
+  const out = [];
+  for (const rodName of RODS) {
+  const riser = find(rodName);
+  if (!riser) { out.push({ rod: rodName, missing: true }); continue; }
+  clock.resetInputs(); clock.scene.updateMatrixWorld(true);
   const rb = new THREE.Box3().setFromObject(riser);
   const zOverlap = Math.min(sb.max.z, rb.max.z) - Math.max(sb.min.z, rb.min.z);
 
-  const v = new THREE.Vector3();
   const rows = [];
   for (const alarmOn of [0, 1]) {
     let worst = 0, worstAt = null, insideMax = 0, n = 0;
@@ -97,18 +119,55 @@ const out = await p.evaluate(async () => {
         restInside: in2, restR: +Math.hypot(a2.x, a2.y).toFixed(4) });
     }
   }
-  return {
+  // THE CHAPERONE, at rest: two readings the polygon cannot fake.
+  I.enterAxis(clock);
+  clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windAccumTurns: 0,
+                  alarmOn: 0, alarmPressCycle: 0 });
+  clock.scene.updateMatrixWorld(true);
+  const rR0 = riser.geometry.parameters.radiusTop;
+  const axisW = riser.getWorldPosition(new THREE.Vector3());
+  const zLo = Math.max(rb.min.z, sb.min.z), zHi = Math.min(rb.max.z, sb.max.z);
+  const pos = skirt.geometry.getAttribute('position');
+  const vv = new THREE.Vector3();
+  let nearest = Infinity;
+  for (let k = 0; k < pos.count; k++) {
+    vv.fromBufferAttribute(pos, k).applyMatrix4(skirt.matrixWorld);
+    if (vv.z < zLo - 1e-9 || vv.z > zHi + 1e-9) continue;
+    nearest = Math.min(nearest, Math.hypot(vv.x - axisW.x, vv.y - axisW.y));
+  }
+  out.push({
+    rod: rodName,
+    rodR: +rR0.toFixed(4),
     riserBand: [+rb.min.z.toFixed(4), +rb.max.z.toFixed(4)],
-    skirtBand: [+sb.min.z.toFixed(4), +sb.max.z.toFixed(4)],
     zOverlap: +zOverlap.toFixed(4),
+    meshClear: +I.meshClearance(riser, skirt).toFixed(4),
+    vertexGap: Number.isFinite(nearest) ? +(nearest - rR0).toFixed(4) : null,
     rows,
-  };
+  });
+  }
+  // the floor every one of them is judged by — §163's, applied to the class
+  let wheelGroup2 = null;
+  clock.scene.traverse((o) => { if (o.name === 'alarmColSkirt') wheelGroup2 = o.parent; });
+  let tipR = 0; for (const q of wheelGroup2.userData.ratchetPoly) tipR = Math.max(tipR, Math.hypot(q.x, q.y));
+  return { skirtBand: [+sb.min.z.toFixed(4), +sb.max.z.toFixed(4)], tipR: +tipR.toFixed(4), rods: out };
 });
 if (out.err) { console.log(out.err); process.exit(1); }
-console.log(`riser z ${out.riserBand[0]} .. ${out.riserBand[1]}`);
-console.log(`skirt z ${out.skirtBand[0]} .. ${out.skirtBand[1]}`);
-console.log(`they share ${out.zOverlap} of z — so the riser passes THROUGH the saw's band\n`);
-for (const r of out.rows)
-  console.log(`  alarmOn=${r.alarmOn}: worst over the press ${String(r.worstDepth).padStart(8)} at cycle ${r.at}`
-    + `   ·   AT REST ${String(r.restDepth).padStart(8)} (axis ${r.restInside ? 'INSIDE' : 'outside'} the saw, r ${r.restR})`);
+console.log(`skirt z ${out.skirtBand[0]} .. ${out.skirtBand[1]}   ·   saw tips r ${out.tipR}`);
+for (const rod of out.rods) {
+  if (rod.missing) { console.log(`\n${rod.rod}: MISSING`); continue; }
+  console.log(`\n${rod.rod}  ⌀${(rod.rodR * 2).toFixed(3)}   z ${rod.riserBand[0]} .. ${rod.riserBand[1]}`);
+  console.log(`  shares ${rod.zOverlap} of z with the saw`
+    + (rod.zOverlap > 0 ? ' — it passes THROUGH the band, so radius is the only free direction' : ' — it never enters the band'));
+  console.log(`  its floor = tip + CLEAR_MARGIN + own radius = ${(out.tipR + 0.15 + rod.rodR).toFixed(4)}`);
+  for (const r of rod.rows)
+    console.log(`  alarmOn=${r.alarmOn}: worst over the press ${String(r.worstDepth).padStart(8)} at cycle ${r.at}`
+      + `   ·   AT REST ${String(r.restDepth).padStart(8)} (axis ${r.restInside ? 'INSIDE' : 'outside'} the saw, r ${r.restR})`);
+  console.log(`  chaperone at rest: meshClearance ${rod.meshClear}   ·   nearest skirt vertex in band leaves ${rod.vertexGap}`);
+  const polySaysBuried = rod.rows.some((r) => r.restInside);
+  const othersSayClear = rod.meshClear > 0 && (rod.vertexGap === null || rod.vertexGap > 0);
+  if (polySaysBuried && othersSayClear)
+    console.log(`  *** DISAGREEMENT: ratchetPoly calls the axis buried, both independent readings call it clear.`
+      + ` An axis ON a cut edge resolves arbitrarily in a crossing test and then reads its own radius (${rod.rodR}) as depth.`
+      + ` Believe the two that measure the METAL.`);
+}
 await b.close(); srv.kill();

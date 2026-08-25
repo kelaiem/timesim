@@ -2247,8 +2247,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickStud', why: '§99: the click on its shoulder screw (the hook carries no bore — the blade seats on the stud, the set-up click\'s own construction)' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickScrewHead', why: '§99: the click under its screw head — the head retains it axially, faces sharing the plane' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickSpring', why: '§99: the spring\'s torus kisses the click\'s flank by construction (tube tangent at the local half-width) — §48-declared spring contact, kept as a row because a float hair puts a kiss on either side of zero' },
-  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'CylinderGeometry#6', why: 'lock lever on its pivot post (index moved 4→6 when TODO 24 added the beak riser+nose to the lever)' },
-  { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'CylinderGeometry#6', why: 'lever tail on the same post' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'alarmLockPivotPost', why: 'lock lever on its pivot post (this selector was CylinderGeometry#4, then #6 when TODO 24 added the beak riser+nose, then #5 when §171 deleted a sibling mesh — §171 named the post so the row stops being a claim about what else the unit contains)' },
+  { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'alarmLockPivotPost', why: 'lever tail on the same post' },
   { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'alarmLockSpring', why: '§102: the return blade\'s tip pressing the arm\'s wheel-side flank — the §48-declared spring contact (a 0.05 preload overlap at the lifted pose, deeper as the column presses the lever engaged)' },
   // TODO 87 step 4 — ONE ROW WAS ANSWERING TWO QUESTIONS. While all three
   // bodies answered to `alarmColWheel` this was a single row reading "column
@@ -6224,6 +6224,11 @@ export const STOCK_KIND_BY_MESH = {
   // TODO 11 tranche five. Three parts that were being judged as WHEELS for
   // want of a name, each measured and kinded rather than thickened:
   alarmLockBeakRiser: 'pivot',       // the beak's post off the lock tail — ⌀ 0.1061 mm on its flats, over the pivot floor
+  // §171 named the lock lever's own pivot post to stop its joint rows riding a
+  // mesh index. Kinding it here is the consequence of that name, not a new
+  // judgement: r 0.4 on a 10-gon reads ⌀ 0.2882 mm across the flats, four times
+  // the pivot floor — the same class as the two posts above it.
+  alarmLockPivotPost: 'pivot',
   alarmFollowerSpringStud: 'pivot',  // the follower blade's grounded stud — ⌀ 0.1137 mm (alarmHammerSpringStud's twin)
   // The striking arbor's turned step between cam and pinion. Its row is the
   // STEP's length (0.3 u), not a section: the census does not subdivide an

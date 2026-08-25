@@ -17749,3 +17749,233 @@ differing leaves and every one is accounted for:
 CONFIRMED overlaps, no FORBIDDEN pairs. `alarmHandoffs` does not appear in the
 diff at all, so all 13 declared contacts are byte-identical. The stem swings
 about 5.4° round the band and crosses nothing.
+
+## §171 — two beaks on one lever: one was a draft nobody deleted, the other stood in the saw
+
+Eye-reported in one sentence — *"there seems a phantom / vestigial steel arm
+that collides with the column wheel every other toggle"* — and it turned out to
+name two different defects on the same lever, with two different repairs. The
+first part is dead metal and the fix is a deletion. The second is live metal in
+the wrong place and the fix is a station.
+
+TODO 90 opened the audit this closes finding 1 of: the column wheel's INPUT
+side was rebuilt across §163, §164, §169 and §170, and its OUTPUT side — the
+three riders reading the castellations — had never been asked the same
+questions.
+
+### 1. `alarmSwitchBeak`, a pre-§68 draft still bolted to the lever
+
+A `BoxGeometry(1.0, 0.4, 0.4)` in steel, whose own source comment described a
+wheel that stopped existing at §68:
+
+> the wheel stands 3.8 behind the pivot, so the beak's near face lands at
+> 3.8 − 2.35 = 1.45 from the wheel axis — 0.05 of engagement into the columns'
+> outer face (1.5)
+
+§68 took the wheel to real chronograph scale (`ALARM_COL_BASE_R` 5.7, not 1.5)
+and moved the pivot to 8.0 behind it, not 3.8. The bar stayed where it was cut,
+spanning r 5.654 .. 6.653 from the wheel's axis — straddling the saw's 6.384 tip
+circle and reaching inside the 5.7 base disc.
+
+TODO 24 had already built this read properly thirty lines above (`alarmLockBeak`
+on `alarmLockBeakRiser`, the nose whose inward face lands on the column's outer
+wall). It did not delete the draft it replaced, so the lever carried **two beaks
+at the same station**, one of them wired to nothing: `alarmSwitchBeak` appears in
+no `MECH_GRAPH` edge, no handoff row, no declared joint, and nowhere in
+`inspect.js` at all.
+
+**Worth saying plainly, because it is the honest part of the record:** before
+§169 the saw ran z 9.6011 .. 9.9178 against this bar's 9.8228 .. 10.2228 — 0.095
+of shared band, with the radial straddle above it. §169 raised the wheel cluster
+1.1396 to make room for the pawl's torsion coil and lifted the saw clear of the
+bar **incidentally**. The collision stopped by luck; the dead metal stayed.
+Nothing replaces it — the member it was a draft of is already built.
+
+### 2. The lock beak's riser was not passing through the teeth. It was parked in them.
+
+"Every other toggle" is a parity, and a parity is a tell — so the first thing
+measured was whether anything alternates. Nothing does:
+
+| | `alarmOn` = 0 | `alarmOn` = 1 |
+|---|---|---|
+| worst over the press | 0.2144 | 0.2144 |
+| **at rest** | **0.14 deep**, axis INSIDE the saw at r 6.15 | **0.14 deep**, axis INSIDE at r 6.15 |
+
+The rod's **axis** sits inside the polygon the teeth were cut from, in both
+alarm states, continuously. What the eye reads as alternation is the lock's own
+swing making one fixed interpenetration more and less conspicuous. That decides
+the repair: it is not a timing fix, and no pose avoids it.
+
+**Two method notes, both of which cost a measurement.** The riser is a
+`CylinderGeometry` with `heightSegments 1`, so every vertex it owns sits on one
+of the two end rings and NONE inside the saw's band — the first cut of the depth
+probe read `0 of 0 vertices` and would have reported the defect as absent
+(MODELING.md rule 5, in the instrument rather than the model, for the second
+time this month; §169's `probe-87-pawl` fix was the first). A rod's in-plane
+footprint is a DISC about its axis, and that is what must be tested. And
+`meshClearance` clamps at 0, so it cannot tell *touching* from *buried* — the
+depth had to be taken against `userData.ratchetPoly` in the wheel's own frame,
+`probe-87-pawl`'s method.
+
+**Why every gate stayed green.** `Alarm lock ⇄ Alarm switch` is a cross-unit
+pair, so `intraUnit` structurally never looks at it; and that pair is EXPECTED,
+because the beak genuinely is meant to touch the castellations. TODO 6's named
+residue is that an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row hands the
+blanket excuse to **every** mesh in both units — including a rod that has no
+business anywhere near the other one. This is that residue arriving as a real
+defect rather than as a caveat.
+
+### The fix is radial, and §163 had already derived it
+
+The riser must cross the saw's z band. Its beak is above the castellations and
+its root is on the tail below the skirt, and there is no stratum that avoids
+that — so the only free direction is **radius**, and the saw sets the floor. The
+constraint is the one §163 wrote one tier down for the driver pawl's own post,
+measured from the face that actually sweeps the tips rather than from the axis:
+
+```
+riser radius ≥ ALARM_COL_TIP_R + CLEAR_MARGIN + its own radius
+             = 6.384 + 0.15 + 0.14 = 6.674        against 6.15 built
+```
+
+**The floor is not automatically a home**, so the whole corridor was scanned
+rather than assumed — §163 put the driver pawl's post at 7.067 with a 0.533
+boss, whose swept annulus starts at 6.534, and the riser's floor lands close to
+that inner edge. `tools/probe-171-corridor.mjs` sweeps a probe cylinder at the
+riser's own azimuth and z span over the press at both parities, against every
+mesh sharing its band. With the phantom deleted the corridor is open from the
+floor out to ≈7.40, where the lock's own pivot post takes over as the binding
+member — and the saw's half of it rises on a unit slope that puts the floor
+exactly on `CLEAR_MARGIN`:
+
+| candidate radius | worst clearance | binding member |
+|---|---|---|
+| 6.60 | 0.076 | `alarmColSkirt` |
+| 6.65 | 0.126 | `alarmColSkirt` |
+| **6.674 — the floor** | **0.150** | `alarmColSkirt` |
+| 6.70 | 0.176 | `alarmColSkirt` |
+| 7.40 | 0.134 | `alarmLockPivotPost` |
+
+So the station is the floor: one constraint, nothing chosen, and a 0.73-wide
+window it sits at the bottom of rather than a tight fit it was pushed into.
+
+### The beak reaches out to meet it, because P0 does not move for packaging
+
+0.524 outboard is 0.524 further from the columns the beak has to touch, and that
+contact is the `alarmHandoffs` row `column outer face ⇄ lock beak`. Moving the
+contact to suit the packaging is exactly what the P3 rules forbid, so the
+displacement is paid in the nose's **length** instead:
+
+```
+noseLen = riserWheelR + riserR − ALARM_COL_BASE_R = 6.674 + 0.14 − 5.7 = 1.114
+```
+
+which is the length that reaches from the column's outer wall out to the
+riser's far side — full cover of the post's disc, derived, not padded. The
+inward face stays at `pivotToCol − ALARM_COL_BASE_R` = 2.3 from the pivot, so
+the lever ratio, the lift law and the handoff row are all untouched. The beak is
+now a bracket cantilevered over the saw to reach the columns, which is the
+anatomy §163 gave the driver's pawl at the other end of the same wheel: a post
+outside the tip circle carrying a member that reaches in.
+
+`pivotToCol` and `noseFaceReach` are read from `ALARM_COL_POS` and
+`alarmLockPivot` now rather than repeating the `(3.8 + R − 1.5)` literal, and
+`ALARM_COL_TIP_R` moved up to the wheel's own dimension block so the riser and
+§163's pawl post derive from one declaration of the same circle — §68's plate-edge
+assert stopped carrying its own `1.12 * ALARM_COL_BASE_R` copy in the same edit.
+
+### Measured off the built metal
+
+| | before | after |
+|---|---|---|
+| riser axis, from the wheel's arbor | 6.15 | **6.674** |
+| depth inside the saw, at rest, both parities | 0.14 | **none — 0.1563 clear** |
+| worst `alarmLockBeakRiser ⇄ alarmColSkirt` over the press | buried | **0.1563** |
+| `alarmLockBeakRiser` in `probe-colwheel-foul`'s under-margin list | the headline row | **absent** |
+| `alarmLockBeak ⇄ alarmColCastellations` | 0 (the declared kiss) | **0** (unchanged) |
+| beak inward face, from the lock pivot | 2.3 | **2.3** |
+| `alarmSwitchBeak` | r 5.654 .. 6.653, wired to nothing | **deleted** |
+
+Two boot asserts carry it (rule 6): the riser's outer face against the tip
+circle plus one margin, and the beak's far end against the riser's far side —
+the second because a post standing out past the end of the member it carries is
+the §169 defect the same eye reported two rounds ago, and it is worth being
+unable to rebuild it silently.
+
+### The report diff says it better than any of those rows
+
+Not one gate-relevant list moved — 0 violations, 0 FORBIDDEN, 0 CONFIRMED, 0
+unwaived, the same 81 contacting pairs — and the whole change shows up in what
+one of those pairs SAYS. `inspection`'s row for `Alarm lock ⇄ Alarm switch`:
+
+```
+before   beat: 97/97 poses (f 0–1); crown: 49/49; reserve: 61/61;
+         wind: 721/721; arrest: 97/97; stemSlip: 97/97; train: 97/97
+after    alarmPress: 10/65 poses (f 0.0781–0.2188)
+```
+
+Before, those two units were in contact at EVERY pose of EVERY axis, including
+axes that move neither of them — which is what permanent buried metal looks
+like from inside the instrument. After, they touch only across the window where
+the beak actually kisses a column. **That row was EXPECTED the whole time, and
+EXPECTED is what let it read `721/721` without anyone being told.** The rest of
+the diff is bookkeeping for one deleted mesh: 627 → 626 meshes, 580 → 579
+geometries, 338 973 → 338 961 triangles, `stockFloor` 623 → 622 rows checked,
+`intraUnit` 316 → 315 movers and 5240 → 5237 MF pairs, `restoring`'s lock frame
+one member shorter, and a new fingerprint.
+
+### 3. Deleting a mesh broke two declarations, which is the declarations' fault
+
+The battery failed on the first run after the deletion, and not where the work
+was:
+
+```
+gate FAIL  intraUnit: 0 unmatched selectors
+  unmatchedIntraUnitSelector  Alarm lock  BoxGeometry#0 ⇄ CylinderGeometry#6
+    "lock lever on its pivot post (index moved 4→6 when TODO 24 added the
+     beak riser+nose to the lever)"   miss: CylinderGeometry#6
+```
+
+`INTRA_UNIT_CONTACTS` selects an unnamed mesh as `Type#n`, where n is its
+position in the unit's mesh list — so both of the lock lever's pivot rows were
+claims about *what else the unit contains*. TODO 24 shifted them 4→6 by ADDING
+two meshes; §171 shifted them 6→5 by REMOVING one. Their own `why` string was
+already a record of the first shift.
+
+The post is now `alarmLockPivotPost` and the rows select it by name, which is
+the fix the keyless works took at TODO 50 and the winding idlers at §99. Kinding
+follows the name rather than preceding it: `PART_STOCK` gets a `'pivot'` entry
+because a named mesh is judged by name, and r 0.4 on a 10-gon reads ⌀ 0.2882 mm
+across its flats — four times the pivot floor, so the entry records a fact
+rather than granting an exemption.
+
+### 4. The riser CLASS, since TODO 90 item 4 asked for it
+
+`probe-lockriser-depth.mjs` was widened from one rod to the class, and the
+second rod it measured — `alarmLinkBeakPost`, which carries the §35 arming
+chain's beak — came back reading 0.1665 deep inside the saw at both parities.
+**It is not.** Widening the probe exposed a way its polygon test can cry wolf:
+`inPoly` is a crossing test, so an axis landing ON a cut edge resolves
+arbitrarily, and when it resolves INSIDE with an edge distance of 0 the depth
+formula `dEdge + rR` hands back the rod's own radius as a penetration. 0.1665 is
+that rod's radius to four places.
+
+Two independent readings settle it, and the probe prints them beside the
+polygon's verdict now rather than after the fact:
+
+| `alarmLinkBeakPost` at rest | |
+|---|---|
+| `ratchetPoly` | axis INSIDE, **0** from the nearest cut edge |
+| `meshClearance` vs `alarmColSkirt` | **0.1267** clear |
+| nearest skirt vertex in the shared z band | leaves **0.1675** of surface gap |
+
+A row where the polygon disagrees with both now says so in the output. The link
+post's real debt is the one TODO 90 already filed — 0.0929 to the skirt over the
+toggle, inside `CLEAR_MARGIN` — and it stays TODO 90's, unfixed here and
+measured honestly rather than escalated to a collision it is not.
+
+**The general point is worth keeping.** Finding 1's whole case rested on a
+polygon test; it was right, and it was corroborated by `meshClearance` reading 0
+and by an eye. The moment the same test was pointed at a second rod it produced
+a confident wrong number. An instrument that has been right once is not thereby
+an instrument that reports the metal.

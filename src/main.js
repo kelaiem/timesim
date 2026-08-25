@@ -18392,6 +18392,15 @@ alarmLockLever.position.set(alarmLockPivot.x, alarmLockPivot.y, ALARM_LOCK_Z);
 alarmLockUnit.add(alarmLockLever);
 {
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.62, 10), MATS.nickel);
+  // NAMED by §171, and the name is the fix rather than a label. Both of this
+  // unit's INTRA_UNIT_CONTACTS rows selected this post by INDEX
+  // ('CylinderGeometry#n'), which is a position in the unit's mesh list — so it
+  // moved once when TODO 24 added the riser and nose (4→6) and again the moment
+  // §171 DELETED a sibling (6→5), each time failing the check as a stale
+  // selector. An index selector is a claim about what else the unit contains;
+  // a name is a claim about this part. (The keyless works' stem journal took
+  // the same fix at TODO 50, and the winding idlers at §99.)
+  post.name = 'alarmLockPivotPost';
   post.rotation.x = Math.PI / 2;
   post.position.set(alarmLockPivot.x, alarmLockPivot.y, TQ_TOP_Z + 0.31 - 0.01);
   alarmLockUnit.add(post);
@@ -18443,6 +18452,11 @@ const ALARM_COL_STEP = Math.PI / ALARM_COL_COLUMNS; // half a pitch per actuatio
 // bound: the diameter takes all of it, and the FEATURE DEPTHS — which
 // the plate-top band leaves free — go to real proportions.
 const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scale (4–6 mm on a 30 mm movement)
+// The saw's tip circle, as geometry.js cuts it. Declared HERE rather than in
+// §163's driver block below, because §171's beak riser has to be sited against
+// the same circle and is built 2000 lines earlier — one declaration, two
+// consumers, no second literal.
+const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;
 const ALARM_COL_BASE_H = 0.7;      // base disc 0.27 mm
 const ALARM_COL_H = 1.4;           // castellation tier 0.53 mm — real proportion at real diameter
 const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
@@ -18511,7 +18525,7 @@ const ALARM_COL_POS = {
 };
 // §68's two bounds, asserted with the achieved numbers (rule 6):
 {
-  const reach = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y) + 1.12 * ALARM_COL_BASE_R;
+  const reach = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y) + ALARM_COL_TIP_R;
   if (reach > plateR - CLEAR_MARGIN + 1e-6)
     console.warn(`§68: wheel saw tips reach r ${reach.toFixed(2)}, plate-edge bound ${(plateR - CLEAR_MARGIN).toFixed(2)}`);
   const skirtBot = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U;
@@ -18539,24 +18553,59 @@ const ALARM_COL_POS = {
 //   and more. The alarmHandoffs row 'column outer face ⇄ lock beak'
 //   measures both parities every run.
 {
-  const noseFaceReach = (3.8 + ALARM_COL_BASE_R - 1.5) - ALARM_COL_BASE_R; // = 2.3, R-independent by the stand-off's own form
-  const noseLen = 0.6, noseW = 0.5;
+  // THE PIVOT-TO-WHEEL STAND-OFF, read from the one place that sets it — the
+  // wheel's own station, which is placed off alarmLockPivot along the engaged
+  // azimuth. Every reach below is measured from the pivot along that line.
+  const pivotToCol = Math.hypot(ALARM_COL_POS.x - alarmLockPivot.x,
+                                ALARM_COL_POS.y - alarmLockPivot.y);   // = 8.0
+  const noseFaceReach = pivotToCol - ALARM_COL_BASE_R;   // = 2.3 — the P0 contact face, fixed
+  const noseW = 0.5;
   const bandBot = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2;   // castellation floor above ALARM_LOCK_Z — rides the §68 raise
   const noseH = ALARM_COL_H * 0.6;
   const noseZ = bandBot + ALARM_COL_H / 2;       // mid-band, clear of the base disc below and the tier's top above
-  const riser = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, noseZ - noseH / 2 - 0.1, 10), MATS.steel);
+  const riserR = 0.14;
+  // §171 (TODO 90 finding 1) — WHERE THE RISER STANDS, derived instead of set.
+  //
+  // The riser must cross the SAW's z band: its beak is above the castellations
+  // and its root is on the tail below the skirt, and no stratum avoids that —
+  // so the only free direction is radius, and the saw sets the floor. Measured
+  // at rest, the riser stood at wheel-radius 6.15 with the saw's tips at
+  // ALARM_COL_TIP_R 6.384: 0.14 INSIDE the metal, in BOTH alarm states. It was
+  // not phasing through the teeth on alternate toggles — it was parked in them,
+  // and the every-other-press impression was the lock's own swing carrying it
+  // between a tooth and a gap.
+  //
+  // The constraint is the one §163 already derived for the driver pawl's post
+  // one tier down, which is the point: anything standing in the saw's z band
+  // clears the tip circle by one CLEAR_MARGIN, measured from the face that
+  // actually sweeps it (its own radius, not its axis).
+  const riserWheelR = ALARM_COL_TIP_R + CLEAR_MARGIN + riserR;   // 6.674
+  const riserReach = pivotToCol - riserWheelR;                   // 1.326 from the pivot
+  // THE BEAK REACHES OUT TO MEET IT. Its inward face stays at noseFaceReach —
+  // that face is the alarmHandoffs row 'column outer face ⇄ lock beak' and P0
+  // does not move for packaging — so the 0.524 the riser goes outboard is paid
+  // in the nose's LENGTH, not in the contact. The beak still lands on the riser
+  // because it now spans out to the riser's far side.
+  const noseLen = riserWheelR + riserR - ALARM_COL_BASE_R;       // 1.114
+  const riser = new THREE.Mesh(new THREE.CylinderGeometry(riserR, riserR, noseZ - noseH / 2 - 0.1, 10), MATS.steel);
   // TODO 11 tranche five: POST stock, declared rather than thickened — the
   // 10-gon's flats read 0.1061 mm, over the 0.07 pivot floor and under the
   // 0.12 wheel floor it was being judged by for want of a name. The
   // alarmSelPost precedent; zero geometry moved.
   riser.name = 'alarmLockBeakRiser';
   riser.rotation.x = Math.PI / 2;
-  riser.position.set(-(noseFaceReach - noseLen / 2 - 0.15), 0, (noseZ - noseH / 2 + 0.1) / 2);
+  riser.position.set(-riserReach, 0, (noseZ - noseH / 2 + 0.1) / 2);
   alarmLockLever.add(riser);
   const nose = new THREE.Mesh(new THREE.BoxGeometry(noseLen, noseW, noseH), MATS.steel);
   nose.name = 'alarmLockBeak'; // the handoffs row selects it by name (inspect.js couples by string)
   nose.position.set(-(noseFaceReach - noseLen / 2), 0, noseZ);
   alarmLockLever.add(nose);
+  // Rule 6, both halves of the fix, with the achieved numbers:
+  if (riserWheelR - riserR < ALARM_COL_TIP_R + CLEAR_MARGIN - 1e-9)
+    console.warn(`§171: the beak riser's outer face reaches ${(riserWheelR - riserR).toFixed(4)} from the wheel's arbor against the saw's tips at ${ALARM_COL_TIP_R.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN}`);
+  const beakOuter = noseFaceReach - noseLen;   // the nose's far end, as a reach from the pivot
+  if (beakOuter > riserReach - riserR + 1e-9)
+    console.warn(`§171: the beak ends at reach ${beakOuter.toFixed(4)} but its riser's far side is at ${(riserReach - riserR).toFixed(4)} — the nose no longer lands on the post that carries it`);
 }
 // §102 (TODO 31) — THE RETURN. The column could press the lever ENGAGED
 // and nothing lifted it: the pose law rose on (1 − colBlock) and §48's
@@ -20675,7 +20724,6 @@ alarmSwitchUnit.add(alarmPusherGroup);
 }
 
 // ————— §163: the driver's and the pawl's dimensions, every one derived —————
-const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;    // the saw's tip circle, as geometry.js cuts it
 // The pawl's PIVOT BOSS — bore plus wall, both at their own floors. Named here
 // because it is the member the pivot's radius has to be derived against, and it
 // is the one a first pass got wrong.
@@ -21680,18 +21728,37 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   if (gap > _pitch / 2) gap -= _pitch;
   if (Math.abs(gap) > 1e-9) console.warn(`alarm click phase: contact azimuths differ by a non-integer pitch (${gap.toFixed(4)}) — the flag and the gate would disagree`);
 }
-// The tail BEAK — the lock lever grows a nose at its tail end, in the column
-// band, riding the castellations. Part of the LEVER (it moves with it).
-{
-  const beak = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 0.4), MATS.steel);
-  beak.name = 'alarmSwitchBeak';
-  // Plan-depth matters as much as z: the wheel stands 3.8 behind the pivot,
-  // so the beak's near face lands at 3.8 − 2.35 = 1.45 from the wheel axis —
-  // 0.05 of engagement into the columns' outer face (1.5), not a bar shoved
-  // clean through the castellation ring (the owner circled exactly that).
-  beak.position.set(-1.85, 0, 0.72);
-  alarmLockLever.add(beak);
-}
+// §171 — THE TAIL BEAK THAT WAS ALREADY REPLACED, deleted rather than moved.
+//
+// A BoxGeometry(1.0, 0.4, 0.4) in MATS.steel stood here on the lock lever, and
+// its own comment described a wheel that has not existed since §68:
+//
+//   "the wheel stands 3.8 behind the pivot, so the beak's near face lands at
+//    3.8 − 2.35 = 1.45 from the wheel axis — 0.05 of engagement into the
+//    columns' outer face (1.5)"
+//
+// §68 took the column wheel to real chronograph scale — ALARM_COL_BASE_R 5.7,
+// not 1.5 — and the pivot now stands 8.0 behind it, not 3.8. A bar cut to
+// engage 0.05 into a 1.5 ring was left sitting across a 5.7 one, spanning r
+// 5.654..6.653 from the wheel's axis: straddling the saw's 6.384 tip circle
+// and reaching inside the 5.7 base disc.
+//
+// TODO 24 then built this read PROPERLY, thirty lines above — alarmLockBeak on
+// alarmLockBeakRiser, the nose that rises into the castellation band and whose
+// inward face lands EXACTLY on the column's outer wall, measured every run by
+// the alarmHandoffs row 'column outer face ⇄ lock beak'. It did not delete the
+// bar it replaced, so the lever carried TWO beaks at the same station, one of
+// them wired to nothing: `alarmSwitchBeak` appears in no MECH_GRAPH edge, no
+// handoff row, no declared joint, and nowhere in inspect.js at all.
+//
+// Reported by eye as "a phantom / vestigial steel arm that collides with the
+// column wheel", which it was: before §169 the saw ran z 9.6011..9.9178
+// against this bar's 9.8228..10.2228 — 0.095 of shared band with the radial
+// straddle above. §169 raised the wheel cluster 1.1396 for the pawl's torsion
+// coil and lifted the saw clear of it INCIDENTALLY, which is worth saying
+// plainly: the collision stopped by luck, and the dead metal stayed.
+//
+// Nothing replaces it. The member it was a draft of is already built.
 
 // ---------------------------------------------------------------------------
 // Mainspring / barrel winding state — barrelWindTurns is the ACTUAL wound
