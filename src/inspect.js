@@ -2337,6 +2337,14 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm switch — §28/§33's column work and pusher:
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'CylinderGeometry#7', why: '§121: the detent post and its second turned step — one post, two diameters' },
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'switchClickSpring', why: '§121: the switch click spring anchored on the detent post (kiss)' },
+  // §164 — the pusher's RETURN, TODO 87 step 5's metal. A collar on the stem, a
+  // fixed abutment hung off the plate's underside, and a coil between them.
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherCollar', why: '§164: the return coil\'s collar pressed on the stem — the face the spring bears against, travelling with the head' },
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherReturnAbutment', why: '§164: the stem running through the abutment\'s bore at PIVOT_BORE_CLEAR — a fixed ring the head slides in, and so a SECOND bearing station inboard of the guide boss' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnAbutment', b: 'alarmPusherReturnArm', why: '§164: the abutment and the arm that reaches out past the coil — the leg cannot climb at the abutment\'s own radius, because between the stem\'s bore and the plate there is 0.39 and a leg at §50\'s floor wants more' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnArm', b: 'alarmPusherReturnPost', why: '§164: and the post that climbs from the arm\'s end to the three-quarter plate\'s underside — one bracket, three bodies' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnSpring', b: 'alarmPusherReturnAbutment', why: '§164: the coil seated on its fixed abutment — the end that does not move' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnSpring', b: 'alarmPusherCollar', why: '§164: the coil bearing on the collar — the end that does. The coil is drawn as FRAMES across the stroke (the mainspring\'s precedent), so this contact is quantised by half a frame step, sized under CLEAR_MARGIN by construction' },
   { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherReach', why: '§163: the reach bar lapped onto the pusher stem\'s inner end — the section change, where the round rod that runs in the guide bore hands over to the flat blade that passes under the plate' },
   // TODO 87 finding 3 — THIS ROW USED TO NAME A PART THAT DOES NOT EXIST.
   // It read "the return coil seated round the pusher stem", and there is no
@@ -8658,16 +8666,18 @@ export const RESTORING_MEMBER_SCOPE = ['Alarm switch'];
 // excuses: if that mesh stops reversing, the row disappears and the waiver
 // goes stale — held by the same rule SLENDER_WAIVERS is (§54).
 export const RESTORING_MEMBER_WAIVERS = {
-  // TODO 87 finding 4, in one row. The pusher is the second reciprocator in
-  // 'Alarm switch' and its return is `ALARM_RETURN_S` — a settling time in the
-  // tick with no metal behind it. Before this tier the unit passed on the
-  // CLICK ARM's blade, which is a real spring answering for a body it does not
-  // touch. TODO 87 step 5 owns the fix and sites it: a fixed abutment hanging
-  // from the plate's underside inboard of a collar on the stem, blade between
-  // them, in the long free run between the riser and the guide boss.
-  'Alarm switch\u0000alarmPusherStem': 'TODO 87',
+  // EMPTY, and §164 is why. This table opened with exactly one row — the
+  // pusher's, citing TODO 87 — because its return was `ALARM_RETURN_S`, a
+  // settling time in the tick with no metal behind it, and before §162's member
+  // tier the unit had passed on the CLICK ARM's blade: a real spring answering
+  // for a body it does not touch. TODO 87 step 5 sited the fix and §164 built
+  // it, so the row goes rather than moving.
+  //
+  // Deleting a fix's waiver is structurally part of the fix (§137's covenant,
+  // and the staleness tier below enforces it): a waiver naming a body that IS
+  // answered is itself a failure, so this table cannot quietly outlive what it
+  // excused.
 };
-
 // How load-bearing a part is: how much of the movement is downstream of it in
 // MECH_GRAPH.drive, transitively. A missing return on the pallet fork would
 // mis-state the whole train below it; a missing return on a dial-side flag

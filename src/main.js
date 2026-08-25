@@ -50,7 +50,7 @@ import {
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
-  STEEL_E_PA, cantileverK_N_per_m,            // §137: the one steel, the one cantilever law
+  STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
 } from './layout.js';
 
@@ -20424,21 +20424,24 @@ const ALARM_PAWL_DPHI = 0.002, ALARM_PAWL_SCAN_N = 400, ALARM_PAWL_CYCLE_N = 96;
 const ALARM_PAWL_SPRING_DEPTH = STOCK_MIN_U;        // §50's floor across the blade (switchClickSpring's own 0.2 is under it — TODO 78)
 const ALARM_PAWL_SPRING_STANDOFF = 0.34;            // anchor off the arm's flank, switchClickSpring's
 // Hardened spring steel's usable elastic strain — the surface strain a blade
-// may work to and come back. σ_y ≈ 800 MPa for a hardened carbon spring band
-// against STEEL_E_PA; TODO 63 is filed precisely because switchClickSpring's
-// own blade exceeds it, so this is a constraint the repo already knows it owes.
-const SPRING_STRAIN_MAX = 800e6 / STEEL_E_PA;
-// How much weaker than the detent the pawl's return drag must be. Both sides
-// of that comparison are first-order beam arithmetic off the SAME modulus and
-// the same cantilever law, and layout.js says what that is worth in its own
-// words: the absolutes carry maybe a factor of two, "the RATIOS are what
+// may work to and come back. §164 moved the yield itself to layout.js, beside
+// the modulus, because the pusher's return COIL needs the same number under a
+// different loading and a second copy of it here would be two definitions of
+// one material.
+const SPRING_STRAIN_MAX = SPRING_SIGMA_Y_PA / STEEL_E_PA;
+// The margin between any two spring forces in this chain — how much weaker
+// than the detent the pawl's return drag must be, and (§164) how much stronger
+// than that drag the pusher's own return must be. One number for both because
+// it is one argument: every side of both comparisons is first-order beam
+// arithmetic off the SAME modulus, and layout.js says what that is worth in its
+// own words — the absolutes carry maybe a factor of two, "the RATIOS are what
 // conclusions rest on". So the margin has to clear the ratio's error, not the
 // absolutes' — 3× does, and it is what the mechanism can actually be built to.
 // (A first pass asked for an order of magnitude on the grounds that a 2× margin
 // sits inside the arithmetic's error. That reasoning applies the absolute
 // caveat to a ratio, and it costs a real blade: 10× wants 5.49 u of free
 // length against 3.67, with the anchor half again as far out.)
-const ALARM_PAWL_DRAG_HEADROOM = 3;
+const ALARM_SPRING_HEADROOM = 3;
 // THE DRIVER'S ANGLE IS THE PIN'S AZIMUTH — that is what a radial slot means,
 // and it is written once here so no consumer has to re-derive a sign. The
 // coefficient is the saw's own drive direction: with the pin at perpendicular
@@ -20595,7 +20598,7 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
   ALARM_PAWL_PHI_FREE = phiMin - ALARM_PAWL_STROKE;
   const U = UNIT_MM / 1000;                                     // m per model unit
   const clickTq_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
-  const noseFmax_N = clickTq_Nmm / (ALARM_PAWL_DRAG_HEADROOM * ALARM_COL_TIP_R * UNIT_MM);
+  const noseFmax_N = clickTq_Nmm / (ALARM_SPRING_HEADROOM * ALARM_COL_TIP_R * UNIT_MM);
   const a = ALARM_PAWL_SPRING_DEPTH, c = SPRING_FLAT_U;
   // WHERE IT BEARS is not free either, and the first solve got that wrong. It
   // tied the bear station to the blade's strain and answered 0.1137 — INSIDE
@@ -20610,7 +20613,7 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
   //
   //   · the DRAG budget. The nose sees k·δ·bearArm/noseArm with k = 3EI/L³ and
   //     δ = (preload + stroke)·bearArm, and that force taken at the tip circle
-  //     must stay under the click's detent by ALARM_PAWL_DRAG_HEADROOM:
+  //     must stay under the click's detent by ALARM_SPRING_HEADROOM:
   //         L³ = E · a · c³ · U² · stroke · bearArm² / (2 · noseArm · Fmax)
   //   · the blade's own STRAIN. Its surface works to 3·c·δ/(2·L²) — a ratio, so
   //     it reads the same in model units — and must stay under SPRING_STRAIN_MAX
@@ -20930,6 +20933,275 @@ let ALARM_PAWL_SPRING = null;   // §137: {k_N_per_m, bearArm_u, noseArm_u}
       '§163: the driver is pushed AND pulled by the pusher’s pin, which runs captive in its radial slot — the slot has metal on both flanks, so the return is driven rather than sprung');
   }
 
+}
+
+// ——————————————— §164 — THE PUSHER'S RETURN, AS METAL ———————————————
+//
+// TODO 87 step 5 tier two. The head's return has been `ALARM_RETURN_S` — a
+// settling time in the tick with nothing behind it — since the pusher was
+// built, and §162's member-keyed audit made that a row rather than a silence:
+// `RESTORING_MEMBER_WAIVERS` carries exactly one entry, this one, and deleting
+// it is structurally part of building this.
+//
+// The item sites the mechanism and the site survives §163 unchanged in kind:
+// a fixed ABUTMENT hanging from the plate's underside, a COLLAR on the stem
+// outboard of it, and a spring between them, compressed by the press. What
+// moved is the run — §163 took the riser from the stem's inner end all the way
+// in to the pin's station, so the stem's free length between its own inner end
+// and the guide boss is measured again here (tools/probe-164-return.mjs).
+//
+// A COIL, NOT A BLADE, and that is a measurement rather than a preference. The
+// item said "blade", and a blade must take the WHOLE press travel as its tip
+// deflection: at SPRING_FLAT_U stock and SPRING_STRAIN_MAX that wants a free
+// length of sqrt(1.5·c·δ/ε) = 11.53 u against the 9.4 the run has, before any
+// clearance. A helix stores the same stroke in its pitch instead of in one
+// beam's curvature, which is why every real case pusher has one.
+let ALARM_RETURN_SPRING = null;   // §137/§48: the return's own arithmetic, published from where it is solved
+let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
+{
+  const U = UNIT_MM / 1000;                       // m per model unit
+  // ---- WHAT THE RETURN MUST OVERCOME.
+  // On the way back the pin drags the driver, and the driver drags its pawl's
+  // nose back over the tooth it has just delivered. That is the one resistance
+  // in the chain with an arithmetic behind it (§163's own row), taken about the
+  // column axis and paid back at the coupling's SMALLEST moment arm — the arm
+  // that has to be afforded.
+  const dragF_N = (ALARM_PAWL_SPRING.dragTq_Nmm / 1000) / (ALARM_PAWL_ARM * UNIT_MM / 1000);
+  const preload_N = ALARM_SPRING_HEADROOM * dragF_N;
+  // ---- THE WIRE AND THE COIL, both set by what they wrap.
+  // The wire is the round analogue of the movement's own spring stock: a
+  // hairspring is thinner than this and a blade here is exactly this.
+  const wireR = SPRING_FLAT_U / 2;
+  // The mean coil radius is the stem plus a running clearance plus half the
+  // wire — the coil rides the stem, so the stem sizes it.
+  const coilR = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR + wireR;
+  const C = (2 * coilR) / (2 * wireR);            // spring index D/d
+  const KW = 1 + 0.5 / C;                         // Wahl's correction, near enough at C ≈ 6.6
+  // ---- HOW MANY COILS, from the stress the wire may work to.
+  // For a compression spring the shear stress at a given DEFLECTION is
+  //     τ = K·G·d·δ / (π·D²·n)
+  // — a ratio of lengths, so it reads the same in model units — and it falls as
+  // the coil count rises. So n is a FLOOR set by the total working deflection,
+  // exactly as §163's blade length is a floor set by its own strain, and not a
+  // number chosen to fit. The deflection includes the preload, which depends on
+  // the rate, which depends on n: solved to a fixed point rather than guessed.
+  // k comes out in N/m, so every deflection it multiplies has to be in METRES —
+  // and every deflection this block otherwise handles is in model units. The
+  // first cut mixed them and carried a preload of 0.000229 into arithmetic
+  // expecting 0.604, which under-counted the deflection the coil count is
+  // solved for and drew the spring at its free length. `defl_u` converts at the
+  // one place it is computed, and the round-trip assert below holds it.
+  const kOf = (n) => STEEL_G_PA * (2 * wireR * U) ** 4 / (8 * (2 * coilR * U) ** 3 * n);
+  const deflOf = (F, kk) => F / (kk * U);         // N and N/m in, MODEL UNITS out
+  let coils = 2, k = kOf(2), preloadDefl = deflOf(preload_N, k);
+  for (let it = 0; it < 80; it++) {
+    const dTot = preloadDefl + ALARM_PUSH_TRAVEL;
+    const need = KW * STEEL_G_PA * (2 * wireR) * dTot / (Math.PI * (2 * coilR) ** 2 * SPRING_TAU_Y_PA);
+    const nNext = Math.max(2, Math.ceil(need));
+    const kNext = kOf(nNext);
+    const dNext = deflOf(preload_N, kNext);
+    if (nNext === coils && Math.abs(dNext - preloadDefl) < 1e-12) { coils = nNext; k = kNext; preloadDefl = dNext; break; }
+    coils = nNext; k = kNext; preloadDefl = dNext;
+  }
+  // ---- AND THE LENGTHS THAT FOLLOW.
+  // Closed ends cost two coils that do not deflect, which is what makes the
+  // solid height (n + 2)·d. The free length is solid plus everything the spring
+  // has to give: its preload, the whole press travel, and one CLEAR_MARGIN of
+  // clash so it never goes solid at the bottom of the stroke — the movement's
+  // one margin rather than a spring-table percentage.
+  const solid = (coils + 2) * 2 * wireR;
+  const freeLen = solid + preloadDefl + ALARM_PUSH_TRAVEL + CLEAR_MARGIN;
+  const installed = freeLen - preloadDefl;        // its length at the seat
+  // ---- WHERE THEY GO.
+  // The abutment is FIXED, so it must clear the reach bar's outer end at EVERY
+  // pose, not at rest: the bar sweeps its own travel, and a ring bored for the
+  // stem is not bored for the bar.
+  const collarT = STOCK_MIN_U, abutT = STOCK_MIN_U;
+  // The two faces the coil bears on cover it and no more. What caps them is the
+  // PLATE: its underside is 0.76 above the press axis, and a disc that reaches
+  // past coilR + wireR buys nothing while spending that headroom.
+  const faceR = coilR + wireR;
+  const collarR = faceR, abutR = faceR;
+  // The abutment is FIXED, so it must clear the reach bar's outer end at EVERY
+  // pose, not at rest: the bar sweeps its own travel, and a ring bored for the
+  // stem is not bored for the bar. The BRACKET that hangs it sits inboard of
+  // the abutment, so the bar has to clear that too. (ALARM_PUSH_INNER is
+  // block-scoped to the pusher's own build; the span it recorded for the
+  // schematic tier is the same number, published.)
+  const barOuterAtRest = alarmPusherGroup.userData.stem.inner + ALARM_PUSH_STEM_R;
+  const bracketT = STOCK_MIN_U;
+  const abutS = barOuterAtRest + CLEAR_MARGIN + bracketT + abutT / 2;
+  const collarS = abutS + abutT / 2 + installed + collarT / 2;
+  // WHERE THE BRACKET RISES, and it cannot rise where a bracket would like to.
+  // Between the stem's bore and the plate's underside there is 0.76 − 0.37 =
+  // 0.39 of radius, and a leg at §50's floor wants its own width plus a margin
+  // off each — more than the gap holds, which a first cut found by running the
+  // leg through the coil. Measured (tools/probe-164-return.mjs), the corridor
+  // is 2+ units clear to the SIDE at this station, so the bracket reaches out
+  // past the coil first and climbs there. Position space, as P3 requires.
+  const postW = faceR + CLEAR_MARGIN + bracketT / 2;
+  // ---- the metal. The collar rides the stem; the abutment hangs off the plate.
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(collarR, collarR, collarT, 16), MATS.steel);
+  collar.name = 'alarmPusherCollar';
+  collar.rotation.z = ALARM_PUSH_AZ - Math.PI / 2;  // cylinder +Y → along the press axis
+  collar.position.set(_pushU.x * collarS, _pushU.y * collarS, 0);
+  alarmPusherGroup.add(collar);
+  {
+    const ring = new THREE.Shape();
+    ring.absarc(0, 0, abutR, 0, Math.PI * 2, false);
+    const bore = new THREE.Path();
+    bore.absarc(0, 0, ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR, 0, Math.PI * 2, true);
+    ring.holes.push(bore);
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(ring, { depth: abutT, bevelEnabled: false }), MATS.nickel);
+    m.name = 'alarmPusherReturnAbutment';
+    // the extrude runs along local +z; aim it down the press axis and seat its
+    // inboard face at abutS − abutT/2
+    m.rotation.set(0, Math.PI / 2, ALARM_PUSH_AZ, 'ZYX');
+    m.position.set(_pushBase.x + _pushU.x * (abutS - abutT / 2), _pushBase.y + _pushU.y * (abutS - abutT / 2),
+                   ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
+    alarmSwitchUnit.add(m);
+    // The ARM sits INBOARD of the abutment, in the gap abutS was derived to
+    // leave for it, and reaches out past the coil. A first cut put it at the
+    // abutment's own station running from the axis outward, which is a bracket
+    // drawn through both the stem it clears and the coil it carries.
+    //
+    // Its inner end laps the ring's outer band (so the two are one body) while
+    // standing CLEAR_MARGIN off the stem — it is a stratum inboard of the
+    // bore, so it does not get the bore's own running fit.
+    const armIn = ALARM_PUSH_STEM_R + CLEAR_MARGIN;
+    const armOut = postW + bracketT / 2;
+    const armS = abutS - abutT / 2 - bracketT / 2;
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(bracketT, armOut - armIn, bracketT), MATS.nickel);
+    arm.name = 'alarmPusherReturnArm';
+    arm.rotation.z = ALARM_PUSH_AZ;
+    arm.position.set(_pushBase.x + _pushU.x * armS + _pushPerp.x * ((armIn + armOut) / 2),
+                     _pushBase.y + _pushU.y * armS + _pushPerp.y * ((armIn + armOut) / 2),
+                     ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
+    alarmSwitchUnit.add(arm);
+    // …and the POST that climbs from its end to the plate's underside
+    const legH = TQ_BOT_Z - (ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(bracketT, bracketT, legH), MATS.nickel);
+    post.name = 'alarmPusherReturnPost';
+    post.rotation.z = ALARM_PUSH_AZ;
+    post.position.set(_pushBase.x + _pushU.x * armS + _pushPerp.x * postW,
+                      _pushBase.y + _pushU.y * armS + _pushPerp.y * postW,
+                      ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL + legH / 2);
+    alarmSwitchUnit.add(post);
+  }
+  // ---- THE COIL, AND WHY IT IS FRAMES.
+  // The collar travels the whole press stroke toward the abutment, so a coil
+  // drawn once at one length ends up a third of the way inside the collar at
+  // the bottom of the stroke — not a contact to declare, a member drawn through
+  // another. The mainspring's precedent applies: pre-build the shape at a set
+  // of lengths and swap geometry, which is EXACT at every frame where a z-scale
+  // would squash the wire's own section along with the pitch it is meant to
+  // close. MODELING.md rule 6 carries the consequence — a morph counts as
+  // motion, and is always its own frame in the MM clustering.
+  //
+  // The frame count is derived, not picked: the swap quantises the coil's end,
+  // and that end is a declared contact with the collar, so the step has to sit
+  // inside the working-contact budget it lives in — half a step under
+  // CLEAR_MARGIN.
+  const ALARM_RETURN_FRAMES = Math.max(2, Math.ceil(ALARM_PUSH_TRAVEL / CLEAR_MARGIN) + 1);
+  const springFrames = [];
+  for (let i = 0; i < ALARM_RETURN_FRAMES; i++) {
+    const len = installed - ALARM_PUSH_TRAVEL * (i / (ALARM_RETURN_FRAMES - 1));
+    springFrames.push(G.makeHelicalSpring({ coilR, wireR, coils, length: len, material: MATS.blueSteel,
+                                            name: 'alarmPusherReturnSpring', seg: 6, per: 6 }).geometry);
+  }
+  const spring = new THREE.Mesh(springFrames[0], MATS.blueSteel);
+  spring.name = 'alarmPusherReturnSpring';
+  spring.rotation.set(0, Math.PI / 2, ALARM_PUSH_AZ, 'ZYX');
+  spring.position.set(_pushBase.x + _pushU.x * (abutS + abutT / 2), _pushBase.y + _pushU.y * (abutS + abutT / 2),
+                      ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
+  alarmSwitchUnit.add(spring);
+  alarmPusherReturnSpring = spring;
+  alarmPusherReturnFrames = springFrames;
+  spring.userData.solve = () => ALARM_RETURN_SPRING;
+  ALARM_RETURN_SPRING = {
+    wireR, coilR, coils, k_N_per_m: k, index_C: C,
+    preload_N, preloadDefl_u: preloadDefl, dragF_N,
+    solid_u: solid, free_u: freeLen, installed_u: installed,
+    collarS, abutS, pressF_N: preload_N + k * ALARM_PUSH_TRAVEL * U,
+    tau_Pa: KW * STEEL_G_PA * (2 * wireR) * (preloadDefl + ALARM_PUSH_TRAVEL) / (Math.PI * (2 * coilR) ** 2 * coils),
+  };
+  // ————————————————— what has to be true of it —————————————————
+  // 1. THE ROUND TRIP. The preload is the force the drag budget asked for; the
+  //    installed length is what the geometry was laid out to. Squeezing the
+  //    spring from free to installed must give that force back, or the two
+  //    halves are describing different springs — which is exactly what a unit
+  //    slip looks like from the outside, and is how the metres-for-units bug
+  //    above showed itself.
+  {
+    const back_N = k * (freeLen - installed) * U;
+    if (Math.abs(back_N - preload_N) > 1e-9 * Math.max(1, preload_N))
+      console.warn(`§164: the coil compressed free→installed gives ${(back_N * 1000).toFixed(4)} mN against the ${(preload_N * 1000).toFixed(4)} mN the drag budget asked for — the length and the force disagree`);
+  }
+  // 2. IT MUST NOT GO SOLID at the bottom of the stroke, by one CLEAR_MARGIN.
+  if (installed - ALARM_PUSH_TRAVEL < solid + CLEAR_MARGIN - 1e-9)
+    console.warn(`§164: at full press the coil stands ${(installed - ALARM_PUSH_TRAVEL).toFixed(4)} against a solid height of ${solid.toFixed(4)} — under the ${CLEAR_MARGIN} clash the free length was sized with`);
+  // 3. AND IT MUST NOT YIELD there.
+  if (ALARM_RETURN_SPRING.tau_Pa > SPRING_TAU_Y_PA + 1e-6)
+    console.warn(`§164: the return coil works to ${(ALARM_RETURN_SPRING.tau_Pa / 1e6).toFixed(1)} MPa shear against SPRING_TAU_Y_PA ${(SPRING_TAU_Y_PA / 1e6).toFixed(1)} — it would take a set and the preload would decay with it`);
+  // 4. THE RETURN TIME, which is what this whole section replaces. ALARM_RETURN_S
+  //    has been an ASSERTION — "an unloaded spring returns at least as fast as a
+  //    deliberate press" — with no spring behind it. There is one now, so the
+  //    claim becomes arithmetic: a mass on a spring reaches the seat in a
+  //    quarter period. The moving mass is the pusher's own metal, summed from
+  //    the built bodies rather than estimated.
+  {
+    let vol_mm3 = 0;
+    alarmPusherGroup.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic) return;
+      const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox();
+      const sz = g.boundingBox.getSize(new THREE.Vector3());
+      // a bounding box over-states a turned part, which is the safe direction
+      // for a RETURN TIME: more mass is a slower return.
+      vol_mm3 += sz.x * sz.y * sz.z * UNIT_MM ** 3;
+    });
+    const m_kg = vol_mm3 * 1e-9 * OSC_STEEL_RHO;   // §56's density, the one the oscillator's inertia already uses
+    const tQuarter = (Math.PI / 2) * Math.sqrt(m_kg / k);
+    ALARM_RETURN_SPRING.mass_kg = m_kg;
+    ALARM_RETURN_SPRING.quarterPeriod_s = tQuarter;
+    if (tQuarter > ALARM_RETURN_S)
+      console.warn(`§164: the return coil brings the head home in ${tQuarter.toFixed(4)} s against the ${ALARM_RETURN_S} s the tick eases it over — the tick would be faster than the metal`);
+  }
+  // §48/§162 — THE DECLARATION THIS SECTION EXISTS TO EARN. Before it, the
+  // pusher was one of four bodies in the movement with no restoring answer at
+  // all, and the unit had passed for years on the CLICK ARM's blade — a real
+  // spring answering for a body it does not touch. Its waiver in
+  // RESTORING_MEMBER_WAIVERS retires with this call, which is what §162 made
+  // structurally part of the fix.
+  // 5. P1, TODO 16's format — WHAT THE FINGER NOW CARRIES. §43 sized the head
+  //    at 2 mm across so a fingertip can locate and press it, and priced the
+  //    chain's own load at single-figure mN against the 1–5 N that delivers.
+  //    §164 adds the first load in that chain with any real size to it: the
+  //    return coil is compressed by the whole stroke, so the finger pays its
+  //    preload plus k·travel on top of everything downstream. Still three
+  //    orders under, which is why the head's dimension stays an ERGONOMIC
+  //    constraint standing alone — but it is no longer true that nothing in
+  //    the chain is sized by how hard it must be pushed.
+  if (ALARM_RETURN_SPRING.pressF_N >= CASE_PUSHER_INPUT_N[0] / 10)
+    console.warn(`§164: the return coil alone wants ${(ALARM_RETURN_SPRING.pressF_N * 1000).toFixed(1)} mN at the bottom of the stroke, within an order of the ${CASE_PUSHER_INPUT_N[0]} N a fingertip delivers — the press would start to feel like the spring`);
+  declareRestoring('Alarm switch', 'alarmPusherStem', 'spring',
+    `§164: a helical coil on the stem between a collar and a fixed abutment hung from the plate's underside — `
+      + `${ALARM_RETURN_SPRING.coils} coils of SPRING_FLAT_U wire at index ${ALARM_RETURN_SPRING.index_C.toFixed(2)}, `
+      + `preloaded to ${(ALARM_RETURN_SPRING.preload_N * 1000).toFixed(1)} mN, which is ALARM_SPRING_HEADROOM times the `
+      + `${(ALARM_RETURN_SPRING.dragF_N * 1000).toFixed(2)} mN the pawl's own spring drags back through the coupling. `
+      + `The coil count is a FLOOR from the shear the wire may work to at full stroke, not a number chosen to fit. `
+      + `ALARM_RETURN_S was a settling time with nothing behind it; the metal brings the head home in `
+      + `${(ALARM_RETURN_SPRING.quarterPeriod_s * 1000).toFixed(2)} ms, so the tick's ${ALARM_RETURN_S} s is a `
+      + `human-scale bound the spring clears by ${Math.round(ALARM_RETURN_S / ALARM_RETURN_SPRING.quarterPeriod_s)}×`,
+    'alarmPusherReturnSpring');
+  // …and the COIL answers for itself, because §164 draws it as frames and a
+  // morph counts as motion (MODELING.md rule 6) — so the audit sees a body that
+  // reciprocates and asks what brings it back. Nothing does, and nothing needs
+  // to: its length is not a state it could lose, it is a pure function of where
+  // the collar is, and it is captive between two faces it never leaves. That is
+  // `two-way` in §48's sense — the alarm link's own idiom, driven both ways by
+  // the metal at both ends, no bias element required.
+  declareRestoring('Alarm switch', 'alarmPusherReturnSpring', 'two-way',
+    '§164: the coil is captive between the collar and the fixed abutment and touches both at every pose, so its drawn length is a function of the press fraction and not a state it can be left in — closed by the collar, opened by its own stored energy against the same two faces');
 }
 {
   // Distance to the NEAREST integer pitch, not the raw modulus: the raw form
@@ -31105,6 +31377,13 @@ function tick(t) {
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
       _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived
+    // §164 — and the return coil closes with it. The collar travels the whole
+    // stroke toward the fixed abutment, so the spring between them is a length,
+    // not a constant: its frame is a pure function of the press fraction, like
+    // everything else the pose path touches.
+    if (alarmPusherReturnFrames)
+      alarmPusherReturnSpring.geometry =
+        alarmPusherReturnFrames[Math.round(alarmPusherT * (alarmPusherReturnFrames.length - 1))];
   }
   // §29 step 2: PULLED, the crown's bevel is meshed to the rod, and the rod
   // creeps with the hour back-drive (see the branch above) — so the crown

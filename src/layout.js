@@ -372,6 +372,20 @@ export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the pla
 // oscillator solve) that could only drift apart; this is that number named
 // once, with both prior sites re-sourced as consumers.
 export const STEEL_E_PA = 200e9;  // Pa — carbon/spring steel Young's modulus (§56's value)
+// §164 — the other two numbers a SPRING needs, beside the one modulus. Both
+// were about to be written a second time inside main.js: the yield was already
+// there as a bare 800e6 inside SPRING_STRAIN_MAX, and a shear modulus was about
+// to appear for the pusher's return coil. §137's rule ("the one steel, named
+// once") applies to a material's other properties too, so they live here.
+export const STEEL_NU = 0.30;                     // Poisson's ratio — carbon steel
+export const STEEL_G_PA = STEEL_E_PA / (2 * (1 + STEEL_NU));   // 76.9 GPa
+// Hardened carbon spring band, the stress a blade or a coil may work to and
+// come back from. TODO 63 is filed precisely because switchClickSpring exceeds
+// it, so this is a limit the repo already knows it owes.
+export const SPRING_SIGMA_Y_PA = 800e6;
+// Shear yield by von Mises — what a COIL is limited by, where a blade is
+// limited by SPRING_SIGMA_Y_PA directly. One yield, two loadings.
+export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
 // End-loaded cantilever stiffness in N/m from section width a, thickness c
 // (bending direction) and free length L, all in MODEL UNITS — the 3EI/L³ that
 // TODO 16 and the §54 report both already compute longhand. I = a·c³/12.

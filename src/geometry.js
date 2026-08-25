@@ -2854,6 +2854,68 @@ export function makeColumnPawl({ nodes, pivot, nose, w, noseR, boreR, bossR, thi
   return { bodies, mesh: bodies[bodies.length - 1], tail: bodies[0], boss, nose: noseM, bore: boreR };
 }
 
+// ---------------------------------------------------------------------------
+// HELICAL COMPRESSION SPRING (§164) — the pusher's return, and the first coil
+// in this movement that is a helix rather than a planar spiral.
+//
+// Swept by hand rather than by TubeGeometry, for one reason: every TubeGeometry
+// in this repo is built with `closed = false`, which leaves both ends OPEN, and
+// an open mesh reads as a COLLIDING one — meshClearance guards its BVH
+// near-zeros with a parity raycast, so an odd crossing count reports contact
+// with parts nowhere near it (TODO 27 measured exactly that on the chain, at
+// 3.7 units of separation). A spring threaded down the middle of the movement
+// is the last part that should ship open, so this one caps both ends.
+//
+// The frame is built from the tangent and the OUTWARD RADIAL rather than by
+// Frenet transport: a helix's Frenet normal points at the axis and rolls the
+// section as the curve climbs, which twists a round wire harmlessly and would
+// twist anything else. Built along local +z; the caller aims it.
+export function makeHelicalSpring({ coilR, wireR, coils, length, material = MATS.blueSteel,
+                                    name = 'helicalSpring', seg = 6, per = 10 }) {
+  const N = Math.max(8, Math.round(coils * per));
+  const at = (t) => {
+    const a = coils * Math.PI * 2 * t;
+    return [coilR * Math.cos(a), coilR * Math.sin(a), length * t];
+  };
+  const pos = [], idx = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const [cx, cy, cz] = at(t);
+    const e = 0.5 / N;
+    const [ax, ay, az] = at(Math.min(1, t + e)), [bx, by, bz] = at(Math.max(0, t - e));
+    let tx = ax - bx, ty = ay - by, tz = az - bz;
+    const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+    let rx = cx, ry = cy, rz = 0;                       // outward from the axis…
+    const dp = rx * tx + ry * ty + rz * tz;             // …orthogonalised against the tangent
+    rx -= dp * tx; ry -= dp * ty; rz -= dp * tz;
+    const rl = Math.hypot(rx, ry, rz) || 1; rx /= rl; ry /= rl; rz /= rl;
+    const nx = ty * rz - tz * ry, ny = tz * rx - tx * rz, nz = tx * ry - ty * rx;
+    for (let k = 0; k < seg; k++) {
+      const a = (k / seg) * Math.PI * 2, ca = Math.cos(a) * wireR, sa = Math.sin(a) * wireR;
+      pos.push(cx + rx * ca + nx * sa, cy + ry * ca + ny * sa, cz + rz * ca + nz * sa);
+    }
+  }
+  for (let i = 0; i < N; i++) {
+    for (let k = 0; k < seg; k++) {
+      const a = i * seg + k, b = i * seg + (k + 1) % seg;
+      const c = (i + 1) * seg + (k + 1) % seg, d = (i + 1) * seg + k;
+      idx.push(a, b, c, a, c, d);
+    }
+  }
+  const c0 = pos.length / 3; { const [x, y, z] = at(0); pos.push(x, y, z); }
+  const c1 = pos.length / 3; { const [x, y, z] = at(1); pos.push(x, y, z); }
+  for (let k = 0; k < seg; k++) idx.push(c0, (k + 1) % seg, k);
+  for (let k = 0; k < seg; k++) idx.push(c1, N * seg + k, N * seg + (k + 1) % seg);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.name = name;
+  mesh.userData.helix = { coilR, wireR, coils, length };
+  return mesh;
+}
+
 // `reverse` mirrors the saw (teeth lean the other way): a ratchet's
 // orientation is not a style — the RAMP must be the flank the working
 // direction climbs and the steep FACE the flank that catches the reverse,
