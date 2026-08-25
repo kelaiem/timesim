@@ -17979,3 +17979,186 @@ polygon test; it was right, and it was corroborated by `meshClearance` reading 0
 and by an eye. The moment the same test was pointed at a second rod it produced
 a confident wrong number. An instrument that has been right once is not thereby
 an instrument that reports the metal.
+
+## §172 — the arming beak's post was clearing the wrong circle, and correcting it re-solved the lever
+
+TODO 90 finding 2, eye-reported and circled on the built tree after §171 landed:
+one L-shaped member, a bar reaching under the column wheel and a post dropping
+through it. It is the `Alarm link` beak — §35's rider, the one that arms the
+selector ring — and it is finding 1's defect on the next rider over, hidden by
+the same two holes.
+
+### One wrong face, for the third time
+
+```js
+const pivDist = ALARM_COL_BASE_R + CLEAR_MARGIN + 0.16 + 0.04; // post r 0.16 fully clear of the wheel's skirt
+```
+
+The comment says exactly the right thing. The **skirt** is the ratchet saw,
+whose teeth reach `ALARM_COL_TIP_R` = 1.12·baseR = **6.384** — and the clearance
+was taken from `ALARM_COL_BASE_R` = 5.7, a face **0.684 inboard** of the one the
+post actually has to pass. So the post stood at 6.05, **0.334 inside the tip
+circle**, threading the tooth gaps for the whole 3.66 of its height.
+
+That is TODO 87 finding 6's mistake a third time, and the pattern is worth
+naming because it keeps recurring in this cluster: **the constraint written
+correctly and measured from the wrong member of the joint.** §163 derived the
+pawl's post radius against the POST when the governing body was its BOSS; §169
+corrected that; §172 corrects a clearance taken against the wheel's disc when
+the governing body was its saw. Each time the comment was right and the
+arithmetic under it was not.
+
+Re-derived, with the constraint at the constant:
+
+```js
+const pivDist = ALARM_COL_TIP_R + CLEAR_MARGIN + STOCK_MIN_R10;   // 6.7005, was 6.05
+```
+
+The `+ 0.04` goes with it. A margin that needs an unexplained supplement is not
+the margin — and nothing in the file said what that 0.04 was for.
+
+### It measured 0.0929 clear, and the eye was still right
+
+This is the honest distinction from §171, and it is the reason the finding was
+filed before it was fixed. The lock riser's **axis** was inside the cut metal;
+this rod is not. Measured with 2-of-3 independent ray agreement, **zero
+vertices** of any link-beak member were strictly inside any wheel body — every
+contact was a surface kiss. The post threaded the gaps and cleared by 0.0929 at
+the tightest.
+
+But 0.0929 is under `CLEAR_MARGIN`, and a rod standing inside a wheel's own
+silhouette for 3.66 of height is what a person correctly reads as a collision
+whether or not the triangles touch. **A clearance check that clamps at zero
+cannot tell you which of those two you have** — which is why the probe measures
+three ways and prints all three.
+
+### The bar was riding the columns its own nose reads
+
+TODO 20 stationed the arm so the NOSE's underside rests on the column top plane
+— right, and the declared contact. But it centred the whole arm on the nose, and
+the BAR is `STOCK_MIN_U` deep against the nose's 0.22. The bar therefore hung
+**0.0483 below** the plane its own finger stands on, measuring `meshClearance` 0
+against the castellations, with nothing declaring it: `INTRA_UNIT_CONTACTS`
+carries `alarmLinkBeakBar` only as *"beak lever on its pivot post"*.
+
+The arm is now stationed by the BAR's underside, and the nose became what its
+name says — a beak hanging off that underside down to the plane it reads, its
+height DERIVED (the drop it covers plus the bar it is let into) rather than the
+0.22 literal it was.
+
+### And the gap over the columns is SWEPT, not assumed
+
+Built at exactly one `CLEAR_MARGIN` over the column top plane, the bar still
+measured **0.1283** across the toggle. Two things eat into a plane-to-plane
+figure here:
+
+- the arm **tilts** as the nose falls (`rotation.y = noseDrop/beakLen`), dipping
+  every point of the bar in proportion to its distance from the pivot;
+- the bar is `STOCK_MIN_U` **wide** against the nose's 0.18, so its corners
+  overhang azimuths where the flank has not dropped as far as it has under the
+  nose.
+
+Both are functions of the cut profile, so the profile answers. The lift is
+stepped through a whole column pitch at build time — §120's cycle-sweep
+precedent, a group's own assert held finer than the pose net — against
+`geometry.js`'s `profileAt`, the mesh's single source and the same function
+`alarmLinkReadClean` consults, at every radius the columns occupy and at both
+edges of the bar. It asks **0.3747** where a flat margin gives 0.15, and it
+re-derives if the columns, the tier height or the bar's section move.
+
+### The spec quantity that moved, declared rather than absorbed
+
+The pivot is **collinear with the wheel→rod line by construction** — that is what
+lands the tail over a corridor-fixed rod — so `pivDist` sets BOTH arms, and
+there is no arrangement that moves the post without re-solving the lever:
+
+| | before | after |
+|---|---|---|
+| `pivDist` | 6.0500 | **6.7005** |
+| `beakLen` | 1.3950 | **2.0455** |
+| `tailLen` | 9.9500 | **9.2995** |
+| lever ratio | 7.133:1 | **4.546:1** |
+| tail depth (`tailLen`/`SLENDER_TARGET`) | 0.3685 | **0.3444** (§50 floor 0.3167) |
+
+This is a LINE SPEC change, and it is a **FORK rather than a drift**: the changed
+row re-derives from the movement constraint that forced it — the post must clear
+the saw it crosses — written in place at the constant. The chain follows without
+anything being re-targeted, because `seatNoseDrop` is derived FROM the ring's own
+`rodTravel` through this ratio rather than assigned to it: the nose now falls
+1.57× further for the same rod travel, against an available fall of `colH` = 1.4.
+
+**The ENVELOPES are inherited and were not forked**, which is the half of the
+fork rule that has teeth. §137's tail-stall row still lands inside the 5–50 mN
+detent band — §54's own rule makes the tail's stiffness length-independent, since
+its depth is `tailLen/27` and `k ∝ w·h³/L³` — and §50's floor still clears at
+0.3444. Both assert at boot, and boot is silent.
+
+### The cost, stated rather than left in the report
+
+Raising the arm 0.4230 to get the bar off the columns lengthened the rod it
+drives, and the rod was already over §54's ceiling:
+
+| `alarmLinkRod` | before | after |
+|---|---|---|
+| length | 7.747 mm | **7.907 mm** |
+| λ (ceiling 30) | 34.1 | **34.8** |
+| cantilever stiffness | 287.4 N/m | **270.3 N/m** |
+
+That row is waived citing TODO 16 and sits in TODO 78's unwaived-residue
+catalogue; `slenderness` is a REPORT by §54's own covenant, so nothing goes red.
+**That is exactly why it is written here.** A gate that cannot fail is not
+permission to spend against it quietly: the rod got 2% longer and 6% softer as
+the price of the bar clearing the columns, and the next person to solve that
+section should know this change is part of why it needs solving.
+
+Not paid out of anything else: no waiver was added or removed anywhere, no
+tolerance or budget widened, and the swept lift is the minimum the profile
+allows rather than a round number with room in it.
+
+### Measured off the built metal
+
+| | before | after |
+|---|---|---|
+| `alarmLinkBeakPost ⇄ alarmColSkirt` | 0.0929 | **0.1502** |
+| `alarmLinkBeakBar ⇄ alarmColCastellations` | 0 | **0.3529** |
+| `alarmLinkBeak ⇄ alarmColCastellations` | 0 | **0** — TODO 20's read, unmoved |
+| nose underside vs the column top plane | on it | **on it**, asserted to 1e-9 |
+| vertices of any member inside any wheel body | 0 | **0** |
+
+Four boot asserts carry it (rule 6): the post's outer face against the tip
+circle, the bar's underside against what the sweep demands, the nose still
+landing on the column top plane — that one has to stay exactly zero — and the
+tail's §54 depth against §50's floor, because the ceiling and the floor now
+approach each other from opposite ends and the gap between them is worth naming
+before it closes.
+
+`tools/probe-90-linkbeak.mjs` is the measurement and the acceptance test. It
+takes **2-of-3 ray agreement** rather than one direction, because a
+single-direction parity test is what made two earlier probes in this item's
+history report confident wrong numbers.
+
+### The report diff, and the sentence that repeats
+
+Twenty-seven non-census leaves, no gate-relevant list moved, and the headline is
+the same row §171 moved one rider over — `inspection`'s entry for
+`Alarm link ⇄ Alarm switch`:
+
+```
+before   beat 97/97; crown 49/49; reserve 61/61; wind 721/721;
+         arrest 97/97; stemSlip 97/97; train 97/97   (f 0–1 on every axis)
+after    alarmPress: 1/65 poses (f 0.0781–0.0781)
+```
+
+In contact at every pose of every axis, including axes that move neither unit —
+and now touching at the single pose where the nose reads a column. **Both riders
+told the same lie in the same words**, and in both cases the EXPECTED blanket is
+what let `721/721` go unremarked. That is TODO 6's residue costing two findings
+in two sections; a `EXPECTED_CONTACT_FLOORS` row for this pair is the structural
+close, and it is worth doing before the third rider is audited.
+
+The FORK is visible in the report too, which is the point of declaring it —
+`transfers` row 10, the beak's crank: `armIn_u` 1.395 → 2.0455, `armOut_u` 9.95
+→ 9.2995, `ratio` 7.1326 → **4.5464**, with the row's own load value unchanged
+to fourteen digits. §137 re-verified its relations from the frozen payload and
+still passes, which is the check earning its keep: the ratio moved and the force
+arithmetic that depends on it still closes.
