@@ -187,6 +187,22 @@ builder cut this surface — not as an instance test.
 clearance, by up to the tolerance, and under-reporting is the one error
 direction no instrument downstream catches. Exact bit equality or no merge.
 
+**A wire given volume is swept by hand, and both ends are capped.** Every
+`TubeGeometry` in `geometry.js` is built `closed = false`, so it ships with two
+OPEN ends — and an open mesh reads as a colliding one to `meshClearance`'s
+parity raycast, whatever it is nowhere near. Both of the movement's swept
+springs are therefore built directly: `makeHelicalSpring` (§164) and
+`makeTorsionSpring` (§169) emit their own rings and close each end with a
+triangle fan. §169's is the one to copy if a third arrives, for two reasons.
+Its frame is PARALLEL TRANSPORT rather than §164's outward-from-the-axis
+radial: that reference is exact for a bare helix and degenerate the moment the
+path has a straight leg pointing at the axis, and a real spring is a leg, a
+helix and a leg. And it publishes the DEVELOPED LENGTH it actually swept, so
+the caller's rate solve reads what was cut instead of πDn — `makeHairspring`'s
+rule, one sampling and one answer. The two differ by the chord error of a
+polygonal coil (8.6e-5 at §169's sampling), which is small, real, and exactly
+the size of thing a `1e-6` equality assert would fail on.
+
 ### 8. A line given volume is a new part, and its walk order is topology
 
 A lever designed as a centreline (pivot → elbow → nose) becomes a mesh by

@@ -1366,7 +1366,7 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
 // tick() poses against, so the cut columns and the ridden profile cannot
 // drift apart (the §25 A cam convention).
 // ---------------------------------------------------------------------------
-export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28 }) {
+export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28, skirtH = STOCK_MIN_U }) {
   const mat = material || MATS.blueSteel;
   const g = new THREE.Group();
   // TODO 87 step 4 — THE THREE BODIES ARE NAMED APART. They used to be
@@ -1534,8 +1534,18 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     shape.closePath();
     const hole = new THREE.Path(); hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
     shape.holes.push(hole);
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 2 }); // TODO 11 tail: the pusher's pawl indexes here — floor stock, growing downward where the call site's raised seat left a full margin
-    geo.translate(0, 0, -baseH / 2 - STOCK_MIN_U);
+    // §169 — THE BAND'S HEIGHT IS THE CALLER'S, and it is a derived number
+    // there rather than a stock floor here. It was `STOCK_MIN_U` — the same
+    // floor the pawl that indexes it is cut at — so the two bands were
+    // IDENTICAL and the pawl's top face was coplanar with the base disc's
+    // underside: 0.000 clearance over the whole area the pawl sweeps under the
+    // disc, at every pose. `intraUnit` gates on intersectsGeometry and two
+    // solids sharing one plane do not intersect, and `clearances` is
+    // cross-unit, so nothing in the battery could see it. The floor stays the
+    // default for callers with no pawl to swallow (test-geometry.html's smoke
+    // test); main.js derives its own from the member that runs in the band.
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: skirtH, bevelEnabled: false, curveSegments: 2 }); // TODO 11 tail: the pusher's pawl indexes here — growing downward where the call site's raised seat left it room
+    geo.translate(0, 0, -baseH / 2 - skirtH);
     const skirtMesh = new THREE.Mesh(geo, mat);
     skirtMesh.name = 'alarmColSkirt';         // TODO 87 step 4 — what the pawl indexes
     g.add(skirtMesh);
@@ -1553,6 +1563,7 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     g.userData.ratchetPoly = ratchetPoly;
   }
   g.userData.columns = columns;
+  g.userData.skirtH = skirtH;      // §169 — the band's height, so a caller siting a member in it reads it here
   g.userData.colH = colH;
   // The saw teeth above run tip→root as the angle RISES, so their cliff faces
   // +theta and a pawl can only drive the wheel in −z. Exported so the caller's
@@ -2913,6 +2924,113 @@ export function makeHelicalSpring({ coilR, wireR, coils, length, material = MATS
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = name;
   mesh.userData.helix = { coilR, wireR, coils, length };
+  return mesh;
+}
+
+// §169 — A TORSION SPRING: a close-wound helix about a post, with one straight
+// leg at each end. The mechanism it exists for is the column wheel's driving
+// pawl, where the restoring moment has to act ABOUT the pawl's own pivot; a
+// cantilever blade cannot, and §163's did the job through a bear arm off an
+// anchor that (measured, §169) stood on nothing at all.
+//
+// Swept by hand for the same reason §164's compression coil is: every
+// TubeGeometry in this file is built `closed = false` and so ships OPEN ends,
+// which meshClearance's parity raycast reads as a collision with whatever
+// shares its bounding box. Both ends are CAPPED here.
+//
+// The frame is PARALLEL TRANSPORT, not makeHelicalSpring's outward-from-the-
+// axis radial. That reference is exact for a helix and degenerate for a
+// straight leg pointing at the axis, and this path is not a helix — it is a
+// leg, a helix and a leg. Transporting one normal along the whole path is the
+// one rule that holds over all three.
+//
+// Close-wound, so the height is `coils · 2 · wireR` and the caller owns
+// whether that fits its stratum. `coils` is an INTEGER here, which puts both
+// leg roots at the same azimuth; a leg that has to end somewhere else is
+// BENT, which is what a real torsion spring's legs do and what keeps the
+// turn count — the thing the stratum is bought for — a whole number.
+//
+// Local frame: origin on the coil's axis in the plane of its BOTTOM end, z up
+// the axis. `legA` / `legB` are POLYLINES in that frame, listed from the coil
+// OUTWARD — one point for a straight leg, two or more for a bent one.
+export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
+                                    legA = [], legB = [], material = MATS.blueSteel,
+                                    name = 'torsionSpring', seg = 6, per = 24 }) {
+  const height = coils * 2 * wireR;
+  const azOf = (t) => startAz + sense * coils * Math.PI * 2 * t;
+  const N = Math.max(16, Math.round(coils * per));
+  const path = [];
+  const coilPt = (t) => [coilR * Math.cos(azOf(t)), coilR * Math.sin(azOf(t)), height * t];
+  for (let i = legA.length - 1; i >= 0; i--) path.push([...legA[i]]);   // listed coil-outward, walked inward
+  for (let i = 0; i <= N; i++) path.push(coilPt(i / N));
+  for (const q of legB) path.push([...q]);
+  // Drop any duplicate consecutive point: a zero-length segment has no
+  // tangent, and the transport below would carry a NaN frame the whole way.
+  const pts = path.filter((p, i) => i === 0
+    || Math.hypot(p[0] - path[i - 1][0], p[1] - path[i - 1][1], p[2] - path[i - 1][2]) > 1e-9);
+  const tan = pts.map((p, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+    const v = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const L = Math.hypot(...v) || 1;
+    return [v[0] / L, v[1] / L, v[2] / L];
+  });
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const unit = (v) => { const L = Math.hypot(...v) || 1; return [v[0] / L, v[1] / L, v[2] / L]; };
+  // seed a normal perpendicular to the first tangent, from whichever axis is
+  // least parallel to it
+  let seed = Math.abs(tan[0][2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+  let nrm = unit(cross(tan[0], seed));
+  const pos = [], idx = [];
+  for (let i = 0; i < pts.length; i++) {
+    if (i) {
+      // rotate the carried normal by the same rotation that takes tan[i-1] to
+      // tan[i] — the discrete rotation-minimising frame
+      const ax = cross(tan[i - 1], tan[i]);
+      const s = Math.hypot(...ax);
+      if (s > 1e-12) {
+        const k = unit(ax), th = Math.atan2(s, dot(tan[i - 1], tan[i])), c = Math.cos(th), sn = Math.sin(th);
+        const kn = cross(k, nrm), kd = dot(k, nrm);
+        nrm = unit([nrm[0] * c + kn[0] * sn + k[0] * kd * (1 - c),
+                    nrm[1] * c + kn[1] * sn + k[1] * kd * (1 - c),
+                    nrm[2] * c + kn[2] * sn + k[2] * kd * (1 - c)]);
+      }
+    }
+    const bin = cross(tan[i], nrm);
+    for (let k = 0; k < seg; k++) {
+      const a = (k / seg) * Math.PI * 2, ca = Math.cos(a) * wireR, sa = Math.sin(a) * wireR;
+      pos.push(pts[i][0] + nrm[0] * ca + bin[0] * sa,
+               pts[i][1] + nrm[1] * ca + bin[1] * sa,
+               pts[i][2] + nrm[2] * ca + bin[2] * sa);
+    }
+  }
+  for (let i = 0; i + 1 < pts.length; i++)
+    for (let k = 0; k < seg; k++) {
+      const a = i * seg + k, b = i * seg + (k + 1) % seg;
+      const c = (i + 1) * seg + (k + 1) % seg, d = (i + 1) * seg + k;
+      idx.push(a, b, c, a, c, d);
+    }
+  const last = (pts.length - 1) * seg;
+  const c0 = pos.length / 3; pos.push(...pts[0]);
+  const c1 = pos.length / 3; pos.push(...pts[pts.length - 1]);
+  for (let k = 0; k < seg; k++) idx.push(c0, (k + 1) % seg, k);
+  for (let k = 0; k < seg; k++) idx.push(c1, last + k, last + (k + 1) % seg);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.name = name;
+  // The DEVELOPED LENGTH of the coil alone, accumulated along the very
+  // polyline that was swept rather than re-integrated from πDn — one
+  // sampling, one answer (makeHairspring's rule). It is what the caller's
+  // rate solve turns on, so the two cannot drift.
+  let devLen = 0;
+  for (let i = 1; i <= N; i++) {
+    const a = coilPt((i - 1) / N), b = coilPt(i / N);
+    devLen += Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  }
+  mesh.userData.torsion = { coilR, wireR, coils, height, devLen, startAz, sense };
   return mesh;
 }
 

@@ -51,14 +51,32 @@ const out = await p.evaluate(async () => {
   // separate solids lapped inside the boss. The acceptance test is over ALL of
   // them, because a member that clears the saw in three pieces and fouls it in
   // a fourth has not cleared it.
-  const bodies = [];
+  //
+  // §169 — AND THE TEST IS THE SKIRT'S BAND, not the name. This measurement
+  // is PLAN-ONLY: it projects into the wheel's 2D frame, which is exactly
+  // right for members that share the saw's z band and says nothing at all
+  // about ones that do not. §163's pawl group was entirely inside that band,
+  // so the name and the band picked out the same set. §169's torsion spring
+  // is not: its coil and its anchor pin stand a stratum BELOW the teeth, in
+  // the driver's own, and the pin sits 0.109 inside the tip circle in plan —
+  // which is unremarkable, since the whole driver does, and is the reason the
+  // architecture works at all. Selecting by name alone reported that pin as
+  // 0.0468 of penetration into a saw it passes a clear 0.541 underneath.
+  const bodies = [], skipped = [];
   let skirt = null, wheelGroup = null, nose = null;
+  unit.obj.traverse((o) => { if (o.name === 'alarmColSkirt') { skirt = o; wheelGroup = o.parent; } });
+  if (!skirt) return { err: 'no alarmColSkirt — the band this test is taken in' };
+  skirt.updateWorldMatrix(true, false);
+  const band = new THREE.Box3().setFromObject(skirt);
   unit.obj.traverse((o) => {
     if (o.userData?.schematic || !o.isMesh) return;
-    if (/^alarmColPawl/.test(o.name)) { bodies.push(o); if (o.name === 'alarmColPawlNose') nose = o; }
-    if (o.name === 'alarmColSkirt') { skirt = o; wheelGroup = o.parent; }
+    if (!/^alarmColPawl/.test(o.name)) return;
+    const bb = new THREE.Box3().setFromObject(o);
+    if (bb.max.z < band.min.z + 1e-9 || bb.min.z > band.max.z - 1e-9) { skipped.push(o.name); return; }
+    bodies.push(o); if (o.name === 'alarmColPawlNose') nose = o;
+    // (the band is re-tested per vertex below, for the one member that spans two)
   });
-  if (!bodies.length) return { err: 'no alarmColPawl* meshes — §163 renamed the member' };
+  if (!bodies.length) return { err: 'no alarmColPawl* meshes in the skirt band — §163 renamed the member' };
   const poly = wheelGroup.userData.ratchetPoly;
   if (!poly) return { err: 'no ratchetPoly on the wheel group' };
   // point-in-polygon and distance-to-polygon, in the wheel's local 2D
@@ -101,6 +119,14 @@ const out = await p.evaluate(async () => {
       const toWheel = inv.clone().multiply(body.matrixWorld);
       const pos = body.geometry.attributes.position;
       for (let k = 0; k < pos.count; k++) {
+        // the band test is per VERTEX, not per mesh: §169's torsion spring is
+        // ONE solid that spans two strata — its coil and anchor leg sit under
+        // the teeth in the driver's, its working leg climbs into the pawl's —
+        // so a mesh-level filter either measures its lower half against a saw
+        // it passes 0.541 beneath, or excuses its upper half from one it is
+        // genuinely in.
+        v.fromBufferAttribute(pos, k).applyMatrix4(body.matrixWorld);
+        if (v.z < band.min.z - 1e-9 || v.z > band.max.z + 1e-9) continue;
         v.fromBufferAttribute(pos, k).applyMatrix4(toWheel);
         n++;
         const r = Math.hypot(v.x, v.y);
@@ -125,11 +151,13 @@ const out = await p.evaluate(async () => {
   }
   let pr=0; for(const q of poly) pr=Math.max(pr,Math.hypot(q.x,q.y));
   let prMin=Infinity; for(const q of poly) prMin=Math.min(prMin,Math.hypot(q.x,q.y));
-  return { rows, teeth: poly.length, tipR:+pr.toFixed(3), rootR:+prMin.toFixed(3) };
+  return { rows, skipped, bodies: bodies.map((o) => o.name), teeth: poly.length, tipR:+pr.toFixed(3), rootR:+prMin.toFixed(3) };
 });
 await b.close(); srv.kill();
 if (out.err) { console.log(out.err); process.exit(1); }
-console.log(`  saw: ${out.teeth} outline points, root circle ${out.rootR}, tip circle ${out.tipR}\n`);
+console.log(`  saw: ${out.teeth} outline points, root circle ${out.rootR}, tip circle ${out.tipR}`);
+console.log(`  in the skirt's band: ${out.bodies.join(', ')}`);
+console.log(`  a stratum below it, not measured here: ${out.skipped.length ? out.skipped.join(', ') : '(none)'}\n`);
 console.log('  f      colA     inside/n   IN-PLANE depth   gap      pawl r          nose');
 for (const r of out.rows)
   console.log(`  ${String(r.f).padStart(5)}  ${String(r.colA).padStart(7)}  ${String(r.insideN).padStart(3)}/${r.n}`

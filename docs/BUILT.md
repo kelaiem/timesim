@@ -17406,3 +17406,181 @@ probe's own first cut collected them for the whole session and reported
 three-mesh-bvh's coplanar notice from the `inspection` sweep as the build's,
 and a silence claim that includes the instruments' own chatter is not a silence
 claim about the build.
+
+## §169 — a spring anchored to nothing, and a saw band that was never sized for what runs in it
+
+Two defects in §163's driver, both reported by eye ("part of the operating
+lever sticks out unsupported… maybe it's a spring that keeps the claw held
+against the teeth of the column wheel", and "the pawl mesh is also still
+colliding with the columns") and both confirmed by measurement before anything
+was built. They are unrelated to each other, they were invisible to different
+instruments for different reasons, and the fix for each is a constant that had
+never been derived.
+
+### 1. The pawl spring stood on nothing
+
+§163 sprang the driver's pawl with a flat cantilever behind its tail. Both of
+the blade's dimensions were solved and its force arithmetic held; what was
+never derived was WHERE its anchor went. The build put it at
+`bear − springFree` along the pawl's own axis, and since the pawl's nose points
+inboard, "behind the pivot" points **outboard**:
+
+| | |
+|---|---|
+| the driver's outline reaches | r = 7.550 from the arbor |
+| the pawl POST stands at | r = 7.067, 0.483 from the nearest driver vertex — on the arm's tip disc |
+| the spring STUD stood at | **r = 11.378**, 4.512 from the nearest driver vertex |
+| stud ⇄ driver, 3D, worst over the press axis | **4.347** clear |
+| a raycast straight down the stud's axis through the driver | **0 hits** |
+
+The stud hung in air 0.15 above the three-quarter plate, turning with the
+driver and touching neither it nor the plate; the blade was cantilevered off
+it. `INTRA_UNIT_CONTACTS` carried a row saying
+`alarmColDriver ⇄ alarmColPawlSpringStud` — *"the pawl spring's stud standing
+on the driver"* — which was both false and the reason nothing caught it: a
+declared joint is an EXCUSE as well as a claim, and that row took the one pair
+that would have shown the gap out of the sweep. **`intraUnit`'s stale tier
+catches a selector that matches nothing; there is no tier that catches a
+selector matching two real meshes that are nowhere near each other.**
+
+**What shipped instead is a torsion spring on the pawl's own post** — the
+classic column-wheel driving-pawl spring, and the version of this part that
+removes the class of mistake rather than re-siting it. A coil coaxial with the
+pivot has no anchor arm to place and no bear arm in the force path at all: the
+restoring MOMENT reaches the pawl directly, and the only lever left in the
+corner is the nose's own, where the blade had two in series.
+
+Its turn count is solved by the same two floors the blade answered to, both
+read as floors on DEVELOPED LENGTH, because a torsion spring's wire works in
+BENDING and so answers to the same `SPRING_STRAIN_MAX` a blade does:
+
+```
+L ≥ E·I·θ / Mmax          the drag budget       11.111 u   ← governs
+L ≥ θ·d / (2·ε)           the wire's own strain   8.969 u
+```
+
+| quantity | value | where it comes from |
+|---|---|---|
+| wire | ⌀ 0.13194 u (0.05 mm) | `SPRING_FLAT_U`, the movement's one spring stock |
+| mean coil radius | 0.28245 | post + `PIVOT_BORE_CLEAR` + half the wire — a close fit is what locates it |
+| spring index D/d | **4.28** | a consequence of those two; asserted inside the 4–12 a torsion spring can be wound to |
+| turns | **6.5** | the smallest count over the 11.111 floor that also puts the legs opposite |
+| developed length | 11.535 u | accumulated along the polyline the coil was **swept** along, not πDn |
+| rate kθ | 1.4038e-5 N·m/rad | E·I / L, from that swept length |
+| surface strain at full wind | **0.003110** | against `SPRING_STRAIN_MAX` 0.004 |
+| nose force | **4.434 mN** | kθ·θ over the nose arm — one lever, no bear arm |
+| return drag at the tip circle | **1.0727e-2 N·mm** | against the click's 3.3410e-2 detent — **3.11× clear**, `ALARM_SPRING_HEADROOM` 3 |
+
+**The HALF turn is the leg geometry's, and it is derived rather than chosen.**
+The anchor leg has to point inboard, onto the driver's own web where its pin
+can stand on metal that was cut; the working leg has to point outboard, onto
+the pawl's tail. Those are opposite, and a whole turn puts both leg roots at
+the same azimuth — so the count carries a half turn, and the small residue
+between "straight outboard" and the tail's actual bear station is a BEND in the
+leg, which is what a real torsion spring's legs are for.
+
+Three things the build asserts that the first cut got wrong:
+
+- **The stratum is the coil's OUTSIDE height, not its centre span.** Close-wound
+  turns put their wire centres one diameter apart, so 6.5 turns span 6.5·d
+  centre to centre and the wire's own radius adds half a diameter at each end.
+  Sizing the band at 6.5·d left the coil **0.084** under the pawl against a
+  `CLEAR_MARGIN` of 0.15. `ALARM_PAWL_COIL_H` is `(coils + 1)·SPRING_FLAT_U`.
+- **The anchor pin's height is what it has to HOLD, not the stratum it stands
+  in.** The pin is the one member of this spring inside the saw's tip circle in
+  plan (6.402 against 6.384) — unremarkable, since the whole driver is, and the
+  reason the architecture works at all — so it is the one that has to be short.
+  A pin sized to the coil's height would have put its top face exactly on the
+  skirt's underside, rebuilding defect 2 below in a new part. It is the leg's
+  own diameter plus a floor-stock head: 0.449, leaving 0.541 to the saw's band.
+- **The working leg is a series compliance**, and TODO 82's lesson is that a
+  series compliance nobody prices is the one that turns out to govern. Priced
+  as a cantilever of the wire's own ROUND section (a square of the same
+  diameter carries 1.7× the second moment, and flattering the member an assert
+  exists to doubt is how an assert is made never to fire): **41.5×** the coil's
+  own rate, so the coil governs, asserted at 10×.
+
+### 2. The saw band was cut at a stock floor, and the pawl exactly filled it
+
+The ratchet skirt was extruded at `STOCK_MIN_U` — the same floor the pawl that
+indexes it is cut at — so the two bands were **identical**:
+
+```
+alarmColPawl   z = 9.6011 .. 9.9178
+alarmColSkirt  z = 9.6011 .. 9.9178     ← the same band
+alarmColBase   z = 9.9178 .. 10.6178    ← starts exactly where the pawl ends
+```
+
+The pawl's top face was coplanar with the base disc's underside, measuring
+**0.000** clearance over the whole area it sweeps under the disc, at every
+pose, with 0.15 below it to the driver and nothing above.
+
+**Neither instrument could see it, and the reasons are worth writing down.**
+`clearances` is cross-UNIT and both are inside `Alarm switch`. `intraUnit`
+gates on `intersectsGeometry`, and two solids that share exactly one plane do
+not intersect — the tier is built to catch overlap, and a zero-clearance
+running face is not overlap. This is a third shape of intra-unit blind spot
+beside TODO 5's two, and it is filed there.
+
+The band is now a consequence of the member it swallows — pawl stock with one
+running margin at EACH face — and the pawl is centred in it, which is the
+arithmetic a real ratchet's tooth band is cut to. `makeColumnWheel` takes
+`skirtH` from its caller (the floor stays the default for `test-geometry.html`,
+which has no pawl to swallow) and main.js derives
+`ALARM_COL_SKIRT_H = STOCK_MIN_U + 2·CLEAR_MARGIN`.
+
+Measured after: `alarmColPawl ⇄ alarmColBase` **0.000 → 0.150**, and
+`alarmColPawlNose ⇄ alarmColBase` likewise. The only remaining zero against the
+wheel is the declared seat, `alarmColPawlNose ⇄ alarmColSkirt`.
+
+### What it cost, stated rather than hidden
+
+Both fixes are paid in the same currency §163 paid in, and for the same reason:
+this is position space, which is the only currency P3 allows.
+`ALARM_COL_RAISE` grows by `ALARM_PAWL_COIL_H + CLEAR_MARGIN` = **1.1396**
+(0.432 mm), and because every rider derives from `ALARM_COL_SPIN_REL` the whole
+cluster rides it. Measured before spending it: nothing unrelated stands above
+the wheel inside r 9 — the only four meshes there are the alarm link's own beak
+parts, which ride.
+
+```
+driver          9.1345 .. 9.4511
+spring pin      9.4511 .. 9.8998      standing on the driver's top face
+coil            9.4511 .. 10.4407     0.9896 = ALARM_PAWL_COIL_H
+skirt          10.4407 .. 11.0574     0.6167 = STOCK_MIN_U + 2·CLEAR_MARGIN
+pawl           10.5907 .. 10.9074     centred, 0.15 to each face
+base           11.0574 .. 11.7574
+castellations  11.7574 .. 13.1574
+```
+
+§164's return coil re-solved with it, which is the coupling working rather than
+a side effect: its preload is `ALARM_SPRING_HEADROOM` × the drag the pawl's own
+spring imposes, and that drag moved from 4.72 to 5.65 mN. **35 → 37 coils**,
+rate 47.60 → **45.02 N/m**, shear 453.2 → **454.5 MPa** against
+`SPRING_TAU_Y_PA` 461.9, press force at the bottom 62.6 → **62.8 mN**, quarter
+period 1.075 → **1.103 ms**.
+
+### The instruments that had to move, and why that is part of the fix
+
+- **`tools/probe-87-pawl.mjs` tests the skirt's BAND, not the name.** It is a
+  plan-only measurement, which is exactly right for members sharing the saw's z
+  band and says nothing about ones that do not. §163's pawl group was entirely
+  inside that band, so name and band picked out the same set; §169's spring is
+  not, and selecting by name reported its anchor pin as 0.0468 of penetration
+  into a saw it passes 0.541 beneath. The band test is per VERTEX, because the
+  spring is ONE solid spanning two strata — coil and anchor leg under the
+  teeth, working leg climbing into the pawl's band. With that, the probe reads
+  what it read before: **0 of 589 vertices inside the saw at every pose**, worst
+  clearance outside the nose's working zone 0.151.
+- **`makeTorsionSpring` sweeps by hand and caps both ends**, for the same reason
+  §164's compression coil does: every `TubeGeometry` in `geometry.js` is built
+  `closed = false` and ships OPEN ends, which `meshClearance`'s parity raycast
+  reads as a collision. Its frame is PARALLEL TRANSPORT rather than
+  `makeHelicalSpring`'s outward-from-the-axis radial, which is exact for a helix
+  and degenerate for a straight leg pointing at the axis — and this path is a
+  leg, a helix and a leg.
+- **The rate is computed from what was CUT.** `makeHairspring`'s rule: the
+  builder accumulates the developed length along the very polyline it swept,
+  and the solve reads that rather than πDn. The two differ by 8.6e-5 — the
+  chord error of a polygonal coil — and the assert holds them within a chord
+  rather than exactly equal, which is the honest claim about a sweep.
