@@ -6315,7 +6315,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     gasketD, gasketSeat, crystT, screwN, screwShaftD, screwHeadD, tubeD, pusherD,
     stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff,
-    lugSpan,
+    lugSpan, sectors: CASE_SECTORS,
   } = dims;
   const g = new THREE.Group();
   g.name = 'case';
@@ -6336,6 +6336,95 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   //
   // The guard is here, at the helper, rather than in the check: the check
   // stays generic, and the next lathe body cannot ship open in silence.
+  // ---------------------------------------------------------------------
+  // A SECTOR of a turning: the same profile, revolved through part of a turn
+  // and CAPPED at both ends. This is what a body of revolution cannot do on
+  // its own — every feature of a full lathe exists at every azimuth, so a
+  // case band turned in one piece can have no hole in it. That is why the
+  // band had no stem bores and why the plate seat was an unbroken ring
+  // standing in the keyless works (TODO 90, TODO 91).
+  //
+  // Three.js gives the side surface via phiStart/phiLength. The caps are the
+  // job: a partial revolution is OPEN where it starts and stops, and an open
+  // body is read as solid behind the missing face by `meshClearance`'s parity
+  // raycast — the exact defect this case has just been cleaned of. So each
+  // sector carries the profile polygon, triangulated, at both ends.
+  //
+  // Azimuth convention, derived rather than guessed: LatheGeometry emits
+  // x = r·sin φ, y = z_profile, z = r·cos φ, and the house rotateX(π/2) maps
+  // (x, y, z) → (x, −z, y). So world X = r·sin φ, Y = −r·cos φ, and the world
+  // azimuth is atan2(−cos φ, sin φ) = φ − π/2. A sector spanning world
+  // [a0, a1] therefore starts at φ = a0 + π/2. Asserted below by measurement,
+  // not trusted.
+  // `capPolys` is how the end face is PAVED, and it defaults to the profile
+  // itself. It exists because earcut will not reliably triangulate this
+  // band's outline: measured, the whole 19-point profile came back as 15
+  // triangles instead of 17 — it gave up on the seat step's notch, and the
+  // cap shipped with a hole exactly the shape of that step. Rather than hope,
+  // pave the face from pieces that are each simple. The band's own
+  // decomposition is natural: WHOLE = RELIEVED ∪ the seat-step rectangle.
+  const sectorLathe = (pts, a0, a1, capPolys = null, segPerTurn = 96) => {
+    const span = a1 - a0;
+    const seg = Math.max(2, Math.ceil(segPerTurn * span / (Math.PI * 2)));
+    const v2 = pts.map(([r, z]) => new THREE.Vector2(r, z));
+    const side = new THREE.LatheGeometry(v2, seg, a0 + Math.PI / 2, span);
+    side.rotateX(Math.PI / 2);
+    // Each piece is a closed contour, so drop the duplicated last point —
+    // ShapeUtils wants the polygon, not the loop.
+    const pieces = (capPolys || [pts]).map((poly) => {
+      const pv = poly.map(([r, z]) => new THREE.Vector2(r, z)).slice(0, -1);
+      const tris = THREE.ShapeUtils.triangulateShape(pv, []);
+      // A simple polygon of n vertices triangulates to exactly n − 2. Fewer
+      // means earcut abandoned part of the outline and the face is holed —
+      // the open-body defect arriving by a different road.
+      if (tris.length !== pv.length - 2)
+        console.warn(`makeCase: a sector cap piece triangulated to ${tris.length} triangles, not the `
+          + `${pv.length - 2} its ${pv.length}-point outline requires — the face is holed`);
+      return { pv, tris };
+    });
+    const capAt = (phi, flip) => {
+      const s = Math.sin(phi), c = Math.cos(phi);
+      const arr = [];
+      for (const { pv, tris } of pieces) {
+        for (const t of tris) {
+          const ix = flip ? [t[2], t[1], t[0]] : t;
+          for (const i of ix) {
+            const p = pv[i];
+            arr.push(p.x * s, -p.x * c, p.y);
+          }
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+      g.computeVertexNormals();
+      return g;
+    };
+    // The two caps face opposite ways along the sweep, so one is wound
+    // against the other; which one flips is settled by the volume assert at
+    // the call site rather than by argument.
+    return mergeGeos([side, capAt(a0 + Math.PI / 2, false), capAt(a1 + Math.PI / 2, true)]);
+  };
+
+  // Concatenate geometries into one body. No BufferGeometryUtils is vendored,
+  // and the app stays dependency-free; §81's weldTree indexes whatever reaches
+  // the scene, so emitting non-indexed here costs nothing.
+  function mergeGeos(geos) {
+    const flat = geos.map((g) => (g.index ? g.toNonIndexed() : g));
+    let n = 0;
+    for (const g of flat) n += g.attributes.position.count;
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+    let w = 0;
+    for (const g of flat) {
+      pos.set(g.attributes.position.array, w);
+      if (g.attributes.normal) nor.set(g.attributes.normal.array, w);
+      w += g.attributes.position.count * 3;
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    return out;
+  }
+
   const lathe = (pts, seg = 96) => {
     const [rA, zA] = pts[0], [rB, zB] = pts[pts.length - 1];
     const closed = (Math.abs(rA - rB) < 1e-9 && Math.abs(zA - zB) < 1e-9)
@@ -6355,23 +6444,92 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // groove) → the back-wall flange that carries the back screws. One closed
   // profile, one turning — which is how a real case middle comes off the
   // lathe.
-  const middle = new THREE.Mesh(lathe([
-    [R_IN, zFlangeIn],
-    [R_IN, zSeatBot], [R_SH, zSeatBot], [R_SH, zSeatTop], [R_IN, zSeatTop],
+  // The profile in three pieces, so a sector can take the part it needs.
+  // FRONT runs the inner wall down from the seat to the bezel and out to the
+  // outer wall; BACK runs the outer wall up to the back face, in across the
+  // gasket groove and down the flange. SEAT is the plate's bearing step, and
+  // it is the piece a relieved sector omits.
+  // Traversed the way the contour runs — DOWN the bore — which the authored
+  // order did not: it went to zSeatBot before zSeatTop while the wall was
+  // descending, so the outline doubled back and touched itself at (R_IN,
+  // zSeatTop). A lathe never asks whether its polyline is a simple polygon,
+  // so it rendered; earcut does ask, and returned 15 triangles where 17 were
+  // needed, holing the cap around exactly this step. The bore narrows to R_SH
+  // BELOW the plate's face and opens to R_IN above it, which is what a
+  // shoulder the rim sits on means in metal.
+  const seatStep = [
+    [R_IN, zSeatTop], [R_SH, zSeatTop], [R_SH, zSeatBot], [R_IN, zSeatBot],
+  ];
+  const frontRun = [
     [R_IN, zBandFront],
     [R_CRYST, zCrystInner], [R_CRYST + 1 / UNIT_MM, zCrystInner],
     [R_BEZEL_IN + 0.3 / UNIT_MM, zCrystOuter],
     [R_BEZEL_IN, zCrystOuter], [R_BEZEL_IN, zBezelOuter],
-    [R_OUT, zBezelOuter], [R_OUT, zMidBack],
+    [R_OUT, zBezelOuter],
+  ];
+  const backRun = [
+    [R_OUT, zMidBack],
     [R_G + 0.35 / UNIT_MM, zMidBack],
     [R_G + 0.35 / UNIT_MM, zMidBack - gasketSeat / 2],
     [R_G - 0.35 / UNIT_MM, zMidBack - gasketSeat / 2],
     [R_G - 0.35 / UNIT_MM, zMidBack],
     [R_FL, zMidBack], [R_FL, zFlangeIn],
-    [R_IN, zFlangeIn],   // ...and back to the start along the flange's INNER
-                         // annular face, the one the movement passes through:
-                         // the turning's last cut, and what shuts the contour
-  ]), material);
+  ];
+  //  · WHOLE — the turning as it comes off the lathe, seat included.
+  //  · RELIEVED — the same turning with the seat step cut away, so the inner
+  //    wall runs straight past. This is TODO 91's interrupted seat: a case
+  //    seat is not obliged to be a full ring, and on a caliber with dial-side
+  //    keyless works it cannot be one.
+  //  · The BORED pair — a relieved sector split by a z window, metal above
+  //    and below the hole, nothing across it.
+  const PROFILE_WHOLE = [[R_IN, zFlangeIn], ...seatStep, ...frontRun, ...backRun, [R_IN, zFlangeIn]];
+  // RELIEVED carries the step's two z breaks ON the straight wall. They are
+  // collinear and cost nothing, and they are what lets a WHOLE sector's face
+  // be paved as RELIEVED + the step: the shared edge between them cancels
+  // exactly, so the paved outline reproduces the side surface's own polyline.
+  // Without them the two disagree along the bore and the seam reads open.
+  const PROFILE_RELIEVED = [
+    [R_IN, zFlangeIn], [R_IN, zSeatTop], [R_IN, zSeatBot],
+    ...frontRun, ...backRun, [R_IN, zFlangeIn],
+  ];
+  // Both pieces keep the WHOLE profile's traversal direction — inner wall
+  // downward, out through the front, up the outer wall, back along the top —
+  // because the orientation is what decides which way the faces look, and a
+  // sector that disagrees with its neighbours renders inside-out.
+  const boredPair = (z1, z2) => [
+    // below the hole: inner wall down to the front, the bezel run, up the
+    // outer wall to the cut, across it
+    [[R_IN, z1], ...frontRun, [R_OUT, z1], [R_IN, z1]],
+    // above the hole: inner wall down to the cut, across it, up the outer
+    // wall, round the back and down the flange
+    [[R_IN, zFlangeIn], [R_IN, z2], [R_OUT, z2], ...backRun, [R_IN, zFlangeIn]],
+  ];
+  const middleGeos = [];
+  for (const s of CASE_SECTORS) {
+    if (s.kind === 'bored') {
+      for (const prof of boredPair(s.z1, s.z2)) middleGeos.push(sectorLathe(prof, s.a0, s.a1));
+    } else {
+      const whole = s.kind !== 'relieved';
+      middleGeos.push(sectorLathe(whole ? PROFILE_WHOLE : PROFILE_RELIEVED, s.a0, s.a1,
+        // WHOLE's face is paved as RELIEVED plus the step it adds; RELIEVED
+        // pays for itself in one piece.
+        whole ? [PROFILE_RELIEVED, [...seatStep, seatStep[0]]] : null));
+    }
+  }
+  const middleGeo = mergeGeos(middleGeos);
+  {
+    const p = middleGeo.attributes.position.array;
+    let v = 0;
+    for (let t = 0; t < p.length; t += 9) {
+      v += (p[t] * (p[t + 4] * p[t + 8] - p[t + 5] * p[t + 7])
+          + p[t + 1] * (p[t + 5] * p[t + 6] - p[t + 3] * p[t + 8])
+          + p[t + 2] * (p[t + 3] * p[t + 7] - p[t + 4] * p[t + 6])) / 6;
+    }
+    if (!(v > 0))
+      console.warn(`makeCase: the sectored band is wound inside-out (signed volume ${v.toFixed(2)} ≤ 0) — `
+        + 'FrontSide culling will hide it, and the caps are the likely side that flipped');
+  }
+  const middle = new THREE.Mesh(middleGeo, material);
   middle.name = 'caseMiddle';
   const middleAsm = new THREE.Group();
   middleAsm.name = 'caseMiddleAssembly';

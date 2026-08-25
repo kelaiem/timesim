@@ -46,6 +46,22 @@ const res = await page.evaluate(async () => {
     if (seen.has(name) && boundary === 0) return;
     seen.add(name);
     out.push(`${boundary === 0 ? 'CLOSED' : 'OPEN  '} ${name.padEnd(18)} boundary edges ${boundary}  (${g.type}, ${pos.count} verts)`);
+    if (boundary) {
+      // Where the hole is, in the cylindrical terms the case is designed in.
+      const rep = new Map();
+      for (const [i] of [...key.entries()]) rep.set(rep.size, i);
+      const byId = new Map();
+      for (const [k, id] of key.entries()) if (!byId.has(id)) byId.set(id, k.split(',').map((n) => +n / Q));
+      let shown = 0;
+      for (const [k, c] of edge.entries()) {
+        if (c !== 1 || shown >= 8) continue;
+        const [u, v] = k.split('_').map(Number);
+        const A = byId.get(u), B = byId.get(v);
+        const cyl = (p) => `r ${Math.hypot(p[0], p[1]).toFixed(2)} az ${(Math.atan2(p[1], p[0]) * 180 / Math.PI).toFixed(1)}° z ${p[2].toFixed(2)}`;
+        out.push(`         edge: ${cyl(A)}  →  ${cyl(B)}`);
+        shown++;
+      }
+    }
   });
   return out;
 });

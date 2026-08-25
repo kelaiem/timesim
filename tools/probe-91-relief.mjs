@@ -46,7 +46,8 @@ const res = await page.evaluate(async () => {
     return { startDeg: start * 180 / Math.PI, spanDeg: span * 180 / Math.PI };
   };
   const all = [];
-  for (const other of ['Keyless works', 'Alarm crown', 'Setting lever', 'Alarm switch']) {
+  for (const other of clock.labelEntries.map((e) => e.name)) {
+    if (other === 'Case') continue;
     const E = unit(other); if (!E) continue;
     for (const B of meshesOf(E)) {
       const g = B.geometry, q = g.attributes.position; const azs = []; let deepest = Infinity;
