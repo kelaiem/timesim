@@ -1,6 +1,13 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-const ROOT = '/Users/willmon/Documents/dev/timesim/.claude/worktrees/case-schematic';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+// Derived, not hardcoded: a probe must run from the worktree that OWNS it, the
+// way ci-battery.mjs resolves its own ROOT. The absolute path this replaced was
+// one machine's worktree, so every one of these probes was unrunnable anywhere
+// else — including from a fresh clone of the branch that ships them. Set ROOT=
+// to take the same numbers against a base worktree.
+const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
 const srv = spawn('python3', ['-m', 'http.server', '8454', '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 1200));
 const browser = await chromium.launch();
