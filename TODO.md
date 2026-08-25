@@ -19,7 +19,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 |---|---|---|
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
-| 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's |
+| 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's. **A third shape found 2026-08-25 (§169): the tiers gate on `intersectsGeometry`, so a FLUSH FACE is invisible** — two solids sharing exactly one plane do not intersect, and the alarm pawl ran 0.000 from the column wheel's base disc over the whole area it sweeps under it, at every pose, with every gate green. Overlap is not the only way metal can be wrong; see item 87 findings 8 and 9 for both this and the excuse a false `INTRA_UNIT_CONTACTS` row grants |
 | 84 | OPEN | Every gear ships fatter than it was cut: three.js's `bevelSize` offsets the outline OUTWARD by more than the backlash the generator reserved (0.0748 u per flank against 0.0427 u for the pair at module 0.34). General to the movement; visible only where a unit is gated. Three candidate fixes in the item, none of them widening `cyBacklash` |
 | 85 | OPEN | §136's residue: `makeBevelGear` and `makeBarrel` still cut trapezoids. The barrel's conversion is a §104 re-solve, not a geometry change; the bevels need a bevel spec. Also records the rule the mistake bought — a tooth-count floor must match the generator that cuts the member |
 | 86 | OPEN | `gearTrueReach`'s miter takes a DIFFERENCE of the outward edge normals where the SUM is meant, and scales by the sine of the turn rather than of the half interior angle. Over-estimates, so the bound still bounds — 4.1451 against 3.9424 on the setting wheel. Correcting it un-binds `SLEEVE_TOP`'s setting-wheel cap and drops `clutchSleeve ⇄ settingWheel` to 0.1278 against 0.15, so the cap must be re-derived in the same landing |
@@ -9705,6 +9705,14 @@ read the other, because the second is then nearly free.
      greater of two floors — the drag budget's 3.987 and its own strain limit's
      4.287. The strain governs, so the drag lands at 3.73× the detent rather
      than the 3× minimum: what a governing constraint always buys.
+
+     **SUPERSEDED by §169** — see findings 8 and 9 below. Every sentence above
+     is still true of the blade and none of it answered the question the blade
+     got wrong, which was where its ANCHOR went. The pawl is sprung by a
+     torsion coil on its own post now: coaxial with the pivot, so there is no
+     anchor arm to place and no bear arm in the force path, and the same two
+     floors re-read as floors on developed length give 6.5 turns at 3.11× the
+     detent.
    - **The pivot's azimuth on the driver is a P3 choice at a 30° quantum.** The
      seats sit at fixed azimuths in the wheel, so the branches are one tooth
      apart, and three of the twelve foul the metal already standing in the
@@ -9824,24 +9832,26 @@ read the other, because the second is then nearly free.
    movement's own spring stock; the mean coil radius is the stem plus a running
    clearance plus half the wire; the **coil count is a FLOOR from the shear the
    wire may work to at full stroke** — `τ = K·G·d·δ / (π·D²·n)` falls as `n`
-   rises, so **35 coils** is what the stress allows and not what fitted, solved
+   rises, so **37 coils** is what the stress allows and not what fitted, solved
    to a fixed point because the deflection includes a preload that depends on
    the rate that depends on `n`. The **preload is `ALARM_SPRING_HEADROOM` × the
-   4.72 mN the pawl's own spring drags back through §163's coupling** = 14.15 mN.
+   5.65 mN the pawl's own spring drags back through §163's coupling** = 16.94 mN
+   (§169 re-solved the pawl's spring as a torsion coil and this followed it — 35
+   coils, 47.60 N/m and 14.15 mN were the figures against §163's blade).
    The free length is solid + preload + travel + one `CLEAR_MARGIN` of clash.
 
    | quantity | value |
    |---|---|
-   | rate | **47.60 N/m** |
-   | shear at full press | **453.2 MPa** against `SPRING_TAU_Y_PA` 461.9 |
-   | press force at the bottom | **62.6 mN** against `CASE_PUSHER_INPUT_N`'s 1–5 N |
-   | return time | **1.075 ms** |
+   | rate | **45.02 N/m** |
+   | shear at full press | **454.5 MPa** against `SPRING_TAU_Y_PA` 461.9 |
+   | press force at the bottom | **62.8 mN** against `CASE_PUSHER_INPUT_N`'s 1–5 N |
+   | return time | **1.103 ms** |
 
    **And the settling time became arithmetic**, which is the half of this step
    that was never about geometry. `ALARM_RETURN_S` asserted that "an unloaded
    spring returns at least as fast as a deliberate press"; there is a spring
-   now, so a quarter period on the pusher's own summed mass is 1.075 ms against
-   the tick's 0.12 s — **conservative by 112×**. The tick keeps its human-scale
+   now, so a quarter period on the pusher's own summed mass is 1.103 ms against
+   the tick's 0.12 s — **conservative by 109×**. The tick keeps its human-scale
    bound, because a real return is damped by friction this movement does not
    model, but the claim is no longer an assertion.
 
@@ -9870,6 +9880,67 @@ on the built mesh, and saying so is the difference between this item and one
 that quietly promotes everything because one number came back. Finding 2's
 numbers are TODO 82's, measured there. Taken 2026-08-23; per TODO 20's own history note, quote a measurement
 with the tree it came from or expect to re-take it.
+
+### 8, 9 and 10 (2026-08-25) — three defects, two eye-reported, all CLOSED by §169
+
+Filed here rather than as a new item because both are §163's, both were caught
+by a reader looking at the movement rather than by any instrument, and both are
+fixed; `docs/BUILT.md` §169 carries the build. What they are worth keeping in
+this file is WHY the battery was green over them.
+
+**8. The pawl's spring was anchored to nothing.** §163 solved both of the
+blade's dimensions honestly and never derived WHERE its anchor went: at
+`bear − springFree` along the pawl's own axis, and the pawl's nose points
+inboard, so "behind the pivot" points outboard. The stud stood at **r 11.378**
+from the arbor against a driver whose outline reaches **7.550** — measured
+**4.347** clear of it in 3D, with a raycast down its own axis hitting the
+driver **zero** times, hanging 0.15 above the plate and turning with neither.
+
+The instrument lesson is the part to keep. `INTRA_UNIT_CONTACTS` carried
+`alarmColDriver ⇄ alarmColPawlSpringStud`, *"the pawl spring's stud standing on
+the driver"* — and **a declared joint is an EXCUSE as well as a claim**, so
+that row took the one pair whose measurement would have shown the gap out of
+the sweep. The table's stale tier catches a selector matching NOTHING; nothing
+catches a selector matching two real meshes that are nowhere near each other.
+A cheap tier that would: for every `INTRA_UNIT_CONTACTS` row, measure the pair
+and REPORT any whose clearance exceeds a joint's plausible span at every pose.
+Not filed as work here because it belongs with item 5's tiers, below.
+
+**9. The saw band was a stock floor, so the pawl exactly filled it.** The
+ratchet skirt was extruded at `STOCK_MIN_U`, the same floor the pawl that
+indexes it is cut at, so the pawl's top face was coplanar with the base disc's
+underside — **0.000** clearance over the whole area it sweeps under the disc,
+at every pose, 0.15 below it and nothing above. §169 makes the band a
+consequence of the member it swallows (`STOCK_MIN_U + 2·CLEAR_MARGIN`) with the
+pawl centred in it; measured after, 0.000 → **0.150**.
+
+**10. And the ruler for a swept solid was measuring its envelope.** Not
+eye-reported — found by diffing §169's `--report` against `origin/main`'s,
+which is the reason that diff is the acceptance rather than the PASS column.
+`stockCensus` measures a static mesh from its geometry-local box, which is
+right for a primitive and wrong for a wire swept along a path: it reports the
+space a coil occupies as the metal it is made of. §169's torsion coil read
+1.35 that way and **§164's compression coil 0.87, since it shipped** — against
+a 0.05 mm wire, a third of the smaller. Both cleared §50's 0.12 floor while
+their stock sat well under it, and the error runs in the direction that never
+fails.
+
+§163's blade was a `BoxGeometry` and so reported 0.05 mm honestly as a waived
+row. Swapping it for a coil would have traded a VISIBLE debt for an invisible
+one, which is the inverse of what a waiver is for. Builders now publish
+`userData.stockSection` and the census prefers it, naming the ruler it used;
+both springs are back in the report as accepted debt (48 waived, 0 unwaived),
+held by `tools/probe-169-stock.mjs`. **Residue, named:** every other
+hand-built `BufferGeometry` in the movement is still measured by its local
+box, and nothing asserts that a mesh which NEEDS a declared section has one —
+the census cannot tell a swept wire from a solid block. Today the two springs
+are the only swept solids; a third would inherit the wrong ruler in silence.
+
+This one is a THIRD shape of intra-unit blind spot, and it is recorded against
+item 5 rather than here: `clearances` is cross-unit and both meshes are inside
+`Alarm switch`; `intraUnit` gates on `intersectsGeometry`, and two solids
+sharing exactly one plane do not intersect. The tier is built to catch overlap,
+and **a zero-clearance running face is not overlap**.
 
 ## 88. The quick-set's detent is arithmetic — deliver the setting-time step through a derived compliance window
 
