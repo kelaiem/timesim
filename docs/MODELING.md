@@ -203,6 +203,18 @@ rule, one sampling and one answer. The two differ by the chord error of a
 polygonal coil (8.6e-5 at §169's sampling), which is small, real, and exactly
 the size of thing a `1e-6` equality assert would fail on.
 
+**And it publishes `userData.stockSection`, because a swept wire has no local
+box to measure.** `stockCensus` sizes a static mesh from its geometry-local
+bounding box — right for anything built from a primitive, and for a coil it
+reports the ENVELOPE as the metal: 1.35 for §169's torsion spring, 0.87 for
+§164's compression coil, against a 0.05 mm wire. Both cleared §50's 0.12 floor
+for two sections while the stock they are wound from sat a third of the way
+under it, in the error direction that never fails. The census now prefers a
+declared section and names the ruler it used (`via: 'declared'`). Publish it
+from any builder whose mesh is a swept path, a lattice, or anything else whose
+bounding box is not a thickness — and restate it at the CALL SITE where the
+consumer keeps only the geometry, as §164's frame-swapping spring does.
+
 ### 8. A line given volume is a new part, and its walk order is topology
 
 A lever designed as a centreline (pivot → elbow → nose) becomes a mesh by

@@ -8558,6 +8558,27 @@ export async function stockCensus(clock, opts = {}) {
       // BAKED INTO ITS VERTICES (dial markers at azimuth, the monogram's
       // stroked quads) still mixes axes in its local box, so its row
       // UNDER-reports thinness rather than over-reporting it.
+      // §169 — A HAND-SWEPT SOLID HAS NO HONEST LOCAL BOX, so a builder that
+      // knows its own section says so and this reads it. Both of the
+      // movement's swept springs are one continuous wire along a path, so the
+      // geometry-local box measures the coil's ENVELOPE and calls it stock:
+      // 1.35 for §169's torsion coil, 0.87 for §164's compression coil,
+      // against a wire that is 0.05 mm — a THIRD of the smaller of them. And
+      // it is wrong in the direction that never fails, which is why it went
+      // unnoticed through §164: both read comfortably over the floor while the
+      // metal they are wound from is under it. Measured against §163's blade,
+      // which was a BoxGeometry and so reported its 0.05 mm honestly as a
+      // waived row, §169 would have traded a visible debt for an invisible
+      // one. The rule this restores is the census's own: say so wherever the
+      // ruler is wrong.
+      if (typeof v.mesh.userData.stockSection === 'number' && v.mesh.userData.stockSection > 0) {
+        thin = v.mesh.userData.stockSection;
+        via = 'declared';
+        source = 'builder-declared section (userData.stockSection) — a swept wire has no local box to measure';
+        rows.push({ part: v.unit, mesh: name, via, source, where: whereOf(v.mesh),
+          thinnestUnits: +thin.toFixed(4), thinnestMM: +(thin * UNIT_MM).toFixed(4) });
+        continue;
+      }
       v.mesh.geometry.computeBoundingBox();
       const lb = v.mesh.geometry.boundingBox;
       const ws = v.mesh.getWorldScale(new THREE.Vector3());

@@ -2924,6 +2924,9 @@ export function makeHelicalSpring({ coilR, wireR, coils, length, material = MATS
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = name;
   mesh.userData.helix = { coilR, wireR, coils, length };
+  // §169 — the STOCK this is wound from, for stockCensus: a swept wire's
+  // geometry-local box is the coil's envelope, not its section.
+  mesh.userData.stockSection = 2 * wireR;
   return mesh;
 }
 
@@ -3031,6 +3034,7 @@ export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
     devLen += Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
   }
   mesh.userData.torsion = { coilR, wireR, coils, height, devLen, startAz, sense };
+  mesh.userData.stockSection = 2 * wireR;   // §169 — see makeHelicalSpring: the wire, not the envelope
   return mesh;
 }
 

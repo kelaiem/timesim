@@ -21429,6 +21429,11 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   }
   const spring = new THREE.Mesh(springFrames[0], MATS.blueSteel);
   spring.name = 'alarmPusherReturnSpring';
+  // §169 — this mesh keeps only the builder's GEOMETRY (it swaps a frame per
+  // pose), so the section the builder published on its own mesh does not
+  // travel. Restated here, or stockCensus measures the coil's envelope and
+  // calls a 0.05 mm wire 0.87 mm of stock.
+  spring.userData.stockSection = 2 * wireR;
   spring.rotation.set(0, Math.PI / 2, ALARM_PUSH_AZ, 'ZYX');
   spring.position.set(_pushBase.x + _pushU.x * (abutS + abutT / 2), _pushBase.y + _pushU.y * (abutS + abutT / 2),
                       ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);

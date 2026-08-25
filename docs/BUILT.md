@@ -17560,6 +17560,65 @@ rate 47.60 → **45.02 N/m**, shear 453.2 → **454.5 MPa** against
 `SPRING_TAU_Y_PA` 461.9, press force at the bottom 62.6 → **62.8 mN**, quarter
 period 1.075 → **1.103 ms**.
 
+### 3. And the ruler for a swept solid was measuring the wrong thing
+
+Found by diffing this change's `--report` against `origin/main`'s rather than
+by any gate, which is the whole reason that diff is the acceptance: `stockFloor`
+went from 47 waived rows to 46, and the row that disappeared was the blade's.
+
+`stockCensus` measures a static mesh from its GEOMETRY-LOCAL box. That is right
+for everything built from a primitive and wrong for a wire swept along a path:
+the box is the coil's ENVELOPE, so it reports the space a spring occupies as
+the metal it is made of. §169's torsion coil reads 1.35 that way and §164's
+compression coil 0.87, against a wire that is **0.05 mm** — a third of the
+smaller of them. Both therefore cleared §50's 0.12 floor comfortably while the
+stock they are wound from sits well under it, and the error is in the direction
+that never fails, which is why §164 shipped it unnoticed.
+
+§163's blade was a `BoxGeometry`, so it reported its 0.05 mm honestly and stood
+in the waived list citing TODO 11. Replacing it with a coil would have traded a
+**visible** debt for an invisible one — the exact inverse of what a waiver is
+for. A builder that knows its own section now publishes
+`userData.stockSection` and the census prefers it, saying which ruler it used
+(`via: 'declared'`). Both springs are back in the report at 0.05 mm as accepted
+debt, and `tools/probe-169-stock.mjs` holds that: 48 waived, 0 violations, 0
+degenerate, both rows present.
+
+§164's spring needed the section restated at its call site, because that mesh
+keeps only the builder's GEOMETRY — it swaps a frame per pose — so anything on
+the builder's own mesh does not travel.
+
+### What the report diff says, which is the acceptance here
+
+A full battery on this tree and on `origin/main`, both **35/35**, diffed with
+timing keys stripped at every depth: **275 differing leaves in 2 checks**. The
+`fingerprint` moves (a new hash, expected — the metal changed). Everything else
+resolves to three things, and none of them is a surprise:
+
+- **Index shifts in sorted lists.** The blade was the smallest waived
+  `stockFloor` row, so removing it renumbered every row below it. That is most
+  of the 275.
+- **The alarm cluster rose.** `assembly` checks one fewer split rigid group
+  (24 → 23: the stud and blade were separate bodies), `meshIntegrity` counts
+  2052 more triangles (the coil), and two EXPECTED unit pairs — `Alarm link ⇄
+  Alarm switch` and `Alarm lock ⇄ Alarm switch` — stop grazing within the
+  contact threshold on the `alarm` and `alarmStrike` axes, which is more
+  clearance, not less.
+- **One member got more slender, and it is named rather than absorbed.**
+  `alarmLinkRod` grows 7.315 → 7.747 mm — **exactly the 0.432 mm the raise
+  is** — so its λ goes 32.2 → 34.1 against a ceiling of 30 and its stiffness
+  falls 341.3 → 287.4 N/m. It was already over the ceiling and already waived
+  citing TODO 16; the waiver still holds and the gate still passes, but a raise
+  that makes an over-ceiling member 6% worse is a cost, not a rounding. It
+  belongs with TODO 79, which owns that rod's overhang.
+
+**What did NOT move is the load-bearing half.** All 13 `alarmHandoffs` rows are
+byte-identical to the base tree — including `column outer face ⇄ lock beak` and
+`beak tail ⇄ rod top` — so §68's claim that every rider's z-station derives
+from `ALARM_COL_SPIN_REL` and the cluster rides up as one is measured here
+rather than trusted. `oscillator`, `equalisation`, `chainLength`, `axisEntry`,
+`sweptOverlap` and every `clearances` budget are unchanged.
+
 ### The instruments that had to move, and why that is part of the fix
 
 - **`tools/probe-87-pawl.mjs` tests the skirt's BAND, not the name.** It is a

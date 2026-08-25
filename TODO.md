@@ -9881,7 +9881,7 @@ that quietly promotes everything because one number came back. Finding 2's
 numbers are TODO 82's, measured there. Taken 2026-08-23; per TODO 20's own history note, quote a measurement
 with the tree it came from or expect to re-take it.
 
-### 8 and 9 (2026-08-25) — two defects §163 shipped, both eye-reported, both CLOSED by §169
+### 8, 9 and 10 (2026-08-25) — three defects, two eye-reported, all CLOSED by §169
 
 Filed here rather than as a new item because both are §163's, both were caught
 by a reader looking at the movement rather than by any instrument, and both are
@@ -9913,6 +9913,28 @@ underside — **0.000** clearance over the whole area it sweeps under the disc,
 at every pose, 0.15 below it and nothing above. §169 makes the band a
 consequence of the member it swallows (`STOCK_MIN_U + 2·CLEAR_MARGIN`) with the
 pawl centred in it; measured after, 0.000 → **0.150**.
+
+**10. And the ruler for a swept solid was measuring its envelope.** Not
+eye-reported — found by diffing §169's `--report` against `origin/main`'s,
+which is the reason that diff is the acceptance rather than the PASS column.
+`stockCensus` measures a static mesh from its geometry-local box, which is
+right for a primitive and wrong for a wire swept along a path: it reports the
+space a coil occupies as the metal it is made of. §169's torsion coil read
+1.35 that way and **§164's compression coil 0.87, since it shipped** — against
+a 0.05 mm wire, a third of the smaller. Both cleared §50's 0.12 floor while
+their stock sat well under it, and the error runs in the direction that never
+fails.
+
+§163's blade was a `BoxGeometry` and so reported 0.05 mm honestly as a waived
+row. Swapping it for a coil would have traded a VISIBLE debt for an invisible
+one, which is the inverse of what a waiver is for. Builders now publish
+`userData.stockSection` and the census prefers it, naming the ruler it used;
+both springs are back in the report as accepted debt (48 waived, 0 unwaived),
+held by `tools/probe-169-stock.mjs`. **Residue, named:** every other
+hand-built `BufferGeometry` in the movement is still measured by its local
+box, and nothing asserts that a mesh which NEEDS a declared section has one —
+the census cannot tell a swept wire from a solid block. Today the two springs
+are the only swept solids; a third would inherit the wrong ruler in silence.
 
 This one is a THIRD shape of intra-unit blind spot, and it is recorded against
 item 5 rather than here: `clearances` is cross-unit and both meshes are inside
