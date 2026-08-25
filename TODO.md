@@ -9800,9 +9800,63 @@ read the other, because the second is then nearly free.
    row that fails the moment its waiver is deleted. Finding 4 carries the
    numbers and the residue.
 
-   **Tier two — the metal — is what remains**, and it is unchanged: the
-   abutment, the collar and the blade, at the station above. Deleting
-   `RESTORING_MEMBER_WAIVERS`' one row is structurally part of building it.
+   **Tier two is DONE (§164) — the return is metal, and the waiver table is
+   empty.** A collar on the stem, a fixed abutment hung off the plate's
+   underside, and a spring between them, exactly as sited. Three corrections to
+   the siting, all of them measured rather than argued:
+
+   - **A COIL, not a blade.** The item said blade, and a blade must take the
+     WHOLE press travel as its tip deflection: at `SPRING_FLAT_U` stock and
+     `SPRING_STRAIN_MAX` that wants a free length of `sqrt(1.5·c·δ/ε)` =
+     **11.53 u** against the **9.4** the run has, before any clearance. A helix
+     stores the stroke in its pitch instead of one beam's curvature, which is
+     why every real case pusher has one.
+   - **The run is not the run this step measured.** §163 took the riser from
+     the stem's inner end all the way in to the pin's station, so "between the
+     riser (s ≈ 7.9) and the guide boss" now reads as between the STEM's inner
+     end and the boss. Re-measured by `tools/probe-164-return.mjs`.
+   - **The bracket cannot climb at the abutment's radius.** Between the stem's
+     bore and the plate's underside there is 0.39, and a leg at §50's floor
+     wants its own width plus a margin off each. It reaches out past the coil
+     first and climbs in the corridor the probe measures at 2+ units clear.
+
+   Every dimension is a consequence. The wire is the round analogue of the
+   movement's own spring stock; the mean coil radius is the stem plus a running
+   clearance plus half the wire; the **coil count is a FLOOR from the shear the
+   wire may work to at full stroke** — `τ = K·G·d·δ / (π·D²·n)` falls as `n`
+   rises, so **35 coils** is what the stress allows and not what fitted, solved
+   to a fixed point because the deflection includes a preload that depends on
+   the rate that depends on `n`. The **preload is `ALARM_SPRING_HEADROOM` × the
+   4.72 mN the pawl's own spring drags back through §163's coupling** = 14.15 mN.
+   The free length is solid + preload + travel + one `CLEAR_MARGIN` of clash.
+
+   | quantity | value |
+   |---|---|
+   | rate | **47.60 N/m** |
+   | shear at full press | **453.2 MPa** against `SPRING_TAU_Y_PA` 461.9 |
+   | press force at the bottom | **62.6 mN** against `CASE_PUSHER_INPUT_N`'s 1–5 N |
+   | return time | **1.075 ms** |
+
+   **And the settling time became arithmetic**, which is the half of this step
+   that was never about geometry. `ALARM_RETURN_S` asserted that "an unloaded
+   spring returns at least as fast as a deliberate press"; there is a spring
+   now, so a quarter period on the pusher's own summed mass is 1.075 ms against
+   the tick's 0.12 s — **conservative by 112×**. The tick keeps its human-scale
+   bound, because a real return is damped by friction this movement does not
+   model, but the claim is no longer an assertion.
+
+   Two things worth recording about the build rather than the part. The coil is
+   drawn as FRAMES (the mainspring's precedent) because the collar travels the
+   whole stroke toward the abutment and a coil drawn once ends up a third of
+   the way inside it — and a morph counts as motion, so the audit then asks
+   what restores the coil itself. It answers `two-way`: captive between two
+   faces it never leaves, its length a function of the press and not a state it
+   can be left in. And the preload deflection came out in METRES (0.000229)
+   while every length around it was model units (0.604), which under-counted
+   the deflection the coil count is solved for and drew the spring at its free
+   length — caught by, and now guarded by, a round-trip assert: squeezing the
+   coil from free to installed must give back the force the drag budget asked
+   for, or the two halves describe different springs.
 
 **What this item measured and what it computed.** As filed, findings 1 and 3
 were arithmetic on the shipped constants — re-run from `ALARM_PUSH_TRAVEL`,

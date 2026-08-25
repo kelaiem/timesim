@@ -17056,3 +17056,108 @@ TODO 87 step 5's second half: the pusher's own return still has no metal, and
 `RESTORING_MEMBER_WAIVERS` still carries its one row citing that item. The
 pawl's spring is a different member answering for a different body — §162's
 whole point.
+
+## §164 — the pusher's return, as metal: a coil, a collar, and a bracket that could not climb where a bracket wants to
+
+TODO 87 step 5 tier two, and the end of that item's last open half. The head's
+return had been `ALARM_RETURN_S` since the pusher was built — a settling time in
+the tick with nothing behind it — and the unit passed §48's audit for years on
+the CLICK ARM's blade, a real spring answering for a body it does not touch.
+§162 turned that into a row rather than a silence: `RESTORING_MEMBER_WAIVERS`
+opened with exactly one entry, the pusher's. **That table is empty now.**
+
+### A coil, not a blade — and that is a measurement
+
+The item sited a *blade*. A blade must take the whole press travel as its tip
+deflection, and at `SPRING_FLAT_U` stock against `SPRING_STRAIN_MAX` that wants
+
+    L = sqrt(1.5 · c · δ / ε) = 11.53 u
+
+against the **9.4** the stem's free run has, before any clearance at all. A
+helix stores the same stroke in its **pitch** instead of in one beam's
+curvature, which is why every real case pusher has one.
+
+The run itself also had to be taken again: §163 moved the riser from the stem's
+inner end all the way in to the pin's station, so the item's "between the riser
+(s ≈ 7.9) and the guide boss" now means between the **stem's** inner end and the
+boss. `tools/probe-164-return.mjs` measures it, and reports the coaxial envelope
+a coil on the stem has to live inside.
+
+### Every dimension a consequence
+
+| quantity | what fixes it |
+|---|---|
+| wire ⌀ 0.05 mm | the round analogue of the movement's own spring stock — a hairspring is thinner, a blade here is exactly this |
+| mean coil ⌀ 0.872 u | the stem, plus a running clearance, plus half the wire: the coil rides the stem |
+| **35 coils** | a FLOOR from the shear the wire may work to at full stroke |
+| preload **14.15 mN** | `ALARM_SPRING_HEADROOM` × the 4.72 mN the pawl's spring drags back through §163's coupling |
+| free length | solid + preload + travel + one `CLEAR_MARGIN` of clash |
+
+The coil count is the interesting one. For a compression spring the shear stress
+at a given **deflection** is `τ = K·G·d·δ / (π·D²·n)` — a ratio of lengths, so it
+reads the same in model units — and it *falls* as the coil count rises. So `n`
+is a floor set by the working deflection, exactly as §163's blade length is a
+floor set by its own strain, and not a number chosen to fit. It is solved to a
+fixed point, because the deflection includes a preload that depends on the rate
+that depends on `n`.
+
+It lands at k **47.60 N/m**, τ **453.2 MPa** against `SPRING_TAU_Y_PA`'s 461.9,
+and **62.6 mN** at the bottom of the stroke against the 1–5 N a fingertip
+delivers. That last figure is the first load in this chain with any real size to
+it: §43's head diameter stays an *ergonomic* constraint standing alone, but it
+is no longer true that nothing in the chain is sized by how hard it must be
+pushed.
+
+### The settling time becomes arithmetic
+
+This is the half of step 5 that was never about geometry. `ALARM_RETURN_S`
+asserted that *"an unloaded spring returns at least as fast as a deliberate
+press, so the press stroke is the conservative bound on the return"*. There is a
+spring now, so the claim is computed rather than asserted: a quarter period on
+the pusher's own summed mass is **1.075 ms** against the tick's 0.12 s —
+**conservative by 112×**.
+
+The tick keeps its human-scale bound, and deliberately: a real pusher's return
+is damped by friction this movement does not model, and two readers ask "is the
+head still off its seat?" by testing `alarmPusherT > 1e-6`, which needs a finite,
+human-scale return. What changed is that the number is now known to be
+conservative rather than believed to be.
+
+### Three things the gates found, all of them siting
+
+- **The bracket cannot climb at the abutment's radius.** Between the stem's bore
+  and the plate's underside there is 0.76 − 0.37 = **0.39** of radius, and a leg
+  at §50's floor wants its own width plus a margin off each. Measured, the
+  corridor is 2+ units clear to the **side** at this station, so the bracket
+  reaches out past the coil first and climbs there. Position space, as P3
+  requires — and the bracket becomes three bodies rather than two.
+- **The arm ran from the axis outward**, through both the stem it clears and the
+  coil it carries. It sits inboard of the abutment now, in the gap `abutS` was
+  already derived to leave for it.
+- **The coil is a body the audit asks about.** It is drawn as FRAMES — the
+  collar travels the whole stroke toward the abutment, so a coil drawn once at
+  one length ends up a third of the way inside it, which is not a contact to
+  declare but a member drawn through another. Frames are the mainspring's
+  precedent and are EXACT where a z-scale would squash the wire's own section
+  along with the pitch it is meant to close; the frame count is derived from the
+  contact it quantises, half a step under `CLEAR_MARGIN`. A morph counts as
+  motion (MODELING.md rule 6), so §48 then asks what restores the coil. It
+  answers `two-way`: captive between two faces it never leaves, its length a
+  function of the press and not a state it can be left in.
+
+### One unit bug, and the assert that now guards it
+
+The preload deflection came out in **metres** (0.000229) while every length
+around it was in model units (0.604). It under-counted the deflection the coil
+count is solved for, and drew the spring at its free length — a spring
+delivering no preload at all. The guard is a round trip: squeezing the coil from
+free to installed must give back the force the drag budget asked for, or the two
+halves are describing different springs, which is exactly what a unit slip looks
+like from outside.
+
+`layout.js` gains `STEEL_NU`, `STEEL_G_PA`, `SPRING_SIGMA_Y_PA` and
+`SPRING_TAU_Y_PA`. The yield was already in `main.js` as a bare `800e6` inside
+`SPRING_STRAIN_MAX`, and a shear modulus was about to appear beside it; §137's
+"the one steel, named once" applies to a material's other properties too. One
+yield, two loadings — a blade is limited by it directly, a coil by its von Mises
+shear.
