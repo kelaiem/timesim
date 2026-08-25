@@ -10230,7 +10230,7 @@ indexes and reads the state; the LINK beak, which arms the selector ring), and
 each of those carries a chain onward. This item is that audit, opened with one
 finding already measured.
 
-### Finding 1 (2026-08-25, MEASURED) — the lock beak's riser is inside the saw
+### Finding 1 (2026-08-25, MEASURED — **CLOSED by §171**) — the lock beak's riser is inside the saw
 
 Eye-reported as *"a phantom / vestigial steel arm that collides with the column
 wheel every other toggle"*. Measured off the built tree with
@@ -10297,6 +10297,32 @@ anatomy §163 gave the driver's pawl (a post outside the tip circle carrying a
 member that reaches in). Whatever this costs is a lock-lever geometry change,
 so it is P0/P1 work on the `Alarm lock` group rather than a nudge.
 
+**CLOSED by §171, at the derived station.** The riser stands at 6.674 and the
+beak grew from 0.6 to `riserWheelR + riserR − ALARM_COL_BASE_R` = 1.114 to reach
+back over the saw, so its inward face stays at 2.3 from the pivot and the
+`alarmHandoffs` row `column outer face ⇄ lock beak` measures unchanged. The
+corridor was scanned rather than assumed (`tools/probe-171-corridor.mjs`): open
+from 6.674 out to ≈7.40 where the lock's own pivot post binds, so the floor is
+the bottom of a 0.73-wide window rather than a squeeze. Measured after:
+`meshClearance` to the skirt 0.1569, nearest skirt vertex leaving 0.15, and the
+rod no longer appears in `probe-colwheel-foul`'s under-margin list at all.
+
+**And the report diff carries the finding better than any single reading.**
+`inspection`'s `Alarm lock ⇄ Alarm switch` row read *beat 97/97, crown 49/49,
+reserve 61/61, wind 721/721, arrest 97/97, stemSlip 97/97, train 97/97* — in
+contact at every pose of every axis, including axes that move neither unit. It
+now reads *alarmPress: 10/65 poses (f 0.0781–0.2188)*: the window where the beak
+kisses a column, and nothing else. That row was EXPECTED throughout, which is
+precisely how `721/721` went unremarked — item 6's residue, stated as a number.
+
+**Two things came out of the same session and belong here.** The eye report that
+opened this finding also named a *second* member — `alarmSwitchBeak`, a
+pre-§68 draft of the same read still bolted to the lever, wired to nothing in
+`inspect.js` — deleted by §171. And deleting it broke both of the unit's
+`INTRA_UNIT_CONTACTS` rows, which selected the lock's pivot post by mesh INDEX;
+§171 named the post (`alarmLockPivotPost`) so those rows stop being claims about
+what else the unit contains. Both are written up in `docs/BUILT.md` §171.
+
 ### The rest of the audit, unmeasured
 
 Each of these is the same question TODO 87 asked of the input side, and none
@@ -10319,10 +10345,29 @@ because none is measured yet:
    ways. But TODO 16's 5–50 mN detent envelope describes a ring that INDEXES,
    and it is worth establishing whether a detent exists as metal or only as
    the envelope the arithmetic is checked against.
-4. **The riser class.** `alarmLockBeakRiser` is one of at least three rods that
-   climb between strata near the wheel (`alarmLinkBeakPost` reads 0.0929 to the
-   skirt, inside `CLEAR_MARGIN`). Whatever fix finding 1 takes should be checked
-   against the others rather than applied to one.
+4. **The riser class — ASKED by §171, and the answer is narrower than it
+   looked.** `tools/probe-lockriser-depth.mjs` now measures the CLASS rather
+   than one rod. `alarmLinkBeakPost` — the §35 arming chain's beak post —
+   crosses the same 0.6167 of saw band and stands at r 6.05 against its own
+   floor of 6.7005, so on the derivation it is 0.65 too far in. But it does not
+   touch: `meshClearance` reads 0.1267 to the skirt at rest (0.0929 worst over
+   the toggle) and the nearest skirt vertex in the shared band leaves 0.1675.
+   **So this is a clearance shortfall under `CLEAR_MARGIN`, not an
+   interpenetration** — a different repair from finding 1's, and unlike the lock
+   riser its station is not a free parameter: `beakPiv` is derived from the beak
+   arm's own reach to the column tops, so moving it outboard re-solves the §35
+   arm rather than re-siting a post. That is the work this item still holds.
+
+   **And the probe's first widened reading was wrong, which is the reusable
+   part.** It reported the link post 0.1665 deep inside the saw at both
+   parities. `inPoly` is a crossing test, so an axis landing ON a cut edge
+   resolves arbitrarily, and when it resolves INSIDE with an edge distance of 0
+   the depth formula `dEdge + rR` returns the rod's own radius as a
+   penetration — 0.1665 is that rod's radius to four places. The probe now
+   prints `meshClearance` and the nearest-vertex gap beside every polygon
+   verdict and flags a row where they disagree. Finding 1's case rested on the
+   same polygon test and was right; pointing it at a second rod produced a
+   confident wrong number on the first try.
 
 The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
 and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
