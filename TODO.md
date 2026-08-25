@@ -12979,14 +12979,47 @@ approximation is available and should be declared if taken: a constant
 angular window over the radial run cuts a slightly conical hole rather than
 a cylindrical one, over-cut at `R_OUT` by 0.24° of the 4.32°.
 
-**The pusher is NOT a third station, and the first version of this entry said
-it was.** `alarmPusherStem` did read as crossing the band at `alarmPress`
-f = 0.5, and that reading was quoted here as one more aperture to cut. It was
-a symptom of two different defects in the pusher's own placement — the head's
-standoff and the bore's azimuth, both since fixed (see item 92) — and with
-those closed, `inspection` reports `Alarm switch ⇄ Case` clear at all 65
-`alarmPress` poses. The pusher bore is real, is drilled, and needs nothing
-from this item. Two crown stems remain.
+**The pusher IS a third station. This entry has now claimed both, and the
+withdrawal was the wrong one.** The first version filed the pusher as one more
+aperture; the second struck that out, citing `inspection` clear at all 65
+`alarmPress` poses. That citation fails twice over.
+
+**There is no `alarmPress` axis on this base.** `main` has one; this branch's
+base carries 13 axes (`beat crown reserve wind arrest stemSlip train
+jumperEngage handSet alarm alarmStrike alarmWind alarmToggle`) and not one of
+them presses the pusher. The branch's own probes say so out loud —
+`probe-92-standoff.mjs` throws on the undefined axis, `probe-92-pose.mjs`
+prints `NO SUCH AXIS`. A sweep that never moves a part cannot report that part
+clear, so those 65 poses were measured against another tree. This is standing
+rule 4's `restoring` lesson in a second place: **a part no axis MOVES is a part
+the instruments cannot judge**, and the silence reads exactly like a pass.
+
+**And the pusher does not need to be pressed.** Measured AT REST by
+`probe-90-pusher-band.mjs`, which takes the stem's true axis from
+`CylinderGeometry.parameters` through `matrixWorld`, casts it at `caseMiddle`
+from outside all case metal, and pairs the surface crossings into metal spans:
+
+| quantity | measured |
+|---|---|
+| stem ends | r 32.91 → 51.22 |
+| axis stand-off from movement centre | 4.370 u (the `ALARM_PUSH_CHORD` offset) |
+| band metal on the stem's line | r 45.55 → 48.18 at z 7.55 |
+| **metal pierced** | **2.645 u = 1.00 mm = the full `CASE_BAND_T` wall** |
+
+Two things the cut has to get right. The window is **not** centred on
+`pusherAz` — an azimuth locates a radius and this stem rides a chord, the same
+distinction item 92 closed for the bore's POSITION; it wants ±asin about the
+chord's own crossing azimuth, taken separately at `R_IN` and at `R_OUT`. And
+the measurement above must be re-taken once a press axis exists, because at
+full press the stem stands further out than it does here.
+
+Three stations, then: two crown stems and the pusher.
+
+**Why no gate says any of this — see item 93.** `meshClearance(caseMiddle,
+stem)` returns **+2.6104**, i.e. 2.61 u of CLEARANCE, against the ray's 2.645 u
+of interpenetration: the same magnitude with the sign inverted. Do not read the
+absence of an `Alarm switch ⇄ Case` row in a battery report as evidence of
+anything.
 
 Do NOT resolve this by declaring the pairs EXPECTED. A stem in a crown tube
 touches the TUBE, by design, with clearance; it does not touch the band.
@@ -13133,3 +13166,60 @@ to the thing meant to go through it. The nearest thing to a gate here is that
 what left the hole standing on its own to be seen. Worth a check that asks
 whether each declared opening contains its part — filed as its own question
 rather than pretended to here.
+
+## 93. `meshClearance` reports clearance through the case band, sign inverted
+
+Filed 2026-08-25, from item 90's re-measurement. This is an INSTRUMENT defect,
+and it is item 27's family again — the parity raycast reading a body wrong —
+but the previous member made an open mesh read as COLLIDING, and this one makes
+solid metal read as CLEAR. That direction is the expensive one: a false
+positive is noisy, a false negative is silent.
+
+**The measurement.** The alarm pusher's stem passes through the band wall at
+rest, entering at r 45.55 and leaving at 48.18 (z 7.55) — 2.645 u, 1.00 mm, the
+full `CASE_BAND_T`. Confirmed by casting the stem's own axis at `caseMiddle`
+from outside all case metal and pairing the four surface crossings
+(`probe-90-pusher-band.mjs`). Asked about the same two meshes at the same pose:
+
+```
+ray             2.645 u of interpenetration
+meshClearance   +2.6104                      ← reported as CLEARANCE
+```
+
+Same magnitude, inverted sign. The distance to the nearest surface is right;
+the INSIDE/OUTSIDE decision is wrong, so penetration is published as clearance.
+
+**Consequence, stated plainly.** `Alarm switch ⇄ Case` appears in no
+`inspection` row and no `sweptOverlap` row of a full battery — 31/34 at
+`--shards 6`, three failures, none of them this. Every `Case ⇄ *` verdict is
+suspect in the same way, and the three pairs the battery DOES confirm are the
+ones where the sign happened to survive; nothing says they are the only ones.
+This is why item 90's pusher paragraph was withdrawn on false evidence, and it
+would mask any future part driven through the band.
+
+**A candidate mechanism, verified to exist but NOT yet shown to be the cause.**
+`sampledVerdict` assumes a closed SIMPLE solid, and `caseMiddle`'s lathe profile
+is not simple. Dumped as built, 20 points:
+
+```
+ 0  r 45.562  z  13.455      the R_IN wall, running the whole way down…
+ 1  r 45.562  z  -4.111
+ 2  r 40.284  z  -4.111      …steps in at zSeatBot…
+ 3  r 40.284  z  -2.000      …climbs to zSeatTop…
+ 4  r 45.562  z  -2.000
+ 5  r 45.562  z -16.619      …and descends R_IN again, RE-TRACING z −2.000..−4.111
+```
+
+Edges 0→1 and 4→5 are collinear on r = 45.562 and overlap over
+z ∈ [−4.111, −2.000]: the contour doubles back through metal it has already
+turned. A lathe never asks whether its polyline is a simple polygon, which is
+why this renders correctly and has shipped unnoticed; earcut and parity both
+ask. The ordering wants `zSeatTop` before `zSeatBot` for a descending contour.
+
+Honest gap: that degeneracy sits at z ∈ [−4.111, −2.000] and the pusher crosses
+at z = 7.55, so the two are not obviously connected. Either the non-simple
+profile corrupts parity globally rather than locally, or there is a second
+cause. **Do not close this item by fixing the profile until a probe shows the
+sign come back.** The `lathe()` helper already guards the OPEN case with a
+boot warning; whatever this turns out to be, the guard it wants is one that
+also catches NON-SIMPLE, since both defeat the same raycast.
