@@ -1873,13 +1873,13 @@ const TQ_MID_Z = TQ_BOT_Z + TQ_T / 2;
 // supportAt seeks a sibling mesh whose box contains the station, and a bush
 // parented to the plate would read as a bearing with no metal at it.
 const ROUTE_FLATS_N = 8;   // the census reads FLATS, so the octagon's flats carry the floor
-const routeApplySolve = (() => {
-  if (!ROUTE_SPEC) return null;
-  const refuse = (why) => {
-    console.warn(`§36 route refused (${why}) — building the identity movement`);
-    return null;
-  };
-  const P = ROUTE_SPEC.points;
+// TWO CALLERS, ONE SOLVE. Boot consumes this to build the metal; the Apply
+// button consumes it to decide whether a sketch may become metal AT ALL, and
+// it needs the same radii to ask its clearance question at the right width.
+// So it returns a REASON rather than warning and returning null — boot turns
+// that into rule 6's one warning, the button puts it under the pointer.
+function solveAppliedRoute(P, bushSpec) {
+  const refuse = (why) => ({ ok: false, why });
   const slabs = [
     { name: 'back', lo: BACK_PLATE_Z - BACK_PLATE_T / 2, hi: BACK_PLATE_Z + BACK_PLATE_T / 2, t: BACK_PLATE_T },
     { name: 'tq', lo: TQ_BOT_Z, hi: TQ_TOP_Z, t: TQ_T },
@@ -1899,7 +1899,7 @@ const routeApplySolve = (() => {
     // check applies, and the result is λ ≤ SLENDER_TARGET by construction: the
     // ceiling binds at effL/27, and where §50's floor binds instead the bar is
     // thicker than the ceiling asked for, so λ can only come in under it.
-    const ts = ROUTE_SPEC.bushes.filter((s) => s.i === i).map((s) => s.t).sort((x, y) => x - y);
+    const ts = bushSpec.filter((s) => s.i === i).map((s) => s.t).sort((x, y) => x - y);
     const cuts = [0, ...ts, 1].map((t) => t * len);
     let free = 0, effL = 0;
     for (let k = 0; k < cuts.length - 1; k++) {
@@ -1938,7 +1938,7 @@ const routeApplySolve = (() => {
     }
   }
   // The stations, in world space, from the same legs the arbors are cut from.
-  const bushes = ROUTE_SPEC.bushes.map(({ i, t }) => {
+  const bushes = bushSpec.map(({ i, t }) => {
     const L = legs[i];
     return {
       i, t,
@@ -1959,7 +1959,18 @@ const routeApplySolve = (() => {
   // rather than declared and caught.
   if (!bores.back.length && !bushes.length)
     return refuse('nothing holds it — no back-plate bore and no footed station');
-  return Object.freeze({ legs, bores, bushes });
+  // The WIDEST member the solve builds is the bush, not the arbor — which is
+  // what a clearance question about this route has to be asked at. Published
+  // so the Apply button cannot ask it at the arbor's radius and get an answer
+  // about a corridor narrower than the part that will stand in it.
+  const widest = bushes.reduce((w, b) => Math.max(w, b.outerR), Math.max(...legs.map((L) => L.r)));
+  return Object.freeze({ ok: true, legs, bores, bushes, widest });
+}
+const routeApplySolve = (() => {
+  if (!ROUTE_SPEC) return null;
+  const r = solveAppliedRoute(ROUTE_SPEC.points, ROUTE_SPEC.bushes);
+  if (!r.ok) { console.warn(`§36 route refused (${r.why}) — building the identity movement`); return null; }
+  return r;
 })();
 // The back plate's bores go in HERE, one line from the solve that produced
 // them and long before makeBackPlate reads the list. §35's own selector-rod
@@ -21544,6 +21555,7 @@ viewHud.innerHTML = `
         <span id="route-z-val">0.0</span>
         <select id="route-exclude" title="Re-routing an existing linkage? Its own sweep must not block the new path."><option value="">new linkage</option></select>
         <button id="btn-route-solve">Solve</button>
+        <button id="btn-route-apply" title="Cut this route as real parts and reload. Undo with the browser's back button.">Apply (reloads)</button>
         <button id="btn-route-clear">Clear</button>
       </div>
       <div class="row label-small" id="reconf-variants-row" style="display:none;">
@@ -26893,6 +26905,99 @@ document.getElementById('btn-route-solve').addEventListener('click', async () =>
     + r.knuckles.length + ' knuckle' + (r.knuckles.length === 1 ? '' : 's') + ' · '
     + r.bushes.length + ' bush station' + (r.bushes.length === 1 ? '' : 's') + bores
     + ' — a spec, drawn as ghosts');
+});
+
+// §36 APPLY — THE VERDICT. A sketch is legal by construction; that is what
+// part three's commit rule bought. This asks the different question Apply
+// needs answered: whether the legal LINE can carry real METAL.
+//
+// THEY ARE NOT THE SAME QUESTION, and this entry learned it the expensive
+// way. checkRoute clears the route line against the SWEPT REGISTRY, which
+// samples registered units by moving them — so a STATIC volume is invisible
+// to it until it carries an exact box, which is §36 part three's own recorded
+// residue. Three canonical routes passed checkRoute and put an arbor through
+// `alarmStemCollar`, which lies along the azimuth-0 axis and never moves.
+// Raising the clearance did not help, because the clearance was never the
+// problem. So the verdict below runs checkRoute AND measures boxes, and the
+// second pass is the one that catches a stem.
+//
+// It also asks at the right WIDTH. The plan for this entry said to re-check
+// at max(rᵢ) + CLEAR_MARGIN — the arbor's radius — and that is too thin: the
+// widest member the solve builds is the BUSH, at r + fit + STOCK_MIN_U, which
+// is more than twice the arbor. `widest` comes back from the solve for this.
+document.getElementById('btn-route-apply').addEventListener('click', async () => {
+  if (!routeReg || routePts.length < 2) { routeStatus('warned', 'place at least two points first'); return; }
+  // Bush stations are FROZEN here, from the same solveRoute the ghosts came
+  // from, and travel in the URL: boot must not re-open the question, because
+  // solveRoute's merge tolerance is a segment fraction and a short leg
+  // re-solved on load can come back with a different bush count than the one
+  // Apply measured and declared against.
+  const ghost = await routeI.solveRoute(__clock, routePts,
+    { registry: routeReg, exclude: routeExcludeSet ? [...routeExcludeSet] : undefined });
+  if (!ghost.ok) { routeStatus('refused', `the sketch is not legal: ${ghost.route.verdict}`); return; }
+  const pts = routePts.map((p) => ({ x: p.x, y: p.y, z: p.z }));
+  const bushSpec = (ghost.bushes || []).map((b) => {
+    // solveRoute reports a station as a world point; Apply stores it as the
+    // (segment, fraction) the document speaks, so the two never disagree.
+    let best = { i: 0, t: 0.5, d: Infinity };
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], c = pts[i + 1];
+      const dx = c.x - a.x, dy = c.y - a.y, dz = c.z - a.z;
+      const L2 = dx * dx + dy * dy + dz * dz;
+      if (!(L2 > 1e-12)) continue;
+      let t = ((b.at[0] - a.x) * dx + (b.at[1] - a.y) * dy + (b.at[2] - a.z) * dz) / L2;
+      t = Math.max(0.001, Math.min(0.999, t));
+      const d = Math.hypot(a.x + dx * t - b.at[0], a.y + dy * t - b.at[1], a.z + dz * t - b.at[2]);
+      if (d < best.d) best = { i, t: +t.toFixed(4), d };
+    }
+    return { i: best.i, t: best.t };
+  });
+  // The solve itself is the first judge: it refuses a channel, a station above
+  // the three-quarter slab, and a route nothing holds — with the same reasons
+  // boot would print, so a refusal reads the same in both places.
+  const solved = solveAppliedRoute(pts, bushSpec);
+  if (!solved.ok) { routeStatus('refused', solved.why); return; }
+  // Re-checked WITHOUT the exclude set: a sketch whose legality depended on
+  // ignoring a linkage that still exists after Apply is not legal as metal.
+  const strict = await routeI.checkRoute(__clock, pts,
+    { registry: routeReg, clearance: solved.widest + CLEAR_MARGIN });
+  if (!strict.ok) {
+    routeStatus('refused', `at the bush's own width (${(solved.widest + CLEAR_MARGIN).toFixed(2)}) this route is blocked${routeExcludeSet ? ' — and the excluded linkage is still there' : ''}: ${strict.route.verdict}`);
+    return;
+  }
+  // The pass checkRoute cannot make. Every mesh box in the movement, plates
+  // excluded because a route is MEANT to bore those, against the widest metal
+  // this route will stand up. Static or moving, registered or not — a box is
+  // a box, which is exactly the property the swept registry does not have.
+  const need = solved.widest + CLEAR_MARGIN;
+  let foul = null;
+  const _b = new THREE.Box3(), _p = new THREE.Vector3();
+  for (const { name, obj } of labelEntries) {
+    if (name === 'Three-quarter plate' || name === 'Dial' || name === ROUTE_UNIT_NAME) continue;
+    obj.traverse((o) => {
+      if (foul || !o.isMesh || !o.geometry?.attributes?.position) return;
+      _b.setFromObject(o);
+      for (const L of solved.legs) {
+        for (let k = 0; k <= 40; k++) {
+          const t = k / 40;
+          _p.set(L.a.x + (L.b.x - L.a.x) * t, L.a.y + (L.b.y - L.a.y) * t, L.a.z + (L.b.z - L.a.z) * t);
+          if (_b.distanceToPoint(_p) < need) { foul = { name, mesh: o.name || '(unnamed)' }; return; }
+        }
+      }
+    });
+    if (foul) break;
+  }
+  if (foul) {
+    routeStatus('refused', `${foul.name} (${foul.mesh}) stands within ${need.toFixed(2)} of this route — the swept registry cannot see a part that never moves, so this is measured against its box`);
+    return;
+  }
+  // A history entry, so Undo is the browser's own back button — §33's grammar.
+  const u = new URL(location.href);
+  u.searchParams.set('route', pts.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`).join(';'));
+  if (bushSpec.length) u.searchParams.set('routebush', bushSpec.map((b) => `${b.i},${b.t}`).join(';'));
+  else u.searchParams.delete('routebush');
+  routeStatus('proposed', `applying ${solved.legs.length} arbor(s), ${bushSpec.length} bush station(s)…`);
+  location.assign(u.toString());
 });
 
 function reconfPointerWorld(e) {
