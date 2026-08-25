@@ -871,6 +871,44 @@ const SPEC_POINTS = [
   // §22's two knobs, at both ends of their clamped ranges.
   { name: 'vph=28800', q: 'vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
   { name: 'reserveh=48', q: 'reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
+  // §36 Apply — THE CANONICAL ROUTE, and it is a spec point rather than a
+  // probe's private fixture because that is what keeps it honest: every
+  // battery run boots it, so a change that stops a route applying is caught
+  // by the same gate that catches a change that stops the alarm corner
+  // building. Two legs meeting at a bend, crossing the back plate once and
+  // carrying one bush — the least route that exercises every part of the
+  // solve: a bore, a knuckle, a bearing declaration, and a free span shorter
+  // than its own leg.
+  //
+  // ITS COORDINATES WERE SOLVED, NOT CHOSEN, and the clearance they were
+  // solved at is the part worth reading. The first canonical here was
+  // hand-typed and ran through the alarm barrel; it BOOTED SILENT, because
+  // nothing at boot checks a route against the movement — that is the sketch
+  // surface's job and a hand-typed URL never reaches it. probe-36-apply
+  // caught it, FORBIDDEN at every pose.
+  //
+  // Two replacements solved with checkRoute ALSO failed, both against the
+  // alarm crown, and raising the clearance did not help because the clearance
+  // was never the problem: `alarmStemCollar` runs along the AZIMUTH-0 AXIS at
+  // x 27.8–28.6, y ±0.55, and every candidate tried sat on that line.
+  // checkRoute could not say so — its registry samples registered units by
+  // sweeping poses, and §36 part three's own record names the failure mode:
+  // static volumes are invisible to it until they carry exact boxes.
+  //
+  // So this station was MEASURED, not solved and not guessed: the minimum
+  // distance from each candidate's two legs to every mesh box in the movement,
+  // plates excluded because a route is meant to bore those. az 240 / r 32
+  // clears 4.35 with the third wheel nearest — against az 0, which clears the
+  // alarm stem by nothing at all. The lesson for Apply's own verdict is that
+  // checkRoute's legality and a route's fitness as METAL are two questions,
+  // and only the second one is answered by measuring boxes.
+  { name: 'route=2-leg', q: 'route=-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3&routebush=0,0.33', expect: 'silent',
+    why: '§36 Apply — a committed route becomes metal: one back-plate bore, one knuckle, one footed bush' },
+  // The refusal, asserted as a WARNING rather than a silence: a route that
+  // meets a plate edge-on is a channel through it, and Apply must say so and
+  // build the identity instead of quietly cutting a slot nobody designed.
+  { name: 'route=channel', q: 'route=10,20,-1;30,20,-0.9', expect: 'any',
+    why: '§36 Apply — a leg almost in the plate plane is refused, and the movement builds as designed' },
 ];
 
 // A spec boot. Deliberately NOT virginBoot: that one imports inspect.js and

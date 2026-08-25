@@ -173,6 +173,65 @@ export const SPEC = (() => {
   const dialr = Number.isFinite(Number(raw.dialr)) ? Number(raw.dialr) : null;
   return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr });
 })();
+
+// §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:
+// the sketch surface refuses to place a refused leg, so a committed polyline is
+// legal by construction. Apply turns that document into metal, and this is
+// where the document is read and JUDGED — once, before anything consumes it.
+//
+// It is validated here rather than at the builder because a malformed route
+// must cost the same as no route at all. §33's courtesy-clamp precedent: one
+// boot warning naming what was wrong, then the IDENTITY build. There is no
+// half-applied route — a spec this refuses is a spec that was never set, and
+// the geometry fingerprint has to prove that (rule 6's silence is the tell:
+// absent keys warn about nothing and take zero paths).
+//
+// Shape, both keys frozen at Apply time by the button, never hand-typed:
+//   ?route=x,y,z;x,y,z;…     the committed polyline, movement units
+//   ?routebush=i,t;i,t;…     station on segment i at fraction t along it
+//
+// Bush stations are FROZEN rather than re-solved on load because solveRoute's
+// merge tolerance is a segment FRACTION — short legs over-bush — so a route
+// that re-solved its own stations at boot could come back with a different
+// bush count than the one Apply measured and declared. The document carries
+// the answer; boot does not re-open the question.
+export const ROUTE_UNIT_NAME = 'Applied route';
+export const ROUTE_SPEC = (() => {
+  const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
+  if (raw.routeSpec === undefined) return null;      // the identity build: no key, no paths
+  const refuse = (why) => {
+    console.warn(`§36 route spec refused (${why}) — building the identity movement`);
+    return null;
+  };
+  const nums = (s, n) => {
+    const parts = String(s).split(',').map((v) => Number(v.trim()));
+    return (parts.length === n && parts.every(Number.isFinite)) ? parts : null;
+  };
+  const points = [];
+  for (const leg of String(raw.routeSpec).split(';')) {
+    if (!leg.trim()) continue;
+    const xyz = nums(leg, 3);
+    if (!xyz) return refuse(`'${leg.trim()}' is not x,y,z`);
+    points.push(Object.freeze({ x: xyz[0], y: xyz[1], z: xyz[2] }));
+  }
+  // Two points are one leg — the least that can be metal. One point is a
+  // station with nothing to carry, and the sketch surface cannot commit it.
+  if (points.length < 2) return refuse(`${points.length} point(s) — a route is at least two`);
+  const bushes = [];
+  for (const st of String(raw.routeBushSpec || '').split(';')) {
+    if (!st.trim()) continue;
+    const it = nums(st, 2);
+    if (!it) return refuse(`'${st.trim()}' is not i,t`);
+    const [i, t] = it;
+    // The index names a SEGMENT, of which there are points.length − 1, and the
+    // fraction is strictly inside it: a station at an endpoint is a station on
+    // the joint, which is the knuckle's business and not a bearing's.
+    if (!Number.isInteger(i) || i < 0 || i > points.length - 2) return refuse(`bush segment ${i} is not a segment of this route`);
+    if (!(t > 0 && t < 1)) return refuse(`bush fraction ${t} is not strictly inside its segment`);
+    bushes.push(Object.freeze({ i, t }));
+  }
+  return Object.freeze({ points: Object.freeze(points), bushes: Object.freeze(bushes) });
+})();
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
 // ---------------------------------------------------------------------------
@@ -335,6 +394,15 @@ export const SLENDER_MAX = 30;
 // 10% headroom, so a part that drifts slightly still passes and one that
 // drifts a lot still fails.
 export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
+// An OVERHANG past the last bearing bends like a cantilever, and §54 charges
+// it a length multiplier for that — ∛(48/3), the ratio of a midspan-loaded
+// simple beam's stiffness to a tip-loaded cantilever's, taken into LAMBDA
+// space. The full derivation, and why it is a bending measure rather than
+// buckling's K, is written at checkSlenderness in inspect.js, which is where
+// a reader of the CHECK meets it. It lives here because it is not only the
+// check's: anything SIZED against §54's ceiling has to size against what §54
+// actually measures, and §36's applied arbors do (see routeApplySolve).
+export const SLENDER_OVERHANG_K = Math.cbrt(48 / 3);   // 2.5198
 // FLAT-SPRING stock. §50's spring floor is 0.03 mm and its own basis says why
 // that is a floor and not a target: "real hairsprings run 0.02-0.04 mm; flat
 // springs THICKER". A click detent or a feeler return is a flat blade, not a

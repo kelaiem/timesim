@@ -35,7 +35,9 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
 import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
-  STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N } from './layout.js'; // §137: the one steel + the declared envelopes
+  STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
+  ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
+  SLENDER_OVERHANG_K } from './layout.js';                        // §54's overhang multiplier — shared, because §36 sizes against it
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -488,6 +490,19 @@ export const MECH_GRAPH = {
     'Dial',                  // cannon pinion — the one that was genuinely ungrounded
   ],
 };
+// §36 APPLY — the route's own row, pushed rather than written inline because
+// it exists only when a route does. The predicate is ROUTE_SPEC ITSELF, not a
+// copy of its test: checkGraph fails in BOTH directions — a declared unit that
+// was not built, and a built unit that was not declared — so the row's
+// condition has to be exactly the condition main.js builds on, or one of those
+// two failures is guaranteed on some spec.
+//
+// SUPPORT ONLY, and no drive edge. An applied route is static modelled stock:
+// the plate holds it (through a bore it was cut for, or a bush footed on it —
+// routeApplySolve refuses a route with neither, so this claim is always real
+// metal within SUPPORT_TOL), and nothing turns it. A drive row here would be
+// the simulation fiction CLAUDE.md names: an edge with no force behind it.
+if (ROUTE_SPEC) MECH_GRAPH.support.push([ROUTE_UNIT_NAME, 'plate']);
 
 // Shared anchor-point extractor: the mesh CENTRE within `unitEntry` nearest
 // to any mesh centre in `targetEntry` — i.e. "whichever part of this unit is
@@ -6415,7 +6430,10 @@ const SLENDER_E_PA = STEEL_E_PA; // §137: re-sourced from layout's one copy —
 // BENDING measure, not a buckling one — the stiffness column says which —
 // and importing buckling's K would be a second, unrelated derivation wearing
 // the same symbol.
-export const SLENDER_OVERHANG_K = Math.cbrt(48 / 3);   // 2.5198
+// The VALUE lives in layout.js (§36's builder sizes against it too); the
+// derivation above is why it is that value. Re-exported so the probes that
+// read it from here keep working.
+export { SLENDER_OVERHANG_K };
 
 // "On the surface counts" — §77's INTERIOR_EPS value, for the same reason: a
 // bearing sitting exactly on the metal's end face is a real construction (a

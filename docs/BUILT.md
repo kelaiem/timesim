@@ -17246,3 +17246,163 @@ Demo is four steps and about five seconds, so it barely raises the question;
 Tour is the one that would benefit, and a landing that re-records its captions
 (the tour re-record is filed on the roadmap) should pick it up there rather
 than pay the translation bill twice.
+
+## §36 Apply — a committed route becomes real parts
+
+Part three shipped routing as a **spec**: the drawn path is checked against the
+swept registry, a refused leg cannot be placed, and a committed polyline is
+therefore legal by construction. What it deliberately did not do is cut
+anything — the solved arbors, knuckles and bush stations were drawn as ghosts,
+and part three's own record names Apply as the piece that remained.
+
+This is that piece. A route becomes a URL document, the document becomes metal
+at boot, and the metal is declared like any other part: `MECH_GRAPH` row,
+stock-floored sections, bores through the plates its legs actually cross.
+
+### The route is a document, judged once
+
+`?route=x,y,z;x,y,z;…` and `?routebush=i,t;…` join `SPEC_FIELDS` in
+`index.html` — which §161 had just made the ONE roster, with `main.js`
+consuming `__WATCH_SPEC_KEYS` rather than restating it. Every row there was
+`Number()`-coerced, and a route is a polyline, not a quantity, so the table
+gained an optional parse: a bare string still means "this numeric field", an
+object names its field and how to read it, and all fifteen existing rows are
+untouched. Parsing the route keys *beside* the table would have rebuilt
+exactly the two-copy drift §161 deleted, so that road is marked closed in the
+comment rather than left open.
+
+`ROUTE_SPEC` validates in `layout.js` and refuses **whole**: one boot warning
+naming the fault, then the identity build (§33's courtesy-clamp precedent).
+A malformed route costs precisely what no route costs, and rule 6's silence is
+what proves it. Two constraints are written where they are enforced — a bush
+station names a SEGMENT and sits strictly inside it (a station at an endpoint
+is on the joint, the knuckle's business and not a bearing's), and the stations
+are FROZEN in the document rather than re-solved at boot, because
+`solveRoute`'s merge tolerance is a segment *fraction*: short legs over-bush,
+so a route that re-solved on load could come back with a different bush count
+than the one Apply measured and declared against.
+
+### Sections are sized by §54's ceiling — over the length §54 actually measures
+
+This is static **modelled** stock. Nothing drives it, so there is no load path
+to derive a section from, and inventing one would be the
+coefficient-because-it-looked-right that standing rule 1 exists to refuse.
+What *can* be stated is that an unsupported length has a slenderness and §54
+fixes the ceiling, so each leg is as thin as its own longest free span allows,
+with §50's floor arriving through `STOCK_MIN_U`.
+
+**The first cut of that got the length wrong, and the probe caught it.**
+Sizing used the raw free span, but §54 does not measure raw length: a run past
+the last bearing bends like a cantilever and is charged `SLENDER_OVERHANG_K`.
+Sizing against a measure that is not the one applied put the built bar at
+**λ 35.3 against the ceiling of 27 it was supposedly sized by**. The solve now
+mirrors `slenderSegments`' own law, so `λ ≤ SLENDER_TARGET` holds **by
+construction**: where the ceiling binds it lands on 27, and where §50's floor
+binds instead the bar is thicker than the ceiling asked for, so λ can only come
+in under it.
+
+That needs the constant in two files, and duplicating it would be a second
+derivation of one number. `SLENDER_OVERHANG_K` therefore moved to `layout.js`
+beside `SLENDER_TARGET` — where anything *sized* against §54's ceiling can
+reach it — with the derivation comment left at `checkSlenderness`, which is
+where a reader of the *check* meets it.
+
+TODO 78's correction is also why **the bushes belong to the route's own unit**
+rather than to the plate: `supportAt` seeks a sibling mesh whose box contains
+the station, so a plate-parented bush would read as a bearing with no metal at
+it. And the declaration goes on the **mesh**, never the geometry —
+`weldGeometry` returns a fresh `BufferGeometry` without `userData`, so
+`weldTree` would silently delete a geometry-level one and §54 would then
+measure the whole bar.
+
+### What it is not
+
+No drive edge, and no §137 transfer row. An applied route transmits nothing;
+its knuckle is a formed boss taking the `rigidBentLink` precedent for its
+SHAPE and explicitly not for its mechanics. A drive row would be the
+simulation fiction CLAUDE.md names — an edge with no force behind it. Giving
+an applied route a real force path later is per-corner design work under
+§137's vocabulary, not something routing hands over.
+
+The graph row is pushed on `ROUTE_SPEC` itself rather than a copy of its test,
+because `checkGraph` fails in **both** directions: a declared unit that was not
+built, and a built unit that was not declared. Any divergence between the two
+predicates guarantees one of those on some spec.
+
+### checkRoute's legality is not fitness as metal
+
+**The most expensive finding here, and the one to carry forward.**
+
+`checkRoute` clears the route *line* against the swept registry, which samples
+**registered** units by moving them. A static volume is invisible to it until
+it carries an exact box — which is part three's own recorded residue, met
+again from the other side.
+
+Three canonical routes in a row passed `checkRoute` and put an arbor through
+`alarmStemCollar`, which lies along the azimuth-0 axis at x 27.8–28.6, y ±0.55
+and never moves. Raising the search clearance from 0.6 to 1.2 did not help,
+because clearance was never the problem: every candidate sat *on* the
+obstacle, and the search was moving along it rather than away from it. Only
+the probe's `inspection` pass said so — FORBIDDEN at every pose — and the boot
+was **silent** throughout, because nothing at boot checks a route against the
+movement.
+
+Two consequences, both now built in:
+
+- **Apply's verdict measures boxes as well as running `checkRoute`.** Every
+  mesh in the movement, plates excluded because a route is meant to bore
+  those, against the widest metal the route will stand up. Its refusal says
+  the registry cannot see a part that never moves, rather than reporting a
+  bare distance and leaving a reader to wonder why the router had been happy.
+- **The canonical route's station is MEASURED, not solved.** Minimum distance
+  from each candidate's legs to every mesh box: az 240 / r 32 clears **4.35**
+  with the third wheel nearest, against az 0 which clears the alarm stem by
+  nothing at all. Both numbers sit beside the spec point so the next edit
+  cannot re-pick the axis that looked fine three times.
+
+### And it asks at the right width
+
+This entry's own plan said to re-check at `max(rᵢ) + CLEAR_MARGIN` — the
+arbor's radius. That is too thin. The widest member the solve builds is the
+**bush**, at `r + fit + STOCK_MIN_U` ≈ 0.64 against the arbor's ≈ 0.3, so a
+route cleared at the arbor's width is a corridor narrower than the part that
+will stand in it. That is exactly how the second canonical passed at 0.6 and
+fouled the alarm crown. The solve publishes `widest` and the verdict asks
+there.
+
+### The refusals
+
+All of them build the identity movement and say why, and all of them read the
+same in the button as at boot, because `solveAppliedRoute` is one function
+with two callers returning a reason rather than warning inline:
+
+| refusal | why it is not negotiable |
+|---|---|
+| fewer than two points | one point is a station with nothing to carry |
+| a zero-length leg | no metal to cut |
+| within 15° of a plate's plane | a channel through the metal, not a bore — a different part and a different conversation |
+| a station above the three-quarter slab | v1 foots hangers on the back plate only; the other story is a second bore and a second support claim |
+| nothing holds it | no back-plate bore and no footed station is a rod floating in the movement, and its support row would be a claim about nothing |
+| blocked at the bush's width | the corridor fits the line and not the part |
+| a box within reach | the pass `checkRoute` structurally cannot make |
+
+### What is verified, and by what
+
+The battery's gates all run on the **identity** tree, and the two route
+`SPEC_POINTS` it boots check silence, not geometry — so nothing in the battery
+measures an applied route's metal. That gap is why
+`tools/probe-36-apply.mjs` exists, and it is worth stating sharply because the
+numbers look reassuring either way: on the identity tree `slenderness` reports
+`0 unsupported, 1 declare 2 bearings` and every one of those bearings is the
+**alarm link's**. It would print exactly that if this entry's declaration were
+nonsense.
+
+The probe asserts eleven things against the applied tree — the unit's meshes,
+every name distinct (a shared one collapses report rows, §137's lesson), the
+bearing declaration having metal at it, no member over §54's ceiling, `support`,
+`graph`, `stockFloor` unwaived with zero kind rows, `inspection` clean, and a
+boot that is silent. Boot warnings are snapshotted *before* any check runs: the
+probe's own first cut collected them for the whole session and reported
+three-mesh-bvh's coplanar notice from the `inspection` sweep as the build's,
+and a silence claim that includes the instruments' own chatter is not a silence
+claim about the build.
