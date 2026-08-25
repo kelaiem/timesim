@@ -74,7 +74,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 | 81 | OPEN | `meshIntegrity`'s sub-body census is a function of the SHARD SCHEDULE — 136/0 against 50/134 on one tree. Found by §127 tier 2a's landing, not caused by it: it is the RUNTIME half of item 80, whose boot-time half is `weldGeometry` dropping `geometry.userData`. Never compare this tier's counts across runs with different task partitions; a `--report` diff that does must cite this item |
 | 82 | CLOSED | The pusher→ring stall had been written down four times (1.5 / 1.6 / 48 / 3.3 mN) and never computed. Two errors, same direction: the stroke every figure used was **`ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `main.js` deletes as "referenced nowhere, and wrong"** (measured 0.09932 u = 0.0376 mm, 4.2× smaller, taken two ways that agree to five decimals); and "in series" was implemented as a **minimum** over members charged against different strokes, where compliances add as `n²/k` reflected to the ring. Computed: **k_eff 21.89 N/m, stall 1.58 mN** — ROD-END-limited, an order of magnitude BELOW the 5–50 mN band, restoring TODO 16's original verdict and refuting §137 Landing 2's 48 mN. The rod-end overhang is **72.4%** of the compliance; the fork-end the section was sized against is **0.1%**. `tools/probe-82-alarm-stall.mjs` |
 | 88 | OPEN | All — the design is written in the item: derive `SET_BACKLASH` from the setting chain's mesh backlash and make the setting-time step the spring's equilibrium over the real V, replacing the `Math.round`; step 1 (the click spring's detent-force arithmetic, P1) stands alone. Roadmap §4 keeps the WHEN half and the word |
-| 89 | OPEN | All — BUILT §1's unpaid bill, per-row: the two promised boot asserts (valley seat, crown-in lift) plus an engage-threshold check, the underived constants split zero-movement vs movement-risking, the three unseeded `Minute jumper` `EXPECTED_CONTACT_FLOORS` pairs, and the ungated explain number |
+| 89 | PART DONE | The zero-movement half LANDED (fingerprint unmoved): four constants derived or named, the garbled `STAR_R` fragment gone, and two of the three promised asserts written and proven to fire — the third (valley seat) REFUSED as tautological, the lifter plane collapsed from three copies to one name. Two defects the measurements found: the jumper's station is **326°, not the 320°** everything claimed (§136's tooth-spec re-derivation silently re-sited it), and the detent latches at `crownPullT > 0.5` while the beak only reaches the star at **0.863** — quantizing the display across ~36% of the pull with the jumper out of contact. Remains: that engage fix (its assert lands with it), the movement-risking constants, the three unseeded floors pairs, and the ungated explain number |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -10051,7 +10051,33 @@ denominations, catalogued per-row (item 12's convention — do not
 bulk-edit). None of it moves geometry BY INTENT; the rows that could
 move it are marked and each is its own `--report`-diffed landing.
 
-### The asserts §1's own step 5 promised and never got
+### The asserts §1's own step 5 promised and never got — LANDED, with one refusal
+
+**Done 2026-08-24.** Two of the three are written and each was PROVEN TO
+FIRE before landing (item 60's standard): the aim's tip is re-checked
+against the seat within `JMP_AIM_BAND` from outside the scan that produced
+it, and the released beak's clearance is re-evaluated outside the lift
+solve in the `+ JMP_BIND_EPS` form. **This item's own spec for that second
+assert was WRONG and is corrected here**: it said
+`≥ STAR_R + CLEAR_MARGIN`, but the solver accepts by
+`≥ STAR_R + CLEAR_MARGIN + JMP_BIND_EPS`, so the filed form would have
+passed on exactly the boot where the solve just failed and fell back.
+The bound is one name now (`JMP_LIFT_CLEAR_R`) and `minRAt` is hoisted
+(`jmpMinRAt`), so the check and the thing it checks cannot drift.
+
+**The valley-seat assert was REFUSED, because it cannot fail.**
+`minuteStar.rotation.z` is assigned `JMP_TIP_AZ − STAR_PITCH/2`, so the
+tick's own `u` at `JMP_TIP_AZ` is 0.5 by algebra — measured
+`0.500000000`. An assert that is true by construction is not a check, so
+the seat is guarded where it CAN fail (the aim above) and the tautology
+is written at the site so nobody re-files it.
+
+**The lifter plane was three sites, not the two this item filed** — the
+bar's centre, the setting lever's drop pin, and the jumper's tail pin.
+Rather than assert that three copies agree, they now read one name
+(`Z_JMP_PIN_FACE`).
+
+### The asserts, as originally filed
 
 `docs/BUILT.md` §1 step 5 asked for three boot asserts; only the third
 (pitch × points ≡ one minute-hand minute) exists, as the `STAR_POINTS`
@@ -10079,9 +10105,33 @@ verified. Rule 6 form — `console.warn` with achieved vs required:
   than the metal does), and write the true touch-fraction's derivation
   in the comment; if it lands far from 0.5, that is a row here.
 
+  **IT LANDS FAR FROM 0.5, AND THIS IS THE ROW. MEASURED 2026-08-24:**
+  the beak first reaches the star's tip circle at **crownPullT ≈ 0.8630**
+  (`jmpMinRAt(JMP_LIFT_SIGN·(1−f)·JMP_LIFT_ROT) < STAR_R`, swept at
+  f-step 0.0005), while the latch fires at **0.5**. So across roughly
+  **36% of the crown's pull** the display is being QUANTIZED — the
+  detent is "engaged", minutes snap to whole indices — while the jumper
+  is measurably not touching the star. At the latch point the beak's
+  nearest outline point stands at 4.0946 against a tip circle of 4.0312:
+  **0.063 of clear air.** The mechanism's own honesty ledger says the
+  star and beak follow the display rather than delivering it (item 88);
+  this measures a pose range where they are not even in contact while it
+  does so.
+
+  **No assert was shipped for this, deliberately.** It would fire on a
+  healthy tree, and boot silence is standing rule 6 — an assert is not
+  the place to announce a known defect. The assert lands WITH the fix,
+  which is one of: derive the latch from the touch fraction (cheap, but
+  it changes when quantization starts, so it is a behaviour change and
+  belongs with item 88's tick-law work), or re-derive the lift so the
+  beak is in the star by half-pull (that MOVES geometry). Either way the
+  number above is the target, and `jmpMinRAt` is now hoisted so the
+  assert is two lines once the fix exists.
+
 ### Underived constants, split by risk
 
-Zero-movement — derivable or nameable in place, one landing:
+Zero-movement — derivable or nameable in place, one landing. **All four
+LANDED 2026-08-24**, fingerprint unmoved; per-row notes inline below:
 
 - `JMP_REACH = JMP_LEVER − JMP_W * 0.45`: the 0.45 IS `0.9/2` —
   `makeJumper`'s own tip-cone proportion. Export the fraction from the
@@ -10090,6 +10140,13 @@ Zero-movement — derivable or nameable in place, one landing:
 - `JMP_TIP_SEAT_R`'s 0.5: name it (`STAR_SEAT_FRAC`) with its
   constraint — ride the flanks, never the root fillet — which the
   comment already argues.
+- **DONE** (fragment deleted; the `0.35` stays rowed and is now
+  DEFENDED-AS-UNDERIVED at the site, which is the honest outcome:
+  `rootR` already subtracts the mate's addendum plus cycloidal clearance,
+  so the 0.35 is EXTRA daylight below where the cannon pinion's teeth
+  actually reach, and nothing reproduces its size — it is 2.3×
+  `CLEAR_MARGIN`. Deriving it MOVES the star and everything scanned from
+  it, so it is a re-solve, not a rename.)
 - `STAR_R`'s ORIGINAL comment is GARBLED and is now also redundant:
   *"the star must never be / the mesh"* drops its verb, and §136 wrote a
   correct statement of the same constraint immediately below it while
@@ -10104,6 +10161,19 @@ Zero-movement — derivable or nameable in place, one landing:
   saturation, the `capD · 0.02` tiebreak): write the constraints — what
   the pad must contain, why clearance saturates, the preference order —
   and pin the output: `JMP_AZ` must still scan to 320°.
+  **DONE, and the pin found a defect: the station is 326°, not 320°.**
+  §136 re-derived `STAR_R` from the cut spec's own root circle, which
+  moved `JMP_PIV_R = STAR_R + 2.4`, which re-ran this scan — a
+  TOOTH-PROFILE landing silently re-sited a mechanism part, and three
+  source comments plus this file went on claiming 320°. The scan's own
+  header warns that a DIAL parameter reaches a mechanism part through it;
+  the reach is wider than that. The output is now a TRIPWIRE, not an
+  equality gate — the scan is *allowed* to re-site the jumper, so it warns
+  on the move with the measured value rather than forbidding it. The stale
+  320° claims are corrected at the scan; the §33-era sentence at the wells
+  is left as history.
+  **Not fixed here: the lifter's run was never re-verified against the
+  moved station**, which is what the tripwire exists to prompt.
 
 Movement-risking — each its own landing, `--report` diff the acceptance:
 

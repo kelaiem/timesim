@@ -3824,7 +3824,14 @@ const JMP_LIFTER_T = STOCK_MIN_U; // TODO 12: floor stock — the bar centre for
 // violation. One explicit centi-unit of slack keeps the bind falsifiable
 // without flickering.
 const JMP_BIND_EPS = 0.01;
-const Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS + JMP_LIFTER_T / 2;
+// The dial-hugging PIN FACE: one plane, bound at CLEAR_MARGIN (plus the
+// headroom above) off the dial's back. Three sites used to write this
+// expression out independently — the lifter bar's centre, the setting
+// lever's drop-pin end, and the jumper's tail-pin end (TODO 89, which
+// filed it as two; it is three). They are one constraint, so they are one
+// name now, and a change to the bind can no longer move two of the three.
+const Z_JMP_PIN_FACE = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS;
+const Z_JMP_LIFTER = Z_JMP_PIN_FACE + JMP_LIFTER_T / 2;   // bar CENTRE; its dial face is the pin face
 const settingLeverGroup = new THREE.Group();
 settingLeverGroup.position.set(settingLeverPivot.x, settingLeverPivot.y, Z_SETTING_LEVER);
 settingLeverGroup.add(settingLever);
@@ -3834,7 +3841,7 @@ settingLeverGroup.add(settingLever);
   // slot has a pin there. Its end binds at CLEAR_MARGIN above the dial's
   // back face (same constraint the bar itself is planed by).
   const topW = Z_SETTING_LEVER - 0.5;                  // lever body's dial-side face (world)
-  const endW = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS;   // pin end, margin (+ bind headroom) off the dial back
+  const endW = Z_JMP_PIN_FACE;                         // the same pin face the bar is planed by
   const drop = new THREE.Mesh(
     new THREE.CylinderGeometry(G.SETTING_LEVER_POST_R, G.SETTING_LEVER_POST_R, topW - endW, 12), MATS.steel);
   drop.rotation.x = Math.PI / 2;
@@ -10683,13 +10690,22 @@ if (STAR_T < 0.2)
   console.warn(`minute quick-set: star slice collapsed to ${STAR_T.toFixed(2)} between the motion-works planes`);
 const STAR_BOT = _mwSliceBot + CLEAR_MARGIN;        // 0-based extrude sits here
 const STAR_MID = STAR_BOT + STAR_T / 2;
-// Radius inside the minute wheel's root circle (the star must never be
-// the mesh).
 // §136 — the star must stay inside the minute wheel's ROOT circle so it never
 // becomes the mesh, and that root is no longer `pitchR − 1.15·m`: it is the
 // cut spec's own, which follows the mate graph. This line re-stated the old
 // factor by hand and would have gone silently stale — it never called
 // gearOuterR, so nothing downstream would have caught it.
+// TODO 89 — the trailing 0.35 is NOT derived, and saying so is the point.
+// `rootR` already subtracts the mate's own addendum plus cycloidal
+// clearance (`ded = mateH + cyClear`), so the root circle is where the
+// cannon pinion's teeth actually reach; the 0.35 is EXTRA daylight below
+// that, and no constraint in this file reproduces its size. It is not
+// CLEAR_MARGIN (0.15) — it is 2.3× it. Measured at the shipped spec:
+// rootR 4.381150, so the star's tips sit at 4.031150. Retiring it means
+// deriving the gap (CLEAR_MARGIN is the principled candidate) and that
+// MOVES the star, the pivot ring, the bearing scan and the aim — a
+// re-solve, not a rename, so it stays rowed in TODO 89 rather than being
+// quietly re-lettered here.
 const STAR_R = G.gearToothSpec({
   module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth],
 }).rootR - 0.35;
@@ -10720,7 +10736,8 @@ const JMP_PIV_R = STAR_R + 2.4;                     // pivot ring: clear of the 
 // is narrowest there. This is a FRACTION of the depth, not a fixed offset:
 // the old `- STAR_DEPTH + 0.1` only looked sane against the old 0.45 depth
 // and would sit outside the tip circle entirely at the derived depth.
-const JMP_TIP_SEAT_R = STAR_R - STAR_DEPTH * 0.5;
+const STAR_SEAT_FRAC = 0.5;   // half depth: on the flanks, clear of the root fillet
+const JMP_TIP_SEAT_R = STAR_R - STAR_DEPTH * STAR_SEAT_FRAC;
 // The radial band over which the beak is actually inside the star.
 const JMP_ENGAGE_BAND = STAR_R - JMP_TIP_SEAT_R;
 // Lever length (pivot → tip), solved so the tip's swing circle CROSSES the
@@ -10737,19 +10754,30 @@ const JMP_LEVER = JMP_PIV_R * Math.cos(JMP_PHI)
   - Math.sqrt(JMP_TIP_SEAT_R ** 2 - (JMP_PIV_R * Math.sin(JMP_PHI)) ** 2); // pivot → tip
 // Beak width from the SHOULDER constraint, not styling. makeJumper's
 // outline is self-similar: the tip cone runs from the apex back to the
-// shoulder over 0.9·(W/2), where the arm flares to full width. Only the
-// cone may be inside the star — the shoulder must stay outside the tip
-// circle, or it fouls the points either side of the valley (that, not the
-// tip, is what the old 0.9 width buried 0.27 deep). Clear the tip circle
-// by one further tooth depth so the ride swing can't carry it back in:
-const JMP_W = (2 * (JMP_ENGAGE_BAND + STAR_DEPTH)) / 0.9;
-const JMP_REACH = JMP_LEVER - JMP_W * 0.45;
+// shoulder over `JUMPER_TIP_CONE_F`·(W/2), where the arm flares to full
+// width. Only the cone may be inside the star — the shoulder must stay
+// outside the tip circle, or it fouls the points either side of the valley
+// (that, not the tip, is what the old 0.9 width buried 0.27 deep). Clear
+// the tip circle by one further tooth depth so the ride swing can't carry
+// it back in.
+//
+// Both lines read the cone fraction FROM THE BUILDER (TODO 89): it was a
+// bare 0.9 here, a bare 0.9 in the outline and a bare 0.45 below — one
+// number written three times, each free to drift from the shape it
+// describes. REACH is what puts the APEX on the lever length: the outline
+// places the apex at `reach + (W/2)·F`, so `reach = LEVER − (W/2)·F`
+// solves `apex ≡ JMP_LEVER` exactly (measured: both 2.659246410).
+const JMP_W = (2 * (JMP_ENGAGE_BAND + STAR_DEPTH)) / G.JUMPER_TIP_CONE_F;
+const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // (The released lift itself is solved further down, over the beak's whole
 // outline — see JMP_LIFT_ROT.)
 // Bearing scan (dialFace-local frame): dodge the setting cap's arbor
 // head (its z-band overlaps this plane), the sub-dial wells, and the
-// hour-wheel tube; prefer the bearing farthest from the setting cap so
-// the lifter link has a clean run from the tail post.
+// dial-centre tube stack — whose OUTERMOST member is the §25 alarm tube,
+// not the hour wheel's, which is what the obstacle below actually reads
+// (this line said "hour-wheel tube" while the code took
+// `ALARM_TUBE_OUTER`); prefer the bearing farthest from the setting cap
+// so the lifter link has a clean run from the tail post.
 //
 // NOTE THAT THIS COUPLES THE JUMPER'S STATION TO THE WELL RADIUS. The wells
 // are obstacles in this scan, so resizing them re-runs it and the bearing can
@@ -10758,8 +10786,30 @@ const JMP_REACH = JMP_LEVER - JMP_W * 0.45;
 // conflict settled in POSITION space, which is what the scan is for — but it
 // is worth saying out loud that a DIAL parameter reaches a mechanism part
 // through here, so a change that looks like finish is not confined to finish.
-// Measured at the new radius, the old 304° is still legal (0.48 clear of the
-// seconds well against the 0.15 margin); the scan simply prefers 320°.
+//
+// AND IT IS NOT ONLY DIAL PARAMETERS (TODO 89, measured). The station is
+// 326° today, not the 320° this comment claimed for three landings: §136
+// re-derived STAR_R from the cut spec's own root circle, which moved
+// JMP_PIV_R (= STAR_R + 2.4), which re-ran this scan. A TOOTH-PROFILE
+// landing silently re-sited a mechanism part, and nothing said so — which
+// is why the tripwire below exists. The scan's INPUTS reach further than
+// its comment's author expected, so the guard is on the output.
+//
+//
+// The tuning, which was three bare numbers:
+//   · the `- 1.2` pad each obstacle carries must contain the JUMPER's own
+//     half-envelope about the pivot, so a bearing that "clears" by the
+//     margin clears the part, not the point;
+//   · `Math.min(clr, 2)` SATURATES the clearance term — past 2 units there
+//     is nothing left to buy, so the tiebreak below decides instead of a
+//     runaway clearance score;
+//   · `capD * 0.02` is that tiebreak: among bearings that all clear, prefer
+//     the one farthest from the setting cap, so the lifter link has a clean
+//     run from the tail post. Weighted small enough that it can only order
+//     candidates the clearance term has already called equivalent.
+// MEASURED, not inherited: the station the scan lands on at the shipped
+// layout and tooth spec. The tripwire below compares against it.
+const JMP_AZ_MEASURED_DEG = 326;
 const JMP_AZ = (() => {
   const capLocal = { x: -SETTING_CAP_XY.x, y: SETTING_CAP_XY.y }; // world→dialFace: R_y(π) mirrors x
   const obstacles = [
@@ -10802,12 +10852,18 @@ jumperAzGroup.add(jumperLever);
 // radius with a real dR/dθ slope. Seat azimuth, slope and lift sign all
 // come out of the same numbers (the pawl/detent scheme).
 const _jTipAt = (rot) => ({ x: JMP_PIV_R + Math.cos(rot) * JMP_LEVER, y: Math.sin(rot) * JMP_LEVER });
+// How near the seat radius a scanned aim must land to count. Named because
+// the boot assert below re-checks the scan's product against it — the two
+// must be the same number or the check is judging by a different rule than
+// the thing it checks (TODO 89). Measured slack at the shipped aim: the
+// solved tip is 0.0195 off, i.e. it spends 97% of this band.
+const JMP_AIM_BAND = 0.02;
 const JMP_AIM = (() => {
   let best = null;
   for (let rot = Math.PI * 0.55; rot <= Math.PI * 1.45; rot += 0.002) {
     const t = _jTipAt(rot);
     const r = Math.hypot(t.x, t.y);
-    if (Math.abs(r - JMP_TIP_SEAT_R) > 0.02) continue;
+    if (Math.abs(r - JMP_TIP_SEAT_R) > JMP_AIM_BAND) continue;
     const r2 = Math.hypot(_jTipAt(rot + 1e-3).x, _jTipAt(rot + 1e-3).y);
     const slope = (r2 - r) / 1e-3; // dR/dθ at the seat
     if (Math.abs(slope) < 0.45 * JMP_LEVER) continue;
@@ -10857,24 +10913,38 @@ jumperBeakMesh.rotation.z = JMP_BASE_ROT; // solved aim, tip on the seat
 // Constraint: at ψ_lift, EVERY outline point stays a margin outside the
 // star's swept tip circle:  min_p |(JMP_PIV_R,0) + R(ψ)·R(base)·p| ≥
 // STAR_R + CLEAR_MARGIN.
-const JMP_LIFT_ROT = (() => {
+// The beak's outline in the AIMED lever frame, sampled along the edges as
+// well as at the corners: an edge's interior can pass closer to the star
+// axis than either of its endpoints.
+const _jmpOutlinePts = (() => {
   const cB = Math.cos(JMP_BASE_ROT), sB = Math.sin(JMP_BASE_ROT);
   const raw = jumperBeakMesh.userData.outline.map(([x, y]) => ({ x: x * cB - y * sB, y: x * sB + y * cB }));
-  // Sample ALONG the outline edges too: an edge's interior can pass closer
-  // to the star axis than either of its endpoints.
   const pts = [];
   for (let i = 0; i < raw.length; i++) {
     const a = raw[i], b = raw[(i + 1) % raw.length];
     for (let k = 0; k < 8; k++) pts.push({ x: a.x + (b.x - a.x) * k / 8, y: a.y + (b.y - a.y) * k / 8 });
   }
-  const minRAt = (psi) => {
-    const c = Math.cos(psi), s = Math.sin(psi);
-    let m = Infinity;
-    for (const p of pts) m = Math.min(m, Math.hypot(JMP_PIV_R + p.x * c - p.y * s, p.x * s + p.y * c));
-    return m;
-  };
+  return pts;
+})();
+// Smallest radius from the STAR's axis that any outline point reaches at
+// lever rotation ψ. Hoisted out of the lift solve below because the boot
+// assert re-checks that solve's own constraint — one definition, or the
+// check and the thing it checks are free to drift apart (TODO 89).
+const jmpMinRAt = (psi) => {
+  const c = Math.cos(psi), s = Math.sin(psi);
+  let m = Infinity;
+  for (const p of _jmpOutlinePts) m = Math.min(m, Math.hypot(JMP_PIV_R + p.x * c - p.y * s, p.x * s + p.y * c));
+  return m;
+};
+// The released beak must clear the star's SWEPT TIP CIRCLE by the margin,
+// plus the bind headroom the planes elsewhere are solved against — the
+// same `+ JMP_BIND_EPS` the assert below re-checks, because a bare
+// `>= STAR_R + CLEAR_MARGIN` would pass on the boot where this solve only
+// just failed and fell back.
+const JMP_LIFT_CLEAR_R = STAR_R + CLEAR_MARGIN + JMP_BIND_EPS;
+const JMP_LIFT_ROT = (() => {
   for (let a = 0; a <= Math.PI / 2; a += 1e-3) {
-    if (minRAt(JMP_LIFT_SIGN * a) >= STAR_R + CLEAR_MARGIN + JMP_BIND_EPS) return a;
+    if (jmpMinRAt(JMP_LIFT_SIGN * a) >= JMP_LIFT_CLEAR_R) return a;
   }
   console.warn('minute jumper: no lift angle clears the star by the margin — beak left at the apex-only lift');
   return (STAR_R + CLEAR_MARGIN - JMP_TIP_SEAT_R) / JMP_SLOPE;
@@ -10893,7 +10963,7 @@ const JMP_LIFT_ROT = (() => {
   // along its span). The pin's dial-ward end sits flush with the bar's
   // dial face, i.e. it binds at CLEAR_MARGIN above the dial's back — the
   // same constraint that planes the bar.
-  const pinEnd = -(CLEAR_MARGIN + JMP_BIND_EPS) - STAR_BOT; // lever-local; +z is dial-ward in the flipped unit frame
+  const pinEnd = -(Z_JMP_PIN_FACE - Z_DIAL) - STAR_BOT; // the shared pin face, expressed lever-locally (+z is dial-ward in the flipped unit frame)
   const tailPin = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, pinEnd + 0.25, 8), MATS.steel);
   tailPin.rotation.x = Math.PI / 2;
   tailPin.position.set(1.35, 0, (pinEnd - 0.25) / 2);
@@ -10939,15 +11009,52 @@ const JMP_LIFT_ROT = (() => {
 // as a follower between its two pins each frame.
 const jumperLifter = new THREE.Mesh(new THREE.BoxGeometry(1, 0.55, JMP_LIFTER_T), MATS.steel);
 jumperUnit.add(jumperLifter); // part of the jumper UNIT (its contact with the post is the declared lost-motion joint)
-// Star base phase: snapped minutes must put a VALLEY under the beak.
-// At a snapped pose the minute wheel's angle is a multiple of the pitch,
-// so a single build-time phase aligns every snap: valley (u = 0.5) at
-// the beak's azimuth when mwMinuteA = 0 snapped.
-// Star base phase from the SOLVED tip azimuth: a snapped minute puts the
-// minute wheel at a pitch multiple, so one build-time phase aligns every
-// snap's valley (u = 0.5) under the beak's tip.
+// Star base phase, from the SOLVED tip azimuth: snapped minutes must put a
+// VALLEY under the beak, and at a snapped pose the minute wheel's angle is
+// a multiple of the pitch — so one build-time phase aligns every snap's
+// valley (u = 0.5) under the tip. (This said the same thing twice, in two
+// paragraphs; TODO 89 collapsed them.)
 const JMP_TIP_AZ = JMP_AZ + JMP_TIP_AZ_LOCAL; // dialFace frame
 minuteStar.rotation.z = JMP_TIP_AZ - STAR_PITCH / 2;
+// BUILT §1 step 5's promised boot checks, finally written (TODO 89), in
+// rule 6 form: achieved vs required, silent when healthy.
+//
+// What is NOT here, and why. §1 asked for a "beak seats in a valley"
+// check. Measured, that assert is TAUTOLOGICAL: `minuteStar.rotation.z`
+// is assigned `JMP_TIP_AZ − STAR_PITCH/2` on the line above, so the
+// tick's own `u` at `JMP_TIP_AZ` is 0.5 by algebra (measured
+// 0.500000000) whatever the geometry does. An assert that cannot fail is
+// not a check, so the seat is guarded where it CAN fail instead — on the
+// aim the phase is built from.
+{
+  // 1. The aim landed on the seat. The scan accepts any sample within
+  // JMP_AIM_BAND of the seat radius and FALLS BACK to a dead-on lay with
+  // no ride authority when none qualifies; that fallback's own warn is
+  // inside the IIFE, so this re-checks its product from outside.
+  const tip = _jTipAt(JMP_BASE_ROT);
+  const tipR = Math.hypot(tip.x, tip.y);
+  const off = Math.abs(tipR - JMP_TIP_SEAT_R);
+  if (off > JMP_AIM_BAND)
+    console.warn(`minute quick-set: solved aim's tip sits ${off.toFixed(4)} off the seat radius, over the ${JMP_AIM_BAND} scan band (tip ${tipR.toFixed(4)}, seat ${JMP_TIP_SEAT_R.toFixed(4)}) — the beak is not on the flanks it rides`);
+
+  // 2. The released beak clears the star. Re-evaluates the lift solve's
+  // OWN constraint from outside it, in the `+ JMP_BIND_EPS` form the
+  // solver accepts by — the bare `STAR_R + CLEAR_MARGIN` form would pass
+  // on precisely the boot where the solve just failed and fell back.
+  const clr = jmpMinRAt(JMP_LIFT_SIGN * JMP_LIFT_ROT);
+  if (clr < JMP_LIFT_CLEAR_R)
+    console.warn(`minute quick-set: lifted beak reaches ${clr.toFixed(4)} from the star axis, inside the required ${JMP_LIFT_CLEAR_R.toFixed(4)} — the running star would grind it`);
+
+  // 3. The bearing STATION, as a tripwire rather than a constraint. The
+  // scan is free to re-site the jumper when the layout moves — that is
+  // what it is for — but it did so silently when §136 re-derived STAR_R
+  // (320° → 326°, found by TODO 89, three comments left stale). Warn on
+  // the MOVE so the next one is noticed and re-verified, and carry the
+  // measured value rather than an inherited claim.
+  const azDeg = (JMP_AZ * 180) / Math.PI;
+  if (Math.abs(azDeg - JMP_AZ_MEASURED_DEG) > 1e-6)
+    console.warn(`minute quick-set: the bearing scan re-sited the jumper to ${azDeg.toFixed(4)}° (was ${JMP_AZ_MEASURED_DEG}°) — legal, but re-verify the lifter's run and update this number`);
+}
 const JMP_WORLD_Z = Z_JMP_LIFTER; // the LIFTER BAR's plane in movement z — the dial-hugging corridor (see its derivation at the setting-lever build); the post's drop pin ends there by the same constraint
 const JMP_LIFT_LOCAL_Z = Z_DIAL - Z_JMP_LIFTER; // same plane in the unit's flipped local frame
 // UNIT ATTRIBUTION: the jumper is PLATE furniture (its stud rivets into the
