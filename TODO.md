@@ -9279,6 +9279,63 @@ that single row waives three pairs. This is item 5's class after its own fix:
 the tier enumerates the pair correctly (pawl and wheel are in different motion
 frames) and then discards it on a declaration.
 
+> **CLOSED by §163, and the over-carry does not get absorbed — it ceases to
+> exist.** The 117.39% was never a surplus to budget: it is exactly the ratio of
+> a guessed number to a derived one, `4.370 / 5.130 = 85.2%`. §163 removes the
+> guess twice over. First `ALARM_PUSH_CHORD` stopped being
+> `1.15 · (baseR / 1.5)` and became `travel ÷ step`, which is the saw's own root
+> circle — right for a rigid pawl on an arm, and the reason the 4.37 fell out as
+> a ratio. Then the pawl stopped being rigid on the pusher: the driver pivots on
+> the wheel's arbor and the pusher reaches it through a pin in a radial slot,
+> which makes the driver's angle the pin's AZIMUTH and forces
+>
+>     d = travel / (2·tan(step/2)) = 5.01226
+>
+> with the stroke straddling the foot of the perpendicular. So the built offset
+> is 2.30% inboard of the root circle and 5.13 is now an INTERMEDIATE — the
+> moment arm of a member that no longer exists. The boot check is a two-sided
+> equality where it was a floor (`|ALARM_PAWL_SWEEP − ALARM_COL_STEP| > 1e-12`),
+> because with the offset derived from the coupling the two sides are the same
+> number by construction, and the two directions fail differently: under-sweep
+> leaves the pawl on a flank mid-index, over-sweep drives into a banked tooth.
+>
+> The carry law moved with it. `travel·T / arm` and the coupling's azimuth share
+> their endpoints and disagree everywhere between, which is half the poses the
+> `alarmPressCycle` axis visits — the middle of the press is where the wheel
+> now stands somewhere different.
+>
+> **MEASURED, on the shipped tick** (`tools/probe-87-press.mjs`, the same probe
+> that took the 117.39%): **100% of a tooth and 0 u after the latch**, at 1/120
+> and 1/480, on both presses. Against the filing's 117.4% and 0.398.
+>
+> Getting there took two corrections to the probe and one to the tick, and the
+> tick's is a defect of its own:
+>
+> - **It measured travel off the PAWL.** With the pawl rigid on the head its
+>   displacement WAS the press travel and its return WAS the head's; §163's pawl
+>   rotates on a driver and its position is the output of a seat solve, so the
+>   two questions came apart and the probe reported "the head never came back to
+>   its seat" four times. Travel and the return are read off `alarmPusherCap`
+>   now; contact still off the nose.
+> - **It took the latch travel as arm × tooth.** That is exact for a constant
+>   arm and meaningless for a pin in a radial slot, whose arm runs 5.012 at the
+>   foot to 5.372 at either end — so the "overrun" moved with the step rate
+>   (0.134 at 1/120 against 0.022 at 1/480), the probe reporting its own model.
+>   The latch travel is INTERPOLATED off the trajectory now, and the delivered
+>   tooth is read off the WHEEL rather than off a travel divided by an arm,
+>   which assumes nothing about the coupling.
+> - **And the wheel lagged the head by exactly one tick.** `alarmPusherT` was
+>   advanced 380 lines BELOW the carry block that reads it, so the wheel was
+>   always turned with the previous tick's fraction: measured, the head reached
+>   full travel 2.68606 with the wheel at 0.518383 of its 0.523599 tooth, and
+>   the wheel only completed on the next frame with the head already returning.
+>   The lag PREDATES this item — the 117.39% was measured through it — but "the
+>   wheel goes exactly where its pawl has pushed it" is what TODO 20 and §163
+>   both claim, and one frame of lag falsifies it at the frame scale. The
+>   advance moved above the carry. It cannot move a battery report: `setPose`
+>   assigns `alarmPusherT` directly, so no sweep comes through this path —
+>   verified by diffing a full `--report` across the change.
+
 ### 2. The force is an order light, and it starves downstream — not at the pusher
 
 Named here so the symptom is not chased to the wrong end. The INPUT side is
@@ -9451,6 +9508,39 @@ band (§51's machinery, if it comes to that). Until then the row is waived in
 `INTRA_UNIT_WAIVERS` citing this item, deliberately not silenced, so `Alarm
 switch` stays GATED: any other interference in that unit now fails.
 
+> **CLOSED by §163, in position space — and this finding's own arithmetic was
+> wrong in a way worth recording.** Two corrections and one fix.
+>
+> **The 0.140 was never 0.140.** The table above reads the plate's top off a
+> vertex at z 8.9945, and that vertex is not the plate: it belongs to
+> `screwSlots`, standing 0.01 proud, whose nearest vertex to the column wheel is
+> **30.48 away**. The plate top is `threeQuarterPlate` at **8.9845** — which is
+> `TQ_TOP_Z`, the constant `ALARM_COL_RAISE` is derived against — so the free
+> band was **0.150** all along, exactly the `CLEAR_MARGIN` the raise exists to
+> put there. The conclusion the row supported (a 0.24 bar with a margin each
+> side wants 0.540 and does not fit) survives the correction unchanged; the
+> number quoted for it did not, and a number measured against the wrong face is
+> how a sound conclusion acquires a false witness.
+>
+> **The band is not 0.150 any more either.** `ALARM_COL_RAISE` is re-derived to
+> open the DRIVER's own stratum — `CLEAR_MARGIN + STOCK_MIN_U + CLEAR_MARGIN` =
+> **0.6166** — which grows the raise by 0.467. That is real movement height and
+> it was priced before it was spent: the link's beak arm derives from
+> `ALARM_COL_TOP_Z`, so the whole rider cluster goes up with the wheel (§68's
+> own comment says so), and neither the under-plate route nor shortening the
+> 1.4 castellation tier could pay for it — the first has 0.19 of largest gap
+> against 2.417 needed, the second would spend two P0 contacts to buy at most
+> 0.26.
+>
+> **And the bar does not go into that band at all.** It goes BELOW the plate, to
+> the stem's own plane, where the plate itself stands between it and the driver.
+> Measured over the whole stroke (`tools/probe-163-pin.mjs`), its nearest
+> neighbour is that plate at **0.61** and the next thing in the movement is
+> **1.95**. So the member does not cease to exist, as step 3 predicted it would
+> — it changes stratum, which is the currency P3 allows and the only one it
+> allows. Its section goes to `STOCK_MIN_U` in both directions on the way, the
+> old 0.30 × 0.24 having been under §50's floor in both.
+
 ### 7. The pawl is inside the ratchet, not on it — and that re-scopes step 3
 
 **Finding 1's depth was never the depth.** `probe-87-press` reports a
@@ -9493,6 +9583,52 @@ evaluated beside it.
 `probe-87-pawl.mjs` is that work's acceptance test, and it is written to be
 one: a pawl that drives through a real contact reads **0 vertices inside at
 every pose except the declared kiss, where it reads depth 0.**
+
+> **CLOSED by §163 — the drive contact is a contact.** The pawl is a shaped
+> member on a driver pivoted on the wheel's OWN ARBOR, and the architecture
+> comes from that one fact: on the drive stroke driver and wheel turn about the
+> same axis together, so relative to the teeth the driver does not move and
+> there is nothing to plough through. Three other pivots were measured first and
+> all three fail the same way — the number that decides it is how far the
+> pawl's pivot advances in azimuth ABOUT THE WHEEL over the stroke, against the
+> 30° the wheel must turn:
+>
+> | pivot carried by | advance | verdict |
+> |---|---|---|
+> | the riser (a straight line) | 11° of 30° | the arm supplies the rest by swinging, 53.4° → 95.5° off radial: past tangential, lying along a flank, −0.15 |
+> | a fixed post outside the wheel, pulling | 0° of 30° | the nose slides off the cliff face |
+> | an operating lever on its own arc | 0.09–9.86° of 30° | never completes the cycle |
+> | **the wheel's own arbor** | **30° of 30°** | **works** |
+>
+> The return is the half that had to be measured rather than argued, because it
+> is where the predecessor died. `tools/probe-163-driver.mjs` sweeps it against
+> `userData.ratchetPoly` with the pawl's angle carried in the DRIVER's frame,
+> the seat tracked from step to step rather than searched globally, and a
+> positive control that lands at 2.66e-15. At the derived post radius —
+> `tip + CLEAR_MARGIN + the pawl's BOSS` = 7.06710 — the pivot rises through the
+> skirt's own band, so what stands there must clear the tips, and the largest
+> thing on that pivot is the boss, not the post inside it — the pawl
+> lifts 1.225 against the 1.224 it needs and the swept free region is 6.304 u².
+>
+> **A straight bar does not fit, and neither does a flood fill's path.** The
+> free region proves SOME member exists by walking grid cells; a member somebody
+> cuts is straight segments, and a straight segment cuts the corner the
+> staircase went round — hand-simplifying it fouled by 0.1645. The probe now
+> straightens the path greedily and verifies each run, and it re-maps the region
+> requiring `w + CLEAR_MARGIN` rather than mere non-intersection, because the
+> first outline that came out ran 0.0174 off a tooth tip, which is a hair and
+> not a clearance. The outline that survives both is what the build cuts, and
+> the build re-sweeps it: **0.1645 worst clearance over the whole return**,
+> asserted at boot (§120's cycle-sweep precedent — the pose net covers the
+> class, the group's own assert keeps the instance).
+>
+> The pawl's angle is SOLVED against the polygon at every pose, statelessly: it
+> anchors at the spring's free angle — derived a full working stroke inside the
+> metal, so the anchor is always blocked — and scans outward to the first free
+> angle, which is the most-closed one. A tracking solve is what a probe can do
+> and a tick cannot, since `setPose` visits poses in any order and a
+> pose-dependent answer would make the wheel's stance a function of pose
+> history, which is the residue TODO 54 exists to keep out.
 
 ### The group's other two outputs, recorded rather than re-filed
 
@@ -9543,22 +9679,83 @@ read the other, because the second is then nearly free.
    retire step 1 — a probe measures one trajectory on demand, where an axis puts
    the stroke in the pose net so every sweep in the battery sees it, which is
    what makes the finding a REGRESSION gate rather than a one-off reading.
-3. **RE-SCOPED by finding 7 — the drive contact has to become one.** This read
-   "give the pawl the freedom a pawl has — a pivot and a return spring". That
-   is necessary and nowhere near sufficient: measured in the wheel's own plane,
-   the pawl stands **inside the root circle** at the bottom of the stroke with
-   every vertex in the saw and 0.7615 u of depth, so there is no contact to
-   give freedom TO. The work is a real drive contact — a short NOSE on a
-   sprung, pivoted lever, its engagement SOLVED against `ratchetPoly` the way
-   TODO 59's click nose is solved against `profileAt`, and the wheel's carry
-   then a consequence of where that contact sits rather than `travel / arm`
-   evaluated beside it. P0 and P2 inside the group, so it is spent in mechanism
-   space and never on a widened budget; the cam-out travel derives from the
-   flank the source has already priced (67.4° off radial). **Its acceptance
-   test exists**: `tools/probe-87-pawl.mjs` must read 0 vertices inside at
-   every pose but the declared kiss, and depth 0 there. Closing it also closes
-   finding 6, since a nose that stays on the saw needs no carrier inside the
-   tooth circle.
+3. **DONE (§163) — the drive contact is a contact, and the member that was
+   0.7615 inside the saw is gone.** The step read "give the pawl the freedom a
+   pawl has — a pivot and a return spring", which finding 7 showed was
+   necessary and nowhere near sufficient. What shipped is a sprung, shaped pawl
+   on a DRIVER pivoted on the column wheel's own arbor, reached from the pusher
+   by a PIN IN A RADIAL SLOT. Findings 1, 6 and 7 close with it; their own
+   blocks carry the measurements.
+
+   **Three things this step changed that the filing did not predict**, each of
+   them a number that was chosen and turned out not to be free:
+
+   - **The offset moved twice.** `travel ÷ step` = 5.13 is the right derivation
+     for a rigid pawl and the wrong question for a coupling: a radial slot makes
+     the driver's angle the pin's AZIMUTH, so one tooth needs
+     `travel / (2·tan(step/2))` = 5.01226 with the stroke straddling the foot of
+     the perpendicular. 5.13 would deliver 29.3415° of the 30.000° a tooth
+     needs, minimised over every start position — a floor, not a placement.
+   - **The spring is solved, and the first cut proved why.** Choosing its length
+     and bear station measured a return drag of 3.89e-1 N·mm against the click's
+     3.34e-2 N·mm detent — 11.6× over, a spring that would drag the wheel back
+     on every release. Its bear station is the pivot boss's edge (a strain solve
+     answered 0.1137, INSIDE the boss, where a blade would work at the boss's
+     radius and make every number downstream a fiction), and its length is the
+     greater of two floors — the drag budget's 3.987 and its own strain limit's
+     4.287. The strain governs, so the drag lands at 3.73× the detent rather
+     than the 3× minimum: what a governing constraint always buys.
+   - **The pivot's azimuth on the driver is a P3 choice at a 30° quantum.** The
+     seats sit at fixed azimuths in the wheel, so the branches are one tooth
+     apart, and three of the twelve foul the metal already standing in the
+     pawl's band. Measured, at the derived pivot radius:
+
+     | branch | clearance |
+     |---|---|
+     | +9.35° | **−0.5216** |
+     | −20.65° | **−0.4891** |
+     | +39.35° | **−0.0957** |
+     | **−50.65°** | **+2.9566** ← built |
+     | the other eight | nothing within reach |
+
+     The build sweeps the pawl through its whole return on EVERY branch and
+     takes the most compact one that clears amply — position space, at the
+     quantum the saw itself supplies. Clearance decides and compactness breaks
+     the tie, because ranking eight equally-unreachable branches by distance
+     picks whichever the polygon listed first, which is a choice made by
+     iteration order.
+
+   **And the two instruments that were agreeing with themselves.** Both were
+   caught by measurement, and both are the same shape of error:
+
+   - **The pivot's radius was derived against the POST** — `tip + CLEAR_MARGIN
+     + STOCK_MIN_R10` = 6.70048 — when the largest thing centred on that pivot
+     is the BOSS the post runs in. The built pawl measured **0.0956 inside the
+     saw** at f 0.604. What let it through is that the build's own outline
+     sweep swept the pawl's two body outlines and not its boss: a sweep that
+     does not cover a member cannot see that member. Deriving a clearance from
+     the wrong member of a joint is finding 6's own mistake at a different
+     station. Re-derived at 7.06710, the return is *stronger* — free region
+     7.136 u² against 6.304 — and the acceptance test reads 0 vertices inside
+     at every pose.
+   - **The branch scan was measuring air.** It collected obstacle vertices
+     lying INSIDE the pawl's 0.317 band, and a post that crosses that band has
+     vertices only at its two ends, both outside it — MODELING.md rule 5's trap,
+     in the instrument rather than in a sweep. Every branch read equally clear
+     and the "choice" was the polygon's listing order. It reads z RANGES now,
+     an empty scan is itself a warning ("no obstacles" and "no measurement"
+     look identical from outside), and the wheel's own bodies are excluded
+     because the nose is *meant* to be in the teeth — left in, the saw
+     saturates every branch at 0 and the scan chooses nothing.
+
+   **Its acceptance test moved with it.** `tools/probe-87-pawl.mjs` selected one
+   mesh named `alarmPusherPawl`; the pawl now ships as three bodies plus a nose
+   disc (the arm is CLIPPED off its own pivot bore, since a post wider than a
+   2w arm would pass through the arm's flanks whatever hole was cut), so the
+   probe measures ALL of them and reports the nose apart as the declared
+   contact. A member that clears the saw in three pieces and fouls it in a
+   fourth has not cleared it.
+
 4. **DONE — the blanket is split and both false rows are corrected.** The
    wheel's three bodies are named at the builder (`alarmColBase`,
    `alarmColCastellations`, `alarmColSkirt`), so the selectors say which body
@@ -9603,9 +9800,63 @@ read the other, because the second is then nearly free.
    row that fails the moment its waiver is deleted. Finding 4 carries the
    numbers and the residue.
 
-   **Tier two — the metal — is what remains**, and it is unchanged: the
-   abutment, the collar and the blade, at the station above. Deleting
-   `RESTORING_MEMBER_WAIVERS`' one row is structurally part of building it.
+   **Tier two is DONE (§164) — the return is metal, and the waiver table is
+   empty.** A collar on the stem, a fixed abutment hung off the plate's
+   underside, and a spring between them, exactly as sited. Three corrections to
+   the siting, all of them measured rather than argued:
+
+   - **A COIL, not a blade.** The item said blade, and a blade must take the
+     WHOLE press travel as its tip deflection: at `SPRING_FLAT_U` stock and
+     `SPRING_STRAIN_MAX` that wants a free length of `sqrt(1.5·c·δ/ε)` =
+     **11.53 u** against the **9.4** the run has, before any clearance. A helix
+     stores the stroke in its pitch instead of one beam's curvature, which is
+     why every real case pusher has one.
+   - **The run is not the run this step measured.** §163 took the riser from
+     the stem's inner end all the way in to the pin's station, so "between the
+     riser (s ≈ 7.9) and the guide boss" now reads as between the STEM's inner
+     end and the boss. Re-measured by `tools/probe-164-return.mjs`.
+   - **The bracket cannot climb at the abutment's radius.** Between the stem's
+     bore and the plate's underside there is 0.39, and a leg at §50's floor
+     wants its own width plus a margin off each. It reaches out past the coil
+     first and climbs in the corridor the probe measures at 2+ units clear.
+
+   Every dimension is a consequence. The wire is the round analogue of the
+   movement's own spring stock; the mean coil radius is the stem plus a running
+   clearance plus half the wire; the **coil count is a FLOOR from the shear the
+   wire may work to at full stroke** — `τ = K·G·d·δ / (π·D²·n)` falls as `n`
+   rises, so **35 coils** is what the stress allows and not what fitted, solved
+   to a fixed point because the deflection includes a preload that depends on
+   the rate that depends on `n`. The **preload is `ALARM_SPRING_HEADROOM` × the
+   4.72 mN the pawl's own spring drags back through §163's coupling** = 14.15 mN.
+   The free length is solid + preload + travel + one `CLEAR_MARGIN` of clash.
+
+   | quantity | value |
+   |---|---|
+   | rate | **47.60 N/m** |
+   | shear at full press | **453.2 MPa** against `SPRING_TAU_Y_PA` 461.9 |
+   | press force at the bottom | **62.6 mN** against `CASE_PUSHER_INPUT_N`'s 1–5 N |
+   | return time | **1.075 ms** |
+
+   **And the settling time became arithmetic**, which is the half of this step
+   that was never about geometry. `ALARM_RETURN_S` asserted that "an unloaded
+   spring returns at least as fast as a deliberate press"; there is a spring
+   now, so a quarter period on the pusher's own summed mass is 1.075 ms against
+   the tick's 0.12 s — **conservative by 112×**. The tick keeps its human-scale
+   bound, because a real return is damped by friction this movement does not
+   model, but the claim is no longer an assertion.
+
+   Two things worth recording about the build rather than the part. The coil is
+   drawn as FRAMES (the mainspring's precedent) because the collar travels the
+   whole stroke toward the abutment and a coil drawn once ends up a third of
+   the way inside it — and a morph counts as motion, so the audit then asks
+   what restores the coil itself. It answers `two-way`: captive between two
+   faces it never leaves, its length a function of the press and not a state it
+   can be left in. And the preload deflection came out in METRES (0.000229)
+   while every length around it was model units (0.604), which under-counted
+   the deflection the coil count is solved for and drew the spring at its free
+   length — caught by, and now guarded by, a round-trip assert: squeezing the
+   coil from free to installed must give back the force the drag budget asked
+   for, or the two halves describe different springs.
 
 **What this item measured and what it computed.** As filed, findings 1 and 3
 were arithmetic on the shipped constants — re-run from `ALARM_PUSH_TRAVEL`,

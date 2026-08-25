@@ -87,14 +87,25 @@ const V = await page.evaluate(async () => {
   // ---- the members ------------------------------------------------------
   const unit = clock.labelEntries.find((e) => e.name === 'Alarm switch');
   if (!unit) return { fail: ['no `Alarm switch` unit in labelEntries'] };
-  let pawl = null; const wheelMeshes = [];
+  // §163 — TWO members now, where one used to do both jobs. The pusher's bar
+  // was rigid on the head, so its own displacement WAS the press travel and its
+  // own return WAS the head's. The driving member is a sprung pawl on a driver
+  // pivoted on the wheel's arbor: it rotates, its angle is the output of a seat
+  // solve, and its world position answers a different question from the head's.
+  // TRAVEL and the RETURN are read off the head; CONTACT off the pawl's nose.
+  let pawl = null, head = null; const wheelMeshes = [];
   unit.obj.traverse((o) => {
     if (o.userData && o.userData.schematic) return;   // §71: flagged display is not metal
     if (!o.isMesh) return;
-    if (o.name === 'alarmPusherPawl') pawl = o;
+    // §163 — the driving member left the pusher. It is a shaped, sprung pawl on
+    // a driver pivoted on the wheel's own arbor, and the body that TOUCHES the
+    // saw is its NOSE, which is what this probe was reading the pusher's bar for.
+    if (o.name === 'alarmColPawlNose') pawl = o;
+    if (o.name === 'alarmPusherCap') head = o;
     if (/^alarmCol(Base|Castellations|Skirt)$/.test(o.name)) wheelMeshes.push(o);
   });
-  if (!pawl) fail.push('no mesh named `alarmPusherPawl`');
+  if (!pawl) fail.push('no mesh named `alarmColPawlNose` — §163 moved the driving member off the pusher');
+  if (!head) fail.push('no mesh named `alarmPusherCap`');
   if (wheelMeshes.length !== 3) fail.push(`expected the wheel's 3 named bodies, found ${wheelMeshes.length}`);
 
   // TODO 87 step 4 named the three bodies apart, so the skirt is SELECTED by
@@ -171,7 +182,7 @@ const V = await page.evaluate(async () => {
     clock.resetInputs();
     for (let i = 0; i < 240; i++) clock.step(dt);   // settle: the wheel's own state is banked
     clock.scene.updateMatrixWorld(true);
-    const pRest = pawl.getWorldPosition(new THREE.Vector3());
+    const pRest = head.getWorldPosition(new THREE.Vector3());
     const runs = [];
     for (let k = 0; k < presses; k++) {
       // Each press gets its OWN angular origin. A cumulative one would call
@@ -184,7 +195,7 @@ const V = await page.evaluate(async () => {
       for (let i = 0; i < Math.ceil(1.5 / dt) && !home; i++) {
         clock.step(dt);
         clock.scene.updateMatrixWorld(true);
-        const travel = pawl.getWorldPosition(new THREE.Vector3()).distanceTo(pRest);
+        const travel = head.getWorldPosition(new THREE.Vector3()).distanceTo(pRest);
         const angle = relAngle(wheelRoot.getWorldQuaternion(new THREE.Quaternion()), qRest);
         const s = separation();
         rows.push({ i, t: round(i * dt, 5), travel: round(travel, 5), angle: round(angle, 6),
@@ -206,8 +217,11 @@ const V = await page.evaluate(async () => {
     // The latch: first frame at the wheel's final angle for this press.
     const latch = rows.find((r) => r.angle >= maxA - 1e-9) || rows[rows.length - 1];
     const bottom = rows.reduce((a, b) => (b.travel >= a.travel ? b : a));
-    // The moment arm, from motion: travel per radian while the pawl still
-    // carries. Taken over the widest pre-latch interval available.
+    // The moment arm, from motion: head travel per radian of wheel while the
+    // pawl still carries, over the widest pre-latch interval available. §163
+    // makes this a MEAN rather than a constant — a pin in a radial slot has the
+    // arm (d² + s²)/d, 5.012 at the foot rising to 5.372 at either end — so the
+    // delivered percent below is the figure to read, not this.
     const carrying = rows.filter((r) => r.angle > 1e-6 && r.angle < maxA - 1e-9);
     const arm = carrying.length >= 2
       ? (carrying[carrying.length - 1].travel - carrying[0].travel) /
@@ -219,7 +233,35 @@ const V = await page.evaluate(async () => {
     // 1/120), which would understate the overrun by exactly the sampling rate.
     // Pre-latch the wheel turns travel/arm exactly, so the latch travel is
     // arm × tooth: both measured here, neither quoted.
-    const latchTravelExact = arm === null ? null : arm * maxA;
+    // WHERE THE LATCH FALLS, and why this is no longer arm × tooth. The first
+    // filing took the latch travel as the constant moment arm times the tooth,
+    // because a rigid pawl on a straight line HAS a constant arm and the frame
+    // grid understates the overrun by up to one frame of travel. §163's pin in
+    // a radial slot has the arm (d² + s²)/d — 5.012 at the foot of the
+    // perpendicular rising to 5.372 at either end — so arm × tooth is not a
+    // travel the mechanism ever stands at, and using it makes the "overrun"
+    // move with the step rate: measured, 0.134 at 1/120 against 0.022 at 1/480,
+    // which is the probe reporting its own model rather than the metal.
+    //
+    // INTERPOLATED instead, off the trajectory itself: the wheel's angle is
+    // monotone through the carry, so the head's travel at the moment it reaches
+    // its final angle is a straight read between the two frames that straddle
+    // it. That is rate-robust for the reason arm × tooth was not — it assumes
+    // nothing about the arm.
+    let latchTravelExact = null;
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].angle >= maxA - 1e-12 && rows[i - 1].angle < maxA - 1e-12) {
+        const a0 = rows[i - 1].angle, a1 = rows[i].angle;
+        const f = a1 > a0 ? (maxA - a0) / (a1 - a0) : 1;
+        latchTravelExact = rows[i - 1].travel + f * (rows[i].travel - rows[i - 1].travel);
+        break;
+      }
+    }
+    // The arm at either END of the coupling's swing, as local slopes — the two
+    // numbers a varying arm actually has, where `arm` above is their mean.
+    const slope = (a, b) => (b.angle - a.angle > 1e-9 ? (b.travel - a.travel) / (b.angle - a.angle) : null);
+    const armEarly = carrying.length >= 3 ? slope(carrying[0], carrying[1]) : null;
+    const armLate = carrying.length >= 3 ? slope(carrying[carrying.length - 2], carrying[carrying.length - 1]) : null;
     return {
       latchFrame: latch.i, latchAngle: latch.angle, latchTravel: latch.travel,
       latchTravelExact: latchTravelExact === null ? null : round(latchTravelExact, 5),
@@ -227,9 +269,14 @@ const V = await page.evaluate(async () => {
       postLatchTravel: latchTravelExact === null ? null : round(bottom.travel - latchTravelExact, 5),
       postLatchTravelByFrame: round(bottom.travel - latch.travel, 5),
       armMeasured: arm === null ? null : round(arm, 4),
+      armEarly: armEarly === null ? null : round(armEarly, 4),
+      armLate: armLate === null ? null : round(armLate, 4),
       sweepRad: arm === null ? null : round(bottom.travel / arm, 5),
       toothRad: latch.angle,
-      deliveredPct: arm === null ? null : round(100 * (bottom.travel / arm) / latch.angle, 2),
+      // WHAT ONE PRESS DELIVERS, read off the WHEEL rather than off a travel
+      // divided by an arm. This is the question finding 1 asked, and it is the
+      // one quantity in the run that no assumption about the coupling touches.
+      deliveredPct: round(100 * latch.angle / (clock.clickLaw.pitch / 2), 2),
       worstSep: worst.sep, worstFrame: worst.i, worstInN: worst.inN,
       buriedFrames: rows.filter((r) => r.sep < 0).length, frames: rows.length,
     };
@@ -285,8 +332,12 @@ const V = await page.evaluate(async () => {
     fail.push(`the worst separation moves with the step rate: ${cw.worstSep} at 1/120 vs ${fw.worstSep} at 1/480 — the probe is measuring its own sampling`);
   if (cw && fw && Math.abs(cw.postLatchTravel - fw.postLatchTravel) > 0.01)
     fail.push(`the overrun moves with the step rate: ${cw.postLatchTravel} at 1/120 vs ${fw.postLatchTravel} at 1/480 — the probe is measuring its own sampling`);
-  if (cw && fw && Math.abs(cw.armMeasured - fw.armMeasured) > 0.01)
-    fail.push(`the measured moment arm moves with the step rate: ${cw.armMeasured} vs ${fw.armMeasured}`);
+  // The MEAN arm is a secant over whatever frames the rate happened to give,
+  // and §163's arm varies 7.18% end to end, so it is reported and not gated.
+  // What must not move with the rate is the delivered tooth, which is read off
+  // the wheel and assumes nothing about the coupling.
+  if (cw && fw && Math.abs(cw.deliveredPct - fw.deliveredPct) > 0.05)
+    fail.push(`the delivered tooth moves with the step rate: ${cw.deliveredPct}% at 1/120 vs ${fw.deliveredPct}% at 1/480 — the probe is measuring its own sampling`);
   if (fw && Math.abs(fw.toothRad - out.toothStepPublic) > 1e-3)
     fail.push(`the measured tooth ${fw.toothRad} disagrees with clickLaw.pitch/2 = ${out.toothStepPublic}`);
   out.fail = fail;

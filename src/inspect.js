@@ -2285,7 +2285,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
   { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
-  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmPusherPawl', why: 'the pawl PARKS ON the kiss — its leading face is derived onto the saw outline (ratchetPoly) and alarmHandoffs asserts the kiss every run' },
+  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColPawlNose', why: '§163: the driver pawl\'s NOSE seated in a root corner of the saw — the seat is solved against ratchetPoly at every pose (the same polygon the teeth were cut from), not parked at a measured-once distance, and alarmHandoffs asserts it every run' },
   // Surfaced the moment the signature above started reading geometry swaps
   // (TODO 1). Both are the hairspring's two ends, and both were always there:
   // the breathing spiral is a mover by morph, and the parts it is pinned
@@ -2337,7 +2337,15 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm switch — §28/§33's column work and pusher:
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'CylinderGeometry#7', why: '§121: the detent post and its second turned step — one post, two diameters' },
   { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'switchClickSpring', why: '§121: the switch click spring anchored on the detent post (kiss)' },
-  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherRiser', why: '§121: the riser lapped onto the pusher stem (0.5 of the riser 0.21 into the stem — the joint that carries the push)' },
+  // §164 — the pusher's RETURN, TODO 87 step 5's metal. A collar on the stem, a
+  // fixed abutment hung off the plate's underside, and a coil between them.
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherCollar', why: '§164: the return coil\'s collar pressed on the stem — the face the spring bears against, travelling with the head' },
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherReturnAbutment', why: '§164: the stem running through the abutment\'s bore at PIVOT_BORE_CLEAR — a fixed ring the head slides in, and so a SECOND bearing station inboard of the guide boss' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnAbutment', b: 'alarmPusherReturnArm', why: '§164: the abutment and the arm that reaches out past the coil — the leg cannot climb at the abutment\'s own radius, because between the stem\'s bore and the plate there is 0.39 and a leg at §50\'s floor wants more' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnArm', b: 'alarmPusherReturnPost', why: '§164: and the post that climbs from the arm\'s end to the three-quarter plate\'s underside — one bracket, three bodies' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnSpring', b: 'alarmPusherReturnAbutment', why: '§164: the coil seated on its fixed abutment — the end that does not move' },
+  { unit: 'Alarm switch', a: 'alarmPusherReturnSpring', b: 'alarmPusherCollar', why: '§164: the coil bearing on the collar — the end that does. The coil is drawn as FRAMES across the stroke (the mainspring\'s precedent), so this contact is quantised by half a frame step, sized under CLEAR_MARGIN by construction' },
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherReach', why: '§163: the reach bar lapped onto the pusher stem\'s inner end — the section change, where the round rod that runs in the guide bore hands over to the flat blade that passes under the plate' },
   // TODO 87 finding 3 — THIS ROW USED TO NAME A PART THAT DOES NOT EXIST.
   // It read "the return coil seated round the pusher stem", and there is no
   // return coil: the pusher's return is ALARM_RETURN_S, a settling time in
@@ -2347,8 +2355,17 @@ export const INTRA_UNIT_CONTACTS = [
   // derived from the stem now (main.js, ALARM_PUSH_GUIDE_BORE), so this is a
   // running fit and the row says which joint it is.
   { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherGuide', why: 'the pusher stem running in its guide boss — a sliding bearing at PIVOT_BORE_CLEAR, the plate pivots\' own fit' },
-  { unit: 'Alarm switch', a: 'alarmPusherPawl', b: 'alarmPusherReach', why: '§121: the pawl lapped on the reach bar (flush faces, deep 0)' },
-  { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser lapped on the reach bar — the pusher\'s own three-piece assembly' },
+  { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser seated on the reach bar\'s inner end — the pusher\'s own three-piece assembly, and the joint the whole climb hangs off' },
+  // §163 — the driver and its pawl. Every one of these is a JOINT somebody
+  // would assemble, which is the test this table applies: a bore on a stud, a
+  // pin in a slot, a blade on the arm it closes.
+  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'CylinderGeometry#3', why: '§163: the driver\'s bore on the column wheel\'s own stud — the third body seated on that one arbor, at PIVOT_BORE_CLEAR, and the reason the drive stroke has no relative motion at the teeth' },
+  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmPusherRiser', why: '§163: the pusher\'s PIN (the riser\'s top) in the driver\'s radial slot — the coupling itself, a running fit at PIVOT_BORE_CLEAR on both flanks, and the joint that makes the driver\'s angle the pin\'s azimuth' },
+  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColPawlPost', why: '§163: the pawl\'s pivot post riveted into the driver\'s outer arm' },
+  { unit: 'Alarm switch', a: 'alarmColPawlBoss', b: 'alarmColPawlPost', why: '§163: the pawl running on that post. The BOSS is the mesh that carries the bore and it is CUT rather than declared — the §137 row quotes this joint\'s running clearance, so a solid pawl would have the arithmetic claiming a fit the metal did not have. The row stays because the two still share a z band and a declared joint should say so' },
+  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColPawlSpringStud', why: '§163: the pawl spring\'s stud standing on the driver, so the blade travels with the arm it closes' },
+  { unit: 'Alarm switch', a: 'alarmColPawlSpring', b: 'alarmColPawlSpringStud', why: '§163: the blade anchored on its stud — §48\'s slaved-blade convention, switchClickSpring\'s one mechanism over' },
+  { unit: 'Alarm switch', a: 'alarmColPawlSpring', b: 'alarmColPawlTail', why: '§163: the blade bearing on the pawl\'s tail — the contact that closes it. The tail is its own body because the arm is CLIPPED off the pivot bore (the post is wider than a 2w arm, so a centreline through the origin would put it through the arm\'s flanks whatever hole was cut); bear station at the boss\'s edge, blade length the greater of the drag budget\'s floor and its own strain limit\'s' },
   { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'switchClickArm', why: '§121: the detent arm riding the column wheel\'s castellations (kiss) — §28\'s column work; a working contact, bounded by the TODO 59 read assert at the click build and swept through a whole pitch by tools/probe-59-click' },
   // TODO 59: this row USED to say "its budget the switch's own asserts", and no
   // such assert had ever been written — a declaration pointing at a check that
@@ -2452,29 +2469,6 @@ export const INTRA_UNIT_WAIVERS = [
     debt: 'TODO 77: p0 ⇄ w1, the stage-one mesh — the profile rolls conjugate, the extrude bevel grows it past its backlash (TODO 84); 0.118 mm, measured' },
   { unit: 'Power-reserve train', a: 'ExtrudeGeometry#4', b: 'ExtrudeGeometry#6',
     debt: 'TODO 77: p1 ⇄ w2, the stage-two mesh — same extrude debt (TODO 84); depth refused by the probe at a 6-tooth wheel, not measured' },
-  // TODO 87 finding 6 — THE FIRST THING THE PRESS AXIS FOUND, on its first
-  // run, in the state no pose in the movement's history had ever reached. The
-  // pusher's REACH BAR — the carrier, not the pawl — is inside the ratchet
-  // skirt over the middle half of the stroke (f 0.30 to 0.75 of the cycle,
-  // 12 sampled vertices at the bottom). The build's own comment three lines
-  // above the carrier says "the PAWL, on its dropped carrier below the disc,
-  // is the only member that reaches the teeth"; that is what this row
-  // falsifies, and the comment is corrected in place beside the metal.
-  //
-  // The DEPTH is not the number to read. It reports a flat 0.03833 at every
-  // pose because the bar's 0.24 of z sits inside the skirt's 0.3166 band with
-  // 0.0383 to each face, so closestPointToPoint answers to a FACE — the same
-  // cap TODO 87's probe documents for the pawl. The in-plane figure is the
-  // real one: the bar's leading end starts 1.1 u behind the pawl's kiss and
-  // the stroke is 2.686, so at the bottom it stands ~1.586 u past the kiss,
-  // inside the tooth circle.
-  //
-  // Waived, not silenced, so the unit stays GATED: any other interference in
-  // 'Alarm switch' now fails. The fix is P2 mechanism space and its own
-  // landing — the carrier wants to leave the skirt's z band and hang the pawl
-  // from a dropper, which is what the source already claims it does.
-  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmPusherReach',
-    debt: 'TODO 87 finding 6: the reach bar carries through the ratchet skirt over the middle half of the press — depth z-capped at 0.03833, in-plane ~1.586 u at the bottom of the stroke' },
 ];
 
 // §121 — the units whose FF and MM tiers are GATED: the population this
@@ -4123,24 +4117,31 @@ const ALARM_HANDOFF_POSES = [
 // accepted debt citing its TODO item, visible in the report, not a pass.
 const ALARM_HANDOFFS = [
   {
-    // CORRECTED: the first filing of this row said "no pawl exists" — an
-    // overclaim. The pawl bar and the ratchet skirt both exist (§43 cut the
-    // saw teeth for this pawl and asserts their direction); what was absent
-    // is CAUSALITY, and TODO 20 fixed that side: pressAlarmPusher() is the
-    // primitive, the wheel's parity IS the state, alarmOn a readout. The
-    // row now measures the pawl PARKED clear of the skirt at both
-    // parities; the index STROKE itself is a transient the static poses
-    // cannot reach, carried below as the row's remaining waiver.
-    // TODO 20 (park) closed the STATIC half: the pawl rests on the tooth
-    // it will drive, a click's bite (−0.025, measured every run — it was
-    // parked 0.18 BURIED before). NOTE the row measures the PARK only:
-    // the index STROKE — press travel 0.7 against a ~0.84 tooth arc at
-    // the engagement radius, marginal — is a transient static poses
-    // cannot reach; TODO 20's status block files that gap, and §43's
-    // direction assert remains its only guard.
-    label: 'pusher pawl ⇄ ratchet skirt',
+    // CORRECTED TWICE, and the second correction is §163's. The first filing
+    // said "no pawl exists" — an overclaim: the pawl bar and the ratchet skirt
+    // both existed (§43 cut the saw for this pawl and asserts its direction).
+    // What was absent was CAUSALITY, and TODO 20 fixed that side:
+    // pressAlarmPusher() is the primitive, the wheel's parity IS the state,
+    // alarmOn a readout.
+    //
+    // What TODO 20 could NOT fix was the member. The old pawl was rigid on the
+    // pusher, so its "park" was a leading FACE derived onto the saw outline —
+    // an honest construction of a dishonest arrangement, since finding 7 then
+    // measured that member 0.7615 INSIDE the metal at other poses. §163
+    // replaces it with a sprung pawl on a driver pivoted on the wheel's own
+    // arbor, and this row now measures what a click actually does: its NOSE
+    // seated in a root CORNER, at both parities.
+    //
+    // The seat is not a measured-once constant and not a face: at every pose
+    // the pawl's angle is SOLVED against userData.ratchetPoly — the polygon
+    // geometry.js cut the teeth from — so the kiss holds wherever the wheel
+    // stands. The row's old waiver said the index stroke was "a transient
+    // static poses cannot reach"; the alarmPressCycle axis reaches it now, and
+    // the pawl's cut outline is swept through the whole return at the build
+    // (§120's cycle-sweep precedent, finer than the pose net).
+    label: 'driver pawl ⇄ ratchet skirt',
     unitA: 'Alarm switch', meshA: 'alarmColSkirt',   // TODO 87 step 4: the SKIRT, named apart — this row used to select all three wheel bodies and take the nearest
-    unitB: 'Alarm switch', meshB: 'alarmPusherPawl',
+    unitB: 'Alarm switch', meshB: 'alarmColPawlNose',
   },
   {
     // §99 — THE HOLD TODO 37 BUILT: the click's beak parked on the arbor
@@ -8665,16 +8666,18 @@ export const RESTORING_MEMBER_SCOPE = ['Alarm switch'];
 // excuses: if that mesh stops reversing, the row disappears and the waiver
 // goes stale — held by the same rule SLENDER_WAIVERS is (§54).
 export const RESTORING_MEMBER_WAIVERS = {
-  // TODO 87 finding 4, in one row. The pusher is the second reciprocator in
-  // 'Alarm switch' and its return is `ALARM_RETURN_S` — a settling time in the
-  // tick with no metal behind it. Before this tier the unit passed on the
-  // CLICK ARM's blade, which is a real spring answering for a body it does not
-  // touch. TODO 87 step 5 owns the fix and sites it: a fixed abutment hanging
-  // from the plate's underside inboard of a collar on the stem, blade between
-  // them, in the long free run between the riser and the guide boss.
-  'Alarm switch\u0000alarmPusherStem': 'TODO 87',
+  // EMPTY, and §164 is why. This table opened with exactly one row — the
+  // pusher's, citing TODO 87 — because its return was `ALARM_RETURN_S`, a
+  // settling time in the tick with no metal behind it, and before §162's member
+  // tier the unit had passed on the CLICK ARM's blade: a real spring answering
+  // for a body it does not touch. TODO 87 step 5 sited the fix and §164 built
+  // it, so the row goes rather than moving.
+  //
+  // Deleting a fix's waiver is structurally part of the fix (§137's covenant,
+  // and the staleness tier below enforces it): a waiver naming a body that IS
+  // answered is itself a failure, so this table cannot quietly outlive what it
+  // excused.
 };
-
 // How load-bearing a part is: how much of the movement is downstream of it in
 // MECH_GRAPH.drive, transitively. A missing return on the pallet fork would
 // mis-state the whole train below it; a missing return on a dial-side flag

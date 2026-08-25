@@ -2669,6 +2669,253 @@ export function makeClick({ radius, thickness }) {
   return click;
 }
 
+// ---------------------------------------------------------------------------
+// COLUMN-WHEEL DRIVE (§163) — the two members that stand between a case
+// pusher's straight stroke and a column wheel's index.
+//
+// The DRIVER pivots on the wheel's own arbor, so on the drive stroke it and
+// the wheel turn together about one axis and there is no relative motion to
+// foul. It is reached by a PIN IN A RADIAL SLOT: a radial slot makes the
+// driver's angle the pin's AZIMUTH about that arbor, which is what fixes the
+// pusher's offset (the consumer derives it — d = travel / (2·tan(step/2)) —
+// and the slot's radii here are the pin's own reach over the stroke). Its
+// second arm carries the PAWL's pivot post, which has to stand outside the
+// saw's tip circle because it rises through the tooth band to reach it.
+//
+// The PAWL is a shaped member, not a bar. It is the only part of the driver
+// inside the tooth annulus, and on the return it sweeps a whole tooth
+// backwards relative to the wheel — out over one tip, into the next corner.
+// A straight bar cannot do that (measured: it fouls at every workable pivot
+// radius); the centreline that can is mapped through the swept free region
+// and arrives here as data, so the metal and the measurement cannot drift
+// apart. `userData.outline` is the cut shape, which is what an instrument
+// should sweep — not a proxy for it.
+// ---------------------------------------------------------------------------
+
+// Thicken a centreline into a simple closed outline, MITRED at the joins.
+// Mitring is exact for a polyline (the offset lines' intersection), unlike a
+// round join it adds no sampling, and unlike a per-segment box it puts no
+// corner outside the offset — the outline is exactly the half-plane
+// intersection the segments define. The inner miter reaches w/sin(θ/2) into
+// the corner, so a segment shorter than that would fold: asserted, because a
+// folded outline extrudes into a solid nobody can measure.
+export function thickenPolyline(nodes, w, name = 'polyline') {
+  const n = nodes.length;
+  const seg = [];
+  for (let i = 0; i + 1 < n; i++) {
+    const [x0, y0] = nodes[i], [x1, y1] = nodes[i + 1];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    seg.push({ len, nx: -(y1 - y0) / len, ny: (x1 - x0) / len });
+  }
+  for (let i = 1; i + 1 < n; i++) {
+    const a = seg[i - 1], b = seg[i];
+    const d = 1 + a.nx * b.nx + a.ny * b.ny;
+    const reach = w * Math.hypot(a.nx + b.nx, a.ny + b.ny) / d;
+    if (reach > Math.min(a.len, b.len))
+      console.warn(`§163: ${name}'s miter at node ${i} reaches ${reach.toFixed(3)} into segments of ${Math.min(a.len, b.len).toFixed(3)} — the outline folds`);
+  }
+  const side = (sgn) => {
+    const out = [[nodes[0][0] + sgn * w * seg[0].nx, nodes[0][1] + sgn * w * seg[0].ny]];
+    for (let i = 1; i + 1 < n; i++) {
+      const a = seg[i - 1], b = seg[i];
+      const d = 1 + a.nx * b.nx + a.ny * b.ny;
+      out.push([nodes[i][0] + sgn * w * (a.nx + b.nx) / d, nodes[i][1] + sgn * w * (a.ny + b.ny) / d]);
+    }
+    out.push([nodes[n - 1][0] + sgn * w * seg[n - 2].nx, nodes[n - 1][1] + sgn * w * seg[n - 2].ny]);
+    return out;
+  };
+  return side(1).concat(side(-1).reverse());
+}
+
+// The DRIVER: a hub bored for the wheel's arbor, one arm out to the pawl
+// post's boss, and a radial SLOT cut in that arm for the pusher's pin. The
+// outline is the hull of the two discs — the two external tangent lines plus
+// each disc's own arc, which is the shape a lever between two bearings has.
+export function makeColumnDriver({ boreR, hubR, arms, slot,
+                                   thickness, material = MATS.blueSteel, name = 'columnDriver' }) {
+  // The outline is the HULL OF DISCS: the hub, plus one tip disc per arm. Two
+  // discs are joined by their external tangent, which touches both at the SAME
+  // angle from their centre line — sin γ = (R1 − R2)/d — so the whole boundary
+  // is arcs and tangents, which is the shape a lever between bearings has and
+  // is exact rather than sampled.
+  const A = arms.slice().sort((a, b) => a.az - b.az);
+  for (const a of A) if (hubR <= a.tipR) console.warn(`§163: ${name}'s hub ${hubR.toFixed(3)} is not larger than the tip ${a.tipR.toFixed(3)} of its arm at ${(a.az * 180 / Math.PI).toFixed(1)}° — the tangent construction assumes it`);
+  const pts = [];
+  const arc = (cx, cy, r, a0, a1, segs = 20) => {
+    for (let i = 0; i <= segs; i++) { const a = a0 + (a1 - a0) * (i / segs); pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+  };
+  for (let i = 0; i < A.length; i++) {
+    const a = A[i], nxt = A[(i + 1) % A.length];
+    const g = Math.asin((hubR - a.tipR) / a.reach), th = Math.PI / 2 + g;
+    const gN = Math.asin((hubR - nxt.tipR) / nxt.reach), thN = Math.PI / 2 + gN;
+    const cx = a.reach * Math.cos(a.az), cy = a.reach * Math.sin(a.az);
+    // round this arm's tip, from its trailing tangent to its leading one
+    arc(cx, cy, a.tipR, a.az - th, a.az + th);
+    // then the hub arc across to the next arm's trailing tangent
+    let a0 = a.az + th, a1 = nxt.az - thN;
+    while (a1 < a0) a1 += Math.PI * 2;
+    arc(0, 0, hubR, a0, a1);
+  }
+  const shape = new THREE.Shape();
+  pts.forEach(([x, y], i) => (i === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y)));
+  shape.closePath();
+  const bore = new THREE.Path();
+  bore.absarc(0, 0, boreR, 0, Math.PI * 2, true);
+  shape.holes.push(bore);
+  // The SLOT: a capsule along its arm's azimuth, its ends the pin's own reach
+  // at either end of the stroke. Traced rather than absarc'd so the hole stays
+  // a polyline, and wound against the shape as a hole must be.
+  const { az, inner, outer, halfW } = slot;
+  const sp = [];
+  const cap = (r, a0) => { for (let i = 0; i <= 12; i++) { const a = a0 + Math.PI * (i / 12); sp.push([r * Math.cos(az) + halfW * Math.cos(az + a), r * Math.sin(az) + halfW * Math.sin(az + a)]); } };
+  cap(outer, -Math.PI / 2);
+  cap(inner, Math.PI / 2);
+  sp.reverse();
+  const hole = new THREE.Path();
+  sp.forEach(([x, y], i) => (i === 0 ? hole.moveTo(x, y) : hole.lineTo(x, y)));
+  hole.closePath();
+  shape.holes.push(hole);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.name = name;
+  mesh.userData.outline = pts;
+  mesh.userData.slot = { ...slot };
+  return mesh;
+}
+
+// The PAWL: the mapped centreline thickened, with a bored pivot boss at one
+// end and a rounded nose at the other. The nose's radius is the one the free
+// region was mapped with — change it and the map no longer describes it.
+export function makeColumnPawl({ nodes, pivot, nose, w, noseR, boreR, bossR, thickness,
+                                 material = MATS.blueSteel, name = 'columnPawl' }) {
+  // The PIVOT BORE is cut, not declared. The repo's older convention is to let
+  // a lever's metal swallow its stud and name the overlap in
+  // INTRA_UNIT_CONTACTS, and that is a real convention with rows behind it —
+  // but here the joint's own running clearance is the number the §137 row
+  // quotes, so a solid pawl would have the arithmetic claiming a fit the metal
+  // does not have.
+  //
+  // Which means the ARM cannot run through the pivot. It is 2w across and the
+  // post is wider than that, so a centreline through the origin puts the post
+  // through the arm's flanks whatever hole is cut in it. The boss is the member
+  // that carries the bore; the arm is CLIPPED off a disc of boreR + w around
+  // the pivot, so its metal starts exactly where the bore ends, and the runs on
+  // either side (the tail, and the arm proper) become their own bodies — still
+  // one part, because each still laps well inside the boss.
+  const clipR = boreR + w;
+  const dOf = (q) => Math.hypot(q[0] - pivot[0], q[1] - pivot[1]);
+  const runs = [];
+  let cur = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const inHere = dOf(nodes[i]) >= clipR;
+    if (inHere) cur.push(nodes[i]);
+    if (i + 1 === nodes.length) break;
+    const inNext = dOf(nodes[i + 1]) >= clipR;
+    if (inHere === inNext) continue;
+    // bisect the crossing so the clipped end lands ON the disc
+    let a = nodes[i], b = nodes[i + 1];
+    for (let k = 0; k < 24; k++) {
+      const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      if ((dOf(m) >= clipR) === inHere) a = m; else b = m;
+    }
+    const cut = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    if (inHere) { cur.push(cut); runs.push(cur); cur = []; } else cur = [cut];
+  }
+  if (cur.length > 1) runs.push(cur);
+  const bodies = runs.filter((r) => r.length > 1).map((r, i) => {
+    const outline = thickenPolyline(r, w, `${name}#${i}`);
+    const sh = new THREE.Shape();
+    outline.forEach(([x, y], k) => (k === 0 ? sh.moveTo(x, y) : sh.lineTo(x, y)));
+    sh.closePath();
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: thickness, bevelEnabled: false }), material);
+    m.name = i === 0 ? `${name}Tail` : name;
+    m.userData.outline = outline;
+    m.userData.centreline = r;
+    return m;
+  });
+  if (bodies.length !== 2)
+    console.warn(`§163: ${name}'s centreline clipped into ${bodies.length} runs around its bore, not the tail and the arm — the spring has nothing to bear on, or the arm is severed`);
+  const end = nodes[nodes.length - 1];
+  if (Math.hypot(nose[0] - end[0], nose[1] - end[1]) > w + noseR)
+    console.warn(`§163: ${name}'s nose at (${nose}) is ${Math.hypot(nose[0] - end[0], nose[1] - end[1]).toFixed(3)} from its body's last node — more than w + noseR ${(w + noseR).toFixed(3)}, so the nose is not attached`);
+  if (bossR <= clipR)
+    console.warn(`§163: ${name}'s boss ${bossR.toFixed(3)} does not reach its clipped arms at ${clipR.toFixed(3)} — the pawl is three parts`);
+  const bossShape = new THREE.Shape();
+  bossShape.absarc(pivot[0], pivot[1], bossR, 0, Math.PI * 2, false);
+  const hole = new THREE.Path();
+  hole.absarc(pivot[0], pivot[1], boreR, 0, Math.PI * 2, true);
+  bossShape.holes.push(hole);
+  const boss = new THREE.Mesh(new THREE.ExtrudeGeometry(bossShape, { depth: thickness, bevelEnabled: false }), material);
+  boss.name = `${name}Boss`;
+  const noseM = new THREE.Mesh(new THREE.CylinderGeometry(noseR, noseR, thickness, 16), material);
+  noseM.name = `${name}Nose`;
+  noseM.rotation.x = Math.PI / 2;
+  noseM.position.set(nose[0], nose[1], thickness / 2);
+  return { bodies, mesh: bodies[bodies.length - 1], tail: bodies[0], boss, nose: noseM, bore: boreR };
+}
+
+// ---------------------------------------------------------------------------
+// HELICAL COMPRESSION SPRING (§164) — the pusher's return, and the first coil
+// in this movement that is a helix rather than a planar spiral.
+//
+// Swept by hand rather than by TubeGeometry, for one reason: every TubeGeometry
+// in this repo is built with `closed = false`, which leaves both ends OPEN, and
+// an open mesh reads as a COLLIDING one — meshClearance guards its BVH
+// near-zeros with a parity raycast, so an odd crossing count reports contact
+// with parts nowhere near it (TODO 27 measured exactly that on the chain, at
+// 3.7 units of separation). A spring threaded down the middle of the movement
+// is the last part that should ship open, so this one caps both ends.
+//
+// The frame is built from the tangent and the OUTWARD RADIAL rather than by
+// Frenet transport: a helix's Frenet normal points at the axis and rolls the
+// section as the curve climbs, which twists a round wire harmlessly and would
+// twist anything else. Built along local +z; the caller aims it.
+export function makeHelicalSpring({ coilR, wireR, coils, length, material = MATS.blueSteel,
+                                    name = 'helicalSpring', seg = 6, per = 10 }) {
+  const N = Math.max(8, Math.round(coils * per));
+  const at = (t) => {
+    const a = coils * Math.PI * 2 * t;
+    return [coilR * Math.cos(a), coilR * Math.sin(a), length * t];
+  };
+  const pos = [], idx = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const [cx, cy, cz] = at(t);
+    const e = 0.5 / N;
+    const [ax, ay, az] = at(Math.min(1, t + e)), [bx, by, bz] = at(Math.max(0, t - e));
+    let tx = ax - bx, ty = ay - by, tz = az - bz;
+    const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+    let rx = cx, ry = cy, rz = 0;                       // outward from the axis…
+    const dp = rx * tx + ry * ty + rz * tz;             // …orthogonalised against the tangent
+    rx -= dp * tx; ry -= dp * ty; rz -= dp * tz;
+    const rl = Math.hypot(rx, ry, rz) || 1; rx /= rl; ry /= rl; rz /= rl;
+    const nx = ty * rz - tz * ry, ny = tz * rx - tx * rz, nz = tx * ry - ty * rx;
+    for (let k = 0; k < seg; k++) {
+      const a = (k / seg) * Math.PI * 2, ca = Math.cos(a) * wireR, sa = Math.sin(a) * wireR;
+      pos.push(cx + rx * ca + nx * sa, cy + ry * ca + ny * sa, cz + rz * ca + nz * sa);
+    }
+  }
+  for (let i = 0; i < N; i++) {
+    for (let k = 0; k < seg; k++) {
+      const a = i * seg + k, b = i * seg + (k + 1) % seg;
+      const c = (i + 1) * seg + (k + 1) % seg, d = (i + 1) * seg + k;
+      idx.push(a, b, c, a, c, d);
+    }
+  }
+  const c0 = pos.length / 3; { const [x, y, z] = at(0); pos.push(x, y, z); }
+  const c1 = pos.length / 3; { const [x, y, z] = at(1); pos.push(x, y, z); }
+  for (let k = 0; k < seg; k++) idx.push(c0, (k + 1) % seg, k);
+  for (let k = 0; k < seg; k++) idx.push(c1, N * seg + k, N * seg + (k + 1) % seg);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.name = name;
+  mesh.userData.helix = { coilR, wireR, coils, length };
+  return mesh;
+}
+
 // `reverse` mirrors the saw (teeth lean the other way): a ratchet's
 // orientation is not a style — the RAMP must be the flank the working
 // direction climbs and the steep FACE the flank that catches the reverse,
