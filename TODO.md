@@ -13015,11 +13015,15 @@ full press the stem stands further out than it does here.
 
 Three stations, then: two crown stems and the pusher.
 
-**Why no gate says any of this — see item 93.** `meshClearance(caseMiddle,
-stem)` returns **+2.6104**, i.e. 2.61 u of CLEARANCE, against the ray's 2.645 u
-of interpenetration: the same magnitude with the sign inverted. Do not read the
-absence of an `Alarm switch ⇄ Case` row in a battery report as evidence of
-anything.
+**Why no gate said any of this — item 93, now closed.** `meshClearance`
+returned **+2.6104 as CLEARANCE** for this pair. Not a parity fault and not the
+lathe profile: the library reported the intersection correctly at 0.0000, and
+`_meshClearanceInner`'s `Math.max(d, v.d)` overrode it because `sampledVerdict`
+samples POINTS and this stem has none in the metal — its vertices are on its
+end caps, its edge midpoints inside the bore, and the wall between is 2.645 u.
+A pass-through witness now catches it and the pair measures 0.0000. The
+withdrawal this item once carried trusted that silence; a battery report from
+before item 93 cannot be used as evidence about any `Case ⇄ *` pair.
 
 Do NOT resolve this by declaring the pairs EXPECTED. A stem in a crown tube
 touches the TUBE, by design, with clearance; it does not touch the band.
@@ -13167,59 +13171,153 @@ what left the hole standing on its own to be seen. Worth a check that asks
 whether each declared opening contains its part — filed as its own question
 rather than pretended to here.
 
-## 93. `meshClearance` reports clearance through the case band, sign inverted
+## 93. CLOSED — a sampling miss overrode a correct intersection, and published it as clearance
 
-Filed 2026-08-25, from item 90's re-measurement. This is an INSTRUMENT defect,
-and it is item 27's family again — the parity raycast reading a body wrong —
-but the previous member made an open mesh read as COLLIDING, and this one makes
-solid metal read as CLEAR. That direction is the expensive one: a false
-positive is noisy, a false negative is silent.
+Filed 2026-08-25 from item 90's re-measurement; closed the same day. The
+filing guessed the mechanism wrong, and the wrong guess is kept here because
+it is the instructive part: the symptom looked exactly like item 27's parity
+family, and it was not that at all.
 
-**The measurement.** The alarm pusher's stem passes through the band wall at
-rest, entering at r 45.55 and leaving at 48.18 (z 7.55) — 2.645 u, 1.00 mm, the
-full `CASE_BAND_T`. Confirmed by casting the stem's own axis at `caseMiddle`
-from outside all case metal and pairing the four surface crossings
-(`probe-90-pusher-band.mjs`). Asked about the same two meshes at the same pose:
+**The symptom.** The alarm pusher's stem passes through the case band at rest —
+entering at r 45.55, leaving at 48.18, z 7.55, 2.645 u of metal, the full
+`CASE_BAND_T` of 1.00 mm. Asked about the same two meshes at the same pose,
+`meshClearance` returned **+2.6104, as CLEARANCE**. `Alarm switch ⇄ Case`
+appeared in no `inspection` row and no `sweptOverlap` row of a full battery.
 
-```
-ray             2.645 u of interpenetration
-meshClearance   +2.6104                      ← reported as CLEARANCE
-```
+**What it was NOT.** Not the parity raycast: `sampledVerdict` is gated behind
+`d < 0.05` and the value was 2.6104, so that branch never ran. Not the
+non-simple lathe profile either — `caseMiddle`'s contour does double back
+(edges 0→1 and 4→5 collinear on r 45.562, overlapping z −4.111..−2.000,
+because the seat step is authored `zSeatBot` before `zSeatTop` while the
+contour descends), and that is a real defect worth its own fix, but it sits at
+z ≈ −3 and the pusher crosses at z 7.55. It was never the cause here.
 
-Same magnitude, inverted sign. The distance to the nearest surface is right;
-the INSIDE/OUTSIDE decision is wrong, so penetration is published as clearance.
-
-**Consequence, stated plainly.** `Alarm switch ⇄ Case` appears in no
-`inspection` row and no `sweptOverlap` row of a full battery — 31/34 at
-`--shards 6`, three failures, none of them this. Every `Case ⇄ *` verdict is
-suspect in the same way, and the three pairs the battery DOES confirm are the
-ones where the sign happened to survive; nothing says they are the only ones.
-This is why item 90's pusher paragraph was withdrawn on false evidence, and it
-would mask any future part driven through the band.
-
-**A candidate mechanism, verified to exist but NOT yet shown to be the cause.**
-`sampledVerdict` assumes a closed SIMPLE solid, and `caseMiddle`'s lathe profile
-is not simple. Dumped as built, 20 points:
+**What it was.** Three measurements localise it exactly:
 
 ```
- 0  r 45.562  z  13.455      the R_IN wall, running the whole way down…
- 1  r 45.562  z  -4.111
- 2  r 40.284  z  -4.111      …steps in at zSeatBot…
- 3  r 40.284  z  -2.000      …climbs to zSeatTop…
- 4  r 45.562  z  -2.000
- 5  r 45.562  z -16.619      …and descends R_IN again, RE-TRACING z −2.000..−4.111
+raw closestPointToGeometry(case←stem)   0.0000     ← the library is RIGHT
+sampled stem-surface → case-surface     0.0003     ← independent, agrees
+meshClearance(case, stem)              +2.6104     ← the WRAPPER disagrees with both
 ```
 
-Edges 0→1 and 4→5 are collinear on r = 45.562 and overlap over
-z ∈ [−4.111, −2.000]: the contour doubles back through metal it has already
-turned. A lathe never asks whether its polyline is a simple polygon, which is
-why this renders correctly and has shipped unnoticed; earcut and parity both
-ask. The ordering wants `zSeatTop` before `zSeatBot` for a descending contour.
+`_meshClearanceInner` takes the library's distance and, when it is under 0.05,
+arbitrates it against `sampledVerdict`:
 
-Honest gap: that degeneracy sits at z ∈ [−4.111, −2.000] and the pusher crosses
-at z = 7.55, so the two are not obviously connected. Either the non-simple
-profile corrupts parity globally rather than locally, or there is a second
-cause. **Do not close this item by fixing the profile until a probe shows the
-sign come back.** The `lathe()` helper already guards the OPEN case with a
-boot warning; whatever this turns out to be, the guard it wants is one that
-also catches NON-SIMPLE, since both defeat the same raycast.
+```js
+if (d < 0.05) { const v = sampledVerdict(a, b, upperBound);
+                d = v.inside ? Math.min(d, 0) : Math.max(d, v.d); }
+```
+
+That `Math.max` exists for a good reason — §82 records the vendor's tri-tri
+test falsely reporting intersections for plainly separated meshes, so a bare 0
+cannot be trusted. But it cannot tell a FALSE zero from a TRUE zero whose
+witness the sampling missed, and it resolves the ambiguity towards clearance.
+
+`sampledVerdict` samples **points**: every vertex, plus every triangle-edge
+midpoint. The stem is a 40-triangle cylinder 18.418 u long. Its vertices sit on
+its two end caps, r 32.91 and 51.22 — both in free space. Its side-edge
+midpoints land at mid-height, r ≈ 42, inside the bore. The wall between is
+2.645 u thick. **No point sample lands in the metal, and no refinement of point
+sampling would**: the wall is thinner than the sample spacing, which is the
+permanent condition of a pin through a plate. So `inside` came back false,
+`v.d` was 2.6104, and `Math.max(0, 2.6104)` threw away the correct answer.
+
+**The fix — a segment test, because no point test can work.** A body that
+passes CLEAN THROUGH another crosses its surface an EVEN number of times along
+one edge, with both endpoints in free space. That is the only witness its shape
+leaves, and `segmentPierces` now looks for it: after point sampling has failed,
+each src triangle edge is cast against the dst tree and two or more distinct
+crossings strictly inside the segment prove the passage. It runs only when
+point sampling has already come up empty, so the common case pays nothing, and
+its box cut is exact in §122's sense (mesh ⊆ box, so a ray missing the box
+cannot cross the surface). Crossings closer than 1e-7 are deduped — a ray
+through a shared triangle edge can be reported twice, and two coincident
+"crossings" are a graze, not a passage.
+
+With it, `meshClearance(case, stem)` returns 0.0000 in both orders, agreeing
+with the raw query and with independent surface sampling.
+
+**The general lesson, which is why this is worth reading.** CLAUDE.md's
+open-mesh trap already says vertex sampling misses surfaces. This is that
+lesson one level further in: it is not only that the instrument fails to
+NOTICE a pass-through, it is that the failure to notice OVERRIDES a correct
+detection and publishes the opposite. Over-estimating clearance is the unsafe
+direction and it is silent — every gate stayed green while a stem ran through
+1 mm of case band. When a sampled verdict and an exact query disagree, the
+sampled one is not automatically the careful choice.
+
+**Residue, named.** The `Math.max` remains, and so does the false-zero problem
+it was built for; this landing narrows the ambiguity rather than removing it.
+A pass-through is now witnessed, but a genuine tri-tri false positive with no
+sample inside and no edge crossing twice still resolves towards clearance.
+Closing that wants an exact triangle-triangle test at the library's reported
+closest point, which is a bigger change than this one and is not taken here.
+
+`tools/probe-93-inversion.mjs` is the reproduction: it prints the raw query,
+independent surface sampling and `meshClearance` side by side, so the same
+three-way comparison can be re-run against any pair.
+
+
+## 94. What item 93's fix made visible — five interpenetrations nothing reported before
+
+Filed 2026-08-25, immediately downstream of item 93. None of these is new
+metal: the geometry fingerprint is byte-identical across the landing
+(1122794032 before and after), so every row here was true of the shipped
+movement already and no instrument said so. They are listed together because
+they share one cause — a body passing CLEAN THROUGH another leaves no sample
+inside anything, so `sampledVerdict` found no witness and
+`_meshClearanceInner` published the sampled distance instead of the
+intersection.
+
+**Each row is validated, not merely reported.** `tools/probe-93-validate.mjs`
+prints three independent numbers per pair — the raw vendor
+`closestPointToGeometry`, barycentric surface sampling, and `meshClearance` —
+and every row below has the LIBRARY independently at 0.0000. The patched
+wrapper restored the library's answer; it did not manufacture one. Re-run that
+probe before spending time on any of these.
+
+| pair | worst mesh pair | tier |
+|---|---|---|
+| `Alarm switch ⇄ Case` | `CylinderGeometry#9 ⇄ caseMiddle` | inspection FORBIDDEN |
+| `Case ⇄ Dial` | `caseMiddle ⇄ CylinderGeometry#0` | inspection FORBIDDEN |
+| `Alarm disc ⇄ Hour wheel` | `ExtrudeGeometry#20 ⇄ hourTube` | expectedContacts, min 0 vs floor 0.15 |
+| `Alarm selector` | `alarmSelRing ⇄ BoxGeometry#1` (also #3, #5) | intraUnit MM |
+| `Alarm winding arrest` | `genevaFingerDisc ⇄ alarmArrestFingerArbor` | intraUnit MF |
+
+Both `inspection` rows are FORBIDDEN at **every pose on every axis** — all
+thirteen, 1907 poses each. That is the signature of static geometry standing
+in static geometry, not of a stroke that goes too far, and it is why no pose
+hunt is needed to reproduce them.
+
+**`Alarm switch ⇄ Case` is item 90's third station and needs no separate
+decision.** `CylinderGeometry#9` is the alarm pusher's stem — unnamed on this
+base, which is also why the pre-existing `intraUnit` row reads
+`CylinderGeometry#9 ⇄ alarmPusherCap`; main's §162 names it. It is measured in
+item 90: 2.645 u, the full `CASE_BAND_T`, entering r 45.55 and leaving 48.18 at
+z 7.55. Cutting the band aperture closes this row.
+
+**The other four are untriaged, and two of them may not be defects at all.**
+An arbor through a disc and a post through a bracket are how those parts are
+ASSEMBLED; if the bore is modelled and the metal genuinely clears, the row is
+real and wants fixing, but if the parts were built as solids that
+interpenetrate at a press fit, the row wants a declaration in
+`INTRA_UNIT_CONTACTS` instead — that table exists for exactly this. **Do not
+declare one to silence it without measuring first.** The distinction is
+whether a real watchmaker would call it a joint or a collision, and the
+measurement that settles it is where each surface actually is, not whether the
+gate is red.
+
+`Case ⇄ Dial` and `Alarm disc ⇄ Hour wheel` have no such excuse available:
+neither pair is assembled to the other. The dial sits inside the case with the
+bezel lip over it, and an hour tube passing through an alarm disc's extrusion
+is the motion works fouling the alarm complex. Both want measuring the way item
+90's stem was measured — axis, surface crossings, depth — before anything is
+moved, and both are P3 conflicts in CLAUDE.md's order, to be resolved in
+position space.
+
+**Why this is filed rather than fixed here.** Item 93 was an instrument
+landing, and its acceptance is that the instrument now agrees with the library
+and with independent sampling. Fixing five pieces of geometry in the same
+change would mix an instrument correction with five mechanism corrections and
+make the report diff unreadable — the diff is the evidence that the instrument
+change did what it claimed and nothing more.
