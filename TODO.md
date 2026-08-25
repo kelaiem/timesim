@@ -12064,3 +12064,86 @@ existing ambiguous row into an unmatched — i.e. a LOUD failure — and forces
 each to be re-declared as the pair someone actually inspected. That converts
 this whole item into a one-time, gate-driven sweep, at the cost of moving every
 label that currently repeats.
+
+## 95. A sampling miss overrode a correct intersection, and published it as clearance
+
+Filed 2026-08-25, and numbered 95 deliberately. 90 through 94 are spoken for
+elsewhere: the watch-case branch files 90, 91 and 92 (band bores, seat ledge,
+chord-mounted pusher) plus 93 and 94 from this same investigation, and they
+land with PR #294.
+
+**Note a collision that is already here, not hypothetical.** `main` now carries
+its own **item 90** — the column wheel's output-side audit — while
+`case-schematic` carries a different item 90 about the band's radial bores.
+Two live branches, two item 90s, and TODO numbers are cited from source
+comments and commit messages the way § numbers are. Whichever merges second
+has to renumber, and the citations to it move too. Worth settling before #294
+lands rather than during the merge.
+
+`_meshClearanceInner` arbitrates a near-zero against `sampledVerdict`:
+
+```js
+if (d < 0.05) { const v = sampledVerdict(a, b, upperBound);
+                d = v.inside ? Math.min(d, 0) : Math.max(d, v.d); }
+```
+
+The `Math.max` is right to exist — §82 records the vendor's tri-tri test
+emitting FALSE ZEROS, and `probe-95-passthrough.mjs` enumerates about 200 of
+them at one pose, including pairs 8 to 10 units apart. But it cannot tell a
+false zero from a TRUE zero whose witness the sampling missed, and it resolves
+that ambiguity towards CLEARANCE — the unsafe direction, and silent.
+
+`sampledVerdict` samples POINTS: vertices and triangle-edge midpoints. A body
+that passes CLEAN THROUGH another has none inside it — measured on the case
+branch, a pusher stem whose vertices sit on its end caps in free space and
+whose edge midpoints sit in a bore, crossing a wall 2.645 u thick. **No
+refinement of point sampling fixes this**: the wall is thinner than the sample
+spacing, which is the permanent condition of a pin through a plate.
+
+**The fix is a SEGMENT test**, because no point test can work. A body passing
+through crosses the other surface an EVEN number of times along one edge, and
+that is the only witness its shape leaves. `segmentPierces` looks for two or
+more distinct crossings strictly inside an edge, running only after point
+sampling has come up empty, so the common case pays nothing. Its box cut is
+exact in §122's sense, and crossings closer than 1e-7 are deduped — a ray
+through a shared triangle edge can be reported twice, and two coincident
+crossings are a graze, not a passage.
+
+**What it makes visible here — six rows, every one PROVEN.** The geometry did
+not change; these were all true of the shipped movement already.
+
+| row | tier | shared grid points |
+|---|---|---|
+| `BoxGeometry#1 ⇄ alarmSelPost@12` | intraUnit MM | 12974 |
+| `BoxGeometry#3 ⇄ alarmSelPost@13` | intraUnit MM | 12974 |
+| `BoxGeometry#5 ⇄ alarmSelPost@14` | intraUnit MM | 12974 |
+| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | intraUnit MF | 3045 |
+| `alarmPusherStem ⇄ alarmPusherReturnSpring` | intraUnit MM | 793 |
+| `Alarm disc ⇄ Hour wheel` (`ExtrudeGeometry#20 ⇄ hourTube`) | expectedContacts, min 0 vs floor 0.15 | 914 |
+
+Proven by `tools/probe-95-grid.mjs`, which grids the two meshes' AABB
+intersection and asks whether any point lies inside BOTH solids, voting five
+oblique parity rays. It depends on neither the tri-tri test nor on
+`segmentPierces`, so it judges the fix without circularity. **Do not validate
+these with the raw library distance** — that is the instrument known to lie
+about exactly this, and an earlier pass in this session did precisely that and
+had to be retracted.
+
+The last row is the one to look at first: `alarmPusherStem` is §162's naming
+and `alarmPusherReturnSpring` is §164's metal, so the pusher's stem stands
+inside its own return spring — recent work, and the kind of thing this
+instrument existed to catch and did not.
+
+**A reporting defect found on the way, worth its own fix.** `meshLabel` returns
+a mesh's bare NAME when it has one, and **three meshes are named
+`alarmSelPost`**. So a battery row reading `BoxGeometry#3 ⇄ alarmSelPost` does
+not say which of three parts it means, and resolving it by first match picks
+the wrong one — which made two true rows look like false positives here until
+the ambiguity was spotted. A label that cannot identify its surface is not a
+label; `meshLabel` should disambiguate repeated names by index the way it
+already does for unnamed meshes.
+
+**Residue.** The `Math.max` stays, so a genuine tri-tri false positive with no
+contained sample and no doubly-crossing edge still resolves towards clearance.
+Closing that wants an exact triangle-triangle test at the library's reported
+closest point, and is not taken here.

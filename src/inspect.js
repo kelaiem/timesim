@@ -1421,6 +1421,54 @@ function bvhBox(tree) {
   if (!box) { box = tree.getBoundingBox(new THREE.Box3()); _bvhBoxCache.set(tree, box); }
   return box;
 }
+// TODO 95 — A BODY THAT PASSES CLEAN THROUGH LEAVES NO SAMPLE INSIDE ANYTHING.
+// `pointInsideTree` can only ever witness a solid one of whose SAMPLE POINTS
+// lies in the other's metal, and a body that goes straight through has none.
+// Measured on the watch-case branch (no case exists here yet, and the defect
+// is not case-specific): the alarm pusher's stem crosses the band with both ends in
+// free space — its vertices sit on its end caps (r 32.91 and 51.22) and its
+// side-edge midpoints at mid-height inside the bore, while the wall it pierces
+// is 2.645 u (1.00 mm) thick. No vertex, no midpoint, and no refinement of
+// POINT sampling need ever land in that metal; the wall is thinner than the
+// sample spacing and always will be for a pin through a plate.
+//
+// Such a body crosses the other surface an EVEN number of times along one
+// edge, and that is the only witness its shape leaves. It matters because the
+// caller does not merely fail to notice — `_meshClearanceInner` publishes
+// `Math.max(d, v.d)`, so a sampling miss OVERRIDES a correct library answer:
+// the raw query returns 0.0000 for that stem and meshClearance returned
+// 2.6104, reporting a genuine 1 mm interpenetration as 2.61 u of CLEARANCE.
+// Over-estimating is the unsafe direction and it is silent — `Alarm switch ⇄
+// Case` appeared in no `inspection` and no `sweptOverlap` row of a full
+// battery while the stem ran through the band.
+//
+// Deliberately a SEGMENT test, not another point test: this is the same lesson
+// as the open-mesh trap next door in CLAUDE.md, one level further in. Testing
+// more points cannot fix a defect whose definition is "no point qualifies".
+const _pierceRay = new THREE.Ray(), _pierceDir = new THREE.Vector3();
+const _pe0 = new THREE.Vector3(), _pe1 = new THREE.Vector3();
+function segmentPierces(tree, box, p0, p1) {
+  const dir = _pierceDir.subVectors(p1, p0);
+  const len = dir.length();
+  if (len < 1e-12) return false;
+  _pierceRay.origin.copy(p0);
+  _pierceRay.direction.copy(dir.divideScalar(len));
+  // A segment whose ray misses the tree's box cannot cross its surface. The
+  // box is a true bound (mesh ⊆ box), so this cut is exact, like §122's.
+  if (!_pierceRay.intersectsBox(box)) return false;
+  const hits = tree.raycast(_pierceRay, THREE.DoubleSide, 0, len);
+  // Dedupe: a ray through a shared triangle edge can be reported twice, and
+  // two coincident "crossings" are a graze, not a passage.
+  let n = 0, last = -Infinity;
+  for (const h of hits) {
+    const d = h.distance;
+    if (d <= 1e-9 || d >= len - 1e-9) continue;   // endpoints are not crossings
+    if (d - last < 1e-7) continue;
+    last = d; n++;
+  }
+  return n >= 2;   // in and out again: the segment is inside between them
+}
+
 function _sampledVerdictInner(a, b, upperBound = Infinity) {
   let best = upperBound, inside = false;
   const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
@@ -1450,6 +1498,18 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
       }
     }
     if (inside) return { inside: true, d: 0 };
+    // TODO 95 — the pass-through witness, run only once point sampling has
+    // failed to find anything, so the common case pays nothing for it.
+    if (idx) {
+      for (let t = 0; t < idx.count && !inside; t += 3) {
+        for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
+          _pe0.fromBufferAttribute(pos, idx.getX(t + i0)).applyMatrix4(_mat);
+          _pe1.fromBufferAttribute(pos, idx.getX(t + i1)).applyMatrix4(_mat);
+          if (segmentPierces(tree, box, _pe0, _pe1)) { inside = true; break; }
+        }
+      }
+      if (inside) return { inside: true, d: 0 };
+    }
   }
   return { inside, d: inside ? 0 : best };
 }
