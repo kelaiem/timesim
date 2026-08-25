@@ -2521,6 +2521,15 @@ export function makeStarWheel({ radius, points, thickness, depth, boreR = 0.5 })
   return mesh;
 }
 
+// The tip cone's proportion: the apex stands off the outline's `reach` by
+// this fraction of the half-width, so a caller that wants the APEX at a
+// solved radius sets `reach = R − (W/2)·JUMPER_TIP_CONE_F`. Exported
+// because the placement solve consumes it too (main.js' JMP_W and
+// JMP_REACH) — it was a bare 0.9 at all three sites, free to drift apart
+// from the outline it describes (TODO 89). NOT the same number as
+// makeJumper's `width` default, which is only a fallback size and is
+// unrelated.
+export const JUMPER_TIP_CONE_F = 0.9;
 // JUMPER — detent lever: pivot boss at the origin, tapered arm along +x
 // ending in a V beak. Extruded 0-based; callers place and aim it.
 export function makeJumper({ reach, thickness, width = 0.9 }) {
@@ -2532,7 +2541,7 @@ export function makeJumper({ reach, thickness, width = 0.9 }) {
     [0, w2],
     [reach * 0.6, w2 * 0.6],
     [reach - 0.01, w2 * 0.28],
-    [reach + w2 * 0.9, 0], // the V beak's point
+    [reach + w2 * JUMPER_TIP_CONE_F, 0], // the V beak's point
     [reach - 0.01, -w2 * 0.28],
     [reach * 0.6, -w2 * 0.6],
     [0, -w2],
