@@ -18226,7 +18226,7 @@ second spring material.
 | blade free length | **10.4874** | `SPRING_STRAIN_MAX` at the crest, smallest length satisfying it |
 | blade section | 0.1319 × **0.7035** | `SPRING_FLAT_U` bending; width from the detent envelope, 2.22× §50's floor |
 | seated / cresting force | **11.18 / 22.36 mN** | equal margin at both ends of `SELECTOR_DETENT_WINDOW_MN` — √5 = 2.236× clear of each |
-| forward detent | **3.899e-2 N·mm** | `F·dr/dθ` peaked over the ramp, through the shipped pose law |
+| forward detent | **3.479e-2 N·mm** | `F·dr/dθ` peaked over the ramp, through the shipped pose law |
 | shank / stud | `STOCK_MIN_R10` | §50's floor; both asserted ≥10× the blade's rate so neither is a series spring (TODO 82) |
 
 The tip is centred in the saw band at `STOCK_MIN_U`, which leaves exactly
@@ -18284,11 +18284,14 @@ enumerated over all twelve step counts against `inCutClearance` before
 choosing — a function that has existed since §62 and answers exactly this
 question, 15,000 lines above where the stud was placed by assumption.
 
-**The consequence is followed rather than absorbed.** Mirroring the blade makes
-the arc's azimuth drift ADD to the ramp instead of subtracting from it, so the
-forward detent rises 3.479e-2 → **3.899e-2 N·mm**. A bigger budget buys a
+**That fold's consequence was followed rather than absorbed** — and then undone
+with it, so read the next section before quoting any of it. Mirroring the blade
+makes the arc's azimuth drift ADD to the ramp instead of subtracting from it,
+so the forward detent rose 3.479e-2 → 3.899e-2 N·mm; a bigger budget buys a
 shorter, stiffer pawl coil, and §169's own instruction — *"re-derive the raise,
-do not re-target the spring"* — takes `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5.
+do not re-target the spring"* — took `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5. **The
+SHIPPED figures are 3.479e-2 N·mm and 6.5 turns**: this fold did not survive
+the corridor, and both numbers came back with the hand.
 
 **The second fold was wrong too**, and that is the finding rather than either
 defect. Flipping the hand to find plate put the anchor inside the ALARM

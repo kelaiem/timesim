@@ -4,7 +4,7 @@
 
 # The instruments
 
-117 scripts. **43 are ACCEPTANCE tests** — they decide and exit non-zero.
+119 scripts. **45 are ACCEPTANCE tests** — they decide and exit non-zero.
 **74 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -18,7 +18,9 @@ when a question was asked; the summaries are what it answered.
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
 | `check-bvh-patches.mjs` |  | acceptance | Verifies the three local patches in vendor/three-mesh-bvh.module.js (see vendor/README.md) still hold — run after any vendor bump, before trusting a single clearance number. |
+| `check-item-numbers.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
 | `ci-battery.mjs` |  | report | (no header — this file says nothing about what it answers) |
+| `claim-item.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
 | `explain-i18n.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
 | `explain-quotes.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
 | `make-favicon.mjs` |  | report | §88 — favicon.svg, generated from the REAL house mark. |

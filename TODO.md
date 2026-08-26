@@ -10674,12 +10674,13 @@ The fix is position-space, as the ladder requires: the blade's HAND flips so it
 runs toward rising azimuth, which moves the anchor to (35.03, 10.19) on solid
 plate and **leaves the tip at the station the free-window measurement chose**.
 Both hands were enumerated over all twelve step counts against
-`inCutClearance` before choosing. The consequence is real and is followed
-rather than absorbed: the arc's drift now adds to the ramp instead of
-subtracting from it, so the forward detent rises 3.479e-2 → **3.899e-2 N·mm**,
-which buys a shorter, stiffer pawl coil — and §169's instruction
-("re-derive the raise, never re-target the spring") takes
-`ALARM_PAWL_SPRING_COILS` 6.5 → 5.5.
+`inCutClearance` before choosing. That fold's consequence was real and was
+followed rather than absorbed — and then undone with the fold, so read the next
+entry before quoting any of it: the arc's drift added to the ramp instead of
+subtracting from it, the forward detent rose 3.479e-2 → 3.899e-2 N·mm, and
+§169's instruction ("re-derive the raise, never re-target the spring") took
+`ALARM_PAWL_SPRING_COILS` 6.5 → 5.5. **The SHIPPED figures are 3.479e-2 N·mm
+and 6.5 turns** — this fold did not survive the corridor.
 
 **AND THE SECOND FOLD WAS WRONG TOO** — a second eye report, and the reason it
 matters more than either defect: flipping the hand to find plate put the anchor
