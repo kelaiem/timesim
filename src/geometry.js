@@ -1173,13 +1173,25 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const ang = (v) => Math.atan2(v.y, v.x);
   const leverRight = ang(new THREE.Vector2(leverHW, yJoin));
   const leverLeft = ang(new THREE.Vector2(-leverHW, yJoin));
+  // The lever's flanks end ON the boss circle, and so does every arc that
+  // follows — so both must be spelled the SAME way or they differ in the last
+  // bit and the outline carries a twin. `Path.absellipse` computes its start
+  // as `r·(cos a, sin a)`; this is that formula, used for the flank ends too,
+  // which is what lets the closing arc land exactly on the `moveTo` and makes
+  // `closePath()` unnecessary. (`getPoints` drops consecutive duplicates with
+  // `equals()`, i.e. EXACTLY, and never compares the last point to the first —
+  // so a 1-ulp twin and a wrap-around twin both survive, and each becomes
+  // collapsed triangles in the extrude wall. Measured: three twins, eight
+  // zero-area triangles, on a movement that already has TODO 74's 8191.)
+  const onBoss = (a) => new THREE.Vector2(bossR * Math.cos(a), bossR * Math.sin(a));
+  const joinL = onBoss(leverLeft), joinR = onBoss(leverRight);
   // CCW distance from the lever's right flank, so the arms are laid down in
   // the order the outline actually walks them rather than by sigma.
   const ccw = (a) => { let d = a - leverRight; while (d < 0) d += 2 * Math.PI; return d; };
   arms.sort((p, q) => ccw(ang(p.rootIn)) - ccw(ang(q.rootIn)));
 
   const s = new THREE.Shape();
-  s.moveTo(-leverHW, yJoin);
+  s.moveTo(joinL.x, joinL.y);
   s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // waisted lever, left flank
   s.lineTo(-forkHW, forkY + t * 0.15); // left horn outer
   s.lineTo(-notchHW - t * 0.15, forkY); // left horn tip
@@ -1187,22 +1199,30 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // notch floor
   s.lineTo(notchHW + t * 0.15, forkY); // right horn tip
   s.lineTo(forkHW, forkY + t * 0.15); // right horn outer
-  s.quadraticCurveTo(waistHW, yWaist, leverHW, yJoin); // waisted lever, right flank (up)
+  s.quadraticCurveTo(waistHW, yWaist, joinR.x, joinR.y); // waisted lever, right flank (up)
   let at = leverRight;
   for (const arm of arms) {
     s.absarc(0, 0, bossR, at, ang(arm.rootIn), false); // boss, CCW
     for (const v of arm.ring) s.lineTo(v.x, v.y);
-    s.lineTo(arm.rootOut.x, arm.rootOut.y);
+    // No `lineTo` back to the root: the NEXT arc joins itself to the head with
+    // a line to its own start point, so the root exists once instead of twice.
     at = ang(arm.rootOut);
   }
-  s.absarc(0, 0, bossR, at, leverLeft, false);
-  s.closePath();
+  s.absarc(0, 0, bossR, at, leverLeft, false);  // lands exactly on the moveTo
 
   // Curve resolution: the boss arcs and the notch floor are load-bearing
   // surfaces, and 4 segments (what the old belly outline used) turns a 67°
   // arc into a visible chamfer.
   const CURVE_SEGS_FORK = 12;
-  const bodyGeo = new THREE.ExtrudeGeometry(s, {
+  // Sample the path ONCE and extrude that polyline, so the outline the asserts
+  // read below and the outline the metal is cut from are the same array rather
+  // than two calls that could drift. It is also the only place the wrap-around
+  // twin can be removed: the closing arc lands exactly on the `moveTo`, so the
+  // loop's last point IS its first, and `ExtrudeGeometry` reads the list as
+  // closed and would cut a zero-length edge there.
+  const pts = s.getPoints(CURVE_SEGS_FORK);
+  if (pts.length > 1 && pts[pts.length - 1].equals(pts[0])) pts.pop();
+  const bodyGeo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), {
     depth: stock,
     bevelEnabled: true,
     bevelThickness: bevel,
@@ -1223,7 +1243,6 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // the belly it shared a part with; the belly is what used to sweep through
   // the teeth (§16).
   {
-    const pts = s.getPoints(CURVE_SEGS_FORK);
     let worst = Infinity, worstAt = null;
     for (let i = 0; i < pts.length; i++) {
       const a = pts[(i - 1 + pts.length) % pts.length], b = pts[i], c = pts[(i + 1) % pts.length];
@@ -1275,7 +1294,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // MODELING.md rule 1's export: the blank's own outline and the two numbers
   // that say how far past it the rendered solid stands. `blankHalfZ` is what
   // layout.js's FORK_HALF_Z must equal — main.js asserts the pair (TODO 91).
-  g.userData.blankOutline = s.getPoints(CURVE_SEGS_FORK).map((p) => [p.x, p.y]);
+  g.userData.blankOutline = pts.map((p) => [p.x, p.y]);
   g.userData.blankBevel = bevel;
   g.userData.blankHalfZ = stock / 2 + bevel;   // = t/2, and asserted against FORK_HALF_Z
   return g;
