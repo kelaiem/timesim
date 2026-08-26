@@ -18474,7 +18474,148 @@ biasing a *separate* pivoted arm and therefore always carries a lever ratio.
   MM frame in `intraUnit`.
 - The `intersectsGeometry` asymmetry above.
 
-## §174 — the pallet fork becomes one blank (TODO 98)
+## §174 — the alarm's suppressor: a stop wheel where a friction brake never was
+
+TODO 90's question 1 asked whether the alarm brake's hold is a modelled
+friction force or a posed angle. Measured, it was neither, and the second half
+of the answer is what decided the repair.
+
+### What was there
+
+A lever whose ruby pad bore on `alarmLockCollar`, a smooth 3.2 band on the
+striking rotor. `ALARM_LOCK_THETA` is solved by law of cosines so the pad
+centre lands at collar r + pad r — **exact tangency, by construction** — so the
+pad gap measured **0.0000** at every engaged state at both parities. Zero
+interference is zero normal force is zero friction torque, while `tick()`
+gated the barrel's spend on `alarmReleased`, a boolean. The lever's ANGLE was
+honest (§102/TODO 28 made it a function of the column's cut, and that stands);
+the HOLD was not.
+
+A preload could not have rescued it, which is why this was never a clearance
+fix. The barrel's moment through the 44/11 wall-to-pinion mesh arrives at the
+collar as 0.0884 N·mm, so at 1.2126 mm and µ 0.2 — `sawCouplingSpec`'s own
+steel-on-steel default — a friction brake needs **364.6 mN**: **5.4×** the
+lock's own return blade AT ITS YIELD (67.4 mN) and 7.3× the top of TODO 16's
+5–50 mN detent envelope.
+
+The build comment's own justification is the cleanest statement of the defect.
+It cited *"the stop-lever-on-balance-rim precedent"* for the smooth band. A
+hack lever holds a balance against its hairspring at **5.815e-4 N·mm**; this
+pad would hold **152×** that. The idiom was borrowed from a member carrying two
+orders less torque. The objection beside it — a partial wind parks the train at
+any phase — is real, and is answered by a tooth COUNT rather than by
+abandoning the stop.
+
+### The one choice that kept the repair local
+
+**The teeth stand OUTWARD from the old band.** `ALARM_LOCK_ENGAGED` is not
+merely the lever's pose: the column wheel's whole station is placed off
+`alarmLockPivot` ALONG that azimuth, so the engaged angle is the datum the
+switch cluster is laid out from. Cutting inward (root 2.883, tip 3.2) seats the
+finger 0.3167 deeper, rotates the lever and therefore MOVES THE COLUMN WHEEL —
+measured, §112's link-rod solve fell to 0.041 against 0.15, and §35's plate
+bores and §43's riser slot drifted off their derived sites. Standing them
+outward leaves the engaged seat where the pad already sat: `ALARM_LOCK_ENGAGED`
+is bit-identical, all five warnings vanish, and only the LIFT grows.
+
+| | |
+|---|---|
+| `ALARM_STOP_TEETH` | `ALARM_CAM_LOBES × ⌈1/ALARM_FREE_FRAC⌉` = **12** |
+| `ALARM_STOP_ROOT_R` / `TIP_R` | 3.2 / **3.5167** (depth `STOCK_MIN_U`) |
+| `ALARM_LOCK_LIFT` | 0.032 → **0.1068** rad |
+| finger into the teeth, engaged | **0.3167** — the full depth |
+| finger off the tips, released | **0.1500** — exactly `CLEAR_MARGIN` |
+
+**Teeth, derived.** The stop must catch before the cam's next lift begins, so
+the finger is never asked to arrest a hammer already loaded on a flank: at
+least one tooth must fall inside every lobe's FREE window — `m ≥
+1/ALARM_FREE_FRAC` per lobe, taken as a whole multiple of `ALARM_CAM_LOBES` so
+the phasing holds at every lobe rather than drifting around the wheel.
+
+**The locking face is RADIAL — a departure from §99's saw law, not an
+oversight.** A click's saw is cut to be ratcheted past; at this radius and
+count its 0.72/0.28 drop stands **54° off radial**, and µ 0.2 buys a friction
+angle of only 11°, so a loaded finger would cam straight out. A stop is never
+ratcheted past, so its face is cut at zero pressure angle: the tangential load
+has no radial component at all, which is exactly what lets the finger be lifted
+WHILE the train pushes on it.
+
+**`ALARM_LOCK_LIFT` is solved in closed form now.** §102 sized it as
+`(CLEAR_MARGIN + 0.01) / ALARM_LOCK_L`, which buys that much ARC at the pad —
+but the quantity that must clear is RADIAL from the striking axis, and the two
+stand 18.4° apart at this lever's proportions, so the intended 0.16 delivered
+**0.1519**, spending 81% of the float-bind centi-unit the constant added on
+purpose. Both angles now invert the lever's own triangle (`_lockArmAt`), so the
+projection is exact rather than carried as a factor.
+
+**And the hold is geometry.** `tick()` runs the striking train on
+`alarmStopClearAt(colBlock) >= 0` — the finger's real gap against the tip
+circle — which is the same function of the ridden profile that poses the lever,
+so hold and pose cannot drift apart (the §25 A cam convention). Switching off
+still re-seats the lock, but by the route the metal takes.
+
+### What the repair paid, in position space
+
+The lift tripling swept the lever's arm onto `alarmLockSpringStud` —
+`intraUnit` measured the arm ON it (0.000) at colBlock 1, because the anchor's
+`0.34` stand-off was a literal that was only ever enough while the lever barely
+moved. Re-derived against what the flank actually sweeps at the stud's station,
+it clears **0.1474** engaged and 0.2278 lifted. **The stud moved; the lift did
+not, and the tooth kept its depth** — the design order's rule that a P3
+conflict is resolved in position space and never paid for out of the mechanism.
+
+The collar is **BORED** now. The old one was a solid disc with the arbor buried
+inside it, so no surface of the two ever crossed — `assembly` read them as two
+bodies 0.16 apart the moment the cut changed which triangles the query found,
+and the joint its `INTRA_UNIT_CONTACTS` row declares ("pressed on the strike
+arbor") had no metal anywhere. The bore is one `SAW_FIT` under the sleeve, this
+repo's own quantum for a weld spent as enclosed metal rather than a running gap.
+
+### Two declarations that were stale, named rather than re-indexed
+
+That `INTRA_UNIT_CONTACTS` row selected its other half as `CylinderGeometry#0`
+— a position in the unit's cylinder list. The collar stopped being a
+`CylinderGeometry`, so every index shifted by one and the row would have
+pointed at a different member in silence. It names `alarmStrikeSleeve` now:
+§171's fix on this same lever's pivot post, and TODO 50's on the stem journal,
+for the third time.
+
+The schematic drew this collar as a plain circle on the stated ground that
+*"the collar is deliberately smooth"* — true when written, false the moment it
+was cut. That glyph is RETRACTED and the part owns its own (§78): it exports
+`userData.profile`, so §83's cut-outline pass draws the teeth from the very
+polygon the Shape was extruded from. It had to go for a second reason worth
+keeping — it read `geometry.parameters.radiusTop`, which only a
+`CylinderGeometry` carries, so the radius arrived `undefined` and `addRing`
+wrote **NaN vertices into a schematic Line**. Invisible in the scene, but
+`box.setFromObject(movement)` spans Lines too, so §39's assembly-depth assert
+reported "NaN mm deep". A glyph that reads a builder's parameters is coupled to
+that builder, and the coupling is silent until the builder changes.
+
+### Instruments
+
+- `tools/probe-90-lockhold.mjs` — the DIAGNOSIS, and a report by covenant: it
+  exits non-zero on its own controls only, because fixing the idiom is supposed
+  to move the three numbers a brake is judged on. Its must-hit control is
+  analytic — the lever's closed-form pad distance, reproduced to 1.8e-15 over
+  four poses.
+- `tools/probe-90-stophold.mjs` — the ACCEPTANCE, gating both halves: the
+  finger seats by the full depth and stands one margin clear, AND the alarm
+  still RINGS when armed (0.6219 turns spent over four seconds) and is HELD
+  when off (1.500 unmoved). The second half is the one that matters — a hold
+  that never releases is as wrong as one that never holds, and swapping a gate
+  is exactly how you get one.
+
+### What this does NOT close
+
+**TODO 90 finding 5.** The lever's READ is still posed: the beak's radial
+excursion is 0.00114, 0.08% of the tier it is declared to read, because the
+wheel's centre stands ON the tail's line and a lever moves its beak
+perpendicular to the arm. So this is a real hold worked by a switch that cannot
+throw it. Filed beside the finding rather than inside it, because the read's
+repair is a different change in a different space.
+
+## §175 — the pallet fork becomes one blank (TODO 98)
 
 Eye-reported: *"the pallet fork looks like different shapes were squashed
 together haphazardly."* It did, and it was — but measuring the complaint first

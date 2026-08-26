@@ -1,5 +1,5 @@
 number: 174
 namespace: BUILT
-title: The pallet fork becomes one blank — TODO 98
-branch: claude/pallet-fork-geometry-dvs11s
+title: the alarm's suppressor: a stop wheel where a friction brake never was
+branch: worktree-todo-triage
 claimed: 2026-08-26

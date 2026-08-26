@@ -677,7 +677,7 @@ const EXPECTED_PAIRS = [
   ['Winding arrest', 'Chain'],                // §47: the arriving coil ON the pad near full wind — the throw itself
   ['Winding arrest', 'Fusee & great wheel'],  // §47: beak on stop lug at full wind — the arrest itself
   ['Alarm winding train', 'Mainspring drum'], // i2's disc overflies the drum's plate-top band near the barrel
-  ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the brake pad ON the lock collar — the hold itself
+  ['Alarm lock', 'Alarm striking wheel'],  // §25 B: the stop finger IN the lock collar's teeth — the hold itself. TODO 90 finding 4: it was a brake PAD on a smooth collar, measured tangent at every engaged pose (zero normal force, zero friction torque) while a boolean did the holding; the band is cut now and tick() runs the train on the finger's real gap
   ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
   ['Alarm lock', 'Three-quarter plate'],   // pivot post
   ['Alarm switch', 'Three-quarter plate'], // guide stud
@@ -2309,7 +2309,14 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm hammer', a: 'alarmHammerArm', b: 'alarmHammerPost', why: 'hammer arm riveted to the arbor boss' },
   { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerPost', why: 'hammer tail on the same boss' },
   { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
-  { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'CylinderGeometry#0', why: 'lock collar pressed on the strike arbor' },
+  // TODO 90 finding 4 NAMED THE OTHER HALF, and had to. `b` was
+  // 'CylinderGeometry#0' — a position in this unit's cylinder list, which is a
+  // claim about what else the unit contains rather than about this joint. The
+  // collar stopped being a CylinderGeometry when it was cut into a stop wheel,
+  // so every index in that list shifted by one and this row would have pointed
+  // at a different member in silence. Exactly §171's fix on the lock lever's
+  // own pivot post, and TODO 50's on the stem journal, for the third time.
+  { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'alarmStrikeSleeve', why: 'lock collar pressed on the strike arbor — the sleeve IS that arbor\'s turned step' },
   { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColPawlNose', why: '§163: the driver pawl\'s NOSE seated in a root corner of the saw — the seat is solved against ratchetPoly at every pose (the same polygon the teeth were cut from), not parked at a measured-once distance, and alarmHandoffs asserts it every run' },
   // Surfaced the moment the signature above started reading geometry swaps
