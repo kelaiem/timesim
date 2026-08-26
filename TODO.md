@@ -17,7 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 are CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 is MEASURED 2026-08-26** (`tools/probe-90-lockhold.mjs`, both controls passing at 1.8e-15 and 27.1): the suppressor's hold is a FLAG, and a preload would not rescue it. `ALARM_LOCK_THETA` solves the pad to exact tangency, so the pad gap measures **0.0000** at every engaged state at both parities — zero interference, zero normal force, zero friction torque — while `tick()` gates the barrel's spend on the boolean `alarmReleased` with no friction coefficient anywhere in the alarm's path. The barrel's 0.0884 N·mm at the collar would need **364.6 mN** at µ 0.2, which is **5.4×** the lock's own return blade at its YIELD and 7.3× the top of the 5–50 mN detent envelope. The collar's build comment justifies the smooth band by "the stop-lever-on-balance-rim precedent" — but a hack lever holds 5.815e-4 N·mm and this pad would hold **152×** that, so the idiom was borrowed from a member carrying two orders less torque. Invisible because `Alarm lock ⇄ Alarm striking wheel` is EXPECTED as "the hold itself" and is the striking train's ONLY declared hold: **no instrument asks whether a declared hold can carry its load** — a new class beside TODO 5's and TODO 6's. The repair is an idiom change (blocking lever into a cut stop wheel, the chronograph practice one unit over), not a number. Two questions remain filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
+| 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and OPEN**: the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's. **A third shape found 2026-08-25 (§169): the tiers gate on `intersectsGeometry`, so a FLUSH FACE is invisible** — two solids sharing exactly one plane do not intersect, and the alarm pawl ran 0.000 from the column wheel's base disc over the whole area it sweeps under it, at every pose, with every gate green. Overlap is not the only way metal can be wrong; see item 87 findings 8 and 9 for both this and the excuse a false `INTRA_UNIT_CONTACTS` row grants |
@@ -10794,7 +10794,7 @@ because none is measured yet:
    same polygon test and was right; pointing it at a second rod produced a
    confident wrong number on the first try.
 
-### Finding 4 (2026-08-26, MEASURED) — the suppressor's hold is a flag, and the metal under it is the wrong IDIOM
+### Finding 4 (2026-08-26, MEASURED — **CLOSED the same day**) — the suppressor's hold is a flag, and the metal under it is the wrong IDIOM
 
 Question 1 above asked whether the brake's hold is a modelled friction force or
 a posed angle. It is neither, and the second half is the part that decides the
@@ -10938,6 +10938,95 @@ wheel-centre line (the §68 azimuth sweep chose that azimuth against clearance,
 not against this) or the wheel presents a stepped outer profile the beak reads
 as a snail. Either is a P0/P1 change on the `Alarm lock` group with `colH` as
 the quantity that must finally reach the lever.
+
+#### CLOSED — the band is cut, and the hold is geometry
+
+The repair is the idiom change the finding prescribed, and it stayed local
+because one choice kept it local.
+
+**The teeth stand OUTWARD from the old band, and that is the whole reason
+nothing else moved.** `ALARM_LOCK_ENGAGED` is not just the lever's pose — the
+column wheel's station is placed off `alarmLockPivot` ALONG that azimuth, so
+the engaged angle is the datum the entire switch cluster is laid out from. The
+first cut put root at 2.883 and tip at the old 3.2, which seats the finger
+0.3167 deeper, rotates the lever, and therefore MOVES THE COLUMN WHEEL:
+measured, §112's link-rod solve fell to **0.041 against 0.15**, and §35's plate
+bores and §43's riser slot all drifted off their derived sites. Standing the
+teeth outward instead (root `3.2`, tip `3.2 + STOCK_MIN_U`) leaves the engaged
+seat at the radius the pad already sat at — `ALARM_LOCK_ENGAGED` is
+bit-identical, all five warnings vanish, and only the LIFT grows.
+
+| | |
+|---|---|
+| `ALARM_STOP_TEETH` | `ALARM_CAM_LOBES × ⌈1/ALARM_FREE_FRAC⌉` = 4 × 3 = **12** |
+| `ALARM_STOP_ROOT_R` / `TIP_R` | 3.2 / **3.5167**, depth `STOCK_MIN_U` |
+| `ALARM_LOCK_LIFT` | 0.032 → **0.1068** rad |
+| finger into the teeth, engaged | **0.3167** — the full depth |
+| finger off the tips, released | **0.1500** — exactly `CLEAR_MARGIN` |
+
+**Teeth, derived.** The stop must catch before the cam's next lift begins, so
+the finger is never asked to arrest a hammer already loaded on a flank: at
+least one tooth must fall inside every lobe's FREE window, which is
+`m ≥ 1/ALARM_FREE_FRAC` teeth per lobe, taken as a whole multiple of
+`ALARM_CAM_LOBES` so the phasing holds at every lobe instead of drifting.
+
+**The locking face is RADIAL, and that is a departure from §99's saw law
+rather than an oversight.** A click's saw is cut to be ratcheted past; at this
+radius and count its 0.72/0.28 drop stands **54° off radial**, and µ 0.2 buys a
+friction angle of only 11°, so a loaded finger would cam straight out. A stop
+is never ratcheted past, so its face is cut at zero pressure angle — the
+tangential load then has no radial component at all, which is exactly what lets
+the finger be lifted out WHILE the train pushes on it.
+
+**And the hold is geometry now.** `tick()` ran the striking train on `alarmOn`,
+a boolean. It runs on `alarmStopClearAt(colBlock) >= 0` — the finger's real gap
+against the tip circle — which is the same function of the ridden profile that
+poses the lever, so hold and pose cannot drift apart. Switching off still
+re-seats the lock, but by the route the metal takes: off steps the wheel, the
+columns put the lever down, the finger enters the teeth.
+
+**Two things the repair had to pay for, both in position space as the design
+order requires.** The lift tripling swept the lever's arm onto
+`alarmLockSpringStud` — `intraUnit` measured the arm ON it (0.000) at
+colBlock 1, because the anchor's `0.34` stand-off was a literal that was only
+ever enough while the lever barely moved. Re-derived against what the flank
+actually sweeps at the stud's station, it now clears **0.1474** engaged and
+0.2278 lifted; the stud moved, the lift did not, and the tooth kept its depth.
+And the collar is **BORED** now: the old one was a solid disc with the arbor
+buried inside it, so no surface of the two ever crossed and `assembly` read
+them as two bodies 0.16 apart the moment the cut changed which triangles the
+query found — the joint its `INTRA_UNIT_CONTACTS` row declares ("pressed on the
+strike arbor") had no metal anywhere. The bore is one `SAW_FIT` under the
+sleeve, this repo's own quantum for a weld spent as enclosed metal rather than
+a running gap, and the row now measures 0.
+
+**Two declarations were stale and are named rather than re-indexed.** That
+`INTRA_UNIT_CONTACTS` row selected its other half as `CylinderGeometry#0` — a
+position in the unit's cylinder list. The collar stopped being a
+`CylinderGeometry`, so every index in that list shifted by one and the row
+would have pointed at a different member in silence; it names
+`alarmStrikeSleeve` now. And the schematic drew this collar as a plain circle,
+on the stated ground that "the collar is deliberately smooth" — true when
+written, false the moment it was cut. That glyph is RETRACTED and the part owns
+its own (§78): it exports `userData.profile`, so §83's cut-outline pass draws
+the teeth from the very polygon the Shape was extruded from. It also had to go
+for a second reason worth keeping — it read `geometry.parameters.radiusTop`,
+which only a `CylinderGeometry` carries, so the radius arrived `undefined` and
+`addRing` wrote **NaN vertices into a schematic Line**. Invisible in the scene,
+but `box.setFromObject(movement)` spans Lines too, so §39's assembly-depth
+assert reported "NaN mm deep". A glyph that reads a builder's parameters is
+coupled to that builder, and the coupling is silent until the builder changes.
+
+`tools/probe-90-stophold.mjs` is the acceptance test and gates both halves:
+the finger seats by the full depth and stands one margin clear, AND the alarm
+still RINGS when armed (barrel spends 0.6219 turns over four seconds) and is
+HELD when off (1.500 unmoved). The second half is the one that matters —
+a hold that never releases is as wrong as one that never holds, and swapping a
+gate is exactly how you get one.
+
+**What this does NOT close: finding 5.** The lever's READ is still posed, so
+this is a real hold worked by a switch that cannot throw it. That is why
+finding 5 is filed beside this one rather than inside it.
 
 The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
 and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
