@@ -14758,6 +14758,59 @@ registerExplode(alarmStrikeUnit, 0, 9); // baseZ 0: children carry world z, like
 // ran. Third time this session; the tell is `__clock` missing, not the log.
 let alarmBarrelGear = null, alarmStrikePinion = null;
 let alarmWindTargetGear = null; // §99: the arbor's winding wheel — the chain's last link since the re-route
+// --- The STOP WHEEL's cut (§25 B, re-derived by TODO 90 finding 4) ---------
+// Sited here rather than at the collar's build because ALARM_LOCK_THETA and
+// ALARM_LOCK_LIFT are solved against these radii one tier down, and a
+// constant read before its declaration is this module's own repeat mistake
+// (the temporal dead zone noted immediately above).
+//
+// Teeth per lobe: at least one tooth must fall inside every lobe's FREE
+// window, or the finger can be asked to arrest a hammer already loaded on a
+// cam flank. Taken as a whole multiple of ALARM_CAM_LOBES so that phasing
+// holds at every lobe instead of drifting around the wheel.
+const ALARM_STOP_TEETH = ALARM_CAM_LOBES * Math.ceil(1 / ALARM_FREE_FRAC);   // 4 × 3 = 12
+// THE ROOT CIRCLE IS THE OLD BAND, and the teeth stand OUTWARD from it. That
+// is not a styling choice — it is what keeps this a local repair.
+// ALARM_LOCK_ENGAGED is not merely the lever's pose: the column wheel's whole
+// station is placed off alarmLockPivot ALONG that azimuth, so the engaged
+// angle is the datum the switch cluster is laid out from. Cutting the teeth
+// inward (root 2.883, tip 3.2) seats the finger 0.3167 deeper, rotates the
+// lever, and therefore MOVES THE COLUMN WHEEL — measured, that is exactly
+// what it did: §112's link-rod solve fell to 0.041 against 0.15, and §35's
+// plate bores and §43's riser slot all drifted off their derived sites.
+// Standing them outward instead leaves the engaged seat at the radius the
+// pad already sat at, so ALARM_LOCK_ENGAGED is bit-identical and nothing in
+// position space moves. Only the LIFT grows, and it grows over a gap where
+// the beak has the arc to spend.
+//
+// Depth is STOCK_MIN_U: the locking face is RADIAL, so a stop cannot cam out
+// at any depth, and the tooth only has to be a feature the movement's stock
+// rules allow to be cut and stay metal.
+const ALARM_STOP_ROOT_R = 3.2;                                  // the §25 B band, unmoved
+const ALARM_STOP_DEPTH = STOCK_MIN_U;
+const ALARM_STOP_TIP_R = ALARM_STOP_ROOT_R + ALARM_STOP_DEPTH;
+// The arbor this collar is pressed on — named so the collar's BORE derives
+// from the shaft it grips instead of restating its radius.
+const ALARM_STRIKE_SLEEVE_R = 0.75;
+// AND IT IS BORED, which the smooth collar never was. The old one was a solid
+// disc with the arbor buried inside it — no surface of the two ever crossed,
+// so `assembly` read them as two bodies 0.16 apart the moment the cut changed
+// which triangles the query found, and the joint the INTRA_UNIT_CONTACTS row
+// declares ("pressed on the strike arbor") had no metal anywhere. A collar IS
+// a bored ring driven onto a shaft. SAW_FIT is this repo's own quantum for
+// exactly that: one radial weld spent as enclosed metal rather than a running
+// gap, so the joint is neither a coincident-cap knife edge nor a burial the
+// proximity instruments cannot arbitrate.
+const ALARM_STOP_BORE_R = ALARM_STRIKE_SLEEVE_R - SAW_FIT;
+// WHAT THE STOP CARRIES, and what is still owed. The barrel's moment through
+// the 44/11 wall-to-pinion mesh arrives at this tip circle as a tangential
+// reaction of ≈72.9 mN (0.08843 N·mm at full wind over MM(3.5167)) — a
+// contact force the pivot post takes, which is a load a lever carries, where
+// the friction this replaced needed 364.6 mN and could not be had. It is NOT
+// declared as a §137 transfer row here: that is TODO 90's own question 2 —
+// the three riders' contacts priced against the column's drive torque, which
+// has never been summed — and pricing this one alone would answer a third of
+// it while looking like the whole. The arithmetic lives at the finding.
 const alarmStrikeRotor = new THREE.Group(); // everything that turns with the striking train
 alarmStrikeRotor.position.set(alarmSwPos.x, alarmSwPos.y, 0);
 alarmStrikeUnit.add(alarmStrikeRotor);
@@ -14827,7 +14880,7 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // the plate now): from the pinion's top face up to the cam's underside,
   // through the plate bore, which is this rotor's upper bearing.
   const sleeveZ0 = ALARM_BARREL_Z + ALARM_PINION_T / 2, sleeveZ1 = ALARM_CAM_Z0;
-  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, sleeveZ1 - sleeveZ0, 16), MATS.steel);
+  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_STRIKE_SLEEVE_R, ALARM_STRIKE_SLEEVE_R, sleeveZ1 - sleeveZ0, 16), MATS.steel);
   // TODO 11 tranche five: a turned STEP on the striking arbor, not a piece of
   // sheet. The census is per mesh and does not subdivide an arbor (its own
   // header says so), so drawing this shaft as cam + sleeve + pinion makes the
@@ -14836,16 +14889,87 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // here is the shaft's ⌀ 0.57 mm. Declared shaft stock; the alarmNose
   // precedent, where the flagged dimension was likewise a derived station.
   sleeve.name = 'alarmStrikeSleeve';
-  // §25 B: the LOCK COLLAR — a smooth braking surface under the cam that the
-  // lock lever's pad bears on when the train is held. Smooth, not notched: a
-  // partial wind can park the train at ANY phase (the winding lockstep), so
-  // the hold is a friction brake — the stop-lever-on-balance-rim precedent.
+  // §25 B: the LOCK COLLAR — the surface the lock lever holds the striking
+  // train by. TODO 90 finding 4 CUT IT. It was a smooth 3.2 band, justified
+  // in place: "Smooth, not notched: a partial wind can park the train at ANY
+  // phase (the winding lockstep), so the hold is a friction brake — the
+  // stop-lever-on-balance-rim precedent." The objection is real; the
+  // precedent is not, and the brake never existed.
+  //
+  // MEASURED (tools/probe-90-lockhold.mjs, both controls passing):
+  // ALARM_LOCK_THETA solves the pad to EXACT tangency with this band, so the
+  // pad gap read 0.0000 at every engaged state at both parities — zero
+  // interference, zero normal force, zero friction torque, while tick() gated
+  // the barrel's spend on a boolean. A preload could not have rescued it
+  // either: the barrel's 0.0884 N·mm arriving here needs
+  //     N = T/(µ·r) = 0.08843 / (0.2 × 1.2126 mm) = 364.6 mN
+  // at the µ 0.2 sawCouplingSpec already uses for steel on steel — 5.4× the
+  // lock's own return blade AT ITS YIELD (67.4 mN), and 7.3× the top of
+  // TODO 16's 5–50 mN detent envelope. And the cited precedent holds a
+  // BALANCE against its hairspring, 5.815e-4 N·mm: 152× less than this. A
+  // hold at this torque is form-locking in real horology, not frictional.
+  //
+  // So the band is cut, and the any-phase objection is answered by the TOOTH
+  // COUNT instead of by abandoning the stop. The finger's reaction becomes a
+  // contact force the pivot post takes (72.9 mN tangential at this radius),
+  // which is a load a lever carries; friction at 364.6 mN was not.
+  //
+  // TEETH, DERIVED. The stop must catch before the cam's next lift begins, so
+  // the finger never has to arrest a hammer already loaded on a flank: at
+  // least one tooth must fall inside every lobe's FREE window. That is
+  // m ≥ 1/ALARM_FREE_FRAC teeth per lobe, and the count is taken as a whole
+  // multiple of ALARM_CAM_LOBES so the phasing holds at EVERY lobe rather
+  // than drifting around the wheel.
+  //
   // TODO 11 tail: the sandwich takes floor stock after all. §124's seam fix
   // re-derived the band from the plate top, so both faces clear by exactly
   // ALARM_LOCK_GAP — plate top below, cam underside above — by construction.
-  const lockCollar = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.2, STOCK_MIN_U, 32), MATS.steel);
+  const lockCollar = (() => {
+    // THE LOCKING FACE IS RADIAL, and that is a departure from §99's saw law
+    // rather than an oversight — the two teeth do different jobs. A CLICK's
+    // saw (root→tip over 0.72 of the pitch, drop over 0.28) is cut to be
+    // ratcheted past: at this radius and count that drop stands 54° off
+    // radial, and a finger loaded against it would cam straight out, since
+    // µ 0.2 buys a friction angle of only 11°. A STOP is never ratcheted
+    // past, so its face is cut at zero pressure angle: the tangential load
+    // then has no radial component at all, which is what lets the finger be
+    // lifted out WHILE the train is pushing on it — the one thing the
+    // release has to do.
+    //
+    // SENSE, derived from the rotor's own angle law rather than eyeballed.
+    // alarmStrikeWheelAngle() is NEGATIVE in phase, so the wheel runs −θ and
+    // the finger travels +θ through the metal's frame: the face it runs into
+    // must bound each valley on its +θ side. Walking CCW that is root→tip at
+    // one azimuth (the face), then tip→root across the pitch (the ramp).
+    const outline = [];
+    for (let i = 0; i < ALARM_STOP_TEETH; i++) {
+      const f = (i / ALARM_STOP_TEETH) * Math.PI * 2;   // this tooth's face azimuth
+      outline.push([Math.cos(f) * ALARM_STOP_ROOT_R, Math.sin(f) * ALARM_STOP_ROOT_R]);
+      outline.push([Math.cos(f) * ALARM_STOP_TIP_R, Math.sin(f) * ALARM_STOP_TIP_R]);
+    }
+    const shape = new THREE.Shape();
+    shape.moveTo(outline[0][0], outline[0][1]);
+    for (let i = 1; i < outline.length; i++) shape.lineTo(outline[i][0], outline[i][1]);
+    shape.closePath();
+    // BORED onto the arbor — see ALARM_STOP_BORE_R. Not a clearance hole: the
+    // bore is one SAW_FIT UNDER the sleeve, so the two solids genuinely
+    // interfere and the press fit the INTRA_UNIT_CONTACTS row declares is
+    // metal rather than a word.
+    const bore = new THREE.Path();
+    bore.absarc(0, 0, ALARM_STOP_BORE_R, 0, Math.PI * 2, true);
+    shape.holes.push(bore);
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: STOCK_MIN_U, bevelEnabled: false, curveSegments: 2 });
+    geo.translate(0, 0, -STOCK_MIN_U / 2);
+    const m = new THREE.Mesh(geo, MATS.steel);
+    // §83's word: a wheel whose content is its cut outline. A pitch-circle
+    // proxy would draw this as the smooth band it no longer is, which is
+    // exactly the claim the schematic must stop making.
+    m.userData.profile = { poly: outline, boreR: ALARM_STOP_BORE_R };
+    m.userData.ratchetPoly = outline.map((p) => [p[0], p[1]]);
+    m.userData.teeth = ALARM_STOP_TEETH;
+    return m;
+  })();
   lockCollar.name = 'alarmLockCollar';
-  lockCollar.rotation.x = Math.PI / 2;
   lockCollar.position.z = ALARM_LOCK_Z; // world (the rotor sits at z 0): the shared §25 B lock band, derived at the §124 seam block
   alarmStrikeRotor.add(lockCollar);
   sleeve.rotation.x = Math.PI / 2;
@@ -18362,7 +18486,26 @@ const ALARM_LOCK_PAD_R = 0.3;
 // angle falls out over the lever's length. (The old 0.085 was "~0.4 of the
 // radial air" — a chosen fraction of the space available, the one number
 // item 28 could not fix.)
-const ALARM_LOCK_LIFT = (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L;   // = 0.032 rad
+// TODO 90 finding 4 — RE-DERIVED, and the closed form replaces the arc.
+//
+// §102's original was (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L, which buys that
+// much ARC at the pad. But the quantity that has to clear is RADIAL from the
+// striking axis, and the two stand 18.4° apart at this lever's proportions —
+// so the 0.16 intended delivered 0.1519 measured, 94.94% of it, spending 81%
+// of the float-bind centi-unit the constant added on purpose. The projection
+// is not a correction factor to carry around: the exact relation is already
+// in the lever's own triangle, so both angles are solved from it directly.
+//
+// pad-centre distance to the striking axis at arm angle α (from the axis
+// bearing) is d(α) = √(D² + L² − 2DL·cos α), so α(d) inverts in closed form.
+// ENGAGED seats the finger tip on the stop wheel's ROOT circle; LIFTED stands
+// it one margin clear of the TIP circle. The travel is the difference, and it
+// re-derives if the tooth, the pad or the lever's triangle ever move.
+const _lockArmAt = (d) => Math.acos(clamp(
+  (ALARM_LOCK_D * ALARM_LOCK_D + ALARM_LOCK_L * ALARM_LOCK_L - d * d)
+  / (2 * ALARM_LOCK_D * ALARM_LOCK_L), -1, 1));
+const ALARM_LOCK_LIFT = _lockArmAt(ALARM_STOP_TIP_R + ALARM_LOCK_PAD_R + CLEAR_MARGIN)
+                      - _lockArmAt(ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R);
 // (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
 // at the §124 seam block beside Z_GONG, up by the gong build: the whole
 // strike tier rides TQ_TOP_Z now instead of restating the pre-§124 plate.)
@@ -18385,11 +18528,36 @@ const alarmLockPivot = (() => {
 // Engaged arm angle: pad centre sits at collar radius + pad radius from the
 // wheel axis; law of cosines at the pivot, same construction as the follower.
 const _lockAzAxis = Math.atan2(alarmSwPos.y - alarmLockPivot.y, alarmSwPos.x - alarmLockPivot.x);
-const _lockDon = 3.2 + ALARM_LOCK_PAD_R;
-const ALARM_LOCK_THETA = Math.acos(clamp(
-  (ALARM_LOCK_D * ALARM_LOCK_D + ALARM_LOCK_L * ALARM_LOCK_L - _lockDon * _lockDon)
-  / (2 * ALARM_LOCK_D * ALARM_LOCK_L), -1, 1));
+// TODO 90 finding 4: the seat is the stop wheel's ROOT circle now, not a
+// tangent on a smooth band. That one substitution is what turns the engaged
+// pose from a kiss carrying nothing into a finger inside a tooth space.
+const _lockDon = ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R;
+const ALARM_LOCK_THETA = _lockArmAt(_lockDon);
 const ALARM_LOCK_ENGAGED = _lockAzAxis + ALARM_LOCK_THETA;
+// TODO 90 finding 4 — WHAT THE HOLD ACTUALLY IS, as geometry rather than as a
+// flag. The finger's inner surface against the stop wheel's TIP circle, at the
+// lever pose the columns put it in: positive is clear of the teeth, zero or
+// less is inside them. tick() runs the striking train on this and nothing
+// else, so the barrel spends only while a real gap exists between the metal
+// that holds and the metal that is held.
+//
+// It is a pure function of the ridden profile, so it is exactly the same law
+// as the lever's own pose one line of tick() away — one derivation, two
+// consumers, which is what keeps a hold from drifting from the pose that
+// produces it (the §25 A cam convention).
+const alarmStopClearAt = (colBlock) => {
+  const arm = ALARM_LOCK_THETA + ALARM_LOCK_LIFT * (1 - colBlock);
+  const d = Math.hypot(ALARM_LOCK_D - ALARM_LOCK_L * Math.cos(arm), ALARM_LOCK_L * Math.sin(arm));
+  return (d - ALARM_LOCK_PAD_R) - ALARM_STOP_TIP_R;
+};
+// Rule 6 — the two ends of the travel, measured at build rather than trusted.
+// Engaged the finger must be IN the teeth by the full depth; lifted it must
+// stand one margin clear. Both are consequences of the two _lockArmAt solves
+// above, so a failure here means those inverted something that moved.
+if (!(alarmStopClearAt(1) <= -ALARM_STOP_DEPTH + 1e-9))
+  console.warn(`TODO 90: the stop finger seats only ${(-alarmStopClearAt(1)).toFixed(4)} into a ${ALARM_STOP_DEPTH.toFixed(4)} tooth — it is not holding the wheel`);
+if (Math.abs(alarmStopClearAt(0) - CLEAR_MARGIN) > 1e-9)
+  console.warn(`TODO 90: the released finger stands ${alarmStopClearAt(0).toFixed(4)} off the stop wheel's tips, not ${CLEAR_MARGIN}`);
 
 const alarmLockUnit = new THREE.Group();
 movement.add(alarmLockUnit);
@@ -18663,8 +18831,22 @@ const ALARM_COL_POS = {
   const bearAlong = SPRING_FREE / 2 + 0.4 + 0.22 + CLEAR_MARGIN;   // = 1.52
   const bear = { x: alarmLockPivot.x + uA.x * bearAlong + nIn.x * (0.25 - 0.05),   // flank half-width minus the blade's preload overlap — the declared kiss
                  y: alarmLockPivot.y + uA.y * bearAlong + nIn.y * (0.25 - 0.05) };
-  const anchor = { x: bear.x + nIn.x * 0.34 - uA.x * SPRING_FREE * 0.5,
-                   y: bear.y + nIn.y * 0.34 - uA.y * SPRING_FREE * 0.5 };
+  // THE ANCHOR'S STAND-OFF, derived by TODO 90 finding 4 — it was 0.34, and
+  // 0.34 was only ever enough because the lever barely moved. This frame is
+  // built at ENGAGED + LIFT, so the arm's flank SWEEPS across the stud as the
+  // columns put the lever down, and the stud has to clear it at the far end of
+  // that sweep rather than at the pose the frame happens to be written in.
+  // Cutting the stop wheel took the lift from 0.032 to 0.107 rad and the
+  // stud's margin went negative — `intraUnit` measured the arm ON it at
+  // colBlock 1. Paid in POSITION SPACE, as the design order requires: the
+  // stud moves, the lift does not, and the tooth it clears keeps its depth.
+  const _studAlong = bearAlong - SPRING_FREE * 0.5;   // the stud's station along the arm
+  const _armHalfW = 0.25, _studR = 0.22;
+  const _anchorOff = _armHalfW + _studR + CLEAR_MARGIN
+                   + _studAlong * ALARM_LOCK_LIFT      // what the flank sweeps at this station
+                   - (0.25 - 0.05);                    // the bear point already stands this far out
+  const anchor = { x: bear.x + nIn.x * _anchorOff - uA.x * SPRING_FREE * 0.5,
+                   y: bear.y + nIn.y * _anchorOff - uA.y * SPRING_FREE * 0.5 };
   // rule 6 — both scarce lanes, measured: everything must clear the
   // striking-wheel axis by the collar's reach + margin (the shared band),
   // and the anchor must genuinely stand off the pivot post
@@ -25339,10 +25521,24 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
     // on the cam beside it, states this part truly. Radius and height read
     // off the built mesh, nothing restated; attached to the rotor the tick
     // poses, like the cam's own outline.
-    {
-      const c = alarmStrikeRotor.children.find((o) => o.name === 'alarmLockCollar');
-      addRing(alarmStrikeRotor, c.geometry.parameters.radiusTop, 0, 0, c.position.z);
-    }
+    // RETRACTED by TODO 90 finding 4, and the comment above is why it had to
+    // be. The circle was honest on the stated ground that "the collar is
+    // deliberately smooth"; the collar is CUT now — 12 stop teeth — so the
+    // same circle became the false claim it was careful not to be, and it
+    // would have drawn a braking band over a wheel that no longer brakes.
+    // The part owns its glyph instead (§78): `alarmLockCollar` exports
+    // `userData.profile`, so §83's cut-outline pass draws the teeth from the
+    // very polygon the Shape was extruded from, exactly as the cam beside it
+    // is drawn. Nothing is added here — the retraction IS the fix.
+    //
+    // It also had to go for a second reason worth keeping: it read
+    // `c.geometry.parameters.radiusTop`, which only a CylinderGeometry
+    // carries. An ExtrudeGeometry has no `parameters`, so the radius arrived
+    // as `undefined` and addRing wrote NaN vertices into a schematic Line —
+    // invisible in the scene, but `box.setFromObject(movement)` spans Lines
+    // too, so §39's assembly-depth assert reported "NaN mm deep". A glyph
+    // that reads a builder's parameters is coupled to the builder, and that
+    // coupling is silent until the builder changes.
     // the pusher — stem, cap, and the riser-to-pawl run, all group-local
     // from the spans the build recorded (userData.stem), so the whole
     // drawing slides on press exactly as the metal does
@@ -31768,6 +31964,20 @@ function tick(t) {
       }
       alarmPrevCentred = centred;
     }
+    // TODO 90 finding 4 — THE STOP, READ OFF THE METAL. Until this landed the
+    // striking train was gated by `alarmOn`, a boolean, while the pad that was
+    // supposed to hold it measured EXACTLY tangent to its collar at every
+    // engaged pose: zero interference, so zero normal force, so zero friction
+    // torque. The train stopped because a flag said so. It now stops because
+    // the finger is inside a tooth, and the predicate is the same function of
+    // the ridden profile that poses the lever itself.
+    //
+    // `alarmColShownA` is refreshed further down (the selector block is its
+    // first consumer), so this reads the wheel's pose at the START of the
+    // tick. That is the honest reading rather than a lag to apologise for: the
+    // metal holds according to where the wheel already is, not where this
+    // tick is about to put it.
+    const alarmStopClear = alarmStopClearAt(alarmColumnWheel.userData.profileAt(alarmColShownA)) >= 0;
     if (alarmOn && alarmBarrelWind > 0 && !alarmReleased && !alarmDropSpent
         && alarmPinDropPhys >= ALARM_PIN_DROP - 1e-9) {
       // The agreement is checked in TARGET space (the tube's mechanical set
@@ -31821,7 +32031,7 @@ function tick(t) {
       // tick; from the next one, rawDt is real-time and the whole ring plays
       // out at a speed it can be watched and heard at.
       alarmRingHoldTick = false;
-    } else if (alarmReleased && alarmOn && alarmBarrelWind > 0) {
+    } else if (alarmReleased && alarmStopClear && alarmBarrelWind > 0) {
       // §104 — TORQUE ENTERS: the barrel spends at the governor's rate,
       // spend = ω(θ)·dt with ω = 1/(gap(θ)·strikesPerTurn), so the ring
       // audibly slows as M(θ) falls and stops at the SET-UP floor (0.488 s
@@ -31834,10 +32044,16 @@ function tick(t) {
       const idx = Math.floor(alarmStrikePhase - alarmStrikeUNow());
       if (idx > alarmStrikeIdx) { alarmStrikeIdx = idx; SND.alarmStrike(); } // one strike edge = one ding (self-gates on soundOn)
       if (alarmBarrelWind <= 0) alarmReleased = false; // §25 C: no phase reset — run-down is 28 strikes = 7 whole cam revs, already ≡ REST
-    } else if (!alarmOn) {
+    } else if (!alarmStopClear) {
       // §25 C: switching off mid-ring just re-seats the LOCK — the cam holds
       // wherever it is (no phase snap; the hammer parks on the flank it was
       // riding, which is where a held train really leaves it).
+      // TODO 90 finding 4: the condition is the FINGER's now, not `alarmOn`.
+      // Switching off still re-seats the lock, but by the route the metal
+      // takes — off steps the column wheel, the columns put the lever down,
+      // and the finger enters the teeth — so a wheel stopped mid-flank holds
+      // or runs according to where its own cut leaves the finger, which a
+      // boolean could not express.
       alarmReleased = false;
     }
   } else {
