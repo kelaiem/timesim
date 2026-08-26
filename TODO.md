@@ -10880,6 +10880,65 @@ over `CLEAR_MARGIN`, but it spends 81% of the 0.01 the constant added on
 purpose, leaving 0.0019. The probe prints intended against achieved so the
 projection cannot be forgotten if the lever's triangle is ever re-solved.
 
+### Finding 5 (2026-08-26, MEASURED) — the lock's READ is posed too: the column cannot block the lever it is declared to block
+
+Found while establishing whether `ALARM_LOCK_LIFT` was free to re-derive for
+finding 4's repair. It is free — and the reason it is free is the defect.
+
+`profileAt` returns a NORMALISED lift in [0..1]; the cut surface's height is
+`colH · profileAt(θ)`. So the SHAPE of the lever's travel comes from the
+column's cut — that much of TODO 28's fix is real and stands — but the
+AMPLITUDE is `ALARM_LOCK_LIFT`, derived from the PAD's clearance need over the
+arm. `ALARM_COL_H` never enters the lock lever's law. §102's own criticism of
+the code it replaced — *"changing colH moved it not at all"* — is still true of
+the code that replaced it.
+
+Measured off the built tree (`tools/probe-90-lockhold.mjs`, same run, same
+controls):
+
+| | |
+|---|---|
+| castellation ring, in the wheel's frame | r **3.6100 .. 5.7000** |
+| the beak's inward face | **5.7000** — flush on the ring's outer wall |
+| beak → wheel axis over the whole sweep | 6.2570 .. 6.2581 |
+| **radial excursion** | **0.00114** = **0.08%** of `ALARM_COL_H` 1.4 |
+| clearance beak ⇄ castellations, colBlock 1 | **0.000000** (both parities) |
+| clearance beak ⇄ castellations, colBlock 0 | 1.198376 (both parities) |
+
+**The excursion is the second-order term and nothing else.** `L(1−cos θ)` at the
+beak's 2.3 reach and the 0.032 lift is 0.00118; measured, 0.00114. The wheel's
+centre stands ON the tail's line by construction — the build comment says so and
+gives that as the REASON — but a lever pivoted at one end moves its beak
+PERPENDICULAR to the arm, and at a point on the line to the wheel's centre the
+perpendicular direction is the TANGENT. So siting the wheel on the arm's line is
+not what makes the read radial; it is what makes it tangential, which is the one
+geometry in which a castellation cannot lift a follower.
+
+**And the lift carries the beak the wrong way.** The beak's face is flush at
+5.7000 — the ring's own outer wall — and the excursion is OUTWARD as the lever
+lifts, so the column is not even a stop against lifting: the beak slides off it.
+Nothing in metal holds the lever engaged. The 1.198 at colBlock 0 is not the
+beak moving clear; it is the WHEEL rotating the metal out from under a beak that
+stayed where it was.
+
+**So `alarmHandoffs`' row measures a real contact that constrains nothing.** The
+face is flush — 0.000000, §169's third shape, the case item 5 records as
+invisible to `intersectsGeometry` — and a handoff check asks whether a contact
+CLOSES, which this one does, permanently. It cannot ask whether the contact can
+transmit anything, which is finding 4's new class arriving at the other end of
+the same lever.
+
+**Both ends of this lever are now posed, and that is one repair, not two.**
+Finding 4: the pad cannot hold the train it is declared to hold. Finding 5: the
+column cannot work the lever that is declared to read it. Fixing only the hold
+would put real metal on a switch that cannot throw it. The read's repair is
+position-space and does not touch the hold's: the beak must approach the
+castellations with a RADIAL component, which means the pivot comes off the
+wheel-centre line (the §68 azimuth sweep chose that azimuth against clearance,
+not against this) or the wheel presents a stepped outer profile the beak reads
+as a snail. Either is a P0/P1 change on the `Alarm lock` group with `colH` as
+the quantity that must finally reach the lever.
+
 The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
 and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
 each offender's unit, and `probe-colwheel-id` identifies them — geometry,

@@ -49,6 +49,7 @@ await p.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
 
 const out = await p.evaluate(async () => {
   const THREE = await import('./vendor/three.module.js');
+  const I = await import('./src/inspect.js');
   const clock = window.__clock;
   const find = (n) => { let r = null; clock.scene.traverse((o) => { if (o.name === n) r = o; }); return r; };
   const world = (o) => o.getWorldPosition(new THREE.Vector3());
@@ -73,7 +74,14 @@ const out = await p.evaluate(async () => {
     clock.scene.updateMatrixWorld(true);
     const ax = world(rotor), pc = world(pad);
     const d = Math.hypot(pc.x - ax.x, pc.y - ax.y);
-    return { colBlock: clock.alarmDebug.profNow, padGap: d - collarR - padR, padDist: d };
+    // The BEAK at the other end, against the column wheel's own axis. The
+    // wheel's centre lies ON the tail's line, so a pivoted beak there moves
+    // TANGENTIALLY to the wheel and its radial change is second order — which
+    // is worth a number, since the lever's whole travel is justified as a
+    // radial read of the castellations.
+    const bc = world(beak), cax = world(cols.parent);
+    const beakR = Math.hypot(bc.x - cax.x, bc.y - cax.y);
+    return { colBlock: clock.alarmDebug.profNow, padGap: d - collarR - padR, padDist: d, beakR };
   };
 
   // Sweep the whole toggle at both parities; keep the extremes of padGap.
@@ -136,6 +144,27 @@ const out = await p.evaluate(async () => {
     // against its HAIRSPRING, so the precedent is only sound if the two
     // torques are comparable. Take the hairspring's, and let the ratio say.
     hairspringK_Nm_per_rad: clock.oscillator.k_Nm_per_rad,
+    beakSpan: { min: Math.min(...rows.map((r) => r.beakR)), max: Math.max(...rows.map((r) => r.beakR)) },
+    // The castellation ring's own radial extent, in the wheel's frame, so the
+    // beak's station can be read against the metal rather than against a
+    // constant. Vertices are enough here: this ring is an extruded profile, so
+    // its extremes ARE vertices (MODELING.md rule 5's exception, stated).
+    ringR: (() => {
+      const pos = cols.geometry.attributes.position, v = new THREE.Vector3();
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i);
+        const r = Math.hypot(v.x, v.y); lo = Math.min(lo, r); hi = Math.max(hi, r); }
+      return [lo, hi];
+    })(),
+    beakClear: (() => {
+      const r = [];
+      for (const alarmOn of [0, 1]) for (const cycle of [0, 1]) {
+        MEAS(alarmOn, cycle);
+        r.push({ alarmOn, cycle, colBlock: clock.alarmDebug.profNow,
+                 clear: I.meshClearance(beak, cols) });
+      }
+      return r;
+    })(),
   };
 });
 await b.close(); srv.kill();
@@ -200,6 +229,18 @@ console.log('\nthe only elastic member in the lever — the §102 return blade')
 console.log(`  section ${bw_mm} x ${f(bt_mm, 4)} mm, free length ${f(bL_mm, 4)} mm`);
 console.log(`  stiffness ${f(k_Npm, 2)} N/m; tip force at its own YIELD ${f(fMax_mN, 3)} mN`);
 console.log(`  the brake needs ${f(nNeed_mN, 1)} mN -> ${f(nNeed_mN / fMax_mN, 1)}x the blade's absolute ceiling`);
+
+// The BEAK end — how much of the lever's travel is a radial read.
+const bs = out.beakSpan;
+console.log('\nthe beak end — is the castellation read radial?');
+console.log(`  beak -> column-wheel axis over the whole sweep: ${f(bs.min)} .. ${f(bs.max)}`);
+console.log(`  radial excursion ${f(bs.max - bs.min, 5)}   against ALARM_COL_H (the tier the beak reads) 1.4000`);
+console.log(`  = ${f((bs.max - bs.min) / 1.4 * 100, 2)}% of the column's height`);
+console.log(`  castellation ring spans r ${f(out.ringR[0])} .. ${f(out.ringR[1])} in the wheel's frame`);
+console.log(`  the beak's inward face stands at ${f(bs.min - 0.5570)} — flush on the ring's outer wall, and LIFT carries it OUTWARD`);
+console.log('  clearance beak -> castellations, by state:');
+for (const r of out.beakClear)
+  console.log(`    alarmOn=${r.alarmOn} cycle ${r.cycle}  colBlock ${f(r.colBlock)}  clear ${f(r.clear, 6)}`);
 
 // The precedent the build comment leans on, tested.
 const AMP_RAD = 270 * Math.PI / 180;                       // a normal amplitude
