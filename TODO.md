@@ -13,10 +13,11 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-23 — items with work left first, with what remains:
+refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 91 | OPEN | The pallet fork is six abutting steel solids where a Swiss lever is one blank — **four z-heights for one plate** (1.200/1.392/1.488/1.560, per-side joint steps to 0.180 against `CLEAR_MARGIN` 0.15), and with it a FALSE derivation: `L_BALANCE` reserves the fork's top at `L_FORK + FORK_T/2` = 5.5079 while the boss reaches **5.6879**, putting the balance rim's underside 0.0300 *below* the metal — held apart only by a swept lateral 0.6001 nothing derives. The two arms differ by 12.2% in length and relate to the body two different ways (0.0000 vs 0.9078), and the body outline still draws the arm region a second time as a pre-§16 belly. Every gate is green on it: `assembly` asks connectivity, not integrity, and does not scope the fork; `intraUnit` sees one frame; the pair sweeps cannot look inside a unit. `tools/probe-fork-blank.mjs` reports all of it |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Finding 1 is MEASURED: `alarmLockBeakRiser` passes through the ratchet skirt's band (0.6167 of shared z) with its axis **0.2144 inside** the polygon the teeth were cut from (0.14 at rest, the SAME at both parities — it sits in the teeth rather than moving through them, so the repair is radial: 6.674 needed against 6.15 built, by §163's own post derivation) — invisible because `Alarm lock ⇄ Alarm switch` is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, which is TODO 6's named residue arriving as a real defect. Four more questions filed unmeasured: whether the suppressor's hold is a modelled friction brake or a posed angle, the three riders' contacts priced as §137 rows against the column's own drive torque, whether the selector ring's detent exists as metal, and the riser class (`alarmLinkBeakPost` reads 0.0929 to the skirt) |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
@@ -10802,3 +10803,170 @@ The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
 and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
 each offender's unit, and `probe-colwheel-id` identifies them — geometry,
 material, parent chain, whether they are NAMED, and per-parity behaviour.
+
+## 91. The pallet fork is an assembly of six abutting solids where the metal is one blank
+
+Eye-reported 2026-08-26: *"the pallet fork looks like different shapes were
+squashed together haphazardly."* It is — and measuring the complaint turned up
+a z-band derivation that is false as well, so this is honesty debt about what
+was cut, not a finish item.
+
+A Swiss lever is **one piece of steel**: pivot boss, both pallet arms, the
+lever and the fork end with its horns and notch are a single blank, pressed or
+wire-cut in one outline and lapped to one thickness. Only the two ruby stones
+and (on many calibres) the guard dart are separate parts. `makePalletFork`
+(`src/geometry.js:911`) instead emits **six steel solids** for that one blank
+and lets them overlap:
+
+| member | geometry | edge treatment | z-height |
+|---|---|---|---|
+| body outline — belly + lever + horns + notch + shoulder | `ExtrudeGeometry` | bevel `t·0.12` = 0.144 | **1.488** |
+| pivot boss | `CylinderGeometry`, h = `t·1.3` | none (a cylinder) | **1.560** |
+| pallet-arm block ×2 (entry, exit) | `ExtrudeGeometry` | bevel `t·0.08` = 0.096 | **1.392** |
+| arm bar ×2 (boss → head) | `BoxGeometry` `t·0.95 × len × t` | **none** — square cut | **1.200** |
+
+All figures measured off the built tree at `FORK_T = 1.2`, not read off the
+source — `tools/probe-fork-blank.mjs` is the instrument and prints every number in
+this item. The unit ships 11 meshes in total: the six above, two ruby stones,
+the guard pin and the two pivots.
+
+### Finding 1 — four thicknesses for one plate
+
+1.200 / 1.392 / 1.488 / 1.560. World z, at rest: the bars occupy 4.3079–5.5079,
+the arm blocks 4.2119–5.6039, the body 4.1639–5.6519, the boss 4.1279–5.6879.
+Against the thinnest member the heights differ by **0.192, 0.288 and 0.360** —
+0.096, 0.144 and 0.180 per side, since all six are centred on the same
+mid-plane. Every one of those per-side steps is a visible ledge at a joint, and
+the largest exceeds `CLEAR_MARGIN` (0.15) — the movement's one clearance
+margin, spent inside a single part. A lever lapped to
+one thickness has one number here; this one has four, and three of them exist
+only because `ExtrudeGeometry`'s bevel and a cylinder's height were never asked
+to agree. That is MODELING.md rule 1 in the z direction: the *rendered* solid
+is not the authored one, and nothing downstream knows it.
+
+### Finding 2 — the derivation `L_BALANCE` rests on is false, and only a lateral accident is holding it
+
+`src/layout.js:542` reads
+
+```js
+// Balance mid-plane: fork body top (L_FORK + FORK_T/2) + margin + half the rim's own height.
+export const L_BALANCE = L_FORK + FORK_T / 2 + CLEAR_MARGIN + RIM_H / 2;
+```
+
+`L_FORK + FORK_T/2` = **5.5079**. The fork's steel actually tops out at
+**5.6879** — the pivot boss, `t·1.3` tall about the mid-plane — an overshoot of
+**0.1800**. The balance rim's underside therefore lands at 5.6579, which is
+**0.0300 *below* the top face of the boss**: the margin the constant reserves
+is not reduced, it is negative. The parts do not touch only because the boss
+and the rim happen not to overlap in XY — swept over a turn of the balance, the
+boss's nearest balance mesh is **0.6001** away. (Sampled at one pose that
+number reads anything from 0.60 to 0.73, which is why the probe sweeps: the
+balance turns, so a single reading of it means nothing.) Nothing asserts that separation, nothing
+derives it, and the comment claims a clearance the geometry does not have. This
+is the honesty half of the item and it is independent of how the fork is
+redrawn: the constant must bind against the fork's **true** reach, exported
+from the builder the way `makeHammerLever` exports its outline and bevel
+(MODELING.md rule 1's pattern), not against a nominal `FORK_T/2`.
+
+### Finding 3 — the two arms are not the same part
+
+The bars run pivot-boss → head-midpoint, and the two heads sit at the leans the
+draw solve gives them (entry ≈ 237° fork-local, exit ≈ −33°). So the bars come
+out **4.2782 and 4.8711 long — 12.2% apart**, and measured mesh-to-mesh the *exit*
+arm block touches the body (clearance 0.0000) while the *entry* block stands
+**0.9078 clear** of it, carried only by its bar. The same nominal member is
+related to the body two different ways on the two sides. A real anchor's arms
+are mirror images about the lever's axis; the drawing here has nothing that
+says so, which is exactly what "squashed together" describes.
+
+### Finding 4 — the body outline draws the arms a second time
+
+Above the pivot the outline still carries the pre-§16 "belly + shoulder": full
+width `2·shoulderX` = 4.32, closed by a concave top whose only derivation is a
+clearance bound —
+
+```js
+const topY = D - (R + 0.15 + bankAllow) - 0.05; // the |p−W| bound at x = 0, with slack
+```
+
+— i.e. a shape that exists to *avoid* the escape wheel rather than to do a job,
+and one carrying a bare `0.05` of "slack" against standing rule 1. Since §16
+moved the arms out onto separate bars, that blob represents the arm region a
+second time: the silhouette says *wide anchor top*, the bars say *two thin
+arms*, and the render draws both, with the bars' square-cut ends butting
+through the belly as a visible seam. Rendered alone (`fork3-front`), the fork
+reads as a kite with two rectangular slabs glued on at unrelated angles.
+
+### Why the instruments are all green on this
+
+Worth writing down, because four of them look like they should have caught it.
+
+- `assembly` (§107) asks whether a rigid group is **one connected body**, and
+  these six solids *are* connected — the bars overlap the boss and the blocks.
+  Connectivity is not integrity. In any case `Pallet fork` is not in
+  `ASSEMBLY_SCOPE`, so its rows are reported, not gated — §107's own residue,
+  arriving as a real defect.
+- `intraUnit` (§121) compares movers against fixtures and fixture pairs; every
+  one of these six rides the same frame and morphs not at all, so they are one
+  part to the clustering and never compared. Same-frame mover splits outside
+  `ASSEMBLY_SCOPE` are the named residue.
+- The pair sweeps cannot see inside a unit at all (TODO 5).
+- `stockFloor` and `slenderness` ask about sections, not about how many
+  sections there are.
+
+Nothing in the bar asks *"is this part one piece of metal, and is it one
+thickness?"* — which is the general question this item raises and finding 1 is
+the first instance of.
+
+### The repair
+
+**One outline, one thickness, one extrude**, with the ruby stones and the guard
+pin the only separate solids. Concretely:
+
+1. **Cut the blank as a single `THREE.Shape`.** Boss, both arms, the two
+   slotted heads, the lever and the fork end are one closed polygon; each
+   stone's slot is a notch in that polygon at the head, kept where
+   `stoneAndArm` already puts it, with `gGap = armBevel + SEAT_SHOW` unchanged
+   (that derivation is right and MODELING.md cites it). Nothing kinematic
+   moves: horn tips, notch walls and floor, the `forkTop`/`forkY` anchors the
+   bank-angle derivation reads, and every stone seat are all *outputs* of
+   solves that stay as they are — this is a re-cut of the connecting metal
+   only, and the fingerprint on the stones and the notch must not move.
+2. **Make the arms mirror images by construction.** Draw one arm in the lever's
+   own frame and reflect it; let the head's *lean* (which genuinely differs per
+   stone, because draw differs) be a rotation applied to the slot inside a
+   mirrored head, not a different arm.
+3. **Replace the belly/shoulder with the arms themselves.** The wheel-clearance
+   bound stops being a shape and becomes what it should have been — a check on
+   the one outline, asserted, with the `0.05` slack either derived or deleted.
+4. **Export the blank's true reach through `userData`** (outline, bevel, and
+   the z half-height the bevel actually produces) and re-derive `L_BALANCE`
+   from it, closing finding 2. If the boss must stand proud of the blank —
+   real levers do have a boss — then it is *declared* as standing proud and the
+   balance's elevation pays for it, instead of the comment claiming a face
+   0.18 lower than the metal.
+
+### Acceptance
+
+- `tools/probe-fork-blank.mjs` ships with this item as a REPORT — it prints the
+  member census, the z-heights, the derivation comparison and the arm figures,
+  and judges nothing. The FIX adds the acceptance form beside it: the fork's
+  steel is **one** solid plus stones and guard pin; **one** z-height across the
+  blank; the two arms agree to float noise under reflection about the lever
+  axis; and the blank's true top equals what `layout.js` derives `L_BALANCE`
+  from. A report saying `6 steel solids` has not failed anything — that is the
+  split `tools/INDEX.md` carries, and this item is on the reporting side of it
+  until the fix lands.
+- Boot silent — the existing `pallet stone: …` and `pallet arm: steel within
+  the wheel sweep` asserts must still hold on the re-cut outline, and the
+  wheel-clearance bound of finding 4 joins them.
+- Full battery clean per standing rule 4; `--report` diffed against the base,
+  since the `Escape wheel ⇄ Pallet fork` and `Pallet fork ⇄ Balance` rows will
+  move even where the gates stay empty.
+- `docs/BUILT.md` §16's account of the fork is edited in place to describe the
+  blank, not the assembly.
+
+**Not in scope**, so that it is not silently absorbed: the guard pin is a
+cylinder with no dart and no matching crescent on the safety roller, and the
+horns are drawn but nothing measures a horn-to-pin contact. That is a separate
+item about the safety action, not about how the lever is cut.
