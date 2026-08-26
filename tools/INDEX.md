@@ -4,7 +4,7 @@
 
 # The instruments
 
-119 scripts. **45 are ACCEPTANCE tests** — they decide and exit non-zero.
+120 scripts. **46 are ACCEPTANCE tests** — they decide and exit non-zero.
 **74 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -112,6 +112,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-87-pawl.mjs` | §87 | acceptance | TODO 87 — THE PAWL AGAINST THE SAW, IN THE WHEEL'S OWN PLANE. |
 | `probe-87-press.mjs` | §87 | acceptance | TODO 87 — THE PRESS STROKE, MEASURED FRAME BY FRAME AGAINST THE METAL. |
 | `probe-90-linkbeak.mjs` | §90 | report | TODO 90 finding 2 — THE LINK BEAK'S OWN MEMBERS AGAINST THE COLUMN WHEEL. |
+| `probe-90-lockhold.mjs` | §90 | acceptance | TODO 90 question 1 — IS THE SUPPRESSOR'S HOLD REAL? |
 | `probe-alarm-placement.mjs` |  | report | THE PLACEMENT GATE: does the alarm striking module FIT under the three-quarter plate once the mainspring drum's side departs? |
 | `probe-alarm-relayout.mjs` |  | report | Relayout feasibility: if the BARREL SIDE (fusee cone, mainspring drum, chain, set-up work) vacated its sector, would a pocket open under the three-quarter plate big enough to take the alarm striking module? |
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |

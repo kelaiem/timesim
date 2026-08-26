@@ -17,7 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Finding 1 is MEASURED: `alarmLockBeakRiser` passes through the ratchet skirt's band (0.6167 of shared z) with its axis **0.2144 inside** the polygon the teeth were cut from (0.14 at rest, the SAME at both parities — it sits in the teeth rather than moving through them, so the repair is radial: 6.674 needed against 6.15 built, by §163's own post derivation) — invisible because `Alarm lock ⇄ Alarm switch` is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, which is TODO 6's named residue arriving as a real defect. Four more questions filed unmeasured: whether the suppressor's hold is a modelled friction brake or a posed angle, the three riders' contacts priced as §137 rows against the column's own drive torque, whether the selector ring's detent exists as metal, and the riser class (`alarmLinkBeakPost` reads 0.0929 to the skirt) |
+| 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 are CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 is MEASURED 2026-08-26** (`tools/probe-90-lockhold.mjs`, both controls passing at 1.8e-15 and 27.1): the suppressor's hold is a FLAG, and a preload would not rescue it. `ALARM_LOCK_THETA` solves the pad to exact tangency, so the pad gap measures **0.0000** at every engaged state at both parities — zero interference, zero normal force, zero friction torque — while `tick()` gates the barrel's spend on the boolean `alarmReleased` with no friction coefficient anywhere in the alarm's path. The barrel's 0.0884 N·mm at the collar would need **364.6 mN** at µ 0.2, which is **5.4×** the lock's own return blade at its YIELD and 7.3× the top of the 5–50 mN detent envelope. The collar's build comment justifies the smooth band by "the stop-lever-on-balance-rim precedent" — but a hack lever holds 5.815e-4 N·mm and this pad would hold **152×** that, so the idiom was borrowed from a member carrying two orders less torque. Invisible because `Alarm lock ⇄ Alarm striking wheel` is EXPECTED as "the hold itself" and is the striking train's ONLY declared hold: **no instrument asks whether a declared hold can carry its load** — a new class beside TODO 5's and TODO 6's. The repair is an idiom change (blocking lever into a cut stop wheel, the chronograph practice one unit over), not a number. Two questions remain filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's. **A third shape found 2026-08-25 (§169): the tiers gate on `intersectsGeometry`, so a FLUSH FACE is invisible** — two solids sharing exactly one plane do not intersect, and the alarm pawl ran 0.000 from the column wheel's base disc over the whole area it sweeps under it, at every pose, with every gate green. Overlap is not the only way metal can be wrong; see item 87 findings 8 and 9 for both this and the excuse a false `INTRA_UNIT_CONTACTS` row grants |
@@ -10754,12 +10754,8 @@ Each of these is the same question TODO 87 asked of the input side, and none
 has been asked of the output side. Filed as questions rather than findings
 because none is measured yet:
 
-1. **Is the suppressor's hold real?** The lock's pad bears on `alarmLockCollar`
-   as a friction brake (the stop-lever-on-balance-rim precedent). §163's note
-   says "the HOLD when braked is the column's, not the spring's" — so what
-   stops the alarm train when the brake is on: a modelled friction force, or a
-   posed angle? If the latter it is a simulation fiction in the README's sense
-   and belongs in this file's main business.
+1. **Is the suppressor's hold real?** — **MEASURED 2026-08-26, and the answer
+   is neither of the two the question offered.** See the finding below.
 2. **The three riders' contacts, priced.** `alarmHandoffs` asserts the lock
    beak's contact closes. Nothing prices what the castellation must PUSH
    against — the lock's spring, the click's detent, the link's chain — as a
@@ -10798,7 +10794,97 @@ because none is measured yet:
    same polygon test and was right; pointing it at a second rod produced a
    confident wrong number on the first try.
 
+### Finding 4 (2026-08-26, MEASURED) — the suppressor's hold is a flag, and the metal under it is the wrong IDIOM
+
+Question 1 above asked whether the brake's hold is a modelled friction force or
+a posed angle. It is neither, and the second half is the part that decides the
+repair. Measured with `tools/probe-90-lockhold.mjs`, both controls passing —
+the must-hit reproduces the lever's own closed-form pad distance to **1.8e-15**
+over four poses, the must-miss reads 27.1 to `chainRun`.
+
+**The pad reaches tangency and never passes it.** `ALARM_LOCK_THETA` is solved
+by law of cosines so the pad centre lands at `3.2 + ALARM_LOCK_PAD_R` = 3.5 from
+the striking axis — exact tangency, by construction. Swept over the whole toggle
+at both parities:
+
+| | colBlock | pad gap |
+|---|---|---|
+| most ENGAGED | 1.0000 | **0.0000** |
+| most LIFTED | 0.0000 | 0.1519 |
+| minimum over the sweep | 1.0000 | **0.0000** |
+
+pad gap = (pad centre → strike axis) − collar r − pad r, so the sign carries the
+answer (`meshClearance` clamps at 0 and could not). **Zero interference is zero
+normal force is zero friction torque**, at every state the toggle reaches. The
+lever's ANGLE is honest — §102/TODO 28 already made it a function of the
+column's cut, and that fix stands. What is fictional is the HOLD: `tick()` gates
+the barrel's spend on `alarmReleased`, a boolean, and no friction coefficient
+exists anywhere in the alarm's path.
+
+**And a preload would not rescue it, which is why this is not a clearance fix.**
+The barrel's moment reflected through the 44/11 wall-to-pinion mesh arrives at
+the collar as 0.0520 .. 0.0884 N·mm. At the collar's 1.2126 mm radius and µ 0.2
+(`sawCouplingSpec`'s own steel-on-steel default, not a number invented here):
+
+```
+N ≥ T / (µ·r) = 0.08843 / (0.2 × 1.2126) = 364.6 mN     at full wind
+```
+
+against the lock's return blade — **the only elastic member in the lever** — at
+5926 N/m over its 0.5684 mm free length, whose tip force **at its own yield** is
+67.4 mN. The brake needs **5.4× the blade's absolute ceiling**, and 7.3× the top
+of TODO 16's 5–50 mN detent envelope. No legal preload closes that.
+
+**The build comment's own justification is the cleanest statement of the
+defect.** `alarmLockCollar` is built smooth with a reason written beside it:
+
+> *Smooth, not notched: a partial wind can park the train at ANY phase (the
+> winding lockstep), so the hold is a friction brake — the stop-lever-on-
+> balance-rim precedent.*
+
+The objection is real — a stop must be able to catch at any phase — but the
+precedent is not. A hack lever holds a balance against its HAIRSPRING:
+**5.815e-4 N·mm** at 270°. This pad would hold a mainspring-fed train:
+**0.08843 N·mm**, **152× more**. The idiom was borrowed from a member carrying
+two orders less torque, and at this one the friction brake is not a marginal
+choice, it is an unavailable one.
+
+**Why nothing caught it.** `['Alarm lock', 'Alarm striking wheel']` is declared
+in `EXPECTED_PAIRS` as *"the brake pad ON the lock collar — the hold itself"*,
+and it is the striking train's ONLY declared hold — no pawl or detent exists on
+that train in `MECH_GRAPH`. So the pair is EXPECTED (correctly — the pad is
+meant to touch), TODO 6's blanket excuse covers it, and no instrument in the
+battery asks whether a declared hold can carry its load. **`restoring` and
+`alarmHandoffs` both ask whether a contact CLOSES; neither asks whether it can
+take the torque behind it.** That is a new class beside TODO 5's and TODO 6's,
+and it is the same shape as finding 3's: a declaration standing in for metal.
+
+**The repair is an idiom change, not a number.** A hold at this torque is
+form-locking in real horology — a blocking lever into a stop wheel, which is the
+chronograph practice this movement already uses one unit over at the column
+wheel. The collar's smooth band becomes a cut one and the pad becomes a finger;
+the lever, its pivot, its §68 azimuth, the beak, the riser and the §102 blade
+are all untouched, and the force at the stop stops being friction and becomes a
+contact reaction the pivot post takes. The build comment's any-phase objection
+is answered by the tooth COUNT — derived from how far the rotor may run before
+catching, against `ALARM_CAM_LOBES` = 4 (one strike per lobe) — rather than by
+abandoning the stop. That derivation, and whether the stop belongs on this rotor
+at all rather than on the hammer or the governor, is a P0/P1 design choice on the
+`Alarm lock` group and is the work this finding hands on.
+
+**One number moved in passing, recorded rather than absorbed.** §102 derived
+`ALARM_LOCK_LIFT = (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L`, which buys 0.16 of
+ARC at the pad — but the pad's clearance from the collar is RADIAL, and the two
+stand 18.4° apart, so the released pad achieves **0.1519**, 94.94% of it. Still
+over `CLEAR_MARGIN`, but it spends 81% of the 0.01 the constant added on
+purpose, leaving 0.0019. The probe prints intended against achieved so the
+projection cannot be forgotten if the lever's triangle is ever re-solved.
+
 The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
 and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
 each offender's unit, and `probe-colwheel-id` identifies them — geometry,
 material, parent chain, whether they are NAMED, and per-parity behaviour.
+`probe-90-lockhold` is finding 4's. It exits non-zero on its own CONTROLS only:
+the three numbers a brake is judged on are a REPORT and must stay one, because
+fixing the idiom is supposed to move them — gating on them would make "the brake
+cannot hold" a claim the repo defends rather than a defect it is fixing.
