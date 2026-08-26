@@ -18411,11 +18411,11 @@ biasing a *separate* pivoted arm and therefore always carries a lever ratio.
   MM frame in `intraUnit`.
 - The `intersectsGeometry` asymmetry above.
 
-## §174 — the pallet fork becomes one blank (TODO 91)
+## §174 — the pallet fork becomes one blank (TODO 98)
 
 Eye-reported: *"the pallet fork looks like different shapes were squashed
 together haphazardly."* It did, and it was — but measuring the complaint first
-(TODO 91, `tools/probe-fork-blank.mjs`) turned up a false derivation underneath
+(TODO 98, `tools/probe-fork-blank.mjs`) turned up a false derivation underneath
 it, which is why this landed as mechanical-realism debt rather than as finish.
 
 A Swiss lever is ONE piece of steel. Pivot boss, both pallet arms, the lever
@@ -18465,7 +18465,7 @@ zero-draw face direction, is the perpendicular of the pivot radial, so a head's
 long axis is always tangential to the pivot circle. The old boss→head-centre
 box ignored that, which is exactly why it read as a strut glued to a slab.
 
-**What is still not mirror-symmetric, and why that is right.** TODO 91's repair
+**What is still not mirror-symmetric, and why that is right.** TODO 98's repair
 step 2 proposed making the two arms exact mirror images, with each head's lean
 applied to the slot inside an unleaned block. Building it showed why real forks
 do not: the zero-draw frame `f0` and the two seats ARE exactly mirror-symmetric
@@ -18521,7 +18521,7 @@ block's own.
 
 ### Instruments
 
-`tools/probe-fork-blank.mjs` was the REPORT that TODO 91 was written from and
+`tools/probe-fork-blank.mjs` was the REPORT that TODO 98 was written from and
 is the ACCEPTANCE test now. It gates five things: the fork's own metal is one
 solid; that solid has one z-height; the height is `FORK_T` (the chamfer came
 out of the stock); the built top equals `L_FORK + FORK_HALF_Z` to float noise;

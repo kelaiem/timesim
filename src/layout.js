@@ -532,7 +532,7 @@ export const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's
 // coplanarity costs nothing laterally and buys the whole stone reach
 // in depth — which the balance, spring and cock all inherit.
 export const L_FORK = L_ESCAPE;
-// TODO 91 — the lapping chamfer on the fork BLANK, as a fraction of its
+// TODO 98 — the lapping chamfer on the fork BLANK, as a fraction of its
 // FINISHED thickness. It lives here rather than inside `makePalletFork`
 // because `L_BALANCE` below has to know how far the blank actually reaches
 // in z, and the builder runs thousands of lines later: MODELING.md rule 1's
@@ -557,7 +557,7 @@ export const RIM_H = BAL_T * 0.55;     // rim height — mirrors makeBalanceWhee
 // margin + half the rim's own height. The rim's underside is the balance's
 // deepest full-ring face, so this is the lowest the wheel can sit without
 // fouling the fork.
-// TODO 91: this used to read `FORK_T / 2` DIRECTLY, and that was a face no
+// TODO 98: this used to read `FORK_T / 2` DIRECTLY, and that was a face no
 // metal had. Measured, the fork's steel topped out 0.18 higher (the old boss
 // cylinder at t·1.3, one of four z-heights in a six-solid part) and the rim's
 // underside landed 0.0300 BELOW it — the margin was not reduced, it was

@@ -1,4 +1,4 @@
-// TODO 91 — is the pallet fork ONE piece of metal, and is it one thickness?
+// TODO 98 — is the pallet fork ONE piece of metal, and is it one thickness?
 // A Swiss lever is a single blank: boss, both pallet arms, the lever and the
 // fork end are cut in one outline and lapped to one thickness, with only the
 // ruby stones and the guard dart separate. This REPORTS what the movement
@@ -7,7 +7,7 @@
 // see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork
 // body top") matches the fork's real reach.
 //
-// ACCEPTANCE since TODO 91 landed: it exits non-zero if the fork stops being
+// ACCEPTANCE since TODO 98 landed: it exits non-zero if the fork stops being
 // one blank of one thickness, or if `FORK_HALF_Z` stops describing it. It was
 // a REPORT while the item was open and the numbers it printed are what the
 // item was written from; the four conditions below are what the fix has to
@@ -90,7 +90,7 @@ const out = await page.evaluate(async () => {
   // phase the page happened to be at — one earlier reading of this same
   // number came back 0.73 and another 0.60 for exactly that reason.
   // The blank is the fork's one steel body that is not the guard dart: the
-  // largest mesh by vertex count. Before TODO 91 this picked the body extrude
+  // largest mesh by vertex count. Before TODO 98 this picked the body extrude
   // out of six steel solids; now there is only one to pick.
   const boss = fork.filter((m) => m.geometry.type === 'ExtrudeGeometry'
     && !(m.material?.color?.getHexString?.() === 'b01326'))
@@ -180,7 +180,7 @@ if (out.stones.length === 2) {
     + `(a pure mirror sums to 180°; 2·DRAW_DEG = ${2 * DRAW_DEG}° is the draw)`);
 }
 
-// --- the four conditions TODO 91 closed, as a gate ---------------------------
+// --- the four conditions TODO 98 closed, as a gate ---------------------------
 // A report saying `1 steel solid` has not passed anything; these have.
 const fails = [];
 if (blank.length !== 1)
@@ -208,7 +208,7 @@ if (!(Math.abs(leanSum - 180 - 2 * DRAW_DEG) < 1e-9))
 
 console.log('');
 if (fails.length) {
-  console.log('FAIL — TODO 91:');
+  console.log('FAIL — TODO 98:');
   for (const f of fails) console.log('  · ' + f);
   process.exitCode = 1;
 } else {

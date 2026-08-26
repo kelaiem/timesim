@@ -1079,7 +1079,7 @@ const palletFork = G.makePalletFork({
   stoneZReach: L_FORK - L_ESCAPE,
   beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
 });
-// TODO 91 — the blank is ONE solid of ONE thickness, and `L_BALANCE` is
+// TODO 98 — the blank is ONE solid of ONE thickness, and `L_BALANCE` is
 // derived from how far that solid actually reaches. Hold the two paths
 // together: the builder's own reach against layout.js's `FORK_HALF_Z`, and
 // the fork's steel against a single mesh. The old six-solid fork put four

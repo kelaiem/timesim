@@ -909,7 +909,7 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 // path in the fork frame is their vector mix), so the caller must pass the
 // same values that drive the animation.
 //
-// TODO 91 — THE FORK IS ONE BLANK. A Swiss lever is a single piece of steel:
+// TODO 98 — THE FORK IS ONE BLANK. A Swiss lever is a single piece of steel:
 // pivot boss, both pallet arms, the lever and the fork end with its horns and
 // notch are cut in one outline and lapped to one thickness, and only the ruby
 // stones and the guard dart are separate parts. This builder used to emit SIX
@@ -983,7 +983,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // elevation from being edited apart.
   //
   // And the chamfer comes OUT of the stock, which is the second half of
-  // TODO 91. `bevelThickness` stands proud of the extrude at BOTH faces, so
+  // TODO 98. `bevelThickness` stands proud of the extrude at BOTH faces, so
   // the old `depth: t` shipped a body t + 2·bevel = 1.488 thick under a
   // balance whose elevation had been derived from t/2. A lever lapped to `t`
   // is `t` overall, chamfer included — so the extrude gets the stock that
@@ -1065,7 +1065,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // the same arithmetic §34 hit on the alarm setting wheel (0.05 gap vs 0.045
   // of bevel). There the answer was a crisp face; here the blank keeps its
   // softened edge, so the GAP is DERIVED from the bevel rather than guessed
-  // against it. TODO 91 moved the term from the head block's own `armBevel`
+  // against it. TODO 98 moved the term from the head block's own `armBevel`
   // to the blank's `bevel` — one bevel in the part means one term here.
   const SEAT_SHOW = 0.05;          // the seat line the stone should actually show
   const gGap = bevel + SEAT_SHOW;  // bevel first, then the gap that survives it
@@ -1293,7 +1293,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   g.userData.span = span;
   // MODELING.md rule 1's export: the blank's own outline and the two numbers
   // that say how far past it the rendered solid stands. `blankHalfZ` is what
-  // layout.js's FORK_HALF_Z must equal — main.js asserts the pair (TODO 91).
+  // layout.js's FORK_HALF_Z must equal — main.js asserts the pair (TODO 98).
   g.userData.blankOutline = pts.map((p) => [p.x, p.y]);
   g.userData.blankBevel = bevel;
   g.userData.blankHalfZ = stock / 2 + bevel;   // = t/2, and asserted against FORK_HALF_Z
