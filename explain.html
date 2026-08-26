@@ -1404,20 +1404,21 @@
       six columns over a saw-toothed ratchet skirt. Each press of the case pusher drives a
       pawl one saw tooth — half a column pitch — so every actuation flips the state: a
       rider standing <b>on a column</b> is held out (alarm OFF); over <b>a gap</b> it drops
-      in (ON). Three members read the same castellations at whole pitches apart, so they
-      always agree: the lock lever's beak (gates the brake), the sprung click (indexes the
-      two stable states and makes the toggle read), and the §35 link beak (arms the ring).</p>
+      in (ON). Two members read the same castellations at whole pitches apart, so they
+      always agree: the lock lever's beak (gates the brake) and the §35 link beak (arms the
+      ring). What HOLDS the wheel where a press leaves it reads something else entirely —
+      §173 moved the index onto the saw, where a sautoir seats between two teeth.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The castellation law, and who rides it</span></div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 210" width="780" height="210" role="img" aria-label="The castellation height profile — columns, gaps, and cut flanks — with the three riders and pawl marked at their stations">
+          <svg viewBox="0 0 780 210" width="780" height="210" role="img" aria-label="The castellation height profile — columns, gaps, and cut flanks — with the two riders and pawl marked at their stations">
             <path d="M 60 150 L 60 80 L 130 80 L 142 150 L 214 150 L 226 80 L 296 80 L 308 150 L 380 150 L 392 80 L 462 80 L 474 150 L 546 150 L 558 80 L 628 80 L 640 150 L 700 150"
                   fill="none" stroke="var(--brass)" stroke-width="2"/>
             <line x1="60" y1="150" x2="700" y2="150" stroke="var(--line)" stroke-width="0.75"/>
             <text class="lbl" x="80" y="70">column</text><text class="lbl" x="164" y="142">gap</text>
             <text class="val val-brass" x="128" y="170">flank = 0.18 pitch — CUT, not narrated (TODO 20: the mesh and the law are one function)</text>
             <circle cx="95" cy="74" r="6" fill="var(--ruby)"/><text class="lbl lbl-strong" x="84" y="46">lock beak · OFF</text>
-            <circle cx="424" cy="74" r="6" fill="var(--steel)"/><text class="lbl lbl-strong" x="392" y="46">click nose · 2 pitches on</text>
+            <text class="lbl" x="300" y="46">(no third rider — §173 took the index off these columns)</text>
             <circle cx="592" cy="74" r="6" fill="var(--ruby)"/><text class="lbl lbl-strong" x="556" y="46">link beak · §35</text>
             <text class="val" x="60" y="196">profileAt(θ): duty 0.5 · 48 segments per pitch (~9 per flank) — the ride every member takes is the surface that was cut</text>
           </svg>
@@ -1457,7 +1458,7 @@
         </div>
         <div class="fig-body">
           <svg viewBox="0 0 780 360" width="780" height="360" role="img"
-               aria-label="Interactive plan view of the column wheel: pressing steps the wheel half a pitch and the lock beak, click, and link beak change state per the castellation law">
+               aria-label="Interactive plan view of the column wheel: pressing steps the wheel half a pitch, the lock beak and link beak change state per the castellation law, and the sautoir reseats in the next saw tooth">
             <g transform="translate(300 180)">
               <g id="cwWheel">
                 <circle r="120" fill="var(--brass-fill)" opacity="0.25" stroke="var(--brass)" stroke-width="1"/>
@@ -1469,8 +1470,9 @@
               <!-- riders (static azimuths; the wheel turns under them) -->
               <g id="cwBeak"><rect x="122" y="-12" width="30" height="24" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/><rect x="150" y="-6" width="80" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/></g>
               <text class="lbl lbl-strong" x="150" y="-24">lock beak · TODO 24's row</text>
-              <g id="cwClick" transform="rotate(120)"><circle id="cwClickNose" cx="134" cy="0" r="13" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/><rect x="145" y="-5" width="70" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/></g>
-              <text class="lbl lbl-strong" x="-150" y="130">click (indexes the two states)</text>
+              <g id="cwJumper" transform="rotate(217.08)"><circle cx="150" cy="0" r="15.6" fill="none" stroke="var(--steel)" stroke-width="1" stroke-dasharray="3 3" opacity="0.55"/><circle id="cwJumperTip" cx="126" cy="0" r="15.6" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/><rect x="126" y="-4" width="150" height="8" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/></g>
+              <text class="lbl lbl-strong" x="-236" y="88">sautoir on the SAW (§173 — 12 teeth, 12 stops)</text>
+              <text class="lbl" x="-236" y="102">dashed: where its tip rides mid-press, over a tooth</text>
               <g id="cwLink" transform="rotate(180)"><rect id="cwLinkNose" x="86" y="-9" width="26" height="18" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.6"/><rect x="110" y="-5" width="90" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/></g>
               <text class="lbl lbl-strong" x="-272" y="-14">link beak · rides the tops (§35 · §68: opposite)</text>
               <g transform="rotate(45)"><rect x="98" y="-30" width="34" height="12" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/></g>
@@ -1478,18 +1480,18 @@
             </g>
             <g font-size="11">
               <text class="val val-steel" x="562" y="70" id="cwBeakState">blocked — brake held</text>
-              <text class="val val-steel" x="562" y="90" id="cwClickState">click OUT on a column</text>
+              <text class="val val-steel" x="562" y="90" id="cwJumperState">sautoir seated — every stop is a tooth space</text>
               <text class="val val-ruby" x="562" y="110" id="cwLinkState">link beak UP → ring up</text>
             </g>
             <text class="val" x="20" y="344">profileAt ported: duty 0.5, flank 0.18·pitch — the same function the mesh was cut from (TODO 20's convention)</text>
           </svg>
         </div>
-        <figcaption>Each press drives the pawl one saw tooth — half a column pitch — and all
-        three riders answer the same castellation law: the lock beak's face kisses a
+        <figcaption>Each press drives the pawl one saw tooth — half a column pitch — and
+        both riders answer the same castellation law: the lock beak's face kisses a
         column's outer wall (blocked; the brake cannot lift) or hangs over gap air (the
         release can act) — the geometry TODO 24 gave matter to, measured by the
         <code>alarmHandoffs</code> row 'column outer face ⇄ lock beak' at both parities;
-        the click rocks out/in and makes the toggle read; the §35 link beak rides the
+        the §35 link beak rides the
         column TOPS, dropping into gaps to arm the ring. §163 rebuilt what does the
         driving: the pawl is sprung on a lever pivoted on the wheel's OWN ARBOR, so on
         the drive stroke lever and wheel turn together and there is nothing at the teeth
@@ -1564,7 +1566,7 @@
         <figcaption>Honesty ledger, stated plainly: the run's geometry is real, every
         hand-off measures shut, and <b>TODO 20 is closed</b> — this chain is driven
         member-by-member from the input now, where it was once POSED from the output
-        (the ring's state). A press carries the wheel by its pawl; the click banks the
+        (the ring's state). A press carries the wheel by its pawl; the SAUTOIR banks the
         tooth; every member downstream reads the one that drives it. What the plate
         still must not imply is DYNAMICS: no force, friction or spring rate appears
         anywhere in the run, so it is a kinematic chain whose contacts are real, not an
@@ -1577,6 +1579,58 @@
         the tail collapsed to ≈7:1 (the built arms measure 9.95/1.395 — §68's own prose
         guessed ~3:1 and TODO 63's re-take corrected it), with the lay shaft's bush
         stations re-solved around the power-reserve train's swept web.</figcaption>
+      </figure>
+      <p><b>What holds it there is a SAUTOIR on the saw</b>, and §173 moved it off the
+      castellations for reasons that are structural rather than stylistic. A part rode
+      the columns until then, and it could not detent the wheel in any state: the wheel
+      stops <b>twelve</b> times a revolution and there are <b>six</b> columns, and worse,
+      a column's top and a gap's floor are both arcs of CONSTANT radius — the chamfer is
+      cut in z only — so the follower was pushed out by nothing at every stop it actually
+      used. The saw already has one tooth per index, and a tooth space is a V.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 3</span><span class="fig-title">One tooth space — why the wheel indexes forward and cannot go back</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 260" width="780" height="260" role="img" aria-label="A single saw tooth space in section: the radial drive flank at zero degrees off radial, the sixty-six degree ride flank, and the jumper tip seated between them">
+            <line x1="60" y1="200" x2="740" y2="200" stroke="var(--line)" stroke-width="0.75"/>
+            <text class="lbl" x="60" y="218">root circle 5.13</text><text class="lbl" x="646" y="218">→ wheel turns</text>
+            <path d="M 150 200 L 150 60 L 420 200 L 420 60 L 690 200" fill="none" stroke="var(--brass)" stroke-width="2"/>
+            <line x1="150" y1="200" x2="150" y2="60" stroke="var(--ruby)" stroke-width="3"/>
+            <text class="lbl lbl-strong" x="66" y="52">DRIVE flank</text>
+            <text class="val val-ruby" x="66" y="38">0.00° off radial</text>
+            <text class="lbl lbl-strong" x="250" y="112">RIDE flank · 66.21°</text>
+            <circle cx="196" cy="176" r="24" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.8"/>
+            <text class="lbl lbl-strong" x="176" y="238">tip r 0.7421</text>
+            <circle cx="420" cy="36" r="24" fill="none" stroke="var(--steel)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"/>
+            <text class="lbl" x="424" y="40">crest — mid-press, the blade at full throw 1.1114</text>
+            <path d="M 236 168 L 300 150" stroke="var(--steel)" stroke-width="1.2" marker-end="none"/>
+            <text class="val val-steel" x="306" y="154">forward: dr/dθ 1.541 — the ramp, 3.479e-2 N·mm to climb</text>
+            <path d="M 172 152 L 172 108" stroke="var(--ruby)" stroke-width="1.2"/>
+            <text class="val val-ruby" x="60" y="100">backward: the flank is RADIAL, so the contact normal</text>
+            <text class="val val-ruby" x="60" y="86">passes through the axis — no cam-out at any drag</text>
+            <text class="val" x="60" y="252">flank angles read off ratchetPoly and asserted at boot; the seat is solved against sawClear, so the law and the metal are one polygon</text>
+          </svg>
+        </div>
+        <figcaption>The asymmetry IS the mechanism. Restoring torque is
+        <code>F × dr/dθ</code>, and the two directions out of a seat are not alike: forward
+        the tip climbs a 66.21° ramp at a price the press pays; backward it meets a face
+        cut <b>0.00° off radial</b>, where the contact normal points at the wheel's own
+        axis and there is no radial component to cam the tip out — at any drag whatsoever.
+        §163's rule that <i>"a return that drags the wheel back un-indexes it"</i> stops
+        being a number to win and becomes a geometry that cannot happen. The sautoir is
+        <b>ONE part</b>: no pivot and no separate spring, because the blade IS the jumper —
+        which is why the part it replaced could have its spring declared 2.0963 away from
+        the arm it was said to press, and this one cannot. Its free length
+        (<code>ALARM_JUMPER_L</code> 10.4874) is solved from
+        <code>SPRING_STRAIN_MAX</code> at the crest and its width
+        (<code>ALARM_JUMPER_W</code> 0.7035, 2.22× the §50 floor) from the detent envelope,
+        so the two dimensions answer to two different constraints and neither is chosen:
+        seated 11.18 mN and cresting 22.36 mN, each √5 = 2.236× clear of the
+        <code>SELECTOR_DETENT_WINDOW_MN</code> bound it faces.
+        <b>Open debt, stated:</b> the castellations' flat top is still cut to the deleted
+        part's nose radius (frozen, not re-sourced — <code>ALARM_COL_RIDER_NOSE_R</code>),
+        and the blade's MESH is rigid — it rotates about its anchor so the tip lands
+        exactly where the solve puts it, but a real cantilever bows and this one does not,
+        so the tip's slope is wrong by 3/2 and nothing reads it.</figcaption>
       </figure>
     </div>
   </details>
@@ -3594,17 +3648,19 @@
       var step = 0, anim = null;
       var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       function setStates(rot) {
-        // riders at az 0 (lock beak), 120° (click), 180° (link beak — §68 re-sited it
-        // diametrically opposite, three whole pitches, so parity holds by construction)
-        var pB = prof(0 - rot), pC = prof(120 * Math.PI / 180 - rot), pL = prof(Math.PI - rot);
+        // riders at az 0 (lock beak) and 180° (link beak — §68 re-sited it
+        // diametrically opposite, three whole pitches, so parity holds by
+        // construction). The sautoir is NOT among them: §173 put it on the saw,
+        // whose pitch is the index step, so it is seated at every stop and reads
+        // no parity at all — which is exactly why it can detent all twelve.
+        var pB = prof(0 - rot), pL = prof(Math.PI - rot);
         var off = pB > 0.5;
         var par = document.getElementById('cwParity');
         par.className = 'chip ' + (off ? 'ride' : 'trip');
         par.textContent = tr(off ? 'ALARM OFF · beak on a column' : 'ALARM ON · beak over a gap');
         document.getElementById('cwBeakState').textContent = tr(off ? 'blocked — brake held' : 'free — the release can lift');
-        document.getElementById('cwClickState').textContent = tr(pC > 0.5 ? 'click OUT on a column' : 'click DROPPED in a gap');
+        document.getElementById('cwJumperState').textContent = tr('sautoir seated — every stop is a tooth space');
         document.getElementById('cwLinkState').textContent = tr(pL > 0.5 ? 'link beak UP → ring up (disarmed)' : 'link beak DOWN → ring down (armed)');
-        document.getElementById('cwClickNose').setAttribute('cx', pC > 0.5 ? 134 : 104);
         document.getElementById('cwLinkNose').setAttribute('x', pL > 0.5 ? 86 : 80);
         document.getElementById('cwStep').textContent = tr('step') + ' ' + step + ' · ' + tr('wheel') + ' ' + Math.round(rot * 180 / Math.PI) + '°';
       }

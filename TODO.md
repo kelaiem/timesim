@@ -57,7 +57,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 | 60 | CLOSED | Three things, and only the first was filed. The arbor was sized to the tower's MIDDLE member, so 1.9 units of tower stood on nothing — side gear B AND its pinion, not the one wheel filed. The zero-height sleeve was a wrong constant: `halfHeight` is the swept ENVELOPE while the cone's hub face is `sideBoreR + faceWidth` (the bevel extrudes along z, then shears), so BOTH legs' sleeves ended 0.672 short in mid-air. Now `SUB_SPEC.hubFaceZ`. Plus a per-member reach assert at build, proven to fire |
 | 61 | CLOSED | All three sites say what is cut (a trapezoidal stand-in, no conjugate action modelled, the escape wheel's club teeth the one designed surface); real cycloidal teeth stay roadmap §136. CI's fingerprint proved the comments-only claim (hash identical to main) |
 | 62 | PART DONE | The GOING TRAIN is solved (backward from the escapement, pair groups per arbor, four runs at four modules) and the striking 64T ⇄ governor mesh with it. Remains: the four keyless runtime bases (two tick-driven chains, a TODO-48-sized solve each), the bevel sites (beyond the planar gauge — §135's instrument question), and §129's tower pinion |
-| 63 | PART DONE | Stall re-taken from the built metal and then CORRECTED (§137): lever gain 7.1×, tail blade 305 N/m, and the 1.6 mN "shaft-limited" headline was a stiffness for a span §68 retired — at the measured 0.9286 mm overhang the shaft is 2518 N/m. **RE-TAKEN AGAIN by TODO 82 and this time computed rather than quoted: ROD-END-limited at ≈1.58 mN, BELOW the 5–50 mN band — the 48 mN rested on a deleted stroke constant and a minimum where compliances add.** The elbows' bending is COMPUTED (Gate A: rigid bend defensible at the derived sub-mN loads, δ ≤ 0.6% of stroke even at `ELBOW_E_MAX`) and all five force paths are priced in place. Remains: the click's return blade is over-strained (≈2.2 GPa at full ride — position-space fix), TODO 16's third bush station, and §137's own idiom record |
+| 63 | PART DONE | Stall re-taken from the built metal and then CORRECTED (§137): lever gain 7.1×, tail blade 305 N/m, and the 1.6 mN "shaft-limited" headline was a stiffness for a span §68 retired — at the measured 0.9286 mm overhang the shaft is 2518 N/m. **RE-TAKEN AGAIN by TODO 82 and this time computed rather than quoted: ROD-END-limited at ≈1.58 mN, BELOW the 5–50 mN band — the 48 mN rested on a deleted stroke constant and a minimum where compliances add.** The elbows' bending is COMPUTED (Gate A: rigid bend defensible at the derived sub-mN loads, δ ≤ 0.6% of stroke even at `ELBOW_E_MAX`) and all five force paths are priced in place. Remains: TODO 16's third bush station, and §137's own idiom record. **§173 closed the over-strained click blade by deleting the click — its sautoir's free length is solved from `SPRING_STRAIN_MAX`** |
 | 64 | OPEN | `alarmCrownPullT` is never swept as an axis (pinned 1 on `alarm`, 0 on `alarmWind`), so `Alarm release lifter`, `Alarm release sleeve` and `Alarm silence rocker` never reciprocate and §48 cannot judge them. The rocker's return blade EXISTS in metal and is simply undeclared — the audit passes it for the wrong reason. Rule 4's own warning, a third time |
 | 65 | CLOSED | `schematic` and `focusUnit` were emitted by `captureState()` and dropped by `sanitize()`'s allow-list, so §69's "only an explicit saved false turns it off" could not happen and `restoredFocus` was dead. Both added to `defaultState` and `sanitize()`. Emitting without allow-listing is silent by construction — check the two lists together when adding to `captureState` |
 | 66 | OPEN | Four one-line untruths: `flute-slider` does not persist while `rib-pitch` and its own generated row do; six `lighting.*` leaves render live and have no applier line (liveness is judged per DOMAIN, not per leaf); `vendor/README.md` denied the two local patches its own header documents AND recorded upstream's hash as the shipped file's, so its own `cmp` step always failed (FIXED here — both hashes now recorded under their own headings); and this file's TODO 8 text describes a two-row alarm readout that no longer exists, against a premise BUILT §38 retired |
@@ -3568,7 +3568,7 @@ already there and had simply never been asked:
 
 | unit | answer | why |
 |---|---|---|
-| Alarm switch | `spring` | the click arm's own blade, `switchClickSpring` — a real mesh, which §48's geometry guard checks |
+| Alarm switch | `spring` | the click arm's own blade, `switchClickSpring` — a real mesh, which §48's geometry guard checks. **§173: the geometry guard checked that the mesh EXISTS, not that it touches; TODO 90 finding 3 measured 2.0963 of air between them. The row is now `alarmJumperBlade` restoring `alarmJumperBlade` — the sautoir IS its own spring, so the two cannot part** |
 | Alarm link | `two-way` | TODO 20's forked tab drives the chain both ways; this is the very thing that retired its phantom bias spring |
 | Alarm selector | `two-way` | same solve — the centre pin in the groove pushes and pulls the ring |
 | **Alarm lock** | **WAIVED, TODO 28** | restored by nothing, because nothing restores it |
@@ -7769,7 +7769,15 @@ pawl at the saw root (beside `ALARM_PAWL_KISS_S`), the click's detent
 
 **What remains.**
 
-- **A NEW finding the click's arithmetic produced, and it is real debt:**
+- ~~**A NEW finding the click's arithmetic produced, and it is real debt:**~~
+  **CLOSED by §173 — the blade ceases to exist.** TODO 90 finding 3 measured
+  that this blade never touched the arm it was declared to press (2.0963 at
+  every pose), so the 15 mN below was never delivered either; §173 deletes the
+  click and replaces it with a sautoir whose free length is SOLVED from
+  `SPRING_STRAIN_MAX` at the crest — the fix this entry called for, arrived at
+  because the part was redesigned rather than repaired. The original finding,
+  kept because the diagnosis was right and is the reason the new blade is
+  ten units long:
   the click's detent is the right SIZE — ≈ 15 mN at the nose, inside the
   5–50 mN band — but the blade that makes it is **over-strained**. The
   nose's 1.04 u ride deflects the blade 0.047 mm, 8.3% of its 1.5 u free
@@ -10461,7 +10469,7 @@ link` group with a spec to measure back to, not a nudge — and the bar's 0.0483
 has to come out of the same solve, since raising the bar clear of the columns
 moves the nose that must still reach them.
 
-### Finding 3 (2026-08-25, MEASURED) — the switch click cannot index the wheel, and its spring is 2.1 units away from the arm it is declared to press
+### Finding 3 (2026-08-25, MEASURED — **CLOSED by §173**) — the switch click cannot index the wheel, and its spring is 2.1 units away from the arm it is declared to press
 
 Eye-reported as *"touching the column wheel doesn't seem sufficient to hold it
 in position when the pawl's moving around"*, which is exactly right and turns
@@ -10540,7 +10548,7 @@ second job, the visible ON/OFF flag, is already done by the lock beak and the
 link beak, and a third rider carrying no force is a part that exists only to be
 looked at — here, the source of three false declarations.
 
-### §173's LINE SPEC, solved before any metal moved
+### §173's LINE SPEC, solved before any metal moved — **SHIPPED, with three rows corrected**
 
 Derived from the saw's own cut polygon (`tools/probe-90-click.mjs`'s source, the
 same `ratchetPoly` the teeth were made from), so every row below is a
@@ -10554,51 +10562,116 @@ consequence of geometry that already exists:
 | drive flank | **0.00° off radial** — a true cliff |
 | ride flank | **66.21° off radial** — the long ramp |
 
-**The tip radius is solved, not chosen**, from *"located by the FLANKS, not by
-the tooth space's floor"* — a jumper that bottoms is positioned by the root
-circle and loses the wedging that makes it a detent:
+**The tip radius is solved, not chosen** — but the constraint below is the WRONG
+ONE, and the line spec is corrected in place rather than left standing with two
+numbers. What it said:
 
 ```
 (seat radius − tip radius) − rootR  >=  CLEAR_MARGIN     →   rTip = 0.7566
 ```
 
-| the jumper, derived | |
+That reads "located by the FLANKS, not by the tooth space's floor", and the
+premise does not survive contact with the polygon: a saw tooth's root is a sharp
+CORNER between the cliff and the next ramp, not a floor. **A circle in a sharp V
+is flank-located at every radius**, so the condition is vacuous and any tip
+satisfies it. What actually binds is the wheel's own STACK. The tip works in the
+saw band, under the base disc; the blade that carries it is ten units long and
+the only band with room for that is above the castellations' outer wall. So a
+shank crosses both upper bodies at the tip's azimuth, and at the seat — the
+innermost pose — it must pass them at one running margin:
+
+```
+seatR(tipR) − STOCK_MIN_R10  >=  ALARM_COL_BASE_R + CLEAR_MARGIN   →   rTip = 0.7421
+```
+
+A bigger tip cannot reach as deep into the V, so it seats further out and the
+constraint is a FLOOR on the tip. The smallest satisfying it is taken: the
+deepest seat this stack allows, the steepest ramp, and so the most restoring
+torque per unit of blade force. Bisected at build time against `sawSeatAt`,
+because the seat is a query against the cut and not a formula.
+
+**The spring is NOT a torsion coil**, which is the second correction. The line
+spec called for §169's pattern on a jumper's own post. Priced first, as the
+order of work requires: a torsion coil on the movement's one spring wire reaches
+**≈2.4 mN at the flank against a 5–50 mN window**, and kθ ∝ d⁴ means
+`SPRING_FLAT_U` cannot be stretched to the envelope without a second spring
+material. So the shipped part is a **SAUTOIR — one piece, no pivot and no
+separate spring, the blade IS the jumper**, which is also what a real
+chronograph carries. Findings 3.2 and 3.3 close differently as a result: the
+spring cannot be two units from the body it presses when it IS that body, and
+the free length is solved from the strain limit instead of inherited.
+
+**The flat top is FROZEN, not re-sourced** — the third correction, and the
+owner's call. `ALARM_CLICK_NOSE_R` was passed to `makeColumnWheel` as
+`riderNoseR` and TODO 28 derived the castellations' flat top from it, so the
+deleted click's ball set a feature the link beak stands on. Re-cutting the flat
+to the surviving riders was deferred; the constant is renamed
+`ALARM_COL_RIDER_NOSE_R`, no longer names a part that is gone, and carries a
+build assert that the flat still clears every rider that IS left. **The debt is
+open**: the flat is wider than any surviving rider needs, and a future rider
+must move that number rather than discover the shortfall by burying itself.
+
+| the jumper, as SHIPPED | |
 |---|---|
-| tip radius | 0.7566 (⌀ 0.57 mm — real jumper-tip scale) |
-| seat / crest (tip centre) | 6.0366 / 6.7061, **lift 0.6695** |
-| tip's lowest point | 5.28 — one `CLEAR_MARGIN` over the root floor |
-| engagement below the tips | 1.104 |
-| `dr/dθ` leaving the seat, forward | **1.905** — the ramp; this is what a press pays |
-| `dr/dθ` leaving the seat, backward | **53.51** — the cliff; **28.1× steeper** |
+| tip radius | **0.7421** (⌀ 0.562 mm — real jumper-tip scale) |
+| seat / crest (tip centre) | 6.0165 / 7.1261 |
+| throw, on the arc the tip travels | **1.1114** |
+| shank | `STOCK_MIN_R10` — the constraint that set the tip, so it cannot be thinned without re-solving it |
+| blade free length | **10.4874**, solved from `SPRING_STRAIN_MAX` at the crest |
+| blade section | 0.1319 (`SPRING_FLAT_U`, bending) × **0.7035** (2.22× §50's floor) |
+| preload | one working throw — §169's precedent, `springTheta = 2·stroke` |
+| seated / cresting force | **11.18 / 22.36 mN**, each √5 = 2.236× clear of the window it faces |
+| forward detent | **3.479e-2 N·mm** about the wheel's axis |
+| `dr/dθ` at the seat, forward / backward | **1.541 / 57.49 — 37× steeper** |
+| drive flank / ride flank | 0.00° / 66.21° off radial, asserted off `ratchetPoly` |
+
+**THE TIP DOES NOT TRAVEL ON A RAY, and that is the correction the acceptance
+probe earned.** It is carried at a fixed distance from the anchor, so it swings
+on an arc and its azimuth about the wheel drifts 0.49° over the ride.
+`sawSeatAt` answers a question about a ray; sizing the blade from it and then
+posing on the arc put the tip **0.0253 INTO a tooth near the crest**, which
+`tools/probe-173-jumper.mjs` measured before the solve replaced it. The pose law
+is now a root find against `sawClear` — the smallest swing whose tip position
+clears the teeth — and the blade's length, the anchor's place, the arc and the
+throw are solved as a **FIXED POINT**, since each sets the next. It converges in
+a handful of passes; a build assert fires if it ever does not.
 
 **That asymmetry is the design, not a curiosity.** The restoring torque is
 `F_spring × dr/dθ`, so against the direction the pawl's return drags the wheel
 the jumper meets a face 0.00° off radial: there is no radial component to cam it
 out, and the wheel cannot be un-indexed backward *at all*. §163's assert —
 *"because a return that drags the wheel back un-indexes it"* — stops being a
-numerical argument and becomes a structural impossibility. Forward, the ramp
-lets the wheel index at a cost that lands inside `SELECTOR_DETENT_WINDOW_MN`.
+numerical argument and becomes a structural impossibility. It now compares the
+drag against the jumper's FORWARD detent, the weaker direction, which makes that
+budget conservative rather than generous and keeps it comparing real numbers.
 
-**The spring is a TORSION COIL on the jumper's own post**, §169's pattern rather
-than a blade: coaxial with the pivot, so there is no bear station to mis-place
-and no anchor to leave standing in air — which is what produced finding 3's
-items 2 and 3. It also carries a real PRELOAD at the seat, where the old click's
-own comment concedes *"no preload is built, so the seated floor is 0"*.
+**What §173 retired:** the two `INTRA_UNIT_CONTACTS` rows on the castellations,
+the two on the click's post, the `switchClickArm` restoring declaration,
+`STOCK_KIND_BY_MESH`'s `switchClickSpring` row, `tools/probe-59-click.mjs`, and
+TODO 63's over-strain entry for this blade (the blade ceases to exist).
+`ALARM_CLICK_FLANK_MN` is REPLACED: the jumper publishes a **torque**
+(`ALARM_JUMPER_DETENT_NMM`) rather than a force, so the four consumers that each
+re-derived one from a force and a riding radius now read one number — three
+fewer chances to quote a different radius.
 
-**One coupling the deletion exposes, found before cutting.**
-`ALARM_CLICK_NOSE_R` is passed to `makeColumnWheel` as `riderNoseR`, and TODO 28
-used it to derive the castellations' FLAT TOP width — so the click's ball
-currently sets a feature of the wheel that the LINK BEAK stands on. Deleting the
-click orphans that derivation. The flat top must therefore be re-sourced from
-the rider that actually uses it (the link beak's nose footprint), not left
-citing a part that no longer exists. That is part of §173, not a follow-on.
+**What §173 leaves open**, named rather than absorbed:
 
-Ships as §173. Retires with it: the two `INTRA_UNIT_CONTACTS` rows above, the
-`switchClickArm` restoring declaration, and TODO 63's over-strain entry for this
-blade (the blade ceases to exist). `ALARM_CLICK_FLANK_MN` is REPLACED, not
-deleted — the jumper's own detent takes its place as the envelope anchor and as
-what the pawl's return is measured against, so §163's assert keeps a real
-reference.
+- **The frozen flat top**, above.
+- **The blade's mesh is rigid.** It rotates about its anchor so that its free
+  end lands exactly where the solve puts it — the tip's POSITION is right at
+  every pose and the FORCE law is the true 3EI/L³ — but a real cantilever bows,
+  and the shipped mesh does not. The tip's slope is therefore wrong by the
+  cantilever's 3/2, which nothing reads. A morphing blade would close it
+  (`spiralFrames`' precedent) at the cost of a new MM frame in `intraUnit`.
+- **`intersectsGeometry` is not symmetric here.** Shank-as-owner reports the
+  shank meeting the skirt; skirt-as-owner reports it does not; the axis
+  measurement says 0.5756 of clearance. `intersectsGeometry` falls back to a
+  CONTAINMENT test when no triangles cross, and a small owner holding a large
+  other answers that wrongly. `probe-173-jumper.mjs` requires both directions to
+  agree and settles disagreements with an axis-segment measurement — but
+  `intraUnit` and `sweptOverlap` call it one way. **Nothing here has measured
+  how often that matters movement-wide**, and it is the kind of instrument bug
+  that reports clean.
 
 ### The rest of the audit, unmeasured
 

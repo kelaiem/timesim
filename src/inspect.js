@@ -2256,11 +2256,22 @@ export const INTRA_UNIT_CONTACTS = [
   // the BASE's bore and the SKIRT's alike. Both are real joints and both are
   // declared now; the castellations stand at colInner, clear of the stud, and
   // so get no row — which is the difference a blanket cannot express.
-  { unit: 'Alarm switch', a: 'alarmColBase', b: 'CylinderGeometry#3', why: 'the base disc\'s bore on the column wheel\'s stud' },
-  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'CylinderGeometry#3', why: 'the ratchet skirt\'s bore on the same stud — one arbor, two seated bodies' },
-  { unit: 'Alarm switch', a: 'switchClickArm', b: 'CylinderGeometry#6', why: 'click arm on its pivot stud' },
-  { unit: 'Alarm switch', a: 'switchClickArm', b: 'CylinderGeometry#7', why: 'click arm at its second stud' },
-  { unit: 'Alarm switch', a: 'switchClickArm', b: 'switchClickSpring', why: 'the detent blade pressing the click arm — §48-declared spring contact' },
+  // §173 NAMED THE STUD, and the three rows that selected it by index are
+  // repointed. Deleting the click took two unnamed CylinderGeometry meshes out
+  // of this unit, which renumbers every index above them — exactly the failure
+  // §172 hit when `alarmSwitchBeak` left and `CylinderGeometry#6` silently
+  // became `#5`. Naming makes the class of failure go away instead of moving
+  // it one part along.
+  { unit: 'Alarm switch', a: 'alarmColBase', b: 'alarmColStud', why: 'the base disc\'s bore on the column wheel\'s stud' },
+  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColStud', why: 'the ratchet skirt\'s bore on the same stud — one arbor, two seated bodies' },
+  // §173 — the SAUTOIR that replaced the click. Four joints, and the shape of
+  // the list is the point: the blade IS the spring, so there is no arm-and-
+  // -blade pair to declare and no chance of the two parting (which is what the
+  // click's rows were hiding — `switchClickArm ⇄ switchClickSpring` was a
+  // declared spring contact between meshes 2.0963 apart at every pose).
+  { unit: 'Alarm switch', a: 'alarmJumperBlade', b: 'alarmJumperStud', why: '§173: the sautoir grounded on its anchor stud — the blade\'s fixed end, and the reaction the whole detent force is taken on' },
+  { unit: 'Alarm switch', a: 'alarmJumperBlade', b: 'alarmJumperShank', why: '§173: the shank hung from the blade\'s free end — one member, two meshes, stepped because the tip works in the saw band and the blade cannot fit there' },
+  { unit: 'Alarm switch', a: 'alarmJumperShank', b: 'alarmJumperTip', why: '§173: the tip on its shank, coaxial — the same stepped member, its working diameter' },
   // Both were 'CylinderGeometry#0' until TODO 11 tranche five named the post
   // (see the strike sleeve above for why that stales a row).
   { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkBeakPost', why: 'beak lever on its pivot post' },
@@ -2350,8 +2361,6 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm lock — §102's return:
   { unit: 'Alarm lock', a: 'alarmLockSpringStud', b: 'alarmLockSpring', why: '§121: §102\'s return blade riding its stud (kiss) — the blade the column works against; restoring\'s sprung row for this unit' },
   // Alarm switch — §28/§33's column work and pusher:
-  { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'CylinderGeometry#7', why: '§121: the detent post and its second turned step — one post, two diameters' },
-  { unit: 'Alarm switch', a: 'CylinderGeometry#6', b: 'switchClickSpring', why: '§121: the switch click spring anchored on the detent post (kiss)' },
   // §164 — the pusher's RETURN, TODO 87 step 5's metal. A collar on the stem, a
   // fixed abutment hung off the plate's underside, and a coil between them.
   { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherCollar', why: '§164: the return coil\'s collar pressed on the stem — the face the spring bears against, travelling with the head' },
@@ -2374,7 +2383,7 @@ export const INTRA_UNIT_CONTACTS = [
   // §163 — the driver and its pawl. Every one of these is a JOINT somebody
   // would assemble, which is the test this table applies: a bore on a stud, a
   // pin in a slot, a blade on the arm it closes.
-  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'CylinderGeometry#3', why: '§163: the driver\'s bore on the column wheel\'s own stud — the third body seated on that one arbor, at PIVOT_BORE_CLEAR, and the reason the drive stroke has no relative motion at the teeth' },
+  { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColStud', why: '§163: the driver\'s bore on the column wheel\'s own stud — the third body seated on that one arbor, at PIVOT_BORE_CLEAR, and the reason the drive stroke has no relative motion at the teeth' },
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmPusherRiser', why: '§163: the pusher\'s PIN (the riser\'s top) in the driver\'s radial slot — the coupling itself, a running fit at PIVOT_BORE_CLEAR on both flanks, and the joint that makes the driver\'s angle the pin\'s azimuth' },
   { unit: 'Alarm switch', a: 'alarmColDriver', b: 'alarmColPawlPost', why: '§163: the pawl\'s pivot post riveted into the driver\'s outer arm' },
   { unit: 'Alarm switch', a: 'alarmColPawlBoss', b: 'alarmColPawlPost', why: '§163: the pawl running on that post. The BOSS is the mesh that carries the bore and it is CUT rather than declared — the §137 row quotes this joint\'s running clearance, so a solid pawl would have the arithmetic claiming a fit the metal did not have. The row stays because the two still share a z band and a declared joint should say so' },
@@ -2382,17 +2391,22 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm switch', a: 'alarmColPawlSpring', b: 'alarmColPawlSpringPin', why: '§169: the coil\'s anchor leg hooked on that pin — the ground the restoring moment reacts against' },
   { unit: 'Alarm switch', a: 'alarmColPawlSpring', b: 'alarmColPawlPost', why: '§169: the coil wound close on the post it restores the pawl about, a running fit on it (mean radius = post + PIVOT_BORE_CLEAR + half the wire). Coaxial with the pivot is the whole point: the restoring moment reaches the pawl with no bear arm in the path' },
   { unit: 'Alarm switch', a: 'alarmColPawlSpring', b: 'alarmColPawlTail', why: '§169: the coil\'s working leg bearing on the pawl\'s tail — the contact that closes it. The tail is its own body because the arm is CLIPPED off the pivot bore (the post is wider than a 2w arm, so a centreline through the origin would put it through the arm\'s flanks whatever hole was cut); bear station at the boss\'s edge, blade length the greater of the drag budget\'s floor and its own strain limit\'s' },
-  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'switchClickArm', why: '§121: the detent arm riding the column wheel\'s castellations (kiss) — §28\'s column work; a working contact, bounded by the TODO 59 read assert at the click build and swept through a whole pitch by tools/probe-59-click' },
-  // TODO 59: this row USED to say "its budget the switch's own asserts", and no
-  // such assert had ever been written — a declaration pointing at a check that
-  // does not exist reads as triaged, which is worse than an admitted gap. The
-  // assert exists now (it holds the two things the mechanism CLAIMS: fully out
-  // over a column, fully home in a gap), and the depth through the flank — the
-  // part no pose can reach, since setPose banks the wheel to integer steps — is
-  // measured by probe-59-click: 0 buried samples of 121 across a full pitch,
-  // worst clearance 0.0052, against 30 of 121 and a worst burial of 0.699 under
-  // the height-as-radius law this replaced.
-  { unit: 'Alarm switch', a: 'alarmColCastellations', b: 'switchClickNose', why: '§121: the detent BALL on the castellations\' ramps (kiss) — the star detent that indexes the column; TODO 59 re-derived its radius from the wall and the top corner it rides, and probe-59-click sweeps the pitch' },
+  // §173 — THE INDEX MOVED OFF THE CASTELLATIONS AND ONTO THE SAW, so this is
+  // where its working contact is declared. Two rows stood here, both against
+  // `alarmColCastellations`: the click's arm and the click's ball. TODO 90
+  // finding 3 measured what they were excusing — the ball touched nothing that
+  // could detent it (both parities land on a flat concentric with the axis,
+  // dr/dθ = 0 at every one of the 12 stops), and the ARM interpenetrated the
+  // columns at 110 and 130 triangle pairs. A declared joint is an EXCUSE as
+  // well as a claim, and those two rows spent that excuse on a part that could
+  // not do the job.
+  //
+  // The sautoir's tip seats in a TOOTH SPACE, which is a V of two flanks, so
+  // the contact is real in both directions by construction. Its budget is the
+  // §173 build asserts (seat repeat over all 12 stops, both flank angles read
+  // off ratchetPoly) plus tools/probe-173-jumper.mjs, which sweeps the pitch
+  // the way probe-59-click swept the old one.
+  { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmJumperTip', why: '§173: the sautoir\'s tip seated between two saw teeth (kiss) — the detent itself. The seat is SOLVED from userData.sawSeatAt against the same ratchetPoly the skirt is extruded from, so this contact cannot drift from the metal; the backward flank is cut radial, which is what makes un-indexing geometrically impossible rather than numerically unlikely' },
   // Alarm link — §45's corner stations and the crank:
   { unit: 'Alarm link', a: 'LatheGeometry#9', b: 'BoxGeometry#10', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'LatheGeometry#11', b: 'BoxGeometry#12', why: '§121: the second corner, same construction' },
@@ -6217,7 +6231,15 @@ export const STOCK_KIND_BY_MESH = {
   mainspringDrumStaff: 'pivot',
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
-  switchClickSpring: 'spring', // the switch detent's blade — spring stock, though at 0.026 mm it stays in the debt even so
+  // §173 — the SAUTOIR, kinded as the three things it is. The blade replaces
+  // `switchClickSpring`, which sat at 0.026 mm and stayed in the debt for it;
+  // this one is solved to SPRING_FLAT_U in the direction it bends and 2.22×
+  // §50's floor across, because its width was derived from the detent envelope
+  // rather than inherited from a drawing.
+  alarmJumperBlade: 'spring',
+  alarmJumperShank: 'pivot',   // floor stock — the constraint that set the tip's radius, so it cannot be thinned without re-solving the tip
+  alarmJumperStud: 'pivot',    // the blade's plate-top ground, sized so it is not a second spring in series (TODO 82)
+  alarmJumperTip: 'pivot',     // the working diameter, ⌀ 0.56 mm — a turned step, not a section under load
   alarmLockSpring: 'spring',   // §102 — the lock's return blade, the same SPRING_FLAT_U stock and the same standing debt
   alarmLockSpringStud: 'pivot', // ...and its plate-top anchor — pin stock over the pivot floor
   alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
