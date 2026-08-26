@@ -1,9 +1,21 @@
-# §73 tier two — the explainer's translation gate.
+# §73 tier two — the explainer's translation gate, and the instrument index
+# beside it.
 #
 # Its own workflow rather than a step in Battery, for two reasons: it is
 # ~1 min against the battery's ~13, so a prose typo should not wait behind
 # the sweeps; and explain.html is sim-code-free by contract, so its gate has
 # no business inside the geometry one.
+#
+# TWO TENANTS, and the rule for joining them. tools/index-instruments.mjs
+# --check is the same SHAPE of thing: generated, milliseconds, no browser,
+# about a DOCUMENT rather than about the movement. A seventh workflow for a
+# millisecond check would cost more attention than it saves. What this must
+# not become is a bin — anything added here has to meet all three.
+#
+# NO § NUMBER on that second tenant, deliberately: §42's own retirement note
+# settles it — "work ON THIS REPO is not a movement capability and does not
+# take a §". The index is tooling about the repository, exactly like the
+# shipped-list checker whose filing raised the question.
 #
 # What failing means, in order of how it usually happens:
 #   * a key stopped matching  — someone edited the English and its
