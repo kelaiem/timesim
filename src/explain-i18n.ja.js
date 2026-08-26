@@ -594,7 +594,7 @@ export default {
   ['RIDE flank · 66.21°']: '乗り上げ側フランク · 66.21°',
   ['tip r 0.7421']: '先端 r 0.7421',
   ['crest — mid-press, the blade at full throw 1.1114']: '頂点——押し込み途中、板ばねは全ストローク 1.1114',
-  ['forward: dr/dθ 1.541 — the ramp, 3.479e-2 N·mm to climb']: '前進：dr/dθ 1.541 — 傾斜、登るのに 3.479e-2 N·mm',
+  ['forward: dr/dθ 1.541 — the ramp, 3.899e-2 N·mm to climb']: '前進：dr/dθ 1.541 — 傾斜、登るのに 3.899e-2 N·mm',
   ['backward: the flank is RADIAL, so the contact normal']: '後退：フランクは半径方向なので、接触法線は',
   ['passes through the axis — no cam-out at any drag']: '軸を通る——いかなる引きずり力でもカム離脱は起きない',
   ['flank angles read off ratchetPoly and asserted at boot; the seat is solved against sawClear, so the law and the metal are one polygon']: 'フランク角は ratchetPoly から読み取り起動時に検証する。着座位置は sawClear に対して解かれるので、法則と金属は同一のポリゴンである',

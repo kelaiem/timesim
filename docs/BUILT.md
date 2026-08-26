@@ -18226,7 +18226,7 @@ second spring material.
 | blade free length | **10.4874** | `SPRING_STRAIN_MAX` at the crest, smallest length satisfying it |
 | blade section | 0.1319 × **0.7035** | `SPRING_FLAT_U` bending; width from the detent envelope, 2.22× §50's floor |
 | seated / cresting force | **11.18 / 22.36 mN** | equal margin at both ends of `SELECTOR_DETENT_WINDOW_MN` — √5 = 2.236× clear of each |
-| forward detent | **3.479e-2 N·mm** | `F·dr/dθ` peaked over the ramp |
+| forward detent | **3.899e-2 N·mm** | `F·dr/dθ` peaked over the ramp, through the shipped pose law |
 | shank / stud | `STOCK_MIN_R10` | §50's floor; both asserted ≥10× the blade's rate so neither is a series spring (TODO 82) |
 
 The tip is centred in the saw band at `STOCK_MIN_U`, which leaves exactly
@@ -18249,6 +18249,64 @@ sets the throw and the throw sets the length, the four are solved as a **FIXED
 POINT** rather than cut anywhere. It converges in a handful of passes; a build
 assert fires if it ever does not. After the change the tip measures **0.0000**
 from the teeth at all 50 poses across a pitch, in both alarm states.
+
+### The fold was wrong the first time, and `support` could not see it
+
+An owner's eye report — *"the post holding the sautoire seems to be floating"* —
+and it was right. The anchor stud was placed at the three-quarter plate's TOP
+FACE LEVEL and assumed to be standing on it. At (24.29, −7.82) it stood over
+the balance cutaway, on air.
+
+**This is §169's own finding reproduced.** That section caught a stud in this
+same cluster hanging over 4.347 of clear air while an `INTRA_UNIT_CONTACTS` row
+declared it "standing on the driver". §173 read that comment and repeated the
+mistake, which is the part worth writing down: knowing a failure mode is not
+the same as testing for it.
+
+Two things kept it invisible:
+
+- **`support` is declared per UNIT.** A single floating mesh inside a unit that
+  is otherwise seated passes it in silence, and did — the battery was 35/35
+  with this stud on nothing.
+- **The first raycast written to check it was wrong in the direction that
+  reports clean.** It started just under the foot, i.e. INSIDE the plate solid,
+  so front-face culling dropped the only faces it could have hit; it reported
+  the plate absent under two CONTROL studs as well. A test whose controls fail
+  the same way as its subject has not tested anything. Casting from above with
+  the plate double-sided answers `[8.9845, 8.1845]` for a seated stud and `[]`
+  for this one.
+
+**The fix is position-space, as the ladder requires.** The blade's HAND flips to
+run toward rising azimuth, putting the anchor at (35.03, 10.19) on solid plate
+while leaving the tip at the station the free-window measurement chose: the tip
+does not move, only which way the blade runs from it. Both hands were
+enumerated over all twelve step counts against `inCutClearance` before
+choosing — a function that has existed since §62 and answers exactly this
+question, 15,000 lines above where the stud was placed by assumption.
+
+**The consequence is followed rather than absorbed.** Mirroring the blade makes
+the arc's azimuth drift ADD to the ramp instead of subtracting from it, so the
+forward detent rises 3.479e-2 → **3.899e-2 N·mm**. A bigger budget buys a
+shorter, stiffer pawl coil, and §169's own instruction — *"re-derive the raise,
+do not re-target the spring"* — takes `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5.
+
+**And the assert now exists**, which is the structural half of the fix: the
+anchor needs its own foot radius plus a margin of solid plate by
+`inCutClearance`, and the same against the plate's rim. Re-siting the stud
+without it would have moved the class of failure rather than removed it.
+
+### The cam disk, checked in the same pass, is not a defect
+
+The same report asked whether the tip overlaps the saw teeth. Measured mesh to
+mesh — rather than through the polygon law the tip was designed to, which would
+only have confirmed its own arithmetic — the built tip's nearest approach to
+the built skirt is **2e-05** at worst and never negative, and a parity raycast
+puts **0 of 144** samples inside the metal. It is SEATED: a detent touching two
+flanks is the mechanism, and at a shallow viewing angle that reads as overlap.
+
+The residue is the other way round and is worth naming: near the crest the
+tip's 24-segment cylinder stands up to **0.0143 clear** of metal the law has it
+touching, which is a polygon approximating its own circle.
 
 ### Two figures published where one was doing two jobs
 

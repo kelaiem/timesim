@@ -594,7 +594,7 @@ export default {
   ['RIDE flank · 66.21°']: '爬升側齒面 · 66.21°',
   ['tip r 0.7421']: '尖端 r 0.7421',
   ['crest — mid-press, the blade at full throw 1.1114']: '齒頂——按壓途中，簧片處於滿行程 1.1114',
-  ['forward: dr/dθ 1.541 — the ramp, 3.479e-2 N·mm to climb']: '正向：dr/dθ 1.541 — 斜坡，爬升需 3.479e-2 N·mm',
+  ['forward: dr/dθ 1.541 — the ramp, 3.899e-2 N·mm to climb']: '正向：dr/dθ 1.541 — 斜坡，爬升需 3.899e-2 N·mm',
   ['backward: the flank is RADIAL, so the contact normal']: '反向：齒面為徑向，故接觸法線',
   ['passes through the axis — no cam-out at any drag']: '穿過軸心——無論拖曳力多大都不會被頂出',
   ['flank angles read off ratchetPoly and asserted at boot; the seat is solved against sawClear, so the law and the metal are one polygon']: '齒面角度取自 ratchetPoly 並在啟動時斷言；就座位置對 sawClear 求解，因此規律與金屬出自同一多邊形',

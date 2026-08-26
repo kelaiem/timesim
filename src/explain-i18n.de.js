@@ -605,7 +605,7 @@ export default {
   ['RIDE flank · 66.21°']: 'LAUF-Flanke · 66.21°',
   ['tip r 0.7421']: 'Spitze r 0.7421',
   ['crest — mid-press, the blade at full throw 1.1114']: 'Scheitel — im Druck, Feder auf vollem Hub 1.1114',
-  ['forward: dr/dθ 1.541 — the ramp, 3.479e-2 N·mm to climb']: 'vorwärts: dr/dθ 1.541 — die Rampe, 3.479e-2 N·mm zu erklimmen',
+  ['forward: dr/dθ 1.541 — the ramp, 3.899e-2 N·mm to climb']: 'vorwärts: dr/dθ 1.541 — die Rampe, 3.899e-2 N·mm zu erklimmen',
   ['backward: the flank is RADIAL, so the contact normal']: 'rückwärts: die Flanke ist RADIAL, die Kontaktnormale läuft',
   ['passes through the axis — no cam-out at any drag']: 'durch die Achse — kein Ausheben bei welcher Schleppkraft auch immer',
   ['flank angles read off ratchetPoly and asserted at boot; the seat is solved against sawClear, so the law and the metal are one polygon']: 'Flankenwinkel aus ratchetPoly gelesen und beim Start geprüft; der Sitz wird gegen sawClear gelöst, sodass Gesetz und Metall ein und dasselbe Polygon sind',

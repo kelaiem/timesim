@@ -599,7 +599,7 @@ export default {
   ['RIDE flank · 66.21°']: 'flanc de MONTÉE · 66.21°',
   ['tip r 0.7421']: 'pointe r 0.7421',
   ['crest — mid-press, the blade at full throw 1.1114']: 'sommet — sous pression, lame à pleine course 1.1114',
-  ['forward: dr/dθ 1.541 — the ramp, 3.479e-2 N·mm to climb']: 'en avant : dr/dθ 1.541 — la rampe, 3.479e-2 N·mm à gravir',
+  ['forward: dr/dθ 1.541 — the ramp, 3.899e-2 N·mm to climb']: 'en avant : dr/dθ 1.541 — la rampe, 3.899e-2 N·mm à gravir',
   ['backward: the flank is RADIAL, so the contact normal']: 'en arrière : le flanc est RADIAL, donc la normale de contact',
   ['passes through the axis — no cam-out at any drag']: 'passe par l\'axe — aucun décrochage, quelle que soit la traînée',
   ['flank angles read off ratchetPoly and asserted at boot; the seat is solved against sawClear, so the law and the metal are one polygon']: 'angles de flanc lus sur ratchetPoly et vérifiés au démarrage ; l\'assise est résolue contre sawClear, si bien que la loi et le métal sont un même polygone',
