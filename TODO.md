@@ -17,7 +17,7 @@ refreshed 2026-08-23 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and OPEN**: the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
+| 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and OPEN, and its repair was SEARCHED and the obvious fix REFUTED** (`tools/probe-90-lockread.mjs`, three controls passing): the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. The beak cannot simply be moved: its station is QUANTIZED to whole column pitches (60°, the parity rule `ALARM_LINK_BEAK_OFF` already snaps to), the exact Thales optimum (φ 44.57°, gain **1.0000**) is mid-flank and so illegal, and both legal neighbours are taken — **−60° is the link beak's own station** (riser 0.0000) and **+60° wants a 0.6723 chamfer against a 0.6327 ceiling** and stands 0.1992 from the driver pawl. So the repair is a FOLD (an intermediate rocker at the free φ 0 station), not a re-siting. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
 | 5 | MOSTLY CLOSED (§121) | All three pair classes instrumented; the FF/MM gate covers `INTRA_TIER_SCOPE` (the alarm complex, 42 rows triaged against measured depths) and REPORTS 202 rows elsewhere — that triage is the remainder. Same-frame splits outside `ASSEMBLY_SCOPE` are §107's residue; transients are item 7's. **A third shape found 2026-08-25 (§169): the tiers gate on `intersectsGeometry`, so a FLUSH FACE is invisible** — two solids sharing exactly one plane do not intersect, and the alarm pawl ran 0.000 from the column wheel's base disc over the whole area it sweeps under it, at every pose, with every gate green. Overlap is not the only way metal can be wrong; see item 87 findings 8 and 9 for both this and the excuse a false `INTRA_UNIT_CONTACTS` row grants |
@@ -11027,6 +11027,78 @@ gate is exactly how you get one.
 **What this does NOT close: finding 5.** The lever's READ is still posed, so
 this is a real hold worked by a switch that cannot throw it. That is why
 finding 5 is filed beside this one rather than inside it.
+
+#### The repair was SEARCHED, and the search refutes the obvious fix (2026-08-26)
+
+Finding 5's own closing paragraph proposed moving the beak so it approaches the
+castellations with a radial component. `tools/probe-90-lockread.mjs` searched
+that, and **no station exists**. The result is worth more than the fix would
+have been, because it says what the repair actually has to be.
+
+**The geometry has an exact optimum, and it is not reachable.** The beak's
+motion is purely radial when `PB ⊥ WB` — Thales' condition, so the station lies
+on the circle of diameter (pivot, wheel centre):
+
+```
+|PB| = √(D² − readR²) = √(8² − 5.7²) = 5.6134     at φ = asin(5.7/8) = 44.57°
+```
+
+Measured there: radial gain **1.0000** (against 0.0000 today), riser 1.81 clear
+of the driver pawl, nose clear, chamfer 0.5448 inside its ceiling. Everything a
+station needs — except legality.
+
+**The station is QUANTIZED to whole column pitches, and both neighbours are
+taken.** A rider must sit centred on a column in one state and centred in a gap
+in the other, so its azimuth is ≡ 0 (mod `2·ALARM_COL_STEP` = 60°) — the same
+rule `ALARM_LINK_BEAK_OFF` already snaps to, for "identical parity". 44.57° is
+mid-flank: a beak there reads a ramp, not a state. The legal stations:
+
+| φ | gain | chamfer needed | riser corridor | |
+|---|---|---|---|---|
+| **0** | **0.0000** | — | — | today's — the defect |
+| **−60°** | 0.9712 | 0.6723 | **0.0000** to `alarmLinkBeak` | the LINK beak's own station |
+| **+60°** | 0.9712 | **0.6723** | 0.1992 to the driver pawl | over the chamfer ceiling, and 0.05 off `CLEAR_MARGIN` at the pawl |
+| ±120°, 180° | ≤ 0.58 | — | — | arms of 11.9–13.7 from the pivot |
+
+The chamfer ceiling is `readR − linkOuter − CLEAR_MARGIN` = 5.7 − 4.9173 − 0.15
+= **0.6327**: the pillars' outer edge must ramp by exactly the beak's radial
+travel, and it may not eat the band the link beak rides. At +60° the travel
+wants 0.6723 and the metal allows 0.6327, so the one legal station with gain
+**fails on the metal by 0.04** and on the corridor by 0.05.
+
+**So the beak cannot be moved into a good station — something else must give.**
+Three routes, in increasing blast radius:
+
+1. **A FOLD — an intermediate rocker at φ = 0**, which is free, parity-correct
+   and already has the declared contact. The lever's pivot is collinear with
+   the wheel there; a rocker with its OWN pivot perpendicular to the radius at
+   that station reads with gain ≈ 1 and pushes the lock lever's tail. This is
+   CLAUDE.md's fold idiom exactly — position-space currency, one added part
+   with its own P1 duties (spring, section, stall) and its own declarations.
+2. **Re-site the LINK beak to −120°**, freeing −60° for the lock. Still over the
+   chamfer ceiling, so it does not close on its own.
+3. **Re-solve the lock lever's pivot off the collinear line.** This invalidates
+   §68's swept azimuth, re-derives the pad triangle, and moves `ALARM_COL_POS`
+   — which §174 measured as the datum the whole switch cluster is laid out from
+   (cutting the stop teeth inward moved the wheel and dropped §112's link-rod
+   solve to 0.041 against 0.15). The largest of the three by a distance.
+
+**Route 1 is the recommendation**, and it is a landing of its own rather than a
+continuation of §174's: a new member is a new row in `MECH_GRAPH`, `restoring`,
+`INTRA_UNIT_CONTACTS` and the handoff table, and its section and stall are P1
+work with the line-spec discipline that implies.
+
+**The search's own method notes, because two of them cost a reading.** The
+corridor to other UNITS is 11–15 everywhere along the sweep — the alarm cluster
+is its own island, and what actually binds is the other RIDERS, which live in
+the two units a cross-unit scan excludes. And the RISER and the NOSE must be
+scanned as separate bodies in separate z bands: the riser crosses every band
+from the tail up, but the nose lives only in the castellation band, and the
+driver pawl works the SAW. Scanning both with one full-height body reported the
+pawl as an obstacle to the nose — which it cannot be — and that false reading is
+what made **both** parity-legal stations look blocked. All three of the probe's
+controls pass (a body parked on the gong reads 0.0000, the same body 200 away
+reads nothing, and φ = 0 recovers the 0.0000 gain that is the defect).
 
 The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
 and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
