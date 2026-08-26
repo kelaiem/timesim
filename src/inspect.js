@@ -1445,6 +1445,72 @@ function bvhBox(tree) {
 // Deliberately a SEGMENT test, not another point test: this is the same lesson
 // as the open-mesh trap next door in CLAUDE.md, one level further in. Testing
 // more points cannot fix a defect whose definition is "no point qualifies".
+// TODO 95 — THE WITNESS IS ONLY VALID ON A CLOSED SURFACE, and this is the
+// guard that says so. `segmentPierces` reads two crossings as "in, then out,
+// so the segment was inside" — an argument that holds only if the surface it
+// crossed BOUNDS a solid. Through an OPEN mesh it is exactly backwards: a
+// segment down a tube's bore crosses the open wall twice and is inside no
+// metal at all, which is what a bore is FOR.
+//
+// Measured, and it is not hypothetical: `hourTube` carries 8 boundary edges,
+// and with the witness ungated `meshClearance(alarmDisc ExtrudeGeometry#20,
+// hourTube)` returned 0.0000 for two bodies standing 2.760 u apart radially
+// about the tube's own axis. That is the same failure CLAUDE.md already
+// records for the PARITY raycast ("An OPEN mesh reads as a colliding one",
+// TODO 27's family) — the segment form inherits it, because both arguments
+// rest on the same premise.
+//
+// So the witness runs only where its premise holds. Elsewhere the behaviour
+// is exactly what it was before TODO 95, which is the conservative direction:
+// a pass-through through an open mesh goes back to being invisible rather
+// than becoming a false contact.
+//
+// !! INCOMPLETE — DO NOT READ THIS AS CLOSING THE HOLE. Measured with the
+// guard in place, `alarmDisc ExtrudeGeometry#20 ⇄ hourTube` STILL reports
+// 0.0000 against a true separation of 2.760 u. It fires on the direction
+// where src is the OPEN hourTube and dst is the CLOSED part — the half this
+// guard permits — and that should be impossible: the longest edge on that
+// tube is a cap radius of ~2.5, shorter than the gap it would have to reach
+// across, let alone cross twice. Requiring BOTH sides closed does suppress
+// it, but it also loses the genuine `alarmPusherStem ⇄ alarmPusherReturnSpring`
+// graze (the stem is open, the spring closed), so that is a bigger hammer than
+// the defect and not the answer.
+//
+// The next diagnostic is to print the crossing distances for that direction
+// and find how a <=2.5 u segment registers two crossings against a surface
+// 2.76 u away. Two suspects, in order: `_mat` is a MODULE-LEVEL temp shared
+// with the point-sampling loop above, so a re-entrant use would silently
+// transform the edge into the wrong frame; and `tree.raycast(ray, side, 0,
+// len)`'s `far` argument may not bound hits the way this code assumes.
+//
+// EDGES ARE KEYED BY POSITION, NOT INDEX. three.js duplicates vertices per
+// face for normals, so an index-keyed count calls a plain BoxGeometry open —
+// measured, 12 triangles and 24 "boundary" edges, which is impossible. That
+// mistake would disable the witness everywhere and look like a fix.
+const _closedCache = new WeakMap();
+function boundsASolid(geom) {
+  let v = _closedCache.get(geom);
+  if (v !== undefined) return v;
+  const pos = geom.attributes.position, idx = geom.index;
+  const n = idx ? idx.count : pos.count;
+  const at = (t) => (idx ? idx.getX(t) : t);
+  const key = (i) => `${pos.getX(i).toFixed(5)}_${pos.getY(i).toFixed(5)}_${pos.getZ(i).toFixed(5)}`;
+  const edge = new Map();
+  for (let t = 0; t + 2 < n; t += 3) {
+    const k = [key(at(t)), key(at(t + 1)), key(at(t + 2))];
+    for (let e = 0; e < 3; e++) {
+      const a = k[e], b = k[(e + 1) % 3];
+      if (a === b) continue;                       // degenerate sliver
+      const kk = a < b ? `${a}|${b}` : `${b}|${a}`;
+      edge.set(kk, (edge.get(kk) || 0) + 1);
+    }
+  }
+  v = true;
+  for (const c of edge.values()) if (c !== 2) { v = false; break; }  // manifold: every edge shared by exactly 2 faces
+  _closedCache.set(geom, v);
+  return v;
+}
+
 const _pierceRay = new THREE.Ray(), _pierceDir = new THREE.Vector3();
 const _pe0 = new THREE.Vector3(), _pe1 = new THREE.Vector3();
 function segmentPierces(tree, box, p0, p1) {
@@ -1500,7 +1566,9 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
     if (inside) return { inside: true, d: 0 };
     // TODO 95 — the pass-through witness, run only once point sampling has
     // failed to find anything, so the common case pays nothing for it.
-    if (idx) {
+    // Gated on the DST surface bounding a solid — see boundsASolid. src may be
+    // open; what the argument needs is that the thing being crossed is closed.
+    if (idx && boundsASolid(dst.geometry)) {
       for (let t = 0; t < idx.count && !inside; t += 3) {
         for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
           _pe0.fromBufferAttribute(pos, idx.getX(t + i0)).applyMatrix4(_mat);
