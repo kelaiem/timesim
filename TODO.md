@@ -11012,6 +11012,20 @@ showed:
    said before, and no longer a coincidence, because `main.js` asserts the
    built blank against it.
 
+**A third defect, found after this item was closed and fixed in the same
+landing.** Reported by eye — *"the tail has one part that is impossibly
+thin"* — and measured: the fork's outline CROSSED ITSELF, five times before
+any of this work and twice after the blank's first cut, because the slot
+(`notchHW` = t·0.7) was broached across a station where the bar (`leverHW` =
+t·0.6) was narrower than the slot. Not this item's doing and not its scope as
+filed, but the same metal, so it is closed here rather than deferred: the fork
+end now flares to `notchHW + leverHW` before the slot begins, on the
+constraint that the two horns together are as thick as the bar they continue.
+§174 carries the measurement. What it costs this file to record is a warning
+about item 78's instrument: `slenderness` reads a mesh's length against its
+section as a WHOLE, so it cannot see a local pinch, and `Pallet fork` never
+appeared in its over-ceiling rows at all.
+
 **Residue, named rather than absorbed.** In XY the bevel still dilates the
 authored outline outward, so the blank is wider than the shape it was cut from
 — TODO 84's class, general to the movement, and left alone on purpose: closing

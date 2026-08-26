@@ -996,7 +996,36 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // circle here — the same join the arms use below, which is what makes the
   // tail and the arms one family of member rather than two.
   const yJoin = -Math.sqrt(Math.max(bossR * bossR - leverHW * leverHW, 0));
-  const yWaist = (yJoin + forkTop) / 2;        // mid-length
+
+  // THE FORK END, and the impossible geometry it used to be cut with.
+  // Eye-reported as "the tail has one part that is impossibly thin", and it
+  // was thinner than that: the outline CROSSED ITSELF, five times in the
+  // pre-TODO-98 build and twice after the blank's first cut.
+  //
+  // The cause is one comparison. The notch is `notchHW` = t·0.7 half-wide and
+  // its closed end sits at `forkTop + 0.9·t`; the lever is `leverHW` = t·0.6
+  // half-wide, and the horns only flared BELOW `forkTop`. So the slot was
+  // broached across a station where the bar was NARROWER than the slot — the
+  // walls it was supposed to leave had negative thickness, and the outline
+  // inverted through itself at (−0.9274, −8.0514). Nothing could see it:
+  // `slenderness` measures a mesh's length against its section as a whole and
+  // reads no local pinch, and a self-intersecting outline still triangulates.
+  //
+  // The fix is the constraint that was missing: THE FORK END IS NOT A WEAK
+  // POINT. Each horn's wall carries at least the lever's own half-section, so
+  // the two horns together are exactly as thick as the bar they continue, and
+  // the outline at the notch's closed end stands at `notchHW + leverHW`. The
+  // flank flares into that point directly — one curve from boss to fork end,
+  // rather than a flank that stopped at `forkTop` and left the slot hanging
+  // outside it. Every kinematic surface is untouched: the notch walls are
+  // still at ±notchHW, its closed end is still the V through
+  // `forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, and the horn
+  // tips and `forkY` are where they were. `forkTop` stays what it always
+  // was — a datum for those, not a vertex of the silhouette.
+  const notchTopY = forkTop + t * 0.9;         // where the slot's walls begin
+  const hornWall = leverHW;                    // see above: the horns are the bar
+  const mouthHW = notchHW + hornWall;          // outline at the slot's closed end
+  const yWaist = (yJoin + notchTopY) / 2;      // mid-length
 
   // -------------------------------------------------------------------------
   // Ruby pallet stones — REAL construction: each stone is a leaning
@@ -1192,13 +1221,14 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
 
   const s = new THREE.Shape();
   s.moveTo(joinL.x, joinL.y);
-  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // waisted lever, left flank
+  s.quadraticCurveTo(-waistHW, yWaist, -mouthHW, notchTopY); // waisted lever flaring into the fork end
   s.lineTo(-forkHW, forkY + t * 0.15); // left horn outer
   s.lineTo(-notchHW - t * 0.15, forkY); // left horn tip
-  s.lineTo(-notchHW, forkTop + t * 0.9); // notch inner left
-  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // notch floor
+  s.lineTo(-notchHW, notchTopY); // notch inner left
+  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, notchTopY); // notch floor — the V at forkTop + 0.7t
   s.lineTo(notchHW + t * 0.15, forkY); // right horn tip
   s.lineTo(forkHW, forkY + t * 0.15); // right horn outer
+  s.lineTo(mouthHW, notchTopY); // right side of the fork end — the mirror of the left
   s.quadraticCurveTo(waistHW, yWaist, joinR.x, joinR.y); // waisted lever, right flank (up)
   let at = leverRight;
   for (const arm of arms) {
@@ -1242,6 +1272,36 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // Replaces the old four-corner check on the head blocks, which could not see
   // the belly it shared a part with; the belly is what used to sweep through
   // the teeth (§16).
+  // THE OUTLINE MUST NOT CROSS ITSELF. A self-intersecting shape still
+  // triangulates, still extrudes, still renders, and every gate in the
+  // battery passes it — the fork carried five crossings for as long as it has
+  // existed and only an eye caught them. This is the cheap check that says so
+  // at build: every pair of non-adjacent edges of the sampled outline.
+  {
+    const X = (p1, p2, q1, q2) => {
+      const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+      const d2x = q2.x - q1.x, d2y = q2.y - q1.y;
+      const den = d1x * d2y - d1y * d2x;
+      if (Math.abs(den) < 1e-14) return null;
+      const tt = ((q1.x - p1.x) * d2y - (q1.y - p1.y) * d2x) / den;
+      const uu = ((q1.x - p1.x) * d1y - (q1.y - p1.y) * d1x) / den;
+      return (tt > 1e-9 && tt < 1 - 1e-9 && uu > 1e-9 && uu < 1 - 1e-9)
+        ? { x: p1.x + tt * d1x, y: p1.y + tt * d1y } : null;
+    };
+    const n = pts.length;
+    let crossings = 0, first = null;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        const hit = X(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n]);
+        if (hit) { crossings++; if (!first) first = hit; }
+      }
+    }
+    if (crossings)
+      console.warn('pallet blank: the outline crosses itself', crossings, 'time(s), first at',
+        `${first.x.toFixed(4)},${first.y.toFixed(4)}`);
+  }
+
   {
     let worst = Infinity, worstAt = null;
     for (let i = 0; i < pts.length; i++) {

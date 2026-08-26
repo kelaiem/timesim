@@ -15048,6 +15048,54 @@ and TODO 4 measured the inside-out castellations moving no AABB and no
 clearance verdict, so the fingerprint cannot key an incremental scheme. A
 `meshIntegrity` fix moves triangles and no bounding box at all.
 
+### The fork end was cut across itself, and had been for as long as it existed
+
+Reported by eye after the blank landed — *"the tail of the disk has one part
+that is impossibly thin"* — and it was thinner than that: **the outline
+CROSSED ITSELF.** Measured off `userData.blankOutline`, the blank's first cut
+carried two self-intersections and a station **0.1339** wide at
+(−0.700, −6.669); a worktree at the commit before any of this work, with a
+one-line outline export patched in, carried **five**, including the identical
+crossing at **(−0.9274, −8.0514)**. So it is not a regression from the
+one-blank re-cut — that re-cut removed three of the five by accident, when
+dropping a vertex changed the right flank, which is also why the tail came out
+asymmetric. The defect is as old as the part.
+
+**The cause is one comparison.** The slot is `notchHW` = t·0.7 half-wide and
+its closed end sits at `forkTop + 0.9·t`; the lever is `leverHW` = t·0.6
+half-wide, and the horns only flared BELOW `forkTop`. So the slot was broached
+across a station where the bar was NARROWER than the slot — the walls it was
+meant to leave had negative thickness, and the outline inverted through itself.
+
+**Nothing in the bar could see it, and it is worth being precise about why.**
+`slenderness` measures a mesh's length against its section AS A WHOLE, so a
+local pinch does not register and `Pallet fork` never appeared in its
+over-ceiling rows at all. And a self-intersecting outline triangulates,
+extrudes, welds and renders like any other: all 35 gates passed it before the
+one-blank work and all 35 passed it after.
+
+**The fix is the constraint that was missing: the fork end is not a weak
+point.** Each horn's wall carries at least the lever's own half-section
+(`hornWall = leverHW`), so the two horns together are exactly as thick as the
+bar they continue, and the outline at the slot's closed end stands at
+`notchHW + leverHW`. The flank flares into that point directly — one curve
+from boss to fork end, instead of a flank that stopped at `forkTop` and left
+the slot hanging outside it. Every kinematic surface is untouched: the notch
+walls are still at ±`notchHW`, its closed end is still the V through
+`forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, and the horn tips
+and `forkY` are where they were. `forkTop` goes back to being what it always
+was, a datum for those rather than a vertex of the silhouette.
+
+Measured after: **0 self-intersections**, the two sides symmetric at 0.6951,
+and the tail is no longer the thinnest thing in the part — the arm heads'
+walls around their slots are, at 0.5762, which is `wallW` doing its job.
+
+**Two guards, because "an eye caught it" is not a control.** A build-time
+assert over every non-adjacent pair of the sampled outline, and the same test
+as a gate in `probe-fork-blank.mjs`. The lesson generalises past this part: a
+builder that cuts a slot into a member has to be asked whether the member is
+wide enough to hold it, and no sweep in the battery asks that.
+
 ### Instruments
 
 Battery green on the landing head, `meshIntegrity` included (`cost: 10`;
@@ -18522,7 +18570,8 @@ block's own.
 ### Instruments
 
 `tools/probe-fork-blank.mjs` was the REPORT that TODO 98 was written from and
-is the ACCEPTANCE test now. It gates five things: the fork's own metal is one
+is the ACCEPTANCE test now. It gates six things — first that the cut outline
+does not cross itself, then five about the metal: the fork's own metal is one
 solid; that solid has one z-height; the height is `FORK_T` (the chamfer came
 out of the stock); the built top equals `L_FORK + FORK_HALF_Z` to float noise;
 and the balance rim clears it by exactly `CLEAR_MARGIN`. Beside them it holds

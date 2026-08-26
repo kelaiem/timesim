@@ -72,6 +72,11 @@ const out = await page.evaluate(async () => {
   // because draw rotates both stones in the wheel's sense rather than
   // mirroring them. Read from the meshes rather than from a userData export,
   // so it measures the metal.
+  // The blank's own cut outline, exported by the builder (MODELING.md rule 1).
+  let outline = null;
+  clock.labelEntries.find((e) => e.name === 'Pallet fork').obj
+    .traverse((o) => { if (o.userData && o.userData.blankOutline) outline = o.userData.blankOutline; });
+
   const forkObj = clock.labelEntries.find((e) => e.name === 'Pallet fork').obj;
   forkObj.updateWorldMatrix(true, true);
   const inv = new THREE.Matrix4().copy(forkObj.matrixWorld).invert();
@@ -111,7 +116,7 @@ const out = await page.evaluate(async () => {
     bossToBalance: +bossToBalance.toFixed(4),
     L_FORK: L.L_FORK, FORK_T: L.FORK_T, L_BALANCE: L.L_BALANCE,
     CLEAR_MARGIN: L.CLEAR_MARGIN, RIM_H: L.RIM_H, FORK_HALF_Z: L.FORK_HALF_Z,
-    stones,
+    stones, outline,
   };
 });
 await browser.close(); srv.kill();
@@ -180,7 +185,37 @@ if (out.stones.length === 2) {
     + `(a pure mirror sums to 180°; 2·DRAW_DEG = ${2 * DRAW_DEG}° is the draw)`);
 }
 
-// --- the four conditions TODO 98 closed, as a gate ---------------------------
+// A CUT OUTLINE DOES NOT CROSS ITSELF. The fork's did — five times before
+// TODO 98, twice after the blank's first cut — because the slot was broached
+// across a station where the bar was narrower than the slot. A self-crossing
+// shape triangulates, extrudes and renders like any other, and every gate in
+// the battery passed it; only an eye caught it. So it is measured here.
+function crossings(poly) {
+  const n = poly.length, hits = [];
+  const hit = (p1, p2, q1, q2) => {
+    const d1x = p2[0] - p1[0], d1y = p2[1] - p1[1];
+    const d2x = q2[0] - q1[0], d2y = q2[1] - q1[1];
+    const den = d1x * d2y - d1y * d2x;
+    if (Math.abs(den) < 1e-14) return null;
+    const t = ((q1[0] - p1[0]) * d2y - (q1[1] - p1[1]) * d2x) / den;
+    const u = ((q1[0] - p1[0]) * d1y - (q1[1] - p1[1]) * d1x) / den;
+    return (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9)
+      ? [p1[0] + t * d1x, p1[1] + t * d1y] : null;
+  };
+  for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
+    if (i === 0 && j === n - 1) continue;
+    const x = hit(poly[i], poly[(i + 1) % n], poly[j], poly[(j + 1) % n]);
+    if (x) hits.push({ i, j, at: x.map((v) => +v.toFixed(4)) });
+  }
+  return hits;
+}
+const xs = out.outline ? crossings(out.outline) : null;
+console.log(`\nOUTLINE: ${out.outline ? out.outline.length : '?'} points, `
+  + `${xs ? xs.length : '?'} self-intersection(s)`);
+for (const h of (xs || []).slice(0, 6))
+  console.log(`   edge ${h.i} x edge ${h.j} at ${h.at.join(', ')}`);
+
+// --- the conditions TODO 98 closed, as a gate --------------------------------
 // A report saying `1 steel solid` has not passed anything; these have.
 const fails = [];
 if (blank.length !== 1)
@@ -202,6 +237,11 @@ if (Math.abs(margin - out.CLEAR_MARGIN) > 1e-6)
 // to the last bit or something has stopped being one rule.
 if (!(seatSkew < 1e-9))
   fails.push(`the two stone seats are not mirror images — residual ${seatSkew}`);
+if (!out.outline)
+  fails.push('the builder exported no blankOutline — the outline cannot be judged');
+else if (xs.length)
+  fails.push(`the cut outline crosses itself ${xs.length} time(s), first at `
+    + `${xs[0].at.join(', ')}`);
 if (!(Math.abs(leanSum - 180 - 2 * DRAW_DEG) < 1e-9))
   fails.push(`the two leans break the mirror by ${(leanSum - 180).toFixed(4)}°, `
     + `not by 2·DRAW_DEG = ${2 * DRAW_DEG}°`);
