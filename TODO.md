@@ -10540,6 +10540,59 @@ second job, the visible ON/OFF flag, is already done by the lock beak and the
 link beak, and a third rider carrying no force is a part that exists only to be
 looked at — here, the source of three false declarations.
 
+### §173's LINE SPEC, solved before any metal moved
+
+Derived from the saw's own cut polygon (`tools/probe-90-click.mjs`'s source, the
+same `ratchetPoly` the teeth were made from), so every row below is a
+consequence of geometry that already exists:
+
+| the saw, measured | |
+|---|---|
+| teeth | 12 — one per index step, which is the whole point |
+| tip / root circle | 6.384 / 5.13, depth 1.254 |
+| pitch | 30° = 3.3427 of arc at the tip circle |
+| drive flank | **0.00° off radial** — a true cliff |
+| ride flank | **66.21° off radial** — the long ramp |
+
+**The tip radius is solved, not chosen**, from *"located by the FLANKS, not by
+the tooth space's floor"* — a jumper that bottoms is positioned by the root
+circle and loses the wedging that makes it a detent:
+
+```
+(seat radius − tip radius) − rootR  >=  CLEAR_MARGIN     →   rTip = 0.7566
+```
+
+| the jumper, derived | |
+|---|---|
+| tip radius | 0.7566 (⌀ 0.57 mm — real jumper-tip scale) |
+| seat / crest (tip centre) | 6.0366 / 6.7061, **lift 0.6695** |
+| tip's lowest point | 5.28 — one `CLEAR_MARGIN` over the root floor |
+| engagement below the tips | 1.104 |
+| `dr/dθ` leaving the seat, forward | **1.905** — the ramp; this is what a press pays |
+| `dr/dθ` leaving the seat, backward | **53.51** — the cliff; **28.1× steeper** |
+
+**That asymmetry is the design, not a curiosity.** The restoring torque is
+`F_spring × dr/dθ`, so against the direction the pawl's return drags the wheel
+the jumper meets a face 0.00° off radial: there is no radial component to cam it
+out, and the wheel cannot be un-indexed backward *at all*. §163's assert —
+*"because a return that drags the wheel back un-indexes it"* — stops being a
+numerical argument and becomes a structural impossibility. Forward, the ramp
+lets the wheel index at a cost that lands inside `SELECTOR_DETENT_WINDOW_MN`.
+
+**The spring is a TORSION COIL on the jumper's own post**, §169's pattern rather
+than a blade: coaxial with the pivot, so there is no bear station to mis-place
+and no anchor to leave standing in air — which is what produced finding 3's
+items 2 and 3. It also carries a real PRELOAD at the seat, where the old click's
+own comment concedes *"no preload is built, so the seated floor is 0"*.
+
+**One coupling the deletion exposes, found before cutting.**
+`ALARM_CLICK_NOSE_R` is passed to `makeColumnWheel` as `riderNoseR`, and TODO 28
+used it to derive the castellations' FLAT TOP width — so the click's ball
+currently sets a feature of the wheel that the LINK BEAK stands on. Deleting the
+click orphans that derivation. The flat top must therefore be re-sourced from
+the rider that actually uses it (the link beak's nose footprint), not left
+citing a part that no longer exists. That is part of §173, not a follow-on.
+
 Ships as §173. Retires with it: the two `INTRA_UNIT_CONTACTS` rows above, the
 `switchClickArm` restoring declaration, and TODO 63's over-strain entry for this
 blade (the blade ceases to exist). `ALARM_CLICK_FLANK_MN` is REPLACED, not
