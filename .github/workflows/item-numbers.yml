@@ -1,0 +1,55 @@
+# Item numbers — the gate for TODO.md items and docs/BUILT.md sections.
+#
+# Its own workflow rather than a battery step, for explain-i18n.yml's reasons:
+# it runs in well under a second against the battery's ~13 minutes, and it
+# reads two markdown documents, which the battery deliberately ignores
+# (paths-ignore lists them precisely because they cannot move the built scene).
+# A numbering mistake should not wait behind the sweeps, and the sweeps have no
+# business judging prose.
+#
+# What failing means:
+#   * an item is new on this branch and unclaimed — run the allocator; it reads
+#     every ref it can see, which `max + 1` on your branch does not.
+#   * this branch's number is used for a DIFFERENT item on main — the other
+#     branch merged first, so there is no add/add conflict left to find and
+#     this is the only place the collision still shows. Renumber and move the
+#     cross-references.
+#   * a number appears twice in TODO.md — every citation to it is ambiguous.
+#
+# The base ref is fetched explicitly: the check refuses to run without it
+# rather than treating every number as new, which would either pass vacuously
+# or demand a claim for all 229.
+name: Item numbers
+
+on:
+  pull_request:
+    paths:
+      - 'TODO.md'
+      - 'docs/BUILT.md'
+      - 'docs/item-numbers/**'
+      - 'tools/check-item-numbers.mjs'
+      - 'tools/claim-item.mjs'
+      - '.github/workflows/item-numbers.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'TODO.md'
+      - 'docs/BUILT.md'
+      - 'docs/item-numbers/**'
+      - 'tools/check-item-numbers.mjs'
+      - 'tools/claim-item.mjs'
+
+jobs:
+  item-numbers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the gate compares against the base's history
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Fetch the base
+        run: git fetch --no-tags origin main:refs/remotes/origin/main || git fetch --no-tags origin main
+      - name: Check item numbers
+        run: node tools/check-item-numbers.mjs --base origin/main

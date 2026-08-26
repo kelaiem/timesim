@@ -727,10 +727,35 @@ built rather than only marking it BUILT — then move the whole section from
 the private roadmap repo into `docs/BUILT.md` here, which is the public
 record; a plan left describing an abandoned approach is worse than no plan.
 
-**§ numbers are permanent IDs.** Never reuse or renumber them: source
-comments cite shipped sections as `BUILT §N` (`src/main.js`, `src/state.js`,
-`src/inspect.js`), and a duplicate number silently breaks those references.
-A new entry takes `max(§ in the roadmap repo, § in docs/BUILT.md) + 1`.
+**§ numbers and `TODO.md` item numbers are permanent IDs, and they are
+CLAIMED, not counted.** Never reuse or renumber them: source comments cite
+shipped sections as `BUILT §N` (`src/main.js`, `src/state.js`,
+`src/inspect.js`), `TODO.md` cross-references items by number, and commit
+messages cite both — so a duplicate silently breaks every one of those
+references.
+
+The old rule was `max(§ in the roadmap repo, § in docs/BUILT.md) + 1`, and
+**it cannot work with more than one branch open**: each branch reads the same
+max, neither can see the other's claim, and nothing detects the collision
+until long after both are written. That is not hypothetical — `main` merged a
+column-wheel audit as TODO 90 while `fix/case-openings` carried a band-bore
+item also numbered 90, filed a day earlier; and two branches were on §173 at
+once. Both sides followed the rule correctly.
+
+Allocate with the tool instead, which reads every ref it can see rather than
+the one you have checked out:
+
+```bash
+node tools/claim-item.mjs --namespace TODO --title "What it actually does"
+```
+
+It writes `docs/item-numbers/<NS>-NNNN.md` — one file per number, so two
+branches claiming the same number create the same PATH and git reports an
+add/add conflict, while different numbers merge silently. That file is the
+reservation; the item's content still lives in `TODO.md` / `docs/BUILT.md`.
+`tools/check-item-numbers.mjs` gates it in `item-numbers.yml` (the hook only
+warns — see `docs/item-numbers/README.md` for why, and for the residue the
+scheme does not cover).
 
 `BACKLOG.md` must never be committed here — `.gitignore` excludes it and
 `.githooks/pre-commit` hard-fails on it. Enable the hook once per clone:
