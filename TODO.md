@@ -17,7 +17,6 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 91 | OPEN | The pallet fork is six abutting steel solids where a Swiss lever is one blank — **four z-heights for one plate** (1.200/1.392/1.488/1.560, per-side joint steps to 0.180 against `CLEAR_MARGIN` 0.15), and with it a FALSE derivation: `L_BALANCE` reserves the fork's top at `L_FORK + FORK_T/2` = 5.5079 while the boss reaches **5.6879**, putting the balance rim's underside 0.0300 *below* the metal — held apart only by a swept lateral 0.6001 nothing derives. The two arms differ by 12.2% in length and relate to the body two different ways (0.0000 vs 0.9078), and the body outline still draws the arm region a second time as a pre-§16 belly. Every gate is green on it: `assembly` asks connectivity, not integrity, and does not scope the fork; `intraUnit` sees one frame; the pair sweeps cannot look inside a unit. `tools/probe-fork-blank.mjs` reports all of it |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Finding 1 is MEASURED: `alarmLockBeakRiser` passes through the ratchet skirt's band (0.6167 of shared z) with its axis **0.2144 inside** the polygon the teeth were cut from (0.14 at rest, the SAME at both parities — it sits in the teeth rather than moving through them, so the repair is radial: 6.674 needed against 6.15 built, by §163's own post derivation) — invisible because `Alarm lock ⇄ Alarm switch` is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, which is TODO 6's named residue arriving as a real defect. Four more questions filed unmeasured: whether the suppressor's hold is a modelled friction brake or a posed angle, the three riders' contacts priced as §137 rows against the column's own drive torque, whether the selector ring's detent exists as metal, and the riser class (`alarmLinkBeakPost` reads 0.0929 to the skirt) |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
@@ -77,6 +76,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 82 | CLOSED | The pusher→ring stall had been written down four times (1.5 / 1.6 / 48 / 3.3 mN) and never computed. Two errors, same direction: the stroke every figure used was **`ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `main.js` deletes as "referenced nowhere, and wrong"** (measured 0.09932 u = 0.0376 mm, 4.2× smaller, taken two ways that agree to five decimals); and "in series" was implemented as a **minimum** over members charged against different strokes, where compliances add as `n²/k` reflected to the ring. Computed: **k_eff 21.89 N/m, stall 1.58 mN** — ROD-END-limited, an order of magnitude BELOW the 5–50 mN band, restoring TODO 16's original verdict and refuting §137 Landing 2's 48 mN. The rod-end overhang is **72.4%** of the compliance; the fork-end the section was sized against is **0.1%**. `tools/probe-82-alarm-stall.mjs` |
 | 88 | OPEN | All — the design is written in the item: derive `SET_BACKLASH` from the setting chain's mesh backlash and make the setting-time step the spring's equilibrium over the real V, replacing the `Math.round`; step 1 (the click spring's detent-force arithmetic, P1) stands alone. Roadmap §4 keeps the WHEN half and the word |
 | 89 | PART DONE | The zero-movement half LANDED (fingerprint unmoved): four constants derived or named, the garbled `STAR_R` fragment gone, and two of the three promised asserts written and proven to fire — the third (valley seat) REFUSED as tautological, the lifter plane collapsed from three copies to one name. Two defects the measurements found: the jumper's station is **326°, not the 320°** everything claimed (§136's tooth-spec re-derivation silently re-sited it), and the detent latches at `crownPullT > 0.5` while the beak only reaches the star at **0.863** — quantizing the display across ~36% of the pull with the jumper out of contact. Remains: that engage fix (its assert lands with it), the movement-risking constants, the three unseeded floors pairs, and the ungated explain number |
+| 91 | CLOSED (§174) | The fork is ONE blank of ONE thickness, lapped to `FORK_T` overall — the chamfer comes out of the stock instead of standing proud of it, which is what made the part 1.488 thick while `L_BALANCE` read 1.2. `FORK_HALF_Z` is a declaration in layout.js now and `main.js` asserts the blank against it, so the rim's 0.15 is the margin that exists. The belly is gone and its wheel-clearance bound became a build-time check over every extruded vertex, mitered, asking `CLEAR_MARGIN` instead of a hand-set 0.1. Two things the plan got wrong are written into the item: exact mirror arms cost 0.2361 of head width reaching at the wheel to hide the draw, and raising the balance to meet the fat blank threw six §47 warnings in the arrest — the builder was wrong, not the constant |
 
 Closed in place, text kept as the record: 1 (torque became item 32), 3,
 9, 10, 13, 14, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27 (closed with a
@@ -10804,7 +10804,7 @@ and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
 each offender's unit, and `probe-colwheel-id` identifies them — geometry,
 material, parent chain, whether they are NAMED, and per-parity behaviour.
 
-## 91. The pallet fork is an assembly of six abutting solids where the metal is one blank
+## 91. The pallet fork is an assembly of six abutting solids where the metal is one blank — CLOSED (§174)
 
 Eye-reported 2026-08-26: *"the pallet fork looks like different shapes were
 squashed together haphazardly."* It is — and measuring the complaint turned up
@@ -10948,23 +10948,79 @@ pin the only separate solids. Concretely:
 
 ### Acceptance
 
-- `tools/probe-fork-blank.mjs` ships with this item as a REPORT — it prints the
-  member census, the z-heights, the derivation comparison and the arm figures,
-  and judges nothing. The FIX adds the acceptance form beside it: the fork's
-  steel is **one** solid plus stones and guard pin; **one** z-height across the
-  blank; the two arms agree to float noise under reflection about the lever
-  axis; and the blank's true top equals what `layout.js` derives `L_BALANCE`
-  from. A report saying `6 steel solids` has not failed anything — that is the
-  split `tools/INDEX.md` carries, and this item is on the reporting side of it
-  until the fix lands.
+- `tools/probe-fork-blank.mjs` shipped with this item as a REPORT — the member
+  census, the z-heights, the derivation comparison and the arm figures, judging
+  nothing, because a report saying `6 steel solids` has not failed anything.
+  **§174 turned it into the acceptance form**, and what it gates is five
+  things: the fork's steel is one solid beside the stones and the guard dart;
+  one z-height across the blank; that height is `FORK_T`, the chamfer taken out
+  of the stock rather than standing proud of it; the built top equals
+  `L_FORK + FORK_HALF_Z`; and the balance rim clears it by exactly
+  `CLEAR_MARGIN`. **This bullet asked for a sixth that was wrong** — "the two
+  arms agree to float noise under reflection about the lever axis." They do not
+  and should not; see correction 1 below. What is gated in its place is the
+  relation that is actually true: the seats mirror exactly (residual 0.000000)
+  and the leans break that mirror by exactly 2·DRAW_DEG (24.000°).
 - Boot silent — the existing `pallet stone: …` and `pallet arm: steel within
   the wheel sweep` asserts must still hold on the re-cut outline, and the
   wheel-clearance bound of finding 4 joins them.
 - Full battery clean per standing rule 4; `--report` diffed against the base,
   since the `Escape wheel ⇄ Pallet fork` and `Pallet fork ⇄ Balance` rows will
   move even where the gates stay empty.
-- `docs/BUILT.md` §16's account of the fork is edited in place to describe the
-  blank, not the assembly.
+- The fork's account is edited in place to describe the blank, not the
+  assembly. §16 turned out to have no `docs/BUILT.md` section — it lives only
+  as source comments, which is where the edit went; the landing's own record
+  is §174.
+
+### CLOSED by §174 — what was built, and where this item was wrong
+
+The blank is one closed outline: down the lever's waisted left flank, round the
+fork end, up the right flank, then the boss arc and the two arms with their
+broached heads. Six steel solids became one, four z-heights became one, and
+every kinematic vertex — horn tips, notch walls, the notch floor at
+`forkTop + 0.7·t`, the `forkTop`/`forkY` anchors, both stone seats — is an
+output of a solve that still runs exactly as it did.
+`tools/probe-fork-blank.mjs` stopped being a report and became the acceptance
+test for it.
+
+**Two things this item proposed and §174 did not do**, recorded here rather
+than quietly dropped, because both were wrong for reasons only building them
+showed:
+
+1. **Repair step 2 asked for mirror-image arms.** It should not have. The
+   zero-draw frame `f0` and both seats ARE exactly mirror-symmetric — the gate
+   holds them to the last bit — and draw then rotates both stones in the
+   wheel's own sense, so the two leans differ from that mirror by exactly
+   2·DRAW_DEG. That is the one asymmetry a lever escapement really has.
+   Holding a leaned slot inside an unleaned block needs the head **0.2361
+   wider** (derived from where the rotated slot's corners land), all of it on
+   the side that reaches toward the wheel — steel spent to hide a real
+   asymmetry. The arms come from one rule applied with sigma instead; what
+   differs between them is the draw. Finding 3's DEFECT is still closed: the
+   0.0000-vs-0.9078 split and the aimed boxes are gone because there are no
+   separate members left to relate two ways.
+2. **Repair step 4 asked for `L_BALANCE` to be re-derived from the blank's
+   reach.** Done — but not in the direction this item assumed. Declaring
+   `FORK_HALF_Z = FORK_T·(0.5 + FORK_BEVEL_FRAC)` and letting the balance rise
+   0.144 to meet the metal threw **six §47 boot warnings** in the mainspring
+   arrest: the balance carries the hairspring stack, the stack is the
+   three-quarter plate's binding member, and the plate carries the arrest. The
+   parameter is called `thickness` and every consumer read it as the finished
+   part, so the BUILDER was wrong: `bevelThickness` stands proud at both faces,
+   and the extrude now gets `FORK_T − 2·bevel` so the lapped blank measures
+   exactly `FORK_T`. `FORK_HALF_Z` = `FORK_T/2` — arithmetically what the file
+   said before, and no longer a coincidence, because `main.js` asserts the
+   built blank against it.
+
+**Residue, named rather than absorbed.** In XY the bevel still dilates the
+authored outline outward, so the blank is wider than the shape it was cut from
+— TODO 84's class, general to the movement, and left alone on purpose: closing
+it for the fork alone would move the notch walls the impulse pin runs in. The
+stone and the blank are still two meshes of one unit, so their seat remains
+TODO 5's fixture-pair residue; `gGap = bevel + SEAT_SHOW` is what guards it,
+reading the blank's one bevel now instead of a head block's own. And the
+"Not in scope" paragraph below still stands untouched — the guard pin has no
+dart and nothing measures a horn-to-pin contact.
 
 **Not in scope**, so that it is not silently absorbed: the guard pin is a
 cylinder with no dart and no matching crescent on the safety roller, and the
