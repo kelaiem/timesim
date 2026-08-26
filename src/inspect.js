@@ -2432,6 +2432,24 @@ export const INTRA_UNIT_CONTACTS = [
   // it as a group. Of the four, three lap the post and the fourth clears it by
   // 0.3211 — covered by the same row, which is the fork lapping its post.
   { unit: 'Alarm selector', a: 'alarmSelTab', b: 'alarmSelPost1', why: '§121: the fork block lapped on the selector\'s first guide post — measured 0.0000 on three of its four meshes, the fourth clear at 0.3211' },
+  // The three guide stations, one row each — the ring's boss reaching its own
+  // post. TODO 95/94's pass-through witness is what made these visible: the
+  // boss is a solid box and the post runs THROUGH it, so no vertex or edge
+  // midpoint of either lands in the other's metal and point sampling saw
+  // nothing. They are joints, not fouls, and were triaged as such rather than
+  // assumed — over the whole pose net each pair's shared volume is CONSTANT
+  // (1296, 1284, 1296 grid points, unchanged across 42 poses) and the shared
+  // centroid sits 0.0016–0.0026 u off the post's own axis, which is a part on
+  // an axis, not a part crossing one.
+  //
+  // What is missing as metal is the bore: the BUSH is modelled (ringGeo 0.15
+  // inner against the post's 0.14, the 0.01 running fit this ring turns on)
+  // but the boss box it sits in was never drilled. That is the same "assembly
+  // modelled as coincident solids" this table exists to name, so it is
+  // declared here rather than cut — cutting it is CSG debt, item 27's family.
+  { unit: 'Alarm selector', a: 'alarmSelBoss1', b: 'alarmSelPost1', why: '§121: the ring\'s first guide boss on its own post — the bush is modelled (0.01 running fit), the boss box is the undrilled bore' },
+  { unit: 'Alarm selector', a: 'alarmSelBoss2', b: 'alarmSelPost2', why: '§121: the second guide station, same construction' },
+  { unit: 'Alarm selector', a: 'alarmSelBoss3', b: 'alarmSelPost3', why: '§121: the third guide station, same construction' },
   { unit: 'Alarm selector', a: 'alarmSelForkBracket', b: 'alarmSelPost1', why: '§121: the fork bracket lapped on the same post — the selector\'s two riders share their pivot' },
   // Alarm setting idler — §15's chain:
   { unit: 'Alarm setting idler', a: 'alarmSetIdler', b: 'alarmSetIdler', why: '§121: the i1⇄i2 working mesh (tooth kiss, deep 0) — TODO 15\'s phase solve owns it; both gears carry one name, which is why one row names it twice' },
@@ -2459,6 +2477,11 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm winding arrest', a: 'spiderSideB', b: 'spiderPlanet1', why: '§129: side B on the second planet' },
   { unit: 'Alarm winding arrest', a: 'spiderPlanet0', b: 'spiderStub0', why: '§129: a planet running on its stub pin in the cage — a bearing, not a foul' },
   { unit: 'Alarm winding arrest', a: 'spiderPlanet1', b: 'spiderStub1', why: '§129: the second planet on its stub' },
+  // TODO 95/94: the finger disc on its arbor. Triaged, not assumed — shared
+  // volume CONSTANT at 337–338 grid points across 42 poses, centroid 0.0228 u
+  // off the arbor's axis against its own radius of 0.185. A rotating part ON
+  // its arbor, which this table's header calls what an assembly IS.
+  { unit: 'Alarm winding arrest', a: 'genevaFingerDisc', b: 'alarmArrestFingerArbor', why: '§121: the geneva finger disc on its arbor — concentric fit, the arbor\'s bore uncut' },
   { unit: 'Alarm winding arrest', a: 'spiderCageWheel', b: 'subFingerPinion', why: '§129: the cage\'s wheel driving the Geneva\'s pinion — the ×2 output stage, TODO 15\'s phase solve owns it. The cage IS that wheel: the output cannot leave up the axis, because leg B\'s pinion is concentric with any such tube' },
   { unit: 'Alarm winding arrest', a: 'spiderCageWheel', b: 'alarmArrestArbor', why: '§129: the cage running on the tower\'s arbor — the bearing the whole differential turns on' },
   { unit: 'Alarm winding arrest', a: 'spiderSideA', b: 'spiderCageWheel', why: '§129: side A seated in the cage — a side gear runs inside its own cage, which is what a cage is for' },

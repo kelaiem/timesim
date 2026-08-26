@@ -11778,9 +11778,15 @@ const alarmSelRing = new THREE.Group();
   ring.name = 'alarmSelRing';
   alarmSelRing.add(ring);
   // three guide bosses reaching the posts
-  for (const az of ALARM_SEL_POST_AZ) {
+  for (const [bossIx, az] of ALARM_SEL_POST_AZ.entries()) {
     const dlx = -Math.cos(az), dly = Math.sin(az); // world → dial-local mirror
     const boss = new THREE.Mesh(new THREE.BoxGeometry(ALARM_SEL_POST_R - ALARM_SEL_R_OUT + 0.3, 0.24, ALARM_SEL_T), MATS.nickel);
+    // Named for the same reason the posts are, and with the same index: each
+    // boss rides its OWN post, so a joint row has to be able to say which.
+    // Unnamed, they were `BoxGeometry#1/#3/#5` — a mesh index over a roster
+    // any part added to this unit renumbers, which is the trap §171 named the
+    // lock lever's post to escape.
+    boss.name = `alarmSelBoss${bossIx + 1}`;
     const mid = (ALARM_SEL_R_OUT + ALARM_SEL_POST_R) / 2;
     boss.position.set(dlx * mid, dly * mid, 0);
     boss.rotation.z = Math.atan2(dly, dlx);
