@@ -1,4 +1,4 @@
-// TODO 90 — does the alarm pusher's stem pass through the case wall?
+// TODO 96 (filed as 90; see the renumber note in TODO.md) — does the alarm pusher's stem pass through the case wall?
 //
 // Item 90 currently says no, citing `inspection` "clear at all 65 alarmPress
 // poses". Neither half of that is usable on THIS base:
