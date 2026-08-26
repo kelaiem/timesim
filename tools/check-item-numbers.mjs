@@ -119,13 +119,16 @@ for (const [ns, cfg] of Object.entries(DOCS)) {
       // that collision still shows.
       fail.push(`${cfg.file}: item ${h.n} is "${h.title}" here but "${base.get(h.n)}" on ${BASE}. `
         + `Two different items cannot share one permanent ID — renumber this one `
-        + `(node tools/claim-item.mjs --namespace ${ns} --title "${h.title}") and move its cross-references.`);
+        + `(node tools/claim-item.mjs --namespace ${ns} --title "${h.title}" allocates a free number) `
+        + `and move its cross-references.`);
     }
   }
   for (const n of [...fresh].sort((a, b) => a - b)) {
     const h = here.find((x) => x.n === n);
+    // --number, not bare: the item ALREADY has this number, and the plain
+    // form would allocate the next free one and quietly disagree with it.
     fail.push(`${cfg.file}: item ${n} ("${h.title}") is new on this branch and unclaimed. `
-      + `node tools/claim-item.mjs --namespace ${ns} --title "${h.title}"`);
+      + `node tools/claim-item.mjs --namespace ${ns} --number ${n} --title "${h.title}"`);
   }
   const newCount = here.filter((h) => !base.has(h.n)).length;
   console.log(`  ${cfg.file}: ${here.length} heading(s), ${newCount} new on this branch`);

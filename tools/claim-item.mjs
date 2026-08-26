@@ -3,6 +3,13 @@
 //
 //   node tools/claim-item.mjs --namespace TODO  --title "What it actually does"
 //   node tools/claim-item.mjs --namespace BUILT --title "..."  [--dry-run]
+//   node tools/claim-item.mjs --namespace TODO  --title "..." --number 95
+//
+// --number claims a SPECIFIC number instead of the next one. Two cases need it
+// and neither is exotic: an item written before this scheme existed and now
+// being brought under it, and a renumber, where the whole point is that the
+// item is moving to a number you chose. Without it the checker's own advice —
+// "item 95 is unclaimed, run claim-item.mjs" — hands you 97.
 //
 // WHY THIS EXISTS RATHER THAN "read max + 1 yourself": that is the rule that
 // collided. It reads one branch. This reads every ref it can see — both
@@ -26,6 +33,11 @@ const opt = (k, d) => (argv.includes(k) ? argv[argv.indexOf(k) + 1] : d);
 const NS = (opt('--namespace', 'TODO') || '').toUpperCase();
 const TITLE = opt('--title', '');
 const DRY = argv.includes('--dry-run');
+const WANT = argv.includes('--number') ? Number(argv[argv.indexOf('--number') + 1]) : null;
+if (WANT !== null && (!Number.isInteger(WANT) || WANT < 1)) {
+  console.error(`--number wants a positive integer (got "${argv[argv.indexOf('--number') + 1]}")`);
+  process.exit(2);
+}
 const NO_REMOTE = argv.includes('--no-remote');
 
 const DOCS = {
@@ -80,12 +92,29 @@ if (existsSync(CLAIMS)) for (const f of readdirSync(CLAIMS)) {
 // citations to it can outlive it — CLAUDE.md's rule for § numbers is that they
 // are permanent and never reused. Allocate above the high-water mark.
 const max = taken.size ? Math.max(...taken.keys()) : 0;
-const next = max + 1;
+const next = WANT ?? max + 1;
 const pad = String(next).padStart(4, '0');
 const file = join(CLAIMS, `${NS}-${pad}.md`);
 
 console.log(`${NS}: ${taken.size} number(s) seen across ${refs.length} ref(s), high-water ${max}`);
 if (existsSync(file)) { console.error(`refusing: ${file} already exists`); process.exit(1); }
+
+// A SPECIFIC number is checked, not trusted. Allocating the next one cannot
+// collide by construction; picking one yourself can, so say where it is
+// already spoken for. The exception is the number's OWN document — an item
+// that already carries this number in TODO.md/BUILT.md is exactly the
+// retroactive case --number exists for, so seeing it there is not a conflict.
+if (WANT !== null) {
+  const where = taken.get(WANT);
+  const ownDoc = where === DOCS[NS].file;
+  if (where && !ownDoc) {
+    console.error(`refusing: ${NS} ${WANT} is already taken (${where}).`);
+    console.error(`          Pick another, or drop --number to take ${max + 1}.`);
+    process.exit(1);
+  }
+  if (ownDoc) console.log(`  ${NS} ${WANT} already appears in ${DOCS[NS].file} — claiming it retroactively.`);
+  else console.log(`  ${NS} ${WANT} is free.`);
+}
 if (DRY) { console.log(`would claim ${NS} ${next} → docs/item-numbers/${NS}-${pad}.md`); process.exit(0); }
 
 mkdirSync(CLAIMS, { recursive: true });
