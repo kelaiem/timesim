@@ -9,4 +9,27 @@ if git diff --cached --name-only | grep -qx 'BACKLOG.md'; then
 	echo '            shipped entries move to docs/BUILT.md.' >&2
 	exit 1
 fi
+
+# Item numbers — a WARNING, never a rejection.
+#
+# The temptation is to block a commit whose new TODO.md / BUILT.md heading has
+# no claim file. Deliberately not doing that: .githooks/commit-msg strips
+# session links rather than rejecting them precisely so nobody is trained to
+# reach for --no-verify, which would skip the BACKLOG.md guard directly above.
+# A blocking hook here would build that habit to protect against something CI
+# catches a few minutes later anyway. So this saves you the round trip and
+# nothing more — item-numbers.yml is the gate.
+#
+# Local-only and offline: it compares against origin/main as already fetched,
+# and stays silent if that ref is missing rather than guessing.
+if git diff --cached --name-only | grep -qE '^(TODO\.md|docs/BUILT\.md)$'; then
+	if git rev-parse --verify --quiet origin/main >/dev/null; then
+		if command -v node >/dev/null 2>&1 && [ -f tools/check-item-numbers.mjs ]; then
+			if ! node tools/check-item-numbers.mjs --base origin/main >/dev/null 2>&1; then
+				echo 'pre-commit: item numbers look wrong — committing anyway (CI is the gate).' >&2
+				node tools/check-item-numbers.mjs --base origin/main 2>&1 | sed 's/^/            /' >&2
+			fi
+		fi
+	fi
+fi
 exit 0
