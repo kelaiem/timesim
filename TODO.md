@@ -10654,6 +10654,47 @@ TODO 63's over-strain entry for this blade (the blade ceases to exist).
 re-derived one from a force and a riding radius now read one number — three
 fewer chances to quote a different radius.
 
+**AND THE FOLD WAS WRONG THE FIRST TIME — an owner's eye report, measured.**
+The anchor stud was placed at the three-quarter plate's TOP FACE LEVEL and
+assumed to be standing on it. It was not: at (24.29, −7.82) it stood over the
+balance cutaway, on nothing. **This is §169's own finding reproduced** — that
+section caught a stud in this same cluster hanging over 4.347 of air while an
+`INTRA_UNIT_CONTACTS` row declared it "standing on the driver" — and §173 had
+read that comment and repeated the mistake anyway.
+
+Two things made it invisible. `support` is declared per UNIT, so a single
+floating mesh inside a unit that is otherwise seated passes it in silence; and
+the first raycast written to check it **started just under the foot, i.e.
+INSIDE the plate solid, so front-face culling dropped the only faces it could
+have hit** and reported the plate absent under two control studs as well. The
+test that works casts from above with the plate double-sided, and answers
+`[8.9845, 8.1845]` for a seated stud and `[]` for this one.
+
+The fix is position-space, as the ladder requires: the blade's HAND flips so it
+runs toward rising azimuth, which moves the anchor to (35.03, 10.19) on solid
+plate and **leaves the tip at the station the free-window measurement chose**.
+Both hands were enumerated over all twelve step counts against
+`inCutClearance` before choosing. The consequence is real and is followed
+rather than absorbed: the arc's drift now adds to the ramp instead of
+subtracting from it, so the forward detent rises 3.479e-2 → **3.899e-2 N·mm**,
+which buys a shorter, stiffer pawl coil — and §169's instruction
+("re-derive the raise, never re-target the spring") takes
+`ALARM_PAWL_SPRING_COILS` 6.5 → 5.5.
+
+**The assert that would have caught it now exists**: the anchor needs its own
+foot radius plus a margin of solid plate by `inCutClearance`, and the same
+against the plate's rim. Writing it is the structural half of the fix —
+re-siting the stud without it would only move the class of failure.
+
+**The cam disk was checked at the same time and is NOT a defect.** Measured
+mesh-to-mesh rather than through the polygon law it was designed to: the built
+tip's nearest approach to the built skirt is 2e-05 at worst and never negative,
+and a parity raycast puts 0 of 144 samples inside the metal. It is SEATED —
+touching two flanks is a detent's whole job — which at a shallow viewing angle
+reads as overlap. The residue worth naming is the other way: near the crest the
+tip's 24-segment cylinder stands up to 0.0143 clear of the metal the law has it
+touching, which is the polygon approximating its own circle.
+
 **What §173 leaves open**, named rather than absorbed:
 
 - **The frozen flat top**, above.

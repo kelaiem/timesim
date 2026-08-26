@@ -18509,7 +18509,16 @@ const ALARM_COL_SKIRT_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;
 // needs the pawl's stroke, which needs the seats); the solve re-derives it
 // from live constants and warns if the two part — §137's rule that a figure an
 // instrument also computes is ASSERTED against, not resembled.
-const ALARM_PAWL_SPRING_COILS = 6.5;
+// §173 moved it 6.5 → 5.5. The count is SOLVED at the spring (the greater of
+// its drag floor and its own strain floor) and is a spec here only because the
+// wheel's raise has to be known before the wheel is cut. §173's fold changed
+// the detent this coil is budgeted against — the sautoir's forward detent is
+// 12% stronger than the ray-solved figure the first cut published, because the
+// blade's hand had to change to put its anchor on plate metal, and the arc's
+// drift then adds to the ramp instead of subtracting from it. A bigger budget
+// buys a shorter, stiffer coil. §169's own instruction is followed rather than
+// worked around: re-derive the raise, never re-target the spring.
+const ALARM_PAWL_SPRING_COILS = 5.5;
 // Close-wound, so successive turns put their wire CENTRES one wire diameter
 // apart and n turns span n·d centre to centre; the wire's own radius then
 // adds half a diameter at each end, which is the height the stratum has to
@@ -18881,9 +18890,26 @@ const ALARM_JUMPER_STEPS = 7;
 const ALARM_JUMPER_OFF = ALARM_JUMPER_STEPS * ALARM_COL_STEP + ALARM_JUMPER_SEAT_PHI;
 const ALARM_JUMPER_AZ = ALARM_LOCK_ENGAGED + ALARM_JUMPER_OFF;
 const ALARM_JUMPER_T = SPRING_FLAT_U;   // bends radially — the movement's one spring stock, in the direction it bends
+// WHICH WAY THE BLADE RUNS is the fold's OTHER position-space freedom, and it
+// is not free: the anchor stud has to stand on METAL. §169 caught a stud in
+// this same cluster hanging over 4.347 of air while its declaration said it
+// stood on the driver, and the first cut of this one reproduced it exactly —
+// at 7 steps running with falling azimuth the anchor lands at (24.29, −7.82),
+// which is inside the three-quarter plate's balance cutaway. Owner's eye
+// report; a downward raycast confirmed zero plate under the foot against two
+// control studs that each returned the plate's two faces.
+//
+// `inCutClearance` (§62, hoisted for the pillar seats) is what answers it:
+// positive is plate, negative is the opening. Both hands were enumerated over
+// all twelve step counts; running with RISING azimuth puts the anchor at
+// (35.03, 10.19) on solid plate, and it keeps the tip at the same station the
+// free-window measurement chose. So the tip does not move and only the blade's
+// hand does — which is what "a fold's only currencies are position-space"
+// means when a fold turns out to be wrong.
+const ALARM_JUMPER_HAND = +1;   // +1: the blade runs toward RISING azimuth from the tip. Asserted against the plate below, not chosen for looks.
 const _jFold = (() => {
   const u = { x: Math.cos(ALARM_JUMPER_AZ), y: Math.sin(ALARM_JUMPER_AZ) };   // wheel centre → tip
-  const tan = { x: u.y, y: -u.x };                                            // along the blade, tip → anchor (azimuth falls)
+  const tan = { x: -u.y * ALARM_JUMPER_HAND, y: u.x * ALARM_JUMPER_HAND };    // along the blade, tip → anchor
   // A world point, read in the WHEEL's own frame. main.js turns the mesh by
   // −a inside a group at ALARM_LOCK_ENGAGED, so local = R(a − ENGAGED)·(P − C)
   // — the same convention profileAt's callers use, written once here.
@@ -18898,8 +18924,9 @@ const _jFold = (() => {
     const D = Math.hypot(anchor.x - ALARM_COL_POS.x, anchor.y - ALARM_COL_POS.y);
     const anchorAz = Math.atan2(ALARM_COL_POS.y - anchor.y, ALARM_COL_POS.x - anchor.x);
     // The branch is fixed once, from the construction, rather than guessed per
-    // call: at rest the blade points along +tan reversed, i.e. AZ + π/2.
-    const sign = Math.sin((ALARM_JUMPER_AZ + Math.PI / 2) - anchorAz) >= 0 ? 1 : -1;
+    // call: at rest the blade points from the anchor back along −tan.
+    const restDir = Math.atan2(-tan.y, -tan.x);
+    const sign = Math.sin(restDir - anchorAz) >= 0 ? 1 : -1;
     const dirOf = (beta) => anchorAz + sign * beta;
     const tipAt = (beta) => ({ x: anchor.x + L * Math.cos(dirOf(beta)), y: anchor.y + L * Math.sin(dirOf(beta)) });
     // The pose law: the SMALLEST swing whose tip clears the teeth. Bisection is
@@ -18923,7 +18950,7 @@ const _jFold = (() => {
     // The throw is the tip's own DEFLECTION — arc length at the blade's free
     // length, which is the quantity the cantilever law wants, not the radial
     // component of it.
-    return { anchor, D, anchorAz, sign, dirOf, tipAt, betaAt, beta0, peak, throw_u: (peak - beta0) * L };
+    return { anchor, D, anchorAz, sign, dirOf, tipAt, betaAt, beta0, peak, restDir, throw_u: (peak - beta0) * L };
   };
   // Seed from the ray answer (CREST_RAY − SEAT), then iterate.
   let L = Math.sqrt(3 * 2 * (ALARM_JUMPER_CREST_RAY_R - ALARM_JUMPER_SEAT_R) * ALARM_JUMPER_T / (2 * SPRING_STRAIN_MAX));
@@ -18978,7 +19005,7 @@ const ALARM_JUMPER_TIP_H = STOCK_MIN_U;
 // the blade's absolute angle out. No state, no ease — the jumper's pose is a
 // FUNCTION of the wheel's, which is what "the wheel indexes and the jumper
 // follows" means when it is driven rather than animated.
-const _jRestDir = _jFold.dirOf(_jFold.beta0);
+const _jRestDir = _jFold.dirOf(_jFold.beta0);   // and _jFold.restDir is the same direction from the construction — assert 4 holds the two together
 const alarmJumperAngle = (wheelA) => _jFold.dirOf(_jFold.betaAt(wheelA));
 // …and the tip-centre radius at that pose, for the reports and the probes.
 const alarmJumperSeatR = (wheelA) => {
@@ -19157,7 +19184,21 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
   for (const [what, k] of [['shank', roundK(ALARM_JUMPER_SHANK_R, shankLen)], ['anchor stud', roundK(ALARM_JUMPER_STUD_R, _jStudLen)]])
     if (k < 10 * ALARM_JUMPER_K)
       console.warn(`§173: the jumper's ${what} is ${(k / ALARM_JUMPER_K).toFixed(2)}× the blade's own rate, under the 10× that makes the blade the member that governs — it is a second spring in series and ALARM_JUMPER_K is not what the tip feels`);
-  // 8. The two claims the design rests on, read off the polygon rather than
+  // 8. THE ANCHOR STANDS ON METAL. This is the assert §169's finding demanded
+  //    and that §173 shipped without: a stud is only a ground if there is
+  //    plate under its foot, and `support` is declared per UNIT, so a single
+  //    floating mesh inside a unit that is otherwise seated passes it in
+  //    silence. It did. The foot needs its own radius plus a margin of solid
+  //    plate, because a post standing on the very lip of an opening is not
+  //    seated either — and the plate's outer edge is the same question from
+  //    the other side.
+  const studSeat = inCutClearance(alarmJumperAnchor.x, alarmJumperAnchor.y);
+  if (studSeat < ALARM_JUMPER_STUD_R + CLEAR_MARGIN)
+    console.warn(`§173: the jumper's anchor stud stands on ${studSeat.toFixed(3)} of plate at (${alarmJumperAnchor.x.toFixed(2)}, ${alarmJumperAnchor.y.toFixed(2)}), under the ${(ALARM_JUMPER_STUD_R + CLEAR_MARGIN).toFixed(3)} its own foot needs — it is over the balance cutaway, not on metal. Re-fold in position space (ALARM_JUMPER_HAND, then ALARM_JUMPER_STEPS); do not lengthen the stud to reach the plate below`);
+  const studEdge = plateR - Math.hypot(alarmJumperAnchor.x, alarmJumperAnchor.y);
+  if (studEdge < ALARM_JUMPER_STUD_R + CLEAR_MARGIN)
+    console.warn(`§173: the jumper's anchor stud stands ${studEdge.toFixed(3)} inside the plate's rim, under the ${(ALARM_JUMPER_STUD_R + CLEAR_MARGIN).toFixed(3)} its foot needs`);
+  // 9. The two claims the design rests on, read off the polygon rather than
   //    asserted about it: the backward face is radial (so no drag cams the tip
   //    out) and the forward face is not (so a press can still index it).
   if (ALARM_SAW_FLANKS_DEG.cliff > 1e-6)
