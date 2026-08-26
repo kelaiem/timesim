@@ -19,8 +19,11 @@ const out = await p.evaluate(async () => {
   const find = (n) => { let r = null; clock.scene.traverse((o) => { if (o.name === n) r = o; }); return r; };
 
   // the offenders, by the labels probe-colwheel-foul printed
-  const SUSPECTS = ['alarmLockBeakRiser', 'alarmLockBeak', 'switchClickArm',
-                    'alarmLinkBeakBar', 'alarmLinkBeak', 'alarmLinkBeakPost', 'switchClickNose'];
+  // (§173 took the click's two names off this list — the part is gone, and a
+  // suspect that cannot be found reads as a suspect that came back clean.)
+  const SUSPECTS = ['alarmLockBeakRiser', 'alarmLockBeak', 'alarmJumperBlade',
+                    'alarmLinkBeakBar', 'alarmLinkBeak', 'alarmLinkBeakPost',
+                    'alarmJumperShank', 'alarmJumperTip'];
   const wheelNames = ['alarmColBase', 'alarmColCastellations', 'alarmColSkirt'];
   const wheels = wheelNames.map(find);
 

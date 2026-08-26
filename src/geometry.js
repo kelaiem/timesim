@@ -1561,6 +1561,47 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
       ratchetPoly.push({ x: Math.cos(a1) * rr, y: -Math.sin(a1) * rr });
     }
     g.userData.ratchetPoly = ratchetPoly;
+    // §173 — THE SEAT IS READ FROM THE CUT, NOT NARRATED. The sautoir's tip is
+    // a cylinder of radius `tipR` whose centre rides a ray fixed in the
+    // movement while the wheel turns under it. Its radius at wheel angle `a`
+    // is therefore the SMALLEST radius at which that circle still clears the
+    // saw outline — a query against `ratchetPoly`, the very polygon the skirt
+    // above is extruded from, so the jumper's rise and fall cannot drift from
+    // the metal the pawl indexes. That is TODO 20's rule ("the flank is cut,
+    // not narrated") applied to the second member riding these teeth; §33 set
+    // the precedent when the pawl's park stopped being a measured-once
+    // constant and became a cast against this same polygon.
+    //
+    // Frame convention is profileAt's exactly — `a` is a LOCAL azimuth and a
+    // caller adds its own member's azimuth offset, because main.js turns the
+    // mesh by −a. Returns the tip-CENTRE radius.
+    //
+    // Bisection, because closed form is not available: the tip seats against
+    // whichever flank is nearer and which one that is changes across a pitch,
+    // and on a crest it is a tooth POINT rather than either flank. What makes
+    // the bracket a bracket is that the saw is star-shaped about its axis, so
+    // the clearance field is monotone in r along any ray out of it.
+    const sawClear = (x, y) => {
+      let best = Infinity, inside = false;
+      for (let i = 0; i < ratchetPoly.length; i++) {
+        const a = ratchetPoly[i], b = ratchetPoly[(i + 1) % ratchetPoly.length];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy)));
+        best = Math.min(best, Math.hypot(x - (a.x + t * dx), y - (a.y + t * dy)));
+        if ((a.y > y) !== (b.y > y) && x < a.x + ((y - a.y) / (b.y - a.y)) * dx) inside = !inside;
+      }
+      return inside ? -best : best;
+    };
+    g.userData.sawClear = sawClear;
+    g.userData.sawSeatAt = (a, tipR) => {
+      const c = Math.cos(a), s = Math.sin(a);
+      let lo = 0, hi = tip + tipR + 1;   // lo: the axis, inside the teeth; hi: clear of every tooth
+      for (let i = 0; i < 40; i++) {     // ⇒ ~1e-11 u, four orders under CLEAR_MARGIN
+        const m = (lo + hi) / 2;
+        if (sawClear(c * m, s * m) >= tipR) hi = m; else lo = m;
+      }
+      return hi;
+    };
   }
   g.userData.columns = columns;
   g.userData.skirtH = skirtH;      // §169 — the band's height, so a caller siting a member in it reads it here

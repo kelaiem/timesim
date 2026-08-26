@@ -1,9 +1,21 @@
-# §73 tier two — the explainer's translation gate.
+# §73 tier two — the explainer's translation gate, and the instrument index
+# beside it.
 #
 # Its own workflow rather than a step in Battery, for two reasons: it is
 # ~1 min against the battery's ~13, so a prose typo should not wait behind
 # the sweeps; and explain.html is sim-code-free by contract, so its gate has
 # no business inside the geometry one.
+#
+# TWO TENANTS, and the rule for joining them. tools/index-instruments.mjs
+# --check is the same SHAPE of thing: generated, milliseconds, no browser,
+# about a DOCUMENT rather than about the movement. A seventh workflow for a
+# millisecond check would cost more attention than it saves. What this must
+# not become is a bin — anything added here has to meet all three.
+#
+# NO § NUMBER on that second tenant, deliberately: §42's own retirement note
+# settles it — "work ON THIS REPO is not a movement capability and does not
+# take a §". The index is tooling about the repository, exactly like the
+# shipped-list checker whose filing raised the question.
 #
 # What failing means, in order of how it usually happens:
 #   * a key stopped matching  — someone edited the English and its
@@ -43,6 +55,11 @@ on:
       - 'src/i18n.js'
       - 'tools/explain-i18n.mjs'
       - 'tools/explain-quotes.mjs'
+      # the instrument index is generated from every tools/*.mjs header, so any
+      # of them changing can stale it
+      - 'tools/**.mjs'
+      - 'tools/INDEX.md'
+      - '.claude/skills/**'
       - '.github/workflows/explain-i18n.yml'
       # the quote audit compares the page against these, so a constant moving
       # here must re-run it — that is the whole point of the check
@@ -88,3 +105,11 @@ jobs:
 
       - name: Check the explainer's translations
         run: node tools/explain-i18n.mjs --check
+
+      # The instrument index is GENERATED from the probes' own headers, so it
+      # rots the moment someone adds a probe and forgets. It rides this
+      # workflow rather than the battery because it needs no browser and takes
+      # milliseconds — and because an index nobody can trust is worse than no
+      # index, which is the state that made it necessary.
+      - name: Check the instrument index is not stale
+        run: node tools/index-instruments.mjs --check

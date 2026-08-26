@@ -383,7 +383,15 @@ function declareRestoring(name, member, kind, why, mesh) {
 //                    offset induces is computed and priced (the elbow rods).
 //   riserReach     — displacement through a plane change with no direction
 //                    change: a climb and a reach, loaded axially (the pusher).
-const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach', 'pinInSlot'];
+//   groundedBlade  — §173. A grounded elastic member whose OWN FREE END is the
+//                    working contact: spring and follower are one part, so
+//                    there is no lever between the stored energy and the
+//                    force, and armIn == armOut is a fact of the anatomy
+//                    rather than a coincidence to check. Distinct from
+//                    `crank`, which is a blade biasing a SEPARATE pivoted arm
+//                    and therefore always carries a lever ratio. The column
+//                    wheel's sautoir is the movement's one instance.
+const TRANSFER_IDIOMS = ['bevelPair', 'doglegIdler', 'crank', 'rigidBentLink', 'riserReach', 'pinInSlot', 'groundedBlade'];
 const declaredTransfers = new Map();   // site -> row
 function declareTransfer(site, row) {
   if (declaredTransfers.has(site)) console.warn(`§137: transfer '${site}' declared twice`);
@@ -14514,9 +14522,9 @@ declareRestoring('Alarm hammer', 'alarmHammerArm', 'spring',
 // None of them is new geometry; what is new is that a sweep finally moves
 // them, so the §48 audit can ask the question it exists to ask. Each answer
 // below is the mechanism that was already there, now stated.
-declareRestoring('Alarm switch', 'switchClickArm', 'spring',
-  'the click arm is held to the castellations by its own blade — a real flat spring, grounded to its stud and bearing on the arm (TODO 11 sized it to flat-spring stock)',
-  'switchClickSpring');
+declareRestoring('Alarm switch', 'alarmJumperBlade', 'spring',
+  'the sautoir IS its own spring — §173 replaced the click, whose declared blade this audit passed on a DECLARATION while measuring 2.0963 of air between it and the arm it was said to press. The reciprocating member and the restoring element are one part now, so the two cannot part: the blade is grounded on alarmJumperStud, its free end carries the tip, and its preload is one working throw',
+  'alarmJumperBlade');
 declareRestoring('Alarm link', '*', 'two-way',
   'TODO 20 second pass: the centre pin rides the drive tab\'s GROOVE at its ±0.01 working clearance, so the chain is pushed and pulled — which is exactly what retired the phantom bias spring the first build needed');
 declareRestoring('Alarm selector', 'alarmSelRing', 'two-way',
@@ -18501,6 +18509,18 @@ const ALARM_COL_SKIRT_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;
 // needs the pawl's stroke, which needs the seats); the solve re-derives it
 // from live constants and warns if the two part — §137's rule that a figure an
 // instrument also computes is ASSERTED against, not resembled.
+// §173 left it at 6.5, and the round trip is worth recording because it shows
+// what this spec is coupled to. The count is SOLVED at the spring (the greater
+// of its drag floor and its own strain floor) and is a spec here only because
+// the wheel's raise has to be known before the wheel is cut. Its drag budget
+// is the sautoir's forward detent over ALARM_SPRING_HEADROOM — so the count is
+// a function of §173's FOLD, not just of the spring: mirroring the blade makes
+// the arc's azimuth drift add to the ramp instead of subtracting from it, the
+// detent rises 12%, and the coil solves one turn shorter. The middle fold ran
+// that way and this constant read 5.5. The fold that survived all three
+// constraints runs the original way, the detent is back to 3.479e-2 N·mm, and
+// so is the count. §169's instruction was followed in both directions rather
+// than worked around: re-derive the raise, never re-target the spring.
 const ALARM_PAWL_SPRING_COILS = 6.5;
 // Close-wound, so successive turns put their wire CENTRES one wire diameter
 // apart and n turns span n·d centre to centre; the wire's own radius then
@@ -18616,7 +18636,8 @@ const ALARM_COL_POS = {
 // which is what a column wheel is for. Said out loud, as the item asked:
 // the spring-only rest state is LOCK LIFTED (beak seated in a gap, pad
 // off the collar); a column overcomes the blade to hold the brake on.
-// Construction is switchClickSpring's, one unit over.
+// Construction is the lock lever's own blade, above — §173 deleted the switch
+// click whose spring this line used to point at.
 //
 // THE BEAR STATION is derived in position space, not placed: the blade
 // shares the collar's z band, so the wheel-ward lane is the scarce one —
@@ -18669,14 +18690,30 @@ const ALARM_COL_POS = {
 declareRestoring('Alarm lock', 'alarmLockPad', 'spring',
   'the return blade biases the lever toward LIFTED (beak into the gap, pad off the collar) and the column presses it ENGAGED against this spring — a real blade on its own stud, bearing on the arm\'s flank; the HOLD when braked is the column\'s, not the spring\'s',
   'alarmLockSpring');
-// The rounded nose every rider presents to the castellations. HOISTED here
-// from the click block below because TODO 28 made the column's flat top a
-// consequence of it: half the flat must clear the nose's own radius plus the
-// margin, so the wheel cannot be cut before the nose is known. The click's
-// nose is the one that matters — it is the largest of the riders and so the
-// binding one.
-const ALARM_CLICK_NOSE_R = 0.28;
-const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel, riderNoseR: ALARM_CLICK_NOSE_R, skirtH: ALARM_COL_SKIRT_H }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier); TODO 28: the nose sets the flat top
+// Hardened spring steel's usable elastic strain — the surface strain a blade
+// may work to and come back. §164 moved the yield itself to layout.js, beside
+// the modulus, because the pusher's return COIL needs the same number under a
+// different loading and a second copy of it here would be two definitions of
+// one material.
+const SPRING_STRAIN_MAX = SPRING_SIGMA_Y_PA / STEEL_E_PA;
+// (§173 hoisted this above the column wheel: the sautoir's free length is
+// solved from it, and that solve runs before the wheel's riders are cut.)
+// The rounded nose every rider presents to the castellations, and through
+// TODO 28 the thing that sets the column's FLAT TOP: half the flat must clear
+// the nose's own radius plus the margin, so the wheel cannot be cut before the
+// nose is known.
+//
+// §173 FROZE IT. It used to be `ALARM_CLICK_NOSE_R`, and the click was the
+// largest rider, so the castellation's flat top was a consequence of the one
+// part §173 deletes. Re-cutting the flat to the surviving riders was the
+// owner's call to defer, so the width is held at what the wheel was cut to
+// and the constant no longer names a part that is gone. The assert below is
+// what makes freezing safe rather than merely convenient: the flat has to
+// still be wide enough for every rider that IS left, and if a future rider
+// needs more it must move this number rather than discover the shortfall by
+// burying itself in a column.
+const ALARM_COL_RIDER_NOSE_R = 0.28;
+const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel, riderNoseR: ALARM_COL_RIDER_NOSE_R, skirtH: ALARM_COL_SKIRT_H }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier); TODO 28: the nose sets the flat top
 // TODO 87 step 4 — the three bodies are NAMED AT THE BUILDER now
 // (alarmColBase / alarmColCastellations / alarmColSkirt), because one name
 // over all three made a single INTRA_UNIT_CONTACTS row a depth-free blanket
@@ -18708,260 +18745,501 @@ alarmSwitchUnit.add(alarmColSpin);
   const studBot = TQ_TOP_Z - 0.3;
   const studTip = ALARM_LOCK_Z + ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 - 0.05;
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(studR, studR, studTip - studBot, 12), MATS.nickel);
+  // §173 NAMED IT. Three INTRA_UNIT_CONTACTS rows selected this stud as
+  // `CylinderGeometry#3`, and §173 takes two unnamed cylinders out of this
+  // unit — which renumbers every index above them. §172 already paid for that
+  // once (`alarmSwitchBeak` left, `#6` silently became `#5`); a name is the
+  // fix that removes the class rather than moving it.
+  stud.name = 'alarmColStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, (studBot + studTip) / 2);
   alarmSwitchUnit.add(stud);
 }
-// The CLICK — the detent arm every real column wheel carries, and the part
-// that makes the toggle READ: its rounded nose rides the castellations, so
-// each actuation visibly rocks it OUT onto a column (alarm OFF) or drops it
-// INTO a gap (ON). Two jobs, one part: the wheel's index (the two stable
-// states + the click) and the visible state flag. Its contact azimuth sits a
-// whole number of pitches from the lock beak's, so the two always read the
-// SAME parity — asserted below, since a phase slip here would show ON while
-// gating OFF.
-const ALARM_CLICK_AZ = ALARM_LOCK_ENGAGED + 2 * (Math.PI * 2 / ALARM_COL_COLUMNS); // 2 pitches around the wheel
-// TANGENTIAL click geometry: the pivot stands one arm-length SIDEWAYS from
-// the contact point, so the arm's rotation carries the nose RADIALLY — it
-// visibly drops INTO a gap (nose centre 1.30 from the axis) and rides OUT
-// onto a column's outer face (1.5 + nose radius = 1.78). The first build's
-// radial arm rocked the nose sideways along the ring — and buried it in it.
-// (ALARM_CLICK_NOSE_R is hoisted above the wheel build — TODO 28 derives the
-// castellation's flat top from it, so the wheel cannot be cut before it exists.)
-// pivot post (r 0.28) fully clear of the saw tips: L = sqrt((tip + post + margin)² − seat²), held at a floor of 2.0
-const ALARM_CLICK_L = Math.max(2.0, Math.sqrt(
-  (1.12 * ALARM_COL_BASE_R + 0.28 + CLEAR_MARGIN) ** 2 - (ALARM_COL_BASE_R * (1.30 / 1.5)) ** 2));
-const ALARM_CLICK_SEAT = ALARM_COL_BASE_R * (1.30 / 1.5); // nose centre, dropped in a gap (proportion kept through the §35 resize)
-const ALARM_CLICK_OUT = ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R; // nose centre riding a column
-const _clickDir = { x: Math.cos(ALARM_CLICK_AZ), y: Math.sin(ALARM_CLICK_AZ) };      // wheel centre → contact
-const _clickTan = { x: -_clickDir.y, y: _clickDir.x };
-const _clickSeatP = { x: ALARM_COL_POS.x + _clickDir.x * ALARM_CLICK_SEAT, y: ALARM_COL_POS.y + _clickDir.y * ALARM_CLICK_SEAT };
-const alarmClickPivot = {
-  x: _clickSeatP.x + _clickTan.x * ALARM_CLICK_L,
-  y: _clickSeatP.y + _clickTan.y * ALARM_CLICK_L,
+// ————————————————— §173 — THE SAUTOIR: THE WHEEL'S INDEX —————————————————
+//
+// What stood here was the CLICK — a pivoted arm whose ball nose rode the
+// CASTELLATIONS, pressed by a grounded blade. TODO 90 finding 3 measured it
+// failing four ways at once, and not one of them was a clearance to repair:
+//
+//  1. NO DETENT EXISTED. The wheel indexes 12 times a revolution (one saw
+//     tooth, half a column pitch per press) and the click rode 6 columns.
+//     Worse than the count mismatch: restoring torque needs the follower
+//     driven RADIALLY OUT as the wheel leaves its stop, and both parities
+//     landed the ball on a FLAT concentric with the axis — a column's top and
+//     a gap's floor are both arcs of CONSTANT radius, because the chamfer is
+//     cut in z only (TODO 59 says exactly that, one screen up, in capitals).
+//     Sampled over the 12 stops: 8 on a flat top, 23 on a flat gap floor, 18
+//     on a ramp — and dr/dθ = 0 at every stop the wheel actually takes.
+//  2. THE SPRING NEVER TOUCHED THE ARM it was declared to press. Arm z
+//     12.2991..12.6157 against blade z 10.0028..10.2028, closest approach
+//     2.0963 at EVERY pose. §48's no-spring audit passed it on a
+//     DECLARATION rather than on metal — which is the failure mode CLAUDE.md
+//     warns about, caught here by measuring instead of reading the row.
+//  3. THE BLADE WAS OVER-STRAINED anyway — ≈2.2 GPa surface against the
+//     SPRING_SIGMA_Y_PA the rest of the movement answers to (TODO 63).
+//  4. THE ARM INTERPENETRATED THE COLUMNS at the 110/130 poses — 110 and 130
+//     triangle pairs. The ball did NOT, which is why four earlier passes over
+//     this cluster measured the nose, found it clear, and moved on.
+//
+// A SAUTOIR REPLACES IT, and it is what a real chronograph carries: the
+// jumper rides the RATCHET the pawl drives, and the columns go back to being
+// what they are — read surfaces. Three reasons, all structural:
+//
+//  · COUNT. The saw has ALARM_COL_COLUMNS·2 = 12 teeth, one per index, so
+//    every stop the wheel takes IS a tooth space. Six columns at half-pitch
+//    indexing cannot detent every stop, whatever rides them.
+//  · CAM-OUT. A tooth space is a V of two flanks, so dr/dθ at the stop is
+//    non-zero by construction — the one thing the castellations structurally
+//    cannot offer a follower.
+//  · ASYMMETRY, which is the mechanism rather than a bonus. Measured off
+//    `ratchetPoly` (asserted below): the saw's two flanks stand 66.21° and
+//    0.00° off radial. FORWARD the tip climbs the ramp, at a price the press
+//    pays. BACKWARD — the direction §169's pawl return drags the wheel — it
+//    meets a face that is RADIAL, so the contact normal is purely tangential
+//    and there is no radial component to cam the tip out at ANY drag. §163's
+//    "a return that drags the wheel back un-indexes it" stops being a number
+//    to win and becomes a geometry that cannot happen.
+//
+// ONE PART: no pivot, no post, no separate spring — the blade IS the jumper,
+// which is what a sautoir is. A lever-plus-coil was priced first and
+// rejected: a torsion coil on the movement's one spring wire reaches ≈2.4 mN
+// at the flank against a 5–50 mN window, and kθ ∝ d⁴ means the single stock
+// cannot be stretched to that without a second spring material.
+//
+// ————————————————————— THE SEAT, SOLVED FROM THE CUT —————————————————————
+// `sawSeatAt` (geometry.js, §173) answers where a tip of radius R sits at a
+// given wheel angle by querying `ratchetPoly` — the polygon the skirt is
+// extruded from. The SEAT is its minimum over one tooth pitch; the CREST is
+// its value at φ 0, which is where the builder puts a tooth point. Solved,
+// never typed, so re-cutting the saw re-solves the jumper.
+const ALARM_SAW_PITCH = (Math.PI * 2) / (ALARM_COL_COLUMNS * 2);
+const _sawSeatOf = (tipR) => {
+  const f = (a) => alarmColumnWheel.userData.sawSeatAt(a, tipR);
+  // Coarse bracket then ternary refine. The profile over a pitch falls off the
+  // cliff, bottoms once and climbs the ramp — one interior minimum, so ternary
+  // is legal; the coarse pass is what guarantees the bracket contains it.
+  let bA = 0, bR = Infinity;
+  for (let k = 0; k < 400; k++) { const a = (k / 400) * ALARM_SAW_PITCH, r = f(a); if (r < bR) { bR = r; bA = a; } }
+  let lo = bA - ALARM_SAW_PITCH / 400, hi = bA + ALARM_SAW_PITCH / 400;
+  for (let i = 0; i < 40; i++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (f(m1) < f(m2)) hi = m2; else lo = m1; }
+  const phi = (lo + hi) / 2;
+  return { phi, r: f(phi) };
 };
-const ALARM_COL_BAND_MID = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL_H / 2; // castellation band's mid-plane above ALARM_LOCK_Z — the riders' z station, derived
-const alarmClickArm = new THREE.Group();
-alarmClickArm.position.set(alarmClickPivot.x, alarmClickPivot.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID); // nose mid-band, clear of the base disc
-alarmSwitchUnit.add(alarmClickArm);
-{
-  const clickPostLen = (ALARM_LOCK_Z + ALARM_COL_BAND_MID) - TQ_TOP_Z + 0.2; // plate top → just past the arm's plane
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, clickPostLen, 10), MATS.nickel);
-  post.rotation.x = Math.PI / 2;
-  post.position.set(alarmClickPivot.x, alarmClickPivot.y, TQ_TOP_Z + clickPostLen / 2 - 0.01);
-  alarmSwitchUnit.add(post);
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_CLICK_L, 0.42, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top click arm, free upward
-  arm.name = 'switchClickArm';   // §162: the §48 member key selects the RECIPROCATOR by name, and BoxGeometry#4 is not a name
-  arm.position.x = -ALARM_CLICK_L / 2; // reaches back toward the seat point
-  alarmClickArm.add(arm);
-  const nose = new THREE.Mesh(new THREE.SphereGeometry(ALARM_CLICK_NOSE_R, 12, 8), MATS.steel);
-  nose.name = 'switchClickNose'; // §162, and SphereGeometry#5 was the only handle three declarations had on it
-  nose.position.x = -ALARM_CLICK_L;
-  alarmClickArm.add(nose);
-}
-// The click's RETURN SPRING — a blade from a fixed stud, bearing on the arm's
-// outer flank to press its nose into the wheel.
+// ————————————— THE TIP'S RADIUS IS DERIVED FROM THE WHEEL'S STACK —————————
+// The tip works in the SAW band, under the base disc. The blade that carries
+// it cannot: at ALARM_JUMPER_L below it is ten units long, and the only band
+// with room for that is above the castellations' outer wall. So a SHANK
+// crosses both upper bodies at the tip's own azimuth, and at the SEAT — the
+// innermost pose the tip ever takes — it must pass them at one running
+// margin. A shank is a real member, so it stands at §50's floor:
 //
-// It used to be a child of alarmClickArm sitting at local x +0.8, i.e. on the
-// far side of the pivot from the arm itself (which reaches back to the nose at
-// x −2.0) — so it hung in space behind the pivot AND travelled with the very
-// lever it exists to push. A spring that moves with its own load does no work
-// and reads as floating, which is exactly how it looked. A return spring has
-// to be GROUNDED: one end fixed to the plate, the other pressing the moving
-// part. Anchored here to the switch unit, not the arm.
+//     seatR(tipR) − STOCK_MIN_R10 ≥ ALARM_COL_BASE_R + CLEAR_MARGIN
 //
-// P1, TODO 16's format (§137) — THE DETENT THIS BLADE PROVIDES, which is
-// the load every actuation of this wheel must overcome and the one the alarm
-// link's stall is judged beside. Section and arithmetic are the lock lever's
-// return blade one unit over, verbatim: SPRING_FLAT_U (0.05 mm) in the
-// direction it bends, 0.2 u (0.0758 mm) of width, over the 1.5 u free
-// length, so 3EI/L³ with I = b·h³/12 = 7.90e-19 m⁴ at 200 GPa is 2.6 kN/m.
-// The RIDE is the wheel's own: the nose travels ALARM_CLICK_SEAT 4.94
-// (dropped in a gap) → ALARM_CLICK_OUT 5.98 (riding a column), 1.04 u
-// radial, which about the pivot is 0.2216 rad and at the bear station
-// (bearFrac's 0.12 floor, 0.563 u out on a 4.693 u arm) is 0.047 mm of blade
-// deflection. That is 122 mN at the bear and, back through the same 0.12 arm
-// ratio, ≈ 15 mN pressing the nose into the wheel — INSIDE the movement's
-// 5–50 mN detent band. It is the number the pusher's pawl is sized against
-// (the press block below carries that half), and it is the same band the
-// alarm link's tail-limited stall sits in (≈6 mN at the tab on the live solve's stroke — see the §137 row): the click is what the
-// INPUT must overcome, the link's stall is what the OUTPUT can deliver, and
-// both landing inside one band is that loop closing.
+// A bigger tip cannot reach as deep into the V, so it seats further out and
+// the constraint is a FLOOR on tipR. The smallest tip satisfying it is taken:
+// the deepest seat this stack allows, which is also the steepest ramp and so
+// the most restoring torque per unit of blade force. Bisected rather than
+// typed, because `seatR` is a query against the cut and not a formula.
+const ALARM_JUMPER_SHANK_R = STOCK_MIN_R10;
+const ALARM_JUMPER_TIP_R = (() => {
+  const need = ALARM_COL_BASE_R + CLEAR_MARGIN + ALARM_JUMPER_SHANK_R;
+  let lo = 0.2, hi = 3.0;
+  for (let i = 0; i < 34; i++) { const m = (lo + hi) / 2; if (_sawSeatOf(m).r >= need) hi = m; else lo = m; }
+  return hi;
+})();
+const _jSeat = _sawSeatOf(ALARM_JUMPER_TIP_R);
+const ALARM_JUMPER_SEAT_PHI = _jSeat.phi;                                     // the seat's own phase within a tooth pitch
+const ALARM_JUMPER_SEAT_R = _jSeat.r;                                         // tip-centre radius, seated
+// The crest ON A RAY — φ 0 is where the builder puts a tooth point. It is the
+// SEED for the fold's fixed point below and not the shipped figure: the tip
+// travels an arc, so its real crest is solved there. Kept named because the
+// gap between the two is the correction §173's acceptance probe measured.
+const ALARM_JUMPER_CREST_RAY_R = alarmColumnWheel.userData.sawSeatAt(0, ALARM_JUMPER_TIP_R);
+// ————————————————————————— PRELOAD, AND WHERE IN THE ENVELOPE —————————————
+// PRELOAD IS ONE WORKING THROW — §169's precedent for the pawl's own spring
+// ("springTheta = 2 · ALARM_PAWL_STROKE … preloaded by one working stroke"),
+// applied to the member next to it. SOME preload is not optional: the click's
+// own comment conceded "no preload is built, so the seated floor is 0", which
+// is what a detent that does not detent looks like written as arithmetic.
 //
-// SAID OUT LOUD, because the detent figure alone hides it: 0.047 mm is 8.3%
-// of this blade's free length, and the root fibre at that deflection carries
-// 3Eδh/2L² ≈ 2.2 GPa — past even hardened blue steel's ~1.5 GPa elastic
-// limit. The detent is the right SIZE and the spring that makes it is
-// over-strained; a real blade would take a set and the 15 mN would decay
-// with it. The bear station is why: bearFrac hits its 0.12 floor because
-// _bearTan ≈ L (the saw's tip circle plus the blade's own depth reaches
-// nearly the whole arm), so the spring works at the pivot end, where the
-// throw per unit of nose travel is worst. The fix is position space — a
-// longer free length, or a bear station the tip circle does not crowd — not
-// a fatter blade. Filed at TODO 63.
-let ALARM_CLICK_SPRING = null; // §137: {k_N_per_m, bearArm_u, noseArm_u} — set where the blade is built, read by the detent arithmetic below
-{
-  // Bear on the arm at mid-length, on the side away from the wheel, so the
-  // moment about the pivot drives the nose inward — the direction the click
-  // must be biased.
-  const toSeat = { x: _clickSeatP.x - alarmClickPivot.x, y: _clickSeatP.y - alarmClickPivot.y };
-  const L = Math.hypot(toSeat.x, toSeat.y) || 1;
-  const uArm = { x: toSeat.x / L, y: toSeat.y / L };          // pivot → nose
-  const nOut = { x: -uArm.y, y: uArm.x };                     // arm's flank normal
-  // the bearing point on the arm, and the anchor standing off it
-  // Bear where the arm stands OUTSIDE the saw-tip circle + margin + the
-  // blade's half-depth — at the old 0.55·L the bear point sat over the
-  // grown castellation annulus and the columns swept through the blade.
-  const _bearTan = Math.sqrt(Math.max(0.01, (1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN + 0.2) ** 2 - ALARM_CLICK_SEAT ** 2));
-  const bearFrac = Math.max(0.12, 1 - _bearTan / L);
-  const bear = { x: alarmClickPivot.x + uArm.x * (L * bearFrac), y: alarmClickPivot.y + uArm.y * (L * bearFrac) };
-  const SPRING_FREE = 1.5;                                    // blade length
-  const anchor = { x: bear.x + nOut.x * 0.34 - uArm.x * SPRING_FREE * 0.5,
-                   y: bear.y + nOut.y * 0.34 - uArm.y * SPRING_FREE * 0.5 };
-  const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.0, 10), MATS.nickel);
-  stud.rotation.x = Math.PI / 2;
-  stud.position.set(anchor.x, anchor.y, TQ_TOP_Z + 0.5);
-  alarmSwitchUnit.add(stud);
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(SPRING_FREE, SPRING_FLAT_U, 0.2), MATS.blueSteel);
-  blade.name = 'switchClickSpring'; // TODO 11: flat-spring stock (was 0.07 u = 0.026 mm, under even the 0.03 floor)
-  blade.position.set((anchor.x + bear.x) / 2, (anchor.y + bear.y) / 2, ALARM_LOCK_Z + 0.80);
-  blade.rotation.z = Math.atan2(bear.y - anchor.y, bear.x - anchor.x);
-  alarmSwitchUnit.add(blade);
-  // §137 — the numbers the detent arithmetic needs, published from the one
-  // place they exist (bearFrac and the arm length are this block's): blade
-  // stiffness by the shared cantilever law over its built section and free
-  // length, and the two arms about the click pivot.
-  ALARM_CLICK_SPRING = {
-    k_N_per_m: cantileverK_N_per_m(0.2, SPRING_FLAT_U, SPRING_FREE),
-    bearArm_u: L * bearFrac, noseArm_u: L,
+// ————————————— THE FOLD, AND WHY IT IS A FIXED POINT —————————————
+// The tip's azimuth must be a tooth seat at EVERY stop the wheel takes, and
+// the stops are whole ALARM_COL_STEPs — which is exactly the saw's pitch, so
+// the condition collapses to one congruence: the jumper's offset from the lock
+// beak's azimuth is a whole number of steps plus the seat's own phase. WHICH
+// whole number is position-space and nothing else, which is all a fold is
+// allowed to spend. Chosen from tools/probe-173-azimuth.mjs: with the click
+// gone the SAW's band is clear from 249.8° to 50.7° — 161°, the largest window
+// in it — and the blade's band above the castellations is clear from 114.6°
+// the whole way round to 50.7°. Seven steps puts the tip at world 329.2°, near
+// that window's centre, and the blade runs back toward 269° where both bands
+// are free.
+//
+// THE TIP DOES NOT TRAVEL ON A RAY. It is carried at a fixed distance from the
+// anchor, so it swings on an ARC and its azimuth about the wheel drifts as it
+// rises — 0.49° over the ride here. `sawSeatAt` answers a question about a
+// ray, so sizing the blade from it and then posing it on the arc puts the tip
+// 0.0253 INTO a tooth near the crest, which §173's acceptance probe measured
+// before this solve replaced it. What the tip really needs is the smallest
+// swing angle whose position clears the teeth — a root find against
+// `sawClear`, the signed field the same polygon publishes.
+//
+// And that closes a loop: the blade's free length sets where the anchor goes,
+// the anchor sets the arc, the arc sets the throw, and the throw sets the free
+// length. Solved as a FIXED POINT rather than cut anywhere: iterate the whole
+// chain until the length stops moving. It converges in a handful of passes
+// because the arc's correction is ~2% of the ray's answer.
+const ALARM_JUMPER_STEPS = 5;
+const ALARM_JUMPER_OFF = ALARM_JUMPER_STEPS * ALARM_COL_STEP + ALARM_JUMPER_SEAT_PHI;
+const ALARM_JUMPER_AZ = ALARM_LOCK_ENGAGED + ALARM_JUMPER_OFF;
+const ALARM_JUMPER_T = SPRING_FLAT_U;   // bends radially — the movement's one spring stock, in the direction it bends
+// WHICH WAY THE BLADE RUNS is the fold's OTHER position-space freedom, and it
+// is not free: the anchor stud has to stand on METAL. §169 caught a stud in
+// this same cluster hanging over 4.347 of air while its declaration said it
+// stood on the driver, and the first cut of this one reproduced it exactly —
+// at 7 steps running with falling azimuth the anchor lands at (24.29, −7.82),
+// which is inside the three-quarter plate's balance cutaway. Owner's eye
+// report; a downward raycast confirmed zero plate under the foot against two
+// control studs that each returned the plate's two faces.
+//
+// `inCutClearance` (§62, hoisted for the pillar seats) is what answers it:
+// positive is plate, negative is the opening. Both hands were enumerated over
+// all twelve step counts; running with RISING azimuth puts the anchor at
+// (35.03, 10.19) on solid plate, and it keeps the tip at the same station the
+// free-window measurement chose. So the tip does not move and only the blade's
+// hand does — which is what "a fold's only currencies are position-space"
+// means when a fold turns out to be wrong.
+// …AND METAL UNDER THE FOOT IS ONLY HALF THE QUESTION. Flipping the hand to
+// find plate put the anchor at (35.03, 10.19) — on solid plate, and INSIDE the
+// alarm hammer's swing, measuring 0 clear of `alarmHammerArm` through the
+// strike. Owner's eye report again, and the second fold in a row that was
+// chosen against ONE constraint at a time.
+//
+// The choice is now made against all three together, over 16 poses and both
+// hands at all twelve step counts (`tools/probe-173-fold.mjs`, which prints
+// the whole table rather than the winner — a search whose losers are invisible
+// is a claim nobody can re-check):
+//
+//   seated?   `inCutClearance` at the foot, plus the plate's own rim
+//   corridor  nearest approach of the stud's whole COLUMN to every mesh
+//             outside this unit, with the plates excluded because the stud is
+//             meant to touch them (leaving them in made the scan rank the
+//             candidates over the CUTAWAY as the roomiest — the exact inverse
+//             of the question, and it is in the probe's comment for the next
+//             reader)
+//   band      the tip's own azimuth inside the saw's free window
+//
+//   steps hand   tip az   anchor           seated   clear   nearest
+//       5   −    269.2    13.92, −1.60     PLATE    9.507   subIdlerArbor   ← taken
+//       1   +    149.2    13.95, −1.66     PLATE    9.549   subIdlerArbor
+//      11   +     89.2    14.09, 10.43     PLATE    4.259   subIdlerArbor
+//       7   +    329.2    35.03, 10.19     PLATE    0.000   alarmHammerArm  ← the second fold
+//       7   −    329.2    24.29, −7.82       —      2.672   (unnamed Box)   ← the first
+//
+// 5/− wins on the band: its tip sits in the 161° window the free-azimuth scan
+// found, where 1/+ and 11/+ sit in the two narrow gaps between the riders. Its
+// blade then sweeps 269° → 209° in the band above the castellations — which is
+// where the CLICK used to be, and is free precisely because §173 deleted it.
+const ALARM_JUMPER_HAND = -1;   // which way the blade runs from the tip; see the table above
+const _jFold = (() => {
+  const u = { x: Math.cos(ALARM_JUMPER_AZ), y: Math.sin(ALARM_JUMPER_AZ) };   // wheel centre → tip
+  const tan = { x: -u.y * ALARM_JUMPER_HAND, y: u.x * ALARM_JUMPER_HAND };    // along the blade, tip → anchor
+  // A world point, read in the WHEEL's own frame. main.js turns the mesh by
+  // −a inside a group at ALARM_LOCK_ENGAGED, so local = R(a − ENGAGED)·(P − C)
+  // — the same convention profileAt's callers use, written once here.
+  const clearAt = (px, py, wheelA) => {
+    const dx = px - ALARM_COL_POS.x, dy = py - ALARM_COL_POS.y;
+    const c = Math.cos(wheelA - ALARM_LOCK_ENGAGED), sn = Math.sin(wheelA - ALARM_LOCK_ENGAGED);
+    return alarmColumnWheel.userData.sawClear(dx * c - dy * sn, dx * sn + dy * c);
   };
-}
-// Base angle: arm pointing from the pivot at the SEATED nose position.
-const ALARM_CLICK_BASE = Math.atan2(_clickSeatP.y - alarmClickPivot.y, _clickSeatP.x - alarmClickPivot.x) + Math.PI;
-
-// TODO 59 — THE NOSE'S RADIUS, READ OFF THE SURFACE IT ACTUALLY RIDES.
-//
-// The first law was `BASE + SWING·profileAt(a)`, and it is a category error:
-// `profileAt` returns a normalized HEIGHT (`top / colH` — it is literally the
-// function that cut `top`), while `SWING` is a RADIAL chord over the arm's
-// length. The link beak consumes the same number correctly, as a height. But
-// the pillar's outer wall stands at a CONSTANT `ALARM_COL_BASE_R` across its
-// whole arc — the chamfer is cut in z only, there is no radial relief anywhere
-// in `makeColumnWheel` — so a nose driven inward in proportion to the chamfer's
-// height is driven into a wall that has not moved. Measured on the old law:
-// 0.52 of burial at mid-flank against a 0.15 margin, over the 71% of each
-// half-arc that is flank. Only the two settled ends were ever clean.
-//
-// What the nose really rides, in the (r, z) half-plane at one azimuth: the
-// pillar is the rectangle [ALARM_COL_INNER, ALARM_COL_BASE_R] × [0, zTop(a)].
-// The nose is a sphere approaching from OUTSIDE, so the least radius its
-// centre may take is the distance-to-rectangle condition, which has exactly
-// three branches — and the middle one is the roll-off nobody had modelled:
-//
-//   dz ≤ 0          the nose is beside the WALL          → baseR + noseR
-//   0 < dz < noseR  it is rolling over the top CORNER    → baseR + √(noseR² − dz²)
-//   dz ≥ noseR      the pillar is clear beneath it       → free to the seat
-//
-// where dz = zNose − zTop(a). So the transition's width is set by the nose's
-// radius and the flank's dz/da — NOT by the flank's whole 10.68°, which is
-// what the old law spread it over.
-//
-// Sampled across the nose's angular FOOTPRINT and taken at the maximum, which
-// is `alarmLinkReadClean`'s shape (§33/§35) and §101's `clearAt` shape one
-// plane over: a rider clears a cut profile at its EDGES, not at a point.
-// MODELING rule 9, applied to the surface rather than to a scalar.
-const ALARM_CLICK_NOSE_HALF = Math.asin(ALARM_CLICK_NOSE_R / ALARM_COL_BASE_R); // the nose's own arc on the wall
-const ALARM_CLICK_Z_NOSE = ALARM_COL_H / 2;   // nose centre above the pillar floor — ALARM_COL_BAND_MID's own definition
-function alarmClickNoseR(colA) {
-  const p = alarmColumnWheel.userData.profileAt;
-  let rc = ALARM_CLICK_SEAT;
-  for (let k = -4; k <= 4; k++) {
-    const dz = ALARM_CLICK_Z_NOSE - ALARM_COL_H * p(colA + (k / 4) * ALARM_CLICK_NOSE_HALF);
-    const need = dz <= 0 ? ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R
-      : dz < ALARM_CLICK_NOSE_R
-        ? ALARM_COL_BASE_R + Math.sqrt(ALARM_CLICK_NOSE_R * ALARM_CLICK_NOSE_R - dz * dz)
-        : -Infinity;
-    if (need > rc) rc = need;
+  const layout = (L) => {
+    const anchor = { x: ALARM_COL_POS.x + u.x * ALARM_JUMPER_SEAT_R + tan.x * L,
+                     y: ALARM_COL_POS.y + u.y * ALARM_JUMPER_SEAT_R + tan.y * L };
+    const D = Math.hypot(anchor.x - ALARM_COL_POS.x, anchor.y - ALARM_COL_POS.y);
+    const anchorAz = Math.atan2(ALARM_COL_POS.y - anchor.y, ALARM_COL_POS.x - anchor.x);
+    // The branch is fixed once, from the construction, rather than guessed per
+    // call: at rest the blade points from the anchor back along −tan.
+    const restDir = Math.atan2(-tan.y, -tan.x);
+    const sign = Math.sin(restDir - anchorAz) >= 0 ? 1 : -1;
+    const dirOf = (beta) => anchorAz + sign * beta;
+    const tipAt = (beta) => ({ x: anchor.x + L * Math.cos(dirOf(beta)), y: anchor.y + L * Math.sin(dirOf(beta)) });
+    // The pose law: the SMALLEST swing whose tip clears the teeth. Bisection is
+    // legal because swinging out moves the tip monotonically away from the axis
+    // (dr/dβ = D·L·sin β / r > 0 over the whole working range) and the saw is
+    // star-shaped, so clearance rises with it.
+    const betaAt = (wheelA) => {
+      let lo = 0, hi = Math.PI;
+      for (let i = 0; i < 44; i++) {
+        const m = (lo + hi) / 2, q = tipAt(m);
+        if (clearAt(q.x, q.y, wheelA) >= ALARM_JUMPER_TIP_R) hi = m; else lo = m;
+      }
+      return hi;
+    };
+    const beta0 = betaAt(0);          // rest = seated, by the congruence above
+    let peakA = 0, peak = beta0;
+    for (let k = 0; k <= 120; k++) { const a = (k / 120) * ALARM_SAW_PITCH, b = betaAt(a); if (b > peak) { peak = b; peakA = a; } }
+    let lo = peakA - ALARM_SAW_PITCH / 120, hi = peakA + ALARM_SAW_PITCH / 120;
+    for (let i = 0; i < 30; i++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (betaAt(m1) > betaAt(m2)) hi = m2; else lo = m1; }
+    peak = Math.max(peak, betaAt((lo + hi) / 2));
+    // The throw is the tip's own DEFLECTION — arc length at the blade's free
+    // length, which is the quantity the cantilever law wants, not the radial
+    // component of it.
+    return { anchor, D, anchorAz, sign, dirOf, tipAt, betaAt, beta0, peak, restDir, throw_u: (peak - beta0) * L };
+  };
+  // Seed from the ray answer (CREST_RAY − SEAT), then iterate.
+  let L = Math.sqrt(3 * 2 * (ALARM_JUMPER_CREST_RAY_R - ALARM_JUMPER_SEAT_R) * ALARM_JUMPER_T / (2 * SPRING_STRAIN_MAX));
+  let f = null, passes = 0;
+  for (; passes < 24; passes++) {
+    f = layout(L);
+    // preload = one throw ⇒ crest deflection = 2 · throw, worked to the
+    // material's declared allowable and taken at the SMALLEST length that
+    // satisfies it (§169's rule: more length is a softer spring, and softer is
+    // the direction that stops holding).
+    const next = Math.sqrt(3 * 2 * f.throw_u * ALARM_JUMPER_T / (2 * SPRING_STRAIN_MAX));
+    const moved = Math.abs(next - L);
+    L = next;
+    if (moved < 1e-12) { f = layout(L); passes++; break; }
   }
-  return rc;
-}
-// …and the arm angle that PUTS the nose at that radius, solved rather than
-// linearised. The nose swings on an arc of radius ALARM_CLICK_L about the
-// pivot, so its distance from the wheel's axis is a law of cosines — the old
-// `(OUT − SEAT)/L` was its first-order approximation, and over a 12.7° swing
-// that is not a rounding difference.
-const _clickD = Math.hypot(alarmClickPivot.x - ALARM_COL_POS.x, alarmClickPivot.y - ALARM_COL_POS.y);
-const _clickPsiOf = (rc) => Math.acos(Math.min(1, Math.max(-1,
-  (_clickD * _clickD + ALARM_CLICK_L * ALARM_CLICK_L - rc * rc) / (2 * _clickD * ALARM_CLICK_L))));
-const _clickPsi0 = _clickPsiOf(ALARM_CLICK_SEAT);
-// Which way the arm must turn to carry the nose OUTWARD is MEASURED off the
-// built frame, not assumed from the sign of anything.
-const _clickSign = (() => {
-  const rAt = (th) => {
-    const f = ALARM_CLICK_BASE + th + Math.PI;   // the arm reaches BACK: its nose is at local −L
-    return Math.hypot(alarmClickPivot.x + Math.cos(f) * ALARM_CLICK_L - ALARM_COL_POS.x,
-      alarmClickPivot.y + Math.sin(f) * ALARM_CLICK_L - ALARM_COL_POS.y);
-  };
-  return rAt(1e-4) > rAt(-1e-4) ? 1 : -1;
+  return { ...f, L, passes };
 })();
-const alarmClickArmAngle = (rc) => ALARM_CLICK_BASE + _clickSign * (_clickPsiOf(rc) - _clickPsi0);
-// TODO 59 — CAN THE CLICK ACTUALLY READ THE WHEEL? The check row that claimed
-// "its budget the switch's own asserts" pointed at a check nobody had written,
-// which reads as triaged and is worse than an admitted gap. This is that check,
-// in `alarmLinkReadClean`'s shape (§33/§35) and deliberately INDEPENDENT of the
-// law above: asserting that `alarmClickNoseR` satisfies its own three branches
-// would be checking a formula against its own terms, which is what TODO 15
-// warns about. So it asserts the two things the MECHANISM claims instead —
-// over a column the nose stands fully out on the wall, and over a gap it
-// drops fully home — plus the seat clearing the inner wall it drops toward.
+const ALARM_JUMPER_L = _jFold.L;
+const ALARM_JUMPER_THROW = _jFold.throw_u;      // what one index makes the blade give, measured on the arc it travels
+const ALARM_JUMPER_CREST_R = (() => {           // …and where the tip stands there, for the reports
+  const q = _jFold.tipAt(_jFold.peak);
+  return Math.hypot(q.x - ALARM_COL_POS.x, q.y - ALARM_COL_POS.y);
+})();
+const ALARM_JUMPER_PRELOAD = ALARM_JUMPER_THROW;
+// The preload fixes the RATIO of the two forces at (preload + throw)/preload
+// = 2, and SELECTOR_DETENT_WINDOW_MN's own ratio is 10. So the pair fits with
+// room, and it is placed with EQUAL margin at both ends — F_seat·F_crest =
+// floor·ceiling — which puts each √(10/2) = 2.236× clear of the bound it
+// faces. Nothing here is centred by eye, and the window is inherited whole:
+// it is a budget ENVELOPE in the design-priority sense and never forkable.
+const _jRatio = (ALARM_JUMPER_PRELOAD + ALARM_JUMPER_THROW) / ALARM_JUMPER_PRELOAD;
+const ALARM_JUMPER_F_SEAT_MN = Math.sqrt(SELECTOR_DETENT_WINDOW_MN[0] * SELECTOR_DETENT_WINDOW_MN[1] / _jRatio);
+const ALARM_JUMPER_F_CREST_MN = ALARM_JUMPER_F_SEAT_MN * _jRatio;
+// ——————————————————————————— THE BLADE'S SECTION ——————————————————————————
+// A cantilever's surface strain is 3·δ·t/(2·L²) — INDEPENDENT OF WIDTH — and
+// its rate is 3EI/L³ with I = w·t³/12. So the two dimensions answer to two
+// different constraints and neither is free: the free LENGTH answered to the
+// material in the fixed point above, and the WIDTH answers to the envelope
+// here. TODO 63's finding on the old blade was the opposite failure: it was
+// SHORT, and paid for it at ≈2.2 GPa.
+const ALARM_JUMPER_K = (ALARM_JUMPER_F_SEAT_MN / 1000) / (ALARM_JUMPER_PRELOAD * UNIT_MM / 1000);   // N/m — the seated force over the preload
+const ALARM_JUMPER_W = ALARM_JUMPER_K / cantileverK_N_per_m(1, ALARM_JUMPER_T, ALARM_JUMPER_L);     // width is linear in k
+const alarmJumperAnchor = _jFold.anchor;
+const ALARM_COL_BAND_MID = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL_H / 2; // castellation band's mid-plane above ALARM_LOCK_Z — the riders' z station, derived
+// The SAW band's mid-plane, the same way. §169 cut that band to swallow the
+// pawl at floor stock with one running margin at EACH face; the tip is the
+// second member to work in it and is cut to the same rule, so its clearance
+// above and below is CLEAR_MARGIN by construction rather than by measurement.
+const ALARM_SAW_BAND_MID = ALARM_COL_SPIN_REL - ALARM_COL_BASE_H / 2 - ALARM_COL_SKIRT_H / 2;
+const ALARM_JUMPER_TIP_H = STOCK_MIN_U;
+// The pose, exposed as the tick and the probes consume it: a wheel angle in,
+// the blade's absolute angle out. No state, no ease — the jumper's pose is a
+// FUNCTION of the wheel's, which is what "the wheel indexes and the jumper
+// follows" means when it is driven rather than animated.
+const _jRestDir = _jFold.dirOf(_jFold.beta0);   // and _jFold.restDir is the same direction from the construction — assert 4 holds the two together
+const alarmJumperAngle = (wheelA) => _jFold.dirOf(_jFold.betaAt(wheelA));
+// …and the tip-centre radius at that pose, for the reports and the probes.
+const alarmJumperSeatR = (wheelA) => {
+  const q = _jFold.tipAt(_jFold.betaAt(wheelA));
+  return Math.hypot(q.x - ALARM_COL_POS.x, q.y - ALARM_COL_POS.y);
+};
+// ————————————————————————————— THE METAL ——————————————————————————————————
+const alarmJumperArm = new THREE.Group();
+alarmJumperArm.position.set(alarmJumperAnchor.x, alarmJumperAnchor.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
+alarmJumperArm.rotation.z = _jRestDir;
+alarmSwitchUnit.add(alarmJumperArm);
 {
-  const pitch = (Math.PI * 2) / ALARM_COL_COLUMNS;
-  const onTop = alarmClickNoseR(0);                 // a column's centre
-  const inGap = alarmClickNoseR(pitch / 2);         // the gap between two
-  if (Math.abs(onTop - ALARM_CLICK_OUT) > 1e-9)
-    console.warn(`alarm click: over a column top the nose sits at ${onTop.toFixed(4)}, not on the `
-      + `wall at ${ALARM_CLICK_OUT.toFixed(4)} — nose z ${ALARM_CLICK_Z_NOSE.toFixed(3)} (r `
-      + `${ALARM_CLICK_NOSE_R}) against a ${ALARM_COL_H.toFixed(3)} column, footprint `
-      + `±${(ALARM_CLICK_NOSE_HALF * 180 / Math.PI).toFixed(2)}° against a `
-      + `±${(alarmColumnWheel.userData.colFlatHalf * 180 / Math.PI).toFixed(2)}° flat`);
-  if (Math.abs(inGap - ALARM_CLICK_SEAT) > 1e-9)
-    console.warn(`alarm click: in the gap the nose only reaches ${inGap.toFixed(4)}, not its seat at `
-      + `${ALARM_CLICK_SEAT.toFixed(4)} — the detent never drops, so the wheel is not indexed`);
-  if (ALARM_CLICK_SEAT - ALARM_CLICK_NOSE_R < ALARM_COL_INNER + CLEAR_MARGIN - 1e-9)
-    console.warn(`alarm click: the seated nose reaches ${(ALARM_CLICK_SEAT - ALARM_CLICK_NOSE_R).toFixed(3)}, `
-      + `inside the castellation floor's inner wall at ${(ALARM_COL_INNER + CLEAR_MARGIN).toFixed(3)}`);
+  // The blade. Local +x runs anchor → tip; local y is the bending direction
+  // (radial at the tip, which is what makes the tip force radial); local z is
+  // the width, so the width is free of the in-plane packing entirely.
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_JUMPER_L, ALARM_JUMPER_T, ALARM_JUMPER_W), MATS.blueSteel);
+  blade.name = 'alarmJumperBlade';
+  blade.position.x = ALARM_JUMPER_L / 2;
+  alarmJumperArm.add(blade);
+  // The shank: floor stock, crossing the base disc and the castellations at
+  // the tip's azimuth — the constraint ALARM_JUMPER_TIP_R was solved from. Its
+  // own compliance is in SERIES with the blade's and is asserted an order
+  // stiffer below, TODO 82's lesson applied before it can bite.
+  //
+  // ONE TURNED BAR WITH A SHOULDER, and the ends are where they are so that
+  // the three meshes are a connected BODY rather than three flush faces. The
+  // first cut stopped the shank at the blade's underside and at the tip's top
+  // — coplanar both ends, which is zero gap and also zero intersection, and
+  // §173's acceptance probe rightly read that as a jumper in three pieces. It
+  // now passes THROUGH the blade (a rivet's anatomy) and runs the full depth
+  // of the tip (a shoulder's).
+  const shankTop = ALARM_JUMPER_W / 2;
+  const shankBot = (ALARM_SAW_BAND_MID - ALARM_JUMPER_TIP_H / 2) - ALARM_COL_BAND_MID;
+  const shank = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_JUMPER_SHANK_R, ALARM_JUMPER_SHANK_R, shankTop - shankBot, 10), MATS.steel);
+  shank.name = 'alarmJumperShank';
+  shank.rotation.x = Math.PI / 2;
+  shank.position.set(ALARM_JUMPER_L, 0, (shankTop + shankBot) / 2);
+  alarmJumperArm.add(shank);
+  // The tip — the only member of this part that reaches into the tooth space.
+  const tip = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_JUMPER_TIP_R, ALARM_JUMPER_TIP_R, ALARM_JUMPER_TIP_H, 24), MATS.steel);
+  tip.name = 'alarmJumperTip';
+  tip.rotation.x = Math.PI / 2;
+  tip.position.set(ALARM_JUMPER_L, 0, ALARM_SAW_BAND_MID - ALARM_COL_BAND_MID);
+  alarmJumperArm.add(tip);
 }
-// §137 — THE CLICK'S DETENT TORQUE, derived (TODO 63: "the load that actually
-// holds the column indexed, and the thing a stall must actually overcome" had
-// no number). First-order chain, every input built above:
-//   arm swing over a full cam-out  = ψ(OUT) − ψ(SEAT), the law-of-cosines
-//                                    solve the nose law already owns;
-//   blade deflection at the bear   = that swing × bearArm (the blade bears at
-//                                    bearFrac·L, the spring block's numbers);
-//   flank force at the nose        = k·δ re-levered bearArm → noseArm about
-//                                    the click pivot, at full lift — the PEAK
-//                                    resistance a tooth crossing must beat
-//                                    (no preload is built, so the seated
-//                                    floor is 0 and the peak is the claim).
-// The value must sit INSIDE the declared detent envelope: a detent under the
-// window's floor is mush that cannot index, over its ceiling is a wall a
-// finger-driven pawl cannot cross — either miss is a finding against the
-// CLICK, never a licence to retune the window.
-const ALARM_CLICK_FLANK_MN = (() => {
-  const swing = _clickPsiOf(ALARM_CLICK_OUT) - _clickPsi0;
-  const bearDefl_m = swing * ALARM_CLICK_SPRING.bearArm_u * (UNIT_MM / 1000);
-  const bearF_N = ALARM_CLICK_SPRING.k_N_per_m * bearDefl_m;
-  return bearF_N * (ALARM_CLICK_SPRING.bearArm_u / ALARM_CLICK_SPRING.noseArm_u) * 1000; // mN at the flank
+// The anchor stud — the blade's GROUND. Sized so it is not a second spring in
+// series with the blade it holds: a cantilever from the plate top at the
+// blade's own station must be an order stiffer than the blade's own rate,
+// which at this reach the §50 floor already is (asserted below with both
+// numbers). Round bar, so I = πr⁴/4 rather than cantileverK's rectangle —
+// §169's warning about flattering the member an assert exists to doubt.
+const _jStudLen = (ALARM_LOCK_Z + ALARM_COL_BAND_MID + ALARM_JUMPER_W / 2) - TQ_TOP_Z;
+const ALARM_JUMPER_STUD_R = Math.max(STOCK_MIN_R10, (() => {
+  const need = 10 * ALARM_JUMPER_K;                                   // N/m
+  const L_m = _jStudLen * UNIT_MM / 1000;
+  const I_need = need * L_m ** 3 / (3 * STEEL_E_PA);                  // m⁴
+  return ((4 * I_need / Math.PI) ** 0.25) / (UNIT_MM / 1000);
+})());
+{
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_JUMPER_STUD_R, ALARM_JUMPER_STUD_R, _jStudLen, 10), MATS.nickel);
+  stud.name = 'alarmJumperStud';
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(alarmJumperAnchor.x, alarmJumperAnchor.y, TQ_TOP_Z + _jStudLen / 2);
+  alarmSwitchUnit.add(stud);
+}
+// ————————————————— WHAT THE JUMPER IS WORTH, IN TWO FIGURES ————————————————
+// The click published ONE number and made it do two jobs badly. There are two
+// questions and they have different answers:
+//
+//   FORWARD — what a press must overcome, stepped through the SHIPPED pose
+//   law so the figure cannot describe a ride the jumper does not take.
+const ALARM_JUMPER_DETENT_NMM = (() => {
+  const N = 720, d = ALARM_SAW_PITCH / N;
+  const U_m = UNIT_MM / 1000;
+  let best = 0;
+  for (let k = 0; k < N; k++) {
+    const a0 = k * d;
+    const b0 = _jFold.betaAt(a0), b1 = _jFold.betaAt(a0 + d);
+    if (b1 <= b0) continue;   // the cliff is a DROP in this direction; the ramp is what a press climbs
+    // Energy, so no contact normal has to be resolved: U = ½k·δ², δ = L·(β − β₀)
+    // plus the preload, and τ = dU/dθ = k·δ·L·dβ/dθ. BOTH factors rise along
+    // the ramp, which is why this is a peak over the ride and not a value at a
+    // point — the old click quoted a value at a point, at full lift.
+    const defl_m = (b0 - _jFold.beta0) * ALARM_JUMPER_L * U_m + ALARM_JUMPER_PRELOAD * U_m;
+    const ddef_mm = ((b1 - b0) / d) * ALARM_JUMPER_L * UNIT_MM;
+    best = Math.max(best, ALARM_JUMPER_K * defl_m * ddef_mm);   // N·mm per radian of wheel
+  }
+  return best;
 })();
-declareTransfer('alarm switch: click detent (spring bear → nose flank)', {
-  unit: 'Alarm switch', meshes: ['switchClickSpring'], idiom: 'crank',
-  load: { value: ALARM_CLICK_FLANK_MN, unit: 'mN',
-    source: 'switchClickSpring k (shared cantilever law, built section) × bear deflection over the full ψ(OUT)−ψ(SEAT) cam-out, re-levered bearArm→noseArm about the click pivot' },
-  quantities: { armIn_u: ALARM_CLICK_SPRING.bearArm_u, armOut_u: ALARM_CLICK_SPRING.noseArm_u,
-    ratio: ALARM_CLICK_SPRING.noseArm_u / ALARM_CLICK_SPRING.bearArm_u },
-  envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: ALARM_CLICK_FLANK_MN },
-  why: 'a grounded blade biasing a pivoted arm is the crank idiom carrying a spring load: the detent that indexes the column wheel, priced at its peak so the pawl row downstream can state what a press must overcome',
+//   BACKWARD — what resists un-indexing. This one is NOT a force at all, and
+//   that is the whole point of moving the index onto the saw. The seat's
+//   backward face is the tooth's cliff, cut RADIAL by makeColumnWheel, so the
+//   normal through the contact passes through the wheel's axis and has no
+//   component that can cam the tip out. No spring rate appears in it; nothing
+//   downstream has to be sized against it. What IS asserted is the geometry
+//   that makes the claim true, read off the polygon rather than asserted about
+//   it — see the flank check below.
+const ALARM_SAW_FLANKS_DEG = (() => {
+  const poly = alarmColumnWheel.userData.ratchetPoly;
+  const off = (p, q) => {
+    const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, n = Math.hypot(mx, my);
+    const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy);
+    return Math.acos(Math.min(1, Math.abs((dx * mx / n + dy * my / n) / L))) * 180 / Math.PI;
+  };
+  let ramp = 0, cliff = 0;
+  for (let i = 0; i < poly.length; i += 2) {
+    ramp = Math.max(ramp, off(poly[i], poly[(i + 1) % poly.length]));
+    cliff = Math.max(cliff, off(poly[(i + 1) % poly.length], poly[(i + 2) % poly.length]));
+  }
+  return { ramp, cliff };
+})();
+declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)', {
+  unit: 'Alarm switch', meshes: ['alarmJumperBlade', 'alarmJumperTip'], idiom: 'groundedBlade',
+  load: { value: ALARM_JUMPER_F_CREST_MN, unit: 'mN',
+    source: 'the blade’s own 3EI/L³ (cantileverK_N_per_m over the built section and free length) at the CREST deflection — preload plus one throw, the throw being the tip’s arc deflection L·(β_peak − β_seat) out of the fold’s fixed point, NOT sawSeatAt’s ray answer (which is 0.0018 shorter and was the seed)' },
+  quantities: { armIn_u: ALARM_JUMPER_L, armOut_u: ALARM_JUMPER_L, ratio: 1 },
+  envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: ALARM_JUMPER_F_CREST_MN },
+  why: `a grounded blade pressing its own tip is the groundedBlade idiom at ratio 1 — there is no lever between the spring and the contact, which is what one-part means. Seated ${ALARM_JUMPER_F_SEAT_MN.toFixed(2)} mN and cresting ${ALARM_JUMPER_F_CREST_MN.toFixed(2)} mN, each ${Math.sqrt(SELECTOR_DETENT_WINDOW_MN[1] / (SELECTOR_DETENT_WINDOW_MN[0] * _jRatio)).toFixed(2)}× clear of the bound it faces; forward detent ${ALARM_JUMPER_DETENT_NMM.toExponential(2)} N·mm about the wheel’s axis, and backward the seat’s face is ${ALARM_SAW_FLANKS_DEG.cliff.toFixed(2)}° off radial so no drag cams it out at all`,
 });
+// ————————————————————————— THE ASSERTS (rule 6) ————————————————————————————
+{
+  // 1. The seat repeats at every stop. The stops are whole ALARM_COL_STEPs and
+  //    the saw's pitch is that same angle, so this is what makes the jumper a
+  //    12-stop detent rather than a 6-stop one — the count failure that
+  //    started §173.
+  if (Math.abs(ALARM_COL_STEP - ALARM_SAW_PITCH) > 1e-12)
+    console.warn(`§173: the index step ${ALARM_COL_STEP.toFixed(6)} is no longer the saw's pitch ${ALARM_SAW_PITCH.toFixed(6)} — the jumper seats at only some of the wheel's stops`);
+  let worst = 0;
+  for (let k = 0; k < ALARM_COL_COLUMNS * 2; k++)
+    worst = Math.max(worst, Math.abs(_jFold.betaAt(k * ALARM_COL_STEP) - _jFold.beta0) * ALARM_JUMPER_L);
+  if (worst > 1e-9)
+    console.warn(`§173: the jumper is off its seat by up to ${worst.toExponential(3)} at the wheel's own stops — the fold's step count no longer lands on a tooth space`);
+  // 2. The shank passes the wheel's upper bodies at the seat — the constraint
+  //    ALARM_JUMPER_TIP_R was solved from, re-read at the achieved numbers.
+  const shankGap = (ALARM_JUMPER_SEAT_R - ALARM_JUMPER_SHANK_R) - ALARM_COL_BASE_R;
+  if (shankGap < CLEAR_MARGIN - 1e-9)
+    console.warn(`§173: the jumper's shank passes the base disc and castellations with ${shankGap.toFixed(4)} of air, under CLEAR_MARGIN ${CLEAR_MARGIN} — re-solve ALARM_JUMPER_TIP_R, do not thin the shank`);
+  // 3. The tip is centred in the saw band with one running margin at each
+  //    face, §169's rule for the pawl applied to the second member in it.
+  const faceGap = (ALARM_COL_SKIRT_H - ALARM_JUMPER_TIP_H) / 2;
+  if (Math.abs(faceGap - CLEAR_MARGIN) > 1e-9)
+    console.warn(`§173: the jumper's tip leaves ${faceGap.toFixed(4)} at each face of the saw band against CLEAR_MARGIN ${CLEAR_MARGIN} — the band and the tip no longer derive from the same rule`);
+  // 4. The pose law reproduces the rest pose exactly. `_jFold.sign` picks which
+  //    side of the anchor→centre line the blade lies on, and a side chosen by a
+  //    sign is right or catastrophically wrong, never nearly right — so this
+  //    holds it against the construction rather than against a tolerance.
+  //
+  //    WRAPPED, because the two paths are free to name one direction 2π apart:
+  //    `dirOf` accumulates from atan2's principal value and `_jRestDir` is
+  //    built from ALARM_JUMPER_AZ, which carries whatever turn count
+  //    ALARM_LOCK_ENGAGED plus seven steps came to. A raw subtraction reads
+  //    that as a full turn of error, and did, first run.
+  const _wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const restErr = Math.abs(_wrap(alarmJumperAngle(0) - _jRestDir));
+  if (restErr > 1e-9)
+    console.warn(`§173: the jumper's pose law misses its own rest pose by ${restErr.toExponential(3)} rad — the fold's branch sign is on the wrong side of the anchor line`);
+  // 5. The blade works inside the material. This is TODO 63's finding, held
+  //    as a gate: the free length is SOLVED from this, so a failure here means
+  //    the solve and the built section have parted.
+  const strain = 3 * (ALARM_JUMPER_PRELOAD + ALARM_JUMPER_THROW) * ALARM_JUMPER_T / (2 * ALARM_JUMPER_L ** 2);
+  if (_jFold.passes >= 24)
+    console.warn(`§173: the blade's free length never settled — the fold's fixed point ran its full ${_jFold.passes} passes, so ALARM_JUMPER_L and the throw it was solved from are not the same design`);
+  if (strain > SPRING_STRAIN_MAX + 1e-12)
+    console.warn(`§173: the jumper's blade works to ${strain.toExponential(3)} surface strain, over SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX.toExponential(3)}`);
+  // 6. The blade is real metal — §50's floor on the one dimension that was
+  //    free to be solved.
+  if (ALARM_JUMPER_W < STOCK_MIN_U - 1e-9)
+    console.warn(`§173: the jumper's blade is ${ALARM_JUMPER_W.toFixed(4)} wide, under STOCK_MIN_U ${STOCK_MIN_U.toFixed(4)} — the envelope wants less force than this stock can be cut to deliver`);
+  // 7. Neither series compliance governs. TODO 82's lesson: a member in series
+  //    with the spring that is not an ORDER stiffer IS the spring. Both the
+  //    shank the tip hangs on and the stud the blade is grounded to are round
+  //    bars, so both are priced at πr⁴/4 and not at cantileverK's rectangle.
+  const U_m = UNIT_MM / 1000;
+  const roundK = (r_u, L_u) => 3 * STEEL_E_PA * (Math.PI * (r_u * U_m) ** 4 / 4) / (L_u * U_m) ** 3;
+  const shankLen = (ALARM_COL_BAND_MID - ALARM_JUMPER_W / 2) - (ALARM_SAW_BAND_MID + ALARM_JUMPER_TIP_H / 2);
+  for (const [what, k] of [['shank', roundK(ALARM_JUMPER_SHANK_R, shankLen)], ['anchor stud', roundK(ALARM_JUMPER_STUD_R, _jStudLen)]])
+    if (k < 10 * ALARM_JUMPER_K)
+      console.warn(`§173: the jumper's ${what} is ${(k / ALARM_JUMPER_K).toFixed(2)}× the blade's own rate, under the 10× that makes the blade the member that governs — it is a second spring in series and ALARM_JUMPER_K is not what the tip feels`);
+  // 8. THE ANCHOR STANDS ON METAL. This is the assert §169's finding demanded
+  //    and that §173 shipped without: a stud is only a ground if there is
+  //    plate under its foot, and `support` is declared per UNIT, so a single
+  //    floating mesh inside a unit that is otherwise seated passes it in
+  //    silence. It did. The foot needs its own radius plus a margin of solid
+  //    plate, because a post standing on the very lip of an opening is not
+  //    seated either — and the plate's outer edge is the same question from
+  //    the other side.
+  const studSeat = inCutClearance(alarmJumperAnchor.x, alarmJumperAnchor.y);
+  if (studSeat < ALARM_JUMPER_STUD_R + CLEAR_MARGIN)
+    console.warn(`§173: the jumper's anchor stud stands on ${studSeat.toFixed(3)} of plate at (${alarmJumperAnchor.x.toFixed(2)}, ${alarmJumperAnchor.y.toFixed(2)}), under the ${(ALARM_JUMPER_STUD_R + CLEAR_MARGIN).toFixed(3)} its own foot needs — it is over the balance cutaway, not on metal. Re-fold in position space (ALARM_JUMPER_HAND, then ALARM_JUMPER_STEPS); do not lengthen the stud to reach the plate below`);
+  const studEdge = plateR - Math.hypot(alarmJumperAnchor.x, alarmJumperAnchor.y);
+  if (studEdge < ALARM_JUMPER_STUD_R + CLEAR_MARGIN)
+    console.warn(`§173: the jumper's anchor stud stands ${studEdge.toFixed(3)} inside the plate's rim, under the ${(ALARM_JUMPER_STUD_R + CLEAR_MARGIN).toFixed(3)} its foot needs`);
+  // 9. The two claims the design rests on, read off the polygon rather than
+  //    asserted about it: the backward face is radial (so no drag cams the tip
+  //    out) and the forward face is not (so a press can still index it).
+  if (ALARM_SAW_FLANKS_DEG.cliff > 1e-6)
+    console.warn(`§173: the saw's backward flank stands ${ALARM_SAW_FLANKS_DEG.cliff.toFixed(4)}° off radial — the un-index proof needs it radial, and a non-zero angle is a cam-out component the pawl's return can spend`);
+  if (!(ALARM_SAW_FLANKS_DEG.ramp > 30))
+    console.warn(`§173: the saw's forward flank stands ${ALARM_SAW_FLANKS_DEG.ramp.toFixed(2)}° off radial — too near radial for a press to climb, so the wheel would be detented in BOTH directions`);
+}
 // THE PUSHER (owner's catch: a cased movement cannot reach a plate-top
 // column wheel — chronographs pierce the case here). A capped stem at the
 // rim on the wheel's azimuth, OFFSET half a wheel-radius sideways so its
@@ -20769,22 +21047,24 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // (TODO 63: the input end of the arming chain had no arithmetic). The
   // riser-and-reach is a plane change at ratio 1 — no lever anywhere, so the
   // pawl sees the finger's press entire. What a press must overcome to index
-  // the column one tooth is the click's detent torque (its §137 row above —
-  // the peak flank force on the wall) taken about the wheel's axis and paid
-  // back at the saw's own radius, read off the SAME ratchetPoly the teeth
-  // were cut from. The margin is the point: tens of mN needed against the
+  // the column one tooth is the SAUTOIR's forward detent (§173's row above),
+  // which is already a torque about the wheel's axis — F·dr/dθ peaked over the
+  // ramp — and is paid back at the saw's own radius, read off the SAME
+  // ratchetPoly the teeth were cut from. It was the click's flank force times
+  // a riding radius until §173; a published torque removes the radius from
+  // every consumer, and with it three chances to quote a different one. The margin is the point: tens of mN needed against the
   // newtons a finger delivers (CASE_PUSHER_INPUT_N) — this chain starves at
   // the SHAFT downstream (the lay-shaft row), never at the input.
   {
     const poly = alarmColumnWheel.userData.ratchetPoly;
     let sawR = 0;
     for (const p of poly) sawR = Math.max(sawR, Math.hypot(p.x, p.y));
-    const clickTorque_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
-    const pawlNeedMN = clickTorque_Nmm / (sawR * UNIT_MM) * 1000;
+    const detentTq_Nmm = ALARM_JUMPER_DETENT_NMM;   // §173: the jumper publishes a TORQUE, so no consumer re-derives one from a force and a radius
+    const pawlNeedMN = detentTq_Nmm / (sawR * UNIT_MM) * 1000;
     declareTransfer('alarm arming: pusher riser and reach (cap → pawl)', {
       unit: 'Alarm switch', meshes: ['alarmPusherCap', 'alarmPusherReach', 'alarmPusherRiser'], idiom: 'riserReach',
       load: { value: pawlNeedMN, unit: 'mN',
-        source: 'the click row\'s peak flank force taken about the column axis at the nose\'s riding radius, paid back at the saw\'s own outermost radius (userData.ratchetPoly) — what one indexing press must overcome' },
+        source: 'the sautoir row\'s FORWARD detent torque (§173: blade force × dr/dθ, peaked over the ramp against sawSeatAt), paid back at the saw\'s own outermost radius (userData.ratchetPoly) — what one indexing press must overcome' },
       quantities: { armIn_u: 1, armOut_u: 1, ratio: 1 },
       why: `displacement through a plane change with no direction change: climb and reach, loaded axially, ratio 1 by construction — the anatomy a real case-pusher's under-plate operating lever has; needs ~${pawlNeedMN.toFixed(1)} mN against the ${CASE_PUSHER_INPUT_N[0]}–${CASE_PUSHER_INPUT_N[1]} N a finger delivers`,
     });
@@ -20891,12 +21171,6 @@ const ALARM_PAWL_L_SPEC = 4.5430;                   // the arm the centreline wa
 // tick. The walk's span covers twice the pawl's stroke, which is what the
 // spring's preload puts between its free angle and the most open seat.
 const ALARM_PAWL_DPHI = 0.002, ALARM_PAWL_SCAN_N = 400, ALARM_PAWL_CYCLE_N = 96;
-// Hardened spring steel's usable elastic strain — the surface strain a blade
-// may work to and come back. §164 moved the yield itself to layout.js, beside
-// the modulus, because the pusher's return COIL needs the same number under a
-// different loading and a second copy of it here would be two definitions of
-// one material.
-const SPRING_STRAIN_MAX = SPRING_SIGMA_Y_PA / STEEL_E_PA;
 // The margin between any two spring forces in this chain — how much weaker
 // than the detent the pawl's return drag must be, and (§164) how much stronger
 // than that drag the pusher's own return must be. One number for both because
@@ -21065,8 +21339,8 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   const ALARM_PAWL_STROKE = phiMax - phiMin;
   ALARM_PAWL_PHI_FREE = phiMin - ALARM_PAWL_STROKE;
   const U = UNIT_MM / 1000;                                     // m per model unit
-  const clickTq_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
-  const noseFmax_N = clickTq_Nmm / (ALARM_SPRING_HEADROOM * ALARM_COL_TIP_R * UNIT_MM);
+  const detentTq_Nmm = ALARM_JUMPER_DETENT_NMM;   // §173: the jumper publishes a TORQUE, so no consumer re-derives one from a force and a radius
+  const noseFmax_N = detentTq_Nmm / (ALARM_SPRING_HEADROOM * ALARM_COL_TIP_R * UNIT_MM);
   // ————— §169 — THE SPRING IS A TORSION COIL ON THE PAWL'S OWN POST —————
   //
   // §163 sprung this pawl with a flat cantilever behind its tail. The blade's
@@ -21444,7 +21718,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     }
     if (worst < CLEAR_MARGIN - 1e-6)
       console.warn(`§163: the pawl's cut outline comes within ${worst.toFixed(4)} of the saw at (${worstAt}) over its return, under CLEAR_MARGIN ${CLEAR_MARGIN}`);
-    alarmColDriverGroup.userData.drive = { postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), branchClear: +ALARM_DRIVER_BRANCH_CLEAR.toFixed(4), postAzDeg: +(postAz * 180 / Math.PI).toFixed(2), branchScan, spring: ALARM_PAWL_SPRING, clickPivotAz: Math.atan2(alarmClickPivot.y - ALARM_COL_POS.y, alarmClickPivot.x - ALARM_COL_POS.x), clickPivotR: Math.hypot(alarmClickPivot.y - ALARM_COL_POS.y, alarmClickPivot.x - ALARM_COL_POS.x), seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
+    alarmColDriverGroup.userData.drive = { postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), branchClear: +ALARM_DRIVER_BRANCH_CLEAR.toFixed(4), postAzDeg: +(postAz * 180 / Math.PI).toFixed(2), branchScan, spring: ALARM_PAWL_SPRING, jumperAz: ALARM_JUMPER_AZ, jumperSeatR: ALARM_JUMPER_SEAT_R, seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
   }
   // 6. P1, TODO 16's format (§137) — THE RETURN MUST NOT UN-INDEX THE WHEEL.
   //    The pawl's spring drags its nose back over the tooth it has just
@@ -21463,15 +21737,26 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     const moment_Nm = ALARM_PAWL_SPRING.kTheta_Nm_per_rad * ALARM_PAWL_SPRING.theta_rad;
     const noseF_mN = 1000 * moment_Nm / (ALARM_PAWL_SPRING.noseArm_u * UNIT_MM / 1000);
     const dragTq_Nmm = (noseF_mN / 1000) * (ALARM_COL_TIP_R * UNIT_MM);
-    const clickTq_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
+    const detentTq_Nmm = ALARM_JUMPER_DETENT_NMM;   // §173: the jumper publishes a TORQUE, so no consumer re-derives one from a force and a radius
     ALARM_PAWL_SPRING.noseF_mN = noseF_mN;
     ALARM_PAWL_SPRING.dragTq_Nmm = dragTq_Nmm;
-    ALARM_PAWL_SPRING.clickTq_Nmm = clickTq_Nmm;
-    ALARM_PAWL_SPRING.headroom = clickTq_Nmm / dragTq_Nmm;
-    if (dragTq_Nmm >= clickTq_Nmm)
-      console.warn(`§169: the pawl's return drag is ${dragTq_Nmm.toExponential(2)} N·mm against the click's ${clickTq_Nmm.toExponential(2)} N·mm detent — the return would carry the wheel back with it`);
-    if (clickTq_Nmm / dragTq_Nmm < ALARM_SPRING_HEADROOM - 1e-9)
-      console.warn(`§169: the pawl's return drag clears the click's detent by ${(clickTq_Nmm / dragTq_Nmm).toFixed(2)}×, under ALARM_SPRING_HEADROOM ${ALARM_SPRING_HEADROOM} — the turn count is what buys this, not the budget`);
+    ALARM_PAWL_SPRING.detentTq_Nmm = detentTq_Nmm;
+    ALARM_PAWL_SPRING.headroom = detentTq_Nmm / dragTq_Nmm;
+    // §173 — WHAT THIS BUDGET IS NOW MEASURED AGAINST, and why it passes by
+    // more than it used to. The drag pulls the wheel BACKWARD, and the member
+    // that resists that is no longer a spring: the sautoir's seat presents the
+    // saw's cliff, cut radial, so the contact normal passes through the axis
+    // and no drag of any size has a component that could cam the tip out (the
+    // §173 block asserts that flank angle off `ratchetPoly` itself). The
+    // honest comparison left is against the sautoir's FORWARD detent — the
+    // weaker of the two directions — which makes this budget CONSERVATIVE
+    // rather than generous: a drag that cannot beat the ramp certainly cannot
+    // beat the wall. Kept comparing real numbers rather than deleted, because
+    // a coil sized against nothing is a coil sized by eye.
+    if (dragTq_Nmm >= detentTq_Nmm)
+      console.warn(`§169: the pawl's return drag is ${dragTq_Nmm.toExponential(2)} N·mm against the sautoir's ${detentTq_Nmm.toExponential(2)} N·mm forward detent — the return would carry the wheel back with it`);
+    if (detentTq_Nmm / dragTq_Nmm < ALARM_SPRING_HEADROOM - 1e-9)
+      console.warn(`§169: the pawl's return drag clears the sautoir's forward detent by ${(detentTq_Nmm / dragTq_Nmm).toFixed(2)}×, under ALARM_SPRING_HEADROOM ${ALARM_SPRING_HEADROOM} — the turn count is what buys this, not the budget`);
     // 7. §169, and TODO 82's lesson applied before it can bite — THE WORKING
     //    LEG IS A SERIES COMPLIANCE, and a series compliance that is not an
     //    order stiffer than the member it is in series with is the one that
@@ -21497,14 +21782,14 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // unlike the other five that arm is NOT one number — the check re-verifies
   // the ratio between its ends from the row's own quantities.
   {
-    const clickTq_Nmm = (ALARM_CLICK_FLANK_MN / 1000) * ((ALARM_COL_BASE_R + ALARM_CLICK_NOSE_R) * UNIT_MM);
+    const detentTq_Nmm = ALARM_JUMPER_DETENT_NMM;   // §173: the jumper publishes a TORQUE, so no consumer re-derives one from a force and a radius
     let sawR = 0;
     for (const q of poly) sawR = Math.max(sawR, Math.hypot(q.x, q.y));
-    const pinNeed_mN = 1000 * clickTq_Nmm / (ALARM_PAWL_ARM * UNIT_MM);
+    const pinNeed_mN = 1000 * detentTq_Nmm / (ALARM_PAWL_ARM * UNIT_MM);
     declareTransfer('alarm arming: the driver’s pin in its radial slot (pin → column wheel)', {
       unit: 'Alarm switch', meshes: ['alarmPusherRiser', 'alarmColDriver'], idiom: 'pinInSlot',
       load: { value: pinNeed_mN, unit: 'mN',
-        source: 'the click row’s detent taken about the column axis, paid back at the coupling’s SMALLEST moment arm (the foot of the perpendicular) — the arm that has to be afforded' },
+        source: 'the sautoir row’s FORWARD detent torque (§173), paid back at the coupling’s SMALLEST moment arm (the foot of the perpendicular) — the arm that has to be afforded' },
       quantities: {
         armIn_u: ALARM_PAWL_ARM, armOut_u: ALARM_PAWL_ARM_END, ratio: ALARM_PAWL_ARM_END / ALARM_PAWL_ARM,
         offset_u: ALARM_DRIVE_OFFSET, travel_u: ALARM_PUSH_TRAVEL, sweep_rad: ALARM_PAWL_SWEEP,
@@ -21530,7 +21815,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         wireD_u: ALARM_PAWL_SPRING.wireD_u, index: ALARM_PAWL_SPRING.index,
         devLen_u: ALARM_PAWL_SPRING.devLen_u, kTheta_Nm_per_rad: ALARM_PAWL_SPRING.kTheta_Nm_per_rad,
         theta_rad: ALARM_PAWL_SPRING.theta_rad, noseArm_u: ALARM_PAWL_SPRING.noseArm_u,
-        dragTq_Nmm: ALARM_PAWL_SPRING.dragTq_Nmm, clickTq_Nmm: ALARM_PAWL_SPRING.clickTq_Nmm,
+        dragTq_Nmm: ALARM_PAWL_SPRING.dragTq_Nmm, detentTq_Nmm: ALARM_PAWL_SPRING.detentTq_Nmm,
         headroom: ALARM_PAWL_SPRING.headroom, legStiffnessRatio: 1 / ALARM_PAWL_SPRING.legShare,
       },
       why: `the coil’s turn count is SOLVED rather than picked, and by the same two floors the blade it replaced `
@@ -21538,7 +21823,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         + `floors on DEVELOPED LENGTH, the ${ALARM_PAWL_SPRING.governs} one governing at `
         + `${Math.max(ALARM_PAWL_SPRING.dragFloor_u, ALARM_PAWL_SPRING.bendFloor_u).toFixed(3)} u. The nose’s `
         + `${ALARM_PAWL_SPRING.noseF_mN.toFixed(2)} mN taken at the tip circle is ${ALARM_PAWL_SPRING.dragTq_Nmm.toExponential(2)} N·mm `
-        + `against the click’s ${ALARM_PAWL_SPRING.clickTq_Nmm.toExponential(2)} N·mm detent — ${ALARM_PAWL_SPRING.headroom.toFixed(2)}× clear, `
+        + `against the click’s ${ALARM_PAWL_SPRING.detentTq_Nmm.toExponential(2)} N·mm detent — ${ALARM_PAWL_SPRING.headroom.toFixed(2)}× clear, `
         + `because a return that drags the wheel back un-indexes it`,
     });
     declareRestoring('Alarm switch', 'alarmColPawl', 'spring',
@@ -21824,14 +22109,23 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
     '§164: the coil is captive between the collar and the fixed abutment and touches both at every pose, so its drawn length is a function of the press fraction and not a state it can be left in — closed by the collar, opened by its own stored energy against the same two faces');
 }
 {
-  // Distance to the NEAREST integer pitch, not the raw modulus: the raw form
-  // held only while (ENGAGED + 2·pitch) − ENGAGED rounded back to exactly
-  // 2·pitch, and a module-rotated ENGAGED (?alarmmod=) lands the residue at
-  // pitch − ε — a phantom full-pitch "disagreement" made of one ulp.
-  const _pitch = Math.PI * 2 / ALARM_COL_COLUMNS;
-  let gap = (((ALARM_CLICK_AZ - ALARM_LOCK_ENGAGED) % _pitch) + _pitch) % _pitch;
-  if (gap > _pitch / 2) gap -= _pitch;
-  if (Math.abs(gap) > 1e-9) console.warn(`alarm click phase: contact azimuths differ by a non-integer pitch (${gap.toFixed(4)}) — the flag and the gate would disagree`);
+  // §173 — THE PHASE ASSERT SURVIVES THE CLICK, with a different subject.
+  //
+  // It used to hold the click's contact azimuth a whole CASTELLATION pitch
+  // from the lock beak's, so the part that made the toggle read and the part
+  // that gated it could not disagree about parity. The click is gone and its
+  // flag job with it (the lock beak and the link beak both read the state
+  // directly), so parity is no longer the question. The jumper's is: its tip
+  // must land in a tooth space at every stop, which is one congruence against
+  // the SAW's pitch instead of the columns'.
+  //
+  // Kept in the NEAREST-integer form the old assert was fixed into, and for
+  // the same reason: a module-rotated ENGAGED (?alarmmod=) lands the raw
+  // residue at pitch − ε and a raw modulus reads that as a full-pitch slip
+  // made of one ulp.
+  let gap = (((ALARM_JUMPER_OFF - ALARM_JUMPER_SEAT_PHI) % ALARM_SAW_PITCH) + ALARM_SAW_PITCH) % ALARM_SAW_PITCH;
+  if (gap > ALARM_SAW_PITCH / 2) gap -= ALARM_SAW_PITCH;
+  if (Math.abs(gap) > 1e-9) console.warn(`§173 jumper phase: the tip's azimuth is ${gap.toFixed(6)} off a whole saw pitch from the seat's own phase — it would rest part-way up a flank at every stop`);
 }
 // §171 — THE TAIL BEAK THAT WAS ALREADY REPLACED, deleted rather than moved.
 //
@@ -24892,7 +25186,7 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
   addLine(alarmFeelerLever, [V(-ALARM_FEELER_TAIL, 0, 0), V(ALARM_FEELER_ARM_LEN, 0, 0)]); // §29 feeler: tail → pivot → pin arm
   addLine(alarmFeelerLever, [V(ALARM_FEELER_ARM_LEN, 0, 0), V(ALARM_FEELER_ARM_LEN, 0, ALARM_PIN_DROP + ALARM_PIN_SHANK + 0.3)]); // the pin's drop leg
   addLine(alarmSilRocker, [V(-alarmSilRocker.userData.aF, 0, 0), V(alarmSilRocker.userData.aP, 0, 0)]); // §45 seesaw: finger arm ← pivot → paddle arm
-  addLine(alarmClickArm, [V(0, 0, 0), V(-ALARM_CLICK_L, 0, 0)]); // §43 click: pivot → nose
+  addLine(alarmJumperArm, [V(0, 0, 0), V(ALARM_JUMPER_L, 0, 0)]); // §173 sautoir: anchor → tip, the blade's own free length
   addLine(alarmLockLever, [V(-2.0, 0, 0), V(ALARM_LOCK_L, 0, 0)]); // §25 D lock: tail beak ← pivot → brake pad
   // §163 — the column wheel's driver, its two arms from the arbor it turns on
   // (slot arm at 0, post arm at the derived azimuth), and the pawl's own
@@ -32124,12 +32418,14 @@ function tick(t) {
     // The click rocks with the SAME ridden profile (its contact sits whole
     // pitches from the beak's): out on a column, dropped into a gap — the
     // visible flip on every actuation, mid-flank included.
-    // TODO 59: the nose's radius comes from the wall and the top corner it
-    // rides, not from the chamfer's height fraction. profileAt is
-    // pitch-periodic and the click's contact sits a whole number of pitches
-    // from the lock beak's (asserted below), so colShownA is the right
-    // azimuth for it unshifted.
-    alarmClickArm.rotation.z = alarmClickArmAngle(alarmClickNoseR(alarmColShownA));
+    // §173: the SAUTOIR's pose, and it is read off the cut rather than eased
+    // toward. `sawSeatAt` gives the tip-centre radius the teeth allow at this
+    // wheel angle; the triangle solve turns that radius into the blade's
+    // angle exactly, so the tip is on the metal at every frame including
+    // mid-flank. There is no state here — the jumper's pose is a function of
+    // the wheel's, which is what "the wheel indexes and the jumper follows"
+    // means when it is driven rather than animated.
+    alarmJumperArm.rotation.z = alarmJumperAngle(alarmColShownA);
     // The pusher: presses IN with the actuation pulse and springs back — its
     // pawl rides the ratchet skirt through the same eased step.
     // TODO 20: the head TRAVELS in — it used to snap to 1, which left the
@@ -32679,20 +32975,29 @@ window.__clock = {
   },
   get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
-  // TODO 59: the click's own law, exposed so a probe measures the SHIPPED
-  // function rather than a re-implementation of it. `poseClick` drives the arm
-  // to an arbitrary wheel angle, which no pose object can reach — setPose
-  // banks alarmColSteps to an integer multiple of ALARM_COL_STEP, so mid-flank
+  // §173 — THE JUMPER'S OWN LAW, exposed so a probe measures the SHIPPED
+  // function rather than a re-implementation of it (TODO 59's rule, inherited
+  // from the click this replaces). `poseJumper` drives the blade to an
+  // arbitrary wheel angle, which no pose object can reach: setPose banks
+  // alarmColSteps to an integer multiple of ALARM_COL_STEP, so mid-flank
   // exists only under the live tick (TODO 7's territory) or through here.
-  clickLaw: {
-    noseR: (colA) => alarmClickNoseR(colA),
-    armAngle: (rc) => alarmClickArmAngle(rc),
-    seat: ALARM_CLICK_SEAT, out: ALARM_CLICK_OUT, noseRadius: ALARM_CLICK_NOSE_R,
-    wallR: ALARM_COL_BASE_R, noseHalf: ALARM_CLICK_NOSE_HALF, zNose: ALARM_CLICK_Z_NOSE,
-    colH: ALARM_COL_H, pitch: (Math.PI * 2) / ALARM_COL_COLUMNS,
-    poseClick: (colA) => {
+  // `pitch` stays the CASTELLATION pitch the click published, because the
+  // press probe reads it to place a half-step and that geometry is unchanged;
+  // `sawPitch` beside it is the jumper's own, and they are not the same angle.
+  jumperLaw: {
+    seatR: (colA) => alarmJumperSeatR(colA),
+    armAngle: (colA) => alarmJumperAngle(colA),
+    seat: ALARM_JUMPER_SEAT_R, crestRay: ALARM_JUMPER_CREST_RAY_R, tipR: ALARM_JUMPER_TIP_R,
+    crest: ALARM_JUMPER_CREST_R, beta0: _jFold.beta0, peak: _jFold.peak, foldPasses: _jFold.passes,
+    preload: ALARM_JUMPER_PRELOAD, throw_u: ALARM_JUMPER_THROW,
+    k_N_per_m: ALARM_JUMPER_K, L: ALARM_JUMPER_L, t: ALARM_JUMPER_T, w: ALARM_JUMPER_W,
+    fSeat_mN: ALARM_JUMPER_F_SEAT_MN, fCrest_mN: ALARM_JUMPER_F_CREST_MN,
+    detent_Nmm: ALARM_JUMPER_DETENT_NMM, flanksDeg: ALARM_SAW_FLANKS_DEG,
+    off: ALARM_JUMPER_OFF, seatPhi: ALARM_JUMPER_SEAT_PHI,
+    pitch: (Math.PI * 2) / ALARM_COL_COLUMNS, sawPitch: ALARM_SAW_PITCH,
+    poseJumper: (colA) => {
       alarmColumnWheel.rotation.z = -colA;
-      alarmClickArm.rotation.z = alarmClickArmAngle(alarmClickNoseR(colA));
+      alarmJumperArm.rotation.z = alarmJumperAngle(colA);
     },
   },
   get fourthAngle() { return fourthAngle(tauIntegrated); },

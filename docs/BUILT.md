@@ -18162,3 +18162,251 @@ The FORK is visible in the report too, which is the point of declaring it —
 to fourteen digits. §137 re-verified its relations from the frozen payload and
 still passes, which is the check earning its keep: the ratio moved and the force
 arithmetic that depends on it still closes.
+
+## §173 — the column wheel's index: a sautoir on the saw, and the click deleted
+
+TODO 90 finding 3 measured the switch click failing four ways at once. Not one
+was a clearance to repair, so this section deletes the part rather than fixing
+it and replaces the index with what a real chronograph carries.
+
+### What was wrong, in the order the failures matter
+
+1. **No detent existed at any of the twelve stops.** The wheel indexes 12 times
+   a revolution — one saw tooth, half a column pitch per press — and the click
+   rode **6 columns**. Worse than the count mismatch: restoring torque needs the
+   follower driven radially OUT as the wheel leaves its stop, and a column's top
+   and a gap's floor are both arcs of *constant* radius, because the chamfer is
+   cut in z only. TODO 59's own comment says exactly that, in capitals, one
+   screen above the click. Sampled over a pitch: 8 on a flat top, 23 on a flat
+   gap floor, 18 on a ramp — and `dr/dθ` = 0 at every stop the wheel uses.
+2. **The spring never touched the arm it was declared to press.** Arm z
+   12.2991..12.6157 against blade z 10.0028..10.2028, closest approach
+   **2.0963 at every pose**. §48's no-spring audit passed on a DECLARATION
+   rather than on metal — the exact failure that audit exists to prevent.
+3. **The blade was over-strained anyway**, ≈2.2 GPa (TODO 63's open entry).
+4. **The arm interpenetrated the columns** at 110 and 130 triangle pairs. The
+   BALL did not, which is how four earlier passes over this cluster measured the
+   nose, found it clear, and moved on.
+
+### The architecture, and why the saw
+
+A sautoir on the RATCHET the pawl drives; the columns go back to being read
+surfaces. Three structural reasons:
+
+- **Count.** The saw has `ALARM_COL_COLUMNS·2` = 12 teeth, one per index, so
+  every stop the wheel takes IS a tooth space. Six columns at half-pitch
+  indexing cannot detent every stop, whatever rides them.
+- **Cam-out.** A tooth space is a V of two flanks, so `dr/dθ` at the stop is
+  non-zero by construction.
+- **Asymmetry, which is the mechanism.** Measured off `ratchetPoly` and asserted
+  at boot, the saw's two flanks stand **66.21°** and **0.00°** off radial.
+  Forward the tip climbs the ramp at a price the press pays. Backward — the
+  direction §169's pawl return drags the wheel — it meets a face that is
+  RADIAL, so the contact normal passes through the axis and there is no radial
+  component to cam the tip out at *any* drag. §163's "a return that drags the
+  wheel back un-indexes it" stops being a number to win and becomes a geometry
+  that cannot happen.
+
+**One part.** No pivot, no post, no separate spring — the blade IS the jumper,
+which is what a sautoir is, and it is why findings 2 and 3 close by construction
+rather than by re-measurement. The line spec called for §169's torsion coil
+instead; that was priced first and **rejected on the envelope**: a coil on the
+movement's one spring wire reaches ≈2.4 mN at the flank against a 5–50 mN
+window, and kθ ∝ d⁴ means `SPRING_FLAT_U` cannot be stretched to it without a
+second spring material.
+
+### Every number, and the constraint it came from
+
+| quantity | value | from |
+|---|---|---|
+| tip radius | **0.7421** (⌀ 0.562 mm) | the smallest tip whose SEAT lets a floor-stock shank pass the base disc and castellations at one `CLEAR_MARGIN` |
+| seat / crest, tip centre | 6.0165 / 7.1261 | `sawSeatAt`, bisected against the cut polygon |
+| throw | **1.1114** | the tip's own deflection along the ARC it travels |
+| preload | one throw | §169's precedent (`springTheta = 2·stroke`) |
+| blade free length | **10.4874** | `SPRING_STRAIN_MAX` at the crest, smallest length satisfying it |
+| blade section | 0.1319 × **0.7035** | `SPRING_FLAT_U` bending; width from the detent envelope, 2.22× §50's floor |
+| seated / cresting force | **11.18 / 22.36 mN** | equal margin at both ends of `SELECTOR_DETENT_WINDOW_MN` — √5 = 2.236× clear of each |
+| forward detent | **3.479e-2 N·mm** | `F·dr/dθ` peaked over the ramp, through the shipped pose law |
+| shank / stud | `STOCK_MIN_R10` | §50's floor; both asserted ≥10× the blade's rate so neither is a series spring (TODO 82) |
+
+The tip is centred in the saw band at `STOCK_MIN_U`, which leaves exactly
+`CLEAR_MARGIN` at each face — §169 cut that band to swallow the pawl by the same
+rule, so the second member in it inherits the arithmetic instead of measuring it.
+
+### The correction the acceptance probe earned
+
+**The tip does not travel on a ray.** It is carried at a fixed distance from the
+anchor, so it swings on an ARC and its azimuth about the wheel drifts 0.49° over
+the ride. `sawSeatAt` answers a question about a ray; sizing the blade from it
+and then posing on the arc put the tip **0.0253 INTO a tooth near the crest** —
+`tools/probe-173-jumper.mjs` caught it, in a check that exists because finding 1
+was about a follower that was not on the surface it claimed.
+
+The pose law is now a root find against `sawClear`, the signed field the same
+polygon publishes: the smallest swing whose tip POSITION clears the teeth. And
+because the blade's length sets the anchor, the anchor sets the arc, the arc
+sets the throw and the throw sets the length, the four are solved as a **FIXED
+POINT** rather than cut anywhere. It converges in a handful of passes; a build
+assert fires if it ever does not. After the change the tip measures **0.0000**
+from the teeth at all 50 poses across a pitch, in both alarm states.
+
+### The fold was wrong the first time, and `support` could not see it
+
+An owner's eye report — *"the post holding the sautoire seems to be floating"* —
+and it was right. The anchor stud was placed at the three-quarter plate's TOP
+FACE LEVEL and assumed to be standing on it. At (24.29, −7.82) it stood over
+the balance cutaway, on air.
+
+**This is §169's own finding reproduced.** That section caught a stud in this
+same cluster hanging over 4.347 of clear air while an `INTRA_UNIT_CONTACTS` row
+declared it "standing on the driver". §173 read that comment and repeated the
+mistake, which is the part worth writing down: knowing a failure mode is not
+the same as testing for it.
+
+Two things kept it invisible:
+
+- **`support` is declared per UNIT.** A single floating mesh inside a unit that
+  is otherwise seated passes it in silence, and did — the battery was 35/35
+  with this stud on nothing.
+- **The first raycast written to check it was wrong in the direction that
+  reports clean.** It started just under the foot, i.e. INSIDE the plate solid,
+  so front-face culling dropped the only faces it could have hit; it reported
+  the plate absent under two CONTROL studs as well. A test whose controls fail
+  the same way as its subject has not tested anything. Casting from above with
+  the plate double-sided answers `[8.9845, 8.1845]` for a seated stud and `[]`
+  for this one.
+
+**The fix is position-space, as the ladder requires.** The blade's HAND flips to
+run toward rising azimuth, putting the anchor at (35.03, 10.19) on solid plate
+while leaving the tip at the station the free-window measurement chose: the tip
+does not move, only which way the blade runs from it. Both hands were
+enumerated over all twelve step counts against `inCutClearance` before
+choosing — a function that has existed since §62 and answers exactly this
+question, 15,000 lines above where the stud was placed by assumption.
+
+**That fold's consequence was followed rather than absorbed** — and then undone
+with it, so read the next section before quoting any of it. Mirroring the blade
+makes the arc's azimuth drift ADD to the ramp instead of subtracting from it,
+so the forward detent rose 3.479e-2 → 3.899e-2 N·mm; a bigger budget buys a
+shorter, stiffer pawl coil, and §169's own instruction — *"re-derive the raise,
+do not re-target the spring"* — took `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5. **The
+SHIPPED figures are 3.479e-2 N·mm and 6.5 turns**: this fold did not survive
+the corridor, and both numbers came back with the hand.
+
+**The second fold was wrong too**, and that is the finding rather than either
+defect. Flipping the hand to find plate put the anchor inside the ALARM
+HAMMER's swing — 0.000 clear of `alarmHammerArm` through the strike, a second
+owner's eye report. Two folds in a row, each chosen against ONE constraint and
+each perfectly fine from inside the constraint it was chosen against.
+
+`tools/probe-173-fold.mjs` is what replaces choosing. All 24 (step, hand) pairs
+against seating, corridor and band TOGETHER, over 16 poses, printing the whole
+table rather than the winner — a search whose losers are invisible is a claim
+nobody can re-check:
+
+```
+ steps hand  tip az   anchor (x,y)      seated   clear   nearest member
+     5   -   269.2   13.92,-1.60        PLATE    9.507   subIdlerArbor   ← taken
+     1   +   149.2   13.95,-1.66        PLATE    9.549   subIdlerArbor
+    11   +    89.2   14.09,10.43        PLATE    4.259   subIdlerArbor
+     7   +   329.2   35.03,10.19        PLATE    0.000   alarmHammerArm  ← the second fold
+     7   -   329.2   24.29,-7.82          -      2.672   (unnamed Box)   ← the first
+```
+
+`5/−` wins on the band: its tip sits in the 161° free window, where `1/+` and
+`11/+` sit in the narrow gaps between the riders. Its blade then sweeps
+269° → 209° in the band above the castellations — free precisely because §173
+deleted the click that occupied 228.9°–276.9° there.
+
+The probe carries its own trap in its header, because that one reported the
+inverse of the truth: the plates must be left OUT of the corridor measurement.
+The stud is meant to stand on the plate, so its foot measures 0 to it by
+design — and with the plates left in, the scan ranked the candidates over the
+CUTAWAY as the roomiest, since nothing was under them at all.
+
+**One round trip, recorded rather than quietly reverted.** The middle fold's
+mirror made the arc's drift add to the ramp instead of subtracting from it, so
+the detent rose 3.479e-2 → 3.899e-2 N·mm and §169's coil solved one turn
+shorter — `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5. The surviving fold runs the
+original way, so both figures return to where they were. §169's instruction was
+followed in both directions rather than pinned once.
+
+**Why the stud was at that z at all.** It was not avoiding the plate, it was
+aiming at it: the foot was set to `TQ_TOP_Z`, copied from the deleted click's
+own post, and that constant IS the three-quarter plate's top face. The height
+was deliberate and correct; the (x, y) was never asked. **A z-datum named after
+a plate reads like a seating guarantee and is only a height** — the
+generalisable half of this finding, and the reason the assert below tests the
+PLANE rather than the level.
+
+**And the assert now exists**, which is the structural half of the fix: the
+anchor needs its own foot radius plus a margin of solid plate by
+`inCutClearance`, and the same against the plate's rim. Re-siting the stud
+without it would have moved the class of failure rather than removed it.
+
+### The cam disk, checked in the same pass, is not a defect
+
+The same report asked whether the tip overlaps the saw teeth. Measured mesh to
+mesh — rather than through the polygon law the tip was designed to, which would
+only have confirmed its own arithmetic — the built tip's nearest approach to
+the built skirt is **2e-05** at worst and never negative, and a parity raycast
+puts **0 of 144** samples inside the metal. It is SEATED: a detent touching two
+flanks is the mechanism, and at a shallow viewing angle that reads as overlap.
+
+The residue is the other way round and is worth naming: near the crest the
+tip's 24-segment cylinder stands up to **0.0143 clear** of metal the law has it
+touching, which is a polygon approximating its own circle.
+
+### Two figures published where one was doing two jobs
+
+`ALARM_CLICK_FLANK_MN` was a FORCE, and four consumers each multiplied it by a
+riding radius to get the torque they wanted — four chances to quote a different
+radius. The jumper publishes `ALARM_JUMPER_DETENT_NMM`, a torque, and the
+consumers read one number.
+
+The backward direction publishes no force at all, which is the point. §163's
+un-index assert now compares the pawl's return drag against the jumper's
+*forward* detent — the weaker of the two directions — which makes that budget
+conservative rather than generous while keeping it comparing real numbers.
+
+### The instrument bug this surfaced
+
+`intersectsGeometry` is **not symmetric**. Shank-as-owner reported the shank
+meeting the skirt; skirt-as-owner reported it did not; an axis-segment
+measurement says **0.5756 of clearance**. It falls back to a CONTAINMENT test
+when no triangles cross, and a small owner holding a large other answers that
+wrongly. `probe-173-jumper.mjs` requires both directions to agree and settles
+disagreements by measurement — `intraUnit` and `sweptOverlap` call it one way,
+and how often that matters movement-wide is unmeasured. Filed under TODO 90.
+
+### Two names, and why naming is the fix
+
+`ALARM_CLICK_NOSE_R` set the castellations' flat top through TODO 28, so the
+deleted click's ball sized a feature the link beak stands on. Re-cutting the
+flat was deferred by the owner; the constant is **frozen** as
+`ALARM_COL_RIDER_NOSE_R`, no longer names a part that is gone, and carries an
+assert that the flat still clears every surviving rider.
+
+The column wheel's stud is now `alarmColStud`. Three `INTRA_UNIT_CONTACTS` rows
+selected it as `CylinderGeometry#3`, and deleting the click takes two unnamed
+cylinders out of that unit — which renumbers every index above them. §172 paid
+for that once, when `alarmSwitchBeak` left and `CylinderGeometry#6` silently
+became `#5`. A name removes the class rather than moving it one part along.
+
+### A new named idiom
+
+`groundedBlade` joins §137's vocabulary: a grounded elastic member whose own
+free end IS the working contact, so `armIn == armOut` is a fact of the anatomy
+rather than a coincidence to check. Distinct from `crank`, which is a blade
+biasing a *separate* pivoted arm and therefore always carries a lever ratio.
+
+### What stays open, named rather than absorbed
+
+- The frozen flat top is wider than any surviving rider needs.
+- **The blade's mesh is rigid.** It rotates about its anchor so its free end
+  lands exactly where the solve puts it — the tip's POSITION is right at every
+  pose and the FORCE law is the true 3EI/L³ — but a real cantilever bows and
+  this mesh does not, so the tip's slope is wrong by the cantilever's 3/2.
+  Nothing reads that slope. A morphing blade would close it at the cost of a new
+  MM frame in `intraUnit`.
+- The `intersectsGeometry` asymmetry above.

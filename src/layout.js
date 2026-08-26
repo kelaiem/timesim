@@ -448,8 +448,11 @@ export const STEEL_E_PA = 200e9;  // Pa — carbon/spring steel Young's modulus 
 export const STEEL_NU = 0.30;                     // Poisson's ratio — carbon steel
 export const STEEL_G_PA = STEEL_E_PA / (2 * (1 + STEEL_NU));   // 76.9 GPa
 // Hardened carbon spring band, the stress a blade or a coil may work to and
-// come back from. TODO 63 is filed precisely because switchClickSpring exceeds
-// it, so this is a limit the repo already knows it owes.
+// come back from. TODO 63 was filed precisely because `switchClickSpring`
+// exceeded it — and §173 closed that by deleting the part: the sautoir that
+// replaced it SOLVES its free length from this number rather than being
+// measured against it afterwards, which is the direction a limit should be
+// used in.
 export const SPRING_SIGMA_Y_PA = 800e6;
 // Shear yield by von Mises — what a COIL is limited by, where a blade is
 // limited by SPRING_SIGMA_Y_PA directly. One yield, two loadings.

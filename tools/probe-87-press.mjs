@@ -276,7 +276,7 @@ const V = await page.evaluate(async () => {
       // WHAT ONE PRESS DELIVERS, read off the WHEEL rather than off a travel
       // divided by an arm. This is the question finding 1 asked, and it is the
       // one quantity in the run that no assumption about the coupling touches.
-      deliveredPct: round(100 * latch.angle / (clock.clickLaw.pitch / 2), 2),
+      deliveredPct: round(100 * latch.angle / (clock.jumperLaw.pitch / 2), 2),
       worstSep: worst.sep, worstFrame: worst.i, worstInN: worst.inN,
       buriedFrames: rows.filter((r) => r.sep < 0).length, frames: rows.length,
     };
@@ -314,7 +314,7 @@ const V = await page.evaluate(async () => {
   const out = { fail, skirt: { tris: skirt.tris, z: [round(skirt.zMin), round(skirt.zMax)], rMax: round(skirt.rMax) },
                 castellationTris: buffers[0].tris,
                 zPawl: zPawl.map((x) => round(x)), zSkirt: zSkirt.map((x) => round(x)), zOverlap: round(zOverlap),
-                toothStepPublic: round(clock.clickLaw.pitch / 2, 6),   // half a pitch per actuation
+                toothStepPublic: round(clock.jumperLaw.pitch / 2, 6),   // half a pitch per actuation
                 coarse: { dt: coarse.dt, runs: coarse.runs.map((r) => ({ press: r.press, returnedHome: r.returnedHome, ...derive(r) })) },
                 fine: { dt: fine.dt, runs: fine.runs.map((r) => ({ press: r.press, returnedHome: r.returnedHome, ...derive(r) })) },
                 rows: fine.runs.map((r) => ({ press: r.press, rows: r.rows })) };
@@ -339,7 +339,7 @@ const V = await page.evaluate(async () => {
   if (cw && fw && Math.abs(cw.deliveredPct - fw.deliveredPct) > 0.05)
     fail.push(`the delivered tooth moves with the step rate: ${cw.deliveredPct}% at 1/120 vs ${fw.deliveredPct}% at 1/480 — the probe is measuring its own sampling`);
   if (fw && Math.abs(fw.toothRad - out.toothStepPublic) > 1e-3)
-    fail.push(`the measured tooth ${fw.toothRad} disagrees with clickLaw.pitch/2 = ${out.toothStepPublic}`);
+    fail.push(`the measured tooth ${fw.toothRad} disagrees with jumperLaw.pitch/2 = ${out.toothStepPublic}`);
   out.fail = fail;
   return out;
 });
@@ -368,7 +368,7 @@ for (const r of rows.filter((_, i) => i % Math.ceil(rows.length / 22) === 0))
 
 console.log(`\n  MEASURED, off the built tree:`);
 console.log(`    moment arm (d travel / d angle)   ${f.armMeasured} u`);
-console.log(`    one tooth (measured latch angle)  ${f.toothRad} rad   [clickLaw.pitch/2 = ${V.toothStepPublic}]`);
+console.log(`    one tooth (measured latch angle)  ${f.toothRad} rad   [jumperLaw.pitch/2 = ${V.toothStepPublic}]`);
 console.log(`    one press carries                 ${f.sweepRad} rad = ${f.deliveredPct}% of a tooth`);
 console.log(`    travel at the latch (arm × tooth) ${f.latchTravelExact} u`);
 console.log(`    travel at the bottom             ${f.bottomTravel} u`);
