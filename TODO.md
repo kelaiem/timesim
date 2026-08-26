@@ -10461,6 +10461,92 @@ link` group with a spec to measure back to, not a nudge — and the bar's 0.0483
 has to come out of the same solve, since raising the bar clear of the columns
 moves the nose that must still reach them.
 
+### Finding 3 (2026-08-25, MEASURED) — the switch click cannot index the wheel, and its spring is 2.1 units away from the arm it is declared to press
+
+Eye-reported as *"touching the column wheel doesn't seem sufficient to hold it
+in position when the pawl's moving around"*, which is exactly right and turns
+out to be the mildest of four independent failures. This is not a clearance
+defect to repair; the part cannot do its stated job in any state, and three
+other pieces of arithmetic are judged against a force it does not produce.
+
+**1. There is no detent at any of the twelve stops.** The wheel indexes 12
+times per revolution — `ALARM_COL_STEP` = π/6, one saw tooth, 30° per press —
+and the click rides **6 columns**. Worse than the count mismatch: a detent needs
+a RESTORING TORQUE, which comes from the follower being driven radially out as
+the wheel turns off the stop. Sampled from the cut profile over one 60° pitch:
+
+```
+####////////.........................////////####
+ 8 samples on a FLAT TOP · 23 on a FLAT GAP FLOOR · 18 on a ramp  (of 49)
+```
+
+(`tools/probe-90-click.mjs` prints exactly this, with two controls — a pair that
+must intersect and a pair that must not — because a test that silently does
+nothing reports clean. An earlier cut of it called a helper `inspect.js` does
+not export, got `null` at every pose and announced "0 intersections" having
+tested nothing.)
+
+Both flats are concentric with the wheel's axis, so the ball's radius does not
+change across either, and the surface pushes it out by nothing. The two parities
+land the ball mid-top and mid-gap-floor — **on the flats, not the ramps** — so
+the restoring torque at every stop the wheel actually uses is **zero**, whatever
+the spring behind it is worth. The source calls this "the wheel's index (the two
+stable states + the click)": it reasons in TWO states, and the wheel has TWELVE.
+
+**2. The spring never touches the arm.** Measured over the whole toggle at both
+parities:
+
+| | z band |
+|---|---|
+| `switchClickArm` | 12.2991 .. 12.6157 |
+| `switchClickSpring` | **10.0028 .. 10.2028** |
+
+They do not overlap. The closest they ever come is **2.0963**, at every pose.
+So `INTRA_UNIT_CONTACTS`' row *"the detent blade pressing the click arm — §48-declared spring contact"* is false, and
+`declareRestoring('Alarm switch', 'switchClickArm', 'spring', …, 'switchClickSpring')`
+names a restoring element two units below the body it restores. **§48's audit
+passed on a declaration rather than on metal** — which is the one thing that
+audit exists to prevent, and it is the sharpest instance yet of this file's
+standing warning that a declared joint is an EXCUSE as well as a claim.
+
+**3. The blade is over-strained even if it did touch** — the build says so
+itself, at its own construction: the root fibre carries ≈2.2 GPa against
+hardened blue steel's ~1.5 GPa elastic limit, so *"a real blade would take a set
+and the 15 mN would decay with it"*. Filed at TODO 63 and still open.
+
+**4. The arm interpenetrates the columns.** Triangle-level (`intersectsGeometry`,
+the test `intraUnit` itself uses, with both controls passing):
+`switchClickArm` intersects `alarmColCastellations` at **110 of 130 poses** —
+85% of the cycle, both parities — while `switchClickNose`, the declared reader,
+intersects at **0**. The arm's row in `INTRA_UNIT_CONTACTS` calls this *"the
+detent arm riding the column wheel's castellations (kiss) — a working contact"*,
+and being declared is what keeps `intraUnit` from looking.
+
+**And the figure propagates, which is why this outranks a clearance fix.**
+`ALARM_CLICK_FLANK_MN` is the declared §137 transfer load for the whole switch,
+the value anchoring `SELECTOR_DETENT_WINDOW_MN`, and the reference §163's build
+assert checks the driver pawl's return drag against — *"because a return that
+drags the wheel back un-indexes it"*. Three separate pieces of arithmetic are
+judged against a detent force that has no contact to act through and no geometry
+to act on.
+
+**The repair is a redesign, and the architecture is chosen: a JUMPER ON THE
+SAW.** Real chronograph practice puts the sautoir on the ratchet the operating
+pawl drives, not on the columns — the columns are for READING. The saw already
+has 12 teeth, one per index step, so the tooth count matches the stop count by
+construction rather than by luck, and the restoring torque derives from a flank
+that was actually cut. The existing click is DELETED rather than rebuilt: its
+second job, the visible ON/OFF flag, is already done by the lock beak and the
+link beak, and a third rider carrying no force is a part that exists only to be
+looked at — here, the source of three false declarations.
+
+Ships as §173. Retires with it: the two `INTRA_UNIT_CONTACTS` rows above, the
+`switchClickArm` restoring declaration, and TODO 63's over-strain entry for this
+blade (the blade ceases to exist). `ALARM_CLICK_FLANK_MN` is REPLACED, not
+deleted — the jumper's own detent takes its place as the envelope anchor and as
+what the pawl's return is measured against, so §163's assert keeps a real
+reference.
+
 ### The rest of the audit, unmeasured
 
 Each of these is the same question TODO 87 asked of the input side, and none
