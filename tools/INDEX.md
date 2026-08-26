@@ -4,8 +4,8 @@
 
 # The instruments
 
-120 scripts. **45 are ACCEPTANCE tests** — they decide and exit non-zero.
-**75 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+120 scripts. **52 are ACCEPTANCE tests** — they decide and exit non-zero.
+**68 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -18,11 +18,11 @@ when a question was asked; the summaries are what it answered.
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
 | `check-bvh-patches.mjs` |  | acceptance | Verifies the three local patches in vendor/three-mesh-bvh.module.js (see vendor/README.md) still hold — run after any vendor bump, before trusting a single clearance number. |
-| `check-item-numbers.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
-| `ci-battery.mjs` |  | report | (no header — this file says nothing about what it answers) |
-| `claim-item.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
-| `explain-i18n.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
-| `explain-quotes.mjs` |  | acceptance | (no header — this file says nothing about what it answers) |
+| `check-item-numbers.mjs` |  | acceptance | The item-number gate. See docs/item-numbers/README.md for why it exists. |
+| `ci-battery.mjs` |  | acceptance | §52 — the inspector battery as a CI gate. |
+| `claim-item.mjs` |  | acceptance | Reserve the next item number, and write the claim file that reserves it. |
+| `explain-i18n.mjs` |  | acceptance | §73 tier two — the STATIC PAGES' translation tooling. |
+| `explain-quotes.mjs` |  | acceptance | §73 tier two — DOES THE EXPLAINER STILL QUOTE THE SOURCE? |
 | `make-favicon.mjs` |  | report | §88 — favicon.svg, generated from the REAL house mark. |
 | `offline-check.mjs` |  | acceptance | §79's instrument — the offline acceptance, scripted. Not part of the PR battery (it exercises the RELEASE machinery, which the battery's source tree deliberately never runs): use it when touching sw.js, stamp-release.mjs, the registration, or the update toast. |
 | `probe-104-boot.mjs` | §104 | report | §104 — boot probe: page errors, boot warnings, the governor's record, and the anchor corner's measured clearances at a few strike poses. |
@@ -46,9 +46,9 @@ when a question was asked; the summaries are what it answered.
 | `probe-111b.mjs` | §111 | report | §111 — the focused instruments, run one at a time on the edited tree: the new penetration row's measured depth, and the checks the anchor's new radii could move. Not a substitute for the battery; a fast loop while iterating (CLAUDE.md's "Inspecting" section). |
 | `probe-115-support.mjs` | §115 | report | §115 — the two support rows that moved, localised to the mesh pair that produced them. The gate only says "within tol"; this says WHICH metal. |
 | `probe-115-window.mjs` | §115 | report | §115 — the governor window, read off a real boot: what the solve wanted, what the keep field left, which keep binds where, and how much of the governor the finished plate actually shows. |
-| `probe-116-locale-fit.mjs` | §116 | acceptance | (no header — this file says nothing about what it answers) |
-| `probe-119-crown-roll.mjs` | §119 | report | (no header — this file says nothing about what it answers) |
-| `probe-119-pad-targets.mjs` | §119 | acceptance | (no header — this file says nothing about what it answers) |
+| `probe-116-locale-fit.mjs` | §116 | acceptance | §116 — WHAT NO GATE MEASURES: does each locale still FIT? |
+| `probe-119-crown-roll.mjs` | §119 | report | §119 — WHAT NO GATE MEASURES: does a crown turn with the knurling under the finger, in every view? |
+| `probe-119-pad-targets.mjs` | §119 | acceptance | §119 — WHAT NO GATE MEASURES: can a thumb hit each control on the pad? |
 | `probe-120-governor.mjs` | §120 | report | §120 — the governor's bearings, read off a real boot. |
 | `probe-121-depth.mjs` | §121 | report | §121 triage evidence — for every in-scope FF/MM row the three-tier check flags, measure HOW the two solids share space: what fraction of each mesh's vertices stands inside the other, and how deep the deepest one sits. A joint by construction (an arbor through its bore, a stud through a spring's eye) reads as a large contained fraction at real depth; a bevel-creep or assembly graze reads as a sliver. Verdicts in the declared table cite these numbers rather than a look. |
 | `probe-121-intraunit.mjs` | §121 | acceptance | §121 — run the three-tier intraUnit and print the raw rows, so the declared population is seeded from measurement rather than guesswork (the same arc probe-107-assembly.mjs ran for the assembly check). Run it TWICE back-to-back before declaring anything: rows at the arbiter's d≈1e-4 boundary flip run-to-run, and the flicker is a triage bucket of its own. |
@@ -67,13 +67,13 @@ when a question was asked; the summaries are what it answered.
 | `probe-137-elbow.mjs` | §137 | acceptance | §137 — THE TWO ELBOW RODS, READ OFF THE METAL, AND THE DRUM RE-CHECK. |
 | `probe-137-jumper-envelope.mjs` | §137 | acceptance | §137 — THE MINUTE JUMPER'S SWEPT ENVELOPE, ALONG THE ALARM LINK'S CHORD. |
 | `probe-152-floor.mjs` | §152 | report | §152 probe two — THE IRREDUCIBLE PER-POSE FLOOR. |
-| `probe-152-fresh.mjs` | §152 | report | §152 — THE FRESH/PAYLOAD BOUNDARY, MEASURED AND INDUCED. |
+| `probe-152-fresh.mjs` | §152 | acceptance | §152 — THE FRESH/PAYLOAD BOUNDARY, MEASURED AND INDUCED. |
 | `probe-152-history.mjs` | §152 | acceptance | §152 probe four — HOW OFTEN COULD AN INCREMENTAL RUN ACTUALLY FIRE? |
-| `probe-152-key-halves.mjs` | §152 | report | §152 Landing 0's acceptance — DOES THE KEY REALLY HAVE TWO HALVES? |
+| `probe-152-key-halves.mjs` | §152 | acceptance | §152 Landing 0's acceptance — DOES THE KEY REALLY HAVE TWO HALVES? |
 | `probe-152-key.mjs` | §152 | report | §152 probe — CAN A PER-UNIT KEY BE BUILT, AND WHAT DOES IT COST? |
-| `probe-152-pose-coverage.mjs` | §152 | report | §152 follow-up's acceptance — IS THE KEY'S POSE SET WORTH WHAT IT SKIPS? |
-| `probe-152-restrict.mjs` | §152 | report | §152 — THE ACCEPTANCE FOR THE RESTRICTION, at a scale a person can iterate at. |
-| `probe-152-swept.mjs` | §152 | report | §152 probe three — IS `sweptOverlap` REALLY UNRESTRICTABLE? |
+| `probe-152-pose-coverage.mjs` | §152 | acceptance | §152 follow-up's acceptance — IS THE KEY'S POSE SET WORTH WHAT IT SKIPS? |
+| `probe-152-restrict.mjs` | §152 | acceptance | §152 — THE ACCEPTANCE FOR THE RESTRICTION, at a scale a person can iterate at. |
+| `probe-152-swept.mjs` | §152 | acceptance | §152 probe three — IS `sweptOverlap` REALLY UNRESTRICTABLE? |
 | `probe-152-tables.mjs` | §152 | report | §152 Landing 4's GATE — is splitting the declaration tables out of src/inspect.js worth doing, or is it a refactor looking for a reason? |
 | `probe-153-boot.mjs` | §153 | report | §153 probe — symmetric reserve arc + barely-recessed sector, boot-level. Boots the sim headless, verifies boot silence, then measures the redesign's claims directly off the built scene: 1. the reserve hand's math angle at tension 0 / 0.5 / 1 lands on 90 + 75, 90, 90 − 75 (the symmetric anchor at both ends and centre); 2. the hand's world plane sits its lift BEYOND the visible face (a proud rider), and the sector floor RESERVE_RECESS inside it; 3. the arbor's front end stops 0.2 short of the hand's plane. |
 | `probe-153-fails.mjs` | §153 | report | §153 — re-run the battery's three failing gates alone and dump their failing rows (the landing run's payload dump was lost to a tail pipe). Same drive as ci-battery.mjs: dev server with a private TMPDIR, headless Chromium with throttling off, sweep hold for the run, start()/status(). Usage: node probe-153-fails.mjs [checkName ...] (default: the three) |
@@ -120,7 +120,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
 | `probe-colwheel-id.mjs` |  | report | probe-colwheel-foul named six meshes touching the column wheel at 0. Two are declared rider contacts. This identifies the rest — what they are, where they were built, what material, whether they are NAMED, whether anything DECLARES the contact, and how the gap behaves across the toggle's two parities (the eye report says "every other toggle", so parity is the tell). |
 | `probe-drum-azimuth.mjs` |  | report | Where else can the MAINSPRING DRUM stand? |
-| `probe-fork-blank.mjs` |  | report | TODO 91 — is the pallet fork ONE piece of metal, and is it one thickness? A Swiss lever is a single blank: boss, both pallet arms, the lever and the fork end are cut in one outline and lapped to one thickness, with only the ruby stones and the guard dart separate. This REPORTS what the movement actually builds — the unit's steel members, the z-height of each, the joint steps between them, the two arms' symmetry, and the one thing the eye cannot see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork body top") matches the fork's real reach. |
+| `probe-fork-blank.mjs` |  | acceptance | TODO 91 — is the pallet fork ONE piece of metal, and is it one thickness? A Swiss lever is a single blank: boss, both pallet arms, the lever and the fork end are cut in one outline and lapped to one thickness, with only the ruby stones and the guard dart separate. This REPORTS what the movement actually builds — the unit's steel members, the z-height of each, the joint steps between them, the two arms' symmetry, and the one thing the eye cannot see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork body top") matches the fork's real reach. |
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |

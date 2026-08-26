@@ -17,7 +17,7 @@ import {
   SPEC, SPEC_RATES,
   F_BALANCE, BEAT_DEG, AMPLITUDE_TRUE_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
   RECOIL_FRACTION, RECOIL_DEG,
-  CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK,
+  CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
@@ -1079,6 +1079,28 @@ const palletFork = G.makePalletFork({
   stoneZReach: L_FORK - L_ESCAPE,
   beatRad: BEAT_DEG * DEG2RAD, bankRad: FORK_BANK_DEG * DEG2RAD,
 });
+// TODO 91 — the blank is ONE solid of ONE thickness, and `L_BALANCE` is
+// derived from how far that solid actually reaches. Hold the two paths
+// together: the builder's own reach against layout.js's `FORK_HALF_Z`, and
+// the fork's steel against a single mesh. The old six-solid fork put four
+// z-heights under a balance whose elevation had been derived from a fifth
+// number that no face occupied.
+if (Math.abs(palletFork.userData.blankHalfZ - FORK_HALF_Z) > 1e-9) {
+  console.warn('pallet blank: FORK_HALF_Z disagrees with the cut blank',
+    palletFork.userData.blankHalfZ, 'vs', FORK_HALF_Z);
+}
+{
+  let steel = 0, ruby = 0;
+  palletFork.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.material && o.material.color && o.material.color.getHex() === 0xb01326) ruby++;
+    else steel++;
+  });
+  // blank + guard dart = 2 steel bodies; two stones. The pivots are added by
+  // the assembly below, not by the builder, so they are not counted here.
+  if (steel !== 2 || ruby !== 2)
+    console.warn('pallet blank: expected 2 steel bodies and 2 stones, built', steel, ruby);
+}
 
 // --- TODO 25 tier two: THE SPRING IS FITTED TO THE BALANCE --------------------
 // Tier one weighed the oscillator and found the rate it implied was 3.69× the

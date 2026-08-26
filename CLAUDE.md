@@ -602,8 +602,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **45 of
-them are ACCEPTANCE tests** that exit non-zero, and **75 are REPORTS** that
+The index also carries the split that decides how to read a result: **52 of
+them are ACCEPTANCE tests** that exit non-zero, and **68 are REPORTS** that
 print and leave the judgement to you. A report saying `0 violations` has not
 passed anything.
 
