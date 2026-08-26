@@ -18533,7 +18533,7 @@ lever's axis (residual **0.000000**) and the two leans break that mirror by
 wrapped and the entry stone's 237° reads as −123°.
 
 Local battery, `node tools/ci-battery.mjs`, on the changed tree:
-**35/35 gates pass**, 1129.3 s. Boot silent. `support` 0 failures; `graph`
+**35/35 gates pass**, 1122.1 s. Boot silent. `support` 0 failures; `graph`
 every violation list empty; `axisEntry` 364 ordered pairs, 0 violations;
 `penetration` every row OK or waived; `alarmHandoffs` 13 hand-offs, 0 waived;
 `intraUnit` 0 unwaived, 0 unmatched selectors; `assembly` 0 undeclared unwaived
@@ -18545,6 +18545,42 @@ splits in scope; `expectedContacts` 18 pairs, 0 waived; `inspection`
 virgin boots. `explain-quotes` PASS and `explain-i18n --check` PASS (0
 unmatched, 0 markup drift, 0 code drift, 0 number drift) after the `gGap` quote
 and its five translations moved with the source.
+
+### What the report diff caught that nothing else did
+
+`--report` diffed against the base is the acceptance for anything that can
+move a report, and it earned that here. Both batteries pass 35/35; the diff is
+22 checks, 12 byte-identical, 10 moved, and **every non-timing movement is
+inside `Pallet fork`** — `stockFloor` rowsChecked 621→616, `slenderness`
+counted 625→620, `meshIntegrity` geometries 578→573 (the fork's four steel
+census rows become one of 1038 tris), `intraUnit` FF 3085→3045 with twelve
+fork FF rows gone, `restoring`'s frame list re-ordered, and census counters
+under `inspection` / `clearances` / `sweptOverlap` (91 668→90 513 pairs
+tested). No violation, waiver or budget row moved anywhere in the movement.
+
+The first cut of this blank also put **eight zero-area triangles** into a
+movement that already carries TODO 74's 8191, from three duplicate outline
+vertices — two 1-ulp twins at the arm roots and one wrap-around twin. Every
+gate passed with them in place, because `meshIntegrity`'s `zeroArea` rows are
+a REPORT; the diff is the only thing that saw them. The causes are worth
+knowing, because both are properties of three.js rather than of this part:
+`Path.absellipse` already joins itself to the previous curve with a `lineTo`
+to its OWN start point, so an explicit `lineTo(root)` before each arc writes
+that corner twice from two formulas that agree to ~2e-16 and not to the bit —
+and `CurvePath.getPoints` drops consecutive duplicates with `equals()`,
+EXACTLY, so a twin that close survives. The third came from `closePath()`
+landing on the `moveTo`, which `getPoints` never compares. The path is sampled
+once now and that polyline is both what is extruded and what the clearance
+assert reads; the flank junctions are spelled `r·(cos a, sin a)` the way the
+arcs spell theirs, so the closing arc lands on the `moveTo` exactly. 131
+outline points, 0 duplicates, and `zeroArea` is byte-identical to the base.
+
+**And the fingerprint could not have caught it either**, which is worth saying
+plainly next to a gate whose name suggests otherwise: `fingerprint` hashes
+per-unit BOUNDING BOXES at 12 poses, so a duplicate vertex — or any change
+that moves no box — leaves the hash untouched. It read 1821137572 both before
+and after the dedupe. It is a go/no-go on where parts ARE, not on what they
+are made of.
 
 **Two bugs in the instrument index fell out of filing this**, both the same
 shape — `tools/INDEX.md` saying something false about a file rather than
