@@ -583,6 +583,38 @@ yields and wedges the tab. Driving the browser through tooling changes the
 arithmetic entirely — see the yield-throttling trap below before starting a
 sweep that way.
 
+### Finding the instrument before writing one
+
+`tools/` holds 117 measuring scripts and this file names 14. The rest are named for the
+SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
+asked, not WHAT it answers — so the one you need is usually there and
+unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
+`probe-106-stud`'s free-disc stud scan from scratch, twice, and got it wrong
+both times; the probe it never found warns about one of those exact errors in
+its own header.
+
+**`tools/INDEX.md` is the catalogue and it is GENERATED** — every summary is
+that file's own leading comment, so it is the author's words and a probe with
+no header shows up as silent rather than as described by someone who did not
+write it. `node tools/index-instruments.mjs` writes it; `--check` fails if it
+is stale and rides the Explainer workflow (fast, browser-free, about a
+document). Grep it by **what you want to know**, never by section number — the
+vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
+in four sections.
+
+The index also carries the split that decides how to read a result: **43 of
+them are ACCEPTANCE tests** that exit non-zero, and **74 are REPORTS** that
+print and leave the judgement to you. A report saying `0 violations` has not
+passed anything.
+
+**`.claude/skills/instruments/SKILL.md` is the method** — how to search, which
+kind to write, and the catalogue of ways an instrument comes back CLEAN while
+measuring nothing (missing controls, the ground counted as an obstacle, a ray
+cast from inside a solid, vertices mistaken for the surface,
+`intersectsGeometry`'s asymmetry, tangency read as intersection, a rotated
+bounding box). Read it before writing a probe; every entry cost this repo real
+time at least once.
+
 ### Two blind spots, now partially instrumented
 
 Both are written up in `TODO.md` (items 5 and 6), and both produced

@@ -43,6 +43,11 @@ on:
       - 'src/i18n.js'
       - 'tools/explain-i18n.mjs'
       - 'tools/explain-quotes.mjs'
+      # the instrument index is generated from every tools/*.mjs header, so any
+      # of them changing can stale it
+      - 'tools/**.mjs'
+      - 'tools/INDEX.md'
+      - '.claude/skills/**'
       - '.github/workflows/explain-i18n.yml'
       # the quote audit compares the page against these, so a constant moving
       # here must re-run it — that is the whole point of the check
@@ -88,3 +93,11 @@ jobs:
 
       - name: Check the explainer's translations
         run: node tools/explain-i18n.mjs --check
+
+      # The instrument index is GENERATED from the probes' own headers, so it
+      # rots the moment someone adds a probe and forgets. It rides this
+      # workflow rather than the battery because it needs no browser and takes
+      # milliseconds — and because an index nobody can trust is worse than no
+      # index, which is the state that made it necessary.
+      - name: Check the instrument index is not stale
+        run: node tools/index-instruments.mjs --check

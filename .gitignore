@@ -4,6 +4,10 @@
 # capability (agent definitions, launch config) is tracked deliberately.
 .claude/*
 !.claude/agents/
+# §174 — skills are shared repo guidance, the same kind of thing as agents:
+# checked in so everyone working here gets them, unlike the rest of .claude
+# which is per-session furniture.
+!.claude/skills/
 !.claude/launch.json
 .claude/worktrees/
 
@@ -21,3 +25,12 @@ tools/node_modules/
 # (2456 lines of per-frame trace), so a committed copy is churn that says
 # nothing — it leaked in once through an over-broad `git add -A tools/`.
 tools/press-trace.json
+
+# Scratch instruments. The underscore prefix is already this repo's marker for
+# a throwaway measuring script, and §163 deleted `tools/_boot.mjs` naming the
+# cause: "added by an over-broad 'git add tools/'". It came back anyway, and
+# §174's generated index is what made it visible again. A rule that has been
+# broken twice by the same one-character mistake is better spent as a pattern
+# than as a reminder — a probe worth keeping earns a real name and a header
+# saying what it answers.
+tools/_*.mjs
