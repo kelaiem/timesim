@@ -10681,6 +10681,39 @@ which buys a shorter, stiffer pawl coil — and §169's instruction
 ("re-derive the raise, never re-target the spring") takes
 `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5.
 
+**AND THE SECOND FOLD WAS WRONG TOO** — a second eye report, and the reason it
+matters more than either defect: flipping the hand to find plate put the anchor
+inside the ALARM HAMMER's swing, 0.000 clear of `alarmHammerArm` through the
+strike. Two folds in a row, each chosen against ONE constraint and each fine
+from inside it.
+
+`tools/probe-173-fold.mjs` is what replaces choosing: all 24 (step, hand) pairs
+against seating, corridor and band TOGETHER, over 16 poses, printing the whole
+table rather than the winner — a search whose losers are invisible is a claim
+nobody can re-check. Its own trap is recorded in it: the plates must be left
+OUT of the corridor measurement, because the stud is meant to touch them, and
+with them in the scan ranked the candidates over the CUTAWAY as roomiest.
+
+Taken: **steps 5, hand −1** — tip at 269.2° inside the 161° free window, anchor
+at (13.92, −1.60) on plate with **9.507** of corridor, blade sweeping 269° → 209°
+in the band above the castellations, which is free precisely because §173
+deleted the click that used to occupy 228.9°–276.9° there.
+
+**One honest round trip, recorded rather than hidden.** The middle fold's mirror
+made the arc's drift add to the ramp, the detent rose 3.479e-2 → 3.899e-2 N·mm,
+and §169's coil solved one turn shorter — so `ALARM_PAWL_SPRING_COILS` went
+6.5 → 5.5. The surviving fold runs the original way, so both figures return to
+where they were. §169's instruction ("re-derive the raise, never re-target the
+spring") was followed in both directions.
+
+**Why the stud was at that z in the first place**, since the owner asked: it was
+not avoiding the plate, it was aiming at it. The foot was set to `TQ_TOP_Z`,
+copied from the deleted click's own post, and that constant is the plate's TOP
+FACE. The height was deliberate and right; the (x, y) was never asked. **A
+z-datum named after a plate reads like a seating guarantee and is only a
+height** — which is the generalisable half of this finding, and why the assert
+below tests the plane rather than the level.
+
 **The assert that would have caught it now exists**: the anchor needs its own
 foot radius plus a margin of solid plate by `inCutClearance`, and the same
 against the plate's rim. Writing it is the structural half of the fix —

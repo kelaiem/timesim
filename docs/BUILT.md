@@ -18290,6 +18290,52 @@ forward detent rises 3.479e-2 → **3.899e-2 N·mm**. A bigger budget buys a
 shorter, stiffer pawl coil, and §169's own instruction — *"re-derive the raise,
 do not re-target the spring"* — takes `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5.
 
+**The second fold was wrong too**, and that is the finding rather than either
+defect. Flipping the hand to find plate put the anchor inside the ALARM
+HAMMER's swing — 0.000 clear of `alarmHammerArm` through the strike, a second
+owner's eye report. Two folds in a row, each chosen against ONE constraint and
+each perfectly fine from inside the constraint it was chosen against.
+
+`tools/probe-173-fold.mjs` is what replaces choosing. All 24 (step, hand) pairs
+against seating, corridor and band TOGETHER, over 16 poses, printing the whole
+table rather than the winner — a search whose losers are invisible is a claim
+nobody can re-check:
+
+```
+ steps hand  tip az   anchor (x,y)      seated   clear   nearest member
+     5   -   269.2   13.92,-1.60        PLATE    9.507   subIdlerArbor   ← taken
+     1   +   149.2   13.95,-1.66        PLATE    9.549   subIdlerArbor
+    11   +    89.2   14.09,10.43        PLATE    4.259   subIdlerArbor
+     7   +   329.2   35.03,10.19        PLATE    0.000   alarmHammerArm  ← the second fold
+     7   -   329.2   24.29,-7.82          -      2.672   (unnamed Box)   ← the first
+```
+
+`5/−` wins on the band: its tip sits in the 161° free window, where `1/+` and
+`11/+` sit in the narrow gaps between the riders. Its blade then sweeps
+269° → 209° in the band above the castellations — free precisely because §173
+deleted the click that occupied 228.9°–276.9° there.
+
+The probe carries its own trap in its header, because that one reported the
+inverse of the truth: the plates must be left OUT of the corridor measurement.
+The stud is meant to stand on the plate, so its foot measures 0 to it by
+design — and with the plates left in, the scan ranked the candidates over the
+CUTAWAY as the roomiest, since nothing was under them at all.
+
+**One round trip, recorded rather than quietly reverted.** The middle fold's
+mirror made the arc's drift add to the ramp instead of subtracting from it, so
+the detent rose 3.479e-2 → 3.899e-2 N·mm and §169's coil solved one turn
+shorter — `ALARM_PAWL_SPRING_COILS` 6.5 → 5.5. The surviving fold runs the
+original way, so both figures return to where they were. §169's instruction was
+followed in both directions rather than pinned once.
+
+**Why the stud was at that z at all.** It was not avoiding the plate, it was
+aiming at it: the foot was set to `TQ_TOP_Z`, copied from the deleted click's
+own post, and that constant IS the three-quarter plate's top face. The height
+was deliberate and correct; the (x, y) was never asked. **A z-datum named after
+a plate reads like a seating guarantee and is only a height** — the
+generalisable half of this finding, and the reason the assert below tests the
+PLANE rather than the level.
+
 **And the assert now exists**, which is the structural half of the fix: the
 anchor needs its own foot radius plus a margin of solid plate by
 `inCutClearance`, and the same against the plate's rim. Re-siting the stud

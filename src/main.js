@@ -18509,16 +18509,19 @@ const ALARM_COL_SKIRT_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;
 // needs the pawl's stroke, which needs the seats); the solve re-derives it
 // from live constants and warns if the two part — §137's rule that a figure an
 // instrument also computes is ASSERTED against, not resembled.
-// §173 moved it 6.5 → 5.5. The count is SOLVED at the spring (the greater of
-// its drag floor and its own strain floor) and is a spec here only because the
-// wheel's raise has to be known before the wheel is cut. §173's fold changed
-// the detent this coil is budgeted against — the sautoir's forward detent is
-// 12% stronger than the ray-solved figure the first cut published, because the
-// blade's hand had to change to put its anchor on plate metal, and the arc's
-// drift then adds to the ramp instead of subtracting from it. A bigger budget
-// buys a shorter, stiffer coil. §169's own instruction is followed rather than
-// worked around: re-derive the raise, never re-target the spring.
-const ALARM_PAWL_SPRING_COILS = 5.5;
+// §173 left it at 6.5, and the round trip is worth recording because it shows
+// what this spec is coupled to. The count is SOLVED at the spring (the greater
+// of its drag floor and its own strain floor) and is a spec here only because
+// the wheel's raise has to be known before the wheel is cut. Its drag budget
+// is the sautoir's forward detent over ALARM_SPRING_HEADROOM — so the count is
+// a function of §173's FOLD, not just of the spring: mirroring the blade makes
+// the arc's azimuth drift add to the ramp instead of subtracting from it, the
+// detent rises 12%, and the coil solves one turn shorter. The middle fold ran
+// that way and this constant read 5.5. The fold that survived all three
+// constraints runs the original way, the detent is back to 3.479e-2 N·mm, and
+// so is the count. §169's instruction was followed in both directions rather
+// than worked around: re-derive the raise, never re-target the spring.
+const ALARM_PAWL_SPRING_COILS = 6.5;
 // Close-wound, so successive turns put their wire CENTRES one wire diameter
 // apart and n turns span n·d centre to centre; the wire's own radius then
 // adds half a diameter at each end, which is the height the stratum has to
@@ -18886,7 +18889,7 @@ const ALARM_JUMPER_CREST_RAY_R = alarmColumnWheel.userData.sawSeatAt(0, ALARM_JU
 // length. Solved as a FIXED POINT rather than cut anywhere: iterate the whole
 // chain until the length stops moving. It converges in a handful of passes
 // because the arc's correction is ~2% of the ray's answer.
-const ALARM_JUMPER_STEPS = 7;
+const ALARM_JUMPER_STEPS = 5;
 const ALARM_JUMPER_OFF = ALARM_JUMPER_STEPS * ALARM_COL_STEP + ALARM_JUMPER_SEAT_PHI;
 const ALARM_JUMPER_AZ = ALARM_LOCK_ENGAGED + ALARM_JUMPER_OFF;
 const ALARM_JUMPER_T = SPRING_FLAT_U;   // bends radially — the movement's one spring stock, in the direction it bends
@@ -18906,7 +18909,38 @@ const ALARM_JUMPER_T = SPRING_FLAT_U;   // bends radially — the movement's one
 // free-window measurement chose. So the tip does not move and only the blade's
 // hand does — which is what "a fold's only currencies are position-space"
 // means when a fold turns out to be wrong.
-const ALARM_JUMPER_HAND = +1;   // +1: the blade runs toward RISING azimuth from the tip. Asserted against the plate below, not chosen for looks.
+// …AND METAL UNDER THE FOOT IS ONLY HALF THE QUESTION. Flipping the hand to
+// find plate put the anchor at (35.03, 10.19) — on solid plate, and INSIDE the
+// alarm hammer's swing, measuring 0 clear of `alarmHammerArm` through the
+// strike. Owner's eye report again, and the second fold in a row that was
+// chosen against ONE constraint at a time.
+//
+// The choice is now made against all three together, over 16 poses and both
+// hands at all twelve step counts (`tools/probe-173-fold.mjs`, which prints
+// the whole table rather than the winner — a search whose losers are invisible
+// is a claim nobody can re-check):
+//
+//   seated?   `inCutClearance` at the foot, plus the plate's own rim
+//   corridor  nearest approach of the stud's whole COLUMN to every mesh
+//             outside this unit, with the plates excluded because the stud is
+//             meant to touch them (leaving them in made the scan rank the
+//             candidates over the CUTAWAY as the roomiest — the exact inverse
+//             of the question, and it is in the probe's comment for the next
+//             reader)
+//   band      the tip's own azimuth inside the saw's free window
+//
+//   steps hand   tip az   anchor           seated   clear   nearest
+//       5   −    269.2    13.92, −1.60     PLATE    9.507   subIdlerArbor   ← taken
+//       1   +    149.2    13.95, −1.66     PLATE    9.549   subIdlerArbor
+//      11   +     89.2    14.09, 10.43     PLATE    4.259   subIdlerArbor
+//       7   +    329.2    35.03, 10.19     PLATE    0.000   alarmHammerArm  ← the second fold
+//       7   −    329.2    24.29, −7.82       —      2.672   (unnamed Box)   ← the first
+//
+// 5/− wins on the band: its tip sits in the 161° window the free-azimuth scan
+// found, where 1/+ and 11/+ sit in the two narrow gaps between the riders. Its
+// blade then sweeps 269° → 209° in the band above the castellations — which is
+// where the CLICK used to be, and is free precisely because §173 deleted it.
+const ALARM_JUMPER_HAND = -1;   // which way the blade runs from the tip; see the table above
 const _jFold = (() => {
   const u = { x: Math.cos(ALARM_JUMPER_AZ), y: Math.sin(ALARM_JUMPER_AZ) };   // wheel centre → tip
   const tan = { x: -u.y * ALARM_JUMPER_HAND, y: u.x * ALARM_JUMPER_HAND };    // along the blade, tip → anchor
