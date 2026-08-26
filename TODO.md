@@ -17,6 +17,8 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 99 | OPEN | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
+| 100 | OPEN | Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and OPEN, and its repair was SEARCHED and the obvious fix REFUTED** (`tools/probe-90-lockread.mjs`, three controls passing): the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. The beak cannot simply be moved: its station is QUANTIZED to whole column pitches (60°, the parity rule `ALARM_LINK_BEAK_OFF` already snaps to), the exact Thales optimum (φ 44.57°, gain **1.0000**) is mid-flank and so illegal, and both legal neighbours are taken — **−60° is the link beak's own station** (riser 0.0000) and **+60° wants a 0.6723 chamfer against a 0.6327 ceiling** and stands 0.1992 from the driver pawl. So the repair is a FOLD (an intermediate rocker at the free φ 0 station), not a re-siting. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
@@ -11347,3 +11349,142 @@ dart and nothing measures a horn-to-pin contact.
 cylinder with no dart and no matching crescent on the safety roller, and the
 horns are drawn but nothing measures a horn-to-pin contact. That is a separate
 item about the safety action, not about how the lever is cut.
+
+## 99. `claim-item.mjs` cannot see a pushed claim the clone never fetched
+
+The item-number scheme replaced "read the max and add one" because that rule
+reads ONE branch and collides silently (`docs/item-numbers/README.md` has the
+history). `tools/claim-item.mjs` reads every ref instead, and its own comment
+says so: *"Every ref we can see, not just this one. This is the whole point."*
+
+**"Can see" is a property of the clone, not of the repository**, and the tool
+never says which it means. It enumerates with
+
+```js
+git('for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes')
+```
+
+— whatever this working copy happens to have fetched. It never fetches, and it
+never compares that against the remote. The header warns about the residue it
+does know: *"It still cannot see an UNPUSHED claim on someone else's machine."*
+The one it does not name is larger and more ordinary: a claim that IS pushed,
+by someone who did everything right, sitting on a ref this clone has never
+pulled.
+
+### Measured, 2026-08-26 — both collisions on one branch
+
+A Claude Code session starts from a clone carrying the branches it needs. On
+`claude/pallet-fork-geometry-dvs11s` that was **2 refs**; `git ls-remote
+--heads origin | wc -l` said **206**. The tool printed its ref count honestly
+and was believed:
+
+| | with 4 refs visible | with all 209 |
+|---|---|---|
+| TODO high-water | 90 | **97** |
+| offered | **91** | 98 |
+
+TODO 91 was `case-openings`' — *"The plate seat ledge projects into the
+dial-side keyless works"* — claimed the same day, with 92–97 behind it. The
+same session then hit it a second time from the other direction: `BUILT 174`
+was genuinely free when claimed and `worktree-todo-triage` merged its own 174
+first, so `docs/item-numbers/BUILT-0174.md` came back as an add/add conflict at
+merge.
+
+**The scheme worked both times** — that is what the file-per-number path is
+for, and the second collision was caught by git exactly as designed. What it
+cost was two renumbers late, one of them after a PR had been opened and
+reviewed against the wrong section number. The first was avoidable at the point
+of claiming and was not avoided, because nothing in the output distinguishes
+*"nobody has taken 91"* from *"nobody I can see has taken 91."*
+
+### The fix, and the constraint it derives from
+
+A claim is a statement about the REPOSITORY, so it must be checked against the
+repository — not against a local cache of it. Three options, cheapest first;
+the third is the one that matches what the tool promises.
+
+1. **Say what was actually consulted.** Print the ref count beside
+   `git ls-remote --heads origin | wc -l` and warn loudly when they differ.
+   Cheap, honest, and would have caught this: `5 ref(s)` against 206 is not a
+   number anyone reads past twice. It still allocates the wrong number.
+2. **Refuse.** Exit non-zero when the local ref set is materially short of the
+   remote, with `--no-remote` (which already exists) as the documented escape
+   for an offline claim. Correct, and annoying in exactly the case the escape
+   hatch covers.
+3. **Fetch first.** `git fetch --quiet --all` before enumerating, behind the
+   existing `--no-remote` opt-out. This is what "every ref we can see" already
+   claims to mean, and it makes the claim true rather than merely honest.
+
+Whichever lands, `docs/item-numbers/README.md`'s residue section gains the
+unfetched-ref case beside the unpushed one, and `claim-item.mjs`'s header
+stops implying the ref set is the repository's.
+
+**Not in scope.** The add/add conflict path stays exactly as it is. It is the
+backstop that caught the BUILT collision, and no amount of fetching removes the
+race between two branches claiming between one fetch and the next — see
+`docs/item-numbers/README.md`.
+
+## 100. Nothing asks whether a cut outline is sound
+
+`makePalletFork`'s outline crossed itself for as long as the part existed —
+**five self-intersections**, measured at the commit before §175 with a one-line
+outline export patched into a worktree, the worst at (−0.9274, −8.0514). The
+cause was one comparison: a slot `notchHW` = t·0.7 half-wide broached across a
+station where the bar was `leverHW` = t·0.6 half-wide, so the walls it was meant
+to leave had negative thickness and the outline inverted through itself.
+
+**Every gate passed it, before and after.** That is the item. A
+self-intersecting `THREE.Shape` triangulates, extrudes, welds, renders and
+sweeps like any other, and each instrument misses it for its own reason:
+
+- `slenderness` measures a mesh's length against its section AS A WHOLE, so a
+  local pinch does not register — `Pallet fork` never appeared in its
+  over-ceiling rows at all.
+- `stockFloor` asks whether a section is above the floor, not whether the
+  outline that produced it is a simple polygon.
+- `meshIntegrity` reports zero-area and INVERTED bodies, and the fork was
+  neither: measured on the merged tree, the four inverted rows are
+  `LatheGeometry` and `BufferGeometry` (TODO 75's winding class), not a crossed
+  extrude cap.
+- `intraUnit` and the pair sweeps compare parts to other parts. A part folded
+  through itself is one mesh and never compared to anything.
+- `fingerprint` hashes per-unit BOUNDING BOXES at 12 poses, so it cannot see
+  the shape inside the box at all.
+
+An eye caught it. That is not a control.
+
+### What exists now, and what it does not cover
+
+§175 added two guards, and both are the fork's alone: a build-time assert in
+`makePalletFork` over every non-adjacent pair of its sampled outline, and the
+same test as a gate in `tools/probe-fork-blank.mjs`.
+
+The population they do not cover: **30 `ExtrudeGeometry` call sites in
+`src/geometry.js` and 23 more in `src/main.js`**, built from 29 `THREE.Shape`
+outlines in the geometry module alone. None is checked. Whether any of them
+crosses is UNMEASURED — the fork is the only instance anyone has looked at,
+and it was found by eye rather than by search, so the count of others is
+unknown rather than zero.
+
+### The work
+
+1. **Measure the class before fixing it.** Every builder that emits a
+   `THREE.Shape` exports its sampled outline the way `makePalletFork` now does
+   (`userData.blankOutline` — MODELING.md rule 1's pattern), and one probe
+   sweeps the scene testing each for self-intersection. That measurement is the
+   real deliverable: it says whether this is one part's defect or a class.
+2. **Then gate it**, as a battery check over every exported outline rather than
+   as an assert per builder. A `THREE.Shape` that crosses itself is not a
+   shape, and unlike a clearance there is no budget and no waiver — it is not a
+   tolerance, so the gate has no dial to widen.
+3. **And ask the question one level up**, which is what would have caught the
+   fork at design time rather than at inspection: a builder that cuts a slot
+   into a member must assert the member is wide enough to hold it. The fork's
+   version of that constraint is `mouthHW = notchHW + leverHW` (§175 — the two
+   horns together are as thick as the bar they continue). The general form is
+   that a slot's half-width plus its walls is a bound on the outline at that
+   station, and it is checkable at build wherever both numbers exist.
+
+**Scope note.** The XY dilation of the extrude's bevel is item 84's and is not
+this: 84 is about a correct outline shipping fatter than it was cut, this is
+about an outline that was never a polygon.
