@@ -19093,10 +19093,10 @@ const ALARM_SAW_FLANKS_DEG = (() => {
 declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)', {
   unit: 'Alarm switch', meshes: ['alarmJumperBlade', 'alarmJumperTip'], idiom: 'groundedBlade',
   load: { value: ALARM_JUMPER_F_CREST_MN, unit: 'mN',
-    source: 'the blade’s own 3EI/L³ (cantileverK_N_per_m over the built section and free length) at the CREST deflection — preload plus one throw, the throw being sawSeatAt’s own crest minus seat' },
+    source: 'the blade’s own 3EI/L³ (cantileverK_N_per_m over the built section and free length) at the CREST deflection — preload plus one throw, the throw being the tip’s arc deflection L·(β_peak − β_seat) out of the fold’s fixed point, NOT sawSeatAt’s ray answer (which is 0.0018 shorter and was the seed)' },
   quantities: { armIn_u: ALARM_JUMPER_L, armOut_u: ALARM_JUMPER_L, ratio: 1 },
   envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: ALARM_JUMPER_F_CREST_MN },
-  why: `a grounded blade pressing its own tip is the blade idiom at ratio 1 — there is no lever between the spring and the contact, which is what one-part means. Seated ${ALARM_JUMPER_F_SEAT_MN.toFixed(2)} mN and cresting ${ALARM_JUMPER_F_CREST_MN.toFixed(2)} mN, each ${Math.sqrt(SELECTOR_DETENT_WINDOW_MN[1] / (SELECTOR_DETENT_WINDOW_MN[0] * _jRatio)).toFixed(2)}× clear of the bound it faces; forward detent ${ALARM_JUMPER_DETENT_NMM.toExponential(2)} N·mm about the wheel’s axis, and backward the seat’s face is ${ALARM_SAW_FLANKS_DEG.cliff.toFixed(2)}° off radial so no drag cams it out at all`,
+  why: `a grounded blade pressing its own tip is the groundedBlade idiom at ratio 1 — there is no lever between the spring and the contact, which is what one-part means. Seated ${ALARM_JUMPER_F_SEAT_MN.toFixed(2)} mN and cresting ${ALARM_JUMPER_F_CREST_MN.toFixed(2)} mN, each ${Math.sqrt(SELECTOR_DETENT_WINDOW_MN[1] / (SELECTOR_DETENT_WINDOW_MN[0] * _jRatio)).toFixed(2)}× clear of the bound it faces; forward detent ${ALARM_JUMPER_DETENT_NMM.toExponential(2)} N·mm about the wheel’s axis, and backward the seat’s face is ${ALARM_SAW_FLANKS_DEG.cliff.toFixed(2)}° off radial so no drag cams it out at all`,
 });
 // ————————————————————————— THE ASSERTS (rule 6) ————————————————————————————
 {
@@ -19121,15 +19121,20 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
   const faceGap = (ALARM_COL_SKIRT_H - ALARM_JUMPER_TIP_H) / 2;
   if (Math.abs(faceGap - CLEAR_MARGIN) > 1e-9)
     console.warn(`§173: the jumper's tip leaves ${faceGap.toFixed(4)} at each face of the saw band against CLEAR_MARGIN ${CLEAR_MARGIN} — the band and the tip no longer derive from the same rule`);
-  // 4. The pose law reproduces the rest pose exactly. A branch chosen by sign
-  //    is right or catastrophically wrong, never nearly right.
-  // Wrapped: acos returns a principal value, so the law and the construction
-  // can name the same direction 2π apart and a raw subtraction reads that as a
-  // full turn of error. (It did, first run.)
+  // 4. The pose law reproduces the rest pose exactly. `_jFold.sign` picks which
+  //    side of the anchor→centre line the blade lies on, and a side chosen by a
+  //    sign is right or catastrophically wrong, never nearly right — so this
+  //    holds it against the construction rather than against a tolerance.
+  //
+  //    WRAPPED, because the two paths are free to name one direction 2π apart:
+  //    `dirOf` accumulates from atan2's principal value and `_jRestDir` is
+  //    built from ALARM_JUMPER_AZ, which carries whatever turn count
+  //    ALARM_LOCK_ENGAGED plus seven steps came to. A raw subtraction reads
+  //    that as a full turn of error, and did, first run.
   const _wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const restErr = Math.abs(_wrap(alarmJumperAngle(0) - _jRestDir));
   if (restErr > 1e-9)
-    console.warn(`§173: the jumper's triangle solve misses its own rest pose by ${restErr.toExponential(3)} rad — the acos branch is on the wrong side`);
+    console.warn(`§173: the jumper's pose law misses its own rest pose by ${restErr.toExponential(3)} rad — the fold's branch sign is on the wrong side of the anchor line`);
   // 5. The blade works inside the material. This is TODO 63's finding, held
   //    as a gate: the free length is SOLVED from this, so a failure here means
   //    the solve and the built section have parted.
