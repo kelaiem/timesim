@@ -2419,8 +2419,20 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm disc', a: 'alarmPivotPost', b: 'alarmFollowerBar', why: '§121: the follower bar turning ON its post — the §48 follower\'s bearing (0.16 of the post in the bar\'s eye)' },
   { unit: 'Alarm disc', a: 'LatheGeometry#1', b: 'alarmFollowerSpringStud', why: '§121: the stud flush on the flange ring (deep 0 — a planted foot)' },
   // Alarm selector — §34's fork on its post:
-  { unit: 'Alarm selector', a: 'alarmSelTab', b: 'alarmSelPost', why: '§121: the tab lapped on the selector post' },
-  { unit: 'Alarm selector', a: 'alarmSelForkBracket', b: 'alarmSelPost', why: '§121: the fork bracket lapped on the same post — the selector\'s two riders share their pivot' },
+  // These two rows named `alarmSelPost`, and THREE meshes answered to that
+  // name — so between them they excused 15 mesh pairs (4 tabs × 3 posts, plus
+  // the bracket × 3). Measured over the pose net, exactly FOUR of the 15 ever
+  // touch, all of them on post 1; posts 2 and 3 stand 8.2 to 10.2 u away and
+  // were being excused for nothing. That is the silent blanket this table's
+  // own header warns about, and it took naming the posts to see it.
+  //
+  // The tabs stay a collective name on purpose: the fork IS the four meshes
+  // (two plates flanking the groove, two side webs), and `selectB` for the
+  // centre-pin handoff and the `centre pin ⇄ fork groove` floors row both want
+  // it as a group. Of the four, three lap the post and the fourth clears it by
+  // 0.3211 — covered by the same row, which is the fork lapping its post.
+  { unit: 'Alarm selector', a: 'alarmSelTab', b: 'alarmSelPost1', why: '§121: the fork block lapped on the selector\'s first guide post — measured 0.0000 on three of its four meshes, the fourth clear at 0.3211' },
+  { unit: 'Alarm selector', a: 'alarmSelForkBracket', b: 'alarmSelPost1', why: '§121: the fork bracket lapped on the same post — the selector\'s two riders share their pivot' },
   // Alarm setting idler — §15's chain:
   { unit: 'Alarm setting idler', a: 'alarmSetIdler', b: 'alarmSetIdler', why: '§121: the i1⇄i2 working mesh (tooth kiss, deep 0) — TODO 15\'s phase solve owns it; both gears carry one name, which is why one row names it twice' },
   // Alarm silence rocker — §94's rocker:
@@ -6242,7 +6254,12 @@ export const STOCK_KIND_BY_MESH = {
   alarmJumperTip: 'pivot',     // the working diameter, ⌀ 0.56 mm — a turned step, not a section under load
   alarmLockSpring: 'spring',   // §102 — the lock's return blade, the same SPRING_FLAT_U stock and the same standing debt
   alarmLockSpringStud: 'pivot', // ...and its plate-top anchor — pin stock over the pivot floor
-  alarmSelPost: 'pivot',       // the selector's three guide posts — pin stock clearing the pivot floor
+  // The selector's three guide posts — pin stock clearing the pivot floor.
+  // One entry each since they carry their own names now (they always were
+  // three parts; one name made three of them look like one to every selector).
+  alarmSelPost1: 'pivot',
+  alarmSelPost2: 'pivot',
+  alarmSelPost3: 'pivot',
   // TODO 11 tranche five. Three parts that were being judged as WHEELS for
   // want of a name, each measured and kinded rather than thickened:
   alarmLockBeakRiser: 'pivot',       // the beak's post off the lock tail — ⌀ 0.1061 mm on its flats, over the pivot floor

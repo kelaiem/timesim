@@ -10802,3 +10802,68 @@ The instruments for all of this exist: `probe-colwheel-foul` sweeps the toggle
 and reports everything within `CLEAR_MARGIN` of the wheel's three bodies with
 each offender's unit, and `probe-colwheel-id` identifies them — geometry,
 material, parent chain, whether they are NAMED, and per-parity behaviour.
+
+## 97. Ambiguous mesh-name selectors excuse pairs nobody triaged
+
+Filed 2026-08-25, from naming the selector's guide posts. One instance is
+fixed in that landing; the class is not, and the class is the item.
+
+**The mechanism.** `meshLabel` returns a mesh's NAME when it has one, and an
+index only when it does not. Every table in `inspect.js` is string-coupled to
+those labels. So when several meshes share a name, a selector naming it matches
+ALL of them, and one declaration excuses every pair in the cross product.
+`INTRA_UNIT_CONTACTS`' own header already says why that is the bad direction:
+*"An accidentally-matched selector is worse than an unmatched one: it excuses a
+pair silently."* A stale selector is a gate failure; an over-matching one is
+invisible.
+
+**Measured, over `INTRA_UNIT_CONTACTS` at the built tree: 18 of 144 rows match
+more than one pair.**
+
+| row | pairs excused |
+|---|---|
+| `alarmWindIdler(4) ⇄ alarmWindIdler(4)` | **16** |
+| `alarmSelTab(4) ⇄ alarmSelPost(3)` | 12 (fixed in this landing) |
+| `alarmWindIdler(4) ⇄ CylinderGeometry#5` | 4 |
+| `alarmWindIdler(4) ⇄ CylinderGeometry#8` | 4 |
+| `alarmClimbPinion ⇄ alarmWindIdler(4)` | 4 |
+| `ratchet(2) ⇄ maintPawl(2)` | 4 |
+| `alarmSetIdler(2) ⇄ alarmSetIdler(2)` | 4 |
+| `alarmSelForkBracket ⇄ alarmSelPost(3)` | 3 (fixed) |
+| ten more at 2 each | 20 |
+
+**What the fixed instance cost, as the worked example.** The two selector rows
+named `alarmSelPost`, and three meshes answered to it. Between them they
+excused 15 pairs. Measured over the pose net, **four** ever touch — all on post
+1 — while posts 2 and 3 stand **8.2 to 10.2 u away** and were being excused for
+nothing. Naming the posts `alarmSelPost1..3` (the index in
+`ALARM_SEL_POST_AZ`, so a reorder STALES the selector rather than silently
+re-pointing it) took 15 down to 4.
+
+**Blanket uniqueness is the wrong fix, and that is what makes this an item
+rather than a chore.** Some collective names are CORRECT. `alarmSelTab` names
+four meshes that ARE one fork — two plates flanking the groove and two side
+webs — and two consumers legitimately want the group: the centre-pin handoff's
+`selectB`, and the `centre pin ⇄ fork groove` floors row. Renaming those four
+would break both. The `SLENDER` kind map has the same shape in reverse: it
+keyed `alarmSelPost: 'pivot'` once for all three posts, which was RIGHT as a
+class statement and had to become three entries when the posts were named.
+
+So each site needs deciding, not sweeping: is this one part in several meshes
+(keep the collective name, and the selector means the assembly), or several
+parts wearing one name (name them, and the rows split)? `alarmWindIdler×4` is
+the one to look at first — 16 pairs from a single row is the largest blanket in
+the table, and four idlers in a train are almost certainly four parts.
+
+**Unmeasured residue, named rather than implied.** Only
+`INTRA_UNIT_CONTACTS` was counted. `EXPECTED_CONTACT_FLOORS`, the `transfers`
+rows, the `restoring` table and the handoff selectors are all string-coupled to
+the same labels and were NOT audited here; the same duplicate names are visible
+to them. Whoever takes this should count those too before deciding the fix.
+
+A cheaper structural option worth weighing against renaming: make `meshLabel`
+disambiguate a repeated name by index (`alarmSelPost#12`), which turns every
+existing ambiguous row into an unmatched — i.e. a LOUD failure — and forces
+each to be re-declared as the pair someone actually inspected. That converts
+this whole item into a one-time, gate-driven sweep, at the cost of moving every
+label that currently repeats.
