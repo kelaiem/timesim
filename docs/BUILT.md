@@ -15090,6 +15090,21 @@ Measured after: **0 self-intersections**, the two sides symmetric at 0.6951,
 and the tail is no longer the thinnest thing in the part — the arm heads'
 walls around their slots are, at 0.5762, which is `wallW` doing its job.
 
+**The plate re-solved itself around the new fork, and that is the machinery
+working.** Diffing this re-cut against the one-blank run alone, two units
+move: the fork's blank (+16 triangles, the outline's extra flare vertices) and
+the THREE-QUARTER PLATE (`threeQuarterPlate` 57 918 → 57 920 triangles, with
+three `chatonSeatLand` meshes re-tessellating with it). The path is `TQ_CUT`:
+the plate's escapement window is MEASURED, not drawn — its edge radius is
+tabulated per degree about the balance axis as the furthest any revealed part
+reaches on that bearing, sampled across the beat *because the fork banks*. A
+wider fork end votes for a slightly wider opening, and the plate keeps every
+scrap of material nothing needs. So a P3 conflict that would otherwise have
+had to be resolved by hand in position space resolved itself, which is exactly
+what that table exists for. Worth writing down because the report diff shows a
+plate moving when only a fork was touched, and that looks like a defect until
+you know where the opening comes from.
+
 **Two guards, because "an eye caught it" is not a control.** A build-time
 assert over every non-adjacent pair of the sampled outline, and the same test
 as a gate in `probe-fork-blank.mjs`. The lesson generalises past this part: a
@@ -18582,13 +18597,15 @@ lever's axis (residual **0.000000**) and the two leans break that mirror by
 wrapped and the entry stone's 237° reads as −123°.
 
 Local battery, `node tools/ci-battery.mjs`, on the changed tree:
-**35/35 gates pass**, 1122.1 s. Boot silent. `support` 0 failures; `graph`
+**35/35 gates pass**, 1744.5 s. Boot silent. `support` 0 failures; `graph`
 every violation list empty; `axisEntry` 364 ordered pairs, 0 violations;
 `penetration` every row OK or waived; `alarmHandoffs` 13 hand-offs, 0 waived;
 `intraUnit` 0 unwaived, 0 unmatched selectors; `assembly` 0 undeclared unwaived
 splits in scope; `expectedContacts` 18 pairs, 0 waived; `inspection`
 (`includeExcluded`) 0 FORBIDDEN over 56 units; `clearances` 0 violations over
 31 budgets; `sweptOverlap` 0 CONFIRMED over 90 513 pairs (tight 3, refuted 13);
+`meshIntegrity` zeroArea 8191 in 128 geometries — the base's own figures, so
+the blank contributes none;
 `stockFloor` 0 degenerate and 0 unwaived; `restoring`, `transfers`,
 `oscillator`, `equalisation` all PASS; `fingerprint` deterministic across
 virgin boots. `explain-quotes` PASS and `explain-i18n --check` PASS (0
@@ -18600,7 +18617,8 @@ and its five translations moved with the source.
 `--report` diffed against the base is the acceptance for anything that can
 move a report, and it earned that here. Both batteries pass 35/35; the diff is
 22 checks, 12 byte-identical, 10 moved, and **every non-timing movement is
-inside `Pallet fork`** — `stockFloor` rowsChecked 621→616, `slenderness`
+inside `Pallet fork`** (and, after the fork end was re-cut, the plate window
+it votes for — see above) — `stockFloor` rowsChecked 621→616, `slenderness`
 counted 625→620, `meshIntegrity` geometries 578→573 (the fork's four steel
 census rows become one of 1038 tris), `intraUnit` FF 3085→3045 with twelve
 fork FF rows gone, `restoring`'s frame list re-ordered, and census counters
