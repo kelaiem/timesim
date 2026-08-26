@@ -12517,7 +12517,23 @@ sit at 0.3044; the guarantee is the floor, not the reading.
 
 The `intraUnit` waiver is **deleted, not renewed**.
 
-## 90. The band has no radial bores, so both stems pass through solid case metal
+## 96. The band has no radial bores, so both stems pass through solid case metal
+
+**Renumbered from 90 to 96 on 2026-08-25, and the old number is not reusable.**
+This item was filed as 90 on 2026-08-24, before `main` merged a different item
+90 (the column wheel's output-side audit, PR #301) on 2026-08-25. Both numbers
+were allocated by reading `max + 1` off a branch, which is exactly the race that
+rule loses when two branches are open at once: each reads the same max, and
+neither can see the other's claim until a merge. `main` is merged and
+published, so this side moves. 96 was chosen by
+scanning EVERY remote branch for claimed numbers, not by taking max + 1 again:
+91–94 are this branch's own and 95 is `fix/meshclearance-passthrough`'s.
+
+Two consequences to know. Commit messages already in history cite this item as
+"TODO 90" — those are immutable and correct as of when they were written. And
+its probes keep their `probe-90-*` filenames (`probe-90-extent`,
+`probe-90-fouls`, `probe-90-pusher-band`) rather than being renamed inside an
+open PR; they answer item 96.
 
 Filed from the case branch's first clean measurement (2026-08-24). It was
 invisible until it wasn't: `makeCase` shipped five bodies as open surfaces,
@@ -12623,8 +12639,8 @@ it might ever foul — the exact shape of excuse item 6 exists to narrow.
 
 ## 91. The plate seat ledge projects into the dial-side keyless works
 
-Filed alongside item 90, from the same first clean measurement, and it is
-the more serious of the two: item 90 is a hole nobody cut, this is two
+Filed alongside item 96, from the same first clean measurement, and it is
+the more serious of the two: item 96 is a hole nobody cut, this is two
 groups of parts claiming one volume.
 
 The case middle's plate seat is turned to `R_SH` = `plateR` − 1 mm =
@@ -12672,7 +12688,7 @@ that stand inside the ledge's own window (r ∈ [`R_SH`, `R_OUT`], z ∈
 Two arcs, not one: **128.4°–147.6° (19.2°)** at the keyless station and
 **358.0°–2.1° (4.1°)** at the alarm crown's. Add `CLEAR_MARGIN` to each.
 The second is nearly free — it sits on the alarm stem's own azimuth, so
-item 90's bore there (±4.32°) already removes it, which is the coupling
+item 96's bore there (±4.32°) already removes it, which is the coupling
 that argues for cutting both items in one pass.
 
 `Setting lever` and `Alarm switch` have vertices near the ledge but land
@@ -12690,8 +12706,8 @@ What still has to be decided, by someone who owns the case design:
   weight and case-screw preload — filed in item 16's format, and it is
   the number that decides whether a relief is enough or whether the seat
   has to move to a different radius entirely.
-- **Whether item 90's bores land inside the same relief.** At the crown
-  azimuths they do (see item 90); if the relief spans them, part of that
+- **Whether item 96's bores land inside the same relief.** At the crown
+  azimuths they do (see item 96); if the relief spans them, part of that
   cut is already paid for.
 
 **A sixth body reaches the ledge, and only with the crown pulled.** The five
@@ -12703,7 +12719,7 @@ at `crown` f=0.25, the lever's post stands at r 40.05–40.95, z −5.10–1.42:
 the fifth one at a pose the rest position hides, and the relief arc has to
 be sized against the lever's swept azimuth, not its resting one.
 
-Both this and item 90 are blocked on the same missing sector-lathe
+Both this and item 96 are blocked on the same missing sector-lathe
 construction, and both should be cut in one pass once it exists.
 
 ## 92. CLOSED — the case treated a chord-mounted pusher as a radial one, twice
@@ -12763,7 +12779,7 @@ rather than pretended to here.
 
 ## 93. CLOSED — a sampling miss overrode a correct intersection, and published it as clearance
 
-Filed 2026-08-25 from item 90's re-measurement; closed the same day. The
+Filed 2026-08-25 from item 96's re-measurement; closed the same day. The
 filing guessed the mechanism wrong, and the wrong guess is kept here because
 it is the instructive part: the symptom looked exactly like item 27's parity
 family, and it was not that at all.
@@ -12900,11 +12916,11 @@ thirteen, 1907 poses each. That is the signature of static geometry standing
 in static geometry, not of a stroke that goes too far, and it is why no pose
 hunt is needed to reproduce them.
 
-**`Alarm switch ⇄ Case` is item 90's third station and needs no separate
+**`Alarm switch ⇄ Case` is item 96's third station and needs no separate
 decision.** `CylinderGeometry#9` is the alarm pusher's stem — unnamed on this
 base, which is also why the pre-existing `intraUnit` row reads
 `CylinderGeometry#9 ⇄ alarmPusherCap`; main's §162 names it. It is measured in
-item 90: 2.645 u, the full `CASE_BAND_T`, entering r 45.55 and leaving 48.18 at
+item 96: 2.645 u, the full `CASE_BAND_T`, entering r 45.55 and leaving 48.18 at
 z 7.55. Cutting the band aperture closes this row.
 
 **The other four are untriaged, and two of them may not be defects at all.**

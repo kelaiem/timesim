@@ -48,10 +48,22 @@ const res = await page.evaluate(async () => {
   clock.resetInputs();
 
   const unit = (n) => clock.labelEntries.find((x) => x.name === n);
+  // MUST mirror collectUnits() in inspect.js exactly, or index-based labels
+  // like `BoxGeometry#3` name a DIFFERENT mesh here than in a battery report.
+  // The difference that bites: collectUnits PRUNES a schematic subtree (early
+  // return before recursing), whereas Object3D.traverse skips only the flagged
+  // node and still descends into its children — so an unflagged mesh under a
+  // flagged parent is collected by traverse and not by collectUnits, and every
+  // index after it shifts.
   const meshesOf = (e) => {
-    const m = []; e.obj.traverse((o) => {
-      if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) m.push(o);
-    }); return m;
+    const m = [];
+    const walk = (o) => {
+      if (o.userData && o.userData.schematic) return;
+      if (o.isMesh && o.geometry && o.geometry.attributes.position) m.push(o);
+      for (const c of o.children) walk(c);
+    };
+    walk(e.obj);
+    return m;
   };
   const label = (m, list) => m.name || `${m.geometry.type}#${list.indexOf(m)}`;
 
