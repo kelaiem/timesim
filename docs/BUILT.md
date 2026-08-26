@@ -15048,6 +15048,69 @@ and TODO 4 measured the inside-out castellations moving no AABB and no
 clearance verdict, so the fingerprint cannot key an incremental scheme. A
 `meshIntegrity` fix moves triangles and no bounding box at all.
 
+### The fork end was cut across itself, and had been for as long as it existed
+
+Reported by eye after the blank landed — *"the tail of the disk has one part
+that is impossibly thin"* — and it was thinner than that: **the outline
+CROSSED ITSELF.** Measured off `userData.blankOutline`, the blank's first cut
+carried two self-intersections and a station **0.1339** wide at
+(−0.700, −6.669); a worktree at the commit before any of this work, with a
+one-line outline export patched in, carried **five**, including the identical
+crossing at **(−0.9274, −8.0514)**. So it is not a regression from the
+one-blank re-cut — that re-cut removed three of the five by accident, when
+dropping a vertex changed the right flank, which is also why the tail came out
+asymmetric. The defect is as old as the part.
+
+**The cause is one comparison.** The slot is `notchHW` = t·0.7 half-wide and
+its closed end sits at `forkTop + 0.9·t`; the lever is `leverHW` = t·0.6
+half-wide, and the horns only flared BELOW `forkTop`. So the slot was broached
+across a station where the bar was NARROWER than the slot — the walls it was
+meant to leave had negative thickness, and the outline inverted through itself.
+
+**Nothing in the bar could see it, and it is worth being precise about why.**
+`slenderness` measures a mesh's length against its section AS A WHOLE, so a
+local pinch does not register and `Pallet fork` never appeared in its
+over-ceiling rows at all. And a self-intersecting outline triangulates,
+extrudes, welds and renders like any other: all 35 gates passed it before the
+one-blank work and all 35 passed it after.
+
+**The fix is the constraint that was missing: the fork end is not a weak
+point.** Each horn's wall carries at least the lever's own half-section
+(`hornWall = leverHW`), so the two horns together are exactly as thick as the
+bar they continue, and the outline at the slot's closed end stands at
+`notchHW + leverHW`. The flank flares into that point directly — one curve
+from boss to fork end, instead of a flank that stopped at `forkTop` and left
+the slot hanging outside it. Every kinematic surface is untouched: the notch
+walls are still at ±`notchHW`, its closed end is still the V through
+`forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, and the horn tips
+and `forkY` are where they were. `forkTop` goes back to being what it always
+was, a datum for those rather than a vertex of the silhouette.
+
+Measured after: **0 self-intersections**, the two sides symmetric at 0.6951,
+and the tail is no longer the thinnest thing in the part — the arm heads'
+walls around their slots are, at 0.5762, which is `wallW` doing its job.
+
+**The plate re-solved itself around the new fork, and that is the machinery
+working.** Diffing this re-cut against the one-blank run alone, two units
+move: the fork's blank (+16 triangles, the outline's extra flare vertices) and
+the THREE-QUARTER PLATE (`threeQuarterPlate` 57 918 → 57 920 triangles, with
+three `chatonSeatLand` meshes re-tessellating with it). The path is `TQ_CUT`:
+the plate's escapement window is MEASURED, not drawn — its edge radius is
+tabulated per degree about the balance axis as the furthest any revealed part
+reaches on that bearing, sampled across the beat *because the fork banks*. A
+wider fork end votes for a slightly wider opening, and the plate keeps every
+scrap of material nothing needs. So a P3 conflict that would otherwise have
+had to be resolved by hand in position space resolved itself, which is exactly
+what that table exists for. Worth writing down because the report diff shows a
+plate moving when only a fork was touched, and that looks like a defect until
+you know where the opening comes from.
+
+**Two guards, because "an eye caught it" is not a control.** A build-time
+assert over every non-adjacent pair of the sampled outline, and the same test
+as a gate in `probe-fork-blank.mjs`. The lesson generalises past this part: a
+builder that cuts a slot into a member has to be asked whether the member is
+wide enough to hold it, and no sweep in the battery asks that.
+
 ### Instruments
 
 Battery green on the landing head, `meshIntegrity` included (`cost: 10`;
@@ -18551,3 +18614,189 @@ wheel's centre stands ON the tail's line and a lever moves its beak
 perpendicular to the arm. So this is a real hold worked by a switch that cannot
 throw it. Filed beside the finding rather than inside it, because the read's
 repair is a different change in a different space.
+
+## §175 — the pallet fork becomes one blank (TODO 98)
+
+Eye-reported: *"the pallet fork looks like different shapes were squashed
+together haphazardly."* It did, and it was — but measuring the complaint first
+(TODO 98, `tools/probe-fork-blank.mjs`) turned up a false derivation underneath
+it, which is why this landed as mechanical-realism debt rather than as finish.
+
+A Swiss lever is ONE piece of steel. Pivot boss, both pallet arms, the lever
+and the fork end with its horns and notch are cut in a single outline and
+lapped to one thickness; only the two ruby stones and the guard dart are
+separate parts. `makePalletFork` was emitting **six steel solids** for that one
+blank — a body extrude, a boss cylinder, two slotted head blocks and two
+`BoxGeometry` arm bars — and because each carried its own edge treatment they
+stood at four different z-heights.
+
+### What was measured before anything was cut
+
+| | |
+|---|---|
+| steel solids carrying the lever's own metal | **6** |
+| distinct z-heights among them | **4** — 1.200 / 1.392 / 1.488 / 1.560 |
+| per-side ledge at the worst joint | **0.180**, against `CLEAR_MARGIN` = 0.15 |
+| arm bar lengths | **4.2782** and **4.8711** — 12.2% apart |
+| arm block → body clearance | **0.0000** (exit) and **0.9078** (entry) |
+| `L_BALANCE`'s assumed fork top | 5.5079 (`L_FORK + FORK_T/2`) |
+| the fork's actual top | **5.6879** — the boss cylinder at `t·1.3` |
+| balance rim underside | 5.6579 — **0.0300 BELOW the metal** |
+| what actually kept them apart | a swept lateral **0.6001** that nothing derived |
+
+The last three rows are the reason this was not a finish item. `L_BALANCE`'s
+comment said "fork body top (`L_FORK + FORK_T/2`)" and named a face no metal
+occupied; the margin it reserved was not reduced by 0.18, it was negative.
+
+### The cut
+
+**One closed outline.** The blank is a single `THREE.Shape`: down the lever's
+waisted left flank, round the fork end (horn, notch, horn), up the right flank,
+then the boss arc and the two arms with their broached heads, in the CCW order
+the outline actually walks them. The stone slots are notches in the nose edge
+of each head — which is what a broach cuts, and what lets a stone be set from
+outside. Every kinematic vertex is untouched: horn tips, notch walls, the notch
+floor at `forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, the
+`forkTop`/`forkY` anchors, and both stone seats are outputs of solves that run
+exactly as they did.
+
+**The arms come from one rule.** Each arm leaves the boss circle as a bar of
+half-width `leverHW` — the lever's own section, joining the circle at exactly
+the same construction the lever's flanks use, `yJoin = −√(bossR² − leverHW²)` —
+and opens out to the two ends of its head's INNER face. That the arm meets a
+head on its *side* rather than its back is not a styling choice: `f0`, the
+zero-draw face direction, is the perpendicular of the pivot radial, so a head's
+long axis is always tangential to the pivot circle. The old boss→head-centre
+box ignored that, which is exactly why it read as a strut glued to a slab.
+
+**What is still not mirror-symmetric, and why that is right.** TODO 98's repair
+step 2 proposed making the two arms exact mirror images, with each head's lean
+applied to the slot inside an unleaned block. Building it showed why real forks
+do not: the zero-draw frame `f0` and the two seats ARE exactly mirror-symmetric
+(the gate below holds both to the last bit), and draw then rotates both stones
+in the wheel's own sense, so the two leans differ from that mirror by exactly
+2·DRAW_DEG. Holding a leaned slot inside an unleaned block needs the head
+**0.2361 wider** — derived from where the rotated slot's corners land, not
+built — and all of it on the side that reaches toward the wheel, spent to hide
+the one asymmetry the escapement actually has. The arms are one rule applied with sigma instead, and what
+differs between them is the draw — which is a derivation, not an aimed box.
+That correction is written back into the item.
+
+**The chamfer comes out of the stock.** `bevelThickness` stands proud at BOTH
+faces, so `depth: t` shipped a body `t + 2·bevel` = 1.488 thick while every
+consumer — `L_BALANCE` included — read 1.2. A lever lapped to `t` is `t`
+overall, chamfer and all, so the extrude now gets `t − 2·bevel` and the
+finished blank measures exactly `FORK_T`. The first attempt did the opposite —
+declared `FORK_HALF_Z = FORK_T·(0.5 + FORK_BEVEL_FRAC)` and let the balance
+rise 0.144 to meet it — and that is worth recording because it produced **six
+§47 boot warnings** in the mainspring arrest: the balance carries the
+hairspring stack, the stack is the three-quarter plate's binding member, and
+the plate carries the arrest. The parameter is named `thickness`; the builder
+was wrong, not the constant.
+
+**`FORK_HALF_Z` is a declaration now, and it is asserted.** `layout.js` exports
+`FORK_BEVEL_FRAC` and `FORK_HALF_Z` (MODELING.md rule 1's exported-function
+case — `L_BALANCE` runs thousands of lines before the builder, so `userData`
+cannot reach it), `makePalletFork` reads the same fraction, and `main.js` warns
+at boot if the blank it built disagrees with either that reach or the
+"2 steel bodies, 2 stones" census.
+
+**The wheel-clearance bound stopped being a shape.** The old outline carried a
+`topY` derived from `D − (R + 0.15 + bankAllow) − 0.05` — an accommodation with
+a bare 0.05 of slack in it (standing rule 1) — and a concave top that existed
+only to dip away from the escape wheel. Both are gone. The bound is a CHECK
+now, run at build over every vertex the extrude actually produces, against the
+miter the bevel opens at each corner (`bevel / cos(θ/2)`, three.js's 0.1 clamp
+included — MODELING.md rule 1) and the `bank·|p|` the swing adds, and it asks
+for `CLEAR_MARGIN` rather than the old hand-set 0.1.
+
+### What this does not fix, named
+
+In XY the extrude's bevel still dilates the authored outline outward by
+`bevelSize`, so the blank's silhouette is wider than the shape it was cut from.
+That is TODO 84's class, general to the movement, and it is deliberately not
+touched here: closing it for the fork alone would move the notch walls the
+impulse pin runs in.
+
+The stone and the blank remain two meshes of one unit, so their seat is still
+TODO 5's fixture-pair residue — the derivation `gGap = bevel + SEAT_SHOW` is
+what guards it, and it now reads the blank's one bevel instead of a head
+block's own.
+
+### Instruments
+
+`tools/probe-fork-blank.mjs` was the REPORT that TODO 98 was written from and
+is the ACCEPTANCE test now. It gates six things — first that the cut outline
+does not cross itself, then five about the metal: the fork's own metal is one
+solid; that solid has one z-height; the height is `FORK_T` (the chamfer came
+out of the stock); the built top equals `L_FORK + FORK_HALF_Z` to float noise;
+and the balance rim clears it by exactly `CLEAR_MARGIN`. Beside them it holds
+the claim that the two arms come from one rule — the seats mirror about the
+lever's axis (residual **0.000000**) and the two leans break that mirror by
+**24.000°** = 2·DRAW_DEG, read off the built stone meshes rather than a
+`userData` export, and compared modulo 360 because `rotation.z` comes back
+wrapped and the entry stone's 237° reads as −123°.
+
+Local battery, `node tools/ci-battery.mjs`, on the changed tree:
+**35/35 gates pass**, 1744.5 s. Boot silent. `support` 0 failures; `graph`
+every violation list empty; `axisEntry` 364 ordered pairs, 0 violations;
+`penetration` every row OK or waived; `alarmHandoffs` 13 hand-offs, 0 waived;
+`intraUnit` 0 unwaived, 0 unmatched selectors; `assembly` 0 undeclared unwaived
+splits in scope; `expectedContacts` 18 pairs, 0 waived; `inspection`
+(`includeExcluded`) 0 FORBIDDEN over 56 units; `clearances` 0 violations over
+31 budgets; `sweptOverlap` 0 CONFIRMED over 90 513 pairs (tight 3, refuted 13);
+`meshIntegrity` zeroArea 8191 in 128 geometries — the base's own figures, so
+the blank contributes none;
+`stockFloor` 0 degenerate and 0 unwaived; `restoring`, `transfers`,
+`oscillator`, `equalisation` all PASS; `fingerprint` deterministic across
+virgin boots. `explain-quotes` PASS and `explain-i18n --check` PASS (0
+unmatched, 0 markup drift, 0 code drift, 0 number drift) after the `gGap` quote
+and its five translations moved with the source.
+
+### What the report diff caught that nothing else did
+
+`--report` diffed against the base is the acceptance for anything that can
+move a report, and it earned that here. Both batteries pass 35/35; the diff is
+22 checks, 12 byte-identical, 10 moved, and **every non-timing movement is
+inside `Pallet fork`** (and, after the fork end was re-cut, the plate window
+it votes for — see above) — `stockFloor` rowsChecked 621→616, `slenderness`
+counted 625→620, `meshIntegrity` geometries 578→573 (the fork's four steel
+census rows become one of 1038 tris), `intraUnit` FF 3085→3045 with twelve
+fork FF rows gone, `restoring`'s frame list re-ordered, and census counters
+under `inspection` / `clearances` / `sweptOverlap` (91 668→90 513 pairs
+tested). No violation, waiver or budget row moved anywhere in the movement.
+
+The first cut of this blank also put **eight zero-area triangles** into a
+movement that already carries TODO 74's 8191, from three duplicate outline
+vertices — two 1-ulp twins at the arm roots and one wrap-around twin. Every
+gate passed with them in place, because `meshIntegrity`'s `zeroArea` rows are
+a REPORT; the diff is the only thing that saw them. The causes are worth
+knowing, because both are properties of three.js rather than of this part:
+`Path.absellipse` already joins itself to the previous curve with a `lineTo`
+to its OWN start point, so an explicit `lineTo(root)` before each arc writes
+that corner twice from two formulas that agree to ~2e-16 and not to the bit —
+and `CurvePath.getPoints` drops consecutive duplicates with `equals()`,
+EXACTLY, so a twin that close survives. The third came from `closePath()`
+landing on the `moveTo`, which `getPoints` never compares. The path is sampled
+once now and that polyline is both what is extruded and what the clearance
+assert reads; the flank junctions are spelled `r·(cos a, sin a)` the way the
+arcs spell theirs, so the closing arc lands on the `moveTo` exactly. 131
+outline points, 0 duplicates, and `zeroArea` is byte-identical to the base.
+
+**And the fingerprint could not have caught it either**, which is worth saying
+plainly next to a gate whose name suggests otherwise: `fingerprint` hashes
+per-unit BOUNDING BOXES at 12 poses, so a duplicate vertex — or any change
+that moves no box — leaves the hash untouched. It read 1821137572 both before
+and after the dedupe. It is a go/no-go on where parts ARE, not on what they
+are made of.
+
+**Two bugs in the instrument index fell out of filing this**, both the same
+shape — `tools/INDEX.md` saying something false about a file rather than
+staying silent, in the one document whose job is to tell a reader what kind of
+answer they are holding. Its classifier matched only `process.exit(`, so the
+seven instruments that set `process.exitCode` instead were all filed as
+REPORTS: five of §152's acceptance probes and `ci-battery.mjs`, the battery
+gate itself. And the header extractor stopped at the first non-comment line,
+which for a shebanged file is line one, so eight files with full headers were
+described as having nothing to say about themselves. The split is **52/68**
+now, not 45/75, and CLAUDE.md's two counts moved with it.

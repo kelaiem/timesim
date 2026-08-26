@@ -34,7 +34,13 @@ const OUT = join(HERE, 'INDEX.md');
 // its imports.
 const header = (src) => {
   const out = [];
-  for (const line of src.split('\n')) {
+  let lines = src.split('\n');
+  // A shebang comes BEFORE the header, and stopping on it reported eight
+  // files — `ci-battery.mjs` among them — as having nothing to say about
+  // themselves when each carries a full one. Silence is the honest answer for
+  // a file with no header; it is a lie about a file that has one.
+  if (lines[0] && lines[0].startsWith('#!')) lines = lines.slice(1);
+  for (const line of lines) {
     if (!line.startsWith('//')) break;
     out.push(line.replace(/^\/\/ ?/, '').trim());
   }
@@ -54,7 +60,14 @@ const rows = files.map((f) => {
     // An ACCEPTANCE instrument decides and exits non-zero; a REPORT prints and
     // leaves the judgement to a reader. Choosing the wrong kind is how a
     // measurement gets mistaken for a verdict, so it is in the index.
-    kind: /process\.exit\(/.test(src) ? 'acceptance' : 'report',
+    //
+    // `process.exitCode = 1` is the OTHER way to exit non-zero, and the one an
+    // instrument that prints a summary should prefer, because `process.exit()`
+    // can truncate stdout mid-flush. Matching only the call misfiled seven
+    // instruments as reports — five of §152's acceptance probes and
+    // `ci-battery.mjs`, the battery gate itself — in the one document whose
+    // job is to tell a reader which kind they are looking at.
+    kind: /process\.exit\(|process\.exitCode\s*=/.test(src) ? 'acceptance' : 'report',
     summary: header(src) || '(no header — this file says nothing about what it answers)',
   };
 });

@@ -532,14 +532,43 @@ export const FORK_T = 1.2;     // pallet-fork body thickness (= makePalletFork's
 // coplanarity costs nothing laterally and buys the whole stone reach
 // in depth — which the balance, spring and cock all inherit.
 export const L_FORK = L_ESCAPE;
+// TODO 98 — the lapping chamfer on the fork BLANK, as a fraction of its
+// FINISHED thickness. It lives here rather than inside `makePalletFork`
+// because `L_BALANCE` below has to know how far the blank actually reaches
+// in z, and the builder runs thousands of lines later: MODELING.md rule 1's
+// "a builder that cannot export through userData exports a function"
+// (`gearTipR`/`gearBevel` are the precedent). `makePalletFork` reads the
+// same fraction, so the chamfer and the elevation cannot be edited apart.
+export const FORK_BEVEL_FRAC = 0.12;
+// What the blank REACHES above its own mid-plane — and the reason this is
+// FORK_T/2 is that the builder now cuts it so. An `ExtrudeGeometry` of depth
+// d with `bevelThickness` b stands b proud at each face, so the solid is
+// d + 2b tall; the old builder passed d = FORK_T and shipped a part 1.488
+// thick while every consumer read 1.2, this constant included. A lever lapped
+// to FORK_T is FORK_T overall, chamfer and all, so the chamfer comes OUT of
+// the stock: the builder extrudes FORK_T − 2b and the finished blank is
+// exactly FORK_T. That is the whole of the disagreement — in XY the bevel
+// still dilates the outline outward, which is TODO 84's class and not this
+// item's.
+export const FORK_HALF_Z = FORK_T / 2;
 export const BAL_T = 2.5;              // balance thickness (= makeBalanceWheel's `thickness`)
 export const RIM_H = BAL_T * 0.55;     // rim height — mirrors makeBalanceWheel's 0.55·t rim
-// Balance mid-plane: fork body top (L_FORK + FORK_T/2) + margin + half the
-// rim's own height. The rim's underside is the balance's deepest full-ring
-// face, so this is the lowest the wheel can sit without fouling the fork.
+// Balance mid-plane: the fork blank's TRUE top (L_FORK + FORK_HALF_Z) +
+// margin + half the rim's own height. The rim's underside is the balance's
+// deepest full-ring face, so this is the lowest the wheel can sit without
+// fouling the fork.
+// TODO 98: this used to read `FORK_T / 2` DIRECTLY, and that was a face no
+// metal had. Measured, the fork's steel topped out 0.18 higher (the old boss
+// cylinder at t·1.3, one of four z-heights in a six-solid part) and the rim's
+// underside landed 0.0300 BELOW it — the margin was not reduced, it was
+// negative, and the two parts missed each other only laterally, by 0.6001
+// that nothing derived. The number here is arithmetically the same and no
+// longer a coincidence: the fork is one blank cut to FORK_T overall, and
+// `FORK_HALF_Z` is what the builder is ASSERTED to produce (main.js), so the
+// margin below is the margin that exists.
 // With the low escapement it lands FAR BELOW the plate band — the whole
 // oscillator now lives in open air under the plate's cutaway.
-export const L_BALANCE = L_FORK + FORK_T / 2 + CLEAR_MARGIN + RIM_H / 2;
+export const L_BALANCE = L_FORK + FORK_HALF_Z + CLEAR_MARGIN + RIM_H / 2;
 // Impulse-pin world mid-plane — inside the fork's z-band, VERIFIED by the
 // collision audit; it is pinned to the FORK, not the balance, and must not
 // move when L_BALANCE does. makeBalanceWheel takes the wheel-centre→pin
