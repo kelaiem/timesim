@@ -1,4 +1,4 @@
-// TODO 95 row 4 / TODO 106 — is the geneva finger disc's BORE actually cut?
+// TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut?
 // The arbor's own side edges cross the disc's surface twice, at exactly the
 // disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it
 // is supposed to pass through freely. That can only mean cap triangles span

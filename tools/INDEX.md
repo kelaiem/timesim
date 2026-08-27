@@ -122,6 +122,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
+| `probe-bore-cut.mjs` |  | report | TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut? The arbor's own side edges cross the disc's surface twice, at exactly the disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it is supposed to pass through freely. That can only mean cap triangles span the hole. This counts them: every triangle whose centroid falls inside the bore radius is metal where the drawing says air. `src/geometry.js` already records this failure once — an `absarc` at `curveSegments: 1` collapsing to a single segment — and replaced it with an explicit 64-gon. This asks whether that replacement finished the job. REPORT. |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
@@ -131,6 +132,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
+| `probe-mesh-closedness-census.mjs` |  | report | TODO 106 — HOW MUCH of the movement is open? Every parity witness in this repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and TODO 27's family) counts ray crossings and is therefore only valid against a CLOSED surface. Nothing measures how many surfaces qualify. |
 | `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |

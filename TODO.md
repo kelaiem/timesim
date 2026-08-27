@@ -12209,7 +12209,7 @@ as a colliding one") and TODO 27 measured one instance of it. Nothing has ever
 asked how many of the movement's surfaces qualify, so no instrument knows when
 it is entitled to its own answer.
 
-`tools/probe-106-open-census.mjs` asks. Measured over the built tree, 717
+`tools/probe-mesh-closedness-census.mjs` asks. Measured over the built tree, 717
 meshes:
 
 | | meshes | what it means for parity |
@@ -12274,7 +12274,7 @@ the rendered solid is not the authored one**, and it is the same failure
 `ARREST_SPEC.fingerBoreR = arborR + 0.05` (`src/geometry.js:2198`) — a running
 fit, the same 0.05 the winding idlers use for a wheel on a stud. The disc
 should turn on `alarmArrestFingerArbor` with 0.05 of air all round. It does
-not: `tools/probe-107-borecut.mjs` casts rays straight down the bore and finds
+not: `tools/probe-bore-cut.mjs` casts rays straight down the bore and finds
 
 | | |
 |---|---|
@@ -12319,7 +12319,7 @@ made this hard to see. Options, cheapest first:
 3. **Drop the cap triangulator entirely** for this part and lathe the disc
    about its own axis, since it is a disc with a bore and a cutaway.
 
-Whichever, the acceptance is `probe-107-borecut.mjs` reading 0 blocked rays
+Whichever, the acceptance is `probe-bore-cut.mjs` reading 0 blocked rays
 inside the arbor's footprint, and `intraUnit` no longer reporting the pair.
 
 **Do NOT declare this pair in `INTRA_UNIT_CONTACTS`.** A declaration says "these
