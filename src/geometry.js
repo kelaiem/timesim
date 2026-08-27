@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics } from './aesthetics.js';
-import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET,
+import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40)
 
 // ---------------------------------------------------------------------------
@@ -908,6 +908,44 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 // half-swing — the impulse faces are CUT from them (the tooth tip's sliding
 // path in the fork frame is their vector mix), so the caller must pass the
 // same values that drive the animation.
+//
+// TODO 98 — THE FORK IS ONE BLANK. A Swiss lever is a single piece of steel:
+// pivot boss, both pallet arms, the lever and the fork end with its horns and
+// notch are cut in one outline and lapped to one thickness, and only the ruby
+// stones and the guard dart are separate parts. This builder used to emit SIX
+// steel solids for that one blank — a body extrude, a boss cylinder, two
+// slotted head blocks and two `BoxGeometry` arm bars — each with its own edge
+// treatment, so they stood at four different z-heights (1.200 / 1.392 / 1.488
+// / 1.560 at FORK_T = 1.2) and met at per-side ledges of up to 0.180, which is
+// larger than CLEAR_MARGIN. Three things followed from that and all three are
+// closed here:
+//
+//   · The BARS were the giveaway. Each ran boss→head-centre as a plain box, so
+//     the two came out 4.2782 and 4.8711 long (12.2% apart) and the exit head
+//     touched the body while the entry head stood 0.9078 clear of it, carried
+//     only by its bar. The arms are cut from the blank now, by ONE rule
+//     applied with sigma: a bar of half-width `leverHW` leaving the boss
+//     circle — the SAME construction as the lever's own flanks, so the arm and
+//     the tail are the same kind of member — opening out to the head's inner
+//     face. What difference remains between the two arms is the draw lean the
+//     escapement demands, not an artifact of how a box was aimed.
+//   · The BELLY drew the arms a second time. Since the arms became separate
+//     bars, the outline above the pivot was a vestigial `2·shoulderX` blob
+//     closed by a concave top whose only derivation was a wheel-clearance
+//     bound plus a bare 0.05 of slack (standing rule 1). It is gone: the metal
+//     above the pivot is the boss and the two arms, and the wheel-clearance
+//     bound became what it should always have been — a CHECK on the one
+//     outline (`bladeClear` below), run over every vertex the extrude actually
+//     produces, against the miter the bevel opens at each corner.
+//   · `L_BALANCE` was derived from `FORK_T / 2`, a face no metal occupied.
+//     `FORK_HALF_Z` in layout.js is the blank's real reach and the elevation
+//     reads that; the boss is part of the flat blank, so nothing stands proud
+//     of it any more.
+//
+// The kinematics are untouched by all of this: horn tips, notch walls, the
+// notch floor at `forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, the
+// `forkTop`/`forkY` anchors, and every stone seat are outputs of solves that
+// still run exactly as they did.
 export function makePalletFork({ span, leverLength, thickness, stoneZReach, beatRad, bankRad }) {
   const g = new THREE.Group();
   const t = thickness;
@@ -922,6 +960,7 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const notchHW = t * 0.7;
   const forkTop = -L * 0.8;
   const forkY = -L;
+  const bossR = t * 1.1;   // the blank's boss, cut in the outline (was a cylinder)
 
   // §16 — the wheel geometry this fork is CUT TO, derived ONCE and shared by
   // the body outline, the stone seats and the clearance asserts. All three
@@ -935,61 +974,63 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const R = span / (2 * Math.sin(THREE.MathUtils.degToRad(EMBRACE_DEG)));
   const D = span / 2 + Math.sqrt(Math.max(R * R - (span / 2) ** 2, 0));
   const bank = bankRad ?? 0.045;
+  const W = new THREE.Vector2(0, D);   // wheel centre, fork-local
 
-  // Single crafted body: belly + lever + fork horns + notch, topped by a
-  // LOW shoulder line. The old outline reached arm blobs up beside the
-  // wheel and spanned them with a concave web whose midpoint sat INSIDE
-  // the escape wheel's tooth-tip circle — the teeth swept straight through
-  // the fork's steel every beat (masked by the expected-contact pair; only
-  // the ruby stones were penetration-budgeted). The body now STOPS below
-  // the wheel: its top edge is bounded by |p − W| ≥ R + swing + margin
-  // (W = wheel centre at (0, D); the fork's ±bank swing moves an outline
-  // point by ~bank·|p|), and the pallet ARMS are separate bars from the
-  // pivot boss out to the slotted stone heads — the real anchor shape.
-  // Every KINEMATIC vertex is untouched: horn tips, notch walls and floor,
-  // and the forkTop/forkY anchors the bank-angle derivation uses.
+  // ONE bevel in the part, because there is one part. The fraction is
+  // declared in layout.js because `L_BALANCE` has to know the z it produces
+  // before this builder ever runs (MODELING.md rule 1's exported-function
+  // case); reading it back here is what keeps the chamfer and the balance's
+  // elevation from being edited apart.
+  //
+  // And the chamfer comes OUT of the stock, which is the second half of
+  // TODO 98. `bevelThickness` stands proud of the extrude at BOTH faces, so
+  // the old `depth: t` shipped a body t + 2·bevel = 1.488 thick under a
+  // balance whose elevation had been derived from t/2. A lever lapped to `t`
+  // is `t` overall, chamfer included — so the extrude gets the stock that
+  // survives the lapping and the finished blank measures exactly `t`.
+  const bevel = t * FORK_BEVEL_FRAC;
+  const stock = t - 2 * bevel;   // what is left to extrude once the chamfer is taken off
+
   const waistHW = leverHW * 0.62;              // narrowest point of the lever
-  const yWaist = (-t * 0.4 + forkTop) / 2;     // mid-length
-  const shoulderX = t * 1.8;
-  const bankAllow = bank * Math.hypot(shoulderX, D - R); // swing sweep of a top point
-  const topY = D - (R + 0.15 + bankAllow) - 0.05; // the |p−W| bound at x = 0, with slack
-  const s = new THREE.Shape();
-  s.moveTo(-shoulderX, topY); // 1 left shoulder
-  s.quadraticCurveTo(-t * 1.4, t * 0.2, -leverHW, -t * 0.4); // 2 belly -> lever
-  s.quadraticCurveTo(-waistHW, yWaist, -leverHW, forkTop); // 3 waisted lever, left flank
-  s.lineTo(-forkHW, forkY + t * 0.15); // 4 left horn outer
-  s.lineTo(-notchHW - t * 0.15, forkY); // 5 left horn tip
-  s.lineTo(-notchHW, forkTop + t * 0.9); // 6 notch inner left
-  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, forkTop + t * 0.9); // 7 notch floor
-  s.lineTo(notchHW + t * 0.15, forkY); // 8 right horn tip
-  s.lineTo(forkHW, forkY + t * 0.15); // 9 right horn outer
-  s.quadraticCurveTo(waistHW, yWaist, leverHW, forkTop); // 10 waisted lever, right flank (up)
-  s.lineTo(leverHW, -t * 0.4); // 11
-  s.quadraticCurveTo(t * 1.4, t * 0.2, shoulderX, topY); // 12 belly right -> shoulder
-  s.quadraticCurveTo(0, topY - t * 0.5, -shoulderX, topY); // 13 concave top, dipping AWAY from the wheel
-  s.closePath();
+  // The lever's flanks are the lines x = ±leverHW, so they meet the boss
+  // circle here — the same join the arms use below, which is what makes the
+  // tail and the arms one family of member rather than two.
+  const yJoin = -Math.sqrt(Math.max(bossR * bossR - leverHW * leverHW, 0));
 
-  const bevel = t * 0.12;
-  const bodyGeo = new THREE.ExtrudeGeometry(s, {
-    depth: t,
-    bevelEnabled: true,
-    bevelThickness: bevel,
-    bevelSize: bevel,
-    bevelSegments: 1,
-    curveSegments: 4,
-  });
-  bodyGeo.translate(0, 0, -t / 2);
-  g.add(new THREE.Mesh(bodyGeo, MATS.steel));
-
-  // Pivot boss at origin.
-  const bossGeo = new THREE.CylinderGeometry(t * 1.1, t * 1.1, t * 1.3, 20);
-  bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
+  // THE FORK END, and the impossible geometry it used to be cut with.
+  // Eye-reported as "the tail has one part that is impossibly thin", and it
+  // was thinner than that: the outline CROSSED ITSELF, five times in the
+  // pre-TODO-98 build and twice after the blank's first cut.
+  //
+  // The cause is one comparison. The notch is `notchHW` = t·0.7 half-wide and
+  // its closed end sits at `forkTop + 0.9·t`; the lever is `leverHW` = t·0.6
+  // half-wide, and the horns only flared BELOW `forkTop`. So the slot was
+  // broached across a station where the bar was NARROWER than the slot — the
+  // walls it was supposed to leave had negative thickness, and the outline
+  // inverted through itself at (−0.9274, −8.0514). Nothing could see it:
+  // `slenderness` measures a mesh's length against its section as a whole and
+  // reads no local pinch, and a self-intersecting outline still triangulates.
+  //
+  // The fix is the constraint that was missing: THE FORK END IS NOT A WEAK
+  // POINT. Each horn's wall carries at least the lever's own half-section, so
+  // the two horns together are exactly as thick as the bar they continue, and
+  // the outline at the notch's closed end stands at `notchHW + leverHW`. The
+  // flank flares into that point directly — one curve from boss to fork end,
+  // rather than a flank that stopped at `forkTop` and left the slot hanging
+  // outside it. Every kinematic surface is untouched: the notch walls are
+  // still at ±notchHW, its closed end is still the V through
+  // `forkTop + 0.7·t` that `FORK_BANK_DEG` is solved against, and the horn
+  // tips and `forkY` are where they were. `forkTop` stays what it always
+  // was — a datum for those, not a vertex of the silhouette.
+  const notchTopY = forkTop + t * 0.9;         // where the slot's walls begin
+  const hornWall = leverHW;                    // see above: the horns are the bar
+  const mouthHW = notchHW + hornWall;          // outline at the slot's closed end
+  const yWaist = (yJoin + notchTopY) / 2;      // mid-length
 
   // -------------------------------------------------------------------------
   // Ruby pallet stones — REAL construction: each stone is a leaning
-  // rectangular prism seated in a slot cut through a pallet-arm block, its
-  // locking corner ON the wheel's tooth circle and its impulse face CUT
+  // rectangular prism seated in a slot BROACHED THROUGH THE BLANK's arm head,
+  // its locking corner ON the wheel's tooth circle and its impulse face CUT
   // from the tooth tip's actual sliding path. Everything below is DERIVED
   // from the wheel geometry the caller already fixed (no seat offsets, no
   // tuned angles — this replaces the old pentagon stones whose placement
@@ -1016,6 +1057,11 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   //     the banking, which is what keeps a real lever safely locked. The
   //     two stones come out at visibly different leans relative to their
   //     arms (entry ≈ 237° fork-local, exit ≈ −33°), like a real fork.
+  //     Note what that asymmetry IS: the zero-draw direction f0 is exactly
+  //     mirror-symmetric between the two stones (it is the perpendicular of
+  //     the pivot radial, and the seats mirror), and the draw rotates both
+  //     in the SAME sense, so the two leans differ from mirror symmetry by
+  //     exactly 2·DRAW_DEG. The arms inherit that and nothing else.
   //   · IMPULSE FACE: during the impulse window the wheel advance
   //     (beatRad) and the fork swing (2·bankRad) ride the SAME smoothstep
   //     (see main.js escapeDeltaDeg/forkSwingRad), so in the fork frame
@@ -1037,13 +1083,46 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const entryPos = new THREE.Vector3(-ax, sy, 0);
   const exitPos = new THREE.Vector3(ax, sy, 0);
 
+  // §16 — the seat gap must CLEAR the blank's own extrude bevel. The bevel
+  // grows the outline along its outward normal, and inside a notch that
+  // direction points INTO the slot, so each wall creeps `bevel` back toward
+  // the ruby it is meant to hold. At FORK_T = 1.2 that is 0.144 against a
+  // hand-set 0.05 gap — steel standing inside the stone, which renders as
+  // z-fighting on the ruby's face and which the battery CANNOT see: blank and
+  // stone are the same unit, and same-unit overlap is the sweep's documented
+  // blind spot (CLAUDE.md, TODO.md item 5). This is MODELING.md rule 1, and
+  // the same arithmetic §34 hit on the alarm setting wheel (0.05 gap vs 0.045
+  // of bevel). There the answer was a crisp face; here the blank keeps its
+  // softened edge, so the GAP is DERIVED from the bevel rather than guessed
+  // against it. TODO 98 moved the term from the head block's own `armBevel`
+  // to the blank's `bevel` — one bevel in the part means one term here.
+  const SEAT_SHOW = 0.05;          // the seat line the stone should actually show
+  const gGap = bevel + SEAT_SHOW;  // bevel first, then the gap that survives it
+  const m = 0.4 * stoneL;          // ruby protrusion past the arm's nose
+  const wallW = 0.55;              // steel around the broached slot
+  const sxL = -stoneW - gGap - wallW, sxR = gGap + wallW; // head outer x
+  const nx0 = -stoneW - gGap, nx1 = gGap;                 // slot walls
+  const yN = m, yF = stoneL + gGap, yB = yF + wallW;      // nose / slot floor / head back
+
+  // The arm head, in the stone's own frame, wound CCW. This ONE polygon is
+  // both heads: sigma only decides where it is placed and which of its two
+  // side faces the arm arrives on, so the entry and exit heads are the same
+  // cut metal. The slot is a notch in the nose edge, not a hole — a broach
+  // enters from the nose, and an open notch is also what lets the stone be
+  // set from outside.
+  const HEAD_LOCAL = [
+    [sxR, yB], [sxL, yB], [sxL, yN],
+    [nx0, yN], [nx0, yF], [nx1, yF], [nx1, yN],   // the broached slot
+    [sxR, yN],
+  ];
+
   // Stone cross-section (stone-local: origin = locking corner, +Y = lean
   // axis pointing away from the wheel into the slot, body at −X — the
   // downstream side of the locking face, where the arm's material backs
   // the stone against the tooth's push):
   //   (0,0) → (−w, Δ) → (−w, ℓ) → (0, ℓ);  x = 0 face = LOCKING face,
   //   the angled (0,0)→(−w,Δ) end = IMPULSE face.
-  function stoneAndArm(sigma) {
+  function solveStone(sigma) {
     const C = new THREE.Vector2(sigma * span / 2, span / 2);
     const u = new THREE.Vector2(C.x - 0, C.y - D).divideScalar(R);      // wheel radial at the corner
     const tHat = new THREE.Vector2(-u.y, u.x);                          // tooth-motion tangent (ẑ×û)
@@ -1072,109 +1151,197 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
     if (sigma * torque < 0)
       console.warn('pallet stone: draw torque sign wrong for stone', sigma);
 
-    const zOff = -(stoneZReach ?? 0);
     const rotZ = thetaTau - Math.PI / 2;
     // Banked contact seat (see header): the corner goes where the tooth
     // actually rests at lock.
     const seat = new THREE.Vector2(C.x + bank * cornerLen * u.x, C.y + bank * cornerLen * u.y);
+    const cos = Math.cos(rotZ), sin = Math.sin(rotZ);
+    const toWorld = (lx, ly) => new THREE.Vector2(
+      seat.x + cos * lx - sin * ly,
+      seat.y + sin * lx + cos * ly);
+    return { sigma, seat, rotZ, delta, toWorld };
+  }
 
-    // The stone itself.
+  // The arm that CARRIES a head. One rule, applied with sigma: leave the boss
+  // circle as a bar of half-width `leverHW` — the lever's own section — on the
+  // line to the head's centre, and open out to the two ends of the head's
+  // INNER face (the side that looks back at the pivot). The head's long axis
+  // is perpendicular to the pivot radial by construction (f0 is the perp of
+  // ĉ), so the arm always meets a head on its side, never on its back — which
+  // is why the old boss→head-centre box read as a strut glued to a slab.
+  function armOf(st) {
+    const world = HEAD_LOCAL.map(([lx, ly]) => st.toWorld(lx, ly));
+    // Which side face looks at the pivot?
+    const midR = st.toWorld(sxR, (yN + yB) / 2), midL = st.toWorld(sxL, (yN + yB) / 2);
+    const innerIsR = midR.length() < midL.length();
+    // In HEAD_LOCAL's CCW winding the inner face runs (sxR,yN)→(sxR,yB) on the
+    // right and (sxL,yB)→(sxL,yN) on the left, so the traversal that leaves
+    // that face spanned by the arm starts at the vertex FOLLOWING it.
+    const start = innerIsR ? 0 : 2;
+    const ring = world.slice(start).concat(world.slice(0, start));
+    const headC = st.toWorld((sxL + sxR) / 2, (yN + yB) / 2);
+    const dHat = headC.clone().normalize();
+    const pHat = new THREE.Vector2(-dHat.y, dHat.x);
+    const base = dHat.clone().multiplyScalar(Math.sqrt(Math.max(bossR * bossR - leverHW * leverHW, 0)));
+    const side = (v) => Math.sign(dHat.x * (v.y - base.y) - dHat.y * (v.x - base.x));
+    const first = ring[0], last = ring[ring.length - 1];
+    if (side(first) === side(last))
+      console.warn('pallet arm: the head\'s inner face does not straddle its arm', st.sigma);
+    const rootFor = (v) => base.clone().add(pHat.clone().multiplyScalar(side(v) * leverHW));
+    return { ring, rootIn: rootFor(first), rootOut: rootFor(last) };
+  }
+
+  const stones = [solveStone(-1), solveStone(1)];
+  const arms = stones.map(armOf);
+
+  // -------------------------------------------------------------------------
+  // THE BLANK — one closed outline, wound CCW, cut in one piece.
+  // Order: down the lever's left flank, round the fork end, up the right
+  // flank, then the boss and the two arms in CCW order round the pivot.
+  // -------------------------------------------------------------------------
+  const ang = (v) => Math.atan2(v.y, v.x);
+  const leverRight = ang(new THREE.Vector2(leverHW, yJoin));
+  const leverLeft = ang(new THREE.Vector2(-leverHW, yJoin));
+  // The lever's flanks end ON the boss circle, and so does every arc that
+  // follows — so both must be spelled the SAME way or they differ in the last
+  // bit and the outline carries a twin. `Path.absellipse` computes its start
+  // as `r·(cos a, sin a)`; this is that formula, used for the flank ends too,
+  // which is what lets the closing arc land exactly on the `moveTo` and makes
+  // `closePath()` unnecessary. (`getPoints` drops consecutive duplicates with
+  // `equals()`, i.e. EXACTLY, and never compares the last point to the first —
+  // so a 1-ulp twin and a wrap-around twin both survive, and each becomes
+  // collapsed triangles in the extrude wall. Measured: three twins, eight
+  // zero-area triangles, on a movement that already has TODO 74's 8191.)
+  const onBoss = (a) => new THREE.Vector2(bossR * Math.cos(a), bossR * Math.sin(a));
+  const joinL = onBoss(leverLeft), joinR = onBoss(leverRight);
+  // CCW distance from the lever's right flank, so the arms are laid down in
+  // the order the outline actually walks them rather than by sigma.
+  const ccw = (a) => { let d = a - leverRight; while (d < 0) d += 2 * Math.PI; return d; };
+  arms.sort((p, q) => ccw(ang(p.rootIn)) - ccw(ang(q.rootIn)));
+
+  const s = new THREE.Shape();
+  s.moveTo(joinL.x, joinL.y);
+  s.quadraticCurveTo(-waistHW, yWaist, -mouthHW, notchTopY); // waisted lever flaring into the fork end
+  s.lineTo(-forkHW, forkY + t * 0.15); // left horn outer
+  s.lineTo(-notchHW - t * 0.15, forkY); // left horn tip
+  s.lineTo(-notchHW, notchTopY); // notch inner left
+  s.quadraticCurveTo(0, forkTop + t * 0.5, notchHW, notchTopY); // notch floor — the V at forkTop + 0.7t
+  s.lineTo(notchHW + t * 0.15, forkY); // right horn tip
+  s.lineTo(forkHW, forkY + t * 0.15); // right horn outer
+  s.lineTo(mouthHW, notchTopY); // right side of the fork end — the mirror of the left
+  s.quadraticCurveTo(waistHW, yWaist, joinR.x, joinR.y); // waisted lever, right flank (up)
+  let at = leverRight;
+  for (const arm of arms) {
+    s.absarc(0, 0, bossR, at, ang(arm.rootIn), false); // boss, CCW
+    for (const v of arm.ring) s.lineTo(v.x, v.y);
+    // No `lineTo` back to the root: the NEXT arc joins itself to the head with
+    // a line to its own start point, so the root exists once instead of twice.
+    at = ang(arm.rootOut);
+  }
+  s.absarc(0, 0, bossR, at, leverLeft, false);  // lands exactly on the moveTo
+
+  // Curve resolution: the boss arcs and the notch floor are load-bearing
+  // surfaces, and 4 segments (what the old belly outline used) turns a 67°
+  // arc into a visible chamfer.
+  const CURVE_SEGS_FORK = 12;
+  // Sample the path ONCE and extrude that polyline, so the outline the asserts
+  // read below and the outline the metal is cut from are the same array rather
+  // than two calls that could drift. It is also the only place the wrap-around
+  // twin can be removed: the closing arc lands exactly on the `moveTo`, so the
+  // loop's last point IS its first, and `ExtrudeGeometry` reads the list as
+  // closed and would cut a zero-length edge there.
+  const pts = s.getPoints(CURVE_SEGS_FORK);
+  if (pts.length > 1 && pts[pts.length - 1].equals(pts[0])) pts.pop();
+  const bodyGeo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), {
+    depth: stock,
+    bevelEnabled: true,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelSegments: 1,
+    curveSegments: CURVE_SEGS_FORK,
+  });
+  bodyGeo.translate(0, 0, -stock / 2);   // the bevel caps carry it out to ±t/2
+  g.add(new THREE.Mesh(bodyGeo, MATS.steel));
+
+  // NO STEEL IN THE WHEEL'S SWEEP — the bound the old outline paid for with a
+  // shape. Every vertex of the blank as EXTRUDED (not as authored) must stand
+  // CLEAR_MARGIN outside the annulus the teeth sweep, at any point of the
+  // fork's ±bank swing: the bevel dilates the outline along its outward normal
+  // and a corner miters that by 1/cos(θ/2) (three.js clamps the divisor at
+  // 0.1 — MODELING.md rule 1), and the swing moves a point by ~bank·|p|.
+  // Replaces the old four-corner check on the head blocks, which could not see
+  // the belly it shared a part with; the belly is what used to sweep through
+  // the teeth (§16).
+  // THE OUTLINE MUST NOT CROSS ITSELF. A self-intersecting shape still
+  // triangulates, still extrudes, still renders, and every gate in the
+  // battery passes it — the fork carried five crossings for as long as it has
+  // existed and only an eye caught them. This is the cheap check that says so
+  // at build: every pair of non-adjacent edges of the sampled outline.
+  {
+    const X = (p1, p2, q1, q2) => {
+      const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+      const d2x = q2.x - q1.x, d2y = q2.y - q1.y;
+      const den = d1x * d2y - d1y * d2x;
+      if (Math.abs(den) < 1e-14) return null;
+      const tt = ((q1.x - p1.x) * d2y - (q1.y - p1.y) * d2x) / den;
+      const uu = ((q1.x - p1.x) * d1y - (q1.y - p1.y) * d1x) / den;
+      return (tt > 1e-9 && tt < 1 - 1e-9 && uu > 1e-9 && uu < 1 - 1e-9)
+        ? { x: p1.x + tt * d1x, y: p1.y + tt * d1y } : null;
+    };
+    const n = pts.length;
+    let crossings = 0, first = null;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        const hit = X(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n]);
+        if (hit) { crossings++; if (!first) first = hit; }
+      }
+    }
+    if (crossings)
+      console.warn('pallet blank: the outline crosses itself', crossings, 'time(s), first at',
+        `${first.x.toFixed(4)},${first.y.toFixed(4)}`);
+  }
+
+  {
+    let worst = Infinity, worstAt = null;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[(i - 1 + pts.length) % pts.length], b = pts[i], c = pts[(i + 1) % pts.length];
+      const d1 = b.clone().sub(a), d2 = c.clone().sub(b);
+      if (d1.lengthSq() < 1e-12 || d2.lengthSq() < 1e-12) continue;
+      d1.normalize(); d2.normalize();
+      const cosHalf = Math.max(Math.sqrt(Math.max((1 + d1.dot(d2)) / 2, 0)), 0.1);
+      const miter = bevel / cosHalf;                       // how far the cut edge grows
+      const clr = b.distanceTo(W) - miter - R - bank * (b.length() + miter);
+      if (clr < worst) { worst = clr; worstAt = b; }
+    }
+    if (worst < CLEAR_MARGIN)
+      console.warn('pallet blank: steel within the wheel sweep', worst.toFixed(4),
+        'needs', CLEAR_MARGIN, 'at', worstAt && `${worstAt.x.toFixed(2)},${worstAt.y.toFixed(2)}`);
+  }
+
+  // The stones, set into the slots the blank was cut with. MATS.ruby is
+  // load-bearing: the inspector's penetration budget splits the fork's ruby
+  // from its steel by this material's colour, so the two budgets that share
+  // the `Escape wheel ⇄ Pallet fork` pair still divide correctly now that the
+  // steel is one mesh.
+  for (const st of stones) {
     const sh = new THREE.Shape();
     sh.moveTo(0, 0);
-    sh.lineTo(-stoneW, delta);
+    sh.lineTo(-stoneW, st.delta);
     sh.lineTo(-stoneW, stoneL);
     sh.lineTo(0, stoneL);
     sh.closePath();
     const geo = new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false, curveSegments: 1 });
     geo.translate(0, 0, -t / 2);
-    const stone = new THREE.Mesh(geo, MATS.ruby); // MATS.ruby is load-bearing: the
-    // inspector's penetration budget finds the stones by this material's colour.
-    stone.position.set(seat.x, seat.y, zOff);
-    stone.rotation.z = rotZ;
+    const stone = new THREE.Mesh(geo, MATS.ruby);
+    stone.position.set(st.seat.x, st.seat.y, -(stoneZReach ?? 0));
+    stone.rotation.z = st.rotZ;
     g.add(stone);
-
-    // Pallet-arm block: the slotted arm the stone is SET INTO — a real
-    // fork's arm is exactly this, a block with a slot broached through it,
-    // the stone protruding past the arm's nose. Drawn in the same
-    // stone-local frame: outer walls one wallW around the slot (slot =
-    // stone footprint + seat gap g all around), nose edge at m along the
-    // lean axis (the stone shows m of ruby past the arm), notch open at
-    // the nose.
-    // §16 — the seat gap must CLEAR the arm's own extrude bevel. The bevel
-    // grows the outline along its outward normal, and inside a notch that
-    // direction points INTO the slot, so each wall creeps armBevel back
-    // toward the ruby it is meant to hold. At FORK_T = 1.2 that is 0.096
-    // against a hand-set 0.05 gap — 0.046 of steel standing inside the
-    // stone, which renders as z-fighting on the ruby's face and which the
-    // battery CANNOT see: arm and stone are the same unit, and same-unit
-    // overlap is the sweep's documented blind spot (CLAUDE.md, TODO.md
-    // item 5). This is MODELING.md rule 1, and the same arithmetic §34 hit
-    // on the alarm setting wheel (0.05 gap vs 0.045 of bevel). There the
-    // answer was a crisp face; here the arm keeps its softened edge, so the
-    // GAP is DERIVED from the bevel rather than guessed against it.
-    const armBevel = t * 0.08;
-    const SEAT_SHOW = 0.05;               // the seat line the stone should actually show
-    const gGap = armBevel + SEAT_SHOW;    // bevel first, then the gap that survives it
-    const m = 0.4 * stoneL;               // ruby protrusion past the arm's nose
-    const wallW = 0.55;
-    const sxL = -stoneW - gGap - wallW, sxR = gGap + wallW; // block outer x
-    const nx0 = -stoneW - gGap, nx1 = gGap;                 // slot walls
-    const yN = m, yF = stoneL + gGap, yB = yF + wallW;      // nose / slot floor / block back
-    const ash = new THREE.Shape();
-    ash.moveTo(sxR, yN);
-    ash.lineTo(sxR, yB);
-    ash.lineTo(sxL, yB);
-    ash.lineTo(sxL, yN);
-    ash.lineTo(nx0, yN);
-    ash.lineTo(nx0, yF);
-    ash.lineTo(nx1, yF);
-    ash.lineTo(nx1, yN);
-    ash.closePath();
-    const armGeo = new THREE.ExtrudeGeometry(ash, {
-      depth: t, bevelEnabled: true, bevelThickness: armBevel, bevelSize: armBevel,
-      bevelSegments: 1, curveSegments: 1,
-    });
-    armGeo.translate(0, 0, -t / 2);
-    const arm = new THREE.Mesh(armGeo, MATS.steel);
-    arm.position.set(seat.x, seat.y, 0); // arm stays in the fork's own plane
-    arm.rotation.z = rotZ;
-    g.add(arm);
-
-    // ARM BAR: the head must be CARRIED by the fork, not hang off its
-    // ruby — a bar from the pivot boss out to the slotted head, the way a
-    // real anchor's arms run. The straight boss→head line stays a full
-    // unit outside the wheel's swept teeth (asserted below with the rest).
-    const headMid = new THREE.Vector2(
-      seat.x + tau.x * (yN + yB) / 2,
-      seat.y + tau.y * (yN + yB) / 2);
-    const barLen = headMid.length();
-    const barDir = headMid.clone().divideScalar(barLen || 1);
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(t * 0.95, barLen, t), MATS.steel);
-    bar.position.set(headMid.x / 2, headMid.y / 2, 0);
-    bar.rotation.z = Math.atan2(barDir.y, barDir.x) - Math.PI / 2;
-    g.add(bar);
-
-    // Clearance sanity: no STEEL of this arm may enter the wheel's swept
-    // tooth annulus, at any point of the fork's ±bank swing. Checked at
-    // the governing points (head nose corners, bar edges nearest the
-    // wheel); the inspector's steel-vs-wheel penetration budget is the
-    // permanent guard.
-    const W = new THREE.Vector2(0, D);
-    const worldPt = (lx, ly) => new THREE.Vector2(
-      seat.x + Math.cos(rotZ) * lx - Math.sin(rotZ) * ly,
-      seat.y + Math.sin(rotZ) * lx + Math.cos(rotZ) * ly);
-    for (const [lx, ly] of [[sxL, yN], [sxR, yN], [sxL, yB], [sxR, yB]]) {
-      const p = worldPt(lx, ly);
-      const clr = p.distanceTo(W) - R - bank * p.length();
-      if (clr < 0.1)
-        console.warn('pallet arm: steel within the wheel sweep', sigma, clr.toFixed(3));
-    }
   }
-  stoneAndArm(-1); // entry
-  stoneAndArm(1);  // exit
 
   // Guard pin at the fork tip just under the notch, protruding toward the
-  // safety roller (-Z) so it rides close to the roller's crescent edge.
+  // safety roller (-Z) so it rides close to the roller's crescent edge. A real
+  // dart is a separate part too, so this stays its own solid.
   const guardGeo = new THREE.CylinderGeometry(t * 0.18, t * 0.18, t * 1.4, 12);
   guardGeo.rotateX(Math.PI / 2);
   const guard = new THREE.Mesh(guardGeo, MATS.steel);
@@ -1184,6 +1351,12 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   g.userData.entryPos = entryPos;
   g.userData.exitPos = exitPos;
   g.userData.span = span;
+  // MODELING.md rule 1's export: the blank's own outline and the two numbers
+  // that say how far past it the rendered solid stands. `blankHalfZ` is what
+  // layout.js's FORK_HALF_Z must equal — main.js asserts the pair (TODO 98).
+  g.userData.blankOutline = pts.map((p) => [p.x, p.y]);
+  g.userData.blankBevel = bevel;
+  g.userData.blankHalfZ = stock / 2 + bevel;   // = t/2, and asserted against FORK_HALF_Z
   return g;
 }
 
