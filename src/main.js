@@ -21431,11 +21431,41 @@ alarmSwitchUnit.add(alarmPusherGroup);
   const boss = new THREE.Mesh(new THREE.TorusGeometry(ALARM_PUSH_GUIDE_RING, ALARM_PUSH_GUIDE_TUBE, 8, 16), MATS.nickel);
   boss.name = 'alarmPusherGuide';   // TODO 87: named, so a declaration can say what it IS
   boss.rotation.z = ALARM_PUSH_AZ; boss.rotation.y = Math.PI / 2; boss.rotation.order = 'ZYX';
+  // §182 (TODO 104 tier A) — ON THE PRESS AXIS, which is what the sentence
+  // above always claimed and what the arithmetic stopped doing at §170.
+  // The line USED to be the radius through the wheel displaced sideways by
+  // ALARM_PUSH_CHORD, and this station was written for it: origin + û·d +
+  // perp·chord put the boss on that displaced line. §170 rotated the line to
+  // run through the movement's centre instead — `_pushBase` moved onto the
+  // radius by construction, every other member here is placed from
+  // `_pushBase` or is a child of the group standing on it, and this one line
+  // kept the old lateral term. So the bearing sat |ALARM_PUSH_CHORD| = one
+  // ALARM_DRIVE_OFFSET beside the stem it bears, measured 4.0979 clear of it
+  // over the whole pose net. The line runs through the origin now, so the
+  // rim station needs no lateral term at all.
+  //
+  // Two instruments were watching and neither could see it: the TODO 87
+  // assert above holds the bore's SIZE against the stem's and never its
+  // PLACE, and `INTRA_UNIT_CONTACTS` declared the sliding fit — which SKIPS
+  // the pair before measurement, so the declaration bought silence for the
+  // very thing it was describing. That is TODO 104's whole subject.
   const bossD = plateR - 1.2;
-  boss.position.set(
-    _pushU.x * bossD + _pushPerp.x * ALARM_PUSH_CHORD,
-    _pushU.y * bossD + _pushPerp.y * ALARM_PUSH_CHORD, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // ON the press axis — a bearing that does not follow its stem is not one (the axis now runs under the plate; the boss's half-span is what derived the axis depth)
+  boss.position.set(_pushU.x * bossD, _pushU.y * bossD, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the axis runs under the plate; the boss's half-span is what derived its depth
   alarmSwitchUnit.add(boss);
+  // …and assert both halves of being a bearing, in the stem's own frame:
+  // ON the line, and AROUND the shaft across the whole stroke. The group
+  // retreats by ALARM_PUSH_TRAVEL when pressed, so the boss's station
+  // measured in group-local s runs bossS → bossS + travel; the stem occupies
+  // [ALARM_PUSH_INNER, stemOuterS] there at every T.
+  {
+    const dx = boss.position.x - _pushBase.x, dy = boss.position.y - _pushBase.y;
+    const off = dx * _pushPerp.x + dy * _pushPerp.y;
+    const bossS = dx * _pushU.x + dy * _pushU.y;
+    if (Math.abs(off) > 1e-6)
+      console.warn(`§182: the pusher's guide boss stands ${off.toFixed(4)} off the stem's own line — a bearing beside its shaft is not one`);
+    if (bossS < ALARM_PUSH_INNER || bossS + ALARM_PUSH_TRAVEL > stemOuterS)
+      console.warn(`§182: the guide boss sits at s ${bossS.toFixed(3)}→${(bossS + ALARM_PUSH_TRAVEL).toFixed(3)} against a stem spanning ${ALARM_PUSH_INNER.toFixed(3)}–${stemOuterS.toFixed(3)} — the shaft leaves its bearing inside the stroke`);
+  }
   // §43 riser-slot tripwire (the §35/§68 rod-bore pattern): the plate's slot
   // is a literal cut long before these constants exist — assert the derived
   // riser track (rest → pressed, at the riser's own radius + CLEAR_MARGIN)

@@ -58,6 +58,15 @@ one line — and pick a pair that genuinely overlaps: a bore on a stud is a
 RUNNING FIT and does not intersect, which is how the first control here was
 itself wrong.
 
+**A pose key nobody reads poses NOTHING.** `setPose` assigns only the keys a
+pose names and silently ignores the rest, so a probe sweeping a stroke with a
+key that does not exist samples ONE pose N times — and N identical rows read
+exactly like a correct stroke-invariant result. §182's guide-station probe
+swept the pusher with `alarmPressT`; the axis's own key is `alarmPressCycle`,
+and the wrong one still printed a table. Take the key from the `AXES` entry you
+mean to reproduce, and if a sweep's rows are all identical, prove that is the
+geometry before believing it.
+
 **The ground is not an obstacle.** A stud is MEANT to touch the plate it
 stands on, so its foot measures 0 to it by design. §173's fold scan left the
 plates in and ranked the candidate positions over the plate's CUTAWAY as the

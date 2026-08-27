@@ -47,6 +47,22 @@ const DOCS = {
 };
 
 const fail = [];
+// A CLOSED item announces it in its own heading — `## 100. … — STEPS 1 AND 2
+// DONE (§178)`, `## 98. … — CLOSED (§175)`. That is a title change under a
+// permanent number, which is exactly what `titleIsIdentity` exists to refuse,
+// and the two rules collided the first time an item filed in one PR was closed
+// in a later one (TODO 104 tier A, §182). Items 98/100/103 slipped past only
+// because they were filed and closed on the same branch, where the base has no
+// heading to compare against at all.
+//
+// So the status marker is stripped before the comparison. It is recognised
+// narrowly — a trailing dash-introduced run of CAPITALS, optionally citing a
+// section — because the point is still to catch two DIFFERENT items sharing a
+// number, and everything before the dash must match exactly. A title whose own
+// last words are capitalised and dash-introduced would be stripped too; that is
+// the documented cost, and it makes the check no weaker than the stem.
+const STATUS_SUFFIX = /\s*[—–-]\s*[A-Z][A-Z0-9 ]*(?:\(§\d+[^)]*\))?\s*$/;
+const stripStatus = (t) => t.replace(STATUS_SUFFIX, '').trim();
 const headings = (text, re) => {
   const out = [];
   for (const line of text.split('\n')) {
@@ -113,7 +129,7 @@ for (const [ns, cfg] of Object.entries(DOCS)) {
     if (!base.has(h.n)) {
       // The numbers this branch INVENTS are exactly the ones that can race.
       if (!claims.has(`${ns} ${h.n}`)) fresh.add(h.n);
-    } else if (cfg.titleIsIdentity && base.get(h.n) !== h.title) {
+    } else if (cfg.titleIsIdentity && stripStatus(base.get(h.n)) !== stripStatus(h.title)) {
       // If the other branch merged first there is no add/add conflict left to
       // find — the base simply owns your number now. This is the only place
       // that collision still shows.

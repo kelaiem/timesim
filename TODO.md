@@ -11678,7 +11678,7 @@ Net outline area 20.1711 → 23.2578, bbox unchanged at 6.941 × 5.899 — the p
 does not reach further, it is simply whole. A new build warning fires if a disc
 never reaches the hull, which is an arm asked for and not cut.
 
-## 104. `INTRA_UNIT_CONTACTS` declarations are never audited against the metal
+## 104. `INTRA_UNIT_CONTACTS` declarations are never audited against the metal — TIER A DONE (§182)
 
 A declared row does not waive a measured overlap — it **skips the pair before
 measurement**. `checkIntraUnit`'s `allowed()` is consulted inside the tier
@@ -11791,6 +11791,54 @@ to catch.
 same shape of question — a declaration nobody audits — and item 6 already
 carries the first. Whether one instrument should judge all declaration tables
 is worth asking once this one exists.
+
+### Tier A, closed by §182
+
+`checkIntraUnit` measures every declared row over the pose net now and fails
+one whose parts never come within `DECLARED_CONTACT_REACH = 1.0`. Rows no tier
+compares are REPORTED as their own class, as the item required; a row whose two
+labels name the one same mesh is malformed and fails.
+
+**It found two false declarations on its first run**, which is the tier's own
+control — a check that has never caught anything has not been shown to work:
+
+- `Alarm switch / alarmPusherStem ⇄ alarmPusherGuide`, **4.0979** apart. §170
+  rotated the press line to run through the movement's centre; every member
+  moved onto it except the guide boss, whose station kept the
+  `+ _pushPerp·ALARM_PUSH_CHORD` term from when the line WAS the displaced
+  radius. The pusher's outer bearing stood one `ALARM_DRIVE_OFFSET` beside the
+  stem it bears. `tools/probe-182-guide-station.mjs` isolated it as purely
+  lateral (perpendicular miss 5.0123; station and height both already right).
+  Fixed in position space, plus two boot asserts — ON the line, and AROUND the
+  shaft across the whole stroke — because the TODO 87 assert next to it holds
+  the bore's SIZE against the stem's and never its PLACE.
+- `Dial / alarmIndexWedge ⇄ ShapeGeometry#3`, **1.2056** apart, which is
+  `DIAL_T + CLEAR_MARGIN` exactly. TODO 26 pulled the wedge's tip back to one
+  margin behind the dial's BACK face when the dial stopped being a sheet; the
+  row still read "stands proud THROUGH the face sheet by design". Retired.
+
+**And the first cut of the audit was itself wrong, which is worth keeping.**
+Resolving each row to a single mesh reported **10** apart rows. `allowed()`
+excuses a LABEL PAIR, and a unit may carry several meshes under one label —
+both maintaining pawls are `maintPawl`, both alarm-winding idlers
+`alarmWindIdler`, both selector posts `alarmSelPost`, and `alarmSelTab` is four
+meshes. Judged on the best matching combination the count is **2**; the other
+eight were real joints measured against the wrong pawl. A false failure here
+would have been a new false declaration — this item's own defect, pointed the
+other way. Row `ratchet ⇄ maintPawl` says so in its own `why`, and the first
+cut read past it.
+
+### Residue tier A leaves, named
+
+- **12 rows no tier compares** (`declaredNeverCompared` in the payload). Eleven
+  are same-frame mover pairs and one is `alarmColPawlSpring ⇄ alarmColPawlPost`
+  at 0.0484. Reported, never failed: nothing measured here establishes where
+  such a row should live instead, and the item's own answer — `ASSEMBLY_WAIVERS`
+  — is a decision, not a measurement. Whoever takes that decision has the list.
+- **`nearestD` on a PASSING row is an upper bound, not a swept minimum.** The
+  sweep stops refining a row once its verdict can no longer change. Rows that
+  FAIL are re-measured unbounded, so the number anybody acts on is exact.
+- Tier B is untouched.
 
 ## 105. The lever's safety action is modelled but not simulated
 

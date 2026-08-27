@@ -84,6 +84,18 @@ Check 4 is the one that catches a collision the merge order hid: if the other
 branch merged first, there is no add/add conflict left to find — main simply
 has your number, spoken for.
 
+**Check 4 ignores a status marker at the end of a title**, because a CLOSED
+item announces it in its own heading (`## 98. … — CLOSED (§175)`) and that is a
+title change under a permanent number — the exact shape check 4 refuses. The
+two rules only collided once an item filed in one PR was closed in a *later*
+one (TODO 104 tier A, §182); 98, 100 and 103 all slipped past because they were
+filed and closed on the same branch, where `main` has no heading to compare
+against. The marker is recognised narrowly — a trailing dash-introduced run of
+CAPITALS, optionally citing a section — and everything before the dash must
+still match exactly, so the check is no weaker than the stem of the title. A
+title whose own last words are dash-introduced capitals would be stripped too;
+that is the cost, and it is why the pattern is not looser than this.
+
 Numbers already on `main` need no claim file. Backfilling ~270 of them would
 add noise without preventing anything: `main`'s documents are already the
 authority for what is taken, and the checker reads them.

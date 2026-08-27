@@ -181,7 +181,20 @@ it into prose either.
    mover pairs inside `INTRA_TIER_SCOPE`, out-of-scope FF/MM rows
    reported; declared joints live in `INTRA_UNIT_CONTACTS`, a stale
    selector in that table is itself a failure, waived rows cite their
-   TODO), and `assembly` **0 undeclared unwaived splits among
+   TODO. **And since §182 the table is audited against the metal, not
+   only against the mesh names** (TODO 104 tier A): a declared row does
+   not waive an overlap, it SKIPS the pair before measurement, so a row
+   describing a joint that is not there buys silence for whatever lands
+   between the two parts. Every row is measured over the pose net and
+   FAILS if its parts never come within `DECLARED_CONTACT_REACH` — a
+   classifier between two measured populations, the fits at or under
+   0.4491 and nothing at all until 1.2, not a physical bound. A row
+   excuses a LABEL PAIR and a unit may carry several meshes under one
+   name, so it is judged on the best matching combination; getting that
+   wrong reported eight real joints as false. Rows no tier compares are
+   REPORTED as their own class — a different defect with the same
+   symptom — and a row whose two labels name one mesh is malformed and
+   fails), and `assembly` **0 undeclared unwaived splits among
    `ASSEMBLY_SCOPE`** (§107 — a rigid group is one connected body;
    out-of-scope rows reported),
    and `expectedContacts` **0 unwaived and 0 unmatched selectors**
@@ -645,10 +658,16 @@ the battery — with known residue:
   comparison; see MODELING.md rule 6 before shipping another one.
   Residue, named: the FF/MM tiers GATE only `INTRA_TIER_SCOPE` (the
   alarm complex — 42 rows triaged against measured depths); everywhere
-  else their rows are REPORTED (202 at §121, visible in the payload,
-  untriaged), and same-frame mover splits outside `ASSEMBLY_SCOPE` are
-  §107's own reported residue. Transients between pose samples stay
-  item 7's.
+  else their rows are REPORTED (202 at §121, 174 since §182 fixed the
+  tier loop's axis entry, visible in the payload, untriaged), and
+  same-frame mover splits outside `ASSEMBLY_SCOPE` are §107's own
+  reported residue. Transients between pose samples stay item 7's.
+  **A declared joint is now audited too** (§182): the rows that BUY the
+  skips are measured over the same net, and one whose parts never come
+  within `DECLARED_CONTACT_REACH` fails. Its own residue is the 12 rows
+  no tier compares — reported, because nothing measured there says where
+  such a row belongs instead — and TODO 104 tier B, which would check
+  that the joint is the KIND the row claims.
 - **Anywhere between an EXPECTED pair.** `EXPECTED` is granted per unit
   *pair*; `expectedContacts` (TODO 6) holds the pairs declared in
   `EXPECTED_CONTACT_FLOORS` to `CLEAR_MARGIN` everywhere EXCEPT their
