@@ -11501,6 +11501,14 @@ authored shape. The probe FAILS on a missed extrude for exactly that reason.
 as item 103. So the fork was not unique and the class is real, but it is two
 parts and not a movement-wide rot.
 
+The weld line is the only source change the measurement needed, and it is
+inert: battery **35/35**, fingerprint `1380256309` — the same hash as the tree
+before it — and `--report` diffed against that tree is 18 of 22 checks
+BYTE-IDENTICAL with the other four differing only in `*Ms`. Every non-timing
+field matches. It carries a reference to an object the builder already
+allocated and touches no vertex, which is what that diff says rather than
+assumes.
+
 **A signature that does not work, recorded because it looked obvious.** The
 first cut of the probe read the CAP's triangulation instead — earcut winds a
 simple polygon consistently, so |Σ signed| / Σ|signed| over the cap should be
