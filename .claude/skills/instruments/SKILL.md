@@ -1,11 +1,11 @@
 ---
 name: instruments
-description: Find, choose, and write measuring instruments (tools/*.mjs probes) for the timesim watch movement. Use BEFORE writing a new probe — the repo has 119 and names them by the section that produced them, so the one you need is usually already there and unfindable. Also use when a probe comes back clean and you need to know whether it measured anything, or when a measurement disagrees with what you can see.
+description: Find, choose, and write measuring instruments (tools/*.mjs probes) for the timesim watch movement. Use BEFORE writing a new probe — the repo has 124 and names them by the section that produced them, so the one you need is usually already there and unfindable. Also use when a probe comes back clean and you need to know whether it measured anything, or when a measurement disagrees with what you can see.
 ---
 
 # Instruments
 
-`tools/` holds 119 measuring scripts. `CLAUDE.md` names 14. The rest are named for the
+`tools/` holds 124 measuring scripts. `CLAUDE.md` names 14. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so you find one only if you already know which §
 went looking.
@@ -37,9 +37,9 @@ and why. That is what makes the next search work.
 
 ## 2. Pick the kind deliberately
 
-- **ACCEPTANCE** (45 of them) — decides, prints PASS/FAIL, exits non-zero.
+- **ACCEPTANCE** (55 of them) — decides, prints PASS/FAIL, exits non-zero.
   Write one when there is a claim to hold true from now on.
-- **REPORT** (74) — prints and leaves the judgement to a reader. Write one when
+- **REPORT** (69) — prints and leaves the judgement to a reader. Write one when
   you are still finding out what is true.
 
 Choosing the wrong kind is how a measurement gets mistaken for a verdict. A

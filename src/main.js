@@ -11498,11 +11498,34 @@ reserveTrain.add(rsvHandArbor);
 // winding CLIMB takes the vacated inner column — the two probed-clear
 // verticals literally exchange places, and the stem's pull now carries its
 // bevel from the (inner) winding contrate out to the setting corner.
-const ALARM_ARBOR_R = ALARM_CD + CROWN_PULL_DIST;
-const alarmWorld = (() => {
-  const bx = P.dial.x - ALARM_LOCAL.x, by = P.dial.y + ALARM_LOCAL.y;
+// THE CORNER'S GEOMETRY AS A FUNCTION OF ITS RADIUS. This used to be a pair
+// of constants computed once at the shipped `ALARM_CD`, which is fine while
+// nothing asks about a DIFFERENT corner — and §94 tier B made `?alarmr=` a
+// spec, so something does. Everything downstream that a candidate radius would
+// move is derived here, once, and the shipped values below are this function
+// evaluated at ALARM_CD rather than a second copy of the same arithmetic.
+//
+// It is a function because `alarmCornerWarnsAt` (with the setting dogleg,
+// further down) has to ask the interior bounds about a radius that is not the
+// built one. `rsvTrainWarnsAt` is the same shape for the reserve station, and
+// for the same reason: one construction, called at the real value at boot and
+// at the candidate in a shadow.
+const alarmCornerGeomAt = (r) => {
+  const local = { x: Math.cos(ALARM_LOCAL_AZ) * r, y: Math.sin(ALARM_LOCAL_AZ) * r };
+  const arborR = r + CROWN_PULL_DIST;
+  const bx = P.dial.x - local.x, by = P.dial.y + local.y;
   const d = Math.hypot(bx, by) || 1;
-  return { x: (bx / d) * ALARM_ARBOR_R, y: (by / d) * ALARM_ARBOR_R };
+  const world = { x: (bx / d) * arborR, y: (by / d) * arborR };
+  // TRUE unit — an un-normalized copy of this once planted the idler in the
+  // climb, which is why it is computed here and never re-derived downstream.
+  const u = { x: world.x / arborR, y: world.y / arborR };
+  return { r, local, arborR, world, u, perp: { x: -u.y, y: u.x } };
+};
+const ALARM_CORNER_GEOM = alarmCornerGeomAt(ALARM_CD);
+const ALARM_ARBOR_R = ALARM_CORNER_GEOM.arborR;
+const alarmWorld = (() => {
+  const g = ALARM_CORNER_GEOM;
+  return { x: g.world.x, y: g.world.y };
 })();
 const _alarmRimD = Math.hypot(alarmWorld.x, alarmWorld.y);
 const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD }; // outward radial (world) to the case rim
@@ -12390,14 +12413,17 @@ const ALARM_TAIL_RUN_HALFW = 0.13; // half of the run's 0.26 width — §29's ow
 // dogleg uses. §76 wall one: the route is now a FUNCTION of its one free
 // parameter, so the wall audit and the build read the same construction
 // instead of the audit re-deriving what the build already decided.
-const _setU = { x: alarmWorld.x / ALARM_ARBOR_R, y: alarmWorld.y / ALARM_ARBOR_R }; // TRUE unit (an un-normalized copy of this once planted the idler in the climb)
-const _setPerp = { x: -_setU.y, y: _setU.x };
-const alarmSetRouteAt = (bearing) => {
+const _setU = ALARM_CORNER_GEOM.u, _setPerp = ALARM_CORNER_GEOM.perp;
+// The second argument is what lets the interior bounds be asked about a corner
+// that was not built. It DEFAULTS to the shipped geometry, so every existing
+// call site is unchanged and the identity build cannot move — the whole point
+// of adding a parameter rather than threading one.
+const alarmSetRouteAt = (bearing, geom = ALARM_CORNER_GEOM) => {
   const i1 = {
-    x: (_setU.x * Math.cos(bearing) + _setPerp.x * Math.sin(bearing)) * ALARM_SET_DW1,
-    y: (_setU.y * Math.cos(bearing) + _setPerp.y * Math.sin(bearing)) * ALARM_SET_DW1,
+    x: (geom.u.x * Math.cos(bearing) + geom.perp.x * Math.sin(bearing)) * ALARM_SET_DW1,
+    y: (geom.u.y * Math.cos(bearing) + geom.perp.y * Math.sin(bearing)) * ALARM_SET_DW1,
   };
-  const dx = alarmWorld.x - i1.x, dy = alarmWorld.y - i1.y;
+  const dx = geom.world.x - i1.x, dy = geom.world.y - i1.y;
   const d = Math.hypot(dx, dy);
   const a = (ALARM_SET_D12 * ALARM_SET_D12 - ALARM_SET_D2P * ALARM_SET_D2P + d * d) / (2 * d);
   const disc = ALARM_SET_D12 * ALARM_SET_D12 - a * a;
@@ -12590,6 +12616,57 @@ const ALARM_SET_BEARING_SOLVED = (() => {
     + `layout — re-solved to ${best.deg}°, which clears every wall by ${best.clr.toFixed(2)}`);
   return best.rad;
 })();
+// ————— THE CORNER'S INTERIOR BOUNDS, AS ONE FUNCTION OF ITS RADIUS —————
+//
+// `solveKeyless` owns exactly one bound for a spec'd corner — the stem must
+// reach the case rim with positive length — and says so in its own comment:
+// "the interior bounds live with their own instruments … so this warn brackets
+// only what they cannot see". That was true and it was also the whole problem.
+// The interior bounds were three asserts at three sites, each reading the BUILT
+// corner, so nothing could ask them about a corner that was not built — and a
+// reconfigure handle refusing on the outer bracket alone would call a corner at
+// 30 legal, then boot full of warnings on Apply. A refusal that is not the real
+// constraint is worse than no handle: it looks like permission.
+//
+// So they are gathered here, as a function of the radius, and the shipped
+// corner is asserted to produce NO warnings — which is what makes this function
+// a faithful restatement rather than a second opinion (`rsvTrainWarnsAt`'s
+// shape and its line-11399 assert, one station over).
+const alarmCornerWarnsAt = (r) => {
+  const out = [];
+  // 1. The stem must reach the case rim. solveKeyless owns this one; it is
+  //    repeated rather than imported because a shadow needs it at a candidate
+  //    and the solver only ever sees the spec'd value.
+  if (!(plateR + 2.2 - r > 0))
+    out.push(`alarm corner ${r.toFixed(2)}: the stem has no length inside the case rim `
+      + `(plateR + 2.2 − corner = ${(plateR + 2.2 - r).toFixed(2)})`);
+  const geom = alarmCornerGeomAt(r);
+  // 2. The setting dogleg must CLOSE. Past a corner of ≈ 19.9 the two-circle
+  //    solve has no intersection at any bearing and the route is not a route —
+  //    a hard failure, not a warning, which is why it is reported first.
+  if (!alarmSetRouteAt(ALARM_SET_BEARING_SOLVED, geom))
+    out.push(`alarm corner ${r.toFixed(2)}: the setting dogleg cannot close at the solved bearing `
+      + `— the arbor is outside the chain's reach entirely, so there is no route`);
+  // 3. …and i2 must be big enough to span i1 → arbor, which grows with the
+  //    corner while D12 + D2P stays fixed.
+  const i1 = {
+    x: (geom.u.x * Math.cos(ALARM_SET_BEARING_SOLVED) + geom.perp.x * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
+    y: (geom.u.y * Math.cos(ALARM_SET_BEARING_SOLVED) + geom.perp.y * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
+  };
+  const reach = Math.hypot(geom.world.x - i1.x, geom.world.y - i1.y);
+  const floor = Math.ceil((2 * reach / ALARM_SET_MODULE - ALARM_SET_I1_TEETH - ALARM_SET_PINION_TEETH) / 2);
+  if (ALARM_SET_I2_TEETH < floor)
+    out.push(`alarm corner ${r.toFixed(2)}: i2 ${ALARM_SET_I2_TEETH} t cannot reach the arbor — needs ≥ ${floor} t `
+      + `(i1 → arbor ${reach.toFixed(3)} against a reach of ${(ALARM_SET_D12 + ALARM_SET_D2P).toFixed(3)}; `
+      + `arbor at ${geom.arborR.toFixed(2)} = corner + CROWN_PULL_DIST)`);
+  return out;
+};
+// The assert that makes the function trustworthy: at the corner actually built,
+// it must find NOTHING. If it ever speaks here, the gathering above has drifted
+// from the asserts it replaced and the handle's refusal is judging a different
+// movement from the one on screen.
+for (const m of alarmCornerWarnsAt(ALARM_CD))
+  console.warn(`§94 tier B: the SHIPPED alarm corner fails its own interior bound — ${m}`);
 {
   // THE SAME MOVING QUESTION AS THE WINDING CHAIN, answered differently
   // because this chain's second idler is not sized by reach. i1 stands at
@@ -33213,6 +33290,12 @@ window.__clock = {
   },
   get alarmDebug() { return { syncPhase, fastForward, alarmDropSpent, alarmReleased, alarmOn, alarmBarrelWind, alarmSelShownT, alarmColShownA, arborA: alarmArborRotor.rotation.z, bodyA: alarmBarrelRotor.rotation.z, profNow: alarmColumnWheel.userData.profileAt(alarmColShownA), profLink: alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF) }; }, // §29/§35 verification surface; §99 adds the two barrel rotor angles
   get alarmPinDrop() { return alarmPinDropNow; }, // §29 step 3: the physical detector's output (step 5 re-derives the trip from it)
+  // §33/§94 — THE RECONFIGURE ROWS, exposed for the same reason the laws below
+  // are: a probe that re-implements a refusal is measuring its own arithmetic,
+  // and a refusal is the one thing in this mode a viewer treats as permission.
+  // Read-only by construction (the rows are consulted, never assigned), so this
+  // is a window rather than a control surface.
+  get reconfHandles() { return RECONF_HANDLES; },
   // §173 — THE JUMPER'S OWN LAW, exposed so a probe measures the SHIPPED
   // function rather than a re-implementation of it (TODO 59's rule, inherited
   // from the click this replaces). `poseJumper` drives the blade to an
