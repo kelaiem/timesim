@@ -20,6 +20,8 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
+| 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
+| 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and OPEN, and its repair was SEARCHED and the obvious fix REFUTED** (`tools/probe-90-lockread.mjs`, three controls passing): the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. The beak cannot simply be moved: its station is QUANTIZED to whole column pitches (60°, the parity rule `ALARM_LINK_BEAK_OFF` already snaps to), the exact Thales optimum (φ 44.57°, gain **1.0000**) is mid-flank and so illegal, and both legal neighbours are taken — **−60° is the link beak's own station** (riser 0.0000) and **+60° wants a 0.6723 chamfer against a 0.6327 ceiling** and stands 0.1992 from the driver pawl. So the repair is a FOLD (an intermediate rocker at the free φ 0 station), not a re-siting. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
@@ -11346,10 +11348,21 @@ reading the blank's one bevel now instead of a head block's own. And the
 "Not in scope" paragraph below still stands untouched — the guard pin has no
 dart and nothing measures a horn-to-pin contact.
 
-**Not in scope**, so that it is not silently absorbed: the guard pin is a
-cylinder with no dart and no matching crescent on the safety roller, and the
-horns are drawn but nothing measures a horn-to-pin contact. That is a separate
-item about the safety action, not about how the lever is cut.
+**Not in scope**, so that it is not silently absorbed: the safety action —
+guard pin, safety roller, horns — is a separate mechanism from how the lever
+is cut. Filed as item 105.
+
+**And this paragraph used to say something false**, corrected here rather than
+left standing in a closed item. It read *"the guard pin is a cylinder with no
+dart and no matching crescent on the safety roller"*. The crescent EXISTS:
+`makeBalanceWheel` cuts it with `gap = 0.45`, and the missing sector is centred
+on azimuth 0 — the same azimuth as the impulse pin at `(rollerR, 0, pinZ)`. That
+phasing is the derivation that matters in a real lever escapement, because the
+passing hollow has to be cut where the impulse pin is or the guard pin could
+cross at the wrong moment. It was written from a glance at the fork and never
+checked against the balance, which is the same mistake item 103's own "not in
+scope" sentence made about the driver. Two for two: a scope note written in
+passing is a claim about metal like any other.
 
 ## 99. `claim-item.mjs` cannot see a pushed claim the clone never fetched — CLOSED (§176)
 
@@ -11664,3 +11677,192 @@ the largest disc, against arcs the old code already sampled at 20 segments.
 Net outline area 20.1711 → 23.2578, bbox unchanged at 6.941 × 5.899 — the part
 does not reach further, it is simply whole. A new build warning fires if a disc
 never reaches the hull, which is an arm asked for and not cut.
+
+## 104. `INTRA_UNIT_CONTACTS` declarations are never audited against the metal
+
+A declared row does not waive a measured overlap — it **skips the pair before
+measurement**. `checkIntraUnit`'s `allowed()` is consulted inside the tier
+loops and the pair `continue`s, so the check records nothing about it at all:
+
+```js
+const allowed = (u, la, lb) => contacts.some((c) => c.unit === u
+  && ((c.a === la && c.b === lb) || (c.a === lb && c.b === la)));
+…
+if (seen.has(key) || allowed(u.name, la, lb)) continue;
+```
+
+The table is gated for **name** validity — `unmatchedSelectors` fails a row
+naming a mesh that does not exist — and never for **geometric** validity.
+Nothing asks whether a declared joint describes metal that is actually in
+contact, or whether the contact it describes is the one that is there.
+
+**It has stated something false twice, and both times were accidents.** §169
+found `alarmColDriver ⇄ alarmColPawlSpringStud` naming a stud that measured
+**4.347 clear** of the part declaring it — the row said the same thing about a
+joint that was not there, and excused the pair from the sweep that would have
+caught it. §177 found the other shape: `alarmColDriver ⇄ alarmColStud` declared
+a running fit at `PIVOT_BORE_CLEAR`, and the bore was **solid metal** — 120 of
+120 sample points filled, the part had no hole to turn on. The declaration was
+right that the two overlap and wrong about what the overlap WAS. Neither was
+found by an instrument aimed at it.
+
+### Measured, 2026-08-27 — 141 rows over 29 units
+
+Two runs, both off the built tree.
+
+**What the declarations describe.** Resolving every row's labels the way
+`collectUnits`/`meshLabel` do, and measuring `meshClearance` at rest:
+
+| gap between the declared pair | rows |
+|---|---|
+| ≤ 0 — actually overlapping | **102** |
+| 0 – 0.05 | 19 |
+| 0.05 – 0.15 | 4 |
+| 0.15 – 0.5 | 6 |
+| **0.5 – 1.0** | **0** |
+| 1 – 3 | 3 |
+| > 3 | **6** |
+
+unresolved: 1. So most rows do describe real contact, and **nine declare one
+between parts that are 2.1 to 9.19 apart**:
+
+```
+9.1928  Alarm selector       alarmSelTab <-> alarmSelPost
+8.2249  Alarm selector       alarmSelForkBracket <-> alarmSelPost
+5.9792  Alarm winding train  alarmClimbPinion <-> alarmWindIdler
+5.1643  Fusee & great wheel  maintPawl <-> CylinderGeometry#14
+4.1442  Alarm winding train  alarmWindIdler <-> CylinderGeometry#5
+4.0979  Alarm switch         alarmPusherStem <-> alarmPusherGuide
+2.7140  Keyless works        settingWheel <-> TorusGeometry#30
+2.3590  Alarm winding arrest spiderCageWheel <-> subFingerPinion
+2.1367  Keyless works        settingWheel <-> BoxGeometry#31
+```
+
+These are NEW — §169's own row was retired when it was found. `CLEAR_MARGIN`
+is 0.15, so a pair that never comes within 1.0 is not describing a contact.
+
+**And a second number that needs its caveat, because it is easy to misread.**
+Re-running `checkIntraUnit` with `contacts: []` — every excuse removed —
+measures 220 intersecting pairs, and **96 declared rows are not among them**.
+That is NOT 96 false rows. Two different things land in that bucket:
+
+- pairs genuinely apart (the nine above, plus the running fits) — the table's
+  own header says designed fits have CLEARANCE and read as apart, so a row
+  documenting one is defensible;
+- **pairs `intraUnit` structurally never compares.** Its tiers are MF, FF once,
+  and MM ACROSS rigid frames. Same-frame mover pairs are `checkAssembly`'s
+  domain by §121's own design, so a row declaring a wheel against its own
+  arbor is inert *in this check* no matter how deeply the two interpenetrate.
+
+That second class is a finding in its own right: **a declaration filed against
+a check that cannot see the pair buys nothing and looks like diligence.** Those
+rows arguably belong in `ASSEMBLY_WAIVERS` instead, and until someone decides,
+they are 96 minus the apart-rows of unexamined paperwork.
+
+### The work, in two tiers
+
+**Tier A — a declaration must excuse something.** For each row, measure the
+pair over the pose net rather than skipping it, and fail a row whose parts
+never come within a threshold of each other. The empty 0.5–1.0 band is what
+makes this gateable: the cut is insensitive to where in that band it sits, so
+it is a measured separation and not a tuned number. Rows in the 0–0.5 cluster
+are running fits and stay.
+
+Two things this must get right or it will be switched off:
+- **Sweep, do not sample.** The gaps above are REST pose. A pair apart at rest
+  can close at another; nine rows at 2.1–9.19 will not, but a 0.4 row might.
+- **Say which class a row is in.** A row inert because `intraUnit` never
+  compares that pair must not be reported as a row whose parts are apart.
+  Those are opposite defects and the same "excuses nothing" symptom.
+
+**Tier B — the joint must be the one declared.** This is the half with teeth
+for §177, and it needs a vocabulary: a `kind` per row from a closed set,
+checked against its own invariant, exactly as `transfers` (§137) declares five
+named idioms beside their metal. 79 of the 141 rows read as bore/stud-like from
+their `why` text, and the `bore` invariant is the measurement that found §177 —
+**the host must have a cavity there, and the pin must be inside the cavity
+rather than the metal.**
+
+Do NOT bulk-annotate the 141 rows with a `kind` inferred from their prose. A
+wrong `kind` is a new false declaration, which is the defect this item exists
+to catch.
+
+**Not in scope**: `EXPECTED_CONTACT_FLOORS` and `RESTORING_WAIVERS` are the
+same shape of question — a declaration nobody audits — and item 6 already
+carries the first. Whether one instrument should judge all declaration tables
+is worth asking once this one exists.
+
+## 105. The lever's safety action is modelled but not simulated
+
+Split out of item 98, which cut the pallet fork as one blank and deliberately
+left the safety action alone: it is a different mechanism from how the lever is
+shaped. This is that mechanism.
+
+**What is right, measured off the built tree 2026-08-27.** The geometry is
+better than item 98's scope note claimed, and that note is corrected in place:
+
+- **The crescent exists and is PHASED to the impulse pin.**
+  `makeBalanceWheel` cuts the safety roller with `gap = 0.45`, so the missing
+  sector spans −gap…+gap, centred on azimuth 0. The impulse pin sits at
+  `(rollerR, 0, pinZ)` — azimuth 0. That is the derivation a real lever
+  escapement needs: the passing hollow is cut where the impulse pin is, so the
+  guard pin can only cross while the pin is engaging the fork.
+- **The guard pin rides close and never touches.** Swept over a beat
+  (48 samples), guard pin → safety roller reads **min 0.2356, max 0.7455**.
+  Never touching is CORRECT for normal running — a safety action is a failsafe,
+  not a working contact — and the ~0.51 of variation is the crescent passing.
+- The impulse pin does reach the fork body: **0.0000**, the notch contact.
+
+**So what is wrong is not the shape. Three things:**
+
+### 1. None of the clearances are derived
+
+`guardR = t·0.18`, the guard pin's seat at `(0, forkY + t·0.5, −t·0.7)`, the
+roller's `srR = radius·0.2`, its `gap = 0.45`, the crescent's pull-in to
+`srR·0.4` — every one is a chosen number. The measured 0.2356 is what they
+happen to produce, not a clearance anyone asked for. Standing rule 1: the
+governing constraint is that the guard pin must **clear the roller's full
+radius in normal running and CATCH it when the fork is displaced**, which sets
+a band the pin's radius and seat should be solved from. Nothing states that
+band, so nothing can tell whether 0.2356 is generous, tight, or wrong.
+
+### 2. The failsafe is never exercised, so nothing tests that it works
+
+The safety action only acts when the fork is out of position, and **no axis
+displaces the fork**. `AXES` moves the beat; it does not knock the lever off
+its banking. So the guard pin's whole purpose is untested by construction, and
+every sweep reports it clear because it is clear in the only situation anyone
+samples.
+
+This is TODO 29/§48's population argument exactly, and §48's own rule names it:
+*ship a mechanism with its own input and you must ship the axis that exercises
+it, or this passes it in silence.* Before TODO 29 no axis varied `alarmOn` and
+the alarm lock was invisible for the same reason.
+
+### 3. The horns are drawn but no horn-to-pin contact is measured
+
+Item 98 got this one right. The fork's horns exist as metal and the impulse pin
+passes between them, but the measured `0.0000` above is the pin against the
+fork BODY as a whole — nothing isolates a horn. In a real escapement the horns
+are the second half of the safety action: if the guard pin is passing the
+crescent, it is the horn that catches the impulse pin. Whether these horns
+could is unmeasured.
+
+### The work
+
+1. **Derive the band, then solve the pin to it.** The guard pin's radius and
+   seat come out of "clears `srR` at every pose of normal running, fouls it at
+   a displaced-fork pose", with both ends asserted at build.
+2. **Add the axis that displaces the fork**, so the failsafe has a pose in
+   which it must act. Without it, 1 is checkable only on the clearing half.
+3. **Then measure the horn against the pin** as its own contact, the way
+   `alarmHandoffs` measures the arming run's — a horn that cannot catch is a
+   drawn horn.
+
+Ordering matters: 2 before 1's second half, and 3 last, because a horn contact
+is only meaningful once there is a pose where the guard pin has let the fork
+move.
+
+**Not in scope**: the dart. A real Swiss lever's guard is often a dart on the
+fork's tail rather than a pin at the horns, and this is a pin. That is a design
+choice, not a defect, and swapping it would change nothing this item measures.
