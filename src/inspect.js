@@ -1465,23 +1465,27 @@ function bvhBox(tree) {
 // a pass-through through an open mesh goes back to being invisible rather
 // than becoming a false contact.
 //
-// !! INCOMPLETE — DO NOT READ THIS AS CLOSING THE HOLE. Measured with the
-// guard in place, `alarmDisc ExtrudeGeometry#20 ⇄ hourTube` STILL reports
-// 0.0000 against a true separation of 2.760 u. It fires on the direction
-// where src is the OPEN hourTube and dst is the CLOSED part — the half this
-// guard permits — and that should be impossible: the longest edge on that
-// tube is a cap radius of ~2.5, shorter than the gap it would have to reach
-// across, let alone cross twice. Requiring BOTH sides closed does suppress
-// it, but it also loses the genuine `alarmPusherStem ⇄ alarmPusherReturnSpring`
-// graze (the stem is open, the spring closed), so that is a bigger hammer than
-// the defect and not the answer.
+// The guard was drafted against a pair believed to be a FALSE POSITIVE —
+// `alarmDisc ExtrudeGeometry#20 ⇄ hourTube`, reported at 0.0000 while a radial
+// measurement about the tube's axis put the two 2.760 u apart. Re-measured, the
+// witness was RIGHT and the refutation was wrong: that 2.760 came from the
+// disc's VERTICES, and the disc's SURFACE reaches in to r 1.216, well inside
+// the tube's 2.050 bore. Sampling the tube's SURFACE and testing parity against
+// the disc puts 126 of 4800 points inside the disc's metal, 0.2885 at the
+// deepest. `probe-95-interpenetration.mjs` is that measurement, and it never
+// assumes a closed mesh: it classifies both first and then picks the only
+// witness the pair admits, refusing outright when both sides are open. (Both of
+// these turned out to be closed once the sign-of-zero bug below was fixed; at
+// the time of the measurement the tube was believed open, and the probe was
+// written to be right either way.)
 //
-// The next diagnostic is to print the crossing distances for that direction
-// and find how a <=2.5 u segment registers two crossings against a surface
-// 2.76 u away. Two suspects, in order: `_mat` is a MODULE-LEVEL temp shared
-// with the point-sampling loop above, so a re-entrant use would silently
-// transform the edge into the wrong frame; and `tree.raycast(ray, side, 0,
-// len)`'s `far` argument may not bound hits the way this code assumes.
+// So the guard stands on its own argument rather than on that pair, and the
+// note worth leaving is the one the mistake taught: VERTICES ARE NOT THE
+// SURFACE, in the direction that REFUTES a finding as much as in the direction
+// that proves one. CLAUDE.md records the trap for proofs; this was the same
+// error spent on a retraction, which is the more expensive way round — a real
+// interpenetration was very nearly declared an instrument defect and shipped
+// as one.
 //
 // EDGES ARE KEYED BY POSITION, NOT INDEX. three.js duplicates vertices per
 // face for normals, so an index-keyed count calls a plain BoxGeometry open —
@@ -1494,7 +1498,15 @@ function boundsASolid(geom) {
   const pos = geom.attributes.position, idx = geom.index;
   const n = idx ? idx.count : pos.count;
   const at = (t) => (idx ? idx.getX(t) : t);
-  const key = (i) => `${pos.getX(i).toFixed(5)}_${pos.getY(i).toFixed(5)}_${pos.getZ(i).toFixed(5)}`;
+  // NORMALISE THE SIGN OF ZERO. `toFixed` renders -1e-16 as "-0.00000" and
+  // +1e-16 as "0.00000", so a lathe or cylinder seam — where θ=0 and θ=2π
+  // produce the same point with opposite-signed zeros — keys as TWO positions
+  // and every seam edge counts once instead of twice. Measured before the fix:
+  // all 250 CylinderGeometry meshes in the movement read "open" with exactly 6
+  // boundary edges, every one of them a 0.00000/-0.00000 pair on a closed body.
+  // Rounding to an integer count of 1e-5 units collapses both to 0.
+  const q = (v) => { const r = Math.round(v * 1e5); return r === 0 ? 0 : r; };
+  const key = (i) => `${q(pos.getX(i))}_${q(pos.getY(i))}_${q(pos.getZ(i))}`;
   const edge = new Map();
   for (let t = 0; t + 2 < n; t += 3) {
     const k = [key(at(t)), key(at(t + 1)), key(at(t + 2))];
@@ -1523,6 +1535,14 @@ function segmentPierces(tree, box, p0, p1) {
   // box is a true bound (mesh ⊆ box), so this cut is exact, like §122's.
   if (!_pierceRay.intersectsBox(box)) return false;
   const hits = tree.raycast(_pierceRay, THREE.DoubleSide, 0, len);
+  // SORT FIRST — three-mesh-bvh returns hits in TRAVERSAL order, not distance
+  // order, and the dedupe below is a scan that assumes ascending. Measured on
+  // `alarmDisc ExtrudeGeometry#20 ⇄ hourTube`: raw distances came back
+  // 3.4463, 2.9659, 7.1572, 7.6510 and the unsorted scan dropped 2.9659 as a
+  // duplicate of the crossing it had just passed. It only ever UNDERCOUNTS, so
+  // it cannot invent a passage — but it can hide one, which is this witness's
+  // whole purpose.
+  hits.sort((x, y) => x.distance - y.distance);
   // Dedupe: a ray through a shared triangle edge can be reported twice, and
   // two coincident "crossings" are a graze, not a passage.
   let n = 0, last = -Infinity;
@@ -1953,6 +1973,13 @@ const CLEARANCE_BUDGETS = [
 export const EXPECTED_CONTACT_FLOORS = [
   {
     a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
+    // TODO 101: the alarm hand's LEAF carries no bore, so the hour tube runs
+    // through it — 0.2885 deep, measured over the tube's surface. The BOSS
+    // beside it holds 2.667 (the derived 24-gon inscribed-radius correction
+    // at main.js:13354); the leaf sits in the same z band and inherited none
+    // of it. Long-standing, and invisible until TODO 95's witness: the raw
+    // intersection was being published as clearance.
+    waived: 'TODO 101: the alarm hand leaf is unbored — 0.2885 into the tube, boss holds 2.667',
     contacts: [
       ['alarmNose', 'alarmHeart'],        // §29 working contact — penetration budget + alarmHandoffs own it
       ['alarmFollowerBar', 'alarmHeart'], // §45 flank sweep owns this at the 0.03 working figure
@@ -2653,6 +2680,15 @@ export const INTRA_UNIT_CONTACTS = [
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
+  // Both rows below became visible with TODO 95's pass-through witness; the
+  // metal did not move. Each is a MESH that fails a fit its CONSTANTS derive
+  // correctly — MODELING.md rule 1 — so the repair is in the builder, not in
+  // this table, and neither may be promoted to INTRA_UNIT_CONTACTS: that
+  // table says "assembled and touching on purpose", which these are not.
+  { unit: 'Alarm winding arrest', a: 'genevaFingerDisc', b: 'alarmArrestFingerArbor',
+    debt: 'TODO 100: the bore is a designed 0.05 running fit (fingerBoreR = arborR + 0.05) that the extrude\'s cap triangulation does not honour — rays down the bore are blocked over 15.1% of its area and 4.3% of the arbor\'s own footprint' },
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherReturnSpring',
+    debt: 'TODO 102: coilR derives the 0.05 running fit correctly; per: 6 at the call site makes the coil path a hexagon whose inradius is 13.4% smaller, eating the fit and 0.0084 more. The builder\'s own default of 10 clears it' },
   // TODO 22 closed with the switch resize: the press axis rides above the
   // wheel's stack and the stem's inner end is press-swept derived — the
   // instrument measures the repair (0 rows).

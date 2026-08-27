@@ -12117,7 +12117,7 @@ not change; these were all true of the shipped movement already.
 | `BoxGeometry#1 ⇄ alarmSelPost@12` | intraUnit MM | 12974 |
 | `BoxGeometry#3 ⇄ alarmSelPost@13` | intraUnit MM | 12974 |
 | `BoxGeometry#5 ⇄ alarmSelPost@14` | intraUnit MM | 12974 |
-| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | intraUnit MF | 3045 |
+| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | intraUnit MF | 3045 — real, but see TODO 100 |
 | `alarmPusherStem ⇄ alarmPusherReturnSpring` | intraUnit MM | 793 |
 | `Alarm disc ⇄ Hour wheel` (`ExtrudeGeometry#20 ⇄ hourTube`) | expectedContacts, min 0 vs floor 0.15 | 914 |
 
@@ -12129,21 +12129,322 @@ these with the raw library distance** — that is the instrument known to lie
 about exactly this, and an earlier pass in this session did precisely that and
 had to be retracted.
 
-The last row is the one to look at first: `alarmPusherStem` is §162's naming
-and `alarmPusherReturnSpring` is §164's metal, so the pusher's stem stands
-inside its own return spring — recent work, and the kind of thing this
-instrument existed to catch and did not.
+**But that probe asks parity of BOTH solids, and parity needs a CLOSED one** —
+so before any of these rows could be trusted, the meshes had to be classified.
+`tools/probe-95-interpenetration.mjs` does that first and then picks the only
+witness the pair admits: both closed, sample each SURFACE against the other;
+exactly one open, sample the OPEN one's surface against the CLOSED one; both
+open, refuse and say so. Surfaces throughout, as a barycentric grid over every
+triangle — never vertices.
 
-**A reporting defect found on the way, worth its own fix.** `meshLabel` returns
-a mesh's bare NAME when it has one, and **three meshes are named
-`alarmSelPost`**. So a battery row reading `BoxGeometry#3 ⇄ alarmSelPost` does
-not say which of three parts it means, and resolving it by first match picks
-the wrong one — which made two true rows look like false positives here until
-the ambiguity was spotted. A label that cannot identify its surface is not a
-label; `meshLabel` should disambiguate repeated names by index the way it
-already does for unnamed meshes.
+| row | witness | verdict |
+|---|---|---|
+| `alarmSelBoss1 ⇄ alarmSelPost1` | both closed, both directions | REAL — post 0.0400 into the boss, boss 0.1087 into the post |
+| `alarmSelBoss2 ⇄ alarmSelPost2` | both closed | REAL — 0.0400 / 0.1082 |
+| `alarmSelBoss3 ⇄ alarmSelPost3` | both closed | REAL — 0.0400 / 0.1087 |
+| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | disc open, arbor closed | REAL, but NOT a joint — **TODO 100** |
+| `alarmPusherStem ⇄ alarmPusherReturnSpring` | both closed | REAL, hair-thin — 0.0075 at closest against a 0.05 nominal fit |
+| `ExtrudeGeometry#20 ⇄ hourTube` | both closed | REAL — 126 of 4800 tube-surface points inside the disc, **0.2885** deep |
+
+**Row 6 was very nearly withdrawn on a false refutation, and that is the
+expensive mistake to record.** It was measured 2.760 u clear radially about the
+tube's own axis and written up as the witness's false positive — an instrument
+defect to be fixed rather than a collision to be repaired. That 2.760 is the
+disc's VERTEX span; its SURFACE reaches r 1.216, inside the tube's 2.050 bore.
+CLAUDE.md records "vertices are not the surface" as a trap for PROOFS. Spent on
+a REFUTATION it is worse, because nothing downstream re-examines a finding that
+has already been called false.
+
+**Row 4 is real too, and it is the one that is not a collision to fix in
+place.** The pair is not an assembly and must not be declared as one:
+`fingerBoreR = arborR + 0.05` (`src/geometry.js:2198`) is a designed running
+fit, the same 0.05 the winding idlers use. The MESH does not honour it — rays
+cast down the bore are blocked over 15.1% of its area, and over 4.3% of the
+arbor's own footprint, by cap triangles spanning the hole. So the arbor's
+surface genuinely crosses the disc's surface, exactly as the witness says,
+while the drawing says 0.05 of air. Filed as **TODO 100**; its declaration must
+come OUT of `INTRA_UNIT_CONTACTS` rather than shipping as an excuse.
+
+**Two defects in the witness itself, both found by instrumenting it rather
+than by reasoning about it.**
+
+1. **The guard.** `segmentPierces` reads two crossings as "in, then out, so the
+   segment was inside", and that argument holds only where the crossed surface
+   BOUNDS a solid. Down an open tube's bore a segment crosses the wall twice
+   and is inside no metal — which is what a bore is for; the same failure
+   CLAUDE.md already records for the parity ray, inherited because both rest on
+   the same premise. `boundsASolid` gates the witness on the DST surface being
+   closed (edges keyed by POSITION — an index-keyed count calls a plain
+   `BoxGeometry` open, 12 triangles and 24 "boundary" edges, and that mistake
+   looks exactly like a fix). SRC may be open; what the argument needs is that
+   the thing being CROSSED is closed.
+2. **The hits come back unsorted.** `MeshBVH.raycast` returns them in traversal
+   order, and the dedupe below it is a scan that assumed ascending. Measured on
+   row 6: raw distances `3.4463, 2.9659, 7.1572, 7.6510`, and the scan dropped
+   2.9659 as a duplicate of the crossing it had just passed. It can only ever
+   UNDERCOUNT, so it cannot invent a passage — but hiding one is this witness's
+   whole failure mode. Sorted before the scan now.
 
 **Residue.** The `Math.max` stays, so a genuine tri-tri false positive with no
 contained sample and no doubly-crossing edge still resolves towards clearance.
 Closing that wants an exact triangle-triangle test at the library's reported
 closest point, and is not taken here.
+
+Beside it now sits a second one: **the guard trades a false positive for a
+blind spot.** A pass-through between two meshes that are both open is invisible
+again — the pre-TODO-95 behaviour, and the conservative direction, but only
+because there is no sound witness to run, not because the pair was checked.
+Measured (TODO 99), 34 of the movement's 717 meshes carry a genuine hole, so
+that blind spot is small but not empty, and it is not distributed evenly: it
+follows `ExtrudeGeometry` and the parts cut from outlines.
+
+## 99. Every parity witness in the repo needs a closed surface, and nothing measures which surfaces are closed
+
+Filed 2026-08-26, out of TODO 95. Every insideness test this repo owns —
+`pointInsideTree`, `sampledVerdict`'s containment, `probe-95-grid`'s five-ray
+vote, `segmentPierces`' two-crossing argument, and TODO 27's parity family —
+works by counting ray crossings, and every one of them is valid **only against
+a surface that bounds a solid**. CLAUDE.md states the trap ("An OPEN mesh reads
+as a colliding one") and TODO 27 measured one instance of it. Nothing has ever
+asked how many of the movement's surfaces qualify, so no instrument knows when
+it is entitled to its own answer.
+
+`tools/probe-99-open-census.mjs` asks. Measured over the built tree, 717
+meshes:
+
+| | meshes | what it means for parity |
+|---|---|---|
+| closed | 547 | sound |
+| **holes** (an edge with 1 face) | **34** | **unsound** — a ray can enter and never leave |
+| non-manifold only (an edge with 3+ faces) | 136 | usually two welded solids sharing a face; may still count correctly |
+
+By geometry type the holes concentrate almost entirely in parts cut from
+outlines: `BufferGeometry` 14, `TorusGeometry` 8, `TubeGeometry` 4,
+`ShapeGeometry` 3, `ExtrudeGeometry` 3, `LatheGeometry` 2, and **0 of 143
+`BoxGeometry` and 0 of 250 `CylinderGeometry`**. The 136 non-manifold meshes
+are a different pathology and mostly the gear blanks — `ExtrudeGeometry` 128 of
+them, where a tooth outline meets a hub.
+
+### The finding this item exists to prevent repeating
+
+**A boundary-edge census keyed on formatted coordinates is wrong, and it is
+wrong in the direction that looks like a discovery.** The first run of this
+census reported **484 of 717 meshes open (67.5%)**, including *every*
+`CylinderGeometry` (250 of 250) and *every* `LatheGeometry` (67 of 67), each
+with exactly 6 boundary edges. That number was about to be written up as the
+headline of this item — a movement two-thirds unmeasurable.
+
+It was an artifact of the census's own key. `(-1e-16).toFixed(5)` is
+`"-0.00000"` and `(1e-16).toFixed(5)` is `"0.00000"`, so a lathe or cylinder
+SEAM — where θ = 0 and θ = 2π produce the same point with opposite-signed zeros
+— keys as two distinct positions, and every seam edge is counted once instead
+of twice. The bodies were closed all along. Normalising through
+`Math.round(v * 1e5)` with `-0 → 0` collapses them, and the count falls from
+484 to 170. **The same key is in the shipped `boundsASolid`**, where it was
+suppressing TODO 95's witness on 547 meshes that did not need suppressing.
+
+Two general lessons, both already in `.claude/skills/instruments/SKILL.md`'s
+catalogue in spirit and neither previously instanced there: a coordinate key is
+a *tolerance decision* disguised as a string operation; and a census that
+reports a shocking number should be run against a CONTROL whose answer is known
+before it is believed — `BoxGeometry` was the control here, and the fact that
+143 of 143 boxes came back closed while 250 of 250 cylinders came back open was
+the whole tell.
+
+### What is not done
+
+1. **The 34 holed meshes are not triaged.** Which are holes that matter (a
+   surface an instrument actually queries) and which are cosmetic is unknown.
+2. **`boundsASolid` rejects non-manifold meshes too**, which is conservative
+   and costs the witness 136 meshes. A 4-face edge (two solids sharing a welded
+   face, both copies present) preserves parity; a 3-face edge does not. The
+   check could split those cases instead of failing them together.
+3. **No gate.** This is a REPORT. Making it a gate means deciding what the
+   movement's target is, and 34 holed meshes is a repair bill, not a threshold.
+4. **A pair whose sides are both open still has no witness at all.** That is
+   TODO 95's named residue and this item bounds it rather than closing it.
+
+
+## 100. The geneva finger disc's bore is not fully cut — cap triangles carry metal across the hole its arbor runs in
+
+Filed 2026-08-26, out of TODO 95 row 4. **This is MODELING.md rule 1 in plan:
+the rendered solid is not the authored one**, and it is the same failure
+`makeGenevaFinger` already fought once and did not finish.
+
+`ARREST_SPEC.fingerBoreR = arborR + 0.05` (`src/geometry.js:2198`) — a running
+fit, the same 0.05 the winding idlers use for a wheel on a stud. The disc
+should turn on `alarmArrestFingerArbor` with 0.05 of air all round. It does
+not: `tools/probe-99-borecut.mjs` casts rays straight down the bore and finds
+
+| | |
+|---|---|
+| bore area blocked by disc metal | **15.1%** (122 of 808 rays) |
+| the ARBOR's own footprint blocked | **4.3%** (20 of 464) |
+| where | a wedge at azimuth ≈ 240–276°, radius 0.156–0.166 |
+
+So the arbor's side really does cross the disc's faces, which is what TODO 95's
+pass-through witness reports — measured directly, the arbor's own side edges
+cross the disc's surface at 0.6000 and 0.9167 along their length, exactly the
+disc's two face planes, from a radius of 0.185 that is 0.05 inside the bore.
+
+**The history matters, because the fix that is already there is the second
+attempt.** `src/geometry.js` carries this comment above the hole:
+
+```js
+// The bore is written as an EXPLICIT POLYGON, not an absarc. This extrude
+// runs at curveSegments: 1 … and at that setting an absarc is divided into a
+// single segment — the hole collapses and the disc's metal closes over the
+// arbor it is bored for.
+```
+
+The absarc was replaced by an explicit 64-gon and the symptom mostly went away
+— from a bore fully closed to a bore 15% closed, which reads as fixed from
+every angle anyone looked at. The remaining wedge is a TRIANGULATION failure,
+not a path failure: the outline is a 1440-point polygon and the hole a
+64-point one, and `ExtrudeGeometry`'s cap triangulator does not reliably
+respect a hole that fine against an outline that fine.
+
+### The repair
+
+Not "add more segments" — that is tuning a symptom, and the last tuning is what
+made this hard to see. Options, cheapest first:
+
+1. **Match the hole's point count to the outline's angular resolution**, and
+   derive it rather than fix it at 64 — the constraint being that no cap
+   triangle may span the bore, which is checkable by the probe above.
+2. **Cut the disc as a `Shape` whose hole is a real path and verify the cap**,
+   asserting at build time that no cap triangle's centroid lies inside
+   `fingerBoreR`. That is the MODELING.md rule 1 pattern: the builder exports
+   what it actually cut.
+3. **Drop the cap triangulator entirely** for this part and lathe the disc
+   about its own axis, since it is a disc with a bore and a cutaway.
+
+Whichever, the acceptance is `probe-99-borecut.mjs` reading 0 blocked rays
+inside the arbor's footprint, and `intraUnit` no longer reporting the pair.
+
+**Do NOT declare this pair in `INTRA_UNIT_CONTACTS`.** A declaration says "these
+two are assembled and touching on purpose"; this pair is designed 0.05 apart
+and is touching by accident. Declaring it would excuse the defect permanently
+and silently, which is exactly what that table's own header warns about.
+
+### Why every instrument missed it until now
+
+The disc carries 135 bad edges — it is one of the 34 holed meshes TODO 99
+counts, so parity witnesses were unsound on it, and a vertex-based radial span
+reads the bore as correctly sized because **the bore's VERTICES are all at
+0.2347**; only the faces between them carry the metal. It took a segment test
+against the arbor, which is the one witness that reads faces rather than
+points.
+
+## 101. The alarm hand's leaf carries no bore, so the hour tube runs through it
+
+Filed 2026-08-26, out of TODO 95 row 6. Found by the pass-through witness, and
+findable by nothing else in the bar: the `expectedContacts` row for
+`Alarm disc ⇄ Hour wheel` had been reading a clean minimum for as long as it
+has existed, because `meshClearance` was publishing the intersection as
+clearance (TODO 95). **The geometry did not change — this was true of the
+shipped movement already.**
+
+`Alarm disc/ExtrudeGeometry#20` is the alarm hand's LEAF. Measured about the
+hour tube's own axis, at the entered pose:
+
+| mesh | world z | surface radius |
+|---|---|---|
+| the hand's BOSS (`ExtrudeGeometry#22`) | −10.76 … −10.36 | **2.667** … 3.300 |
+| the hand's LEAF (`ExtrudeGeometry#20`) | −10.87 … −9.93 | **1.216** … 20.675 |
+| `hourTube` | −12.86 … −4.28 | 2.050 … 2.500 |
+
+126 of 4800 points sampled over the tube's SURFACE lie inside the leaf's metal,
+**0.2885** at the deepest, against the row's 0.15 floor
+(`tools/probe-95-interpenetration.mjs`).
+
+**What makes this worth reading rather than just fixing.** The boss's bore is
+not an accident — `src/main.js:13354` derives it as
+`(HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24)`, and the comment
+above it records exactly why:
+
+> the bore is a 24-gon … its INSCRIBED radius is what faces the tube, so the
+> vertex radius carries the 1/cos(π/24) correction — at a bare 2.65 the facet
+> midpoints dipped to 0.1443 of margin (the expectedContacts floor row caught
+> it).
+
+So this pair has already been measured once, at the boss, with the faceting
+correction derived properly and the instrument credited for catching it. The
+LEAF sits in the same z band — it spans −10.87 … −9.93 and the boss −10.76 …
+−10.36, so the boss is a lip ON the leaf — and it was never bored at all. The
+part that got the careful treatment is not the part that carries the metal.
+
+**This is the shape of every finding in TODO 95**: a member of a pair gets
+scrutiny, and the sibling mesh 0.1 away in z inherits none of it.
+
+### The repair
+
+The leaf must clear the tube by `CLEAR_MARGIN` with the same inscribed-radius
+correction the boss already uses, and the constraint must be written once and
+consumed twice rather than derived at each site. Either
+
+1. **Bore the leaf from the same expression** — `makeHand` cuts leaf and boss
+   from one bore constant, so a future correction cannot land on one and miss
+   the other; or
+2. **Lift the leaf clear in z**, if the hand's stack allows it — but
+   `ALARM_HAND_Z` is a derived budget (§153 consumes this blade's keel height
+   for the reserve sector's plane), so moving it is a layout change, not a
+   local one, and P3's rule applies: solve it in position space or file it.
+
+Acceptance: `expectedContacts` reports `Alarm disc ⇄ Hour wheel` at or above
+0.15 with no waiver, and `probe-95-interpenetration.mjs` finds 0 tube-surface
+points inside the leaf.
+
+## 102. The pusher's return spring is tessellated inside its own running fit
+
+Filed 2026-08-26, out of TODO 95 row 5. The alarm pusher's stem measures in
+CONTACT with the spring wound around it, against a clearance the constants
+derive correctly. **The design is right and the mesh is not** — MODELING.md
+rule 1, and the whole error is one argument at one call site.
+
+`src/main.js:22081` derives the coil's mean radius from the fit it must hold:
+
+```js
+const coilR = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR + wireR;   // 0.32 + 0.05 + 0.066
+```
+
+so the wire's inner surface sits at `coilR − wireR` = 0.370 against a stem of
+0.320 — **exactly `PIVOT_BORE_CLEAR`, 0.05.** Correct, and derived from the
+constraint in the standing-rule-1 way.
+
+Then `src/main.js:22213` builds it with `per: 6` — six path points per turn,
+overriding `makeHelicalSpring`'s own default of 10. The coil's centreline is
+therefore a HEXAGON of circumradius 0.436, and a hexagon's inradius is
+`cos(π/6)` = 86.6% of that:
+
+| `per` | path inradius | wire inner surface | clearance to the stem |
+|---|---|---|---|
+| **6 (as built)** | 0.3776 | 0.3116 | **−0.0084** |
+| 7 | 0.3928 | 0.3268 | +0.0068 |
+| 8 | 0.4028 | 0.3368 | +0.0168 |
+| **10 (the builder's default)** | 0.4147 | 0.3487 | **+0.0287** |
+
+The facet dip eats the entire 0.05 fit and 0.0084 more. `seg: 6` makes the WIRE
+hexagonal in section too, which pushes the surface back out by up to 0.0088 at
+its own facet midpoints — so the two faceting errors partly cancel and the pair
+measures as a graze rather than a clear interference: 0 of 40,140 surface
+samples inside, closest approach **0.0075**, and `meshClearance` reporting
+contact. That near-cancellation is why it reads as noise instead of as a bug.
+
+### The repair
+
+Not "raise `per` until it passes" — `per` is a tessellation count and the
+clearance is a constraint, so the constraint should pick the count:
+
+```js
+// the path polygon's inradius must not eat the running fit: coilR·(1 − cos(π/per)) < PIVOT_BORE_CLEAR
+```
+
+which needs `per ≥ 7` to clear at all and `per ≥ 10` to keep half the fit —
+i.e. the builder's default was already right and the override is the defect.
+Deleting `per: 6` is very likely the whole fix; deriving it is the fix that
+survives the next spring. Check `seg` against the same rule while there, since
+a hexagonal wire misstates the section `stockCensus` reads.
+
+Acceptance: `intraUnit` reports no `alarmPusherStem ⇄ alarmPusherReturnSpring`
+row unwaived, and the derived `per` is asserted at build time against the fit.

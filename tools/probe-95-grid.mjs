@@ -1,5 +1,17 @@
 // TODO 93/94 — an interpenetration witness that trusts NEITHER side.
 //
+// !! VALID ONLY WHERE BOTH MESHES ARE CLOSED, and it does not check. This asks
+// PARITY of both solids, and parity needs a surface that bounds one — so on a
+// mesh with a hole it is exactly as unsound as the witnesses it was written to
+// replace, and it says nothing about which case it is in. Of the six rows it
+// was used to prove in TODO 95, one (`genevaFingerDisc`) is genuinely open, so
+// the probe was entitled to none of that row's answer and happened to be
+// right. Use `probe-95-interpenetration.mjs` instead: it classifies the meshes
+// FIRST, picks the only witness the pair admits, and refuses when there is
+// none. Keep this one for the both-closed case, where its space grid still
+// answers a question the surface sampler does not — where the shared volume
+// IS, not merely that there is one.
+//
 // Two earlier witnesses are both disqualified for this job:
 //   · the vendor's tri-tri distance emits FALSE ZEROS (BUILT §82). Measured on
 //     main at one pose, it reports 0.0000 for pairs `meshClearance` puts 8–10
