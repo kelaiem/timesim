@@ -5678,6 +5678,11 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
     for (let i = 0; i < N; i++) stamp(isOuter(i) ? outer : inner, `link#${i}`);
     for (let i = 0; i <= N; i++) stamp(pin, `rivet#${i}`);
     chainBuf.subBodies = subBodies;
+    // TODO 108 — the ORDER those ranges describe, kept beside them and never
+    // handed to a geometry. chainBuf.idx itself is given to every rebuild's
+    // BufferAttribute, so a BVH build reorders it in place and the authored
+    // order would otherwise be unrecoverable after the first raycast.
+    chainBuf.idxAuthored = chainBuf.idx.slice();
     // ADJACENT pairs are declared expected-overlap, and only adjacent
     // pairs: the chain's articulation is a declared fiction (the frame
     // loop below — up to ~36.3° of per-joint twist a real chain would
@@ -5785,7 +5790,7 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   // §77 — the declared route's table, re-attached to every geometry the
   // rebuild emits (same discipline as `seat`/`links` above: riding the
   // geometry means a rebuild can never serve a stale declaration).
-  G.declareSubBodies(geo, chainBuf.subBodies);   // TODO 108 — the chain is re-tessellated lazily, so boot's weld pass never sees it: the authored index order is captured HERE or nowhere
+  G.declareSubBodies(geo, chainBuf.subBodies, chainBuf.idxAuthored);   // TODO 108 — the order is the one the STAMP wrote, not whatever a BVH has since left in the shared template
   geo.userData.subBodyOverlapOk = chainBuf.subBodyOverlapOk;
   return geo;
 }

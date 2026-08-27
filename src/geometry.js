@@ -219,9 +219,20 @@ export function weldGeometry(geo) {
 // that is not hypothetical: `chainRun` is re-tessellated on every tension
 // change and never passes through it, so the pass alone left the chain's 87
 // bodies unreadable the moment anything raycast them.
-export function declareSubBodies(geo, bodies) {
+// `order` is the authored index order when the caller HOLDS it — which the
+// chain does and must pass, because its index lives in a template buffer
+// shared by every rebuild and handed straight to the geometry: three-mesh-bvh
+// reorders that buffer IN PLACE, so the next rebuild emits from the shuffled
+// template and reading the order back off the geometry snapshots the shuffle
+// faithfully. That failure is worse than no snapshot at all — one EXISTS, so
+// the malformed guard stays quiet while the ranges describe a different
+// tessellation. Measured: `support,meshIntegrity` reads 39/136/0 and
+// `support,axisEntry,meshIntegrity` 493/50/133, the difference being only
+// whether anything rebuilt the chain after a tree was built.
+export function declareSubBodies(geo, bodies, order) {
   geo.userData.subBodies = bodies;
-  snapshotSubBodyIndex(geo);
+  if (order) geo.userData.subBodyIndex = order;   // held by the caller, never handed to a geometry
+  else snapshotSubBodyIndex(geo);
   return geo;
 }
 function snapshotSubBodyIndex(geo) {
