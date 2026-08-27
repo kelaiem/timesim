@@ -1973,13 +1973,13 @@ const CLEARANCE_BUDGETS = [
 export const EXPECTED_CONTACT_FLOORS = [
   {
     a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
-    // TODO 101: the alarm hand's LEAF carries no bore, so the hour tube runs
-    // through it — 0.2885 deep, measured over the tube's surface. The BOSS
+    // TODO 101: the alarm hand's LEAF carries metal where the hour tube runs —
+    // 0.2885 deep, measured over the tube's surface. The BOSS
     // beside it holds 2.667 (the derived 24-gon inscribed-radius correction
     // at main.js:13354); the leaf sits in the same z band and inherited none
     // of it. Long-standing, and invisible until TODO 95's witness: the raw
     // intersection was being published as clearance.
-    waived: 'TODO 101: the alarm hand leaf is unbored — 0.2885 into the tube, boss holds 2.667',
+    waived: 'TODO 101: the alarm hand LEAF carries metal where the tube runs — 0.2885 deep over 126 of 4800 tube-surface samples, and 32 of 216 points on the tube\'s wall band inside it; the BOSS beside it holds the derived 2.667',
     contacts: [
       ['alarmNose', 'alarmHeart'],        // §29 working contact — penetration budget + alarmHandoffs own it
       ['alarmFollowerBar', 'alarmHeart'], // §45 flank sweep owns this at the 0.03 working figure

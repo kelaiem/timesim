@@ -12336,7 +12336,7 @@ reads the bore as correctly sized because **the bore's VERTICES are all at
 against the arbor, which is the one witness that reads faces rather than
 points.
 
-## 101. The alarm hand's leaf carries no bore, so the hour tube runs through it
+## 101. The alarm disc's arm runs through the hour tube — 0.29 u of steel, against a 0.15 floor
 
 Filed 2026-08-26, out of TODO 95 row 6. Found by the pass-through witness, and
 findable by nothing else in the bar: the `expectedContacts` row for
@@ -12358,6 +12358,11 @@ hour tube's own axis, at the entered pose:
 **0.2885** at the deepest, against the row's 0.15 floor
 (`tools/probe-95-interpenetration.mjs`).
 
+Sampled the other way — 216 world points on the tube's wall (r 2.05 / 2.275 /
+2.5 × 72 azimuths) at z = −10.40, inside the leaf's z span — **32 lie in the
+leaf's metal**. So the leaf occupies part of the annulus the tube's wall needs,
+at some azimuths and not others.
+
 **What makes this worth reading rather than just fixing.** The boss's bore is
 not an accident — `src/main.js:13354` derives it as
 `(HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24)`, and the comment
@@ -12370,12 +12375,27 @@ above it records exactly why:
 
 So this pair has already been measured once, at the boss, with the faceting
 correction derived properly and the instrument credited for catching it. The
-LEAF sits in the same z band — it spans −10.87 … −9.93 and the boss −10.76 …
-−10.36, so the boss is a lip ON the leaf — and it was never bored at all. The
-part that got the careful treatment is not the part that carries the metal.
+LEAF sits in the same z band — it spans −10.87 … −9.93 against the boss's
+−10.76 … −10.36, so the boss is a lip ON the leaf — and whatever opening the
+leaf has around that axis is not the boss's 2.667. The part that got the
+careful treatment is not the part that carries the metal.
 
 **This is the shape of every finding in TODO 95**: a member of a pair gets
 scrutiny, and the sibling mesh 0.1 away in z inherits none of it.
+
+### Not yet established, and the fix should start here
+
+**What the leaf's opening actually IS.** Two probes disagree about its inner
+structure and the disagreement is unresolved: sampling the leaf's own surface
+puts its minimum radius about the tube's axis at 1.216, while a parity walk
+outward along one azimuth at z = −10.40 reads METAL at r = 0 and 0.5 and AIR
+from r = 1.0 through 3.0 — which a closed surface cannot do without a boundary
+inside 1.216. One of the two is measuring something other than what it says,
+and **that must be settled before any metal moves**, because the repair
+differs: a leaf with no opening wants a bore, a leaf with a small concentric
+opening wants a bigger one, and a leaf whose opening is offset wants
+re-centring. The collision itself does not depend on which — both witnesses,
+and the 126-sample surface test, agree there is metal where the tube runs.
 
 ### The repair
 
@@ -12383,9 +12403,8 @@ The leaf must clear the tube by `CLEAR_MARGIN` with the same inscribed-radius
 correction the boss already uses, and the constraint must be written once and
 consumed twice rather than derived at each site. Either
 
-1. **Bore the leaf from the same expression** — `makeHand` cuts leaf and boss
-   from one bore constant, so a future correction cannot land on one and miss
-   the other; or
+1. **Cut leaf and boss from one bore constant** in `makeHand`, so a future
+   correction cannot land on one and miss the other; or
 2. **Lift the leaf clear in z**, if the hand's stack allows it — but
    `ALARM_HAND_Z` is a derived budget (§153 consumes this blade's keel height
    for the reserve sector's plane), so moving it is a layout change, not a
