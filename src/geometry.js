@@ -155,6 +155,17 @@ export function weldGeometry(geo) {
   // readers in the tree both build labels), and provenance is exactly what the
   // weld does not change.
   out.type = geo.type;
+  // …and CARRY THE SOURCE SHAPE for the same reason, one step further (TODO
+  // 100). `ExtrudeGeometry` keeps what it was handed in `parameters.shapes`,
+  // which is the only record anywhere of the outline a part was actually cut
+  // from — the builders do not export it, and once the weld drops it the
+  // authored curve is unrecoverable from the mesh. Measured: with this line
+  // absent, 570 of 573 geometries had no readable shape, so a sweep asking
+  // "does any outline cross itself?" answered `0 crossings` while looking at
+  // three parts. It is a reference to a small object the builder already
+  // allocated, so it costs nothing, and like `type` above it is PROVENANCE —
+  // the weld changes vertices, never the curve they were cut from.
+  if (geo.parameters) out.parameters = geo.parameters;
   return out;
 }
 

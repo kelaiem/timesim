@@ -128,6 +128,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
+| `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |
 | `probe-reserve-mesh.mjs` |  | report | Do the power-reserve train's two meshes actually engage? |
