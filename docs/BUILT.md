@@ -18800,3 +18800,78 @@ gate itself. And the header extractor stopped at the first non-comment line,
 which for a shebanged file is line one, so eight files with full headers were
 described as having nothing to say about themselves. The split is **52/68**
 now, not 45/75, and CLAUDE.md's two counts moved with it.
+
+## §176 — the allocator fetches, and says what it consulted (TODO 99)
+
+`tools/claim-item.mjs` exists because "read `max + 1` off the branch you have
+checked out" collided. It reads every ref instead, and its own comment said so:
+*"Every ref we can see, not just this one. This is the whole point."*
+
+**"Can see" was a property of the clone.** It enumerated `refs/heads` and
+`refs/remotes` — whatever this working copy happened to hold — never fetched,
+and never compared that against the remote. The header named the residue it
+knew (an unpushed claim on another machine) and not the larger, more ordinary
+one: a claim that IS pushed, by someone who did everything right, on a ref this
+clone has never pulled.
+
+Measured on the branch that produced TODO 98: the session held **2** of the
+remote's **206** branches, the TODO high-water read **90** against a true
+**97**, and the tool offered 91 — `case-openings`', claimed the same day, with
+92–97 behind it. The same branch then took an add/add on `BUILT-0174.md` at
+merge. The scheme caught both; the cost was two late renumbers, one after the
+PR had been reviewed against the wrong section number. The tool printed
+`5 ref(s)` while meaning it, and nothing in that line distinguishes *"nobody
+has taken 91"* from *"nobody I can see has taken 91."*
+
+### Both halves are needed, and building it is what proved that
+
+TODO 99 listed three fixes cheapest-first and called the third — fetch, behind
+the existing `--no-remote` — *"the one that matches what the tool promises."*
+That was right and not sufficient, which only showed up under test.
+
+The guard was exercised against a deliberately short clone rather than trusted:
+`git clone --single-branch --branch main`, one remote-tracking ref. **The fetch
+did not close the gap.** `--single-branch` writes a restricted
+`remote.origin.fetch`, so `git fetch --all` brings back only that one branch —
+and on that clone the allocator read a high-water of 98 against a true 100 and
+would have handed out an already-claimed number. A fetch fixes the ordinary
+case (an un-fetched clone, which is what this session actually had); it does
+nothing for a clone whose refspec was narrowed at birth.
+
+So the landing is options 1 and 3 together, not 3 alone:
+
+- **It fetches** (`git fetch --quiet --all --prune`) before enumerating, best
+  effort — an offline clone still allocates.
+- **It compares what it consulted against the repository**: `git ls-remote
+  --heads origin` is the repository's answer, `for-each-ref` is ours, and a gap
+  between them raises a warning on stderr naming both counts. Verified firing:
+  *"this clone has 1 remote-tracking ref(s) but origin publishes 208."*
+- **It says which mode ran** on its own report line — `[fetched]`,
+  `[FETCH FAILED — refs may be stale]`, or `[HEAD only (--no-remote)]` — so a
+  number allocated against a stale ref set is as visible as it is dangerous.
+
+`--no-remote` now skips the fetch as well as the remote refs, which is what an
+offline claim wants.
+
+### What is deliberately unchanged
+
+The add/add conflict path. It is the backstop that caught the BUILT collision,
+and no fetch removes the race between two branches claiming seconds apart, or
+an unpushed claim on another machine. The fetch and the warning move collisions
+earlier — from merge to allocation — they do not replace the thing that catches
+the ones that get through. `docs/item-numbers/README.md` now carries both
+residues, told apart, beside the reasons the directory is a directory.
+
+### Instruments
+
+Browser-free and document-only, so the battery cannot see it and the path
+filter takes the job out; `item-numbers.yml` is the gate that matters here.
+
+- `node tools/claim-item.mjs --dry-run` on this repo: `TODO: 99 number(s) seen
+  across 211 ref(s) [fetched], high-water 100`.
+- The same with `--no-remote`: `1 ref(s) [HEAD only (--no-remote)]`, no fetch,
+  no warning.
+- The warning path, on a purpose-built single-branch clone: fires, names both
+  counts, and the allocation it warns about is a real collision (99, already
+  claimed on the true ref set).
+- `node tools/check-item-numbers.mjs` — OK.

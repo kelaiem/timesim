@@ -48,6 +48,28 @@ different numbers touch different paths and merge silently, as they should.
 The claim file is the reservation, not the record: the item's actual content
 lives in `TODO.md` or `docs/BUILT.md` as it always has.
 
+## What the allocator can and cannot see
+
+It reads every ref — both documents on every branch, plus every claim file —
+and since §176 it **fetches first**, because "every ref we can see" used to
+mean every ref the clone happened to hold. Two residues remain, and they are
+different from each other:
+
+- **A short ref set.** A fetch does not always close it: `git clone
+  --single-branch` writes a restricted `remote.origin.fetch`, so `git fetch
+  --all` brings back only that one branch. Measured on such a clone, the
+  allocator read a TODO high-water of 98 against a true 100 and would have
+  offered a number already claimed. That is why the fetch is paired with a
+  comparison against `git ls-remote --heads origin`: the allocator now WARNS
+  when the two disagree, and prints which mode it ran in. **Read that line.**
+- **An unpushed claim on someone else's machine**, and the seconds between one
+  claim and the next. No fetch can close either.
+
+All of them land in the same place — the add/add conflict below — which is the
+backstop and is deliberately unchanged. The fetch and the warning move
+collisions earlier, from merge to allocation; they do not replace the thing
+that catches the ones that get through.
+
 ## What is checked, and where
 
 `tools/check-item-numbers.mjs`, run by `.github/workflows/item-numbers.yml`:
