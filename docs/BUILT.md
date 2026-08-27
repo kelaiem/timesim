@@ -18979,3 +18979,55 @@ outline dedupe, TODO 100 for the class), and it is worth stating as a rule
 rather than an anecdote: `fingerprint` answers *where the parts are*, never
 *what they are made of*. A change that fills or empties a hole is invisible to
 it by construction.
+
+## §178 — the outline check becomes a gate (TODO 100 step 2)
+
+TODO 100 asked whether every cut outline is a simple polygon, and step 1
+measured it: 176 geometries carrying an authored shape, 397 rings, **one**
+crossing — the column driver, closed as §177. Step 2 is turning that
+measurement into something that cannot regress.
+
+**It could only be done in this order.** A gate landing red is how a check gets
+switched off — §54's banner says so — so the movement had to measure clean
+first. §175 cut the fork's five crossings and §177 the driver's 31; only then
+was there a gate to add.
+
+Registered as `outlines` in `inspect.js`'s `CHECKS`, `battery-checks.mjs`'s
+`BATTERY` and `ci-battery.mjs`'s `COSTS` (the harness gates those three against
+each other, which is why all three move together). Unlike `meshIntegrity` and
+`slenderness` beside it, it **gates its rows** rather than reporting them.
+
+Three clauses:
+
+1. **Controls PASS.** A synthetic bowtie must be caught; a square and a holed
+   square must not. Not ceremony — this check has already been wrong once. An
+   earlier signature read the CAP's winding, on the theory that earcut emits
+   mixed handedness for a folded ring. It does not: a bowtie extrudes to no
+   readable cap at all, and a fork-shaped crossing reads exactly `1.000000`.
+   That version swept the movement and reported "372 geometries, 0 folded".
+2. **Zero self-crossing rings** across every authored outline and every hole.
+3. **Every extrude's authored shape is READABLE.** The load-bearing clause. The
+   first version of the sweep read 3 geometries of 573 and answered
+   `0 crossings` — a clean answer to a question it was not asking — because
+   `weldGeometry` dropped the source shape. So an extrude with no readable
+   shape FAILS; a cylinder or a box never had one and is counted and named.
+
+It works at all because `ExtrudeGeometry` keeps what it was handed in
+`parameters.shapes`, and the weld now carries that reference through (§177).
+
+### Instruments
+
+- Battery **36/36 gates pass**, 1334.9 s — the count rose by one, which is this
+  gate. Its own line: *controls PASS, 0 self-crossing rings, and every extrude's
+  authored shape is readable (176 of 573 geometries carry an authored shape,
+  397 rings tested; 176 CylinderGeometry, 109 BoxGeometry, 53 LatheGeometry,
+  42 BufferGeometry, 11 TorusGeometry, 4 TubeGeometry, 2 SphereGeometry never
+  had one)*.
+- **The gate was checked for teeth**, because a gate that cannot fail is worse
+  than none. Its `fails` function was exercised against four payloads: clean → 0
+  failures; a folded outline → 1; a missed extrude → 1; a broken control → 1.
+  All three clauses turn a violation into a failure rather than a note. Beyond
+  that, the controls run live on every battery run, so the catching path is
+  exercised rather than assumed.
+- `tools/probe-outline-simple.mjs` stays as the standalone form, for iterating
+  without a full battery.
