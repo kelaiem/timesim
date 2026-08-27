@@ -18875,3 +18875,90 @@ filter takes the job out; `item-numbers.yml` is the gate that matters here.
   counts, and the allocation it warns about is a real collision (99, already
   claimed on the true ref set).
 - `node tools/check-item-numbers.mjs` — OK.
+
+## §177 — the column driver's bore was solid metal (TODO 103)
+
+TODO 100's sweep found one self-crossing outline in the movement:
+`Alarm switch / alarmColDriver`, 31 crossings, the only one of 176 extrudes.
+Filed as TODO 103 with a sentence saying the folded outline was *"a defect in
+the description, not a measured collision."* Measuring it is what this section
+is, and that sentence was wrong.
+
+### The pivot bore was filled
+
+A folded ring goes to earcut, earcut resolves the fold however it likes, and a
+hole declared inside that ring can land on the wrong side of the result.
+`tools/probe-column-driver.mjs`, 120 samples on a circle at 0.6·boreR:
+
+| | bore interior | annulus just outside it |
+|---|---|---|
+| before | **120/120 FILLED** | 180/180 in metal |
+| after | 0/120 | 180/180 in metal |
+
+The driver had **no hole to turn on**, and turning on `alarmColStud` is the
+part's whole job. The two rows are checked as a pair on purpose: either alone
+passes on a driver that is not there at all.
+
+Nothing downstream could see it, and the reason is worth keeping.
+`INTRA_UNIT_CONTACTS` declares `alarmColDriver ⇄ alarmColStud` as a running fit
+at `PIVOT_BORE_CLEAR` — and a declared joint EXCUSES the pair from the sweep.
+The one instrument positioned to notice a stud passing through solid metal had
+been told the overlap was intentional. §169 wrote this lesson already, about a
+stud that measured 4.347 clear of the part declaring it: *a declared joint is a
+claim*, and a false one buys silence in both directions.
+
+### The construction was unconditionally wrong
+
+The old outline walked the arms in azimuth order and emitted, per arm, its tip
+arc and then a hub arc across to the next arm:
+
+```js
+let a0 = a.az + th, a1 = nxt.az - thN;
+while (a1 < a0) a1 += Math.PI * 2;      // ← the defect
+```
+
+`th = π/2 + asin((hubR − tipR)/reach)` is the correct external-tangent angle
+and is **always greater than π/2**, so `th_a + th_b` always exceeds π. A hub
+arc is exposed in a gap only when the gap is wider than that sum, and a
+driver's gaps sum to 2π — so **at most one gap can ever show hub**, at any
+azimuth, for any number of arms. The loop emitted one arc per arm regardless,
+so with two arms at least one was always spurious, and `a1 < a0` — the geometry
+saying "no hub between these two" — was read as a negative sweep to be
+normalised and drawn the long way round the back. Measured: two hub arcs
+overlapping across ≈164° of hub.
+
+That also closes TODO 103's open question about §163's branch scan, by
+arithmetic rather than measurement. The scan chooses `postAz` for clearance and
+knows nothing about hull spacing, and it does not need to: there is no azimuth
+that makes the old rule right, so there is no constraint to hand it.
+
+**And the assert that was already there did not cover it.** `hubR > tipR` is
+the condition the `asin` needs — it guards the ARITHMETIC — and it passed on a
+folded outline every time. An assert that guards a formula is not an assert
+that guards the shape.
+
+### The cut
+
+The boundary is taken as what the header always called it: the **convex hull of
+the discs** — hub plus one tip disc per arm — sampled and walked as a monotone
+chain. A convex polygon is simple by construction, so no case analysis about
+which gaps show hub is needed and no spacing assumption survives. The cost is
+that tangents are sampled rather than closed-form: under 1.3e-3 u of chord
+error on the largest disc here, against arcs the old code already sampled at 20
+segments. An exact gift-wrap over the discs would remove even that, and is
+worth doing only if a tangent ever becomes a working surface.
+
+A new build warning fires when a disc never reaches the hull — an arm asked for
+and not cut, which no sweep downstream can tell from an arm never asked for.
+
+Net outline area 20.1711 → 23.2578; bbox unchanged at 6.941 × 5.899 × 0.317.
+The part does not reach further, it is simply whole.
+
+### Instruments
+
+- `tools/probe-column-driver.mjs` — **PASS**: bore 0/120 filled, annulus
+  180/180 in metal. New, and the acceptance for this section.
+- `tools/probe-outline-simple.mjs` — the movement's authored outlines:
+  **176 geometries read, 397 rings, 0 self-crossing, 0 extrudes missed**. Was 1
+  before this landing.
+- Boot silent.

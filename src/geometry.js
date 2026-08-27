@@ -2978,28 +2978,74 @@ export function thickenPolyline(nodes, w, name = 'polyline') {
 // each disc's own arc, which is the shape a lever between two bearings has.
 export function makeColumnDriver({ boreR, hubR, arms, slot,
                                    thickness, material = MATS.blueSteel, name = 'columnDriver' }) {
-  // The outline is the HULL OF DISCS: the hub, plus one tip disc per arm. Two
-  // discs are joined by their external tangent, which touches both at the SAME
-  // angle from their centre line — sin γ = (R1 − R2)/d — so the whole boundary
-  // is arcs and tangents, which is the shape a lever between bearings has and
-  // is exact rather than sampled.
+  // The outline is the HULL OF DISCS: the hub, plus one tip disc per arm —
+  // the shape a lever between bearings has.
+  //
+  // TODO 103 — IT USED TO BE CUT BY A RULE THAT CANNOT HOLD. The old
+  // construction walked the arms in azimuth order and, per arm, emitted the
+  // arm's tip arc and then a hub arc across to the next arm's tangent:
+  //
+  //     let a0 = a.az + th, a1 = nxt.az - thN;
+  //     while (a1 < a0) a1 += Math.PI * 2;      // ← the defect
+  //
+  // `th = π/2 + asin((hubR − tipR)/reach)` is the right external-tangent
+  // angle and is ALWAYS greater than π/2, so `th_a + th_b` always exceeds π.
+  // A hub arc is exposed in a gap only when the gap is wider than that sum,
+  // and the gaps around a driver sum to 2π — so **at most one gap can ever
+  // show hub**, whatever the arms' azimuths and however many there are. The
+  // loop emitted one arc per arm regardless, and `a1 < a0` — which is the
+  // geometry saying "no hub between these two" — was read as a negative sweep
+  // to be normalised, so the arc got drawn the long way round the back.
+  // Measured on the shipped two-armed driver: 31 self-intersections, two hub
+  // arcs overlapping across ≈164° of hub (TODO 100's sweep found it; the fork
+  // in §175 was the same class).
+  //
+  // Note what the old assert below did NOT cover. `hubR > tipR` is the
+  // condition the `asin` needs — it guards the ARITHMETIC — and it passed on
+  // a folded outline every time. There is no spacing condition to assert in
+  // its place, because there is no spacing that makes the old rule right.
+  //
+  // So the boundary is taken as what it was always described as: the convex
+  // hull of the discs. Each disc is sampled and the hull of the cloud is
+  // walked (monotone chain), which cannot self-intersect — a convex polygon
+  // is simple by construction — and needs no case analysis about which gaps
+  // show hub. The cost is that the tangents are now sampled rather than
+  // closed-form; at DISC_SEGS the chord error is below 1.3e-3 u on the
+  // largest disc here, against arcs the old code already sampled at 20
+  // segments. An exact gift-wrap over the discs would remove even that, and
+  // would be worth it only if a tangent ever became a working surface.
   const A = arms.slice().sort((a, b) => a.az - b.az);
   for (const a of A) if (hubR <= a.tipR) console.warn(`§163: ${name}'s hub ${hubR.toFixed(3)} is not larger than the tip ${a.tipR.toFixed(3)} of its arm at ${(a.az * 180 / Math.PI).toFixed(1)}° — the tangent construction assumes it`);
-  const pts = [];
-  const arc = (cx, cy, r, a0, a1, segs = 20) => {
-    for (let i = 0; i <= segs; i++) { const a = a0 + (a1 - a0) * (i / segs); pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
-  };
-  for (let i = 0; i < A.length; i++) {
-    const a = A[i], nxt = A[(i + 1) % A.length];
-    const g = Math.asin((hubR - a.tipR) / a.reach), th = Math.PI / 2 + g;
-    const gN = Math.asin((hubR - nxt.tipR) / nxt.reach), thN = Math.PI / 2 + gN;
-    const cx = a.reach * Math.cos(a.az), cy = a.reach * Math.sin(a.az);
-    // round this arm's tip, from its trailing tangent to its leading one
-    arc(cx, cy, a.tipR, a.az - th, a.az + th);
-    // then the hub arc across to the next arm's trailing tangent
-    let a0 = a.az + th, a1 = nxt.az - thN;
-    while (a1 < a0) a1 += Math.PI * 2;
-    arc(0, 0, hubR, a0, a1);
+  const DISC_SEGS = 96;
+  const discs = [{ cx: 0, cy: 0, r: hubR, what: 'hub' }];
+  for (const a of A) discs.push({ cx: a.reach * Math.cos(a.az), cy: a.reach * Math.sin(a.az),
+    r: a.tipR, what: `arm at ${(a.az * 180 / Math.PI).toFixed(1)}°` });
+  const cloud = [];
+  for (const d of discs) for (let i = 0; i < DISC_SEGS; i++) {
+    const t = (2 * Math.PI * i) / DISC_SEGS;
+    cloud.push([d.cx + d.r * Math.cos(t), d.cy + d.r * Math.sin(t)]);
+  }
+  // Monotone chain, wound CCW.
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const sorted = cloud.slice().sort((p, q) => (p[0] - q[0]) || (p[1] - q[1]));
+  const lower = [], upper = [];
+  for (const p of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const p = sorted[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop(); upper.pop();
+  const pts = lower.concat(upper);
+  // A disc that never reaches the hull is an arm swallowed by the body — the
+  // caller asked for a feature that does not exist in the metal, and no sweep
+  // downstream can tell that from a part that was never asked for.
+  for (const d of discs) {
+    const onHull = pts.some(([x, y]) => Math.abs(Math.hypot(x - d.cx, y - d.cy) - d.r) < 1e-6);
+    if (!onHull) console.warn(`§163/TODO 103: ${name}'s ${d.what} does not reach the outline — it is inside the hull of the others, so the arm was asked for and not cut`);
   }
   const shape = new THREE.Shape();
   pts.forEach(([x, y], i) => (i === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y)));
