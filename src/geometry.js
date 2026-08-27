@@ -211,11 +211,23 @@ export function weldGeometry(geo) {
 // to a geometry and no check has run yet. The zero-area and inverted tiers are
 // unaffected — those are per-triangle properties, invariant under a reordering
 // — which is why their counts agree in both orders and only tier 3 moved.
+// The table and the order it indexes are ONE fact, so they are established
+// together: `declareSubBodies` is the only way to say a geometry has
+// sub-bodies. Boot's weldTree pass below is a BACKSTOP for a builder that
+// assigns `userData.subBodies` directly — it fills in a missing snapshot for
+// anything still in the graph — but it cannot reach a mesh built lazily, and
+// that is not hypothetical: `chainRun` is re-tessellated on every tension
+// change and never passes through it, so the pass alone left the chain's 87
+// bodies unreadable the moment anything raycast them.
+export function declareSubBodies(geo, bodies) {
+  geo.userData.subBodies = bodies;
+  snapshotSubBodyIndex(geo);
+  return geo;
+}
 function snapshotSubBodyIndex(geo) {
   if (!geo || !geo.index || !geo.userData || !geo.userData.subBodies) return;
   // Never snapshot an order a BVH has already shuffled: an absent snapshot is
-  // a reported defect, a WRONG one is a silent lie. (Nothing builds a tree
-  // before this pass today; the guard is what keeps that true.)
+  // a REPORTED defect, a wrong one is a silent lie.
   if (geo.boundsTree) return;
   geo.userData.subBodyIndex = geo.index.array.slice();
 }
@@ -5427,7 +5439,7 @@ function mergeGeos(geos, names) {
   for (const g of parts) g.dispose();
   const out = weldGeometry(soup);
   if (out !== soup) soup.dispose();
-  if (subBodies) out.userData.subBodies = subBodies;
+  if (subBodies) declareSubBodies(out, subBodies);   // TODO 108 — the ranges and the index order they mean are one fact
   return out;
 }
 

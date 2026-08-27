@@ -5785,7 +5785,7 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   // §77 — the declared route's table, re-attached to every geometry the
   // rebuild emits (same discipline as `seat`/`links` above: riding the
   // geometry means a rebuild can never serve a stale declaration).
-  geo.userData.subBodies = chainBuf.subBodies;
+  G.declareSubBodies(geo, chainBuf.subBodies);   // TODO 108 — the chain is re-tessellated lazily, so boot's weld pass never sees it: the authored index order is captured HERE or nowhere
   geo.userData.subBodyOverlapOk = chainBuf.subBodyOverlapOk;
   return geo;
 }
