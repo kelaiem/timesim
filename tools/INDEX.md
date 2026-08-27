@@ -4,7 +4,7 @@
 
 # The instruments
 
-128 scripts. **57 are ACCEPTANCE tests** — they decide and exit non-zero.
+129 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
 **71 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -97,6 +97,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-173-jumper.mjs` | §173 | acceptance | §173 ACCEPTANCE — THE SAUTOIR, MEASURED AGAINST WHAT THE CLICK FAILED. |
 | `probe-182-guide-station.mjs` | §182 | report | §182 (TODO 104 tier A) — WHERE IS THE PUSHER'S GUIDE BOSS, RELATIVE TO THE STEM IT IS SUPPOSED TO BEAR? |
 | `probe-182-subbody-index.mjs` | §182 | report | §182 — DOES A BVH BUILD INVALIDATE `userData.subBodies`? |
+| `probe-184-triple.mjs` | §184 | acceptance | THE TIER-SPLIT TRIPLE — is a bearing that is fine ALONE fine TOGETHER? |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
