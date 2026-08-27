@@ -33,6 +33,7 @@ import {
   DIAL_CENTER_BORE_R, DIAL_WALL_HALF, SUBDIAL_INBOARD_CLEAR, // TODO 33: the wells' inboard ceiling and the bore it clears
   SECONDS_HUB_R, RSV_HAND_ARBOR_R, SUBDIAL_BORE_R, SUBDIAL_FLOOR, // §97: the wells' floor-side bore, one source with the radius bound
   BARREL_STEP_DEG, D4, RESERVE_STATION_R, ESCAPE_STEP_DEG, BALANCE_STEP_TARGET_DEG,
+  ALARM_CORNER_R,                             // §94 tier B — the alarm corner's design radius, the third radial row's default
   solveLayout, d4Window,   // §94 tier A: the two-bar's closure window, the d4 handle's refusal
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
@@ -12509,17 +12510,40 @@ const alarmSetWallsOf = (root, label) => {
 // that the dial is a plate the recess lives inside its own thickness. Gated
 // on the measurement rather than deleted: move either the dial's stratum or
 // the setting lane back into contact and this wakes up on its own.
-const ALARM_SET_WALLS = [
+// THE WALL LIST AS A FUNCTION OF THE CORNER, and the split inside it is the
+// FINDING rather than an optimisation. Of the eight rows only THREE move with
+// the corner — the climb, the cock post, and one endpoint of §29's tail
+// corridor. The two that looked fatal are the mesh-measured ones: both roots
+// (`alarmSelectorUnit`, `reserveTrain`) hang off `dialFace` at the origin and
+// read no corner constant anywhere in their builders, so they do not move at
+// all. That is what makes a candidate corner judgeable without rebuilding
+// geometry, and judging one is what the `alarmr` handle needs — the handle
+// was withdrawn once for the want of exactly this, when its refusal read the
+// SHIPPED walls and so accepted five radii that boot noisy.
+//
+// So the traversals are hoisted (they are the expensive half and they are
+// constant), and the list is otherwise written out in its ORIGINAL ORDER:
+// `alarmSetWorst` takes a minimum, so order decides only which row wins a tie,
+// and a report that reorders its ties is a report that moved.
+const _alarmSetWallsMeshed = [
+  ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
+  ...alarmSetWallsOf(reserveTrain, 'reserve train'),
+];
+const alarmSetWallsAt = (geom) => {
+  // The climb stands at the corner's OWN radius on the corner's azimuth —
+  // `ALARM_CORNER_W_AZ` is a function of ALARM_LOCAL_AZ, not of the radius, so
+  // it is the one part of this that a candidate does not move.
+  const wx = Math.cos(ALARM_CORNER_W_AZ) * geom.r, wy = Math.sin(ALARM_CORNER_W_AZ) * geom.r;
+  return [
   // Rods that pierce every lane, so they carry no z gate.
-  { name: 'winding climb', x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.45, lo: -Infinity, hi: Infinity },
-  { name: 'arbor cock post', x: alarmWorld.x + alarmDir.x * 1.4, y: alarmWorld.y + alarmDir.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
+  { name: 'winding climb', x: wx, y: wy, r: 0.45, lo: -Infinity, hi: Infinity },
+  { name: 'arbor cock post', x: geom.world.x + geom.u.x * 1.4, y: geom.world.y + geom.u.y * 1.4, r: 0.4, lo: -Infinity, hi: Infinity },
   // dial-local → world is (−Lx, +Ly) under the dialFace Y-flip
   { name: 'reserve well ring', kind: 'ring', x: -RESERVE_LOCAL.x, y: RESERVE_LOCAL.y, R: reserveWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + RESERVE_RECESS }, // §153 — this well's own shallow depth
   { name: 'seconds well ring', kind: 'ring', x: -SECONDS_LOCAL.x, y: SECONDS_LOCAL.y, R: secondsWellR, halfW: DIAL_WALL_HALF,
     lo: Z_DIAL - DIAL_T, hi: Z_DIAL - DIAL_T + SUBDIAL_RECESS },
-  ...alarmSetWallsOf(alarmSelectorUnit, '§34 selector'),
-  ...alarmSetWallsOf(reserveTrain, 'reserve train'),
+  ..._alarmSetWallsMeshed,
   // §29's two walls, which until now were asserted 500 lines DOWNSTREAM of the
   // route they constrain — the half of "one list, used twice" that Layer 1's
   // reverted bearing sweep paid for: it traded away a §29 feeler clearance
@@ -12528,9 +12552,14 @@ const ALARM_SET_WALLS = [
   // check moved rather than a new one invented.
   { name: '§29 pawl tail corridor', kind: 'seg', r: ALARM_TAIL_RUN_HALFW,
     lo: ALARM_TAIL_RUN_Z - ALARM_TAIL_RUN_T / 2, hi: ALARM_TAIL_RUN_Z + ALARM_TAIL_RUN_T / 2,
-    ax: -_pivotDial.x, ay: _pivotDial.y, bx: ALARM_WIND_X, by: ALARM_WIND_Y },
+    ax: -_pivotDial.x, ay: _pivotDial.y, bx: wx, by: wy },
   { name: '§29 feeler bracket', x: -_uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PIVOT_R, r: 0.31, lo: -Infinity, hi: Infinity },
-];
+  ];
+};
+// The shipped list is that function at the built corner — one list, so the
+// boot assert and the bearing solve cannot drift apart, which is what the
+// original comment on §29's two rows was already protecting.
+const ALARM_SET_WALLS = alarmSetWallsAt(ALARM_CORNER_GEOM);
 // The members, with EXACT tips. i1b is the compound rider — same station as
 // i1, its own lane, its own tip (the §29 feeler assert's own formula).
 const ALARM_SET_LANE_LO = ALARM_SET_Z - ALARM_SET_T / 2, ALARM_SET_LANE_HI = ALARM_SET_Z + ALARM_SET_T / 2;
@@ -12559,9 +12588,11 @@ const alarmSetClearance = (m, w) => {
   return (w.kind === 'ring' ? Math.abs(d - w.R) - w.halfW : d - w.r) - m.tip;
 };
 // The route's worst wall clearance — the solve's objective, one number.
-const alarmSetWorst = (route) => {
+// Defaulted exactly like `alarmSetRouteAt`'s geometry: every existing caller
+// asks about the built movement and is untouched; only a shadow passes a list.
+const alarmSetWorst = (route, walls = ALARM_SET_WALLS) => {
   let worst = { clr: Infinity, m: null, w: null };
-  for (const m of alarmSetMembersAt(route)) for (const w of ALARM_SET_WALLS) {
+  for (const m of alarmSetMembersAt(route)) for (const w of walls) {
     const clr = alarmSetClearance(m, w);
     if (clr < worst.clr) worst = { clr, m: m.name, w: w.name };
   }
@@ -12588,34 +12619,46 @@ const alarmSetWorst = (route) => {
 // the distance i1 → arbor that the dogleg has to close. So as ALARM_CD grows
 // and the arbor walks outward, a bearing exists that both clears the walls
 // and keeps the chain in reach, long after 18° has stopped doing either.
-const ALARM_SET_BEARING_SOLVED = (() => {
-  const incumbent = alarmSetRouteAt(_setB);
-  if (incumbent && alarmSetWorst(incumbent).clr >= CLEAR_MARGIN) return _setB; // shipped case: bit-exact
+// THE SOLVE ITSELF, as a function of the corner, RETURNING its diagnosis
+// instead of announcing it. That split is the whole point: the built corner
+// must still speak at boot (rule 6), and a candidate corner must be judgeable
+// in SILENCE — a shadow that warns is a shadow the viewer hears. So the
+// warnings move to the shipped evaluation below, and every `verdict` string
+// here is data a refusal can read.
+const alarmSetBearingAt = (geom) => {
+  const walls = alarmSetWallsAt(geom);
+  const incumbent = alarmSetRouteAt(_setB, geom);
+  if (incumbent && alarmSetWorst(incumbent, walls).clr >= CLEAR_MARGIN)
+    return { rad: _setB, ok: true, verdict: 'incumbent' }; // shipped case: bit-exact
   let best = null;
   for (let deg = 0; deg < 360; deg += 0.5) {
-    const route = alarmSetRouteAt(deg * DEG2RAD);
+    const route = alarmSetRouteAt(deg * DEG2RAD, geom);
     if (!route) continue;                       // the dogleg cannot close at this bearing
-    const w = alarmSetWorst(route);
+    const w = alarmSetWorst(route, walls);
     if (!best || w.clr > best.clr) best = { ...w, rad: deg * DEG2RAD, deg };
   }
-  if (!best) {
+  // The incumbent STANDS in both failure cases. Taking the least-bad bearing
+  // would be exactly §35's mistake: paying for packaging out of a clearance
+  // nobody chose to spend.
+  if (!best) return { rad: _setB, ok: false, verdict: 'no-route' };
+  if (best.clr < CLEAR_MARGIN) return { rad: _setB, ok: false, verdict: 'no-clear', best };
+  return { rad: best.rad, ok: true, verdict: 're-solved', best };
+};
+const ALARM_SET_BEARING = alarmSetBearingAt(ALARM_CORNER_GEOM);
+const ALARM_SET_BEARING_SOLVED = ALARM_SET_BEARING.rad;
+{
+  const { verdict, best } = ALARM_SET_BEARING;
+  if (verdict === 'no-route')
     console.warn(`alarm setting: the dogleg closes at NO bearing — the arbor is beyond `
       + `i2's reach all the way round; this is a LAYOUT problem, not a bearing one`);
-    return _setB;
-  }
-  if (best.clr < CLEAR_MARGIN) {
-    // Refused rather than applied. Taking the least-bad bearing would be
-    // exactly §35's mistake: paying for packaging out of a clearance nobody
-    // chose to spend. Boot stays loud and the incumbent stands.
+  else if (verdict === 'no-clear')
     console.warn(`alarm setting: NO bearing clears every wall — best is ${best.deg}° at `
       + `${best.clr.toFixed(2)} (worst wall: ${best.m} vs ${best.w}); keeping the incumbent `
       + `${(_setB / DEG2RAD).toFixed(0)}° and leaving this red — a LAYOUT problem, not a bearing one`);
-    return _setB;
-  }
-  console.warn(`alarm setting: the incumbent bearing ${(_setB / DEG2RAD).toFixed(0)}° no longer serves this `
-    + `layout — re-solved to ${best.deg}°, which clears every wall by ${best.clr.toFixed(2)}`);
-  return best.rad;
-})();
+  else if (verdict === 're-solved')
+    console.warn(`alarm setting: the incumbent bearing ${(_setB / DEG2RAD).toFixed(0)}° no longer serves this `
+      + `layout — re-solved to ${best.deg}°, which clears every wall by ${best.clr.toFixed(2)}`);
+}
 // ————— THE CORNER'S INTERIOR BOUNDS, AS ONE FUNCTION OF ITS RADIUS —————
 //
 // `solveKeyless` owns exactly one bound for a spec'd corner — the stem must
@@ -12641,17 +12684,43 @@ const alarmCornerWarnsAt = (r) => {
     out.push(`alarm corner ${r.toFixed(2)}: the stem has no length inside the case rim `
       + `(plateR + 2.2 − corner = ${(plateR + 2.2 - r).toFixed(2)})`);
   const geom = alarmCornerGeomAt(r);
-  // 2. The setting dogleg must CLOSE. Past a corner of ≈ 19.9 the two-circle
-  //    solve has no intersection at any bearing and the route is not a route —
-  //    a hard failure, not a warning, which is why it is reported first.
-  if (!alarmSetRouteAt(ALARM_SET_BEARING_SOLVED, geom))
-    out.push(`alarm corner ${r.toFixed(2)}: the setting dogleg cannot close at the solved bearing `
-      + `— the arbor is outside the chain's reach entirely, so there is no route`);
+  // 2. THE BOUND THAT ACTUALLY BINDS, and the one this function shipped
+  //    without: the setting bearing must have somewhere to go. The build
+  //    re-solves the bearing for whatever corner it is given, so asking about
+  //    the SHIPPED bearing — which is what the first cut of this function did
+  //    — judges a route the candidate would never use. It has to be the
+  //    candidate's own solve, walls included, which is why `alarmSetWallsAt`
+  //    exists at all.
+  //
+  //    Measured, this is the whole gap: five of twelve radii cleared bounds 1
+  //    and 3 and booted with "NO bearing clears every wall". A refusal that
+  //    misses this reads as PERMISSION, because whatever a drag accepts a
+  //    viewer will Apply.
+  const bearing = alarmSetBearingAt(geom);
+  if (bearing.verdict === 'no-route')
+    out.push(`alarm corner ${r.toFixed(2)}: the setting dogleg closes at NO bearing `
+      + `— the arbor is outside the chain's reach all the way round, so there is no route`);
+  else if (bearing.verdict === 'no-clear')
+    out.push(`alarm corner ${r.toFixed(2)}: NO bearing clears every wall — best is `
+      + `${bearing.best.deg}° at ${bearing.best.clr.toFixed(2)} against ${CLEAR_MARGIN} `
+      + `(worst: ${bearing.best.m} vs ${bearing.best.w})`);
+  // A RE-SOLVE IS NOT A FAILURE, AND IT IS STILL SOMETHING TO SAY. The build
+  // succeeds and clears, so this is never a refusal — but it warns at boot
+  // (rule 6), and a viewer about to Apply is entitled to know that this corner
+  // moves the setting bearing off its shipped 18°. Measured: it is what
+  // separates r 10 — which the first cut of this function accepted in total
+  // silence — from the radii that genuinely change nothing.
+  else if (bearing.verdict === 're-solved')
+    out.push(`alarm corner ${r.toFixed(2)}: the setting bearing no longer serves at `
+      + `${(_setB / DEG2RAD).toFixed(0)}° and re-solves to ${bearing.best.deg}° `
+      + `(clearing ${bearing.best.clr.toFixed(2)}) — the movement builds, but not with the shipped route`);
   // 3. …and i2 must be big enough to span i1 → arbor, which grows with the
-  //    corner while D12 + D2P stays fixed.
+  //    corner while D12 + D2P stays fixed. Measured at the bearing this corner
+  //    would actually be built with, for the same reason as bound 2.
+  const b = bearing.rad;
   const i1 = {
-    x: (geom.u.x * Math.cos(ALARM_SET_BEARING_SOLVED) + geom.perp.x * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
-    y: (geom.u.y * Math.cos(ALARM_SET_BEARING_SOLVED) + geom.perp.y * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
+    x: (geom.u.x * Math.cos(b) + geom.perp.x * Math.sin(b)) * ALARM_SET_DW1,
+    y: (geom.u.y * Math.cos(b) + geom.perp.y * Math.sin(b)) * ALARM_SET_DW1,
   };
   const reach = Math.hypot(geom.world.x - i1.x, geom.world.y - i1.y);
   const floor = Math.ceil((2 * reach / ALARM_SET_MODULE - ALARM_SET_I1_TEETH - ALARM_SET_PINION_TEETH) / 2);
@@ -13522,6 +13591,12 @@ alarmRotor.add(alarmArborRod);
 // replacement is a small COCK from the base plate: a post one arbor-bearing
 // outboard, an arm across, and a bush the rod runs in just above the pinion.
 // Static — it lives in the labelled unit but NOT in the rotor.
+// The setting arbor's bearing bush, hoisted to module scope because §179's
+// `alarmr` handle rings THIS bush — the corner's own bearing, the part a drag
+// actually grips — so its radius has one definition rather than a ring and a
+// bush that agree by coincidence.
+const ALARM_ARBOR_BUSH_R = 0.85;
+
 {
   const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD };
   const postXY = { x: alarmWorld.x + u.x * 1.4, y: alarmWorld.y + u.y * 1.4 };
@@ -13539,7 +13614,7 @@ alarmRotor.add(alarmArborRod);
   const COCK_T = STOCK_MIN_U;
   const BEVEL_UNDERSIDE = -6.158; // the §25 C corner bevel's lowest tooth extent, measured on the built gear
   const BUSH_Z = BEVEL_UNDERSIDE - CLEAR_MARGIN - COCK_T / 2;
-  const BUSH_R_OUT = 0.85;
+  const BUSH_R_OUT = ALARM_ARBOR_BUSH_R;
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, -2 - BUSH_Z, 10), MATS.nickel);
   post.rotation.x = Math.PI / 2;
   post.position.set(postXY.x, postXY.y, (-2 + BUSH_Z) / 2);
@@ -28235,6 +28310,56 @@ const RECONF_HANDLES = [
       return { warns, refuse: null };
     },
   },
+  // §94 tier B — the ALARM CORNER's radius, the third radial row, and the one
+  // that took two attempts. `alarmcrown` already drags this corner's AZIMUTH;
+  // this is its missing radial half, so the station is finally expressed the
+  // way every other one is — an angle you can drag and a distance you can too.
+  //
+  // THE SPLIT BETWEEN refuseAt AND shadow IS THE WHOLE DESIGN, and the first
+  // attempt got it wrong by having only the first half. §94 tier A's rule is
+  // that a refusal is never READ FROM a shadow-solve, and the reason is
+  // fallback: `solveLayout` falls back to `D4`, so a shadow of an impossible
+  // value returns the DEFAULT layout and the ghost is a proposal nobody made.
+  // `alarmSetBearingAt` falls back the same way — the incumbent bearing stands
+  // — so the same trap is live here. What makes it safe is that it returns a
+  // VERDICT beside the fallen-back angle: the row reads the solve's own
+  // statement that it fell back, never the value it fell back to.
+  //
+  //  · refuseAt is CLOSED FORM and covers only what leaves the build with
+  //    nothing to stand on. The dogleg's two-circle solve closes for SOME
+  //    bearing iff i1's circle of radius DW1 about the centre can put the
+  //    arbor within [|D12 − D2P|, D12 + D2P] — an interval intersection, no
+  //    solve, `d4Window`'s shape one station over.
+  //  · shadow carries `alarmCornerWarnsAt`, which since this landing includes
+  //    the bound that actually binds: the wall scan at the CANDIDATE's own
+  //    re-solved bearing. Five of twelve radii were accepted in silence
+  //    before that bound existed, which is why the row was withdrawn once
+  //    already. They build — loudly — so they are amber, not refused;
+  //    refusing a movement that boots is the over-strict half of the same
+  //    dishonesty, and `probe-alarmr-handle.mjs` checks both directions.
+  { kind: 'alarmr', specKeyName: 'alarmr', urlKey: 'alarmr', def: ALARM_CORNER_R, radial: true,
+    // The ring circles the corner's OWN bearing bush, +2 like every other
+    // radial row rings its wheel — the reserve's w2 arbor is the template.
+    anchor: () => ({ x: 0, y: 0 }), grabAt: () => alarmWorld, grabR: () => ALARM_ARBOR_BUSH_R + 2,
+    // The grab rides the corner ARBOR, whose distance from the centre is the
+    // radius plus the stem's throw — so the spec is the reading minus it.
+    toSpec: (dist) => dist - CROWN_PULL_DIST,
+    label: (v, def) => `proposed: alarm corner ${v.toFixed(2)} (was ${def.toFixed(2)})`,
+    refuseAt: (v) => {
+      if (!(plateR + 2.2 - v > 0))
+        return `the stem has no length inside the case rim at ${v.toFixed(2)} `
+          + `— plateR + 2.2 is ${(plateR + 2.2).toFixed(2)}, so the corner must stay inside it`;
+      const arborR = v + CROWN_PULL_DIST;
+      const dLo = Math.abs(arborR - ALARM_SET_DW1), dHi = arborR + ALARM_SET_DW1;
+      const rLo = Math.abs(ALARM_SET_D12 - ALARM_SET_D2P), rHi = ALARM_SET_D12 + ALARM_SET_D2P;
+      return (Math.max(dLo, rLo) <= Math.min(dHi, rHi)) ? null
+        : `the setting dogleg cannot close at ${v.toFixed(2)} at ANY bearing — the arbor sits `
+          + `${dLo.toFixed(2)}–${dHi.toFixed(2)} from i1 as the bearing sweeps, and the chain `
+          + `spans only ${rLo.toFixed(2)}–${rHi.toFixed(2)}`;
+    },
+    // The shipped function, called — not a re-implementation of it (TODO 59).
+    shadow: (v) => ({ warns: alarmCornerWarnsAt(v), refuse: null }),
+  },
   // §97 — the WELL RADIUS row, and its one honest concession stated: a
   // radius has no arbor. The ring sits on the SECONDS well (whose centre IS
   // the fourth wheel's real arbor) at the well's own radius, so what is
@@ -28470,8 +28595,9 @@ const RECONF_HINTS = {
   fourth: 'Fourth wheel — drag it toward or away from the centre to move the small-seconds station',
   reserve: 'Reserve wheel — drag it toward or away from the centre to move the power-reserve station',
   subdial: 'Sub-dial wells — drag the seconds well’s ring to resize both wells',
+  alarmr: 'Alarm corner — drag it toward or away from the centre to move the alarm setting station',
 };
-const RECONF_HINT_IDLE = 'Nine rings — each one is a handle';
+const RECONF_HINT_IDLE = 'Ten rings — each one is a handle';
 // The rim handles' meshes, by the same objects their hit tests use — the
 // pusher by name because its cap is what a finger goes for, while the hit
 // test generously accepts the whole switch unit.
@@ -28629,7 +28755,7 @@ function reconfShowStatus() {
     // translates. §93 names the FUSEE rather than "barrel": the ring sits on
     // the fusee and great wheel, which is the part a viewer sees move.
     span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
-      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the sub-dial ring, the escape wheel or the balance');
+      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the sub-dial ring, the escape wheel or the balance');
     applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
