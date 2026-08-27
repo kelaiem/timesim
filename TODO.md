@@ -17,6 +17,9 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
+| 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
+| 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and OPEN, and its repair was SEARCHED and the obvious fix REFUTED** (`tools/probe-90-lockread.mjs`, three controls passing): the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. The beak cannot simply be moved: its station is QUANTIZED to whole column pitches (60°, the parity rule `ALARM_LINK_BEAK_OFF` already snaps to), the exact Thales optimum (φ 44.57°, gain **1.0000**) is mid-flank and so illegal, and both legal neighbours are taken — **−60° is the link beak's own station** (riser 0.0000) and **+60° wants a 0.6723 chamfer against a 0.6327 ceiling** and stands 0.1992 from the driver pawl. So the repair is a FOLD (an intermediate rocker at the free φ 0 station), not a re-siting. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
@@ -11347,3 +11350,317 @@ dart and nothing measures a horn-to-pin contact.
 cylinder with no dart and no matching crescent on the safety roller, and the
 horns are drawn but nothing measures a horn-to-pin contact. That is a separate
 item about the safety action, not about how the lever is cut.
+
+## 99. `claim-item.mjs` cannot see a pushed claim the clone never fetched — CLOSED (§176)
+
+The item-number scheme replaced "read the max and add one" because that rule
+reads ONE branch and collides silently (`docs/item-numbers/README.md` has the
+history). `tools/claim-item.mjs` reads every ref instead, and its own comment
+says so: *"Every ref we can see, not just this one. This is the whole point."*
+
+**"Can see" is a property of the clone, not of the repository**, and the tool
+never says which it means. It enumerates with
+
+```js
+git('for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/remotes')
+```
+
+— whatever this working copy happens to have fetched. It never fetches, and it
+never compares that against the remote. The header warns about the residue it
+does know: *"It still cannot see an UNPUSHED claim on someone else's machine."*
+The one it does not name is larger and more ordinary: a claim that IS pushed,
+by someone who did everything right, sitting on a ref this clone has never
+pulled.
+
+### Measured, 2026-08-26 — both collisions on one branch
+
+A Claude Code session starts from a clone carrying the branches it needs. On
+`claude/pallet-fork-geometry-dvs11s` that was **2 refs**; `git ls-remote
+--heads origin | wc -l` said **206**. The tool printed its ref count honestly
+and was believed:
+
+| | with 4 refs visible | with all 209 |
+|---|---|---|
+| TODO high-water | 90 | **97** |
+| offered | **91** | 98 |
+
+TODO 91 was `case-openings`' — *"The plate seat ledge projects into the
+dial-side keyless works"* — claimed the same day, with 92–97 behind it. The
+same session then hit it a second time from the other direction: `BUILT 174`
+was genuinely free when claimed and `worktree-todo-triage` merged its own 174
+first, so `docs/item-numbers/BUILT-0174.md` came back as an add/add conflict at
+merge.
+
+**The scheme worked both times** — that is what the file-per-number path is
+for, and the second collision was caught by git exactly as designed. What it
+cost was two renumbers late, one of them after a PR had been opened and
+reviewed against the wrong section number. The first was avoidable at the point
+of claiming and was not avoided, because nothing in the output distinguishes
+*"nobody has taken 91"* from *"nobody I can see has taken 91."*
+
+### The fix, and the constraint it derives from
+
+A claim is a statement about the REPOSITORY, so it must be checked against the
+repository — not against a local cache of it. Three options, cheapest first;
+the third is the one that matches what the tool promises.
+
+1. **Say what was actually consulted.** Print the ref count beside
+   `git ls-remote --heads origin | wc -l` and warn loudly when they differ.
+   Cheap, honest, and would have caught this: `5 ref(s)` against 206 is not a
+   number anyone reads past twice. It still allocates the wrong number.
+2. **Refuse.** Exit non-zero when the local ref set is materially short of the
+   remote, with `--no-remote` (which already exists) as the documented escape
+   for an offline claim. Correct, and annoying in exactly the case the escape
+   hatch covers.
+3. **Fetch first.** `git fetch --quiet --all` before enumerating, behind the
+   existing `--no-remote` opt-out. This is what "every ref we can see" already
+   claims to mean, and it makes the claim true rather than merely honest.
+
+Whichever lands, `docs/item-numbers/README.md`'s residue section gains the
+unfetched-ref case beside the unpushed one, and `claim-item.mjs`'s header
+stops implying the ref set is the repository's.
+
+### CLOSED by §176 — and the item's own ranking was wrong
+
+Options 1 and 3 both landed, because building 3 alone showed it insufficient.
+Exercised against a deliberately short clone (`git clone --single-branch`, one
+remote-tracking ref), **the fetch did not close the gap**: `--single-branch`
+writes a restricted `remote.origin.fetch`, so `git fetch --all` returns only
+that branch, and the allocator read a high-water of 98 against a true 100 —
+it would have handed out an already-claimed number. This item called option 3
+"the one that matches what the tool promises" and option 1 merely "honest";
+in fact option 1 is the only one that covers a clone narrowed at birth, which
+is a shape this repo will keep meeting. Both shipped: fetch for the ordinary
+un-fetched clone, and a `git ls-remote` comparison that WARNS with both counts
+when they disagree, plus a `[fetched]` / `[FETCH FAILED]` /
+`[HEAD only (--no-remote)]` note on the report line.
+
+**Not in scope.** The add/add conflict path stays exactly as it is. It is the
+backstop that caught the BUILT collision, and no amount of fetching removes the
+race between two branches claiming between one fetch and the next — see
+`docs/item-numbers/README.md`.
+
+## 100. Nothing asks whether a cut outline is sound — STEPS 1 AND 2 DONE (§178)
+
+`makePalletFork`'s outline crossed itself for as long as the part existed —
+**five self-intersections**, measured at the commit before §175 with a one-line
+outline export patched into a worktree, the worst at (−0.9274, −8.0514). The
+cause was one comparison: a slot `notchHW` = t·0.7 half-wide broached across a
+station where the bar was `leverHW` = t·0.6 half-wide, so the walls it was meant
+to leave had negative thickness and the outline inverted through itself.
+
+**Every gate passed it, before and after.** That is the item. A
+self-intersecting `THREE.Shape` triangulates, extrudes, welds, renders and
+sweeps like any other, and each instrument misses it for its own reason:
+
+- `slenderness` measures a mesh's length against its section AS A WHOLE, so a
+  local pinch does not register — `Pallet fork` never appeared in its
+  over-ceiling rows at all.
+- `stockFloor` asks whether a section is above the floor, not whether the
+  outline that produced it is a simple polygon.
+- `meshIntegrity` reports zero-area and INVERTED bodies, and the fork was
+  neither: measured on the merged tree, the four inverted rows are
+  `LatheGeometry` and `BufferGeometry` (TODO 75's winding class), not a crossed
+  extrude cap.
+- `intraUnit` and the pair sweeps compare parts to other parts. A part folded
+  through itself is one mesh and never compared to anything.
+- `fingerprint` hashes per-unit BOUNDING BOXES at 12 poses, so it cannot see
+  the shape inside the box at all.
+
+An eye caught it. That is not a control.
+
+### What exists now, and what it does not cover
+
+§175 added two guards, and both are the fork's alone: a build-time assert in
+`makePalletFork` over every non-adjacent pair of its sampled outline, and the
+same test as a gate in `tools/probe-fork-blank.mjs`.
+
+The population they do not cover: **30 `ExtrudeGeometry` call sites in
+`src/geometry.js` and 23 more in `src/main.js`**, built from 29 `THREE.Shape`
+outlines in the geometry module alone. None is checked. Whether any of them
+crosses is UNMEASURED — the fork is the only instance anyone has looked at,
+and it was found by eye rather than by search, so the count of others is
+unknown rather than zero.
+
+### MEASURED, 2026-08-27 — the class is one more part, not the movement
+
+`tools/probe-outline-simple.mjs` is step 1, and it needed no builder changes:
+`ExtrudeGeometry` keeps what it was handed in `parameters.shapes`, so the
+AUTHORED curve rides on every built mesh. One line in `weldGeometry` carries
+that through the weld (§81 rebuilt the geometry and dropped it, the same class
+as item 80's `userData` loss); before that line, **570 of 573 geometries had no
+readable shape** and the sweep answered `0 crossings` while looking at three
+parts.
+
+With it, the sweep covers the whole extrude population and accounts for the
+rest: **176 geometries read, 397 rings tested, 0 extrudes missed** — the 397
+unreadable are Cylinder/Box/Lathe/Buffer/Torus/Tube/Sphere, which never had an
+authored shape. The probe FAILS on a missed extrude for exactly that reason.
+
+**One part crosses itself: `Alarm switch / alarmColDriver`, 31 times** — filed
+as item 103. So the fork was not unique and the class is real, but it is two
+parts and not a movement-wide rot.
+
+The weld line is the only source change the measurement needed, and it is
+inert: battery **35/35**, fingerprint `1380256309` — the same hash as the tree
+before it — and `--report` diffed against that tree is 18 of 22 checks
+BYTE-IDENTICAL with the other four differing only in `*Ms`. Every non-timing
+field matches. It carries a reference to an object the builder already
+allocated and touches no vertex, which is what that diff says rather than
+assumes.
+
+**A signature that does not work, recorded because it looked obvious.** The
+first cut of the probe read the CAP's triangulation instead — earcut winds a
+simple polygon consistently, so |Σ signed| / Σ|signed| over the cap should be
+1 for a sound outline and below 1 for a folded one. It is not. Measured, a
+bowtie extrudes to no readable cap at all and a fork-shaped crossing reads
+exactly 1.000000: earcut quietly reinterprets a self-crossing polygon rather
+than emitting mixed windings. That version swept the movement and reported
+"372 geometries, 0 folded" — a clean answer to a question it was not asking.
+Its controls caught it, which is the whole reason it had them.
+
+### The work
+
+1. **Measure the class before fixing it.** DONE, above. Every builder that emits a
+   `THREE.Shape` exports its sampled outline the way `makePalletFork` now does
+   (`userData.blankOutline` — MODELING.md rule 1's pattern), and one probe
+   sweeps the scene testing each for self-intersection. That measurement is the
+   real deliverable: it says whether this is one part's defect or a class.
+2. **Then gate it**, as a battery check over every exported outline rather than
+   as an assert per builder. A `THREE.Shape` that crosses itself is not a
+   shape, and unlike a clearance there is no budget and no waiver — it is not a
+   tolerance, so the gate has no dial to widen. **DONE — §178.** `outlines`
+   gates controls, crossings and coverage; battery 36/36, and its `fails`
+   function was exercised against a folded outline, a missed extrude and a
+   broken control to prove it can actually fail.
+3. **And ask the question one level up**, which is what would have caught the
+   fork at design time rather than at inspection: a builder that cuts a slot
+   into a member must assert the member is wide enough to hold it. The fork's
+   version of that constraint is `mouthHW = notchHW + leverHW` (§175 — the two
+   horns together are as thick as the bar they continue). The general form is
+   that a slot's half-width plus its walls is a bound on the outline at that
+   station, and it is checkable at build wherever both numbers exist.
+
+**Scope note.** The XY dilation of the extrude's bevel is item 84's and is not
+this: 84 is about a correct outline shipping fatter than it was cut, this is
+about an outline that was never a polygon.
+
+## 103. `makeColumnDriver` wraps a hub arc a full turn, and it FILLED THE PIVOT BORE — CLOSED (§177)
+
+Found by TODO 100's measurement pass — `tools/probe-outline-simple.mjs`, the
+first sweep that has ever asked whether the movement's authored outlines are
+simple polygons. **`Alarm switch / alarmColDriver` crosses itself 31 times.**
+It is the only one of 176 extrudes that does, and it is a second instance of
+the class §175 fixed on the pallet fork: a construction that assumes a spacing
+it never checks.
+
+### What is built
+
+`makeColumnDriver` (`src/geometry.js`) cuts its outline as the HULL OF DISCS —
+the hub, plus one tip disc per arm, joined by their external tangents. Per arm
+it emits the arm's tip arc and then a hub arc across to the next arm:
+
+```js
+let a0 = a.az + th, a1 = nxt.az - thN;
+while (a1 < a0) a1 += Math.PI * 2;
+arc(0, 0, hubR, a0, a1);
+```
+
+`th = π/2 + asin((hubR − tipR)/reach)` is the correct external-tangent angle,
+and is always **greater than 90°**. So when two arms sit closer together than
+`th + thN`, their tangent points CROSS: `a1 < a0` is not a wrap, it is the
+geometry saying *the hub is not exposed between these two arms at all*. The
+`while` loop reads that as a negative sweep to be normalised and adds a full
+turn, drawing the arc the long way round the back instead of omitting it.
+
+### Measured, 2026-08-27
+
+The driver has two arms — the pin slot at `az = 0` and the pawl post at
+`postAz`, chosen by §163's branch scan, which currently lands about 40° away.
+Sampled off the built mesh (`geometry.parameters.shapes`, 85 points):
+
+| | |
+|---|---|
+| tip disc, post arm | r ≈ 7.05–7.55, az −43° … −35° |
+| tip disc, slot arm | r ≈ 5.49–5.87, az −5.4° … +5.4° |
+| hub arc 1 | r = 0.9667, sweeping ≈ 65° → 265° |
+| hub arc 2 | r = 0.9667, sweeping ≈ 101° → 317° |
+| overlap | ≈ 164° of hub drawn **twice**, in opposite directions |
+| self-intersections | **31** |
+
+Both hub arcs run across the back of the hub, so the outline doubles back
+through itself and the boundary is not a simple closed curve.
+
+### Why nothing saw it
+
+The same reasons TODO 100 catalogues, plus one specific to this part: the
+builder DOES assert something about its arms —
+
+```js
+if (hubR <= a.tipR) console.warn(`§163: ${name}'s hub … is not larger than the tip …`);
+```
+
+— which is the condition the TANGENT formula needs (`asin` of a ratio ≤ 1),
+not the condition the HULL needs (arms far enough apart that hub is exposed
+between them). The assert passes and the outline is still folded. An assert
+that guards the arithmetic is not an assert that guards the shape.
+
+### The repair
+
+The `while` loop is the bug and deleting it is not the fix — an arc with
+`a1 < a0` must be OMITTED, not normalised, because that is what "no hub
+between these arms" means. Two arms whose tip discs are close enough should
+be joined by their own mutual external tangent instead, which is the same
+construction one level down and keeps the boundary arcs-and-tangents as the
+header claims.
+
+Then assert the condition that was missing, in the builder, next to the one
+that is already there: for each adjacent pair, `nxt.az − a.az ≥ th + thN`, or
+the hull is not the shape this code cuts.
+
+**Open question worth measuring before choosing.** `postAz` comes from §163's
+branch scan, which optimises clearance and knows nothing about this. If the
+scan can return an azimuth that makes ANY legal arm pair too close, then
+asserting is necessary but not sufficient and the scan needs the constraint
+too — otherwise a future re-site trips a boot warning nobody can satisfy.
+
+### CLOSED by §177 — and this item's own worst sentence is the finding
+
+This item filed the following, and it was wrong:
+
+> **Not in scope**: whether the folded outline changes what the driver DOES.
+> `ExtrudeGeometry` triangulated it into a solid that has been passing every
+> sweep, so this is a defect in the description, not a measured collision.
+
+**It changed the metal.** A folded ring goes to earcut, earcut resolves the
+fold however it likes, and a hole declared inside that ring can land on the
+wrong side of the result. Measured on the shipped driver
+(`tools/probe-column-driver.mjs`, 120 samples on a circle at 0.6·boreR):
+
+| | bore interior | annulus just outside it |
+|---|---|---|
+| before | **120/120 FILLED** | 180/180 in metal |
+| after | 0/120 | 180/180 in metal |
+
+**The pivot bore was solid metal.** The driver had no hole to turn on — and
+the part's whole job is to turn on `alarmColStud`, which
+`INTRA_UNIT_CONTACTS` declares as a running fit at `PIVOT_BORE_CLEAR`. That
+declaration is what excused the pair from the sweep, so the one instrument
+positioned to notice had been told not to look. §169 wrote the same lesson
+about a stud that measured 4.347 clear: *a declared joint is a claim*.
+
+The open question about §163's branch scan is closed too, by arithmetic rather
+than by measurement: `th = π/2 + asin(...)` is ALWAYS greater than π/2, so
+`th_a + th_b` always exceeds π, so at most one of a driver's gaps can ever show
+hub — at any azimuth, for any arm count. The old loop emitted one arc per arm
+regardless, so with two arms at least one was always spurious. The scan needs
+no constraint; the construction was unconditionally wrong.
+
+The fix takes the boundary as what the header always called it: the convex
+hull of the discs, walked as a monotone chain over sampled discs, which cannot
+self-intersect and needs no case analysis about which gaps show hub. Cost: the
+tangents are sampled rather than closed-form, under 1.3e-3 u of chord error on
+the largest disc, against arcs the old code already sampled at 20 segments.
+Net outline area 20.1711 → 23.2578, bbox unchanged at 6.941 × 5.899 — the part
+does not reach further, it is simply whole. A new build warning fires if a disc
+never reaches the hull, which is an arm asked for and not cut.
