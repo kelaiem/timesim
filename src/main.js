@@ -19091,7 +19091,68 @@ const SPRING_STRAIN_MAX = SPRING_SIGMA_Y_PA / STEEL_E_PA;
 // needs more it must move this number rather than discover the shortfall by
 // burying itself in a column.
 const ALARM_COL_RIDER_NOSE_R = 0.28;
-const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel, riderNoseR: ALARM_COL_RIDER_NOSE_R, skirtH: ALARM_COL_SKIRT_H }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier); TODO 28: the nose sets the flat top
+// --- TODO 90 finding 5: THE LOCK'S READ, REFOLDED --------------------------
+//
+// Finding 5 measured the defect: the lock lever's beak sits ON the line from
+// its pivot to the wheel's centre, and a lever moves its beak PERPENDICULAR to
+// the arm — so at that one station the perpendicular IS the tangent and the
+// beak's radial excursion is 0.00114, 0.08% of the tier it is declared to
+// read. The column cannot block the lever; the pose law does.
+//
+// probe-90-lockread then searched the obvious repair — move the beak — and
+// REFUTED it. A rider must sit centred on a column in one state and centred in
+// a gap in the other, so its azimuth is quantised to whole column pitches
+// (2·ALARM_COL_STEP), the rule ALARM_LINK_BEAK_OFF already snaps to. The exact
+// optimum (PB ⊥ WB, Thales, gain 1.0000 at 44.57°) is MID-FLANK and therefore
+// illegal, and both legal neighbours are taken: −60° IS the link beak's
+// station, and +60° wants a 0.6723 chamfer against the 0.6327 the metal allows
+// while standing 0.1992 from the driver pawl.
+//
+// So the read is refolded instead of re-sited: a ROCKER at the free, parity-
+// correct station, with its OWN pivot placed where the read is radial. This is
+// the fold idiom in position-space currency — one added member with its own P1
+// duties — and it buys the quantity the direct repairs could not afford:
+//
+//   the chamfer the pillars must carry falls to ARM · θ, because the beak no
+//   longer rides a 5.6-long lever arm. 0.3516 against a 0.6327 ceiling, where
+//   the direct options needed 0.5448 and 0.6723.
+//
+// THE LINE SPEC, every row a consequence:
+//
+//   · the read station is where it already is — wheel-radius ALARM_COL_BASE_R
+//     on the lever's own line, so the parity and the declared contact are
+//     untouched and nothing about the wheel's placement moves.
+//   · the rocker's PIVOT stands perpendicular to the wheel radius at that
+//     station, which is what makes the beak's motion purely radial (gain 1).
+//   · its ARM is the smallest that puts its post clear of the saw it stands
+//     beside — §171's rule, the same one that sited the lock's own riser.
+//   · the CHAMFER is then arm × the rocker's travel, and the rocker's travel
+//     is the lock lever's, because the pin-in-slot is cut at equal radii.
+const ALARM_ROCKER_POST_R = 0.22;                 // post stock, the alarmLockSpringStud precedent
+// The post crosses the saw's band like every other rod beside this wheel, so
+// §171's constraint fixes how far off the radius the pivot must stand:
+//   √(readR² + arm²) ≥ ALARM_COL_TIP_R + CLEAR_MARGIN + postR
+const ALARM_ROCKER_ARM = Math.sqrt(
+  (ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_POST_R) ** 2 - ALARM_COL_BASE_R ** 2);
+// The chamfer the pillars owe this follower: exactly the radial travel it
+// makes, no more — a cam cut deeper than its follower's lift is metal removed
+// for nothing, and cut shallower is a follower that stops reading.
+const ALARM_COL_RCHAM = ALARM_ROCKER_ARM * ALARM_LOCK_LIFT;
+// Rule 6 — the ceiling is the OTHER rider's ride band, asserted rather than
+// assumed. The §35 link beak lands MID-CASTELLATION — its own `noseR` is
+// (ALARM_COL_INNER + ALARM_COL_BASE_R)/2, restated here from the same two radii
+// rather than reached for across the file — and the chamfer may not come
+// inboard of that landing plus a rider's nose plus a margin. Written as the
+// wheel's own vocabulary (ALARM_COL_RIDER_NOSE_R is the very constant it sizes
+// its flat top with) so the bound tracks the wheel if either radius moves.
+const ALARM_LINK_NOSE_LAND_R = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2;
+const ALARM_COL_RCHAM_MAX = ALARM_COL_BASE_R
+  - (ALARM_LINK_NOSE_LAND_R + ALARM_COL_RIDER_NOSE_R + CLEAR_MARGIN);
+if (ALARM_COL_RCHAM > ALARM_COL_RCHAM_MAX + 1e-9)
+  console.warn(`TODO 90: the lock rocker's ${ALARM_COL_RCHAM.toFixed(4)} chamfer exceeds the `
+    + `${ALARM_COL_RCHAM_MAX.toFixed(4)} the pillars can give without cutting into the link beak's `
+    + `landing at ${ALARM_LINK_NOSE_LAND_R.toFixed(4)}`);
+const alarmColumnWheel = G.makeColumnWheel({ columns: ALARM_COL_COLUMNS, baseR: ALARM_COL_BASE_R, baseH: ALARM_COL_BASE_H, colH: ALARM_COL_H, colInner: ALARM_COL_INNER, boreR: ALARM_COL_BORE_R, material: MATS.steel, riderNoseR: ALARM_COL_RIDER_NOSE_R, skirtH: ALARM_COL_SKIRT_H, rCham: ALARM_COL_RCHAM }); // TODO 11 switch tranche: real-scale sections (was floor-stock base, 0.55 tier); TODO 28: the nose sets the flat top
 // TODO 87 step 4 — the three bodies are NAMED AT THE BUILDER now
 // (alarmColBase / alarmColCastellations / alarmColSkirt), because one name
 // over all three made a single INTRA_UNIT_CONTACTS row a depth-free blanket
