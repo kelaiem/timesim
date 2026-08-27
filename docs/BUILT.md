@@ -18800,3 +18800,306 @@ gate itself. And the header extractor stopped at the first non-comment line,
 which for a shebanged file is line one, so eight files with full headers were
 described as having nothing to say about themselves. The split is **52/68**
 now, not 45/75, and CLAUDE.md's two counts moved with it.
+
+## §176 — the allocator fetches, and says what it consulted (TODO 99)
+
+`tools/claim-item.mjs` exists because "read `max + 1` off the branch you have
+checked out" collided. It reads every ref instead, and its own comment said so:
+*"Every ref we can see, not just this one. This is the whole point."*
+
+**"Can see" was a property of the clone.** It enumerated `refs/heads` and
+`refs/remotes` — whatever this working copy happened to hold — never fetched,
+and never compared that against the remote. The header named the residue it
+knew (an unpushed claim on another machine) and not the larger, more ordinary
+one: a claim that IS pushed, by someone who did everything right, on a ref this
+clone has never pulled.
+
+Measured on the branch that produced TODO 98: the session held **2** of the
+remote's **206** branches, the TODO high-water read **90** against a true
+**97**, and the tool offered 91 — `case-openings`', claimed the same day, with
+92–97 behind it. The same branch then took an add/add on `BUILT-0174.md` at
+merge. The scheme caught both; the cost was two late renumbers, one after the
+PR had been reviewed against the wrong section number. The tool printed
+`5 ref(s)` while meaning it, and nothing in that line distinguishes *"nobody
+has taken 91"* from *"nobody I can see has taken 91."*
+
+### Both halves are needed, and building it is what proved that
+
+TODO 99 listed three fixes cheapest-first and called the third — fetch, behind
+the existing `--no-remote` — *"the one that matches what the tool promises."*
+That was right and not sufficient, which only showed up under test.
+
+The guard was exercised against a deliberately short clone rather than trusted:
+`git clone --single-branch --branch main`, one remote-tracking ref. **The fetch
+did not close the gap.** `--single-branch` writes a restricted
+`remote.origin.fetch`, so `git fetch --all` brings back only that one branch —
+and on that clone the allocator read a high-water of 98 against a true 100 and
+would have handed out an already-claimed number. A fetch fixes the ordinary
+case (an un-fetched clone, which is what this session actually had); it does
+nothing for a clone whose refspec was narrowed at birth.
+
+So the landing is options 1 and 3 together, not 3 alone:
+
+- **It fetches** (`git fetch --quiet --all --prune`) before enumerating, best
+  effort — an offline clone still allocates.
+- **It compares what it consulted against the repository**: `git ls-remote
+  --heads origin` is the repository's answer, `for-each-ref` is ours, and a gap
+  between them raises a warning on stderr naming both counts. Verified firing:
+  *"this clone has 1 remote-tracking ref(s) but origin publishes 208."*
+- **It says which mode ran** on its own report line — `[fetched]`,
+  `[FETCH FAILED — refs may be stale]`, or `[HEAD only (--no-remote)]` — so a
+  number allocated against a stale ref set is as visible as it is dangerous.
+
+`--no-remote` now skips the fetch as well as the remote refs, which is what an
+offline claim wants.
+
+### What is deliberately unchanged
+
+The add/add conflict path. It is the backstop that caught the BUILT collision,
+and no fetch removes the race between two branches claiming seconds apart, or
+an unpushed claim on another machine. The fetch and the warning move collisions
+earlier — from merge to allocation — they do not replace the thing that catches
+the ones that get through. `docs/item-numbers/README.md` now carries both
+residues, told apart, beside the reasons the directory is a directory.
+
+### Instruments
+
+Browser-free and document-only, so the battery cannot see it and the path
+filter takes the job out; `item-numbers.yml` is the gate that matters here.
+
+- `node tools/claim-item.mjs --dry-run` on this repo: `TODO: 99 number(s) seen
+  across 211 ref(s) [fetched], high-water 100`.
+- The same with `--no-remote`: `1 ref(s) [HEAD only (--no-remote)]`, no fetch,
+  no warning.
+- The warning path, on a purpose-built single-branch clone: fires, names both
+  counts, and the allocation it warns about is a real collision (99, already
+  claimed on the true ref set).
+- `node tools/check-item-numbers.mjs` — OK.
+
+## §177 — the column driver's bore was solid metal (TODO 103)
+
+TODO 100's sweep found one self-crossing outline in the movement:
+`Alarm switch / alarmColDriver`, 31 crossings, the only one of 176 extrudes.
+Filed as TODO 103 with a sentence saying the folded outline was *"a defect in
+the description, not a measured collision."* Measuring it is what this section
+is, and that sentence was wrong.
+
+### The pivot bore was filled
+
+A folded ring goes to earcut, earcut resolves the fold however it likes, and a
+hole declared inside that ring can land on the wrong side of the result.
+`tools/probe-column-driver.mjs`, 120 samples on a circle at 0.6·boreR:
+
+| | bore interior | annulus just outside it |
+|---|---|---|
+| before | **120/120 FILLED** | 180/180 in metal |
+| after | 0/120 | 180/180 in metal |
+
+The driver had **no hole to turn on**, and turning on `alarmColStud` is the
+part's whole job. The two rows are checked as a pair on purpose: either alone
+passes on a driver that is not there at all.
+
+Nothing downstream could see it, and the reason is worth keeping.
+`INTRA_UNIT_CONTACTS` declares `alarmColDriver ⇄ alarmColStud` as a running fit
+at `PIVOT_BORE_CLEAR` — and a declared joint EXCUSES the pair from the sweep.
+The one instrument positioned to notice a stud passing through solid metal had
+been told the overlap was intentional. §169 wrote this lesson already, about a
+stud that measured 4.347 clear of the part declaring it: *a declared joint is a
+claim*, and a false one buys silence in both directions.
+
+### The construction was unconditionally wrong
+
+The old outline walked the arms in azimuth order and emitted, per arm, its tip
+arc and then a hub arc across to the next arm:
+
+```js
+let a0 = a.az + th, a1 = nxt.az - thN;
+while (a1 < a0) a1 += Math.PI * 2;      // ← the defect
+```
+
+`th = π/2 + asin((hubR − tipR)/reach)` is the correct external-tangent angle
+and is **always greater than π/2**, so `th_a + th_b` always exceeds π. A hub
+arc is exposed in a gap only when the gap is wider than that sum, and a
+driver's gaps sum to 2π — so **at most one gap can ever show hub**, at any
+azimuth, for any number of arms. The loop emitted one arc per arm regardless,
+so with two arms at least one was always spurious, and `a1 < a0` — the geometry
+saying "no hub between these two" — was read as a negative sweep to be
+normalised and drawn the long way round the back. Measured: two hub arcs
+overlapping across ≈164° of hub.
+
+That also closes TODO 103's open question about §163's branch scan, by
+arithmetic rather than measurement. The scan chooses `postAz` for clearance and
+knows nothing about hull spacing, and it does not need to: there is no azimuth
+that makes the old rule right, so there is no constraint to hand it.
+
+**And the assert that was already there did not cover it.** `hubR > tipR` is
+the condition the `asin` needs — it guards the ARITHMETIC — and it passed on a
+folded outline every time. An assert that guards a formula is not an assert
+that guards the shape.
+
+### The cut
+
+The boundary is taken as what the header always called it: the **convex hull of
+the discs** — hub plus one tip disc per arm — sampled and walked as a monotone
+chain. A convex polygon is simple by construction, so no case analysis about
+which gaps show hub is needed and no spacing assumption survives. The cost is
+that tangents are sampled rather than closed-form: under 1.3e-3 u of chord
+error on the largest disc here, against arcs the old code already sampled at 20
+segments. An exact gift-wrap over the discs would remove even that, and is
+worth doing only if a tangent ever becomes a working surface.
+
+A new build warning fires when a disc never reaches the hull — an arm asked for
+and not cut, which no sweep downstream can tell from an arm never asked for.
+
+Net outline area 20.1711 → 23.2578; bbox unchanged at 6.941 × 5.899 × 0.317.
+The part does not reach further, it is simply whole.
+
+### Instruments
+
+- `tools/probe-column-driver.mjs` — **PASS**: bore 0/120 filled, annulus
+  180/180 in metal. New, and the acceptance for this section.
+- `tools/probe-outline-simple.mjs` — the movement's authored outlines:
+  **176 geometries read, 397 rings, 0 self-crossing, 0 extrudes missed**. Was 1
+  before this landing.
+- Boot silent.
+- Battery **35/35**, 1319.5 s. `--report` diffed against the tree immediately
+  before this fix: **17 of 22 checks byte-identical**, and the ONLY non-timing
+  change anywhere in the movement is `alarmColDriver` at 542 → 604 triangles.
+  `expectedContacts`, `inspection`, `clearances` and `sweptOverlap` are
+  unchanged in every non-timing field — including the declared
+  `alarmColDriver ⇄ alarmColStud` row, which now describes a bore that is
+  actually a hole.
+
+**And the fingerprint did not move: `1380256309`, both sides.** A part's metal
+changed materially — a filled bore became an open one — and the movement's
+determinism anchor read the same number, because it hashes per-unit BOUNDING
+BOXES at 12 poses and the driver's box did not change. That is the third time
+in this branch's work that the point has come up (§175 recorded it for an
+outline dedupe, TODO 100 for the class), and it is worth stating as a rule
+rather than an anecdote: `fingerprint` answers *where the parts are*, never
+*what they are made of*. A change that fills or empties a hole is invisible to
+it by construction.
+
+## §178 — the outline check becomes a gate (TODO 100 step 2)
+
+TODO 100 asked whether every cut outline is a simple polygon, and step 1
+measured it: 176 geometries carrying an authored shape, 397 rings, **one**
+crossing — the column driver, closed as §177. Step 2 is turning that
+measurement into something that cannot regress.
+
+**It could only be done in this order.** A gate landing red is how a check gets
+switched off — §54's banner says so — so the movement had to measure clean
+first. §175 cut the fork's five crossings and §177 the driver's 31; only then
+was there a gate to add.
+
+Registered as `outlines` in `inspect.js`'s `CHECKS`, `battery-checks.mjs`'s
+`BATTERY` and `ci-battery.mjs`'s `COSTS` (the harness gates those three against
+each other, which is why all three move together). Unlike `meshIntegrity` and
+`slenderness` beside it, it **gates its rows** rather than reporting them.
+
+Three clauses:
+
+1. **Controls PASS.** A synthetic bowtie must be caught; a square and a holed
+   square must not. Not ceremony — this check has already been wrong once. An
+   earlier signature read the CAP's winding, on the theory that earcut emits
+   mixed handedness for a folded ring. It does not: a bowtie extrudes to no
+   readable cap at all, and a fork-shaped crossing reads exactly `1.000000`.
+   That version swept the movement and reported "372 geometries, 0 folded".
+2. **Zero self-crossing rings** across every authored outline and every hole.
+3. **Every extrude's authored shape is READABLE.** The load-bearing clause. The
+   first version of the sweep read 3 geometries of 573 and answered
+   `0 crossings` — a clean answer to a question it was not asking — because
+   `weldGeometry` dropped the source shape. So an extrude with no readable
+   shape FAILS; a cylinder or a box never had one and is counted and named.
+
+It works at all because `ExtrudeGeometry` keeps what it was handed in
+`parameters.shapes`, and the weld now carries that reference through (§177).
+
+### Instruments
+
+- Battery **36/36 gates pass**, 1334.9 s — the count rose by one, which is this
+  gate. Its own line: *controls PASS, 0 self-crossing rings, and every extrude's
+  authored shape is readable (176 of 573 geometries carry an authored shape,
+  397 rings tested; 176 CylinderGeometry, 109 BoxGeometry, 53 LatheGeometry,
+  42 BufferGeometry, 11 TorusGeometry, 4 TubeGeometry, 2 SphereGeometry never
+  had one)*.
+- **The gate was checked for teeth**, because a gate that cannot fail is worse
+  than none. Its `fails` function was exercised against four payloads: clean → 0
+  failures; a folded outline → 1; a missed extrude → 1; a broken control → 1.
+  All three clauses turn a violation into a failure rather than a note. Beyond
+  that, the controls run live on every battery run, so the catching path is
+  exercised rather than assumed.
+- `tools/probe-outline-simple.mjs` stays as the standalone form, for iterating
+  without a full battery.
+## §179 — The alarm corner's radius becomes the third radial reconfigure handle
+
+Roadmap 177 filed this as tier 1 and called it nearly free: `?alarmr=` has been
+a spec since §94 tier B, `solveLayout` already warns on `(0, plateR + 2.2)`, so
+the estimate was "the row, five minutes". **Both halves of that were wrong, and
+the handle was written and withdrawn once before it shipped.**
+
+### Why the cheap estimate failed
+
+`solveKeyless`'s warn is an OUTER BRACKET, and its own comment says so: *"the
+interior bounds live with their own instruments … so this warn brackets only
+what they cannot see."* A refusal reading it would call a corner at 30 legal.
+
+The first landing gathered the interior bounds into `alarmCornerWarnsAt(r)` and
+built the handle on those. `tools/probe-alarmr-handle.mjs` — three verdicts per
+radius: the row's `refuseAt`, the row's `shadow`, and an actual `?alarmr=` boot
+whose console is ground truth — failed it on the first run. **Five of twelve
+radii were accepted in silence and booted with real wall failures**, `NO bearing
+clears every wall` among them. The row was withdrawn rather than shipped with a
+partial refusal, because a refusal is a PERMISSION: whatever a drag accepts, a
+viewer will Apply.
+
+### The bound that actually binds, and why it was invisible
+
+The setting bearing is re-solved for whatever corner it is given, against
+`ALARM_SET_WALLS`. Those walls were built once at the shipped `ALARM_CD`, so
+asking them about a candidate asked the wrong movement — and `alarmCornerWarnsAt`
+compounded it by measuring bounds at the SHIPPED bearing, a route the candidate
+would never use.
+
+**The wall list is now a function of the corner, and the split inside it is the
+finding.** Of the eight rows only THREE move: the winding climb, the arbor cock
+post, and one endpoint of §29's tail corridor. The two that looked fatal — the
+mesh-measured `alarmSetWallsOf` rows — hang off `dialFace` at the origin and
+read no corner constant in their builders, so they do not move at all. That is
+what makes a candidate judgeable **without rebuilding geometry**, which is the
+whole reason a closed-form-refusal handle is possible here. The traversals are
+hoisted because they are constant; the list otherwise keeps its ORIGINAL ORDER,
+since `alarmSetWorst` takes a minimum and a reordered tie is a moved report.
+
+### The refusal/shadow split, and §94 tier A's rule restated
+
+Tier A's rule is that a refusal is never READ FROM a shadow-solve, and the
+reason is **fallback**: `solveLayout` falls back to `D4`, so a shadow of an
+impossible value returns the DEFAULT layout and the ghost is a proposal nobody
+made. `alarmSetBearingAt` falls back identically — the incumbent bearing stands
+— so the same trap is live. What makes this row safe is that the solve now
+returns a **verdict** beside the fallen-back angle: the row reads the solve's
+own statement that it fell back, never the value it fell back to.
+
+- **`refuseAt` is closed form** and covers only what leaves the build with
+  nothing to stand on: the stem's length inside the case rim, and whether the
+  dogleg can close at ANY bearing — i1's circle of radius `DW1` about the centre
+  must put the arbor within `[|D12 − D2P|, D12 + D2P]`, an interval
+  intersection, `d4Window`'s shape one station over.
+- **`shadow` carries `alarmCornerWarnsAt`**, which now includes the wall scan at
+  the candidate's own re-solved bearing.
+
+**A re-solve is not a failure and is still something to say.** It builds and it
+clears — so it is never refused — but it warns at boot (rule 6), and a viewer
+about to Apply is entitled to know the corner moves the setting bearing off its
+shipped 18°. Measured, that is exactly what separates `r 10`, which the first
+corrected cut still accepted in total silence, from the radii that change
+nothing.
+
+### The residue, named
+
+`alarmCornerWarnsAt` covers the setting corner's own bounds. It does **not**
+cover §112's link solve, a separate mechanism's search whose result also moves
+with the corner — `r 10` warns from it as well as from the re-solve. Covering it
+means parameterising that solve too, which is its own landing. The handle is
+honest on everything measured below and this is the gap to know about.

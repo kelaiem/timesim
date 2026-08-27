@@ -1,11 +1,11 @@
 ---
 name: instruments
-description: Find, choose, and write measuring instruments (tools/*.mjs probes) for the timesim watch movement. Use BEFORE writing a new probe — the repo has 119 and names them by the section that produced them, so the one you need is usually already there and unfindable. Also use when a probe comes back clean and you need to know whether it measured anything, or when a measurement disagrees with what you can see.
+description: Find, choose, and write measuring instruments (tools/*.mjs probes) for the timesim watch movement. Use BEFORE writing a new probe — the repo has 124 and names them by the section that produced them, so the one you need is usually already there and unfindable. Also use when a probe comes back clean and you need to know whether it measured anything, or when a measurement disagrees with what you can see.
 ---
 
 # Instruments
 
-`tools/` holds 119 measuring scripts. `CLAUDE.md` names 14. The rest are named for the
+`tools/` holds 124 measuring scripts. `CLAUDE.md` names 14. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so you find one only if you already know which §
 went looking.
@@ -37,9 +37,9 @@ and why. That is what makes the next search work.
 
 ## 2. Pick the kind deliberately
 
-- **ACCEPTANCE** (45 of them) — decides, prints PASS/FAIL, exits non-zero.
+- **ACCEPTANCE** (55 of them) — decides, prints PASS/FAIL, exits non-zero.
   Write one when there is a claim to hold true from now on.
-- **REPORT** (74) — prints and leaves the judgement to a reader. Write one when
+- **REPORT** (69) — prints and leaves the judgement to a reader. Write one when
   you are still finding out what is true.
 
 Choosing the wrong kind is how a measurement gets mistaken for a verdict. A
@@ -106,6 +106,24 @@ different question and needs `inCutClearance`.
 **rAF and `setTimeout` throttle to ~1 fps under automation.** Timed loops
 inside one browser eval measure nothing. Use `step()`, or sample across
 separate tool calls. See CLAUDE.md's own trap list for the sweep-yield cliff.
+
+**A crashed probe leaves its server running, and every later run reads the
+orphan.** These probes spawn their own `python3 -m http.server` and reap it on
+the last line, so one that THROWS never reaches `srv.kill()` and the orphan
+keeps the port. The next run's spawn then fails silently (address in use),
+`goto` succeeds against the orphan, and only `waitForFunction(() =>
+window.__clock)` times out — because the orphan is rooted somewhere else and
+served a 404 for `index.html`. That reads exactly like a boot this change
+broke. It is not, and a CONTROL ON UNMODIFIED HEAD DOES NOT CLEAR IT: the
+control hits the same orphan and fails the same way, agreeing for the wrong
+reason. `pgrep -af "[h]ttp[.]server"` before believing any boot timeout — and
+the bracket is not decoration, because `pkill -f http.server` matches the shell
+running it and kills your own session instead.
+
+Two things make the first misrun likely. The probes take `ROOT` as `'..'`, so
+they only serve the app when run FROM `tools/`; started from the repo root they
+serve `/home/user` and 404 by construction. And the failure they then leave
+behind outlives the mistake — the diagnosis costs more than the misrun did.
 
 ## 4. Choose against every constraint at once
 

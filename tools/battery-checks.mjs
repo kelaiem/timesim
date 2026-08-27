@@ -135,6 +135,25 @@ export const BATTERY = [
   // can be held on day one — the in-check synthetic controls and every
   // declared sub-body table's validity (a malformed table is a stale
   // selector, the INTRA_UNIT_CONTACTS precedent).
+  // TODO 100 — a cut outline is a simple polygon, or it is not an outline.
+  // Unlike meshIntegrity and slenderness above, this one GATES ITS ROWS rather
+  // than reporting them, and it can because the movement was measured clean
+  // first: §175 cut the pallet fork's five crossings and §177 the column
+  // driver's 31, and only then was there a gate to add. §54's banner names
+  // landing a check red as how a check gets switched off.
+  //
+  // The third gate is coverage, and it is the one that matters most. The first
+  // version of this sweep read 3 geometries of 573 and answered `0 crossings`
+  // — a clean result for a question it was not asking — because `weldGeometry`
+  // dropped the source shape. An EXTRUDE with no readable shape therefore
+  // fails; a cylinder or a box never had one and is counted instead.
+  { name: 'outlines', opts: { yieldEvery: YIELD_EVERY },
+    gate: 'controls PASS, 0 self-crossing rings, and every extrude\'s authored shape is readable',
+    fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...r.violations,
+      ...r.noShape.map((n) => ({ extrudeWithNoReadableShape: `${n.unit} / ${n.mesh}` }))],
+    note: (r) => `${r.read} of ${r.geometries} geometries carry an authored shape, ${r.rings} rings tested; `
+      + `${r.withoutShape.map((w) => `${w.count} ${w.type}`).join(', ')} never had one` },
   { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY },
     gate: 'controls PASS and 0 malformed sub-body declarations — zeroArea/inverted rows are a REPORT (§40)',
     fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]), ...r.subBodies.malformed],

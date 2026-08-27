@@ -241,7 +241,20 @@ it into prose either.
    its rows stay a REPORT by §54's own covenant and the unwaived residue is
    TODO 78's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a
    unit with no over-ceiling row, so deleting a fix's waiver is
-   structurally part of the fix).
+   structurally part of the fix),
+   and `outlines` **controls PASS, 0 self-crossing rings, every extrude's
+   authored shape readable** (TODO 100 — a cut outline is a simple polygon or
+   it is not an outline. This one GATES its rows rather than reporting them,
+   which was only possible once the movement measured clean: the pallet fork
+   carried five crossings for as long as it existed (§175) and the column
+   driver 31, and that one FILLED ITS PIVOT BORE (§177) because earcut
+   resolves a folded ring however it likes. Both passed all 35 gates, both
+   times. The third clause is the load-bearing one — the first version of the
+   sweep read 3 geometries of 573 and answered `0 crossings`, so an EXTRUDE
+   with no readable shape fails rather than being skipped; a cylinder never
+   had a shape and is counted instead. It works at all because
+   `ExtrudeGeometry` keeps `parameters.shapes` and `weldGeometry` now carries
+   that reference through the weld).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
@@ -585,7 +598,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 123 measuring scripts and this file names 14. The rest are named for the
+`tools/` holds 126 measuring scripts and this file names 14. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -602,7 +615,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **54 of
+The index also carries the split that decides how to read a result: **57 of
 them are ACCEPTANCE tests** that exit non-zero, and **69 are REPORTS** that
 print and leave the judgement to you. A report saying `0 violations` has not
 passed anything.
