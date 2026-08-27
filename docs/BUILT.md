@@ -19248,14 +19248,30 @@ are one fact — and both declaration sites go through it; tier 3 reads the
 snapshot, and a geometry with a bounds tree and no snapshot is reported
 malformed rather than answered from a shuffled buffer.
 
-The first cut anchored the snapshot in boot's `weldTree` pass, which covered 28
-of the 29 sub-body geometries and missed the one that matters: `chainRun` is
-re-tessellated on every tension change and never passes through a boot-time
-traversal. The acceptance failed the gate naming `Chain / chainRun` — the
-safety valve working, since a wrong number would have been indistinguishable
-from a healthy one. Both orderings now produce byte-identical payloads:
-*subBodies 174 in 28 geometries; pairs 39 tested / 136 declared / 0 interior*,
-against `39/136/0` and `527/50/134` before.
+A caller that HOLDS the authored order passes it, and the chain must:
+`chainBuf.idx` is a template buffer shared by every rebuild and handed straight
+to the geometry's `BufferAttribute`, so a BVH reorders it in place and the next
+rebuild emits from the shuffled template.
+
+**Two wrong fixes preceded that, and the second is the instructive one.**
+Anchoring the snapshot in boot's `weldTree` missed `chainRun`, which never
+passes a boot traversal — caught as a gate FAILURE naming it. Snapshotting at
+the declaration but reading the order back OFF the geometry was worse and
+passed the acceptance I had: a snapshot EXISTS, so the malformed guard stays
+quiet while the ranges describe a different tessellation — 0 malformed, 133
+phantom interior rows, green gate. It survived because `support,meshIntegrity`
+reads 39/136/0 (nothing rebuilds the chain in between) and I stopped there.
+
+**A single ordering is not an order-independence test**, which is the whole
+lesson. Five are checked now, and the two that reproduce are in the set:
+
+| ordering | before | after |
+|---|---|---|
+| `meshIntegrity` | 39/136/0 | 39/136/0 |
+| `support,meshIntegrity` | 527/50/134 | 39/136/0 |
+| `support,axisEntry,meshIntegrity` | 493/50/133 | 39/136/0 |
+| `axisEntry,support,meshIntegrity` | 493/50/133 | 39/136/0 |
+| `intraUnit,meshIntegrity` | 39/136/0 | 39/136/0 |
 
 The probe cost two more instances of the same lesson before it measured
 anything. Its first cut called `I.bvhFor`, which `inspect.js` does not export —

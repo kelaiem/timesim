@@ -58,6 +58,15 @@ one line — and pick a pair that genuinely overlaps: a bore on a stud is a
 RUNNING FIT and does not intersect, which is how the first control here was
 itself wrong.
 
+**One ordering is not an order-independence test.** §182 fixed
+`meshIntegrity`'s shard-order dependence twice and both times the acceptance —
+`support` then the check — agreed it was fixed. It was not: `support` builds a
+BVH but never REBUILDS the chain, and the corruption needs both. Add any
+pose-sweeping check and the same tree reads `493/50/133` against `39/136/0`.
+When the hypothesis is "state leaks from A into B", the test set has to contain
+the operations the leak needs, not just A and B — and if a fix passes first
+try, suspect the test before believing it.
+
 **`status()` with no argument is a MAP, not a job.** `status(NAME)` returns the
 job; the bare form returns every job keyed by name, so `status().state` is
 undefined and `while (status().state === 'running')` exits immediately. The

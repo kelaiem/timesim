@@ -11881,19 +11881,41 @@ the chain's rebuild. Tier 3 reads the snapshot. A geometry that has a bounds
 tree AND no snapshot is reported malformed: the tier declines to answer rather
 than answering from a shuffled buffer.
 
-**The first cut anchored it in boot's `weldTree` pass instead, and that was
-wrong in the instructive way.** The pass covered 28 of 29 geometries and missed
-exactly the one that matters — `chainRun` is re-tessellated on every tension
-change and never passes through a boot-time traversal, so its 87 bodies (the
-entire 174 → 87 drop) had no order to read. The acceptance caught it as a gate
-FAILURE naming `Chain / chainRun`, which is the safety valve doing its job: a
-wrong number would have looked exactly like a healthy one. The pass stays as a
-BACKSTOP for a builder that assigns `userData.subBodies` directly, with its own
-comment saying why a backstop cannot be the whole answer.
+**A caller that HOLDS the authored order passes it**, and the chain must:
+`chainBuf.idx` is a template buffer shared by every rebuild and handed straight
+to the geometry's `BufferAttribute`, so a BVH reorders it in place and the next
+rebuild emits from the shuffled template. `chainBuf.idxAuthored` is taken at the
+stamp that writes the ranges, never handed to a geometry, and passed explicitly.
+Boot's `weldTree` pass remains a BACKSTOP for a builder that assigns
+`userData.subBodies` directly.
 
-Acceptance: `--only meshIntegrity` and `--only support,meshIntegrity` now give
-byte-identical payloads — `subBodies 174 in 28 geometries; pairs 39 tested /
-136 declared / 0 interior` — where before they read `39/136/0` and `527/50/134`.
+### It took two wrong fixes to get here, and both are worth keeping
+
+**Anchoring the snapshot in boot's `weldTree`** covered 28 of 29 geometries and
+missed the one that matters — `chainRun` never passes a boot-time traversal, so
+its 87 bodies (the entire 174 → 87 drop) had no order to read. The acceptance
+caught it as a gate FAILURE naming `Chain / chainRun`.
+
+**Snapshotting at the declaration by reading the order back OFF the geometry**
+was worse, and passed the acceptance I had. A snapshot EXISTS, so the malformed
+guard stays quiet while the ranges describe a different tessellation: 0
+malformed, 133 phantom interior rows, green gate. It survived because the pair I
+tested could not see it — `support,meshIntegrity` reads 39/136/0 since nothing
+rebuilds the chain in between. Add any pose-sweeping check and it reads
+493/50/133; BOTH orderings of `support`/`axisEntry` fail, because
+`resetInputs()` before `meshIntegrity` is itself enough of a rebuild once the
+template is shuffled.
+
+**The lesson is about the acceptance, not the code.** A single ordering is not
+an order-independence test. Five are checked now:
+
+| ordering | before | after |
+|---|---|---|
+| `meshIntegrity` | 39/136/0 | 39/136/0 |
+| `support,meshIntegrity` | 527/50/134 | 39/136/0 |
+| `support,axisEntry,meshIntegrity` | 493/50/133 | 39/136/0 |
+| `axisEntry,support,meshIntegrity` | 493/50/133 | 39/136/0 |
+| `intraUnit,meshIntegrity` | 39/136/0 | 39/136/0 |
 
 The zero-area and inverted tiers are untouched: those are per-triangle
 properties, invariant under a reordering, which is why their counts agreed in
