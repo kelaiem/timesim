@@ -13,11 +13,11 @@
 //     points sit in the disc's metal (probe-95-interpenetration.mjs). REAL,
 //     and must STAY reported. Both meshes are in fact closed — the 8
 //     "boundary edges" once counted on the tube were signed-zero seam
-//     artifacts, TODO 99's finding.
+//     artifacts, TODO 106's finding.
 //   genevaFingerDisc ⇄ alarmArrestFingerArbor  — the disc is genuinely open
 //     (135 bad edges) and the arbor closed, so the witness is valid and it
 //     fires. Also REAL, and NOT a joint: the bore is a designed 0.05 running
-//     fit that the mesh does not honour (TODO 100).
+//     fit that the mesh does not honour (TODO 107).
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';

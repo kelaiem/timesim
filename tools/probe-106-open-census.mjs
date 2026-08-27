@@ -1,4 +1,4 @@
-// TODO 99 — HOW MUCH of the movement is open? Every parity witness in this
+// TODO 106 — HOW MUCH of the movement is open? Every parity witness in this
 // repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and
 // TODO 27's family) counts ray crossings and is therefore only valid against a
 // CLOSED surface. Nothing measures how many surfaces qualify.

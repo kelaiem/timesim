@@ -2686,7 +2686,7 @@ export const INTRA_UNIT_WAIVERS = [
   // this table, and neither may be promoted to INTRA_UNIT_CONTACTS: that
   // table says "assembled and touching on purpose", which these are not.
   { unit: 'Alarm winding arrest', a: 'genevaFingerDisc', b: 'alarmArrestFingerArbor',
-    debt: 'TODO 100: the bore is a designed 0.05 running fit (fingerBoreR = arborR + 0.05) that the extrude\'s cap triangulation does not honour — rays down the bore are blocked over 15.1% of its area and 4.3% of the arbor\'s own footprint' },
+    debt: 'TODO 107: the bore is a designed 0.05 running fit (fingerBoreR = arborR + 0.05) that the extrude\'s cap triangulation does not honour — rays down the bore are blocked over 15.1% of its area and 4.3% of the arbor\'s own footprint' },
   { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherReturnSpring',
     debt: 'TODO 102: coilR derives the 0.05 running fit correctly; per: 6 at the call site makes the coil path a hexagon whose inradius is 13.4% smaller, eating the fit and 0.0084 more. The builder\'s own default of 10 clears it' },
   // TODO 22 closed with the switch resize: the press axis rides above the

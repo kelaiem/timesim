@@ -12117,7 +12117,7 @@ not change; these were all true of the shipped movement already.
 | `BoxGeometry#1 ⇄ alarmSelPost@12` | intraUnit MM | 12974 |
 | `BoxGeometry#3 ⇄ alarmSelPost@13` | intraUnit MM | 12974 |
 | `BoxGeometry#5 ⇄ alarmSelPost@14` | intraUnit MM | 12974 |
-| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | intraUnit MF | 3045 — real, but see TODO 100 |
+| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | intraUnit MF | 3045 — real, but see TODO 107 |
 | `alarmPusherStem ⇄ alarmPusherReturnSpring` | intraUnit MM | 793 |
 | `Alarm disc ⇄ Hour wheel` (`ExtrudeGeometry#20 ⇄ hourTube`) | expectedContacts, min 0 vs floor 0.15 | 914 |
 
@@ -12142,7 +12142,7 @@ triangle — never vertices.
 | `alarmSelBoss1 ⇄ alarmSelPost1` | both closed, both directions | REAL — post 0.0400 into the boss, boss 0.1087 into the post |
 | `alarmSelBoss2 ⇄ alarmSelPost2` | both closed | REAL — 0.0400 / 0.1082 |
 | `alarmSelBoss3 ⇄ alarmSelPost3` | both closed | REAL — 0.0400 / 0.1087 |
-| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | disc open, arbor closed | REAL, but NOT a joint — **TODO 100** |
+| `genevaFingerDisc ⇄ alarmArrestFingerArbor` | disc open, arbor closed | REAL, but NOT a joint — **TODO 107** |
 | `alarmPusherStem ⇄ alarmPusherReturnSpring` | both closed | REAL, hair-thin — 0.0075 at closest against a 0.05 nominal fit |
 | `ExtrudeGeometry#20 ⇄ hourTube` | both closed | REAL — 126 of 4800 tube-surface points inside the disc, **0.2885** deep |
 
@@ -12162,7 +12162,7 @@ fit, the same 0.05 the winding idlers use. The MESH does not honour it — rays
 cast down the bore are blocked over 15.1% of its area, and over 4.3% of the
 arbor's own footprint, by cap triangles spanning the hole. So the arbor's
 surface genuinely crosses the disc's surface, exactly as the witness says,
-while the drawing says 0.05 of air. Filed as **TODO 100**; its declaration must
+while the drawing says 0.05 of air. Filed as **TODO 107**; its declaration must
 come OUT of `INTRA_UNIT_CONTACTS` rather than shipping as an excuse.
 
 **Two defects in the witness itself, both found by instrumenting it rather
@@ -12194,11 +12194,11 @@ Beside it now sits a second one: **the guard trades a false positive for a
 blind spot.** A pass-through between two meshes that are both open is invisible
 again — the pre-TODO-95 behaviour, and the conservative direction, but only
 because there is no sound witness to run, not because the pair was checked.
-Measured (TODO 99), 34 of the movement's 717 meshes carry a genuine hole, so
+Measured (TODO 106), 34 of the movement's 717 meshes carry a genuine hole, so
 that blind spot is small but not empty, and it is not distributed evenly: it
 follows `ExtrudeGeometry` and the parts cut from outlines.
 
-## 99. Every parity witness in the repo needs a closed surface, and nothing measures which surfaces are closed
+## 106. Open meshes silently degrade every parity witness in the repo — census the movement
 
 Filed 2026-08-26, out of TODO 95. Every insideness test this repo owns —
 `pointInsideTree`, `sampledVerdict`'s containment, `probe-95-grid`'s five-ray
@@ -12209,7 +12209,7 @@ as a colliding one") and TODO 27 measured one instance of it. Nothing has ever
 asked how many of the movement's surfaces qualify, so no instrument knows when
 it is entitled to its own answer.
 
-`tools/probe-99-open-census.mjs` asks. Measured over the built tree, 717
+`tools/probe-106-open-census.mjs` asks. Measured over the built tree, 717
 meshes:
 
 | | meshes | what it means for parity |
@@ -12265,7 +12265,7 @@ the whole tell.
    TODO 95's named residue and this item bounds it rather than closing it.
 
 
-## 100. The geneva finger disc's bore is not fully cut — cap triangles carry metal across the hole its arbor runs in
+## 107. The geneva finger disc's bore is not fully cut — cap triangles carry metal across the hole its arbor runs in
 
 Filed 2026-08-26, out of TODO 95 row 4. **This is MODELING.md rule 1 in plan:
 the rendered solid is not the authored one**, and it is the same failure
@@ -12274,7 +12274,7 @@ the rendered solid is not the authored one**, and it is the same failure
 `ARREST_SPEC.fingerBoreR = arborR + 0.05` (`src/geometry.js:2198`) — a running
 fit, the same 0.05 the winding idlers use for a wheel on a stud. The disc
 should turn on `alarmArrestFingerArbor` with 0.05 of air all round. It does
-not: `tools/probe-99-borecut.mjs` casts rays straight down the bore and finds
+not: `tools/probe-107-borecut.mjs` casts rays straight down the bore and finds
 
 | | |
 |---|---|
@@ -12319,7 +12319,7 @@ made this hard to see. Options, cheapest first:
 3. **Drop the cap triangulator entirely** for this part and lathe the disc
    about its own axis, since it is a disc with a bore and a cutaway.
 
-Whichever, the acceptance is `probe-99-borecut.mjs` reading 0 blocked rays
+Whichever, the acceptance is `probe-107-borecut.mjs` reading 0 blocked rays
 inside the arbor's footprint, and `intraUnit` no longer reporting the pair.
 
 **Do NOT declare this pair in `INTRA_UNIT_CONTACTS`.** A declaration says "these
@@ -12329,7 +12329,7 @@ and silently, which is exactly what that table's own header warns about.
 
 ### Why every instrument missed it until now
 
-The disc carries 135 bad edges — it is one of the 34 holed meshes TODO 99
+The disc carries 135 bad edges — it is one of the 34 holed meshes TODO 106
 counts, so parity witnesses were unsound on it, and a vertex-based radial span
 reads the bore as correctly sized because **the bore's VERTICES are all at
 0.2347**; only the faces between them carry the metal. It took a segment test
