@@ -18962,3 +18962,20 @@ The part does not reach further, it is simply whole.
   **176 geometries read, 397 rings, 0 self-crossing, 0 extrudes missed**. Was 1
   before this landing.
 - Boot silent.
+- Battery **35/35**, 1319.5 s. `--report` diffed against the tree immediately
+  before this fix: **17 of 22 checks byte-identical**, and the ONLY non-timing
+  change anywhere in the movement is `alarmColDriver` at 542 → 604 triangles.
+  `expectedContacts`, `inspection`, `clearances` and `sweptOverlap` are
+  unchanged in every non-timing field — including the declared
+  `alarmColDriver ⇄ alarmColStud` row, which now describes a bore that is
+  actually a hole.
+
+**And the fingerprint did not move: `1380256309`, both sides.** A part's metal
+changed materially — a filled bore became an open one — and the movement's
+determinism anchor read the same number, because it hashes per-unit BOUNDING
+BOXES at 12 poses and the driver's box did not change. That is the third time
+in this branch's work that the point has come up (§175 recorded it for an
+outline dedupe, TODO 100 for the class), and it is worth stating as a rule
+rather than an anecdote: `fingerprint` answers *where the parts are*, never
+*what they are made of*. A change that fills or empties a hole is invisible to
+it by construction.
