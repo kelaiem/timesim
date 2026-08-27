@@ -1,24 +1,26 @@
 // THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build?
 //
-// WHAT THIS FOUND, on its first run. `?alarmr=` has been a spec since §94 tier
-// B, and five of the twelve radii below are accepted in silence by everything
-// that judges them BEFORE the build — solveKeyless's own bracket, and §176's
-// `alarmCornerWarnsAt` gathering of the interior bounds — and then boot with
-// real wall failures: "NO bearing clears every wall", "i2 fouls winding climb
-// at -2.50, need 0.15". Nothing warns at the point of entry.
+// ACCEPTANCE for the `alarmr` reconfigure handle (§179), and the instrument
+// that withdrew it once before it shipped. `?alarmr=` has been a spec since
+// §94 tier B, and on this probe's FIRST run five of the twelve radii below
+// were accepted in silence by everything that judged them before the build —
+// solveKeyless's outer bracket, and `alarmCornerWarnsAt`'s gathering of the
+// interior bounds — and then booted with real wall failures: "NO bearing
+// clears every wall", "i2 fouls winding climb at -2.50, need 0.15".
 //
-// That matters beyond the deep link, because a reconfigure HANDLE for this
-// radius would inherit exactly that silence, and a refusal that is not the
-// real constraint reads as PERMISSION: whatever a drag accepts, a viewer will
-// Apply. The handle was written, measured against this probe, and WITHDRAWN
-// on the strength of these rows — see §176's entry in the roadmap.
+// That matters beyond the deep link, because a handle inherits exactly that
+// silence, and a refusal that is not the real constraint reads as PERMISSION:
+// whatever a drag accepts, a viewer will Apply. The row was written, measured
+// here, and WITHDRAWN on the strength of those rows; §179 then closed the gap
+// and the row ships.
 //
-// WHY THE GAP EXISTS, precisely. The interior bound that actually binds is the
-// setting bearing's wall scan (`alarmSetWorst` over `ALARM_SET_WALLS`), and
-// those walls are built from geometry that MOVES WITH THE CORNER — the winding
-// climb stands at (ALARM_CD, 0). So judging a candidate radius needs the wall
-// list parameterised by the candidate too, which `alarmCornerGeomAt` makes
-// possible and does not by itself do.
+// WHY THE GAP EXISTED, precisely. The interior bound that binds is the setting
+// bearing's wall scan, and three of those walls MOVE WITH THE CORNER — the
+// winding climb stands at the corner's own radius. Judging a candidate needs
+// the wall list parameterised by the candidate, which `alarmSetWallsAt` now
+// does; `alarmCornerWarnsAt` then measures at the candidate's OWN re-solved
+// bearing rather than the shipped one, and reports a re-solve as well as a
+// failure — a corner that builds but moves the bearing off 18° is not silent.
 //
 // The measurement is three verdicts per radius, and the failure to catch is
 // one specific disagreement between them:
@@ -29,6 +31,13 @@
 //
 //   PERMISSION THAT LIES  accepted and silent before the build, noisy in it
 //   over-strict           refused, yet the movement boots clean
+//
+// KNOWN RESIDUE, so a PASS is read for what it is: the shadow covers the
+// setting corner's own bounds and NOT §112's link solve, whose result also
+// moves with the corner. A radius failing only that bound would still pass
+// here. Sweep the band with RADII='5:22:0.5' to bound it by measurement
+// rather than by argument — that is how §179 bounded it, and every point
+// costs a boot because the bound lives inside the build.
 //
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -61,7 +70,20 @@ const p0 = await browser.newPage();
 p0.on('pageerror', (e) => console.log('PAGEERROR', String(e)));
 await p0.goto(`http://127.0.0.1:${PORT}/index.html?hud=0&sync=0`, { waitUntil: 'load', timeout: 120000 });
 await p0.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
-const RADII = [6, 10, 13, 15.400741713809364, 17, 19, 19.5, 20, 21, 24, 30, 46];
+// The twelve that found the original gap, and a denser grid on demand:
+// RADII='5:22:0.5' sweeps the buildable band, which is how the §112 residue
+// named in the header below was BOUNDED rather than assumed. A sample of
+// twelve cannot show that no radius is accepted in silence; a sweep can say
+// which ones are, and there is no cheaper way to ask — the bound lives inside
+// the build, so every point costs a boot.
+const RADII = (() => {
+  const spec = process.env.RADII;
+  if (!spec) return [6, 10, 13, 15.400741713809364, 17, 19, 19.5, 20, 21, 24, 30, 46];
+  const [a, b, st] = spec.split(':').map(Number);
+  const out = [];
+  for (let v = a; v <= b + 1e-9; v += st) out.push(Number(v.toFixed(4)));
+  return out;
+})();
 const rows = await p0.evaluate((rs) => {
   const c = window.__clock;
   const h = (c.reconfHandles || []).find((x) => x.kind === 'alarmr');

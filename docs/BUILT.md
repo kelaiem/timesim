@@ -19031,3 +19031,75 @@ It works at all because `ExtrudeGeometry` keeps what it was handed in
   exercised rather than assumed.
 - `tools/probe-outline-simple.mjs` stays as the standalone form, for iterating
   without a full battery.
+## §179 — The alarm corner's radius becomes the third radial reconfigure handle
+
+Roadmap 177 filed this as tier 1 and called it nearly free: `?alarmr=` has been
+a spec since §94 tier B, `solveLayout` already warns on `(0, plateR + 2.2)`, so
+the estimate was "the row, five minutes". **Both halves of that were wrong, and
+the handle was written and withdrawn once before it shipped.**
+
+### Why the cheap estimate failed
+
+`solveKeyless`'s warn is an OUTER BRACKET, and its own comment says so: *"the
+interior bounds live with their own instruments … so this warn brackets only
+what they cannot see."* A refusal reading it would call a corner at 30 legal.
+
+The first landing gathered the interior bounds into `alarmCornerWarnsAt(r)` and
+built the handle on those. `tools/probe-alarmr-handle.mjs` — three verdicts per
+radius: the row's `refuseAt`, the row's `shadow`, and an actual `?alarmr=` boot
+whose console is ground truth — failed it on the first run. **Five of twelve
+radii were accepted in silence and booted with real wall failures**, `NO bearing
+clears every wall` among them. The row was withdrawn rather than shipped with a
+partial refusal, because a refusal is a PERMISSION: whatever a drag accepts, a
+viewer will Apply.
+
+### The bound that actually binds, and why it was invisible
+
+The setting bearing is re-solved for whatever corner it is given, against
+`ALARM_SET_WALLS`. Those walls were built once at the shipped `ALARM_CD`, so
+asking them about a candidate asked the wrong movement — and `alarmCornerWarnsAt`
+compounded it by measuring bounds at the SHIPPED bearing, a route the candidate
+would never use.
+
+**The wall list is now a function of the corner, and the split inside it is the
+finding.** Of the eight rows only THREE move: the winding climb, the arbor cock
+post, and one endpoint of §29's tail corridor. The two that looked fatal — the
+mesh-measured `alarmSetWallsOf` rows — hang off `dialFace` at the origin and
+read no corner constant in their builders, so they do not move at all. That is
+what makes a candidate judgeable **without rebuilding geometry**, which is the
+whole reason a closed-form-refusal handle is possible here. The traversals are
+hoisted because they are constant; the list otherwise keeps its ORIGINAL ORDER,
+since `alarmSetWorst` takes a minimum and a reordered tie is a moved report.
+
+### The refusal/shadow split, and §94 tier A's rule restated
+
+Tier A's rule is that a refusal is never READ FROM a shadow-solve, and the
+reason is **fallback**: `solveLayout` falls back to `D4`, so a shadow of an
+impossible value returns the DEFAULT layout and the ghost is a proposal nobody
+made. `alarmSetBearingAt` falls back identically — the incumbent bearing stands
+— so the same trap is live. What makes this row safe is that the solve now
+returns a **verdict** beside the fallen-back angle: the row reads the solve's
+own statement that it fell back, never the value it fell back to.
+
+- **`refuseAt` is closed form** and covers only what leaves the build with
+  nothing to stand on: the stem's length inside the case rim, and whether the
+  dogleg can close at ANY bearing — i1's circle of radius `DW1` about the centre
+  must put the arbor within `[|D12 − D2P|, D12 + D2P]`, an interval
+  intersection, `d4Window`'s shape one station over.
+- **`shadow` carries `alarmCornerWarnsAt`**, which now includes the wall scan at
+  the candidate's own re-solved bearing.
+
+**A re-solve is not a failure and is still something to say.** It builds and it
+clears — so it is never refused — but it warns at boot (rule 6), and a viewer
+about to Apply is entitled to know the corner moves the setting bearing off its
+shipped 18°. Measured, that is exactly what separates `r 10`, which the first
+corrected cut still accepted in total silence, from the radii that change
+nothing.
+
+### The residue, named
+
+`alarmCornerWarnsAt` covers the setting corner's own bounds. It does **not**
+cover §112's link solve, a separate mechanism's search whose result also moves
+with the corner — `r 10` warns from it as well as from the re-solve. Covering it
+means parameterising that solve too, which is its own landing. The handle is
+honest on everything measured below and this is the gap to know about.
