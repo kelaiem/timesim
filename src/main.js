@@ -18929,6 +18929,12 @@ const ALARM_COL_POS = {
   if (skirtBot < TQ_TOP_Z + bandNeed - 1e-6)
     console.warn(`§163: ratchet skirt bottom ${skirtBot.toFixed(3)} leaves ${(skirtBot - TQ_TOP_Z).toFixed(3)} over the plate top ${TQ_TOP_Z.toFixed(3)} — the driver's stratum needs ${bandNeed.toFixed(3)}`);
 }
+// The rider nose the wheel sizes its flat tops for — hoisted above the rocker
+// spec that now reads it. Left where it was, it is a TEMPORAL DEAD ZONE and
+// main.js throws at import: `__clock` never appears and the console stays
+// empty, which is this file's own documented tell and the FOURTH time it has
+// been paid here.
+const ALARM_COL_RIDER_NOSE_R = 0.28;
 // The lock beak's azimuth about the wheel, in profileAt's own convention. It is
 // ZERO, and naming it is the point: the fold KEPT the reading station exactly
 // where it was — B0 lies on the wheel→pivot ray, the same ray the wheel's phase
@@ -18942,8 +18948,16 @@ const ALARM_ROCKER_PIN_R = STOCK_MIN_R10;         // the pin runs at the movemen
 // The post crosses the saw's band like every other rod beside this wheel, so
 // §171's constraint fixes how far off the radius the pivot must stand:
 //   √(readR² + arm²) ≥ ALARM_COL_TIP_R + CLEAR_MARGIN + postR
-const ALARM_ROCKER_ARM = Math.sqrt(
-  (ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_POST_R) ** 2 - ALARM_COL_BASE_R ** 2);
+// WHAT THE BEAK RIDES ON is a round nose of the wheel's own `riderNoseR` — the
+// very constant makeColumnWheel sizes its flat tops for — so the read is a
+// point contact on a cylindrical wall rather than a flat face laid along it.
+// The first cut used a BOX along the arm and `alarmHandoffs` refused it at
+// −0.3022: at the Thales station the arm is TANGENTIAL to the wheel, so a box
+// lying along it presents its SIDE to the wall and buries half its width. The
+// nose's CENTRE therefore rides one nose-radius outside the wall.
+const ALARM_ROCKER_READ_R = ALARM_COL_BASE_R + ALARM_COL_RIDER_NOSE_R;
+const ALARM_ROCKER_POST_W = ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_POST_R;  // §171's floor
+const ALARM_ROCKER_ARM = Math.sqrt(ALARM_ROCKER_POST_W ** 2 - ALARM_ROCKER_READ_R ** 2);
 // The chamfer the pillars owe this follower: exactly the radial travel it
 // makes, no more — a cam cut deeper than its follower's lift is metal removed
 // for nothing, and cut shallower is a follower that stops reading.
@@ -19026,7 +19040,7 @@ const ALARM_ROCKER = (() => {
   const dPW = Math.hypot(P.x - W.x, P.y - W.y);
   const u = { x: (P.x - W.x) / dPW, y: (P.y - W.y) / dPW };   // wheel → pivot
   const n = { x: -u.y, y: u.x };                              // +90°: the roomier flank, per the search
-  const B0 = { x: W.x + u.x * ALARM_COL_BASE_R, y: W.y + u.y * ALARM_COL_BASE_R };
+  const B0 = { x: W.x + u.x * ALARM_ROCKER_READ_R, y: W.y + u.y * ALARM_ROCKER_READ_R };
   const Q = { x: B0.x + n.x * ALARM_ROCKER_ARM, y: B0.y + n.y * ALARM_ROCKER_ARM };
   const dQW = Math.hypot(Q.x - W.x, Q.y - W.y);
   const dPQ = Math.hypot(Q.x - P.x, Q.y - P.y);
@@ -19040,8 +19054,9 @@ const ALARM_ROCKER = (() => {
   // assumed: a sign guessed here would put the rocker's whole travel backwards.
   const sgn = Math.sign(wrapPi(Math.atan2(B0.y - Q.y, B0.x - Q.x) - azQW)) || 1;
   const beakAzFor = (r) => azQW + sgn * gammaFor(r);
-  const restAz = beakAzFor(ALARM_COL_BASE_R);                  // beak on a column top
-  const dropAz = beakAzFor(ALARM_COL_BASE_R - ALARM_COL_RCHAM); // beak in a gap
+  // the nose's CENTRE radius at each end of the ride — the wall plus a nose
+  const restAz = beakAzFor(ALARM_ROCKER_READ_R);                  // nose on a column top
+  const dropAz = beakAzFor(ALARM_ROCKER_READ_R - ALARM_COL_RCHAM); // nose in a gap
   const travel = dropAz - restAz;                              // the rocker's own swing
   const pinAz0 = Math.atan2(P.y - Q.y, P.x - Q.x) - restAz;
   // rPin, DERIVED — and SOLVED, not ratio'd. The lever must travel exactly
@@ -19092,7 +19107,7 @@ if (Math.abs(ALARM_ROCKER.dQW - (ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_P
   const b0 = at(ALARM_ROCKER.restAz), b1 = at(ALARM_ROCKER.restAz + eps);
   const mv = { x: (b1.x - b0.x) / eps, y: (b1.y - b0.y) / eps };
   const mvL = Math.hypot(mv.x, mv.y);
-  const ur = { x: (ALARM_ROCKER.W.x - b0.x) / ALARM_COL_BASE_R, y: (ALARM_ROCKER.W.y - b0.y) / ALARM_COL_BASE_R };
+  const ur = { x: (ALARM_ROCKER.W.x - b0.x) / ALARM_ROCKER_READ_R, y: (ALARM_ROCKER.W.y - b0.y) / ALARM_ROCKER_READ_R };
   const gain = Math.abs((mv.x * ur.x + mv.y * ur.y) / mvL);
   if (gain < 0.999)
     console.warn(`TODO 90: the rocker's read has radial gain ${gain.toFixed(4)}, not 1 — its pivot is not perpendicular to the wheel radius`);
@@ -19206,7 +19221,6 @@ const SPRING_STRAIN_MAX = SPRING_SIGMA_Y_PA / STEEL_E_PA;
 // still be wide enough for every rider that IS left, and if a future rider
 // needs more it must move this number rather than discover the shortfall by
 // burying itself in a column.
-const ALARM_COL_RIDER_NOSE_R = 0.28;
 // --- TODO 90 finding 5: THE LOCK'S READ, REFOLDED --------------------------
 //
 // Finding 5 measured the defect: the lock lever's beak sits ON the line from
@@ -19583,7 +19597,6 @@ alarmLockRocker.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, ALARM_LOCK_Z + 
 alarmLockUnit.add(alarmLockRocker);
 {
   const beakH = ALARM_COL_H * 0.6;              // as the old nose: inside the band, clear of both faces
-  const beakLen = 0.5;                          // reaches inboard from the arm's end onto the wall
   const armW = STOCK_MIN_U;
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_ROCKER_ARM, armW, armW), MATS.steel);
   arm.name = 'alarmLockRockerArm';
@@ -19593,9 +19606,11 @@ alarmLockUnit.add(alarmLockRocker);
   // a different carrier: `alarmHandoffs`' row 'column outer face ⇄ lock beak'
   // and inspect.js's tables select it by string, and re-pointing them would
   // have been a rename pretending to be a repair.
-  const beak = new THREE.Mesh(new THREE.BoxGeometry(beakLen, ALARM_COL_RIDER_NOSE_R * 2, beakH), MATS.steel);
+  const beak = new THREE.Mesh(new THREE.CylinderGeometry(
+    ALARM_COL_RIDER_NOSE_R, ALARM_COL_RIDER_NOSE_R, beakH, 16), MATS.steel);
   beak.name = 'alarmLockBeak';
-  beak.position.set(ALARM_ROCKER_ARM - beakLen / 2, 0, 0);
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(ALARM_ROCKER_ARM, 0, 0);   // the arm's tip IS the nose's centre
   alarmLockRocker.add(beak);
   // THE PIVOT POST keeps the riser's name for the same reason, and it is now
   // literally what inspect.js already declares it to be (a 'pivot'). It stands
@@ -19671,7 +19686,8 @@ const ALARM_ROCKER_SLOT = (() => {
 // dimensions moved it not at all — §102's criticism of the code IT replaced,
 // still true of the code that replaced it.
 const alarmLockBeakAzAt = (colA) =>
-  ALARM_ROCKER.beakAzFor(alarmColumnWheel.userData.rOutAt(colA + ALARM_LOCK_BEAK_OFF));
+  ALARM_ROCKER.beakAzFor(alarmColumnWheel.userData.rOutAt(colA + ALARM_LOCK_BEAK_OFF)
+    + ALARM_COL_RIDER_NOSE_R);   // the nose's CENTRE, one radius off the wall it rides
 const alarmLockPinAt = (colA) => {
   const a = alarmLockBeakAzAt(colA) + ALARM_ROCKER.pinAz;
   return { x: ALARM_ROCKER.Q.x + Math.cos(a) * ALARM_ROCKER.aPin,
