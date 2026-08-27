@@ -19237,7 +19237,7 @@ equality, so it is no weaker than the stem of the title.
 
 ### Instruments
 
-- Battery **35/35 gates pass**. `intraUnit`'s line: *0 unwaived intra-unit
+- Battery **36/36 gates pass**, 1376.4 s across 3 shards, local. `intraUnit`'s line: *0 unwaived intra-unit
   intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched
   selectors, 0 declared rows that excuse nothing, 0 malformed declarations
   (316 movers in 95 frames over 70 poses; pairs MF 5205/FF 3045/MM 5824, 174
