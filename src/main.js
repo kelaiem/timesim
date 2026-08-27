@@ -18781,6 +18781,13 @@ alarmLockUnit.add(alarmLockLever);
   post.position.set(alarmLockPivot.x, alarmLockPivot.y, TQ_TOP_Z + 0.31 - 0.01);
   alarmLockUnit.add(post);
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LOCK_L, 0.5, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock — plate-top lever
+  // NAMED by TODO 90 finding 5, for §171's reason and the third time in this
+  // unit: its INTRA_UNIT_CONTACTS rows selected it as 'BoxGeometry#0', a
+  // position in the unit's box list, and the fold both removes a box (the
+  // tail-mounted nose) and adds two (the rocker's arm and beak). An index
+  // selector is a claim about what else the unit contains; a name is a claim
+  // about this part.
+  arm.name = 'alarmLockArm';
   arm.position.x = ALARM_LOCK_L / 2;
   alarmLockLever.add(arm);
   // TODO 11 tranche five: the pad is as thick as the band it brakes. Its 0.3
@@ -18794,6 +18801,7 @@ alarmLockUnit.add(alarmLockLever);
   alarmLockLever.add(pad);
   // Tail — what the switch's nose bears on.
   const tail = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock
+  tail.name = 'alarmLockTail';   // named with the arm above, same reason
   tail.position.x = -1.0; // end at 1.8 from the wheel axis — the old 2.2 corner clipped the ratchet skirt (reach 1.68)
   alarmLockLever.add(tail);
 }
@@ -19164,8 +19172,18 @@ if (Math.abs(ALARM_ROCKER.dQW - (ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_ROCKER_P
   alarmLockUnit.add(blade);
 }
 declareRestoring('Alarm lock', 'alarmLockPad', 'spring',
-  'the return blade biases the lever toward LIFTED (beak into the gap, pad off the collar) and the column presses it ENGAGED against this spring — a real blade on its own stud, bearing on the arm\'s flank; the HOLD when braked is the column\'s, not the spring\'s',
+  'the return blade biases the lever toward LIFTED (finger out of the stop teeth) and the column presses it ENGAGED against this spring — a real blade on its own stud, bearing on the arm\'s flank. TODO 90 finding 4 cut the collar it holds by into a stop wheel, and finding 5 gave the column a rocker to press through, so the HOLD is form-locking now and the PRESS reaches the lever through metal that moves',
   'alarmLockSpring');
+// TODO 90 finding 5 — the ROCKER is a second body in this unit, and it
+// reciprocates, so §162's member tier asks for it by name. It carries no
+// spring of its own and needs none: its pin is LOCATED in the lever's radial
+// slot, which drives it in both directions, and the §102 blade behind the
+// lever is therefore what presses the beak onto its cam. That is the selector
+// fork's answer (a centre pin in a groove) and it is declared the same way —
+// a follower held to its cam by a spring that exists, which is TODO 13's
+// requirement, reached without adding a second one.
+declareRestoring('Alarm lock', 'alarmLockRockerArm', 'two-way',
+  'the pin in the lever\'s radial slot drives the rocker both ways — the lever\'s own §102 blade presses the beak onto the castellations through it, and the column pushes back through the same pin');
 // Hardened spring steel's usable elastic strain — the surface strain a blade
 // may work to and come back. §164 moved the yield itself to layout.js, beside
 // the modulus, because the pusher's return COIL needs the same number under a
