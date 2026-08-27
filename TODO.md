@@ -11873,12 +11873,27 @@ filed and left.
 
 ### Closed by §182
 
-`weldTree` snapshots the authored index order into `userData.subBodyIndex` for
-any geometry declaring sub-bodies. It is the last thing boot does to a geometry
-and no check has run yet, and it covers the lazily re-welded hands by the same
-path. Tier 3 reads the snapshot. A geometry that has a bounds tree AND no
-snapshot is reported malformed — the tier declines to answer rather than
-answering from a shuffled buffer.
+**The table and the order it indexes are ONE fact, so they are established
+together.** `declareSubBodies(geo, bodies)` sets `userData.subBodies` and
+captures the authored index order into `userData.subBodyIndex` in the same
+call; both declaration sites go through it — `mergeGeos`' declared route and
+the chain's rebuild. Tier 3 reads the snapshot. A geometry that has a bounds
+tree AND no snapshot is reported malformed: the tier declines to answer rather
+than answering from a shuffled buffer.
+
+**The first cut anchored it in boot's `weldTree` pass instead, and that was
+wrong in the instructive way.** The pass covered 28 of 29 geometries and missed
+exactly the one that matters — `chainRun` is re-tessellated on every tension
+change and never passes through a boot-time traversal, so its 87 bodies (the
+entire 174 → 87 drop) had no order to read. The acceptance caught it as a gate
+FAILURE naming `Chain / chainRun`, which is the safety valve doing its job: a
+wrong number would have looked exactly like a healthy one. The pass stays as a
+BACKSTOP for a builder that assigns `userData.subBodies` directly, with its own
+comment saying why a backstop cannot be the whole answer.
+
+Acceptance: `--only meshIntegrity` and `--only support,meshIntegrity` now give
+byte-identical payloads — `subBodies 174 in 28 geometries; pairs 39 tested /
+136 declared / 0 interior` — where before they read `39/136/0` and `527/50/134`.
 
 The zero-area and inverted tiers are untouched: those are per-triangle
 properties, invariant under a reordering, which is why their counts agreed in

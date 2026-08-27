@@ -19242,10 +19242,20 @@ It has been latent since sub-bodies existed, because on `main` the partition
 puts `support` and `meshIntegrity` on different shards. Moving `intraUnit`'s
 cost 3 → 11 shifted the partition and put them together. **A cost column is not
 allowed to change a verdict** — that is the entire basis of §81's sharding — so
-this is fixed here rather than filed and left: `weldTree` snapshots the authored
-order into `userData.subBodyIndex` at the last point of boot, tier 3 reads the
+this is fixed here rather than filed and left. `declareSubBodies(geo, bodies)`
+sets the table and captures the authored index order in the same call — they
+are one fact — and both declaration sites go through it; tier 3 reads the
 snapshot, and a geometry with a bounds tree and no snapshot is reported
 malformed rather than answered from a shuffled buffer.
+
+The first cut anchored the snapshot in boot's `weldTree` pass, which covered 28
+of the 29 sub-body geometries and missed the one that matters: `chainRun` is
+re-tessellated on every tension change and never passes through a boot-time
+traversal. The acceptance failed the gate naming `Chain / chainRun` — the
+safety valve working, since a wrong number would have been indistinguishable
+from a healthy one. Both orderings now produce byte-identical payloads:
+*subBodies 174 in 28 geometries; pairs 39 tested / 136 declared / 0 interior*,
+against `39/136/0` and `527/50/134` before.
 
 The probe cost two more instances of the same lesson before it measured
 anything. Its first cut called `I.bvhFor`, which `inspect.js` does not export —
