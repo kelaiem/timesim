@@ -19103,3 +19103,208 @@ cover §112's link solve, a separate mechanism's search whose result also moves
 with the corner — `r 10` warns from it as well as from the re-solve. Covering it
 means parameterising that solve too, which is its own landing. The handle is
 honest on everything measured below and this is the gap to know about.
+
+## §182 — a declaration must excuse something (TODO 104 tier A)
+
+A row in `INTRA_UNIT_CONTACTS` does not waive a measured overlap: `allowed()`
+is consulted *inside* the tier loops and the pair `continue`s, so the check
+records nothing about it at all. The table was gated for NAME validity —
+`unmatchedSelectors` fails a row naming a mesh that does not exist — and never
+for GEOMETRIC validity. Nothing asked whether a declared joint described metal
+that is actually in contact.
+
+It had stated something false twice, both times found by accident: §169's stud
+measured **4.347 clear** of the part declaring it, and §177's declared running
+fit was **solid metal**, 120 of 120 sample points filled.
+
+Tier A measures every row over the pose net instead of skipping it, and fails
+one whose parts never come within `DECLARED_CONTACT_REACH`.
+
+### The threshold is a separation, not a number someone liked
+
+Swept over the whole net before any fix, the 129 rows any tier compared fell in
+two groups: a contact-and-running-fit cluster of **127 topping out at 0.4491**,
+and two rows at **1.2056** and **4.0979**. The band between is empty, so the cut
+is insensitive to where in it it sits — which is what makes 1.0 a classifier
+between two measured populations rather than a tuned constant. Both outliers
+turned out to be defects, so all 128 rows compared today sit at or under 0.4491.
+
+### A row excuses a LABEL PAIR, and the first cut of this forgot it
+
+Resolving each row to a single mesh reported **10** apart rows. But `allowed()`
+compares *labels*, and a unit may carry several meshes under one: both
+maintaining pawls are `maintPawl`, both alarm-winding idlers `alarmWindIdler`,
+both selector posts `alarmSelPost`, and `alarmSelTab` is four meshes. Judged on
+the best matching combination the count is **2** — the other eight were real
+joints measured against the wrong pawl.
+
+That direction of error matters more than the other: a false failure here would
+have been a new false declaration, which is the defect this item exists to
+catch. Row `ratchet ⇄ maintPawl` explains the duplication in its own `why`, and
+the first cut read straight past it.
+
+### Four outcomes; two of them fail
+
+| outcome | verdict |
+|---|---|
+| the pair touches, or sits in a designed running fit | passes |
+| the parts never come within the reach | **fails** — the row excuses nothing |
+| no tier compares any of the row's combinations | reported (12 rows) |
+| both labels name the one same mesh | **fails** — malformed |
+
+The third is the item's explicit requirement that the two "excuses nothing"
+symptoms not be conflated. A row is inert two ways: same-frame movers are
+`checkAssembly`'s domain, and a pair whose meshes both sit in a smaller unit is
+deferred there by `nearestElsewhere`. Neither is a claim about distance, and
+nothing measured here establishes where such a row should live instead.
+
+### What it caught
+
+**`Alarm switch / alarmPusherStem ⇄ alarmPusherGuide` — 4.0979.** §170 rotated
+the press line to run through the movement's centre. `_pushBase` moved onto the
+radius by construction and every member is placed from it or is a child of the
+group standing on it — except the guide boss, whose station kept the
+`+ _pushPerp·ALARM_PUSH_CHORD` term from when the line WAS that radius displaced
+sideways. The pusher's outer bearing stood exactly one `ALARM_DRIVE_OFFSET`
+beside the stem it bears. `tools/probe-182-guide-station.mjs` separated the
+three ways a bearing can be absent — off the shaft's LINE, off its SPAN, or at
+a different HEIGHT — and found it purely lateral: perpendicular miss **5.0123**,
+station 41.72 already inside a stem spanning 31.23–45.72, z aligned. After the
+fix it reads 0 across the whole stroke, with the boss inside the span at every
+sample (the stem's outer end runs 45.72 → 43.04 and the boss stands at 41.72).
+
+That probe also cost a lesson worth its own line, since it is the one this repo
+keeps paying: its first cut posed with `clock.setPose({ alarmPressT: t })`, and
+no pose reads that key. `setPose` assigns only the keys a pose NAMES, so it
+posed rest three times and printed three identical rows — which read exactly
+like a correct stroke-invariant result. The axis's own key is
+`alarmPressCycle`.
+
+Fixed in position space — the lateral term dropped — with two boot asserts,
+because the pair of instruments already watching could not see it: the TODO 87
+assert beside it holds the bore's SIZE against the stem's and never its PLACE,
+and the declaration itself SKIPPED the pair, so it bought silence for the very
+thing it described. The asserts now hold both halves of being a bearing: on the
+shaft's line, and around the shaft across the whole stroke.
+
+Corroborated by `tools/probe-164-return.mjs`, which had reported the coaxial
+envelope at the boss's station as 10.496 with the nearest metal a stray torus;
+it now reads **0.37 by `alarmPusherGuide`** — the bore itself.
+
+**`Dial / alarmIndexWedge ⇄ ShapeGeometry#3` — 1.2056**, which is
+`DIAL_T + CLEAR_MARGIN` exactly. TODO 26 retracted the wedge's tip to one margin
+behind the dial's BACK face when the dial stopped being a sheet and became a
+plate; the row went on reading "stands proud THROUGH the face sheet by design".
+The distance IS the retraction. Retired.
+
+### And a TODO 54 gap in the loop it measures inside
+
+`checkIntraUnit`'s MF/MM tier loop ran straight through `poses` without
+`enterAxis`, so each axis started from the tail of the one declared above it and
+that tier's coverage was a function of `AXES`' order — the thing `axisEntry`
+gates everywhere else. The mover-trace loop above it and `checkAssembly`'s sweep
+both enter canonically; this one was missed, and §182's audit measures inside it
+and would have inherited the drift.
+
+The report **moves** on the fix, by one row: `Dial / alarmPinSpringB ⇄
+alarmFaceCam` at `train f=0.25`, an MM intersection the inherited entry was
+hiding. It is outside `INTRA_TIER_SCOPE`, so it joins §121's reported residue
+(173 → 174) rather than failing anything — but no run before this one could see
+it, which is what the rule is for.
+
+### Cost
+
+The audit adds **+2.6 s** to the check (8.3 s → 10.9 s over 140 rows × 70
+poses), and `COSTS` moves 3 → 11. It is a classifier, so the sweep stops
+refining a row the moment its verdict can no longer change; without that it
+measured **41.4 s**, spending 33 seconds polishing running fits from 0.37 down
+to 0. The price is that `nearestD` on a *passing* row is an upper bound rather
+than a swept minimum (125 of 140 are still exact); rows that FAIL are
+re-measured unbounded, so every number anybody acts on is exact.
+
+### The cost column moved a report, which is not allowed to happen (TODO 108)
+
+Diffing `--report` against a real base run of `a0f35b0` — the reason to do it,
+since the PASS column showed nothing — turned up `meshIntegrity` disagreeing
+with itself: `39 tested / 136 declared / 0 interior` on the base, `527 / 50 /
+134` here. Neither number is this change's doing. Run in isolation the two
+trees give the identical `39 / 136 / 0`, and `--only support,meshIntegrity` on
+the UNMODIFIED base reproduces `527 / 50 / 134`.
+
+`userData.subBodies` is a table of triangle RANGES into the index buffer, and
+three-mesh-bvh's `computeBoundsTree` reorders that buffer in place.
+`tools/probe-182-subbody-index.mjs` measures it: 29 sub-body geometries, no
+bounds tree at boot, 16 with one after `support` — and all 16 with EVERY index
+entry moved. Tier 3 read the live index, so its rows were a function of what
+ran before it in the shard.
+
+It has been latent since sub-bodies existed, because on `main` the partition
+puts `support` and `meshIntegrity` on different shards. Moving `intraUnit`'s
+cost 3 → 11 shifted the partition and put them together. **A cost column is not
+allowed to change a verdict** — that is the entire basis of §81's sharding — so
+this is fixed here rather than filed and left. `declareSubBodies(geo, bodies)`
+sets the table and captures the authored index order in the same call — they
+are one fact — and both declaration sites go through it; tier 3 reads the
+snapshot, and a geometry with a bounds tree and no snapshot is reported
+malformed rather than answered from a shuffled buffer.
+
+A caller that HOLDS the authored order passes it, and the chain must:
+`chainBuf.idx` is a template buffer shared by every rebuild and handed straight
+to the geometry's `BufferAttribute`, so a BVH reorders it in place and the next
+rebuild emits from the shuffled template.
+
+**Two wrong fixes preceded that, and the second is the instructive one.**
+Anchoring the snapshot in boot's `weldTree` missed `chainRun`, which never
+passes a boot traversal — caught as a gate FAILURE naming it. Snapshotting at
+the declaration but reading the order back OFF the geometry was worse and
+passed the acceptance I had: a snapshot EXISTS, so the malformed guard stays
+quiet while the ranges describe a different tessellation — 0 malformed, 133
+phantom interior rows, green gate. It survived because `support,meshIntegrity`
+reads 39/136/0 (nothing rebuilds the chain in between) and I stopped there.
+
+**A single ordering is not an order-independence test**, which is the whole
+lesson. Five are checked now, and the two that reproduce are in the set:
+
+| ordering | before | after |
+|---|---|---|
+| `meshIntegrity` | 39/136/0 | 39/136/0 |
+| `support,meshIntegrity` | 527/50/134 | 39/136/0 |
+| `support,axisEntry,meshIntegrity` | 493/50/133 | 39/136/0 |
+| `axisEntry,support,meshIntegrity` | 493/50/133 | 39/136/0 |
+| `intraUnit,meshIntegrity` | 39/136/0 | 39/136/0 |
+
+The probe cost two more instances of the same lesson before it measured
+anything. Its first cut called `I.bvhFor`, which `inspect.js` does not export —
+a throw per mesh and `0 reordered`, probe-90-click's exact failure. Its second
+waited on `I.status().state`, but `status()` with no argument returns a MAP of
+every job, so `.state` is undefined, the wait loop exited at once and `support`
+never ran — again `0 reordered`. Both are in the skill's catalogue now.
+
+### One more thing this landing had to fix to land
+
+A CLOSED item announces it in its own heading, and `check-item-numbers.mjs`
+treats a `TODO.md` title as the item's identity — so appending `— TIER A DONE
+(§182)` to item 104 read as two different items sharing a permanent number.
+Items 98, 100 and 103 never tripped it because each was filed and closed on the
+same branch, where `main` carries no heading to compare against; 104 was filed
+in an earlier PR, which is the ordinary case and had never been exercised. The
+check now strips a trailing status marker — a dash-introduced run of CAPITALS,
+optionally citing a section — and holds everything before the dash to exact
+equality, so it is no weaker than the stem of the title.
+`docs/item-numbers/README.md` carries the reasoning next to the other residues.
+
+### Instruments
+
+- Battery **36/36 gates pass**, 1376.4 s across 3 shards, local. `intraUnit`'s line: *0 unwaived intra-unit
+  intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched
+  selectors, 0 declared rows that excuse nothing, 0 malformed declarations
+  (316 movers in 95 frames over 70 poses; pairs MF 5205/FF 3045/MM 5824, 174
+  out of scope (reported), 2 waived (accepted debt), 0 unmeasurable (reported);
+  140 declarations (reach 1, 12 no tier compares, 0 unmeasurable — both
+  reported))*.
+- **The gate has teeth, demonstrated rather than argued**: it landed RED on the
+  tree it was written against, naming both defects and their distances, and
+  green only after the metal and the table were corrected. The 10 → 2 correction
+  above was found the same way.
+- `tools/probe-182-guide-station.mjs` (report) — where the guide boss stands
+  relative to the stem, resolved into the stem's own frame.

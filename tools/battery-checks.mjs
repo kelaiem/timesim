@@ -160,11 +160,27 @@ export const BATTERY = [
     note: (r) => `${r.geometries} geometries / ${r.triangles} tris: zeroArea ${r.zeroArea.total} in ${r.zeroArea.geometries} geometries (${r.zeroArea.exactZero} exact), `
       + `${r.inverted.rows.length} inverted, subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries; `
       + `pairs ${r.subBodies.pairs.tested} tested / ${r.subBodies.pairs.skippedDeclaredOverlap} declared / ${r.subBodies.pairs.rows.length} interior` },
+  // TODO 104 tier A rides this row's gate rather than a row of its own: the
+  // declarations it judges are the same table whose stale selectors already
+  // fail here, and they are measured inside the same pose loop. `declaredApart`
+  // is the failure — a row excusing a pair that never comes within
+  // DECLARED_CONTACT_REACH. `declaredNeverCompared` is REPORTED beside it and
+  // is a different defect (a row filed against a tier that cannot see the
+  // pair); nothing measured here establishes where such a row should live, so
+  // it is not gated, and neither is a row whose query THREW — a pair the
+  // geometry cannot measure is not a pair that is far apart, which is the
+  // tiers' own `unmeasurable` rule. What does fail beside `declaredApart` is
+  // `declaredDegenerate`: a row whose two labels name the one same mesh
+  // resolves to no pair at all and would drop out of every count in silence.
   { name: 'intraUnit', opts: { yieldEvery: YIELD_EVERY },
-    gate: '0 unwaived intra-unit intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors',
-    fails: (r) => [...r.violations, ...r.unmatchedSelectors.map((u) => ({ unmatchedIntraUnitSelector: u }))],
+    gate: '0 unwaived intra-unit intersections (MF everywhere; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors, 0 declared rows that excuse nothing, 0 malformed declarations',
+    fails: (r) => [...r.violations, ...r.unmatchedSelectors.map((u) => ({ unmatchedIntraUnitSelector: u })),
+      ...r.declaredApart.map((d) => ({ declarationExcusesNothing: `${d.unit} / ${d.a} \u21c4 ${d.b}`, nearestD: d.nearestD, tiers: d.tiers, why: d.why })),
+      ...r.declaredDegenerate.map((d) => ({ malformedDeclaration: `${d.unit} / ${d.a} \u21c4 ${d.b}`, why: 'both labels name the one same mesh — the row resolves to no pair at all' }))],
     note: (r) => `${r.movers} movers in ${r.frames} frames over ${r.poses} poses; pairs MF ${r.tiers.MF}/FF ${r.tiers.FF}/MM ${r.tiers.MM}, `
-      + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt), ${r.unmeasurable.length} unmeasurable (reported)` },
+      + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt), ${r.unmeasurable.length} unmeasurable (reported); `
+      + `${r.declared.length} declarations (reach ${r.declaredReach}, ${r.declaredNeverCompared.length} no tier compares, `
+      + `${r.declaredUnmeasurable.length} unmeasurable \u2014 both reported)` },
   // §107 — TODO 5's other half. `intraUnit` above compares movers against
   // their own unit's FIXTURES, so two meshes that always move together were
   // never measured by anything: §104's governor anchor shipped with one pallet

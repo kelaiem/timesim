@@ -192,6 +192,57 @@ export function weldGeometry(geo) {
 // Geometries SHARED by several meshes are welded once and shared again: two
 // trees where there was one would give `bvhFor` two entries to build and hold
 // for a part that is one part, which is the opposite of the point.
+// TODO 108 (§182) — A SUB-BODY RANGE ONLY MEANS ANYTHING IN THE INDEX ORDER IT
+// WAS AUTHORED IN. `userData.subBodies` is {triStart, triCount} into the index
+// buffer, and three-mesh-bvh's computeBoundsTree REORDERS that buffer in place
+// to group triangles spatially. Measured: 29 geometries carry a sub-body table
+// and none has a bounds tree at boot; after `support` runs, 16 do — and all 16
+// have EVERY index entry moved (576 of 576, 2016 of 2016). So every range
+// afterwards names a different set of triangles.
+//
+// meshIntegrity's tier 3 read the live index, so its rows were a function of
+// what ran before it in the shard: on one tree `--only meshIntegrity` reports
+// `39 tested / 136 declared / 0 interior` and `--only support,meshIntegrity`
+// reports `527 / 50 / 134`. Both PASS — those rows are a REPORT — so nothing
+// was ever going to notice, and §81's sharding invariant (no check can observe
+// which ones ran before it) was quietly false for this one.
+//
+// The authored order is captured HERE because this is the last thing boot does
+// to a geometry and no check has run yet. The zero-area and inverted tiers are
+// unaffected — those are per-triangle properties, invariant under a reordering
+// — which is why their counts agree in both orders and only tier 3 moved.
+// The table and the order it indexes are ONE fact, so they are established
+// together: `declareSubBodies` is the only way to say a geometry has
+// sub-bodies. Boot's weldTree pass below is a BACKSTOP for a builder that
+// assigns `userData.subBodies` directly — it fills in a missing snapshot for
+// anything still in the graph — but it cannot reach a mesh built lazily, and
+// that is not hypothetical: `chainRun` is re-tessellated on every tension
+// change and never passes through it, so the pass alone left the chain's 87
+// bodies unreadable the moment anything raycast them.
+// `order` is the authored index order when the caller HOLDS it — which the
+// chain does and must pass, because its index lives in a template buffer
+// shared by every rebuild and handed straight to the geometry: three-mesh-bvh
+// reorders that buffer IN PLACE, so the next rebuild emits from the shuffled
+// template and reading the order back off the geometry snapshots the shuffle
+// faithfully. That failure is worse than no snapshot at all — one EXISTS, so
+// the malformed guard stays quiet while the ranges describe a different
+// tessellation. Measured: `support,meshIntegrity` reads 39/136/0 and
+// `support,axisEntry,meshIntegrity` 493/50/133, the difference being only
+// whether anything rebuilt the chain after a tree was built.
+export function declareSubBodies(geo, bodies, order) {
+  geo.userData.subBodies = bodies;
+  if (order) geo.userData.subBodyIndex = order;   // held by the caller, never handed to a geometry
+  else snapshotSubBodyIndex(geo);
+  return geo;
+}
+function snapshotSubBodyIndex(geo) {
+  if (!geo || !geo.index || !geo.userData || !geo.userData.subBodies) return;
+  // Never snapshot an order a BVH has already shuffled: an absent snapshot is
+  // a REPORTED defect, a wrong one is a silent lie.
+  if (geo.boundsTree) return;
+  geo.userData.subBodyIndex = geo.index.array.slice();
+}
+
 export function weldTree(root) {
   const done = new Map();
   let meshes = 0, before = 0, after = 0;
@@ -200,11 +251,12 @@ export function weldTree(root) {
     const old = o.geometry;
     meshes++;
     before += old.attributes.position.count;
-    if (old.index) { after += old.attributes.position.count; return; }
+    if (old.index) { after += old.attributes.position.count; snapshotSubBodyIndex(old); return; }
     let welded = done.get(old);
     if (!welded) { welded = weldGeometry(old); done.set(old, welded); }
     if (welded !== old) o.geometry = welded;
     after += welded.attributes.position.count;
+    snapshotSubBodyIndex(o.geometry);
   });
   for (const [old, welded] of done) if (welded !== old) old.dispose();
   return { meshes, before, after };
@@ -5398,7 +5450,7 @@ function mergeGeos(geos, names) {
   for (const g of parts) g.dispose();
   const out = weldGeometry(soup);
   if (out !== soup) soup.dispose();
-  if (subBodies) out.userData.subBodies = subBodies;
+  if (subBodies) declareSubBodies(out, subBodies);   // TODO 108 — the ranges and the index order they mean are one fact
   return out;
 }
 

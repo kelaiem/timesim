@@ -260,7 +260,11 @@ const COSTS = {
   // shape once. Measured alongside meshIntegrity, which walks the same roster.
   'outlines': 2,
   'meshIntegrity': 10,
-  'intraUnit': 3,
+  // 3 → 11 with §182's declaration audit: 140 rows measured over the same 70
+  // poses the tiers walk. The audit stops refining a row once its verdict
+  // cannot change, which is what keeps this a +2.6 s column and not a +33 s
+  // one (uncapped it measured 41.4).
+  'intraUnit': 11,
   'assembly': 3,
   // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
   // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair

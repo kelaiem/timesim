@@ -2151,6 +2151,25 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 // The fourth class — same-frame mover pairs — is checkAssembly's, gated
 // inside ASSEMBLY_SCOPE and reported outside it (§107's filed widening).
 // ---------------------------------------------------------------------------
+// TODO 104 tier A — how near a declared pair must come to be declaring
+// anything. This is a CLASSIFIER between two measured populations, not a
+// physical bound, and the measurement is why it can be one at all. Swept over
+// the whole pose net at §182, the 129 rows any tier then compared fell in two
+// groups: a contact-and-running-fit cluster of 127 topping out at **0.4491**,
+// and two rows nowhere near their partners at 1.2056 and 4.0979. **The band
+// between is EMPTY**, so the cut is insensitive to where in it it sits, which
+// is what makes this a separation rather than a tuned number. Both outliers
+// were defects and §182 fixed them — the dial row retired, the pusher's guide
+// boss moved back onto its own stem's line — so all 128 rows compared today
+// sit at or under that same 0.4491. 1.0 is kept as the cut because it is
+// where the population PUT it: over twice the widest fit the table describes,
+// and well under anything that has ever turned out to be a real declaration.
+// A row under it documents a fit that has clearance (the table's own header
+// says designed fits read as apart); a row over it excuses nothing and is
+// a standing excuse waiting for a future offender to hide under —
+// SLENDER_WAIVERS' staleness rule, applied to the other table.
+export const DECLARED_CONTACT_REACH = 1.0;
+
 export const INTRA_UNIT_CONTACTS = [
   // { unit, a, b, why } — labels are meshLabel outputs (name, or Type#index
   // within the unit); string-coupled like every table here. Every row below
@@ -2289,7 +2308,13 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Keyless works', a: 'ExtrudeGeometry#41', b: 'CylinderGeometry#38', why: 'crown-end wheel pressed on the long keyless arbor (d≈1e-4 marginal, like its neighbour row)' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#42', b: 'CylinderGeometry#38', why: 'centre-end wheel pressed on the same arbor (same marginal cluster)' },
   { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
-  { unit: 'Dial', a: 'alarmIndexWedge', b: 'ShapeGeometry#3', why: '§34\'s index wedge stands proud THROUGH the face sheet by design — the face is a zero-volume decal plane, not stock (note: parity containment is undefined on open sheets; the crossing itself is real)' },
+  // (§182 retired 'alarmIndexWedge ⇄ ShapeGeometry#3'. It read "the index wedge
+  // stands proud THROUGH the face sheet by design", and TODO 26 had already
+  // pulled the wedge's tip back to one CLEAR_MARGIN behind the DIAL'S BACK
+  // face when the dial stopped being a sheet and became a plate. The tier-A
+  // sweep measures the pair 1.2056 apart at every pose — DIAL_T + CLEAR_MARGIN
+  // exactly, which is the retraction itself — so the row survived the change
+  // that falsified it and went on excusing a crossing nobody could make.)
   { unit: 'Minute jumper', a: 'jumperBeak', b: 'CylinderGeometry#3', why: 'beak lever on its pivot stud' },
   { unit: 'Minute jumper', a: 'BoxGeometry#1', b: 'CylinderGeometry#3', why: 'lever body on the same stud' },
   { unit: 'Minute jumper', a: 'jumperBeak', b: 'jumperClickSpring', why: 'return spring bearing on the beak — §48-declared spring contact' },
@@ -2716,9 +2741,86 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
     }
   }
 
+  // TODO 104 tier A — AUDIT THE DECLARATIONS THEMSELVES. A declared row does
+  // not waive a measured overlap; `allowed()` skips the pair before
+  // measurement, so until now the table was gated for NAME validity
+  // (unmatchedSelectors) and never for geometric validity. It has stated
+  // something false twice: §169's stud measured 4.347 clear of the part
+  // declaring it, and §177's bore was solid metal while the row called it a
+  // running fit. Both were found by accident.
+  //
+  // Resolved here, measured inside the pose loop below, classified after it.
+  // The tier matters as much as the distance: a row naming two movers on ONE
+  // frame is inert whatever its distance, because §121's tiers compare movers
+  // only ACROSS frames — same-frame pairs are checkAssembly's domain. That is
+  // a DIFFERENT defect from "the parts are apart" and must not be reported as
+  // one; the item is explicit that the two have the same symptom.
+  // A row excuses a LABEL PAIR, not a mesh pair — `allowed()` compares labels,
+  // and a unit may carry SEVERAL meshes under one label (both maintaining
+  // pawls are `maintPawl`, both alarm-winding idlers `alarmWindIdler`). So the
+  // row is resolved to every combination its labels match and judged on the
+  // best of them: resolving to one mesh reads the wrong pawl and calls a real
+  // joint false, which is the failure mode this whole item exists to prevent,
+  // pointed the other way. Row 'ratchet ⇄ maintPawl' says so in its own why.
+  const declaredRows = [], declaredDegenerate = [];
+  for (const c of contacts) {
+    const u = units.find((x) => x.name === c.unit);
+    if (!u) continue;                       // unmatchedSelectors already fails this
+    const as = u.meshes.filter((m) => meshLabel(u, m) === c.a);
+    const bs = u.meshes.filter((m) => meshLabel(u, m) === c.b);
+    if (!as.length || !bs.length) continue; // ditto
+    const combos = [];
+    for (const A of as) for (const B of bs) {
+      if (A === B) continue;
+      const mA = movers.has(A), mB = movers.has(B);
+      let tier;
+      if (!mA && !mB) tier = 'FF';
+      else if (mA !== mB) tier = 'MF';
+      else tier = (mmPairs.get(u) ?? []).some(([x, y]) => (x === A && y === B) || (x === B && y === A))
+        ? 'MM' : 'same-frame';
+      // Whether any tier actually reaches this combination. Two ways it does
+      // not: same-frame movers are checkAssembly's domain, and a pair whose
+      // two meshes BOTH sit in a smaller unit is deferred there by
+      // nearestElsewhere — so the excuse, if one is needed, is owed by a row
+      // on THAT unit. Either way the declaration here skips nothing.
+      const compared = tier !== 'same-frame' && !nearestElsewhere(u, A, B);
+      combos.push({ A, B, tier, compared });
+    }
+    // A row resolving to no COMBINATION at all — both labels naming the one
+    // same mesh — measures nothing and would drop out of every count below
+    // in silence, which is the failure mode this whole audit exists to
+    // catch. It is malformed, and it fails as one.
+    if (!combos.length) { declaredDegenerate.push({ unit: c.unit, a: c.a, b: c.b, why: c.why }); continue; }
+    declaredRows.push({
+      unit: c.unit, a: c.a, b: c.b, why: c.why, combos,
+      tiers: [...new Set(combos.map((k) => k.tier))].sort().join('+'),
+      compared: combos.some((k) => k.compared),
+      nearestD: Infinity,    // over the COMPARED combinations — the gating number
+      nearestAny: Infinity,  // over all of them — context for the report
+      threw: false,          // pointInsideTree has no normals to work with here
+    });
+  }
+
   // 4. tiers MF and MM at every sampled pose
+  //
+  // TODO 54 — canonical entry per axis, which this loop did NOT do. It ran
+  // straight through `poses`, so each axis started from the tail of the one
+  // declared above it and this tier's coverage was a function of AXES' order,
+  // exactly what `axisEntry` gates everywhere else (the mover-trace loop
+  // above it and checkAssembly's own sweep both enter canonically; this one
+  // was missed). Found while adding §182's declaration audit, which measures
+  // inside this loop and would have inherited the same drift.
+  //
+  // The report MOVES on the fix, by exactly one row: `Dial / alarmPinSpringB
+  // ⇄ alarmFaceCam` at train f=0.25, an MM intersection the inherited entry
+  // had been hiding. It is out of INTRA_TIER_SCOPE, so it joins §121's
+  // reported residue (173 → 174) rather than failing anything — but it is a
+  // real crossing that no run before this one could see, which is what the
+  // rule is for.
   n = 0;
+  axisNow = null;
   for (const [axis, f] of poses) {
+    if (axis !== axisNow) { enterAxis(clock); axisNow = axis; }
     clock.setPose(axis.pose(f, clock));
     for (const u of units) {
       const fix = u.meshes.filter((m) => !movers.has(m));
@@ -2752,8 +2854,94 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
         }
       }
     }
+    // …and the declared rows, at this same pose. The box test first and a
+    // tight upper bound after it: a pair already known nearer than the reach
+    // needs no further refinement, and one whose boxes are further apart than
+    // the current best cannot improve it.
+    for (const d of declaredRows) {
+      // Stop the moment the row's VERDICT can no longer change. This is a
+      // classifier: once a pair has been seen inside DECLARED_CONTACT_REACH,
+      // no later pose can move it out of the class, and refining a running
+      // fit from 0.37 down to 0 over another 69 poses buys a prettier number
+      // and nothing else. Measured on the shipped table it is most of the
+      // check: 41.4 s → 10.9 s, against an 8.3 s baseline before the audit
+      // existed. What it costs is that `nearestD` on a PASSING row is an
+      // upper bound rather than a swept minimum — named accordingly, and
+      // exact on the rows that fail, which are the ones anybody reads.
+      if ((d.compared ? d.nearestD <= DECLARED_CONTACT_REACH : true)
+        && d.nearestAny <= DECLARED_CONTACT_REACH) continue;
+      for (const k of d.combos) {
+        // nearestD is a minimum over a SUBSET of the combinations nearestAny
+        // runs over, so nearestD >= nearestAny always: a compared combination
+        // is worth querying out to the looser of the two bounds, an uncompared
+        // one only out to nearestAny. Either at 0 leaves nothing to learn.
+        //
+        // And the bound is CAPPED at the reach, for the same reason the row
+        // loop above stops early: this pass only has to answer "does the pair
+        // ever come that near". Uncapped, the first pose costs an unbounded
+        // closestPointToGeometry per row, and the far rows — the ones that
+        // will fail — are exactly the expensive ones. What a failing row is
+        // worth its distance in it gets from the second pass below instead,
+        // run only over the handful that never came near.
+        const bound = Math.min(k.compared ? d.nearestD : d.nearestAny, DECLARED_CONTACT_REACH);
+        if (bound <= 0) continue;
+        _cbA.setFromObject(k.A);
+        _cbB.setFromObject(k.B);
+        if (boxDistance(_cbA, _cbB) >= bound) continue;
+        let got = Infinity;
+        // A pair the geometry cannot measure is NOT a pair that is far apart,
+        // and Infinity would read as one — the tiers' own `unmeasurable`
+        // convention says a throw must assume nothing in either direction, so
+        // the row is marked and reported instead of failed. Nothing throws
+        // today; the row that eventually does must not be called false.
+        try { got = meshClearance(k.A, k.B, bound); }
+        catch (e) { d.threw = true; d.err = String(e).slice(0, 80); continue; }
+        if (got < d.nearestAny) d.nearestAny = got;
+        if (k.compared && got < d.nearestD) d.nearestD = got;
+      }
+    }
     if (++n % 2 === 0) await new Promise((r) => setTimeout(r, 0));
   }
+  // TODO 104 tier A, second pass — HOW FAR, for the rows that never came
+  // within the reach. The pass above caps its queries at DECLARED_CONTACT_REACH
+  // because a classifier only needs the verdict, and that cap is what keeps
+  // the check's wall where it was. But "never within 1.0" is a poor thing to
+  // hand someone: the two rows this audit failed on its first run were
+  // diagnosed FROM their distances — 1.2056 is DIAL_T + CLEAR_MARGIN, which
+  // named TODO 26 as the change that falsified the row, and 4.0979 sent the
+  // guide boss's station to a probe. So the failing rows, and only those, are
+  // re-measured unbounded. Skipped entirely when there are none, which is the
+  // healthy case and the one that must stay cheap.
+  // A row no tier compares has no nearestD to want a number FOR — its combos
+  // were never queried against that bound — so testing it here would drag 12
+  // of them into an unbounded second sweep and cost the check 10 s for a
+  // column nothing reads.
+  const needFar = declaredRows.filter((d) => (d.compared && !Number.isFinite(d.nearestD))
+    || !Number.isFinite(d.nearestAny));
+  if (needFar.length) {
+    axisNow = null;
+    for (const [axis, f] of poses) {
+      if (axis !== axisNow) { enterAxis(clock); axisNow = axis; }
+      clock.setPose(axis.pose(f, clock));
+      for (const d of needFar) {
+        for (const k of d.combos) {
+          const bound = k.compared ? d.nearestD : d.nearestAny;
+          if (Number.isFinite(bound)) {
+            _cbA.setFromObject(k.A);
+            _cbB.setFromObject(k.B);
+            if (boxDistance(_cbA, _cbB) >= bound) continue;
+          }
+          let got = Infinity;
+          try { got = meshClearance(k.A, k.B, bound); }
+          catch (e) { d.threw = true; d.err = String(e).slice(0, 80); continue; }
+          if (got < d.nearestAny) d.nearestAny = got;
+          if (k.compared && got < d.nearestD) d.nearestD = got;
+        }
+      }
+      if (++n % 2 === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+
   // MF pair coverage, for the same population figure the other tiers report
   for (const u of units) {
     const f = u.meshes.filter((m) => !movers.has(m)).length;
@@ -2790,13 +2978,47 @@ export async function checkIntraUnit(clock, { axes = AXES, samplesPerAxis = 5, y
   // and nothing gated may become ungated); FF/MM inside INTRA_TIER_SCOPE.
   const inGate = (v) => v.tier === 'MF' || INTRA_TIER_SCOPE.includes(v.unit);
   const live = all.filter((v) => !v.waived);
+
+  // TODO 104 tier A — classify the declarations. Three outcomes, and only one
+  // of them is a failure:
+  //   touches / near  the row excuses something. `near` is a designed running
+  //                   fit, which the table's header says reads as apart.
+  //   apart           the parts never come within DECLARED_CONTACT_REACH at
+  //                   any sampled pose. The row excuses nothing and stands
+  //                   ready to excuse the next thing that lands between them.
+  //   unmeasurable    a query threw (pointInsideTree wants normals). NOT the
+  //                   same as far apart, though Infinity would read as one:
+  //                   the tiers' own rule is that a throw assumes nothing in
+  //                   either direction, so the row is reported.
+  //   not compared    no tier reaches ANY of the row's combinations — both
+  //                   meshes on one rigid frame (checkAssembly's domain), or
+  //                   both inside a smaller unit, where nearestElsewhere
+  //                   defers the pair and a row on THAT unit owes the excuse.
+  //                   The row is inert whatever the distance: a different
+  //                   defect with the same symptom, filed against a check
+  //                   that cannot see the pair. REPORTED, never failed —
+  //                   nothing measured here establishes where it should live.
+  const num = (x) => (Number.isFinite(x) ? +x.toFixed(4) : null);
+  const declared = declaredRows.map((d) => ({
+    unit: d.unit, a: d.a, b: d.b, tiers: d.tiers, combos: d.combos.length,
+    compared: d.compared, nearestD: num(d.nearestD), nearestAny: num(d.nearestAny),
+    threw: d.threw, err: d.err, why: d.why,
+  }));
+  const declaredNeverCompared = declared.filter((d) => !d.compared);
+  const declaredUnmeasurable = declared.filter((d) => d.threw);
+  const declaredApart = declared.filter((d) => d.compared && !d.threw
+    && (d.nearestD === null || d.nearestD > DECLARED_CONTACT_REACH));
+
   return {
     violations: live.filter(inGate),
     outOfScope: live.filter((v) => !inGate(v)),
     waived: all.filter((v) => v.waived),
     movers: movers.size, poses: poses.length,
     tiers, frames, unmeasurable, unmatchedSelectors,
-    gate: 'GATING — 0 unwaived intersections (tier MF over every unit; FF/MM inside INTRA_TIER_SCOPE) AND 0 unmatched selectors; out-of-scope FF/MM rows and unmeasurable pairs are reported (§48), and the scope widening is TODO 5\'s filed remainder',
+    declared, declaredApart, declaredNeverCompared, declaredDegenerate,
+    declaredUnmeasurable,
+    declaredReach: DECLARED_CONTACT_REACH,
+    gate: 'GATING — 0 unwaived intersections (tier MF over every unit; FF/MM inside INTRA_TIER_SCOPE), 0 unmatched selectors, AND (TODO 104 tier A) 0 declared rows whose parts never come within DECLARED_CONTACT_REACH plus 0 malformed declarations; out-of-scope FF/MM rows, unmeasurable pairs, unmeasurable declarations and declarations no tier compares are reported (§48), and the scope widening is TODO 5\'s filed remainder',
   };
 }
 
@@ -7022,6 +7244,19 @@ export async function checkMeshIntegrity(clock, opts = {}) {
           if (b.triStart + b.triCount > tris) { bad(`sub-body '${b.name}' runs past the mesh (${b.triStart}+${b.triCount} > ${tris} tris)`); okAll = false; break; }
           prevEnd = b.triStart + b.triCount;
         }
+        // TODO 108 (§182) — read the AUTHORED index order, not the live one.
+        // A BVH build reorders the index in place, so triStart/triCount name
+        // different triangles after any check that raycasts; weldTree snapshots
+        // the authored order at boot for exactly these geometries. An absent
+        // snapshot on a geometry that HAS a bounds tree is a reported defect —
+        // the tier declines to answer rather than answering from a shuffled
+        // buffer, which is what it used to do.
+        const sbIdx = geo.userData.subBodyIndex
+          ?? (geo.boundsTree ? null : idx);
+        if (okAll && !sbIdx) {
+          bad('sub-body ranges cannot be read: the index has been reordered by a bounds tree and no authored order was snapshotted at boot');
+          okAll = false;
+        }
         if (okAll) {
           declaredBodies += sb.length;
           // Tier 3 over the validated table: per-body AABBs prefilter the
@@ -7036,7 +7271,7 @@ export async function checkMeshIntegrity(clock, opts = {}) {
           const boxes = sorted.map((b) => {
             let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
             for (let t = b.triStart * 3; t < (b.triStart + b.triCount) * 3; t++) {
-              const vi = idx[t] * 3;
+              const vi = sbIdx[t] * 3;
               const x = pos[vi], y = pos[vi + 1], z = pos[vi + 2];
               if (x < x0) x0 = x; if (x > x1) x1 = x;
               if (y < y0) y0 = y; if (y > y1) y1 = y;
@@ -7060,8 +7295,8 @@ export async function checkMeshIntegrity(clock, opts = {}) {
               const key = A.b.name < B.b.name ? `${A.b.name}|${B.b.name}` : `${B.b.name}|${A.b.name}`;
               if (okPairs.has(key)) { pairsSkippedDeclared++; continue; }
               pairsTested++;
-              const r1 = rangeInteriorTest(pos, idx, A.b, B.b);
-              const r2 = rangeInteriorTest(pos, idx, B.b, A.b);
+              const r1 = rangeInteriorTest(pos, sbIdx, A.b, B.b);
+              const r2 = rangeInteriorTest(pos, sbIdx, B.b, A.b);
               if (r1.insidePoints || r2.insidePoints) {
                 pairRows.push({
                   unit: rec.unit, mesh: meshName, a: A.b.name, b: B.b.name,

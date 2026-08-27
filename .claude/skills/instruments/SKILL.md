@@ -58,6 +58,32 @@ one line — and pick a pair that genuinely overlaps: a bore on a stud is a
 RUNNING FIT and does not intersect, which is how the first control here was
 itself wrong.
 
+**One ordering is not an order-independence test.** §182 fixed
+`meshIntegrity`'s shard-order dependence twice and both times the acceptance —
+`support` then the check — agreed it was fixed. It was not: `support` builds a
+BVH but never REBUILDS the chain, and the corruption needs both. Add any
+pose-sweeping check and the same tree reads `493/50/133` against `39/136/0`.
+When the hypothesis is "state leaks from A into B", the test set has to contain
+the operations the leak needs, not just A and B — and if a fix passes first
+try, suspect the test before believing it.
+
+**`status()` with no argument is a MAP, not a job.** `status(NAME)` returns the
+job; the bare form returns every job keyed by name, so `status().state` is
+undefined and `while (status().state === 'running')` exits immediately. The
+check never runs, and every comparison after it comes back identical — which
+is indistinguishable from a real null result. §182's sub-body probe made this
+one right after making the `bvhFor` one, and both printed a confident
+`0 reordered`.
+
+**A pose key nobody reads poses NOTHING.** `setPose` assigns only the keys a
+pose names and silently ignores the rest, so a probe sweeping a stroke with a
+key that does not exist samples ONE pose N times — and N identical rows read
+exactly like a correct stroke-invariant result. §182's guide-station probe
+swept the pusher with `alarmPressT`; the axis's own key is `alarmPressCycle`,
+and the wrong one still printed a table. Take the key from the `AXES` entry you
+mean to reproduce, and if a sweep's rows are all identical, prove that is the
+geometry before believing it.
+
 **The ground is not an obstacle.** A stud is MEANT to touch the plate it
 stands on, so its foot measures 0 to it by design. §173's fold scan left the
 plates in and ranked the candidate positions over the plate's CUTAWAY as the
