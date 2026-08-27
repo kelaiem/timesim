@@ -107,6 +107,24 @@ different question and needs `inCutClearance`.
 inside one browser eval measure nothing. Use `step()`, or sample across
 separate tool calls. See CLAUDE.md's own trap list for the sweep-yield cliff.
 
+**A crashed probe leaves its server running, and every later run reads the
+orphan.** These probes spawn their own `python3 -m http.server` and reap it on
+the last line, so one that THROWS never reaches `srv.kill()` and the orphan
+keeps the port. The next run's spawn then fails silently (address in use),
+`goto` succeeds against the orphan, and only `waitForFunction(() =>
+window.__clock)` times out — because the orphan is rooted somewhere else and
+served a 404 for `index.html`. That reads exactly like a boot this change
+broke. It is not, and a CONTROL ON UNMODIFIED HEAD DOES NOT CLEAR IT: the
+control hits the same orphan and fails the same way, agreeing for the wrong
+reason. `pgrep -af "[h]ttp[.]server"` before believing any boot timeout — and
+the bracket is not decoration, because `pkill -f http.server` matches the shell
+running it and kills your own session instead.
+
+Two things make the first misrun likely. The probes take `ROOT` as `'..'`, so
+they only serve the app when run FROM `tools/`; started from the repo root they
+serve `/home/user` and 404 by construction. And the failure they then leave
+behind outlives the mistake — the diagnosis costs more than the misrun did.
+
 ## 4. Choose against every constraint at once
 
 A search that satisfies constraints one at a time will find a position that is
