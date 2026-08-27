@@ -7191,6 +7191,160 @@ export async function checkMeshIntegrity(clock, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// TODO 100 — IS EVERY CUT OUTLINE A SIMPLE POLYGON?
+//
+// A self-crossing `THREE.Shape` triangulates, extrudes, welds, renders and
+// sweeps like any other, so nothing in this file used to be able to see one.
+// It found the movement twice: the pallet fork carried five crossings for as
+// long as the part existed (§175), and the column driver carried 31 — and that
+// one FILLED ITS PIVOT BORE (§177), because earcut resolves a folded ring
+// however it likes and a hole declared inside it can land on the wrong side of
+// the result. Both passed all 35 gates, both times.
+//
+// What makes the check possible at all is that `ExtrudeGeometry` keeps what it
+// was handed in `parameters.shapes`, and `weldGeometry` carries that reference
+// through the weld (§81 rebuilt the geometry and dropped it). So the AUTHORED
+// curve is on every built mesh and no builder has to export anything.
+//
+// THREE THINGS ARE GATED, and the third is not optional. Coverage is the claim
+// this check lives on: the first version of the sweep read three geometries out
+// of 573 and answered `0 crossings`, which is a clean result for a question it
+// was not asking. An extrude whose shape went missing is therefore a FAILURE,
+// not a skip. Geometries that never had an authored shape — cylinders, boxes,
+// lathes — are counted and named instead.
+export async function checkOutlines(clock, opts = {}) {
+  const yieldEvery = opts.yieldEvery ?? 16;
+
+  // Every pair of non-adjacent segments of one closed ring.
+  const ringCrossings = (pts) => {
+    const n = pts.length, hits = [];
+    if (n < 4) return hits;
+    const X = (p1, p2, q1, q2) => {
+      const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+      const d2x = q2.x - q1.x, d2y = q2.y - q1.y;
+      const den = d1x * d2y - d1y * d2x;
+      if (Math.abs(den) < 1e-14) return null;
+      const t = ((q1.x - p1.x) * d2y - (q1.y - p1.y) * d2x) / den;
+      const u = ((q1.x - p1.x) * d1y - (q1.y - p1.y) * d1x) / den;
+      return (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9)
+        ? { x: p1.x + t * d1x, y: p1.y + t * d1y } : null;
+    };
+    for (let i = 0; i < n; i++) for (let j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue;
+      const h = X(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n]);
+      if (h) hits.push({ i, j, at: [+h.x.toFixed(4), +h.y.toFixed(4)] });
+    }
+    return hits;
+  };
+  // Sampled the way the extrude sampled it; a repeated last point closes the
+  // loop by definition and is a zero-length edge, not a crossing.
+  const ringsOf = (shape, segs) => {
+    const out = [];
+    const take = (path, kind) => {
+      const q = path.getPoints(segs);
+      if (q.length > 1 && q[q.length - 1].equals(q[0])) q.pop();
+      if (q.length >= 4) out.push({ kind, pts: q });
+    };
+    take(shape, 'outline');
+    for (const h of shape.holes || []) take(h, 'hole');
+    return out;
+  };
+  const verdict = (geo) => {
+    const par = geo.parameters;
+    if (!par || !par.shapes) return null;
+    const shapes = Array.isArray(par.shapes) ? par.shapes : [par.shapes];
+    const segs = par.options?.curveSegments ?? 12;
+    let rings = 0, pts = 0;
+    const hits = [];
+    for (const sh of shapes) {
+      if (!sh || typeof sh.getPoints !== 'function') continue;
+      for (const r of ringsOf(sh, segs)) {
+        rings++; pts += r.pts.length;
+        for (const h of ringCrossings(r.pts)) hits.push({ ring: r.kind, ...h });
+      }
+    }
+    return rings ? { rings, pts, hits } : null;
+  };
+
+  // CONTROL. A check that cannot demonstrate it would catch the defect is not
+  // evidence that there is none — and this one has already been wrong once: an
+  // earlier signature read the CAP's winding instead, on the theory that earcut
+  // emits mixed handedness for a folded ring. It does not. A bowtie extruded to
+  // no readable cap at all and a fork-shaped crossing read exactly 1.000000.
+  const mkShape = (pts) => {
+    const sh = new THREE.Shape();
+    sh.moveTo(pts[0][0], pts[0][1]);
+    for (const q of pts.slice(1)) sh.lineTo(q[0], q[1]);
+    return sh;
+  };
+  const square = mkShape([[0, 0], [4, 0], [4, 4], [0, 4]]);
+  const holed = mkShape([[0, 0], [6, 0], [6, 6], [0, 6]]);
+  const hole = new THREE.Path();
+  hole.moveTo(2, 2); hole.lineTo(4, 2); hole.lineTo(4, 4); hole.lineTo(2, 4);
+  holed.holes.push(hole);
+  const bowtie = mkShape([[0, 0], [4, 4], [4, 0], [0, 4]]);
+  const ctlGeo = (sh) => new THREE.ExtrudeGeometry(sh, { depth: 1, bevelEnabled: false, curveSegments: 4 });
+  const cSquare = verdict(ctlGeo(square)), cHoled = verdict(ctlGeo(holed)), cBow = verdict(ctlGeo(bowtie));
+  const control = (cSquare && cSquare.hits.length === 0 && cHoled && cHoled.hits.length === 0
+    && cBow && cBow.hits.length > 0)
+    ? `PASS — bowtie caught (${cBow.hits.length}), square and holed clean`
+    : `FAIL — square ${cSquare ? cSquare.hits.length : 'unreadable'}, `
+      + `holed ${cHoled ? cHoled.hits.length : 'unreadable'}, `
+      + `bowtie ${cBow ? cBow.hits.length : 'unreadable'}`;
+
+  // Roster: nearest-ancestor dedupe and the schematic prune, as checkSlenderness
+  // and checkMeshIntegrity do (the third copy is noted in TODO 4).
+  const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+  const hops = (mesh, name) => {
+    const target = unitObj.get(name);
+    let n = 0;
+    for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+    return Infinity;
+  };
+  const byMesh = new Map();
+  const walk = (o, unitName) => {
+    if (o.userData && o.userData.schematic) return;
+    if (o.isMesh && o.geometry?.attributes?.position) {
+      const prev = byMesh.get(o);
+      if (!prev || hops(o, unitName) < hops(o, prev)) byMesh.set(o, unitName);
+    }
+    for (const c of o.children) walk(c, unitName);
+  };
+  for (const e of clock.labelEntries) walk(e.obj, e.name);
+  const byGeo = new Map();
+  for (const [mesh, unit] of byMesh) if (!byGeo.has(mesh.geometry)) byGeo.set(mesh.geometry, { unit, mesh });
+
+  const violations = [], noShape = [], byKind = {};
+  let read = 0, rings = 0, i = 0;
+  for (const [geo, rec] of byGeo) {
+    const v = verdict(geo);
+    if (!v) {
+      const t = geo.type || 'BufferGeometry';
+      byKind[t] = (byKind[t] || 0) + 1;
+      // An extrude with no shape is a hole in this sweep, not a clean row.
+      if (/Extrude/i.test(t))
+        noShape.push({ unit: rec.unit, mesh: rec.mesh.name || '(unnamed)', type: t });
+    } else {
+      read++; rings += v.rings;
+      if (v.hits.length)
+        violations.push({ unit: rec.unit, mesh: rec.mesh.name || '(unnamed)',
+          type: geo.type, crossings: v.hits.length, first: v.hits[0] });
+    }
+    if (++i % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+  }
+
+  return {
+    ok: violations.length === 0 && noShape.length === 0 && control.startsWith('PASS'),
+    control,
+    read, rings, geometries: byGeo.size,
+    violations,
+    noShape,
+    withoutShape: Object.entries(byKind).sort((a, b) => b[1] - a[1])
+      .map(([type, count]) => ({ type, count })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // TODO 25 tier one — THE OSCILLATOR'S RATE, WEIGHED AGAINST THE SPEC'S.
 // main.js computes the frequency the built balance and hairspring IMPLY
 // (I from the wheel's own published dimensions, k from the spring's cut
@@ -7860,6 +8014,7 @@ const CHECKS = {
   // trusting that someone remembers. §50's floor and this ceiling are one
   // pair — half of it had been running in CI since §52 and half had not.
   slenderness: (clock, opts) => checkSlenderness(clock, opts),
+  outlines: (clock, opts) => checkOutlines(clock, opts),                 // TODO 100 — every authored outline is a simple polygon, and every extrude's shape is readable
   meshIntegrity: (clock, opts) => checkMeshIntegrity(clock, opts),       // §77 tiers 0+1 — a mesh's own triangles: zeroArea + inverted bodies, a REPORT; gates its controls and the sub-body tables only
   oscillator: (clock, opts) => checkOscillator(clock, opts),             // TODO 25 tier two — the spring is cut to the beat; this gates that claim
   equalisation: (clock, opts) => checkEqualisation(clock, opts),         // TODO 32 (closed by §104) — both springs' derived laws hold; the alarm's cadence is measured against its law

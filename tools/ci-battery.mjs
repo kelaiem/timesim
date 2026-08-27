@@ -256,6 +256,9 @@ const COSTS = {
   // calls inside one unit. 1 is this column's floor for sub-second checks;
   // --report refreshes it like every row.
   'slenderness': 1,
+  // TODO 100 — no scene sweep and no poses: it reads each geometry's authored
+  // shape once. Measured alongside meshIntegrity, which walks the same roster.
+  'outlines': 2,
   'meshIntegrity': 10,
   'intraUnit': 3,
   'assembly': 3,
