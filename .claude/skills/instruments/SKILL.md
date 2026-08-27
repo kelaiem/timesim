@@ -58,6 +58,14 @@ one line — and pick a pair that genuinely overlaps: a bore on a stud is a
 RUNNING FIT and does not intersect, which is how the first control here was
 itself wrong.
 
+**`status()` with no argument is a MAP, not a job.** `status(NAME)` returns the
+job; the bare form returns every job keyed by name, so `status().state` is
+undefined and `while (status().state === 'running')` exits immediately. The
+check never runs, and every comparison after it comes back identical — which
+is indistinguishable from a real null result. §182's sub-body probe made this
+one right after making the `bvhFor` one, and both printed a confident
+`0 reordered`.
+
 **A pose key nobody reads poses NOTHING.** `setPose` assigns only the keys a
 pose names and silently ignores the rest, so a probe sweeping a stroke with a
 key that does not exist samples ONE pose N times — and N identical rows read

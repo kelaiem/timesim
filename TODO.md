@@ -11840,6 +11840,54 @@ cut read past it.
   FAIL are re-measured unbounded, so the number anybody acts on is exact.
 - Tier B is untouched.
 
+## 108. `meshIntegrity`'s sub-body ranges are invalidated by any BVH build — CLOSED (§182)
+
+`userData.subBodies` is a table of TRIANGLE RANGES — `{triStart, triCount}`
+into the geometry's index buffer — and three-mesh-bvh's `computeBoundsTree`
+**reorders that buffer in place** to group triangles spatially. So every range
+names a different set of triangles after any check that raycasts.
+
+`checkMeshIntegrity`'s tier 3 read the live index, which made its rows a
+function of what ran before it in the shard. On one unmodified tree:
+
+```
+--only meshIntegrity           pairs  39 tested / 136 declared /   0 interior
+--only support,meshIntegrity   pairs 527 tested /  50 declared / 134 interior
+```
+
+Both PASS. The gate holds *controls PASS and 0 malformed sub-body
+declarations*; the pair counts and the 134 "interior overlap" rows are a
+REPORT, so nothing was ever going to notice — and §81's sharding invariant,
+that no check can observe which ones ran before it, was quietly false here.
+
+**Measured, `tools/probe-182-subbody-index.mjs`.** 29 geometries carry a
+sub-body table and none has a bounds tree at boot. After `support` runs, 16 do,
+and all 16 have EVERY index entry moved — 576 of 576, 108 of 108, 2016 of 2016.
+
+**Why it surfaced now.** It has been latent since sub-bodies existed. On `main`
+the partition happens to put `support` and `meshIntegrity` on different shards;
+§182 moved `intraUnit`'s cost column 3 → 11, the partition shifted, and they
+landed on one shard. A cost column is not supposed to be able to change a
+verdict — that is the whole basis of sharding — so this was fixed rather than
+filed and left.
+
+### Closed by §182
+
+`weldTree` snapshots the authored index order into `userData.subBodyIndex` for
+any geometry declaring sub-bodies. It is the last thing boot does to a geometry
+and no check has run yet, and it covers the lazily re-welded hands by the same
+path. Tier 3 reads the snapshot. A geometry that has a bounds tree AND no
+snapshot is reported malformed — the tier declines to answer rather than
+answering from a shuffled buffer.
+
+The zero-area and inverted tiers are untouched: those are per-triangle
+properties, invariant under a reordering, which is why their counts agreed in
+both orders and only tier 3 moved.
+
+**Residue.** Nothing else in the battery indexes geometry by triangle range
+today. Anything that starts to must take its order from the same snapshot, and
+this is the reason why.
+
 ## 105. The lever's safety action is modelled but not simulated
 
 Split out of item 98, which cut the pallet fork as one blank and deliberately

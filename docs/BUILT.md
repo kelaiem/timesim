@@ -19222,6 +19222,38 @@ to 0. The price is that `nearestD` on a *passing* row is an upper bound rather
 than a swept minimum (125 of 140 are still exact); rows that FAIL are
 re-measured unbounded, so every number anybody acts on is exact.
 
+### The cost column moved a report, which is not allowed to happen (TODO 108)
+
+Diffing `--report` against a real base run of `a0f35b0` — the reason to do it,
+since the PASS column showed nothing — turned up `meshIntegrity` disagreeing
+with itself: `39 tested / 136 declared / 0 interior` on the base, `527 / 50 /
+134` here. Neither number is this change's doing. Run in isolation the two
+trees give the identical `39 / 136 / 0`, and `--only support,meshIntegrity` on
+the UNMODIFIED base reproduces `527 / 50 / 134`.
+
+`userData.subBodies` is a table of triangle RANGES into the index buffer, and
+three-mesh-bvh's `computeBoundsTree` reorders that buffer in place.
+`tools/probe-182-subbody-index.mjs` measures it: 29 sub-body geometries, no
+bounds tree at boot, 16 with one after `support` — and all 16 with EVERY index
+entry moved. Tier 3 read the live index, so its rows were a function of what
+ran before it in the shard.
+
+It has been latent since sub-bodies existed, because on `main` the partition
+puts `support` and `meshIntegrity` on different shards. Moving `intraUnit`'s
+cost 3 → 11 shifted the partition and put them together. **A cost column is not
+allowed to change a verdict** — that is the entire basis of §81's sharding — so
+this is fixed here rather than filed and left: `weldTree` snapshots the authored
+order into `userData.subBodyIndex` at the last point of boot, tier 3 reads the
+snapshot, and a geometry with a bounds tree and no snapshot is reported
+malformed rather than answered from a shuffled buffer.
+
+The probe cost two more instances of the same lesson before it measured
+anything. Its first cut called `I.bvhFor`, which `inspect.js` does not export —
+a throw per mesh and `0 reordered`, probe-90-click's exact failure. Its second
+waited on `I.status().state`, but `status()` with no argument returns a MAP of
+every job, so `.state` is undefined, the wait loop exited at once and `support`
+never ran — again `0 reordered`. Both are in the skill's catalogue now.
+
 ### One more thing this landing had to fix to land
 
 A CLOSED item announces it in its own heading, and `check-item-numbers.mjs`

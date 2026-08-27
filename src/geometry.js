@@ -192,6 +192,34 @@ export function weldGeometry(geo) {
 // Geometries SHARED by several meshes are welded once and shared again: two
 // trees where there was one would give `bvhFor` two entries to build and hold
 // for a part that is one part, which is the opposite of the point.
+// TODO 108 (§182) — A SUB-BODY RANGE ONLY MEANS ANYTHING IN THE INDEX ORDER IT
+// WAS AUTHORED IN. `userData.subBodies` is {triStart, triCount} into the index
+// buffer, and three-mesh-bvh's computeBoundsTree REORDERS that buffer in place
+// to group triangles spatially. Measured: 29 geometries carry a sub-body table
+// and none has a bounds tree at boot; after `support` runs, 16 do — and all 16
+// have EVERY index entry moved (576 of 576, 2016 of 2016). So every range
+// afterwards names a different set of triangles.
+//
+// meshIntegrity's tier 3 read the live index, so its rows were a function of
+// what ran before it in the shard: on one tree `--only meshIntegrity` reports
+// `39 tested / 136 declared / 0 interior` and `--only support,meshIntegrity`
+// reports `527 / 50 / 134`. Both PASS — those rows are a REPORT — so nothing
+// was ever going to notice, and §81's sharding invariant (no check can observe
+// which ones ran before it) was quietly false for this one.
+//
+// The authored order is captured HERE because this is the last thing boot does
+// to a geometry and no check has run yet. The zero-area and inverted tiers are
+// unaffected — those are per-triangle properties, invariant under a reordering
+// — which is why their counts agree in both orders and only tier 3 moved.
+function snapshotSubBodyIndex(geo) {
+  if (!geo || !geo.index || !geo.userData || !geo.userData.subBodies) return;
+  // Never snapshot an order a BVH has already shuffled: an absent snapshot is
+  // a reported defect, a WRONG one is a silent lie. (Nothing builds a tree
+  // before this pass today; the guard is what keeps that true.)
+  if (geo.boundsTree) return;
+  geo.userData.subBodyIndex = geo.index.array.slice();
+}
+
 export function weldTree(root) {
   const done = new Map();
   let meshes = 0, before = 0, after = 0;
@@ -200,11 +228,12 @@ export function weldTree(root) {
     const old = o.geometry;
     meshes++;
     before += old.attributes.position.count;
-    if (old.index) { after += old.attributes.position.count; return; }
+    if (old.index) { after += old.attributes.position.count; snapshotSubBodyIndex(old); return; }
     let welded = done.get(old);
     if (!welded) { welded = weldGeometry(old); done.set(old, welded); }
     if (welded !== old) o.geometry = welded;
     after += welded.attributes.position.count;
+    snapshotSubBodyIndex(o.geometry);
   });
   for (const [old, welded] of done) if (welded !== old) old.dispose();
   return { meshes, before, after };

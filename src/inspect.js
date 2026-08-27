@@ -7244,6 +7244,19 @@ export async function checkMeshIntegrity(clock, opts = {}) {
           if (b.triStart + b.triCount > tris) { bad(`sub-body '${b.name}' runs past the mesh (${b.triStart}+${b.triCount} > ${tris} tris)`); okAll = false; break; }
           prevEnd = b.triStart + b.triCount;
         }
+        // TODO 108 (§182) — read the AUTHORED index order, not the live one.
+        // A BVH build reorders the index in place, so triStart/triCount name
+        // different triangles after any check that raycasts; weldTree snapshots
+        // the authored order at boot for exactly these geometries. An absent
+        // snapshot on a geometry that HAS a bounds tree is a reported defect —
+        // the tier declines to answer rather than answering from a shuffled
+        // buffer, which is what it used to do.
+        const sbIdx = geo.userData.subBodyIndex
+          ?? (geo.boundsTree ? null : idx);
+        if (okAll && !sbIdx) {
+          bad('sub-body ranges cannot be read: the index has been reordered by a bounds tree and no authored order was snapshotted at boot');
+          okAll = false;
+        }
         if (okAll) {
           declaredBodies += sb.length;
           // Tier 3 over the validated table: per-body AABBs prefilter the
@@ -7258,7 +7271,7 @@ export async function checkMeshIntegrity(clock, opts = {}) {
           const boxes = sorted.map((b) => {
             let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
             for (let t = b.triStart * 3; t < (b.triStart + b.triCount) * 3; t++) {
-              const vi = idx[t] * 3;
+              const vi = sbIdx[t] * 3;
               const x = pos[vi], y = pos[vi + 1], z = pos[vi + 2];
               if (x < x0) x0 = x; if (x > x1) x1 = x;
               if (y < y0) y0 = y; if (y > y1) y1 = y;
@@ -7282,8 +7295,8 @@ export async function checkMeshIntegrity(clock, opts = {}) {
               const key = A.b.name < B.b.name ? `${A.b.name}|${B.b.name}` : `${B.b.name}|${A.b.name}`;
               if (okPairs.has(key)) { pairsSkippedDeclared++; continue; }
               pairsTested++;
-              const r1 = rangeInteriorTest(pos, idx, A.b, B.b);
-              const r2 = rangeInteriorTest(pos, idx, B.b, A.b);
+              const r1 = rangeInteriorTest(pos, sbIdx, A.b, B.b);
+              const r2 = rangeInteriorTest(pos, sbIdx, B.b, A.b);
               if (r1.insidePoints || r2.insidePoints) {
                 pairRows.push({
                   unit: rec.unit, mesh: meshName, a: A.b.name, b: B.b.name,
