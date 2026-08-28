@@ -2680,15 +2680,14 @@ export const INTRA_UNIT_CONTACTS = [
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
-  // Both rows below became visible with TODO 95's pass-through witness; the
-  // metal did not move. Each is a MESH that fails a fit its CONSTANTS derive
-  // correctly — MODELING.md rule 1 — so the repair is in the builder, not in
-  // this table, and neither may be promoted to INTRA_UNIT_CONTACTS: that
-  // table says "assembled and touching on purpose", which these are not.
+  // The row below became visible with TODO 95's pass-through witness; the metal
+  // did not move. It is a MESH that fails a fit its CONSTANTS derive correctly
+  // — MODELING.md rule 1 — so the repair is in the builder, not in this table,
+  // and it may not be promoted to INTRA_UNIT_CONTACTS: that table says
+  // "assembled and touching on purpose", which this is not.
+  // TODO 102 stood here too and is CLOSED — the waiver is deleted, not renewed.
   { unit: 'Alarm winding arrest', a: 'genevaFingerDisc', b: 'alarmArrestFingerArbor',
     debt: 'TODO 107: the bore is a designed 0.05 running fit (fingerBoreR = arborR + 0.05) that the extrude\'s cap triangulation does not honour — rays down the bore are blocked over 15.1% of its area and 4.3% of the arbor\'s own footprint' },
-  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherReturnSpring',
-    debt: 'TODO 102: coilR derives the 0.05 running fit correctly; per: 6 at the call site makes the coil path a hexagon whose inradius is 13.4% smaller, eating the fit and 0.0084 more. The builder\'s own default of 10 clears it' },
   // TODO 22 closed with the switch resize: the press axis rides above the
   // wheel's stack and the stem's inner end is press-swept derived — the
   // instrument measures the repair (0 rows).

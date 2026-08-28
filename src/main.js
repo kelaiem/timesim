@@ -22411,11 +22411,42 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   // inside the working-contact budget it lives in — half a step under
   // CLEAR_MARGIN.
   const ALARM_RETURN_FRAMES = Math.max(2, Math.ceil(ALARM_PUSH_TRAVEL / CLEAR_MARGIN) + 1);
+  // TODO 102 — THE PATH'S TESSELLATION MUST NOT EAT THE RUNNING FIT `coilR`
+  // JUST DERIVED. `per` is points per turn, so the coil's centreline is a
+  // regular polygon of circumradius coilR, and what faces the stem at a facet
+  // MIDPOINT is its inradius, coilR·cos(π/per) — smaller by coilR·(1−cos(π/per)).
+  // At the `per: 6` this shipped with, that dip is 0.0584 against a fit of
+  // PIVOT_BORE_CLEAR = 0.05: it ate the whole clearance and 0.0084 more, and the
+  // stem measured in contact with the spring wound around it.
+  //
+  // So the count is DERIVED from the fit it may not spend, at half of it:
+  //     coilR·(1 − cos(π/per)) ≤ PIVOT_BORE_CLEAR / 2
+  // which gives 10 here — the builder's own default, and the override was the
+  // whole defect. Half rather than all of the fit because this is a running
+  // clearance, not a stop: spending it entirely on tessellation leaves the
+  // real motion nothing.
+  const ALARM_RETURN_PER = Math.ceil(Math.PI / Math.acos(1 - PIVOT_BORE_CLEAR / (2 * coilR)));
+  // `seg` is the WIRE's own section count and is deliberately left at the
+  // builder's 6. Its facet dip moves the wire's surface AWAY from the axis
+  // (wireR·cos(π/seg) at a midpoint), so it can only add clearance, never spend
+  // it — the binding case is a path-facet midpoint at a wire VERTEX, which is
+  // what the derivation above bounds. It flattered the old numbers by ~0.0088
+  // and is why this read as a graze rather than the interference it was.
   const springFrames = [];
   for (let i = 0; i < ALARM_RETURN_FRAMES; i++) {
     const len = installed - ALARM_PUSH_TRAVEL * (i / (ALARM_RETURN_FRAMES - 1));
     springFrames.push(G.makeHelicalSpring({ coilR, wireR, coils, length: len, material: MATS.blueSteel,
-                                            name: 'alarmPusherReturnSpring', seg: 6, per: 6 }).geometry);
+                                            name: 'alarmPusherReturnSpring', seg: 6, per: ALARM_RETURN_PER }).geometry);
+  }
+  {
+    // Boot assert, achieved vs required (standing rule 6).
+    const dip = coilR * (1 - Math.cos(Math.PI / ALARM_RETURN_PER));
+    if (dip > PIVOT_BORE_CLEAR / 2 + 1e-9)
+      console.warn(`alarm return spring: path facet dip ${dip.toFixed(4)} exceeds half the `
+        + `${PIVOT_BORE_CLEAR} running fit at per=${ALARM_RETURN_PER} (TODO 102)`);
+    if (coilR - wireR - dip <= ALARM_PUSH_STEM_R)
+      console.warn(`alarm return spring: inner surface ${(coilR - wireR - dip).toFixed(4)} does not clear `
+        + `the ${ALARM_PUSH_STEM_R} stem (TODO 102)`);
   }
   const spring = new THREE.Mesh(springFrames[0], MATS.blueSteel);
   spring.name = 'alarmPusherReturnSpring';

@@ -12414,7 +12414,7 @@ Acceptance: `expectedContacts` reports `Alarm disc ⇄ Hour wheel` at or above
 0.15 with no waiver, and `probe-95-interpenetration.mjs` finds 0 tube-surface
 points inside the leaf.
 
-## 102. The pusher's return spring is tessellated inside its own running fit
+## 102. The pusher's return spring is tessellated inside its own running fit — CLOSED
 
 Filed 2026-08-26, out of TODO 95 row 5. The alarm pusher's stem measures in
 CONTACT with the spring wound around it, against a clearance the constants
@@ -12450,20 +12450,35 @@ measures as a graze rather than a clear interference: 0 of 40,140 surface
 samples inside, closest approach **0.0075**, and `meshClearance` reporting
 contact. That near-cancellation is why it reads as noise instead of as a bug.
 
-### The repair
+### The repair, as shipped
 
 Not "raise `per` until it passes" — `per` is a tessellation count and the
-clearance is a constraint, so the constraint should pick the count:
+clearance is a constraint, so the **constraint picks the count**:
 
 ```js
-// the path polygon's inradius must not eat the running fit: coilR·(1 − cos(π/per)) < PIVOT_BORE_CLEAR
+//     coilR·(1 − cos(π/per)) ≤ PIVOT_BORE_CLEAR / 2
+const ALARM_RETURN_PER = Math.ceil(Math.PI / Math.acos(1 - PIVOT_BORE_CLEAR / (2 * coilR)));
 ```
 
-which needs `per ≥ 7` to clear at all and `per ≥ 10` to keep half the fit —
-i.e. the builder's default was already right and the override is the defect.
-Deleting `per: 6` is very likely the whole fix; deriving it is the fix that
-survives the next spring. Check `seg` against the same rule while there, since
-a hexagonal wire misstates the section `stockCensus` reads.
+Half rather than all of the fit because this is a running clearance, not a
+stop: spending it entirely on tessellation leaves the real motion nothing. It
+evaluates to **10** — the builder's own default, so the override was the entire
+defect — with a facet dip of 0.0213 against a 0.0250 budget. Two build asserts
+hold it: the dip against half the fit, and the coil's inner surface against the
+stem, each printing achieved and required.
 
-Acceptance: `intraUnit` reports no `alarmPusherStem ⇄ alarmPusherReturnSpring`
-row unwaived, and the derived `per` is asserted at build time against the fit.
+**`seg` is deliberately NOT changed**, and the reasoning is worth keeping
+because the item originally proposed checking it. It is the WIRE's own section
+count, and its facet dip moves the wire's surface AWAY from the axis, so it can
+only add clearance, never spend it. The binding case is a path-facet midpoint
+at a wire VERTEX, which is exactly what the derivation bounds. What `seg: 6`
+did do was flatter the old measurement by about 0.0088, which is why this read
+as a graze rather than as the interference it was.
+
+**Measured after the fix** (`tools/probe-95-interpenetration.mjs`):
+`meshClearance` **0.0000 → 0.0464**, and 0 of 66,780 spring-surface samples
+inside the stem, 0 of 600 the other way. The 0.0464 exceeds the 0.0287 the
+derivation guarantees because the stem is itself a 10-gon whose facet midpoints
+sit at 0.3044; the guarantee is the floor, not the reading.
+
+The `intraUnit` waiver is **deleted, not renewed**.
