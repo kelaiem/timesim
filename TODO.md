@@ -21,6 +21,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
+| 111 | OPEN | The case's seat relief is CUT from a scan that runs once, at build time, at whatever pose the movement is in — so the geometry is a claim about one pose. Item 91 nearly shipped on it: `hackRodPin` reads r 37.801–38.691 at build time and 39.889–40.786 in 33 of the 42 poses the battery visits, half a unit inside a seat with no relief for it. Closed for two populations (build-time occupants, and `LOW_LINKAGE_OBSTACLES` members per standing rule 5) and ungated for a third — any other mover reaching the annulus at some pose. Three fixes in the item; `probe-case-relief.mjs` already asks the question in ~72 s and CI does not run it |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — STEPS 1 AND 2 MEASURED, NEITHER DELIVERS | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. All named; both steps the item prescribed are now done and **both refuted their own premise**. Step 1 (declare the bearings that exist) retired nothing and reddened two — the §29 tail run 35.1 → **85.1** landed, the alarm stem's true **76.6** blocked by TODO 110. Step 2 (price the section) is priced AND measured against the corridor by `tools/probe-section-headroom.mjs`: **six of seven bars are SHORT of the room their own section needs**, walls named per row, and the seventh (`Hack rod / rodSegIn`, needing δ 0.0872) is refused by `ROD_R` itself — shared by both rods, knuckle at 1.15×, rod plane derived from it, so the reset-rod ⇄ hack-knuckle pair caps δ at 0.0637. **What remains is therefore all position-space**: every row is a layout change to file — move the station or the obstacle — which is what the design priority prescribes when a corridor is spent, and the one resolution that does not pay for packaging out of P1 |
 | 110 | OPEN | `start()`'s `resetInputs()` assigns eased state's VARIABLES while the scene follows only on a later tick with real dt — and `start()` runs its check in the same microtask, so a check that READS the live scene instead of posing it measures the previous check's pose. CLAUDE.md's "no check can observe which ones ran before it" is false for that class. Proven on `supportAt`: `--only slenderness` passes, `--only alarmHandoffs,slenderness` fails, the alarm stem standing 5 u out. No probe could have caught it — rAF frames run between a probe's `page.evaluate` calls and never inside the harness's microtask. Step 1 is enumerating the readers; three candidate fixes weighed in the item, one of which (stepping in `start()`) would move `tau` under checks that read it |
@@ -12927,7 +12928,7 @@ alarmHandoffs,slenderness` must agree with `--only slenderness`, and a
 declaration on a sliding part must then be landable — TODO 109's alarm stem
 row, λ 35.4 today against a measured 76.6, is the customer waiting for it.
 
-## 96. The band has no radial bores, so both stems pass through solid case metal
+## 96. CLOSED — the band has no radial bores, so both stems pass through solid case metal
 
 **Renumbered from 90 to 96 on 2026-08-25, and the old number is not reusable.**
 This item was filed as 90 on 2026-08-24, before `main` merged a different item
@@ -13047,7 +13048,51 @@ An `EXPECTED_PAIRS` row here would claim design-intent contact for
 metal-through-metal and would blanket-excuse the pair for everything else
 it might ever foul — the exact shape of excuse item 6 exists to narrow.
 
-## 91. The plate seat ledge projects into the dial-side keyless works
+
+**CLOSED. The band is turned in SECTORS, and three of them are bored.**
+
+The construction the item said was missing now exists: `sectorLathe` in
+`geometry.js` revolves a profile through part of a turn and CAPS both ends,
+triangulating the profile polygon at each. The caps are the work — a partial
+revolution is open where it starts and stops, and an open body is read as solid
+behind the missing face by the same parity raycast this whole family of defects
+came from. `caseMiddle` is built as a list of sectors (`whole` / `relieved` /
+`bored`) merged into one body, and it measures **0 boundary edges**.
+
+Two things the item predicted, and one it got wrong:
+
+- **The two items were one cut**, as filed. Both crown bores fall inside the
+  seat relief arcs item 91 derives, so nothing is cut twice.
+- **The bore window is derived over the wall's THICKNESS**, not taken at one
+  radius: a hole around a line at perpendicular offset `off` covers azimuths
+  `az + asin(p/r)` for `p ∈ [off − ap, off + ap]`, and the window is the union
+  of those over `r ∈ [R_IN, R_OUT]`. The conical-hole approximation the item
+  offered to declare is not taken; the exact window costs four `asin` calls.
+- **The 4.370 u chord stand-off is stale, and the pusher is RADIAL on this
+  tree.** That figure was measured before this branch's base picked up §170,
+  which solves `ALARM_PUSH_AZ` so the press line passes through the movement's
+  centre — `_pushBase·perp` is 0 exactly, and `CASE_DIMS.pusherOff` reads 0.
+  The offset-aware window is still what ships, because the term is live and
+  `tubeAt` already drills the bore with it: the two agreed here by a landing,
+  not by construction of the case.
+
+**And a defect the first cut of this created, worth recording because it looked
+exactly like the bug it was fixing.** The alarm crown's window and the pusher's
+overlap by 5.6° of azimuth, and their z windows are disjoint (crown −7.531 to
+−0.669, pusher 5.049 to 9.799). Emitting one bored sector per bore stacked two
+solids in that arc — and each one's metal filled the other's hole, so
+`Alarm crown ⇄ Case` and `Alarm switch ⇄ Case` still measured as contacting
+after the bores were cut, for the opposite reason to before. The arc is swept
+once now: every window end is a breakpoint, and each elementary piece carries
+the union of the windows covering it, so a piece with two holes is one body of
+metal in three bands.
+
+Measured after the cut, `probe-90-fouls.mjs` at beat f=0: **no mesh-level
+contact** on any of `Case ⇄ Setting lever`, `Case ⇄ Keyless works`,
+`Alarm crown ⇄ Case`, `Alarm switch ⇄ Case` — all four of the FORBIDDEN pairs
+this branch inherited.
+
+## 91. CLOSED — the plate seat ledge projects into the dial-side keyless works
 
 Filed alongside item 96, from the same first clean measurement, and it is
 the more serious of the two: item 96 is a hole nobody cut, this is two
@@ -13131,6 +13176,82 @@ be sized against the lever's swept azimuth, not its resting one.
 
 Both this and item 96 are blocked on the same missing sector-lathe
 construction, and both should be cut in one pass once it exists.
+
+---
+
+**CLOSED. The seat is interrupted, and the relief is DERIVED rather than
+listed.** `CASE_SECTORS` in `main.js` scans the movement for whatever occupies
+the seat's own volume — r ∈ [`R_SH`, `R_OUT`], z ∈ [`zSeatBot`, `zSeatTop`] —
+clusters the azimuths into arcs, pads each by `CLEAR_MARGIN` as an arc at the
+seat's radius, and unions item 96's bore windows in. Ship a part into that
+space and the relief follows it; there is no list to fall stale. Both crowns
+fall inside their own relief arc, exactly as this item predicted, so 91 and 96
+are one cut.
+
+Four things the cutting found that the filing did not.
+
+**The scan must walk EDGES, not vertices, and the reason is three dial feet.**
+Ø1.2 mm columns at r 41.58–42.77 crossing z −8.40 to −1.00 — straight through
+a band of 0.8 mm — and not one vertex inside it, because a cylinder's vertices
+sit on its end caps. The first version of the scan sampled vertices and left
+all three standing in unbroken seat. Walking each triangle edge and taking its
+crossings finds 80 hits apiece. This is the same caveat CLAUDE.md records for
+the parity raycast, arriving from the other direction.
+
+**A relief derived at one pose is a claim about one pose, and this item's own
+last paragraph is the counter-example.** The scan runs while the case is being
+built, and a mover is somewhere else at every other pose. `hackRodPin` measures
+r 37.801–38.691 as the case is built — clear of the seat's 40.284 — and
+39.889–40.786 in 33 of the 42 poses the battery visits: **0.502 inside the
+seat**, crossing its full depth. Standing rule 5 already owns the fix:
+`LOW_LINKAGE_OBSTACLES` is the declared swept footprint of the low linkage over
+the whole crown stroke, and every later seat scan consumes it rather than
+re-deriving the swing. A case seat is a later seat scan. Taken whole it reaches
+this annulus in exactly one arc — **165.5°–169.1°**, the hack pin's station —
+so seeing the mover costs 3.6° of bearing.
+
+**The bearing arithmetic this item asked for, answered — and it is KINEMATIC,
+not a stress bound.** "Keep n% of the ring" was the first cut's rule and it is
+a number that looked right: a plate this size weighs milligrams and no land
+here is within orders of magnitude of a bearing limit. What a rim seat must do
+is stop the plate ROCKING, and it does that exactly when the lands surround the
+axis — when no diameter has every land on one side of it. That is one
+measurement, the widest gap between consecutive lands, and it must stay under
+half a turn. Beside it, a land narrower than the seat is deep is a tooth and
+not a bearing surface, which is also what decides when two reliefs merge into
+one opening with a waist. As cut: **six lands, widest gap 21.9°, 88.5% of the
+ring retained.** The first cut's merge rule (the bore window, doubled) was 4.6×
+wider than the land width and cost 4.4% of the ring for no structural reason.
+
+**And the seat was never touching the plate at all.** `zSeatTop` was
+`BACK_PLATE_Z − BACK_PLATE_T/2` = −2.000, the plate's nominal dial-side face.
+The plate is an ExtrudeGeometry and three.js's bevel grows it past its own
+outline in both directions — TODO 84's finding at plate scale. Measured off the
+built mesh: the rim's flat face lies at **z −2.300** out to r 42.923, and the
+bevel swells OUTWARD to **r 43.2664**, widest at z −2.000. So the seat stood
+0.300 inside the plate's z span over the whole bearing annulus and only the
+bevel's corner ever met it — a bearing that interpenetrates is not a bearing.
+The same drawing-not-metal error put the crown tubes' inboard ends at
+`plateR + CLEAR_MARGIN` = 43.073, **0.193 inside** the plate's widest metal;
+the commit that derived that standoff had the rule right and the radius wrong.
+Both now read `PLATE_RIM`, measured once at boot, and the seat's top face is
+coincident with the plate's rim face by construction.
+
+Neither was visible to a gate, and the reason is item 6's: `['Case', 'plate']`
+is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, so the blanket
+excuse covered everything the case does to the plate. `probe-case-relief.mjs`
+found both because it asks per MESH and over the pose net, which is what a
+per-unit declaration cannot answer.
+
+**Acceptance.** `node tools/probe-case-relief.mjs` — 6 band bodies against 644
+movement meshes over 43 poses: **CLEAR**, with the seat bearing
+(`caseMiddle ⇄ backPlate`) reading shut in 43/43, which is the seat working.
+`node tools/probe-90-fouls.mjs` at beat f=0: no mesh-level contact on any of
+the four pairs this branch inherited. `node tools/probe-case-closed.mjs`: all
+13 case bodies at 0 boundary edges.
+
+What is NOT closed here is item 111: the derivation now sees one pose plus one
+declared table, and nothing gates the rest.
 
 ## 92. CLOSED — the case treated a chord-mounted pusher as a radial one, twice
 
@@ -13358,3 +13479,60 @@ and with independent sampling. Fixing five pieces of geometry in the same
 change would mix an instrument correction with five mechanism corrections and
 make the report diff unreadable — the diff is the evidence that the instrument
 change did what it claimed and nothing more.
+
+## 111. The case's seat relief is derived at one pose plus one declared table — nothing gates the rest
+
+Filed with item 91's closure, from the hole that closure left rather than from
+a symptom. It is item 7 ("the battery samples poses — it cannot bound them")
+made specific and considerably worse, because here the sampling decides
+GEOMETRY rather than a verdict.
+
+`CASE_SECTORS` cuts the band's seat relief by scanning the movement for
+whatever stands in the seat's volume. That scan runs once, while the case is
+being built, at whatever pose the movement is in at module-eval time — and the
+metal it cuts is then fixed for every pose the movement will ever reach. A
+mover that swings into the seat afterwards finds unbroken metal there.
+
+That is not hypothetical; it is how item 91 nearly shipped. `hackRodPin` reads
+r 37.801–38.691 at build time, clear of the seat's 40.284, and 39.889–40.786 —
+half a unit inside it — in 33 of the 42 poses the battery visits. Item 91's fix
+is standing rule 5's: the scan also consumes `LOW_LINKAGE_OBSTACLES`, the
+DECLARED swept footprint of the low linkage, which covers the pin.
+
+**What that leaves.** The relief is now sound for two populations — parts that
+stand in the seat at build time, and members of the low-linkage table. It is
+sound for a third population by luck only: any other mover that reaches the
+seat's annulus at some pose and is in neither. Nothing enumerates that third
+population and nothing gates it.
+
+Three things it would take, cheapest first:
+
+1. **Put `probe-case-relief.mjs` in the battery.** It already asks exactly this
+   question — every band body against every movement mesh over the pose net —
+   and measures in ~72 s local. It is an acceptance test today and CI does not
+   run it, so a regression here is caught by whoever remembers to run it. The
+   objection to answer first is overlap: `inspection` and `sweptOverlap` cover
+   the same pairs at a far denser net, so what this adds is per-MESH naming and
+   nothing else. That may argue for folding the naming into those checks rather
+   than adding a 37th gate.
+2. **Make the derivation see what the battery sees.** The scan's blindness is
+   structural: `setPose` lives ~8000 lines below `CASE_SECTORS`, so the case
+   cannot be cut over a pose net without moving the case build after `__clock`.
+   That is the honest fix and it is a real refactor — and it lands the case on
+   `DIGEST_ALWAYS_CHANGED`'s question (standing rule 7) unless the sampled net
+   is itself deterministic.
+3. **Or state the population.** A movement-wide equivalent of
+   `LOW_LINKAGE_OBSTACLES` for the seat's band — every mover whose z extent
+   crosses `zSeatBot..zSeatTop`, with its swept XY footprint — declared once and
+   consumed by the scan. Rule 5's pattern, a second band. This is the only one
+   of the three that keeps the derivation build-time AND complete, and the cost
+   is a table someone maintains.
+
+**A related exposure to check while here**, because it has the same shape and
+the same excuse: the scan reads the movement at build time, and if the boot
+pose ever depended on restored session state, the case's GEOMETRY would too —
+and `fingerprint`/`unitDigests` both boot virgin, so neither gate would see it.
+Measured on this branch it does not: `hackRodPin` reads identically "as booted"
+and after `resetInputs`, so the build-time pose is the construction pose and
+state restoration happens later. That is a measurement of today's boot order,
+not a guarantee of it.
