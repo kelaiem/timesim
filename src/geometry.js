@@ -7046,7 +7046,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     z0, zMidBack, zFlangeIn,
     zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
     gasketD, gasketSeat, crystT, screwN, screwShaftD, screwHeadD, tubeD, pusherD,
-    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff,
+    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff, plateReach,
     lugSpan, sectors: CASE_SECTORS,
   } = dims;
   const g = new THREE.Group();
@@ -7412,13 +7412,18 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     // 1.995 u across the axis (the offset less the tube's outer radius) and
     // went 0.16 u INTO the three-quarter plate.
     //
-    // So: the rim's nearest point clears plateR by CLEAR_MARGIN. For a radial
-    // tube the across-term is 0 and this reduces to plateR + CLEAR_MARGIN —
-    // 0.15 u shorter than before, which is the margin it should always have
-    // had.
+    // So: the rim's nearest point clears the plate by CLEAR_MARGIN. For a
+    // radial tube the across-term is 0 and this reduces to the plate's rim
+    // plus CLEAR_MARGIN.
+    //
+    // Against `plateReach`, the plate's MEASURED widest metal, not `plateR`,
+    // its authored outline. The first version of this derivation used the
+    // outline and stopped the tube at plateR + CLEAR_MARGIN = 43.073, which
+    // is 0.193 INSIDE a plate whose extrude bevel swells to 43.2664 — the
+    // rule was right and the radius was a drawing. A tube has to miss metal.
     const rimAcross = Math.max(0, Math.abs(off) - (r + TUBE_WALL));
-    const inboard = Math.sqrt(Math.max(0,
-      (plateR + CLEAR_MARGIN) * (plateR + CLEAR_MARGIN) - rimAcross * rimAcross));
+    const clearOf = plateReach + CLEAR_MARGIN;
+    const inboard = Math.sqrt(Math.max(0, clearOf * clearOf - rimAcross * rimAcross));
     const len = outboard - inboard;
     if (len <= 0)
       console.warn(`makeCase: ${name} has no length — its inboard standoff (${inboard.toFixed(3)}) `

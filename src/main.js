@@ -26159,8 +26159,59 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
 // relief arc — the winding crown at az 145.0° sits in the keyless arc, the
 // alarm crown at −0.1° in the alarm one — so the two items are one cut, which
 // is what filing them together predicted.
+// THE PLATE'S REAL RIM, measured. Two of the case's dimensions are taken off
+// the movement's edge, and both were taken off its DRAWING instead.
+//
+// `plateR` is the AUTHORED outline. The plate is an ExtrudeGeometry, and
+// three.js's bevel grows a body past its own outline in both directions —
+// TODO 84's finding, at plate scale rather than tooth scale. Measured off the
+// built mesh: the rim's flat dial-side face lies at z −2.300 out to r 42.923,
+// and the bevel then swells OUTWARD to r 43.2664, reaching its widest at
+// z −2.000. So the two numbers the case wants are 0.300 and 0.343 away from
+// the ones it had:
+//
+//   · The SEAT's top face was `BACK_PLATE_Z − BACK_PLATE_T/2` = −2.000, which
+//     is 0.300 ABOVE the face it exists to carry. The plate never rested on
+//     the seat: the seat stood 0.300 inside the plate's z span over the whole
+//     bearing annulus, and the only metal that met was the bevel's corner
+//     jammed into the seat's. A bearing that interpenetrates is not a bearing.
+//   · The crown tubes' inboard ends stop at `plateR + CLEAR_MARGIN` = 43.073,
+//     which is 0.193 INSIDE the plate's widest metal. The commit that derived
+//     that standoff had the rule right and the radius wrong — it cleared an
+//     outline, and metal is what a tube has to miss.
+//
+// Neither was visible to a gate: `['Case', 'plate']` is an EXPECTED pair and
+// has no `EXPECTED_CONTACT_FLOORS` row, so item 6's blanket excuse covers
+// everything the case does to the plate. Found by `probe-case-relief.mjs`,
+// which asks the question per MESH and so could not be answered by the
+// declaration.
+//
+// Measured once, here, so both consumers read the same metal. The face is
+// taken at the RIM (r ≥ the seat's own inner radius): a boss further in says
+// nothing about what the seat carries.
+const PLATE_RIM = (() => {
+  const rSeat = plateR - 1 / UNIT_MM;
+  const v = new THREE.Vector3();
+  let front = Infinity, reach = 0;
+  backPlate.updateMatrixWorld(true);
+  backPlate.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      o.localToWorld(v.fromBufferAttribute(p, i));
+      const r = Math.hypot(v.x, v.y);
+      if (r > reach) reach = r;
+      if (r >= rSeat && v.z < front) front = v.z;
+    }
+  });
+  if (!(front < Infinity) || !(reach > plateR - 1e-9))
+    console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
+      + `authored ${plateR.toFixed(4)} — the case's seat and tube standoffs are derived from this and cannot be`);
+  return { front, reach };
+})();
+
 const CASE_SECTORS = (() => {
-  const zTop = BACK_PLATE_Z - BACK_PLATE_T / 2;       // the plate's dial-side face
+  const zTop = PLATE_RIM.front;                        // the plate's dial-side face, MEASURED
   const zBot = zTop - 0.8 / UNIT_MM;                  // the seat step, 0.8 mm
   const rSeat = plateR - 1 / UNIT_MM;                 // R_SH: 1 mm of bearing under the rim
   const box = new THREE.Box3(), v = new THREE.Vector3();
@@ -26490,8 +26541,9 @@ const CASE_DIMS = (() => {
     R_BEZEL_IN: dialRadius - 1 / UNIT_MM,
     R_CRYST: dialRadius - 0.5 / UNIT_MM,  // crystal edge trapped under the lip
     z0, zMidBack, zFlangeIn,
-    zSeatTop: BACK_PLATE_Z - BACK_PLATE_T / 2,              // the plate's dial-side face plane
-    zSeatBot: BACK_PLATE_Z - BACK_PLATE_T / 2 - 0.8 / UNIT_MM, // seat shoulder 0.8 mm tall
+    zSeatTop: PLATE_RIM.front,                              // the plate's dial-side face, MEASURED
+    zSeatBot: PLATE_RIM.front - 0.8 / UNIT_MM,              // seat shoulder 0.8 mm tall
+    plateReach: PLATE_RIM.reach,   // ...and its widest metal, which is what a tube has to miss
     zCrystInner, zCrystOuter,
     zBezelOuter: zCrystOuter - 0.25 / UNIT_MM,  // bezel lip over the crystal edge
     zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
