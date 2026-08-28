@@ -23,6 +23,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — STEP 1 DONE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78 by item 55's rule. All seven are NAMED (`tools/probe-slenderness-residue.mjs` matches rows to meshes by MEASUREMENT, since six were addressed positionally and `Keyless works` holds 40 meshes sharing that non-name). **Step 1 is done and its own premise is refuted: declaring the bearings that exist retired NOTHING and reddened two** — the alarm stem 35.4 → **76.6** and the §29 tail run 35.1 → **85.1**, both cantilevers that whole-stock λ had been calling spans. `tools/probe-bearing-candidates.mjs` settles the rest: the three rods are held by pins in OTHER units (`supportAt` refuses them, and a pin-ended link's free length is already right), **the setting arbor is supported by nothing at all over 28.84 u / 10.9 mm** — a position-space landing, the item's one layout row — and the lifter run has only abutting run segments. What remains: step 2's sections for the five undeclarable rows (five of seven inside ×1.4), and the setting arbor's missing cock |
+| 110 | OPEN | `start()`'s `resetInputs()` assigns eased state's VARIABLES while the scene follows only on a later tick with real dt — and `start()` runs its check in the same microtask, so a check that READS the live scene instead of posing it measures the previous check's pose. CLAUDE.md's "no check can observe which ones ran before it" is false for that class. Proven on `supportAt`: `--only slenderness` passes, `--only alarmHandoffs,slenderness` fails, the alarm stem standing 5 u out. No probe could have caught it — rAF frames run between a probe's `page.evaluate` calls and never inside the harness's microtask. Step 1 is enumerating the readers; three candidate fixes weighed in the item, one of which (stepping in `start()`) would move `tau` under checks that read it |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and CLOSED (§183), its repair SEARCHED and the obvious fix REFUTED first** (`tools/probe-90-lockread.mjs`, three controls passing): the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. The beak cannot simply be moved: its station is QUANTIZED to whole column pitches (60°, the parity rule `ALARM_LINK_BEAK_OFF` already snaps to), the exact Thales optimum (φ 44.57°, gain **1.0000**) is mid-flank and so illegal, and both legal neighbours are taken — **−60° is the link beak's own station** (riser 0.0000) and **+60° wants a 0.6723 chamfer against a 0.6327 ceiling** and stands 0.1992 from the driver pawl. So the repair was a FOLD, not a re-siting: §183 gave the beak its own pivot at the free φ 0 station, placed by Thales so the radial gain is 1 by construction, and cut the pillars a radial cam from the same function that ramps their tops. The nose now reads **5.9800 → 5.6754** where it moved 0.00114, and both ends of the lever land on their solved stations exactly. What remains of item 90 is the two questions still filed unmeasured. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
 | 4 | OPEN | A bucket of smaller findings; some rows closed by BUILT §61, the rest live |
@@ -12665,29 +12666,43 @@ battery. The scan settles all seven rows:
 
 | row | what holds it | declarable? |
 |---|---|---|
-| `Alarm crown` stem | `alarmBush`, a bored boss at `plateR − 2`, **same unit** | **yes — landed** |
 | `Alarm release feeler` tail run | its own jog, a built-in root, **same unit** | **yes — landed** |
+| `Alarm crown` stem | `alarmBush`, a bored boss at `plateR − 2`, **same unit** | legal, but withdrawn — TODO 110 |
 | `Hack rod / rodSegOut` | `Stop lever / stopCrankRodPin` — **another unit** | no |
 | `Hack rod / rodSegIn` | `Setting lever / hackRodPin` — **another unit** | no |
 | `Reset rod / rodSegOut` | `Reset hammer` — **another unit** | no |
 | `Keyless works` traverse rod | **nothing at all** over 28.84 u | no |
 | `Alarm release lifter / alarmLifterRun` | nothing but abutting run segments | no |
 
-**What landed** — each station written as the arithmetic that places the metal
-holding it, so moving the bush or the jog moves the free lengths with it, and
-each re-measured off the built tree afterwards:
+**What landed — one of the two, and the other one is why item 110 exists.**
+The station is written as the arithmetic that places the metal holding it, so
+moving the jog moves the free lengths with it, and it is re-measured off the
+built tree afterwards:
 
 | row | before | after | governing free length |
 |---|---|---|---|
-| `Alarm crown` stem | λ 35.4 | **λ 76.6** | overhang 25.5222 u, k 567.4 N/m |
 | `Alarm release feeler` tail run | λ 35.1 | **λ 85.1** | overhang 8.7846 u, k 49.1 N/m |
+| `Alarm crown` stem | λ 35.4 | *(λ 76.6 measured, NOT declared)* | overhang 25.5222 u, k 567.4 N/m |
+
+**The stem's declaration was written, measured, and then WITHDRAWN**, and the
+withdrawal is the more useful half. The stem SLIDES through a bush that does
+not move, so its station is a pose rather than a place on the metal — and
+`alarmCrownPullT` is EASED, so `resetInputs()` zeroes the variable while the
+scene follows only on a later tick with real dt. `start()` runs its check in
+the same microtask as that reset, so `supportAt` reads whatever pose the
+previous check left: after `alarmHandoffs` the stem stands 5 u out and the
+declaration lands in air. The battery caught it — 35/36, one row — where the
+focused probe had passed it twice, because a probe's `page.evaluate` calls
+have rAF frames between them and the harness does not. **That is TODO 110**,
+filed rather than worked around; the stem's real λ 76.6 is recorded at the
+metal, in `main.js`, where a fix would look.
 
 Neither number is new debt: both are the old debt reading true. Whole-stock λ
 treats a bar as a SPAN, and neither of these is one — a stem held by a single
 bush 25.52 u from its inner end, and a tail run built into a jog at one end
 with the beak hanging off the other, are both cantilevers, which §54 charges
 `SLENDER_OVERHANG_K` = ∛16 for. `unsupported` and `malformed` stay 0 and the
-control still passes 13 cases, so the declarations are legal as well as true.
+control still passes 13 cases, so the declaration is legal as well as true.
 
 One caveat on "derived", stated rather than glossed: the stem's station comes
 from `ALARM_STEM_BUSH_DIST − ALARM_CD − alarmStemLen/2`, every term of which
@@ -12757,3 +12772,78 @@ Probe: `tools/probe-slenderness-residue.mjs` (a REPORT — it prints and exits
 0). It is also the reproduction: re-run it before believing any number above,
 because the catalogue this item replaces went stale exactly by not being
 re-run.
+
+## 110. `start()`'s reset does not settle EASED state, so a check can read the previous check's pose
+
+Found 2026-08-28 by TODO 109, which tried to declare a bearing on a part that
+slides and got a gate failure that depends on **what ran before it**.
+
+`start()` opens every check with `clock.resetInputs()`, and CLAUDE.md rests a
+whole tranche of the harness on what that buys:
+
+> `start()` calls `clock.resetInputs()` before every check, so no check can
+> observe which ones ran before it — **if a report ever moves between
+> `--shards 1` and `--shards 2`, the check that moved has broken that
+> invariant and is the bug.**
+
+**For EASED state it does not hold.** `resetInputs()` assigns the state
+VARIABLES (`alarmCrownPullT = 0` among them). The SCENE follows on the next
+tick with real dt, because the ease is integrated in `tick()` — the trap
+CLAUDE.md already documents one level down: *"`setPose` ticks with zero dt, so
+anything eased (the minute jumper's snap, `crownPullT`) cannot move under
+it."* `start()` runs its check in the same microtask as the reset, so no
+frame intervenes, and a check that READS THE LIVE SCENE rather than posing it
+measures the previous check's eased pose.
+
+### Measured, with a 37-second reproduction
+
+`checkSlenderness`'s `supportAt` is such a reader: it places a declared
+station through `mesh.matrixWorld` and asks which sibling's box contains it.
+With a bearing declared on the alarm stem — legal, supported, and correct at
+rest:
+
+| after | alarm stem, world x | `unsupported` |
+|---|---|---|
+| virgin boot | 30.2618 | 0 |
+| `alarmHandoffs` | **35.2618** | **1** |
+| `resetInputs()` **plus a frame** | 30.2618 | 0 |
+
+```
+node tools/ci-battery.mjs --only slenderness           --shards 1   # 8/8 PASS
+node tools/ci-battery.mjs --only alarmHandoffs,slenderness --shards 1   # 8/9, slenderness FAILS
+```
+
+The full battery reproduces it as 35/36: on the shard that scheduled
+`alarmHandoffs` immediately before `slenderness`, the stem is 5 u out.
+
+**Why no probe caught it.** A probe drives the page through separate
+`page.evaluate` calls, and rAF frames run between them — so the ease has
+always relaxed by the time a probe measures. `tools/probe-slenderness-residue.mjs`
+passed this declaration twice. The battery is the only context that reads
+inside the same microtask, which is exactly the context the invariant is
+claimed for.
+
+### What it does NOT mean
+
+Not every check is exposed. A sweep calls `setPose`/`enterAxis` per pose and
+so establishes its own; λ itself is geometry-local and did not move. The
+exposure is the narrow class of **checks that read the live scene without
+posing it**, of which `supportAt` is the one instance proven here. Enumerating
+that class is step 1 — the fix cannot be sized before it is known.
+
+### Candidate fixes, none of them yet weighed against measurement
+
+1. **Settle the ease inside `resetInputs()`** — assign the eased quantity's
+   TARGET to its animated value rather than waiting for `tick()`. Smallest
+   change, and the one that makes the invariant true as stated. Wants a list
+   of every eased pair first.
+2. **Have `start()` step once with real dt after the reset.** One line, but it
+   advances `tau`, which several checks read — a fix that moves other
+   reports is a worse defect than the one it closes.
+3. **Make the exposed checks pose themselves.** Narrow and safe, and it leaves
+   the invariant false for the next reader who relies on it.
+
+Whichever lands, the acceptance is the pair above: `--only
+alarmHandoffs,slenderness` must agree with `--only slenderness`, and a
+declaration on a sliding part must then be landable — TODO 109's alarm stem
+row, λ 35.4 today against a measured 76.6, is the customer waiting for it.

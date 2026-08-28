@@ -13797,35 +13797,33 @@ const alarmStemLen = plateR + 2.2 - ALARM_CD;
 const ALARM_STEM_BUSH_DIST = plateR - 2;   // the plate rim, where the boss is bored (the −2 is inherited with the bush)
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
-// §54 / TODO 78 — WHERE THIS STEM IS HELD, and TODO 109 is the landing that
-// asked. Geometry-local y, the frame computeBoundingBox reads: the spinner
-// sits at its PUSHED-IN rest radius ALARM_CD (the same radius alarmStemLen is
-// measured from, two lines up — NOT _alarmRimD, the ARBOR's rim distance,
-// which as built stands at 20.4007 against ALARM_CD's 15.4007 and puts the
-// station in thin air; `unsupported` caught exactly that), the
-// bush stands at ALARM_STEM_BUSH_DIST on the same radial line, and the mesh's
-// own y runs ±alarmStemLen/2 about its centre. So the station is the bush's
-// distance from the spinner origin, less half the stem. On the MESH, never
-// the geometry: weldGeometry returns a fresh BufferGeometry without copying
-// userData, so a geometry-level declaration is deleted by weldTree.
+// §54 / TODO 78 / TODO 109 — WHERE THIS STEM IS HELD, MEASURED AND NOT
+// DECLARED, and the reason is worth more than the declaration would be.
 //
-// A SLIDING STEM IN A FIXED BUSH, so the station is a POSE, and this is the
-// rest one: pulling the crown slides the metal outward through a bush that
-// does not move, which walks the bush inboard along the stem. Rest is the
-// worst case — the stem is at its innermost, so the run inboard of the bush
-// is at its longest — which is the pose a ceiling should be read at, and is
-// also the pose the check itself measures (start() calls resetInputs).
+// The metal: one bush, at ALARM_STEM_BUSH_DIST on the spinner's radial line,
+// which at the pushed-in rest radius ALARM_CD sits
+// `ALARM_STEM_BUSH_DIST − ALARM_CD − alarmStemLen/2` = 10.6611 along the
+// stem's own y. That leaves 25.5222 u of stem inboard of the only thing
+// holding it: a cantilever, not a span. Declared, the row reads **λ 76.6**
+// against the 35.4 whole-stock λ reports today — measured, both times.
+// The larger number is the true one; whole-stock λ assumes a span and this
+// stem is not one.
 //
-// THIS MAKES THE ROW WORSE, measured 35.4 → 76.6, and that is the point.
-// One bush 25.52 u from the inner end leaves a cantilever that long inboard
-// of it; λ over the whole stock was averaging that away and calling a singly
-// held stem a span. The number is not new debt — it is the debt reading
-// true. TODO 109 owns what to do about it; a second bearing is what the
-// metal actually wants.
-alarmStem.userData.bearings = {
-  axis: 'y',
-  stations: [ALARM_STEM_BUSH_DIST - ALARM_CD - alarmStemLen / 2],
-};
+// WHY IT IS NOT DECLARED. The stem SLIDES through a bush that does not move,
+// so the station is a pose rather than a place on the metal — and
+// `alarmCrownPullT` is EASED, so `resetInputs()` zeroes the variable while
+// the scene follows only on a later tick with real dt. `start()` runs a
+// check in the same microtask as the reset, so `supportAt` reads whatever
+// pose the previous check left: after `alarmHandoffs` the stem stands 5 u
+// out (x 35.2618 against 30.2618) and the declaration lands in air.
+// Reproducible in 37 s: `node tools/ci-battery.mjs --only
+// alarmHandoffs,slenderness --shards 1` fails where `--only slenderness`
+// passes. That is the harness invariant CLAUDE.md states — a check must not
+// observe what ran before it — and for EASED state it does not hold.
+//
+// So a true declaration here would be a gate that fails on execution order.
+// The honest record is this comment plus TODO 109, which owns both halves:
+// the stem wants a second bearing, and `supportAt` wants a settled pose.
 alarmSpinner.add(alarmStem);
 // Brand crown (§27) — the second consumer of makeBrandMark, now the WS
 // monogram (§41). MATCHED to the winding crown at 5.425/3.4.
