@@ -66,7 +66,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
 
+class Server(http.server.ThreadingHTTPServer):
+    # socketserver's default accept backlog is 5, and that is what caps the
+    # battery's shard count — not CPU. Each sharded browser context cold-loads
+    # the whole module graph at once, so K browsers open far more than 5
+    # near-simultaneous connections; the listen queue overflows and the kernel
+    # RESETS the excess. Measured at K=6 on a 12-core M2 Max: shard 4 never
+    # reached __clock, three ERR_CONNECTION_RESET and no __bootWarns at all,
+    # while the other five shards ran clean. The dead-shard gate caught it
+    # (that is what it is for), but the cause was here, not in the harness.
+    request_queue_size = 128
+
+
 if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get('PORT', 8347))
     print(f'timesim dev server on http://127.0.0.1:{port}  (state file: {STATE_PATH})')
-    http.server.ThreadingHTTPServer(('127.0.0.1', port), Handler).serve_forever()
+    Server(('127.0.0.1', port), Handler).serve_forever()
