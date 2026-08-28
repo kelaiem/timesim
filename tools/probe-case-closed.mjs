@@ -1,3 +1,24 @@
+// IS EVERY CASE BODY A SOLID? Boundary edges per mesh — 0 on a closed one, and
+// the locations printed when it is not.
+//
+// The question CLAUDE.md's trap list makes load-bearing: `meshClearance` guards
+// its BVH near-zeros with a parity raycast, which counts crossings and so
+// assumes the surface BOUNDS a solid. Through a missing face the count goes odd
+// and the body reads as solid everywhere behind it — five of `makeCase`'s
+// bodies shipped open, and the movement's setting wheel, three extrusions, a
+// torus and a box all reported "inside" a band whose bore they sat a clear
+// millimetre inside of.
+//
+// So this is the FIRST thing to run on any case geometry change, and it is
+// fast (~40 s). A sectored band is where it earns its keep: a partial
+// revolution is open where it starts and stops, and the caps that close it are
+// triangulated from the profile polygon — earcut abandoning part of an outline
+// holes a cap without failing.
+//
+// REPORT: it prints, it does not decide. A body with 0 boundary edges is closed;
+// it is not thereby correct.
+//
+// Run: node tools/probe-case-closed.mjs   (ROOT= to measure a different worktree)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -53,6 +74,22 @@ const res = await page.evaluate(async () => {
     if (seen.has(name) && boundary === 0) return;
     seen.add(name);
     out.push(`${boundary === 0 ? 'CLOSED' : 'OPEN  '} ${name.padEnd(18)} boundary edges ${boundary}  (${g.type}, ${pos.count} verts)`);
+    if (boundary) {
+      // Where the hole is, in the cylindrical terms the case is designed in.
+      const rep = new Map();
+      for (const [i] of [...key.entries()]) rep.set(rep.size, i);
+      const byId = new Map();
+      for (const [k, id] of key.entries()) if (!byId.has(id)) byId.set(id, k.split(',').map((n) => +n / Q));
+      let shown = 0;
+      for (const [k, c] of edge.entries()) {
+        if (c !== 1 || shown >= 8) continue;
+        const [u, v] = k.split('_').map(Number);
+        const A = byId.get(u), B = byId.get(v);
+        const cyl = (p) => `r ${Math.hypot(p[0], p[1]).toFixed(2)} az ${(Math.atan2(p[1], p[0]) * 180 / Math.PI).toFixed(1)}° z ${p[2].toFixed(2)}`;
+        out.push(`         edge: ${cyl(A)}  →  ${cyl(B)}`);
+        shown++;
+      }
+    }
   });
   return out;
 });

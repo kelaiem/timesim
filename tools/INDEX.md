@@ -4,8 +4,8 @@
 
 # The instruments
 
-150 scripts. **59 are ACCEPTANCE tests** — they decide and exit non-zero.
-**91 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+152 scripts. **60 are ACCEPTANCE tests** — they decide and exit non-zero.
+**92 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -139,8 +139,10 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
 | `probe-bearing-candidates.mjs` |  | report | TODO 109 step 1 — WHO HOLDS THESE PARTS? The scan that has to run before a single `userData.bearings` line is written. |
+| `probe-boot-warns.mjs` |  | report | What boot says. Rule 6 wants silence; this is the fast way to ask, without standing up the whole battery just to read a warning. |
 | `probe-bore-cut.mjs` |  | report | TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut? The arbor's own side edges cross the disc's surface twice, at exactly the disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it is supposed to pass through freely. That can only mean cap triangles span the hole. This counts them: every triangle whose centroid falls inside the bore radius is metal where the drawing says air. `src/geometry.js` already records this failure once — an `absarc` at `curveSegments: 1` collapsing to a single segment — and replaced it with an explicit 64-gon. This asks whether that replacement finished the job. REPORT. |
-| `probe-case-closed.mjs` |  | report | (no header — this file says nothing about what it answers) |
+| `probe-case-closed.mjs` |  | report | IS EVERY CASE BODY A SOLID? Boundary edges per mesh — 0 on a closed one, and the locations printed when it is not. |
+| `probe-case-relief.mjs` |  | acceptance | DOES ANYTHING STAND IN THE BAND'S METAL — AT ANY POSE THE MOVEMENT REACHES? Acceptance. The band's openings (the seat relief, the two crown bores, the pusher bore) are DERIVED at boot by scanning the movement for whatever occupies the band's own volume. A boot scan sees one pose, and a mover is somewhere else at every other: measured, `hackRodPin` sits at r 37.801..38.691 as the case is built — clear of the seat's 40.284 — and at 39.889..40.786 in 33 of the 42 poses the battery visits, half a unit INSIDE it. The relief was derived correctly and was still a claim about one pose. |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
