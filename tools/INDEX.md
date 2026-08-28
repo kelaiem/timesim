@@ -4,8 +4,8 @@
 
 # The instruments
 
-139 scripts. **59 are ACCEPTANCE tests** — they decide and exit non-zero.
-**80 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+140 scripts. **59 are ACCEPTANCE tests** — they decide and exit non-zero.
+**81 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -42,6 +42,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-107-anchor.mjs` | §107 | report | §107 — the anchor fork, close up, and MEASURED against the saw it works on. The question this answers: now that the arms reach into their blades, does any part of the anchor foul the saw's teeth, or is the only metal-to-metal the pallet face the mechanism is built on? |
 | `probe-107-assembly.mjs` | §107 | report | §107 — run the assembly check and print its rows, so the declared-split population is seeded from measurement rather than from guesswork. |
 | `probe-107-shot.mjs` | §107 | report | §107 — the governor corner in both views: the repaired anchor as solid metal, and the line tier's new words for it. |
+| `probe-110-order.mjs` | §110 | report | TODO 110 step 1 — WHICH CHECKS CAN OBSERVE WHAT RAN BEFORE THEM? |
 | `probe-111.mjs` | §111 | report | §111 — the governor anchor's derived section, its bored bearing, and the engagement debt, read off a real boot rather than off the model that predicted them. |
 | `probe-111b.mjs` | §111 | report | §111 — the focused instruments, run one at a time on the edited tree: the new penetration row's measured depth, and the checks the anchor's new radii could move. Not a substitute for the battery; a fast loop while iterating (CLAUDE.md's "Inspecting" section). |
 | `probe-115-support.mjs` | §115 | report | §115 — the two support rows that moved, localised to the mesh pair that produced them. The gate only says "within tol"; this says WHICH metal. |

@@ -13797,33 +13797,41 @@ const alarmStemLen = plateR + 2.2 - ALARM_CD;
 const ALARM_STEM_BUSH_DIST = plateR - 2;   // the plate rim, where the boss is bored (the −2 is inherited with the bush)
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
-// §54 / TODO 78 / TODO 109 — WHERE THIS STEM IS HELD, MEASURED AND NOT
-// DECLARED, and the reason is worth more than the declaration would be.
+// §54 / TODO 78 / TODO 109 — WHERE THIS STEM IS HELD. Geometry-local y, the
+// frame computeBoundingBox reads: the spinner sits at its PUSHED-IN rest
+// radius ALARM_CD (the radius alarmStemLen is measured from, two lines up —
+// NOT _alarmRimD, the ARBOR's rim distance, which stands at 20.4007 against
+// ALARM_CD's 15.4007 as built and puts the station in thin air; `unsupported`
+// caught exactly that). The bush stands at ALARM_STEM_BUSH_DIST on the same
+// radial line, and the mesh's own y runs ±alarmStemLen/2 about its centre, so
+// the station is the bush's distance from the spinner origin less half the
+// stem. On the MESH, never the geometry: weldGeometry returns a fresh
+// BufferGeometry without copying userData, so a geometry-level declaration is
+// deleted by weldTree.
 //
-// The metal: one bush, at ALARM_STEM_BUSH_DIST on the spinner's radial line,
-// which at the pushed-in rest radius ALARM_CD sits
-// `ALARM_STEM_BUSH_DIST − ALARM_CD − alarmStemLen/2` = 10.6611 along the
-// stem's own y. That leaves 25.5222 u of stem inboard of the only thing
-// holding it: a cantilever, not a span. Declared, the row reads **λ 76.6**
-// against the 35.4 whole-stock λ reports today — measured, both times.
-// The larger number is the true one; whole-stock λ assumes a span and this
-// stem is not one.
+// A SLIDING STEM IN A FIXED BUSH, so the station is a POSE, and this is the
+// rest one: pulling the crown slides the metal outward through a bush that
+// does not move, which walks the bush inboard along the stem. Rest is the
+// WORST case — the stem at its innermost leaves the longest run inboard of
+// the bush — and it is the pose the check measures.
 //
-// WHY IT IS NOT DECLARED. The stem SLIDES through a bush that does not move,
-// so the station is a pose rather than a place on the metal — and
-// `alarmCrownPullT` is EASED, so `resetInputs()` zeroes the variable while
-// the scene follows only on a later tick with real dt. `start()` runs a
-// check in the same microtask as the reset, so `supportAt` reads whatever
-// pose the previous check left: after `alarmHandoffs` the stem stands 5 u
-// out (x 35.2618 against 30.2618) and the declaration lands in air.
-// Reproducible in 37 s: `node tools/ci-battery.mjs --only
-// alarmHandoffs,slenderness --shards 1` fails where `--only slenderness`
-// passes. That is the harness invariant CLAUDE.md states — a check must not
-// observe what ran before it — and for EASED state it does not hold.
+// IT MAKES THE ROW WORSE, 35.4 → 76.6, and that is the point: one bush
+// 25.5222 u from the inner end leaves a cantilever that long, which λ over
+// the whole stock was averaging away by calling a singly-held stem a span.
+// Not new debt — the old debt reading true.
 //
-// So a true declaration here would be a gate that fails on execution order.
-// The honest record is this comment plus TODO 109, which owns both halves:
-// the stem wants a second bearing, and `supportAt` wants a settled pose.
+// THIS DECLARATION WAS LANDED, WITHDRAWN, AND RE-LANDED, and the round trip
+// is TODO 110. Withdrawn because the battery failed it on EXECUTION ORDER:
+// `resetInputs()` zeroed `alarmCrownPullT` while the scene followed only on a
+// later tick, so after `alarmHandoffs` the stem stood 5 u out and the station
+// landed in air. Re-landed because TODO 110's fix settles the eased state
+// into the scene, making CLAUDE.md's invariant — a check cannot observe what
+// ran before it — true as stated. The acceptance is that
+// `--only alarmHandoffs,slenderness` now agrees with `--only slenderness`.
+alarmStem.userData.bearings = {
+  axis: 'y',
+  stations: [ALARM_STEM_BUSH_DIST - ALARM_CD - alarmStemLen / 2],
+};
 alarmSpinner.add(alarmStem);
 // Brand crown (§27) — the second consumer of makeBrandMark, now the WS
 // monogram (§41). MATCHED to the winding crown at 5.425/3.4.
@@ -34292,6 +34300,27 @@ window.__clock = {
     lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
+    // …AND PUT THE SCENE WHERE THE VARIABLES NOW SAY IT IS. TODO 110.
+    //
+    // Everything above assigns STATE; none of it moves a part. The scene
+    // follows only through tick(), and `start()` runs its check in the SAME
+    // MICROTASK as this reset — so before this line a check that READS the
+    // live scene rather than posing it measured the PREVIOUS check's pose.
+    // Measured: after `alarmHandoffs` the alarm stem stood 5 u out (world x
+    // 35.2618 against 30.2618) because `alarmCrownPullT` is eased, and
+    // `checkSlenderness`'s supportAt placed a declared bearing station into
+    // the air. CLAUDE.md states the opposite as an invariant the sharding
+    // rests on — "no check can observe which ones ran before it" — and this
+    // is the line that makes it true rather than intended.
+    //
+    // One zero-dt tick, the mechanism setPose already ends with, so there is
+    // no second definition of "re-pose". Zero dt is exactly right: the eases
+    // are written `rawDt > 0 ? lerp(…) : target`, so at dt 0 they SNAP to the
+    // target this reset just set instead of integrating toward it, and the
+    // scene lands on the reset inputs rather than a frame's worth after them.
+    // It also re-bakes the chain that `lastChainTension = Infinity` above
+    // invalidates, so the reset scene is the assembled watch in full.
+    tick(lastTickRawT);
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
