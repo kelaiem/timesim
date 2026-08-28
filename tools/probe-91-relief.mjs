@@ -39,10 +39,26 @@ const res = await page.evaluate(async () => {
   // R_SH (plate seat) and R_FL (back flange) are both plateR-ish minus 2 mm and
   // land within 1e-3 of each other, so "innermost radius" cannot tell the seat
   // from the flange — it spanned the whole case in z. Take the seat's band from
-  // the constants that define it instead: zSeatTop is the plate's dial-side
-  // face (BACK_PLATE_Z - BACK_PLATE_T/2) and the step is 0.8 mm.
+  // what DEFINES it instead: the top face is the plate's dial-side rim face and
+  // the step is 0.8 mm below it.
+  //
+  // Measured off the plate, not restated. This line read `-1 - 2/2` — the
+  // builder's own `BACK_PLATE_Z − BACK_PLATE_T/2`, copied — and that expression
+  // was itself the bug: the plate is an extrude whose bevel puts its real rim
+  // face 0.300 further forward, so the seat was derived 0.300 above the face it
+  // carries. The builder now measures; a probe that restated the old constant
+  // would report a band the case no longer has.
   const UNIT_MM = 1 / (clock.P?.unitMM ?? 0.3788);   // u per mm
-  const zHi = -1 - 2 / 2, zLo = zHi - 0.8 * UNIT_MM;
+  const plate = clock.scene.getObjectByName('backPlate');
+  let zHi = Infinity;
+  {
+    const pp = plate.geometry.attributes.position, w = new THREE.Vector3();
+    for (let i = 0; i < pp.count; i++) {
+      plate.localToWorld(w.fromBufferAttribute(pp, i));
+      if (Math.hypot(w.x, w.y) >= rMin && w.z < zHi) zHi = w.z;
+    }
+  }
+  const zLo = zHi - 0.8 * UNIT_MM;
   out.push(`seat ledge: R_SH ${rMin.toFixed(3)}, z ${zLo.toFixed(3)}..${zHi.toFixed(3)}`);
   const arc = (azs) => {
     if (!azs.length) return null;
