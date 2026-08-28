@@ -12542,6 +12542,11 @@ says `Hack rod / (unnamed)` does not say WHICH bar, and `Keyless works` holds
 
 ### Measured today, on `main` (755e262), with every row NAMED
 
+*(Re-measured on 2a016eb, after §102's coil-tessellation landing and the
+`meshClearance` fix merged: all nine rows, both counts and the control,
+unchanged. Recorded because this item's whole complaint is about numbers
+nobody re-ran.)*
+
 `tools/probe-slenderness-residue.mjs` — runs the shipped check, then matches
 each row to its mesh **by measurement** (the row's own section, thin
 dimension and stock in mm) rather than by name, because name-matching is
