@@ -22,7 +22,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
-| 109 | OPEN — STEP 1 DONE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78 by item 55's rule. All seven are NAMED (`tools/probe-slenderness-residue.mjs` matches rows to meshes by MEASUREMENT, since six were addressed positionally and `Keyless works` holds 40 meshes sharing that non-name). **Step 1 is done and its own premise is refuted: declaring the bearings that exist retired NOTHING and reddened two** — the alarm stem 35.4 → **76.6** and the §29 tail run 35.1 → **85.1**, both cantilevers that whole-stock λ had been calling spans. `tools/probe-bearing-candidates.mjs` settles the rest: the three rods are held by pins in OTHER units (`supportAt` refuses them, and a pin-ended link's free length is already right), **the setting arbor is supported by nothing at all over 28.84 u / 10.9 mm** — a position-space landing, the item's one layout row — and the lifter run has only abutting run segments. What remains: step 2's sections for the five undeclarable rows (five of seven inside ×1.4), and the setting arbor's missing cock |
+| 109 | OPEN — STEPS 1 AND 2 MEASURED, NEITHER DELIVERS | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. All named; both steps the item prescribed are now done and **both refuted their own premise**. Step 1 (declare the bearings that exist) retired nothing and reddened two — the §29 tail run 35.1 → **85.1** landed, the alarm stem's true **76.6** blocked by TODO 110. Step 2 (price the section) is priced AND measured against the corridor by `tools/probe-section-headroom.mjs`: **six of seven bars are SHORT of the room their own section needs**, walls named per row, and the seventh (`Hack rod / rodSegIn`, needing δ 0.0872) is refused by `ROD_R` itself — shared by both rods, knuckle at 1.15×, rod plane derived from it, so the reset-rod ⇄ hack-knuckle pair caps δ at 0.0637. **What remains is therefore all position-space**: every row is a layout change to file — move the station or the obstacle — which is what the design priority prescribes when a corridor is spent, and the one resolution that does not pay for packaging out of P1 |
 | 110 | OPEN | `start()`'s `resetInputs()` assigns eased state's VARIABLES while the scene follows only on a later tick with real dt — and `start()` runs its check in the same microtask, so a check that READS the live scene instead of posing it measures the previous check's pose. CLAUDE.md's "no check can observe which ones ran before it" is false for that class. Proven on `supportAt`: `--only slenderness` passes, `--only alarmHandoffs,slenderness` fails, the alarm stem standing 5 u out. No probe could have caught it — rAF frames run between a probe's `page.evaluate` calls and never inside the harness's microtask. Step 1 is enumerating the readers; three candidate fixes weighed in the item, one of which (stepping in `start()`) would move `tau` under checks that read it |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and CLOSED (§183), its repair SEARCHED and the obvious fix REFUTED first** (`tools/probe-90-lockread.mjs`, three controls passing): the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. The beak cannot simply be moved: its station is QUANTIZED to whole column pitches (60°, the parity rule `ALARM_LINK_BEAK_OFF` already snaps to), the exact Thales optimum (φ 44.57°, gain **1.0000**) is mid-flank and so illegal, and both legal neighbours are taken — **−60° is the link beak's own station** (riser 0.0000) and **+60° wants a 0.6723 chamfer against a 0.6327 ceiling** and stands 0.1992 from the driver pawl. So the repair was a FOLD, not a re-siting: §183 gave the beak its own pivot at the free φ 0 station, placed by Thales so the radial gain is 1 by construction, and cut the pillars a radial cam from the same function that ramps their tops. The nose now reads **5.9800 → 5.6754** where it moved 0.00114, and both ends of the lever land on their solved stations exactly. What remains of item 90 is the two questions still filed unmeasured. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
@@ -12636,15 +12636,21 @@ without anyone touching metal:
    arithmetic on the row rather than a new judgement — λ = Lₑ/t, so
    t = Lₑ/30:
 
-   | row | section now | needed | factor | k after |
-   |---|---|---|---|---|
-   | `alarmLifterRun` | 0.1238 mm | 0.2943 mm | ×2.38 | 221.7 N/m |
-   | `Hack rod / rodSegOut` | 0.2653 mm | 0.5727 mm | ×2.16 | 1059.9 N/m |
-   | `Reset rod / rodSegOut` | 0.2653 mm | 0.4312 mm | ×1.63 | 798.1 N/m |
-   | setting arbor traverse | 0.2653 mm | 0.3642 mm | ×1.37 | 466.8 N/m |
-   | `Hack rod / rodSegIn` | 0.2653 mm | 0.3314 mm | ×1.25 | 613.3 N/m |
-   | alarm stem | 0.3183 mm | 0.3754 mm | ×1.18 | 695.4 N/m |
-   | feeler arm | 0.0985 mm | 0.1154 mm | ×1.17 | 70.3 N/m |
+   | row | section now | needed | factor |
+   |---|---|---|---|
+   | feeler TAIL RUN | 0.0985 mm | 0.2796 mm | ×2.84 |
+   | `alarmLifterRun` | 0.1238 mm | 0.2943 mm | ×2.38 |
+   | `Hack rod / rodSegOut` | 0.2653 mm | 0.5727 mm | ×2.16 |
+   | `Reset rod / rodSegOut` | 0.2653 mm | 0.4312 mm | ×1.63 |
+   | setting arbor traverse | 0.2653 mm | 0.3642 mm | ×1.37 |
+   | `Hack rod / rodSegIn` | 0.2653 mm | 0.3314 mm | ×1.25 |
+   | alarm stem | 0.3183 mm | 0.3754 mm | ×1.18 |
+
+   (Two rows moved when step 1 landed and this table is the corrected one:
+   the "feeler arm" row was never the arm — it is the §29 step-4 TAIL RUN —
+   and declaring its root took it from ×1.17 to **×2.84**. The alarm stem's
+   ×1.18 is priced against the 35.4 the report still shows; against its
+   measured 76.6 it is ×2.55, and TODO 110 is why the report cannot say so.)
 
    (k scales as f⁴ for the round bars, which grow both dimensions, and f³ for
    the two flats, which only have to grow the stiff dimension the check
@@ -12748,6 +12754,79 @@ second guidance station"* — describes a mid-span guide that is not there.
 Measured, `#9` sits at run-local x **+4.5673**, the run's far END: it is the
 riser that carries the beak, a rigid corner of the same lever. A sliding guide
 and a built-in corner are opposite things, and the row buys a skip either way.
+
+### Step 2, measured — the corridor refuses the section, on every bar
+
+Pricing a section is arithmetic; finding room for it is not. CLAUDE.md's
+design priority is explicit that the two must not be traded — P1 (structural
+truth) outranks P3 (fitting the movement), and a P3 conflict is *"resolved in
+POSITION space… Forbidden resolutions: stretching or shrinking a lever arm,
+opening a contact, thinning a member below P1"*. So the section a row NEEDS
+and the section its corridor ALLOWS are separate measurements, and step 2's
+table was only ever the first.
+
+`tools/probe-section-headroom.mjs` measures the second: for each bar, the
+nearest cross-unit metal over 14 axes × 5 poses, ranked. Growing a round bar's
+radius by δ closes each gap by δ; the headroom is (gap − `CLEAR_MARGIN`).
+
+| bar | λ | growth needed, per side | the wall | gap | spare | verdict |
+|---|---|---|---|---|---|---|
+| feeler tail run | 85.1 | 0.2390 u | `Alarm setting idler / alarmSetIdler` | 0.2933 | 0.1433 | **SHORT** |
+| `alarmLifterRun` | 71.3 | 0.2250 u | `Alarm release sleeve / alarmSleeveFlat` | 0.2507 | 0.1007 | **SHORT** |
+| `Hack rod / rodSegOut` | 64.8 | 0.4056 u | `Reset rod / rodSegOut` | 0.4159 | 0.2659 | **SHORT** |
+| `Reset rod / rodSegOut` | 48.8 | 0.2189 u | `Hack rod / rodKnuckle` | 0.2869 | 0.1369 | **SHORT** |
+| setting arbor traverse | 41.2 | 0.1305 u | `Power-reserve train` | 0.1820 | 0.0320 | **SHORT** |
+| `Hack rod / rodSegIn` | 37.5 | 0.0872 u | `Reset rod / rodSegOut` | 0.3457 | 0.1957 | clears |
+| alarm stem | 35.4 | 0.0753 u | `Alarm release lifter / alarmLifterHead` | 0.1400 | **−0.0100** | **SHORT** |
+
+Six of seven are short, and the seventh does not survive its own constant.
+
+**The alarm stem's wall is a working contact, not an obstruction** — `Alarm
+crown ⇄ Alarm release lifter` is an EXPECTED pair (§45: the head rides the
+stem collar), which is why its gap already sits inside `CLEAR_MARGIN`. The
+probe reports arithmetic and does not guess at intent; that row is read
+against `inspect.js`, not against the number alone.
+
+**And the one row that clears is refused by the constant that controls it.**
+`ROD_R = 0.35` is shared — *"reset and hack rods share it"* — `ROD_KNUCKLE_R`
+is `ROD_R × 1.15`, and the rods' own plane is derived from it
+(`ROD2_PLANE_Z = GW_UNDER_Z − CLEAR_MARGIN − ROD_R`). So growing it by δ
+closes the `Reset rod / rodSegOut ⇄ Hack rod / rodKnuckle` gap by δ + 1.15δ:
+
+```
+0.2869 − 2.15·δ ≥ CLEAR_MARGIN  ⇒  δ ≤ 0.0637
+rodSegIn needs                      δ  = 0.0872
+```
+
+Refused, with the z-corridor not even binding (ROD2_PLANE_Z 0.72 against a
+0.55 floor gives δ ≤ 0.17). A per-rod FORK of `ROD_R` would clear that
+particular pair — and would still be the wrong landing, because the member
+that GOVERNS the hack rod is `rodSegOut` at λ 64.8, which is short by a
+factor of two. Fixing `rodSegIn` alone would lower a reported number while
+leaving the part exactly as weak, which is designing for the checker.
+
+**So step 2 delivers no section, and that is its result.** Every one of these
+rows is now a POSITION-SPACE problem — file the layout change, move the
+station or the obstacle — which is precisely what the design priority says to
+do when a corridor is spent, and it is the one resolution that does not pay
+for packaging out of P1. The walls above are the list of what would have to
+move, each named with the gap it owns.
+
+**The instrument's controls, because a headroom number that is quietly wrong
+would send someone re-sectioning into metal.** Two, and the second one
+indicted itself twice before it passed:
+
+- **Exactness** — the battery publishes `Alarm lock ⇄ Alarm striking wheel
+  min 0.1572 at alarmStrike f=0.1743, meshes alarmLockPad ⇄ alarmLockCollar`.
+  Posed there, the probe returns **0.1573**. It reproduces a number it did
+  not compute.
+- **Contact** — a pair the movement runs in contact must read 0. First
+  written at `tau: 0` it read 0.3466 (the fork is between locks there); then
+  swept over the beat with each unit's biggest mesh it read 0.2762 (the fork
+  BODY never touches the wheel — the pallet STONES do, and they are separate
+  meshes). Unit-to-unit over the beat: **0**. Both failures were the
+  control's, not the probe's, which is the argument for writing controls that
+  can fail.
 
 ### What this item is NOT
 
