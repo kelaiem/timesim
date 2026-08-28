@@ -4,7 +4,7 @@
 
 # The instruments
 
-138 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
+139 scripts. **59 are ACCEPTANCE tests** — they decide and exit non-zero.
 **80 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -145,6 +145,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |
 | `probe-reserve-mesh.mjs` |  | report | Do the power-reserve train's two meshes actually engage? |
 | `probe-reset-contact.mjs` |  | acceptance | The seconds-reset contact, measured rather than assumed. |
+| `probe-section-headroom.mjs` |  | acceptance | TODO 109 step 2 — HOW MUCH SECTION CAN EACH BAR ACTUALLY GAIN? |
 | `probe-slenderness-bearings.mjs` |  | report | TODO 78 — the alarm link's lay shaft, MEASURED. Every number the §54 note block quotes about this shaft (33.387, 2.45, 22, λ 135.4, "the 19.55 u bush-to-bush span") comes from prose; this reads them off the built tree. |
 | `probe-slenderness-residue.mjs` |  | report | TODO 109 — the seven UNWAIVED rows of §54's slenderness report, NAMED. |
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
