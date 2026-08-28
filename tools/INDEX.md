@@ -4,8 +4,8 @@
 
 # The instruments
 
-129 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
-**71 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+136 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
+**78 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -118,11 +118,17 @@ when a question was asked; the summaries are what it answered.
 | `probe-90-lockhold.mjs` | §90 | acceptance | TODO 90 question 1 — IS THE SUPPRESSOR'S HOLD REAL? |
 | `probe-90-lockread.mjs` | §90 | report | TODO 90 finding 5 — WHERE CAN THE LOCK BEAK STAND SO THE COLUMN CAN DRIVE IT? |
 | `probe-90-stophold.mjs` | §90 | acceptance | TODO 90 finding 4, ACCEPTANCE — the stop wheel actually holds, and the alarm still rings. |
+| `probe-95-grid.mjs` | §95 | report | TODO 93/94 — an interpenetration witness that trusts NEITHER side. |
+| `probe-95-guard.mjs` | §95 | report | TODO 95 — the closedness guard's regression. Three pairs, chosen because they differ in exactly the thing the guard tests. Note what the history here is worth: two of these were believed to be the guard's false positives and both turned out to be real metal, so this file is as much a record of refutations that did not survive as it is a check. alarmPusherStem ⇄ alarmPusherReturnSpring — spring CLOSED, and the stem really does graze it (surface sampling: 8 of 96,336 points inside). Must stay reported. alarmDisc ExtrudeGeometry#20 ⇄ hourTube — believed to be the guard's false positive on the strength of a 2.760 u radial gap, and it is not. That gap was measured off the disc's VERTICES; its SURFACE reaches r 1.216 inside the tube's 2.050 bore, and 126 of 4800 tube-surface points sit in the disc's metal (probe-95-interpenetration.mjs). REAL, and must STAY reported. Both meshes are in fact closed — the 8 "boundary edges" once counted on the tube were signed-zero seam artifacts, TODO 106's finding. genevaFingerDisc ⇄ alarmArrestFingerArbor — the disc is genuinely open (135 bad edges) and the arbor closed, so the witness is valid and it fires. Also REAL, and NOT a joint: the bore is a designed 0.05 running fit that the mesh does not honour (TODO 107). |
+| `probe-95-interpenetration.mjs` | §95 | report | TODO 95 — does a claimed interpenetration SURVIVE a witness that is valid on the meshes it is applied to? Parity needs a CLOSED surface, so this probe never assumes one: it counts boundary edges (keyed by POSITION — three.js duplicates vertices per face, so an index-keyed count calls a plain box open) and then picks the only sound test available for that pair — both closed → sample each SURFACE, parity against the other exactly one open → sample the OPEN one's surface, parity against the CLOSED both open → REFUSE, and say so; no witness here is valid Surfaces, never vertices: a barycentric grid over every triangle. The row this instrument exists for was retracted on a VERTEX-only radial span that read 5.260 where the surface reaches 1.216. REPORT. |
+| `probe-95-passthrough.mjs` | §95 | report | TODO 95 — find every mesh pair where the WRAPPER disagrees with the LIBRARY. |
+| `probe-95-pierce-trace.mjs` | §95 | report | TODO 95 — WHERE does the pass-through witness fire, and on what edge? Replicates `_sampledVerdictInner`'s witness loop for BOTH directions of a pair (set PAIR='["unit",sel,"unit",sel]') and prints, for each edge that fires: the direction, the edge's endpoints and length in the dst-local frame, the RAW raycast distances and the ones the dedupe kept. |
 | `probe-alarm-placement.mjs` |  | report | THE PLACEMENT GATE: does the alarm striking module FIT under the three-quarter plate once the mainspring drum's side departs? |
 | `probe-alarm-relayout.mjs` |  | report | Relayout feasibility: if the BARREL SIDE (fusee cone, mainspring drum, chain, set-up work) vacated its sector, would a pocket open under the three-quarter plate big enough to take the alarm striking module? |
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
+| `probe-bore-cut.mjs` |  | report | TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut? The arbor's own side edges cross the disc's surface twice, at exactly the disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it is supposed to pass through freely. That can only mean cap triangles span the hole. This counts them: every triangle whose centroid falls inside the bore radius is metal where the drawing says air. `src/geometry.js` already records this failure once — an `absarc` at `curveSegments: 1` collapsing to a single segment — and replaced it with an explicit 64-gon. This asks whether that replacement finished the job. REPORT. |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
@@ -132,6 +138,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
+| `probe-mesh-closedness-census.mjs` |  | report | TODO 106 — HOW MUCH of the movement is open? Every parity witness in this repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and TODO 27's family) counts ray crossings and is therefore only valid against a CLOSED surface. Nothing measures how many surfaces qualify. |
 | `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |
