@@ -19419,3 +19419,100 @@ its post, the pin in the slot), and `restoring` gains the rocker by name.
 `tools/probe-90-lockread.mjs` is the SEARCH and stays a report — it prints the
 whole table, losers included, because a fold chosen against one constraint is
 wrong from outside it. Its three controls pass.
+
+## §184 — the tier-split triple becomes three handles sharing one joint refusal
+
+`ALARM_BARREL_BEARING_DEG` 202°, `ALARM_GOV_BEARING` 92° and
+`ALARM_GOV_ANCHOR_BEARING` 148° are **one solved triple** — §112's argmax over
+the whole rotation × bearing space, 0.90 beyond every margin. Until this
+landing that fact lived only in a comment while the three legs were three
+independent literals, one of which (`?alarmbarrelaz=`, §129) was already
+movable from a URL. A spec that can move a third of a solved triple is worse
+than one that can move none.
+
+### The design question, and why the answer is three rows and not one
+
+The roadmap filed this as *"either one handle moves the triple, or three share
+one joint refusal."* It is **three**. The triple is not one degree of freedom
+that §112 happened to express as three numbers; it is genuinely three, and the
+argmax picked a point in that space. Collapsing it to one handle would invent a
+1-D path through a 3-D space that nothing justifies.
+
+What makes three safe is that every row's `shadow` calls the **same** joint
+bound with its own leg replaced and the other two at the values actually in
+force. So a drag on θ_g is judged against the θ_b and θ_a of the movement on
+screen, and the failure mode the roadmap named cannot be reached silently.
+
+**Measured, that distinction is not theoretical.** `probe-183-triple.mjs`
+samples each leg at 5° and finds the values each handle accepts **in silence on
+its own**, then asks whether pairs of those still clear together:
+
+| pair | both clean alone | the joint bound rejects |
+|---|---|---|
+| θ_b + θ_g | 252 | 2 |
+| θ_b + θ_a | 648 | 1 |
+| θ_g + θ_a | 504 | 6 |
+
+Nine combinations that three independent refusals would have accepted. The
+sharpest is `?alarmbarrelaz=195&alarmgovaz=100`, where §184's assert is the
+**only** voice in the build — no other instrument says anything.
+
+### Why the bound is measured off the metal, not declared
+
+`probe-alarm-tier-split` reads its discs from the built scene, and its header
+says why: a declared plan table went stale **twice** in that file — a 1.9
+standing in for the 44T winding wheel's 6.97, a 2.4 for the ratchet's 6.0 — and
+*"a stale disc passes everything silently"*. A build-time table here would have
+rebuilt exactly the failure that file warns about, so `ALARM_TIER_DISCS`
+measures eleven discs' radii and z bands off the metal once, at the end of the
+alarm block.
+
+**What makes one measurement legal:** a bearing rotates a member about a
+fixed-length spoke, so it moves the member's CENTRE and changes neither its
+reach nor its band. Measure once; a candidate triple then only moves centres.
+That is the same reason the probe can sweep 360° from one read of the scene.
+
+### The pairs are derived, not curated
+
+Three of the six station pairs can never vary — b↔s is `CD_train`, g↔s is
+`CD_gov`, g↔a is the anchor's `D`, and the click rides the barrel rigidly.
+Judging those would measure a mesh or a bearing and call it a collision, which
+is how a gate becomes a liar and then gets "fixed" by widening a margin.
+
+Rather than curate that exemption — the probe's own note says a curated pair
+list is how the barrel-side/governor-side crossings were missed there —
+`ALARM_TIER_VARIES` **perturbs every leg and keeps the pairs whose separation
+actually moves**. It derives `bg ba cg ca cs as`, excluding `bs`, `gs`, `ga`
+and `bc`, and it re-derives if the chain ever changes.
+
+### Three instrument errors this landing made, all caught by its own assert
+
+The boot assert — the shipped triple must produce **nothing** — earned itself
+three times over before the bound was right:
+
+1. **The first version was built on `ALARM_UNDER_FOOTPRINT`**, which is a
+   plan-view keep-out for the pillar solve: deliberately generous, z-agnostic,
+   and never meant to answer whether members foul each other. It reported three
+   fouls in a movement that is green.
+2. **`boxOf` omits `setFromObject`'s `precise` flag**, so it read rotated
+   meshes' inflated AABBs — the trap in the instruments skill, here
+   manufacturing fouls in members that measure clear.
+3. **The block was placed before the click was populated.** The click unit is
+   created 200 lines above where its meshes are added, so the selector matched
+   nothing — and the vacuous-selector warning (`Math.max()` of nothing is
+   −Infinity, a disc that passes everything) is the only reason it was not a
+   silent pass.
+
+### Residue, named
+
+The joint bound judges the group against **itself** — P2 in the design ladder,
+which is the authority a handle legitimately has. It does **not** judge the
+group against the rest of the under-plate movement: that is the occupancy field
+`probe-alarm-tier-split` builds from the whole scene, and no build-time
+expression can carry it. The battery holds that half.
+
+One modelling choice is inherited rather than derived: the click's offset from
+the barrel **translates** rather than rotating, which is the model the tier-split
+search solved this triple under. A real fold would carry the assembly round. The
+difference is zero at the shipped triple, and adopting the search's own model
+keeps the refusal and the solve from being two definitions of one thing.

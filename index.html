@@ -51,6 +51,11 @@
       alarmaz: 'alarmAzDeg',            // §33 — the alarm corner's azimuth, world degrees
       alarmmod: 'alarmModAzDeg',        // §33 — the whole alarm module's azimuth (striking-wheel station), world degrees
       alarmbarrelaz: 'alarmBarrelAzDeg', // §129 — the alarm BARREL's bearing off the striking wheel (module-relative), which ?alarmmod= cannot move
+      // §184 — the OTHER TWO LEGS of that same solved triple. θ_b alone was
+      // movable, which meant a URL could break a triple by moving a third of
+      // it; these complete the set, and main.js's joint bound judges all three.
+      alarmgovaz: 'alarmGovAzDeg',      // §184 — the GOVERNOR's bearing off the striking wheel (module-relative)
+      alarmanchoraz: 'alarmGovAnchorAzDeg', // §184 — the ANCHOR's bearing off the governor (module-relative)
       stemaz: 'stemAzDeg',              // §33 step 2 — the stem decoupled, world degrees
       d4: 'd4',                         // §94 tier A — centre→fourth distance: the small-seconds station, in movement units
       rsvr: 'rsvr',                     // §94 tier C — the power-reserve station's radius, dial-local, in movement units

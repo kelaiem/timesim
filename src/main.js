@@ -2218,10 +2218,8 @@ const ALARM_TRAIN_CD = ALARM_TRAIN_MODULE * (ALARM_BARREL_TEETH + ALARM_STRIKE_P
 // margin — the argmax over the whole rotation × bearing space, drum home.
 const ALARM_BARREL_BEARING_DEG = SPEC.alarmBarrelAzDeg !== null ? SPEC.alarmBarrelAzDeg : 202;
 const ALARM_BARREL_BEARING = ALARM_BARREL_BEARING_DEG * DEG2RAD + ALARM_MOD_ROT; // module-relative: the barrel's bearing off the striker rides the module
-const alarmBarrelPos = {
-  x: alarmSwPos.x + Math.cos(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
-  y: alarmSwPos.y + Math.sin(ALARM_BARREL_BEARING) * ALARM_TRAIN_CD,
-};
+// (alarmBarrelPos is derived with the other two legs at the §184 triple
+// below — the three stations are ONE construction, not three.)
 const ALARM_BARREL_PITCH_R = ALARM_TRAIN_MODULE * ALARM_BARREL_TEETH / 2;
 const ALARM_BARREL_TIP_R = ALARM_BARREL_PITCH_R + ALARM_TRAIN_MODULE * 0.95;   // makeBarrel's toothed wall
 const ALARM_WIND_W = ALARM_BARREL_TEETH; // §99's coaxial identity — see the winding block's note
@@ -2253,11 +2251,10 @@ const ALARM_BARREL_ARBOR_R = G.barrelArborR(ALARM_BARREL_PITCH_R); // 0.594 — 
 const ALARM_GOV_MODULE = 0.22;
 const ALARM_GOV_BEVEL = Math.min(ALARM_WIND_WHEEL_T * 0.18, ALARM_GOV_MODULE * 0.22); // the wheel's stock is the tier's 0.8
 const ALARM_GOV_CD = ALARM_GOV_MODULE * (ALARM_GOV_WHEEL_TEETH + ALARM_GOV_PINION_TEETH) / 2; // 7.92 — the mesh dictates
-const ALARM_GOV_BEARING = 92 * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative (§112: the gate's θ_g)
-const alarmGovPos = {
-  x: alarmSwPos.x + Math.cos(ALARM_GOV_BEARING) * ALARM_GOV_CD,
-  y: alarmSwPos.y + Math.sin(ALARM_GOV_BEARING) * ALARM_GOV_CD,
-};
+// §184 — spec'd like θ_b, and for the same reason: it is one leg of a solved
+// triple, and a triple with one movable leg is worse than none.
+const ALARM_GOV_BEARING_DEG = SPEC.alarmGovAzDeg !== null ? SPEC.alarmGovAzDeg : 92;
+const ALARM_GOV_BEARING = ALARM_GOV_BEARING_DEG * DEG2RAD + ALARM_MOD_ROT;   // from the strike arbor, module-relative (§112: the gate's θ_g)
 // --- The anchor's plan (§113 — the flat-faced recoil anchor; the escapement
 // itself is derived and SOLVED at the §113 block, where the closure lives):
 const ALARM_GOV_SAW_R = ALARM_TRAIN_MODULE * ALARM_GOV_SAW_TEETH / 2; // 6.0 — tip radius, the train's own module
@@ -2279,11 +2276,8 @@ const ALARM_GOV_COLLAR_R = ALARM_GOV_ARBOR_R + PIVOT_MIN_U;   // 0.769 — the r
 // preference. (§104's D put both engagement crossings ON the tip circle —
 // 7.335 — which is exactly the trajectory-face design §113 retired.)
 const ALARM_GOV_ANCHOR_D = ALARM_GOV_SAW_R + ALARM_GOV_HUB_R + CLEAR_MARGIN; // 7.051
-const ALARM_GOV_ANCHOR_BEARING = 148 * DEG2RAD + ALARM_MOD_ROT; // §112: the gate's θ_a — the leg of the solved triple that keeps the anchor's arbor column outside the 64T wheel's swept disc AND the ring off the rods
-const alarmGovAnchorPos = {
-  x: alarmGovPos.x + Math.cos(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
-  y: alarmGovPos.y + Math.sin(ALARM_GOV_ANCHOR_BEARING) * ALARM_GOV_ANCHOR_D,
-};
+const ALARM_GOV_ANCHOR_BEARING_DEG = SPEC.alarmGovAnchorAzDeg !== null ? SPEC.alarmGovAnchorAzDeg : 148;
+const ALARM_GOV_ANCHOR_BEARING = ALARM_GOV_ANCHOR_BEARING_DEG * DEG2RAD + ALARM_MOD_ROT; // §112: the gate's θ_a — the leg of the solved triple that keeps the anchor's arbor column outside the 64T wheel's swept disc AND the ring off the rods
 const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round-mm ring the anchor corner
                                         // holds inside the rim (assert at the §104 block), the cheap
                                         // direction — I = m·r², so radius bought is section saved
@@ -2314,7 +2308,65 @@ const ALARM_GOV_RING_STOCK_MM = [0.2, 0.8]; // drawn-brass ring stock a bench wo
 // is exactly why nothing downstream ever looked wrong — so the conversion
 // is written into the expression now, and the declared-vs-cut assert at the
 // governor build is what stops the next one being silent.
-const ALARM_UNDER_FOOTPRINT = [
+// ————— §184: THE TIER-SPLIT TRIPLE, AS ONE CONSTRUCTION —————
+//
+// θ_b, θ_g and θ_a are ONE SOLVED TRIPLE, not three numbers that happen to sit
+// together. §112's comment says so — probe-alarm-tier-split found them as the
+// argmax over the whole rotation × bearing space, 0.90 beyond every margin —
+// and until this landing that fact lived only in prose while the three legs
+// were three independent literals. Anything that moved one leg alone (a deep
+// link, and now a drag) could land somewhere fine FOR THAT LEG and break the
+// triple, with nothing to say so.
+//
+// WHAT MAKES THE COUPLING TRACTABLE. The three spokes off the strike arbor are
+// FIXED IN LENGTH — CD_train, CD_gov and the anchor's D are all mesh or bearing
+// distances that no bearing angle can change. So the triple moves only the
+// ANGLES BETWEEN SPOKES, and the group's own separations are closed form in the
+// three angles. That is the joint refusal, and it needs no solve and no shadow.
+const alarmTierPosAt = ({ thB, thG, thA }) => {
+  const barrel = {
+    x: alarmSwPos.x + Math.cos(thB) * ALARM_TRAIN_CD,
+    y: alarmSwPos.y + Math.sin(thB) * ALARM_TRAIN_CD,
+  };
+  const gov = {
+    x: alarmSwPos.x + Math.cos(thG) * ALARM_GOV_CD,
+    y: alarmSwPos.y + Math.sin(thG) * ALARM_GOV_CD,
+  };
+  // The anchor hangs off the GOVERNOR, so θ_g translates it and θ_a swings it.
+  // That chaining is why three independent handles are wrong and three sharing
+  // one refusal are right: a drag on θ_g moves two discs, not one.
+  const anchor = {
+    x: gov.x + Math.cos(thA) * ALARM_GOV_ANCHOR_D,
+    y: gov.y + Math.sin(thA) * ALARM_GOV_ANCHOR_D,
+  };
+  // The CLICK rides the barrel as a rigid OFFSET, not at its centre: its stud
+  // stands off on the base plate and its disc is measured about that stud. The
+  // offset TRANSLATES rather than rotating, which is the model
+  // probe-alarm-tier-split solved this triple under — inherited deliberately,
+  // because a refusal that judged candidates by a different model than the
+  // search that produced the shipped value would be two definitions of one
+  // thing. (A real fold would carry the assembly round; that difference is
+  // zero at the shipped triple and is named in §184.)
+  const click = ALARM_TIER_CLICK_OFF
+    ? { x: barrel.x + ALARM_TIER_CLICK_OFF.x, y: barrel.y + ALARM_TIER_CLICK_OFF.y }
+    : barrel;
+  return { barrel, gov, anchor, click };
+};
+// Measured at the end of the alarm block, once the click's stud exists; null
+// until then, which is why the position solve falls back to the barrel centre
+// for the early consumers (the pillar footprint, which never asks about the
+// click's own station).
+let ALARM_TIER_CLICK_OFF = null;
+const ALARM_TIER_TRIPLE = {
+  thB: ALARM_BARREL_BEARING, thG: ALARM_GOV_BEARING, thA: ALARM_GOV_ANCHOR_BEARING,
+};
+const ALARM_TIER_POS = alarmTierPosAt(ALARM_TIER_TRIPLE);
+const alarmBarrelPos = ALARM_TIER_POS.barrel;
+const alarmGovPos = ALARM_TIER_POS.gov;
+const alarmGovAnchorPos = ALARM_TIER_POS.anchor;
+const alarmTierDiscsAt = (t) => {
+  const P = alarmTierPosAt(t);
+  return [
   // The 64T wheel, at the mesh's OWN module — through the builder's own reach
   // rather than a second expression for it. §115: this row said
   // `module·(N/2+1) + bevel` = 7.308 and the cut wheel reaches 7.361, because
@@ -2322,11 +2374,13 @@ const ALARM_UNDER_FOOTPRINT = [
   // tip circle; gearOuterR is that builder's own bound, so the declaration
   // and the metal cannot drift again (the derivation is at its definition).
   { name: 'striking wheel', x: alarmSwPos.x, y: alarmSwPos.y, r: G.gearOuterR({ module: ALARM_GOV_MODULE, teeth: ALARM_GOV_WHEEL_TEETH, mates: [ALARM_GOV_PINION_TEETH], thickness: ALARM_WIND_WHEEL_T }) },
-  { name: 'barrel', x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_BARREL_TIP_R },
-  { name: 'click', x: alarmBarrelPos.x, y: alarmBarrelPos.y, r: ALARM_RATCHET_R * 1.28 + 1.2 }, // the click: pivot registration + pawl/spring reach
-  { name: 'governor saw', x: alarmGovPos.x, y: alarmGovPos.y, r: ALARM_GOV_SAW_R + ALARM_GEAR_BEVEL },
-  { name: 'governor ring', x: alarmGovAnchorPos.x, y: alarmGovAnchorPos.y, r: ALARM_GOV_RING_R + (ALARM_GOV_RING_STOCK_MM[1] / UNIT_MM) / 2 },
-];
+  { name: 'barrel', x: P.barrel.x, y: P.barrel.y, r: ALARM_BARREL_TIP_R },
+  { name: 'click', x: P.barrel.x, y: P.barrel.y, r: ALARM_RATCHET_R * 1.28 + 1.2 }, // the click: pivot registration + pawl/spring reach
+  { name: 'governor saw', x: P.gov.x, y: P.gov.y, r: ALARM_GOV_SAW_R + ALARM_GEAR_BEVEL },
+  { name: 'governor ring', x: P.anchor.x, y: P.anchor.y, r: ALARM_GOV_RING_R + (ALARM_GOV_RING_STOCK_MM[1] / UNIT_MM) / 2 },
+  ];
+};
+const ALARM_UNDER_FOOTPRINT = alarmTierDiscsAt(ALARM_TIER_TRIPLE);
 const alarmUnderDisc = (name) => ALARM_UNDER_FOOTPRINT.find((o) => o.name === name);
 const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate builder
 // (§112: the climb arbor's jeweled upper pivot RETIRED — with the winding
@@ -17420,6 +17474,159 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
     preload: CLEAR_MARGIN / Math.max(lever, 1e-6),               // one margin of travel at the contact radius
   };
 }
+
+// ————— §184: THE TIER-SPLIT TRIPLE'S JOINT REFUSAL —————
+//
+// θ_b, θ_g and θ_a are ONE SOLVED TRIPLE (§112's argmax, 0.90 beyond every
+// margin), and until this landing that lived only in prose while the three
+// legs were three literals. Anything moving one leg alone could land somewhere
+// fine FOR THAT LEG and break the triple with nothing to say so. This is the
+// bound three handles share, so a drag on any one of them is judged against
+// the other two.
+//
+// IT IS MEASURED HERE, NOT DECLARED, and that is not a preference.
+// probe-alarm-tier-split reads its discs off the built metal because a plan
+// table went stale TWICE in that file — a 1.9 standing in for the 44T winding
+// wheel's 6.97, a 2.4 for the ratchet's 6.0 — and, in its own words, "a stale
+// disc passes everything silently". A build-time table here would rebuild the
+// exact failure that file warns about, so the radii and z bands come off the
+// metal, once, at the end of the alarm block.
+//
+// WHAT MAKES A ONE-SHOT MEASUREMENT LEGAL: a bearing rotates a member about a
+// FIXED-LENGTH spoke, so it moves the member's CENTRE and changes neither its
+// reach nor its band. Measure the discs once; a candidate triple then only
+// moves centres. That is the same reason the probe can sweep 360° from one
+// read of the scene.
+const ALARM_TIER_DISCS = (() => {
+  const rowsOf = (unit) => {
+    const rows = [];
+    unit.updateWorldMatrix(true, true);
+    unit.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      // setFromObject's PRECISE form. `boxOf` omits it, which reads a rotated
+      // mesh's inflated AABB — the trap in the instruments skill, and here it
+      // manufactured three fouls in members that measure clear.
+      const bb = new THREE.Box3().setFromObject(o, true);
+      if (!bb.isEmpty()) rows.push({ mesh: o.name || o.geometry.type, bb });
+    });
+    return rows;
+  };
+  // Horizontal reach about a station: per mesh, the distance to its box CENTRE
+  // plus its larger half-extent. The naive farthest-corner read inflates a
+  // station-centred disc by √2 — a 9.6 wheel reports 13.6, measured in the
+  // probe, and that error alone pushed a disc off the plate rim.
+  const reachOf = (rows, st, filter, who) => {
+    const set = rows.filter(filter || (() => true));
+    // An empty set is a SELECTOR gone stale against the built scene, and
+    // Math.max() of nothing is −Infinity — a disc that passes every check in
+    // silence. The probe's first as-built run had three of these. Warn loudly
+    // rather than ship a bound that cannot fail (rule 6).
+    if (!set.length) { console.warn(`§184: disc selector "${who}" matched no meshes — its bound is vacuous`); return null; }
+    return {
+      r: Math.max(...set.map((r) => {
+        const cx = (r.bb.min.x + r.bb.max.x) / 2, cy = (r.bb.min.y + r.bb.max.y) / 2;
+        return Math.hypot(cx - st.x, cy - st.y)
+          + Math.max((r.bb.max.x - r.bb.min.x) / 2, (r.bb.max.y - r.bb.min.y) / 2);
+      })),
+      z: [Math.min(...set.map((r) => r.bb.min.z)), Math.max(...set.map((r) => r.bb.max.z))],
+    };
+  };
+  const barRows = rowsOf(alarmBarrelUnit), clkRows = rowsOf(alarmClickUnit);
+  // The click's own station is its STUD, and its offset from the barrel is
+  // measured here rather than assumed — the probe's `clkOff`, same source.
+  const studRow = clkRows.find((r) => r.mesh === 'alarmClickStud');
+  if (!studRow) console.warn('§184: the click stud was not found — the click disc falls back to the barrel centre, which understates its reach');
+  const clkSt = studRow
+    ? { x: (studRow.bb.min.x + studRow.bb.max.x) / 2, y: (studRow.bb.min.y + studRow.bb.max.y) / 2 }
+    : alarmBarrelPos;
+  ALARM_TIER_CLICK_OFF = { x: clkSt.x - alarmBarrelPos.x, y: clkSt.y - alarmBarrelPos.y };
+  const govRows = rowsOf(alarmGovUnit), ancRows = rowsOf(alarmGovAnchorUnit);
+  const swRows = rowsOf(alarmStrikeUnit);
+  const zc = (r) => (r.bb.min.z + r.bb.max.z) / 2;
+  const ratTop = Math.max(...barRows.filter((r) => r.mesh === 'alarmArborRatchet').map((r) => r.bb.max.z), -Infinity);
+  const STUDS = ['alarmClickStud', 'alarmGovAnchorStud'];
+  const isStud = (r) => STUDS.includes(r.mesh) || (r.mesh === 'CylinderGeometry' && (r.bb.max.x - r.bb.min.x) < 1.5);
+  // `about` names which leg carries the disc: 'b' rides θ_b, 'g' rides θ_g,
+  // 'a' rides θ_g AND θ_a (the anchor hangs off the governor — the chaining
+  // that makes three independent handles wrong), 's' is the fixed strike arbor.
+  const mk = (name, about, rows, st, filter) => {
+    const d = reachOf(rows, st, filter, name);
+    return d && { name, about, r: d.r, z: d.z };
+  };
+  const govReach = (r) => {
+    const cx = (r.bb.min.x + r.bb.max.x) / 2, cy = (r.bb.min.y + r.bb.max.y) / 2;
+    return Math.hypot(cx - alarmSwPos.x, cy - alarmSwPos.y) + Math.max((r.bb.max.x - r.bb.min.x) / 2, (r.bb.max.y - r.bb.min.y) / 2);
+  };
+  return [
+    mk('barrel high', 'b', barRows, alarmBarrelPos, (r) => !isStud(r)
+      && !['alarmArborWheel', 'alarmArborRatchet', 'alarmBarrelArbor'].includes(r.mesh) && zc(r) > ratTop),
+    mk('barrel wind wheel', 'b', barRows, alarmBarrelPos, (r) => r.mesh === 'alarmArborWheel'),
+    mk('barrel ratchet', 'b', barRows, alarmBarrelPos, (r) => r.mesh === 'alarmArborRatchet'),
+    mk('click', 'c', clkRows, clkSt, (r) => !isStud(r)),        // pawl + spring; the stud is the column below
+    mk('governor saw', 'g', govRows, alarmGovPos, (r) => r.mesh === 'alarmGovSaw'),
+    mk('governor pinion+arbor', 'g', govRows, alarmGovPos, (r) => r.mesh === 'alarmGovPinion' || r.mesh === 'alarmGovArbor'),
+    mk('anchor pallets', 'a', ancRows, alarmGovAnchorPos, (r) => r.mesh !== 'alarmGovAnchorStud' && !/Ring/.test(r.mesh)),
+    mk('anchor ring', 'a', ancRows, alarmGovAnchorPos, (r) => /Ring/.test(r.mesh)),
+    mk('sw:strike pinion', 's', swRows, alarmSwPos, (r) => r.mesh === 'alarmStrikePinion'),
+    mk('sw:gov wheel', 's', swRows, alarmSwPos, (r) => r.mesh === 'alarmGovWheel' && govReach(r) > 3),
+    mk('sw:gov wheel hub', 's', swRows, alarmSwPos, (r) => r.mesh === 'alarmGovWheel' && govReach(r) <= 3),
+  ].filter(Boolean);
+})();
+// Meshing pairs are EXPECTED contact and must never be judged — a joint check
+// that measured a drive mesh would report the train's own engagement as a
+// collision, and would then be "fixed" by widening a margin. Declared, like
+// INTRA_UNIT_CONTACTS' joints.
+const ALARM_TIER_MESHED = new Set(['barrel high|sw:strike pinion', 'governor pinion+arbor|sw:gov wheel']);
+// THE PAIRS ARE GENERATED, NOT CURATED. The probe's own note says a stale hand
+// -written pair list is how the barrel-side/governor-side crossings were missed
+// there; a curated list here would be the same bug one repo file over. Every
+// pair whose separation the bearings can alter is judged — that is any pair on
+// two DIFFERENT legs, since same-leg members ride one spoke rigidly.
+// WHICH STATION PAIRS THE TRIPLE CAN ACTUALLY MOVE — DERIVED, not listed.
+// Three of the six pairs are fixed-length spokes and can never vary: b↔s is
+// CD_train, g↔s is CD_gov, and g↔a is the anchor's D. Judging those would
+// measure a mesh or a bearing and call it a collision. Rather than curate that
+// exemption — the probe's own note says a curated pair list is how the
+// barrel/governor crossings were missed there — each pair is TESTED by
+// perturbing every leg and seeing whether its separation moves at all.
+const ALARM_TIER_VARIES = (() => {
+  const KEYS = ['b', 'c', 'g', 'a', 's'];
+  const posOf = (t) => { const P = alarmTierPosAt(t); return { b: P.barrel, c: P.click, g: P.gov, a: P.anchor, s: alarmSwPos }; };
+  const base = posOf(ALARM_TIER_TRIPLE);
+  const d = (p, i, j) => Math.hypot(p[KEYS[i]].x - p[KEYS[j]].x, p[KEYS[i]].y - p[KEYS[j]].y);
+  const out = new Set();
+  for (const leg of ['thB', 'thG', 'thA']) {
+    const p = posOf({ ...ALARM_TIER_TRIPLE, [leg]: ALARM_TIER_TRIPLE[leg] + 0.1 });
+    for (let i = 0; i < KEYS.length; i++) for (let j = i + 1; j < KEYS.length; j++)
+      if (Math.abs(d(p, i, j) - d(base, i, j)) > 1e-9) { out.add(KEYS[i] + KEYS[j]); out.add(KEYS[j] + KEYS[i]); }
+  }
+  return out;
+})();
+const alarmTierWarnsAt = (t) => {
+  const P = alarmTierPosAt(t);
+  const at = (d) => d.about === 'b' ? P.barrel : d.about === 'c' ? P.click
+    : d.about === 'g' ? P.gov : d.about === 'a' ? P.anchor : alarmSwPos;
+  const out = [];
+  for (let i = 0; i < ALARM_TIER_DISCS.length; i++)
+    for (let j = i + 1; j < ALARM_TIER_DISCS.length; j++) {
+      const a = ALARM_TIER_DISCS[i], b = ALARM_TIER_DISCS[j];
+      if (!ALARM_TIER_VARIES.has(`${a.about}${b.about}`)) continue;   // separation invariant under the triple
+      if (ALARM_TIER_MESHED.has(`${a.name}|${b.name}`) || ALARM_TIER_MESHED.has(`${b.name}|${a.name}`)) continue;
+      if (!(a.z[0] < b.z[1] + CLEAR_MARGIN && a.z[1] > b.z[0] - CLEAR_MARGIN)) continue;  // different bands never meet
+      const pa = at(a), pb = at(b);
+      const gap = Math.hypot(pa.x - pb.x, pa.y - pb.y) - a.r - b.r - CLEAR_MARGIN;
+      if (gap < 0)
+        out.push(`θ_b ${(t.thB / DEG2RAD).toFixed(0)}° θ_g ${(t.thG / DEG2RAD).toFixed(0)}° θ_a ${(t.thA / DEG2RAD).toFixed(0)}°: `
+          + `${a.name} fouls ${b.name} by ${(-gap).toFixed(3)} (needs ${CLEAR_MARGIN} clear)`);
+    }
+  return out;
+};
+// The assert that makes the function trustworthy: at the triple actually built
+// it must find NOTHING. If it speaks here, either a disc selector has gone
+// stale or the shipped triple stopped being the argmax — and the handles'
+// refusal would be judging a different movement from the one on screen.
+for (const m of alarmTierWarnsAt(ALARM_TIER_TRIPLE))
+  console.warn(`§184: the SHIPPED tier-split triple fails its own joint bound — ${m}`);
 declareTravel('Alarm click', 0.35,
   'the beak rides the saw between root and tip: lift ≈ 0.2·R/lever ≈ 0.25 rad plus the seat preload — the registry\'s containment assert widens this if the built ride exceeds it');
 declareRestoring('Alarm click', 'alarmClickPawl', 'spring',
@@ -28714,6 +28921,57 @@ const RECONF_HANDLES = [
     // The shipped function, called — not a re-implementation of it (TODO 59).
     shadow: (v) => ({ warns: alarmCornerWarnsAt(v), refuse: null }),
   },
+  // ————— §184: THE TIER-SPLIT TRIPLE — THREE ROWS, ONE JOINT REFUSAL —————
+  //
+  // θ_b, θ_g and θ_a are one solved triple, so the design question was whether
+  // to ship ONE handle that moves all three or THREE that share a refusal. It
+  // is three: the triple is not one degree of freedom, it is three, and §112's
+  // argmax merely picked a point in that space. Collapsing it to one handle
+  // would invent a 1-D path through a 3-D space that nothing justifies.
+  //
+  // What makes three safe is that every row's `shadow` calls the SAME joint
+  // bound with its own leg replaced and the other two at their current values.
+  // So a drag on θ_g is judged against the θ_b and θ_a actually in force, and
+  // the failure the roadmap named — satisfying one leg while breaking the
+  // triple — cannot be reached without the warning saying which pair closed
+  // and by how much.
+  //
+  // No `refuseAt`: unlike the corner, no bearing here leaves the build with
+  // nothing to stand on. Every triple BUILDS; the bad ones interpenetrate. So
+  // these are amber, never refused, and refusing a movement that builds would
+  // be the over-strict half of the same dishonesty.
+  ...[
+    { kind: 'alarmbarrelaz', specKeyName: 'alarmBarrelAzDeg', urlKey: 'alarmbarrelaz',
+      def: ALARM_BARREL_BEARING_DEG, leg: 'thB',
+      anchor: () => alarmSwPos, grabAt: () => alarmBarrelPos, grabR: () => ALARM_BARREL_TIP_R + 2,
+      what: 'alarm barrel' },
+    { kind: 'alarmgovaz', specKeyName: 'alarmGovAzDeg', urlKey: 'alarmgovaz',
+      def: ALARM_GOV_BEARING_DEG, leg: 'thG',
+      anchor: () => alarmSwPos, grabAt: () => alarmGovPos, grabR: () => ALARM_GOV_SAW_R + 2,
+      what: 'alarm governor' },
+    // θ_a swings about the GOVERNOR, not the strike arbor — the chaining that
+    // makes this a triple rather than three numbers. Its anchor moves when θ_g
+    // does, which is why the row reads the built station through a thunk.
+    { kind: 'alarmanchoraz', specKeyName: 'alarmGovAnchorAzDeg', urlKey: 'alarmanchoraz',
+      def: ALARM_GOV_ANCHOR_BEARING_DEG, leg: 'thA',
+      anchor: () => alarmGovPos, grabAt: () => alarmGovAnchorPos, grabR: () => ALARM_GOV_RING_R + 2,
+      what: 'alarm governor anchor' },
+  ].map((r) => ({
+    kind: r.kind, specKeyName: r.specKeyName, urlKey: r.urlKey, def: r.def,
+    anchor: r.anchor, grabAt: r.grabAt, grabR: r.grabR,
+    // Module-relative, like the literals they override: the stored bearing is
+    // `deg + ALARM_MOD_ROT`, so a pointer azimuth sheds the reconfigure frame's
+    // rotation AND the module's, and composes with ?alarmmod= instead of
+    // fighting it.
+    toSpec: (azDeg) => azDeg - RECONF_ROT_DEG - ALARM_MOD_ROT / DEG2RAD,
+    label: (v, def) => `proposed: ${r.what} bearing ${v.toFixed(1)}° (was ${def.toFixed(1)}°)`,
+    // ONE joint bound, three rows. The other two legs come from the build in
+    // force, so this is the triple being judged, never the leg alone.
+    shadow: (v) => ({
+      warns: alarmTierWarnsAt({ ...ALARM_TIER_TRIPLE, [r.leg]: v * DEG2RAD + ALARM_MOD_ROT }),
+      refuse: null,
+    }),
+  })),
   // §97 — the WELL RADIUS row, and its one honest concession stated: a
   // radius has no arbor. The ring sits on the SECONDS well (whose centre IS
   // the fourth wheel's real arbor) at the well's own radius, so what is
@@ -28950,8 +29208,11 @@ const RECONF_HINTS = {
   reserve: 'Reserve wheel — drag it toward or away from the centre to move the power-reserve station',
   subdial: 'Sub-dial wells — drag the seconds well’s ring to resize both wells',
   alarmr: 'Alarm corner — drag it toward or away from the centre to move the alarm setting station',
+  alarmbarrelaz: 'Alarm barrel — drag it about the striking wheel; it shares one bound with the governor and its anchor',
+  alarmgovaz: 'Alarm governor — drag it about the striking wheel; the anchor rides with it',
+  alarmanchoraz: 'Alarm governor anchor — drag it about the governor; it shares one bound with the barrel',
 };
-const RECONF_HINT_IDLE = 'Ten rings — each one is a handle';
+const RECONF_HINT_IDLE = 'Thirteen rings — each one is a handle';
 // The rim handles' meshes, by the same objects their hit tests use — the
 // pusher by name because its cap is what a finger goes for, while the hit
 // test generously accepts the whole switch unit.
@@ -29109,7 +29370,7 @@ function reconfShowStatus() {
     // translates. §93 names the FUSEE rather than "barrel": the ring sits on
     // the fusee and great wheel, which is the part a viewer sees move.
     span.textContent = parts.length ? `current spec: ${parts.join(' \u00b7 ')} \u2014 drag a handle to change`
-      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the sub-dial ring, the escape wheel or the balance');
+      : t('Drag a ringed handle \u2014 either crown, the pusher, the fusee, the fourth wheel, the reserve wheel, the alarm corner, the alarm barrel, the alarm governor and its anchor, the sub-dial ring, the escape wheel or the balance');
     applyRow.style.display = parts.length ? '' : 'none';
     return;
   }
@@ -33782,6 +34043,18 @@ window.__clock = {
   // Read-only by construction (the rows are consulted, never assigned), so this
   // is a window rather than a control surface.
   get reconfHandles() { return RECONF_HANDLES; },
+  // §184 — the tier-split triple's joint bound, exposed so a probe measures the
+  // SHIPPED function rather than a re-implementation of it (TODO 59's rule).
+  // `varies` and `discs` are here because a silent joint check and a vacuous
+  // one look identical from outside: the control has to be able to see what
+  // the check believes it is judging.
+  get alarmTier() {
+    return {
+      triple: { ...ALARM_TIER_TRIPLE }, discs: ALARM_TIER_DISCS,
+      varies: [...ALARM_TIER_VARIES], meshed: [...ALARM_TIER_MESHED],
+      clickOff: ALARM_TIER_CLICK_OFF, warnsAt: alarmTierWarnsAt,
+    };
+  },
   // §173 — THE JUMPER'S OWN LAW, exposed so a probe measures the SHIPPED
   // function rather than a re-implementation of it (TODO 59's rule, inherited
   // from the click this replaces). `poseJumper` drives the blade to an
