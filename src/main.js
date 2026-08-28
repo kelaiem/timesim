@@ -34300,27 +34300,6 @@ window.__clock = {
     lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
-    // …AND PUT THE SCENE WHERE THE VARIABLES NOW SAY IT IS. TODO 110.
-    //
-    // Everything above assigns STATE; none of it moves a part. The scene
-    // follows only through tick(), and `start()` runs its check in the SAME
-    // MICROTASK as this reset — so before this line a check that READS the
-    // live scene rather than posing it measured the PREVIOUS check's pose.
-    // Measured: after `alarmHandoffs` the alarm stem stood 5 u out (world x
-    // 35.2618 against 30.2618) because `alarmCrownPullT` is eased, and
-    // `checkSlenderness`'s supportAt placed a declared bearing station into
-    // the air. CLAUDE.md states the opposite as an invariant the sharding
-    // rests on — "no check can observe which ones ran before it" — and this
-    // is the line that makes it true rather than intended.
-    //
-    // One zero-dt tick, the mechanism setPose already ends with, so there is
-    // no second definition of "re-pose". Zero dt is exactly right: the eases
-    // are written `rawDt > 0 ? lerp(…) : target`, so at dt 0 they SNAP to the
-    // target this reset just set instead of integrating toward it, and the
-    // scene lands on the reset inputs rather than a frame's worth after them.
-    // It also re-bakes the chain that `lastChainTension = Infinity` above
-    // invalidates, so the reset scene is the assembled watch in full.
-    tick(lastTickRawT);
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero

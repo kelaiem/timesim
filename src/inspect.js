@@ -6828,8 +6828,55 @@ const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // corridor of 0.2850. The waiver also covers `alarmLinkRod` at λ 31.4. Its
 // beak tail WAS fixed and is off this report on merit. TODO 79 owns the
 // overhang, which is a chord-growth regression rather than a design.
+//
+// TODO 109 STEP 3 — the seven unwaived rows, waived because they are TRIAGED
+// now, not to green the report. TODO 78 closed with "do not add waivers to
+// green this", and that instruction forbade waiving an UNTRIAGED catalogue;
+// §50's arc is report, triage, then gate. Steps 1 and 2 did the triage:
+// step 1 declared the bearings that exist (retiring nothing and reddening
+// two — the truth costs), and step 2 measured every row's section against
+// its corridor with `tools/probe-section-headroom.mjs`.
+//
+// Each entry below therefore carries what a waiver is supposed to carry: the
+// growth the row needs per side, the WALL that refuses it, and the spare that
+// wall leaves after CLEAR_MARGIN. All are position-space work — move the
+// station or the obstacle — which is what the design priority prescribes when
+// a corridor is spent, and the one resolution that does not pay for packaging
+// out of P1. None of these numbers is an estimate: re-run the probe.
 export const SLENDER_WAIVERS = {
   'Alarm link': 'TODO 16',
+  // λ 85.1, the §29 step-4 tail run. Wants +0.2390 u per side; the alarm
+  // setting idler stands 0.2933 away and leaves 0.1433.
+  'Alarm release feeler': 'TODO 109',
+  // λ 76.6, the stem — and the worst-placed of them all now that its bearing
+  // is declared. Wants +0.6519 u per side; its nearest neighbour is already
+  // 0.0100 INSIDE the margin, and it is a working contact rather than an
+  // obstruction (Alarm crown ⇄ Alarm release lifter is an EXPECTED pair, §45:
+  // the head rides the stem collar). What this row actually wants is a SECOND
+  // BEARING, not a section: one bush 25.5222 u from the inner end is what
+  // makes it a cantilever.
+  'Alarm crown': 'TODO 109',
+  // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
+  // stands 0.2507 away and leaves 0.1007.
+  'Alarm release lifter': 'TODO 109',
+  // λ 64.8 on rodSegOut, which is the member that GOVERNS this rod: wants
+  // +0.4056 u per side against 0.2659 spare to the reset rod. Its inner
+  // segment (λ 37.5, +0.0872) is the one row in the item whose corridor would
+  // take the growth — and ROD_R refuses it anyway: shared by both rods, with
+  // ROD_KNUCKLE_R at 1.15× and ROD2_PLANE_Z derived from it, so growing it by
+  // δ closes the reset-rod ⇄ hack-knuckle gap by 2.15δ and caps δ at 0.0637.
+  // Sectioning the inner segment alone would lower a reported number while
+  // leaving the part as weak, which is designing for the checker.
+  'Hack rod': 'TODO 109',
+  // λ 48.8 on rodSegOut. Wants +0.2189 u per side; the hack rod's own knuckle
+  // stands 0.2869 away and leaves 0.1369.
+  'Reset rod': 'TODO 109',
+  // λ 41.2, the setting arbor's traverse rod, and the item's one pure LAYOUT
+  // row: it wants +0.1305 u per side against 0.0320 spare to the power-reserve
+  // train — but it is also supported by NOTHING over 28.84 u (10.9 mm) between
+  // its two bevel corners. A traverse that long runs in a cock; the fix is to
+  // add metal in position space, not to thicken the bar.
+  'Keyless works': 'TODO 109',
 };
 
 // Young's modulus for the movement's steels/brasses, order of magnitude. The
@@ -7026,6 +7073,33 @@ export function checkSlenderness(clock, opts = {}) {
   // supportAt below reads matrixWorld to place a declared station in the
   // scene, and start()'s resetInputs may have moved parts since the last
   // paint — a check must not depend on a frame having been drawn.
+  //
+  // TODO 110 — AND IT MUST NOT DEPEND ON WHAT RAN BEFORE IT EITHER, which
+  // `updateMatrixWorld` alone does not buy: that flushes matrices from the
+  // transforms the parts currently hold, and `resetInputs()` assigns STATE
+  // without moving a part. The scene follows only through tick(), and
+  // `start()` runs this check in the same microtask as the reset — so
+  // supportAt used to place a declared station into the PREVIOUS check's
+  // pose. Measured: after `alarmHandoffs` the alarm stem stood 5 u out
+  // (world x 35.2618 against 30.2618) and its bearing landed in air, which
+  // failed the battery 35/36 while two focused probe runs passed it (a
+  // probe's page.evaluate calls have rAF frames between them; the ease
+  // relaxes in the gaps and the defect disappears).
+  //
+  // `setPose({})` names no key, so it assigns nothing and only re-poses from
+  // the inputs the reset just set — the mechanism setPose already ends with,
+  // rather than a second definition of "re-pose".
+  //
+  // WHY THIS CHECK AND NOT `resetInputs()`, which is where the invariant
+  // CLAUDE.md states actually lives: putting the tick there was TRIED and
+  // REFUTED BY MEASUREMENT. It moved the geometry fingerprint (790912477 →
+  // 998722455) and failed `axisEntry`, because `enterAxis` IS `resetInputs`
+  // and every sweep's entry pose would have moved with it. A fix that
+  // relocates two gates to close one defect is the worse defect — the same
+  // ground on which TODO 110 refused the candidate that stepped real dt in
+  // `start()`. The invariant stays narrower than CLAUDE.md words it, and
+  // TODO 110 carries what is left.
+  clock.setPose({});
   clock.scene.updateMatrixWorld(true);
   // Nearest-ancestor dedupe — §40's rule. Units nest, so without it a mesh
   // inside two labelled subtrees is reported twice and the second row is not
