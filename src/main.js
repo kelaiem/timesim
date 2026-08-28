@@ -13835,12 +13835,25 @@ alarmStem.position.y = alarmStemLen / 2;
 //
 // The metal: one bush, at ALARM_STEM_BUSH_DIST on the spinner's radial line,
 // which at the pushed-in rest radius ALARM_CD sits
-// `ALARM_STEM_BUSH_DIST − ALARM_CD − alarmStemLen/2` = 10.6611 along the
+// `ALARM_STEM_BUSH_DIST − ALARM_CD − alarmStemLen/2` = 6.1333 along the
 // stem's own y. That leaves 25.5222 u of stem inboard of the only thing
 // holding it: a cantilever, not a span. Declared, the row reads **λ 76.6**
-// against the 35.4 whole-stock λ reports today — measured, both times.
+// against the 46.2 whole-stock λ reports today — measured, both times.
 // The larger number is the true one; whole-stock λ assumes a span and this
 // stem is not one.
+//
+// TWO OF THOSE FIGURES MOVED WHEN THE CASE LANDED AND ONE COULD NOT, which
+// is worth writing down because the third is an IDENTITY and not a
+// coincidence. The case lengthens `alarmStemLen` (29.7222 → 38.7777) so the
+// crown can stand outside the band: the bush's station on the stem therefore
+// travels inboard (10.6611 → 6.1333) and whole-stock λ rises (35.4 → 46.2,
+// its cantilever stiffness 359.3 → 161.8 N/m). The OVERHANG does not move,
+// and cannot: `len/2 + (BUSH − CD − len/2)` is `BUSH − CD`, with
+// `alarmStemLen` cancelling. The stem's inboard end is pinned at the corner
+// and the bush is bored at a fixed radius, so lengthening the stem adds
+// metal only OUTBOARD of the support. λ 76.6 and its k 567.4 N/m are
+// case-independent, and TODO 109's verdict for this row is unchanged by the
+// case — it was SHORT before and is short by more now.
 //
 // WHY IT IS NOT DECLARED. The stem SLIDES through a bush that does not move,
 // so the station is a pose rather than a place on the metal — and

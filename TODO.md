@@ -12579,7 +12579,7 @@ anonymous, which is the control that says the matching did work.
 | `Reset rod` / `rodSegOut` | the same builder, outer segment | **48.8** | 114.4 N/m | — |
 | `Keyless works` / `(unnamed)` | **the setting arbor's traverse rod** — `makeRodSegment(settingA, settingB, 0.35)`, 28.84 u between the two bevel corners | **41.2** | 180.4 N/m | — |
 | `Hack rod` / `rodSegIn` | elbow rod, inner segment | **37.5** | 251.9 N/m | — |
-| `Alarm crown` / `(unnamed)` | **the alarm winding stem** — `CylinderGeometry(0.42, 0.42, alarmStemLen, 12)`, 29.72 u | **35.4** | 359.3 N/m | — |
+| `Alarm crown` / `(unnamed)` | **the alarm winding stem** — `CylinderGeometry(0.42, 0.42, alarmStemLen, 12)`, 38.78 u | **46.2** | 161.8 N/m | — |
 | `Alarm release feeler` / `(unnamed)` | the feeler arm, a 9.13 × 0.26 × 0.10 box | **35.1** | 43.7 N/m | — |
 | `Alarm link` / `alarmLinkRod` | the link rod | **34.8** | 270.3 N/m | TODO 16 |
 
@@ -12611,7 +12611,7 @@ That is the first triage question per row, and it is cheap: **is there metal
 where the part is held?** The alarm stem is the clearest case — it runs
 through `alarmBush`, a bored boss built into its own unit at `plateR − 2` and
 described in source as "the stem's support at the plate rim (its route to
-`plate` in the support graph)" — and its λ 35.4 is measured as though that
+`plate` in the support graph)" — and its λ 46.2 is measured as though that
 bush were not there. `checkSlenderness` already gates the honest version of
 this: a declared station with no mesh at it lands in `unsupported`, which
 FAILS, so a declaration cannot be used to launder a number.
@@ -12650,8 +12650,10 @@ without anyone touching metal:
    (Two rows moved when step 1 landed and this table is the corrected one:
    the "feeler arm" row was never the arm — it is the §29 step-4 TAIL RUN —
    and declaring its root took it from ×1.17 to **×2.84**. The alarm stem's
-   ×1.18 is priced against the 35.4 the report still shows; against its
-   measured 76.6 it is ×2.55, and TODO 110 is why the report cannot say so.)
+   ×1.18 is priced against the 35.4 the report showed then; against its
+   measured 76.6 it is ×2.55, and TODO 110 is why the report cannot say so.
+   The report now shows 46.2 — see the case note below — so the whole-stock
+   pricing is ×1.54; the 76.6 half is unchanged, because the overhang is.)
 
    (k scales as f⁴ for the round bars, which grow both dimensions, and f³ for
    the two flats, which only have to grow the stiff dimension the check
@@ -12689,7 +12691,7 @@ built tree afterwards:
 | row | before | after | governing free length |
 |---|---|---|---|
 | `Alarm release feeler` tail run | λ 35.1 | **λ 85.1** | overhang 8.7846 u, k 49.1 N/m |
-| `Alarm crown` stem | λ 35.4 | *(λ 76.6 measured, NOT declared)* | overhang 25.5222 u, k 567.4 N/m |
+| `Alarm crown` stem | λ 46.2 | *(λ 76.6 measured, NOT declared)* | overhang 25.5222 u, k 567.4 N/m |
 
 **The stem's declaration was written, measured, and then WITHDRAWN**, and the
 withdrawal is the more useful half. The stem SLIDES through a bush that does
@@ -12778,9 +12780,27 @@ radius by δ closes each gap by δ; the headroom is (gap − `CLEAR_MARGIN`).
 | `Reset rod / rodSegOut` | 48.8 | 0.2189 u | `Hack rod / rodKnuckle` | 0.2869 | 0.1369 | **SHORT** |
 | setting arbor traverse | 41.2 | 0.1305 u | `Power-reserve train` | 0.1820 | 0.0320 | **SHORT** |
 | `Hack rod / rodSegIn` | 37.5 | 0.0872 u | `Reset rod / rodSegOut` | 0.3457 | 0.1957 | clears |
-| alarm stem | 35.4 | 0.0753 u | `Alarm release lifter / alarmLifterHead` | 0.1400 | **−0.0100** | **SHORT** |
+| alarm stem | 46.2 | 0.2263 u | `Alarm release lifter / alarmLifterHead` | 0.1400 | **−0.0100** | **SHORT** |
 
 Six of seven are short, and the seventh does not survive its own constant.
+
+**The alarm stem's row was re-measured when the case landed, and its verdict
+did not move.** The case lengthens `alarmStemLen` from 29.7222 to 38.7777 so
+the crown can stand outside the band — a P3 packaging fold in position space,
+not a section spent. Re-run on the merged tree, `probe-section-headroom.mjs`
+reports the row as **λ 46.2, growth 0.2263 u per side** where it read λ 35.4
+and 0.0753 u; the wall, the gap and the spare are unchanged (the wall is the
+same working contact, and `spare = gap − CLEAR_MARGIN` does not depend on the
+bar). So the row is SHORT by more than it was, and the item's count of six is
+untouched.
+
+The half that could NOT move is worth stating, because it is an identity
+rather than a coincidence: the declared **λ 76.6** and its k 567.4 N/m are
+computed from the OVERHANG, which is `ALARM_STEM_BUSH_DIST − ALARM_CD` with
+`alarmStemLen` cancelling out — the stem's inboard end is pinned at the corner
+and its bush is bored at a fixed radius, so lengthening the stem adds metal
+only outboard of the support. A case change cannot reach the number this item
+is really about. `src/main.js` carries the same derivation beside the metal.
 
 **The alarm stem's wall is a working contact, not an obstruction** — `Alarm
 crown ⇄ Alarm release lifter` is an EXPECTED pair (§45: the head rides the
@@ -12926,7 +12946,7 @@ that class is step 1 — the fix cannot be sized before it is known.
 Whichever lands, the acceptance is the pair above: `--only
 alarmHandoffs,slenderness` must agree with `--only slenderness`, and a
 declaration on a sliding part must then be landable — TODO 109's alarm stem
-row, λ 35.4 today against a measured 76.6, is the customer waiting for it.
+row, λ 46.2 today against a measured 76.6, is the customer waiting for it.
 
 ## 96. CLOSED — the band has no radial bores, so both stems pass through solid case metal
 
