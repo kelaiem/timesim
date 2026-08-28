@@ -5,8 +5,10 @@
 // with a smooth collar, so its normal force was zero and `alarmReleased`, a
 // boolean, was the only thing stopping the striking train. This holds the
 // REPAIR true from now on. The collar is cut into a 12-tooth stop wheel and
-// tick() runs the train on `alarmStopClearAt(colBlock) >= 0` — a real gap
-// between the finger and the teeth — so the two claims worth gating are:
+// tick() runs the train on `alarmStopClearAt(arm) >= 0` — a real gap between
+// the finger and the teeth (TODO 90 finding 5 changed that argument from the
+// lever's normalised amplitude to its ARM ANGLE, when the fold made the pose a
+// solve from the cut) — so the two claims worth gating are:
 //
 //   1. the finger is INSIDE the teeth when the columns put the lever down,
 //      and one CLEAR_MARGIN clear of the tips when they lift it;
@@ -36,10 +38,21 @@ const out = await p.evaluate(async () => {
   const rotor = collar.parent;
 
   // 1 — the finger against the teeth, measured off the tree at both extremes.
-  const pos = collar.geometry.attributes.position, v = new THREE.Vector3();
+  //
+  // ROOT AND TIP COME FROM THE CUT OUTLINE, not from the mesh's vertex extremes.
+  // The first cut of this probe took min/max radius over every vertex, which was
+  // right on the day it was written and wrong the moment §174 BORED the collar
+  // onto its arbor: the bore's rim became the minimum radius, so the "tooth
+  // depth" read 2.8167 instead of 0.3167 and the seat test failed against a
+  // depth no tooth has. The mechanism was never wrong — `intoTeeth` measured
+  // 0.3167 throughout — the reference was. `userData.ratchetPoly` is the very
+  // polygon the Shape was extruded from, so it cannot acquire a feature the
+  // teeth do not have.
+  const poly = collar.userData.ratchetPoly;
+  if (!poly) return { err: 'alarmLockCollar exports no ratchetPoly to measure its teeth against' };
   let root = Infinity, tip = -Infinity;
-  for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i);
-    const r = Math.hypot(v.x, v.y); root = Math.min(root, r); tip = Math.max(tip, r); }
+  for (const [x, y] of poly) {
+    const r = Math.hypot(x, y); root = Math.min(root, r); tip = Math.max(tip, r); }
   const padR = pad.geometry.parameters.radiusTop;
   const seat = [];
   for (const [alarmOn, cycle] of [[0, 0], [0, 1], [1, 0], [1, 1]]) {

@@ -1602,7 +1602,7 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
 // tick() poses against, so the cut columns and the ridden profile cannot
 // drift apart (the §25 A cam convention).
 // ---------------------------------------------------------------------------
-export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28, skirtH = STOCK_MIN_U }) {
+export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28, skirtH = STOCK_MIN_U, rCham = 0 }) {
   const mat = material || MATS.blueSteel;
   const g = new THREE.Group();
   // TODO 87 step 4 — THE THREE BODIES ARE NAMED APART. They used to be
@@ -1685,10 +1685,23 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
         const a = centre - edge + (i / (2 * M)) * 2 * edge;
         const ca = Math.cos(a), sa = Math.sin(a);
         const top = colH * prof(a);
+        // TODO 90 finding 5 — THE OUTER EDGE RAMPS TOO, and it is the SAME
+        // function that ramps the top. A column wheel's pillars differ from its
+        // gaps in Z, so a follower that moves AXIALLY (the §35 link beak, which
+        // rides the tops) is cammed by `top` and a follower that moves RADIALLY
+        // is cammed by nothing: at a fixed z the pillar's outer wall is a
+        // constant-radius cylinder with square azimuthal ends, and a radial
+        // beak that dropped into a gap gets hit flat by the next pillar's side
+        // instead of being lifted out. `rCham` gives the outer edge the same
+        // profile the top already has, so ONE law cuts both surfaces — TODO
+        // 20's invariant, extended to the second follower rather than
+        // duplicated for it. rCham = 0 leaves every existing caller's geometry
+        // untouched, which is why it defaults there.
+        const rOut = baseR - rCham * (1 - prof(a));
         pos.push(ca * colInner, sa * colInner, 0);        // 0: inner floor
-        pos.push(ca * baseR, sa * baseR, 0);              // 1: outer floor
+        pos.push(ca * rOut, sa * rOut, 0);                // 1: outer floor
         pos.push(ca * colInner, sa * colInner, top);      // 2: inner top
-        pos.push(ca * baseR, sa * baseR, top);            // 3: outer top
+        pos.push(ca * rOut, sa * rOut, top);              // 3: outer top
       }
       // A pillar's two ends are knife edges — the chamfer runs down to meet
       // the base, so at the extreme ring the top vertices COINCIDE with the
@@ -1856,6 +1869,13 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
     if (rel >= edge) return 0;
     return (edge - rel) / flank;
   };
+  // TODO 90 finding 5 — the RADIAL twin of profileAt, exported for the same
+  // reason: the rider that reads the outer wall must pose against the very law
+  // the wall was cut from, not against a copy of it. The lock's rocker seats on
+  // this radius at every wheel angle, flanks included, which is §173's jumper
+  // convention (`sawSeatAt` → a triangle solve) applied one tier up.
+  g.userData.rOutAt = (a) => baseR - rCham * (1 - g.userData.profileAt(a));
+  g.userData.colRCham = rCham;
   // The derived profile's own numbers, exported so a caller (or a check) can
   // quote them rather than re-deriving them and drifting.
   g.userData.colDuty = duty;

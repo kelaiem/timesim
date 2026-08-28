@@ -19308,3 +19308,114 @@ equality, so it is no weaker than the stem of the title.
   above was found the same way.
 - `tools/probe-182-guide-station.mjs` (report) — where the guide boss stands
   relative to the stem, resolved into the stem's own frame.
+## §183 — the lock's read is a rocker: a fold, because every station with gain was illegal or taken
+
+TODO 90 finding 5 measured the alarm lock's READ as posed: the beak's radial
+excursion was **0.00114**, 0.08% of the tier it was declared to read. §174 had
+just made the same lever's HOLD real, so the movement briefly shipped a genuine
+form-locking stop worked by a switch that could not throw it. This closes that.
+
+### Why the beak could not simply be moved
+
+The wheel's centre stands ON the line from the lock pivot to the beak — the
+build comment gave that as the *reason* the read was radial — but a lever moves
+its beak PERPENDICULAR to the arm, and at a point on the line to the wheel's
+centre the perpendicular IS the tangent. The excursion measured was the
+second-order term `L(1−cos θ)` and nothing else, and it ran OUTWARD as the lever
+lifted, so the column was not even a stop against lifting.
+
+`tools/probe-90-lockread.mjs` searched the obvious repair and refuted it. A
+rider must sit centred on a column in one state and centred in a gap in the
+other, so its azimuth is quantised to whole column pitches — the rule
+`ALARM_LINK_BEAK_OFF` already snaps to. The exact optimum (`PB ⊥ WB`, Thales,
+gain **1.0000** at 44.57°) is MID-FLANK and therefore illegal, and both legal
+neighbours are occupied: −60° IS the §35 link beak's station, and +60° wants a
+0.6723 chamfer against the 0.6327 the metal allows while standing 0.1992 from
+the driver pawl. **Every station with gain is either illegal or taken.**
+
+### The fold
+
+The beak stays at the free, parity-correct station it already had — so the
+declared contact, the parity and the wheel's placement are all untouched,
+and `ALARM_LOCK_BEAK_OFF` is 0 and named to say so — and gets its OWN pivot,
+placed where the read is radial:
+
+```
+Q = B0 + arm · n̂        (n̂ ⊥ the wheel radius at B0)
+arm = √(postW² − readR²)   postW = ALARM_COL_TIP_R + CLEAR_MARGIN + postR  (§171's rule)
+```
+
+| | |
+|---|---|
+| `ALARM_ROCKER_READ_R` | `ALARM_COL_BASE_R + ALARM_COL_RIDER_NOSE_R` = 5.98 |
+| `ALARM_ROCKER_ARM` | **3.1400** (Thales, so radial gain is 1 by construction) |
+| `ALARM_COL_RCHAM` | arm × `ALARM_LOCK_LIFT` = **0.3047** (ceiling 0.6327) |
+| nose centre, column → gap | **5.9800 → 5.6754** (was an excursion of 0.00114) |
+| finger, seated → clear | **3.5000 → 3.9667**, both its solved stations |
+
+**The pillars gained a radial cam, cut by the SAME function that ramps the
+top.** A column wheel's pillars differ from its gaps in Z, so an axial follower
+(the §35 link beak) is cammed by `top` and a radial one is cammed by nothing —
+at a fixed z the outer wall is a constant-radius cylinder with square azimuthal
+ends. `makeColumnWheel` now ramps the outer edge with `prof(a)` too and exports
+`rOutAt` beside `profileAt`: one law for both cut surfaces, TODO 20's invariant
+extended to the second follower rather than duplicated for it. `rCham` defaults
+to 0, so no other caller's geometry moved.
+
+**The chamfer is the fold's whole argument.** Re-siting the beak needed 0.5448
+(Thales) or 0.6723 (+60°) against a 0.6327 ceiling. The rocker's beak no longer
+rides a 5.6-long lever arm, so the metal the pillars give up falls to 0.3047 —
+well inside what they can afford.
+
+**The pin is on the P–Q line, and that is kinematics not tidiness.** Q stands
+3.14 off to the side to clear the saw, so a pin anywhere else has the rocker's
+velocity nearly ORTHOGONAL to the lever's. Collinear, both velocities are
+perpendicular to the same line and therefore parallel. A RADIAL SLOT takes it
+(§163's idiom one tier down): the slot fixes the lever's angle to the pin's
+azimuth and frees the radius, which the pin needs because it swings on an arc
+about Q rather than on the lever's circle.
+
+**Nothing new is sprung.** The §102 blade already biases the lever toward
+LIFTED; through the located pin that same blade presses the beak onto its cam.
+A follower held to its cam by a spring that exists — TODO 13's requirement,
+reached without adding one — declared `two-way`, the selector fork's answer.
+
+**And the lever's pose is SOLVED from the cut**, §173's jumper convention: the
+rocker seats on `rOutAt` at every wheel angle, flanks included, and the lever
+follows through the pin. The line this replaced gave the lever a chosen
+amplitude on a NORMALISED profile, which is exactly why the column's real
+dimensions never reached it.
+
+### Four errors the asserts caught, each in one boot
+
+Written before the metal, and each earned its place:
+
+- The pin was placed opposite the BEAK arm instead of on the P–Q line: the
+  lever rested 0.186 off `ALARM_LOCK_ENGAGED` and travelled −0.031 where it
+  owed +0.097.
+- `rPin` came from the first-order collinear ratio and delivered 0.09613
+  against 0.09703, because both members swing on arcs. Bisected against the
+  exact kinematics now — §102's arc-for-radial and §174's projection error for
+  the third time: where a closed form exists, invert it; where it does not,
+  solve it.
+- The beak was a BOX along the arm. At the Thales station the arm is TANGENTIAL,
+  so the box presented its SIDE to the wall and `alarmHandoffs` measured the
+  burial exactly: −0.3022. It is a round nose of the wheel's own `riderNoseR`
+  now, and the read radius re-derives through it.
+- Hoisting `ALARM_COL_RIDER_NOSE_R` above the spec that reads it paid this
+  file's TEMPORAL DEAD ZONE a fourth time. The tell is the one main.js already
+  documents: `__clock` never appears and the console stays empty.
+
+### Declarations
+
+`alarmLockArm` and `alarmLockTail` are NAMED, because their
+`INTRA_UNIT_CONTACTS` rows selected them as `BoxGeometry#0` and `#2` and the
+fold removes one box and adds one — §171's fix on the pivot post and §174's on
+the strike sleeve, a third time in this unit. Two new joint rows (the rocker on
+its post, the pin in the slot), and `restoring` gains the rocker by name.
+
+### Instruments
+
+`tools/probe-90-lockread.mjs` is the SEARCH and stays a report — it prints the
+whole table, losers included, because a fold chosen against one constraint is
+wrong from outside it. Its three controls pass.
