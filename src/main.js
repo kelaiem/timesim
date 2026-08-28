@@ -13467,12 +13467,36 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // graze at exactly the notch-alignment poses. The jogged run clears i1b
   // by 0.46 even dropped, and still rides 0.43 above the gear lane.
   const _tailRunZ = (-7 - ALARM_TAIL_RUN_Z) - _armMidZ; // world ALARM_TAIL_RUN_Z (run mid) → lever-local
+  // Where the jog stands the run off the lever — the run's ROOT. This is an
+  // INHERITED LITERAL, not a derived one: 0.35 was in place at the jog before
+  // this landing and nothing here establishes why. Naming it buys one thing
+  // only — the jog and the bearing station that cites it can no longer drift
+  // apart — and it is a §86-class number for whoever derives it.
+  const TAIL_RUN_ROOT_X = 0.35;
   const jog = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, Math.abs(_tailRunZ) + ALARM_FEELER_T), MATS.steel);
   const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_PAWL_DIST, 2 * ALARM_TAIL_RUN_HALFW, ALARM_TAIL_RUN_T), MATS.steel);
   tail.position.set(ALARM_PAWL_DIST / 2, 0, _tailRunZ);
+  // §54 / TODO 78, asked by TODO 109 — WHERE THIS RUN IS HELD. Geometry-local
+  // x about the run's centre, so the jog's station (tailG-local
+  // TAIL_RUN_ROOT_X) is that less half the run's length. On the MESH, never
+  // the geometry (weldGeometry drops userData).
+  //
+  // A BUILT-IN ROOT, NOT A BUSH, and the word is exact rather than stretched:
+  // the check's overhang model is 3EI/L³ — a cantilever loaded at its tip —
+  // which is precisely this bar. The jog is where the run is held; the riser
+  // and beak hang off its far tip; nothing supports it in between. TODO 109
+  // went looking for the mid-guide an INTRA_UNIT_CONTACTS row claims here and
+  // measured that pair at run-local x +4.5673, the far END: it is the riser,
+  // a rigid corner of the same lever, so there is no second station to
+  // declare. (Filed against TODO 104, which owns a row describing the wrong
+  // KIND of joint.)
+  //
+  // Measured 35.1 → 85.1. Whole-stock λ was calling a tip-loaded cantilever
+  // a span, which flatters it by K = ∛16; the larger number is the true one.
+  tail.userData.bearings = { axis: 'x', stations: [TAIL_RUN_ROOT_X - ALARM_PAWL_DIST / 2] };
   const tailG = new THREE.Group();
   tailG.rotation.z = dirL;
-  jog.position.set(0.35, 0, _tailRunZ / 2);
+  jog.position.set(TAIL_RUN_ROOT_X, 0, _tailRunZ / 2);
   tailG.add(jog);
   tailG.add(tail);
   alarmFeelerLever.add(tailG);
@@ -13767,8 +13791,39 @@ declareTransfer('alarm setting: stem→disc bevel corner', {
 // spinner slides OUT from there, so basing it on the arbor's outboard radius
 // left the knob 5 short, buried against the dial rim (the sweep caught it).
 const alarmStemLen = plateR + 2.2 - ALARM_CD;
+// The stem's ONE support, hoisted out of the bushing block below so the
+// bush and the declaration that names it cannot drift apart: move the boss
+// and the free lengths move with it.
+const ALARM_STEM_BUSH_DIST = plateR - 2;   // the plate rim, where the boss is bored (the −2 is inherited with the bush)
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
+// §54 / TODO 78 / TODO 109 — WHERE THIS STEM IS HELD, MEASURED AND NOT
+// DECLARED, and the reason is worth more than the declaration would be.
+//
+// The metal: one bush, at ALARM_STEM_BUSH_DIST on the spinner's radial line,
+// which at the pushed-in rest radius ALARM_CD sits
+// `ALARM_STEM_BUSH_DIST − ALARM_CD − alarmStemLen/2` = 10.6611 along the
+// stem's own y. That leaves 25.5222 u of stem inboard of the only thing
+// holding it: a cantilever, not a span. Declared, the row reads **λ 76.6**
+// against the 35.4 whole-stock λ reports today — measured, both times.
+// The larger number is the true one; whole-stock λ assumes a span and this
+// stem is not one.
+//
+// WHY IT IS NOT DECLARED. The stem SLIDES through a bush that does not move,
+// so the station is a pose rather than a place on the metal — and
+// `alarmCrownPullT` is EASED, so `resetInputs()` zeroes the variable while
+// the scene follows only on a later tick with real dt. `start()` runs a
+// check in the same microtask as the reset, so `supportAt` reads whatever
+// pose the previous check left: after `alarmHandoffs` the stem stands 5 u
+// out (x 35.2618 against 30.2618) and the declaration lands in air.
+// Reproducible in 37 s: `node tools/ci-battery.mjs --only
+// alarmHandoffs,slenderness --shards 1` fails where `--only slenderness`
+// passes. That is the harness invariant CLAUDE.md states — a check must not
+// observe what ran before it — and for EASED state it does not hold.
+//
+// So a true declaration here would be a gate that fails on execution order.
+// The honest record is this comment plus TODO 109, which owns both halves:
+// the stem wants a second bearing, and `supportAt` wants a settled pose.
 alarmSpinner.add(alarmStem);
 // Brand crown (§27) — the second consumer of makeBrandMark, now the WS
 // monogram (§41). MATCHED to the winding crown at 5.425/3.4.
@@ -13793,7 +13848,7 @@ alarmSpinner.add(alarmCrownKnob);
 // Stem bushing — the stem's support at the plate rim (its route to 'plate' in
 // the support graph), a bored boss the stem spins through. Static.
 {
-  const bushDist = plateR - 2;
+  const bushDist = ALARM_STEM_BUSH_DIST;   // declared with the stem it supports
   const alarmBush = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.5, 10, 20), MATS.nickel);
   alarmBush.rotation.z = alarmStemAngle;
   alarmBush.rotation.y = Math.PI / 2;
