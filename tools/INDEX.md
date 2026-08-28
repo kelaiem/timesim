@@ -4,8 +4,8 @@
 
 # The instruments
 
-137 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
-**79 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+138 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
+**80 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -128,6 +128,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
+| `probe-bearing-candidates.mjs` |  | report | TODO 109 step 1 — WHO HOLDS THESE PARTS? The scan that has to run before a single `userData.bearings` line is written. |
 | `probe-bore-cut.mjs` |  | report | TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut? The arbor's own side edges cross the disc's surface twice, at exactly the disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it is supposed to pass through freely. That can only mean cap triangles span the hole. This counts them: every triangle whose centroid falls inside the bore radius is metal where the drawing says air. `src/geometry.js` already records this failure once — an `absarc` at `curveSegments: 1` collapsing to a single segment — and replaced it with an explicit 64-gon. This asks whether that replacement finished the job. REPORT. |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
