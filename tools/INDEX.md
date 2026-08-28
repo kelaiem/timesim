@@ -4,8 +4,8 @@
 
 # The instruments
 
-136 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
-**78 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+147 scripts. **58 are ACCEPTANCE tests** — they decide and exit non-zero.
+**89 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -114,10 +114,20 @@ when a question was asked; the summaries are what it answered.
 | `probe-82-alarm-stall.mjs` | §82 | acceptance | TODO 82 — THE ALARM TRANSFER'S STALL, COMPUTED INSTEAD OF QUOTED. |
 | `probe-87-pawl.mjs` | §87 | acceptance | TODO 87 — THE PAWL AGAINST THE SAW, IN THE WHEEL'S OWN PLANE. |
 | `probe-87-press.mjs` | §87 | acceptance | TODO 87 — THE PRESS STROKE, MEASURED FRAME BY FRAME AGAINST THE METAL. |
+| `probe-90-extent.mjs` | §90 | report | (no header — this file says nothing about what it answers) |
+| `probe-90-fouls.mjs` | §90 | report | (no header — this file says nothing about what it answers) |
 | `probe-90-linkbeak.mjs` | §90 | report | TODO 90 finding 2 — THE LINK BEAK'S OWN MEMBERS AGAINST THE COLUMN WHEEL. |
 | `probe-90-lockhold.mjs` | §90 | acceptance | TODO 90 question 1 — IS THE SUPPRESSOR'S HOLD REAL? |
 | `probe-90-lockread.mjs` | §90 | report | TODO 90 finding 5 — WHERE CAN THE LOCK BEAK STAND SO THE COLUMN CAN DRIVE IT? |
+| `probe-90-pusher-band.mjs` | §90 | report | TODO 96 (filed as 90; see the renumber note in TODO.md) — does the alarm pusher's stem pass through the case wall? |
 | `probe-90-stophold.mjs` | §90 | acceptance | TODO 90 finding 4, ACCEPTANCE — the stop wheel actually holds, and the alarm still rings. |
+| `probe-91-relief.mjs` | §91 | report | (no header — this file says nothing about what it answers) |
+| `probe-92-pose.mjs` | §92 | report | (no header — this file says nothing about what it answers) |
+| `probe-92-standoff.mjs` | §92 | report | (no header — this file says nothing about what it answers) |
+| `probe-93-grid.mjs` | §93 | report | TODO 93/94 — an interpenetration witness that trusts NEITHER side. |
+| `probe-93-inversion.mjs` | §93 | report | TODO 93 — why does meshClearance report CLEARANCE through 1 mm of band? |
+| `probe-93-plate.mjs` | §93 | report | (no header — this file says nothing about what it answers) |
+| `probe-93-validate.mjs` | §93 | report | TODO 93 — are the newly-visible rows TRUE positives? |
 | `probe-95-grid.mjs` | §95 | report | TODO 93/94 — an interpenetration witness that trusts NEITHER side. |
 | `probe-95-guard.mjs` | §95 | report | TODO 95 — the closedness guard's regression. Three pairs, chosen because they differ in exactly the thing the guard tests. Note what the history here is worth: two of these were believed to be the guard's false positives and both turned out to be real metal, so this file is as much a record of refutations that did not survive as it is a check. alarmPusherStem ⇄ alarmPusherReturnSpring — spring CLOSED, and the stem really does graze it (surface sampling: 8 of 96,336 points inside). Must stay reported. alarmDisc ExtrudeGeometry#20 ⇄ hourTube — believed to be the guard's false positive on the strength of a 2.760 u radial gap, and it is not. That gap was measured off the disc's VERTICES; its SURFACE reaches r 1.216 inside the tube's 2.050 bore, and 126 of 4800 tube-surface points sit in the disc's metal (probe-95-interpenetration.mjs). REAL, and must STAY reported. Both meshes are in fact closed — the 8 "boundary edges" once counted on the tube were signed-zero seam artifacts, TODO 106's finding. genevaFingerDisc ⇄ alarmArrestFingerArbor — the disc is genuinely open (135 bad edges) and the arbor closed, so the witness is valid and it fires. Also REAL, and NOT a joint: the bore is a designed 0.05 running fit that the mesh does not honour (TODO 107). |
 | `probe-95-interpenetration.mjs` | §95 | report | TODO 95 — does a claimed interpenetration SURVIVE a witness that is valid on the meshes it is applied to? Parity needs a CLOSED surface, so this probe never assumes one: it counts boundary edges (keyed by POSITION — three.js duplicates vertices per face, so an index-keyed count calls a plain box open) and then picks the only sound test available for that pair — both closed → sample each SURFACE, parity against the other exactly one open → sample the OPEN one's surface, parity against the CLOSED both open → REFUSE, and say so; no witness here is valid Surfaces, never vertices: a barycentric grid over every triangle. The row this instrument exists for was retracted on a VERTEX-only radial span that read 5.260 where the surface reaches 1.216. REPORT. |
@@ -129,6 +139,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
 | `probe-bore-cut.mjs` |  | report | TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut? The arbor's own side edges cross the disc's surface twice, at exactly the disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it is supposed to pass through freely. That can only mean cap triangles span the hole. This counts them: every triangle whose centroid falls inside the bore radius is metal where the drawing says air. `src/geometry.js` already records this failure once — an `absarc` at `curveSegments: 1` collapsing to a single segment — and replaced it with an explicit 64-gon. This asks whether that replacement finished the job. REPORT. |
+| `probe-case-closed.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
