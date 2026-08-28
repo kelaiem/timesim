@@ -19308,3 +19308,211 @@ equality, so it is no weaker than the stem of the title.
   above was found the same way.
 - `tools/probe-182-guide-station.mjs` (report) — where the guide boss stands
   relative to the stem, resolved into the stem's own frame.
+## §183 — the lock's read is a rocker: a fold, because every station with gain was illegal or taken
+
+TODO 90 finding 5 measured the alarm lock's READ as posed: the beak's radial
+excursion was **0.00114**, 0.08% of the tier it was declared to read. §174 had
+just made the same lever's HOLD real, so the movement briefly shipped a genuine
+form-locking stop worked by a switch that could not throw it. This closes that.
+
+### Why the beak could not simply be moved
+
+The wheel's centre stands ON the line from the lock pivot to the beak — the
+build comment gave that as the *reason* the read was radial — but a lever moves
+its beak PERPENDICULAR to the arm, and at a point on the line to the wheel's
+centre the perpendicular IS the tangent. The excursion measured was the
+second-order term `L(1−cos θ)` and nothing else, and it ran OUTWARD as the lever
+lifted, so the column was not even a stop against lifting.
+
+`tools/probe-90-lockread.mjs` searched the obvious repair and refuted it. A
+rider must sit centred on a column in one state and centred in a gap in the
+other, so its azimuth is quantised to whole column pitches — the rule
+`ALARM_LINK_BEAK_OFF` already snaps to. The exact optimum (`PB ⊥ WB`, Thales,
+gain **1.0000** at 44.57°) is MID-FLANK and therefore illegal, and both legal
+neighbours are occupied: −60° IS the §35 link beak's station, and +60° wants a
+0.6723 chamfer against the 0.6327 the metal allows while standing 0.1992 from
+the driver pawl. **Every station with gain is either illegal or taken.**
+
+### The fold
+
+The beak stays at the free, parity-correct station it already had — so the
+declared contact, the parity and the wheel's placement are all untouched,
+and `ALARM_LOCK_BEAK_OFF` is 0 and named to say so — and gets its OWN pivot,
+placed where the read is radial:
+
+```
+Q = B0 + arm · n̂        (n̂ ⊥ the wheel radius at B0)
+arm = √(postW² − readR²)   postW = ALARM_COL_TIP_R + CLEAR_MARGIN + postR  (§171's rule)
+```
+
+| | |
+|---|---|
+| `ALARM_ROCKER_READ_R` | `ALARM_COL_BASE_R + ALARM_COL_RIDER_NOSE_R` = 5.98 |
+| `ALARM_ROCKER_ARM` | **3.1400** (Thales, so radial gain is 1 by construction) |
+| `ALARM_COL_RCHAM` | arm × `ALARM_LOCK_LIFT` = **0.3047** (ceiling 0.6327) |
+| nose centre, column → gap | **5.9800 → 5.6754** (was an excursion of 0.00114) |
+| finger, seated → clear | **3.5000 → 3.9667**, both its solved stations |
+
+**The pillars gained a radial cam, cut by the SAME function that ramps the
+top.** A column wheel's pillars differ from its gaps in Z, so an axial follower
+(the §35 link beak) is cammed by `top` and a radial one is cammed by nothing —
+at a fixed z the outer wall is a constant-radius cylinder with square azimuthal
+ends. `makeColumnWheel` now ramps the outer edge with `prof(a)` too and exports
+`rOutAt` beside `profileAt`: one law for both cut surfaces, TODO 20's invariant
+extended to the second follower rather than duplicated for it. `rCham` defaults
+to 0, so no other caller's geometry moved.
+
+**The chamfer is the fold's whole argument.** Re-siting the beak needed 0.5448
+(Thales) or 0.6723 (+60°) against a 0.6327 ceiling. The rocker's beak no longer
+rides a 5.6-long lever arm, so the metal the pillars give up falls to 0.3047 —
+well inside what they can afford.
+
+**The pin is on the P–Q line, and that is kinematics not tidiness.** Q stands
+3.14 off to the side to clear the saw, so a pin anywhere else has the rocker's
+velocity nearly ORTHOGONAL to the lever's. Collinear, both velocities are
+perpendicular to the same line and therefore parallel. A RADIAL SLOT takes it
+(§163's idiom one tier down): the slot fixes the lever's angle to the pin's
+azimuth and frees the radius, which the pin needs because it swings on an arc
+about Q rather than on the lever's circle.
+
+**Nothing new is sprung.** The §102 blade already biases the lever toward
+LIFTED; through the located pin that same blade presses the beak onto its cam.
+A follower held to its cam by a spring that exists — TODO 13's requirement,
+reached without adding one — declared `two-way`, the selector fork's answer.
+
+**And the lever's pose is SOLVED from the cut**, §173's jumper convention: the
+rocker seats on `rOutAt` at every wheel angle, flanks included, and the lever
+follows through the pin. The line this replaced gave the lever a chosen
+amplitude on a NORMALISED profile, which is exactly why the column's real
+dimensions never reached it.
+
+### Four errors the asserts caught, each in one boot
+
+Written before the metal, and each earned its place:
+
+- The pin was placed opposite the BEAK arm instead of on the P–Q line: the
+  lever rested 0.186 off `ALARM_LOCK_ENGAGED` and travelled −0.031 where it
+  owed +0.097.
+- `rPin` came from the first-order collinear ratio and delivered 0.09613
+  against 0.09703, because both members swing on arcs. Bisected against the
+  exact kinematics now — §102's arc-for-radial and §174's projection error for
+  the third time: where a closed form exists, invert it; where it does not,
+  solve it.
+- The beak was a BOX along the arm. At the Thales station the arm is TANGENTIAL,
+  so the box presented its SIDE to the wall and `alarmHandoffs` measured the
+  burial exactly: −0.3022. It is a round nose of the wheel's own `riderNoseR`
+  now, and the read radius re-derives through it.
+- Hoisting `ALARM_COL_RIDER_NOSE_R` above the spec that reads it paid this
+  file's TEMPORAL DEAD ZONE a fourth time. The tell is the one main.js already
+  documents: `__clock` never appears and the console stays empty.
+
+### Declarations
+
+`alarmLockArm` and `alarmLockTail` are NAMED, because their
+`INTRA_UNIT_CONTACTS` rows selected them as `BoxGeometry#0` and `#2` and the
+fold removes one box and adds one — §171's fix on the pivot post and §174's on
+the strike sleeve, a third time in this unit. Two new joint rows (the rocker on
+its post, the pin in the slot), and `restoring` gains the rocker by name.
+
+### Instruments
+
+`tools/probe-90-lockread.mjs` is the SEARCH and stays a report — it prints the
+whole table, losers included, because a fold chosen against one constraint is
+wrong from outside it. Its three controls pass.
+
+## §184 — the tier-split triple becomes three handles sharing one joint refusal
+
+`ALARM_BARREL_BEARING_DEG` 202°, `ALARM_GOV_BEARING` 92° and
+`ALARM_GOV_ANCHOR_BEARING` 148° are **one solved triple** — §112's argmax over
+the whole rotation × bearing space, 0.90 beyond every margin. Until this
+landing that fact lived only in a comment while the three legs were three
+independent literals, one of which (`?alarmbarrelaz=`, §129) was already
+movable from a URL. A spec that can move a third of a solved triple is worse
+than one that can move none.
+
+### The design question, and why the answer is three rows and not one
+
+The roadmap filed this as *"either one handle moves the triple, or three share
+one joint refusal."* It is **three**. The triple is not one degree of freedom
+that §112 happened to express as three numbers; it is genuinely three, and the
+argmax picked a point in that space. Collapsing it to one handle would invent a
+1-D path through a 3-D space that nothing justifies.
+
+What makes three safe is that every row's `shadow` calls the **same** joint
+bound with its own leg replaced and the other two at the values actually in
+force. So a drag on θ_g is judged against the θ_b and θ_a of the movement on
+screen, and the failure mode the roadmap named cannot be reached silently.
+
+**Measured, that distinction is not theoretical.** `probe-183-triple.mjs`
+samples each leg at 5° and finds the values each handle accepts **in silence on
+its own**, then asks whether pairs of those still clear together:
+
+| pair | both clean alone | the joint bound rejects |
+|---|---|---|
+| θ_b + θ_g | 252 | 2 |
+| θ_b + θ_a | 648 | 1 |
+| θ_g + θ_a | 504 | 6 |
+
+Nine combinations that three independent refusals would have accepted. The
+sharpest is `?alarmbarrelaz=195&alarmgovaz=100`, where §184's assert is the
+**only** voice in the build — no other instrument says anything.
+
+### Why the bound is measured off the metal, not declared
+
+`probe-alarm-tier-split` reads its discs from the built scene, and its header
+says why: a declared plan table went stale **twice** in that file — a 1.9
+standing in for the 44T winding wheel's 6.97, a 2.4 for the ratchet's 6.0 — and
+*"a stale disc passes everything silently"*. A build-time table here would have
+rebuilt exactly the failure that file warns about, so `ALARM_TIER_DISCS`
+measures eleven discs' radii and z bands off the metal once, at the end of the
+alarm block.
+
+**What makes one measurement legal:** a bearing rotates a member about a
+fixed-length spoke, so it moves the member's CENTRE and changes neither its
+reach nor its band. Measure once; a candidate triple then only moves centres.
+That is the same reason the probe can sweep 360° from one read of the scene.
+
+### The pairs are derived, not curated
+
+Three of the six station pairs can never vary — b↔s is `CD_train`, g↔s is
+`CD_gov`, g↔a is the anchor's `D`, and the click rides the barrel rigidly.
+Judging those would measure a mesh or a bearing and call it a collision, which
+is how a gate becomes a liar and then gets "fixed" by widening a margin.
+
+Rather than curate that exemption — the probe's own note says a curated pair
+list is how the barrel-side/governor-side crossings were missed there —
+`ALARM_TIER_VARIES` **perturbs every leg and keeps the pairs whose separation
+actually moves**. It derives `bg ba cg ca cs as`, excluding `bs`, `gs`, `ga`
+and `bc`, and it re-derives if the chain ever changes.
+
+### Three instrument errors this landing made, all caught by its own assert
+
+The boot assert — the shipped triple must produce **nothing** — earned itself
+three times over before the bound was right:
+
+1. **The first version was built on `ALARM_UNDER_FOOTPRINT`**, which is a
+   plan-view keep-out for the pillar solve: deliberately generous, z-agnostic,
+   and never meant to answer whether members foul each other. It reported three
+   fouls in a movement that is green.
+2. **`boxOf` omits `setFromObject`'s `precise` flag**, so it read rotated
+   meshes' inflated AABBs — the trap in the instruments skill, here
+   manufacturing fouls in members that measure clear.
+3. **The block was placed before the click was populated.** The click unit is
+   created 200 lines above where its meshes are added, so the selector matched
+   nothing — and the vacuous-selector warning (`Math.max()` of nothing is
+   −Infinity, a disc that passes everything) is the only reason it was not a
+   silent pass.
+
+### Residue, named
+
+The joint bound judges the group against **itself** — P2 in the design ladder,
+which is the authority a handle legitimately has. It does **not** judge the
+group against the rest of the under-plate movement: that is the occupancy field
+`probe-alarm-tier-split` builds from the whole scene, and no build-time
+expression can carry it. The battery holds that half.
+
+One modelling choice is inherited rather than derived: the click's offset from
+the barrel **translates** rather than rotating, which is the model the tier-split
+search solved this triple under. A real fold would carry the assembly round. The
+difference is zero at the shipped triple, and adopting the search's own model
+keeps the refusal and the solve from being two definitions of one thing.

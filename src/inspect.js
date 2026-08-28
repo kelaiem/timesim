@@ -2421,9 +2421,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickStud', why: '§99: the click on its shoulder screw (the hook carries no bore — the blade seats on the stud, the set-up click\'s own construction)' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickScrewHead', why: '§99: the click under its screw head — the head retains it axially, faces sharing the plane' },
   { unit: 'Alarm click', a: 'alarmClickPawl', b: 'alarmClickSpring', why: '§99: the spring\'s torus kisses the click\'s flank by construction (tube tangent at the local half-width) — §48-declared spring contact, kept as a row because a float hair puts a kiss on either side of zero' },
-  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'alarmLockPivotPost', why: 'lock lever on its pivot post (this selector was CylinderGeometry#4, then #6 when TODO 24 added the beak riser+nose, then #5 when §171 deleted a sibling mesh — §171 named the post so the row stops being a claim about what else the unit contains)' },
-  { unit: 'Alarm lock', a: 'BoxGeometry#2', b: 'alarmLockPivotPost', why: 'lever tail on the same post' },
-  { unit: 'Alarm lock', a: 'BoxGeometry#0', b: 'alarmLockSpring', why: '§102: the return blade\'s tip pressing the arm\'s wheel-side flank — the §48-declared spring contact (a 0.05 preload overlap at the lifted pose, deeper as the column presses the lever engaged)' },
+  { unit: 'Alarm lock', a: 'alarmLockArm', b: 'alarmLockPivotPost', why: 'lock lever on its pivot post (this selector was CylinderGeometry#4, then #6 when TODO 24 added the beak riser+nose, then #5 when §171 deleted a sibling mesh; §171 named the POST, and TODO 90 finding 5 named the ARM when the fold removed a box and added two — both halves are claims about the parts now, not about what else the unit contains)' },
+  { unit: 'Alarm lock', a: 'alarmLockTail', b: 'alarmLockPivotPost', why: 'lever tail on the same post' },
+  { unit: 'Alarm lock', a: 'alarmLockArm', b: 'alarmLockSpring', why: '§102: the return blade\'s tip pressing the arm\'s wheel-side flank — the §48-declared spring contact (a 0.05 preload overlap at the lifted pose, deeper as the column presses the lever engaged)' },
   // TODO 87 step 4 — ONE ROW WAS ANSWERING TWO QUESTIONS. While all three
   // bodies answered to `alarmColWheel` this was a single row reading "column
   // wheel on its stud", and splitting the names showed it had been covering
@@ -2545,6 +2545,9 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm click', a: 'alarmClickSpring', b: 'CylinderGeometry#4', why: '§121: the click spring\'s coiled anchor around its post (§99\'s click — the spring is the pawl\'s return)' },
   { unit: 'Alarm click', a: 'alarmClickSpring', b: 'CylinderGeometry#5', why: '§121: the same coiled anchor against the post\'s cap collar above it' },
   { unit: 'Alarm click', a: 'CylinderGeometry#4', b: 'CylinderGeometry#5', why: '§121: post and cap collar — one turned piece modeled as two, stacked flush (deep 0 both ways)' },
+  // Alarm lock — TODO 90 finding 5's fold, the rocker that reads the columns:
+  { unit: 'Alarm lock', a: 'alarmLockRockerArm', b: 'alarmLockBeakRiser', why: 'TODO 90 finding 5: the read rocker turning on its own pivot post — the post that carries the beak, standing where §171\'s rule puts anything crossing the saw\'s band' },
+  { unit: 'Alarm lock', a: 'alarmLockRockerPin', b: 'alarmLockSlot', why: 'TODO 90 finding 5: the rocker\'s pin in the lever\'s RADIAL SLOT — a located drive both ways (§163\'s idiom one tier down), which is also what presses the beak onto its cam without a second spring' },
   // Alarm lock — §102's return:
   { unit: 'Alarm lock', a: 'alarmLockSpringStud', b: 'alarmLockSpring', why: '§121: §102\'s return blade riding its stud (kiss) — the blade the column works against; restoring\'s sprung row for this unit' },
   // Alarm switch — §28/§33's column work and pusher:

@@ -171,7 +171,22 @@ export const SPEC = (() => {
   // actual metal in the dial's slab. null = as designed: solveKeyless runs
   // its own arithmetic (dialRadius = plateR) and identity stays bit-exact.
   const dialr = Number.isFinite(Number(raw.dialr)) ? Number(raw.dialr) : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr });
+  // §184 — THE TIER-SPLIT TRIPLE'S OTHER TWO LEGS. `alarmBarrelAzDeg` (θ_b) has
+  // been a spec since §112; θ_g and θ_a were bare literals in main.js, so two
+  // thirds of a solved triple could not be moved from a URL at all — and the
+  // one third that could was movable ALONE, which is the failure §184 exists to
+  // stop. All three are module-relative bearings in degrees.
+  //
+  // NOT clamped here, like every other station spec: the triple's own joint
+  // bound in main.js (alarmTierWarnsAt, measured off the built metal) is what
+  // warns, with the fouling pair and its depth. A clamp here would silently
+  // build a different watch than the URL asked for. null = as designed, and
+  // identity stays bit-exact.
+  const alarmGovAzDeg = Number.isFinite(Number(raw.alarmGovAzDeg))
+    ? ((Number(raw.alarmGovAzDeg) % 360) + 360) % 360 : null;
+  const alarmGovAnchorAzDeg = Number.isFinite(Number(raw.alarmGovAnchorAzDeg))
+    ? ((Number(raw.alarmGovAnchorAzDeg) % 360) + 360) % 360 : null;
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:

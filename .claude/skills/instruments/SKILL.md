@@ -170,3 +170,19 @@ commit one for you, which is how `_b.mjs` and `_boot.mjs` got in (and how
 `_boot.mjs` got in a SECOND time, after §163 deleted it naming that cause).
 Regenerate `tools/INDEX.md` in the same commit —
 `node tools/index-instruments.mjs --check` fails if you forget.
+
+**And regenerate it AFTER deleting the scratch, not before.** The gitignore
+guards the FILE; it does not guard the ENTRY. `index-instruments.mjs` walks the
+directory, so a scratch probe that exists when you regenerate is described in a
+document that IS committed — the ignore rule has done its job on the artifact it
+knows about while the index quietly carries the name. Caught by CI rather than
+locally, because the local check passed at the moment it was run and the probe
+was deleted afterwards.
+
+**A `rm` that reports success may have deleted nothing.** The scratch above was
+still there to be indexed because its `rm -f tools/_x.mjs` ran with the shell
+already inside `tools/`: it looked for `tools/tools/_x.mjs`, matched nothing,
+and exited 0. `rm -f` cannot fail on a missing path — that is what the `-f` is
+for. This is the silent-clean failure of §3 arriving on a filesystem instead of
+in a measurement, and the fix is the same one: check the postcondition (`ls
+tools/_*.mjs`) rather than the exit code.
