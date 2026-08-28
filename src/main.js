@@ -11829,9 +11829,15 @@ const alarmSelRing = new THREE.Group();
   ring.name = 'alarmSelRing';
   alarmSelRing.add(ring);
   // three guide bosses reaching the posts
-  for (const az of ALARM_SEL_POST_AZ) {
+  for (const [bossIx, az] of ALARM_SEL_POST_AZ.entries()) {
     const dlx = -Math.cos(az), dly = Math.sin(az); // world → dial-local mirror
     const boss = new THREE.Mesh(new THREE.BoxGeometry(ALARM_SEL_POST_R - ALARM_SEL_R_OUT + 0.3, 0.24, ALARM_SEL_T), MATS.nickel);
+    // Named for the same reason the posts are, and with the same index: each
+    // boss rides its OWN post, so a joint row has to be able to say which.
+    // Unnamed, they were `BoxGeometry#1/#3/#5` — a mesh index over a roster
+    // any part added to this unit renumbers, which is the trap §171 named the
+    // lock lever's post to escape.
+    boss.name = `alarmSelBoss${bossIx + 1}`;
     const mid = (ALARM_SEL_R_OUT + ALARM_SEL_POST_R) / 2;
     boss.position.set(dlx * mid, dly * mid, 0);
     boss.rotation.z = Math.atan2(dly, dlx);
@@ -11867,11 +11873,22 @@ const alarmSelRing = new THREE.Group();
   alarmSelRing.position.z = ALARM_SEL_Z_UP - ALARM_SEL_T / 2;
   alarmSelectorUnit.add(alarmSelRing);
   // the posts: sheet's back face down past the ring's lowest travel
-  for (const az of ALARM_SEL_POST_AZ) {
+  for (const [postIx, az] of ALARM_SEL_POST_AZ.entries()) {
     const dlx = -Math.cos(az), dly = Math.sin(az);
     const postLen = (ALARM_SEL_Z_UP - ALARM_SEL_TRAVEL - ALARM_SEL_T - 0.06) - (-0.05);
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, Math.abs(postLen), 10), MATS.steel);
-    post.name = 'alarmSelPost'; // TODO 11 triage: PIN stock (0.28 u ⌀ = 0.105 mm ≥ the 0.07 pivot floor) — declared, not thickened; the §34 corridor asserts below own their walls
+    // §171's precedent — a part gets a name so its joint rows stop riding a
+    // mesh index. Here the defect was the opposite and worse: all three posts
+    // answered to ONE name, so `INTRA_UNIT_CONTACTS`' selectors matched all
+    // three at once and one declaration excused three pairs, of which the fork
+    // laps exactly one. That table's own comment calls an accidentally-matched
+    // selector worse than an unmatched one, because it excuses a pair silently.
+    //
+    // The suffix is the post's index in ALARM_SEL_POST_AZ, which is the single
+    // source for these stations. Reordering that list therefore STALES the
+    // selectors rather than silently re-pointing them at a different post —
+    // a stale selector is itself a gate failure, which is the safe direction.
+    post.name = `alarmSelPost${postIx + 1}`; // TODO 11 triage: PIN stock (0.28 u ⌀ = 0.105 mm ≥ the 0.07 pivot floor) — declared, not thickened; the §34 corridor asserts below own their walls
     post.rotation.x = Math.PI / 2;
     post.position.set(dlx * ALARM_SEL_POST_R, dly * ALARM_SEL_POST_R, -0.05 + postLen / 2);
     alarmSelectorUnit.add(post);
