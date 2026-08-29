@@ -19832,3 +19832,109 @@ that pass for the wrong reason: an empty string, a null, or a link the probe
 failed to build at all would satisfy them equally. Every share link carries a
 camera pose, so a missing `?cam` throws rather than reporting a pass. Verified
 by breaking the share half on purpose: three assertions fail.
+
+## §188 — hands cut from real stock: the one-knob law splits into stock, plan, and pipe
+
+The central hands were 3–7× real hand stock, and not because anyone chose
+that: `rBase = length·widthFactor·0.35` was one knob answering three
+questions — thickness (1.5·rBase, the keeled section's fixed proportion),
+plan width (√3·rBase) and boss height (2.6·rBase) — so the hour hand's
+LENGTH set its blade 0.749 mm thick against the 0.10–0.20 mm blued-steel
+stock `STOCK_FLOORS.hand` already cited. §158 had split width off with
+`halfWidth` for one hand; §188 finishes the split for the law itself:
+
+- **Thickness from stock.** `HAND_STOCK_MM = 0.20` (the owner's choice at
+  the conservative end of real stock), `HAND_RBASE_STOCK = (0.20 /
+  UNIT_MM) / 1.5` — `HAND_RBASE_FLOOR`'s own derivation at the chosen
+  thickness instead of the floor. Central hour/minute (and the alarm's
+  'hour' cut) take it; sub-dial hands were already at the floor.
+- **Plan from `planBase`** — the OLD width expression, now width-only:
+  the default halfW is `planBase·√3/2` and the tip taper's length rides
+  `planBase·2.6`, so every shipped plan width and central tip length is
+  preserved bit-for-bit, and the aesthetics label "Hour hand width" is
+  finally true — `widthFactor` drags no thickness and no boss with it.
+- **Boss from the joint.** The rod-swallow term (2·rBase·1.3) survives but
+  is floored by `HAND_PIPE_MIN_MM = 0.4` for the CENTRAL stack: a pressed
+  pipe grips by friction over a land, real pipes run ~0.4–0.9 mm, and the
+  rod law alone gives a 0.35 mm collet with nothing to grip by. Sub-dial
+  hands keep the pure rod law — their arbor joints are §153's, derived
+  and asserted from 2.6·rBase, and re-flooring them would silently deepen
+  the wells.
+
+### The λ honesty clause — recorded where no instrument can hold it
+
+At the hour hand's 9.52 mm, 0.20 mm stock is thickness-λ ≈ 48, inside the
+`hand` kind's λ 50 ceiling (0.15 would have been 63 and would have owed a
+load-based derivation or a filed residue — the roadmap entry's
+derive-or-floor clause, resolved by the owner's 0.20 choice). But the
+`slenderness` check measures λ against the SECOND-smallest extent — the
+stiffest section dimension, deliberately — and for a wide flat blade that
+is its ~0.86 mm width, λ ≈ 13. So no candidate thickness ever reds the
+gate, and the thickness-direction arithmetic lives as a claim in
+`HAND_STOCK_MM`'s comment and here, not in an instrument: inventing a
+thickness-λ gate would be a second definition of λ.
+
+The sections are DECLARED now, which is the half an instrument can hold:
+the three central hands gained `namePrefix` ('hour'/'minute'/'alarm' —
+their units carry non-hand metal, so `STOCK_KIND_BY_PART` cannot say it)
+and nine `STOCK_KIND_BY_MESH` rows put their meshes on the `hand` kind:
+stockFloor holds them to 0.10 mm honestly, and their λ ceiling moves from
+the wheel default 30 to hand's 50.
+
+### Three consequences, each re-derived where it lands
+
+**The alarm hand's 0.5 z-scale is deleted.** It faked a rattrapante leaf
+out of a five-times-stock section; at stock the leaf IS the section, the
+lane asserts read the same truth off `userData` at scale 1, and TODO 113's
+open question — does the scale belong in the spec? — dissolves along with
+the §121 morph-frame concern. TODO 101's leaf-through-tube overlap shrank
+fifteen-fold (0.2885 → 0.0188 deep, re-measured by
+`probe-95-interpenetration.mjs`); the leaf is still unbored, so the item
+stays open with its waiver refreshed, naming `alarmShaft` now that the
+mesh has a name.
+
+**The reserve well rejoins the deep-well class.** §153 cut it barely
+recessed (a derived 0.24) because the old blade's sweep lane
+(`ALARM_RSV_LANE` ≈ 0.472) boxed the hand in from above — the shallowest
+pocket that seated the hand was the honest answer, and the hand hugged
+the ceiling as a proud rider. With the blade at stock the lane is
+`1.1 − HAND_RBASE_STOCK` ≈ 0.748 and §153's equality solve goes NEGATIVE:
+no recess is required at all. A forced deviation whose force is gone is
+not kept — the well takes `SUBDIAL_RECESS`, the hand rides `wellHandZ`
+like the seconds hand (sunk below the face, the well's design claim), and
+the lane survives as an asserted ceiling with ~0.79 of slack, because the
+§153 lesson — the lane, not the face, is the real ceiling — is still
+true.
+
+**The freed headroom is spent.** `handsGroupZOffset` 3.4 → 2.6, and the
+governing minimum is NOT the §125 lane (which fell to ≈ 1.95 with the
+pipe-floor hub) but the hour blade's keel over the alarm hand's bored
+collet: the collet seats at 1.1 over the face and stands 0.8 proud, the
+blade sweeps the centre at (offset + DIAL_T) − rBase, DIAL_T cancels, so
+offset ≥ 1.1 + 0.8 + CLEAR_MARGIN + rBase = 2.402. The shipped 3.4 cleared
+that same collet by 0.18 with the fat blade — it was always the tight
+constraint; 2.6 carries the ~0.12–0.2 headroom every previous offset
+shipped with. Everything downstream derives: the hour tube's length, the
+crystal (`CASE_DIMS` measures `handFront`), the §39 box.
+
+### Measured, before → after
+
+Movement depth 11.56 → **10.90 mm**; cased assembly 15.51 → **14.85 mm**
+(0.66 mm off the front stack, banked in §2's ledger); crystal clearance
+still exactly 0.300 mm on the new boss — the chain is measured from
+metal, so it followed with zero edits. Sections: hour 0.749 → 0.200 mm,
+minute 0.640 → 0.200, alarm 0.357 (effective) → 0.200. Plan widths
+unchanged: hour 0.865 mm ≈ 8.5′ at the wrist, minute 0.739 ≈ 7.3′, alarm
+0.824 ≈ 8.1′, reserve 3.00′ (§158's apparatus). Alarm↔hour lane 0.217 mm
+minimum over the 43-pose net. `depthFactor`/`depthMin` deleted from
+hour/minute aesthetics (read, then overwritten — lying parameters) with
+their five-locale labels; 'second' keeps both, where they are live.
+
+Acceptance: boot silent; `probe-112-recut` (both re-cut drivers
+idempotent, must-move and must-catch controls), `probe-hand-stack` (both
+controls: front-most metal is the minute boss, lane non-negative
+everywhere), `probe-153-boot`, `probe-95-guard`; fingerprint re-baselined
+4245145891 at 56 units, measured twice on the tree that carries the
+TODO 116/117 landings underneath (§188's first cut measured 647756545 on
+the pre-116/117 tree — a number a rebase made describe nothing, so it was
+re-measured rather than inherited).

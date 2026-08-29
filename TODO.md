@@ -12453,6 +12453,15 @@ hour tube's own axis, at the entered pose:
 **0.2885** at the deepest, against the row's 0.15 floor
 (`tools/probe-95-interpenetration.mjs`).
 
+**Re-measured 2026-08-29, after §188 cut the leaf to real stock** (0.20 mm
+blade at full scale, replacing the 0.5-z-scaled five-times-stock section):
+150 of 4800 tube-surface points inside, deepest **0.0188** — the debt shrank
+fifteen-fold because the tube's wall now crosses 0.2 mm of steel instead of
+0.29 u of it, but the leaf is still unbored where the tube runs, so the item
+stays open and the repair below stands unchanged. (The waived row's meshes
+read `alarmShaft ⇄ hourTube` now — §188 named the central hands' meshes, so
+the row names parts instead of `ExtrudeGeometry#20`.)
+
 Sampled the other way — 216 world points on the tube's wall (r 2.05 / 2.275 /
 2.5 × 72 azimuths) at z = −10.40, inside the leaf's z span — **32 lie in the
 leaf's metal**. So the leaf occupies part of the annulus the tube's wall needs,

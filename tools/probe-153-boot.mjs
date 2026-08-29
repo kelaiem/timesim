@@ -3,8 +3,10 @@
 // claims directly off the built scene:
 //   1. the reserve hand's math angle at tension 0 / 0.5 / 1 lands on
 //      90 + 75, 90, 90 − 75 (the symmetric anchor at both ends and centre);
-//   2. the hand's world plane sits its lift BEYOND the visible face
-//      (a proud rider), and the sector floor RESERVE_RECESS inside it;
+//   2. the hand's world plane against the well floor and the visible face —
+//      §153 built it as a proud rider over a barely-recessed sector; §188
+//      returned the well to SUBDIAL_RECESS depth and the hand to wellHandZ,
+//      so it now reads sunk BELOW the face like the seconds hand;
 //   3. the arbor's front end stops 0.2 short of the hand's plane.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
