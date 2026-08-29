@@ -1812,17 +1812,153 @@ const BACK_PLATE_T = 2;    // ...spanning [z−1, z+1]
 // stations join them once the hands exist (the crystal plane is measured
 // from the tallest hand); see CASE_DIMS. Owner caps asserted at boot.
 const CASE_R_IN = plateR + CASE_CLEAR;       // 1 mm movement-ring clearance
-const CASE_R_OUT = CASE_R_IN + CASE_BAND_T;  // 1 mm band wall
+// §186 — the case has TWO working outer diameters now (a stepped midcase:
+// one turning, two sections, standard case-making). The FRONT keeps the
+// derivation the whole case used to have — plate + clearance + one wall —
+// so the bezel side (§189's subject) inherits an untouched front. The BACK
+// section is the clamp band: it spends the owner's re-based body budget
+// WHOLE (the 40 mm cap now applies to the case body, lugs excluded — the
+// old across-the-lugs reading is §190's to re-base), because §187's
+// caseback ring and lip are the annulus's next tenants and a band derived
+// minimal today would be re-grown by that entry tomorrow. The cap assert
+// below stays as the tripwire; equality is legal by construction.
+const CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T;
+const CASE_R_OUT = CASE_WIDTH_MAX;
+// The back band's bore: one wall inside the body outer — the same 1 mm
+// dress-watch wall the front keeps, and the gasket annulus keeps exactly
+// its old proportions inside it.
+const R_BORE_BACK = CASE_R_OUT - CASE_BAND_T;
+// §186 — THE MOUNTING RIM the plate grows (the plate MESH alone: plateR is
+// the movement's working radius and fans out to dialRadius, R_IN, and every
+// station — growing it would move the dial, the case and the lugs at once).
+// The rim drops into the back band's bore, so its outer radius derives from
+// the LOCATING FIT against the bore wall — SEAT_FIT, geometry.js's one
+// drop-into-a-recess fit (a located casing ring is exactly that; real
+// movement-ring recess fits run 0.02–0.10 mm diametral, and SEAT_FIT is
+// 0.061 diametral) — measured against the rim's REAL reach, which is the
+// authored radius plus the extrude bevel (TODO 84 at plate scale). The
+// swell is ABSOLUTE: makeBackPlate cuts one bevelSize = working-radius ·
+// PLATE_BEVEL_F for the whole extrude, so the rim's outline grows by
+// plateR's bevel, not its own — subtracted here from the same exported
+// expression the builder swells the metal with. Boot re-verifies the fit
+// off the measured mesh at PLATE_RIM.
+const BASE_RIM_R = R_BORE_BACK - G.SEAT_FIT - plateR * G.PLATE_BEVEL_F;
+// The clamp screws: heads bear on the rim's back face, shafts pass through
+// the rim (clearance-bored, §20's passes-through rule) and thread into the
+// ledge's own metal below it. The circle stands one CLEAR_MARGIN off the
+// bore wall by the head's radius — as far outboard as the head can bear,
+// which maximises the rim bearing inboard of it.
+const R_CLAMP = R_BORE_BACK - CLEAR_MARGIN - CASE_SCREW_HEAD_D / 2;
+// Three screws: a plane is three points — the kinematic definition of the
+// bearing the clamps must define — and a lapped ring joint gains nothing
+// from over-constraint (real casing clamps run 2–4). Stations are a tripod,
+// rotated so the nearest screw stands as far as possible from the two
+// crown-stem notches (solved below, where the notch spec is).
+const CASE_CLAMP_N = 3;
+// §186 — the crown-stem NOTCHES the rim carries. Each crown's tube sleeve
+// crosses the rim's z-band inboard of the bore wall, so the rim is cut back
+// to the working outline on each stem's radial line. The half-width derives
+// from the SAME expressions tubeAt builds the sleeve with — the sleeve's
+// outer radius (bore + G.TUBE_WALL, one derivation for both sides), plus the
+// one CLEAR_MARGIN, plus the plate extrude's bevel compensation: the bevel
+// grows material INTO a concave cut by bevelSize = plateR · PLATE_BEVEL_F,
+// so the authored wall stands that much wider for the finished wall to land
+// on the clearance (the same TODO 84 rule BASE_RIM_R divides out, applied on
+// the other side of the outline).
+const CASE_TUBE_AP = CASE_TUBE_D / 2 + G.TUBE_WALL;
+const CASE_NOTCH_HALFW = CASE_TUBE_AP + CLEAR_MARGIN + plateR * G.PLATE_BEVEL_F;
+// The winding stem's azimuth is the keyless layout's (stemAngle); the alarm
+// crown's stem stands on the climb corner's azimuth, ALARM_CORNER_W_AZ —
+// alarmStemAngle is derived far below from the same direction vector, and a
+// boot assert PINS the two together where it is born (search §186 PIN),
+// because a notch cut here at one azimuth and a stem built there at another
+// would eat the margin sideways: 1 mrad of disagreement is 0.05 u of the
+// 0.15 clearance at the rim's radius.
+const CASE_NOTCHES = [
+  { az: stemAngle, halfW: CASE_NOTCH_HALFW },
+  { az: ALARM_CORNER_W_AZ, halfW: CASE_NOTCH_HALFW },
+];
+// The rim's clearance bores for the clamp screws: a screw that PASSES
+// THROUGH a member wants a clearance hole at the screw-through fit (§148's
+// two-holes rule — the rim is not what holds the screw, the tapped ledge
+// metal is).
+const CASE_CLAMP_BORE_R = CASE_SCREW_SHAFT_D / 2 + G.SEAT_FIT;
+// Thread engagement below the ledge face — the §3 precedent the caseback
+// screws set (0.7 mm into a 1.0 mm wall).
+const CASE_CLAMP_ENG = 0.7 / UNIT_MM;
+// The tripod's ROTATION, solved rather than chosen: the pattern repeats
+// every 2π/3, so fold both notch azimuths into one period and stand the
+// first screw at the midpoint of the largest gap between the folded images
+// — the rotation that maximises the minimum station-to-notch angular
+// distance, exactly (with two images the optimum is a gap midpoint; no
+// scan, no tolerance).
+const CASE_CLAMP_AZ = (() => {
+  const period = Math.PI * 2 / CASE_CLAMP_N;
+  const fold = (a) => ((a % period) + period) % period;
+  const b = CASE_NOTCHES.map((n) => fold(n.az)).sort((x, y) => x - y);
+  let best = { gap: -1, mid: 0 };
+  for (let i = 0; i < b.length; i++) {
+    const next = i + 1 < b.length ? b[i + 1] : b[0] + period;
+    if (next - b[i] > best.gap) best = { gap: next - b[i], mid: (b[i] + next) / 2 };
+  }
+  return [...Array(CASE_CLAMP_N)].map((_, k) => best.mid + k * period);
+})();
+{
+  // What the solve must have achieved, asserted in metal terms rather than
+  // trusted: every screw HEAD stands clear of every notch WALL by the one
+  // margin (the head is the widest thing at a station, so this also clears
+  // the tapped hole from the crown bores below — halfW + headR exceeds
+  // tubeAp + shaftR by construction). Perpendicular distance from a station
+  // to a stem's radial line, conservative past a quarter turn.
+  const TWO_PI = Math.PI * 2;
+  let worst = Infinity;
+  for (const a of CASE_CLAMP_AZ) {
+    for (const n of CASE_NOTCHES) {
+      let d = Math.abs(a - n.az) % TWO_PI;
+      if (d > Math.PI) d = TWO_PI - d;
+      worst = Math.min(worst, Math.sin(Math.min(d, Math.PI / 2)) * R_CLAMP);
+    }
+  }
+  const need = CASE_NOTCH_HALFW + CASE_SCREW_HEAD_D / 2 + CLEAR_MARGIN;
+  if (worst < need)
+    console.warn(`§186: a clamp station stands ${worst.toFixed(3)} u off a crown notch's line — the head `
+      + `needs ${need.toFixed(3)} (notch ${CASE_NOTCH_HALFW.toFixed(3)} + head ${(CASE_SCREW_HEAD_D / 2).toFixed(3)} + margin)`);
+  // The tapped hole's inboard thread wall: from the hole's wall to the case
+  // bore, at least one thread pitch of metal (pitch ≈ Ø/4 for watch screws —
+  // the same rule screwShankR encodes as head ≈ 2×thread).
+  const wall = (R_CLAMP - CASE_SCREW_SHAFT_D / 2) - CASE_R_IN;
+  const pitch = CASE_SCREW_SHAFT_D / 4;
+  if (wall < pitch)
+    console.warn(`§186: the clamp thread's inboard wall is ${wall.toFixed(3)} u — under the one-pitch `
+      + `floor ${pitch.toFixed(3)} u; the thread would break into the case bore`);
+  // The head bears mostly on rim: its outer edge stops one CLEAR_MARGIN off
+  // the bore wall by R_CLAMP's derivation (tripwire, not arithmetic), and at
+  // least a head-RADIUS of the head's diameter lands on the rim's lid face
+  // (authored outline BASE_RIM_R — the lid carries the authored shape, the
+  // mid-depth bulge is what fits the bore).
+  if (R_CLAMP + CASE_SCREW_HEAD_D / 2 > R_BORE_BACK - CLEAR_MARGIN + 1e-9)
+    console.warn('§186: a clamp head reaches within CLEAR_MARGIN of the bore wall — R_CLAMP regressed');
+  const overlap = Math.min(R_CLAMP + CASE_SCREW_HEAD_D / 2, BASE_RIM_R) - (R_CLAMP - CASE_SCREW_HEAD_D / 2);
+  if (overlap < CASE_SCREW_HEAD_D / 2)
+    console.warn(`§186: a clamp head overlaps the rim's lid by ${overlap.toFixed(3)} u — under the `
+      + `half-diameter floor ${(CASE_SCREW_HEAD_D / 2).toFixed(3)}; the head is clamping air`);
+  // The bearing the rim actually gets: from the ledge's inner edge to the
+  // rim's authored outline, held to the 1 mm the old seat step gave (the
+  // precedent floor — a mount must not bear LESS than the seat it replaces).
+  if (BASE_RIM_R - CASE_R_IN < 1 / UNIT_MM)
+    console.warn(`§186: the rim bears ${((BASE_RIM_R - CASE_R_IN) * UNIT_MM).toFixed(2)} mm on the ledge — `
+      + 'under the 1 mm the seat step it replaces provided');
+}
 // (The z stations live in CASE_DIMS — they are measured from the metal once
 // the movement exists, and the dial side is −z, which the first cut of this
 // feature learned by putting the caseback through the dial.)
 const CASE_LUG_SPAN = 18 / UNIT_MM;          // 18 mm — period-typical for a ~36 mm case, under the 20 mm cap
-if (CASE_R_OUT > CASE_WIDTH_MAX)
-  console.warn(`case: band Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap — the movement outgrew its housing budget`);
-// Width across the lug TIPS is the number a calliper actually reads: band
-// radius + 2.5 mm reach − 0.8 mm root (geometry.js's lug derivation).
-if (CASE_R_OUT + 1.7 / UNIT_MM > CASE_WIDTH_MAX)
-  console.warn(`case: ${(2 * (CASE_R_OUT + 1.7 / UNIT_MM) * UNIT_MM).toFixed(2)} mm across the lugs breaks the 40 mm owner cap`);
+if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
+  console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
+// The old across-the-lug-tips assert is RETIRED to §190: the owner re-based
+// the 40 mm cap to the case BODY, lugs excluded, and the lug spec is opened
+// for options there. probe-lug-geom.mjs still measures the tips (now past
+// 40 mm, legally) as the baseline §190 re-derives against.
 if (CASE_LUG_SPAN > CASE_LUG_SPAN_MAX)
   console.warn(`case: lug span ${(CASE_LUG_SPAN * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap`);
 const BACK_PLATE_HOLES = [
@@ -4800,7 +4936,17 @@ if (HACK_PIN_OWN) {
 // it always was.
 const backPlate = G.makeBackPlate({
   radius: plateR, thickness: BACK_PLATE_T,
-  holes: BACK_PLATE_HOLES,
+  // §186 — the MOUNTING RIM (mesh only: plateR stays the working radius
+  // every station fans out from), notched for the two crown-stem sleeves,
+  // and pierced at the tripod stations for the clamp screws' clearance
+  // bores. All four numbers derive where the case's radial chain does.
+  rim: { r: BASE_RIM_R, notches: CASE_NOTCHES },
+  holes: [
+    ...BACK_PLATE_HOLES,
+    ...CASE_CLAMP_AZ.map((a) => ({
+      x: Math.cos(a) * R_CLAMP, y: Math.sin(a) * R_CLAMP, r: CASE_CLAMP_BORE_R,
+    })),
+  ],
   // One stud on the arm: the stadium it has always had, unchanged.
   slots: HACK_PIN_OWN ? [] : [studSlot(postRel, postEng, kwPostBow)],
   // TWO studs on the arm: ONE opening, the sector they sweep between them.
@@ -13866,6 +14012,20 @@ movement.add(alarmCrownUnit);
 registerLabel('Alarm crown', alarmCrownUnit);
 registerExplode(alarmCrownUnit, 0, 2, -1);
 const alarmStemAngle = Math.atan2(alarmDir.y, alarmDir.x);
+// §186 PIN — the rim's alarm notch was cut long before this block ran, at
+// ALARM_CORNER_W_AZ (the only name for this direction that exists at plate
+// time). The stem built HERE must stand on that same line, or the sleeve
+// eats the notch clearance sideways: 1 mrad of disagreement costs 0.05 u of
+// the 0.15 margin at the rim's radius, so the tolerance is a tenth of the
+// margin at that lever arm.
+{
+  let d = Math.abs(alarmStemAngle - ALARM_CORNER_W_AZ) % (Math.PI * 2);
+  if (d > Math.PI) d = Math.PI * 2 - d;
+  if (d * BASE_RIM_R > CLEAR_MARGIN * 0.1)
+    console.warn(`§186: the alarm stem stands ${(d * 1e3).toFixed(2)} mrad off the rim notch cut at `
+      + `ALARM_CORNER_W_AZ — ${(d * BASE_RIM_R).toFixed(4)} u of sideways drift against a `
+      + `${(CLEAR_MARGIN * 0.1).toFixed(4)} u budget (a tenth of the notch's clearance)`);
+}
 const alarmSpinner = new THREE.Group(); // local +Y = outward along the stem (cf. windSpinner)
 alarmSpinner.position.set(alarmWorld.x, alarmWorld.y, Z_ALARM_CORNER);
 alarmSpinner.rotation.order = 'ZYX';
@@ -26258,25 +26418,15 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
 // crystal plane is MEASURED from the tallest hand, and a constant there
 // lies the moment a hand grows. Assembled as one labelled unit so it
 // explodes, labels, and fingerprints like any other.
-// TODO 91 / TODO 90 — WHERE THE BAND IS INTERRUPTED, measured off the metal
-// rather than listed. The seat is a bearing ring under the plate's rim, and
-// since the keyless works moved to the dial side it cannot be a full ring:
-// five bodies stand inside its annulus, the deepest 2.26 u past R_SH, and
-// there is nothing to trim to — the works already run within 0.38 u of the
-// plate's own edge. So the seat is INTERRUPTED, which is what a real caliber
-// with dial-side keyless works does.
-//
-// The relief is not a constant. It is wherever the movement occupies the
-// seat's own volume, so it is derived by asking exactly that: every vertex
-// standing in the annulus (R_SH..R_OUT) × (zSeatBot..zSeatTop) contributes
-// its azimuth, the azimuths cluster into arcs, and each arc is padded by
-// CLEAR_MARGIN converted to an angle at the radius it is measured on. Ship a
-// part into that space and the relief follows it; no list to fall stale.
-//
-// The stem bores (TODO 90) are unioned in. Both crowns fall INSIDE their own
-// relief arc — the winding crown at az 145.0° sits in the keyless arc, the
-// alarm crown at −0.1° in the alarm one — so the two items are one cut, which
-// is what filing them together predicted.
+// §186 — WHERE THE BAND IS INTERRUPTED, derived rather than scanned. The
+// old seat stood at plateR − 1 mm, in among the dial-side works — five
+// bodies inside its annulus, so its relief had to be MEASURED (the TODO 91
+// scan that used to live here, retired with the seat itself). The §186
+// mount bears OUTBOARD instead: the plate's rim drops into the back band's
+// bore and rests on a ledge whose innermost metal is CASE_R_IN — outside
+// everything the old scan ever found — so the band's only interruptions are
+// the three declared, pose-invariant bores (two crown tubes, one pusher),
+// and CASE_SECTORS below is a derivation with a tripwire, not a scan.
 // THE PLATE'S REAL RIM, measured. Two of the case's dimensions are taken off
 // the movement's edge, and both were taken off its DRAWING instead.
 //
@@ -26310,7 +26460,14 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
 const PLATE_RIM = (() => {
   const rSeat = plateR - 1 / UNIT_MM;
   const v = new THREE.Vector3();
+  const bevelSize = plateR * G.PLATE_BEVEL_F;
   let front = Infinity, back = -Infinity, reach = 0;
+  // §186 — the notch FLOORS, measured per notch: the widest metal on each
+  // stem's own line, which is what that crown's tube must stop short of.
+  // Wall vertices are excluded by their perpendicular offset (the finished
+  // wall stands at halfW − bevelSize; anything inboard of that by a hair is
+  // floor), so the number is the floor's swell and not the rim's.
+  const floors = CASE_NOTCHES.map(() => 0);
   backPlate.updateMatrixWorld(true);
   backPlate.traverse((o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
@@ -26321,251 +26478,225 @@ const PLATE_RIM = (() => {
       if (r > reach) reach = r;
       if (r >= rSeat && v.z < front) front = v.z;
       if (r >= rSeat && v.z > back) back = v.z;   // §186 — the rim's BACK face: what a clamp head seats on
+      for (let n = 0; n < CASE_NOTCHES.length; n++) {
+        const { az, halfW } = CASE_NOTCHES[n];
+        const along = v.x * Math.cos(az) + v.y * Math.sin(az);
+        const perp = Math.abs(-v.x * Math.sin(az) + v.y * Math.cos(az));
+        if (along > 0 && perp < halfW - bevelSize - 0.02 && r > floors[n]) floors[n] = r;
+      }
     }
   });
   if (!(front < Infinity) || !(reach > plateR - 1e-9))
     console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
       + `authored ${plateR.toFixed(4)} — the case's seat and tube standoffs are derived from this and cannot be`);
-  return { front, back, reach };
+  // §186 — the LOCATING FIT, re-verified off the metal: the rim's measured
+  // widest reach against the back band's bore wall must land on SEAT_FIT
+  // (BASE_RIM_R subtracts the bevel swell out, so the two should agree to
+  // float noise; a tenth of the fit is the drift alarm).
+  const fit = R_BORE_BACK - reach;
+  if (Math.abs(fit - G.SEAT_FIT) > G.SEAT_FIT * 0.1)
+    console.warn(`§186: the rim-to-bore fit measures ${fit.toFixed(4)} u against the SEAT_FIT `
+      + `${G.SEAT_FIT.toFixed(4)} it was derived to — the rim no longer locates the movement`);
+  // ...and the notch floors against the standoff the tubes are cut to
+  // (tubeClearR = plateR · (1 + PLATE_BEVEL_F), the floor's own swell rule):
+  // a floor past that number is metal a crown tube runs into.
+  const tubeClearR = plateR * (1 + G.PLATE_BEVEL_F);
+  for (let n = 0; n < CASE_NOTCHES.length; n++) {
+    if (floors[n] > tubeClearR + 1e-3)
+      console.warn(`§186: notch ${n} (az ${(CASE_NOTCHES[n].az * 180 / Math.PI).toFixed(1)}°) measures its floor `
+        + `at r ${floors[n].toFixed(4)} — past the ${tubeClearR.toFixed(4)} the crown tubes are cut to clear`);
+  }
+  return { front, back, reach, floors };
 })();
 
+// §186 — the z at which the midcase STEPS from the back band (R_OUT) to the
+// front section (R_OUT_FRONT): one CLEAR_MARGIN in front of the lowest crown
+// bore window, so both crown sleeves live entirely in the thick back band —
+// the step's position is a consequence of where the stems are, not a styling
+// choice. (The pusher sits far above both crowns and never binds this.)
+const CASE_Z_STEP = Math.min(Z_KEYLESS, alarmSpinner.position.z) - CASE_TUBE_AP - CLEAR_MARGIN;
+
 const CASE_SECTORS = (() => {
-  const zTop = PLATE_RIM.front;                        // the plate's dial-side face, MEASURED
-  const zBot = zTop - 0.8 / UNIT_MM;                  // the seat step, 0.8 mm
-  const rSeat = plateR - 1 / UNIT_MM;                 // R_SH: 1 mm of bearing under the rim
-  const box = new THREE.Box3(), v = new THREE.Vector3();
-  const seatBox = new THREE.Box3(
-    new THREE.Vector3(-CASE_R_OUT, -CASE_R_OUT, zBot),
-    new THREE.Vector3(CASE_R_OUT, CASE_R_OUT, zTop));
-  const azs = [];
-  // The PLATE is what the seat carries, not something it has to dodge, and
-  // zSeatTop is derived from the plate's own dial-side face — so its metal
-  // sitting there is the seat working. Its mesh reaches a little past that
-  // nominal plane (2961 of its vertices, measured, the extrude's bevel), and
-  // counting those relieved the ENTIRE ring: the plate obstructing its own
-  // seat at every azimuth, bearing computed as −1.3%.
-  const onPlate = (o) => { for (let n = o; n; n = n.parent) if (n === backPlate) return true; return false; };
-  movement.updateMatrixWorld(true);
-  movement.traverse((o) => {
-    if (!o.isMesh || o.userData.casePart || o.userData.schematic || onPlate(o)) return;
-    if (!o.geometry?.attributes?.position) return;
-    // Box test first: the seat is a thin slab and almost nothing crosses it,
-    // so this prunes the vertex walk to a handful of parts at boot.
-    if (!box.setFromObject(o).intersectsBox(seatBox)) return;
-    // EDGES, not vertices. A column crossing the seat carries no vertex inside
-    // it — a cylinder's vertices sit on its two end caps — so a vertex scan
-    // reports nothing while the part runs clean through the metal. Measured:
-    // the three Ø1.2 mm DIAL FEET span z −8.40..−1.00 straight across a band of
-    // −4.111..−2.000 at r 41.58..42.77, and carry not one vertex in it; the
-    // first version of this scan, which sampled vertices, left all three
-    // standing in unbroken seat. Walk each triangle edge instead and take the
-    // piece of it that lies in the band — 80 crossings each, and the three
-    // narrowest relief arcs on the cut are theirs.
-    const p = o.geometry.attributes.position;
-    const idx = o.geometry.index;
-    const n = idx ? idx.count : p.count;
-    const a = new THREE.Vector3(), b = new THREE.Vector3();
-    const take = (q) => {
-      // STRICTLY inside the step, not on its top face: zTop IS the plate's
-      // dial-side face, the surface the seat exists to carry, so metal there
-      // is the seat working. Counting it relieved the ENTIRE ring — the plate
-      // obstructing its own seat at every azimuth, bearing measured as −1.3%.
-      if (q.z < zBot || q.z > zTop - 1e-6) return;
-      const r = Math.hypot(q.x, q.y);
-      if (r < rSeat || r > CASE_R_OUT) return;
-      azs.push(Math.atan2(q.y, q.x));
-    };
-    for (let t = 0; t < n; t += 3) {
-      for (let e = 0; e < 3; e++) {
-        const i0 = idx ? idx.getX(t + e) : t + e;
-        const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
-        a.fromBufferAttribute(p, i0); o.localToWorld(a);
-        b.fromBufferAttribute(p, i1); o.localToWorld(b);
-        take(a);
-        // Where the edge crosses either face of the band, that crossing point
-        // is what stands in the seat even when neither end does.
-        for (const zc of [zBot, zTop - 1e-6]) {
-          const d = b.z - a.z;
-          if (Math.abs(d) < 1e-12) continue;
-          const s = (zc - a.z) / d;
-          if (s <= 0 || s >= 1) continue;
-          take(v.copy(a).lerp(b, s));
-        }
-        // ...and the midpoint of the piece inside, so a long edge lying in
-        // the band contributes its span rather than just its ends.
-        if (a.z >= zBot && a.z <= zTop && b.z >= zBot && b.z <= zTop) take(v.copy(a).lerp(b, 0.5));
-      }
-    }
-  });
+  // §186 — FULLY ANALYTIC (TODO 111's fix vehicle). The old scan measured
+  // the movement at the ONE pose the case is built in and consumed
+  // LOW_LINKAGE_OBSTACLES for the movers it knew about — an honest
+  // instrument for a seat that stood at plateR − 1 mm, in among the
+  // dial-side works. The §186 case has no metal inboard of CASE_R_IN at
+  // any z the movement occupies: the ledge, the bores and the band all
+  // start at 45.56, OUTBOARD of everything the old scan ever found
+  // (measured, probe-ledge-occupancy: the rim and head bands are empty over
+  // the full 43-pose net and the shelf band holds exactly the two crown
+  // stems, which get bores). So the sectors are a function of the three
+  // DECLARED, pose-invariant bores and nothing else — a derivation, not a
+  // measurement — and what holds the claim is (a) standing rule 5's reach
+  // assert below, which fails the moment the low linkage grows toward the
+  // bore, and (b) a build-pose tripwire scan over the annulus, which fails
+  // the moment anything else stands in it. The full pose net stays the
+  // battery's job (Case rows sweep like every unit) plus
+  // probe-case-relief's.
   const TWO_PI = Math.PI * 2;
   const norm = (a) => ((a % TWO_PI) + TWO_PI) % TWO_PI;
-  // ...and then the parts that MOVE into it. Everything above reads the
-  // movement at the ONE pose the case is built in, and a mover is somewhere
-  // else at every other. Measured over the pose net: `hackRodPin` stands at
-  // r 37.801..38.691 as the case is built — clear of the seat's 40.284 — and
-  // at 39.889..40.786 in 33 of the 42 poses the battery visits, 0.502 INSIDE
-  // it, crossing the step's full depth (the pin spans z −5.100..1.421 against
-  // the seat's −4.111..−2.000). A relief derived from one pose is a claim
-  // about one pose, and the shipped tree already contains the counter-example.
-  //
-  // Standing rule 5 owns exactly this: LOW_LINKAGE_OBSTACLES is the DECLARED
-  // swept footprint of the low linkage, sampled over the full crown stroke,
-  // and every later seat scan consumes it rather than re-deriving the swing.
-  // A case seat is a later seat scan. The table is XY-only by design — each
-  // consumer adds its own reach — so it is taken whole, and taken whole it
-  // reaches this annulus in ONE arc, 165.5°..169.1°: the hack pin's station,
-  // and the members standing there are the ones whose z DOES cross the seat.
-  // Its cost is 3.6° of bearing, which is what seeing the mover is worth.
+  // (a) Standing rule 5, inverted: the table that used to FEED this scan now
+  // GATES its retirement. Every declared swept footprint of the low linkage,
+  // taken whole, must stop one CLEAR_MARGIN inside the case bore.
   {
-    // A disc of radius rc whose centre stands d from the axis reaches past
-    // rSeat over an azimuth half-width taken at whichever bound BINDS: the
-    // disc's own tangent (asin(rc/d), at radius sqrt(d² − rc²)) while that
-    // tangent point is itself outside rSeat, and otherwise where the disc's
-    // rim crosses the rSeat circle. Analytic rather than sampled, because a
-    // sampled boundary can only under-report an arc, and an under-reported
-    // relief is metal left standing in a part's path.
-    const discArc = (cx, cy, rc) => {
-      const d = Math.hypot(cx, cy);
-      if (d + rc < rSeat || d - rc > CASE_R_OUT) return null;
-      if (d <= rc) return [0, TWO_PI];               // the axis is inside it
-      const tangentR = Math.sqrt(Math.max(0, d * d - rc * rc));
-      const half = tangentR >= rSeat
-        ? Math.asin(Math.min(1, rc / d))
-        : Math.acos(Math.max(-1, Math.min(1, (d * d + rSeat * rSeat - rc * rc) / (2 * d * rSeat))));
-      const a = Math.atan2(cy, cx);
-      return [a - half, a + half];
-    };
-    const eat = (arc) => { if (!arc) return; for (let i = 0; i <= 24; i++) azs.push(arc[0] + (arc[1] - arc[0]) * i / 24); };
+    let lowReach = 0;
     for (const o of LOW_LINKAGE_OBSTACLES) {
-      if (o.x !== undefined) { eat(discArc(o.x, o.y, o.r)); continue; }
-      // A stadium is the union of discs along its segment; 32 steps puts the
-      // sample spacing far under CLEAR_MARGIN at these lengths.
-      for (let i = 0; i <= 32; i++) {
-        const t = i / 32;
-        eat(discArc(o.ax + (o.bx - o.ax) * t, o.ay + (o.by - o.ay) * t, o.r));
+      if (o.x !== undefined) lowReach = Math.max(lowReach, Math.hypot(o.x, o.y) + o.r);
+      else lowReach = Math.max(lowReach, Math.hypot(o.ax, o.ay) + o.r, Math.hypot(o.bx, o.by) + o.r);
+    }
+    if (lowReach + CLEAR_MARGIN >= CASE_R_IN)
+      console.warn(`§186: the low linkage sweeps to r ${lowReach.toFixed(3)} — within CLEAR_MARGIN of the `
+        + `case bore ${CASE_R_IN.toFixed(3)}; the analytic sectors assume the case metal is outboard of every mover `
+        + '(standing rule 5) and that assumption just broke');
+  }
+  // (b) The tripwire: at the build pose, no movement metal in the annulus
+  // the case's solid walls will occupy — r ∈ [CASE_R_IN, CASE_R_OUT] over
+  // the band's own z — except the plate (the rim is the tenant the case is
+  // built around; its fit is asserted at PLATE_RIM) and metal on a declared
+  // bore's line (the stems the bores exist for). EDGES, not vertices: a
+  // radial member can cross the annulus with every vertex outside it —
+  // probe-ledge-occupancy's first cut missed the alarm stem exactly that
+  // way, so this walk samples each edge's endpoints, its exact crossings of
+  // the two wall radii (the quadratic in t), and its in-band midpoint.
+  {
+    const zLo = CASE_Z_STEP, zHi = PLATE_RIM.back + 1 / UNIT_MM;
+    const exempt = (q) => {
+      for (const b of [{ az: stemAngle, z: Z_KEYLESS }, { az: ALARM_CORNER_W_AZ, z: alarmSpinner.position.z }]) {
+        const perp = Math.abs(-q.x * Math.sin(b.az) + q.y * Math.cos(b.az));
+        const along = q.x * Math.cos(b.az) + q.y * Math.sin(b.az);
+        if (along > 0 && perp < CASE_TUBE_AP + CLEAR_MARGIN && Math.abs(q.z - b.z) < CASE_TUBE_AP + CLEAR_MARGIN) return true;
       }
+      return false;
+    };
+    const onPlate = (o) => { for (let n = o; n; n = n.parent) if (n === backPlate) return true; return false; };
+    const box = new THREE.Box3();
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
+    const hits = [];
+    movement.updateMatrixWorld(true);
+    movement.traverse((o) => {
+      if (!o.isMesh || o.userData.casePart || o.userData.schematic || onPlate(o)) return;
+      if (!o.geometry?.attributes?.position) return;
+      box.setFromObject(o);
+      // Prune: a box whose farthest corner never reaches the inner wall
+      // cannot put an edge in the annulus.
+      const rBox = Math.hypot(Math.max(Math.abs(box.min.x), Math.abs(box.max.x)),
+                              Math.max(Math.abs(box.min.y), Math.abs(box.max.y)));
+      if (rBox < CASE_R_IN || box.max.z < zLo || box.min.z > zHi) return;
+      const p = o.geometry.attributes.position;
+      const idx = o.geometry.index;
+      const n = idx ? idx.count : p.count;
+      const take = (pt) => {
+        if (pt.z < zLo || pt.z > zHi) return;
+        const r = Math.hypot(pt.x, pt.y);
+        if (r < CASE_R_IN || r > CASE_R_OUT) return;
+        if (exempt(pt)) return;
+        hits.push({ name: o.name || o.parent?.name || '(unnamed)', r, z: pt.z, az: Math.atan2(pt.y, pt.x) });
+      };
+      for (let t = 0; t < n; t += 3) {
+        for (let e = 0; e < 3; e++) {
+          const i0 = idx ? idx.getX(t + e) : t + e;
+          const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
+          a.fromBufferAttribute(p, i0); o.localToWorld(a);
+          b.fromBufferAttribute(p, i1); o.localToWorld(b);
+          take(a);
+          take(q.copy(a).lerp(b, 0.5));
+          // Exact crossings of the two wall radii: |a + t(b-a)|_xy = rw.
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const A = dx * dx + dy * dy;
+          if (A > 1e-12) {
+            for (const rw of [CASE_R_IN, CASE_R_OUT]) {
+              const B = a.x * dx + a.y * dy;
+              const C = a.x * a.x + a.y * a.y - rw * rw;
+              const disc = B * B - A * C;
+              if (disc < 0) continue;
+              const sq = Math.sqrt(disc);
+              for (const t0 of [(-B - sq) / A, (-B + sq) / A]) {
+                for (const dt of [-1e-4, 1e-4]) {
+                  const tt = t0 + dt;
+                  if (tt > 0 && tt < 1) take(q.copy(a).lerp(b, tt));
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    if (hits.length) {
+      const names = [...new Set(hits.map((h) => h.name))];
+      console.warn(`§186: the analytic case sectors' annulus is OCCUPIED at the build pose — ${hits.length} `
+        + `sample(s) from [${names.join(', ')}] inside r ${CASE_R_IN.toFixed(2)}..${CASE_R_OUT.toFixed(2)}, `
+        + `z ${zLo.toFixed(2)}..${zHi.toFixed(2)}; the case would be built through that metal`);
     }
   }
-  // Angular margin: CLEAR_MARGIN as an arc at the seat's own radius — the
-  // relief has to clear the part, not graze it.
-  const pad = CLEAR_MARGIN / rSeat;
   // A bore is a hole around a LINE, and the arc it opens in the wall depends
   // on how that line meets it. In the line's own frame a point of the bore's
   // surface has perpendicular coordinate p ∈ [off − ap, off + ap]; at radius r
   // that point sits at azimuth az + asin(p / r). The wall has THICKNESS, so
-  // the window is the union of those arcs over r ∈ [R_IN, R_OUT], and asin(x/r)
+  // the window is the union of those arcs over the wall's radii, and asin(x/r)
   // is monotone in r at fixed x — so the union's ends are among the four values
-  // at the two wall radii.
-  //   A radial bore (off = 0) collapses to ±asin(ap / R_IN), which is what both
-  // crowns get. The pusher measures radial too on this tree — §170 solves
-  // ALARM_PUSH_AZ so that _pushBase·perp is 0 exactly, and the press line runs
-  // through the movement's centre — but its offset is a LIVE quantity that
-  // `tubeAt` already consumes, and a window centred on one radius is wrong the
-  // moment it stops being zero. Derived, not assumed to stay zero.
-  // §186 plumbing: the two wall radii are parameters (defaulting to today's
-  // band) because the redesigned case cuts windows through walls at more
-  // than one pair of radii — the union rule is the same at any pair.
-  const boreWindow = (az, ap, off, walls = [CASE_R_IN, CASE_R_OUT]) => {
+  // at the two wall radii. Since §186 the two radii are PER BORE: the crowns
+  // cross the full wall from the front bore out (their windows straddle the
+  // ledge), the pusher only the thin back band — the union rule is the same
+  // at any pair, which is exactly why the walls became a parameter.
+  const boreWindow = (az, ap, off, walls) => {
     const ends = [];
     for (const x of [off - ap, off + ap])
       for (const r of walls)
         ends.push(Math.asin(Math.max(-1, Math.min(1, x / r))));
     return { a0: az + Math.min(...ends), a1: az + Math.max(...ends) };
   };
-  const tubeAp = CASE_TUBE_D / 2 + 0.3 / UNIT_MM;     // bore + the tube's own wall
-  // Cluster the azimuths into arcs. What separates two reliefs is the LAND
-  // between them, and a land narrower than it is deep is a tooth, not a
-  // bearing surface: the seat bears plateR − R_SH = 1 mm radially, so an
-  // island of metal shorter than that around the circumference has nothing
-  // holding it down and is better cut away. Two reliefs closer than one land
-  // width are therefore one opening with a waist.
-  //   Derived here rather than borrowed from the bore window, which was the
-  // first cut's rule and is 4.6× wider: it swallowed the 17.2° land between
-  // the setting works and the hack pin and cost 4.4% of the bearing ring for
-  // no structural reason.
-  const SPLIT = (plateR - rSeat) / rSeat;
-  const arcs = [];
-  if (azs.length) {
-    const s = azs.map(norm).sort((a, b) => a - b);
-    let lo = s[0], hi = s[0];
-    for (let i = 1; i < s.length; i++) {
-      if (s[i] - hi > SPLIT) { arcs.push([lo, hi]); lo = s[i]; }
-      hi = s[i];
-    }
-    arcs.push([lo, hi]);
-    // The first and last may be one arc across 0.
-    if (arcs.length > 1 && (s[0] + TWO_PI) - s[s.length - 1] <= SPLIT) {
-      const first = arcs.shift(), last = arcs.pop();
-      arcs.push([last[0], first[1] + TWO_PI]);
-    }
-  }
-  // Union each stem's bore window in, and remember the window so the sector
-  // that carries it knows where to split in z.
-  //
-  // The pusher is the third opening, and it earns its place on a measurement
-  // that was misread once: its stem crosses the band (r 32.87–51.25 against
-  // R_IN 45.56 – R_OUT 48.20, the full 2.645 u wall), which is what the
-  // geometry always said — but the seat step's self-touching profile had
-  // corrupted the parity test in exactly that region, the pair reported CLEAR,
-  // and TODO 96 was edited to say the pusher needed nothing. It does.
-  //
-  // Its offset is passed rather than assumed. `ALARM_PUSH_CHORD` steps the
-  // pawl's base off the movement's centre, and TODO 96 records that stand-off
-  // as 4.370 u — measured on a base that predates §170, which then SOLVED
-  // ALARM_PUSH_AZ so the press line runs through the centre and made
-  // `_pushBase·perp` zero exactly. So the pusher is radial on this tree and
-  // this term contributes nothing today. It is still read from the same
-  // expression `tubeAt` drills the bore with: a window centred on one radius
-  // is wrong the moment the two stop agreeing, and they agreed here by a
-  // landing, not by construction of the case.
-  const pusherAp = CASE_PUSHER_D / 2 + 0.3 / UNIT_MM;
+  // The three openings. The pusher's offset is passed rather than assumed
+  // zero: §170 solved ALARM_PUSH_AZ so the press line runs through the
+  // centre and '_pushBase·perp\u2019 is 0 exactly on this tree, but it is a LIVE
+  // quantity tubeAt already consumes, and a window centred on one radius is
+  // wrong the moment the two stop agreeing. Aps from the same expressions
+  // tubeAt builds the sleeves with (bore + G.TUBE_WALL).
+  const pusherAp = CASE_PUSHER_D / 2 + G.TUBE_WALL;
   const pushOff = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;
   const bores = [
-    { az: norm(stemAngle), ap: tubeAp, z: Z_KEYLESS, off: 0 },
-    { az: norm(alarmStemAngle), ap: tubeAp, z: alarmSpinner.position.z, off: 0 },
-    { az: norm(ALARM_PUSH_AZ), ap: pusherAp, z: alarmPusherGroup.position.z, off: pushOff },
+    { az: norm(stemAngle), ap: CASE_TUBE_AP, z: Z_KEYLESS, off: 0, walls: [CASE_R_IN, CASE_R_OUT] },
+    { az: norm(alarmStemAngle), ap: CASE_TUBE_AP, z: alarmSpinner.position.z, off: 0, walls: [CASE_R_IN, CASE_R_OUT] },
+    { az: norm(ALARM_PUSH_AZ), ap: pusherAp, z: alarmPusherGroup.position.z, off: pushOff, walls: [R_BORE_BACK, CASE_R_OUT] },
   ];
-  const regions = arcs.map(([a, b]) => ({ a0: a - pad, a1: b + pad, bores: [] }));
+  // Group overlapping windows into regions. Two windows a full turn apart in
+  // representation are the same metal on two branches (the alarm opening
+  // measured [358°, 362°] against its own window's [−4.3°, +4.3°]), so the
+  // shift that makes them overlap is CARRIED into the merge.
+  const regions = [];
   for (const bore of bores) {
-    const { a0: w0, a1: w1 } = boreWindow(bore.az, bore.ap, bore.off);
-    // The window and its host arc may be written a full turn apart — the
-    // alarm opening measures as [358.0°, 362.0°] while its own bore window is
-    // [−4.3°, +4.3°], the same metal on two branches. So the shift that makes
-    // them overlap has to be CARRIED into the merge; taking min/max on the raw
-    // numbers spanned 366.7° and computed the bearing as negative.
+    const { a0: w0, a1: w1 } = boreWindow(bore.az, bore.ap, bore.off, bore.walls);
     let host = null, shift = 0;
     for (const R of regions) {
       for (const k of [-TWO_PI, 0, TWO_PI]) {
-        if (w0 + k < R.a1 + pad && w1 + k > R.a0 - pad) { host = R; shift = k; break; }
+        if (w0 + k < R.a1 && w1 + k > R.a0) { host = R; shift = k; break; }
       }
       if (host) break;
     }
     const b0 = w0 + shift, b1 = w1 + shift;
-    if (!host) { host = { a0: b0 - pad, a1: b1 + pad, bores: [] }; regions.push(host); }
-    host.a0 = Math.min(host.a0, b0 - pad);
-    host.a1 = Math.max(host.a1, b1 + pad);
-    host.bores.push({ a0: b0, a1: b1, z1: bore.z - bore.ap, z2: bore.z + bore.ap });
+    if (!host) { host = { a0: b0, a1: b1, bores: [] }; regions.push(host); }
+    host.a0 = Math.min(host.a0, b0);
+    host.a1 = Math.max(host.a1, b1);
+    host.bores.push({ a0: b0, a1: b1, z1: bore.z - bore.ap, z2: bore.z + bore.ap,
+                      onLedge: bore.z - bore.ap < PLATE_RIM.front && bore.z + bore.ap > PLATE_RIM.front });
   }
   regions.sort((x, y) => x.a0 - y.a0);
   // Walk the circle once, emitting whole sectors between the regions and the
-  // relieved/bored pieces inside them.
+  // bored pieces inside them. (The RELIEVED kind is gone with the seat it
+  // relieved — a region is exactly a union of overlapping windows, so every
+  // elementary piece inside one is covered by at least one window.)
   const out = [];
   let cursor = regions.length ? regions[0].a0 : 0;
   const start = cursor;
   for (const R of regions) {
     if (R.a0 > cursor + 1e-9) out.push({ kind: 'whole', a0: cursor, a1: R.a0 });
-    // Two bores may share an arc, and here two do: the alarm crown's window
-    // and the alarm pusher's overlap by 5.6°, and their z windows are DISJOINT
-    // (the crown at z −7.531..−0.669, the pusher at 5.049..9.799). Emitting one
-    // bored piece per bore stacks two solids in that arc, and each one's metal
-    // FILLS the other's hole — measured, that is why `Alarm crown ⇄ Case` and
-    // `Alarm switch ⇄ Case` both still read as contacting after the first cut:
-    // each stem was crossing the sector the OTHER bore had left whole.
-    //   So the arc is swept ONCE. Every window end is a breakpoint, and each
-    // elementary piece is bored with the union of the windows covering it: a
-    // piece with two holes is one body of metal in THREE bands, not two bodies
-    // with one hole each. Windows that do overlap in z merge into one hole,
-    // because a wall cannot have two holes where it has one.
+    // Two bores may share an arc with DISJOINT z windows (the alarm crown's
+    // and the pusher's overlap in azimuth). The arc is swept ONCE: every
+    // window end is a breakpoint, and each elementary piece is bored with
+    // the union of the windows covering it — a piece with two holes is one
+    // body of metal in THREE bands, not two bodies with one hole each.
+    // Windows that do overlap in z merge into one hole, because a wall
+    // cannot have two holes where it has one.
     const xs = [...new Set([R.a0, R.a1, ...R.bores.flatMap((b) => [b.a0, b.a1])])]
       .filter((x) => x > R.a0 - 1e-9 && x < R.a1 + 1e-9).sort((p, q) => p - q);
     for (let i = 0; i + 1 < xs.length; i++) {
@@ -26574,7 +26705,14 @@ const CASE_SECTORS = (() => {
       const mid = (a0 + a1) / 2;
       const wins = R.bores.filter((b) => b.a0 <= mid && b.a1 >= mid)
         .map((b) => [b.z1, b.z2]).sort((p, q) => p[0] - q[0]);
-      if (!wins.length) { out.push({ kind: 'relieved', a0, a1 }); continue; }
+      if (!wins.length) {
+        // Structurally unreachable for a union of overlapping windows; if a
+        // future edit breaks that, fail loudly rather than emit a kind the
+        // builder no longer has.
+        console.warn(`§186: an uncovered piece inside a bore region (${(a0 * 180 / Math.PI).toFixed(1)}°..${(a1 * 180 / Math.PI).toFixed(1)}°) — the region merge is broken`);
+        out.push({ kind: 'whole', a0, a1 });
+        continue;
+      }
       const windows = [wins[0].slice()];
       for (const w of wins.slice(1)) {
         const last = windows[windows.length - 1];
@@ -26585,46 +26723,54 @@ const CASE_SECTORS = (() => {
     cursor = R.a1;
   }
   if (start + TWO_PI > cursor + 1e-9) out.push({ kind: 'whole', a0: cursor, a1: start + TWO_PI });
-  // WHAT THE PLATE STILL STANDS ON. The seat exists to carry the rim, so the
-  // relief has to answer for what it leaves — stated here, at the cut, rather
-  // than assumed to be fine elsewhere (TODO 91 asked for exactly this
-  // arithmetic and named a fraction-of-the-ring threshold as the thing it did
-  // NOT have).
-  //
-  // The bound is kinematic, not a stress one. A plate this size weighs
-  // milligrams and no land here is within orders of magnitude of a bearing
-  // limit, so "keep n% of the ring" would be a number that looked right — the
-  // bug rule 1 exists to refuse. What a rim seat must actually do is stop the
-  // plate from ROCKING, and it does that exactly when the lands it leaves
-  // SURROUND the axis: if some diameter has every land on one side of it, the
-  // plate tips about that diameter and the seat is a hinge. That is one
-  // measurement — the widest gap between consecutive lands, which must stay
-  // under half a turn.
-  //
-  // And a land narrower than the seat is deep is a tooth, not a bearing
-  // surface: the same width SPLIT is derived from, applied to what survives
-  // rather than to what is cut.
-  const lands = out.filter((s) => s.kind === 'whole').map((s) => [s.a0, s.a1]).sort((x, y) => x[0] - y[0]);
-  const bearingFrac = lands.reduce((t, [a, b]) => t + (b - a), 0) / TWO_PI;
-  const narrow = lands.filter(([a, b]) => b - a < SPLIT - 1e-9);
-  if (narrow.length)
-    console.warn(`TODO 91: the interrupted seat leaves ${narrow.length} land(s) narrower than the `
-      + `${(SPLIT * rSeat).toFixed(3)} it bears radially — narrowest ${(Math.min(...narrow.map(([a, b]) => b - a)) * rSeat).toFixed(3)} `
-      + 'around the rim, which is a tooth and not a bearing surface');
-  let maxGap = 0;
-  for (let i = 0; i < lands.length; i++) {
-    const next = lands[(i + 1) % lands.length];
-    const gap = (i + 1 < lands.length ? next[0] : next[0] + TWO_PI) - lands[i][1];
-    maxGap = Math.max(maxGap, gap);
+  // WHAT THE MOVEMENT STILL STANDS ON — §186's re-key of the old TODO 91
+  // arithmetic (that item closed with the seat it measured). The mount must
+  // stop the plate from ROCKING, and it does that exactly when its supports
+  // SURROUND the axis: the supports are the ledge's uncut arcs (the ledge is
+  // interrupted only where a crown's window straddles its plane) UNION the
+  // three clamp stations, which press the rim down wherever they stand. The
+  // measurement is the widest angular gap between consecutive supports,
+  // which must stay under half a turn — and with three clamp screws 120°
+  // apart it is trivially satisfied, which is why they are asserted rather
+  // than trusted: delete two screws and this line is what notices.
+  {
+    const ledgeCuts = [];
+    for (const R of regions) {
+      for (const b of R.bores) if (b.onLedge) ledgeCuts.push([norm(b.a0), norm(b.a0) <= norm(b.a1) ? norm(b.a1) : norm(b.a1) + TWO_PI]);
+    }
+    // Support intervals: the complement of the cuts, plus the stations as
+    // zero-width supports.
+    const supports = CASE_CLAMP_AZ.map((a) => [norm(a), norm(a)]);
+    const cuts = ledgeCuts.sort((x, y) => x[0] - y[0]);
+    let edge = 0;
+    for (const [c0, c1] of cuts) {
+      if (c0 > edge) supports.push([edge, c0]);
+      edge = Math.max(edge, c1);
+    }
+    if (edge < TWO_PI) supports.push([edge, TWO_PI]);
+    supports.sort((x, y) => x[0] - y[0]);
+    let maxGap = 0;
+    for (let i = 0; i < supports.length; i++) {
+      const next = supports[(i + 1) % supports.length];
+      const gap = (i + 1 < supports.length ? next[0] : next[0] + TWO_PI) - supports[i][1];
+      maxGap = Math.max(maxGap, gap);
+    }
+    if (!supports.length || maxGap >= Math.PI)
+      console.warn(`§186: the mount's supports leave a ${(maxGap * 180 / Math.PI).toFixed(1)}° gap — half a `
+        + 'turn or more unsupported means some diameter has every support on one side of it, and the movement rocks about it');
+    // And a ledge land narrower than the ledge is deep is a tooth, not a
+    // bearing surface — the old seat's rule at the ledge's own depth.
+    const depth = (R_BORE_BACK - CASE_R_IN) / CASE_R_IN;
+    const narrow = supports.filter(([a, b]) => b > a && b - a < depth - 1e-9);
+    if (narrow.length)
+      console.warn(`§186: ${narrow.length} ledge land(s) narrower than the ${(R_BORE_BACK - CASE_R_IN).toFixed(3)} u `
+        + 'the ledge bears radially — a tooth, not a bearing surface');
   }
-  if (!lands.length || maxGap >= Math.PI)
-    console.warn(`TODO 91: the interrupted seat's ${lands.length} land(s) leave a ${(maxGap * 180 / Math.PI).toFixed(1)}° gap `
-      + '— half a turn or more of unsupported rim means some diameter has every land on one side of it, '
-      + `and the plate rocks about it (${(bearingFrac * 100).toFixed(1)}% of the ring retained)`);
   return out;
 })();
 
 const CASE_DIMS = (() => {
+
   // BOTH ends measured from the metal, not constanted: the crystal's
   // underside clears the hands' front-most metal by CASE_CRYSTAL_CLEAR, and
   // the back wall's inner face clears the movement's back-most metal (the
@@ -26651,21 +26797,39 @@ const CASE_DIMS = (() => {
   const zCrystOuter = zCrystInner - CASE_CRYSTAL_T;
   return {
     UNIT_MM,
-    R_IN: CASE_R_IN, R_OUT: CASE_R_OUT, plateR,
-    R_SH: plateR - 1 / UNIT_MM,           // the plate rim's seat: 1 mm of bearing under the edge
-    R_FL: CASE_R_IN - 2.0 / UNIT_MM,      // flange inner edge — 2 mm of thread-bearing wall
-    R_SCR: CASE_R_IN - 1.0 / UNIT_MM,     // screw circle: centred on the flange
-    R_G: CASE_R_IN + 0.5 / UNIT_MM,       // gasket groove, centred in the band annulus
-    R_WIN: CASE_R_IN - 2.3 / UNIT_MM,     // window bore — inside the flange, rim for the lip
-    R_PLATE: CASE_R_OUT - 0.3 / UNIT_MM,  // plate edge, a hair inside the band's
+    R_IN: CASE_R_IN, R_OUT: CASE_R_OUT,
+    // §186 — the stepped midcase's other two working radii, derived at the
+    // ~1810 block with the rest of the radial chain.
+    R_OUT_FRONT: CASE_R_OUT_FRONT, R_BORE_BACK,
+    // §3's caseback stack, re-based whole onto the wide back bore (§186):
+    // every one of these stood a fixed offset off CASE_R_IN, and the offsets
+    // are the constraint — the radii just followed the bore that carried
+    // them. The old R_SCR ≡ plateR coincidence dissolves with the move.
+    R_FL: R_BORE_BACK - 2.0 / UNIT_MM,      // flange inner edge — 2 mm of thread-bearing wall
+    R_SCR: R_BORE_BACK - 1.0 / UNIT_MM,     // screw circle: centred on the flange
+    R_G: R_BORE_BACK + 0.5 / UNIT_MM,       // gasket groove: same stand-off into the (1 mm) band annulus as before
+    R_WIN: R_BORE_BACK - 2.3 / UNIT_MM,     // window bore — inside the flange, rim for the lip
+    R_PLATE: CASE_R_OUT - 0.3 / UNIT_MM,    // plate edge, a hair inside the band's
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
     // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
     R_BEZEL_IN: dialRadius - 1 / UNIT_MM,
     R_CRYST: dialRadius - 0.5 / UNIT_MM,  // crystal edge trapped under the lip
     z0, zMidBack, zFlangeIn,
-    zSeatTop: PLATE_RIM.front,                              // the plate's dial-side face, MEASURED
-    zSeatBot: PLATE_RIM.front - 0.8 / UNIT_MM,              // seat shoulder 0.8 mm tall
-    plateReach: PLATE_RIM.reach,   // ...and its widest metal, which is what a tube has to miss
+    // §186 — THE LEDGE: the plane the rim's measured underside face lands
+    // on, coincident by construction (§3's measured-face pattern; the old
+    // seat step and its R_SH/zSeatBot are deleted with the bearing they
+    // described). zStep is the midcase step, derived beside the sectors.
+    zLedge: PLATE_RIM.front,
+    zStep: CASE_Z_STEP,
+    rimBack: PLATE_RIM.back,       // the rim's measured back face — what a clamp head seats on
+    // The standoff every tube's inboard end is cut to: the notch floor's own
+    // swell rule (the working outline plus its extrude bevel — the exact
+    // number the pre-§186 case measured as the plate's global reach, now
+    // derived because the global reach is the RIM's). PLATE_RIM verifies the
+    // measured floors against it at boot.
+    tubeClearR: plateR * (1 + G.PLATE_BEVEL_F),
+    // §186 — the clamp screws (derived at the ~1810 block, built by makeCase).
+    clampN: CASE_CLAMP_N, clampR: R_CLAMP, clampAz: CASE_CLAMP_AZ, clampEng: CASE_CLAMP_ENG,
     zCrystInner, zCrystOuter,
     zBezelOuter: zCrystOuter - 0.25 / UNIT_MM,  // bezel lip over the crystal edge
     zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
@@ -26790,16 +26954,21 @@ const SCHEMATIC = { proxies: [], on: false };
     // Asserted at the end of the §71/§78 block, not merely intended.
     SCHEMATIC.occluderFills = [];
     SCHEMATIC.baseFills = [];
+    // §186 — the occluder follows the plate's grown silhouette: the mounting
+    // rim IS base-plate metal, so the fills run to BASE_RIM_R (a plain
+    // circle — the two crown notches are a few degrees each, and this is a
+    // drawing convention, not a claim the instruments read: every piece here
+    // is flagged userData.schematic).
     for (const zf of [1, -1]) { // backPlate local: the slab spans ±1 about its centre
-      const f = new THREE.Mesh(new THREE.CircleGeometry(plateR, 96), occMat);
+      const f = new THREE.Mesh(new THREE.CircleGeometry(BASE_RIM_R, 96), occMat);
       f.position.z = zf;
       if (zf < 0) f.rotation.x = Math.PI; // face outward
       SCHEMATIC.baseFills.push(f);
-      const rim = new THREE.Line(circGeo(plateR, 96), rimMat);
+      const rim = new THREE.Line(circGeo(BASE_RIM_R, 96), rimMat);
       rim.position.z = zf;
       for (const o of [f, rim]) { o.userData.schematic = true; o.layers.set(1); backPlate.add(o); }
     }
-    const wall = new THREE.Mesh(new THREE.CylinderGeometry(plateR, plateR, 2, 96, 1, true), occMat);
+    const wall = new THREE.Mesh(new THREE.CylinderGeometry(BASE_RIM_R, BASE_RIM_R, 2, 96, 1, true), occMat);
     wall.rotation.x = Math.PI / 2;
     wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
     SCHEMATIC.baseFills.push(wall);
@@ -26820,8 +26989,9 @@ const SCHEMATIC = { proxies: [], on: false };
     // One derivation, two tiers: every station below is CASE_DIMS, the same
     // object the solid case is built from — the drawing cannot drift from
     // the metal because there is nothing to drift FROM.
-    const { R_IN, R_OUT, R_BEZEL_IN, R_CRYST, R_FL, R_SCR, R_WIN, R_PLATE,
-            z0, zMidBack, zFlangeIn, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, zSeatTop } = CASE_DIMS;
+    const { R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_BEZEL_IN, R_CRYST, R_FL, R_SCR, R_WIN, R_PLATE,
+            z0, zMidBack, zFlangeIn, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+            zLedge, zStep, rimBack, clampR, clampAz } = CASE_DIMS;
     const rim = SCHEMATIC.rimMat;
     const seg = (a, b) => new THREE.BufferGeometry().setFromPoints([a, b]);
     const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -26829,16 +26999,32 @@ const SCHEMATIC = { proxies: [], on: false };
     caseGroup.name = 'caseLines';
     const put = (o) => { o.userData.schematic = true; o.layers.set(1); caseGroup.add(o); return o; };
 
-    for (const [r, z] of [[R_OUT, zMidBack], [R_OUT, zBandFront], [R_IN, zFlangeIn], [R_IN, zBandFront],
+    // §186 — the drawing follows the stepped metal: the back band at R_OUT
+    // down to the midcase step, the front section at R_OUT_FRONT below it,
+    // the wide back bore at R_BORE_BACK down to the ledge, the front bore at
+    // R_IN below that. Same derivation, two tiers — every station is
+    // CASE_DIMS, so the lines cannot drift from the solid.
+    for (const [r, z] of [[R_OUT, zMidBack], [R_OUT, zStep], [R_OUT_FRONT, zStep], [R_OUT_FRONT, zBandFront],
+                          [R_BORE_BACK, zFlangeIn], [R_BORE_BACK, zLedge], [R_IN, zLedge], [R_IN, zBandFront],
                           [R_FL, zMidBack], [R_FL, zFlangeIn],
                           [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter],
-                          [R_BEZEL_IN, zBezelOuter], [R_OUT, zBezelOuter]]) {
+                          [R_BEZEL_IN, zBezelOuter], [R_OUT_FRONT, zBezelOuter]]) {
       const c = new THREE.Line(circGeo(r, 96), rim); c.position.z = z; put(c);
     }
-    // Band walls: four generators at the cardinal azimuths.
-    for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2])
+    // Band walls: four generators at the cardinal azimuths, one run per
+    // section (the step is where they change radius).
+    for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
       put(new THREE.Line(seg(V3(Math.cos(a) * R_OUT, Math.sin(a) * R_OUT, zMidBack),
-                             V3(Math.cos(a) * R_OUT, Math.sin(a) * R_OUT, zBandFront)), rim));
+                             V3(Math.cos(a) * R_OUT, Math.sin(a) * R_OUT, zStep)), rim));
+      put(new THREE.Line(seg(V3(Math.cos(a) * R_OUT_FRONT, Math.sin(a) * R_OUT_FRONT, zStep),
+                             V3(Math.cos(a) * R_OUT_FRONT, Math.sin(a) * R_OUT_FRONT, zBandFront)), rim));
+    }
+    // §186 — the clamp screws, drawn as the back screws are: head circles at
+    // their own stations on the rim's back face.
+    for (const a of clampAz) {
+      const s = new THREE.Line(circGeo(CASE_SCREW_HEAD_D / 2, 24), rim);
+      s.position.set(Math.cos(a) * clampR, Math.sin(a) * clampR, rimBack); put(s);
+    }
 
     // Screw-fixed exhibition back (owner call, over the thread): the plate's
     // edge and the window's glaze line at the back face, the screws as their
@@ -26871,7 +27057,7 @@ const SCHEMATIC = { proxies: [], on: false };
     const LUG_SPAN = CASE_DIMS.lugSpan;
     for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
       const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
-      const zLug = zSeatTop + 1.5 / UNIT_MM + 0.5 / UNIT_MM; // the solid lugs' own station
+      const zLug = zLedge + 1.5 / UNIT_MM + 0.5 / UNIT_MM; // the solid lugs' own station (lugW/2 + 0.5 mm above the ledge plane)
       for (const s of [-1, 1]) {                   // the two lug flanks: each rooted
         const off = s * LUG_SPAN / 2;              // 0.8 mm past the chord-depth
         const root = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0)) - 0.8 / UNIT_MM; // surface at its
@@ -34597,7 +34783,8 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
   //    cased watch gets its own envelope here. The ceiling is the stack
   //    budgeted, not the current number written down: the movement's own
   //    12 mm envelope + the front's 0.3 clearance + 0.6 crystal + 0.25 lip +
-  //    0.3 seat step (1.45) + the back's 0.6 clearance + 1.0 flange + 1.2
+  //    0.3 bezel step (1.45 — the zBandFront step where the bezel seats on
+  //    the band, not §186's deleted plate seat) + the back's 0.6 clearance + 1.0 flange + 1.2
   //    screw-fixed plate (2.8) ≈ 16.25 — call it 16. (The screw-down
   //    exhibition back this replaced budgeted 19.2; dropping the thread
   //    stack was the owner's call, "very aggressive" on thickness, and the
