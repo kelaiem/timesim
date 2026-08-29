@@ -4,8 +4,8 @@
 
 # The instruments
 
-167 scripts. **73 are ACCEPTANCE tests** — they decide and exit non-zero.
-**94 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+166 scripts. **73 are ACCEPTANCE tests** — they decide and exit non-zero.
+**93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -13,7 +13,6 @@ when a question was asked; the summaries are what it answered.
 
 | instrument | § | kind | what it answers, in its own words |
 |---|---|---|---|
-| `_boot-diag.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `battery-checks.mjs` |  | report | §152 — WHAT A CHECK COMPUTES, split from the harness that schedules it. |
 | `battery-split.mjs` |  | report | §127 — the battery's partition atom, and the reassembly that makes it legal. |
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
