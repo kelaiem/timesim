@@ -4,7 +4,7 @@
 
 # The instruments
 
-154 scripts. **61 are ACCEPTANCE tests** — they decide and exit non-zero.
+160 scripts. **67 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -139,7 +139,9 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |
 | `probe-alarm-under-plate.mjs` |  | report | Can the alarm striking module be LOWERED UNDER the three-quarter plate? |
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
+| `probe-back-envelope.mjs` |  | acceptance | WHAT STANDS ABOVE THE THREE-QUARTER PLATE — the back envelope, per member and per station, SWEPT over the pose net. |
 | `probe-bearing-candidates.mjs` |  | report | TODO 109 step 1 — WHO HOLDS THESE PARTS? The scan that has to run before a single `userData.bearings` line is written. |
+| `probe-bezel-cover.mjs` |  | acceptance | HOW NARROW CAN THE BEZEL GO — the join-hiding requirement, measured instead of stated. |
 | `probe-boot-warns.mjs` |  | report | What boot says. Rule 6 wants silence; this is the fast way to ask, without standing up the whole battery just to read a warning. |
 | `probe-bore-cut.mjs` |  | report | TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut? The arbor's own side edges cross the disc's surface twice, at exactly the disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it is supposed to pass through freely. That can only mean cap triangles span the hole. This counts them: every triangle whose centroid falls inside the bore radius is metal where the drawing says air. `src/geometry.js` already records this failure once — an `absarc` at `curveSegments: 1` collapsing to a single segment — and replaced it with an explicit 64-gon. This asks whether that replacement finished the job. REPORT. |
 | `probe-case-closed.mjs` |  | report | IS EVERY CASE BODY A SOLID? Boundary edges per mesh — 0 on a closed one, and the locations printed when it is not. |
@@ -153,7 +155,11 @@ when a question was asked; the summaries are what it answered.
 | `probe-fork-blank.mjs` |  | acceptance | TODO 98 — is the pallet fork ONE piece of metal, and is it one thickness? A Swiss lever is a single blank: boss, both pallet arms, the lever and the fork end are cut in one outline and lapped to one thickness, with only the ruby stones and the guard dart separate. This REPORTS what the movement actually builds — the unit's steel members, the z-height of each, the joint steps between them, the two arms' symmetry, and the one thing the eye cannot see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork body top") matches the fork's real reach. |
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
+| `probe-hand-stack.mjs` |  | acceptance | THE HAND STACK, MEASURED — every indicator's blade/boss z, the crystal chain from live constants, the alarm lane over poses, and the section table a thinning would be judged by. |
+| `probe-interplate-demand.mjs` |  | acceptance | WHAT PINS THE THREE-QUARTER PLATE'S UNDERSIDE — the inter-plate z demand, per station, and the wheel-in-bore inventory. |
+| `probe-ledge-occupancy.mjs` |  | acceptance | WHAT OCCUPIES THE CANDIDATE RIM-LEDGE ANNULUS — the redesign's mounting band, scanned over the pose net. |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
+| `probe-lug-geom.mjs` |  | acceptance | THE LUGS, READ OFF THE METAL — and the across-the-lugs assert's hand-copied term checked against the geometry it copies. |
 | `probe-mesh-closedness-census.mjs` |  | report | TODO 106 — HOW MUCH of the movement is open? Every parity witness in this repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and TODO 27's family) counts ray crossings and is therefore only valid against a CLOSED surface. Nothing measures how many surfaces qualify. |
 | `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
