@@ -8633,7 +8633,24 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 117 + the merge of main's TODO 112/113 landing; 56 units,
+// Baseline (§188 — the hands cut from stock; 56 units, 12 poses):
+// 4245145891
+//   moved from 3900833778 (main's value after TODO 117 re-posed the alarm
+//   setting arbor and TODO 116 re-phased the going blanks) deliberately:
+//   §188 moves geometry in five units at once — the central hands' blades
+//   drop from 0.64-0.75 mm sections to HAND_STOCK_MM (0.20) with their
+//   plan widths held, their bosses shrink to the 0.4 mm pipe-land floor,
+//   the alarm hand goes to full scale (the 0.5 z-scale retired), the
+//   reserve well returns to SUBDIAL_RECESS depth with its hand back on
+//   wellHandZ, and handsGroupZOffset spends the freed headroom (3.4 →
+//   2.6), pulling the whole front stack — hour tube, hands, crystal — in.
+//   Dial, Hour wheel, Alarm disc, Small seconds and Power reserve all
+//   re-box. (§188's first cut recorded 647756545 against pre-TODO-116/117
+//   main; rebasing onto those landings made that number describe a tree
+//   that no longer exists, so it was re-measured here — the rule the entry
+//   below writes down: measure the tree you have, never inherit a
+//   parent's.)
+// Previous baseline (TODO 117 + the merge of main's TODO 112/113 landing; 56 units,
 // 12 poses):
 // 3900833778
 //   moved from 3397006610 by TWO changes at once, which is why it is measured
