@@ -26769,6 +26769,172 @@ const CASE_SECTORS = (() => {
   return out;
 })();
 
+// §187 — THE BACK ENVELOPE, measured at boot: max z per radial bin over the
+// whole movement, which is the surface the caseback's glass hugs. The number
+// a glass hugs is not a constant — it is whatever the tallest metal is,
+// wherever it is (a rest-pose survey already lied once at scale: three
+// records named the alarm barrel as the back-most metal after §112 had
+// moved it under the plate — TODO 114). And it cannot be swept here:
+// setPose lives thousands of lines below this point (TODO 111's structural
+// note), so boot measures the BUILD POSE and adds DECLARED allowances for
+// the movers whose pose-net maximum exceeds it. What keeps the declaration
+// honest is probe-back-envelope in CI: it sweeps the full net and fails if
+// any bin's swept measurement tops the declared envelope — a mover that
+// grows reds CI, not the glass. (The §186 clamp screws and the case's own
+// metal are NOT in this scan — the case does not exist yet, which is what
+// lets the scan run at all — so any case-borne metal the glass must clear
+// is an ANALYTIC term at the consumer, derived from the same constants
+// that build it.)
+//
+// EDGES, not vertices, for the bin assignment: z is linear along an edge,
+// so a bin's max-z is exact from the edge's endpoints plus its crossings of
+// the bin-boundary radii (the quadratic in t) — a radial member spans bins
+// its vertices never visit, probe-ledge-occupancy's own lesson.
+const BACK_SWEPT_ALLOWANCE = new Map([
+  // The one unit whose pose-net z-max exceeds its build pose, measured by
+  // probe-back-envelope's build-pose product: the alarm link's beak rides
+  // to 13.976 at `alarm` f=0 against 13.877 at build (+0.099). Declared
+  // 0.12 — rounded UP past the excess so no clearance row the glass
+  // derivation produces can sit at exactly CLEAR_MARGIN and flicker.
+  ['Alarm link', 0.12],
+]);
+// ...and the movers that MIGRATE RADIALLY — metal that stands in bins its
+// build pose leaves empty, which no per-unit z allowance can express
+// (standing rule 5's declared-swept-footprint pattern, in r–z instead of
+// XY). Every row is measured by the same probe product and gated by the
+// same probe clause; each z is the unit's swept maximum over the row's
+// band, rounded up past margin flicker.
+const BACK_SWEPT_REGIONS = [
+  // The strike swing carries the hammer head outward to r 42.0 at z 10.898
+  // — at build it parks at r 35.4–37, leaving bins out to 42 with nothing
+  // above the three-quarter plate.
+  { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 10.92 },
+  // The switch cluster's press/castellation swing spreads its metal across
+  // r 17.3–31.3 (measured swept 10.907 at r 17.3–18.1 against build 9.242;
+  // 13.157 at r 30.4–31.3 against build 11.757). One row at the unit's
+  // swept ceiling — conservative in the inner bins, and free: the whole
+  // band lies inside the glass's raised step.
+  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 13.16 },
+  // The striking wheel's rotation is not axisymmetric at bin scale:
+  // swept 10.421 at r 33.7–34.6 against build 10.021.
+  { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: 10.43 },
+];
+const BACK_ENVELOPE = (() => {
+  const NBIN = 60;
+  const rSpan = CASE_R_OUT;   // the annulus the case will occupy is part of the question (the ring's skirt descends inside the bore)
+  const bins = new Array(NBIN).fill(-Infinity);
+  const owners = new Array(NBIN).fill(null);
+  // Per-mesh unit attribution, so each sample carries its unit's declared
+  // allowance: score = z + allowance(unit). The bin keeps the max SCORE —
+  // exact for the model "each unit's metal may stand its allowance above
+  // its build pose", and conservative for everything with no row (0).
+  const unitByObj = new Map(labelEntries.map((e) => [e.obj, e.name]));
+  const unitOf = (o) => { for (let n = o; n; n = n.parent) { const u = unitByObj.get(n); if (u) return u; } return null; };
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
+  movement.updateMatrixWorld(true);
+  movement.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || o.userData.casePart || !o.geometry?.attributes?.position) return;
+    const unit = unitOf(o);
+    const allow = (unit && BACK_SWEPT_ALLOWANCE.get(unit)) || 0;
+    const p = o.geometry.attributes.position;
+    const idx = o.geometry.index;
+    const n = idx ? idx.count : p.count;
+    const take = (pt) => {
+      const r = Math.hypot(pt.x, pt.y);
+      if (r >= rSpan) return;
+      const s = Math.floor(r / rSpan * NBIN);
+      const score = pt.z + allow;
+      if (score > bins[s]) { bins[s] = score; owners[s] = unit || o.name || '(unlabelled)'; }
+    };
+    for (let t = 0; t < n; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const i0 = idx ? idx.getX(t + e) : t + e;
+        const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
+        a.fromBufferAttribute(p, i0); o.localToWorld(a);
+        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        take(a);
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const A2 = dx * dx + dy * dy;
+        if (A2 > 1e-12) {
+          const B2 = a.x * dx + a.y * dy;
+          // Only the bin walls the edge's own radial range can cross: r(t)
+          // is convex along the edge, so the range is [min at the interior
+          // stationary point or an endpoint, max at an endpoint].
+          const ra = Math.hypot(a.x, a.y), rb = Math.hypot(b.x, b.y);
+          let rLo = Math.min(ra, rb);
+          const tStar = -B2 / A2;
+          if (tStar > 0 && tStar < 1) rLo = Math.min(rLo, Math.hypot(a.x + tStar * dx, a.y + tStar * dy));
+          const rHi = Math.max(ra, rb);
+          const wLo = Math.max(1, Math.ceil(rLo / rSpan * NBIN));
+          const wHi = Math.min(NBIN - 1, Math.floor(rHi / rSpan * NBIN));
+          for (let w = wLo; w <= wHi; w++) {
+            const rw = w / NBIN * rSpan;
+            const C2 = a.x * a.x + a.y * a.y - rw * rw;
+            const disc = B2 * B2 - A2 * C2;
+            if (disc <= 0) continue;
+            const sq = Math.sqrt(disc);
+            for (const t0 of [(-B2 - sq) / A2, (-B2 + sq) / A2]) {
+              for (const dt of [-1e-4, 1e-4]) {
+                const tt = t0 + dt;
+                if (tt > 0 && tt < 1) take(q.copy(a).lerp(b, tt));
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+  // The probe's two controls, mirrored as boot warns (rule 6 — silence when
+  // healthy): the alarm link tower is the envelope's governor and must be
+  // seen; the alarm barrel lives under the plate since §112 and must not
+  // stand above it. Either failing means the scan measured the wrong thing
+  // — and a glass derived from a wrong scan is metal through the movement.
+  {
+    const tqe = labelEntries.find((e) => e.name === 'Three-quarter plate');
+    let tqTop = -Infinity;
+    const v = new THREE.Vector3();
+    if (tqe) tqe.obj.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > tqTop) tqTop = v.z; }
+    });
+    const zOf = (name) => {
+      const e = labelEntries.find((x) => x.name === name);
+      let z = -Infinity;
+      if (e) e.obj.traverse((o) => {
+        if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+        const p = o.geometry.attributes.position;
+        for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > z) z = v.z; }
+      });
+      return z;
+    };
+    const tower = zOf('Alarm link'), barrel = zOf('Alarm barrel');
+    if (!(tower > 13.0))
+      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)} — the envelope's `
+        + 'governor (build 13.877) was not seen, and a glass derived from this scan is unfounded');
+    if (barrel > tqTop)
+      console.warn(`§187: the alarm barrel reads ${barrel.toFixed(3)}, above the three-quarter plate's measured top `
+        + `${tqTop.toFixed(3)} — §112 put it below; the scan or the tree is wrong`);
+  }
+  // Fold the declared region rows in: a bin's envelope is the max of what
+  // the build pose showed (plus its unit's z allowance) and every declared
+  // swept region overlapping it.
+  for (const reg of BACK_SWEPT_REGIONS) {
+    const sLo = Math.max(0, Math.floor(reg.r0 / rSpan * NBIN));
+    const sHi = Math.min(NBIN - 1, Math.ceil(reg.r1 / rSpan * NBIN) - 1);
+    for (let s = sLo; s <= sHi; s++) {
+      if (reg.z > bins[s]) { bins[s] = reg.z; owners[s] = `${reg.unit} (declared swept region)`; }
+    }
+  }
+  return {
+    NBIN, rSpan,
+    bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan,
+      z: z === -Infinity ? null : z, owner: owners[i] })),
+    allowances: [...BACK_SWEPT_ALLOWANCE.entries()].map(([unit, extra]) => ({ unit, extra })),
+    regions: BACK_SWEPT_REGIONS,
+  };
+})();
+
 const CASE_DIMS = (() => {
 
   // BOTH ends measured from the metal, not constanted: the crystal's
@@ -26848,6 +27014,11 @@ const CASE_DIMS = (() => {
     stemZ: Z_KEYLESS, alarmZ: alarmSpinner.position.z, pusherZ: alarmPusherGroup.position.z,
     lugSpan: CASE_LUG_SPAN,
     sectors: CASE_SECTORS,
+    // §187 — the measured back envelope (build-pose scan + declared swept
+    // allowances). Stage 1 plumbing: carried here and exposed for the
+    // instruments; the caseback derivation consumes it in the geometry
+    // landing.
+    backEnvelope: BACK_ENVELOPE,
   };
 })();
 const caseCrystalMat = new THREE.MeshPhysicalMaterial({
@@ -35473,6 +35644,9 @@ window.__clock = {
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
+  // §187 — the boot-measured back envelope (build-pose bins + declared
+  // swept allowances), for probe-back-envelope's declared≥swept gate.
+  backEnvelope: CASE_DIMS.backEnvelope,
   // §158 Gate 0 — THE RESERVE TRAIN DECLARES ITS OWN TEETH. `probe-reserve-mesh`
   // is built to refuse any silhouette reading whose gap count disagrees with the
   // DECLARED count, which needs a declaration from somewhere; it carried its own

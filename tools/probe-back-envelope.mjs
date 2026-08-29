@@ -36,6 +36,18 @@
 // (§112 put it at ≈5.4). A run failing either exits 2 — the scan measured
 // the wrong thing.
 //
+// §187 GATE — declared ≥ swept. When the tree under test exposes
+// `__clock.backEnvelope` (the boot-measured declaration the glass is built
+// from: build-pose bins + BACK_SWEPT_ALLOWANCE + BACK_SWEPT_REGIONS), this
+// probe re-measures the envelope over the full pose net IN THE
+// DECLARATION'S OWN BINNING and fails (exit 2) on any bin where swept
+// metal tops the declaration — a mover that grows or migrates reds CI
+// here, not the glass. Scoped to metal ABOVE the plate top: every glass
+// surface stands at least the ring's own stack above the three-quarter
+// plate's top face, so metal at or below it can never govern the glass,
+// and gating it would only make the declaration carry parts the glass
+// cannot meet.
+//
 // Run: node tools/probe-back-envelope.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -74,6 +86,11 @@ const res = await page.evaluate(async () => {
   }
   const NBIN = 60;                 // r-bins across [0, plateR·1.15]
   const rSpan = plateR * 1.15;
+  // §187 — the declaration under test, when the tree carries one. The gate
+  // histogram uses ITS binning, so the comparison is bin-for-bin.
+  const decl = clock.backEnvelope || null;
+  const declSwept = decl ? new Array(decl.NBIN).fill(-Infinity) : null;
+  const declOwner = decl ? new Array(decl.NBIN).fill(null) : null;
   const bins = new Array(NBIN).fill(-Infinity);
   const binOwner = new Array(NBIN).fill(null);
   // §187 — the build-pose histogram, recorded beside the swept one. The
@@ -104,11 +121,30 @@ const res = await page.evaluate(async () => {
           const b = Math.min(NBIN - 1, Math.floor(Math.hypot(v.x, v.y) / rSpan * NBIN));
           if (v.z > bins[b]) { bins[b] = v.z; binOwner[b] = e.name; }
           if (p.isBuild && v.z > binsBuild[b]) binsBuild[b] = v.z;
+          if (decl) {
+            const r = Math.hypot(v.x, v.y);
+            if (r < decl.rSpan) {
+              const db = Math.floor(r / decl.rSpan * decl.NBIN);
+              if (v.z > declSwept[db]) { declSwept[db] = v.z; declOwner[db] = e.name; }
+            }
+          }
         }
       });
     }
   }
+  // §187 gate rows: swept vs declared, in the declaration's bins.
+  const declFails = [];
+  if (decl) {
+    for (let b = 0; b < decl.NBIN; b++) {
+      if (declSwept[b] === -Infinity) continue;
+      const d = decl.bins[b].z;
+      if (d === null || declSwept[b] > d + 1e-6)
+        declFails.push({ r0: decl.bins[b].r0, r1: decl.bins[b].r1, swept: declSwept[b],
+          declared: d, owner: declOwner[b], declOwner: decl.bins[b].owner });
+    }
+  }
   return {
+    hasDecl: !!decl, declFails,
     plateTop, plateR, rSpan, poses: poses.length,
     units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose, zBuild: u.zBuild }))
       .sort((a, b) => b.zMax - a.zMax),
@@ -127,6 +163,21 @@ for (const b of res.bins) {
   console.log(`  r ${b.r0.toFixed(1).padStart(5)}..${b.r1.toFixed(1).padEnd(5)}  z ${b.zMax.toFixed(3).padStart(7)}  build ${b.zBuild === -Infinity ? '      —' : b.zBuild.toFixed(3).padStart(7)}  Δ ${(b.zBuild === -Infinity ? b.zMax - res.plateTop : b.zMax - b.zBuild).toFixed(3).padStart(6)}  daylight ${((b.zMax - res.plateTop) * MM).toFixed(2).padStart(5)} mm  ${b.owner}`);
 }
 
+// §187 GATE — declared ≥ swept, when the tree declares.
+let declOk = true;
+if (res.hasDecl) {
+  if (res.declFails.length) {
+    declOk = false;
+    console.log(`\n§187 GATE FAIL — ${res.declFails.length} bin(s) where the swept envelope tops the boot declaration:`);
+    for (const f of res.declFails)
+      console.log(`  r ${f.r0.toFixed(1)}..${f.r1.toFixed(1)}  swept ${f.swept.toFixed(3)} (${f.owner})  declared ${f.declared === null ? 'NOTHING' : f.declared.toFixed(3)} (${f.declOwner ?? '—'}) — grow the unit's allowance or region row, with the measurement`);
+  } else {
+    console.log('\n§187 GATE PASS: every swept bin sits at or under the boot declaration (build + allowances + regions)');
+  }
+} else {
+  console.log('\n(§187 gate skipped: this tree exposes no __clock.backEnvelope declaration)');
+}
+
 // CONTROLS — both directions.
 const tower = res.units.find((u) => u.name === 'Alarm link');
 const barrel = res.units.find((u) => u.name === 'Alarm barrel');
@@ -136,4 +187,4 @@ else console.log(`\nCONTROL PASS: alarm link tower found at ${tower.zMax.toFixed
 if (barrel) { ok = false; console.log(`CONTROL FAIL: the alarm barrel appears ABOVE the plate at ${barrel.zMax.toFixed(3)} — §112 put it below; the scan or the tree is wrong`); }
 else console.log('CONTROL PASS: the alarm barrel is not above the plate (§112 holds)');
 await browser.close(); srv.kill();
-process.exit(ok ? 0 : 2);
+process.exit(ok && declOk ? 0 : 2);
