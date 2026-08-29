@@ -1,3 +1,12 @@
+// WHAT STOOD IN THE OLD SEAT BAND — SUPERSEDED by §186, kept as the record.
+// Report. This measured the occupants of the pre-§186 interrupted seat's
+// annulus (r from plateR − 1 mm, in among the dial-side works) — the band
+// TODO 91 was about. §186 DELETED that seat: the movement mounts on a
+// rim-ledge at the back band's bore, outboard of everything this band held,
+// so this probe's subject no longer exists in the tree. For the shipped
+// mount, `probe-case-relief.mjs` (battery-riding acceptance) and
+// `probe-ledge-occupancy.mjs --accept` are the instruments. Kept because its
+// numbers are cited by TODO 91's closure and §186's record.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';

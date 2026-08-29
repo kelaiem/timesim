@@ -1,17 +1,23 @@
 // DOES ANYTHING STAND IN THE BAND'S METAL — AT ANY POSE THE MOVEMENT REACHES?
-// Acceptance. The band's openings (the seat relief, the two crown bores, the
-// pusher bore) are DERIVED at boot by scanning the movement for whatever
-// occupies the band's own volume. A boot scan sees one pose, and a mover is
-// somewhere else at every other: measured, `hackRodPin` sits at r 37.801..38.691
-// as the case is built — clear of the seat's 40.284 — and at 39.889..40.786 in
-// 33 of the 42 poses the battery visits, half a unit INSIDE it. The relief was
-// derived correctly and was still a claim about one pose.
+// Acceptance, and since §186 it rides the battery workflow (TODO 111 option 1:
+// this is the gate that holds the ANALYTIC sectors honest over the net). The
+// band's openings (the two crown bores, the pusher bore) are a DERIVATION now
+// — CASE_SECTORS cuts them from the three declared, pose-invariant bore lines
+// and nothing else, on the claim that the §186 case has no metal inboard of
+// CASE_R_IN at any pose. Boot holds that claim at ONE pose (the rule-5 reach
+// assert and the build-pose tripwire beside the sectors); this holds it over
+// the POSE NET: every axis at f ∈ {0, 0.5, 1}, entered canonically
+// (inspect.js's own enterAxis, so an axis cannot inherit the tail of the one
+// before it), plus the pose the page boots in. Any contact is a failure,
+// named on both sides.
 //
-// So this asks the question over the POSE NET rather than at the pose the
-// geometry happens to be built in: every axis at f ∈ {0, 0.5, 1}, entered
-// canonically (inspect.js's own enterAxis, so an axis cannot inherit the tail
-// of the one before it), plus the pose the page boots in. Any contact is a
-// failure, named on both sides.
+// The history that shaped it: the pre-§186 seat stood at plateR − 1 mm, in
+// among the dial-side works, and its relief was SCANNED at build pose —
+// measured, `hackRodPin` sat clear of that seat as the case was built and
+// half a unit inside it in 33 of the 42 poses the battery visits. The relief
+// was derived correctly and was still a claim about one pose. §186 moved the
+// bearing outboard of every mover; this probe is what says "every mover"
+// stays true.
 //
 // Its subject is the BAND and what is pressed into it — not the whole case. The
 // crystals and the back close the case in z and have no openings to get wrong,
@@ -43,11 +49,12 @@ const res = await page.evaluate(async () => {
 
   // The band and what is pressed into it. Named rather than taken off the
   // `casePart` flag, because the question is about the OPENINGS and every one
-  // of them is in these six bodies. A name that matches nothing THROWS: a stale
+  // of them is in these bodies. A name that matches nothing THROWS: a stale
   // roster would otherwise report a clean scan of no work — `resolveAxes`'
   // precedent, and the failure this whole file exists to refuse.
   const BAND = ['caseMiddle', 'caseCrownTubeSleeve', 'caseCrownTubeCollar',
-    'caseAlarmTubeSleeve', 'caseAlarmTubeCollar', 'casePusherBoreSleeve'];
+    'caseAlarmTubeSleeve', 'caseAlarmTubeCollar', 'casePusherBoreSleeve',
+    'caseClampScrew']; // §186 — three heads + three shafts through the rim; six meshes, one name
   const caseMeshes = [], movementMeshes = [];
   scene.traverse((o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
@@ -61,16 +68,20 @@ const res = await page.evaluate(async () => {
   // declaration (see makeCase's CSG note).
   const label = (m) => m.name || `${m.geometry.type}#${m.id}`;
 
-  // ONE contact is the seat doing its job. `['Case', 'plate']` is an EXPECTED
-  // pair in inspect.js — the movement is carried by the band's seat step —
-  // and since the seat's top face is derived FROM the plate's measured rim
-  // face, the two are coincident planes and read 0.0000 by construction.
-  // Excused by NAME, not by unit, so it excuses exactly the bearing and
-  // nothing else the band might do to the plate. What it does not check is
-  // stated rather than implied: a coincident plane is what a bearing looks
-  // like and also what §169's flush-face blind spot looks like, and telling
-  // them apart is the plate face's own derivation, not this measurement.
+  // TWO contacts are the mount doing its job. `['Case', 'plate']` is an
+  // EXPECTED pair in inspect.js — since §186 the movement is carried by the
+  // band's LEDGE, whose plane is derived FROM the plate rim's measured
+  // underside face, so the two are coincident planes and read 0.0000 by
+  // construction; and the clamp screws' heads seat on the rim's measured
+  // back face (SEAT_EMBED — the press-contact idiom) while their shafts
+  // pass its clearance bores at SEAT_FIT. Excused by NAME, not by unit, so
+  // each excuse covers exactly its joint and nothing else the band might do
+  // to the plate. What this does not check is stated rather than implied: a
+  // coincident plane is what a bearing looks like and also what §169's
+  // flush-face blind spot looks like, and telling them apart is the plane's
+  // own derivation, not this measurement.
   const BEARING = 'caseMiddle ⇄ backPlate';
+  const CLAMP = 'caseClampScrew ⇄ backPlate';
 
   // A box test alone prunes almost nothing: the band's box encloses the whole
   // movement, so every mesh in it "overlaps". Prune on the case's OWN metal
@@ -101,7 +112,7 @@ const res = await page.evaluate(async () => {
   for (const ax of I.AXES) for (const f of [0, 0.5, 1])
     poses.push({ name: `${ax.name} f=${f}`, enter: () => { I.enterAxis(clock); clock.setPose(ax.pose(f, clock)); } });
 
-  let tested = 0, bearingPoses = 0;
+  let tested = 0, bearingPoses = 0, clampContacts = 0;
   for (const p of poses) {
     p.enter();
     scene.updateMatrixWorld(true);
@@ -121,6 +132,7 @@ const res = await page.evaluate(async () => {
         if (d > 1e-3) continue;
         const k = `${label(A)} ⇄ ${label(B)}`;
         if (k === BEARING) { bearingPoses++; continue; }
+        if (k === CLAMP) { clampContacts++; continue; }
         if (!hits.has(k)) hits.set(k, { pose: p.name, d, n: 0 });
         hits.get(k).n++;
       }
@@ -129,6 +141,7 @@ const res = await page.evaluate(async () => {
   return {
     poses: poses.length, caseMeshes: caseMeshes.length, movementMeshes: movementMeshes.length, tested,
     bearing: bearingPoses, bearingName: BEARING,
+    clamp: clampContacts, clampName: CLAMP,
     rows: [...hits.entries()].map(([k, v]) => ({ pair: k, firstAt: v.pose, poses: v.n, clearance: v.d })),
   };
 });
@@ -136,10 +149,13 @@ const res = await page.evaluate(async () => {
 console.log(`\nband bodies ${res.caseMeshes} ⇄ movement meshes ${res.movementMeshes}, `
   + `over ${res.poses} poses — ${res.tested} pairs measured after the radial prune`);
 if (!res.tested) console.log('WARNING: the prune left nothing to measure, so this run judged nothing');
-console.log(`the seat bearing (${res.bearingName}) reads shut in ${res.bearing}/${res.poses} poses — `
+console.log(`the ledge bearing (${res.bearingName}) reads shut in ${res.bearing}/${res.poses} poses — `
   + "EXPECTED ['Case', 'plate'], and not counted below");
 if (res.bearing !== res.poses)
-  console.log('...which is itself a finding: the movement is not sitting on its seat at every pose');
+  console.log('...which is itself a finding: the movement is not sitting on its ledge at every pose');
+console.log(`the clamp joints (${res.clampName}) read shut in ${res.clamp} pair-pose(s) — the screws doing their job, not counted below`);
+if (!res.clamp)
+  console.log('...which is itself a finding: no clamp screw touches the rim it exists to clamp');
 if (!res.rows.length) {
   console.log('CLEAR — nothing stands in the band at any pose in the net');
 } else {

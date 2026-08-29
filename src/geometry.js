@@ -4189,10 +4189,46 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 // angles a0…a1, dilated by `pad` (the stud's radius plus its margin) at every
 // edge — which at the inner radius costs more ANGLE for the same metal, so
 // the angular pad is taken there.
-export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [] }) {
-  const bevelSize = radius * 0.008;
+// §186 — the plate extrude's bevel RULE, exported: bevelSize = radius ·
+// PLATE_BEVEL_F, so a caller deriving a fit against the plate's REAL reach
+// (authored radius + bevel — TODO 84 at plate scale) derives it from the
+// same expression the builder swells the metal with, rather than copying
+// 0.008 and letting the two drift.
+export const PLATE_BEVEL_F = 0.008;
+export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null }) {
+  const bevelSize = radius * PLATE_BEVEL_F;
   const shape = new THREE.Shape();
-  shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+  // §186 — the MOUNTING RIM. `rim: { r, notches: [{ az, halfW }] }` runs the
+  // outline at rim.r instead of the working radius, dropped back to the
+  // working radius across each notch — a straight-walled slot on a stem's
+  // radial line. The wall construction is exact, not approximated: a wall
+  // line at perpendicular offset halfW from the az ray meets a circle of
+  // radius r at angular offset asin(halfW/r), so the two circle points at
+  // matching offsets lie ON the wall line and one lineTo (the connection
+  // absarc draws implicitly) IS the wall. The outline stays one simple
+  // polygon — the `outlines` gate holds it. `radius` remains the working
+  // outline every hole/bevel rule is keyed to; with no `rim` the path below
+  // is byte-identical to the pre-§186 single arc.
+  if (!rim) {
+    shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+  } else if (!(rim.notches || []).length) {
+    shape.absarc(0, 0, rim.r, 0, Math.PI * 2, false);
+  } else {
+    const ns = [...rim.notches].sort((a, b) => a.az - b.az);
+    for (let i = 0; i < ns.length; i++) {
+      const n = ns[i], next = ns[(i + 1) % ns.length];
+      const wrap = i + 1 === ns.length ? Math.PI * 2 : 0;
+      // across this notch's floor at the working radius…
+      shape.absarc(0, 0, radius,
+        n.az - Math.asin(n.halfW / radius), n.az + Math.asin(n.halfW / radius), false);
+      // …out along the wall (implicit connection), round the rim to the
+      // next notch's near wall…
+      shape.absarc(0, 0, rim.r,
+        n.az + Math.asin(n.halfW / rim.r), next.az - Math.asin(next.halfW / rim.r) + wrap, false);
+      // …and closePath (below the loop) draws the last inbound wall.
+    }
+    shape.closePath();
+  }
   for (const h of holes) {
     const p = new THREE.Path();
     p.absarc(h.x, h.y, h.r + bevelSize, 0, Math.PI * 2, true); // CW: a hole
@@ -7059,11 +7095,28 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   return g;
 }
 
+// The tube's own metal — MODULE SCOPE and exported since §186, because the
+// plate's rim NOTCHES are sized to clear the tube sleeves and must derive
+// their half-width from the same expression tubeAt builds the sleeve with
+// (one derivation, both sides — a copy of 0.3 in main.js would let the two
+// drift). COLLAR_PROUD is the flange's radius over the bore and predates
+// this; TUBE_WALL is derived FROM it by the constraint that a flange has to
+// stand proud of the wall it flanges — 0.3 mm of wall under a 0.4 mm collar
+// leaves 0.1 mm of shoulder, and 0.3 mm is ordinary tube stock for a
+// Ø2.0 mm bore. Assert rather than assume: swap the two and the collar
+// silently becomes a groove.
+export const COLLAR_PROUD = 0.4 / UNIT_MM;
+export const TUBE_WALL = 0.3 / UNIT_MM;
+if (TUBE_WALL >= COLLAR_PROUD)
+  console.warn(`case: tube wall ${(TUBE_WALL * UNIT_MM).toFixed(2)} mm is not under the collar's `
+    + `${(COLLAR_PROUD * UNIT_MM).toFixed(2)} mm proud radius — the collar is no longer a flange`);
+
 // ---------------------------------------------------------------------------
 // Backlog (watch case) — THE SOLID CASE. makeCase builds the housing as real
 // closed metal, BACK-LOADING like the real construction: the movement enters
-// from the back, the plate's dial-side rim face rests on the case middle's
-// seat, and the screw-down back closes behind it.
+// from the back, the plate's rim drops into the back band's bore, its
+// underside face rests on the case middle's LEDGE (§186), and the clamp
+// screws thread into the band's own metal below it.
 //
 // Z CONVENTION, learned the hard way on the first cut of this builder: the
 // DIAL side is −z (the Dial unit reaches −13.84; Z_DIAL = −7) and the back
@@ -7087,11 +7140,12 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
 // ---------------------------------------------------------------------------
 export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const {
-    UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_FL, R_SCR, R_G, R_WIN, R_PLATE, plateR,
+    UNIT_MM, R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_CRYST, R_BEZEL_IN, R_FL, R_SCR, R_G, R_WIN, R_PLATE,
     z0, zMidBack, zFlangeIn,
-    zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+    zLedge, zStep, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+    rimBack, clampN, clampR, clampAz, clampEng, tubeClearR,
     gasketD, gasketSeat, crystT, screwN, screwShaftD, screwHeadD, tubeD, pusherD,
-    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff, plateReach,
+    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff,
     lugSpan, sectors: CASE_SECTORS,
   } = dims;
   const g = new THREE.Group();
@@ -7215,34 +7269,58 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     return geo;
   };
 
-  // Case middle: bore from the flange's inner face → plate seat shoulder →
-  // bore → crystal seat chamfer → seat ledge → bezel wall → lip over the
-  // crystal → bezel outer face → outer wall → back face (with the gasket
-  // groove) → the back-wall flange that carries the back screws. One closed
-  // profile, one turning — which is how a real case middle comes off the
-  // lathe.
-  // The profile in three pieces, so a sector can take the part it needs.
-  // FRONT runs the inner wall down from the seat to the bezel and out to the
-  // outer wall; BACK runs the outer wall up to the back face, in across the
-  // gasket groove and down the flange. SEAT is the plate's bearing step, and
-  // it is the piece a relieved sector omits.
-  // Traversed the way the contour runs — DOWN the bore — which the authored
-  // order did not: it went to zSeatBot before zSeatTop while the wall was
-  // descending, so the outline doubled back and touched itself at (R_IN,
-  // zSeatTop). A lathe never asks whether its polyline is a simple polygon,
-  // so it rendered; earcut does ask, and returned 15 triangles where 17 were
-  // needed, holing the cap around exactly this step. The bore narrows to R_SH
-  // BELOW the plate's face and opens to R_IN above it, which is what a
-  // shoulder the rim sits on means in metal.
-  const seatStep = [
-    [R_IN, zSeatTop], [R_SH, zSeatTop], [R_SH, zSeatBot], [R_IN, zSeatBot],
-  ];
+  // Case middle (§186): a STEPPED midcase with the movement mounted on a
+  // LEDGE. From the back: the wide back bore (R_BORE_BACK — the plate's rim
+  // drops into it on a SEAT_FIT), down to the ledge at zLedge (the rim's
+  // measured underside plane — the bearing face), then the front bore at
+  // R_IN. Outside: the back band at R_OUT down to the midcase step at
+  // zStep, then the front section at R_OUT_FRONT (today's derivation kept
+  // whole — §189 inherits an untouched front), out through the bezel. One
+  // closed profile, one turning — which is how a real stepped case middle
+  // comes off the lathe. The old interrupted SEAT STEP (R_SH, TODO 91) is
+  // deleted whole: nothing bears at plateR − 1 mm any more, the movement
+  // hangs from its rim.
+  //
+  // Both walls are STAIRCASES now, so the profile pieces are composed from
+  // two helpers that know where the corners are — a bore window may cut
+  // either wall on either side of its corner, and the piece on each side
+  // has to carry the corner it contains (the crown windows straddle zLedge;
+  // every window is derived to sit above zStep by zStep's own derivation).
+  const rBoreAt = (z) => (z > zLedge ? R_BORE_BACK : R_IN);
+  const rOuterAt = (z) => (z > zStep ? R_OUT : R_OUT_FRONT);
+  // Down the bore (+z → −z), the ledge corner included when crossed.
+  const boreDown = (zHi, zLo) => {
+    const pts = [[rBoreAt(zHi), zHi]];
+    if (zHi > zLedge && zLo < zLedge) pts.push([R_BORE_BACK, zLedge], [R_IN, zLedge]);
+    pts.push([rBoreAt(zLo), zLo]);
+    return pts;
+  };
+  // Up the outer wall (−z → +z), the midcase step included when crossed.
+  const outerUp = (zLo, zHi) => {
+    const pts = [[rOuterAt(zLo), zLo]];
+    if (zLo < zStep && zHi > zStep) pts.push([R_OUT_FRONT, zStep], [R_OUT, zStep]);
+    pts.push([rOuterAt(zHi), zHi]);
+    return pts;
+  };
+  // Concatenate runs into one polyline, dropping the duplicated join points —
+  // a lathe tolerates a doubled vertex, earcut does not (a zero-length edge
+  // is a self-touching outline, the exact defect the cap warn watches for).
+  const joinRuns = (...runs) => {
+    const out = [];
+    for (const run of runs) {
+      for (const p of run) {
+        const last = out[out.length - 1];
+        if (!last || Math.abs(last[0] - p[0]) > 1e-9 || Math.abs(last[1] - p[1]) > 1e-9) out.push(p);
+      }
+    }
+    return out;
+  };
   const frontRun = [
     [R_IN, zBandFront],
     [R_CRYST, zCrystInner], [R_CRYST + 1 / UNIT_MM, zCrystInner],
     [R_BEZEL_IN + 0.3 / UNIT_MM, zCrystOuter],
     [R_BEZEL_IN, zCrystOuter], [R_BEZEL_IN, zBezelOuter],
-    [R_OUT, zBezelOuter],
+    [R_OUT_FRONT, zBezelOuter],
   ];
   const backRun = [
     [R_OUT, zMidBack],
@@ -7252,50 +7330,47 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     [R_G - 0.35 / UNIT_MM, zMidBack],
     [R_FL, zMidBack], [R_FL, zFlangeIn],
   ];
-  //  · WHOLE — the turning as it comes off the lathe, seat included.
-  //  · RELIEVED — the same turning with the seat step cut away, so the inner
-  //    wall runs straight past. This is TODO 91's interrupted seat: a case
-  //    seat is not obliged to be a full ring, and on a caliber with dial-side
-  //    keyless works it cannot be one.
-  //  · The BORED pair — a relieved sector split by a z window, metal above
-  //    and below the hole, nothing across it.
-  const PROFILE_WHOLE = [[R_IN, zFlangeIn], ...seatStep, ...frontRun, ...backRun, [R_IN, zFlangeIn]];
-  // RELIEVED carries the step's two z breaks ON the straight wall. They are
-  // collinear and cost nothing, and they are what lets a WHOLE sector's face
-  // be paved as RELIEVED + the step: the shared edge between them cancels
-  // exactly, so the paved outline reproduces the side surface's own polyline.
-  // Without them the two disagree along the bore and the seam reads open.
-  const PROFILE_RELIEVED = [
-    [R_IN, zFlangeIn], [R_IN, zSeatTop], [R_IN, zSeatBot],
-    ...frontRun, ...backRun, [R_IN, zFlangeIn],
-  ];
-  // Both pieces keep the WHOLE profile's traversal direction — inner wall
-  // downward, out through the front, up the outer wall, back along the top —
+  //  · WHOLE — the turning as it comes off the lathe, ledge and step
+  //    included. Unlike the old seat-step notch this outline is a genuine
+  //    staircase — each wall jogs ONCE and never doubles back — so it is a
+  //    simple polygon and paves in one piece; the triangle-count warn in
+  //    sectorLathe is the tripwire that holds that claim.
+  //  · BORED — a whole sector split by z windows, metal above and below
+  //    each hole, nothing across it. (The old RELIEVED kind is gone with
+  //    the seat it relieved: the ledge's only interruptions are bores.)
+  const PROFILE_WHOLE = joinRuns(
+    boreDown(zFlangeIn, zBandFront), frontRun,
+    outerUp(zBezelOuter, zMidBack), backRun,
+    [[R_BORE_BACK, zFlangeIn]]);
+  // Every piece keeps the WHOLE profile's traversal direction — down the
+  // bore, out through the front, up the outer wall, back along the top —
   // because the orientation is what decides which way the faces look, and a
   // sector that disagrees with its neighbours renders inside-out.
   //   A sector may carry MORE than one hole: the alarm crown's bore and the
-  // alarm pusher's share 5.6° of azimuth with disjoint z windows, so the wall
-  // there is metal in three bands, not two. n holes give n + 1 pieces — the
-  // front run below the lowest, a plain rectangle between each adjacent pair,
-  // and the back run above the highest.
+  // alarm pusher's share azimuth with disjoint z windows, so the wall there
+  // is metal in three bands, not two. n holes give n + 1 pieces — the front
+  // run below the lowest, a spanning band between each adjacent pair, and
+  // the back run above the highest — each composed through the corner-aware
+  // helpers, so a piece straddling zLedge or zStep carries its jog.
   const boredProfiles = (wins) => {
     const lo = wins[0][0], hi = wins[wins.length - 1][1];
     if (!(lo > zBandFront && hi < zFlangeIn))
       console.warn(`makeCase: a bore window (z ${lo.toFixed(3)}..${hi.toFixed(3)}) reaches past the band's own `
         + `wall (${zBandFront.toFixed(3)}..${zFlangeIn.toFixed(3)}) — the pieces either side of it are degenerate`);
     const ps = [
-      // below the lowest hole: inner wall down to the front, the bezel run, up
-      // the outer wall to the cut, across it
-      [[R_IN, lo], ...frontRun, [R_OUT, lo], [R_IN, lo]],
+      // below the lowest hole: inner wall down to the front, the bezel run,
+      // up the outer wall to the cut, across it
+      joinRuns(boreDown(lo, zBandFront), frontRun, outerUp(zBezelOuter, lo), [[rBoreAt(lo), lo]]),
     ];
     // between two holes: inner wall down to the lower cut, across, up the
-    // outer wall to the upper cut, across — the same traversal, no features
+    // outer wall to the upper cut, across
     for (let i = 1; i < wins.length; i++)
-      ps.push([[R_IN, wins[i][0]], [R_IN, wins[i - 1][1]], [R_OUT, wins[i - 1][1]],
-        [R_OUT, wins[i][0]], [R_IN, wins[i][0]]]);
+      ps.push(joinRuns(boreDown(wins[i][0], wins[i - 1][1]),
+        outerUp(wins[i - 1][1], wins[i][0]), [[rBoreAt(wins[i][0]), wins[i][0]]]));
     // above the highest: inner wall down to the cut, across it, up the outer
     // wall, round the back and down the flange
-    ps.push([[R_IN, zFlangeIn], [R_IN, hi], [R_OUT, hi], ...backRun, [R_IN, zFlangeIn]]);
+    ps.push(joinRuns(boreDown(zFlangeIn, hi), outerUp(hi, zMidBack), backRun,
+      [[R_BORE_BACK, zFlangeIn]]));
     return ps;
   };
   const middleGeos = [];
@@ -7303,11 +7378,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     if (s.kind === 'bored') {
       for (const prof of boredProfiles(s.windows)) middleGeos.push(sectorLathe(prof, s.a0, s.a1));
     } else {
-      const whole = s.kind !== 'relieved';
-      middleGeos.push(sectorLathe(whole ? PROFILE_WHOLE : PROFILE_RELIEVED, s.a0, s.a1,
-        // WHOLE's face is paved as RELIEVED plus the step it adds; RELIEVED
-        // pays for itself in one piece.
-        whole ? [PROFILE_RELIEVED, [...seatStep, seatStep[0]]] : null));
+      middleGeos.push(sectorLathe(PROFILE_WHOLE, s.a0, s.a1));
     }
   }
   const middleGeo = mergeGeos(middleGeos);
@@ -7409,18 +7480,9 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // ITS STEM'S OWN Z (a tube at mid-band would sleeve nothing): from inside
   // the bore to 1.5 mm proud of the band, with a 0.5 mm collar. The band's
   // radial bores they pass through are the same CSG debt as the thread
-  // grooves.
-  // The tube's own metal. COLLAR_PROUD is the flange's radius over the bore
-  // and predates this; TUBE_WALL is derived FROM it by the constraint that a
-  // flange has to stand proud of the wall it flanges — 0.3 mm of wall under a
-  // 0.4 mm collar leaves 0.1 mm of shoulder, and 0.3 mm is ordinary tube stock
-  // for a Ø2.0 mm bore. Assert rather than assume: swap the two and the collar
-  // silently becomes a groove.
-  const COLLAR_PROUD = 0.4 / UNIT_MM;
-  const TUBE_WALL = 0.3 / UNIT_MM;
-  if (TUBE_WALL >= COLLAR_PROUD)
-    console.warn(`makeCase: tube wall ${(TUBE_WALL * UNIT_MM).toFixed(2)} mm is not under the collar's `
-      + `${(COLLAR_PROUD * UNIT_MM).toFixed(2)} mm proud radius — the collar is no longer a flange`);
+  // grooves. The tube's own metal (TUBE_WALL under COLLAR_PROUD) is module
+  // scope since §186 — the plate's rim notches derive from the same
+  // expressions.
   // `flush` is the pusher's case, and it is the difference between a crown
   // TUBE and a pusher BORE — the two things this builder was making the same
   // way. A crown tube stands 1.5 mm proud and carries a collar, because a
@@ -7443,7 +7505,10 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // With an offset axis the tube no longer meets the wall at radius: it
   // crosses R at sqrt(R² − off²) along its own line, so the ends derive from
   // the offset rather than being read straight off R_IN/R_OUT.
-  const tubeAt = (az, d, z, name, flush = false, off = 0) => {
+  // §186 plumbing: `clearR` lets a caller name the plate metal THIS opening
+  // must miss (a rim notch's floor for a crown, the full rim otherwise);
+  // null keeps the global measured reach, which is today's behaviour.
+  const tubeAt = (az, d, z, name, flush = false, off = 0, clearR = null) => {
     const r = d / 2;
     const alongAt = (R) => Math.sqrt(Math.max(0, R * R - off * off));
     const outboard = flush ? alongAt(R_OUT) : alongAt(R_OUT) + 1.5 / UNIT_MM;
@@ -7461,13 +7526,18 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     // radial tube the across-term is 0 and this reduces to the plate's rim
     // plus CLEAR_MARGIN.
     //
-    // Against `plateReach`, the plate's MEASURED widest metal, not `plateR`,
-    // its authored outline. The first version of this derivation used the
-    // outline and stopped the tube at plateR + CLEAR_MARGIN = 43.073, which
-    // is 0.193 INSIDE a plate whose extrude bevel swells to 43.2664 — the
-    // rule was right and the radius was a drawing. A tube has to miss metal.
+    // Against `tubeClearR`, the plate metal ON THIS OPENING'S LINE — not the
+    // authored outline (the first version used plateR and stopped the tube
+    // 0.193 INSIDE a plate whose extrude bevel swells past it — the rule was
+    // right and the radius was a drawing; a tube has to miss metal), and
+    // since §186 not the plate's global reach either: the rim reaches to
+    // the band's own bore, but a crown's line runs through a NOTCH whose
+    // floor is the working outline, and the pusher's line passes over the
+    // rim in z. The caller derives the standoff from the notch floor's own
+    // swell expression and verifies it against the measured mesh at
+    // PLATE_RIM; `clearR` remains the per-opening override (§186 plumbing).
     const rimAcross = Math.max(0, Math.abs(off) - (r + TUBE_WALL));
-    const clearOf = plateReach + CLEAR_MARGIN;
+    const clearOf = (clearR ?? tubeClearR) + CLEAR_MARGIN;
     const inboard = Math.sqrt(Math.max(0, clearOf * clearOf - rimAcross * rimAcross));
     const len = outboard - inboard;
     if (len <= 0)
@@ -7517,6 +7587,42 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
   tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff);  // flush, and OFF the radius — a bore, not a tube
 
+  // §186 — THE CLAMP SCREWS: what actually fastens the movement. Heads bear
+  // on the rim's measured back face (rimBack — the extrude's lid plane, the
+  // same measurement the caller's head-overlap assert reads), shafts pass
+  // through the rim's clearance bores (cut by the plate builder at
+  // screw-through fit) and thread clampEng into the ledge's own metal below
+  // zLedge. PROUD heads, deliberately: a flush counterbore does not fit
+  // inside the rim (the seat circle would cross the outline — an invalid
+  // shape under the `outlines` gate), and visible casing screws through an
+  // exhibition back are the design feature. They live in middleAsm because
+  // they clamp the movement TO THE MIDDLE — they stay put when the back
+  // unscrews, exactly like the tubes — and the tapped holes they sit in are
+  // the same declared CSG debt as every thread in this case (the Case unit
+  // stays outside INTRA_TIER_SCOPE for exactly this family of joints).
+  // Same head/shaft stock as the back screws: one screw vocabulary per case.
+  for (const a of clampAz) {
+    const cx = Math.cos(a) * clampR, cy = Math.sin(a) * clampR;
+    const head = new THREE.Mesh(
+      new THREE.CylinderGeometry(screwHeadD / 2, screwHeadD / 2, headT, 20), material);
+    head.geometry.rotateX(Math.PI / 2);            // axis → Z
+    // SEAT_EMBED: the head's underside sinks a hundredth into the rim's back
+    // face — exact-coplanar contact faces z-fight (the exhibition back's own
+    // idiom, two blocks up).
+    head.position.set(cx, cy, rimBack - SEAT_EMBED + headT / 2);
+    head.name = 'caseClampScrew';
+    middleAsm.add(head);
+    const shaftTop = rimBack, shaftBot = zLedge - clampEng;
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(screwShaftD / 2, screwShaftD / 2, shaftTop - shaftBot, 12), material);
+    shaft.geometry.rotateX(Math.PI / 2);
+    shaft.position.set(cx, cy, (shaftTop + shaftBot) / 2);
+    shaft.name = 'caseClampScrew';
+    middleAsm.add(shaft);
+  }
+  if (clampAz.length !== clampN)
+    console.warn(`makeCase: ${clampAz.length} clamp stations arrived for a declared tripod of ${clampN}`);
+
   // Lugs at 12 and 6, spring-bar span per dims; each lug a prism
   // chord-tangent to the band and ROOTED 0.8 mm into it (the brazed
   // stamped-lug truth — a watchmaker solders the lug foot to the band,
@@ -7545,7 +7651,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
       const lug = new THREE.Mesh(new THREE.BoxGeometry(lugT, tip - root, lugW), material);
       lug.position.set(u.x * (root + tip) / 2 + perp.x * off,
                        u.y * (root + tip) / 2 + perp.y * off,
-                       zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
+                       zLedge + lugW / 2 + 0.5 / UNIT_MM); // z station keyed to the ledge plane (same value the old seat face had)
       lug.rotation.z = lugAz - Math.PI / 2;
       lug.name = 'caseLug';
       middleAsm.add(lug);
@@ -7557,7 +7663,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction
     bar.position.set(u.x * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
                      u.y * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
-                     zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
+                     zLedge + lugW / 2 + 0.5 / UNIT_MM);
     bar.name = 'caseSpringBar';
     middleAsm.add(bar);
   }
