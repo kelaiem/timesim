@@ -22,7 +22,15 @@
 // annulus radially at az ≈145°) and so must the alarm switch (its stem and
 // pusher cross near az 0°) — both are cylinders whose vertices sit on end
 // caps OUTSIDE the annulus, so finding them at all is the edge walk working;
-// a vertex scan reports the annulus empty. The dial feet are deliberately
+// a vertex scan reports the annulus empty. AND THE CONTROLS WERE NOT ENOUGH
+// (§186 commit 0): both control members happened to put an edge MIDPOINT
+// inside the annulus, while the alarm crown's stem — the same radial-
+// cylinder shape — put its endpoints AND its midpoint outside and was
+// invisible to the first cut, which sampled only endpoints, z-face
+// crossings and in-band midpoints. The scan now also solves each edge's
+// exact crossings of both r walls (quadratic per wall), which is the sample
+// kind a radial member actually needs; the survey numbers from before this
+// fix under-counted the annulus by exactly that class. The dial feet are deliberately
 // NOT a control: they stand at r 41.6..42.8, INBOARD of the plate's real rim
 // (43.2664), so they never enter this annulus — the first cut of this probe
 // used them as a must-hit and the control failed against a correct scan,
@@ -32,11 +40,21 @@
 // around theirs.
 //
 // Run: node tools/probe-ledge-occupancy.mjs   (ROOT= for another worktree)
+//   Band overrides (§186 commit 0 — the design's three tight bands are
+//   measured with the same scan rather than a second one):
+//     --r0 --r1 --z0 --z1   absolute UNITS; any subset; the rest keep the
+//                           survey defaults (r from the plate's measured
+//                           reach, z from its faces ±2 mm).
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = process.env.ROOT || join(dirname(fileURLToPath(import.meta.url)), '..');
+const argVal = (k) => {
+  const i = process.argv.indexOf(k);
+  return i >= 0 && process.argv[i + 1] !== undefined ? Number(process.argv[i + 1]) : null;
+};
+const BAND = { r0: argVal('--r0'), r1: argVal('--r1'), z0: argVal('--z0'), z1: argVal('--z1') };
 const srv = spawn('python3', ['-m', 'http.server', '8514', '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 1200));
 const browser = await chromium.launch();
@@ -45,7 +63,7 @@ page.on('pageerror', (e) => console.log('PAGEERROR', String(e)));
 await page.goto('http://127.0.0.1:8514/index.html', { waitUntil: 'load', timeout: 120000 });
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 120000 });
 
-const res = await page.evaluate(async () => {
+const res = await page.evaluate(async (BAND) => {
   const I = await import('./src/inspect.js');
   const THREE = await import('three');
   const clock = window.__clock;
@@ -66,8 +84,10 @@ const res = await page.evaluate(async () => {
       zFront = Math.min(zFront, v.z); zBack = Math.max(zBack, v.z);
     }
   }
-  // Candidate annulus: r ∈ [reach, reach + 3 mm], z ∈ [zFront − 2 mm, zBack + 2 mm].
-  const r0 = reach, r1 = reach + 3 * MMu, z0 = zFront - 2 * MMu, z1 = zBack + 2 * MMu;
+  // Candidate annulus: r ∈ [reach, reach + 3 mm], z ∈ [zFront − 2 mm, zBack + 2 mm]
+  // — unless a band override names its own walls (§186 commit 0).
+  const r0 = BAND.r0 ?? reach, r1 = BAND.r1 ?? reach + 3 * MMu;
+  const z0 = BAND.z0 ?? zFront - 2 * MMu, z1 = BAND.z1 ?? zBack + 2 * MMu;
 
   const NA = 72;                    // 5° azimuth bins
   const hit = Array.from({ length: NA }, () => new Map());   // az-bin → name → {rMin,rMax,zMin,zMax,n}
@@ -114,6 +134,37 @@ const res = await page.evaluate(async () => {
               take(v.copy(a).lerp(b, s), e.name);
             }
             if (a.z >= z0 && a.z <= z1 && b.z >= z0 && b.z <= z1) take(v.copy(a).lerp(b, 0.5), e.name);
+            // ...and the crossing points at the R WALLS, solved exactly. A
+            // RADIAL member (the alarm crown's stem) enters and leaves the
+            // annulus along one edge: its endpoints sit outside both walls
+            // and its midpoint can too, so the samples above see nothing —
+            // measured, the alarm stem (r 15.4..54.2 through this band) was
+            // invisible to the first cut of this probe while the winding
+            // stem was caught only because ITS midpoint happens to land
+            // inside. Solve |a + t(b−a)|_xy = rWall (quadratic) per wall and
+            // take every in-segment root — with the sample kinds above this
+            // covers every way an edge can meet the annulus.
+            {
+              const dx = b.x - a.x, dy = b.y - a.y;
+              const A2 = dx * dx + dy * dy;
+              if (A2 > 1e-12) {
+                const B2 = 2 * (a.x * dx + a.y * dy);
+                for (const rw of [r0, r1]) {
+                  const C2 = a.x * a.x + a.y * a.y - rw * rw;
+                  const disc = B2 * B2 - 4 * A2 * C2;
+                  if (disc <= 0) continue;
+                  const sq = Math.sqrt(disc);
+                  for (const t of [(-B2 - sq) / (2 * A2), (-B2 + sq) / (2 * A2)]) {
+                    if (t <= 0 || t >= 1) continue;
+                    // a root sits ON the wall; sample a hair to each side and
+                    // let the band filter keep the inside one — no sign
+                    // arithmetic about which side is "in"
+                    take(v.copy(a).lerp(b, Math.max(0, t - 1e-4)), e.name);
+                    take(v.copy(a).lerp(b, Math.min(1, t + 1e-4)), e.name);
+                  }
+                }
+              }
+            }
           }
         }
       });
@@ -138,7 +189,7 @@ const res = await page.evaluate(async () => {
     })).sort((x, y) => y.arcs - x.arcs),
     freeBins: freeBins.map((x) => Math.round((x + 0.5) / NA * 360 - 180)),
   };
-});
+}, BAND);
 
 const MM = 0.378947;
 console.log(`base plate REAL rim r ${res.reach.toFixed(4)}, z ${res.zFront.toFixed(3)}..${res.zBack.toFixed(3)}`);
@@ -150,9 +201,16 @@ console.log(`\nFREE azimuth: ${res.freeBins.length}/${res.NA} bins (${(res.freeB
 console.log(`free az° (bin centres): ${res.freeBins.join(', ')}`);
 
 let ok = true;
-if (!res.units.some((u) => u.name === 'Keyless works')) { ok = false; console.log('\nCONTROL FAIL: the keyless works do not appear — the scan missed the annulus the shipped seat is interrupted FOR'); }
-else console.log('\nCONTROL PASS: keyless works found in the annulus');
-if (!res.units.some((u) => u.name === 'Alarm switch')) { ok = false; console.log('CONTROL FAIL: the alarm switch (stem/pusher crossers near az 0°) did not appear — the edge walk is not finding radial cylinders'); }
-else console.log('CONTROL PASS: alarm switch found in the annulus (edge walk sees radial crossers)');
+if (Object.values(BAND).some((v) => v !== null)) {
+  // An override names a DESIGN band whose expected occupancy the caller
+  // knows (often: nothing) — the survey band's must-hit controls do not
+  // apply to it, so the run reports and leaves the judgement to the caller.
+  console.log('\n(band override: survey controls skipped — judge the occupancy against the design band\'s own expectation)');
+} else {
+  if (!res.units.some((u) => u.name === 'Keyless works')) { ok = false; console.log('\nCONTROL FAIL: the keyless works do not appear — the scan missed the annulus the shipped seat is interrupted FOR'); }
+  else console.log('\nCONTROL PASS: keyless works found in the annulus');
+  if (!res.units.some((u) => u.name === 'Alarm switch')) { ok = false; console.log('CONTROL FAIL: the alarm switch (stem/pusher crossers near az 0°) did not appear — the edge walk is not finding radial cylinders'); }
+  else console.log('CONTROL PASS: alarm switch found in the annulus (edge walk sees radial crossers)');
+}
 await browser.close(); srv.kill();
 process.exit(ok ? 0 : 2);
