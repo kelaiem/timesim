@@ -8621,8 +8621,19 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 116 — the going train's blanks phase-solved at a running
-// pose; 56 units, 12 poses):
+// Baseline (TODO 117 + the merge of main's TODO 112/113 landing; 56 units,
+// 12 poses):
+// 3900833778
+//   moved from 3397006610 by TWO changes at once, which is why it is measured
+//   on the merged tree rather than reasoned from either side. This branch
+//   corrected the alarm setting arbor's back-drive sign (TODO 117), which
+//   re-poses the arbor rod and its bevel mount at every pose whose hour term
+//   is non-zero — that is 12 of 12 here, since the dial epoch is 1:51. And
+//   main's TODO 112/113 landing re-cut the hands through `HAND_SPECS`.
+//   Neither parent's recorded value describes this tree. 36/36 gates green,
+//   boot silent.
+// Previous baseline (TODO 116 — the going train's blanks phase-solved at a
+// running pose; 56 units, 12 poses):
 // 3397006610
 //   moved from 2777254390 deliberately, and geometry DID move: every going
 //   blank's build rotation. `solveGearChain` ran with the arbors at zero and
