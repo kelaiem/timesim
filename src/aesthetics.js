@@ -115,6 +115,14 @@ try {
     console.warn('§23: the previous boot died before completing with tuned overrides active — overrides dropped, booting from aesthetics.json');
   }
 } catch { }
+// The FILE's own values, snapshotted BEFORE anything merges over them. The
+// header calls the file "the single source of record", and after the merge
+// below that record is gone — `aestheticsData` holds the EFFECTIVE value, so
+// nothing downstream can still ask what shipped. The share link needs exactly
+// that question answered ("only non-default travels", §37's rule), and it is
+// the one thing an in-place merge structurally cannot answer afterwards.
+export const AESTHETICS_DEFAULTS = Object.freeze(structuredClone(aestheticsData));
+
 try {
   const over = readOverrides();
   if (over) {
@@ -122,6 +130,56 @@ try {
     localStorage.setItem(BOOT_PENDING_KEY, '1');
   }
 } catch { /* corrupt overrides must never brick boot */ }
+
+// --- §37 tier two — THE DIAL'S COLOUR TRAVELS. `?dialcol=rrggbb`.
+//
+// The face colour is FINISH, not spec: it moves no station and rebuilds no
+// geometry, so it has no business in index.html's spec table (§161's assert
+// exists to keep modes out of that roster; a finish value would be the same
+// mistake from the other side). It gets its own key at its own tier instead.
+//
+// WHY IT IS READ HERE, before the build, rather than in applyDeepLink with the
+// other link params. The face is a CANVAS, painted during makeDial, and the
+// legibility floor (DIAL_INK_CONTRAST_MIN, WCAG 2.1 SC 1.4.11) is asserted at
+// paint. Applying the link's colour afterwards through `recolourFace` would
+// build the dial once in the wrong colour and assert the wrong value on the
+// way past. Merged here, a link is indistinguishable from a tuned override —
+// one path, and the build's own asserts judge what the viewer actually sees.
+// `src/i18n.js` reads `?lang` the same way and for the same reason: the panel
+// is BUILT from it.
+//
+// THE LINK WINS over a persisted override, deliberately, and this is §97's
+// rule rather than a preference. A recipient with their own saved colour would
+// otherwise see a different watch from the one that was sent, with nothing on
+// screen saying so — "the link and the picture disagree silently, per machine"
+// is the exact defect §97 deleted when it retired the sub-dial radius knob.
+//
+// ...but it is NOT WRITTEN BACK. A link is a way of showing someone a dial,
+// not of editing their preferences: the override store is untouched, so their
+// own colour is still there on the next visit without the param. That also
+// keeps this off the crash-recovery marker below-left: arming it for a URL
+// value would let a stranger's link wipe the recipient's saved tuning, which
+// is a worse failure than the one the marker exists for. A six-hex colour
+// cannot break the build in any case — it is a canvas fill and two contrast
+// sums, both total over valid hex.
+//
+// VALIDATED SYNTACTICALLY, because `mergeAesthetics` cannot do it. That merge
+// is TYPE-anchored and clamps NUMBERS against `_bounds`; `dial.face.color` is
+// a string, so every string passes and `_bounds` has nothing to say about a
+// colour (aesthetics.json states that omission is a decision, not an
+// oversight). A URL is untrusted input, so the shape is checked here: six hex
+// digits, '#' optional, anything else ignored in silence, which is
+// applyDeepLink's standing rule — a bad link degrades, it never throws.
+export const DIAL_COL_PARAM = 'dialcol';
+export function parseDialCol(raw) {
+  if (typeof raw !== 'string') return null;
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(raw.trim());
+  return m ? `#${m[1].toLowerCase()}` : null;
+}
+try {
+  const col = parseDialCol(new URLSearchParams(location.search).get(DIAL_COL_PARAM));
+  if (col) mergeAesthetics(aestheticsData, { dial: { face: { color: col } } });
+} catch { /* no location, or a hostile param: the file's colour stands */ }
 
 // Called by main.js when the build has completed — the crash-recovery
 // marker's other half.
