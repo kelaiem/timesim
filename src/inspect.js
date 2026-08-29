@@ -8621,7 +8621,36 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 87 step 4 — the guide bore derived; 55 units, 12 poses):
+// Baseline (TODO 117 + the merge of main's TODO 112/113 landing; 56 units,
+// 12 poses):
+// 3900833778
+//   moved from 3397006610 by TWO changes at once, which is why it is measured
+//   on the merged tree rather than reasoned from either side. This branch
+//   corrected the alarm setting arbor's back-drive sign (TODO 117), which
+//   re-poses the arbor rod and its bevel mount at every pose whose hour term
+//   is non-zero — that is 12 of 12 here, since the dial epoch is 1:51. And
+//   main's TODO 112/113 landing re-cut the hands through `HAND_SPECS`.
+//   Neither parent's recorded value describes this tree. 36/36 gates green,
+//   boot silent.
+// Previous baseline (TODO 116 — the going train's blanks phase-solved at a
+// running pose; 56 units, 12 poses):
+// 3397006610
+//   moved from 2777254390 deliberately, and geometry DID move: every going
+//   blank's build rotation. `solveGearChain` ran with the arbors at zero and
+//   was correct there, but each going arbor's tick angle adds a `meshOffset`
+//   constant that is not a whole number of pitches, so all four meshes ran
+//   8.6–38.7% of a pitch off anti-phase at every pose the movement actually
+//   occupies. The solve now enters the arbors' own tau = 0 angles first, which
+//   turns each blank by the residual it was short. Nothing else moved — no
+//   station, no clearance, no z-stack, no tooth count, and no display, since
+//   the arbors' tick angles are untouched. 36/36 gates green on the same tree.
+//   NOTE the record below had gone stale AGAIN, and by a whole unit: it says
+//   480940272 at 55 units, and this branch measured 2777254390 at 56 units
+//   BEFORE changing anything. That is the third time this comment has caught
+//   its own drift (see the §99 and §160 notes further down), and the reason
+//   this change measured the pre-state rather than assuming the record was it.
+// Previous baseline (TODO 87 step 4 — the guide bore derived; 55 units,
+// 12 poses; STALE when found — main measured 2777254390 at 56 units):
 // 480940272
 //   moved from 1207183716 deliberately, and this time geometry DID move: the
 //   pusher's guide boss was a torus whose 0.24 hole ran a 0.32 stem, and its

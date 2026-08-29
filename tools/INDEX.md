@@ -4,7 +4,7 @@
 
 # The instruments
 
-161 scripts. **68 are ACCEPTANCE tests** — they decide and exit non-zero.
+164 scripts. **71 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -148,6 +148,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-case-closed.mjs` |  | report | IS EVERY CASE BODY A SOLID? Boundary edges per mesh — 0 on a closed one, and the locations printed when it is not. |
 | `probe-case-relief.mjs` |  | acceptance | DOES ANYTHING STAND IN THE BAND'S METAL — AT ANY POSE THE MOVEMENT REACHES? Acceptance. The band's openings (the seat relief, the two crown bores, the pusher bore) are DERIVED at boot by scanning the movement for whatever occupies the band's own volume. A boot scan sees one pose, and a mover is somewhere else at every other: measured, `hackRodPin` sits at r 37.801..38.691 as the case is built — clear of the seat's 40.284 — and at 39.889..40.786 in 33 of the 42 poses the battery visits, half a unit INSIDE it. The relief was derived correctly and was still a claim about one pose. |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
+| `probe-coaxial-sense.mjs` |  | acceptance | TODO 115 — DO THE PARTS THAT SHARE A SHAFT TURN THE SAME WAY? |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
 | `probe-colwheel-id.mjs` |  | report | probe-colwheel-foul named six meshes touching the column wheel at 0. Two are declared rider contacts. This identifies the rest — what they are, where they were built, what material, whether they are NAMED, whether anything DECLARES the contact, and how the gap behaves across the toggle's two parities (the eye report says "every other toggle", so parity is the tell). |
@@ -162,6 +163,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
 | `probe-lug-geom.mjs` |  | acceptance | THE LUGS, READ OFF THE METAL — and the across-the-lugs assert's hand-copied term checked against the geometry it copies. |
 | `probe-mesh-closedness-census.mjs` |  | report | TODO 106 — HOW MUCH of the movement is open? Every parity witness in this repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and TODO 27's family) counts ray crossings and is therefore only valid against a CLOSED surface. Nothing measures how many surfaces qualify. |
+| `probe-mesh-transmission.mjs` |  | acceptance | DOES EVERY DECLARED MESH ACTUALLY TRANSMIT AT ITS TOOTH RATIO? |
 | `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |
@@ -171,6 +173,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-slenderness-bearings.mjs` |  | report | TODO 78 — the alarm link's lay shaft, MEASURED. Every number the §54 note block quotes about this shaft (33.387, 2.45, 22, λ 135.4, "the 19.55 u bush-to-bush span") comes from prose; this reads them off the built tree. |
 | `probe-slenderness-residue.mjs` |  | report | TODO 109 — the seven UNWAIVED rows of §54's slenderness report, NAMED. |
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
+| `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |

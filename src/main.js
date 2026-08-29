@@ -13249,6 +13249,37 @@ const solveGearChain = (label, chain, module) => {
   // great wheel (its own knob on the fusee arbor) to the center pinion.
   // Four runs because the train has four modules; one run per mesh keeps
   // every centre-distance tripwire honest.
+  //
+  // TODO 116 — AND THEY MUST BE SOLVED AT THE POSE THE TRAIN RUNS IN, not
+  // at zero. The reserve solves above are entitled to ignore this and say
+  // why: their arbors' tick rotations are pure counter-rotations
+  // (`rsvArbor1 = -rsvArbor0 · ratio`), so the SUM invariant a solve
+  // establishes at ANY pose rides every other one. THE GOING ARBORS ARE NOT
+  // LIKE THAT. Each carries an ADDITIVE constant from `meshOffset` —
+  // `fourthAngle = offFourth − ratio·escapeAngle`, and so on up the chain —
+  // a second and older phasing system that phases ARBORS where these solves
+  // phase BLANKS, and neither knows about the other. A blank aligned with
+  // its arbor at 0 is turned by that constant the instant tick() runs, and
+  // `off*` is not a whole number of pitches.
+  //
+  // The tripwires below cannot see it, by construction: the error is a
+  // CONSTANT, so it is exactly zero at the one pose they read and exactly
+  // wrong at every pose the movement occupies. Measured over a full turn of
+  // the fourth arbor before this fix — 38.2% of a pitch on great ⇄ centre,
+  // 30.9% on centre ⇄ third, 8.7% on third ⇄ fourth, 36.8% on fourth ⇄
+  // escape, against 0.02–0.21% at the arbors' zero. Tooth meeting tooth,
+  // reported by eye and then measured (`tools/probe-train-mesh-phase.mjs`,
+  // which holds all four to the 2% bar below at every pose it sweeps).
+  //
+  // So enter the arbors' own tau = 0 angles, solve there, and restore. Any
+  // single RUNNING pose fixes all of them — that much of the reserve's
+  // reasoning does carry, once the constants sit inside the pose rather
+  // than being added after it. Zero is the one pose that is not one.
+  const goingRest = [
+    [barrelArbor, barrelMeshAngle(0)], [centerArbor, centerAt0],
+    [thirdArbor, thirdAt0], [fourthArbor, fourthAt0], [escapeArbor, escAt0],
+  ];
+  for (const [arbor, a] of goingRest) arbor.rotation.z = a;
   solveGearChain('going fourth ⇄ escape:', [
     { obj: escapePinion, teeth: TRAIN.fourth.pinion, name: 'escape pinion' },
     { obj: fourthPair, teeth: TRAIN.fourth.teeth, name: 'fourth wheel (+pinion held)' },
@@ -13265,6 +13296,9 @@ const solveGearChain = (label, chain, module) => {
     { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
     { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
   ], TRAIN.barrel.module);
+  // tick() owns these every frame; put them back so nothing built after this
+  // block reads a world matrix off a pose that only existed for the solve.
+  for (const [arbor] of goingRest) arbor.rotation.z = 0;
 })();
 
 // --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
@@ -34118,7 +34152,21 @@ function tick(t) {
   // the pulled crown — real Memovox behaviour — and the hub slips only
   // under the user's own setting torque, which is the re-phasing.
   const _bd = ALARM_BD_SIGN * mwHourA;
-  alarmRotor.rotation.z = -alarmSetRot - 3 * _bd; // −ω_i1·(28/10) closes the chain on the rod: 3 = ALARM_DISC_TEETH/ALARM_SET_PINION_TEETH
+  // TODO 117 — the BACK-DRIVE term's sign is +, not −. The crown term is
+  // right and stays: measured, i2 → arbor pinion transmits at exactly
+  // −3.700 (= −r_i2/r_pinion) under the crown. Under the HOUR the same
+  // mesh read +3.700 — the same magnitude with the wrong sign, so the
+  // arbor turned the way the gearing forbids while the crown path was
+  // faultless. Derived rather than flipped by inspection: the chain from
+  // the disc is three external meshes (disc → i1b·i1 → i2 → pinion), so
+  // the pinion must run at −(r_i2/r_pin)·ω_i2, and ω_i2 already carries
+  // the hour correctly (its own two meshes measure ok under both inputs).
+  // ALARM_BD_SIGN is NOT the place to fix it — i1 and i2 read that same
+  // constant and are correct; only this member's use of it was inverted.
+  // (`tools/probe-mesh-transmission.mjs`. Nothing reads this angle back —
+  // the rotor is posed, never sensed — so the correction moves the arbor
+  // rod and its bevel mount and nothing else.)
+  alarmRotor.rotation.z = -alarmSetRot + 3 * _bd; // 3 = ALARM_DISC_TEETH/ALARM_SET_PINION_TEETH
   alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH)
     - _bd * (ALARM_DISC_TEETH / ALARM_SET_I2_TEETH);
   alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH)
