@@ -11675,14 +11675,21 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // handsGroupZOffset rose 2.5 → 3.2 when the old lane thinned to ≈ 0.5
 // (§25 C), then §125 grew the hands with the face and the hub swallowed it
 // again (hub bottom 0.072 over the blade's corner plane at 3.2), forcing
-// 3.2 → 3.4 against a then-minimum of 3.278. §188 broke the coupling: the
+// 3.2 → 3.4 against a then-minimum of 3.278. §188 broke the coupling — the
 // central sections are stock (G.HAND_RBASE_STOCK), the hub is the pipe
-// floor (bossH ≈ 1.056), and the minimum falls to ALARM_HAND_Z + the
-// blade's corner rise + CLEAR_MARGIN + bossH/2 ≈ 1.95 — so 3.4 now carries
-// ≈ 1.4 of headroom, banked for the §39 front-stack ledger rather than
-// spent here (re-deriving the offset is §188's separate, revertible
-// commit). The lane is ASSERTED at the alarm hand's build from the two
-// hands' own userData, so any regression warns instead of shipping thin.
+// floor (bossH ≈ 1.056) — and SPENT the freed headroom: the offset is 2.6,
+// against a governing minimum of 2.402 that is NOT the §125 lane's (that
+// one falls to ≈ 1.95) but the hour blade's KEEL over the alarm hand's
+// bored collet: the collet seats at 1.1 over the face and stands its 0.8
+// bossH proud, the hour blade sweeps the whole centre at (offset + DIAL_T)
+// − rBase, and DIAL_T cancels — offset ≥ 1.1 + 0.8 + CLEAR_MARGIN + rBase
+// = 2.402. At the shipped 3.4 that same keel cleared the collet by 0.18
+// (with the fat blade), so the constraint was always the tight one; 2.6 is
+// the 0.1-grid value carrying the ~0.12-0.2 headroom every previous offset
+// shipped with, and the ~0.3 mm it frees flows to the crystal through
+// CASE_DIMS' measured handFront. The lane is ASSERTED at the alarm hand's
+// build from the two hands' own userData, so any regression warns instead
+// of shipping thin.
 // The alarm hand seats at 1.1 at FULL scale since §188 (the 0.5 z-scale
 // faked a leaf from a five-times-stock section; at stock the leaf is the
 // section); its bored collet straddles the tube's front face at 1.1.
