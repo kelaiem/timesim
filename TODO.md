@@ -22,6 +22,9 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
 | 111 | OPEN | The case's seat relief is CUT from a scan that runs once, at build time, at whatever pose the movement is in — so the geometry is a claim about one pose. Item 91 nearly shipped on it: `hackRodPin` reads r 37.801–38.691 at build time and 39.889–40.786 in 33 of the 42 poses the battery visits, half a unit inside a seat with no relief for it. Closed for two populations (build-time occupants, and `LOW_LINKAGE_OBSTACLES` members per standing rule 5) and ungated for a third — any other mover reaching the annulus at some pose. Three fixes in the item; `probe-case-relief.mjs` already asks the question in ~72 s and CI does not run it |
+| 112 | OPEN | `HAND_SPECS` omits the reserve hand's `halfWidth`, so the first panel hands edit re-cuts §158's 3.00′ pointer back to 1.16′ — the exact defect the row's own comment warns about for `subdial`/`namePrefix`, one line up. Carry the field; acceptance = panel re-cut leaves the width identical |
+| 113 | OPEN | `alarmHand` is absent from `HAND_SPECS` entirely, so panel edits re-cut every hand except it. Not a one-line add: the boot site passes explicit bore/boss overrides and a post-build `scale.z = 0.5` the lane asserts read |
+| 114 | OPEN | Three sites still name the alarm barrel as the back-most metal (main.js:26542, 34482, BUILT §3) — measured, the alarm link tower at z 13.877 is; §112 moved the barrel under the plate (5.399). Behaviour is right (live Box3), the prose derives the back stack from a part that is not there |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -13685,3 +13688,80 @@ Measured on this branch it does not: `hackRodPin` reads identically "as booted"
 and after `resetInputs`, so the build-time pose is the construction pose and
 state restoration happens later. That is a measurement of today's boot order,
 not a guarantee of it.
+
+## 112. HAND_SPECS omits the reserve hand's halfWidth, so any panel edit reverts §158's widening
+
+Found 2026-08-29 while scoping the case/hands redesign, by reading, and it is
+the exact defect the table's own comment warns against — one line up.
+
+§158 widened the reserve pointer to 3.00′ of arc through `halfWidth`
+(`RSV_HAND_HALF_W`, `src/main.js:11249-11251`), deliberately NOT through a
+bigger `rBase`, because `rBase` drives the boss and the §153 recess chain.
+The panel's re-cut path reads `HAND_SPECS` (`src/main.js:25190-25199`), and
+the reserve hand's row there carries `length`, `kind`, `subdial` and
+`namePrefix` — **no `halfWidth`**. `makeHand`'s default then applies
+(`halfWidth ?? rBase·√3/2`, `src/geometry.js:6886`), so the first drag of any
+`dial.hands` slider or the flute control re-cuts the pointer at its pre-§158
+width: 1.16′, from 3.00′, silently.
+
+The bitter part: the row's OWN comment (`src/main.js:25193-25197`) records
+why `subdial` and `namePrefix` must survive a re-cut — "a recut that dropped
+it would silently regrow the blade the fix slimmed — a flute drag must change
+the flute, never the section law". `halfWidth` is section law by §158's own
+argument, and it was left off the same row.
+
+Fix path: carry `halfWidth: RSV_HAND_HALF_W` in the reserve row (and see
+item 113 — the same audit says which hands the table covers at all). The
+acceptance is a probe that re-cuts through the panel path and measures the
+pointer's width before and after: identical, at 3.00′.
+
+## 113. The alarm hand is absent from HAND_SPECS, so the panel cannot re-cut it at all
+
+Sibling of item 112, from the same reading. `alarmHand` is built once at boot
+(`src/main.js:13633-13637`) from the same `dial.hands.hour` aesthetics the
+hour hand uses (kind `'hour'`, `scale.z = 0.5` for the rattrapante-leaf
+section), but it appears nowhere in `HAND_SPECS` (`src/main.js:25190-25199`).
+A panel edit to the hands therefore re-cuts hour, minute and both sub-dial
+hands and leaves the alarm hand at its boot geometry — the one indicator on
+the dial that stops matching the family it was cut to match.
+
+It is not a one-line add: the boot site passes explicit `boreR`, `bossR 3.3`,
+`bossH 0.8` overrides and a post-build `scale.z`, so a `HAND_SPECS` row must
+carry ALL of that or the re-cut regresses the §125/§153 lane asserts
+(`src/main.js:13645-13665` read `alarmHand.userData` and its scale). Whoever
+closes this should also decide whether `scale.z = 0.5` belongs inside
+`makeHand` as a spec field rather than as a caller-side scale — the §121 rule
+that a morph is its own frame reads scale changes as motion.
+
+Fix path: a full-spec row plus item 112's acceptance probe extended to the
+alarm hand: panel re-cut, then `alarmHand`'s width, section, bore and z-lane
+all measure identical.
+
+## 114. Three sites still name the alarm barrel as the movement's back-most metal — §112 moved it
+
+Measured 2026-08-29 (per-unit z extents over the built tree): the movement's
+back-most metal is the **alarm link/column-wheel tower** — `Alarm link` tops
+at z 13.877, `Alarm switch` 13.157, `Alarm lock` 12.877 — and the alarm
+barrel, which §112's tier split moved UNDER the three-quarter plate, tops at
+5.399. Three records still say the barrel:
+
+- `src/main.js:26542-26543` — CASE_DIMS' header: "the back wall's inner face
+  clears the movement's back-most metal (the alarm barrel's side)".
+- `src/main.js:34482-34483` — the §39 envelope comment: "up to the alarm
+  barrel at +12.1, for 25.94 units". Both numbers are stale too: the box now
+  reads 13.877 above and −16.619 below, 30.50 units = 11.56 mm — which is
+  what the assert itself measures and passes today.
+- `docs/BUILT.md:19567` — §3's record: "the cap floor off the movement's
+  back-most metal (the alarm barrel)".
+
+No behaviour is wrong — `backMetal` is a live `Box3` max, so the case builds
+against the true metal whichever part it is. But the §39 budget PROSE and
+§3's record derive their stack arithmetic from a part that is no longer
+there, and the case redesign now being scoped budgets the caseback off this
+exact quantity. A comment that names the wrong part is how the next person
+re-derives against the barrel.
+
+Fix path: correct the three sites (and run `node tools/explain-quotes.mjs` in
+the same change — the explainer quotes constants, not this prose, but the
+check is free). The measurement itself ships with the redesign scope's
+`probe-back-envelope.mjs`, which carries the tower/barrel controls.
