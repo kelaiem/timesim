@@ -13006,10 +13006,22 @@ measured **λ 76.6** instead of 35.4, with `unsupported 0`.
   the code without conceding a sharding argument that rests on it.
 - **`resetInputs` does not reset the going crown at all.** Measured: no
   assignment to `crownPullT`, `crownOut`, `leverEngage` or `tauIntegrated`
-  anywhere in it. So that group survives across checks by design or by
-  oversight — unestablished which — and `probe-110-order`'s run used
-  `alarmHandoffs` as its dirtier, which does not move them. **The measurement
-  owed is the same probe with a crown-posing dirtier** (`DIRTY=` takes one).
+  anywhere in it. So that group survives across checks — by design or by
+  oversight, unestablished which.
+
+  **Measured with a dirtier that leaves it set**, since `alarmHandoffs` does
+  not: `DIRTY=stemClutchHandoff`, whose last pose is
+  `{ crownPullT: 1, leverEngage: 1 }`. Result: **0 of 17 order-dependent.**
+
+  **That null result has NO POSITIVE CONTROL, and is weaker evidence than the
+  alarm run for exactly that reason.** The control that fires in this probe is
+  `slenderness`, and it is sensitive to the ALARM crown, not the going one —
+  so with this dirtier there is no check known to be observable, and "nothing
+  moved" cannot be distinguished from "nothing here could have seen it". What
+  the run does establish is narrower and still worth having: no check in the
+  measured 17 is *currently* reading the going crown's state without posing
+  first. Finding a positive control for that group — or proving none can
+  exist because every world-reading check now poses — is what would close it.
 - **The nine skipped sweeps** are still not measured.
 
 ### Candidate fixes as filed, and why (1) was taken### Candidate fixes as filed, and why (1) was taken
