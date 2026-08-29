@@ -27,7 +27,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 114 | OPEN | Three sites still name the alarm barrel as the back-most metal (main.js:26542, 34482, BUILT §3) — measured, the alarm link tower at z 13.877 is; §112 moved the barrel under the plate (5.399). Behaviour is right (live Box3), the prose derives the back stack from a part that is not there |
 | 115 | OPEN | Issue #327, and wider than reported: EVERY display the going train drives counter-rotates the wheel it is keyed to. Measured equal and opposite to the last digit — fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909 — with all FOUR of `probe-coaxial-sense.mjs`'s controls passing, so the trains are right and the defect is the dialFace frame seam. The comment justifying it ("the same physical rotation seen from opposite sides") is true about viewers and false about parts — and it is not the house rule either: the power reserve hand crosses the same seam with the OPPOSITE, correct sign (`src/main.js:33743`), measured as the probe's fourth control, so this is an inconsistency between two conventions in one file. **No one-line fix exists and the halves are measured, not argued**: negating the displays alone runs the hands backwards on a correct dial, and negating `escapeAngle` alone is strictly worse. Both, together, plus the metal that is cut for one direction — club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless sense — of which boot asserts exactly ONE (§47's, `src/main.js:1554`, measured). **The three couplings hanging off the train are now MEASURED and cost the reversal nothing** (`probe-handedness.mjs`): the alarm release notch, the heart cam, and the jumper's star and beak each have a mirror axis (0.00000–0.00654 against a ratchet saw's 0.15309, controls separating 758566×), and both swept laws read even inside the sweep's own sample step. The item's own suspicion that the release ramp was direction-committed is REFUTED — there is no ramp; the notch is the absence of track, extruded `bevelEnabled: false` |
 | 116 | CLOSED | Reported by eye: the going train's teeth meeting tooth-on-tooth instead of interlocking. Real, and in all four meshes, three worse than the reported one — **38.2% / 30.9% / 8.7% / 36.8%** of a pitch off anti-phase across a full turn of the fourth arbor — all four meshes — now **0.01–0.37%**. Every gate passed it because `solveGearChain` ran with the arbors at `rotation.z = 0` and was CORRECT there (0.02–0.21%): zero is not a pose the train occupies, and each going arbor's tick angle adds a `meshOffset` constant that is not a whole number of pitches, so the residual is a CONSTANT — exactly zero where the build tripwire reads and exactly wrong everywhere else. Two phasing systems, `meshOffset` phasing ARBORS and `solveGearChain` phasing BLANKS, neither aware of the other. Fixed by solving at the arbors' τ = 0 angles. `tools/probe-train-mesh-phase.mjs`; the alarm setting chain's 37.44%, a different cause, is left open in the item |
-| 117 | PART DONE | Found by item 116's instrument: the alarm setting wheel ⇄ i1 mesh reads **37.44% of a pitch** off anti-phase — and it is not a phase defect. `probe-mesh-transmission.mjs` asks the prior question, does each declared mesh TURN its neighbour by what the metal says, and walks each input separately because the chain has two (crown, and the hour's back-drive). Three of four meshes are exact under one input and inverted or silent under the other. **FIXED**: the arbor pinion's back-drive sign (`-3*_bd` → `+3*_bd`; −3.700 measured under both inputs now, and nothing reads that angle back). **OPEN, and not a sign**: the gearing makes the setting wheel and the disc one 1:1 pair, so the wheel must follow the hour; the disc's law is PINNED by the trip (measured at three settings — the pin bottoms when the hour hand meets the alarm hand, constant offset); and the armed pin-B coupling needs the wheel to equal the TUBE, which holds. Three laws, any two compatible. Filed rather than guessed — candidate resolutions in the item |
+| 117 | PART DONE | Found by item 116's instrument: the alarm setting wheel ⇄ i1 mesh reads **37.44% of a pitch** off anti-phase — and it is not a phase defect. `probe-mesh-transmission.mjs` asks the prior question, does each declared mesh TURN its neighbour by what the metal says, and walks each input separately because the chain has two (crown, and the hour's back-drive). Three of four meshes are exact under one input and inverted or silent under the other. **FIXED**: the arbor pinion's back-drive sign (`-3*_bd` → `+3*_bd`; −3.700 measured under both inputs now, and nothing reads that angle back). **OPEN, and not a sign**: the gearing makes the setting wheel and the disc one 1:1 pair, so the wheel must follow the hour; the disc's law is PINNED by the trip (measured at three settings — the pin bottoms when the hour hand meets the alarm hand, constant offset); and the armed pin-B coupling needs the wheel to equal the TUBE, which holds. Three laws, any two compatible — and the root cause is one fact: a FIXED reader forces the disc to encode `hour − set`, that needs a differential, and the branch doing the summing is a plain gear train, which back-drives. So the hour flows back up the whole setting train and no member carries the set term alone. **DECIDED 2026-08-29 (owner): the moving reader rides the HOUR** — the real Memovox topology. The disc carries SET only and holds still, the hour carries the reader, the branch and the differential both disappear. Open at implementation: what holds the disc once its hour-tube friction hub goes, and how the moving feeler's run to the release lifter reaches it across its travel (the expensive half, not yet measured) |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -14169,28 +14169,75 @@ coupling un-seats once every 12 h. The tick law currently obeys (3) and
 simply omits the hour term, which is why the wheel stands still while the
 idler it is geared to turns — and why its teeth sit 37% of a pitch out.
 
-**This is a P0/P2 finding — the group does not agree with itself — so it is
-filed rather than guessed at.** Adding the missing term would satisfy the
-gearing and break the coupling; flipping the disc would satisfy the gearing
-and break the alarm's timing. Both are behaviour changes to a shipped
-mechanism, and the item deliberately does not pick one. Candidate
-resolutions, for whoever has the design intent:
+**This is a P0/P2 finding — the group does not agree with itself.** Adding
+the missing term would satisfy the gearing and break the coupling; flipping
+the disc would satisfy the gearing and break the alarm's timing.
 
-- **The setting wheel is a spurious mesh.** If the crown's re-phasing is
-  meant to reach the disc through the branch alone, the wheel does not belong
-  in `i1`'s plane at all: move it out and the contradiction evaporates. This
-  is the cheapest resolution and the one to price first — but the wheel is
-  also what the tube couples to, so its plane is not free.
-- **The tube couples to something that carries only the set term.** Nothing
-  in the chain does today; the arbor comes closest and also back-drives.
-- **The differential is re-planned** so the hour and the set enter one member
-  and only their difference leaves it, which is what a fixed reader needs.
+**The root cause, found once the coupling was traced to the metal.** The pin
+arm is mounted on the TUBE (`main.js:11849`) and the face cam is cut into the
+SETTING WHEEL (`12493`), so `relB` is a genuine physical relative angle: give
+the wheel the hour term the gearing demands and that cam turns under the pin
+twice a day, cycling the coupling through its whole 0.02→0.10 height. Which
+means the contradiction is not a sign anywhere. **A FIXED READER forces the
+disc to encode `hour − set`, that needs two inputs summing into one output
+with no back-flow, and the branch that does the summing is a plain gear
+train — which is bidirectional.** So the hour injected at `i1` flows back up
+the entire setting train, no member carries the set term alone, and the
+hand's coupling wheel cannot hold still. Every symptom in the table above is
+that one fact seen from a different member.
 
-Whichever is chosen, `probe-mesh-transmission.mjs` is the acceptance: all
-four rows ok under both inputs. Its alarm rows are REPORTED rather than
-gated for exactly this reason — a red mark nobody can clear is not a gate.
+### DECIDED (2026-08-29, owner) — the moving reader rides the HOUR
 
-**Residue.** The three sites item 15 tables (power-reserve wheels, alarm
+The real Memovox topology, and it removes a mechanism rather than adding one:
+**the disc carries the SET only and holds still, while the HOUR carries the
+reader round to meet it.** The trip stops being a difference to be computed
+and becomes a plain coincidence between a moving reader and a fixed notch, so
+no differential is needed at all — and with nothing injecting the hour into
+the setting train, every member of it carries set alone, the hand holds, and
+`relB` is constant while armed.
+
+What that lands:
+
+- **The branch is deleted.** `i1b` and its sleeve (`main.js:13371-13378`) go,
+  and with them the whole back-drive. The setting wheel's "missing" hour term
+  dissolves rather than being added — it was only ever demanded by the branch.
+- **The disc's law loses its hour term**, becoming a function of `alarmSetRot`
+  and the release phase alone.
+- **The disc must come OFF its hour-tube friction hub** (`main.js:13347`) or
+  gain a detent: the hub is what would otherwise drag it with the hour, and
+  under this topology it must hold where the crown left it. Which of those two
+  is the open construction question — the hub is currently doing real work as
+  the running seat, so deleting it means the disc needs something else to run
+  on.
+- **The feeler moves.** It is a "FIXED reader on a dial-hung bracket" today
+  (`main.js:13380-13392`); it becomes hour-carried, and §29 step 4's run from
+  its tail to the release lifter has to reach it across that travel. This is
+  the expensive half and it is NOT yet measured — see the residue below.
+
+**Acceptance, and one thing to change about it.** `probe-mesh-transmission.mjs`
+holds the kinematics: all rows ok under every input the mesh actually sees.
+Note that under this topology the setting train is CORRECTLY still under the
+hour sweep — so the probe's present "driver STILL … not transmitting" rows
+become the right answer, and the check needs the per-mesh declaration of
+WHICH INPUTS drive it before it can tell the two apart. That is the same
+declaration §194 (roadmap) needs for the battery gate, and neither can be
+built without it.
+
+The trip invariant is the other half and is already measured: the pin bottoms
+at full `ALARM_PIN_DROP` when the hour hand's world azimuth meets the alarm
+hand's, at three settings, with an offset identical at all three
+(`probe-handedness.mjs` measured 0.02185 rad, the sampling plateau). That must
+still hold afterwards, and it is what says the re-plan kept the alarm honest.
+
+**Residue.** The decided topology's expensive half is UNMEASURED: whether
+the feeler has anywhere to travel once it rides the hour — the dial-side
+band's free azimuth over the pose net — and what its tail's run to the
+release lifter costs across that travel. Measure that before any of it is
+built; `probe-ledge-occupancy`'s method (walk triangle EDGES over the full
+pose net, per azimuth bin) is the shape to copy, since a radial arm carries
+no vertex in a band.
+
+The three sites item 15 tables (power-reserve wheels, alarm
 branch idler i1b, alarm winding idlers) are still unmeasured for
 transmission, and so is every other declared mesh in the movement: this
 probe covers the going train and the alarm setting chain only. A `transmits`
