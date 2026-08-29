@@ -12869,14 +12869,24 @@ its comment rather than a bare item number:
 | `Reset rod` | 48.8 | 0.2189 u | `Hack rod / rodKnuckle` | 0.1369 |
 | `Keyless works` | 41.2 | 0.1305 u | `Power-reserve train` | 0.0320 |
 
-The report now reads **9 over ceiling, 0 unwaived, 0 stale waivers**. That is not
+The report now reads **10 over ceiling, 1 unwaived, 0 stale waivers** — and the
+one unwaived row is deliberate. `Alarm switch / alarmPusherStem` at **λ 30.9**
+arrived with §96's case landing, after this item's steps 1 and 2 had measured
+their population. It has no measured wall and no fix path yet, so waiving it
+would be precisely what TODO 78 forbade: an entry bought for a row nobody has
+looked at. It is the item's next customer, not part of this landing's triage. That is not
 the movement getting better and the entries say so: each names position-space
 work, and the staleness gate turns a fix into a waiver that must be deleted.
 
 **The alarm stem's row moved while this landed**, which is why its figure is the
-outlier. TODO 110's fix let its declaration stand, so it reads λ 76.6 instead of
-35.4 — and the section that would answer 76.6 is ×2.55 rather than ×1.18, against
-a neighbour already inside `CLEAR_MARGIN`. Its real want is a SECOND BEARING, not
+outlier. TODO 110's fix let its declaration stand, so it reads λ 76.6 instead of the
+whole-stock figure — and the section that would answer 76.6 is ×2.55 rather than
+×1.18, against a neighbour already inside `CLEAR_MARGIN`. (That whole-stock
+figure is 46.2 since §96's case lengthened the stem, not the 35.4 measured
+before it. **λ 76.6 did not move and could not**: the overhang is
+`BUSH − CD` with `alarmStemLen` cancelling, so the case adds metal only
+OUTBOARD of the only bearing — an identity §96 derived and this landing
+re-measured after merging it.) Its real want is a SECOND BEARING, not
 a section: one bush 25.5222 u from the inner end is what makes it a cantilever.
 The waiver says that instead of quoting a section nobody should cut.
 
