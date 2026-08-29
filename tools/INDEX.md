@@ -4,7 +4,7 @@
 
 # The instruments
 
-163 scripts. **70 are ACCEPTANCE tests** — they decide and exit non-zero.
+164 scripts. **71 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -45,6 +45,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-110-order.mjs` | §110 | report | TODO 110 step 1 — WHICH CHECKS CAN OBSERVE WHAT RAN BEFORE THEM? |
 | `probe-111.mjs` | §111 | report | §111 — the governor anchor's derived section, its bored bearing, and the engagement debt, read off a real boot rather than off the model that predicted them. |
 | `probe-111b.mjs` | §111 | report | §111 — the focused instruments, run one at a time on the edited tree: the new penetration row's measured depth, and the checks the anchor's new radii could move. Not a substitute for the battery; a fast loop while iterating (CLAUDE.md's "Inspecting" section). |
+| `probe-112-recut.mjs` | §112 | acceptance | THE PANEL RE-CUT REPRODUCES THE BOOT METAL — TODO 112/113's acceptance, held from now on. |
 | `probe-115-support.mjs` | §115 | report | §115 — the two support rows that moved, localised to the mesh pair that produced them. The gate only says "within tol"; this says WHICH metal. |
 | `probe-115-window.mjs` | §115 | report | §115 — the governor window, read off a real boot: what the solve wanted, what the keep field left, which keep binds where, and how much of the governor the finished plate actually shows. |
 | `probe-116-locale-fit.mjs` | §116 | acceptance | §116 — WHAT NO GATE MEASURES: does each locale still FIT? |
