@@ -26310,7 +26310,7 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
 const PLATE_RIM = (() => {
   const rSeat = plateR - 1 / UNIT_MM;
   const v = new THREE.Vector3();
-  let front = Infinity, reach = 0;
+  let front = Infinity, back = -Infinity, reach = 0;
   backPlate.updateMatrixWorld(true);
   backPlate.traverse((o) => {
     if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
@@ -26320,12 +26320,13 @@ const PLATE_RIM = (() => {
       const r = Math.hypot(v.x, v.y);
       if (r > reach) reach = r;
       if (r >= rSeat && v.z < front) front = v.z;
+      if (r >= rSeat && v.z > back) back = v.z;   // §186 — the rim's BACK face: what a clamp head seats on
     }
   });
   if (!(front < Infinity) || !(reach > plateR - 1e-9))
     console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
       + `authored ${plateR.toFixed(4)} — the case's seat and tube standoffs are derived from this and cannot be`);
-  return { front, reach };
+  return { front, back, reach };
 })();
 
 const CASE_SECTORS = (() => {
@@ -26461,10 +26462,13 @@ const CASE_SECTORS = (() => {
   // through the movement's centre — but its offset is a LIVE quantity that
   // `tubeAt` already consumes, and a window centred on one radius is wrong the
   // moment it stops being zero. Derived, not assumed to stay zero.
-  const boreWindow = (az, ap, off) => {
+  // §186 plumbing: the two wall radii are parameters (defaulting to today's
+  // band) because the redesigned case cuts windows through walls at more
+  // than one pair of radii — the union rule is the same at any pair.
+  const boreWindow = (az, ap, off, walls = [CASE_R_IN, CASE_R_OUT]) => {
     const ends = [];
     for (const x of [off - ap, off + ap])
-      for (const r of [CASE_R_IN, CASE_R_OUT])
+      for (const r of walls)
         ends.push(Math.asin(Math.max(-1, Math.min(1, x / r))));
     return { a0: az + Math.min(...ends), a1: az + Math.max(...ends) };
   };

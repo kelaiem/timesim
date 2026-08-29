@@ -4189,10 +4189,40 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 // angles a0…a1, dilated by `pad` (the stud's radius plus its margin) at every
 // edge — which at the inner radius costs more ANGLE for the same metal, so
 // the angular pad is taken there.
-export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [] }) {
+export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null }) {
   const bevelSize = radius * 0.008;
   const shape = new THREE.Shape();
-  shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+  // §186 — the MOUNTING RIM. `rim: { r, notches: [{ az, halfW }] }` runs the
+  // outline at rim.r instead of the working radius, dropped back to the
+  // working radius across each notch — a straight-walled slot on a stem's
+  // radial line. The wall construction is exact, not approximated: a wall
+  // line at perpendicular offset halfW from the az ray meets a circle of
+  // radius r at angular offset asin(halfW/r), so the two circle points at
+  // matching offsets lie ON the wall line and one lineTo (the connection
+  // absarc draws implicitly) IS the wall. The outline stays one simple
+  // polygon — the `outlines` gate holds it. `radius` remains the working
+  // outline every hole/bevel rule is keyed to; with no `rim` the path below
+  // is byte-identical to the pre-§186 single arc.
+  if (!rim) {
+    shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+  } else if (!(rim.notches || []).length) {
+    shape.absarc(0, 0, rim.r, 0, Math.PI * 2, false);
+  } else {
+    const ns = [...rim.notches].sort((a, b) => a.az - b.az);
+    for (let i = 0; i < ns.length; i++) {
+      const n = ns[i], next = ns[(i + 1) % ns.length];
+      const wrap = i + 1 === ns.length ? Math.PI * 2 : 0;
+      // across this notch's floor at the working radius…
+      shape.absarc(0, 0, radius,
+        n.az - Math.asin(n.halfW / radius), n.az + Math.asin(n.halfW / radius), false);
+      // …out along the wall (implicit connection), round the rim to the
+      // next notch's near wall…
+      shape.absarc(0, 0, rim.r,
+        n.az + Math.asin(n.halfW / rim.r), next.az - Math.asin(next.halfW / rim.r) + wrap, false);
+      // …and closePath (below the loop) draws the last inbound wall.
+    }
+    shape.closePath();
+  }
   for (const h of holes) {
     const p = new THREE.Path();
     p.absarc(h.x, h.y, h.r + bevelSize, 0, Math.PI * 2, true); // CW: a hole
@@ -7443,7 +7473,10 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // With an offset axis the tube no longer meets the wall at radius: it
   // crosses R at sqrt(R² − off²) along its own line, so the ends derive from
   // the offset rather than being read straight off R_IN/R_OUT.
-  const tubeAt = (az, d, z, name, flush = false, off = 0) => {
+  // §186 plumbing: `clearR` lets a caller name the plate metal THIS opening
+  // must miss (a rim notch's floor for a crown, the full rim otherwise);
+  // null keeps the global measured reach, which is today's behaviour.
+  const tubeAt = (az, d, z, name, flush = false, off = 0, clearR = null) => {
     const r = d / 2;
     const alongAt = (R) => Math.sqrt(Math.max(0, R * R - off * off));
     const outboard = flush ? alongAt(R_OUT) : alongAt(R_OUT) + 1.5 / UNIT_MM;
@@ -7467,7 +7500,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     // is 0.193 INSIDE a plate whose extrude bevel swells to 43.2664 — the
     // rule was right and the radius was a drawing. A tube has to miss metal.
     const rimAcross = Math.max(0, Math.abs(off) - (r + TUBE_WALL));
-    const clearOf = plateReach + CLEAR_MARGIN;
+    const clearOf = (clearR ?? plateReach) + CLEAR_MARGIN;
     const inboard = Math.sqrt(Math.max(0, clearOf * clearOf - rimAcross * rimAcross));
     const len = outboard - inboard;
     if (len <= 0)
