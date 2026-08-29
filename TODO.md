@@ -13450,7 +13450,9 @@ the four pairs this branch inherited. `node tools/probe-case-closed.mjs`: all
 13 case bodies at 0 boundary edges.
 
 What is NOT closed here is item 111: the derivation now sees one pose plus one
-declared table, and nothing gates the rest.
+declared table, and nothing gates the rest. (Item 111 closed since — §186
+deleted the scanned seat outright and mounted the movement outboard of the
+population this sentence worries about.)
 
 ## 92. CLOSED — the case treated a chord-mounted pusher as a radial one, twice
 
@@ -13679,7 +13681,29 @@ change would mix an instrument correction with five mechanism corrections and
 make the report diff unreadable — the diff is the evidence that the instrument
 change did what it claimed and nothing more.
 
-## 111. The case's seat relief is derived at one pose plus one declared table — nothing gates the rest
+## 111. The case's seat relief is derived at one pose plus one declared table — nothing gates the rest — CLOSED
+
+**CLOSED 2026-08-29 by §186**, and the closure removed the population instead
+of enumerating it. The seat this item is about no longer exists: the movement
+mounts on a rim-ledge at the back band's bore, and the innermost case metal
+at any z the movement occupies is `CASE_R_IN` (45.56) — outboard of everything
+the old scan ever found, measured over the pose net
+(`probe-ledge-occupancy`, whose first cut this work also fixed: it sampled
+edge endpoints/midpoints and was blind to radial crossers, the same class of
+miss this item describes at pose scale). With the third population gone,
+`CASE_SECTORS` became a DERIVATION — the three declared, pose-invariant bore
+windows and nothing else — and the scan was deleted rather than completed.
+
+What now gates the claim, per the item's own list: option 1 landed —
+`probe-case-relief.mjs` rides `battery.yml` (every band body against every
+movement mesh over the pose net, per-mesh naming, the ledge and clamp
+bearings excused by name), with the overlap objection answered in the
+workflow step's comment: `inspection`/`sweptOverlap` sweep denser but cannot
+state the bearing-coincidence excuses per mesh. At boot, standing rule 5
+inverted (the whole `LOW_LINKAGE_OBSTACLES` footprint must stop one
+CLEAR_MARGIN inside `CASE_R_IN`) plus a build-pose edge-walk tripwire over
+the annulus keep the derivation's precondition loud. The related exposure
+(build-pose vs restored state) closed with the scan that had it.
 
 Filed with item 91's closure, from the hole that closure left rather than from
 a symptom. It is item 7 ("the battery samples poses — it cannot bound them")

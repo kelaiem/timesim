@@ -298,6 +298,22 @@ jobs:
             --digests .battery-out/digests.json \
             ${{ steps.mode.outputs.args }}
 
+      # ---- §186 / TODO 111: the analytic case sectors, held over the pose net
+      #
+      # CASE_SECTORS is a derivation since §186 — three declared, pose-invariant
+      # bores, no scan — on the claim that the case has no metal inboard of
+      # CASE_R_IN at any pose the movement reaches. Boot holds that claim at ONE
+      # pose (the rule-5 reach assert and the build-pose tripwire beside the
+      # sectors); this holds it over the same pose net the battery sweeps, and
+      # names the MESH on both sides when it fails — which is what tells you
+      # which opening is in the wrong place. TODO 111's option 1, with its
+      # overlap objection answered in the item's closure: `inspection` and
+      # `sweptOverlap` cover the same pairs denser, but neither can state the
+      # bearing-coincidence excuses per mesh. ~72 s measured local; an
+      # acceptance test, exit non-zero on any unexcused contact.
+      - name: Case relief over the pose net (§186 / TODO 111)
+        run: node tools/probe-case-relief.mjs
+
       # Only a run that measured the WHOLE movement may become a baseline, and
       # only from main: a report carrying `restrictedTo` inherited rows from a
       # previous baseline, and caching it would let one key error chain forward

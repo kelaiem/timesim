@@ -1,22 +1,26 @@
-// WHAT OCCUPIES THE CANDIDATE RIM-LEDGE ANNULUS — the redesign's mounting
-// band, scanned over the pose net.
+// WHAT OCCUPIES THE RIM-LEDGE ANNULUS — §186's mounting band, scanned over
+// the pose net.
 //
-// REPORT. Written for the case-redesign scope (roadmap): the owner's chosen
-// architecture seats the base plate on a narrow LEDGE at the midcase's inner
-// wall and clamps it with case screws from the back. The ledge and the clamp
-// heads live in the annulus outboard of the plate's rim, in the plate's own
-// z-band and just behind it — exactly where the dial-side keyless works and
-// the low linkage already swing (the shipped seat is INTERRUPTED for them,
-// TODO 91/§3). This measures what stands in that annulus, per azimuth, over
-// the pose net, so the entry can say where ledge lands and screw stations
-// can exist at all.
+// REPORT by default, ACCEPTANCE with --accept. Written as the survey that
+// scoped §186 (the rim-mounted movement: the base plate's rim drops into the
+// back band's bore, rests on a ledge, and three clamp screws hold it), and
+// kept as the instrument that says what stands in the annulus OUTBOARD of
+// the plate's measured rim — since §186 that is the space the case's own
+// mount occupies, and the correct answer is "the three stem crossers and
+// nothing else": the two crown stems and the alarm pusher's head, each in
+// its own few degrees of azimuth (the stems get rim notches and case bores;
+// the pusher passes above the rim in z). --accept gates exactly that: any
+// OTHER unit in the annulus, or an allowed one spreading past a stem
+// corridor's width, exits non-zero — a new part swinging into the mount's
+// space, which every clean unit-pair sweep can only report per unit pair,
+// fails here with the annulus named.
 //
 // What this is NOT: `probe-case-relief.mjs` judges the SHIPPED band bodies
-// against the movement (an acceptance about metal that exists);
-// `probe-91-relief.mjs` reports the shipped seat band's occupants. This one
-// scans a CANDIDATE annulus — [plate real reach .. plate reach + 3 mm] over
-// z [plate front face − 2 mm .. plate back face + 2 mm] — metal that exists
-// nowhere yet, so nothing gates it; it is a survey for a design.
+// against the movement over the same net (that one rides the battery
+// workflow, TODO 111). This one asks about the ANNULUS as a region —
+// [plate real reach .. reach + 3 mm] over z [plate front − 2 mm .. plate
+// back + 2 mm], derived from the measured plate, so it follows the rim
+// wherever the derivation puts it.
 //
 // Controls: the keyless works MUST appear (the winding stem crosses the
 // annulus radially at az ≈145°) and so must the alarm switch (its stem and
@@ -40,11 +44,15 @@
 // around theirs.
 //
 // Run: node tools/probe-ledge-occupancy.mjs   (ROOT= for another worktree)
+//   --accept              gate the survey band's §186 expectation (see above)
+//                         instead of only reporting; controls still apply.
 //   Band overrides (§186 commit 0 — the design's three tight bands are
 //   measured with the same scan rather than a second one):
 //     --r0 --r1 --z0 --z1   absolute UNITS; any subset; the rest keep the
 //                           survey defaults (r from the plate's measured
-//                           reach, z from its faces ±2 mm).
+//                           reach, z from its faces ±2 mm). An override
+//                           skips the controls AND --accept: a design band's
+//                           expectation is the caller's.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { dirname, join } from 'node:path';
@@ -55,6 +63,7 @@ const argVal = (k) => {
   return i >= 0 && process.argv[i + 1] !== undefined ? Number(process.argv[i + 1]) : null;
 };
 const BAND = { r0: argVal('--r0'), r1: argVal('--r1'), z0: argVal('--z0'), z1: argVal('--z1') };
+const ACCEPT = process.argv.includes('--accept');
 const srv = spawn('python3', ['-m', 'http.server', '8514', '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 1200));
 const browser = await chromium.launch();
@@ -211,6 +220,29 @@ if (Object.values(BAND).some((v) => v !== null)) {
   else console.log('\nCONTROL PASS: keyless works found in the annulus');
   if (!res.units.some((u) => u.name === 'Alarm switch')) { ok = false; console.log('CONTROL FAIL: the alarm switch (stem/pusher crossers near az 0°) did not appear — the edge walk is not finding radial cylinders'); }
   else console.log('CONTROL PASS: alarm switch found in the annulus (edge walk sees radial crossers)');
+  if (ACCEPT) {
+    // §186's expectation, gated. The corridor cap is 3 bins (15°): a Ø2 mm
+    // sleeve plus margin subtends ~9° at the rim and lands in at most two
+    // 5° bins plus one of binning slop — measured, each crosser sits in
+    // exactly 2. Azimuths are deliberately NOT pinned here: the notches and
+    // bores derive from the same stem angles the metal does, so a moved
+    // crown moves its corridor with it and the mount stays right; what
+    // cannot be right is a FOURTH occupant, or a crosser smeared wider than
+    // a stem's corridor.
+    const ALLOWED = new Map([['Alarm crown', 3], ['Keyless works', 3], ['Alarm switch', 3]]);
+    let aok = true;
+    for (const u of res.units) {
+      if (!ALLOWED.has(u.name)) {
+        aok = false;
+        console.log(`ACCEPT FAIL: ${u.name} stands in the mount's annulus (${u.arcs} bins, az° ${u.azDeg.slice(0, 8).join(',')}) — §186's ledge assumes only the three stem crossers`);
+      } else if (u.arcs > ALLOWED.get(u.name)) {
+        aok = false;
+        console.log(`ACCEPT FAIL: ${u.name} spreads to ${u.arcs} bins — wider than a stem corridor (${ALLOWED.get(u.name)})`);
+      }
+    }
+    if (aok) console.log('ACCEPT PASS: only the three stem crossers, each inside its corridor');
+    ok = ok && aok;
+  }
 }
 await browser.close(); srv.kill();
 process.exit(ok ? 0 : 2);

@@ -19938,3 +19938,128 @@ everywhere), `probe-153-boot`, `probe-95-guard`; fingerprint re-baselined
 TODO 116/117 landings underneath (§188's first cut measured 647756545 on
 the pre-116/117 tree — a number a rebase made describe nothing, so it was
 re-measured rather than inherited).
+
+## §186 — the case rebuilt around a rim-mounted movement: ledge, clamp screws, and the width cap re-based to the body
+
+The movement rested on an interrupted seat step (`R_SH = plateR − 1 mm`,
+six lands among the dial-side works) and nothing fastened it — the six
+case screws held the CASEBACK, and the movement was held by gravity. The
+owner's chosen architecture moves the bearing OUTBOARD, casing-clamp
+practice: the base plate grows a mounting RIM (the plate MESH alone —
+`plateR` is the movement's working radius and fans out to the dial, the
+case and every station, so it never moves), the rim drops into the back
+band's bore and rests on a LEDGE, and three clamp screws thread into the
+band's own metal below it, heads clamping the rim from the back.
+
+### The radial chain, one constraint each
+
+- `CASE_R_OUT := CASE_WIDTH_MAX` (52.7778 u, Ø40.000) — the owner's
+  re-based budget (40 mm applies to the case BODY, lugs excluded) spent
+  WHOLE, because §187's caseback ring and lip are the annulus's next
+  tenants and a band derived minimal today would be re-grown by that
+  entry tomorrow. The cap assert stays as the tripwire (equality legal);
+  the across-the-lugs assert retires to §190, `probe-lug-geom` keeping
+  the tips' number as the baseline that entry re-derives against.
+- `CASE_R_OUT_FRONT = CASE_R_IN + CASE_BAND_T` (48.2007) — the front
+  section keeps the derivation the whole case used to have, so §189
+  inherits an untouched front. The midcase STEP between the two sits one
+  `CLEAR_MARGIN` in front of the lowest crown bore window — both crown
+  sleeves live entirely in the thick back band by construction.
+- `R_BORE_BACK = CASE_R_OUT − CASE_BAND_T` (50.1389): the same 1 mm
+  dress-watch wall, the gasket annulus at its old proportions inside it.
+- `BASE_RIM_R = R_BORE_BACK − SEAT_FIT − plateR·PLATE_BEVEL_F`
+  (49.7155): the locating fit is wall-to-REAL-reach (TODO 84 at plate
+  scale), and the extrude's swell is ABSOLUTE — one
+  `bevelSize = plateR·F` for the whole extrude, so the rim's outline
+  grows by plateR's bevel, not its own. The first cut divided by
+  (1 + F) instead and the boot fit-assert caught it on the first boot
+  (0.134 against 0.080); the shipped fit measures 0.0800 exactly, reach
+  50.0589. `PLATE_BEVEL_F` is exported so the derivation and the builder
+  share one expression.
+- `zLedge = PLATE_RIM.front` — the rim's measured underside plane,
+  coincident by construction (§3's measured-face pattern). The ledge
+  bears `BASE_RIM_R − CASE_R_IN` ≈ 1.57 mm, asserted ≥ the 1 mm the seat
+  it replaces provided.
+- Clamp screws: **three** — a plane is three points, the kinematic
+  definition of the bearing the clamps must define, and a lapped ring
+  joint gains nothing from over-constraint. `R_CLAMP = R_BORE_BACK −
+  CLEAR_MARGIN − headR` (as far outboard as the head can bear, which
+  maximises the rim bearing inboard of it); tripod rotation solved
+  EXACTLY — fold both notch azimuths into the 120° period, stand the
+  first screw at the largest gap's midpoint — with the achieved standoff
+  asserted in metal terms (head to notch wall ≥ margin; thread's inboard
+  wall ≥ one pitch, 0.733 vs 0.660). Engagement 0.7 mm below the ledge
+  (§3's precedent), shafts through SEAT_FIT clearance bores in the rim
+  (§148's two-holes rule), heads seated on the rim's measured back face.
+
+### What the plan predicted differently, reconciled
+
+- **Proud heads, not §148 crescent lands.** The entry sketched screw
+  seats cut into the rim; a flush counterbore does not FIT — at the
+  outboard-most clamp circle the seat circle crosses the rim's outline,
+  an invalid shape under the `outlines` gate. Heads stand 0.4 mm proud
+  on the rim's back face instead — visible casing screws through §187's
+  window, which the entry already wanted recorded as a design feature.
+- **The rim needed crown-stem NOTCHES the entry did not predict**: the
+  tube sleeves' metal crosses the rim's z-band inboard of the bore wall.
+  Each notch's half-width derives from the SAME expressions `tubeAt`
+  builds the sleeve with (`TUBE_WALL` hoisted to module scope and
+  exported: bore/2 + wall + CLEAR_MARGIN + bevel compensation), its
+  walls are exact (a wall line at perpendicular offset halfW meets a
+  circle at asin(halfW/r), so the connecting segments ARE the walls and
+  the outline stays one simple polygon), and `alarmStemAngle` is PINNED
+  at birth to `ALARM_CORNER_W_AZ`, the only name for that direction that
+  exists at plate-cut time — 1 mrad of disagreement eats a third of the
+  notch margin, so the tolerance is a tenth of it.
+- **`CASE_SECTORS` went fully ANALYTIC, not "the scan re-derived".** The
+  entry planned to move the edge-walking scan outboard; the measurement
+  emptied the population instead — the innermost case metal at any
+  movement z is `CASE_R_IN` 45.56, outboard of everything the old scan
+  ever found (`probe-ledge-occupancy` over the 43-pose net: 340° of 360°
+  free, exactly three stem crossers). So the sectors are a derivation
+  from the three declared, pose-invariant bores, the RELIEVED sector
+  kind is deleted with the seat it relieved, and TODO 111 closes by
+  REMOVING its third population rather than enumerating it. What holds
+  the claim: standing rule 5 inverted (the whole `LOW_LINKAGE_OBSTACLES`
+  footprint must stop one CLEAR_MARGIN inside the bore), a build-pose
+  edge-walk tripwire over the annulus (edges, not vertices — the
+  probe's own blind-spot lesson, applied at boot), and
+  `probe-case-relief` riding `battery.yml` (TODO 111 option 1, its
+  overlap objection answered: the pair sweeps are denser but cannot
+  state the bearing-coincidence excuses per mesh).
+- **No-rocking re-keyed §186**: supports = the ledge's uncut arcs (only
+  a crown window straddling the ledge plane interrupts it) UNION the
+  three clamp stations; widest gap must stay under half a turn —
+  trivially satisfied by a tripod and asserted anyway, because deleting
+  two screws is exactly the regression it notices.
+
+### The case middle, one staircase
+
+One profile, one turning: the wide back bore down to the ledge, the
+front bore below it; the back band down to the step, the front section
+below that, out through the bezel run. Unlike the old seat-step notch
+the outline never doubles back, so it is a simple polygon and the caps
+pave in one piece (the triangle-count warn keeps that claim honest).
+Bored pieces compose through corner-aware helpers — the crown windows
+straddle `zLedge`, so the metal on each side of a hole carries the jog
+it contains. §3's caseback stack re-bases whole onto the wide bore
+(`R_FL`/`R_SCR`/`R_G`/`R_WIN` keep their offsets, the bore moves; the
+`R_SCR ≡ plateR` coincidence dissolves). Consumers re-derive by reading
+`CASE_R_OUT`: both stem lengths, the §43 pusher standoff and TODO 92's
+assert, the lug chord — and the lugs' z re-keys to `zLedge`, the same
+plane the seat face used to be.
+
+### Measured
+
+Boot silent. `ci-battery --only graph,support,outlines,assembly`: 11/11
+gates PASS on the new tree. `probe-case-relief` (now with the clamp
+screws in its roster and the two mount joints excused by name): CLEAR
+over 43 poses, ledge bearing shut 43/43, clamp joints shut.
+`probe-ledge-occupancy --accept` (the new acceptance mode): only the
+three stem crossers, each in ≤ 2 of 72 bins, controls PASS. The mesh's
+corner set reads back the derivation exactly — step at −7.68
+(48.20→52.78), ledge at −2.30 (45.56→50.14), crown windows −7.53/−0.67,
+pusher 5.05/9.80, flange at 15.46. Fingerprint re-baselined 3880401533
+at 56 units (deterministic across virgin boots): the Case unit re-boxes
+wholesale and every part whose standoff reads `CASE_R_OUT` moves
+outboard with the band. The full battery verdict is CI's, per rule 4.

@@ -8633,7 +8633,20 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§188 — the hands cut from stock; 56 units, 12 poses):
+// Baseline (§186 — the case rebuilt around a rim-mounted movement; 56 units,
+// 12 poses):
+// 3880401533
+//   moved from 4245145891 deliberately: the back band spends the owner's
+//   40 mm body budget whole (CASE_R_OUT 48.20 → 52.78), so the Case unit
+//   re-boxes wholesale — stepped middle, re-based caseback stack, the new
+//   clamp screws, lugs and tubes rooted on the wider band — and every
+//   part whose standoff derives from CASE_R_OUT moves outboard with it:
+//   both crowns and their stems (stemLen/alarmStemLen), and the alarm
+//   pusher's head and stroke stations (§43). The base plate's grown rim
+//   itself is invisible here — backPlate is not a labelled unit — but the
+//   movement's outboard hardware is not. Measured twice on this tree
+//   (virgin double-boot, the determinism gate beside it).
+// Previous baseline (§188 — the hands cut from stock; 56 units, 12 poses):
 // 4245145891
 //   moved from 3900833778 (main's value after TODO 117 re-posed the alarm
 //   setting arbor and TODO 116 re-phased the going blanks) deliberately:
