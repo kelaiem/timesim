@@ -719,7 +719,9 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   counter-rotates its own wheel, equal and opposite to the last digit
   (`tools/probe-coaxial-sense.mjs`). Read the convention as a description of
   a defect, not as a rule to follow, until that item lands — and note the fix
-  is not one sign, because the train's absolute sense is wrong too.
+  is not one sign, because the train's absolute sense is wrong too. The
+  correct crossing is already in the tree: `reserveHand.rotation.z =
+  -rsvArbor2.rotation.z` (33743), and the alarm pointer's comment beside it.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
   **Disarmed at the source by §81**: every mesh now reaches the scene

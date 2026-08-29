@@ -25,7 +25,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 112 | OPEN | `HAND_SPECS` omits the reserve hand's `halfWidth`, so the first panel hands edit re-cuts §158's 3.00′ pointer back to 1.16′ — the exact defect the row's own comment warns about for `subdial`/`namePrefix`, one line up. Carry the field; acceptance = panel re-cut leaves the width identical |
 | 113 | OPEN | `alarmHand` is absent from `HAND_SPECS` entirely, so panel edits re-cut every hand except it. Not a one-line add: the boot site passes explicit bore/boss overrides and a post-build `scale.z = 0.5` the lane asserts read |
 | 114 | OPEN | Three sites still name the alarm barrel as the back-most metal (main.js:26542, 34482, BUILT §3) — measured, the alarm link tower at z 13.877 is; §112 moved the barrel under the plate (5.399). Behaviour is right (live Box3), the prose derives the back stack from a part that is not there |
-| 115 | OPEN | Issue #327, and wider than reported: EVERY display the going train drives counter-rotates the wheel it is keyed to. Measured equal and opposite to the last digit — fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909 — with all three of `probe-coaxial-sense.mjs`'s controls passing, so the trains are right and the defect is the dialFace frame seam. The comment justifying it ("the same physical rotation seen from opposite sides") is true about viewers and false about parts. **No one-line fix exists and the halves are measured, not argued**: negating the displays alone runs the hands backwards on a correct dial, and negating `escapeAngle` alone is strictly worse. Both, together, plus the metal that is cut for one direction — club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless sense — of which boot asserts exactly ONE (§47's, `src/main.js:1554`, measured) |
+| 115 | OPEN | Issue #327, and wider than reported: EVERY display the going train drives counter-rotates the wheel it is keyed to. Measured equal and opposite to the last digit — fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909 — with all FOUR of `probe-coaxial-sense.mjs`'s controls passing, so the trains are right and the defect is the dialFace frame seam. The comment justifying it ("the same physical rotation seen from opposite sides") is true about viewers and false about parts — and it is not the house rule either: the power reserve hand crosses the same seam with the OPPOSITE, correct sign (`src/main.js:33743`), measured as the probe's fourth control, so this is an inconsistency between two conventions in one file. **No one-line fix exists and the halves are measured, not argued**: negating the displays alone runs the hands backwards on a correct dial, and negating `escapeAngle` alone is strictly worse. Both, together, plus the metal that is cut for one direction — club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless sense — of which boot asserts exactly ONE (§47's, `src/main.js:1554`, measured) |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -13787,6 +13787,18 @@ are right — Third ⇄ Fourth counter-rotate across their one mesh, Centre ⇄
 Fourth co-rotate across their two — so the defect lives exactly at the frame
 seam, nowhere else.
 
+**And the seam is not crossed wrongly everywhere: the tree already contains
+the correct rule.** `reserveHand.rotation.z = -rsvArbor2.rotation.z`
+(`src/main.js:33743`) is the SAME joint — a dialFace-mounted hand on a
+movement-frame arbor — carrying the negation the turned-around frame actually
+calls for. Measured as the probe's fourth control over a tension walk: the
+hand and all six turning coaxial parts of its train agree at −3.141593, one
+body. The alarm setting pointer states the rule in prose beside it
+(33745-33748, "It rides the Y-flipped dialFace, so rotation.z = −(disc
+angle)"). So this is an INCONSISTENCY between two conventions in one file,
+not a house style — which is what makes it fixable at all, and what says
+which of the two is right.
+
 **Where the sign comes from.** `dialFace.rotation.y = Math.PI`
 (`src/main.js:10093`) turns the dial-side authoring frame around, so a
 dialFace child's `rotation.z = θ` IS a world rotation of −θ. The dial-side
@@ -13868,6 +13880,17 @@ then fit it):
 4. Re-derive, do not re-target: `secondsZeroRef`, `camPhaseOffset` and the
    heart's reset contact all read the seconds display's sign, as does
    `DIAL_EPOCH_ANGLE` through `MIN_HAND_RAD_PER_SEC`.
+
+**Scope, so nobody reads this as "invert the watch".** Nothing MOVES: no
+station, no clearance, no z-stack, no tooth count, and the plates, cocks,
+pillars, jewels, case, dial artwork, hands and balance/hairspring are all
+untouched (a balance swings both ways; a spiral's handedness does not read
+on it). What changes is the going train's SENSE, the cuts that lean with it,
+and the display expressions — plus a review pass on three things that hang
+off those and are NOT yet measured: the alarm release trip (the disc tracks
+the hour wheel, so its ramp is direction-committed), the heart cam's reset
+flanks, and the minute jumper's lift sign. Those three are named here rather
+than claimed either way.
 
 Acceptance: `node tools/probe-coaxial-sense.mjs` PASSes (it is written to
 be red on the tree that shipped it), boot stays silent, and the battery's
