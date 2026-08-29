@@ -3,13 +3,15 @@
 // table a thinning would be judged by.
 //
 // REPORT. Written for the case-redesign scope (roadmap): the owner wants
-// hands THINNER in z and same-or-wider in plan. The law (read, geometry.js
-// 6886/6960-6962): width = √3·rBase, thickness = 1.5·rBase, boss height
-// = 2.6·rBase — one knob, three consequences — and §158's `halfWidth`
-// decouples width alone. So a thinning must (a) shrink rBase, which moves
-// the BOSS and therefore zCrystInner and the whole front stack, (b) hold
-// width via halfWidth, and (c) survive the lane asserts. This measures all
-// three territories before an entry quotes them.
+// hands THINNER in z and same-or-wider in plan. The law AS SCOPED (then
+// geometry.js 6886/6960-6962): width = √3·rBase, thickness = 1.5·rBase,
+// boss height = 2.6·rBase — one knob, three consequences — and §158's
+// `halfWidth` decoupled width alone. §188 LANDED the flip this measured
+// for: central rBase now comes from HAND_STOCK_MM, plan width from
+// planBase (the old width law), boss from the rod-swallow term floored by
+// the pipe land — so this probe is now the acceptance that the thinning
+// held: sections at stock, widths unchanged, the crystal chain shut on the
+// new boss, the lanes open over the whole net.
 //
 // What this is NOT: probe-153-shot renders the reserve recess; the §125/§153
 // boot asserts hold two specific lanes. Neither prints the whole stack with
@@ -124,8 +126,9 @@ console.log(`\nALARM↔HOUR lane over ${res.poses} poses: min separation ${res.l
 
 // The section table (pure arithmetic from the read law — printed so the entry
 // quotes a table someone can re-derive, not loose numbers).
-console.log('\nSECTION LAW (read from geometry.js:6886,6960-6962): width = √3·rBase, thickness = 1.5·rBase, bossH = 2.6·rBase');
-console.log('CANDIDATES (thickness → implied rBase → boss height → width if halfWidth NOT used):');
+console.log('\nSECTION LAW: thickness = 1.5·rBase, and §188 flipped the coupling — central rBase = HAND_RBASE_STOCK');
+console.log('(plan width rides planBase = length·widthFactor·0.35, so it no longer follows thickness; bossH = max(2.6·rBase, pipe floor 0.4 mm))');
+console.log('CANDIDATES, kept as the scoping record (thickness → rBase → the OLD one-knob consequences):');
 for (const tmm of [0.20, 0.15, 0.10]) {
   const rb = tmm / MM / 1.5;
   console.log(`  ${tmm.toFixed(2)} mm thick → rBase ${rb.toFixed(3)} u → boss ${(2.6 * rb * MM).toFixed(3)} mm tall → default width ${(Math.sqrt(3) * rb * MM).toFixed(3)} mm (λ at hour length ${(25.11 * MM / tmm).toFixed(0)})`);

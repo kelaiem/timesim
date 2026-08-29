@@ -5,8 +5,8 @@
 import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics } from './aesthetics.js';
-import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC,
-  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40)
+import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
+  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -6828,6 +6828,30 @@ export function makeDial({
 // so rBase ≥ (0.10 mm + a hair) / UNIT_MM / 1.5 = 0.176 → 0.18 puts the blade
 // at 0.102 mm against real hands' 0.10–0.20.
 const HAND_RBASE_FLOOR = 0.18;
+// §188 — THE CENTRAL HANDS ARE CUT FROM STOCK, not from their length. The
+// old law rBase = length·widthFactor·0.35 made one knob answer three
+// questions (thickness 1.5·rBase, width √3·rBase, boss 2.6·rBase), and at
+// central lengths it cut the hour blade 0.749 mm thick against real
+// blued-steel hands' 0.10–0.20 mm (STOCK_FLOORS.hand's own citation). The
+// stock is the owner's choice at the conservative end of that band, and the
+// slenderness arithmetic is recorded HERE because no instrument computes it:
+// §54's check measures λ against the SECOND-smallest extent (the stiffest
+// section dimension — for a wide flat blade that is its ~0.86 mm width,
+// λ ≈ 13), so the thickness-direction figure is a design claim, not a gate.
+// At the hour hand's 9.52 mm: 0.20 mm → λ_t ≈ 48, inside the `hand` kind's
+// λ 50 ceiling; 0.15 would be 63 and would owe a load-based derivation.
+const HAND_STOCK_MM = 0.20;
+// The keeled section is 1.5·rBase thick (keel at −rBase, corners at
+// +rBase/2), so rBase derives from the stock — HAND_RBASE_FLOOR's own
+// derivation, at the chosen thickness instead of the floor.
+export const HAND_RBASE_STOCK = (HAND_STOCK_MM / UNIT_MM) / 1.5; // exported: ALARM_RSV_LANE restates the blade's keel drop from it (main.js, §153 pin)
+// A pressed CENTRAL hand grips its tube by friction over the pipe's land;
+// real hour/minute pipes run ~0.4–0.9 mm tall, and the rod-swallow law alone
+// (2·rBase·1.3) gives 0.35 mm at this stock — a collet with no land. The
+// floor is the joint's, so it applies to the central stack only: the
+// sub-dial hands press on Ø0.8 arbors whose joints §153 derived and asserts
+// from 2.6·rBase, and re-flooring those would silently deepen the wells.
+const HAND_PIPE_MIN_MM = 0.4;
 
 export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null,
   namePrefix = null, subdial = false, halfWidth = null }) {
@@ -6843,8 +6867,8 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   const config = handAesthetics[kind];
 
   const tail = length * config.tailFactor;
-  const depth = Math.max(length * config.depthFactor, config.depthMin);
-  let bossH = depth * 1.6;
+  let bossH;        // set per branch: the central law (§188) or the second kind's depth law
+  let cwHalf = 0;   // the second kind's counterweight half-thickness, else 0
 
   // Bur rod, shared by all three hands: a TRIANGULAR section, keel edge
   // down at the dial, whose top face is CONCAVE — a shallow flute dished
@@ -6855,11 +6879,13 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   // hollow narrows and dives into the point instead of filling flat.
   // Concavity only removes material below the corner plane, so the
   // crossing envelope is the hour blade's corner plane (rBase/2 up) against
-  // the minute blade's keel (rBase down) — 0.66 + 1.13 ≈ 1.79 at §125's
-  // lengths, inside the 2.3 hour/minute plane gap in main.js. (The old
-  // note bounded rHour + rMinute ≈ 2.10 as if both were cylinders; the
-  // §125 hands grew that sum past 2.3 while the true envelope stayed
-  // clear, which is why the honest expression is written out now.)
+  // the minute blade's keel (rBase down) — and since §188 both central
+  // sections are HAND_RBASE_STOCK, so the sum is 1.5·rBase ≈ 0.79, deep
+  // inside the 2.3 hour/minute plane gap in main.js. (History: the old
+  // note bounded rHour + rMinute ≈ 2.10 as if both were cylinders; §125
+  // grew that sum past 2.3 while the true envelope stayed clear at ≈1.79,
+  // which is why the honest expression is written out; §188 then cut both
+  // sections to stock and the envelope stopped depending on length at all.)
   const facetFlat = (geo) => {
     // Extrude output is already non-indexed; toNonIndexed() would warn and
     // return the same geometry (which the dispose below would then free).
@@ -6868,22 +6894,24 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     if (flat !== geo) geo.dispose();
     return flat;
   };
-  const burRod = (rBase) => {
+  const burRod = (rBase, planBase) => {
     const grp = new THREE.Group();
-    const tipLen = rBase * 2.6; // curved taper: a little longer so the ease reads
+    const tipLen = planBase * 2.6; // curved taper is a PLAN feature (§188): it eases the width out, so its length follows the plan base, not the stock
     const shaftLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
     // §158 — WIDTH AND DEPTH ARE TWO QUESTIONS, and the equilateral section
     // answered them with one number. The keel depth is a STOCK question
-    // (§50's floor, and §153 derived the reserve well's whole recess from it
-    // — floorDrop and the boss that swallows the rod both scale with rBase,
-    // so a wider hand cut this way demands a deeper pocket the z-stack has
-    // not got). The width is a READING question. A caller that has derived
-    // its own half-width passes it and the section goes wide WITHOUT going
-    // deep, which is what a real hand is: flat stock, not a chunky prism.
-    // Everything below already reads halfW for x and rBase for y, so this
-    // separates two axes that were only ever coupled by the default.
-    const halfW = halfWidth ?? rBase * (Math.sqrt(3) / 2);
+    // (§50's floor, §188's central stock, and §153 derived the reserve
+    // well's whole recess from it — floorDrop and the boss that swallows
+    // the rod both scale with rBase, so a wider hand cut deep demands a
+    // pocket the z-stack has not got). The width is a READING question.
+    // §188 finished the split §158 started: `planBase` carries the old
+    // width law (length·widthFactor·0.35 for the central hands — so the
+    // aesthetics label "hand width" is finally true), rBase carries the
+    // stock, and a caller that has derived its own half-width still
+    // overrides the default. Flat stock, not a chunky prism, is what a
+    // real hand is. Everything below reads halfW for x and rBase for y.
+    const halfW = halfWidth ?? planBase * (Math.sqrt(3) / 2);
     const crown = rBase * (handAesthetics.fluteFactor ?? -0.3); // <0 dishes into a flute, >0 crowns (UI-adjustable)
     // Cross-section in (x = width, y = toward viewer): keel down, top an
     // arc bowing `crown` above the corners (quadratic midpoint = a+crown).
@@ -6947,7 +6975,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     return grp;
   };
 
-  let rBase;
+  let rBase, planBase;
   if (kind === 'hour' || kind === 'minute') {
     // TODO 41: a SUB-DIAL hand does not inherit the central width law.
     // length·widthFactor was tuned on hands ~3× this long, and at sub-dial
@@ -6957,9 +6985,21 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     // well floor. Sub-dial hands ride §50's floor section instead — the rule
     // TODO 12's tranche four declared for the class, which only the 'second'
     // branch below had been applying.
-    rBase = subdial ? HAND_RBASE_FLOOR : length * config.widthFactor * 0.35;
-    g.add(burRod(rBase));
-    bossH = rBase * 2 * 1.3; // boss must swallow the rod's full diameter
+    // §188: the central section comes from STOCK, the plan from the old
+    // width law — planBase preserves every shipped plan width bit-for-bit
+    // (the default halfW and the tip taper both read it) while the keel
+    // depth drops from length-coupled 0.75/0.64 mm blades to 0.20 mm metal.
+    // A sub-dial hand's two bases coincide at the floor, as before.
+    planBase = subdial ? HAND_RBASE_FLOOR : length * config.widthFactor * 0.35;
+    rBase = subdial ? HAND_RBASE_FLOOR : HAND_RBASE_STOCK;
+    g.add(burRod(rBase, planBase));
+    // The boss must swallow the rod's full circumscribed diameter (2·rBase,
+    // ×1.3 land) — and, for the CENTRAL stack, stand at least a real pipe's
+    // height (HAND_PIPE_MIN_MM: the friction land the press grips by). The
+    // sub-dial hands keep the pure rod law: their arbor joints are §153's,
+    // derived and asserted from 2.6·rBase — see HAND_PIPE_MIN_MM above.
+    bossH = subdial ? rBase * 2 * 1.3
+      : Math.max(rBase * 2 * 1.3, HAND_PIPE_MIN_MM / UNIT_MM);
   } else {
     // second: same bur rod, slimmer. Floor on the radius — originally 0.14 so
     // a sub-dial-length rod would not vanish, now DERIVED from §50's hand
@@ -6967,7 +7007,13 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     // ride the floor; the central seconds (length·widthFactor·0.5 ≈ 0.195)
     // clears it on its own and is untouched.
     rBase = Math.max(length * config.widthFactor * 0.5, HAND_RBASE_FLOOR);
-    g.add(burRod(rBase));
+    planBase = rBase;   // the second kind never split its plan from its stock
+    g.add(burRod(rBase, planBase));
+    // depth is LIVE on this branch alone (§188 moved it here): the
+    // counterweight disc's thickness, and the boss law this kind kept.
+    const depth = Math.max(length * config.depthFactor, config.depthMin);
+    bossH = depth * 1.6;
+    cwHalf = depth / 2;
     // Counterweight tail disc.
     const cw = new THREE.Mesh(
       new THREE.CylinderGeometry(length * config.counterweightSizeFactor, length * config.counterweightSizeFactor, depth, 16),
@@ -7004,9 +7050,8 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   //     when bored), and where it dips or stands is the placement site's
   //     question — over a bore, on a hub — not the open section's.
   const crown = rBase * (handAesthetics.fluteFactor ?? -0.3);
-  const cwHalf = kind === 'second' ? depth / 2 : 0;
   g.userData.rBase = rBase;
-  g.userData.halfW = halfWidth ?? rBase * (Math.sqrt(3) / 2);   // §158 — the built half-width, for the placement site's asserts
+  g.userData.halfW = halfWidth ?? planBase * (Math.sqrt(3) / 2);   // §158/§188 — the built half-width, for the placement site's asserts
   g.userData.floorDrop = Math.max(rBase, cwHalf);
   g.userData.topRise = Math.max(rBase * 0.5 + Math.max(0, crown), cwHalf);
   g.userData.bossR = bossR;

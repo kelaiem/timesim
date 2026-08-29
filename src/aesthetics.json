@@ -30,31 +30,24 @@
       }
     },
     "hands": {
+      "_comment": "hour/minute carry no depth keys, deliberately (§188): the central sections are cut from HAND_STOCK_MM in geometry.js, so a depth knob here would be a lying parameter — the keys existed, were read, and had no effect on the built mesh (bossH overwrote their only consumer). The `second` kind keeps its depth keys because they are live there: counterweight thickness and that kind's boss law. widthFactor is now exactly what its label says — the plan width (halfW = length·widthFactor·0.35·√3/2) — and no longer drags thickness or boss with it. A persisted override of the removed keys is refused by the loader's type anchoring (aesthetics.js), the same rule the subdials layer's note cites.",
       "hour": {
         "widthFactor": 0.15,
         "tailFactor": 0.22,
-        "depthFactor": 0.012,
-        "depthMin": 0.35,
         "bossSizeFactor": 0.05,
         "_labels": {
           "widthFactor": "Hour hand width",
           "tailFactor": "Hour hand tail",
-          "depthFactor": "Hour hand depth",
-          "depthMin": "Hour hand depth, minimum",
           "bossSizeFactor": "Hour hand boss"
         }
       },
       "minute": {
         "widthFactor": 0.09,
         "tailFactor": 0.22,
-        "depthFactor": 0.012,
-        "depthMin": 0.35,
         "bossSizeFactor": 0.035,
         "_labels": {
           "widthFactor": "Minute hand width",
           "tailFactor": "Minute hand tail",
-          "depthFactor": "Minute hand depth",
-          "depthMin": "Minute hand depth, minimum",
           "bossSizeFactor": "Minute hand boss"
         }
       },

@@ -1981,12 +1981,13 @@ export const EXPECTED_CONTACT_FLOORS = [
   {
     a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
     // TODO 101: the alarm hand's LEAF carries metal where the hour tube runs —
-    // 0.2885 deep, measured over the tube's surface. The BOSS
+    // 0.0188 deep since §188 cut the leaf to 0.20 mm stock (0.2885 before;
+    // the debt shrank fifteen-fold but the leaf is still unbored). The BOSS
     // beside it holds 2.667 (the derived 24-gon inscribed-radius correction
     // at main.js:13354); the leaf sits in the same z band and inherited none
     // of it. Long-standing, and invisible until TODO 95's witness: the raw
     // intersection was being published as clearance.
-    waived: 'TODO 101: the alarm hand LEAF carries metal where the tube runs — 0.2885 deep over 126 of 4800 tube-surface samples, and 32 of 216 points on the tube\'s wall band inside it; the BOSS beside it holds the derived 2.667',
+    waived: 'TODO 101: the alarm hand LEAF (alarmShaft since §188 named it) carries metal where the tube runs — 0.0188 deep over 150 of 4800 tube-surface samples (0.2885 before §188 cut the leaf to stock); the BOSS beside it holds the derived 2.667',
     contacts: [
       ['alarmNose', 'alarmHeart'],        // §29 working contact — penetration budget + alarmHandoffs own it
       ['alarmFollowerBar', 'alarmHeart'], // §45 flank sweep owns this at the 0.03 working figure
@@ -6611,6 +6612,17 @@ export const STOCK_KIND_BY_PART = {
   'Power reserve': 'hand',
 };
 export const STOCK_KIND_BY_MESH = {
+  // §188 — the CENTRAL hands, declared per MESH because their units (Hour
+  // wheel, Dial, Alarm disc) carry non-hand metal a PART row would mislabel.
+  // Cut from HAND_STOCK_MM (geometry.js): 0.20 mm blades against the 0.10
+  // hand floor, where the old length-coupled law cut them 0.64–0.75 mm and
+  // they hid under the default wheel kind with unnamed meshes. The kind also
+  // moves their λ ceiling to hand's 50 — and the width-governed λ the check
+  // actually measures is ≈ 13 (see HAND_STOCK_MM's comment for why the
+  // thickness-direction λ 48 lives in prose, not in a gate).
+  hourShaft: 'hand', hourTip: 'hand', hourBoss: 'hand',
+  minuteShaft: 'hand', minuteTip: 'hand', minuteBoss: 'hand',
+  alarmShaft: 'hand', alarmTip: 'hand', alarmBoss: 'hand',
   alarmIndexLine: 'marking',       // §34 registration line, cited above
   alarmFeelerSpring: 'spring',     // §40\'s first honesty nominee — a real blade
   alarmDiscTrack: 'marking',       // printed track on the disc face
