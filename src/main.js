@@ -13830,8 +13830,17 @@ const alarmStemLen = CASE_R_OUT + 2 / UNIT_MM + 0.7 - ALARM_CD; // through the c
 const ALARM_STEM_BUSH_DIST = plateR - 2;   // the plate rim, where the boss is bored (the −2 is inherited with the bush)
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, alarmStemLen, 12), MATS.steel);
 alarmStem.position.y = alarmStemLen / 2;
-// §54 / TODO 78 / TODO 109 — WHERE THIS STEM IS HELD, MEASURED AND NOT
-// DECLARED, and the reason is worth more than the declaration would be.
+// §54 / TODO 78 / TODO 109 — WHERE THIS STEM IS HELD. Geometry-local y, the
+// frame computeBoundingBox reads: the spinner sits at its PUSHED-IN rest
+// radius ALARM_CD (the radius alarmStemLen is measured from, two lines up —
+// NOT _alarmRimD, the ARBOR's rim distance, which stands at 20.4007 against
+// ALARM_CD's 15.4007 as built and puts the station in thin air; `unsupported`
+// caught exactly that). The bush stands at ALARM_STEM_BUSH_DIST on the same
+// radial line, and the mesh's own y runs ±alarmStemLen/2 about its centre, so
+// the station is the bush's distance from the spinner origin less half the
+// stem. On the MESH, never the geometry: weldGeometry returns a fresh
+// BufferGeometry without copying userData, so a geometry-level declaration is
+// deleted by weldTree.
 //
 // The metal: one bush, at ALARM_STEM_BUSH_DIST on the spinner's radial line,
 // which at the pushed-in rest radius ALARM_CD sits
@@ -13854,22 +13863,34 @@ alarmStem.position.y = alarmStemLen / 2;
 // metal only OUTBOARD of the support. λ 76.6 and its k 567.4 N/m are
 // case-independent, and TODO 109's verdict for this row is unchanged by the
 // case — it was SHORT before and is short by more now.
+////
+// A SLIDING STEM IN A FIXED BUSH, so the station is a POSE, and this is the
+// rest one: pulling the crown slides the metal outward through a bush that
+// does not move, which walks the bush inboard along the stem. Rest is the
+// WORST case — the stem at its innermost leaves the longest run inboard of
+// the bush — and it is the pose the check measures.
 //
-// WHY IT IS NOT DECLARED. The stem SLIDES through a bush that does not move,
-// so the station is a pose rather than a place on the metal — and
-// `alarmCrownPullT` is EASED, so `resetInputs()` zeroes the variable while
-// the scene follows only on a later tick with real dt. `start()` runs a
-// check in the same microtask as the reset, so `supportAt` reads whatever
-// pose the previous check left: after `alarmHandoffs` the stem stands 5 u
-// out (x 35.2618 against 30.2618) and the declaration lands in air.
-// Reproducible in 37 s: `node tools/ci-battery.mjs --only
-// alarmHandoffs,slenderness --shards 1` fails where `--only slenderness`
-// passes. That is the harness invariant CLAUDE.md states — a check must not
-// observe what ran before it — and for EASED state it does not hold.
+// THIS DECLARATION WAS LANDED, WITHDRAWN, AND RE-LANDED, and the round trip
+// is TODO 110. Withdrawn because the battery failed it on EXECUTION ORDER:
+// `resetInputs()` zeroed `alarmCrownPullT` while the scene followed only on a
+// later tick, so after `alarmHandoffs` the stem stood 5 u out and the station
+// landed in air. Re-landed because `checkSlenderness` now establishes its own
+// pose (`setPose({})`) before it reads.
 //
-// So a true declaration here would be a gate that fails on execution order.
-// The honest record is this comment plus TODO 109, which owns both halves:
-// the stem wants a second bearing, and `supportAt` wants a settled pose.
+// NOT because the invariant was made true — that fix was tried and REVERTED.
+// Settling the pose inside `resetInputs()` would have closed the defect
+// everywhere, and `enterAxis` IS `resetInputs`, so it moved every sweep's
+// entry pose and the geometry fingerprint with it (790912477 → 998722455,
+// `axisEntry` red). The narrow fix is what a check may do for itself; the
+// invariant CLAUDE.md words universally is still narrower than its wording,
+// and TODO 110 carries that.
+//
+// The acceptance is that `--only alarmHandoffs,slenderness` agrees with
+// `--only slenderness`.
+alarmStem.userData.bearings = {
+  axis: 'y',
+  stations: [ALARM_STEM_BUSH_DIST - ALARM_CD - alarmStemLen / 2],
+};
 alarmSpinner.add(alarmStem);
 // Brand crown (§27) — the second consumer of makeBrandMark, now the WS
 // monogram (§41). MATCHED to the winding crown at 5.425/3.4.
