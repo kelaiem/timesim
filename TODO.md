@@ -25,7 +25,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 112 | CLOSED | The table stopped restating: every `HAND_SPECS` row now references the hand's BOOT SPEC OBJECT (`HOUR_HAND_SPEC`…`ALARM_HAND_SPEC`), so a row cannot drift from its build. `probe-112-recut.mjs` holds it: both re-cut drivers (flute slider and the §23 panel) reproduce the boot metal byte for byte, and its must-catch control proves the 3.00′→1.16′ collapse is visible to the instrument |
 | 113 | CLOSED | `alarmHand` joined `HAND_SPECS` via the shared `ALARM_HAND_SPEC`, with its steel as a named FINISH function the row and boot share (a fresh cut is blued by default); `scale.z` is group state `hand.clear()` never touches, so the leaf section survives a re-cut with no row entry — the spec-field question is deferred to §188, which deletes the scale outright. Same acceptance probe as item 112 |
 | 114 | OPEN | Three sites still name the alarm barrel as the back-most metal (main.js:26542, 34482, BUILT §3) — measured, the alarm link tower at z 13.877 is; §112 moved the barrel under the plate (5.399). Behaviour is right (live Box3), the prose derives the back stack from a part that is not there |
-| 115 | OPEN | Issue #327, and wider than reported: EVERY display the going train drives counter-rotates the wheel it is keyed to. Measured equal and opposite to the last digit — fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909 — with all FOUR of `probe-coaxial-sense.mjs`'s controls passing, so the trains are right and the defect is the dialFace frame seam. The comment justifying it ("the same physical rotation seen from opposite sides") is true about viewers and false about parts — and it is not the house rule either: the power reserve hand crosses the same seam with the OPPOSITE, correct sign (`src/main.js:33743`), measured as the probe's fourth control, so this is an inconsistency between two conventions in one file. **No one-line fix exists and the halves are measured, not argued**: negating the displays alone runs the hands backwards on a correct dial, and negating `escapeAngle` alone is strictly worse. Both, together, plus the metal that is cut for one direction — club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless sense — of which boot asserts exactly ONE (§47's, `src/main.js:1554`, measured) |
+| 115 | OPEN | Issue #327, and wider than reported: EVERY display the going train drives counter-rotates the wheel it is keyed to. Measured equal and opposite to the last digit — fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909 — with all FOUR of `probe-coaxial-sense.mjs`'s controls passing, so the trains are right and the defect is the dialFace frame seam. The comment justifying it ("the same physical rotation seen from opposite sides") is true about viewers and false about parts — and it is not the house rule either: the power reserve hand crosses the same seam with the OPPOSITE, correct sign (`src/main.js:33743`), measured as the probe's fourth control, so this is an inconsistency between two conventions in one file. **No one-line fix exists and the halves are measured, not argued**: negating the displays alone runs the hands backwards on a correct dial, and negating `escapeAngle` alone is strictly worse. Both, together, plus the metal that is cut for one direction — club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless sense — of which boot asserts exactly ONE (§47's, `src/main.js:1554`, measured). **The three couplings hanging off the train are now MEASURED and cost the reversal nothing** (`probe-handedness.mjs`): the alarm release notch, the heart cam, and the jumper's star and beak each have a mirror axis (0.00000–0.00654 against a ratchet saw's 0.15309, controls separating 758566×), and both swept laws read even inside the sweep's own sample step. The item's own suspicion that the release ramp was direction-committed is REFUTED — there is no ramp; the notch is the absence of track, extruded `bevelEnabled: false` |
 | 116 | CLOSED | Reported by eye: the going train's teeth meeting tooth-on-tooth instead of interlocking. Real, and in all four meshes, three worse than the reported one — **38.2% / 30.9% / 8.7% / 36.8%** of a pitch off anti-phase across a full turn of the fourth arbor — all four meshes — now **0.01–0.37%**. Every gate passed it because `solveGearChain` ran with the arbors at `rotation.z = 0` and was CORRECT there (0.02–0.21%): zero is not a pose the train occupies, and each going arbor's tick angle adds a `meshOffset` constant that is not a whole number of pitches, so the residual is a CONSTANT — exactly zero where the build tripwire reads and exactly wrong everywhere else. Two phasing systems, `meshOffset` phasing ARBORS and `solveGearChain` phasing BLANKS, neither aware of the other. Fixed by solving at the arbors' τ = 0 angles. `tools/probe-train-mesh-phase.mjs`; the alarm setting chain's 37.44%, a different cause, is left open in the item |
 | 117 | PART DONE | Found by item 116's instrument: the alarm setting wheel ⇄ i1 mesh reads **37.44% of a pitch** off anti-phase — and it is not a phase defect. `probe-mesh-transmission.mjs` asks the prior question, does each declared mesh TURN its neighbour by what the metal says, and walks each input separately because the chain has two (crown, and the hour's back-drive). Three of four meshes are exact under one input and inverted or silent under the other. **FIXED**: the arbor pinion's back-drive sign (`-3*_bd` → `+3*_bd`; −3.700 measured under both inputs now, and nothing reads that angle back). **OPEN, and not a sign**: the gearing makes the setting wheel and the disc one 1:1 pair, so the wheel must follow the hour; the disc's law is PINNED by the trip (measured at three settings — the pin bottoms when the hour hand meets the alarm hand, constant offset); and the armed pin-B coupling needs the wheel to equal the TUBE, which holds. Three laws, any two compatible. Filed rather than guessed — candidate resolutions in the item |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
@@ -13947,11 +13947,55 @@ station, no clearance, no z-stack, no tooth count, and the plates, cocks,
 pillars, jewels, case, dial artwork, hands and balance/hairspring are all
 untouched (a balance swings both ways; a spiral's handedness does not read
 on it). What changes is the going train's SENSE, the cuts that lean with it,
-and the display expressions — plus a review pass on three things that hang
-off those and are NOT yet measured: the alarm release trip (the disc tracks
-the hour wheel, so its ramp is direction-committed), the heart cam's reset
-flanks, and the minute jumper's lift sign. Those three are named here rather
-than claimed either way.
+and the display expressions.
+
+**And the three couplings this item used to name as unmeasured are now
+measured: none of them is direction-committed.** They cost the reversal
+nothing. `tools/probe-handedness.mjs` asks one question of each — does the
+cut have a MIRROR AXIS, since a cut that does works the same driven either
+way — and searches every candidate axis rather than looking for a named
+feature. Residual as a fraction of each profile's own radial swing, 0 being
+a perfect mirror:
+
+| part | best axis | runner-up | verdict |
+|---|---|---|---|
+| *control* — a gear (setting wheel) | **0.00000** | 0.01113 | symmetric, as a generator cuts it |
+| *control* — a ratchet saw (alarm arbor) | **0.15309** | 0.15326 | handed, as `makeRatchetAndClick` intends |
+| alarm release track + notch | **0.00000** at 179.9° | 0.00058 | SYMMETRIC |
+| heart cam (seconds reset) | **0.00000** at 179.9° | 0.00056 | SYMMETRIC |
+| minute jumper star | **0.00654** | 0.09767 | SYMMETRIC |
+| minute jumper beak | worst point misses its reflection by **0.0000%** of reach | — | SYMMETRIC |
+
+The two controls separate by 758566×, and the bar is their midpoint rather
+than a number chosen here. The runner-up column is the second reading worth
+having: a gear has a mirror axis per tooth, so its runner-up is small too,
+while the notch and the heart have exactly ONE axis each — which is what a
+single working feature looks like, and confirms the axis found is the notch
+rather than an accident.
+
+**The item's own suspicion is refuted by that first row.** It read "the disc
+tracks the hour wheel, so its ramp is direction-committed". There is no ramp:
+the notch is the ABSENCE of track (`main.js:13358-13367`), the track is
+extruded `bevelEnabled: false`, and the gap is centred on θ = 0 with square
+radial ends. Nothing there prefers a side.
+
+The LAWS were swept too, since a symmetric cut read by a handed law is still
+handed. Response either side of its working point, which is taken as the
+sample furthest from the response's MEDIAN (the alarm's pin sits at 0 and
+peaks at the notch; the jumper's lever sits seated and moves away at a tooth —
+one rule, both directions):
+
+- alarm pin drop: worst |Δ| **0.00051**, 0.51% of the signal and **0.30×** the
+  sweep's own sample step — EVEN.
+- jumper lever angle: worst |Δ| **0.00019**, 1.17% of the signal and **0.95×**
+  the sample step — EVEN.
+- the heart's law is READ, not swept, and marked so in the probe: the tick
+  takes `Math.sign(off)` against `heartFreeAngleAt(d)`, a table of DISTANCE
+  alone, so it has no side to prefer. Its METAL is measured above.
+
+So the reversal's inventory is the going train's sense, the display
+expressions, and the direction-committed cuts — and these three are not among
+them.
 
 Acceptance: `node tools/probe-coaxial-sense.mjs` PASSes (it is written to
 be red on the tree that shipped it), boot stays silent, and the battery's
