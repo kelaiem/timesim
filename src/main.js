@@ -34124,7 +34124,21 @@ function tick(t) {
   // the pulled crown — real Memovox behaviour — and the hub slips only
   // under the user's own setting torque, which is the re-phasing.
   const _bd = ALARM_BD_SIGN * mwHourA;
-  alarmRotor.rotation.z = -alarmSetRot - 3 * _bd; // −ω_i1·(28/10) closes the chain on the rod: 3 = ALARM_DISC_TEETH/ALARM_SET_PINION_TEETH
+  // TODO 117 — the BACK-DRIVE term's sign is +, not −. The crown term is
+  // right and stays: measured, i2 → arbor pinion transmits at exactly
+  // −3.700 (= −r_i2/r_pinion) under the crown. Under the HOUR the same
+  // mesh read +3.700 — the same magnitude with the wrong sign, so the
+  // arbor turned the way the gearing forbids while the crown path was
+  // faultless. Derived rather than flipped by inspection: the chain from
+  // the disc is three external meshes (disc → i1b·i1 → i2 → pinion), so
+  // the pinion must run at −(r_i2/r_pin)·ω_i2, and ω_i2 already carries
+  // the hour correctly (its own two meshes measure ok under both inputs).
+  // ALARM_BD_SIGN is NOT the place to fix it — i1 and i2 read that same
+  // constant and are correct; only this member's use of it was inverted.
+  // (`tools/probe-mesh-transmission.mjs`. Nothing reads this angle back —
+  // the rotor is posed, never sensed — so the correction moves the arbor
+  // rod and its bevel mount and nothing else.)
+  alarmRotor.rotation.z = -alarmSetRot + 3 * _bd; // 3 = ALARM_DISC_TEETH/ALARM_SET_PINION_TEETH
   alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH)
     - _bd * (ALARM_DISC_TEETH / ALARM_SET_I2_TEETH);
   alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH)
