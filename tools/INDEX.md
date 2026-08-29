@@ -4,7 +4,7 @@
 
 # The instruments
 
-161 scripts. **68 are ACCEPTANCE tests** — they decide and exit non-zero.
+162 scripts. **69 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -171,6 +171,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-slenderness-bearings.mjs` |  | report | TODO 78 — the alarm link's lay shaft, MEASURED. Every number the §54 note block quotes about this shaft (33.387, 2.45, 22, λ 135.4, "the 19.55 u bush-to-bush span") comes from prose; this reads them off the built tree. |
 | `probe-slenderness-residue.mjs` |  | report | TODO 109 — the seven UNWAIVED rows of §54's slenderness report, NAMED. |
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
+| `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |

@@ -13238,6 +13238,37 @@ const solveGearChain = (label, chain, module) => {
   // great wheel (its own knob on the fusee arbor) to the center pinion.
   // Four runs because the train has four modules; one run per mesh keeps
   // every centre-distance tripwire honest.
+  //
+  // TODO 116 — AND THEY MUST BE SOLVED AT THE POSE THE TRAIN RUNS IN, not
+  // at zero. The reserve solves above are entitled to ignore this and say
+  // why: their arbors' tick rotations are pure counter-rotations
+  // (`rsvArbor1 = -rsvArbor0 · ratio`), so the SUM invariant a solve
+  // establishes at ANY pose rides every other one. THE GOING ARBORS ARE NOT
+  // LIKE THAT. Each carries an ADDITIVE constant from `meshOffset` —
+  // `fourthAngle = offFourth − ratio·escapeAngle`, and so on up the chain —
+  // a second and older phasing system that phases ARBORS where these solves
+  // phase BLANKS, and neither knows about the other. A blank aligned with
+  // its arbor at 0 is turned by that constant the instant tick() runs, and
+  // `off*` is not a whole number of pitches.
+  //
+  // The tripwires below cannot see it, by construction: the error is a
+  // CONSTANT, so it is exactly zero at the one pose they read and exactly
+  // wrong at every pose the movement occupies. Measured over a full turn of
+  // the fourth arbor before this fix — 38.2% of a pitch on great ⇄ centre,
+  // 30.9% on centre ⇄ third, 8.7% on third ⇄ fourth, 36.8% on fourth ⇄
+  // escape, against 0.02–0.21% at the arbors' zero. Tooth meeting tooth,
+  // reported by eye and then measured (`tools/probe-train-mesh-phase.mjs`,
+  // which holds all four to the 2% bar below at every pose it sweeps).
+  //
+  // So enter the arbors' own tau = 0 angles, solve there, and restore. Any
+  // single RUNNING pose fixes all of them — that much of the reserve's
+  // reasoning does carry, once the constants sit inside the pose rather
+  // than being added after it. Zero is the one pose that is not one.
+  const goingRest = [
+    [barrelArbor, barrelMeshAngle(0)], [centerArbor, centerAt0],
+    [thirdArbor, thirdAt0], [fourthArbor, fourthAt0], [escapeArbor, escAt0],
+  ];
+  for (const [arbor, a] of goingRest) arbor.rotation.z = a;
   solveGearChain('going fourth ⇄ escape:', [
     { obj: escapePinion, teeth: TRAIN.fourth.pinion, name: 'escape pinion' },
     { obj: fourthPair, teeth: TRAIN.fourth.teeth, name: 'fourth wheel (+pinion held)' },
@@ -13254,6 +13285,9 @@ const solveGearChain = (label, chain, module) => {
     { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
     { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
   ], TRAIN.barrel.module);
+  // tick() owns these every frame; put them back so nothing built after this
+  // block reads a world matrix off a pose that only existed for the solve.
+  for (const [arbor] of goingRest) arbor.rotation.z = 0;
 })();
 
 // --- '(§29 step 2) Alarm release disc' — the Memovox differential ----------
