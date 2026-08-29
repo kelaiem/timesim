@@ -22,8 +22,8 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
 | 111 | OPEN | The case's seat relief is CUT from a scan that runs once, at build time, at whatever pose the movement is in — so the geometry is a claim about one pose. Item 91 nearly shipped on it: `hackRodPin` reads r 37.801–38.691 at build time and 39.889–40.786 in 33 of the 42 poses the battery visits, half a unit inside a seat with no relief for it. Closed for two populations (build-time occupants, and `LOW_LINKAGE_OBSTACLES` members per standing rule 5) and ungated for a third — any other mover reaching the annulus at some pose. Three fixes in the item; `probe-case-relief.mjs` already asks the question in ~72 s and CI does not run it |
-| 112 | OPEN | `HAND_SPECS` omits the reserve hand's `halfWidth`, so the first panel hands edit re-cuts §158's 3.00′ pointer back to 1.16′ — the exact defect the row's own comment warns about for `subdial`/`namePrefix`, one line up. Carry the field; acceptance = panel re-cut leaves the width identical |
-| 113 | OPEN | `alarmHand` is absent from `HAND_SPECS` entirely, so panel edits re-cut every hand except it. Not a one-line add: the boot site passes explicit bore/boss overrides and a post-build `scale.z = 0.5` the lane asserts read |
+| 112 | CLOSED | The table stopped restating: every `HAND_SPECS` row now references the hand's BOOT SPEC OBJECT (`HOUR_HAND_SPEC`…`ALARM_HAND_SPEC`), so a row cannot drift from its build. `probe-112-recut.mjs` holds it: both re-cut drivers (flute slider and the §23 panel) reproduce the boot metal byte for byte, and its must-catch control proves the 3.00′→1.16′ collapse is visible to the instrument |
+| 113 | CLOSED | `alarmHand` joined `HAND_SPECS` via the shared `ALARM_HAND_SPEC`, with its steel as a named FINISH function the row and boot share (a fresh cut is blued by default); `scale.z` is group state `hand.clear()` never touches, so the leaf section survives a re-cut with no row entry — the spec-field question is deferred to §188, which deletes the scale outright. Same acceptance probe as item 112 |
 | 114 | OPEN | Three sites still name the alarm barrel as the back-most metal (main.js:26542, 34482, BUILT §3) — measured, the alarm link tower at z 13.877 is; §112 moved the barrel under the plate (5.399). Behaviour is right (live Box3), the prose derives the back stack from a part that is not there |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
@@ -13689,7 +13689,19 @@ and after `resetInputs`, so the build-time pose is the construction pose and
 state restoration happens later. That is a measurement of today's boot order,
 not a guarantee of it.
 
-## 112. HAND_SPECS omits the reserve hand's halfWidth, so any panel edit reverts §158's widening
+## 112. HAND_SPECS omits the reserve hand's halfWidth, so any panel edit reverts §158's widening — CLOSED
+
+**CLOSED 2026-08-29.** The fix went one level up from "carry the field": the
+table stopped restating specs at all. Each hand's build options now live in
+one named spec object at its build site (`RESERVE_HAND_SPEC` carries
+`halfWidth: RSV_HAND_HALF_W`) and `HAND_SPECS` references those same objects
+— boot and re-cut cannot diverge because there is nothing to keep in step.
+`tools/probe-112-recut.mjs` is the acceptance this item asked for, and more:
+idempotent re-cut through BOTH drivers (flute slider and the §23 generated
+panel), a real flute drag that must move geometry while every section law
+holds, a closing round trip — and a must-catch control that rebuilds this
+exact defect synthetically and proves the probe's own width read sees the
+3.00′ → 1.16′ collapse.
 
 Found 2026-08-29 while scoping the case/hands redesign, by reading, and it is
 the exact defect the table's own comment warns against — one line up.
@@ -13715,7 +13727,19 @@ item 113 — the same audit says which hands the table covers at all). The
 acceptance is a probe that re-cuts through the panel path and measures the
 pointer's width before and after: identical, at 3.00′.
 
-## 113. The alarm hand is absent from HAND_SPECS, so the panel cannot re-cut it at all
+## 113. The alarm hand is absent from HAND_SPECS, so the panel cannot re-cut it at all — CLOSED
+
+**CLOSED 2026-08-29, with item 112.** `ALARM_HAND_SPEC` (the boot site's own
+options object, bore/boss overrides included) joined `HAND_SPECS`, and the
+steel became a named FINISH function (`ALARM_HAND_FINISH`) the row carries as
+a third element and boot calls too — one definition, applied after every cut,
+because a fresh `makeHand` build is blued by default. `scale.z = 0.5` needed
+no row entry: it lives on the GROUP, which `hand.clear()` never touches, so
+the leaf section survives a re-cut by construction (asserted by the probe's
+snapshot). The open design question this item posed — whether the scale
+belongs inside `makeHand` as a spec field — is answered by §188's landing
+instead: at real stock the leaf IS the section and the scale is deleted
+outright, which is the §121-cleanest outcome (no morph frame at all).
 
 Sibling of item 112, from the same reading. `alarmHand` is built once at boot
 (`src/main.js:13633-13637`) from the same `dial.hands.hour` aesthetics the

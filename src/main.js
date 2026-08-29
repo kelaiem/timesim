@@ -10375,7 +10375,11 @@ registerExplode(handsGroup, aesthetics.dial.hands.handsGroupZOffset, 2, 1);
 // FIRES. That window is set by the release notch's angular width at the track
 // radius (§38's floor: pin ÷ radius), and no hand length touches it.
 const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F;
-const hourHand = G.makeHand({ length: HOUR_HAND_LEN, kind: 'hour' });
+// TODO 112/113 — every hand's build options live in ONE named spec object,
+// and the panel's HAND_SPECS rows reference these same objects: boot and
+// re-cut cannot diverge because there is nothing to keep in step.
+const HOUR_HAND_SPEC = { length: HOUR_HAND_LEN, kind: 'hour' };
+const hourHand = G.makeHand(HOUR_HAND_SPEC);
 // Minute hand length: tip ON the railroad's rungs — DERIVED from the print's
 // own frame (§125 step 5), mid-rung between the two rails. A printed fraction
 // f lands at world f · 2·DIAL_CANVAS_FILL_F · dialRadius (the canvas square
@@ -10387,7 +10391,8 @@ const hourHand = G.makeHand({ length: HOUR_HAND_LEN, kind: 'hour' });
 // hour hand's derivation closed one constant up.
 const MINUTE_HAND_LEN = dialRadius * (2 * G.DIAL_CANVAS_FILL_F)
   * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
-const minuteHand = G.makeHand({ length: MINUTE_HAND_LEN, kind: 'minute' });
+const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute' };
+const minuteHand = G.makeHand(MINUTE_HAND_SPEC);
 minuteHand.position.z = 2.3; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
 handsGroup.add(minuteHand);
 
@@ -10402,7 +10407,8 @@ const smallSecondsGroup = new THREE.Group();
 smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
 dialPlateFace.add(smallSecondsGroup);   // TODO 26: dial furniture — rides the face
 registerLabel('Small seconds', smallSecondsGroup);
-const smallSecondsHand = G.makeHand({ length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds' });
+const SMALL_SECONDS_HAND_SPEC = { length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds' };
+const smallSecondsHand = G.makeHand(SMALL_SECONDS_HAND_SPEC);
 smallSecondsHand.name = 'smallSecondsHand';
 // TODO 41 CLOSED — a well hand's plane is DERIVED from the section it
 // carries, not authored (the 0.3 this replaces spent the one margin without
@@ -11247,8 +11253,13 @@ registerLabel('Power reserve', reserveGroup);
 // pocket ~4× deeper than the alarm blade's lane leaves room for. Wide and
 // flat is also what a hand actually is.
 const RSV_HAND_HALF_W = mmForArcmin(POINTER_ARCMIN) / UNIT_MM / 2;
-const reserveHand = G.makeHand({ length: reserveR * 0.8, kind: 'minute', subdial: true,
-  namePrefix: 'reserve', halfWidth: RSV_HAND_HALF_W });
+// TODO 112 CLOSED here — `halfWidth` is section law by §158's own argument
+// above, and it rides the shared spec object into HAND_SPECS, so a panel
+// re-cut rebuilds this pointer at 3.00′ rather than the √3/2 default the
+// omitted key used to fall back to.
+const RESERVE_HAND_SPEC = { length: reserveR * 0.8, kind: 'minute', subdial: true,
+  namePrefix: 'reserve', halfWidth: RSV_HAND_HALF_W };
+const reserveHand = G.makeHand(RESERVE_HAND_SPEC);
 reserveHand.position.z = ALARM_RSV_LANE - CLEAR_MARGIN - reserveHand.userData.bossH / 2;
 {
   const { floorDrop, bossH, bossR } = reserveHand.userData;
@@ -13630,8 +13641,15 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
 // radius is what faces the tube, so the vertex radius carries the 1/cos(π/24)
 // correction — at a bare 2.65 the facet midpoints dipped to 0.1443 of margin
 // (the expectedContacts floor row caught it).
-const alarmHand = G.makeHand({ length: HOUR_HAND_LEN - 1.2, kind: 'hour', boreR: (HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24), bossR: 3.3, bossH: 0.8 });
-alarmHand.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
+const ALARM_HAND_SPEC = { length: HOUR_HAND_LEN - 1.2, kind: 'hour',
+  boreR: (HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24), bossR: 3.3, bossH: 0.8 };
+// TODO 113 CLOSED — the spec object above joins HAND_SPECS, so the panel can
+// re-cut this hand at last. Steel is FINISH law (a fresh makeHand build is
+// blued by default), so the finish is a named function the re-cut row shares
+// with boot: one definition, applied after every cut.
+const ALARM_HAND_FINISH = (h) => h.traverse((o) => { if (o.isMesh) o.material = MATS.steel; });
+const alarmHand = G.makeHand(ALARM_HAND_SPEC);
+ALARM_HAND_FINISH(alarmHand);
 alarmHand.scale.z = 0.5; // flat rattrapante leaf — half the going hands' section (see ALARM_HAND_Z)
 alarmHand.position.z = ALARM_HAND_Z;
 alarmTubeGroup.add(alarmHand);
@@ -25187,19 +25205,28 @@ function askTour(onProceed) {
 {
   const fluteSlider = document.getElementById('flute-slider');
   fluteSlider.value = Math.round((aesthetics.dial.hands.fluteFactor ?? -0.3) * 100);
+  // §94 / TODO 41 / TODO 112/113 — every row references the hand's BOOT SPEC
+  // OBJECT, not a copy: the table used to restate the options by hand and it
+  // drifted twice exactly as its own comment warned (the minute length once —
+  // 0.905R here vs 0.84R at build, a latent flute-slider length jump — then
+  // the reserve row shipped without §158's `halfWidth`, so a flute drag
+  // re-cut the pointer at 1.16′ instead of 3.00′: TODO 112). halfWidth is
+  // section law by §158's own argument, namePrefix is the floors rows'
+  // selector (§94), `subdial` is the section law itself (TODO 41) — a flute
+  // drag must change the flute, never the section law, the selectors, or the
+  // finish. The alarm row (TODO 113) carries its FINISH as a third element
+  // because a fresh cut is blued by default; its scale.z is GROUP state,
+  // which hand.clear() never touches, so the leaf section survives a re-cut
+  // with no row entry.
   const HAND_SPECS = [
-    [hourHand, { length: HOUR_HAND_LEN, kind: 'hour' }],
-    [minuteHand, { length: MINUTE_HAND_LEN, kind: 'minute' }], // was 0.905R here vs 0.84R at build — a latent flute-slider length jump, now one constant
-    // §94 / TODO 41 — the two well hands keep their FULL build spec through
-    // a re-cut: namePrefix because the floors rows select their meshes by
-    // name, and `subdial` because a recut that dropped it would silently
-    // regrow the blade the fix slimmed — a flute drag must change the
-    // flute, never the section law or the selectors.
-    [smallSecondsHand, { length: secondsSubR * 0.8, kind: 'second', subdial: true, namePrefix: 'smallSeconds' }],
-    [reserveHand, { length: reserveR * 0.8, kind: 'minute', subdial: true, namePrefix: 'reserve' }],
+    [hourHand, HOUR_HAND_SPEC],
+    [minuteHand, MINUTE_HAND_SPEC],
+    [smallSecondsHand, SMALL_SECONDS_HAND_SPEC],
+    [reserveHand, RESERVE_HAND_SPEC],
+    [alarmHand, ALARM_HAND_SPEC, ALARM_HAND_FINISH],
   ];
   const recutHands = () => {
-    for (const [hand, spec] of HAND_SPECS) {
+    for (const [hand, spec, finish] of HAND_SPECS) {
       hand.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
       hand.clear();
       for (const ch of [...G.makeHand(spec).children]) hand.add(ch);
@@ -25209,6 +25236,7 @@ function askTour(onProceed) {
       // a slider drag quietly un-welds four units. The weld keys on the full
       // attribute tuple, so the facets survive it — see weldGeometry.
       G.weldTree(hand);
+      if (finish) finish(hand);
     }
   };
   fluteSlider.addEventListener('input', () => {
