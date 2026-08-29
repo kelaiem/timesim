@@ -19719,3 +19719,116 @@ Still owed, and declared rather than hidden:
   The case unit stays outside `INTRA_TIER_SCOPE` until that lands.
 - **The sapphire dial**, which is backlog §3's remaining half.
 - An `explain.html` entry, which the case does not yet have.
+
+## §185 — the dial's colour travels in the link
+
+`?dialcol=rrggbb`. Pick a dial colour, press Copy view, and the person who
+opens the link sees the dial you were looking at.
+
+Until now it did not. The face colour is an AESTHETICS value — browser-local,
+persisted in `localStorage`, live since §157 — so a viewer could tune it and
+then have no way to show anybody. The share link carried the camera, the
+toggles and (since §161) the whole designed SPEC, and stopped exactly where
+taste began.
+
+### It is finish, not spec, and it stays on its own tier
+
+The obvious place to add it was index.html's `SPEC_FIELDS`, and that is the
+wrong place. That table is the GEOMETRY tier: its keys are read before boot,
+feed `solveLayout`, and are what reconfigure mode's variants and trial boots
+carry. §161 already put an assert there to keep MODES out of it ("a recipient
+should receive the watch rather than the workbench") — a finish value in that
+roster is the same mistake from the other side, and it would put a colour into
+every saved variant and every trial spec.
+
+The face colour moves no station and rebuilds no geometry. So it gets its own
+key, read where the aesthetics live, and `currentSpecParams()` is untouched.
+
+### Read before the build, because the assert is at paint
+
+The colour could have been applied in `applyDeepLink` with the other link
+params, through §157's live `recolourFace`. It is not, and the reason is the
+legibility floor: `assertInkLegible` runs when the face canvas is PAINTED, and
+`makeDial` paints during the build. Applying afterwards would build the dial
+once in the wrong colour and assert the wrong value on the way past.
+
+Merged in `aesthetics.js` instead, before the build, a link is
+indistinguishable from a tuned override — one path, and the build's own asserts
+judge what the viewer actually sees. `src/i18n.js` reads `?lang` in the same
+place for the same reason: the panel is BUILT from it.
+
+### The link wins; the recipient's colour survives
+
+Two rules that pull against each other, and either alone is wrong.
+
+**The link beats a persisted override.** This is §97's rule, not a preference.
+When §97 retired the sub-dial radius knob it wrote down why: a browser-local
+value over something the URL also describes means "the link and the picture
+disagree silently, per machine". A recipient who saw their own saved colour
+instead of the sender's would be looking at a different watch with nothing on
+screen saying so.
+
+**But it is not written back.** A link shows someone a dial; it does not edit
+their preferences. The override store is untouched, so their own colour is
+there again on the next visit without the param. That also keeps the URL value
+off §23's crash-recovery marker — arming it for a link would let a stranger's
+URL wipe the recipient's saved tuning, a worse failure than the one the marker
+exists for.
+
+### What the merge could not check, and what does
+
+`mergeAesthetics` is TYPE-anchored and clamps NUMBERS against `_bounds`.
+`dial.face.color` is a string, so every string passes it, and `_bounds` has
+nothing to say about a colour — `aesthetics.json` records that omission as a
+decision rather than an oversight, since a colour has no min or max to give.
+
+A URL is untrusted input, so the SHAPE is checked at the param: six hex digits,
+'#' optional, anything else ignored in silence — `applyDeepLink`'s standing
+rule that a bad link degrades rather than throws. `?dialcol=<script>`,
+`rgb(1,2,3)`, five digits and seven all leave the file's colour standing.
+
+### Only non-default travels, which needed the file's value back
+
+§37's rule for the toggles applies here too, and it needed something that did
+not exist: `aesthetics.js` merges overrides INTO `aestheticsData` in place, so
+after boot the shipped value is gone and nothing can ask what the file said.
+`AESTHETICS_DEFAULTS` is a frozen snapshot taken before the merge — the header
+calls the file "the single source of record", and this is what keeps that true
+at runtime. The comparison is therefore the same object's before and after: a
+re-tone of the shipped dial cannot leave the link comparing against a constant
+that used to be right.
+
+### The legibility floor is now a stranger's warning, and that is deliberate
+
+A dark dial fails `DIAL_INK_CONTRAST_MIN` (3.0:1, WCAG 2.1 SC 1.4.11) and warns
+at boot. `?dialcol=1b3a5c` — a plausible navy — measures 1.41:1 at the outer
+rail and warns four times, twice for the minute track and twice for the reserve
+zones.
+
+That behaviour is unchanged and reproduces the SENDER's screen exactly: the
+same assert fires on their live recolour when they pick the colour, because it
+is one copy called at build and on every recolour. So the link is honest — it
+carries the dial and its warnings together.
+
+What IS new is who can trigger it: standing rule 6 ("boot is silent") now has a
+path reachable from someone else's URL. The battery cannot see this class at
+all, since it boots without params. Two things follow, and both are decisions
+rather than oversights. The floor is not enforced at the link, because refusing
+a colour the panel allows would make the link mean something different from
+what the sender sees — the exact defect §97 deleted. And a second copy of the
+threshold is not added here; geometry.js's own comment warns that "a second
+transcription of a threshold is a second place for it to rot". **If links
+should refuse illegible colours, that is a design call for the owner**, and it
+belongs with the floor, not beside it.
+
+### Instrument
+
+`tools/probe-dial-colour-link.mjs` — acceptance, 15 assertions. It is the first
+instrument for ANY link behaviour: §37's pose, §69's focus and §161's spec all
+shipped untested, and this covers only what this landing added.
+
+Its control is worth naming, because the "key is absent" cases are the ones
+that pass for the wrong reason: an empty string, a null, or a link the probe
+failed to build at all would satisfy them equally. Every share link carries a
+camera pose, so a missing `?cam` throws rather than reporting a pass. Verified
+by breaking the share half on purpose: three assertions fail.
