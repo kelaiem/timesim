@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MATS, applyDecorationFromAesthetics } from './materials.js';
-import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides } from './aesthetics.js';
+import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
@@ -31754,6 +31754,22 @@ function currentViewLink() {
   if (selectedUnit !== 'All') p.set('unit', selectedUnit);
   if (explodeAmount > 0) p.set('explode', explodeAmount.toFixed(CAM_LINK_DP));
   if (crownOut) p.set('crown', 'out');
+  // §37 tier two — the DIAL'S COLOUR travels, on the same "only non-default"
+  // rule as the toggles above. It is compared against the FILE's value rather
+  // than against a constant restated here: `aesthetics` is the effective
+  // colour after any tuned override merged over it, so the two are the same
+  // object's before and after, and a re-tone of the shipped dial cannot leave
+  // this comparing against a number that used to be true.
+  //
+  // The '#' is dropped because a URL fragment starts with one — left in, it
+  // would need percent-encoding and would read as a fragment to anything
+  // parsing the link by hand. `parseDialCol` accepts it either way.
+  //
+  // Not a spec key, so it is set here beside the toggles rather than arriving
+  // through `currentSpecParams()`: a recipient gets the sender's DIAL, and the
+  // reconfigure workbench's variants stay geometry-only.
+  if (aesthetics.dial.face.color !== AESTHETICS_DEFAULTS.dial.face.color)
+    p.set(DIAL_COL_PARAM, aesthetics.dial.face.color.replace(/^#/, ''));
   // §161 — THE DESIGN TRAVELS, not just the view. Reconfigure mode's Apply is a
   // navigation (`location.search`, so back is undo), which means the spec a
   // viewer has DESIGNED lives in the query string and nowhere else — and a link
