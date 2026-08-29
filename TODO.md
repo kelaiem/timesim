@@ -25,6 +25,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 112 | OPEN | `HAND_SPECS` omits the reserve hand's `halfWidth`, so the first panel hands edit re-cuts §158's 3.00′ pointer back to 1.16′ — the exact defect the row's own comment warns about for `subdial`/`namePrefix`, one line up. Carry the field; acceptance = panel re-cut leaves the width identical |
 | 113 | OPEN | `alarmHand` is absent from `HAND_SPECS` entirely, so panel edits re-cut every hand except it. Not a one-line add: the boot site passes explicit bore/boss overrides and a post-build `scale.z = 0.5` the lane asserts read |
 | 114 | OPEN | Three sites still name the alarm barrel as the back-most metal (main.js:26542, 34482, BUILT §3) — measured, the alarm link tower at z 13.877 is; §112 moved the barrel under the plate (5.399). Behaviour is right (live Box3), the prose derives the back stack from a part that is not there |
+| 115 | OPEN | Issue #327, and wider than reported: EVERY display the going train drives counter-rotates the wheel it is keyed to. Measured equal and opposite to the last digit — fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909 — with all three of `probe-coaxial-sense.mjs`'s controls passing, so the trains are right and the defect is the dialFace frame seam. The comment justifying it ("the same physical rotation seen from opposite sides") is true about viewers and false about parts. **No one-line fix exists and the halves are measured, not argued**: negating the displays alone runs the hands backwards on a correct dial, and negating `escapeAngle` alone is strictly worse. Both, together, plus the metal that is cut for one direction — club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless sense — of which boot asserts exactly ONE (§47's, `src/main.js:1554`, measured) |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -13765,3 +13766,111 @@ Fix path: correct the three sites (and run `node tools/explain-quotes.mjs` in
 the same change — the explainer quotes constants, not this prose, but the
 check is free). The measurement itself ships with the redesign scope's
 `probe-back-envelope.mjs`, which carries the tower/barrel controls.
+
+## 115. The going train counter-rotates every display it drives
+
+Reported by eye (issue #327): *"the seconds sweeps in the opposite direction
+of the fourth wheel"*. Measured, and it is not only the seconds hand —
+`tools/probe-coaxial-sense.mjs`, all three controls passing, over 200
+poses × 0.1 s:
+
+| parts | relation the metal forces | measured world spin (rad) |
+|---|---|---|
+| Fourth wheel ⇄ small seconds hand | SAME — one shaft, through the slip-coupled display arbor | −2.094395 vs **+2.094395** |
+| Fourth wheel ⇄ heart cam (display arbor) | SAME — a friction coupling transmits, it does not reverse | −2.094395 vs **+2.094395** |
+| Centre wheel ⇄ hour wheel | SAME — cannon pinion on the centre arbor, then two motion-works meshes | −0.034907 vs **+0.002909** |
+
+Equal and opposite to the last digit, which is the signature: not a phase
+error, a SIGN. Every display the going train drives turns backwards relative
+to the wheel it is keyed to. The controls that pass say the trains themselves
+are right — Third ⇄ Fourth counter-rotate across their one mesh, Centre ⇄
+Fourth co-rotate across their two — so the defect lives exactly at the frame
+seam, nowhere else.
+
+**Where the sign comes from.** `dialFace.rotation.y = Math.PI`
+(`src/main.js:10093`) turns the dial-side authoring frame around, so a
+dialFace child's `rotation.z = θ` IS a world rotation of −θ. The dial-side
+displays are nonetheless assigned the movement-frame angle unnegated —
+`smallSecondsHand.rotation.z = fourthA − secondsZeroRef` (33235),
+`cannonPinion.rotation.z = minuteA` (33236) — and the comments beside them
+(10394-10400, 33296-33307) justify it as *"the same physical rotation seen
+from opposite sides"*. That sentence is true about VIEWERS and false about
+PARTS. Two parts keyed to one arbor are one rigid body; a viewer's side
+changes what their rotation looks like, not what it is. CLAUDE.md's trap list
+carries the same reasoning as a convention — *"a movement-frame arbor carries
+the NEGATED rotation of the hand it drives"* — so the convention is the
+defect, and correcting it is a documentation change too.
+
+**Why the one-line fix does not exist, measured rather than argued.** Negate
+the display expressions alone and the hands run counter-clockwise on a dial
+whose numerals are correct (verified from the front: XII up, the sub-dial
+reading 60/15/45 clockwise). So the train's ABSOLUTE sense is wrong as well,
+and both halves have to move together. Three boots settle it:
+
+1. **Head.** Seconds hand clockwise, dial correct; all three pairs FAIL.
+2. **`escapeAngle` negated** (the whole chain is derived off it, so fourth,
+   third, centre and barrel all flip). The pairs still FAIL — the displays
+   track the flipped angle with the same wrong sign — and now the dial reads
+   counter-clockwise as well. Strictly worse, which is the trap for anyone who
+   tries this half.
+3. **`escapeAngle` negated AND the two seconds expressions negated.** Fourth
+   ⇄ hand and Fourth ⇄ heart cam both go SAME, the dial reads clockwise again,
+   and Centre ⇄ hour wheel still fails — because the motion-works half was
+   left alone. The probe's third CONTROL fires here too (the two hands on one
+   dial now disagree), which is the control doing its job.
+
+So the kinematic fix is: **negate the train chain, and negate every dial-side
+display expression in the same landing.** Neither half is shippable alone.
+
+**And the kinematic fix is the cheap half.** Reversing the train invalidates
+the metal that is cut for one direction, none of which any gate reads:
+
+- the escape wheel's club teeth lead the rotation (`geometry.js:915`, "club
+  tip (leading, forward)") and the pallet stones are cut against them;
+- both mainspring ribbons' wind sense, the fusee's groove handedness and the
+  chain wrap in `rebuildChain` (the §47 sign chain at 33338-33356 is anchored
+  on "the fusee must turn CW-from-the-back to gather chain");
+- every saw: `makeRatchetAndClick`'s `reverse` flag already exists for exactly
+  this (`geometry.js:3393-3412`), and the going ratchet, the set-up ratchet
+  and the maintaining-power flange/ring each pick a hand;
+- the keyless works' winding direction, which §47 derives forward from the
+  fusee and pins to the horological convention (crown clockwise from its outer
+  end winds).
+
+**Boot has exactly ONE tripwire for any of this, and it is not the
+escapement's.** Measured: with `escapeAngle` negated the tree boots with a
+single warning, §47's `barrelMeshAngle runs BACKWARD` (`src/main.js:1554`) —
+whose own comment predicted this case. Nothing warns that the escape wheel is
+now running onto its locking faces, that a ratchet climbs its own cliff, or
+that the dial reads backwards. That silence is a second finding: the movement
+has no assert tying a direction-committed CUT to the direction its part
+actually turns, and the fix should leave one behind for each of the sites
+above.
+
+**Not a P3 problem.** Nothing here is packaging: no clearance moves and no
+station moves. This is P0 — causality arriving at the output through a sign
+rather than through the shaft — inside the going train's own action group.
+(The battery was NOT re-run on the two experiment boots above; they were
+scoping runs, judged on boot silence and this probe alone.)
+
+Fix path, in the order the design-priority note prescribes (prove the group,
+then fit it):
+
+1. Land the kinematic reversal and the display negations together, with the
+   direction-committed geometry mirrored in the same change — `reverse` cuts
+   where the flag exists, mirrored outlines where it does not.
+2. Give each mirrored cut a build-time assert relating its lead to the sense
+   its part turns, so the next reversal cannot be silent.
+3. Correct CLAUDE.md's trap entry and the comments at 10394-10400 and
+   33296-33307: the dial-side rule is that a display carries the NEGATION of
+   its movement-frame arbor because the frame is turned around, and a part and
+   its arbor always agree in world.
+4. Re-derive, do not re-target: `secondsZeroRef`, `camPhaseOffset` and the
+   heart's reset contact all read the seconds display's sign, as does
+   `DIAL_EPOCH_ANGLE` through `MIN_HAND_RAD_PER_SEC`.
+
+Acceptance: `node tools/probe-coaxial-sense.mjs` PASSes (it is written to
+be red on the tree that shipped it), boot stays silent, and the battery's
+`--report` is diffed against the base — the reversal moves poses, so
+`fingerprint` will legitimately move and must be re-measured and recorded
+rather than tolerated.

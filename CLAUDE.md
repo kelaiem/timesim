@@ -709,8 +709,17 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
 - **`inspect.js` couples by string.** Every `MECH_GRAPH` / `EXPECTED_PAIRS` /
   anchors name must match a `registerLabel` name *verbatim*.
 - **`dialFace` is Y-flipped**: dial-local `(x, y)` ↔ world
-  `(P.dial.x − x, P.dial.y + y)`, and a movement-frame arbor carries the
-  NEGATED rotation of the hand it drives.
+  `(P.dial.x − x, P.dial.y + y)`. The frame is turned 180° about Y, so a
+  dialFace child's `rotation.z = θ` IS a world rotation of −θ — which means a
+  display and the movement-frame arbor it is keyed to must carry OPPOSITE
+  values to be the same rigid body. **What the code does today is the
+  reverse**, and this entry used to state that as the convention ("a
+  movement-frame arbor carries the NEGATED rotation of the hand it drives").
+  It is TODO 115: measured, every display the going train drives
+  counter-rotates its own wheel, equal and opposite to the last digit
+  (`tools/probe-coaxial-sense.mjs`). Read the convention as a description of
+  a defect, not as a rule to follow, until that item lands — and note the fix
+  is not one sign, because the train's absolute sense is wrong too.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
   **Disarmed at the source by §81**: every mesh now reaches the scene

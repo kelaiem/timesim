@@ -4,7 +4,7 @@
 
 # The instruments
 
-160 scripts. **67 are ACCEPTANCE tests** — they decide and exit non-zero.
+161 scripts. **68 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -147,6 +147,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-case-closed.mjs` |  | report | IS EVERY CASE BODY A SOLID? Boundary edges per mesh — 0 on a closed one, and the locations printed when it is not. |
 | `probe-case-relief.mjs` |  | acceptance | DOES ANYTHING STAND IN THE BAND'S METAL — AT ANY POSE THE MOVEMENT REACHES? Acceptance. The band's openings (the seat relief, the two crown bores, the pusher bore) are DERIVED at boot by scanning the movement for whatever occupies the band's own volume. A boot scan sees one pose, and a mover is somewhere else at every other: measured, `hackRodPin` sits at r 37.801..38.691 as the case is built — clear of the seat's 40.284 — and at 39.889..40.786 in 33 of the 42 poses the battery visits, half a unit INSIDE it. The relief was derived correctly and was still a claim about one pose. |
 | `probe-chain-daylight.mjs` |  | report | The DAYLIGHT: from every chain vertex in the fusee's bottom wrap turn, cast a ray radially INWARD (toward the fusee axis, in the horizontal plane) and take the distance to the first fusee surface hit. That is the visible gap between the chain's body and the cone flank that has fallen away beneath it — the quantity the burial-only seating row cannot see. |
+| `probe-coaxial-sense.mjs` |  | acceptance | TODO 115 — DO THE PARTS THAT SHARE A SHAFT TURN THE SAME WAY? |
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
 | `probe-colwheel-id.mjs` |  | report | probe-colwheel-foul named six meshes touching the column wheel at 0. Two are declared rider contacts. This identifies the rest — what they are, where they were built, what material, whether they are NAMED, whether anything DECLARES the contact, and how the gap behaves across the toggle's two parities (the eye report says "every other toggle", so parity is the tell). |
