@@ -13,13 +13,23 @@
 // whether the module fits BELOW the plate. Neither sweeps poses nor reports
 // the z-envelope the caseback must clear, which is this file's one question.
 //
-// Three products:
+// Four products:
 //   1. per-UNIT z-max over the whole net, with the pose that set it — the
 //      caseback's floor, and E7's (strike-tier sinking) price list;
 //   2. a radial histogram of the envelope (max z per r-bin over all poses) —
 //      what a stepped or domed glass could hug at each radius;
 //   3. the daylight ledger over the three-quarter plate: envelope minus
-//      plate-top, per r-bin.
+//      plate-top, per r-bin;
+//   4. §187 — the BUILD-POSE histogram and per-unit z-max beside the swept
+//      ones, with the swept-minus-build DELTA per unit. §187's glass derives
+//      at boot, and boot cannot sweep poses (setPose lives thousands of
+//      lines below the case build — TODO 111's structural note), so the boot
+//      derivation is build-pose scan + DECLARED mover allowances; this
+//      product is where those allowance numbers are MEASURED rather than
+//      guessed, and the delta column is the allowance table's source.
+//      ("Build pose" here is the canonical reset pose — TODO 111 measured
+//      the construction pose and the reset pose identical; the going train's
+//      tau drift between them is rotation about z and cannot move a z-max.)
 //
 // Controls (both directions, asserted): the alarm link tower MUST appear
 // above the plate (rest measurement 13.877); the alarm barrel MUST NOT
@@ -66,8 +76,12 @@ const res = await page.evaluate(async () => {
   const rSpan = plateR * 1.15;
   const bins = new Array(NBIN).fill(-Infinity);
   const binOwner = new Array(NBIN).fill(null);
-  const units = new Map();         // name → { zMax, pose }
-  const poses = [{ name: 'as booted', enter: () => {} }];
+  // §187 — the build-pose histogram, recorded beside the swept one. The
+  // first pose in the walk is the CANONICAL RESET pose (enterAxis with no
+  // setPose), which is the pose the boot derivation measures at.
+  const binsBuild = new Array(NBIN).fill(-Infinity);
+  const units = new Map();         // name → { zMax, pose, zBuild }
+  const poses = [{ name: 'build pose (canonical reset)', enter: () => { I.enterAxis(clock); }, isBuild: true }];
   for (const ax of I.AXES) for (const f of [0, 0.5, 1])
     poses.push({ name: `${ax.name} f=${f}`, enter: () => { I.enterAxis(clock); clock.setPose(ax.pose(f, clock)); } });
 
@@ -83,32 +97,34 @@ const res = await page.evaluate(async () => {
         for (let i = 0; i < pos.count; i++) {
           o.localToWorld(v.fromBufferAttribute(pos, i));
           if (v.z <= plateTop) continue;                // only what stands ABOVE the plate top
-          const u = units.get(e.name) || { zMax: -Infinity, pose: '' };
+          const u = units.get(e.name) || { zMax: -Infinity, pose: '', zBuild: -Infinity };
           if (v.z > u.zMax) { u.zMax = v.z; u.pose = p.name; }
+          if (p.isBuild && v.z > u.zBuild) u.zBuild = v.z;
           units.set(e.name, u);
           const b = Math.min(NBIN - 1, Math.floor(Math.hypot(v.x, v.y) / rSpan * NBIN));
           if (v.z > bins[b]) { bins[b] = v.z; binOwner[b] = e.name; }
+          if (p.isBuild && v.z > binsBuild[b]) binsBuild[b] = v.z;
         }
       });
     }
   }
   return {
     plateTop, plateR, rSpan, poses: poses.length,
-    units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose }))
+    units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose, zBuild: u.zBuild }))
       .sort((a, b) => b.zMax - a.zMax),
-    bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan, zMax: z, owner: binOwner[i] })),
+    bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan, zMax: z, owner: binOwner[i], zBuild: binsBuild[i] })),
   };
 });
 
 const MM = 0.378947;
 console.log(`plate top MEASURED z ${res.plateTop.toFixed(4)} (r ${res.plateR.toFixed(3)}), ${res.poses} poses swept\n`);
-console.log('UNIT z-max ABOVE the plate top (u / mm proud), worst pose:');
+console.log('UNIT z-max ABOVE the plate top (u / mm proud), worst pose — and §187\'s swept−build delta:');
 for (const u of res.units.slice(0, 20))
-  console.log(`  ${u.name.padEnd(28)} ${u.zMax.toFixed(3).padStart(8)}  +${((u.zMax - res.plateTop) * MM).toFixed(2)} mm  @ ${u.pose}`);
-console.log('\nRADIAL ENVELOPE (r-bin → max z over all poses, owner):');
+  console.log(`  ${u.name.padEnd(28)} ${u.zMax.toFixed(3).padStart(8)}  +${((u.zMax - res.plateTop) * MM).toFixed(2)} mm  build ${u.zBuild === -Infinity ? '   (below plate)' : u.zBuild.toFixed(3).padStart(8)}  Δ ${(u.zMax - (u.zBuild === -Infinity ? res.plateTop : u.zBuild)).toFixed(3)}  @ ${u.pose}`);
+console.log('\nRADIAL ENVELOPE (r-bin → max z over all poses / at build pose, owner):');
 for (const b of res.bins) {
   if (b.zMax === -Infinity) continue;
-  console.log(`  r ${b.r0.toFixed(1).padStart(5)}..${b.r1.toFixed(1).padEnd(5)}  z ${b.zMax.toFixed(3).padStart(7)}  daylight-over-plate ${((b.zMax - res.plateTop) * MM).toFixed(2).padStart(5)} mm  ${b.owner}`);
+  console.log(`  r ${b.r0.toFixed(1).padStart(5)}..${b.r1.toFixed(1).padEnd(5)}  z ${b.zMax.toFixed(3).padStart(7)}  build ${b.zBuild === -Infinity ? '      —' : b.zBuild.toFixed(3).padStart(7)}  Δ ${(b.zBuild === -Infinity ? b.zMax - res.plateTop : b.zMax - b.zBuild).toFixed(3).padStart(6)}  daylight ${((b.zMax - res.plateTop) * MM).toFixed(2).padStart(5)} mm  ${b.owner}`);
 }
 
 // CONTROLS — both directions.
