@@ -19516,3 +19516,206 @@ the barrel **translates** rather than rotating, which is the model the tier-spli
 search solved this triple under. A real fold would carry the assembly round. The
 difference is zero at the shipped triple, and adopting the search's own model
 keeps the refusal and the solve from being two definitions of one thing.
+
+## §3 (the case and its glazed back) — the watch case, and its openings cut in sectors
+
+**A PARTIAL ship, keeping its own § in both places** — the header rule, and
+`§10 level 1`'s precedent. Backlog §3's sapphire dial has not shipped and stays
+in the roadmap under the same number.
+
+It asked for three things: a case band, a **box sapphire dial**, and a display
+caseback, all sized off §2's mapping, with the total thickness asserted against
+"~10–11.5 mm". Two of the three shipped. Reconciled against the metal rather
+than marked BUILT:
+
+| §3 asked for | what shipped |
+|---|---|
+| case band sized from §2's mapping | **shipped** — Ø36.53 mm, derived below |
+| display caseback | **shipped** — glazed, screw-fixed, six screws |
+| box **sapphire dial** | **not built.** The dial is still opaque, so the entry's own premise — "the dial side becomes the second display" — is not delivered, and the keyless works, motion works, reserve train and minute jumper are visible only through the schematic tier and x-ray |
+| total thickness ~10–11.5 mm | **missed.** §39 measures the cased assembly at **15.51 mm** |
+
+The thickness miss is not a slip to fix by trimming: 10–11.5 mm was written
+before the movement had an alarm barrel or a fusée cone standing where they now
+stand, and §39's own comment says a fusée-and-alarm in an honest glazed case
+"has no business under 13". The ceiling was therefore re-budgeted from the
+STACK rather than from the wish — movement 12 + front 1.45 + back 2.8 ≈ 16.25,
+called 16 — and the movement's own envelope is untouched at **11.56 mm** inside
+its 2.5–12 bound. What §3 asked for is unreachable at this movement's size; the
+entry is retired PARTIAL and the sapphire dial keeps its own line there.
+
+### The radial dimensions, and the owner's two caps
+
+`CASE_R_IN = plateR + CASE_CLEAR` and `CASE_R_OUT = CASE_R_IN + CASE_BAND_T` —
+1 mm of movement-ring clearance and a 1 mm wall, dress-watch practice, stated
+in `layout.js`. Against a 32.53 mm plate that is **Ø36.53 mm**, and the 40 mm
+cap is spent on walls, bezel and clearance rather than assumed to fit. Three
+boot asserts hold the owner's caps, and the middle one is the one that matters:
+the number a calliper reads is across the lug TIPS, not the bare band, and the
+lugs measure **39.93 mm** against the 40 mm cap. An assert on the band alone
+would have passed a case nobody could wear.
+
+Lugs are 18 mm between spring bars — period-typical for a ~36 mm case, inside
+the 20 mm cap — as parallel prisms on Ø1.5 mm bars, each foot rooted 0.8 mm past
+the chord-depth surface at ITS OWN station (`sqrt(R² − off²)`, the brazed
+stamped-lug construction). Seating them from the pair axis instead left them
+hovering over the curved wall and reaching 40.9 mm.
+
+### Both ends of the z stack are MEASURED, because a constant there lies
+
+The crystal plane comes off the hands' front-most metal plus the clearance, and
+the cap floor off the movement's back-most metal (the alarm barrel). Neither is
+a constant, because a constant is wrong the moment a hand or the alarm grows.
+The dial side is **−z**, which the first cut of the feature learned by putting
+the caseback through the dial; `CASE_DIMS`' header states the convention now.
+
+The back is a **screw-fixed exhibition back** (owner's calls: glazed, then
+"simpler, fixed with individual screws", over a screw-down): a flat glazed plate
+1.2 mm thick — retaining lip 0.6 + crystal 0.6, flush both sides — on the
+middle's back face, held by six Ø1.0 mm screws with 0.7 mm of thread engagement
+in a 1.0 mm flange off the same turning. No thread to single-point and no opener
+teeth. Dropping the thread stack took the back from 4.8 mm to 2.8 mm and the
+cased ceiling moved DOWN with it, so the saving cannot quietly be spent again.
+
+### Two checks were taught about the case, rather than the case wedged into them
+
+§62's keep sweep enrolls any mesh crossing the plate's z-band as "material the
+plate must carry". A case band encloses the plate BY DESIGN, so case meshes opt
+out on the part (`userData.casePart`) and the check stays generic. And §39's
+depth envelope is a movement-proportions claim, so it excludes the case and a
+cased envelope stands beside it.
+
+### The bodies had to be SOLIDS before any of it could be measured
+
+Five of `makeCase`'s bodies were open surfaces. That is not cosmetic:
+`meshClearance` guards its BVH near-zeros with a parity raycast, which counts
+crossings and so assumes a closed solid. Through a missing face the count goes
+odd and the body reads as solid everywhere behind it — the setting wheel, three
+extrusions, a torus and a box all reported "inside" a band whose bore they sat a
+clear millimetre inside of.
+
+Both lathe contours now close (`lathe()` warns when a profile neither closes nor
+lands both ends on the axis, so the next body cannot ship open in silence); the
+tubes are capped sleeves with a wall derived from the collar they must stand
+proud of, where they had been `openEnded` cylinders **at the bore radius**, so
+the tube's metal had never been modelled at all; the collars are bored; and the
+"flush" pusher stopped being built with the crown tubes' proud extension.
+
+Two corrections only visible once those cleared. The pusher head's standoff read
+`hypot(_pushBase)` where the constraint wants that vector's PROJECTION on the
+push axis — equal only for a radial pusher — and was under the throw regardless;
+it now derives from `CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL`, clearing by
+0.181 u at full press instead of standing 0.397 u inside the band, and resting
+1.086 mm proud. That discharges §43's recorded loose end, which had been waiting
+for this entry's band to seat against. And an AZIMUTH LOCATES A RADIUS, NOT A
+LINE: `tubeAt` drilled every opening on a radius, so the pusher's bore sat
+1.66 mm beside the pusher — a bare ring on the band with the button standing in
+unbroken metal next to it.
+
+### The openings: a band turned in SECTORS
+
+A body of revolution has every feature at every azimuth, so a case band turned
+in one piece can have no hole in it and no interruption in its plate seat. That
+is why the band had no stem bores (TODO 96) and why the seat was an unbroken
+ring standing in the dial-side keyless works (TODO 91). Both items said they
+were blocked on the same missing construction and should be cut in one pass.
+
+`sectorLathe` revolves a profile through part of a turn and CAPS both ends,
+triangulating the profile polygon at each. The caps are the work: a partial
+revolution is open where it starts and stops, which is the very defect the
+bodies had just been cleaned of. `caseMiddle` is built as whole / relieved /
+bored sectors merged into one body, and measures **0 boundary edges**.
+
+WHERE the openings go is derived, not listed. `CASE_SECTORS` scans the movement
+for whatever occupies the seat's own volume, clusters the azimuths into arcs,
+pads each by `CLEAR_MARGIN` as an arc at the seat's radius, and unions the bore
+windows in. Ship a part into that space and the relief follows it. Both crowns
+fall inside their own relief arc, so 91 and 96 really are one cut.
+
+**Four numbers, each from its constraint.**
+
+- The **bore window** is the union over the wall's THICKNESS, not an arc at one
+  radius: a hole around a line at perpendicular offset `off` covers azimuths
+  `az + asin(p/r)` for `p ∈ [off − ap, off + ap]`, and `asin(x/r)` is monotone
+  in `r`, so the ends are among the four values at `R_IN` and `R_OUT`. A radial
+  bore collapses to `±asin(ap/R_IN)`. TODO 96 offered to declare a
+  constant-angle approximation; it is not needed.
+- The **pusher's offset is read, not assumed zero.** TODO 96 records a 4.370
+  chord stand-off, measured before §170 solved `ALARM_PUSH_AZ` through the
+  movement's centre and made `_pushBase·perp` exactly 0. It is radial today,
+  and the offset-aware form still ships because `tubeAt` drills from the same
+  expression — the two agree by a landing, not by construction of the case.
+- What **separates two reliefs** is the land between them, and a land narrower
+  than the seat is deep is a tooth, not a bearing surface: the threshold is
+  `plateR − R_SH` = 1 mm as an arc. The first cut used the bore window doubled,
+  4.6× wider, which swallowed the 17.2° land between the setting works and the
+  hack pin for 4.4% of the ring and no structural reason.
+- What the relief may **LEAVE is kinematic, not a stress bound.** TODO 91 asked
+  for this arithmetic and named a fraction-of-the-ring threshold as the thing it
+  did not have. A plate this size weighs milligrams and no land is near a
+  bearing limit, so "keep n% of the ring" is a number that looks right. A rim
+  seat's job is to stop the plate ROCKING, and it does that exactly when the
+  lands surround the axis — no diameter with every land on one side. One
+  measurement, the widest gap, under half a turn. As cut: **six lands, widest
+  gap 21.9°, 88.5% retained.**
+
+### Three things the cutting found that the filings did not
+
+**The scan must walk EDGES, and the reason is three dial feet.** Ø1.2 mm columns
+crossing z −8.40..−1.00 straight through a 0.8 mm band, with not one vertex in
+it, because a cylinder's vertices sit on its end caps. A vertex scan left all
+three standing in unbroken seat; edges find 80 crossings apiece.
+
+**A relief derived at ONE pose is a claim about one pose.** The scan runs while
+the case is built, and a mover is elsewhere at every other pose: `hackRodPin`
+measures r 37.801–38.691 at build time, clear of the seat's 40.284, and
+39.889–40.786 in 33 of the 42 poses the battery visits — **0.502 inside**,
+through the step's full depth. Standing rule 5 owns the fix: the scan consumes
+`LOW_LINKAGE_OBSTACLES`, which reaches this annulus in one arc (165.5°–169.1°,
+the pin's station) for 3.6° of bearing. What that still leaves is **TODO 111**.
+
+**And the seat was never touching the plate.** `zSeatTop` was the plate's
+NOMINAL face; the plate is an ExtrudeGeometry and three.js's bevel grows a body
+past its own outline both ways (TODO 84 at plate scale). Measured: the rim's
+flat face lies at z −2.300 out to r 42.923 and the bevel swells to r 43.2664,
+widest at z −2.000. So the seat stood **0.300 inside** the plate's z span over
+the whole annulus, and only the bevel's corner met it — a bearing that
+interpenetrates is not a bearing. The same drawing-not-metal error put the crown
+tubes' inboard ends **0.193 inside** the plate's widest metal. Both read
+`PLATE_RIM` now, measured once at boot.
+
+Neither was visible to a gate, and item 6 says why: `['Case', 'plate']` is an
+EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, so the blanket excuse
+covered everything the case does to the plate. `probe-case-relief.mjs` found
+both by asking per MESH over the pose net, which a per-unit declaration cannot
+answer.
+
+### One defect the cut created, which looked exactly like the bug it fixed
+
+The alarm crown's window and the pusher's overlap by 5.6° with DISJOINT z
+windows. Emitting one bored sector per bore stacked two solids there, and each
+one's metal filled the other's hole — so `Alarm crown ⇄ Case` and
+`Alarm switch ⇄ Case` still measured shut AFTER the bores were cut, for the
+opposite reason to before. The arc is swept once now: every window end is a
+breakpoint and each piece carries the union of the windows covering it, so a
+piece with two holes is one body of metal in three bands.
+
+### The tiers, and what is still owed
+
+One derivation (`CASE_DIMS`) feeds the solid tier and the §66 line tier, so the
+drawing cannot drift from the metal — the schematic back draws the plate edge,
+the glaze line and the six screws at the same derived stations. One Case toggle
+(W, persisted as `caseLines`) owns both. The case explodes the way it comes
+apart: back assembly +z past the gong's stratum, front crystal −z, the middle as
+the reference body. 'Case' is translated in all five locales.
+
+Still owed, and declared rather than hidden:
+
+- **TODO 111** — the relief is sound for build-time occupants and for the
+  low-linkage table, and ungated for any other mover that reaches the annulus at
+  some pose.
+- **The CSG debt.** The openings are cut by sector construction, not by boolean;
+  the screw holes and the flange's threads are still through/contact geometry.
+  The case unit stays outside `INTRA_TIER_SCOPE` until that lands.
+- **The sapphire dial**, which is backlog §3's remaining half.
+- An `explain.html` entry, which the case does not yet have.

@@ -38,6 +38,11 @@ import {
   CROWN_PULL_DIST, SL_C, SL_TAIL, GROOVE_LOCAL, YK_C,
   solveKeyless,
   segCircleClear, solveElbow, solveStopWork, ELBOW_E_MAX,   // §85 step A: the stop work solves like the layout does
+  // Backlog (watch case): the schematic-tier case's dimensions — caps and
+  // real hardware sizes, all derived in layout.js at the §39 pin.
+  CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T,
+  CASE_BACK_SCREWS, CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
+  CASE_TUBE_D, CASE_PUSHER_D,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -1801,6 +1806,25 @@ const alarmSwPos = { x: Math.cos(ALARM_SW_AZ) * ALARM_SW_R, y: Math.sin(ALARM_SW
 // movement hashes exactly as it did with the cut up here.
 const BACK_PLATE_Z = -1;   // the slab's centre
 const BACK_PLATE_T = 2;    // ...spanning [z−1, z+1]
+
+// --- the case's RADIAL dimensions (backlog: watch case) — derived once,
+// here, because the stems below are cut to reach through them. The z
+// stations join them once the hands exist (the crystal plane is measured
+// from the tallest hand); see CASE_DIMS. Owner caps asserted at boot.
+const CASE_R_IN = plateR + CASE_CLEAR;       // 1 mm movement-ring clearance
+const CASE_R_OUT = CASE_R_IN + CASE_BAND_T;  // 1 mm band wall
+// (The z stations live in CASE_DIMS — they are measured from the metal once
+// the movement exists, and the dial side is −z, which the first cut of this
+// feature learned by putting the caseback through the dial.)
+const CASE_LUG_SPAN = 18 / UNIT_MM;          // 18 mm — period-typical for a ~36 mm case, under the 20 mm cap
+if (CASE_R_OUT > CASE_WIDTH_MAX)
+  console.warn(`case: band Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap — the movement outgrew its housing budget`);
+// Width across the lug TIPS is the number a calliper actually reads: band
+// radius + 2.5 mm reach − 0.8 mm root (geometry.js's lug derivation).
+if (CASE_R_OUT + 1.7 / UNIT_MM > CASE_WIDTH_MAX)
+  console.warn(`case: ${(2 * (CASE_R_OUT + 1.7 / UNIT_MM) * UNIT_MM).toFixed(2)} mm across the lugs breaks the 40 mm owner cap`);
+if (CASE_LUG_SPAN > CASE_LUG_SPAN_MAX)
+  console.warn(`case: lug span ${(CASE_LUG_SPAN * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap`);
 const BACK_PLATE_HOLES = [
   { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
@@ -3497,7 +3521,11 @@ const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
 const MEASURED_MARGIN_BAND = 1e-6;
 const SQ_TOP = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF + SLEEVE_TOP
   + CLEAR_MARGIN + MEASURED_MARGIN_BAND + SAW_FIT;
-const stemLen = plateR + 2.2 - pinDist;
+// Backlog (watch case): the stem now reaches THROUGH the case band's tube —
+// the crown's base stands 2 mm outboard of the band's outer face (tube
+// collar plus finger room), so the length is cut to CASE_R_OUT, not the
+// plate. The keyless throws are clutch-local and untouched by this.
+const stemLen = CASE_R_OUT + 2 / UNIT_MM + 0.7 - pinDist;
 // Round shaft from the square's shoulder (a SAW_FIT weld into the square,
 // one turned piece modeled as two meshes) out to the crown; the bushing
 // sits ≈8+ units outboard of SQ_TOP at every pull, so the declared
@@ -7344,6 +7372,11 @@ function sweepTqKeeps() {
   movement.updateMatrixWorld(true);
   const consider = (o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position || o.userData?.schematic) return;
+    // The case (backlog: watch case) encloses the plate BY DESIGN — a
+    // housing is the world's fixture, not a load the plate carries, and its
+    // band stands CASE_CLEAR off the plate rim by construction. Its meshes
+    // opt out on the part (makeCase sets casePart); the check stays generic.
+    if (o.userData?.casePart) return;
     o.geometry.computeBoundingBox();
     const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
     const crosses = b.min.z < TQ_TOP_Z - 1e-6 && b.max.z > TQ_BOT_Z + 1e-6;
@@ -13790,7 +13823,7 @@ declareTransfer('alarm setting: stem→disc bevel corner', {
 // Stem length from the PUSHED-IN rest radius (the climb, ALARM_CD) — the
 // spinner slides OUT from there, so basing it on the arbor's outboard radius
 // left the knob 5 short, buried against the dial rim (the sweep caught it).
-const alarmStemLen = plateR + 2.2 - ALARM_CD;
+const alarmStemLen = CASE_R_OUT + 2 / UNIT_MM + 0.7 - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
 // The stem's ONE support, hoisted out of the bushing block below so the
 // bush and the declaration that names it cannot drift apart: move the boss
 // and the free lengths move with it.
@@ -13809,25 +13842,51 @@ alarmStem.position.y = alarmStemLen / 2;
 // BufferGeometry without copying userData, so a geometry-level declaration is
 // deleted by weldTree.
 //
+// The metal: one bush, at ALARM_STEM_BUSH_DIST on the spinner's radial line,
+// which at the pushed-in rest radius ALARM_CD sits
+// `ALARM_STEM_BUSH_DIST − ALARM_CD − alarmStemLen/2` = 6.1333 along the
+// stem's own y. That leaves 25.5222 u of stem inboard of the only thing
+// holding it: a cantilever, not a span. Declared, the row reads **λ 76.6**
+// against the 46.2 whole-stock λ reports today — measured, both times.
+// The larger number is the true one; whole-stock λ assumes a span and this
+// stem is not one.
+//
+// TWO OF THOSE FIGURES MOVED WHEN THE CASE LANDED AND ONE COULD NOT, which
+// is worth writing down because the third is an IDENTITY and not a
+// coincidence. The case lengthens `alarmStemLen` (29.7222 → 38.7777) so the
+// crown can stand outside the band: the bush's station on the stem therefore
+// travels inboard (10.6611 → 6.1333) and whole-stock λ rises (35.4 → 46.2,
+// its cantilever stiffness 359.3 → 161.8 N/m). The OVERHANG does not move,
+// and cannot: `len/2 + (BUSH − CD − len/2)` is `BUSH − CD`, with
+// `alarmStemLen` cancelling. The stem's inboard end is pinned at the corner
+// and the bush is bored at a fixed radius, so lengthening the stem adds
+// metal only OUTBOARD of the support. λ 76.6 and its k 567.4 N/m are
+// case-independent, and TODO 109's verdict for this row is unchanged by the
+// case — it was SHORT before and is short by more now.
+////
 // A SLIDING STEM IN A FIXED BUSH, so the station is a POSE, and this is the
 // rest one: pulling the crown slides the metal outward through a bush that
 // does not move, which walks the bush inboard along the stem. Rest is the
 // WORST case — the stem at its innermost leaves the longest run inboard of
 // the bush — and it is the pose the check measures.
 //
-// IT MAKES THE ROW WORSE, 35.4 → 76.6, and that is the point: one bush
-// 25.5222 u from the inner end leaves a cantilever that long, which λ over
-// the whole stock was averaging away by calling a singly-held stem a span.
-// Not new debt — the old debt reading true.
-//
 // THIS DECLARATION WAS LANDED, WITHDRAWN, AND RE-LANDED, and the round trip
 // is TODO 110. Withdrawn because the battery failed it on EXECUTION ORDER:
 // `resetInputs()` zeroed `alarmCrownPullT` while the scene followed only on a
 // later tick, so after `alarmHandoffs` the stem stood 5 u out and the station
-// landed in air. Re-landed because TODO 110's fix settles the eased state
-// into the scene, making CLAUDE.md's invariant — a check cannot observe what
-// ran before it — true as stated. The acceptance is that
-// `--only alarmHandoffs,slenderness` now agrees with `--only slenderness`.
+// landed in air. Re-landed because `checkSlenderness` now establishes its own
+// pose (`setPose({})`) before it reads.
+//
+// NOT because the invariant was made true — that fix was tried and REVERTED.
+// Settling the pose inside `resetInputs()` would have closed the defect
+// everywhere, and `enterAxis` IS `resetInputs`, so it moved every sweep's
+// entry pose and the geometry fingerprint with it (790912477 → 998722455,
+// `axisEntry` red). The narrow fix is what a check may do for itself; the
+// invariant CLAUDE.md words universally is still narrower than its wording,
+// and TODO 110 carries that.
+//
+// The acceptance is that `--only alarmHandoffs,slenderness` agrees with
+// `--only slenderness`.
 alarmStem.userData.bearings = {
   axis: 'y',
   stations: [ALARM_STEM_BUSH_DIST - ALARM_CD - alarmStemLen / 2],
@@ -21903,7 +21962,41 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // this station and no longer does, so it goes.
   const _tipClear = 1.12 * ALARM_COL_BASE_R + CLEAR_MARGIN; // saw tip circle (geometry.js) + the one margin
   const ALARM_PUSH_INNER = Math.sqrt(Math.max(0, _tipClear * _tipClear - ALARM_PUSH_CHORD * ALARM_PUSH_CHORD)) + ALARM_PUSH_TRAVEL;
-  const stemOuterS = 1.6 + plateR + 2.6 - Math.hypot(_pushBase.x, _pushBase.y) - 1.4; // the as-built case-band end
+  // THE HEAD MUST CLEAR THE CASE AT FULL PRESS, and until now nothing said so.
+  // Two things were wrong with the hand-set "1 mm proud":
+  //
+  // It measured from the wrong quantity. `_pushBase` is the pawl's base and
+  // the push axis is a CHORD — ALARM_PUSH_CHORD offsets it from the movement's
+  // centre precisely so the pawl has a moment arm — so the head's distance
+  // from the CASE axis is its projection along û, not the magnitude of the
+  // base vector. `hypot(_pushBase)` is the same number only for a pusher
+  // aimed at the centre, which this one deliberately is not: measured, the
+  // two differ by 0.3495 u.
+  //
+  // And 1 mm was not enough to begin with. The throw is ALARM_PUSH_TRAVEL
+  // (2.686 u — one ratchet tooth, mechanism, derived above and untouched
+  // here), so a 2.6385 u standoff is already short of the stroke before the
+  // chord error. Measured over the alarmPress axis, the head reached 0.397 u
+  // INSIDE the band at full press (f = 0.5, the deepest point of the cycle),
+  // and it cannot go there: the case has no recess for it, and the head is
+  // Ø2 mm against its own Ø1.2 mm bore, so it can never enter the bore either.
+  //
+  // At full press the group stands TRAVEL in along −û, so the head's nearest
+  // point to the case axis is `_pushBaseS + stemOuterS − ALARM_PUSH_TRAVEL`.
+  // Requiring THAT to clear R_OUT by CLEAR_MARGIN is the constraint, and it
+  // is what this now solves. The case never limits the stroke — the throw
+  // stays the mechanism's, which is standing rule 2's direction of travel.
+  //
+  // What it costs: the head rests CLEAR_MARGIN + TRAVEL = 2.836 u = 1.075 mm
+  // proud, against the 1.0 mm that was asserted before. "Discreet" survives,
+  // and is now a consequence of the throw rather than a number chosen to look
+  // like one.
+  // Solved with the across-axis term dropped, which is the CONSERVATIVE
+  // reading — see the measurement after the head is built, which carries the
+  // exact figure and the boot assert.
+  const _pushBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;  // the base, ON the push axis
+  const _pushOffAxis = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;  // ...and ACROSS it (the chord)
+  const stemOuterS = CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL - _pushBaseS;
   const stemLen = stemOuterS - ALARM_PUSH_INNER;
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PUSH_STEM_R, ALARM_PUSH_STEM_R, stemLen, 10), MATS.steel);
   stem.name = 'alarmPusherStem';  // §162: the pusher body's own name, so the §48 member key and the joint rows stop selecting it as CylinderGeometry#9
@@ -21942,6 +22035,26 @@ alarmSwitchUnit.add(alarmPusherGroup);
   alarmPusherGroup.add(cap);
   if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
+  // TODO 92 — WHAT THE HEAD ACTUALLY CLEARS AT FULL PRESS, measured off the
+  // built numbers rather than trusted from the solve above.
+  //
+  // stemOuterS solves the standoff as if the head's nearest point to the case
+  // axis lay straight along û. It does not: the push axis stands off that axis
+  // by the chord, and where that offset exceeds the head's own radius the
+  // nearest point is a RIM point, whose distance is the hypotenuse — strictly
+  // larger. The solve is therefore CONSERVATIVE, never optimistic, which is
+  // the safe direction and why it is left in its simple form.
+  //
+  // But "conservative" is a claim, so this measures the real figure: the head's
+  // in-plane footprint is a rectangle (±LEN/2 along û, ±HEAD_R across), and the
+  // nearest point of a rectangle to a point outside it clamps per axis.
+  const _capAlongU = _pushBaseS + stemOuterS - ALARM_PUSH_TRAVEL;       // inner face, at full press
+  const _capAcross = Math.max(0, Math.abs(_pushOffAxis) - PUSHER_HEAD_R); // 0 while the axis passes under the head
+  const _capNearest = Math.hypot(_capAlongU, _capAcross);
+  if (_capNearest < CASE_R_OUT + CLEAR_MARGIN - 1e-9)
+    console.warn(`TODO 92: the pusher head closes to ${_capNearest.toFixed(4)} u at full press, inside the `
+      + `${(CASE_R_OUT + CLEAR_MARGIN).toFixed(4)} u its stroke needs (R_OUT ${CASE_R_OUT.toFixed(4)} + `
+      + `CLEAR_MARGIN ${CLEAR_MARGIN}) — the case would limit the throw, or take it`);
   // P1, TODO 16's format (§137) — WHAT THE FINGER BRINGS, against what the
   // chain asks of it. The head is 2 mm across precisely so a fingertip can
   // locate and press it, and a fingertip on a cap that size delivers 1–10 N
@@ -23291,6 +23404,7 @@ let restoredCamera = null; // camera pose to apply once camera/controls exist
 let restoredXray = false;  // plate X-ray toggle, applied once the UI exists
 let restoredSound = false; // sound toggle, applied once the UI exists
 let restoredSchematic = true; // §69: the schematic tier is the boot DEFAULT — a save can only turn it off
+let restoredCaseLines = true; // case line-drawing within the tier — same default-ON convention
 let restoredFocus = null;  // §69: tap-focus unit name, applied once the scene + drive graph exist
 
 // A beat (one lock-to-lock swing) is 1/(2·F_BALANCE) ≈ 0.2 s here; contact
@@ -23421,6 +23535,7 @@ let mmPerPxCal = null;
   // before the field existed (and a fresh visitor's absent state) both mean
   // ON; only an explicit saved false turns it off.
   restoredSchematic = savedState.schematic ?? true;
+  restoredCaseLines = savedState.caseLines ?? true; // ?? true, not !! — same reason as schematic above
   restoredFocus = typeof savedState.focusUnit === 'string' ? savedState.focusUnit : null;
   restoredSound = !!savedState.soundOn;
   alarmCrownRotation = savedState.alarmCrownRotation ?? 0; // ?? — states saved before §24 have no such field
@@ -24078,6 +24193,10 @@ viewHud.innerHTML = `
   <div class="row">
     <span class="label-small">Schematic</span>
     <button id="btn-schematic">Off</button>
+  </div>
+  <div class="row">
+    <span class="label-small">Case</span>
+    <button id="btn-case">On</button>
   </div>
   <div class="row">
     <span class="label-small">Labels</span>
@@ -24973,6 +25092,7 @@ function askTour(onProceed) {
     ['C', 'Crown pull / push', click('btn-crown', 'Crown')],
     ['A', 'Alarm arm / disarm', click('btn-alarm', 'Alarm')],
     ['S', 'Schematic view', click('btn-schematic', 'Schematic')],
+    ['W', 'Case lines', click('btn-case', 'Case')],
     ['X', 'X-ray plate', click('btn-xray', 'X-ray')],
     ['L', 'Part labels', click('btn-labels', 'Labels')],
     ['F', 'Tap-focus mode', click('btn-focus', 'Focus')],
@@ -25019,7 +25139,7 @@ function askTour(onProceed) {
   ]);
   // shortcut hints on the buttons they drive (title = discoverability)
   for (const [id, key] of [['btn-pause', 'Space'], ['btn-wind', 'W'], ['btn-crown', 'C'],
-    ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-xray', 'X'], ['btn-labels', 'L'],
+    ['btn-alarm', 'A'], ['btn-schematic', 'S'], ['btn-case', 'W'], ['btn-xray', 'X'], ['btn-labels', 'L'],
     ['btn-focus', 'F'], ['btn-sound', 'M'], ['btn-hud', 'D'],
     ['chrome-t-ui', 'H'], ['chrome-t-view', 'V'], ['chrome-t-hud', 'D']]) {
     const b = document.getElementById(id);
@@ -26048,6 +26168,453 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
 // inherit it through group visibility. Contact-dot lighting from the
 // instrument tables and lever/spring proxies are §66's parts two, still in
 // the roadmap.
+// Backlog (watch case) — THE SOLID CASE, built from the same single
+// derivation the line tier draws. The radial half lives beside BACK_PLATE_Z
+// (the stems are cut to it); the z half could not exist until now — the
+// crystal plane is MEASURED from the tallest hand, and a constant there
+// lies the moment a hand grows. Assembled as one labelled unit so it
+// explodes, labels, and fingerprints like any other.
+// TODO 91 / TODO 90 — WHERE THE BAND IS INTERRUPTED, measured off the metal
+// rather than listed. The seat is a bearing ring under the plate's rim, and
+// since the keyless works moved to the dial side it cannot be a full ring:
+// five bodies stand inside its annulus, the deepest 2.26 u past R_SH, and
+// there is nothing to trim to — the works already run within 0.38 u of the
+// plate's own edge. So the seat is INTERRUPTED, which is what a real caliber
+// with dial-side keyless works does.
+//
+// The relief is not a constant. It is wherever the movement occupies the
+// seat's own volume, so it is derived by asking exactly that: every vertex
+// standing in the annulus (R_SH..R_OUT) × (zSeatBot..zSeatTop) contributes
+// its azimuth, the azimuths cluster into arcs, and each arc is padded by
+// CLEAR_MARGIN converted to an angle at the radius it is measured on. Ship a
+// part into that space and the relief follows it; no list to fall stale.
+//
+// The stem bores (TODO 90) are unioned in. Both crowns fall INSIDE their own
+// relief arc — the winding crown at az 145.0° sits in the keyless arc, the
+// alarm crown at −0.1° in the alarm one — so the two items are one cut, which
+// is what filing them together predicted.
+// THE PLATE'S REAL RIM, measured. Two of the case's dimensions are taken off
+// the movement's edge, and both were taken off its DRAWING instead.
+//
+// `plateR` is the AUTHORED outline. The plate is an ExtrudeGeometry, and
+// three.js's bevel grows a body past its own outline in both directions —
+// TODO 84's finding, at plate scale rather than tooth scale. Measured off the
+// built mesh: the rim's flat dial-side face lies at z −2.300 out to r 42.923,
+// and the bevel then swells OUTWARD to r 43.2664, reaching its widest at
+// z −2.000. So the two numbers the case wants are 0.300 and 0.343 away from
+// the ones it had:
+//
+//   · The SEAT's top face was `BACK_PLATE_Z − BACK_PLATE_T/2` = −2.000, which
+//     is 0.300 ABOVE the face it exists to carry. The plate never rested on
+//     the seat: the seat stood 0.300 inside the plate's z span over the whole
+//     bearing annulus, and the only metal that met was the bevel's corner
+//     jammed into the seat's. A bearing that interpenetrates is not a bearing.
+//   · The crown tubes' inboard ends stop at `plateR + CLEAR_MARGIN` = 43.073,
+//     which is 0.193 INSIDE the plate's widest metal. The commit that derived
+//     that standoff had the rule right and the radius wrong — it cleared an
+//     outline, and metal is what a tube has to miss.
+//
+// Neither was visible to a gate: `['Case', 'plate']` is an EXPECTED pair and
+// has no `EXPECTED_CONTACT_FLOORS` row, so item 6's blanket excuse covers
+// everything the case does to the plate. Found by `probe-case-relief.mjs`,
+// which asks the question per MESH and so could not be answered by the
+// declaration.
+//
+// Measured once, here, so both consumers read the same metal. The face is
+// taken at the RIM (r ≥ the seat's own inner radius): a boss further in says
+// nothing about what the seat carries.
+const PLATE_RIM = (() => {
+  const rSeat = plateR - 1 / UNIT_MM;
+  const v = new THREE.Vector3();
+  let front = Infinity, reach = 0;
+  backPlate.updateMatrixWorld(true);
+  backPlate.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      o.localToWorld(v.fromBufferAttribute(p, i));
+      const r = Math.hypot(v.x, v.y);
+      if (r > reach) reach = r;
+      if (r >= rSeat && v.z < front) front = v.z;
+    }
+  });
+  if (!(front < Infinity) || !(reach > plateR - 1e-9))
+    console.warn(`case: the plate's rim measured front ${front} / reach ${reach.toFixed(4)} against an `
+      + `authored ${plateR.toFixed(4)} — the case's seat and tube standoffs are derived from this and cannot be`);
+  return { front, reach };
+})();
+
+const CASE_SECTORS = (() => {
+  const zTop = PLATE_RIM.front;                        // the plate's dial-side face, MEASURED
+  const zBot = zTop - 0.8 / UNIT_MM;                  // the seat step, 0.8 mm
+  const rSeat = plateR - 1 / UNIT_MM;                 // R_SH: 1 mm of bearing under the rim
+  const box = new THREE.Box3(), v = new THREE.Vector3();
+  const seatBox = new THREE.Box3(
+    new THREE.Vector3(-CASE_R_OUT, -CASE_R_OUT, zBot),
+    new THREE.Vector3(CASE_R_OUT, CASE_R_OUT, zTop));
+  const azs = [];
+  // The PLATE is what the seat carries, not something it has to dodge, and
+  // zSeatTop is derived from the plate's own dial-side face — so its metal
+  // sitting there is the seat working. Its mesh reaches a little past that
+  // nominal plane (2961 of its vertices, measured, the extrude's bevel), and
+  // counting those relieved the ENTIRE ring: the plate obstructing its own
+  // seat at every azimuth, bearing computed as −1.3%.
+  const onPlate = (o) => { for (let n = o; n; n = n.parent) if (n === backPlate) return true; return false; };
+  movement.updateMatrixWorld(true);
+  movement.traverse((o) => {
+    if (!o.isMesh || o.userData.casePart || o.userData.schematic || onPlate(o)) return;
+    if (!o.geometry?.attributes?.position) return;
+    // Box test first: the seat is a thin slab and almost nothing crosses it,
+    // so this prunes the vertex walk to a handful of parts at boot.
+    if (!box.setFromObject(o).intersectsBox(seatBox)) return;
+    // EDGES, not vertices. A column crossing the seat carries no vertex inside
+    // it — a cylinder's vertices sit on its two end caps — so a vertex scan
+    // reports nothing while the part runs clean through the metal. Measured:
+    // the three Ø1.2 mm DIAL FEET span z −8.40..−1.00 straight across a band of
+    // −4.111..−2.000 at r 41.58..42.77, and carry not one vertex in it; the
+    // first version of this scan, which sampled vertices, left all three
+    // standing in unbroken seat. Walk each triangle edge instead and take the
+    // piece of it that lies in the band — 80 crossings each, and the three
+    // narrowest relief arcs on the cut are theirs.
+    const p = o.geometry.attributes.position;
+    const idx = o.geometry.index;
+    const n = idx ? idx.count : p.count;
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    const take = (q) => {
+      // STRICTLY inside the step, not on its top face: zTop IS the plate's
+      // dial-side face, the surface the seat exists to carry, so metal there
+      // is the seat working. Counting it relieved the ENTIRE ring — the plate
+      // obstructing its own seat at every azimuth, bearing measured as −1.3%.
+      if (q.z < zBot || q.z > zTop - 1e-6) return;
+      const r = Math.hypot(q.x, q.y);
+      if (r < rSeat || r > CASE_R_OUT) return;
+      azs.push(Math.atan2(q.y, q.x));
+    };
+    for (let t = 0; t < n; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const i0 = idx ? idx.getX(t + e) : t + e;
+        const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
+        a.fromBufferAttribute(p, i0); o.localToWorld(a);
+        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        take(a);
+        // Where the edge crosses either face of the band, that crossing point
+        // is what stands in the seat even when neither end does.
+        for (const zc of [zBot, zTop - 1e-6]) {
+          const d = b.z - a.z;
+          if (Math.abs(d) < 1e-12) continue;
+          const s = (zc - a.z) / d;
+          if (s <= 0 || s >= 1) continue;
+          take(v.copy(a).lerp(b, s));
+        }
+        // ...and the midpoint of the piece inside, so a long edge lying in
+        // the band contributes its span rather than just its ends.
+        if (a.z >= zBot && a.z <= zTop && b.z >= zBot && b.z <= zTop) take(v.copy(a).lerp(b, 0.5));
+      }
+    }
+  });
+  const TWO_PI = Math.PI * 2;
+  const norm = (a) => ((a % TWO_PI) + TWO_PI) % TWO_PI;
+  // ...and then the parts that MOVE into it. Everything above reads the
+  // movement at the ONE pose the case is built in, and a mover is somewhere
+  // else at every other. Measured over the pose net: `hackRodPin` stands at
+  // r 37.801..38.691 as the case is built — clear of the seat's 40.284 — and
+  // at 39.889..40.786 in 33 of the 42 poses the battery visits, 0.502 INSIDE
+  // it, crossing the step's full depth (the pin spans z −5.100..1.421 against
+  // the seat's −4.111..−2.000). A relief derived from one pose is a claim
+  // about one pose, and the shipped tree already contains the counter-example.
+  //
+  // Standing rule 5 owns exactly this: LOW_LINKAGE_OBSTACLES is the DECLARED
+  // swept footprint of the low linkage, sampled over the full crown stroke,
+  // and every later seat scan consumes it rather than re-deriving the swing.
+  // A case seat is a later seat scan. The table is XY-only by design — each
+  // consumer adds its own reach — so it is taken whole, and taken whole it
+  // reaches this annulus in ONE arc, 165.5°..169.1°: the hack pin's station,
+  // and the members standing there are the ones whose z DOES cross the seat.
+  // Its cost is 3.6° of bearing, which is what seeing the mover is worth.
+  {
+    // A disc of radius rc whose centre stands d from the axis reaches past
+    // rSeat over an azimuth half-width taken at whichever bound BINDS: the
+    // disc's own tangent (asin(rc/d), at radius sqrt(d² − rc²)) while that
+    // tangent point is itself outside rSeat, and otherwise where the disc's
+    // rim crosses the rSeat circle. Analytic rather than sampled, because a
+    // sampled boundary can only under-report an arc, and an under-reported
+    // relief is metal left standing in a part's path.
+    const discArc = (cx, cy, rc) => {
+      const d = Math.hypot(cx, cy);
+      if (d + rc < rSeat || d - rc > CASE_R_OUT) return null;
+      if (d <= rc) return [0, TWO_PI];               // the axis is inside it
+      const tangentR = Math.sqrt(Math.max(0, d * d - rc * rc));
+      const half = tangentR >= rSeat
+        ? Math.asin(Math.min(1, rc / d))
+        : Math.acos(Math.max(-1, Math.min(1, (d * d + rSeat * rSeat - rc * rc) / (2 * d * rSeat))));
+      const a = Math.atan2(cy, cx);
+      return [a - half, a + half];
+    };
+    const eat = (arc) => { if (!arc) return; for (let i = 0; i <= 24; i++) azs.push(arc[0] + (arc[1] - arc[0]) * i / 24); };
+    for (const o of LOW_LINKAGE_OBSTACLES) {
+      if (o.x !== undefined) { eat(discArc(o.x, o.y, o.r)); continue; }
+      // A stadium is the union of discs along its segment; 32 steps puts the
+      // sample spacing far under CLEAR_MARGIN at these lengths.
+      for (let i = 0; i <= 32; i++) {
+        const t = i / 32;
+        eat(discArc(o.ax + (o.bx - o.ax) * t, o.ay + (o.by - o.ay) * t, o.r));
+      }
+    }
+  }
+  // Angular margin: CLEAR_MARGIN as an arc at the seat's own radius — the
+  // relief has to clear the part, not graze it.
+  const pad = CLEAR_MARGIN / rSeat;
+  // A bore is a hole around a LINE, and the arc it opens in the wall depends
+  // on how that line meets it. In the line's own frame a point of the bore's
+  // surface has perpendicular coordinate p ∈ [off − ap, off + ap]; at radius r
+  // that point sits at azimuth az + asin(p / r). The wall has THICKNESS, so
+  // the window is the union of those arcs over r ∈ [R_IN, R_OUT], and asin(x/r)
+  // is monotone in r at fixed x — so the union's ends are among the four values
+  // at the two wall radii.
+  //   A radial bore (off = 0) collapses to ±asin(ap / R_IN), which is what both
+  // crowns get. The pusher measures radial too on this tree — §170 solves
+  // ALARM_PUSH_AZ so that _pushBase·perp is 0 exactly, and the press line runs
+  // through the movement's centre — but its offset is a LIVE quantity that
+  // `tubeAt` already consumes, and a window centred on one radius is wrong the
+  // moment it stops being zero. Derived, not assumed to stay zero.
+  const boreWindow = (az, ap, off) => {
+    const ends = [];
+    for (const x of [off - ap, off + ap])
+      for (const r of [CASE_R_IN, CASE_R_OUT])
+        ends.push(Math.asin(Math.max(-1, Math.min(1, x / r))));
+    return { a0: az + Math.min(...ends), a1: az + Math.max(...ends) };
+  };
+  const tubeAp = CASE_TUBE_D / 2 + 0.3 / UNIT_MM;     // bore + the tube's own wall
+  // Cluster the azimuths into arcs. What separates two reliefs is the LAND
+  // between them, and a land narrower than it is deep is a tooth, not a
+  // bearing surface: the seat bears plateR − R_SH = 1 mm radially, so an
+  // island of metal shorter than that around the circumference has nothing
+  // holding it down and is better cut away. Two reliefs closer than one land
+  // width are therefore one opening with a waist.
+  //   Derived here rather than borrowed from the bore window, which was the
+  // first cut's rule and is 4.6× wider: it swallowed the 17.2° land between
+  // the setting works and the hack pin and cost 4.4% of the bearing ring for
+  // no structural reason.
+  const SPLIT = (plateR - rSeat) / rSeat;
+  const arcs = [];
+  if (azs.length) {
+    const s = azs.map(norm).sort((a, b) => a - b);
+    let lo = s[0], hi = s[0];
+    for (let i = 1; i < s.length; i++) {
+      if (s[i] - hi > SPLIT) { arcs.push([lo, hi]); lo = s[i]; }
+      hi = s[i];
+    }
+    arcs.push([lo, hi]);
+    // The first and last may be one arc across 0.
+    if (arcs.length > 1 && (s[0] + TWO_PI) - s[s.length - 1] <= SPLIT) {
+      const first = arcs.shift(), last = arcs.pop();
+      arcs.push([last[0], first[1] + TWO_PI]);
+    }
+  }
+  // Union each stem's bore window in, and remember the window so the sector
+  // that carries it knows where to split in z.
+  //
+  // The pusher is the third opening, and it earns its place on a measurement
+  // that was misread once: its stem crosses the band (r 32.87–51.25 against
+  // R_IN 45.56 – R_OUT 48.20, the full 2.645 u wall), which is what the
+  // geometry always said — but the seat step's self-touching profile had
+  // corrupted the parity test in exactly that region, the pair reported CLEAR,
+  // and TODO 96 was edited to say the pusher needed nothing. It does.
+  //
+  // Its offset is passed rather than assumed. `ALARM_PUSH_CHORD` steps the
+  // pawl's base off the movement's centre, and TODO 96 records that stand-off
+  // as 4.370 u — measured on a base that predates §170, which then SOLVED
+  // ALARM_PUSH_AZ so the press line runs through the centre and made
+  // `_pushBase·perp` zero exactly. So the pusher is radial on this tree and
+  // this term contributes nothing today. It is still read from the same
+  // expression `tubeAt` drills the bore with: a window centred on one radius
+  // is wrong the moment the two stop agreeing, and they agreed here by a
+  // landing, not by construction of the case.
+  const pusherAp = CASE_PUSHER_D / 2 + 0.3 / UNIT_MM;
+  const pushOff = _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y;
+  const bores = [
+    { az: norm(stemAngle), ap: tubeAp, z: Z_KEYLESS, off: 0 },
+    { az: norm(alarmStemAngle), ap: tubeAp, z: alarmSpinner.position.z, off: 0 },
+    { az: norm(ALARM_PUSH_AZ), ap: pusherAp, z: alarmPusherGroup.position.z, off: pushOff },
+  ];
+  const regions = arcs.map(([a, b]) => ({ a0: a - pad, a1: b + pad, bores: [] }));
+  for (const bore of bores) {
+    const { a0: w0, a1: w1 } = boreWindow(bore.az, bore.ap, bore.off);
+    // The window and its host arc may be written a full turn apart — the
+    // alarm opening measures as [358.0°, 362.0°] while its own bore window is
+    // [−4.3°, +4.3°], the same metal on two branches. So the shift that makes
+    // them overlap has to be CARRIED into the merge; taking min/max on the raw
+    // numbers spanned 366.7° and computed the bearing as negative.
+    let host = null, shift = 0;
+    for (const R of regions) {
+      for (const k of [-TWO_PI, 0, TWO_PI]) {
+        if (w0 + k < R.a1 + pad && w1 + k > R.a0 - pad) { host = R; shift = k; break; }
+      }
+      if (host) break;
+    }
+    const b0 = w0 + shift, b1 = w1 + shift;
+    if (!host) { host = { a0: b0 - pad, a1: b1 + pad, bores: [] }; regions.push(host); }
+    host.a0 = Math.min(host.a0, b0 - pad);
+    host.a1 = Math.max(host.a1, b1 + pad);
+    host.bores.push({ a0: b0, a1: b1, z1: bore.z - bore.ap, z2: bore.z + bore.ap });
+  }
+  regions.sort((x, y) => x.a0 - y.a0);
+  // Walk the circle once, emitting whole sectors between the regions and the
+  // relieved/bored pieces inside them.
+  const out = [];
+  let cursor = regions.length ? regions[0].a0 : 0;
+  const start = cursor;
+  for (const R of regions) {
+    if (R.a0 > cursor + 1e-9) out.push({ kind: 'whole', a0: cursor, a1: R.a0 });
+    // Two bores may share an arc, and here two do: the alarm crown's window
+    // and the alarm pusher's overlap by 5.6°, and their z windows are DISJOINT
+    // (the crown at z −7.531..−0.669, the pusher at 5.049..9.799). Emitting one
+    // bored piece per bore stacks two solids in that arc, and each one's metal
+    // FILLS the other's hole — measured, that is why `Alarm crown ⇄ Case` and
+    // `Alarm switch ⇄ Case` both still read as contacting after the first cut:
+    // each stem was crossing the sector the OTHER bore had left whole.
+    //   So the arc is swept ONCE. Every window end is a breakpoint, and each
+    // elementary piece is bored with the union of the windows covering it: a
+    // piece with two holes is one body of metal in THREE bands, not two bodies
+    // with one hole each. Windows that do overlap in z merge into one hole,
+    // because a wall cannot have two holes where it has one.
+    const xs = [...new Set([R.a0, R.a1, ...R.bores.flatMap((b) => [b.a0, b.a1])])]
+      .filter((x) => x > R.a0 - 1e-9 && x < R.a1 + 1e-9).sort((p, q) => p - q);
+    for (let i = 0; i + 1 < xs.length; i++) {
+      const a0 = xs[i], a1 = xs[i + 1];
+      if (a1 - a0 < 1e-9) continue;
+      const mid = (a0 + a1) / 2;
+      const wins = R.bores.filter((b) => b.a0 <= mid && b.a1 >= mid)
+        .map((b) => [b.z1, b.z2]).sort((p, q) => p[0] - q[0]);
+      if (!wins.length) { out.push({ kind: 'relieved', a0, a1 }); continue; }
+      const windows = [wins[0].slice()];
+      for (const w of wins.slice(1)) {
+        const last = windows[windows.length - 1];
+        if (w[0] <= last[1]) last[1] = Math.max(last[1], w[1]); else windows.push(w.slice());
+      }
+      out.push({ kind: 'bored', a0, a1, windows });
+    }
+    cursor = R.a1;
+  }
+  if (start + TWO_PI > cursor + 1e-9) out.push({ kind: 'whole', a0: cursor, a1: start + TWO_PI });
+  // WHAT THE PLATE STILL STANDS ON. The seat exists to carry the rim, so the
+  // relief has to answer for what it leaves — stated here, at the cut, rather
+  // than assumed to be fine elsewhere (TODO 91 asked for exactly this
+  // arithmetic and named a fraction-of-the-ring threshold as the thing it did
+  // NOT have).
+  //
+  // The bound is kinematic, not a stress one. A plate this size weighs
+  // milligrams and no land here is within orders of magnitude of a bearing
+  // limit, so "keep n% of the ring" would be a number that looked right — the
+  // bug rule 1 exists to refuse. What a rim seat must actually do is stop the
+  // plate from ROCKING, and it does that exactly when the lands it leaves
+  // SURROUND the axis: if some diameter has every land on one side of it, the
+  // plate tips about that diameter and the seat is a hinge. That is one
+  // measurement — the widest gap between consecutive lands, which must stay
+  // under half a turn.
+  //
+  // And a land narrower than the seat is deep is a tooth, not a bearing
+  // surface: the same width SPLIT is derived from, applied to what survives
+  // rather than to what is cut.
+  const lands = out.filter((s) => s.kind === 'whole').map((s) => [s.a0, s.a1]).sort((x, y) => x[0] - y[0]);
+  const bearingFrac = lands.reduce((t, [a, b]) => t + (b - a), 0) / TWO_PI;
+  const narrow = lands.filter(([a, b]) => b - a < SPLIT - 1e-9);
+  if (narrow.length)
+    console.warn(`TODO 91: the interrupted seat leaves ${narrow.length} land(s) narrower than the `
+      + `${(SPLIT * rSeat).toFixed(3)} it bears radially — narrowest ${(Math.min(...narrow.map(([a, b]) => b - a)) * rSeat).toFixed(3)} `
+      + 'around the rim, which is a tooth and not a bearing surface');
+  let maxGap = 0;
+  for (let i = 0; i < lands.length; i++) {
+    const next = lands[(i + 1) % lands.length];
+    const gap = (i + 1 < lands.length ? next[0] : next[0] + TWO_PI) - lands[i][1];
+    maxGap = Math.max(maxGap, gap);
+  }
+  if (!lands.length || maxGap >= Math.PI)
+    console.warn(`TODO 91: the interrupted seat's ${lands.length} land(s) leave a ${(maxGap * 180 / Math.PI).toFixed(1)}° gap `
+      + '— half a turn or more of unsupported rim means some diameter has every land on one side of it, '
+      + `and the plate rocks about it (${(bearingFrac * 100).toFixed(1)}% of the ring retained)`);
+  return out;
+})();
+
+const CASE_DIMS = (() => {
+  // BOTH ends measured from the metal, not constanted: the crystal's
+  // underside clears the hands' front-most metal by CASE_CRYSTAL_CLEAR, and
+  // the back wall's inner face clears the movement's back-most metal (the
+  // alarm barrel's side). Measured BEFORE the case joins the movement, so
+  // the box cannot see itself. The tick poses the hands about z only, so
+  // these extents are pose-invariant.
+  movement.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  const frontOf = (o) => box.setFromObject(o).min.z;
+  const handFront = Math.min(frontOf(hourHand), frontOf(minuteHand));
+  const backMetal = box.setFromObject(movement).max.z;
+  // Back stack, outside-in (all §39-pinned mm, owner: VERY aggressive on
+  // thickness): 0.6 mm of clearance (the alarm barrel is fixed metal — no
+  // flex to accommodate); the middle's back-wall flange, 1.0 mm, carries
+  // the screw threads; the back plate sits ON the back face, 1.2 mm thick —
+  // exactly lip (0.6) + crystal (0.6), so the glazing is flush both sides.
+  // Total 2.8 mm where the screw-down needed 4.8.
+  const zFlangeIn = backMetal + 0.6 / UNIT_MM;
+  const zMidBack = zFlangeIn + 1.0 / UNIT_MM;    // the middle's back face
+  const z0 = zMidBack + 1.2 / UNIT_MM;           // the back plate's outer face
+  // Front stack: dial side is −z — the crystal stands OFF the hands toward
+  // the viewer.
+  const zCrystInner = handFront - CASE_CRYSTAL_CLEAR;
+  const zCrystOuter = zCrystInner - CASE_CRYSTAL_T;
+  return {
+    UNIT_MM,
+    R_IN: CASE_R_IN, R_OUT: CASE_R_OUT, plateR,
+    R_SH: plateR - 1 / UNIT_MM,           // the plate rim's seat: 1 mm of bearing under the edge
+    R_FL: CASE_R_IN - 2.0 / UNIT_MM,      // flange inner edge — 2 mm of thread-bearing wall
+    R_SCR: CASE_R_IN - 1.0 / UNIT_MM,     // screw circle: centred on the flange
+    R_G: CASE_R_IN + 0.5 / UNIT_MM,       // gasket groove, centred in the band annulus
+    R_WIN: CASE_R_IN - 2.3 / UNIT_MM,     // window bore — inside the flange, rim for the lip
+    R_PLATE: CASE_R_OUT - 0.3 / UNIT_MM,  // plate edge, a hair inside the band's
+    // The bezel opening COVERS the dial/plate join (layout.js §125: "the
+    // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
+    R_BEZEL_IN: dialRadius - 1 / UNIT_MM,
+    R_CRYST: dialRadius - 0.5 / UNIT_MM,  // crystal edge trapped under the lip
+    z0, zMidBack, zFlangeIn,
+    zSeatTop: PLATE_RIM.front,                              // the plate's dial-side face, MEASURED
+    zSeatBot: PLATE_RIM.front - 0.8 / UNIT_MM,              // seat shoulder 0.8 mm tall
+    plateReach: PLATE_RIM.reach,   // ...and its widest metal, which is what a tube has to miss
+    zCrystInner, zCrystOuter,
+    zBezelOuter: zCrystOuter - 0.25 / UNIT_MM,  // bezel lip over the crystal edge
+    zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
+    gasketD: CASE_GASKET_D, gasketSeat: CASE_GASKET_SEAT, crystT: CASE_CRYSTAL_T,
+    screwN: CASE_BACK_SCREWS, screwShaftD: CASE_SCREW_SHAFT_D, screwHeadD: CASE_SCREW_HEAD_D,
+    tubeD: CASE_TUBE_D, pusherD: CASE_PUSHER_D,
+    stemAz: stemAngle, alarmAz: alarmStemAngle, pusherAz: ALARM_PUSH_AZ,
+    // An azimuth locates a RADIUS; the pusher runs on a line PARALLEL to one.
+    // ALARM_PUSH_CHORD steps its base off the movement's centre to give the
+    // pawl a moment arm, so the case has to be told the offset or it drills
+    // the hole beside the pusher — which it did, by 4.37 u. Both crowns ARE
+    // radial and pass 0 by omission.
+    pusherOff: _pushBase.x * _pushPerp.x + _pushBase.y * _pushPerp.y,
+    // The tubes sleeve their stems at the stems' OWN z — a tube at mid-band
+    // would sleeve nothing.
+    stemZ: Z_KEYLESS, alarmZ: alarmSpinner.position.z, pusherZ: alarmPusherGroup.position.z,
+    lugSpan: CASE_LUG_SPAN,
+    sectors: CASE_SECTORS,
+  };
+})();
+const caseCrystalMat = new THREE.MeshPhysicalMaterial({
+  color: 0xf8fbff, transparent: true, opacity: 0.14, roughness: 0.04,
+  metalness: 0, depthWrite: false, // a crystal the scene reads through — the x-ray materials' own trick
+});
+const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.steel, crystalMaterial: caseCrystalMat });
+caseSolid.visible = restoredCaseLines;
+movement.add(caseSolid);
+registerLabel('Case', caseSolid);
+// Explode choreography: the case comes apart the way it comes apart — the
+// back unscrews OUT THE BACK (+z, past the alarm gong's stratum 11), the
+// crystal lifts off the front (−z, past the dial's own stage), and the
+// middle stays put as the reference body the movement sits in. The cap's
+// gasket, thread and key teeth ride with it (backAsm), the tubes and lugs
+// stay with the band (middleAsm).
+registerExplode(caseSolid.userData.assemblies.back, 0, 13, 1);
+registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
+
 const SCHEMATIC = { proxies: [], on: false };
 {
   const MAT_WHEEL = new THREE.LineBasicMaterial({ color: 0xe0a355 }); // the explainer's brass
@@ -26149,6 +26716,90 @@ const SCHEMATIC = { proxies: [], on: false };
     wall.userData.schematic = true; wall.layers.set(1); backPlate.add(wall);
     SCHEMATIC.baseFills.push(wall);
   }
+
+  // Backlog (watch case) — THE CASE, drawn as the housing the movement's own
+  // dimensions prove: a screw-down-back dress case under the owner's hard
+  // caps (<40 mm wide, ≤20 mm lugs — layout.js's CASE_WIDTH_MAX /
+  // CASE_LUG_SPAN_MAX). Line-tier only, and LINES only — no fills: a case
+  // occluder would hide the very movement this tier exists to explain, so
+  // the housing draws as hairlines and reads as glass. Every radius is
+  // plateR plus a derived layout constant; the crystal plane is MEASURED
+  // from the tallest hand, because a constant there lies the moment a hand
+  // grows. Not a MECH_GRAPH part: it is drawing, not metal — the real
+  // case's constructability rules live in the backlog entry for the solid
+  // tier, and the instruments skip userData.schematic by standing rule.
+  {
+    // One derivation, two tiers: every station below is CASE_DIMS, the same
+    // object the solid case is built from — the drawing cannot drift from
+    // the metal because there is nothing to drift FROM.
+    const { R_IN, R_OUT, R_BEZEL_IN, R_CRYST, R_FL, R_SCR, R_WIN, R_PLATE,
+            z0, zMidBack, zFlangeIn, zBandFront, zCrystInner, zCrystOuter, zBezelOuter, zSeatTop } = CASE_DIMS;
+    const rim = SCHEMATIC.rimMat;
+    const seg = (a, b) => new THREE.BufferGeometry().setFromPoints([a, b]);
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const caseGroup = new THREE.Group();
+    caseGroup.name = 'caseLines';
+    const put = (o) => { o.userData.schematic = true; o.layers.set(1); caseGroup.add(o); return o; };
+
+    for (const [r, z] of [[R_OUT, zMidBack], [R_OUT, zBandFront], [R_IN, zFlangeIn], [R_IN, zBandFront],
+                          [R_FL, zMidBack], [R_FL, zFlangeIn],
+                          [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter],
+                          [R_BEZEL_IN, zBezelOuter], [R_OUT, zBezelOuter]]) {
+      const c = new THREE.Line(circGeo(r, 96), rim); c.position.z = z; put(c);
+    }
+    // Band walls: four generators at the cardinal azimuths.
+    for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2])
+      put(new THREE.Line(seg(V3(Math.cos(a) * R_OUT, Math.sin(a) * R_OUT, zMidBack),
+                             V3(Math.cos(a) * R_OUT, Math.sin(a) * R_OUT, zBandFront)), rim));
+
+    // Screw-fixed exhibition back (owner call, over the thread): the plate's
+    // edge and the window's glaze line at the back face, the screws as their
+    // own small circles on the screw circle.
+    const plateEdge = new THREE.Line(circGeo(R_PLATE, 96), rim); plateEdge.position.z = z0; put(plateEdge);
+    const winEdge = new THREE.Line(circGeo(R_WIN, 96), rim); winEdge.position.z = z0; put(winEdge);
+    for (let i = 0; i < CASE_BACK_SCREWS; i++) {
+      const a = (i / CASE_BACK_SCREWS) * Math.PI * 2;
+      const s = new THREE.Line(circGeo(CASE_SCREW_HEAD_D / 2, 24), rim);
+      s.position.set(Math.cos(a) * R_SCR, Math.sin(a) * R_SCR, z0); put(s);
+    }
+
+    // Crown tubes and the alarm pusher: the stems ALREADY reach the as-built
+    // band (the alarm pusher's stemOuterS is literally "the as-built
+    // case-band end"); the case answers with a Ø2.0 mm tube per crown and a
+    // Ø1.2 mm pusher bore, flush — "discreet" was the owner's word.
+    const tube = (az, d, z) => {
+      const u = V3(Math.cos(az), Math.sin(az), 0), p = V3(-Math.sin(az), Math.cos(az), 0);
+      for (const s of [-1, 1])
+        put(new THREE.Line(seg(
+          u.clone().multiplyScalar(R_IN).addScaledVector(p, s * d / 2).setZ(z),
+          u.clone().multiplyScalar(R_OUT).addScaledVector(p, s * d / 2).setZ(z)), rim));
+    };
+    tube(stemAngle, CASE_TUBE_D, CASE_DIMS.stemZ);
+    tube(alarmStemAngle, CASE_TUBE_D, CASE_DIMS.alarmZ);
+    tube(ALARM_PUSH_AZ, CASE_PUSHER_D, CASE_DIMS.pusherZ);
+
+    // Lugs at 12 and 6 — the span is the shared derivation (18 mm, asserted
+    // against the 20 mm cap where it is derived, beside BACK_PLATE_Z).
+    const LUG_SPAN = CASE_DIMS.lugSpan;
+    for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
+      const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
+      const zLug = zSeatTop + 1.5 / UNIT_MM + 0.5 / UNIT_MM; // the solid lugs' own station
+      for (const s of [-1, 1]) {                   // the two lug flanks: each rooted
+        const off = s * LUG_SPAN / 2;              // 0.8 mm past the chord-depth
+        const root = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0)) - 0.8 / UNIT_MM; // surface at its
+        put(new THREE.Line(seg(                    // own station, tip at the
+          u.clone().multiplyScalar(root).addScaledVector(p, off).setZ(zLug),   // solid's own
+          u.clone().multiplyScalar(R_OUT + 1.7 / UNIT_MM).addScaledVector(p, off).setZ(zLug)), rim)); // station
+      }
+      put(new THREE.Line(seg(                       // the spring bar itself, at the
+        u.clone().multiplyScalar(R_OUT + 1.4 / UNIT_MM).addScaledVector(p, -LUG_SPAN / 2).setZ(zLug),   // solid bar's own
+        u.clone().multiplyScalar(R_OUT + 1.4 / UNIT_MM).addScaledVector(p, LUG_SPAN / 2).setZ(zLug)), rim)); // radius
+    }
+
+    caseGroup.visible = restoredCaseLines;
+    movement.add(caseGroup);
+    SCHEMATIC.caseGroup = caseGroup;
+  }
 }
 function setSchematic(on) {
   SCHEMATIC.on = on;
@@ -26173,6 +26824,19 @@ document.getElementById('btn-schematic').addEventListener('click', () => {
   // or leaving the mode would silently undo the click just made.
   if (reconfOn) reconfSchematicWas = SCHEMATIC.on;
 });
+
+// Backlog (watch case) — the case line-drawing's own toggle. Tier furniture
+// with no tick-law visibility, so the mesh.visible invariant does not apply
+// (same standing as the §71 occluders).
+let caseLinesOn = restoredCaseLines;
+function setCaseLines(on) {
+  caseLinesOn = on;
+  if (SCHEMATIC.caseGroup) SCHEMATIC.caseGroup.visible = on;
+  caseSolid.visible = on; // one toggle, both tiers — "Case" means the housing, however it is drawn
+  const b = document.getElementById('btn-case');
+  if (b) { setBtnState(b, on); b.classList.toggle('active', on); }
+}
+document.getElementById('btn-case').addEventListener('click', () => setCaseLines(!caseLinesOn));
 
 // §66 part two — the per-unit vocabulary a generic traverse cannot derive.
 // LEVERS as pivot-to-contact lines, attached to the moving groups the tick
@@ -30369,6 +31033,7 @@ function captureState() {
     // interrupted; persisting the override would let a 5-second autosave
     // taken mid-drag quietly become the viewer's saved choice of view.
     schematic: reconfOn && reconfSchematicWas !== null ? reconfSchematicWas : SCHEMATIC.on,
+    caseLines: caseLinesOn,
     focusUnit: focusName,    // §69: tap-focus selection, null when none
     soundOn,
     alarmOn,
@@ -30474,6 +31139,7 @@ const UNIT_GROUPS = new Map([
   ])],
   ['Frame & plates', new Map([
     ['Structure', null], ['pillars', null], ['Three-quarter plate', null],
+    ['Case', null], // backlog: the housing — band, screw back, crystal, lugs, tubes
   ])],
   ['Alarm complication', new Map([
     // dial side, unfolding toward the viewer in drive order: crown outermost
@@ -31892,6 +32558,7 @@ function applyDeepLink() {
 // default synchronously, ?focus=<unit> lands after the restored focus because
 // both sequence FIFO on the same ensureExploreDrive promise).
 if (restoredSchematic) setSchematic(true);
+setCaseLines(restoredCaseLines); // applies the persisted preference; the group was built with it
 if (restoredFocus) setFocus(restoredFocus);
 // The control HUD is ON by default: §57 built it (and the ?hud link) for the
 // arrival that wants the watch driveable immediately; the default extends
@@ -33801,9 +34468,29 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
   //    stack alone. Both are real; they are just different things, and calling
   //    this one "movement thickness" would quietly conflate them.
   //    This is what a case has to swallow, so it is the one worth asserting.
-  const movMM = MM(box.setFromObject(movement).getSize(new THREE.Vector3()).z);
+  const movBox = new THREE.Box3();
+  for (const c of movement.children) if (c !== caseSolid && c.name !== 'caseLines') movBox.expandByObject(c);
+  const movMM = MM(movBox.getSize(new THREE.Vector3()).z);
   if (!(movMM >= 2.5 && movMM <= 12))
     console.warn(`§39: assembly ${movMM.toFixed(2)} mm deep, outside the 2.5–12 mm envelope`);
+
+  // 4. The CASED watch (backlog: watch case). The movement envelope above is
+  //    a movement-proportions claim, so the case is excluded from it; the
+  //    cased watch gets its own envelope here. The ceiling is the stack
+  //    budgeted, not the current number written down: the movement's own
+  //    12 mm envelope + the front's 0.3 clearance + 0.6 crystal + 0.25 lip +
+  //    0.3 seat step (1.45) + the back's 0.6 clearance + 1.0 flange + 1.2
+  //    screw-fixed plate (2.8) ≈ 16.25 — call it 16. (The screw-down
+  //    exhibition back this replaced budgeted 19.2; dropping the thread
+  //    stack was the owner's call, "very aggressive" on thickness, and the
+  //    ceiling moved down WITH the stack so the saving cannot silently be
+  //    spent again.) A fusée-and-alarm in an honest glazed case has no
+  //    business under 13. Both bounds can fail; that is what makes it an
+  //    assert.
+  const casedBox = movBox.clone().expandByObject(caseSolid); // the line tier is drawing, not metal — never measured
+  const casedMM = MM(casedBox.getSize(new THREE.Vector3()).z);
+  if (!(casedMM >= movMM && casedMM <= 16))
+    console.warn(`§39: cased assembly ${casedMM.toFixed(2)} mm deep, outside the movement–16 mm envelope (stack budget 16.25)`);
 
   // The chain pitch itself is not asserted — it IS the pin, so checking it
   // against its own definition would be the circularity this entry exists to

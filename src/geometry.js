@@ -7013,3 +7013,517 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   g.userData.bossH = bossH;
   return g;
 }
+
+// ---------------------------------------------------------------------------
+// Backlog (watch case) — THE SOLID CASE. makeCase builds the housing as real
+// closed metal, BACK-LOADING like the real construction: the movement enters
+// from the back, the plate's dial-side rim face rests on the case middle's
+// seat, and the screw-down back closes behind it.
+//
+// Z CONVENTION, learned the hard way on the first cut of this builder: the
+// DIAL side is −z (the Dial unit reaches −13.84; Z_DIAL = −7) and the back
+// — the alarm barrel's side — is +z. The first cut assumed the reverse and
+// put the caseback through the dial.
+//
+// Parts: the case middle (band + seat + bezel + back-wall flange, ONE lathe
+// profile — the bore, plate seat, gasket groove, crystal seat, bezel lip
+// and screw flange come off the same turning, which is how a real case
+// middle is made), the screw-fixed EXHIBITION back (owner call over the
+// screw-down: a flat plate on the back face, six screws into the flange,
+// the window glazed from inside against the turned retaining lip; the
+// plate's screw holes and the flange's threads are declared debt, same
+// CSG-free family as the band's radial bores: the case unit is
+// deliberately outside INTRA_TIER_SCOPE until that approach lands), the
+// gasket cord half-seated in its back-face groove, the front crystal, the
+// exhibition back crystal, lugs and spring bars, crown tubes and the flush
+// alarm-pusher bore. Every face capped; each part its own named mesh so
+// the unit labels and fingerprints like any other.
+// dims — all measured/derived by the caller (main.js); nothing recomputed.
+// ---------------------------------------------------------------------------
+export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
+  const {
+    UNIT_MM, R_IN, R_OUT, R_CRYST, R_BEZEL_IN, R_SH, R_FL, R_SCR, R_G, R_WIN, R_PLATE, plateR,
+    z0, zMidBack, zFlangeIn,
+    zSeatBot, zSeatTop, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+    gasketD, gasketSeat, crystT, screwN, screwShaftD, screwHeadD, tubeD, pusherD,
+    stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff, plateReach,
+    lugSpan, sectors: CASE_SECTORS,
+  } = dims;
+  const g = new THREE.Group();
+  g.name = 'case';
+  // A lathe is a SURFACE of revolution, so it is a SOLID only if its profile
+  // closes in the r–z half-plane: either the last point returns to the first,
+  // or both ends sit on the axis (r = 0), where the revolution closes itself.
+  // Anything else leaves an open annulus where the contour should have shut.
+  //
+  // That is not a cosmetic defect. `meshClearance` guards its BVH near-zeros
+  // with `sampledVerdict`, a PARITY RAYCAST — it counts crossings, so it
+  // assumes a closed solid (CLAUDE.md's trap list; TODO 27 measured the same
+  // failure on the chain's opened rivets). Through a missing face the count
+  // goes odd and the body reads as solid everywhere behind it: the first cut
+  // of this builder shipped `caseMiddle` and `caseBack` open, and `inspection`
+  // duly called four pairs FORBIDDEN — the movement's setting wheel, three
+  // extrusions, a torus and a box all "inside" a band whose bore they sit a
+  // clear millimetre inside of.
+  //
+  // The guard is here, at the helper, rather than in the check: the check
+  // stays generic, and the next lathe body cannot ship open in silence.
+  // ---------------------------------------------------------------------
+  // A SECTOR of a turning: the same profile, revolved through part of a turn
+  // and CAPPED at both ends. This is what a body of revolution cannot do on
+  // its own — every feature of a full lathe exists at every azimuth, so a
+  // case band turned in one piece can have no hole in it. That is why the
+  // band had no stem bores and why the plate seat was an unbroken ring
+  // standing in the keyless works (TODO 90, TODO 91).
+  //
+  // Three.js gives the side surface via phiStart/phiLength. The caps are the
+  // job: a partial revolution is OPEN where it starts and stops, and an open
+  // body is read as solid behind the missing face by `meshClearance`'s parity
+  // raycast — the exact defect this case has just been cleaned of. So each
+  // sector carries the profile polygon, triangulated, at both ends.
+  //
+  // Azimuth convention, derived rather than guessed: LatheGeometry emits
+  // x = r·sin φ, y = z_profile, z = r·cos φ, and the house rotateX(π/2) maps
+  // (x, y, z) → (x, −z, y). So world X = r·sin φ, Y = −r·cos φ, and the world
+  // azimuth is atan2(−cos φ, sin φ) = φ − π/2. A sector spanning world
+  // [a0, a1] therefore starts at φ = a0 + π/2. Asserted below by measurement,
+  // not trusted.
+  // `capPolys` is how the end face is PAVED, and it defaults to the profile
+  // itself. It exists because earcut will not reliably triangulate this
+  // band's outline: measured, the whole 19-point profile came back as 15
+  // triangles instead of 17 — it gave up on the seat step's notch, and the
+  // cap shipped with a hole exactly the shape of that step. Rather than hope,
+  // pave the face from pieces that are each simple. The band's own
+  // decomposition is natural: WHOLE = RELIEVED ∪ the seat-step rectangle.
+  const sectorLathe = (pts, a0, a1, capPolys = null, segPerTurn = 96) => {
+    const span = a1 - a0;
+    const seg = Math.max(2, Math.ceil(segPerTurn * span / (Math.PI * 2)));
+    const v2 = pts.map(([r, z]) => new THREE.Vector2(r, z));
+    const side = new THREE.LatheGeometry(v2, seg, a0 + Math.PI / 2, span);
+    side.rotateX(Math.PI / 2);
+    // Each piece is a closed contour, so drop the duplicated last point —
+    // ShapeUtils wants the polygon, not the loop.
+    const pieces = (capPolys || [pts]).map((poly) => {
+      const pv = poly.map(([r, z]) => new THREE.Vector2(r, z)).slice(0, -1);
+      const tris = THREE.ShapeUtils.triangulateShape(pv, []);
+      // A simple polygon of n vertices triangulates to exactly n − 2. Fewer
+      // means earcut abandoned part of the outline and the face is holed —
+      // the open-body defect arriving by a different road.
+      if (tris.length !== pv.length - 2)
+        console.warn(`makeCase: a sector cap piece triangulated to ${tris.length} triangles, not the `
+          + `${pv.length - 2} its ${pv.length}-point outline requires — the face is holed`);
+      return { pv, tris };
+    });
+    const capAt = (phi, flip) => {
+      const s = Math.sin(phi), c = Math.cos(phi);
+      const arr = [];
+      for (const { pv, tris } of pieces) {
+        for (const t of tris) {
+          const ix = flip ? [t[2], t[1], t[0]] : t;
+          for (const i of ix) {
+            const p = pv[i];
+            arr.push(p.x * s, -p.x * c, p.y);
+          }
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+      g.computeVertexNormals();
+      return g;
+    };
+    // The two caps face opposite ways along the sweep, so one is wound
+    // against the other; which one flips is settled by the volume assert at
+    // the call site rather than by argument.
+    return mergeGeos([side, capAt(a0 + Math.PI / 2, false), capAt(a1 + Math.PI / 2, true)]);
+  };
+
+  // Concatenate geometries into one body. No BufferGeometryUtils is vendored,
+  // and the app stays dependency-free; §81's weldTree indexes whatever reaches
+  // the scene, so emitting non-indexed here costs nothing.
+  function mergeGeos(geos) {
+    const flat = geos.map((g) => (g.index ? g.toNonIndexed() : g));
+    let n = 0;
+    for (const g of flat) n += g.attributes.position.count;
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3);
+    let w = 0;
+    for (const g of flat) {
+      pos.set(g.attributes.position.array, w);
+      if (g.attributes.normal) nor.set(g.attributes.normal.array, w);
+      w += g.attributes.position.count * 3;
+    }
+    const out = new THREE.BufferGeometry();
+    out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    return out;
+  }
+
+  const lathe = (pts, seg = 96) => {
+    const [rA, zA] = pts[0], [rB, zB] = pts[pts.length - 1];
+    const closed = (Math.abs(rA - rB) < 1e-9 && Math.abs(zA - zB) < 1e-9)
+      || (rA === 0 && rB === 0);
+    if (!closed)
+      console.warn(`makeCase: lathe profile is OPEN — ends (${rA.toFixed(3)}, ${zA.toFixed(3)}) and `
+        + `(${rB.toFixed(3)}, ${zB.toFixed(3)}) neither coincide nor both sit on the axis (r = 0); `
+        + `the parity raycast will read this body as solid behind the missing face`);
+    const geo = new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), seg);
+    geo.rotateX(Math.PI / 2); // lathe axis Y → +Z, house convention
+    return geo;
+  };
+
+  // Case middle: bore from the flange's inner face → plate seat shoulder →
+  // bore → crystal seat chamfer → seat ledge → bezel wall → lip over the
+  // crystal → bezel outer face → outer wall → back face (with the gasket
+  // groove) → the back-wall flange that carries the back screws. One closed
+  // profile, one turning — which is how a real case middle comes off the
+  // lathe.
+  // The profile in three pieces, so a sector can take the part it needs.
+  // FRONT runs the inner wall down from the seat to the bezel and out to the
+  // outer wall; BACK runs the outer wall up to the back face, in across the
+  // gasket groove and down the flange. SEAT is the plate's bearing step, and
+  // it is the piece a relieved sector omits.
+  // Traversed the way the contour runs — DOWN the bore — which the authored
+  // order did not: it went to zSeatBot before zSeatTop while the wall was
+  // descending, so the outline doubled back and touched itself at (R_IN,
+  // zSeatTop). A lathe never asks whether its polyline is a simple polygon,
+  // so it rendered; earcut does ask, and returned 15 triangles where 17 were
+  // needed, holing the cap around exactly this step. The bore narrows to R_SH
+  // BELOW the plate's face and opens to R_IN above it, which is what a
+  // shoulder the rim sits on means in metal.
+  const seatStep = [
+    [R_IN, zSeatTop], [R_SH, zSeatTop], [R_SH, zSeatBot], [R_IN, zSeatBot],
+  ];
+  const frontRun = [
+    [R_IN, zBandFront],
+    [R_CRYST, zCrystInner], [R_CRYST + 1 / UNIT_MM, zCrystInner],
+    [R_BEZEL_IN + 0.3 / UNIT_MM, zCrystOuter],
+    [R_BEZEL_IN, zCrystOuter], [R_BEZEL_IN, zBezelOuter],
+    [R_OUT, zBezelOuter],
+  ];
+  const backRun = [
+    [R_OUT, zMidBack],
+    [R_G + 0.35 / UNIT_MM, zMidBack],
+    [R_G + 0.35 / UNIT_MM, zMidBack - gasketSeat / 2],
+    [R_G - 0.35 / UNIT_MM, zMidBack - gasketSeat / 2],
+    [R_G - 0.35 / UNIT_MM, zMidBack],
+    [R_FL, zMidBack], [R_FL, zFlangeIn],
+  ];
+  //  · WHOLE — the turning as it comes off the lathe, seat included.
+  //  · RELIEVED — the same turning with the seat step cut away, so the inner
+  //    wall runs straight past. This is TODO 91's interrupted seat: a case
+  //    seat is not obliged to be a full ring, and on a caliber with dial-side
+  //    keyless works it cannot be one.
+  //  · The BORED pair — a relieved sector split by a z window, metal above
+  //    and below the hole, nothing across it.
+  const PROFILE_WHOLE = [[R_IN, zFlangeIn], ...seatStep, ...frontRun, ...backRun, [R_IN, zFlangeIn]];
+  // RELIEVED carries the step's two z breaks ON the straight wall. They are
+  // collinear and cost nothing, and they are what lets a WHOLE sector's face
+  // be paved as RELIEVED + the step: the shared edge between them cancels
+  // exactly, so the paved outline reproduces the side surface's own polyline.
+  // Without them the two disagree along the bore and the seam reads open.
+  const PROFILE_RELIEVED = [
+    [R_IN, zFlangeIn], [R_IN, zSeatTop], [R_IN, zSeatBot],
+    ...frontRun, ...backRun, [R_IN, zFlangeIn],
+  ];
+  // Both pieces keep the WHOLE profile's traversal direction — inner wall
+  // downward, out through the front, up the outer wall, back along the top —
+  // because the orientation is what decides which way the faces look, and a
+  // sector that disagrees with its neighbours renders inside-out.
+  //   A sector may carry MORE than one hole: the alarm crown's bore and the
+  // alarm pusher's share 5.6° of azimuth with disjoint z windows, so the wall
+  // there is metal in three bands, not two. n holes give n + 1 pieces — the
+  // front run below the lowest, a plain rectangle between each adjacent pair,
+  // and the back run above the highest.
+  const boredProfiles = (wins) => {
+    const lo = wins[0][0], hi = wins[wins.length - 1][1];
+    if (!(lo > zBandFront && hi < zFlangeIn))
+      console.warn(`makeCase: a bore window (z ${lo.toFixed(3)}..${hi.toFixed(3)}) reaches past the band's own `
+        + `wall (${zBandFront.toFixed(3)}..${zFlangeIn.toFixed(3)}) — the pieces either side of it are degenerate`);
+    const ps = [
+      // below the lowest hole: inner wall down to the front, the bezel run, up
+      // the outer wall to the cut, across it
+      [[R_IN, lo], ...frontRun, [R_OUT, lo], [R_IN, lo]],
+    ];
+    // between two holes: inner wall down to the lower cut, across, up the
+    // outer wall to the upper cut, across — the same traversal, no features
+    for (let i = 1; i < wins.length; i++)
+      ps.push([[R_IN, wins[i][0]], [R_IN, wins[i - 1][1]], [R_OUT, wins[i - 1][1]],
+        [R_OUT, wins[i][0]], [R_IN, wins[i][0]]]);
+    // above the highest: inner wall down to the cut, across it, up the outer
+    // wall, round the back and down the flange
+    ps.push([[R_IN, zFlangeIn], [R_IN, hi], [R_OUT, hi], ...backRun, [R_IN, zFlangeIn]]);
+    return ps;
+  };
+  const middleGeos = [];
+  for (const s of CASE_SECTORS) {
+    if (s.kind === 'bored') {
+      for (const prof of boredProfiles(s.windows)) middleGeos.push(sectorLathe(prof, s.a0, s.a1));
+    } else {
+      const whole = s.kind !== 'relieved';
+      middleGeos.push(sectorLathe(whole ? PROFILE_WHOLE : PROFILE_RELIEVED, s.a0, s.a1,
+        // WHOLE's face is paved as RELIEVED plus the step it adds; RELIEVED
+        // pays for itself in one piece.
+        whole ? [PROFILE_RELIEVED, [...seatStep, seatStep[0]]] : null));
+    }
+  }
+  const middleGeo = mergeGeos(middleGeos);
+  {
+    const p = middleGeo.attributes.position.array;
+    let v = 0;
+    for (let t = 0; t < p.length; t += 9) {
+      v += (p[t] * (p[t + 4] * p[t + 8] - p[t + 5] * p[t + 7])
+          + p[t + 1] * (p[t + 5] * p[t + 6] - p[t + 3] * p[t + 8])
+          + p[t + 2] * (p[t + 3] * p[t + 7] - p[t + 4] * p[t + 6])) / 6;
+    }
+    if (!(v > 0))
+      console.warn(`makeCase: the sectored band is wound inside-out (signed volume ${v.toFixed(2)} ≤ 0) — `
+        + 'FrontSide culling will hide it, and the caps are the likely side that flipped');
+  }
+  const middle = new THREE.Mesh(middleGeo, material);
+  middle.name = 'caseMiddle';
+  const middleAsm = new THREE.Group();
+  middleAsm.name = 'caseMiddleAssembly';
+  middleAsm.add(middle);
+  g.add(middleAsm);
+  const backAsm = new THREE.Group();
+  backAsm.name = 'caseBackAssembly';
+  g.add(backAsm);
+  const frontAsm = new THREE.Group();
+  frontAsm.name = 'caseCrystalAssembly';
+  g.add(frontAsm);
+
+  // Screw-fixed exhibition back (owner call, over the thread: simpler bench
+  // work — no thread to single-point, no wrench teeth, and the axial stack
+  // the thread needed is simply gone). A flat plate sitting ON the middle's
+  // back face, 1.2 mm thick = lip (0.6) + crystal (0.6), the window glazed
+  // from inside against the retaining lip — the standard exhibition stack.
+  // The screw holes through the plate and the threads in the flange are
+  // declared CSG debt, same family as the band's radial bores.
+  const lipW = 1.2 / UNIT_MM;          // retaining-lip radial width
+  const lipT = 0.6 / UNIT_MM;          // retaining-lip thickness
+  const zCrystOut = z0 - lipT;         // back crystal outer face, lip-flush
+  const zCrystIn = zCrystOut - crystT; // ≈ zMidBack: flush with the plate's underside
+  const SEAT_EMBED = 0.01 / UNIT_MM;   // the plate's underside sinks a
+  // hundredth into the back face — exact-coplanar contact faces z-fight
+  // (the front crystal escapes this because its seat ledge never overlaps
+  // it radially); a sub-visible embed is the press-contact idiom.
+  const zSeat = zMidBack - SEAT_EMBED;
+  const back = new THREE.Mesh(lathe([
+    [R_WIN - lipW, z0], [R_PLATE, z0], [R_PLATE, zSeat],
+    [R_WIN, zSeat], [R_WIN, zCrystOut], [R_WIN - lipW, zCrystOut],
+    [R_WIN - lipW, z0],  // the retaining lip's own BORE, back up to the outer
+                         // face — the window's edge is metal, and it is what
+                         // closes this contour
+  ]), material);
+  back.name = 'caseBack';
+  backAsm.add(back);
+  // The back crystal itself — same stock as the front (CASE_CRYSTAL_T),
+  // seated against the lip; it travels WITH the plate in the explode.
+  const backCrystal = new THREE.Mesh(lathe([
+    [0, zCrystIn], [R_WIN, zCrystIn], [R_WIN, zCrystOut], [0, zCrystOut],
+  ]), crystalMaterial);
+  backCrystal.name = 'caseBackCrystal';
+  backAsm.add(backCrystal);
+  // The screws: heads flush in a 0.4 mm counterbore, shafts through the
+  // plate and 0.7 mm of thread engagement in the 1.0 mm flange. They hold
+  // the plate, so they travel with it.
+  const headT = 0.4 / UNIT_MM;
+  const screwEng = 0.7 / UNIT_MM;
+  for (let i = 0; i < screwN; i++) {
+    const a = (i / screwN) * Math.PI * 2;
+    const head = new THREE.Mesh(
+      new THREE.CylinderGeometry(screwHeadD / 2, screwHeadD / 2, headT, 20), material);
+    head.geometry.rotateX(Math.PI / 2);            // axis → Z
+    head.position.set(Math.cos(a) * R_SCR, Math.sin(a) * R_SCR, z0 - headT / 2);
+    head.name = 'caseBackScrew';
+    backAsm.add(head);
+    const shaftTop = z0 - headT, shaftBot = zMidBack - screwEng;
+    const shaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(screwShaftD / 2, screwShaftD / 2, shaftTop - shaftBot, 12), material);
+    shaft.geometry.rotateX(Math.PI / 2);
+    shaft.position.set(Math.cos(a) * R_SCR, Math.sin(a) * R_SCR, (shaftTop + shaftBot) / 2);
+    shaft.name = 'caseBackScrew';
+    backAsm.add(shaft);
+  }
+  // Gasket: the cord half-seated in the back-face groove, the plate
+  // squeezing it to the stated 20% (the stack that makes the rating claim
+  // honest — compression now comes from the screws, not a thread).
+  const gasket = new THREE.Mesh(
+    new THREE.TorusGeometry(R_G, gasketD / 2 * 0.8, 10, 96), MATS.dark);
+  gasket.name = 'caseGasket';
+  gasket.position.z = zMidBack;
+  backAsm.add(gasket);
+
+  // Crystal: flat mineral disc with relieved edge, seated on the ledge.
+  const crystal = new THREE.Mesh(lathe([
+    [0, zCrystInner], [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter], [0, zCrystOuter],
+  ]), crystalMaterial);
+  crystal.name = 'caseCrystal';
+  frontAsm.add(crystal);
+
+  // Crown tubes (Ø2.0 mm) and the flush alarm-pusher bore (Ø1.2 mm), each AT
+  // ITS STEM'S OWN Z (a tube at mid-band would sleeve nothing): from inside
+  // the bore to 1.5 mm proud of the band, with a 0.5 mm collar. The band's
+  // radial bores they pass through are the same CSG debt as the thread
+  // grooves.
+  // The tube's own metal. COLLAR_PROUD is the flange's radius over the bore
+  // and predates this; TUBE_WALL is derived FROM it by the constraint that a
+  // flange has to stand proud of the wall it flanges — 0.3 mm of wall under a
+  // 0.4 mm collar leaves 0.1 mm of shoulder, and 0.3 mm is ordinary tube stock
+  // for a Ø2.0 mm bore. Assert rather than assume: swap the two and the collar
+  // silently becomes a groove.
+  const COLLAR_PROUD = 0.4 / UNIT_MM;
+  const TUBE_WALL = 0.3 / UNIT_MM;
+  if (TUBE_WALL >= COLLAR_PROUD)
+    console.warn(`makeCase: tube wall ${(TUBE_WALL * UNIT_MM).toFixed(2)} mm is not under the collar's `
+      + `${(COLLAR_PROUD * UNIT_MM).toFixed(2)} mm proud radius — the collar is no longer a flange`);
+  // `flush` is the pusher's case, and it is the difference between a crown
+  // TUBE and a pusher BORE — the two things this builder was making the same
+  // way. A crown tube stands 1.5 mm proud and carries a collar, because a
+  // crown has to be gripped clear of the band; a flush bore stops AT the band
+  // and has neither, which is what "discreet" (the owner's word, layout.js)
+  // means in metal. Built proud, its collar landed inside the §43 pusher head
+  // — a 2 mm cap whose inner face is at R_OUT + 1 mm, exactly where the collar
+  // began — so the two occupied the same 0.5 mm of the pusher's axis.
+  // `off` is the opening's PERPENDICULAR offset from the case centre, and it
+  // is the difference between an azimuth and a LINE. A crown is mounted on a
+  // radius, so for both crown tubes off = 0 and the two are the same thing.
+  // The alarm pusher is not: ALARM_PUSH_CHORD offsets its line from the
+  // movement's centre precisely so the pawl has a moment arm, so it travels
+  // along a line PARALLEL to the radius at `pusherAz` and 4.37 u (1.66 mm)
+  // to one side of it. Told only the azimuth, this builder drilled the hole
+  // on the radius and the pusher came out through solid band beside it —
+  // visible as a bare ring with the head standing next to it, which is how
+  // it was found.
+  //
+  // With an offset axis the tube no longer meets the wall at radius: it
+  // crosses R at sqrt(R² − off²) along its own line, so the ends derive from
+  // the offset rather than being read straight off R_IN/R_OUT.
+  const tubeAt = (az, d, z, name, flush = false, off = 0) => {
+    const r = d / 2;
+    const alongAt = (R) => Math.sqrt(Math.max(0, R * R - off * off));
+    const outboard = flush ? alongAt(R_OUT) : alongAt(R_OUT) + 1.5 / UNIT_MM;
+    // The inboard end has to STOP SHORT OF THE MOVEMENT, and that wants
+    // deriving rather than arriving at. It read `R_IN − 1 mm`, and since R_IN
+    // is `plateR + CASE_CLEAR` with CASE_CLEAR = 1 mm, that expression IS
+    // plateR: the tube ended exactly on the plate's rim, tangent, with 0.003 u
+    // to spare — coincidence standing in for clearance. A radial tube gets
+    // away with it because a cylinder meets a cylinder at one line; the moment
+    // the pusher's tube moved onto its own offset line, its inner rim swung
+    // 1.995 u across the axis (the offset less the tube's outer radius) and
+    // went 0.16 u INTO the three-quarter plate.
+    //
+    // So: the rim's nearest point clears the plate by CLEAR_MARGIN. For a
+    // radial tube the across-term is 0 and this reduces to the plate's rim
+    // plus CLEAR_MARGIN.
+    //
+    // Against `plateReach`, the plate's MEASURED widest metal, not `plateR`,
+    // its authored outline. The first version of this derivation used the
+    // outline and stopped the tube at plateR + CLEAR_MARGIN = 43.073, which
+    // is 0.193 INSIDE a plate whose extrude bevel swells to 43.2664 — the
+    // rule was right and the radius was a drawing. A tube has to miss metal.
+    const rimAcross = Math.max(0, Math.abs(off) - (r + TUBE_WALL));
+    const clearOf = plateReach + CLEAR_MARGIN;
+    const inboard = Math.sqrt(Math.max(0, clearOf * clearOf - rimAcross * rimAcross));
+    const len = outboard - inboard;
+    if (len <= 0)
+      console.warn(`makeCase: ${name} has no length — its inboard standoff (${inboard.toFixed(3)}) `
+        + `has passed its outboard end (${outboard.toFixed(3)}); the opening is off the band`);
+    // The stems' own convention (windSpinner et al.): cylinder axis Y, the
+    // pivot's z-rotation maps +Y outboard along the azimuth. No intermediate
+    // holder — a rotated frame would throw the radial offsets into z.
+    const pivot = new THREE.Group();
+    pivot.rotation.z = az - Math.PI / 2;
+    pivot.position.z = z;
+    // ...and step the whole pivot sideways onto the opening's real line. The
+    // rotation above already maps +Y outboard, so +X is the perpendicular.
+    pivot.position.x = -Math.sin(az) * off;
+    pivot.position.y = Math.cos(az) * off;
+    // A CAPPED SLEEVE, not a bore surface. This was an open-ended cylinder at
+    // the bore radius: a wall of no thickness, open at both ends — which is a
+    // SURFACE, and `d` is the tube's BORE (layout.js), so the metal it stands
+    // for was never modelled at all. The parity raycast reads an unclosed body
+    // as solid behind it, so all three of these read as fouling the stems they
+    // are supposed to sleeve. ringExtrude caps both ends by construction.
+    const sleeve = new THREE.Mesh(ringExtrude(r + TUBE_WALL, r, len, 20), material);
+    sleeve.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
+    sleeve.position.y = inboard + len / 2;
+    sleeve.name = `${name}Sleeve`;
+    pivot.add(sleeve);
+    // Collar: the tube's outer flange, 0.5 mm tall, 0.4 mm proud radius —
+    // BORED to the same r as the sleeve it flanges. It was a solid disc, so
+    // the stem it exists to sleeve ran through its metal: a flange on a tube
+    // is an annulus, and the bore does not stop because the wall got thicker.
+    // A flush bore has no flange at all — there is nothing standing proud for
+    // one to sit on.
+    if (!flush) {
+      const collar = new THREE.Mesh(ringExtrude(r + COLLAR_PROUD, r, 0.5 / UNIT_MM, 20), material);
+      collar.geometry.rotateX(-Math.PI / 2);  // ringExtrude runs +Z; the stems run +Y
+      collar.position.y = alongAt(R_OUT) + 1.25 / UNIT_MM;   // on the tube's own line, like the sleeve
+      collar.name = `${name}Collar`;
+      pivot.add(collar);
+    }
+    const grp = new THREE.Group();
+    grp.add(pivot);
+    grp.name = name;
+    middleAsm.add(grp);
+    return grp;
+  };
+  tubeAt(stemAz, tubeD, stemZ, 'caseCrownTube');
+  tubeAt(alarmAz, tubeD, alarmZ, 'caseAlarmTube');
+  tubeAt(pusherAz, pusherD, pusherZ, 'casePusherBore', true, pusherOff);  // flush, and OFF the radius — a bore, not a tube
+
+  // Lugs at 12 and 6, spring-bar span per dims; each lug a prism
+  // chord-tangent to the band and ROOTED 0.8 mm into it (the brazed
+  // stamped-lug truth — a watchmaker solders the lug foot to the band,
+  // so the prism must visibly sink into the wall, not kiss it; the
+  // first-cut 0.3 mm embed read as a floating gap at screen scale and
+  // let the tips breach the 40 mm width cap). The Ø1.5 mm spring bar
+  // spans each pair.
+  const lugT = 1.2 / UNIT_MM;            // lug thickness across the strap
+  const lugH = 2.5 / UNIT_MM;            // radial reach out of the band
+  const lugW = 3.0 / UNIT_MM;            // height along z
+  const LUG_ROOT = 0.8 / UNIT_MM;        // embed into the band at the lug's own station
+  for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
+    const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
+    const perp = { x: -u.y, y: u.x };
+    for (const s of [-1, 1]) {
+      const off = s * lugSpan / 2;
+      // The pair's lugs stay PARALLEL (the strap's sides are parallel), but
+      // each one stands ±lugSpan/2 off the pair axis, where the band has
+      // fallen away from R_OUT to the chord depth sqrt(R_OUT² − off²) —
+      // 6+ units at an 18 mm span. Root the foot 0.8 mm past THAT surface
+      // (the brazed stamped-lug truth: the foot is bent to the band radius
+      // and soldered), keep the tip at R_OUT + lugH − LUG_ROOT (52.7 u ≈
+      // 39.9 mm across — inside the 40 mm cap), and let the length derive.
+      const surfR = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0));
+      const root = surfR - LUG_ROOT, tip = R_OUT + lugH - LUG_ROOT;
+      const lug = new THREE.Mesh(new THREE.BoxGeometry(lugT, tip - root, lugW), material);
+      lug.position.set(u.x * (root + tip) / 2 + perp.x * off,
+                       u.y * (root + tip) / 2 + perp.y * off,
+                       zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
+      lug.rotation.z = lugAz - Math.PI / 2;
+      lug.name = 'caseLug';
+      middleAsm.add(lug);
+    }
+    const bar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.75 / UNIT_MM, 0.75 / UNIT_MM, lugSpan - lugT, 12), material);
+    bar.geometry.rotateX(Math.PI / 2);   // axis → Z
+    bar.geometry.rotateY(Math.PI / 2);   // axis → X
+    bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction
+    bar.position.set(u.x * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
+                     u.y * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
+                     zSeatTop + lugW / 2 + 0.5 / UNIT_MM);
+    bar.name = 'caseSpringBar';
+    middleAsm.add(bar);
+  }
+
+  // The §62 keep sweep enrolls any mesh whose box crosses the three-quarter
+  // plate's z-band as "material the plate must carry". The case band
+  // encloses the plate BY DESIGN — it is the world's fixture, not a load on
+  // the plate — so its meshes opt out here, on the part, where the claim is
+  // made, rather than in the check, which stays generic.
+  g.traverse((o) => { if (o.isMesh) o.userData.casePart = true; });
+  g.userData.r = R_OUT;
+  g.userData.assemblies = { middle: middleAsm, back: backAsm, front: frontAsm };
+  return g;
+}

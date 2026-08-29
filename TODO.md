@@ -21,6 +21,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
+| 111 | OPEN | The case's seat relief is CUT from a scan that runs once, at build time, at whatever pose the movement is in — so the geometry is a claim about one pose. Item 91 nearly shipped on it: `hackRodPin` reads r 37.801–38.691 at build time and 39.889–40.786 in 33 of the 42 poses the battery visits, half a unit inside a seat with no relief for it. Closed for two populations (build-time occupants, and `LOW_LINKAGE_OBSTACLES` members per standing rule 5) and ungated for a third — any other mover reaching the annulus at some pose. Three fixes in the item; `probe-case-relief.mjs` already asks the question in ~72 s and CI does not run it |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -12578,7 +12579,7 @@ anonymous, which is the control that says the matching did work.
 | `Reset rod` / `rodSegOut` | the same builder, outer segment | **48.8** | 114.4 N/m | — |
 | `Keyless works` / `(unnamed)` | **the setting arbor's traverse rod** — `makeRodSegment(settingA, settingB, 0.35)`, 28.84 u between the two bevel corners | **41.2** | 180.4 N/m | — |
 | `Hack rod` / `rodSegIn` | elbow rod, inner segment | **37.5** | 251.9 N/m | — |
-| `Alarm crown` / `(unnamed)` | **the alarm winding stem** — `CylinderGeometry(0.42, 0.42, alarmStemLen, 12)`, 29.72 u | **35.4** | 359.3 N/m | — |
+| `Alarm crown` / `(unnamed)` | **the alarm winding stem** — `CylinderGeometry(0.42, 0.42, alarmStemLen, 12)`, 38.78 u | **46.2** | 161.8 N/m | — |
 | `Alarm release feeler` / `(unnamed)` | the feeler arm, a 9.13 × 0.26 × 0.10 box | **35.1** | 43.7 N/m | — |
 | `Alarm link` / `alarmLinkRod` | the link rod | **34.8** | 270.3 N/m | TODO 16 |
 
@@ -12610,7 +12611,7 @@ That is the first triage question per row, and it is cheap: **is there metal
 where the part is held?** The alarm stem is the clearest case — it runs
 through `alarmBush`, a bored boss built into its own unit at `plateR − 2` and
 described in source as "the stem's support at the plate rim (its route to
-`plate` in the support graph)" — and its λ 35.4 is measured as though that
+`plate` in the support graph)" — and its λ 46.2 is measured as though that
 bush were not there. `checkSlenderness` already gates the honest version of
 this: a declared station with no mesh at it lands in `unsupported`, which
 FAILS, so a declaration cannot be used to launder a number.
@@ -12649,8 +12650,10 @@ without anyone touching metal:
    (Two rows moved when step 1 landed and this table is the corrected one:
    the "feeler arm" row was never the arm — it is the §29 step-4 TAIL RUN —
    and declaring its root took it from ×1.17 to **×2.84**. The alarm stem's
-   ×1.18 is priced against the 35.4 the report still shows; against its
-   measured 76.6 it is ×2.55, and TODO 110 is why the report cannot say so.)
+   ×1.18 is priced against the 35.4 the report showed then; against its
+   measured 76.6 it is ×2.55, and TODO 110 is why the report cannot say so.
+   The report now shows 46.2 — see the case note below — so the whole-stock
+   pricing is ×1.54; the 76.6 half is unchanged, because the overhang is.)
 
    (k scales as f⁴ for the round bars, which grow both dimensions, and f³ for
    the two flats, which only have to grow the stiff dimension the check
@@ -12688,7 +12691,7 @@ built tree afterwards:
 | row | before | after | governing free length |
 |---|---|---|---|
 | `Alarm release feeler` tail run | λ 35.1 | **λ 85.1** | overhang 8.7846 u, k 49.1 N/m |
-| `Alarm crown` stem | λ 35.4 | *(λ 76.6 measured, NOT declared)* | overhang 25.5222 u, k 567.4 N/m |
+| `Alarm crown` stem | λ 46.2 | *(λ 76.6 measured, NOT declared)* | overhang 25.5222 u, k 567.4 N/m |
 
 **The stem's declaration was written, measured, and then WITHDRAWN**, and the
 withdrawal is the more useful half. The stem SLIDES through a bush that does
@@ -12777,9 +12780,27 @@ radius by δ closes each gap by δ; the headroom is (gap − `CLEAR_MARGIN`).
 | `Reset rod / rodSegOut` | 48.8 | 0.2189 u | `Hack rod / rodKnuckle` | 0.2869 | 0.1369 | **SHORT** |
 | setting arbor traverse | 41.2 | 0.1305 u | `Power-reserve train` | 0.1820 | 0.0320 | **SHORT** |
 | `Hack rod / rodSegIn` | 37.5 | 0.0872 u | `Reset rod / rodSegOut` | 0.3457 | 0.1957 | clears |
-| alarm stem | 35.4 | 0.0753 u | `Alarm release lifter / alarmLifterHead` | 0.1400 | **−0.0100** | **SHORT** |
+| alarm stem | 46.2 | 0.2263 u | `Alarm release lifter / alarmLifterHead` | 0.1400 | **−0.0100** | **SHORT** |
 
 Six of seven are short, and the seventh does not survive its own constant.
+
+**The alarm stem's row was re-measured when the case landed, and its verdict
+did not move.** The case lengthens `alarmStemLen` from 29.7222 to 38.7777 so
+the crown can stand outside the band — a P3 packaging fold in position space,
+not a section spent. Re-run on the merged tree, `probe-section-headroom.mjs`
+reports the row as **λ 46.2, growth 0.2263 u per side** where it read λ 35.4
+and 0.0753 u; the wall, the gap and the spare are unchanged (the wall is the
+same working contact, and `spare = gap − CLEAR_MARGIN` does not depend on the
+bar). So the row is SHORT by more than it was, and the item's count of six is
+untouched.
+
+The half that could NOT move is worth stating, because it is an identity
+rather than a coincidence: the declared **λ 76.6** and its k 567.4 N/m are
+computed from the OVERHANG, which is `ALARM_STEM_BUSH_DIST − ALARM_CD` with
+`alarmStemLen` cancelling out — the stem's inboard end is pinned at the corner
+and its bush is bored at a fixed radius, so lengthening the stem adds metal
+only outboard of the support. A case change cannot reach the number this item
+is really about. `src/main.js` carries the same derivation beside the metal.
 
 **The alarm stem's wall is a working contact, not an obstruction** — `Alarm
 crown ⇄ Alarm release lifter` is an EXPECTED pair (§45: the head rides the
@@ -13045,3 +13066,612 @@ than a reason to have chosen differently.
 
 The acceptance held both halves: the pair agrees, and a declaration on a sliding
 part is landable — TODO 109's alarm stem reads 76.6.
+
+## 96. CLOSED — the band has no radial bores, so both stems pass through solid case metal
+
+**Renumbered from 90 to 96 on 2026-08-25, and the old number is not reusable.**
+This item was filed as 90 on 2026-08-24, before `main` merged a different item
+90 (the column wheel's output-side audit, PR #301) on 2026-08-25. Both numbers
+were allocated by reading `max + 1` off a branch, which is exactly the race that
+rule loses when two branches are open at once: each reads the same max, and
+neither can see the other's claim until a merge. `main` is merged and
+published, so this side moves. 96 was chosen by
+scanning EVERY remote branch for claimed numbers, not by taking max + 1 again:
+91–94 are this branch's own and 95 is `fix/meshclearance-passthrough`'s.
+
+Two consequences to know. Commit messages already in history cite this item as
+"TODO 90" — those are immutable and correct as of when they were written. And
+its probes keep their `probe-90-*` filenames (`probe-90-extent`,
+`probe-90-fouls`, `probe-90-pusher-band`) rather than being renamed inside an
+open PR; they answer item 96.
+
+Filed from the case branch's first clean measurement (2026-08-24). It was
+invisible until it wasn't: `makeCase` shipped five bodies as open surfaces,
+the parity raycast read them as solid everywhere behind the missing faces,
+and `inspection` returned four FORBIDDEN pairs of which most rows were
+phantoms. With those bodies closed the phantoms cleared and this stayed —
+which is the whole reason a false positive is expensive, not merely noisy.
+
+`makeCase` declares the debt in its own comment ("the band's radial bores
+they pass through are the same CSG debt as the thread grooves"), so this
+item is the measurement it never had, and item 27's family is where it
+belongs.
+
+Measured at beat f=0, world cylindrical coordinates, units:
+
+| mesh | r span | z span |
+|---|---|---|
+| `caseMiddle` | 40.28–48.20 | −19.65–16.09 |
+| Keyless works / `windStem` | 31.95–**54.18** | −4.55–−3.65 |
+| Alarm crown / (unnamed cylinder) | 15.40–**54.18** | −4.52–−3.68 |
+
+Both stems run from inside the movement to 54.18 — past `R_OUT` = 48.20,
+as they must, since a crown is gripped outside its case. The band occupies
+`R_IN` 45.56 to `R_OUT` 48.20 at **every** azimuth, so each stem crosses
+2.64 u of metal that should not be there. `sweptOverlap` confirms both:
+Case ⇄ Keyless works 0.900, Alarm crown ⇄ Case 0.103.
+
+The tubes themselves are no longer part of this. They sleeve their stems
+correctly now — capped annular sleeves, bore `r`, wall 0.3 mm — and their
+collars are bored. What is missing is the hole in the band the tube is
+pressed into.
+
+**The aperture, if it is cut round.** Tube outer radius is r + wall =
+3.43 u (1.3 mm), so the window is ±asin(3.43/45.56) = **±4.32°** at `R_IN`
+and ±4.08° at `R_OUT`, over z = stemZ ± 3.43 u — for the winding stem at
+`Z_KEYLESS` = −4.1 that is z ∈ [−7.53, −0.67].
+
+**Note the coupling with item 91**: that z window straddles the plate seat
+(`zSeatBot` −4.112 to `zSeatTop` −2), so cutting this bore already removes
+the seat ledge at the crown azimuths. The two items want the same cut and
+should be solved together, not twice.
+
+**What is missing to fix it is a construction, not a decision.** Nothing in
+the repo builds a partial revolution — `phiStart`/`phiLength` appear
+nowhere, and every lathe here is a full turn. A sector-lathe helper (side
+surface over an azimuth range, plus the two end faces triangulated from the
+profile polygon) is the piece both this and item 91 need. An honest
+approximation is available and should be declared if taken: a constant
+angular window over the radial run cuts a slightly conical hole rather than
+a cylindrical one, over-cut at `R_OUT` by 0.24° of the 4.32°.
+
+**The pusher IS a third station. This entry has now claimed both, and the
+withdrawal was the wrong one.** The first version filed the pusher as one more
+aperture; the second struck that out, citing `inspection` clear at all 65
+`alarmPress` poses. That citation fails twice over.
+
+**There is no `alarmPress` axis on this base.** `main` has one; this branch's
+base carries 13 axes (`beat crown reserve wind arrest stemSlip train
+jumperEngage handSet alarm alarmStrike alarmWind alarmToggle`) and not one of
+them presses the pusher. The branch's own probes say so out loud —
+`probe-92-standoff.mjs` throws on the undefined axis, `probe-92-pose.mjs`
+prints `NO SUCH AXIS`. A sweep that never moves a part cannot report that part
+clear, so those 65 poses were measured against another tree. This is standing
+rule 4's `restoring` lesson in a second place: **a part no axis MOVES is a part
+the instruments cannot judge**, and the silence reads exactly like a pass.
+
+**And the pusher does not need to be pressed.** Measured AT REST by
+`probe-90-pusher-band.mjs`, which takes the stem's true axis from
+`CylinderGeometry.parameters` through `matrixWorld`, casts it at `caseMiddle`
+from outside all case metal, and pairs the surface crossings into metal spans:
+
+| quantity | measured |
+|---|---|
+| stem ends | r 32.91 → 51.22 |
+| axis stand-off from movement centre | 4.370 u (the `ALARM_PUSH_CHORD` offset) |
+| band metal on the stem's line | r 45.55 → 48.18 at z 7.55 |
+| **metal pierced** | **2.645 u = 1.00 mm = the full `CASE_BAND_T` wall** |
+
+Two things the cut has to get right. The window is **not** centred on
+`pusherAz` — an azimuth locates a radius and this stem rides a chord, the same
+distinction item 92 closed for the bore's POSITION; it wants ±asin about the
+chord's own crossing azimuth, taken separately at `R_IN` and at `R_OUT`. And
+the measurement above must be re-taken once a press axis exists, because at
+full press the stem stands further out than it does here.
+
+Three stations, then: two crown stems and the pusher.
+
+**Why no gate said any of this — item 93, now closed.** `meshClearance`
+returned **+2.6104 as CLEARANCE** for this pair. Not a parity fault and not the
+lathe profile: the library reported the intersection correctly at 0.0000, and
+`_meshClearanceInner`'s `Math.max(d, v.d)` overrode it because `sampledVerdict`
+samples POINTS and this stem has none in the metal — its vertices are on its
+end caps, its edge midpoints inside the bore, and the wall between is 2.645 u.
+A pass-through witness now catches it and the pair measures 0.0000. The
+withdrawal this item once carried trusted that silence; a battery report from
+before item 93 cannot be used as evidence about any `Case ⇄ *` pair.
+
+Do NOT resolve this by declaring the pairs EXPECTED. A stem in a crown tube
+touches the TUBE, by design, with clearance; it does not touch the band.
+An `EXPECTED_PAIRS` row here would claim design-intent contact for
+metal-through-metal and would blanket-excuse the pair for everything else
+it might ever foul — the exact shape of excuse item 6 exists to narrow.
+
+
+**CLOSED. The band is turned in SECTORS, and three of them are bored.**
+
+The construction the item said was missing now exists: `sectorLathe` in
+`geometry.js` revolves a profile through part of a turn and CAPS both ends,
+triangulating the profile polygon at each. The caps are the work — a partial
+revolution is open where it starts and stops, and an open body is read as solid
+behind the missing face by the same parity raycast this whole family of defects
+came from. `caseMiddle` is built as a list of sectors (`whole` / `relieved` /
+`bored`) merged into one body, and it measures **0 boundary edges**.
+
+Two things the item predicted, and one it got wrong:
+
+- **The two items were one cut**, as filed. Both crown bores fall inside the
+  seat relief arcs item 91 derives, so nothing is cut twice.
+- **The bore window is derived over the wall's THICKNESS**, not taken at one
+  radius: a hole around a line at perpendicular offset `off` covers azimuths
+  `az + asin(p/r)` for `p ∈ [off − ap, off + ap]`, and the window is the union
+  of those over `r ∈ [R_IN, R_OUT]`. The conical-hole approximation the item
+  offered to declare is not taken; the exact window costs four `asin` calls.
+- **The 4.370 u chord stand-off is stale, and the pusher is RADIAL on this
+  tree.** That figure was measured before this branch's base picked up §170,
+  which solves `ALARM_PUSH_AZ` so the press line passes through the movement's
+  centre — `_pushBase·perp` is 0 exactly, and `CASE_DIMS.pusherOff` reads 0.
+  The offset-aware window is still what ships, because the term is live and
+  `tubeAt` already drills the bore with it: the two agreed here by a landing,
+  not by construction of the case.
+
+**And a defect the first cut of this created, worth recording because it looked
+exactly like the bug it was fixing.** The alarm crown's window and the pusher's
+overlap by 5.6° of azimuth, and their z windows are disjoint (crown −7.531 to
+−0.669, pusher 5.049 to 9.799). Emitting one bored sector per bore stacked two
+solids in that arc — and each one's metal filled the other's hole, so
+`Alarm crown ⇄ Case` and `Alarm switch ⇄ Case` still measured as contacting
+after the bores were cut, for the opposite reason to before. The arc is swept
+once now: every window end is a breakpoint, and each elementary piece carries
+the union of the windows covering it, so a piece with two holes is one body of
+metal in three bands.
+
+Measured after the cut, `probe-90-fouls.mjs` at beat f=0: **no mesh-level
+contact** on any of `Case ⇄ Setting lever`, `Case ⇄ Keyless works`,
+`Alarm crown ⇄ Case`, `Alarm switch ⇄ Case` — all four of the FORBIDDEN pairs
+this branch inherited.
+
+## 91. CLOSED — the plate seat ledge projects into the dial-side keyless works
+
+Filed alongside item 96, from the same first clean measurement, and it is
+the more serious of the two: item 96 is a hole nobody cut, this is two
+groups of parts claiming one volume.
+
+The case middle's plate seat is turned to `R_SH` = `plateR` − 1 mm =
+**40.28 u** (plateR 42.923) and stands from `zSeatBot` −4.112 to `zSeatTop`
+−2, the 0.8 mm step whose top face carries the plate's dial-side rim. That
+ledge is a continuous annulus. But since the keyless works moved to the
+dial side, five bodies stand inside its footprint:
+
+| unit / mesh | r span | z span |
+|---|---|---|
+| Keyless works / `settingWheel` | 33.16–41.00 | −4.72–−3.48 |
+| Keyless works / (extrude) | 33.25–42.44 | −4.67–−3.53 |
+| Keyless works / (torus) | 40.91–41.97 | −5.70–−2.50 |
+| Keyless works / (box) | 40.35–42.54 | −4.10–−1.40 |
+| Alarm crown / (torus) | 40.45–41.41 | −5.55–−2.65 |
+
+Every one of them overlaps the ledge in both r and z. The deepest reach is
+r 42.54 against a ledge starting at 40.28 — **2.26 u (0.86 mm) of radial
+interference**, and the movement could not be cased.
+
+**There is no clearance to find by trimming.** The furthest part stands at
+r 42.54 against `plateR` 42.923: the keyless works already runs to within
+0.38 u (0.14 mm) of the plate's own edge. Any continuous seat under that
+rim fouls it. So the fix is not a smaller number, it is a different shape.
+
+**The real answer is the real answer: the seat is interrupted.** A case
+seat is not obliged to be a full ring, and on a caliber with dial-side
+keyless works it is not one — the bearing is cut away over the works and
+the plate lands on the arcs that remain. That is a position-space
+resolution in CLAUDE.md's sense (P3): the mechanism keeps every dimension,
+the housing gives way.
+
+**The relief is two arcs, and they are measured.** Counting the vertices
+that stand inside the ledge's own window (r ∈ [`R_SH`, `R_OUT`], z ∈
+[−4.112, −2.000], the band read off `caseMiddle` rather than restated):
+
+| cluster | mesh | azimuth | span | deepest |
+|---|---|---|---|---|
+| keyless | (extrude) | 128.4° | 10.4° | 42.44 |
+| keyless | `settingWheel` | 142.2° | 5.4° | 41.00 |
+| keyless | (torus) | 142.8° | 4.4° | 41.97 |
+| keyless | (box) | 143.4° | 3.1° | 42.54 |
+| alarm | (torus) | 358.0° | 4.1° | 41.41 |
+
+Two arcs, not one: **128.4°–147.6° (19.2°)** at the keyless station and
+**358.0°–2.1° (4.1°)** at the alarm crown's. Add `CLEAR_MARGIN` to each.
+The second is nearly free — it sits on the alarm stem's own azimuth, so
+item 96's bore there (±4.32°) already removes it, which is the coupling
+that argues for cutting both items in one pass.
+
+`Setting lever` and `Alarm switch` have vertices near the ledge but land
+in the flange's band, not the seat's, and neither pair reports contact —
+they are not part of this. (The first cut of this measurement conflated
+the two: `R_SH` and `R_FL` agree to 1e-3, so "the case's innermost radius"
+selects the flange as readily as the seat. Derive the band from
+`BACK_PLATE_Z`/`BACK_PLATE_T` and the 0.8 mm step, not from the mesh.)
+
+What still has to be decided, by someone who owns the case design:
+
+- **What the remaining bearing has to carry.** The seat exists to support
+  the plate; cutting an arc out of it is only free if what is left still
+  does. This wants the P1 arithmetic — bearing arc length against plate
+  weight and case-screw preload — filed in item 16's format, and it is
+  the number that decides whether a relief is enough or whether the seat
+  has to move to a different radius entirely.
+- **Whether item 96's bores land inside the same relief.** At the crown
+  azimuths they do (see item 96); if the relief spans them, part of that
+  cut is already paid for.
+
+**A sixth body reaches the ledge, and only with the crown pulled.** The five
+above were measured at `beat` f=0, where the movement is at rest. Over the
+pose net `inspection` also reports `Case ⇄ Setting lever`, on the `crown`
+axis alone, 21 poses across f 0.0625–0.4792 — the pull-out stroke. Measured
+at `crown` f=0.25, the lever's post stands at r 40.05–40.95, z −5.10–1.42:
+0.67 u past `R_SH`, through the same ledge. It is not a sixth cause, it is
+the fifth one at a pose the rest position hides, and the relief arc has to
+be sized against the lever's swept azimuth, not its resting one.
+
+Both this and item 96 are blocked on the same missing sector-lathe
+construction, and both should be cut in one pass once it exists.
+
+---
+
+**CLOSED. The seat is interrupted, and the relief is DERIVED rather than
+listed.** `CASE_SECTORS` in `main.js` scans the movement for whatever occupies
+the seat's own volume — r ∈ [`R_SH`, `R_OUT`], z ∈ [`zSeatBot`, `zSeatTop`] —
+clusters the azimuths into arcs, pads each by `CLEAR_MARGIN` as an arc at the
+seat's radius, and unions item 96's bore windows in. Ship a part into that
+space and the relief follows it; there is no list to fall stale. Both crowns
+fall inside their own relief arc, exactly as this item predicted, so 91 and 96
+are one cut.
+
+Four things the cutting found that the filing did not.
+
+**The scan must walk EDGES, not vertices, and the reason is three dial feet.**
+Ø1.2 mm columns at r 41.58–42.77 crossing z −8.40 to −1.00 — straight through
+a band of 0.8 mm — and not one vertex inside it, because a cylinder's vertices
+sit on its end caps. The first version of the scan sampled vertices and left
+all three standing in unbroken seat. Walking each triangle edge and taking its
+crossings finds 80 hits apiece. This is the same caveat CLAUDE.md records for
+the parity raycast, arriving from the other direction.
+
+**A relief derived at one pose is a claim about one pose, and this item's own
+last paragraph is the counter-example.** The scan runs while the case is being
+built, and a mover is somewhere else at every other pose. `hackRodPin` measures
+r 37.801–38.691 as the case is built — clear of the seat's 40.284 — and
+39.889–40.786 in 33 of the 42 poses the battery visits: **0.502 inside the
+seat**, crossing its full depth. Standing rule 5 already owns the fix:
+`LOW_LINKAGE_OBSTACLES` is the declared swept footprint of the low linkage over
+the whole crown stroke, and every later seat scan consumes it rather than
+re-deriving the swing. A case seat is a later seat scan. Taken whole it reaches
+this annulus in exactly one arc — **165.5°–169.1°**, the hack pin's station —
+so seeing the mover costs 3.6° of bearing.
+
+**The bearing arithmetic this item asked for, answered — and it is KINEMATIC,
+not a stress bound.** "Keep n% of the ring" was the first cut's rule and it is
+a number that looked right: a plate this size weighs milligrams and no land
+here is within orders of magnitude of a bearing limit. What a rim seat must do
+is stop the plate ROCKING, and it does that exactly when the lands surround the
+axis — when no diameter has every land on one side of it. That is one
+measurement, the widest gap between consecutive lands, and it must stay under
+half a turn. Beside it, a land narrower than the seat is deep is a tooth and
+not a bearing surface, which is also what decides when two reliefs merge into
+one opening with a waist. As cut: **six lands, widest gap 21.9°, 88.5% of the
+ring retained.** The first cut's merge rule (the bore window, doubled) was 4.6×
+wider than the land width and cost 4.4% of the ring for no structural reason.
+
+**And the seat was never touching the plate at all.** `zSeatTop` was
+`BACK_PLATE_Z − BACK_PLATE_T/2` = −2.000, the plate's nominal dial-side face.
+The plate is an ExtrudeGeometry and three.js's bevel grows it past its own
+outline in both directions — TODO 84's finding at plate scale. Measured off the
+built mesh: the rim's flat face lies at **z −2.300** out to r 42.923, and the
+bevel swells OUTWARD to **r 43.2664**, widest at z −2.000. So the seat stood
+0.300 inside the plate's z span over the whole bearing annulus and only the
+bevel's corner ever met it — a bearing that interpenetrates is not a bearing.
+The same drawing-not-metal error put the crown tubes' inboard ends at
+`plateR + CLEAR_MARGIN` = 43.073, **0.193 inside** the plate's widest metal;
+the commit that derived that standoff had the rule right and the radius wrong.
+Both now read `PLATE_RIM`, measured once at boot, and the seat's top face is
+coincident with the plate's rim face by construction.
+
+Neither was visible to a gate, and the reason is item 6's: `['Case', 'plate']`
+is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, so the blanket
+excuse covered everything the case does to the plate. `probe-case-relief.mjs`
+found both because it asks per MESH and over the pose net, which is what a
+per-unit declaration cannot answer.
+
+**Acceptance.** `node tools/probe-case-relief.mjs` — 6 band bodies against 644
+movement meshes over 43 poses: **CLEAR**, with the seat bearing
+(`caseMiddle ⇄ backPlate`) reading shut in 43/43, which is the seat working.
+`node tools/probe-90-fouls.mjs` at beat f=0: no mesh-level contact on any of
+the four pairs this branch inherited. `node tools/probe-case-closed.mjs`: all
+13 case bodies at 0 boundary edges.
+
+What is NOT closed here is item 111: the derivation now sees one pose plus one
+declared table, and nothing gates the rest.
+
+## 92. CLOSED — the case treated a chord-mounted pusher as a radial one, twice
+
+Filed 2026-08-24, and honestly attributed: this is a consequence of the
+flush-bore correction in the same landing, not a defect that predated it.
+
+The pusher head was placed against the case's pusher COLLAR — `stemOuterS`
+puts its inner face at `R_OUT` + 1 mm, which is exactly where the collar
+began. The two interpenetrated over 0.5 mm of the pusher's axis, constantly,
+which is why the pair reported contact at every pose on every axis and
+nothing about the stroke could be read. Removing the collar (a flush bore
+has no flange to carry one — see the landing that closed the case's open
+bodies) narrowed `Alarm switch ⇄ Case` from ~1900 poses to **11**, all of
+them on `alarmPress`, f 0.4219–0.5781.
+
+What those 11 poses say: at `alarmPress` f=0.5 the cap stands at r
+47.80–49.90 against a band whose outer wall is `R_OUT` = 48.20. The cap is
+**0.40 u (0.15 mm) inside the case's outer face** at mid-press. It cannot
+be anywhere else — the head is Ø2 mm and the bore is Ø1.2 mm, so the cap
+can never enter the bore; the press has to be absorbed by the stem sliding
+inside it, with the cap standing off the band by the stroke at rest and
+arriving flush at full press. Today it simply travels through.
+
+**CLOSED, and the second half is the more interesting one.** Both faults were
+the same wrong assumption in two places: that a pusher on azimuth `pusherAz`
+lies on the RADIUS at that azimuth. It does not — `ALARM_PUSH_CHORD` steps
+its line 4.37 u (1.66 mm) off the movement's centre so the pawl has a moment
+arm — and an azimuth locates a radius, not a line.
+
+**Depth.** `stemOuterS` read `CASE_R_OUT + 1.0/UNIT_MM − hypot(_pushBase)`.
+The magnitude of the base vector is its projection on the push axis only for
+a radial pusher, so the term was wrong by that same 0.3495 u; and 1 mm of
+standoff was under the 2.686 u throw regardless. Now solved from the
+constraint — `CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL − _pushBaseS` —
+so the head clears the band by 0.181 u at full press instead of standing
+0.397 u inside it, and rests 1.086 mm proud. The throw is untouched: the
+case does not get to limit the stroke.
+
+**Position.** `makeCase`'s `tubeAt` built every opening on a radius, so the
+pusher bore was drilled 4.37 u to one side of the pusher. It was visible from
+the moment the head stopped burying itself: a bare ring on the band with the
+button standing in unbroken metal beside it — which is how it was actually
+caught, by eye, not by a gate. `tubeAt` now takes the opening's perpendicular
+offset, and an offset tube meets the wall at sqrt(R² − off²) along its own
+line rather than at R, so its ends derive from the offset too. Both crowns
+pass 0 and are unchanged.
+
+**What no instrument said.** Every gate was green on the misplaced bore, and
+would have stayed green: it is Case ⇄ Case, and the case unit sits outside
+`INTRA_TIER_SCOPE` by its own declaration, so no pair check compares a hole
+to the thing meant to go through it. The nearest thing to a gate here is that
+`Alarm switch ⇄ Case` was FORBIDDEN for the OTHER reason, and clearing it is
+what left the hole standing on its own to be seen. Worth a check that asks
+whether each declared opening contains its part — filed as its own question
+rather than pretended to here.
+
+## 93. CLOSED — a sampling miss overrode a correct intersection, and published it as clearance
+
+Filed 2026-08-25 from item 96's re-measurement; closed the same day. The
+filing guessed the mechanism wrong, and the wrong guess is kept here because
+it is the instructive part: the symptom looked exactly like item 27's parity
+family, and it was not that at all.
+
+**The symptom.** The alarm pusher's stem passes through the case band at rest —
+entering at r 45.55, leaving at 48.18, z 7.55, 2.645 u of metal, the full
+`CASE_BAND_T` of 1.00 mm. Asked about the same two meshes at the same pose,
+`meshClearance` returned **+2.6104, as CLEARANCE**. `Alarm switch ⇄ Case`
+appeared in no `inspection` row and no `sweptOverlap` row of a full battery.
+
+**What it was NOT.** Not the parity raycast: `sampledVerdict` is gated behind
+`d < 0.05` and the value was 2.6104, so that branch never ran. Not the
+non-simple lathe profile either — `caseMiddle`'s contour does double back
+(edges 0→1 and 4→5 collinear on r 45.562, overlapping z −4.111..−2.000,
+because the seat step is authored `zSeatBot` before `zSeatTop` while the
+contour descends), and that is a real defect worth its own fix, but it sits at
+z ≈ −3 and the pusher crosses at z 7.55. It was never the cause here.
+
+**What it was.** Three measurements localise it exactly:
+
+```
+raw closestPointToGeometry(case←stem)   0.0000     ← the library is RIGHT
+sampled stem-surface → case-surface     0.0003     ← independent, agrees
+meshClearance(case, stem)              +2.6104     ← the WRAPPER disagrees with both
+```
+
+`_meshClearanceInner` takes the library's distance and, when it is under 0.05,
+arbitrates it against `sampledVerdict`:
+
+```js
+if (d < 0.05) { const v = sampledVerdict(a, b, upperBound);
+                d = v.inside ? Math.min(d, 0) : Math.max(d, v.d); }
+```
+
+That `Math.max` exists for a good reason — §82 records the vendor's tri-tri
+test falsely reporting intersections for plainly separated meshes, so a bare 0
+cannot be trusted. But it cannot tell a FALSE zero from a TRUE zero whose
+witness the sampling missed, and it resolves the ambiguity towards clearance.
+
+`sampledVerdict` samples **points**: every vertex, plus every triangle-edge
+midpoint. The stem is a 40-triangle cylinder 18.418 u long. Its vertices sit on
+its two end caps, r 32.91 and 51.22 — both in free space. Its side-edge
+midpoints land at mid-height, r ≈ 42, inside the bore. The wall between is
+2.645 u thick. **No point sample lands in the metal, and no refinement of point
+sampling would**: the wall is thinner than the sample spacing, which is the
+permanent condition of a pin through a plate. So `inside` came back false,
+`v.d` was 2.6104, and `Math.max(0, 2.6104)` threw away the correct answer.
+
+**The fix — a segment test, because no point test can work.** A body that
+passes CLEAN THROUGH another crosses its surface an EVEN number of times along
+one edge, with both endpoints in free space. That is the only witness its shape
+leaves, and `segmentPierces` now looks for it: after point sampling has failed,
+each src triangle edge is cast against the dst tree and two or more distinct
+crossings strictly inside the segment prove the passage. It runs only when
+point sampling has already come up empty, so the common case pays nothing, and
+its box cut is exact in §122's sense (mesh ⊆ box, so a ray missing the box
+cannot cross the surface). Crossings closer than 1e-7 are deduped — a ray
+through a shared triangle edge can be reported twice, and two coincident
+"crossings" are a graze, not a passage.
+
+With it, `meshClearance(case, stem)` returns 0.0000 in both orders, agreeing
+with the raw query and with independent surface sampling.
+
+**The general lesson, which is why this is worth reading.** CLAUDE.md's
+open-mesh trap already says vertex sampling misses surfaces. This is that
+lesson one level further in: it is not only that the instrument fails to
+NOTICE a pass-through, it is that the failure to notice OVERRIDES a correct
+detection and publishes the opposite. Over-estimating clearance is the unsafe
+direction and it is silent — every gate stayed green while a stem ran through
+1 mm of case band. When a sampled verdict and an exact query disagree, the
+sampled one is not automatically the careful choice.
+
+**Residue, named.** The `Math.max` remains, and so does the false-zero problem
+it was built for; this landing narrows the ambiguity rather than removing it.
+A pass-through is now witnessed, but a genuine tri-tri false positive with no
+sample inside and no edge crossing twice still resolves towards clearance.
+Closing that wants an exact triangle-triangle test at the library's reported
+closest point, which is a bigger change than this one and is not taken here.
+
+`tools/probe-93-inversion.mjs` is the reproduction: it prints the raw query,
+independent surface sampling and `meshClearance` side by side, so the same
+three-way comparison can be re-run against any pair.
+
+
+## 94. What item 93's fix made visible — five interpenetrations nothing reported before
+
+Filed 2026-08-25, immediately downstream of item 93. None of these is new
+metal: the geometry fingerprint is byte-identical across the landing
+(1122794032 before and after), so every row here was true of the shipped
+movement already and no instrument said so. They are listed together because
+they share one cause — a body passing CLEAN THROUGH another leaves no sample
+inside anything, so `sampledVerdict` found no witness and
+`_meshClearanceInner` published the sampled distance instead of the
+intersection.
+
+**Each row is PROVEN, and the first attempt to prove them was unsound.** That
+attempt rested on the raw vendor `closestPointToGeometry` reading 0.0000, which
+is not evidence: §82 records the tri-tri test emitting FALSE ZEROS, and
+`probe-95-passthrough.mjs` enumerates them on main at one pose — `raw 0.0000`
+for pairs `meshClearance` puts 8 to 10 units apart. The `Math.max` guard in
+`_meshClearanceInner` exists to suppress exactly that, and it is doing far more
+real work than the first pass credited.
+
+The witness that does hold is `tools/probe-93-grid.mjs`: it grids the two
+meshes' AABB intersection and asks whether any point lies inside BOTH solids,
+deciding containment by majority vote over five oblique parity rays. It depends
+on neither the tri-tri test nor on `segmentPierces`, so it can validate the
+TODO 93 fix without circularity. All five rows below are proven that way — 409,
+4329, 914, 1378 and 2929 shared points respectively. It is a ONE-SIDED
+instrument: a shared point proves contact, no shared point proves only that the
+grid missed.
+
+**A caveat it turned up about `caseMiddle` specifically.** The pusher row's
+first shared point sits at r 35.823, which is inside the case's BORE — metal at
+that z runs 45.56 to 48.20 — so that point cannot really be inside
+`caseMiddle`, and its parity is demonstrably unreliable. That is the
+non-simple lathe profile from item 93 doing damage after all, just not the
+damage item 93 originally accused it of. The pusher row does not depend on it:
+that one is independently proven by four clean axis crossings
+(48.20 → 45.55 in, 45.55 → 48.18 out) and by barycentric surface sampling at
+0.0003. Rows that rest on `caseMiddle` parity ALONE should be re-proven once
+the profile is fixed.
+
+| pair | worst mesh pair | tier |
+|---|---|---|
+| `Alarm switch ⇄ Case` | `CylinderGeometry#9 ⇄ caseMiddle` | inspection FORBIDDEN |
+| `Case ⇄ Dial` | `caseMiddle ⇄ CylinderGeometry#0` | inspection FORBIDDEN |
+| `Alarm disc ⇄ Hour wheel` | `ExtrudeGeometry#20 ⇄ hourTube` | expectedContacts, min 0 vs floor 0.15 |
+| `Alarm selector` | `alarmSelRing ⇄ BoxGeometry#1` (also #3, #5) | intraUnit MM |
+| `Alarm winding arrest` | `genevaFingerDisc ⇄ alarmArrestFingerArbor` | intraUnit MF |
+
+Both `inspection` rows are FORBIDDEN at **every pose on every axis** — all
+thirteen, 1907 poses each. That is the signature of static geometry standing
+in static geometry, not of a stroke that goes too far, and it is why no pose
+hunt is needed to reproduce them.
+
+**`Alarm switch ⇄ Case` is item 96's third station and needs no separate
+decision.** `CylinderGeometry#9` is the alarm pusher's stem — unnamed on this
+base, which is also why the pre-existing `intraUnit` row reads
+`CylinderGeometry#9 ⇄ alarmPusherCap`; main's §162 names it. It is measured in
+item 96: 2.645 u, the full `CASE_BAND_T`, entering r 45.55 and leaving 48.18 at
+z 7.55. Cutting the band aperture closes this row.
+
+**The other four are untriaged, and two of them may not be defects at all.**
+An arbor through a disc and a post through a bracket are how those parts are
+ASSEMBLED; if the bore is modelled and the metal genuinely clears, the row is
+real and wants fixing, but if the parts were built as solids that
+interpenetrate at a press fit, the row wants a declaration in
+`INTRA_UNIT_CONTACTS` instead — that table exists for exactly this. **Do not
+declare one to silence it without measuring first.** The distinction is
+whether a real watchmaker would call it a joint or a collision, and the
+measurement that settles it is where each surface actually is, not whether the
+gate is red.
+
+`Case ⇄ Dial` and `Alarm disc ⇄ Hour wheel` have no such excuse available:
+neither pair is assembled to the other. The dial sits inside the case with the
+bezel lip over it, and an hour tube passing through an alarm disc's extrusion
+is the motion works fouling the alarm complex. Both want measuring the way item
+90's stem was measured — axis, surface crossings, depth — before anything is
+moved, and both are P3 conflicts in CLAUDE.md's order, to be resolved in
+position space.
+
+**Why this is filed rather than fixed here.** Item 93 was an instrument
+landing, and its acceptance is that the instrument now agrees with the library
+and with independent sampling. Fixing five pieces of geometry in the same
+change would mix an instrument correction with five mechanism corrections and
+make the report diff unreadable — the diff is the evidence that the instrument
+change did what it claimed and nothing more.
+
+## 111. The case's seat relief is derived at one pose plus one declared table — nothing gates the rest
+
+Filed with item 91's closure, from the hole that closure left rather than from
+a symptom. It is item 7 ("the battery samples poses — it cannot bound them")
+made specific and considerably worse, because here the sampling decides
+GEOMETRY rather than a verdict.
+
+`CASE_SECTORS` cuts the band's seat relief by scanning the movement for
+whatever stands in the seat's volume. That scan runs once, while the case is
+being built, at whatever pose the movement is in at module-eval time — and the
+metal it cuts is then fixed for every pose the movement will ever reach. A
+mover that swings into the seat afterwards finds unbroken metal there.
+
+That is not hypothetical; it is how item 91 nearly shipped. `hackRodPin` reads
+r 37.801–38.691 at build time, clear of the seat's 40.284, and 39.889–40.786 —
+half a unit inside it — in 33 of the 42 poses the battery visits. Item 91's fix
+is standing rule 5's: the scan also consumes `LOW_LINKAGE_OBSTACLES`, the
+DECLARED swept footprint of the low linkage, which covers the pin.
+
+**What that leaves.** The relief is now sound for two populations — parts that
+stand in the seat at build time, and members of the low-linkage table. It is
+sound for a third population by luck only: any other mover that reaches the
+seat's annulus at some pose and is in neither. Nothing enumerates that third
+population and nothing gates it.
+
+Three things it would take, cheapest first:
+
+1. **Put `probe-case-relief.mjs` in the battery.** It already asks exactly this
+   question — every band body against every movement mesh over the pose net —
+   and measures in ~72 s local. It is an acceptance test today and CI does not
+   run it, so a regression here is caught by whoever remembers to run it. The
+   objection to answer first is overlap: `inspection` and `sweptOverlap` cover
+   the same pairs at a far denser net, so what this adds is per-MESH naming and
+   nothing else. That may argue for folding the naming into those checks rather
+   than adding a 37th gate.
+2. **Make the derivation see what the battery sees.** The scan's blindness is
+   structural: `setPose` lives ~8000 lines below `CASE_SECTORS`, so the case
+   cannot be cut over a pose net without moving the case build after `__clock`.
+   That is the honest fix and it is a real refactor — and it lands the case on
+   `DIGEST_ALWAYS_CHANGED`'s question (standing rule 7) unless the sampled net
+   is itself deterministic.
+3. **Or state the population.** A movement-wide equivalent of
+   `LOW_LINKAGE_OBSTACLES` for the seat's band — every mover whose z extent
+   crosses `zSeatBot..zSeatTop`, with its swept XY footprint — declared once and
+   consumed by the scan. Rule 5's pattern, a second band. This is the only one
+   of the three that keeps the derivation build-time AND complete, and the cost
+   is a table someone maintains.
+
+**A related exposure to check while here**, because it has the same shape and
+the same excuse: the scan reads the movement at build time, and if the boot
+pose ever depended on restored session state, the case's GEOMETRY would too —
+and `fingerprint`/`unitDigests` both boot virgin, so neither gate would see it.
+Measured on this branch it does not: `hackRodPin` reads identically "as booted"
+and after `resetInputs`, so the build-time pose is the construction pose and
+state restoration happens later. That is a measurement of today's boot order,
+not a guarantee of it.
