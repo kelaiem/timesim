@@ -314,6 +314,24 @@ jobs:
       - name: Case relief over the pose net (§186 / TODO 111)
         run: node tools/probe-case-relief.mjs
 
+      # ---- §187: the casing path, and the back envelope the glass hugs
+      #
+      # Two acceptances the pair sweeps structurally cannot give:
+      # · probe-187-casing-path — CAN THE MOVEMENT BE CASED. Assembly lives
+      #   between poses, so no pose-based gate ever sees a bore the rim
+      #   cannot pass — §3's flange blocked §186's rim for a day with every
+      #   sweep green. Fast (~40 s), exit 3 on a blocked path.
+      # · probe-back-envelope — the §187 glass derives AT BOOT from a
+      #   build-pose scan plus DECLARED mover allowances (boot cannot sweep
+      #   poses); this sweeps the full net and fails if any bin tops the
+      #   declaration, or if the BUILT pane/step/skirt/aperture come within
+      #   CLEAR_MARGIN of swept metal. A mover that grows reds CI here, not
+      #   the glass.
+      - name: Casing path and back envelope (§187)
+        run: |
+          node tools/probe-187-casing-path.mjs
+          node tools/probe-back-envelope.mjs
+
       # Only a run that measured the WHOLE movement may become a baseline, and
       # only from main: a report carrying `restrictedTo` inherited rows from a
       # previous baseline, and caching it would let one key error chain forward

@@ -35808,8 +35808,18 @@ window.__clock = {
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
   // §187 — the boot-measured back envelope (build-pose bins + declared
-  // swept allowances), for probe-back-envelope's declared≥swept gate.
+  // swept allowances), for probe-back-envelope's declared≥swept gate...
   backEnvelope: CASE_DIMS.backEnvelope,
+  // ...and the BUILT glass/ring numbers the same probe holds against the
+  // swept net: the pane, the step and the skirt each cleared by the one
+  // margin at every pose, and the aperture against the plate's measured
+  // reach — §187's acceptance, judged on the metal rather than on the
+  // declaration alone.
+  backGlass: {
+    apertureR: CASE_DIMS.apertureR, rStep: CASE_DIMS.rStep,
+    zStepUnder: CASE_DIMS.zStepUnder, paneInner: CASE_DIMS.zMidBack,
+    skirtBot: CASE_DIMS.zSkirtBot, skirtID: CASE_DIMS.skirtID, skirtOD: CASE_DIMS.skirtOD,
+  },
   // §158 Gate 0 — THE RESERVE TRAIN DECLARES ITS OWN TEETH. `probe-reserve-mesh`
   // is built to refuse any silhouette reading whose gap count disagrees with the
   // DECLARED count, which needs a declaration from somewhere; it carried its own

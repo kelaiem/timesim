@@ -50,15 +50,16 @@
 // excluded by name, the path must read CLEAR — proving the named parts are
 // the whole story, not an artifact of the scan.
 //
-// EXPECT: on the tree §187 starts from, BLOCKED — exit 3 with TWO
-// offenders named: §3's flange leg of caseMiddle (bore ~44.86 at
-// z ~15.3..18.1) and casePusherBoreSleeve (inboard end ~43.42 at
-// z ~5.0..9.8 — §186 kept the pre-§186 standoff for all three tube
-// openings, and for the pusher, whose z-band is INSIDE the insertion
-// path, that leaves the sleeve hanging across it; the crowns' sleeves sit
-// below the rim's back face and are the seat's business, not the path's).
-// After §187's Stage 2, CLEAR — exit 0. Any other combination is the scan
-// or the tree lying.
+// EXPECT: CLEAR — exit 0 — on every tree from §187's landing on; it rides
+// battery.yml so a regression is caught per PR. THE RECORD: on the tree
+// §187 started from this measured BLOCKED (exit 3) with TWO offenders —
+// §3's flange leg of caseMiddle (bore 44.84 at z 15.3..18.1, 1.98 mm into
+// the path) and casePusherBoreSleeve (inboard end 43.42 at z 5.0..9.8,
+// 2.52 mm — §186 kept the plate-derived standoff for all three tube
+// openings, and the pusher's z-band is INSIDE the insertion path; the
+// crowns' sleeves sit below the rim's back face and are the seat's
+// business, not the path's). §187 deleted the flange and re-cut the
+// sleeve to line only the band's own hole.
 //
 // Run: node tools/probe-187-casing-path.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';

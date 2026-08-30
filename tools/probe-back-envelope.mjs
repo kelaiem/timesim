@@ -1,12 +1,14 @@
 // WHAT STANDS ABOVE THE THREE-QUARTER PLATE — the back envelope, per member
 // and per station, SWEPT over the pose net.
 //
-// REPORT. Written for the case-redesign scope (roadmap): the caseback's glass
+// ACCEPTANCE since §187 (born as the scope's report — the §187 GATES
+// paragraph below is what turned its exit code into a verdict).
+// Written for the case-redesign scope (roadmap): the caseback's glass
 // wants to hug the movement, and the number it hugs is not a constant — it is
 // whatever the tallest metal is, wherever it is, at its worst POSE (the alarm
 // hammer swings; the link lever rocks). A rest-pose survey already lied once
-// at scale: three records name the alarm barrel as the back-most metal, and
-// §112 moved it under the plate (TODO 114).
+// at scale: three records named the alarm barrel as the back-most metal long
+// after §112 moved it under the plate (TODO 114, closed by §187).
 //
 // What this is NOT: `probe-104.mjs` surveys the striking corner's XY
 // footprint at rest for a siting decision; `probe-alarm-under-plate.mjs` asks
@@ -36,17 +38,22 @@
 // (§112 put it at ≈5.4). A run failing either exits 2 — the scan measured
 // the wrong thing.
 //
-// §187 GATE — declared ≥ swept. When the tree under test exposes
-// `__clock.backEnvelope` (the boot-measured declaration the glass is built
-// from: build-pose bins + BACK_SWEPT_ALLOWANCE + BACK_SWEPT_REGIONS), this
-// probe re-measures the envelope over the full pose net IN THE
-// DECLARATION'S OWN BINNING and fails (exit 2) on any bin where swept
-// metal tops the declaration — a mover that grows or migrates reds CI
-// here, not the glass. Scoped to metal ABOVE the plate top: every glass
-// surface stands at least the ring's own stack above the three-quarter
-// plate's top face, so metal at or below it can never govern the glass,
-// and gating it would only make the declaration carry parts the glass
-// cannot meet.
+// §187 GATES — this probe is §187's acceptance. When the tree under test
+// exposes `__clock.backEnvelope` (the boot-measured declaration the glass
+// is built from: build-pose bins + BACK_SWEPT_ALLOWANCE +
+// BACK_SWEPT_REGIONS), the probe re-measures the envelope over the full
+// pose net IN THE DECLARATION'S OWN BINNING and fails (exit 2) on any bin
+// where swept metal tops the declaration — a mover that grows or migrates
+// reds CI here, not the glass. And when the tree exposes
+// `__clock.backGlass` (the BUILT ring/glass numbers), the same swept bins
+// are held against the metal itself: the outer pane, the raised step and
+// the skirt bottom each cleared by CLEAR_MARGIN at every pose, and the
+// aperture against the three-quarter plate's measured reach — judged on
+// what was built, not only on what was declared. Scoped to metal ABOVE
+// the plate top: every glass surface stands at least the ring's own stack
+// above the three-quarter plate's top face, so metal at or below it can
+// never govern the glass, and gating it would only make the declaration
+// carry parts the glass cannot meet.
 //
 // Run: node tools/probe-back-envelope.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';
@@ -91,6 +98,7 @@ const res = await page.evaluate(async () => {
   const decl = clock.backEnvelope || null;
   const declSwept = decl ? new Array(decl.NBIN).fill(-Infinity) : null;
   const declOwner = decl ? new Array(decl.NBIN).fill(null) : null;
+  const glass = clock.backGlass || null;
   const bins = new Array(NBIN).fill(-Infinity);
   const binOwner = new Array(NBIN).fill(null);
   // §187 — the build-pose histogram, recorded beside the swept one. The
@@ -143,8 +151,25 @@ const res = await page.evaluate(async () => {
           declared: d, owner: declOwner[b], declOwner: decl.bins[b].owner });
     }
   }
+  // §187 glass rows: swept vs the BUILT surfaces, each with the one margin.
+  const MARGIN = 0.15; // CLEAR_MARGIN — quoted, and cross-checked against the gap arithmetic it polices
+  const glassFails = [];
+  if (decl && glass) {
+    for (let b = 0; b < decl.NBIN; b++) {
+      if (declSwept[b] === -Infinity) continue;
+      const mid = (decl.bins[b].r0 + decl.bins[b].r1) / 2;
+      const surf = mid < glass.rStep ? { name: 'raised step', z: glass.zStepUnder }
+        : (mid >= glass.skirtID && mid < glass.skirtOD + 0.1) ? { name: 'skirt bottom', z: glass.skirtBot }
+        : { name: 'outer pane', z: glass.paneInner };
+      if (declSwept[b] + MARGIN > surf.z + 1e-6)
+        glassFails.push({ r0: decl.bins[b].r0, r1: decl.bins[b].r1, swept: declSwept[b],
+          surface: surf.name, at: surf.z, owner: declOwner[b] });
+    }
+    if (glass.apertureR < plateR + MARGIN)
+      glassFails.push({ r0: 0, r1: 0, swept: plateR, surface: 'APERTURE vs the plate reach', at: glass.apertureR, owner: 'Three-quarter plate' });
+  }
   return {
-    hasDecl: !!decl, declFails,
+    hasDecl: !!decl, declFails, hasGlass: !!(decl && glass), glassFails,
     plateTop, plateR, rSpan, poses: poses.length,
     units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose, zBuild: u.zBuild }))
       .sort((a, b) => b.zMax - a.zMax),
@@ -176,6 +201,18 @@ if (res.hasDecl) {
   }
 } else {
   console.log('\n(§187 gate skipped: this tree exposes no __clock.backEnvelope declaration)');
+}
+if (res.hasGlass) {
+  if (res.glassFails.length) {
+    declOk = false;
+    console.log(`§187 GLASS FAIL — ${res.glassFails.length} place(s) where swept metal comes within CLEAR_MARGIN of the built back:`);
+    for (const f of res.glassFails)
+      console.log(`  r ${f.r0.toFixed(1)}..${f.r1.toFixed(1)}  swept ${f.swept.toFixed(3)} (${f.owner})  vs ${f.surface} at ${f.at.toFixed(3)}`);
+  } else {
+    console.log('§187 GLASS PASS: pane, step, skirt and aperture all clear the swept net by the margin');
+  }
+} else if (res.hasDecl) {
+  console.log('(§187 glass clauses skipped: this tree exposes no __clock.backGlass)');
 }
 
 // CONTROLS — both directions.

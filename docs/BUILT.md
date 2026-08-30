@@ -20069,3 +20069,102 @@ pusher 5.05/9.80, flange at 15.46. Fingerprint re-baselined 3880401533
 at 56 units (deterministic across virgin boots): the Case unit re-boxes
 wholesale and every part whose standoff reads `CASE_R_OUT` moves
 outboard with the band. The full battery verdict is CI's, per rule 4.
+
+## §187 — the exhibition back opens to the whole three-quarter plate, and the glass hugs a measured envelope
+
+The caseback was a screwed plate on a flange whose lip showed Ø31 mm of a
+Ø32.5 mm plate; the owner asked for the whole plate. What the work found
+first was bigger than the window: **the shipped case could not be
+assembled.** §3's construction back-loads the movement, §186 hung the
+movement from a rim of measured reach 50.0589 that must descend the back
+bore to its ledge — and §3's flange (bore 44.84, z 15.3..18.1) stood
+1.98 mm across that path. No instrument saw it: the flange never touches
+the *seated* rim, and assembly lives between poses, where no pose-based
+gate reaches. `probe-187-casing-path` is the instrument that says it in
+metal (per z-slice bore against the rim's measured reach, edges not
+vertices, mesh against mesh — its first cut held the path to
+reach + SEAT_FIT and failed the bore wall on its own 96-gon sagitta), and
+it found a SECOND blocker the same way: the pusher's sleeve, on a
+§186-inherited standoff that sleeved nothing, hanging 2.52 mm across the
+path at z 5..9.8. It now lines exactly the band's own hole, inboard end
+pressed on the bore wall.
+
+### The threaded ring
+
+The flange dies whole, and the screw family with it — thread + two pitch
+walls + gasket need ~2.35 mm of the 1.0 mm flangeless annulus — so the
+back is a THREADED RING, the owner's call revisiting §3's
+screws-over-thread call under these changed costs. The chain, one
+constraint each: skirt OD = `R_BORE_BACK − SEAT_FIT` (the one running fit
+everything entering this bore locates on); wall 0.8 mm (0.35 of declared
+thread + stock behind it — the thread modeled smooth and declared,
+§3's own precedent for its screw threads); skirt bottom = the tallest
+thing in its own annulus + `CLEAR_MARGIN`; band back face = skirt bottom
++ the §3/§186 0.7 mm engagement (18.10 → 12.08); ring face = + lip 0.6 +
+glass 0.6, §3's flush identity restated — the outer pane's INNER face is
+flush with the case's own back face. Aperture = skirt ID − SEAT_FIT
+(glass drops into the ring) − one glass-thickness of lip (a glass bears
+on a land at least its own thickness) = 46.28, asserted ≥ the plate's
+MEASURED reach + margin (43.42 — TODO 84's rule). The gasket stays
+exactly where §3 cut it: the groove + lands fit the flangeless 1.0 mm
+annulus, and the ring's face compresses the same cord the screwed plate
+did, preloaded by the thread. Two raised key lugs are the wrench
+purchase (recessed slots would be CSG; height under the glass step's
+proud stand, so the feature spends no depth). §186's clamp heads show
+their inner ~22% dead-on and whole from ~17° off-axis — that record's
+"visible casing screws" promise is honoured obliquely, and now says so.
+
+### The glass derives from a measured envelope — shape included
+
+The back stack used to hang off one `Box3` max: the whole back stood
+2.8 mm above the single tallest tower even where the movement is 3 mm
+shorter. §187 replaces the number with a SURFACE: `BACK_ENVELOPE`
+measures max z per radial bin at boot (edges, not vertices — bin-wall
+crossings solved per edge), and what boot cannot see is DECLARED and
+gated:
+
+- **Boot cannot sweep poses** (`setPose` lives thousands of lines below
+  the case build — TODO 111's structural note), so movers carry declared
+  allowances: `BACK_SWEPT_ALLOWANCE` (per-unit z headroom — one row, the
+  alarm link's beak, measured +0.099 swept over build, declared 0.12) and
+  `BACK_SWEPT_REGIONS` (standing rule 5's declared-swept-footprint
+  pattern in r–z, for movers that MIGRATE RADIALLY into bins their build
+  pose leaves empty: the hammer's strike swing out to r 42, the switch
+  cluster's spread, the striking wheel's non-axisymmetric rotation — and
+  the pusher-side linkage, which the chain's own boot assert caught on
+  its first boot standing 2.3 u higher at every canonical pose than at
+  construction: the one member measured so far for which TODO 111's
+  construction≡reset finding does NOT hold).
+- **Boot cannot see case metal either** (the scan runs before the case
+  exists), so the §186 clamp heads enter the skirt-bottom derivation as
+  an ANALYTIC term from the same constants that build them.
+- **`probe-back-envelope` in CI holds all of it**: the swept 43-pose net
+  against the declaration bin-for-bin (a mover that grows reds CI, not
+  the glass), and against the BUILT pane/step/skirt/aperture with the
+  margin — riding `battery.yml` beside the casing-path probe.
+
+The STEPPED glass then derives end to end: outer pane at the ring's own
+plane, hugging the striking tier (0.96 mm of air over the plate, from
+1.94 flat); raised step one margin over the tower's declared envelope;
+step radius = outermost too-tall bin + margin (38.85 — the switch/link
+band). Scan-don't-freeze extends to the SHAPE: when §191/§192 lower the
+tower below the pane plane, the tall-bin population empties and the same
+derivation yields a flat back with no edits here.
+
+### Measured
+
+Cased depth **14.85 → 12.75 mm**; the §39 ceiling moves DOWN with its
+stack a third time (19.2 → 16 → 14, budget 14.11 itemized at the
+assert), and the "no business under 13" prose retires with the flange
+stack it was written against — the honest floor was always the
+movement's own depth, which the assert holds. TODO 114 CLOSED (all
+three catalogued sites plus a fourth, and the class with them: the back
+derives from a measured envelope now, not from any named part).
+Acceptance on this tree: boot silent; `probe-187-casing-path` CLEAR
+(tightest bore 50.112 ≥ rim reach); `probe-back-envelope` GATE PASS +
+GLASS PASS with both controls; `probe-case-relief` CLEAR ×43 (ledge
+shut 43/43, clamp joints shut); `probe-case-closed` 0 boundary edges on
+every case body, ring, stepped glass and keys included; battery subset
+11/11 locally, the full verdict CI's. Fingerprint re-baselined
+**3944605007** (56 units, deterministic across virgin boots) — only the
+Case unit re-boxes.
