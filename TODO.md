@@ -14107,10 +14107,10 @@ tree, reverses that one sign, boots the copy, and records what complained.
 |---|---|
 | the going train's absolute sense (`main.js`) | **CAUGHT** — §47, `barrelMeshAngle runs BACKWARD` |
 | *(control)* pallet stone draw sense (`geometry.js:1215`) | **CAUGHT** — `draw torque sign wrong`, both stones |
-| escape wheel club-tooth lead | **SILENT** |
-| the mainspring winds' hand | **SILENT** |
-| every ratchet/saw tooth hand (all five) | **SILENT** |
-| the fusee groove's hand | **SILENT** |
+| escape wheel club-tooth lead | **CAUGHT** — §115, `club tip leads -ve` |
+| the mainspring winds' hand | **CAUGHT** — §115, `winds anticlockwise outward` |
+| every ratchet/saw tooth hand (all five) | **CAUGHT** — §115, `the tooth leans -ve in its pitch window` |
+| the fusee groove's hand | **CAUGHT** — §115, `winds left-handed` |
 
 **This corrects the item's own claim.** It read "of which boot asserts exactly
 ONE (§47's)". There are TWO, and the second is the escapement's — the pallet
@@ -14134,11 +14134,45 @@ train-sense row came back NO-OP *and* CAUGHT at once, because `escapeAngle` is
 a tick-time law that leaves every vertex where it was. A mutant counts as
 having had an effect if the metal moved **or** the build complained.
 
-**What this makes the reversal owe.** Four unguarded commitments have to gain
-guards BEFORE the reversal lands, not after — a half-reversed movement is
-indistinguishable from a healthy one by every instrument this repository owns,
-and the census already proved the written inventory was wrong in both
-directions.
+**The four unguarded commitments now have guards, and the table above is the
+run that proves it: 0 of 5 reverse silently.** They are boot asserts beside the
+metal they judge, each measuring the part's hand from the geometry it has just
+cut and comparing it against `MOVEMENT_SENSE` (`layout.js`) — ONE declaration
+of which way the movement runs, so a reversal flips it and every guard then
+demands its part follow.
+
+What the guards hold is COHERENCE, not a first-principles derivation of each
+hand. A part's relation to the sense (`SENSE_REL` beside its builder, e.g. the
+mainsprings' −1, measured LEFT-handed against a +1 train) is a fact about the
+metal as cut; the assert enforces that the declaration and the cut move
+TOGETHER. That is exactly the property a staged reversal needs.
+
+**Three of the guards were wrong on the first write, and the mutation probe is
+what said so** — a guard nobody has seen fire is a comment:
+
+- the ratchet guard read `outline[0]`/`[1]` as root and tip, but `reverse`
+  mirrors the points AND reverses their order, so on the one reversed saw in
+  the movement those indices are a tip and the previous root. It fired at boot
+  on shipped metal. It folds every point into one pitch window and takes the
+  radius-weighted mean now, which no ordering can disturb.
+- the mainspring guard computed its step as `sign((A − A/n) − A)` —
+  algebraically `sign(−A/n)`, a CONSTANT that never touches the emitted
+  geometry. It sat there reading the same answer whichever way the ribbon
+  wound, and the probe kept reporting that commitment SILENT with the guard
+  already in place. It reads the first two emitted points now.
+- the harness's own metal hash included the CHAIN, whose mesh is re-tessellated
+  lazily and is path-dependent (the reason `fingerprint` excludes it by name).
+  Two boots of one tree hashed 3993372851, 2256983692, 3993372851 — so the
+  NO-OP verdict, which decides whether a row tested anything, was a coin toss.
+  The chain is excluded, and the identity control now doubles as a
+  reproducibility check on the hash itself.
+
+**What remains for the reversal.** The guards make an incomplete reversal
+visible; they do not make a complete one correct. Still open: the display
+crossing (`probe-coaxial-sense.mjs`, red by design), `escapeAngle`'s own sign,
+and re-cutting the nine handed outlines and three winds — with the pallet
+stones' draw among them, which is guarded already and will go red the moment
+the wheel reverses without them.
 
 ### The wound half — two of three measured, and the third has no instrument
 

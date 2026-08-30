@@ -111,11 +111,22 @@ let port = 8540;
 // A cheap, order-stable hash over every mesh's world geometry. Enough to say
 // "the metal moved", which is all this needs — the battery's fingerprint is
 // the authority on what the metal IS.
+// THE CHAIN IS EXCLUDED, for the reason `fingerprint` excludes it by name: its
+// mesh is re-tessellated lazily and is PATH-DEPENDENT, so two boots of the same
+// tree hash differently. Measured here before it was excluded — the reference
+// read 3993372851, 2256983692 and 3993372851 across three runs of an unchanged
+// tree — which would make NO-OP fire or not fire at random, and NO-OP is the
+// verdict that decides whether a row tested anything at all.
 const GEO_HASH = `(() => {
   let h = 2166136261 >>> 0;
   const acc = (v) => { h ^= (Math.round(v * 4096) | 0) >>> 0; h = Math.imul(h, 16777619) >>> 0; };
+  const skip = new Set();
+  for (const e of window.__clock.labelEntries) {
+    if (e.name !== 'Chain') continue;
+    e.obj?.traverse?.((o) => skip.add(o));
+  }
   const objs = [];
-  window.__clock.scene.traverse((o) => { if (o.isMesh && o.geometry?.attributes?.position) objs.push(o); });
+  window.__clock.scene.traverse((o) => { if (o.isMesh && !skip.has(o) && o.geometry?.attributes?.position) objs.push(o); });
   objs.sort((a, b) => (a.name || '').localeCompare(b.name || '') || a.id - b.id);
   for (const o of objs) {
     const p = o.geometry.attributes.position;
@@ -196,6 +207,16 @@ const verdict = (r) => r.err ? 'ERROR'
 console.log('\nCONTROLS — the harness, before any subject is read\n');
 console.log(`  metal reference hash: ${baseHash ?? 'FAILED TO BOOT'}`);
 if (baseHash == null) bad++;
+// The must-miss control boots the SAME tree a second time, so its hash must
+// equal the reference. If it does not, the hash is unstable and every NO-OP
+// verdict below is a coin toss — which is exactly what the Chain's lazy
+// re-tessellation was doing before it was excluded.
+{
+  const idc = results.find((r) => r.kind === 'control-miss');
+  const stable = idc && idc.geoHash === baseHash;
+  if (!stable) bad++;
+  console.log(`  ${stable ? 'ok  ' : 'FAIL'} the hash is REPRODUCIBLE across two boots of one tree  (${baseHash} vs ${idc?.geoHash})`);
+}
 for (const r of results.filter((x) => x.kind.startsWith('control'))) {
   const v = verdict(r);
   const want = r.kind === 'control-hit' ? 'CAUGHT' : 'SILENT';
@@ -226,10 +247,17 @@ if (noop.length) {
   for (const r of noop) console.log(`    · ${r.name} — ${r.file}`);
 }
 console.log(`\n  ${silent.length} of ${subjects.length} direction commitments would reverse SILENTLY.`);
-console.log('  Every collision gate in the battery stays green through all of them: nothing there');
-console.log('  measures a direction. That is the exposure a staged reversal has to close FIRST,');
-console.log('  because the failure it produces — a movement half-reversed and confidently green —');
-console.log('  is indistinguishable from a healthy one by every instrument this repository owns.');
+if (silent.length) {
+  console.log('  Every collision gate in the battery stays green through those: nothing there measures');
+  console.log('  a direction. That is exposure a staged reversal has to close FIRST, because the failure');
+  console.log('  it produces — a movement half-reversed and confidently green — is indistinguishable');
+  console.log('  from a healthy one by every instrument this repository owns.');
+} else {
+  console.log('  Every one is guarded, so a reversal that lands incompletely now SAYS SO at boot rather');
+  console.log('  than passing every collision gate in silence. That is what this file was built to');
+  console.log('  establish, and it is the precondition TODO 115\'s reversal was waiting on — not a');
+  console.log('  claim that the reversal is correct, only that an incomplete one cannot hide.');
+}
 
 console.log(`\n${bad === 0 ? 'PASS — the controls hold, so the table above is readable' : `FAIL — ${bad} control problem(s)`}`);
 process.exit(bad === 0 ? 0 : 1);
