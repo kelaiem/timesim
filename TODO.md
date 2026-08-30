@@ -28,6 +28,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 115 | OPEN | Issue #327, and wider than reported: EVERY display the going train drives counter-rotates the wheel it is keyed to. Measured equal and opposite to the last digit — fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909 — with all FOUR of `probe-coaxial-sense.mjs`'s controls passing, so the trains are right and the defect is the dialFace frame seam. The comment justifying it ("the same physical rotation seen from opposite sides") is true about viewers and false about parts — and it is not the house rule either: the power reserve hand crosses the same seam with the OPPOSITE, correct sign (`src/main.js:33743`), measured as the probe's fourth control, so this is an inconsistency between two conventions in one file. **No one-line fix exists and the halves are measured, not argued**: negating the displays alone runs the hands backwards on a correct dial, and negating `escapeAngle` alone is strictly worse. Both, together, plus the metal that is cut for one direction — club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless sense — of which boot asserts exactly ONE (§47's, `src/main.js:1554`, measured). **The three couplings hanging off the train are now MEASURED and cost the reversal nothing** (`probe-handedness.mjs`): the alarm release notch, the heart cam, and the jumper's star and beak each have a mirror axis (0.00000–0.00654 against a ratchet saw's 0.15309, controls separating 758566×), and both swept laws read even inside the sweep's own sample step. The item's own suspicion that the release ramp was direction-committed is REFUTED — there is no ramp; the notch is the absence of track, extruded `bevelEnabled: false` |
 | 116 | CLOSED | Reported by eye: the going train's teeth meeting tooth-on-tooth instead of interlocking. Real, and in all four meshes, three worse than the reported one — **38.2% / 30.9% / 8.7% / 36.8%** of a pitch off anti-phase across a full turn of the fourth arbor — all four meshes — now **0.01–0.37%**. Every gate passed it because `solveGearChain` ran with the arbors at `rotation.z = 0` and was CORRECT there (0.02–0.21%): zero is not a pose the train occupies, and each going arbor's tick angle adds a `meshOffset` constant that is not a whole number of pitches, so the residual is a CONSTANT — exactly zero where the build tripwire reads and exactly wrong everywhere else. Two phasing systems, `meshOffset` phasing ARBORS and `solveGearChain` phasing BLANKS, neither aware of the other. Fixed by solving at the arbors' τ = 0 angles. `tools/probe-train-mesh-phase.mjs`; the alarm setting chain's 37.44%, a different cause, is left open in the item |
 | 117 | PART DONE | Found by item 116's instrument: the alarm setting wheel ⇄ i1 mesh reads **37.44% of a pitch** off anti-phase — and it is not a phase defect. `probe-mesh-transmission.mjs` asks the prior question, does each declared mesh TURN its neighbour by what the metal says, and walks each input separately because the chain has two (crown, and the hour's back-drive). Three of four meshes are exact under one input and inverted or silent under the other. **FIXED**: the arbor pinion's back-drive sign (`-3*_bd` → `+3*_bd`; −3.700 measured under both inputs now, and nothing reads that angle back). **OPEN, and not a sign**: the gearing makes the setting wheel and the disc one 1:1 pair, so the wheel must follow the hour; the disc's law is PINNED by the trip (measured at three settings — the pin bottoms when the hour hand meets the alarm hand, constant offset); and the armed pin-B coupling needs the wheel to equal the TUBE, which holds. Three laws, any two compatible — and the root cause is one fact: a FIXED reader forces the disc to encode `hour − set`, that needs a differential, and the branch doing the summing is a plain gear train, which back-drives. So the hour flows back up the whole setting train and no member carries the set term alone. **DECIDED 2026-08-29 (owner): the moving reader rides the HOUR** — the real Memovox topology. The disc carries SET only and holds still, the hour carries the reader, the branch and the differential both disappear. Open at implementation: what holds the disc once its hour-tube friction hub goes, and how the moving feeler's run to the release lifter reaches it across its travel (the expensive half, not yet measured) |
+| 118 | CLOSED (same landing) | The minute hand's 2.3 lift over the hour plane was a fat-rod literal (pre-§125), not a derivation — after §188's 0.2 mm blades it left 0.67 mm of bare air between the hands, found by the owner's eye. Derived from the built hands' own userData now; the alarm collet's "stands 0.8 proud" record error found and corrected in the same audit |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -5103,12 +5104,14 @@ Power reserve` as the same claim — no contact exists between the units, so
 the pair owes clearance everywhere (TODO 6's index row records what that
 leaves unseeded).
 
-**The central hands were checked and left alone.** The minute hand's 2.3
-and the hour/alarm planes are z-stack quantities datumed against
-`ALARM_HAND_Z`'s derived lane (the `handsGroupZOffset` record in
-`aesthetics.json` documents that derivation), not floor standoffs of this
-class; their pairs have no wells to scrape and their crossing envelope is
-bounded where the rod widths are set (`makeHand`'s crossing note).
+**The central hands were checked and left alone — and half of that
+paragraph turned out false.** The hour/alarm planes ARE datumed against
+`ALARM_HAND_Z`'s derived lane; the minute hand's 2.3 was NOT datumed
+against anything — it was a bare literal sized for the pre-§125 fat rods,
+and item 118 caught it (post-§188 it left the minute hand floating 0.67 mm
+above a 0.2 mm blade). It is derived at the placement site now; the
+crossing-envelope claim (`makeHand`'s note) was the true part and is what
+the derivation reads.
 
 *(§153 postscript: the RESERVE half of this item's fix moved on. The
 reserve sector went barely-recessed — `RESERVE_RECESS` = 0.25, under
@@ -14282,3 +14285,46 @@ probe covers the going train and the alarm setting chain only. A `transmits`
 battery check over every declared mesh, per input, is the generalisation —
 and it is a different check from `meshPhase`, because a pair can be
 perfectly phased and still not be geared at all.
+
+## 118. The minute hand's 2.3 lift over the hour hand was a fat-rod literal, not a derivation — CLOSED
+
+**Found by the owner's eye, 2026-08-30** ("the minute hand appears to
+float above the hour hand"), which is itself the finding: three
+instruments watched this stack and none could see it. Measured on the
+tree it was found on: the minute hand's plane stood 2.3 u = 0.87 mm above
+the hour plane — a literal at its placement site, sized for the pre-§125
+fat cylindrical rods ("rHour + rMinute ≈ 2.10") and never re-cut. §125
+grew the plan widths past it in silence; §188 cut both central blades to
+0.20 mm stock and re-floored the bosses at the 0.4 mm pipe land, which
+collapsed the real requirement to 1.206 u (two centred collets + the one
+CLEAR_MARGIN) — and the stranded 2.3 left **0.672 mm of bare air between
+two 0.2 mm blades**, a 4.4:1 air-to-metal ratio at the one distance the
+eye reads first.
+
+**Why no instrument caught it.** `probe-hand-stack`'s two controls are
+"the minute boss is the front-most metal" — which the float *satisfies* —
+and the alarm↔hour lane, which never involves the minute hand. The pair
+sweeps hold minimum clearances, and this is a MAXIMUM defect: too much
+air, which no clearance gate can flag. And the exemption paragraph in
+item 95's record claimed the 2.3 was "datumed against `ALARM_HAND_Z`'s
+derived lane" — false; nothing datumed it (corrected in place).
+
+**CLOSED in the same landing.** The lift derives at the placement site
+from the built hands' own userData — the largest of the four ways the two
+hands can meet (boss/boss, blade/blade, and both cross terms), each
+cleared by the one margin; boss-to-boss governs at stock (1.206). Blade
+air lands at 0.257 mm, inside the 0.2–0.3 mm running clearance real hands
+are set with (stated as the sanity cross-check, not the derivation).
+`probe-hand-stack` gains the hour→minute product and an acceptance clause
+re-deriving the expected lift from the same userData, so the gap can
+neither float nor thin again in silence. Downstream followed by
+measurement, zero edits: `handFront` → crystal → cased depth.
+
+**The audit's second catch, records only:** `makeHand`'s bossH note said a
+bored collet is "extruded 0..bossH"; the mesh centres it (`ringExtrude`
+translates to ±thickness/2). §188's freed-headroom bound inherited the
+error ("the collet stands 0.8 proud" → offset ≥ 2.402) when the true
+binder is ≈ 2.002 — so the shipped `handsGroupZOffset` 2.6 carries ~0.6 of
+headroom, not ~0.2. The metal was fine; the comment, the §188 record and
+its main.js mirror were corrected, and the 2.6 STAYS (the owner's accepted
+stack; the slack is now stated rather than mis-derived).

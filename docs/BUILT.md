@@ -19915,12 +19915,16 @@ true.
 **The freed headroom is spent.** `handsGroupZOffset` 3.4 → 2.6, and the
 governing minimum is NOT the §125 lane (which fell to ≈ 1.95 with the
 pipe-floor hub) but the hour blade's keel over the alarm hand's bored
-collet: the collet seats at 1.1 over the face and stands 0.8 proud, the
-blade sweeps the centre at (offset + DIAL_T) − rBase, DIAL_T cancels, so
-offset ≥ 1.1 + 0.8 + CLEAR_MARGIN + rBase = 2.402. The shipped 3.4 cleared
-that same collet by 0.18 with the fat blade — it was always the tight
-constraint; 2.6 carries the ~0.12–0.2 headroom every previous offset
-shipped with. Everything downstream derives: the hour tube's length, the
+collet: the collet seats at 1.1 over the face, the blade sweeps the
+centre at (offset + DIAL_T) − rBase, DIAL_T cancels. *(Corrected by
+TODO 118: this paragraph originally derived the bound as
+1.1 + 0.8 + CLEAR_MARGIN + rBase = 2.402, taking the collet as standing
+its whole 0.8 bossH proud — but ringExtrude CENTRES a bored collet
+(±bossH/2), so it stands 0.4 proud and the true binder is ≈ 2.002. The
+shipped 2.6 is safer than recorded — ~0.6 of headroom, not ~0.2 — and
+stays; the record, not the metal, was wrong.)* The shipped 3.4 cleared
+that same collet with the fat blade — it was always the tight
+constraint. Everything downstream derives: the hour tube's length, the
 crystal (`CASE_DIMS` measures `handFront`), the §39 box.
 
 ### Measured, before → after

@@ -10539,7 +10539,30 @@ const MINUTE_HAND_LEN = dialRadius * (2 * G.DIAL_CANVAS_FILL_F)
   * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
 const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute', namePrefix: 'minute' };
 const minuteHand = G.makeHand(MINUTE_HAND_SPEC);
-minuteHand.position.z = 2.3; // lifted with the wider rods: rHour + rMinute must clear this gap (see makeHand)
+// TODO 118 — the minute hand's lift over the hour plane, DERIVED at last.
+// This was `2.3`, a literal sized for the pre-§125 fat cylindrical rods
+// ("rHour + rMinute ≈ 2.10") and never re-cut: §125 widened the plans past
+// it in silence, §188 cut both blades to 0.20 mm stock and collapsed the
+// real requirement to half of it — and the minute hand shipped floating
+// 0.67 mm of bare air above a 0.2 mm blade, which is how the owner found
+// it. The lift is the largest of the four ways the two hands can meet,
+// each cleared by the one margin, read from the built hands' own userData
+// so a future boss or blade change re-binds by itself:
+//  · boss against boss (both collets are CENTRED about their planes —
+//    ±bossH/2 — and rotate relative to each other): the governing term at
+//    stock, 1.206;
+//  · hour blade's corner plane against the minute blade's keel (makeHand's
+//    crossing note — 0.678 at stock);
+//  · each blade against the other's boss (the cross terms, smaller today
+//    but written out rather than assumed away).
+// Sanity, not derivation: the resulting 0.26 mm of blade air sits inside
+// the 0.2–0.3 mm running clearance real hands are set with.
+minuteHand.position.z = Math.max(
+  hourHand.userData.bossH / 2 + CLEAR_MARGIN + minuteHand.userData.bossH / 2,
+  hourHand.userData.topRise + CLEAR_MARGIN + minuteHand.userData.floorDrop,
+  hourHand.userData.bossH / 2 + CLEAR_MARGIN + minuteHand.userData.floorDrop,
+  hourHand.userData.topRise + CLEAR_MARGIN + minuteHand.userData.bossH / 2,
+);
 handsGroup.add(minuteHand);
 
 // Small-seconds display — the hand rides the fourth wheel's own axis via
@@ -11824,18 +11847,20 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // 3.2 → 3.4 against a then-minimum of 3.278. §188 broke the coupling — the
 // central sections are stock (G.HAND_RBASE_STOCK), the hub is the pipe
 // floor (bossH ≈ 1.056) — and SPENT the freed headroom: the offset is 2.6,
-// against a governing minimum of 2.402 that is NOT the §125 lane's (that
-// one falls to ≈ 1.95) but the hour blade's KEEL over the alarm hand's
-// bored collet: the collet seats at 1.1 over the face and stands its 0.8
-// bossH proud, the hour blade sweeps the whole centre at (offset + DIAL_T)
-// − rBase, and DIAL_T cancels — offset ≥ 1.1 + 0.8 + CLEAR_MARGIN + rBase
-// = 2.402. At the shipped 3.4 that same keel cleared the collet by 0.18
-// (with the fat blade), so the constraint was always the tight one; 2.6 is
-// the 0.1-grid value carrying the ~0.12-0.2 headroom every previous offset
-// shipped with, and the ~0.3 mm it frees flows to the crystal through
-// CASE_DIMS' measured handFront. The lane is ASSERTED at the alarm hand's
-// build from the two hands' own userData, so any regression warns instead
-// of shipping thin.
+// against a governing minimum that is NOT the §125 lane's (that one falls
+// to ≈ 1.95) but the hour blade's KEEL over the alarm hand's bored collet:
+// the collet seats at 1.1 over the face, the hour blade sweeps the whole
+// centre at (offset + DIAL_T) − rBase, and DIAL_T cancels. §188's record
+// wrote that bound as offset ≥ 1.1 + 0.8 + CLEAR_MARGIN + rBase = 2.402,
+// taking the collet as standing its whole 0.8 bossH proud — and TODO 118's
+// audit found that premise wrong against the mesh: ringExtrude CENTRES the
+// bored collet (±bossH/2), so it stands 0.4 proud and the true binder is
+// 1.1 + 0.4 + CLEAR_MARGIN + rBase ≈ 2.002. The shipped 2.6 is therefore
+// SAFER than §188 recorded — ~0.6 of headroom, not ~0.2 — and it STAYS at
+// 2.6: the number was the owner's accepted stack, the record is what was
+// wrong, and the ~0.6 is now stated slack rather than mis-derived
+// tightness. The lane is ASSERTED at the alarm hand's build from the two
+// hands' own userData, so any regression warns instead of shipping thin.
 // The alarm hand seats at 1.1 at FULL scale since §188 (the 0.5 z-scale
 // faked a leaf from a five-times-stock section; at stock the leaf is the
 // section); its bored collet straddles the tube's front face at 1.1.
