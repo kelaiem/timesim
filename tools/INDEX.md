@@ -4,7 +4,7 @@
 
 # The instruments
 
-167 scripts. **74 are ACCEPTANCE tests** — they decide and exit non-zero.
+168 scripts. **75 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -178,5 +178,6 @@ when a question was asked; the summaries are what it answered.
 | `probe-swept.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
+| `probe-wound-sense.mjs` |  | acceptance | WHICH WAY DOES EACH WOUND PART WIND? — TODO 115's unmeasured half. |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |
