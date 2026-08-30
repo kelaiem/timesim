@@ -6083,9 +6083,34 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const L = len / N;
   if (!chainFrames || chainFrames.length < N)
     chainFrames = Array.from({ length: N }, () => ({ t: new THREE.Vector3(), y: new THREE.Vector3(), k: new THREE.Vector3() }));
+  // TODO 115 — WHICH SIDE OF THE LINK FACES THE CONE is a fact about where
+  // the cone's axis is, not about which way the chain happens to be walked.
+  // ŷ = k̂ × t̂ takes its sign from the tangent and the tangent reverses when
+  // the wrap does, so under the reversal "+ŷ", declared INBOARD below, turned
+  // outboard — and it turned twice over, because the §124 lean tips the stack
+  // toward +ŷ AND `userData.seat` declares its crowns on that same side. Both
+  // came out mirrored: measured, the float row read 1.286–1.491 against its
+  // 0.25 budget at EVERY reserve (0.207 on the reference build), and the
+  // burial row stayed green throughout because the outer edge had simply
+  // taken the inner edge's place. Correcting the lean alone makes it worse,
+  // not better — 2.348, a correctly leaned link measured on its outer edge —
+  // which is the tell that the frame, not the lean, is the one source. So the
+  // walk's sense is decided ONCE off the wrap's own geometry and t̂ and ŷ are
+  // negated together, which preserves the basis's handedness (and with it
+  // every normal) while putting the link's inboard side back inboard. The
+  // plate template is symmetric along t̂ — a stadium with a rivet hole at each
+  // end — so nothing else reads the direction of the walk.
+  let frameFlip = 1;
+  if (wrapArc > 0) {
+    t.subVectors(joints[1], joints[0]).normalize();
+    k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
+    y.crossVectors(k, t);
+    frameFlip = (y.x * (P.barrel.x - (joints[0].x + joints[1].x) / 2)
+      + y.y * (P.barrel.y - (joints[0].y + joints[1].y) / 2)) >= 0 ? 1 : -1;
+  }
   for (let i = 0; i < N; i++) {
     const a = joints[i], b = joints[i + 1];
-    t.subVectors(b, a).normalize();
+    t.subVectors(b, a).normalize().multiplyScalar(frameFlip);
     // Pin axis: world-vertical with the tangent's component removed, so
     // plates stay flat while the span carries its slight z slope.
     k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
@@ -6443,6 +6468,45 @@ function chainLayoutAt(tension) {
     console.warn(`§115 chain ends: the cone advances ${fuseeAdvance.toExponential(2)} rad/s while the drum runs `
       + `${drumAdvance.toFixed(4)} rad over the same drain — opposite ways, on an EXTERNAL tangent where they must `
       + `turn together (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+  // · AND DOES THE LINK LIE THE RIGHT WAY UP IN IT? The three above are all
+  //   about the RUN's path; this one is about the link's own cross-section.
+  //   §124 leans the stack into the flank and declares the crowns that seat on
+  //   it, and both of those name a side of the frame — so a reversed walk
+  //   mirrors the link inside a wrap whose path is already correct. Measured
+  //   off the built metal at full wind: the declared crowns against the cut's
+  //   own floorAt, the same pairing `penetration`'s float row makes, held here
+  //   at boot because the walk's sense is settled at build time and a battery
+  //   run is not where you want to learn it flipped.
+  {
+    const lay = chainLayoutAt(1);
+    // on its OWN buffers, `builtPtsNear`'s precedent: the shipped chain's
+    // tessellation is path-dependent, so a measurement must not be the thing
+    // that sizes it
+    const saveBuf = chainBuf, saveFrames = chainFrames;
+    chainBuf = null; chainFrames = null;
+    const geo = buildChainLinkGeometry(lay.curve, lay.wrapArc, lay.betaAtArc);
+    const seat = geo.userData?.seat, floorAt = fusee?.userData?.groove?.floorAt;
+    if (!seat?.bases?.length || !seat.crownIdx || typeof floorAt !== 'function') {
+      console.warn('§115 chain seat: no declared crowns or no cut floor to read them against — the lie is unchecked');
+    } else {
+      const pos = geo.attributes.position;
+      let worst = 0;
+      for (const base of seat.bases) {
+        for (const ci of seat.crownIdx) {
+          const j = (base + ci) * 3;
+          const r = Math.hypot(pos.array[j] - P.barrel.x, pos.array[j + 1] - P.barrel.y);
+          worst = Math.max(worst, r - floorAt(pos.array[j + 2] - (L_BARREL + FUSEE_BASE_Z)));
+        }
+      }
+      // 0.25 is the float row's own budget — link chording at the honest
+      // 2.41 chord plus the base corner residual plus tessellation slack —
+      // so the two hold ONE number. A mirrored link reads 1.29 against it.
+      if (!(worst <= 0.25))
+        console.warn(`§115 chain seat: the declared seat crowns stand ${worst.toFixed(3)} off the groove floor `
+          + `(budget 0.25) — the link is mirrored in its own wrap (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+    }
+    chainBuf = saveBuf; chainFrames = saveFrames;
+  }
 })();
 function rebuildChain(tension) {
   lastChainTension = tension;
