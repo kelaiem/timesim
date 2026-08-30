@@ -7590,8 +7590,15 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   backAsm.add(backCrystal);
   // THE WRENCH PURCHASE — two key lugs on the ring's face (a spanner
   // engages across them; recessed slots would be CSG, and a raised key is
-  // the same honest statement in weldable metal). Height under the glass
-  // step's proud stand, so the feature spends no cased depth.
+  // the same honest statement in weldable metal).
+  // §192 inverted this feature's original free ride: it was sized "under
+  // the glass step's proud stand, so the feature spends no cased depth" —
+  // true while the step topped 15.7 — but the strike tower's descent sank
+  // the step under the ring's own face, so the keys are now the case's
+  // back-most metal and DO spend their 0.15 mm. The cased depth's floor is
+  // the ring's face plane (z0, the case band's own architecture) plus
+  // these keys; lowering the tower further buys no depth past that floor,
+  // which is where §192's 1:1 drop-to-back relation honestly ends.
   const headT = 0.4 / UNIT_MM;   // §186 clamp-screw head height (their block below reads it)
   {
     const keyT = 0.15 / UNIT_MM;

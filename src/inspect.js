@@ -8644,7 +8644,21 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 119 — handsGroupZOffset derives from the blade↔blade lane;
+// Baseline (§192 — the strike tower descends toward the flat back; 56 units,
+// 12 poses):
+// 1015408335
+//   moved from 2853250929 deliberately: the whole strike tower re-boxes.
+//   The §169 pawl coil re-formed as an in-plane blade (the driver gains a
+//   third arm carrying the blade's anchor stud; the coil and its pin
+//   leave), which drops the ratchet skirt 0.839; the wheel's sections
+//   re-derive from their riders (tier 1.4 → 0.6167, base 0.7 → 0.6333),
+//   so the Alarm switch, Alarm lock and Alarm link units all come down
+//   with their stations, the link's bar-lift re-solves lower, and the
+//   Case re-boxes because the back glass's raised step follows the link
+//   tower down (its top sinks from proud-of-the-ring 15.731 to 13.915,
+//   under the ring's face). Nothing outside the strike complex and the
+//   Case moves. Measured twice on this tree (virgin double-boot).
+// Previous baseline (TODO 119 — handsGroupZOffset derives from the blade↔blade lane;
 // 56 units, 12 poses):
 // 2853250929
 //   moved from 3466530421 deliberately: the whole central display stack

@@ -20419,6 +20419,19 @@ derived depth and the declared allowance — every term derived, none
 forkable — and it ships measured, per the plan's refusal point: the
 flat back was the target, not a claim.
 
+**Where the 1:1 relation honestly ends — the cased depth found its
+floor.** The scoping baseline's 12.02 mm was the OLD glass step's top
+(z 15.731) standing proud of the exhibition ring; the descent sank the
+step below the ring's own face (13.915 against 15.244), so the case's
+back-most metal is now the ring plus its wrench keys (15.613 →
+**11.98 mm** cased) and further tower drops stop buying depth — the
+floor is the case band's own back plane, not the movement. The §187
+keys' "spends no cased depth" sizing note inverted with this and
+carries the annotation at the builder. Removing the residual 0.10 mm
+glass step would flatten the LOOK and buy zero further millimetres;
+recessing the ring's keys (a §187 revisit, not §192's) is the only
+depth left on the back.
+
 ### What did NOT move
 
 The under-plate move stayed refused on §163's measured record (sinking
