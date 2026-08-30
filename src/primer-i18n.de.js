@@ -61,6 +61,30 @@ export default {
   ['weak pull']: 'schwacher Zug',
   ['small pull × big radius']: 'kleiner Zug × großer Radius',
   ['≈ the same torque']: '≈ dasselbe Drehmoment',
+  // ---- fusee, plate 2 (§195 — the interactive bargain) ----
+  ['Plate 2 puts that bargain under your finger. Drag the reserve from a full wind down to empty — or let it play — and watch the two quantities trade places while their product holds still. That level bar is the whole reason the cone exists.']:
+    'Tafel 2 legt Ihnen diesen Handel unter den Finger. Ziehen Sie die Reserve vom vollen Aufzug bis leer — oder lassen Sie sie einfach laufen — und sehen Sie zu, wie die beiden Größen die Plätze tauschen, während ihr Produkt stillhält. Dieser waagerechte Balken ist der ganze Grund, aus dem der Kegel existiert.',
+  ['The numbers are the machine\'s own, rounded: over the 30-hour reserve the spring\'s pull fades to about three-fifths of its full-wind strength, and the cone answers by letting the lever grow about 1.7× — so their product, the third bar, does not move. The fourth bar is the watch this would be without a fusee: every push to the balance sagging in step with the spring. One simplification is drawn: the pull fades along a straight line here, where the real spring\'s fade is a measured curve — which is why the real cone\'s flank is not quite straight either. It is cut against that curve, and the bargain holds exactly.']:
+    'Die Zahlen sind die der Maschine selbst, gerundet: über die 30-Stunden-Reserve fällt der Zug der Feder auf etwa drei Fünftel seiner Stärke bei vollem Aufzug, und der Kegel antwortet, indem er den Hebel um etwa das 1,7-Fache wachsen lässt — sodass ihr Produkt, der dritte Balken, sich nicht bewegt. Der vierte Balken ist die Uhr, die dies ohne Schnecke wäre: jeder Antrieb zur Unruh sackt im Gleichschritt mit der Feder ab. Eine Vereinfachung ist gezeichnet: der Zug fällt hier entlang einer Geraden, während der Abfall der echten Feder eine gemessene Kurve ist — weshalb auch die Flanke des echten Kegels nicht ganz gerade ist. Sie ist gegen genau diese Kurve geschnitten, und der Handel geht exakt auf.',
+  ['Run the bargain yourself']: 'Führen Sie den Handel selbst',
+  ['PLATE 2']: 'TAFEL 2',
+  ['fully wound · big pull, short lever']: 'voll aufgezogen · großer Zug, kurzer Hebel',
+  ['run down · small pull, long lever']: 'abgelaufen · kleiner Zug, langer Hebel',
+  ['the product is not moving']: 'das Produkt bewegt sich nicht',
+  ['⏸ pause']: '⏸ Pause',
+  ['▶ play']: '▶ Abspielen',
+  ['the cone, side on']: 'der Kegel, von der Seite',
+  ['wide end']: 'weites Ende',
+  ['narrow end']: 'schmales Ende',
+  ['the chain walks wide as the spring fades; the lever is the radius it pulls at']:
+    'die Kette wandert ins Weite, wenn die Feder nachlässt; der Hebel ist der Radius, an dem sie zieht',
+  ['the spring\'s pull']: 'der Zug der Feder',
+  ['the lever arm']: 'der Hebelarm',
+  ['pull × lever — what the gears feel']: 'Zug × Hebel — was das Räderwerk spürt',
+  ['× 1.0']: '× 1,0',
+  ['level']: 'konstant',
+  ['if the chain pulled at one radius']: 'zöge die Kette an einem festen Radius',
+  ['reserve']: 'Reserve',
 
   // ---- gears ----
   ['Everything between the drum and the ticking is multiplication. When a wheel with many teeth drives a small pinion, the pinion turns faster in exact proportion to the tooth counts — a wheel of 120 teeth driving a pinion of 7 turns it exactly 17 1/7 times per revolution, and there is nothing more to know. Speed is bought at the price of force, the same trade as a bicycle\'s gears.']: 'Alles zwischen dem Federhaus und dem Ticken ist Multiplikation. Treibt ein Rad mit vielen Zähnen ein kleines Trieb, dreht sich das Trieb genau im Verhältnis der Zähnezahlen schneller — ein Rad mit 120 Zähnen an einem Trieb mit 7 dreht dieses genau 17 1/7 Mal je Umdrehung, und mehr gibt es dazu nicht zu wissen. Geschwindigkeit wird mit Kraft bezahlt, derselbe Handel wie bei den Gängen eines Fahrrads.',

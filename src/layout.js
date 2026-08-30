@@ -252,6 +252,31 @@ export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 // ---------------------------------------------------------------------------
 // Kinematic constants (see SPEC.md "Gear train" + "Escapement behavior")
 // ---------------------------------------------------------------------------
+// THE MOVEMENT'S RUNNING SENSE — one declaration, and every part whose METAL
+// is cut for a direction is asserted against it (TODO 115).
+//
+// +1 means the going train advances its arbors in +z, which is what §47 holds
+// at boot from the barrel's side (`barrelMeshAngle` ascending, main.js) and
+// what `probe-wound-sense.mjs` measures from the outside on the fusee arbor.
+// This constant does not CHOOSE that; it NAMES it, so the parts cut against it
+// have something to be checked against.
+//
+// Why it exists at all: `probe-direction-guards.mjs` reverses one direction
+// commitment at a time and boots the result, and measured that 4 of 5 reverse
+// in SILENCE — the club-tooth lead, both mainspring winds, all five ratchet
+// saws and the fusee groove. Every collision gate stays green through all of
+// them, because none of them measures a direction. So a half-finished reversal
+// is indistinguishable from a healthy movement, which is the failure the
+// guards below exist to make impossible.
+//
+// WHAT THE GUARDS HOLD is COHERENCE, not a first-principles derivation of each
+// hand. Each part's relation to this sense (`SENSE_REL` beside its builder) is
+// a measured fact about the metal as cut; what the assert enforces is that the
+// declaration and the metal move TOGETHER. Flip this constant without
+// re-cutting a part, or re-cut a part without flipping this, and that part
+// says so at boot.
+export const MOVEMENT_SENSE = +1;
+
 export const F_BALANCE = SPEC.vph / 7200; // Hz — balance frequency: vph/3600 beats/s, 2 beats per oscillation
 export const BEAT_DEG = 12;             // escape-wheel advance per beat (half of 24° tooth pitch)
 export const AMPLITUDE_TRUE_DEG = 270;  // "true" balance swing (physical reference, unused for mesh)
