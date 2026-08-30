@@ -31,6 +31,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 118 | CLOSED (same landing) | The minute hand's 2.3 lift over the hour plane was a fat-rod literal (pre-§125), not a derivation — after §188's 0.2 mm blades it left 0.67 mm of bare air between the hands, found by the owner's eye. Derived from the built hands' own userData now; the alarm collet's "stands 0.8 proud" record error found and corrected in the same audit |
 | 119 | CLOSED (same landing) | `handsGroupZOffset` carried 0.82 u of dead air: §188's binder (≥ 2.402) and item 118's correction (≥ 2.002) both held apart planes that never radially meet — the real governing pair is alarm blade top ↔ hour blade keel, and the offset now derives at 1.778 from it (owner-directed respend, 0.31 mm off the cased depth); §125's lane assert rewritten two-sided with a measured radial guard |
 | 120 | OPEN | The central hand collets are display fictions: the hour boss is solid at r ≤ 1.26 against a tube spanning r 2.05..2.50 (inside its own arbor's bore), the minute boss is solid over the cannon pinion, and both blades detach radially from their own bosses (roots at r 5.5/7.9 vs rims at 1.26/1.25) — each hand turns by parenting, not by any surface. Fix: bore the bosses to their arbors, bridge blade roots to bosses, declare the joints |
+| 121 | PART DONE | The strike tier's stale self-descriptions, found by §191/§192's audit. FIXED: the §163 skirt assert read a plane 0.30 above the real underside AND omitted the §169 pawl coil from its band need — 1.14 of phantom headroom against a real 0.000, blind to exactly the downward re-station §192 prices (both sides now read the raise solve's own inventory, sitting at equality); the λ "= 30" comment vs the code's SLENDER_TARGET 27; EXPECTED_PAIRS' claim of a Stop lever ⇄ plate budget row that did not exist (the row exists now). OPEN: main.js's `TQ_TOP_Z + 2.5` strike-band literal understates the built tier by ~2.4 (real ceiling Δ4.89, probe-192-tier-price) — re-authoring it can move the solved link-rod site, so it is priced in §192 rather than patched; and BUILT.md §183's arm/chamfer table disagrees with main.js's §183 comment (3.1400/0.3047 vs ~3.62/0.3516) — annotated in both places, the live derivation is the authority |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -14623,3 +14624,49 @@ and declare the two display joints in `INTRA_UNIT_CONTACTS` /
 `EXPECTED_CONTACT_FLOORS` so the fits are measured, not assumed. The
 rotation-by-parenting half (a display posed rather than driven) is item
 115's train-sense work and stays there.
+
+## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — PART DONE
+
+Found by the §191/§192 audit (the per-member z-anatomy walk that priced
+the tier), filed together because they are one defect class: **the tier
+outgrew its own descriptions and nothing was positioned to notice.** The
+§172 record already named the pattern — "the constraint written
+correctly and measured from the wrong member of the joint" — and each of
+these is that pattern one register up: the constraint written correctly
+and measured against metal that later landings moved.
+
+**FIXED in this landing:**
+
+- **The §163 skirt assert** (`main.js`, beside the raise solve) computed
+  the skirt's underside with `STOCK_MIN_U` where §169 had deepened the
+  metal to `ALARM_COL_SKIRT_H`, and its band need omitted
+  `ALARM_PAWL_COIL_H` — the term §169 made binding. It reported 1.14 of
+  headroom against a real 0.000, and it guards exactly the move §192
+  prices: a downward re-station could bury the pawl's torsion coil and
+  boot would stay silent. Both sides now read the same inventory the
+  raise solve does, so the assert sits at equality by that solve's own
+  construction; `probe-192-tier-price` measures the same 0.990 coil
+  stratum off the metal.
+- **The λ comment** on the link tail said `tailLen / height = 30` while
+  the code divides by `SLENDER_TARGET` (27) — an 11% deeper tail than
+  the prose claimed, for two landings.
+- **The phantom budget row**: `EXPECTED_PAIRS`' note said the stop
+  lever's under-plate margin was held "see CLEARANCE_BUDGETS"; no such
+  row existed. It does now, and the note tells the truth.
+
+**OPEN:**
+
+- `main.js`'s link-rod site solver bounds the strike band with a frozen
+  `TQ_TOP_Z + 2.5`, ~2.4 under the built tier's ceiling
+  (Δ4.89, measured). The solve stands today because everything between
+  2.5 and the ceiling is the tier's own metal, which the solve avoids in
+  plan — but re-authoring the bound to the measured ceiling can MOVE the
+  solved rod site, a geometry change, so it is priced in §192's table
+  rather than patched here. Fix path: when §192's implementation
+  re-stations the tier, derive this bound from the measured tier ceiling
+  in the same landing and accept the re-solved site.
+- `docs/BUILT.md` §183's table and `main.js`'s §183 comment quote
+  incompatible arm/chamfer figures (3.1400/0.3047 vs ~3.62/0.3516); one
+  went stale when an input moved. Both places now carry the annotation;
+  closing this half means re-deriving from the live expressions and
+  correcting whichever quotation is wrong.

@@ -4,7 +4,7 @@
 
 # The instruments
 
-169 scripts. **76 are ACCEPTANCE tests** — they decide and exit non-zero.
+170 scripts. **77 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -101,6 +101,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-182-subbody-index.mjs` | §182 | report | §182 — DOES A BVH BUILD INVALIDATE `userData.subBodies`? |
 | `probe-184-triple.mjs` | §184 | acceptance | THE TIER-SPLIT TRIPLE — is a bearing that is fine ALONE fine TOGETHER? |
 | `probe-187-casing-path.mjs` | §187 | acceptance | CAN THE MOVEMENT ACTUALLY BE CASED — the back bore's insertion profile against the rim's measured reach, per z-slice. |
+| `probe-192-tier-price.mjs` | §192 | acceptance | THE STRIKE TIER, PRICED — every above-plate member's height over the three-quarter plate's top face (build and swept over the alarm axes), the tower's segment ladder measured face to face, and the §187 glass arithmetic that turns a tower drop into cased height. |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |

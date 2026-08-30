@@ -605,10 +605,14 @@ const EXPECTED_PAIRS = [
   // main.js), so the plate never touches the bridge — the cock stands on
   // its own base-plate legs in open air. A clearance budget below holds
   // the gap.)
-  // ('Stop lever' ⇄ 'Three-quarter plate' is NOT expected: the
-  // blade runs under the plate at a held margin — see CLEARANCE_BUDGETS —
-  // and its anchor post lands on the base plate, which is a structure node,
-  // not a swept unit.)
+  // ('Stop lever' ⇄ 'Three-quarter plate' is NOT expected: the crank's
+  // mast stands in the plate cut's open wedge (no plate above it — the
+  // §191 footprint scan settled this; a radius-collapsed reading once
+  // charged it 0.006 mm against a face that is not there), its low arms
+  // run under the plate with ~1 mm of air, and its anchor post lands on
+  // the base plate. TODO 121: this note used to say "see
+  // CLEARANCE_BUDGETS" while no such row existed — the row exists now,
+  // so the held margin is held by a gate rather than by a comment.)
   // The two rods run a 0.22-unit corridor and touch where their routes
   // converge; the angular spread to their destinations separates them
   // beyond that. At the shipped spec that convergence is the tail post
@@ -1895,6 +1899,14 @@ const CLEARANCE_BUDGETS = [
   { a: 'Stop lever', b: 'Balance cock', min: 0.15 },
   { a: 'Stop lever', b: 'Fork cock', min: 0.15 },
   { a: 'Stop lever', b: 'Pallet fork', min: 0.15 },
+  // TODO 121 — the EXPECTED_PAIRS note above claimed this row existed for
+  // as long as the lever has run under the plate; nothing held it. The
+  // mast keeps ~1.65 to the cut wedge's fence by the §86 corner solve and
+  // the low arms ~1 mm of air to the underside, so the row measures with
+  // real margin — it exists so a §191/§192-class plate or station move
+  // cannot eat that corridor silently, the way the §125 lane fell to
+  // 0.072 with no row watching.
+  { a: 'Stop lever', b: 'Three-quarter plate', min: 0.15 },
   // (Hack rod ⇄ Reset rod is EXPECTED contact now — shared post pin
   // stack in the low corridor; see EXPECTED_PAIRS.)
   { a: 'Hack rod', b: 'Balance cock', min: 0.15 },
