@@ -19558,10 +19558,21 @@ const ALARM_COL_POS = {
   const reach = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y) + ALARM_COL_TIP_R;
   if (reach > plateR - CLEAR_MARGIN + 1e-6)
     console.warn(`§68: wheel saw tips reach r ${reach.toFixed(2)}, plate-edge bound ${(plateR - CLEAR_MARGIN).toFixed(2)}`);
-  const skirtBot = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - STOCK_MIN_U;
-  const bandNeed = CLEAR_MARGIN + ALARM_COL_DRIVER_T + CLEAR_MARGIN;   // §163: the driver runs in here
+  // TODO 121 — this assert was stale twice over and BLIND to the very move
+  // it guards. It computed the skirt bottom with STOCK_MIN_U where the metal
+  // is ALARM_COL_SKIRT_H (§169 deepened the band and this reader never
+  // followed — it measured a plane 0.30 above the real underside), and its
+  // band need predated ALARM_PAWL_COIL_H, the term §169 made binding. It
+  // showed 1.14 of headroom against a real 0.000: a §192-class downward
+  // re-station could bury the pawl's torsion coil and this would stay
+  // silent. Both sides now read the same inventory the raise solve does
+  // (19547-19549), so the assert sits AT equality by that solve's own
+  // construction — probe-192-tier-price measures the same 0.990 coil
+  // stratum and 1.456 skirt height off the metal.
+  const skirtBot = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - ALARM_COL_SKIRT_H;
+  const bandNeed = CLEAR_MARGIN + ALARM_COL_DRIVER_T + ALARM_PAWL_COIL_H;   // §163's stratum + §169's coil, the raise's own terms
   if (skirtBot < TQ_TOP_Z + bandNeed - 1e-6)
-    console.warn(`§163: ratchet skirt bottom ${skirtBot.toFixed(3)} leaves ${(skirtBot - TQ_TOP_Z).toFixed(3)} over the plate top ${TQ_TOP_Z.toFixed(3)} — the driver's stratum needs ${bandNeed.toFixed(3)}`);
+    console.warn(`§163/TODO 121: ratchet skirt underside ${skirtBot.toFixed(3)} leaves ${(skirtBot - TQ_TOP_Z).toFixed(3)} over the plate top ${TQ_TOP_Z.toFixed(3)} — the driver + pawl-coil stratum needs ${bandNeed.toFixed(3)}`);
 }
 // The rider nose the wheel sizes its flat tops for — hoisted above the rocker
 // spec that now reads it. Left where it was, it is a TEMPORAL DEAD ZONE and
@@ -20686,6 +20697,14 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   // swallowed the setting-plane wheels the real shaft clears by z.
   const shaftBand = [ALARM_LINK_SHAFT_Z - (0.26 + CLEAR_MARGIN), ALARM_LINK_SHAFT_Z + (0.26 + CLEAR_MARGIN)];
   const colBand = [ALARM_LINK_SHAFT_Z, TQ_TOP_Z + 2.5]; // up through both plates to the strike band
+  // TODO 121 (OPEN half): that 2.5 is a FROZEN description of the strike
+  // band's height and it understates the built tier by ~2.4 — the link tower
+  // tops Δ4.89 over the plate (probe-192-tier-price). The solver still
+  // stands because everything between 2.5 and the real ceiling is the tier's
+  // OWN metal (which the solve already avoids by siting the rod outside its
+  // plan), but re-authoring it to the measured ceiling could MOVE the solved
+  // rod site — a geometry change — so it is priced in §192's table rather
+  // than patched here.
   // Rotor meshes enter as DISCS about their axis (the tier-split gate's
   // shape rule): a round wheel's square box owns corners the metal never
   // visits, and the chord's own destination sits in the setting wheel's
@@ -21191,7 +21210,10 @@ const alarmLinkParts = {};
   // available dimension, so a blade earns its ratio by being deep where it is
   // loaded rather than by being fat everywhere.
   //
-  // Height derived from the ceiling, not chosen: λ = tailLen / height = 30.
+  // Height derived from the ceiling, not chosen: λ = tailLen / height =
+  // SLENDER_TARGET (27 — §54's ceiling with its 0.9 working factor; this
+  // comment said "30" for two landings while the code divided by 27, an 11%
+  // deeper tail than the prose claimed — TODO 121's third find).
   // It grows UPWARD ONLY — the underside carries the rod-top contact, and
   // dropping it would both bury the rod and close on the plate 1.02 away.
   const ALARM_LINK_TAIL_H = tailLen / SLENDER_TARGET;

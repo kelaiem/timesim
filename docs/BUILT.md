@@ -19353,6 +19353,15 @@ arm = √(postW² − readR²)   postW = ALARM_COL_TIP_R + CLEAR_MARGIN + postR 
 | `ALARM_ROCKER_READ_R` | `ALARM_COL_BASE_R + ALARM_COL_RIDER_NOSE_R` = 5.98 |
 | `ALARM_ROCKER_ARM` | **3.1400** (Thales, so radial gain is 1 by construction) |
 | `ALARM_COL_RCHAM` | arm × `ALARM_LOCK_LIFT` = **0.3047** (ceiling 0.6327) |
+
+*(TODO 121's audit: these two rows and `main.js`'s own §183 comment
+disagree — the comment beside the fold quotes a chamfer of 0.3516 and an
+arm standing ~3.62 off to the side. Both derivations are live in the
+source (`ALARM_ROCKER_ARM = √(postW² − readR²)`, chamfer = arm ×
+`ALARM_LOCK_LIFT`), so one of the two quotations went stale when an
+input moved after its record froze; the source expression, not either
+frozen number, is the authority. Re-derive from the code before quoting
+either figure anywhere new.)*
 | nose centre, column → gap | **5.9800 → 5.6754** (was an excursion of 0.00114) |
 | finger, seated → clear | **3.5000 → 3.9667**, both its solved stations |
 
@@ -20253,3 +20262,59 @@ full/half/empty × en/de: bars, chips, readout and cone all track the
 slider; the product bar does not move. The battery's paths filter takes
 this change out by its standing claim: the page and its tables are not
 on `index.html`'s module graph.
+
+## §191 — Recesses phase A, rescoped by its own instrument: the demand map was measuring ghosts
+
+**The commission** was the cheap phase of the recess series: drop the
+three-quarter plate's underside to per-region demand, pockets over the
+tall tenants, 0.3–0.5 mm of cased height expected. **What landed is the
+instrument that killed the premise** — the §38 shape, a deliberate
+outcome, owner-directed after the measurement.
+
+`probe-interplate-demand` had counted every unit as a tenant and
+collapsed each r-ring over azimuth, and both simplifications polluted
+the map the entry was scoped from. Corrected (footprint by raycast over
+a fine (r × az) grid, mixed-neighbourhood edge cells refined by a
+bounded 4×4 subgrid; riders excluded by a roster asserted against the
+scene; five controls):
+
+- **Open sky is not demand.** The plate is a three-quarter plate — the
+  balance, hairspring, cock and the stop lever's mast stand in the
+  cutaway and cut wedge with nothing above them. The scoping table's
+  alarming stop-lever row (0.006 mm) was the azimuth collapse charging
+  the underside for the mast's wedge station; its real under-plate
+  metal keeps ~1 mm.
+- **Riders are not tenants.** The pillars and the winding arrest derive
+  from `TQ_BOT_Z` and descend with any drop. The balance and fork cocks
+  looked like riders in the entry and are NOT — they stand on their own
+  legs; they are simply in the sky.
+- **Under a §62 window is an opening, not an underside.** The chain's
+  top wrap classifies under the fusee's window; for a drop it becomes
+  metal-rising-into-the-opening, like the wheel tops.
+
+**The corrected map**: true underside demand is a uniform outer band at
+7.94–7.99 (the mainspring drum's annulus — its top IS `SPRING_TOP_Z` —
+the alarm winding arrest's cantilevered arbor tops at 7.994, fusee,
+fourth, escape) under exactly the radii where the strike tier stands
+(r 13.8–39.4), and a deep centre (third wheel 6.861, centre wheel
+4.430) with nothing above it that a drop would lower. The honest
+uniform drop is `8.1845 − (7.994 + CLEAR_MARGIN)` = 0.04 u =
+**0.015 mm**; the regional construction buys cased height only where
+the tier stands, which is where there is no room. The entry's estimate
+came from the polluted map. Also settled: the "~0.03 u unattributed
+term" in `TQ_BOT_Z`'s chain is attributed and measured every boot
+(`WIND_ARREST.chainTqBoundSlack`, the chain bound's deliberate outward
+error).
+
+**What the landing shipped instead of metal**: the corrected instrument;
+`probe-192-tier-price` (the §192 scoping deliverable — the tower ladder
+measured face to face, the 1:1 drop-to-back relation asserted against
+the live §187 glass numbers, and the flat-back prize measured at
+**2.069 u = 0.78 mm**); TODO 121's three stale self-descriptions of the
+tier fixed or declared in place (the §163 skirt assert that showed 1.14
+of phantom headroom against a real 0.000, the frozen `TQ_TOP_Z + 2.5`
+tier-height literal, the λ = 30-vs-27 comment); and the
+`Stop lever ⇄ Three-quarter plate` clearance-budget row that
+`EXPECTED_PAIRS`' own note had claimed existed for as long as the lever
+has run under the plate. No geometry moved; the fingerprint holding
+still is this landing's acceptance.
