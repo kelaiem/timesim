@@ -2,7 +2,7 @@
 // chain from live constants, the alarm lane over poses, and the section
 // table a thinning would be judged by.
 //
-// REPORT. Written for the case-redesign scope (roadmap): the owner wants
+// ACCEPTANCE (originally a report). Written for the case-redesign scope (roadmap): the owner wants
 // hands THINNER in z and same-or-wider in plan. The law AS SCOPED (then
 // geometry.js 6886/6960-6962): width = √3·rBase, thickness = 1.5·rBase,
 // boss height = 2.6·rBase — one knob, three consequences — and §158's
@@ -23,6 +23,17 @@
 // boot-asserted floor (CLEAR_MARGIN) must measure as slack >= 0 at every
 // pose (the assert says it holds; a negative here means this probe measures
 // a different quantity than the assert — investigate before trusting either).
+//
+// TODO 118 — the HOUR→MINUTE product, the gap this probe was blind to: the
+// minute hand floated 0.67 mm above the hour hand for three landings and the
+// front-most-metal control was satisfied BY the float (a higher minute hand
+// is MORE front-most). ACCEPTANCE now, not a report, in both directions:
+// the measured lift must equal the lift main.js derives — re-derived here
+// from the same userData terms, asserting the EXPRESSION rather than a copy
+// of its result (the transfers-check rule) — and the tightest of the four
+// measured face-pair airs must BIND at CLEAR_MARGIN: below it is a
+// clearance defect, above it is exactly the maximum-air defect the owner
+// saw from across the room and no clearance gate can ever see.
 //
 // Run: node tools/probe-hand-stack.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';
@@ -60,11 +71,14 @@ const res = await page.evaluate(async () => {
     return { zMin, zMax };
   };
 
-  // The central hands carry NO namePrefix (their meshes are unnamed — that is
-  // §94's own point about floors rows), so find them by makeHand's signature:
-  // every hand group records userData.length/kind/rBase. Classify by (kind,
-  // length): the alarm hand is kind 'hour' at HOUR_HAND_LEN − 1.2, the reserve
-  // hand is kind 'minute' on the sub-dial floor — length disambiguates all.
+  // Find the hands by makeHand's signature — every hand group records
+  // userData.length/kind/rBase — and classify by (kind, length): the alarm
+  // hand is kind 'hour' at HOUR_HAND_LEN − 1.2, the reserve hand is kind
+  // 'minute' on the sub-dial floor, so length disambiguates all. (The
+  // central hands ARE named since §188 — namePrefix 'hour'/'minute', which
+  // the stock declarations couple by — but the signature find predates that,
+  // still catches every hand including the unnamed subdial ones, and does
+  // not couple this probe to the naming.)
   const handGroups = [];
   clock.scene.traverse((o) => {
     if (o.userData && o.userData.rBase !== undefined && o.userData.kind !== undefined && o.userData.length !== undefined)
@@ -77,6 +91,58 @@ const res = await page.evaluate(async () => {
   if (missing.length) return { error: `cannot find: ${missing.join(', ')} (found ${handGroups.length} hand groups: ${handGroups.map((g) => `${g.userData.kind}@${g.userData.length.toFixed(1)}`).join(', ')})` };
   const hands = {};
   for (const [n, h] of Object.entries(roots)) hands[n] = { ...ext(h), len: h.userData.length, rBase: h.userData.rBase, halfW: h.userData.halfW, bossH: h.userData.bossH };
+
+  // TODO 118 — the hour→minute product, measured AS BOOTED (before the lane
+  // loop poses the scene: explode translates handsGroup in z, and this pair's
+  // relative z is pose-independent — both ride the dial axis, and rotation
+  // about z moves no z extent).
+  const L = await import('./src/layout.js');
+  const CM = L.CLEAR_MARGIN;
+  const split = (root) => {
+    // boss vs blade by the §188 names: the collet is `${prefix}Boss`, every
+    // other mesh (shaft, tip, counterweight) is blade metal for this purpose —
+    // exactly the partition the userData terms describe (floorDrop/topRise
+    // are defined "boss excluded" and already fold the counterweight in).
+    const boss = { zMin: Infinity, zMax: -Infinity }, blade = { zMin: Infinity, zMax: -Infinity };
+    root.updateWorldMatrix(true, true);
+    root.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const tgt = /Boss$/.test(o.name) ? boss : blade;
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        o.localToWorld(v.fromBufferAttribute(p, i));
+        tgt.zMin = Math.min(tgt.zMin, v.z); tgt.zMax = Math.max(tgt.zMax, v.z);
+      }
+    });
+    return { boss, blade };
+  };
+  const hm = (() => {
+    const h = split(roots.hourHand), m = split(roots.minuteHand);
+    // dial side is −z and the minute hand is in front: each air is the hour
+    // side's front face against the minute side's rear face.
+    const airs = {
+      'boss ↔ boss  ': h.boss.zMin - m.boss.zMax,
+      'blade ↔ blade': h.blade.zMin - m.blade.zMax,
+      'boss ↔ blade ': h.boss.zMin - m.blade.zMax,
+      'blade ↔ boss ': h.blade.zMin - m.boss.zMax,
+    };
+    const hu = roots.hourHand.userData, mu = roots.minuteHand.userData;
+    // The SAME four-term expression main.js derives the lift from (TODO 118,
+    // main.js at minuteHand.position.z) — re-derived from the same userData,
+    // not copied as a number, so a boss or blade change moves both sides.
+    const expectedLift = Math.max(
+      hu.bossH / 2 + CM + mu.bossH / 2,
+      hu.topRise + CM + mu.floorDrop,
+      hu.bossH / 2 + CM + mu.floorDrop,
+      hu.topRise + CM + mu.bossH / 2,
+    );
+    // Both collets are CENTRED about their hand planes (ringExtrude translates
+    // −thickness/2; CylinderGeometry centres), so the plane-to-plane lift IS
+    // the boss z-centres' separation — measured off the metal, not read back
+    // from the position the build assigned.
+    const measuredLift = (h.boss.zMin + h.boss.zMax) / 2 - (m.boss.zMin + m.boss.zMax) / 2;
+    return { airs, expectedLift, measuredLift, CM };
+  })();
   // Which mesh is the true front (min z) of the MOVEMENT — walked through
   // labelEntries, not the scene: the scene carries a backdrop plane at z −90
   // that is neither schematic nor casePart, and the first cut of this scan
@@ -112,7 +178,7 @@ const res = await page.evaluate(async () => {
     const gap = (a.zMin >= h.zMax) ? a.zMin - h.zMax : h.zMin - a.zMax;
     if (gap < lane.min) lane = { min: gap, pose: p.name };
   }
-  return { hands, front, cryst, lane, poses: poses.length };
+  return { hands, front, cryst, lane, hm, poses: poses.length };
 });
 
 const MM = 0.378947;
@@ -123,6 +189,11 @@ for (const [n, e] of Object.entries(res.hands))
 console.log(`\nFRONT-MOST movement metal: ${res.front.unit} / ${res.front.name} at z ${res.front.z.toFixed(3)}`);
 if (res.cryst) console.log(`caseCrystal z ${res.cryst.zMin.toFixed(3)} .. ${res.cryst.zMax.toFixed(3)} → clearance to front metal ${((res.front.z - res.cryst.zMax) * MM).toFixed(3)} mm`);
 console.log(`\nALARM↔HOUR lane over ${res.poses} poses: min separation ${res.lane.min.toFixed(4)} u = ${(res.lane.min * MM).toFixed(3)} mm  @ ${res.lane.pose}  (CLEAR_MARGIN = 0.15 u)`);
+
+console.log(`\nHOUR→MINUTE stack (TODO 118; as booted — pose-independent for this pair):`);
+for (const [n, a] of Object.entries(res.hm.airs))
+  console.log(`  ${n}  air ${a.toFixed(4)} u = ${(a * MM).toFixed(3)} mm`);
+console.log(`  lift measured off the boss metal ${res.hm.measuredLift.toFixed(4)} u; derived from userData ${res.hm.expectedLift.toFixed(4)} u  (CLEAR_MARGIN = ${res.hm.CM} u)`);
 
 // The section table (pure arithmetic from the read law — printed so the entry
 // quotes a table someone can re-derive, not loose numbers).
@@ -141,5 +212,14 @@ if (!isMinuteBoss) { ok = false; console.log(`\nCONTROL FAIL: front-most metal i
 else console.log(`\nCONTROL PASS: front-most metal is the minute hand (${res.front.name}) — the crystal chain's premise holds`);
 if (res.lane.min < 0) { ok = false; console.log(`CONTROL FAIL: alarm↔hour lane measured NEGATIVE (${res.lane.min.toFixed(4)}) while the boot assert passes — this probe measures a different quantity than the assert; distrust both until reconciled`); }
 else console.log(`CONTROL PASS: alarm↔hour lane non-negative at every pose`);
+
+// TODO 118 ACCEPTANCE — both directions.
+const liftErr = Math.abs(res.hm.measuredLift - res.hm.expectedLift);
+if (liftErr > 1e-3) { ok = false; console.log(`ACCEPT FAIL: hour→minute lift measured ${res.hm.measuredLift.toFixed(4)} vs derived ${res.hm.expectedLift.toFixed(4)} (Δ ${liftErr.toFixed(4)}) — the build's lift and this expression have parted; one of them is not reading the hands' userData`); }
+else console.log(`ACCEPT PASS: hour→minute lift = the four-term userData derivation (Δ ${liftErr.toExponential(1)})`);
+const minAir = Math.min(...Object.values(res.hm.airs));
+if (minAir < res.hm.CM - 1e-3) { ok = false; console.log(`ACCEPT FAIL: tightest hour→minute air ${minAir.toFixed(4)} u < CLEAR_MARGIN — a clearance defect between the central hands`); }
+else if (minAir > res.hm.CM + 5e-3) { ok = false; console.log(`ACCEPT FAIL: tightest hour→minute air ${minAir.toFixed(4)} u does not BIND at CLEAR_MARGIN — the minute hand is floating again (the 2.3-era literal measured 1.244 here); the governing pair must sit AT the margin, not above it`); }
+else console.log(`ACCEPT PASS: tightest hour→minute air binds at CLEAR_MARGIN (${minAir.toFixed(4)} u)`);
 await browser.close(); srv.kill();
 process.exit(ok ? 0 : 2);
