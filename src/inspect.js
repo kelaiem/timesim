@@ -8633,8 +8633,19 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§186 — the case rebuilt around a rim-mounted movement; 56 units,
+// Baseline (§187 — the exhibition back opens on a threaded ring; 56 units,
 // 12 poses):
+// 3944605007
+//   moved from 3880401533 deliberately: the Case unit's whole back re-boxes
+//   — §3's flange and its six screws deleted (the flange stood across
+//   §186's casing path, measured by probe-187-casing-path), the band's
+//   back face dropping 18.10 → 12.08, the threaded ring with its stepped
+//   glass and two key lugs replacing the screwed plate, and the pusher's
+//   sleeve re-cut to line only the band's own hole. Only the Case moves —
+//   every movement unit's box is untouched, which is why the hash step is
+//   one unit wide. Measured twice on this tree (virgin double-boot).
+// Previous baseline (§186 — the case rebuilt around a rim-mounted movement;
+// 56 units, 12 poses):
 // 3880401533
 //   moved from 4245145891 deliberately: the back band spends the owner's
 //   40 mm body budget whole (CASE_R_OUT 48.20 → 52.78), so the Case unit

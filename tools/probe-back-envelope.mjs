@@ -1,30 +1,59 @@
 // WHAT STANDS ABOVE THE THREE-QUARTER PLATE — the back envelope, per member
 // and per station, SWEPT over the pose net.
 //
-// REPORT. Written for the case-redesign scope (roadmap): the caseback's glass
+// ACCEPTANCE since §187 (born as the scope's report — the §187 GATES
+// paragraph below is what turned its exit code into a verdict).
+// Written for the case-redesign scope (roadmap): the caseback's glass
 // wants to hug the movement, and the number it hugs is not a constant — it is
 // whatever the tallest metal is, wherever it is, at its worst POSE (the alarm
 // hammer swings; the link lever rocks). A rest-pose survey already lied once
-// at scale: three records name the alarm barrel as the back-most metal, and
-// §112 moved it under the plate (TODO 114).
+// at scale: three records named the alarm barrel as the back-most metal long
+// after §112 moved it under the plate (TODO 114, closed by §187).
 //
 // What this is NOT: `probe-104.mjs` surveys the striking corner's XY
 // footprint at rest for a siting decision; `probe-alarm-under-plate.mjs` asks
 // whether the module fits BELOW the plate. Neither sweeps poses nor reports
 // the z-envelope the caseback must clear, which is this file's one question.
 //
-// Three products:
+// Four products:
 //   1. per-UNIT z-max over the whole net, with the pose that set it — the
 //      caseback's floor, and E7's (strike-tier sinking) price list;
 //   2. a radial histogram of the envelope (max z per r-bin over all poses) —
 //      what a stepped or domed glass could hug at each radius;
 //   3. the daylight ledger over the three-quarter plate: envelope minus
-//      plate-top, per r-bin.
+//      plate-top, per r-bin;
+//   4. §187 — the BUILD-POSE histogram and per-unit z-max beside the swept
+//      ones, with the swept-minus-build DELTA per unit. §187's glass derives
+//      at boot, and boot cannot sweep poses (setPose lives thousands of
+//      lines below the case build — TODO 111's structural note), so the boot
+//      derivation is build-pose scan + DECLARED mover allowances; this
+//      product is where those allowance numbers are MEASURED rather than
+//      guessed, and the delta column is the allowance table's source.
+//      ("Build pose" here is the canonical reset pose — TODO 111 measured
+//      the construction pose and the reset pose identical; the going train's
+//      tau drift between them is rotation about z and cannot move a z-max.)
 //
 // Controls (both directions, asserted): the alarm link tower MUST appear
 // above the plate (rest measurement 13.877); the alarm barrel MUST NOT
 // (§112 put it at ≈5.4). A run failing either exits 2 — the scan measured
 // the wrong thing.
+//
+// §187 GATES — this probe is §187's acceptance. When the tree under test
+// exposes `__clock.backEnvelope` (the boot-measured declaration the glass
+// is built from: build-pose bins + BACK_SWEPT_ALLOWANCE +
+// BACK_SWEPT_REGIONS), the probe re-measures the envelope over the full
+// pose net IN THE DECLARATION'S OWN BINNING and fails (exit 2) on any bin
+// where swept metal tops the declaration — a mover that grows or migrates
+// reds CI here, not the glass. And when the tree exposes
+// `__clock.backGlass` (the BUILT ring/glass numbers), the same swept bins
+// are held against the metal itself: the outer pane, the raised step and
+// the skirt bottom each cleared by CLEAR_MARGIN at every pose, and the
+// aperture against the three-quarter plate's measured reach — judged on
+// what was built, not only on what was declared. Scoped to metal ABOVE
+// the plate top: every glass surface stands at least the ring's own stack
+// above the three-quarter plate's top face, so metal at or below it can
+// never govern the glass, and gating it would only make the declaration
+// carry parts the glass cannot meet.
 //
 // Run: node tools/probe-back-envelope.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';
@@ -64,10 +93,20 @@ const res = await page.evaluate(async () => {
   }
   const NBIN = 60;                 // r-bins across [0, plateR·1.15]
   const rSpan = plateR * 1.15;
+  // §187 — the declaration under test, when the tree carries one. The gate
+  // histogram uses ITS binning, so the comparison is bin-for-bin.
+  const decl = clock.backEnvelope || null;
+  const declSwept = decl ? new Array(decl.NBIN).fill(-Infinity) : null;
+  const declOwner = decl ? new Array(decl.NBIN).fill(null) : null;
+  const glass = clock.backGlass || null;
   const bins = new Array(NBIN).fill(-Infinity);
   const binOwner = new Array(NBIN).fill(null);
-  const units = new Map();         // name → { zMax, pose }
-  const poses = [{ name: 'as booted', enter: () => {} }];
+  // §187 — the build-pose histogram, recorded beside the swept one. The
+  // first pose in the walk is the CANONICAL RESET pose (enterAxis with no
+  // setPose), which is the pose the boot derivation measures at.
+  const binsBuild = new Array(NBIN).fill(-Infinity);
+  const units = new Map();         // name → { zMax, pose, zBuild }
+  const poses = [{ name: 'build pose (canonical reset)', enter: () => { I.enterAxis(clock); }, isBuild: true }];
   for (const ax of I.AXES) for (const f of [0, 0.5, 1])
     poses.push({ name: `${ax.name} f=${f}`, enter: () => { I.enterAxis(clock); clock.setPose(ax.pose(f, clock)); } });
 
@@ -83,32 +122,97 @@ const res = await page.evaluate(async () => {
         for (let i = 0; i < pos.count; i++) {
           o.localToWorld(v.fromBufferAttribute(pos, i));
           if (v.z <= plateTop) continue;                // only what stands ABOVE the plate top
-          const u = units.get(e.name) || { zMax: -Infinity, pose: '' };
+          const u = units.get(e.name) || { zMax: -Infinity, pose: '', zBuild: -Infinity };
           if (v.z > u.zMax) { u.zMax = v.z; u.pose = p.name; }
+          if (p.isBuild && v.z > u.zBuild) u.zBuild = v.z;
           units.set(e.name, u);
           const b = Math.min(NBIN - 1, Math.floor(Math.hypot(v.x, v.y) / rSpan * NBIN));
           if (v.z > bins[b]) { bins[b] = v.z; binOwner[b] = e.name; }
+          if (p.isBuild && v.z > binsBuild[b]) binsBuild[b] = v.z;
+          if (decl) {
+            const r = Math.hypot(v.x, v.y);
+            if (r < decl.rSpan) {
+              const db = Math.floor(r / decl.rSpan * decl.NBIN);
+              if (v.z > declSwept[db]) { declSwept[db] = v.z; declOwner[db] = e.name; }
+            }
+          }
         }
       });
     }
   }
+  // §187 gate rows: swept vs declared, in the declaration's bins.
+  const declFails = [];
+  if (decl) {
+    for (let b = 0; b < decl.NBIN; b++) {
+      if (declSwept[b] === -Infinity) continue;
+      const d = decl.bins[b].z;
+      if (d === null || declSwept[b] > d + 1e-6)
+        declFails.push({ r0: decl.bins[b].r0, r1: decl.bins[b].r1, swept: declSwept[b],
+          declared: d, owner: declOwner[b], declOwner: decl.bins[b].owner });
+    }
+  }
+  // §187 glass rows: swept vs the BUILT surfaces, each with the one margin.
+  const MARGIN = 0.15; // CLEAR_MARGIN — quoted, and cross-checked against the gap arithmetic it polices
+  const glassFails = [];
+  if (decl && glass) {
+    for (let b = 0; b < decl.NBIN; b++) {
+      if (declSwept[b] === -Infinity) continue;
+      const mid = (decl.bins[b].r0 + decl.bins[b].r1) / 2;
+      const surf = mid < glass.rStep ? { name: 'raised step', z: glass.zStepUnder }
+        : (mid >= glass.skirtID && mid < glass.skirtOD + 0.1) ? { name: 'skirt bottom', z: glass.skirtBot }
+        : { name: 'outer pane', z: glass.paneInner };
+      if (declSwept[b] + MARGIN > surf.z + 1e-6)
+        glassFails.push({ r0: decl.bins[b].r0, r1: decl.bins[b].r1, swept: declSwept[b],
+          surface: surf.name, at: surf.z, owner: declOwner[b] });
+    }
+    if (glass.apertureR < plateR + MARGIN)
+      glassFails.push({ r0: 0, r1: 0, swept: plateR, surface: 'APERTURE vs the plate reach', at: glass.apertureR, owner: 'Three-quarter plate' });
+  }
   return {
+    hasDecl: !!decl, declFails, hasGlass: !!(decl && glass), glassFails,
     plateTop, plateR, rSpan, poses: poses.length,
-    units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose }))
+    units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose, zBuild: u.zBuild }))
       .sort((a, b) => b.zMax - a.zMax),
-    bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan, zMax: z, owner: binOwner[i] })),
+    bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan, zMax: z, owner: binOwner[i], zBuild: binsBuild[i] })),
   };
 });
 
 const MM = 0.378947;
 console.log(`plate top MEASURED z ${res.plateTop.toFixed(4)} (r ${res.plateR.toFixed(3)}), ${res.poses} poses swept\n`);
-console.log('UNIT z-max ABOVE the plate top (u / mm proud), worst pose:');
+console.log('UNIT z-max ABOVE the plate top (u / mm proud), worst pose — and §187\'s swept−build delta:');
 for (const u of res.units.slice(0, 20))
-  console.log(`  ${u.name.padEnd(28)} ${u.zMax.toFixed(3).padStart(8)}  +${((u.zMax - res.plateTop) * MM).toFixed(2)} mm  @ ${u.pose}`);
-console.log('\nRADIAL ENVELOPE (r-bin → max z over all poses, owner):');
+  console.log(`  ${u.name.padEnd(28)} ${u.zMax.toFixed(3).padStart(8)}  +${((u.zMax - res.plateTop) * MM).toFixed(2)} mm  build ${u.zBuild === -Infinity ? '   (below plate)' : u.zBuild.toFixed(3).padStart(8)}  Δ ${(u.zMax - (u.zBuild === -Infinity ? res.plateTop : u.zBuild)).toFixed(3)}  @ ${u.pose}`);
+console.log('\nRADIAL ENVELOPE (r-bin → max z over all poses / at build pose, owner):');
 for (const b of res.bins) {
   if (b.zMax === -Infinity) continue;
-  console.log(`  r ${b.r0.toFixed(1).padStart(5)}..${b.r1.toFixed(1).padEnd(5)}  z ${b.zMax.toFixed(3).padStart(7)}  daylight-over-plate ${((b.zMax - res.plateTop) * MM).toFixed(2).padStart(5)} mm  ${b.owner}`);
+  console.log(`  r ${b.r0.toFixed(1).padStart(5)}..${b.r1.toFixed(1).padEnd(5)}  z ${b.zMax.toFixed(3).padStart(7)}  build ${b.zBuild === -Infinity ? '      —' : b.zBuild.toFixed(3).padStart(7)}  Δ ${(b.zBuild === -Infinity ? b.zMax - res.plateTop : b.zMax - b.zBuild).toFixed(3).padStart(6)}  daylight ${((b.zMax - res.plateTop) * MM).toFixed(2).padStart(5)} mm  ${b.owner}`);
+}
+
+// §187 GATE — declared ≥ swept, when the tree declares.
+let declOk = true;
+if (res.hasDecl) {
+  if (res.declFails.length) {
+    declOk = false;
+    console.log(`\n§187 GATE FAIL — ${res.declFails.length} bin(s) where the swept envelope tops the boot declaration:`);
+    for (const f of res.declFails)
+      console.log(`  r ${f.r0.toFixed(1)}..${f.r1.toFixed(1)}  swept ${f.swept.toFixed(3)} (${f.owner})  declared ${f.declared === null ? 'NOTHING' : f.declared.toFixed(3)} (${f.declOwner ?? '—'}) — grow the unit's allowance or region row, with the measurement`);
+  } else {
+    console.log('\n§187 GATE PASS: every swept bin sits at or under the boot declaration (build + allowances + regions)');
+  }
+} else {
+  console.log('\n(§187 gate skipped: this tree exposes no __clock.backEnvelope declaration)');
+}
+if (res.hasGlass) {
+  if (res.glassFails.length) {
+    declOk = false;
+    console.log(`§187 GLASS FAIL — ${res.glassFails.length} place(s) where swept metal comes within CLEAR_MARGIN of the built back:`);
+    for (const f of res.glassFails)
+      console.log(`  r ${f.r0.toFixed(1)}..${f.r1.toFixed(1)}  swept ${f.swept.toFixed(3)} (${f.owner})  vs ${f.surface} at ${f.at.toFixed(3)}`);
+  } else {
+    console.log('§187 GLASS PASS: pane, step, skirt and aperture all clear the swept net by the margin');
+  }
+} else if (res.hasDecl) {
+  console.log('(§187 glass clauses skipped: this tree exposes no __clock.backGlass)');
 }
 
 // CONTROLS — both directions.
@@ -120,4 +224,4 @@ else console.log(`\nCONTROL PASS: alarm link tower found at ${tower.zMax.toFixed
 if (barrel) { ok = false; console.log(`CONTROL FAIL: the alarm barrel appears ABOVE the plate at ${barrel.zMax.toFixed(3)} — §112 put it below; the scan or the tree is wrong`); }
 else console.log('CONTROL PASS: the alarm barrel is not above the plate (§112 holds)');
 await browser.close(); srv.kill();
-process.exit(ok ? 0 : 2);
+process.exit(ok && declOk ? 0 : 2);
