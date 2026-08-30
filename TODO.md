@@ -14337,17 +14337,22 @@ and orbiting that:
 So a reader confined to the track's own radius orbits freely with **0.4153**
 of clearance, about 2.8× `CLEAR_MARGIN`. Today's feeler reaches r 2.91 → 14.261
 and gets 45° of scattered fragments (best gap over the orbit 0.051, median
-0.0225, worst 0.0025), dominated by the **alarm release sleeve (130°)**, then
-the power-reserve train (50°), the selector (35°), the alarm setting idler and
-the link (30° each), the silence rocker and the keyless works (15° each) and
-the release lifter (10°).
+0.0225, worst 0.0018), dominated by the **alarm release sleeve (130°)**, then
+the power-reserve train (50°), the alarm setting idler and the selector
+(35° each), the link (25°), the silence rocker and the keyless works
+(15° each) and the release lifter (10°).
 
-(These figures were re-measured on the post-§186/§188 tree — the case rebuilt
-around a rim-mounted movement and the hands cut from stock. The conclusion is
-unmoved and the constraint is unmoved; what shifted is small and in the third
-decimal, plus a reshuffle among the minor blockers. Recorded because the rule
-is to measure the tree you have: the numbers a branch inherits from its parent
-describe a movement that no longer exists.)
+(These figures have been re-measured twice, on the post-§186/§188 tree and
+again on §187's, because this branch was rebased across all three and the rule
+is to measure the tree you have — the numbers a branch inherits from its parent
+describe a movement that no longer exists. Both times the conclusion and the
+constraint were unmoved and what shifted was third-decimal, which is the useful
+result: the feeler's crowding is a dial-side fact, and the case landings that
+have been reshaping the movement around it do not reach it. The one figure that
+moved on each pass is the ORBIT'S WORST gap — 0.0019, then 0.0025, now 0.0018 —
+which is the minimum over 72 stations and so is the number most exposed to any
+part moving anywhere near the orbit. Nothing that decides the topology depends
+on it.)
 
 **The bar is the SHIPPED station, not `CLEAR_MARGIN`, and that is a finding of
 its own.** The feeler already sits **0.0458** from the alarm winding train
