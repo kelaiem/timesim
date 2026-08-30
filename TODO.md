@@ -1098,6 +1098,23 @@ expect contact-on-column / free-in-gap parity — the same shape as
 the link beak's row. Closing item 11's layout § would rework this
 joint anyway; whichever lands first carries it.
 
+**§192 annotation — the switch tranche's "real-scale sections" are now
+DERIVED, and the proportion claim is retired with its residue named.**
+This item's switch tranche took the column wheel's base to 0.7 and its
+tier to 1.4 as real proportions at real diameter (Ø 4.32 mm), which was
+honest about a LOOK. §192's flat-back campaign re-founded both on the
+riders' constraint set: the tier is `STOCK_MIN_U + 2·CLEAR_MARGIN`
+(the rocker beak's band — the governing rider; the link beak's
+seat-caught fall wants only 0.0218 + margin), and the base is the
+journal law on its stud (`2·studR + 0.05 − SKIRT_H`; the old 0.7 gave
+L/D 1.06, so it was already sized AT the constraint carrying 0.06
+loose). The realism residue is real and recorded here rather than kept
+in metal: a physical chronograph's tier is deeper than its riders
+strictly need (≈0.5 mm against the derived 0.23 mm), because a real
+beak is a hand-finished steel finger with engagement safety this
+model's solved poses don't consume. If a future item wants the LOOK
+back, it buys it in z knowingly, against §192's measured price table.
+
 **Closed 2026-08-02, exactly along that path.** The nose rises off
 the tail's end into the castellation band (mid-band, clear of the
 base disc below and the tier's top), and its inward face lands on
@@ -14625,7 +14642,7 @@ and declare the two display joints in `INTRA_UNIT_CONTACTS` /
 rotation-by-parenting half (a display posed rather than driven) is item
 115's train-sense work and stays there.
 
-## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — PART DONE
+## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — PART DONE (rod literal closed by §192)
 
 Found by the §191/§192 audit (the per-member z-anatomy walk that priced
 the tier), filed together because they are one defect class: **the tier
@@ -14654,17 +14671,19 @@ and measured against metal that later landings moved.
   lever's under-plate margin was held "see CLEARANCE_BUDGETS"; no such
   row existed. It does now, and the note tells the truth.
 
+**CLOSED by §192 (the rod-literal half):** the link-rod site solver's
+strike-band bound was a frozen `TQ_TOP_Z + 2.5`; it is now the column
+stack top derived from the same constants that cut the wheel, plus the
+one margin, and tracks any future re-station. The priced risk — that
+re-authoring could move the solved rod site — was measured across the
+change and did not bite: the site is byte-identical, because every unit
+with metal in the widened span was already excluded as the link's own
+neighbourhood. (The same landing also took the §169 coil term OUT of
+the skirt assert this item fixed, both sides still reading the raise
+solve's own inventory — see §192's record.)
+
 **OPEN:**
 
-- `main.js`'s link-rod site solver bounds the strike band with a frozen
-  `TQ_TOP_Z + 2.5`, ~2.4 under the built tier's ceiling
-  (Δ4.89, measured). The solve stands today because everything between
-  2.5 and the ceiling is the tier's own metal, which the solve avoids in
-  plan — but re-authoring the bound to the measured ceiling can MOVE the
-  solved rod site, a geometry change, so it is priced in §192's table
-  rather than patched here. Fix path: when §192's implementation
-  re-stations the tier, derive this bound from the measured tier ceiling
-  in the same landing and accept the re-solved site.
 - `docs/BUILT.md` §183's table and `main.js`'s §183 comment quote
   incompatible arm/chamfer figures (3.1400/0.3047 vs ~3.62/0.3516); one
   went stale when an input moved. Both places now carry the annotation;
