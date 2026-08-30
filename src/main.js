@@ -19475,8 +19475,31 @@ const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scal
 // the same circle and is built 2000 lines earlier — one declaration, two
 // consumers, no second literal.
 const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;
-const ALARM_COL_BASE_H = 0.7;      // base disc 0.27 mm
-const ALARM_COL_H = 1.4;           // castellation tier 0.53 mm — real proportion at real diameter
+// §192 — the castellation tier's height DERIVED from its riders, where
+// TODO 11 set it by proportion (1.4, "castellation tier 0.53 mm — real
+// proportion at real diameter"). The §192 fork convention: a changed spec row
+// re-derives from the movement constraint that forced it, in place. What
+// actually works in this band, measured:
+//   · the lock rocker's beak — a §50-floor cylinder riding the column outer
+//     faces at band mid, wanting one running margin at each face:
+//     STOCK_MIN_U + 2·CLEAR_MARGIN (the governing floor);
+//   · the link beak's fall into a gap — caught by the SEAT (the ring's full
+//     travel reflected back through the lever, F.seatNoseDrop), wanting one
+//     margin off the gap floor: ALARM_COL_SEAT_DROP_SPEC + CLEAR_MARGIN.
+// The proportion this retires was honest ABOUT A LOOK; the riders are what
+// the feature is FOR, and the residue (a real chronograph's tier is deeper
+// than its riders strictly need) is recorded at TODO 11's annotation rather
+// than silently kept at 2.3× the derived height.
+//
+// The seat drop is a SPEC here because the wheel is cut long before the link
+// that measures it exists — §169's COILS convention: the link build re-derives
+// F.seatNoseDrop from live constants and warns if the two part.
+// (0.0237 before §192's own sections landed — the drop reads the folded
+// linkage, so the spec is the fixed point of the fork it feeds: COL_H's max()
+// is governed by the rocker term either way, so one re-derivation converges.)
+const ALARM_COL_SEAT_DROP_SPEC = 0.0218;
+const ALARM_COL_H = Math.max(STOCK_MIN_U + 2 * CLEAR_MARGIN,
+                             ALARM_COL_SEAT_DROP_SPEC + CLEAR_MARGIN);
 const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
 // §68's second move — the RAISED STRATUM. Inboard of the rim the
 // three-quarter plate runs under the wheel, and the collar-bound lever z
@@ -19512,6 +19535,18 @@ const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06
 // margin at EACH face — and the pawl is centred in it, which is the same
 // arithmetic a real ratchet's tooth band is cut to.
 const ALARM_COL_SKIRT_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;
+// §192 — the base disc's height DERIVED from its bearing, where TODO 11 set
+// it by proportion (0.7, "base disc 0.27 mm"). The wheel spins on a fixed
+// stud — a journal — and its bore engages that stud from the skirt's
+// underside up to the tip parked 0.05 under the base's top face (§68's
+// concealment margin, declared at the stud). A journal wants its length no
+// shorter than its diameter, so the base supplies what the skirt does not:
+//   SKIRT_H + BASE_H − 0.05 ≥ stud Ø = 2·(ALARM_COL_BORE_R − 0.06)
+// Declared here because the skirt height is a term; the old 0.7 gave the
+// journal L/D 1.06, so the proportion was already sized AT this constraint
+// — the fork writes the constraint down and keeps the 0.06 it was carrying
+// loose.
+const ALARM_COL_BASE_H = 2 * (ALARM_COL_BORE_R - 0.06) + 0.05 - ALARM_COL_SKIRT_H;
 const ALARM_COL_DRIVER_T = STOCK_MIN_U;   // the driver runs at §50's floor, like every blade here
 // §192 — THE PAWL'S SPRING LEFT THE Z-STACK, so the raise no longer carries a
 // spring term at all. §169's torsion coil stood in its own
@@ -20222,7 +20257,14 @@ const alarmLockRocker = new THREE.Group();
 alarmLockRocker.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
 alarmLockUnit.add(alarmLockRocker);
 {
-  const beakH = ALARM_COL_H * 0.6;              // as the old nose: inside the band, clear of both faces
+  // §192 — the band minus one running margin per face. The 0.6 factor it
+  // replaces was never derived ("as the old nose") and its per-face clearance
+  // crossed CLEAR_MARGIN at COL_H 0.75 with nothing watching; this form keeps
+  // the margins exact at any tier height, and the tier's own floor
+  // (STOCK_MIN_U + 2·CM at the wheel) is what keeps the beak at §50 stock.
+  const beakH = ALARM_COL_H - 2 * CLEAR_MARGIN;
+  if (beakH < STOCK_MIN_U - 1e-9)
+    console.warn(`§192: the rocker beak solves to ${beakH.toFixed(4)} tall, under §50's ${STOCK_MIN_U.toFixed(4)} floor — the tier no longer affords its own rider`);
   const armW = STOCK_MIN_U;
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_ROCKER_ARM, armW, armW), MATS.steel);
   arm.name = 'alarmLockRockerArm';
@@ -20677,15 +20719,16 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   // inside bushes r 0.26 — plus the one margin. 0.45 was a guess and it
   // swallowed the setting-plane wheels the real shaft clears by z.
   const shaftBand = [ALARM_LINK_SHAFT_Z - (0.26 + CLEAR_MARGIN), ALARM_LINK_SHAFT_Z + (0.26 + CLEAR_MARGIN)];
-  const colBand = [ALARM_LINK_SHAFT_Z, TQ_TOP_Z + 2.5]; // up through both plates to the strike band
-  // TODO 121 (OPEN half): that 2.5 is a FROZEN description of the strike
-  // band's height and it understates the built tier by ~2.4 — the link tower
-  // tops Δ4.89 over the plate (probe-192-tier-price). The solver still
-  // stands because everything between 2.5 and the real ceiling is the tier's
-  // OWN metal (which the solve already avoids by siting the rod outside its
-  // plan), but re-authoring it to the measured ceiling could MOVE the solved
-  // rod site — a geometry change — so it is priced in §192's table rather
-  // than patched here.
+  // §192 closed TODO 121's open half here: the band's top was a frozen 2.5
+  // ("up through both plates to the strike band") that understated the built
+  // tier — the strike band's top IS the column stack's, so it is derived from
+  // the same constants that cut the wheel, plus the one margin, and tracks
+  // any future re-station. Re-authoring it was priced as a possible
+  // rod-site move; measured across the change, the solved site did not move
+  // (every unit with metal in the widened span was already excluded as the
+  // link's own neighbourhood).
+  const colBand = [ALARM_LINK_SHAFT_Z,
+    (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H + CLEAR_MARGIN];
   // Rotor meshes enter as DISCS about their axis (the tier-split gate's
   // shape rule): a round wheel's square box owns corners the metal never
   // visits, and the chord's own destination sits in the setting wheel's
@@ -21784,6 +21827,16 @@ const alarmLinkParts = {};
       say('nose underside off the column top plane', `${noseBox.min.z.toFixed(3)} vs ${ALARM_COL_TOP_Z.toFixed(3)}`);
     if (!(F.seatNoseDrop > 0.001 && F.seatNoseDrop < 0.55))
       say('seat nose drop out of range', F.seatNoseDrop.toFixed(4));
+    // §192 — the two claims the tier's height now rests on. The spec at the
+    // wheel is this number re-derived (the §169 COILS convention: the wheel
+    // is cut before the link exists, so the spec leads and this holds it
+    // honest); and the tick's Math.min(colH·(1−p), seatNoseDrop) caps the
+    // fall SILENTLY if the tier ever undercuts the drop, so the starvation
+    // case gets the assert it never had.
+    if (Math.abs(F.seatNoseDrop - ALARM_COL_SEAT_DROP_SPEC) > 1e-3)
+      say('seat nose drop parted from its spec', `${F.seatNoseDrop.toFixed(4)} vs ALARM_COL_SEAT_DROP_SPEC ${ALARM_COL_SEAT_DROP_SPEC} — re-derive the spec at the wheel, never re-target the linkage`);
+    if (ALARM_COL_H < F.seatNoseDrop + CLEAR_MARGIN - 1e-9)
+      say('the tier starves the seat drop', `colH ${ALARM_COL_H.toFixed(4)} vs seatNoseDrop ${F.seatNoseDrop.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN} — the beak would ride the gap floor, not the seat`);
     if (Math.sign(F.rodTravel) !== Math.sign(travelW))
       say('rod and ring travel disagree in sign', `${F.rodTravel.toFixed(3)} vs ${travelW.toFixed(3)}`);
     // 7. The §54 corridor budget: the rim finger's contact ridge must not
@@ -26846,9 +26899,10 @@ const CASE_SECTORS = (() => {
 const BACK_SWEPT_ALLOWANCE = new Map([
   // The one unit whose pose-net z-max exceeds its build pose, measured by
   // probe-back-envelope's build-pose product: the alarm link's beak rides
-  // to 13.976 at `alarm` f=0 against 13.877 at build (+0.099). Declared
-  // 0.12 — rounded UP past the excess so no clearance row the glass
-  // derivation produces can sit at exactly CLEAR_MARGIN and flicker.
+  // to 12.161 at `alarm` f=0 against 12.061 at build (+0.099 — the lift is
+  // the axis's own and rode §192's descent unchanged). Declared 0.12 —
+  // rounded UP past the excess so no clearance row the glass derivation
+  // produces can sit at exactly CLEAR_MARGIN and flicker.
   ['Alarm link', 0.12],
 ]);
 // ...and the movers that MIGRATE RADIALLY — metal that stands in bins its
@@ -26863,11 +26917,12 @@ const BACK_SWEPT_REGIONS = [
   // above the three-quarter plate.
   { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 10.92 },
   // The switch cluster's press/castellation swing spreads its metal across
-  // r 17.3–31.3 (measured swept 10.907 at r 17.3–18.1 against build 9.242;
-  // 13.157 at r 30.4–31.3 against build 11.757). One row at the unit's
-  // swept ceiling — conservative in the inner bins, and free: the whole
-  // band lies inside the glass's raised step.
-  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 13.16 },
+  // r 17.3–31.3 (measured swept 10.068 at r 17.3–18.1 against build 9.242;
+  // 11.468 at r 30.4–31.3 against build 10.851 — §192's descent re-measured
+  // both, from 10.907 and 13.157). One row at the unit's swept ceiling
+  // (the castellation top), rounded up past margin flicker — conservative
+  // in the inner bins, and the number the flat back was bought against.
+  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 11.47 },
   // The striking wheel's rotation is not axisymmetric at bin scale:
   // swept 10.421 at r 33.7–34.6 against build 10.021.
   { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: 10.43 },
@@ -26969,9 +27024,16 @@ const BACK_ENVELOPE = (() => {
       return z;
     };
     const tower = zOf('Alarm link'), barrel = zOf('Alarm barrel');
-    if (!(tower > 13.0))
-      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)} — the envelope's `
-        + 'governor (build 13.877) was not seen, and a glass derived from this scan is unfounded');
+    // §192 — the governor's floor is DERIVED now, where it was a snapshot
+    // (`> 13.0`, from a 13.877 build the strike-tower descent retired): the
+    // link's beak arm rides the column tops, so its tower must stand at
+    // least above the stack it rides — a threshold that tracks every future
+    // re-station instead of naming one build's number.
+    const colStackTop = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H;
+    if (!(tower > colStackTop))
+      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)}, under the column `
+        + `stack top ${colStackTop.toFixed(3)} it rides — the envelope's governor was not seen, and a glass derived `
+        + 'from this scan is unfounded');
     if (barrel > tqTop)
       console.warn(`§187: the alarm barrel reads ${barrel.toFixed(3)}, above the three-quarter plate's measured top `
         + `${tqTop.toFixed(3)} — §112 put it below; the scan or the tree is wrong`);

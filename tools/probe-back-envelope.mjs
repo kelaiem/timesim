@@ -34,7 +34,9 @@
 //      tau drift between them is rotation about z and cannot move a z-max.)
 //
 // Controls (both directions, asserted): the alarm link tower MUST appear
-// above the plate (rest measurement 13.877); the alarm barrel MUST NOT
+// above the column stack top it rides — measured off the castellation ring's
+// own metal, §192's form of a floor that was a hardcoded 13.877 until the
+// strike tower descended; the alarm barrel MUST NOT appear above the plate
 // (§112 put it at ≈5.4). A run failing either exits 2 — the scan measured
 // the wrong thing.
 //
@@ -171,6 +173,20 @@ const res = await page.evaluate(async () => {
   return {
     hasDecl: !!decl, declFails, hasGlass: !!(decl && glass), glassFails,
     plateTop, plateR, rSpan, poses: poses.length,
+    // §192 — the tower control's floor, measured off the metal it rides:
+    // the column stack's top (castellations). Replaces a hardcoded 13.0/13.877
+    // that went stale the day the strike tower descended.
+    colStackTop: (() => {
+      let mesh = null;
+      clock.scene.traverse((o) => { if (o.name === 'alarmColCastellations') mesh = o; });
+      if (!mesh) return null;
+      mesh.updateWorldMatrix(true, false);
+      const p = mesh.geometry.attributes.position, m = mesh.matrixWorld.elements;
+      let z = -Infinity;
+      for (let i = 0; i < p.count; i++)
+        z = Math.max(z, m[2] * p.getX(i) + m[6] * p.getY(i) + m[10] * p.getZ(i) + m[14]);
+      return z;
+    })(),
     units: [...units.entries()].map(([name, u]) => ({ name, zMax: u.zMax, pose: u.pose, zBuild: u.zBuild }))
       .sort((a, b) => b.zMax - a.zMax),
     bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan, zMax: z, owner: binOwner[i], zBuild: binsBuild[i] })),
@@ -219,7 +235,7 @@ if (res.hasGlass) {
 const tower = res.units.find((u) => u.name === 'Alarm link');
 const barrel = res.units.find((u) => u.name === 'Alarm barrel');
 let ok = true;
-if (!tower || tower.zMax < 13.0) { ok = false; console.log(`\nCONTROL FAIL: the alarm link tower (rest 13.877) was not found above the plate — the scan measured the wrong thing (got ${tower ? tower.zMax.toFixed(3) : 'nothing'})`); }
+if (!tower || !(res.colStackTop > 0) || tower.zMax < res.colStackTop) { ok = false; console.log(`\nCONTROL FAIL: the alarm link tower was not found above the column stack top ${res.colStackTop ? res.colStackTop.toFixed(3) : '(unmeasured)'} it rides — the scan measured the wrong thing (got ${tower ? tower.zMax.toFixed(3) : 'nothing'})`); }
 else console.log(`\nCONTROL PASS: alarm link tower found at ${tower.zMax.toFixed(3)}`);
 if (barrel) { ok = false; console.log(`CONTROL FAIL: the alarm barrel appears ABOVE the plate at ${barrel.zMax.toFixed(3)} — §112 put it below; the scan or the tree is wrong`); }
 else console.log('CONTROL PASS: the alarm barrel is not above the plate (§112 holds)');
