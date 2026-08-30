@@ -41,7 +41,7 @@ import {
   // Backlog (watch case): the schematic-tier case's dimensions — caps and
   // real hardware sizes, all derived in layout.js at the §39 pin.
   CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T,
-  CASE_BACK_SCREWS, CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
+  CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
@@ -26769,28 +26769,301 @@ const CASE_SECTORS = (() => {
   return out;
 })();
 
+// §187 — THE BACK ENVELOPE, measured at boot: max z per radial bin over the
+// whole movement, which is the surface the caseback's glass hugs. The number
+// a glass hugs is not a constant — it is whatever the tallest metal is,
+// wherever it is (a rest-pose survey already lied once at scale: three
+// records named the alarm barrel as the back-most metal after §112 had
+// moved it under the plate — TODO 114). And it cannot be swept here:
+// setPose lives thousands of lines below this point (TODO 111's structural
+// note), so boot measures the BUILD POSE and adds DECLARED allowances for
+// the movers whose pose-net maximum exceeds it. What keeps the declaration
+// honest is probe-back-envelope in CI: it sweeps the full net and fails if
+// any bin's swept measurement tops the declared envelope — a mover that
+// grows reds CI, not the glass. (The §186 clamp screws and the case's own
+// metal are NOT in this scan — the case does not exist yet, which is what
+// lets the scan run at all — so any case-borne metal the glass must clear
+// is an ANALYTIC term at the consumer, derived from the same constants
+// that build it.)
+//
+// EDGES, not vertices, for the bin assignment: z is linear along an edge,
+// so a bin's max-z is exact from the edge's endpoints plus its crossings of
+// the bin-boundary radii (the quadratic in t) — a radial member spans bins
+// its vertices never visit, probe-ledge-occupancy's own lesson.
+const BACK_SWEPT_ALLOWANCE = new Map([
+  // The one unit whose pose-net z-max exceeds its build pose, measured by
+  // probe-back-envelope's build-pose product: the alarm link's beak rides
+  // to 13.976 at `alarm` f=0 against 13.877 at build (+0.099). Declared
+  // 0.12 — rounded UP past the excess so no clearance row the glass
+  // derivation produces can sit at exactly CLEAR_MARGIN and flicker.
+  ['Alarm link', 0.12],
+]);
+// ...and the movers that MIGRATE RADIALLY — metal that stands in bins its
+// build pose leaves empty, which no per-unit z allowance can express
+// (standing rule 5's declared-swept-footprint pattern, in r–z instead of
+// XY). Every row is measured by the same probe product and gated by the
+// same probe clause; each z is the unit's swept maximum over the row's
+// band, rounded up past margin flicker.
+const BACK_SWEPT_REGIONS = [
+  // The strike swing carries the hammer head outward to r 42.0 at z 10.898
+  // — at build it parks at r 35.4–37, leaving bins out to 42 with nothing
+  // above the three-quarter plate.
+  { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 10.92 },
+  // The switch cluster's press/castellation swing spreads its metal across
+  // r 17.3–31.3 (measured swept 10.907 at r 17.3–18.1 against build 9.242;
+  // 13.157 at r 30.4–31.3 against build 11.757). One row at the unit's
+  // swept ceiling — conservative in the inner bins, and free: the whole
+  // band lies inside the glass's raised step.
+  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 13.16 },
+  // The striking wheel's rotation is not axisymmetric at bin scale:
+  // swept 10.421 at r 33.7–34.6 against build 10.021.
+  { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: 10.43 },
+  // The pusher-side linkage outboard at the band: measured swept (and
+  // canonical-reset) 10.063 over r 48.5–49.4 against a CONSTRUCTION pose
+  // that parks it at 7.744 — the one member found so far for which
+  // TODO 111's "construction pose = reset pose" measurement does NOT hold,
+  // discovered by this scan's own zMidBack assert on its first boot. This
+  // row is what the ring skirt's bottom actually derives from.
+  { unit: 'Alarm switch', r0: 48.3, r1: 49.6, z: 10.08 },
+];
+const BACK_ENVELOPE = (() => {
+  const NBIN = 60;
+  const rSpan = CASE_R_OUT;   // the annulus the case will occupy is part of the question (the ring's skirt descends inside the bore)
+  const bins = new Array(NBIN).fill(-Infinity);
+  const owners = new Array(NBIN).fill(null);
+  // Per-mesh unit attribution, so each sample carries its unit's declared
+  // allowance: score = z + allowance(unit). The bin keeps the max SCORE —
+  // exact for the model "each unit's metal may stand its allowance above
+  // its build pose", and conservative for everything with no row (0).
+  const unitByObj = new Map(labelEntries.map((e) => [e.obj, e.name]));
+  const unitOf = (o) => { for (let n = o; n; n = n.parent) { const u = unitByObj.get(n); if (u) return u; } return null; };
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), q = new THREE.Vector3();
+  movement.updateMatrixWorld(true);
+  movement.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || o.userData.casePart || !o.geometry?.attributes?.position) return;
+    const unit = unitOf(o);
+    const allow = (unit && BACK_SWEPT_ALLOWANCE.get(unit)) || 0;
+    const p = o.geometry.attributes.position;
+    const idx = o.geometry.index;
+    const n = idx ? idx.count : p.count;
+    const take = (pt) => {
+      const r = Math.hypot(pt.x, pt.y);
+      if (r >= rSpan) return;
+      const s = Math.floor(r / rSpan * NBIN);
+      const score = pt.z + allow;
+      if (score > bins[s]) { bins[s] = score; owners[s] = unit || o.name || '(unlabelled)'; }
+    };
+    for (let t = 0; t < n; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const i0 = idx ? idx.getX(t + e) : t + e;
+        const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
+        a.fromBufferAttribute(p, i0); o.localToWorld(a);
+        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        take(a);
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const A2 = dx * dx + dy * dy;
+        if (A2 > 1e-12) {
+          const B2 = a.x * dx + a.y * dy;
+          // Only the bin walls the edge's own radial range can cross: r(t)
+          // is convex along the edge, so the range is [min at the interior
+          // stationary point or an endpoint, max at an endpoint].
+          const ra = Math.hypot(a.x, a.y), rb = Math.hypot(b.x, b.y);
+          let rLo = Math.min(ra, rb);
+          const tStar = -B2 / A2;
+          if (tStar > 0 && tStar < 1) rLo = Math.min(rLo, Math.hypot(a.x + tStar * dx, a.y + tStar * dy));
+          const rHi = Math.max(ra, rb);
+          const wLo = Math.max(1, Math.ceil(rLo / rSpan * NBIN));
+          const wHi = Math.min(NBIN - 1, Math.floor(rHi / rSpan * NBIN));
+          for (let w = wLo; w <= wHi; w++) {
+            const rw = w / NBIN * rSpan;
+            const C2 = a.x * a.x + a.y * a.y - rw * rw;
+            const disc = B2 * B2 - A2 * C2;
+            if (disc <= 0) continue;
+            const sq = Math.sqrt(disc);
+            for (const t0 of [(-B2 - sq) / A2, (-B2 + sq) / A2]) {
+              for (const dt of [-1e-4, 1e-4]) {
+                const tt = t0 + dt;
+                if (tt > 0 && tt < 1) take(q.copy(a).lerp(b, tt));
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+  // The probe's two controls, mirrored as boot warns (rule 6 — silence when
+  // healthy): the alarm link tower is the envelope's governor and must be
+  // seen; the alarm barrel lives under the plate since §112 and must not
+  // stand above it. Either failing means the scan measured the wrong thing
+  // — and a glass derived from a wrong scan is metal through the movement.
+  {
+    const tqe = labelEntries.find((e) => e.name === 'Three-quarter plate');
+    let tqTop = -Infinity;
+    const v = new THREE.Vector3();
+    if (tqe) tqe.obj.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > tqTop) tqTop = v.z; }
+    });
+    const zOf = (name) => {
+      const e = labelEntries.find((x) => x.name === name);
+      let z = -Infinity;
+      if (e) e.obj.traverse((o) => {
+        if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+        const p = o.geometry.attributes.position;
+        for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); if (v.z > z) z = v.z; }
+      });
+      return z;
+    };
+    const tower = zOf('Alarm link'), barrel = zOf('Alarm barrel');
+    if (!(tower > 13.0))
+      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)} — the envelope's `
+        + 'governor (build 13.877) was not seen, and a glass derived from this scan is unfounded');
+    if (barrel > tqTop)
+      console.warn(`§187: the alarm barrel reads ${barrel.toFixed(3)}, above the three-quarter plate's measured top `
+        + `${tqTop.toFixed(3)} — §112 put it below; the scan or the tree is wrong`);
+  }
+  // Fold the declared region rows in: a bin's envelope is the max of what
+  // the build pose showed (plus its unit's z allowance) and every declared
+  // swept region overlapping it.
+  for (const reg of BACK_SWEPT_REGIONS) {
+    const sLo = Math.max(0, Math.floor(reg.r0 / rSpan * NBIN));
+    const sHi = Math.min(NBIN - 1, Math.ceil(reg.r1 / rSpan * NBIN) - 1);
+    for (let s = sLo; s <= sHi; s++) {
+      if (reg.z > bins[s]) { bins[s] = reg.z; owners[s] = `${reg.unit} (declared swept region)`; }
+    }
+  }
+  return {
+    NBIN, rSpan,
+    bins: bins.map((z, i) => ({ r0: i / NBIN * rSpan, r1: (i + 1) / NBIN * rSpan,
+      z: z === -Infinity ? null : z, owner: owners[i] })),
+    allowances: [...BACK_SWEPT_ALLOWANCE.entries()].map(([unit, extra]) => ({ unit, extra })),
+    regions: BACK_SWEPT_REGIONS,
+  };
+})();
+
 const CASE_DIMS = (() => {
 
-  // BOTH ends measured from the metal, not constanted: the crystal's
-  // underside clears the hands' front-most metal by CASE_CRYSTAL_CLEAR, and
-  // the back wall's inner face clears the movement's back-most metal (the
-  // alarm barrel's side). Measured BEFORE the case joins the movement, so
-  // the box cannot see itself. The tick poses the hands about z only, so
-  // these extents are pose-invariant.
+  // BOTH ends of the z stack come off measured metal, not constants — a
+  // constant here lies the moment a part grows (TODO 114 was three records
+  // still crediting the alarm barrel with a ceiling the §112 tier split had
+  // moved to the alarm link tower). The FRONT is the §3 measurement it
+  // always was: the crystal's underside clears the hands' front-most metal
+  // by CASE_CRYSTAL_CLEAR. The BACK is §187's: the whole back stack derives
+  // from BACK_ENVELOPE — the per-radial-bin scan plus its declared swept
+  // allowances — so the glass hugs the movement region by region instead of
+  // one Box3 max hanging the entire back off the tallest tower. Measured
+  // BEFORE the case joins the movement, so the box cannot see itself. The
+  // tick poses the hands about z only, so the front extent is
+  // pose-invariant; the back's pose variance is exactly what the declared
+  // allowances carry and probe-back-envelope gates.
   movement.updateMatrixWorld(true);
   const box = new THREE.Box3();
   const frontOf = (o) => box.setFromObject(o).min.z;
   const handFront = Math.min(frontOf(hourHand), frontOf(minuteHand));
-  const backMetal = box.setFromObject(movement).max.z;
-  // Back stack, outside-in (all §39-pinned mm, owner: VERY aggressive on
-  // thickness): 0.6 mm of clearance (the alarm barrel is fixed metal — no
-  // flex to accommodate); the middle's back-wall flange, 1.0 mm, carries
-  // the screw threads; the back plate sits ON the back face, 1.2 mm thick —
-  // exactly lip (0.6) + crystal (0.6), so the glazing is flush both sides.
-  // Total 2.8 mm where the screw-down needed 4.8.
-  const zFlangeIn = backMetal + 0.6 / UNIT_MM;
-  const zMidBack = zFlangeIn + 1.0 / UNIT_MM;    // the middle's back face
-  const z0 = zMidBack + 1.2 / UNIT_MM;           // the back plate's outer face
+  // §187 — THE THREADED RING's chain, inboard-out and bottom-up. §3's
+  // flange is deleted WHOLE, and not for the window's sake alone: measured
+  // (probe-187-casing-path), the movement CANNOT BE CASED past it — §3's
+  // own construction back-loads the movement, §186's rim (measured reach
+  // 50.0589) must descend the back bore to its ledge, and the flange's
+  // 44.86 bore stood across that path, 1.98 mm into it. No pose ever
+  // touches the conflict — assembly lives between poses — which is why
+  // every sweep stayed green over an un-assemblable case. With the flange
+  // dead the axial-screw family dies too (thread + two pitch walls +
+  // gasket need ~2.35 mm of the 1.0 mm back annulus), so the back becomes
+  // a THREADED RING (owner call, revisiting §3's screws-over-thread call
+  // under these changed costs): skirt into the bore mouth, thread modeled
+  // smooth and declared CSG debt exactly as §3's screw threads were.
+  const envBins = BACK_ENVELOPE.bins;
+  const envMaxOver = (r0, r1) => {
+    let z = -Infinity;
+    for (const b of envBins) if (b.z !== null && b.r1 > r0 && b.r0 < r1) z = Math.max(z, b.z);
+    return z;
+  };
+  // The skirt: outer face runs the bore at the same running fit the rim
+  // itself locates on (one drop-into-the-bore fit for everything that
+  // enters it); wall carries the declared thread (0.35 mm of thread depth
+  // + 0.45 mm of stock behind it — real caseback skirts run 0.8–1 mm).
+  const skirtOD = R_BORE_BACK - G.SEAT_FIT;
+  const SKIRT_WALL = 0.8 / UNIT_MM;
+  const skirtID = skirtOD - SKIRT_WALL;
+  // The skirt's bottom stops one CLEAR_MARGIN above the tallest thing in
+  // its own annulus — from the ENVELOPE (the pusher-side linkage tops
+  // 10.063 there), with the §186 clamp heads as an ANALYTIC term: they are
+  // case metal built after this scan and invisible to it, so they enter
+  // from the same constants that build them (rim back face + the 0.4 mm
+  // proud head).
+  const clampHeadTop = PLATE_RIM.back + 0.4 / UNIT_MM;
+  const skirtBandMax = Math.max(envMaxOver(skirtID, R_BORE_BACK), clampHeadTop);
+  const zSkirtBot = skirtBandMax + CLEAR_MARGIN;
+  // Thread engagement: the one screw-engagement precedent this case has
+  // (§3's 0.7 mm, reused by §186's clamps as CASE_CLAMP_ENG) — a ring
+  // thread engaging less than the screws it replaced would be a downgrade
+  // nobody derived.
+  const zMidBack = zSkirtBot + CASE_CLAMP_ENG;   // the band's back face = top of the threaded mouth
+  // The bore wall must still contain the pusher's bore window whole
+  // (§186's boredProfiles carries the degenerate-piece assert; this is the
+  // same constraint stated where the number is born).
+  const pusherApD = CASE_PUSHER_D / 2 + G.TUBE_WALL;
+  const zPusherHi = alarmPusherGroup.position.z + pusherApD;
+  if (zMidBack < zPusherHi + CLEAR_MARGIN)
+    console.warn(`§187: the band's back face ${zMidBack.toFixed(3)} sits within CLEAR_MARGIN of the pusher `
+      + `window's top ${zPusherHi.toFixed(3)} — the bored piece above the window is degenerate`);
+  // The ring's face plate: lip (0.6) + crystal (0.6) — §3's flush-both-
+  // sides identity, kept for the glass's EDGE band (the raised step stands
+  // proud of this plane by design; the record states the successor
+  // identity: the glass's outer pane's INNER face is flush with the band's
+  // back face).
+  const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
+  // The glazing channel: glass edge drops into the ring against the
+  // skirt's inner wall (SEAT_FIT — the one drop-into-a-recess fit) under a
+  // lip one glass-thickness wide (a glass bears on a land at least its own
+  // thickness — the glazing floor; anything wider spends aperture).
+  const RA_EDGE = skirtID - G.SEAT_FIT;          // the glass's outer edge
+  const RA = RA_EDGE - CASE_CRYSTAL_T;           // the APERTURE — the lip's bore
+  // ...which must show the whole three-quarter plate: measured reach
+  // (TODO 84's rule — the extrude bevel swells past the authored radius),
+  // plus the one margin of sight.
+  {
+    const tqe = labelEntries.find((e) => e.name === 'Three-quarter plate');
+    let tqReach = 0;
+    const v = new THREE.Vector3();
+    if (tqe) tqe.obj.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) { o.localToWorld(v.fromBufferAttribute(p, i)); tqReach = Math.max(tqReach, Math.hypot(v.x, v.y)); }
+    });
+    if (RA < tqReach + CLEAR_MARGIN)
+      console.warn(`§187: the aperture ${RA.toFixed(3)} does not clear the three-quarter plate's measured `
+        + `reach ${tqReach.toFixed(3)} + CLEAR_MARGIN — the window §187 exists for is blocked by its own ring`);
+  }
+  // THE STEPPED GLASS, both planes and the step radius derived from the
+  // envelope (scan-don't-freeze extends to the SHAPE: when §191/§192 lower
+  // the tower below the pane plane, the tall-bin population empties and
+  // this same derivation yields a flat back with no edits here):
+  //  · the outer pane's inner face sits at the band's back-face plane (its
+  //    own mount — glass does not dip below the ring that carries it), and
+  //    every bin outside the step must clear it;
+  //  · the raised step's inner face stands one CLEAR_MARGIN over the
+  //    envelope's global max (the alarm link tower + its declared
+  //    allowance);
+  //  · rStep is the outer edge of the outermost bin too tall for the pane,
+  //    plus one CLEAR_MARGIN so the step's wall clears the bin's own metal.
+  const envMaxAll = envMaxOver(0, CASE_R_OUT);
+  const zStepUnder = envMaxAll + CLEAR_MARGIN;
+  const zStepTop = zStepUnder + CASE_CRYSTAL_T;
+  let rStep = 0;
+  for (const b of envBins) if (b.z !== null && b.z + CLEAR_MARGIN > zMidBack) rStep = Math.max(rStep, b.r1);
+  rStep += CLEAR_MARGIN;
+  if (rStep > RA - CLEAR_MARGIN)
+    console.warn(`§187: the glass step's radius ${rStep.toFixed(3)} reaches the aperture ${RA.toFixed(3)} — `
+      + 'the raised step no longer fits through its own window; the tall band has outgrown the ring');
+  {
+    const outsideMax = envMaxOver(rStep, CASE_R_OUT);
+    if (outsideMax + CLEAR_MARGIN > zMidBack)
+      console.warn(`§187: metal outside the glass step (envelope ${outsideMax.toFixed(3)}) stands within `
+        + `CLEAR_MARGIN of the outer pane's plane ${zMidBack.toFixed(3)} — the pane needs a taller mount or a wider step`);
+  }
   // Front stack: dial side is −z — the crystal stands OFF the hands toward
   // the viewer.
   const zCrystInner = handFront - CASE_CRYSTAL_CLEAR;
@@ -26801,20 +27074,20 @@ const CASE_DIMS = (() => {
     // §186 — the stepped midcase's other two working radii, derived at the
     // ~1810 block with the rest of the radial chain.
     R_OUT_FRONT: CASE_R_OUT_FRONT, R_BORE_BACK,
-    // §3's caseback stack, re-based whole onto the wide back bore (§186):
-    // every one of these stood a fixed offset off CASE_R_IN, and the offsets
-    // are the constraint — the radii just followed the bore that carried
-    // them. The old R_SCR ≡ plateR coincidence dissolves with the move.
-    R_FL: R_BORE_BACK - 2.0 / UNIT_MM,      // flange inner edge — 2 mm of thread-bearing wall
-    R_SCR: R_BORE_BACK - 1.0 / UNIT_MM,     // screw circle: centred on the flange
-    R_G: R_BORE_BACK + 0.5 / UNIT_MM,       // gasket groove: same stand-off into the (1 mm) band annulus as before
-    R_WIN: R_BORE_BACK - 2.3 / UNIT_MM,     // window bore — inside the flange, rim for the lip
-    R_PLATE: CASE_R_OUT - 0.3 / UNIT_MM,    // plate edge, a hair inside the band's
+    // §187 — §3's flange stack (R_FL/R_SCR/R_WIN and its six screws) is
+    // deleted with the flange: the offsets' reasons died with the part.
+    // What remains of the caseback's radii:
+    R_G: R_BORE_BACK + 0.5 / UNIT_MM,       // gasket groove, in the band's back face as before — it FITS the flangeless 1 mm annulus (0.7 groove + two ~0.15 lands), and the ring's face compresses the same cord the screwed plate did
+    R_PLATE: CASE_R_OUT - 0.3 / UNIT_MM,    // ring edge, a hair inside the band's
+    // §187 — the threaded ring and its stepped glass (derivations above).
+    skirtOD, skirtID, zSkirtBot,
+    apertureR: RA, glassEdgeR: RA_EDGE,
+    rStep, zStepUnder, zStepTop,
     // The bezel opening COVERS the dial/plate join (layout.js §125: "the
     // CASE, not the plate's rim, covers the join") — 1 mm of dial edge.
     R_BEZEL_IN: dialRadius - 1 / UNIT_MM,
     R_CRYST: dialRadius - 0.5 / UNIT_MM,  // crystal edge trapped under the lip
-    z0, zMidBack, zFlangeIn,
+    z0, zMidBack,
     // §186 — THE LEDGE: the plane the rim's measured underside face lands
     // on, coincident by construction (§3's measured-face pattern; the old
     // seat step and its R_SH/zSeatBot are deleted with the bearing they
@@ -26834,7 +27107,9 @@ const CASE_DIMS = (() => {
     zBezelOuter: zCrystOuter - 0.25 / UNIT_MM,  // bezel lip over the crystal edge
     zBandFront: zCrystInner + 0.3 / UNIT_MM,   // bezel seats on the band; 0.3 mm step
     gasketD: CASE_GASKET_D, gasketSeat: CASE_GASKET_SEAT, crystT: CASE_CRYSTAL_T,
-    screwN: CASE_BACK_SCREWS, screwShaftD: CASE_SCREW_SHAFT_D, screwHeadD: CASE_SCREW_HEAD_D,
+    // §187 — screwShaftD/HeadD stay for the §186 CLAMP screws; the six
+    // caseback screws died with the flange.
+    screwShaftD: CASE_SCREW_SHAFT_D, screwHeadD: CASE_SCREW_HEAD_D,
     tubeD: CASE_TUBE_D, pusherD: CASE_PUSHER_D,
     stemAz: stemAngle, alarmAz: alarmStemAngle, pusherAz: ALARM_PUSH_AZ,
     // An azimuth locates a RADIUS; the pusher runs on a line PARALLEL to one.
@@ -26848,6 +27123,11 @@ const CASE_DIMS = (() => {
     stemZ: Z_KEYLESS, alarmZ: alarmSpinner.position.z, pusherZ: alarmPusherGroup.position.z,
     lugSpan: CASE_LUG_SPAN,
     sectors: CASE_SECTORS,
+    // §187 — the measured back envelope (build-pose scan + declared swept
+    // allowances). Stage 1 plumbing: carried here and exposed for the
+    // instruments; the caseback derivation consumes it in the geometry
+    // landing.
+    backEnvelope: BACK_ENVELOPE,
   };
 })();
 const caseCrystalMat = new THREE.MeshPhysicalMaterial({
@@ -26859,13 +27139,60 @@ caseSolid.visible = restoredCaseLines;
 movement.add(caseSolid);
 registerLabel('Case', caseSolid);
 // Explode choreography: the case comes apart the way it comes apart — the
-// back unscrews OUT THE BACK (+z, past the alarm gong's stratum 11), the
-// crystal lifts off the front (−z, past the dial's own stage), and the
-// middle stays put as the reference body the movement sits in. The cap's
-// gasket, thread and key teeth ride with it (backAsm), the tubes and lugs
-// stay with the band (middleAsm).
+// back UNSCREWS out the back (+z, past the alarm gong's stratum 11 —
+// literally, since §187 made it a threaded ring), the crystal lifts off
+// the front (−z, past the dial's own stage), and the middle stays put as
+// the reference body the movement sits in. The ring's glass, key lugs and
+// the gasket cord it compresses ride with it (backAsm); the tubes, lugs
+// and §186 clamp screws stay with the band (middleAsm).
 registerExplode(caseSolid.userData.assemblies.back, 0, 13, 1);
 registerExplode(caseSolid.userData.assemblies.front, 0, 2, -1);
+
+// §187 — THE CASING-PATH TRIPWIRE. probe-187-casing-path is the instrument
+// (per-slice, CI-run); this is its cheapest true statement at boot: no
+// middle metal may stand inboard of the rim's measured reach anywhere
+// above the rim's back face, or the movement cannot be lowered into its
+// own case (the §3 flange did exactly that for a day — 1.98 mm into the
+// path, invisible to every pose-based gate because assembly lives between
+// poses). Clamp screws are installed after casing and lugs/collars stand
+// outboard; the same exclusions the probe claims.
+{
+  const SKIP = ['caseClampScrew', 'caseLug', 'caseSpringBar', 'caseCrownTubeCollar', 'caseAlarmTubeCollar'];
+  const zPath = PLATE_RIM.back;
+  let minR = Infinity, minName = null;
+  const a = new THREE.Vector3(), b = new THREE.Vector3();
+  caseSolid.userData.assemblies.middle.updateWorldMatrix(true, true);
+  caseSolid.userData.assemblies.middle.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || SKIP.includes(o.name) || !o.geometry?.attributes?.position) return;
+    const p = o.geometry.attributes.position, idx = o.geometry.index;
+    const n = idx ? idx.count : p.count;
+    const take = (x, y, z) => { if (z > zPath) { const r = Math.hypot(x, y); if (r < minR) { minR = r; minName = o.name; } } };
+    for (let t = 0; t < n; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const i0 = idx ? idx.getX(t + e) : t + e;
+        const i1 = idx ? idx.getX(t + (e + 1) % 3) : t + (e + 1) % 3;
+        a.fromBufferAttribute(p, i0); o.localToWorld(a);
+        b.fromBufferAttribute(p, i1); o.localToWorld(b);
+        take(a.x, a.y, a.z);
+        // min-r along an edge is convex: the interior stationary point and
+        // the z-boundary crossing are the two samples vertices miss
+        const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+        const dd = dx * dx + dy * dy;
+        if (dd > 1e-12) {
+          const t0 = -(a.x * dx + a.y * dy) / dd;
+          if (t0 > 0 && t0 < 1) take(a.x + t0 * dx, a.y + t0 * dy, a.z + t0 * dz);
+        }
+        if (Math.abs(dz) > 1e-12) {
+          const tc = (zPath - a.z) / dz;
+          if (tc > 0 && tc < 1) take(a.x + tc * dx, a.y + tc * dy, zPath + 1e-6);
+        }
+      }
+    }
+  });
+  if (minR < PLATE_RIM.reach - 1e-3)
+    console.warn(`§187: middle metal (${minName}) stands at r ${minR.toFixed(3)} above the rim's back face — `
+      + `inboard of the rim's measured reach ${PLATE_RIM.reach.toFixed(4)}, so the movement cannot be cased`);
+}
 
 const SCHEMATIC = { proxies: [], on: false };
 {
@@ -26989,9 +27316,10 @@ const SCHEMATIC = { proxies: [], on: false };
     // One derivation, two tiers: every station below is CASE_DIMS, the same
     // object the solid case is built from — the drawing cannot drift from
     // the metal because there is nothing to drift FROM.
-    const { R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_BEZEL_IN, R_CRYST, R_FL, R_SCR, R_WIN, R_PLATE,
-            z0, zMidBack, zFlangeIn, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
-            zLedge, zStep, rimBack, clampR, clampAz } = CASE_DIMS;
+    const { R_IN, R_OUT, R_OUT_FRONT, R_BORE_BACK, R_BEZEL_IN, R_CRYST, R_PLATE,
+            z0, zMidBack, zBandFront, zCrystInner, zCrystOuter, zBezelOuter,
+            zLedge, zStep, rimBack, clampR, clampAz,
+            skirtOD, zSkirtBot, apertureR, rStep, zStepUnder, zStepTop } = CASE_DIMS;
     const rim = SCHEMATIC.rimMat;
     const seg = (a, b) => new THREE.BufferGeometry().setFromPoints([a, b]);
     const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -27005,8 +27333,7 @@ const SCHEMATIC = { proxies: [], on: false };
     // R_IN below that. Same derivation, two tiers — every station is
     // CASE_DIMS, so the lines cannot drift from the solid.
     for (const [r, z] of [[R_OUT, zMidBack], [R_OUT, zStep], [R_OUT_FRONT, zStep], [R_OUT_FRONT, zBandFront],
-                          [R_BORE_BACK, zFlangeIn], [R_BORE_BACK, zLedge], [R_IN, zLedge], [R_IN, zBandFront],
-                          [R_FL, zMidBack], [R_FL, zFlangeIn],
+                          [R_BORE_BACK, zMidBack], [R_BORE_BACK, zLedge], [R_IN, zLedge], [R_IN, zBandFront],
                           [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter],
                           [R_BEZEL_IN, zBezelOuter], [R_OUT_FRONT, zBezelOuter]]) {
       const c = new THREE.Line(circGeo(r, 96), rim); c.position.z = z; put(c);
@@ -27026,15 +27353,15 @@ const SCHEMATIC = { proxies: [], on: false };
       s.position.set(Math.cos(a) * clampR, Math.sin(a) * clampR, rimBack); put(s);
     }
 
-    // Screw-fixed exhibition back (owner call, over the thread): the plate's
-    // edge and the window's glaze line at the back face, the screws as their
-    // own small circles on the screw circle.
+    // §187 — the threaded exhibition ring and its stepped glass: the ring's
+    // edge and aperture at its face, the skirt's two circles down the bore
+    // mouth, and the glass step's own two rims standing proud through the
+    // aperture. Same derivation, two tiers — every station is CASE_DIMS.
     const plateEdge = new THREE.Line(circGeo(R_PLATE, 96), rim); plateEdge.position.z = z0; put(plateEdge);
-    const winEdge = new THREE.Line(circGeo(R_WIN, 96), rim); winEdge.position.z = z0; put(winEdge);
-    for (let i = 0; i < CASE_BACK_SCREWS; i++) {
-      const a = (i / CASE_BACK_SCREWS) * Math.PI * 2;
-      const s = new THREE.Line(circGeo(CASE_SCREW_HEAD_D / 2, 24), rim);
-      s.position.set(Math.cos(a) * R_SCR, Math.sin(a) * R_SCR, z0); put(s);
+    const winEdge = new THREE.Line(circGeo(apertureR, 96), rim); winEdge.position.z = z0; put(winEdge);
+    for (const [r, z] of [[skirtOD, zMidBack], [skirtOD, zSkirtBot],
+                          [rStep, zStepUnder], [rStep + CASE_CRYSTAL_T, zStepTop]]) {
+      const c = new THREE.Line(circGeo(r, 96), rim); c.position.z = z; put(c);
     }
 
     // Crown tubes and the alarm pusher: the stems ALREADY reach the as-built
@@ -34767,9 +35094,14 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
 
   // 3. OVERALL ASSEMBLY DEPTH — not the same quantity as §2's "z-stack ≈ 18.6
   //    units". This box spans everything: the hands standing off the dial
-  //    (the Dial unit reaches z −13.84, well past Z_DIAL = −7) up to the alarm
-  //    barrel at +12.1, for 25.94 units. §2's figure is the going-train plate
-  //    stack alone. Both are real; they are just different things, and calling
+  //    (the Dial unit reaches z −13.84, well past Z_DIAL = −7) up to the
+  //    ALARM LINK TOWER at +13.877 (TODO 114: three records said "the alarm
+  //    barrel at +12.1" here long after §112 had moved the barrel under the
+  //    plate to +5.4 — the live Box3 was never wrong, the prose was), for
+  //    ≈ 28.8 units = 10.90 mm since §188 pulled the front stack in
+  //    (TODO 114's own 30.50 u / 11.56 mm figure was measured just before
+  //    that landing). §2's figure is the going-train plate stack
+  //    alone. Both are real; they are just different things, and calling
   //    this one "movement thickness" would quietly conflate them.
   //    This is what a case has to swallow, so it is the one worth asserting.
   const movBox = new THREE.Box3();
@@ -34784,18 +35116,20 @@ confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned ov
   //    budgeted, not the current number written down: the movement's own
   //    12 mm envelope + the front's 0.3 clearance + 0.6 crystal + 0.25 lip +
   //    0.3 bezel step (1.45 — the zBandFront step where the bezel seats on
-  //    the band, not §186's deleted plate seat) + the back's 0.6 clearance + 1.0 flange + 1.2
-  //    screw-fixed plate (2.8) ≈ 16.25 — call it 16. (The screw-down
-  //    exhibition back this replaced budgeted 19.2; dropping the thread
-  //    stack was the owner's call, "very aggressive" on thickness, and the
-  //    ceiling moved down WITH the stack so the saving cannot silently be
-  //    spent again.) A fusée-and-alarm in an honest glazed case has no
-  //    business under 13. Both bounds can fail; that is what makes it an
-  //    assert.
+  //    the band, not §186's deleted plate seat) + §187's back — one
+  //    CLEAR_MARGIN (0.06) over the tower's declared envelope + 0.6 of
+  //    stepped glass (0.66; the flange stack's 2.8 died with the flange,
+  //    which blocked §186's casing path anyway) ≈ 14.11 — call it 14.
+  //    (Each predecessor's ceiling moved down WITH its stack — 19.2 →
+  //    16 → 14 — so no saving can silently be respent.) The old "no
+  //    business under 13" line was written against the flange stack and
+  //    retired with it: the honest floor was always the movement's own
+  //    depth, which is what the assert holds. Both bounds can fail; that
+  //    is what makes it an assert.
   const casedBox = movBox.clone().expandByObject(caseSolid); // the line tier is drawing, not metal — never measured
   const casedMM = MM(casedBox.getSize(new THREE.Vector3()).z);
-  if (!(casedMM >= movMM && casedMM <= 16))
-    console.warn(`§39: cased assembly ${casedMM.toFixed(2)} mm deep, outside the movement–16 mm envelope (stack budget 16.25)`);
+  if (!(casedMM >= movMM && casedMM <= 14))
+    console.warn(`§39: cased assembly ${casedMM.toFixed(2)} mm deep, outside the movement–14 mm envelope (stack budget 14.11)`);
 
   // The chain pitch itself is not asserted — it IS the pin, so checking it
   // against its own definition would be the circularity this entry exists to
@@ -35473,6 +35807,19 @@ window.__clock = {
   get alarmDrawRad() { return ALARM_DRAW_RAD; },     // hammer draw at release — derived from the pin geometry
   get alarmCamRiseFrac() { return ALARM_CAM_RISE_FRAC; }, // fraction of a lobe pitch the driven rise occupies
   camera, controls, scene, labelEntries,
+  // §187 — the boot-measured back envelope (build-pose bins + declared
+  // swept allowances), for probe-back-envelope's declared≥swept gate...
+  backEnvelope: CASE_DIMS.backEnvelope,
+  // ...and the BUILT glass/ring numbers the same probe holds against the
+  // swept net: the pane, the step and the skirt each cleared by the one
+  // margin at every pose, and the aperture against the plate's measured
+  // reach — §187's acceptance, judged on the metal rather than on the
+  // declaration alone.
+  backGlass: {
+    apertureR: CASE_DIMS.apertureR, rStep: CASE_DIMS.rStep,
+    zStepUnder: CASE_DIMS.zStepUnder, paneInner: CASE_DIMS.zMidBack,
+    skirtBot: CASE_DIMS.zSkirtBot, skirtID: CASE_DIMS.skirtID, skirtOD: CASE_DIMS.skirtOD,
+  },
   // §158 Gate 0 — THE RESERVE TRAIN DECLARES ITS OWN TEETH. `probe-reserve-mesh`
   // is built to refuse any silhouette reading whose gap count disagrees with the
   // DECLARED count, which needs a declaration from somewhere; it carried its own
