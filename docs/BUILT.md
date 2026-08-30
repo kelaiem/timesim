@@ -2588,9 +2588,12 @@ avoid. What is checked is that the geometry still reproduces it.
 
 And one it did *not* correct, because they are different quantities:
 §2's "z-stack ≈ 18.6 units" is the going-train plate stack, while the
-assert measures **overall assembly depth** — 25.94 units, spanning the
-hands standing off the dial (the `Dial` unit reaches z −13.84, well past
-`Z_DIAL = −7`) up to the alarm barrel at +12.1. That is what a case has
+assert measures **overall assembly depth** — 25.94 units when this
+shipped, spanning the hands standing off the dial (the `Dial` unit
+reaches z −13.84, well past `Z_DIAL = −7`) up to the alarm barrel at
++12.1 (both movement-era numbers: §112 later moved the barrel under the
+plate and the alarm link tower took the ceiling — TODO 114/§187's
+correction). That is what a case has
 to swallow, so it is the one worth asserting; calling it "movement
 thickness" would have quietly conflated the two.
 
@@ -19564,7 +19567,10 @@ hovering over the curved wall and reaching 40.9 mm.
 ### Both ends of the z stack are MEASURED, because a constant there lies
 
 The crystal plane comes off the hands' front-most metal plus the clearance, and
-the cap floor off the movement's back-most metal (the alarm barrel). Neither is
+the cap floor off the movement's back-most metal (the alarm barrel when this
+shipped; §112 later moved the barrel under the plate and the alarm LINK TOWER
+became the back-most metal — the measurement followed by itself, the prose here
+did not until TODO 114/§187 corrected it). Neither is
 a constant, because a constant is wrong the moment a hand or the alarm grows.
 The dial side is **−z**, which the first cut of the feature learned by putting
 the caseback through the dial; `CASE_DIMS`' header states the convention now.

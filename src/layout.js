@@ -331,17 +331,18 @@ export const CASE_LUG_SPAN_MAX = 20 / UNIT_MM;    // 52.77 units across the spri
 // under it).
 export const CASE_CLEAR = 1 / UNIT_MM;            // 2.64 units
 export const CASE_BAND_T = 1 / UNIT_MM;           // 2.64 units
-// Screw-fixed exhibition back (owner call, over the screw-down: "simpler,
-// fixed with individual screws" — no thread to single-point, no wrench
-// teeth, and the axial stack the thread needed is simply gone). Six
-// screws: six is the period-common count for a back this size — even
-// compression on the gasket with a screwdriver's worth of bench work.
-export const CASE_BACK_SCREWS = 6;
+// Case screws (§186's movement clamps — Ø1.0/1.8 mm cheese heads). §3's
+// six caseback screws used the same stock until §187 deleted them with the
+// flange they threaded: the flange stood across §186's casing path
+// (measured, probe-187-casing-path), and the back is a THREADED ring now —
+// the owner's call, revisiting §3's screws-over-thread call once the
+// screws' flange turned out to cost the assembly itself.
 export const CASE_SCREW_SHAFT_D = 1.0 / UNIT_MM;  // Ø1.0 mm shaft
-export const CASE_SCREW_HEAD_D = 1.8 / UNIT_MM;   // Ø1.8 mm head, flush in its counterbore
+export const CASE_SCREW_HEAD_D = 1.8 / UNIT_MM;   // Ø1.8 mm head
 // The gasket: 0.5 mm cord in a 0.2 mm groove in the middle's back face,
-// standing 0.2 mm proud — the plate squeezes it to 0.4 mm, the usual 20%
-// O-ring squeeze for a static face seal.
+// standing 0.2 mm proud — squeezed to 0.4 mm, the usual 20% O-ring squeeze
+// for a static face seal (by the §187 ring's seating face now; preload
+// from its thread).
 export const CASE_GASKET_D = 0.5 / UNIT_MM;
 export const CASE_GASKET_SEAT = 0.4 / UNIT_MM;
 // Crystal: 0.6 mm flat (owner: very aggressive on thickness — 0.6 mm is
