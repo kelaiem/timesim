@@ -55,6 +55,30 @@ export default {
   ['weak pull']: '拉力弱',
   ['small pull × big radius']: '小拉力 × 大半径',
   ['≈ the same torque']: '≈ 同样的力矩',
+  // ---- fusee, plate 2 (§195 — the interactive bargain) ----
+  ['Plate 2 puts that bargain under your finger. Drag the reserve from a full wind down to empty — or let it play — and watch the two quantities trade places while their product holds still. That level bar is the whole reason the cone exists.']:
+    '图版 2 把这笔买卖放到你的指尖。把储备从满弦拖到放尽——或让它自己播放——看这两个量互换位置，而它们的乘积纹丝不动。那条保持水平的横条，就是锥体存在的全部理由。',
+  ['The numbers are the machine\'s own, rounded: over the 30-hour reserve the spring\'s pull fades to about three-fifths of its full-wind strength, and the cone answers by letting the lever grow about 1.7× — so their product, the third bar, does not move. The fourth bar is the watch this would be without a fusee: every push to the balance sagging in step with the spring. One simplification is drawn: the pull fades along a straight line here, where the real spring\'s fade is a measured curve — which is why the real cone\'s flank is not quite straight either. It is cut against that curve, and the bargain holds exactly.']:
+    '这些数字是机器自己的，已经取整：在 30 小时的储备里，发条的拉力衰减到满弦时的约五分之三，锥体的回应是让力臂增长约 1.7 倍——于是两者之积，第三条横条，一动不动。第四条横条是没有塔轮时这只表的样子：传到摆轮的每一次推力都随发条一同下沉。图中画了一处简化：这里的拉力沿直线衰减，而真实发条的衰减是一条实测的曲线——这也是真实锥体的侧面并非完全笔直的原因。它正是照着那条曲线车出来的，这笔买卖因此分毫不差。',
+  ['Run the bargain yourself']: '亲手跑一遍这笔买卖',
+  ['PLATE 2']: '图版 2',
+  ['fully wound · big pull, short lever']: '满弦 · 拉力大，力臂短',
+  ['run down · small pull, long lever']: '放尽 · 拉力小，力臂长',
+  ['the product is not moving']: '乘积一动不动',
+  ['⏸ pause']: '⏸ 暂停',
+  ['▶ play']: '▶ 播放',
+  ['the cone, side on']: '锥体侧视',
+  ['wide end']: '粗端',
+  ['narrow end']: '细端',
+  ['the chain walks wide as the spring fades; the lever is the radius it pulls at']:
+    '发条渐弱，链条便走向粗端；力臂就是它拉动之处的半径',
+  ['the spring\'s pull']: '发条的拉力',
+  ['the lever arm']: '力臂',
+  ['pull × lever — what the gears feel']: '拉力 × 力臂——轮系感受到的',
+  ['× 1.0']: '× 1.0',
+  ['level']: '恒定',
+  ['if the chain pulled at one radius']: '若链条固定在一个半径上拉',
+  ['reserve']: '储备',
 
   // ---- gears ----
   ['Everything between the drum and the ticking is multiplication. When a wheel with many teeth drives a small pinion, the pinion turns faster in exact proportion to the tooth counts — a wheel of 120 teeth driving a pinion of 7 turns it exactly 17 1/7 times per revolution, and there is nothing more to know. Speed is bought at the price of force, the same trade as a bicycle\'s gears.']: '从条盒到滴答之间的一切都是乘法。当一只多齿的轮驱动一只小齿轮时，小齿轮转快的倍数恰好等于齿数之比——一只 120 齿的轮带动 7 齿的小齿轮，每转一圈就把它带转整整 17 1/7 圈，除此之外没有别的门道。速度是用力换来的，和自行车换挡是同一笔买卖。',
