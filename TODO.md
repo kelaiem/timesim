@@ -14090,11 +14090,47 @@ whole answer:
   wheel says nothing about the fork, and the fork is where the escapement's
   draw lean lives.
 
-**Residue, and it is half the inventory.** A spring's wind and the fusee's
-groove are handed by CONSTRUCTION, not by an outline — there is no
-`parameters.shapes` for the census to mirror — so both mainspring winds and
-the fusee wrap are ABSENT from that table rather than symmetric in it. They
-still have to be reversed, and nothing measures them yet.
+### The wound half — two of three measured, and the third has no instrument
+
+`probe-wound-sense.mjs` closes most of what the census structurally could not
+see. One estimator for both shapes: bin a part's world points by an ADVANCE
+coordinate (radius for a flat spiral, z for a helix), take the CIRCULAR MEAN
+azimuth per bin, unwrap, and read the total swept angle — its sign is the
+hand. Five controls, four synthetic winds of both chiralities plus a cylinder
+that must NOT read as wound.
+
+| wound part | hand | turns | conc | monotone |
+|---|---|---|---|---|
+| going mainspring (`mainspringRibbon`, drum) | **LEFT** | −6.603 | 0.94 | 92.2% |
+| alarm mainspring (`mainspringRibbon`, barrel) | **LEFT** | −6.213 | 0.92 | 76.0% |
+| hairspring | **RIGHT** | +9.934 | 0.98 | 98.8% |
+
+Measured beside them, so a hand can be read against something: the fusee /
+great-wheel arbor advances **POSITIVE (+z)** over 600 s of τ, which is §47's
+boot assert (`main.js:1554`) arrived at from the outside.
+
+**The two mainsprings agree with each other and the hairspring opposes them.**
+That is not itself a defect — a hairspring is not driven by the going train
+and has no reason to share its hand — but it is the fact a reversal must not
+flatten: three wound parts, two of which reverse with the train and one of
+which answers to the balance instead.
+
+**The fusee groove has NO INSTRUMENT, and that is the finding.** Two routes
+were tried and both fail for recorded reasons: the helical CREST ribbon is
+merged into the lathed core by §81's weld, and the core is a surface of
+revolution, so every z bin holds every azimuth and the per-bin mean is as
+meaningless as it is for the cylinder control (the merged solid reads 55.7%
+monotone, which is the estimator saying so); and the CHAIN, which wraps the
+same thread and is its own unit, is one run from drum to fusee whose STRAIGHT
+span dominates, so it does not read as a helix at all.
+
+So the groove's hand is known only from its GENERATOR — the crest loop in
+`geometry.js` runs `a = t * grooveTurns * 2π` with z rising, hence
+right-handed — **which is a reading of the source, not a measurement of the
+metal**, and must not be recorded as one. Two consequences for the reversal:
+it would have nothing to check the groove against afterwards, and the
+generator has no `sense` parameter to flip, where `makeTorsionSpring` beside
+it already takes one. Both are work this item still owes.
 
 Acceptance: `node tools/probe-coaxial-sense.mjs` PASSes (it is written to
 be red on the tree that shipped it), boot stays silent, and the battery's
