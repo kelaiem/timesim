@@ -34,7 +34,9 @@ try {
     c.scene.traverse((o) => {
       if (o.isMesh && /^(clutch|windPinionSaw|stemSquare|yokeSpring|windingPinion)/.test(o.name)) names.push(o.name);
     });
-    return { names: [...new Set(names)].sort(), pitch: c.stemSawPitch, slip: c.windStemSlip };
+    return { names: [...new Set(names)].sort(), pitch: c.stemSawPitch, slip: c.windStemSlip,
+             stemRadPerTurn: c.stemRadPerTurn,
+             sawHands: (() => { const h = {}; c.scene.traverse((o) => { if (o.userData?.sawHand !== undefined) h[o.name] = o.userData.sawHand; }); return h; })() };
   });
   console.log('build:', JSON.stringify(build));
 
@@ -42,33 +44,51 @@ try {
     const c = window.__clock;
     const out = {};
     const P = c.stemSawPitch;
+    // TODO 115 — WHICH WAY IS "FORWARD" IS NOT A CONSTANT. The crown's winding
+    // direction reverses with the movement, so every stroke below is written in
+    // winding-positive crown radians and converted here, off the one gearing
+    // constant the build and the tick both use. Hard-coding + as forward is how
+    // this probe would have reported a reversed movement's one-way as broken
+    // (or, worse, an unwind stroke as a wind).
+    const W = Math.sign(c.stemRadPerTurn);
+    const wind = (r) => c.setCrownRotation(c.crownRotation + W * r);
+    const slipW = () => W * c.windStemSlip;                // winding-positive slip
     // seated: drive baseline
     c.resetInputs();
     c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.5 });
     const bank0 = c.barrelWindTurns;
     // a backward half-pitch of crown, then the same forward amount + one pitch:
     // the forward input must first re-swing the parked gap before banking.
-    c.setCrownRotation(c.crownRotation - 0.5 * P); c.step(1 / 60);
-    out.slipAfterBack = c.windStemSlip;                    // ≈ −0.5·P
-    const gap = ((-c.windStemSlip) % P + P) % P;
-    c.setCrownRotation(c.crownRotation + 0.5 * P); c.step(1 / 60);
-    out.slipAfterTakeUp = c.windStemSlip;                  // ≈ 0 (mod P)
+    wind(-0.5 * P); c.step(1 / 60);
+    out.slipAfterBack = slipW();                           // ≈ −0.5·P
+    const gap = ((-slipW()) % P + P) % P;
+    wind(0.5 * P); c.step(1 / 60);
+    out.slipAfterTakeUp = slipW();                         // ≈ 0 (mod P)
     out.bankAfterTakeUp = c.barrelWindTurns - bank0;       // ≈ 0 — the whole stroke was take-up
     out.gapWas = gap;
     // now a clean forward pitch banks fully:
-    c.setCrownRotation(c.crownRotation + P); c.step(1 / 60);
+    wind(P); c.step(1 / 60);
     out.bankAfterDrive = c.barrelWindTurns - bank0;        // ≈ P through the 3:1 ratio /2π
     // knob hold through the drain: park a gap, run time, knob must not move
     // until the gap closes.
     c.resetInputs();
     c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.5 });
-    c.setCrownRotation(c.crownRotation - 0.25 * P); c.step(1 / 60);
-    const slipParked = c.windStemSlip;
-    const stemRotAt = () => (24 / 8) * 2 * Math.PI * (c.barrelWindTurns - 1.75) + c.windStemSlip;
+    wind(-0.25 * P); c.step(1 / 60);
+    const slipParked = slipW();
+    const stemRotAt = () => c.stemRadPerTurn * (c.barrelWindTurns - 1.75) + c.windStemSlip;
     const knob0 = stemRotAt();
     for (let i = 0; i < 240; i++) c.step(0.5);            // 120 s of run — drains a little
     out.knobDriftDuringPickup = stemRotAt() - knob0;      // ≈ 0 while the gap absorbs the drain
-    out.slipPickedUp = c.windStemSlip - slipParked;       // > 0: the gap closing
+    out.slipPickedUp = slipW() - slipParked;              // > 0: the gap closing
+    // TODO 115 — and the knob must TRACK THE HAND: one radian of winding crown
+    // is one radian of knob, whichever way winding is. Stepped through the
+    // shipped tick rather than re-derived, because the identity spans the input
+    // branch, the gearing constant and the display.
+    c.resetInputs();
+    c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.5 });
+    const k0 = stemRotAt(), cr0 = c.crownRotation;
+    wind(0.5 * P); c.step(1 / 60);
+    out.knobPerCrown = (stemRotAt() - k0) / (c.crownRotation - cr0);   // must be +1
     return out;
   });
   console.log('laws:', JSON.stringify(laws, null, 1));
@@ -81,11 +101,12 @@ try {
     const c = window.__clock;
     const I = await import('./src/inspect.js');
     const P = c.stemSawPitch;
+    const W = Math.sign(c.stemRadPerTurn);   // TODO 115 — the slip axis is winding-positive here too
     const rows = [];
     for (let k = 0; k <= 10; k++) {
       const slip = -(k / 10) * P;
       c.resetInputs();
-      c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: slip });
+      c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: W * slip });
       const m = I.measureHandoffsNow(c, { handoffs: I.STEM_CLUTCH_HANDOFFS });
       rows.push([+(-slip / P).toFixed(2), +m[0].gap.toFixed(4)]);
     }

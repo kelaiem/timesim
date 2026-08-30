@@ -55,7 +55,7 @@ import {
   STEM_R, WIND_PINION_T, CLUTCH_RIM_T, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
-  sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
+  sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
@@ -64,6 +64,37 @@ import {
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
+
+// TODO 115 / §126 — ONE SOURCE for the stem⇄bank gearing, and it carries the
+// movement's sense. `STEM_RAD_PER_TURN` is what the knob's derived angle
+// advances per turn banked; the INPUT divides by it to turn crown radians into
+// banked turns, the DISPLAY multiplies by it, and the coupling's rings are CUT
+// to `windSign`. Two spellings of one ratio is how the winding train came to
+// disagree with itself when the going train reversed — and it is what makes
+// "which way you turn the crown to wind" a consequence rather than a
+// convention: `windSign` is read OFF this, never declared beside it.
+//
+// Reversing the going train reverses which way the fusee must turn to GATHER
+// chain; the keyless gearing between it and the crown did not change; so the
+// winding direction at the crown reverses with the movement. That is
+// user-visible, and it is not a preference.
+//
+// It lives up here rather than beside the input because the CLUTCH is built
+// 20k lines earlier and its saw rings need the same sign — a build reading one
+// sense and a tick reading another is the defect, not the arrangement.
+//
+// Walked through the keyless gears rather than written as one product, because
+// the SENSE is not free at any link: the spur's own rate comes from
+// `windLocalAt`'s law (bank rising means the cone GATHERS, which is the reverse
+// of the way the train pays out), then one mesh to the transfer the crown wheel
+// is keyed to, then the crown-wheel/pinion pair. Only the last relation carries
+// a convention — the pinion turns about the stem and the crown wheel about z,
+// and the build's `rotation.y = -windStemRot` puts them in the same sign — and
+// it is stated once, here, instead of being hidden inside a product.
+const SPUR_RAD_PER_TURN = -MOVEMENT_SENSE * 2 * Math.PI;                              // windLocalAt's reserve term, per turn banked
+const CROWN_RAD_PER_TURN = -(WIND_SPUR_TEETH / crownWheelTeeth) * SPUR_RAD_PER_TURN;  // one mesh: the transfer counter-rotates the spur
+const STEM_RAD_PER_TURN = (crownWheelTeeth / windPinionTeeth) * CROWN_RAD_PER_TURN;   // the crown wheel drives the pinion on the stem
+const windSign = Math.sign(STEM_RAD_PER_TURN);   // +1 if positive crownRotation winds
 
 // Boot-assert visibility (§29 step 0's postscript): console.warn is the
 // assert channel (CLAUDE.md rule 6), but an automated console reader sees a
@@ -3635,16 +3666,19 @@ windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the s
 windPinionGroup.add(windPinion);
 {
   // The pinion's saw ring, on its outboard face, teeth toward the clutch.
-  // BOTH rings are cut sense +1 and mounted as mirror mounts (−π/2 here,
-  // +π/2 on the clutch), which lands the pair on sawCouplingLiftAt's own
-  // index convention: relative angle δ = −windStemSlip (+ the hairline
-  // relief), seated drive-faces at δ = 0, the backlash then the ramps as
-  // backward slip accumulates. The sign that decides this is the one a
-  // whiteboard gets wrong: a +Y rotation DECREASES the x–z plane azimuth,
-  // so a sense −1 pair (the first cut) ran the coupling mirrored — seated
-  // measured tip-on-tip, a full tooth buried. probe-50-clutch's handoff
-  // tier is what holds this convention in metal.
-  const ring = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'windPinionSaw' });
+  // BOTH rings are cut to the same `windSign` and mounted as mirror mounts
+  // (−π/2 here, +π/2 on the clutch), which lands the pair on
+  // sawCouplingLiftAt's own index convention: relative angle δ = −windStemSlip
+  // (+ the hairline relief), seated drive-faces at δ = 0, the backlash then the
+  // ramps as backward slip accumulates. The sign that decides this is the one a
+  // whiteboard gets wrong: a +Y rotation DECREASES the x–z plane azimuth, so a
+  // pair cut against its mounting runs the coupling mirrored — seated measures
+  // tip-on-tip, a full tooth buried (0.1699, exactly one toothH). TODO 115 —
+  // and mirroring the pair for a reversed movement does NOT preserve the seat
+  // either: the drive faces move to the far end of the backlash window, which
+  // is what `sawSeatOffset` clocks back. probe-50-clutch's handoff tier is what
+  // holds all of this in metal.
+  const ring = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: windSign, name: 'windPinionSaw' }); // TODO 115: the drive faces bear in the WINDING direction, which reverses with the movement
   ring.rotation.x = -Math.PI / 2;    // ring local +Z (teeth) → +Y (outboard)
   ring.position.y = WIND_PINION_T / 2 - SAW_FIT; // base sunk a SAW_FIT weld into the pinion's face — no knife-edge abutment; STEM_CLUTCH_OFF subtracts this sink
   windPinionGroup.add(ring);
@@ -4284,11 +4318,45 @@ windClutchMount.add(windClutch);
   // rim-leads arrangement): its base sinks a SAW_FIT weld into the
   // inboard collar's face, and SAW_RING_ROOT is its root plane — the
   // stack STEM_CLUTCH_OFF closes the seat against.
-  const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'clutchSaw',
+  const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: windSign, name: 'clutchSaw', // TODO 115: cut to `windSign` with its mate — mirroring BOTH keeps the pair complementary and moves the drive faces to the other flank
     rIn: STEM_SAW_SPEC.rIn + SAW_FIT, rOut: STEM_SAW_SPEC.rOut - SAW_FIT }); // the male/female fit — see SAW_FIT
+  // TODO 115 — and CLOCKED by the mirror's seat offset (layout.js), so the pair
+  // still bears on its drive faces at slip 0. Applied here as the ring's own
+  // rotation.z, which three.js's XYZ order runs BEFORE the mount below.
+  saw.rotation.z = sawSeatOffset(STEM_SAW_SPEC, windSign);
   saw.rotation.x = Math.PI / 2;      // ring local +Z (teeth) → −Y (inboard)
   saw.position.y = SAW_RING_ROOT + SAW_BASE_T; // = the base's outboard face, sunk SAW_FIT into collar In
   windClutch.add(saw);
+  // TODO 115 GUARD — THE ONE-WAY MUST BE CUT FOR THE DIRECTION THAT WINDS.
+  // Both rings' ramps climb in their own +theta; the drive faces are the steps
+  // back. Which world direction that is decides which way the coupling BEARS
+  // and which way it ratchets, and the winding direction at the crown reverses
+  // with the movement (`windSign`, off `STEM_RAD_PER_TURN`). Cut for the old
+  // one, the crown would drive through the ramps and free-wheel on the faces:
+  // a one-way running backwards, with the tick's own laws — which read the
+  // profile through `stemSlipLocal()` — perfectly self-consistent about it.
+  // `makeSawCoupling` measures the hand off the samples it laid, so this
+  // compares the METAL against the gearing rather than an argument against
+  // itself. (`stemClutchHandoff` in the battery holds the same claim in the
+  // built pair; this says it at boot, one battery run earlier.)
+  for (const r of [saw, windPinionGroup.getObjectByName('windPinionSaw')]) {
+    if (!r) { console.warn('§115 stem coupling: a saw ring is missing — its cut hand is unchecked'); continue; }
+    if (r.userData.sawHand !== windSign)
+      console.warn(`§115 stem coupling: ${r.name} is cut hand ${r.userData.sawHand} but winding turns the crown `
+        + `${windSign > 0 ? '+' : '-'}ve (STEM_RAD_PER_TURN ${STEM_RAD_PER_TURN.toFixed(4)}) — the crown would drive `
+        + 'through the ramps and free-wheel on the drive faces');
+  }
+  // The pair's CLOCKING is NOT asserted here, and the reason is worth writing
+  // down rather than leaving as an omission. `sawSeatOffset` is read by the
+  // metal (the line above) and by the ride law (tick's `sawLift`), so any assert
+  // between those two compares one call against itself — a tautology, which is
+  // exactly what the first version of this guard was. What holds the clocking is
+  // `stemClutchHandoff` in the battery, on the built pair: measured, the metal
+  // and the law given DIFFERENT offsets still passed every column of it with the
+  // camming pose 0.0256 off contact — inside the 0.03 tolerance, and riding a
+  // coupling that is not there — while sharing one offset lands that column at
+  // 0.0003. The gate is a battery run away rather than a boot away; the
+  // alternative is an assert that measures nothing, and that is worse.
   // Hub collars for the yoke's fork (moved here from the stem group) —
   // bored discs riding the sleeve (0.62 bore into the 0.75 spine), 0.17
   // clear of the stem inside.
@@ -23928,30 +23996,31 @@ if (Math.abs(RESERVE_BARREL_TURNS - WIND_ARREST.engageTurns) > 1e-9)
       + `so it is climbing the FACE (0.28 of the pitch) instead of the RAMP (0.72) — the wind direction, `
       + `windLocalAt's sense and MAINT_U_SIGN do not compose (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
 }
-// TODO 115 — THE WINDING TRAIN AGAINST ITSELF, and this one is EXPECTED TO FIRE
-// until the keyless half of the reversal lands (see the item's "what remains").
-// It is here rather than absent for the item's own reason: a movement reversed
-// from the escapement out to the fusee and NOT at the crown is a half-reversal,
-// and a half-reversal that passes in silence is the exact failure every guard
-// above exists to prevent. This one is not an exception because it is ours.
-//
-// The relation: the winding spur's WORLD delta from the built pose is its local
-// `windLocalAt` term plus the arbor's train rotation, the tau parts cancelling —
-// so it carries MOVEMENT_SENSE. The crown wheel is keyed to the transfer wheel
-// that spur drives, so its spin is that delta through the tooth ratio, negated
-// once for the mesh. `crownWheelSpin` in tick() is a SECOND expression of the
-// same quantity and did not learn the sense, so the two turn opposite ways per
-// turn banked. Nothing else reads it: both are poses, and no gate in the battery
-// measures whether a mesh turns the right way.
+// TODO 115 GUARD — THE KEYLESS CHAIN IS BUILT ON A CONSTANT; THIS IS THE LAW IT
+// CLAIMS TO COME FROM. `SPUR_RAD_PER_TURN` (top of file) is the winding spur's
+// world rotation per turn banked, and everything from the crown wheel out to the
+// coupling's cut hangs off it — but it is declared 20k lines from `windLocalAt`,
+// which is where that rate actually LIVES, and it has to be, because the clutch
+// is built long before the reserve constants exist. Two copies of one rate, in
+// two places, is the defect this whole item is made of, so the moment the second
+// one is reachable it is measured against the first.
 {
-  const spurWorld = (turns) => windLocalAt(turns, 0) + (barrelMeshAngle(0) - barrelMeshAngle(0));
-  const want = -(WIND_SPUR_TEETH / crownWheelTeeth) * (spurWorld(1) - spurWorld(0));
-  const have = -(WIND_SPUR_TEETH / crownWheelTeeth) * 2 * Math.PI * ((RESERVE_BARREL_TURNS - 1) - (RESERVE_BARREL_TURNS - 0));
-  if (Math.sign(want) !== Math.sign(have))
-    console.warn(`§115 winding train: per turn banked the crown wheel spins ${have.toFixed(4)} rad but the spur it `
-      + `meshes demands ${want.toFixed(4)} — the two turn opposite ways. TODO 115's keyless half is NOT landed: `
-      + `crownWheelSpin, windStemRot and TODO 50's saw coupling still carry the old sense`);
+  const measured = windLocalAt(RESERVE_BARREL_TURNS, 0) - windLocalAt(RESERVE_BARREL_TURNS - 1, 0);   // one turn BANKED
+  if (!(Math.abs(measured - SPUR_RAD_PER_TURN) < 1e-9))
+    console.warn(`§115 winding train: the spur turns ${measured.toFixed(4)} rad per turn banked by windLocalAt's own `
+      + `law, but the keyless chain is built on ${SPUR_RAD_PER_TURN.toFixed(4)} — the crown wheel, the knob and the `
+      + 'stem coupling would all be geared to a spur that is not there');
 }
+// TODO 115 — THE WINDING TRAIN AGAINST ITSELF. This slot used to hold a guard
+// comparing `crownWheelSpin` against the winding spur's world delta, because the
+// two were separate expressions of one quantity and only one of them learned the
+// movement's sense. It is retired rather than kept green: tick() DERIVES the
+// crown wheel's spin from the spur's own delta now (search §126 one source), and
+// `STEM_RAD_PER_TURN` is the single gearing constant the input divides by and the
+// knob multiplies by — so there is no second copy left for a sense to be missing
+// from, and an assert between one expression and itself measures nothing.
+// What the keyless half still needs held is the COUPLING'S CUT against the
+// winding direction, and that assert lives where the rings are built.
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 
 // TODO 18's gate. The reserve indicator is three quantities that must agree —
@@ -24084,11 +24153,22 @@ let windStemSlip = 0;      // stem rotation not delivered to the winding wheel (
 // eats a whole tooth of wind. probe-50-clutch caught exactly that: a
 // half-pitch wiggle-and-return left slip at +2e-6 and the next pitch of
 // forward crown banked nothing.
+// TODO 115 — measured in WINDING-POSITIVE stem radians (`slipW`), so the whole
+// one-way — this gap, the take-up, the ratchet and the coupling's own ride law —
+// keeps one arithmetic whichever way the crown winds. `windStemSlip` itself
+// stays in the KNOB's frame, because that is what the display and the saved
+// state mean; this and `stemSlipLocal` below are the only two conversions.
 function stemClutchGap() {
   const P = STEM_SAW_SPEC.pitch;
-  const g = (((-windStemSlip) % P) + P) % P;
+  const g = ((stemSlipLocal() % P) + P) % P;
   return g > P - 1e-9 ? 0 : g;
 }
+// The coupling's relative angle in the PROFILE's own local sense: δ_ring is
+// −windStemSlip (clutch keyed to the stem, pinion to the bank), and a ring cut
+// with `sense: windSign` runs its profile in that sense, so the law reads
+// windSign·δ_ring. Equivalently −slipW, which is why the gap above is one
+// modulo of exactly this.
+function stemSlipLocal() { return windSign * -windStemSlip; }
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
@@ -33968,8 +34048,13 @@ function tick(t) {
   }
   const crownRotDelta = crownRotation - lastCrownRotation;
   lastCrownRotation = crownRotation;
+  // TODO 115 — the input works in WINDING-POSITIVE knob radians. Which way that
+  // is comes from `windSign`, which is read off the one gearing constant the
+  // display also uses, so the input and the knob cannot disagree about which
+  // direction winds. Everything below is the arithmetic it always was.
+  const windIn = windSign * crownRotDelta;
   if (windEngaged) {
-    if (crownRotDelta > 0) {
+    if (windIn > 0) {
       // TODO 50 sub-pitch take-up: after a reversal the clutch stands a
       // parked fraction past the drive faces (relative angle −slip mod
       // pitch), and forward input FREE-SWINGS that gap — back through the
@@ -33977,13 +34062,14 @@ function tick(t) {
       // can bank. The gap is the coupling's own relative angle, read from
       // the same spec the rings were cut from; at the seated state it is
       // zero and this whole block is a no-op.
-      const takeUp = Math.min(crownRotDelta, stemClutchGap());
-      windStemSlip += takeUp;
-      const drive = crownRotDelta - takeUp;
+      const takeUp = Math.min(windIn, stemClutchGap());
+      windStemSlip += windSign * takeUp;
+      const drive = windIn - takeUp;
       if (drive > 0) {
-        // Ratio chain gives the winding spur's rotation in RADIANS;
-        // barrelWindTurns is in TURNS, hence the /2π.
-        const turnsDelta = drive * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / WIND_SPUR_TEETH) / (2 * Math.PI);
+        // One gearing constant, inverted: the knob's derived angle multiplies
+        // by STEM_RAD_PER_TURN and the input divides by it, so the knob tracks
+        // the hand exactly by construction rather than by two ratios agreeing.
+        const turnsDelta = drive / Math.abs(STEM_RAD_PER_TURN);
         // §47 — the cap is the ARREST, not a number: the bank saturates because
         // the finger's beak is on the stop lug and the whole path from the lug
         // back to the crown is rigid, so input past it banks nothing and MOVES
@@ -34044,8 +34130,8 @@ function tick(t) {
     if (drained > 0) {
       const gap = stemClutchGap();
       if (gap > 1e-12) {
-        const stemRad = drained * (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI;
-        windStemSlip += Math.min(stemRad, gap);
+        const stemRad = drained * Math.abs(STEM_RAD_PER_TURN);   // the same one gearing constant
+        windStemSlip += windSign * Math.min(stemRad, gap);       // TODO 115 — closing the gap is the winding direction
       }
     }
   }
@@ -34268,7 +34354,8 @@ function tick(t) {
   // nothing (the first cut added the full lift at every pull, and the
   // pulled clutch overshot the setting station into the wheel by it).
   const sawLift = Math.max(0,
-    sawCouplingLiftAt(STEM_SAW_SPEC, -windStemSlip) - crownPullT * CLUTCH_TRAVEL);
+    sawCouplingLiftAt(STEM_SAW_SPEC, stemSlipLocal() + sawSeatOffset(STEM_SAW_SPEC, windSign))
+    - crownPullT * CLUTCH_TRAVEL);   // TODO 115 — the profile's own sense, at the same seat offset the rings are clocked to
   // §99's face-relief convention, at the coupling: the analytic seat would
   // park the pair plane-on-plane twice over (tip flats on valley flats in
   // z, drive faces in θ), and exactly-coincident planes are the one case
@@ -34373,8 +34460,17 @@ function tick(t) {
   // rate through the 24:8 ratio is 1:1 with banked crown input); at the
   // arrest it stops with the wheel, which is §47's acceptance — a real
   // fusee stop stalls the crown dead, the hand slips on the knob.
-  const windStemRot = (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI
-    * (barrelWindTurns - RESERVE_BARREL_TURNS) + windStemSlip;
+  //
+  // TODO 115 — the derived term carries the movement's sense, because the
+  // sentence four lines up ("positive crownRotation IS the banking direction")
+  // stopped being true: reversing the going train reverses which way the fusee
+  // must turn to GATHER chain, and the keyless gearing between it and the crown
+  // did not change, so the winding direction AT THE CROWN reverses with it.
+  // That is user-visible and it is not a preference — `windCrownDrive` at the
+  // input above is the same fact, read from the other end, and the two are held
+  // together by the knob-tracks-the-hand assert (search §115 knob).
+  const windBack = windLocalAt(barrelWindTurns, tau);
+  const windStemRot = STEM_RAD_PER_TURN * (barrelWindTurns - RESERVE_BARREL_TURNS) + windStemSlip;
   windSpinner.rotation.y = -windStemRot;
   // TODO 50 — the split's two rotors. The CLUTCH is keyed to the stem
   // (square joint): it spins with the knob, slip included. The FIXED
@@ -34385,13 +34481,22 @@ function tick(t) {
   windClutch.rotation.y = -windStemRot + 0.005; // the clocking half of SEAT_RELIEF, INTO the backlash (+δ — see the slide above and the ring-mount comment)
   windPinionGroup.rotation.y = -(windStemRot - windStemSlip);
 
-  // The spur's world-angle DELTA from the built (full-wind) pose is
-  // −2π·(RESERVE − bank) — its local windLocalAt term plus the arbor's train
-  // rotation, the tau parts cancelling by the drain sync. The transfer
-  // counter-rotates through 24:20, the crown wheel is keyed to it, and the
-  // idler hangs off the wheel as before.
-  const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * 2 * Math.PI
-    * (RESERVE_BARREL_TURNS - barrelWindTurns);
+  // The spur's world-angle DELTA from the built (full-wind) pose: its local
+  // `windLocalAt` term plus the arbor's train rotation, the tau parts
+  // cancelling by the drain sync. The transfer counter-rotates through 24:20,
+  // the crown wheel is keyed to it, and the idler hangs off the wheel as
+  // before.
+  //
+  // TODO 115 / §126 — ONE SOURCE. This used to be a SECOND expression of the
+  // same quantity, spelled `−(ratio)·2π·(RESERVE − bank)`, and when
+  // `windLocalAt` learned the movement's sense this copy did not: the crown
+  // wheel turned one way per turn banked while the spur it meshes turned the
+  // other. Nothing in the battery reads it — both are poses, and no gate
+  // measures whether a mesh turns the right way — so the winding train ran
+  // through itself in silence. It is now DERIVED from the spur's own delta,
+  // which is why there is nothing left here for a sense to be missing from.
+  const spurWorldDelta = windBack + (barrelMeshAngle(tau) - barrelMeshAngle(0));
+  const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * spurWorldDelta;
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
   if (windIdlerWheel) windIdlerWheel.rotation.z = -crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream
@@ -34401,7 +34506,6 @@ function tick(t) {
     // bank; see windLocalAt for why the tau term makes run-down a constant
     // here), riding on the arbor's own train rotation. Raw crown input past
     // the arrest moves none of them — the beak is on the block.
-    const windBack = windLocalAt(barrelWindTurns, tau);
     windSpur.rotation.z = windSpurBase + windBack;
     windTop.rotation.z = windBack;
     fusee.rotation.z = windBack;
@@ -35919,6 +36023,10 @@ window.__clock = {
   get barrelWindTurns() { return barrelWindTurns; },
   get windStemSlip() { return windStemSlip; },        // TODO 50: the coupling's relative index
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)
+  // TODO 115 — the ONE stem⇄bank gearing constant, exposed because an
+  // instrument that hard-codes which way the crown winds measures the old
+  // movement (probe-50-clutch did, and its "forward" stroke became an unwind).
+  get stemRadPerTurn() { return STEM_RAD_PER_TURN; },
   get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },
   get crownRotation() { return crownRotation; },
   get setPathRot() { return setPathRot; },

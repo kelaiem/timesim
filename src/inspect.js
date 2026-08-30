@@ -37,7 +37,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
-  SLENDER_OVERHANG_K } from './layout.js';                        // §54's overhang multiplier — shared, because §36 sizes against it
+  SLENDER_OVERHANG_K, MOVEMENT_SENSE } from './layout.js';        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -917,9 +917,15 @@ export const AXES = [
     // zeroes it, so every other axis still sweeps the seated coupling).
     name: 'stemSlip',
     n: 96,
+    // TODO 115 — BACKWARD carries the movement's sense, like the handoff poses
+    // below. Left as a bare minus this axis swept the DRIVING direction on a
+    // reversed movement: it would have driven the pair tip-on-tip at every
+    // sample and left the camming reversal — the one thing it exists to
+    // observe — unobserved, which is the §48-population gap its own comment
+    // above is about.
     pose: (f, clock) => ({
       tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
-      windStemSlip: -(clock?.stemSawPitch ?? Math.PI / 4) * (1 - Math.abs(2 * f - 1)),
+      windStemSlip: -MOVEMENT_SENSE * (clock?.stemSawPitch ?? Math.PI / 4) * (1 - Math.abs(2 * f - 1)),
     }),
   },
   {
@@ -4779,10 +4785,17 @@ export const WIND_ARREST_HANDOFFS = [
 // valley flat, camming the ramps bear — so the pair expects CONTACT at all
 // three engaged poses and FREE only pulled out. Slip values are the
 // coupling's own fractions of its 2π/8 pitch (one saw tooth per leaf).
+// TODO 115 — "backward crown" is a DIRECTION, and it reverses with the movement:
+// a backward stroke of magnitude m parks the slip at −windSign·m, and windSign
+// is MOVEMENT_SENSE (main.js's STEM_RAD_PER_TURN). Left as bare negatives these
+// poses drove the coupling the WRONG way past its faces on a reversed movement
+// and measured the pair tip-on-tip, a whole tooth buried — a real reading of a
+// pose the watch never reaches, which is the worst kind of red.
+const BACKWARD_SLIP = (m) => -MOVEMENT_SENSE * m * (Math.PI / 4);
 export const STEM_CLUTCH_POSES = [
   ['seated', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: 0 }],
-  ['backlash', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.075 * (Math.PI / 4) }],
-  ['camming', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.5 * (Math.PI / 4) }],
+  ['backlash', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: BACKWARD_SLIP(0.075) }],
+  ['camming', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: BACKWARD_SLIP(0.5) }],
   ['pulled', { tau: 0.13, crownPullT: 1, leverEngage: 1, tension: 1, windStemSlip: 0 }],
 ];
 export const STEM_CLUTCH_HANDOFFS = [

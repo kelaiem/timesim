@@ -25,7 +25,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 112 | CLOSED | The table stopped restating: every `HAND_SPECS` row now references the hand's BOOT SPEC OBJECT (`HOUR_HAND_SPEC`…`ALARM_HAND_SPEC`), so a row cannot drift from its build. `probe-112-recut.mjs` holds it: both re-cut drivers (flute slider and the §23 panel) reproduce the boot metal byte for byte, and its must-catch control proves the 3.00′→1.16′ collapse is visible to the instrument |
 | 113 | CLOSED | `alarmHand` joined `HAND_SPECS` via the shared `ALARM_HAND_SPEC`, with its steel as a named FINISH function the row and boot share (a fresh cut is blued by default); `scale.z` is group state `hand.clear()` never touches, so the leaf section survives a re-cut with no row entry — the spec-field question is deferred to §188, which deletes the scale outright. Same acceptance probe as item 112 |
 | 114 | CLOSED (§187) | Three sites named the alarm barrel as the back-most metal after §112 moved it under the plate — plus a fourth the item missed. All four corrected by §187, whose whole point is that the back derives from a measured per-radius ENVELOPE now rather than any named part |
-| 115 | PART LANDED | Issue #327, and wider than reported: EVERY display the going train drove counter-rotated the wheel it was keyed to (fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909, equal and opposite to the last digit — a SIGN, not a phase). Two halves, and neither alone was a fix: the dialFace seam, where four dial-side displays now take the NEGATED movement-frame angle and one MOVEMENT-frame part stops taking it negated; and the train's ABSOLUTE sense, now one factor in `escapeAngle` off `MOVEMENT_SENSE` (`layout.js`), the single declaration every direction-committed cut derives from. **The dial-side numbers did not move** (2.094395, 0.002909) — the displays run as they always did and the wheels under them stopped disagreeing, which is the proof that the dial was right and the train was backwards. Nine handed cuts and three winds re-derived where they are cut; the pallet fork's commitment turned out to be a MIRROR of its whole stone assembly — body side, slot, head walls, tooth-motion tangent, face normal — not a sign, and its own draw-torque assert (invariant under a true mirror, so never parameterised) caught every partial attempt. A tenth commitment nobody had listed, the escape wheel's PHASE, moves no vertex and so read NO-OP to the mutation probe until its metal hash learned to carry world matrices; it has a guard now that reads the club tips out of §83's cut outline. `probe-direction-guards.mjs`: 0 of 8 reverse silently. `probe-coaxial-sense.mjs` PASSes. **Three regions of four are landed — escapement, dial seam, motor — and the KEYLESS WINDING CHAIN is not**: `crownWheelSpin` is a second expression of the winding spur's world delta that never learned the sense, `windStemRot` hangs off it (the winding direction at the CROWN reverses, which is user-visible), and TODO 50's saw coupling has both its cut rings and its ride law to follow. The boot guard beside `crownWheelSpin` is left FIRING on purpose — a half-reversal that passes in silence is the exact failure the guards exist to prevent. The battery is 33/36 with all three red gates in that one region (`penetration` Chain⇄Fusee 1.491/0.25 and Fusee⇄Winding arrest 0.327/0.03, `windArrestHandoff` coil⇄finger 0.0532, `expectedContacts` Winding arrest⇄Fusee 0/0.15) — red rather than waived. Residue, unchanged: the fusee groove still has no instrument — its hand is read from the generator's emitted points, not from the welded metal |
+| 115 | PART LANDED | Issue #327, and wider than reported: EVERY display the going train drove counter-rotated the wheel it was keyed to (fourth wheel −2.094395 against the seconds hand and the heart cam at +2.094395, centre wheel −0.034907 against the hour wheel at +0.002909, equal and opposite to the last digit — a SIGN, not a phase). Two halves, and neither alone was a fix: the dialFace seam, where four dial-side displays now take the NEGATED movement-frame angle and one MOVEMENT-frame part stops taking it negated; and the train's ABSOLUTE sense, now one factor in `escapeAngle` off `MOVEMENT_SENSE` (`layout.js`), the single declaration every direction-committed cut derives from. **The dial-side numbers did not move** (2.094395, 0.002909) — the displays run as they always did and the wheels under them stopped disagreeing, which is the proof that the dial was right and the train was backwards. Nine handed cuts and three winds re-derived where they are cut; the pallet fork's commitment turned out to be a MIRROR of its whole stone assembly — body side, slot, head walls, tooth-motion tangent, face normal — not a sign, and its own draw-torque assert (invariant under a true mirror, so never parameterised) caught every partial attempt. A tenth commitment nobody had listed, the escape wheel's PHASE, moves no vertex and so read NO-OP to the mutation probe until its metal hash learned to carry world matrices; it has a guard now that reads the club tips out of §83's cut outline. `probe-direction-guards.mjs`: 0 of 8 reverse silently. `probe-coaxial-sense.mjs` PASSes. **Four regions: the escapement, the dial seam, the motor, and the keyless winding chain.** The last reverses which way you turn the CROWN to wind — a consequence of the gearing, not a preference — and is walked through the keyless gears from `windLocalAt`'s own law so no link's sense is free. TODO 50's saw coupling had to be re-cut, and taught the item a new lesson: a MIRRORED pair does not seat where the original does (its clear window is the backlash's other end; unclocked it measures tip-on-tip, 0.1699 buried, exactly one toothH), and giving the metal and the ride law DIFFERENT clockings still passed every column of `stemClutchHandoff` with the camming pose 0.0256 off contact — inside the gate, riding a coupling that is not there. One number now, in both. The POSE TABLES were direction-committed too — `stemSlip`'s axis and the handoff poses swept the driving direction on a reversed movement, measuring poses the watch never reaches. **A FIFTH region is open**: §47's winding ARREST is clocked against a coil and a cone this item moved, and it holds three battery rows red (`penetration` Chain⇄Fusee 1.491/0.25 and Fusee⇄Winding arrest 0.327/0.03, `windArrestHandoff` coil⇄finger 0.0532/0.03, `expectedContacts` Winding arrest⇄Fusee 0/0.15) — red rather than waived. The battery is 33/36. Residue, unchanged: the fusee groove still has no instrument — its hand is read from the generator's emitted points, not from the welded metal |
 | 116 | CLOSED | Reported by eye: the going train's teeth meeting tooth-on-tooth instead of interlocking. Real, and in all four meshes, three worse than the reported one — **38.2% / 30.9% / 8.7% / 36.8%** of a pitch off anti-phase across a full turn of the fourth arbor — all four meshes — now **0.01–0.37%**. Every gate passed it because `solveGearChain` ran with the arbors at `rotation.z = 0` and was CORRECT there (0.02–0.21%): zero is not a pose the train occupies, and each going arbor's tick angle adds a `meshOffset` constant that is not a whole number of pitches, so the residual is a CONSTANT — exactly zero where the build tripwire reads and exactly wrong everywhere else. Two phasing systems, `meshOffset` phasing ARBORS and `solveGearChain` phasing BLANKS, neither aware of the other. Fixed by solving at the arbors' τ = 0 angles. `tools/probe-train-mesh-phase.mjs`; the alarm setting chain's 37.44%, a different cause, is left open in the item |
 | 117 | PART DONE | Found by item 116's instrument: the alarm setting wheel ⇄ i1 mesh reads **37.44% of a pitch** off anti-phase — and it is not a phase defect. `probe-mesh-transmission.mjs` asks the prior question, does each declared mesh TURN its neighbour by what the metal says, and walks each input separately because the chain has two (crown, and the hour's back-drive). Three of four meshes are exact under one input and inverted or silent under the other. **FIXED**: the arbor pinion's back-drive sign (`-3*_bd` → `+3*_bd`; −3.700 measured under both inputs now, and nothing reads that angle back). **OPEN, and not a sign**: the gearing makes the setting wheel and the disc one 1:1 pair, so the wheel must follow the hour; the disc's law is PINNED by the trip (measured at three settings — the pin bottoms when the hour hand meets the alarm hand, constant offset); and the armed pin-B coupling needs the wheel to equal the TUBE, which holds. Three laws, any two compatible — and the root cause is one fact: a FIXED reader forces the disc to encode `hour − set`, that needs a differential, and the branch doing the summing is a plain gear train, which back-drives. So the hour flows back up the whole setting train and no member carries the set term alone. **DECIDED 2026-08-29 (owner): the moving reader rides the HOUR** — the real Memovox topology. The disc carries SET only and holds still, the hour carries the reader, the branch and the differential both disappear. **The travel is now MEASURED and the topology is feasible** (`probe-feeler-travel.mjs`, 42-pose net, both controls passing): the band is not full, the ARM is long — a reader inside **r 3.6 orbits the whole 360° with 0.4153 of clearance** (~2.8× CLEAR_MARGIN), where today's r 14.261 arm gets 45° in scattered fragments, blocked mostly by the alarm release sleeve (130°). So the reader must be a SHORT member at the track radius, which moves the real problem to the OUTPUT: today's arm reaches a lifter at r 16.942 and that run spans **2.682 → 31.203 across the orbit**, so no simple link does it. Also found: the bar is the shipped station's own **0.0458** to the alarm winding train, not CLEAR_MARGIN — a real sub-margin proximity the movement accepts and nothing gates. Open at implementation: what holds the disc once its hour-tube friction hub goes, and the output path for a short orbiting reader |
 | 118 | CLOSED (same landing) | The minute hand's 2.3 lift over the hour plane was a fat-rod literal (pre-§125), not a derivation — after §188's 0.2 mm blades it left 0.67 mm of bare air between the hands, found by the owner's eye. Derived from the built hands' own userData now; the alarm collet's "stands 0.8 proud" record error found and corrected in the same audit |
@@ -13885,10 +13885,10 @@ check is free). The measurement itself ships with the redesign scope's
 ## 115. The going train counter-rotates every display it drives — PART LANDED
 
 **What landed is at the end of this item (THE LANDING); everything before it is
-the measurement that decided what had to. The movement is reversed from the
-escapement out to the fusee and NOT at the crown — the KEYLESS WINDING CHAIN is
-a fourth region and it is open, named at the very end. The tree says so at
-boot; it is not green.**
+the measurement that decided what had to. Four regions are landed — the
+escapement, the dial seam, the motor and the keyless winding chain — and a
+FIFTH, §47's winding arrest, is not: it is calibrated against a coil and a cone
+this item moved, and it is named with its numbers at the very end.**
 
 Reported by eye (issue #327): *"the seconds sweeps in the opposite direction
 of the fourth wheel"*. Measured, and it is not only the seconds hand —
@@ -14232,7 +14232,7 @@ it would have nothing to check the groove against afterwards, and the
 generator has no `sense` parameter to flip, where `makeTorsionSpring` beside
 it already takes one. Both are work this item still owes.
 
-### THE LANDING (three regions of four) — one declaration, one crossing rule, and the fork mirrored
+### THE LANDING — one declaration, one crossing rule, and the fork mirrored
 
 `MOVEMENT_SENSE` (`layout.js`) went to **−1**, and every direction-committed
 cut derives from it. Two halves, exactly as the measurements above said:
@@ -14421,34 +14421,41 @@ and the shipped tree is silent.
 - `node tools/probe-coaxial-sense.mjs` — **PASS**, 4 controls and all 3 claims,
   on a probe written to be red on the tree that shipped it.
 - `node tools/probe-direction-guards.mjs` — **PASS**, controls hold,
-  **0 of 14** direction commitments reverse silently: the 5 the item inherited,
+  **0 of 16** direction commitments reverse silently: the 5 the item inherited,
   plus the pallet stones' body side, the tooth-motion tangent, the escape
   wheel's phase, the chain's pay-out sense, the maintaining click's tooth
   mapping, the alarm motor's own hand, the chain's wrap hand, the span's tangent
-  branch, and the mainspring drum's rotation. Every mutant now negates a SENSE at
+  branch, the mainspring drum's rotation, the keyless chain's spur rate, and the
+  stem one-way's cut. It also learned to SUBTRACT the baseline's own warnings:
+  for one pass this tree deliberately carried one, and it would otherwise have
+  ridden into every row and reported everything CAUGHT — a harness saying
+  "everything is guarded" because one thing is broken. Every mutant negates a SENSE at
   one site rather than flipping a hard-coded `+`, because that is the failure
   the landing can actually have. **The probe gates its subjects now.** It was a
   report on the argument that "gating it before the reversal is planned would
   only freeze today's exposure in place"; that argument expired with the
   exposure, and a SILENT row is no longer standing debt but debt the person
   running it just introduced.
-- Boot: silent at MOVEMENT_SENSE +1 and at both alarm hands, which is what
-  makes the guards a coherence check rather than a one-way ratchet. At −1 it
-  carries exactly ONE warning, the winding-train guard, and that warning is the
-  point — see "what remains".
-- The battery: **33 of 36 gates**, fingerprint 2099541984 (deterministic across
-  two virgin boots), local. `outlines`, `alarmHandoffs` and `restoring` went
-  from red to green over the course of the landing. The three that are red are
-  all one region and all the wind side:
-  `penetration` (`Chain ⇄ Fusee & great wheel` 1.491 against 0.25 at
-  reserve 0.067, and `Fusee & great wheel ⇄ Winding arrest` 0.327 against 0.03),
-  `windArrestHandoff` (`coil ⇄ finger pad`, 0.0532 at full wind), and
-  `expectedContacts` (`Winding arrest ⇄ Fusee & great wheel`, 0 against a 0.15
-  floor). §47's arrest is calibrated against the coil's arrival and the cone's
-  clocking, and this landing moved both; the chain's PHASE in its groove — as
-  opposed to its hand, which the new guard holds — is part of the same open
-  region. **They are red on purpose rather than waived**: a waiver here would be
-  buying silence for a mechanism that is half-reversed.
+- `node tools/probe-50-clutch.mjs` — the stem clutch's tick laws reproduce the
+  PRE-REVERSAL numbers exactly: take-up 0.3927 of a pitch parked and consumed,
+  bank after take-up 1e-7, bank after a clean pitch 0.041666, knob drift through
+  the drain 0, pick-up 0.01829, and `knobPerCrown` 0.99999. `stemClutchHandoff`
+  reads seated −0.0005, backlash −0.0003, camming 0.0003, pulled 0.9857.
+- Boot silent at MOVEMENT_SENSE −1 and +1, and at both alarm hands — the tree
+  still builds clean with either declaration flipped back, which is what makes
+  the guards a coherence check rather than a one-way ratchet.
+- The battery: **33 of 36**, fingerprint 1428272738 across two virgin boots,
+  local. `stemClutchHandoff` is green. The three that are red are the same
+  three the third region left, and they are the WINDING ARREST — see below.
+
+**A measurement of mine that was wrong, recorded because it nearly landed a
+false claim.** A targeted `penetration` run over the same rows came back OK at
+both senses (`Chain ⇄ Fusee & great wheel` 0.218/0.209 against 0.25), and I
+wrote that the region had closed. The full battery says 1.491 at reserve 0.067.
+The targeted run and the battery are not the same measurement — the check
+carries two budget rows for that pair and the run reported the other one — so
+the agreement between the senses was real and about the wrong row. A report
+saying OK has not passed anything.
 
 **What this item does NOT close.** The fusee groove still has no instrument:
 its hand is read from the emitted crest points, which is the generator's own
@@ -14456,55 +14463,122 @@ output and not the welded metal (`probe-wound-sense` cannot see it — the crest
 is merged into a surface of revolution). Recorded above, unchanged by the
 landing.
 
-### WHAT REMAINS — the keyless winding chain, and it is the fourth region
+### THE FOURTH REGION — the keyless winding chain
 
-**The movement is reversed from the escapement out to the fusee, and NOT at the
-crown.** The winding train's own direction commitments are unlanded, and the
-guard beside `crownWheelSpin` is deliberately left FIRING so the tree says so
-rather than looking green. That is the item's own rule applied to itself: a
-half-reversed movement that passes every collision gate in silence is the exact
-failure the guards exist to prevent, and this one is not going to be an
-exception because it is mine.
+**Reversing the going train reverses which way you turn the crown to wind.** The
+keyless gearing between the crown and the fusee did not change; what changed is
+which way the fusee must turn to GATHER chain. That is user-visible, and it is a
+consequence rather than a preference — so it is derived here rather than
+declared. `SPUR_RAD_PER_TURN` is the winding spur's world rotation per turn
+banked, taken from `windLocalAt`'s own law; one mesh carries it to the crown
+wheel, the crown-wheel/pinion pair to the stem, and `windSign` is read OFF the
+result. Only the last relation carries a convention (the pinion turns about the
+stem and the crown wheel about z), and it is stated once instead of hiding
+inside a product.
 
-What is unlanded, in the order the chain runs:
+- **`crownWheelSpin` was a SECOND expression of the spur's world delta**, and
+  when `windLocalAt` learned the sense this copy did not: the crown wheel turned
+  one way per turn banked while the spur it meshes turned the other. Nothing
+  reads it — both are poses, and no gate measures whether a mesh turns the right
+  way. It is derived from the spur's own delta now (§126), which is why the
+  guard that used to sit there is RETIRED rather than kept green: there is no
+  second copy left for a sense to be missing from, and an assert between one
+  expression and itself measures nothing.
+- **The input works in winding-positive knob radians.** `windStemSlip` stays in
+  the knob's frame — that is what the display and the saved state mean — and
+  `stemSlipLocal()` is the one conversion into the coupling's own index. The
+  knob tracks the hand by construction rather than by two ratios agreeing: the
+  display multiplies by `STEM_RAD_PER_TURN` and the input divides by it.
+  Measured through the shipped tick, one radian of winding crown is
+  **0.99999** radians of knob (the deficit is the drain during the step).
 
-- **`crownWheelSpin`** is a SECOND expression of the winding spur's world
-  delta — the spur poses from `windLocalAt`, which carries the sense, and the
-  crown wheel keyed to the transfer it drives re-derives the same quantity
-  without it. Measured: the crown wheel and the spur it meshes turn opposite
-  ways per turn banked. §126's one-source rule is the fix (derive the crown's
-  spin FROM the spur's delta, not beside it), not a second sign.
-- **`windStemRot`** hangs off that, and the knob must keep tracking the hand:
-  the derived term takes the sense, and the WINDING DIRECTION AT THE CROWN
-  reverses with it — `crownRotDelta > 0` stops being "wind" and becomes
-  "unwind". That is not a UI preference; it is what reversing a keyless train
-  does, and it is user-visible.
-- **TODO 50's saw coupling** is the hard half. Its rings are cut from
-  `sawProfileAt`, which is handed (valley → ramp → flat), and its ride law
-  reads `sawCouplingLiftAt(STEM_SAW_SPEC, -windStemSlip)`. Reversing the crown
-  reverses the slip's sign convention AND the ramp direction the one-way has to
-  cam over, so the metal and the law move together or the coupling ratchets the
-  wrong way. The builder is documented as "deliberately MOVEMENT-INDEPENDENT",
-  which is now a thing that has to be decided rather than inherited.
+**TODO 50's saw coupling was the hard half, and it taught the item something.**
+The one-way has to bear on the other flank, so both rings are cut to `windSign`.
+But a mirrored pair does NOT seat where the original does: measured on the built
+metal, the original's clear window is (−backlashFrac, 0] of a pitch with the
+drive faces bearing at its upper edge, and the mirrored pair's is (0,
++backlashFrac) — the faces move to the OTHER end. Cut mirrored and left
+unclocked, the pair measures tip-on-tip, **0.1699 buried, exactly one toothH**.
+So `sawSeatOffset` clocks a mirrored pair by exactly the backlash, and the ride
+law is read at the same offset.
 
-**Why this stops here rather than pushing on.** Every region so far was
-verifiable by a build assert plus the battery. This one is not: the coupling's
-correctness is a property of an INTERACTIVE path — crown drag, take-up, the
-free-swing branch, the reversal branch — and the battery drives none of it.
-Landing it needs an instrument that steps the crown through a wind and a
-reversal and reads the coupling's ride, which does not exist yet and is the
-first piece of work this item still owes.
+**ONE number, in the metal and in the law — and the near-miss is why that
+sentence is in the source.** Given DIFFERENT offsets, the pair still passed
+every column of `stemClutchHandoff`: seated 0.0050, backlash −0.0005, camming
+**−0.0256** against a 0.03 tolerance. Inside the gate, and riding a coupling
+that is not there. Sharing one offset lands that column at **0.0003**. The
+clocking is deliberately NOT boot-asserted, and the reason is written beside it:
+`sawSeatOffset` is read by the metal and by the law, so any assert between those
+two compares one call against itself — a tautology, which is exactly what the
+first version of that guard was. `stemClutchHandoff` holds it instead, a battery
+run away rather than a boot away.
 
-**And the shape of every finding so far predicts the shape of that one.** Eight
-of the eleven defects this landing turned up were the same thing: ONE direction
-written down TWICE, in two files or two laws, with only one copy carrying the
-sense — the groove and the wrap, the tangent branch and the hook, the saw and
-its analytic twin, the reserve term and the train, the spur and the crown wheel.
-The fix that keeps working is not a sign, it is ONE SOURCE; the guard that keeps
-working measures a physical invariant the two copies must both satisfy (the
-chain lies in its groove, the two pulleys turn together, the click climbs the
-ramp), never restates either copy. Both rules are worth carrying into the
-remaining region.
+**And the POSE TABLES were direction-committed, which is a class this item had
+not met.** `STEM_CLUTCH_POSES`' "backward crown" slips and the `stemSlip` AXIS's
+one-pitch backward sweep were bare negatives. On a reversed movement they drive
+the pair the WRONG way past its faces: the handoff poses measured a real
+tip-on-tip burial at a pose the watch never reaches, and the axis would have
+swept the driving direction and left the camming reversal — the one thing it
+exists to observe — unobserved, which is the §48-population gap its own comment
+is about. Both carry the sense now. `probe-50-clutch.mjs` had the same defect
+and the same fix: its "forward" stroke would have been an unwind.
+
+**Two new guards, both control-tested by mutation.** The spur-rate assert
+compares `SPUR_RAD_PER_TURN` against `windLocalAt`'s own law — the constant is
+declared 20k lines from the law and has to be, because the clutch is built long
+before the reserve constants exist, so the moment the second one is reachable it
+is measured against the first. And `makeSawCoupling` now measures its own cut's
+hand off the samples it laid (`userData.sawHand`), so the assert beside the
+rings compares the METAL against the gearing rather than an argument against
+itself.
+
+### WHAT REMAINS — the winding arrest, and one knife-edge
+
+**§47's ARREST is the fifth region and it is not landed.** Its finger, beak, lug
+and pad are calibrated against the coil's arrival and the cone's clocking, and
+this item's third region moved both. Three battery rows, all one mechanism:
+
+| row | measured | budget |
+|---|---|---|
+| `penetration` Chain ⇄ Fusee & great wheel | **1.491** at reserve 0.067 | 0.25 |
+| `penetration` Fusee & great wheel ⇄ Winding arrest | **0.327** at wind 0.494 | 0.03 |
+| `windArrestHandoff` coil ⇄ finger pad | **0.0532** at full wind | 0.03 |
+| `expectedContacts` Winding arrest ⇄ Fusee & great wheel | **0** at reserve f=0.4 | 0.15 floor |
+
+The chain's HAND in its groove is held (the wrap guard); what is not held is its
+PHASE — where along the thread it sits — and that is the same quantity the
+arrest's lug is clocked against, which is why these are one region and not four
+rows. They are red rather than waived: a waiver here would buy silence for a
+mechanism that has not been re-clocked.
+
+**And one knife-edge that is a measurement problem, not a mechanism problem.**
+`penetration`'s `Keyless works ⇄ Winding clutch` reads **0.17 at stemSlip
+0.421** — exactly one `toothH`, which is what an MTV reports for two INTERLEAVED
+combs the moment they touch at all, whatever the depth. Measured against the
+metal, the mirrored pair's ride tracks its law to within 0.005 across the whole
+pitch, and the REFERENCE build at MOVEMENT_SENSE +1 sits 0.0045 into the same
+hairline where this one sits 0.0005 — closer to touching, and green only
+because the axis samples different poses. Fixing it by widening the clocking
+relief would be spending a hairline to satisfy an instrument; what it wants is
+either a depth measure that understands interleave or a declared contact, and
+that is filed rather than fudged.
+
+**What else this landing does NOT close**, named rather than left as omissions:
+the fusee groove still has no instrument (its hand is read from the generator's
+emitted crest points, not from the welded metal), and the stem coupling's
+CLOCKING is held by `stemClutchHandoff` in the battery rather than by a boot
+assert, for the tautology reason above.
+
+**The shape of every finding, in one line.** Eleven of the fourteen defects this
+item turned up were the same thing: ONE direction written down TWICE, in two
+files or two laws, with only one copy carrying the sense — the groove and the
+wrap, the tangent branch and the hook, a saw and its analytic twin, the reserve
+term and the train, the spur and the crown wheel, the ring's cut and the ride
+law's index. The fix that keeps working is not a sign, it is ONE SOURCE; the
+guard that keeps working measures a physical invariant both copies must satisfy
+(the chain lies in its groove, two pulleys on one belt turn together, a click
+climbs the ramp, a saw's cut hand matches the direction that drives it), never
+restates either copy.
 
 ## 116. CLOSED — the going train's blanks were phase-solved at a pose the train never occupies
 

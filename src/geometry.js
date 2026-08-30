@@ -2967,8 +2967,8 @@ export function makeJumper({ reach, thickness, width = 0.9 }) {
 // clutch's stroke, and geometry.js already imports layout, so the one
 // arithmetic sits at the bottom of that edge. Re-exported here so builder
 // consumers keep a single import surface.
-import { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt } from './layout.js';
-export { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt };
+import { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt, sawSeatOffset } from './layout.js';
+export { sawCouplingSpec, sawProfileAt, sawCouplingLiftAt, sawSeatOffset };
 
 // The coupling ring as a closed, indexed solid: an annulus rIn..rOut of
 // thickness baseT with the saw profile standing on its +Z face. Every body
@@ -3023,6 +3023,21 @@ export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawC
     ring.push({ theta: thetaF, z: baseT });                                   // face foot, on the pitch boundary
   }
   const S = ring.length;
+  // TODO 115 — THE CUT'S OWN HAND, measured off the samples just laid rather
+  // than echoed from `sense`. The ramp is the only long CLIMB in a tooth (the
+  // drive face is a drop, at the pitch boundary), so the climb's direction in
+  // theta IS the direction the coupling cams — and it is what a consumer has to
+  // match its winding direction against. A consumer that asserts against the
+  // argument it passed has asserted nothing.
+  let sawHand = 0;
+  {
+    let acc = 0;
+    for (let i = 0; i < S - 1; i++) {
+      const dz = ring[i + 1].z - ring[i].z;
+      if (dz > 0) acc += dz * Math.sign(ring[i + 1].theta - ring[i].theta);
+    }
+    sawHand = Math.sign(acc);
+  }
   // 4 vertices per sample: (rIn,0) (rOut,0) (rOut,zTop) (rIn,zTop)
   for (const smp of ring) {
     const c = Math.cos(smp.theta), s = Math.sin(smp.theta);
@@ -3044,6 +3059,7 @@ export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawC
   geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, material || MATS.steel);
   m.name = name;
+  m.userData.sawHand = sawHand;    // TODO 115 — measured off the cut, for the consumer's assert
   return m;
 }
 
@@ -3833,6 +3849,8 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     // line above is to be handed what the crest MEASURED. (TODO 115 — the wrap
     // and the groove are two files apart and were laid by two opposite laws.)
     g.userData.grooveDAdZ = (gA1 - gA0) / (gZ1 - gZ0);
+    g.userData.grooveAz0 = gA0;   // …and its PHASE at that first crest point, so a consumer can ask WHERE the thread is, not only which way it runs
+    g.userData.grooveZ0 = gZ0;
     const hand = Math.sign((gA1 - gA0) / (gZ1 - gZ0));
     if (hand !== MOVEMENT_SENSE)
       console.warn(`§115 fusee groove: winds ${hand > 0 ? 'right' : 'left'}-handed (${((gA1 - gA0) / (Math.PI * 2)).toFixed(3)} turns over ${(gZ1 - gZ0).toFixed(3)} of z) but MOVEMENT_SENSE is ${MOVEMENT_SENSE} — the chain would wrap against its lay`);

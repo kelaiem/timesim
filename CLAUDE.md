@@ -733,7 +733,13 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   tooth-motion tangent and face normal together), the five saw/ratchet cuts, the
   fusee groove, both mainspring ribbons, the chain's wrap and its span's tangent
   branch, the drum's rotation, `windLocalAt`'s pay-out term, the maintaining
-  click's tooth mapping, and `escapeAngle`. Nothing in the battery measures a
+  click's tooth mapping, the keyless chain out to the crown (which reverses
+  WHICH WAY YOU TURN IT to wind — a consequence of the gearing, walked through
+  it rather than declared) with TODO 50's saw coupling re-cut and re-clocked,
+  and `escapeAngle`. **Pose tables are direction-committed too** — a declared
+  pose that means "backward crown", or an axis that sweeps one pitch of it, is a
+  direction; left as a bare negative it sweeps the driving side on a reversed
+  movement and measures poses the watch never reaches. Nothing in the battery measures a
   direction, so a half-landed reversal passes every collision gate in silence —
   which is why each of those sites carries a boot guard that measures its part's
   hand off the geometry it just cut and compares it against the declaration.
@@ -743,9 +749,10 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   keeps working is one SOURCE, and the guard that keeps working measures a
   physical invariant both copies must satisfy (the chain lies in its groove, two
   pulleys on one belt turn together, a click climbs the ramp), never restates
-  either copy. **TODO 115 is PART LANDED**: the keyless winding chain still
-  carries the old sense and the boot guard beside `crownWheelSpin` says so.
-  **The guards hold COHERENCE, not a first-principles
+  either copy. **TODO 115 is PART LANDED**: four regions are reversed and
+  guarded, and §47's winding ARREST — clocked against a coil and a cone that
+  landing moved — is not; it holds three battery rows red on purpose rather
+  than waived. **The guards hold COHERENCE, not a first-principles
   derivation**: a part's relation to the sense (`SENSE_REL` beside its
   builder) is a fact about the metal as cut, and the assert makes the
   declaration and the cut move together. `node tools/probe-direction-guards.mjs`

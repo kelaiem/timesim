@@ -1168,6 +1168,23 @@ export function sawCouplingLiftAt(spec, delta) {
   return Math.max(0, need - spec.toothH);       // seated interference is exactly toothH (tip in valley)
 }
 
+// TODO 115 — THE SEAT INDEX OF A MIRRORED PAIR. `sawCouplingLiftAt` above and
+// the mounting convention beside it are written for a pair cut `sense: +1`,
+// where relative index 0 IS the drive faces bearing and the BACKLASH runs from
+// there to `backlashFrac`. Mirroring the cut — which is what reversing the
+// movement costs this joint, since the faces have to move to the other flank —
+// swaps the two ends of that window: the mirrored pair's faces bear at its FAR
+// end. So a mirrored pair is clocked by exactly the backlash, and the ride law
+// is read at the same offset.
+//
+// ONE number, in the metal and in the law. Measured on the built pair, the two
+// can be given different offsets and the coupling then rides a coupling that is
+// not there: at clocking 0.075·pitch with the law unshifted every column of
+// `stemClutchHandoff` still passed while the camming pose stood 0.0256 off its
+// contact — inside the 0.03 tolerance, and wrong. With both at this offset the
+// same pose measures 0.0003.
+export const sawSeatOffset = (spec, sense) => (sense < 0 ? spec.backlashFrac * spec.pitch : 0);
+
 // The going stem's instance of the coupling, as DIMENSIONS (the alarm's,
 // when built, declares its own):
 //   · SAW_TEETH = windPinionTeeth — one saw tooth per leaf, the classic
