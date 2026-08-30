@@ -11846,21 +11846,30 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // again (hub bottom 0.072 over the blade's corner plane at 3.2), forcing
 // 3.2 → 3.4 against a then-minimum of 3.278. §188 broke the coupling — the
 // central sections are stock (G.HAND_RBASE_STOCK), the hub is the pipe
-// floor (bossH ≈ 1.056) — and SPENT the freed headroom: the offset is 2.6,
-// against a governing minimum that is NOT the §125 lane's (that one falls
-// to ≈ 1.95) but the hour blade's KEEL over the alarm hand's bored collet:
-// the collet seats at 1.1 over the face, the hour blade sweeps the whole
-// centre at (offset + DIAL_T) − rBase, and DIAL_T cancels. §188's record
-// wrote that bound as offset ≥ 1.1 + 0.8 + CLEAR_MARGIN + rBase = 2.402,
-// taking the collet as standing its whole 0.8 bossH proud — and TODO 118's
-// audit found that premise wrong against the mesh: ringExtrude CENTRES the
-// bored collet (±bossH/2), so it stands 0.4 proud and the true binder is
-// 1.1 + 0.4 + CLEAR_MARGIN + rBase ≈ 2.002. The shipped 2.6 is therefore
-// SAFER than §188 recorded — ~0.6 of headroom, not ~0.2 — and it STAYS at
-// 2.6: the number was the owner's accepted stack, the record is what was
-// wrong, and the ~0.6 is now stated slack rather than mis-derived
-// tightness. The lane is ASSERTED at the alarm hand's build from the two
-// hands' own userData, so any regression warns instead of shipping thin.
+// floor (bossH ≈ 1.056) — and SPENT the freed headroom: §188 set the
+// offset 2.6 against a recorded binder of "the hour blade's keel over the
+// alarm hand's bored collet, ≥ 1.1 + 0.8 + CLEAR_MARGIN + rBase = 2.402";
+// TODO 118's audit corrected the collet to CENTRED (0.4 proud, binder
+// ≈ 2.002); and TODO 119 then measured BOTH versions of that binder as
+// RADIALLY FICTIONAL: the alarm collet is a ring at r 2.67..3.30, the
+// hour hand carries NO metal there (its boss ends at r 1.26, its blade
+// root starts at r 5.52), so the two z-planes those records held apart
+// can never meet. Measured over every fixed mesh behind the descending
+// stack (per-mesh z AND r, radial overlap required — the scratchpad scan
+// recorded in TODO 119), the real governing pair is the ALARM BLADE'S TOP
+// against the HOUR BLADE'S KEEL — coplanar annuli sharing 15 u of radius —
+// and the offset is now DERIVED from it, owner-directed after TODO 118:
+//   offset = (ALARM_HAND_Z − DIAL_T) + topRise_alarm + floorDrop_hour
+//            + CLEAR_MARGIN = 1.1 + 0.1759 + 0.3519 + 0.15 = 1.7778,
+// stored 1.778 (rounded UP at 3 dp; the 0.0002 is rounding, not slack).
+// Consequence to know: the hour hub's REAR face now sits 0.03 below the
+// alarm blade's TOP plane — legal, because they are 4.0 u apart radially —
+// so the §125 lane assert below carries a measured RADIAL guard instead
+// of comparing bare z-planes; a change that brings the alarm blade's root
+// inboard of the hub (or widens the hub) re-arms the z comparison and
+// warns. The lane itself is asserted TWO-SIDED from the two hands' own
+// userData: thin warns, and so does float — TODO 118's maximum-air
+// lesson applied at build time.
 // The alarm hand seats at 1.1 at FULL scale since §188 (the 0.5 z-scale
 // faked a leaf from a five-times-stock section; at stock the leaf is the
 // section); its bored collet straddles the tube's front face at 1.1.
@@ -13889,21 +13898,58 @@ alarmTubeGroup.add(alarmHand);
     console.warn(`§153 lane restatement drifted: built alarm-blade keel ${builtLane.toFixed(4)} over the face `
       + `vs ALARM_RSV_LANE ${ALARM_RSV_LANE.toFixed(4)} — re-derive the reserve hand's ceiling assert from the built value`);
 }
-// §125 — the FREE LANE between this blade and the hour hand's hub, asserted
-// from the two hands' own sections (TODO 41's userData exports) because both
-// GROW with their lengths: the hub reaches bossH/2 below the hour plane and
-// the blade's corner plane rises topRise·scale.z above its seat. §125 grew
-// both hands with the face and the lane silently fell from 0.24 to 0.072 —
-// the expectedContacts floor row caught it after the fact; this catches it
-// at boot, where the number that moved it is still on the screen.
+// §125/TODO 119 — the FREE LANE between this blade and the hour hand,
+// asserted from the two hands' own sections (TODO 41's userData exports)
+// because both GROW with their lengths. §125 grew both hands with the face
+// and the lane silently fell from 0.24 to 0.072 — the expectedContacts
+// floor row caught it after the fact; this catches it at boot, where the
+// number that moved it is still on the screen. TODO 119 split it in two,
+// because the old single z-plane comparison (hub bottom vs blade top)
+// held apart two parts that never radially meet:
+//  · BLADE ↔ BLADE — the governing pair (shared annulus measured 15 u
+//    wide): asserted TWO-SIDED. Below CLEAR_MARGIN is thin; above it by
+//    more than the stored value's 3 dp rounding (+5e-3) is the offset
+//    floating over its own derivation — the maximum-air defect TODO 118
+//    caught one lane up, watched here at build time.
+//  · HUB ↔ BLADE — real only if the alarm blade's root reaches inboard of
+//    the hub's rim. The radial gap is MEASURED off the built alarm blade
+//    (4.0 u today: root r 5.26, hub rim r 1.26); while it clears
+//    CLEAR_MARGIN the z-interleave is legal and the z clause stands down,
+//    and any change that closes the radial gap re-arms the old z
+//    comparison verbatim.
 {
-  const hubBottom = (aesthetics.dial.hands.handsGroupZOffset + DIAL_T) - hourHand.userData.bossH / 2;
+  const off = aesthetics.dial.hands.handsGroupZOffset;
   const bladeTop = ALARM_HAND_Z + alarmHand.userData.topRise * alarmHand.scale.z;
-  const lane = hubBottom - bladeTop;
+  const hourKeel = (off + DIAL_T) - hourHand.userData.floorDrop;
+  const lane = hourKeel - bladeTop;
   if (lane < CLEAR_MARGIN)
-    console.warn(`§125 hand stack: the hour hub's underside leaves ${lane.toFixed(3)} over the alarm blade `
-      + `(hub bottom ${hubBottom.toFixed(3)}, blade top ${bladeTop.toFixed(3)}) — need ${CLEAR_MARGIN}; `
-      + `raise handsGroupZOffset or shorten the hands`);
+    console.warn(`§125/TODO 119 hand stack: the hour blade's keel leaves ${lane.toFixed(4)} over the alarm blade `
+      + `(keel ${hourKeel.toFixed(3)}, blade top ${bladeTop.toFixed(3)}) — need ${CLEAR_MARGIN}; the offset regressed below its derivation`);
+  else if (lane > CLEAR_MARGIN + 5e-3)
+    console.warn(`§125/TODO 119 hand stack: the hour blade floats ${lane.toFixed(4)} over the alarm blade `
+      + `(bound ${(CLEAR_MARGIN + 5e-3).toFixed(4)}) — handsGroupZOffset has parted from its derivation `
+      + `(ALARM_HAND_Z − DIAL_T) + topRise_a + floorDrop_h + CLEAR_MARGIN; re-derive it, do not restate it`);
+  // The hub clause, radially guarded off the built metal (r is invariant
+  // under the hand's rotation, so one boot measurement stands for every pose).
+  let bladeRootR = Infinity;
+  const vv = new THREE.Vector3();
+  alarmHand.traverse((o) => {
+    if (!o.isMesh || /Boss$/.test(o.name) || !o.geometry?.attributes?.position) return;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      o.localToWorld(vv.fromBufferAttribute(p, i));
+      bladeRootR = Math.min(bladeRootR, Math.hypot(vv.x, vv.y));
+    }
+  });
+  const radialGap = bladeRootR - hourHand.userData.bossR;
+  if (radialGap < CLEAR_MARGIN) {
+    const hubBottom = (off + DIAL_T) - hourHand.userData.bossH / 2;
+    const hubLane = hubBottom - bladeTop;
+    if (hubLane < CLEAR_MARGIN)
+      console.warn(`§125/TODO 119 hand stack: the alarm blade's root (r ${bladeRootR.toFixed(3)}) reaches the hour hub `
+        + `(rim r ${hourHand.userData.bossR.toFixed(3)}, radial gap ${radialGap.toFixed(3)}) AND the hub's underside leaves `
+        + `${hubLane.toFixed(3)} over it — need ${CLEAR_MARGIN} in one direction or the other`);
+  }
 }
 // §38 — the alarm hand and the RAISED hour markers overlap in z (hand
 // −10.96..−10.16 at §188's stock section, numerals reaching well past it),
