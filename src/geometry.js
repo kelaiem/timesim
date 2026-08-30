@@ -908,14 +908,28 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 
   const shape = new THREE.Shape();
   for (let i = 0; i < teeth; i++) {
-    const c = i * pitch;
-    const V = P(baseR, c - 0.5 * pitch); // valley (scallop bottom)
-    const cBack = P(baseR * 1.18, c - 0.12 * pitch); // concave back control
-    const H = P(radius * 0.9, c + 0.03 * pitch); // club heel
-    const T = P(radius, c + 0.22 * pitch); // club tip (leading, forward)
-    const L = P(radius * 0.8, c + 0.17 * pitch); // locking-face foot (undercut hook)
-    const cScal = P(baseR * 0.98, c + 0.34 * pitch); // scallop control
-    const Vn = P(baseR, c + 0.5 * pitch); // next valley
+    // TODO 115 — EVERY offset from the tooth centre carries MOVEMENT_SENSE, so
+    // the club leads the direction the wheel actually runs. Mirroring only the
+    // tip would leave the heel, the locking foot and the scallop describing the
+    // old hand: a tooth cut half each way, which is not a tooth.
+    //
+    // AND SO DOES THE TOOTH CENTRE, because this is one continuous ring and the
+    // mirror reverses the direction it is walked in. Each tooth ends at
+    // `Vn = c + W·0.5·pitch` and the next begins at `V = c' − W·0.5·pitch`;
+    // those are the same point only if `c' − c` is `W·pitch`. Leaving `c` at
+    // `i·pitch` under W = −1 makes every tooth jump two pitches backwards to
+    // start the next — the ring crossed itself once per tooth, 15 times, and
+    // it still triangulated, still extruded and still rendered. `outlines`
+    // (TODO 100) is the only thing that said so.
+    const W = MOVEMENT_SENSE;
+    const c = W * i * pitch;
+    const V = P(baseR, c - W * 0.5 * pitch); // valley (scallop bottom)
+    const cBack = P(baseR * 1.18, c - W * 0.12 * pitch); // concave back control
+    const H = P(radius * 0.9, c + W * 0.03 * pitch); // club heel
+    const T = P(radius, c + W * 0.22 * pitch); // club tip (leading, forward)
+    const L = P(radius * 0.8, c + W * 0.17 * pitch); // locking-face foot (undercut hook)
+    const cScal = P(baseR * 0.98, c + W * 0.34 * pitch); // scallop control
+    const Vn = P(baseR, c + W * 0.5 * pitch); // next valley
     if (i === 0) shape.moveTo(V[0], V[1]);
     else shape.lineTo(V[0], V[1]);
     shape.quadraticCurveTo(cBack[0], cBack[1], H[0], H[1]); // rising back
@@ -1139,16 +1153,31 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   //     budget measured exactly that (0.194 vs the 0.1 allowance).
   //   · LEAN (draw): a locking face perpendicular to the pivot→corner
   //     line would hold the tooth with zero torque about the fork pivot.
-  //     Rotating that face by DRAW_DEG in the wheel's rotation sense gives
-  //     both stones real draw — the tooth's pressure pulls the fork INTO
-  //     the banking, which is what keeps a real lever safely locked. The
-  //     two stones come out at visibly different leans relative to their
-  //     arms (entry ≈ 237° fork-local, exit ≈ −33°), like a real fork.
+  //     Rotating that face by MOVEMENT_SENSE·DRAW_DEG — the wheel's own
+  //     rotation sense — gives both stones real draw: the tooth's pressure
+  //     pulls the fork INTO the banking, which is what keeps a real lever
+  //     safely locked. The two stones come out at visibly different leans
+  //     relative to their arms, like a real fork. f0 is exactly ±45°
+  //     fork-local (C is (σ·span/2, span/2), so its perpendicular is), and
+  //     the lean is f0 + MOVEMENT_SENSE·DRAW_DEG: at −1 the −x stone leans
+  //     213° and the +x stone 303°; at +1 they were 237° and −33°.
   //     Note what that asymmetry IS: the zero-draw direction f0 is exactly
   //     mirror-symmetric between the two stones (it is the perpendicular of
   //     the pivot radial, and the seats mirror), and the draw rotates both
   //     in the SAME sense, so the two leans differ from mirror symmetry by
   //     exactly 2·DRAW_DEG. The arms inherit that and nothing else.
+  //   · TODO 115 — WHICH WAY THE WHEEL RUNS is not a sign in this block, it
+  //     is a MIRROR of the whole stone assembly about the fork's own x = 0
+  //     (the line through the pivot and the wheel centre, which the blank is
+  //     already symmetric about). Reversing the movement swaps entry and
+  //     exit, leans both stones the other way, moves each body — and its
+  //     slot, and the head broached round it — to the other side of its
+  //     locking face, and reverses the tooth-motion tangent the impulse face
+  //     is cut from. Under that mirror σ and the draw torque both negate, so
+  //     the draw assert below is invariant and is NOT parameterised; four
+  //     things are (bodyX, t̂, the face normal's sign, and the head's walls),
+  //     each spelled where it is cut. Flipping any ONE of them is a PARTIAL
+  //     mirror and the asserts say so, which is how they were found.
   //   · IMPULSE FACE: during the impulse window the wheel advance
   //     (beatRad) and the fork swing (2·bankRad) ride the SAME smoothstep
   //     (see main.js escapeDeltaDeg/forkSwingRad), so in the fork frame
@@ -1167,8 +1196,11 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const stoneL = 0.9 * pitchArc;   // slot-buried tail included
   const cornerLen = Math.hypot(span / 2, span / 2); // |C|
   const beat = beatRad ?? THREE.MathUtils.degToRad(12);
-  const entryPos = new THREE.Vector3(-ax, sy, 0);
-  const exitPos = new THREE.Vector3(ax, sy, 0);
+  // TODO 115 — ENTRY is the stone a tooth reaches first, so it is on the side
+  // the teeth come FROM: the movement's direction names these, it does not
+  // just place them. Reverse the movement and the two swap seats.
+  const entryPos = new THREE.Vector3(-MOVEMENT_SENSE * ax, sy, 0);
+  const exitPos = new THREE.Vector3(MOVEMENT_SENSE * ax, sy, 0);
 
   // §16 — the seat gap must CLEAR the blank's own extrude bevel. The bevel
   // grows the outline along its outward normal, and inside a notch that
@@ -1187,8 +1219,21 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   const gGap = bevel + SEAT_SHOW;  // bevel first, then the gap that survives it
   const m = 0.4 * stoneL;          // ruby protrusion past the arm's nose
   const wallW = 0.55;              // steel around the broached slot
-  const sxL = -stoneW - gGap - wallW, sxR = gGap + wallW; // head outer x
-  const nx0 = -stoneW - gGap, nx1 = gGap;                 // slot walls
+  // TODO 115 — WHICH SIDE OF ITS LOCKING FACE THE STONE'S BODY STANDS ON is
+  // the one thing about this assembly the movement's direction decides, and it
+  // decides it for the ruby, the slot broached to hold it and the head cut
+  // around that slot TOGETHER. Reversing the movement makes the whole stone
+  // assembly the exact x-MIRROR of the canonical one (solveStone below carries
+  // the rest of that mirror), so it is spelled once, here, in stone-local x.
+  // Mirroring HEAD_LOCAL's CCW ring and re-winding it CCW is EXACTLY the swap
+  // below — right wall ↔ left wall, near slot wall ↔ far — which is why the
+  // polygon itself and the traversal that reads it are untouched.
+  const mirrored = MOVEMENT_SENSE < 0;
+  const bodyX = mirrored ? stoneW : -stoneW;       // stone-local x of the body's back face
+  const sxCanL = -stoneW - gGap - wallW, sxCanR = gGap + wallW;  // head outer x, canonical
+  const nxCanL = -stoneW - gGap, nxCanR = gGap;                  // slot walls, canonical
+  const sxL = mirrored ? -sxCanR : sxCanL, sxR = mirrored ? -sxCanL : sxCanR;
+  const nx0 = mirrored ? -nxCanR : nxCanL, nx1 = mirrored ? -nxCanL : nxCanR;
   const yN = m, yF = stoneL + gGap, yB = yF + wallW;      // nose / slot floor / head back
 
   // The arm head, in the stone's own frame, wound CCW. This ONE polygon is
@@ -1204,36 +1249,48 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   ];
 
   // Stone cross-section (stone-local: origin = locking corner, +Y = lean
-  // axis pointing away from the wheel into the slot, body at −X — the
+  // axis pointing away from the wheel into the slot, body at `bodyX` — the
   // downstream side of the locking face, where the arm's material backs
-  // the stone against the tooth's push):
-  //   (0,0) → (−w, Δ) → (−w, ℓ) → (0, ℓ);  x = 0 face = LOCKING face,
-  //   the angled (0,0)→(−w,Δ) end = IMPULSE face.
+  // the stone against the tooth's push, and the side the movement's
+  // direction picks):
+  //   (0,0) → (bodyX, Δ) → (bodyX, ℓ) → (0, ℓ);  x = 0 face = LOCKING face,
+  //   the angled (0,0)→(bodyX,Δ) end = IMPULSE face.
   function solveStone(sigma) {
     const C = new THREE.Vector2(sigma * span / 2, span / 2);
     const u = new THREE.Vector2(C.x - 0, C.y - D).divideScalar(R);      // wheel radial at the corner
-    const tHat = new THREE.Vector2(-u.y, u.x);                          // tooth-motion tangent (ẑ×û)
+    // Tooth-motion tangent. TODO 115 — the tooth travels the way the WHEEL
+    // runs, so this is MOVEMENT_SENSE·(ẑ×û), not ẑ×û. It sets the impulse
+    // face's cut below against the fork's own swing, and those two terms have
+    // to reverse together or the face is cut from a path nothing travels.
+    const tHat = new THREE.Vector2(-u.y, u.x).multiplyScalar(MOVEMENT_SENSE);
     const cHat = C.clone().divideScalar(cornerLen);                     // pivot radial
     // Zero-torque face direction: the perp of ĉ on the away-from-wheel
-    // branch, then + draw in the wheel's (+z) rotation sense.
+    // branch, then draw in the wheel's own rotation sense (MOVEMENT_SENSE·z).
     let f0 = new THREE.Vector2(-cHat.y, cHat.x);
     if (f0.dot(u) < 0) f0.negate();
-    const drawRad = THREE.MathUtils.degToRad(DRAW_DEG);
+    const drawRad = THREE.MathUtils.degToRad(MOVEMENT_SENSE * DRAW_DEG); // TODO 115 — draw leans the way the wheel turns
     const tau = f0.clone().rotateAround(new THREE.Vector2(), drawRad);  // stone lean axis
     const thetaTau = Math.atan2(tau.y, tau.x);
     // Impulse slide direction in the fork frame (see header comment).
     const p = tHat.clone().multiplyScalar(R * beat)
       .add(u.clone().multiplyScalar(2 * bank * cornerLen));
     // Into stone-local (rotate by −(θτ − 90°)) and solve the let-off
-    // corner's setback: face through (0,0) along p meets x = −w at Δ.
+    // corner's setback: face through (0,0) along p meets x = bodyX at Δ.
     const pLoc = p.clone().rotateAround(new THREE.Vector2(), -(thetaTau - Math.PI / 2));
-    const delta = Math.abs(pLoc.x) > 1e-6 ? -stoneW * (pLoc.y / pLoc.x) : stoneW * 0.5;
+    const delta = Math.abs(pLoc.x) > 1e-6 ? bodyX * (pLoc.y / pLoc.x) : stoneW * 0.5;
     if (!(delta > 0.02 && delta < stoneL * 0.8))
       console.warn('pallet stone: impulse setback out of range', sigma, delta.toFixed(3));
     // Draw sanity: the tooth's normal push on the locking face must torque
-    // the fork INTO this stone's banking (deeper lock). Face outward
-    // normal (toward the tooth) = stone-local +X mapped to world.
-    const n = new THREE.Vector2(Math.cos(thetaTau - Math.PI / 2), Math.sin(thetaTau - Math.PI / 2));
+    // the fork INTO this stone's banking (deeper lock). The face's outward
+    // normal points AWAY from the body it backs onto, so it is stone-local
+    // −sign(bodyX)·X̂ mapped to world — TODO 115: the +X̂ this used to spell
+    // was the canonical body side written as a constant. The assert itself is
+    // direction-agnostic and unchanged: under a true mirror sigma and the
+    // torque both negate, so their product is invariant, and which stone
+    // banks which way is a fact about the seats, not about the wheel.
+    const nSign = -Math.sign(bodyX);
+    const n = new THREE.Vector2(Math.cos(thetaTau - Math.PI / 2), Math.sin(thetaTau - Math.PI / 2))
+      .multiplyScalar(nSign);
     const torque = C.x * -n.y - C.y * -n.x; // (C × (−n))_z — force on the FORK is −n
     if (sigma * torque < 0)
       console.warn('pallet stone: draw torque sign wrong for stone', sigma);
@@ -1414,8 +1471,8 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   for (const st of stones) {
     const sh = new THREE.Shape();
     sh.moveTo(0, 0);
-    sh.lineTo(-stoneW, st.delta);
-    sh.lineTo(-stoneW, stoneL);
+    sh.lineTo(bodyX, st.delta);      // TODO 115 — the body side the movement's direction picks
+    sh.lineTo(bodyX, stoneL);
     sh.lineTo(0, stoneL);
     sh.closePath();
     const geo = new THREE.ExtrudeGeometry(sh, { depth: t, bevelEnabled: false, curveSegments: 1 });
@@ -3423,7 +3480,11 @@ export function makeTorsionSpring({ coilR, wireR, coils, startAz = 0, sense = 1,
 // one-way-ness, so every check stayed green while the saw ran inverted.
 // The mirror maps (x, y) → (x, −y) with the point order reversed, so the
 // outline still winds the same way and the extrude's normals are untouched.
-export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null, reverse = false }) {
+// `sense`: which train this saw turns with — MOVEMENT_SENSE for the going
+// side, ALARM_SENSE for the alarm's own motor (layout.js says why they are
+// two). The `reverse` flag keeps its meaning against whichever it is given.
+export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClick = true, squareBore = null, reverse = false,
+                                      sense = MOVEMENT_SENSE }) {
   const g = new THREE.Group();
   const rShape = new THREE.Shape();
   const outline = [];
@@ -3433,7 +3494,10 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
     outline.push([Math.cos(a0) * radius * 0.8, Math.sin(a0) * radius * 0.8]);
     outline.push([Math.cos(a1) * radius, Math.sin(a1) * radius]);
   }
-  if (reverse) { for (const p of outline) p[1] = -p[1]; outline.reverse(); }
+  // TODO 115 — `reverse` means "against this train's running direction", so
+  // the mirror it applies is XORed with that train's `sense`. The flag keeps
+  // its meaning for every caller; what changes is which cut it produces.
+  if (reverse !== (sense < 0)) { for (const p of outline) p[1] = -p[1]; outline.reverse(); }
   // TODO 115 GUARD — a saw is handed on purpose: the RAMP is the flank the
   // working direction climbs and the steep FACE is the one that catches the
   // reverse. Measured off the outline just built rather than from `reverse`,
@@ -3467,8 +3531,8 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
       wsum += w; asum += w * a;
     }
     const lean = wsum > 0 ? Math.sign(asum / wsum - pitchA / 2) : 0;
-    if (lean !== SENSE_REL * MOVEMENT_SENSE)
-      console.warn(`§115 ratchet(teeth=${teeth}, reverse=${reverse}): the tooth leans ${lean > 0 ? '+' : '-'}ve in its pitch window but MOVEMENT_SENSE ${MOVEMENT_SENSE} with reverse=${reverse} demands ${SENSE_REL * MOVEMENT_SENSE} — the click would ride the cliff instead of the ramp`);
+    if (lean !== SENSE_REL * sense)
+      console.warn(`§115 ratchet(teeth=${teeth}, reverse=${reverse}): the tooth leans ${lean > 0 ? '+' : '-'}ve in its pitch window but sense ${sense} with reverse=${reverse} demands ${SENSE_REL * sense} — the click would ride the cliff instead of the ramp`);
   }
   rShape.moveTo(outline[0][0], outline[0][1]);
   for (let i = 1; i < outline.length; i++) rShape.lineTo(outline[i][0], outline[i][1]);
@@ -3719,7 +3783,7 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   let gA0 = null, gA1 = 0, gZ0 = 0, gZ1 = 0;
   for (let i = 0; i <= SEG; i++) {
     const t = i / (grooveTurns * 48);
-    const a = t * grooveTurns * Math.PI * 2;
+    const a = MOVEMENT_SENSE * t * grooveTurns * Math.PI * 2;  // TODO 115 — the chain pays off in the running direction
     const zg = bandZ0 + bandSpan * t;                     // groove point of the wrap below
     if (gA0 === null) { gA0 = a; gZ0 = zg; }
     gA1 = a; gZ1 = zg;
@@ -3764,6 +3828,11 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // silence (`probe-direction-guards.mjs`), which is why the hand is read off
   // the laid crest rather than trusted to the line that lays it.
   if (gA0 !== null && Math.abs(gZ1 - gZ0) > 1e-9) {
+    // Exported too: the chain's own wrap is laid in main.js, and the only way
+    // for that layer to know which way this groove runs without restating the
+    // line above is to be handed what the crest MEASURED. (TODO 115 — the wrap
+    // and the groove are two files apart and were laid by two opposite laws.)
+    g.userData.grooveDAdZ = (gA1 - gA0) / (gZ1 - gZ0);
     const hand = Math.sign((gA1 - gA0) / (gZ1 - gZ0));
     if (hand !== MOVEMENT_SENSE)
       console.warn(`§115 fusee groove: winds ${hand > 0 ? 'right' : 'left'}-handed (${((gA1 - gA0) / (Math.PI * 2)).toFixed(3)} turns over ${(gZ1 - gZ0).toFixed(3)} of z) but MOVEMENT_SENSE is ${MOVEMENT_SENSE} — the chain would wrap against its lay`);
@@ -3844,7 +3913,10 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
 // is exactly Archimedean (the open-quadrature note below is why) — but it is
 // no longer a frame: no service state ever shows it. Default 0 keeps the
 // alarm barrel (§89) exactly as it was.
-export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0 }) {
+// `sense`: the train this spring drives — MOVEMENT_SENSE for the going drum,
+// ALARM_SENSE for the alarm barrel (layout.js says why they are two).
+export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup = 0,
+                                   sense = MOVEMENT_SENSE }) {
   const pBind = ribbonR * 2;              // coil bind — see above
   const P = pBind / (Math.PI * 2);        // ...as radius gained per radian
   const A_free = coils * Math.PI * 2;     // the ribbon as coiled: even pitch, k = 1
@@ -3890,7 +3962,7 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
     for (let i = 0; i <= n; i++) {
       const a = (A * i) / n;
       const r = radiusAt(A, k, S, a);
-      const ang = A - a;                  // clockwise outward — the handedness note above
+      const ang = sense * (A - a);        // TODO 115 — the ribbon unwinds in the direction it drives its arbor
       pts[i] = [Math.cos(ang) * r, Math.sin(ang) * r];
     }
     // TODO 115 GUARD — the ribbon's WIND. A spiral has no mirror axis, so a
@@ -3920,8 +3992,8 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
       while (d > Math.PI) d -= Math.PI * 2;
       while (d < -Math.PI) d += Math.PI * 2;
       const step = Math.sign(d);
-      if (step !== SENSE_REL * MOVEMENT_SENSE)
-        console.warn(`§115 mainspring ribbon: winds ${step > 0 ? 'anticlockwise' : 'clockwise'} outward but MOVEMENT_SENSE ${MOVEMENT_SENSE} with SENSE_REL ${SENSE_REL} demands ${SENSE_REL * MOVEMENT_SENSE} — the spring would drive its arbor backwards`);
+      if (step !== SENSE_REL * sense)
+        console.warn(`§115 mainspring ribbon: winds ${step > 0 ? 'anticlockwise' : 'clockwise'} outward but sense ${sense} with SENSE_REL ${SENSE_REL} demands ${SENSE_REL * sense} — the spring would drive its arbor backwards`);
     }
     return pts;
   };
@@ -4051,7 +4123,8 @@ export const barrelArborR = (radius) => radius * 0.09;
 export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null,
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
                              springSetupSweep = 0,
-                             arbor = true, arborBoreR = null }) {
+                             arbor = true, arborBoreR = null,
+                             sense = MOVEMENT_SENSE }) {
   const g = new THREE.Group();
   if (!arbor && arborBoreR === null)
     console.warn('makeBarrel: arbor: false without arborBoreR — the body has nothing to turn on and no bore to turn on it');
@@ -4125,7 +4198,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
   const springInner = morph ? springArborR + sRibbon : radius * 0.16;
   const wind = morph ? mainspringFrames({
     innerR: springInner, outerR: springOuter, coils: sCoils, ribbonR: sRibbon,
-    sweep: springWindSweep, setup: springSetupSweep,
+    sweep: springWindSweep, setup: springSetupSweep, sense,
   }) : null;
   const tubeOf = (pts) => new THREE.TubeGeometry(
     new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))),

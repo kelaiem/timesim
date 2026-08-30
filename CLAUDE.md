@@ -712,16 +712,48 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   `(P.dial.x − x, P.dial.y + y)`. The frame is turned 180° about Y, so a
   dialFace child's `rotation.z = θ` IS a world rotation of −θ — which means a
   display and the movement-frame arbor it is keyed to must carry OPPOSITE
-  values to be the same rigid body. **What the code does today is the
-  reverse**, and this entry used to state that as the convention ("a
-  movement-frame arbor carries the NEGATED rotation of the hand it drives").
-  It is TODO 115: measured, every display the going train drives
-  counter-rotates its own wheel, equal and opposite to the last digit
-  (`tools/probe-coaxial-sense.mjs`). Read the convention as a description of
-  a defect, not as a rule to follow, until that item lands — and note the fix
-  is not one sign, because the train's absolute sense is wrong too. The
-  correct crossing is already in the tree: `reserveHand.rotation.z =
-  -rsvArbor2.rotation.z` (33743), and the alarm pointer's comment beside it.
+  values to be the same rigid body. **That is the rule, and since TODO 115 the
+  code follows it**: every dial-side display keyed to a going-train quantity
+  takes the negated angle (`minuteHand`, `hourWheelGroup`, `smallSecondsHand`,
+  `cannonPinion`), and a MOVEMENT-frame part keyed to the same quantity takes
+  it unnegated (`secondsCamArbor`, which `movement.add`s) — the same seam read
+  from the other side, and the error the fix had to correct in both
+  directions. `reserveHand.rotation.z = -rsvArbor2.rotation.z` always did
+  this and is `probe-coaxial-sense.mjs`'s fourth control. **Which frame a part
+  is parented into is the whole question**, so check the `add` before the
+  sign. The train's ABSOLUTE sense is the other half and it is one factor, not
+  a sign per wheel: `MOVEMENT_SENSE` in `layout.js` — see the direction-guard
+  entry below.
+- **Which way a train runs is ONE declaration, and there are TWO of them** —
+  `MOVEMENT_SENSE` (the going train) and `ALARM_SENSE` (the alarm, a second
+  MOTOR posed off `alarmStrikePhase` that reversing the going train does not
+  turn) — both in `layout.js`. Every direction-committed cut derives from one of
+  them: the escape wheel's club and its tooth PHASE, the pallet stones (a MIRROR
+  of the whole stone assembly, not a sign — body side, slot, head walls,
+  tooth-motion tangent and face normal together), the five saw/ratchet cuts, the
+  fusee groove, both mainspring ribbons, the chain's wrap and its span's tangent
+  branch, the drum's rotation, `windLocalAt`'s pay-out term, the maintaining
+  click's tooth mapping, and `escapeAngle`. Nothing in the battery measures a
+  direction, so a half-landed reversal passes every collision gate in silence —
+  which is why each of those sites carries a boot guard that measures its part's
+  hand off the geometry it just cut and compares it against the declaration.
+  **The recurring defect is ONE direction written down TWICE** — the groove and
+  the wrap, the tangent branch and the hook, a saw and its analytic twin, the
+  spur and the crown wheel — with only one copy carrying the sense; the fix that
+  keeps working is one SOURCE, and the guard that keeps working measures a
+  physical invariant both copies must satisfy (the chain lies in its groove, two
+  pulleys on one belt turn together, a click climbs the ramp), never restates
+  either copy. **TODO 115 is PART LANDED**: the keyless winding chain still
+  carries the old sense and the boot guard beside `crownWheelSpin` says so.
+  **The guards hold COHERENCE, not a first-principles
+  derivation**: a part's relation to the sense (`SENSE_REL` beside its
+  builder) is a fact about the metal as cut, and the assert makes the
+  declaration and the cut move together. `node tools/probe-direction-guards.mjs`
+  is what proves a guard fires — it MUTATES each site and boots the result,
+  because a guard nobody has seen fire is a comment. Add a
+  direction-committed cut and it belongs in that table; a row that comes back
+  SILENT is an unguarded commitment, and one that comes back NO-OP tested
+  nothing.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
   **Disarmed at the source by §81**: every mesh now reaches the scene
