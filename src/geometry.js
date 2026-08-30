@@ -7024,12 +7024,17 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   // Concavity only removes material below the corner plane, so the
   // crossing envelope is the hour blade's corner plane (rBase/2 up) against
   // the minute blade's keel (rBase down) — and since §188 both central
-  // sections are HAND_RBASE_STOCK, so the sum is 1.5·rBase ≈ 0.79, deep
-  // inside the 2.3 hour/minute plane gap in main.js. (History: the old
-  // note bounded rHour + rMinute ≈ 2.10 as if both were cylinders; §125
-  // grew that sum past 2.3 while the true envelope stayed clear at ≈1.79,
-  // which is why the honest expression is written out; §188 then cut both
-  // sections to stock and the envelope stopped depending on length at all.)
+  // sections are HAND_RBASE_STOCK, so the sum is 1.5·rBase ≈ 0.79. Since
+  // TODO 118 the hour/minute plane gap in main.js is DERIVED from exactly
+  // this envelope (plus the boss terms, which govern at stock), so this
+  // note and that lift can no longer disagree. (History: the old note
+  // bounded rHour + rMinute ≈ 2.10 as if both were cylinders and main.js
+  // carried a 2.3 literal sized to it; §125 grew that sum past 2.3 while
+  // the true envelope stayed clear at ≈1.79, which is why the honest
+  // expression is written out; §188 then cut both sections to stock, the
+  // envelope stopped depending on length at all — and the stranded 2.3
+  // left the minute hand floating on 0.67 mm of air until TODO 118 re-cut
+  // it to the constraint.)
   const facetFlat = (geo) => {
     // Extrude output is already non-indexed; toNonIndexed() would warn and
     // return the same geometry (which the dispose below would then free).
@@ -7189,10 +7194,16 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   //   topRise — tallest metal above the plane, boss excluded: the blade's
   //     corner plane at rBase/2 (a positive crown bows the flute above it
   //     by `crown`), and the same counterweight;
-  //   bossR/bossH — the collet, deliberately NOT in either figure: it is a
-  //     centred cylinder ±bossH/2 when unbored (a collet extruded 0..bossH
-  //     when bored), and where it dips or stands is the placement site's
-  //     question — over a bore, on a hub — not the open section's.
+  //   bossR/bossH — the collet, deliberately NOT in either figure: CENTRED
+  //     about the mounting plane, ±bossH/2, in BOTH branches (the unbored
+  //     cylinder by CylinderGeometry's own convention, the bored collet
+  //     because ringExtrude translates itself to ±thickness/2 — this line
+  //     used to claim "extruded 0..bossH when bored", and §188's
+  //     freed-headroom arithmetic inherited that error as "the collet
+  //     stands 0.8 proud" when the metal stands 0.4; TODO 118's audit
+  //     caught it against the mesh). Where the collet dips or stands is
+  //     the placement site's question — over a bore, on a hub — not the
+  //     open section's.
   const crown = rBase * (handAesthetics.fluteFactor ?? -0.3);
   g.userData.rBase = rBase;
   g.userData.halfW = halfWidth ?? planBase * (Math.sqrt(3) / 2);   // §158/§188 — the built half-width, for the placement site's asserts

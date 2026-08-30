@@ -8633,7 +8633,17 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§187 — the exhibition back opens on a threaded ring; 56 units,
+// Baseline (TODO 118 — the minute hand's lift becomes a derivation; 56 units,
+// 12 poses):
+// 3466530421
+//   moved from 3944605007 deliberately: the minute hand comes DOWN 1.094 u
+//   = 0.41 mm (the 2.3 fat-rod literal replaced by the four-term userData
+//   derivation, governing term boss-to-boss at CLEAR_MARGIN), and because
+//   the minute boss is the front-most metal, handFront moves −14.883 →
+//   −13.789 and the crystal chain follows — the Dial-side units that carry
+//   the hand and the Case's crystal re-box; nothing behind the dial moves.
+//   Measured twice on this tree (virgin double-boot).
+// Previous baseline (§187 — the exhibition back opens on a threaded ring; 56 units,
 // 12 poses):
 // 3944605007
 //   moved from 3880401533 deliberately: the Case unit's whole back re-boxes
