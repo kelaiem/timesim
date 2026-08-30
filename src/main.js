@@ -5972,6 +5972,52 @@ const CHAIN_TMPL = (() => {
 }
 let chainBuf = null;   // reused position/normal buffers — see buildChainLinkGeometry
 let chainFrames = null; // reused per-link frame slots (rivets read their neighbours' frames)
+// TODO 115 — ONE FRAME LAW FOR THE CHAIN, because there are two readers of it:
+// `buildChainLinkGeometry` lays the metal and `linkOuterPtsNear` models the
+// same metal analytically for the arrest's reach tables. A link's frame is
+// t̂ along the run, k̂ the pin axis (world-vertical with the tangent removed,
+// so plates stay flat while the span carries its slight z slope) and
+// ŷ = k̂ × t̂ across it, then §124's lean rotates (ŷ, k̂) about t̂.
+//
+// WHICH SIDE OF THE LINK FACES THE CONE is a fact about where the cone's axis
+// is, not about which way the chain happens to be walked. ŷ takes its sign
+// from the tangent and the tangent reverses when the wrap does, so under the
+// reversal "+ŷ" — declared INBOARD by §124 — turned outboard, and it turned
+// twice over: the lean tips the stack toward +ŷ AND `userData.seat` declares
+// its crowns on that same side. Both came out mirrored. Measured, the float
+// row read 1.286–1.491 against its 0.25 budget at EVERY reserve (0.207 on the
+// reference build), and the burial row stayed green throughout because the
+// outer edge had simply taken the inner edge's place. Correcting the lean
+// alone makes it WORSE, not better — 2.348, a correctly leaned link measured
+// on its outer edge — which is the tell that the frame, not the lean, is the
+// one source. So the walk's sense is decided ONCE off the wrap's own geometry
+// and t̂ and ŷ are negated together, which preserves the basis's handedness
+// (and with it every normal) while putting the link's inboard side back
+// inboard. The plate template is symmetric along t̂ — a stadium with a rivet
+// hole at each end — so nothing else reads the direction of the walk.
+//
+// It lives HERE, above both readers, because the analytic twin having its own
+// copy is how this cost a second landing: the metal releaned, the reach table
+// did not, and the arrest solved its pad arm against a chain that no longer
+// existed (`Winding arrest ⇄ Chain` 0.1325 against a 0.15 floor).
+function chainWalkFlip(joints, wrapArc) {
+  if (!(wrapArc > 0) || joints.length < 2) return 1;
+  const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
+  chainLinkFrame(joints[0], joints[1], 0, 1, t, k, y);
+  return (y.x * (P.barrel.x - (joints[0].x + joints[1].x) / 2)
+    + y.y * (P.barrel.y - (joints[0].y + joints[1].y) / 2)) >= 0 ? 1 : -1;
+}
+function chainLinkFrame(a, b, beta, flip, t, k, y) {
+  t.subVectors(b, a).normalize().multiplyScalar(flip);
+  k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
+  y.crossVectors(k, t);
+  if (beta > 1e-9) {   // the top of the stack tips toward +ŷ, into the flank
+    const cb = Math.cos(beta), sb = Math.sin(beta);
+    const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
+    k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
+    y.set(y2x, y2y, y2z);
+  }
+}
 // §124 (TODO 46) — betaAtArc: the wrap's tilt law as a function of arc
 // position along the curve (rebuildChain builds it from its own chord-summed
 // wrap points, so the builder and the path hold ONE mapping). Wrap links get
@@ -6083,64 +6129,28 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const L = len / N;
   if (!chainFrames || chainFrames.length < N)
     chainFrames = Array.from({ length: N }, () => ({ t: new THREE.Vector3(), y: new THREE.Vector3(), k: new THREE.Vector3() }));
-  // TODO 115 — WHICH SIDE OF THE LINK FACES THE CONE is a fact about where
-  // the cone's axis is, not about which way the chain happens to be walked.
-  // ŷ = k̂ × t̂ takes its sign from the tangent and the tangent reverses when
-  // the wrap does, so under the reversal "+ŷ", declared INBOARD below, turned
-  // outboard — and it turned twice over, because the §124 lean tips the stack
-  // toward +ŷ AND `userData.seat` declares its crowns on that same side. Both
-  // came out mirrored: measured, the float row read 1.286–1.491 against its
-  // 0.25 budget at EVERY reserve (0.207 on the reference build), and the
-  // burial row stayed green throughout because the outer edge had simply
-  // taken the inner edge's place. Correcting the lean alone makes it worse,
-  // not better — 2.348, a correctly leaned link measured on its outer edge —
-  // which is the tell that the frame, not the lean, is the one source. So the
-  // walk's sense is decided ONCE off the wrap's own geometry and t̂ and ŷ are
-  // negated together, which preserves the basis's handedness (and with it
-  // every normal) while putting the link's inboard side back inboard. The
-  // plate template is symmetric along t̂ — a stadium with a rivet hole at each
-  // end — so nothing else reads the direction of the walk.
-  let frameFlip = 1;
-  if (wrapArc > 0) {
-    t.subVectors(joints[1], joints[0]).normalize();
-    k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
-    y.crossVectors(k, t);
-    frameFlip = (y.x * (P.barrel.x - (joints[0].x + joints[1].x) / 2)
-      + y.y * (P.barrel.y - (joints[0].y + joints[1].y) / 2)) >= 0 ? 1 : -1;
-  }
+  const frameFlip = chainWalkFlip(joints, wrapArc);
   for (let i = 0; i < N; i++) {
     const a = joints[i], b = joints[i + 1];
-    t.subVectors(b, a).normalize().multiplyScalar(frameFlip);
-    // Pin axis: world-vertical with the tangent's component removed, so
-    // plates stay flat while the span carries its slight z slope.
-    k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
-    y.crossVectors(k, t);
-    // §124 (TODO 46) — the wrap links LEAN into the flank: rotate (ŷ, k̂)
-    // about t̂ by the link's own β, top of the stack tipping inboard (+ŷ),
-    // exactly the tilt the corner-locus cut accepts. The RAMP sheds β at the
-    // departure: judged links (the isWrapLink guard, one full pitch below
-    // the departure) carry FULL β — anything less re-opens the daylight the
-    // float row gates — the one unjudged link ending inside the last pitch
-    // takes β/2, and the straddler + span are vertical. That grades the
-    // shed into two adjacent-joint steps of ≤ β/2 ≈ 32° at the lowest wrap
-    // tensions — the same order as the ~20–34° of azimuth articulation the
-    // wrap already carries between stations, and the declared articulation
-    // fiction of this chain (a real chain sheds its lean over the free span
-    // by joint play; measured worst per-joint twist over the reserve sweep:
-    // 36.3°, at tension ≈ 0.07 where the departure is still near the base).
+    // §124 (TODO 46) — the wrap links LEAN into the flank, the tilt the
+    // corner-locus cut accepts. The RAMP sheds β at the departure: judged
+    // links (the isWrapLink guard, one full pitch below the departure) carry
+    // FULL β — anything less re-opens the daylight the float row gates — the
+    // one unjudged link ending inside the last pitch takes β/2, and the
+    // straddler + span are vertical. That grades the shed into two
+    // adjacent-joint steps of ≤ β/2 ≈ 32° at the lowest wrap tensions — the
+    // same order as the ~20–34° of azimuth articulation the wrap already
+    // carries between stations, and the declared articulation fiction of this
+    // chain (a real chain sheds its lean over the free span by joint play;
+    // measured worst per-joint twist over the reserve sweep: 36.3°, at
+    // tension ≈ 0.07 where the departure is still near the base).
+    let beta = 0;
     if (betaAtArc && wrapArc > 0) {
       const sEnd = (i + 1) * L;
       const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      if (ramp > 0) {
-        const beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
-        if (beta > 1e-9) {
-          const cb = Math.cos(beta), sb = Math.sin(beta);
-          const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
-          k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
-          y.set(y2x, y2y, y2z);
-        }
-      }
+      if (ramp > 0) beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
     }
+    chainLinkFrame(a, b, beta, frameFlip, t, k, y);
     chainFrames[i].t.copy(t); chainFrames[i].y.copy(y); chainFrames[i].k.copy(k);
     mid.addVectors(a, b).multiplyScalar(0.5);
     if (isOuter(i) && isWrapLink(i)) seatBases.push(off / 3);
@@ -8874,23 +8884,19 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const L = len / N;
     const out = [];
     const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
+    // TODO 115 — through `chainLinkFrame`, the builder's own law, not a copy
+    // of it: this table models the metal `buildChainLinkGeometry` lays, so a
+    // frame the two disagree about is an arrest solved against a chain that
+    // is not there. It was, for one landing.
+    const flip = chainWalkFlip(joints, wrapArc);
     for (let i = 0; i < N; i++) {
       const sEnd = (i + 1) * L;
       if (sEnd < wrapArc - arcBack) continue; // only the wrap's top matters to the finger
       if (i * L > wrapArc) break;             // past the departure the span takes over (its corridor is asserted separately)
       if (wrapOnly && sEnd > wrapArc) break;  // …and the straddling link goes with it — see the note above
       const a = joints[i], b = joints[i + 1];
-      t.subVectors(b, a).normalize();
-      k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
-      y.crossVectors(k, t);
       const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      const beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
-      if (beta > 1e-9) {
-        const cb = Math.cos(beta), sb = Math.sin(beta);
-        const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
-        k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
-        y.set(y2x, y2y, y2z);
-      }
+      chainLinkFrame(a, b, ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc)), flip, t, k, y);
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mz = (a.z + b.z) / 2;
       const push = (aa, yy, dd) => out.push({
         x: mx + t.x * aa + y.x * yy + k.x * dd,
