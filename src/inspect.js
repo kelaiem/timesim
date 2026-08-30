@@ -8633,7 +8633,18 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (TODO 118 — the minute hand's lift becomes a derivation; 56 units,
+// Baseline (TODO 119 — handsGroupZOffset derives from the blade↔blade lane;
+// 56 units, 12 poses):
+// 2853250929
+//   moved from 3466530421 deliberately: the whole central display stack
+//   comes down 0.822 u = 0.31 mm (offset 2.6 → 1.778, derived from the
+//   alarm-blade-top ↔ hour-blade-keel pair — the recorded collet binders
+//   were radially fictional, see TODO 119), so Dial (minute hand and
+//   handsGroup furniture), Hour wheel (hand and shortened tube) and the
+//   Case (the crystal chain follows handFront) re-box; the alarm hand
+//   itself is the fixed floor and does not move. Measured twice on this
+//   tree (virgin double-boot).
+// Previous baseline (TODO 118 — the minute hand's lift becomes a derivation; 56 units,
 // 12 poses):
 // 3466530421
 //   moved from 3944605007 deliberately: the minute hand comes DOWN 1.094 u
