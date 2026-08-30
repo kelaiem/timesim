@@ -20063,3 +20063,74 @@ pusher 5.05/9.80, flange at 15.46. Fingerprint re-baselined 3880401533
 at 56 units (deterministic across virgin boots): the Case unit re-boxes
 wholesale and every part whose standoff reads `CASE_R_OUT` moves
 outboard with the band. The full battery verdict is CI's, per rule 4.
+
+## §195 — The primer's first interactive plate: the fusee bargain, under the reader's finger
+
+Filed from a request for the one diagram plate that would be the most
+interactive and approachable to a novice. The explainer's interactive
+plates (§67's play loops, the fusee elevation, the beat-law scrubber)
+were the model to adapt; the choice fell on the fusee bargain because
+the primer already teaches it as its second entry, its static plate
+already draws the two endpoint states, and the whole idea IS one
+degree of freedom — a single slider is the mechanism's honest control
+surface. Continuously connecting the two panels the reader has just
+seen beats introducing a new drawing vocabulary.
+
+### What shipped
+
+**The plate.** `primer.html`'s fusee entry gains PLATE 2 ("Run the
+bargain yourself"): a slider (plus the explainer's ▶ play loop —
+run-down slow, rewind fast, paused while the entry is closed or the tab
+hidden, no autoplay under `prefers-reduced-motion`) drives a side-on
+cone whose contact dot walks the flank, a lever line and a pull arrow
+that trade lengths, and four bars — the spring's pull (falls to 59%),
+the lever arm (grows ×1.7), their product (drawn at a fixed width,
+because holding still is the entire claim), and a fourth, faded bar
+showing what the gears would feel if the chain pulled at one fixed
+radius. The counterfactual bar is the teaching move: the level bar
+alone looks like nothing happening; beside its sagging twin it looks
+like the achievement it is.
+
+**The quantities are the machine's, rounded per the page's contract.**
+The empty-end pull fraction 0.59 and the ~1.7× lever growth are the
+source's own derived pair (the §124 set-up's consequence, 0.58986, and
+its inverse — the drawn cone's radii keep the same proportion), stated
+in the caption as "about three-fifths" and "about 1.7×". One
+simplification is drawn and captioned rather than hidden: the pull
+fades along a straight line in reserve, where the real spring's fade
+is the measured concave solve — which is also why the caption can say
+the real flank is not quite straight. No source identifier reaches the
+page; `explain-quotes.mjs` still reports 0 claims, and the plate's
+script feeds the scan only its string literals by that gate's design.
+
+**The chrome came over, not a copy of the idea of it.** The
+`.controls`/`.readout`/`.chip` CSS is the explainer's, ported verbatim
+so the two pages' plates read as one instrument family, and the module
+script now follows the ordering rule its own comment had been keeping
+for a plate that did not exist: localize first, then wire, every
+dynamic string through `tr()` — named `tr` to match the explainer, so
+`explain-i18n.mjs`'s one literal scan covers both pages' scripts.
+
+**Localized whole in the landing.** All five tables
+(`primer-i18n.{de,fr,ja,zh,zh-Hant}.js`) gained the plate's ~20 keys —
+prose, labels, chips, and the play/pause verbs reusing the explainer's
+established renderings — keys regenerated with `--extract`, never
+retyped. The value-not-glyph number rule did its job in both
+directions: German's caption reads `1,7` and its readout `30,0 h`
+(`fmtNum`/`fmtInt` at the display layer), while the gate holds every
+translated quantity to the English value.
+
+### Measured
+
+`explain-quotes.mjs`: PASS, primer 0 identifier claims.
+`explain-i18n.mjs --check` (both pages, all locales): PASS — 0
+unmatched, 0 markup drift, 0 code drift, 0 number drift, plate fit 0
+new overflow/collision in all five locales, 0 page errors. Primer
+coverage 114/116 per locale (+2 number-only keys the checker counts
+as invariant) (the two keyless-entry paragraphs
+invalidated by an earlier English edit predate this landing and stay
+visible-English by the tier's design). Screenshot pass over
+full/half/empty × en/de: bars, chips, readout and cone all track the
+slider; the product bar does not move. The battery's paths filter takes
+this change out by its standing claim: the page and its tables are not
+on `index.html`'s module graph.

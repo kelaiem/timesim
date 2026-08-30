@@ -134,6 +134,33 @@
   svg .leader { stroke: var(--muted); stroke-width: 0.75; fill: none; opacity: 0.8; }
   svg .dim { stroke: var(--muted); stroke-width: 0.75; }
 
+  /* controls — the explainer's chrome, ported verbatim so the two pages'
+     interactive plates read as one instrument family (§67's buttons and
+     chips; §195 gave the primer its first interactive plate, the fusee
+     bargain below) */
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--hairline);
+    border-radius: 8px; padding: 9px 12px; margin-bottom: 10px;
+    font-size: 11px; color: var(--muted); user-select: none;
+  }
+  .controls label { display: flex; align-items: center; gap: 8px; }
+  .controls input[type="range"] { width: 200px; accent-color: var(--accent); }
+  .controls input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .controls button {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong);
+    color: var(--text); border-radius: 6px; padding: 5px 12px;
+    font: 11px system-ui, sans-serif; cursor: pointer;
+  }
+  .readout { font: 11px/1 ui-monospace, monospace; color: var(--readout); font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+  .chip {
+    font: 10.5px/1 ui-monospace, monospace; padding: 4px 8px; border-radius: 6px;
+    border: 1px solid; white-space: nowrap;
+  }
+  .chip.ride { color: var(--steel); border-color: var(--steel); }
+  .chip.ramp { color: var(--brass); border-color: var(--brass); }
+  .chip.trip { color: #fff; background: var(--ruby); border-color: var(--ruby); }
+
   footer { max-width: 840px; margin: 30px auto 0; color: var(--muted); font-size: 11px; border-top: 1px solid var(--hairline); padding-top: 12px; }
 </style>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
@@ -236,6 +263,77 @@
         curves cancel. The chain also explains the winding feel of such watches: winding
         spools the chain back from drum to cone, and a small detent keeps the gears driven
         during the seconds the wind would otherwise unload them.</figcaption>
+      </figure>
+      <p>Plate 2 puts that bargain under your finger. Drag the reserve from a full wind
+      down to empty — or let it play — and watch the two quantities trade places while
+      their product holds still. That level bar is the whole reason the cone exists.</p>
+      <!-- §195 — the primer's first interactive plate. Everything the script
+           writes into it is a rounded quantity (the page's contract), and the
+           two endpoint states are exactly plate 1's two panels: drag the
+           slider to either end and you are looking at the drawing above. -->
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">Run the bargain yourself</span></div>
+        <div class="controls">
+          <button id="fbPlay">▶ play</button>
+          <label>reserve
+            <input type="range" id="fbSlider" min="0" max="1000" value="1000" step="1"
+                   aria-label="Reserve remaining, as a fraction of a full wind">
+          </label>
+          <span class="readout" id="fbReadout">reserve 30.0 h</span>
+          <span class="chip ride" id="fbChip">fully wound · big pull, short lever</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 252" width="780" height="252" role="img"
+               aria-label="Interactive elevation of the fusee cone beside four bars. As the reserve runs down, the chain's contact point walks from the cone's narrow end to its wide end; a bar for the spring's pull shrinks, a bar for the lever arm grows, and the bar for their product — the torque the gears feel — stays level. A fourth, faded bar shows the push sagging as it would if the chain pulled at one fixed radius.">
+            <!-- the cone, side on — wide end left, narrow end right, the same
+                 silhouette as plate 1's two panels but continuous. The edge is
+                 drawn straight, as plate 1 draws it; the caption owns the
+                 simplification. Radii are in the machine's true proportion:
+                 the wide end is about 1.7× the narrow end. -->
+            <text class="lbl lbl-strong" x="60" y="26">the cone, side on</text>
+            <polygon points="90,66 330,90 330,158 90,182" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+            <line x1="90" y1="124" x2="330" y2="124" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+            <text class="val" x="60" y="204">wide end</text>
+            <text class="val" x="272" y="204">narrow end</text>
+            <line id="fbLever" x1="322" y1="124" x2="322" y2="91" stroke="var(--steel)" stroke-width="1.6"/>
+            <line id="fbPull" x1="322" y1="90" x2="410" y2="90" stroke="var(--ruby)" stroke-width="2.4" marker-end="url(#arrB)"/>
+            <circle id="fbDot" cx="322" cy="90" r="3.5" fill="var(--ruby)"/>
+            <text class="val" x="60" y="232">the chain walks wide as the spring fades; the lever is the radius it pulls at</text>
+            <!-- the four bars. Track width 250 px = the full-wind pull; every
+                 bar is drawn as its fraction of that. -->
+            <g>
+              <text class="lbl val-ruby" x="470" y="42">the spring's pull</text>
+              <rect x="470" y="50" width="250" height="12" rx="3" fill="none" stroke="var(--line)" stroke-width="0.75"/>
+              <rect id="fbPullBar" x="470" y="50" width="250" height="12" rx="3" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1"/>
+              <text class="val" id="fbPullVal" x="726" y="60">100 %</text>
+              <text class="lbl val-steel" x="470" y="92">the lever arm</text>
+              <rect x="470" y="100" width="250" height="12" rx="3" fill="none" stroke="var(--line)" stroke-width="0.75"/>
+              <rect id="fbLeverBar" x="470" y="100" width="147" height="12" rx="3" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
+              <text class="val" id="fbLeverVal" x="726" y="110">× 1.0</text>
+              <text class="lbl val-brass" x="470" y="150">pull × lever — what the gears feel</text>
+              <rect x="470" y="158" width="250" height="12" rx="3" fill="none" stroke="var(--line)" stroke-width="0.75"/>
+              <rect x="470" y="158" width="147" height="12" rx="3" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
+              <text class="val val-brass" x="726" y="168">level</text>
+              <text class="lbl" x="470" y="204">if the chain pulled at one radius</text>
+              <rect x="470" y="212" width="250" height="12" rx="3" fill="none" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
+              <rect id="fbSagBar" x="470" y="212" width="250" height="12" rx="3" fill="var(--steel-fill)" opacity="0.5"/>
+              <text class="val" id="fbSagVal" x="726" y="222">100 %</text>
+            </g>
+            <defs>
+              <marker id="arrB" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L6,3 L0,6 z" fill="var(--ruby)"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+        <figcaption>The numbers are the machine's own, rounded: over the 30-hour reserve
+        the spring's pull fades to about three-fifths of its full-wind strength, and the
+        cone answers by letting the lever grow about 1.7× — so their product, the third
+        bar, does not move. The fourth bar is the watch this would be without a fusee:
+        every push to the balance sagging in step with the spring. One simplification is
+        drawn: the pull fades along a straight line here, where the real spring's fade is
+        a measured curve — which is why the real cone's flank is not quite straight
+        either. It is cut against that curve, and the bargain holds exactly.</figcaption>
       </figure>
     </div>
   </details>
@@ -550,14 +648,15 @@
 </div>
 
 <script type="module">
-  // §95 tier two — localize the page. A module, and the only script that
-  // touches this page's prose: the localizer replaces rich blocks' innerHTML
-  // wholesale, so anything that had cached a node inside one would be holding
-  // a detached copy. The primer has no interactive plates, so unlike the
-  // explainer there is nothing here to order against — the rule is kept
-  // anyway, because the next plate added to this page should inherit it.
-  import { UI_LANG, setUiLang, LOCALES } from './src/i18n.js';
-  import { localizePrimer } from './src/primer-i18n.js';
+  // §95 tier two — LOCALIZE FIRST, then wire the plate (§195). The localizer
+  // replaces rich blocks' innerHTML wholesale, so a plate that had already
+  // cached a node inside one would be holding a detached copy — the ordering
+  // rule this comment used to keep for a plate that did not exist yet, now
+  // load-bearing. Every dynamic string below goes through tr() rather than
+  // being written in English (`tr`, not `t`, matching the explainer so the
+  // i18n checker's one literal scan covers both pages).
+  import { UI_LANG, setUiLang, LOCALES, fmtNum, fmtInt } from './src/i18n.js';
+  import { localizePrimer, t as tr } from './src/primer-i18n.js';
   localizePrimer();
   {
     const sel = document.getElementById('lang-select');
@@ -571,6 +670,86 @@
     }
     sel.addEventListener('change', () => setUiLang(sel.value));
   }
+
+  // §195 — the fusee bargain, plate 2. The page's contract shapes the code:
+  // no source identifiers reach the DOM (the quantities below are the
+  // machine's published, rounded ones — see the caption), and numbers are
+  // quantities, so they render through tier one's fmtNum/fmtInt.
+  (function () {
+    // The machine's two endpoint quantities, rounded as the caption states
+    // them: at run-down the spring's pull is ~59% of full wind (the set-up's
+    // consequence — the source derives 0.58986), so the cone lets the lever
+    // grow by the inverse, ~1.7×. The drawn fade is linear in reserve — the
+    // one simplification, owned by the caption.
+    var EMPTY = 0.59, HOURS = 30;
+    var pullAt = function (t) { return EMPTY + (1 - EMPTY) * t; };
+
+    // The drawn cone: centreline y 124, edge from (90,66) wide to (330,90)
+    // narrow — radii 58 and 34 px, the true ~1.7 proportion. The contact
+    // point sits where the straight edge offers the lever the law asks for.
+    var CY = 124, XN = 330, XW = 90, RN = 34, RW = 58;
+    var el = function (id) { return document.getElementById(id); };
+    var box = el('fusee');
+    var slider = el('fbSlider'), btn = el('fbPlay'), chip = el('fbChip'), readout = el('fbReadout');
+    var lever = el('fbLever'), pullArrow = el('fbPull'), dot = el('fbDot');
+    var pullBar = el('fbPullBar'), leverBar = el('fbLeverBar'), sagBar = el('fbSagBar');
+    var pullVal = el('fbPullVal'), leverVal = el('fbLeverVal'), sagVal = el('fbSagVal');
+
+    function draw(t) {
+      var pull = pullAt(t);
+      var lev = 1 / pull;                     // full-wind lever = 1
+      var rPx = RN * lev;                     // the radius the chain pulls at, in px
+      var x = XN - (XN - XW) * ((rPx - RN) / (RW - RN));
+      var y = CY - rPx;
+      lever.setAttribute('x1', x); lever.setAttribute('x2', x);
+      lever.setAttribute('y1', CY); lever.setAttribute('y2', y + 1);
+      dot.setAttribute('cx', x); dot.setAttribute('cy', y);
+      pullArrow.setAttribute('x1', x); pullArrow.setAttribute('y1', y);
+      pullArrow.setAttribute('x2', x + 90 * pull); pullArrow.setAttribute('y2', y);
+      pullArrow.setAttribute('stroke-width', 1.2 + 1.2 * (pull - EMPTY) / (1 - EMPTY));
+      // Bars share one scale: the track is the full-wind pull, and the level
+      // product lands at 59% of it — pull × lever printed in the same units.
+      pullBar.setAttribute('width', 250 * pull);
+      leverBar.setAttribute('width', 250 * EMPTY * lev);
+      sagBar.setAttribute('width', 250 * pull);
+      var pct = fmtInt(Math.round(pull * 100)) + ' %';
+      pullVal.textContent = pct;
+      sagVal.textContent = pct;
+      leverVal.textContent = '× ' + fmtNum(lev, 1);
+      readout.textContent = tr('reserve') + ' ' + fmtNum(t * HOURS, 1) + ' h';
+      chip.className = 'chip';
+      if (t > 0.995) { chip.classList.add('ride'); chip.textContent = tr('fully wound · big pull, short lever'); }
+      else if (t < 0.005) { chip.classList.add('trip'); chip.textContent = tr('run down · small pull, long lever'); }
+      else { chip.classList.add('ramp'); chip.textContent = tr('the product is not moving'); }
+    }
+
+    // Scrubbing is the honest default; play walks the whole run-down and the
+    // (faster) wind that follows, pausing while the entry is closed or the
+    // tab hidden — the explainer's loop, inherited.
+    var playing = false, t0 = null, raf = 0, RUN = 8.0, WIND = 2.0;
+    function frame(now) {
+      if (!playing) return;
+      if (!box.open || document.hidden) { t0 = null; raf = requestAnimationFrame(frame); return; }
+      if (t0 === null) t0 = now;
+      var e = ((now - t0) / 1000) % (RUN + WIND);
+      var t = e < RUN ? 1 - e / RUN : (e - RUN) / WIND;
+      slider.value = String(Math.round(t * 1000));
+      draw(t);
+      raf = requestAnimationFrame(frame);
+    }
+    function setPlaying(on) {
+      playing = on;
+      btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
+      if (on) { t0 = null; raf = requestAnimationFrame(frame); }
+      else { cancelAnimationFrame(raf); draw(slider.value / 1000); }
+    }
+    slider.addEventListener('input', function () {
+      if (playing) setPlaying(false); else draw(slider.value / 1000);
+    });
+    btn.addEventListener('click', function () { setPlaying(!playing); });
+    draw(1);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(true);
+  })();
 </script>
 <script>
   // §79 — the offline worker, release-gated on the app-version meta that
