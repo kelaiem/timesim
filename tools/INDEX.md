@@ -4,7 +4,7 @@
 
 # The instruments
 
-166 scripts. **73 are ACCEPTANCE tests** — they decide and exit non-zero.
+167 scripts. **74 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -155,6 +155,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-colwheel-id.mjs` |  | report | probe-colwheel-foul named six meshes touching the column wheel at 0. Two are declared rider contacts. This identifies the rest — what they are, where they were built, what material, whether they are NAMED, whether anything DECLARES the contact, and how the gap behaves across the toggle's two parities (the eye report says "every other toggle", so parity is the tell). |
 | `probe-dial-colour-link.mjs` |  | acceptance | DOES THE DIAL'S COLOUR SURVIVE A LINK — AND WHOSE COLOUR WINS? Acceptance. `?dialcol=rrggbb` is FINISH travelling in a URL, which puts it between two things that were previously separate: the aesthetics store (browser-local, persisted, the viewer's own taste) and the share link (a claim about a watch someone else will see). Six behaviours fall out of that, and every one of them is a decision rather than an implementation detail — so they are asserted here rather than left to be rediscovered. |
 | `probe-drum-azimuth.mjs` |  | report | Where else can the MAINSPRING DRUM stand? |
+| `probe-feeler-travel.mjs` |  | acceptance | IF THE FEELER RIDES THE HOUR, HAS IT ANYWHERE TO GO? |
 | `probe-fork-blank.mjs` |  | acceptance | TODO 98 — is the pallet fork ONE piece of metal, and is it one thickness? A Swiss lever is a single blank: boss, both pallet arms, the lever and the fork end are cut in one outline and lapped to one thickness, with only the ruby stones and the guard dart separate. This REPORTS what the movement actually builds — the unit's steel members, the z-height of each, the joint steps between them, the two arms' symmetry, and the one thing the eye cannot see: whether `L_BALANCE`'s stated derivation (`L_FORK + FORK_T/2` as "fork body top") matches the fork's real reach. |
 | `probe-fouls.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
