@@ -19922,7 +19922,17 @@ TODO 118: this paragraph originally derived the bound as
 its whole 0.8 bossH proud — but ringExtrude CENTRES a bored collet
 (±bossH/2), so it stands 0.4 proud and the true binder is ≈ 2.002. The
 shipped 2.6 is safer than recorded — ~0.6 of headroom, not ~0.2 — and
-stays; the record, not the metal, was wrong.)* The shipped 3.4 cleared
+stays; the record, not the metal, was wrong.)* *(Corrected again and
+SPENT by TODO 119: measured per-mesh with radii, BOTH versions of the
+collet binder are radially fictional — the collet is a ring at
+r 2.67..3.30 and the hour hand carries no metal between r 1.26 and
+r 5.52, so those z-planes can never meet. The real governing pair over
+every fixed mesh behind the descending stack is the alarm blade's TOP
+against the hour blade's KEEL, and the offset is now derived from it:
+(ALARM_HAND_Z − DIAL_T) + topRise_a + floorDrop_h + CLEAR_MARGIN =
+1.7778, stored 1.778 — an owner-directed respend of 0.82 u = 0.31 mm,
+asserted two-sided with a measured radial guard at the alarm hand's
+build.)* The shipped 3.4 cleared
 that same collet with the fat blade — it was always the tight
 constraint. Everything downstream derives: the hour tube's length, the
 crystal (`CASE_DIMS` measures `handFront`), the §39 box.

@@ -23,6 +23,10 @@
 // boot-asserted floor (CLEAR_MARGIN) must measure as slack >= 0 at every
 // pose (the assert says it holds; a negative here means this probe measures
 // a different quantity than the assert — investigate before trusting either).
+// Since TODO 119 the lane is measured over RADIALLY-REAL mesh pairs (see the
+// eval's comment) and is also an ACCEPTANCE: handsGroupZOffset derives from
+// this lane's blade↔blade pair, so the lane must BIND at CLEAR_MARGIN in
+// both directions, the same two-sided hold the hour→minute stack gets.
 //
 // TODO 118 — the HOUR→MINUTE product, the gap this probe was blind to: the
 // minute hand floated 0.67 mm above the hour hand for three landings and the
@@ -160,10 +164,42 @@ const res = await page.evaluate(async () => {
   // Crystal chain, from the case's built meshes (the constants' consequences):
   const cryst = find('caseCrystal') ? ext(find('caseCrystal')) : null;
 
-  // Alarm lane over the pose net: min gap between the alarm hand's blade top
-  // (its max z, dial-local toward the hour hub) and the hour hand subtree's
-  // min z — the pair the §125 lane assert (main.js:13657) guards at boot.
+  // Alarm lane over the pose net — RADIALLY AWARE since TODO 119. The old
+  // measure was the signed z-separation of the two whole subtrees, and the
+  // respend made that measure wrong on purpose: the hour hub now legally
+  // interleaves the alarm collet's z-band, because the collet is a ring at
+  // r 2.67..3.30 and the hub ends at r 1.26 — they never radially meet, so
+  // their z overlap is nesting, not contact. The lane is now the minimum
+  // signed z-gap over MESH pairs that actually share radius (rOverlap > 0);
+  // r is invariant under the hands' rotation about the common axis, so the
+  // radial ranges are measured once and only z is re-read per pose.
   const hour = roots.hourHand, alarm = roots.alarmHand;
+  const meshList = (root) => {
+    const out = [];
+    root.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      let rMin = Infinity, rMax = 0;
+      const p = o.geometry.attributes.position;
+      for (let i = 0; i < p.count; i++) {
+        o.localToWorld(v.fromBufferAttribute(p, i));
+        const r = Math.hypot(v.x, v.y);
+        rMin = Math.min(rMin, r); rMax = Math.max(rMax, r);
+      }
+      out.push({ o, rMin, rMax });
+    });
+    return out;
+  };
+  clock.scene.updateMatrixWorld(true);
+  const alarmMeshes = meshList(alarm), hourMeshes = meshList(hour);
+  const zExt = (o) => {
+    let zMin = Infinity, zMax = -Infinity;
+    const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      o.localToWorld(v.fromBufferAttribute(p, i));
+      zMin = Math.min(zMin, v.z); zMax = Math.max(zMax, v.z);
+    }
+    return { zMin, zMax };
+  };
   let lane = { min: Infinity, pose: '' };
   const poses = [{ name: 'as booted', enter: () => {} }];
   for (const ax of I.AXES) for (const f of [0, 0.5, 1])
@@ -171,12 +207,16 @@ const res = await page.evaluate(async () => {
   for (const p of poses) {
     p.enter();
     clock.scene.updateMatrixWorld(true);
-    const a = ext(alarm), h = ext(hour);
-    // dial side is −z: the alarm hand sits nearer the dial (larger z) than the
-    // hour hand; the lane is hourMax→? — measure the signed separation of the
-    // two subtrees along z, whichever way they stack at this pose.
-    const gap = (a.zMin >= h.zMax) ? a.zMin - h.zMax : h.zMin - a.zMax;
-    if (gap < lane.min) lane = { min: gap, pose: p.name };
+    const az = alarmMeshes.map((m) => ({ ...m, ...zExt(m.o) }));
+    const hz = hourMeshes.map((m) => ({ ...m, ...zExt(m.o) }));
+    for (const a of az) for (const h of hz) {
+      if (Math.min(a.rMax, h.rMax) - Math.max(a.rMin, h.rMin) <= 0) continue;
+      // dial side is −z: the alarm hand sits nearer the dial (larger z) than
+      // the hour hand; measure the signed separation whichever way this pair
+      // stacks at this pose.
+      const gap = (a.zMin >= h.zMax) ? a.zMin - h.zMax : h.zMin - a.zMax;
+      if (gap < lane.min) lane = { min: gap, pose: p.name };
+    }
   }
   return { hands, front, cryst, lane, hm, poses: poses.length };
 });
@@ -188,7 +228,7 @@ for (const [n, e] of Object.entries(res.hands))
   console.log(`  ${n.padEnd(12)} z ${e.zMin.toFixed(3)} .. ${e.zMax.toFixed(3)}   span ${((e.zMax - e.zMin) * MM).toFixed(3)} mm   len ${e.len.toFixed(2)}  rBase ${e.rBase.toFixed(3)} (thick ${(1.5 * e.rBase * MM).toFixed(3)} mm)  halfW ${e.halfW.toFixed(3)} (wide ${(2 * e.halfW * MM).toFixed(3)} mm)  bossH ${e.bossH.toFixed(3)}`);
 console.log(`\nFRONT-MOST movement metal: ${res.front.unit} / ${res.front.name} at z ${res.front.z.toFixed(3)}`);
 if (res.cryst) console.log(`caseCrystal z ${res.cryst.zMin.toFixed(3)} .. ${res.cryst.zMax.toFixed(3)} → clearance to front metal ${((res.front.z - res.cryst.zMax) * MM).toFixed(3)} mm`);
-console.log(`\nALARM↔HOUR lane over ${res.poses} poses: min separation ${res.lane.min.toFixed(4)} u = ${(res.lane.min * MM).toFixed(3)} mm  @ ${res.lane.pose}  (CLEAR_MARGIN = 0.15 u)`);
+console.log(`\nALARM↔HOUR lane over ${res.poses} poses (radially-real mesh pairs only — TODO 119): min separation ${res.lane.min.toFixed(4)} u = ${(res.lane.min * MM).toFixed(3)} mm  @ ${res.lane.pose}  (CLEAR_MARGIN = 0.15 u)`);
 
 console.log(`\nHOUR→MINUTE stack (TODO 118; as booted — pose-independent for this pair):`);
 for (const [n, a] of Object.entries(res.hm.airs))
@@ -212,6 +252,14 @@ if (!isMinuteBoss) { ok = false; console.log(`\nCONTROL FAIL: front-most metal i
 else console.log(`\nCONTROL PASS: front-most metal is the minute hand (${res.front.name}) — the crystal chain's premise holds`);
 if (res.lane.min < 0) { ok = false; console.log(`CONTROL FAIL: alarm↔hour lane measured NEGATIVE (${res.lane.min.toFixed(4)}) while the boot assert passes — this probe measures a different quantity than the assert; distrust both until reconciled`); }
 else console.log(`CONTROL PASS: alarm↔hour lane non-negative at every pose`);
+
+// TODO 119 ACCEPTANCE — the alarm↔hour lane BINDS at CLEAR_MARGIN, both
+// directions, exactly as the hour→minute stack does below: handsGroupZOffset
+// is a derivation now, so below the margin is a clearance regression and
+// above it is the offset floating over its own derivation.
+if (res.lane.min < 0.15 - 1e-3) { ok = false; console.log(`ACCEPT FAIL: alarm↔hour lane ${res.lane.min.toFixed(4)} u < CLEAR_MARGIN — the hour blade rides too close to the alarm blade`); }
+else if (res.lane.min > 0.15 + 5e-3) { ok = false; console.log(`ACCEPT FAIL: alarm↔hour lane ${res.lane.min.toFixed(4)} u does not BIND at CLEAR_MARGIN — handsGroupZOffset has parted from its blade↔blade derivation (the 2.6-era value measured 0.9722 here)`); }
+else console.log(`ACCEPT PASS: alarm↔hour lane binds at CLEAR_MARGIN (${res.lane.min.toFixed(4)} u)`);
 
 // TODO 118 ACCEPTANCE — both directions.
 const liftErr = Math.abs(res.hm.measuredLift - res.hm.expectedLift);

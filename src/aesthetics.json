@@ -69,7 +69,7 @@
           "counterweightOffsetFactor": "Seconds counterweight offset"
         }
       },
-      "handsGroupZOffset": 2.6,
+      "handsGroupZOffset": 1.778,
       "fluteFactor": -0.03,
       "_labels": {
         "handsGroupZOffset": "Hand stack height",
