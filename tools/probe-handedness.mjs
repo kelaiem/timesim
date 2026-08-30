@@ -56,9 +56,27 @@
 // alone, so it has no side to prefer; that is reported from the source, not
 // measured, and is marked as such.
 //
-// ACCEPTANCE — exits non-zero if a control fails or a subject is judged on a
-// profile too sparse to read. The subjects' own verdicts are REPORTED: what
-// they feed is TODO 115's scope, not a gate.
+// A THIRD TIER is a CENSUS of every authored outline in the movement (192
+// cuts), because TODO 115 names its direction-committed inventory in prose —
+// "club-tooth lead, both spring winds, the fusee wrap, four saws, the keyless
+// sense" — and a prose list is not a population. Measured, there are NINE
+// handed cuts, and the list was wrong in both directions: five saw-class cuts
+// rather than four, and four more nobody had listed. Beside each, a FLIP
+// question — is the body symmetric about its own mid-plane, so that turning it
+// over mirrors the cut at no cost in z? All nine are. Both tiers carry their
+// own controls; the census's bar is the same controls' midpoint the subject
+// verdicts use, after a first version classified by the widest gap in the
+// sorted residuals and put that gap at 0.00004, in the float noise, calling
+// 136 of 192 cuts handed including the gear its own control is cut from.
+//
+// WHAT THE CENSUS CANNOT SEE, and it is half the inventory: a spring's wind and
+// the fusee's groove are handed by CONSTRUCTION, not by an outline — there is
+// no `parameters.shapes` to mirror — so they are absent here rather than
+// symmetric. Read a missing part as unmeasured.
+//
+// ACCEPTANCE — exits non-zero if a control fails (either tier's) or a subject
+// is judged on a profile too sparse to read. The subjects' verdicts and the
+// whole census are REPORTED: what they feed is TODO 115's scope, not a gate.
 // Run from tools/ with a Playwright Chromium: `node probe-handedness.mjs`.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -170,6 +188,77 @@ const out = await page.evaluate(() => {
     };
   };
 
+  // Is the body symmetric about its own mid-plane? This is what decides
+  // whether a handed cut can be reversed by TURNING THE PART OVER instead of
+  // recutting its outline — a flip about a diameter mirrors the profile, and
+  // costs nothing in z exactly when this holds.
+  //
+  // Measured on the vertices, in the mesh's OWN frame. The mid-plane is taken
+  // from the z EXTENT rather than assumed to be zero: a builder is free to
+  // extrude from 0 to depth and never translate, and such a body is still
+  // flippable — it just lands somewhere else, which is a placement question,
+  // not a shape one. What is NOT allowed to slide is the tolerance: it is a
+  // fraction of the body's own thickness, so a thick plate and a thin blade
+  // are judged alike.
+  const zSymmetry = (mesh) => {
+    const pos = mesh.geometry?.attributes?.position;
+    if (!pos || pos.count < 4) return null;
+    let zmin = Infinity, zmax = -Infinity;
+    for (let i = 0; i < pos.count; i++) { const z = pos.getZ(i); if (z < zmin) zmin = z; if (z > zmax) zmax = z; }
+    const t = zmax - zmin;
+    if (!(t > 0)) return { flat: true };
+    const mid = (zmin + zmax) / 2;
+    // NEAREST NEIGHBOUR, not bucket-matching. The first version of this bucketed
+    // vertices into (x, y) columns and compared the depth multiset above the
+    // mid-plane with the one below — and read exactly 0.0000 or exactly 1.0000
+    // and nothing between, across 136 parts. That bimodality was the tell: the
+    // 1.0000s were all the `miss = t` FALLBACK for a column whose two sides held
+    // different vertex COUNTS, which any welded body produces the moment two
+    // sub-bodies of different depth share a column. A cliff is not a measurement.
+    //
+    // So: for every vertex, find the closest vertex to its z-mirror image, and
+    // report the WORST such miss. No counting, no buckets to fall between, and
+    // it degrades smoothly — a body slightly out of symmetry reads slightly out.
+    // The grid is a spatial hash sized off the body's own diagonal, so lookup
+    // stays cheap without the cell size becoming a second tolerance.
+    const bb = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i);
+      if (x < bb.x0) bb.x0 = x; if (x > bb.x1) bb.x1 = x;
+      if (y < bb.y0) bb.y0 = y; if (y > bb.y1) bb.y1 = y;
+    }
+    const diag = Math.hypot(bb.x1 - bb.x0, bb.y1 - bb.y0, t) || 1;
+    const cell = Math.max(diag / 64, 1e-9);
+    const hash = new Map();
+    const ck = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+    for (let i = 0; i < pos.count; i++) {
+      const k = ck(pos.getX(i), pos.getY(i), pos.getZ(i) - mid);
+      let c = hash.get(k); if (!c) hash.set(k, c = []);
+      c.push(i);
+    }
+    let worst = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = -(pos.getZ(i) - mid);
+      let near = Infinity;
+      const cx = Math.floor(x / cell), cy = Math.floor(y / cell), cz = Math.floor(z / cell);
+      for (let a = -1; a <= 1 && near > 0; a++) for (let b = -1; b <= 1 && near > 0; b++) for (let c = -1; c <= 1 && near > 0; c++) {
+        const bucket = hash.get(`${cx + a},${cy + b},${cz + c}`);
+        if (!bucket) continue;
+        for (const j of bucket) {
+          const d = Math.hypot(pos.getX(j) - x, pos.getY(j) - y, (pos.getZ(j) - mid) - z);
+          if (d < near) near = d;
+        }
+      }
+      // A neighbour outside the 3×3×3 stencil is further than a cell, which is
+      // already far beyond "symmetric" — clamp rather than widen the search.
+      if (near === Infinity) near = cell;
+      if (near > worst) worst = near;
+    }
+    // Reported as a FRACTION of the body's thickness so the number means the
+    // same thing for a thick plate and a thin blade.
+    return { miss: worst / t, thickness: t, verts: pos.count, mid };
+  };
+
   // The named mesh that actually carries an extruded outline — a gear group
   // names its hub too, and a cylinder never had a shape to read.
   const namedExtrude = (nm) => {
@@ -245,6 +334,88 @@ const out = await page.evaluate(() => {
       if (worst < best) { best = worst; bestA = a; }
     }
     beak = { miss: best / reach, axisDeg: (bestA * 180) / Math.PI, points: beakOutline.length, reach };
+  }
+
+  // ---- CENSUS: every authored outline in the movement -------------------
+  // TODO 115 names its direction-committed inventory in prose — "club-tooth
+  // lead, both spring winds, the fusee wrap, four saws, the keyless sense" —
+  // and a prose list is not a population. Three things go wrong with working
+  // it by hand: the escape wheel's mesh carries NO name (it is reached through
+  // its unit, not `namedExtrude`), "four saws" is a count nobody has checked
+  // against the five `makeRatchetAndClick` call sites, and a handed cut nobody
+  // thought to list is exactly the one that survives the reversal and lies.
+  // So sweep every extrude that kept its authored shape and let the inventory
+  // fall out of the measurement instead.
+  //
+  // Same `mirror()` as the subjects above — one definition of the measurement,
+  // so a census row and a subject row are comparable numbers.
+  const census = [];
+  {
+    const owner = new Map();       // mesh -> unit label, so a row names a part
+    for (const e of C.labelEntries) {
+      e.obj?.traverse?.((o) => { if (o.isMesh && !owner.has(o)) owner.set(o, e.name); });
+    }
+    const seenGeo = new Set();
+    C.scene.traverse((o) => {
+      if (!o.isMesh || o.userData?.schematic) return;
+      const g = o.geometry;
+      if (!g?.parameters?.shapes) return;
+      // One row per GEOMETRY: a wheel instanced at four stations is one cut.
+      if (seenGeo.has(g.id)) return;
+      seenGeo.add(g.id);
+      const pts = outlineOf(o);
+      if (!pts) return;
+      const p = profileOfOutline(pts);
+      const m = mirror(p);
+      // A perfect circle has no swing, so there is nothing to mirror and
+      // nothing to be handed about — a hub or a plain ring, counted not swept.
+      if (!m) { census.push({ label: owner.get(o) ?? o.name ?? '(unlabelled)', mesh: o.name || '', round: true }); return; }
+      census.push({
+        label: owner.get(o) ?? o.name ?? '(unlabelled)', mesh: o.name || '',
+        best: m.best, bestAz: m.bestAz, second: m.second,
+        populated: p.populated, verts: pts.length,
+        // CAN IT BE TURNED OVER? A flip about a diameter maps (x,y,z) to
+        // (x,−y,−z), which mirrors the cut — the reversal TODO 115 needs —
+        // but only lands the part back in its own z band if the body is
+        // symmetric about its mid-plane. Measured on the vertices in the
+        // mesh's OWN frame rather than reasoned from the builder: quantise
+        // z about the mid-plane and ask whether the multiset of +z depths
+        // equals the multiset of −z depths.
+        zsym: zSymmetry(o),
+      });
+    });
+    census.sort((a, b) => (a.best ?? Infinity) - (b.best ?? Infinity));
+  }
+
+  // CONTROLS for the flip tier. Synthesised rather than borrowed from the
+  // scene, because a control has to be a body whose answer is known before it
+  // is measured, and no shipped part qualifies — that is the whole question.
+  //
+  // The must-miss is the one that needs care. The obvious asymmetric body —
+  // faces at +0.5 and −0.3 — reads PERFECTLY SYMMETRIC here, because the
+  // mid-plane is taken from the z extent, so it re-centres to ±0.4 and the
+  // check is answering "is this body symmetric about SOME plane", which it is.
+  // A real must-miss has to be asymmetric about every plane: one face flat,
+  // the other STEPPED, so no z offset can bring the two into agreement.
+  const zControls = {};
+  {
+    const shim = (pts) => ({
+      geometry: { attributes: { position: {
+        count: pts.length,
+        getX: (i) => pts[i][0], getY: (i) => pts[i][1], getZ: (i) => pts[i][2],
+      } } },
+    });
+    const hit = [], miss = [];
+    for (let ix = -8; ix <= 8; ix++) for (let iy = -8; iy <= 8; iy++) {
+      const x = ix / 8, y = iy / 8;
+      hit.push([x, y, 0.5], [x, y, -0.5]);
+      // Top flat; bottom stepped on the +x half. No plane makes these agree.
+      miss.push([x, y, 0.5], [x, y, x >= 0 ? -0.2 : -0.5]);
+    }
+    zControls.sym = zSymmetry(shim(hit))?.miss ?? null;
+    zControls.symName = 'a slab, both faces flat';
+    zControls.asym = zSymmetry(shim(miss))?.miss ?? null;
+    zControls.asymName = 'a slab stepped on one face only';
   }
 
   // ---- TIER TWO: are the LAWS even about their working point? ----------
@@ -329,7 +500,7 @@ const out = await page.evaluate(() => {
       (i) => { C.setPose({ ...base, tau: (i / N) * SPAN }); return lever ? lever.rotation.z : NaN; }, N);
     lawRows.push({ ...row, moved, lever: lever?.name || lever?.type || null });
   }
-  return { rows, lawRows, beak };
+  return { rows, lawRows, beak, census, zControls };
 });
 
 const f = (x, n = 5) => (x === null || x === undefined || Number.isNaN(x) ? '   —  ' : (x >= 0 ? ' ' : '') + x.toFixed(n));
@@ -393,6 +564,87 @@ for (const l of out.lawRows) {
 console.log('\n  The heart cam\'s law is NOT swept here and is reported from source: the tick takes');
 console.log('  Math.sign(off) against heartFreeAngleAt(d), a table of DISTANCE alone, so it has no');
 console.log('  side to prefer. Its METAL is measured above; its law is read, not measured.');
+
+// ---- THE CENSUS — a REPORT, and deliberately not gated ---------------------
+// It answers "which cuts are handed", which is an inventory question, not a
+// pass/fail one: a handed cut is not a defect, it is a cut that COSTS
+// something under TODO 115's reversal. Gating it would invent a bar for a
+// population nobody has triaged. The two controls above still gate, so a
+// census printed under a failed control is already disclaimed.
+if (out.census?.length) {
+  const swept = out.census.filter((r) => !r.round);
+  const round = out.census.length - swept.length;
+  console.log(`\nCENSUS — every authored outline in the movement (${swept.length} cuts swept, ${round} round with no swing to mirror)\n`);
+
+  // THE BAR IS THE CONTROLS' MIDPOINT — the same one the subject verdicts above
+  // use, so a census row and a subject row are judged by one rule.
+  //
+  // The first version of this classified by the widest MULTIPLICATIVE gap in
+  // the sorted residuals, on the DECLARED_CONTACT_REACH precedent of reading a
+  // classifier off two measured populations. It does not transfer, and the way
+  // it failed is worth keeping: the widest ratio landed at 0.00004, down in the
+  // float-noise floor where a 5× gap means nothing, and it duly reported 136 of
+  // 192 cuts "handed" — including the setting wheel the probe's own must-be-
+  // symmetric control is cut from. That precedent works when both populations
+  // are real and separated; here the low population is noise about zero, where
+  // ratios are meaningless. The controls are the honest poles.
+  const symC = out.rows.find((r) => r.kind === 'control-sym');
+  const handC = out.rows.find((r) => r.kind === 'control-handed');
+  const cut = (symC && handC && !symC.err && !handC.err) ? (symC.best + handC.best) / 2 : null;
+  if (cut == null) { console.log('  no bar — a control did not measure, so nothing here is classified\n'); }
+  else console.log(`  bar ${f(cut)} — midpoint of the controls, ${f(symC.best)} (a gear) and ${f(handC.best)} (a saw)\n`);
+  const handedRows = cut == null ? [] : swept.filter((r) => r.best > cut);
+  // The band between the noise floor and the bar is REPORTED, not silently
+  // dropped: a cut at 0.038 is not a gear and not a saw, and which it is
+  // matters to a reversal. Naming the population is the point of a census.
+  const midRows = cut == null ? [] : swept.filter((r) => r.best <= cut && r.best > 0.003);
+  console.log('  HANDED — these cuts commit to a direction, so a reversal must reverse them\n');
+  console.log('  part                              mesh                  resid    axis°   z-sym   turn over?');
+  for (const r of handedRows) {
+    const z = r.zsym;
+    const flip = !z ? '—' : z.flat ? 'flat' : z.miss <= 1e-3 ? 'YES' : 'no';
+    const zs = !z || z.flat ? '   —  ' : z.miss.toFixed(4);
+    console.log(`  ${String(r.label).slice(0, 32).padEnd(33)} ${String(r.mesh).slice(0, 20).padEnd(21)} ${f(r.best)} ${r.bestAz.toFixed(1).padStart(7)}  ${zs}   ${flip}`);
+  }
+  if (!handedRows.length) console.log('    (none)');
+
+  if (midRows.length) {
+    console.log(`\n  BETWEEN THE POLES — above the noise floor, below the bar (${midRows.length}); neither a gear nor a saw,`);
+    console.log('  and a reversal has to decide about each one rather than inherit a verdict\n');
+    for (const r of midRows.slice().reverse()) {
+      console.log(`  ${String(r.label).slice(0, 32).padEnd(33)} ${String(r.mesh).slice(0, 20).padEnd(21)} ${f(r.best)} ${r.bestAz.toFixed(1).padStart(7)}`);
+    }
+  }
+
+  // CONTROLS FOR THE FLIP TIER — without these the z-symmetry column is a
+  // number with no scale. Both kinds, as always: the must-hit is a body that
+  // cannot be anything but symmetric about its mid-plane, the must-miss a body
+  // that plainly is not.
+  console.log('\n  FLIP-TIER CONTROLS — the z-symmetry column has no meaning without them\n');
+  const zc = out.zControls || {};
+  let zBad = 0;
+  const showZ = (kind, want, got, note) => {
+    const ok = want === 'sym' ? (got != null && got <= 1e-3) : (got != null && got > 1e-3);
+    if (!ok) zBad++;
+    console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${kind.padEnd(10)} ${note.padEnd(44)} ${got == null ? 'no handle' : got.toFixed(5)}`);
+  };
+  showZ('must-hit', 'sym', zc.sym, `${zc.symName ?? '—'} — extruded and centred, must read ~0`);
+  showZ('must-miss', 'asym', zc.asym, `${zc.asymName ?? '—'} — bevelled one side only, must not`);
+  if (zBad) { console.log('\n  Flip-tier control failure — read the z-sym column as unmeasured.'); bad += zBad; }
+
+  const flippable = handedRows.filter((r) => r.zsym && !r.zsym.flat && r.zsym.miss <= 1e-3).length;
+  console.log(`\n  ${flippable} of ${handedRows.length} handed cuts are symmetric about their own mid-plane, so turning the`);
+  console.log('  part over mirrors the cut at no cost in z. The rest must be RECUT — their outline');
+  console.log('  is the only place the direction lives.');
+  console.log('\n  What "turn over" does NOT settle, and the reason this is a report: a flip is a');
+  console.log('  MODEL trick unless the source follows it. Leave `makeEscapeWheel` authoring a tip');
+  console.log('  at `c + 0.22 * pitch` commented "leading, forward" and flip the group, and the');
+  console.log('  constant now describes a tooth that leads backward — standing rule 1 broken in the');
+  console.log('  quietest way there is. The flip says the METAL can be reversed cheaply; the fix is');
+  console.log('  still a sign in the builder, so the comment and the cut keep saying one thing.');
+  console.log('  It also says nothing about the part\'s NEIGHBOURS: a wheel that may be flipped in');
+  console.log('  isolation still has a pinion, a mate cut against it, and a z station to keep.');
+}
 
 console.log(`\n${bad === 0 ? 'PASS' : `FAIL — ${bad} problem(s)`}`);
 await browser.close(); srv.kill();

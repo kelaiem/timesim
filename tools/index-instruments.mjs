@@ -23,6 +23,7 @@
 //   node tools/index-instruments.mjs --check    # fail if it is stale
 //
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -50,7 +51,31 @@ const header = (src) => {
   return first.join(' ').replace(/\s+/g, ' ').trim();
 };
 
-const files = readdirSync(HERE).filter((f) => f.endsWith('.mjs') && f !== 'index-instruments.mjs').sort();
+// THE CATALOGUE DESCRIBES THE REPOSITORY, NOT THE WORKING DIRECTORY. This
+// walked the directory, so anything a contributor left lying about got a row —
+// and `.gitignore` already reserves `tools/_*.mjs` for exactly that scratch
+// work. The failure is not cosmetic and it is not local: the index is
+// regenerated here, committed, and then `--check` re-derives it on a runner
+// that never had the scratch file, so the row is missing on one side and the
+// job fails as STALE. Which is what happened — a throwaway `_boot-diag.mjs`
+// used to chase a port collision rode into INDEX.md and reddened CI on a PR
+// whose own local `--check` passed, because locally the file was still there.
+//
+// So ask git what it tracks. `--others --exclude-standard` lists untracked
+// files git would keep; anything untracked AND ignored is scratch and is
+// skipped. Falling back to the plain listing if git is unavailable keeps the
+// tool usable outside a checkout — the old behaviour, but only as a fallback.
+let ignored = new Set();
+try {
+  ignored = new Set(
+    execFileSync('git', ['ls-files', '--others', '--ignored', '--exclude-standard', '--', '.'],
+      { cwd: HERE, encoding: 'utf8' })
+      .split('\n').map((s) => s.trim()).filter(Boolean),
+  );
+} catch { /* not a checkout, or no git — index everything, as before */ }
+const files = readdirSync(HERE)
+  .filter((f) => f.endsWith('.mjs') && f !== 'index-instruments.mjs' && !ignored.has(f))
+  .sort();
 const rows = files.map((f) => {
   const src = readFileSync(join(HERE, f), 'utf8');
   const m = /^probe-(\d+)/.exec(f);

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
-  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity
+  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -924,6 +924,30 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
     shape.quadraticCurveTo(cScal[0], cScal[1], Vn[0], Vn[1]); // deep scallop
   }
   shape.closePath();
+
+  // TODO 115 GUARD — the club LEADS, and it is measured off the cut, not
+  // restated from the constants above. Within one tooth pitch the club's TIP
+  // is the outermost point; the constraint is that it sits AHEAD of the tooth
+  // centre in the direction the wheel runs, which is what makes the slanted
+  // face an impulse face and the steep one a lock. Reverse the wheel without
+  // re-cutting the tooth and the impulse face is on the trailing flank — an
+  // escapement that cannot impulse, and before this it booted in silence
+  // (`probe-direction-guards.mjs`).
+  {
+    const c0 = 0;                          // tooth 0's centre, in the loop's own parametrisation
+    let tipAz = 0, tipR = -Infinity;
+    for (const pt of shape.getPoints(24)) {
+      let a = Math.atan2(pt.y, pt.x);
+      // Fold onto tooth 0's pitch window so the comparison is against ONE tooth.
+      while (a > c0 + pitch / 2) a -= pitch;
+      while (a < c0 - pitch / 2) a += pitch;
+      const r = Math.hypot(pt.x, pt.y);
+      if (r > tipR) { tipR = r; tipAz = a; }
+    }
+    const lead = Math.sign(tipAz - c0);
+    if (lead !== MOVEMENT_SENSE)
+      console.warn(`§115 escape wheel: club tip leads ${lead > 0 ? '+' : '-'}ve (${(tipAz / pitch).toFixed(3)} of a pitch off centre) but MOVEMENT_SENSE is ${MOVEMENT_SENSE} — the impulse face is on the trailing flank`);
+  }
 
   const boreR = Math.max(radius * 0.05, 0.5);
   const hubR = radius * 0.16;
@@ -3410,6 +3434,42 @@ export function makeRatchetAndClick({ radius, teeth = 24, thickness, includeClic
     outline.push([Math.cos(a1) * radius, Math.sin(a1) * radius]);
   }
   if (reverse) { for (const p of outline) p[1] = -p[1]; outline.reverse(); }
+  // TODO 115 GUARD — a saw is handed on purpose: the RAMP is the flank the
+  // working direction climbs and the steep FACE is the one that catches the
+  // reverse. Measured off the outline just built rather than from `reverse`,
+  // so the assert reads the metal and not the argument that shaped it.
+  //
+  // Tooth 0 runs from its root at a0 to its tip at a1 = (0.72/teeth)·2π, so an
+  // unreversed saw's tip sits at POSITIVE azimuth from its root — the ramp
+  // climbing in +z, the movement's sense. `reverse` mirrors that, which is
+  // what a saw driven the other way needs, and `SENSE_REL` is the relation
+  // each caller is declaring by passing it.
+  //
+  // Read ORDER-INDEPENDENTLY, which the first version of this was not: it took
+  // outline[0] and outline[1] as root and tip, and `reverse` above mirrors the
+  // points AND reverses their order, so on a reversed saw those two indices are
+  // a tip and the previous root. It duly fired on the one reversed caller in
+  // the movement — the guard was wrong, not the metal. Fold every point into
+  // ONE pitch window instead and take the radius-weighted mean azimuth: a saw's
+  // mass sits on the ramp side of its window, and mirroring moves it to the
+  // other side, whatever order the points arrive in.
+  {
+    const SENSE_REL = reverse ? -1 : +1;   // the flag IS the declaration; this checks the cut matches it
+    const pitchA = (Math.PI * 2) / teeth;
+    let rMin = Infinity;
+    for (const [x, y] of outline) rMin = Math.min(rMin, Math.hypot(x, y));
+    let wsum = 0, asum = 0;
+    for (const [x, y] of outline) {
+      const w = Math.hypot(x, y) - rMin;                 // radial excess: the tooth, not the rim
+      if (!(w > 0)) continue;
+      let a = Math.atan2(y, x) % pitchA;
+      if (a < 0) a += pitchA;                            // fold into one pitch window
+      wsum += w; asum += w * a;
+    }
+    const lean = wsum > 0 ? Math.sign(asum / wsum - pitchA / 2) : 0;
+    if (lean !== SENSE_REL * MOVEMENT_SENSE)
+      console.warn(`§115 ratchet(teeth=${teeth}, reverse=${reverse}): the tooth leans ${lean > 0 ? '+' : '-'}ve in its pitch window but MOVEMENT_SENSE ${MOVEMENT_SENSE} with reverse=${reverse} demands ${SENSE_REL * MOVEMENT_SENSE} — the click would ride the cliff instead of the ramp`);
+  }
   rShape.moveTo(outline[0][0], outline[0][1]);
   for (let i = 1; i < outline.length; i++) rShape.lineTo(outline[i][0], outline[i][1]);
   rShape.closePath();
@@ -3653,10 +3713,16 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
   // `open` tracks strip continuity: a merged-channel station emits nothing
   // and breaks the quad strip, so no degenerate slivers bridge the gap.
   let open = false;
+  // TODO 115 GUARD — the groove's HAND, sampled from the crest as it is laid
+  // rather than restated from the line that lays it (accumulated here, checked
+  // after the loop).
+  let gA0 = null, gA1 = 0, gZ0 = 0, gZ1 = 0;
   for (let i = 0; i <= SEG; i++) {
     const t = i / (grooveTurns * 48);
     const a = t * grooveTurns * Math.PI * 2;
     const zg = bandZ0 + bandSpan * t;                     // groove point of the wrap below
+    if (gA0 === null) { gA0 = a; gZ0 = zg; }
+    gA1 = a; gZ1 = zg;
     const zLo = zg + dropAt(t) + seatClear;               // top of the lower wrap's channel
     const zHi = zg + pitch - dropAt(t + 1 / grooveTurns) - seatClear; // bottom of the upper wrap's
     if (zHi - zLo < 0.02) { open = false; continue; }     // channels merged — no land here
@@ -3689,6 +3755,18 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
       for (const k of [0, 1, 2]) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
     }
     open = true;
+  }
+  // TODO 115 GUARD — the groove is a HELIX and a helix has no mirror axis, so
+  // the chain can only sit in it from one side. The constraint: azimuth must
+  // advance with z in the movement's own sense, because the chain pays off the
+  // fusee as the train turns it. Cut the groove the other way and the chain
+  // would have to wrap against its own lay — and before this it booted in
+  // silence (`probe-direction-guards.mjs`), which is why the hand is read off
+  // the laid crest rather than trusted to the line that lays it.
+  if (gA0 !== null && Math.abs(gZ1 - gZ0) > 1e-9) {
+    const hand = Math.sign((gA1 - gA0) / (gZ1 - gZ0));
+    if (hand !== MOVEMENT_SENSE)
+      console.warn(`§115 fusee groove: winds ${hand > 0 ? 'right' : 'left'}-handed (${((gA1 - gA0) / (Math.PI * 2)).toFixed(3)} turns over ${(gZ1 - gZ0).toFixed(3)} of z) but MOVEMENT_SENSE is ${MOVEMENT_SENSE} — the chain would wrap against its lay`);
   }
   const landGeo = new THREE.BufferGeometry();
   landGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -3814,6 +3892,36 @@ export function mainspringFrames({ innerR, outerR, coils, ribbonR, sweep, setup 
       const r = radiusAt(A, k, S, a);
       const ang = A - a;                  // clockwise outward — the handedness note above
       pts[i] = [Math.cos(ang) * r, Math.sin(ang) * r];
+    }
+    // TODO 115 GUARD — the ribbon's WIND. A spiral has no mirror axis, so a
+    // mainspring can only drive its arbor one way: the coil must tighten in
+    // the direction the arbor is wound and unwind in the direction it drives.
+    // Measured off the points just walked, from inner end to outer.
+    //
+    // SENSE_REL = −1: measured on the tree as cut, both mainsprings wind
+    // OPPOSITE the train's running sense (`probe-wound-sense.mjs`: LEFT-handed
+    // at −6.603 and −6.213 turns against a +1 train). That is the relation the
+    // metal declares; the assert holds the declaration and the cut together,
+    // so flipping MOVEMENT_SENSE without re-cutting the ribbon says so.
+    {
+      const SENSE_REL = -1;
+      // MEASURED OFF THE POINTS, which is the whole difference between a guard
+      // and a restatement. The first version computed the step as
+      // `sign((A - A/n) - A)` — algebraically `sign(-A/n)`, a constant that
+      // never touches the emitted geometry — so it read the same whether the
+      // ribbon wound one way or the other, and the mutation probe duly kept
+      // reporting this commitment SILENT with the guard sitting right there.
+      //
+      // Consecutive points are A/n apart in angle, far under π, so the
+      // wrapped difference between the first two carries the hand exactly.
+      const az0 = Math.atan2(pts[0][1], pts[0][0]);
+      const az1 = Math.atan2(pts[1][1], pts[1][0]);
+      let d = az1 - az0;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      const step = Math.sign(d);
+      if (step !== SENSE_REL * MOVEMENT_SENSE)
+        console.warn(`§115 mainspring ribbon: winds ${step > 0 ? 'anticlockwise' : 'clockwise'} outward but MOVEMENT_SENSE ${MOVEMENT_SENSE} with SENSE_REL ${SENSE_REL} demands ${SENSE_REL * MOVEMENT_SENSE} — the spring would drive its arbor backwards`);
     }
     return pts;
   };
