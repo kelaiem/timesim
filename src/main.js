@@ -9388,6 +9388,70 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     }
     return worst;
   };
+  // THE PAD IS A PLANE ON A LEVER, so what a coil demands of it is a
+  // ROTATION, not a radius. `proudOf` above reads how far the metal reaches
+  // along ONE ray; the face the finger actually presents has TURNED by ψ
+  // about the stud and swung sideways with it, so at lateral offset ℓ in the
+  // face's own frame it stands ℓ·tanψ off where the ray says. Those agree
+  // only for a coil whose proudest point sits ON the ray, and it is the
+  // wrap's LINK PHASE that decides where that point sits — nothing in the
+  // solve. Measured (TODO 115): reversing the movement moved the point to
+  // 0.0908 of a 0.107 half-window, the finger swings 0.35 rad at full wind,
+  // and the "kiss" this row exists to hold opened to 0.0532 against its 0.03
+  // band while every collision gate stayed green.
+  //
+  // Rotating the pawl by ψ carries a fixed world point p into the face's REST
+  // frame as q = S + R(−ψ)(p − S), whose leaned radial coordinate is
+  //   g(ψ) = (S−C)·r̂ + a·cosψ + b·sinψ − (zRef − p.z)·lean,
+  //   a = (p−S)·r̂,  b = (p−S)·θ̂,
+  // so the face REACHES p exactly at g(ψ) = rest — a·cosψ + b·sinψ = K with
+  // K = rest − (S−C)·r̂ + (zRef − p.z)·lean, i.e. cos(ψ − α) = K/ρ,
+  // ρ = hypot(a, b), α = atan2(b, a). Closed form, two roots, and the one
+  // nearest zero is the FIRST rotation that reaches the point.
+  //
+  // WHICH POINTS THE FACE IS EVEN OVER MOVES WITH THE ROTATION, so this is a
+  // least fixed point rather than one pass. The lateral coordinate in the same
+  // frame is ℓ(ψ) = (S−C)·θ̂ − a·sinψ + b·cosψ, and the finger's swing carries
+  // the face up-fan by most of half its own width — measured on the built
+  // metal, the face spans world-tangential [−0.35, +0.35] seated and
+  // [+0.09, +0.72] at full lift. So an AZIMUTH window centred on the pad's ray
+  // is the rest face's footprint, not the lifted one: filtering on it first
+  // hid every link the lifted face actually rides and punched holes in the
+  // law (measured, lift fell to 0 across t = 0.985…0.992, and the closing-arc
+  // assert read the beak a whole PAD_LIFT short). The loop instead asks, at
+  // the rotation reached so far, which points are under the face and still in
+  // front of it, and takes the deepest rotation any of them demands; it stops
+  // when none is, which is the smallest rotation that clears the coil.
+  const psiDemand = (set, azMid, zLo, zHi, lean, zRef, S, rest, halfW, sgn) => {
+    const cA = Math.cos(azMid), sA = Math.sin(azMid);
+    const sr = (S.x - C.x) * cA + (S.y - C.y) * sA;   // (S−C)·r̂
+    const sl = -(S.x - C.x) * sA + (S.y - C.y) * cA;  // (S−C)·θ̂
+    let cur = 0, unreachable = 0;
+    for (let it = 0; it < 8; it++) {
+      const cc = Math.cos(cur), ss = Math.sin(cur);
+      let need = cur, unreach = 0;
+      for (const p of set) {
+        if (p.z < zLo || p.z > zHi) continue;
+        const ux = p.x - S.x, uy = p.y - S.y;
+        const a = ux * cA + uy * sA, b = -ux * sA + uy * cA;
+        if (Math.abs(sl - a * ss + b * cc) > halfW) continue;  // not under the face at this rotation
+        const K = rest - sr + (zRef - p.z) * lean;
+        if (a * cc + b * ss <= K) continue;                    // already behind the face
+        const rho = Math.hypot(a, b);
+        if (rho < 1e-12) continue;
+        const q = K / rho;
+        if (q < -1 || q > 1) { unreach++; continue; }           // no rotation clears it
+        const alpha = Math.atan2(b, a), d = Math.acos(q);
+        const r1 = alpha - d, r2 = alpha + d;
+        const psi = Math.abs(r1) <= Math.abs(r2) ? r1 : r2;
+        if (psi * sgn > need * sgn) need = psi;
+      }
+      unreachable = unreach;
+      if (need === cur) break;
+      cur = need;
+    }
+    return { psi: cur, unreachable };
+  };
   // the lean itself: the wall under the pad belongs to the station whose
   // plate TOP stands at the pad's mid — its β through the same law the cut
   // and the links share
@@ -9509,48 +9573,38 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // single candidate: the fixed point on the window, the stud's three-way
   // shove, the lever's gain, and the beak scan. It returns null when no beak
   // azimuth survives, which is what makes the ranked walk above possible.
-  const solveFinger = (az) => {
-    // Fixed point on the window: the law's azimuth window must span the arc
-    // the BUILT face really covers, and the face's radius comes out of the
-    // law — the rest radius moves the window's arc, the window moves the
-    // rest radius; converges in two rounds (an earlier cut read the window
-    // at a nominal radius and the real face overhung it by 20% of arc — the
-    // checker found the coil 0.07 into the pad through exactly that lip).
-    let azHalf = PAD_AZ_HALF, proudFull = 0, restR = 0;
-    for (let fp = 0; fp < 3; fp++) {
-      proudFull = proudOf(_setFullPad, az, azHalf, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid);
-      restR = proudFull - PAD_LIFT;
-      azHalf = Math.atan((PAD_W / 2) / restR);
-    }
-    // --- the lever: pad — stud — beak ------------------------------------
-    // The stud sits tangentially offset DOWN-FAN of the pad point (−θ̂). The
-    // side matters: the arriving links approach the pad from +θ̂ and STOP at
-    // their terminal azimuths on its face, so everything at −θ̂ of the pad is
-    // azimuth the wrap never visits at these z bands — the stud, its head,
-    // the beak and the bank all live there, and the occupancy asserts hold
-    // it measured rather than believed. The outboard shove costs the gain
-    // nothing: the tangential offset carries the pad's moment arm and
-    // cross2(r̂,r̂) = 0.
-    const pt = { x: C.x + restR * Math.cos(az), y: C.y + restR * Math.sin(az) };
-    const th = { x: -Math.sin(az), y: Math.cos(az) }; // +θ̂ at the pad
-    // THREE constraints share the shove, all radial clearances at the stud:
-    // the hub's sweep outside the lug's orbit, the retaining head's
-    // inner-bottom corner outside the leaned top links' reach at its own
-    // window (measured by the occupancy law on a first-pass azimuth, then
-    // re-measured after the shove settles — two passes converge because the
-    // azimuth barely moves with the shove), and — TODO 51 — the HUB'S OWN RIM
-    // outside `ARM_STOP_R`. That third one is why no riser station could
-    // rescue the beak arm before: an arm's inboard end is the hub's rim, and
-    // with the stud where §126 left it the rim reached in to 4.23 against a
-    // discrete reach of 4.37. An arm cannot be asked to clear metal its own
-    // pivot is standing in.
-    // The shove lands the pivot ON its floor — the SAME `STUD_FLOOR_R` the
-    // lug was sized against. It has to be the same number: the lug's
-    // proudness is what opens the beak's window, and it opens it at that
-    // radius. A stud that then settled a hundredth further out (two `+0.02`
-    // allowances the floor did not know about) closed the window again from
-    // the outside, which is exactly the failure this whole solve exists to
-    // stop happening in sequence.
+  // --- the lever: pad — stud — beak --------------------------------------
+  // The stud sits tangentially offset DOWN-FAN of the pad point (−θ̂). The
+  // side matters: the arriving links approach the pad from +θ̂ and STOP at
+  // their terminal azimuths on its face, so everything at −θ̂ of the pad is
+  // azimuth the wrap never visits at these z bands — the stud, its head,
+  // the beak and the bank all live there, and the occupancy asserts hold
+  // it measured rather than believed. The outboard shove costs the gain
+  // nothing: the tangential offset carries the pad's moment arm and
+  // cross2(r̂,r̂) = 0.
+  // THREE constraints share the shove, all radial clearances at the stud:
+  // the hub's sweep outside the lug's orbit, the retaining head's
+  // inner-bottom corner outside the leaned top links' reach at its own
+  // window (measured by the occupancy law on a first-pass azimuth, then
+  // re-measured after the shove settles — two passes converge because the
+  // azimuth barely moves with the shove), and — TODO 51 — the HUB'S OWN RIM
+  // outside `ARM_STOP_R`. That third one is why no riser station could
+  // rescue the beak arm before: an arm's inboard end is the hub's rim, and
+  // with the stud where §126 left it the rim reached in to 4.23 against a
+  // discrete reach of 4.37. An arm cannot be asked to clear metal its own
+  // pivot is standing in.
+  // The shove lands the pivot ON its floor — the SAME `STUD_FLOOR_R` the
+  // lug was sized against. It has to be the same number: the lug's
+  // proudness is what opens the beak's window, and it opens it at that
+  // radius. A stud that then settled a hundredth further out (two `+0.02`
+  // allowances the floor did not know about) closed the window again from
+  // the outside, which is exactly the failure this whole solve exists to
+  // stop happening in sequence.
+  // TODO 115 made this a FUNCTION of the rest radius rather than a step that
+  // ran once after it: the demand the finger's own plane makes moves the rest
+  // radius, and a stud sited from the seed radius would be a lever solved
+  // against a pad that is no longer there.
+  const studFor = (pt, th, az, restR) => {
     let out = Math.max(0.15,
       Math.sqrt(Math.max(STUD_FLOOR_R ** 2 - R_PAD_ARM ** 2, 0)) - restR);
     const studAtOut = (o) => ({
@@ -9566,9 +9620,68 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
       const need = worst + CLEAR_MARGIN + HEAD_R; // head's inner sweep past the worst reach
       if (rOf(s) < need) out += need - rOf(s) + 0.01;
     }
-    const st = studAtOut(out);
-    const gain = cross2({ x: pt.x - st.x, y: pt.y - st.y }, rHat(az));
-    const psi = PAD_LIFT / gain;            // finger rotation at full wind (sign per the lever's own handedness)
+    return studAtOut(out);
+  };
+  const solveFinger = (az) => {
+    // Fixed point on the window: the law's azimuth window must span the arc
+    // the BUILT face really covers, and the face's radius comes out of the
+    // law — the rest radius moves the window's arc, the window moves the
+    // rest radius; converges in two rounds (an earlier cut read the window
+    // at a nominal radius and the real face overhung it by 20% of arc — the
+    // checker found the coil 0.07 into the pad through exactly that lip).
+    // TODO 115 widened that fixed point to carry the STUD too, because the
+    // demand `psiDemand` measures is a property of the whole lever: the rest
+    // radius sites the stud, the stud fixes the swing, the swing fixes how
+    // much lift the coil demands, and that demand must come out at PAD_LIFT
+    // or the designed throw is not the throw the metal performs.
+    //
+    // BISECTED, not stepped. Pulling the rest face in by δ adds δ to the lift
+    // the coil demands only to first order — the stud's own shove reads that
+    // radius too, and WHICH link governs the demand changes discretely as the
+    // face swings — so the naive step limit-cycles (measured, it stalled
+    // 1.13e-3 off the designed throw and dragged the pose's exact-inverse
+    // assert red with it). The shortfall is MONOTONE in the rest radius
+    // whatever the discontinuities do inside it, which is exactly the
+    // property bisection needs and iteration does not.
+    const th = { x: -Math.sin(az), y: Math.cos(az) }; // +θ̂ at the pad
+    let proudFull = 0, fpUnreach = 0;
+    // the seed is the RAY reading — the law this solve carried before the
+    // plane's own tilt was in it, and still the right first guess
+    const seed = proudOf(_setFullPad, az, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid) - PAD_LIFT;
+    // the lever this rest radius builds, and the lift its own coil demands of it
+    const leverAt = (rest) => {
+      const p = { x: C.x + rest * Math.cos(az), y: C.y + rest * Math.sin(az) };
+      const s = studFor(p, th, az, rest);
+      const g = cross2({ x: p.x - s.x, y: p.y - s.y }, rHat(az));
+      // the ray standoff a rotation ψ puts the face at — the same closed form
+      // `psiStandoff` publishes below, on this rest radius's own lever
+      const A = cross2({ x: s.x - C.x, y: s.y - C.y }, th);
+      const B = -g;
+      const Kp = cross2({ x: p.x - s.x, y: p.y - s.y }, th);
+      const dem = psiDemand(_setFullPad, az, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid,
+        s, rest, PAD_W / 2, Math.sign(PAD_LIFT / g));
+      const lift = A + (Kp - B * Math.sin(dem.psi)) / Math.cos(dem.psi) - rest;
+      return { pt: p, st: s, gain: g, psi: PAD_LIFT / g, lift, unreachable: dem.unreachable };
+    };
+    // bracket first: the demand falls as the rest face moves out, so walk the
+    // seed outward (or inward) by the shortfall itself until the sign turns
+    let lo = seed, hi = seed;
+    for (let k = 0; k < 40 && leverAt(lo).lift < PAD_LIFT; k++) lo -= 0.05;
+    for (let k = 0; k < 40 && leverAt(hi).lift > PAD_LIFT; k++) hi += 0.05;
+    for (let k = 0; k < 60 && hi - lo > 1e-12; k++) {
+      const mid = (lo + hi) / 2;
+      if (leverAt(mid).lift > PAD_LIFT) lo = mid; else hi = mid;
+    }
+    // take the side that lifts AT LEAST the designed throw: a discontinuity in
+    // which link governs cannot be bisected away, and a finger that falls
+    // short of its own throw is the failure this solve exists to prevent
+    const restR = lo;
+    const lev = leverAt(restR);
+    const pt = lev.pt, st = lev.st, gain = lev.gain, psi = lev.psi;
+    fpUnreach = lev.unreachable;
+    const fpMiss = Math.abs(lev.lift - PAD_LIFT);
+    const azHalf = Math.atan((PAD_W / 2) / restR);
+    proudFull = restR + PAD_LIFT;   // the ray standoff at full wind, by construction
     // The pad arm's own chord vs the flying span (the corridor law above):
     // its station solves outward later (armEndOutside), so the chord is
     // tested out to the sectored stop plus the head-room that walk
@@ -9576,7 +9689,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     // no legal finger at all, whatever the beak scan finds.
     if (spanFoulsChord(st.x, st.y,
       C.x + (armStopAt(az) + 1) * Math.cos(az), C.y + (armStopAt(az) + 1) * Math.sin(az))) {
-      return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st,
+      return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st, fpMiss, fpUnreach,
         padGain: gain, psiFull: psi, beakParked: null, beakGain: 0, beakMoment: 0,
         rejects: { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 1 }, trace: 'P' };
     }
@@ -9618,7 +9731,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
       const sc = Math.abs(g) / armLen;
       if (sc > best) { best = sc; parked = c; bGain = g; bMoment = mom; }
     }
-    return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st,
+    return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st, fpMiss, fpUnreach,
       padGain: gain, psiFull: psi, beakParked: parked, beakGain: bGain,
       beakMoment: bMoment, rejects, trace: trace.join('') };
   };
@@ -9636,6 +9749,14 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   }
   PAD_AZ = FINGER.az; T_TOUCH = FINGER.tTouch;
   PAD_AZ_HALF = FINGER.azHalf;
+  // the CHOSEN candidate's fixed point, reported here rather than inside the
+  // solve — a rejected azimuth's arithmetic is not this movement's finger
+  if (!(FINGER.fpMiss < 1e-10))
+    console.warn(`§47: the finger's rest radius never settled — the lift its own coil demands is still `
+      + `${FINGER.fpMiss.toExponential(2)} off PAD_LIFT after 16 rounds`);
+  if (FINGER.fpUnreach)
+    console.warn(`§47: ${FINGER.fpUnreach} coil point(s) under the pad face stand proud of it at EVERY finger `
+      + 'rotation — the lever cannot clear its own coil');
   const PAD_PROUD_FULL = FINGER.proudFull, PAD_REST_R = FINGER.restR;
   const padPt = FINGER.padPt, tHat = FINGER.tHat, stud = FINGER.stud;
   const padGain = FINGER.padGain;
@@ -9708,8 +9829,16 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const SUB = 4; // fine samples per node interval — the step's position inside an interval, resolved
     for (let k = 0; k <= LAW_N * SUB; k++) {
       const t = LAW_T0 + (k / (LAW_N * SUB)) * (1 - LAW_T0);
-      padLaw[k] = Math.max(0,
-        proudOf(builtPtsNear(t), PAD_AZ, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid) - PAD_REST_R);
+      // the ROTATION the coil demands of this finger, read back as the lift
+      // the pose law speaks in — the same conversion the rest-radius solve
+      // ran, so the law and the geometry that produced it are one arithmetic.
+      // NO demand is EXACTLY no lift: psiStandoff(0) reassembles PAD_REST_R
+      // out of two cross products and lands a rounding step above it, and the
+      // catch-window assert next door tests `liftAt(...) !== 0` — a 1e-16 of
+      // lift reads there as a finger already thrown through the lug's free pass.
+      const dem = psiDemand(builtPtsNear(t), PAD_AZ, PAD_ZLO, PAD_ZHI,
+        PAD_LEAN, padZMid, stud, PAD_REST_R, PAD_W / 2, Math.sign(PSI_FULL));
+      padLaw[k] = dem.psi === 0 ? 0 : Math.max(0, psiStandoff(dem.psi) - PAD_REST_R);
     }
   }
   const liftAt = (tension) => {
@@ -10053,14 +10182,26 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     pawl.add(padPivot);
   }
   {
-    // the tab rides at the LUG's own z: its +θ̂ face passes through the
-    // parked contact point, its stock runs −θ̂ (behind the face, out of the
-    // lug's approach) and radially OUTWARD from the parked radius — so
+    // the tab rides at the LUG's own z: its WORKING face passes through the
+    // parked contact point, its stock runs BEHIND that face — out of the
+    // lug's approach — and radially OUTWARD from the parked radius, so
     // parked, no part of it stands inside the orbit (A4), and the throw
     // alone buys the engagement.
+    //
+    // TODO 115 — WHICH SIDE THE LUG COMES FROM is the movement's. The cone's
+    // local rotation runs −MOVEMENT_SENSE·2π per turn banked (windLocalAt), so
+    // as the wind rises the lug travels −MOVEMENT_SENSE·θ̂ and arrives from the
+    // +MOVEMENT_SENSE·θ̂ side. The stock therefore runs −MOVEMENT_SENSE·θ̂, and
+    // the sentence this comment used to make — "its +θ̂ face … its stock runs
+    // −θ̂" — was that arithmetic with the sense already substituted. Left
+    // unsigned against a reversed movement the lug meets the tab's STOCK
+    // instead of its face: measured, the beak stood 0.327 inside the lug at
+    // wind 0.494, arriving early and burying deeper all the way to full wind,
+    // and `windArrestHandoff` still read the full-wind kiss as 0 because the
+    // two faces are coplanar there whichever side the body is on.
     const ctr = {
-      x: beakParked.x - beakTan.x * (BEAK_TAN / 2) + beakRad.x * (BEAK_RAD / 2),
-      y: beakParked.y - beakTan.y * (BEAK_TAN / 2) + beakRad.y * (BEAK_RAD / 2),
+      x: beakParked.x - MOVEMENT_SENSE * beakTan.x * (BEAK_TAN / 2) + beakRad.x * (BEAK_RAD / 2),
+      y: beakParked.y - MOVEMENT_SENSE * beakTan.y * (BEAK_TAN / 2) + beakRad.y * (BEAK_RAD / 2),
     };
     const m = new THREE.Mesh(new THREE.BoxGeometry(BEAK_RAD, BEAK_TAN, TAB_Z2 - TAB_Z1), MATS.steel);
     m.name = 'windArrestBeak';
@@ -10221,9 +10362,12 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const sOut = Math.abs(sOutA) < Math.abs(sOutB) ? sOutA : sOutB;
     const e1 = { x: beakThrown.x + sIn * alongFace.x, y: beakThrown.y + sIn * alongFace.y };
     const e2 = { x: beakThrown.x + sOut * alongFace.x, y: beakThrown.y + sOut * alongFace.y };
-    // sweep the face edge to the TRAILING side (+θ̂, where the lug's body
-    // follows its own leading face) to close the body
-    const sweep = (p) => rot2(p, LUG_SWEEP_W / rOf(p));
+    // sweep the face edge to the TRAILING side — where the lug's body follows
+    // its own leading face — to close the body. TODO 115: trailing is
+    // +MOVEMENT_SENSE·θ̂, the same commitment the beak tab's stock carries and
+    // for the same reason; flip one without the other and the pair meets
+    // stock-on-stock at full wind (measured −0.327 on the handoff's kiss).
+    const sweep = (p) => rot2(p, MOVEMENT_SENSE * LUG_SWEEP_W / rOf(p));
     const q1 = sweep(e1), q2 = sweep(e2);
     // build the quad in the FUSEE's local frame (world-at-arrest rotated
     // back by the datum), extruded over the lug's z band
