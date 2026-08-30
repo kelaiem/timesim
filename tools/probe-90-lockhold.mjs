@@ -156,6 +156,16 @@ const out = await p.evaluate(async () => {
         const r = Math.hypot(v.x, v.y); lo = Math.min(lo, r); hi = Math.max(hi, r); }
       return [lo, hi];
     })(),
+    // §192 — the tier's height MEASURED off the castellation ring's own z
+    // extent, replacing a hardcoded 1.4000 that went stale the day the tier
+    // was re-derived from its riders.
+    colH: (() => {
+      const pos = cols.geometry.attributes.position, v = new THREE.Vector3();
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i);
+        lo = Math.min(lo, v.z); hi = Math.max(hi, v.z); }
+      return hi - lo;
+    })(),
     beakClear: (() => {
       const r = [];
       for (const alarmOn of [0, 1]) for (const cycle of [0, 1]) {
@@ -234,8 +244,8 @@ console.log(`  the brake needs ${f(nNeed_mN, 1)} mN -> ${f(nNeed_mN / fMax_mN, 1
 const bs = out.beakSpan;
 console.log('\nthe beak end — is the castellation read radial?');
 console.log(`  beak -> column-wheel axis over the whole sweep: ${f(bs.min)} .. ${f(bs.max)}`);
-console.log(`  radial excursion ${f(bs.max - bs.min, 5)}   against ALARM_COL_H (the tier the beak reads) 1.4000`);
-console.log(`  = ${f((bs.max - bs.min) / 1.4 * 100, 2)}% of the column's height`);
+console.log(`  radial excursion ${f(bs.max - bs.min, 5)}   against ALARM_COL_H (the tier the beak reads, measured off the ring) ${f(out.colH, 4)}`);
+console.log(`  = ${f((bs.max - bs.min) / out.colH * 100, 2)}% of the column's height`);
 console.log(`  castellation ring spans r ${f(out.ringR[0])} .. ${f(out.ringR[1])} in the wheel's frame`);
 console.log(`  the beak's inward face stands at ${f(bs.min - 0.5570)} — flush on the ring's outer wall, and LIFT carries it OUTWARD`);
 console.log('  clearance beak -> castellations, by state:');

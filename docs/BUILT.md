@@ -17475,6 +17475,20 @@ claim about the build.
 
 ## §169 — a spring anchored to nothing, and a saw band that was never sized for what runs in it
 
+> **Superseded in part by §192.** The torsion coil this section built was
+> re-formed as an in-plane cantilever blade when the strike tower came
+> down toward the flat back: the coil's (coils + 1)·`SPRING_FLAT_U`
+> stratum was the tower's tallest single rung, and the anchor-siting
+> failure that justified the coil over §163's blade is now held by two
+> instruments that did not exist then — §182's declared-joint audit
+> (the exact row that lied in §163 fails the battery if its parts never
+> meet) and a build assert on the stud's own arm. The coil's TWO FLOORS
+> survive it: the blade's free length answers the same drag budget and
+> the same strain limit, read back in blade form. Section 2's band
+> arithmetic also survives — §192 returned the band to §163's stated
+> minimum by removing the coil term, not by re-thinning the band.
+> The §192 record has the ledger.
+
 Two defects in §163's driver, both reported by eye ("part of the operating
 lever sticks out unsupported… maybe it's a spring that keeps the claw held
 against the teeth of the column wheel", and "the pawl mesh is also still
@@ -20318,3 +20332,111 @@ tier-height literal, the λ = 30-vs-27 comment); and the
 `EXPECTED_PAIRS`' own note had claimed existed for as long as the lever
 has run under the plate. No geometry moved; the fingerprint holding
 still is this landing's acceptance.
+
+## §192 — the strike tower comes down: a spring re-formed in plane, sections re-founded on their riders, and the back follows 1:1
+
+The owner picked the full flat back from §191/§192's measured price table
+(2.069 u = 0.78 mm between the glass's raised step and its pane plane),
+and the campaign ran in the order the dependency maps dictated — because
+`ALARM_COL_RAISE`'s algebra makes the saw band and skirt bottom INVARIANT
+to the wheel's own sections (`BASE_H/2` and `SKIRT_H` cancel between the
+raise and the spin plane), sections alone could never reach it: the
+z-stack's spring term had to go first.
+
+### Stage 1 — the pawl's spring left the z-stack
+
+The §169 torsion coil's stratum — `(coils + 1)·SPRING_FLAT_U` = 0.990,
+`probe-192-tier-price`'s tallest single rung — was never part of §163's
+architecture verdict; it was the FORM §169 chose after §163's flat blade
+anchored its stud on air (r 11.378 over a driver reaching 7.550, with a
+declared-joint row stating the false ground). That failure class is held
+now, twice over: §182 audits every `INTRA_UNIT_CONTACTS` row against the
+metal, and the anchor this time is a stud on a THIRD ARM of the driver,
+cut to reach it, stud-on-metal asserted at the build, the §68 plate-edge
+bound re-asserted at the driver's new longest reach (r 11.64 + tip
+against plate − margin).
+
+The blade is coplanar with the pawl in the skirt band the pawl already
+owns: square flat-spring stock (the §48 feeler's section), bearing on the
+tail's flank at the boss's edge (bearArm = BOSS_R + HALF_W), free length
+SOLVED as the greater of §169's two floors read back in blade form —
+drag `L³ ≥ 3EI·bearArm²·θmax/Mmax`, strain `L² ≥ 3t·δmax/(2ε)`. Strain
+governs at 4.287 u; drag headroom lands at 9.32× against the 3× floor;
+the stud is the one series compliance left and prices at 8027× the
+blade's rate (πr⁴/4, the round section's own figure). The tick holds the
+built blade's tip on the tail at every pose (the feeler's §48 frame law),
+so the spring is never drawn parted from its load. The branch scan sweeps
+the blade's run too — three branches it would have fouled read negative;
+the winner keeps ample clearance. bandNeed returned to §163's stated
+minimum (`CM + DRIVER_T + CM`), the TODO 121 assert followed the same
+inventory, and the ratchet skirt's underside dropped 10.4405 → 9.6011
+(**0.839**).
+
+### Stage 2 — the sections derived from their riders
+
+- `ALARM_COL_H` 1.4 → **0.6167**: TODO 11's proportion retired with its
+  residue annotated there. The governing rider is the lock rocker's beak
+  (§50-floor cylinder wanting a running margin per face:
+  `STOCK_MIN_U + 2·CM`); the link beak's seat-caught fall measures only
+  0.0218 (the ring's travel reflected back through the lever), spec'd at
+  the wheel on §169's COILS convention and re-derived at the link with
+  two new asserts — the spec round-trip, and the starvation case the
+  tick's `Math.min(colH·(1−p), seatNoseDrop)` would otherwise cap in
+  silence.
+- The rocker beak's underived `0.6·COL_H` became `COL_H − 2·CM` (its
+  per-face clearance crossed CM at COL_H 0.75 with nothing watching);
+  at the derived tier it sits exactly at §50 stock, with a floor warn.
+- `ALARM_COL_BASE_H` 0.7 → **0.6333**: the journal law written down —
+  the wheel's bore engages its stud from the skirt's underside to the
+  tip parked 0.05 under the base top (§68), and a journal wants L no
+  shorter than its Ø. The old 0.7 gave L/D 1.06: already sized at the
+  constraint, carrying 0.06 loose.
+- TODO 121's rod-literal half closed: the link-rod solver's colBand top
+  is the column stack top + CM, derived; the priced rod-site move did
+  not bite (site byte-identical, measured).
+- Three instruments had snapshots of the old tower and now derive their
+  controls: the §187 boot control and `probe-back-envelope` hold the
+  link tower above the column stack top it rides (was `> 13.0`);
+  `probe-90-lockhold` measures the tier off the castellation ring's own
+  z extent (was 1.4000). `BACK_SWEPT_REGIONS`' Alarm-switch row
+  re-authored to the measured swept ceiling (13.16 → 11.47); the link
+  allowance's basis re-measured (excursion +0.099 rode the descent
+  unchanged; 0.12 stands).
+
+### The ledger, measured
+
+| member | before | after |
+|---|---|---|
+| ratchet skirt underside | 10.4405 | 9.6011 |
+| castellation top | 12.3178 | 11.4678 |
+| link tower (envelope governor) | 13.877 | 12.061 |
+| glass step proud of pane | 2.069 u = 0.78 mm | **0.254 u = 0.10 mm** |
+
+The bar-lift relax delivered beyond the two section drops (the lift
+solve reads `colH·(1−p)` and re-derived itself down). The residual
+0.10 mm step is the bar-lift solve's own answer plus the link tail's
+derived depth and the declared allowance — every term derived, none
+forkable — and it ships measured, per the plan's refusal point: the
+flat back was the target, not a claim.
+
+**Where the 1:1 relation honestly ends — the cased depth found its
+floor.** The scoping baseline's 12.02 mm was the OLD glass step's top
+(z 15.731) standing proud of the exhibition ring; the descent sank the
+step below the ring's own face (13.915 against 15.244), so the case's
+back-most metal is now the ring plus its wrench keys (15.613 →
+**11.98 mm** cased) and further tower drops stop buying depth — the
+floor is the case band's own back plane, not the movement. The §187
+keys' "spends no cased depth" sizing note inverted with this and
+carries the annotation at the builder. Removing the residual 0.10 mm
+glass step would flatten the LOOK and buy zero further millimetres;
+recessing the ring's keys (a §187 revisit, not §192's) is the only
+depth left on the back.
+
+### What did NOT move
+
+The under-plate move stayed refused on §163's measured record (sinking
+the column starves the jumper's tip and the sautoir). The detent
+envelope, §50 floors, and every working contact stayed inherited:
+`alarmHandoffs` holds all 13 rows shut at both parities throughout, and
+the §120-class cycle sweep still clears the cut outline by CLEAR_MARGIN
+(+0.0016 worst slack, `probe-163-driver` re-run).

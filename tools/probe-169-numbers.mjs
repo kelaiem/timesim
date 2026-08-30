@@ -23,7 +23,7 @@ const out = await p.evaluate(async () => {
   const z = (n) => { const o = find(n); if (!o) return null;
     const x = new THREE.Box3().setFromObject(o); return [+x.min.z.toFixed(4), +x.max.z.toFixed(4)]; };
   const rows = {};
-  for (const n of ['alarmColDriver', 'alarmColPawlSpringPin', 'alarmColPawlSpring', 'alarmColPawl',
+  for (const n of ['alarmColDriver', 'alarmColPawlSpringStud', 'alarmColPawlSpring', 'alarmColPawl',
                    'alarmColSkirt', 'alarmColBase', 'alarmColCastellations', 'alarmLinkBeakTail'])
     rows[n] = z(n);
   return { spring: drive && drive.spring, ret, z: rows,
