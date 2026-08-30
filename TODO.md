@@ -14642,7 +14642,7 @@ and declare the two display joints in `INTRA_UNIT_CONTACTS` /
 rotation-by-parenting half (a display posed rather than driven) is item
 115's train-sense work and stays there.
 
-## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — PART DONE (rod literal closed by §192)
+## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — PART DONE
 
 Found by the §191/§192 audit (the per-member z-anatomy walk that priced
 the tier), filed together because they are one defect class: **the tier
