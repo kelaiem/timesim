@@ -129,12 +129,22 @@ export const BATTERY = [
     note: (r) => `${r.counted} meshes, ${r.exemptByKind} exempt by kind; ${r.over} over ceiling `
       + `(${r.unwaived} unwaived — untriaged, §40); ${r.bearings.declaredMeshes} declare `
       + `${r.bearings.stations} bearings, overhang K ${r.overhangK}` },
-  // §77 tiers 0+1 — a REPORT (§40): the zeroArea and inverted rows land red
-  // by design (3,233 zero-area triangles and 4 inverted bodies measured on
-  // arrival, triaged into TODO.md) and are NOT gated; what is gated is what
-  // can be held on day one — the in-check synthetic controls and every
+  // §77 tiers 0+1 — the zeroArea rows stay a REPORT (§40: thousands of
+  // zero-area triangles measured on arrival, triaged into TODO.md, not
+  // gated); gated on day one were the in-check synthetic controls and every
   // declared sub-body table's validity (a malformed table is a stale
   // selector, the INTRA_UNIT_CONTACTS precedent).
+  // TODO 123 promoted the INVERTED tier to a gate — §50's report → triage →
+  // gate arc, run when the class produced its measured defect: the §187
+  // exhibition ring and §3's front crystal were wound inside-out and CULLED
+  // INVISIBLE for their whole lives, while measuring solid to every
+  // facing-agnostic instrument (this tier was the only one that could see
+  // them, and it was reporting). Promotion-day population: 5 FIXED — the
+  // two case bodies, plus three the gate caught on its own first run
+  // (TODO 115's mirrored sweeps had shipped both stem saws and the fusee's
+  // land ring inverted, days old, seen by nothing else) — and 4 waived by
+  // name in INVERTED_WAIVERS citing TODO 123. Waiver staleness gates with
+  // it, SLENDER_WAIVERS' covenant.
   // TODO 100 — a cut outline is a simple polygon, or it is not an outline.
   // Unlike meshIntegrity and slenderness above, this one GATES ITS ROWS rather
   // than reporting them, and it can because the movement was measured clean
@@ -155,10 +165,13 @@ export const BATTERY = [
     note: (r) => `${r.read} of ${r.geometries} geometries carry an authored shape, ${r.rings} rings tested; `
       + `${r.withoutShape.map((w) => `${w.count} ${w.type}`).join(', ')} never had one` },
   { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY },
-    gate: 'controls PASS and 0 malformed sub-body declarations — zeroArea/inverted rows are a REPORT (§40)',
-    fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]), ...r.subBodies.malformed],
+    gate: 'controls PASS, 0 malformed sub-body declarations, 0 unwaived inverted bodies, 0 stale inverted waivers — zeroArea rows are a REPORT (§40)',
+    fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...r.subBodies.malformed,
+      ...(r.inverted.unwaived || []),
+      ...(r.inverted.staleWaivers || [])],
     note: (r) => `${r.geometries} geometries / ${r.triangles} tris: zeroArea ${r.zeroArea.total} in ${r.zeroArea.geometries} geometries (${r.zeroArea.exactZero} exact), `
-      + `${r.inverted.rows.length} inverted, subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries; `
+      + `inverted ${r.inverted.rows.length} (${r.inverted.waivedCount ?? 0} waived — accepted debt), subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries; `
       + `pairs ${r.subBodies.pairs.tested} tested / ${r.subBodies.pairs.skippedDeclaredOverlap} declared / ${r.subBodies.pairs.rows.length} interior` },
   // TODO 104 tier A rides this row's gate rather than a row of its own: the
   // declarations it judges are the same table whose stale selectors already

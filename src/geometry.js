@@ -3044,7 +3044,17 @@ export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawC
     pos.push(rIn * c, rIn * s, 0, rOut * c, rOut * s, 0,
              rOut * c, rOut * s, smp.z, rIn * c, rIn * s, smp.z);
   }
-  const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+  // TODO 123 — THE WINDING FOLLOWS THE SWEEP. These quads are written for a
+  // ring traversed in INCREASING theta; at sense = −1 the traversal mirrors,
+  // and an indexer that does not mirror with it builds the whole body
+  // inside-out — culled invisible, while measuring solid to every
+  // facing-agnostic instrument. That is not hypothetical: TODO 115 flipped
+  // both stem saws to the reversed sense and they shipped inverted, caught
+  // by meshIntegrity's inverted gate on its first run. Flipping each
+  // triangle's order at negative sense is the mirror the sweep already took.
+  const quad = sense >= 0
+    ? (a, b, c, d) => { idx.push(a, b, c, a, c, d); }
+    : (a, b, c, d) => { idx.push(c, b, a, d, c, a); };
   for (let i = 0; i < S; i++) {
     const j = (i + 1) % S;
     const A = i * 4, B = j * 4;
@@ -3831,8 +3841,17 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     for (const [r, z] of [[rIn, zLo], [rOut, zLo], [rOut, zHi], [rIn, zHi]])
       pos.push(ca * r, sa * r, z);
     if (open) {
+      // TODO 123 — the winding follows the sweep (makeSawCoupling's rule,
+      // same landing): these quads were written for azimuth advancing in
+      // +theta, and TODO 115's MOVEMENT_SENSE on the sweep line mirrored the
+      // traversal without them — at sense −1 the whole land ring built
+      // inside-out and culled invisible, the third body the inverted gate
+      // caught on its first run.
       const b = base - 4, c = base;
-      for (const k of [0, 1, 2]) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
+      for (const k of [0, 1, 2]) {
+        if (MOVEMENT_SENSE >= 0) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
+        else idx.push(c + k + 1, c + k, b + k, b + k + 1, c + k + 1, b + k);
+      }
     }
     open = true;
   }
@@ -7477,6 +7496,30 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
         + `the parity raycast will read this body as solid behind the missing face`);
     const geo = new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), seg);
     geo.rotateX(Math.PI / 2); // lathe axis Y → +Z, house convention
+    // TODO 123 — ORIENTATION, not just closure. A profile that runs the
+    // wrong way round builds every face inward, and FrontSide culling then
+    // hides the whole body from outside: invisible metal that still
+    // measures solid to every instrument, because BVH clearances and the
+    // parity raycast are facing-agnostic. That is not hypothetical — the
+    // §187 exhibition ring shipped wound inside-out and painted NOTHING
+    // for its whole life until the owner noticed objects showing through
+    // it; `meshIntegrity` had it in the "inverted" residue all along,
+    // reported and ungated. The sector builder below has warned about its
+    // own version of this since §186; the lathe gets the same tripwire.
+    {
+      const pos = geo.attributes.position, idx = geo.index;
+      const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), vx = new THREE.Vector3();
+      let v = 0; const nT = idx ? idx.count : pos.count;
+      for (let t = 0; t < nT; t += 3) {
+        va.fromBufferAttribute(pos, idx ? idx.getX(t) : t);
+        vb.fromBufferAttribute(pos, idx ? idx.getX(t + 1) : t + 1);
+        vc.fromBufferAttribute(pos, idx ? idx.getX(t + 2) : t + 2);
+        v += va.dot(vx.crossVectors(vb, vc)) / 6;
+      }
+      if (v < 0)
+        console.warn(`makeCase: lathe profile is wound INSIDE-OUT (signed volume ${v.toFixed(1)} < 0) — `
+          + 'FrontSide culling will hide the whole body from outside; reverse the profile\'s point order');
+    }
     return geo;
   };
 
@@ -7646,15 +7689,20 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // faces z-fight, so a seated part sinks a sub-visible hundredth into
   // what carries it (the §186 clamp heads reuse this below).
   const zSeat = zMidBack - SEAT_EMBED;
+  // TODO 123 — the profile runs the direction that faces the metal OUTWARD.
+  // The first cut ran it the other way and the ring painted nothing: every
+  // face culled, the movement visible straight through 2.4 mm of steel,
+  // while the geometry measured solid to every instrument. Same points,
+  // opposite travel; the lathe helper's signed-volume warn holds it now.
   const back = new THREE.Mesh(lathe([
-    [apertureR, z0],                 // the lip's bore — the APERTURE, out along the top face
-    [R_PLATE, z0], [R_PLATE, zSeat], // the ring's edge, down to the seating face
-    [skirtOD, zSeat],                // in along the seating face (over the gasket cord)
-    [skirtOD, zSkirtBot],            // down the skirt's threaded outer face (smooth + declared)
+    [apertureR, z0],                 // the lip's bore — the APERTURE, down its wall
+    [apertureR, zCrystOut],          // out along the lip's underside
+    [skirtID, zCrystOut],            // down the skirt's inner wall — the glazing channel's radial wall
     [skirtID, zSkirtBot],            // across the skirt's bottom
-    [skirtID, zCrystOut],            // up the skirt's inner wall — the glazing channel's radial wall
-    [apertureR, zCrystOut],          // in along the lip's underside
-    [apertureR, z0],                 // close up the lip's bore
+    [skirtOD, zSkirtBot],            // up the skirt's threaded outer face (smooth + declared)
+    [skirtOD, zSeat],                // out along the seating face (over the gasket cord)
+    [R_PLATE, zSeat], [R_PLATE, z0], // the ring's edge, up to the face
+    [apertureR, z0],                 // in along the top face — close at the bore
   ]), material);
   back.name = 'caseBack';
   backAsm.add(back);
@@ -7742,8 +7790,11 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   backAsm.add(gasket);
 
   // Crystal: flat mineral disc with relieved edge, seated on the ledge.
+  // TODO 123 — reversed with the ring: the first order wound it inside-out
+  // (signed volume −8603) and the front glass CULLED — no sheen, no
+  // presence, a crystal the viewer was never actually looking through.
   const crystal = new THREE.Mesh(lathe([
-    [0, zCrystInner], [R_CRYST, zCrystInner], [R_CRYST, zCrystOuter], [0, zCrystOuter],
+    [0, zCrystOuter], [R_CRYST, zCrystOuter], [R_CRYST, zCrystInner], [0, zCrystInner],
   ]), crystalMaterial);
   crystal.name = 'caseCrystal';
   frontAsm.add(crystal);

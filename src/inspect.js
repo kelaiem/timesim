@@ -7405,9 +7405,13 @@ export function checkSlenderness(clock, opts = {}) {
 // A REPORT, §40's rule: `ok` is always true, the rows are the product, and
 // the battery row gates only what can be held on arrival — the in-check
 // synthetic controls and the sub-body declaration table's validity. The
-// zeroArea and inverted rows land red by design (the scene measures
-// thousands of zero-area faces today) and are triaged into TODO.md, never
-// waived at birth. NOTE the fingerprint is no regression guard for any of
+// zeroArea rows land red by design (the scene measures thousands of
+// zero-area faces today) and are triaged into TODO.md, never waived at
+// birth. The INVERTED tier left that covenant at TODO 123 and GATES —
+// §50's report → triage → gate arc, run when the class produced its
+// measured defect (the §187 ring and §3 front crystal, invisible for
+// their whole lives): rows fixed or waived by name, staleness gated, see
+// INVERTED_WAIVERS below. NOTE the fingerprint is no regression guard for any of
 // this: it hashes per-unit AABBs at 11 poses, and TODO 4 measured the
 // inside-out castellations moving no AABB and no clearance verdict — only
 // this check's own report diff watches this class.
@@ -7435,6 +7439,36 @@ export const ZERO_AREA_MAX = 1e-12;
 // is float noise around zero. 1e-3 of the bbox volume separates the two by
 // orders of magnitude; a body flagged here is inside-out, not thin.
 export const INVERTED_VOL_FRAC = 1e-3;
+// TODO 123 — the inverted tier GATES now, §50's arc run whole: reported at
+// §77, triaged when the owner proved the class by eye (objects plainly
+// visible through 2.4 mm of steel — the §187 exhibition ring and §3's front
+// crystal were both wound inside-out, culled invisible for their whole
+// lives while measuring solid to every facing-agnostic instrument), the two
+// case bodies FIXED, and the remainder waived by name. An inverted body is
+// invisible metal: nothing else in the battery can see it (BVH clearances
+// and the parity raycast ignore facing; the fingerprint hashes AABBs), so
+// this tier is the one instrument that holds the class and a report was
+// letting it ride.
+//
+// The SLENDER_WAIVERS covenant, verbatim: a waived row is accepted debt
+// citing its TODO item, visible in the report; a waiver naming a body with
+// no inverted row is STALE and fails, so deleting a fix's waiver is
+// structurally part of the fix. Keys are `unit/mesh`, and one key may cover
+// several meshes sharing a name — the Fork cock carries two unnamed
+// inverted lathes under its one `(unnamed)` key, both the same debt.
+export const INVERTED_WAIVERS = {
+  // Two jewel-setting lathes on the fork cock and one on the balance cock —
+  // cosmetic turnings whose profiles run the caseBack's old way. They render
+  // today only because nothing ever views them from the culled side; the fix
+  // is TODO 123's (reverse the profile travel; the makeCase lathe helper's
+  // signed-volume warn is the pattern to port to their builder).
+  'Fork cock/(unnamed)': 'TODO 123',
+  'Balance cock/(unnamed)': 'TODO 123',
+  // The alarm face cam — a custom BufferGeometry whose index winds inward
+  // (signed volume −0.27 against a 6.08 bbox). Dial-side, viewed from its
+  // lucky side only. Same item, same fix path at its builder.
+  'Alarm setting wheel/alarmFaceCam': 'TODO 123',
+};
 
 // Classify one triangle given its nine coords. Exported for the probe.
 // `collapsed` = two vertex POSITIONS bit-identical (an edge of zero
@@ -7816,7 +7850,21 @@ export async function checkMeshIntegrity(clock, opts = {}) {
     },
     geometries: byGeo.size, meshes: byMesh.size, triangles,
     zeroArea: { threshold: ZERO_AREA_MAX, total: zeroTotal, exactZero, geometries: zeroRows.length, rows: zeroRows },
-    inverted: { rows: invertedRows },
+    // TODO 123 — the inverted tier gates (see INVERTED_WAIVERS' covenant):
+    // rows carry their waiver, `unwaived` is what fails, and a waiver whose
+    // key matches no row is stale and fails too — the fix's own deletion
+    // duty, SLENDER_WAIVERS' rule verbatim.
+    inverted: (() => {
+      const rows = invertedRows.map((r) => ({ ...r, waived: INVERTED_WAIVERS[`${r.unit}/${r.mesh}`] || null }));
+      const matched = new Set(rows.filter((r) => r.waived).map((r) => `${r.unit}/${r.mesh}`));
+      return {
+        rows,
+        unwaived: rows.filter((r) => !r.waived),
+        waivedCount: rows.length - rows.filter((r) => !r.waived).length,
+        staleWaivers: Object.keys(INVERTED_WAIVERS).filter((k) => !matched.has(k))
+          .map((k) => ({ key: k, debt: INVERTED_WAIVERS[k], problem: 'waiver names a body with no inverted row — retire it' })),
+      };
+    })(),
     aggregates,
     subBodies: {
       declaredGeometries, bodies: declaredBodies, malformed,

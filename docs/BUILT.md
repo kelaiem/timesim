@@ -20150,7 +20150,14 @@ clamp screw), a located part nothing fastened. The channel is now cut
 for a compressed crystal gasket — the I-ring that actually fixes a
 display glass — so the edge radius derives from that member's section
 and the aperture reads 45.73; the three joints are declared and
-measured every run. The gasket stays
+measured every run. **And TODO 123 then found the ring itself had never
+been visible at all**: its lathe profile was wound inside-out, every
+face culled, the metal painting nothing while measuring solid to every
+facing-agnostic instrument — the front crystal shared the defect since
+§3. Both windings reversed; the lathe helper warns on negative signed
+volume (the sector builder's own tripwire extended to the tool that
+lacked it), and `meshIntegrity`'s inverted tier is a GATE now, its
+residue waived by name. The gasket stays
 exactly where §3 cut it: the groove + lands fit the flangeless 1.0 mm
 annulus, and the ring's face compresses the same cord the screwed plate
 did, preloaded by the thread. Two raised key lugs are the wrench
