@@ -20465,3 +20465,164 @@ envelope, §50 floors, and every working contact stayed inherited:
 `alarmHandoffs` holds all 13 rows shut at both parities throughout, and
 the §120-class cycle sweep still clears the cut outline by CLEAR_MARGIN
 (+0.0016 worst slack, `probe-163-driver` re-run).
+
+## §194 — `meshPhase` and `transmits`: the movement gets a mesh registry, and its 12:1 turns out to be arithmetic
+
+Two gates over every declared gear mesh, and the declaration they both
+rest on. The entry's own case for building it was that four one-off
+probes had between them found five defects nothing gated; what the gates
+found on their first run was a sixth, in the movement's headline ratio.
+
+**Nothing enumerated a gear mesh.** A mesh existed implicitly, as two
+positions plus a centre distance. The nearest things were unit-PAIR
+allow-lists serving other purposes — `EXPECTED_PAIRS` (a blanket contact
+excuse), `EXPECTED_CONTACT_FLOORS` (which *excludes* the contact meshes
+by design), `INTRA_UNIT_CONTACTS` (declared joints inside a unit) — and
+`['Keyless works', 'Fusee & great wheel']` covers a mesh and a shared
+band in one row. The battery structurally could not supply this: its
+sweeps ask whether volumes overlap, and **two wheels whose angles are
+written independently sweep exactly the same volumes as two that are
+genuinely geared.**
+
+### The plan could not be built as written, and measuring said so first
+
+The roadmap entry specified rows naming their two members "the way §121's
+`INTRA_UNIT_CONTACTS` rows are" — that is, by mesh name. Measured against
+the metal, **not one of the 21 real meshes had both members named**, and
+only 13 of 85 rotors were named at all. That is why both existing probes
+select by measurement; `probe-train-mesh-phase` says so in its header:
+*"nothing in the train carries one."*
+
+Measurement is fine for a probe and wrong for a declaration. A population
+rediscovered by the same rule it is checked against cannot report a mesh
+in the metal that no row declares — which is half of what a registry is
+for. So the rotors were named first.
+
+The entry's population was wrong too: it claimed "81 rotors across 29
+units, 32 meshes"; measured, **85 across 26, and 21 meshes** (parallel
+axes, centre distance within 0.5% of the pitch-radius sum, rims axially
+overlapping so contact is possible). Every chain the entry meant to gate
+is inside that 21.
+
+### What the rotors now declare
+
+`makeGear` / `makePinion` / `makeBevelGear` / `makeBarrel` take an
+optional `name` and record `userData.teeth` and `userData.module` beside
+the pitch radius they already recorded. The 48 call sites pass the
+constant they already bind to, so the vocabulary is the source's own; a
+site that already named its child meshes gives the group that same name.
+Group names and mesh names stay separate namespaces, which is what lets
+§121's declared `alarmSetIdler ⇄ alarmSetIdler` contact keep its shared
+MESH name while the two rotors become tellable apart.
+
+Two boot asserts (standing rule 6). **Names must be unique** — a
+duplicate makes a row ambiguous and silently collapses two report rows
+into one while staying green, the §137 `rodSeg` defect waiting to happen;
+two builders cut two wheels apiece from one call site, and before this
+pass each pair answered to one name. And **`userData.r` must be
+`module·teeth/2`**, one number by construction today and held one number
+tomorrow.
+
+### The registry, and why the solve declares its own
+
+`solveGearChain` is already handed each chain as `{obj, teeth, name}` per
+member, so **the chain it phases IS the mesh list**: 16 of the 23 rows
+are emitted by the solve itself, from the pair it just measured. Writing
+them separately would have been a second copy of the chain — the defect
+this repo keeps re-learning at a longer fuse each time (a direction
+written twice, then a whole frame law written twice). A chain that gains
+a wheel now gains its row.
+
+The other seven are declared beside their metal, and they are the
+interesting half: both **motion works** meshes (which no `solveGearChain`
+call ever covered), the alarm setting chain's disc branch and its last
+mesh, arrest leg B's own mesh, and two **keyless** meshes declared *with*
+a known discrepancy rather than dropped for not fitting — a registry that
+excluded its own counterexample would agree with itself for the wrong
+reason.
+
+A row declares only what no measurement can recover: the two members by
+name, which inputs drive the pair, and its chain. Every number is read
+off the metal at check time.
+
+### `meshPhase`
+
+Is each pair anti-phased at every pose the movement occupies, rather than
+at the one the build solve ran at? The bar is 2% of a pitch and is not
+invented here — it is `solveGearChain`'s own tripwire, quoted there as
+the gauge's resolution. The gauge and the residual arithmetic stay in
+`main.js` beside the solve that uses them, reached through
+`clock.measureMeshNow`; the probe had to port the gauge because nothing
+exposed it, and a ported law is how TODO 115's reach tables went on
+modelling a link whose frame had already been mirrored.
+
+Nine of 23 rows are over the bar. **Every row any chain solve covers is
+inside it (worst 0.74%); every row no chain covers is outside.** The
+ninth is the check earning its keep on arrival: `alarm setting: disc rim
+⇄ idler 1b` reads 0.11% at the build pose and 36.68% over the net — the
+TODO 116 pattern, where the error is a constant that happens to be zero
+at the one pose a build-time tripwire sees.
+
+**The spread across the net separates two defects that read alike at one
+pose.** `frac(uP + uQ)` is invariant only while a pair genuinely
+transmits, so a residual that is CONSTANT is a phase never solved, while
+one that SWEEPS is a pair whose two angles are written independently.
+Same symptom at the build pose, opposite causes.
+
+### `transmits`, and two guards that were wrong before they were right
+
+Does each mesh turn its neighbour by what the metal says, under every
+input that drives it? The bar comes from the tooth counts — standing rule
+2 applied to the instrument — and the pitch radii give the same number by
+a different route, so the check computes both and fails if they disagree.
+Each input is walked separately, because a chain fed by two inputs can
+satisfy every ratio under one and violate it under the other.
+
+Both guards produced a confident false finding first, which is the
+argument for writing them down rather than for trusting a first green
+run:
+
+- **Aliasing that looks unaliased.** A member turning almost exactly 2π
+  between samples wraps to nearly zero, looks slow, satisfies any
+  per-step threshold, and accumulates into a confident wrong number.
+  Measured: the third pinion at ~6.3 rad/step read 0.02, and `going
+  centre ⇄ third` came back **−29.99 against a bar of −0.133** with the
+  step guard satisfied throughout. A ratio is scale-invariant, so the
+  honest test is that halving the span does not move it. Spans now halve
+  until two successive readings agree, and a row that never converges is
+  refused rather than reported. The governor's `0.875` against `−0.125`
+  was the same artefact.
+- **Mirrored frames.** `dialFace` is turned 180° about Y, so everything
+  under it sits on a mirrored basis and its apparent rotation runs
+  backwards — a mesh crossing that seam reads as co-rotating for free.
+  `rotorAzimuth` now returns the frame's handedness, measured off the
+  basis determinant rather than inferred from a parent's name.
+
+### What survived both guards
+
+**The motion works does not transmit.** Both rows read the right ratio
+magnitude to six figures with the sign inverted: the members co-rotate
+where an external mesh must counter-rotate. The reading converged under
+span halving (not aliasing), both members report the same handedness (not
+the mirror), and the magnitude is exact (the counts are right; only the
+causality is missing). The angles are computed from the ratio instead of
+arriving through the teeth — *"the hour hand is not `minuteA / 12`"* —
+in the movement's headline 12:1, the one gear train with no phase solve
+of its own. Filed as TODO 124 with the excluded explanations recorded,
+because each of them produced this exact symptom during development.
+
+The keyless rows produced TODO 125: six sites in `layout.js` add a bare
+`+ 0.1` to the pitch-radius sum, so two declared meshes stand at 7.58
+where `module·(P+Q)/2` is 7.48. Two independent pairs off by an identical
+amount is one shared constant, not two coincidences. The item does not
+assume it is a defect — a small positive offset can be real backlash
+allowance — it asks for it to be derived or deleted.
+
+### Waivers
+
+Both gates land with waivers rather than red, individually by name and
+each citing its item: gating nine rows red on day one is how an
+instrument gets switched off (§54's banner), and pretending they pass is
+worse. A waiver on a row that is *not* over the bar is itself a failure,
+so deleting the waiver is structurally part of any fix — which is how the
+first draft's extra `transmits` entry was caught, stale on arrival.
