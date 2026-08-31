@@ -139,9 +139,12 @@ export const BATTERY = [
   // exhibition ring and §3's front crystal were wound inside-out and CULLED
   // INVISIBLE for their whole lives, while measuring solid to every
   // facing-agnostic instrument (this tier was the only one that could see
-  // them, and it was reporting). The population on promotion day: 6 rows —
-  // 2 fixed (the case bodies), 4 waived by name in INVERTED_WAIVERS citing
-  // TODO 123. Waiver staleness gates with it, SLENDER_WAIVERS' covenant.
+  // them, and it was reporting). Promotion-day population: 5 FIXED — the
+  // two case bodies, plus three the gate caught on its own first run
+  // (TODO 115's mirrored sweeps had shipped both stem saws and the fusee's
+  // land ring inverted, days old, seen by nothing else) — and 4 waived by
+  // name in INVERTED_WAIVERS citing TODO 123. Waiver staleness gates with
+  // it, SLENDER_WAIVERS' covenant.
   // TODO 100 — a cut outline is a simple polygon, or it is not an outline.
   // Unlike meshIntegrity and slenderness above, this one GATES ITS ROWS rather
   // than reporting them, and it can because the movement was measured clean

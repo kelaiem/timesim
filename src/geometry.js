@@ -3044,7 +3044,17 @@ export function makeSawCoupling({ spec, baseT, material, sense = 1, name = 'sawC
     pos.push(rIn * c, rIn * s, 0, rOut * c, rOut * s, 0,
              rOut * c, rOut * s, smp.z, rIn * c, rIn * s, smp.z);
   }
-  const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+  // TODO 123 — THE WINDING FOLLOWS THE SWEEP. These quads are written for a
+  // ring traversed in INCREASING theta; at sense = −1 the traversal mirrors,
+  // and an indexer that does not mirror with it builds the whole body
+  // inside-out — culled invisible, while measuring solid to every
+  // facing-agnostic instrument. That is not hypothetical: TODO 115 flipped
+  // both stem saws to the reversed sense and they shipped inverted, caught
+  // by meshIntegrity's inverted gate on its first run. Flipping each
+  // triangle's order at negative sense is the mirror the sweep already took.
+  const quad = sense >= 0
+    ? (a, b, c, d) => { idx.push(a, b, c, a, c, d); }
+    : (a, b, c, d) => { idx.push(c, b, a, d, c, a); };
   for (let i = 0; i < S; i++) {
     const j = (i + 1) % S;
     const A = i * 4, B = j * 4;
@@ -3831,8 +3841,17 @@ export function makeFusee({ rSmall, rLarge, height, grooveTurns = 5,
     for (const [r, z] of [[rIn, zLo], [rOut, zLo], [rOut, zHi], [rIn, zHi]])
       pos.push(ca * r, sa * r, z);
     if (open) {
+      // TODO 123 — the winding follows the sweep (makeSawCoupling's rule,
+      // same landing): these quads were written for azimuth advancing in
+      // +theta, and TODO 115's MOVEMENT_SENSE on the sweep line mirrored the
+      // traversal without them — at sense −1 the whole land ring built
+      // inside-out and culled invisible, the third body the inverted gate
+      // caught on its first run.
       const b = base - 4, c = base;
-      for (const k of [0, 1, 2]) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
+      for (const k of [0, 1, 2]) {
+        if (MOVEMENT_SENSE >= 0) idx.push(b + k, c + k, c + k + 1, b + k, c + k + 1, b + k + 1);
+        else idx.push(c + k + 1, c + k, b + k, b + k + 1, c + k + 1, b + k);
+      }
     }
     open = true;
   }

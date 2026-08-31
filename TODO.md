@@ -15272,7 +15272,18 @@ the tool that was missing it, so the next lathe body cannot ship
 invisible in silence.
 
 **And the tier GATES now** (owner's ask, same landing): §50's report →
-triage → gate arc, run whole. `meshIntegrity`'s inverted rows fail the
+triage → gate arc, run whole — and the gate caught a LIVE regression on
+its first run against the current tree. TODO 115's direction campaign
+had put `MOVEMENT_SENSE`/`windSign` mirrors on three swept cuts —
+`windPinionSaw`, `clutchSaw` (both `makeSawCoupling`) and the fusee's
+groove-land ring — whose quad indexers were written for the unmirrored
+traversal, so all three built inside-out and shipped culled-invisible,
+days old, seen by nothing until this gate went red. The fix is the
+same one sentence at both builders (the winding follows the sweep:
+flip each triangle's order at negative sense), and it is exactly why
+the promotion had to happen: the class regenerates whenever a sweep
+gains a mirror, and a report would have let these three ride the way
+the ring rode for months. `meshIntegrity`'s inverted rows fail the
 battery unless waived by name in `INVERTED_WAIVERS`, waiver staleness
 fails with them (the `SLENDER_WAIVERS` covenant verbatim, so deleting a
 fix's waiver is part of the fix), and the check's own ±volume box
