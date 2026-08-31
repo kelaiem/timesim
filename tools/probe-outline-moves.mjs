@@ -70,16 +70,39 @@
 // moved" is not actionable and "the plate's opening at the escape station
 // moved" is. Each moved contour's centroid is carried into world through the
 // mesh's own matrixWorld and reported with the nearest declared station in
-// `__clock.P` and its distance. hole[10] above named itself that way: centroid
-// (4.92, −26.61) against the `escape` station at (4.9, −26.6), d = 0.01.
+// `__clock.P` and its distance. The plate opening above names itself that way,
+// and the run prints it as `threeQuarterPlate / hole16 … escape d=0.01`: its
+// centroid (4.92, −26.61) against the `escape` station at (4.9, −26.6). Holes
+// are keyed by their AUTHORED index, so that number is the shape's own and not
+// a rank — an earlier hand-rolled version sorted holes by centroid and called
+// the same opening hole[10], which is a label nothing in the source carries.
+//
+// WHAT IT CANNOT SEE, and it is most of the movement. The population is only
+// the extrudes that kept an authored shape — 192 geometries and 437 contours
+// here, against the ~600 geometries the movement builds. Everything cut as a
+// lathe, a cylinder, a box or a tube never had an outline to move, so it is
+// ABSENT from this report rather than unchanged by it. **A run that says
+// `0 moved` is saying no AUTHORED OUTLINE moved, not that no geometry did.**
+//
+// That distinction is not academic; it is what the first six real runs turned
+// out to be. Swept across the merges either side of TODO 115's reversal, this
+// reported 0 for §192's tower (a pawl spring re-formed in-plane and wheel
+// sections re-derived), for TODO 122's crystal, for the ring winding and for
+// the case lugs — and all four zeros are TRUE: none of those diffs touches a
+// `Shape`, an `ExtrudeGeometry`, a `.holes` or an `absarc`, and their only
+// geometry constructors are Cylinder, Lathe and Box. Four changes that plainly
+// moved metal, invisible here by construction. Reach for the fingerprint or a
+// unit digest when the question is "did any geometry move"; this file answers
+// the narrower one it is named for.
 //
 // CONTROLS, and their honest limit:
 //   · must-MISS — a tree diffed against ITSELF must report zero moved contours,
 //     AND a non-zero population that matches on both sides. The second clause
 //     is the load-bearing one: comparing identical dumps reports zero whether
-//     the dumper read 573 outlines or none, which is TODO 100's own recorded
-//     failure ("read 3 geometries of 573 and answered 0 crossings") arriving
-//     one instrument later.
+//     the dumper read every contour or none at all. That is TODO 100's own
+//     recorded failure — its outline sweep "read 3 geometries of 573 and
+//     answered 0 crossings" — arriving one instrument later. (573 is that
+//     sweep's population, not this one's; see WHAT IT CANNOT SEE above.)
 //   · must-HIT — one named contour in a copy of the dump is displaced by a
 //     known ε and the differ must report exactly that contour, at exactly that
 //     displacement.
@@ -331,6 +354,10 @@ if (d.resampled.length) {
 console.log(`\nMOVED OUTLINES — ${d.moved.length} of ${A.rows.length} contours`);
 if (!d.moved.length) {
   console.log('  none: every authored outline this tree cuts is identical on both refs.');
+  console.log('  Read that narrowly. This sweeps only the extrudes that kept an authored');
+  console.log(`  shape — ${A.rows.length} contours over ${new Set(A.rows.map((r) => r.key.split('#')[0])).size} geometries, against the ~600 the movement builds — so a`);
+  console.log('  change made in lathes, cylinders or boxes moves no row here and is not');
+  console.log('  reported unchanged, it is ABSENT. "0 moved" is about outlines, not geometry.');
 } else {
   console.log('  (worst = greatest point displacement; Δcentroid and Δbox are the shape of the move;');
   console.log('   "sits on" is the contour\'s own centroid carried into world, against the nearest declared station)\n');
