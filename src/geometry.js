@@ -7376,7 +7376,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
     skirtOD, skirtID, zSkirtBot, apertureR, glassEdgeR, rStep, zStepUnder, zStepTop,
     gasketD, gasketSeat, crystT, screwShaftD, screwHeadD, tubeD, pusherD,
     stemAz, alarmAz, pusherAz, stemZ, alarmZ, pusherZ, pusherOff,
-    lugSpan, sectors: CASE_SECTORS,
+    lugSpanInner, sectors: CASE_SECTORS,
   } = dims;
   const g = new THREE.Group();
   g.name = 'case';
@@ -7954,7 +7954,8 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   if (clampAz.length !== clampN)
     console.warn(`makeCase: ${clampAz.length} clamp stations arrived for a declared tripod of ${clampN}`);
 
-  // Lugs at 12 and 6, spring-bar span per dims; each lug a prism
+  // Lugs at 12 and 6, INTERIOR span per dims (the strap gap between the
+  // pair's facing walls — the spec dimension); each lug a prism
   // chord-tangent to the band and ROOTED 0.8 mm into it (the brazed
   // stamped-lug truth — a watchmaker solders the lug foot to the band,
   // so the prism must visibly sink into the wall, not kiss it; the
@@ -7965,15 +7966,19 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   const lugH = 2.5 / UNIT_MM;            // radial reach out of the band
   const lugW = 3.0 / UNIT_MM;            // height along z
   const LUG_ROOT = 0.8 / UNIT_MM;        // embed into the band at the lug's own station
+  // The dims quantity is the INTERIOR gap; each lug's centre stands half its
+  // own thickness outboard of the wall it presents to the strap, so the
+  // centre-to-centre seat span derives here, beside the thickness it adds.
+  const lugCtrSpan = lugSpanInner + lugT;
   for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
     const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
     const perp = { x: -u.y, y: u.x };
     for (const s of [-1, 1]) {
-      const off = s * lugSpan / 2;
+      const off = s * lugCtrSpan / 2;
       // The pair's lugs stay PARALLEL (the strap's sides are parallel), but
-      // each one stands ±lugSpan/2 off the pair axis, where the band has
+      // each one stands ±lugCtrSpan/2 off the pair axis, where the band has
       // fallen away from R_OUT to the chord depth sqrt(R_OUT² − off²) —
-      // 6+ units at an 18 mm span. Root the foot 0.8 mm past THAT surface
+      // ~9 units at the 20 mm interior spec. Root the foot 0.8 mm past THAT surface
       // (the brazed stamped-lug truth: the foot is bent to the band radius
       // and soldered), keep the tip at R_OUT + lugH − LUG_ROOT (52.7 u ≈
       // 39.9 mm across — inside the 40 mm cap), and let the length derive.
@@ -7988,7 +7993,7 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
       middleAsm.add(lug);
     }
     const bar = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.75 / UNIT_MM, 0.75 / UNIT_MM, lugSpan - lugT, 12), material);
+      new THREE.CylinderGeometry(0.75 / UNIT_MM, 0.75 / UNIT_MM, lugSpanInner, 12), material);
     bar.geometry.rotateX(Math.PI / 2);   // axis → Z
     bar.geometry.rotateY(Math.PI / 2);   // axis → X
     bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction

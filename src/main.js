@@ -2039,15 +2039,23 @@ const CASE_CLAMP_AZ = (() => {
 // (The z stations live in CASE_DIMS — they are measured from the metal once
 // the movement exists, and the dial side is −z, which the first cut of this
 // feature learned by putting the caseback through the dial.)
-const CASE_LUG_SPAN = 18 / UNIT_MM;          // 18 mm — period-typical for a ~36 mm case, under the 20 mm cap
+// The lug spec is the INTERIOR distance — the gap a calliper reads between
+// the two lugs' facing walls, which is the size a strap is bought in and
+// exactly the spring bar's free length. Owner spec (2026-08-31): 20 mm, the
+// standard strap width, sitting ON the 20 mm across-the-spring-bar cap
+// rather than under it. (The first cut declared the CENTRE span 18 mm and
+// the interior came out 16.8 mm — the constant now names the dimension the
+// spec actually constrains; centre-to-centre derives in makeCase as
+// interior + one lug thickness.)
+const CASE_LUG_INNER = 20 / UNIT_MM;
 if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
   console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
 // The old across-the-lug-tips assert is RETIRED to §190: the owner re-based
 // the 40 mm cap to the case BODY, lugs excluded, and the lug spec is opened
 // for options there. probe-lug-geom.mjs still measures the tips (now past
 // 40 mm, legally) as the baseline §190 re-derives against.
-if (CASE_LUG_SPAN > CASE_LUG_SPAN_MAX)
-  console.warn(`case: lug span ${(CASE_LUG_SPAN * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap`);
+if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
+  console.warn(`case: interior lug span ${(CASE_LUG_INNER * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap (the cap IS the bar's free length, so the spec may meet it, never pass it)`);
 const BACK_PLATE_HOLES = [
   { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
@@ -27859,7 +27867,7 @@ const CASE_DIMS = (() => {
     // The tubes sleeve their stems at the stems' OWN z — a tube at mid-band
     // would sleeve nothing.
     stemZ: Z_KEYLESS, alarmZ: alarmSpinner.position.z, pusherZ: alarmPusherGroup.position.z,
-    lugSpan: CASE_LUG_SPAN,
+    lugSpanInner: CASE_LUG_INNER,
     sectors: CASE_SECTORS,
     // §187 — the measured back envelope (build-pose scan + declared swept
     // allowances). Stage 1 plumbing: carried here and exposed for the
@@ -28117,9 +28125,12 @@ const SCHEMATIC = { proxies: [], on: false };
     tube(alarmStemAngle, CASE_TUBE_D, CASE_DIMS.alarmZ);
     tube(ALARM_PUSH_AZ, CASE_PUSHER_D, CASE_DIMS.pusherZ);
 
-    // Lugs at 12 and 6 — the span is the shared derivation (18 mm, asserted
-    // against the 20 mm cap where it is derived, beside BACK_PLATE_Z).
-    const LUG_SPAN = CASE_DIMS.lugSpan;
+    // Lugs at 12 and 6 — the interior span is the shared derivation (20 mm,
+    // asserted against the cap where it is derived, beside BACK_PLATE_Z);
+    // the flank lines ride the lug CENTRES, so centre-to-centre adds the
+    // solid's 1.2 mm lug thickness — hand-copied like the rest of this
+    // block's lug stock (0.8, 1.7, 1.5, 1.4).
+    const LUG_SPAN = CASE_DIMS.lugSpanInner + 1.2 / UNIT_MM;
     for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
       const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
       const zLug = zLedge + 1.5 / UNIT_MM + 0.5 / UNIT_MM; // the solid lugs' own station (lugW/2 + 0.5 mm above the ledge plane)

@@ -19587,6 +19587,16 @@ the chord-depth surface at ITS OWN station (`sqrt(R² − off²)`, the brazed
 stamped-lug construction). Seating them from the pair axis instead left them
 hovering over the curved wall and reaching 40.9 mm.
 
+*(Re-specced 2026-08-31, owner: the lug dimension the spec constrains is the
+INTERIOR gap — the strap width, the gap a strap is bought in and exactly the
+spring bar's free length — set to the standard 20 mm. The 18 mm above was the
+CENTRE span, which read 16.8 mm interior once the 1.2 mm lug walls were
+subtracted; the declared constant is now `CASE_LUG_INNER` and the centre span
+derives in `makeCase` as interior + one lug thickness (21.2 mm), landing the
+interior exactly ON the 20 mm across-the-bar cap rather than under it.
+`probe-lug-geom.mjs` now reads the interior off the metal and holds it to the
+spec.)*
+
 ### Both ends of the z stack are MEASURED, because a constant there lies
 
 The crystal plane comes off the hands' front-most metal plus the clearance, and
