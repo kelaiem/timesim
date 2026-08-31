@@ -14689,3 +14689,55 @@ solve's own inventory — see §192's record.)
   went stale when an input moved. Both places now carry the annotation;
   closing this half means re-deriving from the live expressions and
   correcting whichever quotation is wrong.
+
+## 122. The exhibition crystals are glazed by coordinates: no gasket, no press, nothing fixes them in place
+
+Found by the owner's eye on §192's lowered back ("it looks like the back
+glass is just resting on the caseback and not fixed down") and measured
+worse than it looked. The §187 back crystal's retention inventory, off
+the built metal:
+
+- **radially**: edge at r 47.868 against the channel wall at 47.948 —
+  `SEAT_FIT` (0.08 u) of open clearance. A drop-into-a-recess fit
+  LOCATES a part somebody then fastens; nothing fastened this one.
+- **outward**: the edge's land stood 0.026 u SHY of the retaining lip —
+  `SEAT_EMBED` applied with the wrong sign, the press-contact idiom
+  parking the pane a hundredth off the only face that could retain it.
+- **inward**: nothing at all. No seat ledge, no gasket, no tension
+  ring; the first metal below the edge annulus was a clamp screw
+  10.7 u down. Dial-up, the pane lies on the movement.
+
+It survived every gate because `support` is declared per UNIT (one
+floating mesh in a seated unit passes in silence — the §173
+jumper-stud class, catalogued in the roadmap's reconfigure entry) and
+the Case sits outside `INTRA_TIER_SCOPE` as §187's declared debt. The
+defect predates §192 — it is §3's original "glazed from inside against
+the turned retaining lip", inherited by §187's threaded ring — and
+§192 merely made it visible by sinking the step below the ring's rim,
+where the pane reads as the loose disc it was.
+
+**CLOSED for the back, same landing.** What fixes a real display
+crystal is its GASKET: a nylon I-ring compressed between the glass's
+edge and the ring's channel wall, the interference carrying the pane
+in every direction the lip does not. `caseBackCrystalGasket` is that
+member, drawn at its compressed section — real crystal-gasket stock at
+0.3 mm wall (the low end, the movement's floor-stock discipline) at
+the §3 face cord's own stated 20% squeeze — and **the channel is cut
+FOR it**: `glassEdgeR = skirtID − 0.8·stock`, so the fit IS the press
+(aperture 46.28 → 45.73, still clearing the plate's measured reach by
+2.3). The lip embed's sign is corrected (the glass sinks `SEAT_EMBED`
+INTO the lip), no two faces in the stack share a plane (the z-fight
+rule, which is also the BVH coplanar-triangle rule), and the three
+joints — pane ⇄ lip, pane ⇄ gasket, gasket ⇄ wall — are declared in
+`INTRA_UNIT_CONTACTS`, where the §182 audit measures them shut every
+battery run. Before the gasket existed those rows would have been
+§163's stud row again: a declared fixation the metal did not have.
+
+**Residue, measured and kept**: the FRONT crystal (`caseCrystal` ⇄
+`caseMiddle`) measures 0 — it is genuinely engaged, press-fitted into
+the bezel's cone with ~0.2 mm of radial interference standing in for
+the "relieved edge" its comment claims. That is a modeled press (the
+§3 smooth-thread family: real engagement, declared simplification),
+held radially and outward by the cone and inward by the friction the
+interference implies. It stays as-is; if a later item wants the front
+armed like the back, the same gasket idiom applies at the bezel.

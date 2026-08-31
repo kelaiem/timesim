@@ -27130,11 +27130,27 @@ const CASE_DIMS = (() => {
   // identity: the glass's outer pane's INNER face is flush with the band's
   // back face).
   const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
-  // The glazing channel: glass edge drops into the ring against the
-  // skirt's inner wall (SEAT_FIT — the one drop-into-a-recess fit) under a
-  // lip one glass-thickness wide (a glass bears on a land at least its own
-  // thickness — the glazing floor; anything wider spends aperture).
-  const RA_EDGE = skirtID - G.SEAT_FIT;          // the glass's outer edge
+  // The glazing channel, under a lip one glass-thickness wide (a glass
+  // bears on a land at least its own thickness — the glazing floor;
+  // anything wider spends aperture).
+  //
+  // TODO 122 — THE CHANNEL IS CUT FOR ITS GASKET NOW, because the fit is
+  // the fixation. The first form located the glass's edge on SEAT_FIT — a
+  // running CLEARANCE — and measured, the pane touched nothing in any
+  // direction: 0.08 u of radial slack to the wall, its edge a SEAT_EMBED
+  // shy of the lip (the press idiom applied with the wrong sign), and
+  // 10.7 u of open air below its edge. A drop-in fit locates a part
+  // somebody then fastens; nothing fastened this one, so dial-up it lies
+  // on the movement. A real display back fixes its crystal with a nylon
+  // I-ring compressed between the glass's edge and the ring's channel
+  // wall — the interference is what holds the pane, inward included — so
+  // the edge radius derives from that member's compressed section: real
+  // crystal-gasket stock at 0.3 mm wall (the low end, this movement's
+  // floor-stock discipline), drawn at the §3 face cord's own stated 20%
+  // squeeze. The gasket itself is cut in makeCase, in the channel this
+  // derivation shapes.
+  const CASE_BCG_T = (0.3 / UNIT_MM) * 0.8;      // the I-ring's wall, compressed as drawn
+  const RA_EDGE = skirtID - CASE_BCG_T;          // the glass's outer edge — on the gasket, not on air
   const RA = RA_EDGE - CASE_CRYSTAL_T;           // the APERTURE — the lip's bore
   // ...which must show the whole three-quarter plate: measured reach
   // (TODO 84's rule — the extrude bevel swells past the authored radius),
