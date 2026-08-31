@@ -15354,3 +15354,93 @@ their builders, retiring each waiver as it lands. (A raw signed-volume
 sweep also flags open display shells — subdial faces — where the number
 is not meaningful; the check's `INVERTED_VOL_FRAC` classifier already
 keeps those out of the gated population.)
+
+## 124. The motion works does not transmit — the movement's 12:1 is arithmetic, not gearing
+
+Found by §194's `transmits` gate on its first run, and it is standing
+rule 2's own worked example failing that rule. The rule states it in
+these words: *"The hour hand is not `minuteA / 12`; it arrives at 12:1
+because the tooth counts multiply to it."* Measured, it does not.
+
+**The measurement.** Both motion-works meshes turn their neighbour by the
+right ratio MAGNITUDE, to six figures, with the sign INVERTED:
+
+| mesh | measured | bar (−teethA/teethB) |
+|---|---|---|
+| cannon pinion ⇄ minute wheel | **+0.333333** | −0.333333 |
+| minute pinion ⇄ hour wheel | **+0.250000** | −0.250000 |
+
+An external mesh counter-rotates. These co-rotate. The counts are right —
+10/30 × 8/32 is 12:1, and the magnitudes prove the arithmetic is being
+done — so what is missing is the causality: the angles are computed from
+the ratio rather than arriving through the teeth.
+
+**Three explanations are ruled out by measurement, not by argument**, and
+each of them produced this exact symptom during §194's development:
+
+- *Aliasing.* A member turning almost exactly 2π between samples wraps to
+  nearly zero and accumulates to a confident wrong number. Excluded: the
+  reading is unchanged under span halving, and a ratio is scale-invariant,
+  so an aliased one would move. (This is what made `going centre ⇄ third`
+  read −29.99 against −0.133 before the convergence guard existed.)
+- *The `dialFace` mirror.* That frame is turned 180° about Y, so a mesh
+  crossing it reads as co-rotating for free. Excluded: both members report
+  the SAME frame handedness, measured off the basis determinant.
+- *Wrong tooth counts.* Excluded: the magnitude is exact.
+
+**Why nothing caught it before.** No `solveGearChain` call ever covered
+this chain — it is the one gear train in the movement with no phase solve
+of its own — and the battery's sweeps structurally cannot see it, because
+two wheels whose angles are written independently sweep exactly the same
+volumes as two that are geared. §194's `meshPhase` reads the same rows at
+a spread of 42.9 and 37.3 percentage points across the pose net, which is
+the same defect seen from the other side: `frac(uP + uQ)` is invariant
+only while a pair genuinely transmits.
+
+**The fix** is the one standing rule 2 names: derive the minute wheel's
+angle from the cannon pinion through the mesh, and the hour wheel's from
+the minute pinion, so 12:1 is a consequence of the counts rather than a
+coefficient. Both rows are waived in `TRANSMITS_WAIVERS` and
+`MESH_PHASE_WAIVERS` citing this item; the waivers are gated stale, so
+deleting them is structurally part of the fix.
+
+**Five more meshes are off anti-phase and are NOT this item** — they are
+geared and merely mis-phased, which the spread tells apart from this
+(`spread ≈ 0` is a phase never solved; a large spread is a pair that does
+not transmit). They are waived citing this item too, as the nearest
+owner, and each should be re-read against its own cause when it is taken
+up: the two keyless rows, `alarm setting: idler 2 ⇄ arbor pinion`,
+`alarm arrest: leg B pinion ⇄ idler pinion`, and `alarm arrest output:
+cage wheel ⇄ finger pinion`.
+
+## 125. The keyless centre distances carry an underived `+ 0.1`
+
+`layout.js` adds a bare `+ 0.1` to the pitch-radius sum in six places
+when siting the keyless works — `windSpurR + crownWheelR + 0.1` (four
+sites), `windSpurR + windIdlerR + 0.1`, and `mwFoldD = settingWheelR +
+minuteWheelR + 0.1`. Nothing derives it and no comment explains it. It is
+not `CLEAR_MARGIN`, which is 0.15 and is the *one* clearance margin
+standing rule 1 names.
+
+**Measured consequence.** Two declared meshes stand 0.1 beyond the centre
+distance their teeth were cut for: `settingWheel ⇄ minuteWheel` and
+`windSpur ⇄ transferWheel` both sit at 7.58 where `module·(P+Q)/2` is
+7.48 (module 0.34, 20+24 and 24+20 teeth). Two independent pairs off by
+an identical amount is the signature of one shared constant, not of two
+coincidences.
+
+Both are declared in §194's registry WITH the discrepancy rather than
+excluded for not fitting — a registry that dropped its own counterexample
+would agree with itself for the wrong reason — and §194's centre-distance
+figures are what make it visible.
+
+**What is not yet known** is whether the offset is deliberate. Increasing
+a centre distance beyond the theoretical increases backlash and reduces
+contact ratio; a small positive is sometimes a real design choice. The
+fix is therefore to DERIVE it or delete it, not to assume either: if it
+is backlash allowance it should be named, computed from the module, and
+shared with every other mesh that needs one; if it is not, the stations
+close by 0.1 and the two rows come inside the bar.
+
+Related: [§86] is the underived-constants audit, and this is one of its
+cleanest specimens — found by an instrument rather than by reading.

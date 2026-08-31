@@ -266,6 +266,13 @@ const COSTS = {
   // one (uncapped it measured 41.4).
   'intraUnit': 11,
   'assembly': 3,
+  // §194 — both walk the 23-row registry. meshPhase reads two silhouette
+  // gauges per row over the 43-pose net (2048 bins each, outline edges only);
+  // transmits sweeps each row's declared inputs with span refinement, so its
+  // cost is rows × inputs × halvings rather than rows × poses. Measured on the
+  // container that ran the landing battery; --report refreshes both.
+  'meshPhase': 34,
+  'transmits': 22,
   // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
   // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair
   // loop is quadratic in exactly that. Measured, unscaled, on the container

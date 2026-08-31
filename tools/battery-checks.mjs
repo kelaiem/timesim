@@ -278,6 +278,24 @@ export const BATTERY = [
   // own arithmetic no longer recomputes, or that busts its declared envelope
   // without a cited TODO. The control is gated for the same reason as §48's:
   // a classifier that quietly stops catching bad rows is a dead instrument.
+  // §194 — the mesh registry's two questions, asked separately because they
+  // are separate: where two tooth patterns STAND relative to each other, and
+  // whether turning one member actually turns the other. A pair can pass
+  // either and fail the other, and the pair sweeps see neither: two wheels
+  // whose angles are written independently sweep exactly the same volumes as
+  // two that are genuinely geared.
+  { name: 'meshPhase', opts: {},
+    gate: '0 unwaived rows over 2% of a pitch, 0 malformed, 0 stale waivers, controls PASS',
+    fails: (r) => [...(r.violations || []), ...(r.malformed || []), ...(r.staleWaivers || []),
+                   ...(r.controlPass ? [] : [{ controls: 'FAIL' }])],
+    note: (r) => `${(r.rows || []).length} declared meshes over ${r.poseCount} poses, `
+      + `${(r.waived || []).length} waived (accepted debt)` },
+  { name: 'transmits', opts: {},
+    gate: '0 unwaived ratio mismatches, 0 malformed, 0 stale waivers, controls PASS',
+    fails: (r) => [...(r.violations || []), ...(r.malformed || []), ...(r.staleWaivers || []),
+                   ...(r.controlPass ? [] : [{ controls: 'FAIL' }])],
+    note: (r) => `${(r.rows || []).length} meshes × declared inputs, `
+      + `${(r.waived || []).length} waived (accepted debt), ${(r.reported || []).length} reported (driver still / refused)` },
   { name: 'transfers', opts: {},
     gate: '0 malformed, 0 stale, 0 mismatched, 0 unwaived envelope misses, 0 stale waivers, control PASS',
     fails: (r) => [
