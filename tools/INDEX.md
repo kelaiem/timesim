@@ -4,7 +4,7 @@
 
 # The instruments
 
-170 scripts. **77 are ACCEPTANCE tests** — they decide and exit non-zero.
+171 scripts. **78 are ACCEPTANCE tests** — they decide and exit non-zero.
 **93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -169,6 +169,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-lug-geom.mjs` |  | acceptance | THE LUGS, READ OFF THE METAL — and the across-the-lugs assert's hand-copied term checked against the geometry it copies. |
 | `probe-mesh-closedness-census.mjs` |  | report | TODO 106 — HOW MUCH of the movement is open? Every parity witness in this repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and TODO 27's family) counts ray crossings and is therefore only valid against a CLOSED surface. Nothing measures how many surfaces qualify. |
 | `probe-mesh-transmission.mjs` |  | acceptance | DOES EVERY DECLARED MESH ACTUALLY TRANSMIT AT ITS TOOTH RATIO? |
+| `probe-outline-moves.mjs` |  | acceptance | WHICH AUTHORED OUTLINES DID A CHANGE MOVE, and what do they sit on? |
 | `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |
