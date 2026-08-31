@@ -8335,6 +8335,354 @@ export const TRANSFER_ENVELOPES = {
 export const TRANSFER_WAIVERS = {
   'alarm arming: lay shaft cranks (rod foot → ring drive tab)': 'TODO 79',
 };
+// ---------------------------------------------------------------------------
+// §194 — meshPhase. Is every DECLARED mesh anti-phased, at every pose the
+// movement occupies rather than at the one the build solve ran at?
+//
+// The bar is 2% of a pitch and it is NOT invented here: it is solveGearChain's
+// own anti-phase tripwire (`main.js`, "the residual tolerance is set by the
+// INSTRUMENT"), quoted there as the gauge's resolution — gap centres are
+// quantised to 2π/2048 and averaged over N gaps — rather than as a target.
+//
+// The gauge and the residual arithmetic both live in main.js beside the solve
+// that uses them, reached through `clock.measureMeshNow`. This check does not
+// re-implement either: a law written twice is how TODO 115's reach tables went
+// on modelling a link whose frame had already been mirrored.
+//
+// WAIVED ROWS ARE ACCEPTED DEBT CITING A TODO, the stockFloor convention, and
+// on arrival eight of the twenty-three rows are over the bar. Gating them red
+// on day one is how an instrument gets switched off (§54's banner); pretending
+// they pass is worse. So they are waived, individually, by name — and a waiver
+// naming a row that is NOT over the bar is itself a failure, so a fix cannot
+// land without deleting its waiver (§137's rule, and the reason §54's stale
+// waivers gate).
+export const MESH_PHASE_WAIVERS = {
+  // TODO 124 — the eight meshes no solveGearChain call covers. The motion
+  // works pair reads exactly 50.00%: a half pitch, tooth meeting tooth on the
+  // line of centres, which is the worst value the measure can take and the
+  // precise defect TODO 15 was filed for. That it is the movement's 12:1 —
+  // standing rule 2's own worked example — is why this is filed loudly.
+  'motion works: cannon pinion ⇄ minute wheel': 'TODO 124',
+  'motion works: minute pinion ⇄ hour wheel': 'TODO 124',
+  'keyless: setting wheel ⇄ minute wheel': 'TODO 124',
+  'keyless: wind spur ⇄ transfer wheel': 'TODO 124',
+  'alarm setting setting wheel ⇄ idler 1': 'TODO 124',
+  'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 124',
+  'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 124',
+  'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 124',
+  // TODO 117, not 124, and the SPREAD is what says so: this row reads 0.11% at
+  // the build pose and 36.68% over the net. A residual that MOVES is not a
+  // mis-set phase — frac(uP + uQ) is invariant while a pair genuinely
+  // transmits — it is the disc branch's angles being written independently,
+  // which is the contradiction TODO 117 already owns and has not decided.
+  'alarm setting: disc rim ⇄ idler 1b': 'TODO 117',
+};
+const MESH_PHASE_BAR = 0.02;          // solveGearChain's own, see above
+
+export function checkMeshPhase(clock) {
+  const payload = clock.meshes;
+  if (!payload) return { ok: true, error: 'no meshes payload on __clock (main.js §194 block missing)' };
+  if (typeof clock.measureMeshNow !== 'function')
+    return { ok: true, error: 'no measureMeshNow on __clock (main.js §194 block missing)' };
+
+  const axisNames = new Set(AXES.map((a) => a.name));
+  const rows = [], violations = [], waived = [], malformed = [], notCredible = [];
+
+  // Every declared input must name a real pose axis. A row that names an axis
+  // nobody sweeps is a row whose "driven by" claim is untestable, and the
+  // stale-selector rule (§121) makes that a failure rather than a shrug.
+  for (const r of payload.rows)
+    for (const i of r.inputs || [])
+      if (!axisNames.has(i)) malformed.push({ site: r.site, why: `input '${i}' is not an axis in AXES` });
+
+  // THE POSE NET. A build-pose-only reading is what let the going train run
+  // 8.6–38.7% off at every pose the movement occupies while the build tripwire
+  // read zero (TODO 116) — the error is a CONSTANT, exactly zero at the one
+  // pose the tripwire sees. So every row is read at several poses and the
+  // WORST is the row's figure.
+  const poses = digestPoses(clock);   // axis.pose(f, clock) reads it — not optional
+  for (const r of payload.rows) {
+    let worst = null, lo = Infinity;
+    for (let pi = 0; pi < poses.length; pi++) {
+      clock.resetInputs();
+      clock.setPose(poses[pi]);
+      clock.scene.updateMatrixWorld(true);
+      const m = clock.measureMeshNow(r.site);
+      if (!m.ok) { malformed.push({ site: r.site, why: m.why }); worst = null; break; }
+      if (!worst || m.off > worst.off) worst = { ...m, poseIndex: pi };
+      if (m.off < lo) lo = m.off;
+    }
+    if (!worst) continue;
+    const row = {
+      site: r.site, a: worst.a, b: worst.b, chain: r.chain, inputs: r.inputs || [],
+      offPct: +(worst.off * 100).toFixed(3), poseIndex: worst.poseIndex,
+      // The SPREAD across the net separates two different defects that read
+      // alike at one pose. A residual that is CONSTANT is a phase never
+      // solved — the pair is geared, its teeth just sit wrong (TODO 124). One
+      // that SWEEPS is a pair that does not transmit at all: frac(uP + uQ) is
+      // invariant only while both members turn at the ratio the metal says, so
+      // a moving residual means the two angles are written independently
+      // (TODO 117's kinematic lie). Same symptom at the build pose, opposite
+      // causes, and only the net can tell them apart.
+      offMinPct: +(lo * 100).toFixed(3), offSpreadPct: +((worst.off - lo) * 100).toFixed(3),
+      credible: worst.credible, cdMiss: +(worst.d - worst.want).toFixed(5),
+      moduleSplit: worst.moduleSplit,
+      waiver: MESH_PHASE_WAIVERS[r.site] || null,
+    };
+    rows.push(row);
+    if (!worst.credible) notCredible.push(row);
+    if (worst.off > MESH_PHASE_BAR) (row.waiver ? waived : violations).push(row);
+  }
+
+  // A waiver for a row that is NOT over the bar is itself a failure: deleting
+  // the waiver has to be structurally part of the fix, or the table silently
+  // accumulates permission nobody needs (§54's stale-waiver gate).
+  const overNow = new Set(rows.filter((r) => r.offPct / 100 > MESH_PHASE_BAR).map((r) => r.site));
+  const declared = new Set(rows.map((r) => r.site));
+  const staleWaivers = Object.keys(MESH_PHASE_WAIVERS)
+    .filter((k) => !overNow.has(k))
+    .map((k) => ({ site: k, why: declared.has(k) ? 'row is inside the bar — delete the waiver' : 'waiver names no declared mesh' }));
+
+  // CONTROLS, both kinds, on a row that is actually being reported — a check
+  // whose controls run somewhere else has not bracketed its own subject.
+  //   must-hit  — a WHOLE pitch is a symmetry of the mesh, so the reading must
+  //               not move: it says the gauge tracks that member's phase.
+  //   must-miss — a HALF pitch is the worst case, and the assertion is that
+  //               base + injected = 0.5 EXACTLY. "injected ≈ 0.5" only holds
+  //               when the base is already near zero, which is a control that
+  //               passes on a healthy tree and misfires on the broken one it
+  //               exists to be trusted on.
+  clock.resetInputs();
+  clock.setPose(poses[0]);
+  clock.scene.updateMatrixWorld(true);
+  const controls = [];
+  const subject = rows.filter((r) => r.credible).slice(0, 4);
+  for (const r of subject) {
+    const base = clock.measureMeshNow(r.site);
+    const whole = clock.measureMeshNow(r.site, 1);
+    const half = clock.measureMeshNow(r.site, 0.5);
+    if (!base.ok || !whole.ok || !half.ok) { controls.push({ site: r.site, ok: false, why: 'measurement refused' }); continue; }
+    const hitOk = Math.abs(whole.off - base.off) < 1e-3;
+    const missOk = Math.abs((base.off + half.off) - 0.5) < 5e-3;
+    controls.push({ site: r.site, ok: hitOk && missOk,
+      base: +(base.off * 100).toFixed(3), whole: +(whole.off * 100).toFixed(3),
+      halfSum: +((base.off + half.off) * 100).toFixed(2), hitOk, missOk });
+  }
+  const controlPass = controls.length > 0 && controls.every((c) => c.ok);
+
+  clock.resetInputs();
+  return {
+    ok: true, barPct: MESH_PHASE_BAR * 100, poseCount: poses.length,
+    rows, violations, waived, malformed, staleWaivers, notCredible,
+    controls, controlPass,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// §194 — transmits. Does each declared mesh turn its neighbour by what the
+// metal says, under EVERY input that drives it?
+//
+// A DIFFERENT question from phase, and it has to be asked separately: a pair
+// can be perfectly phased and still not transmit — its two tick laws simply
+// disagree — and the battery's sweeps cannot see it, because two wheels whose
+// angles are written independently sweep exactly the same volumes as two that
+// are genuinely geared. That is the kinematic-lie class.
+//
+// THE BAR COMES FROM THE TOOTH COUNTS, and that is standing rule 2 applied to
+// the instrument rather than to the movement: meshing gears counter-rotate as
+// their counts, so the expected ratio is −teethA/teethB. Every rotor also
+// records its pitch radius, and r = module·teeth/2 with a shared module, so
+// −rA/rB is the SAME number by a different route. The check computes both and
+// fails if they disagree — CLAUDE.md's rule that a figure an instrument also
+// computes must be asserted against, not resembled. (A boot assert already
+// holds r to module·teeth/2; this is the second, independent statement of it,
+// and the one that would survive that assert being weakened.)
+//
+// EACH INPUT IS WALKED SEPARATELY, and that is the point rather than a detail.
+// A chain fed by two inputs can satisfy every ratio under one and violate it
+// under the other, and a combined sweep hides exactly that — TODO 117 is that
+// case, invisible until the inputs were separated.
+//
+// TWO GUARDS, both of which produced wrong answers before they existed:
+//   · DRIVER STILL — a member that does not move under an input cannot be
+//     judged by a quotient, so it is reported, never divided by.
+//   · ALIASING — a wrapped per-step delta cannot tell θ from θ ± 2π, so a
+//     member turning more than half a turn between samples reads as something
+//     else. The going train's escape wheel turns ~2400 times in six hours and
+//     accumulated to a confident ZERO on the probe's first draft. The guard is
+//     PER ROW because one chain's useful span is another's aliasing, and it
+//     REFUSES the reading rather than reporting it.
+export const TRANSMITS_WAIVERS = {
+  // TODO 117 — three laws in contradiction, and the right answer is not yet
+  // decided. Gating a row whose correct value nobody has settled would just be
+  // a red mark no one can clear, which is why the probe reported it too.
+  // (The chain's OTHER rows are not waived: measured, `setting wheel ⇄ idler 1`
+  // has no mismatch on either declared input, so a waiver for it would be
+  // stale on arrival — and this table's own gate says so.)
+  'alarm setting: disc rim ⇄ idler 1b': 'TODO 117',
+  // TODO 124 — THE MOTION WORKS DOES NOT TRANSMIT. Both rows read the right
+  // ratio MAGNITUDE with the sign inverted: the members co-rotate where an
+  // external mesh must counter-rotate. Three things rule out the obvious
+  // explanations, which is why this is filed as a mechanism defect and not as
+  // a measurement artefact — the reading CONVERGED under span halving (so it
+  // is not aliasing), both members report the SAME frame handedness (so it is
+  // not the dialFace mirror), and the magnitude is exact to six figures (so
+  // the counts are right and only the causality is missing). The angles are
+  // computed from the ratio instead of arriving through the teeth, which is
+  // the shortcut standing rule 2 exists to forbid — "the hour hand is not
+  // minuteA / 12" — sitting in the movement's headline 12:1.
+  'motion works: cannon pinion ⇄ minute wheel': 'TODO 124',
+  'motion works: minute pinion ⇄ hour wheel': 'TODO 124',
+};
+const TRANSMITS_TOL = 0.02;        // 2% of the expected ratio
+const TRANSMITS_STILL = 1e-6;      // below this a driver has not moved
+const TRANSMITS_ALIAS = Math.PI / 2;  // a step this large cannot be unwrapped safely
+
+export function checkTransmits(clock) {
+  const payload = clock.meshes;
+  if (!payload) return { ok: true, error: 'no meshes payload on __clock (main.js §194 block missing)' };
+  if (typeof clock.rotorAzimuth !== 'function')
+    return { ok: true, error: 'no rotorAzimuth on __clock (main.js §194 block missing)' };
+
+  const axisByName = new Map(AXES.map((a) => [a.name, a]));
+  const rows = [], violations = [], waived = [], malformed = [], reported = [];
+  const STEPS = 64;
+  const wrap = (x) => Math.atan2(Math.sin(x), Math.cos(x));
+
+  // Every declared input must name a real pose axis. A row naming an axis
+  // nobody sweeps makes an untestable "driven by" claim, and §121's
+  // stale-selector rule makes that a failure rather than a shrug.
+  for (const i of [...new Set(payload.rows.flatMap((r) => r.inputs || []))])
+    if (!axisByName.has(i)) malformed.push({ input: i, why: 'names no axis in AXES' });
+
+  // THE SPAN IS PER ROW, PER INPUT, and refined — because one chain's useful
+  // span is another's aliasing and there is no single walk that serves both.
+  // The going train's escape wheel turns ~2400 times over six hours while the
+  // hour wheel turns half a revolution; a span short enough to unwrap the
+  // first leaves the second reading "driver still", and a span long enough to
+  // move the second aliases the first into a confident wrong number.
+  //
+  // So each row is walked over its OWN span: start at the axis's full declared
+  // range and halve until both members' largest step is safely unwrappable.
+  // Ratios are scale-invariant, so a shortened span costs nothing but samples.
+  // A row that still aliases at the floor is REFUSED, not reported as a value.
+  const sweepOnce = (axis, a, b, span) => {
+    enterAxis(clock);
+    clock.setPose(axis.pose(0, clock));
+    clock.scene.updateMatrixWorld(true);
+    let pa = clock.rotorAzimuth(a), pb = clock.rotorAzimuth(b);
+    if (!pa || !pb) return { bad: `no rotor for ${!pa ? a : b}` };
+    // Divide the frame's handedness out: a mirrored basis reverses apparent
+    // rotation, and only the MATERIAL sense is comparable across a mesh.
+    const ha = pa.hand, hb = pb.hand;
+    let accA = 0, accB = 0, worst = 0;
+    for (let i = 1; i <= STEPS; i++) {
+      clock.setPose(axis.pose((i / STEPS) * span, clock));
+      clock.scene.updateMatrixWorld(true);
+      const na = clock.rotorAzimuth(a), nb = clock.rotorAzimuth(b);
+      if (!na || !nb) return { bad: 'rotor vanished mid-sweep' };
+      const da = wrap(na.az - pa.az), db = wrap(nb.az - pb.az);
+      worst = Math.max(worst, Math.abs(da), Math.abs(db));
+      accA += da; accB += db; pa = na; pb = nb;
+    }
+    return { accA: accA * ha, accB: accB * hb, worst, span, hand: [ha, hb] };
+  };
+
+  // THE SPAN IS PER ROW, PER INPUT, and it is validated by CONVERGENCE rather
+  // than by the wrapped step alone — because the wrapped step cannot see the
+  // failure that matters.
+  //
+  // A member turning almost exactly 2π between samples wraps to nearly ZERO.
+  // It then looks slow, passes any per-step threshold, and accumulates into a
+  // confident wrong number: measured here, the third pinion at ~6.3 rad/step
+  // read as 0.02 and the going centre ⇄ third ratio came back −29.99 against a
+  // bar of −0.133, with the step guard satisfied throughout. That is the same
+  // aliasing the probe's header warns about, wearing a disguise the probe's
+  // hand-chosen spans never had to meet.
+  //
+  // A ratio is SCALE-INVARIANT, so the honest test is that halving the span
+  // does not move it. A true reading is unchanged; an aliased one is not,
+  // because the wrap lands differently. Halve until two successive spans agree
+  // — and refuse the row if they never do, rather than report the last number.
+  const sweepPair = (axis, a, b) => {
+    let prev = null;
+    for (let span = 1, tries = 0; tries < 14; span /= 2, tries++) {
+      const s1 = sweepOnce(axis, a, b, span);
+      if (s1.bad) return s1;
+      if (s1.worst < TRANSMITS_ALIAS && Math.abs(s1.accA) > TRANSMITS_STILL) {
+        const got = s1.accB / s1.accA;
+        if (prev !== null && Math.abs(got - prev) <= Math.abs(got) * 1e-3 + 1e-9)
+          return { ...s1, got, converged: true };
+        prev = got;
+      } else if (Math.abs(s1.accA) <= TRANSMITS_STILL && s1.worst < TRANSMITS_ALIAS) {
+        // The driver genuinely does not move on this input, at a span whose
+        // steps are unwrappable. That is a fact about the mechanism, not a
+        // measurement failure, and it is reported rather than divided by.
+        return { ...s1, still: true };
+      }
+    }
+    return { aliased: true };
+  };
+
+  for (const r of payload.rows) {
+    const per = [];
+    const m = clock.measureMeshNow(r.site);
+    if (!m.ok) { malformed.push({ site: r.site, why: m.why }); rows.push({ site: r.site, per }); continue; }
+    // The two independent routes to one bar: counts (standing rule 2) and
+    // radii. r = module·teeth/2 makes them the same number, so a disagreement
+    // is a defect and not something to pick a winner from.
+    const wantTeeth = -m.teethA / m.teethB;
+    const wantRadii = -m.rA / m.rB;
+    const barsAgree = Math.abs(wantTeeth - wantRadii) <= 1e-9 * Math.abs(wantTeeth) + 1e-12;
+
+    for (const inName of r.inputs || []) {
+      const axis = axisByName.get(inName);
+      if (!axis) continue;                     // already recorded as malformed
+      const sw = sweepPair(axis, r.a, r.b);
+      const row = { site: r.site, input: inName, a: r.a, b: r.b, chain: r.chain,
+        want: +wantTeeth.toFixed(6), wantFromRadii: +wantRadii.toFixed(6), barsAgree };
+      if (!barsAgree) { row.verdict = 'BARS DISAGREE'; malformed.push(row); per.push(row); continue; }
+      if (sw.bad) { row.verdict = 'no rotor'; row.why = sw.bad; malformed.push(row); per.push(row); continue; }
+      if (sw.aliased) { row.verdict = 'aliased'; reported.push(row); per.push(row); continue; }
+      Object.assign(row, { aSpin: +sw.accA.toFixed(6), bSpin: +sw.accB.toFixed(6),
+        maxStep: +sw.worst.toFixed(4), span: sw.span, hand: sw.hand });
+      if (sw.still) { row.verdict = 'driver still'; reported.push(row); per.push(row); continue; }
+      row.got = +sw.got.toFixed(6);
+      row.verdict = Math.abs(row.got - wantTeeth) <= TRANSMITS_TOL * Math.abs(wantTeeth) ? 'ok' : 'MISMATCH';
+      if (row.verdict === 'MISMATCH') {
+        row.waiver = TRANSMITS_WAIVERS[r.site] || null;
+        (row.waiver ? waived : violations).push(row);
+      }
+      per.push(row);
+    }
+    rows.push({ site: r.site, chain: r.chain, inputs: r.inputs || [], per });
+  }
+
+  // A waiver naming a site with no mismatch is itself a failure — the §137
+  // rule, so a fix cannot land while leaving its permission behind.
+  const missing = new Set(waived.map((w) => w.site));
+  const known = new Set(payload.rows.map((r) => r.site));
+  const staleWaivers = Object.keys(TRANSMITS_WAIVERS)
+    .filter((k) => !missing.has(k))
+    .map((k) => ({ site: k, why: known.has(k) ? 'no mismatch on any declared input — delete the waiver' : 'waiver names no declared mesh' }));
+
+  // CONTROLS. must-hit: the going train, independently solved and known good.
+  // must-miss: the same rows against a deliberately INVERTED bar, which must
+  // fail — without it, "everything ok" is also what a comparison that always
+  // passes looks like.
+  const going = rows.flatMap((r) => r.per).filter((p) => p.chain === 'going' && p.verdict === 'ok');
+  const hit = going.length > 0;
+  const miss = going.every((p) => Math.abs(p.got - -p.want) > TRANSMITS_TOL * Math.abs(p.want));
+  const controlPass = hit && miss;
+
+  clock.resetInputs();
+  return {
+    ok: true, tol: TRANSMITS_TOL, steps: STEPS,
+    rows, violations, waived, malformed, reported, staleWaivers,
+    controls: { mustHit: going.length, mustMiss: miss }, controlPass,
+  };
+}
+
 export function checkTransfers(clock) {
   const payload = clock.transfers;
   if (!payload) return { ok: true, error: 'no transfers payload on __clock (main.js §137 block missing)' };
@@ -8716,6 +9064,8 @@ const CHECKS = {
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
+  meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's
+  transmits: (clock, opts) => checkTransmits(clock, opts),               // §194 — every declared mesh turns its neighbour by its tooth ratio, per input
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };

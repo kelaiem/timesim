@@ -750,7 +750,7 @@ export function gearOuterR({ module, teeth, thickness, bevel: bevelOn = true, ma
   return Math.max(spec.tipR + bevel, gearTrueReach(spec, bevel));
 }
 
-export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
+export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name = '',
                            material, hub = true, bevel: bevelOn = true, mates }) {
   const mat = material || MATS.brass;
   mates = gearMates(mates, teeth, 'makeGear');
@@ -814,7 +814,16 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
   if (hub) {
     g.add(new THREE.Mesh(ringExtrude(hubR, boreR, thickness * 1.5, 24), mat));
   }
+  // §194 — the tooth count and module travel with the metal, beside the pitch
+  // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
+  // mesh check must read the counts rather than infer them back out of a
+  // radius: standing rule 2 is that a ratio arrives from tooth counts, so
+  // recording both lets the check derive the ratio twice and ASSERT the two
+  // agree — the bar a figure an instrument also computes has to meet.
   g.userData.r = pitchR;
+  g.userData.teeth = teeth;
+  g.userData.module = module;
+  if (name) g.name = name;   // §194: a declared mesh row NAMES its two members
   return g;
 }
 
@@ -822,7 +831,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5,
 // Pinion (small solid steel wheel with fat leaves)
 // ---------------------------------------------------------------------------
 
-export function makePinion({ module, teeth, thickness, material, boreR = null, mates }) {
+export function makePinion({ module, teeth, thickness, material, boreR = null, mates, name = '' }) {
   const mat = material || MATS.steel;
   mates = gearMates(mates, teeth, 'makePinion');
   // §136 — same generator as the wheel, and that is the point: a pinion leaf
@@ -853,7 +862,16 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
 
   const g = new THREE.Group();
   g.add(new THREE.Mesh(geo, mat));
+  // §194 — the tooth count and module travel with the metal, beside the pitch
+  // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
+  // mesh check must read the counts rather than infer them back out of a
+  // radius: standing rule 2 is that a ratio arrives from tooth counts, so
+  // recording both lets the check derive the ratio twice and ASSERT the two
+  // agree — the bar a figure an instrument also computes has to meet.
   g.userData.r = pitchR;
+  g.userData.teeth = teeth;
+  g.userData.module = module;
+  if (name) g.name = name;   // §194: a declared mesh row NAMES its two members
   return g;
 }
 
@@ -867,7 +885,7 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
 // gear it meshes with) — same convention as a real bevel gear keyed to the
 // end of its arbor, body trailing back along the shaft from the pitch point.
 // ---------------------------------------------------------------------------
-export function makeBevelGear({ teeth, module, coneAngleDeg = 45, faceWidth = 1.1, boreR = 0.4, material }) {
+export function makeBevelGear({ teeth, module, coneAngleDeg = 45, faceWidth = 1.1, boreR = 0.4, material, name = '' }) {
   const mat = material || MATS.steel;
   const pitchR = pitchRadius(module, teeth);
   const tipR = pitchR + module * 0.85;
@@ -891,7 +909,16 @@ export function makeBevelGear({ teeth, module, coneAngleDeg = 45, faceWidth = 1.
 
   const g = new THREE.Group();
   g.add(new THREE.Mesh(geo, mat));
+  // §194 — the tooth count and module travel with the metal, beside the pitch
+  // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
+  // mesh check must read the counts rather than infer them back out of a
+  // radius: standing rule 2 is that a ratio arrives from tooth counts, so
+  // recording both lets the check derive the ratio twice and ASSERT the two
+  // agree — the bar a figure an instrument also computes has to meet.
   g.userData.r = pitchR;
+  g.userData.teeth = teeth;
+  g.userData.module = module;
+  if (name) g.name = name;   // §194: a declared mesh row NAMES its two members
   return g;
 }
 
@@ -2816,6 +2843,7 @@ export function makeSpiderDifferential({ spec, planets = 2, outModule, outTeeth,
   const wheel = makeGear({
     module: outModule, teeth: outTeeth, mates: outMates, thickness,
     boreR: spec.cageBoreR, spokes: 2, material: MATS.brass,
+    name: 'spiderCageWheel',   // §194: it meshes the finger pinion, so a row names it
   });
   wheel.traverse((o) => { if (o.isMesh && !o.name) o.name = 'spiderCageWheel'; });
   cage.add(wheel);
@@ -4157,7 +4185,7 @@ export const barrelArborR = (radius) => radius * 0.09;
 // smoke test being the one).
 // springSetupSweep (TODO 32): pre-tension under the whole service band —
 // see mainspringFrames. Default 0, so the alarm barrel (§89) is untouched.
-export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null,
+export function makeBarrel({ radius, height, teeth, module, plain = false, arborH = null, name = '',
                              ratchet = !plain, springArborR = null, springWindSweep = 0,
                              springSetupSweep = 0,
                              arbor = true, arborBoreR = null,
@@ -4368,7 +4396,16 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     g.add(rc);
   }
 
+  // §194 — the tooth count and module travel with the metal, beside the pitch
+  // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
+  // mesh check must read the counts rather than infer them back out of a
+  // radius: standing rule 2 is that a ratio arrives from tooth counts, so
+  // recording both lets the check derive the ratio twice and ASSERT the two
+  // agree — the bar a figure an instrument also computes has to meet.
   g.userData.r = pitchR;
+  g.userData.teeth = teeth;
+  g.userData.module = module;
+  if (name) g.name = name;   // §194: a declared mesh row NAMES its two members
   g.userData.drumR = radius;
   // The cavity the spring lives in, body-local: what a part standing on the
   // static arbor INSIDE the drum has to clear. Exported rather than
