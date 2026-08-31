@@ -3798,6 +3798,78 @@ function mtvDepth(bvh, wheelMatrixWorld, meshB) {
   return best; // Infinity if no candidate direction cleared it within the cap
 }
 
+// TWO INTERLEAVED COMBS HAVE NO SEPARATING TRANSLATION, so `mtvDepth` is the
+// wrong instrument for a face ratchet. It reports a whole tooth height the
+// moment the two rings touch at all, whatever the depth — measured, 0.17 for
+// a pair whose facing surfaces stand 0.002–0.005 apart, because clearing an
+// interleave means lifting one ring clean out of the other's valleys and no
+// smaller push exists in any direction. The number was never about the fit,
+// which is why the reference build at MOVEMENT_SENSE +1 read GREEN on the
+// same geometry: it sat 0.0045 into the identical hairline and its axis
+// happened to sample poses where the two never touched at all. TODO 115
+// reversed the movement, the sampling moved, and a row that had never been
+// measuring its claim finally said so.
+//
+// The pair's OWN free coordinate is the slip angle, so that is what this
+// bisects: the smallest rotation about the shared axis, either way, that
+// clears the boolean intersection — `mtvDepth`'s minimum-translation search,
+// one coordinate over, and asking the same always-reliable triangle-triangle
+// test rather than any inside/outside classification. Reported as ARC at the
+// teeth's mean radius, so it is commensurate with HANDOFF_TRACK_TOL and with
+// every other budget in this table.
+//
+// CONTROLLED, because a bisection that finds a search artefact looks exactly
+// like one that finds a boundary: `tools/probe-50-clutch.mjs` pre-rotates the
+// clutch and the reading moves by exactly what was added (+0.02 rad → +0.02,
+// +0.05 → +0.05) and clears entirely the other way. A linear response is what
+// says the boundary is real.
+export function sawRideDepth(A, B) {
+  const bvh = bvhFor(B);
+  bvhFor(A);   // intersectsGeometry needs the other side INDEXED — mtvDepth's own note
+  const ax = new THREE.Vector3(0, 0, 1).transformDirection(B.matrixWorld).normalize();
+  const oB = new THREE.Vector3().setFromMatrixPosition(B.matrixWorld);
+  const invB = B.matrixWorld.clone().invert();
+  const T1 = new THREE.Matrix4().makeTranslation(-oB.x, -oB.y, -oB.z);
+  const T2 = new THREE.Matrix4().makeTranslation(oB.x, oB.y, oB.z);
+  const q = new THREE.Quaternion();
+  const R = new THREE.Matrix4(), M = new THREE.Matrix4();
+  const hits = (phi) => {
+    q.setFromAxisAngle(ax, phi);
+    R.makeRotationFromQuaternion(q);
+    M.copy(T2).multiply(R).multiply(T1).multiply(A.matrixWorld);
+    return bvh.intersectsGeometry(A.geometry, M.premultiply(invB));
+  };
+  if (!hits(0)) return 0;
+  // the teeth's mean radius, off A's own vertices about the shared axis —
+  // a bounding box's corner is not a ring's radius and its centre is not the bore
+  const pos = A.geometry.attributes.position, v = new THREE.Vector3();
+  const oA = new THREE.Vector3().setFromMatrixPosition(A.matrixWorld);
+  let rLo = Infinity, rHi = 0;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(A.matrixWorld).sub(oA);
+    const rr = v.addScaledVector(ax, -v.dot(ax)).length();
+    if (rr < rLo) rLo = rr;
+    if (rr > rHi) rHi = rr;
+  }
+  const rMean = (rLo + rHi) / 2;
+  let best = Infinity;
+  for (const s of [1, -1]) {
+    let lo = 0, hi = 0.001;
+    while (hits(s * hi) && hi < 0.9) hi *= 1.8;
+    if (hits(s * hi)) continue;             // never cleared this way — the ramp side
+    for (let i = 0; i < 26; i++) {
+      const mid = (lo + hi) / 2;
+      if (hits(s * mid)) lo = mid; else hi = mid;
+    }
+    if (hi < best) best = hi;
+  }
+  // Loud, not lenient: neither direction clearing means the rings are meshed
+  // in a way this measure cannot describe, and a silent 0 would read as a
+  // perfect ride — the exact lie the row it replaces was telling.
+  if (best === Infinity) throw new Error('stem coupling ride: no rotation either way clears the pair');
+  return best * rMean;
+}
+
 // A working contact's tolerance, shared by the selector-family penetration
 // budgets below and the alarmHandoffs check that owns the gap side: the
 // tessellation-sag scale the finish already accepts as invisible
@@ -4469,15 +4541,16 @@ const PENETRATION_BUDGETS = [
     maxDepth: HANDOFF_TRACK_TOL,
     axis: 'stemSlip',
     nSamples: 480,
-    selectA(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'clutchSaw') out.push(o); });
-      return out;
-    },
-    selectB(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windPinionSaw') out.push(o); });
-      return out;
+    // NOT mtvDepth — see `sawRideDepth` above for why a face ratchet has no
+    // separating translation, and what this measures instead.
+    measure(clock, unitA, unitB) {
+      let A = null, B = null;
+      unitA.obj.traverse((o) => { if (!A && o.isMesh && o.name === 'clutchSaw') A = o; });
+      unitB.obj.traverse((o) => { if (!B && o.isMesh && o.name === 'windPinionSaw') B = o; });
+      // Loud, not NaN: a silent non-finite depth reads as a clean 0, which is
+      // how the chain-on-cone row's first run lied.
+      if (!A || !B) throw new Error('stem coupling ride: clutchSaw or windPinionSaw not found');
+      return sawRideDepth(A, B);
     },
   },
 ];

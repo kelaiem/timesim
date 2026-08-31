@@ -1,6 +1,6 @@
 // TODO 50 — the stem clutch, measured in the movement.
 //
-// Three tiers, fast (no sweeps):
+// Four tiers, fast (no sweeps):
 //  1. BUILD: the split's pieces exist, the coupling's seated pair measures
 //     contact at slip 0 and the ride law's lift matches the metal at a
 //     mid-ramp pose (mesh-vs-mesh clearance ≈ 0 both times — the spring
@@ -9,7 +9,14 @@
 //     wiggle then forward drive banks LESS by exactly the parked gap),
 //     knob hold through the drain while the gap closes, and the seated
 //     pitch invariant (slip returns to ≡ 0 mod pitch after take-up).
-//  3. CHECKS: the focused battery checks that judge the new unit —
+//  3. RIDE-DEPTH CONTROLS (TODO 115): the linearity evidence for
+//     `sawRideDepth`, the measure the battery's penetration row for this pair
+//     uses instead of an MTV — pre-rotate the clutch by a known angle and the
+//     reading must move by exactly that much, and clear outright the other
+//     way. An MTV is the wrong instrument for a face ratchet: two interleaved
+//     combs have no separating translation, so it reported a whole toothH
+//     (0.17) the moment the rings touched at all, whatever the depth.
+//  4. CHECKS: the focused battery checks that judge the new unit —
 //     support, graph, assembly, stemClutchHandoff, restoring.
 //
 // Ports: 8483. Run: node tools/probe-50-clutch.mjs
@@ -113,6 +120,56 @@ try {
     return rows;
   });
   console.log('pairSweep (d/P vs gap):', JSON.stringify(sweep));
+
+  // RIDE-DEPTH CONTROLS — TODO 115. The battery's penetration row for this
+  // pair used to be an MTV, and an MTV is the wrong instrument for a face
+  // ratchet: two interleaved combs have no separating translation, so it
+  // reported a whole toothH (0.17) the moment the rings touched at all,
+  // whatever the depth. `sawRideDepth` bisects the pair's OWN free
+  // coordinate instead — the smallest slip rotation, either way, that clears
+  // the intersection, reported as arc at the teeth's mean radius.
+  //
+  // A bisection that finds a search artefact looks exactly like one that
+  // finds a boundary, so this is the control that separates them: pre-rotate
+  // the clutch by a known angle and the reading must move by exactly that
+  // much, and rotating it the other way must clear the pair outright. A
+  // LINEAR response is the evidence; a reading that merely "looks small" is
+  // not.
+  const ride = await page.evaluate(async () => {
+    const c = window.__clock;
+    const I = await import('./src/inspect.js');
+    const THREE = await import('./vendor/three.module.js');
+    const P = c.stemSawPitch, W = Math.sign(c.stemRadPerTurn);
+    const find = (n) => { let f = null; c.scene.traverse((m) => { if (m.isMesh && m.name === n) f = m; }); return f; };
+    // the worst pose the battery's own axis finds, entered the same way
+    I.enterAxis(c);
+    c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
+      windStemSlip: W * -P * (1 - Math.abs(2 * 0.421 - 1)) });
+    c.scene.updateMatrixWorld(true);
+    const A = find('clutchSaw'), B = find('windPinionSaw');
+    const ax = new THREE.Vector3(0, 0, 1).transformDirection(B.matrixWorld).normalize();
+    const base = A.matrixWorld.clone();
+    const oB = new THREE.Vector3().setFromMatrixPosition(B.matrixWorld);
+    const spun = (phi) => {
+      const q = new THREE.Quaternion().setFromAxisAngle(ax, phi);
+      A.matrixWorld.copy(new THREE.Matrix4().makeTranslation(oB.x, oB.y, oB.z))
+        .multiply(new THREE.Matrix4().makeRotationFromQuaternion(q))
+        .multiply(new THREE.Matrix4().makeTranslation(-oB.x, -oB.y, -oB.z))
+        .multiply(base);
+      const d = I.sawRideDepth(A, B);
+      A.matrixWorld.copy(base);
+      return +d.toFixed(5);
+    };
+    return { asBuilt: spun(0), plus002: spun(0.02), plus005: spun(0.05), minus002: spun(-0.02) };
+  });
+  {
+    const lin2 = Math.abs((ride.plus002 - ride.asBuilt) - 0.02 * 0.997);
+    const lin5 = Math.abs((ride.plus005 - ride.asBuilt) - 0.05 * 0.997);
+    console.log('rideDepth controls:', JSON.stringify(ride),
+      lin2 < 0.002 && lin5 < 0.002 && ride.minus002 === 0
+        ? '— LINEAR, and clears the other way: the boundary is real'
+        : '— NOT LINEAR: the bisection is not finding the contact boundary');
+  }
 
   const checks = {};
   for (const name of ['support', 'graph', 'assembly', 'stemClutchHandoff', 'restoring', 'stockFloor', 'intraUnit']) {
