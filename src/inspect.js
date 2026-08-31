@@ -37,7 +37,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
-  SLENDER_OVERHANG_K } from './layout.js';                        // §54's overhang multiplier — shared, because §36 sizes against it
+  SLENDER_OVERHANG_K, MOVEMENT_SENSE } from './layout.js';        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -917,9 +917,15 @@ export const AXES = [
     // zeroes it, so every other axis still sweeps the seated coupling).
     name: 'stemSlip',
     n: 96,
+    // TODO 115 — BACKWARD carries the movement's sense, like the handoff poses
+    // below. Left as a bare minus this axis swept the DRIVING direction on a
+    // reversed movement: it would have driven the pair tip-on-tip at every
+    // sample and left the camming reversal — the one thing it exists to
+    // observe — unobserved, which is the §48-population gap its own comment
+    // above is about.
     pose: (f, clock) => ({
       tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
-      windStemSlip: -(clock?.stemSawPitch ?? Math.PI / 4) * (1 - Math.abs(2 * f - 1)),
+      windStemSlip: -MOVEMENT_SENSE * (clock?.stemSawPitch ?? Math.PI / 4) * (1 - Math.abs(2 * f - 1)),
     }),
   },
   {
@@ -3801,6 +3807,78 @@ function mtvDepth(bvh, wheelMatrixWorld, meshB) {
   return best; // Infinity if no candidate direction cleared it within the cap
 }
 
+// TWO INTERLEAVED COMBS HAVE NO SEPARATING TRANSLATION, so `mtvDepth` is the
+// wrong instrument for a face ratchet. It reports a whole tooth height the
+// moment the two rings touch at all, whatever the depth — measured, 0.17 for
+// a pair whose facing surfaces stand 0.002–0.005 apart, because clearing an
+// interleave means lifting one ring clean out of the other's valleys and no
+// smaller push exists in any direction. The number was never about the fit,
+// which is why the reference build at MOVEMENT_SENSE +1 read GREEN on the
+// same geometry: it sat 0.0045 into the identical hairline and its axis
+// happened to sample poses where the two never touched at all. TODO 115
+// reversed the movement, the sampling moved, and a row that had never been
+// measuring its claim finally said so.
+//
+// The pair's OWN free coordinate is the slip angle, so that is what this
+// bisects: the smallest rotation about the shared axis, either way, that
+// clears the boolean intersection — `mtvDepth`'s minimum-translation search,
+// one coordinate over, and asking the same always-reliable triangle-triangle
+// test rather than any inside/outside classification. Reported as ARC at the
+// teeth's mean radius, so it is commensurate with HANDOFF_TRACK_TOL and with
+// every other budget in this table.
+//
+// CONTROLLED, because a bisection that finds a search artefact looks exactly
+// like one that finds a boundary: `tools/probe-50-clutch.mjs` pre-rotates the
+// clutch and the reading moves by exactly what was added (+0.02 rad → +0.02,
+// +0.05 → +0.05) and clears entirely the other way. A linear response is what
+// says the boundary is real.
+export function sawRideDepth(A, B) {
+  const bvh = bvhFor(B);
+  bvhFor(A);   // intersectsGeometry needs the other side INDEXED — mtvDepth's own note
+  const ax = new THREE.Vector3(0, 0, 1).transformDirection(B.matrixWorld).normalize();
+  const oB = new THREE.Vector3().setFromMatrixPosition(B.matrixWorld);
+  const invB = B.matrixWorld.clone().invert();
+  const T1 = new THREE.Matrix4().makeTranslation(-oB.x, -oB.y, -oB.z);
+  const T2 = new THREE.Matrix4().makeTranslation(oB.x, oB.y, oB.z);
+  const q = new THREE.Quaternion();
+  const R = new THREE.Matrix4(), M = new THREE.Matrix4();
+  const hits = (phi) => {
+    q.setFromAxisAngle(ax, phi);
+    R.makeRotationFromQuaternion(q);
+    M.copy(T2).multiply(R).multiply(T1).multiply(A.matrixWorld);
+    return bvh.intersectsGeometry(A.geometry, M.premultiply(invB));
+  };
+  if (!hits(0)) return 0;
+  // the teeth's mean radius, off A's own vertices about the shared axis —
+  // a bounding box's corner is not a ring's radius and its centre is not the bore
+  const pos = A.geometry.attributes.position, v = new THREE.Vector3();
+  const oA = new THREE.Vector3().setFromMatrixPosition(A.matrixWorld);
+  let rLo = Infinity, rHi = 0;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(A.matrixWorld).sub(oA);
+    const rr = v.addScaledVector(ax, -v.dot(ax)).length();
+    if (rr < rLo) rLo = rr;
+    if (rr > rHi) rHi = rr;
+  }
+  const rMean = (rLo + rHi) / 2;
+  let best = Infinity;
+  for (const s of [1, -1]) {
+    let lo = 0, hi = 0.001;
+    while (hits(s * hi) && hi < 0.9) hi *= 1.8;
+    if (hits(s * hi)) continue;             // never cleared this way — the ramp side
+    for (let i = 0; i < 26; i++) {
+      const mid = (lo + hi) / 2;
+      if (hits(s * mid)) lo = mid; else hi = mid;
+    }
+    if (hi < best) best = hi;
+  }
+  // Loud, not lenient: neither direction clearing means the rings are meshed
+  // in a way this measure cannot describe, and a silent 0 would read as a
+  // perfect ride — the exact lie the row it replaces was telling.
+  if (best === Infinity) throw new Error('stem coupling ride: no rotation either way clears the pair');
+  return best * rMean;
+}
+
 // A working contact's tolerance, shared by the selector-family penetration
 // budgets below and the alarmHandoffs check that owns the gap side: the
 // tessellation-sag scale the finish already accepts as invisible
@@ -4472,15 +4550,16 @@ const PENETRATION_BUDGETS = [
     maxDepth: HANDOFF_TRACK_TOL,
     axis: 'stemSlip',
     nSamples: 480,
-    selectA(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'clutchSaw') out.push(o); });
-      return out;
-    },
-    selectB(unit) {
-      const out = [];
-      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'windPinionSaw') out.push(o); });
-      return out;
+    // NOT mtvDepth — see `sawRideDepth` above for why a face ratchet has no
+    // separating translation, and what this measures instead.
+    measure(clock, unitA, unitB) {
+      let A = null, B = null;
+      unitA.obj.traverse((o) => { if (!A && o.isMesh && o.name === 'clutchSaw') A = o; });
+      unitB.obj.traverse((o) => { if (!B && o.isMesh && o.name === 'windPinionSaw') B = o; });
+      // Loud, not NaN: a silent non-finite depth reads as a clean 0, which is
+      // how the chain-on-cone row's first run lied.
+      if (!A || !B) throw new Error('stem coupling ride: clutchSaw or windPinionSaw not found');
+      return sawRideDepth(A, B);
     },
   },
 ];
@@ -4788,10 +4867,17 @@ export const WIND_ARREST_HANDOFFS = [
 // valley flat, camming the ramps bear — so the pair expects CONTACT at all
 // three engaged poses and FREE only pulled out. Slip values are the
 // coupling's own fractions of its 2π/8 pitch (one saw tooth per leaf).
+// TODO 115 — "backward crown" is a DIRECTION, and it reverses with the movement:
+// a backward stroke of magnitude m parks the slip at −windSign·m, and windSign
+// is MOVEMENT_SENSE (main.js's STEM_RAD_PER_TURN). Left as bare negatives these
+// poses drove the coupling the WRONG way past its faces on a reversed movement
+// and measured the pair tip-on-tip, a whole tooth buried — a real reading of a
+// pose the watch never reaches, which is the worst kind of red.
+const BACKWARD_SLIP = (m) => -MOVEMENT_SENSE * m * (Math.PI / 4);
 export const STEM_CLUTCH_POSES = [
   ['seated', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: 0 }],
-  ['backlash', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.075 * (Math.PI / 4) }],
-  ['camming', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: -0.5 * (Math.PI / 4) }],
+  ['backlash', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: BACKWARD_SLIP(0.075) }],
+  ['camming', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, windStemSlip: BACKWARD_SLIP(0.5) }],
   ['pulled', { tau: 0.13, crownPullT: 1, leverEngage: 1, tension: 1, windStemSlip: 0 }],
 ];
 export const STEM_CLUTCH_HANDOFFS = [

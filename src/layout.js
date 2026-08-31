@@ -275,7 +275,27 @@ export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 // declaration and the metal move TOGETHER. Flip this constant without
 // re-cutting a part, or re-cut a part without flipping this, and that part
 // says so at boot.
-export const MOVEMENT_SENSE = +1;
+export const MOVEMENT_SENSE = -1;
+
+// AND IT GOVERNS THE GOING TRAIN, not "the movement" in the loosest sense —
+// which is a distinction TODO 115's landing had to learn from the battery.
+// The ALARM is a second MOTOR: its barrel, its train and its governor are
+// posed off `alarmStrikePhase`, and nothing in that chain reads the constant
+// above, so reversing the going train does not turn one alarm arbor the other
+// way. Its direction-committed cuts must therefore follow their own train's
+// hand, and this is it.
+//
+// +1 is what the alarm train measurably does, not a preference: its ribbon
+// reads LEFT-handed against a +z arbor (`probe-wound-sense.mjs`, −6.213 turns)
+// and its click beak is cut, flank for flank, to a `reverse: true` saw turning
+// +z (§101). Two builders are SHARED with the going side — `makeRatchetAndClick`
+// and `mainspringFrames` — and landing the reversal with both reading
+// MOVEMENT_SENSE mirrored the alarm's ratchet and ribbon under a train that had
+// not moved. Nothing about that was arguable: `alarmHandoffs` put the click beak
+// 0.35 off its tooth at every parity and `restoring` reported the barrel as
+// restored by nothing. Both builders take a `sense` now, defaulting to the going
+// train's; the alarm's three callers pass this.
+export const ALARM_SENSE = +1;
 
 export const F_BALANCE = SPEC.vph / 7200; // Hz — balance frequency: vph/3600 beats/s, 2 beats per oscillation
 export const BEAT_DEG = 12;             // escape-wheel advance per beat (half of 24° tooth pitch)
@@ -1147,6 +1167,23 @@ export function sawCouplingLiftAt(spec, delta) {
   }
   return Math.max(0, need - spec.toothH);       // seated interference is exactly toothH (tip in valley)
 }
+
+// TODO 115 — THE SEAT INDEX OF A MIRRORED PAIR. `sawCouplingLiftAt` above and
+// the mounting convention beside it are written for a pair cut `sense: +1`,
+// where relative index 0 IS the drive faces bearing and the BACKLASH runs from
+// there to `backlashFrac`. Mirroring the cut — which is what reversing the
+// movement costs this joint, since the faces have to move to the other flank —
+// swaps the two ends of that window: the mirrored pair's faces bear at its FAR
+// end. So a mirrored pair is clocked by exactly the backlash, and the ride law
+// is read at the same offset.
+//
+// ONE number, in the metal and in the law. Measured on the built pair, the two
+// can be given different offsets and the coupling then rides a coupling that is
+// not there: at clocking 0.075·pitch with the law unshifted every column of
+// `stemClutchHandoff` still passed while the camming pose stood 0.0256 off its
+// contact — inside the 0.03 tolerance, and wrong. With both at this offset the
+// same pose measures 0.0003.
+export const sawSeatOffset = (spec, sense) => (sense < 0 ? spec.backlashFrac * spec.pitch : 0);
 
 // The going stem's instance of the coupling, as DIMENSIONS (the alarm's,
 // when built, declares its own):

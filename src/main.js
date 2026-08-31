@@ -55,14 +55,46 @@ import {
   STEM_R, WIND_PINION_T, CLUTCH_RIM_T, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
   CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
-  sawCouplingLiftAt,                          // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal)
+  sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
   SLENDER_OVERHANG_K,                         // §54: an overhang's effective length — §36 sizes against what the check MEASURES
+  MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
 } from './layout.js';
 
 const DEG2RAD = Math.PI / 180;
+
+// TODO 115 / §126 — ONE SOURCE for the stem⇄bank gearing, and it carries the
+// movement's sense. `STEM_RAD_PER_TURN` is what the knob's derived angle
+// advances per turn banked; the INPUT divides by it to turn crown radians into
+// banked turns, the DISPLAY multiplies by it, and the coupling's rings are CUT
+// to `windSign`. Two spellings of one ratio is how the winding train came to
+// disagree with itself when the going train reversed — and it is what makes
+// "which way you turn the crown to wind" a consequence rather than a
+// convention: `windSign` is read OFF this, never declared beside it.
+//
+// Reversing the going train reverses which way the fusee must turn to GATHER
+// chain; the keyless gearing between it and the crown did not change; so the
+// winding direction at the crown reverses with the movement. That is
+// user-visible, and it is not a preference.
+//
+// It lives up here rather than beside the input because the CLUTCH is built
+// 20k lines earlier and its saw rings need the same sign — a build reading one
+// sense and a tick reading another is the defect, not the arrangement.
+//
+// Walked through the keyless gears rather than written as one product, because
+// the SENSE is not free at any link: the spur's own rate comes from
+// `windLocalAt`'s law (bank rising means the cone GATHERS, which is the reverse
+// of the way the train pays out), then one mesh to the transfer the crown wheel
+// is keyed to, then the crown-wheel/pinion pair. Only the last relation carries
+// a convention — the pinion turns about the stem and the crown wheel about z,
+// and the build's `rotation.y = -windStemRot` puts them in the same sign — and
+// it is stated once, here, instead of being hidden inside a product.
+const SPUR_RAD_PER_TURN = -MOVEMENT_SENSE * 2 * Math.PI;                              // windLocalAt's reserve term, per turn banked
+const CROWN_RAD_PER_TURN = -(WIND_SPUR_TEETH / crownWheelTeeth) * SPUR_RAD_PER_TURN;  // one mesh: the transfer counter-rotates the spur
+const STEM_RAD_PER_TURN = (crownWheelTeeth / windPinionTeeth) * CROWN_RAD_PER_TURN;   // the crown wheel drives the pinion on the stem
+const windSign = Math.sign(STEM_RAD_PER_TURN);   // +1 if positive crownRotation winds
 
 // Boot-assert visibility (§29 step 0's postscript): console.warn is the
 // assert channel (CLAUDE.md rule 6), but an automated console reader sees a
@@ -1455,7 +1487,11 @@ function escapeDeltaDeg(p) {
 
 function escapeAngle(t) {
   const { n, p } = beatPhase(t);
-  return (n * BEAT_DEG + escapeDeltaDeg(p)) * DEG2RAD;
+  // TODO 115 — the train's ABSOLUTE sense. Every relative sense in the chain
+  // below was already right (each mesh reverses its neighbour, and the §47
+  // control pair measures that); what was wrong was which way the whole thing
+  // ran, which is one factor here rather than a sign per wheel.
+  return MOVEMENT_SENSE * (n * BEAT_DEG + escapeDeltaDeg(p)) * DEG2RAD;
 }
 
 function forkBankAt(n) { return (n % 2 === 0) ? -1 : 1; }
@@ -1543,16 +1579,30 @@ function barrelMeshAngle(t) { return offBarrel - ratioBarrel * centerAngle(t); }
 // clicks. (RESERVE_BARREL_TURNS is declared with the spring, ~13k lines down;
 // this function is only ever CALLED from tick() and the arrest build, both
 // after module init, so the const is live by then.)
+// TODO 115 — the reserve term carries MOVEMENT_SENSE because PAY-OUT DOES. The
+// sense in `2π·(RESERVE − turns)` is not a bookkeeping convention: it says which
+// way the cone turns as the chain leaves it, and that is a fact about the
+// GROOVE, which is cut to the movement's sense (makeFusee). Left at a bare +2π
+// against a reversed train, the two terms both change with t in the same
+// direction instead of cancelling: the cone counter-rotates on its own arbor at
+// twice the drain rate, which is the phantom maintaining clicks this whole law
+// exists to avoid — and no gate in the battery measures it. The assert below is
+// what does.
 function windLocalAt(turns, t) {
-  return 2 * Math.PI * (RESERVE_BARREL_TURNS - turns) - (barrelMeshAngle(t) - barrelMeshAngle(0));
+  return MOVEMENT_SENSE * 2 * Math.PI * (RESERVE_BARREL_TURNS - turns) - (barrelMeshAngle(t) - barrelMeshAngle(0));
 }
 // The law above needs the train to ADVANCE the barrel arbor as tau grows —
 // pay-out is the positive sense (the sign-chain anchor at the keyless pose
 // block: gathering chain is −z, so paying it out is +z). If a re-gear ever
 // flips barrelMeshAngle's direction the arrest law silently mirrors, so hold
 // the sense here rather than assuming it.
-if (!(barrelMeshAngle(1) > barrelMeshAngle(0)))
-  console.warn(`§47: barrelMeshAngle runs BACKWARD (${barrelMeshAngle(1) - barrelMeshAngle(0)} over 1 s) — the wind-local law assumes the train advances the barrel arbor in +z, the chain's pay-out sense`);
+// TODO 115 — the ASSERTION is unchanged; what it compares against is now the
+// movement's declared sense rather than a hard-coded +z. The wind-local law
+// still assumes the train advances the barrel arbor in the chain's pay-out
+// direction; that direction is MOVEMENT_SENSE, and reversing the movement
+// without reversing this law is exactly what this catches.
+if (!(MOVEMENT_SENSE * (barrelMeshAngle(1) - barrelMeshAngle(0)) > 0))
+  console.warn(`§47: barrelMeshAngle runs AGAINST MOVEMENT_SENSE ${MOVEMENT_SENSE} (${barrelMeshAngle(1) - barrelMeshAngle(0)} over 1 s) — the wind-local law assumes the train advances the barrel arbor in the chain's pay-out sense`);
 
 // Amplitude sags with the state of wind (real movements drop from ~300° to
 // ~200° as the mainspring drains) and the oscillation runs on movement time τ.
@@ -1650,19 +1700,56 @@ const escapeArbor = new THREE.Group();
 escapeArbor.position.set(P.escape.x, P.escape.y, L_FOURTH);
 escapePinion.position.z = 0;
 escapeWheel.position.z = L_ESCAPE - L_FOURTH;
-// Phase the wheel so a tooth tip rests on the exit stone at each lock (the
-// 84° stone embrace = 3.5 pitches then makes alternate beats land on the
-// entry stone automatically). Tooth tips sit at (i + 0.22)·pitch in the
-// wheel's local frame (see makeEscapeWheel); stones sit at (±s/2, s/2) in the
-// fork's local frame, whose wheel centre lies at (0, palletStoneDist).
+// Phase the wheel so a tooth tip rests on the +x stone at each lock (the
+// 84° stone embrace = 3.5 pitches then makes alternate beats land on the −x
+// stone automatically — half a pitch of wheel per beat, either way round).
+// Tooth tips sit at (i + MOVEMENT_SENSE·0.22)·pitch in the wheel's local
+// frame (see makeEscapeWheel); stones sit at (±s/2, s/2) in the fork's local
+// frame, whose wheel centre lies at (0, palletStoneDist).
+//
+// TODO 115 — the +x stone is the EXIT stone only while the movement runs +z;
+// reversed, the teeth arrive from the other side and it is the entry stone.
+// The stone this targets is named by POSITION for that reason, and the tip
+// offset carries the sense because makeEscapeWheel's club does: phasing a
+// reversed wheel against the old +0.22 would seat the tooth's HEEL on the
+// stone by half a club, with nothing measuring the difference at t = 0.
 {
   const pitch = (Math.PI * 2) / 15;
   const half = forkSpan / 2;
   const exitLocal = Math.atan2(half - palletStoneDist, half);
   const exitWorld = exitLocal + forkBaseAngle;
-  const tipPhase = 0.22 * pitch;
+  const tipPhase = MOVEMENT_SENSE * 0.22 * pitch;
   const raw = exitWorld - tipPhase - escapeAngle(0);
   escapeWheel.rotation.z = ((raw % pitch) + pitch) % pitch;
+
+  // TODO 115 GUARD — the two lines above are ARITHMETIC; this reads the metal
+  // they placed. §83 exports the wheel's cut outline, and within it the club
+  // tips are the only vertices at the full `radius` (heel 0.9, locking foot
+  // 0.8, valley 0.68), so the phase can be measured rather than restated: turn
+  // those tips by the phase just applied and the nearest one must land ON the
+  // stone's corner.
+  //
+  // It exists because this commitment is invisible to everything else. Flipping
+  // `tipPhase` alone seats the club's HEEL against the stone instead of its tip
+  // — 0.44 of a pitch out, an escapement that locks on the wrong flank — and it
+  // moves NO VERTEX of any part, only a group's rotation. `probe-direction-
+  // guards.mjs` hashed shape and reported that mutant NO-OP; no boot assert,
+  // no collision gate and no fingerprint would have said a word.
+  const poly = escapeWheel.userData.profile?.poly ?? [];
+  let tipR = 0;
+  for (const [x, y] of poly) tipR = Math.max(tipR, Math.hypot(x, y));
+  let worst = Infinity;
+  for (const [x, y] of poly) {
+    if (Math.hypot(x, y) < tipR - 1e-9) continue;      // club tips only
+    let d = Math.atan2(y, x) + escapeWheel.rotation.z + escapeAngle(0) - exitWorld;
+    d = ((d % pitch) + pitch + pitch / 2) % pitch - pitch / 2;   // fold into ±half a pitch
+    if (Math.abs(d) < Math.abs(worst)) worst = d;
+  }
+  const PHASE_TOL = 0.01 * pitch;   // the tips are authored vertices, so this is float slack, not a fit
+  if (!(Math.abs(worst) <= PHASE_TOL))
+    console.warn(`§115 escape wheel phase: the nearest club tip stands ${(worst / pitch).toFixed(3)} of a pitch `
+      + `off the +x stone's corner, needs |Δ| ≤ ${(PHASE_TOL / pitch).toFixed(3)} — the wheel is phased to seat `
+      + 'the wrong part of the club (MOVEMENT_SENSE ' + MOVEMENT_SENSE + ')');
 }
 escapeArbor.add(escapePinion, escapeWheel);
 // The arbor itself — the low-escapement layout drops the wheel 2.45 under
@@ -3579,16 +3666,19 @@ windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the s
 windPinionGroup.add(windPinion);
 {
   // The pinion's saw ring, on its outboard face, teeth toward the clutch.
-  // BOTH rings are cut sense +1 and mounted as mirror mounts (−π/2 here,
-  // +π/2 on the clutch), which lands the pair on sawCouplingLiftAt's own
-  // index convention: relative angle δ = −windStemSlip (+ the hairline
-  // relief), seated drive-faces at δ = 0, the backlash then the ramps as
-  // backward slip accumulates. The sign that decides this is the one a
-  // whiteboard gets wrong: a +Y rotation DECREASES the x–z plane azimuth,
-  // so a sense −1 pair (the first cut) ran the coupling mirrored — seated
-  // measured tip-on-tip, a full tooth buried. probe-50-clutch's handoff
-  // tier is what holds this convention in metal.
-  const ring = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'windPinionSaw' });
+  // BOTH rings are cut to the same `windSign` and mounted as mirror mounts
+  // (−π/2 here, +π/2 on the clutch), which lands the pair on
+  // sawCouplingLiftAt's own index convention: relative angle δ = −windStemSlip
+  // (+ the hairline relief), seated drive-faces at δ = 0, the backlash then the
+  // ramps as backward slip accumulates. The sign that decides this is the one a
+  // whiteboard gets wrong: a +Y rotation DECREASES the x–z plane azimuth, so a
+  // pair cut against its mounting runs the coupling mirrored — seated measures
+  // tip-on-tip, a full tooth buried (0.1699, exactly one toothH). TODO 115 —
+  // and mirroring the pair for a reversed movement does NOT preserve the seat
+  // either: the drive faces move to the far end of the backlash window, which
+  // is what `sawSeatOffset` clocks back. probe-50-clutch's handoff tier is what
+  // holds all of this in metal.
+  const ring = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: windSign, name: 'windPinionSaw' }); // TODO 115: the drive faces bear in the WINDING direction, which reverses with the movement
   ring.rotation.x = -Math.PI / 2;    // ring local +Z (teeth) → +Y (outboard)
   ring.position.y = WIND_PINION_T / 2 - SAW_FIT; // base sunk a SAW_FIT weld into the pinion's face — no knife-edge abutment; STEM_CLUTCH_OFF subtracts this sink
   windPinionGroup.add(ring);
@@ -4228,11 +4318,45 @@ windClutchMount.add(windClutch);
   // rim-leads arrangement): its base sinks a SAW_FIT weld into the
   // inboard collar's face, and SAW_RING_ROOT is its root plane — the
   // stack STEM_CLUTCH_OFF closes the seat against.
-  const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: 1, name: 'clutchSaw',
+  const saw = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: windSign, name: 'clutchSaw', // TODO 115: cut to `windSign` with its mate — mirroring BOTH keeps the pair complementary and moves the drive faces to the other flank
     rIn: STEM_SAW_SPEC.rIn + SAW_FIT, rOut: STEM_SAW_SPEC.rOut - SAW_FIT }); // the male/female fit — see SAW_FIT
+  // TODO 115 — and CLOCKED by the mirror's seat offset (layout.js), so the pair
+  // still bears on its drive faces at slip 0. Applied here as the ring's own
+  // rotation.z, which three.js's XYZ order runs BEFORE the mount below.
+  saw.rotation.z = sawSeatOffset(STEM_SAW_SPEC, windSign);
   saw.rotation.x = Math.PI / 2;      // ring local +Z (teeth) → −Y (inboard)
   saw.position.y = SAW_RING_ROOT + SAW_BASE_T; // = the base's outboard face, sunk SAW_FIT into collar In
   windClutch.add(saw);
+  // TODO 115 GUARD — THE ONE-WAY MUST BE CUT FOR THE DIRECTION THAT WINDS.
+  // Both rings' ramps climb in their own +theta; the drive faces are the steps
+  // back. Which world direction that is decides which way the coupling BEARS
+  // and which way it ratchets, and the winding direction at the crown reverses
+  // with the movement (`windSign`, off `STEM_RAD_PER_TURN`). Cut for the old
+  // one, the crown would drive through the ramps and free-wheel on the faces:
+  // a one-way running backwards, with the tick's own laws — which read the
+  // profile through `stemSlipLocal()` — perfectly self-consistent about it.
+  // `makeSawCoupling` measures the hand off the samples it laid, so this
+  // compares the METAL against the gearing rather than an argument against
+  // itself. (`stemClutchHandoff` in the battery holds the same claim in the
+  // built pair; this says it at boot, one battery run earlier.)
+  for (const r of [saw, windPinionGroup.getObjectByName('windPinionSaw')]) {
+    if (!r) { console.warn('§115 stem coupling: a saw ring is missing — its cut hand is unchecked'); continue; }
+    if (r.userData.sawHand !== windSign)
+      console.warn(`§115 stem coupling: ${r.name} is cut hand ${r.userData.sawHand} but winding turns the crown `
+        + `${windSign > 0 ? '+' : '-'}ve (STEM_RAD_PER_TURN ${STEM_RAD_PER_TURN.toFixed(4)}) — the crown would drive `
+        + 'through the ramps and free-wheel on the drive faces');
+  }
+  // The pair's CLOCKING is NOT asserted here, and the reason is worth writing
+  // down rather than leaving as an omission. `sawSeatOffset` is read by the
+  // metal (the line above) and by the ride law (tick's `sawLift`), so any assert
+  // between those two compares one call against itself — a tautology, which is
+  // exactly what the first version of this guard was. What holds the clocking is
+  // `stemClutchHandoff` in the battery, on the built pair: measured, the metal
+  // and the law given DIFFERENT offsets still passed every column of it with the
+  // camming pose 0.0256 off contact — inside the 0.03 tolerance, and riding a
+  // coupling that is not there — while sharing one offset lands that column at
+  // 0.0003. The gate is a battery run away rather than a boot away; the
+  // alternative is an assert that measures nothing, and that is worse.
   // Hub collars for the yoke's fork (moved here from the stem group) —
   // bored discs riding the sleeve (0.62 bore into the 0.75 spine), 0.17
   // clear of the stem inside.
@@ -5527,7 +5651,15 @@ const DRUM_ROT_FULL = SPRING_WIND_FULL - SETUP_SWEEP;
 // The tick's setWind(sweepFull − drumRot) therefore lands the ribbon at
 // exactly A_free + u(t), which closes TODO 32's loop: the angle the torque
 // law reads and the angle the metal wears are one number.
-const drumRotAt = (t) => SPRING_WIND_FULL - springWindAt(t);
+// TODO 115 — THE DRUM TURNS WITH THE MOVEMENT, and that is forced, not chosen:
+// drum and fusee are joined by a chain on an EXTERNAL tangent, and two pulleys
+// on an external tangent turn the SAME way. So reversing the going train
+// reverses this too, and the magnitude stays the same wind accounting it always
+// was. The mainspring's own hand is referenced to MOVEMENT_SENSE for exactly
+// this reason (its `SENSE_REL` beside `mainspringFrames`): the ribbon tightens
+// against the drum, so if the drum turns with the movement the ribbon must too.
+// The assert after chainLayoutAt holds the two ends to the same sense.
+const drumRotAt = (t) => MOVEMENT_SENSE * (SPRING_WIND_FULL - springWindAt(t));
 // The static arbor's spring seat inside the drum, built with the set-up work
 // far below — hoisted here because the ribbon's inner coil BEARS on it, so the
 // spring's inner radius and its section both derive from this number now
@@ -5840,6 +5972,52 @@ const CHAIN_TMPL = (() => {
 }
 let chainBuf = null;   // reused position/normal buffers — see buildChainLinkGeometry
 let chainFrames = null; // reused per-link frame slots (rivets read their neighbours' frames)
+// TODO 115 — ONE FRAME LAW FOR THE CHAIN, because there are two readers of it:
+// `buildChainLinkGeometry` lays the metal and `linkOuterPtsNear` models the
+// same metal analytically for the arrest's reach tables. A link's frame is
+// t̂ along the run, k̂ the pin axis (world-vertical with the tangent removed,
+// so plates stay flat while the span carries its slight z slope) and
+// ŷ = k̂ × t̂ across it, then §124's lean rotates (ŷ, k̂) about t̂.
+//
+// WHICH SIDE OF THE LINK FACES THE CONE is a fact about where the cone's axis
+// is, not about which way the chain happens to be walked. ŷ takes its sign
+// from the tangent and the tangent reverses when the wrap does, so under the
+// reversal "+ŷ" — declared INBOARD by §124 — turned outboard, and it turned
+// twice over: the lean tips the stack toward +ŷ AND `userData.seat` declares
+// its crowns on that same side. Both came out mirrored. Measured, the float
+// row read 1.286–1.491 against its 0.25 budget at EVERY reserve (0.207 on the
+// reference build), and the burial row stayed green throughout because the
+// outer edge had simply taken the inner edge's place. Correcting the lean
+// alone makes it WORSE, not better — 2.348, a correctly leaned link measured
+// on its outer edge — which is the tell that the frame, not the lean, is the
+// one source. So the walk's sense is decided ONCE off the wrap's own geometry
+// and t̂ and ŷ are negated together, which preserves the basis's handedness
+// (and with it every normal) while putting the link's inboard side back
+// inboard. The plate template is symmetric along t̂ — a stadium with a rivet
+// hole at each end — so nothing else reads the direction of the walk.
+//
+// It lives HERE, above both readers, because the analytic twin having its own
+// copy is how this cost a second landing: the metal releaned, the reach table
+// did not, and the arrest solved its pad arm against a chain that no longer
+// existed (`Winding arrest ⇄ Chain` 0.1325 against a 0.15 floor).
+function chainWalkFlip(joints, wrapArc) {
+  if (!(wrapArc > 0) || joints.length < 2) return 1;
+  const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
+  chainLinkFrame(joints[0], joints[1], 0, 1, t, k, y);
+  return (y.x * (P.barrel.x - (joints[0].x + joints[1].x) / 2)
+    + y.y * (P.barrel.y - (joints[0].y + joints[1].y) / 2)) >= 0 ? 1 : -1;
+}
+function chainLinkFrame(a, b, beta, flip, t, k, y) {
+  t.subVectors(b, a).normalize().multiplyScalar(flip);
+  k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
+  y.crossVectors(k, t);
+  if (beta > 1e-9) {   // the top of the stack tips toward +ŷ, into the flank
+    const cb = Math.cos(beta), sb = Math.sin(beta);
+    const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
+    k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
+    y.set(y2x, y2y, y2z);
+  }
+}
 // §124 (TODO 46) — betaAtArc: the wrap's tilt law as a function of arc
 // position along the curve (rebuildChain builds it from its own chord-summed
 // wrap points, so the builder and the path hold ONE mapping). Wrap links get
@@ -5951,39 +6129,28 @@ function buildChainLinkGeometry(curve, wrapArc = 0, betaAtArc = null) {
   const L = len / N;
   if (!chainFrames || chainFrames.length < N)
     chainFrames = Array.from({ length: N }, () => ({ t: new THREE.Vector3(), y: new THREE.Vector3(), k: new THREE.Vector3() }));
+  const frameFlip = chainWalkFlip(joints, wrapArc);
   for (let i = 0; i < N; i++) {
     const a = joints[i], b = joints[i + 1];
-    t.subVectors(b, a).normalize();
-    // Pin axis: world-vertical with the tangent's component removed, so
-    // plates stay flat while the span carries its slight z slope.
-    k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
-    y.crossVectors(k, t);
-    // §124 (TODO 46) — the wrap links LEAN into the flank: rotate (ŷ, k̂)
-    // about t̂ by the link's own β, top of the stack tipping inboard (+ŷ),
-    // exactly the tilt the corner-locus cut accepts. The RAMP sheds β at the
-    // departure: judged links (the isWrapLink guard, one full pitch below
-    // the departure) carry FULL β — anything less re-opens the daylight the
-    // float row gates — the one unjudged link ending inside the last pitch
-    // takes β/2, and the straddler + span are vertical. That grades the
-    // shed into two adjacent-joint steps of ≤ β/2 ≈ 32° at the lowest wrap
-    // tensions — the same order as the ~20–34° of azimuth articulation the
-    // wrap already carries between stations, and the declared articulation
-    // fiction of this chain (a real chain sheds its lean over the free span
-    // by joint play; measured worst per-joint twist over the reserve sweep:
-    // 36.3°, at tension ≈ 0.07 where the departure is still near the base).
+    // §124 (TODO 46) — the wrap links LEAN into the flank, the tilt the
+    // corner-locus cut accepts. The RAMP sheds β at the departure: judged
+    // links (the isWrapLink guard, one full pitch below the departure) carry
+    // FULL β — anything less re-opens the daylight the float row gates — the
+    // one unjudged link ending inside the last pitch takes β/2, and the
+    // straddler + span are vertical. That grades the shed into two
+    // adjacent-joint steps of ≤ β/2 ≈ 32° at the lowest wrap tensions — the
+    // same order as the ~20–34° of azimuth articulation the wrap already
+    // carries between stations, and the declared articulation fiction of this
+    // chain (a real chain sheds its lean over the free span by joint play;
+    // measured worst per-joint twist over the reserve sweep: 36.3°, at
+    // tension ≈ 0.07 where the departure is still near the base).
+    let beta = 0;
     if (betaAtArc && wrapArc > 0) {
       const sEnd = (i + 1) * L;
       const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      if (ramp > 0) {
-        const beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
-        if (beta > 1e-9) {
-          const cb = Math.cos(beta), sb = Math.sin(beta);
-          const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
-          k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
-          y.set(y2x, y2y, y2z);
-        }
-      }
+      if (ramp > 0) beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
     }
+    chainLinkFrame(a, b, beta, frameFlip, t, k, y);
     chainFrames[i].t.copy(t); chainFrames[i].y.copy(y); chainFrames[i].k.copy(k);
     mid.addVectors(a, b).multiplyScalar(0.5);
     if (isOuter(i) && isWrapLink(i)) seatBases.push(off / 3);
@@ -6052,12 +6219,20 @@ function fuseeGrooveAt(f) { // f: 0 = bottom/large end … 1 = top/small end
 // chainLayoutAt) rather than only measured once: the span-aware solve
 // re-centres the anchor whenever the law moves, which is exactly when the
 // branch's headroom needs re-reading.
-const HOOK_A = (() => {
-  const midR = fuseeGrooveAt(0.5 * FUSEE_F_ACTIVE).r;
+// TODO 115 — ONE spelling of the span's tangent branch, because the branch is a
+// DIRECTION commitment (the assert after chainLayoutAt measures why) and this
+// arithmetic had two copies: here and in chainLayoutAt. Two copies is two
+// chances to carry the movement's sense in one and not the other, and that is
+// exactly what the reversal did — the wrap was already right and the hook's
+// congruence drift went from 0.03 to 0.39 of its ±0.5 branch headroom, which
+// the boot assert below caught and nothing else would have.
+const spanTangentAngle = (coneR) => {
   const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
-  const thetaMid = Math.atan2(dy, dx) - Math.acos(clamp((midR - DRUM_WRAP_R) / Math.hypot(dx, dy), -1, 1));
-  return thetaMid + DRUM_COIL_SLACK_TURNS * Math.PI * 2;
-})();
+  return Math.atan2(dy, dx)
+    - MOVEMENT_SENSE * Math.acos(clamp((coneR - DRUM_WRAP_R) / Math.hypot(dx, dy), -1, 1));
+};
+const HOOK_A = spanTangentAngle(fuseeGrooveAt(0.5 * FUSEE_F_ACTIVE).r)
+  + MOVEMENT_SENSE * DRUM_COIL_SLACK_TURNS * Math.PI * 2;
 {
   // The hook itself: a riveted tab on the drum wall with a claw pin the
   // chain's end link drops over — child of drumGroup, so it turns with the
@@ -6092,16 +6267,14 @@ function chainLayoutAt(tension) {
   const fActive = tension * FUSEE_F_ACTIVE; // full wind uses the wrap's share of the groove band exactly (§61)
   const active = fuseeGrooveAt(fActive);
   // External tangent between the fusee's active circle and the drum.
-  const dx = drumPos.x - P.barrel.x, dy = drumPos.y - P.barrel.y;
-  const D = Math.hypot(dx, dy);
-  const base = Math.atan2(dy, dx);
-  const alpha = Math.acos(clamp((active.r - DRUM_WRAP_R) / D, -1, 1));
-  // Tangent BRANCH matters: the arbor runs CCW, so paying out requires the
-  // cone's surface velocity at the departure point (its CCW tangent) to
-  // point along the span toward the drum — that's the base−α branch. The
-  // +α branch puts the span on the side where the surface moves INTO the
-  // wrap, i.e. the chain peels off the wrong tangent.
-  const thetaT = base - alpha; // tangent departure angle on both circles
+  // Tangent BRANCH matters: paying out requires the cone's surface velocity at
+  // the departure point to point along the span toward the drum. TODO 115 — the
+  // sentence this replaced started "the arbor runs CCW", and it does not once
+  // MOVEMENT_SENSE is −1: the surface velocity reverses with it and the chain
+  // has to leave on the other branch, or it peels off the side where the
+  // surface runs INTO the wrap. One spelling, up at `spanTangentAngle`; the
+  // assert after this function measures the branch rather than trusting it.
+  const thetaT = spanTangentAngle(active.r); // tangent departure angle on both circles
   const pts = [];
   // 1. Helical wrap on the cone: from the bottom groove up to the active one,
   //    ending at the tangent departure angle.
@@ -6121,7 +6294,15 @@ function chainLayoutAt(tension) {
     const s = nF ? (i / nF) * wraps : 0;     // turns from the stack's bottom (an empty wrap is the departure alone)
     const f = wraps ? (s / wraps) * fActive : 0;
     const gp = fuseeGrooveAt(f);
-    const ang = thetaT - (wraps - s) * Math.PI * 2;
+    // TODO 115 — and the WRAP is a helix laid into a helical groove cut in
+    // another file, so its hand is not free: `makeFusee` measures its crest's
+    // dazimuth/dz and exports it, and the assert after this function holds the
+    // two together. Left at a bare −2π against a reversed groove, the chain
+    // climbs the cone one way while the thread it sits in runs the other —
+    // the run still draws, still measures the right length, and every
+    // clearance gate stays green, because none of them asks whether the chain
+    // is IN its groove.
+    const ang = thetaT - MOVEMENT_SENSE * (wraps - s) * Math.PI * 2;
     pts.push(new THREE.Vector3(
       P.barrel.x + Math.cos(ang) * gp.r,
       P.barrel.y + Math.sin(ang) * gp.r,
@@ -6137,8 +6318,14 @@ function chainLayoutAt(tension) {
   // its comment). The coil hangs DOWN from the hook, one chain diameter
   // per turn, so the takeoff tangent point descends as the reserve drains.
   const rot = drumRotAt(tension); // = drumGroup.rotation.z in tick()
-  const baseTurns = rot / (2 * Math.PI) + DRUM_COIL_SLACK_TURNS; // the slack the span law's takeoff-z reads too
-  let frac = ((HOOK_A + rot - thetaT) / (2 * Math.PI)) % 1;
+  // TODO 115 — TURNS ARE A MAGNITUDE, AZIMUTHS CARRY THE SENSE. `rot` reverses
+  // with the movement now (see drumRotAt), so the coil's turn COUNT reads it
+  // through MOVEMENT_SENSE and stays positive, while every azimuth the coil is
+  // laid at takes the sense explicitly. Without the split the count goes
+  // negative at −1 and `drumTurns` clamps to its 0.05 floor — a chain with no
+  // coil on the drum, drawn without complaint.
+  const baseTurns = (MOVEMENT_SENSE * rot) / (2 * Math.PI) + DRUM_COIL_SLACK_TURNS; // the slack the span law's takeoff-z reads too
+  let frac = ((MOVEMENT_SENSE * (HOOK_A + rot - thetaT)) / (2 * Math.PI)) % 1;
   if (frac < 0) frac += 1;
   const drumTurns = Math.max(Math.round(baseTurns - frac) + frac, 0.05);
   const takeoffZ = COIL_TOP - drumTurns * CHAIN_COIL_PITCH;
@@ -6150,7 +6337,7 @@ function chainLayoutAt(tension) {
   // takeoff makes the spline enter the coil along the wall's tangent.
   {
     const sA = Math.min(0.03, drumTurns * 0.5);
-    const angA = thetaT + sA * Math.PI * 2;
+    const angA = thetaT + MOVEMENT_SENSE * sA * Math.PI * 2;
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(angA) * DRUM_WRAP_R,
       drumPos.y + Math.sin(angA) * DRUM_WRAP_R,
@@ -6170,7 +6357,7 @@ function chainLayoutAt(tension) {
   const coilEnd = Math.max(drumTurns - 0.03, 0);
   for (let i = 1; i <= nD; i++) {
     const s = (i / nD) * coilEnd;
-    const ang = thetaT + s * Math.PI * 2;
+    const ang = thetaT + MOVEMENT_SENSE * s * Math.PI * 2;
     pts.push(new THREE.Vector3(
       drumPos.x + Math.cos(ang) * DRUM_WRAP_R,
       drumPos.y + Math.sin(ang) * DRUM_WRAP_R,
@@ -6179,7 +6366,7 @@ function chainLayoutAt(tension) {
   }
   // ...and the end link steps onto the hook's claw pin — same standoff as
   // the wrap, so the last link arrives without a radial jog.
-  const hookAng = thetaT + drumTurns * Math.PI * 2; // ≡ HOOK_A + rot by the solve above
+  const hookAng = thetaT + MOVEMENT_SENSE * drumTurns * Math.PI * 2; // ≡ HOOK_A + rot by the solve above
   pts.push(new THREE.Vector3(
     drumPos.x + Math.cos(hookAng) * DRUM_WRAP_R,
     drumPos.y + Math.sin(hookAng) * DRUM_WRAP_R,
@@ -6226,6 +6413,110 @@ function chainLayoutAt(tension) {
   const worst = Math.max(Math.abs(lo), Math.abs(hi));
   if (worst > 0.25)
     console.warn(`chain hook: congruence drift ${lo.toFixed(4)}..${hi.toFixed(4)} turns (at t=${atLo.toFixed(2)}/${atHi.toFixed(2)}) — over half the ±0.5 branch headroom; re-centre HOOK_A's anchor`);
+})();
+// TODO 115 GUARD — TWO THINGS ABOUT THE CHAIN THAT NOTHING ELSE ASKS, both of
+// them direction and both of them measured off what was actually laid.
+//
+//   · IS THE CHAIN IN ITS GROOVE? The wrap is a helix laid here; the groove is
+//     a helix cut in geometry.js; and until this landing they were laid by two
+//     opposite laws with nothing comparing them. `makeFusee` exports the
+//     dazimuth/dz its crest MEASURED (grooveDAdZ), so this reads the wrap's own
+//     control points for the same quantity and requires the two to agree in
+//     sign. A chain climbing the cone against the thread it sits in still
+//     draws, still measures the right length through `chainLength`, and passes
+//     every clearance gate, because none of them asks.
+//   · DOES IT LEAVE ON THE RIGHT TANGENT? Of the two external tangents, only
+//     one has the cone's surface at the departure point MOVING down the span
+//     toward the drum; on the other the surface runs into the wrap and the
+//     chain peels off backwards. The fusee turns with the arbor (windLocal is
+//     constant during run-down, §47), so that surface velocity is
+//     MOVEMENT_SENSE·ẑ×û — which is what makes the branch a direction
+//     commitment rather than a choice of sign.
+(() => {
+  const dAdZ = fusee?.userData?.grooveDAdZ;
+  const { curve } = chainLayoutAt(1);
+  const pts = curve.points;
+  // The wrap points are the ones on the cone; the span and coil are at the
+  // drum. Take the first and last that stand within the cone's own reach.
+  const onCone = pts.filter((p) => Math.hypot(p.x - P.barrel.x, p.y - P.barrel.y) <= FUSEE_R_LARGE + 0.5);
+  if (!(dAdZ != null) || onCone.length < 3) {
+    console.warn('§115 chain wrap: could not read the groove hand or the wrap points — the fit is unchecked');
+    return;
+  }
+  const az = (p) => Math.atan2(p.y - P.barrel.y, p.x - P.barrel.x);
+  let unwrapped = 0, prev = az(onCone[0]);
+  for (let i = 1; i < onCone.length; i++) {
+    let d = az(onCone[i]) - prev;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    unwrapped += d; prev = az(onCone[i]);
+  }
+  const dz = onCone[onCone.length - 1].z - onCone[0].z;
+  const wrapDAdZ = Math.abs(dz) > 1e-9 ? unwrapped / dz : 0;
+  if (Math.sign(wrapDAdZ) !== Math.sign(dAdZ))
+    console.warn(`§115 chain wrap: the chain climbs the cone at ${wrapDAdZ.toFixed(3)} rad/z but its groove is cut `
+      + `at ${dAdZ.toFixed(3)} — the run is wrapped against the thread it sits in (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+  // The departure: last cone point, and the drum it must run to.
+  const dep = onCone[onCone.length - 1];
+  const ux = dep.x - P.barrel.x, uy = dep.y - P.barrel.y;
+  const surf = { x: -uy * MOVEMENT_SENSE, y: ux * MOVEMENT_SENSE };    // MOVEMENT_SENSE·ẑ×û
+  const span = { x: drumPos.x - dep.x, y: drumPos.y - dep.y };
+  if (!(surf.x * span.x + surf.y * span.y > 0))
+    console.warn('§115 chain departure: the cone\'s surface at the tangent point runs INTO the wrap rather than '
+      + `down the span — the external-tangent branch is the wrong one (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+  // · AND DO ITS TWO ENDS TURN THE SAME WAY? Two pulleys joined by a belt on an
+  //   EXTERNAL tangent must, and that is what makes the drum's rotation a
+  //   direction commitment rather than free bookkeeping. Read from the two laws
+  //   independently — the cone rides the arbor `barrelMeshAngle` turns, the drum
+  //   runs on `drumRotAt` — so this catches either one being left behind. Before
+  //   it, the drum turned +z under a cone turning −z and the chain simply drew
+  //   itself between them: the length gate is satisfied by a run whose two ends
+  //   are unwinding each other.
+  const fuseeAdvance = barrelMeshAngle(1) - barrelMeshAngle(0);   // per second of tau
+  const drumAdvance = drumRotAt(0.4) - drumRotAt(0.5);            // per unit of reserve drained
+  if (Math.sign(fuseeAdvance) !== Math.sign(drumAdvance))
+    console.warn(`§115 chain ends: the cone advances ${fuseeAdvance.toExponential(2)} rad/s while the drum runs `
+      + `${drumAdvance.toFixed(4)} rad over the same drain — opposite ways, on an EXTERNAL tangent where they must `
+      + `turn together (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+  // · AND DOES THE LINK LIE THE RIGHT WAY UP IN IT? The three above are all
+  //   about the RUN's path; this one is about the link's own cross-section.
+  //   §124 leans the stack into the flank and declares the crowns that seat on
+  //   it, and both of those name a side of the frame — so a reversed walk
+  //   mirrors the link inside a wrap whose path is already correct. Measured
+  //   off the built metal at full wind: the declared crowns against the cut's
+  //   own floorAt, the same pairing `penetration`'s float row makes, held here
+  //   at boot because the walk's sense is settled at build time and a battery
+  //   run is not where you want to learn it flipped.
+  {
+    const lay = chainLayoutAt(1);
+    // on its OWN buffers, `builtPtsNear`'s precedent: the shipped chain's
+    // tessellation is path-dependent, so a measurement must not be the thing
+    // that sizes it
+    const saveBuf = chainBuf, saveFrames = chainFrames;
+    chainBuf = null; chainFrames = null;
+    const geo = buildChainLinkGeometry(lay.curve, lay.wrapArc, lay.betaAtArc);
+    const seat = geo.userData?.seat, floorAt = fusee?.userData?.groove?.floorAt;
+    if (!seat?.bases?.length || !seat.crownIdx || typeof floorAt !== 'function') {
+      console.warn('§115 chain seat: no declared crowns or no cut floor to read them against — the lie is unchecked');
+    } else {
+      const pos = geo.attributes.position;
+      let worst = 0;
+      for (const base of seat.bases) {
+        for (const ci of seat.crownIdx) {
+          const j = (base + ci) * 3;
+          const r = Math.hypot(pos.array[j] - P.barrel.x, pos.array[j + 1] - P.barrel.y);
+          worst = Math.max(worst, r - floorAt(pos.array[j + 2] - (L_BARREL + FUSEE_BASE_Z)));
+        }
+      }
+      // 0.25 is the float row's own budget — link chording at the honest
+      // 2.41 chord plus the base corner residual plus tessellation slack —
+      // so the two hold ONE number. A mirrored link reads 1.29 against it.
+      if (!(worst <= 0.25))
+        console.warn(`§115 chain seat: the declared seat crowns stand ${worst.toFixed(3)} off the groove floor `
+          + `(budget 0.25) — the link is mirrored in its own wrap (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+    }
+    chainBuf = saveBuf; chainFrames = saveFrames;
+  }
 })();
 function rebuildChain(tension) {
   lastChainTension = tension;
@@ -6410,6 +6701,19 @@ if (MAINT_PAWL_TIP_R > MAINT_FLANGE_R - 0.05 || MAINT_PAWL_TIP_R < MAINT_FLANGE_
   console.warn(`maintaining pawl tip seats at ${MAINT_PAWL_TIP_R.toFixed(2)} — outside the flange's working band [${(MAINT_FLANGE_R * 0.8).toFixed(2)}, ${MAINT_FLANGE_R.toFixed(2)}]`);
 // Saw profile shared by pawls and detent (the builder's tooth: root→tip
 // chord over 72% of the pitch, face over the last 28%).
+//
+// TODO 115 — `sawRadiusAt` is the SHAPE function and carries no direction at
+// all: the hand lives entirely in how a consumer maps azimuth to u, which is
+// `u = S·(tipAz − wheelRot)·N/2π`. S is +1 for the builder's base cut and −1
+// for its mirror, and `makeRatchetAndClick` mirrors when `reverse` disagrees
+// with its train's sense — so for these two saws, both `reverse: false` on the
+// going side, S IS the going train's sense. Spelled once here because a saw
+// whose twin has the wrong hand rides the CLIFF instead of the ramp, and
+// nothing in the battery measures that: the pawl still moves, still clears,
+// still reports green. (The alarm's arbor ratchet is the same arithmetic with
+// its own sign, and needs none of this: `reverse: true` against a fixed
+// ALARM_SENSE +1 leaves it mirrored, which is the mapping it already spells.)
+const MAINT_U_SIGN = MOVEMENT_SENSE;
 function sawRadiusAt(u, R) {
   const rootR = R * 0.8, depth = R * 0.2;
   return u <= 0.72 ? rootR + (depth * u) / 0.72 : R - (depth * (u - 0.72)) / 0.28;
@@ -6426,7 +6730,7 @@ let MAINT_DETENT_AZ = 0, MAINT_DET_TIP_AZ = 0, MAINT_DET_TIP_R = 0,
 // slow tick per tooth as the watch runs, and NEVER a reverse pass.
 function updateMaintaining(windBack) {
   for (let k = 0; k < MAINT_PAWL_SEATS.length; k++) {
-    let u = (((MAINT_PAWL_TIP_AZ - windBack) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    let u = ((MAINT_U_SIGN * (MAINT_PAWL_TIP_AZ - windBack) * MAINT_TEETH) / (2 * Math.PI)) % 1;
     if (u < 0) u += 1;
     const lift = Math.max(sawRadiusAt(u, MAINT_FLANGE_R) - MAINT_PAWL_TIP_R, 0) / (MAINT_FLANGE_R * 0.8);
     MAINT_PAWL_SEATS[k].rotation.z = MAINT_PAWL_BASE + MAINT_PAWL_SIGN * lift;
@@ -6457,7 +6761,7 @@ function updateMaintaining(windBack) {
   const followCam = (seat, cam, sign) => (sign > 0 ? Math.min(seat, cam) : Math.max(seat, cam));
   if (maintDetentBeak) {
     const net = barrelArbor.rotation.z - MAINT_DETENT_AZ;
-    let u = (((MAINT_DET_TIP_AZ - net) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    let u = ((MAINT_U_SIGN * (MAINT_DET_TIP_AZ - net) * MAINT_TEETH) / (2 * Math.PI)) % 1;
     if (u < 0) u += 1;
     const lift = Math.max(sawRadiusAt(u, MAINT_RING_R) - MAINT_DET_TIP_R, 0) / MAINT_DET_LEVER;
     maintDetentBeak.rotation.z = followCam(
@@ -6793,6 +7097,23 @@ const pivotBossR = (p) => Math.max(p.jewelR * 1.7, p.boreR, p.jewelR ? tqOpening
 // The window must not eat the pivots the plate still carries. Each upper
 // pivot's jewel boss has to stay clear of the cut edge by the margin.
 // Factored: it re-runs after the balance-cock reveal grows the cut.
+//
+// IT JUDGES A CLAMPED TABLE, at both call sites, and that is the whole point
+// of where the calls now sit. `finishCutRadii` runs the per-degree maxima out
+// over ±6° for the cutter's radius, which over-opens the window on either side
+// of a lobe; §148's `seatCut` then walks the edge back out of every chaton keep
+// (`clampCutToKeeps` SHRINKS radii — the chaton wins), and the plate is cut
+// from what survives that. This call used to sit BEFORE the first `seatCut`,
+// which §148 inserted underneath it, so it read a table no plate is cut from
+// and that the next statement repairs. TODO 115's fork moved a swept lobe 6°
+// around the balance and the spread's overhang landed on the fourth wheel's
+// chaton: edge 15.72 against a 15.63 limit at that bearing BEFORE the clamp,
+// 14.33 after it — while the fork's own bearings stayed fully revealed
+// (raw 13.4–15.7 under a 15.8 edge) and `Pallet fork ⇄ Three-quarter plate`
+// measured 2.257 clear, so nothing was ever eaten but the overhang. The second
+// call is unmoved and still judges the final table, so nothing is checked less:
+// the reveal only grows the cut and the clamp only shrinks it at keeps, and
+// both call sites now read the state their stage actually cuts.
 function checkCutVsPivots() {
   for (const p of tqPivots) {
     const dx = p.x - P.balance.x, dy = p.y - P.balance.y;
@@ -6806,7 +7127,6 @@ function checkCutVsPivots() {
         p.x.toFixed(1), p.y.toFixed(1), '— edge', edge.toFixed(2), 'vs', (d - bossR).toFixed(2));
   }
 }
-checkCutVsPivots();
 
 // A jewelled pivot needs the plate opened up to its CHATON's diameter, not
 // the staff's — the counterbore is cut right through and the bearing collar
@@ -6959,6 +7279,7 @@ function seatCut() {
   }
 }
 seatCut();
+checkCutVsPivots();   // see its header: the clamped table, not the spread one
 
 const tqPolyHoles = tqPivots.filter((p) => p.chaton)
   .map((p) => ({ name: `chaton seat @ ${p.x.toFixed(1)},${p.y.toFixed(1)}`, pts: chatonOutline(p) }));
@@ -8563,23 +8884,19 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const L = len / N;
     const out = [];
     const t = new THREE.Vector3(), k = new THREE.Vector3(), y = new THREE.Vector3();
+    // TODO 115 — through `chainLinkFrame`, the builder's own law, not a copy
+    // of it: this table models the metal `buildChainLinkGeometry` lays, so a
+    // frame the two disagree about is an arrest solved against a chain that
+    // is not there. It was, for one landing.
+    const flip = chainWalkFlip(joints, wrapArc);
     for (let i = 0; i < N; i++) {
       const sEnd = (i + 1) * L;
       if (sEnd < wrapArc - arcBack) continue; // only the wrap's top matters to the finger
       if (i * L > wrapArc) break;             // past the departure the span takes over (its corridor is asserted separately)
       if (wrapOnly && sEnd > wrapArc) break;  // …and the straddling link goes with it — see the note above
       const a = joints[i], b = joints[i + 1];
-      t.subVectors(b, a).normalize();
-      k.set(-t.z * t.x, -t.z * t.y, 1 - t.z * t.z).normalize();
-      y.crossVectors(k, t);
       const ramp = sEnd > wrapArc ? 0 : sEnd > wrapArc - CHAIN_PITCH ? 0.5 : 1;
-      const beta = ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc));
-      if (beta > 1e-9) {
-        const cb = Math.cos(beta), sb = Math.sin(beta);
-        const y2x = y.x * cb - k.x * sb, y2y = y.y * cb - k.y * sb, y2z = y.z * cb - k.z * sb;
-        k.set(k.x * cb + y.x * sb, k.y * cb + y.y * sb, k.z * cb + y.z * sb);
-        y.set(y2x, y2y, y2z);
-      }
+      chainLinkFrame(a, b, ramp * betaAtArc(Math.min((i + 0.5) * L, wrapArc)), flip, t, k, y);
       const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, mz = (a.z + b.z) / 2;
       const push = (aa, yy, dd) => out.push({
         x: mx + t.x * aa + y.x * yy + k.x * dd,
@@ -9141,6 +9458,70 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     }
     return worst;
   };
+  // THE PAD IS A PLANE ON A LEVER, so what a coil demands of it is a
+  // ROTATION, not a radius. `proudOf` above reads how far the metal reaches
+  // along ONE ray; the face the finger actually presents has TURNED by ψ
+  // about the stud and swung sideways with it, so at lateral offset ℓ in the
+  // face's own frame it stands ℓ·tanψ off where the ray says. Those agree
+  // only for a coil whose proudest point sits ON the ray, and it is the
+  // wrap's LINK PHASE that decides where that point sits — nothing in the
+  // solve. Measured (TODO 115): reversing the movement moved the point to
+  // 0.0908 of a 0.107 half-window, the finger swings 0.35 rad at full wind,
+  // and the "kiss" this row exists to hold opened to 0.0532 against its 0.03
+  // band while every collision gate stayed green.
+  //
+  // Rotating the pawl by ψ carries a fixed world point p into the face's REST
+  // frame as q = S + R(−ψ)(p − S), whose leaned radial coordinate is
+  //   g(ψ) = (S−C)·r̂ + a·cosψ + b·sinψ − (zRef − p.z)·lean,
+  //   a = (p−S)·r̂,  b = (p−S)·θ̂,
+  // so the face REACHES p exactly at g(ψ) = rest — a·cosψ + b·sinψ = K with
+  // K = rest − (S−C)·r̂ + (zRef − p.z)·lean, i.e. cos(ψ − α) = K/ρ,
+  // ρ = hypot(a, b), α = atan2(b, a). Closed form, two roots, and the one
+  // nearest zero is the FIRST rotation that reaches the point.
+  //
+  // WHICH POINTS THE FACE IS EVEN OVER MOVES WITH THE ROTATION, so this is a
+  // least fixed point rather than one pass. The lateral coordinate in the same
+  // frame is ℓ(ψ) = (S−C)·θ̂ − a·sinψ + b·cosψ, and the finger's swing carries
+  // the face up-fan by most of half its own width — measured on the built
+  // metal, the face spans world-tangential [−0.35, +0.35] seated and
+  // [+0.09, +0.72] at full lift. So an AZIMUTH window centred on the pad's ray
+  // is the rest face's footprint, not the lifted one: filtering on it first
+  // hid every link the lifted face actually rides and punched holes in the
+  // law (measured, lift fell to 0 across t = 0.985…0.992, and the closing-arc
+  // assert read the beak a whole PAD_LIFT short). The loop instead asks, at
+  // the rotation reached so far, which points are under the face and still in
+  // front of it, and takes the deepest rotation any of them demands; it stops
+  // when none is, which is the smallest rotation that clears the coil.
+  const psiDemand = (set, azMid, zLo, zHi, lean, zRef, S, rest, halfW, sgn) => {
+    const cA = Math.cos(azMid), sA = Math.sin(azMid);
+    const sr = (S.x - C.x) * cA + (S.y - C.y) * sA;   // (S−C)·r̂
+    const sl = -(S.x - C.x) * sA + (S.y - C.y) * cA;  // (S−C)·θ̂
+    let cur = 0, unreachable = 0;
+    for (let it = 0; it < 8; it++) {
+      const cc = Math.cos(cur), ss = Math.sin(cur);
+      let need = cur, unreach = 0;
+      for (const p of set) {
+        if (p.z < zLo || p.z > zHi) continue;
+        const ux = p.x - S.x, uy = p.y - S.y;
+        const a = ux * cA + uy * sA, b = -ux * sA + uy * cA;
+        if (Math.abs(sl - a * ss + b * cc) > halfW) continue;  // not under the face at this rotation
+        const K = rest - sr + (zRef - p.z) * lean;
+        if (a * cc + b * ss <= K) continue;                    // already behind the face
+        const rho = Math.hypot(a, b);
+        if (rho < 1e-12) continue;
+        const q = K / rho;
+        if (q < -1 || q > 1) { unreach++; continue; }           // no rotation clears it
+        const alpha = Math.atan2(b, a), d = Math.acos(q);
+        const r1 = alpha - d, r2 = alpha + d;
+        const psi = Math.abs(r1) <= Math.abs(r2) ? r1 : r2;
+        if (psi * sgn > need * sgn) need = psi;
+      }
+      unreachable = unreach;
+      if (need === cur) break;
+      cur = need;
+    }
+    return { psi: cur, unreachable };
+  };
   // the lean itself: the wall under the pad belongs to the station whose
   // plate TOP stands at the pad's mid — its β through the same law the cut
   // and the links share
@@ -9262,48 +9643,38 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   // single candidate: the fixed point on the window, the stud's three-way
   // shove, the lever's gain, and the beak scan. It returns null when no beak
   // azimuth survives, which is what makes the ranked walk above possible.
-  const solveFinger = (az) => {
-    // Fixed point on the window: the law's azimuth window must span the arc
-    // the BUILT face really covers, and the face's radius comes out of the
-    // law — the rest radius moves the window's arc, the window moves the
-    // rest radius; converges in two rounds (an earlier cut read the window
-    // at a nominal radius and the real face overhung it by 20% of arc — the
-    // checker found the coil 0.07 into the pad through exactly that lip).
-    let azHalf = PAD_AZ_HALF, proudFull = 0, restR = 0;
-    for (let fp = 0; fp < 3; fp++) {
-      proudFull = proudOf(_setFullPad, az, azHalf, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid);
-      restR = proudFull - PAD_LIFT;
-      azHalf = Math.atan((PAD_W / 2) / restR);
-    }
-    // --- the lever: pad — stud — beak ------------------------------------
-    // The stud sits tangentially offset DOWN-FAN of the pad point (−θ̂). The
-    // side matters: the arriving links approach the pad from +θ̂ and STOP at
-    // their terminal azimuths on its face, so everything at −θ̂ of the pad is
-    // azimuth the wrap never visits at these z bands — the stud, its head,
-    // the beak and the bank all live there, and the occupancy asserts hold
-    // it measured rather than believed. The outboard shove costs the gain
-    // nothing: the tangential offset carries the pad's moment arm and
-    // cross2(r̂,r̂) = 0.
-    const pt = { x: C.x + restR * Math.cos(az), y: C.y + restR * Math.sin(az) };
-    const th = { x: -Math.sin(az), y: Math.cos(az) }; // +θ̂ at the pad
-    // THREE constraints share the shove, all radial clearances at the stud:
-    // the hub's sweep outside the lug's orbit, the retaining head's
-    // inner-bottom corner outside the leaned top links' reach at its own
-    // window (measured by the occupancy law on a first-pass azimuth, then
-    // re-measured after the shove settles — two passes converge because the
-    // azimuth barely moves with the shove), and — TODO 51 — the HUB'S OWN RIM
-    // outside `ARM_STOP_R`. That third one is why no riser station could
-    // rescue the beak arm before: an arm's inboard end is the hub's rim, and
-    // with the stud where §126 left it the rim reached in to 4.23 against a
-    // discrete reach of 4.37. An arm cannot be asked to clear metal its own
-    // pivot is standing in.
-    // The shove lands the pivot ON its floor — the SAME `STUD_FLOOR_R` the
-    // lug was sized against. It has to be the same number: the lug's
-    // proudness is what opens the beak's window, and it opens it at that
-    // radius. A stud that then settled a hundredth further out (two `+0.02`
-    // allowances the floor did not know about) closed the window again from
-    // the outside, which is exactly the failure this whole solve exists to
-    // stop happening in sequence.
+  // --- the lever: pad — stud — beak --------------------------------------
+  // The stud sits tangentially offset DOWN-FAN of the pad point (−θ̂). The
+  // side matters: the arriving links approach the pad from +θ̂ and STOP at
+  // their terminal azimuths on its face, so everything at −θ̂ of the pad is
+  // azimuth the wrap never visits at these z bands — the stud, its head,
+  // the beak and the bank all live there, and the occupancy asserts hold
+  // it measured rather than believed. The outboard shove costs the gain
+  // nothing: the tangential offset carries the pad's moment arm and
+  // cross2(r̂,r̂) = 0.
+  // THREE constraints share the shove, all radial clearances at the stud:
+  // the hub's sweep outside the lug's orbit, the retaining head's
+  // inner-bottom corner outside the leaned top links' reach at its own
+  // window (measured by the occupancy law on a first-pass azimuth, then
+  // re-measured after the shove settles — two passes converge because the
+  // azimuth barely moves with the shove), and — TODO 51 — the HUB'S OWN RIM
+  // outside `ARM_STOP_R`. That third one is why no riser station could
+  // rescue the beak arm before: an arm's inboard end is the hub's rim, and
+  // with the stud where §126 left it the rim reached in to 4.23 against a
+  // discrete reach of 4.37. An arm cannot be asked to clear metal its own
+  // pivot is standing in.
+  // The shove lands the pivot ON its floor — the SAME `STUD_FLOOR_R` the
+  // lug was sized against. It has to be the same number: the lug's
+  // proudness is what opens the beak's window, and it opens it at that
+  // radius. A stud that then settled a hundredth further out (two `+0.02`
+  // allowances the floor did not know about) closed the window again from
+  // the outside, which is exactly the failure this whole solve exists to
+  // stop happening in sequence.
+  // TODO 115 made this a FUNCTION of the rest radius rather than a step that
+  // ran once after it: the demand the finger's own plane makes moves the rest
+  // radius, and a stud sited from the seed radius would be a lever solved
+  // against a pad that is no longer there.
+  const studFor = (pt, th, az, restR) => {
     let out = Math.max(0.15,
       Math.sqrt(Math.max(STUD_FLOOR_R ** 2 - R_PAD_ARM ** 2, 0)) - restR);
     const studAtOut = (o) => ({
@@ -9319,9 +9690,68 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
       const need = worst + CLEAR_MARGIN + HEAD_R; // head's inner sweep past the worst reach
       if (rOf(s) < need) out += need - rOf(s) + 0.01;
     }
-    const st = studAtOut(out);
-    const gain = cross2({ x: pt.x - st.x, y: pt.y - st.y }, rHat(az));
-    const psi = PAD_LIFT / gain;            // finger rotation at full wind (sign per the lever's own handedness)
+    return studAtOut(out);
+  };
+  const solveFinger = (az) => {
+    // Fixed point on the window: the law's azimuth window must span the arc
+    // the BUILT face really covers, and the face's radius comes out of the
+    // law — the rest radius moves the window's arc, the window moves the
+    // rest radius; converges in two rounds (an earlier cut read the window
+    // at a nominal radius and the real face overhung it by 20% of arc — the
+    // checker found the coil 0.07 into the pad through exactly that lip).
+    // TODO 115 widened that fixed point to carry the STUD too, because the
+    // demand `psiDemand` measures is a property of the whole lever: the rest
+    // radius sites the stud, the stud fixes the swing, the swing fixes how
+    // much lift the coil demands, and that demand must come out at PAD_LIFT
+    // or the designed throw is not the throw the metal performs.
+    //
+    // BISECTED, not stepped. Pulling the rest face in by δ adds δ to the lift
+    // the coil demands only to first order — the stud's own shove reads that
+    // radius too, and WHICH link governs the demand changes discretely as the
+    // face swings — so the naive step limit-cycles (measured, it stalled
+    // 1.13e-3 off the designed throw and dragged the pose's exact-inverse
+    // assert red with it). The shortfall is MONOTONE in the rest radius
+    // whatever the discontinuities do inside it, which is exactly the
+    // property bisection needs and iteration does not.
+    const th = { x: -Math.sin(az), y: Math.cos(az) }; // +θ̂ at the pad
+    let proudFull = 0, fpUnreach = 0;
+    // the seed is the RAY reading — the law this solve carried before the
+    // plane's own tilt was in it, and still the right first guess
+    const seed = proudOf(_setFullPad, az, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid) - PAD_LIFT;
+    // the lever this rest radius builds, and the lift its own coil demands of it
+    const leverAt = (rest) => {
+      const p = { x: C.x + rest * Math.cos(az), y: C.y + rest * Math.sin(az) };
+      const s = studFor(p, th, az, rest);
+      const g = cross2({ x: p.x - s.x, y: p.y - s.y }, rHat(az));
+      // the ray standoff a rotation ψ puts the face at — the same closed form
+      // `psiStandoff` publishes below, on this rest radius's own lever
+      const A = cross2({ x: s.x - C.x, y: s.y - C.y }, th);
+      const B = -g;
+      const Kp = cross2({ x: p.x - s.x, y: p.y - s.y }, th);
+      const dem = psiDemand(_setFullPad, az, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid,
+        s, rest, PAD_W / 2, Math.sign(PAD_LIFT / g));
+      const lift = A + (Kp - B * Math.sin(dem.psi)) / Math.cos(dem.psi) - rest;
+      return { pt: p, st: s, gain: g, psi: PAD_LIFT / g, lift, unreachable: dem.unreachable };
+    };
+    // bracket first: the demand falls as the rest face moves out, so walk the
+    // seed outward (or inward) by the shortfall itself until the sign turns
+    let lo = seed, hi = seed;
+    for (let k = 0; k < 40 && leverAt(lo).lift < PAD_LIFT; k++) lo -= 0.05;
+    for (let k = 0; k < 40 && leverAt(hi).lift > PAD_LIFT; k++) hi += 0.05;
+    for (let k = 0; k < 60 && hi - lo > 1e-12; k++) {
+      const mid = (lo + hi) / 2;
+      if (leverAt(mid).lift > PAD_LIFT) lo = mid; else hi = mid;
+    }
+    // take the side that lifts AT LEAST the designed throw: a discontinuity in
+    // which link governs cannot be bisected away, and a finger that falls
+    // short of its own throw is the failure this solve exists to prevent
+    const restR = lo;
+    const lev = leverAt(restR);
+    const pt = lev.pt, st = lev.st, gain = lev.gain, psi = lev.psi;
+    fpUnreach = lev.unreachable;
+    const fpMiss = Math.abs(lev.lift - PAD_LIFT);
+    const azHalf = Math.atan((PAD_W / 2) / restR);
+    proudFull = restR + PAD_LIFT;   // the ray standoff at full wind, by construction
     // The pad arm's own chord vs the flying span (the corridor law above):
     // its station solves outward later (armEndOutside), so the chord is
     // tested out to the sectored stop plus the head-room that walk
@@ -9329,7 +9759,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     // no legal finger at all, whatever the beak scan finds.
     if (spanFoulsChord(st.x, st.y,
       C.x + (armStopAt(az) + 1) * Math.cos(az), C.y + (armStopAt(az) + 1) * Math.sin(az))) {
-      return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st,
+      return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st, fpMiss, fpUnreach,
         padGain: gain, psiFull: psi, beakParked: null, beakGain: 0, beakMoment: 0,
         rejects: { arm: 0, radial: 0, sense: 0, chain: 0, moment: 0, span: 1 }, trace: 'P' };
     }
@@ -9371,7 +9801,7 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
       const sc = Math.abs(g) / armLen;
       if (sc > best) { best = sc; parked = c; bGain = g; bMoment = mom; }
     }
-    return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st,
+    return { azHalf, proudFull, restR, padPt: pt, tHat: th, stud: st, fpMiss, fpUnreach,
       padGain: gain, psiFull: psi, beakParked: parked, beakGain: bGain,
       beakMoment: bMoment, rejects, trace: trace.join('') };
   };
@@ -9389,6 +9819,14 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   }
   PAD_AZ = FINGER.az; T_TOUCH = FINGER.tTouch;
   PAD_AZ_HALF = FINGER.azHalf;
+  // the CHOSEN candidate's fixed point, reported here rather than inside the
+  // solve — a rejected azimuth's arithmetic is not this movement's finger
+  if (!(FINGER.fpMiss < 1e-10))
+    console.warn(`§47: the finger's rest radius never settled — the lift its own coil demands is still `
+      + `${FINGER.fpMiss.toExponential(2)} off PAD_LIFT after 16 rounds`);
+  if (FINGER.fpUnreach)
+    console.warn(`§47: ${FINGER.fpUnreach} coil point(s) under the pad face stand proud of it at EVERY finger `
+      + 'rotation — the lever cannot clear its own coil');
   const PAD_PROUD_FULL = FINGER.proudFull, PAD_REST_R = FINGER.restR;
   const padPt = FINGER.padPt, tHat = FINGER.tHat, stud = FINGER.stud;
   const padGain = FINGER.padGain;
@@ -9461,8 +9899,16 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const SUB = 4; // fine samples per node interval — the step's position inside an interval, resolved
     for (let k = 0; k <= LAW_N * SUB; k++) {
       const t = LAW_T0 + (k / (LAW_N * SUB)) * (1 - LAW_T0);
-      padLaw[k] = Math.max(0,
-        proudOf(builtPtsNear(t), PAD_AZ, PAD_AZ_HALF, PAD_ZLO, PAD_ZHI, PAD_LEAN, padZMid) - PAD_REST_R);
+      // the ROTATION the coil demands of this finger, read back as the lift
+      // the pose law speaks in — the same conversion the rest-radius solve
+      // ran, so the law and the geometry that produced it are one arithmetic.
+      // NO demand is EXACTLY no lift: psiStandoff(0) reassembles PAD_REST_R
+      // out of two cross products and lands a rounding step above it, and the
+      // catch-window assert next door tests `liftAt(...) !== 0` — a 1e-16 of
+      // lift reads there as a finger already thrown through the lug's free pass.
+      const dem = psiDemand(builtPtsNear(t), PAD_AZ, PAD_ZLO, PAD_ZHI,
+        PAD_LEAN, padZMid, stud, PAD_REST_R, PAD_W / 2, Math.sign(PSI_FULL));
+      padLaw[k] = dem.psi === 0 ? 0 : Math.max(0, psiStandoff(dem.psi) - PAD_REST_R);
     }
   }
   const liftAt = (tension) => {
@@ -9806,14 +10252,26 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     pawl.add(padPivot);
   }
   {
-    // the tab rides at the LUG's own z: its +θ̂ face passes through the
-    // parked contact point, its stock runs −θ̂ (behind the face, out of the
-    // lug's approach) and radially OUTWARD from the parked radius — so
+    // the tab rides at the LUG's own z: its WORKING face passes through the
+    // parked contact point, its stock runs BEHIND that face — out of the
+    // lug's approach — and radially OUTWARD from the parked radius, so
     // parked, no part of it stands inside the orbit (A4), and the throw
     // alone buys the engagement.
+    //
+    // TODO 115 — WHICH SIDE THE LUG COMES FROM is the movement's. The cone's
+    // local rotation runs −MOVEMENT_SENSE·2π per turn banked (windLocalAt), so
+    // as the wind rises the lug travels −MOVEMENT_SENSE·θ̂ and arrives from the
+    // +MOVEMENT_SENSE·θ̂ side. The stock therefore runs −MOVEMENT_SENSE·θ̂, and
+    // the sentence this comment used to make — "its +θ̂ face … its stock runs
+    // −θ̂" — was that arithmetic with the sense already substituted. Left
+    // unsigned against a reversed movement the lug meets the tab's STOCK
+    // instead of its face: measured, the beak stood 0.327 inside the lug at
+    // wind 0.494, arriving early and burying deeper all the way to full wind,
+    // and `windArrestHandoff` still read the full-wind kiss as 0 because the
+    // two faces are coplanar there whichever side the body is on.
     const ctr = {
-      x: beakParked.x - beakTan.x * (BEAK_TAN / 2) + beakRad.x * (BEAK_RAD / 2),
-      y: beakParked.y - beakTan.y * (BEAK_TAN / 2) + beakRad.y * (BEAK_RAD / 2),
+      x: beakParked.x - MOVEMENT_SENSE * beakTan.x * (BEAK_TAN / 2) + beakRad.x * (BEAK_RAD / 2),
+      y: beakParked.y - MOVEMENT_SENSE * beakTan.y * (BEAK_TAN / 2) + beakRad.y * (BEAK_RAD / 2),
     };
     const m = new THREE.Mesh(new THREE.BoxGeometry(BEAK_RAD, BEAK_TAN, TAB_Z2 - TAB_Z1), MATS.steel);
     m.name = 'windArrestBeak';
@@ -9974,9 +10432,12 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     const sOut = Math.abs(sOutA) < Math.abs(sOutB) ? sOutA : sOutB;
     const e1 = { x: beakThrown.x + sIn * alongFace.x, y: beakThrown.y + sIn * alongFace.y };
     const e2 = { x: beakThrown.x + sOut * alongFace.x, y: beakThrown.y + sOut * alongFace.y };
-    // sweep the face edge to the TRAILING side (+θ̂, where the lug's body
-    // follows its own leading face) to close the body
-    const sweep = (p) => rot2(p, LUG_SWEEP_W / rOf(p));
+    // sweep the face edge to the TRAILING side — where the lug's body follows
+    // its own leading face — to close the body. TODO 115: trailing is
+    // +MOVEMENT_SENSE·θ̂, the same commitment the beak tab's stock carries and
+    // for the same reason; flip one without the other and the pair meets
+    // stock-on-stock at full wind (measured −0.327 on the handoff's kiss).
+    const sweep = (p) => rot2(p, MOVEMENT_SENSE * LUG_SWEEP_W / rOf(p));
     const q1 = sweep(e1), q2 = sweep(e2);
     // build the quad in the FUSEE's local frame (world-at-arrest rotated
     // back by the datum), extruded over the lug's z band
@@ -10568,10 +11029,14 @@ handsGroup.add(minuteHand);
 // Small-seconds display — the hand rides the fourth wheel's own axis via
 // the slip-coupled display arbor (see secondsCamArbor: heart cam + through
 // rod). The hand mesh lives on the dialFace (authored-frame) like every
-// other hand; its rotation uses the SAME expression the old central second
-// hand used (fourthA − secondsZeroRef), which is verified clockwise from
-// the front — the movement-frame arbor carries the negated value, the two
-// being the same physical rotation seen from opposite sides.
+// other hand; its rotation is built from the SAME expression the old central
+// second hand used (fourthA − secondsZeroRef), NEGATED for the dialFace frame.
+// TODO 115 — this sentence used to read "the movement-frame arbor carries the
+// negated value, the two being the same physical rotation seen from opposite
+// sides", and that is true about VIEWERS and false about PARTS: two bodies
+// keyed to one arbor are one rigid body, and a viewer's side changes what
+// their rotation looks like, not what it is. The dial side is the negated one;
+// the movement-frame arbor (secondsCamArbor) takes the value straight.
 const smallSecondsGroup = new THREE.Group();
 smallSecondsGroup.position.set(SECONDS_LOCAL.x, SECONDS_LOCAL.y, 0);
 dialPlateFace.add(smallSecondsGroup);   // TODO 26: dial furniture — rides the face
@@ -15762,6 +16227,9 @@ alarmBarrelUnit.add(alarmArborRotor);
 // (ALARM_WIND_TIP_R and ALARM_RATCHET_R — §112: in the alarm-plan block;
 // the grounding-lane derivation above still owns their arithmetic.)
 const ALARM_RATCHET_N = 2 * ALARM_STRIKES_PER_BARREL_TURN;
+// TODO 115 — the arbor ratchet's own cut outline, kept so the click beak's
+// guard can read the SAW rather than restate the mapping it was cut to.
+let ALARM_RATCHET_POLY = null;
 // §106's counts, continued — these need the arbor wheel and the ratchet, so
 // they land here rather than beside ARREST_PINION_TEETH. Each is an identity
 // the build asserts, not a value chosen to make one come out.
@@ -15930,6 +16398,7 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
     // whose ribbon needed a collar built up over a thin pivot — there is
     // nothing here for a collar to add but a second radius to justify.
     springArborR: ALARM_BARREL_ARBOR_R,
+    sense: ALARM_SENSE, // TODO 115: the alarm is its own motor — layout.js
     // A full wind IS the relative travel between the two rotors: since §99
     // tick winds the ribbon by (bodyA − arborA), which spans TURNS·2π from
     // run-down to full, so the reserve and the sweep are the same quantity
@@ -16015,8 +16484,10 @@ let alarmSpring = null;   // the ribbon's wind morph — set below, driven in ti
   const arborRatchet = G.makeRatchetAndClick({
     radius: ALARM_RATCHET_R, teeth: ALARM_RATCHET_N, thickness: ALARM_RATCHET_T,
     includeClick: false, squareBore: arborSq, reverse: true,
+    sense: ALARM_SENSE, // TODO 115: the alarm is its own motor — layout.js
   });
   arborRatchet.traverse((o) => { if (o.isMesh) o.name = 'alarmArborRatchet'; });
+  ALARM_RATCHET_POLY = arborRatchet.userData.ratchetPoly;   // TODO 115: the beak's guard reads this
   arborRatchet.position.z = ALARM_RATCHET_BOT_Z - ALARM_BARREL_Z; // extrude runs bottom→up
   // §83's word for "a wheel whose content is its cut outline": the profile
   // is both the OWN_GLYPH opt-out (a saw drawn as a smooth pitch circle is
@@ -16776,6 +17247,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   // metal on metal by construction, not by adjacency.
   const saw = G.makeRatchetAndClick({
     radius: ALARM_GOV_SAW_R, teeth: ALARM_GOV_SAW_TEETH, thickness: ALARM_GOV_SAW_T, includeClick: false,
+    sense: ALARM_SENSE, // TODO 115: the alarm is its own motor — layout.js
     squareBore: (2 * ALARM_GOV_ARBOR_R) / Math.SQRT2 }); // side of the filed square, across-corners = arbor ⌀ (§99's arborSq)
   saw.traverse((o) => { if (o.isMesh) o.name = 'alarmGovSaw'; });
   saw.rotation.z = ALARM_GOV_SAW_PHASE;
@@ -17670,6 +18142,40 @@ registerExplode(alarmClickUnit, 0, 9); // rides with the back stack, like the wi
   // ramp relief: azV − t·0.6·pitch at ramp radius + 0.02 (the ramp spans
   // 0.72 of the pitch; the beak covers 0.6 of it)
   const rampPt = (t) => polarPt(azV - t * 0.6 * pitchAz, rootR + (t * 0.6 / 0.72) * (ALARM_RATCHET_R - rootR) + 0.02);
+  // TODO 115 GUARD — THE BEAK IS CUT TO A SAW, so the saw had better be cut
+  // that way. Both profiles above assume the REVERSED mapping: the face edge
+  // climbs rootR → R over azV → azV + 0.28·pitch, which is the tooth's steep
+  // locking face only while this ratchet is MIRRORED — and whether it is
+  // mirrored is `reverse: true` XORed with ALARM_SENSE, the alarm motor's own
+  // hand (layout.js). Turn that hand over and the saw flips under a beak that
+  // did not: measured, the beak stood 0.35 clear of its tooth at every parity,
+  // which the battery reports as an `alarmHandoffs` failure and nothing says at
+  // build. So read the saw where the beak's face edge ENDS — it must be at the
+  // crest, not two fifths of the way up a ramp.
+  {
+    // Read the RATCHET'S OWN OUTLINE, not the mapping this file believes in —
+    // the first cut of this guard sampled `sawRadiusAt` through a hard-coded
+    // reversed mapping, which is the beak's assumption restated, and it sat
+    // there reporting the crest whichever way the saw was cut. The roots sit at
+    // multiples of the pitch under BOTH cuts (a reflection maps that set onto
+    // itself), so folding every outline point into one pitch window puts the
+    // crest at 0.28 of it when the saw is mirrored and 0.72 when it is not, and
+    // the beak above is cut for 0.28. Halfway between the two is the
+    // classifier; nothing here is a tolerance.
+    const poly = ALARM_RATCHET_POLY ?? [];
+    let crestFrac = null, crestR = 0;
+    for (const [x, y] of poly) {
+      const r = Math.hypot(x, y);
+      if (r <= crestR) continue;
+      let a = Math.atan2(y, x) % pitchAz;
+      if (a < 0) a += pitchAz;
+      crestR = r; crestFrac = a / pitchAz;
+    }
+    if (crestFrac === null || !(crestFrac < 0.5))
+      console.warn(`§115 alarm click beak: the arbor ratchet's crest sits ${crestFrac === null ? 'nowhere readable' : crestFrac.toFixed(3)} `
+        + 'into its pitch, but the beak above is cut for a MIRRORED saw (crest at 0.28) — the beak would park on a '
+        + `ramp instead of filling its valley (ALARM_SENSE ${ALARM_SENSE})`);
+  }
   const clickShape = new THREE.Shape();
   const faceEdge = [1.15, 1.0, 0.66, 0.33].map((s) => facePt(s, faceRelief));   // 1.15 extends past the crest to r ≈ R+0.14, outside the tips
   const rampEdge = [0.25, 0.5, 0.75, 1.0].map(rampPt);
@@ -23652,6 +24158,96 @@ const RESERVE_BARREL_TURNS = RELAX_SECONDS / (HOURS_PER_FUSEE_TURN * 3600); // =
 // minted, rather than trusted to the comment three lines up.
 if (Math.abs(RESERVE_BARREL_TURNS - WIND_ARREST.engageTurns) > 1e-9)
   console.warn(`§47: RESERVE_BARREL_TURNS ${RESERVE_BARREL_TURNS} ≠ WIND_ARREST.engageTurns ${WIND_ARREST.engageTurns} — the bank and the cone disagree about where full wind is`);
+// TODO 115 GUARD — and the sense assert up beside `windLocalAt` is only half of
+// it, because it holds that law's two terms SEPARATELY and the law's whole
+// content is that they CANCEL. §47's claim in prose is "during run-down the
+// local angle is CONSTANT — drain-turns ≡ cone advance, pathwise"; this
+// measures that claim rather than repeating it. Walk the drain: `turns` falls
+// one per HOURS_PER_FUSEE_TURN of τ, the same ratio `barrelMeshAngle` gears, so
+// the local angle must not move at all. (It lives here, not beside the law,
+// because RESERVE_BARREL_TURNS is minted on this line — the reason `windLocalAt`
+// is documented as call-after-init.)
+//
+// It exists because the sense the reserve term carries is invisible from
+// outside: get it wrong and the cone creeps on its arbor at TWICE the drain
+// rate, clicking the maintaining pawls the whole time — a watch running
+// permanently on its maintaining power. Every gate in the battery stays green
+// through that, and TODO 115's reversal walked straight into it.
+{
+  // A WHOLE NUMBER OF BEATS, not a round quarter turn. `barrelMeshAngle` runs
+  // back through `escapeAngle`, which is a STAIRCASE — n·BEAT_DEG plus a
+  // within-beat delta — so sampling at an arbitrary τ carries that delta into
+  // the comparison and the drift reads 3e-6 rad of the escapement's own
+  // quantisation rather than anything about the cone. Landing on a beat
+  // boundary makes both samples share the same phase and the identity exact,
+  // which is the difference between a tolerance and a measurement.
+  const beatS = 1 / (2 * F_BALANCE);
+  const DT = Math.round(3600 * HOURS_PER_FUSEE_TURN * 0.25 / beatS) * beatS;
+  const drained = DT / (3600 * HOURS_PER_FUSEE_TURN);          // turns per second of τ, by the same ratio
+  const drift = windLocalAt(RESERVE_BARREL_TURNS - drained, DT) - windLocalAt(RESERVE_BARREL_TURNS, 0);
+  if (!(Math.abs(drift) < 1e-9))
+    console.warn(`§47: the fusee cone creeps ${drift.toExponential(3)} rad on its arbor over ${drained.toFixed(4)} `
+      + `turns of run-down (needs 0) — the reserve term and barrelMeshAngle are not cancelling, so the maintaining `
+      + `work clicks while the watch simply runs (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+}
+// TODO 115 GUARD — THE MAINTAINING CLICK MUST CLIMB THE RAMP, NOT THE CLIFF.
+// Winding banks turns, `windLocalAt` turns that into windBack, and the pawl
+// reads windBack back through `MAINT_U_SIGN`: three signs in series, and the
+// only thing that matters is what they COMPOSE to. The saw's ramp is 0.72 of
+// its pitch and its locking face the other 0.28, so a click winding the right
+// way spends 72% of each pitch rising and 28% dropping off. Get any one of the
+// three wrong and it does the exact reverse — dragged up the steep face and
+// sliding back down the ramp, a one-way device running the wrong way — and
+// nothing else in this repository would say so: the pawl still moves, still
+// clears, still reports green through every collision gate. Measured by
+// STEPPING the shipped chain (bank a pitch, read the tooth under the tip)
+// rather than by restating any of the three signs.
+{
+  const N = 240;
+  const pitchTurns = 1 / MAINT_TEETH;                       // one tooth of bank
+  const rAt = (turns) => {
+    let u = ((MAINT_U_SIGN * (MAINT_PAWL_TIP_AZ - windLocalAt(turns, 0)) * MAINT_TEETH) / (2 * Math.PI)) % 1;
+    if (u < 0) u += 1;
+    return sawRadiusAt(u, MAINT_FLANGE_R);
+  };
+  let rising = 0;
+  for (let i = 0; i < N; i++) {
+    const a = RESERVE_BARREL_TURNS - pitchTurns + (i * pitchTurns) / N;
+    if (rAt(a + pitchTurns / N) > rAt(a)) rising++;          // winding = banking turns
+  }
+  const frac = rising / N;
+  // 0.5 is the CLASSIFIER between two populations the cut itself defines — the
+  // ramp's 0.72 and the face's 0.28 — not a tolerance anybody chose.
+  if (!(frac > 0.5))
+    console.warn(`§115 maintaining click: winding lifts the pawl over ${(frac * 100).toFixed(1)}% of a tooth pitch, `
+      + `so it is climbing the FACE (0.28 of the pitch) instead of the RAMP (0.72) — the wind direction, `
+      + `windLocalAt's sense and MAINT_U_SIGN do not compose (MOVEMENT_SENSE ${MOVEMENT_SENSE})`);
+}
+// TODO 115 GUARD — THE KEYLESS CHAIN IS BUILT ON A CONSTANT; THIS IS THE LAW IT
+// CLAIMS TO COME FROM. `SPUR_RAD_PER_TURN` (top of file) is the winding spur's
+// world rotation per turn banked, and everything from the crown wheel out to the
+// coupling's cut hangs off it — but it is declared 20k lines from `windLocalAt`,
+// which is where that rate actually LIVES, and it has to be, because the clutch
+// is built long before the reserve constants exist. Two copies of one rate, in
+// two places, is the defect this whole item is made of, so the moment the second
+// one is reachable it is measured against the first.
+{
+  const measured = windLocalAt(RESERVE_BARREL_TURNS, 0) - windLocalAt(RESERVE_BARREL_TURNS - 1, 0);   // one turn BANKED
+  if (!(Math.abs(measured - SPUR_RAD_PER_TURN) < 1e-9))
+    console.warn(`§115 winding train: the spur turns ${measured.toFixed(4)} rad per turn banked by windLocalAt's own `
+      + `law, but the keyless chain is built on ${SPUR_RAD_PER_TURN.toFixed(4)} — the crown wheel, the knob and the `
+      + 'stem coupling would all be geared to a spur that is not there');
+}
+// TODO 115 — THE WINDING TRAIN AGAINST ITSELF. This slot used to hold a guard
+// comparing `crownWheelSpin` against the winding spur's world delta, because the
+// two were separate expressions of one quantity and only one of them learned the
+// movement's sense. It is retired rather than kept green: tick() DERIVES the
+// crown wheel's spin from the spur's own delta now (search §126 one source), and
+// `STEM_RAD_PER_TURN` is the single gearing constant the input divides by and the
+// knob multiplies by — so there is no second copy left for a sense to be missing
+// from, and an assert between one expression and itself measures nothing.
+// What the keyless half still needs held is the COUPLING'S CUT against the
+// winding direction, and that assert lives where the rings are built.
 let barrelWindTurns = RESERVE_BARREL_TURNS; // starts fully wound
 
 // TODO 18's gate. The reserve indicator is three quantities that must agree —
@@ -23784,11 +24380,22 @@ let windStemSlip = 0;      // stem rotation not delivered to the winding wheel (
 // eats a whole tooth of wind. probe-50-clutch caught exactly that: a
 // half-pitch wiggle-and-return left slip at +2e-6 and the next pitch of
 // forward crown banked nothing.
+// TODO 115 — measured in WINDING-POSITIVE stem radians (`slipW`), so the whole
+// one-way — this gap, the take-up, the ratchet and the coupling's own ride law —
+// keeps one arithmetic whichever way the crown winds. `windStemSlip` itself
+// stays in the KNOB's frame, because that is what the display and the saved
+// state mean; this and `stemSlipLocal` below are the only two conversions.
 function stemClutchGap() {
   const P = STEM_SAW_SPEC.pitch;
-  const g = (((-windStemSlip) % P) + P) % P;
+  const g = ((stemSlipLocal() % P) + P) % P;
   return g > P - 1e-9 ? 0 : g;
 }
+// The coupling's relative angle in the PROFILE's own local sense: δ_ring is
+// −windStemSlip (clutch keyed to the stem, pinion to the bank), and a ring cut
+// with `sense: windSign` runs its profile in that sense, so the law reads
+// windSign·δ_ring. Equivalently −slipW, which is why the gap above is one
+// modulo of exactly this.
+function stemSlipLocal() { return windSign * -windStemSlip; }
 let setPathRot = 0;        // accumulated rotation actually delivered to the setting path
 let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
@@ -33693,8 +34300,13 @@ function tick(t) {
   }
   const crownRotDelta = crownRotation - lastCrownRotation;
   lastCrownRotation = crownRotation;
+  // TODO 115 — the input works in WINDING-POSITIVE knob radians. Which way that
+  // is comes from `windSign`, which is read off the one gearing constant the
+  // display also uses, so the input and the knob cannot disagree about which
+  // direction winds. Everything below is the arithmetic it always was.
+  const windIn = windSign * crownRotDelta;
   if (windEngaged) {
-    if (crownRotDelta > 0) {
+    if (windIn > 0) {
       // TODO 50 sub-pitch take-up: after a reversal the clutch stands a
       // parked fraction past the drive faces (relative angle −slip mod
       // pitch), and forward input FREE-SWINGS that gap — back through the
@@ -33702,13 +34314,14 @@ function tick(t) {
       // can bank. The gap is the coupling's own relative angle, read from
       // the same spec the rings were cut from; at the seated state it is
       // zero and this whole block is a no-op.
-      const takeUp = Math.min(crownRotDelta, stemClutchGap());
-      windStemSlip += takeUp;
-      const drive = crownRotDelta - takeUp;
+      const takeUp = Math.min(windIn, stemClutchGap());
+      windStemSlip += windSign * takeUp;
+      const drive = windIn - takeUp;
       if (drive > 0) {
-        // Ratio chain gives the winding spur's rotation in RADIANS;
-        // barrelWindTurns is in TURNS, hence the /2π.
-        const turnsDelta = drive * (windPinionTeeth / crownWheelTeeth) * (crownWheelTeeth / WIND_SPUR_TEETH) / (2 * Math.PI);
+        // One gearing constant, inverted: the knob's derived angle multiplies
+        // by STEM_RAD_PER_TURN and the input divides by it, so the knob tracks
+        // the hand exactly by construction rather than by two ratios agreeing.
+        const turnsDelta = drive / Math.abs(STEM_RAD_PER_TURN);
         // §47 — the cap is the ARREST, not a number: the bank saturates because
         // the finger's beak is on the stop lug and the whole path from the lug
         // back to the crown is rigid, so input past it banks nothing and MOVES
@@ -33769,8 +34382,8 @@ function tick(t) {
     if (drained > 0) {
       const gap = stemClutchGap();
       if (gap > 1e-12) {
-        const stemRad = drained * (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI;
-        windStemSlip += Math.min(stemRad, gap);
+        const stemRad = drained * Math.abs(STEM_RAD_PER_TURN);   // the same one gearing constant
+        windStemSlip += windSign * Math.min(stemRad, gap);       // TODO 115 — closing the gap is the winding direction
       }
     }
   }
@@ -33907,12 +34520,15 @@ function tick(t) {
   // t=0 so the dial reads 12:00:00 at sim start (the raw angles carry the
   // arbitrary tooth-interleaving phase constants), plus handSetOffset from
   // manual time-setting. Sign notes: centerAngle decreases with t (−2π per
-  // sim hour); a hand's local +Z axis points toward the viewer on the dial
-  // (-Z) side through dialFace's Y-flip, so a decreasing local rotation
-  // reads as a clockwise sweep from the front — the raw deltas already
-  // have the right sense.
+  // sim hour), and every hand below is a dialFace child, so it carries the
+  // NEGATED movement-frame angle (TODO 115) — the Y-flip turns that back into
+  // the clockwise sweep a dial reads. The old note here said the raw deltas
+  // already had the right sense; they read right and were the wrong body.
   const minuteA = centerAngle(tau) - centerAt0 + handSetOffset + DIAL_EPOCH_ANGLE; // −2π per hour
-  minuteHand.rotation.z = minuteA;
+  // TODO 115 — dialFace is turned 180° about Y, so a dial-side display keyed
+  // to a movement-frame quantity carries the NEGATED value to be the same rigid
+  // body. `reserveHand` (below) always did this; these did not.
+  minuteHand.rotation.z = -minuteA;
   // Hour hand: NOT minuteA/12. The angle is carried through the motion
   // works' two real meshes — cannon pinion → minute wheel, then minute
   // pinion → hour wheel — from their tooth counts, the same way every
@@ -33960,12 +34576,14 @@ function tick(t) {
     jumperLifter.rotation.z = Math.atan2(ldy, ldx);
     jumperLifter.scale.x = llen;
   }
-  hourWheelGroup.rotation.z = mwHourA;
+  // TODO 115 — dial-side: carries the negated movement-frame angle.
+  hourWheelGroup.rotation.z = -mwHourA;
   // Small seconds at 6: same expression the old central hand used (−2π per
-  // minute, re-referenced on reset) — the CW-from-front sense is already
-  // verified for dialFace children.
-  smallSecondsHand.rotation.z = fourthA - secondsZeroRef;
-  cannonPinion.rotation.z = minuteA;
+  // minute, re-referenced on reset). TODO 115 — dial-side, so negated: the hand
+  // and the fourth wheel it rides are one rigid body rather than mirror images
+  // of one, which is what `probe-coaxial-sense.mjs` measures.
+  smallSecondsHand.rotation.z = -(fourthA - secondsZeroRef);
+  cannonPinion.rotation.z = -minuteA;   // TODO 115 — dial-side, as above
 
   // (The mainspring is wound further down, off the drum's own angle — it is
   // not a readout of tension any more. TODO 1.)
@@ -33988,7 +34606,8 @@ function tick(t) {
   // nothing (the first cut added the full lift at every pull, and the
   // pulled clutch overshot the setting station into the wheel by it).
   const sawLift = Math.max(0,
-    sawCouplingLiftAt(STEM_SAW_SPEC, -windStemSlip) - crownPullT * CLUTCH_TRAVEL);
+    sawCouplingLiftAt(STEM_SAW_SPEC, stemSlipLocal() + sawSeatOffset(STEM_SAW_SPEC, windSign))
+    - crownPullT * CLUTCH_TRAVEL);   // TODO 115 — the profile's own sense, at the same seat offset the rings are clocked to
   // §99's face-relief convention, at the coupling: the analytic seat would
   // park the pair plane-on-plane twice over (tip flats on valley flats in
   // z, drive faces in θ), and exactly-coincident planes are the one case
@@ -34025,18 +34644,22 @@ function tick(t) {
   // Reset hammer + heart cam: the hammer is DRIVEN by the rigid connecting
   // rod — its angle is solved from the setting-lever post's position through
   // the rod constraint, so the whole linkage moves as the four-bar it is.
-  // The display arbor (cam + through rod + hand hub) carries the NEGATED
-  // hand value: a movement-frame rotation reads mirrored from the front
-  // through the dialFace Y-flip, so −(fourthA − secondsZeroRef) here and
-  // +(fourthA − secondsZeroRef) on the dialFace-mounted hand are the same
-  // physical rotation seen from opposite sides — the same slip-coupling
-  // sign convention the reserve train uses. At reset both go to 0 and the
+  // The display arbor (cam + through rod + hand hub) is in the MOVEMENT frame,
+  // so it carries the hand value STRAIGHT and the dialFace-mounted hand carries
+  // it negated. TODO 115 — the two were the other way round, justified as "the
+  // same physical rotation seen from opposite sides"; they are one rigid body,
+  // and it measured them counter-rotating by exactly 2·(fourthA − zero). The
+  // reserve train's crossing (reserveHand) is the pattern this now follows.
+  // At reset both go to 0 and the
   // cam sits at camPhaseOffset, so the hammer-seat calibration is
   // unaffected by the sign. (postNow and the rod solve both ran up at the
   // reset-contact block, which needs the roller's position before anything
   // reads the seconds display — the same post drives the hack ramp collar.)
   hammerGroup.rotation.z = hammerRot;
-  secondsCamArbor.rotation.z = -(fourthA - secondsZeroRef) + camPhaseOffset;
+  // TODO 115 — the cam arbor is in the MOVEMENT frame (movement.add, 2881), so
+  // it takes the angle UNNEGATED. The negation here was the same seam error
+  // read from the other side: a movement-frame part written as if dial-side.
+  secondsCamArbor.rotation.z = (fourthA - secondsZeroRef) + camPhaseOffset;
 
   // Reset-hammer rod: rigid — constant length by construction; just placed
   // between its two pins.
@@ -34089,8 +34712,17 @@ function tick(t) {
   // rate through the 24:8 ratio is 1:1 with banked crown input); at the
   // arrest it stops with the wheel, which is §47's acceptance — a real
   // fusee stop stalls the crown dead, the hand slips on the knob.
-  const windStemRot = (WIND_SPUR_TEETH / windPinionTeeth) * 2 * Math.PI
-    * (barrelWindTurns - RESERVE_BARREL_TURNS) + windStemSlip;
+  //
+  // TODO 115 — the derived term carries the movement's sense, because the
+  // sentence four lines up ("positive crownRotation IS the banking direction")
+  // stopped being true: reversing the going train reverses which way the fusee
+  // must turn to GATHER chain, and the keyless gearing between it and the crown
+  // did not change, so the winding direction AT THE CROWN reverses with it.
+  // That is user-visible and it is not a preference — `windCrownDrive` at the
+  // input above is the same fact, read from the other end, and the two are held
+  // together by the knob-tracks-the-hand assert (search §115 knob).
+  const windBack = windLocalAt(barrelWindTurns, tau);
+  const windStemRot = STEM_RAD_PER_TURN * (barrelWindTurns - RESERVE_BARREL_TURNS) + windStemSlip;
   windSpinner.rotation.y = -windStemRot;
   // TODO 50 — the split's two rotors. The CLUTCH is keyed to the stem
   // (square joint): it spins with the knob, slip included. The FIXED
@@ -34101,13 +34733,22 @@ function tick(t) {
   windClutch.rotation.y = -windStemRot + 0.005; // the clocking half of SEAT_RELIEF, INTO the backlash (+δ — see the slide above and the ring-mount comment)
   windPinionGroup.rotation.y = -(windStemRot - windStemSlip);
 
-  // The spur's world-angle DELTA from the built (full-wind) pose is
-  // −2π·(RESERVE − bank) — its local windLocalAt term plus the arbor's train
-  // rotation, the tau parts cancelling by the drain sync. The transfer
-  // counter-rotates through 24:20, the crown wheel is keyed to it, and the
-  // idler hangs off the wheel as before.
-  const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * 2 * Math.PI
-    * (RESERVE_BARREL_TURNS - barrelWindTurns);
+  // The spur's world-angle DELTA from the built (full-wind) pose: its local
+  // `windLocalAt` term plus the arbor's train rotation, the tau parts
+  // cancelling by the drain sync. The transfer counter-rotates through 24:20,
+  // the crown wheel is keyed to it, and the idler hangs off the wheel as
+  // before.
+  //
+  // TODO 115 / §126 — ONE SOURCE. This used to be a SECOND expression of the
+  // same quantity, spelled `−(ratio)·2π·(RESERVE − bank)`, and when
+  // `windLocalAt` learned the movement's sense this copy did not: the crown
+  // wheel turned one way per turn banked while the spur it meshes turned the
+  // other. Nothing in the battery reads it — both are poses, and no gate
+  // measures whether a mesh turns the right way — so the winding train ran
+  // through itself in silence. It is now DERIVED from the spur's own delta,
+  // which is why there is nothing left here for a sense to be missing from.
+  const spurWorldDelta = windBack + (barrelMeshAngle(tau) - barrelMeshAngle(0));
+  const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * spurWorldDelta;
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
   transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
   if (windIdlerWheel) windIdlerWheel.rotation.z = -crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream
@@ -34117,7 +34758,6 @@ function tick(t) {
     // bank; see windLocalAt for why the tau term makes run-down a constant
     // here), riding on the arbor's own train rotation. Raw crown input past
     // the arrest moves none of them — the beak is on the block.
-    const windBack = windLocalAt(barrelWindTurns, tau);
     windSpur.rotation.z = windSpurBase + windBack;
     windTop.rotation.z = windBack;
     fusee.rotation.z = windBack;
@@ -35650,6 +36290,10 @@ window.__clock = {
   get barrelWindTurns() { return barrelWindTurns; },
   get windStemSlip() { return windStemSlip; },        // TODO 50: the coupling's relative index
   get stemSawPitch() { return STEM_SAW_SPEC.pitch; }, // …and its pitch (the stemSlip axis reads this)
+  // TODO 115 — the ONE stem⇄bank gearing constant, exposed because an
+  // instrument that hard-codes which way the crown winds measures the old
+  // movement (probe-50-clutch did, and its "forward" stroke became an unwind).
+  get stemRadPerTurn() { return STEM_RAD_PER_TURN; },
   get tension() { return clamp(barrelWindTurns / RESERVE_BARREL_TURNS, 0, 1); },
   get crownRotation() { return crownRotation; },
   get setPathRot() { return setPathRot; },

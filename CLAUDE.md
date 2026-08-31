@@ -611,7 +611,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 126 measuring scripts and this file names 14. The rest are named for the
+`tools/` holds 170 measuring scripts and this file names 14. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -628,8 +628,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **57 of
-them are ACCEPTANCE tests** that exit non-zero, and **69 are REPORTS** that
+The index also carries the split that decides how to read a result: **77 of
+them are ACCEPTANCE tests** that exit non-zero, and **93 are REPORTS** that
 print and leave the judgement to you. A report saying `0 violations` has not
 passed anything.
 
@@ -712,16 +712,61 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   `(P.dial.x − x, P.dial.y + y)`. The frame is turned 180° about Y, so a
   dialFace child's `rotation.z = θ` IS a world rotation of −θ — which means a
   display and the movement-frame arbor it is keyed to must carry OPPOSITE
-  values to be the same rigid body. **What the code does today is the
-  reverse**, and this entry used to state that as the convention ("a
-  movement-frame arbor carries the NEGATED rotation of the hand it drives").
-  It is TODO 115: measured, every display the going train drives
-  counter-rotates its own wheel, equal and opposite to the last digit
-  (`tools/probe-coaxial-sense.mjs`). Read the convention as a description of
-  a defect, not as a rule to follow, until that item lands — and note the fix
-  is not one sign, because the train's absolute sense is wrong too. The
-  correct crossing is already in the tree: `reserveHand.rotation.z =
-  -rsvArbor2.rotation.z` (33743), and the alarm pointer's comment beside it.
+  values to be the same rigid body. **That is the rule, and since TODO 115 the
+  code follows it**: every dial-side display keyed to a going-train quantity
+  takes the negated angle (`minuteHand`, `hourWheelGroup`, `smallSecondsHand`,
+  `cannonPinion`), and a MOVEMENT-frame part keyed to the same quantity takes
+  it unnegated (`secondsCamArbor`, which `movement.add`s) — the same seam read
+  from the other side, and the error the fix had to correct in both
+  directions. `reserveHand.rotation.z = -rsvArbor2.rotation.z` always did
+  this and is `probe-coaxial-sense.mjs`'s fourth control. **Which frame a part
+  is parented into is the whole question**, so check the `add` before the
+  sign. The train's ABSOLUTE sense is the other half and it is one factor, not
+  a sign per wheel: `MOVEMENT_SENSE` in `layout.js` — see the direction-guard
+  entry below.
+- **Which way a train runs is ONE declaration, and there are TWO of them** —
+  `MOVEMENT_SENSE` (the going train) and `ALARM_SENSE` (the alarm, a second
+  MOTOR posed off `alarmStrikePhase` that reversing the going train does not
+  turn) — both in `layout.js`. Every direction-committed cut derives from one of
+  them: the escape wheel's club and its tooth PHASE, the pallet stones (a MIRROR
+  of the whole stone assembly, not a sign — body side, slot, head walls,
+  tooth-motion tangent and face normal together), the five saw/ratchet cuts, the
+  fusee groove, both mainspring ribbons, the chain's wrap and its span's tangent
+  branch, the drum's rotation, `windLocalAt`'s pay-out term, the maintaining
+  click's tooth mapping, the keyless chain out to the crown (which reverses
+  WHICH WAY YOU TURN IT to wind — a consequence of the gearing, walked through
+  it rather than declared) with TODO 50's saw coupling re-cut and re-clocked,
+  and `escapeAngle`. **Pose tables are direction-committed too** — a declared
+  pose that means "backward crown", or an axis that sweeps one pitch of it, is a
+  direction; left as a bare negative it sweeps the driving side on a reversed
+  movement and measures poses the watch never reaches. Nothing in the battery measures a
+  direction, so a half-landed reversal passes every collision gate in silence —
+  which is why each of those sites carries a boot guard that measures its part's
+  hand off the geometry it just cut and compares it against the declaration.
+  **The recurring defect is ONE direction written down TWICE** — the groove and
+  the wrap, the tangent branch and the hook, a saw and its analytic twin, the
+  spur and the crown wheel — with only one copy carrying the sense; the fix that
+  keeps working is one SOURCE, and the guard that keeps working measures a
+  physical invariant both copies must satisfy (the chain lies in its groove, two
+  pulleys on one belt turn together, a click climbs the ramp), never restates
+  either copy. **TODO 115 is CLOSED**: all five regions are reversed and
+  guarded — the escapement, the dial seam, the motor, the keyless winding
+  chain and §47's winding arrest. Its last finding is worth carrying forward
+  because it was not a sign at all: `linkOuterPtsNear` held a VERBATIM COPY of
+  `buildChainLinkGeometry`'s frame law, so the metal releaned and the arrest's
+  reach tables went on modelling the mirrored link. The frame is one function
+  now (`chainLinkFrame`/`chainWalkFlip`) and the grep that proves it is that
+  the pin-axis expression appears once in the file. A direction written twice
+  is the usual defect; a whole LAW written twice is the same defect with a
+  longer fuse. **The guards hold COHERENCE, not a first-principles
+  derivation**: a part's relation to the sense (`SENSE_REL` beside its
+  builder) is a fact about the metal as cut, and the assert makes the
+  declaration and the cut move together. `node tools/probe-direction-guards.mjs`
+  is what proves a guard fires — it MUTATES each site and boots the result,
+  because a guard nobody has seen fire is a comment. Add a
+  direction-committed cut and it belongs in that table; a row that comes back
+  SILENT is an unguarded commitment, and one that comes back NO-OP tested
+  nothing.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
   **Disarmed at the source by §81**: every mesh now reaches the scene
@@ -730,6 +775,22 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   identity one. The defensive `bvhFor(src)` calls stay — the trap is
   disarmed, not the discipline, and a builder that ships after the pass
   can still re-arm it. See MODELING.md rule 7 before adding one.
+- **An MTV cannot separate two INTERLEAVED combs, so it reports a whole tooth
+  the moment they touch.** `mtvDepth` bisects the smallest TRANSLATION that
+  clears a boolean intersection, and for a face ratchet — or any designed mesh
+  — no such translation is small: clearing it means lifting one ring clean out
+  of the other's valleys. Measured (TODO 115), the stem coupling's penetration
+  row read 0.17, exactly one `toothH`, for a pair whose facing surfaces stood
+  0.002–0.005 apart. The failure mode to fear is not the red: it is that the
+  same row read GREEN on the reference build while sitting 0.0045 into the
+  identical hairline, because its axis happened to sample poses where the rings
+  never touched. **A pair that is MEANT to mesh needs a measure in its own free
+  coordinate** — `sawRideDepth` bisects the slip ROTATION instead and reports
+  arc at the mean tooth radius, which keeps it commensurate with the linear
+  budgets. And a bisection that finds a search artefact looks exactly like one
+  that finds a boundary, so the LINEARITY control is the load-bearing part, not
+  the reading: pre-rotate by 0.02 and 0.05 and the answer must move by exactly
+  0.02 and 0.05 (`probe-50-clutch.mjs`, its own tier).
 - **An OPEN mesh reads as a colliding one.** `meshClearance` guards its BVH
   near-zeros with `sampledVerdict`, which is a PARITY RAYCAST — it counts
   crossings, so it assumes the solid is closed. Build a body open-ended and
