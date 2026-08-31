@@ -14643,8 +14643,8 @@ places with one of them carrying the sense, and the fourth was a whole law held
 in two places.
 
 **Where the battery stands, and the one report that moved for a good reason.**
-35/36 local (`--no-incremental`), the single failure being the knife-edge below,
-which is not this region's. Diffed against the run before the frame refactor,
+**36/36 local** (`--no-incremental`) once the last row below was re-measured.
+Diffed against the run before the frame refactor,
 eight payloads moved and every headline count held (`intraUnit` 0 violations /
 195 out of scope / 3 waived, `clearances` 0 / 32 budgets, `restoring` and
 `transfers` controls PASS, `sweptOverlap` 0 CONFIRMED, `assembly` 0) — what
@@ -14680,7 +14680,11 @@ intersection — `mtvDepth`'s minimum-translation search one coordinate over,
 asking the same always-reliable triangle-triangle test and no inside/outside
 classification. It reports ARC at the teeth's mean radius, so it stays
 commensurate with `HANDOFF_TRACK_TOL` and with every other budget in the table.
-The row now measures **0.007 at the same pose**, against its unchanged 0.03.
+The row now measures **0.007 at the same pose**, against its unchanged 0.03,
+and the battery is 36/36. Diffed against the run before it, the only payload
+that moved in substance is `penetration`'s own — every other difference is a
+`sliceMs` or a census timing, which is what a measure-only change should look
+like.
 
 **A bisection that finds a search artefact looks exactly like one that finds a
 boundary**, which is why the linearity control is the load-bearing part and
