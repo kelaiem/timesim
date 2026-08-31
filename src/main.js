@@ -450,6 +450,58 @@ function transferAudit() {
   return _transferAudit;
 }
 
+// ---------------------------------------------------------------------------
+// §194 — THE MESH REGISTRY. Nothing in this project enumerated a gear mesh: a
+// mesh existed implicitly, as two positions plus a centre distance, and the
+// nearest things were all unit-PAIR allow-lists serving other purposes
+// (EXPECTED_PAIRS, EXPECTED_CONTACT_FLOORS, INTRA_UNIT_CONTACTS). The battery
+// structurally cannot supply it — its sweeps ask whether volumes overlap, and
+// two wheels whose angles are written independently sweep exactly the same
+// volumes as two that are genuinely geared.
+//
+// A row DECLARES only what no measurement can recover: the two members by
+// name, which INPUTS drive the pair, and the chain it belongs to. Everything
+// numeric — module, tooth counts, pitch radii, centre distance — is read off
+// the metal at check time, because a transcribed number is a second copy to
+// keep in step (§137's lesson, and this file's recurring one).
+//
+// `inputs` is the field that makes the transmission check possible at all: a
+// chain fed by two inputs can satisfy every ratio under one and violate it
+// under the other, and a combined sweep hides exactly that. TODO 117 is that
+// case, and it was invisible until each input was walked separately.
+const declaredMeshes = new Map();      // site -> row
+function declareMesh(site, row) {
+  if (declaredMeshes.has(site)) { console.warn(`§194: mesh '${site}' declared twice`); return; }
+  if (!row.a || !row.b) { console.warn(`§194: mesh '${site}' names no member pair`); return; }
+  if (row.a === row.b) { console.warn(`§194: mesh '${site}' names one rotor twice — malformed`); return; }
+  declaredMeshes.set(site, row);
+}
+
+// A chain member is sometimes handed to solveGearChain as the GROUP that holds
+// the rotor rather than as the rotor (fourthPair carries the fourth wheel and
+// the third pinion on one arbor). The rotor is the descendant whose recorded
+// tooth count is the one the chain declared — resolved here, at boot, against
+// the live object, so a row can never name a part the solve did not turn.
+function rotorNameFor(obj, teeth) {
+  let hit = null, n = 0;
+  obj.traverse((o) => {
+    if (o.userData && o.userData.teeth === teeth && typeof o.userData.r === 'number') { hit = hit || o; n++; }
+  });
+  if (!hit) return null;
+  if (n > 1) console.warn(`§194: ${n} rotors under one chain member carry ${teeth} teeth — the row cannot tell them apart`);
+  return hit.name || null;
+}
+
+let _meshAudit = null;
+function meshAudit() {
+  if (!_meshAudit) {
+    _meshAudit = Object.freeze({
+      rows: Object.freeze([...declaredMeshes.entries()].map(([site, r]) => Object.freeze({ site, ...r }))),
+    });
+  }
+  return _meshAudit;
+}
+
 const movement = new THREE.Group();
 scene.add(movement);
 
@@ -3855,6 +3907,15 @@ const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: 
     { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
     { teeth: SETTING_CAP_TEETH, mates: [minuteWheelTeeth] },
   ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
+// §194 — two KEYLESS meshes, and they are declared with a known discrepancy
+// rather than left out of the registry because they do not fit: both stand at
+// centre distance 7.58 where module·(P+Q)/2 is 7.48. One cause, six sites —
+// layout.js adds a bare `+ 0.1` to the pitch-radius sum (windSpurR +
+// crownWheelR + 0.1, and mwFoldD here), underived and not CLEAR_MARGIN's
+// 0.15. The registry's job is to make that visible, so the rows exist and the
+// centre-distance tier reports them; the constant itself is TODO 118's.
+declareMesh('keyless: setting wheel ⇄ minute wheel', { a: 'settingWheel', b: 'minuteWheel', inputs: ['crown', 'handSet'], chain: 'keyless' });
+declareMesh('keyless: wind spur ⇄ transfer wheel', { a: 'windSpur', b: 'transferWheel', inputs: ['crown', 'wind'], chain: 'keyless' });
 const minuteWheelBase = Math.PI / minuteWheelTeeth;
 const minutePinion = G.makePinion({ name: 'minutePinion', module: 0.28, teeth: minutePinionTeeth, mates: [minutePinionTeeth], // §136: meshes NOTHING (see above) — self-Willis display form, not a mesh claim
   thickness: 1.3, material: MATS.steel });
@@ -11402,6 +11463,13 @@ const mwHourWheel = G.makeGear({ name: 'mwHourWheel',
   module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH], thickness: 0.8,
   boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
 });
+// §194 — the MOTION WORKS, the movement's 12:1, and the one chain with no
+// phase solve of its own: solveGearChain never covered it, so before this row
+// nothing anywhere named these two meshes. Standing rule 2's own worked
+// example (the hour hand arrives at 12:1 because 10/30 × 8/32 multiplies to
+// it) had no instrument holding the counts to the ratio they claim.
+declareMesh('motion works: cannon pinion ⇄ minute wheel', { a: 'cannonPinion', b: 'mwMinuteWheel', inputs: ['train', 'handSet'], chain: 'motion works' });
+declareMesh('motion works: minute pinion ⇄ hour wheel', { a: 'mwMinutePinion', b: 'mwHourWheel', inputs: ['train', 'handSet'], chain: 'motion works' });
 mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 6 contact-floor selector
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
@@ -13808,7 +13876,7 @@ declareTransfer('alarm setting: lane dogleg (setting wheel → arbor pinion)', {
 // distance against the pitch-circle sum — a perfectly phased pair that does
 // not reach each other is not a mesh either, and that second check is
 // independent of the phase solve.
-const solveGearChain = (label, chain, module) => {
+const solveGearChain = (label, chain, module, inputs = []) => {
   // GAUGE VALIDATION FIRST. A reading whose gap count disagrees with the
   // declared tooth count, or whose folded resultant is weak, is refused —
   // solving on it would drag every wheel downstream of the bad reading to a
@@ -13869,6 +13937,11 @@ const solveGearChain = (label, chain, module) => {
     if (Math.abs(d - want) > 0.05)
       console.warn(`TODO 15: ${label} ${P.name} ⇄ ${Q.name} centre distance ${d.toFixed(3)} is not the `
         + `pitch-circle sum ${want.toFixed(3)} — the phase solve is meaningless if they do not mesh`);
+    // §194 — this pair is a declared mesh by construction: the solve just
+    // phased it, so the registry cannot describe a pair the solve does not.
+    const an = rotorNameFor(P.obj, P.teeth), bn = rotorNameFor(Q.obj, Q.teeth);
+    if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
+    else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.replace(/:.*$/, '') });
   }
 };
 (() => {
@@ -13877,7 +13950,7 @@ const solveGearChain = (label, chain, module) => {
     { obj: alarmSetWheelMesh, teeth: ALARM_SET_WHEEL_TEETH, name: 'setting wheel' },
     { obj: gearOf(alarmSetI1Spin), teeth: ALARM_SET_I1_TEETH, name: 'idler 1' },
     { obj: gearOf(alarmSetI2Spin), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' },
-  ], ALARM_SET_MODULE);
+  ], ALARM_SET_MODULE, ['train', 'alarm']);
   // TODO 48 — the power-reserve train, the last un-fixed instance of TODO
   // 15's idiom (measured 47–49% of a pitch off anti-phase at three winds:
   // tooth ON tooth, stable because a static build-phase error reads the
@@ -13898,11 +13971,11 @@ const solveGearChain = (label, chain, module) => {
   solveGearChain('reserve stage one:', [
     { obj: reservePinion0, teeth: rsvTeethP0, name: 'p0' },
     { obj: rsvPair1, gauge: rsvWheel1, teeth: rsvTeethW1, name: 'w1 (+p1 held)' },
-  ], rsvModule0);
+  ], rsvModule0, ['wind', 'train']);
   solveGearChain('reserve stage two:', [
     { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },
     { obj: rsvWheel2, teeth: rsvTeethW2, name: 'w2' },
-  ], rsvModule1);
+  ], rsvModule1, ['wind', 'train']);
   // TODO 62 — THE GOING TRAIN, which had no phase of any kind: not one
   // rotation.z was ever assigned to its seven gears, so all four meshes
   // were phased by wherever gearOutlineShape happened to put a tooth — at
@@ -13951,19 +14024,19 @@ const solveGearChain = (label, chain, module) => {
   solveGearChain('going fourth ⇄ escape:', [
     { obj: escapePinion, teeth: TRAIN.fourth.pinion, name: 'escape pinion' },
     { obj: fourthPair, teeth: TRAIN.fourth.teeth, name: 'fourth wheel (+pinion held)' },
-  ], TRAIN.fourth.module);
+  ], TRAIN.fourth.module, ['train']);
   solveGearChain('going third ⇄ fourth:', [
     { obj: fourthPinion, teeth: TRAIN.third.pinion, name: 'fourth pinion' },
     { obj: thirdPair, teeth: TRAIN.third.teeth, name: 'third wheel (+pinion held)' },
-  ], TRAIN.third.module);
+  ], TRAIN.third.module, ['train']);
   solveGearChain('going center ⇄ third:', [
     { obj: thirdPinion, teeth: TRAIN.center.pinion, name: 'third pinion' },
     { obj: centerPair, teeth: TRAIN.center.teeth, name: 'center wheel (+pinion held)' },
-  ], TRAIN.center.module);
+  ], TRAIN.center.module, ['train']);
   solveGearChain('going great ⇄ center:', [
     { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
     { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
-  ], TRAIN.barrel.module);
+  ], TRAIN.barrel.module, ['train']);
   // tick() owns these every frame; put them back so nothing built after this
   // block reads a world matrix off a pose that only existed for the solve.
   for (const [arbor] of goingRest) arbor.rotation.z = 0;
@@ -14048,6 +14121,11 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 // fail to close, and the whole j problem evaporates.
 {
   const i1b = G.makeGear({ name: 'i1b', module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, mates: [ALARM_DISC_TEETH], thickness: ALARM_DISC_BODY_T, boreR: 0.5, spokes: 4, hub: false, material: MATS.brass, bevel: false });
+  // §194 — the disc BRANCH. The setting chain's solve covers wheel→i1→i2; this
+  // pair is the second entry into it (the hour's back-drive through the disc
+  // rim), which is exactly the input TODO 117 found the chain answering
+  // differently. Declared here so both entries carry rows.
+  declareMesh('alarm setting: disc rim ⇄ idler 1b', { a: 'alarmDiscBody', b: 'i1b', inputs: ['train', 'alarm'], chain: 'alarm setting' });
   i1b.rotation.z = Math.PI / ALARM_SET_I1_TEETH;
   i1b.position.z = ALARM_BAND_Z - ALARM_SET_Z;
   alarmSetI1Spin.add(i1b);
@@ -14480,6 +14558,8 @@ alarmRotor.add(alarmArborRod);
 // the idler. Same module as the whole train (see ALARM_SET_MODULE).
 {
   const pin = G.makePinion({ name: 'alarmSetArborPinion', module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, mates: [{ teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] }], thickness: ALARM_SET_T, material: MATS.steel });
+  // §194 — the setting chain's LAST mesh, past the end of the phase solve.
+  declareMesh('alarm setting: idler 2 ⇄ arbor pinion', { a: 'alarmSetIdler2', b: 'alarmSetArborPinion', inputs: ['train', 'alarm'], chain: 'alarm setting' });
   pin.position.z = ALARM_SET_Z;
   alarmRotor.add(pin);
 }
@@ -17430,7 +17510,7 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
   solveGearChain('alarm governor:', [
     { obj: alarmGovRotor.userData.pinion, teeth: ALARM_GOV_PINION_TEETH, name: 'governor pinion' },
     { obj: wheel, teeth: ALARM_GOV_WHEEL_TEETH, name: 'striking 64T' },
-  ], ALARM_GOV_MODULE);
+  ], ALARM_GOV_MODULE, ['alarmStrike']);
   // §112 band swap, rule 6: the wheel's web must UNDERREACH the barrel
   // arbor (the plan block's module derivation) — assert the metal, not the
   // intention. tip+bevel vs the arbor's near edge, one margin between.
@@ -18009,11 +18089,11 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     { obj: alarmWindUnit.userData.i1.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 1' },
     { obj: alarmWindUnit.userData.i2.userData.gear, teeth: ALARM_WIND_IDLER_TEETH, name: 'idler 2' },
     { obj: alarmWindTargetGear, teeth: ALARM_WIND_W, name: 'arbor wheel' },
-  ], ALARM_TRAIN_MODULE);
+  ], ALARM_TRAIN_MODULE, ['alarmWind']);
   solveGearChain('alarm striking:', [
     { obj: alarmBarrelGear, teeth: ALARM_BARREL_TEETH, name: 'barrel' },
     { obj: alarmStrikePinion, teeth: ALARM_STRIKE_PINION_TEETH, name: 'striking pinion' },
-  ], ALARM_TRAIN_MODULE);
+  ], ALARM_TRAIN_MODULE, ['alarmStrike']);
 }
 
 // ---------------------------------------------------------------------------
@@ -19470,6 +19550,8 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
     module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH, mates: [{ teeth: SUB_IDLER_SOLVED, mates: [ALARM_BARREL_TEETH, SUB_LEG_TEETH] }],
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
+  // §194 — leg B's own mesh, the compound idler's pinion against the leg.
+  declareMesh('alarm arrest: leg B pinion ⇄ idler pinion', { a: 'pinB', b: 'idlerP', inputs: ['alarmWind'], chain: 'alarm arrest' });
   pinB.traverse((o) => { if (o.isMesh) o.name = 'subLegBPinion'; });
   pinBSpin.add(pinB);
   // TODO 60 — THE SLEEVE THAT WAS A POINT. Both its arguments used to reduce to
@@ -19585,15 +19667,15 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   solveGearChain('alarm arrest leg A:', [
     { obj: alarmWindTargetGear, teeth: ALARM_WIND_W, name: 'arbor wheel' },
     { obj: pinA, teeth: SUB_LEG_TEETH, name: 'leg A pinion' },
-  ], ALARM_TRAIN_MODULE);
+  ], ALARM_TRAIN_MODULE, ['alarmWind']);
   solveGearChain('alarm arrest leg B:', [
     { obj: alarmBarrelGear, teeth: ALARM_BARREL_TEETH, name: 'barrel rim' },
     { obj: idlerW, teeth: SUB_IDLER_SOLVED, name: 'idler wheel' },
-  ], ALARM_TRAIN_MODULE);
+  ], ALARM_TRAIN_MODULE, ['alarmWind']);
   solveGearChain('alarm arrest output:', [
     { obj: subDiff.userData.wheel, teeth: SUB_OUT_TEETH, name: 'cage wheel' },
     { obj: fPin, teeth: SUB_FINGER_TEETH, name: 'finger pinion' },
-  ], SUB_OUT_MODULE);
+  ], SUB_OUT_MODULE, ['alarmWind']);
 
   // Boot asserts (rule 6) — every one of these is a number the build claims.
   if (Math.abs(ARREST_TRAVEL_TURNS - (ARREST_STATIONS - 1)) > 1e-12)
@@ -36172,7 +36254,8 @@ window.__clock = {
   get balanceRate() { return balanceRate; },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
-  get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get transfers() { return transferAudit(); },
+  get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   // The seconds-reset contact, as the tick law last solved it: the roller's
