@@ -36346,10 +36346,10 @@ window.__clock = {
   get balanceRate() { return balanceRate; },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
-  get transfers() { return transferAudit(); },
-  get meshes() { return meshAudit(); },
-  rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin, for the transmission sweep
-  measureMeshNow(site, inject) { return measureMeshNow(site, inject); },  // §194 — one declared mesh at the current pose; `inject` turns B by a fraction of its pitch for the checks' controls        // §194 — every declared gear mesh, its two named members and the inputs that drive it // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
+  rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin (and its frame's handedness), for the transmission sweep
+  measureMeshNow(site, inject) { return measureMeshNow(site, inject); },  // §194 — one declared mesh at the current pose; `inject` turns B by a fraction of its pitch for the checks' controls
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   // The seconds-reset contact, as the tick law last solved it: the roller's
