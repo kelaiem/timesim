@@ -14020,12 +14020,37 @@ then fit it):
    heart's reset contact all read the seconds display's sign, as does
    `DIAL_EPOCH_ANGLE` through `MIN_HAND_RAD_PER_SEC`.
 
-**Scope, so nobody reads this as "invert the watch".** Nothing MOVES: no
-station, no clearance, no z-stack, no tooth count, and the plates, cocks,
-pillars, jewels, case, dial artwork, hands and balance/hairspring are all
-untouched (a balance swings both ways; a spiral's handedness does not read
-on it). What changes is the going train's SENSE, the cuts that lean with it,
-and the display expressions.
+**Scope, so nobody reads this as "invert the watch".** No STATION moves: no
+clearance, no z-stack, no tooth count, and the cocks, pillars, jewels, case,
+dial artwork, hands and balance/hairspring are untouched (a balance swings
+both ways; a spiral's handedness does not read on it). What changes is the
+going train's SENSE, the cuts that lean with it, and the display expressions.
+
+**This paragraph used to say "the plates ... are untouched", and that was
+wrong** — corrected here rather than left standing, because the reason it is
+wrong is worth more than the sentence. The three-quarter plate's ESCAPEMENT
+VIEW is not a fixed outline: it is cut from the swept maxima of the
+escapement's own parts (`finishCutRadii` runs per-degree maxima over ±6°, then
+§148's `seatCut` walks the edge back out of every chaton keep). Mirror the
+pallet fork and the escape wheel and the lobe the cut is taken from moves, so
+the cut follows — which is the derivation doing its job, not a station moving.
+Measured on the two trees that differ only by this landing (`c8087dd` →
+`541f55f`), reading the plate's own authored `parameters.shapes`:
+
+- the escape wheel's opening — its centroid is the `escape` station to 0.01 —
+  went `4.78 × 8.4271` to `4.78 × 8.035`, same centroid, same 241 points;
+- the silhouette moved over ~40 points spanning the escape station toward the
+  fork's, bounding box and point count unchanged;
+- the BASE plate, carried as the control, is identical.
+
+It still clears, and the numbers say what kind of clearance it is: swept over
+the beat, `Three-quarter plate ⇄ Pallet fork` measures **2.2571** — the same
+2.257 the source comment recorded when the lobe moved — and the 0.0483 that
+looks tight is a `pivotCollar` seated in its bore, an EXPECTED fit, which the
+fourth wheel (untouched by this landing) reads identically. Nothing was eaten
+but the overhang. `src/main.js:7108-7125` carries the same finding at the
+site, and is why `checkCutVsPivots()` moved from before `seatCut()` to after
+it: it had been judging a table no plate is cut from.
 
 **And the three couplings this item used to name as unmeasured are now
 measured: none of them is direction-committed.** They cost the reversal
@@ -14074,6 +14099,37 @@ one rule, both directions):
 So the reversal's inventory is the going train's sense, the display
 expressions, and the direction-committed cuts — and these three are not among
 them.
+
+**Re-measured AFTER the landing, which is the reading that counts.** Everything
+above was measured on the tree that was ABOUT to reverse, so "they cost the
+reversal nothing" was a prediction. Run again on the landed tree, every subject
+row, both controls and both law sweeps reproduce to the digit. The law tier is
+direction-safe by construction, which is worth stating because this item found
+that pose tables are not: both sweeps drive `tau` FORWARD and compare ±k about
+a working point inside that sweep, so unlike `stemSlip`'s axis there is no
+signed constant that could sweep a side the watch no longer travels.
+
+**And the census, run on the two trees that differ only by this landing, says
+which cuts the reversal actually touched.** Exactly eight rows moved, and the
+AXIS is the discriminator rather than the residual — a mirror residual is
+invariant under mirroring, so the going-side residuals moving in the fifth
+decimal is float noise and the axis is the signal:
+
+| cut | before | after | relation |
+|---|---|---|---|
+| fusee ratchet ×2 | @159.4°, @91.9° | @200.5°, @268.0° | θ → −θ (360−159.4 = 200.6, grid 0.1°) |
+| set-up ratchet | @144.4° | @80.5° | θ → −θ, modulo 9 of its 24-tooth 15° pitches |
+| escape wheel | @132.8° | @227.1° | θ → −θ |
+| pallet fork ×2 | @119.4°, @296.4° | @60.6°, @243.6° | θ → 180−θ, EXACT — mirrored about its own centre line, not the wheels' axis |
+| `windArrestLug` | 0.01895 @126.7° | 0.01560 @241.5° | neither — genuinely re-cut, its fold re-solved |
+| `threeQuarterPlate` | 0.03120 @318.8° | 0.03090 @138.7° | the SAME line (318.8 − 138.7 = 180.1); the escapement view, above |
+
+**Nothing else moved, and that includes every ALARM-side handed cut**: the
+alarm arbor ratchet, governor saw, `alarmCam`, `alarmLockCollar` and
+`alarmColSkirt` are bit-identical across the two trees. That is `ALARM_SENSE`
+measured on the metal rather than argued from the declaration — the going side
+mirrored, the alarm did not, and a census that could not tell them apart would
+have shown it here.
 
 ### The direction-committed cuts are MEASURED — nine of them, and the prose list was wrong twice
 
