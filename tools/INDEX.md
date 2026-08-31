@@ -4,8 +4,8 @@
 
 # The instruments
 
-171 scripts. **77 are ACCEPTANCE tests** — they decide and exit non-zero.
-**94 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+170 scripts. **77 are ACCEPTANCE tests** — they decide and exit non-zero.
+**93 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -181,6 +181,5 @@ when a question was asked; the summaries are what it answered.
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `probe-wound-sense.mjs` |  | acceptance | WHICH WAY DOES EACH WOUND PART WIND? — TODO 115's unmeasured half. |
-| `scratch-lug-interior.mjs` |  | report | SCRATCH (not committed): interior lug distance, read off the built metal. For each lug pair, project every vertex of each caseLug onto the pair's strap axis (the direction the spring bar runs); the interior distance is the gap between the two lugs' facing extremes. Also reads the spring bar's free length the same way, as a cross-check (the bar fills the interior). |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |
