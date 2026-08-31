@@ -492,6 +492,74 @@ function rotorNameFor(obj, teeth) {
   return hit.name || null;
 }
 
+// The rotor index, name -> object, built on first read. A row names its two
+// members; this is what turns a name back into metal. Built from the SCENE, so
+// a row naming a part that was never added resolves to nothing and the check
+// reports a stale selector rather than skipping in silence (§121's rule).
+let _rotorIndex = null;
+function rotorByName(n) {
+  if (!_rotorIndex) {
+    _rotorIndex = new Map();
+    scene.traverse((o) => {
+      if (o.name && o.userData && typeof o.userData.r === 'number' && o.userData.r > 0 && !o.userData.schematic)
+        if (!_rotorIndex.has(o.name)) _rotorIndex.set(o.name, o);
+    });
+  }
+  return _rotorIndex.get(n) || null;
+}
+
+// §194 — MEASURE ONE DECLARED MESH AT THE CURRENT POSE.
+//
+// The gauge is `measuredToothPhase` and the anti-phase arithmetic is
+// solveGearChain's own, both a few hundred lines below: this is deliberately
+// NOT a third copy of either. The probe that found the going train's defect
+// had to port the gauge because nothing exposed it, and a ported law is how
+// TODO 115's arrest tables went on modelling a mirrored link long after the
+// metal moved. inspect.js gets the CHECK; main.js keeps the LAW.
+//
+// `inject` turns member B by that fraction of its own pitch before reading,
+// and puts it back. That is what makes the check's two controls possible — a
+// WHOLE pitch is a symmetry of the mesh and must not move the reading at all,
+// a HALF pitch is the worst case — and the mutation lives here, next to the
+// objects, rather than in a checker reaching into the scene.
+function measureMeshNow(site, inject = 0) {
+  const row = declaredMeshes.get(site);
+  if (!row) return { ok: false, why: 'no such declared mesh' };
+  const A = rotorByName(row.a), B = rotorByName(row.b);
+  if (!A || !B) return { ok: false, why: `stale selector: ${!A ? row.a : row.b} names no rotor in the scene` };
+  const uA = A.userData, uB = B.userData;
+  if (typeof uA.teeth !== 'number' || typeof uB.teeth !== 'number')
+    return { ok: false, why: `no tooth count on ${typeof uA.teeth !== 'number' ? row.a : row.b}` };
+
+  const z0 = B.rotation.z;
+  if (inject) B.rotation.z += inject * (Math.PI * 2) / uB.teeth;
+  scene.updateMatrixWorld(true);
+  const cA = worldCentreOf(A), cB = worldCentreOf(B);
+  const mA = measuredToothPhase(A, uA.teeth), mB = measuredToothPhase(B, uB.teeth);
+  const psi = Math.atan2(cB.y - cA.y, cB.x - cA.x);
+  const a = _frac(((psi - mA.phase) * uA.teeth) / (Math.PI * 2));
+  const b = _frac(((psi + Math.PI - mB.phase) * uB.teeth) / (Math.PI * 2));
+  const off = Math.min(_frac(a + b - 0.5), 1 - _frac(a + b - 0.5));
+  const d = Math.hypot(cB.x - cA.x, cB.y - cA.y);
+  if (inject) { B.rotation.z = z0; scene.updateMatrixWorld(true); }
+
+  // The gauge's own credibility, per its header: a reading whose gap count
+  // disagrees with the declared tooth count, or whose folded resultant is
+  // weak, is not a measurement of anything. Reported, never silently used.
+  const credible = mA.gaps === uA.teeth && mB.gaps === uB.teeth && mA.conf >= 0.9 && mB.conf >= 0.9;
+  return {
+    ok: true, site, a: row.a, b: row.b, off, credible,
+    gaugeA: { gaps: mA.gaps, conf: mA.conf, teeth: uA.teeth },
+    gaugeB: { gaps: mB.gaps, conf: mB.conf, teeth: uB.teeth },
+    // Two gears can only mesh if they share a module, so a disagreement is a
+    // defect in its own right and not something to average away. `want` is the
+    // pitch-circle sum the solve's own tripwire uses: module·(P+Q)/2.
+    d, want: uA.module * (uA.teeth + uB.teeth) / 2,
+    moduleSplit: Math.abs(uA.module - uB.module) > 1e-9 ? [uA.module, uB.module] : null,
+    rA: uA.r, rB: uB.r, teethA: uA.teeth, teethB: uB.teeth,
+  };
+}
+
 let _meshAudit = null;
 function meshAudit() {
   if (!_meshAudit) {
@@ -3913,7 +3981,7 @@ const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: 
 // layout.js adds a bare `+ 0.1` to the pitch-radius sum (windSpurR +
 // crownWheelR + 0.1, and mwFoldD here), underived and not CLEAR_MARGIN's
 // 0.15. The registry's job is to make that visible, so the rows exist and the
-// centre-distance tier reports them; the constant itself is TODO 118's.
+// centre-distance tier reports them; the constant itself is TODO 125's.
 declareMesh('keyless: setting wheel ⇄ minute wheel', { a: 'settingWheel', b: 'minuteWheel', inputs: ['crown', 'handSet'], chain: 'keyless' });
 declareMesh('keyless: wind spur ⇄ transfer wheel', { a: 'windSpur', b: 'transferWheel', inputs: ['crown', 'wind'], chain: 'keyless' });
 const minuteWheelBase = Math.PI / minuteWheelTeeth;
@@ -36255,7 +36323,8 @@ window.__clock = {
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get transfers() { return transferAudit(); },
-  get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get meshes() { return meshAudit(); },
+  measureMeshNow(site, inject) { return measureMeshNow(site, inject); },  // §194 — one declared mesh at the current pose; `inject` turns B by a fraction of its pitch for the checks' controls        // §194 — every declared gear mesh, its two named members and the inputs that drive it // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
   // The seconds-reset contact, as the tick law last solved it: the roller's

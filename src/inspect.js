@@ -8335,6 +8335,149 @@ export const TRANSFER_ENVELOPES = {
 export const TRANSFER_WAIVERS = {
   'alarm arming: lay shaft cranks (rod foot → ring drive tab)': 'TODO 79',
 };
+// ---------------------------------------------------------------------------
+// §194 — meshPhase. Is every DECLARED mesh anti-phased, at every pose the
+// movement occupies rather than at the one the build solve ran at?
+//
+// The bar is 2% of a pitch and it is NOT invented here: it is solveGearChain's
+// own anti-phase tripwire (`main.js`, "the residual tolerance is set by the
+// INSTRUMENT"), quoted there as the gauge's resolution — gap centres are
+// quantised to 2π/2048 and averaged over N gaps — rather than as a target.
+//
+// The gauge and the residual arithmetic both live in main.js beside the solve
+// that uses them, reached through `clock.measureMeshNow`. This check does not
+// re-implement either: a law written twice is how TODO 115's reach tables went
+// on modelling a link whose frame had already been mirrored.
+//
+// WAIVED ROWS ARE ACCEPTED DEBT CITING A TODO, the stockFloor convention, and
+// on arrival eight of the twenty-three rows are over the bar. Gating them red
+// on day one is how an instrument gets switched off (§54's banner); pretending
+// they pass is worse. So they are waived, individually, by name — and a waiver
+// naming a row that is NOT over the bar is itself a failure, so a fix cannot
+// land without deleting its waiver (§137's rule, and the reason §54's stale
+// waivers gate).
+export const MESH_PHASE_WAIVERS = {
+  // TODO 124 — the eight meshes no solveGearChain call covers. The motion
+  // works pair reads exactly 50.00%: a half pitch, tooth meeting tooth on the
+  // line of centres, which is the worst value the measure can take and the
+  // precise defect TODO 15 was filed for. That it is the movement's 12:1 —
+  // standing rule 2's own worked example — is why this is filed loudly.
+  'motion works: cannon pinion ⇄ minute wheel': 'TODO 124',
+  'motion works: minute pinion ⇄ hour wheel': 'TODO 124',
+  'keyless: setting wheel ⇄ minute wheel': 'TODO 124',
+  'keyless: wind spur ⇄ transfer wheel': 'TODO 124',
+  'alarm setting setting wheel ⇄ idler 1': 'TODO 124',
+  'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 124',
+  'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 124',
+  'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 124',
+  // TODO 117, not 124, and the SPREAD is what says so: this row reads 0.11% at
+  // the build pose and 36.68% over the net. A residual that MOVES is not a
+  // mis-set phase — frac(uP + uQ) is invariant while a pair genuinely
+  // transmits — it is the disc branch's angles being written independently,
+  // which is the contradiction TODO 117 already owns and has not decided.
+  'alarm setting: disc rim ⇄ idler 1b': 'TODO 117',
+};
+const MESH_PHASE_BAR = 0.02;          // solveGearChain's own, see above
+
+export function checkMeshPhase(clock) {
+  const payload = clock.meshes;
+  if (!payload) return { ok: true, error: 'no meshes payload on __clock (main.js §194 block missing)' };
+  if (typeof clock.measureMeshNow !== 'function')
+    return { ok: true, error: 'no measureMeshNow on __clock (main.js §194 block missing)' };
+
+  const axisNames = new Set(AXES.map((a) => a.name));
+  const rows = [], violations = [], waived = [], malformed = [], notCredible = [];
+
+  // Every declared input must name a real pose axis. A row that names an axis
+  // nobody sweeps is a row whose "driven by" claim is untestable, and the
+  // stale-selector rule (§121) makes that a failure rather than a shrug.
+  for (const r of payload.rows)
+    for (const i of r.inputs || [])
+      if (!axisNames.has(i)) malformed.push({ site: r.site, why: `input '${i}' is not an axis in AXES` });
+
+  // THE POSE NET. A build-pose-only reading is what let the going train run
+  // 8.6–38.7% off at every pose the movement occupies while the build tripwire
+  // read zero (TODO 116) — the error is a CONSTANT, exactly zero at the one
+  // pose the tripwire sees. So every row is read at several poses and the
+  // WORST is the row's figure.
+  const poses = digestPoses(clock);   // axis.pose(f, clock) reads it — not optional
+  for (const r of payload.rows) {
+    let worst = null, lo = Infinity;
+    for (let pi = 0; pi < poses.length; pi++) {
+      clock.resetInputs();
+      clock.setPose(poses[pi]);
+      clock.scene.updateMatrixWorld(true);
+      const m = clock.measureMeshNow(r.site);
+      if (!m.ok) { malformed.push({ site: r.site, why: m.why }); worst = null; break; }
+      if (!worst || m.off > worst.off) worst = { ...m, poseIndex: pi };
+      if (m.off < lo) lo = m.off;
+    }
+    if (!worst) continue;
+    const row = {
+      site: r.site, a: worst.a, b: worst.b, chain: r.chain, inputs: r.inputs || [],
+      offPct: +(worst.off * 100).toFixed(3), poseIndex: worst.poseIndex,
+      // The SPREAD across the net separates two different defects that read
+      // alike at one pose. A residual that is CONSTANT is a phase never
+      // solved — the pair is geared, its teeth just sit wrong (TODO 124). One
+      // that SWEEPS is a pair that does not transmit at all: frac(uP + uQ) is
+      // invariant only while both members turn at the ratio the metal says, so
+      // a moving residual means the two angles are written independently
+      // (TODO 117's kinematic lie). Same symptom at the build pose, opposite
+      // causes, and only the net can tell them apart.
+      offMinPct: +(lo * 100).toFixed(3), offSpreadPct: +((worst.off - lo) * 100).toFixed(3),
+      credible: worst.credible, cdMiss: +(worst.d - worst.want).toFixed(5),
+      moduleSplit: worst.moduleSplit,
+      waiver: MESH_PHASE_WAIVERS[r.site] || null,
+    };
+    rows.push(row);
+    if (!worst.credible) notCredible.push(row);
+    if (worst.off > MESH_PHASE_BAR) (row.waiver ? waived : violations).push(row);
+  }
+
+  // A waiver for a row that is NOT over the bar is itself a failure: deleting
+  // the waiver has to be structurally part of the fix, or the table silently
+  // accumulates permission nobody needs (§54's stale-waiver gate).
+  const overNow = new Set(rows.filter((r) => r.offPct / 100 > MESH_PHASE_BAR).map((r) => r.site));
+  const declared = new Set(rows.map((r) => r.site));
+  const staleWaivers = Object.keys(MESH_PHASE_WAIVERS)
+    .filter((k) => !overNow.has(k))
+    .map((k) => ({ site: k, why: declared.has(k) ? 'row is inside the bar — delete the waiver' : 'waiver names no declared mesh' }));
+
+  // CONTROLS, both kinds, on a row that is actually being reported — a check
+  // whose controls run somewhere else has not bracketed its own subject.
+  //   must-hit  — a WHOLE pitch is a symmetry of the mesh, so the reading must
+  //               not move: it says the gauge tracks that member's phase.
+  //   must-miss — a HALF pitch is the worst case, and the assertion is that
+  //               base + injected = 0.5 EXACTLY. "injected ≈ 0.5" only holds
+  //               when the base is already near zero, which is a control that
+  //               passes on a healthy tree and misfires on the broken one it
+  //               exists to be trusted on.
+  clock.resetInputs();
+  clock.setPose(poses[0]);
+  clock.scene.updateMatrixWorld(true);
+  const controls = [];
+  const subject = rows.filter((r) => r.credible).slice(0, 4);
+  for (const r of subject) {
+    const base = clock.measureMeshNow(r.site);
+    const whole = clock.measureMeshNow(r.site, 1);
+    const half = clock.measureMeshNow(r.site, 0.5);
+    if (!base.ok || !whole.ok || !half.ok) { controls.push({ site: r.site, ok: false, why: 'measurement refused' }); continue; }
+    const hitOk = Math.abs(whole.off - base.off) < 1e-3;
+    const missOk = Math.abs((base.off + half.off) - 0.5) < 5e-3;
+    controls.push({ site: r.site, ok: hitOk && missOk,
+      base: +(base.off * 100).toFixed(3), whole: +(whole.off * 100).toFixed(3),
+      halfSum: +((base.off + half.off) * 100).toFixed(2), hitOk, missOk });
+  }
+  const controlPass = controls.length > 0 && controls.every((c) => c.ok);
+
+  clock.resetInputs();
+  return {
+    ok: true, barPct: MESH_PHASE_BAR * 100, poseCount: poses.length,
+    rows, violations, waived, malformed, staleWaivers, notCredible,
+    controls, controlPass,
+  };
+}
+
 export function checkTransfers(clock) {
   const payload = clock.transfers;
   if (!payload) return { ok: true, error: 'no transfers payload on __clock (main.js §137 block missing)' };
@@ -8716,6 +8859,7 @@ const CHECKS = {
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
+  meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),
 };
