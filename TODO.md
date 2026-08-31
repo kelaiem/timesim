@@ -15230,3 +15230,51 @@ the "relieved edge" its comment claims. That is a modeled press (the
 held radially and outward by the cone and inward by the friction the
 interference implies. It stays as-is; if a later item wants the front
 armed like the back, the same gasket idiom applies at the bezel.
+## 123. A body wound inside-out is invisible metal: the exhibition ring painted nothing and every instrument passed
+
+Found by the owner over three rounds of looking at the §192 back, and
+the finding survived two wrong explanations from the tooling side before
+the right measurement was taken — worth recording, because the owner's
+final argument is the method: **"I can plainly see objects that would be
+occluded if the metal was rendered"** beats any theory about finishes.
+The first explanation (mirror-flat steel reflecting the dark studio)
+was plausible and false; the perlage visible THROUGH the ring's face
+annulus disproved it.
+
+Measured: `caseBack` — the §187 threaded exhibition ring — had signed
+volume **−6260**: its lathe profile ran the wrong way round, so every
+face pointed inward and FrontSide culling hid the entire body from
+outside. An occlusion raycast from behind at the face annulus sailed
+through the culled face and first met the ring at the skirt's BOTTOM
+(z 10.23 instead of the face's 15.24). Visually: the movement and the
+case's perlage wall showed straight through 2.4 mm of steel, the wrench
+keys (wound correctly) floated on nothing, and the ring's silhouette
+read as a black gap — the inside of the far wall seen through the
+culled near wall. **The tripwire built for the fix immediately caught a
+second body: `caseCrystal`, the front crystal, at −8603** — the front
+glass has been culled since §3, a crystal the viewer was never actually
+looking through.
+
+Why every gate passed: BVH clearances and the parity raycast are
+FACING-AGNOSTIC — a closed-but-inverted solid measures identically —
+and `meshIntegrity` carries inverted bodies as a REPORT, not a gate,
+where both of these sat in the standing residue. The §186 sector
+builder has warned about its own winding since it was written
+("FrontSide culling will hide it"); the lathe helper next to it
+checked closure and never orientation.
+
+**CLOSED, same landing**: both profiles reversed (same points, opposite
+travel; `caseBack` +6007, `caseCrystal` +8603, occlusion verified from
+both sides — the back ray hits the face at 15.24, the front ray hits
+the crystal at −15.34), and the lathe helper now computes signed volume
+and warns on a negative — the sector builder's tripwire, extended to
+the tool that was missing it, so the next lathe body cannot ship
+invisible in silence.
+
+**Residue**: `meshIntegrity`'s inverted report predates this and keeps
+its own criteria; whatever remains in it after these two are the
+movement-side cases, still reported and ungated. (A raw signed-volume
+sweep also flags open display shells — subdial faces, the face cam —
+where the number is not meaningful; orientation gating movement-wide
+would first need that classifier, which is meshIntegrity's territory,
+not this item's.)
