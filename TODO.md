@@ -15271,10 +15271,19 @@ and warns on a negative — the sector builder's tripwire, extended to
 the tool that was missing it, so the next lathe body cannot ship
 invisible in silence.
 
-**Residue**: `meshIntegrity`'s inverted report predates this and keeps
-its own criteria; whatever remains in it after these two are the
-movement-side cases, still reported and ungated. (A raw signed-volume
-sweep also flags open display shells — subdial faces, the face cam —
-where the number is not meaningful; orientation gating movement-wide
-would first need that classifier, which is meshIntegrity's territory,
-not this item's.)
+**And the tier GATES now** (owner's ask, same landing): §50's report →
+triage → gate arc, run whole. `meshIntegrity`'s inverted rows fail the
+battery unless waived by name in `INVERTED_WAIVERS`, waiver staleness
+fails with them (the `SLENDER_WAIVERS` covenant verbatim, so deleting a
+fix's waiver is part of the fix), and the check's own ±volume box
+control already proves the classifier fires. The population on
+promotion day was 6: the two case bodies fixed above, and four rows
+waived citing this item — two unnamed jewel-setting lathes on the Fork
+cock, one on the Balance cock, and `alarmFaceCam` (a custom
+BufferGeometry wound inward, −0.27 against a 6.08 bbox). All four
+render today only because nothing ever views them from the culled side;
+the fix path is the same profile-travel reversal as the ring's, at
+their builders, retiring each waiver as it lands. (A raw signed-volume
+sweep also flags open display shells — subdial faces — where the number
+is not meaningful; the check's `INVERTED_VOL_FRAC` classifier already
+keeps those out of the gated population.)
