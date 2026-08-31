@@ -1098,6 +1098,23 @@ expect contact-on-column / free-in-gap parity — the same shape as
 the link beak's row. Closing item 11's layout § would rework this
 joint anyway; whichever lands first carries it.
 
+**§192 annotation — the switch tranche's "real-scale sections" are now
+DERIVED, and the proportion claim is retired with its residue named.**
+This item's switch tranche took the column wheel's base to 0.7 and its
+tier to 1.4 as real proportions at real diameter (Ø 4.32 mm), which was
+honest about a LOOK. §192's flat-back campaign re-founded both on the
+riders' constraint set: the tier is `STOCK_MIN_U + 2·CLEAR_MARGIN`
+(the rocker beak's band — the governing rider; the link beak's
+seat-caught fall wants only 0.0218 + margin), and the base is the
+journal law on its stud (`2·studR + 0.05 − SKIRT_H`; the old 0.7 gave
+L/D 1.06, so it was already sized AT the constraint carrying 0.06
+loose). The realism residue is real and recorded here rather than kept
+in metal: a physical chronograph's tier is deeper than its riders
+strictly need (≈0.5 mm against the derived 0.23 mm), because a real
+beak is a hand-finished steel finger with engagement safety this
+model's solved poses don't consume. If a future item wants the LOOK
+back, it buys it in z knowingly, against §192's measured price table.
+
 **Closed 2026-08-02, exactly along that path.** The nose rises off
 the tail's end into the castellation band (mid-band, clear of the
 base disc below and the tier's top), and its inward face lands on
@@ -15143,19 +15160,73 @@ and measured against metal that later landings moved.
   lever's under-plate margin was held "see CLEARANCE_BUDGETS"; no such
   row existed. It does now, and the note tells the truth.
 
+**CLOSED by §192 (the rod-literal half):** the link-rod site solver's
+strike-band bound was a frozen `TQ_TOP_Z + 2.5`; it is now the column
+stack top derived from the same constants that cut the wheel, plus the
+one margin, and tracks any future re-station. The priced risk — that
+re-authoring could move the solved rod site — was measured across the
+change and did not bite: the site is byte-identical, because every unit
+with metal in the widened span was already excluded as the link's own
+neighbourhood. (The same landing also took the §169 coil term OUT of
+the skirt assert this item fixed, both sides still reading the raise
+solve's own inventory — see §192's record.)
+
 **OPEN:**
 
-- `main.js`'s link-rod site solver bounds the strike band with a frozen
-  `TQ_TOP_Z + 2.5`, ~2.4 under the built tier's ceiling
-  (Δ4.89, measured). The solve stands today because everything between
-  2.5 and the ceiling is the tier's own metal, which the solve avoids in
-  plan — but re-authoring the bound to the measured ceiling can MOVE the
-  solved rod site, a geometry change, so it is priced in §192's table
-  rather than patched here. Fix path: when §192's implementation
-  re-stations the tier, derive this bound from the measured tier ceiling
-  in the same landing and accept the re-solved site.
 - `docs/BUILT.md` §183's table and `main.js`'s §183 comment quote
   incompatible arm/chamfer figures (3.1400/0.3047 vs ~3.62/0.3516); one
   went stale when an input moved. Both places now carry the annotation;
   closing this half means re-deriving from the live expressions and
   correcting whichever quotation is wrong.
+
+## 122. The exhibition crystals are glazed by coordinates: no gasket, no press, nothing fixes them in place
+
+Found by the owner's eye on §192's lowered back ("it looks like the back
+glass is just resting on the caseback and not fixed down") and measured
+worse than it looked. The §187 back crystal's retention inventory, off
+the built metal:
+
+- **radially**: edge at r 47.868 against the channel wall at 47.948 —
+  `SEAT_FIT` (0.08 u) of open clearance. A drop-into-a-recess fit
+  LOCATES a part somebody then fastens; nothing fastened this one.
+- **outward**: the edge's land stood 0.026 u SHY of the retaining lip —
+  `SEAT_EMBED` applied with the wrong sign, the press-contact idiom
+  parking the pane a hundredth off the only face that could retain it.
+- **inward**: nothing at all. No seat ledge, no gasket, no tension
+  ring; the first metal below the edge annulus was a clamp screw
+  10.7 u down. Dial-up, the pane lies on the movement.
+
+It survived every gate because `support` is declared per UNIT (one
+floating mesh in a seated unit passes in silence — the §173
+jumper-stud class, catalogued in the roadmap's reconfigure entry) and
+the Case sits outside `INTRA_TIER_SCOPE` as §187's declared debt. The
+defect predates §192 — it is §3's original "glazed from inside against
+the turned retaining lip", inherited by §187's threaded ring — and
+§192 merely made it visible by sinking the step below the ring's rim,
+where the pane reads as the loose disc it was.
+
+**CLOSED for the back, same landing.** What fixes a real display
+crystal is its GASKET: a nylon I-ring compressed between the glass's
+edge and the ring's channel wall, the interference carrying the pane
+in every direction the lip does not. `caseBackCrystalGasket` is that
+member, drawn at its compressed section — real crystal-gasket stock at
+0.3 mm wall (the low end, the movement's floor-stock discipline) at
+the §3 face cord's own stated 20% squeeze — and **the channel is cut
+FOR it**: `glassEdgeR = skirtID − 0.8·stock`, so the fit IS the press
+(aperture 46.28 → 45.73, still clearing the plate's measured reach by
+2.3). The lip embed's sign is corrected (the glass sinks `SEAT_EMBED`
+INTO the lip), no two faces in the stack share a plane (the z-fight
+rule, which is also the BVH coplanar-triangle rule), and the three
+joints — pane ⇄ lip, pane ⇄ gasket, gasket ⇄ wall — are declared in
+`INTRA_UNIT_CONTACTS`, where the §182 audit measures them shut every
+battery run. Before the gasket existed those rows would have been
+§163's stud row again: a declared fixation the metal did not have.
+
+**Residue, measured and kept**: the FRONT crystal (`caseCrystal` ⇄
+`caseMiddle`) measures 0 — it is genuinely engaged, press-fitted into
+the bezel's cone with ~0.2 mm of radial interference standing in for
+the "relieved edge" its comment claims. That is a modeled press (the
+§3 smooth-thread family: real engagement, declared simplification),
+held radially and outward by the cone and inward by the friction the
+interference implies. It stays as-is; if a later item wants the front
+armed like the back, the same gasket idiom applies at the bezel.

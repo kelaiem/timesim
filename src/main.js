@@ -19981,8 +19981,31 @@ const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scal
 // the same circle and is built 2000 lines earlier — one declaration, two
 // consumers, no second literal.
 const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;
-const ALARM_COL_BASE_H = 0.7;      // base disc 0.27 mm
-const ALARM_COL_H = 1.4;           // castellation tier 0.53 mm — real proportion at real diameter
+// §192 — the castellation tier's height DERIVED from its riders, where
+// TODO 11 set it by proportion (1.4, "castellation tier 0.53 mm — real
+// proportion at real diameter"). The §192 fork convention: a changed spec row
+// re-derives from the movement constraint that forced it, in place. What
+// actually works in this band, measured:
+//   · the lock rocker's beak — a §50-floor cylinder riding the column outer
+//     faces at band mid, wanting one running margin at each face:
+//     STOCK_MIN_U + 2·CLEAR_MARGIN (the governing floor);
+//   · the link beak's fall into a gap — caught by the SEAT (the ring's full
+//     travel reflected back through the lever, F.seatNoseDrop), wanting one
+//     margin off the gap floor: ALARM_COL_SEAT_DROP_SPEC + CLEAR_MARGIN.
+// The proportion this retires was honest ABOUT A LOOK; the riders are what
+// the feature is FOR, and the residue (a real chronograph's tier is deeper
+// than its riders strictly need) is recorded at TODO 11's annotation rather
+// than silently kept at 2.3× the derived height.
+//
+// The seat drop is a SPEC here because the wheel is cut long before the link
+// that measures it exists — §169's COILS convention: the link build re-derives
+// F.seatNoseDrop from live constants and warns if the two part.
+// (0.0237 before §192's own sections landed — the drop reads the folded
+// linkage, so the spec is the fixed point of the fork it feeds: COL_H's max()
+// is governed by the rocker term either way, so one re-derivation converges.)
+const ALARM_COL_SEAT_DROP_SPEC = 0.0218;
+const ALARM_COL_H = Math.max(STOCK_MIN_U + 2 * CLEAR_MARGIN,
+                             ALARM_COL_SEAT_DROP_SPEC + CLEAR_MARGIN);
 const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
 // §68's second move — the RAISED STRATUM. Inboard of the rim the
 // three-quarter plate runs under the wheel, and the collar-bound lever z
@@ -20018,40 +20041,33 @@ const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06
 // margin at EACH face — and the pawl is centred in it, which is the same
 // arithmetic a real ratchet's tooth band is cut to.
 const ALARM_COL_SKIRT_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;
-// §169's other half — THE PAWL'S SPRING IS A TORSION COIL ON ITS OWN POST, and
-// it stands in the stratum between the driver's top face and the pawl. Its
-// turn count is a SPEC here because the raise has to be known before the wheel
-// is cut and the count is solved against the wheel's own saw (the drag floor
-// needs the pawl's stroke, which needs the seats); the solve re-derives it
-// from live constants and warns if the two part — §137's rule that a figure an
-// instrument also computes is ASSERTED against, not resembled.
-// §173 left it at 6.5, and the round trip is worth recording because it shows
-// what this spec is coupled to. The count is SOLVED at the spring (the greater
-// of its drag floor and its own strain floor) and is a spec here only because
-// the wheel's raise has to be known before the wheel is cut. Its drag budget
-// is the sautoir's forward detent over ALARM_SPRING_HEADROOM — so the count is
-// a function of §173's FOLD, not just of the spring: mirroring the blade makes
-// the arc's azimuth drift add to the ramp instead of subtracting from it, the
-// detent rises 12%, and the coil solves one turn shorter. The middle fold ran
-// that way and this constant read 5.5. The fold that survived all three
-// constraints runs the original way, the detent is back to 3.479e-2 N·mm, and
-// so is the count. §169's instruction was followed in both directions rather
-// than worked around: re-derive the raise, never re-target the spring.
-const ALARM_PAWL_SPRING_COILS = 6.5;
-// Close-wound, so successive turns put their wire CENTRES one wire diameter
-// apart and n turns span n·d centre to centre; the wire's own radius then
-// adds half a diameter at each end, which is the height the stratum has to
-// hold. Getting this wrong by exactly that d is what the first cut did, and
-// it left the coil 0.084 under the pawl against a CLEAR_MARGIN of 0.15.
-const ALARM_PAWL_COIL_H = (ALARM_PAWL_SPRING_COILS + 1) * SPRING_FLAT_U;
+// §192 — the base disc's height DERIVED from its bearing, where TODO 11 set
+// it by proportion (0.7, "base disc 0.27 mm"). The wheel spins on a fixed
+// stud — a journal — and its bore engages that stud from the skirt's
+// underside up to the tip parked 0.05 under the base's top face (§68's
+// concealment margin, declared at the stud). A journal wants its length no
+// shorter than its diameter, so the base supplies what the skirt does not:
+//   SKIRT_H + BASE_H − 0.05 ≥ stud Ø = 2·(ALARM_COL_BORE_R − 0.06)
+// Declared here because the skirt height is a term; the old 0.7 gave the
+// journal L/D 1.06, so the proportion was already sized AT this constraint
+// — the fork writes the constraint down and keeps the 0.06 it was carrying
+// loose.
+const ALARM_COL_BASE_H = 2 * (ALARM_COL_BORE_R - 0.06) + 0.05 - ALARM_COL_SKIRT_H;
 const ALARM_COL_DRIVER_T = STOCK_MIN_U;   // the driver runs at §50's floor, like every blade here
-// The skirt's underside sits one coil height above the driver's top face: the
-// coil is anchored TO the driver so it may stand on it, and it is clear of the
-// skirt in PLAN (its outer surface reaches 6.718 from the arbor against saw
-// tips at 6.384), so the only z it owes is to the pawl above — which the
-// pawl's own centring in the band then supplies.
+// §192 — THE PAWL'S SPRING LEFT THE Z-STACK, so the raise no longer carries a
+// spring term at all. §169's torsion coil stood in its own
+// (coils + 1)·SPRING_FLAT_U stratum between the driver's top face and the
+// pawl, and this constant bought 0.990 u of tier height to hold it — measured
+// by probe-192-tier-price as the tallest single rung in the strike tower's
+// ladder. The spring is now an in-plane cantilever blade COPLANAR with the
+// pawl, in the skirt band the pawl already owns (see the §192 block at the
+// driver), so the band between the plate top and the ratchet skirt returns to
+// §163's own stated minimum: "a driver at floor stock wants CLEAR_MARGIN +
+// STOCK_MIN_U + CLEAR_MARGIN = 0.6166 between the plate top and the ratchet
+// skirt" — one running margin under the driver, the driver, one running
+// margin over it.
 const ALARM_COL_RAISE = Math.max(0,
-  (TQ_TOP_Z + CLEAR_MARGIN + ALARM_COL_DRIVER_T + ALARM_PAWL_COIL_H)
+  (TQ_TOP_Z + CLEAR_MARGIN + ALARM_COL_DRIVER_T + CLEAR_MARGIN)
     - ((ALARM_LOCK_Z + 0.22) - ALARM_COL_BASE_H / 2 - ALARM_COL_SKIRT_H));
 const ALARM_COL_SPIN_REL = 0.22 + ALARM_COL_RAISE; // the spin plane above ALARM_LOCK_Z
 const ALARM_COL_INNER = ALARM_COL_BASE_R * (0.95 / 1.5); // the original proportion, kept
@@ -20068,17 +20084,17 @@ const ALARM_COL_POS = {
   // it guards. It computed the skirt bottom with STOCK_MIN_U where the metal
   // is ALARM_COL_SKIRT_H (§169 deepened the band and this reader never
   // followed — it measured a plane 0.30 above the real underside), and its
-  // band need predated ALARM_PAWL_COIL_H, the term §169 made binding. It
-  // showed 1.14 of headroom against a real 0.000: a §192-class downward
-  // re-station could bury the pawl's torsion coil and this would stay
-  // silent. Both sides now read the same inventory the raise solve does
-  // (19547-19549), so the assert sits AT equality by that solve's own
-  // construction — probe-192-tier-price measures the same 0.990 coil
-  // stratum and 1.456 skirt height off the metal.
+  // band need predated the coil term §169 made binding. It showed 1.14 of
+  // headroom against a real 0.000: a §192-class downward re-station could
+  // bury what stands in the band and this would stay silent. Both sides now
+  // read the same inventory the raise solve does, so the assert sits AT
+  // equality by that solve's own construction. §192 took the coil term out of
+  // both at once — the spring is in-plane now, so what the band holds is the
+  // driver with a running margin at each face, §163's own stated minimum.
   const skirtBot = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - ALARM_COL_SKIRT_H;
-  const bandNeed = CLEAR_MARGIN + ALARM_COL_DRIVER_T + ALARM_PAWL_COIL_H;   // §163's stratum + §169's coil, the raise's own terms
+  const bandNeed = CLEAR_MARGIN + ALARM_COL_DRIVER_T + CLEAR_MARGIN;   // §163's stratum, whole again — the raise's own terms
   if (skirtBot < TQ_TOP_Z + bandNeed - 1e-6)
-    console.warn(`§163/TODO 121: ratchet skirt underside ${skirtBot.toFixed(3)} leaves ${(skirtBot - TQ_TOP_Z).toFixed(3)} over the plate top ${TQ_TOP_Z.toFixed(3)} — the driver + pawl-coil stratum needs ${bandNeed.toFixed(3)}`);
+    console.warn(`§163/TODO 121: ratchet skirt underside ${skirtBot.toFixed(3)} leaves ${(skirtBot - TQ_TOP_Z).toFixed(3)} over the plate top ${TQ_TOP_Z.toFixed(3)} — the driver's stratum needs ${bandNeed.toFixed(3)}`);
 }
 // The rider nose the wheel sizes its flat tops for — hoisted above the rocker
 // spec that now reads it. Left where it was, it is a TEMPORAL DEAD ZONE and
@@ -20747,7 +20763,14 @@ const alarmLockRocker = new THREE.Group();
 alarmLockRocker.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
 alarmLockUnit.add(alarmLockRocker);
 {
-  const beakH = ALARM_COL_H * 0.6;              // as the old nose: inside the band, clear of both faces
+  // §192 — the band minus one running margin per face. The 0.6 factor it
+  // replaces was never derived ("as the old nose") and its per-face clearance
+  // crossed CLEAR_MARGIN at COL_H 0.75 with nothing watching; this form keeps
+  // the margins exact at any tier height, and the tier's own floor
+  // (STOCK_MIN_U + 2·CM at the wheel) is what keeps the beak at §50 stock.
+  const beakH = ALARM_COL_H - 2 * CLEAR_MARGIN;
+  if (beakH < STOCK_MIN_U - 1e-9)
+    console.warn(`§192: the rocker beak solves to ${beakH.toFixed(4)} tall, under §50's ${STOCK_MIN_U.toFixed(4)} floor — the tier no longer affords its own rider`);
   const armW = STOCK_MIN_U;
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_ROCKER_ARM, armW, armW), MATS.steel);
   arm.name = 'alarmLockRockerArm';
@@ -21202,15 +21225,16 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   // inside bushes r 0.26 — plus the one margin. 0.45 was a guess and it
   // swallowed the setting-plane wheels the real shaft clears by z.
   const shaftBand = [ALARM_LINK_SHAFT_Z - (0.26 + CLEAR_MARGIN), ALARM_LINK_SHAFT_Z + (0.26 + CLEAR_MARGIN)];
-  const colBand = [ALARM_LINK_SHAFT_Z, TQ_TOP_Z + 2.5]; // up through both plates to the strike band
-  // TODO 121 (OPEN half): that 2.5 is a FROZEN description of the strike
-  // band's height and it understates the built tier by ~2.4 — the link tower
-  // tops Δ4.89 over the plate (probe-192-tier-price). The solver still
-  // stands because everything between 2.5 and the real ceiling is the tier's
-  // OWN metal (which the solve already avoids by siting the rod outside its
-  // plan), but re-authoring it to the measured ceiling could MOVE the solved
-  // rod site — a geometry change — so it is priced in §192's table rather
-  // than patched here.
+  // §192 closed TODO 121's open half here: the band's top was a frozen 2.5
+  // ("up through both plates to the strike band") that understated the built
+  // tier — the strike band's top IS the column stack's, so it is derived from
+  // the same constants that cut the wheel, plus the one margin, and tracks
+  // any future re-station. Re-authoring it was priced as a possible
+  // rod-site move; measured across the change, the solved site did not move
+  // (every unit with metal in the widened span was already excluded as the
+  // link's own neighbourhood).
+  const colBand = [ALARM_LINK_SHAFT_Z,
+    (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H + CLEAR_MARGIN];
   // Rotor meshes enter as DISCS about their axis (the tier-split gate's
   // shape rule): a round wheel's square box owns corners the metal never
   // visits, and the chord's own destination sits in the setting wheel's
@@ -22309,6 +22333,16 @@ const alarmLinkParts = {};
       say('nose underside off the column top plane', `${noseBox.min.z.toFixed(3)} vs ${ALARM_COL_TOP_Z.toFixed(3)}`);
     if (!(F.seatNoseDrop > 0.001 && F.seatNoseDrop < 0.55))
       say('seat nose drop out of range', F.seatNoseDrop.toFixed(4));
+    // §192 — the two claims the tier's height now rests on. The spec at the
+    // wheel is this number re-derived (the §169 COILS convention: the wheel
+    // is cut before the link exists, so the spec leads and this holds it
+    // honest); and the tick's Math.min(colH·(1−p), seatNoseDrop) caps the
+    // fall SILENTLY if the tier ever undercuts the drop, so the starvation
+    // case gets the assert it never had.
+    if (Math.abs(F.seatNoseDrop - ALARM_COL_SEAT_DROP_SPEC) > 1e-3)
+      say('seat nose drop parted from its spec', `${F.seatNoseDrop.toFixed(4)} vs ALARM_COL_SEAT_DROP_SPEC ${ALARM_COL_SEAT_DROP_SPEC} — re-derive the spec at the wheel, never re-target the linkage`);
+    if (ALARM_COL_H < F.seatNoseDrop + CLEAR_MARGIN - 1e-9)
+      say('the tier starves the seat drop', `colH ${ALARM_COL_H.toFixed(4)} vs seatNoseDrop ${F.seatNoseDrop.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN} — the beak would ride the gap floor, not the seat`);
     if (Math.sign(F.rodTravel) !== Math.sign(travelW))
       say('rod and ring travel disagree in sign', `${F.rodTravel.toFixed(3)} vs ${travelW.toFixed(3)}`);
     // 7. The §54 corridor budget: the rim finger's contact ridge must not
@@ -23140,7 +23174,7 @@ const alarmDriverAngleAt = (T) => ALARM_DRIVER_REST_A + alarmColumnWheel.userDat
 // travel rather than being retyped: the post's radius is derived here from the
 // same constraint the probe used, and the pawl's centreline is the one mapped
 // through the swept free region at that radius.
-let alarmColDriverGroup = null, alarmColPawlGroup = null;
+let alarmColDriverGroup = null, alarmColPawlGroup = null, alarmColPawlSpringBlade = null;
 let alarmPawlSeatPhi = null;
 let ALARM_DRIVER_REST_A = 0, ALARM_PAWL_PHI_FREE = 0, ALARM_PAWL_L = 0, ALARM_DRIVER_BRANCH_CLEAR = 0;
 let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLen_u, noseArm_u, …}
@@ -23267,87 +23301,71 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   const U = UNIT_MM / 1000;                                     // m per model unit
   const detentTq_Nmm = ALARM_JUMPER_DETENT_NMM;   // §173: the jumper publishes a TORQUE, so no consumer re-derives one from a force and a radius
   const noseFmax_N = detentTq_Nmm / (ALARM_SPRING_HEADROOM * ALARM_COL_TIP_R * UNIT_MM);
-  // ————— §169 — THE SPRING IS A TORSION COIL ON THE PAWL'S OWN POST —————
+  // ——— §192 — THE SPRING IS AN IN-PLANE BLADE IN THE PAWL'S OWN BAND ———
   //
-  // §163 sprung this pawl with a flat cantilever behind its tail. The blade's
-  // two dimensions were solved honestly and its arithmetic held, but its
-  // ANCHOR was placed at `bear − springFree` along the pawl's own axis, and
-  // the pawl's nose points inboard, so "behind the pivot" points OUTBOARD: the
-  // stud landed 11.378 from the arbor against a driver whose outline reaches
-  // 7.550. Measured (§169): 4.347 of clear air under it, a raycast down its
-  // axis hitting the driver zero times, and an INTRA_UNIT_CONTACTS row
-  // declaring it "standing on the driver" — which both stated something false
-  // and excused the pair from the sweep that would have caught it.
+  // Third form of this one member, and each move is on the record. §163
+  // sprung the pawl with a flat cantilever behind its tail: the FORM was
+  // honest and its arithmetic held, but its anchor stud stood on air — 11.378
+  // from the arbor against a driver whose outline reached 7.550, with an
+  // INTRA_UNIT_CONTACTS row declaring a joint that was not there, which both
+  // stated something false and excused the pair from the sweep that would
+  // have caught it. §169 replaced it with a torsion coil wound on the pawl's
+  // own post, which removed that CLASS of mistake — coaxial, so no anchor to
+  // place — and paid for it in z: the coil stood in its own
+  // (coils + 1)·SPRING_FLAT_U stratum between the driver and the pawl, and
+  // the wheel's raise carried it. probe-192-tier-price measured that stratum
+  // as the tallest single rung in the strike tower's ladder (0.990 u of the
+  // 2.069 the flat back wants), which is what re-opened the question.
   //
-  // A torsion spring removes the whole class of mistake rather than re-siting
-  // it. Its coil is COAXIAL with the pivot, so there is no anchor arm to place
-  // and no bear arm in the force path at all: the restoring MOMENT acts on the
-  // pawl directly, and the only lever left in the corner is the nose's own.
-  // What it costs is z — see ALARM_PAWL_COIL_H at the wheel, where the raise
-  // is bought.
+  // The blade returns because the failure that exiled it is now HELD rather
+  // than hoped against, twice over: §182 audits every declared joint against
+  // the metal (a row whose parts never come within DECLARED_CONTACT_REACH
+  // fails the battery — exactly the row that lied in §163), and the anchor
+  // this time is a stud on a THIRD ARM of the driver, cut to reach it, so the
+  // ground the blade reacts against is hull metal by construction and the
+  // stud-on-metal claim is asserted below at the build. What the blade buys
+  // back is the whole coil stratum: it works IN PLANE, coplanar with the pawl
+  // in the skirt band the pawl already owns, pressing the tail's flank
+  // directly — no pin, no legs, no stratum of its own.
   //
-  // THE WIRE is the movement's one spring stock (SPRING_FLAT_U, ⌀0.05 mm) and
-  // THE COIL is a close fit on the post it locates on, which is what makes it
-  // a torsion spring rather than a loop of wire near one:
-  const wireR = SPRING_FLAT_U / 2;
-  const coilR = STOCK_MIN_R10 + PIVOT_BORE_CLEAR + wireR;       // mean radius: post + running fit + half the wire
-  const springIndex = (2 * coilR) / SPRING_FLAT_U;              // D/d — a real spring is wound at 4..12
-  // HOW MANY TURNS is bounded from BOTH sides, and both are floors on the
-  // DEVELOPED LENGTH, exactly as the blade's two floors were floors on its
-  // free length — a spring can always be longer than either needs, never
-  // shorter than the greater. The wire works in BENDING (that is what a
-  // torsion spring is), so the strain limit is the same SPRING_STRAIN_MAX a
-  // blade answers to, under a different loading:
-  //
-  //   · the DRAG budget. M = kθ·θ with kθ = E·I/L and θ = preload + stroke,
-  //     and M/noseArm taken at the tip circle must stay under the click's
-  //     detent by ALARM_SPRING_HEADROOM:
-  //         L ≥ E · I · θ / Mmax
-  //   · the wire's own STRAIN. Its surface works to θ·(d/2)/L and must stay
-  //     under SPRING_STRAIN_MAX or it takes a set and the drag budget decays
-  //     with it:
-  //         L ≥ θ · d / (2 · ε)
-  //
-  const springTheta = 2 * ALARM_PAWL_STROKE;   // preloaded by one working stroke — see the free angle above
-  const wire_m = SPRING_FLAT_U * U, I_m4 = Math.PI * wire_m ** 4 / 64;
-  const momentMax_Nm = noseFmax_N * (ALARM_PAWL_L * U);
-  const coilDragFloor = (STEEL_E_PA * I_m4 * springTheta / momentMax_Nm) / U;   // model units
-  const coilBendFloor = (springTheta * wire_m / (2 * SPRING_STRAIN_MAX)) / U;
-  const coilLenFloor = Math.max(coilDragFloor, coilBendFloor);
-  // The turn count is then the smallest count over that floor that ALSO puts
-  // the two legs where their anchors are. They want to be opposite — the
-  // anchor leg inboard onto the driver's own web, the working leg outboard
-  // onto the pawl's tail — so the count carries a HALF turn, and the small
-  // residue between "straight outboard" and the tail's own bear station is a
-  // BEND in the leg, which is what a real torsion spring's legs are for.
-  // Smallest, because more length is a softer spring and softer is the
-  // direction that stops holding the nose closed; the drag budget below is
-  // what bounds it the other way.
-  const springCoils = Math.ceil(coilLenFloor / (Math.PI * 2 * coilR) - 0.5) + 0.5;
-  const springDevLenPlan = Math.PI * 2 * coilR * springCoils;
-  // The RATE is NOT computed from that. makeHairspring's rule — one sampling,
-  // one answer — is that a rate is computed from what was CUT, and what is cut
-  // here is a polygonal sweep whose chords fall a measurable 8.6e-5 short of
-  // the circle the plan integrates. Both are filled in at the metal, from the
-  // length the builder accumulated along the very polyline it swept.
-  let springDevLen = springDevLenPlan, springKtheta = 0, springStrain = 0;
-  const springRateFrom = (devLen_u) => {
-    springDevLen = devLen_u;
-    springKtheta = STEEL_E_PA * I_m4 / (springDevLen * U);                      // N·m per radian
-    springStrain = springTheta * (wire_m / 2) / (springDevLen * U);
-    if (springStrain > SPRING_STRAIN_MAX + 1e-12)
-      console.warn(`§169: the pawl spring's wire works to ${springStrain.toExponential(3)} surface strain, over SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX.toExponential(3)}`);
-  };
-  const bearArm = ALARM_PAWL_BOSS_R + ALARM_PAWL_HALF_W;   // where the working leg touches the tail — the boss governs, as it did the blade's
+  // THE SECTION is the movement's one flat-spring stock, square — the §48
+  // feeler blade's own section — with the thin axis in the bending direction:
+  const bladeT = SPRING_FLAT_U;                 // thickness, the bending direction
+  const bladeW = SPRING_FLAT_U;                 // width, across the band's z
+  // THE BEAR STATION is the closest one the tail offers: the flank at the
+  // boss's edge. The pawl's rotation about its post moves that station
+  // bladewise by bearArm per radian, so the blade's tip deflection is the
+  // pawl's angle read through that arm.
+  const bearArm = ALARM_PAWL_BOSS_R + ALARM_PAWL_HALF_W;
   const springTail = -(bearArm + ALARM_PAWL_HALF_W);
-  if (springIndex < 4 || springIndex > 12)
-    console.warn(`§169: the pawl spring is wound at index D/d ${springIndex.toFixed(2)}, outside the 4..12 a torsion spring can be coiled to — the post's diameter and the wire's are what set it`);
-  // THE SPEC ASSERT the raise is bought against. ALARM_PAWL_SPRING_COILS is
-  // declared at the wheel because the stratum has to exist before the wheel is
-  // cut; this is the same number re-derived from live constants, and the two
-  // parting means the raise no longer describes the spring standing in it.
-  if (springCoils !== ALARM_PAWL_SPRING_COILS)
-    console.warn(`§169: the pawl spring solves to ${springCoils} turns (developed floor ${coilLenFloor.toFixed(3)} over ${(Math.PI * 2 * coilR).toFixed(3)} per turn) but the wheel's raise was bought for ALARM_PAWL_SPRING_COILS ${ALARM_PAWL_SPRING_COILS} — re-derive the raise, do not re-target the spring`);
+  const springTheta = 2 * ALARM_PAWL_STROKE;   // fullest working deflection: preload + one stroke — see the free angle above
+  const deltaMax_m = (bearArm * U) * springTheta;
+  // THE FREE LENGTH is bounded from both sides, and both are floors — a
+  // spring may always be longer than either wants, never shorter than the
+  // greater. §169's two floors, read back in blade form:
+  //
+  //   · the DRAG budget. kθ = k·bearArm² with k = 3EI/L³, and kθ·θmax over
+  //     the nose arm, taken at the tip circle, must stay under the sautoir's
+  //     forward detent by ALARM_SPRING_HEADROOM:
+  //         L³ ≥ 3 · E · I · bearArm² · θmax / Mmax
+  //   · the blade's own STRAIN. An end-loaded cantilever's root surface works
+  //     to 3·t·δ/(2L²), and it must stay under SPRING_STRAIN_MAX or it takes
+  //     a set and the preload decays with it:
+  //         L² ≥ 3 · t · δmax / (2 · ε)
+  const bladeI_m4 = (bladeW * U) * (bladeT * U) ** 3 / 12;
+  const momentMax_Nm = noseFmax_N * (ALARM_PAWL_L * U);
+  const bladeDragFloor = Math.cbrt(3 * STEEL_E_PA * bladeI_m4 * (bearArm * U) ** 2 * springTheta / momentMax_Nm) / U;
+  const bladeStrainFloor = Math.sqrt(3 * (bladeT * U) * deltaMax_m / (2 * SPRING_STRAIN_MAX)) / U;
+  // Exactly the greater floor, not a round-up: a blade's length is free where
+  // a coil's turn count was quantised, and every unit past the floor is a
+  // softer spring — softness is the direction that stops holding the nose
+  // closed, and reach is what the anchor arm below has to afford.
+  const bladeFree = Math.max(bladeDragFloor, bladeStrainFloor);
+  const bladeK_N_per_m = cantileverK_N_per_m(bladeW, bladeT, bladeFree);   // §173's one cantilever law
+  const springKtheta = bladeK_N_per_m * (bearArm * U) ** 2;                // N·m per radian, as the pawl feels it
+  const springStrain = 3 * (bladeT * U) * deltaMax_m / (2 * (bladeFree * U) ** 2);
+  if (springStrain > SPRING_STRAIN_MAX + 1e-12)
+    console.warn(`§192: the pawl blade's root works to ${springStrain.toExponential(3)} surface strain at full deflection, over SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX.toExponential(3)} — the strain floor no longer governs its own length`);
   const branchScan = [];
   // ---- WHICH BRANCH, measured against the metal already standing in the
   // pawl's own z-band. The pawl is the only member of the driver inside the
@@ -23394,8 +23412,13 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         for (const q of pts) obst.push(q);
       });
     }
-    // the pawl's own reach, as segments in its frame plus its two discs
-    const spine = [[springTail, 0]].concat(ALARM_PAWL_BODY, [[ALARM_PAWL_L, 0]]);
+    // the pawl's own reach, as segments in its frame plus its two discs —
+    // EXTENDED past the tail by the blade's free length and its stud (§192):
+    // the blade is driver-fixed rather than pawl-fixed, so sweeping it with
+    // the pawl's frame overstates its motion by the pawl's own rocking, which
+    // is the conservative side. A branch is only as good as the room its
+    // whole spring train has.
+    const spine = [[springTail - bladeFree - 2 * STOCK_MIN_R10, 0], [springTail, 0]].concat(ALARM_PAWL_BODY, [[ALARM_PAWL_L, 0]]);
     const segDist = (px, py, ax, ay, bx, by) => {
       const dx = bx - ax, dy = by - ay, d2 = dx * dx + dy * dy;
       const t = d2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / d2)) : 0;
@@ -23448,17 +23471,43 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     if (best < CLEAR_MARGIN)
       console.warn(`§163: the best of the ${branches.length} post branches stands ${best.toFixed(4)} off the metal already in the pawl's band, under CLEAR_MARGIN ${CLEAR_MARGIN} — the driver needs re-siting, not a smaller margin`);
   }
-  // ---- the metal.
+  // ---- the metal. The blade's geometry has to exist BEFORE the driver is
+  // cut, because the driver's third arm is derived from it: which FLANK the
+  // blade bears on is the closing side (the tail is behind the pivot, so a
+  // force pushing the tail one way rotates the nose the other, and the
+  // closing side is the one the opening sense is not on), and the root
+  // continues straight on from the bear station by the free length, with the
+  // stud's own radius past that so the clamp face to the bear station IS the
+  // free length. All of it placed at the spring's FREE angle — the same
+  // convention the coil's legs used, and the §48 frame law in the tick keeps
+  // the built blade's tip on the tail wherever the seat solve puts the pawl.
+  const springSide = -phiOpenSense(ALARM_PAWL_PHI_FREE);
+  const bear = { x: -bearArm, y: springSide * ALARM_PAWL_HALF_W };
+  const clampLocal = { x: -(bearArm + bladeFree), y: springSide * ALARM_PAWL_HALF_W };
+  const postAt = { x: ALARM_DRIVER_POST_R * Math.cos(postAz), y: ALARM_DRIVER_POST_R * Math.sin(postAz) };
+  const csF = Math.cos(postAz + ALARM_PAWL_PHI_FREE), snF = Math.sin(postAz + ALARM_PAWL_PHI_FREE);
+  const rootAt = { x: postAt.x + clampLocal.x * csF - clampLocal.y * snF,
+                   y: postAt.y + clampLocal.x * snF + clampLocal.y * csF };
+  const anchorAt = { x: rootAt.x - STOCK_MIN_R10 * csF,     // one stud radius on past the clamp face,
+                     y: rootAt.y - STOCK_MIN_R10 * snF };   // along the same tail line (local −x)
+  const anchorR = Math.hypot(anchorAt.x, anchorAt.y);
+  const anchorAz = Math.atan2(anchorAt.y, anchorAt.x);
+  // The anchor arm's tip: the stud plus a §50-floor wall around it, the post
+  // arm's own rule. Its reach is the longest thing on the driver, so the §68
+  // plate-edge bound is re-asserted for it below with the achieved numbers.
+  const anchorArmTipR = STOCK_MIN_R10 + STOCK_MIN_U;
+  const slotHalfW = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;             // a running fit on the pin
   alarmColDriverGroup = new THREE.Group();
   alarmColDriverGroup.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_DRIVER_BOT_Z);
   alarmColDriverGroup.rotation.z = ALARM_DRIVER_REST_A;
   alarmSwitchUnit.add(alarmColDriverGroup);
-  const slotHalfW = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;             // a running fit on the pin
   const driver = G.makeColumnDriver({
     boreR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR,          // the stud it turns on, plus the movement's running clearance
     hubR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR + STOCK_MIN_U,
     arms: [{ az: 0, reach: ALARM_DRIVER_SLOT_OUT, tipR: slotHalfW + STOCK_MIN_U },
-           { az: postAz, reach: ALARM_DRIVER_POST_R, tipR: STOCK_MIN_R10 + STOCK_MIN_U }],
+           { az: postAz, reach: ALARM_DRIVER_POST_R, tipR: STOCK_MIN_R10 + STOCK_MIN_U },
+           // §192 — the blade's anchor arm: the metal §163's stud never had.
+           { az: anchorAz, reach: anchorR, tipR: anchorArmTipR }],
     slot: { az: 0, inner: ALARM_DRIVER_SLOT_IN, outer: ALARM_DRIVER_SLOT_OUT, halfW: slotHalfW },
     thickness: ALARM_COL_DRIVER_T, material: MATS.blueSteel, name: 'alarmColDriver',
   });
@@ -23468,20 +23517,16 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   // this is the one member of the driver that is inside the tooth annulus in
   // z, and it is outside it in plan.
   const pawlTopZ = ALARM_PAWL_BAND_Z + STOCK_MIN_U;
-  const postAt = { x: ALARM_DRIVER_POST_R * Math.cos(postAz), y: ALARM_DRIVER_POST_R * Math.sin(postAz) };
   const post = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, pawlTopZ, 10), MATS.nickel);
   post.name = 'alarmColPawlPost';
   post.rotation.x = Math.PI / 2;
   post.position.set(postAt.x, postAt.y, pawlTopZ / 2);
   alarmColDriverGroup.add(post);
-  // ---- THE SPRING'S METAL. Its section and turn count were solved above,
-  // before the branch scan, because the tail they imply is part of what the
-  // scan sweeps. Which FLANK it bears on is derived, not picked — the tail is
-  // behind the pivot, so a force pushing the tail one way rotates the nose the
-  // other, and the closing side is the one the opening sense is not on.
+  // ---- THE SPRING'S METAL. The blade's dimensions were solved above, before
+  // the branch scan, because the run they imply is part of what the scan
+  // sweeps; its flank, root and stud were derived before the driver was cut,
+  // because the third arm is derived from them.
   {
-    const springSide = -phiOpenSense(ALARM_PAWL_PHI_FREE);
-    const bear = { x: -bearArm, y: springSide * ALARM_PAWL_HALF_W };
     const tail = springTail;
     // ---- the pawl's metal, now that its tail is known
     alarmColPawlGroup = new THREE.Group();
@@ -23497,95 +23542,62 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     alarmColPawlGroup.add(pawl.boss); alarmColPawlGroup.add(pawl.nose);
     alarmColPawlGroup.rotation.z = postAz + ALARM_PAWL_PHI_FREE;   // posed by the tick; built at the free angle
     alarmColPawlGroup.userData.pawlNodes = [[tail, 0]].concat(ALARM_PAWL_BODY, [[ALARM_PAWL_L, 0]]);
-    // ---- and the COIL, standing on the driver's top face around the same
-    // post the pawl runs on. Both legs are placed in the spring's own frame
-    // (origin on the post's axis, in the plane of the coil's bottom end):
-    //
-    //   · the ANCHOR leg leaves the bottom end pointing straight at the arbor,
-    //     which is where the driver's own metal is — it runs down the middle
-    //     of the post arm's web, so its pin stands on a surface that was cut.
-    //     Its length is the floor at which the pin clears the coil it sits
-    //     beside: coil surface + the pin's own radius + one margin.
-    //   · the WORKING leg leaves the top end, which the HALF turn above puts
-    //     exactly opposite — outboard, on the tail's side — and is BENT
-    //     through the small residue between straight-outboard and the tail's
-    //     own bear station, then climbs the one margin to the tail's
-    //     mid-height. A real torsion spring's legs are bent for exactly this.
-    const cs = Math.cos(postAz + ALARM_PAWL_PHI_FREE), sn = Math.sin(postAz + ALARM_PAWL_PHI_FREE);
-    const bx = bear.x * cs - bear.y * sn, by = bear.x * sn + bear.y * cs;   // bear station, relative to the post
-    const anchorAz = postAz + Math.PI;
-    const anchorLegR = coilR + wireR + STOCK_MIN_R10 + CLEAR_MARGIN;
-    const coilBotZ = ALARM_COL_DRIVER_T + wireR;               // the coil SITS on the driver's top face: its path runs one wire radius above it
-    const bearZ = ALARM_PAWL_BAND_Z + STOCK_MIN_U / 2;         // the tail's mid-height, group-local
-    const rB = Math.hypot(bx, by);
-    const anchorAt = { x: postAt.x + anchorLegR * Math.cos(anchorAz),
-                       y: postAt.y + anchorLegR * Math.sin(anchorAz) };
-    const spring = G.makeTorsionSpring({
-      coilR, wireR, coils: springCoils,
-      startAz: anchorAz,
-      // WOUND SO THE WORKING STROKE TIGHTENS IT. The wrap from the anchor end
-      // to the working end runs with `sense`, so a working leg that rotates
-      // with `sense` increases it; the pawl's deflection is in the OPENING
-      // sense, and a coil that unwound instead would grow off its own post.
-      sense: -springSide,
-      legA: [[anchorLegR * Math.cos(anchorAz), anchorLegR * Math.sin(anchorAz), 0]],
-      legB: [[rB * Math.cos(anchorAz + Math.PI), rB * Math.sin(anchorAz + Math.PI), ALARM_PAWL_COIL_H],
-             [bx, by, bearZ - coilBotZ]],
-      material: MATS.blueSteel, name: 'alarmColPawlSpring',
-    });
-    spring.position.set(postAt.x, postAt.y, coilBotZ);
-    alarmColDriverGroup.add(spring);
-    // THE RATE AND THE METAL COME FROM ONE SAMPLING. `springDevLen` above is
-    // πDn in closed form and the builder accumulates the same length along the
-    // very polyline it swept; makeHairspring's rule is that a rate is computed
-    // from what was cut, so the two are held equal rather than assumed so.
-    springRateFrom(spring.userData.torsion.devLen);
-    // The sweep may CHORD the plan — it cannot disagree with it. A sampling
-    // fine enough to be metal is within a chord's error of the circle; a
-    // percent apart means the two are describing different springs.
-    if (Math.abs(spring.userData.torsion.devLen - springDevLenPlan) > 1e-3 * springDevLenPlan)
-      console.warn(`§169: the pawl spring's turn count was solved on a plan of ${springDevLenPlan.toFixed(5)} developed wire but the coil was swept along ${spring.userData.torsion.devLen.toFixed(5)} — more than a chord apart`);
-    if (spring.userData.torsion.devLen < coilLenFloor)
-      console.warn(`§169: the coil as SWEPT is ${spring.userData.torsion.devLen.toFixed(4)} of wire against the ${coilLenFloor.toFixed(4)} floor its ${springCoils}-turn count was chosen to clear`);
-    // and the stratum bought at the wheel is the one the coil actually stands in
-    if (Math.abs((spring.userData.torsion.height + SPRING_FLAT_U) - ALARM_PAWL_COIL_H) > 1e-9)
-      console.warn(`§169: the coil stands ${(spring.userData.torsion.height + SPRING_FLAT_U).toFixed(4)} tall against the ALARM_PAWL_COIL_H ${ALARM_PAWL_COIL_H.toFixed(4)} the wheel's raise was bought for`);
-    // the anchor pin the bottom leg hooks — a real riveted pin standing on the
-    // driver. ITS HEIGHT IS WHAT IT HAS TO HOLD, not the coil's: the leg it
-    // catches lies at the coil's BOTTOM end, so the pin needs the leg's own
-    // diameter plus a floor-stock head over it and no more. The coil's full
-    // height would put its top face exactly on the skirt's underside — the
-    // pin is the one member of this spring that stands INSIDE the saw's tip
-    // circle in plan (6.402 against 6.384), so it is the one that has to be
-    // short, and a pin sized to the stratum rather than to its job would
-    // rebuild the very flush-face defect §169 exists to close.
-    const pinH = SPRING_FLAT_U + STOCK_MIN_U;
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, pinH, 10), MATS.nickel);
-    pin.name = 'alarmColPawlSpringPin';
-    pin.rotation.x = Math.PI / 2;
-    pin.position.set(anchorAt.x, anchorAt.y, ALARM_COL_DRIVER_T + pinH / 2);
-    if (ALARM_COL_DRIVER_T + pinH > ALARM_PAWL_BAND_Z - CLEAR_MARGIN + 1e-9)
-      console.warn(`§169: the spring's anchor pin reaches ${(ALARM_COL_DRIVER_T + pinH).toFixed(4)} against the skirt's underside at ${(ALARM_PAWL_BAND_Z - CLEAR_MARGIN).toFixed(4)} — it stands inside the tip circle in plan, so that gap is the only thing keeping it out of the saw's band`);
-    alarmColDriverGroup.add(pin);
-    // THE PIN STANDS ON METAL, asserted rather than assumed. It sits on the
-    // post arm's own centreline, so the hull's half-width there interpolates
-    // the hub disc's radius to the post tip disc's — the same external-tangent
-    // hull makeColumnDriver builds.
+    // ---- the STUD the blade is clamped to, riveted into the anchor arm cut
+    // to carry it. It spans from the arm's top face to the pawl's own top —
+    // the blade bears at the tail's mid-height, so the clamp has to hold the
+    // blade's full width at that height, and a stud flush with the pawl does
+    // exactly that with nothing to spare. In plan it stands far OUTSIDE the
+    // saw's tip circle (§163's post is at 7.55 and this is the blade's free
+    // length again beyond it), so unlike §169's pin it owes the skirt nothing.
+    const studTopZ = ALARM_PAWL_BAND_Z + STOCK_MIN_U;
+    const stud = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, studTopZ - ALARM_COL_DRIVER_T, 10), MATS.nickel);
+    stud.name = 'alarmColPawlSpringStud';
+    stud.rotation.x = Math.PI / 2;
+    stud.position.set(anchorAt.x, anchorAt.y, (ALARM_COL_DRIVER_T + studTopZ) / 2);
+    alarmColDriverGroup.add(stud);
+    // THE STUD STANDS ON METAL, asserted rather than assumed — the assert
+    // §163's stud never had, and the exact claim it falsified. The arm was
+    // CUT to reach the stud's own station, so the check is that the anchor
+    // disc's rim holds the stud with a full wall around it; TODO 103's hull
+    // warn in makeColumnDriver covers the other failure (an arm asked for
+    // and swallowed), and §182's declared-joint audit measures the pair in
+    // the battery.
+    if (anchorArmTipR < STOCK_MIN_R10 + STOCK_MIN_U - 1e-9)
+      console.warn(`§192: the anchor arm's tip disc is ${anchorArmTipR.toFixed(4)} against the stud's ${STOCK_MIN_R10.toFixed(4)} plus a ${STOCK_MIN_U.toFixed(4)} wall — the stud is not held`);
+    // §68's plate-edge bound, re-asserted for the driver's longest reach: the
+    // anchor arm is the furthest thing this group swings.
     {
-      const hubR = (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR + STOCK_MIN_U;
-      const tipR = STOCK_MIN_R10 + STOCK_MIN_U;
-      const t = (ALARM_DRIVER_POST_R - anchorLegR) / ALARM_DRIVER_POST_R;    // 0 at the post, 1 at the hub
-      const halfW = tipR + (hubR - tipR) * t;
-      if (halfW < STOCK_MIN_R10 + CLEAR_MARGIN)
-        console.warn(`§169: the pawl spring's anchor pin stands where the driver is ${halfW.toFixed(4)} half-wide, under the pin's own ${STOCK_MIN_R10.toFixed(4)} plus CLEAR_MARGIN ${CLEAR_MARGIN} — the leg reaches past its own arm`);
+      const reach = Math.hypot(ALARM_COL_POS.x + anchorAt.x, ALARM_COL_POS.y + anchorAt.y) + anchorArmTipR;
+      if (reach > plateR - CLEAR_MARGIN + 1e-6)
+        console.warn(`§192: the blade's anchor arm reaches r ${reach.toFixed(2)} from the movement centre, over the plate-edge bound ${(plateR - CLEAR_MARGIN).toFixed(2)}`);
     }
+    // ---- and the BLADE itself: a unit box with its origin at the clamp
+    // face, aimed and stretched to the bear station — built here at the free
+    // angle, held on the tail by the §48 frame law in the tick (the feeler
+    // blade's own idiom, one mechanism over). Coplanar with the pawl: its
+    // mid-plane is the tail's mid-height and it never leaves the band the
+    // pawl already owns, which is the whole §192 purchase.
+    const bearZ = ALARM_PAWL_BAND_Z + STOCK_MIN_U / 2;         // the tail's mid-height, group-local
+    const bearAt = { x: postAt.x + bear.x * csF - bear.y * snF,
+                     y: postAt.y + bear.x * snF + bear.y * csF };
+    const geo = new THREE.BoxGeometry(1, bladeT, bladeW);
+    geo.translate(0.5, 0, 0);                                  // origin at the clamped end
+    const blade = new THREE.Mesh(geo, MATS.blueSteel);
+    blade.name = 'alarmColPawlSpring';
+    blade.position.set(rootAt.x, rootAt.y, bearZ);
+    blade.rotation.z = Math.atan2(bearAt.y - rootAt.y, bearAt.x - rootAt.x);
+    blade.scale.x = Math.hypot(bearAt.x - rootAt.x, bearAt.y - rootAt.y);
+    blade.userData.aim = { rx: rootAt.x, ry: rootAt.y, bearX: bear.x, bearY: bear.y };
+    alarmColDriverGroup.add(blade);
+    alarmColPawlSpringBlade = blade;
     ALARM_PAWL_SPRING = {
-      kTheta_Nm_per_rad: springKtheta, coils: springCoils, coilR_u: coilR, wireD_u: SPRING_FLAT_U,
-      index: springIndex, devLen_u: springDevLen, height_u: ALARM_PAWL_COIL_H,
+      kTheta_Nm_per_rad: springKtheta, k_N_per_m: bladeK_N_per_m,
+      bladeT_u: bladeT, bladeW_u: bladeW, freeLen_u: bladeFree,
       bearArm_u: bearArm, noseArm_u: ALARM_PAWL_L, strain: springStrain,
-      dragFloor_u: coilDragFloor, bendFloor_u: coilBendFloor,
-      governs: coilBendFloor >= coilDragFloor ? 'strain' : 'drag',
+      dragFloor_u: bladeDragFloor, strainFloor_u: bladeStrainFloor,
+      governs: bladeStrainFloor >= bladeDragFloor ? 'strain' : 'drag',
       theta_rad: springTheta, stroke_rad: ALARM_PAWL_STROKE, side: springSide, tail_u: tail,
+      anchorR_u: anchorR,
       moment_Nm: springKtheta * springTheta,
       noseF_mN: springKtheta * springTheta / (ALARM_PAWL_L * U) * 1000,
     };
@@ -23654,11 +23666,11 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   //    tangential at the TIP circle, which no real flank does), against the
   //    click's own detent from its §137 row.
   //
-  //    §169 — the arithmetic SHORTENED when the blade became a coil, and that
-  //    is the point of the change rather than a side effect: a torsion spring
-  //    is coaxial with the pivot, so its restoring MOMENT reaches the pawl
-  //    with no bear arm in the path. There is exactly one lever left here, the
-  //    nose's own, where the blade had two in series.
+  //    §192 — the bear arm is back in the path (the blade presses the tail's
+  //    flank at bearArm), and the arithmetic did not lengthen with it: the
+  //    blade's rate is already REFERRED to the pawl's axis through that arm
+  //    (kθ = k·bearArm², above), so the drag is still one moment over the
+  //    nose's own lever, exactly as the coil's was.
   {
     const moment_Nm = ALARM_PAWL_SPRING.kTheta_Nm_per_rad * ALARM_PAWL_SPRING.theta_rad;
     const noseF_mN = 1000 * moment_Nm / (ALARM_PAWL_SPRING.noseArm_u * UNIT_MM / 1000);
@@ -23683,22 +23695,23 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
       console.warn(`§169: the pawl's return drag is ${dragTq_Nmm.toExponential(2)} N·mm against the sautoir's ${detentTq_Nmm.toExponential(2)} N·mm forward detent — the return would carry the wheel back with it`);
     if (detentTq_Nmm / dragTq_Nmm < ALARM_SPRING_HEADROOM - 1e-9)
       console.warn(`§169: the pawl's return drag clears the sautoir's forward detent by ${(detentTq_Nmm / dragTq_Nmm).toFixed(2)}×, under ALARM_SPRING_HEADROOM ${ALARM_SPRING_HEADROOM} — the turn count is what buys this, not the budget`);
-    // 7. §169, and TODO 82's lesson applied before it can bite — THE WORKING
-    //    LEG IS A SERIES COMPLIANCE, and a series compliance that is not an
-    //    order stiffer than the member it is in series with is the one that
-    //    governs. Priced as a cantilever of the wire's own section over the
-    //    leg's own reach, referred to the same radius the coil's rate is:
-    //    the wire's OWN round section, not cantileverK_N_per_m's rectangle —
-    //    a square of the wire's diameter carries 1.7× the second moment of the
-    //    round bar it stands for, and flattering the member an assert exists
-    //    to doubt is the way to make the assert never fire.
-    const legL_u = ALARM_PAWL_SPRING.bearArm_u + ALARM_PAWL_HALF_W;   // coil surface out to the bear station, generously
-    const legL_m = legL_u * UNIT_MM / 1000;
-    const wireI_m4 = Math.PI * (SPRING_FLAT_U * UNIT_MM / 1000) ** 4 / 64;
-    const legK_Nm_per_rad = (3 * STEEL_E_PA * wireI_m4 / legL_m ** 3) * legL_m ** 2;
-    ALARM_PAWL_SPRING.legShare = ALARM_PAWL_SPRING.kTheta_Nm_per_rad / legK_Nm_per_rad;
-    if (legK_Nm_per_rad < 10 * ALARM_PAWL_SPRING.kTheta_Nm_per_rad)
-      console.warn(`§169: the spring's working leg is ${(legK_Nm_per_rad / ALARM_PAWL_SPRING.kTheta_Nm_per_rad).toFixed(2)}× the coil's own rate, under the 10× that makes the coil the member that governs — the leg is a second spring in series and the rate above is not what the pawl feels`);
+    // 7. §192, and TODO 82's lesson applied before it can bite — THE STUD IS
+    //    THE ONE SERIES COMPLIANCE LEFT. §169's working leg is gone (the
+    //    blade bears on the tail directly), but the blade's ground now stands
+    //    on a post of its own: the stud is a cantilever from the driver's arm
+    //    up to the clamp, and a ground that is not an order stiffer than the
+    //    spring it anchors is the member that governs. Priced with the ROUND
+    //    section's own πr⁴/4 — not cantileverK_N_per_m's rectangle, which
+    //    carries 1.7× the second moment of the round bar it stands for, and
+    //    flattering the member an assert exists to doubt is the way to make
+    //    the assert never fire — over the stud's full height, compared at the
+    //    shared load point (the clamp face).
+    const studL_m = (ALARM_PAWL_BAND_Z + STOCK_MIN_U - ALARM_COL_DRIVER_T) * UNIT_MM / 1000;
+    const studI_m4 = Math.PI * (STOCK_MIN_R10 * UNIT_MM / 1000) ** 4 / 4;
+    const studK_N_per_m = 3 * STEEL_E_PA * studI_m4 / studL_m ** 3;
+    ALARM_PAWL_SPRING.studShare = ALARM_PAWL_SPRING.k_N_per_m / studK_N_per_m;
+    if (studK_N_per_m < 10 * ALARM_PAWL_SPRING.k_N_per_m)
+      console.warn(`§192: the blade's anchor stud is ${(studK_N_per_m / ALARM_PAWL_SPRING.k_N_per_m).toFixed(2)}× the blade's own rate, under the 10× that makes the blade the member that governs — the ground is a second spring in series and the rate above is not what the pawl feels`);
   }
   // ————————————————— §137: the two corners this adds —————————————————
   // §163 puts a new IDIOM in the named vocabulary, because the corner it makes
@@ -23729,31 +23742,31 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
         + `${CASE_PUSHER_INPUT_N[0]}–${CASE_PUSHER_INPUT_N[1]} N a finger delivers`,
     });
     declareTransfer('alarm arming: the pawl on its post (spring → nose at the saw)', {
-      unit: 'Alarm switch', meshes: ['alarmColPawlSpring', 'alarmColPawlSpringPin', 'alarmColPawl', 'alarmColPawlPost'], idiom: 'crank',
+      unit: 'Alarm switch', meshes: ['alarmColPawlSpring', 'alarmColPawlSpringStud', 'alarmColPawl', 'alarmColPawlPost'], idiom: 'crank',
       load: { value: ALARM_PAWL_SPRING.noseF_mN, unit: 'mN',
-        source: 'the coil’s built section and developed length at its fullest wind (preload + one working stroke) as a MOMENT about the pawl’s post, over the nose arm' },
-      // NO armIn: a torsion spring coaxial with the pivot applies a pure
-      // moment, so there is no input arm to declare and `ratio` would be
-      // decoration. §169 is what removed it — §163's blade had a bear arm in
-      // series here, and the anchor that arm reached back to stood on nothing.
+        source: 'the blade’s built section and free length at its fullest deflection (preload + one working stroke), read through the bear arm as a MOMENT about the pawl’s post, over the nose arm' },
       quantities: {
-        coils: ALARM_PAWL_SPRING.coils, coilR_u: ALARM_PAWL_SPRING.coilR_u,
-        wireD_u: ALARM_PAWL_SPRING.wireD_u, index: ALARM_PAWL_SPRING.index,
-        devLen_u: ALARM_PAWL_SPRING.devLen_u, kTheta_Nm_per_rad: ALARM_PAWL_SPRING.kTheta_Nm_per_rad,
-        theta_rad: ALARM_PAWL_SPRING.theta_rad, noseArm_u: ALARM_PAWL_SPRING.noseArm_u,
+        bladeT_u: ALARM_PAWL_SPRING.bladeT_u, bladeW_u: ALARM_PAWL_SPRING.bladeW_u,
+        freeLen_u: ALARM_PAWL_SPRING.freeLen_u, k_N_per_m: ALARM_PAWL_SPRING.k_N_per_m,
+        kTheta_Nm_per_rad: ALARM_PAWL_SPRING.kTheta_Nm_per_rad,
+        armIn_u: ALARM_PAWL_SPRING.bearArm_u, armOut_u: ALARM_PAWL_SPRING.noseArm_u,
+        ratio: ALARM_PAWL_SPRING.noseArm_u / ALARM_PAWL_SPRING.bearArm_u,
+        theta_rad: ALARM_PAWL_SPRING.theta_rad,
         dragTq_Nmm: ALARM_PAWL_SPRING.dragTq_Nmm, detentTq_Nmm: ALARM_PAWL_SPRING.detentTq_Nmm,
-        headroom: ALARM_PAWL_SPRING.headroom, legStiffnessRatio: 1 / ALARM_PAWL_SPRING.legShare,
+        headroom: ALARM_PAWL_SPRING.headroom, studStiffnessRatio: 1 / ALARM_PAWL_SPRING.studShare,
       },
-      why: `the coil’s turn count is SOLVED rather than picked, and by the same two floors the blade it replaced `
-        + `answered to — its own strain (SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX}) and the drag budget — both read as `
-        + `floors on DEVELOPED LENGTH, the ${ALARM_PAWL_SPRING.governs} one governing at `
-        + `${Math.max(ALARM_PAWL_SPRING.dragFloor_u, ALARM_PAWL_SPRING.bendFloor_u).toFixed(3)} u. The nose’s `
-        + `${ALARM_PAWL_SPRING.noseF_mN.toFixed(2)} mN taken at the tip circle is ${ALARM_PAWL_SPRING.dragTq_Nmm.toExponential(2)} N·mm `
-        + `against the click’s ${ALARM_PAWL_SPRING.detentTq_Nmm.toExponential(2)} N·mm detent — ${ALARM_PAWL_SPRING.headroom.toFixed(2)}× clear, `
+      why: `the blade’s free length is SOLVED rather than picked, by the same two floors every form of this spring has `
+        + `answered to — its own strain (SPRING_STRAIN_MAX ${SPRING_STRAIN_MAX}) and the drag budget — the `
+        + `${ALARM_PAWL_SPRING.governs} one governing at `
+        + `${Math.max(ALARM_PAWL_SPRING.dragFloor_u, ALARM_PAWL_SPRING.strainFloor_u).toFixed(3)} u. The bear arm is back in the `
+        + `path (§192; the rate is referred through it, kθ = k·bearArm²) and this time its anchor is CUT — a stud on the driver’s `
+        + `third arm, the joint §182 audits. The nose’s ${ALARM_PAWL_SPRING.noseF_mN.toFixed(2)} mN taken at the tip circle is `
+        + `${ALARM_PAWL_SPRING.dragTq_Nmm.toExponential(2)} N·mm against the click’s `
+        + `${ALARM_PAWL_SPRING.detentTq_Nmm.toExponential(2)} N·mm detent — ${ALARM_PAWL_SPRING.headroom.toFixed(2)}× clear, `
         + `because a return that drags the wheel back un-indexes it`,
     });
     declareRestoring('Alarm switch', 'alarmColPawl', 'spring',
-      '§169: the pawl rocks through its whole stroke on every press and is closed by alarmColPawlSpring, a torsion coil of the movement’s one spring wire wound close on the pawl’s OWN post — its anchor leg on a pin in the driver, its working leg bent onto the tail. Coaxial with the pivot, so the restoring moment reaches the pawl with no bear arm in the path; its free angle is derived a full working stroke inside the metal, so it is never slack (asserted at the build)',
+      '§192: the pawl rocks through its whole stroke on every press and is closed by alarmColPawlSpring, an in-plane cantilever blade of the movement’s one flat-spring stock, coplanar with the pawl in the skirt band — clamped to a stud on the driver’s third arm (cut to reach it; the ground §163’s blade never had), bearing on the tail’s flank at the boss’s edge. Its free angle is derived a full working stroke inside the metal, so it is never slack (asserted at the build)',
       'alarmColPawlSpring');
     declareRestoring('Alarm switch', 'alarmColDriver', 'two-way',
       '§163: the driver is pushed AND pulled by the pusher’s pin, which runs captive in its radial slot — the slot has metal on both flanks, so the return is driven rather than sprung');
@@ -27493,9 +27506,10 @@ const CASE_SECTORS = (() => {
 const BACK_SWEPT_ALLOWANCE = new Map([
   // The one unit whose pose-net z-max exceeds its build pose, measured by
   // probe-back-envelope's build-pose product: the alarm link's beak rides
-  // to 13.976 at `alarm` f=0 against 13.877 at build (+0.099). Declared
-  // 0.12 — rounded UP past the excess so no clearance row the glass
-  // derivation produces can sit at exactly CLEAR_MARGIN and flicker.
+  // to 12.161 at `alarm` f=0 against 12.061 at build (+0.099 — the lift is
+  // the axis's own and rode §192's descent unchanged). Declared 0.12 —
+  // rounded UP past the excess so no clearance row the glass derivation
+  // produces can sit at exactly CLEAR_MARGIN and flicker.
   ['Alarm link', 0.12],
 ]);
 // ...and the movers that MIGRATE RADIALLY — metal that stands in bins its
@@ -27510,11 +27524,12 @@ const BACK_SWEPT_REGIONS = [
   // above the three-quarter plate.
   { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 10.92 },
   // The switch cluster's press/castellation swing spreads its metal across
-  // r 17.3–31.3 (measured swept 10.907 at r 17.3–18.1 against build 9.242;
-  // 13.157 at r 30.4–31.3 against build 11.757). One row at the unit's
-  // swept ceiling — conservative in the inner bins, and free: the whole
-  // band lies inside the glass's raised step.
-  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 13.16 },
+  // r 17.3–31.3 (measured swept 10.068 at r 17.3–18.1 against build 9.242;
+  // 11.468 at r 30.4–31.3 against build 10.851 — §192's descent re-measured
+  // both, from 10.907 and 13.157). One row at the unit's swept ceiling
+  // (the castellation top), rounded up past margin flicker — conservative
+  // in the inner bins, and the number the flat back was bought against.
+  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 11.47 },
   // The striking wheel's rotation is not axisymmetric at bin scale:
   // swept 10.421 at r 33.7–34.6 against build 10.021.
   { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: 10.43 },
@@ -27616,9 +27631,16 @@ const BACK_ENVELOPE = (() => {
       return z;
     };
     const tower = zOf('Alarm link'), barrel = zOf('Alarm barrel');
-    if (!(tower > 13.0))
-      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)} — the envelope's `
-        + 'governor (build 13.877) was not seen, and a glass derived from this scan is unfounded');
+    // §192 — the governor's floor is DERIVED now, where it was a snapshot
+    // (`> 13.0`, from a 13.877 build the strike-tower descent retired): the
+    // link's beak arm rides the column tops, so its tower must stand at
+    // least above the stack it rides — a threshold that tracks every future
+    // re-station instead of naming one build's number.
+    const colStackTop = (ALARM_LOCK_Z + ALARM_COL_SPIN_REL) + ALARM_COL_BASE_H / 2 + ALARM_COL_H;
+    if (!(tower > colStackTop))
+      console.warn(`§187: the back-envelope scan reads the alarm link tower at ${tower.toFixed(3)}, under the column `
+        + `stack top ${colStackTop.toFixed(3)} it rides — the envelope's governor was not seen, and a glass derived `
+        + 'from this scan is unfounded');
     if (barrel > tqTop)
       console.warn(`§187: the alarm barrel reads ${barrel.toFixed(3)}, above the three-quarter plate's measured top `
         + `${tqTop.toFixed(3)} — §112 put it below; the scan or the tree is wrong`);
@@ -27715,11 +27737,27 @@ const CASE_DIMS = (() => {
   // identity: the glass's outer pane's INNER face is flush with the band's
   // back face).
   const z0 = zMidBack + 1.2 / UNIT_MM;           // the ring's outer face at the rim
-  // The glazing channel: glass edge drops into the ring against the
-  // skirt's inner wall (SEAT_FIT — the one drop-into-a-recess fit) under a
-  // lip one glass-thickness wide (a glass bears on a land at least its own
-  // thickness — the glazing floor; anything wider spends aperture).
-  const RA_EDGE = skirtID - G.SEAT_FIT;          // the glass's outer edge
+  // The glazing channel, under a lip one glass-thickness wide (a glass
+  // bears on a land at least its own thickness — the glazing floor;
+  // anything wider spends aperture).
+  //
+  // TODO 122 — THE CHANNEL IS CUT FOR ITS GASKET NOW, because the fit is
+  // the fixation. The first form located the glass's edge on SEAT_FIT — a
+  // running CLEARANCE — and measured, the pane touched nothing in any
+  // direction: 0.08 u of radial slack to the wall, its edge a SEAT_EMBED
+  // shy of the lip (the press idiom applied with the wrong sign), and
+  // 10.7 u of open air below its edge. A drop-in fit locates a part
+  // somebody then fastens; nothing fastened this one, so dial-up it lies
+  // on the movement. A real display back fixes its crystal with a nylon
+  // I-ring compressed between the glass's edge and the ring's channel
+  // wall — the interference is what holds the pane, inward included — so
+  // the edge radius derives from that member's compressed section: real
+  // crystal-gasket stock at 0.3 mm wall (the low end, this movement's
+  // floor-stock discipline), drawn at the §3 face cord's own stated 20%
+  // squeeze. The gasket itself is cut in makeCase, in the channel this
+  // derivation shapes.
+  const CASE_BCG_T = (0.3 / UNIT_MM) * 0.8;      // the I-ring's wall, compressed as drawn
+  const RA_EDGE = skirtID - CASE_BCG_T;          // the glass's outer edge — on the gasket, not on air
   const RA = RA_EDGE - CASE_CRYSTAL_T;           // the APERTURE — the lip's bore
   // ...which must show the whole three-quarter plate: measured reach
   // (TODO 84's rule — the extrude bevel swells past the authored radius),
@@ -35573,6 +35611,21 @@ function tick(t) {
       const relPost = alarmColDriverGroup.rotation.z + d.postAz - (ALARM_LOCK_ENGAGED - alarmColShownA);
       const phi = alarmPawlSeatPhi(relPost);
       if (phi !== null) alarmColPawlGroup.rotation.z = d.postAz + phi;
+      // §192 — the blade tracks the tail it closes: root clamped on the
+      // driver's stud (both live in the driver's frame, so the root needs no
+      // update), free end held on the bear station wherever the seat solve
+      // just put the pawl. The §48 feeler blade's frame law, one mechanism
+      // over — a spring drawn parted from its load would be the display
+      // fiction TODO.md exists to catch.
+      {
+        const a = alarmColPawlSpringBlade.userData.aim;
+        const rot = alarmColPawlGroup.rotation.z;
+        const c = Math.cos(rot), s = Math.sin(rot);
+        const bx = alarmColPawlGroup.position.x + a.bearX * c - a.bearY * s;
+        const by = alarmColPawlGroup.position.y + a.bearX * s + a.bearY * c;
+        alarmColPawlSpringBlade.rotation.z = Math.atan2(by - a.ry, bx - a.rx);
+        alarmColPawlSpringBlade.scale.x = Math.hypot(bx - a.rx, by - a.ry);
+      }
     }
     const colBlock = alarmColumnWheel.userData.profileAt(alarmColShownA);
     // §29 step 5: the brake is the ON/OFF STOP-WORK alone now — it lifts at

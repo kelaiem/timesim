@@ -14,8 +14,14 @@
 //    plane do not intersect. So it is measured here, over the real press axis
 //    at both parities, with meshClearance.
 //
-// PASSES when the pin and the post both hit the driver, and when the only
+// PASSES when the anchor and the post both hit the driver, and when the only
 // zero against the wheel is the declared seat (nose ⇄ skirt).
+//
+// §192 re-formed the spring: the torsion coil and its anchor pin left, an
+// in-plane blade clamped to a stud on the driver's THIRD ARM returned — so
+// the anchor this measures is `alarmColPawlSpringStud`, standing at r ≈ 11.6
+// on metal cut to reach it. The measurement is the same raycast, and it now
+// guards the very claim §163's stud falsified.
 //
 // Run: cd tools && node probe-169-spring.mjs
 import { chromium } from 'playwright';
@@ -55,7 +61,7 @@ const out = await p.evaluate(async () => {
 
   // ---- 2. the pawl against the wheel, over the real press axis
   const PAWL = ['alarmColPawl', 'alarmColPawlTail', 'alarmColPawlBoss', 'alarmColPawlNose',
-                'alarmColPawlPost', 'alarmColPawlSpring', 'alarmColPawlSpringPin'];
+                'alarmColPawlPost', 'alarmColPawlSpring', 'alarmColPawlSpringStud'];
   const WHEEL = ['alarmColBase', 'alarmColCastellations', 'alarmColSkirt'];
   const rows = {};
   const N = 33;
@@ -72,7 +78,7 @@ const out = await p.evaluate(async () => {
   }
   clock.resetInputs(); clock.scene.updateMatrixWorld(true);
   const bands = {};
-  for (const n of ['alarmColDriver', 'alarmColPawlSpringPin', 'alarmColPawlSpring',
+  for (const n of ['alarmColDriver', 'alarmColPawlSpringStud', 'alarmColPawlSpring',
                    'alarmColSkirt', 'alarmColPawl', 'alarmColBase', 'alarmColCastellations']) {
     const o = find(n); if (!o) continue;
     const x = new THREE.Box3().setFromObject(o);
@@ -86,7 +92,7 @@ const out = await p.evaluate(async () => {
     for (let i = 0; i < a.array.length; i++) if (!Number.isFinite(a.array[i])) { nan.push(o.name || o.geometry.type); break; } });
   return {
     drvMaxR: +drvMaxR.toFixed(4),
-    anchors: [stands('alarmColPawlPost'), stands('alarmColPawlSpringPin')],
+    anchors: [stands('alarmColPawlPost'), stands('alarmColPawlSpringStud')],
     pairs: Object.entries(rows).map(([k, v]) => ({ pair: k, min: +v.c.toFixed(4), alarmOn: v.alarmOn, cycle: v.cycle }))
       .sort((x, y) => x.min - y.min),
     bands, spring: drive && drive.spring, nan,
@@ -106,12 +112,12 @@ for (const [k, v] of Object.entries(out.bands))
   console.log(`   ${k.padEnd(24)} ${v[0].toFixed(4)} .. ${v[1].toFixed(4)}   (${(v[1] - v[0]).toFixed(4)})`);
 const s = out.spring;
 if (s) {
+  // §192 re-formed the spring in-plane: the record is the blade's now.
   console.log('\n3. THE SPRING AS SOLVED');
-  console.log(`   ${s.coils} turns, wire ⌀ ${s.wireD_u.toFixed(5)}, mean coil r ${s.coilR_u.toFixed(5)}, index D/d ${s.index.toFixed(2)}`);
-  console.log(`   developed ${s.devLen_u.toFixed(4)} against floors  drag ${s.dragFloor_u.toFixed(4)} / strain ${s.bendFloor_u.toFixed(4)}  (${s.governs} governs)`);
+  console.log(`   blade ${s.bladeT_u.toFixed(5)} × ${s.bladeW_u.toFixed(5)}, free length ${s.freeLen_u.toFixed(4)} against floors  drag ${s.dragFloor_u.toFixed(4)} / strain ${s.strainFloor_u.toFixed(4)}  (${s.governs} governs)`);
   console.log(`   kθ ${s.kTheta_Nm_per_rad.toExponential(4)} N·m/rad · θ ${s.theta_rad.toFixed(4)} rad → nose ${s.noseF_mN.toFixed(3)} mN`);
-  console.log(`   drag ${s.dragTq_Nmm.toExponential(3)} N·mm vs click detent ${s.clickTq_Nmm.toExponential(3)} — ${s.headroom.toFixed(2)}× clear`);
-  console.log(`   surface strain ${s.strain.toExponential(3)} · working leg ${(1 / s.legShare).toFixed(1)}× the coil's rate`);
+  console.log(`   drag ${s.dragTq_Nmm.toExponential(3)} N·mm vs sautoir detent ${s.detentTq_Nmm.toExponential(3)} — ${s.headroom.toFixed(2)}× clear`);
+  console.log(`   surface strain ${s.strain.toExponential(3)} · anchor stud ${(1 / s.studShare).toFixed(1)}× the blade's rate`);
 }
 const seat = 'alarmColPawlNose ⇄ alarmColSkirt';
 const zeros = out.pairs.filter((r) => r.min <= 1e-4 && r.pair !== seat);
