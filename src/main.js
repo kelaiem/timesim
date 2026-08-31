@@ -560,6 +560,30 @@ function measureMeshNow(site, inject = 0) {
   };
 }
 
+// §194 — a rotor's WORLD SPIN: the azimuth of its own local +X, a material
+// direction on the part. No frame is reasoned about and no rotation.z is read,
+// so a member nested under any number of posed groups still reports the angle
+// it actually turned through — which is the whole point when the question is
+// whether two parts' angles are related by their teeth or written separately.
+function rotorAzimuth(name) {
+  const o = rotorByName(name);
+  if (!o) return null;
+  o.updateWorldMatrix(true, false);
+  const e = o.matrixWorld.elements;
+  // HANDEDNESS, returned with the angle. `dialFace` is turned 180° about Y, so
+  // everything under it sits on a MIRRORED basis and its apparent rotation runs
+  // backwards — the trap CLAUDE.md warns about, arriving here as a sign. Two
+  // gears both under the dial mirror together and their ratio survives; a mesh
+  // that CROSSES the seam reads as co-rotating, which for an external mesh is
+  // impossible, and a checker that did not divide this out would report the
+  // seam itself as a kinematic lie. Measured off the basis (the determinant's
+  // sign), never inferred from a parent's name.
+  const det = e[0] * (e[5] * e[10] - e[6] * e[9])
+            - e[4] * (e[1] * e[10] - e[2] * e[9])
+            + e[8] * (e[1] * e[6] - e[2] * e[5]);
+  return { az: Math.atan2(e[1], e[0]), hand: det < 0 ? -1 : 1 };
+}
+
 let _meshAudit = null;
 function meshAudit() {
   if (!_meshAudit) {
@@ -14009,7 +14033,7 @@ const solveGearChain = (label, chain, module, inputs = []) => {
     // phased it, so the registry cannot describe a pair the solve does not.
     const an = rotorNameFor(P.obj, P.teeth), bn = rotorNameFor(Q.obj, Q.teeth);
     if (!an || !bn) console.warn(`§194: ${label} ${P.name} ⇄ ${Q.name} — no NAMED rotor for ${!an ? P.name : Q.name}, so no row`);
-    else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.replace(/:.*$/, '') });
+    else declareMesh(`${label.replace(/:$/, '')} ${P.name} ⇄ ${Q.name}`, { a: an, b: bn, inputs, chain: label.split(/[\s:]/)[0] });
   }
 };
 (() => {
@@ -36324,6 +36348,7 @@ window.__clock = {
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get transfers() { return transferAudit(); },
   get meshes() { return meshAudit(); },
+  rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin, for the transmission sweep
   measureMeshNow(site, inject) { return measureMeshNow(site, inject); },  // §194 — one declared mesh at the current pose; `inject` turns B by a fraction of its pitch for the checks' controls        // §194 — every declared gear mesh, its two named members and the inputs that drive it // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get leverEngage() { return leverEngage; },
   get secondsZeroRef() { return secondsZeroRef; },
