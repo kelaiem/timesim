@@ -7572,22 +7572,51 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
   // the back envelope (CASE_DIMS): the outer pane hugs the striking tier
   // at the ring's own plane, the raised step stands one margin over the
   // alarm tower's declared envelope, and a constant-thickness shell
-  // connects them — a box-stepped display glass, proud of the ring's rim
-  // by design. Glazed from inside: the edge drops into the ring's channel
-  // at SEAT_FIT against the skirt's inner wall, pressed under the lip
-  // (SEAT_EMBED against z-fighting).
+  // connects them — a box-stepped display glass. Glazed from inside: the
+  // edge drops into the ring's channel onto its GASKET (TODO 122 — the
+  // channel is cut for that member at the caller, see glassEdgeR) and is
+  // pressed UNDER the lip, sinking SEAT_EMBED into it — the press-contact
+  // idiom with the sign that presses. The first cut subtracted the embed
+  // instead, which parked the pane a hundredth shy of the only face that
+  // could retain it.
   const backCrystal = new THREE.Mesh(lathe([
     [0, zStepUnder],                       // axis, the raised pane's inner face
     [rStep, zStepUnder],                   // out to the step
     [rStep, zCrystIn],                     // down the step's inner wall
     [glassEdgeR, zCrystIn],                // out along the pane's inner face
-    [glassEdgeR, zCrystOut - SEAT_EMBED],  // up the edge (under the lip)
-    [rStep + crystT, zCrystOut - SEAT_EMBED], // in along the pane's outer face
+    [glassEdgeR, zCrystOut + SEAT_EMBED],  // up the edge — INTO the lip's underside
+    [rStep + crystT, zCrystOut + SEAT_EMBED], // in along the pane's outer face
     [rStep + crystT, zStepTop],            // up the step's outer wall
     [0, zStepTop],                         // in along the raised pane's top — closes on the axis
   ]), crystalMaterial);
   backCrystal.name = 'caseBackCrystal';
   backAsm.add(backCrystal);
+  // TODO 122 — THE GLAZING'S RETENTION MEMBER. A located part is not a
+  // fixed one: the pane above sits in an L-channel (wall + lip) that stops
+  // it falling OUT and nothing else — measured before this member existed,
+  // it touched nothing in any direction, and dial-up it would lie on the
+  // movement. What fixes a real display crystal is its GASKET: a nylon
+  // I-ring compressed between the glass's edge and the channel's wall, the
+  // interference carrying the pane in every direction the lip does not.
+  // Drawn at its compressed section (the channel is cut to exactly that at
+  // the caller — glassEdgeR = skirtID − wall·0.8, the §3 face cord's own
+  // stated squeeze), spanning the edge band's full height and sunk
+  // SEAT_EMBED into glass, wall and lip alike, the press idiom on every
+  // face it works against.
+  // (Its bottom face sits one SEAT_EMBED below the pane's inner plane and
+  // its top one further into the lip than the glass's — not features, the
+  // same z-fight rule: two exactly-coplanar faces make every BVH query
+  // over the pair warn about coplanar triangles, so no two faces here
+  // share a plane.)
+  const bcGasket = new THREE.Mesh(lathe([
+    [glassEdgeR - SEAT_EMBED, zCrystIn - SEAT_EMBED],
+    [skirtID + SEAT_EMBED, zCrystIn - SEAT_EMBED],
+    [skirtID + SEAT_EMBED, zCrystOut + 2 * SEAT_EMBED],
+    [glassEdgeR - SEAT_EMBED, zCrystOut + 2 * SEAT_EMBED],
+    [glassEdgeR - SEAT_EMBED, zCrystIn - SEAT_EMBED],
+  ]), MATS.dark);
+  bcGasket.name = 'caseBackCrystalGasket';
+  backAsm.add(bcGasket);
   // THE WRENCH PURCHASE — two key lugs on the ring's face (a spanner
   // engages across them; recessed slots would be CSG, and a raised key is
   // the same honest statement in weldable metal).

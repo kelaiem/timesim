@@ -20142,7 +20142,15 @@ glass 0.6, §3's flush identity restated — the outer pane's INNER face is
 flush with the case's own back face. Aperture = skirt ID − SEAT_FIT
 (glass drops into the ring) − one glass-thickness of lip (a glass bears
 on a land at least its own thickness) = 46.28, asserted ≥ the plate's
-MEASURED reach + margin (43.42 — TODO 84's rule). The gasket stays
+MEASURED reach + margin (43.42 — TODO 84's rule). **TODO 122 later
+measured that "drops into the ring" was the whole story**: the pane
+touched nothing in any direction (SEAT_FIT is a clearance, the lip
+embed carried the wrong sign, and below the edge was open air to a
+clamp screw), a located part nothing fastened. The channel is now cut
+for a compressed crystal gasket — the I-ring that actually fixes a
+display glass — so the edge radius derives from that member's section
+and the aperture reads 45.73; the three joints are declared and
+measured every run. The gasket stays
 exactly where §3 cut it: the groove + lands fit the flangeless 1.0 mm
 annulus, and the ring's face compresses the same cord the screwed plate
 did, preloaded by the thread. Two raised key lugs are the wrench

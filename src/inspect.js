@@ -2699,6 +2699,16 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm winding train', a: 'alarmWindIdler', b: 'alarmWindIdler', why: '§121: the i1⇄i2 working mesh, same solve — both idlers carry §99\'s one name, so the row names it twice' },
   // Alarm release feeler — §29's tail run:
   { unit: 'Alarm release feeler', a: 'BoxGeometry#8', b: 'BoxGeometry#9', why: '§121: the §29 tail RUN sliding through its cheek mid-guide (kiss at cam poses) — §103\'s second guidance station' },
+  // Case — TODO 122's glazing joints. The Case sits outside INTRA_TIER_SCOPE
+  // (its FF rows are reported, not gated), but a declared joint is a CLAIM
+  // the §182 audit measures every run, and these three are exactly the
+  // claims TODO 122 exists to make true: before its gasket landed, the back
+  // crystal touched nothing in any direction — a declared joint here would
+  // have been §163\'s stud row again, stating a fixation the metal did not
+  // have.
+  { unit: 'Case', a: 'caseBackCrystal', b: 'caseBack', why: 'TODO 122: the pane\'s edge land pressed UNDER the threaded ring\'s retaining lip (SEAT_EMBED into it — the press idiom with the sign that presses; the first cut subtracted the embed and parked the glass a hundredth shy of the only face that could retain it)' },
+  { unit: 'Case', a: 'caseBackCrystal', b: 'caseBackCrystalGasket', why: 'TODO 122: the pane\'s edge on its I-ring — the interference that fixes the glass in every direction the lip does not, drawn at the gasket\'s compressed section' },
+  { unit: 'Case', a: 'caseBackCrystalGasket', b: 'caseBack', why: 'TODO 122: the I-ring compressed against the channel\'s wall and squeezed under the lip — the channel is cut to the gasket\'s compressed wall (glassEdgeR = skirtID − 0.8·stock), so the fit IS the press' },
 ];
 // Accepted debt, §50's convention — red in the report, cited, not silenced:
 export const INTRA_UNIT_WAIVERS = [
