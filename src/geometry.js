@@ -4,7 +4,7 @@
 // radius where meaningful. Real tooth profiles via Shape/ExtrudeGeometry.
 import * as THREE from 'three';
 import { MATS } from './materials.js';
-import { aesthetics } from './aesthetics.js';
+import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity
 
@@ -5893,9 +5893,18 @@ export const SUBDIAL_TICK_OUTER_F = 0.92;   // tick circle, as a fraction of the
 export const SUBDIAL_MAJOR_LEN_F = 0.20, SUBDIAL_MINOR_LEN_F = 0.09;
 export const SUBDIAL_MAJOR_W_F = 0.055, SUBDIAL_MINOR_W_F = 0.022;
 
-function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null) {
-  ctx.strokeStyle = '#1c1c22';
-  ctx.fillStyle = '#1c1c22';
+function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null, shippedGround = null) {
+  // §196 — ONE ink for everything this function prints, SOLVED against the
+  // well's own ground. Before §196 this was a literal '#1c1c22' at four
+  // sites — a second transcription of DIAL_TRACK_INK two hex units off it,
+  // and the §159 zone solve scored against the constant, i.e. against an
+  // ink that was NOT the one printed over the zones. Unifying to the solved
+  // ink moves the shipped print by those two units (imperceptible) and
+  // closes both transcriptions; a caller with no ground gets the dark pole,
+  // which is what the literal was.
+  const ink = ground ? solveInk([ground]) : DIAL_TRACK_INK;
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
   const tickAt = (mathDeg, r1, len, w) => {
     const a = (mathDeg * Math.PI) / 180;
     ctx.lineWidth = w;
@@ -5950,7 +5959,7 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null) {
   const caption = (txt) => {
     ctx.save();
     ctx.font = `400 ${sr * 0.08}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
-    ctx.fillStyle = '#1c1c22';
+    ctx.fillStyle = ink; // §196 — the well's one solved ink
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const track = sr * 0.01;
@@ -6021,23 +6030,47 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null) {
     // the new ground instead of leaving two fixed swatches on a moved face.
     const zoneTone = (hue) => {
       if (!ground) return hue;              // no ground given: nothing to solve against
-      const score = (t) => {
-        const c = mixHex(hue, ground, t);
-        return Math.min(contrastRatio(c, ground), contrastRatio(c, DIAL_TRACK_INK));
-      };
+      // §196 — the objective is scored against the ink actually printed over
+      // the zones (the solved `ink` above), not the DIAL_TRACK_INK constant:
+      // before §196 the two were near-identical by accident, and on a dark
+      // well the printed ink is the LIGHT pole, which the constant is not.
+      const contrastOf = (c) => Math.min(contrastRatio(c, ground), contrastRatio(c, ink));
+      const score = (t) => contrastOf(mixHex(hue, ground, t));
       let lo = 0, hi = 1;
       for (let i = 0; i < 40; i++) {
         const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3;
         if (score(m1) < score(m2)) lo = m1; else hi = m2;
       }
-      return mixHex(hue, ground, (lo + hi) / 2);
+      const blend = mixHex(hue, ground, (lo + hi) / 2);
+      if (contrastOf(blend) >= DIAL_INK_CONTRAST_MIN) return blend;
+      // §196 — the ground left the blend-in no room, which until now was the
+      // warn below and nothing else. The blend segment can only move the
+      // tone TOWARD its ground, so on a dark or near-hue ground it is the
+      // wrong direction entirely; widen to the hue mixed toward either POLE
+      // (a pastel or a deep tone of the same hue) and take the best of the
+      // same min-contrast objective. Scanned, not ternary-searched: min of
+      // two V-shaped ratios along a segment is not unimodal, and the hexes
+      // quantise to bytes, so 256 steps per segment IS the search space.
+      // When even this cannot reach the floor the warn below still fires —
+      // rightly, since a ground standing less than 9:1 from its ink leaves
+      // no room for a third tone 3:1 from both (the chained-ratio bound),
+      // and §159's redundancy design means only the reminder is lost.
+      let best = blend, bestScore = contrastOf(blend);
+      for (const pole of ['#ffffff', '#000000']) {
+        for (let i = 0; i <= 255; i++) {
+          const c = mixHex(hue, pole, i / 255);
+          const s = contrastOf(c);
+          if (s > bestScore) { bestScore = s; best = c; }
+        }
+      }
+      return best;
     };
     const warnTone = zoneTone(RESERVE_WARN_HUE), fullTone = zoneTone(RESERVE_FULL_HUE);
     sector(0, RESERVE_WARN_HOURS, warnTone);
     sector(hours - 1, hours, fullTone);
     if (ground) {
       for (const [what, tone] of [['warning', warnTone], ['maximum', fullTone]]) {
-        const vsGround = contrastRatio(tone, ground), vsInk = contrastRatio(tone, DIAL_TRACK_INK);
+        const vsGround = contrastRatio(tone, ground), vsInk = contrastRatio(tone, ink);
         if (Math.min(vsGround, vsInk) < DIAL_INK_CONTRAST_MIN)
           console.warn(`reserve face: the ${what} zone's best tone on this ground holds only `
             + `${vsGround.toFixed(2)}:1 against the face and ${vsInk.toFixed(2)}:1 against the ticks `
@@ -6150,11 +6183,14 @@ function paintSubdialFace(ctx, scx, scy, sr, kind, scale = {}, ground = null) {
       markEm = lo;
     }
     const markR = markRadiusFor(markEm).r;
-    ctx.fillStyle = '#1c1c22';
+    ctx.fillStyle = ink; // §196 — the well's one solved ink
     ctx.font = `400 ${sr * CAPTION_EM_F}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
     const capArc = arcLabel('POWER RESERVE', 90, sr * capR, false);
     ctx.font = `400 ${sr * markEm}px "Helvetica Neue", Helvetica, Arial, sans-serif`;
-    ctx.fillStyle = '#8a887e';
+    // §196 — this was a literal copy of DIAL_MARK_INK, the fifth untracked
+    // transcription this landing retired; the mark now tracks its shipped
+    // RELATION to this well's ground (see solveMarkInk).
+    ctx.fillStyle = solveMarkInk(ground, shippedGround ?? ground);
     const markArc = arcLabel(MARK_TEXT, 90, sr * markR, false);
     // The caption is NOT solved — it is the line that names the complication,
     // so it keeps its size and the mark yields around it. Both are asserted
@@ -6321,13 +6357,15 @@ export function dialTintAt(baseColor, radialFraction) {
 }
 
 // §157 — CAN THE PRINTING STILL BE READ ON THIS GROUND? Roadmap item 140's
-// third ask, and the reason it asked: `dial.face.color` is free taste, but
-// the ink printed on it is FIXED, so a dark enough tone silently swallows
+// third ask, and the reason it asked: `dial.face.color` is free taste, and
+// the ink printed on it WAS fixed, so a dark enough tone silently swallowed
 // the minute track. Measured, at the rail radius: the shipped tone holds
-// 11.96:1 against the track, and a #1a1a1a dial collapses it to 1.02:1 —
+// 11.96:1 against the track, and a #1a1a1a dial collapsed it to 1.02:1 —
 // invisible, with every other gate green. Nothing in the tree measured this
 // (the two existing "legibility" asserts are geometric: the crown monogram's
-// counter floor and the sub-dial texel density).
+// counter floor and the sub-dial texel density). §196 closed the defect the
+// gate could only report: the ink SOLVES against the ground now (see
+// solveInk below), and the gate holds the solve rather than the taste.
 //
 // The metric is WCAG 2.1's relative luminance and contrast ratio, used
 // because it is the standard, citable answer to "can a mark be told from its
@@ -6351,12 +6389,87 @@ export function contrastRatio(hexA, hexB) {
 // track is exactly that: a graphic, not type. Not 4.5 (SC 1.4.3, normal
 // TEXT) because the track carries no glyphs.
 export const DIAL_INK_CONTRAST_MIN = 3.0;
-// The printed inks, quoted where they are used below so the assert and the
-// paint cannot drift: the chemin-de-fer rails and ticks, and the maker's
-// mark. Exported so the published measurement beside the gate reads the
-// same constants the canvas paints with.
+// §196 — THE PRINTED INK IS SOLVED AT PAINT TIME, NOT FIXED. Until §196
+// these two were the inks, full stop: a dark face collapsed the track to
+// 1.02:1 and the §157 gate could only WARN about it (§185 measured a
+// plausible navy at 1.41:1, warning four times, and shipped the illegible
+// dial anyway). A real dial maker flips to light print on a dark ground;
+// solveInk below does the same. These constants are now the DARK POLE the
+// solve starts from — on the shipped face it returns DIAL_TRACK_INK
+// verbatim, so the shipped print reproduces bit-for-bit.
 export const DIAL_TRACK_INK = '#1a1a1a';
 export const DIAL_MARK_INK = '#8a887e';
+// The LIGHT POLE is derived, not picked: it is the tone that stands to a
+// pure black ground exactly as DIAL_TRACK_INK stands to a pure white one —
+// mirror symmetry, so neither pole is a second taste decision. Closed form:
+// C0 = contrast(track, white) ≈ 17.4, L = C0·0.05 − 0.05 ≈ 0.820, inverse
+// sRGB per channel ≈ #eaeaea (achromatic, because the dark ink is).
+const srgbChannelFromLinear = (l) =>
+  (l <= 0.03928 / 12.92 ? l * 12.92 : 1.055 * Math.pow(l, 1 / 2.4) - 0.055);
+export const DIAL_TRACK_INK_LIGHT = (() => {
+  const L = contrastRatio(DIAL_TRACK_INK, '#ffffff') * 0.05 - 0.05;
+  const c = Math.round(srgbChannelFromLinear(L) * 255);
+  return rgbToHex([c, c, c]);
+})();
+// §196 — WHICH POLE PRINTS. Deliberately an ARGMAX over the two poles and
+// not a zoneTone-style ternary search: contrast against a fixed ground is
+// V-SHAPED along the dark→light ramp (it falls to 1:1 where the ink's
+// luminance crosses the ground's, and rises on both sides), so the min over
+// several grounds is a W whose maximum sits at an ENDPOINT — a ternary
+// search needs a unimodal objective and this is its opposite. The flip
+// point between the poles is therefore a CONSEQUENCE of the objective, not
+// a hand-picked luminance threshold. Consequence worth holding: the worst
+// ground for this pole pair (luminance ≈ 0.18) still reads ≈ 3.8:1, above
+// DIAL_INK_CONTRAST_MIN — so EVERY face colour now ships legible print, and
+// a warn from the §157 gate means the SOLVE regressed, not that the viewer
+// picked a bad colour (standing rule 6 regains the ground §185 conceded).
+// Ties go to the dark pole, the shipped design's side.
+export function solveInk(grounds) {
+  const worst = (ink) => Math.min(...grounds.map((g) => contrastRatio(g, ink)));
+  return worst(DIAL_TRACK_INK) >= worst(DIAL_TRACK_INK_LIGHT)
+    ? DIAL_TRACK_INK : DIAL_TRACK_INK_LIGHT;
+}
+// §196 — THE MAKER'S MARK KEEPS ITS DISCRETION AS A RELATION. §157's record
+// is explicit that the mark is discreet BY DESIGN (2.82:1 on the shipped
+// face, under the 3:1 floor, reported rather than gated) and that its
+// constraint pulls OPPOSITE the track's — so it must not ride solveInk,
+// which maximises. Instead it solves for the SAME contrast the shipped pair
+// holds, from whichever side of the ground has room: the target T is the
+// mark's ratio on the site's SHIPPED ground (passed by the caller from
+// AESTHETICS_DEFAULTS through the site's own ground expression), so on the
+// shipped face r0 === T by construction and the mark returns DIAL_MARK_INK
+// verbatim. Elsewhere: too loud (a black ground reads ≈ 5.9:1) → mix toward
+// the ground, monotone down; too quiet (a ground near the mark's own
+// luminance) → mix toward the pole on the mark's own side, monotone up; and
+// when that side cannot reach T at all, re-anchor from the OTHER pole
+// toward the ground, monotone down — three monotone segments, each
+// bisectable, where the raw dark→light ramp is not.
+export function solveMarkInk(ground, shippedGround) {
+  if (!ground) return DIAL_MARK_INK;
+  const T = contrastRatio(shippedGround, DIAL_MARK_INK);
+  const r = (ink) => contrastRatio(ground, ink);
+  const r0 = r(DIAL_MARK_INK);
+  if (r0 === T) return DIAL_MARK_INK; // the shipped ground, bit-exact
+  // f(t) monotone on [0,1]; find f(t) = T by bisection (40 halvings — the
+  // hexes quantise to bytes long before that, same budget as zoneTone).
+  const bisect = (inkAt, rising) => {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 40; i++) {
+      const m = (lo + hi) / 2;
+      if ((r(inkAt(m)) < T) === rising) lo = m; else hi = m;
+    }
+    return inkAt((lo + hi) / 2);
+  };
+  if (r0 > T) return bisect((t) => mixHex(DIAL_MARK_INK, ground, t), false);
+  const markSide = srgbLuminance(DIAL_MARK_INK) < srgbLuminance(ground) ? '#000000' : '#ffffff';
+  if (r(markSide) >= T) return bisect((t) => mixHex(DIAL_MARK_INK, markSide, t), true);
+  const other = markSide === '#000000' ? '#ffffff' : '#000000';
+  return bisect((t) => mixHex(other, ground, t), false);
+}
+// §196 — the maker's-mark RADIUS, hoisted from makeDial so the paint, the
+// §157 measurement and the shipped-ground expression above all quote one
+// number. A fraction of the PRINTED DISC (same frame as DIAL_RAIL_*_F).
+export const MARK_RADIAL_F = 0.78;
 // §159 — THE RESERVE SCALE'S TWO ZONE HUES. Hue is the only part of a zone
 // that is a convention rather than a derivation: red for "running out" is the
 // one colour meaning every reader already holds (fuel, battery, oil), and its
@@ -6475,11 +6588,12 @@ export function makeDial({
   // than assume a dial can always be recoloured in place.
   let repaintFace = null;
   const repaintWells = [];
-
-  // The MAKER'S MARK's radius, hoisted out of the paint because the §157
-  // contrast measurement quotes the ground at exactly this fraction — a
-  // number the assert and the paint must not be able to disagree about.
-  const MARK_RADIAL_F = 0.78;
+  // §196 — every printed site whose ink is SOLVED, collected as the wells
+  // build so the §157 gate and the inkContrast report walk the same grounds
+  // the paint used (one expression per ground, closed over here — never a
+  // second transcription). MARK_RADIAL_F lives at module scope since §196,
+  // beside the solve that needs the shipped ground at that fraction.
+  const wellInkSites = [];
 
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
     const canvas = document.createElement('canvas');
@@ -6514,8 +6628,16 @@ export function makeDial({
         // crossing tick every minute, heavier sleepers on the five-minute marks.
         const rOut = R * DIAL_RAIL_OUT_F;
         const rIn = R * DIAL_RAIL_IN_F;
-        ctx.strokeStyle = DIAL_TRACK_INK;
-        ctx.fillStyle = DIAL_TRACK_INK;
+        // §196 — the track ink is SOLVED against both rails' own grounds
+        // (the vignette darkens outward, so the two differ); on the shipped
+        // face this is DIAL_TRACK_INK verbatim, on a dark face the light
+        // pole. One call here, and the §157 gate re-derives the same call.
+        const trackInk = solveInk([
+          dialTintAt(faceColor, DIAL_RAIL_OUT_F),
+          dialTintAt(faceColor, DIAL_RAIL_IN_F),
+        ]);
+        ctx.strokeStyle = trackInk;
+        ctx.fillStyle = trackInk;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(0, 0, rOut, 0, Math.PI * 2);
@@ -6541,7 +6663,11 @@ export function makeDial({
         // 6-o'clock arc.
         if (!subdials.some((sd) => sd.kind === 'reserve')) {
           ctx.font = '400 13px "Helvetica Neue", Helvetica, Arial, sans-serif';
-          ctx.fillStyle = DIAL_MARK_INK;
+          // §196 — discreet means a RELATION, so the mark tracks the shipped
+          // pair's contrast on whatever ground it lands on (see solveMarkInk).
+          ctx.fillStyle = solveMarkInk(
+            dialTintAt(faceColor, MARK_RADIAL_F),
+            dialTintAt(AESTHETICS_DEFAULTS.dial.face.color, MARK_RADIAL_F));
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           const msg = MARK_TEXT;   // §158 — one copy of the signature, shared with the well's
@@ -6760,16 +6886,26 @@ export function makeDial({
           // (?d4=, ?rsvr=) re-derives its own tone. A well may still pass an
           // explicit `face` to opt out and read as a separate instrument.
           const wellR = Math.hypot(sd.x, sd.y) / (2 * DIAL_CANVAS_FILL_F * radius);
+          // ONE expression for this well's ground: it fills the canvas, it is
+          // what §159's zone tones and §196's ink are solved against, and the
+          // §157 gate re-reads it through wellInkSites — so none of them can
+          // be given different answers by a second transcription. The SHIPPED
+          // ground is the same expression over the file's frozen defaults: it
+          // anchors the maker's mark's designed relation (§196), and for a
+          // well that opted out with an explicit `face` it IS that face —
+          // such a well never recolours, so its shipped ground is itself.
+          const wellGroundNow = () => sd.face || dialTintAt(aesthetics.dial.face.color, wellR);
+          const wellGroundShipped = sd.face
+            || dialTintAt(AESTHETICS_DEFAULTS.dial.face.color, wellR);
+          wellInkSites.push({ kind: sd.kind, ground: wellGroundNow });
           const paintWell = () => {
             fctx.setTransform(1, 0, 0, 1, 0, 0);
             fctx.clearRect(0, 0, px, px);
-            // ONE expression for this well's ground: it fills the canvas AND
-            // it is what §159's zone tones are solved against, so the two
-            // cannot be given different answers by a second transcription.
-            const wellGround = sd.face || dialTintAt(aesthetics.dial.face.color, wellR);
+            const wellGround = wellGroundNow();
             fctx.fillStyle = wellGround;
             fctx.fillRect(0, 0, px, px);
-            paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale, wellGround);
+            paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale,
+              wellGround, wellGroundShipped);
           };
           paintWell();
           const ftex = new THREE.CanvasTexture(cv);
@@ -7031,28 +7167,37 @@ export function makeDial({
 
   g.userData.r = radius;
 
-  // §157 — THE LEGIBILITY GATE, and the measurement beside it.
-  //
-  // ASSERTED: the chemin-de-fer against its ground, at BOTH rails. The ink
-  // is fixed and the ground is free taste, so this is the pair that a colour
-  // choice can actually break — and it is assertable because both sides are
-  // flat, known sRGB values composited in the canvas, with no lighting in
-  // between. Worst case is the OUTER rail: the vignette darkens outward, so
-  // that is where a light dial's contrast is thinnest; both are checked
-  // rather than reasoned about, because a dark base tone inverts which one
-  // is worst (the ink is nearly black, so a dark ground fails inner-first).
-  // ONE copy of the check, called at build and again on every live recolour —
-  // a second transcription of a threshold is a second place for it to rot.
+  // §157 — THE LEGIBILITY GATE, and the measurement beside it. §196 INVERTED
+  // ITS MEANING: the ink is no longer fixed, it is SOLVED against the ground
+  // (solveInk — the two-pole argmax whose worst case over ALL grounds is
+  // ≈ 3.8:1), so a warn here no longer means "the viewer picked a bad
+  // colour" — it means the SOLVE failed to hold its own floor, which is a
+  // regression. The gate asserts the SAME solved ink the paint used, derived
+  // through the same calls, at both rails (the vignette darkens outward and
+  // a dark base inverts which rail is worst, so both are checked rather than
+  // reasoned about) and at every well against its own ground. ONE copy,
+  // called at build and again on every live recolour — a second
+  // transcription of a threshold is a second place for it to rot.
   const assertInkLegible = () => {
     const face = aesthetics.dial.face.color;
-    for (const [name, f] of [['outer', DIAL_RAIL_OUT_F], ['inner', DIAL_RAIL_IN_F]]) {
-      const ground = dialTintAt(face, f);
-      const ratio = contrastRatio(ground, DIAL_TRACK_INK);
+    const railGrounds = [dialTintAt(face, DIAL_RAIL_OUT_F), dialTintAt(face, DIAL_RAIL_IN_F)];
+    const trackInk = solveInk(railGrounds);
+    for (const [name, ground] of [['outer', railGrounds[0]], ['inner', railGrounds[1]]]) {
+      const ratio = contrastRatio(ground, trackInk);
       if (ratio < DIAL_INK_CONTRAST_MIN)
-        console.warn(`dial: the minute track is not legible on this face colour — ${name} rail `
-          + `${ratio.toFixed(2)}:1 (ground ${ground} vs ink ${DIAL_TRACK_INK}), `
+        console.warn(`dial: the ink SOLVE failed on this face colour — ${name} rail `
+          + `${ratio.toFixed(2)}:1 (ground ${ground} vs solved ink ${trackInk}), `
           + `need ${DIAL_INK_CONTRAST_MIN.toFixed(1)}:1 (WCAG 2.1 SC 1.4.11, non-text contrast). `
-          + `Face colour ${face} is too close to the printed track.`);
+          + `solveInk's poles should hold ≥ 3.8:1 on every ground; this is a regression.`);
+    }
+    for (const { kind, ground } of wellInkSites) {
+      const gNow = ground();
+      const ratio = contrastRatio(gNow, solveInk([gNow]));
+      if (ratio < DIAL_INK_CONTRAST_MIN)
+        console.warn(`dial: the ink SOLVE failed in the ${kind} well — `
+          + `${ratio.toFixed(2)}:1 (ground ${gNow} vs solved ink ${solveInk([gNow])}), `
+          + `need ${DIAL_INK_CONTRAST_MIN.toFixed(1)}:1 (WCAG 2.1 SC 1.4.11, non-text contrast). `
+          + `solveInk's poles should hold ≥ 3.8:1 on every ground; this is a regression.`);
     }
   };
   assertInkLegible();
@@ -7065,7 +7210,10 @@ export function makeDial({
   // this repo forbids. So it is reported and left alone. Note the two pull in
   // OPPOSITE directions — darkening the dial lifts the mark's contrast while
   // collapsing the track's — so no single threshold serves both, which is the
-  // second reason only the track is gated.
+  // second reason the track and the mark ride DIFFERENT solves since §196:
+  // solveInk maximises the print's contrast, solveMarkInk holds the mark to
+  // the shipped pair's 2.82:1 RELATION on every ground — adapted, still
+  // discreet, still outside the gate.
   //
   // Also published rather than asserted: the applied markers (MATS.steel,
   // 0xd6d9dd) and the hands (MATS.bluedHand, 0x2450b5). Those are METALS at
@@ -7078,11 +7226,23 @@ export function makeDial({
   g.userData.inkContrast = () => {
     const face = aesthetics.dial.face.color;
     const at = (f) => dialTintAt(face, f);
+    // §196 — the gated block measures the SOLVED inks, the ones the paint
+    // actually printed, and names which pole won; the wells joined the gate
+    // with the solve. The reported block keeps measuring the CONSTANTS
+    // (the mark's designed relation and the metals' indicative hexes).
+    const railGrounds = [at(DIAL_RAIL_OUT_F), at(DIAL_RAIL_IN_F)];
+    const trackInk = solveInk(railGrounds);
     return {
       face,
       gated: {
-        trackOuter: contrastRatio(at(DIAL_RAIL_OUT_F), DIAL_TRACK_INK),
-        trackInner: contrastRatio(at(DIAL_RAIL_IN_F), DIAL_TRACK_INK),
+        trackInk,
+        trackOuter: contrastRatio(railGrounds[0], trackInk),
+        trackInner: contrastRatio(railGrounds[1], trackInk),
+        wells: wellInkSites.map(({ kind, ground }) => {
+          const gNow = ground();
+          const ink = solveInk([gNow]);
+          return { kind, ground: gNow, ink, ratio: contrastRatio(gNow, ink) };
+        }),
         floor: DIAL_INK_CONTRAST_MIN,
       },
       reported: {
@@ -7096,10 +7256,12 @@ export function makeDial({
   };
 
   // §157 — the live-recolour hook the aesthetics panel drives. Repaints the
-  // face canvas and every well that DERIVES its tone, then re-runs the gate
-  // above so a live drag into an illegible colour warns exactly as a boot
-  // into one would. Returns false where no canvas exists (no-DOM harnesses),
-  // so the caller can fall back to the reload tier instead of assuming.
+  // face canvas and every well that DERIVES its tone (each repaint re-runs
+  // §196's ink solve for its new ground), then re-runs the gate above — which
+  // since §196 holds the SOLVE, so a live drag stays silent on every colour
+  // unless the solve itself regresses. Returns false where no canvas exists
+  // (no-DOM harnesses), so the caller can fall back to the reload tier
+  // instead of assuming.
   g.userData.recolourFace = () => {
     if (!repaintFace) return false;
     repaintFace();

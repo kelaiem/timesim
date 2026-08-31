@@ -20626,3 +20626,133 @@ instrument gets switched off (§54's banner), and pretending they pass is
 worse. A waiver on a row that is *not* over the bar is itself a failure,
 so deleting the waiver is structurally part of any fix — which is how the
 first draft's extra `transmits` entry was caught, stale on arrival.
+
+## §196 — adaptive dial ink: the print re-solves with the face instead of warning about it
+
+Roadmap §196, filed 2026-08-31 and built the same day. `dial.face.color` is
+free taste (§154, §157, §185), but the ink printed on it was constant — so
+the §157 floor could DETECT an illegible pairing and do nothing else. §185
+measured the consequence and shipped it as a documented limitation: a
+plausible navy (`#1b3a5c`) read **1.41:1** at the outer rail, warned four
+times, and shipped the illegible dial anyway, with the section closing on
+"if links should refuse illegible colours, that is a design call for the
+owner". §196 answers that question by dissolving it: nothing needs
+refusing, because the print now does what a real dial maker does — flips to
+light ink on a dark ground.
+
+### The solve is an argmax over two poles, and deliberately not a search
+
+Contrast against a fixed ground is **V-shaped along the dark→light ramp**:
+it falls to 1:1 where the ink's luminance crosses the ground's and rises on
+both sides. The min over several grounds (the two rails differ — the
+vignette darkens outward) is therefore a W whose maximum sits at an
+ENDPOINT, so §159's ternary search — which needs a unimodal objective — is
+the wrong instrument here, and evaluating the two poles is exact.
+`solveInk(grounds)` returns whichever pole holds the larger worst-case
+contrast; ties go dark, the shipped design's side.
+
+The dark pole is `DIAL_TRACK_INK` unchanged. **The light pole is derived,
+not picked**: `DIAL_TRACK_INK_LIGHT` is the tone standing to a pure black
+ground exactly as the dark ink stands to a pure white one — mirror
+symmetry, `C0 = contrast(track, white) ≈ 17.4`, `L = C0·0.05 − 0.05 ≈
+0.820`, inverse-sRGB → `#eaeaea` — so neither pole is a second taste
+decision. The consequence that makes the landing: **the worst ground for
+this pole pair (luminance ≈ 0.18) still reads ≈ 3.83:1**, above the 3.0:1
+floor, so EVERY face colour ships legible print. The §157 assert survives
+with its meaning INVERTED — a warn no longer means "the viewer picked a bad
+colour", it means the solve regressed — and standing rule 6 regains the
+ground §185 conceded (`?dialcol=` can no longer warn a stranger's boot).
+The gate now derives the same solved ink the paint used, at both rails and
+at every well against its own ground (`wellInkSites` closes over each
+well's one ground expression), and `inkContrast()` publishes the solved
+inks and per-well rows in its gated block.
+
+### Five transcriptions retired, and the two-hex-unit cost of one source
+
+Scoping found the sub-dial print was not even the constant: `paintSubdialFace`
+printed its combs, figures and captions in a literal `'#1c1c22'` at four
+sites — a second transcription of `DIAL_TRACK_INK` two hex units off it —
+and the in-well maker's mark at a fifth literal, `'#8a887e'`, a copy of
+`DIAL_MARK_INK`. Worse than untidy: **§159's zone solve scored against
+`DIAL_TRACK_INK`, an ink that was not the one printed over the zones.** All
+five now resolve through the solves, and the zone objective reads the ink
+actually printed. The recorded cost: the shipped sub-dial print moves
+`#1c1c22` → `#1a1a1a`, two hex units, imperceptible — the price of one
+source, stated rather than hidden. The main face's print is bit-identical:
+on the shipped tone every solve returns the shipped constant verbatim
+(`solveInk` → `#1a1a1a` at 11.96/12.79:1, the §157 numbers unchanged).
+
+### The zones needed the same widening, and the landing found it the §157 way
+
+With the track solved, a navy boot STILL warned twice — §185's four warns
+were two track and two zone, and the zone half was its own defect:
+`zoneTone` searches only the hue→ground blend segment, which can move a
+tone TOWARD its ground and never away, so on a dark ground it is the wrong
+direction entirely. The fix keeps §159's aesthetic where it works and
+widens only where it fails: the original ternary blend runs first and is
+returned whenever it holds the floor (every previously-clean ground is
+untouched, byte for byte — the shipped tones `#c75352`/`#378851` still
+print), and only a blend under the floor falls through to a scan of the hue
+mixed toward either pole — a pastel or a deep tone of the same hue,
+scanned at byte resolution because min-of-two-Vs is not unimodal and the
+hexes quantise to 1/255 anyway.
+
+**What remains impossible remains warned, and that is arithmetic, not
+debt**: a third tone 3:1 from both a ground and an ink requires the pair to
+stand ≥ 9:1 apart (the chained-ratio bound), so grounds whose luminance
+lands in ≈[0.30, 0.49] — light-mid grays whose ink is the dark pole at less
+than 9:1 — cannot host a compliant zone at all. There §159's warn fires
+exactly as before, and §159's own redundancy design (position and width
+carry the meaning; the hue is a reminder) is why that is acceptable.
+Measured over a 72-colour lattice: 26 grounds in the impossible band, every
+one warned, zero silent failures.
+
+### The maker's mark keeps its discretion as a relation
+
+§157's reasons for not gating the mark stand — discreet by design, its
+constraint pulling opposite the track's — so the mark rides a different
+solve: `solveMarkInk` holds the SHIPPED pair's contrast on whatever ground
+it lands on, from whichever side has room. The target is the mark's ratio
+on the site's own shipped ground (`AESTHETICS_DEFAULTS` through the same
+ground expression the site paints with), so on the shipped face `r0 === T`
+by construction and `DIAL_MARK_INK` returns verbatim — the reported 2.8203
+is unchanged. Off the shipped face it is three monotone segments, each
+bisectable where the raw ramp is not: too loud dims toward the ground (a
+black ground reads 5.90:1 as a constant and 3.03:1 solved), too quiet
+lifts toward the mark's own pole, and a ground the mark's side cannot
+serve re-anchors from the other pole. Measured across representative
+grounds the relation holds to ±0.02:1, the byte-quantisation width. The
+metals stay reported with §157's reason untouched: markers and hands are
+environment-lit, and a hex ratio there would be a number that looks like a
+check and tests nothing.
+
+### Instrument
+
+`tools/probe-196-ink.mjs` — acceptance, 26 checks, four tiers. Controls
+first, both directions: the metric must still SEE §185's defect (the navy
+against the old constant ink reads 1.41:1 < 3.0), the light pole must equal
+its mirror derivation recomputed independently, `solveInk` must answer
+dark-on-white and light-on-black, and the zone warn must still FIRE in the
+impossible band (`#a0a0a0`) — silence elsewhere is a measurement only
+because the warn is proven alive. Then shipped-verbatim (track and wells
+`#1a1a1a`, mark relation 2.8203, `bootWarns` empty), the named set booted
+via `?dialcol=` (navy min **9.36:1** where §185 measured 1.41; black
+17.46:1; the `#1a1a1a` face that §157 measured at 1.02:1 now 14.32:1; the
+crossover gray 3.95:1 — all with `bootWarns` empty), a 72-colour lattice
+applied by live recolour (min ink contrast **3.871:1** at `#ff0000`, the
+valley the pole-pair analysis predicts), and §157's invariance re-proven
+under the solve: 44 dial geometries and 12,621 vertices identical across a
+recolour and back. It is deliberately NOT `probe-dial-colour-link.mjs`,
+which holds whose colour a link applies and names legibility as out of its
+scope; this is the legibility half.
+
+### Reconciled in this landing
+
+`AESTHETICS.md`'s Face bullet claimed the printed inks were "independent,
+fixed ink colors and are unaffected" — the one sentence in the docs the
+solve falsifies — and closed with §185's "warnings and all"; both clauses
+now describe the solve. §157's in-source premise ("the ink is FIXED") and
+the recolour hook's comment are updated where they stand. §185's BUILT
+record is left as written — it is the honest history of the limitation this
+section retires — with its closing owner-question answered here: links
+refuse nothing, because there is nothing left to refuse.
