@@ -9,6 +9,11 @@
 // `lugH − LUG_ROOT` hand-copied from geometry.js. If the two ever part, the
 // assert prices a lug that is not there.
 //
+// Since the owner's 2026-08-31 strap spec it also reads the INTERIOR lug
+// distance — the gap between a pair's facing walls, the dimension a strap is
+// bought in — and holds it to the declared 20 mm (CASE_LUG_INNER, main.js):
+// the metal must present the spec, not the centre span the seats derive.
+//
 // What this is NOT: no other instrument touches the lugs at all (INDEX.md,
 // searched: lug/strap/spring bar — zero rows).
 //
@@ -78,17 +83,33 @@ const res = await page.evaluate(async () => {
   let tipsAcross = 0;
   for (const l of L) for (const [px, py] of l.pts) tipsAcross = Math.max(tipsAcross, Math.abs(px * ax + py * ay));
   tipsAcross *= 2;
+  // INTERIOR distance per pair: project each lug's vertices onto the STRAP
+  // axis (the pair axis's perpendicular — the direction the spring bar
+  // runs); the interior is the gap between the two facing extremes. The
+  // same read of the metal a strap maker's calliper takes.
+  const sxA = -ay, syA = ax;
+  const interiors = [];
+  for (const sign of [1, -1]) {
+    const pair = [];
+    for (let i = 0; i < L.length; i++)
+      if ((cs[i][0] * ax + cs[i][1] * ay) * sign > 0) pair.push(i);
+    if (pair.length !== 2) { interiors.push({ error: `pair of ${pair.length}` }); continue; }
+    const proj = (i) => L[pair[i]].pts.map(([px, py]) => px * sxA + py * syA);
+    const [pa, pb] = [proj(0), proj(1)];
+    const [pos, neg] = (cs[pair[0]][0] * sxA + cs[pair[0]][1] * syA) > 0 ? [pa, pb] : [pb, pa];
+    interiors.push({ inner: Math.min(...pos) - Math.max(...neg) });
+  }
   // Span between the two bars of one pair (z of bar centres, and the XY gap):
   return {
     nLugs: lugs.length, nBars: bars.length,
     lugR: L.map((l) => ({ rMin: +l.rMin.toFixed(4), rMax: +l.rMax.toFixed(4), zMin: +l.zMin.toFixed(3), zMax: +l.zMax.toFixed(3) })),
     barR: B.map((b) => ({ rMin: +b.rMin.toFixed(4), rMax: +b.rMax.toFixed(4), zMin: +b.zMin.toFixed(3), zMax: +b.zMax.toFixed(3) })),
-    tipsAcross,
+    tipsAcross, interiors,
   };
 });
 
 const MM = 0.378947, UNIT_MM_INV = 1 / MM;
-const CASE_R_OUT = 48.2007;                          // main.js:1815's value, restated for the check below
+const CASE_R_OUT = 20 * UNIT_MM_INV;                 // main.js: CASE_R_OUT = CASE_WIDTH_MAX — the §190 re-base spent the 40 mm budget on the BODY; restated for the check below (the stale Ø36.5-era 48.2007 sat here until 2026-08-31 and failed this control against healthy metal)
 const assertFormula = CASE_R_OUT + 1.7 * UNIT_MM_INV; // the boot assert's expression
 console.log(`lugs ${res.nLugs}, spring bars ${res.nBars}`);
 for (const l of res.lugR) console.log(`  lug  r ${l.rMin}..${l.rMax}  z ${l.zMin}..${l.zMax}`);
@@ -99,5 +120,15 @@ const drift = Math.abs(res.tipsAcross - 2 * assertFormula);
 let ok = true;
 if (drift > 0.02) { ok = false; console.log(`\nCONTROL FAIL: measured tips and the assert's formula disagree by ${drift.toFixed(4)} u — the hand-copied 1.7 has drifted from geometry.js`); }
 else console.log(`\nCONTROL PASS: the hand-copied 1.7 still matches the metal (drift ${drift.toFixed(4)} u)`);
+// The owner's strap spec, held against the metal: CASE_LUG_INNER (main.js)
+// declares the interior at 20 mm; the tolerance is the mesh's own
+// tessellation, same as the tips control above.
+const LUG_INNER_SPEC = 20 * UNIT_MM_INV;
+for (const it of res.interiors) {
+  if (it.error) { ok = false; console.log(`INTERIOR FAIL: ${it.error} — could not pair the lugs`); continue; }
+  const d = Math.abs(it.inner - LUG_INNER_SPEC);
+  console.log(`interior lug distance MEASURED: ${it.inner.toFixed(4)} u = ${(it.inner * MM).toFixed(3)} mm  (spec 20 mm, drift ${d.toFixed(4)} u)`);
+  if (d > 0.02) { ok = false; console.log(`INTERIOR FAIL: the metal does not present the 20 mm strap spec`); }
+}
 await browser.close(); srv.kill();
 process.exit(ok ? 0 : 2);
