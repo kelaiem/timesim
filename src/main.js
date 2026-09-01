@@ -28236,10 +28236,19 @@ const BACK_SWEPT_ALLOWANCE = new Map([
 // same probe clause; each z is the unit's swept maximum over the row's
 // band, rounded up past margin flicker.
 const BACK_SWEPT_REGIONS = [
-  // The strike swing carries the hammer head outward to r 42.0 at z 10.898
-  // — at build it parks at r 35.4–37, leaving bins out to 42 with nothing
-  // above the three-quarter plate.
-  { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 10.92 },
+  // The strike swing carries the hammer head outward through r 34.6–42.0 —
+  // at build it parks at r 35.4–37, leaving bins out to 42 with nothing
+  // above the three-quarter plate. §197 grew the head (1.75 → 2.63 u), so
+  // the swept ceiling here rose with it: measured 12.060 (was 10.898 pre-§197)
+  // against a build-pose reading of "—" (no metal) in the outboard half of
+  // this band, rounded up past margin flicker.
+  { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 12.07 },
+  // §197's larger head also carries the swing's outer edge past the old
+  // r1 = 42.0 boundary for the first time, out to r 44.4 at a lower ceiling
+  // (12.060 → 11.534 once the head has swung clear of the taller inboard
+  // arc) — measured by the same probe product, its own row rather than
+  // widening the one above past what that band needs.
+  { unit: 'Alarm hammer', r0: 42.0, r1: 44.5, z: 11.54 },
   // The switch cluster's press/castellation swing spreads its metal across
   // r 17.3–31.3 (measured swept 10.068 at r 17.3–18.1 against build 9.242;
   // 11.468 at r 30.4–31.3 against build 10.851 — §192's descent re-measured
