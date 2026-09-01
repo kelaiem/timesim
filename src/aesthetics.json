@@ -163,9 +163,9 @@
     }
   },
   "gong": {
-    "arcDeg": 90,
-    "wireDiaUnits": 1.0,
-    "_comment": "The alarm gong's ringing wire. arcDeg is measured BACK FROM THE FREE (struck) end, so changing it moves the FOOT and leaves the hammer, its pivot and the strike point exactly where they are. Both feed the synthesised tone: f_n = (beta_n L)^2 (d/4) sqrt(E/rho) / (2 pi L^2) for a clamped-free steel bar, so the gong is heard at the pitch its dimensions imply rather than at a chosen note. Shorter arc or thicker wire = higher pitch. See TODO 17 — at the 90 deg default the fundamental is only 623 Hz, low for an alarm; ~45 deg puts it near 2.5 kHz.",
+    "arcDeg": 72.47,
+    "wireDiaUnits": 2.6292,
+    "_comment": "The alarm gong's ringing wire. arcDeg is measured BACK FROM THE FREE (struck) end, so changing it moves the FOOT and leaves the hammer, its pivot and the strike point exactly where they are. Both feed the synthesised tone: f_n = (beta_n L)^2 (d/4) sqrt(E/rho) / (2 pi L^2) for a clamped-free steel bar, so the gong is heard at the pitch its dimensions imply rather than at a chosen note. \u00a7197 made both defaults DERIVED, and main.js warns if either drifts from its derivation: wireDiaUnits is the height of the band the ring flies in (floor = the tallest metal in its own radial swath, measured off the built movement; ceiling = the movement's existing back envelope), because the radiated power of a struck wire rises with its section and only space caps it; arcDeg is the length that puts the FUNDAMENTAL on 2.5 kHz, the A-weighted peak of human hearing and the figure TODO 17 named for this gong. The foot's clear-station walk then lengthens the arc from there, which drops the pitch a little \u2014 the achieved figure is reported by clock.acoustics and gated into the alarm band. See TODO 17 and TODO 127.",
     "_bounds": {
       "arcDeg": [
         25,
@@ -173,7 +173,7 @@
       ],
       "wireDiaUnits": [
         0.4,
-        2.0
+        2.63
       ]
     },
     "_labels": {

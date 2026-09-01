@@ -50,7 +50,10 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
 | 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
 | 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%). **TODO 82 re-took the chain: ROD-END-limited at ≈1.58 mN, not tail-limited at ≈48 mN — the stroke every earlier figure used was a deleted constant, and "in series" was a minimum. This item's ORIGINAL verdict (short by one to two orders of magnitude) is restored.** `SLENDER_WAIVERS['Alarm link']` cannot be retired by ANY legal section — §54's ceiling wants r 0.326 — so what remains is a third bush station, in position space |
-| 17 | MOSTLY CLOSED | The hammer still strikes in-plane |
+| 17 | MOSTLY CLOSED | The hammer still strikes in-plane, so a curved bar's own modes would sit above the straight-bar figures. §197 closed the rest: the strike's excitation weighting across modes and the two synthesised gains are derived now, and the pitch's own bound moved out to item 127 |
+| 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
+| 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
+| 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
 | 30 | OPEN | §76's walls two and three (wall three was misdiagnosed; the crash is fixed, the wall stands) |
@@ -1500,7 +1503,16 @@ fact.
 
 Verified: root moved **0.000000** while the hammer swung **0.3162 rad**,
 tip-to-tail gap **0.0000** across the whole strike axis, and the measured
-torque (−5.954) opposes a draw of +0.27. The audit closes its own
+torque (−5.954) opposes a draw of +0.27.
+
+**REOPENED IN PART by §197, as item 128.** Every sentence above is still
+true and none of it was enough. The audit asks whether a restoring MESH
+exists and whether its torque has the right sign; it cannot ask whether the
+mesh is a spring. This one is not: the blade runs along the push direction
+and the frame law redraws it to reach the moving bearing, so it changes
+LENGTH by 36% of itself over the draw. `ALARM_HAMMER_W` therefore still
+does not come from it — which §197 could measure in joules, because the
+blow is ½Iθ̇² and this is the θ̇. The audit closes its own
 finding: the alarm hammer moved out of `malformedDeclarations` into
 `restoredByDeclaredElement ← alarmHammerSpring`, leaving that bucket
 empty. Boot silent; `stockFloor` green (the blade clears the spring floor
@@ -2420,11 +2432,28 @@ dimensions and the arc is a live parameter, so the pitch tracks the
 geometry (90° → 626/3922 Hz, 45° → 2514 Hz). The octave pair is gone and
 the inharmonic 1 : 6.27 ratio is what is sounded.
 
-Still open: the hammer strikes **in-plane**, and a curved bar's in-plane
-modes sit above the straight-bar figures used here — `gongModes()` should
-carry the curvature term. And the DESIGN question is now exposed rather
-than answered: the 90° default still rings low for an alarm; whether the
-default arc should move to ~45° is a decision, not a bug.
+**§197 closed the excitation half.** The residue above said the *ratios*
+were derived but the strike was not: which modes a blow excites, and in
+what proportion, was still four chosen envelope numbers. It is arithmetic
+now — an impulsive hand-off between the rotor's effective mass and the
+wire's modal mass `M/4`, weighted by the Hertz contact's own half-sine
+spectrum, and each partial's synthesised amplitude set to √(its radiated
+power) referred to the loudest. `0.30` survives as the overall LEVEL
+(§56's chosen gain), which is a volume and not a claim about the wire.
+
+Still open, and now two separate things:
+
+- **The hammer strikes in-plane**, and a curved bar's in-plane modes sit
+  above the straight-bar figures `gongModes()` uses — the curvature term
+  is still missing. Unchanged by §197, which reused the same law.
+- **The strike's ENERGY is still not derived** — item 17's own ledger said
+  so and it is still true, now with a number on it: item 128.
+- **The DESIGN question moved to item 127**, where it belongs: §197
+  measured why the arc cannot shorten to the ear's optimum (the plate's
+  balance opening offers no stud station), so "should the default arc be
+  ~45°" is answerable at last and the answer is "not without moving where
+  the foot lands". Item 126 carries the other half — that the wire is not
+  what makes a real alarm loud.
 
 ## 19. CLOSED — the selector's sensing pin never touched the ring it read
 
@@ -15444,3 +15473,155 @@ close by 0.1 and the two rows come inside the bar.
 
 Related: [§86] is the underived-constants audit, and this is one of its
 cleanest specimens — found by an instrument rather than by reading.
+
+## 126. The gong's level stops at the wire: the case is the radiator and the path is unmodelled
+
+§197 derived what the gong radiates and the answer is **40.1 dBA at 0.3 m,
+on axis** — audible, roughly a quiet room, and about 30 dB under what a
+real alarm wristwatch does. The shortfall is not in the arithmetic and it
+is not in the wire's dimensions. It is that **the wire is a string with no
+soundboard**.
+
+A bar this short against the sound it makes radiates as a compact dipole:
+it displaces no net volume, only net momentum, and the fluid it pushes is
+its own added mass. Measured through `probe-197-gong-loudness.mjs`, the
+whole ring converts about **6.7 nW** of acoustic power out of a 2.84 µJ
+blow — a radiation efficiency in the 10⁻³ range, which is what a 1 mm
+steel wire is worth as a loudspeaker and cannot be fixed by making it
+better at being a wire.
+
+Real alarm watches (Memovox, Cricket) solve it the way a piano does: the
+gong's foot drives the **case**, and the caseback is a ~30 mm diaphragm
+with three orders more radiating area. The Cricket goes further and makes
+the back a resonance chamber, which is most of why it is the loud one.
+
+**The path already exists in the model as metal** — that is what makes
+this tractable rather than speculative. `alarmGongPost` plants in the
+three-quarter plate; the plate stands on the pillars; the pillars stand on
+the base plate; §186's mounting rim is clamped to the case ledge by three
+screws. Every member is modelled. What is not modelled is that a
+structure-borne path *carries energy*, so today the blow's energy is
+accounted for as if the stud were built into bedrock.
+
+**Closing it means a second radiator in the chain**, and the arithmetic is
+the same shape as §197's: the fraction of the wire's energy that crosses
+the foot (a mobility ratio at the stud, which is where the modelled
+stiffnesses actually pay off), the caseback's own modes, and a piston-ish
+radiation from a disc of that size — a disc is not compact at 1.4 kHz and
+radiates enormously better than a wire. Until that exists **every level
+§197 reports is a floor, not a prediction of the watch**, and the
+instrument says so in its own header.
+
+Related: item 127 (the pitch's own bound), [§197].
+
+## 127. The gong's pitch is set by where a stud can be screwed down, not by the ear
+
+`aesthetics.gong.arcDeg`'s default is DERIVED — the arc length that puts
+the fundamental on 2.5 kHz, the A-weighted peak of hearing and the figure
+item 17 named for this gong. It has never once taken effect. §125's foot
+clamp and §197's clear-station walk both lengthen it, and the shipped arc
+comes out at **97.5° against the 72.5° the ear wants**, which drops the
+fundamental to **1381 Hz**.
+
+**Measured, the reason is the three-quarter plate's balance opening.**
+Raycast down the gong circle (`r 35`), the plate carries metal only at
+az ≥ −5° and az ≤ −75°: the whole span between is the balance's cut, and
+the balance and fork cocks bridge over it rather than filling it. A stud
+must plant in plate, so there are exactly two stations available and they
+give an arc of 20° (f₁ ≈ 33 kHz — silent) or ~97° (f₁ 1381 Hz). Nothing in
+between exists. The scan is reproducible from
+`probe-197-gong-loudness.mjs`'s own reading of the ring, and the walk that
+finds the station is in `main.js` beside `GONG_FOOT_BOUND`.
+
+The wire cannot buy the pitch back either: `f ∝ a/L²`, so ringing 2.5 kHz
+at the forced 22.6 mm wants **⌀1.8 mm** wire — outside real alarm-gong
+stock (0.4–1.1 mm) and nearly twice the band the ring has to fly in.
+
+**Two ways out, both position-space, which is where a P3 conflict belongs.**
+
+1. **Stand the stud on the fork cock.** It bridges the opening at az −53°
+   to −71°, which is exactly the azimuth an ear-optimal arc wants, and a
+   gong foot on a bridge is a real construction. Costs: the gong's support
+   edge in `MECH_GRAPH` moves off the plate, and the cock takes the blow's
+   reaction — which wants checking, not assuming, since that cock also
+   carries the pallet fork's upper pivot.
+2. **Take the ring outside the plate rim**, where no opening exists at any
+   azimuth. §197 measured that option and did not take it: the annulus's
+   usable window is pinched between the alarm pusher's stem (z 7.10–7.74)
+   and §187's caseback skirt, and the head's radial room falls from 6.4 u
+   to 4.7 u, which costs more level than the pitch buys — about 2.7 dB net
+   against §197's arrangement. It becomes the better option only WITH a
+   lifting lever between the cam and the hammer, because a hammer pivot
+   moved outboard can no longer reach the striking wheel with a 6.5 u tail
+   (the cam would have to grow by the same displacement). That lever is a
+   fold with its own P1 duties, and it is filed as a roadmap entry rather
+   than as debt.
+
+Neither is a fix to the acoustics: the law is right and the wire is the
+size the band allows. This is a LAYOUT problem, filed as one.
+
+Related: item 17 (the voice), item 126 (the level), [§197].
+
+## 128. The hammer spring changes LENGTH as the hammer swings: a rubber band where TODO 14 recorded a blade
+
+Item 14 closed on a real declaration and a real mesh: `alarmHammerSpring`,
+a flat blade grounded on its own stud, bearing on the tail at 45% of its
+length, with a build-time tripwire proving its torque opposes the draw.
+§48's audit answered `restoredByDeclaredElement`, and everything item 14
+verified is still true.
+
+**It is still not a spring.** The blade is anchored one free length back
+along the PUSH direction from its bearing point, and the bearing point
+travels along that same line as the hammer swings — so the load is AXIAL,
+and the frame law redraws the bar from its fixed anchor to the moving
+bearing to keep them touching. Measured: the drawn bar is **2.2 u** long
+and the draw moves its far end **0.79 u — 36% of its own length**. A steel
+blade strained 36% is not a blade. Nothing in the audit could see this:
+§48 asks whether a restoring MESH exists and whether its torque has the
+right sign, and both answers are yes.
+
+**Which is why `ALARM_HAMMER_W` still is not `√(k/I)`.** The fall time is
+chosen (a third of the cam's free window) and the angular frequency solved
+to match, exactly as item 14 described — and it stays that way, because a
+bending rate read off a bar that stretches would be a second falsehood on
+top of the first.
+
+**What it costs, in the only unit that settles it.** The blow is `½Iθ̇²`
+and `θ̇` is `W`'s, so this constant IS the gong's level. §197 published the
+arithmetic on `__clock.acoustics.spring`:
+
+| | |
+|---|---|
+| the fall law implies | k = 1.886e−7 N·m/rad — a straight blade **48.4 u** long, 18 mm in a 32 mm movement |
+| the drawn bar, if it bent | k = 2.009e−3 N·m/rad, **10,650×** stiffer, working to 6459 MPa against an 800 MPa yield |
+| what it actually does | changes length by 0.79 u over the draw |
+| worth, at the gong | the blow is **6.11 nJ**; a spring working to its own yield gives ~2.8 µJ — **≈26 dB** of level |
+
+**The fix, sized rather than named.** A pivoted hammer's spring is a
+TORSION spring on its own arbor — inner end on the staff, outer end pinned
+to a stud, so nothing has to change length and the restoring torque is
+`k·θ` by construction. At flat-spring stock (`SPRING_FLAT_U`, tail-height
+ribbon) the rate the fall wants needs about **9.5 u of developed ribbon**:
+roughly two turns at r ≈ 0.75 about the hammer post, which is already
+there. `spiralFrames` / `writeSpiralLine` (§83, the hairspring) is the
+machinery, and `OWN_GLYPH` already has the `spiral` word so the schematic
+draws it truly instead of calling it a leaf spring.
+
+Once it exists, `ALARM_HAMMER_W` becomes `√(k/I)` off the built ribbon and
+the built rotor, and the fall time is whatever that makes it — about 2 ms,
+which is what a real striking watch does and means the fall stops being
+visible. That is a change the owner should see before it lands: the LIFT
+(62% of a 0.42 s cycle) is unchanged either way, and the blow would be
+marked by the flash and the ding as it is now.
+
+**Tried and reverted, so the next attempt does not repeat it.** §197 built
+the straight-blade version first — free length solved from
+`SPRING_SIGMA_Y_PA`, §173's direction of use — and it lands at 6.25 u,
+which drives the anchor stud into the alarm column: `Alarm hammer ⇄ Alarm
+switch` FORBIDDEN over 12 poses of `alarmPress`, `sweptOverlap` confirming
+0.3. There is no room for a straight blade of the right rate in that
+corner, and that is a second reason the answer is a coil rather than a
+longer bar.
+
+Related: item 14 (the declaration this refines), item 126 (the case, the
+other order of magnitude), [§197].
