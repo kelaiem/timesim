@@ -715,7 +715,8 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   values to be the same rigid body. **That is the rule, and since TODO 115 the
   code follows it**: every dial-side display keyed to a going-train quantity
   takes the negated angle (`minuteHand`, `hourWheelGroup`, `smallSecondsHand`,
-  `cannonPinion`), and a MOVEMENT-frame part keyed to the same quantity takes
+  `cannonPinion`, and — TODO 129, found after 115's own landing — `alarmTubeGroup`'s
+  disarmed target), and a MOVEMENT-frame part keyed to the same quantity takes
   it unnegated (`secondsCamArbor`, which `movement.add`s) — the same seam read
   from the other side, and the error the fix had to correct in both
   directions. `reserveHand.rotation.z = -rsvArbor2.rotation.z` always did
@@ -723,7 +724,10 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   is parented into is the whole question**, so check the `add` before the
   sign. The train's ABSOLUTE sense is the other half and it is one factor, not
   a sign per wheel: `MOVEMENT_SENSE` in `layout.js` — see the direction-guard
-  entry below.
+  entry below. **The enumeration itself can be incomplete, which is exactly
+  what TODO 129 was**: nothing sweeps "disarmed, tau varying" (no axis poses
+  that combination — the 'alarm' axis pins armed), so a fifth `dialFace`
+  child keyed to the same quantity shipped unnegated and no gate saw it.
 - **Which way a train runs is ONE declaration, and there are TWO of them** —
   `MOVEMENT_SENSE` (the going train) and `ALARM_SENSE` (the alarm, a second
   MOTOR posed off `alarmStrikePhase` that reversing the going train does not
