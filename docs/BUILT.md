@@ -21008,3 +21008,87 @@ battery came back `inspection: 1 FORBIDDEN` and `sweptOverlap: 1 CONFIRMED`,
 both `Alarm hammer ⇄ Alarm switch`, the anchor stud pushed into the alarm
 column's skirt. Reverting it is what sent §197 back to read how the blade is
 actually loaded — which is how the rubber-band finding above was made at all.
+
+## §190 — Lugs re-derived from the strap: the wrap gap becomes the source, and the lug stock becomes one declaration
+
+Commissioned when §186 re-based the 40 mm width cap to the case BODY
+(lugs excluded) and the owner opened the lug spec for options rather
+than freezing it. Two owner specs then arrived and turned the options
+question into a derivation: the 2026-08-31 INTERIOR spec (20 mm between
+the facing lug walls — the width a strap is bought in, already landed as
+`CASE_LUG_INNER`), and the 2026-09-01 WRAP spec — **at least 2.0 mm
+between case metal and the spring bar's surface everywhere on the wrap
+path**, the thickness of strap that can wrap the bar. Measured before
+the fix, the shipped metal offered **0.650 mm** (bar centre at
+`R_OUT + 1.4 mm`, Ø1.5 bar, band wall at `R_OUT`): two-piece strap ends
+run 1.2–1.8 mm at the bar and a one-piece/NATO doubles its layer, so the
+lugs accepted no real strap at all — and nothing declared that cap. The
+owner directed implementation on the straight-prism chain.
+
+### The radial chain, one constraint each (`layout.js`)
+
+- `CASE_STRAP_CLEAR = 2.0 mm` — the owner's wrap spec, beside
+  `CASE_LUG_INNER`: the strap's two purchase dimensions (bought 20 mm
+  wide, wrapped up to 2.0 mm thick). An ENVELOPE in the design-priority
+  sense — inherited, never forkable.
+- `CASE_SPRING_BAR_D = 1.5 mm` — names the `0.75 / UNIT_MM` literal that
+  appeared twice in the builder.
+- `CASE_BAR_REACH = CASE_STRAP_CLEAR + CASE_SPRING_BAR_D/2` (2.75 mm) —
+  the bar's centre past the band wall. The bar station DERIVES from the
+  gap, so the 2.0 mm holds by construction; the band is the nearest case
+  metal in every wrap direction (the back is a disc at ≤ `R_OUT`, so
+  below the bar is open sky), which the probe measures rather than
+  assumes.
+- `CASE_LUG_TIP_WALL = CASE_SPRING_BAR_D/3` (0.5 mm) and
+  `CASE_LUG_REACH = CASE_BAR_REACH + CASE_SPRING_BAR_D/2 +
+  CASE_LUG_TIP_WALL` (4.0 mm) — the tip derives from the BAR, reversing
+  the shipped direction: pre-§190 the bar derived from the tip and stood
+  **0.45 mm proud of it** (bore centre 0.3 mm inboard of the tip against
+  a 0.75 mm bar radius) — metal no drilled lug presents. The tip keeps a
+  third of the bore Ø beyond the bore, stamped-lug practice.
+- Tips-across is now `body Ø + 2 × CASE_LUG_REACH` = **48.0 mm** by
+  construction (from 43.4) — long-normal for a 40 mm body (40 mm cases
+  run 46–50 lug-to-lug). The scoping priced a DOWNTURNED-TIP option as
+  the lever that buys reach back under the same envelope (a curved lug
+  drops the bar toward the wrist, where below the back plane there is no
+  case metal); the owner did not take it — it would be a new entry now.
+- `CASE_LUG_T` (1.2), `CASE_LUG_W` (3.0 — carries the bore with 0.75 mm
+  walls), `CASE_LUG_ROOT` (0.8), `CASE_LUG_Z_OFF` (0.5): unchanged
+  values, MOVED — see below.
+
+### One declaration, three consumers
+
+The lug stock was hand-copied at three sites: the solid builder
+(`makeCase`), the schematic line tier in `main.js` (whose own comment
+admitted "hand-copied like the rest of this block's lug stock — 0.8,
+1.7, 1.5, 1.4" and which would have gone on drawing the pre-§190 metal
+after the re-derivation), and `probe-lug-geom.mjs` (whose whole reason
+to exist was tripwiring the `1.7 mm` copy). All three now consume
+`layout.js`'s declaration; the copy the probe watched cannot drift
+because it does not exist, and the old across-the-lug-tips assert is
+gone for good — tips-across is a construction, not a claim to check.
+
+### The instrument
+
+`probe-lug-geom.mjs` rewritten as the acceptance: declared-chain control
+(measured tips 48.000 mm, drift 0.0000 u), interior 20.000 mm at both
+pairs, and the new WRAP-GAP read — minimum distance from each bar's
+ANALYTIC surface to every case mesh that is not a lug, measured
+**2.003 / 2.002 mm** against the 2.0 mm spec (the excess is the faceted
+band's sagitta, conservative by construction). Two measurement lessons
+are recorded in the probe:
+
+- **The bar side must be analytic** (axis segment + radius, never the
+  vertex list): a cylinder's vertices sit only on its end rings, so the
+  old per-bar `rMin` read 60.55 u where the true near surface sat
+  54.49 u — the instruments skill's "vertices mistaken for the surface"
+  trap, live in this probe's own output for as long as it existed.
+- **The vertex centroid is not on the axis**: `CylinderGeometry`'s UV
+  seam duplicates one azimuth, biasing the centroid 0.104 u off-axis;
+  the first cut of the new read measured radial distance from a line
+  through it and recovered r = 2.083 for a 1.979 bar. The centre now
+  comes from a Kåsa circle fit of the ring vertices' perpendicular
+  projections (exact for on-circle data), and the CONTROL that catches
+  the whole class is the abutment read: the same machinery pointed at
+  the excluded lugs must report ≈ −barR, contact the metal actually
+  makes.

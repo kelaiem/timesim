@@ -402,6 +402,32 @@ export const CASE_CRYSTAL_CLEAR = 0.3 / UNIT_MM;
 // owner's word for it.
 export const CASE_TUBE_D = 2.0 / UNIT_MM;
 export const CASE_PUSHER_D = 1.2 / UNIT_MM;
+// Lug and spring-bar stock (§190). ONE declaration — the solid builder
+// (geometry.js makeCase), the schematic line tier (main.js) and
+// probe-lug-geom.mjs all consume these; before §190 the same numbers were
+// hand-copied at all three sites, the recurring one-direction-written-twice
+// defect with a longer fuse.
+export const CASE_LUG_T = 1.2 / UNIT_MM;      // lug thickness across the strap — stamped-lug plate stock
+export const CASE_LUG_W = 3.0 / UNIT_MM;      // lug height along z: carries the spring-bar bore with a wall each side ((3.0 − 1.5)/2 = 0.75 mm)
+export const CASE_LUG_ROOT = 0.8 / UNIT_MM;   // embed into the band — the brazed stamped-lug truth (a 0.3 mm first cut read as floating at screen scale)
+export const CASE_LUG_Z_OFF = 0.5 / UNIT_MM;  // the lug band's z offset above the ledge plane (the value the pre-§186 seat face had)
+export const CASE_SPRING_BAR_D = 1.5 / UNIT_MM; // Ø1.5 mm — the standard double-flanged spring bar for a 20 mm strap
+// The wrap gap — owner spec 2026-09-01: at least 2.0 mm between case metal
+// and the bar's surface everywhere on the wrap path, the thickness of strap
+// that can wrap the bar (two-piece ends run 1.2–1.8 mm there; a one-piece/
+// NATO doubles its layer). With CASE_LUG_INNER this is the strap's other
+// purchase dimension: bought 20 mm wide, wrapped up to 2.0 mm thick.
+export const CASE_STRAP_CLEAR = 2 / UNIT_MM;
+// The bar's radial station DERIVES from the gap, so the 2.0 mm holds by
+// construction — the shipped pre-§190 bar sat at band + 1.4 mm and left a
+// 0.65 mm gap no strap passes.
+export const CASE_BAR_REACH = CASE_STRAP_CLEAR + CASE_SPRING_BAR_D / 2;  // bar CENTRE past the band wall (2.75 mm)
+// The lug tip derives from the BAR (pre-§190 the bar derived from the tip
+// and stood 0.45 mm proud of it — metal no drilled lug presents): the tip
+// keeps a third of the bore Ø of metal beyond the bore, stamped-lug
+// practice.
+export const CASE_LUG_TIP_WALL = CASE_SPRING_BAR_D / 3;                  // 0.5 mm beyond the bore
+export const CASE_LUG_REACH = CASE_BAR_REACH + CASE_SPRING_BAR_D / 2 + CASE_LUG_TIP_WALL; // lug TIP past the band wall (4.0 mm; tips-across = body Ø + 2×this)
 
 // --- READING SIZE IS DERIVED FROM ACUITY (§158) -----------------------------
 // A printed feature's size is not a taste question once you name the distance

@@ -169,7 +169,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-interplate-demand.mjs` |  | acceptance | WHAT PINS THE THREE-QUARTER PLATE'S UNDERSIDE — the inter-plate z demand, per station, and the wheel-in-bore inventory. |
 | `probe-ledge-occupancy.mjs` |  | acceptance | WHAT OCCUPIES THE RIM-LEDGE ANNULUS — §186's mounting band, scanned over the pose net. |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
-| `probe-lug-geom.mjs` |  | acceptance | THE LUGS, READ OFF THE METAL — and the across-the-lugs assert's hand-copied term checked against the geometry it copies. |
+| `probe-lug-geom.mjs` |  | acceptance | THE LUGS, READ OFF THE METAL — the derived radial chain held to layout.js's declaration, and the §190 wrap gap measured off the analytic bar surface. |
 | `probe-mesh-closedness-census.mjs` |  | report | TODO 106 — HOW MUCH of the movement is open? Every parity witness in this repo (`pointInsideTree`, `probe-95-grid`, `sampledVerdict`'s insideness, and TODO 27's family) counts ray crossings and is therefore only valid against a CLOSED surface. Nothing measures how many surfaces qualify. |
 | `probe-mesh-transmission.mjs` |  | acceptance | DOES EVERY DECLARED MESH ACTUALLY TRANSMIT AT ITS TOOTH RATIO? |
 | `probe-outline-moves.mjs` |  | acceptance | WHICH AUTHORED OUTLINES DID A CHANGE MOVE, and what do they sit on? |

@@ -6,7 +6,9 @@ import * as THREE from 'three';
 import { MATS } from './materials.js';
 import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
-  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity
+  mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
+  CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
+  CASE_SPRING_BAR_D, CASE_BAR_REACH, CASE_LUG_REACH } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190: the lug/bar stock, one declaration
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -8155,50 +8157,49 @@ export function makeCase({ dims, material = MATS.steel, crystalMaterial }) {
 
   // Lugs at 12 and 6, INTERIOR span per dims (the strap gap between the
   // pair's facing walls — the spec dimension); each lug a prism
-  // chord-tangent to the band and ROOTED 0.8 mm into it (the brazed
+  // chord-tangent to the band and ROOTED CASE_LUG_ROOT into it (the brazed
   // stamped-lug truth — a watchmaker solders the lug foot to the band,
   // so the prism must visibly sink into the wall, not kiss it; the
-  // first-cut 0.3 mm embed read as a floating gap at screen scale and
-  // let the tips breach the 40 mm width cap). The Ø1.5 mm spring bar
-  // spans each pair.
-  const lugT = 1.2 / UNIT_MM;            // lug thickness across the strap
-  const lugH = 2.5 / UNIT_MM;            // radial reach out of the band
-  const lugW = 3.0 / UNIT_MM;            // height along z
-  const LUG_ROOT = 0.8 / UNIT_MM;        // embed into the band at the lug's own station
-  // The dims quantity is the INTERIOR gap; each lug's centre stands half its
-  // own thickness outboard of the wall it presents to the strap, so the
-  // centre-to-centre seat span derives here, beside the thickness it adds.
-  const lugCtrSpan = lugSpanInner + lugT;
+  // first-cut 0.3 mm embed read as a floating gap at screen scale).
+  // §190 — the RADIAL chain derives from the wrap gap, in layout.js: the
+  // spring bar's centre stands CASE_BAR_REACH past the band wall so the
+  // strap has CASE_STRAP_CLEAR to wrap it, and the lug TIP derives from
+  // the bar (CASE_LUG_REACH), not the bar from the tip — the pre-§190
+  // direction left the bar 0.45 mm proud of its own lug.
   for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
     const u = { x: Math.cos(lugAz), y: Math.sin(lugAz) };
     const perp = { x: -u.y, y: u.x };
+    // The dims quantity is the INTERIOR gap; each lug's centre stands half
+    // its own thickness outboard of the wall it presents to the strap, so
+    // the centre-to-centre seat span derives here, beside the thickness it
+    // adds.
+    const lugCtrSpan = lugSpanInner + CASE_LUG_T;
     for (const s of [-1, 1]) {
       const off = s * lugCtrSpan / 2;
       // The pair's lugs stay PARALLEL (the strap's sides are parallel), but
       // each one stands ±lugCtrSpan/2 off the pair axis, where the band has
       // fallen away from R_OUT to the chord depth sqrt(R_OUT² − off²) —
-      // ~9 units at the 20 mm interior spec. Root the foot 0.8 mm past THAT surface
-      // (the brazed stamped-lug truth: the foot is bent to the band radius
-      // and soldered), keep the tip at R_OUT + lugH − LUG_ROOT (52.7 u ≈
-      // 39.9 mm across — inside the 40 mm cap), and let the length derive.
+      // ~9 units at the 20 mm interior spec. Root the foot CASE_LUG_ROOT
+      // past THAT surface, put the tip at R_OUT + CASE_LUG_REACH, and let
+      // the length derive.
       const surfR = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0));
-      const root = surfR - LUG_ROOT, tip = R_OUT + lugH - LUG_ROOT;
-      const lug = new THREE.Mesh(new THREE.BoxGeometry(lugT, tip - root, lugW), material);
+      const root = surfR - CASE_LUG_ROOT, tip = R_OUT + CASE_LUG_REACH;
+      const lug = new THREE.Mesh(new THREE.BoxGeometry(CASE_LUG_T, tip - root, CASE_LUG_W), material);
       lug.position.set(u.x * (root + tip) / 2 + perp.x * off,
                        u.y * (root + tip) / 2 + perp.y * off,
-                       zLedge + lugW / 2 + 0.5 / UNIT_MM); // z station keyed to the ledge plane (same value the old seat face had)
+                       zLedge + CASE_LUG_W / 2 + CASE_LUG_Z_OFF); // z station keyed to the ledge plane
       lug.rotation.z = lugAz - Math.PI / 2;
       lug.name = 'caseLug';
       middleAsm.add(lug);
     }
     const bar = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.75 / UNIT_MM, 0.75 / UNIT_MM, lugSpanInner, 12), material);
+      new THREE.CylinderGeometry(CASE_SPRING_BAR_D / 2, CASE_SPRING_BAR_D / 2, lugSpanInner, 12), material);
     bar.geometry.rotateX(Math.PI / 2);   // axis → Z
     bar.geometry.rotateY(Math.PI / 2);   // axis → X
     bar.rotation.z = lugAz + Math.PI / 2; // X → the strap direction
-    bar.position.set(u.x * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
-                     u.y * (R_OUT + lugH - LUG_ROOT - 0.3 / UNIT_MM),
-                     zLedge + lugW / 2 + 0.5 / UNIT_MM);
+    bar.position.set(u.x * (R_OUT + CASE_BAR_REACH),
+                     u.y * (R_OUT + CASE_BAR_REACH),
+                     zLedge + CASE_LUG_W / 2 + CASE_LUG_Z_OFF);
     bar.name = 'caseSpringBar';
     middleAsm.add(bar);
   }

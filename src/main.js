@@ -43,6 +43,8 @@ import {
   CASE_WIDTH_MAX, CASE_LUG_SPAN_MAX, CASE_CLEAR, CASE_BAND_T,
   CASE_SCREW_SHAFT_D, CASE_SCREW_HEAD_D, CASE_GASKET_D, CASE_GASKET_SEAT, CASE_CRYSTAL_T, CASE_CRYSTAL_CLEAR,
   CASE_TUBE_D, CASE_PUSHER_D,
+  CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
+  CASE_BAR_REACH, CASE_LUG_REACH,             // §190: the lug/bar stock, one declaration — the schematic tier draws the same metal makeCase cuts
   CHAIN_PITCH, CHAIN_PITCH_MM, UNIT_MM, MM,   // §39: the unit→mm pin
   mmForArcmin, arcminAt, POINTER_ARCMIN,      // §158: reading size, derived from acuity at the wrist
   CHAIN_PIN_LEN, CHAIN_LEAF_GAP, CHAIN_PLATE_T, CHAIN_END_R_OUT, CHAIN_END_R_IN,
@@ -2194,10 +2196,13 @@ const CASE_CLAMP_AZ = (() => {
 const CASE_LUG_INNER = 20 / UNIT_MM;
 if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
   console.warn(`case: body Ø${(2 * CASE_R_OUT * UNIT_MM).toFixed(2)} mm breaks the 40 mm owner cap (body, lugs excluded) — the movement outgrew its housing budget`);
-// The old across-the-lug-tips assert is RETIRED to §190: the owner re-based
-// the 40 mm cap to the case BODY, lugs excluded, and the lug spec is opened
-// for options there. probe-lug-geom.mjs still measures the tips (now past
-// 40 mm, legally) as the baseline §190 re-derives against.
+// The old across-the-lug-tips assert is gone for good (§190): the owner
+// re-based the 40 mm cap to the case BODY, lugs excluded, and the lugs'
+// radial chain now DERIVES in layout.js from the wrap gap (CASE_STRAP_CLEAR
+// → CASE_BAR_REACH → CASE_LUG_REACH — tips-across is body Ø + 2×reach by
+// construction, no copy to assert against). probe-lug-geom.mjs holds the
+// metal to that declaration, including the ≥2 mm wrap gap off the analytic
+// bar surface.
 if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
   console.warn(`case: interior lug span ${(CASE_LUG_INNER * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap (the cap IS the bar's free length, so the spec may meet it, never pass it)`);
 const BACK_PLATE_HOLES = [
@@ -28863,22 +28868,24 @@ const SCHEMATIC = { proxies: [], on: false };
     // Lugs at 12 and 6 — the interior span is the shared derivation (20 mm,
     // asserted against the cap where it is derived, beside BACK_PLATE_Z);
     // the flank lines ride the lug CENTRES, so centre-to-centre adds the
-    // solid's 1.2 mm lug thickness — hand-copied like the rest of this
-    // block's lug stock (0.8, 1.7, 1.5, 1.4).
-    const LUG_SPAN = CASE_DIMS.lugSpanInner + 1.2 / UNIT_MM;
+    // lug thickness. §190: every lug quantity here is layout.js's own
+    // declaration — this block used to hand-copy the solid's stock
+    // (0.8, 1.7, 1.5, 1.4) and would have gone on drawing the pre-§190
+    // metal after the wrap-gap re-derivation moved it.
+    const LUG_SPAN = CASE_DIMS.lugSpanInner + CASE_LUG_T;
     for (const lugAz of [Math.PI / 2, -Math.PI / 2]) {
       const u = V3(Math.cos(lugAz), Math.sin(lugAz), 0), p = V3(-Math.sin(lugAz), Math.cos(lugAz), 0);
-      const zLug = zLedge + 1.5 / UNIT_MM + 0.5 / UNIT_MM; // the solid lugs' own station (lugW/2 + 0.5 mm above the ledge plane)
+      const zLug = zLedge + CASE_LUG_W / 2 + CASE_LUG_Z_OFF; // the solid lugs' own station
       for (const s of [-1, 1]) {                   // the two lug flanks: each rooted
-        const off = s * LUG_SPAN / 2;              // 0.8 mm past the chord-depth
-        const root = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0)) - 0.8 / UNIT_MM; // surface at its
+        const off = s * LUG_SPAN / 2;              // CASE_LUG_ROOT past the chord-depth
+        const root = Math.sqrt(Math.max(R_OUT * R_OUT - off * off, 0)) - CASE_LUG_ROOT; // surface at its
         put(new THREE.Line(seg(                    // own station, tip at the
           u.clone().multiplyScalar(root).addScaledVector(p, off).setZ(zLug),   // solid's own
-          u.clone().multiplyScalar(R_OUT + 1.7 / UNIT_MM).addScaledVector(p, off).setZ(zLug)), rim)); // station
+          u.clone().multiplyScalar(R_OUT + CASE_LUG_REACH).addScaledVector(p, off).setZ(zLug)), rim)); // station
       }
       put(new THREE.Line(seg(                       // the spring bar itself, at the
-        u.clone().multiplyScalar(R_OUT + 1.4 / UNIT_MM).addScaledVector(p, -LUG_SPAN / 2).setZ(zLug),   // solid bar's own
-        u.clone().multiplyScalar(R_OUT + 1.4 / UNIT_MM).addScaledVector(p, LUG_SPAN / 2).setZ(zLug)), rim)); // radius
+        u.clone().multiplyScalar(R_OUT + CASE_BAR_REACH).addScaledVector(p, -LUG_SPAN / 2).setZ(zLug),   // solid bar's own
+        u.clone().multiplyScalar(R_OUT + CASE_BAR_REACH).addScaledVector(p, LUG_SPAN / 2).setZ(zLug)), rim)); // radius
     }
 
     caseGroup.visible = restoredCaseLines;
