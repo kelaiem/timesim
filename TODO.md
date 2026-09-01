@@ -15625,3 +15625,66 @@ longer bar.
 
 Related: item 14 (the declaration this refines), item 126 (the case, the
 other order of magnitude), [§197].
+
+## 129. The alarm hand's dial-frame negation — the reversal's fifth display, missed — CLOSED
+
+Reported by eye (issue #327 follow-up): *"the alarm hand now doesn't tuck
+under the hour hand when the alarm is silenced. It appears flipped across
+the vertical line of symmetry and then in the opposite direction."*
+
+Item 115's landing named the rule and its four instances: `dialFace`
+children keyed to a going-train quantity take the NEGATED movement-frame
+angle, because `dialFace.rotation.y = Math.PI` turns the authoring frame
+around (`minuteHand`, `hourWheelGroup`, `smallSecondsHand`, `cannonPinion`).
+`alarmTubeGroup` — the alarm-set tube the alarm hand rides, also a direct
+`dialFace` child — carries the identical relation to `mwHourA` (disarmed,
+it is supposed to ride the hour wheel exactly, hidden under its hand) and
+was left out of that audit: `tick()`'s disarmed target was `mwHourA`, not
+`-mwHourA`.
+
+Measured (`labelEntries`, 'Hour wheel' vs 'Alarm disc', disarmed, across
+three tau values): `alarmTubeGroup.rotation.z === -hourWheelGroup.rotation.z`
+exactly — a mirror across the 12–6 line, growing as tau advances, not the
+coincidence the disarmed state is built to show. The armed/set branch
+(`-alarmAngle`) was already correctly negated, which is why only the
+disarmed case read wrong.
+
+**One direction written twice, the recurring shape TODO 115 catalogued**:
+the follower/heart-cam contact solve a few lines down reads the SAME
+`alarmTubeShownA` vs `mwHourA` relation to find their relative angle
+(`psi`), and the heart is cut on `hourWheelGroup` while the follower rides
+`alarmTubeGroup` — both `dialFace` children, so their true relative angle is
+the difference of their own dial-local values, `alarmTubeShownA -
+(-mwHourA)`. Fixing the display target alone without this second copy would
+have left "seated" (tucked, `alarmTubeShownA == -mwHourA`) no longer landing
+`psi` at 0, walking the follower off the heart's rest lobe. Both copies are
+fixed together in `src/main.js`, each carrying a comment against the other.
+
+**Why no gate caught it.** The 'alarm' axis — the only one that turns the
+alarm crown — pins `alarmOn: 1` (armed) and `tau: 0.13` fixed, so it never
+poses the disarmed, tau-varying case at all (its own comment: *"disarmed it
+would follow the fixed hour wheel and the axis would probe nothing"* — true
+before this fix, silently wrong after it shipped). `expectedContacts`'
+'Alarm disc' ⇄ 'Hour wheel' row EXCLUDES the follower/heart contacts by
+declaration rather than verifying their engagement, so a wrong relative
+angle there reads the same as a right one. This is TODO 29's residue again:
+a part no axis exercises is a part the battery cannot judge.
+
+**The release-disc/pin trip (`discRotForTrip`, `alarmDiscGroup`,
+`alarmPinDropNow`) is a SEPARATE mechanism and was not touched.** It shares
+the unnegated `mwHourA` convention but is entirely self-referential — the
+same expression drives both the trigger logic and the disc mesh's own pose
+— so its absolute sign never had to agree with `hourWheelGroup` to fire
+correctly, only with itself. Measured directly (bisecting tau for
+`mwHourA == alarmAngle` against the declared "Rings at" readout,
+`alarmDiscAngle`): the trip fires within 22 s of the declared target on a
+43,200 s dial, not mirrored. Left as-is.
+
+Fixed in `src/main.js`: `tubeTarget`'s disarmed branch and the follower's
+`psi` calculation. Verified: `checkExpectedContacts` restricted to 'Alarm
+disc' ⇄ 'Hour wheel' over the full 'train' axis (the one axis that sweeps
+tau widely with alarm left at its disarmed default) — 0 new violations, the
+one non-`ok` row is the pre-existing waived TODO 101 leaf/tube overlap at
+`f=0`, unaffected by rotation angle; `checkAlarmHandoffs` — `ok: true`.
+
+Related: item 115 (the rule this refines the count of).

@@ -36169,7 +36169,15 @@ function tick(t) {
     // and the §25 C friction seat turns it live — the hand SWEEPS while
     // being set. Read from the cone's cap (the member's pose), not a flag.
     const alarmArmFreed = alarmPhiCapNow >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
-    const tubeTarget = (alarmSelShownT > 0.5 || alarmArmFreed) ? -alarmAngle : mwHourA;
+    // TODO 115 residue — alarmTubeGroup is a dialFace child exactly like
+    // hourWheelGroup, so "tucked under the hour hand" (disarmed, riding the
+    // hour wheel) means matching hourWheelGroup's OWN dial-local value, which
+    // is -mwHourA (the Y-flip rule), not mwHourA. Left unnegated, the tube
+    // mirrored the hour hand across the 12-6 line instead of hiding under it,
+    // and walked backward as tau advanced — the reversal's four named fixes
+    // (minuteHand, hourWheelGroup, smallSecondsHand, cannonPinion) missed this
+    // fifth dial-side display keyed to the same going-train quantity.
+    const tubeTarget = (alarmSelShownT > 0.5 || alarmArmFreed) ? -alarmAngle : -mwHourA;
     // Both transitions EASE live (the pose path assigns exactly): disarming is
     // the spring snapping the follower home along the cam slope, and arming is
     // the re-coupled friction wheel swinging the hand out to the set time —
@@ -36192,7 +36200,13 @@ function tick(t) {
     let contactAz = ALARM_NOSE_AZ;
     let armA = ALARM_FOLLOWER_A0;
     for (let it = 0; it < 2; it++) {
-      const psi = contactAz - ALARM_NOSE_AZ + wrapPi(alarmTubeShownA - mwHourA);
+      // The heart is cut on hourWheelGroup (dial-local -mwHourA), the follower
+      // on alarmTubeGroup (dial-local alarmTubeShownA) — both dialFace
+      // children, so their TRUE relative angle is the difference of those two
+      // local values: alarmTubeShownA - (-mwHourA). Follows tubeTarget's fix
+      // above; unseparated, "seated" (tucked, alarmTubeShownA == -mwHourA) no
+      // longer landed psi at 0 and the nose rode off the heart's rest lobe.
+      const psi = contactAz - ALARM_NOSE_AZ + wrapPi(alarmTubeShownA + mwHourA);
       const d = alarmHeartRAt(psi) + ALARM_NOSE_R;
       armA = alarmArmAngleAt(d);
       contactAz = Math.atan2(ALARM_FOLLOWER_LEN * Math.sin(armA), -ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * Math.cos(armA));
