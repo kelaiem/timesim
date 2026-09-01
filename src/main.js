@@ -15341,18 +15341,46 @@ declareTransfer('alarm silence: rocker (lifter run → feeler tail)', {
 // away from the balance/escapement in the lower-right), above the 3/4 plate.
 // §124 seam (TODO 46): the strike tier STANDS ON the three-quarter plate, so
 // its planes are DERIVED from TQ_TOP_Z rather than restated. (§124 lifted the
-// plate by FUSEE_TILT_Z and the old literals — Z_GONG 9.6, ALARM_LOCK_Z 8.83 —
+// plate by FUSEE_TILT_Z and the old literals — Z_STRIKE 9.6, ALARM_LOCK_Z 8.83 —
 // kept describing the pre-lift plate at 8.51: the §102 spring stud collapsed
 // to a 0.015 sliver and the collar's band sank inside the plate.) The stack,
 // floor to ceiling: plate top → ALARM_LOCK_GAP → lock collar (STOCK_MIN_U
 // floor stock, the §25 B brake band, shared with the lock lever) →
 // ALARM_LOCK_GAP again → cam underside; the gong/hammer/tail plane is the
 // cam's mid-thickness above that.
-const ALARM_CAM_T = 0.8;         // cam thickness — straddles the tail (hoisted from the §25 A z-stack: Z_GONG derives through it now)
+const ALARM_CAM_T = 0.8;         // cam thickness — straddles the tail (hoisted from the §25 A z-stack: Z_STRIKE derives through it now)
 const ALARM_LOCK_GAP = CLEAR_MARGIN + 0.01; // the margin plus the float-bind centi-unit — §102's convention, on both faces of the collar
 const ALARM_LOCK_Z = TQ_TOP_Z + ALARM_LOCK_GAP + STOCK_MIN_U / 2; // lock lever / brake collar band centre (§25 B, §102)
-const Z_GONG = ALARM_LOCK_Z + STOCK_MIN_U / 2 + ALARM_LOCK_GAP + ALARM_CAM_T / 2; // ≈ 1.04 over the plate top — the gong rings just above the balance cock, as before
+const Z_STRIKE = ALARM_LOCK_Z + STOCK_MIN_U / 2 + ALARM_LOCK_GAP + ALARM_CAM_T / 2; // ≈ 1.04 over the plate top — the CAM/TAIL plane (§197 split it from the ring's)
 const GONG_R = 35;               // arc radius — near the rim (plateR 42.9), inboard of it
+// §197 — THE RING HAS ITS OWN PLANE, AND THE BAND IS WHAT SIZES THE GONG.
+// Until §197 the ring rode the cam's plane, Z_STRIKE, 1.04 over the plate
+// top — so the wire's diameter and the hammer head's section were both
+// bounded by that 1.04, and the wire came out 0.379 mm: needle thin, and
+// measured (probe-197-gong-loudness) 45 dB short of audible. Nothing had
+// SIZED either of them; 1.0 unit was a round number in aesthetics.json.
+//
+// The acoustics say what to spend the room on. A clamped-free wire struck
+// at its free tip radiates as a compact DIPOLE — the fluid it pushes is
+// its own added mass — so the radiated power at a given blow energy and a
+// given pitch goes as
+//     W ∝ ρ0 ω⁴ γ² E a² L / (ρ_steel c³)      (a = wire radius, L its length)
+// which RISES with the section: the a⁴ in the dipole strength beats the
+// 1/(a²L) the same energy loses in amplitude on a heavier wire. Nothing
+// internal to the wire caps it. SPACE does, and that makes the band the
+// derivation — the constraint written down, per standing rule 1.
+//
+// The ring lives in an annular band over the plate whose FLOOR is the
+// tallest metal its own radial swath carries (measured below off the built
+// movement, not declared — the fork cock's screw heads win it) and whose
+// CEILING is the movement's existing back envelope. Both ends are cheap:
+// the floor is dead air the ring was already flying over, and the ceiling
+// is height §187's caseback ALREADY spends on the alarm link's beak tower,
+// so a wire that fills the band costs the watch no thickness at all. That
+// last claim is not trusted — the BACK_ENVELOPE tripwire (search §197
+// ENVELOPE) re-measures it every boot.
+const GONG_BAND_TOP = 12.06;     // the alarm link's beak tower (§54's deepened tail) owns the back
+                                 // envelope at these radii — measured 12.061; the tripwire holds it
 // §33 (pusher handle) — THE ALARM WORK ROTATES AS ONE MODULE (?alarmmod=).
 // The striking wheel's cam lifts the hammer tail, the hammer strikes the
 // gong, the lock lever banks on the wheel, the column stands off the lock,
@@ -15392,6 +15420,71 @@ const GONG_A1 = 15 * DEG2RAD + ALARM_MOD_ROT;   // free (ringing) end — the ha
 // off GONG_A1, so moving the FOOT changes the ringing length while leaving
 // every one of them untouched. Anchoring at the foot instead would drag the
 // hammer around the rim on every edit and re-open §25's strike geometry.
+// §197 — THE BAND'S FLOOR, MEASURED OFF THE BUILT MOVEMENT. The ring flies
+// over the plate top, so its floor is not the plate: it is the tallest metal
+// standing in the ring's own radial swath. Measured rather than declared,
+// because the tenants of that swath (the fork cock's screw heads win it at
+// 9.281, the balance cock's at 9.242) are placed by their own solves and a
+// literal here would go stale the moment one of them moved — TODO 114's class.
+//
+// ARC-INDEPENDENT ON PURPOSE. arcDeg is a live knob, so a floor measured over
+// the CURRENT arc would move under the user's hand and take Z_GONG with it —
+// the ring would sink through the fork cock the moment somebody shortened it.
+// The swath is therefore the widest the knob can ever ask for: the full arc
+// bound, and a radial half-width taken from the tallest wire the band could
+// possibly carry (ceiling minus the plate's own clearance plane).
+const GONG_SCAN_W = (GONG_BAND_TOP - (TQ_TOP_Z + ALARM_LOCK_GAP)) / 2 + CLEAR_MARGIN;
+const GONG_BAND_FLOOR = (() => {
+  const rLo = GONG_R - GONG_SCAN_W, rHi = GONG_R + GONG_SCAN_W;
+  const azSpan = (aesthetics.gong._bounds.arcDeg[1]) * DEG2RAD;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  let top = TQ_TOP_Z;                       // the plate's own face is the floor of last resort
+  let owner = 'three-quarter plate top';
+  // TRIANGLES, not vertices: the max of z over a triangle is at a vertex, but
+  // a triangle can cross the swath with its high vertices outside it, so the
+  // test is "does this triangle's xy footprint touch the swath" and the value
+  // is its own vertex max (the instruments skill's "vertices mistaken for the
+  // surface" trap, paid on the conservative side).
+  const inSwath = (p) => {
+    const r = Math.hypot(p.x, p.y);
+    if (r < rLo || r > rHi) return false;
+    let d = Math.atan2(p.y, p.x) - GONG_A1;
+    while (d > 0) d -= Math.PI * 2;
+    while (d <= -Math.PI * 2) d += Math.PI * 2;
+    return d >= -azSpan;
+  };
+  movement.updateMatrixWorld(true);
+  movement.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position, idx = o.geometry.index;
+    const n = idx ? idx.count : pos.count;
+    for (let t = 0; t + 2 < n; t += 3) {
+      let hit = false, zMax = -Infinity;
+      for (let e = 0; e < 3; e++) {
+        const i = idx ? idx.getX(t + e) : t + e;
+        const v = e === 0 ? a : e === 1 ? b : c;
+        o.localToWorld(v.fromBufferAttribute(pos, i));
+        zMax = Math.max(zMax, v.z);
+        if (inSwath(v)) hit = true;
+      }
+      if (hit && zMax > top) { top = zMax; owner = o.name || '(unnamed)'; }
+    }
+  });
+  return { z: top + CLEAR_MARGIN, raw: top, owner };
+})();
+// The band, and the wire that fills it. The DIAMETER is the band's height:
+// the derivation above says thicker is louder and nothing but this room
+// stops it, so the wire is the room. Z_GONG centres it, which is also what
+// gives the hammer's head its own symmetric half-heights below.
+const GONG_WIRE_DIA = GONG_BAND_TOP - GONG_BAND_FLOOR.z;
+const Z_GONG = GONG_BAND_FLOOR.z + GONG_WIRE_DIA / 2;
+if (Math.abs(aesthetics.gong.wireDiaUnits - GONG_WIRE_DIA) > 5e-3)
+  console.warn(`§197: aesthetics.gong.wireDiaUnits ${aesthetics.gong.wireDiaUnits} is not the band's height `
+    + `${GONG_WIRE_DIA.toFixed(4)} (floor ${GONG_BAND_FLOOR.z.toFixed(4)} off ${GONG_BAND_FLOOR.owner}, ceiling ${GONG_BAND_TOP}) `
+    + '— the shipped default must BE the derivation, or the knob is the design');
+if (aesthetics.gong._bounds.wireDiaUnits[1] > GONG_WIRE_DIA + 5e-3)
+  console.warn(`§197: the wire knob's ceiling ${aesthetics.gong._bounds.wireDiaUnits[1]} lets a live edit push the `
+    + `wire past the band's ${GONG_WIRE_DIA.toFixed(4)} — into the fork cock below or the caseback above`);
 let GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
 // §125 Tier B — THE FOOT LANDS ON PLATE, held by derivation: the balance's
 // cut wedge rotated with the moved balance and swallowed the foot's station
@@ -15403,6 +15496,17 @@ let GONG_A0 = GONG_A1 - aesthetics.gong.arcDeg * DEG2RAD;   // fixed (foot) end
 // the ringing length absorbs it, and the strike end, hammer and emitter
 // never feel it. The arc knob therefore reads as the arc's MINIMUM: the
 // clamp only ever lengthens it (identity engages it by 3.3°).
+let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
+// §197 — THE STUD IS SIZED BY THE WIRE IT HOLDS, not by a literal. The wire's
+// end is let into it, so the stud carries a floor-stock wall all round that
+// bore; below that it is not a stud but a ferrule. (0.7 was the old number and
+// stood THINNER than the §197 wire it would have to clamp, which is a hinge,
+// not a fixing. The stiffness that matters is checked outright below: a
+// clamped-free bar only rings at its clamped-free modes if the root is
+// effectively rigid, and the stud is 20× shorter than the wire, so it wins
+// that comparison on length long before section.)
+const GONG_POST_R = GONG_WIRE_R + STOCK_MIN_U;
+const GONG_POST_TOP = Z_GONG + GONG_WIRE_R;   // the wire is let in WHOLE, so the stud reaches over its top
 const GONG_FOOT_BOUND = (() => {
   const ed = TQ_CUT.aim - TQ_CUT.phiOpen;
   const dx = Math.cos(ed), dy = Math.sin(ed);
@@ -15415,10 +15519,86 @@ const GONG_FOOT_BOUND = (() => {
   // normalize into (GONG_A1 − 2π, GONG_A1] so the comparison is wrap-safe
   while (azEdge > GONG_A1) azEdge -= Math.PI * 2;
   while (azEdge <= GONG_A1 - Math.PI * 2) azEdge += Math.PI * 2;
-  return azEdge - (0.7 + TQ_CUT_MARGIN) / GONG_R;
+  return azEdge - (GONG_POST_R + TQ_CUT_MARGIN) / GONG_R;
 })();
 GONG_A0 = Math.min(GONG_A0, GONG_FOOT_BOUND);
-let GONG_WIRE_R = aesthetics.gong.wireDiaUnits / 2;
+// §197 — ...AND IT LANDS ON CLEAR PLATE, not merely on plate. §125's bound
+// asks whether there is METAL under the stud; it cannot ask what is standing
+// ON it, and the §197 stud is 2.3× the diameter of the one that bound was
+// written for. The fork cock's screw heads sit exactly on the gong circle at
+// az −57°, which the old thin post cleared by luck and this one does not.
+// So the foot WALKS: clockwise (the direction §56's free-end anchoring makes
+// free — the ringing length absorbs it and the strike end never moves) to the
+// first station where the stud's own footprint is clear of everything already
+// standing on the plate. Same convention as §125's clamp: it only ever
+// lengthens the arc, and the knob reads as the arc's minimum.
+const GONG_FOOT_OBSTACLES = (() => {
+  // World AABBs of the plate-top tenants, gathered once. A box is
+  // conservative — it can only push the foot further round, never let it
+  // land on something — which is the right side to be wrong on for a fixing.
+  const boxes = [];
+  const zLo = TQ_TOP_Z - 0.5;                   // the stud's plant depth: it fouls anything reaching this
+  const zHi = Z_GONG + GONG_WIRE_R;
+  const rLo = GONG_R - GONG_POST_R - CLEAR_MARGIN, rHi = GONG_R + GONG_POST_R + CLEAR_MARGIN;
+  const v = new THREE.Vector3();
+  movement.updateMatrixWorld(true);
+  movement.traverse((o) => {
+    if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+    if (o.name === 'threeQuarterPlate' || o.userData.tqPlate) return;   // the plate is what it stands ON
+    const pos = o.geometry.attributes.position, idx = o.geometry.index;
+    const n = idx ? idx.count : pos.count;
+    // PER TRIANGLE, not per mesh: an L-shaped part's whole-mesh box claims the
+    // corner it does not occupy, and at this radius that is 20° of arc.
+    for (let t = 0; t + 2 < n; t += 3) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let e = 0; e < 3; e++) {
+        const i = idx ? idx.getX(t + e) : t + e;
+        o.localToWorld(v.fromBufferAttribute(pos, i));
+        x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x);
+        y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y);
+        z0 = Math.min(z0, v.z); z1 = Math.max(z1, v.z);
+      }
+      if (z1 <= zLo || z0 >= zHi) continue;
+      // Radial cull: keep only triangles whose box can reach the gong circle.
+      const cx = Math.max(x0, Math.min(0, x1)), cy = Math.max(y0, Math.min(0, y1));
+      const rMin = Math.hypot(cx, cy);          // nearest point of the box to the axis
+      const rMax = Math.max(Math.hypot(x0, y0), Math.hypot(x1, y0), Math.hypot(x0, y1), Math.hypot(x1, y1));
+      if (rMax < rLo || rMin > rHi) continue;
+      boxes.push({ x0, x1, y0, y1, name: o.name || '(unnamed)' });
+    }
+  });
+  return boxes;
+})();
+{
+  const need = GONG_POST_R + CLEAR_MARGIN;
+  const clearAt = (az) => {
+    const x = Math.cos(az) * GONG_R, y = Math.sin(az) * GONG_R;
+    for (const q of GONG_FOOT_OBSTACLES) {
+      const dx = Math.max(q.x0 - x, 0, x - q.x1), dy = Math.max(q.y0 - y, 0, y - q.y1);
+      if (Math.hypot(dx, dy) < need) return q.name;
+    }
+    return null;
+  };
+  const step = 0.25 * DEG2RAD;                  // 0.15 u of arc at GONG_R — finer than the margin it defends
+  let az = GONG_A0, blocked = clearAt(az), walked = 0;
+  while (blocked && walked < 60 * DEG2RAD) { az -= step; walked += step; blocked = clearAt(az); }
+  if (blocked)
+    console.warn(`§197: the gong's stud finds no clear station within 60° of its arc — ${blocked} blocks it`);
+  else if (walked > 0) GONG_A0 = az;
+}
+{
+  // The stud must be a CLAMP, not a hinge: gongModes() solves a clamped-free
+  // bar, and that boundary is only true if the root is effectively rigid
+  // against the bar it holds. Compared as root rotational stiffnesses,
+  // (r_stud/r_wire)^4 x (L_wire/L_stud) — the stud wins on LENGTH long before
+  // section, which is why a stud barely thicker than the wire is enough and a
+  // literal 0.7 (thinner than the §197 wire) was not.
+  const stiff = (GONG_POST_R / GONG_WIRE_R) ** 4
+    * ((GONG_R * (GONG_A1 - GONG_A0)) / (GONG_POST_TOP - (TQ_TOP_Z - 0.5)));
+  if (stiff < 10)
+    console.warn(`§197: the gong stud's root stiffness is only ${stiff.toFixed(1)}× the wire's — under the 10× `
+      + 'a clamped-free boundary needs; gongModes() would be describing a bar clamped in rubber');
+}
 // (TQ_TOP_Z — the three-quarter plate's top face — is derived up at the plate
 // build; the gong foot and hammer post plant into it.)
 
@@ -15436,9 +15616,19 @@ alarmGongUnit.add(gongArc);
 // Foot: a post from the arc's fixed end down into the 3/4 plate top — the
 // gong's ONLY fixing (the far end rings free); its route to the plate.
 let gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
-const gongPost = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
+const gongPost = new THREE.Mesh(new THREE.CylinderGeometry(GONG_POST_R, GONG_POST_R, GONG_POST_TOP - (TQ_TOP_Z - 0.5), 12), MATS.steel);
 gongPost.name = 'alarmGongPost';
-gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
+// §197 — IT STANDS UP. CylinderGeometry is built along +Y, and this stud and
+// the hammer's post below were both left unrotated: they LAY on the plate,
+// axis in the plate's plane, and reached the wire only because a 1.4-diameter
+// cylinder happens to be 1.4 tall however it is turned. Nothing caught it —
+// support asks whether the route touches the plate, and a lying cylinder
+// touches it — which is what a "structural node" check cannot see and why the
+// §197 stud, three times longer than it is thick, makes the error visible.
+// (alarmHammerSpringStud always carried this line; the two posts beside it did
+// not, which is the tell.)
+gongPost.rotation.x = Math.PI / 2;
+gongPost.position.set(gongFoot.x, gongFoot.y, (GONG_POST_TOP + TQ_TOP_Z - 0.5) / 2);
 alarmGongUnit.add(gongPost);
 
 // §56 — THE GONG'S VOICE, DERIVED FROM THE GONG. A clamped-free steel bar:
@@ -15451,11 +15641,36 @@ alarmGongUnit.add(gongPost);
 //
 // Recomputed whenever the arc or wire changes, so the pitch tracks the
 // geometry: shorten the arc and it rings higher, exactly as the real thing.
-const GONG_STEEL_C = Math.sqrt(200e9 / 7850);      // bar wave speed, m/s
+const GONG_STEEL_C = Math.sqrt(OSC_STEEL_E / OSC_STEEL_RHO);      // bar wave speed, m/s — §137's one steel pair
+// §197 — THE MODE TABLE IS ONE DECLARATION. gongModes() wants (β_nL)²; the
+// acoustics block below wants the same modes' SHAPE integrals, and two copies
+// of a mode list is two chances to disagree about which mode is which. Both
+// come off the clamped-free eigenvalues β_nL (the roots of cos·cosh = −1),
+// with every shape normalised to unity at the FREE END — the point the hammer
+// hits, so φ(strike) = 1 for all of them and the strike couples to each mode
+// through its own modal mass alone.
+//   bl2   = (β_nL)², the frequency factor
+//   gamma = (1/L)∫φ dx, the mode's NET transverse displacement — its dipole
+//           strength, which is what a compact radiator radiates with
+// ∫φ² dx = L/4 exactly, for every mode, at this normalisation — so the modal
+// mass a strike at the tip meets is M/4 whichever mode is asked about. That
+// identity is why the impedance match below has one answer and not five.
+// The roots themselves are the declaration — β_nL, not (β_nL)² and not the
+// shape integrals, because those are DERIVED from the root below and a table
+// of three numbers per mode is three chances to mistype one.
+const GONG_MODE_BL = [1.87510407, 4.69409113, 7.85475744, 10.99554073, 14.13716839];
+const GONG_MODES = GONG_MODE_BL.map((bl) => {
+  const sig = (Math.cosh(bl) + Math.cos(bl)) / (Math.sinh(bl) + Math.sin(bl));
+  const raw = (u) => (Math.cosh(bl * u) - Math.cos(bl * u)) - sig * (Math.sinh(bl * u) - Math.sin(bl * u));
+  const tip = raw(1);
+  const phi = (u) => raw(u) / tip;                 // u = x/L, unity at the free end
+  return { bl, bl2: bl * bl, phi };
+});
+const gongDevLen = () => GONG_R * (GONG_A1 - GONG_A0) * UNIT_MM / 1000;   // developed length, m
 function gongModes() {
-  const L = GONG_R * (GONG_A1 - GONG_A0) * UNIT_MM / 1000;   // developed length, m
+  const L = gongDevLen();
   const k = (2 * GONG_WIRE_R * UNIT_MM / 1000) / 4;          // radius of gyration, circular section
-  return [3.5160, 22.034, 61.70].map((bl2) => bl2 * k * GONG_STEEL_C / (2 * Math.PI * L * L));
+  return GONG_MODES.map((m) => m.bl2 * k * GONG_STEEL_C / (2 * Math.PI * L * L));
 }
 let gongF = gongModes();
 
@@ -15477,16 +15692,17 @@ movement.add(alarmHammerUnit);
 registerLabel('Alarm hammer', alarmHammerUnit);
 registerExplode(alarmHammerUnit, 0, 9); // baseZ 0: children carry world z
 // Pivot post down to the plate (static — carries the pivot bearing).
-const hammerPost = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
+const hammerPost = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, Z_STRIKE - (TQ_TOP_Z - 0.5), 12), MATS.steel);
 // NAMED, with the arm beside it (§148): both were reaching `INTRA_UNIT_CONTACTS`
 // as `CylinderGeometry#n`, an index into a traversal — a name that moves when
 // anything upstream of it in the unit does.
 hammerPost.name = 'alarmHammerPost';
-hammerPost.position.set(hammerPiv.x, hammerPiv.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
+hammerPost.rotation.x = Math.PI / 2;   // §197: stand it along the movement axis — see the gong stud above
+hammerPost.position.set(hammerPiv.x, hammerPiv.y, (Z_STRIKE + TQ_TOP_Z - 0.5) / 2);
 alarmHammerUnit.add(hammerPost);
 // Pivot group (this is what tick/frame rotates to strike).
 const alarmHammerPivot = new THREE.Group();
-alarmHammerPivot.position.set(hammerPiv.x, hammerPiv.y, Z_GONG);
+alarmHammerPivot.position.set(hammerPiv.x, hammerPiv.y, Z_STRIKE);
 alarmHammerUnit.add(alarmHammerPivot);
 // Arm from the pivot to the head, resting HEAD_GAP outside the wire at the
 // free end. Built in world coords then reparented, so the head lands exactly
@@ -15513,29 +15729,55 @@ const headRest = { x: Math.cos(GONG_A1) * headRestR, y: Math.sin(GONG_A1) * head
 //    arm length, the tail's lever ratio, the cam lift and every §35 hand-off
 //    the alarm is gated on come through this untouched — which is the whole
 //    reason the eye is the anchor and not the head's centre.
-//  · SECTION. A hammer wants mass, and what limits it here is the plane it
-//    swings in: the plate's top face stands (Z_GONG − TQ_TOP_Z) under the
-//    gong's centre line, so the largest section centred on that line is twice
-//    that, less the margin — taken with §102's float-bind centi-unit, the
-//    same allowance the lock collar's own gaps carry, because this lands on
-//    the margin exactly. SQUARE, because nothing distinguishes the two axes
-//    across a round wire: a square face meets the crown with the same margin
-//    either side however the wire is approached, and its corners stand
-//    FURTHER off the wire than its centre, so the rest gap is the face's.
+//  · SECTION. A hammer wants mass, and what limits it is the BAND the head
+//    swings in — §197's band, the same one that sizes the wire, because the
+//    head is centred on the ring's own centre line. Its half-heights are
+//    therefore the two clearances that band is bounded by: the plate's top
+//    face below (with §102's float-bind centi-unit, the allowance the lock
+//    collar's own gaps carry) and the movement's back envelope above. The
+//    LESSER of the two is doubled, so the head stays symmetric about the
+//    blow — a head heavier on one side of the wire's centre line hits with a
+//    couple, and the blow's line of action is the whole point of a face.
+//    (Until §197 this read (Z_STRIKE − TQ_TOP_Z), a 1.04 ceiling that
+//    belonged to the CAM's plane and had nothing to do with the ring. That
+//    is the whole 4.0× the ROTOR's own moment gains here.)
+//    SQUARE, because nothing distinguishes the two axes across a round wire:
+//    a square face meets the crown with the same margin either side however
+//    the wire is approached, and its corners stand FURTHER off the wire than
+//    its centre, so the rest gap is the face's.
 //  · LENGTH. Twice the section, and the factor is the definition rather than
 //    a taste: a bar is what puts a face and a peen either side of an eye, and
-//    at 1:1 the head is a block on a stick again. Least is what it is taken
-//    at — every unit of head is inertia the alarm's spring has to lift, and
-//    TODO 17's ledger records that the strike's ENERGY is still not derived,
-//    so this head's mass rests on a shape argument and not a dynamic one.
-const ALARM_HEAD_H = 2 * (Z_GONG - TQ_TOP_Z - (CLEAR_MARGIN + 0.01));
+//    at 1:1 the head is a block on a stick again.
+//
+// §197 — AND THE MASS IS NOW A CLAIM, not a leftover. The head's inertia IS
+// the blow (E = ½Iθ̇², and θ̇ is the cadence's, not the head's), and the wire
+// it hits has a modal mass of its own: a clamped-free bar normalised to unity
+// at its free end has ∫φ² = L/4 for EVERY mode, so the mass the hammer meets
+// is exactly a QUARTER of the wire, whichever mode is being asked about. The
+// energy an impact hands to that mass peaks at μ = m_hammer/m_modal = 1 —
+// impedance match, the same rule that sizes a bell's clapper. The band-limited
+// head lands at μ ≈ 0.8 and thus within a couple of per cent of the optimum,
+// which is measured and asserted in the §197 acoustics block below rather
+// than hoped for here.
+const ALARM_HEAD_H = 2 * Math.min(Z_GONG - (TQ_TOP_Z + CLEAR_MARGIN + 0.01), GONG_BAND_TOP - Z_GONG);
 const ALARM_HEAD_L = 2 * ALARM_HEAD_H;
 const ALARM_HEAD_FACE_R = headRestR - ALARM_HEAD_R;   // where the ball's surface was
 {
-  const a = new THREE.Vector3(hammerPiv.x, hammerPiv.y, Z_GONG);
+  // §197 — the arm is CRANKED, because the tail and the head no longer share
+  // a plane: the tail rides the cam at Z_STRIKE and the head rings the wire at
+  // Z_GONG, one band higher. The pivot's axis is still z, so every quantity
+  // the strike geometry is written in — arm length, tail ratio, cam lift, the
+  // §35 hand-offs — is a PLAN quantity and none of them feel this. What the
+  // arm gains is a rise of (Z_GONG − Z_STRIKE) over its own length.
+  const a = new THREE.Vector3(hammerPiv.x, hammerPiv.y, Z_STRIKE);
   const b = new THREE.Vector3(headRest.x, headRest.y, Z_GONG);
   const len = a.distanceTo(b);
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, len, 10), MATS.steel);
+  // The handle is let through the eye, so its diameter is a proportion of the
+  // head that hangs on it — a quarter of the section, which is what a real
+  // hammer's eye leaves either side of its haft. (0.32 was a literal sized
+  // against nothing; at the §197 head it would be a wire through a brick.)
+  const armR = ALARM_HEAD_H / 8;
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(armR, armR, len, 10), MATS.steel);
   arm.name = 'alarmHammerArm';
   arm.position.copy(a).add(b).multiplyScalar(0.5).sub(alarmHammerPivot.position);
   arm.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
@@ -15559,7 +15801,8 @@ const ALARM_HEAD_FACE_R = headRestR - ALARM_HEAD_R;   // where the ball's surfac
   hg.rotateX(Math.PI / 2);      // the profile's v becomes world z, its depth the tangent
   hg.rotateZ(GONG_A1);          // ...and its u the radial line the blow runs along
   hg.translate(Math.cos(GONG_A1) * ALARM_HEAD_FACE_R - alarmHammerPivot.position.x,
-    Math.sin(GONG_A1) * ALARM_HEAD_FACE_R - alarmHammerPivot.position.y, 0);
+    Math.sin(GONG_A1) * ALARM_HEAD_FACE_R - alarmHammerPivot.position.y,
+    Z_GONG - Z_STRIKE);   // §197: the head rides the RING's plane, the group's origin the cam's
   const head = new THREE.Mesh(hg, MATS.steel);
   head.name = 'alarmHammerHead';
   alarmHammerPivot.add(head);
@@ -15648,10 +15891,10 @@ const ALARM_CAM_LOBE_PITCH = (Math.PI * 2) / ALARM_CAM_LOBES;
 // the hammer tail's plane so the tail's nose can ride its rim, and the barrel
 // rides above it on the same arbor line.
 const ALARM_TAIL_T = 0.5;                              // tail bar thickness, centred on the gong plane
-// (ALARM_CAM_T is hoisted to the §124 seam block beside Z_GONG — the gong
+// (ALARM_CAM_T is hoisted to the §124 seam block beside Z_STRIKE — the gong
 // plane derives through the cam's half-thickness now.)
-const ALARM_CAM_Z0 = Z_GONG - ALARM_CAM_T / 2;
-const ALARM_CAM_Z1 = Z_GONG + ALARM_CAM_T / 2;
+const ALARM_CAM_Z0 = Z_STRIKE - ALARM_CAM_T / 2;
+const ALARM_CAM_Z1 = Z_STRIKE + ALARM_CAM_T / 2;
 const ALARM_BARREL_H = 1.3;
 const ALARM_PINION_T = 1.0;                            // meshes inside the barrel's toothed wall band
 if (ALARM_CAM_Z0 < TQ_TOP_Z + CLEAR_MARGIN)
@@ -15884,6 +16127,27 @@ const ALARM_CAM_TIP_R = alarmCamRadiusAt(ALARM_DRAW_RAD);
 // no choice), free after the drop.
 const ALARM_FREE_FRAC = 1 - ALARM_CAM_RISE_FRAC;
 const ALARM_FREE_S = ALARM_FREE_FRAC * ALARM_STRIKE_GAP;
+// §197 — AND THIS IS WHERE THE LOUDNESS RUNS OUT, so read the arithmetic
+// before believing the shape. The fall time is picked (a third of the cam's
+// free window) and the angular frequency is then SOLVED to match it. TODO 14
+// already named what that means: the free swing is a spring-and-inertia law,
+// so W is √(k/I) and nothing else — the arrow points the wrong way.
+// §197 measured what the arrow's other end would have to be, because the blow
+// is ½Iθ̇² and θ̇ is W's, so this constant IS the gong's level. A third of the
+// window wants W = 35.9 rad/s, i.e. k = 1.9e-7 N·m/rad, i.e. a blade EIGHTEEN
+// MILLIMETRES long in a 32 mm movement — 22× the one §48 drew and 10,700×
+// softer. And the blade §48 drew cannot be asked either: it is redrawn each
+// frame from its anchor to the moving bearing point, so it CHANGES LENGTH by
+// 36% of itself over the draw. It is a rubber band, not a leaf spring, and no
+// stiffness can be read off it in either direction.
+// So the arrow stays where §25 left it, deliberately and not by neglect: a
+// bending rate derived from a bar that stretches would be a second falsehood
+// on top of the first. TODO 128 carries the real fix — a torsion spring on
+// the hammer's own arbor, which is both the construction a pivoted hammer
+// actually uses and one that fits (measured: ~9.5 u of developed ribbon at
+// flat-spring stock, coiled about a post that is already there) — and
+// GONG_ACOUSTICS below publishes the gap as a number rather than a note, so
+// the next landing can measure its own progress.
 const ALARM_FALL_S = ALARM_FREE_S / 3;
 const ALARM_HAMMER_W = Math.acos(-ALARM_STRIKE_AMP / ALARM_DRAW_RAD) / ALARM_FALL_S; // reaches the wire exactly at ALARM_FALL_S
 const ALARM_HAMMER_DECAY = Math.log(20) / (ALARM_FREE_S - ALARM_FALL_S);             // rebound down to 5% by the next pickup
@@ -16006,8 +16270,27 @@ if (!(ALARM_DRAW_RAD > ALARM_STRIKE_AMP))
 // child of the static `alarmHammerUnit`, never of the rotating pivot group.
 const ALARM_HAM_SPR_BEAR_F = 0.45;   // bearing at 45% of the tail — inboard of
                                      // the nose, so it never fouls the cam
-const ALARM_HAM_SPR_FREE = 2.2;      // free length, anchor → bearing at rest
 const ALARM_HAM_SPR_LB = ALARM_TAIL_LEN * ALARM_HAM_SPR_BEAR_F;
+// §197 measured this literal and left it, with the reasons written down
+// because they are the whole of TODO 128. Two of them, and the second is why
+// no number here can be right:
+//   · AS A BENDING BLADE it is far too short. The draw moves the bearing
+//     point DRAW·L_b = 0.30 mm; over a 0.83 mm cantilever of 0.05 mm band
+//     that is a root stress of 6.5 GPa, eight times SPRING_SIGMA_Y_PA. Solved
+//     from the yield instead (§173's direction of use) it wants 6.25 u.
+//   · BUT IT IS NOT LOADED IN BENDING. The blade runs from its anchor ALONG
+//     the push direction to the bearing, and the bearing point travels along
+//     that same line, so the load is AXIAL — and the frame law below redraws
+//     the bar to reach it, which means the modelled part changes length by
+//     36% of itself over the draw. Lengthening it to 6.25 was tried and
+//     reverted: it drives the anchor stud into the alarm column (measured,
+//     `Alarm hammer ⇄ Alarm switch` FORBIDDEN over 12 poses of alarmPress),
+//     and it would have bought that collision with a bending rate read off a
+//     bar that stretches.
+// A pivoted hammer's real spring is a TORSION spring on its own arbor, which
+// is what TODO 128 files and what would make this a derivation rather than a
+// literal. Until then the literal stands and says so.
+const ALARM_HAM_SPR_FREE = 2.2;      // free length, anchor → bearing at rest
 const ALARM_HAM_SPR_DRAW_SIGN = Math.sign(ALARM_DRAW_RAD) || 1;
 const _hamBear0 = {
   x: hammerPiv.x + ALARM_HAM_SPR_LB * Math.cos(ALARM_TAIL_REST_AZ),
@@ -16026,11 +16309,11 @@ const ALARM_HAM_SPR_ANCHOR = {
 let alarmHammerSpring = null;
 {
   const stud = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.3, 0.3, Z_GONG - (TQ_TOP_Z - 0.5), 12), MATS.steel);
+    new THREE.CylinderGeometry(0.3, 0.3, Z_STRIKE - (TQ_TOP_Z - 0.5), 12), MATS.steel);
   stud.rotation.x = Math.PI / 2;      // stand it along the movement axis
   stud.name = 'alarmHammerSpringStud';
   stud.position.set(ALARM_HAM_SPR_ANCHOR.x, ALARM_HAM_SPR_ANCHOR.y,
-                    (Z_GONG + TQ_TOP_Z - 0.5) / 2);
+                    (Z_STRIKE + TQ_TOP_Z - 0.5) / 2);
   alarmHammerUnit.add(stud);
   // Blade built one unit long with its ORIGIN at the anchored end, so the
   // frame law below can point it and set its reach without moving its root.
@@ -16041,7 +16324,7 @@ let alarmHammerSpring = null;
   geo.translate(0.5, 0, 0);
   alarmHammerSpring = new THREE.Mesh(geo, MATS.blueSteel);
   alarmHammerSpring.name = 'alarmHammerSpring';
-  alarmHammerSpring.position.set(ALARM_HAM_SPR_ANCHOR.x, ALARM_HAM_SPR_ANCHOR.y, Z_GONG);
+  alarmHammerSpring.position.set(ALARM_HAM_SPR_ANCHOR.x, ALARM_HAM_SPR_ANCHOR.y, Z_STRIKE);
   alarmHammerUnit.add(alarmHammerSpring);
 }
 // THE TRIPWIRE. The push direction is derived from the draw's sign, so this
@@ -16054,6 +16337,258 @@ let alarmHammerSpring = null;
   if (Math.sign(tq) !== -ALARM_HAM_SPR_DRAW_SIGN)
     console.warn(`§48/TODO 14: the hammer spring's torque (${tq.toFixed(3)}) does not oppose `
       + `the draw (sign ${ALARM_HAM_SPR_DRAW_SIGN}) — it would hold the hammer up, not drive it down`);
+}
+
+// --- §197 — THE LOUDNESS, DERIVED FROM THE METAL ---------------------------
+//
+// §56 made the gong's PITCH a consequence of the wire. Its LEVEL was still
+// nobody's: the wire was 0.379 mm because 1.0 was a round number, the head was
+// bounded by the cam's plane, and the two sndTone gains below were chosen by
+// ear. This is the arithmetic that closes that — the whole chain from the
+// hammer's inertia to a sound pressure level, computed off the built meshes
+// (rule 1's single source: nothing here restates a dimension a builder knows).
+//
+// THE CHAIN, and what each link is worth:
+//
+//  1. THE BLOW. E = ½·I·θ̇², with I the rotor's own second moment about the
+//     pivot axis — measured by signed tetrahedra over the arm, head and tail,
+//     not estimated from a bounding box — and θ̇ the shipped fall law's speed
+//     at the wire (ALARM_DRAW_RAD·W·sin(acos(−AMP/DRAW))). The head's mass IS
+//     the blow: that is what makes §148's shape argument a dynamic one at
+//     last, and what the §197 band buys.
+//  2. THE HAND-OFF. A rigid-body impact between the rotor's effective mass at
+//     the strike radius (I/r²) and the wire's modal mass M/4 gives the mode
+//     the fraction η = 4μ/(1+μ)²·((1+e)/2)², peaking at μ = 1 — the impedance
+//     match that sizes a clapper. e is steel on steel, and the CONTACT TIME
+//     (Hertz, a torus on a flat face) decides which modes the blow can reach
+//     at all: a half-sine impulse of duration τ carries |cos(πfτ)/(1−(2fτ)²)|
+//     of its low-frequency content to f. At these masses τ ≈ 4 µs, so the
+//     contact is not the limit here — but it is written down because it is
+//     the limit that arrives first if the head ever grows again.
+//  3. THE RADIATION, which is where a wire loses. The bar is short against
+//     the sound it makes (L ≈ λ/8 at the fundamental), so it radiates as a
+//     COMPACT DIPOLE: it makes no net volume change, only a net momentum, and
+//     the fluid it pushes is its own added mass. Force on the air
+//     F = 2ρ₀·πa²·ω·U·∫φ, and a point force radiates W = k²F²/(24πρ₀c) —
+//     giving W ∝ ρ₀ ω⁴ γ² E a² L / (ρc³), the law the band derivation up top
+//     spends its room on.
+//  4. THE LEVEL. Dipole directivity puts 3× the sphere average on the axis,
+//     so I(0.3 m) = 3W/(4π·0.3²), reported raw and A-weighted.
+//
+// WHAT THIS MODEL WILL NOT SAY. A mode is counted only where the model is
+// valid AND the ear is listening: f ≤ 20 kHz, and the bar compact against its
+// own wavelength (L ≤ λ/2 — past that neighbouring antinodes cancel and the
+// compact dipole is simply the wrong integral). The wire's higher modes leave
+// on both grounds at once, which is honest rather than convenient: they are
+// exactly the modes an over-eager reading of the ω⁴ would credit with the
+// whole level.
+//
+// AND WHAT IT LEAVES OUT, named because it is the biggest term of all: the
+// CASE. A real alarm watch is loud because the gong's foot drives the
+// caseback and the caseback is a 30 mm diaphragm — the wire is the string and
+// the case is the soundboard. Nothing here models that path, so every figure
+// below is the wire radiating ON ITS OWN. TODO 126 carries it.
+const GONG_ACOUSTICS = (() => {
+  const U = OSC_U;                                     // m per unit
+  const RHO_AIR = 1.2, C_AIR = 343;                    // 20 °C, 1 atm
+  const REST = 0.8;                                    // coefficient of restitution, hardened steel on steel
+  const NU = 0.29;                                     // Poisson's ratio, steel — the Hertz contact's only extra constant
+  const Q = 4000;                                      // the wire's Q: internal damping of hardened steel, the
+                                                       // clamp at the stud dominating; the ring-down below is a
+                                                       // REPORT, so this number decorates nothing that gates.
+  // 1 — the rotor, by signed tetrahedra over its own triangles.
+  const pivot = new THREE.Vector3(hammerPiv.x, hammerPiv.y, 0);
+  const rotor = (() => {
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    let V = 0, Izz = 0;
+    alarmHammerPivot.updateMatrixWorld(true);
+    alarmHammerPivot.traverse((o) => {
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
+      const pos = o.geometry.attributes.position, idx = o.geometry.index;
+      const n = idx ? idx.count : pos.count;
+      for (let t = 0; t + 2 < n; t += 3) {
+        for (let e = 0; e < 3; e++) {
+          const i = idx ? idx.getX(t + e) : t + e;
+          const v = e === 0 ? a : e === 1 ? b : c;
+          o.localToWorld(v.fromBufferAttribute(pos, i)).sub(pivot);
+        }
+        const v6 = a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x);
+        V += v6 / 6;
+        // The tetrahedron (0,a,b,c) about z: (V/10)·Σ_{i≤j}(x_i x_j + y_i y_j).
+        const P = [a, b, c];
+        let sxy = 0;
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+          const w = i === j ? 2 : 1;
+          sxy += w * (P[i].x * P[j].x + P[i].y * P[j].y);
+        }
+        Izz += (v6 / 6) * sxy / 20;
+      }
+    });
+    return { vol_u3: V, Izz_u5: Izz };
+  })();
+  const mRotor = rotor.vol_u3 * U ** 3 * OSC_STEEL_RHO;         // kg
+  const I_h = rotor.Izz_u5 * U ** 5 * OSC_STEEL_RHO;            // kg·m²
+  const rArm = ALARM_ARM_LEN * U;                               // m — the PLAN lever, the crank's rise is not a moment arm
+  // 1a — THE SPRING THE FALL LAW IMPLIES, published as a number. The fall is
+  // still §25's chosen time (see ALARM_FALL_S), so W is not √(k/I) — but the
+  // law asserts a k all the same, and THAT is what the blow's energy rests on.
+  // Reported, not asserted: the two figures below are the size of TODO 128.
+  const kImplied = I_h * ALARM_HAMMER_W ** 2;                   // N·m/rad the fall law needs
+  const bladeLenForK = (() => {
+    // The straight blade that would deliver it, at flat-spring stock and this
+    // bearing arm: k_θ = (3EI/L³)·L_b², so L = ∛(3EI·L_b²/k_θ).
+    const I = (ALARM_TAIL_T * 0.8 * U) * (SPRING_FLAT_U * U) ** 3 / 12;
+    return Math.cbrt(3 * OSC_STEEL_E * I * (ALARM_HAM_SPR_LB * U) ** 2 / kImplied) / U;
+  })();
+  const kDrawn = cantileverK_N_per_m(ALARM_TAIL_T * 0.8, SPRING_FLAT_U, ALARM_HAM_SPR_FREE)
+    * (ALARM_HAM_SPR_LB * U) ** 2;                              // ...if the drawn bar bent, which it does not
+  const thetaDot = ALARM_DRAW_RAD * ALARM_HAMMER_W
+    * Math.sin(Math.acos(-ALARM_STRIKE_AMP / ALARM_DRAW_RAD));   // rad/s at the wire
+  const vHead = thetaDot * rArm;
+  const E_blow = 0.5 * I_h * thetaDot * thetaDot;
+  const mEff = I_h / (rArm * rArm);                             // the mass the wire actually meets
+  // 2 — the wire, and the hand-off.
+  const L = gongDevLen(), aW = GONG_WIRE_R * U;
+  const M = OSC_STEEL_RHO * Math.PI * aW * aW * L;
+  const mModal = M / 4;                                          // ∫φ² = L/4, every mode (see GONG_MODES)
+  const mu = mEff / mModal;
+  const eta = (4 * mu / (1 + mu) ** 2) * ((1 + REST) / 2) ** 2;
+  const Estar = OSC_STEEL_E / (2 * (1 - NU * NU));
+  const Re = Math.sqrt(aW * GONG_R * U);                         // torus on a flat: √(r_section·r_arc)
+  const kHertz = (4 / 3) * Estar * Math.sqrt(Re);
+  const mRed = mEff * mModal / (mEff + mModal);
+  const tau = 2.9432 * (5 * mRed / (4 * kHertz)) ** 0.4 * vHead ** -0.2;
+  // 3/4 — per mode.
+  const kGyr = aW / 2;
+  const spec = GONG_MODES.map((m) => {
+    const f = m.bl2 * kGyr * GONG_STEEL_C / (2 * Math.PI * L * L);
+    const x = 2 * f * tau;
+    const S = Math.abs(Math.cos(Math.PI * f * tau) / (Math.abs(1 - x * x) < 1e-12 ? 1e-12 : 1 - x * x));
+    return { f, w: S * S, lambda: C_AIR / f };
+  });
+  const wSum = spec.reduce((t, m) => t + m.w, 0);
+  const aWeight = (f) => {
+    const f2 = f * f;
+    const num = 12194 ** 2 * f2 * f2;
+    const den = (f2 + 20.6 ** 2) * Math.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2)) * (f2 + 12194 ** 2);
+    return 20 * Math.log10(num / den) + 2.0;
+  };
+  // THE RADIATION INTEGRAL, and why it is an integral. The wire is a LINE of
+  // transverse dipoles whose strength follows the mode shape, so the far field
+  // in a direction α off the wire's own axis is that shape's Fourier component
+  // at the acoustic wavenumber:
+  //     D(α) = ∫₀^L φ(x)·e^{−i k x cosα} dx        (→ γL as k→0)
+  //     W    = k²·(2ρ₀πa²ωU)²/(32πρ₀c) · ∫₀^π sin³α |D̂(α)|² dα
+  // which reduces EXACTLY to the compact dipole k²F²/(24πρ₀c) when kL ≪ 1
+  // (∫sin³ = 4/3), and degrades on its own past that. A hard "compact or not"
+  // cutoff was the first form and it is worse than wrong, it is DISCONTINUOUS:
+  // the wire's second mode crossed L = λ/2 with the §197 arc and its whole
+  // contribution vanished from the total in one step, which reads as a design
+  // change and is a modelling artefact. Neighbouring antinodes cancelling is a
+  // real effect and this is what it looks like when it is computed instead of
+  // declared.
+  const NX = 400, NA = 180;
+  const radiate = (phi, kAc, amp) => {
+    // amp = 2ρ₀πa²ωU, the dipole strength per unit length at the tip.
+    let peak = 0, tot = 0;
+    for (let j = 0; j <= NA; j++) {
+      const al = (j / NA) * Math.PI, ca = Math.cos(al);
+      let re = 0, im = 0;
+      for (let q = 0; q <= NX; q++) {
+        const u = q / NX, w = (q === 0 || q === NX) ? 0.5 : 1;
+        const ph = phi(u) * w, th = -kAc * L * u * ca;
+        re += ph * Math.cos(th); im += ph * Math.sin(th);
+      }
+      const D2 = (re * re + im * im) * (L / NX) ** 2;
+      const wA = (j === 0 || j === NA) ? 0.5 : 1;
+      tot += wA * Math.sin(al) ** 3 * D2 * (Math.PI / NA);
+      peak = Math.max(peak, Math.sin(al) ** 2 * D2);
+    }
+    const W = kAc * kAc * amp * amp * tot / (32 * Math.PI * RHO_AIR * C_AIR);
+    // the on-axis (β = 0, best α) intensity at 0.3 m, from |p| = k·amp·|D|·sinα/(4πr)
+    const I = (kAc * kAc * amp * amp * peak) / (32 * Math.PI * Math.PI * RHO_AIR * C_AIR * 0.09);
+    return { W, I };
+  };
+  let counted = 0;
+  const modes = spec.map((m, i) => {
+    const E_n = eta * E_blow * m.w / wSum;
+    const U_n = Math.sqrt(8 * E_n / M);                          // tip velocity amplitude (m_n = M/4)
+    const om = 2 * Math.PI * m.f;
+    const kAc = om / C_AIR;
+    const { W: W_rad, I: I_ax } = radiate(GONG_MODES[i].phi, kAc, 2 * RHO_AIR * Math.PI * aW * aW * om * U_n);
+    const spl = 10 * Math.log10(Math.max(I_ax, 1e-30) / 1e-12);
+    const audible = m.f <= 20000;                                // the listener, not the model
+    if (audible) counted += 10 ** ((spl + aWeight(m.f)) / 10);
+    return { n: i + 1, f_Hz: m.f, E_J: E_n, tipV_ms: U_n, W_W: W_rad, kL: kAc * L,
+      spl_dB: spl, splA_dBA: spl + aWeight(m.f), audible, ringT60_s: 13.8 * Q / om };
+  });
+  return {
+    band: { floor: GONG_BAND_FLOOR.z, floorOwner: GONG_BAND_FLOOR.owner, ceiling: GONG_BAND_TOP,
+      height_u: GONG_WIRE_DIA, ringZ: Z_GONG, strikeZ: Z_STRIKE },
+    wire: { dia_mm: 2 * GONG_WIRE_R * UNIT_MM, devLen_mm: L * 1000, arcDeg: (GONG_A1 - GONG_A0) / DEG2RAD,
+      mass_mg: M * 1e6, modalMass_mg: mModal * 1e6 },
+    hammer: { headH_u: ALARM_HEAD_H, mass_mg: mRotor * 1e6, I_kgm2: I_h, effMass_mg: mEff * 1e6,
+      arm_mm: rArm * 1000, thetaDot_rad_s: thetaDot, v_ms: vHead, fall_s: ALARM_FALL_S },
+    strike: { energy_J: E_blow, mu, eta, contact_s: tau, restitution: REST },
+    // TODO 128, as arithmetic. `impliedK` is what the fall law asserts; `drawnK`
+    // is what the drawn bar would give IF it bent (it does not — it is redrawn
+    // to reach the moving bearing, so it changes length); `needLen_u` is the
+    // straight blade that would deliver the implied k, against the 2.2 u there.
+    // `stretch_u` is the length change over the full draw — the number that
+    // says this is a rubber band rather than a spring.
+    spring: { free_u: ALARM_HAM_SPR_FREE, bearArm_u: ALARM_HAM_SPR_LB,
+      impliedK_Nm_per_rad: kImplied, drawnK_Nm_per_rad: kDrawn,
+      needLen_u: bladeLenForK, stretch_u: ALARM_DRAW_RAD * ALARM_HAM_SPR_LB,
+      release_J: 0.5 * kImplied * (ALARM_DRAW_RAD ** 2 - ALARM_STRIKE_AMP ** 2),
+      // the stress the 2.2 u bar would work to if it DID bend, against the yield
+      rootStress_Pa: 1.5 * OSC_STEEL_E * (SPRING_FLAT_U * U) * (ALARM_DRAW_RAD * ALARM_HAM_SPR_LB * U)
+        / (ALARM_HAM_SPR_FREE * U) ** 2,
+      yield_Pa: SPRING_SIGMA_Y_PA },
+    modes,
+    splA_dBA: 10 * Math.log10(Math.max(counted, 1e-30)),
+  };
+})();
+{
+  const A = GONG_ACOUSTICS;
+  // The pitch has to land where an alarm lives, and where it lands is NOT the
+  // ear's optimum — that is a finding, not a slip. TODO 17 named 2.5 kHz (the
+  // A-weighted peak) and arcDeg's default is derived to hit it, but the
+  // three-quarter plate's BALANCE OPENING spans az −5° to −75° at this radius:
+  // measured, there is no stud station on the gong circle between them, so
+  // §125's clamp walks the foot past the whole opening and the arc comes out
+  // at ~97° instead of 72°. The wire that would ring 2.5 kHz at that length is
+  // ⌀1.8 mm, well outside gong stock and twice the band. So the fundamental is
+  // a CONSEQUENCE of where a gong can be screwed down in this movement, and
+  // the band below is what the design is actually held to. TODO 127 carries
+  // the two ways out (a stud on the fork cock, which bridges the opening at
+  // exactly the right azimuth, or the ring outside the plate rim).
+  if (!(A.modes[0].f_Hz >= 1000 && A.modes[0].f_Hz <= 4000))
+    console.warn(`§197: the gong's fundamental is ${A.modes[0].f_Hz.toFixed(0)} Hz — outside the 1–4 kHz a struck `
+      + 'alarm gong rings in; the band or the arc moved and the ear is no longer being aimed at');
+  // The band-limited head must still land near the impedance match, or the
+  // §148 shape argument has quietly stopped being a dynamic one.
+  if (!(A.strike.mu > 0.4 && A.strike.mu < 2.5))
+    console.warn(`§197: the hammer meets the wire at μ = ${A.strike.mu.toFixed(2)} — far off the matched 1.0, `
+      + `so ${(100 * A.strike.eta / ((1 + A.strike.restitution) / 2) ** 2).toFixed(0)}% of the available transfer is being thrown away`);
+  // Real alarm-gong wire runs 0.4–1.1 mm. A band that drifts outside that is
+  // no longer describing a gong, whatever the arithmetic says.
+  if (!(A.wire.dia_mm >= 0.4 && A.wire.dia_mm <= 1.1))
+    console.warn(`§197: the gong wire is ⌀${A.wire.dia_mm.toFixed(3)} mm — outside real alarm-gong stock (0.4–1.1 mm)`);
+  // The head is centred on the ring, so it must not be the thing that fouls
+  // the plate it swings over.
+  const headBot = Z_GONG - ALARM_HEAD_H / 2;
+  if (headBot < TQ_TOP_Z + CLEAR_MARGIN - 1e-9)
+    console.warn(`§197: the hammer head's underside ${headBot.toFixed(3)} does not clear the plate top `
+      + `${TQ_TOP_Z.toFixed(3)} by CLEAR_MARGIN`);
+  // The IMPLIED spring must at least release the energy the rotor arrives with
+  // — ½k(θd²−θs²) against ½Iθ̇² — which is an identity of the fall law itself
+  // and therefore a check on this block's arithmetic rather than on the metal.
+  // (What is NOT held here is that any such spring exists. It does not: that
+  // is TODO 128, and the numbers are in the payload instead of in a warn,
+  // because a boot that warns about known debt trains everyone to ignore it.)
+  if (Math.abs(A.spring.release_J / A.strike.energy_J - 1) > 1e-9)
+    console.warn(`§197: the implied spring releases ${A.spring.release_J.toExponential(4)} J and the rotor `
+      + `arrives with ${A.strike.energy_J.toExponential(4)} J — the acoustics block has lost the fall law`);
 }
 
 // --- 'Alarm striking wheel' — lifting cam + its pinion on a bearing stud -----
@@ -16196,7 +16731,7 @@ alarmStrikeUnit.add(alarmStrikeRotor);
   // z 0 (the translate above), so the loop's z-0 polyline lands on the gong
   // plane, exactly where the tail nose rides the flank.
   cam.userData.profile = { poly: pts, boreR: CAM_BORE_R };
-  cam.position.z = Z_GONG;
+  cam.position.z = Z_STRIKE;
   alarmStrikeRotor.add(cam);
   // Sleeve DOWN to the pinion (§112 — the barrel's tooth band lives under
   // the plate now): from the pinion's top face up to the cam's underside,
@@ -20025,7 +20560,7 @@ const _lockArmAt = (d) => Math.acos(clamp(
 const ALARM_LOCK_LIFT = _lockArmAt(ALARM_STOP_TIP_R + ALARM_LOCK_PAD_R + CLEAR_MARGIN)
                       - _lockArmAt(ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R);
 // (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
-// at the §124 seam block beside Z_GONG, up by the gong build: the whole
+// at the §124 seam block beside Z_STRIKE, up by the gong build: the whole
 // strike tier rides TQ_TOP_Z now instead of restating the pre-§124 plate.)
 // §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
 // tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
@@ -26417,7 +26952,7 @@ function askTour(onProceed) {
       gongArc.geometry = new THREE.TorusGeometry(GONG_R, GONG_WIRE_R, 8, 64, GONG_A1 - GONG_A0);
       gongArc.rotation.z = GONG_A0;
       gongFoot = { x: Math.cos(GONG_A0) * GONG_R, y: Math.sin(GONG_A0) * GONG_R };
-      gongPost.position.set(gongFoot.x, gongFoot.y, (Z_GONG + TQ_TOP_Z - 0.5) / 2);
+      gongPost.position.set(gongFoot.x, gongFoot.y, (GONG_POST_TOP + TQ_TOP_Z - 0.5) / 2);
       gongF = gongModes();   // the voice follows the wire
     },
   };
@@ -27701,10 +28236,19 @@ const BACK_SWEPT_ALLOWANCE = new Map([
 // same probe clause; each z is the unit's swept maximum over the row's
 // band, rounded up past margin flicker.
 const BACK_SWEPT_REGIONS = [
-  // The strike swing carries the hammer head outward to r 42.0 at z 10.898
-  // — at build it parks at r 35.4–37, leaving bins out to 42 with nothing
-  // above the three-quarter plate.
-  { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 10.92 },
+  // The strike swing carries the hammer head outward through r 34.6–42.0 —
+  // at build it parks at r 35.4–37, leaving bins out to 42 with nothing
+  // above the three-quarter plate. §197 grew the head (1.75 → 2.63 u), so
+  // the swept ceiling here rose with it: measured 12.060 (was 10.898 pre-§197)
+  // against a build-pose reading of "—" (no metal) in the outboard half of
+  // this band, rounded up past margin flicker.
+  { unit: 'Alarm hammer', r0: 34.6, r1: 42.0, z: 12.07 },
+  // §197's larger head also carries the swing's outer edge past the old
+  // r1 = 42.0 boundary for the first time, out to r 44.4 at a lower ceiling
+  // (12.060 → 11.534 once the head has swung clear of the taller inboard
+  // arc) — measured by the same probe product, its own row rather than
+  // widening the one above past what that band needs.
+  { unit: 'Alarm hammer', r0: 42.0, r1: 44.5, z: 11.54 },
   // The switch cluster's press/castellation swing spreads its metal across
   // r 17.3–31.3 (measured swept 10.068 at r 17.3–18.1 against build 9.242;
   // 11.468 at r 30.4–31.3 against build 10.851 — §192's descent re-measured
@@ -27826,6 +28370,23 @@ const BACK_ENVELOPE = (() => {
     if (barrel > tqTop)
       console.warn(`§187: the alarm barrel reads ${barrel.toFixed(3)}, above the three-quarter plate's measured top `
         + `${tqTop.toFixed(3)} — §112 put it below; the scan or the tree is wrong`);
+    // §197 ENVELOPE — THE RING COSTS NO WATCH THICKNESS, measured rather than
+    // claimed. GONG_BAND_TOP is declared up at the gong build as "the height
+    // the caseback already spends on the alarm link's tower"; this is the
+    // sentence turned into a test. If the gong or the hammer head ever stands
+    // above the tallest thing the movement already has, the §187 glass rises
+    // to clear it and the watch gets thicker — which is a real cost, and one
+    // nobody would otherwise attribute to the gong.
+    const govern = Math.max(tower, zOf('Alarm switch'), zOf('Alarm striking wheel'));
+    for (const name of ['Alarm gong', 'Alarm hammer']) {
+      const z = zOf(name);
+      if (z > govern + 1e-6)
+        console.warn(`§197: ${name} reaches ${z.toFixed(3)}, above the ${govern.toFixed(3)} the movement's back `
+          + 'envelope already stands at — the ring is now paying for case thickness of its own');
+      if (z > GONG_BAND_TOP + 1e-6)
+        console.warn(`§197: ${name} reaches ${z.toFixed(3)}, past the declared band ceiling ${GONG_BAND_TOP} — `
+          + 'the constant and the metal have parted');
+    }
   }
   // Fold the declared region rows in: a bin's envelope is the max of what
   // the build pose showed (plus its unit's z allowance) and every declared
@@ -28512,8 +29073,13 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
     // hammer reads as lifted by magic — the glyph and its follower are one
     // contact, so they draw together.
     {
+      // §197 — the arm RISES: the tail rides the cam at Z_STRIKE and the head
+      // rings the wire one band higher, so the line is drawn to the head's own
+      // plane. A flat line here would draw the pre-§197 hammer and quietly
+      // claim the head is in the cam's plane, which is §78's rule exactly.
+      const hz = Z_GONG - Z_STRIKE;
       const hx = headRest.x - hammerPiv.x, hy = headRest.y - hammerPiv.y;
-      addLine(alarmHammerPivot, [V(0, 0, 0), V(hx, hy, 0)]);
+      addLine(alarmHammerPivot, [V(0, 0, 0), V(hx, hy, hz)]);
       {
         // The head's PLAN outline, off the same three constants the solid was
         // cut from: face at ALARM_HEAD_FACE_R, ALARM_HEAD_L along the blow,
@@ -28521,7 +29087,7 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
         const ur = { x: Math.cos(GONG_A1), y: Math.sin(GONG_A1) };
         const tg = { x: -ur.y, y: ur.x }, w = ALARM_HEAD_H / 2;
         const at = (u, t) => V(ur.x * (ALARM_HEAD_FACE_R + u) + tg.x * t - hammerPiv.x,
-          ur.y * (ALARM_HEAD_FACE_R + u) + tg.y * t - hammerPiv.y, 0);
+          ur.y * (ALARM_HEAD_FACE_R + u) + tg.y * t - hammerPiv.y, hz);
         addLine(alarmHammerPivot, [at(0, -w), at(0, w), at(ALARM_HEAD_L, w),
           at(ALARM_HEAD_L, -w), at(0, -w)]);
       }
@@ -29749,6 +30315,22 @@ function beatEventCount(t) {
 // Timbres per source (tuned by ear; the beat alternates two centres by
 // bank parity — that parity IS the fork's bank side, so tic/toc is
 // mechanically honest for free).
+// §197 — the ding's partials, DERIVED from GONG_ACOUSTICS. Audible modes only
+// (the wire's 3rd is 24 kHz and inaudible — the law computes it, the speaker
+// does not sound it, which is the same rule the explainer's plate follows),
+// amplitudes as √(radiated power) referred to the loudest, and decays the
+// modes' own T60s clipped to one strike gap so the ring cannot outlive its
+// own cadence. `0.30` — §56's chosen gain for the loudest partial — is kept
+// as the overall LEVEL so this changes the balance and not the volume.
+const SND_GONG_PARTIALS = (() => {
+  const heard = GONG_ACOUSTICS.modes.filter((m) => m.audible && m.W_W > 0);
+  const wMax = Math.max(...heard.map((m) => m.W_W));
+  return heard.map((m) => ({
+    n: m.n - 1,
+    gain: 0.30 * Math.sqrt(m.W_W / wMax),
+    decay: Math.min(m.ringT60_s, ALARM_STRIKE_GAP),
+  })).sort((a, b) => b.gain - a.gain);
+})();
 const SND = {
   // Each beat is a THREE-impact cluster, the way a timing machine hears a
   // real lever escapement:
@@ -29790,10 +30372,18 @@ const SND = {
     // the work, the hammer carried it, the gong turned it into sound (§25).
     sndFlash(alarmGongUnit); sndFlash(alarmHammerUnit); sndFlash(alarmStrikeUnit);
     // §56: the wire's OWN modes, not a chosen note. The 2nd sits at 6.27× the
-    // 1st — inharmonic, which is what makes this read as struck steel. It also
-    // carries the loudest energy at these dimensions, hence the gain order.
-    sndTone(gongF[1], 0.55, 0.30, 0, alarmEmitter);     // 2nd flexural mode — the ring that carries
-    sndTone(gongF[0], 0.32, 0.14, 0, alarmEmitter);     // fundamental — the body under it
+    // 1st — inharmonic, which is what makes this read as struck steel.
+    // §197 — AND THE BALANCE BETWEEN THEM IS THE ARITHMETIC'S NOW, not an ear's.
+    // 0.30 over 0.14 said "the 2nd carries the loudest energy at these
+    // dimensions", which was a guess that happened to be right; GONG_ACOUSTICS
+    // computes how much (mode 2 radiates ~26 dB over mode 1, because a compact
+    // dipole's power goes as ω⁴ and the two modes leave the strike with the
+    // same energy). Amplitudes are √power, referred to the loudest partial so
+    // the ding's overall level is unchanged — this fixes the MIX to the metal,
+    // not the volume. Decays are the modes' own T60s, capped: a 6 s
+    // fundamental would still be humming three strikes later, which is true of
+    // the wire and wrong for the cadence, so the ring is cut at the gap.
+    for (const t of SND_GONG_PARTIALS) sndTone(gongF[t.n], t.decay, t.gain, 0, alarmEmitter);
   },
 };
 // §71 — SOUND EMITTERS in the schematic (owner call: "it'd be good to see
@@ -36346,6 +36936,7 @@ window.__clock = {
   get balanceRate() { return balanceRate; },
   get oscillator() { return OSCILLATOR; },   // TODO 25 tier one — the weighed rate, for the inspector's report
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
+  get acoustics() { return GONG_ACOUSTICS; },  // §197 — the gong's blow, modes and radiated level, off the built metal
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin (and its frame's handedness), for the transmission sweep

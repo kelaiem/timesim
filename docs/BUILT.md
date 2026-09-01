@@ -20756,3 +20756,255 @@ the recolour hook's comment are updated where they stand. §185's BUILT
 record is left as written — it is the honest history of the limitation this
 section retires — with its closing owner-question answered here: links
 refuse nothing, because there is nothing left to refuse.
+
+## §197 — The gong stops being needle thin: a band that sizes the ring, and a level that is arithmetic at last
+
+Owner report: *"The gong appears to be needle thin. Review the expected
+loudness and increase the gong and hammers' sizes appropriately."* The
+review came back worse than the report. The wire was 0.379 mm, and through
+the acoustic chain this entry builds it radiated **−3.7 dBA at 0.3 m** —
+below the threshold of hearing, at any distance, forever. §56 had derived
+the gong's PITCH from the wire and left its LEVEL nobody's.
+
+Nothing was mis-computed. One thing had never been sized, and one had
+never been derived — and §197 fixed the first and MEASURED the second,
+which is the honest split rather than the tidy one.
+
+### One: the ring was wearing the cam's ceiling
+
+`Z_GONG` was the strike tier's plane — cam, lock collar, tail, wire, all
+one number, 1.04 u over the plate top. So the wire's diameter and the
+hammer head's section were both bounded by a clearance that belongs to the
+CAM, and nothing in the build ever asked what the ring itself had room
+for. The answer, measured, is a band nearly three times as tall:
+
+| | | |
+|---|---|---|
+| floor | 9.431 | the tallest metal in the ring's own radial swath (the fork cock's screw heads at 9.281) + `CLEAR_MARGIN`, **measured off the built movement** |
+| ceiling | 12.06 | the movement's existing back envelope, which the alarm link's beak tower already owns at these radii |
+| band | **2.629 u** | ⌀0.996 mm of wire — real alarm-gong stock (0.4–1.1 mm), where 0.379 mm was piano wire |
+
+Both ends are free. The floor is dead air the ring was already flying
+over; the ceiling is height §187's caseback ALREADY spends, so a wire that
+fills the band **costs the watch no thickness**. That last claim is a
+tripwire, not a hope: `§197 ENVELOPE` re-measures it beside `BACK_ENVELOPE`
+every boot and warns if the gong or the hammer ever becomes the thing the
+glass has to rise for.
+
+The floor is deliberately **arc-independent**. `arcDeg` is a live knob, and
+a floor measured over the current arc would move under the reader's hand
+and take `Z_GONG` with it — the ring would sink through the fork cock the
+moment somebody shortened it. The swath scanned is the widest the knob can
+ever ask for.
+
+`Z_GONG` and `Z_STRIKE` are two constants now. The hammer's arm is
+CRANKED: its tail rides the cam at `Z_STRIKE`, its head rings the wire one
+band higher, and because the pivot's axis is still z, every quantity the
+strike geometry is written in — arm length, tail ratio, cam lift, the §35
+hand-offs the alarm is gated on — is a PLAN quantity and none of them feel
+it. The head's section grew 1.75 → 2.63 u on the same band, which takes the
+rotor's own moment up 4.0×, and its half-heights are now the band's two
+clearances doubled at the LESSER, so the head stays symmetric about the
+blow — a head heavier on one side of the wire's centre line hits with a
+couple, and the line of action is the whole point of a face.
+
+### Two: the fall is a number, and no spring that fits could produce it
+
+`ALARM_FALL_S = ALARM_FREE_S / 3` — a third of the cam's free window — with
+the swing's angular frequency then solved to match. TODO 14 had already
+named the shape of that: the free swing is a spring-and-inertia law, so
+`W` is `√(k/I)` and nothing else. It shipped the blade and never tied `W`
+to it.
+
+§197 measured the size of the gap, because the blow is `½Iθ̇²` and `θ̇` is
+`W`'s — **this constant is the gong's level**, and it is now the biggest
+term left in it. Two readings of one hammer:
+
+| | |
+|---|---|
+| the fall law implies | k = **1.886e−7** N·m/rad — a straight blade **48.4 u** long, 18 mm in a 32 mm movement |
+| the drawn bar, if it bent | k = 2.009e−3 N·m/rad — **10,650× stiffer**, working to 6459 MPa against an 800 MPa yield |
+
+and the second row is the one that decided §197's answer, because **the
+drawn bar does not bend at all**. It runs from its anchor ALONG the push
+direction to the bearing point, the bearing point travels along that same
+line, and the frame law redraws the bar to reach it — so the modelled part
+**changes length by 0.79 u, 36% of itself, over the draw**. It is a rubber
+band, not a leaf spring, and no stiffness can be read off it in either
+direction.
+
+So the arrow stays where §25 left it, deliberately: a bending rate derived
+from a bar that stretches would be a second falsehood on top of the first.
+Solving the free length from the yield WAS built and reverted — it lands
+at 6.25 u, and a blade that long drives its anchor stud into the alarm
+column (`Alarm hammer ⇄ Alarm switch` FORBIDDEN over 12 poses of
+`alarmPress`, `sweptOverlap` confirming 0.3). It would have bought that
+collision with a number read off the wrong physics.
+
+TODO 128 carries the fix, and §197 sized it rather than only naming it: a
+pivoted hammer's real spring is a **torsion spring on its own arbor**, and
+at flat-spring stock the required rate wants about **9.5 u of developed
+ribbon** — two turns about a post that is already there, using the spiral
+machinery §83 built for the hairspring. `GONG_ACOUSTICS.spring` publishes
+all four numbers so the next landing can measure its own progress instead
+of re-deriving this.
+
+### The chain, and the instrument that re-derives it
+
+`__clock.acoustics` publishes the whole thing off the built metal — no
+dimension restated that a builder knows:
+
+1. **The blow.** `E = ½Iθ̇²`, with I integrated by signed tetrahedra over
+   the rotor's own triangles (arm, head, tail), not estimated from a box.
+   `θ̇` comes from the shipped fall law, which is exactly why §197 could put
+   a number on that law's own debt rather than describing it.
+2. **The hand-off.** A clamped-free bar normalised to unity at its free
+   end has `∫φ² = L/4` for EVERY mode, so the mass a tip strike meets is
+   `M/4` whichever mode is asked about — which is why the impedance match
+   has one answer and not five. `η = 4μ/(1+μ)²·((1+e)/2)²`, peaking at
+   μ = 1; the band-limited head lands at **μ = 0.553**, giving 0.92 of the
+   transfer a matched head would. The Hertz contact time (a torus on a
+   flat face) decides which modes the blow can reach: 4.5 µs, so the
+   contact is not the limit here — written down because it is the limit
+   that arrives first if the head ever grows again.
+3. **The radiation**, which is where a wire loses. The bar is a LINE of
+   transverse dipoles, so the far field is the mode shape's Fourier
+   component at the acoustic wavenumber, `D(α) = ∫φ e^{−ikx cosα} dx`, and
+   `W = k²·(2ρ₀πa²ωU)²/(32πρ₀c)·∫sin³α|D|²dα`. This reduces exactly to the
+   compact dipole when kL ≪ 1 and degrades on its own past it. **A hard
+   "compact or not" cutoff was the first form and it is worse than wrong,
+   it is discontinuous**: the wire's second mode crossed L = λ/2 with the
+   new arc and its whole contribution vanished from the total in one step,
+   which reads as a design change and is a modelling artefact.
+4. **The level.** On-axis intensity at 0.3 m, raw and A-weighted, with
+   modes above 20 kHz dropped — the listener's limit, not the model's.
+
+| | before | after |
+|---|---|---|
+| wire | ⌀0.379 mm × 21.41 mm | ⌀0.996 mm × 22.57 mm |
+| head | 1.75 u square | 2.63 u square |
+| rotor inertia | 3.66e−11 kg·m² | 1.46e−10 kg·m² |
+| blow | 1.53 nJ | **6.11 nJ** (4.0×, all of it the head's inertia) |
+| f₁ / f₂ | 584 / 3660 Hz | 1381 / 8656 Hz |
+| **level @ 0.3 m** | **−3.7 dBA** | **14.0 dBA** |
+| fall / face speed | 53.2 ms / 0.024 m/s | *unchanged* — TODO 128 |
+
+**+17.7 dB**, about 60× in acoustic power, and every decibel of it from
+sizing two parts against a band nobody had derived. The remaining two
+orders are named rather than implied: **~26 dB** waits on a hammer spring
+that exists as a mechanism (TODO 128 — that is the ratio between the blow
+this fall gives and the blow a spring at its own yield would), and
+**~30 dB** on the case (TODO 126).
+`tools/probe-197-gong-loudness.mjs` is the acceptance: it re-derives every
+one of those numbers a second way — the wire's section from its VERTICES
+rather than its `TorusGeometry` parameters, the inertia by its own
+integration, and the strike speed by stepping `setPose({alarmStrikePhase})`
+across the fall and differencing, which is the one figure that cannot be
+read back out of a constant — and fails on disagreement. All six
+cross-checks and four design bounds are green.
+
+### The ding's mix is arithmetic too
+
+`sndTone(gongF[1], 0.55, 0.30)` + `sndTone(gongF[0], 0.32, 0.14)` were
+chosen by ear; §56's own comment said the second mode "carries the loudest
+energy at these dimensions", which was a guess that happened to be right.
+`SND_GONG_PARTIALS` computes how much: each amplitude is √(that mode's
+radiated power) referred to the loudest, so the fundamental sits **28 dB**
+under the second because that is what ω⁴ does to a compact dipole, and each
+decay is the mode's own T60 clipped to one strike gap so the ring cannot
+outlive its own cadence. `0.30` survives as the overall LEVEL — this fixed
+the mix to the metal, not the volume.
+
+### Two things found on the way, both older than this entry
+
+**The posts were lying down.** `CylinderGeometry` is built along +Y, and
+`alarmGongPost` and `alarmHammerPost` were never rotated: they lay on the
+plate with their axes in its plane, and reached the gong only because a
+1.4-diameter cylinder is 1.4 tall however you turn it. Nothing caught it —
+`support` asks whether the route touches the plate, and a lying cylinder
+touches it. `alarmHammerSpringStud` beside them always carried the line,
+which is the tell. Standing them up was invisible until the §197 stud
+became three times longer than it is thick.
+
+**The stud is sized by the wire now**, not by a literal: 0.7 stood
+*thinner* than the ⌀0.996 wire it would have to clamp, which is a hinge,
+not a fixing. The stud carries a floor-stock wall around the brazed end,
+and a boot assert holds the rigid-root condition a clamped-free mode
+analysis assumes (achieved 58×, floor 10×).
+
+### And the foot walks, because §125's bound could not see cocks
+
+§125's clamp asks whether there is METAL under the stud. It cannot ask
+what is standing ON it, and the §197 stud is 2.3× the old diameter. So the
+foot now WALKS clockwise — §56's free-end anchoring makes that the free
+handle, the ringing length absorbs it and the strike end never moves — to
+the first station clear of everything already on the plate, tested against
+per-TRIANGLE boxes rather than per-mesh ones (an L-shaped part's whole-mesh
+box claims 20° of arc it does not occupy).
+
+Which is where §197 hit the wall it did not get past, and the wall is the
+best finding here. Raycast down the gong circle, **the plate carries metal
+only at az ≥ −5° and az ≤ −75°** — everything between is the balance's
+opening, bridged by the balance and fork cocks rather than filled. There
+are exactly two stud stations, giving an arc of 20° (f₁ 33 kHz, silent) or
+97.5° (f₁ 1381 Hz). The arc that puts the fundamental on the ear's 2.5 kHz
+peak is 72.5°, and it lands in the opening. `aesthetics.gong.arcDeg` still
+DERIVES that 72.5 and is still clamped away from it, which is the honest
+record: **the gong's pitch in this movement is set by where a stud can be
+screwed down.** Filed as TODO 127 with the two position-space ways out.
+
+### What §197 did not do, and why — the ring outside the plate
+
+The owner's second suggestion was to take the ring outside the
+three-quarter plate and drop the exterior work below it. It was measured,
+not waved away. The annulus is genuinely free — z 1.48 to 6.95 at r 43–50,
+crossed only by the alarm pusher's stem — and it costs no case height at
+all, which the over-plate band does not beat.
+
+It loses on two counts. **Radially** the usable window is pinched between
+the plate rim and §187's caseback skirt (which descends into the bore at
+r 47.94), leaving 4.7 u for wire + rest gap + head against the 6.4 u the
+over-plate band has, and the head's length is what the level is bought
+with: about **2.7 dB net worse**. **Mechanically** it needs a part that
+does not exist. A radial blow requires the hammer's pivot at roughly the
+ring's own radius, and a pivot moved 9 u outboard can no longer reach the
+striking wheel with a 6.5 u tail — either the tail grows by the same 9 u
+(and the cam's rise with it, 1.76 → 4.3 u on a wheel that already sits
+between the column and the lock) or a lifting lever goes in between, which
+is a fold with its own P1 duties. Both routes spend the strike geometry the
+§35 hand-offs are gated on, to buy a level that is lower. Filed in the
+roadmap rather than built.
+
+### Verified
+
+`node tools/probe-197-gong-loudness.mjs` — all six cross-checks and four
+design bounds clear. Boot silent. Full battery **38/38** locally, and the
+base tree run beside it (38/38 too) so the REPORTS could be diffed rather
+than the PASS column trusted — which is the acceptance a change that moves
+two parts owes, per CLAUDE.md's own note that a report can move while every
+gate stays empty.
+
+The diff is the result worth quoting. **Not one row appears or disappears
+anywhere** — `penetration`, `stockFloor`, `intraUnit`, `assembly`,
+`expectedContacts`, `clearances`, `sweptOverlap` and `inspection` all carry
+exactly the rows they carried, with the same values. Outside timings there
+are two differences in the whole report, and both are the hammer's arm
+being a different shape:
+
+- `axisEntry`'s LEAK report (what would ride through without `enterAxis`)
+  reads `Alarm hammer` 1.592 → 1.555 — the arm moved, so what it would leak
+  moved with it. A report, not a gate.
+- `restoring`'s `sweptAs` for `alarmHammerArm` moves from
+  `declared:arc` to `covered:arc` — the §36 registry reaching the same
+  verdict (a full revolve) by coverage instead of by declared travel. Both
+  set `full = true`; nothing downstream sees a difference.
+
+The fingerprint moves (3832554282 → 714923835), which it must: the geometry
+changed.
+
+One failure on the way, recorded because it is the entry's own evidence: the
+first cut solved the blade's free length from the yield (6.25 u) and the
+battery came back `inspection: 1 FORBIDDEN` and `sweptOverlap: 1 CONFIRMED`,
+both `Alarm hammer ⇄ Alarm switch`, the anchor stud pushed into the alarm
+column's skirt. Reverting it is what sent §197 back to read how the blade is
+actually loaded — which is how the rubber-band finding above was made at all.

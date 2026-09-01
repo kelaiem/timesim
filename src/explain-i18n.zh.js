@@ -464,9 +464,7 @@ export default {
 
   // ---- gong ----
   ['The alarm\'s sound is not a sample and not a picked frequency: the gong is a clamped-free steel bar, and its voice is derived from that bar\'s own bending modes. A clamped-free bar\'s overtones are fixed by physics, not tuning: the second mode rings at <b>6.27×</b> the fundamental — that is <code>(k₂L/k₁L)² = (4.694/1.875)²</code> from the beam equation, and it is why struck gongs sound metallic rather than musical (the partials are inharmonic). The build states it as its own comment: "the wire\'s OWN modes, not a chosen note. The 2nd sits at 6.27× the [fundamental]".']: '闹铃的声音既不是采样，也不是挑选出来的频率：音簧是一根一端固定、一端自由的钢棒，它的嗓音由这根棒自身的弯曲模态推导而来。一端固定棒的泛音由物理决定，而非由调音决定：第二模态响在基频的 <b>6.27×</b> 处——这就是梁方程给出的 <code>(k₂L/k₁L)² = (4.694/1.875)²</code>，也正是被敲击的音簧听起来金属味而非乐音的原因（各分音非谐）。构建代码在自己的注释中写明：“the wire\'s OWN modes, not a chosen note. The 2nd sits at 6.27× the [fundamental]”。',
-  ['Ledger: TODO 17 is MOSTLY closed by §56 — the synthesis takes its partial ratios and decay from the modelled bar rather than a preset chord; the residue TODO 17 still holds (the strike\'s excitation weighting across modes) is catalogued there, and this plate draws only what is derived.']: '台账：TODO 17 已被 §56 大部分关闭——合成所用的分音比与衰减取自建模出来的棒，而非预设和弦；TODO 17 仍持有的残留（敲击在各模态上的激励权重）已在该处登记，本图版只画推导得出的部分。',
-  ['The sound is the law run live: <code>fₙ = (βₙL)²·(d/4)·√(E/ρ) / (2πL²)</code> with <code>(βₙL)² = 3.516, 22.03</code>, steel\'s <code>E/ρ = 200 GPa / 7850</code>, and <code>L = GONG_R·arc·UNIT_MM</code> (GONG_R 35, UNIT_MM 0.379) — <code>gongModes()</code> ported verbatim, so the readout at the defaults IS the shipped voice (~620 Hz; TODO 17 notes that is low for an alarm — try ~45°). STRIKE plays what the sim plays on a hammer hit: the same two partials through <code>sndTone</code>\'s envelope, ported number for number — mode 2 at gain 0.30 decaying 0.55 s, mode 1 at 0.14 over 0.32 s, each a ±4-cent sine pair. Ledger: those four envelope numbers are TODO 17\'s open residue (chosen, not derived from strike mechanics), and this plate plays the same chosen numbers; the third mode is computed by the law but not voiced, matching the build. A partial the law pushes past hearing is marked and skipped, not folded back.']: '这声音就是实时运行的规律：<code>fₙ = (βₙL)²·(d/4)·√(E/ρ) / (2πL²)</code>，其中 <code>(βₙL)² = 3.516, 22.03</code>，钢的 <code>E/ρ = 200 GPa / 7850</code>，以及 <code>L = GONG_R·arc·UNIT_MM</code>（GONG_R 35，UNIT_MM 0.379）——<code>gongModes()</code> 逐字移植，因此默认值下的读数就是已发布的那个嗓音（约 620 Hz；TODO 17 指出这对闹铃而言偏低——可试 ~45°）。“敲击”播放的正是模拟器在音锤击中时所播放的：同样两个分音经 <code>sndTone</code> 的包络，逐个数字移植——模态 2 增益 0.30、衰减 0.55 s，模态 1 增益 0.14、衰减 0.32 s，各为一对相差 ±4 音分的正弦。台账：这四个包络数字是 TODO 17 尚未关闭的残留（是选定的，而非从敲击力学推导出来的），本图版播放的正是这同一组选定数字；第三模态由规律算出但不发声，与构建一致。被规律推到听阈之外的分音会被标注并跳过，而不是折回。',
-  ['The gong\'s voice — partials from the bar, not a chosen note<span class="where">alarm · src/main.js §56</span>']: '音簧的嗓音 — 分音来自钢棒，而非选定的音高<span class="where">闹铃 · src/main.js §56</span>',
+  ['The gong\'s voice — partials from the bar, and how loud a wire can be<span class="where">alarm · src/main.js §56, §197</span>']: '音簧的嗓音——分音来自杆本身，以及一根钢丝能响多大<span class="where">闹铃 · src/main.js §56, §197</span>',
   ['Two mode shapes, one strike point']: '两种模态振型，一个敲击点',
   ['Dimension the wire, then strike it — the pitch its dimensions imply']: '先给钢丝定尺寸，再敲响它 — 音高由尺寸决定',
   ['SHIPPED VOICE']: '已发布嗓音',
@@ -477,13 +475,13 @@ export default {
   ['hammer strikes here']: '音锤在此敲击',
   ['arc length is a LIVE parameter, measured back from the free end — shorten the bar and every partial rises together']: '弧长是一个可实时调节的参数，自由端起回量 — 缩短钢棒，所有分音一起升高',
   ['movement axis · GONG_R 35']: '机芯轴线 · GONG_R 35',
-  ['shipped arc 90°']: '已发布弧度 90°',
+  ['shipped arc 97.5°']: '已发布弧度 97.5°',
   ['foot (moves)']: '簧脚（可移动）',
   ['hammer — fixed at the free end']: '音锤 — 固定在自由端',
   ['GONG_A1 15° · pivot at +11°']: 'GONG_A1 15° · 支点在 +11°',
-  ['f₁ 617 Hz']: 'f₁ 617 Hz',
-  ['f₂ 3.86 kHz · 6.27×']: 'f₂ 3.86 kHz · 6.27×',
-  ['(f₃ 10.82 kHz — computed, not struck)']: '（f₃ 10.82 kHz — 已算出，未敲响）',
+  ['f₁ 1.38 kHz']: 'f₁ 1.38 kHz',
+  ['f₂ 8.66 kHz · 6.27×']: 'f₂ 8.66 kHz · 6.27×',
+  ['(f₃ 24.24 kHz — computed, not struck)']: '（f₃ 24.24 kHz — 已算出，未敲响）',
   ['arc']: '弧度',
   ['wire Ø']: '钢丝 Ø',
 

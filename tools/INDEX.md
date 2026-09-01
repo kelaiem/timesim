@@ -4,7 +4,7 @@
 
 # The instruments
 
-173 scripts. **79 are ACCEPTANCE tests** — they decide and exit non-zero.
+174 scripts. **80 are ACCEPTANCE tests** — they decide and exit non-zero.
 **94 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -104,6 +104,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-192-tier-price.mjs` | §192 | acceptance | THE STRIKE TIER, PRICED — every above-plate member's height over the three-quarter plate's top face (build and swept over the alarm axes), the tower's segment ladder measured face to face, and the §187 glass arithmetic that turns a tower drop into cased height. |
 | `probe-194-mesh-population.mjs` | §194 | report | WHAT MESHES ARE IN THE METAL, AND WHICH OF THEM DOES A ROW DECLARE? |
 | `probe-196-ink.mjs` | §196 | acceptance | IS THE DIAL'S PRINT LEGIBLE ON EVERY FACE COLOUR — AND STILL THE SHIPPED PRINT ON THE SHIPPED ONE? Acceptance. §196 made the printed ink a SOLVE (solveInk's two-pole argmax, solveMarkInk's relation hold, zoneTone's widened segments) where it had been constants a dark face silently swallowed — §185 measured a plausible navy at 1.41:1 warning four times and shipping anyway. This probe holds the landing's four claims: 1. CONTROLS. The metric still SEES the old defect (the §185 navy against the constant dark ink reads under the floor — a detector that cannot fail has tested nothing); the light pole equals its mirror derivation recomputed independently; solveInk answers dark-on-white and light-on-black; and the zone warn still FIRES where the chained-ratio bound makes a zone impossible (#a0a0a0 — ground and ink under 9:1 apart), so silence elsewhere is a measurement, not a dead warn. 2. SHIPPED VERBATIM. On the shipped face every solved ink is the §157 constant bit-for-bit (track and wells #1a1a1a-family, mark #8a887e, 2.82:1 relation unchanged) — the solve degenerates to the old design exactly where the old design was right. 3. LEGIBLE EVERYWHERE. Across the named set (shipped, the §185 navy, black, white, the #1a1a1a that measured 1.02:1, the crossover gray) booted via ?dialcol=, and a 4×4×4 lattice plus grays applied by LIVE recolour: track and every well hold ≥ DIAL_INK_CONTRAST_MIN, and the named set boots with __clock.bootWarns EMPTY (standing rule 6 — the warn's meaning inverted: it now flags a solve regression, not taste). Lattice zone warns are REPORTED, not gated — the impossible band is §159's honest residue, not a defect. 4. A RECOLOUR MOVES NO METAL. Dial-scoped geometry ids and vertex counts identical across navy-and-back, re-proving §157's measurement under the solve. NOT probe-dial-colour-link.mjs, deliberately: that one holds WHOSE colour a link applies (store vs param precedence) and states in its own header that legibility is out of its scope. This is the legibility half. |
+| `probe-197-gong-loudness.mjs` | §197 | acceptance | §197 — WHAT DOES THE GONG ACTUALLY SOUND LIKE, AND HOW LOUD? |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
 | `probe-50-coupling.mjs` | §50 | report | Boot test-geometry.html headless and report the build log + a lift-law sanity table. |
