@@ -21681,6 +21681,14 @@ workflow's step looks; registration with a one-hour token minted through
 on macOS, systemd on Linux); and optionally `BATTERY_SHARDS` into the
 runner's `.env`, which the runner loads into every job's environment.
 
+Its default runner name is `battery-1`, never the hostname: the repository
+is public, and the runner name, the OS hostname, the working directory and
+the platform are all printed into public job logs by the runner or the
+checkout — `docs/RUNNERS.md` "Privacy" tabulates the four and the three
+levels of containment, of which a Linux container with the runner inside
+is the one that closes all four and doubles as the isolation the security
+section asks for.
+
 It ends by PRINTING `gh variable set BATTERY_RUNS_ON …` and not running
 it. Pointing the merge gate at a machine is the owner's decision, and the
 doc's "Before you flip it" is the checklist.

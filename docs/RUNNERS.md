@@ -74,13 +74,55 @@ have its own battery queued behind the outage.
   create either for you — it cannot without root, and which one you want is
   yours to decide.
 
+## Privacy: what a public repository's logs say about the host
+
+Every job log and step summary on this repository is **public**. A
+self-hosted runner puts the host into them in four places, and only one of
+those is something the workflow controls:
+
+| what shows | where | who controls it |
+|---|---|---|
+| the runner's **name** | "Set up job", the §200 summary line | you, at registration (`--name`; the script defaults to `battery-1`, never the hostname) |
+| the **machine name** — the OS hostname | "Set up job", printed by the runner itself | the OS; not configurable in the runner |
+| the **working directory** — `/Users/<user>/…` or `/home/<user>/…` | checkout, the `report written to …` line, every stack trace | the account the runner runs as |
+| **OS and architecture** | the cache-key lines (`…-macOS-ARM64-…`), the summary line | the host you chose |
+
+Not shown anywhere public: the host's IP (the runner only makes outbound
+connections), its other users, and anything outside the job's working
+directory. Timestamps in logs are GitHub's, in UTC.
+
+Three levels of containment, in increasing order of how much they hide:
+
+1. **A neutral runner name.** Free, and the script's default. Closes the first
+   row only.
+2. **A dedicated account and a neutral hostname.** Create a standard user
+   named `runner` (its home becomes `/Users/runner`, which is exactly what
+   GitHub's own macOS images use, so the paths say nothing) and install as
+   that user; set the machine's hostname to something neutral in System
+   Settings → General → Sharing. Both are system changes the script cannot
+   make. Closes rows two and three; row four still says "an Apple Silicon
+   Mac".
+3. **A Linux container or VM with the runner inside it — recommended.** The
+   hostname is the container's, the user is `runner`, the paths are
+   `/home/runner`, and the platform reads `Linux/ARM64` like any other box.
+   It closes every row at once, and it is also the isolation the security
+   section asks for: an `--ephemeral` runner in a container that is
+   recreated per job is the "clean environment" GitHub recommends for
+   reused hardware. It costs one tool this Mac does not have today
+   (OrbStack or Docker Desktop for containers; Tart for a full VM) and a
+   Linux/ARM64 Playwright Chromium, which exists. This host would then never
+   share a baseline with `ubuntu-latest` (X64), which the platform-carrying
+   cache key already handles.
+
+Whichever level you pick, the workflow does not change; only the host does.
+
 ## Setting a host up
 
 ```bash
 tools/self-hosted-runner.sh install
 ```
 
-Defaults: name = the host's short hostname, label = `timesim-battery`,
+Defaults: name = `battery-1` (neutral on purpose — see Privacy above), label = `timesim-battery`,
 directory = `~/actions-runner-timesim` (outside the checkout on purpose — the
 runner's `_work` holds its own clones). What it does, in order: checks the
 host's tools and that `gh` is logged in as a repo admin; downloads the

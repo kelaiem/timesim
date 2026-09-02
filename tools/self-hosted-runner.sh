@@ -35,7 +35,10 @@
 # approval policy for outside contributors).
 #
 # Runs OUTSIDE the checkout by default (~/actions-runner-timesim): the runner's
-# _work directory holds its own clones and must not sit inside this one.
+# _work directory holds its own clones and must not sit inside this one. On a
+# public repo that path is PRINTED in every job log (checkout, the report
+# path, any stack trace) — so run this as a user whose home reveals nothing,
+# or inside a container; docs/RUNNERS.md "Privacy" says what shows and why.
 set -euo pipefail
 
 cmd=${1:-}; shift || true
@@ -43,7 +46,12 @@ case "$cmd" in install|status|uninstall) ;; *)
   sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
 
-NAME=$(hostname -s 2>/dev/null || hostname)
+# NEUTRAL BY DEFAULT, never the hostname: this is a public repository, and the
+# runner name is printed in every job's public "Set up job" log. So is the
+# MACHINE NAME, which the runner reads from the OS and this script cannot
+# change — docs/RUNNERS.md "Privacy" is the list of what the logs show and
+# the three ways to keep a machine out of them.
+NAME=battery-1
 LABEL=timesim-battery
 RUNNER_HOME="$HOME/actions-runner-timesim"
 VERSION=""
