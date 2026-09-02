@@ -13,6 +13,7 @@ lever escapement. Everything is procedural — there are no model assets.
 | `TODO.md` | Mechanical-realism debt: honesty fixes to what exists. |
 | `AESTHETICS.md`, `src/aesthetics.json` | Finish parameters and the reasoning behind them. |
 | `docs/MODELING.md` | Geometry-building conventions. |
+| `docs/RUNNERS.md` | Where the battery job runs (§200): the fork-routing rule, the `BATTERY_RUNS_ON` variable, and how a host is set up. |
 | `.github/pull_request_template.md` | The PR body's layout. Read before opening one — see Conventions. |
 
 `test-geometry.html` is a per-part visual smoke test, separate from the
@@ -487,6 +488,20 @@ for the pages' tables and it also matches `src/i18n.js`, which `main.js`
 imports. The check lives in the harness because editing the list touches
 `.github/workflows/**`, which the list does not ignore — so the change that
 could break it always runs the job that judges it.
+
+**Since §200 the battery job's HOST is routed, and the rule is trust first,
+variable second.** A pull request from a FORK runs on `ubuntu-latest`, always —
+the repo is public, and a fork's PR runs its own workflow code on the host, so
+the `runs-on` expression tests the head repo before it reads anything else.
+Everything trusted (push to `main`, dispatch, a PR from a branch here) runs on
+the label the repository variable `BATTERY_RUNS_ON` names, `ubuntu-latest` when
+unset. `tools/self-hosted-runner.sh install` puts a runner on a host under that
+label and prints the variable flip it deliberately does not perform; the job
+summary names the runner that took each run. Two consequences to know: the §152
+baseline key carries the platform, so flipping the variable costs one whole run
+per PR until the next merge re-seeds it; and a host's shard count is written on
+the host (`--shards K` → the runner's `.env`), never in the workflow, because K
+is a measured property of a machine. `docs/RUNNERS.md` has the rest.
 
 Since §81 the harness SHARDS: it partitions the work across K browser
 contexts by the measured `cost` column in `BATTERY` (`--shards`, default 2)

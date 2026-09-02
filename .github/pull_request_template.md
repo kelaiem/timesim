@@ -35,9 +35,11 @@ and diff it against the base. §80 and §81 were both accepted that way.
 
 <!--
 CI and local are DIFFERENT EVIDENCE, so say which you have. Same harness, but
-CI is the merge gate and runs the ubuntu-latest / SwiftShader path nothing else
-exercises. A local run is pre-flight — and, on a PR the filter below caught, it
-is the only battery evidence that exists.
+CI is the merge gate, and since §200 it may run on a self-hosted host — the
+job summary's first line names the runner that took it; say which. A fork PR
+always runs the ubuntu-latest / SwiftShader path nothing else exercises. A
+local run is pre-flight — and, on a PR the filter below caught, it is the only
+battery evidence that exists.
 
 Tick both if both. Neither is a claim too, and an honest one.
 -->

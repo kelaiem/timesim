@@ -21598,3 +21598,135 @@ was still the crystal), so no viewer can get past it. The probe lifts the
 crystal to an unused layer as a declared control to reach the plate at all.
 Two defects in one — the crystal should demote like glass, and the fallback
 name is wrong for it — both §187/§59's, neither this entry's.
+
+## §200 — Self-hosted battery runner — routed by trust, switched by a variable
+
+Owner request: *"set up self-hosted runners."* The candidate was never in
+doubt. `battery.yml` is 13–34 minutes of single-threaded browser work per
+run on `ubuntu-latest` (the last twenty runs, read off the Actions API), on
+a runner whose own header records a 1.66× spread between two runs of the
+same tree; every other workflow is seconds, or holds a secret. So §200 is
+the battery job's HOST, and nothing about what the job judges.
+
+The one fact that shaped it: **the repository is public**, and GitHub's own
+guidance is that self-hosted runners "should almost never be used for
+public repositories on GitHub, because any user can open pull requests
+against the repository and compromise the environment." That is correct,
+and it is why this is not a `runs-on` swap.
+
+### The rule: trust first, variable second
+
+`runs-on` is one expression, read in this order:
+
+| event | head repository | host |
+|---|---|---|
+| `pull_request` | a fork (or a deleted one — `null` compares unequal) | `ubuntu-latest`, always |
+| `pull_request` | a branch of this repository | `vars.BATTERY_RUNS_ON`, or `ubuntu-latest` when unset |
+| `push` to `main`, `workflow_dispatch` | — | the same variable, the same default |
+
+The fork test comes BEFORE the variable is read, so no label, variable or
+later edit lower in the file can route a fork onto a host. The variable is
+a single runner **label** (`timesim-battery`, the one the setup script
+registers), not JSON: a bare word cannot fail to parse, and a label no
+online runner carries makes the job queue visibly rather than run on the
+wrong machine. Merging the workflow changes nothing until the variable
+exists — which is what let this land before any host did.
+
+**A repository variable, when `pages.yml`'s rule is "every pointer is a git
+ref".** The deviation is deliberate and the two pointers are different in
+kind. §88's rule is about CONTENT: which bytes an environment serves must
+be auditable from history. This pointer chooses a HOST and never touches a
+byte the battery judges — same harness, same gates, same tree. What it
+changes is operational: GitHub holds a job queued for a self-hosted label
+for 24 hours before cancelling it, so a laptop that closes its lid parks
+every trusted run for a day, and the fix has to be a settings flip because
+a revert PR would have its own battery queued behind the outage. The
+audit trail the git-ref rule wants is kept another way: the job's first
+step writes the runner's name, OS, architecture, the variable's value and
+the trust verdict into the step summary, through `env` rather than inline
+(a head repository name is untrusted text).
+
+### What holds the rule, beside the expression
+
+Defence in depth, each named in `docs/RUNNERS.md` rather than assumed:
+the outside-contributor approval policy (`first_time_contributors` today;
+`all_external_contributors` recommended, a settings change the owner
+makes); no secret on the job (`release.yml` and `pages.yml` are not routed
+by the variable and stay GitHub-hosted); and the host's own isolation — a
+dedicated user or a snapshot-able VM, which the script cannot create
+without root and does not pretend to.
+
+### What the script does, and the one thing it refuses to
+
+`tools/self-hosted-runner.sh install | status | uninstall`. Install is
+idempotent, and in order: host check (the gh account must be a repo
+admin — registration tokens need it); the `actions/runner` release for
+this OS/arch, **verified against the SHA256 the release notes embed for
+that exact asset** and refused if the release publishes none — a runner
+executes CI's code on the machine, so its own bytes are checked before
+anything else is; the pinned Playwright Chromium pre-installed where the
+workflow's step looks; registration with a one-hour token minted through
+`gh api` and never written to disk; the service (`svc.sh` — a LaunchAgent
+on macOS, systemd on Linux); and optionally `BATTERY_SHARDS` into the
+runner's `.env`, which the runner loads into every job's environment.
+
+It ends by PRINTING `gh variable set BATTERY_RUNS_ON …` and not running
+it. Pointing the merge gate at a machine is the owner's decision, and the
+doc's "Before you flip it" is the checklist.
+
+**The shard count lives on the host, and that is the roadmap's own rule
+applied.** §127's K=4 revert established that K is a measured property of
+a machine (the container said +12.3%, the runner said +28.7%, opposite
+signs), and its tier-3 bullet says "each host in a matrix should run the
+K that CI has measured, not the K a laptop likes." The harness already
+read `BATTERY_SHARDS`; the workflow never states K; so a host's K is
+written on that host, by someone who measured it there.
+
+### Three workflow consequences, all in the safe direction
+
+- **The §152 baseline key carries `runner.os`/`runner.arch`.** A baseline's
+  rows are inherited VERBATIM into a PR's report, so they must come from
+  the same browser build on the same architecture — a macOS/arm64 push
+  run must not seed a fork PR's ubuntu run, whether or not the digests
+  would happen to agree. A platform miss resolves like every §152
+  uncertainty: a whole run, said so in the summary. Flipping the variable
+  therefore costs one whole run per PR until the next merge re-seeds.
+- **The Playwright cache lists both browser directories** (`~/.cache` on
+  Linux, `~/Library/Caches` on macOS); `actions/cache` saves whichever
+  exists.
+- **`--with-deps` is passed on Linux only**, where it is the apt work the
+  step's comment describes. Measured on this Mac with the browser already
+  present: it downloaded a 1 MiB ffmpeg the harness never uses and then
+  sat for over two minutes with nothing left to fetch.
+
+### Not moved, on purpose
+
+The 50-minute job cap and the 35-minute per-check guard. Both are sized
+by the slow tail of the runner they were measured on, and both files say
+to re-derive them together from several runs. A faster host makes them
+loose, which costs nothing.
+
+### Acceptance
+
+- `battery.yml` parses; `runs-on` is the expression above and the
+  contexts it uses (`github`, `vars`) are the ones GitHub allows there.
+- `tools/self-hosted-runner.sh` parses, and its usage exits 2; the release
+  notes for `actions/runner` v2.337.0 do carry `<!-- BEGIN SHA osx-arm64 -->`
+  … markers, which is what the checksum step reads.
+- `node tools/index-instruments.mjs --check` — 174 instruments, unchanged:
+  the script is not an `.mjs` and the index does not see it, and
+  `payload.sh` excludes `tools/` so it does not ship.
+- The battery itself: this PR touches `.github/workflows/**`, which the
+  filter deliberately does not ignore, so the job runs — on
+  `ubuntu-latest`, because the variable is unset. That run is the
+  evidence that the trusted path still resolves to today's host.
+
+### What remains, and it is not code
+
+Register a host (`install`), measure its K at two or three values across
+several runs, set the variable, and watch the first trusted run's summary
+name the runner. Roadmap §127 tier 3's Landing B — the matrix across
+hosts — gains a heterogeneous-fleet option from this, which is one more
+reason K stays on the host.
+
+---
