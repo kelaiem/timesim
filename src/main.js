@@ -21535,6 +21535,29 @@ alarmLockUnit.add(alarmLockRocker);
   alarmLockRocker.add(pin);
   if (!(ALARM_ROCKER.rPin > 0 && ALARM_ROCKER.aPin > 0))
     console.warn(`TODO 90: the rocker's pin solves outside the pivots (rPin ${ALARM_ROCKER.rPin.toFixed(4)}, aPin ${ALARM_ROCKER.aPin.toFixed(4)})`);
+  // THE PIN'S ARM — TODO 130. The solve above calls the pin "a SECOND arm at a
+  // fixed angular offset from the first", and §183 built the pin and not the
+  // arm. As a child of this group the pin swung about Q exactly as the
+  // kinematics say, with no metal between it and the post it swung about: a
+  // pivot standing aPin (1.87) off its post and moving in an arc when the
+  // lever moved, seen by eye, and reported by `assembly` as a second body in
+  // this unit at 0.689 separation — reported only, because the unit was
+  // outside ASSEMBLY_SCOPE (it is inside now). The arm is the metal the solve
+  // already assumed: root at Q, tip at the pin, in the rocker's plane at the
+  // rocker's section. The pin's top ends AT that plane (pinTop above), so the
+  // arm lets it in by half its own height — asserted, since a pin whose top
+  // stopped under the arm would float exactly as before with an arm above it.
+  const pinArm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_ROCKER.aPin, armW, armW), MATS.steel);
+  pinArm.name = 'alarmLockRockerPinArm';
+  pinArm.position.set(Math.cos(ALARM_ROCKER.pinAz) * ALARM_ROCKER.aPin / 2,
+                      Math.sin(ALARM_ROCKER.pinAz) * ALARM_ROCKER.aPin / 2, 0);
+  pinArm.rotation.z = ALARM_ROCKER.pinAz;
+  alarmLockRocker.add(pinArm);
+  {
+    const letIn = pinTop - ((ALARM_LOCK_Z + ALARM_COL_BAND_MID) - armW / 2); // how far the pin's top reaches up into the arm's section
+    if (letIn < armW / 2 - 1e-9)
+      console.warn(`TODO 130: the rocker's pin reaches ${letIn.toFixed(4)} into its arm's ${armW.toFixed(4)} section — need ${(armW / 2).toFixed(4)}, or the pin floats under the arm as it floated without one`);
+  }
 }
 // THE SLOT the pin rides, cut in the lock lever. Radial from the lock pivot, so
 // the lever's angle IS the pin's azimuth (§163's idiom) and the pin's RADIUS is
@@ -21558,7 +21581,8 @@ const ALARM_ROCKER_SLOT = (() => {
   slot.absarc(-hl, 0, halfW, Math.PI * 0.5, Math.PI * 1.5, false);
   slot.absarc(hl, 0, halfW, Math.PI * 1.5, Math.PI * 2.5, false);
   const plate = new THREE.Shape();
-  const pw = ALARM_ROCKER_SLOT.len / 2 + 0.35, ph = halfW + 0.35;
+  const rim = 0.35;                                     // solid plate around the slot, each way
+  const pw = ALARM_ROCKER_SLOT.len / 2 + rim, ph = halfW + rim;
   plate.moveTo(-pw, -ph); plate.lineTo(pw, -ph); plate.lineTo(pw, ph); plate.lineTo(-pw, ph);
   plate.closePath();
   plate.holes.push(slot);
@@ -21570,6 +21594,30 @@ const ALARM_ROCKER_SLOT = (() => {
                    Math.sin(ALARM_ROCKER.slotAzLocal) * ALARM_ROCKER_SLOT.mid, 0);
   lug.rotation.z = ALARM_ROCKER.slotAzLocal;
   alarmLockLever.add(lug);           // rides the lever, as the driven member must
+  // THE WEB — TODO 130's other half. The plate above rode the lever's FRAME
+  // at radius ALARM_ROCKER_SLOT.mid, and the lever's metal — arm and tail, one
+  // bar through the pivot — never reached it: `assembly` read the plate as a
+  // second body at 0.463 separation, so the pin was located in a slot that was
+  // located in nothing. A bar from the pivot out along the slot's own radial,
+  // at the lever's width and stock, ending in the MIDDLE of the plate's inner
+  // rim: the near half of the rim is the joint and the far half keeps the bar
+  // out of the slot's hole, and both halves come from the one `rim` above, so
+  // the tip can neither fall short of the plate nor break into the slot
+  // unless that constant does. Rooted at the pivot it shares the arm and the
+  // tail's own overlap with the post, and the bar is declared there.
+  const webLen = ALARM_ROCKER_SLOT.mid - ALARM_ROCKER_SLOT.len / 2 - rim / 2; // pivot → mid-rim
+  const web = new THREE.Mesh(new THREE.BoxGeometry(webLen, 0.5, STOCK_MIN_U), MATS.steel); // 0.5: the lever's own width, arm and tail alike
+  web.name = 'alarmLockWeb';
+  web.position.set(Math.cos(ALARM_ROCKER.slotAzLocal) * webLen / 2,
+                   Math.sin(ALARM_ROCKER.slotAzLocal) * webLen / 2, 0);
+  web.rotation.z = ALARM_ROCKER.slotAzLocal;
+  alarmLockLever.add(web);
+  {
+    const nearEdge = ALARM_ROCKER_SLOT.mid - pw;                      // where the plate begins
+    const holeIn = ALARM_ROCKER_SLOT.mid - ALARM_ROCKER_SLOT.len / 2; // where the slot's hole begins
+    if (!(webLen > nearEdge + 1e-9 && webLen < holeIn - 1e-9))
+      console.warn(`TODO 130: the lock lever's web ends at ${webLen.toFixed(4)} from the pivot — the slot plate begins at ${nearEdge.toFixed(4)} and its hole at ${holeIn.toFixed(4)}`);
+  }
 }
 // THE POSE LAW, one derivation with three consumers — the rocker's own angle,
 // the lever's, and the stop predicate the tick runs the striking train on. It

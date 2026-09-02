@@ -19440,6 +19440,15 @@ fold removes one box and adds one — §171's fix on the pivot post and §174's 
 the strike sleeve, a third time in this unit. Two new joint rows (the rocker on
 its post, the pin in the slot), and `restoring` gains the rocker by name.
 
+**Found later — TODO 130.** "The pin is a SECOND arm" above was written and
+the arm was not built: the pin was a child of the rocker group with no metal
+to Q, and the slot plate rode the lever's frame with no metal to the pivot.
+Every assert here passed, because the kinematics were right and only the
+matter was missing; `assembly` reported both splits (0.689, 0.463) and gated
+neither, the unit being outside `ASSEMBLY_SCOPE`. Seen by eye as a pivot
+swinging off its post. The pin's arm, the lever's web and the unit's entry
+into `ASSEMBLY_SCOPE` are that item's landing.
+
 ### Instruments
 
 `tools/probe-90-lockread.mjs` is the SEARCH and stays a report — it prints the
