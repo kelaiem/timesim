@@ -160,16 +160,22 @@ const V = await page.evaluate(async () => {
   const shaftR = shaftMesh.geometry.parameters ? shaftMesh.geometry.parameters.radiusTop : Math.min(ext.x, ext.y, ext.z) / 2;
   const stations = (shaftMesh.userData.bearings || {}).stations || [];
   const cuts = [-stock / 2, ...stations, stock / 2].sort((a, b) => a - b);
+  // §202 — ANY NUMBER OF STATIONS. The rod end is the LOW-y end of the shaft
+  // (geometry y = shaftMidT − chord t, and the rod stands at the chord's far
+  // end), so the first segment is the rod-end overhang, the last is the
+  // fork-end overhang, and every segment between is a span — one per gap.
+  // The old form found the rod end as "the overhang longer than 5 u", which
+  // stopped being true the moment a third hanger stood 2.64 u from it.
   const seg = [];
   for (let i = 0; i < cuts.length - 1; i++) {
     const Lg = cuts[i + 1] - cuts[i];
     if (Lg <= 1e-9) continue;
-    seg.push({ kind: (i === 0 || i === cuts.length - 2) ? 'overhang' : 'span', L_u: Lg });
+    seg.push({ kind: (i === 0 || i === cuts.length - 2) ? 'overhang' : 'span', L_u: Lg, i });
   }
-  seg.sort((a, b) => b.L_u - a.L_u);
-  const rodEnd = seg.find((s) => s.kind === 'overhang' && s.L_u > 5) || null;
-  const forkEnd = seg.filter((s) => s.kind === 'overhang').sort((a, b) => a.L_u - b.L_u)[0] || null;
-  const span = seg.find((s) => s.kind === 'span') || null;
+  const rodEnd = seg[0] && seg[0].kind === 'overhang' ? seg[0] : null;
+  const forkEnd = seg.length > 1 && seg[seg.length - 1].kind === 'overhang' ? seg[seg.length - 1] : null;
+  const spans = seg.filter((s) => s.kind === 'span');
+  const span = spans[0] || null;   // the span next to the rod end — what its cantilever rotates against
 
   // THE ROD END IS COUPLED, NOT A FIXED CANTILEVER. SLENDER_OVERHANG_K's own
   // comment: a cantilever past a real back span deflects Pa²(L+a)/3EI at its
@@ -197,8 +203,8 @@ const V = await page.evaluate(async () => {
     `coupled by (L+a)/a = ${coupling.toFixed(3)}; ABSENT from every previously published figure`);
   if (forkEnd) add('shaft, fork-end overhang', kBend(shaftR, forkEnd.L_u, 3), n(posed.pin),
     'the only one §137 Landing 2 sized the section against');
-  if (span) add('shaft, bush-to-bush span', kBend(shaftR, span.L_u, 48), n(posed.pin),
-    'simply supported, load at midspan');
+  spans.forEach((sp, j) => add(`shaft, span ${j + 1} (${sp.L_u.toFixed(2)} u)`, kBend(shaftR, sp.L_u, 48), n(posed.pin),
+    'simply supported, load at midspan — one member per gap between hangers (§202)'));
 
   const C = members.reduce((s, m) => s + m.reflectedCompliance, 0);
   const kEff = 1 / C;
