@@ -727,7 +727,14 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   entry below. **The enumeration itself can be incomplete, which is exactly
   what TODO 129 was**: nothing sweeps "disarmed, tau varying" (no axis poses
   that combination — the 'alarm' axis pins armed), so a fifth `dialFace`
-  child keyed to the same quantity shipped unnegated and no gate saw it.
+  child keyed to the same quantity shipped unnegated and no gate saw it —
+  and neither did anything see that the WHOLE alarm branch (release disc,
+  back-drive, follower) had been pinned empirically to the hour wheel's old
+  sign, so the alarm rang at 12 h minus the set time from #346 on. The
+  branch reads the hour through ONE name now, `hourDialA` (the hour wheel's
+  own dial-local write); a new alarm-side site keyed to the hour reads that,
+  never `mwHourA`. And the measurement that cleared the trip in #356 was an
+  instrument measuring its own hypothesis — TODO 129 records how.
 - **Which way a train runs is ONE declaration, and there are TWO of them** —
   `MOVEMENT_SENSE` (the going train) and `ALARM_SENSE` (the alarm, a second
   MOTOR posed off `alarmStrikePhase` that reversing the going train does not

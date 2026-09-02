@@ -14498,7 +14498,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // notch at the SAME world azimuth (the release az).
   for (const setRot of [1.0, 4.7]) {
     const aSet = setRot * ALARM_SET_RATIO;
-    const hourAtTrip = -aSet;                               // the §25 B trip: mwHourA == tube (−alarmAngle)
+    const hourAtTrip = -aSet;                               // the §25 B trip: the hour wheel's dial-local angle (hourDialA) == tube (−alarmAngle)
     const discRot = hourAtTrip + ALARM_DISC_SIGN * aSet + ALARM_RELEASE_PHASE;
     const notchWorld = Math.PI - discRot;                   // dialFace mirror of the disc-local-az-0 gap
     const err = Math.abs(wrapPi(notchWorld - ALARM_RELEASE_AZ));
@@ -35360,6 +35360,16 @@ function tick(t) {
   }
   // TODO 115 — dial-side: carries the negated movement-frame angle.
   hourWheelGroup.rotation.z = -mwHourA;
+  // TODO 129 — THE HOUR, AS THE ALARM BRANCH READS IT: the hour wheel's own
+  // dial-local angle, ONE source. Everything on the alarm side that is keyed
+  // to the hour — the release disc's law (both copies), the setting train's
+  // back-drive, the tube's tucked target, the follower's heart contact — was
+  // pinned empirically against the hour wheel when its dial-local value WAS
+  // +mwHourA (§29 step 2's "disc tracks hour when idle"). TODO 115 negated
+  // the hour wheel and left every one of those reading the raw movement-frame
+  // angle, so the whole branch mirrored the hour it is supposed to follow and
+  // the alarm rang at 12 h minus the set time. Read this, never mwHourA.
+  const hourDialA = hourWheelGroup.rotation.z;
   // Small seconds at 6: same expression the old central hand used (−2π per
   // minute, re-referenced on reset). TODO 115 — dial-side, so negated: the hand
   // and the fourth wheel it rides are one rigid body rather than mirror images
@@ -35655,10 +35665,10 @@ function tick(t) {
     // drops into the heart's notch exactly when the hour wheel's angle
     // reaches the held tube's, and that PHYSICAL alignment (rel crossing 0)
     // is now the release. §24's seconds-space comparison is retired; the
-    // guards keep their meaning in angle space (the hour wheel turns
-    // clockwise ⇒ rel falls; a jump of more than half a turn in one tick is
-    // a hand-set wrap, not a crossing).
-    const rel = wrapPi(mwHourA - alarmTubeShownA);
+    // guards keep their meaning in angle space — the AGREEMENT ASSERT on
+    // `relTarget` below (a jump of more than half a turn in one tick is a
+    // hand-set wrap, not a crossing). TODO 129 retired the unused `rel` that
+    // restated the crossing against the raw movement-frame hour.
     // §29 step 5 ordering: the strike section runs EARLIER in tick than the
     // alarm-setting section that poses the disc, so the pin's drop is
     // computed HERE from the same closed forms — the trip must read THIS
@@ -35667,7 +35677,7 @@ function tick(t) {
     // state). The later disc block re-derives the identical value for the
     // visual pose; both are pure functions of the same inputs.
     {
-      discRotForTrip = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+      discRotForTrip = hourDialA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
       const discRotNow = discRotForTrip;
       const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
       const gapHalf = ALARM_NOTCH_W / 2;
@@ -35756,7 +35766,7 @@ function tick(t) {
       // cannot move under a zero-dt setPose tick (the documented trap), so
       // a posed jump would false-fire the assert while the pin is exactly
       // where the mechanism puts it.
-      const relTarget = wrapPi(mwHourA + alarmDiscAngle());
+      const relTarget = wrapPi(hourDialA + alarmDiscAngle());
       if (Math.abs(relTarget) > ALARM_NOTCH_W)
         console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad from coincidence — detector and arithmetic disagree (window ${ALARM_NOTCH_W})`);
       alarmReleased = true;              // both holds now off: the brake lifted at arming, the pawl just withdrew
@@ -36176,15 +36186,14 @@ function tick(t) {
     // and the §25 C friction seat turns it live — the hand SWEEPS while
     // being set. Read from the cone's cap (the member's pose), not a flag.
     const alarmArmFreed = alarmPhiCapNow >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
-    // TODO 115 residue — alarmTubeGroup is a dialFace child exactly like
+    // TODO 129 — alarmTubeGroup is a dialFace child exactly like
     // hourWheelGroup, so "tucked under the hour hand" (disarmed, riding the
-    // hour wheel) means matching hourWheelGroup's OWN dial-local value, which
-    // is -mwHourA (the Y-flip rule), not mwHourA. Left unnegated, the tube
-    // mirrored the hour hand across the 12-6 line instead of hiding under it,
-    // and walked backward as tau advanced — the reversal's four named fixes
-    // (minuteHand, hourWheelGroup, smallSecondsHand, cannonPinion) missed this
-    // fifth dial-side display keyed to the same going-train quantity.
-    const tubeTarget = (alarmSelShownT > 0.5 || alarmArmFreed) ? -alarmAngle : -mwHourA;
+    // hour wheel) means the hour wheel's OWN dial-local value, hourDialA.
+    // Read as the raw mwHourA, the tube mirrored the hour hand across the
+    // 12-6 line instead of hiding under it, and walked backward as tau
+    // advanced — the reversal's four named fixes (minuteHand, hourWheelGroup,
+    // smallSecondsHand, cannonPinion) missed this fifth dial-side display.
+    const tubeTarget = (alarmSelShownT > 0.5 || alarmArmFreed) ? -alarmAngle : hourDialA;
     // Both transitions EASE live (the pose path assigns exactly): disarming is
     // the spring snapping the follower home along the cam slope, and arming is
     // the re-coupled friction wheel swinging the hand out to the set time —
@@ -36207,13 +36216,12 @@ function tick(t) {
     let contactAz = ALARM_NOSE_AZ;
     let armA = ALARM_FOLLOWER_A0;
     for (let it = 0; it < 2; it++) {
-      // The heart is cut on hourWheelGroup (dial-local -mwHourA), the follower
-      // on alarmTubeGroup (dial-local alarmTubeShownA) — both dialFace
-      // children, so their TRUE relative angle is the difference of those two
-      // local values: alarmTubeShownA - (-mwHourA). Follows tubeTarget's fix
-      // above; unseparated, "seated" (tucked, alarmTubeShownA == -mwHourA) no
-      // longer landed psi at 0 and the nose rode off the heart's rest lobe.
-      const psi = contactAz - ALARM_NOSE_AZ + wrapPi(alarmTubeShownA + mwHourA);
+      // The heart is cut on hourWheelGroup (dial-local hourDialA), the
+      // follower on alarmTubeGroup (dial-local alarmTubeShownA) — both
+      // dialFace children, so their TRUE relative angle is the difference of
+      // those two local values. Seated (tucked, alarmTubeShownA == hourDialA)
+      // that is exactly 0, the heart's rest lobe (TODO 129).
+      const psi = contactAz - ALARM_NOSE_AZ + wrapPi(alarmTubeShownA - hourDialA);
       const d = alarmHeartRAt(psi) + ALARM_NOSE_R;
       armA = alarmArmAngleAt(d);
       contactAz = Math.atan2(ALARM_FOLLOWER_LEN * Math.sin(armA), -ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * Math.cos(armA));
@@ -36257,7 +36265,7 @@ function tick(t) {
   // nothing detents the crown's ROTATION, so the train slowly back-turns
   // the pulled crown — real Memovox behaviour — and the hub slips only
   // under the user's own setting torque, which is the re-phasing.
-  const _bd = ALARM_BD_SIGN * mwHourA;
+  const _bd = ALARM_BD_SIGN * hourDialA; // TODO 129: the hour the DISC carries, not the raw movement-frame angle
   // TODO 117 — the BACK-DRIVE term's sign is +, not −. The crown term is
   // right and stays: measured, i2 → arbor pinion transmits at exactly
   // −3.700 (= −r_i2/r_pinion) under the crown. Under the HOUR the same
@@ -36281,7 +36289,7 @@ function tick(t) {
   // through the friction seat; setting: re-phased through the branch): its
   // dial-frame angle is hour + set-term + the release phase, so the notch
   // sits at the release azimuth exactly when the hands coincide.
-  alarmDiscGroup.rotation.z = mwHourA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+  alarmDiscGroup.rotation.z = hourDialA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
   // §29 step 3: the pin RIDES the track — its lift IS the surface under it,
   // a pure function of the disc's angle (no ease, no state: setPose poses
   // it exactly). alarmPinDropNow was computed up at the strike section this
