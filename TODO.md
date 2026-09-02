@@ -15628,9 +15628,17 @@ other order of magnitude), [§197].
 
 ## 129. The alarm hand's dial-frame negation — the reversal's fifth display, missed — CLOSED
 
-Reported by eye (issue #327 follow-up): *"the alarm hand now doesn't tuck
-under the hour hand when the alarm is silenced. It appears flipped across
-the vertical line of symmetry and then in the opposite direction."*
+*(The title is the permanent ID and stays as claimed; the item grew past it.
+It now covers the whole alarm branch reading the hour in the wrong frame,
+including the alarm ringing at 12 h minus the set time.)*
+
+Reported by eye, twice (issue #327 follow-ups): *"the alarm hand now doesn't
+tuck under the hour hand when the alarm is silenced. It appears flipped
+across the vertical line of symmetry and then in the opposite direction"* —
+and, after the first landing fixed only the hand: *"It doesn't seem to ring
+within 2 minutes of the set time."* The second report is the one that
+mattered; the first landing's account of why the trip was fine (kept below,
+struck) was wrong, and this item records both.
 
 Item 115's landing named the rule and its four instances: `dialFace`
 children keyed to a going-train quantity take the NEGATED movement-frame
@@ -15670,21 +15678,72 @@ declaration rather than verifying their engagement, so a wrong relative
 angle there reads the same as a right one. This is TODO 29's residue again:
 a part no axis exercises is a part the battery cannot judge.
 
-**The release-disc/pin trip (`discRotForTrip`, `alarmDiscGroup`,
-`alarmPinDropNow`) is a SEPARATE mechanism and was not touched.** It shares
-the unnegated `mwHourA` convention but is entirely self-referential — the
-same expression drives both the trigger logic and the disc mesh's own pose
-— so its absolute sign never had to agree with `hourWheelGroup` to fire
-correctly, only with itself. Measured directly (bisecting tau for
-`mwHourA == alarmAngle` against the declared "Rings at" readout,
-`alarmDiscAngle`): the trip fires within 22 s of the declared target on a
-43,200 s dial, not mirrored. Left as-is.
+**The first landing (#356) then claimed the release trip was fine, and it
+was not.** Its paragraph read: *"the release-disc/pin trip is a SEPARATE
+mechanism … entirely self-referential — the same expression drives both the
+trigger logic and the disc mesh's own pose — so its absolute sign never had
+to agree with `hourWheelGroup` … measured, the trip fires within 22 s of the
+declared target … Left as-is."* Two errors, worth naming because they are
+the ordinary way a measurement lies. The reasoning: self-consistency between
+the disc's LOGIC and the disc's MESH says nothing about the disc and the
+HOUR WHEEL, and the trip is the disc arriving at a fixed pin as the hour
+wheel drives it. The measurement: the probe that produced "22 s" bisected
+the dial for `mwHourA == alarmAngle` and reported the displayed time there —
+which is the target by construction, whatever the trip does — while its own
+`releasedAtCoincidence` read **false** and its blind scan had fired at
+displayed 37763 for a declared 5271 (43,200 − 5271 = 37929). Both were in
+the output and neither was read. `.claude/skills/instruments/SKILL.md`'s
+catalogue has a row for this: an instrument that measures its own
+hypothesis.
 
-Fixed in `src/main.js`: `tubeTarget`'s disarmed branch and the follower's
-`psi` calculation. Verified: `checkExpectedContacts` restricted to 'Alarm
-disc' ⇄ 'Hour wheel' over the full 'train' axis (the one axis that sweeps
-tau widely with alarm left at its disarmed default) — 0 new violations, the
-one non-`ok` row is the pre-existing waived TODO 101 leaf/tube overlap at
-`f=0`, unaffected by rotation angle; `checkAlarmHandoffs` — `ok: true`.
+**Measured properly — the trip's fire window, jump-scanned at 1.8 s over
+one 12 h dial for three set targets, fresh arm per sample, displayed time at
+the window's centre:**
 
-Related: item 115 (the rule this refines the count of).
+| tree | set 5400 | set 18000 | set 36000 |
+|---|---|---|---|
+| before the reversal (`c8087dd`) | fires at **5400** | **18000** | **36000** |
+| `main` after #356 (`9209cd9`) | fires at **37800** | **25200** | **7200** |
+
+The second row is `43,200 − target` to the digit: the alarm rang at
+twelve hours minus the set time, since #346. Under real ticks (1/30 s,
+alarm wound, armed, set 90 s ahead, watched for 4.5 min) `main` never
+tripped and the barrel never drained.
+
+**Why: the whole branch was pinned to the hour wheel's OLD sign.** §29 step 2
+fixed `ALARM_DISC_SIGN` and `ALARM_BD_SIGN` *empirically* against "disc
+tracks hour when idle" — against `hourWheelGroup.rotation.z`, which was then
+`+mwHourA`. TODO 115 made it `-mwHourA` and left every alarm-side reader of
+the hour on the raw movement-frame angle: the disc law (both copies —
+`discRotForTrip` and `alarmDiscGroup.rotation.z`), the setting train's
+back-drive `_bd`, the tube's tucked target, the follower's heart contact,
+the agreement assert `relTarget`. Not five sites with five signs: ONE
+quantity read in the wrong frame at every site. So the fix is one source —
+`hourDialA = hourWheelGroup.rotation.z`, defined beside that write — and
+every alarm-branch site reads it; `mwHourA` is now read exactly twice in
+`tick()`, its definition and the hour wheel's own write. #356's two `-mwHourA`
+sites are folded into that.
+
+**Why no gate caught THIS either.** Same blind spot as the hand, one level
+deeper: `alarmHandoffs`' pin ⇄ track row and the `'alarm'` axis pose the
+disc under the CROWN (tau pinned at 0.13), never under the hour; the
+`penetration` row for the same pair sweeps the same axis. `transmits`
+measures the back-drive meshes under the `train` input and passed both
+before and after — correctly, because a uniform sign error across the whole
+branch keeps every mesh RATIO right while the branch as a whole runs
+backwards against the hour wheel. And the §29 trip-invariance boot assert
+is written in `aSet` alone (`hourAtTrip = -aSet`), so it holds for any
+hour sign. Nothing anywhere asked the one question the owner asked: does it
+ring when it says it will.
+
+**What the fix is verified against.** `probe-mesh-transmission.mjs`: PASS,
+HOUR input disc rim → i1b −1.071429, i1 → i2 −0.756757, i2 → arbor pinion
+−3.700000, the two TODO 117 `rep` rows unchanged. The same 12 h scan on the
+fixed tree, and the same real-tick run, are pasted in the landing PR.
+Note the trip's own precision: the pin bottoms while `|align| ≤ 0.0241 rad`,
+±2.8 min on the dial, so an alarm set inside that window of "now" rings the
+moment it is armed — which is what a real Memovox does, and what "within
+2 minutes" exercises.
+
+Related: item 115 (the rule; this is its incomplete enumeration), item 117
+(the back-drive sign, pinned in the same frame), TODO 8 (the notch window).
