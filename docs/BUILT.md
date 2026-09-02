@@ -21324,3 +21324,176 @@ mesh pairs the re-triangulation happens not to touch this time.
 
 Cost: total 678.8 s against the base's 843.8 s on the same machine — noise
 from what else was running, not a change; the cost column is left alone.
+
+## §202 — Bearings for the column wheel's neighbours: the pusher stem, the selector rod, the lay shaft's rod end and the alarm stem's tube
+
+**The ask was more slenderness waivers retired around the column wheel — the
+selector rod and the fictions behind it, the crown stem, the pusher stem, the
+click posts and the fixtures.** Measured first (`checkSlenderness` on the
+booted tree): the column wheel, its stud, driver, pawl, pawl post, pawl
+spring stud, sautoir stud and shank, the alarm click's stud and spring post,
+and the alarm lock's posts all read λ under 6 and carry no rows. What was
+there to retire, and what happened to each:
+
+| row | before | §202 | how |
+|---|---|---|---|
+| `Alarm switch / alarmPusherStem` | **38.1**, the one UNWAIVED row | off the report (worst segment λₑ 15) | two real bores declared, one liner added in the case's bore |
+| `Alarm link / alarmLinkRod` (selector rod) | 31.8, waived TODO 16 | off the report (foot overhang λₑ 26.6) | a bush in each plate |
+| `Alarm link / alarmLinkShaft` (lay shaft) | **127.6** on the rod-end overhang, waived TODO 16 / 79 | 59.6 on its spans, still waived TODO 16 | a third hanger at the rod end, the middle one moved to the midpoint |
+| `Alarm crown / alarmStem` | 76.6 inboard, **53.5** on the crown end, waived TODO 109 | 76.6 inboard, **26.0** crown end, still waived | a liner in the case's alarm tube; the inboard end measured unfixable by a bearing |
+| the arming chain's stall (TODO 82) | **1.58 mN**, under the 5–50 mN detent window, transfer waived TODO 79 | **6.17 mN**, inside the window, waiver retired | the rod-end term 21 → 341 N/m |
+
+The report reads 10 over ceiling / 1 unwaived → **8 over / 0 unwaived / 0
+stale**; `bearings` 3 meshes declaring 4 stations → **5 meshes, 11 stations,
+0 unsupported, 0 malformed**.
+
+### The case guides what passes through it
+
+The alarm crown's stem crosses the case band through a Ø2.0 mm tube and the
+pusher's stem through a Ø1.2 mm flush bore, and in a real case those bores
+ARE the stems' outer guides. Here they were sleeves of air: the pusher's
+Ø0.24 mm stem ran 13.9 u from its rim guide to its head with nothing round
+it, the alarm stem 17.8 u from its rim bush to the crown. Declaring the
+pusher's two real bearings (the guide boss and §164's return abutment, both
+bored at `PIVOT_BORE_CLEAR` and declared by nothing — the guide's own comment
+called itself "the pusher's bearing until §3's case takes over") would alone
+have made the row WORSE, the way TODO 109's step 1 found: the crown-end run
+reads λₑ 54.7 as an overhang.
+
+So each bore carries a LINER, owned by the unit whose stem it holds (a bush
+is part of the part it holds — `supportAt`'s covenant, and what lets the
+check see it): bored one `PIVOT_BORE_CLEAR` over its stem — the same fit the
+guide and abutment carry, one derivation in three places — pressed into the
+case's bore at a hundredth of running room (the studded-wheel idiom, never
+coincident solids), as long as the sleeve the case built, read off that
+sleeve rather than re-derived from the case's arithmetic. They are built
+after the case, because the case builds last, and the stems' bearing tables
+are completed there. Each liner owes the graph a support edge to the Case, an
+EXPECTED pair with a floors row naming its press fits, and an `intraUnit`
+joint row for the stem sliding in it. The first battery run named a press
+fit the row had not: the alarm tube carries a flanged COLLAR bored to the
+same radius as its sleeve, and the liner passes through both at 0.01 — the
+`expectedContacts` gate read it at every pose and failed, which is that
+gate doing exactly what TODO 6 built it for. The collar is the row's second
+contact now; the pusher's bore is flush and has no collar.
+
+| pusher stem, three stations (stem-local y) | | |
+|---|---|---|
+| return abutment | −11.25 | inboard overhang 0.94 u |
+| rim guide boss | −1.70 | span 9.55 u, λ 15 |
+| case-bore liner | 8.02 | span 9.72 u, λ 15; crown-end overhang 4.17 u, λₑ 16 |
+
+The alarm stem's third station stands at the tube liner's middle, 13.00 on
+the stem's own y beside its rim bush's 3.84: its crown end is a 8.68 u
+overhang at λₑ 26.0 now.
+
+### The alarm stem's inboard end — measured, and no bearing's to fix
+
+TODO 109's waiver said this row "actually wants a SECOND BEARING". Measured
+(the pull posed and stepped): the whole spinner slides 5 u, the bevel pinion
+(r 1.77) sweeps x 15.8–22.5 and the collars (r 0.78) sweep x 22.8–33.6, so a
+fixed bush bored to the stem can stand nowhere inboard of x ≈ 34 — which is
+where the rim bush already is. The stem's inboard tip stands on the winding
+arbor's own axis at rest, so an inner journal bore is not there to cut
+either. The 25.5 u overhang and its λ 76.6 are a corner-layout fact — a
+contrate mesh on the stem's line, a 5 u throw — and the waiver stays saying
+so.
+
+### The selector rod: bushed in both plates, from the rod outward
+
+The rod passed both plates through clearance holes (r 0.45 against a 0.30 rod)
+and declared nothing; TODO 87 finding 5 had said so. The chain now runs FROM
+the rod: its section is the datum (§137's reconciled 0.30 — it had been
+derived from the hole, which had been sized by the plate's bevel), a bush is
+bored one running fit over it, the bush's wall is the §50 floor, and each
+plate's hole is the bush's outside plus a hundredth. `ALARM_LINK_ROD_R_SECTION`
+and that chain are hoisted above the back plate's hole list, which consumes
+them. The rod's site solve keeps the 0.45 it was solved and frozen with
+(re-scoring at the new radius could move the frozen site and every derivation
+behind it) and an assert holds that the frozen site still clears the larger
+bore: it returns the column's clearance now, and 0.677 leaves the margin.
+
+| rod, two stations (rod-local y = world z) | | |
+|---|---|---|
+| back-plate bush | −3.19 | foot overhang 6.34 u, λₑ 26.6 — under the 27 target, asserted, with the skirt the bush would grow if the foot ever deepened |
+| three-quarter-plate bush | 6.39 | span 9.58 u, λ 16; beak-end overhang 3.13 u, λₑ 13 |
+
+The link's plate pair had TODO 6's blanket excuse; it has a floors row now
+naming the beak's post and the upper bush, and everything else the unit owns
+holds the margin from the plate.
+
+### The lay shaft: a third hanger where TODO 79 said, measured before it was cut
+
+§112 grew the chord ≈ 9 u and the two station literals stayed, so the rod-end
+overhang ran 12.6 u at λₑ 127.6 and k 36 N/m — the member TODO 82 measured
+carrying 72.4 % of the arming chain's compliance, and the reason the pusher's
+stall read 1.58 mN against a 5–50 mN detent. The third station is END-RELATIVE
+and derived: `fullChordLen − ALARM_LINK_ROD_END_OVERHANG`, the overhang being
+what §54's target allows this section as a cantilever, `SLENDER_TARGET · 2r /
+SLENDER_OVERHANG_K` = 2.642 u. The middle station moved to the midpoint of the
+two end stations, because a run's bending compliance is a sum of L³ over its
+spans and is least when they are equal: 19.55 + 9.85 → 14.70 + 14.70.
+
+`tools/probe-79-rodend-band.mjs` measured the corridor §68's scan never
+reached (t 24 → the chord's end) over the pose net, a hanger's own column at
+each station against every mesh outside the link — floor (the dial's sheets,
+0.54 under the foot) and ceiling classed apart from walls: room ≥ 2.5 u from
+the rod end inboard to t 10.6, 12.1 at the station taken, 3.9 at the moved
+middle one, the alarm setting idler's arbor the wall throughout. Its exact
+control is the battery's published `alarmLockPad ⇄ alarmLockCollar 0.1572`;
+its contact control straddles a dial foot and reads 0.0000. §68's own
+"measured room 2.77" at t 22 could not be reproduced (this reads 7.74 to the
+axis there) and the probe says so rather than passing a control it cannot
+hold. The hanger bushes are named now — a third station renumbers every
+positional selector, and four joint rows addressed them by index.
+
+The stall arithmetic in `main.js` and TODO 82's probe both take any number of
+stations now (rod end = the low-y overhang, one midspan-loaded span per gap,
+the cantilever coupled to the span beside it), and they agree: **k_eff 85.70
+N/m, stall 6.17 mN**, the two equal spans 42.5 % of the compliance each. The
+derivation's assert against the probe is relative (3 %) now — the probe
+measures nPin at 1.0152 where the solve holds it at 1, and with the spans
+governing that 1.5 % is 3 % of the total. The transfer waiver is retired (the
+gate would have failed it: a waiver naming a site with no envelope miss).
+
+What the shaft still owes is TODO 16's, and the arithmetic moved under it: λ ≤
+27 on a 14.70 span wants r ≥ 0.2722, inside the 0.2850 corridor for the first
+time — but at r 0.28 the tail blade governs alone and the chain overshoots the
+window at ≈ 65 mN. Tail and shaft want sizing together; the waiver stays with
+those numbers in its comment.
+
+### What the record owes
+
+`TODO.md`: item 79 closed; items 16, 82 and 109 re-measured (109's index row
+had said 9 rows / 0 unwaived where its body said 10 / 1; the live report is
+the arbiter). `explain.html`: nothing — no quoted number moves. `MECH_GRAPH`:
+two support edges to the Case. `SLENDER_WAIVERS`: unchanged in membership,
+`Alarm link`'s comment rewritten; `TRANSFER_WAIVERS`: empty again.
+
+### The battery, and what moved
+
+**38/38 gates pass**, boot silent, run locally on this tree (three shards,
+`--no-incremental`) and diffed check by check against `origin/main` (79aa1e0)
+with timings and censuses stripped:
+
+```
+support 0 failures (four new rows: Alarm switch → Case 0.010, Alarm crown → Case 0.010, Alarm link → Three-quarter plate 0.147 → 0.007 (the bush in its bore), Alarm crown → plate 0.35 → 0.15)
+slenderness 8 over ceiling (was 10), 0 unwaived (was 1), 0 stale; 5 meshes declare 11 stations, 0 unsupported, 0 malformed
+transfers 15 rows, 0 unwaived envelope misses, 0 waived (was 1) — the lay-shaft row 1.588 → 6.331 mN, inside 5–50
+expectedContacts 21 pairs (was 18), 0 unwaived: Alarm switch ⇄ Case min 0.150 (the head at full press against the bore's sleeve — exactly the margin, by the §43 solve), Alarm crown ⇄ Case 0.55, Alarm link ⇄ Three-quarter plate 0.374 (the rod in its bush's bore)
+intraUnit 155 declarations (was 149), 0 unwaived, 0 unmatched; the new joints measure 0.050 / 0.0499 / 0.0496 (the three sliding fits) and 0 (the hangers' sockets)
+stockFloor 652 rows, 50 waived (the six hanger rows now NAMED instead of four (unnamed) ones — TODO 11's existing waivers, two more bodies)
+sweptOverlap 0 CONFIRMED over 103393 pairs (tight 3, refuted 18) · inspection 0 FORBIDDEN over 57 units / 81 pairs · clearances 0 violations over 32 budgets
+fingerprint 3499276729 → 48949037 (six new fixtures; deterministic across virgin boots) · spec boots 32/32, identity control silent
+```
+
+Sixteen payloads are byte-identical to the base — `graph`, `axisEntry`,
+`penetration`, every hand-off check, `assembly`, `oscillator`,
+`equalisation`, `chainLength`, `restoring`, `meshPhase`, `transmits`,
+`inspection` and `clearances`. Nine differ, and each difference is a named
+part above: `support` (the four edges), `slenderness` (two rows leave, one
+moves), `transfers` (one value, one waiver gone), `expectedContacts` (three
+pairs), `intraUnit` (six declarations), `stockFloor` (six named rows for four
+anonymous ones), and `outlines` / `meshIntegrity` / `sweptOverlap` counting
+the six new solids. The first run of this tree failed one gate —
+`expectedContacts`, the tube collar — and that finding is above.

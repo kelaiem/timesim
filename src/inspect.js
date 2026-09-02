@@ -192,6 +192,7 @@ export const MECH_GRAPH = {
     // rim bushing on the plate; the setting arbor pivots in the plate and
     // carries the disc's pointer through the dial well.
     ['Alarm crown', 'plate'],                // stem bushing at the case rim
+    ['Alarm crown', 'Case'],                 // §202: the stem's tube liner, pressed into the case's alarm tube
     ['Alarm setting arbor', 'plate'],     // §25 C stage 3: the well-floor collar became a plate cock (post + arm + bush)
     ['Alarm disc', 'Hour wheel'],            // §25 C: the alarm tube RIDES the hour-wheel tube — that
                                              // running fit is its bearing (rattrapante centre stack)
@@ -212,6 +213,7 @@ export const MECH_GRAPH = {
     ['Winding arrest', 'Three-quarter plate'], // §47: the bracket hangs the whole group from the plate's UNDERSIDE, top face flush (§29's lug idiom inverted)
     ['Alarm lock', 'Three-quarter plate'],   // §25 B: brake-lever pivot post on the plate top
     ['Alarm switch', 'Three-quarter plate'], // §25 D: the column wheel's stud on the plate top
+    ['Alarm switch', 'Case'],                // §202: the pusher's bore liner, pressed into the case's pusher bore
     // Alarm striker (§24): a gong fixed to the back plate by one foot (its far
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
     // — §25 built the striking works below and moved its pose into tick(), so
@@ -692,6 +694,8 @@ const EXPECTED_PAIRS = [
   ['Alarm lock', 'Alarm switch'],          // §25 D: the tail beak riding the column wheel's castellations
   ['Alarm lock', 'Three-quarter plate'],   // pivot post
   ['Alarm switch', 'Three-quarter plate'], // guide stud
+  ['Alarm switch', 'Case'],                // §202: the pusher's bore liner in the case's bore — floors row names the one contact
+  ['Alarm crown', 'Case'],                 // §202: the stem's tube liner in the case's alarm tube — likewise
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
   ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
   ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
@@ -1996,6 +2000,33 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // §202 — the two case liners: each pair is EXPECTED for exactly one press
+  // fit, and everything else the unit owns keeps the margin from the case.
+  {
+    a: 'Alarm switch', b: 'Case', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmPusherCaseLiner', 'casePusherBoreSleeve'], // the liner pressed into the pusher's bore
+    ],
+  },
+  {
+    a: 'Alarm crown', b: 'Case', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmStemTubeLiner', 'caseAlarmTubeSleeve'], // the liner pressed into the alarm tube
+      ['alarmStemTubeLiner', 'caseAlarmTubeCollar'], // …and through the tube's flanged collar, bored to the same radius (the battery found this one: 0.01 at every pose)
+    ],
+  },
+  // §202 — the link's plate pair had the blanket excuse (TODO 6's residue):
+  // it is EXPECTED for the beak's post standing on the plate top and, now,
+  // for the rod's bush pressed into the plate's bore. Everything else —
+  // the rod inside its bush's bore, the beak tail above the plate — holds
+  // the margin.
+  {
+    a: 'Alarm link', b: 'Three-quarter plate', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmLinkBeakPost', 'threeQuarterPlate'],   // §35: the beak's post on the plate top
+      ['alarmLinkRodBushTop', 'threeQuarterPlate'], // §202: the rod's upper bush in the plate's bore
+    ],
+  },
   {
     a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
     // TODO 101: the alarm hand's LEAF carries metal where the hour tube runs —
@@ -2476,8 +2507,11 @@ export const INTRA_UNIT_CONTACTS = [
   // (see the strike sleeve above for why that stales a row).
   { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkBeakPost', why: 'beak lever on its pivot post' },
   { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkBeakPost', why: 'beak tail on the same post' },
-  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#9', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations)' },
-  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'LatheGeometry#11', why: 'lay shaft in hanger bush 2' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush1', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations; §202 named the bushes, since a third station renumbers every positional selector)' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush2', why: 'lay shaft in hanger bush 2' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
+  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushTop', why: '§202: the selector rod sliding in its three-quarter-plate bush at PIVOT_BORE_CLEAR — the rod\'s upper bearing, declared on the rod' },
+  { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushBack', why: '§202: the same rod in its back-plate bush — the lower bearing' },
   { unit: 'Keyless works', a: 'ExtrudeGeometry#43', b: 'CylinderGeometry#39', why: 'the minute-arbor pair\'s other wheel, same shaft as #44 (this row measures MARGINAL — flag flips run-to-run at the d≈1e-4 boundary; the joint is real either way)' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
@@ -2597,6 +2631,9 @@ export const INTRA_UNIT_CONTACTS = [
   // derived from the stem now (main.js, ALARM_PUSH_GUIDE_BORE), so this is a
   // running fit and the row says which joint it is.
   { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherGuide', why: 'the pusher stem running in its guide boss — a sliding bearing at PIVOT_BORE_CLEAR, the plate pivots\' own fit' },
+  { unit: 'Alarm switch', a: 'alarmPusherStem', b: 'alarmPusherCaseLiner', why: '§202: the stem running in the case bore\'s liner — the third bearing, the one the case owes, at the same PIVOT_BORE_CLEAR' },
+  // §202 — the alarm crown's stem in its tube liner: the same joint one crown over.
+  { unit: 'Alarm crown', a: 'alarmStem', b: 'alarmStemTubeLiner', why: '§202: the alarm stem sliding in the case tube\'s liner at PIVOT_BORE_CLEAR — the outboard bearing the crown end never had; it slides 5 u through it on the pull' },
   { unit: 'Alarm switch', a: 'alarmPusherRiser', b: 'alarmPusherReach', why: '§121: the riser seated on the reach bar\'s inner end — the pusher\'s own three-piece assembly, and the joint the whole climb hangs off' },
   // §163 — the driver and its pawl. Every one of these is a JOINT somebody
   // would assemble, which is the test this table applies: a bore on a stud, a
@@ -2625,8 +2662,9 @@ export const INTRA_UNIT_CONTACTS = [
   // the way probe-59-click swept the old one.
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmJumperTip', why: '§173: the sautoir\'s tip seated between two saw teeth (kiss) — the detent itself. The seat is SOLVED from userData.sawSeatAt against the same ratchetPoly the skirt is extruded from, so this contact cannot drift from the metal; the backward flank is cut radial, which is what makes un-indexing geometrically impossible rather than numerically unlikely' },
   // Alarm link — §45's corner stations and the crank:
-  { unit: 'Alarm link', a: 'LatheGeometry#9', b: 'BoxGeometry#10', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
-  { unit: 'Alarm link', a: 'LatheGeometry#11', b: 'BoxGeometry#12', why: '§121: the second corner, same construction' },
+  { unit: 'Alarm link', a: 'alarmLinkHangerBush1', b: 'alarmLinkHanger1', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
+  { unit: 'Alarm link', a: 'alarmLinkHangerBush2', b: 'alarmLinkHanger2', why: '§121: the second corner, same construction' },
+  { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
   { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail formed on the rod (kiss under the alarm pose) — one member, two meshes' },
   { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rod\'s end in the crank rim\'s eye — the crank joint the arming run turns' },
   // Alarm disc — the §34/§48 follower assembly on the flange:
@@ -6954,12 +6992,25 @@ const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // (the alarm setting idler, max legal r 0.2850 over 89 stations) and took the
 // section to its force floor.
 //
-// WHAT KEEPS IT WAIVED TODAY, measured rather than argued (TODO 78 registered
-// the check that measures it): the governing free length is the ROD-END
-// OVERHANG, 12.487 u at λₑ 127.6, and λ ≤ 30 there wants r ≥ 0.5244 against a
-// corridor of 0.2850. The waiver also covers `alarmLinkRod` at λ 31.4. Its
-// beak tail WAS fixed and is off this report on merit. TODO 79 owns the
-// overhang, which is a chord-growth regression rather than a design.
+// WHAT KEPT IT WAIVED until §202, measured rather than argued (TODO 78
+// registered the check that measures it): the governing free length was the
+// ROD-END OVERHANG, 12.487 u at λₑ 127.6, wanting r ≥ 0.5244 against a
+// corridor of 0.2850; and the waiver also covered `alarmLinkRod` at λ 31.8.
+// §202 gave the shaft a third hanger at the rod end (overhang 2.64 u, λₑ 27,
+// built to the target) and moved the middle one to the midpoint of the run,
+// and bushed the rod in both plates (off the report at λₑ 26.6 on its foot
+// overhang). Its beak tail WAS fixed and is off this report on merit.
+//
+// WHAT KEEPS IT WAIVED TODAY: the two equal SPANS, 14.70 u each at λ 59.6.
+// That number is TODO 16's, not TODO 79's, and it changed the item's
+// arithmetic: λ ≤ 27 on a 14.70 span wants r ≥ 0.2722, which is INSIDE the
+// 0.2850 the corridor allows for the first time — the section fix is legal
+// now. It is not taken here because it overshoots: at r 0.28 the shaft's
+// compliance all but vanishes and the beak tail blade (305 N/m) governs
+// alone, delivering ≈ 65 mN at the tab against a 5–50 mN window. The next
+// move is TODO 16's to make — size the tail and the shaft together so the
+// chain lands inside the window — and the row stays waived under it until
+// then.
 //
 // TODO 109 STEP 3 — the seven unwaived rows, waived because they are TRIAGED
 // now, not to green the report. TODO 78 closed with "do not add waivers to
@@ -8335,12 +8386,21 @@ export const TRANSFER_ENVELOPES = {
 // the one the waiver was opened over, and the entry comes back citing the
 // item that owns the overhang.
 //
-// It cites TODO 79 rather than TODO 16 deliberately: 16 owns the section,
-// 79 owns the station, and the fix is 79's — position space, and NOT the
-// roadmap's third bush, which splits the span that does not govern.
-export const TRANSFER_WAIVERS = {
-  'alarm arming: lay shaft cranks (rod foot → ring drive tab)': 'TODO 79',
-};
+// It cited TODO 79 rather than TODO 16 deliberately: 16 owns the section,
+// 79 owns the station, and the fix was 79's — position space.
+//
+// §202 CLOSED THE ROUND TRIP. A third hanger now stands ALARM_LINK_ROD_END_
+// OVERHANG inboard of the shaft's rod end (the station §54's target allows
+// that section as a cantilever), and the middle hanger moved to the midpoint
+// of the run so the two spans are equal; the rod-end term went 36 → 341 N/m
+// and the chain reads 6.17 mN at the tab (tools/probe-82-alarm-stall.mjs,
+// and the row's own derivation agrees within its 3% tolerance) — inside the
+// 5–50 mN window, with the two equal spans governing. So the entry is
+// deleted for the second time, on a measurement this time rather than a
+// stiffness for a member that had been retired, and this table is empty
+// again. If the site ever misses the window again, the row's `governs`
+// field says which member to open the entry against.
+export const TRANSFER_WAIVERS = {};
 // ---------------------------------------------------------------------------
 // §194 — meshPhase. Is every DECLARED mesh anti-phased, at every pose the
 // movement occupies rather than at the one the build solve ran at?

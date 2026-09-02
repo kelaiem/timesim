@@ -71,6 +71,7 @@ import { writeFileSync } from 'node:fs';
 const PORT = process.env.PORT || 8479;
 const ROOT = process.env.ROOT || '..';
 const SAMPLES = +(process.env.SAMPLES || 5);
+const S_MAX = +(process.env.S_MAX || 12.5);   // how far inboard of the rod end to scan (S_MAX=24 reaches §68's own band)
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 await new Promise((r) => setTimeout(r, 800));
 const browser = await chromium.launch();
@@ -79,7 +80,7 @@ page.on('pageerror', (e) => console.error('PAGEERROR', String(e)));
 await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', timeout: 90000 });
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
 
-const V = await page.evaluate(async ({ SAMPLES }) => {
+const V = await page.evaluate(async ({ SAMPLES, S_MAX }) => {
   const THREE = await import('./vendor/three.module.js');
   const I = await import('./src/inspect.js');
   const L = await import('./src/layout.js');
@@ -100,12 +101,17 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
     .map((o) => { const p = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld); return { o, p }; })
     .filter(({ p }) => Math.abs(p.z - shaftZ) < 0.05)
     .filter(({ o }) => { o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox; return (b.max.x - b.min.x) < 1 && (b.max.y - b.min.y) < 1; });
-  if (bushes.length !== 2) return { error: `expected 2 hanger bushes at the shaft's z, found ${bushes.length}` };
+  if (bushes.length < 2) return { error: `expected at least 2 hanger bushes at the shaft's z, found ${bushes.length}` };
   const rodXY = new THREE.Vector3().setFromMatrixPosition(rod.matrixWorld);
-  bushes.sort((a, b) => Math.hypot(b.p.x - rodXY.x, b.p.y - rodXY.y) - Math.hypot(a.p.x - rodXY.x, a.p.y - rodXY.y)); // [t 2.45 (far), t 22 (near)]
-  const B1 = bushes[0].p, B2 = bushes[1].p;
+  bushes.sort((a, b) => Math.hypot(b.p.x - rodXY.x, b.p.y - rodXY.y) - Math.hypot(a.p.x - rodXY.x, a.p.y - rodXY.y)); // farthest from the rod first: t 2.45 … the rod-end station
+  // §202 — any number of stations: the chord runs from the fork-end bush
+  // (§68's own datum, t 2.45) through the rod-end one, and every shipped
+  // station's t is its distance along it from that datum.
+  const B1 = bushes[0].p, B2 = bushes[bushes.length - 1].p;
   const u = { x: B2.x - B1.x, y: B2.y - B1.y }; const uL = Math.hypot(u.x, u.y); u.x /= uL; u.y /= uL;
-  const T1 = 2.45, T2 = T1 + uL;                       // chord t of each bush (t 2.45 is §68's own datum)
+  const T1 = 2.45;
+  const shippedT = bushes.map(({ p }) => T1 + (p.x - B1.x) * u.x + (p.y - B1.y) * u.y);
+  const T2 = shippedT[1];                              // the second station, §68's t 22 (the record below reads it)
   const inner = { x: B1.x - u.x * T1, y: B1.y - u.y * T1 };
   const tRod = (rodXY.x - inner.x) * u.x + (rodXY.y - inner.y) * u.y;
   const offRod = Math.abs(-(rodXY.x - inner.x) * u.y + (rodXY.y - inner.y) * u.x);
@@ -168,7 +174,7 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
     poses.push({ label: `${ax.name} f=${f.toFixed(2)}`, enter: () => { I.enterAxis(clock); clock.setPose(ax.pose(f)); } });
   }
   const stations = [];
-  for (let s = 0.5; s <= 12.5; s += 0.25) stations.push(+s.toFixed(2));
+  for (let s = 0.5; s <= S_MAX; s += 0.25) stations.push(+s.toFixed(2));
   const rows = stations.map((s) => ({ s, t: +(tMetalEnd - s).toFixed(3), d: Infinity, who: null, floor: Infinity }));
   const control = { exact: null, contact: null };
   for (const pose of poses) {
@@ -181,10 +187,11 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
       r.ceiling = Math.min(r.ceiling ?? Infinity, m.ceiling);
     }
   }
-  // station two's own room, for the record (see the header on why it is not a control)
+  // every shipped station's own room, for the record (see the header on why station two's is not a control)
   I.enterAxis(clock); clock.scene.updateMatrixWorld(true);
-  const two = measure(B2.x, B2.y, 'rest');
-  control.stationTwo = { d: +two.d.toFixed(4), who: two.who && { unit: two.who.unit, mesh: two.who.mesh } };
+  control.shipped = bushes.map(({ p }, i) => { const m = measure(p.x, p.y, 'rest'); return { t: +shippedT[i].toFixed(3), d: +m.d.toFixed(4), who: m.who && `${m.who.unit} / ${m.who.mesh}` }; });
+  const two = control.shipped[1];
+  control.stationTwo = { d: two.d, who: two.who };
   // EXACT control: the published battery row, reproduced with the same distance call
   {
     const findMesh = (unit, name) => { const root = unitObj.get(unit); let hit = null; root?.traverse((o) => { if (!hit && o.isMesh && o.name === name) hit = o; }); return hit; };
@@ -224,10 +231,10 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
   return {
     CLEAR_MARGIN, SLENDER_TARGET, SLENDER_OVERHANG_K, shaftR: +shaftR.toFixed(4), bushOuter: +bushOuter.toFixed(4),
     need: +(bushOuter + CLEAR_MARGIN).toFixed(4), target: +target.toFixed(3),
-    chord: { inner: [+inner.x.toFixed(3), +inner.y.toFixed(3)], u: [+u.x.toFixed(4), +u.y.toFixed(4)], T1, T2: +T2.toFixed(3), tRod: +tRod.toFixed(3), offRod: +offRod.toFixed(4), tMetalStart: +tMetalStart.toFixed(3), tMetalEnd: +tMetalEnd.toFixed(3), overhangNow: +overhangNow.toFixed(3) },
+    chord: { inner: [+inner.x.toFixed(3), +inner.y.toFixed(3)], u: [+u.x.toFixed(4), +u.y.toFixed(4)], T1, T2: +T2.toFixed(3), shippedT: shippedT.map((t) => +t.toFixed(3)), tRod: +tRod.toFixed(3), offRod: +offRod.toFixed(4), tMetalStart: +tMetalStart.toFixed(3), tMetalEnd: +tMetalEnd.toFixed(3), overhangNow: +overhangNow.toFixed(3) },
     rows: rows.map((r) => ({ ...r, who: r.who && { unit: r.who.unit, mesh: r.who.mesh, pose: r.who.pose }, d: +r.d.toFixed(4), floor: +r.floor.toFixed(4), ceiling: +r.ceiling.toFixed(4) })), control, poses: poses.length,
   };
-}, { SAMPLES });
+}, { SAMPLES, S_MAX });
 
 if (V.error) {
   // a report, so it says what it could not measure and still exits 0 — the
@@ -236,13 +243,13 @@ if (V.error) {
 } else {
 console.log(`=== TODO 79 — hanger room at the lay shaft's rod end (${V.poses} poses) ===`);
 console.log(`shaft r ${V.shaftR}  bush outer ${V.bushOuter}  column need ${V.need} (bush + CLEAR_MARGIN ${V.CLEAR_MARGIN})`);
-console.log(`chord: inner (${V.chord.inner.join(', ')}) u (${V.chord.u.join(', ')})  bushes at t ${V.chord.T1} / ${V.chord.T2}  metal t ${V.chord.tMetalStart} … ${V.chord.tMetalEnd}  rod axis at t ${V.chord.tRod} (${V.chord.offRod} off the chord)`);
+console.log(`chord: inner (${V.chord.inner.join(', ')}) u (${V.chord.u.join(', ')})  bushes at t ${V.chord.shippedT.join(' / ')}  metal t ${V.chord.tMetalStart} … ${V.chord.tMetalEnd}  rod axis at t ${V.chord.tRod} (${V.chord.offRod} off the chord)`);
 console.log(`rod-end overhang now ${V.chord.overhangNow} u; λ ≤ SLENDER_TARGET ${V.SLENDER_TARGET} on an overhang wants ≤ ${V.target} u (2r·target/K, K ${V.SLENDER_OVERHANG_K.toFixed(4)})`);
 console.log('\n=== controls ===');
 const ex = V.control.exact;
 console.log(`  EXACT   alarmLockPad ⇄ alarmLockCollar at alarmStrike f=0.1743: ${ex.measured ?? 'n/a'} vs published ${ex.published ?? 0.1572} — ${ex.ok ? 'PASS' : 'FAIL'}${ex.why ? ' (' + ex.why + ')' : ''}`);
-const st = V.control.stationTwo;
-console.log(`  (record) station two's shipped column reads ${st.d} to its surface = ${(st.d + V.bushOuter).toFixed(4)} to its axis (nearest wall ${st.who?.unit} / ${st.who?.mesh}); §68's note says 2.77 and does not say what it measured`);
+for (const st of V.control.shipped)
+  console.log(`  (record) shipped station t ${st.t}: ${st.d} to its surface = ${(st.d + V.bushOuter).toFixed(4)} to its axis (nearest wall ${st.who})${Math.abs(st.t - 22) < 0.5 ? " — §68's note says 2.77 here and does not say what it measured" : ''}`);
 const ct = V.control.contact;
 console.log(`  CONTACT column on ${ct?.on}: ${ct ? ct.d.toFixed(4) : 'n/a'} — ${ct && ct.d <= 1e-3 ? 'PASS' : 'FAIL'}`);
 if (ct) console.log(`          target box ${JSON.stringify(ct.targetBox)}  column box ${JSON.stringify(ct.columnBox)}  direct ${ct.direct}  nearest at centre ${ct.nearestAtCentre}`);
