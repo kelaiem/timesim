@@ -21618,14 +21618,25 @@ and it is why this is not a `runs-on` swap.
 
 `runs-on` is one expression, read in this order:
 
-| event | head repository | host |
-|---|---|---|
-| `pull_request` | a fork (or a deleted one — `null` compares unequal) | `ubuntu-latest`, always |
-| `pull_request` | a branch of this repository | `vars.BATTERY_RUNS_ON`, or `ubuntu-latest` when unset |
-| `push` to `main`, `workflow_dispatch` | — | the same variable, the same default |
+| event | head repository | `github.actor` | host |
+|---|---|---|---|
+| `pull_request` | a fork (or a deleted one — `null` compares unequal) | anyone | `ubuntu-latest`, always |
+| any | — | not the repository owner | `ubuntu-latest` |
+| `pull_request` | a branch of this repository | the owner | `vars.BATTERY_RUNS_ON`, or `ubuntu-latest` when unset |
+| `push` to `main`, `workflow_dispatch` | — | the owner | the same variable, the same default |
 
 The fork test comes BEFORE the variable is read, so no label, variable or
-later edit lower in the file can route a fork onto a host. The variable is
+later edit lower in the file can route a fork onto a host. The actor test
+(added on the owner's request, "restrict it to PRs I start") is the tighter
+of the two readings of that request: `github.actor` is the user whose action
+caused THIS run, which on a `synchronize` is whoever pushed the commits being
+tested rather than whoever opened the PR, so a collaborator's push to the
+owner's branch, their merge and their dispatch all stay hosted. It compares
+against `github.repository_owner`, not a login — no name in the file, and a
+transfer to an org matches nobody, the safe side. The residue is named in
+`docs/RUNNERS.md`: the owner's NEXT push to a branch a collaborator touched
+tests the combined tree on the host, which is the trust a write-access
+collaborator already holds. The variable is
 a single runner **label** (`timesim-battery`, the one the setup script
 registers), not JSON: a bare word cannot fail to parse, and a label no
 online runner carries makes the job queue visibly rather than run on the

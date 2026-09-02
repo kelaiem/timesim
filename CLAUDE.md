@@ -493,9 +493,11 @@ could break it always runs the job that judges it.
 variable second.** A pull request from a FORK runs on `ubuntu-latest`, always —
 the repo is public, and a fork's PR runs its own workflow code on the host, so
 the `runs-on` expression tests the head repo before it reads anything else.
-Everything trusted (push to `main`, dispatch, a PR from a branch here) runs on
-the label the repository variable `BATTERY_RUNS_ON` names, `ubuntu-latest` when
-unset. `tools/self-hosted-runner.sh install` puts a runner on a host under that
+A run the repository OWNER did not trigger runs there too — `github.actor`
+against `github.repository_owner`, and on a PR's `synchronize` the actor is
+whoever pushed the commits being tested. What is left (the owner's own pushes,
+merges and dispatches) runs on the label the repository variable
+`BATTERY_RUNS_ON` names, `ubuntu-latest` when unset. `tools/self-hosted-runner.sh install` puts a runner on a host under that
 label and prints the variable flip it deliberately does not perform; the job
 summary names the runner that took each run. Two consequences to know: the §152
 baseline key carries the platform, so flipping the variable costs one whole run

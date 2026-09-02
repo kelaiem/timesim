@@ -17,10 +17,18 @@ The job's `runs-on` is one expression, and it reads in this order:
    pull request runs its own workflow code on the host. The expression tests
    the head repository before it reads anything else, so no variable, label or
    later edit lower in the file can route a fork onto your machine.
-2. **Everything else** — a push to `main`, a `workflow_dispatch` (collaborators
-   only), a pull request from a branch of this repository — runs on the label
-   the repository variable `BATTERY_RUNS_ON` names, and on `ubuntu-latest`
-   when it is unset.
+2. **A run the repository owner did not trigger runs on `ubuntu-latest`.**
+   `github.actor` is the user whose action caused *this* run. On a pull
+   request's `synchronize` that is whoever pushed the commits being tested,
+   not whoever opened the PR, so a collaborator pushing to your branch sends
+   that run to GitHub; so does their merge or their dispatch. It is compared
+   against `github.repository_owner`, not a login, so no name lives in the
+   file and a transfer to an organisation matches nobody, which is the safe
+   side.
+3. **What is left** — the owner's own pushes to `main`, dispatches and pull
+   requests from branches of this repository — runs on the label the
+   repository variable `BATTERY_RUNS_ON` names, and on `ubuntu-latest` when
+   it is unset.
 
 The variable is a single runner **label**, not JSON and not a list:
 `timesim-battery` is what `tools/self-hosted-runner.sh` registers. A bare word
@@ -28,8 +36,14 @@ cannot fail to parse, and a label no online runner carries makes the job
 *queue*, which is visible, rather than run on the wrong host, which is not.
 
 Every run writes which runner took it into the job summary (name, OS,
-architecture, the variable's value, and whether the event was trusted or a
-fork). The pointer is read off the run; nobody has to remember it.
+architecture, the variable's value, who triggered it, and which of the three
+tiers applied). The pointer is read off the run; nobody has to remember it.
+
+One edge the actor test does not close, named rather than hidden: a
+collaborator's commit pushed to your branch runs hosted, but your *next* push
+to that branch tests the combined tree on your host. A collaborator with write
+access already has that much trust; the test bounds the host to your own
+activity, it does not audit the commits underneath it.
 
 **Why a variable, when `pages.yml`'s rule is "every pointer is a git ref".**
 That rule is about content: which bytes an environment serves must be
