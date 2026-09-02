@@ -33,7 +33,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 120 | OPEN | The central hand collets are display fictions: the hour boss is solid at r ≤ 1.26 against a tube spanning r 2.05..2.50 (inside its own arbor's bore), the minute boss is solid over the cannon pinion, and both blades detach radially from their own bosses (roots at r 5.5/7.9 vs rims at 1.26/1.25) — each hand turns by parenting, not by any surface. Fix: bore the bosses to their arbors, bridge blade roots to bosses, declare the joints |
 | 121 | PART DONE | The strike tier's stale self-descriptions, found by §191/§192's audit. FIXED: the §163 skirt assert read a plane 0.30 above the real underside AND omitted the §169 pawl coil from its band need — 1.14 of phantom headroom against a real 0.000, blind to exactly the downward re-station §192 prices (both sides now read the raise solve's own inventory, sitting at equality); the λ "= 30" comment vs the code's SLENDER_TARGET 27; EXPECTED_PAIRS' claim of a Stop lever ⇄ plate budget row that did not exist (the row exists now). OPEN: main.js's `TQ_TOP_Z + 2.5` strike-band literal understates the built tier by ~2.4 (real ceiling Δ4.89, probe-192-tier-price) — re-authoring it can move the solved link-rod site, so it is priced in §192 rather than patched; and BUILT.md §183's arm/chamfer table disagrees with main.js's §183 comment (3.1400/0.3047 vs ~3.62/0.3516) — annotated in both places, the live derivation is the authority |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
-| 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number; the report reads 9 over ceiling, **0 unwaived, 0 stale**. What remains is not a section anywhere: **move a station or an obstacle**, per row, walls named — and for the alarm stem a SECOND BEARING, which is what a 25.5222 u cantilever off one bush actually wants |
+| 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number. **§202**: the pusher stem's row (λ 38.1, the item's unwaived "next customer") is RETIRED — its abutment and guide bores declared and the case's Ø1.2 mm bore given a liner, three stations, worst λₑ 15; the alarm stem's crown-end overhang is held by a tube liner (λₑ 53.5 → 26.0) while its inboard 25.5 u overhang stays at 76.6 and is now MEASURED as no bearing's to fix — the pinion sweeps x 15.8–22.5 and the collars 22.8–33.6 under the 5 u throw, so no fixed bore fits inboard of x ≈ 34; a corner re-layout, not a bush. The report reads 8 over ceiling, **0 unwaived, 0 stale**. What remains is position-space, per row, walls named |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
 | 90 | OPEN | What the column wheel DRIVES has never been audited the way what drives it has. Findings 1-3 CLOSED (§171 the lock riser's station, §172 the link beak's post and bar, §173 the click replaced by a jumper on the saw). **Finding 4 MEASURED and CLOSED 2026-08-26 (§174)**: the suppressor's hold was a FLAG — `ALARM_LOCK_THETA` solved the pad to exact tangency so the pad gap measured **0.0000** at every engaged state, zero normal force, while `tick()` gated the barrel on a boolean; and a preload could not have rescued it, since µ 0.2 at that radius needs **364.6 mN** against the lock blade's **67.4 mN at its own yield**. The band is cut into a 12-tooth stop wheel with a RADIAL locking face (§99's saw drop stands 54° off radial and would cam a loaded finger out), the teeth stand OUTWARD so `ALARM_LOCK_ENGAGED` — the datum the whole switch cluster is laid out from — stays bit-identical, and the train now runs on the finger's real gap. **Finding 5 is MEASURED and CLOSED (§183), its repair SEARCHED and the obvious fix REFUTED first** (`tools/probe-90-lockread.mjs`, three controls passing): the lever's READ is posed too — the beak's radial excursion is **0.00114**, 0.08% of the tier it is declared to read, because the wheel's centre stands ON the tail's line and a lever moves its beak perpendicular to the arm, so the column cannot block it and the lift carries it the wrong way. A real hold worked by a switch that cannot throw it. The beak cannot simply be moved: its station is QUANTIZED to whole column pitches (60°, the parity rule `ALARM_LINK_BEAK_OFF` already snaps to), the exact Thales optimum (φ 44.57°, gain **1.0000**) is mid-flank and so illegal, and both legal neighbours are taken — **−60° is the link beak's own station** (riser 0.0000) and **+60° wants a 0.6723 chamfer against a 0.6327 ceiling** and stands 0.1992 from the driver pawl. So the repair was a FOLD, not a re-siting: §183 gave the beak its own pivot at the free φ 0 station, placed by Thales so the radial gain is 1 by construction, and cut the pillars a radial cam from the same function that ramps their tops. The nose now reads **5.9800 → 5.6754** where it moved 0.00114, and both ends of the lever land on their solved stations exactly. What remains of item 90 is the two questions still filed unmeasured. Two questions still filed unmeasured: the three riders' contacts priced as §137 rows against the column's own drive torque, and whether the selector ring's detent exists as metal |
 | 87 | OPEN | The alarm toggle's action group, aggregated from four eye-reported symptoms. **Finding 1 is MEASURED since 2026-08-24** (`tools/probe-87-press.mjs`: 117.39% of a tooth and **0.39794 u** of overrun off the built tree, against 117.4% and 0.398 computed — steps 1 and 2 done — §160 put the stroke in the pose net as the `alarmPress` axis, so the overrun is a REGRESSION gate now and not only a reading). No axis varies `alarmPusherT`, so every sweep samples the pawl PARKED: the tick latches the wheel at one tooth (0.5236 rad) while the stroke runs to **0.6147**, putting **0.398 u = 0.151 mm** of travel into a tooth that has stopped — past `CLEAR_MARGIN` — and the return asks a rigid pawl to cam over a flank it has no freedom to cam over. Beside it, three declarations that answer for the wrong member: one `INTRA_UNIT_CONTACTS` row excuses the pawl against all three meshes named `alarmColWheel` at any depth; the pusher's only guide bores **0.24** against a **0.32** stem and is declared as a "return coil" that does not exist; and `restoring` answered for `Alarm switch` with the CLICK's blade, so the pusher's spring-less return was never asked about — a GRANULARITY gap where TODO 29/64 are population ones, **closed as a blind spot by §162** (declarations keyed by `(unit, member)`, bodies derived by `clusterByFrame`: 40 across the movement against 24 unit answers, and the pusher is one of four answered by nothing — waived, gated, and now a row that fails the moment the metal is built). The force half is TODO 82/79's, recorded not re-opened. **Finding 7 (2026-08-24) re-scopes step 3**: measured in the wheel's own plane the pawl stands INSIDE the root circle at the bottom of the stroke — 24/24 vertices in the saw, **0.7615 u** deep, 20× the z-capped figure — so the drive contact is not a contact and a pivot alone cannot fix it; `tools/probe-87-pawl.mjs` is the acceptance test |
@@ -49,11 +49,12 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 11 | OPEN | The alarm-stock residue after three tranches; the remaining waived rows are catalogued in the item |
 | 12 | PART CLOSED | 11 rows of the 0.05–0.12 band remain, bound-or-band, catalogued per-row |
 | 15 | PART CLOSED | Winding + setting chains closed; the alarm branch idler i1b remains. Its other named site, the power-reserve pair, closed with item 48 |
-| 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%). **TODO 82 re-took the chain: ROD-END-limited at ≈1.58 mN, not tail-limited at ≈48 mN — the stroke every earlier figure used was a deleted constant, and "in series" was a minimum. This item's ORIGINAL verdict (short by one to two orders of magnitude) is restored.** `SLENDER_WAIVERS['Alarm link']` cannot be retired by ANY legal section — §54's ceiling wants r 0.326 — so what remains is a third bush station, in position space |
+| 16 | PART CLOSED | The beak lever question (7.1×, not the 36:1 the text describes), and the SHAFT — but the SHAFT is now MEASURED rather than argued (§137: `probe-137-jumper-envelope.mjs`). The jumper is 13.32 u away and binds nothing since §112; the wall is the alarm setting idler at max legal r 0.285; the force budget is met at r 0.1232 (+2.7%). **TODO 82 re-took the chain: ROD-END-limited at ≈1.58 mN, not tail-limited at ≈48 mN — the stroke every earlier figure used was a deleted constant, and "in series" was a minimum. This item's ORIGINAL verdict (short by one to two orders of magnitude) is restored.** **§202: `alarmLinkRod` is bushed in both plates and off the report (foot overhang λₑ 26.6); the shaft carries three hangers and its two equal 14.70 u spans govern at λ 59.6 — and λ ≤ 27 there wants r ≥ 0.2722, INSIDE the 0.2850 corridor for the first time.** The section fix is legal now and deliberately not taken: at r 0.28 the tail blade governs alone at ≈ 65 mN against the window's 50. What remains is sizing tail and shaft together so the chain lands inside 5–50 mN |
 | 17 | MOSTLY CLOSED | The hammer still strikes in-plane, so a curved bar's own modes would sit above the straight-bar figures. §197 closed the rest: the strike's excitation weighting across modes and the two synthesised gains are derived now, and the pitch's own bound moved out to item 127 |
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
+| 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
 | 30 | OPEN | §76's walls two and three (wall three was misdiagnosed; the crash is fixed, the wall stands) |
@@ -91,10 +92,10 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 75 | OPEN | Four bodies measure INSIDE-OUT by signed volume — two Fork-cock lathes at −56% and −73% of their own bboxes, a Balance-cock lathe, and `alarmFaceCam`. Item 4's fixed-pillars class, item 70's invisibility (nothing coplanar behind them). NOT item 70's collars — coordinates measured and do not match. `assertLatheOutward` exists to point at the three lathes
 | 76 | OPEN | The chain's declared articulation fiction, measured by §77's declared tier: 91 adjacent link/rivet pairs interpenetrate (median 0.05 u, max 0.24 u at boot; BVH-confirmed), 0 non-adjacent. Adjacent pairs are `subBodyOverlapOk` citing this item, so the instrument keeps watching for corruption while the fiction is declared where it lives. Fix is real articulation — an owner's call on whether the fiction is worth closing |
 | 78 | CLOSED | §54's `checkSlenderness` was exported and NEVER REGISTERED in `CHECKS` — `start()` answered "unknown check", so it had not run once since §52, its waiver waived rows in a report nothing produced, and three different λ values for one mesh accumulated in `main.js`. Second instance of the class (TODO 29 was the first), so `ci-battery` now GATES `CHECK_NAMES` (read from the page) against `BATTERY`. It also measured stock length, not free length: meshes may now declare `userData.bearings` and λ is taken per free length, an overhang scaled by `SLENDER_OVERHANG_K` = ∛16. Report (§40): **9 rows over ceiling, 7 unwaived and untriaged** |
-| 79 | OPEN | The alarm link's lay shaft has a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. **MEASURED by TODO 82: the transfer IS rod-end-limited, at ≈1.58 mN — below the 5–50 mN band, and the rod-end overhang carries 72.4% of the whole chain's compliance while the fork-end the section was sized against carries 0.1%.** (The 3.3 mN first filed here was the free-cantilever value against a stroke that was itself a deleted constant; both are corrected in TODO 82.) Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
+| 79 | CLOSED (§202) | **A third hanger stands 2.64 u inboard of the rod end — the overhang §54's target allows this section as a cantilever, λₑ 27 — and the middle hanger moved to the run's midpoint; the rod-end term went 21.2 → 341 N/m coupled, the chain delivers 6.17 mN at the tab (probe and derivation agree), inside the window, and the transfer waiver is retired. `tools/probe-79-rodend-band.mjs` scanned the run §68 never did: clear by ≥ 2.5 u from the rod end to t 10.6.** As filed: the alarm link's lay shaft had a **12.487 u / 4.732 mm rod-end overhang at 21.2 N/m** — TODO 16's condemned 4.5 mm / 21 N/m cantilever returned at the other end. §68 sited the bushes at chord t 2.45/22 for short overhangs at both ends; §112 grew the chord ≈9 u and the two station literals did not travel with it. **MEASURED by TODO 82: the transfer IS rod-end-limited, at ≈1.58 mN — below the 5–50 mN band, and the rod-end overhang carries 72.4% of the whole chain's compliance while the fork-end the section was sized against carries 0.1%.** (The 3.3 mN first filed here was the free-cantilever value against a stroke that was itself a deleted constant; both are corrected in TODO 82.) Fix is position space and is NOT roadmap §156's third bush, which splits a span that does not govern |
 | 80 | OPEN | `weldGeometry` returns a fresh `BufferGeometry` and does not copy `userData`, and `weldTree` assigns it at the end of boot — so a `geometry.userData.subBodies` declared on a non-indexed geometry is silently deleted before any check runs, reporting `declaredGeometries: 0`. §77's shipped tables survive by construction (`mergeGeos` declares after welding, and its output is indexed), which nothing states anywhere |
 | 81 | OPEN | `meshIntegrity`'s sub-body census is a function of the SHARD SCHEDULE — 136/0 against 50/134 on one tree. Found by §127 tier 2a's landing, not caused by it: it is the RUNTIME half of item 80, whose boot-time half is `weldGeometry` dropping `geometry.userData`. Never compare this tier's counts across runs with different task partitions; a `--report` diff that does must cite this item |
-| 82 | CLOSED | The pusher→ring stall had been written down four times (1.5 / 1.6 / 48 / 3.3 mN) and never computed. Two errors, same direction: the stroke every figure used was **`ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `main.js` deletes as "referenced nowhere, and wrong"** (measured 0.09932 u = 0.0376 mm, 4.2× smaller, taken two ways that agree to five decimals); and "in series" was implemented as a **minimum** over members charged against different strokes, where compliances add as `n²/k` reflected to the ring. Computed: **k_eff 21.89 N/m, stall 1.58 mN** — ROD-END-limited, an order of magnitude BELOW the 5–50 mN band, restoring TODO 16's original verdict and refuting §137 Landing 2's 48 mN. The rod-end overhang is **72.4%** of the compliance; the fork-end the section was sized against is **0.1%**. `tools/probe-82-alarm-stall.mjs` |
+| 82 | CLOSED | The pusher→ring stall had been written down four times (1.5 / 1.6 / 48 / 3.3 mN) and never computed. Two errors, same direction: the stroke every figure used was **`ALARM_LINK_ROD_TRAVEL = 0.42`, a constant `main.js` deletes as "referenced nowhere, and wrong"** (measured 0.09932 u = 0.0376 mm, 4.2× smaller, taken two ways that agree to five decimals); and "in series" was implemented as a **minimum** over members charged against different strokes, where compliances add as `n²/k` reflected to the ring. Computed: **k_eff 21.89 N/m, stall 1.58 mN** — ROD-END-limited, an order of magnitude BELOW the 5–50 mN band, restoring TODO 16's original verdict and refuting §137 Landing 2's 48 mN. The rod-end overhang is **72.4%** of the compliance; the fork-end the section was sized against is **0.1%**. `tools/probe-82-alarm-stall.mjs`. **Re-measured §202 with three hangers: k_eff 85.7 N/m, stall 6.17 mN, inside the window; the two equal 14.70 u spans carry 42.5% each, the tail 7.7%, the rod end 6.9%** |
 | 88 | OPEN | All — the design is written in the item: derive `SET_BACKLASH` from the setting chain's mesh backlash and make the setting-time step the spring's equilibrium over the real V, replacing the `Math.round`; step 1 (the click spring's detent-force arithmetic, P1) stands alone. Roadmap §4 keeps the WHEN half and the word |
 | 89 | PART DONE | The zero-movement half LANDED (fingerprint unmoved): four constants derived or named, the garbled `STAR_R` fragment gone, and two of the three promised asserts written and proven to fire — the third (valley seat) REFUSED as tautological, the lifter plane collapsed from three copies to one name. Two defects the measurements found: the jumper's station is **326°, not the 320°** everything claimed (§136's tooth-spec re-derivation silently re-sited it), and the detent latches at `crownPullT > 0.5` while the beak only reaches the star at **0.863** — quantizing the display across ~36% of the pull with the jumper out of contact. Remains: that engage fix (its assert lands with it), the movement-risking constants, the three unseeded floors pairs, and the ungated explain number |
 | 98 | CLOSED (§175) | The fork is ONE blank of ONE thickness, lapped to `FORK_T` overall — the chamfer comes out of the stock instead of standing proud of it, which is what made the part 1.488 thick while `L_BALANCE` read 1.2. `FORK_HALF_Z` is a declaration in layout.js now and `main.js` asserts the blank against it, so the rim's 0.15 is the margin that exists. The belly is gone and its wheel-clearance bound became a build-time check over every extruded vertex, mitered, asking `CLEAR_MARGIN` instead of a hand-set 0.1. Two things the plan got wrong are written into the item: exact mirror arms cost 0.2361 of head width reaching at the wheel to hide the draw, and raising the balance to meet the fat blank threw six §47 warnings in the arrest — the builder was wrong, not the constant |
@@ -2381,6 +2382,22 @@ two.
 Reverted to the section that passes CI; `SLENDER_WAIVERS['Alarm link']`
 restored. The **beak tail** fix and the **inverted lever** fix stand — both
 movement-side, both verified, neither implicated.
+### §202 — the rod is off the report, the shaft's arithmetic moved, and the section fix is legal at last
+
+`alarmLinkRod` runs in a bush in each plate now (bore = rod + `PIVOT_BORE_CLEAR`,
+wall at the §50 floor, the plates' holes following the bush), declared on the
+rod: its foot overhang below the back plate reads λₑ 26.6 and the row is gone.
+The shaft has three hangers (TODO 79's closure) and its governing free length
+is no longer an overhang but its two equal 14.70 u spans at **λ 59.6**. That
+changes this item's own arithmetic: λ ≤ 27 on a 14.70 span wants **r ≥ 0.2722**,
+which is inside the **0.2850** the alarm setting idler leaves — the section fix
+this item said no legal section could make is legal now. It is not taken in
+§202 because it overshoots: at r 0.28 the shaft's compliance all but vanishes,
+the beak tail blade (305 N/m) governs alone, and the chain delivers ≈ 65 mN at
+the tab against a 5–50 mN window. The remaining work is to size the tail and
+the shaft TOGETHER so the chain lands inside the window; until then the waiver
+stays, and its comment in `inspect.js` carries these numbers.
+
 ## 17. MOSTLY CLOSED (§56) — the gong's sound is not derived from the gong
 
 `sndTone(1760, …)` + `sndTone(880, …)` — an **octave pair**, chosen
@@ -8797,7 +8814,7 @@ addresses them positionally. Do not add waivers to green this.
 
 Probe: `tools/probe-slenderness-bearings.mjs`.
 
-## 79. The alarm link's rod-end overhang is a chord-growth regression, and it is TODO 16's own condemned cantilever returned
+## 79. The alarm link's rod-end overhang is a chord-growth regression, and it is TODO 16's own condemned cantilever returned — CLOSED (§202)
 
 TODO 16 diagnosed the lay shaft with **both bushes clustered at one end**
 and a **4.5 mm / 21 N/m cantilever** carrying the drive, and prescribed
@@ -8917,6 +8934,36 @@ an origin-relative one), which is a design change this item does not make
 because the honest bands are absolute positions in the movement, not
 fractions of a chord. Whoever re-sites this shaft should read that tension
 before choosing.
+
+### CLOSED by §202 — the station derived from the chord's end, and measured first
+
+The tension above was resolved the way the last paragraph suggested: the
+rod-end station is END-RELATIVE, `fullChordLen − ALARM_LINK_ROD_END_OVERHANG`,
+and the overhang is not a literal but what §54's target allows this section as
+a cantilever, `SLENDER_TARGET · 2r / SLENDER_OVERHANG_K` = 2.642 u. The chord
+can grow again and the station travels with it. The middle station moved to
+the midpoint of the two end stations, because with both ends fixed by their
+own constraints a run's bending compliance (a sum of L³) is least when its
+spans are equal: 19.55 + 9.85 became 14.70 + 14.70.
+
+Measured before it was cut, by `tools/probe-79-rodend-band.mjs` — the
+pose-swept column scan §68 ran to t 24 and never past: from the rod end
+inboard to t 10.6 the hanger's column has more than 2.5 u of in-plane room at
+every station (the alarm setting idler's arbor is the wall), 12.1 u at the
+station taken, 3.9 u at the moved middle one, with the dial's sheets a
+constant 0.54 u under its foot. Two controls pass; §68's own "measured room
+2.77" at t 22 could not be reproduced and is recorded as such.
+
+| | before | §202 |
+|---|---|---|
+| rod-end overhang | 12.487 u, λₑ 127.6 | **2.642 u, λₑ 27** |
+| rod-end term, coupled | 21.2 N/m (36 rectangular) | **340.9 N/m** |
+| governing member | the rod-end overhang, 72.4 % | the two equal spans, 42.5 % each |
+| k_eff / stall at the tab | 21.89 N/m / **1.58 mN** | 85.70 N/m / **6.17 mN**, inside 5–50 |
+
+The transfer waiver this item held is retired (a waiver naming a site with no
+envelope miss fails the gate). What the shaft still owes is TODO 16's: the
+spans at λ 59.6.
 
 ## 80. `weldGeometry` drops `geometry.userData`, and §77's sub-body declarations ride on it
 
@@ -9113,6 +9160,19 @@ Circular, `I = πr⁴/4`, because the shaft is round and §137's 2807 N/m is
 circular. `checkSlenderness`'s column is **rectangular** (`ac³/12`) and reads
 `64/12π = 1.6977×` stiffer for a round bar. Mixing them is what put two wrong
 rows in TODO 79's table; both are corrected there.
+
+### Re-measured, §202 — three hangers
+
+The probe and `main.js`'s derivation both take any number of stations now:
+the rod end is the shaft's low-y overhang, every gap between hangers is a
+midspan-loaded span, and the rod-end cantilever is coupled to the span beside
+it. With the rod-end overhang at 2.64 u and the middle hanger at the run's
+midpoint: k_eff **85.70 N/m**, stall **6.17 mN** — inside the window. Members,
+reflected: the two 14.70 u spans 42.5 % of the compliance each, the tail blade
+7.7 %, the rod-end overhang 6.9 %, the fork end 0.5 %. The derivation's assert
+against this figure is RELATIVE (3 %) now: the probe measures nPin at 1.0152
+where the solve holds it at 1, and with the spans governing that 1.5 % is 3 %
+of the total.
 
 ## 83. The parity ray still lies inside the box — §122 silenced only the provably-outside calls
 
@@ -13017,6 +13077,42 @@ Probe: `tools/probe-slenderness-residue.mjs` (a REPORT — it prints and exits
 because the catalogue this item replaces went stale exactly by not being
 re-run.
 
+### §202 — two rows in the column wheel's neighbourhood, and the verdict on the third
+
+**The pusher stem is retired.** Its row had drifted to λ 38.1 (the §170/§192
+re-stationing lengthened the stem; the 30.9 above was the figure at this
+item's landing). Two of its bearings existed as bored metal and declared
+nothing — the rim guide boss and §164's return abutment, both at
+`PIVOT_BORE_CLEAR` — and declaring them alone would have made the row worse
+(the crown-end run from the guide to the head, 13.9 u, reads λₑ 54.7 as an
+overhang). The third bearing is the one the case owes: its Ø1.2 mm pusher
+bore, which the guide boss's own comment had promised would "take over", was a
+sleeve of air around a Ø0.24 mm stem. It carries a LINER now, owned by the
+switch unit (a bush is part of the part it holds), bored to the stem at the
+same running fit and pressed into the case's bore at a hundredth of running
+room. Three stations, worst segment λₑ 15.
+
+**The alarm stem's crown end is held, and its inboard end is measured
+unfixable by a bearing.** The same liner in the case's alarm tube takes the
+17.8 u crown-end overhang (λₑ 53.5) to 8.68 u (λₑ 26.0). The 25.5 u inboard
+overhang stays at **76.6**, and the second bearing this item asked for cannot
+exist: the whole spinner slides 5 u on the pull, the bevel pinion (r 1.77)
+sweeps x 15.8–22.5 and the collars (r 0.78) x 22.8–33.6, so no fixed bore fits
+inboard of x ≈ 34 — and the stem's inboard tip stands on the winding arbor's
+own axis at rest. A stem this long with a throw this long is held by an inner
+journal in the plate only if the corner is re-laid (the contrate mesh off the
+stem's line, or a shorter throw). The waiver stays, and now says that.
+
+**The column wheel and its fixtures carry no rows.** Measured off the report
+rather than assumed: the wheel, its stud, the driver, the pawl and its post,
+the pawl spring's stud, the sautoir's stud and shank, the alarm click's stud
+and spring post, the alarm lock's pivot post, spring stud and beak riser all
+read λ under 6. There was nothing there to retire.
+
+The report reads **8 over ceiling, 0 unwaived, 0 stale** (`Alarm link` moved
+from the rod-end overhang to the spans, TODO 16's business now; TODO 79 is
+closed).
+
 ## 110. `start()`'s reset does not settle EASED state, so a check can read the previous check's pose — PART DONE
 
 Found 2026-08-28 by TODO 109, which tried to declare a bearing on a part that
@@ -15747,3 +15843,70 @@ moment it is armed — which is what a real Memovox does, and what "within
 
 Related: item 115 (the rule; this is its incomplete enumeration), item 117
 (the back-drive sign, pinned in the same frame), TODO 8 (the notch window).
+
+## 130. The lock rocker's pin and the lever's slot lug float — two bodies in a seated unit no gate held — CLOSED
+
+Reported by eye, on the alarm toggle: *the arm's pivot appears translated a
+few points away from its post, and swings a bit when the arm moves.* The
+part is `alarmLockRockerPin` — §183's pin, the one TODO 90 finding 5 put on
+the P–Q line so the rocker's velocity would be parallel to the lever's.
+
+**What the metal was.** The rocker group carried three meshes: the beak arm
+along its local +x, the beak nose at that arm's tip, and the pin at 32.8° off
+the arm and 0.689 clear of its box. §183's own comment calls the pin "a SECOND
+arm at a fixed angular offset from the first"; the pin was built and the arm
+was not. As a child of the rocker group the pin swung about Q exactly as the
+solve says — every pose assert, `alarmHandoffs` row and `restoring` row was
+satisfied — with no metal between it and the post it swung about. Which is
+precisely what the eye reported: a pivot 1.874 (`aPin`) off its post, moving
+on an arc. The other half of the same joint had the same defect: the lever's
+slot plate `alarmLockSlot` rode the lever's FRAME at radius
+`ALARM_ROCKER_SLOT.mid` and the lever's bar (arm and tail through the pivot)
+never reached it. Measured by `assembly`, both rows in one unit:
+
+| Alarm lock split | separation |
+|---|---|
+| beak + rocker arm ⇄ rocker pin | 0.689 |
+| arm + pad + tail ⇄ slot plate | 0.463 |
+
+**Why no gate caught it.** `assembly` gates only `ASSEMBLY_SCOPE` (the
+governor, its anchor, the striking wheel), so both rows were REPORTED residue
+under §107's covenant. `support` is per unit and the unit is seated. The
+`INTRA_UNIT_CONTACTS` rows for the pin in its slot and the rocker on its post
+describe joints that ARE there, so §182's audit passed them. Nothing asks
+whether a mover's metal reaches the part it is posed with — roadmap item 180
+names the same class from the jumper stud: one floating mesh in a seated unit
+passes in silence.
+
+**The fix, position-space only.** Two members, no constant moved:
+
+- `alarmLockRockerPinArm` — root at Q, tip at the pin, along `pinAz` for
+  `aPin`, at the rocker's own section (`armW` square) in the rocker's plane.
+  The pin's top already ends AT that plane (`pinTop`), so the arm lets it in
+  by half the arm's height; a boot assert holds that, because a pin whose top
+  stopped under the arm would float exactly as before with an arm above it.
+- `alarmLockWeb` — from the lever's pivot out along the slot's own radial
+  (`slotAzLocal`), at the lever's width (0.5, the arm and tail's) and stock,
+  ending in the MIDDLE of the slot plate's inner rim. The rim was a bare
+  `0.35` in the plate's outline; it is one named `rim` now, so the web's tip
+  derives from the same number that sizes the plate: the near half of the rim
+  is the joint, the far half keeps the web out of the slot's hole, and a boot
+  assert holds the tip between the plate's edge and the hole's.
+
+Both new members are declared where their overlap lands on a fixture
+(`alarmLockRockerPinArm ⇄ alarmLockBeakRiser`, `alarmLockWeb ⇄
+alarmLockPivotPost`); their overlaps with the arm, tail, slot plate, beak arm
+and pin are same-frame and are `assembly`'s domain, not `intraUnit`'s. And
+**'Alarm lock' is in `ASSEMBLY_SCOPE`** now, so the class this item is — a
+member of a unit that its bar does not reach — fails rather than reports.
+
+Measured after the fix: `assembly` 0 undeclared, 0 out-of-scope rows for the
+unit; `support` 0 failures; boot silent. The full battery is pasted in the
+landing PR.
+
+**Residue, named.** The schematic tier draws the lock as its lever line alone
+(`addLine(alarmLockLever, …)`) — the rocker, its two arms and the slot never
+drew, before or after this item; §84's census owns that. And this item
+closes one instance of item 180's class; the class itself (a floating mesh in
+a seated unit) is still gated only through `ASSEMBLY_SCOPE` membership, unit
+by unit.

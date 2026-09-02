@@ -4,8 +4,8 @@
 
 # The instruments
 
-175 scripts. **81 are ACCEPTANCE tests** — they decide and exit non-zero.
-**94 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+176 scripts. **81 are ACCEPTANCE tests** — they decide and exit non-zero.
+**95 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -119,6 +119,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-77-census.mjs` | §77 | acceptance | §77 — run `meshIntegrity` headless and print its summary: the control, the aggregates (builder-owned cause patterns), the top zeroArea and inverted rows, sub-body declarations, and the triangle census's head. The full payload is written to the file named in argv[2] (default meshintegrity-payload.json beside this script) for report-diff work. |
 | `probe-77-chain.mjs` | §77 | acceptance | §77 tier 3 — the chain's sub-body declaration, held at three tensions. |
 | `probe-77-threshold.mjs` | §77 | report | §77 tier 1 — derive ZERO_AREA_MAX from the scene, not from taste. |
+| `probe-79-rodend-band.mjs` | §79 | report | TODO 79 — IS THERE ROOM FOR A HANGER AT THE LAY SHAFT'S ROD END? The scan §68 never ran past t 24. |
 | `probe-82-alarm-stall.mjs` | §82 | acceptance | TODO 82 — THE ALARM TRANSFER'S STALL, COMPUTED INSTEAD OF QUOTED. |
 | `probe-87-pawl.mjs` | §87 | acceptance | TODO 87 — THE PAWL AGAINST THE SAW, IN THE WHEEL'S OWN PLANE. |
 | `probe-87-press.mjs` | §87 | acceptance | TODO 87 — THE PRESS STROKE, MEASURED FRAME BY FRAME AGAINST THE METAL. |

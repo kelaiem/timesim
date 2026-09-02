@@ -19446,6 +19446,15 @@ fold removes one box and adds one — §171's fix on the pivot post and §174's 
 the strike sleeve, a third time in this unit. Two new joint rows (the rocker on
 its post, the pin in the slot), and `restoring` gains the rocker by name.
 
+**Found later — TODO 130.** "The pin is a SECOND arm" above was written and
+the arm was not built: the pin was a child of the rocker group with no metal
+to Q, and the slot plate rode the lever's frame with no metal to the pivot.
+Every assert here passed, because the kinematics were right and only the
+matter was missing; `assembly` reported both splits (0.689, 0.463) and gated
+neither, the unit being outside `ASSEMBLY_SCOPE`. Seen by eye as a pivot
+swinging off its post. The pin's arm, the lever's web and the unit's entry
+into `ASSEMBLY_SCOPE` are that item's landing.
+
 ### Instruments
 
 `tools/probe-90-lockread.mjs` is the SEARCH and stays a report — it prints the
@@ -21099,6 +21108,402 @@ are recorded in the probe:
   the excluded lugs must report ≈ −barR, contact the metal actually
   makes.
 
+## §201 — The plate frames the governor's fork and opens onto the Maltese cross; the cross's window is a late intent
+
+**Roadmap §131 lands, by route (a) — a third window — with the governor's
+window narrowed beside it rather than swapped.** Two premises of that entry
+were stale by the time it was read: it counted three intents (§148 withdrew
+`escapement`; the shipped list was `fusee` and `governor`), and it prescribed
+declaring the cross's disc "up front in `ALARM_UNDER_FOOTPRINT`", which cannot
+be done — the cross's STATION is a solved output of §106/§129's scene scan,
+not a plan constant. Both are corrected below; the route decision is made on
+the ½∮r²dθ number §131 asked for.
+
+### The governor window: §120's argument, one step further
+
+§120 moved the frame from the union of the saw's disc and the ring's onto the
+anchor's own disc, arguing that the escapement's ACTION happens on the anchor.
+That argument reaches its own conclusion one step further on. The poising ring
+is the anchor's INERTIA — what the cadence is an arithmetic OF — and it turns
+as a plain hoop; the action is the two pallets meeting the saw's teeth on
+§113's flat faces, and measured off the boot (`tools/probe-115-window.mjs`)
+all of it stands within **1.256** of the anchor's axis:
+
+| fork member | greatest reach from the anchor's axis |
+|---|---|
+| `alarmGovAnchor` (body) | 0.902 |
+| `alarmGovAnchorArm` | 1.032 |
+| `alarmGovPallet` | **1.256** |
+| `alarmGovRing` (not the fork) | 6.320 |
+
+The window's disc is now **`ALARM_GOV_FORK_DISC`**, a bound derived from the
+plan rather than read off metal that does not exist when the solver runs
+(five thousand lines before the anchor is cut): the landing corner sits on the
+saw's tip circle `ALARM_GOV_LAND_EPS` (2.25°) off the anchor–wheel
+centre-line, so it stands
+
+    |C| = √(D² + R² − 2·D·R·cos ε) = 1.084     (D = ALARM_GOV_ANCHOR_D 7.051, R = ALARM_GOV_SAW_R 6.0)
+
+from the axis; the working face runs `ALARM_GOV_FACE_LEN` (0.317) along the
+tooth path from that corner and the pad stands `ALARM_GOV_PALLET_BACK` (0.417)
+behind the face, so by the triangle inequality no point of either pallet is
+farther than **1.818** from the axis. The arms root at the arbor wall and end
+inside the pallets; the hub is 0.901. The anchor is a revolver about this
+axis, so the reach is pose-independent (§115's argument). Plus one
+`CLEAR_MARGIN` of visual reveal: **1.965**. Four §113 constants are hoisted to
+the plan block for it, the way §115 hoisted the ring's stock window.
+
+The disc is deliberately NOT a row of `ALARM_UNDER_FOOTPRINT`. That list is
+what the pillar solve avoids and what §184's joint bound judges pairwise, and a
+disc nested inside the ring's would read there as a foul while buying the
+pillars nothing. It is declared beside the footprint, and the §115
+declared-versus-cut assert measures it with the rows — body, arms, pallets,
+arbor and stud against the fork's disc; the ring's members stay on the ring's
+row.
+
+What the saw shows: the tooth circle passes 1.05 from the anchor's axis and
+stays inside a 1.965 disc for **±14.7°** of saw about that axis — about three
+of the forty teeth, engagement at the middle.
+
+| governor window | §120 | §201 |
+|---|---|---|
+| disc | 6.483 (ring row + margin) | **1.965** (fork disc + margin) |
+| bearings open / at full reach | 360 / 360 | 360 / 360 |
+| ½∮r²dθ | 132.1 | **12.1** |
+| `alarmGovAnchor`, `alarmGovAnchorArm`, `alarmGovPallet` past the plate | 100 % | **100 %** |
+| `alarmGovRing` past the plate | 100 % | **0 %** |
+| `alarmGovSaw` past the plate | 21.4 % (unit) | 3 % |
+
+The probe reports per MESH now, because "the anchor unit is 100 % revealed"
+stopped being the claim and "every vertex of the fork is" started being it. It
+also reports a second column, "past everything": the fork reads 48–87 % there,
+and what stands over it is the anchor's OWN ring arms and collar at z 3.06–3.41
+— the part, not the plate — which the frame cannot and should not change.
+
+### The cross: a window whose centre does not exist when the plate is solved
+
+`alarmArrestCross` lies at z 0.10–0.42 under a plate whose underside is at
+8.184. Measured before anything was cut: **0 of 3109 vertices** with a path
+out. Its station — stud at (29.357, 9.629) — comes out of the four-freedom
+scan at the tower build, which scores the built scene and so runs eleven
+thousand lines after `solveTqWindows()` first does. Nothing at the plan hoist
+can declare a disc for it; the station cannot be hoisted either, because
+above the plate there is no scene for the scan to score.
+
+So the intent is the movement's first **LATE intent**: its centre is a holder
+(`ARREST_WINDOW`) the arrest block fills once the stud is placed, and the row
+is solved on the re-cut pass only. At the first solve it is reported as
+`deferred` — present in every table by name, never silently absent.
+
+§115 barred SIZING a window on the re-cut pass, and the bar's whole reason is
+that the first outline has consumers: the pillar seats and their plate screws,
+solved against it and no longer conservative if it grows. A window that did
+not exist at the first solve is exactly that case, so the same consumers are
+HELD rather than trusted, three ways:
+
+1. Every pillar seat is a `tqHoles` row, and `checkPlateWindows` check 2
+   measures every cut window's edge against every `tqHoles` row at
+   `TQ_LAND_MIN` on the `re-cut` and `movement complete` stages. A late window
+   inside a land of a seat already warns.
+2. The re-cut block states the same rule against the SEATS by name — every
+   late row's every sector against every seat circle at `PILLAR_SEAT_R`,
+   needing `TQ_LAND_MIN` — at the one place the bar is relaxed, so the
+   relaxation and its guard sit together.
+3. A late intent still deferred at the re-cut warns (a holder nobody filled is
+   a report of nothing), and an intent that returns no centre WITHOUT being
+   declared late warns too.
+
+Measured, the nearest seat stands 15.9 from the cross's stud; the gate is what
+keeps that a fact the next re-layout cannot lose.
+
+What the window frames is the cross's own rim disc, `ARREST_SPEC.b` — the
+radius the finger's pin banks on — read through the holder rather than
+transcribed, and held by a declared-versus-cut assert at the cross build
+(§115's pattern: the greatest vertex distance from the stud must not exceed
+the declared radius; a cross with no vertices warns). The finger is not
+framed: its pin enters the cross's disc where it works, and the disc contains
+the engagement.
+
+| arrest window | value |
+|---|---|
+| centre | (29.357, 9.629), the stud |
+| disc | 3.801 (`ARREST_SPEC.b`) + `CLEAR_MARGIN` = **3.951** |
+| bearings open / at full reach | 360 / 348 |
+| keeps bite | 12 bearings, 100–111°, worst **0.328** at 106° — `alarmHammerSpringStud`, 4.07 from the centre |
+| ½∮r²dθ | **48.8** cut of 49.0 wanted |
+| sectors | 1 (bossless — the tower's columns plant in the BASE plate) |
+| `alarmArrestCross` past the plate | 0 % → **100 %** (4442 / 4442) |
+| `alarmArrestCross` past everything | **73 %** |
+
+The 27 % the window does not buy is the column wheel: `ALARM_COL_POS` stands
+7.24 from the cross above the plate, base radius 5.7, and covers the cross's
+near third from above. It is not a keep — only its stud crosses the plate
+band, and the stud is 7 away — so the window is cut whole under it, and the
+eye sees the cross the way the owner asked for it: partially under the switch.
+
+**No pillar seat moved.** All four stations are bit-identical to §120's
+(29.3755, 25.5357 / −38.917, −0.6793 / −24.3407, −24.3407 / 7.1569,
+−33.6707): the governor's smaller disc leaves the 45° seat's optimum where it
+was, and the pillar scan never sees the late window at all.
+
+### A solver blindness the late window exposed, and the rule it needed
+
+`solveR` bisects for the largest radius on a bearing whose POINT clears the
+keep field, and it took the shortcut every window had earned so far: if the
+ray's END is clear, return the full reach. That assumes the clearance along
+a ray is monotone — clear at the centre, blocked once and for good toward
+the rim — which was true only because every keep stood OUTSIDE its window's
+disc and bit the rim. A keep standing INSIDE the disc leaves the end clear,
+and the window was cut straight through the plate that keep needs; only
+`checkPlateWindows` check 1 said so, after the cut. It was found by the late
+window under the `crownaz=90` spec boot, which moves the switch cluster into
+the cross's disc: the check read **0.107** against 0.15, twice (re-cut and
+movement complete).
+
+The fix is a WALK: a late intent whose disc has any keep, pivot or opening
+reaching inside it walks each ray outward from `r0` in steps of
+`CLEAR_MARGIN / 2` — under the narrowest blocked run an obstacle can leave,
+since a keep inflated by `CLEAR_MARGIN` blocks at least 2·`CLEAR_MARGIN` of
+ray and a hole inflated by `TQ_LAND_MIN` more — and bisects only inside the
+first step that fails. Under `crownaz=90` the arrest window now solves to a
+minimum reach of 2.964 at 360 open bearings and the check is silent.
+
+**And it is the late intents' rule, not every window's.** Walking every
+window cut the fusee window to pieces on the identity boot — 158 bearings
+bitten, some to zero — around §47's winding-arrest stud, which stands up
+through the fusee window's own OPENING and was sited there by reading this
+very report. An early window's interior is already spoken for: a part that
+crosses the plate band inside it is a part that read the window and stood in
+its air. A late window has no such history — nothing could have read it — so
+anything inside its disc that crosses the band is plate-borne until the
+movement says otherwise. The early windows keep the end test and their
+check-1 guard exactly as before; every row now reports `interior` and
+`walked` so the reader can see which rule it was solved under.
+
+### What the record does not owe
+
+`explain.html` gains nothing — §115's argument holds verbatim: its entries are
+mechanisms, and a window is structure and finish; no quoted number moves.
+`MECH_GRAPH` gains nothing: a window is an absence. §71's occluder shares the
+plate's geometry, so the schematic tier and x-ray follow both openings for
+free. `TODO.md` gains nothing: nothing here is waived.
+
+Roadmap §131 is retired to a stub in the private repo; this is its record.
+
+### The battery, and the two things that moved
+
+**38/38 gates pass**, boot silent, run locally on this tree and on
+`origin/main` (79aa1e0) in turn, `--no-incremental`, three shards:
+
+```
+support 0 failures · graph clean · penetration every row OK or waived
+alarmHandoffs 13 hand-offs, 0 waived · stockFloor 646 rows, 0 degenerate, 0 unwaived
+slenderness 10 over ceiling (1 unwaived, §40's report), 0 malformed, 0 unsupported, 0 stale
+outlines 410 rings tested, 0 self-crossing · intraUnit 319 movers over 70 poses, 0 unwaived
+assembly 0 undeclared unwaived splits · expectedContacts 18 pairs, 0 unwaived
+restoring 24 reversing units, 0 unwaived, control PASS · transfers 15, 0 unwaived misses
+inspection 0 FORBIDDEN over 57 units and 81 contacting pairs · clearances 0 violations over 32 budgets
+sweptOverlap 0 CONFIRMED over 102003 pairs (tight 3, refuted 19)
+fingerprint 3499276729, deterministic across virgin boots · spec boots 32/32 build, identity control silent
+```
+
+`--report` diffed check by check against the base, timings and censuses
+stripped: **twenty-three of twenty-five payloads are byte-identical** —
+`support`, `graph`, `axisEntry`, `penetration`, every hand-off check,
+`stockFloor`, `slenderness`, `intraUnit`, `assembly`, `expectedContacts`,
+`oscillator`, `equalisation`, `chainLength`, `restoring`, `meshPhase`,
+`transmits`, `transfers`, `inspection`, `clearances` and `sweptOverlap`. The
+fingerprint is **unchanged**: a window is strictly interior, no pillar seat
+moved, so no unit's box moved. Two things differ and both are the plate's
+new geometry showing up where it should:
+
+1. **`outlines`: 409 → 410 rings.** The governor window trades one ring for
+   one; the cross window is the ring added. Every ring simple.
+2. **`meshIntegrity`: the plate goes 57,902 → 66,558 triangles** (+8,656,
+   the two new outlines re-triangulating the face), and its exact-zero-area
+   count 8006 → 8010 — four more collapsed triangles at the plate's face,
+   the class the check REPORTS. No inverted body, no sub-body row moved.
+
+Unlike §115, neither `support` nor `sweptOverlap` moved by a triangle's
+worth anywhere: the base's two rows that §115 saw shift were measured against
+mesh pairs the re-triangulation happens not to touch this time.
+
+Cost: total 678.8 s against the base's 843.8 s on the same machine — noise
+from what else was running, not a change; the cost column is left alone.
+
+## §202 — Bearings for the column wheel's neighbours: the pusher stem, the selector rod, the lay shaft's rod end and the alarm stem's tube
+
+**The ask was more slenderness waivers retired around the column wheel — the
+selector rod and the fictions behind it, the crown stem, the pusher stem, the
+click posts and the fixtures.** Measured first (`checkSlenderness` on the
+booted tree): the column wheel, its stud, driver, pawl, pawl post, pawl
+spring stud, sautoir stud and shank, the alarm click's stud and spring post,
+and the alarm lock's posts all read λ under 6 and carry no rows. What was
+there to retire, and what happened to each:
+
+| row | before | §202 | how |
+|---|---|---|---|
+| `Alarm switch / alarmPusherStem` | **38.1**, the one UNWAIVED row | off the report (worst segment λₑ 15) | two real bores declared, one liner added in the case's bore |
+| `Alarm link / alarmLinkRod` (selector rod) | 31.8, waived TODO 16 | off the report (foot overhang λₑ 26.6) | a bush in each plate |
+| `Alarm link / alarmLinkShaft` (lay shaft) | **127.6** on the rod-end overhang, waived TODO 16 / 79 | 59.6 on its spans, still waived TODO 16 | a third hanger at the rod end, the middle one moved to the midpoint |
+| `Alarm crown / alarmStem` | 76.6 inboard, **53.5** on the crown end, waived TODO 109 | 76.6 inboard, **26.0** crown end, still waived | a liner in the case's alarm tube; the inboard end measured unfixable by a bearing |
+| the arming chain's stall (TODO 82) | **1.58 mN**, under the 5–50 mN detent window, transfer waived TODO 79 | **6.17 mN**, inside the window, waiver retired | the rod-end term 21 → 341 N/m |
+
+The report reads 10 over ceiling / 1 unwaived → **8 over / 0 unwaived / 0
+stale**; `bearings` 3 meshes declaring 4 stations → **5 meshes, 11 stations,
+0 unsupported, 0 malformed**.
+
+### The case guides what passes through it
+
+The alarm crown's stem crosses the case band through a Ø2.0 mm tube and the
+pusher's stem through a Ø1.2 mm flush bore, and in a real case those bores
+ARE the stems' outer guides. Here they were sleeves of air: the pusher's
+Ø0.24 mm stem ran 13.9 u from its rim guide to its head with nothing round
+it, the alarm stem 17.8 u from its rim bush to the crown. Declaring the
+pusher's two real bearings (the guide boss and §164's return abutment, both
+bored at `PIVOT_BORE_CLEAR` and declared by nothing — the guide's own comment
+called itself "the pusher's bearing until §3's case takes over") would alone
+have made the row WORSE, the way TODO 109's step 1 found: the crown-end run
+reads λₑ 54.7 as an overhang.
+
+So each bore carries a LINER, owned by the unit whose stem it holds (a bush
+is part of the part it holds — `supportAt`'s covenant, and what lets the
+check see it): bored one `PIVOT_BORE_CLEAR` over its stem — the same fit the
+guide and abutment carry, one derivation in three places — pressed into the
+case's bore at a hundredth of running room (the studded-wheel idiom, never
+coincident solids), as long as the sleeve the case built, read off that
+sleeve rather than re-derived from the case's arithmetic. They are built
+after the case, because the case builds last, and the stems' bearing tables
+are completed there. Each liner owes the graph a support edge to the Case, an
+EXPECTED pair with a floors row naming its press fits, and an `intraUnit`
+joint row for the stem sliding in it. The first battery run named a press
+fit the row had not: the alarm tube carries a flanged COLLAR bored to the
+same radius as its sleeve, and the liner passes through both at 0.01 — the
+`expectedContacts` gate read it at every pose and failed, which is that
+gate doing exactly what TODO 6 built it for. The collar is the row's second
+contact now; the pusher's bore is flush and has no collar.
+
+| pusher stem, three stations (stem-local y) | | |
+|---|---|---|
+| return abutment | −11.25 | inboard overhang 0.94 u |
+| rim guide boss | −1.70 | span 9.55 u, λ 15 |
+| case-bore liner | 8.02 | span 9.72 u, λ 15; crown-end overhang 4.17 u, λₑ 16 |
+
+The alarm stem's third station stands at the tube liner's middle, 13.00 on
+the stem's own y beside its rim bush's 3.84: its crown end is a 8.68 u
+overhang at λₑ 26.0 now.
+
+### The alarm stem's inboard end — measured, and no bearing's to fix
+
+TODO 109's waiver said this row "actually wants a SECOND BEARING". Measured
+(the pull posed and stepped): the whole spinner slides 5 u, the bevel pinion
+(r 1.77) sweeps x 15.8–22.5 and the collars (r 0.78) sweep x 22.8–33.6, so a
+fixed bush bored to the stem can stand nowhere inboard of x ≈ 34 — which is
+where the rim bush already is. The stem's inboard tip stands on the winding
+arbor's own axis at rest, so an inner journal bore is not there to cut
+either. The 25.5 u overhang and its λ 76.6 are a corner-layout fact — a
+contrate mesh on the stem's line, a 5 u throw — and the waiver stays saying
+so.
+
+### The selector rod: bushed in both plates, from the rod outward
+
+The rod passed both plates through clearance holes (r 0.45 against a 0.30 rod)
+and declared nothing; TODO 87 finding 5 had said so. The chain now runs FROM
+the rod: its section is the datum (§137's reconciled 0.30 — it had been
+derived from the hole, which had been sized by the plate's bevel), a bush is
+bored one running fit over it, the bush's wall is the §50 floor, and each
+plate's hole is the bush's outside plus a hundredth. `ALARM_LINK_ROD_R_SECTION`
+and that chain are hoisted above the back plate's hole list, which consumes
+them. The rod's site solve keeps the 0.45 it was solved and frozen with
+(re-scoring at the new radius could move the frozen site and every derivation
+behind it) and an assert holds that the frozen site still clears the larger
+bore: it returns the column's clearance now, and 0.677 leaves the margin.
+
+| rod, two stations (rod-local y = world z) | | |
+|---|---|---|
+| back-plate bush | −3.19 | foot overhang 6.34 u, λₑ 26.6 — under the 27 target, asserted, with the skirt the bush would grow if the foot ever deepened |
+| three-quarter-plate bush | 6.39 | span 9.58 u, λ 16; beak-end overhang 3.13 u, λₑ 13 |
+
+The link's plate pair had TODO 6's blanket excuse; it has a floors row now
+naming the beak's post and the upper bush, and everything else the unit owns
+holds the margin from the plate.
+
+### The lay shaft: a third hanger where TODO 79 said, measured before it was cut
+
+§112 grew the chord ≈ 9 u and the two station literals stayed, so the rod-end
+overhang ran 12.6 u at λₑ 127.6 and k 36 N/m — the member TODO 82 measured
+carrying 72.4 % of the arming chain's compliance, and the reason the pusher's
+stall read 1.58 mN against a 5–50 mN detent. The third station is END-RELATIVE
+and derived: `fullChordLen − ALARM_LINK_ROD_END_OVERHANG`, the overhang being
+what §54's target allows this section as a cantilever, `SLENDER_TARGET · 2r /
+SLENDER_OVERHANG_K` = 2.642 u. The middle station moved to the midpoint of the
+two end stations, because a run's bending compliance is a sum of L³ over its
+spans and is least when they are equal: 19.55 + 9.85 → 14.70 + 14.70.
+
+`tools/probe-79-rodend-band.mjs` measured the corridor §68's scan never
+reached (t 24 → the chord's end) over the pose net, a hanger's own column at
+each station against every mesh outside the link — floor (the dial's sheets,
+0.54 under the foot) and ceiling classed apart from walls: room ≥ 2.5 u from
+the rod end inboard to t 10.6, 12.1 at the station taken, 3.9 at the moved
+middle one, the alarm setting idler's arbor the wall throughout. Its exact
+control is the battery's published `alarmLockPad ⇄ alarmLockCollar 0.1572`;
+its contact control straddles a dial foot and reads 0.0000. §68's own
+"measured room 2.77" at t 22 could not be reproduced (this reads 7.74 to the
+axis there) and the probe says so rather than passing a control it cannot
+hold. The hanger bushes are named now — a third station renumbers every
+positional selector, and four joint rows addressed them by index.
+
+The stall arithmetic in `main.js` and TODO 82's probe both take any number of
+stations now (rod end = the low-y overhang, one midspan-loaded span per gap,
+the cantilever coupled to the span beside it), and they agree: **k_eff 85.70
+N/m, stall 6.17 mN**, the two equal spans 42.5 % of the compliance each. The
+derivation's assert against the probe is relative (3 %) now — the probe
+measures nPin at 1.0152 where the solve holds it at 1, and with the spans
+governing that 1.5 % is 3 % of the total. The transfer waiver is retired (the
+gate would have failed it: a waiver naming a site with no envelope miss).
+
+What the shaft still owes is TODO 16's, and the arithmetic moved under it: λ ≤
+27 on a 14.70 span wants r ≥ 0.2722, inside the 0.2850 corridor for the first
+time — but at r 0.28 the tail blade governs alone and the chain overshoots the
+window at ≈ 65 mN. Tail and shaft want sizing together; the waiver stays with
+those numbers in its comment.
+
+### What the record owes
+
+`TODO.md`: item 79 closed; items 16, 82 and 109 re-measured (109's index row
+had said 9 rows / 0 unwaived where its body said 10 / 1; the live report is
+the arbiter). `explain.html`: nothing — no quoted number moves. `MECH_GRAPH`:
+two support edges to the Case. `SLENDER_WAIVERS`: unchanged in membership,
+`Alarm link`'s comment rewritten; `TRANSFER_WAIVERS`: empty again.
+
+### The battery, and what moved
+
+**38/38 gates pass**, boot silent, run locally on this tree (three shards,
+`--no-incremental`) and diffed check by check against `origin/main` (79aa1e0)
+with timings and censuses stripped:
+
+```
+support 0 failures (four new rows: Alarm switch → Case 0.010, Alarm crown → Case 0.010, Alarm link → Three-quarter plate 0.147 → 0.007 (the bush in its bore), Alarm crown → plate 0.35 → 0.15)
+slenderness 8 over ceiling (was 10), 0 unwaived (was 1), 0 stale; 5 meshes declare 11 stations, 0 unsupported, 0 malformed
+transfers 15 rows, 0 unwaived envelope misses, 0 waived (was 1) — the lay-shaft row 1.588 → 6.331 mN, inside 5–50
+expectedContacts 21 pairs (was 18), 0 unwaived: Alarm switch ⇄ Case min 0.150 (the head at full press against the bore's sleeve — exactly the margin, by the §43 solve), Alarm crown ⇄ Case 0.55, Alarm link ⇄ Three-quarter plate 0.374 (the rod in its bush's bore)
+intraUnit 155 declarations (was 149), 0 unwaived, 0 unmatched; the new joints measure 0.050 / 0.0499 / 0.0496 (the three sliding fits) and 0 (the hangers' sockets)
+stockFloor 652 rows, 50 waived (the six hanger rows now NAMED instead of four (unnamed) ones — TODO 11's existing waivers, two more bodies)
+sweptOverlap 0 CONFIRMED over 103393 pairs (tight 3, refuted 18) · inspection 0 FORBIDDEN over 57 units / 81 pairs · clearances 0 violations over 32 budgets
+fingerprint 3499276729 → 48949037 (six new fixtures; deterministic across virgin boots) · spec boots 32/32, identity control silent
+```
+
+Sixteen payloads are byte-identical to the base — `graph`, `axisEntry`,
+`penetration`, every hand-off check, `assembly`, `oscillator`,
+`equalisation`, `chainLength`, `restoring`, `meshPhase`, `transmits`,
+`inspection` and `clearances`. Nine differ, and each difference is a named
+part above: `support` (the four edges), `slenderness` (two rows leave, one
+moves), `transfers` (one value, one waiver gone), `expectedContacts` (three
+pairs), `intraUnit` (six declarations), `stockFloor` (six named rows for four
+anonymous ones), and `outlines` / `meshIntegrity` / `sweptOverlap` counting
+the six new solids. The first run of this tree failed one gate —
+`expectedContacts`, the tube collar — and that finding is above.
+
 ---
 
 ## §199 — The screwed gold chatons and the plate screws glass with the three-quarter plate in x-ray
@@ -21193,4 +21598,3 @@ was still the crystal), so no viewer can get past it. The probe lifts the
 crystal to an unused layer as a declared control to reach the plate at all.
 Two defects in one — the crystal should demote like glass, and the fallback
 name is wrong for it — both §187/§59's, neither this entry's.
-
