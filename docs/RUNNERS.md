@@ -115,8 +115,81 @@ Three levels of containment, in increasing order of how much they hide:
    cache key already handles.
 
 Whichever level you pick, the workflow does not change; only the host does.
+The third level is built: the next section.
 
-## Setting a host up
+## The built path: a throwaway Linux VM per job, on Apple Virtualization
+
+`tools/tart-battery-runner.sh` runs the battery in a fresh Ubuntu 24.04
+ARM64 guest for every job, on Apple's Virtualization.framework through
+[Tart](https://github.com/cirruslabs/tart) — the Swift tool on that
+framework, licensed under the Functional Source License 1.1 (internal use
+permitted; converts to Apache 2.0 after two years). It is the privacy answer
+and the isolation answer in one mechanism:
+
+- **Everything the public logs print belongs to the guest.** Hostname
+  `battery-1`, user `runner`, paths under `/home/runner`, platform
+  `Linux/ARM64`. The Mac's name, account and kind appear nowhere.
+- **Every job gets a clean machine.** Each cycle clones the golden image (an
+  APFS copy-on-write clone, instant), mints a **just-in-time** runner
+  configuration through `gh api` — good for exactly one job, never written
+  to disk, never in the image — boots the guest, runs the runner until it
+  has done that one job, and deletes the clone. That is the "clean
+  environment" GitHub asks for on reused hardware, literally.
+- **Nothing enters the guest but that configuration.** Commands reach it
+  through `tart exec`, the guest agent the Cirrus images ship, with stdin
+  attached. No SSH key, no password, no token. The guest never calls
+  GitHub's API; the host does, as `gh`, and hands in what it verified.
+- **The guest only ever reaches out.** NAT networking: no inbound path from
+  the LAN, and the host's IP is seen only by GitHub, npm and the Playwright
+  CDN, as it would be from any runner.
+
+```bash
+brew trust cirruslabs/cli && brew install cirruslabs/cli/tart   # once
+tools/tart-battery-runner.sh build            # the golden image, once
+tools/tart-battery-runner.sh once --max-wait 75   # one cycle, foreground, giving up after 75 s idle
+tools/tart-battery-runner.sh install-service  # a LaunchAgent running `loop`
+tools/tart-battery-runner.sh status
+```
+
+**The golden image** holds Ubuntu 24.04, the `runner` user with
+passwordless sudo (battery.yml's `--with-deps` step apt-installs, exactly as
+on `ubuntu-latest`), Node 22 verified against nodejs.org's SHASUMS256, the
+`actions/runner` tarball verified against the SHA256 its release notes
+embed (refused if absent), the runner's own dependency script, and the
+pinned Playwright Chromium with its apt dependencies — so the workflow's
+install steps find everything present and finish in seconds. It is
+registered to nothing. `--cpu` and `--memory` size it (6 and 8192 by
+default on a 10-core, 16 GB host); `--shards K` writes `BATTERY_SHARDS`
+into the runner's `.env`, because the VM is the host whose K gets measured.
+`--rebuild` throws it away and builds again — that is how the runner, Node
+or the browser pin get updated. Measured on the M4 host: 75 s from `build`
+to a powered-off golden image, image pull excluded.
+
+`once --max-wait N` is the bounded test: it does a whole cycle but gives up
+waiting for a job after N seconds, then tears down and removes the runner
+record GitHub would otherwise keep as `offline`. Without the flag a cycle
+waits for its job indefinitely, which is what the loop wants.
+
+**The loop** is `once` forever: sweep any job VM a crash left behind, clone,
+boot, mint, run one job, tear down. Between jobs there is no online runner
+for the few seconds a clone and boot take, so a job that lands then queues
+briefly. A cycle that fails waits a minute and tries again; `touch
+~/.timesim-tart/stop` ends the loop between jobs. The service is a
+LaunchAgent, which runs while this user is logged in; `--keep-awake` wraps
+each cycle in `caffeinate -i` so the Mac does not idle-sleep with a runner
+online — on a laptop, decide that on purpose.
+
+**Reading it.** `~/.timesim-tart/loop.log` is the loop; each cycle's runner
+output lives beside it only until the cycle ends. `status` lists the VMs,
+the service, the runners GitHub currently sees (a JIT runner exists only
+between mint and its one job) and the routing variable.
+
+The name GitHub shows for each runner is `battery-1-` plus four hex digits,
+because a JIT runner's name must be unique among online runners and the
+previous cycle's may still be draining when the next one registers. The
+machine name it prints beside it is the guest's, `battery-1`.
+
+## Setting a host up (bare metal)
 
 ```bash
 tools/self-hosted-runner.sh install

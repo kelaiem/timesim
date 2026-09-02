@@ -21701,6 +21701,43 @@ K that CI has measured, not the K a laptop likes." The harness already
 read `BATTERY_SHARDS`; the workflow never states K; so a host's K is
 written on that host, by someone who measured it there.
 
+### The built host: a throwaway Linux VM per job, on Apple Virtualization
+
+The owner's next two questions — "how do I keep my machine details
+private?" and "how about the Swift-based Apple virtualization?" — were one
+question. On a public repository every job log is public, and a bare-metal
+runner prints the machine's hostname, the working directory (`/Users/<user>/…`)
+and the platform into it; the runner name is the only one of the four the
+workflow controls. A Linux guest owns all four. So the built path is
+`tools/tart-battery-runner.sh`: Ubuntu 24.04 ARM64 on Virtualization.framework
+through Tart (the Swift tool on that framework; Functional Source License
+1.1, internal use permitted), one **throwaway VM per job**.
+
+The cycle is clone → boot → mint → one job → delete. The clone is an APFS
+copy-on-write clone of a golden image and is instant; the boot was measured
+at four seconds to an answering guest agent; the mint is a just-in-time
+runner configuration from `gh api`, good for exactly one job, which travels
+from `gh`'s stdout to the guest's stdin through `tart exec -i` and is never
+written down. That is GitHub's own recommendation for reused hardware — a
+JIT runner in a clean environment — taken literally rather than approximated
+with `--ephemeral` on a shared filesystem. Nothing else enters the guest:
+no SSH key, no password, no token, and the guest never calls GitHub's API.
+
+The golden image is built once, by the same script, from what the host
+verified: Node 22 against nodejs.org's SHASUMS256, the runner tarball
+against the SHA256 its release notes embed, the pinned Playwright Chromium
+with its apt dependencies, the `runner` user with passwordless sudo because
+battery.yml's `--with-deps` step apt-installs exactly as it does on
+`ubuntu-latest`. The workflow is unchanged by any of this; the guest
+registers under the same label, and the platform-carrying baseline key
+already keeps a Linux/ARM64 host from inheriting `ubuntu-latest`'s X64 rows.
+
+Two measured facts from building it. `tart exec` refuses a `--` separator
+(exit 125) while accepting the command bare, which the script's first draft
+got wrong on every call. And the Cirrus Ubuntu image boots to a working
+guest agent as user `admin` with passwordless sudo, which is what makes a
+credential-free provisioning possible at all.
+
 ### Three workflow consequences, all in the safe direction
 
 - **The §152 baseline key carries `runner.os`/`runner.arch`.** A baseline's
