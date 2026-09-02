@@ -21598,3 +21598,234 @@ was still the crystal), so no viewer can get past it. The probe lifts the
 crystal to an unused layer as a declared control to reach the plate at all.
 Two defects in one — the crystal should demote like glass, and the fallback
 name is wrong for it — both §187/§59's, neither this entry's.
+
+## §200 — Self-hosted battery runner — routed by trust, switched by a variable
+
+Owner request: *"set up self-hosted runners."* The candidate was never in
+doubt. `battery.yml` is 13–34 minutes of single-threaded browser work per
+run on `ubuntu-latest` (the last twenty runs, read off the Actions API), on
+a runner whose own header records a 1.66× spread between two runs of the
+same tree; every other workflow is seconds, or holds a secret. So §200 is
+the battery job's HOST, and nothing about what the job judges.
+
+The one fact that shaped it: **the repository is public**, and GitHub's own
+guidance is that self-hosted runners "should almost never be used for
+public repositories on GitHub, because any user can open pull requests
+against the repository and compromise the environment." That is correct,
+and it is why this is not a `runs-on` swap.
+
+### The rule: trust first, variable second
+
+`runs-on` is one expression, read in this order:
+
+| event | head repository | `github.actor` | asked for the host? | host |
+|---|---|---|---|---|
+| `pull_request` | a fork (or a deleted one — `null` compares unequal) | anyone | — | `ubuntu-latest`, always |
+| any | — | not the repository owner | — | `ubuntu-latest` |
+| `pull_request` | a branch of this repository | the owner | no | `ubuntu-latest` |
+| `pull_request` | a branch of this repository | the owner | `self-hosted-battery` label or `[self-hosted]` in the title | `vars.BATTERY_RUNS_ON`, or `ubuntu-latest` when unset |
+| `workflow_dispatch` | — | the owner | `runner: self-hosted` | the same |
+| `push` to `main` | — | — | cannot ask | `ubuntu-latest`, always |
+
+The fork test comes BEFORE the variable is read, so no label, variable or
+later edit lower in the file can route a fork onto a host. The actor test
+(added on the owner's request, "restrict it to PRs I start") is the tighter
+of the two readings of that request: `github.actor` is the user whose action
+caused THIS run, which on a `synchronize` is whoever pushed the commits being
+tested rather than whoever opened the PR, so a collaborator's push to the
+owner's branch, their merge and their dispatch all stay hosted. It compares
+against `github.repository_owner`, not a login — no name in the file, and a
+transfer to an org matches nobody, the safe side. The residue is named in
+`docs/RUNNERS.md`: the owner's NEXT push to a branch a collaborator touched
+tests the combined tree on the host, which is the trust a write-access
+collaborator already holds.
+
+**And the host is never the default** (the owner's third request: "choose
+not to use the self-hosted by default and explicitly target the runner when
+creating the PR"). §152's escape hatch — a label or a title marker read by
+the workflow — is the idiom, inverted: `self-hosted-battery` or
+`[self-hosted]` opts a PR in, a `runner` input opts a dispatch in, and a
+push to `main` cannot ask, so merges stay GitHub-hosted and main's baseline
+stays on the platform ordinary PRs inherit from. The variable stops being
+the router and becomes the AVAILABILITY switch: unset, every opt-in lands
+on `ubuntu-latest` in silence, which is the outage remedy. Two mechanics
+are written beside the trigger: the title marker is the reliable one at
+creation (`gh pr create --label` labels a moment after the PR opens, so the
+opening payload may not carry it), and a label added later needs the
+`labeled` event, which the trigger now lists with a job `if` that lets only
+the two routing labels start a run — any other label would otherwise cost a
+battery — while `cancel-in-progress` retires the hosted run the label
+supersedes. The variable is
+a single runner **label** (`timesim-battery`, the one the setup script
+registers), not JSON: a bare word cannot fail to parse, and a label no
+online runner carries makes the job queue visibly rather than run on the
+wrong machine. Merging the workflow changes nothing until the variable
+exists — which is what let this land before any host did.
+
+**A repository variable, when `pages.yml`'s rule is "every pointer is a git
+ref".** The deviation is deliberate and the two pointers are different in
+kind. §88's rule is about CONTENT: which bytes an environment serves must
+be auditable from history. This pointer chooses a HOST and never touches a
+byte the battery judges — same harness, same gates, same tree. What it
+changes is operational: GitHub holds a job queued for a self-hosted label
+for 24 hours before cancelling it, so a laptop that closes its lid parks
+every trusted run for a day, and the fix has to be a settings flip because
+a revert PR would have its own battery queued behind the outage. The
+audit trail the git-ref rule wants is kept another way: the job's first
+step writes the runner's name, OS, architecture, the variable's value and
+the trust verdict into the step summary, through `env` rather than inline
+(a head repository name is untrusted text).
+
+### What holds the rule, beside the expression
+
+Defence in depth, each named in `docs/RUNNERS.md` rather than assumed:
+the outside-contributor approval policy (`first_time_contributors` today;
+`all_external_contributors` recommended, a settings change the owner
+makes); no secret on the job (`release.yml` and `pages.yml` are not routed
+by the variable and stay GitHub-hosted); and the host's own isolation — a
+dedicated user or a snapshot-able VM, which the script cannot create
+without root and does not pretend to.
+
+### What the script does, and the one thing it refuses to
+
+`tools/self-hosted-runner.sh install | status | uninstall`. Install is
+idempotent, and in order: host check (the gh account must be a repo
+admin — registration tokens need it); the `actions/runner` release for
+this OS/arch, **verified against the SHA256 the release notes embed for
+that exact asset** and refused if the release publishes none — a runner
+executes CI's code on the machine, so its own bytes are checked before
+anything else is; the pinned Playwright Chromium pre-installed where the
+workflow's step looks; registration with a one-hour token minted through
+`gh api` and never written to disk; the service (`svc.sh` — a LaunchAgent
+on macOS, systemd on Linux); and optionally `BATTERY_SHARDS` into the
+runner's `.env`, which the runner loads into every job's environment.
+
+Its default runner name is `battery-1`, never the hostname: the repository
+is public, and the runner name, the OS hostname, the working directory and
+the platform are all printed into public job logs by the runner or the
+checkout — `docs/RUNNERS.md` "Privacy" tabulates the four and the three
+levels of containment, of which a Linux container with the runner inside
+is the one that closes all four and doubles as the isolation the security
+section asks for.
+
+It ends by PRINTING `gh variable set BATTERY_RUNS_ON …` and not running
+it. Pointing the merge gate at a machine is the owner's decision, and the
+doc's "Before you flip it" is the checklist.
+
+**The shard count lives on the host, and that is the roadmap's own rule
+applied.** §127's K=4 revert established that K is a measured property of
+a machine (the container said +12.3%, the runner said +28.7%, opposite
+signs), and its tier-3 bullet says "each host in a matrix should run the
+K that CI has measured, not the K a laptop likes." The harness already
+read `BATTERY_SHARDS`; the workflow never states K; so a host's K is
+written on that host, by someone who measured it there.
+
+### The built host: a throwaway Linux VM per job, on Apple Virtualization
+
+The owner's next two questions — "how do I keep my machine details
+private?" and "how about the Swift-based Apple virtualization?" — were one
+question. On a public repository every job log is public, and a bare-metal
+runner prints the machine's hostname, the working directory (`/Users/<user>/…`)
+and the platform into it; the runner name is the only one of the four the
+workflow controls. A Linux guest owns all four. So the built path is
+`tools/tart-battery-runner.sh`: Ubuntu 24.04 ARM64 on Virtualization.framework
+through Tart (the Swift tool on that framework; Functional Source License
+1.1, internal use permitted), one **throwaway VM per job**.
+
+The cycle is clone → boot → mint → one job → delete. The clone is an APFS
+copy-on-write clone of a golden image and is instant; the boot was measured
+at four seconds to an answering guest agent; the mint is a just-in-time
+runner configuration from `gh api`, good for exactly one job, which travels
+from `gh`'s stdout to the guest's stdin through `tart exec -i` and is never
+written down. That is GitHub's own recommendation for reused hardware — a
+JIT runner in a clean environment — taken literally rather than approximated
+with `--ephemeral` on a shared filesystem. Nothing else enters the guest:
+no SSH key, no password, no token, and the guest never calls GitHub's API.
+
+The golden image is built once, by the same script, from what the host
+verified: Node 22 against nodejs.org's SHASUMS256, the runner tarball
+against the SHA256 its release notes embed, the pinned Playwright Chromium
+with its apt dependencies, the `runner` user with passwordless sudo because
+battery.yml's `--with-deps` step apt-installs exactly as it does on
+`ubuntu-latest`. The workflow is unchanged by any of this; the guest
+registers under the same label, and the platform-carrying baseline key
+already keeps a Linux/ARM64 host from inheriting `ubuntu-latest`'s X64 rows.
+
+Three measured facts from building it. `tart exec` refuses a `--` separator
+(exit 125) while accepting the command bare, which the script's first draft
+got wrong on every call. The Cirrus Ubuntu image boots to a working guest
+agent as user `admin` with passwordless sudo, which is what makes a
+credential-free provisioning possible at all. And the first cycle ever run
+died in under a second with `Aborted (core dumped)`, exit 134, and no
+message in the lines the job log kept — the guess was .NET's ICU abort, and
+the reproduction in a fresh clone with full stderr said otherwise:
+`UnauthorizedAccessException` on `_diag/Runner_….log`, because the build
+had printed the runner's version AS ROOT, which created a root-owned
+`_diag/` the `runner` user could not open. The build now hands the whole
+runner directory to `runner`, reads the version as that user, and asserts
+`_diag/`'s owner before it powers off. A guess that pattern-matched an exit
+code was one reproduction away from being wrong, which is the trap the
+repo's traps list already names in other words.
+
+**Measured, one bounded cycle on the M4 host** (`once --max-wait 90`,
+polled from outside every 5 s):
+
+| | |
+|---|---|
+| clone + boot + guest agent + JIT mint | 8 s to "up", by the script's own clock |
+| runner listening, and `online` in GitHub's runner list | within the first 10 s poll |
+| watchdog kill → clone gone from `tart list` | under 5 s |
+| GitHub still reporting the dead runner `online` | ~20 s after its process ended |
+
+That last row is why the cleanup removes the record by NAME rather than by
+status, with a short retry: the first version deleted only `offline`
+records, ran before the API had noticed, and left one behind.
+
+### Three workflow consequences, all in the safe direction
+
+- **The §152 baseline key carries `runner.os`/`runner.arch`.** A baseline's
+  rows are inherited VERBATIM into a PR's report, so they must come from
+  the same browser build on the same architecture — a macOS/arm64 push
+  run must not seed a fork PR's ubuntu run, whether or not the digests
+  would happen to agree. A platform miss resolves like every §152
+  uncertainty: a whole run, said so in the summary. Flipping the variable
+  therefore costs one whole run per PR until the next merge re-seeds.
+- **The Playwright cache lists both browser directories** (`~/.cache` on
+  Linux, `~/Library/Caches` on macOS); `actions/cache` saves whichever
+  exists.
+- **`--with-deps` is passed on Linux only**, where it is the apt work the
+  step's comment describes. Measured on this Mac with the browser already
+  present: it downloaded a 1 MiB ffmpeg the harness never uses and then
+  sat for over two minutes with nothing left to fetch.
+
+### Not moved, on purpose
+
+The 50-minute job cap and the 35-minute per-check guard. Both are sized
+by the slow tail of the runner they were measured on, and both files say
+to re-derive them together from several runs. A faster host makes them
+loose, which costs nothing.
+
+### Acceptance
+
+- `battery.yml` parses; `runs-on` is the expression above and the
+  contexts it uses (`github`, `vars`) are the ones GitHub allows there.
+- `tools/self-hosted-runner.sh` parses, and its usage exits 2; the release
+  notes for `actions/runner` v2.337.0 do carry `<!-- BEGIN SHA osx-arm64 -->`
+  … markers, which is what the checksum step reads.
+- `node tools/index-instruments.mjs --check` — 174 instruments, unchanged:
+  the script is not an `.mjs` and the index does not see it, and
+  `payload.sh` excludes `tools/` so it does not ship.
+- The battery itself: this PR touches `.github/workflows/**`, which the
+  filter deliberately does not ignore, so the job runs — on
+  `ubuntu-latest`, because the variable is unset. That run is the
+  evidence that the trusted path still resolves to today's host.
+
+### What remains, and it is not code
+
+Register a host (`install`), measure its K at two or three values across
+several runs, set the variable, and watch the first trusted run's summary
+name the runner. Roadmap §127 tier 3's Landing B — the matrix across
+hosts — gains a heterogeneous-fleet option from this, which is one more
+reason K stays on the host.
+
+---

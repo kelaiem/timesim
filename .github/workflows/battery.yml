@@ -188,6 +188,10 @@ name: Battery
 
 on:
   pull_request:
+    # `labeled` is §200's: a routing label added to an open PR must start a
+    # run, because a re-run reuses the original payload. The job's `if`
+    # below keeps every OTHER label from costing a battery.
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
       - 'explain.html'
@@ -211,6 +215,11 @@ on:
         description: 'Ignore any baseline and run every check (default for this trigger)'
         type: boolean
         default: true
+      runner:
+        description: '§200 — where to run: the self-hosted host needs vars.BATTERY_RUNS_ON set'
+        type: choice
+        options: [ubuntu-latest, self-hosted]
+        default: ubuntu-latest
 
 # A force-push mid-run should kill the stale run — the battery is long enough
 # that queued duplicates would otherwise stack up behind it.
@@ -218,11 +227,114 @@ concurrency:
   group: battery-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# §200 — WHERE THIS JOB RUNS IS DECIDED HERE, BY TRUST FIRST AND BY A VARIABLE
+# SECOND.
+#
+# This is a PUBLIC repository, and GitHub's own guidance is that self-hosted
+# runners "should almost never be used for public repositories", because a
+# pull request from a fork runs its workflow code on the host. That is exactly
+# right and it is why the routing below is two-tiered rather than a label swap:
+#
+#   · A pull request whose head is a FORK runs on `ubuntu-latest`, always. No
+#     variable, label or later edit lower in this file can send it anywhere
+#     else — the expression tests the head repo before it reads the variable.
+#   · A run the repository OWNER did not trigger runs on `ubuntu-latest`
+#     too. `github.actor` is the user whose action caused THIS run — on a
+#     pull request's `synchronize` that is whoever pushed the commits being
+#     tested, not whoever opened the PR — so a collaborator's push to any
+#     branch, their merge, or their dispatch stays GitHub-hosted. Compared
+#     against `github.repository_owner` rather than a login: no name in the
+#     file, and a transfer to an org makes it match nobody, which is the safe
+#     side.
+#   · THE HOST IS NEVER THE DEFAULT. A run goes there only when the event
+#     itself asks: a pull request carrying the `self-hosted-battery` label or
+#     `[self-hosted]` in its title (§152's escape-hatch idiom, inverted), or
+#     a workflow_dispatch whose `runner` input says so. A push to main never
+#     asks, so merges always run GitHub-hosted — which also keeps main's
+#     baseline on the platform ordinary PRs inherit from.
+#   · And only when `vars.BATTERY_RUNS_ON` is set. It is the AVAILABILITY
+#     switch, not the router: unset it and every opt-in lands on
+#     `ubuntu-latest` in silence, which is the outage remedy — a queued
+#     self-hosted job waits 24 h for a host that is asleep.
+#
+# The variable is a single runner LABEL (`timesim-battery`, the one the
+# runner scripts register), not JSON: a bare word cannot fail to parse, and a
+# label that no online runner carries queues rather than runs the wrong host.
+# Merging this file changes nothing until the variable is set AND a PR asks.
+#
+# TWO MECHANICS OF THE OPT-IN. The title marker is the reliable one at
+# creation: `gh pr create --label` applies the label a moment after the PR
+# opens, so the opening run's payload may not carry it, while `[self-hosted]`
+# in the title is in every payload. And a label added LATER needs the
+# `labeled` event — a re-run reuses the original payload — so the trigger
+# lists it, the job's `if` lets only the two routing labels start a run (any
+# other label would otherwise cost a battery), and `cancel-in-progress`
+# retires the hosted run the label supersedes.
+#
+# WHY A REPOSITORY VARIABLE, WHEN THE PAGES RULE IS "EVERY POINTER IS A GIT
+# REF". That rule is about CONTENT — which bytes an environment serves must be
+# auditable from history. This pointer is about a HOST, and it never touches a
+# byte the battery judges: the same harness runs the same gates on the same
+# tree. What it changes is operational — a laptop that has closed its lid
+# leaves every trusted job queued for up to 24 hours before GitHub cancels it
+# (docs: "A job can be in the queue for 24 hours before it is automatically
+# cancelled") — and the fix for that has to be a settings flip, not a revert
+# through a PR whose own battery would be queued behind the outage. The step
+# summary names the runner that took each run, so the pointer is still read
+# off the run rather than remembered.
+#
+# NOTHING HERE IS SECRET-BEARING. The job uses only the read-scoped
+# GITHUB_TOKEN and the Actions cache; release.yml (SFTP key) and pages.yml
+# (deploy) stay on GitHub-hosted runners and are not routed by this variable.
+# docs/RUNNERS.md carries the rest: the approval-policy recommendation, the
+# host's own isolation, and how a host's shard count is set on the host.
 jobs:
   battery:
-    runs-on: ubuntu-latest
+    # A `labeled` event runs the job only for the two labels that change what
+    # a run is; every other label is skipped, not run.
+    if: github.event.action != 'labeled' || contains(fromJSON('["self-hosted-battery","full-battery"]'), github.event.label.name)
+    # Read as: (asked for by a same-repo PR) or (asked for by a dispatch),
+    # and owner-triggered, and the host is available — else GitHub-hosted.
+    runs-on: >-
+      ${{ (
+      (github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && (contains(github.event.pull_request.labels.*.name, 'self-hosted-battery')
+      || contains(github.event.pull_request.title, '[self-hosted]')))
+      || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted')
+      ) && github.actor == github.repository_owner && vars.BATTERY_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 50   # must stay ABOVE ci-battery.mjs's per-check guard (35; TODO 38's wind axis re-derived both — guard + the ~15 min this pair has always kept above it)
     steps:
+      # §200 — the pointer is read off the run, never remembered. Values go
+      # through env, not inline: a head repo name is untrusted text.
+      - name: Record which runner took this job (§200)
+        env:
+          RUNNER_NAME: ${{ runner.name }}
+          RUNNER_OS: ${{ runner.os }}
+          RUNNER_ARCH: ${{ runner.arch }}
+          ROUTE_VAR: ${{ vars.BATTERY_RUNS_ON }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          EVENT: ${{ github.event_name }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          TITLE: ${{ github.event.pull_request.title }}
+          DISPATCH_RUNNER: ${{ inputs.runner }}
+        run: |
+          asked=no
+          if [ "$EVENT" = pull_request ]; then
+            printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'self-hosted-battery' && asked="label"
+            printf '%s' "$TITLE" | grep -qF '[self-hosted]' && asked="title"
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$DISPATCH_RUNNER" = self-hosted ]; then asked="dispatch input"
+          fi
+          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then verdict="FORK — pinned to ubuntu-latest"
+          elif [ "$ACTOR" != "$OWNER" ]; then verdict="triggered by a non-owner — pinned to ubuntu-latest"
+          elif [ "$asked" = no ]; then verdict="host not asked for — ubuntu-latest by default"
+          elif [ -z "$ROUTE_VAR" ]; then verdict="host asked for ($asked) but vars.BATTERY_RUNS_ON is unset — ubuntu-latest"
+          else verdict="host asked for ($asked) and available — routed to '$ROUTE_VAR'"
+          fi
+          echo "§200: ran on runner '$RUNNER_NAME' ($RUNNER_OS/$RUNNER_ARCH); $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -233,17 +345,26 @@ jobs:
         working-directory: tools
         run: npm ci --no-audit --no-fund
 
+      # §200 — Playwright keeps its browsers under ~/.cache on Linux and
+      # ~/Library/Caches on macOS; both are listed so the step is right on
+      # either host. actions/cache saves whichever exists. On a self-hosted
+      # host the browser is already on disk (the setup script installs it) and
+      # this is a fast no-op either way.
       - name: Cache Playwright Chromium
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ms-playwright
+          path: |
+            ~/.cache/ms-playwright
+            ~/Library/Caches/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('tools/package-lock.json') }}
 
       # --with-deps also apt-installs the shared libraries Chromium needs,
       # which the browser cache above cannot carry — so it runs every time.
+      # Linux only (§200): it is apt work, and on macOS it was measured to
+      # download a codec the harness never uses and then stall.
       - name: Install Chromium
         working-directory: tools
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install ${{ runner.os == 'Linux' && '--with-deps' || '' }} chromium
 
       # ---- §152: the baseline, and what this run is allowed to skip ---------
       #
@@ -252,13 +373,20 @@ jobs:
       # An exact-key restore only: a near-miss baseline would be a baseline for
       # a different tree, and `restore-keys` exists to serve exactly the
       # near-miss this must never take.
+      #
+      # §200 — THE KEY CARRIES THE PLATFORM. A baseline's rows are inherited
+      # VERBATIM into a PR's report, so they must come from the same browser
+      # build on the same architecture; a macOS/arm64 push run must not seed a
+      # fork PR's ubuntu run, whether or not the digests would happen to agree.
+      # A platform miss resolves the way every §152 uncertainty does — towards
+      # a whole run, said so in the summary.
       - name: Restore the base tree's battery baseline
         if: github.event_name == 'pull_request'
         id: baseline
         uses: actions/cache/restore@v4
         with:
           path: .battery-baseline
-          key: battery-baseline-v1-${{ github.event.pull_request.base.sha }}
+          key: battery-baseline-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.event.pull_request.base.sha }}
 
       # The decision, assembled here rather than inside the harness, because a
       # workflow's own triggers are the thing that knows which run this is.
@@ -277,7 +405,7 @@ jobs:
           if [ "$EVENT" != "pull_request" ]; then
             why="not a pull request — this run IS the baseline, so it is always whole"
           elif [ "$HIT" != "true" ]; then
-            why="no cached baseline for the merge base (${{ github.event.pull_request.base.sha }}) — running everything"
+            why="no cached baseline for the merge base (${{ github.event.pull_request.base.sha }}) on ${{ runner.os }}/${{ runner.arch }} — running everything"
           elif printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'full-battery'; then
             why="the full-battery label is set — running everything"
           elif printf '%s' "$TITLE" | grep -qF '[full battery]'; then
@@ -355,7 +483,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .battery-baseline
-          key: battery-baseline-v1-${{ github.sha }}
+          key: battery-baseline-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
 
       # The report is worth having on a red run too — CLAUDE.md makes a
       # --report diff the acceptance for anything that could move a number, and
