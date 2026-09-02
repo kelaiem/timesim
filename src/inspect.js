@@ -2574,6 +2574,8 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm lock — TODO 90 finding 5's fold, the rocker that reads the columns:
   { unit: 'Alarm lock', a: 'alarmLockRockerArm', b: 'alarmLockBeakRiser', why: 'TODO 90 finding 5: the read rocker turning on its own pivot post — the post that carries the beak, standing where §171\'s rule puts anything crossing the saw\'s band' },
   { unit: 'Alarm lock', a: 'alarmLockRockerPin', b: 'alarmLockSlot', why: 'TODO 90 finding 5: the rocker\'s pin in the lever\'s RADIAL SLOT — a located drive both ways (§163\'s idiom one tier down), which is also what presses the beak onto its cam without a second spring' },
+  { unit: 'Alarm lock', a: 'alarmLockRockerPinArm', b: 'alarmLockBeakRiser', why: 'TODO 130: the pin\'s arm turning on the same post as the beak\'s — the second arm §183 described and never built, rooted at Q with the first' },
+  { unit: 'Alarm lock', a: 'alarmLockWeb', b: 'alarmLockPivotPost', why: 'TODO 130: the web that carries the slot plate, rooted at the lever\'s pivot with the arm and the tail — the third member of one bar on one post' },
   // Alarm lock — §102's return:
   { unit: 'Alarm lock', a: 'alarmLockSpringStud', b: 'alarmLockSpring', why: '§121: §102\'s return blade riding its stud (kiss) — the blade the column works against; restoring\'s sprung row for this unit' },
   // Alarm switch — §28/§33's column work and pusher:
@@ -3304,7 +3306,11 @@ export const ASSEMBLY_SPLITS = [
 ];
 // The units held to "a rigid group is one body". §107 seeds it with the two
 // the landing owns; every other unit's rows are reported, not gated.
-export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel'];
+// TODO 130 added 'Alarm lock': §183's fold shipped the rocker's pin and the
+// lever's slot plate as two floating bodies, both REPORTED here (0.689 and
+// 0.463 separation) and gated nowhere — a pivot seen swinging off its post by
+// eye. In scope, a member of this unit that its bar does not reach fails.
+export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel', 'Alarm lock'];
 // Accepted debt, §50's convention — red in the report, cited, never silenced.
 // (TODO 44's lock-collar waiver RETIRED by §112: the tier-split re-derived
 // the strike sleeve to span from the wheel's hub to the cam's underside —

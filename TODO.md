@@ -54,6 +54,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
+| 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
 | 30 | OPEN | §76's walls two and three (wall three was misdiagnosed; the crash is fixed, the wall stands) |
@@ -15747,3 +15748,70 @@ moment it is armed — which is what a real Memovox does, and what "within
 
 Related: item 115 (the rule; this is its incomplete enumeration), item 117
 (the back-drive sign, pinned in the same frame), TODO 8 (the notch window).
+
+## 130. The lock rocker's pin and the lever's slot lug float — two bodies in a seated unit no gate held — CLOSED
+
+Reported by eye, on the alarm toggle: *the arm's pivot appears translated a
+few points away from its post, and swings a bit when the arm moves.* The
+part is `alarmLockRockerPin` — §183's pin, the one TODO 90 finding 5 put on
+the P–Q line so the rocker's velocity would be parallel to the lever's.
+
+**What the metal was.** The rocker group carried three meshes: the beak arm
+along its local +x, the beak nose at that arm's tip, and the pin at 32.8° off
+the arm and 0.689 clear of its box. §183's own comment calls the pin "a SECOND
+arm at a fixed angular offset from the first"; the pin was built and the arm
+was not. As a child of the rocker group the pin swung about Q exactly as the
+solve says — every pose assert, `alarmHandoffs` row and `restoring` row was
+satisfied — with no metal between it and the post it swung about. Which is
+precisely what the eye reported: a pivot 1.874 (`aPin`) off its post, moving
+on an arc. The other half of the same joint had the same defect: the lever's
+slot plate `alarmLockSlot` rode the lever's FRAME at radius
+`ALARM_ROCKER_SLOT.mid` and the lever's bar (arm and tail through the pivot)
+never reached it. Measured by `assembly`, both rows in one unit:
+
+| Alarm lock split | separation |
+|---|---|
+| beak + rocker arm ⇄ rocker pin | 0.689 |
+| arm + pad + tail ⇄ slot plate | 0.463 |
+
+**Why no gate caught it.** `assembly` gates only `ASSEMBLY_SCOPE` (the
+governor, its anchor, the striking wheel), so both rows were REPORTED residue
+under §107's covenant. `support` is per unit and the unit is seated. The
+`INTRA_UNIT_CONTACTS` rows for the pin in its slot and the rocker on its post
+describe joints that ARE there, so §182's audit passed them. Nothing asks
+whether a mover's metal reaches the part it is posed with — roadmap item 180
+names the same class from the jumper stud: one floating mesh in a seated unit
+passes in silence.
+
+**The fix, position-space only.** Two members, no constant moved:
+
+- `alarmLockRockerPinArm` — root at Q, tip at the pin, along `pinAz` for
+  `aPin`, at the rocker's own section (`armW` square) in the rocker's plane.
+  The pin's top already ends AT that plane (`pinTop`), so the arm lets it in
+  by half the arm's height; a boot assert holds that, because a pin whose top
+  stopped under the arm would float exactly as before with an arm above it.
+- `alarmLockWeb` — from the lever's pivot out along the slot's own radial
+  (`slotAzLocal`), at the lever's width (0.5, the arm and tail's) and stock,
+  ending in the MIDDLE of the slot plate's inner rim. The rim was a bare
+  `0.35` in the plate's outline; it is one named `rim` now, so the web's tip
+  derives from the same number that sizes the plate: the near half of the rim
+  is the joint, the far half keeps the web out of the slot's hole, and a boot
+  assert holds the tip between the plate's edge and the hole's.
+
+Both new members are declared where their overlap lands on a fixture
+(`alarmLockRockerPinArm ⇄ alarmLockBeakRiser`, `alarmLockWeb ⇄
+alarmLockPivotPost`); their overlaps with the arm, tail, slot plate, beak arm
+and pin are same-frame and are `assembly`'s domain, not `intraUnit`'s. And
+**'Alarm lock' is in `ASSEMBLY_SCOPE`** now, so the class this item is — a
+member of a unit that its bar does not reach — fails rather than reports.
+
+Measured after the fix: `assembly` 0 undeclared, 0 out-of-scope rows for the
+unit; `support` 0 failures; boot silent. The full battery is pasted in the
+landing PR.
+
+**Residue, named.** The schematic tier draws the lock as its lever line alone
+(`addLine(alarmLockLever, …)`) — the rocker, its two arms and the slot never
+drew, before or after this item; §84's census owns that. And this item
+closes one instance of item 180's class; the class itself (a floating mesh in
+a seated unit) is still gated only through `ASSEMBLY_SCOPE` membership, unit
+by unit.
