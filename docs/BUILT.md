@@ -174,6 +174,12 @@ jumper readable through the dial from the front camera; x-ray off:
 dial pixel-identical to today; toggle round-trips with no material
 leak onto non-dial parts (spot-check a train wheel and the crown).
 
+**§199 finished this rule for the plate's own metal.** `setXray` swapped
+the plate BODY and this dial set; the chatons, collars, lands, stones and
+pillar screws parented beside the body stayed solid in the glass until
+§199 made the x-ray set "every non-schematic mesh under the two units" —
+one map, one loop, the body's pre-built pair seeded into it.
+
 ## 7. Per-unit explode selector (+ label filtering) (BUILT)
 
 **Goal.** Pick one component group and lift only it, so a single
@@ -21092,3 +21098,99 @@ are recorded in the probe:
   the whole class is the abutment read: the same machinery pointed at
   the excluded lugs must report ≈ −barR, contact the metal actually
   makes.
+
+---
+
+## §199 — The screwed gold chatons and the plate screws glass with the three-quarter plate in x-ray
+
+**Filed** 2026-09-02 from the owner's report — *"the screwed gold chatons and
+plate screws should be made translucent along with the 3/4 plate in x-ray
+mode"* — and shipped the same day. Number claimed through
+`tools/claim-item.mjs` before the entry was written.
+
+### What x-ray glassed, and what it left standing
+
+`setXray` swapped exactly two things: `tqPlateMesh`'s material (the plate's
+BODY, solid ⇄ `tqXrayMat`) and §6's per-mesh Dial map. `tqPlateMesh` is one
+child of the group registered as `Three-quarter plate`; the plate build
+parents eight other mesh classes beside it, and the toggle reached none of
+them. Measured on the shipped tree (`probe-199-xray-set.mjs`, the unit's
+non-schematic meshes):
+
+| class | count | material |
+|---|---|---|
+| `threeQuarterPlate` (the body) | 1 | nickel — **the one mesh x-ray glassed** |
+| `pivotCollar` | 5 | nickel |
+| `chatonBezel` | 5 | gold |
+| `chatonJewel` | 5 | ruby |
+| `screwHeads` / `screwShanks` / `screwSlots` (chaton screws + pillar screws, merged per site) | 6 / 6 / 6 | blue steel / blue steel / dark |
+| `chatonSeatLand` | 14 | nickel |
+| flush stones and pillar-screw lands (unnamed) | 4 | ruby / nickel |
+
+52 meshes, 51 of them solid in a glass plate — a constellation of gold rings,
+red stones, nickel collars and blued heads hanging at the plate's top face
+over exactly the pivots the view exists to look through (§132/§148 put a
+chaton on every jewelled upper pivot in this plate). §69's focus ghosting
+already walked this group per mesh and glassed all of it, so the intended
+picture existed in one mode and not in the older, more-used one.
+
+### The rule, and the build
+
+**X-ray glasses a UNIT, not a mesh.** The x-ray set is every mesh in the two
+units' subtrees (`dial` + the dial feet; `threeQuarterPlate`) that is not
+flagged `userData.schematic` — the walk PRUNES there, because §71's
+page-coloured occluders are children of the very plates they silhouette and
+the line tier is never glassed (their fills are hidden through
+`SCHEMATIC.occluderFills`, as before). §6's clone map is now built over that
+set, with the body's pre-built pair seeded first so `tqXrayMat` stays the one
+object every other x-ray opacity is read from (rule 1: one translucency
+constant, 0.28); the separate `tqPlateMesh.material = …` line is gone and
+`setXray` is one loop. Per-BASE-material clones, swapped per MESH — the
+materials are shared across the movement (`MATS.blueSteel` is every screw
+head in the watch, `MATS.ruby` every stone), so only meshes in the set are
+ever swapped, which is §6's leak rule. The clones register in
+`xrayGlassMats`, so §59's pick demotion and §69's compose-don't-stack rule
+need no new code.
+
+**Decisions made in the viewer.** The ruby joins the swap: it is transparent
+by nature (opacity 0.85, transmission 0.55) and a 0.28 clone still reads as a
+stone in a glass plate — leaving it out would have hung five solid red dots
+in the glass, the same defect at a smaller scale. The balance cock and the
+fork cock stay SOLID: they are their own units, screwed to the plate's face
+but not the plate, and a cock standing on a glass plate is the intended
+reading (the P3 hierarchy as a view). The base plate is untouched — §78's
+partition stands.
+
+### Measured (`node tools/probe-199-xray-set.mjs`, acceptance, exits non-zero)
+
+- **coverage** — 52/52 plate meshes on x-ray clones at opacity 0.28; 6
+  distinct clone materials; 43/43 of §6's dial set glass, the 101 other
+  `dialGroup` meshes (hands, motion works) untouched; every plate mesh
+  carries the declared membership stamp (`userData.solidMat`).
+- **no leak** — 40/40 control meshes (balance-cock screws, fork-cock stone,
+  alarm-click screw, escape wheel — the parts that SHARE the cloned
+  materials) keep their material OBJECT through the toggle.
+- **round trip** — 236/236 meshes back on their original material object.
+- **§59** — 4/4 chatons in view resolve THROUGH the glassed plate to what is
+  behind them (third, fourth, escape, alarm striking wheel); with x-ray off
+  the same points name `Three-quarter plate` (the control).
+- **§69** — `?focus=` on the escape wheel: 52/52 plate meshes ghosted; x-ray
+  on puts all 52 at the x-ray opacity (composed, never stacked); x-ray off
+  returns them to focus ghosts; clearing the focus returns all 52 to their
+  solid material object.
+- Boot silent at both boots. Battery: material-only — no geometry, no
+  constant, no `MECH_GRAPH` edge; the report must diff empty against base.
+
+### Residue found, not fixed
+
+**The caseback crystal takes every hover pick from the back.** §187's
+`caseBackCrystal` is not in any glass set, so from the default camera the
+§59 readout names it — and it names it `Structure`, because the crystal's
+ancestor chain meets the case's explode entry before the `Case` label and
+`explodeEntryName` falls back to that word. The orbit's `minDistance` stops a
+zoom just outside the glass (measured: at 24 u from the plate the first hit
+was still the crystal), so no viewer can get past it. The probe lifts the
+crystal to an unused layer as a declared control to reach the plate at all.
+Two defects in one — the crystal should demote like glass, and the fallback
+name is wrong for it — both §187/§59's, neither this entry's.
+

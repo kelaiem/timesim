@@ -30101,23 +30101,57 @@ tqXrayMat.roughness = Math.min(1, tqSolidMat.roughness + 0.1); // less mirror, m
 // glassy too (a live preview of that dial). Unlike the plate, the dial is
 // MANY meshes mixing unique canvas-textured materials with shared MATS
 // entries, so glassy clones are cached per ORIGINAL material and swapped
-// both ways. The mesh set covers only the Dial unit's own geometry (the
-// makeDial build plus the dial feet); hands, subdial hands and the whole
-// motion-works cluster are dialFace siblings — not in the set — so they
-// stay solid, and a shared MATS clone can never leak onto another part
-// because only meshes in this set ever get their material swapped.
-const dialXrayMeshes = [];
-dial.traverse((o) => { if (o.isMesh) dialXrayMeshes.push(o); });
-for (const c of dialGroup.children) if (c.isMesh) dialXrayMeshes.push(c); // the dial feet
-const dialXrayClones = new Map(); // original material → glassy clone
-for (const m of dialXrayMeshes) {
-  if (!dialXrayClones.has(m.material)) {
+// both ways.
+//
+// §199 — AND SO DOES THE REST OF THE PLATE'S OWN METAL. X-RAY GLASSES A
+// UNIT, NOT A MESH. `tqPlateMesh` is the plate's BODY, one child of the
+// group registered as 'Three-quarter plate'; the plate build parents eight
+// other mesh classes beside it — the bearing collars, the screwed gold
+// chatons (bezel, pressed stone, sunk blue-steel screws, their slot films),
+// the seat lands under the chaton screws, the flush rubbed-in stones, the
+// pillar screws and their lands — and until §199 the toggle reached none of
+// them. With x-ray on, the plate read as a glass sheet with a constellation
+// of solid gold rings, red stones and blued screw heads hanging in it at the
+// plate's top face, over exactly the pivots the view exists to look through
+// (§132/§148 put a chaton on every jewelled upper pivot in this plate). §69's
+// focus ghosting already walked this group per mesh and glassed all of it;
+// x-ray, the older toggle, is now read the same way: the x-ray set is every
+// mesh in the two units' subtrees that is not the schematic tier.
+//
+// The mesh set covers only the two units' own geometry (the makeDial build
+// plus the dial feet; the threeQuarterPlate subtree). Hands, subdial hands
+// and the whole motion-works cluster are dialFace siblings — not in the set
+// — so they stay solid; the balance cock and the fork cock are their own
+// units, screwed to the plate's face but not the plate, and stay solid too.
+// A shared MATS clone can never leak onto another part because only meshes
+// in this set ever get their material swapped: MATS.blueSteel is every screw
+// head in the movement, MATS.ruby every stone, and the cock screws and the
+// alarm click's are the leak test (probe-199-xray-set.mjs). The walk PRUNES
+// at `userData.schematic` — §71's page-coloured occluders are children of
+// the very plates they silhouette, and the line tier is never glassed
+// (setXray hides those fills through SCHEMATIC.occluderFills instead).
+const xrayMeshes = [];
+{
+  const walk = (o) => {
+    if (o.userData && o.userData.schematic) return;
+    if (o.isMesh && !Array.isArray(o.material)) xrayMeshes.push(o);
+    for (const c of o.children) walk(c);
+  };
+  walk(dial);
+  for (const c of dialGroup.children) if (c.isMesh) walk(c); // the dial feet
+  walk(threeQuarterPlate);
+}
+// One map for the whole set, the plate body's pre-built pair seeded first so
+// tqXrayMat stays the one object every other opacity here is read from.
+const xrayClones = new Map([[tqSolidMat, tqXrayMat]]); // original material → glassy clone
+for (const m of xrayMeshes) {
+  if (!xrayClones.has(m.material)) {
     const x = m.material.clone();
     x.transparent = true;
     x.opacity = tqXrayMat.opacity; // the ONE x-ray opacity, shared with the plate
     x.depthWrite = false;
-    x.roughness = Math.min(1, (x.roughness ?? 1) + 0.1);
-    dialXrayClones.set(m.material, x);
+    if (x.roughness !== undefined) x.roughness = Math.min(1, x.roughness + 0.1); // §6's less-mirror-more-glass, where the material has roughness at all
+    xrayClones.set(m.material, x);
   }
   m.userData.solidMat = m.material;
 }
@@ -30126,22 +30160,24 @@ for (const m of dialXrayMeshes) {
 // renderer drawing this mesh as glass right now?" and get the DECLARED answer.
 // Inferring it from opacity would be a second source that also catches any
 // other transparent material the finish grows. Self-disabling: with x-ray off
-// every mesh carries its solid material and nothing matches.
-const xrayGlassMats = new Set([tqXrayMat, ...dialXrayClones.values()]);
+// every mesh carries its solid material and nothing matches. §69's
+// focusGlassFor reads the same set to COMPOSE with x-ray rather than stack
+// on it, which is what makes §199's plate metal need no focus-side code.
+const xrayGlassMats = new Set([tqXrayMat, ...xrayClones.values()]);
 
 function setXray(on) {
   xrayOn = on;
-  tqPlateMesh.material = on ? tqXrayMat : tqSolidMat;
   // §71 x-ray-in-schematic, as §78 part four narrowed it: one x-ray state, and
-  // it means the SAME THING in both views. The two lines above are the whole
-  // of the realistic view's x-ray — the three-quarter plate's material and the
-  // Dial unit's — and occluderFills now holds exactly those two parts'
-  // schematic fills. SCHEMATIC.baseFills is deliberately absent: nothing here
-  // may reach the base plate, whose occlusion is the line drawing's only
+  // it means the SAME THING in both views. The loop below is the whole of the
+  // realistic view's x-ray — the three-quarter plate's subtree (§199: its
+  // body AND its chatons, collars, lands, stones and screws) and the Dial
+  // unit's — and occluderFills now holds exactly those two units' schematic
+  // fills. SCHEMATIC.baseFills is deliberately absent: nothing here may
+  // reach the base plate, whose occlusion is the line drawing's only
   // partition between the dial-side works and the train.
   for (const o of SCHEMATIC.occluderFills || []) o.visible = !on;
-  for (const m of dialXrayMeshes) {
-    m.material = on ? dialXrayClones.get(m.userData.solidMat) : m.userData.solidMat;
+  for (const m of xrayMeshes) {
+    m.material = on ? xrayClones.get(m.userData.solidMat) : m.userData.solidMat;
   }
   const b = document.getElementById('btn-xray');
   setBtnState(b, on);
