@@ -1,6 +1,16 @@
 // §115 — the governor window, read off a real boot: what the solve wanted,
 // what the keep field left, which keep binds where, and how much of the
 // governor the finished plate actually shows.
+//
+// §201 — every window, and the reveal PER MESH rather than per unit: the
+// governor window frames the fork now (body, arms, pallets) and the ring is
+// meant to be hidden, so "the anchor unit is 100% revealed" stopped being the
+// claim; and the late 'arrest' window onto the Maltese cross is reported with
+// two reveals — clear of the PLATE (what the window buys) and clear of
+// EVERYTHING (what the eye gets, since the column wheel stands over the
+// cross's near third above the plate and no window can change that). A row
+// the solver DEFERRED (a late intent whose holder was never filled) prints
+// as such rather than being skipped.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 const port = process.env.PORT || '8473';
@@ -18,8 +28,9 @@ await page.waitForFunction(() => !!window.__clock, null, { timeout: 90000 });
 const out = await page.evaluate(async () => {
   const clock = window.__clock;
   const THREE = await import('./vendor/three.module.js');
-  const rows = clock.tqWindows.map((r) => ({
+  const rows = clock.tqWindows.map((r) => r.deferred ? { name: r.name, deferred: true, late: r.late } : ({
     name: r.name,
+    late: !!r.late,
     c: [+r.c.x.toFixed(3), +r.c.y.toFixed(3)],
     discs: (r.discs || []).map((d) => [+d.x.toFixed(3), +d.y.toFixed(3), +d.r.toFixed(3)]),
     wanted: +r.wanted.toFixed(3),
@@ -52,48 +63,71 @@ const out = await page.evaluate(async () => {
   }));
 
   // What the window actually SHOWS. Raycast straight down (+z, the side the
-  // three-quarter plate is on) from every vertex of the governor's own
-  // meshes and count how many reach the outside without meeting the plate.
+  // three-quarter plate is on) from every vertex of each named mesh and count
+  // how many reach the outside without meeting the plate — and, separately,
+  // without meeting anything at all (§201: the column wheel over the cross).
+  // Bearings of the still-covered vertices are taken about the WINDOW's own
+  // centre, read from the solve rather than typed: §120 moved the governor's
+  // centre onto the anchor's, and a literal here would have kept reporting
+  // bearings about a point the window is no longer at.
   const plate = clock.labelEntries.find((e) => e.name === 'Three-quarter plate');
-  const govC = clock.tqWindows.find((r) => r.name === 'governor')?.c ?? { x: 0, y: 0 };
   const reveal = {};
   if (plate) {
     const targets = [];
     plate.obj.traverse((o) => { if (o.isMesh && !o.userData?.schematic) targets.push(o); });
+    const everything = [];
+    for (const e of clock.labelEntries)
+      e.obj.traverse((o) => { if (o.isMesh && !o.userData?.schematic && !o.userData?.casePart) everything.push(o); });
     const ray = new THREE.Raycaster();
     ray.far = 1e4;
     const dir = new THREE.Vector3(0, 0, 1);
     const v = new THREE.Vector3();
-    for (const unit of ['Alarm governor', 'Alarm governor anchor']) {
+    const MESHES = [
+      // [unit, mesh, the window whose centre bearings are taken about]
+      ['Alarm governor anchor', 'alarmGovAnchor', 'governor'],
+      ['Alarm governor anchor', 'alarmGovAnchorArm', 'governor'],
+      ['Alarm governor anchor', 'alarmGovPallet', 'governor'],
+      ['Alarm governor anchor', 'alarmGovAnchorArbor', 'governor'],
+      ['Alarm governor anchor', 'alarmGovRing', 'governor'],
+      ['Alarm governor', 'alarmGovSaw', 'governor'],
+      ['Alarm winding arrest', 'alarmArrestCross', 'arrest'],
+      ['Alarm winding arrest', 'genevaFingerDisc', 'arrest'],
+      ['Alarm winding arrest', 'genevaFingerPin', 'arrest'],
+    ];
+    for (const [unit, meshName, winName] of MESHES) {
       const u = clock.labelEntries.find((e) => e.name === unit);
-      if (!u) continue;
+      if (!u) { reveal[`${unit} / ${meshName}`] = { missing: 'unit' }; continue; }
+      const wc = clock.tqWindows.find((r) => r.name === winName)?.c ?? { x: 0, y: 0 };
       u.obj.updateWorldMatrix(true, true);
-      let seen = 0, total = 0;
-      const covered = {};       // which mesh the still-hidden vertices belong to, and how far out they sit
+      let seen = 0, seenAll = 0, total = 0;
+      const covered = { n: 0, minAz: 999, maxAz: -999 };
+      let found = false;
       u.obj.traverse((o) => {
-        if (!o.isMesh || o.userData?.schematic || !o.geometry?.attributes?.position) return;
+        if (!o.isMesh || o.userData?.schematic || o.name !== meshName || !o.geometry?.attributes?.position) return;
+        found = true;
         const pos = o.geometry.attributes.position;
         const step = Math.max(1, Math.floor(pos.count / 4000));
         for (let i = 0; i < pos.count; i += step) {
           v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
           total++;
           ray.set(v, dir);
-          if (ray.intersectObjects(targets, false).length === 0) seen++;
-          else {
-            const c = covered[o.name] ??= { n: 0, minAz: 999, maxAz: -999 };
-            c.n++;
-            // …off the governor window's OWN centre, read from the solve
-            // rather than typed: §120 moved that centre from the midpoint
-            // between the two axes onto the anchor's, and a literal here
-            // would have kept reporting bearings about a point the window is
-            // no longer at.
-            const az = Math.atan2(v.y - govC.y, v.x - govC.x) * 180 / Math.PI;
-            c.minAz = Math.min(c.minAz, (az + 360) % 360);
-            c.maxAz = Math.max(c.maxAz, (az + 360) % 360);
+          if (ray.intersectObjects(targets, false).length === 0) {
+            seen++;
+            const hits = ray.intersectObjects(everything, false).filter((h) => h.object !== o && h.distance > 1e-3);
+            if (!hits.length) seenAll++;
+          } else {
+            covered.n++;
+            const az = Math.atan2(v.y - wc.y, v.x - wc.x) * 180 / Math.PI;
+            covered.minAz = Math.min(covered.minAz, (az + 360) % 360);
+            covered.maxAz = Math.max(covered.maxAz, (az + 360) % 360);
           }
         }
       });
-      reveal[unit] = { total, seen, pct: total ? +(100 * seen / total).toFixed(1) : null, covered };
+      // A name that matches nothing is a rename, not a clean row.
+      reveal[`${unit} / ${meshName}`] = found
+        ? { total, seen, seenAll, pct: total ? +(100 * seen / total).toFixed(1) : null,
+            pctAll: total ? +(100 * seenAll / total).toFixed(1) : null, covered: covered.n ? covered : null }
+        : { missing: 'mesh' };
     }
   }
   // The pillar stations, because ALARM_UNDER_FOOTPRINT's corrected ring disc
@@ -116,7 +150,8 @@ for (const w of warns) console.log(' ', w);
 
 console.log('\n=== windows ===');
 for (const r of out.rows) {
-  console.log(`\n'${r.name}'  centre ${r.c.join(', ')}  wanted ${r.wanted}  r0 ${r.r0}  boss ${r.boss}  cut ${r.cut}  sectors ${r.sectors}`);
+  if (r.deferred) { console.log(`\n'${r.name}'  DEFERRED — a late intent whose holder was never filled (late: ${r.late})`); continue; }
+  console.log(`\n'${r.name}'${r.late ? '  (late: first solved at the re-cut)' : ''}  centre ${r.c.join(', ')}  wanted ${r.wanted}  r0 ${r.r0}  boss ${r.boss}  cut ${r.cut}  sectors ${r.sectors}`);
   if (r.discs.length) console.log(`  discs: ${r.discs.map((d) => `(${d[0]}, ${d[1]}) r ${d[2]}`).join('  ')}`);
   const open = r.rOut.filter((x) => x > 0).length;
   const atWant = r.rOut.filter((x, i) => x >= r.want[i] - 1e-9).length;
@@ -139,18 +174,19 @@ for (const r of out.rows) {
   const closed = [];
   for (let i = 0; i < 360; i++) if (r.rOut[i] <= 0) closed.push(i);
   if (closed.length) console.log(`  closed at: ${closed.join(',')}`);
-  if (r.name === 'governor') {
+  if (r.name === 'governor' || r.late) {
     const t = [];
     for (let i = 0; i < 360; i += 10) t.push(`${i}:${r.rOut[i].toFixed(2)}`);
     console.log(`  rOut/10°: ${t.join(' ')}`);
   }
 }
 
-console.log('\n=== reveal (vertices with a clear path out through +z) ===');
+console.log('\n=== reveal (vertices with a clear path out through +z: past the PLATE / past EVERYTHING) ===');
 for (const [k, v] of Object.entries(out.reveal)) {
-  console.log(`  ${k.padEnd(24)} ${v.seen}/${v.total} = ${v.pct}%`);
-  for (const [m, c] of Object.entries(v.covered || {}))
-    console.log(`      still covered: ${m} ×${c.n}  at bearings ${c.minAz.toFixed(0)}–${c.maxAz.toFixed(0)}° off the window's centre`);
+  if (v.missing) { console.log(`  ${k.padEnd(44)} MISSING ${v.missing} — a rename; this row measures nothing`); continue; }
+  console.log(`  ${k.padEnd(44)} plate ${v.seen}/${v.total} = ${v.pct}%   everything ${v.seenAll}/${v.total} = ${v.pctAll}%`);
+  if (v.covered)
+    console.log(`      still under plate: ×${v.covered.n}  at bearings ${v.covered.minAz.toFixed(0)}–${v.covered.maxAz.toFixed(0)}° off the window's centre`);
 }
 
 console.log('\n=== pillar stations ===');

@@ -2692,6 +2692,17 @@ const ALARM_GOV_RING_R = 2.0 / UNIT_MM; // 5.277 u — 2.0 mm: the largest round
 const ALARM_GOV_RING_STOCK_MM = [0.2, 0.8]; // drawn-brass ring stock a bench would loop and poise:
                                         // below 0.2 mm a 4 mm ring loses its roundness to handling,
                                         // above 0.8 it is clock-plate bar, not a poising ring
+// --- The fork's plan (§113's pallet constants, hoisted here because the §62
+// window reveal reads them — the same reason §115 hoisted the ring's stock
+// window): the landing corner sits on the saw's tip circle LAND_EPS off the
+// anchor–wheel centre-line; the working face is one stock floor long; the
+// pad stands PALLET_BACK deep behind it (a floor of working section plus the
+// shank the arm laps ARM_LAP into). §113's own block derives the rest of the
+// escapement from these and says why each is what it is.
+const ALARM_GOV_LAND_EPS = ALARM_GOV_TOOTH_PITCH / 4;
+const ALARM_GOV_FACE_LEN = STOCK_MIN_U;
+const ALARM_GOV_ARM_LAP = 0.1; // how far a member enters the body it joins
+const ALARM_GOV_PALLET_BACK = STOCK_MIN_U + ALARM_GOV_ARM_LAP;
 // THE FOOTPRINT the pillar solve consumes — the corner's five under-plate
 // discs, each the member's own working radius, NAMED so a consumer selects
 // a member rather than an index (§115: the window solver reads the two
@@ -2786,6 +2797,32 @@ const alarmTierDiscsAt = (t) => {
 };
 const ALARM_UNDER_FOOTPRINT = alarmTierDiscsAt(ALARM_TIER_TRIPLE);
 const alarmUnderDisc = (name) => ALARM_UNDER_FOOTPRINT.find((o) => o.name === name);
+// §201 — THE FORK'S DISC: what the governor window frames. A bound derived
+// from the plan, not a measurement of metal that does not exist yet (this
+// runs five thousand lines before the anchor is cut): the landing corner
+// sits on the saw's tip circle ALARM_GOV_LAND_EPS off the anchor–wheel
+// centre-line, so it stands |C| = √(D² + R² − 2·D·R·cos ε) from the anchor's
+// axis; the working face runs FACE_LEN along the tooth path from that corner
+// and the pad stands PALLET_BACK behind the face, so no point of either
+// pallet can be farther than |C| + FACE_LEN + PALLET_BACK from the axis
+// (the triangle inequality — the face direction and the back offset are
+// unit vectors scaled by those two lengths). The arms root at the arbor
+// wall and end INSIDE the pallets, and the hub is ALARM_GOV_HUB_R, so both
+// lie inside the same bound. The anchor is a revolver about this axis, so
+// the reach is pose-independent by construction (§115's argument).
+//
+// Deliberately NOT a row of ALARM_UNDER_FOOTPRINT: that list is what the
+// pillar solve avoids and §184's joint bound judges pairwise, and a disc
+// nested inside the ring's would read as a foul there while buying the
+// pillars nothing. It is the ring's row's inner partner, named beside it,
+// and the §115 declared-vs-cut assert at the governor build measures the
+// cut fork against it exactly as it measures the ring against its row.
+const ALARM_GOV_FORK_DISC = (() => {
+  const D = ALARM_GOV_ANCHOR_D, R = ALARM_GOV_SAW_R;
+  const cornerR = Math.sqrt(D * D + R * R - 2 * D * R * Math.cos(ALARM_GOV_LAND_EPS));  // 1.084
+  return { name: 'governor fork', x: alarmGovAnchorPos.x, y: alarmGovAnchorPos.y,
+    r: cornerR + ALARM_GOV_FACE_LEN + ALARM_GOV_PALLET_BACK };                          // 1.818
+})();
 const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate builder
 // (§112: the climb arbor's jeweled upper pivot RETIRED — with the winding
 // tier under the plate the climb tops out ~3 and never reaches this
@@ -8146,46 +8183,110 @@ const TQ_WINDOW_INTENTS = [
     // the saw's rim is a circle of teeth, and everything the escapement
     // DOES — the flat faces §113 solved, the drop, the poising ring the
     // cadence is an arithmetic of, and since §120 the located bearing under
-    // it — happens on the anchor. So the frame is the anchor's own disc, and
-    // the saw appears in it the way it appears in the action: the tooth
-    // circle passes 1.05 from the anchor's axis, so ~118° of the saw's rim —
-    // the arc the pallets work on, engagement at its middle — stands inside
-    // this window and the far side of the wheel goes back under the plate.
-    // What that buys is the plate, measured as AREA rather than as reach —
-    // a radius cannot answer this, since two windows of equal reach can take
-    // very different amounts of metal. ½∮r²dθ over the solved reveal:
-    // 209.6 cut before, 132.1 now, so 37% of the opening goes back to a
-    // plate that is a bearing first (§115's own priority, applied to §115's
-    // own window). The probe reports it.
+    // it — happens on the anchor. So §120 made the frame the anchor's own
+    // disc (the ring's footprint row, 6.483), and ½∮r²dθ went 209.6 → 132.1.
     //
-    // The disc comes from ALARM_UNDER_FOOTPRINT, which is the point: that
-    // list is what the movement DECLARES this metal occupies, the pillar
-    // solve already avoids exactly this circle, and the governor's own
-    // meshes do not exist yet (this solver first runs five thousand lines
-    // before the alarm block). Sizing the reveal from a second description of
-    // the same part would be two numbers to keep in step; sizing it in the
-    // RE-CUT pass instead is barred outright, because that pass may only ever
-    // shrink what the pillar seats were solved against. What keeps the
+    // §201 — AND THE ACTION IS SMALLER THAN THE ANCHOR. §120's argument
+    // reaches its own conclusion one step further on: the poising ring is
+    // the anchor's INERTIA, not its action — it is what the cadence is an
+    // arithmetic OF, and it turns as a plain hoop — while the action is the
+    // two pallets meeting the saw's teeth on §113's flat faces, all of it
+    // within 1.26 of the anchor's axis (measured, tools/probe-115-window).
+    // So the frame is the FORK'S disc, ALARM_GOV_FORK_DISC, plus one margin
+    // of reveal: the anchor body, both arms, both pallets, and the arc of
+    // saw rim they work on — the tooth circle passes 1.05 from this axis and
+    // stays inside a 1.97 disc for ±14.7° of saw, about three teeth,
+    // engagement at the middle. The ring, its arms and collar, and the far
+    // rim go back under the plate, which is a bearing first. ½∮r²dθ:
+    // 132.1 → ≈ 12.2; the probe reports it, per mesh now rather than per
+    // unit, because "the anchor unit is 100% revealed" stops being the
+    // claim and "every vertex of the fork is" starts being it.
+    //
+    // The disc is DECLARED at the plan hoist beside ALARM_UNDER_FOOTPRINT,
+    // for the reason §120 gave: the governor's own meshes do not exist yet
+    // (this solver first runs five thousand lines before the alarm block),
+    // sizing the reveal from a second description of the same part would be
+    // two numbers to keep in step, and sizing it in the RE-CUT pass is
+    // barred for a window the pillar seats were solved against, because
+    // that pass may only ever shrink such a window. What keeps the
     // declaration honest is the §115 assert at the governor build, which
-    // measures the cut metal against the disc it was promised to fit inside.
+    // measures the cut fork against the disc it was promised to fit inside.
     //
     // Neither governor unit pivots in this plate — both stand on posts
     // planted in the BASE plate — so this is still the bossless window §115's
     // all-or-nothing rule was written for, and it is still declared through
-    // `discs()` rather than `reveal()`: the framed circle is a member of the
-    // footprint, named, and one member is the honest way to say so. A single
-    // disc concentric with its own centre short-circuits to `d.r` by name in
-    // the solve, so the reveal is exact rather than routed through arithmetic.
+    // `discs()` rather than `reveal()`: one named disc is the honest way to
+    // say which member is framed. A single disc concentric with its own
+    // centre short-circuits to `d.r` by name in the solve, so the reveal is
+    // exact rather than routed through arithmetic.
     at: () => alarmGovAnchorPos,
-    discs: () => [alarmUnderDisc('governor ring')]
-      .map((d) => ({ x: d.x, y: d.y, r: d.r + CLEAR_MARGIN })),   // one margin of visual reveal, as both windows above
+    discs: () => [ALARM_GOV_FORK_DISC]
+      .map((d) => ({ x: d.x, y: d.y, r: d.r + CLEAR_MARGIN })),   // one margin of visual reveal, as the fusee window above
+  },
+  // §201 — THE MALTESE CROSS, and the first LATE intent. The alarm's Geneva
+  // stop-work (§106, re-geared by §129) lies at z 0.1–0.42 with the plate
+  // closed over it: measured before this, 0 of 3109 cross vertices had a
+  // path out. Its station is a SOLVED output of the tower's scene scan —
+  // four freedoms swept against the units built before it — which runs
+  // eleven thousand lines after this solver first does, so neither the
+  // cross's metal nor its centre exists here; nothing at the plan hoist can
+  // declare a disc for it the way the governor's is declared. The station
+  // cannot be hoisted either: the scan scores the built scene, and above
+  // the plate there is no scene to score.
+  //
+  // So the intent's centre is a HOLDER the arrest block fills, and the row
+  // is solved on the RE-CUT pass only. §115 barred SIZING a window on that
+  // pass, and the bar's whole reason is that the first outline has
+  // consumers — the pillar seats and their plate screws, solved against it
+  // and no longer conservative if it grows. A window that did not exist at
+  // the first solve is exactly the case the bar is about, so the same
+  // consumers are HELD rather than trusted: every pillar seat is a tqHoles
+  // row, checkPlateWindows check 2 measures every cut window's edge against
+  // every tqHoles row at TQ_LAND_MIN on the 're-cut' and 'movement
+  // complete' stages, and the re-cut block below names the rule for late
+  // rows in its own words on top of that. Measured today the nearest seat
+  // stands 15.9 from the cross's stud; the gate is what makes that a fact
+  // the next re-layout cannot silently lose.
+  //
+  // What the window frames is the cross's own rim disc, ARREST_SPEC.b, the
+  // radius the finger's pin banks on — the same solved number the cross was
+  // cut to, read through the holder rather than transcribed, and held by a
+  // declared-vs-cut assert at the cross build (§115's pattern). The finger
+  // is not framed: its pin enters the cross's disc where it works, and the
+  // disc contains the engagement. Bossless — the tower's columns plant in
+  // the BASE plate — so §115's all-or-nothing rule applies unchanged.
+  //
+  // The column wheel stands above this plate 7.24 from the cross and covers
+  // the cross's near third from above; it is not a keep (only its stud
+  // crosses the plate band, and the stud is 7 away), so the window is cut
+  // whole under it. The probe reports both reveals: clear of the plate, and
+  // clear of everything.
+  {
+    name: 'arrest',
+    late: true,
+    at: () => ARREST_WINDOW,
+    discs: () => [{ x: ARREST_WINDOW.x, y: ARREST_WINDOW.y, r: ARREST_WINDOW.r + CLEAR_MARGIN }],
   },
 ];
+// §201 — the late intent's centre. null until the arrest block has placed the
+// cross's stud; the solver reports the row as deferred while it is null.
+let ARREST_WINDOW = null;
 
 function solveTqWindows() {
   const polys = [], report = [];
   for (const intent of TQ_WINDOW_INTENTS) {
     const c = intent.at();
+    // §201 — a LATE intent whose centre is not yet placed is REPORTED as
+    // deferred, never silently skipped: the row exists in every report with
+    // `deferred: true`, so a consumer reading the table by name finds it, and
+    // the re-cut block can tell "first solved here" from "was here before".
+    if (!c) {
+      if (!intent.late)
+        console.warn(`§201 window '${intent.name}': at() returned nothing and the intent is not declared late — an early window with no centre`);
+      report.push({ name: intent.name, c: null, discs: [], wanted: 0, r0: 0, boss: false, cut: false,
+        deferred: true, late: !!intent.late, webW: 0, webSpan: 0, sectors: [], rOut: [] });
+      continue;
+    }
     // The framed circles. A coaxial intent declares one radius about its own
     // axis; a multi-axis one declares the discs and the window is their union.
     const discs = intent.discs
@@ -8250,6 +8351,43 @@ function solveTqWindows() {
     // under both §50's floor and §54's; the land check said so at boot, which
     // is the assert doing its job on the very solve that added it.
     const r0 = boss ? pivotBossR(boss) + TQ_LAND_MIN : 0;
+    // §201 — WHAT STANDS INSIDE THE DISC. The bisection below assumes the
+    // clearance along a ray is monotone: clear at the centre, blocked once
+    // and for good somewhere out toward the rim. A keep standing INSIDE the
+    // disc — a stud the window reaches past — leaves the ray's END clear,
+    // and the end is all the old test looked at: the window was cut straight
+    // through plate the stud needs, and only checkPlateWindows said so,
+    // after the fact. Found by the late arrest window under a spec boot
+    // (crownaz=90 moves the switch cluster into the cross's disc; the check
+    // read 0.107 against 0.15).
+    //
+    // AND IT IS THE LATE INTENTS' RULE, NOT EVERY WINDOW'S, because an early
+    // window's interior is already SPOKEN FOR: §47 stands the winding
+    // arrest's stud up through the fusee window's own opening, siting it by
+    // reading this very report — a part that crosses the plate band inside
+    // a window is, for an early window, a part that read the window and
+    // stood in its air, and walking those rays cut the fusee window to
+    // pieces around a stud that was never in plate (measured: 158 bearings
+    // bitten, some to zero, on the identity boot). A late window has no
+    // such history — nothing could have read it — so anything inside its
+    // disc that crosses the band is plate-borne until the movement says
+    // otherwise. So a LATE intent whose disc has any keep, pivot or opening
+    // reaching inside it WALKS each ray from r0 outward in steps under the
+    // narrowest blocked run an obstacle can leave (inflated by CLEAR_MARGIN
+    // it blocks at least 2·CLEAR_MARGIN of ray; a hole inflated by
+    // TQ_LAND_MIN more), and bisects only inside the first step that fails.
+    // An early window keeps the end test and its check-1 guard, as before.
+    const reachesIn = (d, r, band) => d - r - band < wanted;
+    const interior = TQ_KEEPS.some((k) => reachesIn(Math.hypot(k.cx - c.x, k.cy - c.y), k.cr, CLEAR_MARGIN))
+      || tqPivots.some((p) => p !== boss && reachesIn(Math.hypot(p.x - c.x, p.y - c.y), pivotBossR(p), CLEAR_MARGIN))
+      || tqHoles.some((h) => reachesIn(Math.hypot(h.x - c.x, h.y - c.y), h.r, TQ_LAND_MIN))
+      || tqSlots.some((sl) => {
+        const vx = sl.bx - sl.ax, vy = sl.by - sl.ay, L2 = vx * vx + vy * vy || 1e-9;
+        const t = clamp(((c.x - sl.ax) * vx + (c.y - sl.ay) * vy) / L2, 0, 1);
+        return reachesIn(Math.hypot(c.x - sl.ax - t * vx, c.y - sl.ay - t * vy), sl.r, TQ_LAND_MIN);
+      });
+    const walk = !!intent.late && interior;
+    const TQ_RAY_STEP = CLEAR_MARGIN / 2;
     // Step 1 — the outer edge, per degree: the wanted reveal, pulled in by
     // whichever bound binds first at that bearing.
     // Bisect for the largest radius at this bearing whose point still clears
@@ -8259,11 +8397,27 @@ function solveTqWindows() {
     const solveR = (a) => {
       const cs = Math.cos(a), sn = Math.sin(a);
       const want = wantedAt(a);                // per bearing now — the union's own edge
-      const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN
-        && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN;
-      if (ok(want)) return want;
+      // §201 — with float slack on both bounds, because a bossed window's r0
+      // stands EXACTLY one land from its own bore (r0 = boss + TQ_LAND_MIN
+      // and the boss is the bore's wall), so ok(r0) is an equality the last
+      // digit decides. The end test used to hide that: a bearing whose end
+      // was clear never asked about r0. Asked, 158 of the fusee's bearings
+      // answered "pinched" by rounding alone.
+      const ok = (r) => tqKeepClearance(c.x + cs * r, c.y + sn * r) >= CLEAR_MARGIN - 1e-9
+        && tqOpeningClearance(c.x + cs * r, c.y + sn * r) >= TQ_LAND_MIN - 1e-9;
+      if (!walk && ok(want)) return want;      // the end is clear and nothing stands inside: full reach
       if (!ok(r0)) return 0;                   // pinched shut at this bearing
       let lo = r0, hi = want;
+      if (walk) {
+        // walk out; the first failing step brackets the bisection
+        let r = r0, blocked = false;
+        while (r < want - 1e-12) {
+          const n = Math.min(r + TQ_RAY_STEP, want);
+          if (!ok(n)) { lo = r; hi = n; blocked = true; break; }
+          r = n;
+        }
+        if (!blocked) return want;
+      }
       for (let k = 0; k < 20; k++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
       return lo;
     };
@@ -8316,7 +8470,7 @@ function solveTqWindows() {
         + `round, and it pinches at ${shut.length} of 360 bearings (first ${i0}°, closed by `
         + `${byKeep ? 'material the plate must carry' : 'another opening'}) — a bossless window has no webs, `
         + 'so the plate between two of its runs would be a knife-edged spur, not an arm');
-      report.push({ name: intent.name, c, discs, wanted, r0, boss: false, cut: false, webW: 0, webSpan: 0, sectors: [], rOut });
+      report.push({ name: intent.name, c, discs, wanted, r0, boss: false, cut: false, late: !!intent.late, interior, walked: walk, webW: 0, webSpan: 0, sectors: [], rOut });
       continue;
     }
     // Step 3 — the webs. Every gap the shrink left between runs is ALREADY a
@@ -8448,7 +8602,7 @@ function solveTqWindows() {
       kept.push({ pts: [...outer, ...inner.reverse()], a: aRaw, b: bRaw });
     }
     polys.push(...kept.map((s) => ({ pts: s.pts, name: intent.name })));
-    report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, cut: true, webW, webSpan, sectors: kept, rOut });
+    report.push({ name: intent.name, c, discs, wanted, r0, boss: !!boss, cut: true, late: !!intent.late, interior, walked: walk, webW, webSpan, sectors: kept, rOut });
   }
   return { polys, report };
 }
@@ -17438,12 +17592,13 @@ const ALARM_GOV_RING_BOT = Math.max(
 //     cut strip stands one ARM LAP deeper still (the shank, below): the
 //     working section and the joint's grab are separate jobs, and only the
 //     first may live inside the pair's clearance band.
-const ALARM_GOV_LAND_EPS = ALARM_GOV_TOOTH_PITCH / 4;
-// The FACE is exactly one stock floor long: L = STOCK_MIN_U makes every
-// dimension of the paddle clear §50's wheel floor BY CONSTRUCTION (a rotated
-// rectangle's AABB never reads below its smaller side, so even stockFloor's
-// axis-aligned census cannot under-read it — the inverse of the §111 trap).
-const ALARM_GOV_FACE_LEN = STOCK_MIN_U;
+// (ALARM_GOV_LAND_EPS and ALARM_GOV_FACE_LEN are hoisted to the plan block —
+// the §62 window reveal now reads them, five thousand lines before this
+// solve runs. The face is exactly one stock floor long: L = STOCK_MIN_U makes
+// every dimension of the paddle clear §50's wheel floor BY CONSTRUCTION (a
+// rotated rectangle's AABB never reads below its smaller side, so even
+// stockFloor's axis-aligned census cannot under-read it — the inverse of the
+// §111 trap).)
 // The joint between arm and pallet, sized here because the pallet's own cut
 // consumes it: the arm ends ALARM_GOV_ARM_LAP inside the pallet's shank, and
 // the shank exists so that grab happens OUTSIDE the stay-out band the
@@ -17452,10 +17607,10 @@ const ALARM_GOV_FACE_LEN = STOCK_MIN_U;
 // this bar, aimed at the strip's mid-point, measured 0.011 from a passing
 // tooth for exactly that reason).
 const ALARM_GOV_ARM_W = 0.5;   // arm width at the root, as §104 cut it
-const ALARM_GOV_ARM_LAP = 0.1; // how far a member enters the body it joins
-// Total strip depth behind the face: one floor of WORKING section plus the
-// shank the arm laps into — never part of the working face.
-const ALARM_GOV_PALLET_BACK = STOCK_MIN_U + ALARM_GOV_ARM_LAP;
+// (ALARM_GOV_ARM_LAP and ALARM_GOV_PALLET_BACK — the total strip depth behind
+// the face, one floor of WORKING section plus the shank the arm laps into,
+// never part of the working face — are hoisted to the plan block with the
+// two above; the window reveal's bound is their sum.)
 // The ring's plan and stock window, hoisted above the closure solve because
 // ψ's own solve below consumes them; the final ring-section solve further
 // down uses the SAME formula (one copy, _govRingIOf).
@@ -18192,9 +18347,15 @@ alarmGovAnchorUnit.add(alarmGovAnchorPivot);
     'governor ring': ['alarmGovRing', 'alarmGovRingArm', 'alarmGovRingCollar',
       'alarmGovAnchor', 'alarmGovAnchorArm', 'alarmGovPallet', 'alarmGovAnchorArbor', 'alarmGovAnchorStud'],
   };
+  // §201 — the fork's disc is declared BESIDE the footprint (see its
+  // definition for why it is not a row of it) and is a window reveal's
+  // whole basis, so it is measured here with the rows, against the fork's
+  // own metal: body, arms, pallets, arbor and stud — the ring's members stay
+  // on the ring's row.
+  rowMembers['governor fork'] = ['alarmGovAnchor', 'alarmGovAnchorArm', 'alarmGovPallet', 'alarmGovAnchorArbor', 'alarmGovAnchorStud'];
   const v = new THREE.Vector3();
   movement.updateMatrixWorld(true);
-  for (const row of ALARM_UNDER_FOOTPRINT) {
+  for (const row of [...ALARM_UNDER_FOOTPRINT, ALARM_GOV_FORK_DISC]) {
     const names = rowMembers[row.name];
     if (!names) continue;          // the barrel and click rows are the barrel block's to own
     let reach = 0, at = null;
@@ -20061,6 +20222,10 @@ const arrestStud = {
   x: arrestFingerPos.x + Math.cos(ARREST_CROSS_AZ) * ARREST_SPEC.d,
   y: arrestFingerPos.y + Math.sin(ARREST_CROSS_AZ) * ARREST_SPEC.d,
 };
+// §201 — the plate's late window onto the cross reads the stud and the rim
+// radius from here: the same solved station and the same spec the cross is
+// cut to, so the frame and the metal cannot be two descriptions.
+ARREST_WINDOW = { x: arrestStud.x, y: arrestStud.y, r: ARREST_SPEC.b };
 // WHICH ARM IS BLANK is derived, not declared — the assembly clocking a
 // watchmaker performs: fit the cross with its un-slotted arm where the pin
 // arrives at full wind. Assuming station 0 was wrong twice over: the cross
@@ -20289,6 +20454,27 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   cSpin.add(cross);
   alarmArrestUnit.add(cSpin);
   arrestCrossSpin = cSpin;
+  // §201 — DECLARED VERSUS CUT, §115's pattern: the window solver frames
+  // ARREST_WINDOW.r about the stud, and this measures the cut cross against
+  // it — the greatest distance from the stud's axis to any vertex of the
+  // cross. A cross that out-reaches its declared disc is framed short, and
+  // nothing downstream would say so. Pose-independent: the cross is a
+  // revolver about this axis.
+  {
+    alarmArrestUnit.updateMatrixWorld(true);
+    const v = new THREE.Vector3();
+    const pos = cross.geometry.attributes.position;
+    let reach = 0;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(cross.matrixWorld);
+      reach = Math.max(reach, Math.hypot(v.x - ARREST_WINDOW.x, v.y - ARREST_WINDOW.y));
+    }
+    if (!pos.count)
+      console.warn('§201: the cross has no vertices to measure — the declared-vs-cut check is measuring nothing');
+    if (reach > ARREST_WINDOW.r + 1e-6)
+      console.warn(`§201: the arrest window frames ${ARREST_WINDOW.r.toFixed(3)} about the cross's stud but the cut cross reaches `
+        + `${reach.toFixed(3)} — the plate frames the stop-work short`);
+  }
   column(arrestStud.x, arrestStud.y, ARREST_SPEC.studR,
     ARREST_Z + ARREST_PLATE_T * 2, 'alarmArrestStud');
 
@@ -27859,6 +28045,10 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
   for (const b of before) {
     const a = TQ_WINDOWS.report.find((r) => r.name === b.name);
     if (!a) continue;
+    // §201 — a row that was DEFERRED at the first solve has no outline to
+    // shrink from: it is first solved here, by declaration, and what stands
+    // in for the shrink-only property is the seat gate below.
+    if (!b.rOut.length) continue;
     let grew = 0, worstAt = -1, worstBy = 0;
     for (let i = 0; i < 360; i++) {
       const by = a.rOut[i] - b.rOut[i];
@@ -27869,6 +28059,37 @@ document.getElementById('btn-labels').addEventListener('click', () => setLabels(
         + 'the pillar seats and plate screws were solved against the first outline and are no longer conservative');
     if (a.r0 < b.r0 - 1e-9)
       console.warn(`§62 window '${b.name}': the re-solve shrank its boss ${b.r0.toFixed(3)} → ${a.r0.toFixed(3)}`);
+  }
+  // §201 — THE LATE ROWS, held to the rule the shrink-only bar exists for.
+  // A window first solved on this pass was never seen by the pillar scan,
+  // whose seats and plate screws are the first outline's consumers. Check 2
+  // of checkPlateWindows measures every cut edge against every tqHoles row —
+  // the seats included — so a late window inside a land of a seat already
+  // warns; this states the same fact against the SEATS by name, at the one
+  // place the bar is relaxed, so the relaxation and its guard sit together.
+  // A late intent still deferred here is a hole in the build order, not a
+  // window: warn, because a holder nobody filled is a report of nothing.
+  for (const r of TQ_WINDOWS.report) {
+    if (!r.late) continue;
+    if (r.deferred) {
+      console.warn(`§201 window '${r.name}': declared late and still deferred at the re-cut — its holder was never filled, so it was never solved`);
+      continue;
+    }
+    if (!r.cut) continue;
+    for (const p of pillarSeats) {
+      let d = Infinity;
+      for (const sec of r.sectors) {
+        for (let i = 0; i < sec.pts.length; i++) {
+          const a = sec.pts[i], b = sec.pts[(i + 1) % sec.pts.length];
+          const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-9;
+          const t = clamp(((p.x - a[0]) * vx + (p.y - a[1]) * vy) / L2, 0, 1);
+          d = Math.min(d, Math.hypot(p.x - a[0] - t * vx, p.y - a[1] - t * vy) - PILLAR_SEAT_R);
+        }
+      }
+      if (d < TQ_LAND_MIN - 1e-6)
+        console.warn(`§201 window '${r.name}': first solved at the re-cut, and it leaves ${d.toFixed(3)} of plate to the pillar seat at `
+          + `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}) — need ${TQ_LAND_MIN.toFixed(3)}; the seat was solved blind to this window, so the window must move or be hoisted`);
+    }
   }
   // Re-cut the plate to the second answer. The mesh object is kept and only
   // its geometry replaced, so everything already parented to it — the chatons,
