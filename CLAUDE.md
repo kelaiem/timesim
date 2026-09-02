@@ -495,9 +495,11 @@ the repo is public, and a fork's PR runs its own workflow code on the host, so
 the `runs-on` expression tests the head repo before it reads anything else.
 A run the repository OWNER did not trigger runs there too — `github.actor`
 against `github.repository_owner`, and on a PR's `synchronize` the actor is
-whoever pushed the commits being tested. What is left (the owner's own pushes,
-merges and dispatches) runs on the label the repository variable
-`BATTERY_RUNS_ON` names, `ubuntu-latest` when unset. `tools/tart-battery-runner.sh` (the built path — a throwaway Linux VM per job
+whoever pushed the commits being tested. And the host is NEVER the default: a run
+goes there only when the event asks — a PR carrying the `self-hosted-battery`
+label or `[self-hosted]` in its title, or a dispatch whose `runner` input says
+so — and only while the repository variable `BATTERY_RUNS_ON` (the label, and
+the availability switch) is set; pushes to `main` always run GitHub-hosted. `tools/tart-battery-runner.sh` (the built path — a throwaway Linux VM per job
 on Apple Virtualization, so the public logs name the guest, not the Mac) or
 `tools/self-hosted-runner.sh` (bare metal) puts a runner under that label and
 prints the variable flip it deliberately does not perform; the job

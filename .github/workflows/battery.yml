@@ -188,6 +188,10 @@ name: Battery
 
 on:
   pull_request:
+    # `labeled` is §200's: a routing label added to an open PR must start a
+    # run, because a re-run reuses the original payload. The job's `if`
+    # below keeps every OTHER label from costing a battery.
+    types: [opened, synchronize, reopened, labeled]
     paths-ignore:
       - '**/*.md'
       - 'explain.html'
@@ -211,6 +215,11 @@ on:
         description: 'Ignore any baseline and run every check (default for this trigger)'
         type: boolean
         default: true
+      runner:
+        description: '§200 — where to run: the self-hosted host needs vars.BATTERY_RUNS_ON set'
+        type: choice
+        options: [ubuntu-latest, self-hosted]
+        default: ubuntu-latest
 
 # A force-push mid-run should kill the stale run — the battery is long enough
 # that queued duplicates would otherwise stack up behind it.
@@ -237,15 +246,30 @@ concurrency:
 #     against `github.repository_owner` rather than a login: no name in the
 #     file, and a transfer to an org makes it match nobody, which is the safe
 #     side.
-#   · What is left — the owner's own pushes, merges and dispatches — runs on
-#     whatever `vars.BATTERY_RUNS_ON` names, and on `ubuntu-latest` when it
-#     is unset.
+#   · THE HOST IS NEVER THE DEFAULT. A run goes there only when the event
+#     itself asks: a pull request carrying the `self-hosted-battery` label or
+#     `[self-hosted]` in its title (§152's escape-hatch idiom, inverted), or
+#     a workflow_dispatch whose `runner` input says so. A push to main never
+#     asks, so merges always run GitHub-hosted — which also keeps main's
+#     baseline on the platform ordinary PRs inherit from.
+#   · And only when `vars.BATTERY_RUNS_ON` is set. It is the AVAILABILITY
+#     switch, not the router: unset it and every opt-in lands on
+#     `ubuntu-latest` in silence, which is the outage remedy — a queued
+#     self-hosted job waits 24 h for a host that is asleep.
 #
-# The variable is a single runner LABEL (`timesim-battery`, the one
-# tools/self-hosted-runner.sh registers), not JSON: a bare word cannot fail to
-# parse, and a label that no online runner carries queues rather than runs the
-# wrong host. Merging this file changes nothing until the variable is set,
-# which is what lets it land before a host exists.
+# The variable is a single runner LABEL (`timesim-battery`, the one the
+# runner scripts register), not JSON: a bare word cannot fail to parse, and a
+# label that no online runner carries queues rather than runs the wrong host.
+# Merging this file changes nothing until the variable is set AND a PR asks.
+#
+# TWO MECHANICS OF THE OPT-IN. The title marker is the reliable one at
+# creation: `gh pr create --label` applies the label a moment after the PR
+# opens, so the opening run's payload may not carry it, while `[self-hosted]`
+# in the title is in every payload. And a label added LATER needs the
+# `labeled` event — a re-run reuses the original payload — so the trigger
+# lists it, the job's `if` lets only the two routing labels start a run (any
+# other label would otherwise cost a battery), and `cancel-in-progress`
+# retires the hosted run the label supersedes.
 #
 # WHY A REPOSITORY VARIABLE, WHEN THE PAGES RULE IS "EVERY POINTER IS A GIT
 # REF". That rule is about CONTENT — which bytes an environment serves must be
@@ -266,7 +290,19 @@ concurrency:
 # host's own isolation, and how a host's shard count is set on the host.
 jobs:
   battery:
-    runs-on: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor == github.repository_owner && (vars.BATTERY_RUNS_ON || 'ubuntu-latest') || 'ubuntu-latest' }}
+    # A `labeled` event runs the job only for the two labels that change what
+    # a run is; every other label is skipped, not run.
+    if: github.event.action != 'labeled' || contains(fromJSON('["self-hosted-battery","full-battery"]'), github.event.label.name)
+    # Read as: (asked for by a same-repo PR) or (asked for by a dispatch),
+    # and owner-triggered, and the host is available — else GitHub-hosted.
+    runs-on: >-
+      ${{ (
+      (github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && (contains(github.event.pull_request.labels.*.name, 'self-hosted-battery')
+      || contains(github.event.pull_request.title, '[self-hosted]')))
+      || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted')
+      ) && github.actor == github.repository_owner && vars.BATTERY_RUNS_ON || 'ubuntu-latest' }}
     timeout-minutes: 50   # must stay ABOVE ci-battery.mjs's per-check guard (35; TODO 38's wind axis re-derived both — guard + the ~15 min this pair has always kept above it)
     steps:
       # §200 — the pointer is read off the run, never remembered. Values go
@@ -281,12 +317,23 @@ jobs:
           EVENT: ${{ github.event_name }}
           ACTOR: ${{ github.actor }}
           OWNER: ${{ github.repository_owner }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          TITLE: ${{ github.event.pull_request.title }}
+          DISPATCH_RUNNER: ${{ inputs.runner }}
         run: |
-          trust="trusted (owner-triggered, not a fork)"
-          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then trust="FORK — pinned to ubuntu-latest"
-          elif [ "$ACTOR" != "$OWNER" ]; then trust="triggered by a non-owner — pinned to ubuntu-latest"
+          asked=no
+          if [ "$EVENT" = pull_request ]; then
+            printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'self-hosted-battery' && asked="label"
+            printf '%s' "$TITLE" | grep -qF '[self-hosted]' && asked="title"
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$DISPATCH_RUNNER" = self-hosted ]; then asked="dispatch input"
           fi
-          echo "§200: ran on runner '$RUNNER_NAME' ($RUNNER_OS/$RUNNER_ARCH); vars.BATTERY_RUNS_ON='${ROUTE_VAR:-<unset>}'; $EVENT from $HEAD_REPO by $ACTOR — $trust" | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then verdict="FORK — pinned to ubuntu-latest"
+          elif [ "$ACTOR" != "$OWNER" ]; then verdict="triggered by a non-owner — pinned to ubuntu-latest"
+          elif [ "$asked" = no ]; then verdict="host not asked for — ubuntu-latest by default"
+          elif [ -z "$ROUTE_VAR" ]; then verdict="host asked for ($asked) but vars.BATTERY_RUNS_ON is unset — ubuntu-latest"
+          else verdict="host asked for ($asked) and available — routed to '$ROUTE_VAR'"
+          fi
+          echo "§200: ran on runner '$RUNNER_NAME' ($RUNNER_OS/$RUNNER_ARCH); $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/checkout@v4
 

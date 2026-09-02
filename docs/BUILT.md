@@ -21618,12 +21618,14 @@ and it is why this is not a `runs-on` swap.
 
 `runs-on` is one expression, read in this order:
 
-| event | head repository | `github.actor` | host |
-|---|---|---|---|
-| `pull_request` | a fork (or a deleted one — `null` compares unequal) | anyone | `ubuntu-latest`, always |
-| any | — | not the repository owner | `ubuntu-latest` |
-| `pull_request` | a branch of this repository | the owner | `vars.BATTERY_RUNS_ON`, or `ubuntu-latest` when unset |
-| `push` to `main`, `workflow_dispatch` | — | the owner | the same variable, the same default |
+| event | head repository | `github.actor` | asked for the host? | host |
+|---|---|---|---|---|
+| `pull_request` | a fork (or a deleted one — `null` compares unequal) | anyone | — | `ubuntu-latest`, always |
+| any | — | not the repository owner | — | `ubuntu-latest` |
+| `pull_request` | a branch of this repository | the owner | no | `ubuntu-latest` |
+| `pull_request` | a branch of this repository | the owner | `self-hosted-battery` label or `[self-hosted]` in the title | `vars.BATTERY_RUNS_ON`, or `ubuntu-latest` when unset |
+| `workflow_dispatch` | — | the owner | `runner: self-hosted` | the same |
+| `push` to `main` | — | — | cannot ask | `ubuntu-latest`, always |
 
 The fork test comes BEFORE the variable is read, so no label, variable or
 later edit lower in the file can route a fork onto a host. The actor test
@@ -21636,7 +21638,24 @@ against `github.repository_owner`, not a login — no name in the file, and a
 transfer to an org matches nobody, the safe side. The residue is named in
 `docs/RUNNERS.md`: the owner's NEXT push to a branch a collaborator touched
 tests the combined tree on the host, which is the trust a write-access
-collaborator already holds. The variable is
+collaborator already holds.
+
+**And the host is never the default** (the owner's third request: "choose
+not to use the self-hosted by default and explicitly target the runner when
+creating the PR"). §152's escape hatch — a label or a title marker read by
+the workflow — is the idiom, inverted: `self-hosted-battery` or
+`[self-hosted]` opts a PR in, a `runner` input opts a dispatch in, and a
+push to `main` cannot ask, so merges stay GitHub-hosted and main's baseline
+stays on the platform ordinary PRs inherit from. The variable stops being
+the router and becomes the AVAILABILITY switch: unset, every opt-in lands
+on `ubuntu-latest` in silence, which is the outage remedy. Two mechanics
+are written beside the trigger: the title marker is the reliable one at
+creation (`gh pr create --label` labels a moment after the PR opens, so the
+opening payload may not carry it), and a label added later needs the
+`labeled` event, which the trigger now lists with a job `if` that lets only
+the two routing labels start a run — any other label would otherwise cost a
+battery — while `cancel-in-progress` retires the hosted run the label
+supersedes. The variable is
 a single runner **label** (`timesim-battery`, the one the setup script
 registers), not JSON: a bare word cannot fail to parse, and a label no
 online runner carries makes the job queue visibly rather than run on the

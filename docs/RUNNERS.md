@@ -25,19 +25,39 @@ The job's `runs-on` is one expression, and it reads in this order:
    against `github.repository_owner`, not a login, so no name lives in the
    file and a transfer to an organisation matches nobody, which is the safe
    side.
-3. **What is left** — the owner's own pushes to `main`, dispatches and pull
-   requests from branches of this repository — runs on the label the
-   repository variable `BATTERY_RUNS_ON` names, and on `ubuntu-latest` when
-   it is unset.
+3. **The host is never the default.** A run goes there only when the event
+   itself asks: a pull request carrying the label `self-hosted-battery` or
+   `[self-hosted]` in its title, or a manual dispatch whose `runner` input
+   says `self-hosted`. A push to `main` never asks, so merges always run
+   GitHub-hosted, which also keeps main's baseline on the platform ordinary
+   PRs inherit from.
+4. **And only while the variable permits.** `BATTERY_RUNS_ON` names the
+   label and is the availability switch, not the router: unset it and every
+   opt-in lands on `ubuntu-latest` in silence.
+
+Asking for the host, at creation or later:
+
+```bash
+gh pr create --title '[self-hosted] …'            # in the payload from the first run
+gh pr edit NNN --add-label self-hosted-battery     # starts a new run; the hosted one is cancelled
+```
+
+The title marker is the reliable one at creation: `gh pr create --label`
+applies the label a moment after the PR opens, so the opening run's payload
+may not carry it. A label added to an open PR works because the workflow
+listens for the `labeled` event; only the two routing labels
+(`self-hosted-battery`, `full-battery`) start a run that way, and the
+cancel-in-progress rule retires the hosted run the label supersedes.
 
 The variable is a single runner **label**, not JSON and not a list:
-`timesim-battery` is what `tools/self-hosted-runner.sh` registers. A bare word
+`timesim-battery` is what both runner scripts register. A bare word
 cannot fail to parse, and a label no online runner carries makes the job
 *queue*, which is visible, rather than run on the wrong host, which is not.
 
 Every run writes which runner took it into the job summary (name, OS,
-architecture, the variable's value, who triggered it, and which of the three
-tiers applied). The pointer is read off the run; nobody has to remember it.
+architecture, who triggered it, whether and how the host was asked for, and
+which tier decided). The pointer is read off the run; nobody has to remember
+it.
 
 One edge the actor test does not close, named rather than hidden: a
 collaborator's commit pushed to your branch runs hosted, but your *next* push
@@ -215,7 +235,7 @@ gh variable set BATTERY_RUNS_ON --repo kelaiem/timesim --body 'timesim-battery'
 ```
 
 **Before you flip it**, on a laptop especially: the machine has to be awake
-and online whenever a trusted PR or a merge lands, or that run queues for up
+and online whenever a PR that asked for it lands, or that run queues for up
 to a day. A host that is only sometimes there is worse than `ubuntu-latest`,
 because the failure looks like a slow battery rather than an absent one.
 Unset the variable the moment the host is going away:
