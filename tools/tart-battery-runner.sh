@@ -98,11 +98,21 @@ teardown() {
   tart delete "$vm" >/dev/null 2>&1 || true
   rm -f "$STATE/$vm.run.log"
 }
-# A runner record left at GitHub by a cycle that never ran its job.
+# A runner record left at GitHub by a cycle that never ran its job. Its
+# process is dead by the time this runs, but GitHub reports it `online` for
+# ~20 s more (measured), so the record is removed by NAME whatever its status,
+# with a short retry for the window in which the API still refuses.
 forget_runner() {
-  local id
-  id=$(gh api "repos/$REPO/actions/runners" --jq ".runners[] | select(.name==\"$1\" and .status==\"offline\") | .id" 2>/dev/null | head -1)
-  [ -n "$id" ] && { gh api -X DELETE "repos/$REPO/actions/runners/$id" >/dev/null 2>&1 && log "removed lingering runner record '$1' (#$id)"; } || true
+  local id i
+  for i in 1 2 3 4 5 6; do
+    id=$(gh api "repos/$REPO/actions/runners" --jq ".runners[] | select(.name==\"$1\") | .id" 2>/dev/null | head -1)
+    [ -n "$id" ] || return 0
+    if gh api -X DELETE "repos/$REPO/actions/runners/$id" >/dev/null 2>&1; then
+      log "removed runner record '$1' (#$id)"; return 0
+    fi
+    sleep 10
+  done
+  log "could not remove runner record '$1' (#$id); it will read offline in the runner list" >&2
 }
 # Clones from a previous crash: anything named like a job VM that is not ours.
 sweep_stale() {
@@ -164,12 +174,18 @@ sudo -u runner -H bash -euo pipefail -c '
   echo "'"$RUNNER_SHA"'  r.tgz" | sha256sum -c -
   tar xzf r.tgz && rm r.tgz'
 /home/runner/actions-runner/bin/installdependencies.sh
-[ -n "$SHARDS" ] && echo "BATTERY_SHARDS=$SHARDS" > /home/runner/actions-runner/.env && chown runner /home/runner/actions-runner/.env
+[ -n "$SHARDS" ] && echo "BATTERY_SHARDS=$SHARDS" > /home/runner/actions-runner/.env
+# Everything under the runner's directory must be the runner's: its first
+# start writes _diag/, and a root-owned _diag/ makes .NET abort (exit 134)
+# with no message the job log keeps — the first cycle ever run died of it.
+chown -R runner:runner /home/runner/actions-runner
 # The pinned browser, and its apt deps, where battery.yml's own step will look.
 chown -R runner /opt/timesim-tools
 sudo -u runner -H bash -euo pipefail -c 'cd /opt/timesim-tools && npm ci --no-audit --no-fund >/dev/null && npx playwright install-deps chromium && npx playwright install chromium'
 apt-get clean; rm -rf /var/lib/apt/lists/*
-echo "provisioned: $(hostname) node $(node --version) runner $(/home/runner/actions-runner/bin/Runner.Listener --version) chromium $(ls /home/runner/.cache/ms-playwright)"
+# The version read AS runner, so the _diag/ it creates is runner's too.
+echo "provisioned: $(hostname) node $(node --version) runner $(sudo -u runner -H /home/runner/actions-runner/bin/Runner.Listener --version) chromium $(ls /home/runner/.cache/ms-playwright)"
+test "$(stat -c %U /home/runner/actions-runner/_diag)" = runner
 GUEST
   log "powering the golden image off"
   tart exec "$BASE" sudo poweroff >/dev/null 2>&1 || true

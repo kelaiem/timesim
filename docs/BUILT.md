@@ -21732,11 +21732,35 @@ battery.yml's `--with-deps` step apt-installs exactly as it does on
 registers under the same label, and the platform-carrying baseline key
 already keeps a Linux/ARM64 host from inheriting `ubuntu-latest`'s X64 rows.
 
-Two measured facts from building it. `tart exec` refuses a `--` separator
+Three measured facts from building it. `tart exec` refuses a `--` separator
 (exit 125) while accepting the command bare, which the script's first draft
-got wrong on every call. And the Cirrus Ubuntu image boots to a working
-guest agent as user `admin` with passwordless sudo, which is what makes a
-credential-free provisioning possible at all.
+got wrong on every call. The Cirrus Ubuntu image boots to a working guest
+agent as user `admin` with passwordless sudo, which is what makes a
+credential-free provisioning possible at all. And the first cycle ever run
+died in under a second with `Aborted (core dumped)`, exit 134, and no
+message in the lines the job log kept — the guess was .NET's ICU abort, and
+the reproduction in a fresh clone with full stderr said otherwise:
+`UnauthorizedAccessException` on `_diag/Runner_….log`, because the build
+had printed the runner's version AS ROOT, which created a root-owned
+`_diag/` the `runner` user could not open. The build now hands the whole
+runner directory to `runner`, reads the version as that user, and asserts
+`_diag/`'s owner before it powers off. A guess that pattern-matched an exit
+code was one reproduction away from being wrong, which is the trap the
+repo's traps list already names in other words.
+
+**Measured, one bounded cycle on the M4 host** (`once --max-wait 90`,
+polled from outside every 5 s):
+
+| | |
+|---|---|
+| clone + boot + guest agent + JIT mint | 8 s to "up", by the script's own clock |
+| runner listening, and `online` in GitHub's runner list | within the first 10 s poll |
+| watchdog kill → clone gone from `tart list` | under 5 s |
+| GitHub still reporting the dead runner `online` | ~20 s after its process ended |
+
+That last row is why the cleanup removes the record by NAME rather than by
+status, with a short retry: the first version deleted only `offline`
+records, ran before the API had noticed, and left one behind.
 
 ### Three workflow consequences, all in the safe direction
 
