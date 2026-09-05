@@ -27,7 +27,8 @@ buttons persist to and sends `Cache-Control: no-store` so edited modules
 aren't served stale:
 
 ```sh
-python3 dev_server.py        # :8347
+python3 dev_server.py        # :8347, loopback only
+python3 dev_server.py --host 0.0.0.0   # also reachable from the LAN (trusted networks only)
 ```
 
 then open http://localhost:8347/ — no build step, no network access needed

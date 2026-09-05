@@ -15,7 +15,6 @@ Serves the repo like `python3 -m http.server`, with two additions:
 import http.server
 import json
 import os
-import sys
 import tempfile
 
 STATE_PATH = os.path.join(tempfile.gettempdir(), 'timesim-state.json')
@@ -79,6 +78,19 @@ class Server(http.server.ThreadingHTTPServer):
 
 
 if __name__ == '__main__':
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get('PORT', 8347))
-    print(f'timesim dev server on http://127.0.0.1:{port}  (state file: {STATE_PATH})')
-    Server(('127.0.0.1', port), Handler).serve_forever()
+    import argparse
+    ap = argparse.ArgumentParser(description='timesim dev server')
+    ap.add_argument('port', nargs='?', type=int,
+                    default=int(os.environ.get('PORT', 8347)))
+    # Loopback is the default on purpose: /__state accepts PUT and DELETE, so
+    # any host that can reach the port can overwrite or clear the saved sim
+    # state. Opt in to other machines (a phone on the LAN, a VM guest reaching
+    # the host's checkout) with --host 0.0.0.0 or HOST=0.0.0.0 — a trusted
+    # network only.
+    ap.add_argument('--host', default=os.environ.get('HOST', '127.0.0.1'),
+                    help='interface to bind (default 127.0.0.1; 0.0.0.0 for all)')
+    args = ap.parse_args()
+    shown = 'localhost' if args.host in ('0.0.0.0', '') else args.host
+    print(f'timesim dev server on http://{shown}:{args.port}  (bound to {args.host}, '
+          f'state file: {STATE_PATH})')
+    Server((args.host, args.port), Handler).serve_forever()
