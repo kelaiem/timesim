@@ -116,6 +116,7 @@ const out = await page.evaluate(async () => {
     bossToBalance: +bossToBalance.toFixed(4),
     L_FORK: L.L_FORK, FORK_T: L.FORK_T, L_BALANCE: L.L_BALANCE,
     CLEAR_MARGIN: L.CLEAR_MARGIN, RIM_H: L.RIM_H, FORK_HALF_Z: L.FORK_HALF_Z,
+    MOVEMENT_SENSE: L.MOVEMENT_SENSE,
     stones, outline,
   };
 });
@@ -182,7 +183,7 @@ if (out.stones.length === 2) {
   console.log(`  leans           ${a.lean.toFixed(3)}° and ${b.lean.toFixed(3)}°`);
   console.log(`  leans, summed   ${leanSum.toFixed(3)}° (mod 360)`);
   console.log(`  broken mirror   ${(leanSum - 180).toFixed(3)}°   `
-    + `(a pure mirror sums to 180°; 2·DRAW_DEG = ${2 * DRAW_DEG}° is the draw)`);
+    + `(a pure mirror sums to 180°; MOVEMENT_SENSE·2·DRAW_DEG = ${out.MOVEMENT_SENSE * 2 * DRAW_DEG}° is the draw)`);
 }
 
 // A CUT OUTLINE DOES NOT CROSS ITSELF. The fork's did — five times before
@@ -242,9 +243,15 @@ if (!out.outline)
 else if (xs.length)
   fails.push(`the cut outline crosses itself ${xs.length} time(s), first at `
     + `${xs[0].at.join(', ')}`);
-if (!(Math.abs(leanSum - 180 - 2 * DRAW_DEG) < 1e-9))
+// The draw leans both stones in the WHEEL's sense (TODO 115: `f0 +
+// MOVEMENT_SENSE·DRAW_DEG` in geometry.js), so the broken mirror carries that
+// sign: +24° under a +1 movement, −24° under −1. This read a bare +24° from
+// TODO 98 until TODO 131 and had been failing the reversed build since #327 —
+// the header's own "213° and 303°" sum to 156°, i.e. 180° − 24°.
+const drawBreak = out.MOVEMENT_SENSE * 2 * DRAW_DEG;
+if (!(Math.abs(leanSum - 180 - drawBreak) < 1e-9))
   fails.push(`the two leans break the mirror by ${(leanSum - 180).toFixed(4)}°, `
-    + `not by 2·DRAW_DEG = ${2 * DRAW_DEG}°`);
+    + `not by MOVEMENT_SENSE·2·DRAW_DEG = ${drawBreak}°`);
 
 console.log('');
 if (fails.length) {

@@ -142,9 +142,17 @@ window.__clock)` times out — because the orphan is rooted somewhere else and
 served a 404 for `index.html`. That reads exactly like a boot this change
 broke. It is not, and a CONTROL ON UNMODIFIED HEAD DOES NOT CLEAR IT: the
 control hits the same orphan and fails the same way, agreeing for the wrong
-reason. `pgrep -af "[h]ttp[.]server"` before believing any boot timeout — and
-the bracket is not decoration, because `pkill -f http.server` matches the shell
-running it and kills your own session instead.
+reason. `node tools/servers.mjs` before believing any boot timeout: it lists
+every tools-spawned server with the `.mjs` that OWNS it, read off the process
+tree, and `--reap` kills only the ones no live script is above. **Never kill a
+server by port or by `pgrep`** — a port number says nothing about ownership,
+and that is exactly how a full battery was killed at its final anchor (TODO
+131): its `dev_server.py` on a random port looked like a leftover from an i18n
+run, and one `kill` cost the whole 30-minute run. Owned servers are the run
+you are waiting for; orphans have PID 1 above them. And write new probes so the
+question does not arise: `process.on('exit', () => srv.kill())` right after
+the spawn, which reaps the server on a throw as well as on the last line
+(`probe-131-escapement-slide.mjs` is the pattern).
 
 Two things make the first misrun likely. The probes take `ROOT` as `'..'`, so
 they only serve the app when run FROM `tools/`; started from the repo root they

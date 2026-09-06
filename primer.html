@@ -419,9 +419,11 @@
       tighter rather than slipping — like a door wedge that a push only seats deeper.
       When the swinging balance flicks the lever, the stone lifts, the wheel escapes
       forward by <b>12°</b> — half a tooth spacing, no more, because the lever's other
-      stone is already in the way — and in that brief slide the tooth's face pushes on
-      the stone, handing the balance a small shove that pays back what friction and air
-      took from its swing. Then the wheel is caught again, and waits.</p>
+      stone is already in the way — and in that brief slide the tooth's tip rides across
+      the stone's inclined end, pushing the stone out of its way and handing the balance
+      a small shove that pays back what friction and air took from its swing. The end of
+      each stone is cut on a slant that leans <em>toward</em> the wheel, so the tooth
+      climbs it rather than falling off it. Then the wheel is caught again, and waits.</p>
       <p>That cycle is the tick: <b>5 per second</b> here, 18,000 per hour, each one an
       unlock–slide–catch. The wheel is in motion for only about a sixth of each beat —
       a watch is a machine that is almost always standing still.</p>
@@ -456,6 +458,60 @@
         flows outward: train → wheel → stone → lever → balance, a shove per beat.
         Position flows inward: the wheel stands where the stones allow, so the balance —
         not the spring in the drum — decides what time it is.</figcaption>
+      </figure>
+      <p>Plate 2 slows one beat down to a few seconds and draws it from the lever's point
+      of view, so the stones stand still and the wheel does the moving. Watch the right
+      stone: the tooth's tip sits on its corner, slides down its slanted end as the stone
+      lifts, and drops off — and the next tooth is already landing on the left stone's
+      corner.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">One beat, slowed down</span></div>
+        <div class="controls">
+          <button id="esPlay">▶ play</button>
+          <label>beat
+            <input type="range" id="esSlider" min="0" max="1000" value="0" step="1"
+                   aria-label="Phase within one beat">
+          </label>
+          <span class="readout" id="esReadout">beat 0.00</span>
+          <span class="chip ride" id="esChip">locked · the stone holds the wheel</span>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 250" width="780" height="250" role="img"
+               aria-label="Two close-ups of the escapement drawn from the lever's frame, one per pallet stone, driven by the slider through one beat. On the right, a wheel tooth rests on the stone's locking corner, the stone lifts while the wheel backs up a little, then the tooth's tip slides along the stone's slanted end until it drops off; on the left, the next tooth arrives and lands on the other stone's corner, and the wheel is held again.">
+            <!-- Both panels are computed, not drawn: the script below builds the
+                 wheel's teeth and the two stones in the machine's own proportions
+                 (tooth circle, embrace, draw, drop) and poses them through the
+                 same beat law the simulation ticks — in the LEVER's frame, so the
+                 stones are fixed and the wheel is what moves. -->
+            <text class="lbl lbl-strong" x="24" y="24">the stone about to catch</text>
+            <text class="lbl lbl-strong" x="414" y="24">the stone letting go</text>
+            <clipPath id="esClipL"><rect x="14" y="32" width="366" height="186"/></clipPath>
+            <clipPath id="esClipR"><rect x="400" y="32" width="366" height="186"/></clipPath>
+            <rect x="14" y="32" width="366" height="186" fill="none" stroke="var(--line)" stroke-width="0.75"/>
+            <rect x="400" y="32" width="366" height="186" fill="none" stroke="var(--line)" stroke-width="0.75"/>
+            <g clip-path="url(#esClipL)">
+              <path id="esArmL" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+              <path id="esWheelL" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <path id="esStoneL" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+              <circle id="esDotL" r="4" fill="var(--ruby)" opacity="0"/>
+            </g>
+            <g clip-path="url(#esClipR)">
+              <path id="esArmR" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+              <path id="esWheelR" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.4"/>
+              <path id="esStoneR" fill="var(--ruby-fill)" stroke="var(--ruby)" stroke-width="1.4"/>
+              <circle id="esDotR" r="4" fill="var(--ruby)" opacity="0"/>
+            </g>
+            <text class="lbl" x="24" y="240">the lever's frame, in the machine's proportions: stones still, wheel moving; the dot is a touch</text>
+          </svg>
+        </div>
+        <figcaption>What the slant buys. The stone's end is cut so that the tooth's tip,
+        travelling forward while the stone lifts, stays pressed on it for almost the whole
+        step — the wheel only runs free for the last degree and a half before the other
+        stone catches it. Cut the slant the other way and the tip would leave the corner
+        into thin air, the wheel would spin the whole step unloaded, and the balance would
+        get nothing. Two things here are honest simplifications: the lever's swing is drawn
+        as the simulation poses it, and the little backward twitch of the wheel at the start
+        of each beat is a posed gesture rather than a measured recoil.</figcaption>
       </figure>
     </div>
   </details>
@@ -774,6 +830,153 @@
     });
     btn.addEventListener('click', function () { setPlaying(!playing); });
     draw(1);
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(true);
+  })();
+
+  // TODO 131 — the escapement, plate 2. The same contract as the fusee plate:
+  // no source identifier reaches the DOM, every number written into it is a
+  // rounded quantity, and the geometry below is the machine's own in
+  // proportion — a 15-tooth club wheel, the two stones embracing 84° of it,
+  // 12° of draw, and each stone's slanted end cut as the chord of the path a
+  // tooth tip actually travels past it in the lever's frame, up to a drop of
+  // 1.5° of wheel. The beat law is the one the tick uses (a backward twitch on
+  // a sine for the first quarter of the window, then a smoothstep advance of
+  // 12° while the lever swings bank to bank), so what the slider drives is the
+  // shipped motion, in a frame that makes the contact readable.
+  (function () {
+    var el = function (id) { return document.getElementById(id); };
+    var box = el('escapement');
+    var slider = el('esSlider'), btn = el('esPlay'), chip = el('esChip'), readout = el('esReadout');
+    if (!slider) return;
+    var nTeeth = 15, rWheel = 4.5, embrace = 42 * Math.PI / 180, pitch = 2 * Math.PI / nTeeth;
+    var beatRad = 12 * Math.PI / 180, drawRad = 12 * Math.PI / 180, dropRad = 1.5 * Math.PI / 180;
+    var window_ = 0.16, twitchFrac = 0.25, twitchRad = 1.0 * Math.PI / 180;
+    var bankRad = 2.57 * Math.PI / 180;          // the lever's half-swing, as the simulation derives it
+    var sense = -1;                            // the wheel turns clockwise, seen from the dial
+    var s = 2 * rWheel * Math.sin(embrace), D = s / 2 + Math.sqrt(rWheel * rWheel - s * s / 4);
+    var rot = function (p, a) { var c = Math.cos(a), sn = Math.sin(a); return [c * p[0] - sn * p[1], sn * p[0] + c * p[1]]; };
+    var sub = function (a, b) { return [a[0] - b[0], a[1] - b[1]]; };
+    var add = function (a, b) { return [a[0] + b[0], a[1] + b[1]]; };
+    var smooth = function (x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+    var sOff = 1 - dropRad / beatRad;
+    var wc = [0, D];
+    // One stone: seat, lean and slanted end, from the tooth tip's own path.
+    function stone(sig) {
+      var C = [sig * s / 2, s / 2];
+      var cl = Math.hypot(C[0], C[1]);
+      var u = [(C[0] - wc[0]) / rWheel, (C[1] - wc[1]) / rWheel];
+      var f0 = [-C[1] / cl, C[0] / cl];
+      if (f0[0] * u[0] + f0[1] * u[1] < 0) f0 = [-f0[0], -f0[1]];
+      var tau = rot(f0, sense * drawRad), th = Math.atan2(tau[1], tau[0]);
+      var tipAt = function (f) { return rot(add(rot(sub(C, wc), sense * beatRad * f), wc), -sig * bankRad * (1 - 2 * f)); };
+      var seat = tipAt(0), chord = sub(tipAt(sOff), seat);
+      var loc = rot(chord, -(th - Math.PI / 2));
+      return { sig: sig, seat: seat, th: th, xTravel: Math.abs(loc[0]), slope: loc[1] / loc[0] };
+    }
+    var stones = [stone(-1), stone(1)];
+    var w = Math.min(stones[0].xTravel, stones[1].xTravel), len = 0.9 * pitch * rWheel;
+    stones.forEach(function (st) {
+      var bodyX = sense < 0 ? w : -w, delta = bodyX * st.slope;
+      var local = [[0, 0], [bodyX, delta], [bodyX, len], [0, len]];
+      var arm = [[bodyX + (bodyX > 0 ? 0.6 : -0.6), 0.5 * len], [bodyX + (bodyX > 0 ? 0.6 : -0.6), len + 0.6],
+                 [-(bodyX > 0 ? 0.6 : -0.6), len + 0.6], [-(bodyX > 0 ? 0.6 : -0.6), 0.5 * len]];
+      var place = function (q) { return add(st.seat, rot(q, st.th - Math.PI / 2)); };
+      st.poly = local.map(place); st.arm = arm.map(place);
+      st.corner = st.poly[0]; st.letOff = st.poly[1];
+    });
+    // The wheel's teeth: tips on the tooth circle, a heel and a locking foot
+    // behind each in the club's proportions, phased so a tip rests on the
+    // right-hand stone's corner at the start of the beat.
+    var az0 = Math.atan2(s / 2 - wc[1], s / 2);   // the +x corner in the lever's neutral frame, seen from the wheel's centre
+    // ONE closed outline, walked the way the wheel turns: valley, rising
+    // back, heel, tip, the undercut locking foot, scallop, next valley.
+    var ring = [];
+    for (var k = 0; k < nTeeth; k++) {
+      var a = az0 + sense * k * pitch, P = function (r, d) { return [r * Math.cos(a + sense * d * pitch), r * Math.sin(a + sense * d * pitch)]; };
+      ring.push(P(0.68 * rWheel, -0.72), P(0.78 * rWheel, -0.4), P(0.9 * rWheel, -0.19), P(rWheel, 0), P(0.8 * rWheel, -0.05), P(0.7 * rWheel, 0.12));
+    }
+    var tipIdx = []; for (var i = 3; i < ring.length; i += 6) tipIdx.push(i);
+    function wheelAt(p) {
+      var f = p / window_, dlt;
+      if (p < window_) {
+        if (f < twitchFrac) dlt = -Math.sin(f / twitchFrac * Math.PI) * twitchRad;
+        else dlt = smooth((f - twitchFrac) / (1 - twitchFrac)) * beatRad;
+      } else dlt = beatRad;
+      return sense * dlt;
+    }
+    function leverAt(p) {
+      var f = p / window_, swing;
+      if (p < window_) {
+        if (f < twitchFrac) swing = -bankRad + Math.sin(f / twitchFrac * Math.PI) * bankRad / 4;
+        else swing = -bankRad + 2 * bankRad * smooth((f - twitchFrac) / (1 - twitchFrac));
+      } else swing = bankRad;
+      return -swing;
+    }
+    // Panels: a window of 3.4 units about each stone, y up.
+    var pxPerUnit = 74;
+    var panels = [
+      { st: stones[0], cx: 197, cy: 125, wheel: el('esWheelL'), stone: el('esStoneL'), arm: el('esArmL'), dot: el('esDotL') },
+      { st: stones[1], cx: 583, cy: 125, wheel: el('esWheelR'), stone: el('esStoneR'), arm: el('esArmR'), dot: el('esDotR') },
+    ];
+    panels.forEach(function (pn) {
+      var c = pn.st.poly.reduce(function (a, q) { return [a[0] + q[0] / 4, a[1] + q[1] / 4]; }, [0, 0]);
+      pn.o = [c[0] + (pn.st.sig > 0 ? -0.4 : 0.4), c[1] + 0.5];
+      pn.X = function (q) { return (pn.cx + (q[0] - pn.o[0]) * pxPerUnit).toFixed(1) + ',' + (pn.cy - (q[1] - pn.o[1]) * pxPerUnit).toFixed(1); };
+      pn.path = function (pts) { return 'M' + pts.map(pn.X).join(' L') + ' Z'; };
+      pn.stone.setAttribute('d', pn.path(pn.st.poly));
+      pn.arm.setAttribute('d', pn.path(pn.st.arm));
+    });
+    function draw(p) {
+      var thW = wheelAt(p), phi = leverAt(p);
+      var toLever = function (q) { return rot(add(rot(q, thW), wc), -phi); };
+      var d = ring.map(toLever);
+      panels.forEach(function (pn) {
+        pn.wheel.setAttribute('d', pn.path(d));
+        // The contact dot: a tip within a hair of the stone's slanted end or corner.
+        var best = 1, bestPt = null;
+        tipIdx.forEach(function (ti) {
+          var tip = d[ti], a = pn.st.corner, b = pn.st.letOff;
+          var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+          var tt = Math.max(0, Math.min(1, ((tip[0] - a[0]) * dx + (tip[1] - a[1]) * dy) / L2));
+          var dd = Math.hypot(tip[0] - a[0] - tt * dx, tip[1] - a[1] - tt * dy);
+          if (dd < best) { best = dd; bestPt = tip; }
+        });
+        var on = best < 0.03;
+        pn.dot.setAttribute('opacity', on ? 1 : 0);
+        if (on) { var xy = pn.X(bestPt).split(','); pn.dot.setAttribute('cx', xy[0]); pn.dot.setAttribute('cy', xy[1]); }
+      });
+      readout.textContent = tr('beat') + ' ' + fmtNum(p, 2);
+      chip.className = 'chip';
+      var f = p / window_;
+      if (p >= window_) { chip.classList.add('ride'); chip.textContent = tr('locked · the stone holds the wheel'); }
+      else if (f < twitchFrac) { chip.classList.add('trip'); chip.textContent = tr('unlock · the stone lifts, the wheel twitches back'); }
+      else if (f < sOff) { chip.classList.add('ramp'); chip.textContent = tr('impulse · the tip rides the slant'); }
+      else { chip.classList.add('ramp'); chip.textContent = tr('drop · the wheel runs free to the other stone'); }
+    }
+    // Play dilates the beat: the action is 16% of it, so the window gets most
+    // of the loop and the lock a short dwell — the explainer's loop, inherited.
+    var playing = false, t0 = null, raf = 0, actS = 4.0, dwellS = 1.2;
+    function frame(now) {
+      if (!playing) return;
+      if (!box.open || document.hidden) { t0 = null; raf = requestAnimationFrame(frame); return; }
+      if (t0 === null) t0 = now;
+      var e = ((now - t0) / 1000) % (actS + dwellS);
+      var p = e < actS ? (e / actS) * window_ : window_ + ((e - actS) / dwellS) * (1 - window_);
+      slider.value = String(Math.round(p * 1000));
+      draw(p);
+      raf = requestAnimationFrame(frame);
+    }
+    function setPlaying(on) {
+      playing = on;
+      btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
+      if (on) { t0 = null; raf = requestAnimationFrame(frame); }
+      else { cancelAnimationFrame(raf); draw(slider.value / 1000); }
+    }
+    slider.addEventListener('input', function () {
+      if (playing) setPlaying(false); else draw(slider.value / 1000);
+    });
+    btn.addEventListener('click', function () { setPlaying(!playing); });
+    draw(0);
     if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPlaying(true);
   })();
 </script>

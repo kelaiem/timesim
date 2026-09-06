@@ -54,6 +54,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
+| 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
 | 29 | MOSTLY CLOSED | The Dial row — the one entry left in `RESTORING_WAIVERS` |
@@ -9264,6 +9265,14 @@ Whichever lands, every `gearOuterR` consumer moves with it: the bound feeds
 station solves across the movement, so this is a landing with a battery run
 in it, not an edit.
 
+**Candidate 1 has one instance now.** Item 131 applied it to `makeEscapeWheel`
+— `bevelOffset: −bevel`, which is three.js's own inset (the body contour is
+scaled by `bevelSize + bevelOffset` = 0) — with a boot guard that reads the
+reach off the vertices. The club tips went from 4.62 to the authored 4.5 and
+the tooth stopped burying 0.078 in the pallet stone. That builder cuts its own
+outline rather than `cycloidalGearShape`, so nothing about `gearOuterR` moved;
+the gears are still this item's.
+
 **Related debt already closed by measuring this.** `gearTrueReach` shipped in
 §136 with its bisector wrong — a DIFFERENCE of the two outward edge normals
 where the SUM is meant, which points 90° off the bisector, and a length that
@@ -15910,3 +15919,141 @@ drew, before or after this item; §84's census owns that. And this item
 closes one instance of item 180's class; the class itself (a floating mesh in
 a seated unit) is still gated only through `ASSEMBLY_SCOPE` membership, unit
 by unit.
+
+## 131. The pallet stones' impulse faces were cut from a slide path the tooth does not travel, and the escape wheel's metal outran its tooth circle — CLOSED
+
+Reported by eye, at the Escapement framing: "the teeth overlap the stones
+rather than gliding across the incline surface on the unlock", with the
+suspicion that the reversal (item 115) had left the stones leaning the wrong
+way. The suspicion was half right. The reversal mirrored the stone assembly
+correctly — both stones, both senses — and in doing so preserved a defect that
+had been cut into the stones since §16 and was invisible under the +1 build
+for the same reason it was invisible under −1: nothing measured WHERE on the
+stone the tooth tip was, only whether two meshes overlapped by more than 0.1.
+
+**Defect one — the impulse face.** `makePalletFork` cuts each stone's impulse
+face as the plane through the locking corner containing the tooth tip's slide
+path in the fork frame, and wrote that path as
+
+    p = R·beat·t̂ + 2·bank·|C|·û
+
+with `û` the wheel radial at the corner. The stone that is UNLOCKING moves
+outward — the seat puts its corner on the tooth circle at the bank it locks on
+and the swing to the other bank carries it `2·bank·|C|` away from the wheel —
+so in the fork frame the tooth tip moves INWARD while it advances: the swing
+term is `−û`. Measured in the fork frame over the impulse window, the tip
+travelled `(−0.955, −0.347)` from the +x corner while the let-off corner had
+been cut along `(−0.44, −0.90)`: 45° apart. The tip left the locking corner
+into free air at the first instant of impulse and stood 0.76 clear of the
+stone by the end of the window; the "impulse face" was a chisel pointing away
+from the wheel, and the tooth's push could never have had an outward
+component on it. Under a mirror both `t̂` and `û` mirror, so the +1 and −1
+builds carried the same 45°, and the draw-torque assert — invariant under a
+true mirror by design — was never asked about the incline.
+
+**Defect two — the wheel's metal.** `makeEscapeWheel` extruded with
+`bevelSize: bevel` and no `bevelOffset`, and three.js offsets the body
+contour OUTWARD by `bevelSize` (item 84's mechanism, on the one wheel whose
+tip circle is a working surface). Measured off the vertices the club tips
+reached **4.62** while `radius` = 4.5 is what the stones are seated on
+(`R` in makePalletFork), what the blank's `bladeClear` holds clear, and what
+the §83 schematic line draws. At rest, with the tooth phased tip-on-corner,
+the tip stood **0.078** inside the ruby — `penetration`'s
+`Escape wheel ⇄ Pallet fork` row, 0.078 against a 0.1 budget that its own
+comment said the sagittas would use 0.03 of. That is the overlap the eye
+reported; the incline was the part the eye could not see through it.
+
+**The fix, in `makePalletFork` and `makeEscapeWheel`.**
+
+- The tip's path is written out EXACTLY as the two rotations it is —
+  `tip(s) = Rot(−σ·bank·(1−2s))·(W₀ + Rot(MOVEMENT_SENSE·beat·s)·(C − W₀))`,
+  `slidePath` — and the linear form with its corrected sign stays in the
+  header as the way to read it. The seat is `tip(0)`: the corner rotated back
+  through the lock bank so the bank carries it onto `C` exactly (the linear
+  `C + bank·|C|·û` left the tip 0.006 off the corner). The impulse face is the
+  CHORD from the seat to `tip(sOff)`, the point where the drop begins, so the
+  let-off corner's lead `Δ` is negative in the stone's frame: the let-off
+  corner leads the locking corner toward the wheel, which is the real
+  pallet's shape and the only one a tooth can push outward on.
+- **The stone's width is derived.** `stoneW = 0.32·pitchArc` had no
+  constraint behind it and dropped the wheel free for 4.4° of its 12°. It is
+  now the tip's travel across the stone up to a declared `DROP_DEG = 1.5`
+  (a horological constant beside `DRAW_DEG` and `EMBRACE_DEG`), taking the
+  smaller of the two stones' travels so the drop is a floor: the entry and
+  exit paths differ by the draw asymmetry, and one head polygon carries both.
+- **The wheel's chamfer comes out of its stock**: `bevelOffset: −bevel`
+  starts the chamfer inside the outline and ends it on it, so the body
+  contour IS `shape` and the metal's tip circle is `radius`. Item 84's
+  candidate 1, applied to one builder; the gears keep item 84.
+- **Guards, measuring the cut**: the wheel warns unless its body-band
+  vertices reach `radius` within float32 slack (the first draft read 0
+  because 0.4 is 0.4000000059 in a `Float32Array`); each stone warns unless
+  its placed let-off corner lies DOWNSTREAM of the locking corner along `t̂`
+  and INWARD of it along `û` — either sign wrong is a face the tip walks
+  away from, and flipping `t̂` alone, `û` alone, the body side or the swing
+  term each fails one of the two. `probe-direction-guards.mjs`'s
+  tooth-motion row fires on the new guard.
+
+**Measured after the fix** (`tools/probe-131-escapement-slide.mjs`, an
+ACCEPTANCE probe, 65 samples over the impulse window in the fork frame, both
+outlines read off the built meshes through the live matrices):
+
+| claim | reading |
+|---|---|
+| wheel metal reach in its body band | 4.500000 (authored 4.5) |
+| tip on the locking corner at lock | 0.0000 |
+| tip off the impulse face while riding (38 samples after the recoil dip) | ≤ 0.0012 |
+| tip passes the let-off corner | s = 0.84 of the window |
+| drop, window-sampled | 1.88° (the +x stone; the −x stone's is the 1.5° floor) |
+| tip on the other stone's corner at the end of the window | 0.0000 |
+| worst outline-vs-outline overlap, any sample | 0.0012 |
+| must-hit control (tooth shoved 0.3 through the locking face) | 0.0704 read, 0.0704 predicted |
+| must-miss control (the other stone at rest) | 0.1260 clear |
+
+The must-hit control is worth its two false starts: a shove ALONG the locking
+face slides the tip and reads nothing, and a shove toward the centroid reads
+`0.1·sin(incline)` because the tip sits in the wedge between the two faces —
+so the control now predicts its reading off the polygon and holds the
+instrument to it, which is what a control is for.
+
+**Residue, named.**
+
+- **The recoil phase is posed by two constants that do not agree.** The tick
+  dips the wheel `RECOIL_DEG = 1.0°` and the fork `FORK_RECOIL_DEG = bank/4`
+  (0.64°) on one sine. With a 12° draw, a fork dip of 0.64° carries the
+  corner 0.048 inward and asks the wheel for 0.048·tan(12°)/R = 0.13° of
+  recoil, not 1.0°. Measured in the fork frame at mid-dip the tip stands
+  0.046 inward and 0.083 upstream of the corner — the stone has lifted a
+  quarter bank out of its bank and the wheel has backed 1°, and with no lock
+  depth (next point) there is no face under the tip: it leaves the corner
+  into free air and returns. A real unlock has the tip pressed on the
+  locking face the whole way, sliding down to the corner as the pin pushes
+  the fork out and the draw forces the wheel back by exactly the face's
+  lift times tan(draw). Both constants are pose-law fiction in
+  `escapeDeltaDeg` / `forkSwingRad` (main.js) and explain.html's plate 2
+  quotes them; this item did not touch the tick.
+- **There is no lock depth.** The tip rests ON the corner at lock; a real
+  lever locks with the tip a little way down the locking face, and the
+  unlock's recoil is that depth times the draw. Adding it means seating the
+  corner past the tip by the lock and giving the tick an unlock phase — the
+  same change as the point above, from the other end.
+- **The club's own face does not share the impulse.** The tooth's impulse
+  face runs tip→heel at ≈51° to the tangent (heel at 0.9R, 0.19 pitch behind
+  the tip), so the tip is the contact for the whole slide and the stone's
+  let-off corner never rides the tooth. Real club teeth split the lift
+  between tooth and stone; that is a re-cut of the tooth, and §136's class.
+- The two stones drop by different amounts (the +x stone's 1.9° against the
+  1.5° floor) because one head polygon carries one width; a real fork's entry
+  and exit stones are cut to their own widths.
+
+**A harness lesson this landing paid for, and closed.** The first full battery
+run for this item was killed at its final anchor by hand: its `dev_server.py`
+on a random port was mistaken for an orphan left by the i18n checker and
+`kill`ed, because SKILL.md's advice was `pgrep` the servers and kill the
+strays, and a port number says nothing about ownership. The process tree
+does: a live run's server has the `.mjs` that spawned it as an ancestor, a
+crashed probe's has been reparented to init. `tools/servers.mjs` lists every
+tools-spawned server with its owner and `--reap` kills only the ownerless;
+SKILL.md now says never to kill one by port, and new probes reap their own
+server on any exit (`process.on('exit', …)`, the pattern in
+`probe-131-escapement-slide.mjs`).
