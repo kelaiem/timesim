@@ -776,9 +776,12 @@
       swinging and to count its swings. Each beat is a fixed sequence of mechanical contacts,
       and the source builds every one by name (<code>makePalletFork</code>): the stone's
       locking corner solved <em>onto</em> the wheel's tooth circle, the impulse face cut as
-      the plane through that corner, and draw ("LEAN") as a locking face angled so the
-      wheel's own pressure pulls the fork <em>deeper</em> into its banking — with a
-      draw-torque-sign assert, because a draw that pushes the wrong way unlocks itself.</p>
+      the chord of the tooth tip's own path in the fork's frame — downstream and
+      <em>toward</em> the wheel, so the let-off corner leads the locking corner and the tip
+      rides the incline until a drop of <code>DROP_DEG = 1.5</code>° — and draw ("LEAN") as
+      a locking face angled so the wheel's own pressure pulls the fork <em>deeper</em> into
+      its banking, with a draw-torque-sign assert, because a draw that pushes the wrong way
+      unlocks itself.</p>
       <p><b>Two arrows, and they run opposite ways.</b> ENERGY travels wheel → stone → fork →
       roller pin → balance: the train pushes, and the escapement exists to hand a sip of that
       push to the oscillator twice a beat. POSITION travels the other way. The escape wheel is
@@ -991,7 +994,15 @@
       seat in slots whose gap is DERIVED from the blank's own
       extrude bevel (<code>gGap = bevel + SEAT_SHOW</code>) — a guard born from a defect
       every battery run missed; that seat is also TODO 5's fixture-vs-fixture residue: the
-      one intra-unit pair class the interim instrument still cannot see. Banking:
+      one intra-unit pair class the interim instrument still cannot see. The stones' WIDTH is
+      the impulse they carry: <code>stoneW</code> is the tip's travel across the stone up to
+      the drop, so the wheel runs free for 1.5° and not, as it did until TODO 131, for 4.4° of
+      its 12°; and the wheel's chamfer comes out of its stock (<code>bevelOffset: -bevel</code>),
+      so the metal's tip circle is the <code>radius</code> the stones are seated on — until
+      then it reached 4.62 against 4.5 and buried the tip 0.078 in the corner at rest. What
+      stays fiction is the recoil: <code>RECOIL_DEG = 1.0</code>° of wheel and a fork dip of a
+      quarter bank are two constants a 12° draw does not reconcile, and there is no lock depth
+      (TODO 131's residue). Banking:
       <code>FORK_BANK_DEG = rollerR·Δθ_pin / notchDepth / 2</code>, derived, with
       <code>FORK_RECOIL_DEG</code> at a quarter of it.</p>
     </div>

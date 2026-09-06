@@ -4,8 +4,8 @@
 
 # The instruments
 
-176 scripts. **81 are ACCEPTANCE tests** — they decide and exit non-zero.
-**95 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+178 scripts. **82 are ACCEPTANCE tests** — they decide and exit non-zero.
+**96 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -62,6 +62,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-129-bootcost.mjs` | §129 | acceptance | §129 — WHAT DOES THE SITING SOLVE COST TO BOOT? |
 | `probe-129-spider.mjs` | §129 | acceptance | §129 — the spider differential, measured as a body before it is a member. |
 | `probe-129-subtractor-line.mjs` | §129 | acceptance | §129 — THE WIND SUBTRACTOR, AS A STRAIGHT LINE. |
+| `probe-131-escapement-slide.mjs` | §131 | acceptance | TODO 131 — does the escape wheel's tooth tip RIDE the pallet stone's impulse face, or does it leave the locking corner into free air? ACCEPTANCE: it exits non-zero unless, over one beat measured in the FORK's own frame (wheel outline and stone cross-sections both read off the built meshes and carried through the live world matrices), the tooth tip · rests ON the locking corner at lock (rest pose, both stones); · stays within HANDOFF_TRACK_TOL of the impulse face, BETWEEN its two corners, from the end of the recoil dip until it passes the let-off; · then runs free by a drop of under 3° of wheel before the OTHER stone's corner catches the next tooth at the end of the window; · never overlaps a stone's outline by more than HANDOFF_TRACK_TOL at any sampled pose (the 2D outline-vs-outline depth, which the wheel's bevel can no longer inflate because the wheel's metal is held to its authored tooth circle — that reach is measured here too, off the vertices). Two controls hold the measure honest: a must-hit (the tooth outline shoved 0.1 into the locked stone reads a depth of at least 0.09) and a must-miss (at rest the stone the tooth is NOT on stands clear by more than 0.1). |
 | `probe-132-joints.mjs` | §132 | report | §132 — MEASURE the intra-unit joints the chatons add. `intraUnit`'s FF tier REPORTS rather than gates outside INTRA_TIER_SCOPE, and 'Three-quarter plate' is outside it, so the fifteen new rows in that report are exactly the residue CLAUDE.md says to measure yourself. This does that: signed clearance for each named pair, at the base pose. |
 | `probe-134-tier.mjs` | §134 | acceptance | §134 — DOES THE GENEVA PASS OBEY THE TIER'S TWO INVARIANTS? |
 | `probe-136-profile.mjs` | §136 | acceptance | §136 Landing 0 — THE CYCLOIDAL PROFILE, PRICED BEFORE IT IS CUT. |
@@ -187,5 +188,6 @@ when a question was asked; the summaries are what it answered.
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `probe-wound-sense.mjs` |  | acceptance | WHICH WAY DOES EACH WOUND PART WIND? — TODO 115's unmeasured half. |
+| `servers.mjs` |  | report | TODO 131 — WHO OWNS THAT SERVER? Every instrument in this directory spawns its own static server (`python3 -m http.server`, or `dev_server.py` for the battery and the i18n checker) and reaps it on its last line — so a probe that THROWS leaves the server behind, and the next run on that port reads the orphan (SKILL.md, "a crashed probe leaves its server running"). The advice used to be `pgrep -af "[h]ttp[.]server"` and a kill by hand, and that is how the full battery was killed mid-run at its final anchor: its dev server on a random port looked exactly like an orphan, because a port number says nothing about ownership. |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |

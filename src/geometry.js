@@ -998,15 +998,48 @@ export function makeEscapeWheel({ teeth = 15, radius, thickness }) {
 
   const bevel = Math.min(thickness * 0.25, radius * 0.02);
   const CURVE_SEGS = 3;   // the tessellation of the quadratics above — shared with the §83 outline below
+  // TODO 131 — THE CHAMFER COMES OUT OF THE STOCK, in the plane of the cut.
+  // `bevelSize` alone offsets the contour OUTWARD by `bevel` along every
+  // edge's normal (TODO 84's mechanism), so the wheel this built used to reach
+  // 4.62 at its club tips while `radius` = 4.5 was what every consumer read:
+  // the pallet stones are seated on a tooth circle of `radius`
+  // (makePalletFork's R), the fork's blank is held clear of `radius`, and the
+  // §83 schematic line is `shape` itself. Measured, the tip stood 0.078 INTO
+  // the stone's locking corner at rest — "the teeth overlap the stones" — and
+  // the pair's 0.1 penetration budget was absorbing a finish parameter.
+  // `bevelOffset = −bevel` starts the chamfer `bevel` inside the outline and
+  // ends it ON the outline (three.js scales the body contour by
+  // `bevelSize + bevelOffset` = 0), so the metal's tip circle IS `radius` and
+  // the guard below reads it off the vertices. TODO 84 candidate 1, applied to
+  // the one wheel whose tip circle is a working surface.
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: true,
     bevelThickness: bevel,
     bevelSize: bevel,
+    bevelOffset: -bevel,
     bevelSegments: 1,
     curveSegments: CURVE_SEGS,
   });
   geo.translate(0, 0, -thickness / 2);
+  // TODO 131 GUARD — the metal's reach is `radius`, measured, not assumed.
+  // Every vertex in the body band (|z| ≤ thickness/2; the caps sit beyond it
+  // at ±bevelThickness) must stay at or inside `radius`, and the club tips must
+  // reach it: the first clause fails a grown outline, the second a shrunken
+  // one, and the two together are what lets `radius` be quoted as the tooth
+  // circle downstream. Float slack only — these are authored vertices, and
+  // the attribute is float32 (0.4 reads back as 0.4000000059), so the band
+  // and the reach are held to 1e-5, four orders under the 0.09 this catches.
+  {
+    const pos = geo.attributes.position;
+    let reach = 0;
+    for (let i = 0; i < pos.count; i++) {
+      if (Math.abs(pos.getZ(i)) > thickness / 2 + 1e-5) continue;
+      reach = Math.max(reach, Math.hypot(pos.getX(i), pos.getY(i)));
+    }
+    if (!(Math.abs(reach - radius) <= 1e-5))
+      console.warn(`TODO 131 escape wheel: the cut metal reaches ${reach.toFixed(4)} in the body band, the authored tooth circle is ${radius} — the stones are seated on a circle the wheel does not have`);
+  }
   g.add(new THREE.Mesh(geo, mat));
   g.add(new THREE.Mesh(ringExtrude(hubR, boreR, thickness * 1.3, 20), mat));
   g.userData.r = radius;
@@ -1172,11 +1205,13 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   //     nominal corners C_σ = (σ·span/2, span/2) sit on the tooth-tip
   //     circle at the fork's NEUTRAL pose — but the tooth only ever RESTS
   //     on a stone at the BANKED pose, when the fork's swing has carried
-  //     the corner bank·|C| toward the wheel. So each stone is seated at
-  //     its banked CONTACT point, C_σ + bank·|C|·û_σ: at lock the dipped
-  //     corner lands exactly back on the tip circle and the phased tooth
-  //     tip rests precisely on it (the caller's tip-at-corner phasing
-  //     becomes exact, not approximate). Seating at the nominal C instead
+  //     the corner toward the wheel. So each stone is seated at its banked
+  //     CONTACT point — C_σ rotated back through the lock bank about the
+  //     pivot (TODO 131; to first order C_σ + bank·|C|·û_σ, which is what
+  //     this was until then and what left the tip 0.006 off the corner): at
+  //     lock the swing carries the corner exactly back onto the tip circle
+  //     and the phased tooth tip rests precisely on it (the caller's
+  //     tip-at-corner phasing is exact). Seating at the nominal C instead
   //     started the impulse slide 0.19 outside the corner and drove the
   //     tooth through the locking face — the inspector's penetration
   //     budget measured exactly that (0.194 vs the 0.1 allowance).
@@ -1210,21 +1245,112 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   //   · IMPULSE FACE: during the impulse window the wheel advance
   //     (beatRad) and the fork swing (2·bankRad) ride the SAME smoothstep
   //     (see main.js escapeDeltaDeg/forkSwingRad), so in the fork frame
-  //     the tooth tip slides along the fixed direction
-  //       p = R·beatRad·t̂ + 2·bankRad·|C|·û
-  //     (t̂ = tooth-motion tangent, û = wheel radial at the corner). The
-  //     impulse face is the plane through the locking corner containing p:
-  //     the let-off corner's setback Δ is solved per stone from that line,
-  //     so entry and exit faces come out at their own angles. Residual
-  //     contact error is bounded by the two arc sagittas (≈0.03) — inside
-  //     the inspector's 0.1 penetration budget by construction.
+  //     the tooth tip slides, to first order, along the fixed direction
+  //       p = R·beatRad·t̂ − 2·bankRad·|C|·û
+  //     (t̂ = tooth-motion tangent, û = wheel radial at the corner), and
+  //     exactly along the composed rotations `slidePath` writes out. The
+  //     impulse face is the plane through the locking corner along the
+  //     CHORD of that path up to the drop: the let-off corner's LEAD Δ is
+  //     solved per stone from that line, so entry and exit faces come out
+  //     at their own angles. Residual contact error is the chord's sagitta
+  //     (≈0.02, under HANDOFF_TRACK_TOL), which is what the inspector's
+  //     penetration budget for the pair now holds.
+  //   · TODO 131 — THE SIGN OF THE SWING TERM IS THE WHOLE INCLINE. The stone
+  //     that is unlocking moves OUTWARD (the seat above puts it on the tooth
+  //     circle at the bank it locks on, and the swing to the other bank
+  //     carries it 2·bank·|C| away from the wheel), so in the fork frame the
+  //     tooth tip moves INWARD while it advances: −û, not +û. This was cut
+  //     with +û from §16 until TODO 131 — measured in the fork frame, the tip
+  //     travelled (−0.955, −0.347) while the let-off corner was cut along
+  //     (−0.44, −0.90), 45° off the path — so the tip left the locking corner
+  //     into free air and no tooth ever slid on a stone; the face was a
+  //     chisel pointing away from the wheel. The consequence for the metal:
+  //     Δ is NEGATIVE in the stone's own frame, so the let-off corner LEADS
+  //     the locking corner toward the wheel and the face slopes into the
+  //     tooth circle — the real pallet's shape, and what makes the tooth's
+  //     push have an outward component on the stone (work, not a jam).
+  //     Guarded below by measuring the cut polygon against t̂ and û, not by
+  //     restating the sign.
   // -------------------------------------------------------------------------
   const DRAW_DEG = 12; // horological constant, like the EMBRACE_DEG above
   const pitchArc = (2 * Math.PI * R) / 15;
-  const stoneW = 0.32 * pitchArc;  // well under one tooth spacing
   const stoneL = 0.9 * pitchArc;   // slot-buried tail included
   const cornerLen = Math.hypot(span / 2, span / 2); // |C|
   const beat = beatRad ?? THREE.MathUtils.degToRad(12);
+  // TODO 131 — DROP: the wheel's free run after the tip leaves the let-off
+  // corner and before the other stone catches the next tooth. A real
+  // escapement keeps it to a degree or so: enough that a tooth clears the
+  // corner it just left, no more, because every degree of drop is a degree of
+  // the beat's advance that impulses nothing. `sOff` is the fraction of the
+  // impulse window the tip spends ON the face — both advances ride one
+  // smoothstep, so wheel fraction and fork fraction are the same s.
+  const DROP_DEG = 1.5; // horological constant, like DRAW_DEG and EMBRACE_DEG
+  const dropRad = THREE.MathUtils.degToRad(DROP_DEG);
+  if (!(dropRad > 0 && dropRad < beat))
+    console.warn('pallet stone: drop must be a fraction of the beat', DROP_DEG);
+  const sOff = 1 - dropRad / beat;
+
+  // The tooth tip's slide path past one stone, in the fork frame and in the
+  // stone's own frame — everything about a stone that does not depend on its
+  // width, split out (TODO 131) because the width is DERIVED from it below.
+  function slidePath(sigma) {
+    const C = new THREE.Vector2(sigma * span / 2, span / 2);
+    const u = new THREE.Vector2(C.x - 0, C.y - D).divideScalar(R);      // wheel radial at the corner
+    // Tooth-motion tangent. TODO 115 — the tooth travels the way the WHEEL
+    // runs, so this is MOVEMENT_SENSE·(ẑ×û), not ẑ×û. It sets the impulse
+    // face's cut below against the fork's own swing, and those two terms have
+    // to reverse together or the face is cut from a path nothing travels.
+    const tHat = new THREE.Vector2(-u.y, u.x).multiplyScalar(MOVEMENT_SENSE);
+    const cHat = C.clone().divideScalar(cornerLen);                     // pivot radial
+    // Zero-torque face direction: the perp of ĉ on the away-from-wheel
+    // branch, then draw in the wheel's own rotation sense (MOVEMENT_SENSE·z).
+    let f0 = new THREE.Vector2(-cHat.y, cHat.x);
+    if (f0.dot(u) < 0) f0.negate();
+    const drawRad = THREE.MathUtils.degToRad(MOVEMENT_SENSE * DRAW_DEG); // TODO 115 — draw leans the way the wheel turns
+    const tau = f0.clone().rotateAround(new THREE.Vector2(), drawRad);  // stone lean axis
+    const thetaTau = Math.atan2(tau.y, tau.x);
+    // THE TIP'S PATH IN THE FORK FRAME, exactly (TODO 131 — the linear form
+    // in the header, R·beat·t̂ − 2·bank·|C|·û, is this to first order and is
+    // how to read it; the metal is cut from the rotations themselves). The
+    // fork's swing is φ = σ·bank at this stone's lock and −σ·bank at the
+    // other bank (main.js forkSwingRad, whose sign is what seats the +x
+    // stone at n even), and the wheel advances MOVEMENT_SENSE·beat about its
+    // centre W₀ = (0, D) in the fork's NEUTRAL frame. A world point reads in
+    // the fork's own frame rotated by −φ, so at fraction s of the window,
+    // both advances on one smoothstep:
+    //   tip(s) = Rot(−σ·bank·(1 − 2s)) · (W₀ + Rot(MOVEMENT_SENSE·beat·s)·(C − W₀))
+    // tip(0) is the SEAT — the corner placed so the lock bank carries it back
+    // onto C, on the tooth circle, exactly rather than to bank·|C| — and the
+    // impulse face is the CHORD from the seat to tip(s_off), the point where
+    // the drop begins (`sOff` below). A flat face against a curved path
+    // leaves the two arcs' sagitta between them, ≈0.02 here, which is under
+    // HANDOFF_TRACK_TOL and is the budget the pair is now held to.
+    const W0 = new THREE.Vector2(0, D);
+    const O = new THREE.Vector2();
+    const tipAt = (sFrac) => C.clone().sub(W0)
+      .rotateAround(O, MOVEMENT_SENSE * beat * sFrac).add(W0)
+      .rotateAround(O, -sigma * bank * (1 - 2 * sFrac));
+    const seat = tipAt(0);
+    const chord = tipAt(sOff).sub(seat);
+    // Into stone-local (rotate by −(θτ − 90°)): x across the stone (the
+    // let-off corner's side), y along the lean.
+    const chordLoc = chord.clone().rotateAround(O, -(thetaTau - Math.PI / 2));
+    return { sigma, C, u, tHat, thetaTau, seat, chord, chordLoc, tipAt };
+  }
+  const paths = [slidePath(-1), slidePath(1)];
+
+  // TODO 131 — THE STONE'S WIDTH IS THE IMPULSE IT HAS TO CARRY. The face
+  // reaches `stoneW` across the stone (stone-local x), and the tip's travel
+  // across the stone up to the drop is |chordLoc.x| — so the width that makes
+  // the drop DROP_DEG is that, read straight off the path. The two stones'
+  // paths differ by the draw asymmetry, so one width for one head polygon
+  // takes the SMALLER travel: drop is a clearance, so it is a floor, and the
+  // other stone drops by a little more rather than a little less. The old
+  // `0.32·pitchArc` had no constraint behind it and dropped the wheel for
+  // 4.4° of its 12°.
+  const stoneW = Math.min(...paths.map((q) => Math.abs(q.chordLoc.x)));
+  if (!(stoneW > 0.1 && stoneW < 0.5 * pitchArc))
+    console.warn('pallet stone: derived width out of range', stoneW.toFixed(4), 'against a tooth spacing of', pitchArc.toFixed(4));
   // TODO 115 — ENTRY is the stone a tooth reaches first, so it is on the side
   // the teeth come FROM: the movement's direction names these, it does not
   // just place them. Reverse the movement and the two swap seats.
@@ -1283,32 +1409,20 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   // the stone against the tooth's push, and the side the movement's
   // direction picks):
   //   (0,0) → (bodyX, Δ) → (bodyX, ℓ) → (0, ℓ);  x = 0 face = LOCKING face,
-  //   the angled (0,0)→(bodyX,Δ) end = IMPULSE face.
+  //   the angled (0,0)→(bodyX,Δ) end = IMPULSE face, with Δ < 0 (TODO 131):
+  //   the let-off corner stands |Δ| nearer the wheel than the locking corner.
   function solveStone(sigma) {
-    const C = new THREE.Vector2(sigma * span / 2, span / 2);
-    const u = new THREE.Vector2(C.x - 0, C.y - D).divideScalar(R);      // wheel radial at the corner
-    // Tooth-motion tangent. TODO 115 — the tooth travels the way the WHEEL
-    // runs, so this is MOVEMENT_SENSE·(ẑ×û), not ẑ×û. It sets the impulse
-    // face's cut below against the fork's own swing, and those two terms have
-    // to reverse together or the face is cut from a path nothing travels.
-    const tHat = new THREE.Vector2(-u.y, u.x).multiplyScalar(MOVEMENT_SENSE);
-    const cHat = C.clone().divideScalar(cornerLen);                     // pivot radial
-    // Zero-torque face direction: the perp of ĉ on the away-from-wheel
-    // branch, then draw in the wheel's own rotation sense (MOVEMENT_SENSE·z).
-    let f0 = new THREE.Vector2(-cHat.y, cHat.x);
-    if (f0.dot(u) < 0) f0.negate();
-    const drawRad = THREE.MathUtils.degToRad(MOVEMENT_SENSE * DRAW_DEG); // TODO 115 — draw leans the way the wheel turns
-    const tau = f0.clone().rotateAround(new THREE.Vector2(), drawRad);  // stone lean axis
-    const thetaTau = Math.atan2(tau.y, tau.x);
-    // Impulse slide direction in the fork frame (see header comment).
-    const p = tHat.clone().multiplyScalar(R * beat)
-      .add(u.clone().multiplyScalar(2 * bank * cornerLen));
-    // Into stone-local (rotate by −(θτ − 90°)) and solve the let-off
-    // corner's setback: face through (0,0) along p meets x = bodyX at Δ.
-    const pLoc = p.clone().rotateAround(new THREE.Vector2(), -(thetaTau - Math.PI / 2));
-    const delta = Math.abs(pLoc.x) > 1e-6 ? bodyX * (pLoc.y / pLoc.x) : stoneW * 0.5;
-    if (!(delta > 0.02 && delta < stoneL * 0.8))
-      console.warn('pallet stone: impulse setback out of range', sigma, delta.toFixed(3));
+    const { C, u, tHat, thetaTau, seat, chordLoc } = paths[sigma < 0 ? 0 : 1];
+    // Solve the let-off corner's lead: the face through (0,0) along the
+    // slide chord meets x = bodyX at Δ.
+    const delta = Math.abs(chordLoc.x) > 1e-6 ? bodyX * (chordLoc.y / chordLoc.x) : 0;
+    // The let-off corner must LEAD toward the wheel (Δ < 0) and stay within
+    // the stone's own width of protrusion — a face steeper than 45° to the
+    // locking face is a path no beat/bank pair the movement declares
+    // produces, and the tip would meet it as a wall rather than a ramp.
+    if (!(delta < 0 && -delta < stoneW))
+      console.warn('pallet stone: impulse face lead out of range', sigma, delta.toFixed(3),
+        `needs −${stoneW.toFixed(3)} < Δ < 0 — the face slopes away from the wheel and the tip leaves the corner into free air`);
     // Draw sanity: the tooth's normal push on the locking face must torque
     // the fork INTO this stone's banking (deeper lock). The face's outward
     // normal points AWAY from the body it backs onto, so it is stone-local
@@ -1326,12 +1440,26 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
 
     const rotZ = thetaTau - Math.PI / 2;
     // Banked contact seat (see header): the corner goes where the tooth
-    // actually rests at lock.
-    const seat = new THREE.Vector2(C.x + bank * cornerLen * u.x, C.y + bank * cornerLen * u.y);
+    // actually rests at lock — `seat` = tip(0) from slidePath, the corner
+    // rotated back through the lock bank, so the bank carries it onto C.
     const cos = Math.cos(rotZ), sin = Math.sin(rotZ);
     const toWorld = (lx, ly) => new THREE.Vector2(
       seat.x + cos * lx - sin * ly,
       seat.y + sin * lx + cos * ly);
+    // TODO 131 GUARD — read the CUT, not the solve. The let-off corner as it
+    // will be placed (the same toWorld the mesh is seated with) must lie
+    // DOWNSTREAM of the locking corner along the tooth's motion and INWARD of
+    // it toward the wheel: the tip enters the face travelling that way, so
+    // either sign wrong is a face the tip walks away from. Flipping t̂ alone,
+    // û alone, the body side alone or the sign of the swing term each fails
+    // one of these two dot products — which is how the +û cut would have been
+    // caught at boot had this existed (probe-direction-guards.mjs).
+    const letOff = toWorld(bodyX, delta).sub(toWorld(0, 0));
+    if (!(letOff.dot(tHat) > 0))
+      console.warn('pallet stone: let-off corner is UPSTREAM of the locking corner', sigma, letOff.dot(tHat).toFixed(4));
+    if (!(letOff.dot(u) < 0))
+      console.warn('pallet stone: let-off corner stands AWAY from the wheel', sigma, letOff.dot(u).toFixed(4),
+        '— the impulse face slopes out of the tooth circle and the tip cannot ride it');
     return { sigma, seat, rotZ, delta, toWorld };
   }
 
