@@ -431,7 +431,7 @@ what is genuinely simulated.
 
 ## License
 
-Copyright 2026 kelaiem. Licensed under the [Apache License, Version
+Copyright 2026 timesim authors. Licensed under the [Apache License, Version
 2.0](LICENSE); you may not use this project except in compliance with it.
 
 The Apache grant covers this project's own code — `src/`, `index.html`,
