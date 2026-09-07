@@ -16057,3 +16057,20 @@ tools-spawned server with its owner and `--reap` kills only the ownerless;
 SKILL.md now says never to kill one by port, and new probes reap their own
 server on any exit (`process.on('exit', …)`, the pattern in
 `probe-131-escapement-slide.mjs`).
+
+**Follow-up (same item, next landing): the explainer's plate 1 is COMPUTED
+now.** The four hand-drawn keyframes in `explain.html` kept the pre-131
+slant — a picture of the tooth overlapping the stone, animated — after the
+metal stopped doing that, and nothing gated it: the quotes checker reads
+numbers, not polygons. The plate now builds the wheel's teeth and both
+stones from the same constraints `makePalletFork` solves (EMBRACE_DEG,
+DRAW_DEG, DROP_DEG, MOVEMENT_SENSE) and poses them through the ported law in
+the FORK's frame, with a slider and the play loop — the primer's "One beat,
+slowed down" model, carrying the source names. Two honest consequences it
+shows that the drawing hid: the contact dot goes OUT during the recoil
+(measured off the drawn geometry, the tip stands ≈0.09 in free air at
+mid-dip — the first residue point above, now visible on the page), and the
+DROP chip begins when the wheel has advanced `BEAT_DEG − DROP_DEG`, not at a
+fraction of the window (the primer's chip had the same off-by-a-smoothstep,
+fixed alongside). The model lives twice — once per page, both sim-code-free
+by design — so a change to the stone law is owed to both plates.
