@@ -950,7 +950,7 @@
       var f = p / window_;
       if (p >= window_) { chip.classList.add('ride'); chip.textContent = tr('locked · the stone holds the wheel'); }
       else if (f < twitchFrac) { chip.classList.add('trip'); chip.textContent = tr('unlock · the stone lifts, the wheel twitches back'); }
-      else if (f < sOff) { chip.classList.add('ramp'); chip.textContent = tr('impulse · the tip rides the slant'); }
+      else if (wheelAt(p) * sense < beatRad - dropRad) { chip.classList.add('ramp'); chip.textContent = tr('impulse · the tip rides the slant'); }  // drop begins when the WHEEL passes the let-off, not at a fraction of the window
       else { chip.classList.add('ramp'); chip.textContent = tr('drop · the wheel runs free to the other stone'); }
     }
     // Play dilates the beat: the action is 16% of it, so the window gets most

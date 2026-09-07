@@ -6135,7 +6135,10 @@ tube law's own OR.
 
 **Deltas from the filing, recorded.** The planned "hack gap"
 interactive landed as the truth table instead (the filing offered
-either); and the four §65 seed entries (fusee & chain, motion works,
+either); the escapement's four contact-phase figures were hand-drawn
+keyframes until TODO 131's follow-up replaced them with a plate COMPUTED
+from the stone law in the fork's frame (see TODO 131 for why a drawn
+plate could go stale unseen); and the four §65 seed entries (fusee & chain, motion works,
 keyless, alarm train) gained plates beyond the entry's scope — the
 fusee's torque graph is the HUD's own law
 (`springTq = 0.35 + 0.65·reserve`, `trainTq ≈ 1` by the cone), the
