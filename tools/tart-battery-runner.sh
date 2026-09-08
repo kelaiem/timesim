@@ -11,6 +11,8 @@
 #
 #   options: --cpu N (6)  --memory MB (8192)  --shards K  --repo OWNER/REPO  --rebuild  --keep-awake
 #            --max-wait SECONDS   (`once` only: give up waiting for a job — a bounded test cycle)
+#            --max-idle SECONDS   (recycle a runner that has waited this long with no job; 21600)
+#            --poll SECONDS       (how often the host checks on a waiting runner; 60)
 #
 # WHY A VM PER JOB, on a public repository (docs/RUNNERS.md has the long form):
 #   · PRIVACY — every job log is public, and a self-hosted runner prints the
@@ -39,6 +41,25 @@
 #
 # WHAT IT DELIBERATELY DOES NOT DO: set `vars.BATTERY_RUNS_ON`. It prints the
 # command. Pointing the merge gate at a machine is the owner's decision.
+#
+# THE FIRST WEEK'S LESSON, which shaped `once` (docs/RUNNERS.md has the trail).
+# A waiting runner sat for days, and on 2026-09-05 at 06:29 UTC Ubuntu's own
+# unattended-upgrade ran inside the clone, restarted the guest agent under
+# the exec session carrying the runner, and the runner died of the cancel. The
+# host's `tart exec` never learned it — the agent restarted beneath its stream
+# and the exit never arrived — so the loop waited on a corpse for three days,
+# GitHub dropped the just-in-time registration, and the owner's next opt-in
+# queued into nothing. Three rules follow, each a mechanism below:
+#   · A THROWAWAY VM DOES NOT UPDATE ITSELF. The build removes
+#     unattended-upgrades and masks the apt-daily timers; updates arrive by
+#     --rebuild, never by mutating under a live runner.
+#   · THE EXEC STREAM IS NOT THE SIGNAL. While a runner waits, the host asks
+#     every --poll seconds whether GitHub still lists it and whether the guest
+#     still has a Runner.Listener process, and recycles the clone the moment
+#     either says no. The stream is only ever the FAST path.
+#   · A WAIT HAS A CEILING. A runner idle past --max-idle is recycled anyway:
+#     a JIT registration is meant for one job, not for days of waiting, and a
+#     fresh clone bounds whatever drifted. A BUSY runner is never recycled.
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
@@ -52,6 +73,7 @@ BASE=timesim-battery-base
 GUEST_HOST=battery-1
 LABEL=timesim-battery
 CPU=6; MEMORY=8192; SHARDS=""; REPO=""; REBUILD=0; KEEP_AWAKE=${KEEP_AWAKE:-0}; MAX_WAIT=""; VM_PID=""; JOB_PID=
+MAX_IDLE=${MAX_IDLE:-21600}; POLL=${POLL:-60}
 STATE="$HOME/.timesim-tart"; mkdir -p "$STATE"
 SERVICE=com.timesim.tart-battery
 PLIST="$HOME/Library/LaunchAgents/$SERVICE.plist"
@@ -61,11 +83,16 @@ while [ $# -gt 0 ]; do
     --shards) SHARDS=$2; shift 2 ;;  --repo) REPO=$2; shift 2 ;;
     --rebuild) REBUILD=1; shift ;;  --keep-awake) KEEP_AWAKE=1; shift ;;
     --max-wait) MAX_WAIT=$2; shift 2 ;;
+    --max-idle) MAX_IDLE=$2; shift 2 ;;  --poll) POLL=$2; shift 2 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# The checkout the service should run from: a worktree under .claude/worktrees
+# is deleted after its PR merges, and a LaunchAgent pointing into it respawns
+# a failing shell forever. The main checkout's copy is used when it has one.
+MAIN_ROOT=$(cd "$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || echo "$ROOT/.git")/.." && pwd)
 log() { printf '%s §200 tart: %s\n' "$(date -u +%FT%TZ)" "$*"; }
 die() { log "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "needs $1 on PATH"; }
@@ -114,10 +141,13 @@ forget_runner() {
   done
   log "could not remove runner record '$1' (#$id); it will read offline in the runner list" >&2
 }
-# Clones from a previous crash: anything named like a job VM that is not ours.
+# Clones from a previous crash: anything named like a job VM that no live
+# `tart run` on this host owns. A crash leaves no process; a running loop (or
+# a test cycle beside it) has one, and is left alone.
 sweep_stale() {
   local vm
   for vm in $(tart list --quiet 2>/dev/null | grep -E '^timesim-battery-[0-9]+$' || true); do
+    pgrep -f "tart run $vm " >/dev/null 2>&1 && continue
     log "sweeping stale job VM $vm"; VM_PID=""; teardown "$vm"
   done
 }
@@ -163,6 +193,12 @@ id runner >/dev/null 2>&1 || useradd -m -s /bin/bash runner
 echo 'runner ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/runner; chmod 440 /etc/sudoers.d/runner
 apt-get update -q
 apt-get install -y -q curl git python3 ca-certificates xz-utils jq
+# A throwaway VM does not update itself: on 2026-09-05 unattended-upgrade
+# restarted the guest agent under a waiting runner and killed it. Updates
+# arrive by --rebuild.
+apt-get purge -y -q unattended-upgrades >/dev/null 2>&1 || true
+systemctl disable --now apt-daily.timer apt-daily-upgrade.timer >/dev/null 2>&1 || true
+systemctl mask apt-daily.service apt-daily-upgrade.service >/dev/null 2>&1 || true
 # Node 22, verified.
 cd /tmp && curl -fsSL -o node.tar.xz "https://nodejs.org/dist/v$NODE_VER/node-v$NODE_VER-linux-arm64.tar.xz"
 echo "$NODE_SHA  node.tar.xz" | sha256sum -c -
@@ -186,6 +222,7 @@ apt-get clean; rm -rf /var/lib/apt/lists/*
 # The version read AS runner, so the _diag/ it creates is runner's too.
 echo "provisioned: $(hostname) node $(node --version) runner $(sudo -u runner -H /home/runner/actions-runner/bin/Runner.Listener --version) chromium $(ls /home/runner/.cache/ms-playwright)"
 test "$(stat -c %U /home/runner/actions-runner/_diag)" = runner
+test "$(systemctl is-enabled apt-daily-upgrade.timer 2>&1)" != enabled
 GUEST
   log "powering the golden image off"
   tart exec "$BASE" sudo poweroff >/dev/null 2>&1 || true
@@ -216,10 +253,35 @@ once() {
     'cd ~/actions-runner && c=$(cat) && exec ./run.sh --jitconfig "$c"' \
     >"$STATE/$vm.job.log" 2>&1 &
   JOB_PID=$!
-  # macOS has no coreutils `timeout`; a watchdog subshell does the same job.
-  if [ -n "$MAX_WAIT" ]; then ( sleep "$MAX_WAIT"; kill "$JOB_PID" 2>/dev/null ) & dog=$!; fi
+  # THE WATCHDOG. The exec stream is the fast path; these checks are the
+  # signal. Every $POLL seconds while the runner is waiting: does GitHub
+  # still list it, does the guest still have a listener process, has it
+  # waited past --max-idle (or --max-wait) with no job? Any "no" ends the
+  # cycle. A BUSY runner is left alone whatever the clock says.
+  local t0 now elapsed rec reason="" guest
+  t0=$(date +%s)
+  while kill -0 "$JOB_PID" 2>/dev/null; do
+    sleep "$POLL"; kill -0 "$JOB_PID" 2>/dev/null || break
+    now=$(date +%s); elapsed=$((now - t0))
+    rec=$(gh api "repos/$REPO/actions/runners" --jq ".runners[] | select(.name==\"$name\") | \"\(.status) \(.busy)\"" 2>/dev/null || echo "api-error")
+    case "$rec" in
+      "api-error") ;;                                   # GitHub unreachable: not a verdict
+      "") reason="GitHub no longer lists runner '$name'"; break ;;
+      *" true") continue ;;                              # busy: a job is running, hands off
+    esac
+    guest=$(tart exec "$vm" sh -c 'pgrep -x Runner.Listener >/dev/null && echo alive || echo dead' 2>/dev/null || echo "agent-down")
+    case "$guest" in
+      dead) reason="no Runner.Listener process left in $vm (the exec stream never said so)"; break ;;
+      agent-down) ;;                                     # the agent itself is silent: the stream will tell, or the API will
+    esac
+    if [ -n "$MAX_WAIT" ] && [ "$elapsed" -ge "$MAX_WAIT" ]; then reason="waited ${elapsed}s (--max-wait)"; break; fi
+    if [ "$elapsed" -ge "$MAX_IDLE" ]; then reason="idle ${elapsed}s (--max-idle $MAX_IDLE)"; break; fi
+  done
+  if [ -n "$reason" ] && kill -0 "$JOB_PID" 2>/dev/null; then
+    log "recycling: $reason"; kill "$JOB_PID" 2>/dev/null
+  fi
   wait "$JOB_PID" || rc=$?
-  JOB_PID=""; [ -n "$dog" ] && { kill "$dog" 2>/dev/null; wait "$dog" 2>/dev/null; } || true
+  JOB_PID=""
   log "runner '$name' exited ($rc); tearing $vm down"
   tail -3 "$STATE/$vm.job.log" | sed 's/^/    /' || true
   rm -f "$STATE/$vm.job.log"
@@ -237,6 +299,11 @@ loop() {
 
 install_service() {
   need tart; have_vm "$BASE" || die "build the golden image first: $0 build"
+  local SCRIPT="$MAIN_ROOT/tools/tart-battery-runner.sh"
+  if [ ! -f "$SCRIPT" ]; then
+    SCRIPT="$ROOT/tools/tart-battery-runner.sh"
+    log "WARNING: $MAIN_ROOT has no copy of this script yet (pull main); the service will point into $ROOT, which a worktree cleanup deletes"
+  fi
   mkdir -p "$HOME/Library/LaunchAgents"
   cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -244,7 +311,7 @@ install_service() {
 <plist version="1.0"><dict>
   <key>Label</key><string>$SERVICE</string>
   <key>ProgramArguments</key><array>
-    <string>/bin/bash</string><string>$ROOT/tools/tart-battery-runner.sh</string><string>loop</string>
+    <string>/bin/bash</string><string>$SCRIPT</string><string>loop</string>
     <string>--repo</string><string>$REPO</string>
   </array>
   <key>EnvironmentVariables</key><dict>
@@ -281,6 +348,20 @@ status() {
   log "runners GitHub sees for $REPO:"
   gh api "repos/$REPO/actions/runners" --jq '.runners[] | "    \(.name)\t\(.status)\t\(.os)\t[\([.labels[].name]|join(","))]"' 2>/dev/null || true
   log "routing: BATTERY_RUNS_ON=$(gh variable get BATTERY_RUNS_ON --repo "$REPO" 2>/dev/null || echo '<unset — battery runs on ubuntu-latest>')"
+  # THE VERDICT: would a PR that opts in right now be picked up? Three
+  # witnesses must agree — GitHub lists an online runner under the label, a
+  # job VM is running, and that VM has a listener process. The September
+  # outage had a running VM, a waiting loop, and none of the other two.
+  local online vm listener
+  online=$(gh api "repos/$REPO/actions/runners" --jq "[.runners[] | select(.status==\"online\" and any(.labels[]; .name==\"$LABEL\"))] | length" 2>/dev/null || echo 0)
+  vm=$(tart list --quiet 2>/dev/null | grep -E '^timesim-battery-[0-9]+$' | head -1)
+  listener=none
+  [ -n "$vm" ] && listener=$(tart exec "$vm" sh -c 'pgrep -x Runner.Listener >/dev/null && echo alive || echo dead' 2>/dev/null || echo "agent-down")
+  if [ "${online:-0}" -ge 1 ] && [ -n "$vm" ] && [ "$listener" = alive ]; then
+    log "READY — an opt-in PR would be picked up (GitHub: $online online under '$LABEL'; $vm: listener alive)"
+  else
+    log "NOT READY — GitHub online under '$LABEL': ${online:-0}; job VM: ${vm:-none}; listener: $listener. An opt-in PR would QUEUE (up to 24 h)."
+  fi
 }
 
 case "$cmd" in

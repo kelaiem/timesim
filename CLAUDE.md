@@ -503,7 +503,9 @@ the availability switch) is set; pushes to `main` always run GitHub-hosted. `too
 on Apple Virtualization, so the public logs name the guest, not the Mac) or
 `tools/self-hosted-runner.sh` (bare metal) puts a runner under that label and
 prints the variable flip it deliberately does not perform; the job
-summary names the runner that took each run. Two consequences to know: the §152
+summary names the runner that took each run, and `status` ends in a READY /
+NOT READY verdict to read BEFORE opting a PR in — a queued opt-in with no
+runner waits a day in silence. Two consequences to know: the §152
 baseline key carries the platform, so flipping the variable costs one whole run
 per PR until the next merge re-seeds it; and a host's shard count is written on
 the host (`--shards K` → the runner's `.env`), never in the workflow, because K

@@ -202,7 +202,53 @@ online — on a laptop, decide that on purpose.
 **Reading it.** `~/.timesim-tart/loop.log` is the loop; each cycle's runner
 output lives beside it only until the cycle ends. `status` lists the VMs,
 the service, the runners GitHub currently sees (a JIT runner exists only
-between mint and its one job) and the routing variable.
+between mint and its one job) and the routing variable — and ends with a
+**verdict**, `READY` or `NOT READY`, from three witnesses that must agree:
+GitHub lists an online runner under the label, a job VM is running, and that
+VM has a listener process. **Run it before you label a PR.** A job that opts
+in while the verdict is NOT READY queues for up to a day and nothing tells you.
+
+### The first week, and the three rules it wrote into the loop
+
+The host ran for six days before an opt-in landed on it, and the trail of
+that week is worth keeping because every part of it looked healthy from
+the host. On 2026-09-06 at 14:35 UTC a PR asked for the host, its job was
+labelled correctly, and it queued for sixteen minutes into nothing until the
+owner cancelled it and dispatched a hosted run instead. The runner had been
+dead for thirty-two hours. What the guest's own logs showed, all on 09-05:
+
+| UTC | evidence |
+|---|---|
+| 06:29:31–06:30:03 | Ubuntu's `unattended-upgrade` ran inside the job VM (util-linux, PAM, OpenSSH, perl, kernel headers) |
+| 06:29:48 | the Tart guest agent restarted, per systemd, mid-upgrade |
+| 06:29:48 | the runner logged "Runner execution been cancelled" and deleted its session; no listener process existed in the guest from then on |
+| 06:30:52 | the guest's network stack restarted |
+
+The agent restarted underneath the exec stream that carried the runner, so
+the host's `tart exec` never received an exit and the loop waited on a
+corpse for three days. With the session deleted and never reconnected,
+GitHub removed the just-in-time registration. The 09-04 cycle had ended in
+the same 06:00–07:00 window with "registration deleted", so this was a daily
+hazard, not a one-off; that time the exit arrived and the loop recovered,
+which is why it went unnoticed.
+
+1. **A throwaway VM does not update itself.** The build purges
+   `unattended-upgrades` and masks the apt-daily timers, and asserts the
+   timer is not enabled before it powers off. Updates arrive by `--rebuild`.
+2. **The exec stream is not the signal.** While a runner waits, the host asks
+   every `--poll` seconds (60) whether GitHub still lists it and whether the
+   guest still has a `Runner.Listener` process, and recycles the clone the
+   moment either says no. Either witness would have caught the 09-05 death
+   within a minute. A busy runner is never touched; a silent GitHub API or a
+   silent guest agent is not a verdict either way. Measured: with a 15 s
+   poll, a cycle whose record was deleted at GitHub recycled 10 s later.
+3. **A wait has a ceiling.** A runner idle past `--max-idle` (6 h) is
+   recycled regardless: a JIT registration is meant for one job, and a fresh
+   clone bounds whatever drifted.
+
+Recovery from a hung cycle, if one ever recurs: end the host's `tart exec`
+process for the job VM (`kill`, plain SIGTERM) and the loop tears the clone
+down and clones fresh within ten seconds — measured on 09-08.
 
 The name GitHub shows for each runner is `battery-1-` plus four hex digits,
 because a JIT runner's name must be unique among online runners and the
@@ -227,6 +273,11 @@ minted through `gh api` and never stored; installs and starts the service
 (a LaunchAgent on macOS, which runs while that user is logged in; a systemd
 unit on Linux, which is why that path uses `sudo`). Every step is idempotent;
 re-run it to repair a half-finished host.
+
+`install-service` records the **main checkout's** copy of the script in the
+LaunchAgent, not the worktree it was run from — a worktree is deleted after
+its PR merges, and a service pointing into it respawns a failing shell
+forever — and warns if main does not have the script yet.
 
 It ends by printing the one command it deliberately does not run:
 

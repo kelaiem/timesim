@@ -21784,6 +21784,38 @@ That last row is why the cleanup removes the record by NAME rather than by
 status, with a short retry: the first version deleted only `offline`
 records, ran before the API had noticed, and left one behind.
 
+### The first week: a self-updating guest, a silent exec stream, and the watchdog
+
+The host ran six days before an opt-in landed, and the first one queued
+into nothing for sixteen minutes. The guest's own logs told the story
+(`docs/RUNNERS.md` keeps the table): on 09-05 at 06:29 UTC Ubuntu's
+`unattended-upgrade` ran inside the job VM and restarted the Tart guest
+agent under the exec session carrying the runner; the runner took the cut
+as a cancel, deleted its session, and no listener process existed in the
+guest from then on. The host's `tart exec` never received the exit — the
+agent restarted beneath its stream — so the loop waited on a corpse for
+three days while GitHub removed the JIT registration. The 09-04 cycle had
+died in the same window and recovered because its exit did arrive, which
+is exactly how a daily hazard hides.
+
+Three mechanisms, each a rule in the script's header: the golden image
+purges `unattended-upgrades` and masks the apt-daily timers (a throwaway
+VM does not update itself; `--rebuild` is how updates arrive); a host
+watchdog polls GitHub's runner list and the guest's process table every
+60 s while a runner waits and recycles on either witness's "no" — the
+exec stream is demoted to the fast path; and `--max-idle` (6 h) recycles
+an idle runner regardless, a JIT registration being meant for one job. A
+busy runner is never recycled. Measured on 09-08: the rebuild with
+self-updates disabled took 108 s and its new assertion (the apt-daily timer
+not enabled) held; the watchdog, polling at 15 s in the test, recycled a
+waiting cycle 10 s after its record was deleted at GitHub, and the sweep's
+new liveness guard left the service's own clone untouched beside it.
+`status` now ends in a verdict, READY or
+NOT READY, from the three witnesses together, because the outage looked
+healthy from every single one of them. And `install-service` records the
+main checkout's script path rather than the worktree's, the defect the
+owner's first install exposed.
+
 ### Three workflow consequences, all in the safe direction
 
 - **The §152 baseline key carries `runner.os`/`runner.arch`.** A baseline's
