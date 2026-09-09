@@ -21864,3 +21864,89 @@ hosts — gains a heterogeneous-fleet option from this, which is one more
 reason K stays on the host.
 
 ---
+
+## §203 — Steel finish and case metal as aesthetics options — step 1: the case exterior is its own material
+
+Roadmap item 203 (private) files the steel's finish as a brushed↔polished
+slider and the case's metal as a steel / 18K yellow gold / 18K white gold /
+platinum pick, both declared in `src/aesthetics.json` and driven from the §23
+panel, the pick travelling as `?metal=` under §185's rule. It lands in four
+steps, each green on its own. **This is step 1 and nothing else**: no knob,
+no colour, no document — one material object split in two, so that the
+later steps have something to address.
+
+### What was measured
+
+`MATS.steel` was ONE `MeshPhysicalMaterial` referenced 226 times — 191 in
+`main.js`, 35 in `geometry.js` — and the population under it was every
+pinion, arbor, lever and spring in the works AND the case exterior:
+`makeCase`'s `material` argument (eleven meshes — the band, the back ring,
+the stem sleeves and their collars), both crowns (`makeCrown`, going and
+alarm) and the alarm pusher's cap. A finish applied to that object reaches
+all of them at once, which is right for a finish and wrong for an alloy: a
+platinum case does not come with platinum pinions, and there was no object
+to give the case's metal to without giving it to the springs.
+
+The steel itself is neither brushed nor polished, which corrects the item's
+own premise: isotropic `roughness 0.30` under a hazed clearcoat is a SATIN,
+and nothing in the tree has ever shaded an anisotropic lobe. Its 0.30 and
+`0xd6d9dd` are authored numbers with no derivation (roadmap item 86's class)
+and are now named as such in the comment beside them rather than laundered.
+
+### What changed
+
+- `materials.js` declares the finish ONCE, `STEEL_FINISH`, and builds two
+  instances from it: `steel` (the works) and `caseMetal` (the case exterior).
+  A shared object literal rather than `steel.clone()`, deliberately: a clone
+  copies the numbers and then diverges silently, while one literal keeps the
+  two materials moving together until step 2 gives them a reason to differ —
+  the grain law applies to both — and step 3 gives `caseMetal` alone a
+  colour. Same five numbers, so the picture is unchanged by construction.
+- Four sites take `MATS.caseMetal`: `makeCase`'s `material` (all eleven of
+  its meshes), the going crown, the alarm crown, and `alarmPusherCap`. The
+  pusher's STEM stays `steel` — it is a stem, not a head — and so do the
+  case clamps and their screws, which are movement-side hardware.
+- Nothing else. `MATS.steel` keeps its 222 sites; `test-geometry.html`,
+  `inspect.js` and the tools compare no material by identity (the only
+  identity tests in the tree are `MATS.ruby`'s, for the impulse pin), so no
+  check sees the split.
+
+### Instrument
+
+Two full batteries, run locally on the same dev container (4 cores, 2
+shards each, side by side): the base tree at `6549da0` (`main` at the branch
+point — the four commits `main` gained since touch docs, `CLAUDE.md` and the
+tart runner script, nothing served or keyed) and this tree.
+
+```
+base:    39/39 gates pass · total 1994.7s (checks 3138.7s across 2 shard(s))
+change:  39/39 gates pass · total 2000.1s (checks 3128.4s across 2 shard(s))
+fingerprint A = B = 2402376983 on both trees
+```
+
+The two `--report` files differ at exactly **12 leaves, every one a timing**
+— `exactMs` / `verdictMs` in each of the four sweeps' `census`, plus
+`sweptOverlap`'s `confirmMs`, `registryMs`, `hullMs`, `totalMs` — and at the
+25 per-check `ms` fields. With those set aside the payloads are equal: every
+row of every check, the same numbers. The two `--digests` files are
+byte-identical without any exclusion (`cmp` returns equal — 57 units, 43
+poses, the same SHAPE and PLACE key for every unit), which is the direct
+measurement of the claim in the comment: a material is not in the key.
+
+That identity also answers §152's question for CI. The check-code digest is
+unchanged (none of the four keyed files moved) and the per-unit keys are
+equal, so `digestChangedUnits` returns `['Chain']` alone — the unconditional
+entry — and an incremental run restricts the four sweeps to Chain's 56 of
+1596 pairs with every other check whole. Whether CI takes that path depends
+only on whether `main`'s baseline run has finished when the PR's job starts;
+either way the verdict is the whole movement's.
+
+### What remains — roadmap item 203, steps 2–4
+
+The slider (`materials.steel.brush`, default 1 = brushed, the world-space
+grain law in `onBeforeCompile` on BOTH steel materials), the alloy pick
+(`materials.caseMetal.alloy` with the panel's new `<select>` kind, the
+loader's option validation, four DERIVED colours and `?metal=`), and the
+Materials section `AESTHETICS.md` has owed since §23 made the ruby colour a
+live knob. All three are filed in the private roadmap under the same number;
+the entry there names this step as shipped and points here.
