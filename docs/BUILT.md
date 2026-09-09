@@ -22147,15 +22147,137 @@ so the next `controls.update()` re-aimed it. Both produced a diff column
 that looked like a measurement of the grain and was a measurement of
 nothing — the instruments skill's catalogue, one more entry.
 
-#### What remains — roadmap item 203, steps 3 and 4
+### Step 3 — the case metal is a pick, and its colours are measured
 
-The alloy pick (`materials.caseMetal.alloy` with the panel's new `<select>`
-kind, the loader's option validation, four DERIVED colours and `?metal=`),
-and the rest of the Materials section `AESTHETICS.md` now carries — step 2
-wrote the steel's paragraph and the ruby's line, so what step 4 owes is the
-`decoration` and `gong` headings the page has never had. Both are filed in the
-private roadmap under the same number; the entry there names steps 1 and 2 as
-shipped and points here.
+`materials.caseMetal.alloy`: one of `steel` · `yellowGold18k` · `whiteGold18k`
+· `platinum`, default steel. It reaches `MATS.caseMetal` only — the band, back
+ring, sleeves and collars, both crowns, the pusher cap — and never the works,
+which is what step 1's split was for. One colour write per pick; the finish
+(roughness, grain) stays step 2's slider, which reaches both materials, so a
+platinum case can be brushed or polished like a steel one.
+
+#### The colours are derived, and the derivation carries its own controls
+
+A metalness-1 material's `color` IS its normal-incidence reflectance F0, and
+F0 is measured: `F0(λ) = ((n−1)² + k²) / ((n+1)² + k²)` from the complex
+refractive index. `tools/derive-203-alloys.mjs` (acceptance) embeds the
+visible-range n, k rows from refractiveindex.info's database (CC0 — Johnson &
+Christy 1972 for Au, Ag and Cu; Rakić 1998's Lorentz–Drude tabulation for Pt;
+Weaver 1977 per Palik for Rh; three tabulations of Fe), integrates F0(λ)
+against the CIE 1931 2° observer in Wyman, Sloan & Shirley's 2013 analytic
+fit under an equal-energy illuminant, converts XYZ to linear sRGB by the
+standard matrix, and white-balances each channel to the same pipeline's answer
+for a perfect reflector — a base colour is reflectance under the renderer's
+own white, since the renderer supplies the illuminant. The sRGB-encoded hex is
+the form `material.color.set('#…')` takes.
+
+Two controls, both gated. The observer fit's three integrals must reproduce
+the real CMFs' 106.86 (they read 106.77 / 106.92 / 106.88). And every metal
+that SHIPS must land within 0.06 per channel of Hoffman's 2013 published F0
+table, an independent spectral integration of the same kind of data:
+
+| metal | this tool, linear F0 | Hoffman 2013 | max Δ |
+|---|---|---|---|
+| gold | 1.006, 0.735, 0.359 | 1.00, 0.77, 0.34 | 0.035 |
+| silver | 0.989, 0.984, 0.977 | 0.97, 0.96, 0.92 | 0.057 |
+| copper | 0.911, 0.624, 0.518 | 0.95, 0.64, 0.54 | 0.039 |
+| platinum | 0.674, 0.638, 0.582 | 0.67, 0.64, 0.59 | **0.008** |
+
+The second control earned its keep on the first run: the draft took Werner's
+2009 platinum table (derived from electron energy-loss spectra), whose one
+visible-range row at 708 nm reads n 0.50, k 7.03, and the tool reported
+platinum 0.30 off the published value. Rakić's table put it at 0.008.
+Iron is REPORTED, not gated — steel keeps its authored `#d6d9dd`, and iron's
+three tabulations disagree with each other by more than the gate (Johnson
+`#c0beba`, Ordal `#c6c6c6`, Querry `#c7c6c6`), which is worth seeing rather
+than hiding behind one row.
+
+The alloys: **18K white gold** is rhodium-plated as standard and the plate is
+what the eye meets, so it reads as rhodium (`#e6e3e0`, F0 0.79 / 0.77 /
+0.74 — no published row to gate against, and its neutrality is what a rhodium
+plate is for). **Platinum** is Pt950 and reads as platinum (`#d6d1c9`).
+**18K yellow gold** is 3N — 75 / 12.5 / 12.5 Au / Ag / Cu by mass — and an
+alloy's optical constants are not its constituents' mix; the tool takes the
+simplest effective-medium approximation, the dielectric function ε = (n+ik)²
+averaged by ATOMIC fraction (Au 0.549, Ag 0.167, Cu 0.284), names it as an
+approximation, and prints the mass-averaged variant beside it (`#fde3b7`
+ships; the mass rule gives `#fee4af`, eight units apart in the blue). ISO 8654
+fixes 3N as a CIELAB swatch; when a copy of the standard is at hand that
+swatch replaces the average. Density is not modelled and is not claimed.
+
+#### A pick is anchored to its option set
+
+`_options` is a sibling of `_bounds` and `_labels` in `aesthetics.json` —
+the same underscore convention, schema rather than parameter — and three
+readers consume the one list. The **panel** renders a `<select>` for a leaf
+whose container declares `_options` for it: option values are the canonical
+keys, option TEXT goes through `t()` (five locale rows for the label and the
+four names), the check placed before the string branches so a hex-shaped
+value could never be mistaken for a colour. The **loader** refuses a string
+outside its set as `option` — not clamped, there is no nearest alloy — which
+closes the one hole the dial colour's note recorded: the type anchor passed
+every string, and a retired alloy's key in a persisted override, or a hostile
+link, would have been applied verbatim. Two fixtures in `aestheticsMerge`
+hold it (`14 fixtures — 8 applied, 7 refused, 2 clamped`). And the **link**:
+`?metal=<key>` under §185's rule, read before the build so the case is built
+in the linked metal, validated against the same list, winning over a
+persisted override and never written back; Copy view sets it whenever the
+alloy differs from the file's.
+
+#### Instrument
+
+`node tools/derive-203-alloys.mjs` — `both controls PASS` (the table above).
+`node tools/ci-battery.mjs --only aestheticsMerge` — `14 fixtures — 8 applied,
+7 refused, 2 clamped; control PASS — live schema unmoved`, identity boot
+silent.
+
+`tools/probe-203-alloys.mjs` (acceptance) — **33 rows, all PASS**, over nine
+virgin boots through Playwright's Chromium: for each of the four alloys via
+`?metal=`, the case reads its `ALLOY_COLORS` hex, the works' steel reads
+`#d6d9dd` untouched, the override store is `null` afterwards, boot warns 0,
+the panel's select shows the alloy, and Copy view's link carries `metal=`
+exactly when the alloy is non-default; the panel's select carries the four
+canonical values with the four English labels; the loader reports a bogus
+key as `[{ path: 'materials.caseMetal.alloy', why: 'option' }]`; a persisted
+platinum boots platinum and links it; a linked yellow gold over a persisted
+platinum boots yellow gold and leaves the store saying platinum; a bogus link
+key and a bogus persisted key both boot steel, silently. One Dial-view shot
+per alloy for the eye: the bezel and band read warm gold, rhodium white,
+platinum's cooler grey, and the dial and hands do not move between them.
+
+Three full batteries, every one **40/40** (the tree gained a gate since step
+2). Local, base `c8cc415` and this tree, side by side on the 4-core container:
+
+```
+base:    40/40 gates pass · total 2666.0s (checks 4329.9s across 2 shard(s))
+change:  40/40 gates pass · total 2686.4s (checks 4342.3s across 2 shard(s))
+CI, self-hosted battery-1-153c (Linux/ARM64, 3 shards):
+         40/40 gates pass · total 966.1s (checks 2503.1s across 3 shard(s))
+fingerprint A = B = 2402376983 on all three
+```
+
+The two `--report` files differ at **84 leaves: 80 timings, and the four
+leaves of `aestheticsMerge` that ARE the change** — `fixtures` 12 → 14,
+`applied` 7 → 8, `refused` 6 → 7, and the rows list grown by the two new
+names. Every other result row of every check is equal. The `--digests` unit
+keys are byte-identical; the check-code digest moved in exactly one file,
+`src/inspect.js`, which is the fixture table — so CI ran everything, as
+§152's rule says it must when the code that judges the rows moves.
+
+And a §200 fact the CI run's own log settled: `no cached baseline for the
+merge base on Linux/ARM64 — running everything`. Baselines are seeded by
+pushes to `main`, which always run GitHub-hosted on x64, and the §152 key
+carries the platform, so the self-hosted path has NO incremental path — it
+runs the whole battery every time. At 16–18 minutes of wall that still beats
+the hosted path's ~29 whole or its incremental runs' queue time, but it is a
+property of the routing worth knowing, not a fault of the run.
+
+#### What remains — roadmap item 203, step 4
+
+The two headings `AESTHETICS.md` has never had — `decoration` and `gong` —
+step 2 having written the Materials section's steel paragraph and step 3 its
+case-metal paragraph. Filed in the private roadmap under the same number; the
+entry there names steps 1–3 as shipped and points here.
 
 ## §204 — A 36,000 A/h row in the beat-rate menu — ten beats a second, carried by a finer fourth mesh and a spring at the top of stock
 
