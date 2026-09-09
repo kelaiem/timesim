@@ -63,6 +63,7 @@ export function serializeOverrides(obj) {
 // difference between a broken import and a silent one.
 export function mergeAesthetics(dst, src, out = { applied: [], refused: [], clamped: [] }, path = []) {
   const bounds = dst._bounds || {};
+  const options = dst._options || {};
   for (const k of Object.keys(src)) {
     if (k.startsWith('_')) continue;
     const at = [...path, k];
@@ -93,6 +94,17 @@ export function mergeAesthetics(dst, src, out = { applied: [], refused: [], clam
         const c = Math.min(bounds[k][1], Math.max(bounds[k][0], v));
         if (c !== v) { out.clamped.push({ path: p, from: v, to: c }); v = c; }
       }
+    }
+    // §203 step 3 — A PICK IS ANCHORED TO ITS OPTION SET, the way a number is
+    // clamped to its _bounds. A string leaf that declares `_options` (the case
+    // alloy) accepts only a listed value; anything else is REFUSED, not
+    // clamped — there is no nearest alloy — and reported as `option`, so a
+    // persisted key from a retired alloy, or a hostile link, is named on the
+    // refused line rather than applied verbatim. Before this the type anchor
+    // passed every string, which aesthetics.json's dial-colour note records as
+    // the one hole a colour could live with and a pick cannot.
+    if (typeof v === 'string' && options[k]) {
+      if (!options[k].some((o) => o.value === v)) { out.refused.push({ path: p, why: 'option' }); continue; }
     }
     dst[k] = v;
     out.applied.push(p);
@@ -180,6 +192,27 @@ try {
   const col = parseDialCol(new URLSearchParams(location.search).get(DIAL_COL_PARAM));
   if (col) mergeAesthetics(aestheticsData, { dial: { face: { color: col } } });
 } catch { /* no location, or a hostile param: the file's colour stands */ }
+
+// --- §203 step 3 — THE CASE METAL TRAVELS. `?metal=<key>`, §185's rule
+// applied to the second finish value that rides a link: the link WINS over a
+// persisted override and is NEVER WRITTEN BACK, for the reasons the dial
+// colour's block above spells out. It is read here, before the build, so the
+// case is built in the linked metal and the panel's select shows it. The
+// value is validated against the schema's own `_options` — not a regex here,
+// the same list the loader and the panel read — and an unknown key is
+// ignored in silence, applyDeepLink's standing rule (a bad link degrades, it
+// never throws).
+export const METAL_PARAM = 'metal';
+export function parseMetal(raw) {
+  if (typeof raw !== 'string') return null;
+  const opts = aestheticsData.materials?.caseMetal?._options?.alloy || [];
+  const v = raw.trim();
+  return opts.some((o) => o.value === v) ? v : null;
+}
+try {
+  const metal = parseMetal(new URLSearchParams(location.search).get(METAL_PARAM));
+  if (metal) mergeAesthetics(aestheticsData, { materials: { caseMetal: { alloy: metal } } });
+} catch { /* no location, or a hostile param: the file's alloy stands */ }
 
 // Called by main.js when the build has completed — the crash-recovery
 // marker's other half.

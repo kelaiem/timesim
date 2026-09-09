@@ -258,6 +258,21 @@
         "brushAngleDeg": "Steel grain angle"
       }
     },
+    "caseMetal": {
+      "alloy": "steel",
+      "_comment": "§203 step 3 — the CASE EXTERIOR's metal (MATS.caseMetal: the band, back ring, sleeves and collars, both crowns, the pusher cap — step 1's split), a PICK rather than a slider: one of the `_options` keys, never a free string. It reaches the case and never the works: a spring, a pinion or a lever in gold or platinum would be a lie about the metal. Each alloy's base colour is DERIVED, not authored — a metalness-1 material's colour IS its normal-incidence reflectance F0, computed by tools/derive-203-alloys.mjs from measured optical constants (refractiveindex.info's tables, primary sources cited there) and held in materials.js ALLOY_COLORS with the derivation's two controls; steel keeps the authored 0xd6d9dd for continuity, named as underived there. 18K white gold reads as its rhodium plate. It TRAVELS as ?metal=<key> under §185's rule (a link overrides the store and never writes it) and the loader refuses any value outside `_options` — a persisted or linked key from a retired alloy is reported on the refused line, never applied. `_options` is a sibling of `_bounds` and `_labels`: the same underscore convention (schema, not a parameter), read by the panel to render a select whose option TEXT is translated and whose values stay canonical (display translates, values do not).",
+      "_options": {
+        "alloy": [
+          { "value": "steel", "label": "Steel" },
+          { "value": "yellowGold18k", "label": "18K yellow gold" },
+          { "value": "whiteGold18k", "label": "18K white gold" },
+          { "value": "platinum", "label": "Platinum" }
+        ]
+      },
+      "_labels": {
+        "alloy": "Case metal"
+      }
+    },
     "ruby": {
       "color": "#b01326",
       "_comment": "Bearing jewels, pallet stones, impulse pin. Read at material creation and updatable live; the advanced panel writes here.",
