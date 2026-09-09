@@ -22694,3 +22694,39 @@ the bank backs out and seven unwinds reach home, a further one is refused;
 scrub reads LOCKED / INDEXING / LOCKED across the window with the cross
 turning one station; reduced motion; no page errors. Battery: none — the
 page is sim-code-free and stays so.
+
+## §146 — The main panel starts hidden — the arrival sees the watch, and every way back to the panel still works
+
+Roadmap item 146 asked to hide the main panel by default; its own refutation
+(§161's landing) re-derived what that costs. Measured by template membership,
+`#clock-ui` holds Time, wind, crown, sync, reserve, Alarm and Appearance —
+NOT the primer link, `Advanced`, `Reconfigure`, `Trial boot` or `Copy view`,
+which live in the View panel. So hiding it costs the primer nothing, and the
+question the entry re-scoped itself to — is hiding the DRIVING controls by
+default wanted — is answered the way §57 answered it for the pad: the pad
+already drives the watch, and it is on by default.
+
+**What landed.** One line at boot, after `setHud(true)`: `setPanelHidden(true)`.
+Session-tier like the pad (nothing persists it). Every way back is kept: the
+chrome bar's Menu toggle, the `H` key, and a new `?panel=1` deep link for a
+link that wants the panel open on arrival (`?panel=0` is the default said
+aloud). **What a first-time viewer reaches without opening anything:** the
+watch, the control pad (crown, wind, time, the alarm readout), the View
+panel (x-ray, schematic, labels, the tour, "How they work" → the primer →
+the explainer), and the chrome bar.
+
+**The no-restore branch, verified against a never-opened panel.**
+`hidePanelForScript` guards on the panel's OWN prior state, so a tour started
+on the hidden default ends with it still hidden — the tour does not "restore"
+a panel the viewer never opened — while a tour started on a panel the viewer
+had opened hides it for the run and restores it after. Both measured.
+
+**Sequencing.** §142 is the prerequisite the entry named — the tour must
+surface the pages — and §142's closing stop links to both from its banner;
+this landed after it.
+
+`tools/probe-146-panel.mjs` (acceptance, 8 claims): virgin boot hidden with
+the pad on and the View panel up; `H` shows, the Menu toggle hides; the two
+tour cases above; `?panel=1` opens; a 375×667 phone boots hidden with the pad
+on. Battery: `src/main.js` is on the graph, so it ran; the fingerprint is the
+check — chrome visibility reaches no geometry.
