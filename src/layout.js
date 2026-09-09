@@ -45,11 +45,28 @@
 // minute and hour hands are untouched by construction; only the
 // fourth⇄escape mesh re-gears, and solveLayout absorbs the moved centre
 // distances the way §13 built it to.
+//
+// A ROW MAY CARRY ITS OWN MODULE (§204), and the 36,000 row must. 1/20 has
+// four integer pairs, and all four were booted (§204's probe): 4/80 and
+// 5/100 are not pinions any watch runs (TODO 15's gauge refuses the four-leaf
+// one outright), and 6/120 at the mesh's 0.21 module grows the fourth wheel
+// to r 12.6 and the plate to 47.87 — past §187's caseback aperture (45.73)
+// and four units through §186's case clamp thread: the first row that fails
+// to fit the CASE, not only the plate. Cut at 0.168 = 0.21 · 96/120 the
+// 120-tooth wheel has the SAME pitch radius (10.08) as the 96-tooth wheel the
+// two fast rows already carry, so the escape arbor lands within 0.1 u of the
+// 28,800 row's and the row closes exactly as well as the menu already does —
+// measured, the same three boot warnings, none added. The module is the
+// row's, never the escape wheel's: the wheel's own cut (15 teeth, 24° pitch,
+// BEAT_DEG 12) is untouched at every rate. Absent, a row's module is the
+// mesh's 0.21, so the three rows above are byte-identical to what shipped.
 const RATE_TABLE = {
   18000: { fourthTeeth: 80, escPinion: 8 }, // 8/80 = 1/10 — the shipped movement
   21600: { fourthTeeth: 96, escPinion: 8 }, // 8/96 = 1/12
   28800: { fourthTeeth: 96, escPinion: 6 }, // 6/96 = 1/16
+  36000: { fourthTeeth: 120, escPinion: 6, module: 0.168 }, // 6/120 = 1/20 — §204: at 0.168 the wheel keeps the 96-tooth rows' pitch radius
 };
+export const FOURTH_MODULE_DEFAULT = 0.21; // the fourth⇄escape mesh's cut, the rows above's module when they carry none
 export const SPEC = (() => {
   const raw = (typeof globalThis !== 'undefined' && globalThis.__WATCH_SPEC) || {};
   const vph = RATE_TABLE[raw.vph] ? Number(raw.vph) : 18000;
@@ -800,8 +817,11 @@ export const TRAIN = {
   center: { module: 0.30, teeth: 75, pinion: 10 }, // center wheel → third pinion
   third:  { module: 0.24, teeth: 80, pinion: 10 }, // third wheel → fourth pinion
   // fourth wheel → escape pinion: the ONE mesh the beat-rate spec re-gears
-  // (§22, table above) — every other count is beat-independent.
-  fourth: { module: 0.21, teeth: RATE_TABLE[SPEC.vph].fourthTeeth, pinion: RATE_TABLE[SPEC.vph].escPinion },
+  // (§22, table above) — every other count is beat-independent. §204: the
+  // module is the row's when it carries one (36,000 must, or it does not
+  // fit the case) and the mesh's 0.21 otherwise, so the identity spec's
+  // literal is unchanged and the fingerprint with it.
+  fourth: { module: RATE_TABLE[SPEC.vph].module ?? FOURTH_MODULE_DEFAULT, teeth: RATE_TABLE[SPEC.vph].fourthTeeth, pinion: RATE_TABLE[SPEC.vph].escPinion },
 };
 
 // Keyless works + winding path (the SETTING side, not the going train).
