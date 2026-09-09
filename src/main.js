@@ -35536,6 +35536,9 @@ function applyDeepLink() {
   // the watch driveable the moment it loads (a phone, where hunting a 5 u
   // crown by orbit is the least pleasant thing this app asks of anyone).
   if (params.has('hud')) setHud(params.get('hud') !== '0');
+  // §146 — `?panel=1`. The main panel starts hidden; a link that wants it
+  // open on arrival (a tutorial pointing at Reserve spec, say) says so.
+  if (params.has('panel')) setPanelHidden(params.get('panel') === '0');
   // §55 — `?inspect=1`. No confirm gate, unlike ?tour: that gate exists because
   // a deep link is not a user gesture and shouldn't swing the camera, crown and
   // SOUND at a first-time visitor unasked. The inspection route is a working
@@ -35570,6 +35573,17 @@ if (restoredFocus) setFocus(restoredFocus);
 // §90 already made this call boot-safe: ?hud=1 reached setHud() from
 // applyDeepLink() at this same point in the sequence.
 setHud(true);
+// §146 — THE MAIN PANEL STARTS HIDDEN. The same argument that made the pad
+// default-on: the arrival sees the watch, not the chrome. Measured by
+// template membership (the entry's own refutation), `#clock-ui` holds Time,
+// wind, crown, sync, reserve, Alarm and Appearance — the pad above already
+// drives the watch, the View panel holds x-ray, schematic, labels, the tour
+// and the only in-app link to the primer, and the chrome bar's Menu toggle,
+// the H key and `?panel=1` all reach this one. Session-tier like the pad:
+// nothing persists it. And because `hidePanelForScript` guards on the
+// panel's OWN prior state, a tour started on a never-opened panel does not
+// "restore" it afterwards — §142's closing links are the discovery path.
+setPanelHidden(true);
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
