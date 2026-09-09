@@ -21908,7 +21908,14 @@ arriving together (table in `docs/RUNNERS.md`): ~1.5× throughput at ~30 %
 slower per overlapping job, and the second PR starting six minutes sooner.
 The measurement WAS the first production use — slot 2's first cycle took
 the queued PR the moment its runner came online — which is the only kind
-of measurement that does not need the host to itself. And `install-service` records the
+of measurement that does not need the host to itself. Installing it found
+one more silent exit: `launchctl bootout` returns before the loop's
+teardown has finished, a `bootstrap` in that window fails, and the script
+exited under `set -e` with nothing said — slot 1's resize left no service,
+a stopped clone and an offline record. Both service commands now wait for
+launchd to unload the old instance, bootstrap retries five times saying
+why, the plist grants a teardown 90 s before SIGKILL, and uninstall removes
+the slot's orphaned records. And `install-service` records the
 main checkout's script path rather than the worktree's, the defect the
 owner's first install exposed.
 

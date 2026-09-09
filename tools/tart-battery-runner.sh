@@ -175,6 +175,25 @@ forget_runner() {
   done
   log "could not remove runner record '$1' (#$id); it will read offline in the runner list" >&2
 }
+# launchd unloads a service asynchronously: `bootout` returns before the loop
+# has finished its teardown, and a `bootstrap` in that window fails with an
+# I/O error while a sweep in it sees a live `tart run` and skips the clone.
+# Both callers wait for the service to be gone first.
+wait_gone() {
+  local i
+  for i in $(seq 1 45); do
+    launchctl print "gui/$(id -u)/$SERVICE" >/dev/null 2>&1 || return 0
+    sleep 2
+  done
+  log "WARNING: $SERVICE still listed by launchd after 90 s"
+}
+# Runner records this slot left offline: a teardown cut short leaves one.
+forget_orphans() {
+  local id
+  for id in $(gh api "repos/$REPO/actions/runners" --jq ".runners[] | select(.name | startswith(\"$GUEST_HOST-\")) | select(.status==\"offline\") | .id" 2>/dev/null || true); do
+    gh api -X DELETE "repos/$REPO/actions/runners/$id" >/dev/null 2>&1 && log "removed orphaned offline runner record #$id" || true
+  done
+}
 # Clones from a previous crash: anything named like a job VM that no live
 # `tart run` on this host owns. A crash leaves no process; a running loop (or
 # a test cycle beside it) has one, and is left alone.
@@ -368,12 +387,28 @@ install_service() {
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <!-- A cycle's teardown (stop the VM, delete it, remove the runner record)
+       takes longer than launchd's default grace before SIGKILL; cut short, it
+       leaves a stopped clone and an offline record — measured at the 09-09
+       slot-1 resize. 90 s covers tart's own 30 s stop timeout with room. -->
+  <key>ExitTimeOut</key><integer>90</integer>
   <key>StandardOutPath</key><string>$STATE/loop.log</string>
   <key>StandardErrorPath</key><string>$STATE/loop.log</string>
 </dict></plist>
 EOF
   launchctl bootout "gui/$(id -u)/$SERVICE" >/dev/null 2>&1 || true
-  launchctl bootstrap "gui/$(id -u)" "$PLIST"
+  wait_gone
+  # bootstrap can still refuse for a few seconds after the old instance is
+  # gone; the first version tried once and exited in silence under set -e,
+  # which is how a resize left slot 1 with no service and nothing said.
+  local i
+  for i in 1 2 3 4 5; do
+    launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>"$STATE/bootstrap.err" && break
+    log "launchctl bootstrap attempt $i failed: $(tr -d '\n' < "$STATE/bootstrap.err"); retrying in 3 s"
+    [ "$i" = 5 ] && die "launchctl bootstrap failed five times — $SERVICE is NOT running"
+    sleep 3
+  done
+  rm -f "$STATE/bootstrap.err"
   log "service $SERVICE installed and started (log: $STATE/loop.log)"
   cat <<EOF
 §200: the battery still runs on ubuntu-latest until the repository variable names this label.
@@ -386,7 +421,8 @@ EOF
 uninstall_service() {
   touch "$STATE/stop"
   launchctl bootout "gui/$(id -u)/$SERVICE" >/dev/null 2>&1 || true
-  rm -f "$PLIST"; sweep_stale
+  wait_gone
+  rm -f "$PLIST"; sweep_stale; forget_orphans
   log "service removed; golden image $BASE kept (tart delete $BASE to drop it)"
   log "if vars.BATTERY_RUNS_ON still names '$LABEL', unset it:  gh variable delete BATTERY_RUNS_ON --repo $REPO"
 }
