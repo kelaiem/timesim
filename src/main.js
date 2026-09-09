@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { MATS, applyDecorationFromAesthetics } from './materials.js';
+import { MATS, applyDecorationFromAesthetics, applyBrushFromAesthetics } from './materials.js';
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
@@ -27287,7 +27287,10 @@ function askTour(onProceed) {
     rendering: () => { renderer.toneMappingExposure = aesthetics.rendering.toneMappingExposure; },
     camera: () => { controls.dampingFactor = aesthetics.camera.dampingFactor; },
     decoration: () => { applyDecorationFromAesthetics(); if (ribPitch) ribPitch.value = aesthetics.decoration.ribbing.widthUnits; },
-    materials: () => { MATS.ruby.color.set(aesthetics.materials.ruby.color); },
+    materials: () => {
+      MATS.ruby.color.set(aesthetics.materials.ruby.color);
+      applyBrushFromAesthetics();   // §203 step 2 — the steel finish, both steel materials, live
+    },
     // §157 — `face` joins `hands` as a LIVE path. Roadmap item 140 asked for
     // this and §154 shipped it reload-tier; the reason it was not live is that
     // the dial face is a canvas texture, not a material `.color`, so there is

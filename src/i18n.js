@@ -336,6 +336,7 @@ Object.assign(DE, {
   'Perlage ring spacing': 'Perlage-Ringabstand', 'Perlage scallop depth': 'Perlage-Muscheltiefe',
   'Pearl radius': 'Perlenradius', 'Pearl shingle direction': 'Perlen-Schuppenrichtung',
   'Pearl jitter': 'Perlen-Streuung', 'Ruby colour': 'Rubinfarbe',
+  'Steel finish (polished → brushed)': 'Stahl-Finish (poliert → gebürstet)', 'Steel grain angle': 'Stahl-Schliffwinkel',
   'Dial colour': 'Zifferblattfarbe',
   'Search settings': 'Einstellungen durchsuchen',
 });
@@ -586,6 +587,7 @@ Object.assign(ZH, {
   'Perlage ring spacing': '珍珠纹环距', 'Perlage scallop depth': '珍珠纹扇贝深度',
   'Pearl radius': '珍珠半径', 'Pearl shingle direction': '珍珠叠瓦方向',
   'Pearl jitter': '珍珠抖动', 'Ruby colour': '红宝石颜色',
+  'Steel finish (polished → brushed)': '钢材表面（抛光 → 拉丝）', 'Steel grain angle': '钢材拉丝角度',
   'Dial colour': '表盘颜色',
   'Search settings': '搜索设置',
 });
@@ -1002,6 +1004,8 @@ const FR = {
   ['Pearl shingle direction']: 'Sens de recouvrement des perles',
   ['Pearl jitter']: 'Irrégularité des perles',
   ['Ruby colour']: 'Couleur des rubis',
+  ['Steel finish (polished → brushed)']: 'Finition de l’acier (poli → brossé)',
+  ['Steel grain angle']: 'Angle du brossage de l’acier',
   ['Dial colour']: 'Couleur du cadran',
   ['Search settings']: 'Rechercher les réglages',
 
@@ -1419,6 +1423,8 @@ const JA = {
   ['Pearl shingle direction']: '真珠の重なり方向',
   ['Pearl jitter']: '真珠のばらつき',
   ['Ruby colour']: 'ルビーの色',
+  ['Steel finish (polished → brushed)']: 'スチール仕上げ（鏡面 → ヘアライン）',
+  ['Steel grain angle']: 'スチールの筋目角度',
   ['Dial colour']: '文字盤の色',
   ['Search settings']: '設定を検索',
 
@@ -1835,6 +1841,8 @@ const ZH_HANT = {
   ['Pearl shingle direction']: '珍珠疊瓦方向',
   ['Pearl jitter']: '珍珠抖動',
   ['Ruby colour']: '紅寶石顏色',
+  ['Steel finish (polished → brushed)']: '鋼材表面（拋光 → 拉絲）',
+  ['Steel grain angle']: '鋼材拉絲角度',
   ['Dial colour']: '錶盤顏色',
   ['Search settings']: '搜尋設定',
 

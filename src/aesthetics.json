@@ -232,6 +232,25 @@
     }
   },
   "materials": {
+    "steel": {
+      "brush": 1,
+      "brushAngleDeg": 0,
+      "_comment": "\u00a7203 step 2 \u2014 the steel's FINISH, one slider from polished (0) to brushed (1), default brushed (owner's call). It reaches MATS.steel (the works) and MATS.caseMetal (the case exterior) alike. Both ends are constraints rather than tastes: at 0 the roughness sits on the renderer's own floor (0.0525 \u2014 lights_physical_fragment clamps below it, so a smaller number does nothing) with the lobe isotropic; at 1 the lobe is fully anisotropic (the BRDF's own saturation) and the across-grain roughness is STEEL_FINISH's 0.30 \u2014 an authored number with no derivation, roadmap item 86's class, named as such in materials.js rather than laundered here. Between them both quantities mix linearly. The GRAIN DIRECTION is a world-space law in materials.js, never the UV tangent: flats (|n.z| above the ribbing's cos 45\u00b0 gate) are straight-grained along brushAngleDeg in the plate plane, everything else is grained circumferentially about the movement axis (cross(z, n)) \u2014 the direction a lathe or a turning brush leaves on an arbor or a band. Live: APPLIERS.materials writes both materials, and the anisotropy define is held ON across the whole range (a floor of 1e-3 is the shader's zero) so a drag is a uniform write, never a recompile.",
+      "_bounds": {
+        "brush": [
+          0,
+          1
+        ],
+        "brushAngleDeg": [
+          0,
+          180
+        ]
+      },
+      "_labels": {
+        "brush": "Steel finish (polished \u2192 brushed)",
+        "brushAngleDeg": "Steel grain angle"
+      }
+    },
     "ruby": {
       "color": "#b01326",
       "_comment": "Bearing jewels, pallet stones, impulse pin. Read at material creation and updatable live; the advanced panel writes here.",

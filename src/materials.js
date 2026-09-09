@@ -44,6 +44,92 @@ const steel = phys({ ...STEEL_FINISH });
 // materials enter neither the fingerprint nor any sweep.
 const caseMetal = phys({ ...STEEL_FINISH });
 
+// §203 step 2 — THE FINISH SLIDER, `materials.steel.brush` (0 polished → 1
+// brushed, default 1), and the grain it lays.
+//
+// Two ends, each a CONSTRAINT rather than a taste. Polished is the renderer's
+// own roughness floor: lights_physical_fragment clamps `max(roughnessFactor,
+// 0.0525)`, so any smaller number does nothing, and the lobe is isotropic.
+// Brushed is `anisotropy = 1`, the BRDF's saturation, with the across-grain
+// roughness at STEEL_FINISH's 0.30 — the authored, underived number named
+// above (item 86's class). Between them both mix linearly. The roadmap entry
+// first said the slider would drive anisotropy ALONE and leave roughness
+// constant; measured against the ask, that put the shipped SATIN at the
+// polished end (0.30 isotropic is what the movement looked like before this
+// slider existed), so roughness rides the slider too, and the entry's record
+// says so.
+//
+// THE DIRECTION IS A WORLD-SPACE LAW, never the UV tangent. three's
+// anisotropy frame is `getTangentFrame(-vViewPosition, normal, vUv)` — screen
+// derivatives of the UVs — so left alone the grain runs whichever way each
+// builder's parametrisation happens to (a lathe's around its axis, an
+// extrude's along world x, a box's per face), and a welded geometry with no
+// `uv` attribute gives a zero derivative and a NaN frame. The override below
+// reads the WORLD normal instead, the ribbing's construction: a face whose
+// normal is within the ribbing's cos 45° gate of ±z is a FLAT (a lever, a
+// spring, a cock, the bezel top) and is straight-grained along
+// `brushAngleDeg` in the plate plane; everything else — an arbor, a pinion
+// body, the band's flank, a crown — is grained circumferentially about the
+// movement axis, `cross(ẑ, n)`, the direction a lathe or a turning brush
+// leaves. Written after lights_physical_fragment so `tbn` is never read.
+//
+// THE DEFINE IS HELD ON. `MeshPhysicalMaterial`'s anisotropy setter bumps the
+// material version whenever the value crosses zero, which is a shader
+// RECOMPILE mid-drag — so the polished end is BRUSH_EPS, not 0: the shader's
+// only zero-guard is `if (material.anisotropy == 0.0)`, and at 1e-3 the lobe
+// is isotropic to one part in a million. A drag is then two property writes
+// (roughness, anisotropy — both refreshed from the material every frame) and
+// one uniform (the grain direction), never a program.
+export const BRUSH_POLISH_FLOOR = 0.0525;  // three r165, lights_physical_fragment: max(roughnessFactor, 0.0525)
+export const BRUSH_EPS = 1e-3;             // below the slider's step (1/100 of its range); the shader's zero without the define flip
+const BRUSH_FLAT_GATE = 0.7;               // the ribbing's own gate (vRibNormal.z > 0.7): cos 45°, the diagonal between a flat and a flank
+const BRUSH_MATERIALS = [steel, caseMetal];
+function installBrush(mat) {
+  mat.onBeforeCompile = (shader) => {
+    mat.userData.shader = shader;
+    const a = ((aesthetics.materials?.steel?.brushAngleDeg ?? 0) * Math.PI) / 180;
+    shader.uniforms.brushDir = { value: new THREE.Vector2(Math.cos(a), Math.sin(a)) };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBrushNormal;')
+      .replace('#include <begin_vertex>',
+        '#include <begin_vertex>\nvBrushNormal = normalize(mat3(modelMatrix) * objectNormal);');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBrushNormal;\nuniform vec2 brushDir;')
+      .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
+      #ifdef USE_ANISOTROPY
+      {
+        vec3 nW = normalize(vBrushNormal);
+        vec3 tW = (abs(nW.z) > ${BRUSH_FLAT_GATE})
+          ? vec3(brushDir, 0.0)                 // a flat: straight grain along the declared angle
+          : cross(vec3(0.0, 0.0, 1.0), nW);     // a flank: circumferential about the movement axis
+        tW = normalize(tW - nW * dot(tW, nW));
+        vec3 tV = normalize((viewMatrix * vec4(tW, 0.0)).xyz);
+        tV = normalize(tV - normal * dot(tV, normal));
+        material.anisotropyT = tV;
+        material.anisotropyB = normalize(cross(normal, tV));
+      }
+      #endif`);
+  };
+}
+for (const m of BRUSH_MATERIALS) installBrush(m);
+
+// Apply `materials.steel` to both steel materials — at creation and LIVE from
+// APPLIERS.materials. Roughness and anisotropy are material properties three
+// refreshes every frame; only the direction is a custom uniform, and a
+// material not yet compiled picks it up at first compile from the schema.
+export function applyBrushFromAesthetics() {
+  const st = aesthetics.materials?.steel || {};
+  const brush = Math.min(1, Math.max(0, st.brush ?? 1));
+  const a = ((st.brushAngleDeg ?? 0) * Math.PI) / 180;
+  for (const m of BRUSH_MATERIALS) {
+    m.roughness = BRUSH_POLISH_FLOOR + (STEEL_FINISH.roughness - BRUSH_POLISH_FLOOR) * brush;
+    m.anisotropy = Math.max(BRUSH_EPS, brush);
+    const sh = m.userData.shader;
+    if (sh?.uniforms?.brushDir) sh.uniforms.brushDir.value.set(Math.cos(a), Math.sin(a));
+  }
+}
+applyBrushFromAesthetics();
+
 // Deep, saturated blued-steel for screws and hands.
 const blueSteel = phys({
   color: 0x1b3a86,

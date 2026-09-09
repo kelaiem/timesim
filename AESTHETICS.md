@@ -20,6 +20,10 @@ Only values that affect pure visual appearance (not mechanical behavior or calcu
 - **Rim Spot**: Color, intensity, penumbra, decay
 - **Backdrop**: Color, roughness, metalness
 
+### Materials
+- **Steel finish**: `materials.steel.brush` — one slider from polished (0) to brushed (1), default brushed (§203 step 2). It reaches the works' steel and the case exterior's (`MATS.steel` and `MATS.caseMetal`, split in §203 step 1) alike. Both ends are constraints rather than tastes: at 0 the roughness sits on the renderer's own floor (0.0525 — three's shader clamps below it, so a smaller number does nothing) and the lobe is isotropic; at 1 the lobe is fully anisotropic and the across-grain roughness is the steel's authored 0.30, which is named as underived in `materials.js` rather than laundered. Between them both mix linearly. `materials.steel.brushAngleDeg` sets the straight grain's direction on FLATS (levers, springs, cocks, the bezel top — a face within cos 45° of the movement axis); everything else (arbors, pinion bodies, the band's flank, the crowns) is grained circumferentially about the movement axis, the way a lathe or a turning brush leaves it. The direction is a world-space law in the shader, never the UV tangent, because procedural geometry's UVs run wherever each builder's parametrisation runs. **Live**: the panel writes both materials with no reload, and the anisotropy define is held on across the whole range so a drag is never a shader recompile. `node tools/probe-203-brush.mjs` (a report) screenshots both ends and a turned grain and diffs them.
+- **Ruby colour**: `materials.ruby.color` — bearing jewels, pallet stones and the impulse pin; live since §23.
+
 ### Camera & Rendering
 - **Camera**: Damping factor (controls smoothness of orbit)
 - **Rendering**: Tone mapping exposure
@@ -63,5 +67,6 @@ This separation ensures that tweaking the look of the clock won't break its mech
 
 - `src/geometry.js` - Imports aesthetics for hand and marker styling
 - `src/main.js` - Imports aesthetics for lighting, rendering, and scene setup
+- `src/materials.js` - Reads `materials.*` for the ruby's colour and the steel finish (its grain law lives there)
 - `src/aesthetics.js` - Module that exports the aesthetics configuration
 - `src/aesthetics.json` - Central configuration file with all aesthetic values
