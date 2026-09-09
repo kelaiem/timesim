@@ -21941,12 +21941,110 @@ entry — and an incremental run restricts the four sweeps to Chain's 56 of
 only on whether `main`'s baseline run has finished when the PR's job starts;
 either way the verdict is the whole movement's.
 
-### What remains — roadmap item 203, steps 2–4
+### Step 2 — the finish slider, and the grain it lays
 
-The slider (`materials.steel.brush`, default 1 = brushed, the world-space
-grain law in `onBeforeCompile` on BOTH steel materials), the alloy pick
-(`materials.caseMetal.alloy` with the panel's new `<select>` kind, the
-loader's option validation, four DERIVED colours and `?metal=`), and the
-Materials section `AESTHETICS.md` has owed since §23 made the ruby colour a
-live knob. All three are filed in the private roadmap under the same number;
-the entry there names this step as shipped and points here.
+`materials.steel.brush`, one slider from polished (0) to brushed (1), default
+**brushed** (the owner's call at filing), and `materials.steel.brushAngleDeg`
+beside it. Both reach `MATS.steel` and `MATS.caseMetal` alike — step 1's
+split is what lets step 3 give the case an alloy without this step having to
+tell the two apart. Two `_labels`, five locale rows, `_bounds` on both, and
+the panel's generic slider does the rest (§23): no hand-written row.
+
+#### The two ends are constraints, and the entry's own rule had to move
+
+The polished end is the renderer's roughness floor — `lights_physical_fragment`
+clamps `max(roughnessFactor, 0.0525)`, so a smaller number does nothing —
+with the lobe isotropic. The brushed end is `anisotropy = 1`, the BRDF's own
+saturation, with the across-grain roughness at `STEEL_FINISH`'s 0.30, the
+authored number step 1 named as underived. Between them BOTH mix linearly.
+
+The roadmap entry had said the slider would drive anisotropy alone and leave
+roughness a constant beside the knob. Measured against the ask, that rule put
+the shipped SATIN at the polished end — 0.30 isotropic is exactly what the
+movement looked like before the slider existed, and the ask was polished, not
+"the old look with the grain off". So roughness rides the slider too, from
+the floor to the constant; the constant itself is still not derived, and is
+still named so in the comment. The record says this here because the entry
+did not, and a plan describing an abandoned rule is worse than none.
+
+#### The direction is a world-space law
+
+three r165 has the anisotropic GGX (`USE_ANISOTROPY`), but its tangent frame is
+`getTangentFrame(-vViewPosition, normal, vUv)` — screen derivatives of the
+UVs — so left alone the grain runs whichever way each builder's
+parametrisation happens to: a lathe's around its axis, an extrude's along
+world x, a box's per face, and a welded geometry with no `uv` attribute gives
+a zero derivative and a NaN frame. `installBrush` in `materials.js` overrides
+`material.anisotropyT` / `anisotropyB` after `lights_physical_fragment` from
+the WORLD normal instead, the ribbing shader's construction, so `tbn` is never
+read:
+
+- a face within the ribbing's own gate of ±z (`|n.z| > 0.7`, cos 45°, the
+  diagonal between a flat and a flank) is a FLAT — a lever, a spring, a cock,
+  the bezel top — and is straight-grained along `brushAngleDeg` in the plate
+  plane;
+- everything else — an arbor, a pinion body, the band's flank, a crown — is
+  grained circumferentially about the movement axis, `cross(ẑ, n)`, the
+  direction a lathe or a turning brush leaves.
+
+The world direction is projected into the tangent plane, taken to view space
+and re-orthogonalised against the shading normal, and the bitangent is
+`cross(normal, T)`. One custom uniform, `brushDir`; roughness and anisotropy
+are material properties three refreshes every frame, so the live path is two
+property writes and one uniform on each of two materials.
+
+#### The define is held on
+
+`MeshPhysicalMaterial`'s `anisotropy` setter bumps the material version
+whenever the value crosses zero — a shader RECOMPILE mid-drag, and the trap
+the entry named. So the polished end is `BRUSH_EPS = 1e-3`, not 0: the
+shader's only zero-guard is `if (material.anisotropy == 0.0)`, and at 1e-3
+the lobe is isotropic to one part in a million (`alphaT = mix(r², 1, a²)`).
+The epsilon is below the slider's step (1/100 of its range), so no drag can
+land between it and zero.
+
+#### Instrument
+
+A full local battery on this tree, diffed against step 1's tree (the served
+files `main` carries), plus `tools/probe-203-brush.mjs`.
+
+```
+step 2:  39/39 gates pass · total 2431.3s (checks 3940.0s across 2 shard(s))
+fingerprint A = B = 2402376983, as on both trees before it
+```
+
+The two `--report` files differ at **54 leaves and every one is a timing**:
+the 25 per-check `ms`, the per-axis `sliceMs` of the three split sweeps
+(14 axes × 3), and the `*Ms` fields inside each census. Every result row of
+every check is equal, and the two `--digests` files are byte-identical with
+no exclusion — a finish is not in the per-unit key, measured a second time.
+
+The probe boots the page three times through the override store — `brush`
+0, `brush` 1, and `brush` 1 with the grain turned 90° — and reads back off
+each live page:
+
+| end | `MATS.steel` and `MATS.caseMetal` | override compiled | boot warns |
+|---|---|---|---|
+| polished (0) | roughness **0.0525**, anisotropy **0.001** | yes, both | 0 |
+| brushed (1) | roughness **0.3**, anisotropy **1** | yes, both | 0 |
+
+That is the polished end sitting on the renderer's floor with the define
+still on (anisotropy at the epsilon, never 0), the brushed end at the
+authored constant with the lobe saturated, the world-space override present
+in both compiled fragment shaders, and boot silent (standing rule 6). Read
+by eye from its shots: at the polished end the bezel, the back ring and the
+steel of the escapement are mirror-bright with sharp reflections of the
+studio; at the brushed end the same metal reads matte with a broad soft
+highlight, the ring's a streak along its circumference. The pairwise
+luminance diffs between the three boots are recorded in the paragraph
+below, added when the third boot's views landed.
+
+#### What remains — roadmap item 203, steps 3 and 4
+
+The alloy pick (`materials.caseMetal.alloy` with the panel's new `<select>`
+kind, the loader's option validation, four DERIVED colours and `?metal=`),
+and the rest of the Materials section `AESTHETICS.md` now carries — step 2
+wrote the steel's paragraph and the ruby's line, so what step 4 owes is the
+`decoration` and `gong` headings the page has never had. Both are filed in the
+private roadmap under the same number; the entry there names steps 1 and 2 as
+shipped and points here.
