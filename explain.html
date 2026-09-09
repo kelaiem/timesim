@@ -108,7 +108,22 @@
   details.mech > summary::before { content: '▸'; font-size: 9px; color: #6b7683; transition: transform 0.15s; }
   details.mech[open] > summary::before { transform: rotate(90deg); }
   details.mech > summary:hover { color: var(--head-hover); }
-  details.mech > summary .where { margin-left: auto; font: 10px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: 0; text-transform: none; }
+  details.mech > summary .where { margin-inline-start: auto; font: 10px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: 0; text-transform: none; }
+  /* §208 — the first right-to-left locale. The document's `dir` comes from
+     src/i18n.js beside `lang`, and a flex row, a text-align: start and a
+     margin-inline mirror with it for free; what does NOT is anything drawn.
+     SVG text anchors read `direction` too — under rtl every text-anchor:
+     start label would swing to the other side of its anchor point and the
+     fit gate would report a plate full of collisions — so the drawings keep
+     their coordinate system and only their labels' letters run right-to-left
+     (an Arabic run inside an ltr paragraph shapes and orders itself
+     correctly; the base direction only decides where MIXED runs sit). The
+     disclosure marker mirrors by glyph rather than by transform: '▸' rotated
+     90° points down, '◂' rotated 90° points up, so the rtl open state turns
+     the other way. */
+  figure svg { direction: ltr; }
+  [dir="rtl"] details.mech > summary::before { content: '◂'; }
+  [dir="rtl"] details.mech[open] > summary::before { transform: rotate(-90deg); }
   .mech-body { border-top: 1px solid var(--hairline); padding: 14px 0 18px; }
   .mech-body p { max-width: 68ch; margin: 0 0 10px; }
   .mech-body p.note { color: var(--muted); font-size: 12px; }
@@ -158,10 +173,10 @@
   table { border-collapse: collapse; font-size: 12px; width: 100%; font-variant-numeric: tabular-nums; }
   th {
     font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--head);
-    font-weight: 600; text-align: left; padding: 6px 12px 6px 0;
+    font-weight: 600; text-align: start; padding: 6px 0; padding-inline-end: 12px;
     border-bottom: 1px solid var(--hairline-strong);
   }
-  td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  td { padding: 7px 0; padding-inline-end: 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
   td:first-child { white-space: nowrap; }
   .table-wrap { overflow-x: auto; }
 
@@ -182,7 +197,8 @@
        other in its header. -->
   <a class="back" href="./primer.html">just want to understand it? →</a>
   <span class="spacer"></span>
-  <!-- §73 tier two: the same three locales as the app's chrome, chosen the
+  <!-- §73 tier two: the same locales as the app's chrome (LOCALES in
+       src/i18n.js is the one roster — six translations since §208), chosen the
        same way (?lang → localStorage → navigator.language) and applied the
        same reload-tier way. Untranslated blocks render English visibly. -->
   <select id="lang-select" aria-label="Language" title="Language"></select>

@@ -18,7 +18,7 @@
 // the scope AND the version · version.json and /__state NOT cached · precache
 // complete · OFFLINE: index boots, deep link boots, explain.html renders,
 // primer.html renders · the localized primer boots from cache in EACH of the
-// five non-English locales and the ?lang=zh-Hant deep link stays Traditional
+// six non-English locales and the ?lang=zh-Hant deep link stays Traditional
 // (§116) · primer.html renders (§95 — this boot is also the assert that catches a
 // mis-listed primer seed: the stamper tolerates an absent primer because
 // archived pre-§95 trees legitimately lack one, so only HERE, where the tree
@@ -303,7 +303,7 @@ try {
   // line is never reached). §116 hit that second failure and it presents as a
   // hang, not a number: the per-locale offline boots below are what actually
   // prove each table arrived.
-  check('release: precache complete', counts === 33, `${counts}/33`);
+  check('release: precache complete', counts === 35, `${counts}/35`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -341,7 +341,7 @@ try {
   // missing table from another, and a per-locale dynamic import is exactly the
   // kind of thing that gets added to a LOADERS map and forgotten in a file
   // name; this loop is what makes each one prove itself from cache.
-  for (const code of ['de', 'fr', 'ja', 'zh', 'zh-Hant']) {
+  for (const code of ['de', 'fr', 'ja', 'zh', 'zh-Hant', 'ar']) {
     await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, { waitUntil: 'load' });
     const ok = await page.evaluate((c) =>
       document.documentElement.lang === c

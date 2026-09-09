@@ -25869,7 +25869,10 @@ style.textContent = `
 .hud-panel .ui-section > summary:hover { color: #b9cbe0; }
 .hud-panel .ui-section-body { padding-bottom: 4px; }
 .hud-panel .ui-section-body > .row:first-child { margin-top: 0; }
-#btn-hide-ui, #btn-hide-view { position: absolute; top: 10px; right: 12px; padding: 2px 7px !important; font-size: 10px !important; color: #8b95a1 !important; }
+/* inset-inline-end, not right (§208): the panel's title starts at the text's
+   start edge, so the hide button belongs at its END — physical right put it on
+   top of the Arabic title. */
+#btn-hide-ui, #btn-hide-view { position: absolute; top: 10px; inset-inline-end: 12px; padding: 2px 7px !important; font-size: 10px !important; color: #8b95a1 !important; }
 /* §110 item 1 — the chrome bar. Above every panel it toggles (z 12, over
    #clock-update's 11) because it must stay reachable whatever else is up:
    a control that opens the chrome cannot be underneath the chrome.
@@ -25926,11 +25929,13 @@ style.textContent = `
   display: block; white-space: normal; overflow-wrap: anywhere;
   margin-bottom: 2px; line-height: 1.25; opacity: 0.85;
 }
-/* the scalar readout rides the label line, right-aligned - the number a
-   slider is AT, not just where it sits in its groove (owner call) */
+/* the scalar readout rides the label line, end-aligned - the number a
+   slider is AT, not just where it sits in its groove (owner call). Logical
+   rather than physical since §208: under a right-to-left document the label
+   starts at the right and the readout belongs at the left end of its line. */
 .hud-panel .adv-row .adv-val {
-  float: right; opacity: 0.95; color: #e0a355;
-  font: 11px ui-monospace, monospace; margin-left: 8px;
+  float: inline-end; opacity: 0.95; color: #e0a355;
+  font: 11px ui-monospace, monospace; margin-inline-start: 8px;
 }
 .hud-panel .adv-row input, .hud-panel .adv-row select { width: 100%; }
 .hud-panel input[type=range] { width: 128px; accent-color: #3a6bd8; }
@@ -26704,8 +26709,13 @@ function setBarState(id, on) {
 // three more locales and German is STILL the widest (measured together on one
 // machine: en 170.2, de 192.4, fr 189.9, ja 166.0, zh 144.0, zh-Hant 144.0 —
 // absolute numbers move with the font stack, the ordering is the point), so
-// nothing below needed re-deriving. So the two rules below read the bar's OWN
-// rect:
+// nothing below needed re-deriving. §208's Arabic measured 198.1 on its first
+// pass — WIDER than German, on a three-word "Controls" — and 167.0 once that
+// face became the one word التحكم: a face is chosen against this bar, not
+// only against the 240 px column. The bar is also the one piece of chrome
+// that does NOT mirror under dir="rtl": it is pinned to the viewport's
+// top-right, a fact about the screen rather than about the script. So the
+// two rules below read the bar's OWN rect:
 //   · if the bar would sit over the panel's header (its Hide button and
 //     title live in that corner), the panel drops below the bar;
 //   · if both panels cannot fit side by side, they become mutually

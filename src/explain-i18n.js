@@ -1,7 +1,7 @@
 // §73 tier two — THE EXPLAINER, LOCALIZED. German and Chinese prose for
 // explain.html's entries, plates and captions; French, Japanese and
-// Traditional Chinese since §117 (§116 wired the tables in empty), all
-// five at 100%.
+// Traditional Chinese since §117 (§116 wired the tables in empty); Arabic
+// since §208 — all six at 100%.
 //
 // The walk and the swap live in src/page-i18n.js (§95 moved them there when
 // the primer became a second tier-two page); this file is the EXPLAINER's
@@ -65,6 +65,7 @@ const LOADERS = {
   ja: () => import('./explain-i18n.ja.js'),
   zh: () => import('./explain-i18n.zh.js'),
   'zh-Hant': () => import('./explain-i18n.zh-Hant.js'),
+  ar: () => import('./explain-i18n.ar.js'),
 };
 const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 
