@@ -336,9 +336,36 @@ function registerExplode(obj, baseZ, layer, dir = 1) {
 // orders the member UNITS of a group instead, see groupDrillRank).
 // `baseZ` is read off the constructed position, so it cannot disagree with
 // it the way registerExplode's argument once did.
-const subEntries = []; // { obj, parentUnit, displayName, baseZ, subLayer }
-function registerSub(parentUnit, displayName, obj) {
-  subEntries.push({ obj, parentUnit, displayName, baseZ: obj.position.z, subLayer: null });
+const subEntries = []; // { obj, parentUnit, displayName, baseZ, subLayer, tickOwned }
+// `tickOwned` — §10 level 2's remainder: a piece whose position tick() writes
+// every frame (the winding stem, the alarm's pusher, selector ring, sleeve,
+// lifter, link rod and pawl tip) cannot take the generic write below — the
+// two would fight, and the generic write's rest value would be the wrong
+// one whenever tick has moved the piece for a real reason. Such a piece is
+// registered tickOwned and its tick write ADDS subDrillZ(obj) to the z it
+// computes: resetRod's `rodOff` pattern, the entry's own template.
+// A PIECE MAY HAVE SEVERAL BODIES. The selector ring stands on three
+// identical posts and the sleeve on three more; three records at one height
+// would fan as if they were a stack, which is not what the metal is. So a
+// registration repeated under the same unit and display name ADDS a body to
+// that piece, and the piece's bodies move together and rank by their union.
+// A registration repeated for the same object refreshes its record (several
+// alarm units are built inside functions that run again on a re-solve), so
+// a piece is one record however many times the build ran.
+function registerSub(parentUnit, displayName, obj, { tickOwned = false } = {}) {
+  const byObj = subEntries.find((s) => s.objs.includes(obj));
+  if (byObj) { Object.assign(byObj, { parentUnit, displayName, subLayer: null, tickOwned }); byObj.baseZ.set(obj, obj.position.z); return; }
+  const byName = subEntries.find((s) => s.parentUnit === parentUnit && s.displayName === displayName);
+  if (byName) { byName.objs.push(obj); byName.baseZ.set(obj, obj.position.z); byName.subLayer = null; return; }
+  subEntries.push({ objs: [obj], get obj() { return this.objs[0]; }, parentUnit, displayName, baseZ: new Map([[obj, obj.position.z]]), subLayer: null, tickOwned });
+}
+const EXPLODE_UNIT = 4; // one explode layer in z units — updateExplode's UNIT, hoisted so the tick compose reads the same number
+function subDrillZ(obj) {
+  if (!(drillAmount > 0)) return 0;
+  const s = subEntries.find((x) => x.objs.includes(obj));
+  if (!s || s.subLayer === null || !subActive(s.parentUnit)) return 0;
+  const ent = explodeEntries.find((en) => explodeEntryName(en) === s.parentUnit);
+  return drillAmount * s.subLayer * (ent ? ent.dir : 1) * EXPLODE_UNIT;
 }
 function solveSubLayers() {
   const byParent = new Map();
@@ -350,9 +377,12 @@ function solveSubLayers() {
     // the piece's metal, measured: world bounds → centre → the parent's frame,
     // which is the frame the drill writes in
     const stand = (s) => {
-      s.obj.updateWorldMatrix(true, true);
-      box.setFromObject(s.obj).getCenter(ctr);
-      if (s.obj.parent) s.obj.parent.worldToLocal(ctr);
+      // a piece's bodies, as one: bodies a rebuild has detached are dropped
+      s.objs = s.objs.filter((o) => o.parent);
+      const u = new THREE.Box3();
+      for (const o of s.objs) { o.updateWorldMatrix(true, true); u.union(box.setFromObject(o)); }
+      u.getCenter(ctr);
+      if (s.obj && s.obj.parent) s.obj.parent.worldToLocal(ctr);
       return ctr.z;
     };
     // stable: equal z keeps registration order, so a tie is never a gap
@@ -4376,6 +4406,20 @@ settingCap.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_CANNON_PINION);
 const SETTING_CAP_PHASE =
   Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
 keyless.add(settingCap);
+// §10 level 2, the keyless table — the pieces on the winding and setting
+// paths, named for what the code builds. The winding stem is tick-written
+// (its pull travel) and composes its drill offset in tick.
+registerSub('Keyless works', 'Crown wheel', crownWheel);
+registerSub('Keyless works', 'Transfer wheel', transferWheel);
+registerSub('Keyless works', 'Transfer arbor', transferArbor);
+registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
+registerSub('Keyless works', 'Winding pinion', windPinionGroup);
+registerSub('Keyless works', 'Winding stem', windSpinner, { tickOwned: true });
+registerSub('Keyless works', 'Setting wheel', settingWheel);
+registerSub('Keyless works', 'Minute-wheel arbor', minuteArbor);
+registerSub('Keyless works', 'Setting drop', settingDrop);
+registerSub('Keyless works', 'Setting rise', settingRise);
+registerSub('Keyless works', 'Setting cap', settingCap);
 
 // ---------------------------------------------------------------------------
 // Setting-lever linkage — the visible actuation chain behind the crown pull.
@@ -13130,6 +13174,8 @@ const alarmSelRing = new THREE.Group();
     post.rotation.x = Math.PI / 2;
     post.position.set(dlx * ALARM_SEL_POST_R, dly * ALARM_SEL_POST_R, -0.05 + postLen / 2);
     alarmSelectorUnit.add(post);
+    registerSub('Alarm selector', 'Selector ring', alarmSelRing, { tickOwned: true }); // §10 level 2 — tick slides it on the switch
+    registerSub('Alarm selector', 'Selector post', post);
   }
 }
 // §34 pass 2b corridor asserts — the posts' walls, achieved numbers:
@@ -13498,6 +13544,8 @@ const alarmSleeve = new THREE.Group(); // the moving ring (flat + skirt + bosses
     post.rotation.x = Math.PI / 2;
     post.position.set(dlx * ALARM_SLEEVE_POST_R, dly * ALARM_SLEEVE_POST_R, -0.05 + postLen / 2);
     alarmSleeveUnit.add(post);
+    registerSub('Alarm release sleeve', 'Release sleeve', alarmSleeve, { tickOwned: true }); // §10 level 2 — tick lifts it through the collar
+    registerSub('Alarm release sleeve', 'Sleeve post', post);
   }
 }
 // §45 sleeve band-fit asserts — the chain block priced the band; verify the
@@ -14608,6 +14656,7 @@ const alarmFeelerLever = new THREE.Group();
 alarmFeelerLever.position.set(_uF.x * ALARM_FEELER_PIVOT_R, _uF.y * ALARM_FEELER_PIVOT_R, _armMidZ);
 alarmFeelerLever.rotation.z = _phiF; // local +x = inboard, toward the pin
 alarmFeelerUnit.add(alarmFeelerLever);
+registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 level 2
 {
   const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_ARM_LEN, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.steel);
   arm.position.x = ALARM_FEELER_ARM_LEN / 2;
@@ -14743,6 +14792,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   alarmPawlFlex.position.set(Math.cos(dirL) * ALARM_PAWL_DIST, Math.sin(dirL) * ALARM_PAWL_DIST, 0);
   alarmPawlFlex.rotation.z = -dirL; // beak's +x aims at the climb axis
   alarmFeelerLever.add(alarmPawlFlex);
+  registerSub('Alarm release feeler', 'Pawl tip', alarmPawlFlex, { tickOwned: true }); // §10 level 2 — tick flexes it with the tooth profile
 }
 // §29 step 4 asserts — the tail's corridor and the travel arithmetic:
 {
@@ -15340,6 +15390,8 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   post.position.set(hx + 0.7, 1.3, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
   post.rotation.x = Math.PI / 2;
   alarmLifterUnit.add(post);
+  registerSub('Alarm release lifter', 'Release lifter', alarmLifter, { tickOwned: true }); // §10 level 2 — tick presses it toward the dial
+  registerSub('Alarm release lifter', 'Lifter post', post);
   {
     const ez = ALARM_LIFT_EYE_Z;
     const eyeROut = 0.17 + STOCK_MIN_U;  // the RING carries the bore (0.02 running fit over the 0.15 plunger)
@@ -16219,6 +16271,8 @@ if (Math.hypot(hammerPiv.x, hammerPiv.y) + HAMMER_POST_R > R_ANNULUS_OUT + 1e-9
 const alarmHammerPivot = new THREE.Group();
 alarmHammerPivot.position.set(hammerPiv.x, hammerPiv.y, Z_STRIKE);
 alarmHammerUnit.add(alarmHammerPivot);
+registerSub('Alarm hammer', 'Hammer post', hammerPost); // §10 level 2
+registerSub('Alarm hammer', 'Hammer', alarmHammerPivot);
 // §148 — A HAMMER, NOT A MALLET. The striker was a 0.6 ball on a rod, and a
 // ball on a rod is a mallet: it has no face, no peen and no eye, and nothing
 // about it says which way it hits. A hammer's head is a BAR lying along the
@@ -16620,10 +16674,12 @@ const ALARM_LIFT_POST_R = 0.6;         // the §24 hammer post's section, on the
   post.rotation.x = Math.PI / 2;       // stand it along the movement axis (§197's lesson: CylinderGeometry lies down)
   post.position.set(LIFT_PIV.x, LIFT_PIV.y, (Z_STRIKE + TQ_TOP_Z - 0.5) / 2);
   alarmLiftUnit.add(post);
+  registerSub('Alarm lifting lever', 'Lever post', post); // §10 level 2 — the hammer's two pieces, mirrored
 }
 const alarmLiftPivot = new THREE.Group();   // what tick rotates — the lever's angle, solved from the hammer's
 alarmLiftPivot.position.set(LIFT_PIV.x, LIFT_PIV.y, Z_STRIKE);
 alarmLiftUnit.add(alarmLiftPivot);
+registerSub('Alarm lifting lever', 'Lifting lever', alarmLiftPivot);
 // Where the lever's pivot stands off the wheel — the numbers the cam is
 // sized against. Identical to the §25 hammer's by construction (the lever
 // pivots where that hammer did), asserted rather than assumed.
@@ -17656,6 +17712,8 @@ alarmBarrelUnit.add(alarmBarrelRotor);
 const alarmArborRotor = new THREE.Group();
 alarmArborRotor.position.set(alarmBarrelPos.x, alarmBarrelPos.y, ALARM_BARREL_Z);
 alarmBarrelUnit.add(alarmArborRotor);
+registerSub('Alarm barrel', 'Barrel', alarmBarrelRotor); // §10 level 2
+registerSub('Alarm barrel', 'Arbor, winding wheel and ratchet', alarmArborRotor);
 // §89 split the single member; §99 took the OTHER split — the true going
 // barrel. §25 A built this as ONE member: body, arbor and ribbon in one
 // rotating group, so the coil turned rigidly with the drum and stored
@@ -22283,6 +22341,8 @@ const ALARM_COL_BAND_MID = ALARM_COL_SPIN_REL + ALARM_COL_BASE_H / 2 + ALARM_COL
 const alarmLockRocker = new THREE.Group();
 alarmLockRocker.position.set(ALARM_ROCKER.Q.x, ALARM_ROCKER.Q.y, ALARM_LOCK_Z + ALARM_COL_BAND_MID);
 alarmLockUnit.add(alarmLockRocker);
+registerSub('Alarm lock', 'Lock lever', alarmLockLever); // §10 level 2
+registerSub('Alarm lock', 'Lock rocker', alarmLockRocker);
 {
   // §192 — the band minus one running margin per face. The 0.6 factor it
   // replaces was never derived ("as the old nose") and its per-face clearance
@@ -23818,6 +23878,9 @@ const alarmLinkParts = {};
     alarmLinkParts.rod = rod;
     alarmLinkParts.rodLen = rodLen;
     alarmLinkParts.rodZRest = rod.position.z;
+    registerSub('Alarm link', 'Rod', rod, { tickOwned: true }); // §10 level 2 — tick drops it with the beak
+    registerSub('Alarm link', 'Lay shaft', alarmLinkParts.shaft);
+    registerSub('Alarm link', 'Beak arm', alarmLinkParts.beakArm);
     // §202 — THE ROD'S TWO BUSHES, one in each plate, owned by this unit (a
     // bush is part of the part it holds — supportAt's covenant, and the lay
     // shaft's hangers' precedent). Bore and outside are the plan hoist's
@@ -24496,6 +24559,9 @@ if (ALARM_PUSH_GUIDE_BORE <= ALARM_PUSH_STEM_R)
 const ALARM_PUSH_AXIS_REL = (TQ_BOT_Z - CLEAR_MARGIN - ALARM_PUSH_GUIDE_HALF) - ALARM_LOCK_Z;
 alarmPusherGroup.position.set(_pushBase.x, _pushBase.y, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
 alarmSwitchUnit.add(alarmPusherGroup);
+registerSub('Alarm switch', 'Column wheel', alarmColSpin); // §10 level 2
+registerSub('Alarm switch', 'Jumper arm', alarmJumperArm);
+registerSub('Alarm switch', 'Pusher', alarmPusherGroup, { tickOwned: true }); // tick slides it on the press
 // §198 — the gong ring runs UNDER this stem; its ceiling was derived from the
 // same constants up at the gong block, and this is the two agreeing.
 if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARGIN - 1e-9)
@@ -32544,7 +32610,7 @@ function explorePickFrom(hits, throughGlass) {
     // name stays what a drag takes (sub is display only).
     let sub = null;
     for (let o = h.object; o && o !== movement; o = o.parent) {
-      if (!sub && drillAmount > 0) { const s = subEntries.find((x) => x.obj === o && subActive(x.parentUnit)); if (s) sub = s.displayName; }
+      if (!sub && drillAmount > 0) { const s = subEntries.find((x) => x.objs.includes(o) && subActive(x.parentUnit)); if (s) sub = s.displayName; }
       const lbl = labelEntries.find((l) => l.obj === o);
       if (lbl) return { name: lbl.name, point: h.point, sub };
       const ent = explodeEntries.find((en) => en.obj === o);
@@ -34650,7 +34716,7 @@ function assertUnitGroups() {
   for (const s of subEntries) {
     if (!universe.has(s.parentUnit))
       console.warn(`sub-record "${s.displayName}": parent "${s.parentUnit}" is not a registered unit name`);
-    claimedObj.set(s.obj, [...(claimedObj.get(s.obj) ?? []), s.displayName]);
+    for (const o of s.objs) claimedObj.set(o, [...(claimedObj.get(o) ?? []), s.displayName]);
   }
   for (const [, names] of claimedObj)
     if (names.length > 1) console.warn(`one object is claimed by ${names.length} sub-records (${names.join(', ')}) — a piece belongs to one record`);
@@ -36326,7 +36392,7 @@ function fmtHM(displaySeconds) { return formatTime(displaySeconds).slice(0, -3);
 // works, where it is read off the PIN that is actually holding the tail.)
 
 function updateExplode() {
-  const UNIT = 4;
+  const UNIT = EXPLODE_UNIT;
   for (const e of explodeEntries) {
     // With one unit selected, the plates co-lift to their own full-explode
     // positions: a lone unit rising through a parked three-quarter plate or
@@ -36374,12 +36440,13 @@ function updateExplode() {
   // fight this write; the fusee arbor's pieces are rotated by tick, never
   // positioned, which is what makes them registrable.
   for (const s of subEntries) {
-    const on = drillAmount > 0 && subActive(s.parentUnit);
-    if (on) {
-      const ent = explodeEntries.find((en) => explodeEntryName(en) === s.parentUnit);
-      s.obj.position.z = s.baseZ + drillAmount * s.subLayer * (ent ? ent.dir : 1) * UNIT;
-    } else if (s.obj.position.z !== s.baseZ) {
-      s.obj.position.z = s.baseZ;
+    if (s.tickOwned) continue;   // tick composes subDrillZ into its own write
+    const on = drillAmount > 0 && subActive(s.parentUnit) && s.subLayer !== null;
+    const ent = on ? explodeEntries.find((en) => explodeEntryName(en) === s.parentUnit) : null;
+    for (const o of s.objs) {
+      const base = s.baseZ.get(o);
+      if (on) o.position.z = base + drillAmount * s.subLayer * (ent ? ent.dir : 1) * UNIT;
+      else if (o.position.z !== base) o.position.z = base;
     }
   }
   updateLabelDrags();
@@ -36841,7 +36908,7 @@ function tick(t) {
   // (local +Y = outward) — crownPullT itself was updated at the top of
   // tick(), before the clutch routing above needed it.
   const crownOutDist = pinDist + crownPullT * CROWN_PULL_DIST;
-  windSpinner.position.set(uWind.x * crownOutDist, uWind.y * crownOutDist, Z_KEYLESS);
+  windSpinner.position.set(uWind.x * crownOutDist, uWind.y * crownOutDist, Z_KEYLESS + subDrillZ(windSpinner)); // §10 level 2: the drill composes here, resetRod's rodOff pattern
   // TODO 50 — the CLUTCH's slide is the stem's pull PLUS the saw lift: the
   // coupling's ride law at the coupling's own relative angle, which IS
   // −windStemSlip (the clutch is keyed to the stem, the pinion to the bank,
@@ -37396,8 +37463,8 @@ function tick(t) {
   {
     const sHead = (ALARM_LIFT_HEAD_R - ALARM_CD) - alarmCrownPullT * CROWN_PULL_DIST;
     alarmSleeveLiftNow = alarmCollarRAt(sHead) - ALARM_COLLAR_THIN_R; // 0 → ALARM_SLEEVE_TRAVEL
-    alarmLifter.position.z = -alarmSleeveLiftNow;                     // world: pressed toward the dial
-    alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow; // dial-local +z ≡ the same world direction
+    alarmLifter.position.z = -alarmSleeveLiftNow + subDrillZ(alarmLifter);                     // world: pressed toward the dial (+ §10 level 2's drill)
+    alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow + subDrillZ(alarmSleeve); // dial-local +z ≡ the same world direction (+ the drill)
     alarmLifterBladeGroup.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
     const skirtTopZ = (ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow) - ALARM_SLEEVE_T;
     const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
@@ -37558,7 +37625,7 @@ function tick(t) {
       // The tail's far end — the rod's station — rises by the lever ratio;
       // the rod rides it, foot-down onto the rim finger.
       const rodLift = noseDrop * (alarmLinkParts.tailLen / alarmLinkParts.beakLen) * Math.sign(F.rodTravel);
-      alarmLinkParts.rod.position.z = alarmLinkParts.rodZRest + rodLift;
+      alarmLinkParts.rod.position.z = alarmLinkParts.rodZRest + rodLift + subDrillZ(alarmLinkParts.rod); // §10 level 2: the drill composes here
       // The rim finger follows its contact with the rod's foot: the
       // envelope solve, seeded deterministically along the derived roll
       // span so the answer is a pure function of the pose.
@@ -37573,7 +37640,7 @@ function tick(t) {
       const pinNow = F.pinFit.A * Math.sin(roll + F.dPhi) + F.pinFit.B * Math.cos(roll + F.dPhi) + F.pinFit.C;
       alarmSelShownT = Math.max(0, Math.min(1, (pinNow - F.grooveMidRest) / F.travelW));
     }
-    alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT;
+    alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT + subDrillZ(alarmSelRing); // §10 level 2: the drill composes here
     // TODO 19 (closed) — the rocker's angle is SOLVED FROM THE CONTACT, not
     // amplitude-fitted: the sensing pin's tip must lie ON the ring's riding
     // face at every state, which is one equation in the rocker's see-saw
@@ -37793,7 +37860,7 @@ function tick(t) {
       const seatedT = 1 - clamp(alarmPinDropPhys / ALARM_PIN_DROP, 0, 1); // §45 stage 2: a held pin seats the pawl
       const ph = ((alarmWindUnit.userData.climb.rotation.z * ALARM_BEVEL_TEETH / (2 * Math.PI)) % 1 + 1) % 1;
       const saw = ph < 0.85 ? ph / 0.85 : (1 - ph) / 0.15;
-      alarmPawlFlex.position.z = -seatedT * ALARM_PAWL_ENGAGE * 0.9 * saw; // cam-out is plate-ward (−local z), the withdrawal's own direction
+      alarmPawlFlex.position.z = -seatedT * ALARM_PAWL_ENGAGE * 0.9 * saw + subDrillZ(alarmPawlFlex); // cam-out is plate-ward (−local z), the withdrawal's own direction (+ the drill)
     }
     // §99 — the CLICK rides the arbor ratchet: the maintaining detent's
     // one-sided constraint (seek the seat, stop at the cam — the spring
@@ -37948,7 +38015,7 @@ function tick(t) {
     // turned with the PREVIOUS tick's fraction.
     alarmPusherGroup.position.set(
       _pushBase.x - _pushU.x * ALARM_PUSH_TRAVEL * alarmPusherT,
-      _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived
+      _pushBase.y - _pushU.y * ALARM_PUSH_TRAVEL * alarmPusherT, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL + subDrillZ(alarmPusherGroup)); // the raised press axis (TODO 22) — the tick must pose the SAME station the build derived (+ §10 level 2's drill)
     // §164 — and the return coil closes with it. The collar travels the whole
     // stroke toward the fixed abutment, so the spring between them is a length,
     // not a constant: its frame is a pure function of the press fraction, like
@@ -38399,7 +38466,7 @@ let WELD_CENSUS = null;   // §81 tranche A — filled by the weld pass at the e
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
   // §10 level 2 — the sub-table, read-only, for probes: what the drill knows.
-  get subEntries() { return subEntries.map((s) => ({ parentUnit: s.parentUnit, displayName: s.displayName, baseZ: s.baseZ, subLayer: s.subLayer, z: s.obj.position.z })); },
+  get subEntries() { return subEntries.map((s) => ({ parentUnit: s.parentUnit, displayName: s.displayName, baseZ: s.baseZ.get(s.obj), subLayer: s.subLayer, z: s.obj.position.z, tickOwned: s.tickOwned, bodies: s.objs.length })); },
   setDrill(amount) { drillAmount = amount; drillSlider.value = String(Math.round(amount * 100)); },
   setExplode(amount, unit) { explodeAmount = amount; if (unit !== undefined) { selectedUnit = unit; refreshDrillRow(); } },
   step(dt) {
