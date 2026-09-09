@@ -8444,6 +8444,28 @@ export const MESH_PHASE_WAIVERS = {
   'alarm setting: disc rim ⇄ idler 1b': 'TODO 117',
 };
 const MESH_PHASE_BAR = 0.02;          // solveGearChain's own, see above
+// §135 item 2 — THE CENTRE DISTANCE, GATED. Every row already reports
+// `cdMiss` against module·(P+Q)/2 (the solve's own tripwire); §194 declined
+// to gate it because two keyless rows sit 0.1 out on an undecided constant
+// (TODO 125) and a gate landing red on an undecided constant is §54's banner.
+// The bar is §194's own enumeration criterion — 0.5% of the pitch-radius sum,
+// the tolerance the coverage check below enumerates candidates with — so one
+// number says both "this pair meshes" and "this declared mesh stands where
+// its teeth were cut for". The two rows are WAIVED by name, citing the item,
+// and the waiver goes stale the day the item is decided either way.
+//
+// What TODO 125's deletion measured, so nobody repeats it blind: with the
+// six `+ 0.1` removed, both rows read 0.000% — and §125's D4 assert fires,
+// because the seconds well's outboard bound is derived through the plate
+// from the keyless station and moved 15.6277 → 15.1334 (0.49, not 0.1: the
+// plate re-solves). Deleting the constant is therefore a RE-SOLVE of the
+// identity (D4's literal, the fourth's station, the escapement behind it),
+// not a constant edit, and that is the decision the item is still owed.
+export const MESH_CD_TOL = 0.005;
+export const MESH_CENTRE_WAIVERS = {
+  'keyless: setting wheel ⇄ minute wheel': 'TODO 125',   // 7.58 against 7.48 — the shared +0.1
+  'keyless: wind spur ⇄ transfer wheel': 'TODO 125',     // the same 0.1, the same constant
+};
 
 export function checkMeshPhase(clock) {
   const payload = clock.meshes;
@@ -8453,6 +8475,7 @@ export function checkMeshPhase(clock) {
 
   const axisNames = new Set(AXES.map((a) => a.name));
   const rows = [], violations = [], waived = [], malformed = [], notCredible = [];
+  const centreViolations = [], centreWaived = [];   // §135 item 2
 
   // Every declared input must name a real pose axis. A row that names an axis
   // nobody sweeps is a row whose "driven by" claim is untestable, and the
@@ -8492,13 +8515,26 @@ export function checkMeshPhase(clock) {
       // causes, and only the net can tell them apart.
       offMinPct: +(lo * 100).toFixed(3), offSpreadPct: +((worst.off - lo) * 100).toFixed(3),
       credible: worst.credible, cdMiss: +(worst.d - worst.want).toFixed(5),
+      // §135 item 2 — the miss as a fraction of the pitch-radius sum, the
+      // quantity the bar is stated in; and the row's centre waiver, if any.
+      cdMissRel: +((worst.d - worst.want) / worst.want).toFixed(5),
       moduleSplit: worst.moduleSplit,
       waiver: MESH_PHASE_WAIVERS[r.site] || null,
+      centreWaiver: MESH_CENTRE_WAIVERS[r.site] || null,
     };
     rows.push(row);
     if (!worst.credible) notCredible.push(row);
     if (worst.off > MESH_PHASE_BAR) (row.waiver ? waived : violations).push(row);
+    // §135 item 2 — two gears can only mesh if they share a module (a split
+    // is malformed, not a miss), and a declared mesh must stand within the
+    // bar of the distance its teeth were cut for.
+    if (worst.moduleSplit) malformed.push({ site: r.site, why: `module split ${worst.moduleSplit.join(' vs ')} — two gears cannot mesh across a module` });
+    if (Math.abs(row.cdMissRel) > MESH_CD_TOL) (row.centreWaiver ? centreWaived : centreViolations).push(row);
   }
+  const centreOverNow = new Set(rows.filter((r) => Math.abs(r.cdMissRel) > MESH_CD_TOL).map((r) => r.site));
+  const staleCentreWaivers = Object.keys(MESH_CENTRE_WAIVERS)
+    .filter((k) => !centreOverNow.has(k))
+    .map((k) => ({ site: k, why: rows.some((r) => r.site === k) ? 'row is inside the centre bar — delete the waiver' : 'waiver names no declared mesh' }));
 
   // A waiver for a row that is NOT over the bar is itself a failure: deleting
   // the waiver has to be structurally part of the fix, or the table silently
@@ -8540,7 +8576,67 @@ export function checkMeshPhase(clock) {
   return {
     ok: true, barPct: MESH_PHASE_BAR * 100, poseCount: poses.length,
     rows, violations, waived, malformed, staleWaivers, notCredible,
+    centreBarPct: MESH_CD_TOL * 100, centreViolations, centreWaived, staleCentreWaivers,   // §135 item 2
     controls, controlPass,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// §135 item 4 — meshCoverage. Is there a mesh IN THE METAL that no row
+// declares? The registry's other half: meshPhase and transmits can only judge
+// rows that exist, and a pair nobody wrote down is a pair nobody checks.
+// `clock.meshCandidates(tol)` enumerates every rotor pair that meets §194's
+// three criteria at the current pose (parallel axes, centre distance within
+// `tol` of the pitch-radius sum, rims axially overlapping); this walks the
+// pose net and takes the UNION, because a pair that meets at some pose only
+// (the sliding clutch's) is still a mesh, then diffs against the rows by the
+// unordered member pair. A candidate no row declares is a failure unless
+// waived by name citing a TODO; a waiver naming a pair that is declared, or
+// that no longer meets in the metal, is stale and fails (§54's rule). Declared
+// rows whose pair never meets the criteria at any pose are REPORTED, not
+// gated — the centre gate in meshPhase owns a row standing off its distance,
+// and measureMeshNow's stale-selector path owns a row naming no rotor.
+// CONTROL: the enumeration must find the declared meshes it exists to be
+// compared against — if it finds none of them, it is a dead instrument, not
+// a clean one.
+export const MESH_COVERAGE_WAIVERS = {};
+export function checkMeshCoverage(clock) {
+  const declared = clock.meshes;
+  if (!declared) return { ok: true, error: 'no meshes payload on __clock (main.js §194 block missing)' };
+  if (typeof clock.meshCandidates !== 'function')
+    return { ok: true, error: 'no meshCandidates on __clock (main.js §135 block missing)' };
+  const key = (a, b) => [a, b].sort().join(' ⇄ ');
+  const declaredBy = new Map(declared.rows.map((r) => [key(r.a, r.b), r.site]));
+  const poses = digestPoses(clock);
+  const seen = new Map();
+  let rotors = 0;
+  for (let pi = 0; pi < poses.length; pi++) {
+    clock.resetInputs();
+    clock.setPose(poses[pi]);
+    clock.scene.updateMatrixWorld(true);
+    const found = clock.meshCandidates(MESH_CD_TOL);
+    rotors = found.rotors;
+    for (const c of found.candidates) {
+      const k = key(c.a, c.b);
+      const row = seen.get(k) || { pair: k, a: c.a, b: c.b, poses: [], d: c.d, want: c.want, relMiss: c.relMiss,
+        moduleSplit: Math.abs(c.moduleA - c.moduleB) > 1e-9 ? [c.moduleA, c.moduleB] : null };
+      row.poses.push(pi);
+      seen.set(k, row);
+    }
+  }
+  clock.resetInputs();
+  const rows = [...seen.values()].map((r) => ({ ...r, site: declaredBy.get(r.pair) || null, waiver: MESH_COVERAGE_WAIVERS[r.pair] || null }));
+  const undeclared = rows.filter((r) => !r.site && !r.waiver);
+  const waived = rows.filter((r) => !r.site && r.waiver);
+  const staleWaivers = Object.keys(MESH_COVERAGE_WAIVERS)
+    .filter((k) => declaredBy.has(k) || !seen.has(k))
+    .map((k) => ({ pair: k, why: declaredBy.has(k) ? 'the pair is declared — delete the waiver' : 'the pair no longer meets in the metal — delete the waiver' }));
+  const declaredNotSeen = declared.rows.filter((r) => !seen.has(key(r.a, r.b))).map((r) => ({ site: r.site, a: r.a, b: r.b }));
+  const covered = rows.filter((r) => r.site).length;
+  const controlPass = covered > 0;
+  return {
+    ok: true, tolPct: MESH_CD_TOL * 100, poseCount: poses.length, rotors,
+    candidates: rows.length, covered, rows, undeclared, waived, staleWaivers, declaredNotSeen, controlPass,
   };
 }
 
@@ -9130,7 +9226,8 @@ const CHECKS = {
   // instrument was to import the module and call it by hand (TODO 29).
   restoring: (clock, opts) => auditOscillators(clock, opts),
   transfers: (clock, opts) => checkTransfers(clock, opts),               // §137 — every corner's idiom + arithmetic; declarations held honest, tiers gated
-  meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's
+  meshPhase: (clock, opts) => checkMeshPhase(clock, opts),               // §194 — every declared mesh anti-phased at every pose, not just the build's; §135 gates the centre distance beside it
+  meshCoverage: (clock, opts) => checkMeshCoverage(clock, opts),         // §135 item 4 — every mesh in the metal is a declared row
   transmits: (clock, opts) => checkTransmits(clock, opts),               // §194 — every declared mesh turns its neighbour by its tooth ratio, per input
   // opts: { units: [...names], axes?: [...axisNames] } — the focused convenience.
   focused: (clock, opts = {}) => focusedCheck(clock, opts.units, opts),

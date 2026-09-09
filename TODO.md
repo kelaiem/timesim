@@ -15579,6 +15579,18 @@ close by 0.1 and the two rows come inside the bar.
 Related: [§86] is the underived-constants audit, and this is one of its
 cleanest specimens — found by an instrument rather than by reading.
 
+**Measured 2026-09-09 (§135), so the decision is not taken blind.** With
+the six `+ 0.1` deleted, both rows read 0.000% against `module·(P+Q)/2` —
+and §125's D4 assert fires, because the seconds well's outboard bound is
+derived through the plate from the keyless station and moved 15.6277 →
+15.1334, 0.49 rather than 0.1: the plate re-solves. So deleting the
+constant is a RE-SOLVE of the identity (D4's full-precision literal, the
+fourth's station, the escapement hung off it), not a constant edit. §135
+gates the centre distance now (`meshPhase`, 0.5% of the pitch-radius sum)
+with these two rows waived by name against this item, so whichever way it
+is decided — derive and name the allowance, or delete and re-solve — the
+waivers go stale and the gate says so.
+
 ## 126. The gong's level stops at the wire: the case is the radiator and the path is unmodelled
 
 §197 derived what the gong radiates and the answer is **40.1 dBA at 0.3 m,
