@@ -318,6 +318,26 @@ the `cost` column, the per-check guard and the job cap all carry the same
 warning, and `battery.yml`'s header is the record of what a single green run
 gets wrong.
 
+**Measured on this host, 2026-09-09** — an 8-vCPU / 6 GB clone of the golden
+image, main at `612f37e`, the harness run directly in the guest:
+
+| K | wall | check time | against K=3 |
+|---|---|---|---|
+| 3 | 780.8 s | 1976.7 s | — |
+| 4 | 752.8 s | 2332.0 s | wall −3.6 %, CPU +18 % |
+| 6 | 784.9 s | 2884.1 s | wall +0.5 %, CPU +46 % — a production job started mid-run |
+| 8 | 986.2 s | 5147.7 s | wall +26 %, CPU +160 % — fully overlapped a production job |
+
+Only the first two rows are clean; the shape of the last two is the same one
+`ci-battery.mjs`'s header recorded for `ubuntu-latest` and would not change
+with the contention removed. **K stays at 3.** Four buys a few percent of
+wall, inside the spread a single run cannot resolve, for a fifth more CPU;
+more throughput comes from a second loop serving a second job, not from
+shards. And the measurement itself cost a real run: the owner's hosted
+battery that overlapped it took 1528 s where an idle host does ~780. **Never
+measure beside the service while PRs may opt in** — check `gh run list` for
+queued or running `timesim-battery` jobs first.
+
 ## What stays the same on any host
 
 - **The job cap (50 min) and the per-check guard (35 min).** Both are sized by
