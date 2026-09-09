@@ -22287,12 +22287,69 @@ runs the whole battery every time. At 16–18 minutes of wall that still beats
 the hosted path's ~29 whole or its incremental runs' queue time, but it is a
 property of the routing worth knowing, not a fault of the run.
 
-#### What remains — roadmap item 203, step 4
+### Step 4 — the document catches up, and finds three dead sliders
 
-The two headings `AESTHETICS.md` has never had — `decoration` and `gong` —
-step 2 having written the Materials section's steel paragraph and step 3 its
-case-metal paragraph. Filed in the private roadmap under the same number; the
-entry there names steps 1–3 as shipped and points here.
+`AESTHETICS.md` had documented three of the file's six subtrees since §23
+made the panel generate itself from the schema. Step 2 wrote the Materials
+section's steel paragraph and step 3 its case-metal paragraph; this step
+writes the two headings the page never had, **Decoration** (the ribbing and
+the perlage — what each knob means, that both are shaded by a world-position
+law gated to up-facing surfaces so the stripes cross the escape bridge by
+construction, and that the main panel's "Rib pitch" is the same knob) and
+**Gong** (the one subtree that is not purely visual: two DIMENSIONS of a
+modelled part, both derived at §197 with a boot warning if either drifts,
+both feeding the synthesised tone, the foot held to §125's bound on a live
+edit). The page's opening claim — "only values that affect pure visual
+appearance" — is corrected to name that exception.
+
+Writing the perlage paragraph found a defect the panel had been carrying
+since §23: `applyDecorationFromAesthetics` wrote the pitch, ring spacing and
+tilt uniforms and NOTHING ELSE, while the other three perlage knobs —
+`pearlRadiusUnits`, `shingleFlip`, `jitterFrac` — were seeded at first
+compile and never written again. An applier existed for the `decoration`
+domain, so the panel labelled all six sliders LIVE; three of them did
+nothing until reload and said otherwise, §157's rule about a panel's reach
+broken in the one domain nobody had re-read since. The applier now writes
+all six uniforms, the same three lines the other three already had, and the
+document says "all six are live" because it is true rather than because the
+label said so.
+
+### The entry as filed, reconciled
+
+Roadmap item 203 shipped whole across four landings (#370, #372, #383 and
+this one), and the entry retires to a pointer there. What the filing said
+against what was built, where they differ:
+
+- **"The slider drives anisotropy alone; roughness stays a constant."**
+  Wrong, and corrected at step 2: roughness rides the slider from the
+  renderer's floor to the authored 0.30, or the polished end would have been
+  the shipped satin — the old look with the grain off, not the ask. The
+  constant stays underived and named.
+- **"Default 0, polished — the ask."** The owner settled the default at
+  BRUSHED at filing: the first message's "brushed to polished" named the
+  range, not the resting point.
+- **"`?metal=` recommended."** Decided at filing, shipped at step 3.
+- **"ISO 8654's swatch for 3N."** Not at hand; 3N ships under a named
+  effective-medium approximation with the mass-averaged variant printed
+  beside it, and the swatch replaces it when the standard is.
+- **"Derive the steel's 0.30 and `0xd6d9dd` later."** Still later. Iron's
+  three tabulations disagree by more than the derivation's own gate, which
+  the tool prints rather than hides; the numbers stay authored and named.
+- **Not in the filing at all:** the three dead perlage sliders above, and the
+  §200 fact from step 3's CI log — the self-hosted host has no incremental
+  path, because baselines are seeded by pushes to `main` (GitHub-hosted, x64)
+  and the §152 key carries the platform.
+- **Everything else landed as filed:** the case's own material (step 1), the
+  world-space grain law and the held define (step 2), the pick anchored to
+  its option set through three readers and the derived colours under two
+  gated controls (step 3), the document (step 4).
+
+### What remains
+
+Nothing of item 203. The follow-ups it named live where they were named:
+the steel's underived pair and 3N's swatch above, in `materials.js` and
+`derive-203-alloys.mjs`; a gold watch with gold hands, which the filing
+called a real object and a separate entry.
 
 ## §204 — A 36,000 A/h row in the beat-rate menu — ten beats a second, carried by a finer fourth mesh and a spring at the top of stock
 

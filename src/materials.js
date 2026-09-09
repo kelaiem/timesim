@@ -448,6 +448,15 @@ export function applyDecorationFromAesthetics() {
     if (ps.uniforms.prlPitch) ps.uniforms.prlPitch.value = prl.pitchUnits ?? 4.2;
     if (ps.uniforms.prlRingFreq) ps.uniforms.prlRingFreq.value = prl.ringFreq ?? 9.0;
     if (ps.uniforms.prlTilt) ps.uniforms.prlTilt.value = prl.tilt ?? 0.22;
+    // §203 step 4 — the other three perlage knobs were compiled in at first
+    // compile and never written again, while the panel labelled the whole
+    // `decoration` domain LIVE (an applier exists for it): three sliders that
+    // did nothing until reload and said otherwise — §157's rule about a
+    // panel's reach, found while documenting the subtree. Same uniforms the
+    // compile seeds; written the same way the three above are.
+    if (ps.uniforms.prlRadius) ps.uniforms.prlRadius.value = prl.pearlRadiusUnits ?? (prl.pitchUnits ?? 4.2) * 0.8;
+    if (ps.uniforms.prlOrder) ps.uniforms.prlOrder.value = prl.shingleFlip ? -1.0 : 1.0;
+    if (ps.uniforms.prlJitter) ps.uniforms.prlJitter.value = prl.jitterFrac ?? 0.25;
   }
 }
 
