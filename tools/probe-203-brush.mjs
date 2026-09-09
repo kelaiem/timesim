@@ -79,14 +79,23 @@ for (const [name, steel] of ENDS) {
         });
         const at = best.getWorldPosition(new V());
         const out = new V(at.x - c.P.dial.x, at.y - c.P.dial.y, 0).normalize();   // radially outward from the movement axis
-        c.camera.position.copy(at).addScaledVector(out, 9).add(new V(0, 0, -7));
+        const tan = new V(-out.y, out.x, 0);                                       // along the band
+        // A three-quarter view from outside and beside the knob, its radial axis
+        // crossing the frame, so the flank's circumferential grain is on show.
+        // The orbit controls' TARGET is set too, and they are updated once: a
+        // camera written by hand while the controls still hold the previous
+        // preset's target is re-aimed by the next controls.update() — the first
+        // version of this view diffed 74.6% against ITSELF for that reason.
+        c.camera.position.copy(at).addScaledVector(out, 7).addScaledVector(tan, 11).add(new V(0, 0, -6));
         c.camera.up.set(0, 0, -1);
+        c.controls.target.copy(at);
+        c.controls.update();
         c.camera.lookAt(at);
         c.camera.updateProjectionMatrix();
       } else {
         document.querySelector(`[data-cam="${view}"]`).click();
-      }
-      c.step(1);   // one step past the tween's ~0.9 s: camTween.t >= 1 lands the camera in ONE render (step() paints, and a software GL frame is seconds)
+        c.step(1);   // one step past the tween's ~0.9 s: camTween.t >= 1 lands the camera in ONE render (step() paints, and a software GL frame is seconds)
+      }   // one step past the tween's ~0.9 s: camTween.t >= 1 lands the camera in ONE render (step() paints, and a software GL frame is seconds)
       c.render();
       const canvas = document.querySelector('canvas');
       const dataUrl = canvas.toDataURL('image/png'); // same task as the render, nothing awaited between
