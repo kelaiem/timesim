@@ -22038,9 +22038,36 @@ in both compiled fragment shaders, and boot silent (standing rule 6). Read
 by eye from its shots: at the polished end the bezel, the back ring and the
 steel of the escapement are mirror-bright with sharp reflections of the
 studio; at the brushed end the same metal reads matte with a broad soft
-highlight, the ring's a streak along its circumference. The pairwise
-luminance diffs between the three boots are recorded in the paragraph
-below, added when the third boot's views landed.
+highlight, the ring's a streak along its circumference.
+
+**The pairwise diffs, with their control.** Each view is reduced to a 90×90
+luminance thumbnail in the render's own task, and two boots are compared by
+the share of cells that moved by more than 4/255. The fourth boot is the
+brushed end AGAIN at identical settings — the control that says whether the
+other two columns measure the finish or render noise:
+
+| view | polished → brushed | brushed → grain turned 90° | control: brushed → brushed again |
+|---|---|---|---|
+| Train (movement side) | 25.9% | 15.8% | **0.0%** |
+| Setting (keyless works) | 19.0% | 12.4% | **0.0%** |
+| Dial (case and bezel) | 25.6% | 17.0% | **0.0%** |
+| Crown (the alarm knob, close) | 65.7% | 9.7% | **0.0%** |
+
+Read against the law: the finish moves every view wherever steel is; the
+angle moves the three preset views LESS (only the flats' streak turns) and
+moves the knob's view least of all — that frame is almost entirely FLANK,
+where the grain is circumferential whatever the angle says, and the 9.7% is
+the flats that share it. The control at 0.0% on all four is what makes the
+other eight numbers numbers.
+
+The control earned its place on its first run. The knob view's first two
+versions had diffed **74.6% against themselves**: the first had found the
+'Alarm crown' LABEL, whose object is the unit and whose origin is a star
+wheel inside the movement; the second found the knob but wrote the camera
+by hand while the orbit controls still held the previous preset's target,
+so the next `controls.update()` re-aimed it. Both produced a diff column
+that looked like a measurement of the grain and was a measurement of
+nothing — the instruments skill's catalogue, one more entry.
 
 #### What remains — roadmap item 203, steps 3 and 4
 
