@@ -27,12 +27,17 @@ const srv = spawn('python3', ['-m', 'http.server', port, '--bind', '127.0.0.1'],
 await new Promise((r) => setTimeout(r, 900));
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const OUT = process.env.OUT || '/tmp/shot203';
-// Three boots: the two ends, and the brushed end with the grain turned 90° —
+// Four boots: the two ends, the brushed end with the grain turned 90°, and
+// the brushed end AGAIN as the control (0.0% or the diffs mean nothing) —
 // the flats' streak must MOVE between the last two (the angle uniform reaches
 // the shader) while nothing else in the scene does, and the first two must
 // differ everywhere steel is.
-const ENDS = [['polished', { brush: 0 }], ['brushed', { brush: 1 }], ['brushed-90', { brush: 1, brushAngleDeg: 90 }]];
-// Three presets and one custom view: the going crown, close, from outside the
+const ENDS = [['polished', { brush: 0 }], ['brushed', { brush: 1 }], ['brushed-90', { brush: 1, brushAngleDeg: 90 }],
+  // THE CONTROL: the brushed boot again, byte-for-byte the same settings. Its
+  // diff against 'brushed' must be 0.0% or the render is not deterministic
+  // and the two columns above measure noise, not the finish.
+  ['brushed-again', { brush: 1 }]];
+// Three presets and one custom view: a crown knob, close, from outside the
 // band — a cylinder whose axis is RADIAL, the flank rule's hardest case.
 const VIEWS = ['Train', 'Setting', 'Dial', 'Crown'];
 const rows = [];
@@ -57,9 +62,22 @@ for (const [name, steel] of ENDS) {
       c.resetInputs();
       c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 0.6, windAccumTurns: 0 });
       if (view === 'Crown') {
-        const e = c.labelEntries.find((l) => l.name === 'Crown') || c.labelEntries.find((l) => /crown/i.test(l.name));
+        // The knobs carry no name and no label of their own (the 'Alarm crown'
+        // label is the UNIT, whose origin is a star wheel inside the movement —
+        // the first version of this view aimed there and called it the crown).
+        // Find them by what they ARE: caseMetal meshes outside the Case label
+        // that stand farthest from the movement axis — the two knobs at the rim.
         const V = (await import('three')).Vector3;
-        const at = e.obj.getWorldPosition(new V());
+        const caseObj = c.labelEntries.find((l) => l.name === 'Case')?.obj;
+        const inCase = (o) => { for (let q = o; q; q = q.parent) if (q === caseObj) return true; return false; };
+        let best = null, bestR = -1;
+        c.scene.traverse((o) => {
+          if (!o.isMesh || o.material !== M.caseMetal || inCase(o)) return;
+          const w = o.getWorldPosition(new V());
+          const r = Math.hypot(w.x - c.P.dial.x, w.y - c.P.dial.y);
+          if (r > bestR) { bestR = r; best = o; }
+        });
+        const at = best.getWorldPosition(new V());
         const out = new V(at.x - c.P.dial.x, at.y - c.P.dial.y, 0).normalize();   // radially outward from the movement axis
         c.camera.position.copy(at).addScaledVector(out, 9).add(new V(0, 0, -7));
         c.camera.up.set(0, 0, -1);
@@ -102,7 +120,8 @@ const diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i++) if (Math.
 const pairs = [];
 for (const view of VIEWS) {
   pairs.push({ view, 'polished→brushed': diff(thumbs[`polished/${view}`], thumbs[`brushed/${view}`]),
-    'brushed→brushed-90': diff(thumbs[`brushed/${view}`], thumbs[`brushed-90/${view}`]) });
+    'brushed→brushed-90': diff(thumbs[`brushed/${view}`], thumbs[`brushed-90/${view}`]),
+    'CONTROL brushed→brushed-again': diff(thumbs[`brushed/${view}`], thumbs[`brushed-again/${view}`]) });
 }
 console.table(pairs);
 await b.close(); srv.kill();
