@@ -5564,6 +5564,30 @@ this CSS — and the failure surfaced only as a `TypeError` at boot. Syntax
 checking cannot see a string that ends early and leaves something valid
 behind it.
 
+
+### The remainder, measured — roadmap §53 closes
+
+The roadmap kept §53 open for a remainder its own body said to "verify
+against the live panel before acting on"; the panel was rebuilt under this
+number (authored `_labels`, stacked rows, wrapping) and the entry was never
+rewritten down. `tools/probe-53-labels.mjs` (acceptance) now measures the
+entry's acceptance line for line, at the phone width §15 fits (375×667,
+mobile emulation) and on desktop (1280×800):
+
+- boot silent — no `§53: no _labels entry` fallback fired, so all **62**
+  Advanced leaves carry an authored name and no label shows a key path;
+- no label overflows its row (`scrollWidth ≤ clientWidth`) or leaves the
+  panel's box; none is ellipsised or `nowrap`;
+- a deliberately long 70-character label WRAPS — taller, not wider, no
+  overflow — so no future name can truncate;
+- the section collapses by default, and the panel fits the viewport and
+  scrolls. Tallest label at rest: 13.1 px, one line.
+
+No code moved: the tree already did what the remainder asked, and the
+measurement is what was missing. No tooltip is needed to read any label
+(the key path stays in `title` for anyone who wants it, and nothing depends
+on it). Battery: none — the probe and this paragraph touch nothing on
+`index.html`'s module graph.
 ## §36 part three — routing as a spec
 
 §35's corridor hunt was done **by hand**: two shafts, one knuckle, four
