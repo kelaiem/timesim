@@ -4026,7 +4026,7 @@ windSpinner.add(stem);
 // knurl crown it replaces: the redesign stays inside that build's PROVEN
 // swept envelope (asserted in the builder), so every standing clearance
 // row holds without re-derivation.
-const crown = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.steel }); // +75% over the original 3.1/2.6
+const crown = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.caseMetal }); // §203: case exterior, its own material // +75% over the original 3.1/2.6
 crown.rotation.x = -Math.PI / 2; // builder's +Z face → outward along the stem (+Y)
 crown.position.y = stemLen - 0.7; // base where the old crown's base sat
 windSpinner.add(crown);
@@ -15042,7 +15042,7 @@ alarmSpinner.add(alarmStem);
 // growth extends OUTWARD along the stem into free air past the rim — the
 // inner face, the stem interface and the bushing are untouched, which is
 // what the earlier "placement change" scoping worry turned out to miss.
-const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.steel });
+const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.caseMetal }); // §203: case exterior
 alarmCrownKnob.rotation.x = -Math.PI / 2; // builder +Z face → outward along +Y
 alarmCrownKnob.position.y = alarmStemLen - 0.7;
 alarmSpinner.add(alarmCrownKnob);
@@ -23967,7 +23967,7 @@ alarmSwitchUnit.add(alarmPusherGroup);
   // column wheel one castellation per press is mechanism and is untouched
   // below, which is why the pusher is not simply scaled up as a whole.
   const PUSHER_HEAD_LEN = PUSHER_HEAD_R * 0.62;
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(PUSHER_HEAD_R, PUSHER_HEAD_R, PUSHER_HEAD_LEN, 20), MATS.steel);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(PUSHER_HEAD_R, PUSHER_HEAD_R, PUSHER_HEAD_LEN, 20), MATS.caseMetal); // §203: the head is case exterior; the stem stays steel
   cap.name = 'alarmPusherCap';
   cap.rotation.z = ALARM_PUSH_AZ - Math.PI / 2;
   cap.position.set(_pushU.x * (stemOuterS + PUSHER_HEAD_LEN / 2),
@@ -29007,7 +29007,7 @@ const caseCrystalMat = new THREE.MeshPhysicalMaterial({
   color: 0xf8fbff, transparent: true, opacity: 0.14, roughness: 0.04,
   metalness: 0, depthWrite: false, // a crystal the scene reads through — the x-ray materials' own trick
 });
-const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.steel, crystalMaterial: caseCrystalMat });
+const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }); // §203 step 1: the case exterior's own material — an alloy reaches this and never the works
 caseSolid.visible = restoredCaseLines;
 movement.add(caseSolid);
 registerLabel('Case', caseSolid);

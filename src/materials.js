@@ -17,14 +17,32 @@ const brass = phys({
   reflectivity: 0.6,
 });
 
-// Bright, near-white polished steel for pinions, arbors, fork, springs.
-const steel = phys({
+// Bright, near-white steel for pinions, arbors, fork, springs. ONE finish
+// declared once and shared below: §203 measured this as neither brushed nor
+// polished — isotropic roughness 0.30 under a hazed clearcoat is a SATIN —
+// and its 0.30 and 0xd6d9dd are authored numbers with no derivation (§86's
+// class), named as such here rather than laundered. §203 step 2 adds the
+// grain and the polished end; both materials below must move together
+// when it does, which is what sharing the literal buys.
+const STEEL_FINISH = {
   color: 0xd6d9dd,
   metalness: 1.0,
   roughness: 0.30,
   clearcoat: 0.15,
   clearcoatRoughness: 0.3,
-});
+};
+const steel = phys({ ...STEEL_FINISH });
+
+// §203 step 1 — the CASE EXTERIOR is its own material object: the band, back
+// ring, stem sleeves and collars (makeCase's `material`), both crowns and the
+// pusher cap. Identical to `steel` today by construction (the same object
+// literal), and a separate INSTANCE on purpose: an alloy (§203 step 3 — 18K
+// yellow gold, white gold, platinum) reaches a case and never a pinion or a
+// spring, and before this split there was no object to give it to — `steel`
+// was 226 meshes including the case. Nothing here moves geometry; the
+// battery's --report must read byte-identical across this change, and
+// materials enter neither the fingerprint nor any sweep.
+const caseMetal = phys({ ...STEEL_FINISH });
 
 // Deep, saturated blued-steel for screws and hands.
 const blueSteel = phys({
@@ -271,6 +289,7 @@ export const MATS = {
   bluedHand,
   gold,
   steel,
+  caseMetal,
   blueSteel,
   ruby,
   nickel,
