@@ -65,8 +65,8 @@ three-quarter plate and the dial). The base plate's fills live in
 line drawing's only partition between the dial-side works and the
 train. Both halves are boot-asserted.
 
-The chrome is LOCALIZED (§73 tier one, §116 — English, German, French,
-Japanese, and Chinese in both scripts):
+The chrome is LOCALIZED (§73 tier one, §116, §208 — English, German, French,
+Japanese, Chinese in both scripts, and Arabic):
 `src/i18n.js` holds one table keyed by the English source string, so the
 app keeps authoring its UI in English and `t()` / `localizeTree()`
 resolve at the display site; a missing entry falls back to English
@@ -75,7 +75,19 @@ three pickers render, `_norm` resolves through and `LANG_TAG` reads. **Its array
 order is the resolution ladder and it is boot-asserted**, because a script
 subtag has to be tested before the bare language it refines: get `zh-Hant`
 below `zh` and a Taiwanese reader silently gets Simplified, with nothing
-thrown and nothing blank. Two rules when touching UI text. **State is an attribute, never
+thrown and nothing blank. **A row's `dir` is the document's direction** (§208 —
+Arabic is `rtl`, every other row is `ltr` by omission): `i18n.js` writes it to
+`documentElement` beside `lang`, so flex rows, `text-align: start` and the
+logical margins mirror on every page that imports it, while the drawings keep
+`direction: ltr` (an SVG text anchor reads `direction`, and under `rtl` every
+`start`-anchored label would swing across its anchor point) and every physical
+position — the chrome bar's corner, the panel's inset — stays put. Write new
+chrome CSS in logical properties (`margin-inline-start`, `float: inline-end`,
+`text-align: start`); a `left`/`right` is a claim that the thing is a viewport
+fact, not a text fact. Arabic's `tag` is `ar-u-nu-latn` on purpose: Western
+digits and the `.`/`,` marks, because the dial's figures, the explainer's
+source-form constants and every deep link are Western digits already, and a
+bare `ar` answers differently per ICU release. Two rules when touching UI text. **State is an attribute, never
 the text**: toggles carry `data-state="on|off"` (`setBtnState`), §72's
 `aria-pressed` observer watches that attribute, and no code may compare
 button text to `'On'`. **Display translates, values do not**: option
@@ -107,7 +119,8 @@ not wrap**: both bars are `position: fixed` above a constant body padding, so a
 second line covers the first paragraph — every item is `nowrap` and the stamp
 is the one that yields (ellipsis, then hidden under 820 px). German found it;
 §116 re-measured all six locales × both pages × eight widths straddling that
-breakpoint and added `tools/probe-116-locale-fit.mjs`, which is also where the
+breakpoint and added `tools/probe-116-locale-fit.mjs` (§208 ran it again for
+the seventh, in both directions), which is also where the
 chrome-bar and 150 px HUD-label numbers now come from — none of that is gated,
 so it is measured on purpose rather than assumed.
 

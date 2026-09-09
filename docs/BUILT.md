@@ -22995,3 +22995,144 @@ every generic piece bit-exactly. `probe-10-drill.mjs` (the mechanism) stays
 green, scoped to the fusee cluster it was written for. Battery: render-side
 as before — `resetInputs()` zeroes the drill, so every tick-owned write
 returns to what tick alone computes; the fingerprint is the check.
+
+## §208 — Arabic — the first right-to-left locale, across the chrome and both pages
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(685 keys) and `primer.html` (133 keys) all read Arabic at 100%, in one
+landing rather than §73's chrome-first shape — the tables were built in
+parallel against one glossary, so there was no reason to ship a partial
+state the way §116 had to. Seven locales now; the roster is still the one
+`LOCALES` declaration and every picker, probe and loop that enumerates it was
+found by grepping for `zh-Hant` — the last code added — and moved the same
+day.
+
+**Why this locale, in the §73 idiom.** German is the layout stress test and
+Chinese the typography one; Arabic is the DIRECTION one. Every earlier locale
+could be added as a table; this one is a property of the document, and
+adding it found every place the app had quietly assumed the text starts at
+the left.
+
+**Direction is declared on the locale row and written beside `lang`.** The
+row carries `dir: 'rtl'` (absent means `ltr`; five rows say nothing), and
+`src/i18n.js` writes `documentElement.dir` in the same breath as
+`documentElement.lang` — explicitly `'ltr'` for every other locale, so a
+reader switching AWAY from Arabic lands on a document that says so rather
+than one inheriting whatever the markup carried. Every page that imports
+`i18n.js` inherits both, which is all three.
+
+**What mirrors and what does not, decided rather than discovered.** Under
+`dir="rtl"` a flex row, `text-align: start` and a logical margin mirror for
+free, and that is what the panels' rows, the pages' prose and the headers
+want. Three things must NOT mirror, and each is written as a rule at its
+site:
+
+- **Drawings.** An SVG text anchor reads `direction`, so under `rtl` every
+  `text-anchor: start` label would swing to the other side of its anchor
+  point and the fit gate would report a plate full of collisions. `figure svg
+  { direction: ltr }` on both pages keeps the coordinate system; an Arabic
+  run inside an ltr label shapes and orders itself correctly, because the
+  base direction only decides where MIXED runs sit.
+- **Physical positions.** The chrome bar's top-right corner, `#clock-ui`'s
+  `left: 14px`, the pad's bottom-right are facts about the viewport, not
+  about the script; they stay. The RULE that came out of it: new chrome CSS
+  is written in logical properties, and a `left`/`right` is a claim that the
+  thing is a viewport fact. Four physical rules were converted — the
+  explainer's and primer's `.where { margin-left: auto }` and their table
+  cells' `text-align: left` / right-side padding, and the Advanced panel's
+  `.adv-val { float: right; margin-left }`.
+- **The disclosure marker** mirrors by GLYPH, not transform: `▸` rotated 90°
+  points down, `◂` rotated 90° points up, so the rtl open state rotates the
+  other way.
+
+**One defect the screenshot found and no gate did.** `#btn-hide-view` sat at
+`right: 12px` and the panel's title now starts at the right, so the hide
+button landed on top of the word العرض. `inset-inline-end: 12px` puts it at
+the title's END in either direction. Nothing measured this: the fit probe
+measures widths against boxes, not one control over another, and it is
+recorded here as the shape of thing the probe cannot see.
+
+**Digits are a decision, and the tag carries it.** `ar-EG` and `ar-SA` format
+`30.0` as `٣٠٫٠`; a bare `ar` answers Western in this ICU and Eastern in
+others. The dial's figures, the explainer's source-form constants and every
+deep link are Western digits already, so one screen gets one digit system:
+`tag: 'ar-u-nu-latn'` pins Western digits and the `.`/`,` marks, `fmtNum` and
+`fmtInt` produce `30.0` / `0.024` / `18,000` in Chromium (measured, not
+inferred from Node), and the checker's `MARKS` row says the same — its `\d`
+token class makes an Arabic-Indic digit a DROPPED quantity, which is the gate
+for the one typographic rule the primer table has.
+
+**The tables were built by ten translators against one glossary, and the
+glossary was the product.** 1,262 strings is not one sitting's work; the
+chrome, the primer and the explainer's seven sections were translated in
+parallel from a single brief — hard rules the checker would enforce (markup
+sequence, `<code>` bytes, numbers, Western digits, no added `<em>` for
+English's CAPITALS) and a part-name glossary so the chrome and both pages
+name the escapement الميزان, the pallet fork شوكة الميزان, the balance عجلة
+التوازن, winding التعبئة, the dial الميناء and the fusee الفيوزي (no Arabic
+word exists) exactly once each. The seams the glossary did not cover were
+reconciled by hand afterwards — brake, the going drum's "barrel" in
+`TRAIN.barrel`, castellations, one spelling of feeler — and the modelled /
+simulated distinction rides two words, مُنمذَج and مُحاكى, held apart as the
+repo's rule requires.
+
+**Labels that carry only identifiers stay verbatim, as in every locale.**
+Three translators satisfied a self-check by decorating `min()`, `d`, `TODO
+128` and the constants strip with an Arabic word; the shipped tables keep
+them byte-identical to the English, which is what `fr`, `ja` and the rest
+do. The checker classes them live (they contain Latin letters), so they
+count toward the denominator, and they are translated by being copied.
+
+**Nine plate labels overran or collided, and every fix was in the label.**
+Eight on the explainer, one on the primer, measured against the English
+baseline; each shortened — أعلى for لأعلى, the article dropped, a qualifier
+cut — never the tolerance. Two of the nine were VERTICAL: Arabic
+diacritics (a shadda, a tanwīn) push a label's glyph box 2–3 px taller than
+the English line beneath it, and the fix is diacritic-free wording — مسطح
+for مستوٍ — rather than fewer words. The fit gate reads **0 new overflow or
+collision vs English** on both pages.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **685/685**, primer **133/133**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow — PASS |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Arabic**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
+| `#chrome-bar` | ar **198.1 on the first pass** — wider than German's 192.4, on a three-word "Controls" — and **167.0** once that face became the one word التحكم (en 170.2). German is still the widest; the comment at the site now says so with the number |
+| `.hud-ro-label` | 26.0 and 32.8 against 150 px, one line |
+| §53's 240 px column | no content wider than its box; the open panel, every fold open, has 0 elements outside its rect |
+| `offline-check` | **31/31**, precache **35/35** (33 + two tables), the Arabic primer served from cache |
+| boot | console clean on all three documents at `?lang=ar`; the ladder assert extended with `ar`, `ar-EG`, `ar-SA`, `ar_MA`, `ar-u-nu-latn` |
+| battery | **39/39 gates**, local (dev container, 3 shards, 3082 s wall); boot silent; fingerprint **2402376983** (56 units, 12 poses) deterministic across virgin boots — and IDENTICAL to a virgin boot of `origin/main` measured beside it, which is §73's and §116's form of "no geometry moved" |
+| `probe-142-tour` | 20 of 21 claims, the derived count reading `6 locale rows`; the one FAIL is below |
+
+**`probe-142-tour` read a literal.** It counted a caption's occurrences in
+`src/i18n.js` against `5` and named "all five locales" in its verdict; a
+sixth table would have let a caption missing from it pass. It now derives the
+count from `TABLES`' own declaration.
+
+### Residue, recorded
+
+- **No native review pass** — the same IOU §73 and §116 carry, one locale
+  longer. The register is Modern Standard Arabic in the engineering
+  vocabulary; a watchmaker in Cairo or Casablanca may have different words
+  for some of these parts, and the glossary is where that correction lands.
+- **The other five locales read 643/685 and 126/133** on this run. That is
+  not this landing's: the English grew after their last pass (the honest
+  fallback, visible), and TODO.md already records it. Named because the
+  coverage column reads oddly beside a new locale at 100%.
+- **Two arrows in slider labels are not mirrored** (`fewer ribs →`,
+  `polished → brushed`): the slider's increasing end mirrors with the
+  document, and so does the arrow's meaning. Left as the English glyph; if a
+  reader reports it backwards, the label is the fix.
+- **The 3D view's own labels and the pad are untouched** — they are drawn,
+  not laid out, and were already direction-free.
+- **`probe-142-tour`'s "the panel is restored after End" claim is stale, and
+  it is not this landing's.** The probe was written at §142 against a panel
+  that started visible; §146 landed after it and the panel now starts
+  hidden, so after End there is nothing to restore and the claim reads
+  FAIL on `origin/main` for the same reason. Every other claim passes,
+  including the one this section changed. Filed as its own fix rather than
+  patched here — the right expectation depends on §165's rule for which
+  panels a run hides.

@@ -172,6 +172,13 @@ const MARKS = {
   // Escaped, not typed: three characters that render identically, so a typed
   // one could not be told from another by reading this file.
   fr: { group: ['\u202f', '\u00a0', '\u2009'], dec: ',' },
+  // §208 — Arabic groups with ',' and points with '.' HERE because the chrome
+  // formats through 'ar-u-nu-latn' (src/i18n.js LOCALES says why), and a
+  // table must read as the chrome does. The row is also the digit gate:
+  // the token class below is \d, so an Arabic-Indic ٠١٢ in a translation
+  // is not a parsed number at all — the value comparison reports it as a
+  // quantity DROPPED, which is what it would be to the checker.
+  ar: { group: [','], dec: '.' },
 };
 const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {

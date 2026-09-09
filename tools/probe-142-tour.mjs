@@ -57,8 +57,12 @@ st = await state();
 if (!st || st.idx !== 1) F(`control: the run did not advance to stop 1 on its own: ${JSON.stringify(st && st.idx)}`); else OK('control: the run advances to stop 1 after its dwell');
 // 1 + 2 — captions and their locales
 const i18n = readFileSync(join(ROOT, 'src/i18n.js'), 'utf8');
-const missing = st.captions.filter((c) => (i18n.split(`'${c.replace(/'/g, "\\'")}'`).length - 1) < 5);
-if (missing.length) F(`${missing.length} caption(s) not in all five locales: ${missing.map((c) => c.slice(0, 40)).join(' | ')}`); else OK(`all ${st.captions.length} captions carry five locale rows`);
+// §208 — the table count is read off TABLES' own declaration rather than
+// typed: a sixth locale arrived and a literal 5 would have let a caption
+// missing from it pass as "in every locale".
+const nTables = i18n.match(/^export const TABLES = \{([^}]*)\}/m)[1].split(',').filter((x) => x.includes(':')).length;
+const missing = st.captions.filter((c) => (i18n.split(`'${c.replace(/'/g, "\\'")}'`).length - 1) < nTables);
+if (missing.length) F(`${missing.length} caption(s) not in all ${nTables} locales: ${missing.map((c) => c.slice(0, 40)).join(' | ')}`); else OK(`all ${st.captions.length} captions carry ${nTables} locale rows`);
 if (!st.captions.some((c) => /half a tooth/.test(c))) F('the escapement caption still overclaims a tooth per beat'); else OK('escapement caption: half a tooth per beat');
 if (!st.captions.some((c) => /great wheel to centre/.test(c))) F('the train caption still names the barrel as the driver'); else OK('train caption: the great wheel drives the centre');
 if (!st.captions.some((c) => /Maltese cross/.test(c)) || !st.captions.some((c) => /Press the pusher/.test(c))) F('the cross or alarm-toggle stop is missing'); else OK('the cross stop and the alarm-toggle stop exist');

@@ -1,6 +1,6 @@
 // §95 tier two — THE PRIMER, LOCALIZED. German and Chinese prose for
 // primer.html's entries, plates and captions; French, Japanese and
-// Traditional Chinese since §116, all five at 100%.
+// Traditional Chinese since §116; Arabic since §208 — all six at 100%.
 //
 // Same engine as the explainer (src/page-i18n.js holds the walk and the swap),
 // same contract as tier one: authored in English, keyed by the English source,
@@ -39,6 +39,7 @@ const LOADERS = {
   ja: () => import('./primer-i18n.ja.js'),
   zh: () => import('./primer-i18n.zh.js'),
   'zh-Hant': () => import('./primer-i18n.zh-Hant.js'),
+  ar: () => import('./primer-i18n.ar.js'),
 };
 const TABLE = LOADERS[UI_LANG] ? (await LOADERS[UI_LANG]()).default : null;
 

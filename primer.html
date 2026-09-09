@@ -108,7 +108,14 @@
   details.mech > summary::before { content: '▸'; font-size: 9px; color: #6b7683; transition: transform 0.15s; }
   details.mech[open] > summary::before { transform: rotate(90deg); }
   details.mech > summary:hover { color: var(--head-hover); }
-  details.mech > summary .where { margin-left: auto; font: 10px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: 0; text-transform: none; }
+  details.mech > summary .where { margin-inline-start: auto; font: 10px/1 ui-monospace, monospace; color: var(--muted); letter-spacing: 0; text-transform: none; }
+  /* §208 — the first right-to-left locale; the reasoning is written out in
+     explain.html's copy of this rule. The drawings keep their coordinate
+     system (an SVG text anchor reads `direction`), the prose and the flex
+     rows take the document's. */
+  figure svg { direction: ltr; }
+  [dir="rtl"] details.mech > summary::before { content: '◂'; }
+  [dir="rtl"] details.mech[open] > summary::before { transform: rotate(-90deg); }
   .mech-body { border-top: 1px solid var(--hairline); padding: 14px 0 18px; }
   .mech-body p { max-width: 68ch; margin: 0 0 10px; }
   .mech-body p.note { color: var(--muted); font-size: 12px; }
@@ -173,7 +180,8 @@
   <a class="back" href="./index.html">← the movement</a>
   <a class="back" href="./explain.html">want the numbers? →</a>
   <span class="spacer"></span>
-  <!-- §73 tier two: the same three locales as the app's chrome, chosen the
+  <!-- §73 tier two: the same locales as the app's chrome (LOCALES in
+       src/i18n.js is the one roster — six translations since §208), chosen the
        same way (?lang → localStorage → navigator.language) and applied the
        same reload-tier way. Untranslated blocks render English visibly. -->
   <select id="lang-select" aria-label="Language" title="Language"></select>

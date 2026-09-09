@@ -194,11 +194,13 @@ readouts. The alarm has its own crown and pusher. `?inspect=1` and `?cycle=1`
 deep-link into the inspection and alarm-cycler routes; an Advanced panel
 exposes the finish parameters from `src/aesthetics.json`.
 
-The chrome is localised — English, German, French, Japanese and Chinese in
-both scripts — selectable in the panel or by `?lang=fr` / `?lang=zh-Hant`
-(a script subtag, so `zh-TW`, `zh-HK` and `zh-MO` all resolve to Traditional).
+The chrome is localised — English, German, French, Japanese, Chinese in
+both scripts, and Arabic — selectable in the panel or by `?lang=fr` /
+`?lang=zh-Hant` (a script subtag, so `zh-TW`, `zh-HK` and `zh-MO` all resolve
+to Traditional) / `?lang=ar` (the one right-to-left locale: the document's
+direction follows it, the drawings and the panels' corners do not).
 `primer.html` and `explain.html`, the mechanism explainer linked from
-the HUD, are translated in all six. A released build also **loads with
+the HUD, are translated in all seven. A released build also **loads with
 the network gone**: a service worker precaches the release, so a page that
 has been visited online once boots offline, deep links included. Neither
 applies to a source tree, which registers no worker at all so that an edit is
