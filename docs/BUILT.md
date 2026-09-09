@@ -22381,3 +22381,94 @@ mostly the five tick-written alarm parts — composing those needs each tick
 write to add the drill offset, the `rodOff` pattern, which is the work the
 entry named as the alarm's. The mechanism is built and measured; those are
 tables.
+## §133 — *Mechanical Watch* (ciechanow.ski), evaluated: what it does that this project does not, filed as three entries
+
+Roadmap item 133 shipped its citation half with the filing (`README.md`, the end
+of "A note on the styling") and left the evaluation blocked: the article was
+unreachable from the environment that filed it, so nothing could be said about
+it honestly. Read on 2026-09-09. The comparison is against what exists here —
+`explain.html`, `primer.html` and the schematic tier — and its output is three
+roadmap entries, each naming a measurement or an artifact, per the entry's own
+scope guard; nothing here proposes replacing a page.
+
+### What the article is, read rather than remembered
+
+Twelve sections in one scroll — Power, Gears, Escapement, Balance, Mainplate,
+Click, Motion Works, Date, Keyless Works, Automatic Winding, The Size of It
+All, Further Reading — for a generic modern automatic with a date. Every
+mechanism is a 3D model the reader can drag to re-aim, and its controls are a
+small fixed vocabulary reused throughout: a slider that WINDS or SLOWS
+("slow things down"), sliders on a principle's parameters (spring stiffness,
+moment of inertia), buttons that toggle a state (the pallet fork's position),
+cutaways that lift a cover, exploded assemblies, and — its most used
+instrument — a timeline scrubber: "you can scrub back and forth in time to see
+all the action as it happens", with the balance/pallet interaction cut into
+six labelled phases. Pacing is principle-then-assembly: a coil spring before
+the torsion spring, a 2D pallet-and-wheel before the 3D escapement, a
+problem stated before its part ("we clearly have some work to do"), and an
+honest running count of what is still missing ("sufficient for the watch to
+run, but we're still missing a few details"). Numbers live inside sentences
+— "40 hours on a single wind", "343:1", "four times per second … 8 beats per
+second or 28,800 beats per hour" — and there is no torque figure anywhere.
+Parts are colour-coded once ("will be color-coded for easy reference") and
+the coding is never legended; it holds by repetition. Further reading is two
+items: the Wristwatch Revival channel and Daniels' *Watchmaking*.
+
+### Against what exists here
+
+- **`explain.html`** — 19 `<details class="mech">` sections carrying 27 figures,
+  7 range inputs and 8 buttons; two sections have no figure at all
+  (`winding-arrest`, `alarm-winding-arrest` — roadmap §145 is the second).
+  Every quoted number is gated against `src/*.js` by `explain-quotes.mjs`,
+  which the article's numbers are not (they are illustrative; ours must
+  match the metal). The page is sim-code-free by contract, so its plates are
+  2D and its one link into the sim is the header's bare `index.html`.
+- **`primer.html`** — the reader's register, held to zero source identifiers
+  by the same instrument. The article writes in exactly this register
+  throughout; the primer is the closer relative of the two pages.
+- **The schematic tier** (§66/§78) — line-only, a glyph vocabulary a part may
+  opt out of, contact dots lit by measurement. It already borrows the
+  explainer's brass and steel hexes (`0xe0a355`, `0x8fa6bf`, "the explainer's
+  brass"), by hand-copied literal.
+
+### What the article does that this project does not — the three entries
+
+1. **The diagram-to-model handoff happens in place.** The article's 2D
+   principle and its 3D assembly sit one paragraph apart under one control
+   vocabulary. Here the 3D exists in a separate app the pages link to once,
+   bare, while the sim accepts `?preset=`, `?focus=`, `?unit=`, `?scale=`,
+   `?schematic=`, `?xray=`, `?labels=` and `?lifesize=`. Measured: 0 of 19
+   sections open the sim at their mechanism. **Roadmap §205** — a link per
+   section into the sim at its preset, focus and rate, held by a check that
+   every section has one and its parameters name real presets and units.
+2. **Time is a position, not only a rate.** The scrubber is the article's
+   most used instrument; the sim's time control is a rate (`?scale=`,
+   0.02×–1×) and pause. Measured: no control here sets τ directly. **Roadmap
+   §206** — with the sim paused, a phase slider over one escapement cycle
+   that sets τ, naming the phase from the sim's own impulse law.
+3. **One colour per part, held by repetition, no legend.** Measured: the
+   explainer's plates use 18 distinct hexes; the tier draws 6 line materials,
+   two of them the explainer's colours copied by hand (§86's class).
+   **Roadmap §207** — one palette module, keyed by material family, read by
+   the tier's line materials and emitted as CSS custom properties for the
+   plates, with a check that every plate hex is a member. Per material, not
+   per part, and stated as the choice: a lever and its spring differ by
+   metal here, where the article colours by role.
+
+### What this project does that the article does not, so it is not filed
+
+Numbers gated against the source; a battery that decides; x-ray, explode
+(to the piece, since §10 level 2), labels, Measure and Life size in the app
+itself; a mechanism graph the pages and the checks share; and a
+fusée-and-chain with a column-wheel alarm rather than a generic automatic.
+Not filed either: the article's prose pacing (a rewrite of pages that
+already exist, which the scope guard forbids), and its Date and Automatic
+sections, which describe complications this movement does not carry.
+
+### The measurement behind each number above
+
+`grep -c` over `explain.html`: 19 `<details class="mech">`, 27 `<figure>`,
+7 `type="range"`, 8 `<button>`, 18 distinct `#rrggbb`; the sim's parameter
+vocabulary read off `main.js`'s `p.get(...)` calls; the tier's materials off
+its `LineBasicMaterial` constructors. `explain-quotes.mjs` PASS on the tree
+at hand. Battery: none — this landing is a record and three claim files.
