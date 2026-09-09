@@ -299,6 +299,50 @@ gh variable delete BATTERY_RUNS_ON --repo kelaiem/timesim
 the service's state on this host, and the variable. `uninstall` stops the
 service and unregisters, and reminds you about the variable.
 
+## Two jobs on one host: slots
+
+One loop serves one job at a time, so a second opted-in PR waits a whole run.
+`--slot N` runs a second, independent loop on the same host: its own service
+(`com.timesim.tart-battery-N`), state directory (`~/.timesim-tart/slot-N`),
+VM name prefix (`timesim-battery-sN-…`) and runner name (`battery-N-…`), all
+cloning the one golden image. GitHub hands a queued job to whichever slot's
+runner is free. The guest is renamed `battery-N` at clone time, so the
+machine name in the public logs says which slot ran the job. Slot 1 keeps
+every path it always had.
+
+**Size the clones, not the image.** With `once`, `loop` and
+`install-service`, `--cpu` and `--memory` apply to that slot's clones by
+`tart set` after each clone; the golden image is untouched. On this
+ten-core, 16 GB host the sizing is two slots at **5 vCPU / 6 GB**: one job
+at K=3 averages about 2.5 cores (1977 s of checks over 781 s of wall,
+measured above), so two fit with headroom, while 8 GB twice would leave the
+host itself squeezed.
+
+```bash
+~/dev/Clock/tools/tart-battery-runner.sh install-service --keep-awake --cpu 5 --memory 6144            # slot 1, resized
+~/dev/Clock/tools/tart-battery-runner.sh install-service --keep-awake --cpu 5 --memory 6144 --slot 2   # slot 2
+~/dev/Clock/tools/tart-battery-runner.sh status --slot 2
+```
+
+`uninstall-service --slot 2` retires a slot on its own; the routing variable
+does not change, since the label is shared.
+
+**Measured 2026-09-09**, three opted-in PRs arriving at once, slot 1 at the
+image's 6 vCPU / 8 GB and slot 2 at 5 vCPU / 6 GB, against an idle run of
+~781 s wall / ~1977 s checks:
+
+| job | slot | overlapped another job for | wall | checks |
+|---|---|---|---|---|
+| cross-plate-145 | 1 | 6 of 16 min | 840.4 s (+8 %) | 2049.9 s (+4 %) |
+| panel-146 | 2 | its whole run | 1050.7 s (+35 %) | 2594.1 s (+31 %) |
+| steel-finish | 1 | 13 of 17 min | 966.1 s (+24 %) | 2503.1 s (+27 %) |
+
+Three jobs done in 34.5 min from the first start, against ~42 min one after
+another: about 1.5× the throughput, at ~30 % slower per job while two
+overlap, with the second PR starting six minutes sooner than it would have
+waited. Host load sat at 10 on ten cores while both ran. Two slots is the
+right number for this host; a third would only divide the same cores.
+
 ## What a host is allowed to decide for itself: its shard count
 
 `ci-battery.mjs` runs its checks across K browser contexts, and K is a

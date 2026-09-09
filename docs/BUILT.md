@@ -21893,7 +21893,22 @@ healthy from every single one of them. The host's shard count was then
 measured on an 8-vCPU clone (table in `docs/RUNNERS.md`): K=4 buys 3.6 %
 of wall for 18 % more CPU, six and eight are worse, K stays at 3 — and the
 measurement overlapped a production run and doubled its wall, which is now
-a rule in the doc rather than a lesson in a log. And `install-service` records the
+a rule in the doc rather than a lesson in a log.
+
+**Two jobs on one host — `--slot N`.** The owner's next question was
+whether the host could take two jobs; one loop serves one, so a second
+opted-in PR waited a whole run. A slot is a second independent loop —
+its own service, state directory, VM prefix and runner name, the guest
+renamed `battery-N` at clone time so the public logs say which — cloning
+the one golden image, with `--cpu`/`--memory` sizing that slot's CLONES by
+`tart set` rather than the image. The sizing derives from the measurement
+above: a job at K=3 averages ~2.5 cores, so two slots at 5 vCPU / 6 GB fit
+a 10-core / 16 GB host, and 8 GB twice would not. Measured on three PRs
+arriving together (table in `docs/RUNNERS.md`): ~1.5× throughput at ~30 %
+slower per overlapping job, and the second PR starting six minutes sooner.
+The measurement WAS the first production use — slot 2's first cycle took
+the queued PR the moment its runner came online — which is the only kind
+of measurement that does not need the host to itself. And `install-service` records the
 main checkout's script path rather than the worktree's, the defect the
 owner's first install exposed.
 

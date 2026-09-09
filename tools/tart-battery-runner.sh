@@ -13,6 +13,18 @@
 #            --max-wait SECONDS   (`once` only: give up waiting for a job — a bounded test cycle)
 #            --max-idle SECONDS   (recycle a runner that has waited this long with no job; 21600)
 #            --poll SECONDS       (how often the host checks on a waiting runner; 60)
+#            --slot N             (a second, independent loop on the same host; 1)
+#
+# TWO JOBS ON ONE HOST — `--slot N`. Each slot is its own loop, service, state
+# directory, VM name prefix and runner name (`battery-N-…`, and the guest is
+# renamed `battery-N` at clone time so the public logs say which), all cloning
+# the one golden image. GitHub hands a queued job to whichever slot's runner is
+# free, so a second opted-in PR starts at once instead of waiting a run. With
+# `once`/`loop`/`install-service`, --cpu and --memory size THAT SLOT'S CLONES
+# (`tart set` after the clone, the image untouched): a 10-core / 16 GB host
+# carries two slots at 5 vCPU / 6 GB — one job at K=3 averages ~2.5 cores
+# (1977 s of checks over 781 s of wall, measured), and 8 GB twice would leave
+# the host itself squeezed. Slot 1 keeps the paths it always had.
 #
 # WHY A VM PER JOB, on a public repository (docs/RUNNERS.md has the long form):
 #   · PRIVACY — every job log is public, and a self-hosted runner prints the
@@ -70,16 +82,14 @@ esac
 
 IMAGE=ghcr.io/cirruslabs/ubuntu:24.04
 BASE=timesim-battery-base
-GUEST_HOST=battery-1
 LABEL=timesim-battery
 CPU=6; MEMORY=8192; SHARDS=""; REPO=""; REBUILD=0; KEEP_AWAKE=${KEEP_AWAKE:-0}; MAX_WAIT=""; VM_PID=""; JOB_PID=
 MAX_IDLE=${MAX_IDLE:-21600}; POLL=${POLL:-60}
-STATE="$HOME/.timesim-tart"; mkdir -p "$STATE"
-SERVICE=com.timesim.tart-battery
-PLIST="$HOME/Library/LaunchAgents/$SERVICE.plist"
+SLOT=${SLOT:-1}; CPU_SET=0; MEMORY_SET=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --cpu) CPU=$2; shift 2 ;;  --memory) MEMORY=$2; shift 2 ;;
+    --cpu) CPU=$2; CPU_SET=1; shift 2 ;;  --memory) MEMORY=$2; MEMORY_SET=1; shift 2 ;;
+    --slot) SLOT=$2; shift 2 ;;
     --shards) SHARDS=$2; shift 2 ;;  --repo) REPO=$2; shift 2 ;;
     --rebuild) REBUILD=1; shift ;;  --keep-awake) KEEP_AWAKE=1; shift ;;
     --max-wait) MAX_WAIT=$2; shift 2 ;;
@@ -87,6 +97,25 @@ while [ $# -gt 0 ]; do
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
 done
+[[ "$SLOT" =~ ^[1-9][0-9]*$ ]] || { echo "--slot wants a positive integer" >&2; exit 2; }
+# Slot 1 keeps the names it always had; every other slot is suffixed, so two
+# loops never share a state dir, a service label, or a VM name pattern.
+if [ "$SLOT" = 1 ]; then
+  STATE="$HOME/.timesim-tart"; SERVICE=com.timesim.tart-battery
+  VM_PREFIX=timesim-battery-; VM_RE='^timesim-battery-[0-9]+$'; TAG="§200 tart"
+else
+  STATE="$HOME/.timesim-tart/slot-$SLOT"; SERVICE=com.timesim.tart-battery-$SLOT
+  VM_PREFIX="timesim-battery-s$SLOT-"; VM_RE="^timesim-battery-s$SLOT-[0-9]+\$"; TAG="§200 tart[slot $SLOT]"
+fi
+GUEST_HOST=battery-$SLOT
+mkdir -p "$STATE"
+PLIST="$HOME/Library/LaunchAgents/$SERVICE.plist"
+# Clone sizing for once/loop/install-service: --cpu/--memory given here, or
+# SLOT_CPU/SLOT_MEMORY from the service's plist. Empty means the image's own.
+case "$cmd" in once|loop|install-service)
+  [ "$CPU_SET" = 1 ] && SLOT_CPU=$CPU; [ "$MEMORY_SET" = 1 ] && SLOT_MEMORY=$MEMORY ;;
+esac
+SLOT_CPU=${SLOT_CPU:-}; SLOT_MEMORY=${SLOT_MEMORY:-}
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 # The checkout the service should run from: a worktree under .claude/worktrees
@@ -98,7 +127,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 # cd'd from the caller's directory, passed its test from a worktree, and
 # died on line one in the main checkout the day the fix merged.
 MAIN_ROOT=$(cd "$ROOT" && cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/.." && pwd)
-log() { printf '%s §200 tart: %s\n' "$(date -u +%FT%TZ)" "$*"; }
+log() { printf '%s %s: %s\n' "$(date -u +%FT%TZ)" "$TAG" "$*"; }
 die() { log "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "needs $1 on PATH"; }
 if [ -z "$REPO" ]; then
@@ -151,7 +180,7 @@ forget_runner() {
 # a test cycle beside it) has one, and is left alone.
 sweep_stale() {
   local vm
-  for vm in $(tart list --quiet 2>/dev/null | grep -E '^timesim-battery-[0-9]+$' || true); do
+  for vm in $(tart list --quiet 2>/dev/null | grep -E "$VM_RE" || true); do
     pgrep -f "tart run $vm " >/dev/null 2>&1 && continue
     log "sweeping stale job VM $vm"; VM_PID=""; teardown "$vm"
   done
@@ -239,7 +268,7 @@ once() {
   for t in tart gh; do need "$t"; done
   have_vm "$BASE" || die "no golden image — run: $0 build"
   sweep_stale
-  local vm="timesim-battery-$(date +%s)" name jit rc=0 dog=""
+  local vm="$VM_PREFIX$(date +%s)" name jit rc=0 dog=""
   name="$GUEST_HOST-$(printf '%04x' $((RANDOM % 65536)))"
   # Whatever ends this cycle — the job, a signal, a bounded wait — the clone
   # goes, and so does any runner record GitHub still holds for its name: a
@@ -247,7 +276,12 @@ once() {
   trap 'teardown "$vm"; forget_runner "$name"' RETURN   # for the die() paths above; cleared before the normal return
   trap 'log "signal — tearing $vm down"; [ -n "$JOB_PID" ] && kill "$JOB_PID" 2>/dev/null; teardown "$vm"; forget_runner "$name"; exit 130' INT TERM
   tart clone "$BASE" "$vm"
+  [ -n "$SLOT_CPU" ] && tart set "$vm" --cpu "$SLOT_CPU"
+  [ -n "$SLOT_MEMORY" ] && tart set "$vm" --memory "$SLOT_MEMORY"
   VM_PID=""; boot "$vm"
+  # The image is built as battery-1; another slot renames its guest so the
+  # machine name the public logs print says which slot ran the job.
+  [ "$SLOT" != 1 ] && tart exec "$vm" sudo hostnamectl set-hostname "$GUEST_HOST" >/dev/null 2>&1
   # A JIT configuration is good for exactly one job and is never written down:
   # it goes from gh's stdout to the guest's stdin and nowhere else.
   jit=$(gh api -X POST "repos/$REPO/actions/runners/generate-jitconfig" \
@@ -324,11 +358,13 @@ install_service() {
   <key>Label</key><string>$SERVICE</string>
   <key>ProgramArguments</key><array>
     <string>/bin/bash</string><string>$SCRIPT</string><string>loop</string>
-    <string>--repo</string><string>$REPO</string>
+    <string>--repo</string><string>$REPO</string><string>--slot</string><string>$SLOT</string>
   </array>
   <key>EnvironmentVariables</key><dict>
     <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     <key>KEEP_AWAKE</key><string>$KEEP_AWAKE</string>
+    <key>SLOT_CPU</key><string>$SLOT_CPU</string>
+    <key>SLOT_MEMORY</key><string>$SLOT_MEMORY</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -369,11 +405,11 @@ status() {
   # `|| true`: with no job VM the grep finds nothing, and under set -e an
   # assignment from a failing pipeline ends the script one line before the
   # verdict that would have said NOT READY.
-  vm=$(tart list --quiet 2>/dev/null | grep -E '^timesim-battery-[0-9]+$' | head -1 || true)
+  vm=$(tart list --quiet 2>/dev/null | grep -E "$VM_RE" | head -1 || true)
   listener=none
   [ -n "$vm" ] && listener=$(tart exec "$vm" sh -c 'pgrep -x Runner.Listener >/dev/null && echo alive || echo dead' 2>/dev/null || echo "agent-down")
   if [ "${online:-0}" -ge 1 ] && [ -n "$vm" ] && [ "$listener" = alive ]; then
-    log "READY — an opt-in PR would be picked up (GitHub: $online online under '$LABEL'; $vm: listener alive)"
+    log "READY — an opt-in PR would be picked up (GitHub: $online online under '$LABEL'; $vm: listener alive$( [ -n "$SLOT_CPU$SLOT_MEMORY" ] && echo ", clones at ${SLOT_CPU:-image} cpu / ${SLOT_MEMORY:-image} MB"))"
   else
     log "NOT READY — GitHub online under '$LABEL': ${online:-0}; job VM: ${vm:-none}; listener: $listener. An opt-in PR would QUEUE (up to 24 h)."
   fi
