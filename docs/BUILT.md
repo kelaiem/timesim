@@ -22551,3 +22551,91 @@ identical to the two previous runs on the old partition (§3's and §10's,
 themselves identical to each other). The gate is unmoved; the census is
 context-order-sensitive by that much. Not this entry's to fix; it is written
 down so the next partition change is not read as a geometry change.
+## §142 — The tour re-recorded, paused by a touch, and asked before it ends — and it reaches the pages
+
+Roadmap item 142 asked three distinct things of the guided tour and said to
+keep them distinct. All three land here, plus a defect the acceptance probe
+turned up on the way.
+
+### 1 — Re-recorded: every caption walked against the metal
+
+Twelve captions read against what the build does. Two overclaimed and are
+corrected, in all five locales:
+
+- **Stop 1** said the balance "frees one tooth per beat". `BEAT_DEG` is 12°,
+  half the escape wheel's 24° pitch: a beat frees the wheel by HALF a tooth,
+  one tooth every two beats. It says so now.
+- **Stop 4** said the torque runs "barrel to centre". The drum drives the
+  CHAIN; the wheel that drives the centre pinion is the fusee's great wheel
+  (`MECH_GRAPH.drive`: drum → Chain → Fusee & great wheel → Center wheel).
+  It says "great wheel to centre" now.
+
+The quick-set pair TODO 58 already corrected stays as it is. The other eight
+read true: the arrest's finger (§47, still built), the sync through the real
+keyless works (§9), the synthesised ticks (§8).
+
+### 2 — A PAUSE state, then the confirmation
+
+The engine had two states, running and stopped, and `scriptAbort` stopped it
+on ANY `pointerdown` / `keydown` / `wheel`. Now: incidental input **pauses**
+(`scriptPause`) — the sim keeps running, since the viewer has just started
+driving it; only the dwell clock and the step's own scripted actions hold
+(`scriptUpdate` returns while paused) — and the banner, which stays
+click-through, grows a Resume control in its own `pointer-events: auto`
+child ("Paused — the watch keeps running" · Resume). **Resume re-enters the
+current stop view-only**: `scriptEnterStep(i, { viewOnly })` re-establishes
+camera, x-ray, explode and labels the viewer just perturbed, and skips the
+stop's one-shot actions (a wind, a setting turn, a sync) which would
+ACCUMULATE on a second pass — the one way the entry's "idempotent" needed a
+qualifier. The dwell restarts, the entry's call.
+
+Only the **explicit exits ask**: the Tour button (which reads Stop while
+running) and Esc raise "End the tour?" · Keep going · End, with the run held
+paused underneath. The box is the `?tour` deep link's own gate with the
+question's copy set per use and its default copy put back (`askGate`;
+`askTour` is now a caller of it). Clicks on the banner's controls and on the
+gate are not incidental input.
+
+### 3 — Two stops, and the discovery duty
+
+The tour never went near the alarm work. It now frames the **alarm barrel's
+Maltese cross** (§106's stop-work, drawn in the line tier since §134 — the
+stop turns the line tier on and the probe counts 31 line proxies under
+'Alarm winding arrest' there) via the same lazy `get camera()` idiom stop 4
+uses, and then **arms the alarm** from the Dial preset under x-ray
+(`alarm: true` was already a step field) with the column wheel, the beak and
+the long link named in the caption. Both are data, not engine.
+
+§146's discovery duty is met FROM the tour rather than by naming chrome the
+run has hidden: the closing stop carries `links: true`, and the banner then
+shows two links — "How they work" (`primer.html`) and "The explainer"
+(`explain.html`) — in the same pointer-taking child the Resume control
+uses. Fourteen stops now; every caption and label in five locales.
+
+### The defect the probe found, fixed at its root
+
+Driving the run through stop 4 (power flow) raised 381 warnings, "THREE.
+Texture: Unable to serialize Texture", and stop 10 twelve more. The stack:
+`pfApply` → `Material.clone` → `Material.copy`, which deep-copies `userData`
+through JSON — and since §203 step 2 the steel materials carry their compiled
+shader in `userData.shader`, whose uniforms hold the environment PMREM and
+the shadow map. Every clone of such a material (power flow's ghosts, focus
+ghosting) serialised them all. The three write sites (`materials.js`: the
+brush law on both steels, the ribbing, the perlage) now define the handle
+NON-ENUMERABLE: readers still find it, JSON does not, and a clone gets its
+own `onBeforeCompile` and its own handle, which is the correct one. The
+probe's warning check is exact again.
+
+### Instrument
+
+`tools/probe-142-tour.mjs` (acceptance, 21 claims), driving the engine
+through `__clock.scriptTick` in real seconds rather than the rAF loop (a
+software-GL frame is seconds): the run advances on its own past a dwell
+(control); a click pauses and shows Resume; the index holds through 10 s of
+engine time; Resume re-enters the same stop and the run goes on; Esc asks
+with the run paused, Keep going resumes, the button asks, End stops and
+restores the panel and the gate's copy; the cross draws in the line tier;
+the closing stop links to both pages; every caption is in five locales; no
+warning across the run. Battery: `src/main.js`, `src/materials.js` and
+`src/i18n.js` are on the graph, so it ran — the fingerprint is the check,
+the tour being outside `resetInputs()`'s world entirely.

@@ -26132,6 +26132,18 @@ style.textContent = `
   opacity: 0; transition: opacity 0.35s; display: none;
 }
 #clock-caption.show { opacity: 1; }
+/* §142 — the banner stays click-through (a click on the movement PAUSES the
+   run now, it no longer cancels it), and only its own controls take the
+   pointer: the Resume affordance while paused, and the two page links on the
+   closing stop. */
+#clock-caption .cap-actions { display: none; margin-top: 8px; pointer-events: auto; }
+#clock-caption .cap-actions.show { display: block; }
+#clock-caption .cap-actions button, #clock-caption .cap-actions a {
+  display: inline-block; margin: 0 4px; padding: 4px 12px; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.22); background: rgba(255,255,255,0.08);
+  color: #eaf0f7; font: inherit; text-decoration: none; cursor: pointer;
+}
+#clock-caption .cap-actions .pause-note { display: block; margin-bottom: 6px; color: #8fa6bf; font-size: 12px; }
 /* §28 layer 2 — the "a new version is available" toast. Bottom-LEFT, clear of
    the caption (bottom-centre) and the panel (top-left on desktop, and on a
    phone §15's panel collapses upward), because this can appear at any moment
@@ -26771,6 +26783,15 @@ function unhideViewHudForMode() {
 const captionEl = document.createElement('div');
 captionEl.id = 'clock-caption';
 document.body.appendChild(captionEl);
+// §142 — the caption's TEXT and its ACTIONS are separate children: the text
+// is what a step writes, the actions are what the engine shows (Resume while
+// paused, the page links on a `links` stop), so neither overwrites the other.
+const captionTextEl = document.createElement('span');
+captionTextEl.className = 'cap-text';
+captionEl.appendChild(captionTextEl);
+const captionActionsEl = document.createElement('div');
+captionActionsEl.className = 'cap-actions';
+captionEl.appendChild(captionActionsEl);
 
 // ---------------------------------------------------------------------------
 // §28 layer 2 — a USER-DECIDED reload for tabs left open across a deploy.
@@ -27101,18 +27122,27 @@ tourGateEl.innerHTML = `
     </div>
   </div>`;
 document.body.appendChild(tourGateEl);
-function askTour(onProceed) {
-  tourGateEl.classList.add('show');
+// §142 — the box asks whatever it is handed: the ?tour link's question, or
+// the running tour's "End the tour?". One element, one pair of buttons; the
+// copy is set per use and the default copy is put back when the box closes.
+function askGate(question, noLabel, yesLabel, done) {
+  const p = tourGateEl.querySelector('p');
   const goBtn = document.getElementById('tour-gate-go');
   const skipBtn = document.getElementById('tour-gate-skip');
-  const finish = (proceed) => {
+  const dflt = { p: p.textContent, go: goBtn.textContent, skip: skipBtn.textContent };
+  p.textContent = question; goBtn.textContent = yesLabel; skipBtn.textContent = noLabel;
+  tourGateEl.classList.add('show');
+  const finish = (yes) => {
     tourGateEl.classList.remove('show');
-    goBtn.onclick = null;
-    skipBtn.onclick = null;
-    if (proceed) onProceed();
+    goBtn.onclick = null; skipBtn.onclick = null;
+    p.textContent = dflt.p; goBtn.textContent = dflt.go; skipBtn.textContent = dflt.skip;
+    done(yes);
   };
   goBtn.onclick = () => finish(true);
   skipBtn.onclick = () => finish(false);
+}
+function askTour(onProceed) {
+  askGate(t('Take a guided tour of the movement?'), t('Skip'), t('Start Tour'), (yes) => { if (yes) onProceed(); });
 }
 
 // §72 — THE KEYBOARD AND SCREEN-READER LAYER (owner request: an a11y audit
@@ -34767,11 +34797,23 @@ let scriptBtn = null;           // the Guided button that started the run
 let scriptDwell = 0;            // s held since the current step's actions settled
 let scriptTurnRad = 0;          // signed crown rotation left to feed for a turn step
 let scriptExplodeTarget = null; // 0..1 to ease explodeAmount toward, or null
+// §142 — A PAUSED run. The engine had two states, running and stopped, and
+// ANY input stopped it; now incidental input (a click on the movement, a key,
+// a wheel) PAUSES — the viewer has just started driving the sim, which keeps
+// running; only the dwell clock and the step's own scripted actions hold —
+// and the explicit exits (the Tour button, Esc) ask before ending the run.
+let scriptPaused = false;
 
-function scriptEnterStep(i) {
+// `viewOnly` — re-entering the CURRENT step on resume re-establishes the view
+// the viewer just perturbed (camera, x-ray, explode, labels…) without
+// replaying its one-shot actions: a wind, a setting turn or a sync would
+// ACCUMULATE on a second pass, which is the one way this re-entry is not
+// idempotent. The dwell restarts, which is cheaper and more predictable than
+// restoring a partial one (the entry's call).
+function scriptEnterStep(i, { viewOnly = false } = {}) {
   const s = scriptSteps[i];
   scriptDwell = 0;
-  scriptTurnRad = 0;
+  if (!viewOnly) scriptTurnRad = 0;
   // View/UI state first, camera next, then crown/turn/sync — so a preset's
   // reveal:'xray' can be overridden by an explicit xray:false in the same step.
   if (s.scale !== undefined) setTimeScale(s.scale);
@@ -34811,20 +34853,61 @@ function scriptEnterStep(i) {
   if (s.xray !== undefined) setXray(s.xray);
   if (s.schematic !== undefined) setSchematic(s.schematic); // §69: scripts narrate the finished watch, so their reset steps force solids
   if (s.crown) { setCrownOut(s.crown === 'out'); updateCrownUI(); }
-  if (s.turnMinutes) scriptTurnRad = settingTurnRad(s.turnMinutes);
+  if (s.turnMinutes && !viewOnly) scriptTurnRad = settingTurnRad(s.turnMinutes);
   // §34 first slice — the alarm vocabulary, same shape as the crown's:
   if (s.alarm !== undefined) setAlarm(s.alarm);
   if (s.alarmCrown) { alarmCrownOut = (s.alarmCrown === 'out'); alarmCrownSyncLabel(); }
-  if (s.turnAlarmHours) scriptAlarmTurnRad = s.turnAlarmHours * (2 * Math.PI / 4); // one crown rev = 4 h through the 10/30 train
-  if (s.wind) autoWindRemaining += s.wind * 2 * Math.PI;
-  if (s.sync) { syncStart(); updateCrownUI(); }
-  if (s.caption !== undefined) captionEl.textContent = t(s.caption); // §73: step tables stay English; display resolves
+  if (s.turnAlarmHours && !viewOnly) scriptAlarmTurnRad = s.turnAlarmHours * (2 * Math.PI / 4); // one crown rev = 4 h through the 10/30 train
+  if (s.wind && !viewOnly) autoWindRemaining += s.wind * 2 * Math.PI;
+  if (s.sync && !viewOnly) { syncStart(); updateCrownUI(); }
+  if (s.caption !== undefined) captionTextEl.textContent = t(s.caption); // §73: step tables stay English; display resolves
+  // §142 — the closing stop's DISCOVERY duty: the two pages, reachable FROM
+  // the tour, as links in the banner rather than a caption naming chrome the
+  // run has hidden (INSPECT_STEPS' own lesson).
+  captionActionsEl.innerHTML = '';
+  if (s.links) {
+    for (const [href, label] of [['./primer.html', 'How they work'], ['./explain.html', 'The explainer']]) {
+      const a = document.createElement('a'); a.href = href; a.textContent = t(label); captionActionsEl.appendChild(a);
+    }
+  }
+  captionActionsEl.classList.toggle('show', !!s.links);
   captionEl.style.display = 'block';
   captionEl.classList.add('show');
 }
 
+function scriptPause() {
+  if (!scriptSteps || scriptPaused) return;
+  scriptPaused = true;
+  captionActionsEl.innerHTML = '';
+  const note = document.createElement('span'); note.className = 'pause-note'; note.textContent = t('Paused — the watch keeps running');
+  const btn = document.createElement('button'); btn.className = 'script-ctrl'; btn.id = 'script-resume'; btn.textContent = t('Resume');
+  btn.addEventListener('click', scriptResume);
+  captionActionsEl.append(note, btn);
+  captionActionsEl.classList.add('show');
+}
+function scriptResume() {
+  if (!scriptSteps || !scriptPaused) return;
+  scriptPaused = false;
+  scriptEnterStep(scriptIdx, { viewOnly: true });
+}
+// The explicit exits confirm. The gate is the ?tour deep link's own box with
+// this question's copy; Keep going resumes, End stops — and the run is held
+// paused underneath while the question is up, because a tour that keeps
+// walking behind its own dialog answers the question for the viewer.
+let scriptExitAsking = false;
+function askScriptExit() {
+  if (!scriptSteps || scriptExitAsking) return;
+  scriptExitAsking = true;
+  scriptPause();
+  askGate(t('End the tour?'), t('Keep going'), t('End'), (end) => {
+    scriptExitAsking = false;
+    if (end) scriptStop(); else scriptResume();
+  });
+}
+
 function scriptUpdate(realDt) {
   if (!scriptSteps) return;
+  if (scriptPaused) return;   // §142 — the dwell clock and the step's actions hold; the sim itself runs on
   const s = scriptSteps[scriptIdx];
   // Feed a scripted setting turn — only while the stem is physically in the
   // setting position (crownPullT > 0.5), mirroring tick()'s own gate, so it can
@@ -34870,9 +34953,13 @@ function scriptUpdate(realDt) {
 let scriptAbortArmed = false;
 function scriptAbort(e) {
   // A click on a Guided button is the user talking TO the script (its handler
-  // toggles it), not taking over from it — let that through.
-  if (e.target && e.target.closest && e.target.closest('.script-ctrl')) return;
-  scriptStop();
+  // toggles it), not taking over from it — let that through. So is a click on
+  // the banner's own controls (Resume, the page links) and on the exit gate.
+  if (e.target && e.target.closest && e.target.closest('.script-ctrl, #clock-caption, #clock-tour-gate')) return;
+  // §142 — Esc is the explicit exit and asks; everything else is incidental
+  // input and PAUSES (the viewer is driving now; the run waits).
+  if (e.type === 'keydown' && e.key === 'Escape') { askScriptExit(); return; }
+  scriptPause();
 }
 function armScriptAbort() {
   if (scriptAbortArmed) return;
@@ -34905,6 +34992,9 @@ function scriptStop() {
   scriptIdx = 0;
   scriptTurnRad = 0;
   scriptExplodeTarget = null;
+  scriptPaused = false;            // §142
+  captionActionsEl.innerHTML = '';
+  captionActionsEl.classList.remove('show');
   syncCancel();
   captionEl.classList.remove('show');
   setTimeout(() => { if (!scriptSteps) captionEl.style.display = 'none'; }, 400); // let the fade finish
@@ -35099,7 +35189,8 @@ const TOUR_STEPS = [
   { preset: 'Free', scale: 1, crown: 'in', xray: false, explode: 0, labels: false, powerflow: false, sound: false, unit: 'All', schematic: false,
     caption: 'A fusee-and-chain watch movement — every part built from geometry, no models', dwell: 3.6 },
   { preset: 'Escapement', scale: 0.05,
-    caption: 'The Swiss lever escapement, slowed right down — the balance frees one tooth per beat', dwell: 6.0 },
+    // §142 re-record: BEAT_DEG is 12°, half the 24° tooth pitch — one tooth every TWO beats
+    caption: 'The Swiss lever escapement, slowed right down — each beat frees the escape wheel by half a tooth', dwell: 6.0 },
   { preset: 'Free', scale: 1, crown: 'in', wind: 7, xray: true, // scale:1 — auto-wind drains in sim-time, so the previous step's slow scale would stretch the wind out
     // wind: 7 — a full wind is 5.25 crown turns (RESERVE·24/8); the rest is
     // deliberately cranked against the §47 arrest so the next stop's subject
@@ -35111,7 +35202,8 @@ const TOUR_STEPS = [
     scale: 1, xray: true,
     caption: 'Full wind ends on metal: the last coil lifts a finger, its beak drops before a stop on the cone, and the crown stands still', dwell: 5.0 },
   { preset: 'Train', scale: 1, powerflow: true,
-    caption: 'That torque runs the going train — barrel to centre, third, fourth, escape', dwell: 5.1 },
+    // §142 re-record: the drum drives the CHAIN; the wheel that drives the centre is the fusee's great wheel
+    caption: 'That torque runs the going train — great wheel to centre, third, fourth, escape', dwell: 5.1 },
   { preset: 'Free', powerflow: false, xray: true, explode: 0.6, labels: true,
     caption: 'X-ray the plates and explode the stack to see how the layers fit', dwell: 6.0 },
   { preset: 'Setting', explode: 0, labels: false, scale: 0.3, crown: 'out',
@@ -35122,8 +35214,17 @@ const TOUR_STEPS = [
     caption: 'Sync sets the hands to your wall clock through the real keyless works, then catches up', dwell: 0.9 },
   { preset: 'Free', sound: true,
     caption: 'Every tick is synthesised from the movement’s own events — turn the volume up', dwell: 5.1 },
-  { preset: 'Free', sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false,
-    caption: 'That’s the tour. Now explore the controls yourself.', dwell: 3.9 },
+  // §142 — two stops the tour never made: the alarm's Maltese cross (§106's
+  // stop-work, drawn in the line tier since §134 — framed by the same lazy
+  // getter idiom stop 4 uses) and the alarm's arming, which is the one thing
+  // an owner presses.
+  { get camera() { return frameOn('Alarm winding arrest', [0.35, -0.5, 0.75], 4.6); },
+    sound: false, xray: true, schematic: true,
+    caption: 'The alarm barrel has a stop-work of its own: a Maltese cross counts its turns, and the last one lands on a solid limb', dwell: 5.0 },
+  { preset: 'Dial', schematic: false, xray: true, alarm: true,
+    caption: 'Press the pusher and the alarm arms: a column wheel indexes, a beak reads it, and a long link carries the arming to the selector ring', dwell: 4.6 },
+  { preset: 'Free', alarm: false, sound: false, scale: 1, xray: false, explode: 0, labels: false, powerflow: false, links: true,
+    caption: 'That’s the tour. Explore the controls yourself, or read how they work:', dwell: 6.0 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -35355,7 +35456,7 @@ document.getElementById('btn-demo').addEventListener('click', (e) => {
 });
 document.getElementById('btn-tour').addEventListener('click', (e) => {
   const btn = e.currentTarget;
-  if (scriptBtn === btn) scriptStop(); else scriptStart(TOUR_STEPS, btn);
+  if (scriptBtn === btn) askScriptExit(); else scriptStart(TOUR_STEPS, btn); // §142: the button is the explicit exit, and it asks
 });
 
 // ---------------------------------------------------------------------------
@@ -38178,7 +38279,9 @@ window.__clock = {
   goToPose(pos, look, opts) { goToPose(new THREE.Vector3(...pos), new THREE.Vector3(...look), opts); }, // §37 — the primitive, for review sessions (this is what §35 lacked)
   startTour() { scriptStart(TOUR_STEPS, document.getElementById('btn-tour')); },
   startBench() { scriptStart(BENCH_STEPS, document.getElementById('btn-bench')); },   // §161 — the watchmaker's route
-  get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionEl.textContent } : null; },
+  get scriptState() { return scriptSteps ? { idx: scriptIdx, of: scriptSteps.length, caption: captionTextEl.textContent, paused: scriptPaused, captions: scriptSteps.map((s) => s.caption), links: captionActionsEl.querySelectorAll('a').length } : null; }, // §142: paused, the step list and the banner's links, for the probe
+  scriptJump(i) { if (scriptSteps) { scriptIdx = i; scriptEnterStep(i, { viewOnly: true }); } }, // §142 — enter a stop directly (view only), for the probe
+  scriptTick(dt) { scriptUpdate(dt); }, // §142 — advance the engine by dt seconds of real time without waiting on the rAF loop (a software-GL frame is seconds), for the probe
   // Deterministic per-frame advance for verification (rAF is paused when the
   // automation pane is backgrounded, so the guided demo/tour can't be watched
   // through the real loop). Runs script + sync + sim + camera + render.

@@ -86,7 +86,12 @@ const BRUSH_FLAT_GATE = 0.7;               // the ribbing's own gate (vRibNormal
 const BRUSH_MATERIALS = [steel, caseMetal];
 function installBrush(mat) {
   mat.onBeforeCompile = (shader) => {
-    mat.userData.shader = shader;
+    // §142 found, §203/§119's class: the shader handle must not be an ENUMERABLE member of userData —
+    // Material.copy deep-copies userData through JSON, and a shader carries its uniforms' textures
+    // (the env PMREM, the shadow map), so every clone of this material (power flow's ghosts, focus)
+    // serialised them all and warned per texture. Non-enumerable: readers still find it, JSON does not,
+    // and a clone gets its own onBeforeCompile and its own handle, which is the correct one.
+    Object.defineProperty(mat.userData, 'shader', { value: shader, enumerable: false, configurable: true, writable: true });
     const a = ((aesthetics.materials?.steel?.brushAngleDeg ?? 0) * Math.PI) / 180;
     shader.uniforms.brushDir = { value: new THREE.Vector2(Math.cos(a), Math.sin(a)) };
     shader.vertexShader = shader.vertexShader
@@ -277,7 +282,12 @@ const ribbedNickel = phys({
     // §23: the compiled shader is kept so the advanced panel can rewrite the
     // uniforms live — before this, the values were captured constants and a
     // decoration knob would have silently done nothing until reload.
-    ribbedNickel.userData.shader = shader;
+    // §142 found, §203/§119's class: the shader handle must not be an ENUMERABLE member of userData —
+    // Material.copy deep-copies userData through JSON, and a shader carries its uniforms' textures
+    // (the env PMREM, the shadow map), so every clone of this material (power flow's ghosts, focus)
+    // serialised them all and warned per texture. Non-enumerable: readers still find it, JSON does not,
+    // and a clone gets its own onBeforeCompile and its own handle, which is the correct one.
+    Object.defineProperty(ribbedNickel.userData, 'shader', { value: shader, enumerable: false, configurable: true, writable: true });
     shader.uniforms.ribDir = { value: dir };
     shader.uniforms.ribWidth = { value: width };
     shader.uniforms.ribTilt = { value: tilt };
@@ -315,7 +325,12 @@ const perledNickel = phys({
   const ringFreq = prl.ringFreq ?? 9.0;
   const tilt = prl.tilt ?? 0.22;
   perledNickel.onBeforeCompile = (shader) => {
-    perledNickel.userData.shader = shader;
+    // §142 found, §203/§119's class: the shader handle must not be an ENUMERABLE member of userData —
+    // Material.copy deep-copies userData through JSON, and a shader carries its uniforms' textures
+    // (the env PMREM, the shadow map), so every clone of this material (power flow's ghosts, focus)
+    // serialised them all and warned per texture. Non-enumerable: readers still find it, JSON does not,
+    // and a clone gets its own onBeforeCompile and its own handle, which is the correct one.
+    Object.defineProperty(perledNickel.userData, 'shader', { value: shader, enumerable: false, configurable: true, writable: true });
     shader.uniforms.prlPitch = { value: pitch };
     shader.uniforms.prlRingFreq = { value: ringFreq };
     shader.uniforms.prlTilt = { value: tilt };
