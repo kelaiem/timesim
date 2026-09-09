@@ -22472,3 +22472,78 @@ sections, which describe complications this movement does not carry.
 vocabulary read off `main.js`'s `p.get(...)` calls; the tier's materials off
 its `LineBasicMaterial` constructors. `explain-quotes.mjs` PASS on the tree
 at hand. Battery: none — this landing is a record and three claim files.
+## §135 — The mesh registry's other two questions — the centre distance gated, and a mesh in the metal that no row declares
+
+Roadmap §135 asked for a registry (Tier A) and four things it makes checkable;
+§194 built the registry and the first and third (`transmits`, `meshPhase`),
+and reconciled the entry down to items 2 and 4. Both land here, and the entry
+closes.
+
+### Item 2 — the centre distance, gated
+
+Every row already reported `cdMiss` against `module·(P+Q)/2` — the solve's own
+tripwire — and §194 declined to gate it because two keyless rows sit 0.1 out
+on an undecided constant (TODO 125), and a gate landing red on an undecided
+constant is §54's banner. The gate lands anyway, the way §194 landed its
+phase gate: **every row gated, the two that fail waived by name, citing the
+item.** The bar is §194's own enumeration criterion, **0.5% of the pitch-radius
+sum** (`MESH_CD_TOL`), so one number says both "this pair meshes" (item 4
+below) and "this declared mesh stands where its teeth were cut for". A module
+split between members is malformed, not a miss. Measured: 21 rows at 0.000%,
+the two keyless rows at 1.337% (7.58 against 7.48), waived against TODO 125;
+no stale waiver.
+
+**What TODO 125's deletion measures, recorded there and beside the waivers.**
+With the six `+ 0.1` removed both rows read 0.000% — and §125's D4 assert
+fires: the seconds well's outboard bound is derived through the plate from the
+keyless station and moved 15.6277 → 15.1334, 0.49 rather than 0.1, because
+the plate re-solves. Deleting the constant is a re-solve of the identity
+(D4's full-precision literal, the fourth's station, the escapement hung off
+it), not a constant edit; the constant was put back and the decision left
+with the item it belongs to. Either decision goes the waivers stale, and the
+gate says so.
+
+### Item 4 — a mesh in the metal that no row declares
+
+`clock.meshCandidates(tol)` (`main.js`) is §194's hand enumeration as a
+function, with its three criteria and nothing invented: every rotor with a
+pitch radius (57 in the scene, schematic proxies excluded — §194's 85 counted
+per unit and proxies), pairwise — parallel axes, centre distance within `tol`
+of the pitch-radius sum, rims axially overlapping so contact is possible. The
+tolerance is passed in, so it has one home (`inspect.js`). `checkMeshCoverage`
+walks the 43-pose net and takes the UNION — a pair that meets at some pose only
+is still a mesh — and diffs against the rows by unordered member pair: an
+undeclared pair fails unless waived by name; a waiver naming a declared pair,
+or one that no longer meets, is stale and fails; declared rows that never meet
+the criteria are reported, not gated (the centre gate owns a row standing off
+its distance, the stale-selector path owns a row naming no rotor). Its
+control: the enumeration must find the declared meshes it exists to be
+compared against.
+
+**Measured: 21 pairs mesh in the metal over 43 poses, all 21 declared — §194's
+"21 measured" exactly — 0 undeclared, and the only declared rows outside the
+enumeration are the two TODO 125 rows, 0.1 off the pitch sum by
+construction.** The first cut missed two alarm-setting rows: a rotor under the
+dial's mirrored frame reports its axis as −z, and projecting each member's
+extent onto its OWN axis put two rims sharing a plane on opposite sides of
+zero. Axes are oriented to one sign before projecting. The movement has
+**21 gear meshes**, which the entry's acceptance asked to be stated and nobody
+could answer.
+
+### Battery
+
+`meshPhase` gains the centre gate (its line reads "0 unwaived centre-distance
+misses over 0.5% (§135)"); `meshCoverage` is a new gate, cost column 3 (a
+guess; the column's rule is to correct it from a run). `tools/probe-135-
+registry.mjs` runs both alone on the battery's own drive and holds the
+numbers above. No geometry moved; the fingerprint is the check.
+
+**One residue, measured and recorded rather than chased.** A new check
+re-partitions the shards, and with `graph` and `axisEntry` moved ahead of
+the clearances sweep in shard 0's order, the sweep's AABB pre-filter passed
+72 fewer pairs of 279,046 (0.026%), every one of them landing in `pruned` —
+`aabbTests`, `verdictCalls`, `far`, `mid`, `near` and every verdict row are
+identical to the two previous runs on the old partition (§3's and §10's,
+themselves identical to each other). The gate is unmoved; the census is
+context-order-sensitive by that much. Not this entry's to fix; it is written
+down so the next partition change is not read as a geometry change.

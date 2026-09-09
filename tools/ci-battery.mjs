@@ -275,6 +275,7 @@ const COSTS = {
   // exists to be corrected out of (it costs wall clock, never a verdict).
   'meshPhase': 10,
   'transmits': 5,
+  'meshCoverage': 3,   // §135 item 4 — 85 rotors pairwise × the 43-pose net, bounding boxes only; a guess until measured (the column's rule: corrected from a run, never trusted)
   // 147 → 243 with §94 tier A's three sub-dial rows. Two of them pair a
   // 3-mesh and a 4-mesh unit against the DIAL's 147 meshes, and the pair
   // loop is quadratic in exactly that. Measured, unscaled, on the container

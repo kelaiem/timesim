@@ -285,11 +285,20 @@ export const BATTERY = [
   // whose angles are written independently sweep exactly the same volumes as
   // two that are genuinely geared.
   { name: 'meshPhase', opts: {},
-    gate: '0 unwaived rows over 2% of a pitch, 0 malformed, 0 stale waivers, controls PASS',
-    fails: (r) => [...(r.violations || []), ...(r.malformed || []), ...(r.staleWaivers || []),
+    gate: '0 unwaived rows over 2% of a pitch, 0 unwaived centre-distance misses over 0.5% (§135), 0 malformed, 0 stale waivers, controls PASS',
+    fails: (r) => [...(r.violations || []), ...(r.centreViolations || []), ...(r.malformed || []),
+                   ...(r.staleWaivers || []), ...(r.staleCentreWaivers || []),
                    ...(r.controlPass ? [] : [{ controls: 'FAIL' }])],
     note: (r) => `${(r.rows || []).length} declared meshes over ${r.poseCount} poses, `
-      + `${(r.waived || []).length} waived (accepted debt)` },
+      + `${(r.waived || []).length} waived (accepted debt), ${(r.centreWaived || []).length} centre-distance waived (TODO 125)` },
+  // §135 item 4 — the registry's other half: a pair that MESHES in the metal
+  // (§194's three criteria, over the pose net) and that no row declares. Its
+  // control is that the enumeration finds the declared meshes at all.
+  { name: 'meshCoverage', opts: {},
+    gate: '0 undeclared meshes in the metal, 0 stale waivers, control PASS',
+    fails: (r) => [...(r.undeclared || []), ...(r.staleWaivers || []), ...(r.controlPass ? [] : [{ control: 'FAIL — the enumeration found no declared mesh' }])],
+    note: (r) => `${r.candidates} pair(s) mesh in the metal over ${r.poseCount} poses (${r.rotors} rotors), ${r.covered} declared, `
+      + `${(r.waived || []).length} waived, ${(r.declaredNotSeen || []).length} declared row(s) never meeting the criteria (reported)` },
   { name: 'transmits', opts: {},
     gate: '0 unwaived ratio mismatches, 0 malformed, 0 stale waivers, controls PASS',
     fails: (r) => [...(r.violations || []), ...(r.malformed || []), ...(r.staleWaivers || []),

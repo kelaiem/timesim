@@ -610,6 +610,63 @@ function measureMeshNow(site, inject = 0) {
   };
 }
 
+// §135 item 4 — A MESH IN THE METAL THAT NO ROW DECLARES. The registry can
+// only be checked against itself unless something enumerates candidates FROM
+// THE GEOMETRY; §194 did that enumeration once, by hand, to write its rows
+// (21 measured, 23 declared). This is that enumeration as a function, with
+// §194's own three criteria and nothing invented: parallel axes, centre
+// distance within `tol` of the pitch-radius sum, rims axially overlapping so
+// contact is possible. Every rotor with a recorded module and tooth count is a
+// member; the candidate carries its two names and its measured distance, and
+// inspect.js's checkMeshCoverage diffs the list against the declared rows over
+// the pose net (a pair that meets only at some pose is still a mesh — the
+// sliding clutch's is one). `tol` is the CHECK's number, passed in, so the
+// tolerance has one home (inspect.js) and this function has no opinion.
+function meshCandidates(tol) {
+  const rotors = [];
+  scene.traverse((o) => {
+    // every rotor with a pitch radius — §194's 85 — not only those carrying a
+    // module: the criteria need r alone, and a rim that records teeth without
+    // a module (a barrel's, a disc's) meshes all the same
+    if (o.name && o.userData && typeof o.userData.r === 'number' && o.userData.r > 0 && !o.userData.schematic) rotors.push(o);
+  });
+  scene.updateMatrixWorld(true);
+  const q = new THREE.Quaternion(), box = new THREE.Box3();
+  const info = rotors.map((o) => {
+    o.getWorldQuaternion(q);
+    const n = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+    // ONE SIGN for a shared axis. A rotor under the dial's mirrored frame
+    // reports its axis as −z; projecting its extent onto its OWN axis and its
+    // mate's onto +z put two rims that share a plane on opposite sides of
+    // zero, and the alarm-setting rows across the seam read as never
+    // overlapping. Orient every axis so its largest component is positive.
+    const big = Math.abs(n.x) >= Math.abs(n.y) && Math.abs(n.x) >= Math.abs(n.z) ? n.x : Math.abs(n.y) >= Math.abs(n.z) ? n.y : n.z;
+    if (big < 0) n.negate();
+    const c = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
+    box.setFromObject(o);
+    let lo = Infinity, hi = -Infinity;
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      const s = x * n.x + y * n.y + z * n.z; if (s < lo) lo = s; if (s > hi) hi = s;
+    }
+    return { name: o.name, n, c, lo, hi, r: o.userData.r, teeth: o.userData.teeth ?? null, module: o.userData.module ?? null };
+  });
+  const out = [];
+  const dv = new THREE.Vector3();
+  for (let i = 0; i < info.length; i++) for (let j = i + 1; j < info.length; j++) {
+    const A = info[i], B = info[j];
+    if (Math.abs(A.n.dot(B.n)) < 0.999) continue;                       // parallel axes
+    dv.copy(B.c).sub(A.c);
+    const along = dv.dot(A.n);
+    const d = dv.addScaledVector(A.n, -along).length();                 // centre distance in the common plane
+    const want = A.r + B.r;
+    if (Math.abs(d - want) > tol * want) continue;                      // within the tolerance of the pitch-radius sum
+    if (Math.min(A.hi, B.hi) - Math.max(A.lo, B.lo) <= 0) continue;     // rims axially overlapping
+    out.push({ a: A.name, b: B.name, d: +d.toFixed(4), want: +want.toFixed(4), relMiss: +((d - want) / want).toFixed(5),
+      teethA: A.teeth, teethB: B.teeth, moduleA: A.module, moduleB: B.module });
+  }
+  return { rotors: info.length, candidates: out };
+}
+
 // §194 — a rotor's WORLD SPIN: the azimuth of its own local +X, a material
 // direction on the part. No frame is reasoned about and no rotation.z is read,
 // so a member nested under any number of posed groups still reports the angle
@@ -37717,6 +37774,7 @@ window.__clock = {
   get acoustics() { return GONG_ACOUSTICS; },  // §197 — the gong's blow, modes and radiated level, off the built metal
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
+  meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows
   rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin (and its frame's handedness), for the transmission sweep
   measureMeshNow(site, inject) { return measureMeshNow(site, inject); },  // §194 — one declared mesh at the current pose; `inject` turns B by a fraction of its pitch for the checks' controls
   get leverEngage() { return leverEngage; },
