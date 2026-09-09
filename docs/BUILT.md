@@ -22761,3 +22761,94 @@ the closing stop links to both pages; every caption is in five locales; no
 warning across the run. Battery: `src/main.js`, `src/materials.js` and
 `src/i18n.js` are on the graph, so it ran — the fingerprint is the check,
 the tour being outside `resetInputs()`'s world entirely.
+
+## §145 — The Maltese cross in the explainer — solved in the page from the same three floors, and scrubbed to the bank
+
+`#alarm-winding-arrest` was twelve paragraphs and no drawing, one of two
+plate-less sections on a page carrying 27 figures. It has its plate.
+
+**Solved, not transcribed.** `genevaSpec` is ported verbatim into the plate —
+the three floors (rim pitch, arm web, the horn against the finger's bore lip),
+the bisection on the horn, the bank angle — and driven from the floors the
+plate PRINTS where `explain-quotes.mjs` reads them: `ARREST_STATIONS 8 ·
+STOCK_MIN_U 0.317 · PIVOT_MIN_U 0.185 · CLEAR_MARGIN 0.15` (`STOCK_MIN_U` and
+`CLEAR_MARGIN` compared and green; `ARREST_STATIONS` reported, its source an
+expression the tool does not resolve). Everything drawn is a consequence: the
+resolved `d` (4.116 from the rounded quotes, against the build's 4.1140 — a
+0.129% rounding drift, the worst of six figures the probe compares) is printed
+beside its derivation because nothing re-checks a solved value, and the three
+floors are printed with the one that governs.
+
+**The plate asserts its own index.** The entry's own warning — an inverted
+`a`/`b` pair still satisfies `a² + b² = d²` and looks fine in motion — is met
+the way the build meets it: the chip measures `2·asin(a/d)` and reads
+"index 45.00° = 2π/8"; an inverted pair would read INVERTED and log.
+
+**Scrub, wind, bank.** A slider scrubs the finger's angle within a turn; the
+cross holds while the disc is in the hollow and follows the pin's bearing
+`γ(θ) = atan2(a·sin θ, d + a·cos θ)` while the pin is in the slot (entry at
+`π/2 + β`, exit at `3π/2 − β`), one station of `2π/N` per turn. Wind and
+unwind step whole turns with the zero-reset plate's tween; after seven the
+cross presents the arm with no slot and the pin banks on its flank at
+`π − bankTh`, 74.24° before the line of centres — a little before it would
+have entered, because it banks with its surface and enters with its centre.
+An eighth wind is refused; unwinding backs out of the partial turn first,
+then seven more reach home. Play winds to the bank, holds, and loops; it
+idles while the section is closed or the tab hidden, and under
+`prefers-reduced-motion` there is no autoplay and a wind snaps to its end.
+
+**Constraints held.** The page stays sim-code-free (it imports nothing new).
+Every string is a literal inside `tr()` or static markup, and all 28 new keys
+carry five locale rows; `explain-i18n.mjs --check` PASS with 0 unmatched, 0
+markup / code / number drift. Composed readouts live in `.readout` spans,
+not SVG text, so a rendered number never becomes a translation key.
+
+**Measured beside it, not this entry's:** the explainer's coverage stood at
+613/688 (89.1%) before this landing — sections rewritten since their
+translation (§136's teeth, the column wheel, the gong's level) render
+English in five locales by the page's own design. This landing's keys take
+it to 643/685; the remainder is the pages' standing translation debt.
+
+`tools/probe-145-cross.mjs` (acceptance, 11 claims): the ported solve against
+`geometry.js`'s `genevaSpec` on the build's own inputs (worst 0.129%, the
+quote rounding); the index chip; seven winds bank, the eighth is refused,
+the bank backs out and seven unwinds reach home, a further one is refused;
+scrub reads LOCKED / INDEXING / LOCKED across the window with the cross
+turning one station; reduced motion; no page errors. Battery: none — the
+page is sim-code-free and stays so.
+
+## §146 — The main panel starts hidden — the arrival sees the watch, and every way back to the panel still works
+
+Roadmap item 146 asked to hide the main panel by default; its own refutation
+(§161's landing) re-derived what that costs. Measured by template membership,
+`#clock-ui` holds Time, wind, crown, sync, reserve, Alarm and Appearance —
+NOT the primer link, `Advanced`, `Reconfigure`, `Trial boot` or `Copy view`,
+which live in the View panel. So hiding it costs the primer nothing, and the
+question the entry re-scoped itself to — is hiding the DRIVING controls by
+default wanted — is answered the way §57 answered it for the pad: the pad
+already drives the watch, and it is on by default.
+
+**What landed.** One line at boot, after `setHud(true)`: `setPanelHidden(true)`.
+Session-tier like the pad (nothing persists it). Every way back is kept: the
+chrome bar's Menu toggle, the `H` key, and a new `?panel=1` deep link for a
+link that wants the panel open on arrival (`?panel=0` is the default said
+aloud). **What a first-time viewer reaches without opening anything:** the
+watch, the control pad (crown, wind, time, the alarm readout), the View
+panel (x-ray, schematic, labels, the tour, "How they work" → the primer →
+the explainer), and the chrome bar.
+
+**The no-restore branch, verified against a never-opened panel.**
+`hidePanelForScript` guards on the panel's OWN prior state, so a tour started
+on the hidden default ends with it still hidden — the tour does not "restore"
+a panel the viewer never opened — while a tour started on a panel the viewer
+had opened hides it for the run and restores it after. Both measured.
+
+**Sequencing.** §142 is the prerequisite the entry named — the tour must
+surface the pages — and §142's closing stop links to both from its banner;
+this landed after it.
+
+`tools/probe-146-panel.mjs` (acceptance, 8 claims): virgin boot hidden with
+the pad on and the View panel up; `H` shows, the Menu toggle hides; the two
+tour cases above; `?panel=1` opens; a 375×667 phone boots hidden with the pad
+on. Battery: `src/main.js` is on the graph, so it ran; the fingerprint is the
+check — chrome visibility reaches no geometry.
