@@ -118,6 +118,50 @@ function installBrush(mat) {
 }
 for (const m of BRUSH_MATERIALS) installBrush(m);
 
+// §203 step 3 — THE CASE ALLOYS. A metalness-1 material's `color` IS its
+// normal-incidence reflectance F0, and F0 is measured, not chosen: every hex
+// below except steel's is the output of tools/derive-203-alloys.mjs, which
+// integrates F0(λ) = ((n−1)²+k²)/((n+1)²+k²) from tabulated optical constants
+// (refractiveindex.info, CC0; Johnson & Christy 1972 for Au/Ag/Cu, Rakić 1998
+// for Pt, Weaver 1977 for Rh) against the CIE 1931 observer and white-balances
+// to the renderer's own white — with two CONTROLS, the observer fit's
+// integrals and Hoffman's 2013 published F0 table, which the four shipping
+// metals match to 0.06 or better (platinum to 0.008). Re-run the tool before
+// touching a value here; it prints this table.
+//   steel        — the authored 0xd6d9dd of STEEL_FINISH, kept for continuity
+//                  and NAMED as underived (iron measures #c6c6c6 by two of its
+//                  three tabulations — the follow-up the roadmap entry files);
+//   yellowGold18k — 3N, 75/12.5/12.5 Au/Ag/Cu by mass, the dielectric
+//                  function averaged by atomic fraction (an effective-medium
+//                  approximation the tool names, and prints the mass-averaged
+//                  variant beside: #fee4af, 8 units apart in the blue);
+//   whiteGold18k — RHODIUM: 18K white gold is rhodium-plated as standard and
+//                  the plate is what the eye meets;
+//   platinum     — Pt950 reads as platinum.
+// Density is NOT modelled and must not be claimed anywhere: platinum's 21.45
+// g/cm³ against 18K gold's ~15.5 and steel's 7.9 is a real difference nothing
+// in this sim reads.
+export const ALLOY_COLORS = {
+  steel: `#${STEEL_FINISH.color.toString(16).padStart(6, '0')}`,
+  yellowGold18k: '#fde3b7',
+  whiteGold18k: '#e6e3e0',
+  platinum: '#d6d1c9',
+};
+
+// Apply `materials.caseMetal.alloy` to the case exterior — at creation and
+// LIVE from APPLIERS.materials. One colour write; the finish (roughness,
+// grain) stays the steel slider's, which reaches both materials. A key the
+// table does not know falls back to steel and WARNS: the loader refuses such
+// a key before it gets here, so reaching this branch means the schema's
+// `_options` and this table have parted, which is a bug, not a taste.
+export function applyCaseMetalFromAesthetics() {
+  const key = aesthetics.materials?.caseMetal?.alloy ?? 'steel';
+  const hex = ALLOY_COLORS[key];
+  if (!hex) console.warn(`§203: alloy '${key}' is in aesthetics.json's _options but not in ALLOY_COLORS — falling back to steel`);
+  caseMetal.color.set(hex || ALLOY_COLORS.steel);
+}
+applyCaseMetalFromAesthetics();
+
 // Apply `materials.steel` to both steel materials — at creation and LIVE from
 // APPLIERS.materials. Roughness and anisotropy are material properties three
 // refreshes every frame; only the direction is a custom uniform, and a

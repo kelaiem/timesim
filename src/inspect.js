@@ -9117,6 +9117,17 @@ const AESTHETICS_MERGE_FIXTURES = [
   { name: 'a whole subtree the schema does not have is refused, not created',
     dst: { keyLight: { intensity: 2.4 } }, src: { rimSpot: { intensity: 1.0 } },
     want: { applied: [], refused: [{ path: 'rimSpot', why: 'unknown' }], clamped: [], values: { keyLight: { intensity: 2.4 } } } },
+  // §203 step 3 — a PICK is anchored to its `_options` the way a number is
+  // clamped to its `_bounds`: a listed value applies, an unlisted one is
+  // refused as `option` (there is no nearest alloy to clamp to). The loader's
+  // type anchor alone passed every string, and a retired alloy's key in a
+  // persisted override, or a hostile link, would have been applied verbatim.
+  { name: 'a string in its _options set is applied',
+    dst: { alloy: 'steel', _options: { alloy: [{ value: 'steel', label: 'Steel' }, { value: 'platinum', label: 'Platinum' }] } }, src: { alloy: 'platinum' },
+    want: { applied: ['alloy'], refused: [], clamped: [], values: { alloy: 'platinum', _options: { alloy: [{ value: 'steel', label: 'Steel' }, { value: 'platinum', label: 'Platinum' }] } } } },
+  { name: 'a string outside its _options set is refused as option',
+    dst: { alloy: 'steel', _options: { alloy: [{ value: 'steel', label: 'Steel' }, { value: 'platinum', label: 'Platinum' }] } }, src: { alloy: 'unobtainium' },
+    want: { applied: [], refused: [{ path: 'alloy', why: 'option' }], clamped: [], values: { alloy: 'steel', _options: { alloy: [{ value: 'steel', label: 'Steel' }, { value: 'platinum', label: 'Platinum' }] } } } },
   // Prose is not a parameter. `_labels`/`_bounds`/`_comment` ride along in
   // anything Copy JSON produced before the replacer existed, and in any file a
   // human edited by hand from the schema.

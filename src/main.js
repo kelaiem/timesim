@@ -2,8 +2,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { MATS, CRYSTAL_GLASS, applyDecorationFromAesthetics, applyBrushFromAesthetics } from './materials.js';
-import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM } from './aesthetics.js';
+import { MATS, CRYSTAL_GLASS, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
+import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM, METAL_PARAM } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
@@ -27445,7 +27445,8 @@ function askTour(onProceed) {
     decoration: () => { applyDecorationFromAesthetics(); if (ribPitch) ribPitch.value = aesthetics.decoration.ribbing.widthUnits; },
     materials: () => {
       MATS.ruby.color.set(aesthetics.materials.ruby.color);
-      applyBrushFromAesthetics();   // §203 step 2 — the steel finish, both steel materials, live
+      applyBrushFromAesthetics();     // §203 step 2 — the steel finish, both steel materials, live
+      applyCaseMetalFromAesthetics(); // §203 step 3 — the case alloy, the case exterior only, live
     },
     // §157 — `face` joins `hands` as a LIVE path. Roadmap item 140 asked for
     // this and §154 shipped it reload-tier; the reason it was not live is that
@@ -27535,7 +27536,27 @@ function askTour(onProceed) {
       // so coarse knobs read coarse and fine knobs read fine.
       let valEl = null, valDec = 2;
       let input;
-      if (typeof r.value === 'number') {
+      // §203 step 3 — A PICK. A leaf whose container declares `_options` for
+      // it is a choice among named values, and a text input would be the
+      // panel lying about the value's domain (§157's rule about a panel's
+      // reach, applied to its vocabulary). The option VALUES stay canonical
+      // and are what the leaf, the override store and the link carry; only
+      // the option TEXT goes through t() — display translates, values do not.
+      // Checked before the string branches below so a hex-shaped option value
+      // could never be mistaken for a colour.
+      let optParent = aesthetics;
+      for (const k of r.path.slice(0, -1)) optParent = optParent[k];
+      const declaredOptions = optParent._options && optParent._options[r.path[r.path.length - 1]];
+      if (declaredOptions) {
+        input = document.createElement('select');
+        for (const o of declaredOptions) {
+          const el = document.createElement('option');
+          el.value = o.value;
+          el.textContent = t(o.label);
+          if (o.value === r.value) el.selected = true;
+          input.appendChild(el);
+        }
+      } else if (typeof r.value === 'number') {
         input = document.createElement('input');
         input.type = 'range';
         // Bounds: the schema's own _bounds first (declared beside the value,
@@ -34685,6 +34706,11 @@ function currentViewLink() {
   // reconfigure workbench's variants stay geometry-only.
   if (aesthetics.dial.face.color !== AESTHETICS_DEFAULTS.dial.face.color)
     p.set(DIAL_COL_PARAM, aesthetics.dial.face.color.replace(/^#/, ''));
+  // §203 step 3 — the CASE METAL travels on the same rule and by the same
+  // comparison: the effective alloy against the file's, so "look at it in
+  // platinum" is one link and a steel case sends nothing.
+  if (aesthetics.materials.caseMetal.alloy !== AESTHETICS_DEFAULTS.materials.caseMetal.alloy)
+    p.set(METAL_PARAM, aesthetics.materials.caseMetal.alloy);
   // §161 — THE DESIGN TRAVELS, not just the view. Reconfigure mode's Apply is a
   // navigation (`location.search`, so back is undo), which means the spec a
   // viewer has DESIGNED lives in the query string and nowhere else — and a link
