@@ -156,6 +156,28 @@ const ruby = phys({
   clearcoatRoughness: 0.05,
 });
 
+// §3 — SAPPHIRE, for the box sapphire dial: when `dial.plate.sapphire` is
+// set, the dial's MATTER — the plate, its pocket walls and the sheets its
+// print is laid on — takes this, while the chapter ring, the applied
+// numerals and the feet stay the metal they are. ONE recipe, shared with the
+// case crystal (main.js builds `caseCrystalMat` from this literal), because a
+// sapphire dial and a sapphire crystal are one material and the scene must
+// not carry two opinions of it: opacity 0.14 with depthWrite off is the
+// "crystal the scene reads through" trick the x-ray materials use, and the
+// tint is the crystal's own. `ior` is corundum's — 1.77 (Al₂O₃, n_o ≈ 1.768
+// at 589 nm), the one property here that is sapphire's rather than
+// glass-in-general's; it moves only the dielectric F0, and the case crystal
+// keeps three's default by not carrying it, so its picture is unmoved.
+// `userData.glass` marks a material as glass BY NATURE: the x-ray set reads
+// it to compose rather than clone (a 0.28 clone of a 0.14 glass would make
+// the dial MORE opaque under x-ray, the toggle's opposite).
+export const CRYSTAL_GLASS = Object.freeze({
+  color: 0xf8fbff, transparent: true, opacity: 0.14, roughness: 0.04, metalness: 0, depthWrite: false,
+});
+export const SAPPHIRE_IOR = 1.77;
+const sapphire = phys({ ...CRYSTAL_GLASS, ior: SAPPHIRE_IOR });
+sapphire.userData.glass = true;
+
 // Yellow GOLD — for the screwed chatons the upper pivot jewels sit in, and
 // for the balance's anti-shock lyre. A distinct material rather than a reuse
 // of `brass`: the chatons are set into a nickel plate a few units from brass
@@ -381,6 +403,7 @@ export const MATS = {
   nickel,
   ribbedNickel,
   perledNickel,
+  sapphire,      // §3 — the box sapphire dial's plate, walls and print sheets
   silver,
   dark,
 };

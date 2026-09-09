@@ -3,7 +3,7 @@
 // centered at the origin, rotating about local +Z. userData.r = pitch/functional
 // radius where meaningful. Real tooth profiles via Shape/ExtrudeGeometry.
 import * as THREE from 'three';
-import { MATS } from './materials.js';
+import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR } from './materials.js';
 import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
@@ -6725,6 +6725,44 @@ export function makeDial({
   // beside the solve that needs the shipped ground at that fraction.
   const wellInkSites = [];
 
+  // §3 — THE BOX SAPPHIRE DIAL. `dial.plate.sapphire` (reload-tier: the
+  // materials are chosen here at build, and main.js's x-ray map is built
+  // over them) turns the dial's MATTER to sapphire — the plate, its pocket
+  // walls and the sheets its print is laid on — while the chapter ring, the
+  // applied numerals and the feet stay the metal they are: a sapphire dial
+  // is glass with print and applied furniture on it, which is exactly the
+  // separation this build already makes. Geometry is untouched by
+  // construction (the same loops, the same merged body), so the fingerprint
+  // cannot move whichever way the knob is set.
+  //
+  // THE PRINT'S GROUND CHANGES WITH THE PLATE. Silvered, the ink is solved
+  // against the face's own vignette at the print's radius; on sapphire what
+  // stands behind the ink is the crystal's tint over the base plate's nickel,
+  // so the ground is that composite — alpha-over of CRYSTAL_GLASS's colour at
+  // its opacity on MATS.perledNickel's colour, both READ off the materials
+  // rather than retyped — and every consumer of "the ground" in this
+  // function (the face paint, each well, the §157 gate, inkContrast) reads
+  // it through the one `groundAt`, so none can be given a different answer.
+  // The wheels behind the dial are brass and darker than the plate; the dark
+  // pole holds above the floor on both, and the gate is what says so at boot.
+  const sapphire = !!(aesthetics.dial.plate && aesthetics.dial.plate.sapphire);
+  const glassTint = '#' + CRYSTAL_GLASS.color.toString(16).padStart(6, '0');
+  const glassFill = `rgba(${hexToRgb(glassTint).join(',')},${CRYSTAL_GLASS.opacity})`; // the sheet's own texels carry the glass: tint at the crystal's alpha, ink at 1
+  const alphaOver = (top, alpha, under) => {
+    const t = hexToRgb(top), u = hexToRgb(under);
+    return rgbToHex(t.map((c, i) => Math.round(c * alpha + u[i] * (1 - alpha))));
+  };
+  const glassGround = alphaOver(glassTint, CRYSTAL_GLASS.opacity, '#' + MATS.perledNickel.color.getHexString());
+  const groundAt = (f) => (sapphire ? glassGround : dialTintAt(aesthetics.dial.face.color, f));
+  // A print sheet on sapphire: the glass recipe with the sheet's canvas as
+  // its map. Colour white and opacity 1 because the texels already carry the
+  // tint and the alpha — the material must not apply either twice.
+  const printOnSapphire = (tex) => {
+    const m = new THREE.MeshPhysicalMaterial({ ...CRYSTAL_GLASS, color: 0xffffff, opacity: 1, ior: SAPPHIRE_IOR, map: tex });
+    m.userData.glass = true;
+    return m;
+  };
+
   if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
@@ -6748,7 +6786,9 @@ export function makeDial({
         grad.addColorStop(0, dialTintStop(faceColor, 0));
         grad.addColorStop(0.75, faceColor);
         grad.addColorStop(1, dialTintStop(faceColor, 1));
-        ctx.fillStyle = grad;
+        // §3 — on sapphire the sheet's ground IS the glass: no vignette, the
+        // crystal's tint at its own alpha, so what shows through is the works.
+        ctx.fillStyle = sapphire ? glassFill : grad;
         ctx.beginPath();
         ctx.arc(C, C, R, 0, Math.PI * 2);
         ctx.fill();
@@ -6763,8 +6803,8 @@ export function makeDial({
         // face this is DIAL_TRACK_INK verbatim, on a dark face the light
         // pole. One call here, and the §157 gate re-derives the same call.
         const trackInk = solveInk([
-          dialTintAt(faceColor, DIAL_RAIL_OUT_F),
-          dialTintAt(faceColor, DIAL_RAIL_IN_F),
+          groundAt(DIAL_RAIL_OUT_F),
+          groundAt(DIAL_RAIL_IN_F),
         ]);
         ctx.strokeStyle = trackInk;
         ctx.fillStyle = trackInk;
@@ -6796,7 +6836,7 @@ export function makeDial({
           // §196 — discreet means a RELATION, so the mark tracks the shipped
           // pair's contrast on whatever ground it lands on (see solveMarkInk).
           ctx.fillStyle = solveMarkInk(
-            dialTintAt(faceColor, MARK_RADIAL_F),
+            groundAt(MARK_RADIAL_F),
             dialTintAt(AESTHETICS_DEFAULTS.dial.face.color, MARK_RADIAL_F));
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -6826,7 +6866,7 @@ export function makeDial({
       // Enamelled/lacquered dial: a deep glossy clearcoat over the painted
       // face — low metalness (fired enamel is glass, not metal), tightened
       // base roughness, near-mirror coat.
-      mat = new THREE.MeshPhysicalMaterial({
+      mat = sapphire ? printOnSapphire(tex) : new THREE.MeshPhysicalMaterial({
         map: tex,
         color: 0xffffff,
         metalness: 0.05,
@@ -6837,7 +6877,7 @@ export function makeDial({
       repaintFace = () => { paintFace(); tex.needsUpdate = true; };
     }
   }
-  if (!mat) mat = MATS.silver;
+  if (!mat) mat = sapphire ? MATS.sapphire : MATS.silver;
 
   // SEG is the one tessellation of every circle in the dial — the face's
   // printed sheet, the plate under it, the wells and their bores all read the
@@ -6962,7 +7002,7 @@ export function makeDial({
       part(`pocket-floor#${i}`, plateCap(pocket, [hole], -recess, +1));
       part(`arbor-bore#${i}`, plateWall(sd.x, sd.y, hole, -recess, hole, zB, false));
     });
-    const body = new THREE.Mesh(mergeGeos(parts, partNames), MATS.brass);
+    const body = new THREE.Mesh(mergeGeos(parts, partNames), sapphire ? MATS.sapphire : MATS.brass); // §3: the plate's matter
     body.name = 'dialPlate';
     g.add(body);
   }
@@ -6981,9 +7021,13 @@ export function makeDial({
     // Matte and darker than the dial: the wall is the SHADOWED side of a
     // recess. A polished/metallic wall catches highlights and reads as a
     // raised bezel ring from oblique angles — the opposite of sunk.
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
-    });
+    // §3 — on sapphire the wall is the pocket's own glass, two-sided as the
+    // silvering was so the well reads from oblique angles either way.
+    const wallMat = sapphire
+      ? Object.assign(MATS.sapphire.clone(), { side: THREE.DoubleSide, userData: { glass: true } })
+      : new THREE.MeshStandardMaterial({
+        color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
+      });
     subdials.forEach((sd, i) => {
       const recess = wells[i].recess;
       if (!(recess > 0)) return;   // an un-sunk aperture carries no floor or wall to finish
@@ -7024,7 +7068,7 @@ export function makeDial({
           // anchors the maker's mark's designed relation (§196), and for a
           // well that opted out with an explicit `face` it IS that face —
           // such a well never recolours, so its shipped ground is itself.
-          const wellGroundNow = () => sd.face || dialTintAt(aesthetics.dial.face.color, wellR);
+          const wellGroundNow = () => sd.face || groundAt(wellR);
           const wellGroundShipped = sd.face
             || dialTintAt(AESTHETICS_DEFAULTS.dial.face.color, wellR);
           wellInkSites.push({ kind: sd.kind, ground: wellGroundNow });
@@ -7032,7 +7076,7 @@ export function makeDial({
             fctx.setTransform(1, 0, 0, 1, 0, 0);
             fctx.clearRect(0, 0, px, px);
             const wellGround = wellGroundNow();
-            fctx.fillStyle = wellGround;
+            fctx.fillStyle = sapphire ? glassFill : wellGround; // §3: the well's sheet carries the glass, the ink is solved against the composite
             fctx.fillRect(0, 0, px, px);
             paintSubdialFace(fctx, px / 2, px / 2, px / 2, sd.kind, sd.scale,
               wellGround, wellGroundShipped);
@@ -7042,14 +7086,15 @@ export function makeDial({
           ftex.colorSpace = THREE.SRGBColorSpace;
           ftex.anisotropy = 8;
           // Same lacquered finish as the main dial face.
-          floorMat = new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07 });
+          floorMat = sapphire ? printOnSapphire(ftex)
+            : new THREE.MeshPhysicalMaterial({ map: ftex, roughness: 0.35, metalness: 0.05, clearcoat: 1.0, clearcoatRoughness: 0.07 });
           // Only a well that DERIVES its tone follows a live recolour; one
           // that passed an explicit `face` asked for a fixed colour and keeps
           // it, which is the same opt-out the paint above honours.
           if (!sd.face) repaintWells.push(() => { paintWell(); ftex.needsUpdate = true; });
         }
       }
-      if (!floorMat) floorMat = MATS.silver;
+      if (!floorMat) floorMat = sapphire ? MATS.sapphire : MATS.silver;
 
       // The printed face, laid on the machined floor: the pocket's own loop
       // and bore, baked at the dial's coordinates (no mesh offset), so the two
@@ -7296,6 +7341,7 @@ export function makeDial({
   }
 
   g.userData.r = radius;
+  g.userData.sapphire = sapphire; // §3 — what the plate is, for probes and the record
 
   // §157 — THE LEGIBILITY GATE, and the measurement beside it. §196 INVERTED
   // ITS MEANING: the ink is no longer fixed, it is SOLVED against the ground
@@ -7309,8 +7355,7 @@ export function makeDial({
   // called at build and again on every live recolour — a second
   // transcription of a threshold is a second place for it to rot.
   const assertInkLegible = () => {
-    const face = aesthetics.dial.face.color;
-    const railGrounds = [dialTintAt(face, DIAL_RAIL_OUT_F), dialTintAt(face, DIAL_RAIL_IN_F)];
+    const railGrounds = [groundAt(DIAL_RAIL_OUT_F), groundAt(DIAL_RAIL_IN_F)]; // §3: the composite on sapphire, the vignette otherwise — one expression
     const trackInk = solveInk(railGrounds);
     for (const [name, ground] of [['outer', railGrounds[0]], ['inner', railGrounds[1]]]) {
       const ratio = contrastRatio(ground, trackInk);
@@ -7355,7 +7400,7 @@ export function makeDial({
   // and that failure is exactly the kind a flat-colour assert would miss.
   g.userData.inkContrast = () => {
     const face = aesthetics.dial.face.color;
-    const at = (f) => dialTintAt(face, f);
+    const at = (f) => groundAt(f); // §3: on sapphire every ground is the glass-over-nickel composite
     // §196 — the gated block measures the SOLVED inks, the ones the paint
     // actually printed, and names which pole won; the wells joined the gate
     // with the solve. The reported block keeps measuring the CONSTANTS

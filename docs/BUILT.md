@@ -19780,6 +19780,56 @@ Still owed, and declared rather than hidden:
 - **The sapphire dial**, which is backlog §3's remaining half.
 - An `explain.html` entry, which the case does not yet have.
 
+
+### The sapphire dial — SHIPPED, and roadmap §3 closes with it
+
+The third thing §3 asked for, the **box sapphire dial**, is built: `dial.plate.sapphire`
+in `src/aesthetics.json` (Advanced → "Sapphire dial", reload-tier ⟳, browser-local
+like every finish knob but the dial colour). On, the dial's MATTER becomes sapphire —
+the plate (`dialPlate`), both pocket walls and the three sheets its print is laid on —
+while the chapter ring, the applied numerals and the feet stay the metal they are: a
+sapphire dial is glass with print and applied furniture on it, and that is exactly the
+separation `makeDial` already made. The keyless works, motion works, reserve train and
+minute jumper now read through the print from the front — the "second display" the
+entry's premise named, delivered as a dial rather than as §6's x-ray preview of one.
+
+**One glass, not two.** The case crystal's recipe moved to `materials.js` as
+`CRYSTAL_GLASS` — colour, opacity 0.14, roughness, depthWrite off, the numbers
+unmoved — and `MATS.sapphire` is that literal plus corundum's `ior` 1.77 (Al₂O₃,
+n_o ≈ 1.768 at 589 nm), the one property here that is sapphire's rather than
+glass-in-general's; the crystal keeps three's default by not carrying it, so its
+picture is unchanged. `userData.glass` marks a material as glass BY NATURE, which is
+how the x-ray set knows to compose (it maps such a material to itself) rather than
+clone: a 0.28 clone of a 0.14 glass would make the dial MORE opaque under x-ray, and
+the print sheets' alpha lives in their textures, which a cloned opacity would
+double-count. A self-mapped glass is deliberately not in `xrayGlassMats` — that set
+means "installed by the toggle", and with x-ray off the sapphire dial is glass on its
+own account, the way the crystal is.
+
+**The print's ground changes with the plate, and the gate holds it.** Silvered, the
+ink is solved against the face's vignette at the print's radius; on sapphire what
+stands behind the ink is the crystal's tint over the base plate's nickel, so the
+ground is that composite — alpha-over of `CRYSTAL_GLASS`'s colour at its opacity on
+`MATS.perledNickel`'s colour, both READ off the materials — and every consumer of "the
+ground" in `makeDial` (the face paint, each well, the §157 gate, `inkContrast`) reads
+it through one `groundAt`. Measured: `#d0d3d7`, on which the dark pole holds
+**11.59:1** against the 3:1 floor (the silvered face: 11.96:1). The sheets carry the
+glass in their own texels — the crystal's tint at its alpha under ink at 1 — on a
+material with colour white and opacity 1, so nothing applies the tint twice.
+
+**Geometry is untouched by construction** — the same loops, the same merged body —
+and `tools/probe-3-sapphire.mjs` (acceptance) measures it: 144 meshes under the Dial
+unit with the same names, vertex counts and bounds on both boots; both boots silent;
+the plate, 2 walls, 2 well sheets and the face sheet glass at the crystal's 0.14 with
+depthWrite off, 133 metal parts opaque (the 5 ruby pins transparent on both boots, as
+before); x-ray on→off restores every dial material and leaves the glass-by-nature
+ones alone while 42 metal dial parts glass as the toggle asks. Two frames from the
+Dial preset are in the PR.
+
+**Not modelled, and said so:** a box dial's raised rim (the plate keeps its chamfered
+outline), and any depth to the glass beyond the plate's own thickness. The knob is
+the owner's to make the default — one line in the schema — and it ships OFF so the
+shipped picture is the shipped picture. Roadmap §3 has no remainder.
 ## §185 — the dial's colour travels in the link
 
 `?dialcol=rrggbb`. Pick a dial colour, press Copy view, and the person who

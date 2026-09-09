@@ -337,7 +337,7 @@ Object.assign(DE, {
   'Pearl radius': 'Perlenradius', 'Pearl shingle direction': 'Perlen-Schuppenrichtung',
   'Pearl jitter': 'Perlen-Streuung', 'Ruby colour': 'Rubinfarbe',
   'Steel finish (polished → brushed)': 'Stahl-Finish (poliert → gebürstet)', 'Steel grain angle': 'Stahl-Schliffwinkel',
-  'Dial colour': 'Zifferblattfarbe',
+  'Dial colour': 'Zifferblattfarbe', 'Sapphire dial': 'Saphir-Zifferblatt',
   'Search settings': 'Einstellungen durchsuchen',
 });
 
@@ -588,7 +588,7 @@ Object.assign(ZH, {
   'Pearl radius': '珍珠半径', 'Pearl shingle direction': '珍珠叠瓦方向',
   'Pearl jitter': '珍珠抖动', 'Ruby colour': '红宝石颜色',
   'Steel finish (polished → brushed)': '钢材表面（抛光 → 拉丝）', 'Steel grain angle': '钢材拉丝角度',
-  'Dial colour': '表盘颜色',
+  'Dial colour': '表盘颜色', 'Sapphire dial': '蓝宝石表盘',
   'Search settings': '搜索设置',
 });
 
@@ -1006,7 +1006,7 @@ const FR = {
   ['Ruby colour']: 'Couleur des rubis',
   ['Steel finish (polished → brushed)']: 'Finition de l’acier (poli → brossé)',
   ['Steel grain angle']: 'Angle du brossage de l’acier',
-  ['Dial colour']: 'Couleur du cadran',
+  ['Dial colour']: 'Couleur du cadran', ['Sapphire dial']: 'Cadran en saphir',
   ['Search settings']: 'Rechercher les réglages',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
@@ -1425,7 +1425,7 @@ const JA = {
   ['Ruby colour']: 'ルビーの色',
   ['Steel finish (polished → brushed)']: 'スチール仕上げ（鏡面 → ヘアライン）',
   ['Steel grain angle']: 'スチールの筋目角度',
-  ['Dial colour']: '文字盤の色',
+  ['Dial colour']: '文字盤の色', ['Sapphire dial']: 'サファイア文字盤',
   ['Search settings']: '設定を検索',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
@@ -1843,7 +1843,7 @@ const ZH_HANT = {
   ['Ruby colour']: '紅寶石顏色',
   ['Steel finish (polished → brushed)']: '鋼材表面（拋光 → 拉絲）',
   ['Steel grain angle']: '鋼材拉絲角度',
-  ['Dial colour']: '錶盤顏色',
+  ['Dial colour']: '錶盤顏色', ['Sapphire dial']: '藍寶石錶盤',
   ['Search settings']: '搜尋設定',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
