@@ -97,6 +97,14 @@ export const BATTERY = [
     gate: 'the coupling in contact seated/backlash/camming and free pulled out',
     fails: (r) => r.unwaived,
     note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
+  // §198 — the strike chain's two contacts through the lifting lever: the
+  // nose on the cam's flank mid-rise and free of it in the fall and rebound,
+  // the tip on the hammer's tail at every phase (the lever's restoring
+  // answer, measured).
+  { name: 'strikeHandoff', opts: {},
+    gate: 'the nose on the flank lifting and free falling/rebounding; the tip on the tail at every phase',
+    fails: (r) => r.unwaived,
+    note: (r) => `${r.rows.length} hand-offs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'stockFloor', opts: {},
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],

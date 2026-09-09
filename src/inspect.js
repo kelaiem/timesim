@@ -218,8 +218,13 @@ export const MECH_GRAPH = {
     // end rings free) and a hammer pivoted beside it. The hammer IS driven now
     // — §25 built the striking works below and moved its pose into tick(), so
     // the 'alarmStrike' axis sweeps it like any other train.
-    ['Alarm gong', 'Three-quarter plate'],   // the gong's single foot stands on the back plate
-    ['Alarm hammer', 'Three-quarter plate'], // the hammer's pivot post stands on the back plate
+    // §198 — both left the three-quarter plate: the ring lives in the annulus
+    // outside its rim, and the gong's block, the hammer's post and its
+    // spring stud all stand on the BASE plate's mounting rim (§186's) there.
+    // The corner that lifts the hammer from out there stays on the plate.
+    ['Alarm gong', 'plate'],                 // §198: the gong's block stands on the base plate's rim
+    ['Alarm hammer', 'plate'],               // §198: the hammer's post and its spring stud stand on the base plate's rim
+    ['Alarm lifting lever', 'Three-quarter plate'], // §198: the lever's post plants where §24's hammer post did
     // Alarm striking works (§25 A, re-grounded by §112's tier-split): the
     // power tiers live UNDER the three-quarter plate now, their studs and
     // bosses planted in the BASE plate; the strike arbor alone reaches the
@@ -332,7 +337,8 @@ export const MECH_GRAPH = {
     // so the hammer's swing is reachable from a spring and from nothing else.
     ['alarm mainspring', 'Alarm barrel'],
     ['Alarm barrel', 'Alarm striking wheel'], // barrel's toothed wall → strike pinion
-    ['Alarm striking wheel', 'Alarm hammer'], // pins lift the tail and let it go
+    ['Alarm striking wheel', 'Alarm lifting lever'], // §198: the cam lifts the lever's nose and lets it go
+    ['Alarm lifting lever', 'Alarm hammer'],         // §198: the lever's tip lifts the tail — a corner, ratio 1
     ['Alarm striking wheel', 'Alarm governor'],
   ['Alarm governor', 'Alarm governor anchor'], // §107: the saw drives the anchor, tooth face on pallet face — the escapement's own edge, one level down // §104: the strike arbor's 64T wheel → the governor pinion.
                                               // A LEAF of the drive graph on purpose — a brake consumes,
@@ -697,15 +703,17 @@ const EXPECTED_PAIRS = [
   ['Alarm switch', 'Case'],                // §202: the pusher's bore liner in the case's bore — floors row names the one contact
   ['Alarm crown', 'Case'],                 // §202: the stem's tube liner in the case's alarm tube — likewise
   ['Dial', 'Alarm disc'],                 // §25 C: alarm tube passes the enlarged centre bore
-  ['Alarm gong', 'Three-quarter plate'],  // gong foot planted in the back plate top
-  ['Alarm hammer', 'Three-quarter plate'],// hammer pivot post planted in the back plate top
+  ['Alarm gong', 'plate'],                // §198: the gong's block planted in the base plate's rim
+  ['Alarm hammer', 'plate'],              // §198: the hammer's post and spring stud planted in the base plate's rim
+  ['Alarm lifting lever', 'Three-quarter plate'], // §198: the lever's post planted in the back plate top
   ['Alarm hammer', 'Alarm gong'],         // the strike — head onto the ringing end (touches at the strike, blind spot below)
   // Alarm striking works (§25 A) — the declared contacts of the power chain:
   ['Alarm barrel', 'plate'],        // §112: arbor boss planted in the base plate
   ['Alarm striking wheel', 'plate'],// §112: the stud's base, likewise
   ['Alarm striking wheel', 'Three-quarter plate'],// §112: the rotor's sleeve in the plate's bore
   ['Alarm barrel', 'Alarm striking wheel'],       // the gear mesh (barrel wall ⇄ strike pinion)
-  ['Alarm striking wheel', 'Alarm hammer'],       // a pin on the hammer's tail — the lift
+  ['Alarm striking wheel', 'Alarm lifting lever'],// §198: the cam under the lever's nose — the lift (floors row + penetration budget own it)
+  ['Alarm lifting lever', 'Alarm hammer'],        // §198: the lever's tip on the tail's face — the corner (floors row + penetration budget own it)
   ['Alarm governor', 'plate'],      // §104's stud, §112's face (§107 took the anchor's stud into the anchor's own unit)
   ['Alarm governor', 'Alarm striking wheel'],     // §104: the ×8 mesh (64T wheel ⇄ governor pinion)
   ['Alarm governor anchor', 'plate'],// §107's stud, §112's face
@@ -2254,6 +2262,23 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['clutchHubCollarOut', 'yokeProng'],  // both faces are the working pair
     ],
   },
+  // §198 — the strike side's first two floors rows. Before the lifting lever
+  // the cam⇄hammer pair carried TODO 6's blanket excuse; each of these names
+  // the ONE working contact and holds everything else between the two units
+  // to the margin — the lever's bars against the cam's other lobes and the
+  // wheel's sleeve, the tail against the lever's post and nose arm.
+  {
+    a: 'Alarm striking wheel', b: 'Alarm lifting lever', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmCam', 'alarmLiftNose'],       // the nose riding the flank — the strike hand-off rows and the penetration budget own it
+    ],
+  },
+  {
+    a: 'Alarm lifting lever', b: 'Alarm hammer', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmLiftTip', 'alarmTail'],       // the rounded tip on the tail's face — likewise
+    ],
+  },
 ];
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
@@ -2549,6 +2574,10 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm hammer', a: 'alarmHammerArm', b: 'alarmHammerPost', why: 'hammer arm riveted to the arbor boss' },
   { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerPost', why: 'hammer tail on the same boss' },
   { unit: 'Alarm hammer', a: 'alarmHammerSpring', b: 'alarmHammerSpringStud', why: 'hammer spring anchored on its stud — §48-declared' },
+  // §198 — the lifting lever: both bars root at the pivot on the post §24's
+  // hammer stood on, the same rivet idiom as the hammer's own arm and tail.
+  { unit: 'Alarm lifting lever', a: 'alarmLiftNose', b: 'alarmLiftPost', why: '§198: the nose arm riveted to the lever\'s arbor boss' },
+  { unit: 'Alarm lifting lever', a: 'alarmLiftTip', b: 'alarmLiftPost', why: '§198: the far arm on the same boss' },
   // TODO 90 finding 4 NAMED THE OTHER HALF, and had to. `b` was
   // 'CylinderGeometry#0' — a position in this unit's cylinder list, which is a
   // claim about what else the unit contains rather than about this joint. The
@@ -2822,6 +2851,7 @@ export const INTRA_TIER_SCOPE = [
   'Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel',
   'Alarm barrel', 'Alarm click', 'Alarm winding train',
   'Alarm link', 'Alarm lock', 'Alarm hammer', 'Alarm gong',
+  'Alarm lifting lever',   // §198 — two bars and a post: its FF/MM rows are gated with the rest of the strike group
   'Alarm switch', 'Alarm selector', 'Alarm disc',
   'Alarm release lifter', 'Alarm release feeler', 'Alarm silence rocker',
   'Alarm setting arbor', 'Alarm setting idler',
@@ -3348,7 +3378,8 @@ export const ASSEMBLY_SPLITS = [
 // lever's slot plate as two floating bodies, both REPORTED here (0.689 and
 // 0.463 separation) and gated nowhere — a pivot seen swinging off its post by
 // eye. In scope, a member of this unit that its bar does not reach fails.
-export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel', 'Alarm lock'];
+export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel', 'Alarm lock',
+  'Alarm lifting lever'];   // §198 — two bars on one pivot: they overlap at the boss, so the lever is one body or this says so
 // Accepted debt, §50's convention — red in the report, cited, never silenced.
 // (TODO 44's lock-collar waiver RETIRED by §112: the tier-split re-derived
 // the strike sleeve to span from the wheel's hub to the cam's underside —
@@ -4060,13 +4091,37 @@ const PENETRATION_BUDGETS = [
     // the floor for touching here, not a bite. 0.12 therefore still fails on
     // about 0.03 of genuine penetration, which is the resolution this measure
     // can honestly claim. (The pin wheel it replaced reported 0.375.)
-    pair: ['Alarm striking wheel', 'Alarm hammer'],
+    pair: ['Alarm striking wheel', 'Alarm lifting lever'],   // §198: the nose is the lifting lever's now — same cam, same budget, same calibration
     maxDepth: 0.12,
     axis: 'alarmStrike',
     nSamples: 240,
     selectA(unit) {
       const out = [];
       unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmCam') out.push(o); });
+      return out;
+    },
+    selectB(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLiftNose') out.push(o); });
+      return out;
+    },
+  },
+  {
+    // §198 — the lifting lever's TIP on the hammer's tail: the strike side's
+    // second working contact, a rounded tip riding a flat face. Same class
+    // as the cam row above (tangential, so mtvDepth resolves it badly and a
+    // correct build reads a floor rather than zero), same axis, same
+    // budget, inherited rather than chosen. The contact solve holds the tip
+    // tangent to the face at every pose by construction; this row is what
+    // catches the metal disagreeing with the solve — a re-cut tail, a moved
+    // pivot, a stand-off that no longer matches the bars' widths.
+    pair: ['Alarm lifting lever', 'Alarm hammer'],
+    maxDepth: 0.12,
+    axis: 'alarmStrike',
+    nSamples: 240,
+    selectA(unit) {
+      const out = [];
+      unit.obj.traverse((o) => { if (o.isMesh && o.name === 'alarmLiftTip') out.push(o); });
       return out;
     },
     selectB(unit) {
@@ -4930,6 +4985,46 @@ export const STEM_CLUTCH_HANDOFFS = [
     unitA: 'Winding clutch', meshA: 'clutchSaw',
     unitB: 'Keyless works', meshB: 'windPinionSaw',
     expect: { seated: 'contact', backlash: 'contact', camming: 'contact', pulled: 'free' },
+  },
+];
+
+// §198 — THE STRIKE CHAIN'S HAND-OFFS, a sibling registration in the same
+// pattern (its own pose table, the same checker): the cam's flank under the
+// lifting lever's nose, and the lever's tip on the hammer's tail. The alarm
+// table's three parities all park the striker, and the striker's contacts
+// live in its PHASE — so the poses here are strike phases, posed exactly
+// (alarmStrikePhase is a whole-cycle fraction: 0 = the release, 0.38 = the
+// pickup, 1 = the next release). Three of them:
+//   lifting  — mid-rise (u = 0.69): the nose is ON the generated flank by
+//              construction, and the tip is on the tail because the cam is
+//              pushing it there;
+//   falling  — mid-fall (u = 0.06): the flank has dropped away faster than
+//              the hammer follows (§25's whole design), so the nose hangs
+//              FREE over the base circle while the blade holds the tail on
+//              the tip — the corner is closed by the spring, not the cam;
+//   rebound  — the check (u = 0.30): the nose is clear of the base circle
+//              by the cut-away below the strike (ALARM_CAM_BASE_R's
+//              CLEAR_MARGIN), the tip still on the tail.
+// The tip⇄tail row therefore expects CONTACT at every phase — that is the
+// lever's restoring answer (declareRestoring: one blade returns both
+// members through this contact) turned into a measurement.
+export const STRIKE_HANDOFF_POSES = [
+  ['lifting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 0.69 }],
+  ['falling', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 0.06 }],
+  ['rebound', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmReleased: 1, alarmStrikePhase: 0.30 }],
+];
+export const STRIKE_HANDOFFS = [
+  {
+    label: 'cam flank ⇄ lifting nose',
+    unitA: 'Alarm striking wheel', meshA: 'alarmCam',
+    unitB: 'Alarm lifting lever', meshB: 'alarmLiftNose',
+    expect: { lifting: 'contact', falling: 'free', rebound: 'free' },
+  },
+  {
+    label: 'lifting tip ⇄ hammer tail',
+    unitA: 'Alarm lifting lever', meshA: 'alarmLiftTip',
+    unitB: 'Alarm hammer', meshB: 'alarmTail',
+    expect: { lifting: 'contact', falling: 'contact', rebound: 'contact' },
   },
 ];
 
@@ -9208,6 +9303,11 @@ const CHECKS = {
   // constraint closed), free pulled out.
   stemClutchHandoff: (clock, opts) => checkAlarmHandoffs(clock,
     { poses: STEM_CLUTCH_POSES, handoffs: STEM_CLUTCH_HANDOFFS, ...opts }),
+  // §198 — the strike chain's two contacts, same instrument, own phase
+  // table: the nose on the flank mid-rise and free of it in the fall, the
+  // tip on the tail at every phase.
+  strikeHandoff: (clock, opts) => checkAlarmHandoffs(clock,
+    { poses: STRIKE_HANDOFF_POSES, handoffs: STRIKE_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
   assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body

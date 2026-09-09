@@ -116,10 +116,15 @@ const out = await page.evaluate(async () => {
   // and the angle, and the fall ends where the angular rate collapses (the
   // wire stops the hammer dead — that discontinuity IS the strike).
   const head = byName.get('alarmHammerHead')[0];
+  // §198 — the hammer's own sense: the lifting lever turns it CLOCKWISE under
+  // the lift, so the pivot's angle is liftSign × the law's. Read in the LAW's
+  // frame (the fall runs negative there, and the strike is its minimum), so
+  // the extremum search below stays the one §197 wrote.
+  const liftSign = clock.acoustics.hammer.liftSign || 1;
   const sample = (u) => {
     clock.setPose({ alarmStrikePhase: 4 + u, alarmReleased: true });
     pivotGroup.updateMatrixWorld(true);
-    return pivotGroup.rotation.z;
+    return liftSign * pivotGroup.rotation.z;
   };
   const N = 20000;
   const th = [];
@@ -285,7 +290,7 @@ for (const [what, got, lim] of checks) {
 // only a mirror of the build's own asserts.
 const bounds = [
   ['fundamental inside 1–4 kHz', modes[0].f_Hz >= 1000 && modes[0].f_Hz <= 4000],
-  ['wire inside real gong stock 0.4–1.1 mm', 2 * aW * 1000 >= 0.4 && 2 * aW * 1000 <= 1.1],
+  ['wire inside real gong stock 0.4–1.1 mm', 2 * aW * 1000 >= 0.4 - 1e-3 && 2 * aW * 1000 <= 1.1 + 1e-3],   // §198 sizes the wire AT the ceiling; the knob's 4-decimal quantum is 8e-5 mm
   ['mass ratio within 0.4–2.5 of matched', mu > 0.4 && mu < 2.5],
   ['fall fits the fastest free window', D.hammer.fall_s <= out.cadence.hammerWindow.freeAtFastest_s],
 ];

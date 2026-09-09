@@ -15631,7 +15631,7 @@ instrument says so in its own header.
 
 Related: item 127 (the pitch's own bound), [§197].
 
-## 127. The gong's pitch is set by where a stud can be screwed down, not by the ear
+## 127. The gong's pitch is set by where a stud can be screwed down, not by the ear — CLOSED (§198)
 
 `aesthetics.gong.arcDeg`'s default is DERIVED — the arc length that puts
 the fundamental on 2.5 kHz, the A-weighted peak of hearing and the figure
@@ -15677,7 +15677,24 @@ stock (0.4–1.1 mm) and nearly twice the band the ring has to fly in.
 Neither is a fix to the acoustics: the law is right and the wire is the
 size the band allows. This is a LAYOUT problem, filed as one.
 
-Related: item 17 (the voice), item 126 (the level), [§197].
+**CLOSED by §198, by way 2 — and closed as a measurement, not a re-tune.**
+The ring stands in the annulus between the three-quarter plate's rim and
+the case bore now, on a block planted in the base plate's mounting rim, at
+r 48.20; no plate opening exists at that radius, so the block lands where
+the pitch wants it and the clear-station walk that lengthened the arc on the
+plate walks **0°**. The arc is the design arc, 55.29° on a 1.1 mm wire (the
+stock ceiling — out there the room is taller than any gong wire is drawn
+to, so stock caps the section, not the band), and the fundamental measures
+**2500 Hz** against the 2.5 kHz TODO 17 named — held at boot to 0.1% and by
+`probe-198-lifting-lever.mjs`. The price this item priced (a lifting lever
+between the cam and a hammer whose pivot moved 12 u outboard) was paid as a
+fold in position space: two equal arms about the post §24's hammer stood
+on, ratio 1, the cam's base and pickup radii reproduced, and the corner's
+one fork (the lobe tip, +0.11) declared at `ALARM_LIFT_FORK`. Level: 14.0 →
+24.4 dBA at 0.3 m, the wire alone (item 126's path still unmodelled, so
+still a floor).
+
+Related: item 17 (the voice), item 126 (the level), [§197], [§198].
 
 ## 128. The hammer spring changes LENGTH as the hammer swings: a rubber band where TODO 14 recorded a blade
 
@@ -15739,6 +15756,19 @@ switch` FORBIDDEN over 12 poses of `alarmPress`, `sweptOverlap` confirming
 0.3. There is no room for a straight blade of the right rate in that
 corner, and that is a second reason the answer is a coil rather than a
 longer bar.
+
+**§198 moved the blade with the hammer and changed nothing about it.** The
+hammer's post and the blade's stud stand on the base plate's mounting rim
+in the annulus now (there IS room for 6.25 u of blade out there, and it was
+deliberately not spent — a bending rate read off a bar that stretches is
+still the wrong physics), the bearing fraction is the same 0.45 of the same
+6.5 u tail, and `ALARM_HAM_SPR_FREE` is the same 2.2 literal with the same
+note beside it. One thing this item now owes that it did not: the LIFTING
+LEVER's restoring answer is this blade too — the tail is held on the
+lever's tip by it at every phase (`strikeHandoff` measures the contact
+shut), so `declareRestoring('Alarm lifting lever', …)` names
+`alarmHammerSpring` and is exactly as true as the hammer's own. When the
+torsion spring lands, both declarations move together.
 
 Related: item 14 (the declaration this refines), item 126 (the case, the
 other order of magnitude), [§197].

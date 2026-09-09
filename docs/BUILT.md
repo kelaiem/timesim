@@ -21104,6 +21104,280 @@ both `Alarm hammer ⇄ Alarm switch`, the anchor stud pushed into the alarm
 column's skirt. Reverting it is what sent §197 back to read how the blade is
 actually loaded — which is how the rubber-band finding above was made at all.
 
+## §198 — The gong ring leaves the plate: an annulus mounting, and the lifting lever it needs
+
+Owner's second suggestion during §197: *"Consider having the gong span
+outside the 3/4 plate to use the available space and consider a layout
+change to move the features exterior to the 3/4 plate below it."* §197
+measured it and did not build it, and filed the version worth building in
+the roadmap as this entry: take the ring into the annulus between the
+three-quarter plate's rim and the case bore — where there is no balance
+opening at any azimuth, so the stud can stand where the PITCH wants it — and
+pay for it with the one part that makes it reachable, a **lifting lever**
+between the striking wheel's cam and the hammer. The prize was TODO 127, the
+pitch bound §197 could not lift from the plate: the fundamental at the ear's
+2.5 kHz instead of the 1381 Hz two stud stations forced. That is what this
+entry bought, and it is closed by measurement, not by re-tuning anything.
+
+Everything about the strike group is a DERIVATION from the line spec §24/§25
+established, and where the fold changed a spec quantity it is declared as a
+fork with its constraint written beside it. The two premises the roadmap
+entry was priced on both turned out wrong in the movement's favour, and the
+build records that rather than the plan.
+
+### The annulus, measured again — both premises corrected
+
+The roadmap gave the annulus 4.7 u of radial room (plate rim 42.92 → §187's
+caseback skirt at 47.94) and priced the arrangement at **2.7 dB below** the
+over-plate ring because the head's LENGTH is what buys level. Built and
+measured, neither holds:
+
+- **The skirt does not reach the ring.** §187's skirt descends to a z the
+  ring never rises to: the ring's ceiling is the alarm pusher's STEM
+  (`GONG_BAND_TOP` = the stem's underside − `CLEAR_MARGIN` − 0.01 = 6.944, the
+  §102 centi-unit convention), and the skirt's bottom sits above that, so at
+  the ring's height the annulus runs out to the case middle's back bore.
+  `R_ANNULUS_IN = plateR + CLEAR_MARGIN` (43.07) and `R_ANNULUS_OUT =
+  R_BORE_BACK − CLEAR_MARGIN` (49.99): **6.92 u**, not 4.7. The §186 case
+  tripwire that holds "nothing occupies the annulus" was rewritten to know
+  this — its wall is `wallAt(z)`, the case-middle bore below the plate rim's
+  front face and the back bore above it, plus the three clamp heads
+  analytically — because its old single-radius wall would have read the
+  block and the post as intruders.
+- **Level is bought with the MATCH, not with length.** §197's head was a
+  bar along the blow whose length was the radial room; out here the head is
+  SOLVED: its height is the value that puts its mass at a quarter of the
+  wire's (`ALARM_HEAD_H_MATCH`, the impedance match μ = 1 that §197 derived
+  and could only approach at 0.55), capped by the band (`ALARM_HEAD_H_BAND`,
+  twice the lesser of the two clearances about `Z_GONG`). The band owns it —
+  5.06 against a matched 5.08 — and the arm and tail add the rest, so the
+  face meets the wire at **μ = 1.135, η = 0.81** where §197 had 0.553 and
+  0.74. The z the annulus offers is exactly the currency a mass needs.
+
+| | §197 (on the plate) | §198 (in the annulus) |
+|---|---|---|
+| ring | r 35, arc 97.5° (walked from 72.5°) | r **48.20**, arc **55.29°**, walked **0°** |
+| wire | ⌀0.996 mm × 22.57 mm (the band's height) | ⌀**1.100** mm × 17.63 mm (the STOCK ceiling) |
+| f₁ / f₂ | 1381 / 8656 Hz | **2500** / 15668 Hz |
+| head | 2.63 u square, μ 0.553 | 5.06 × 3.28 u, 32.6 mg, **μ 1.135** |
+| rotor inertia | 1.46e−10 kg·m² | 2.86e−10 kg·m² |
+| blow | 6.11 nJ | **11.95 nJ** |
+| hammer pivot | r 35 (on the plate, §24's post) | r 46.92 (on the base plate's rim) |
+| **level @ 0.3 m** | **14.0 dBA** | **24.4 dBA** |
+| fall / face speed | 53.2 ms / 0.024 m/s | *unchanged* — TODO 128 |
+
+**+10.4 dB**, and the split is the entry's claim made good: the pitch is ω⁴
+on a compact dipole, the head is a match, and the wire grew to stock rather
+than to the band — `GONG_STOCK_MM [0.4, 1.1]` caps the section now, the
+band no longer does, and `__clock.acoustics.band.wireCap` says which.
+
+### The ring: a block on the base plate's rim, and a design arc that took effect
+
+`GONG_R = R_ANNULUS_OUT − GONG_POST_R` — the ring sits as far out as its own
+block allows, so the head has the most room inboard of it. The block is a
+post from the base plate's mounting rim (`PLATE_RIM.back`, measured off the
+built plate, hoisted from the case block because the strike group needs it
+before the case exists) up through the annulus to the ring at `Z_GONG`
+(5.49): 7.14 u tall, and its radius is the larger of stock around the
+brazed wire and the ROOT-STIFFNESS solve — `GONG_ROOT_STIFF_MIN` (10×, the
+rigid-root condition a clamped-free analysis assumes) × `GONG_ROOT_DESIGN`
+(1.5, so the assert has a margin that is a design and not a coincidence),
+raised to the quarter power because a cantilever's stiffness goes as r⁴/L³ —
+1.79 u.
+
+`aesthetics.gong.arcDeg` has DERIVED the ear's arc since §125 and never once
+taken effect; here it does. `GONG_ARC_DESIGN` is the arc that rings
+`GONG_F1_TARGET_HZ` (2500) on this wire at this radius, the foot walks the
+annulus's rim by §197's clear-station rule — against the pusher stem and the
+clamp heads — and walks **0°**, and a boot assert holds the achieved
+fundamental to the target scaled by (design/shipped arc)², so a walk that
+ever did lengthen the arc would say so rather than quietly detune. The band
+floor is measured as §197's was, an annulus swath over the widest arc the
+knob can ask for plus the clamp heads analytically: 1.506, the case clamp
+head, 4 u under the ring.
+
+Which way round the ring goes is derived, not declared. `GONG_BLOW = +1` (the
+head strikes radially OUTWARD — the head is inboard of the wire, where the
+room is), and `GONG_HAND` — the ring's sense from the free end — follows from
+which side of the free end the hammer's pivot lands; the torus is rotated by
+`min(A0, A1)` so either hand draws the same metal.
+
+### The hammer: a pivot solved so the blow is radial
+
+A radial blow needs the arm tangent to the ring at the face. The pivot is
+the closed-form answer to that — the point at distance `√(arm² − headR²)`
+along the tangent from the face point, at `rP = hypot(ALARM_HEAD_FACE_R,
+that)` — and the face point is itself placed by the LEVER (below), so the
+whole hammer is sited from the corner it is driven through. Measured, the
+blow lands **0.51° off the radius, outward**. The arm keeps §24's length
+(`STRIKE_REF.armLen`, 7.304 — the reference pivot-to-eye distance) and the
+tail keeps §25's 6.5, so every line-spec quantity survives; the arm is
+CRANKED as §197's was, rooted a bar's thickness under `Z_STRIKE` on the staff
+and slanting down to `Z_GONG`, which is what put the caseback's skirt floor
+back on its old owner (the first cut rooted it AT `Z_STRIKE` and the arm's
+cap became the tallest metal under the skirt).
+
+The head is `ALARM_HEAD_L = FACE_R − R_ANNULUS_IN` long (3.28 — from the face
+back to the plate rim's clearance), and at full draw it swings **in under the
+plate's rim** (r 40.60, top z 8.02); `ALARM_HEAD_H` is capped by the plate's
+underside for exactly that reason, and the pair sweep holds the rest.
+
+The post and the spring's stud stand on the base plate's rim beside the
+block, each with an annulus assert; the blade itself is §25's, unchanged —
+TODO 128 records why it was deliberately NOT lengthened out here where there
+is room for it.
+
+### The lifting lever — the fold, and its one fork
+
+The corner is a rigid L pivoted on the three-quarter plate at the station
+§24's hammer post stood on (r 35, a proven column beside the cam). Its NOSE
+arm is the §25 tail verbatim — `ALARM_LIFT_ARM = ALARM_TAIL_LEN` (6.5) at
+`bearing + restGamma` (12° off the pivot⇄wheel bearing, where the tail
+rested) — so the cam sees the follower it was cut for. Its far arm is the
+same length, anti-parallel to the hammer's tail at rest, and ends in a
+rounded tip (`ALARM_LIFT_TIP_R`, the bar's own half-width) that rides the
+tail's flat face at stand-off `ALARM_LIFT_S` (half the tail's width plus the
+tip's radius). Equal arms, anti-parallel: the corner's ratio is **−1** at
+rest, `dθL/dθH` measured −1.0000, which is a ratio someone would design and
+the line spec's own.
+
+The contact is solved in closed form. With the tip on the tail's face, the
+lever's angle for a hammer angle θH is
+
+    θL = θH + asin((−σ·s(1 − cos θH) − (a + ℓ) sin θH) / a)
+
+(`alarmLiftFromHam`; a = ℓ = 6.5, s = 0.5, σ = `ALARM_LIFT_SIDE`), and the
+tick writes the hammer from the cam through it — `alarmHammerPivot.rotation
+= ALARM_HAM_LIFT_SIGN · alarmHammerAngle()`, `alarmLiftPivot.rotation =
+alarmLiftFromHam(that)` — so the pose derives from the driver against a
+surface that was cut, rule 1 at mechanism scale. **The cam is GENERATED
+through the lever**: `alarmNoseAt(θH)` is the lever's nose at the lever angle
+the hammer angle implies, `ALARM_CAM_RISE_PTS` consumes it, and the cam's
+three radii are re-derived and compared against `STRIKE_REF`'s:
+
+| | reference (§25) | through the lever | |
+|---|---|---|---|
+| base | 3.2977 | 3.2954 | reproduced (< 0.01) |
+| pickup | 3.7102 | 3.7102 | reproduced |
+| tip | 5.0360 | 5.1501 | **fork, +0.114** |
+
+The tip is the one row the fold changes, and `ALARM_LIFT_FORK` declares it
+with its constraint: a tip on a flat face is a HIGHER pair whose contact
+point slides outward as the angles open, so at full draw the nose must rise
+by the asin term above — the lever stands 0.2894 rad where the hammer
+stands −0.27, and the nose's extra 0.019 rad of travel at 6.5 u is where
+the 0.114 comes from (the nose moves on an arc about the post, so the cam
+radius grows a little less than the product). A boot assert
+holds the delta in (−0.01, 0.2) and the other two rows within 0.01.
+
+**The mirrored lever was built first and refuted by measurement.** Putting
+the nose on the other side of the bearing (−12°) reads identically in every
+plan quantity and fails in time: the nose drifts AGAINST the wheel's turn
+after release, and measured it stood 0.65 INSIDE the lobe on the next
+approach. `ALARM_LIFT_SIDE` (+1) and `ALARM_HAM_LIFT_SIGN` (−σ) carry the
+choice, and the asserts beside them measure the two things a wrong sign
+breaks — the nose lifts OUTWARD under a positive draw, and the lift carries
+the head AGAINST the blow.
+
+The lever's duties as a real part, each in its instrument: a `MECH_GRAPH`
+node (`Alarm lifting lever`, supported by the three-quarter plate, driven by
+the striking wheel, driving the hammer); two `INTRA_UNIT_CONTACTS` rows for
+its own rivets (measured against the metal, §182); two
+`EXPECTED_CONTACT_FLOORS` rows (cam⇄nose, tip⇄tail) and two penetration
+budgets over `alarmStrike`; `declareRestoring(…, 'spring', …,
+'alarmHammerSpring')` — the tail is held on the tip by the hammer's blade at
+every phase, so the lever's return IS the hammer's, and TODO 128 now owes
+both declarations together; `declareTravel`; and a `declareTransfer` row in
+the `crank` idiom, the strike side's first, its load the fall law's implied
+spring rate × the draw referred to the tail's contact arm (TODO 128's k, so
+a floor — a real spring at its yield would ask ~20× this of the cam), and
+no envelope, because there is no detent here to be in-window for.
+
+### The hand-offs, gated
+
+`strikeHandoff` joins the battery beside `windArrestHandoff` — the same
+`checkAlarmHandoffs` engine over its own three poses (lifting at u 0.69,
+falling at 0.06, rebound at 0.30, all armed and released) and two rows:
+the cam's flank ⇄ the lever's nose (contact lifting, free falling and
+rebounding) and the lever's tip ⇄ the hammer's tail (contact at every
+phase). Measured over 40 phases of one strike by
+`tools/probe-198-lifting-lever.mjs`: tip on tail worst gap **0.0037**, nose
+on the flank **0.0000** through the rise, nose free of the cam by at least
+**0.1607** through fall and rebound. Zero waivers.
+
+### What the sweeps taught, so the next fold is cheaper
+
+Four instruments read the annulus tenants wrongly before they read them
+right, and each fix is a rule rather than an exception:
+
+- **The rod solve inflated boxes.** The lever's tip arm and the torus's arc
+  both scored as their rotated AABBs, and the §35 rod site drifted its plate
+  bores. A bar now publishes `userData.planStadium` and the solve scores the
+  stadium; a mesh whose every vertex stands outside `plateR` is not the
+  plate's load and is skipped (`A PART THAT STANDS OUTSIDE THE RIM IS NOT THE
+  PLATE'S LOAD`, beside the keep field, which enrolled the same tenants).
+- **The §115 governor window did not cut** because the keep field enrolled
+  parts crossing the plate band that never touch the plate. Same rule.
+- **§186's annulus tripwire assumed one wall** at every z; see above.
+- **`probe-back-envelope`** reads the hammer at Δ 0.000 in every bin once it
+  dropped under the plate, so its `BACK_SWEPT_REGIONS` rows are retired with
+  a comment, not carried — the envelope owes the hammer nothing now.
+
+And two probe artefacts from the instruments skill's catalogue, met again:
+sampling the cam's VERTICES read 0.15 of daylight where the nose was
+touching the flank (the extrusion's caps), and the must-hit control had to be
+the lever's own two arms sharing a root — a control that could not fail
+measures nothing.
+
+### Verified
+
+`node tools/probe-198-lifting-lever.mjs` — ALL PASS, 15 checks and 2
+controls: the contact figures above, ratio −1.0000, draw −0.2700 / 0.2894
+as declared, blow 0.51° off radial outward, f₁ **2500.2 Hz**, foot walked
+0.00°, every annulus tenant inside r 43.073–49.989 (measured
+43.082–49.971), the ring's top 6.9445 under its 6.944 ceiling, cam
+base/pickup reproduced and tip the declared fork, μ 1.135, boot silent.
+`node tools/probe-197-gong-loudness.mjs` — all clear, its stock bound now
+±1e−3 mm (the knob's rounding of a 1.1 mm wire) and its strike sampling
+reading the hammer's own lift sign. `node tools/probe-back-envelope.mjs` —
+the hammer Δ 0.000 in every bin. Boot silent.
+
+Full battery locally (a dev container, three shards, `--no-incremental`):
+**40/40 gates** — §197's 39 plus `strikeHandoff` — with `--report` diffed
+against the base tree's own 39/39 run. Outside timings and census counts,
+every difference is the lever existing or the two parts having moved:
+
+- New rows, all green: `support` gains `Alarm gong → plate`, `Alarm hammer →
+  plate` and `Alarm lifting lever → Three-quarter plate` (the two plate edges
+  the gong and hammer used to carry are gone, which is the move);
+  `expectedContacts` two floors rows (min 0.33 and 0.55 against 0.15);
+  `intraUnit` two declared rivets, both measured at reach 0; `assembly` and
+  `stockFloor` one unit each; `transfers` one `crank` row; `strikeHandoff`
+  two hand-offs, zero waivers.
+- `penetration`: the base's `Alarm hammer ⇄ Alarm striking wheel` (0.002)
+  becomes `Alarm lifting lever ⇄ Alarm striking wheel` (0.013) and `Alarm
+  hammer ⇄ Alarm lifting lever` (**0.097** of the 0.12 budget). That second
+  reading is the MTV artefact the row's own comment predicts, not metal:
+  the tip's vertices measured in the tail's frame stand 0 to 0.003 OUTSIDE
+  the face at every phase sampled, with the two bars' bottom faces exactly
+  coplanar, and `mtvDepth` cannot resolve a tangent, coplanar touch. The
+  contact the row polices is held by `strikeHandoff`'s signed measure at
+  ±0.03 instead.
+- `inspection`'s EXPECTED rows re-key from the hammer to the lever, and
+  `Alarm gong ⇄ Alarm hammer` gains one pose in its raw-after-confirmed list
+  (6/110); no FORBIDDEN, no new class.
+- `sweptOverlap`: the hammer's hull now overlaps the three-quarter plate's
+  (3.50) and the case's (2.60) — both REFUTED by refinement at 0.16 and
+  0.47, the head swinging under the rim at exactly the margin the build
+  asserts; `Alarm lifting lever ⇄ Alarm link` refuted at 0.46. 0 CONFIRMED.
+- `restoring`: population 24 → 25, every fan-out one higher, `Alarm lifting
+  lever` answered by `alarmHammerSpring`. `meshIntegrity`: the cam's
+  extrude carries 4 more collapsed slivers (its lobe is generated through
+  the lever now, 4284 triangles), reported as before, nothing inverted.
+
+The fingerprint moves (2402376983 → 3534559869, 56 → 57 units), as it
+must; boot B reproduces it.
+
 ## §190 — Lugs re-derived from the strap: the wrap gap becomes the source, and the lug stock becomes one declaration
 
 Commissioned when §186 re-based the 40 mm width cap to the case BODY
