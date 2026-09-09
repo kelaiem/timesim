@@ -5070,10 +5070,13 @@ asserts are the real gate.
 ### Beat rate — a menu, not a dial
 
 Rates a re-solved train can actually deliver: 18,000 / 21,600 / 28,800
-A/h. Each row of the rate table carries the fourth-wheel/escape-pinion
-pair that keeps the fourth wheel at exactly 1 rev/min with the escape
-wheel untouched (8/80 → 8/96 → 6/96; escPinion/fourthTeeth = 1800/vph,
-integer pairs only). The third mesh never changes, so minutes and hours
+A/h — and, since §204, 36,000. Each row of the rate table carries the
+fourth-wheel/escape-pinion pair that keeps the fourth wheel at exactly
+1 rev/min with the escape wheel untouched (8/80 → 8/96 → 6/96 → 6/120;
+escPinion/fourthTeeth = 1800/vph, integer pairs only). A row may also
+carry its own MODULE for that one mesh, and the 36,000 row must — at the
+mesh's 0.21 the 120-tooth wheel outgrows the case; §204 has the
+measurement. The third mesh never changes, so minutes and hours
 are untouched by construction; `solveLayout` absorbs the moved
 fourth⇄escape centre distance. A boot assert measures 1 rev/min
 **through the same ratio chain the hands read** — a rate row whose
@@ -22048,3 +22051,127 @@ wrote the steel's paragraph and the ruby's line, so what step 4 owes is the
 `decoration` and `gong` headings the page has never had. Both are filed in the
 private roadmap under the same number; the entry there names steps 1 and 2 as
 shipped and points here.
+
+## §204 — A 36,000 A/h row in the beat-rate menu — ten beats a second, carried by a finer fourth mesh and a spring at the top of stock
+
+Roadmap item 204 (private) asked two things in one message: what the
+movement re-derives when its beat rate changes, and a ten-beats-a-second
+option in §22's menu. The first is answered below because the second
+depended on it — the row that looked obvious does not fit the case, and
+only a boot could say so.
+
+### What changes with the beat — five things, nothing else
+
+`SPEC.vph` is read once at boot (`?vph=`, reload-tier) and the chain is:
+
+1. **`F_BALANCE = vph / 7200`** — every tick law that swings the balance,
+   steps the escape wheel, schedules the impulse window and the tick sound,
+   and the HUD's beats/s readout, read this one constant. At 36,000 it is
+   5 Hz and the readout prints "10.0 beats/s" with no edit.
+2. **The hairspring's section is SOLVED to it** (TODO 25 tier two). The
+   balance is weighed from its own rim, arms and screws — the same wheel
+   at every rate, I = 5.001 × 10⁻¹⁰ kg·m² — the rate demands
+   `k = I·(2πf)²`, and the ribbon's radial half-diagonal falls out as a
+   cube root of the spiral's own length; k scales with f², the ribbon with
+   f^(2/3):
+
+   | A/h | Hz | k (N·m/rad) | ribbon (mm) | in stock 0.02–0.04 |
+   |---|---|---|---|---|
+   | 18,000 | 2.5 | 1.234 × 10⁻⁷ | 0.0244 | yes |
+   | 21,600 | 3 | 1.777 × 10⁻⁷ | 0.0276 | yes |
+   | 28,800 | 4 | 3.159 × 10⁻⁷ | 0.0334 | yes |
+   | 36,000 | 5 | 4.936 × 10⁻⁷ | 0.0388 | yes — 0.0012 under the ceiling |
+
+   This balance CAN be sprung to ten beats out of real wire, by a hair. A
+   real hi-beat calibre carries the rate with a lower-inertia balance and
+   a normal ribbon; re-cutting the balance per rate is a separate design
+   and is not claimed here.
+3. **One gear pair.** The third mesh never changes, so the minute and hour
+   hands are untouched by construction; only the fourth wheel ⇄ escape
+   pinion pair re-gears, `escPinion / fourthTeeth = 1800 / vph`, escape
+   wheel untouched (15 teeth, `BEAT_DEG` 12). At 36,000: **1/20**. The
+   boot assert that walks 60 s of beats through the hands' own ratio chain
+   holds at the new row.
+4. **The layout re-solves.** The fourth arbor is pinned by the third mesh
+   (`P.fourth` = (0, −18.778) at every rate); the changed centre distance
+   moves the ESCAPE arbor and the balance with it, and D4 (§125), the
+   plate's reach and the caseback aperture (§187), the case clamp's wall
+   (§186) and the gong band's floor (§197) all re-derive off those
+   stations. This is where the fast rows stop closing.
+5. **Nothing else.** Mainspring, fusee, keyless works, alarm and motion
+   works do not read the rate. At ten beats a second a beat is 24 ticks of
+   `FIXED_DT` and the impulse window 3.84 — coarse, but the balance is a
+   closed-form swing, never integrated.
+
+### What was measured — four integer pairs, and why the row carries a module
+
+Every menu row and four candidate 36,000 rows were booted headless off
+`main`, the fast rows beside them as the baseline (`tools/probe-204-rates.mjs`
+is the loop, kept):
+
+| row | fourth pitch r (u) | plate R (u) | boot warnings | new against 28,800 |
+|---|---|---|---|---|
+| 18,000 · 8/80 @ 0.21 (identity) | 8.40 | 42.923 | 0 | — |
+| 21,600 · 8/96 @ 0.21 | 10.08 | 43.423 | 3 | the fast rows' three: §186's clamp wall 0.233 u under its 0.660 floor, §125's D4 no longer maximal, §197's gong band 0.04 off its derivation |
+| 28,800 · 6/96 @ 0.21 | 10.08 | 43.544 | 3 | the same three (wall 0.112 u) |
+| 36,000 · 6/120 @ 0.21 | 12.60 | **47.870** | **5** | wall **−4.214 u** (the thread breaks four units into the case bore); the rim bears −0.32 mm on its ledge; **§187's aperture 45.731 no longer clears the plate's measured reach 47.870** |
+| 36,000 · **6/120 @ 0.168** | 10.08 | 43.340 | 3 | **none** — the same three, at magnitudes between the two shipped fast rows (wall 0.315 u, D4 outboard 15.562) |
+| 36,000 · 5/100 @ 0.21 | 10.50 | 44.294 | 3 | the same three (wall −0.638 u) — and a five-leaf pinion, which no watch runs |
+| 36,000 · 4/80 @ 0.21 | 8.40 | 42.923 | 1 | the plate is the identity's — and TODO 15's gauge REFUSES the pinion (8 gaps for 4 teeth, confidence 0.721, chain solve skipped) |
+
+The naive row grows the fourth wheel 25% in radius and the plate past the
+caseback window: the first menu row that fails to fit the CASE rather than
+only the plate. The two rows that fit are not real pinions. So the row
+carries its own module — **0.168 = 0.21 × 96/120**, by construction the
+pitch radius of the 96-tooth wheel the two fast rows already carry — and
+the escape arbor lands within 0.1 u of the 28,800 row's. In real metal the
+six-leaf escape pinion's pitch radius drops 0.63 → 0.504 u (0.191 mm at
+`UNIT_MM` 0.379; module 0.064 mm against the mesh's 0.080): small-calibre
+fine, and TODO 15's gauge reads the pair as credible at that cut (no gauge
+warning, unlike 4/80). The pinion body is generated from the module and
+no bore assert fired.
+
+### What changed
+
+- `layout.js`: the `36000: { fourthTeeth: 120, escPinion: 6, module: 0.168 }`
+  row, `FOURTH_MODULE_DEFAULT = 0.21`, and `TRAIN.fourth.module` reading
+  the row's module with the mesh's as the default — so the three shipped
+  rows and the identity spec are byte-identical, which the fingerprint
+  holds (below). `SPEC_RATES` derives from the table, so the Time panel's
+  select gained the option with no other edit, and `fmtInt` localises
+  "36,000 A/h" per §73 — no new string, no locale row.
+- `main.js`, the spec verdict row: a second line, "hairspring 0.039 mm —
+  at the top of real stock (0.02–0.04)", whenever the solved ribbon sits
+  within a tenth of the stock window's width of either edge. TODO 25's
+  solve warns only when the ribbon LEAVES stock, so a rate carried by a
+  hair passed in silence; the band is the one that separates the two
+  measured cases it exists to tell apart — the identity ribbon 0.0044 off
+  the floor stays silent, the fastest row 0.0012 under the ceiling does
+  not, each with 2× to spare. English by i18n's own contract for
+  boot-assert prose, like the line beside it.
+- `tools/probe-204-rates.mjs`, acceptance: boots the identity and every
+  `SPEC_RATES` row, prints the table above's live columns, and holds two
+  claims — the identity boots silent, and the 36,000 row's warning SET
+  equals the 28,800 row's (warnings keyed by the assert that raised them,
+  never by what they measured: the gong band binding on the screw heads
+  at one row and the screw slots at another is one assert). "Closes
+  exactly as well as the menu already does" is what shipped, and set
+  equality is what it means. Both hold.
+- §22's record, one paragraph: the fourth rate and the module rule.
+
+### What it is not
+
+Not a closure of the fast rows' three warnings — they are §22's open
+validity residue ("real per-rate layout tuning is §33's story") and the
+new row inherits them deliberately. Not a lighter balance, not a re-cut
+escapement (a 20-tooth escape wheel would give 6/90 and a smaller fourth
+wheel, but `BEAT_DEG`, the pallet span and the club-tooth profile all
+derive from 15 teeth). Not a change to the identity movement.
+
+### Instrument
+
+`tools/probe-204-rates.mjs`: identity silent; 36,000 trips the same 3
+structural asserts as 28,800, none added. `node tools/explain-quotes.mjs`
+PASS (the explainer quotes the identity mesh only). Battery: see the
+landing PR — the identity fingerprint is the gate this change must not
+move, and the row it adds is judged by the probe, as §22 judges its rows.

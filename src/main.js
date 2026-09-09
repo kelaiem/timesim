@@ -27849,13 +27849,29 @@ updateCrownUI();
   // 'load' listener is NOT enough — the vendor modules cache and load can
   // beat this module's evaluation); the identity spec keeps the row hidden
   // by staying at zero.
+  //
+  // §204 — THE SPRING'S MARGIN, said out loud. TODO 25's solve cuts the
+  // ribbon to the rate and warns only when it LEAVES real stock; a rate the
+  // solve carries by a hair (36,000: 0.0388 mm under a 0.04 ceiling) passed
+  // in silence. A second line names the ribbon whenever it sits within a
+  // tenth of the stock window's width of either edge — the band that
+  // separates the two measured cases it exists to tell apart: the identity
+  // ribbon 0.0044 off the floor stays silent, the fastest row 0.0012 under
+  // the ceiling does not, each with 2× to spare. Boot-assert prose stays
+  // English by i18n's own contract, and so does this, its sibling.
+  const [stockLo, stockHi] = OSCILLATOR.stockWindowMm;
+  const edgeBand = 0.1 * (stockHi - stockLo);
+  const hMm = OSCILLATOR.spring.h_mm;
+  const atEdge = hMm >= stockHi - edgeBand ? 'top' : hMm <= stockLo + edgeBand ? 'bottom' : null;
   setTimeout(() => {
     const w = __bootWarns.length;
-    if (w === 0) return;
+    if (w === 0 && !atEdge) return;
     const row = document.getElementById('spec-verdict');
     row.style.display = '';
-    row.firstElementChild.textContent =
-      `⚠ this spec does not close: ${w} structural assert${w === 1 ? '' : 's'} (see console)`;
+    const lines = [];
+    if (w) lines.push(`⚠ this spec does not close: ${w} structural assert${w === 1 ? '' : 's'} (see console)`);
+    if (atEdge) lines.push(`⚠ hairspring ${hMm.toFixed(3)} mm — at the ${atEdge} of real stock (${stockLo}–${stockHi})`);
+    row.firstElementChild.textContent = lines.join(' · ');
   }, 0);
 }
 
