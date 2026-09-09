@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { MATS, applyDecorationFromAesthetics, applyBrushFromAesthetics } from './materials.js';
+import { MATS, CRYSTAL_GLASS, applyDecorationFromAesthetics, applyBrushFromAesthetics } from './materials.js';
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
@@ -29022,10 +29022,11 @@ const CASE_DIMS = (() => {
     backEnvelope: BACK_ENVELOPE,
   };
 })();
-const caseCrystalMat = new THREE.MeshPhysicalMaterial({
-  color: 0xf8fbff, transparent: true, opacity: 0.14, roughness: 0.04,
-  metalness: 0, depthWrite: false, // a crystal the scene reads through — the x-ray materials' own trick
-});
+// §3 — ONE glass recipe: the crystal's numbers now live in materials.js as
+// CRYSTAL_GLASS, shared with the sapphire dial's plate, so the two cannot
+// drift apart. Unmoved: opacity 0.14 with depthWrite off is a crystal the
+// scene reads through — the x-ray materials' own trick.
+const caseCrystalMat = new THREE.MeshPhysicalMaterial({ ...CRYSTAL_GLASS });
 const caseSolid = G.makeCase({ dims: CASE_DIMS, material: MATS.caseMetal, crystalMaterial: caseCrystalMat }); // §203 step 1: the case exterior's own material — an alloy reaches this and never the works
 caseSolid.visible = restoredCaseLines;
 movement.add(caseSolid);
@@ -30646,6 +30647,17 @@ const xrayMeshes = [];
 // tqXrayMat stays the one object every other opacity here is read from.
 const xrayClones = new Map([[tqSolidMat, tqXrayMat]]); // original material → glassy clone
 for (const m of xrayMeshes) {
+  // §3 — a material that is glass BY NATURE (the sapphire dial's plate,
+  // walls and print sheets, `userData.glass`) composes with x-ray rather
+  // than being cloned: it maps to itself, so the toggle leaves it exactly
+  // as it is. A 0.28 clone of a 0.14 glass would make the dial MORE opaque
+  // under x-ray — the toggle's opposite — and the print sheet's alpha lives
+  // in its texture, which a cloned opacity would double-count.
+  if (m.material.userData && m.material.userData.glass) {
+    xrayClones.set(m.material, m.material);
+    m.userData.solidMat = m.material;
+    continue;
+  }
   if (!xrayClones.has(m.material)) {
     const x = m.material.clone();
     x.transparent = true;
@@ -30664,7 +30676,11 @@ for (const m of xrayMeshes) {
 // every mesh carries its solid material and nothing matches. §69's
 // focusGlassFor reads the same set to COMPOSE with x-ray rather than stack
 // on it, which is what makes §199's plate metal need no focus-side code.
-const xrayGlassMats = new Set([tqXrayMat, ...xrayClones.values()]);
+// §3 — a self-mapped glass (the sapphire dial) is NOT in this set: the set
+// means "installed by the x-ray toggle", and with x-ray off the sapphire
+// dial is glass on its own account, the way the case crystal is. A pick
+// treats it as the crystal is treated, not as a demoted x-ray ghost.
+const xrayGlassMats = new Set([tqXrayMat, ...[...xrayClones].filter(([k, v]) => k !== v).map(([, v]) => v)]);
 
 function setXray(on) {
   xrayOn = on;

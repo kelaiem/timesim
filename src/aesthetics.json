@@ -29,6 +29,13 @@
         "color": "Dial colour"
       }
     },
+    "plate": {
+      "sapphire": false,
+      "_comment": "§3 — the box sapphire dial, the half of that entry the case left unbuilt. On, the dial's MATTER becomes sapphire — the plate, its pocket walls and the sheets its print is laid on take the case crystal's own glass (materials.js CRYSTAL_GLASS, corundum's ior) — while the chapter ring, the applied numerals and the feet stay the metal they are, so the keyless works, motion works, reserve train and minute jumper read through the print from the front. RELOAD-TIER, deliberately (§22's precedent): makeDial chooses the materials at build and the x-ray map is built over them, so a live swap would be a second owner of the same slots. Geometry is untouched by construction — the same loops, the same merged body — which is what keeps the fingerprint still. The print's ink is SOLVED against the ground that actually stands behind it: the crystal's tint over the base plate's nickel (both read off the materials, never retyped), and the §157 legibility gate holds that composite the way it holds the silvered face. Not modelled, and said so: a box dial's raised rim (the plate keeps its chamfered outline), and any depth to the glass beyond the plate's own thickness. Browser-local like every finish knob but the dial colour; it does not travel in a link.",
+      "_labels": {
+        "sapphire": "Sapphire dial"
+      }
+    },
     "hands": {
       "_comment": "hour/minute carry no depth keys, deliberately (§188): the central sections are cut from HAND_STOCK_MM in geometry.js, so a depth knob here would be a lying parameter — the keys existed, were read, and had no effect on the built mesh (bossH overwrote their only consumer). The `second` kind keeps its depth keys because they are live there: counterweight thickness and that kind's boss law. widthFactor is now exactly what its label says — the plan width (halfW = length·widthFactor·0.35·√3/2) — and no longer drags thickness or boss with it. A persisted override of the removed keys is refused by the loader's type anchoring (aesthetics.js), the same rule the subdials layer's note cites.",
       "hour": {
