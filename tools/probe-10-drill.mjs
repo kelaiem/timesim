@@ -57,21 +57,24 @@ const r = await page.evaluate(async () => {
   }
   // 3 — drill anchored at the lifted group, and at home
   c.resetInputs();
-  const subs0 = c.subEntries;
+  // this probe holds the MECHANISM on the fusee cluster; the keyless and alarm
+  // tables (probe-10-tables.mjs) share the registry, so scope to the cluster
+  const mine = (list) => list.filter((s) => s.parentUnit === 'Fusee & great wheel');
+  const subs0 = mine(c.subEntries);
   const level1 = () => ({ fusee: z('Fusee & great wheel'), drum: z('Mainspring drum'), chain: z('Chain'), detent: z('Maintaining detent'), setup: z('Set-up work') });
   c.setExplode(1, 'Fusee & chain'); c.step(0.01);
   const liftedBefore = level1();
   c.setDrill(1); c.step(0.01);
   const liftedAfter = level1();
-  const subsDrilled = c.subEntries;
+  const subsDrilled = mine(c.subEntries);
   out.drillAtLift = { liftedBefore, liftedAfter, subs: subsDrilled.map((s) => ({ n: s.displayName, dz: s.z - s.baseZ, layer: s.subLayer })) };
   c.setDrill(0); c.step(0.01);
-  const subsBack = c.subEntries;
+  const subsBack = mine(c.subEntries);
   out.backExact = subsBack.every((s) => s.z === s.baseZ);
   c.setExplode(0, 'Fusee & great wheel'); c.step(0.01);
   const homeBefore = z('Fusee & great wheel');
   c.setDrill(1); c.step(0.01);
-  out.drillAtHome = { unitZBefore: homeBefore, unitZAfter: z('Fusee & great wheel'), subs: c.subEntries.map((s) => ({ n: s.displayName, dz: s.z - s.baseZ })) };
+  out.drillAtHome = { unitZBefore: homeBefore, unitZAfter: z('Fusee & great wheel'), subs: mine(c.subEntries).map((s) => ({ n: s.displayName, dz: s.z - s.baseZ })) };
   // 6 — labels
   document.getElementById('btn-labels').click(); c.step(0.01);
   out.subLabelsOpen = [...document.querySelectorAll('.clock-sublabel')].filter((e) => e.style.display !== 'none').length;
@@ -80,7 +83,7 @@ const r = await page.evaluate(async () => {
   document.getElementById('btn-labels').click();
   // 4 — resetInputs re-gathers
   c.setDrill(1); c.step(0.01); c.resetInputs(); c.step(0.01);
-  out.resetExact = c.subEntries.every((s) => s.z === s.baseZ) && z('Chain') === 0;
+  out.resetExact = c.subEntries.filter((s) => !s.tickOwned).every((s) => s.z === s.baseZ) && z('Chain') === 0;
   out.subs0 = subs0.map((s) => ({ n: s.displayName, parent: s.parentUnit, baseZ: s.baseZ, layer: s.subLayer }));
   return out;
 });

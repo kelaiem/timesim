@@ -22867,3 +22867,67 @@ the pad on and the View panel up; `H` shows, the Menu toggle hides; the two
 tour cases above; `?panel=1` opens; a 375×667 phone boots hidden with the pad
 on. Battery: `src/main.js` is on the graph, so it ran; the fingerprint is the
 check — chrome visibility reaches no geometry.
+
+## §10 level 2, the remainder — the keyless and alarm piece tables, and pieces that tick owns
+
+"§10 level 2" above shipped the mechanism and its first table, the fusee
+cluster, and named the remainder: piece tables for 'Keyless & winding' and
+'Alarm complication', the latter mostly parts whose position `tick()` writes.
+Both land here, and roadmap §10 closes.
+
+### Pieces that tick owns
+
+Seven of the pieces are written by `tick()` every frame — the winding stem's
+pull travel, the alarm pusher's press, the selector ring's slide, the release
+sleeve's and lifter's lift, the link rod's drop, the pawl tip's flex. The
+generic drill write would fight those writes, and its rest value would be
+wrong whenever tick had moved the piece for a real reason. So a piece may be
+registered `tickOwned`: the generic loop skips it and its own tick write ADDS
+`subDrillZ(obj)` to the z it computes — `resetRod`'s `rodOff` pattern, the
+entry's own template, at seven sites. `subDrillZ` is the same
+`drill · subLayer · dir · UNIT` the generic write uses, read off the record.
+
+### A piece may have several bodies
+
+The selector ring stands on three identical posts and the release sleeve on
+three more; three records at one height would have fanned as if they were a
+stack, which is not what the metal is. A registration repeated under the same
+unit and display name now ADDS a body to that piece: its bodies move together
+and rank by their union's extent. A registration repeated for the same object
+refreshes its record — several alarm units are built inside functions that
+run again on a re-solve, and the first cut recorded the ring three times.
+
+### The tables
+
+- **'Keyless works'** (explodes toward the dial, `dir −1`): crown wheel,
+  transfer wheel and arbor, crown-wheel screw, winding pinion, winding stem
+  (tick-owned), setting wheel, minute-wheel arbor, setting drop, setting rise,
+  setting cap — 11 pieces, ranked by where their metal stands along the
+  unit's own direction: Transfer wheel → Transfer arbor → Crown wheel →
+  Winding pinion → Winding stem → Setting wheel → Setting drop → Setting rise
+  → Minute-wheel arbor → Setting cap → Crown-wheel screw. The winding clutch,
+  yoke and setting lever are single-piece units and take no table.
+- **The alarm**, eight units: barrel (barrel; arbor, winding wheel and
+  ratchet), hammer (post; hammer), lock (lever; rocker), switch (pusher*;
+  column wheel; jumper arm), selector (ring*; posts), release sleeve
+  (sleeve*; posts), release lifter (post; lifter*), release feeler (lever;
+  pawl tip*), link (beak arm; rod*; lay shaft) — 20 pieces, six tick-owned
+  (*). The crown, striking wheel, governor and the rest are single-rotor units
+  and take no table.
+
+Every display name names what the code builds, in five locales; the
+inspector's camelCase `.name`s are untouched.
+
+### Measured
+
+`tools/probe-10-tables.mjs` (acceptance, 16 claims): boot silent under the
+extended assert; the keyless pieces fan to negative z by rank·UNIT, dense
+0..10, and the winding stem holds its drill offset across ticks; each alarm
+unit's pieces fan by rank·UNIT in that unit's own direction, and the six
+tick-owned handles hold their offsets through a pressed, armed, striking pose
+(measured against a drill-0 baseline at the same pose); backing out returns
+every piece to its baseline, tick-owned included, and `resetInputs` re-gathers
+every generic piece bit-exactly. `probe-10-drill.mjs` (the mechanism) stays
+green, scoped to the fusee cluster it was written for. Battery: render-side
+as before — `resetInputs()` zeroes the drill, so every tick-owned write
+returns to what tick alone computes; the fingerprint is the check.
