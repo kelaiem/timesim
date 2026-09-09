@@ -92,7 +92,12 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 # The checkout the service should run from: a worktree under .claude/worktrees
 # is deleted after its PR merges, and a LaunchAgent pointing into it respawns
 # a failing shell forever. The main checkout's copy is used when it has one.
-MAIN_ROOT=$(cd "$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null || echo "$ROOT/.git")/.." && pwd)
+# `--git-common-dir` answers RELATIVE to the cwd when the answer is `.git`
+# (the main checkout) and absolute from a worktree — so it is resolved from
+# inside $ROOT, not from wherever the script was invoked. The first version
+# cd'd from the caller's directory, passed its test from a worktree, and
+# died on line one in the main checkout the day the fix merged.
+MAIN_ROOT=$(cd "$ROOT" && cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/.." && pwd)
 log() { printf '%s §200 tart: %s\n' "$(date -u +%FT%TZ)" "$*"; }
 die() { log "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "needs $1 on PATH"; }
@@ -354,7 +359,10 @@ status() {
   # outage had a running VM, a waiting loop, and none of the other two.
   local online vm listener
   online=$(gh api "repos/$REPO/actions/runners" --jq "[.runners[] | select(.status==\"online\" and any(.labels[]; .name==\"$LABEL\"))] | length" 2>/dev/null || echo 0)
-  vm=$(tart list --quiet 2>/dev/null | grep -E '^timesim-battery-[0-9]+$' | head -1)
+  # `|| true`: with no job VM the grep finds nothing, and under set -e an
+  # assignment from a failing pipeline ends the script one line before the
+  # verdict that would have said NOT READY.
+  vm=$(tart list --quiet 2>/dev/null | grep -E '^timesim-battery-[0-9]+$' | head -1 || true)
   listener=none
   [ -n "$vm" ] && listener=$(tart exec "$vm" sh -c 'pgrep -x Runner.Listener >/dev/null && echo alive || echo dead' 2>/dev/null || echo "agent-down")
   if [ "${online:-0}" -ge 1 ] && [ -n "$vm" ] && [ "$listener" = alive ]; then
