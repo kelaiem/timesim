@@ -4,7 +4,7 @@
 
 # The instruments
 
-185 scripts. **88 are ACCEPTANCE tests** — they decide and exit non-zero.
+186 scripts. **89 are ACCEPTANCE tests** — they decide and exit non-zero.
 **97 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -72,6 +72,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-137-elbow.mjs` | §137 | acceptance | §137 — THE TWO ELBOW RODS, READ OFF THE METAL, AND THE DRUM RE-CHECK. |
 | `probe-137-jumper-envelope.mjs` | §137 | acceptance | §137 — THE MINUTE JUMPER'S SWEPT ENVELOPE, ALONG THE ALARM LINK'S CHORD. |
 | `probe-142-tour.mjs` | §142 | acceptance | §142 — THE TOUR PAUSES, CONFIRMS BEFORE ENDING, AND REACHES THE PAGES. Acceptance, on a real run of TOUR_STEPS in headless Chromium with the throttling flags off (the engine runs in the rAF loop): 1. every caption of every stop exists in all five locale tables (read off src/i18n.js: the file carries five tables, so a caption's key appears five times when it is translated everywhere); 2. the two re-recorded captions say what the metal does (half a tooth per beat; the GREAT WHEEL drives the centre), and the cross and alarm-toggle stops exist; 3. incidental input PAUSES: a pointerdown on the canvas leaves the run in place, paused, with a Resume control in the banner; the step index does not advance while paused (longer than the stop's dwell); Resume re-enters the same stop and the run goes on to the next; 4. the explicit exits CONFIRM: Esc raises the gate ("End the tour?") with the run paused; Keep going resumes; the Tour button raises it too; End stops the run and restores the panel; 5. the cross draws in the line tier when framed: at the cross stop with schematic on, the 'Alarm winding arrest' unit carries line proxies; 6. the closing stop's banner carries two links, to primer.html and explain.html. cd tools && node probe-142-tour.mjs (exit 1 on any claim) |
+| `probe-145-cross.mjs` | §145 | acceptance | §145 — THE MALTESE CROSS PLATE DRAWS THE CROSS THE BUILD CUTS. Acceptance: 1. the plate's ported spec agrees with geometry.js's genevaSpec to 1e-9 on d, a, b, slotW, lockR and the bank angle, on the same inputs — the "same relations" claim, measured rather than trusted; 2. the index chip reads 2π/8 (45.00°), not INVERTED; 3. seven winds bank the pin on the blank arm (chip BANKED, finger short of the entry angle); an eighth wind is refused (W clamps); unwinding back to zero locks it again; 4. scrubbing the slider into the engagement window reads INDEXING and the cross angle moves; outside it the cross holds; 5. under prefers-reduced-motion the plate does not autoplay and a wind snaps to its end state in one frame; 6. no page errors. cd tools && node probe-145-cross.mjs (exit 1 on any claim) |
 | `probe-152-floor.mjs` | §152 | report | §152 probe two — THE IRREDUCIBLE PER-POSE FLOOR. |
 | `probe-152-fresh.mjs` | §152 | acceptance | §152 — THE FRESH/PAYLOAD BOUNDARY, MEASURED AND INDUCED. |
 | `probe-152-history.mjs` | §152 | acceptance | §152 probe four — HOW OFTEN COULD AN INCREMENTAL RUN ACTUALLY FIRE? |
