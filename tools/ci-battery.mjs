@@ -249,6 +249,7 @@ const COSTS = {
   'alarmHandoffs': 1,
   'windArrestHandoff': 1,
   'stemClutchHandoff': 1,
+  'strikeHandoff': 1,      // §198 — three posed phases, two rows
   'stockFloor': 6,
   // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
   // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no
