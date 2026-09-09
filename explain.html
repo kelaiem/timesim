@@ -2367,6 +2367,41 @@
       battery found what it had missed. And the demonstration half &mdash; a script verb
       that winds the alarm, and a readout that can say &ldquo;arrested&rdquo; rather than a
       percentage &mdash; is filed, not built.</p>
+      <figure>
+        <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">One pin, eight stations &mdash; the cross counts the wind, and the eighth arm has no slot</span></div>
+        <!-- §145: the section had twelve paragraphs and no drawing. This one is
+             SOLVED in the page from the same three floors genevaSpec solves
+             from (the relation is ported verbatim, including the bisection),
+             so what moves is the cross the build cuts — and it asserts its own
+             index at 2π/N, because an inverted a/b pair survives every eyeball
+             check and only the angle catches it. -->
+        <div class="controls">
+          <button id="mxUnwind" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">&#9664; unwind</button>
+          <button id="mxWind" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">wind &#9654;</button>
+          <button id="mxPlay" style="background: rgba(255,255,255,0.06); border: 1px solid var(--hairline-strong); color: var(--text); border-radius: 6px; padding: 5px 12px; font: 11px system-ui, sans-serif; cursor: pointer;">&#9654; play</button>
+          <span class="chip ride" id="mxChip">LOCKED &middot; disc in the hollow</span>
+          <span class="chip ride" id="mxIndex">index</span>
+          <span class="readout" id="mxReadout"></span>
+          <span class="readout" id="mxSolved"></span>
+          <span class="readout" id="mxFloors"></span>
+          <span class="readout" id="mxBank"></span>
+          <label>finger angle within the turn
+            <input type="range" id="mxSlider" min="0" max="360" value="0" aria-label="Finger angle within the current turn">
+          </label>
+        </div>
+        <div class="fig-body">
+          <svg viewBox="0 0 780 330" width="780" height="330" role="img"
+               aria-label="The Maltese cross and its finger, drawn at the solved radii: the pin enters a slot, walks the cross one station, and the locking disc holds it between turns; the eighth arm has no slot and the pin banks on it.">
+            <g id="mxCross" transform="translate(300,165)"></g>
+            <g id="mxFinger" transform="translate(300,165)"></g>
+            <text class="val" x="20" y="24">ARREST_STATIONS 8 &middot; STOCK_MIN_U 0.317 &middot; PIVOT_MIN_U 0.185 &middot; CLEAR_MARGIN 0.15</text>
+            <text class="val" x="560" y="24">a = d&middot;sin(&pi;/N)</text>
+            <text class="val" x="560" y="42">b = d&middot;cos(&pi;/N)</text>
+            <text class="val" x="560" y="60">index = 2&middot;asin(a/d)</text>
+          </svg>
+        </div>
+        <figcaption>The cross's size is solved here from the same three floors <code>genevaSpec</code> solves it from &mdash; rim pitch, arm web, and the horn against the finger's bore lip, by the same bisection &mdash; so the radii drawn are consequences of the quoted floors, not a transcription; the resolved <code>d</code> is printed beside its derivation because nothing re-checks a solved value. The pin circle is the SMALL radius and the slot-tip circle the large one; swap them and the drawing still closes, which is why the plate asserts the index it actually measures. Scrub one turn of the finger, or wind turn by turn: after seven the cross presents the arm with no slot, and the pin banks on its flank before it would have entered &mdash; a little early, because it banks with its surface and enters with its centre. The hollows the locking disc rides in are not drawn.</figcaption>
+      </figure>
     </div>
   </details>
 
@@ -3856,6 +3891,148 @@
       setStates(0);
     })();
 
+    // —— The Maltese cross (§145): genevaSpec ported verbatim, then driven ——
+    //
+    // The spec is the SAME arithmetic geometry.js exports: the three floors,
+    // the bisection on the horn, the bank angle. The inputs are the quoted
+    // floors the plate prints (gated by explain-quotes); everything else here
+    // is a consequence of them, which is the only honest way to draw a part
+    // whose size no closed form gives.
+    (function () {
+      var NS = 'http://www.w3.org/2000/svg';
+      var box = document.getElementById('alarm-winding-arrest');
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var N = 8, STOCK_MIN = 0.317, PIVOT_MIN = 0.185, MARGIN = 0.15;   // ARREST_STATIONS, STOCK_MIN_U, PIVOT_MIN_U, CLEAR_MARGIN — as printed on the plate
+      var studR = PIVOT_MIN + 0.01 + STOCK_MIN, arborR = PIVOT_MIN;     // ARREST_SPEC's own arguments
+      function genevaSpec(N, stockMin, pivotMin, margin, studR, arborR) {
+        var beta = Math.PI / N;
+        var fingerBoreR = arborR + 0.05;
+        var slotW = 2 * pivotMin + 0.06;
+        var hubR = studR + stockMin;
+        var dFromPitch = ((slotW + 2 * stockMin) * N) / (2 * Math.PI) / Math.cos(beta);
+        var dFromWeb = (hubR + stockMin) / (1 - Math.sin(beta));
+        var hornAt = function (dd) {
+          var bb = dd * Math.cos(beta), al = Math.asin(Math.min(1, (slotW / 2) / bb));
+          return Math.hypot(dd - bb * Math.cos(al), bb * Math.sin(al));
+        };
+        var hornFloor = fingerBoreR + margin;
+        var lo = Math.max(dFromPitch, dFromWeb), hi = lo;
+        while (hornAt(hi) < hornFloor && hi < 200) hi *= 1.5;
+        for (var i = 0; i < 160; i++) { var mid = (lo + hi) / 2; if (hornAt(mid) >= hornFloor) hi = mid; else lo = mid; }
+        var dFromHorn = hi;
+        var d = Math.max(dFromPitch, dFromWeb, dFromHorn);
+        var a = d * Math.sin(beta), b = d * Math.cos(beta);
+        var lockR = a - pivotMin;
+        return { N: N, beta: beta, d: d, a: a, b: b, slotW: slotW, hubR: hubR, lockR: lockR, pinR: pivotMin,
+          floors: { pitch: dFromPitch, web: dFromWeb, horn: dFromHorn },
+          bankTh: Math.acos((a * a + d * d - (b + pivotMin) * (b + pivotMin)) / (2 * a * d)),
+          slotInner: d - a, index: 2 * Math.PI / N };
+      }
+      var S = genevaSpec(N, STOCK_MIN, PIVOT_MIN, MARGIN, studR, arborR);
+      // THE ASSERT the build makes: the index measured off a and d must be 2π/N.
+      var measuredIndex = 2 * Math.asin(S.a / S.d);
+      var inverted = Math.abs(measuredIndex - S.index) > 1e-9;
+      var idxChip = document.getElementById('mxIndex');
+      idxChip.className = 'chip ' + (inverted ? 'trip' : 'ride');
+      idxChip.textContent = tr('index') + ' ' + (measuredIndex * 180 / Math.PI).toFixed(2) + '° ' + (inverted ? tr('≠ 2π/N — INVERTED') : '= 2π/' + N);
+      if (inverted) console.error('§145 plate: the a/b pair is inverted — index ' + (measuredIndex * 180 / Math.PI).toFixed(2) + '°');
+      document.getElementById('mxSolved').textContent = tr('solved here:') + ' d ' + S.d.toFixed(3) + ' · a ' + S.a.toFixed(3) + ' · b ' + S.b.toFixed(3) + ' · slot ' + S.slotW.toFixed(3) + ' · hub ' + S.hubR.toFixed(3) + ' · disc ' + S.lockR.toFixed(3);
+      document.getElementById('mxFloors').textContent = tr('the three floors on d:') + ' ' + tr('rim pitch') + ' ' + S.floors.pitch.toFixed(3) + ' · ' + tr('arm web') + ' ' + S.floors.web.toFixed(3) + ' · ' + tr('horn') + ' ' + S.floors.horn.toFixed(3) + ' — ' + tr('the horn governs');
+      document.getElementById('mxBank').textContent = tr('bank at') + ' ' + (S.bankTh * 180 / Math.PI).toFixed(2) + '° ' + tr('before the line of centres');
+
+      // ---- drawing, 34 px per unit; the cross at the origin, the finger at +d ----
+      var PX = 34;
+      var crossG = document.getElementById('mxCross'), fingerG = document.getElementById('mxFinger');
+      var el = function (name, attrs, parent) { var n = document.createElementNS(NS, name); for (var k in attrs) n.setAttribute(k, attrs[k]); (parent || crossG).appendChild(n); return n; };
+      var beta = S.beta, half = 2 * beta;                    // one station is 2β of cross rotation
+      var armW = S.slotW + 2 * STOCK_MIN;                    // the rim-pitch floor: a slot and two walls
+      var crossBody = el('g', {}), fingerBody = el('g', {}, fingerG);
+      // hub, then N arms (a rectangle from the hub to the rim), each slotted but the last
+      el('circle', { cx: 0, cy: 0, r: S.hubR * PX, fill: 'var(--brass-fill)', stroke: 'var(--brass)', 'stroke-width': 1.2 }, crossBody);
+      for (var k = 0; k < N; k++) {
+        var g = el('g', { transform: 'rotate(' + (k * half * 180 / Math.PI) + ')' }, crossBody);
+        el('rect', { x: S.hubR * PX * 0.6, y: -armW * PX / 2, width: (S.b - S.hubR * 0.6) * PX, height: armW * PX, fill: 'var(--brass-fill)', stroke: 'var(--brass)', 'stroke-width': 1.2, rx: 1 }, g);
+        if (k < N - 1) el('rect', { x: S.slotInner * PX, y: -S.slotW * PX / 2, width: (S.b - S.slotInner) * PX + 1, height: S.slotW * PX, fill: 'var(--bg)', stroke: 'var(--brass)', 'stroke-width': 1 }, g);
+        else el('text', { x: (S.slotInner + 0.15) * PX, y: 4, class: 'val', fill: 'var(--ruby)', 'font-size': 9 }, g).textContent = tr('blank');
+      }
+      el('circle', { cx: 0, cy: 0, r: S.b * PX, fill: 'none', stroke: 'var(--line)', 'stroke-width': 0.75, 'stroke-dasharray': '4 4' });   // slot-tip circle, b
+      el('circle', { cx: S.d * PX, cy: 0, r: S.a * PX, fill: 'none', stroke: 'var(--line)', 'stroke-width': 0.75, 'stroke-dasharray': '4 4' }); // pin circle, a
+      el('line', { x1: 0, y1: 0, x2: S.d * PX, y2: 0, stroke: 'var(--muted)', 'stroke-width': 0.75, 'stroke-dasharray': '2 3' });          // line of centres, d
+      el('text', { x: S.d * PX / 2 - 6, y: -6, class: 'val' }).textContent = 'd';
+      // the finger: its locking disc, the crank to the pin, the pin
+      var fg = el('g', { transform: 'translate(' + (S.d * PX) + ',0)' }, fingerBody);
+      var crank = el('g', {}, fg);
+      el('circle', { cx: 0, cy: 0, r: S.lockR * PX, fill: 'var(--steel-fill)', stroke: 'var(--steel)', 'stroke-width': 1.2 }, crank);
+      el('line', { x1: 0, y1: 0, x2: -S.a * PX, y2: 0, stroke: 'var(--steel)', 'stroke-width': 3, 'stroke-linecap': 'round' }, crank);
+      el('circle', { cx: -S.a * PX, cy: 0, r: S.pinR * PX, fill: 'var(--ruby-fill)', stroke: 'var(--ruby)', 'stroke-width': 1.2 }, crank);
+      el('circle', { cx: 0, cy: 0, r: arborR * PX, fill: 'var(--bg)', stroke: 'var(--steel)', 'stroke-width': 1 }, fg);
+
+      // ---- kinematics: a wind angle W = turn·2π + θ, θ from the line of centres ----
+      // Entry when the pin's CENTRE reaches b (cos θe = −a/d ⇒ θe = π/2 + β), exit
+      // at 3π/2 − β; between them the engaged slot follows the pin's bearing
+      // γ(θ) = atan2(a·sin θ, d + a·cos θ), and outside them the cross holds.
+      // The bank is on the surface: θb = π − bankTh, a little before entry.
+      var thetaE = Math.PI / 2 + beta, thetaX = 3 * Math.PI / 2 - beta, thetaB = Math.PI - S.bankTh;
+      var WMAX = (N - 1) * 2 * Math.PI + thetaB;   // seven turns, then the bank
+      var crankAngle = function (theta) { return theta; }; // the pin sits at −a on the crank, so θ = 0 puts it toward the cross's far side
+      function pose(W) {
+        var j = Math.min(N - 1, Math.floor(W / (2 * Math.PI))), theta = W - j * 2 * Math.PI;
+        var engaged = theta >= thetaE && theta <= thetaX && j < N - 1;
+        var R;
+        if (engaged) { var P = [S.d + S.a * Math.cos(theta), S.a * Math.sin(theta)]; R = Math.atan2(P[1], P[0]) - half * j; }
+        else if (theta < thetaE) R = beta - half * j;
+        else R = beta - half * (j + 1);
+        var banked = W >= WMAX - 1e-9;
+        return { j: j, theta: theta, R: R, engaged: engaged, banked: banked };
+      }
+      var chip = document.getElementById('mxChip'), readout = document.getElementById('mxReadout'), slider = document.getElementById('mxSlider');
+      var W = 0;
+      function draw() {
+        var p = pose(W);
+        crossBody.setAttribute('transform', 'rotate(' + (-p.R * 180 / Math.PI) + ')');   // svg y is down: math +R is a clockwise screen turn
+        crank.setAttribute('transform', 'rotate(' + (-(p.theta + Math.PI) * 180 / Math.PI) + ')');  // pin at −a: rotate so θ measures from the line of centres, away from the cross
+        chip.className = 'chip ' + (p.banked ? 'trip' : p.engaged ? 'ramp' : 'ride');
+        chip.textContent = p.banked ? tr('BANKED · the pin on the blank arm') : p.engaged ? tr('INDEXING · the pin walks the slot') : tr('LOCKED · disc in the hollow');
+        readout.textContent = tr('turn') + ' ' + p.j + ' ' + tr('of') + ' ' + (N - 1) + ' · ' + tr('finger') + ' ' + Math.round(p.theta * 180 / Math.PI) + '° · ' + tr('cross') + ' ' + Math.round(-p.R * 180 / Math.PI + 360) % 360 + '°';
+        slider.value = String(Math.round(p.theta * 180 / Math.PI));
+      }
+      var anim = null, playing = false, t0 = null;
+      function tweenTo(target, ms) {
+        if (anim) cancelAnimationFrame(anim);
+        target = Math.max(0, Math.min(WMAX, target));
+        if (reduce) { W = target; draw(); anim = null; return; }
+        var from = W, start = performance.now();
+        anim = requestAnimationFrame(function tick2(now) {
+          var f = Math.min(1, (now - start) / ms), e = f * f * (3 - 2 * f);
+          W = from + (target - from) * e; draw();
+          anim = f < 1 ? requestAnimationFrame(tick2) : null;
+        });
+      }
+      document.getElementById('mxWind').addEventListener('click', function () { if (playing) setPlaying(false); tweenTo(Math.min(WMAX, (Math.floor(W / (2 * Math.PI) + 1e-9) + 1) * 2 * Math.PI), 700); });
+      document.getElementById('mxUnwind').addEventListener('click', function () { if (playing) setPlaying(false); tweenTo(Math.max(0, (Math.ceil(W / (2 * Math.PI) - 1e-9) - 1) * 2 * Math.PI), 700); });
+      slider.addEventListener('input', function () { if (playing) setPlaying(false); var j = Math.min(N - 1, Math.floor(W / (2 * Math.PI) + 1e-9)); W = Math.min(WMAX, j * 2 * Math.PI + slider.value * Math.PI / 180); draw(); });
+      // Play winds through every station to the bank, holds there, and starts
+      // over; it idles (no writes) while the section is closed or the tab hidden.
+      var btn = document.getElementById('mxPlay'), PLAY_S = 12, HOLD_S = 1.5;
+      function tick(now) {
+        if (!playing) return;
+        if (!box.open || document.hidden) { t0 = null; anim = requestAnimationFrame(tick); return; }
+        if (t0 === null) t0 = now;
+        var e = ((now - t0) / 1000) % (PLAY_S + HOLD_S);
+        W = e < PLAY_S ? (e / PLAY_S) * WMAX : WMAX;
+        draw();
+        anim = requestAnimationFrame(tick);
+      }
+      function setPlaying(on) {
+        playing = on;
+        btn.textContent = on ? tr('⏸ pause') : tr('▶ play');
+        if (anim) cancelAnimationFrame(anim);
+        if (on) { t0 = null; anim = requestAnimationFrame(tick); } else { anim = null; draw(); }
+      }
+      btn.addEventListener('click', function () { setPlaying(!playing); });
+      draw();
+      if (!reduce) setPlaying(true);
+    })();
     // —— Show/hide truth table: the §45 biconditional, the tube law's own OR ——
     (function () {
       var armed = document.getElementById('shArmed'), setting = document.getElementById('shSetting');
