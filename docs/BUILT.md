@@ -22252,3 +22252,108 @@ structural asserts as 28,800, none added. `node tools/explain-quotes.mjs`
 PASS (the explainer quotes the identity mesh only). Battery: see the
 landing PR — the identity fingerprint is the gate this change must not
 move, and the row it adds is judged by the probe, as §22 judges its rows.
+
+## §10 level 2 — Drill-in: a group's pieces separate from the lifted cluster, and the chain finally lifts with its group
+
+Level 1 (above) made the selector speak in assemblies. Level 2 drills INTO
+one: the pieces inside a unit separate along z from wherever the level-1
+lift has put the cluster, under their own names, and re-gather onto it on
+the way out. Shipped here: the mechanism whole (steps 1–5 of the roadmap
+entry's plan) and the first group it was measured on, 'Fusee & chain'; the
+keyless and alarm groups' piece registrations are the remainder, and the
+roadmap entry keeps the number for them.
+
+### Step 1 — the level-1 gap, closed first
+
+The chain had a label and no explode record: exploding 'Fusee & chain'
+lifted the arbor, drum, detent and set-up work while the chain stayed put,
+threading the gap. `rebuildChain` swaps the mesh's GEOMETRY and never its
+position, so a plain record (`registerExplode(chainMesh, 0, 1)` at the lazy
+first build) survives every rebuild, and at explode 0 it writes the 0 the
+mesh was built at. Measured (`tools/probe-10-drill.mjs`): the chain lifts by
+exactly the arbor's lift, 4 u, at tension 0 and at tension 1 — the chain is
+re-baked at each, so a record a rebuild could lose would have shown. The
+object-level drag offset the chain used to ride in `updateLabelDrags` is
+gone; its drag composes through the entry path like every other unit's.
+
+### The sub-registry, and what it is not
+
+`subEntries` — `{ obj, parentUnit, displayName, baseZ, subLayer }` — is a NEW
+table parallel to `explodeEntries`, deliberately not `registerLabel`: that
+registry feeds `MECH_GRAPH`, `EXPECTED_PAIRS` and the battery's unit-pair
+sweeps, and a sub-part entry there would be a phantom unit. The inspector's
+camelCase `.name`s (`greatWheel`, `windSpur`, …) are load-bearing strings
+and are not touched; `displayName` is the viewer's vocabulary and names what
+the code builds. Five records on 'Fusee & great wheel': Great wheel, Winding
+spur, Fusee cone (the cone with its lands, base flange and boss — one turned
+piece), Maintaining wheel (ring, pawls, studs, spring — the maintaining-power
+sandwich) and Let-down square. `baseZ` is read off the constructed position,
+so it cannot disagree with it the way `registerExplode`'s argument once did.
+
+### Compose, never substitute
+
+A piece is a child of its unit's object, so the level-1 lift reaches it by
+parenting; `updateExplode` writes only the drill stage on top —
+`z = baseZ + drill·subLayer·dir·UNIT` — and writes `baseZ` back exactly at
+rest, the contract `explodeEntries` keep. So child z = own home + group lift
++ drill lift by construction, the cluster never re-homes when the drill
+state changes, and with the group at rest the drill still separates the
+pieces anchored at home. All measured: drilling with 'Fusee & chain' lifted
+moved no unit's level-1 z; drilling with the unit at rest moved the unit
+by 0; backing out put every piece at its constructed z with `===`, and so
+did `resetInputs`, which zeroes the drill for the same reason it zeroes the
+explode (§34 — a user input that moves pieces must not reach a sweep).
+Tick-written parts are not registered: a part whose position `tick()` owns
+would fight this write, and the fusee arbor's pieces are rotated by tick,
+never positioned, which is what made them registrable first.
+
+**The member UNITS of a drilled group fan out too**, in the order the
+mechanism drives them: a topological walk of `MECH_GRAPH.drive` restricted
+to the group's members (loaded lazily, as explore mode loads the graph),
+so adjacent shelves are parts that drive each other. Measured: drum +0,
+chain +4, fusee +8 u. A member no drive edge reaches (Set-up work, support
+only) keeps rank 0 — the fallback the entry allowed, noted rather than
+hidden in a hand layer.
+
+**`subLayer` is DERIVED, not typed.** For pieces sharing one arbor the
+interaction chain IS the stack order, so `solveSubLayers` ranks a unit's
+pieces by where their METAL stands along the unit's explode direction — the
+centre of each piece's measured bounds in the unit's frame, not its group
+origin. The first cut ranked origins and put the cone above the let-down
+square, because the square's group sits at 0 with its metal above the
+plate; the probe caught it. Order now: Winding spur → Great wheel →
+Maintaining wheel → Fusee cone → Let-down square, dense 0..4.
+
+### UI, labels, hover, assert
+
+- A **Drill-in** slider under the Unit row, shown only while the selection
+  has pieces to drill; a change of selection zeroes it (a hidden slider
+  must not keep parts displaced). One variable, `drillAmount`.
+- **Sub-labels** (`.clock-sublabel`, one grain finer than the unit label)
+  appear only while a drill is open on their unit — a piece at home IS the
+  unit, and naming it there would stack two labels on one spot. Measured:
+  5 shown drilled, 0 closed. Elements grow lazily like `labelEls`.
+- **§59's hover readout** resolves a drilled piece: "Fusee & great wheel ·
+  Great wheel". The unit name stays what a drag takes; `sub` is display only.
+- **`assertUnitGroups` extended**: every sub-record's parent is a real unit,
+  no object is claimed by two records, and each drilled unit's sub-layers
+  form a dense 0..n−1 set. Boot is silent, so all three hold.
+- `__clock` gains `subEntries` (read-only), `setDrill` and `setExplode` for
+  the probe; every locale gains the six new strings.
+
+### Battery
+
+Render-side: `resetInputs()` zeroes explode and drill, so the sweeps never
+see either, and every write at rest is the constructed value with `===`.
+The chain's record is the one piece touching a mesh the battery reads, and
+at explode 0 it writes 0. The identity fingerprint is the acceptance; see
+the landing PR.
+
+### What remains under roadmap §10
+
+Piece registrations for 'Keyless & winding' (the winding spinner is
+tick-written and stays excluded) and 'Alarm complication', whose pieces are
+mostly the five tick-written alarm parts — composing those needs each tick
+write to add the drill offset, the `rodOff` pattern, which is the work the
+entry named as the alarm's. The mechanism is built and measured; those are
+tables.

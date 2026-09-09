@@ -313,6 +313,54 @@ function registerExplode(obj, baseZ, layer, dir = 1) {
   explodeEntries.push({ obj, baseZ, layer, dir });
 }
 
+// §10 level 2 — THE SUB-REGISTRY. A drill-in separates the pieces INSIDE a
+// unit; those pieces are children of the unit's own object, so they ride
+// the level-1 lift by parenting and a sub-offset composes on top by
+// construction: child z = own home + group lift + drill lift, and the
+// cluster never re-homes when the drill state changes. A NEW table,
+// parallel to explodeEntries and deliberately not registerLabel: that
+// registry feeds MECH_GRAPH / EXPECTED_PAIRS / the battery's unit-pair
+// sweeps, and a sub-part entry there would be a phantom unit. The inspector
+// selectors (`greatWheel`, `windSpur`, …) are load-bearing strings and are
+// NOT renamed — `displayName` is the Title Case vocabulary the viewer sees,
+// and it names what the code builds (there is no "ratchet wheel inside the
+// fusee": the ratchets are the maintaining ring and the set-up ratchet).
+// `subLayer` is DERIVED, not typed — solveSubLayers() ranks a unit's pieces
+// by where their METAL stands along the unit's own explode direction (the
+// centre of each piece's bounds in the unit's frame, not its group origin:
+// the let-down square's group sits at 0 with its square above the plate, and
+// ranking origins put the cone above it), so the drilled stack fans out in
+// the order the pieces actually sit on the arbor
+// (for pieces sharing one arbor the interaction chain IS the stack order,
+// which is why MECH_GRAPH — unit-granular — has nothing to add here; it
+// orders the member UNITS of a group instead, see groupDrillRank).
+// `baseZ` is read off the constructed position, so it cannot disagree with
+// it the way registerExplode's argument once did.
+const subEntries = []; // { obj, parentUnit, displayName, baseZ, subLayer }
+function registerSub(parentUnit, displayName, obj) {
+  subEntries.push({ obj, parentUnit, displayName, baseZ: obj.position.z, subLayer: null });
+}
+function solveSubLayers() {
+  const byParent = new Map();
+  for (const s of subEntries) byParent.set(s.parentUnit, [...(byParent.get(s.parentUnit) ?? []), s]);
+  const box = new THREE.Box3(), ctr = new THREE.Vector3();
+  for (const [unit, subs] of byParent) {
+    const ent = explodeEntries.find((e) => explodeEntryName(e) === unit);
+    const dir = ent ? ent.dir : 1;
+    // the piece's metal, measured: world bounds → centre → the parent's frame,
+    // which is the frame the drill writes in
+    const stand = (s) => {
+      s.obj.updateWorldMatrix(true, true);
+      box.setFromObject(s.obj).getCenter(ctr);
+      if (s.obj.parent) s.obj.parent.worldToLocal(ctr);
+      return ctr.z;
+    };
+    // stable: equal z keeps registration order, so a tie is never a gap
+    subs.map((s, i) => [s, i, stand(s)]).sort((a, b) => (a[2] - b[2]) * dir || a[1] - b[1])
+      .forEach(([s], rank) => { s.subLayer = rank; });
+  }
+}
+
 const labelEntries = []; // { name, obj }
 function registerLabel(name, obj) {
   labelEntries.push({ name, obj });
@@ -1800,6 +1848,10 @@ windSpur.position.z = Z_RATCHET_BOT + RATCHET_T / 2 - L_BARREL;
 barrelArbor.add(windSpur);
 fusee.position.z = FUSEE_BASE_Z; // cone base above the third wheel's plane
 barrelArbor.add(fusee);
+// §10 level 2 — the pieces on this arbor, named for what the code builds
+registerSub('Fusee & great wheel', 'Great wheel', greatWheel);
+registerSub('Fusee & great wheel', 'Winding spur', windSpur);
+registerSub('Fusee & great wheel', 'Fusee cone', fusee); // the cone with its lands, base flange and boss — one turned piece
 movement.add(barrelArbor);
 registerExplode(barrelArbor, L_BARREL, 1);
 registerLabel('Fusee & great wheel', barrelArbor);
@@ -2944,6 +2996,7 @@ const windTop = new THREE.Group();
   windTop.add(square);
 }
 barrelArbor.add(windTop); // explodes and labels with 'Fusee & great wheel', which is what it is
+registerSub('Fusee & great wheel', 'Let-down square', windTop); // §10 level 2
 
 // (The plate-top ratchet + click that used to stand here on the FUSEE
 // arbor are gone — a fixed pawl on a bidirectional arbor was a display
@@ -6759,6 +6812,14 @@ function rebuildChain(tension) {
     chainMesh.name = 'chainRun'; // §47: the arrest's pad⇄coil rows address the chain by name, like every other contact table
     movement.add(chainMesh);
     registerLabel('Chain', chainMesh);
+    // §10 level 2, step 1 — THE CHAIN LIFTS WITH ITS GROUP. Until now the
+    // chain had a label and no explode record: exploding 'Fusee & chain'
+    // lifted the arbor, drum, detent and set-up work while the chain stayed
+    // put, threading the gap. rebuildChain swaps this mesh's GEOMETRY and
+    // never its position, so a plain record (baseZ 0, its group-mates'
+    // layer) survives every rebuild; at explode 0 it writes the 0 the mesh
+    // was built at, so the battery and the fingerprint see nothing.
+    registerExplode(chainMesh, 0, 1);
     // §69: the chain is the one mesh built AFTER the boot restore applies its
     // ghosting (this lazy first build) — re-run the walk so it joins whatever
     // ghost tier is active instead of standing solid in a ghosted movement.
@@ -6915,6 +6976,7 @@ const MAINT_PAWL_SEATS = []; // filled below; tick rides them on windBack
   maintWheel.add(msArc);
 }
 barrelArbor.add(maintWheel); // train rotation only — tick never adds windBack here
+registerSub('Fusee & great wheel', 'Maintaining wheel', maintWheel); // §10 level 2 — ring, pawls, studs and spring: the maintaining-power sandwich
 // Pawl ride constants — seat measured from the built geometry, lift sign
 // derived numerically (same scheme the plate click used).
 const MAINT_PAWL_BASE = Math.PI * 0.778;
@@ -25775,6 +25837,9 @@ style.textContent = `
   color: #cfe3ff; background: rgba(10,12,15,0.55); padding: 2px 6px; border-radius: 4px;
   white-space: nowrap; border: 1px solid rgba(255,255,255,0.1);
 }
+/* §10 level 2 — a drilled PIECE's label: the unit label's vocabulary one grain
+   finer, dimmer so the unit still reads as the assembly it is. */
+.clock-label.clock-sublabel { color: #a9bdd6; background: rgba(10,12,15,0.45); font-size: 10px; }
 /* §107 — a member CALLOUT is a unit label's quieter sibling: same language,
    one grain finer, so a viewer can tell "this is the assembly" from "this is
    a part of it" without reading either twice. Smaller, dimmer, no fill —
@@ -26311,6 +26376,10 @@ viewHud.innerHTML = `
       <div class="row">
         <span class="label-small">Unit</span>
         <select id="explode-unit"><option>All</option></select>
+      </div>
+      <div class="row" id="drill-row" style="display:none"><!-- §10 level 2: shown only while the selection has pieces to drill into -->
+        <span class="label-small">Drill-in</span>
+        <input type="range" id="drill-slider" min="0" max="100" step="1" value="0" />
       </div>
       <div class="row">
         <span class="label-small">Control HUD</span>
@@ -27506,6 +27575,7 @@ const labelsContainer = document.createElement('div');
 labelsContainer.id = 'clock-labels';
 labelsContainer.style.display = 'none';
 document.body.appendChild(labelsContainer);
+const subLabelEls = []; // §10 level 2 — grown lazily in updateLabels, one per sub-record
 const labelEls = labelEntries.map(({ name }) => {
   const el = document.createElement('div');
   el.className = 'clock-label';
@@ -31847,11 +31917,16 @@ function explorePickFrom(hits, throughGlass) {
     // a ghosted part is still nameable where it is the only thing there.
     if (!throughGlass && (xrayGlassMats.has(h.object.material) || focusGlassMats.has(h.object.material))) continue;
     if (h.object === chainMesh) return { name: 'Chain', point: h.point };
+    // §10 level 2 — a piece under a drilled unit resolves to its own name as
+    // well: the readout says "Fusee & great wheel · Great wheel". The unit
+    // name stays what a drag takes (sub is display only).
+    let sub = null;
     for (let o = h.object; o && o !== movement; o = o.parent) {
+      if (!sub && drillAmount > 0) { const s = subEntries.find((x) => x.obj === o && subActive(x.parentUnit)); if (s) sub = s.displayName; }
       const lbl = labelEntries.find((l) => l.obj === o);
-      if (lbl) return { name: lbl.name, point: h.point };
+      if (lbl) return { name: lbl.name, point: h.point, sub };
       const ent = explodeEntries.find((en) => en.obj === o);
-      if (ent) return { name: explodeEntryName(ent), point: h.point };
+      if (ent) return { name: explodeEntryName(ent), point: h.point, sub };
     }
   }
   return null;
@@ -31920,7 +31995,7 @@ function drawExploreHover() {
   // chasing the cursor through the movement is noise over the thing it names.
   const text = exploreGrab ? null : exploreHoverLabel();
   if (!text || !exploreHoverPos) { exploreHoverEl.style.display = 'none'; return; }
-  const shown = t(text); // §73: the readout displays, exploreHoverName stays canonical
+  const shown = t(text) + (exploreHoverSub && !exploreHoverShift ? ` · ${t(exploreHoverSub)}` : ''); // §73: the readout displays, exploreHoverName stays canonical; §10 level 2 appends the drilled piece
   if (exploreHoverEl.textContent !== shown) exploreHoverEl.textContent = shown;
   exploreHoverEl.style.display = 'block';
   // Below-right of the pointer, flipped at the viewport edges — a name the
@@ -31932,9 +32007,11 @@ function drawExploreHover() {
   exploreHoverEl.style.top = `${exploreHoverPos.y + (flipY ? -14 - h : 14)}px`;
 }
 
-function setExploreHover(name, shift = false, pos = null) {
+let exploreHoverSub = null; // §10 level 2 — the drilled piece under the pointer, display only
+function setExploreHover(name, shift = false, pos = null, sub = null) {
   if (name !== exploreHoverName) renderer.domElement.style.cursor = name ? 'grab' : '';
   exploreHoverName = name;
+  exploreHoverSub = sub;
   exploreHoverShift = !!shift;
   exploreHoverPos = pos;
   drawExploreHover();
@@ -31959,7 +32036,7 @@ function resolveExploreHover() {
   // pointerdown: a CONTROL the viewer is reaching for is not a part to drag,
   // so it is not a part to name either.
   const pick = (!crownHitTest(e) && !alarmCrownHitTest(e) && !alarmColumnHitTest(e)) ? explorePick(e) : null;
-  setExploreHover(pick ? pick.name : null, e.shiftKey, { x: e.clientX, y: e.clientY });
+  setExploreHover(pick ? pick.name : null, e.shiftKey, { x: e.clientX, y: e.clientY }, pick ? pick.sub : null);
 }
 
 renderer.domElement.addEventListener('pointermove', (e) => {
@@ -33759,6 +33836,63 @@ let explodeAmount = 0;
 document.getElementById('explode-slider').addEventListener('input', (e) => {
   explodeAmount = Number(e.target.value) / 100;
 });
+// §10 level 2 — THE DRILL-IN, one variable. A second stage on top of the
+// group lift, never a substitute for it: with the group at rest the drill
+// still separates the pieces, anchored at home; with the group lifted the
+// pieces fan out FROM the lifted cluster. Its slider shows only while the
+// selection has pieces to drill (drillable), and a change of selection
+// zeroes it — a hidden slider must not keep parts displaced.
+let drillAmount = 0;
+const drillRow = document.getElementById('drill-row');
+const drillSlider = document.getElementById('drill-slider');
+drillSlider.addEventListener('input', (e) => { drillAmount = Number(e.target.value) / 100; });
+function subActive(parentUnit) {
+  if (parentUnit === selectedUnit) return true;
+  const g = UNIT_GROUPS.get(selectedUnit);
+  return !!(g && g.has(parentUnit));
+}
+function drillable() { return subEntries.some((s) => subActive(s.parentUnit)); }
+function refreshDrillRow() {
+  const on = drillable();
+  drillRow.style.display = on ? '' : 'none';
+  if (!on && drillAmount !== 0) { drillAmount = 0; drillSlider.value = '0'; }
+}
+// The member UNITS of a drilled group fan out too, in the order the
+// mechanism drives them: a topological walk of MECH_GRAPH's drive edges
+// restricted to the group's members (Mainspring drum → Chain → Fusee &
+// great wheel → Maintaining detent / Winding arrest), so adjacent shelves
+// in the stack are parts that actually drive each other. A member no drive
+// edge reaches (Set-up work: support only) keeps rank 0 — the fallback the
+// entry allowed, noted here rather than hidden in a hand layer.
+const groupDrillRanks = new Map(); // group name → Map(unit → rank)
+// inspect.js is not a static import of this module (explore mode loads
+// MECH_GRAPH the same lazy way); the ranks are cached only once the edges
+// have arrived, and every rank is 0 until then — a drill in the first
+// milliseconds after boot separates pieces, not units, and settles.
+let mechDrive = null;
+import('./inspect.js').then((m) => { mechDrive = m.MECH_GRAPH.drive; groupDrillRanks.clear(); });
+function groupDrillRank(groupName, unit) {
+  let ranks = groupDrillRanks.get(groupName);
+  if (!ranks) {
+    ranks = new Map();
+    const members = UNIT_GROUPS.get(groupName);
+    if (members && mechDrive) {
+      const edges = mechDrive.filter(([a, b]) => members.has(a) && members.has(b));
+      const rankOf = (n, seen = new Set()) => {
+        if (ranks.has(n)) return ranks.get(n);
+        if (seen.has(n)) return 0; // a cycle would be a graph defect, not a stack order
+        seen.add(n);
+        const ins = edges.filter(([, b]) => b === n).map(([a]) => rankOf(a, seen) + 1);
+        const r = ins.length ? Math.max(...ins) : 0;
+        ranks.set(n, r);
+        return r;
+      };
+      for (const n of members.keys()) rankOf(n);
+    }
+    if (mechDrive) groupDrillRanks.set(groupName, ranks);
+  }
+  return ranks.get(unit) ?? 0;
+}
 
 // --- per-unit explode + label filter (BUILT §7) --------------------------
 // Pick one unit and the slider lifts only it (labels filter to it too).
@@ -33884,6 +34018,26 @@ function assertUnitGroups() {
   for (const n of universe)
     if (!claimedBy.has(n))
       console.warn(`unit "${n}" belongs to no group — add it to UNIT_GROUPS`);
+  // §10 level 2 — the sub-table rots the same way, so the same three checks:
+  // every parent is a real unit, no piece is claimed twice, and each drilled
+  // unit's sub-layers form a dense 0..n−1 set (a gap reads as a missing
+  // shelf). Layers are solved here first, from the constructed z.
+  solveSubLayers();
+  const claimedObj = new Map();
+  for (const s of subEntries) {
+    if (!universe.has(s.parentUnit))
+      console.warn(`sub-record "${s.displayName}": parent "${s.parentUnit}" is not a registered unit name`);
+    claimedObj.set(s.obj, [...(claimedObj.get(s.obj) ?? []), s.displayName]);
+  }
+  for (const [, names] of claimedObj)
+    if (names.length > 1) console.warn(`one object is claimed by ${names.length} sub-records (${names.join(', ')}) — a piece belongs to one record`);
+  const perParent = new Map();
+  for (const s of subEntries) perParent.set(s.parentUnit, [...(perParent.get(s.parentUnit) ?? []), s.subLayer]);
+  for (const [unit, layers] of perParent) {
+    const sorted = [...layers].sort((a, b) => a - b);
+    if (sorted.some((l, i) => l !== i))
+      console.warn(`unit "${unit}": sub-layers ${JSON.stringify(sorted)} are not a dense 0..${layers.length - 1} set`);
+  }
 }
 
 const unitSelect = document.getElementById('explode-unit');
@@ -33940,7 +34094,7 @@ function refreshUnitOptions() {
 }
 refreshUnitOptions();
 unitSelect.addEventListener('pointerdown', refreshUnitOptions);
-unitSelect.addEventListener('change', () => { selectedUnit = unitSelect.value; updateMeasureStats(); });
+unitSelect.addEventListener('change', () => { selectedUnit = unitSelect.value; updateMeasureStats(); refreshDrillRow(); });
 
 // --- §69 TAP FOCUS + THE GHOST TIER ---------------------------------------
 // Tap a part and everything unrelated to its mechanism goes glassy in place:
@@ -35475,7 +35629,10 @@ function updateExplode() {
     // A member's null layer means "keep your own registered staging", so an
     // unchoreographed group lifts as its slice of 'All' rather than as a slab.
     const layer = inGroup != null ? inGroup : e.layer; // group staging overrides only while the group is selected
-    const z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * layer * UNIT;
+    // §10 level 2 — the drill's second stage on a member UNIT: composed on
+    // the level-1 z (never a re-home), in the group's drive order.
+    const drill = drillAmount > 0 && isMember ? drillAmount * groupDrillRank(selectedUnit, explodeEntryName(e)) : 0;
+    const z = e.baseZ + (lifts ? explodeAmount : 0) * e.dir * layer * UNIT + drill * e.dir * UNIT;
     // §58 — compose the explore drag on top. The §10/§32 refactor in its
     // minimal honest form: z stays the absolute write it always was (explode
     // owns it), and x/y are touched ONLY while this entry is displaced, with
@@ -35494,6 +35651,22 @@ function updateExplode() {
         e.dragBase = undefined;
       }
       e.obj.position.z = z;
+    }
+  }
+  // §10 level 2 — the pieces INSIDE a unit. Each is a child of its unit's
+  // object, so the group lift reaches it by parenting; this writes only the
+  // drill stage, on the piece's own constructed z, and writes that z back
+  // exactly at rest (the same contract explodeEntries keep). Tick-written
+  // parts are not registered here — a part whose position tick() owns would
+  // fight this write; the fusee arbor's pieces are rotated by tick, never
+  // positioned, which is what makes them registrable.
+  for (const s of subEntries) {
+    const on = drillAmount > 0 && subActive(s.parentUnit);
+    if (on) {
+      const ent = explodeEntries.find((en) => explodeEntryName(en) === s.parentUnit);
+      s.obj.position.z = s.baseZ + drillAmount * s.subLayer * (ent ? ent.dir : 1) * UNIT;
+    } else if (s.obj.position.z !== s.baseZ) {
+      s.obj.position.z = s.baseZ;
     }
   }
   updateLabelDrags();
@@ -35526,11 +35699,9 @@ function updateLabelDrags() {
   // it rides its offset at the OBJECT level, which survives every rebuild
   // (updateChain reuses the mesh) and costs one vector write. Checked before
   // the early return so clearing the last offset also clears the chain.
-  if (chainMesh) {
-    const chainOff = dragOffsets.get('Chain');
-    if (chainOff) chainMesh.position.copy(chainOff);
-    else if (chainMesh.position.lengthSq() > 0) chainMesh.position.set(0, 0, 0);
-  }
+  // (§10 level 2: the chain is an explode entry now, so its drag composes
+  // through the entry path above like every other unit's — the object-level
+  // offset it used to ride here is that path's dragBase.)
   if (dragOffsets.size === 0 && labelDragBases.size === 0) return;
   for (const [name, base] of labelDragBases) {
     if (!dragOffsets.has(name)) {
@@ -35583,6 +35754,26 @@ function updateLabels() {
     projected.project(camera);
     const behind = projected.z > 1;
     if (behind) { el.style.display = 'none'; continue; }
+    el.style.display = 'block';
+    el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
+    el.style.top = `${(-projected.y * 0.5 + 0.5) * h}px`;
+  }
+  // §10 level 2 — the pieces' own labels, shown only while a drill-in is
+  // open on their unit: a piece at home is the unit, and naming it there
+  // would stack two labels on one spot. Elements grow lazily like labelEls.
+  while (subLabelEls.length < subEntries.length) {
+    const el = document.createElement('div');
+    el.className = 'clock-label clock-sublabel';
+    el.textContent = t(subEntries[subLabelEls.length].displayName);
+    labelsContainer.appendChild(el);
+    subLabelEls.push(el);
+  }
+  for (let i = 0; i < subEntries.length; i++) {
+    const s = subEntries[i], el = subLabelEls[i];
+    if (!(drillAmount > 0 && subActive(s.parentUnit))) { el.style.display = 'none'; continue; }
+    s.obj.getWorldPosition(projected);
+    projected.project(camera);
+    if (projected.z > 1) { el.style.display = 'none'; continue; }
     el.style.display = 'block';
     el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
     el.style.top = `${(-projected.y * 0.5 + 0.5) * h}px`;
@@ -37201,7 +37392,8 @@ checkPlateWindows('movement complete');
 
 tick(0); // seed correct initial pose before the first paint
 updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
-assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label makes the universe complete
+assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label makes the universe complete (level 2: solves the sub-layers too)
+refreshDrillRow();    // §10 level 2: a deep-linked ?unit= may already be drillable
 confirmAestheticsBoot(); // §23 crash recovery: the build survived the tuned overrides
 
 // §39 — the SIZE PREDICTIONS. UNIT_MM is pinned to fusee chain pitch (see
@@ -37488,6 +37680,10 @@ let WELD_CENSUS = null;   // §81 tranche A — filled by the weld pass at the e
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
+  // §10 level 2 — the sub-table, read-only, for probes: what the drill knows.
+  get subEntries() { return subEntries.map((s) => ({ parentUnit: s.parentUnit, displayName: s.displayName, baseZ: s.baseZ, subLayer: s.subLayer, z: s.obj.position.z })); },
+  setDrill(amount) { drillAmount = amount; drillSlider.value = String(Math.round(amount * 100)); },
+  setExplode(amount, unit) { explodeAmount = amount; if (unit !== undefined) { selectedUnit = unit; refreshDrillRow(); } },
   step(dt) {
     simTime += dt;
     tick(simTime);
@@ -37769,7 +37965,7 @@ window.__clock = {
     // also the fingerprint's immunity to drags: it calls resetInputs first,
     // so a dragged session hashes the same geometry as a virgin one.
     dragOffsets.clear(); setExploreHover(null);
-    explodeAmount = 0; selectedUnit = 'All'; updateExplode();
+    explodeAmount = 0; drillAmount = 0; selectedUnit = 'All'; updateExplode(); // §10 level 2: the drill is a user input that moves pieces — same lesson
     // …and the CHAIN's mesh is a BAKED PATH (the fingerprint's exclusion)
     // that only rebuilds on a tension DELTA — a chain baked around an
     // exploded drum keeps that shape forever at constant tension.
