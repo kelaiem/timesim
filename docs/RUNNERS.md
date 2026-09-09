@@ -327,6 +327,15 @@ host itself squeezed.
 `uninstall-service --slot 2` retires a slot on its own; the routing variable
 does not change, since the label is shared.
 
+Both `install-service` and `uninstall-service` wait for launchd to have
+unloaded the old instance before they sweep or bootstrap: `bootout` returns
+before the loop's teardown has finished, a `bootstrap` in that window fails,
+and the first version exited in silence when it did — a resize on 09-09 left
+slot 1 with no service, a stopped clone and an offline runner record. The
+bootstrap now retries five times saying why, the plist gives a cycle's
+teardown 90 s before launchd's SIGKILL (tart's own stop timeout is 30 s), and
+`uninstall-service` removes any offline record this slot left behind.
+
 **Measured 2026-09-09**, three opted-in PRs arriving at once, slot 1 at the
 image's 6 vCPU / 8 GB and slot 2 at 5 vCPU / 6 GB, against an idle run of
 ~781 s wall / ~1977 s checks:
