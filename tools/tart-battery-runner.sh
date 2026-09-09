@@ -244,7 +244,7 @@ once() {
   # Whatever ends this cycle — the job, a signal, a bounded wait — the clone
   # goes, and so does any runner record GitHub still holds for its name: a
   # JIT runner that never got its job lingers as `offline` otherwise.
-  trap 'teardown "$vm"; forget_runner "$name"' RETURN
+  trap 'teardown "$vm"; forget_runner "$name"' RETURN   # for the die() paths above; cleared before the normal return
   trap 'log "signal — tearing $vm down"; [ -n "$JOB_PID" ] && kill "$JOB_PID" 2>/dev/null; teardown "$vm"; forget_runner "$name"; exit 130' INT TERM
   tart clone "$BASE" "$vm"
   VM_PID=""; boot "$vm"
@@ -288,6 +288,13 @@ once() {
   wait "$JOB_PID" || rc=$?
   JOB_PID=""
   log "runner '$name' exited ($rc); tearing $vm down"
+  # A RETURN trap outlives the function that set it, and `vm` does not: the
+  # loop's own return on the stop file fired this cycle's teardown a second
+  # time with no cycle to tear down ("vm: unbound variable", harmless, seen at
+  # the 2026-09-09 handover). Teardown is done explicitly here and the trap
+  # cleared, so the function's return is the only thing that returns.
+  trap - RETURN
+  teardown "$vm"; forget_runner "$name"
   tail -3 "$STATE/$vm.job.log" | sed 's/^/    /' || true
   rm -f "$STATE/$vm.job.log"
   return 0

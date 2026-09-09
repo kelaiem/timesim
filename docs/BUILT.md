@@ -21889,7 +21889,11 @@ waiting cycle 10 s after its record was deleted at GitHub, and the sweep's
 new liveness guard left the service's own clone untouched beside it.
 `status` now ends in a verdict, READY or
 NOT READY, from the three witnesses together, because the outage looked
-healthy from every single one of them. And `install-service` records the
+healthy from every single one of them. The host's shard count was then
+measured on an 8-vCPU clone (table in `docs/RUNNERS.md`): K=4 buys 3.6 %
+of wall for 18 % more CPU, six and eight are worse, K stays at 3 — and the
+measurement overlapped a production run and doubled its wall, which is now
+a rule in the doc rather than a lesson in a log. And `install-service` records the
 main checkout's script path rather than the worktree's, the defect the
 owner's first install exposed.
 
