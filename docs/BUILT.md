@@ -23103,7 +23103,7 @@ probe's warning check is exact again.
 
 ### Instrument
 
-`tools/probe-142-tour.mjs` (acceptance, 21 claims), driving the engine
+`tools/probe-142-tour.mjs` (acceptance, 21 claims at §142 — see the postscript), driving the engine
 through `__clock.scriptTick` in real seconds rather than the rAF loop (a
 software-GL frame is seconds): the run advances on its own past a dwell
 (control); a click pauses and shows Resume; the index holds through 10 s of
@@ -23114,6 +23114,18 @@ the closing stop links to both pages; every caption is in five locales; no
 warning across the run. Battery: `src/main.js`, `src/materials.js` and
 `src/i18n.js` are on the graph, so it ran — the fingerprint is the check,
 the tour being outside `resetInputs()`'s world entirely.
+
+> **Postscript (after §208).** "End restores the panel" went stale the day it
+> was written: §146 landed after this entry and the main panel now starts
+> HIDDEN, so a bare "the panel came back" is a claim nothing can satisfy, and
+> the probe read FAIL on `main` for that reason alone. It now measures §165's
+> actual rule — each panel gets back its OWN prior state, and only what the
+> run hid is restored: the probe opens the main panel from the chrome bar
+> first (so the restore has something to restore), records BOTH panels'
+> states, adds a control that the run really did hide them, and holds End to
+> that record rather than to "visible". Compared as a record, a run that
+> restores everything and a run that restores nothing both fail. The caption
+> claim reads the table count off `TABLES` since §208. 23 claims now.
 
 ## §145 — The Maltese cross in the explainer — solved in the page from the same three floors, and scrubbed to the bank
 
@@ -23410,3 +23422,6 @@ count from `TABLES`' own declaration.
   including the one this section changed. Filed as its own fix rather than
   patched here — the right expectation depends on §165's rule for which
   panels a run hides.
+  **Fixed in the follow-up** (the §142 postscript): the claim now holds
+  each panel to its recorded prior state, with a control that the run hid
+  them.

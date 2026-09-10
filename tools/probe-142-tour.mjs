@@ -13,7 +13,12 @@
 //      re-enters the same stop and the run goes on to the next;
 //   4. the explicit exits CONFIRM: Esc raises the gate ("End the tour?") with
 //      the run paused; Keep going resumes; the Tour button raises it too; End
-//      stops the run and restores the panel;
+//      stops the run and gives EACH panel back the state it had before the run
+//      (§165's per-panel rule — a run hides both fixed panels and restores only
+//      what it hid). The main panel starts hidden since §146, so a bare "the
+//      panel came back" is a claim nothing can satisfy: the probe opens it
+//      first, from the chrome bar, so the restore has something to restore,
+//      records both panels' state, and holds End to exactly that record;
 //   5. the cross draws in the line tier when framed: at the cross stop with
 //      schematic on, the 'Alarm winding arrest' unit carries line proxies;
 //   6. the closing stop's banner carries two links, to primer.html and
@@ -47,10 +52,25 @@ const OK = (m) => console.log('OK  ', m);
 // engine is driven through scriptTick (real seconds), not the rAF loop: a
 // software-GL frame is seconds, so wall time would say nothing.
 const tick = (dt) => page.evaluate((d) => window.__clock.scriptTick(d), dt);
+// §146: the main panel starts hidden, so open it from the chrome bar first —
+// otherwise the restore claim in 4 has nothing to restore and cannot be told
+// from a run that forgot. Both panels' states are recorded BEFORE the run,
+// because that record, not "visible", is what End owes (§165).
+const panelState = () => page.evaluate(() => ({
+  panel: document.getElementById('clock-ui').style.display !== 'none',
+  view: document.getElementById('view-hud').style.display !== 'none',
+}));
+if (!(await panelState()).panel) await page.evaluate(() => document.getElementById('chrome-t-ui').click());
+await wait(200);
+const before = await panelState();
+if (!before.panel) F('could not open the main panel from the chrome bar before the run'); else OK(`before the run: main panel up, view panel ${before.view ? 'up' : 'down'}`);
 await page.evaluate(() => document.getElementById('btn-tour').click());
 await wait(300);
 let st = await state();
 if (!st || st.idx !== 0) F(`tour did not start at stop 0: ${JSON.stringify(st)}`); else OK(`tour running at stop 0 of ${st.of}`);
+// control for 4: the run hides both fixed panels (§165) — without this the
+// restore claim below could pass on a run that never touched them.
+{ const during = await panelState(); if (during.panel || during.view) F(`the run did not hide the panels: ${JSON.stringify(during)}`); else OK('control: the run hides both fixed panels'); }
 // control: the run advances on its own — 4 s of engine time past a 3.6 s dwell
 for (let i = 0; i < 40; i++) await tick(0.1);
 st = await state();
@@ -103,10 +123,14 @@ if (!gate) F('the Tour button did not ask before ending'); else OK('the Tour but
 await page.evaluate(() => document.getElementById('tour-gate-go').click());
 await wait(600);
 st = await state();
-const panelBack = await page.evaluate(() => document.getElementById('clock-ui').style.display !== 'none');
+const after = await panelState();
 const gateDefault = await page.evaluate(() => document.getElementById('tour-gate-go').textContent);
 if (st) F('End did not stop the run'); else OK('End stops the run');
-if (!panelBack) F('the panel did not come back after End'); else OK('the panel is restored after End');
+// §165: each panel gets back its OWN prior state — the one the probe opened
+// returns, and the other returns only if it was up. Compared as a record, not
+// as "visible", so a run that restores everything and a run that restores
+// nothing both fail, and only the honest one passes.
+if (after.panel !== before.panel || after.view !== before.view) F(`End did not restore each panel to its prior state: before ${JSON.stringify(before)}, after ${JSON.stringify(after)}`); else OK(`End restores each panel to its prior state (main ${after.panel ? 'up' : 'down'}, view ${after.view ? 'up' : 'down'})`);
 if (!/Start Tour|Tour/.test(gateDefault)) F(`the gate's default copy was not restored: ${gateDefault}`); else OK('the gate\'s own copy is restored');
 // 5 + 6 — the cross draws in the line tier; the closing stop links out
 await page.evaluate(() => document.getElementById('btn-tour').click());
