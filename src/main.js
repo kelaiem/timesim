@@ -26328,6 +26328,10 @@ const CAM_SNAP_TAU = 0.06; // s — faster than the balance's own damping: a
 // ---------------------------------------------------------------------------
 const style = document.createElement('style');
 style.textContent = `
+/* §211 — Korean wraps at spaces, not between syllables; see explain.html's
+   copy of this rule for why. Inherited from the root, so the panels, the HUD and
+   every caption take it. */
+html:lang(ko) { word-break: keep-all; }
 /* §110 step 0 — A PANEL IS A CLASS, NOT AN ID.
    Every rule below used to read #clock-ui …, and so did §72's a11y passes
    and §73's localizeTree call. That made the id load-bearing for three

@@ -75,11 +75,21 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // legible if unfamiliar — and a second row sharing the table is the fix if
 // one reports it (unsupported today: TABLES and both LOADERS are keyed by
 // code, one file per code). Nothing else in this array begins 'es'.
+// §211 — Korean's matcher is ANCHORED, the first row that is: 'kok' (Konkani)
+// begins the same two letters, and startsWith would hand a Konkani reader a
+// legible Korean page with no error anywhere — §116's failure shape. The
+// ladder assert carries the negative row. 'ko-KR' is number-transparent
+// (30.0 · 0.024 · 18,000, English's marks — measured in Chromium 141), so
+// its tag decides nothing a reader would notice; the locale's real rule is
+// LINE-BREAKING, declared in each document's stylesheet as
+// html:lang(ko) { word-break: keep-all } — Hangul has CJK glyph metrics and
+// Latin word structure, and the default breaks a word between syllables.
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
   { code: 'fr', face: 'Français', tag: 'fr-FR', match: (v) => v.startsWith('fr') },
   { code: 'es', face: 'Español', tag: 'es-ES', match: (v) => v.startsWith('es') },
+  { code: 'ko', face: '한국어', tag: 'ko-KR', match: (v) => /^ko(-|$)/.test(v) },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
   { code: 'zh', face: '简体中文', tag: 'zh-CN', match: (v) => v.startsWith('zh') },
@@ -116,6 +126,9 @@ for (const [input, want] of [
   // whose browsers would format 0.024 rather than 0,024; the row's tag, not
   // the reader's region, decides that (see LOCALES).
   ['es', 'es'], ['es-ES', 'es'], ['es-MX', 'es'], ['es-419', 'es'], ['es_AR', 'es'],
+  // §211 — the negative row is the point: 'kok' must NOT resolve to Korean.
+  // (_norm lowercases and maps '_' to '-' before matching, so ko_KR lands too.)
+  ['ko', 'ko'], ['ko-KR', 'ko'], ['ko_KR', 'ko'], ['kok', null], ['kok-IN', null],
   ['ja', 'ja'], ['ja-JP', 'ja'],
   // The rows this assert is really for. Every one of these begins 'zh', and
   // the wrong answer is a legible page in the wrong script — no error anywhere.
