@@ -23410,3 +23410,110 @@ count from `TABLES`' own declaration.
   including the one this section changed. Filed as its own fix rather than
   patched here — the right expectation depends on §165's rule for which
   panels a run hides.
+
+## §209 — Spanish — the first locale whose region decides its decimal mark
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(689 keys) and `primer.html` (134 keys) read Spanish at 100% in one landing,
+§208's shape — the tables were built in parallel against one glossary by ten
+translators, seams reconciled afterwards by hand. Eight locales now. The
+recipe the roadmap entry wrote once was followed item for item, and every
+site it named was real: the `LOCALES` row and its ladder rows, the two
+`LOADERS` entries (extract first, wire second — the bootstrap order), a
+`MARKS.es` row, the precache count (35 → 37), the three hand-kept loops
+(`offline-check`, the fit probe's default roster, the bench probe's) and the
+two measured width comments in `src/main.js`.
+
+**Why Spanish, in the §73 idiom.** German is the layout stress, Chinese the
+typography, Arabic the direction; Spanish is the REGION one. Measured in
+Chromium 141, `es-ES` formats `30,0 · 0,024 · 18.000` and `es-MX` / `es-419`
+format `30.0 · 0.024 · 18,000` — the region subtag flips the decimal mark,
+which no earlier region split did (fr-CA changes only the group character).
+A decimal mark is the one thing a table cannot leave open: the primer's
+quantities are WRITTEN in the table in one convention, `MARKS` is per code,
+and the chrome must format the same way or one screen carries two marks. So
+the row says `tag: 'es-ES'` and its comment carries the measurement and the
+consequence — a reader from a `.`-decimal country sees `30,0`, legible if
+unfamiliar — and names the fix if one reports it (a second row sharing the
+table), which today's shape does not support: `TABLES` and both `LOADERS`
+are keyed by code, one file per code. Nothing else in the roster begins
+`es`; the ladder assert takes `es`, `es-ES`, `es-MX`, `es-419` and `es_AR`.
+
+**The glossary was the product, again.** Pan-Hispanic where the words agree
+and decided once where they do not: *esfera* for the dial (not *carátula*),
+*agujas* for the hands (not *manecillas*), *muelle* for a spring (not
+*resorte*), *caracol* for the fusee — the traditional Spanish clockmaking
+word — *rodaje* for the train, *minutería* for the motion works, *rueda de
+pilares* for the column wheel, *reposo / tiro / impulso / caída* for the
+escapement's four phases, *dardo* for the guard pin, *elipse* on its *plato*
+for the roller jewel, *uña* for a driving pawl against *trinquete* for a
+click, *sautoir* for the jumper. *Alternancia* is a beat and `A/h` stays
+`A/h`. The reader is *tú*; commands are infinitives. *Modelado* and
+*simulado* are held apart, the repo's rule. Three seams the ten translators
+left were reconciled by hand: FULL WIND is *CUERDA COMPLETA* everywhere
+(one chunk had *TODA LA CUERDA*), ratchet clicks are *clics* (one chunk had
+*muescas*), and the figure word PLATE is *LÁMINA* on both pages with the
+spring blade as *hoja* so the two never share a word. One deliberate
+non-reconciliation: the gong's ringing is *repique* on the primer and
+*tañido* on the explainer — a sound, not a part, and each page's register
+chose. Labels that carry only identifiers (`min()`, `d`, `TODO 128`, the
+constants strips) are byte-identical to the English, as in every locale.
+
+**Thirty-seven plate labels overran or collided, and every fix was in the
+label.** Thirty on the explainer, seven on the primer, measured against the
+English baseline — French's class (§117 had 28), as the entry predicted for
+a Romance locale. Each was shortened, meaning kept, digits untouched (*el
+pie libra el addendum RESUELTO* for a 49-character first draft; *sonería →
+palanca → martillo*; *p (alt.)*), never the tolerance. **One of them took
+two passes and is worth recording**: `link beak UP → ring up (disarmed)` is
+a key the page uses TWICE, the extractor emits an entry per occurrence, and
+a JS object keeps the LAST — so the first pass shortened the wrong copy and
+the label stayed long. A duplicated key must be edited in every copy, and
+the assembler now warns when two copies of one key disagree. The gate reads
+**0 new overflow or collision vs English** on both pages.
+
+**The numbers rule held in both directions.** The explainer's numbers stay
+in source form (`0.15`, `18,000`, `2.5 Hz`) and the primer's are quantities
+in es-ES punctuation (`0,024 mm`, `18.000`, `2,5 Hz`); the checker compares
+parsed values through `MARKS.es`, so the punctuation is free and the
+quantity is not. es-ES also leaves four digits ungrouped (`1000`, measured)
+where the chrome's `fmtInt` would group — no chrome figure has four digits
+today, and Italian (§210) is where the two ICU builds were found to disagree
+on exactly that.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **689/689**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — Spanish PASSES every row; the run's one FAIL is Arabic's (below) |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Spanish**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
+| `#chrome-bar` | es **168.9** against en 170.2 — NARROWER than English on the three-word bar (*Controles / Vista / Esfera*); German's 192.4 is still the widest and the comment at the site now says so |
+| `.hud-ro-label` | *Tiempo* 33.0, ***Suena a las* 52.8** against 150 px — the new widest, past German's *Klingelt um* at 49.5; one line, the two-line allowance still unspent |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **32/32**, precache **37/37** (35 + two tables), the Spanish primer served from cache |
+| boot | `?lang=es` on all three documents: `explain.html` and `primer.html` console-silent; `index.html` carries only the environment's own lines (SwiftShader's deprecation notice, the dev server's 404 for a virgin `/__state`) and no `i18n:` warning — the ladder assert extended with the five Spanish rows |
+| battery | **40/40 gates**, local (dev container, 3 shards, 1263 s wall, 2978 s of checks); boot silent; fingerprint **3534559869** (57 units, 12 poses) deterministic across virgin boots — and IDENTICAL to a virgin boot of `origin/main` measured beside it in its own worktree, which is §73's, §116's and §208's form of "no geometry moved" |
+
+### Residue, recorded
+
+- **No native review pass** — the same IOU §73, §116 and §208 carry. The
+  register is Spain's punctuation with pan-Hispanic vocabulary; a Mexican
+  reader will find *esfera* where they say *carátula*, and the glossary is
+  where that correction lands.
+- **The checker FAILS on `main`, and it is not this landing's.** Arabic reads
+  668/689 with **17 unmatched keys**, all in the gong section — the English
+  moved after §208 (the ring left the plate) and the honest fallback renders
+  English there. The other five locales read 647/689 and 126/134, the lag
+  TODO.md already records. Named because a red Explainer check on this PR
+  would otherwise look like Spanish's.
+- **`es-419` is a second-row question, not a table.** A reader who reports
+  `30,0` as foreign wants the same words with the other marks; today one code
+  is one file, and sharing a table between two codes is the small change
+  that would answer it.
+- **`index.html`'s `<title>` is not localized in any locale** — observed
+  while checking boot silence; the two pages' titles are. Not this
+  landing's, and not new.
+- **`On` / `Off` are *Activado* / *Desactivado*** — the correct UI words and
+  longer than German's *Ein / Aus*; measured inside the 240 px column with
+  everything else, so the length is a fact rather than a worry.
