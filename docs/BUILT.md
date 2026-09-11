@@ -23517,3 +23517,91 @@ on exactly that.
 - **`On` / `Off` are *Activado* / *Desactivado*** — the correct UI words and
   longer than German's *Ein / Aus*; measured inside the 240 px column with
   everything else, so the length is a fact rather than a worry.
+
+## §211 — Korean — Hangul, and the first locale whose line-breaking rule has to be declared
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(689 keys) and `primer.html` (134 keys) read Korean at 100% in one landing,
+the recipe in §209's first paragraph followed item for item. Nine locales
+now.
+
+**Why Korean, in the §73 idiom.** Japanese and Chinese proved the pages under
+CJK glyphs, and both wrap ANYWHERE by design. Korean has CJK glyph metrics
+and Latin word structure — spaces between words, and a word that must not be
+split — and under `word-break: normal` Chromium breaks Hangul between
+syllables as if it were Chinese. Every earlier locale could be added as a
+table; this is the first whose correct rendering needs a rule the document
+did not have.
+
+**The rule, declared once per document and MEASURED.** `html:lang(ko) {
+word-break: keep-all }` in both pages' stylesheets and the sim's injected
+one, scoped by the `documentElement.lang` that `i18n.js` already writes and
+inherited from the root, so the panels, the HUD and every caption take it.
+It was measured to do something rather than assumed to: the primer's intro
+paragraph at 480 px wraps to the same eight lines under either rule, but
+under `normal` **two of those lines begin in the middle of a word** and
+under `keep-all` none do — which is exactly the defect and exactly the fix,
+and the line count alone would not have shown it. The two
+`overflow-wrap: anywhere` sites (§53's control labels, the 150 px HUD label)
+keep their rule; the fit probe reports no Korean label reaching that
+allowance.
+
+**The matcher is anchored, the first in the roster.** `kok` (Konkani) begins
+the same two letters, so `startsWith('ko')` would hand a Konkani reader a
+legible Korean page with no error anywhere — §116's failure shape, the one
+the ladder assert exists for. The row's matcher is `/^ko(-|$)/` and the
+assert carries the NEGATIVE rows, `kok` and `kok-IN` → `null`, beside `ko`,
+`ko-KR` and `ko_KR` → `ko`. Finnish (§217) inherits the pattern for `fil`.
+
+**Number-transparent, so the tag decides nothing a reader notices.**
+`ko-KR` formats `30.0 · 0.024 · 18,000` (Chromium 141) — English's marks —
+so `MARKS.ko` is `ja`'s row and every number on every page is byte-identical
+to the English. Its plural rule has one category, free while no chrome string
+pluralizes a count. Numbers English writes in words stay in words (다섯 클릭,
+사분의 일), which the number gate holds: 3번 휠 for "third wheel" would have
+added a digit, so the wheels are 센터 휠 / 서드 휠 / 포스 휠.
+
+**The glossary is the trade's loanwords, decided once.** 탈진기 for the
+escapement, 팔레트 포크 and 팔레트 스톤, 밸런스, 헤어스프링, 태엽 for the
+mainspring, 퓨지, 윤열 for the train, 모션 워크, 용두 for the crown (the one
+native term every Korean watch buyer knows), 컬럼 휠, 잠금 / 드로 / 임펄스 /
+드롭 for the escapement's phases; 모델링된 and 시뮬레이션된 held apart. Ten
+translators against it, three seams reconciled by hand afterwards: the
+striking wheel is 타격 휠 everywhere (one chunk had 스트라이킹 휠), the
+fusee's cone 원뿔 (the explainer's chunks had 콘, the primer's and the
+chrome's 원뿔), the pause face ⏸ 일시정지 (one chunk chose ⏸ 멈춤 for width,
+and the fit gate then showed the longer face fits).
+
+**Zero plate labels shortened, and that is the compression measured.**
+Spanish (§209) shortened 37 labels against the English baseline and French
+(§117) 28; Korean's first pass read **0 new overflow or collision vs English
+on both pages** with every label as translated. Hangul is compact where the
+Romance locales and Cyrillic run long: a syllable block carries what two or
+three Latin letters do.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **689/689**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run (Arabic's gong keys were re-translated in #392 just before) |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Korean**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
+| `#chrome-bar` | ko **144.0** against en 170.2 — level with Simplified Chinese, the narrowest the bar gets; German's 192.4 is still the widest |
+| `.hud-ro-label` | 시간 20.0, **울리는 시각 52.8** against 150 px — a tie with Spanish's *Suena a las* for the widest, one line |
+| §53's 240 px column | no content wider than its box |
+| keep-all | primer intro at 480 px: 8 lines under both rules; mid-word line starts **2 under `normal`, 0 under `keep-all`** |
+| `offline-check` | **33/33**, precache **39/39** (37 + two tables), the Korean primer served from cache |
+| boot | `?lang=ko` on all three documents console-silent (the environment's own SwiftShader and virgin-state lines filtered); `getComputedStyle(body).wordBreak` reads `keep-all` on each; the ladder assert extended with the five Korean rows |
+| battery | **40/40 gates**, local (dev container, 3 shards, 1608 s wall, 3626 s of checks — the wall carries two other browsers running beside it); boot silent; fingerprint **3534559869** (57 units, 12 poses) deterministic across virgin boots — and IDENTICAL to `main`'s virgin boot measured at §209, which the tables cannot move: §73's, §116's, §208's and §209's form of "no geometry moved" |
+
+### Residue, recorded
+
+- **No native review pass** — the same IOU every locale carries. The
+  register is the enthusiast trade's loanwords; a Korean watchmaker trained
+  on the older Sino-Korean vocabulary (탈진기 is shared, 윤열 is theirs) may
+  prefer a term here or there, and the glossary is where that lands.
+- **Counter units are unspaced** (`11.8초`, `28회`) where Latin units keep the
+  English space (`0.12 mm`) — standard Korean, noted because the brief's
+  spacing rule was written for Latin units.
+- **`index.html`'s `<title>` is not localized in any locale** — §209's
+  observation, still true.
