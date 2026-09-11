@@ -64,10 +64,22 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // them. 简体中文 is the face the Simplified row now carries — 中文 alone stopped
 // being a distinguishing name the moment a second Chinese appeared, and the
 // VALUE stayed 'zh' so every ?lang=zh link ever shared still resolves.
+// §209 — Spanish's tag carries a REGION decision, the way Arabic's carries a
+// digit one. The region subtag changes the DECIMAL mark: measured in Chromium
+// 141, 'es-ES' formats 30,0 · 0,024 · 18.000 and 'es-MX' / 'es-419' format
+// 30.0 · 0.024 · 18,000 — the split runs through the Spanish-speaking world
+// roughly by country. One row is one table, and the primer's numbers are
+// WRITTEN in that table in one convention (0,024 mm), so the chrome must
+// format the same way or one screen would carry two decimal marks. 'es-ES'
+// is that convention; a reader from a '.'-decimal country sees 30,0 —
+// legible if unfamiliar — and a second row sharing the table is the fix if
+// one reports it (unsupported today: TABLES and both LOADERS are keyed by
+// code, one file per code). Nothing else in this array begins 'es'.
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
   { code: 'fr', face: 'Français', tag: 'fr-FR', match: (v) => v.startsWith('fr') },
+  { code: 'es', face: 'Español', tag: 'es-ES', match: (v) => v.startsWith('es') },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
   { code: 'zh', face: '简体中文', tag: 'zh-CN', match: (v) => v.startsWith('zh') },
@@ -100,6 +112,10 @@ for (const [input, want] of [
   ['en', 'en'], ['en-GB', 'en'],
   ['de', 'de'], ['de-AT', 'de'], ['de_CH', 'de'],
   ['fr', 'fr'], ['fr-CA', 'fr'],
+  // §209 — every Spanish region lands on the one table, including the ones
+  // whose browsers would format 0.024 rather than 0,024; the row's tag, not
+  // the reader's region, decides that (see LOCALES).
+  ['es', 'es'], ['es-ES', 'es'], ['es-MX', 'es'], ['es-419', 'es'], ['es_AR', 'es'],
   ['ja', 'ja'], ['ja-JP', 'ja'],
   // The rows this assert is really for. Every one of these begins 'zh', and
   // the wrong answer is a legible page in the wrong script — no error anywhere.
