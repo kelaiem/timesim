@@ -62,6 +62,7 @@ export const NUMBERS = 'source';
 const LOADERS = {
   de: () => import('./explain-i18n.de.js'),
   fr: () => import('./explain-i18n.fr.js'),
+  es: () => import('./explain-i18n.es.js'),
   ja: () => import('./explain-i18n.ja.js'),
   zh: () => import('./explain-i18n.zh.js'),
   'zh-Hant': () => import('./explain-i18n.zh-Hant.js'),

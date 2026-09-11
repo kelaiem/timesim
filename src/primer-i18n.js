@@ -36,6 +36,7 @@ export const NUMBERS = 'quantity';
 const LOADERS = {
   de: () => import('./primer-i18n.de.js'),
   fr: () => import('./primer-i18n.fr.js'),
+  es: () => import('./primer-i18n.es.js'),
   ja: () => import('./primer-i18n.ja.js'),
   zh: () => import('./primer-i18n.zh.js'),
   'zh-Hant': () => import('./primer-i18n.zh-Hant.js'),
