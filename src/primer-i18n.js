@@ -13,12 +13,12 @@
 // src/*.js, and rendering it "0,15" would break the promise its header makes).
 // The primer quotes NOTHING; its header promises rounded quantities with
 // units, so its numbers are quantities being READ ALOUD — the ordinary case,
-// where tier one's fmtNum rule applies and a German reader is owed "0,024 mm"
+// where tier one's fmtNum rule applies and a German reader is owed "0,023 mm"
 // and "18.000" exactly as the app's chrome owes them "30,0 h".
 //
 // The checker enforces the difference rather than trusting it: on this page a
 // translated number must carry the same VALUE (parsed per locale), not the
-// same glyphs — so "0,024" passes and "0,25" fails. A byte-identity rule here
+// same glyphs — so "0,023" passes and "0,25" fails. A byte-identity rule here
 // would have forced English punctuation into German prose; a no rule at all
 // would have let a decimal point wander during translation.
 import { UI_LANG } from './i18n.js';

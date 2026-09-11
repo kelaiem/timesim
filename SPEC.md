@@ -71,8 +71,13 @@ export function makePalletFork({ span, leverLength, thickness })
 export function makeBalanceWheel({ radius, thickness })
 
 // Archimedean-spiral hairspring with `coils` turns, terminal curve, collet at center,
-// stud at outside. Flat ribbon cross-section. Group so it can be rotated as a whole.
-export function makeHairspring({ innerR, outerR, coils = 12, height })
+// stud at outside. Flat ribbon cross-section. The collet turns with the staff and the
+// stud does not, so a wind state is a change of SHAPE: each frame is the clamped–clamped
+// planar elastica of an inextensible ribbon (§218 — constant length, curvature carries
+// the turn, the stud's reaction reported as the lateral load on the pivots), swapped by
+// `userData.setWind(θ)`; `hairspringClampRatio(plan)` is the section-free stiffening
+// the rate solve fits against.
+export function makeHairspring({ innerR, outerR, coils = 12, height, ribbonR, reportMaxRad })
 
 // Going barrel: drum + toothed rim (it IS the great wheel: give it `teeth`,`module`),
 // cutaway sector (~90°) in the lid revealing a spiral mainspring inside, hook at wall,
@@ -125,9 +130,15 @@ The beat is a TARGET the oscillator is built to hit, not a number the movement
 is told (TODO 25 tier two). `F_BALANCE` (= `vph / 7200`) sets the goal; the
 balance's moment of inertia is computed from its own rim, arms and timing
 screws, and the hairspring's section is then SOLVED so `√(k/I)` lands on it —
-the way a régleur vibrates a balance to its spring. The `oscillator` check
-gates that the solve holds and that the resulting ribbon stays inside real
-hairspring stock (0.02–0.04 mm), so a balance that cannot be sprung to the
+the way a régleur vibrates a balance to its spring. Since §218 the spring is
+fitted AS CLAMPED: `k` is `EI/L` times the stiffening the stud's reaction adds
+(a pure function of the coil plan, 1.0043 at the shipped 8 coils), and the
+coil count is itself derived — the fewest that keep the slowest menu row clear
+of §204's margin band inside the stock window. The `oscillator` check
+gates that the solve holds, that the resulting ribbon stays inside real
+hairspring stock (0.02–0.04 mm), that every wind frame is one length of
+steel and that the frames' own torque per radian is the `k` the rate was
+computed from, so a balance that cannot be sprung to the
 spec'd beat out of real wire is a build-time finding rather than a silent
 fiction.
 
@@ -155,8 +166,9 @@ Per half-swing state machine synced to balance phase:
 Implement as phase-driven keyframing (robust), not rigid-body physics: given balance
 phase, derive fork angle and escape-wheel advance count + partial. Escape wheel total
 rotation = f(beats) → drives whole train backwards through ratios above (train angles
-are pure functions of escape rotation — never drift). Hairspring: rotate ±small angle
-and radially breathe (scale ~±4%) in sync with balance.
+are pure functions of escape rotation — never drift). Hairspring: the collet turns
+with the balance and the coils breathe as the elastica says they must (§218) — a
+precomputed frame per wind angle, never a scale.
 
 Mainspring: barrel advances per the train; spring spiral child slowly relaxes
 (scale/rotation on the 'spring' object), "Wind" button re-tightens.

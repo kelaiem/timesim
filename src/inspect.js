@@ -8259,17 +8259,59 @@ export function checkOscillator(clock) {
           cut: { ribbonR: grp.userData.ribbonR, scaleZ: s, axialHalf: sec.a * s } });
     }
   }
+  // §218 — THE BREATHING, held against the METAL. Every wind frame the spring
+  // can wear must be one length of steel, and that is measured here on the
+  // POLYLINES the builder published (`spiralFrames` — what the tube was swept
+  // along and what the schematic draws), not taken from the payload's word:
+  // the law this replaced moved the length ±1.59% and would fail this row.
+  // The payload's own claims are then held: the frames' torque per radian is
+  // the k the rate was computed from (0.5%, the gate's own tolerance), the
+  // builder's clamp stiffening is the one the section was fitted with, the
+  // free-landing control reads no pivot force, the solve converged on every
+  // frame, and the outer-fibre stress at the physical swing sits under the
+  // cited endurance figure. The pivot force itself is a REPORT — tier two's
+  // input, not a bound.
+  const B = O.breathing;
+  let breathingMeasured = null;
+  if (hs && B) {
+    let grp = null;
+    hs.obj.traverse((o) => { if (!grp && o.userData && o.userData.spiralFrames) grp = o; });
+    if (grp) {
+      const L0 = grp.userData.devLen;
+      let maxRel = 0;
+      for (const poly of grp.userData.spiralFrames) {
+        let len = 0;
+        for (let i = 1; i < poly.length; i++) len += Math.hypot(poly[i][0] - poly[i - 1][0], poly[i][1] - poly[i - 1][1]);
+        maxRel = Math.max(maxRel, Math.abs(len - L0) / L0);
+      }
+      breathingMeasured = { frames: grp.userData.spiralFrames.length, devLen_u: L0, maxRelLengthErr: maxRel, held: maxRel < 1e-9 };
+      if (!breathingMeasured.held)
+        mismatches.push({ what: 'hairspring frames are not one length of steel', maxRelLengthErr: maxRel, tol: 1e-9 });
+    }
+  }
   const failures = [];
   if (!O.agrees) failures.push({ what: 'rate', impliedHz: O.fImpliedHz, specHz: O.fSpecHz, tolPct: O.agreeTolPct });
   if (!O.spring.inStock) failures.push({ what: 'spring stock', h_mm: O.spring.h_mm, window: O.stockWindowMm });
   for (const m of mismatches) failures.push({ what: 'declared vs cut', ...m });
+  if (!B) failures.push({ what: 'breathing', missing: 'no breathing payload on the oscillator (main.js §218 block)' });
+  else {
+    if (!B.converged) failures.push({ what: 'breathing solve', unconverged: true });
+    if (!B.lengthHeld) failures.push({ what: 'breathing length (payload)', maxRelErr: B.lengthMaxRelErr, tol: 1e-9 });
+    if (!B.clampRatioAgrees) failures.push({ what: 'clamp ratio', builder: B.clampRatioBuilder, fitted: B.clampRatio });
+    if (!B.kFramesAgrees) failures.push({ what: 'frames torque vs k', kFrames: B.kFrames_Nm_per_rad, k: O.k_Nm_per_rad, tolPct: 0.5 });
+    if (!B.control.pass) failures.push({ what: 'free-landing control', maxPivotForce_mN: B.control.maxPivotForce_mN });
+    if (!B.stressInLimit) failures.push({ what: 'ribbon stress', stress_MPa: B.peaks.physical.stress_MPa, fatigue_MPa: B.fatigue_MPa });
+  }
   return {
     ok: failures.length === 0,       // a GATE since tier two — the spring is cut to the rate
     agrees: O.agrees, solved: O.solved,
     impliedHz: +O.fImpliedHz.toFixed(4), specHz: O.fSpecHz, ratio: +O.ratio.toFixed(4),
     tolPct: O.agreeTolPct,
     inertia: { I_kgm2: O.I_kgm2, ...O.terms },
-    spring: { k_Nm_per_rad: O.k_Nm_per_rad, ...O.spring, windowMm: O.stockWindowMm },
+    spring: { k_Nm_per_rad: O.k_Nm_per_rad, kPure_Nm_per_rad: O.kPure_Nm_per_rad, clampRatio: O.clampRatio, ...O.spring, windowMm: O.stockWindowMm },
+    breathing: B ? { measured: breathingMeasured, lengthHeld: B.lengthHeld, converged: B.converged,
+                     clampRatio: B.clampRatio, kFrames_Nm_per_rad: B.kFrames_Nm_per_rad, control: B.control,
+                     peaks: B.peaks, fatigue_MPa: B.fatigue_MPa, law: B.law } : null,
     mismatches, failures,
     summary: `implied ${O.fImpliedHz.toFixed(3)} Hz vs spec ${O.fSpecHz} Hz (${O.ratio.toFixed(3)}×) — ${O.agrees ? 'the spring is cut to the beat' : 'DISAGREES'}; ribbon ${O.spring.h_mm.toFixed(4)} mm ${O.spring.inStock ? 'within' : 'OUTSIDE'} real stock ${O.stockWindowMm[0]}–${O.stockWindowMm[1]} mm`,
   };
