@@ -187,6 +187,11 @@ const MARKS = {
   // the token class parses either form, so nothing here depends on it.
   es: { group: ['.'], dec: ',' },
   ko: { group: [','], dec: '.' },        // §211 — ko-KR: number-transparent, as ja and zh
+  // §213 — Russian groups with U+00A0 (Chromium 141's own output for ru-RU),
+  // French's list with the plain no-break space FIRST; the other two are
+  // accepted for the same reason they are for French: a translator's keyboard
+  // and older ICU produce them, and flanked by digits they are unambiguous.
+  ru: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
 };
 const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {

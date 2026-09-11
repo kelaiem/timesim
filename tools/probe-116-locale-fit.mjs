@@ -27,7 +27,7 @@
 // translation makes WORSE is interesting, which keeps this about the
 // translation rather than about pre-existing layout choices.
 //
-//   node tools/probe-116-locale-fit.mjs [--locales en,de,fr,es,ko,ja,zh-Hant,zh,ar]
+//   node tools/probe-116-locale-fit.mjs [--locales en,de,fr,es,ko,ru,ja,zh-Hant,zh,ar]
 //
 // Needs python3 (dev_server.py) and a Playwright Chromium, like ci-battery.
 import { spawn } from 'node:child_process';
@@ -43,7 +43,7 @@ const argOf = (flag, dflt) => {
   const i = process.argv.indexOf(flag);
   return i >= 0 ? process.argv[i + 1] : dflt;
 };
-const LOCALES = argOf('--locales', 'en,de,fr,es,ko,ja,zh-Hant,zh,ar').split(',');
+const LOCALES = argOf('--locales', 'en,de,fr,es,ko,ru,ja,zh-Hant,zh,ar').split(',');
 // 821/820 straddle the @media (max-width: 820px) rule that hides the stamp:
 // the interesting widths are the ones either side of a rule, not round numbers.
 const WIDTHS = [1440, 1100, 900, 830, 821, 820, 700, 480];
