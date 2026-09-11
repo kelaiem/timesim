@@ -179,6 +179,13 @@ const MARKS = {
   // is not a parsed number at all — the value comparison reports it as a
   // quantity DROPPED, which is what it would be to the checker.
   ar: { group: [','], dec: '.' },
+  // §209 — German's marks, and a decision rather than a fact about "Spanish":
+  // es-MX and es-419 point with '.' and group with ','. The chrome formats
+  // through 'es-ES' (src/i18n.js LOCALES says why), and a table must read as
+  // the chrome does, so the primer's quantities are written 0,024 / 18.000.
+  // es-ES also leaves four digits ungrouped (1000, measured in Chromium 141);
+  // the token class parses either form, so nothing here depends on it.
+  es: { group: ['.'], dec: ',' },
 };
 const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {

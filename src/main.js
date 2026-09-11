@@ -26591,11 +26591,12 @@ style.textContent = `
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All SIX
-   locales measure inside 150 px on one line today — German's "Klingelt um"
-   is still the long one at 49.5 px (§116 measured the other five against
-   it: en 36.7, fr 37.3, ja 40.0, zh 40.0, zh-Hant 30.0) — so the allowance
-   that a locale which does not fit simply gets two lines is still unspent.
+   what it says, and the box already grows to fit its contents. All EIGHT
+   locales measure inside 150 px on one line today — Spanish's "Suena a las"
+   is the long one at 52.8 px since §209, past German's "Klingelt um" at
+   49.5 (§116 measured the others against it: en 36.7, fr 37.3, ja 40.0,
+   zh 40.0, zh-Hant 30.0; §208's Arabic 32.8) — so the allowance that a
+   locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
   color: #8b95a1; font: 10px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -27218,7 +27219,10 @@ function setBarState(id, on) {
 // nothing below needed re-deriving. §208's Arabic measured 198.1 on its first
 // pass — WIDER than German, on a three-word "Controls" — and 167.0 once that
 // face became the one word التحكم: a face is chosen against this bar, not
-// only against the 240 px column. The bar is also the one piece of chrome
+// only against the 240 px column. §209's Spanish measured 168.9 — narrower
+// than English, which a Romance locale has no right to be on a
+// three-word bar, and is the point of measuring rather than assuming.
+// German is still the widest. The bar is also the one piece of chrome
 // that does NOT mirror under dir="rtl": it is pinned to the viewport's
 // top-right, a fact about the screen rather than about the script. So the
 // two rules below read the bar's OWN rect:
