@@ -55,7 +55,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
-| 132 | OPEN | TODO 124's residue: six meshes over `meshPhase`'s 2% bar with no `solveGearChain` call of their own, waived against this number now that 124's own subject is fixed. Five are FLAT (spread ≤ 0.244) and should take the phase solve directly. The sixth, `alarm setting setting wheel ⇄ idler 1`, must not be clocked before it is understood: its spread is 45.703 — the movement's largest, the "does not transmit" class — yet `transmits` PASSES it unwaived on both declared inputs, and those readings have never been reconciled. The two keyless rows also carry [TODO 125]'s 1.337% centre-distance error, which decides first — a phase solve on a pair that does not stand at its centre distance is what `solveGearChain`'s own tripwire refuses |
+| 132 | OPEN | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects: `idler 2 ⇄ arbor pinion` is genuinely unsolved and transmits on both inputs (clock it, as a second stage after the arbor pinion is built); `cage wheel ⇄ finger pinion` is ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature, a constant the tick carries that the build tripwire cannot see at the one pose it reads, and NOT closed by clocking; `leg B pinion ⇄ idler pinion` reads 0|0 on its only axis, so nothing can judge it until an axis exercises it (the `restoring` lesson); and both keyless rows are blocked on [TODO 125] — their 0.1 centre miss is over solveGearChain's own 0.05 tripwire, which would refuse them aloud. A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
@@ -15227,6 +15227,17 @@ battery check over every declared mesh, per input, is the generalisation —
 and it is a different check from `meshPhase`, because a pair can be
 perfectly phased and still not be geared at all.
 
+**That generalisation shipped (§194's `transmits`), and it hands this item a
+row back.** `alarm setting setting wheel ⇄ idler 1` had its `meshPhase` waiver
+parked on [TODO 124] and then on [TODO 132] for want of an owner. It is this
+item's: 132 listed it as an unchased contradiction — a 45.703 spread that
+`transmits` nonetheless passed — and both halves were already in the table
+above. The spread is the driver-STILL row; `transmits` passes it only because a
+still driver gets a `driver still` verdict filed under *reported*, never under
+*violations*, so it never disagreed with `meshPhase` at all. It could not
+speak. The waiver cites 117 now, and the row closes when law 1, 2 or 3 above
+gives way — not by clocking, which would phase a pair that is not transmitting.
+
 ## 118. The minute hand's 2.3 lift over the hour hand was a fat-rod literal, not a derivation — CLOSED
 
 **Found by the owner's eye, 2026-08-30** ("the minute hand appears to
@@ -15709,69 +15720,111 @@ chased. Filed here rather than silently re-labelled.
 
 ## 132. Six meshes are mis-phased with no `solveGearChain` call of their own
 
-The residue of TODO 124, rehomed when that item closed. These six rows are
-over `meshPhase`'s 2% anti-phase bar and are waived in
-`MESH_PHASE_WAIVERS` citing this item:
+The residue of TODO 124, rehomed when that item closed. **This item's first
+triage was wrong and is corrected below**; the measurements that correct it
+are in the table.
 
-| row | worst | spread | also |
-|---|---|---|---|
-| `alarm setting setting wheel ⇄ idler 1` | 48.203% | **45.703** | — |
-| `alarm setting: idler 2 ⇄ arbor pinion` | 43.107% | 0.098 | — |
-| `keyless: wind spur ⇄ transfer wheel` | 34.345% | 0.244 | centre 1.337% ([TODO 125]) |
-| `alarm arrest: leg B pinion ⇄ idler pinion` | 34.334% | 0.049 | — |
-| `alarm arrest output cage wheel ⇄ finger pinion` | 26.880% | 0.098 | — |
-| `keyless: setting wheel ⇄ minute wheel` | 22.222% | 0.000 | centre 1.337% ([TODO 125]) |
+**THE HEADING IS PART OF THAT ERROR AND IS KEPT ANYWAY.** It says six rows and
+says none is covered by a `solveGearChain` call; measured, one of the six was
+never this item's ([TODO 117]'s, below) and one of the remaining five IS
+solved. The heading stays because an item number is a permanent ID whose title
+is part of that identity — `check-item-numbers.mjs` allows only a trailing
+status marker and cannot tell a correction from a stolen number — so the
+correction lives here, in the body. Same rule, same reason, as [TODO 124].
 
-They were parked on TODO 124 as the nearest owner while that item was
-open; its own text always called them "NOT this item", and its subject —
-the motion works — is fixed, so leaving them citing a closed number would
-have been a dangling waiver.
+| row | worst | spread | transmits, per declared input | what it actually is |
+|---|---|---|---|---|
+| `alarm setting: idler 2 ⇄ arbor pinion` | 43.107% | 0.098 | train ok, alarm ok | **never solved** — clock it |
+| `keyless: wind spur ⇄ transfer wheel` | 34.345% | 0.244 | crown 0\|0, wind 0\|0 | never exercised; centre 1.337% ([TODO 125]) |
+| `alarm arrest: leg B pinion ⇄ idler pinion` | 34.334% | 0.049 | alarmWind 0\|0 | **never exercised** — unjudgeable |
+| `alarm arrest output cage wheel ⇄ finger pinion` | 26.880% | 0.098 | alarmWind ok | **already solved** — see below |
+| `keyless: setting wheel ⇄ minute wheel` | 22.222% | 0.000 | crown 0\|0, handSet ok | transmits; centre 1.337% ([TODO 125]) |
 
-**What TODO 124 leaves them is a method, not just a number.** That item
-turned out to be TWO defects wearing one symptom, and the SPREAD column
-is what tells them apart:
+`0|0` is `transmits`' own `aSpin|bSpin` pair with both members still.
 
-- **a large spread is a pair that does not transmit.** `frac(uP + uQ)` is
-  invariant only while both members turn at the ratio the metal says, so
-  a residual that SWEEPS means the two angles are written independently.
-  Clocking such a pair is meaningless — the solve is true at the build
-  pose and false everywhere else.
-- **a flat spread is a phase never solved.** The pair is geared and its
-  teeth simply sit wrong, which is what `solveGearChain` exists to fix.
+**What this item got wrong.** It said five of six rows were "flat, so clock
+them directly", reasoning from TODO 124's spread rule: a large spread is a
+pair that does not transmit, a flat one is a phase never solved. The rule is
+sound and it is not enough, because **a flat spread has a third cause the item
+did not consider** — a pair NEITHER of whose members any axis moves reads flat
+because nothing happens, not because its teeth are right. `transmits` records
+`aSpin` and `bSpin` for every row, including the ones it declines to judge, and
+those columns were never read. Two of the five turn out to be that case.
 
-Measured on TODO 124's own rows, fixing the sense moved the spread
-42.871 → 0.049 and 37.305 → 0.781 while leaving a CONSTANT 50.00%, and
-only then did the phase solve mean anything. **So the order is: establish
-that the pair transmits, then clock it.**
+This is the `restoring` lesson in another place: *a part no axis MOVES is a
+part an instrument cannot judge*. Shipping a mechanism obliges shipping the
+axis that exercises it, or its rows pass in silence.
 
-**Five of the six are flat** (spread ≤ 0.244) and should take the phase
-solve directly, in the two-stage form TODO 48 and TODO 124 both used
-where a wheel and its pinion are one blank.
+**And a sixth row was never this item's at all.** `alarm setting setting wheel
+⇄ idler 1` was listed here as an unchased contradiction — spread 45.703 while
+`transmits` passed it. Both halves of that were already known: [TODO 117]'s own
+table records `setting wheel → i1` as **driver STILL under the hour while i1
+turned −3.366**, and the reason `transmits` "passes" is that a still driver
+gets a `driver still` verdict filed under *reported*, never under
+*violations* — it cannot speak, so it never disagreed. The cause is in the
+metal and is plain: the idler carries the disc's back-drive term and the
+setting wheel does not —
 
-**The sixth is not, and it should not be clocked before it is
-understood.** `alarm setting setting wheel ⇄ idler 1` carries a spread of
-**45.703**, the largest in the movement — the "does not transmit" class
-by the rule above — and yet `transmits` PASSES it unwaived on both its
-declared inputs, having measured no mismatch on either. Those two
-readings disagree and neither has been chased. Two candidate
-explanations, neither tested: the row transmits on its declared inputs
-but some third axis moves one member alone, or the spread is picking up
-the `alarm setting: disc rim ⇄ idler 1b` contradiction next door
-([TODO 117], whose own row sweeps 36.621 for exactly that reason and
-which shares idler 1's arbor). Resolve that before deciding what the row
-needs.
+```
+alarmSetI1Spin.rotation.z     = -alarmSetRot*(P/I1) + _bd*(DISC/I1)
+alarmSetWheelGroup.rotation.z = -alarmSetRot*ALARM_SET_RATIO
+```
 
-**The two keyless rows carry a second, independent defect** — their
-centre distance is 1.337% beyond the pitch-radius sum their teeth were
-cut for, which is [TODO 125]'s underived `+ 0.1`. A phase solve on a pair
-that does not stand at its centre distance is the case `solveGearChain`
-warns about in its own tripwire ("the phase solve is meaningless if they
-do not mesh"), so 125 is decided FIRST for those two — and the solve will
-refuse them loudly if it is not.
+— so the hour turns one member of a mesh and not the other. That is exactly
+[TODO 117]'s three-law contradiction, whose resolution is undecided, and the
+row's waiver now cites 117. `tools/probe-mesh-transmission.mjs` measures it
+already; nothing new is needed to see it.
+
+**What each remaining row needs, and they do not share an answer:**
+
+- **`alarm setting: idler 2 ⇄ arbor pinion` — clock it.** Verified geared on
+  both declared inputs (−3.700000 under the hour and under the crown, exact to
+  six figures: [TODO 117] fixed the back-drive sign here). It is declared by
+  hand and no `solveGearChain` call covers it; the existing `alarm setting:`
+  solve stops at idler 2 because the arbor pinion is not built yet when that
+  solve runs. Needs a second stage after the pinion exists, reading idler 2's
+  already-fixed phase — the reserve train's two-stage form. Deleting the manual
+  `declareMesh` is part of it: the solve declares every pair it phases, and
+  TODO 124 showed what a second row for the same metal costs.
+
+- **`alarm arrest output cage wheel ⇄ finger pinion` — NOT a clocking job.**
+  It is *already* solved (`solveGearChain('alarm arrest output:', …)`), its
+  ratio measures ok, and it still reads 26.880% off across the net with only
+  0.098 of spread. The solve's own tripwire warns above 2% and boot is silent,
+  so it is right at the ONE pose that tripwire sees and constant-wrong at every
+  pose the movement occupies. **That is TODO 116's signature exactly** — "the
+  error is a CONSTANT, exactly zero at the one pose the tripwire sees". The
+  solve is not overwritten (it aligns `fPin` inside `fpSpin`, and the tick
+  turns the spin group, so they compose), so what is owed is the constant: a
+  phase one of the two laws carries that the build solve never saw. Chase that
+  before touching the solve.
+
+- **`alarm arrest: leg B pinion ⇄ idler pinion` — ship the axis first.**
+  `alarmWind` moves neither member. Nothing can say whether it transmits, so
+  nothing can say whether clocking it would mean anything. Clocking a pair
+  whose relative phase nothing ever changes is harmless and also unverifiable,
+  which is the worst combination to land quietly.
+
+- **The two keyless rows — [TODO 125] decides first.** Their centre distance
+  stands 1.337% beyond the pitch-radius sum their teeth were cut for, and the
+  0.1 absolute miss is over `solveGearChain`'s own 0.05 centre tripwire, so a
+  solve would refuse them aloud rather than quietly mis-clock them. That is the
+  right behaviour and it is also the blocker. `wind spur ⇄ transfer wheel`
+  additionally has no axis that moves it.
+
+**The method, restated so the next reader does not repeat this item's error.**
+Before clocking any pair, read three things, not one:
+
+1. the **spread** — large means it does not transmit, fix that first;
+2. `transmits`' **verdict** on every declared input — `MISMATCH` is a lie,
+   `ok` is a working mesh;
+3. `transmits`' **`aSpin`/`bSpin`** — `0|0` means the row was never exercised
+   and neither instrument is judging it, whatever colour it shows.
 
 Related: [TODO 15] is the original anti-phase idiom, [TODO 48] closed the
-reserve train's instance, [TODO 62] the going train's, [TODO 124] the
-motion works'.
+reserve train's instance, [TODO 62] the going train's, [TODO 116] the
+build-pose-only reading, [TODO 124] the motion works', [TODO 117] the alarm
+setting branch's undecided kinematics.
 
 ## 125. The keyless centre distances carry an underived `+ 0.1`
 

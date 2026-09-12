@@ -8563,26 +8563,45 @@ export const TRANSFER_WAIVERS = {};
 // land without deleting its waiver (§137's rule, and the reason §54's stale
 // waivers gate).
 export const MESH_PHASE_WAIVERS = {
-  // TODO 132 — the six meshes no solveGearChain call covers. They were waived
-  // against TODO 124 while that item was the nearest owner, which it no longer
-  // is: 124's own subject was the MOTION WORKS, and both of its rows are gone
-  // from this table. Its text always called these six "NOT this item", so they
-  // are rehomed rather than left citing a closed number.
+  // TODO 132 — the rows left over when TODO 124 closed. They were waived
+  // against 124 while it was the nearest owner; its own text always called
+  // them "NOT this item", so they were rehomed rather than left citing a
+  // closed number.
   //
-  // What TODO 124 leaves behind for them is a METHOD, and it is worth stating
-  // where the waivers are. That item was two defects wearing one symptom, and
-  // the SPREAD column told them apart: the pair CO-ROTATED (mwArbor lacked
-  // TODO 115's negation) and, underneath, its teeth had never been clocked.
-  // Fixing the sense alone moved the spread 42.871 → 0.049 and 37.305 → 0.781
-  // while leaving a CONSTANT 50.00% — so a large spread means "does not
-  // transmit, fix the sense first" and a flat one means "geared, clock it".
-  // Five of the six below are flat and should take the phase solve directly;
-  // `alarm setting setting wheel ⇄ idler 1` is not, and TODO 132 says so.
+  // 132 FIRST SAID ALL FIVE WERE "FLAT, SO CLOCK THEM", AND THAT WAS WRONG.
+  // The spread column separates "does not transmit" from "never solved", but a
+  // flat spread has a THIRD cause the item did not consider: a pair NEITHER of
+  // whose members any axis moves reads flat because nothing happens, not
+  // because the phase is right. `transmits`' own aSpin/bSpin columns tell the
+  // two apart and were never read. Measured per declared input (0 | 0 is both
+  // members still):
+  //
+  //   idler 2 ⇄ arbor pinion            train ok, alarm ok      → transmits
+  //   cage wheel ⇄ finger pinion        alarmWind ok            → transmits
+  //   keyless setting wheel ⇄ minute w. crown 0|0, handSet ok   → transmits once
+  //   leg B pinion ⇄ idler pinion       alarmWind 0|0           → never exercised
+  //   wind spur ⇄ transfer wheel        crown 0|0, wind 0|0     → never exercised
+  //
+  // So the item's rule stands but its triage did not: only two rows are
+  // verified geared on every input they declare, two are unjudgeable until an
+  // axis exercises them (the `restoring` lesson — a part no axis MOVES is a
+  // part an instrument cannot judge), and the two keyless rows are blocked on
+  // TODO 125 regardless, since their 0.1 centre miss exceeds solveGearChain's
+  // own 0.05 tripwire and it would refuse them aloud.
   'keyless: setting wheel ⇄ minute wheel': 'TODO 132',
   'keyless: wind spur ⇄ transfer wheel': 'TODO 132',
-  'alarm setting setting wheel ⇄ idler 1': 'TODO 132',
+  // NOT flat and NOT 132's: measured driver-still under the HOUR (0 against the
+  // idler's -3.366) — the setting wheel has no back-drive term while the idler
+  // it meshes carries `_bd`. That is TODO 117's second open row, already in its
+  // table, and 132 was wrong to call it unchased.
+  'alarm setting setting wheel ⇄ idler 1': 'TODO 117',
   'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 132',
   'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 132',
+  // Solved by solveGearChain already (`alarm arrest output:`), transmitting at
+  // its ratio, and still 26.880% off over the net against 0.098 of spread: the
+  // build tripwire sees one pose and reads zero there. TODO 116's signature, a
+  // constant the tick introduces after the solve — a different defect from the
+  // other four and NOT closed by clocking.
   'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 132',
   // TODO 117, not 124, and the SPREAD is what says so: this row reads 0.11% at
   // the build pose and 36.68% over the net. A residual that MOVES is not a
