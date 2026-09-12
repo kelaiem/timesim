@@ -55,7 +55,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
-| 132 | OPEN | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` is ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature, a constant the tick carries that the build tripwire cannot see at the one pose it reads, and NOT closed by clocking; `leg B pinion ⇄ idler pinion` reads 0|0 on its only axis, so nothing can judge it until an axis exercises it (the `restoring` lesson); and both keyless rows are blocked on [TODO 125] — their 0.1 centre miss is over solveGearChain's own 0.05 tripwire, which would refuse them aloud. A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
+| 132 | OPEN | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; `leg B pinion ⇄ idler pinion` reads 0|0 on its only axis, so nothing can judge it until an axis exercises it (the `restoring` lesson); and both keyless rows are blocked on [TODO 125] — their 0.1 centre miss is over solveGearChain's own 0.05 tripwire, which would refuse them aloud. A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
@@ -15737,7 +15737,7 @@ correction lives here, in the body. Same rule, same reason, as [TODO 124].
 | ~~`alarm setting: idler 2 ⇄ arbor pinion`~~ | ~~43.107%~~ → **0.057%** | 0.049 | train ok, alarm ok | **never solved — CLOCKED, waiver gone** |
 | `keyless: wind spur ⇄ transfer wheel` | 34.345% | 0.244 | crown 0\|0, wind 0\|0 | never exercised; centre 1.337% ([TODO 125]) |
 | `alarm arrest: leg B pinion ⇄ idler pinion` | 34.334% | 0.049 | alarmWind 0\|0 | **never exercised** — unjudgeable |
-| `alarm arrest output cage wheel ⇄ finger pinion` | 26.880% | 0.098 | alarmWind ok | **already solved** — see below |
+| ~~`alarm arrest output cage wheel ⇄ finger pinion`~~ | ~~26.880%~~ → **0.073%** | 0.073 | alarmWind ok | **solved in the wrong FRAME — FIXED, waiver gone** |
 | `keyless: setting wheel ⇄ minute wheel` | 22.222% | 0.000 | crown 0\|0, handSet ok | transmits; centre 1.337% ([TODO 125]) |
 
 `0|0` is `transmits`' own `aSpin|bSpin` pair with both members still.
@@ -15791,17 +15791,36 @@ already; nothing new is needed to see it.
   showed what a second row for the same metal costs) and the waiver went with
   it, named stale by the table's own gate.
 
-- **`alarm arrest output cage wheel ⇄ finger pinion` — NOT a clocking job.**
-  It is *already* solved (`solveGearChain('alarm arrest output:', …)`), its
-  ratio measures ok, and it still reads 26.880% off across the net with only
-  0.098 of spread. The solve's own tripwire warns above 2% and boot is silent,
-  so it is right at the ONE pose that tripwire sees and constant-wrong at every
-  pose the movement occupies. **That is TODO 116's signature exactly** — "the
-  error is a CONSTANT, exactly zero at the one pose the tripwire sees". The
-  solve is not overwritten (it aligns `fPin` inside `fpSpin`, and the tick
-  turns the spin group, so they compose), so what is owed is the constant: a
-  phase one of the two laws carries that the build solve never saw. Chase that
-  before touching the solve.
+- **`alarm arrest output cage wheel ⇄ finger pinion` — DONE, and it was not a
+  clocking job.** It was *already* solved
+  (`solveGearChain('alarm arrest output:', …)`), its ratio measured ok, and it
+  still read 26.880% off across the net with only 0.098 of spread — right at
+  the ONE pose the solve's own 2% tripwire sees and constant-wrong at every
+  pose the movement occupies, which is why boot was silent. **TODO 116's
+  signature exactly**: "the error is a CONSTANT, exactly zero at the one pose
+  the tripwire sees."
+
+  **The solve was being taken in a frame the movement never occupies.**
+  `fpSpin` carries BOTH members of that arbor — the Geneva finger and the
+  output pinion — and the tick writes it `phi + ARREST_FINGER_CLOCK`, the
+  assembly registration that points the pin at the cross's stud. So the arbor
+  sits at `ARREST_FINGER_CLOCK` when the driver angle is zero and is never at
+  plain zero, which is where the solve ran. It phased the pinion for a frame
+  the tick then carried a whole clock away.
+
+  The clocking itself was right and is untouched: the pinion's phase belongs to
+  its MESH and the finger's to the CROSS, one arbor satisfying both only
+  because they are clocked against each other, and the pin's world position is
+  read off `arrestFingerSpin.rotation.z` downstream, so the finger's angle has
+  to stay on that group. Only WHERE the solve was taken from was wrong. The
+  arbor is put in its assembled pose before the solve now — `alignGear`
+  calibrates its own local→world slope, so a rotated parent needs no special
+  handling — and the row reads **0.073%**, boot still silent, the waiver
+  deleted by the table's own stale gate.
+
+  Worth carrying: the lesson generalises past this row. **A phase solve taken
+  at a pose the mechanism never occupies is a solve for nothing**, and its own
+  tripwire cannot see that, because the tripwire runs at exactly that pose.
 
 - **`alarm arrest: leg B pinion ⇄ idler pinion` — ship the axis first.**
   `alarmWind` moves neither member. Nothing can say whether it transmits, so
