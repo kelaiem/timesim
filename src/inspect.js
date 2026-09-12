@@ -8563,19 +8563,27 @@ export const TRANSFER_WAIVERS = {};
 // land without deleting its waiver (§137's rule, and the reason §54's stale
 // waivers gate).
 export const MESH_PHASE_WAIVERS = {
-  // TODO 124 — the eight meshes no solveGearChain call covers. The motion
-  // works pair reads exactly 50.00%: a half pitch, tooth meeting tooth on the
-  // line of centres, which is the worst value the measure can take and the
-  // precise defect TODO 15 was filed for. That it is the movement's 12:1 —
-  // standing rule 2's own worked example — is why this is filed loudly.
-  'motion works: cannon pinion ⇄ minute wheel': 'TODO 124',
-  'motion works: minute pinion ⇄ hour wheel': 'TODO 124',
-  'keyless: setting wheel ⇄ minute wheel': 'TODO 124',
-  'keyless: wind spur ⇄ transfer wheel': 'TODO 124',
-  'alarm setting setting wheel ⇄ idler 1': 'TODO 124',
-  'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 124',
-  'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 124',
-  'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 124',
+  // TODO 132 — the six meshes no solveGearChain call covers. They were waived
+  // against TODO 124 while that item was the nearest owner, which it no longer
+  // is: 124's own subject was the MOTION WORKS, and both of its rows are gone
+  // from this table. Its text always called these six "NOT this item", so they
+  // are rehomed rather than left citing a closed number.
+  //
+  // What TODO 124 leaves behind for them is a METHOD, and it is worth stating
+  // where the waivers are. That item was two defects wearing one symptom, and
+  // the SPREAD column told them apart: the pair CO-ROTATED (mwArbor lacked
+  // TODO 115's negation) and, underneath, its teeth had never been clocked.
+  // Fixing the sense alone moved the spread 42.871 → 0.049 and 37.305 → 0.781
+  // while leaving a CONSTANT 50.00% — so a large spread means "does not
+  // transmit, fix the sense first" and a flat one means "geared, clock it".
+  // Five of the six below are flat and should take the phase solve directly;
+  // `alarm setting setting wheel ⇄ idler 1` is not, and TODO 132 says so.
+  'keyless: setting wheel ⇄ minute wheel': 'TODO 132',
+  'keyless: wind spur ⇄ transfer wheel': 'TODO 132',
+  'alarm setting setting wheel ⇄ idler 1': 'TODO 132',
+  'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 132',
+  'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 132',
+  'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 132',
   // TODO 117, not 124, and the SPREAD is what says so: this row reads 0.11% at
   // the build pose and 36.68% over the net. A residual that MOVES is not a
   // mis-set phase — frac(uP + uQ) is invariant while a pair genuinely
@@ -8647,7 +8655,7 @@ export function checkMeshPhase(clock) {
       offPct: +(worst.off * 100).toFixed(3), poseIndex: worst.poseIndex,
       // The SPREAD across the net separates two different defects that read
       // alike at one pose. A residual that is CONSTANT is a phase never
-      // solved — the pair is geared, its teeth just sit wrong (TODO 124). One
+      // solved — the pair is geared, its teeth just sit wrong (TODO 132). One
       // that SWEEPS is a pair that does not transmit at all: frac(uP + uQ) is
       // invariant only while both members turn at the ratio the metal says, so
       // a moving residual means the two angles are written independently
@@ -8822,19 +8830,15 @@ export const TRANSMITS_WAIVERS = {
   // has no mismatch on either declared input, so a waiver for it would be
   // stale on arrival — and this table's own gate says so.)
   'alarm setting: disc rim ⇄ idler 1b': 'TODO 117',
-  // TODO 124 — THE MOTION WORKS DOES NOT TRANSMIT. Both rows read the right
-  // ratio MAGNITUDE with the sign inverted: the members co-rotate where an
-  // external mesh must counter-rotate. Three things rule out the obvious
-  // explanations, which is why this is filed as a mechanism defect and not as
-  // a measurement artefact — the reading CONVERGED under span halving (so it
-  // is not aliasing), both members report the SAME frame handedness (so it is
-  // not the dialFace mirror), and the magnitude is exact to six figures (so
-  // the counts are right and only the causality is missing). The angles are
-  // computed from the ratio instead of arriving through the teeth, which is
-  // the shortcut standing rule 2 exists to forbid — "the hour hand is not
-  // minuteA / 12" — sitting in the movement's headline 12:1.
-  'motion works: cannon pinion ⇄ minute wheel': 'TODO 124',
-  'motion works: minute pinion ⇄ hour wheel': 'TODO 124',
+  // The two motion-works rows were waived here against TODO 124 and are GONE,
+  // because the item's transmission half is closed: `mwArbor` was the one
+  // dialFace child keyed to a going-train quantity without TODO 115's
+  // negation, so the pair co-rotated. With the negation it was owed, both rows
+  // read their signed tooth-count bar exactly (−0.333333, −0.250000) and this
+  // table's own stale-waiver gate named them for deletion, which is the rule
+  // working as designed. The item stays OPEN on its PHASE half — see
+  // MESH_PHASE_WAIVERS above, where the two rows remain over the bar for a
+  // different reason.
 };
 const TRANSMITS_TOL = 0.02;        // 2% of the expected ratio
 const TRANSMITS_STILL = 1e-6;      // below this a driver has not moved

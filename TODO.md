@@ -32,6 +32,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 119 | CLOSED (same landing) | `handsGroupZOffset` carried 0.82 u of dead air: §188's binder (≥ 2.402) and item 118's correction (≥ 2.002) both held apart planes that never radially meet — the real governing pair is alarm blade top ↔ hour blade keel, and the offset now derives at 1.778 from it (owner-directed respend, 0.31 mm off the cased depth); §125's lane assert rewritten two-sided with a measured radial guard |
 | 120 | OPEN | The central hand collets are display fictions: the hour boss is solid at r ≤ 1.26 against a tube spanning r 2.05..2.50 (inside its own arbor's bore), the minute boss is solid over the cannon pinion, and both blades detach radially from their own bosses (roots at r 5.5/7.9 vs rims at 1.26/1.25) — each hand turns by parenting, not by any surface. Fix: bore the bosses to their arbors, bridge blade roots to bosses, declare the joints |
 | 121 | PART DONE | The strike tier's stale self-descriptions, found by §191/§192's audit. FIXED: the §163 skirt assert read a plane 0.30 above the real underside AND omitted the §169 pawl coil from its band need — 1.14 of phantom headroom against a real 0.000, blind to exactly the downward re-station §192 prices (both sides now read the raise solve's own inventory, sitting at equality); the λ "= 30" comment vs the code's SLENDER_TARGET 27; EXPECTED_PAIRS' claim of a Stop lever ⇄ plate budget row that did not exist (the row exists now). OPEN: main.js's `TQ_TOP_Z + 2.5` strike-band literal understates the built tier by ~2.4 (real ceiling Δ4.89, probe-192-tier-price) — re-authoring it can move the solved link-rod site, so it is priced in §192 rather than patched; and BUILT.md §183's arm/chamfer table disagrees with main.js's §183 comment (3.1400/0.3047 vs ~3.62/0.3516) — annotated in both places, the live derivation is the authority |
+| 124 | CLOSED | Reported by eye through §220's sapphire dial, and TWO defects wearing one symptom — the movement's headline 12:1, standing rule 2's own worked example. First, the pair CO-ROTATED: `mwArbor` was the only one of the movement's six dial-side rotation writes without TODO 115's negation, sitting between two members (`cannonPinion`, `hourWheelGroup`) that both carry it, so the minute wheel turned WITH the cannon pinion driving it (+0.333333 against a bar of −0.333333). The item's first diagnosis — "the angles are computed from the ratio rather than arriving through the teeth" — was WRONG and is retracted in place: `MW_RATIO_1/2` are already SIGNED tooth-count quotients, so 12:1 always arrived through the counts and the sign was dropped after it arrived. Second, underneath that, the teeth had never been CLOCKED — no `solveGearChain` call covered the chain — and fixing the sense alone left a CONSTANT 50.00% of a pitch, tooth on tooth at every pose rather than at the worst of them. The spread column is what tells the two apart (42.871 → 0.049, 37.305 → 0.781: a residual sweeps only while a pair does not transmit), and it is why the ORDER is the transferable part — clocking a pair that does not transmit is true at the build pose and false everywhere else. Solved in TODO 48's two-stage form with a new `mwPair` rigid group; `minuteStar` stays OUTSIDE it (clocked to the jumper, not the mesh — beak reads u = 0.500000 at all 13 detents sampled) and stage two turns `mwHourWheel`, never `hourWheelGroup` (which carries the hand, tube and alarm heart). Measured 50.00% → **0.049%** and **0.781%** against a 2% bar; both `MESH_PHASE_WAIVERS` and both `TRANSMITS_WAIVERS` entries deleted by their own stale gates. Gated by `probe-124-motionworks-sense.mjs`. Residue rehomed to [TODO 132] |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
 | 109 | OPEN — ALL THREE STEPS DONE, THE WORK IS NOW POSITION-SPACE | §54's seven UNWAIVED λ rows, split out of CLOSED TODO 78. Every step the item prescribed is done and the first two refuted their own premise. Step 1: declaring the bearings that exist retired nothing and reddened two (the §29 tail run 35.1 → **85.1**; the alarm stem's **76.6** landed once TODO 110 was fixed). Step 2: sections priced AND measured against the corridor — six of seven bars SHORT, the seventh refused by `ROD_R` itself. Step 3: all seven waived as TRIAGED debt, each entry carrying its growth, its wall and its spare rather than a bare item number. **§202**: the pusher stem's row (λ 38.1, the item's unwaived "next customer") is RETIRED — its abutment and guide bores declared and the case's Ø1.2 mm bore given a liner, three stations, worst λₑ 15; the alarm stem's crown-end overhang is held by a tube liner (λₑ 53.5 → 26.0) while its inboard 25.5 u overhang stays at 76.6 and is now MEASURED as no bearing's to fix — the pinion sweeps x 15.8–22.5 and the collars 22.8–33.6 under the 5 u throw, so no fixed bore fits inboard of x ≈ 34; a corner re-layout, not a bush. The report reads 8 over ceiling, **0 unwaived, 0 stale**. What remains is position-space, per row, walls named |
 | 110 | PART DONE | `resetInputs()` assigns the eased state's VARIABLES while the scene follows only on a later tick, and `start()` runs its check in the same microtask — so a check that READ the live scene measured its predecessor's pose. Enumerated by measurement (`tools/probe-110-order.mjs`, one `page.evaluate` because rAF frames between evaluates relax the ease and hide it): **1 of 17 order-dependent, `slenderness`**; nine sweeps named as skipped rather than counted clean. **This item's own preferred fix was landed and REFUTED**: a zero-dt tick in `resetInputs` closed the defect and then failed the battery 35/36 — `enterAxis` IS `resetInputs`, so it moved every sweep's entry pose (`axisEntry`) and the geometry fingerprint (790912477 → 998722455). Reverting one line restored both. Landed instead: candidate (3), `checkSlenderness` posing itself with `setPose({})`. Residue, all measured or named: the invariant stays narrower than CLAUDE.md words it; `resetInputs` resets NO part of the going crown (`crownPullT`/`crownOut`/`leverEngage`/`tauIntegrated` — 0 assignments), and the probe's dirtier does not move them, so that measurement is still owed; the nine sweeps are unmeasured |
@@ -54,6 +55,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
+| 132 | OPEN | TODO 124's residue: six meshes over `meshPhase`'s 2% bar with no `solveGearChain` call of their own, waived against this number now that 124's own subject is fixed. Five are FLAT (spread ≤ 0.244) and should take the phase solve directly. The sixth, `alarm setting setting wheel ⇄ idler 1`, must not be clocked before it is understood: its spread is 45.703 — the movement's largest, the "does not transmit" class — yet `transmits` PASSES it unwaived on both declared inputs, and those readings have never been reconciled. The two keyless rows also carry [TODO 125]'s 1.337% centre-distance error, which decides first — a phase solve on a pair that does not stand at its centre distance is what `solveGearChain`'s own tripwire refuses |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
@@ -15509,12 +15511,12 @@ sweep also flags open display shells — subdial faces — where the number
 is not meaningful; the check's `INVERTED_VOL_FRAC` classifier already
 keeps those out of the gated population.)
 
-## 124. The motion works does not transmit — the movement's 12:1 is arithmetic, not gearing
+## 124. The motion works does not transmit — the movement's 12:1 is arithmetic, not gearing — CLOSED
 
 Found by §194's `transmits` gate on its first run, and it is standing
 rule 2's own worked example failing that rule. The rule states it in
 these words: *"The hour hand is not `minuteA / 12`; it arrives at 12:1
-because the tooth counts multiply to it."* Measured, it does not.
+because the tooth counts multiply to it."*
 
 **The measurement.** Both motion-works meshes turn their neighbour by the
 right ratio MAGNITUDE, to six figures, with the sign INVERTED:
@@ -15524,10 +15526,10 @@ right ratio MAGNITUDE, to six figures, with the sign INVERTED:
 | cannon pinion ⇄ minute wheel | **+0.333333** | −0.333333 |
 | minute pinion ⇄ hour wheel | **+0.250000** | −0.250000 |
 
-An external mesh counter-rotates. These co-rotate. The counts are right —
-10/30 × 8/32 is 12:1, and the magnitudes prove the arithmetic is being
-done — so what is missing is the causality: the angles are computed from
-the ratio rather than arriving through the teeth.
+An external mesh counter-rotates. These co-rotate — tooth tip meeting
+tooth tip on the line of centres rather than tooth entering gap, which is
+what `meshPhase` reads from the other side as **50.00% of a pitch**, the
+worst value that measure can take.
 
 **Three explanations are ruled out by measurement, not by argument**, and
 each of them produced this exact symptom during §194's development:
@@ -15542,21 +15544,150 @@ each of them produced this exact symptom during §194's development:
   the SAME frame handedness, measured off the basis determinant.
 - *Wrong tooth counts.* Excluded: the magnitude is exact.
 
+**THE HEADING ABOVE IS THE FIRST DIAGNOSIS, AND ITS SECOND CLAUSE IS
+RETRACTED BELOW.** It is left in place because an item number is a
+permanent ID and its title is part of that identity — `check-item-numbers.mjs`
+refuses a retitle under a live number, allowing only a trailing status
+marker, because it cannot tell a correction from a stolen number. So the
+correction lives here, in the body, rather than in the heading.
+
+**THE FIRST DIAGNOSIS WAS WRONG, and it is left standing here because the
+refutation is the useful part.** This item originally concluded that "the
+angles are computed from the ratio rather than arriving through the
+teeth" — that the causality was missing. It is not. `MW_RATIO_1` and
+`MW_RATIO_2` are ALREADY signed tooth-count quotients
+(`-(cannonPinionTeeth / MW_MINUTE_TEETH)`, `src/main.js:1687-1688`), so
+the ratio carries the minus sign and **cannot** produce a positive
+reading. The angles do arrive through the counts; the SIGN is lost after
+they arrive.
+
+**Where it is lost.** The exclusion of the mirror above is sound — all
+three members really are in the one `dialFace` frame — but the defect is
+the frame SEAM, not the mirror. `cannonPinion`, `motionWorks` (hence
+`mwArbor`) and `hourWheelGroup` are all `dialFace` children, and of the
+movement's six dial-side rotation writes `mwArbor` is the ONLY one
+missing TODO 115's negation, sitting between two members that both carry
+it:
+
+| write | negated |
+|---|---|
+| `minuteHand.rotation.z = -minuteA` | yes |
+| `cannonPinion.rotation.z = -minuteA` | yes |
+| **`mwArbor.rotation.z = mwMinuteA`** | **no** |
+| `hourWheelGroup.rotation.z = -mwHourA` | yes |
+| `smallSecondsHand.rotation.z = -(fourthA - …)` | yes |
+| `reserveHand.rotation.z = -rsvArbor2.rotation.z` | yes |
+
+So this is TODO 129's class — an incomplete enumeration of dial-side
+parts keyed to a going-train quantity — and not a missing-causality one.
+That matters for the fix: deriving the minute wheel's angle "through the
+mesh", as this item first proposed, would have rebuilt machinery that was
+already correct and left the sign exactly where it was.
+
+**Measured, not argued.** `tools/probe-124-motionworks-sense.mjs`
+accumulates the world azimuth of each part's own material +X across a tau
+sweep — frame-free, so the Y-flip cannot touch the reading — and runs the
+counterfactual: with `mwArbor.rotation.z` negated in place, both rows
+land on their bars exactly (−0.333333, −0.250000). One negation, both
+meshes. Its controls are the going train's Third ⇄ Fourth (must-hit,
+−8.000000) and the same pair with a negation injected (must-miss,
++8.000000), so a run that measured nothing cannot report clean.
+
 **Why nothing caught it before.** No `solveGearChain` call ever covered
 this chain — it is the one gear train in the movement with no phase solve
 of its own — and the battery's sweeps structurally cannot see it, because
-two wheels whose angles are written independently sweep exactly the same
-volumes as two that are geared. §194's `meshPhase` reads the same rows at
-a spread of 42.9 and 37.3 percentage points across the pose net, which is
-the same defect seen from the other side: `frac(uP + uQ)` is invariant
-only while a pair genuinely transmits.
+two wheels whose angles are written with the wrong relative sign sweep
+exactly the same volumes as two that are geared. §194's `meshPhase` reads
+the same rows at a spread of 42.9 and 37.3 percentage points across the
+pose net, which is the same defect seen from the other side:
+`frac(uP + uQ)` is invariant only while a pair genuinely transmits.
 
-**The fix** is the one standing rule 2 names: derive the minute wheel's
-angle from the cannon pinion through the mesh, and the hour wheel's from
-the minute pinion, so 12:1 is a consequence of the counts rather than a
-coefficient. Both rows are waived in `TRANSMITS_WAIVERS` and
-`MESH_PHASE_WAIVERS` citing this item; the waivers are gated stale, so
-deleting them is structurally part of the fix.
+**THE TRANSMISSION HALF IS CLOSED; THE PHASE HALF IS NOT, AND THAT IS
+WHAT THIS ITEM NOW TRACKS.** The fix was the negation `mwArbor` was owed,
+plus the one consequence it carries: `minuteStar` is a child of `mwArbor`
+(`src/main.js:12152`), so the jumper's `starTurn` reads the arbor's own
+rotation rather than a second copy of the sign — one source, the rule
+that keeps working. `mwHourA` was left alone: it is a movement-frame
+quantity derived by ratio, and only the dial-side WRITE was ever wrong.
+
+Measured after the fix, both rows read their signed tooth-count bar
+exactly (−0.333333, −0.250000) and `transmits` named its own two waivers
+stale, so they are deleted — the gate's stale rule working as designed.
+
+**What is left is a different defect wearing the same symptom**, and the
+spread column is what tells them apart. `meshPhase`'s spread collapsed
+**42.871 → 0.049** and **37.305 → 0.781**, because `frac(uP + uQ)` is
+invariant only while a pair genuinely transmits — so the pair now
+transmits. But the residual is a CONSTANT **50.00%** of a pitch: tooth
+meeting tooth on the line of centres at EVERY pose, where before the fix
+it swept and only touched 50% at the worst of them. By this item's own
+rule (`spread ≈ 0` is a phase never solved), what remains is the build
+clocking: the motion works is still the one gear train in the movement
+with no `solveGearChain` call of its own, which is the sentence under
+"Why nothing caught it before" that was always the other half of this.
+
+So the two `MESH_PHASE_WAIVERS` entries STAY, re-cited in place against
+what they now describe, and closing this item means CLOCKING THE BUILD —
+solving the two wheels' tooth-interleaving phase so the teeth enter gaps
+— not re-checking the sense. `tools/probe-124-motionworks-sense.mjs`
+gates the half that is done and will not move when the other half lands.
+
+**CLOSED, in two landings, because it was two defects wearing one
+symptom.** The sense fix above left a CONSTANT 50.00% — tooth on tooth at
+every pose rather than at the worst of them — and the second landing
+clocked the build, which is the fix the residual was actually asking for
+once the pair transmitted. `solveGearChain` now covers the motion works,
+in the two-stage form TODO 48 established for the reserve train:
+
+- **stage one**, `MW_MODULE_1`: the cannon pinion is the datum (friction
+  fit on the centre arbor, no upstream mesh to answer to) and `mwPair` —
+  a new rigid group holding the minute wheel and its pinion, which are
+  one blank — aligns as one knob, gauged by the minute wheel. Both
+  modules are 0.3, so the wheel's 4.5 pitch radius owns the pair's
+  combined silhouette against the pinion's 1.2; the §153 gauge-ownership
+  failure is avoided by arithmetic rather than by luck.
+- **stage two**, `MW_MODULE_2`: the minute pinion's phase is READ, since
+  stage one fixed it, and the hour wheel aligns to it.
+
+**Two things the clocking had to not disturb**, both structural rather
+than incidental:
+
+- `minuteStar` stays on `mwArbor`, OUTSIDE `mwPair`. The star is a
+  separate component on the same arbor and its index is clocked to the
+  JUMPER, not to either mesh; inside the pair, the tooth solve would have
+  rotated the detent pattern out from under the beak. Measured after:
+  the beak reads u = 0.500000 — a valley — at all 13 minute detents
+  sampled, with `mwArbor` at an exact integer multiple of `STAR_PITCH`
+  (111…123), and a half-pitch injection reads a POINT, so the check can
+  tell the two apart.
+- stage two turns `mwHourWheel`, never `hourWheelGroup`. That group also
+  carries the hour HAND, the tube and the alarm release HEART, all
+  clocked to the hour the watch shows; turning it would have clocked the
+  teeth by silently re-setting the time and mis-timing the alarm. Turning
+  the wheel inside it is what a watchmaker does — the hand is pressed
+  onto the tube at whatever index reads 12:00, so the wheel's teeth are
+  free.
+
+**Measured, both rows, over the pose net**: 50.00% → **0.049%** and
+**0.781%**, against a 2% bar. The two `MESH_PHASE_WAIVERS` entries are
+deleted, boot is silent (the solver's own anti-phase and centre-distance
+tripwires do not fire), and the two rows are no longer declared by hand —
+`solveGearChain` declares every pair it phases, so the manual
+`declareMesh` calls would have been a second row for the same metal. The
+registry still reads 23 rows and `meshCoverage` still enumerates 21 of
+them.
+
+**The order mattered and is the transferable part.** Clocking a pair that
+does not transmit is meaningless: the solve would be true at the build
+pose and false everywhere else, which is the exact failure
+`solveGearChain`'s own comment describes. The spread column is what says
+which case a row is in — and that is the method [TODO 132] inherits along
+with this item's six orphaned rows.
+
+**The six rows this item hosted are now [TODO 132]**, which carries the
+table, the spread method and the unresolved contradiction on
+`alarm setting setting wheel ⇄ idler 1`. The original wording follows, as
+the record of why they were parked here.
 
 **Five more meshes are off anti-phase and are NOT this item** — they are
 geared and merely mis-phased, which the spread tells apart from this
@@ -15566,6 +15697,81 @@ owner, and each should be re-read against its own cause when it is taken
 up: the two keyless rows, `alarm setting: idler 2 ⇄ arbor pinion`,
 `alarm arrest: leg B pinion ⇄ idler pinion`, and `alarm arrest output:
 cage wheel ⇄ finger pinion`.
+
+**A sixth row is waived against this item that this item does not
+describe**, and it should not be adopted without its own reading:
+`alarm setting setting wheel ⇄ idler 1`. It is absent from the five
+above, its spread is **45.703** — the largest in the movement, which by
+the rule just stated puts it in the "does not transmit" class rather than
+the mis-phased one — and yet `transmits` passes it unwaived on both its
+declared inputs. Those two readings disagree, and neither has been
+chased. Filed here rather than silently re-labelled.
+
+## 132. Six meshes are mis-phased with no `solveGearChain` call of their own
+
+The residue of TODO 124, rehomed when that item closed. These six rows are
+over `meshPhase`'s 2% anti-phase bar and are waived in
+`MESH_PHASE_WAIVERS` citing this item:
+
+| row | worst | spread | also |
+|---|---|---|---|
+| `alarm setting setting wheel ⇄ idler 1` | 48.203% | **45.703** | — |
+| `alarm setting: idler 2 ⇄ arbor pinion` | 43.107% | 0.098 | — |
+| `keyless: wind spur ⇄ transfer wheel` | 34.345% | 0.244 | centre 1.337% ([TODO 125]) |
+| `alarm arrest: leg B pinion ⇄ idler pinion` | 34.334% | 0.049 | — |
+| `alarm arrest output cage wheel ⇄ finger pinion` | 26.880% | 0.098 | — |
+| `keyless: setting wheel ⇄ minute wheel` | 22.222% | 0.000 | centre 1.337% ([TODO 125]) |
+
+They were parked on TODO 124 as the nearest owner while that item was
+open; its own text always called them "NOT this item", and its subject —
+the motion works — is fixed, so leaving them citing a closed number would
+have been a dangling waiver.
+
+**What TODO 124 leaves them is a method, not just a number.** That item
+turned out to be TWO defects wearing one symptom, and the SPREAD column
+is what tells them apart:
+
+- **a large spread is a pair that does not transmit.** `frac(uP + uQ)` is
+  invariant only while both members turn at the ratio the metal says, so
+  a residual that SWEEPS means the two angles are written independently.
+  Clocking such a pair is meaningless — the solve is true at the build
+  pose and false everywhere else.
+- **a flat spread is a phase never solved.** The pair is geared and its
+  teeth simply sit wrong, which is what `solveGearChain` exists to fix.
+
+Measured on TODO 124's own rows, fixing the sense moved the spread
+42.871 → 0.049 and 37.305 → 0.781 while leaving a CONSTANT 50.00%, and
+only then did the phase solve mean anything. **So the order is: establish
+that the pair transmits, then clock it.**
+
+**Five of the six are flat** (spread ≤ 0.244) and should take the phase
+solve directly, in the two-stage form TODO 48 and TODO 124 both used
+where a wheel and its pinion are one blank.
+
+**The sixth is not, and it should not be clocked before it is
+understood.** `alarm setting setting wheel ⇄ idler 1` carries a spread of
+**45.703**, the largest in the movement — the "does not transmit" class
+by the rule above — and yet `transmits` PASSES it unwaived on both its
+declared inputs, having measured no mismatch on either. Those two
+readings disagree and neither has been chased. Two candidate
+explanations, neither tested: the row transmits on its declared inputs
+but some third axis moves one member alone, or the spread is picking up
+the `alarm setting: disc rim ⇄ idler 1b` contradiction next door
+([TODO 117], whose own row sweeps 36.621 for exactly that reason and
+which shares idler 1's arbor). Resolve that before deciding what the row
+needs.
+
+**The two keyless rows carry a second, independent defect** — their
+centre distance is 1.337% beyond the pitch-radius sum their teeth were
+cut for, which is [TODO 125]'s underived `+ 0.1`. A phase solve on a pair
+that does not stand at its centre distance is the case `solveGearChain`
+warns about in its own tripwire ("the phase solve is meaningless if they
+do not mesh"), so 125 is decided FIRST for those two — and the solve will
+refuse them loudly if it is not.
+
+Related: [TODO 15] is the original anti-phase idiom, [TODO 48] closed the
+reserve train's instance, [TODO 62] the going train's, [TODO 124] the
+motion works'.
 
 ## 125. The keyless centre distances carry an underived `+ 0.1`
 

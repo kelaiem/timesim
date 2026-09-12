@@ -12021,7 +12021,21 @@ const mwMinutePinion = G.makePinion({ name: 'mwMinutePinion',
 });
 mwMinutePinion.traverse((o) => { if (o.isMesh) o.name = 'mwMinutePinion'; }); // TODO 6 contact-floor selector
 mwMinutePinion.position.z = MW_Z2;
-mwArbor.add(mwMinuteWheel, mwMinutePinion);
+// TODO 124 — THE WHEEL AND ITS PINION ARE ONE BLANK, so their relative phase
+// is a constraint, not a freedom, and the pair group is the structural form of
+// that constraint (rsvPair1's precedent). The phase solve below turns this
+// group as one knob, gauged by the minute wheel: module is 0.3 on both sides,
+// so the wheel's pitch radius is 4.5 against the pinion's 1.2 and the
+// combined silhouette is unambiguously the wheel's.
+//
+// `minuteStar` is deliberately NOT in here — it is added to `mwArbor` itself
+// further down. The star is a separate component pressed onto the same arbor,
+// and its index is clocked to the JUMPER (the beak must seat in a valley at
+// every minute detent), not to either mesh. Putting it inside the pair would
+// let the tooth solve rotate the detent pattern out from under the beak.
+const mwPair = new THREE.Group();
+mwPair.add(mwMinuteWheel, mwMinutePinion);
+mwArbor.add(mwPair);
 motionWorks.add(mwArbor);
 // The stud itself, riveted into the plate's dial-side face. Its length is
 // SOLVED so it actually reaches the plate rather than stopping in mid-air:
@@ -12048,13 +12062,19 @@ const mwHourWheel = G.makeGear({ name: 'mwHourWheel',
   module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH], thickness: 0.8,
   boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
 });
-// §194 — the MOTION WORKS, the movement's 12:1, and the one chain with no
-// phase solve of its own: solveGearChain never covered it, so before this row
-// nothing anywhere named these two meshes. Standing rule 2's own worked
-// example (the hour hand arrives at 12:1 because 10/30 × 8/32 multiplies to
-// it) had no instrument holding the counts to the ratio they claim.
-declareMesh('motion works: cannon pinion ⇄ minute wheel', { a: 'cannonPinion', b: 'mwMinuteWheel', inputs: ['train', 'handSet'], chain: 'motion works' });
-declareMesh('motion works: minute pinion ⇄ hour wheel', { a: 'mwMinutePinion', b: 'mwHourWheel', inputs: ['train', 'handSet'], chain: 'motion works' });
+// §194 — the MOTION WORKS, the movement's 12:1. It was the one chain with no
+// phase solve of its own, so before §194's rows nothing anywhere named these
+// two meshes and standing rule 2's own worked example (the hour hand arrives
+// at 12:1 because 10/30 × 8/32 multiplies to it) had no instrument holding the
+// counts to the ratio they claim. Both things the rows then measured turned
+// out to be broken — the pair co-rotated and its teeth had never been clocked
+// — which is TODO 124, closed.
+//
+// TODO 124 — these two rows are no longer declared by hand. `solveGearChain`
+// declares every pair it phases ("this pair is a declared mesh by
+// construction"), and the motion works is phase-solved now, so a manual
+// declaration here would be a SECOND row for the same metal. The solve is in
+// the chain-solving IIFE below, beside the reserve train's.
 mwHourWheel.traverse((o) => { if (o.isMesh) o.name = 'mwHourWheel'; }); // TODO 6 contact-floor selector
 mwHourWheel.position.z = MW_Z2;
 hourWheelGroup.add(mwHourWheel);
@@ -14577,6 +14597,43 @@ const solveGearChain = (label, chain, module, inputs = []) => {
     { obj: reservePinion1, teeth: rsvTeethP1, name: 'p1' },
     { obj: rsvWheel2, teeth: rsvTeethW2, name: 'w2' },
   ], rsvModule1, ['wind', 'train']);
+  // TODO 124 — THE MOTION WORKS, the movement's 12:1, and the last chain with
+  // no phase solve of its own. It read a CONSTANT 50.00% of a pitch: tooth
+  // meeting tooth on the line of centres, the worst value the measure can
+  // take, at every pose. That is TODO 15's idiom one more time and it is
+  // solved the same way TODO 48 solved the reserve train — two runs with the
+  // rigid pair held, because this is four wheels and THREE links:
+  //  · stage one, MW_MODULE_1: the cannon pinion is the datum (friction-fit
+  //    on the centre arbor, no upstream mesh to answer to); `mwPair` aligns
+  //    as one knob and the minute pinion rides, GAUGED by the minute wheel —
+  //    both modules are 0.3, so the wheel's 4.5 pitch radius owns the pair's
+  //    combined silhouette against the pinion's 1.2 and the gauge has one
+  //    unambiguous owner (the §153 failure mode, avoided by arithmetic rather
+  //    than by luck);
+  //  · stage two, MW_MODULE_2: the minute pinion's phase is READ — stage one
+  //    fixed it — and the hour WHEEL aligns to it on its own rotation.
+  //
+  // Stage two turns `mwHourWheel`, never `hourWheelGroup`, and that distinction
+  // is load-bearing: the group also carries the hour HAND, the tube and the
+  // alarm release HEART, all of which are clocked to the hour the watch shows,
+  // not to this mesh. Turning the group would clock the teeth by silently
+  // re-setting the time and mis-timing the alarm. Turning the wheel inside it
+  // is what a watchmaker does — the hand is pressed onto the tube at whatever
+  // index reads 12:00, so the wheel's teeth are free.
+  //
+  // This solve is only meaningful because the sense was fixed first: the
+  // arbors' tick() rotations are proper mesh counter-rotations now, so the SUM
+  // invariant it establishes rides every pose. Run it against a co-rotating
+  // pair and it would be true at the build pose and false everywhere else,
+  // which is the exact failure the solver's own comment above describes.
+  solveGearChain('motion works:', [
+    { obj: cannonPinion, teeth: cannonPinionTeeth, name: 'cannon pinion' },
+    { obj: mwPair, gauge: mwMinuteWheel, teeth: MW_MINUTE_TEETH, name: 'minute wheel (+pinion held)' },
+  ], MW_MODULE_1, ['train', 'handSet']);
+  solveGearChain('motion works:', [
+    { obj: mwMinutePinion, teeth: MW_PINION_TEETH, name: 'minute pinion' },
+    { obj: mwHourWheel, teeth: MW_HOUR_TEETH, name: 'hour wheel' },
+  ], MW_MODULE_2, ['train', 'handSet']);
   // TODO 62 — THE GOING TRAIN, which had no phase of any kind: not one
   // rotation.z was ever assigned to its seven gears, so all four meshes
   // were phased by wherever gearOutlineShape happened to put a tooth — at
@@ -37054,14 +37111,30 @@ function tick(t) {
   // hand is a child of hourWheelGroup, so rotating the wheel moves it.
   const mwMinuteA = minuteA * MW_RATIO_1;      // minute wheel + its pinion
   const mwHourA = mwMinuteA * MW_RATIO_2;      // hour wheel (and its tube)
-  mwArbor.rotation.z = mwMinuteA;
+  // TODO 124 — dial-side: carries the NEGATED movement-frame angle, the same
+  // rule as cannonPinion above and hourWheelGroup below. `mwArbor` was the one
+  // dialFace child keyed to a going-train quantity that TODO 115's pass missed,
+  // and it sat between two members that both carry the negation — so the minute
+  // wheel CO-ROTATED with the cannon pinion driving it (measured +0.333333
+  // against a bar of −0.333333, tooth tip on tooth tip: `meshPhase` read the
+  // pair at 50.00% of a pitch, the worst value that measure can take). The
+  // ratios were never the defect: MW_RATIO_1/2 are signed tooth-count
+  // quotients, so 12:1 always arrived through the counts — the sign was being
+  // dropped after it arrived. `mwHourA` above stays unnegated because it is a
+  // MOVEMENT-frame quantity; only the dial-side WRITE was ever wrong.
+  // Gated by tools/probe-124-motionworks-sense.mjs.
+  mwArbor.rotation.z = -mwMinuteA;
   // Minute jumper: the star is a child of mwArbor, so its dial-frame turn
-  // is mwMinuteA plus its build phase; the beak's tip rides the V profile
-  // passing its azimuth, on top of the crown-driven lift (crownPullT is
-  // already eased, so engagement is smooth). While running with the crown
-  // in, the lever holds clear of the points by the derived lift.
+  // is the arbor's own rotation plus its build phase; the beak's tip rides
+  // the V profile passing its azimuth, on top of the crown-driven lift
+  // (crownPullT is already eased, so engagement is smooth). While running
+  // with the crown in, the lever holds clear of the points by the derived lift.
   {
-    const starTurn = minuteStar.rotation.z + mwMinuteA;
+    // ONE SOURCE: read the arbor's own rotation rather than re-deriving it from
+    // mwMinuteA. A second copy of that sign is exactly the defect TODO 115
+    // spent two landings on (`linkOuterPtsNear`'s verbatim frame law), and the
+    // star is a child of mwArbor, so this IS its dial-frame turn by definition.
+    const starTurn = minuteStar.rotation.z + mwArbor.rotation.z;
     let u = ((JMP_TIP_AZ - starTurn) / STAR_PITCH) % 1;
     if (u < 0) u += 1;
     const rU = STAR_R - 2 * STAR_DEPTH * Math.min(u, 1 - u); // V profile: tips at u=0, valley at 0.5

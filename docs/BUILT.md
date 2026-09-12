@@ -20725,6 +20725,27 @@ in the movement's headline 12:1, the one gear train with no phase solve
 of its own. Filed as TODO 124 with the excluded explanations recorded,
 because each of them produced this exact symptom during development.
 
+> **Correction, and TODO 124 is now CLOSED.** The paragraph above is left
+> as §194 wrote it, because the refutation is the useful part. Two of its
+> three exclusions held; its CONCLUSION did not. The causality was never
+> missing: `MW_RATIO_1/2` are already SIGNED tooth-count quotients, so
+> 12:1 always arrived through the counts and the sign was being dropped
+> *after* it arrived — at the `dialFace` seam, where `mwArbor` was the
+> only one of the movement's six dial-side rotation writes lacking
+> TODO 115's negation, sitting between two members that both carry it.
+> The §194 exclusion of the mirror was right (all three members are in
+> that one frame) and simply did not reach the seam.
+>
+> Underneath that sat a SECOND defect with the same symptom: the teeth had
+> never been clocked, this being the last chain `solveGearChain` did not
+> cover. Fixing the sense alone moved `meshPhase`'s spread from 42.871 to
+> 0.049 and 37.305 to 0.781 while leaving a CONSTANT 50.00% of a pitch —
+> which is how the two are told apart, and why the order matters: clocking
+> a pair that does not transmit is true at the build pose and false
+> everywhere else. Solved in TODO 48's two-stage form, both rows now
+> measure 0.049% and 0.781% against a 2% bar, and the six meshes §194's
+> rows also caught are rehomed to TODO 132.
+
 The keyless rows produced TODO 125: six sites in `layout.js` add a bare
 `+ 0.1` to the pitch-radius sum, so two declared meshes stand at 7.58
 where `module·(P+Q)/2` is 7.48. Two independent pairs off by an identical
