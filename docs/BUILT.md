@@ -24372,6 +24372,122 @@ read the same 0 drift and 0 new plate overflow before and after.
   of the panel; a deliberate homograph, noted.
 - **`index.html`'s `<title>` is not localized in any locale** — still true.
 
+## §212 — Hindi — Devanagari above and below the line, and a register that splits
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(700 keys) and `primer.html` (134 keys) read Hindi at 100% in one landing,
+§209's recipe item for item. Thirteen locales now.
+
+**The row is measured, and the measurement is the opposite of what a
+Devanagari locale suggests.** `hi-IN`'s DEFAULT numbering system is LATIN
+(Chromium 141: `30.0` · `0.024` · `1,000` · `18,000` · `36,000`), so
+`MARKS.hi` is English's row, not a digit pin like Arabic's `-u-nu-latn`.
+Devanagari digits (`१८,०००`) appear only under an explicit `-u-nu-deva`,
+which no row asks for. The grouping IS Indian — `1,00,000`, three then twos
+— and diverges from English only at six digits; the chrome's largest figure
+is 36,000, five digits, so the lakh grouping never shows today, and the
+checker strips group marks before parsing, so such a quantity would still
+read as 100000 if one ever landed. Both facts are written beside the row
+rather than left for a reader to rediscover.
+
+**The matcher is ANCHORED** — `/^hi(-|$)/`, Korean's precedent — because
+`hif` is Fiji Hindi, a different language, and must fall through to English
+rather than silently borrow this table. The ladder assert carries it as a
+negative row, which is the form a decision takes in that table.
+
+**The register splits, and that is the entry's own deliverable.** Hindi
+engineering prose uses transliterated loanwords for part names and native
+Sanskritic vocabulary for physical quantities, and this table follows that
+split rather than picking one register for everything:
+
+| | choice | why |
+|---|---|---|
+| part names | एस्केपमेंट, बैलेंस व्हील, हेयरस्प्रिंग, मेनस्प्रिंग, बैरल, पैलेट | no Sanskritic coinage is in use; one would read as invented |
+| physical quantities | आवृत्ति, आयाम, जड़त्व, बलाघूर्ण, घर्षण | these ARE the standard scientific words; a loanword reads as lazy |
+| everyday objects | सूइयाँ (hands), दाँत, हथौड़ा, चेन, घड़ी | the word a Hindi speaker already uses for the thing |
+
+Three examples as the entry's acceptance asks: **एस्केपमेंट** because no
+coinage is in use, **आवृत्ति** because it is what a physics textbook prints,
+**सूइयाँ** because it is simply what the hands of a watch are called.
+
+### The vertical measurement, and the one rule derived from it
+
+§208's only vertical finding was two Arabic diacritics pushing a label 2–3 px
+past the line beneath it, and the fix was to reword around them. **Devanagari
+cannot be reworded around**: vowel signs ride above the headline (ि ी े ो ौ ँ)
+and below the base (ु ू ृ), conjuncts stack, and no Hindi label exists without
+matras. So the deliverable is a measurement and one rule.
+
+`tools/probe-212-devanagari-vert.mjs` measures it. At each site the two pages
+size `font: Npx/1`:
+
+| site | box | Latin ink | Hindi ink | over | needs |
+|---|---|---|---|---|---|
+| `.where` / section stamp | 10 | 8 + 2 = 10 | 9 + 3 = 12 | 2.0 | 1.200 |
+| `.readout` | 11 | 8 + 2 = 10 | 10 + 3 = 13 | 2.0 | 1.182 |
+| chip · stamp · `.num` | 10.5 | 8 + 2 = 10 | 10 + 3 = 13 | **2.5** | **1.238** |
+
+Every boxed site is contained by line-height ≥ 1.238, so the rule is
+`line-height: 1.25` — that ratio rounded up, one `:lang(hi)` block over the
+five selectors, with the numbers in its comment. Latin exactly fills its box
+at these sizes, which is why there was no headroom to begin with.
+
+**The probe carries three controls, because a vertical measurement passes
+easily while measuring nothing.** A container with no Devanagari face draws
+`.notdef` boxes whose metrics are uniform, plausible and meaningless, so the
+probe requires क्ष to shape to ONE cluster narrower than the same letters held
+apart by ZWJ (measured 6 against 12). Latin at the same site must come back
+INSIDE its box, or the probe has measured the box and not the script. And an
+ABSENT font family falls back silently and reports the same width as the
+generic run — which reads exactly like a match: the probe's first version
+named Noto Sans Devanagari, Mangal and Kohinoor as serving faces when all
+three are absent here. A deliberately nonexistent family now measures what
+"absent" looks like, and the probe refuses to report unless exactly one
+INSTALLED face is identified.
+
+**The face is named, and it is a limit on the claim.** The stacks name no
+Devanagari family, so the glyphs come from whatever the system resolves —
+Mangal on Windows, Kohinoor on macOS, Noto on most Linux. Here that face is
+**FreeSans**, and 1.25 is FreeSans's number. A reader on Mangal may need more
+or less.
+
+**One collision was NOT Hindi's to absorb.** The SVG plate labels are
+deliberately outside the rule: SVG text is baseline-positioned and has no line
+box to overflow. What it can do is collide with a neighbour, and one pair did
+— `clamp (foot)` over the mode-shape caption, baselines 10 px apart, where
+**English already sits flush at exactly 0 px of gap**. Any script with more ink
+than Latin collides there. Fixed in position space (the caption's baseline
+178 → 183, inside a viewBox 190 deep), because a plate whose two labels touch
+is a spacing defect every tall script would have found.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **700/700**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Hindi**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English, and unchanged by the `line-height` rule (the title's own 13px/1.55 box dominates the header) |
+| `#chrome-bar` | hi **150.0** against en 170.2 — narrower than every Latin-script locale, because Devanagari spends its complexity vertically; the script that is TALLEST in ink is among the narrowest on a bar |
+| `.hud-ro-label` | समय 18.0, *बजने का समय* **50.6** against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **37/37**, precache **47/47** (45 + two tables) |
+| boot | `?lang=hi` on all three documents console-silent; `Intl.NumberFormat('hi-IN')` in the page reads `18,000` · `0.024` · `1,000` — Latin digits, as the row says |
+| `probe-212-devanagari-vert` | controls PASS (shaping, discrimination, one identified face); worst overrun 2.5 px; derived line-height 1.238 → 1.25 |
+
+### Residue, recorded
+
+- **No native review pass** — the IOU every locale carries. The register split
+  is defensible and stated, but which side of it a borderline term falls on is
+  a judgement a Hindi engineer should confirm.
+- **1.25 is FreeSans's number.** The three faces most Hindi readers actually
+  have are absent from this container, and their matra extents differ. The
+  probe names the face it measured; re-running it where Mangal or Noto is
+  installed is the obvious follow-up, and would either confirm the rule or
+  give it a second measured row.
+- **The lakh grouping is unexercised.** `1,00,000` is correct Hindi and no
+  string on either page reaches six digits, so nothing renders it today.
+- **`index.html`'s `<title>` is not localized in any locale** — still true.
+
 ## §222 — The smoked sapphire dial becomes the shipped picture
 
 `dial.plate.sapphire` ships `true` and `dial.plate.smoke` ships `0.45`. Two
