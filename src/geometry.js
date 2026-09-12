@@ -2318,16 +2318,168 @@ export const HACK_RUBY_FLARE = 1.15;  // ruby cap's top radius over the post rad
 // the section from this length, then builds. Same sampling as the builder
 // below — one formula, one answer, no drift between the solve and the metal.
 export function hairspringSegs(coils) { return Math.max(coils * 48, 96); }
-export function hairspringDevLen({ innerR, outerR, coils = 12 }) {
-  const segs = hairspringSegs(coils), S0 = coils * Math.PI * 2;
-  let len = 0, px = 0, py = 0;
+// §218 — THE REST SPIRAL as one function: the polyline the tube is swept
+// along at θ = 0, its two end tangents from the closed form (the CLAMPS the
+// elastica below holds), and the developed length summed over that very
+// polyline. One sampling, one answer — hairspringDevLen, the rate solve and
+// the metal all read this.
+export function hairspringRest({ innerR, outerR, coils = 12 }) {
+  const segs = hairspringSegs(coils), S0 = coils * Math.PI * 2, dR = outerR - innerR;
+  const pts = [];
+  let len = 0;
   for (let i = 0; i <= segs; i++) {
-    const t = i / segs, a = t * S0, r = innerR + t * (outerR - innerR);
-    const x = Math.cos(a) * r, y = Math.sin(a) * r;
-    if (i) len += Math.hypot(x - px, y - py);
-    px = x; py = y;
+    const t = i / segs, a = t * S0, r = innerR + t * dR;
+    pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    if (i) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
   }
-  return len;
+  // d/dt of (r cos a, r sin a) with r' = dR and a' = S0 — the tangent the
+  // collet clamps at t = 0 and the stud clamps at t = 1.
+  const tangent = (t) => {
+    const a = t * S0, r = innerR + t * dR;
+    return Math.atan2(dR * Math.sin(a) + r * S0 * Math.cos(a), dR * Math.cos(a) - r * S0 * Math.sin(a));
+  };
+  return { pts, phiC0: tangent(0), phiCN: tangent(1), len, segs, S0 };
+}
+export function hairspringDevLen(plan) { return hairspringRest(plan).len; }
+
+// §218 — THE CLAMPED–CLAMPED PLANAR ELASTICA. What the ribbon does between a
+// collet that turns with the staff and a stud that does not.
+//
+// The law this replaces redistributed AZIMUTH between the two ends with every
+// coil held at its rest RADIUS, so no coil ever tightened and the ribbon's
+// length moved instead (±1.59% at ±1 rad on this very polyline) — a ribbon
+// in bending keeps its length and changes CURVATURE, which is what the
+// mainspring's frames have honoured since TODO 27 and this spring had not.
+//
+// The ribbon is N segments of FIXED length (the rest polyline's own ℓⱼ —
+// inextensible by construction, so constant length is structural, never a
+// tolerance) with the N segment tangents φⱼ as unknowns. Bending energy, EI
+// scaled out (EI = 1 here; the caller multiplies back in SI, which is what
+// makes the small-θ stiffness RATIO below a pure function of the plan):
+//   E = ½·Σⱼ₌₀..N wⱼ·eⱼ²,   eⱼ = (turn between tangent j and j+1) − (its rest turn)
+// with wⱼ = 1/dsⱼ, dsⱼ the half-segments either side of vertex j; the two
+// CLAMPS enter as the end terms — e₀ against the collet's tangent (turned by
+// θ), e_N against the stud's — with half-segment weights, so Σ dsⱼ = L exactly
+// and a pure moment gives k = 1/L to the last digit rather than to 1/N.
+// Constraint: the outer end lands ON the stud, c(φ) = p₀(θ) + Σ ℓⱼ·e(φⱼ) − p_N = 0.
+// KKT, Newton, warm-started frame to frame; the Hessian is tridiagonal plus
+// the constraint's diagonal, so each iteration is three Thomas solves and a
+// 2×2. The position multipliers λ ARE the force the stud exerts, equal and
+// opposite to the lateral load on the balance PIVOTS — the flat spiral's
+// known vice, and tier two's input. The collet moment is the total
+// derivative dE*/dθ: −w₀e₀ from the clamp term, plus λ·dp₀/dθ from the collet
+// carrying the constraint round with it.
+//
+// Sign: θ > 0 turns the collet the way the spiral WINDS OUT (angle grows with
+// t), so the ribbon's total turning falls, curvature drops and the coils
+// DILATE; θ < 0 tightens them. Both are visited every swing.
+export function spiralElastica(rest) {
+  const { pts, phiC0, phiCN } = rest;
+  const N = pts.length - 1;
+  const wrap = (a) => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+  const ell = new Float64Array(N + 1), phi0 = new Float64Array(N + 1);
+  let L = 0;
+  for (let j = 1; j <= N; j++) {
+    const dx = pts[j][0] - pts[j - 1][0], dy = pts[j][1] - pts[j - 1][1];
+    ell[j] = Math.hypot(dx, dy); L += ell[j];
+    const a = Math.atan2(dy, dx);
+    phi0[j] = j === 1 ? a : phi0[j - 1] + wrap(a - phi0[j - 1]);   // unwrapped
+  }
+  const c0 = phi0[1] + wrap(phiC0 - phi0[1]);
+  const cN = phi0[N] + wrap(phiCN - phi0[N]);
+  const w = new Float64Array(N + 1), d0 = new Float64Array(N + 1);
+  w[0] = 2 / ell[1]; d0[0] = phi0[1] - c0;
+  for (let j = 1; j < N; j++) { w[j] = 2 / (ell[j] + ell[j + 1]); d0[j] = phi0[j + 1] - phi0[j]; }
+  w[N] = 2 / ell[N]; d0[N] = cN - phi0[N];
+  const p0 = pts[0], pN = pts[N];
+  const thomas = (diag, off, b) => {
+    const cp = new Float64Array(N + 1), dp = new Float64Array(N + 1), x = new Float64Array(N + 1);
+    cp[1] = off[1] / diag[1]; dp[1] = b[1] / diag[1];
+    for (let j = 2; j <= N; j++) {
+      const m = diag[j] - off[j - 1] * cp[j - 1];
+      cp[j] = off[j] / m; dp[j] = (b[j] - off[j - 1] * dp[j - 1]) / m;
+    }
+    x[N] = dp[N];
+    for (let j = N - 1; j >= 1; j--) x[j] = dp[j] - cp[j] * x[j + 1];
+    return x;
+  };
+  // target: where the outer end must land. The stud by default; the CONTROL
+  // passes the free spring's own landing (freeLanding), on which the
+  // constraint does no work and λ must come back zero.
+  const solve = (theta, warm = null, target = pN) => {
+    const phi = warm ? Float64Array.from(warm.phi) : Float64Array.from(phi0);
+    let lx = warm ? warm.lam[0] : 0, ly = warm ? warm.lam[1] : 0;
+    const cc0 = c0 + theta;
+    const px0 = Math.cos(theta) * p0[0] - Math.sin(theta) * p0[1];
+    const py0 = Math.sin(theta) * p0[0] + Math.cos(theta) * p0[1];
+    const e = new Float64Array(N + 1), r1 = new Float64Array(N + 1);
+    const diag = new Float64Array(N + 1), off = new Float64Array(N + 1);
+    const Jx = new Float64Array(N + 1), Jy = new Float64Array(N + 1);
+    let iters = 0, res = Infinity;
+    for (iters = 0; iters < 60; iters++) {
+      e[0] = phi[1] - cc0 - d0[0];
+      for (let j = 1; j < N; j++) e[j] = phi[j + 1] - phi[j] - d0[j];
+      e[N] = cN - phi[N] - d0[N];
+      let cx = px0 - target[0], cy = py0 - target[1];
+      for (let j = 1; j <= N; j++) {
+        const s = Math.sin(phi[j]), c = Math.cos(phi[j]);
+        Jx[j] = -ell[j] * s; Jy[j] = ell[j] * c;
+        cx += ell[j] * c; cy += ell[j] * s;
+        r1[j] = (w[j - 1] * e[j - 1] - w[j] * e[j]) + lx * Jx[j] + ly * Jy[j];
+        diag[j] = w[j - 1] + w[j] - ell[j] * (lx * c + ly * s);
+        off[j] = -w[j];
+      }
+      res = Math.max(Math.abs(cx), Math.abs(cy));
+      for (let j = 1; j <= N; j++) res = Math.max(res, Math.abs(r1[j]));
+      if (res < 1e-11) break;
+      const u = thomas(diag, off, r1), vx = thomas(diag, off, Jx), vy = thomas(diag, off, Jy);
+      let a11 = 0, a12 = 0, a21 = 0, a22 = 0, bx = cx, by = cy;
+      for (let j = 1; j <= N; j++) {
+        a11 += Jx[j] * vx[j]; a12 += Jx[j] * vy[j]; a21 += Jy[j] * vx[j]; a22 += Jy[j] * vy[j];
+        bx -= Jx[j] * u[j]; by -= Jy[j] * u[j];
+      }
+      const det = a11 * a22 - a12 * a21;
+      const dlx = (bx * a22 - a12 * by) / det, dly = (a11 * by - a21 * bx) / det;
+      let step = 1;   // cap any tangent step at half a radian — a guard, not a tuning
+      for (let j = 1; j <= N; j++) step = Math.min(step, 0.5 / Math.max(Math.abs(-u[j] - vx[j] * dlx - vy[j] * dly), 1e-30));
+      for (let j = 1; j <= N; j++) phi[j] += step * (-u[j] - vx[j] * dlx - vy[j] * dly);
+      lx += step * dlx; ly += step * dly;
+    }
+    const out = new Array(N + 1);
+    out[0] = [px0, py0];
+    let x = px0, y = py0, energy = 0, dkMax = 0;
+    for (let j = 0; j <= N; j++) { energy += 0.5 * w[j] * e[j] * e[j]; dkMax = Math.max(dkMax, Math.abs(e[j] * w[j])); }
+    for (let j = 1; j <= N; j++) { x += ell[j] * Math.cos(phi[j]); y += ell[j] * Math.sin(phi[j]); out[j] = [x, y]; }
+    const torque = -w[0] * e[0] + lx * (-py0) + ly * px0;
+    return { theta, pts: out, phi, lam: [lx, ly], energy, torque, dkMax, iters, res, converged: res < 1e-11 };
+  };
+  // The FREE spring's landing at θ — uniform curvature change −θ/L, λ ≡ 0.
+  const freeLanding = (theta) => {
+    const dk = -theta / L;
+    let ph = c0 + theta + d0[0] + dk / w[0];
+    let x = Math.cos(theta) * p0[0] - Math.sin(theta) * p0[1], y = Math.sin(theta) * p0[0] + Math.cos(theta) * p0[1];
+    for (let j = 1; j <= N; j++) {
+      if (j > 1) ph += d0[j - 1] + dk / w[j - 1];
+      x += ell[j] * Math.cos(ph); y += ell[j] * Math.sin(ph);
+    }
+    return [x, y];
+  };
+  return { N, L, solve, freeLanding };
+}
+
+// §218 — the CLAMP STIFFENING, a pure function of the plan. The rate solve
+// fits the section to k = I·ω² assuming k = EI/L, which is the PURE-bending
+// stiffness; the spring as clamped is stiffer, because the stud's reaction
+// costs strain energy the moment alone would not. The ratio τ·L/θ at small θ
+// is section-free (EI scales out of the solve), so the solve can ask for it
+// before the spring exists — the same no-circularity that lets it ask for L.
+// Measured: 1.0026 at the shipped 10 coils (inside the oscillator's 0.5% and
+// so invisible until now), 1.0072 at 6.
+export const HAIRSPRING_RATIO_THETA = 0.05;   // rad — the smallest frame step; the linear regime
+export function hairspringClampRatio(plan) {
+  const el = spiralElastica(hairspringRest(plan));
+  const a = el.solve(HAIRSPRING_RATIO_THETA), b = el.solve(-HAIRSPRING_RATIO_THETA);
+  return { ratio: ((a.torque - b.torque) / (2 * HAIRSPRING_RATIO_THETA)) * el.L, converged: a.converged && b.converged };
 }
 
 // §83 — ONE writer for the schematic's spiral line, shared by both morphing
@@ -2347,52 +2499,87 @@ export function writeSpiralLine(line, pts) {
 }
 
 export function makeHairspring({ innerR, outerR, coils = 12, height,
-                                 windFrames = 41, windMaxRad = 1.0, ribbonR: ribbonROverride = null }) {
+                                 windFrames = 41, windMaxRad = 1.0, reportMaxRad = windMaxRad,
+                                 ribbonR: ribbonROverride = null }) {
   const g = new THREE.Group();
   // TODO 25 tier two: the section is SOLVED BY THE CALLER from the balance it
   // must beat with (main.js owns the physics, this file owns the metal). The
   // legibility rule below survives only as the fallback for callers that have
   // no rate to hit — test-geometry.html's part smoke test being the one.
   const ribbonR = ribbonROverride ?? Math.max(((outerR - innerR) / coils) * 0.12, 0.05);
-  const segs = hairspringSegs(coils);
-  const S0 = coils * Math.PI * 2; // unwound span; outer end angle ≡ S0
+  const rest = hairspringRest({ innerR, outerR, coils });
+  const { segs, S0 } = rest;   // S0: unwound span; outer end angle ≡ S0
 
   // TODO 25 tier one: the DEVELOPED LENGTH of the as-built (θ = 0) spiral,
-  // accumulated as the same polyline the tube is swept along rather than
-  // re-integrated from the spiral's closed form — one sampling, one answer.
-  // Captured at θ = 0 exactly: windFrames is ODD, so frame (windFrames−1)>>1
-  // lands on −windMaxRad + 0.5·2·windMaxRad = 0 in exact arithmetic, and that
-  // middle frame is the one `tube` is built with below. The wind frames each
-  // bunch or spread the coils (±1.6% in length at ±1 rad); the REST frame is
-  // the spring as cut, which is what a rate is computed from.
-  let restDevLen = 0;
+  // summed over the same polyline the tube is swept along — one sampling,
+  // one answer (hairspringRest is that sampling). Since §218 every frame has
+  // this length by CONSTRUCTION (the elastica's segments are inextensible),
+  // so the rate is computed from the same quantity of steel the metal wears
+  // in every frame, not only the middle one.
+  const restDevLen = rest.len;
   // §83 — the frames' own POLYLINES, kept alongside the tubes. The schematic
-  // draws this spring from `spiralFrames` (see writeSpiralLine below), and the
-  // only honest source for "the shape it is wearing right now" is the very
-  // sampling the tube for that frame was swept along. Pushed from inside
-  // spiralGeo so the two can never be built from different sweeps; the frame
-  // loop below is its only caller, which is what keeps index k aligned.
+  // draws this spring from `spiralFrames` (see writeSpiralLine), and the only
+  // honest source for "the shape it is wearing right now" is the very sampling
+  // the tube for that frame was swept along. Both come from one solve below,
+  // which is what keeps index k aligned.
   const framePolys = [];
-  const spiralGeo = (theta) => {
-    const pts = [];
-    let len = 0;
-    for (let i = 0; i <= segs; i++) {
-      const t = i / segs;
-      const a = theta + t * (S0 - theta); // inner (turned) → outer (fixed)
-      const r = innerR + t * (outerR - innerR);
-      const p = new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, 0);
-      if (i) len += p.distanceTo(pts[i - 1]);
-      pts.push(p);
+  // §218 — the SOLVE. Frame k is the clamped–clamped elastica at
+  // θ_k = −windMaxRad + k·2·windMaxRad/(windFrames−1), warm-started outward
+  // from the rest frame in both directions (the rest frame IS the rest
+  // polyline: zero residual, zero λ, bit-identical). Beyond the frames the
+  // scalars alone are continued to `reportMaxRad` (the physical amplitude
+  // the mesh does not perform) at a coarser step — a law that only holds at
+  // small angles is the linearisation this replaces.
+  const el = spiralElastica(rest);
+  const dTheta = (2 * windMaxRad) / (windFrames - 1);
+  const REST_FRAME = (windFrames - 1) >> 1;   // θ = 0 exactly — windFrames is ODD
+  const solved = new Array(windFrames);
+  solved[REST_FRAME] = el.solve(0);
+  for (let k = REST_FRAME + 1; k < windFrames; k++) solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k - 1]);
+  for (let k = REST_FRAME - 1; k >= 0; k--) solved[k] = el.solve(-windMaxRad + k * dTheta, solved[k + 1]);
+  const segsPerTurn = segs / coils;
+  const scalars = (sol) => {
+    // coil gap: the nearest two centreline points at least half a turn apart
+    // — the self-contact no pair sweep can see, measured here (CLAUDE.md's
+    // residue rule); the ribbon's own diameter is subtracted by the caller.
+    const half = Math.floor(segsPerTurn / 2);
+    let gap = Infinity, len = 0, shift = 0;
+    const P = sol.pts;
+    for (let i = 0; i < P.length; i++) {
+      if (i) len += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+      shift = Math.max(shift, Math.abs(Math.hypot(P[i][0], P[i][1]) - Math.hypot(rest.pts[i][0], rest.pts[i][1])));
+      for (let j = i + half; j < P.length; j++) {
+        const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]);
+        if (d < gap) gap = d;
+      }
     }
-    if (theta === 0) restDevLen = len;
-    framePolys.push(pts.map((p) => [p.x, p.y]));
-    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), segs, ribbonR, 4, false);
+    return { theta: sol.theta, torque: sol.torque, lam: Math.hypot(sol.lam[0], sol.lam[1]), energy: sol.energy,
+             dkMax: sol.dkMax, gap, len, radialShift: shift, iters: sol.iters, converged: sol.converged };
   };
+  const frameRows = solved.map(scalars);
+  const reportRows = [];
+  {
+    const step = 2 * dTheta;
+    let up = solved[windFrames - 1], dn = solved[0];
+    for (let th = windMaxRad + step; th <= reportMaxRad + 1e-9; th += step) { up = el.solve(th, up); reportRows.push(scalars(up)); }
+    for (let th = -windMaxRad - step; th >= -reportMaxRad - 1e-9; th -= step) { dn = el.solve(th, dn); reportRows.push(scalars(dn)); }
+  }
+  // THE CONTROL: solved against the free spring's own landing, the constraint
+  // does no work and λ must come back zero — at the frame edge and at the
+  // report edge, both signs. A pivot force the solver invents would show here.
+  const control = [windMaxRad, -windMaxRad, reportMaxRad, -reportMaxRad].map((th) => {
+    const s = el.solve(th, null, el.freeLanding(th));
+    return { theta: th, lam: Math.hypot(s.lam[0], s.lam[1]), kOverPure: (s.torque / th) * el.L, converged: s.converged };
+  });
+  const ratioAt = (th) => { const s = solved[Math.round((th + windMaxRad) / dTheta)]; return s.torque / th; };
+  const clampRatio = ((ratioAt(HAIRSPRING_RATIO_THETA) + ratioAt(-HAIRSPRING_RATIO_THETA)) / 2) * el.L;
+
   const frames = [];
   for (let k = 0; k < windFrames; k++) {
-    frames.push(spiralGeo(-windMaxRad + (k / (windFrames - 1)) * 2 * windMaxRad));
+    const pts = solved[k].pts.map((p) => new THREE.Vector3(p[0], p[1], 0));
+    framePolys.push(solved[k].pts.map((p) => [p[0], p[1]]));
+    frames.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), segs, ribbonR, 4, false));
   }
-  const REST_FRAME = (windFrames - 1) >> 1;   // θ = 0 exactly — see the restDevLen note above
   const tube = new THREE.Mesh(frames[REST_FRAME], MATS.blueSteel);
   tube.scale.z = Math.max(height / (ribbonR * 2), 1); // stand the ribbon on edge
   g.add(tube);
@@ -2449,6 +2636,13 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
   // turns on); `spiralFrames` is what the metal is actually wearing.
   g.userData.spiralFrames = framePolys;
   g.userData.spiralFrame = REST_FRAME;
+  // §218 — what the solve measured, in MODEL units with EI = 1: the caller
+  // (main.js, which owns the physics) multiplies EI back in and converts.
+  // `frames` are the worn states, `report` the continuation to reportMaxRad,
+  // `control` the free-landing solves, `clampRatio` the small-θ stiffening
+  // (the builder's own reading; main.js asserts it against the plan-level
+  // hairspringClampRatio the section was solved with — one law, two paths).
+  g.userData.elastica = { frames: frameRows, report: reportRows, control, clampRatio, dTheta, windMaxRad, reportMaxRad, N: el.N, L: el.L };
   // TODO 25 tier one — the SECTION AS CUT, not as imagined. TubeGeometry with
   // radialSegments 4 cuts a RHOMBUS, not a rectangle: the 4-gon's diagonals
   // ride the Frenet frame's normal (radial — the bending direction) and

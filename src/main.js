@@ -1469,11 +1469,41 @@ const OSC_I = (() => {
 // I_sec = a³c/3. With c set by the ribbon standing on edge at HAIRSPRING_H/2,
 // a falls out as a cube root. This is the constant that used to be 12% of a
 // coil gap; it is now the thickness this balance must be sprung with.
-const HAIRSPRING_PLAN = { innerR: Math.max(rollerR * 0.5, 1.5), outerR: balanceR * 0.88, coils: 10 };
+// §218 — THE COIL COUNT IS DERIVED, not chosen. The rate is fixed (k = I·ω²),
+// so a shorter ribbon must be THINNER (I_sec = k·L/E, a ∝ L^⅓), and fewer
+// coils is what makes the breathing READ: the curvature change per radian is
+// θ/L, so the coils' excursion goes as 1/coils. The wall it derives against is
+// the stock window §50 cites, 0.02–0.04 mm, read through §204's own margin —
+// the HUD's spec verdict names a ribbon within a tenth of that window of
+// either edge, and its stated design is that the identity spec's ribbon stays
+// SILENT. So the count is the fewest at which the slowest menu row (18,000
+// A/h, the shipped spec) clears the band: 8 coils, 0.0227 mm, 0.0007 above
+// the 0.022 line. The bare floor alone allows 6 (0.0206 — 5 leaves stock at
+// 0.0194), but 6 and 7 both sit inside the band and would put §204's line on
+// the identity spec permanently; deriving against the band rather than
+// widening it is rule 4's discipline. The fastest row (36,000 A/h) is the
+// other wall and 8 coils clears it too, 0.0360 under the 0.04 ceiling —
+// OUTSIDE the band it sat inside at 10 coils (0.0388), so §204's one flagged
+// row goes quiet as a consequence. Radii unchanged: the pitch grows, the
+// footprint does not.
+const HAIRSPRING_PLAN = { innerR: Math.max(rollerR * 0.5, 1.5), outerR: balanceR * 0.88, coils: 8 };
 const OSC_K_TARGET = OSC_I.total * (2 * Math.PI * F_BALANCE) ** 2;
+// §218 — the spring is fitted AS CLAMPED. k = EI/L is the pure-bending
+// stiffness; between a collet that turns and a stud that does not, the stud's
+// reaction costs strain energy a moment alone would not, and the spring the
+// balance feels is stiffer by a ratio that is a pure function of the plan
+// (EI scales out of the elastica, so it can be asked for before the section
+// exists, exactly as L can). Measured 1.0026 at the shipped 10 coils — inside
+// the oscillator's 0.5% and so unseen — 1.0043 at 8 and 1.0072 at 6, which is
+// outside it: fit to the pure formula and a 6-coil watch runs 0.36% fast by
+// arithmetic. The fit below uses the ratio at every count, so the gate holds
+// the clamped spring and not the formula.
+const HS_CLAMP = G.hairspringClampRatio(HAIRSPRING_PLAN);
+if (!HS_CLAMP.converged)
+  console.warn('§218: the hairspring clamp-ratio solve did not converge — the section below is fitted to an unproven stiffness');
 const HAIRSPRING_RIBBON_R = (() => {
   const L = G.hairspringDevLen(HAIRSPRING_PLAN) * OSC_U;         // m
-  const iSecNeeded = OSC_K_TARGET * L / OSC_STEEL_E;             // m⁴
+  const iSecNeeded = OSC_K_TARGET * L / (OSC_STEEL_E * HS_CLAMP.ratio); // m⁴ — k = (EI/L)·ratio
   const c = (HAIRSPRING_H / 2) * OSC_U;                          // m — the axial half-diagonal
   const a = Math.cbrt(3 * iSecNeeded / c);                       // m
   return a / OSC_U;                                              // back to units
@@ -1496,6 +1526,7 @@ const hairspring = G.makeHairspring({
   ...HAIRSPRING_PLAN,
   height: HAIRSPRING_H, // shared with the cock's z-solve: its slab sits one margin above this stack
   ribbonR: HAIRSPRING_RIBBON_R,   // TODO 25 tier two — solved from the balance above, not from legibility
+  reportMaxRad: AMPLITUDE_TRUE_DEG * DEG2RAD, // §218 — the law is EVALUATED (not meshed) out to the physical swing
 });
 
 // --- TODO 25 tier two: THE RATE, NOW A CONSEQUENCE ---------------------------
@@ -1510,13 +1541,66 @@ const hairspring = G.makeHairspring({
 // (isochronous) model f = √(k/I)/2π has no amplitude term, so neither
 // AMPLITUDE_VISUAL_DEG (45, what the mesh performs) nor AMPLITUDE_TRUE_DEG
 // (270, the physical reference) belongs in it.
+// §218 — a FATIGUE figure for the ribbon, cited rather than chosen (rule 1,
+// STEEL_E_PA's precedent): Shigley's rotating-beam endurance limit for steels,
+// S'e = 0.5·Sut up to Sut 1400 MPa and 700 MPa above it (Budynas & Nisbett,
+// Shigley's Mechanical Engineering Design, eq. 6-8). Hardened-and-tempered
+// spring-steel wire at hairspring diameters sits above that knee (EN 10270-1
+// SH/DH grades), so the cap is the figure. The outer-fibre stress the solve
+// reports is fully reversed each swing, which is the loading the limit is
+// stated for. A REPORT beside the metal's number; boot speaks only if the
+// stress at the physical amplitude exceeds it (rule 6).
+const HAIRSPRING_FATIGUE_MPA = 700;
 const OSCILLATOR = (() => {
   const H = hairspring.userData;
-  const k = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4) / (H.devLen * OSC_U);
+  const kPure = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4) / (H.devLen * OSC_U); // EI/L — pure bending
+  const k = kPure * HS_CLAMP.ratio;                                          // §218 — as CLAMPED, what the balance feels
   const f = Math.sqrt(k / OSC_I.total) / (2 * Math.PI);
   const pct = (x) => +(100 * x / OSC_I.total).toFixed(1);
+  // §218 — THE BREATHING, converted from the builder's EI = 1 model units.
+  // Energy·EI/U → J; torque·EI/U → N·m; force·EI/U² → N; strain = a·Δκ.
+  const EL = H.elastica;
+  const EI = OSC_STEEL_E * (H.section.I_u4 * OSC_U ** 4);                  // N·m²
+  const rowSI = (r) => ({
+    thetaRad: +r.theta.toFixed(4),
+    torque_Nm: r.torque * EI / OSC_U,
+    pivotForce_mN: r.lam * EI / OSC_U ** 2 * 1e3,
+    stress_MPa: OSC_STEEL_E * H.ribbonR * r.dkMax / 1e6,
+    coilGap_mm: MM(r.gap - 2 * H.ribbonR),          // centreline distance less the ribbon's own diameter
+    radialShift_mm: MM(r.radialShift),
+    len_u: r.len, iters: r.iters, converged: r.converged,
+  });
+  const frames = EL.frames.map(rowSI), report = EL.report.map(rowSI);
+  const peak = (rows, key) => rows.reduce((m, r) => Math.max(m, r[key]), 0);
+  const worn = frames.filter((r) => Math.abs(r.thetaRad) <= AMPLITUDE_VISUAL_DEG * DEG2RAD + EL.dTheta / 2 + 1e-9);
+  const all = frames.concat(report);
+  const lenErr = all.reduce((m, r) => Math.max(m, Math.abs(r.len_u - H.devLen) / H.devLen), 0);
+  // the builder's own small-θ stiffening against the plan-level solve the
+  // section was fitted with — one law read on two paths, held to float noise
+  const ratioErr = Math.abs(EL.clampRatio / HS_CLAMP.ratio - 1);
+  // the frames' torque per radian, in SI, against k — the metal's own reading
+  const kFrames = frames.filter((r) => Math.abs(r.thetaRad) <= 0.06 && r.thetaRad !== 0)
+    .reduce((acc, r) => acc + r.torque_Nm / r.thetaRad, 0) / 2;
+  const controlLam = EL.control.reduce((m, c) => Math.max(m, c.lam * EI / OSC_U ** 2 * 1e3), 0);
+  const breathing = {
+    law: 'clamped–clamped planar elastica, inextensible segments, EI scaled out (geometry.js spiralElastica)',
+    frames, report, dThetaRad: EL.dTheta, windMaxRad: EL.windMaxRad, reportMaxRad: EL.reportMaxRad,
+    lengthHeld: lenErr < 1e-9, lengthMaxRelErr: lenErr,
+    converged: all.every((r) => r.converged) && EL.control.every((c) => c.converged) && HS_CLAMP.converged,
+    clampRatio: HS_CLAMP.ratio, clampRatioBuilder: EL.clampRatio, clampRatioAgrees: ratioErr < 1e-9,
+    kFrames_Nm_per_rad: kFrames, kFramesAgrees: Math.abs(kFrames / k - 1) * 100 <= 0.5,
+    control: { maxPivotForce_mN: controlLam, pass: controlLam < 1e-9, rows: EL.control.map((c) => ({ thetaRad: c.theta, pivotForce_mN: c.lam * EI / OSC_U ** 2 * 1e3, kOverPure: c.kOverPure })) },
+    peaks: {
+      performed: { ampDeg: AMPLITUDE_VISUAL_DEG, pivotForce_mN: peak(worn, 'pivotForce_mN'), stress_MPa: peak(worn, 'stress_MPa'), radialShift_mm: peak(worn, 'radialShift_mm'), minCoilGap_mm: worn.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
+      physical:  { ampDeg: AMPLITUDE_TRUE_DEG,   pivotForce_mN: peak(all, 'pivotForce_mN'),  stress_MPa: peak(all, 'stress_MPa'),  radialShift_mm: peak(all, 'radialShift_mm'),  minCoilGap_mm: all.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
+    },
+    fatigue_MPa: HAIRSPRING_FATIGUE_MPA,
+    fatigueSource: "Shigley eq. 6-8: S'e = 0.5·Sut ≤ 700 MPa; spring-steel wire above the 1400 MPa knee",
+  };
+  breathing.stressInLimit = breathing.peaks.physical.stress_MPa <= HAIRSPRING_FATIGUE_MPA;
   return Object.freeze({
-    I_kgm2: OSC_I.total, k_Nm_per_rad: k, fImpliedHz: f,
+    I_kgm2: OSC_I.total, k_Nm_per_rad: k, kPure_Nm_per_rad: kPure, clampRatio: HS_CLAMP.ratio, fImpliedHz: f,
+    breathing,
     fSpecHz: F_BALANCE, ratio: f / F_BALANCE,
     agreeTolPct: 0.5,                 // the spring is CUT to the rate; a solve that misses by more is broken arithmetic, not a tolerance
     agrees: Math.abs(f / F_BALANCE - 1) * 100 <= 0.5,
@@ -1529,6 +1613,22 @@ const OSCILLATOR = (() => {
 })();
 if (!OSCILLATOR.agrees)
   console.warn(`TODO 25: the solved spring does not deliver the spec'd beat — ${OSCILLATOR.fImpliedHz.toFixed(4)} Hz against ${F_BALANCE} Hz. The section was solved against a spiral plan the built spring no longer has.`);
+// §218 — the breathing's own asserts (rule 6: silent unless something regressed).
+{
+  const B = OSCILLATOR.breathing;
+  if (!B.converged)
+    console.warn('§218: the hairspring elastica did not converge on every frame — the spring is wearing an unsolved shape');
+  if (!B.lengthHeld)
+    console.warn(`§218: the hairspring's frames are not one length of steel — max relative error ${B.lengthMaxRelErr.toExponential(2)} against 1e-9`);
+  if (!B.clampRatioAgrees)
+    console.warn(`§218: the builder's clamp stiffening ${B.clampRatioBuilder.toFixed(6)} disagrees with the plan-level ${B.clampRatio.toFixed(6)} the section was fitted to`);
+  if (!B.kFramesAgrees)
+    console.warn(`§218: the frames' torque per radian ${B.kFrames_Nm_per_rad.toExponential(4)} N·m/rad is not the k ${OSCILLATOR.k_Nm_per_rad.toExponential(4)} the rate was computed from (0.5%)`);
+  if (!B.control.pass)
+    console.warn(`§218: the free-landing control reads a pivot force of ${B.control.maxPivotForce_mN.toExponential(2)} mN — the solver is inventing a constraint reaction`);
+  if (!B.stressInLimit)
+    console.warn(`§218: the ribbon's outer-fibre stress at ${AMPLITUDE_TRUE_DEG}° is ${B.peaks.physical.stress_MPa.toFixed(0)} MPa, over the ${HAIRSPRING_FATIGUE_MPA} MPa endurance figure`);
+}
 
 // ---------------------------------------------------------------------------
 // Planar layout (XY plane; assembly only sets position, no extra rotation

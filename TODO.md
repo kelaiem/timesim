@@ -2987,6 +2987,23 @@ above re-run to show the rate actually moving with radius, and SPEC.md's
 gear-train section updated to say the beat is a target the regulator
 hits rather than a number the movement is told.
 
+**Re-measured by §218 (2026-09-11), and the solve was fitting the wrong
+spring by 0.13%.** `k = E·I_sec/L` is the PURE-bending stiffness; between a
+collet that turns and a stud that does not, the stud's reaction costs strain
+energy the moment alone would not, and the spring the balance feels is
+stiffer by a ratio that is a pure function of the coil plan — 1.0026 at the
+10 coils this item shipped, so the watch it sprang would have run 0.13% fast
+in frequency, inside this gate's own 0.5% and therefore unseen. §218 solves
+each wind frame as the clamped–clamped elastica, exports that ratio beside
+`hairspringDevLen` (section-free, so no circularity), and the section is now
+fitted to `k = (EI/L)·ratio` — the spring AS CLAMPED, which is the one a
+régleur vibrates. The plan moved with it: 8 coils (derived — the fewest that
+keep the slowest menu row clear of §204's margin band), ribbon 0.0227 mm,
+ratio 1.0040; the rate still lands on 2.5000 Hz as arithmetic, and the gate
+now also holds every wind frame to ONE length of steel, which the frame law
+this item inherited from item 4 did not (±1.59% at ±1 rad, measured on its
+own polyline). The record is `docs/BUILT.md` §218.
+
 ## 26. CLOSED — the dial is a plate, and the wells are pockets machined into it
 
 The dial is a zero-thickness sheet: one `ShapeGeometry` plane, measured at

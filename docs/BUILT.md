@@ -23606,6 +23606,151 @@ three Latin letters do.
 - **`index.html`'s `<title>` is not localized in any locale** — §209's
   observation, still true.
 
+## §218 — the hairspring breathes as steel does: the clamped–clamped elastica as its frame law, the spring fitted as clamped, the coil count derived — PARTIAL, tier one; the Breguet overcoil remains in the roadmap
+
+> Filed 2026-09-11 from two asks in one sitting — make the balance spring's
+> coils tighten on each vibration, and shorten the spring so it flexes more —
+> and tier one shipped the same day. Tier two, the Breguet overcoil, stays in
+> the private roadmap under this number as a DECISION on the pivot-force figure
+> this landing produced; the entry there is rewritten to that remainder.
+
+### What was wrong, measured
+
+`makeHairspring` precomputed 41 wind frames over θ ∈ [−1, +1] rad and
+`tick()` swapped them (`setWind(balanceTheta)`, TODO 4's mechanism), and the
+frame law was `a(t) = θ + t·(S0 − θ)`, `r(t) = innerR + t·(outerR − innerR)`:
+the AZIMUTH redistributed between the turned collet and the fixed stud, every
+coil at its rest RADIUS. No coil ever tightened. What the swap changed was the
+ribbon's LENGTH — on the builder's own polyline, +1.59% at θ = −1 and −1.59%
+at +1 — the opposite of steel in bending, which keeps its length and changes
+curvature. The mainspring's frames had honoured that since TODO 27 (the
+explainer's own plate says "every frame must be the same length of steel,
+because steel does not grow"); the oscillator's spring had not, and nothing
+gated it because `checkOscillator` declined path length by design.
+
+### The law
+
+Each frame is now the clamped–clamped planar elastica of an INEXTENSIBLE
+ribbon (`spiralElastica` in `geometry.js`): N = `hairspringSegs(coils)`
+segments of the rest polyline's own lengths — so constant length is
+structural, never a tolerance — with the N segment tangents as unknowns,
+bending energy `½·Σ wⱼ·eⱼ²` minimised with EI scaled out, the two CLAMPS as
+half-weighted end terms (the collet's tangent turned by θ, the stud's fixed —
+half-segment weights make `Σ ds = L` exact, so a pure moment reproduces
+`k = 1/L` to the last digit rather than to 1/N), and one constraint: the
+outer end lands on the stud. Newton on the KKT system, warm-started outward
+from the rest frame in both directions — the rest frame IS the rest polyline,
+bit-identical; three iterations per frame, measured. The Hessian is
+tridiagonal plus the constraint's diagonal, so an iteration is three Thomas
+solves and a 2×2. The frames stay distinct `BufferGeometry`s (MODELING rule
+6; the probe holds it as a control) and `spiralFrames` is written from the
+solved polylines, so the schematic rides the honest shape with no change of
+its own.
+
+The position multipliers λ ARE the stud's reaction — equal and opposite to
+the lateral load the spring puts on the balance pivots, the flat spiral's
+known vice and what a Breguet overcoil exists to remove. The collet moment is
+the total derivative dE*/dθ (the clamp term plus λ carried round by the
+collet), and it equals the finite difference of the frames' energies to six
+figures. Beyond the ±1 rad the mesh wears, the scalars are continued at twice
+the frame step out to `AMPLITUDE_TRUE_DEG` (270°) — evaluated, not meshed —
+because a law that only holds at small angles is the linearisation this
+replaced.
+
+### Two things the plan did not know
+
+**The spring as clamped is stiffer than `EI/L`.** The stud's reaction costs
+strain energy a pure moment would not, by a ratio that is a pure function of
+the coil plan (EI scales out): 1.0026 at the 10 coils that shipped, 1.0040 at
+8, 1.0072 at 6. TODO 25's solve had fitted the section to the pure formula,
+so the 10-coil watch ran 0.13% fast in frequency — inside the gate's 0.5%
+and unseen. `hairspringClampRatio(plan)` now exports that ratio beside
+`hairspringDevLen` (no circularity: both are plan-only), the section is
+fitted to `k = (EI/L)·ratio`, and `OSCILLATOR` publishes `k`, `kPure` and
+the ratio. At 6 coils the difference exceeds the tolerance, which is the
+finding that made this a fit rather than a report.
+
+**The coil count derives against §204's band, not the bare floor.** The entry
+derived 6 as the fewest coils keeping the slowest menu row inside 0.02 mm
+(0.0206). But §204's HUD verdict names a ribbon within a tenth of the stock
+window of either edge, and its stated design is that the identity spec's
+ribbon stays SILENT — a declared constraint 6 (0.0206) and 7 (0.0217) both
+violate. Deriving against the band rather than widening it gives **8 coils,
+0.0227 mm**, 0.0007 above the 0.022 line; and the fastest row (36,000 A/h)
+lands at 0.0360, OUTSIDE the band it sat inside at 10 coils (0.0388), so
+§204's one flagged row goes quiet as a consequence. The coils' excursion gain
+over the shipped 10 is therefore ×1.25, not the entry's ×1.67; 6 stays one
+number away if the owner accepts §204's line on the identity spec, and the
+comment beside `HAIRSPRING_PLAN` says so.
+
+### Measured on the built tree (8 coils, 18,000 A/h)
+
+| quantity | performed swing (45°) | physical swing (270°) |
+|---|---|---|
+| lateral pivot force | 0.004 mN | 0.027 mN |
+| coils' max radial excursion | 0.141 mm | 0.927 mm |
+| minimum coil gap (centreline less ribbon) | 0.242 mm | 0.075 mm |
+| outer-fibre stress | 22.7 MPa | 134 MPa |
+
+Against §137's hack row on the same pivots — 1.3 mN of normal force, 0.19 mN
+of friction — the flat spring's load is two orders down at the drawn swing
+and an order under the friction at 270°; that is the number tier two decides
+on. The stress is reported beside a CITED figure, `HAIRSPRING_FATIGUE_MPA`
+700 — Shigley's endurance-limit rule for steels (eq. 6-8, `S'e = 0.5·Sut`
+capped at 700 MPa above the 1400 MPa knee, where hardened spring-steel wire
+sits) — the one new material constant, rule 1's citation in its comment. The
+free-landing CONTROL — the constrained solve against the free spring's own
+landing point, where the constraint does no work — reads λ of 1e-14 mN at
+±1 rad and ±270° and reproduces the pure stiffness to twelve digits, so the
+reported force is the constraint's and not the solver's.
+
+### What holds it
+
+- `checkOscillator` gains rows and stays a GATE: every published frame's
+  polyline summed against `devLen` on the METAL (the row that fails on the
+  old law at 1.59e-2 against 1e-9), the frames' own torque per radian
+  against `k` (0.5%, the gate's tolerance), the builder's clamp ratio against
+  the one the section was fitted with, the control, convergence, and the
+  stress under the endurance figure. The pivot force itself is a REPORT.
+- Boot asserts for each (rule 6): silent on this tree.
+- `tools/probe-218-breathing.mjs`, the acceptance test on the built tree —
+  10/10 rows here; against a worktree of `origin/main` it reads `FAIL every
+  frame is one length of steel — max |Δlen|/len 1.59e-2; the two edge frames
+  read 1.59% and -1.59%` with the rate row green, the "shown failing" the
+  entry asked for.
+- `explain.html`'s free-sprung caption rewritten (the breathing, the clamp,
+  the reported force) in English and its seven translations; `primer.html`'s
+  ribbon figure 0.024 → 0.023 mm in eight files; both document gates green.
+  `SPEC.md`'s builder signature and gear-train paragraph, TODO 25's record
+  (re-measured), and the battery's gate text updated.
+
+### What this does NOT claim
+
+The balance is still POSED — `balanceTheta` is a sine on τ — so the
+oscillator is modelled, not simulated, before and after; this landing makes
+the spring's SHAPE a consequence of the balance's angle through a
+boundary-value solve and reports the force that solve implies. The ×6 lever
+on the visible breathing is the amplitude (45° performed against 270°
+physical) and is untouched; the law is valid there so that decision, if
+taken, costs nothing here.
+
+### Verified
+
+`node tools/ci-battery.mjs --report …` locally on the dev container (3 shards):
+**40/40 gates pass · total 2071.3 s (checks 4940.2 s across 3 shards)** — boot
+silent, support 0, graph clean, axisEntry 364 pairs clean, penetration and
+stockFloor (655 rows, 50 waived, the same debt as `main`) green, alarmHandoffs
+13/0 waived, intraUnit and assembly clean, expectedContacts 23 pairs / 1
+waived, `oscillator` PASS with its new rows (implied 2.5 Hz, ribbon 0.0227 mm,
+clamp ×1.0040, pivot 0.0042 mN @45° / 0.0275 @270°, stress 134/700 MPa),
+equalisation, restoring, transfers, meshPhase, meshCoverage, transmits green,
+inspection 0 FORBIDDEN over 58 units, clearances 0 violations over 32 budgets,
+sweptOverlap 0 CONFIRMED over 104,268 pairs (tight 3, refuted 20), the
+fingerprint deterministic across virgin boots at **2050941457** — moved from
+`main`'s, correctly: the spring was re-cut and every frame re-shaped. The
+report's `oscillator` payload carries the same figures the probe printed. CI's
+run on the pull request is the merge evidence; the local run is the pre-flight.
+
 ## §220 — A smoked sapphire dial — the Lumen tint as a coating recipe on the shipped glass, not a second crystal
 
 `dial.plate.smoke` in `src/aesthetics.json` (Advanced → "Sapphire dial
