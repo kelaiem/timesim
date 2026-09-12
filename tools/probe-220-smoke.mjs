@@ -240,7 +240,14 @@ async function boot({ sapphire, smoke, liftFloor = false, seedStore = true }) {
     crop.getContext('2d').putImageData(g.getImageData(x0, y0, w, h), 0, 0);
     return { png: src.toDataURL('image/png'), crop: crop.toDataURL('image/png'), p10: q(0.10), p90: q(0.90), n: L.length, masked, box: [x0, y0, w, h] };
   }, PATCH);
-  const tag = sapphire ? `sapphire-T${String(smoke ?? 1).replace('.', 'p')}` : 'silvered';
+  // Named from what the BUILD reported (consts.smokeT, the dial's own sapphire
+  // flag), never from this call's arguments: the shipped boot passes neither,
+  // and deriving from the arguments filed the smoked shipped dial as
+  // 'dial-silvered.png' — a frame whose label denied what it showed.
+  const shot = consts.smokeT;
+  const isSapph = !!(before && before.sapphire);
+  const tag = seedStore ? (isSapph ? `sapphire-T${String(shot).replace('.', 'p')}` : 'silvered')
+                        : `shipped-${isSapph ? `sapphire-T${String(shot).replace('.', 'p')}` : 'silvered'}`;
   writeFileSync(join(OUT, `dial-${tag}.png`), Buffer.from(frame.png.split(',')[1], 'base64'));
   writeFileSync(join(OUT, `patch-${tag}.png`), Buffer.from(frame.crop.split(',')[1], 'base64'));
   await ctx.close();
