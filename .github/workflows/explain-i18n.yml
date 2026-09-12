@@ -38,6 +38,29 @@
 # Coverage is reported, not gated: an untranslated block renders English and
 # says so. A hard 100% gate would push a future contributor toward machine
 # filler to make the light green, which is the opposite of the point.
+#
+# THE INDEX ARM IS SPLIT BY EVENT, and only the index is:
+#
+#   pull_request -> CHECK. Fail the PR; the author regenerates and pushes.
+#   push to main -> FIX.   Regenerate and commit. Nobody is blocked.
+#
+# It needed splitting because the index's count is a WHOLE-DIRECTORY fact, so
+# it can go stale with no branch doing anything wrong: #407 and #408 each added
+# a probe and each regenerated correctly against its own base, and the MERGE of
+# the two left main reading 195 where the directory held 196. A merge
+# regenerates nothing, and no rebase is available after the fact.
+#
+# Auto-fixing is safe HERE for the same reason the roadmap repo's links.yml
+# gives for BACKLOG.md's contents: the file is a pure restatement of what it
+# indexes — every summary is the probe's own leading comment, written by its
+# author — so regenerating carries no editorial judgement and can introduce no
+# claim. The other two checks in this workflow are NOT of that kind and stay
+# verify-only: a translation is editorial, and explain-quotes asserts the page
+# against src/*.js rather than restating it. Neither may ever be auto-written.
+#
+# The index CHECK is therefore skipped on push, because the fix job below is
+# what answers for main. Without that skip a stale main reds this workflow at
+# the same moment the fix job repairs it.
 
 name: Explainer
 
@@ -72,6 +95,9 @@ on:
 concurrency:
   group: explain-i18n-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   explain-i18n:
@@ -111,5 +137,64 @@ jobs:
       # workflow rather than the battery because it needs no browser and takes
       # milliseconds — and because an index nobody can trust is worse than no
       # index, which is the state that made it necessary.
+      # PR only. On push to main the fix-index job below regenerates instead —
+      # see the header: main can go stale without any branch being at fault.
       - name: Check the instrument index is not stale
+        if: github.event_name == 'pull_request'
         run: node tools/index-instruments.mjs --check
+
+  # The repair arm. Browser-free and about a generated document, which is the
+  # same bar the index check had to meet to ride this workflow at all.
+  fix-index:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    # Serialised, and NOT cancel-in-progress: two quick pushes must not race to
+    # commit. The workflow-level group above cancels superseded runs, which is
+    # right for a check and wrong for a writer.
+    concurrency:
+      group: explain-i18n-fix-index
+      cancel-in-progress: false
+    steps:
+      # ref: main rather than the triggering SHA, so the commit lands on the
+      # branch tip even if main moved while this was queued.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No npm ci and no Chromium: index-instruments.mjs reads the tools/
+      # directory and nothing else.
+      - name: Regenerate the instrument index
+        run: node tools/index-instruments.mjs
+
+      # "[skip ci]" keeps this commit from triggering another run. Even without
+      # it the loop would terminate — the next run would find nothing to change
+      # — but that wastes a run per fix.
+      - name: Commit if anything changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- tools/INDEX.md; then
+            echo "Instrument index already current."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/INDEX.md
+          git commit -m "Regenerate tools/INDEX.md [skip ci]"
+          # main may have moved since checkout; rebase this one commit on top.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              echo "Pushed on attempt $attempt."
+              exit 0
+            fi
+            echo "Push rejected — rebasing onto main and retrying."
+            git pull --rebase origin main
+          done
+          echo "Could not push after 3 attempts." >&2
+          exit 1
