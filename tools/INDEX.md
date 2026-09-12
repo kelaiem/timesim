@@ -4,7 +4,7 @@
 
 # The instruments
 
-193 scripts. **96 are ACCEPTANCE tests** — they decide and exit non-zero.
+194 scripts. **97 are ACCEPTANCE tests** — they decide and exit non-zero.
 **97 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -58,6 +58,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-121-depth.mjs` | §121 | report | §121 triage evidence — for every in-scope FF/MM row the three-tier check flags, measure HOW the two solids share space: what fraction of each mesh's vertices stands inside the other, and how deep the deepest one sits. A joint by construction (an arbor through its bore, a stud through a spring's eye) reads as a large contained fraction at real depth; a bevel-creep or assembly graze reads as a sliver. Verdicts in the declared table cite these numbers rather than a look. |
 | `probe-121-intraunit.mjs` | §121 | acceptance | §121 — run the three-tier intraUnit and print the raw rows, so the declared population is seeded from measurement rather than guesswork (the same arc probe-107-assembly.mjs ran for the assembly check). Run it TWICE back-to-back before declaring anything: rows at the arbiter's d≈1e-4 boundary flip run-to-run, and the flicker is a triage bucket of its own. |
 | `probe-122-verdict.mjs` | §122 | acceptance | §122 — THE VERDICT DISSECTION: the instrument fix one's soundness claim rests on, kept in the tree because the landing's comment cites it and a future reader must be able to re-take the measurement. |
+| `probe-124-motionworks-sense.mjs` | §124 | acceptance | DOES THE MOTION WORKS COUNTER-ROTATE? — TODO 124's gate, and its diagnosis. |
 | `probe-127-extrema.mjs` | §127 | acceptance | §127 tier 2a — the acceptance for slicing the two EXTREMA sweeps, at a scale a person can iterate at. |
 | `probe-127-matrix.mjs` | §127 | acceptance | §127 tier 3 Landing A — THE ACCEPTANCE FOR ASSEMBLING ACROSS PROCESSES, at a scale a person can iterate at. |
 | `probe-127-split.mjs` | §127 | acceptance | §127 — the acceptance for the split, at a scale a person can iterate at. |

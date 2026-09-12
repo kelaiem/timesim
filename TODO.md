@@ -15514,7 +15514,7 @@ keeps those out of the gated population.)
 Found by §194's `transmits` gate on its first run, and it is standing
 rule 2's own worked example failing that rule. The rule states it in
 these words: *"The hour hand is not `minuteA / 12`; it arrives at 12:1
-because the tooth counts multiply to it."* Measured, it does not.
+because the tooth counts multiply to it."*
 
 **The measurement.** Both motion-works meshes turn their neighbour by the
 right ratio MAGNITUDE, to six figures, with the sign INVERTED:
@@ -15524,10 +15524,10 @@ right ratio MAGNITUDE, to six figures, with the sign INVERTED:
 | cannon pinion ⇄ minute wheel | **+0.333333** | −0.333333 |
 | minute pinion ⇄ hour wheel | **+0.250000** | −0.250000 |
 
-An external mesh counter-rotates. These co-rotate. The counts are right —
-10/30 × 8/32 is 12:1, and the magnitudes prove the arithmetic is being
-done — so what is missing is the causality: the angles are computed from
-the ratio rather than arriving through the teeth.
+An external mesh counter-rotates. These co-rotate — tooth tip meeting
+tooth tip on the line of centres rather than tooth entering gap, which is
+what `meshPhase` reads from the other side as **50.00% of a pitch**, the
+worst value that measure can take.
 
 **Three explanations are ruled out by measurement, not by argument**, and
 each of them produced this exact symptom during §194's development:
@@ -15542,21 +15542,73 @@ each of them produced this exact symptom during §194's development:
   the SAME frame handedness, measured off the basis determinant.
 - *Wrong tooth counts.* Excluded: the magnitude is exact.
 
+**THE HEADING ABOVE IS THE FIRST DIAGNOSIS, AND ITS SECOND CLAUSE IS
+RETRACTED BELOW.** It is left in place because an item number is a
+permanent ID and its title is part of that identity — `check-item-numbers.mjs`
+refuses a retitle under a live number, allowing only a trailing status
+marker, because it cannot tell a correction from a stolen number. So the
+correction lives here, in the body, rather than in the heading.
+
+**THE FIRST DIAGNOSIS WAS WRONG, and it is left standing here because the
+refutation is the useful part.** This item originally concluded that "the
+angles are computed from the ratio rather than arriving through the
+teeth" — that the causality was missing. It is not. `MW_RATIO_1` and
+`MW_RATIO_2` are ALREADY signed tooth-count quotients
+(`-(cannonPinionTeeth / MW_MINUTE_TEETH)`, `src/main.js:1687-1688`), so
+the ratio carries the minus sign and **cannot** produce a positive
+reading. The angles do arrive through the counts; the SIGN is lost after
+they arrive.
+
+**Where it is lost.** The exclusion of the mirror above is sound — all
+three members really are in the one `dialFace` frame — but the defect is
+the frame SEAM, not the mirror. `cannonPinion`, `motionWorks` (hence
+`mwArbor`) and `hourWheelGroup` are all `dialFace` children, and of the
+movement's six dial-side rotation writes `mwArbor` is the ONLY one
+missing TODO 115's negation, sitting between two members that both carry
+it:
+
+| write | negated |
+|---|---|
+| `minuteHand.rotation.z = -minuteA` | yes |
+| `cannonPinion.rotation.z = -minuteA` | yes |
+| **`mwArbor.rotation.z = mwMinuteA`** | **no** |
+| `hourWheelGroup.rotation.z = -mwHourA` | yes |
+| `smallSecondsHand.rotation.z = -(fourthA - …)` | yes |
+| `reserveHand.rotation.z = -rsvArbor2.rotation.z` | yes |
+
+So this is TODO 129's class — an incomplete enumeration of dial-side
+parts keyed to a going-train quantity — and not a missing-causality one.
+That matters for the fix: deriving the minute wheel's angle "through the
+mesh", as this item first proposed, would have rebuilt machinery that was
+already correct and left the sign exactly where it was.
+
+**Measured, not argued.** `tools/probe-124-motionworks-sense.mjs`
+accumulates the world azimuth of each part's own material +X across a tau
+sweep — frame-free, so the Y-flip cannot touch the reading — and runs the
+counterfactual: with `mwArbor.rotation.z` negated in place, both rows
+land on their bars exactly (−0.333333, −0.250000). One negation, both
+meshes. Its controls are the going train's Third ⇄ Fourth (must-hit,
+−8.000000) and the same pair with a negation injected (must-miss,
++8.000000), so a run that measured nothing cannot report clean.
+
 **Why nothing caught it before.** No `solveGearChain` call ever covered
 this chain — it is the one gear train in the movement with no phase solve
 of its own — and the battery's sweeps structurally cannot see it, because
-two wheels whose angles are written independently sweep exactly the same
-volumes as two that are geared. §194's `meshPhase` reads the same rows at
-a spread of 42.9 and 37.3 percentage points across the pose net, which is
-the same defect seen from the other side: `frac(uP + uQ)` is invariant
-only while a pair genuinely transmits.
+two wheels whose angles are written with the wrong relative sign sweep
+exactly the same volumes as two that are geared. §194's `meshPhase` reads
+the same rows at a spread of 42.9 and 37.3 percentage points across the
+pose net, which is the same defect seen from the other side:
+`frac(uP + uQ)` is invariant only while a pair genuinely transmits.
 
-**The fix** is the one standing rule 2 names: derive the minute wheel's
-angle from the cannon pinion through the mesh, and the hour wheel's from
-the minute pinion, so 12:1 is a consequence of the counts rather than a
-coefficient. Both rows are waived in `TRANSMITS_WAIVERS` and
-`MESH_PHASE_WAIVERS` citing this item; the waivers are gated stale, so
-deleting them is structurally part of the fix.
+**The fix**, therefore, is the negation `mwArbor` was owed, plus the one
+consequence it carries: `minuteStar` is a child of `mwArbor`
+(`src/main.js:12152`), so the jumper's `starTurn` must read the arbor's
+own value rather than a second copy of the sign — one source, the rule
+that keeps working. `mwHourA` stays as it is: it is a movement-frame
+quantity derived by ratio, and only the dial-side WRITE was ever wrong.
+Both rows are waived in `TRANSMITS_WAIVERS` and `MESH_PHASE_WAIVERS`
+citing this item; the waivers are gated stale, so deleting them is
+structurally part of the fix.
 
 **Five more meshes are off anti-phase and are NOT this item** — they are
 geared and merely mis-phased, which the spread tells apart from this
@@ -15566,6 +15618,15 @@ owner, and each should be re-read against its own cause when it is taken
 up: the two keyless rows, `alarm setting: idler 2 ⇄ arbor pinion`,
 `alarm arrest: leg B pinion ⇄ idler pinion`, and `alarm arrest output:
 cage wheel ⇄ finger pinion`.
+
+**A sixth row is waived against this item that this item does not
+describe**, and it should not be adopted without its own reading:
+`alarm setting setting wheel ⇄ idler 1`. It is absent from the five
+above, its spread is **45.703** — the largest in the movement, which by
+the rule just stated puts it in the "does not transmit" class rather than
+the mis-phased one — and yet `transmits` passes it unwaived on both its
+declared inputs. Those two readings disagree, and neither has been
+chased. Filed here rather than silently re-labelled.
 
 ## 125. The keyless centre distances carry an underived `+ 0.1`
 
