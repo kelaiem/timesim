@@ -1647,11 +1647,32 @@ export function makePalletFork({ span, leverLength, thickness, stoneZReach, beat
   guardGeo.rotateX(Math.PI / 2);
   const guard = new THREE.Mesh(guardGeo, MATS.steel);
   guard.position.set(0, forkY + t * 0.5, -t * 0.7);
+  // §221 — NAMED because the safety action is measurable for the first time.
+  // At ±45° the balance never carried the roller's solid rim past this pin;
+  // at the physical ±270° it does, twice a swing, and the pair needs to be
+  // findable by an instrument rather than by "the fork's non-ruby child that
+  // is not the blank" (which is how probe-fork-blank.mjs still has to do it).
+  guard.name = 'guardPin';
   g.add(guard);
 
   g.userData.entryPos = entryPos;
   g.userData.exitPos = exitPos;
   g.userData.span = span;
+  // §221 — THE ESCAPEMENT'S OWN ARITHMETIC, published. `stoneW` is derived
+  // here (TODO 131) from the tip's slide path, and the path is a function of
+  // the bank the caller passes — so the width is where a change in the lift
+  // arrives in the metal. It was readable only through a console.warn that
+  // fires when it leaves its range, which is no use to a gate or a probe that
+  // wants the number while it is still legal. `faceBeatFrac` is the reading
+  // that matters: the face as a fraction of the wheel's advance in one beat,
+  // which is what has to stay under 1 for the tooth to leave the stone before
+  // the next tooth arrives.
+  g.userData.stone = {
+    w: stoneW, l: stoneL, pitchArc, beatArc: 0.5 * pitchArc,
+    faceBeatFrac: stoneW / (0.5 * pitchArc),
+    dropDeg: DROP_DEG, drawDeg: DRAW_DEG, embraceDeg: EMBRACE_DEG,
+    bankRad, beatRad: beat, sOff,
+  };
   // MODELING.md rule 1's export: the blank's own outline and the two numbers
   // that say how far past it the rendered solid stands. `blankHalfZ` is what
   // layout.js's FORK_HALF_Z must equal — main.js asserts the pair (TODO 98).
@@ -1770,7 +1791,14 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
     curveSegments: 24,
   });
   srGeo.translate(0, 0, srZ - thickness * 0.17);
-  g.add(new THREE.Mesh(srGeo, MATS.steel));
+  const srMesh = new THREE.Mesh(srGeo, MATS.steel);
+  srMesh.name = 'safetyRoller';   // §221 — the guard pin's mate; see guardPin in makePalletFork
+  g.add(srMesh);
+  // §221 — the crescent's own half-angle, published so an instrument can say
+  // WHICH part of the swing the pin faces the passing hollow and which part it
+  // faces solid steel. `gap` is the absarc's start angle, so the notch spans
+  // ±gap about the impulse pin's azimuth.
+  g.userData.safetyRoller = { r: srR, crescentHalfAngleRad: gap, z: srZ, h: thickness * 0.35 };
 
   g.userData.r = radius;
   g.userData.rollerR = rollerR;
@@ -2664,7 +2692,17 @@ export function makeHairspring(plan) {
     const s = el.solve(th, null, el.freeLanding(th));
     return { theta: th, lam: Math.hypot(s.lam[0], s.lam[1]), kOverPure: (s.torque / th) * el.L, converged: s.converged };
   });
-  const ratioAt = (th) => { const s = solved[Math.round((th + windMaxRad) / dTheta)]; return s.torque / th; };
+  // §221 — the clamp stiffening is SOLVED at the small angle, not read off the
+  // nearest frame. It used to index the frame table
+  // (`solved[round((th + windMaxRad)/dTheta)]`), which quietly required the
+  // frame step to divide HAIRSPRING_RATIO_THETA — true while the span was
+  // ±1 rad in 41 frames (step exactly 0.05) and false the moment the span
+  // became the balance's own amplitude, since 2·270°/n is never a divisor of
+  // 0.05. The symptom would have been main.js's `clampRatioAgrees` assert
+  // firing on a spring that was perfectly fine: the two paths would have been
+  // reading two different angles. The ratio is a property of the PLAN, so it
+  // is measured at the plan's angle and the sampling cannot reach it.
+  const ratioAt = (th) => el.solve(th).torque / th;
   const clampRatio = ((ratioAt(HAIRSPRING_RATIO_THETA) + ratioAt(-HAIRSPRING_RATIO_THETA)) / 2) * el.L;
 
   // §218 tier two — the path carries the overcoil's z profile. The tube is

@@ -54,6 +54,8 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
+| 132 | OPEN (§221) | §221 made the amplitude constant over the reserve and gave the fusee's level product as the reason, which is right as far as it goes: §104 holds `springTq·r/K` to 2.2e-16 across 30 hours, so no TORQUE error can make the arc sag. But a real fusee watch still loses a few degrees over a long run, to the escapement's and train's own friction, and nothing here models that. The amplitude is therefore constant for one correct reason and one missing one. Needs a Q for the balance and an energy balance across the escapement; §221 deliberately did NOT invent a slope, because a coefficient with no mechanism is what most of this file exists to catch |
+| 133 | OPEN (§221) | The pallet stone's impulse face measures **0.9959 of the escape wheel's one-beat arc** — 0.41% of headroom under the ceiling `makePalletFork` asserts. The wheel's own term is already 0.861 of it before the fork contributes anything (drop 1.5° of 12°, so `sOff` 0.875), so the ceiling is nearly binding by construction once the bank is realistic, and it is what capped §221's lift at 40° when the cited range runs to 52°. The escapement cannot take a modern lift angle as proportioned. Fix path is a bigger drop or a different wheel pitch, both re-solves; what is NOT the fix is widening the assert |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
@@ -12181,6 +12183,21 @@ better than item 98's scope note claimed, and that note is corrected in place:
   (48 samples), guard pin → safety roller reads **min 0.2356, max 0.7455**.
   Never touching is CORRECT for normal running — a safety action is a failsafe,
   not a working contact — and the ~0.51 of variation is the crescent passing.
+
+  **RE-MEASURED at the physical amplitude (§221, 2026-09-12): min 0.1863.**
+  The reading above was taken while the balance mesh performed ±45°; §221
+  retired that fiction and the swing is ±270°, so the roller presents every
+  azimuth to the pin instead of a 19° sliver (solid rim in front of the pin for
+  94% of the swing, against 61% before). `tools/probe-221-safety.mjs`
+  (acceptance, 339 poses over one oscillation, both controls asserted) reads
+  **0.1863** at the worst pose, balance −111.2°. Still clear, and still not a
+  clearance anyone asked for — but 0.047 tighter than this item recorded, and
+  now only 0.036 above `CLEAR_MARGIN`. That does not close defect 1 below; it
+  makes it sharper, because the margin the chosen numbers happen to leave has
+  moved most of the way to the floor and nothing states the band it should
+  have been solved to. Defects 2 and 3 are untouched: no axis displaces the
+  fork, so the ACTING half of the failsafe is still untested by construction,
+  and no horn-to-pin contact is isolated.
 - The impulse pin does reach the fork body: **0.0000**, the notch contact.
 
 **So what is wrong is not the shape. Three things:**
@@ -16136,3 +16153,79 @@ DROP chip begins when the wheel has advanced `BEAT_DEG − DROP_DEG`, not at a
 fraction of the window (the primer's chip had the same off-by-a-smoothstep,
 fixed alongside). The model lives twice — once per page, both sim-code-free
 by design — so a change to the stone law is owed to both plates.
+
+## 132. The balance's amplitude has no loss model, so the fusee's level torque is the only reason it holds constant
+
+Filed by §221, which retired `balanceTheta`'s `(0.55 + 0.45·tension)` sag. That
+law was a going-barrel story told on a fusee watch and had to go: §104 holds the
+going spring's level product `springTq·r/K` to 2.2e-16 across the whole 30-hour
+reserve, so the escape wheel receives the same torque at hour 30 as at hour 0,
+and a constant impulse into a constant oscillator is a constant arc. Nothing
+about that argument is wrong.
+
+**What it does not cover.** A real fusee watch's amplitude still drops a few
+degrees over a long run. The fusee equalises the SPRING's torque; it does not
+equalise what the escapement and train lose to friction, to the oil thickening,
+or to the balance's own air drag. So the shipped amplitude is constant for one
+correct reason (no torque error) and one missing one (no losses at all).
+
+§221 deliberately did not approximate the difference. A slope fitted to look
+right would be exactly the class of coefficient this file exists to catch —
+standing rule 1 at oscillator scale — and the honest form of the claim is
+"constant, because the torque is level, and the losses are not modelled".
+
+**What would earn a slope.** An energy balance: the impulse energy the
+escapement delivers per beat (from the level torque and the lift), against the
+energy the oscillator loses per beat (a Q for the balance — air drag on the rim,
+pivot friction, the hairspring's internal damping). Amplitude is then the arc at
+which the two balance, and it falls as Q falls. That is a real derivation with
+real inputs, and it would also give the sim its first honest answer to "what
+happens as the watch runs down", which the sag law was pretending to.
+
+**Not in scope, and worth saying**: the amplitude is not a free parameter to
+restore. `AMPLITUDE_DEG` is one number now (§221) and a loss model would make it
+the arc at full wind rather than a second constant beside it.
+
+## 133. The pallet stone's impulse face is within 0.4% of the beat arc, so the escapement cannot take a modern lift angle
+
+Found by §221 while deriving the fork's bank from a cited lift angle, and it is
+the constraint that capped that lift at 40° when the cited range runs to 52°.
+
+**Measured.** `makePalletFork` derives `stoneW` (TODO 131) as the tooth tip's
+travel across the stone up to the drop, and asserts it under the escape wheel's
+advance in one beat (`0.5·pitchArc`, since `BEAT_DEG` is half the 24° pitch).
+The shipped face reads **0.9386 against a 0.9425 ceiling — `faceBeatFrac`
+0.9959**, 0.41% of headroom.
+
+**Why it is nearly binding by construction.** The face is a relative SLIDE: the
+tooth's advance plus the stone's own retreat as the fork rocks. The wheel's term
+alone is 0.861 of the beat arc — `sOff` is 0.875 because the drop is 1.5° of
+12° — so only 14% is left for everything the fork contributes, and the fork's
+contribution grows with the bank. Measured across the bank:
+
+| bank, each way | `faceBeatFrac` |
+|---|---|
+| 0° (the wheel's term alone) | 0.861 |
+| 2.57° (the old bank, from the 45° fiction) | 0.942 |
+| 4.74° (shipped) | 0.9959 |
+| 5.00° | 1.002 — over |
+| 5.92° (a 50° lift) | 1.024 — over |
+
+The old build sat at 0.942 and the ceiling was never tested, which is why this
+went unnoticed: the fork banked 2.57° because it was sized from a readability
+number, and a fork that barely moves barely lengthens its stone's face.
+
+**What is owed.** Two candidate fixes, both re-solves rather than edits:
+increase `DROP_DEG` (a bigger drop lowers `sOff` and shrinks the wheel's term,
+at the cost of beat energy — every degree of drop impulses nothing), or change
+the wheel's pitch (a different tooth count re-cuts the club, the phase and the
+fork's span). Either needs the escapement re-proportioned as a group, with
+§120's cycle sweep and `probe-131-escapement-slide` held green across it.
+
+**What is NOT the fix**: widening the assert. The ceiling is a real statement —
+the tooth must leave the stone before the next tooth arrives — and 0.41% is a
+thin margin on a real constraint, not a false alarm. It is also worth stating
+plainly that the ceiling may be CONSERVATIVE: a slide can legitimately exceed
+the wheel's advance, and nobody has derived the true bound (the stone fitting
+the tooth gap). Deriving that bound is a third candidate, and the only one that
+could turn this from debt into headroom.

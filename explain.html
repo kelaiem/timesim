@@ -956,7 +956,7 @@
             <text class="val" x="14" y="164">0°</text>
             <text class="val" x="8" y="188">−1° recoil dip</text>
             <line x1="169" y1="20" x2="169" y2="160" stroke="var(--line)" stroke-width="0.75" stroke-dasharray="3 3"/>
-            <text class="val" x="150" y="176">0.16</text>
+            <text class="val" x="146" y="176">0.0472</text>
             <path id="escLaw" fill="none" stroke="var(--brass)" stroke-width="2"/>
             <path id="forkLaw" fill="none" stroke="var(--steel)" stroke-width="1.5" stroke-dasharray="5 3"/>
             <text class="lbl val-brass" x="240" y="46">escape wheel Δ (escapeDeltaDeg)</text>
@@ -969,8 +969,11 @@
         computes them — recoil dip of <code>RECOIL_DEG = 1.0°</code> over the first quarter
         of the impulse window (<code>RECOIL_FRACTION = 0.25</code>), smoothstep advance of
         <code>BEAT_DEG = 12°</code> (half the 24° tooth pitch), all inside
-        <code>IMPULSE_WIDTH = 0.16</code> of the beat; the remaining 84% is lock, with the
-        balance detached. The wheel's angle is <code>n·BEAT_DEG + Δ(p)</code> — the whole
+        <code>IMPULSE_WIDTH</code> of the beat — 0.0472 since §221, where it was an authored
+        0.16: the window is now DERIVED from the lift as
+        <code>(2/π)·asin(LIFT_DEG/2 / AMPLITUDE_DEG)</code>, the fraction of a beat a balance
+        swinging <code>A·sin(ωt)</code> spends inside <code>±LIFT_DEG/2</code>. So 95% of the
+        beat is lock, with the balance detached. The wheel's angle is <code>n·BEAT_DEG + Δ(p)</code> — the whole
         train hangs off this one function, never integrated, so it cannot drift. Which is the
         position arrow with nothing left over: <code>p</code> is the balance's phase, so the
         wheel's angle is READ OUT of the oscillator, and every wheel behind it is read out of
@@ -984,7 +987,11 @@
       (TODO 32 derived the mainspring's torque law and the fusee delivers it level, but that
       is a published moment, not a force stepping this train), so the impulse of
       panel 3 transfers no energy, the amplitude it would sustain is a declared constant, and
-      lift angles and safety-action dynamics are not simulated. The drawn contacts are the
+      the safety action's DYNAMICS are not simulated. Its clearing half is measured, and
+      §221 re-measured it at the swing the balance now performs: the guard pin clears the
+      safety roller's rim by 0.1863 at the worst of 339 poses, against the 0.2356 TODO 105
+      read at the old ±45°. Tighter by 0.047 than anyone knew, and still not a DERIVED
+      band — which is that item's first defect, sharpened rather than closed. The drawn contacts are the
       built geometry's and the motion law is the shipped one. Note what that leaves standing:
       the stones of a real escapement DO command the wheel's position — the plates above claim
       no more than that — and here they command it absolutely, because there is no torque to
@@ -1001,8 +1008,15 @@
       stays fiction is the recoil: <code>RECOIL_DEG = 1.0</code>° of wheel and a fork dip of a
       quarter bank are two constants a 12° draw does not reconcile, and there is no lock depth
       (TODO 131's residue). Banking:
-      <code>FORK_BANK_DEG = rollerR·Δθ_pin / notchDepth / 2</code>, derived, with
-      <code>FORK_RECOIL_DEG</code> at a quarter of it.</p>
+      <code>FORK_BANK_DEG = rollerR·LIFT_DEG / notchDepth / 2</code>, derived — and §221
+      changed what Δθ_pin means there. It used to be <code>amp·sin(π·IMPULSE_WIDTH)</code>,
+      the pin's travel computed from the drawn amplitude, so the fork's swing and the stones
+      cut against it were sized by a readability number. The pin's travel during the impulse
+      IS the lift, by definition, so the lift goes in directly and amplitude drops out: a
+      watch running at 180° and the same watch at 300° bank the same fork over the same
+      stones. The bank reads 4.74° each way, 9.48° bank to bank, where a real Swiss lever
+      swings 8–12°; it was 2.57° before, which no lever is.
+      <code>FORK_RECOIL_DEG</code> stays at a quarter of it.</p>
     </div>
   </details>
 
@@ -1048,16 +1062,22 @@
         state is the elastica of an inextensible ribbon between a collet that turns and a
         stud that does not, so the coils tighten on the wind and dilate on the run-back at
         constant length, and the sideways load the stud's reaction would put on the pivots —
-        the flat spiral's known vice — is measured rather than assumed: 0.0047 mN at the
-        drawn swing for a flat spring of this section, and 0.0003 mN with the Breguet
-        overcoil the next plate draws.
+        the flat spiral's known vice — is measured rather than assumed: 0.0264 mN at the
+        swing the balance performs for a flat spring of this section, and 0.0078 mN with the
+        Breguet overcoil the next plate draws.
         <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and
         <code>checkOscillator</code> gates that solve every battery run, holds every frame
         to one length of steel, and holds the overcoil concentric.
-        Still NOT modelled, and this page draws no such mechanism: turning a timing screw to
-        move the rate. Amplitude varies with mainspring tension
-        (<code>AMPLITUDE_VISUAL_DEG</code> scales with it), which is the isochronism story a
-        free-sprung balance exists to tell.</figcaption>
+        Since §221 the swing the mesh performs IS the swing the movement makes —
+        <code>AMPLITUDE_DEG</code> = 270°, one amplitude where there were two, the spring's
+        189 wind frames spanning all of it. And it does not sag as the reserve drains: this
+        is a FUSEE, whose cut holds the escape wheel's torque level across the whole 30
+        hours (§104), so a constant impulse into a constant oscillator keeps a constant arc.
+        A real fusee watch still loses a few degrees over the reserve to the escapement's
+        own friction; that is NOT modelled, because a slope needs a loss model and this page
+        will not draw a coefficient.
+        Still NOT modelled either, and this page draws no such mechanism: turning a timing
+        screw to move the rate.</figcaption>
       </figure>
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 2</span><span class="fig-title">The Breguet overcoil — the spring breathes concentrically</span></div>
@@ -1080,8 +1100,8 @@
             <text class="val" x="320" y="102">curvatures SOLVED: ρ₁ 6.73, ρ₂ 10.02 against R 7.92</text>
             <text class="lbl lbl-strong" x="320" y="130">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="146">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="174">measured: pivot load ×0.060 at 45°, ×0.29 at 270°</text>
-            <text class="val" x="320" y="190">flat spring 0.0047 mN → overcoil 0.0003 mN at the drawn swing</text>
+            <text class="lbl" x="320" y="174">measured: pivot load ×0.0034 at small swing, ×0.296 at 270°</text>
+            <text class="val" x="320" y="190">flat spring 0.0264 mN → overcoil 0.0078 mN at the full swing</text>
           </svg>
         </div>
         <figcaption>The last three quarters of a turn are raised through a knee to a second
@@ -1092,9 +1112,10 @@
         centroid of the whole flexing length sits on the balance axis. That is Phillips's
         condition, derived rather than quoted, and the elastica verifies it: the clamp
         stiffening the flat spring showed (1.0040) reads 1.000000 with the overcoil, and the
-        pivot load at the drawn swing falls to a sixteenth of the flat spring's. At a real
-        270° a residual survives — the theorem is a small-amplitude statement — and it is
-        reported, not hidden. The terminal's length is the classical three-quarter turn, taken
+        pivot load at small swing falls to a three-hundredth of the flat spring's. At the
+        270° the balance actually performs a residual survives — the theorem is a
+        small-amplitude statement, so §221 gates it at the angle it is stated for and reports
+        the rest. The terminal's length is the classical three-quarter turn, taken
         inside a measured window: the family solves from 0.55 to 0.90 turns and nowhere
         outside it. What the overcoil costs is metal in the stack — the balance cock rides
         0.63 u higher — and what it does not touch is the going train, whose drum, fusee band
@@ -2968,7 +2989,9 @@
 
     // —— Escapement plate 2: the beat law, ported verbatim (layout.js/main.js) ——
     (function () {
-      var BEAT_DEG = 12, IMPULSE_WIDTH = 0.16, RECOIL_FRACTION = 0.25, RECOIL_DEG = 1.0;
+      // §221 — IMPULSE_WIDTH is the derived window, (2/π)·asin(LIFT_DEG/2 / AMPLITUDE_DEG)
+      // at LIFT_DEG 40 and AMPLITUDE_DEG 270. Quoted as the value layout.js computes.
+      var BEAT_DEG = 12, IMPULSE_WIDTH = 0.0472, RECOIL_FRACTION = 0.25, RECOIL_DEG = 1.0;
       var smooth = function (x) { return x * x * (3 - 2 * x); };
       function escDelta(p) {
         if (p < IMPULSE_WIDTH) {
@@ -3034,7 +3057,7 @@
         var slider = el('escFrameSlider'), btn = el('escPlay'), chipEl = el('escPhaseChip'), readout = el('escFrameReadout');
         var frame = el('escStepFrame'), rideOut = el('escFrameRide');
         var TEETH = 15, R = 4.5, EMBRACE_DEG = 42, DRAW_DEG = 12, DROP_DEG = 1.5;
-        var BANK_DEG = 2.57;                 // FORK_BANK_DEG as main.js derives it (arc-length match, notch ⇄ roller pin)
+        var BANK_DEG = 4.74;                 // FORK_BANK_DEG as main.js derives it (§221: arc-length match on the LIFT, notch ⇄ roller pin)
         var MOVEMENT_SENSE = -1;             // layout.js — clockwise seen from the dial; +x stone is the ENTRY stone
         var D2R = Math.PI / 180;
         var embrace = EMBRACE_DEG * D2R, pitch = 2 * Math.PI / TEETH;
@@ -3173,7 +3196,7 @@
           else if (ph === 3) rideOut.textContent = tr('tip on the impulse face at') + ' ' + ride.t.toFixed(2) + ' ' + tr('of its width');
           else rideOut.textContent = tr('tip past the let-off — the wheel runs free');
         }
-        // Play dilates the beat: the action is IMPULSE_WIDTH (16%) of it, so
+        // Play dilates the beat: the action is IMPULSE_WIDTH (4.7%) of it, so
         // the window gets most of the loop and the lock a short dwell.
         var playing = false, t0 = null, raf = 0, actS = 4.0, dwellS = 1.2;
         function tick(now) {

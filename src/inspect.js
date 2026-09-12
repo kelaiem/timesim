@@ -37,7 +37,8 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
-  SLENDER_OVERHANG_K, MOVEMENT_SENSE } from './layout.js';        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  SLENDER_OVERHANG_K, MOVEMENT_SENSE,                             // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  F_BALANCE, IMPULSE_WIDTH, RECOIL_FRACTION } from './layout.js'; // §221: the beat axis's density is derived from the escapement's own finest feature, not authored
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -838,11 +839,32 @@ function unitsIntersect(A, B, raw = false) {
 // canonical state (enterAxis, below the array). An axis that wants a state must
 // NAME it — which is what turns an inherited accident into a decision, and what
 // lets §127 sweep two axes in two browser contexts and merge the results.
+// §221 — THE BEAT AXIS'S DENSITY IS DERIVED, from the escapement's own finest
+// feature rather than from a round number. The axis walks one whole
+// oscillation (tau 0 → 1/F_BALANCE, two beats), and everything the escapement
+// does happens inside the two impulse windows: IMPULSE_WIDTH of each beat,
+// which is IMPULSE_WIDTH/2 of the axis. The finest structure in there is the
+// recoil dip — RECOIL_FRACTION of the window, where the fork dips past its
+// bank on draw and the escape wheel runs backwards by RECOIL_DEG — so the net
+// must place at least two distinct poses inside THAT, or the dip is a feature
+// no sweep ever stands in.
+//
+// n = ceil(2 / (RECOIL_FRACTION · IMPULSE_WIDTH / 2)).
+//
+// It used to be an authored 96, sized when IMPULSE_WIDTH was an authored 0.16
+// of a beat; that put 1.92 samples across the dip — under two, so the shipped
+// net sometimes had exactly one pose in it. §221 derived the window from the
+// lift and it narrowed to 0.0472, which would have left 0.57 samples there:
+// the dip would have been stepped straight over, and nothing would have said
+// so. The price is real and is measured rather than assumed — see the §221
+// record for the three beat slices' before/after — and it is the honest price
+// of a window that is now a consequence of the escapement instead of a guess.
+const BEAT_AXIS_N = Math.ceil(2 / (RECOIL_FRACTION * IMPULSE_WIDTH / 2));
 export const AXES = [
   {
     name: 'beat',
-    n: 96,
-    pose: (f) => ({ tau: f * 0.4, crownPullT: 0, leverEngage: 0, tension: 1 }),
+    n: BEAT_AXIS_N,
+    pose: (f) => ({ tau: f / F_BALANCE, crownPullT: 0, leverEngage: 0, tension: 1 }),
   },
   {
     name: 'crown',
@@ -8299,7 +8321,7 @@ export function checkOscillator(clock) {
     if (!B.clampRatioAgrees) failures.push({ what: 'clamp ratio', builder: B.clampRatioBuilder, fitted: B.clampRatio });
     if (!B.kFramesAgrees) failures.push({ what: 'frames torque vs k', kFrames: B.kFrames_Nm_per_rad, k: O.k_Nm_per_rad, tolPct: 0.5 });
     if (!B.control.pass) failures.push({ what: 'free-landing control', maxPivotForce_mN: B.control.maxPivotForce_mN });
-    if (!B.stressInLimit) failures.push({ what: 'ribbon stress', stress_MPa: B.peaks.physical.stress_MPa, fatigue_MPa: B.fatigue_MPa });
+    if (!B.stressInLimit) failures.push({ what: 'ribbon stress', stress_MPa: B.peaks.stress_MPa, fatigue_MPa: B.fatigue_MPa });
     // §218 tier two — the overcoil is concentric (clamp ratio 1 to 1e-6, the
     // centroid solve converged) and the pivot force at the performed swing is
     // under a tenth of the flat spring's; the physical residual is a report.

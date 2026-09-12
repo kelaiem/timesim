@@ -24362,3 +24362,181 @@ read the same 0 drift and 0 new plate overflow before and after.
   carica" and the software word for loading a file, in different sections
   of the panel; a deliberate homograph, noted.
 - **`index.html`'s `<title>` is not localized in any locale** — still true.
+
+## §221 — the balance swings its physical amplitude: `AMPLITUDE_VISUAL_DEG` retired, the impulse window and fork bank re-derived from a cited lift, and the arc held constant because the movement has a fusee
+
+Shipped 2026-09-12, out of [§218](#218--the-hairspring-breathes-as-steel-does-the-clampedclamped-elastica-as-its-frame-law-the-spring-fitted-as-clamped-the-coil-count-derived--and-the-breguet-overcoil-solved-so-the-spring-breathes-on-centre)'s landing, which named the performed amplitude as the ×6 lever on the
+visible breathing and left it alone.
+
+**What it retires.** `layout.js` declared two amplitudes:
+`AMPLITUDE_TRUE_DEG = 270`, commented "physical reference, unused for mesh",
+beside `AMPLITUDE_VISUAL_DEG = 45`, "scaled-down, readable swing actually
+applied to the mesh". The mesh performed a sixth of the swing a real balance
+makes. That much was declared; what was not is how far the readability number
+reached — `FORK_BANK_DEG` was derived from it, and the builder cuts the pallet
+stones' impulse faces from the beat/bank pair, so the escapement's metal was
+sized by how legible the drawn swing was. That is standing rule 2's shortcut at
+escapement scale. There is one `AMPLITUDE_DEG = 270` now.
+
+**The lift is the one authored angle, and the movement bounds it.** A Swiss
+lever's lift — the balance's rotation between unlock and drop — is a cited
+design fact, not something this geometry produces: Reymondin et al., *The
+Theory of Horology* (the lever-escapement chapter) and Daniels, *Watchmaking*,
+put it across roughly 38°–52°. `LIFT_DEG = 40`, and **the entry's 50° did not
+survive contact with the metal**, which is the reconciliation this record owes.
+The arc-length identity makes the bank proportional to the lift
+(`bank = lift/8.4392` for this roller and notch), and two things fail as the
+bank opens — both measured, neither guessed:
+
+| bank, each way | stone face ÷ beat arc | fork blank in the wheel's sweep |
+|---|---|---|
+| 2.57° (the old, from 45°) | 0.942 | clear |
+| 4.00° | 0.978 | clear |
+| 4.74° (**shipped**, lift 40°) | **0.9959** | clear |
+| 5.00° | 1.002 — over | clear |
+| 5.50° | 1.014 — over | **0.1302, needs 0.15** |
+| 5.92° (lift 50°, the entry's) | 1.024 — over | **0.1125, needs 0.15** |
+
+So the cited range's top is not available to this caliber. 40° sits inside
+38°–52°, under both bounds, and puts the fork at 4.74° each way — **9.48° bank
+to bank, where a real Swiss lever swings 8°–12°**, which is a check on the
+choice rather than the reason for it. It was 2.57°, which no lever is. The
+roller stays at 18% of the balance radius, untouched and mid-band.
+
+**The face's 0.41% headroom is thin, and is reported rather than smoothed.**
+The wheel's own term is 0.861 of the beat arc before the fork contributes
+anything (the drop is 1.5° of 12°, so `sOff` is 0.875), so the ceiling is
+nearly binding by construction once the bank is realistic. Raising the lift
+further needs a bigger drop or a different wheel pitch — not a widened assert.
+`stoneW` is published now (`userData.stone`, with `faceBeatFrac`): it was
+readable only through a `console.warn` that fires when it leaves its range,
+which is no use to a gate or a probe that wants the number while it is legal.
+
+**The window is derived, and the two constants could never have been swapped.**
+`IMPULSE_WIDTH` was an authored 0.16 of a beat. Under `θ = A·sin(ωt)` the
+balance is inside `±L/2` for `(2/π)·asin(L/2A)` of a beat — 0.0472 here. The
+entry predicted 0.059, which is the same formula at a 50° lift; the figure
+moved with the lift, the derivation did not. The old 0.16 at 270° would have
+carried the impulse pin 130° across a notch it clears in a few degrees.
+
+**Δθ_pin IS the lift, so amplitude leaves the bank derivation entirely.** The
+old expression computed the pin's impulse travel indirectly as
+`amp·sin(π·IMPULSE_WIDTH)`; with the window now derived FROM the lift that
+route is circular as well as amplitude-dependent. A watch running at 180° and
+the same watch at 300° bank the same fork over the same stones.
+
+**The arc does not sag, because this is a fusee.** `balanceTheta` scaled the
+swing by `(0.55 + 0.45·tension)` — 25° at the end of the reserve against 45°
+full — under the comment "real movements drop from ~300° to ~200° as the
+mainspring drains". They do; a GOING-BARREL movement does.
+[§104](#104--the-fusee-is-cut-against-its-own-spring-the-equalisation-solved-and-gated)'s
+whole point is that this one does not: the fusee's cut holds the level product
+`springTq·r/K` to 2.2e-16 across the 30-hour reserve, which is the same
+statement as "the escape wheel receives the same torque at hour 30 as at hour
+0". A constant impulse into a constant oscillator is a constant amplitude, and
+the `reserve` and `wind` axes had been sweeping a going-barrel story as if it
+were mechanism. The `tension` parameter is GONE from the signature rather than
+ignored — an unread argument every caller still passes is an invitation to
+start reading it again.
+
+**Two declared travels are deleted, and the hull got BIGGER.** `declareTravel`
+buys a bounded arc in place of the registry's full-circle fallback, and is only
+worth having while the arc is bounded. At ±270° the peak-to-peak travel is
+540°, so the impulse pin and the safety roller's crescent visit every azimuth
+and the full circle is the parts' true swept hull — not a conservative bound on
+it. `declareTravel` refuses a travel of 2π or more for exactly that reason and
+`bounded` in `inspect.js` already read such a declaration as none, so declaring
+would have been a boot warning plus a no-op. `Balance` and `Hairspring` now
+present a full-circle hull to every sweep: a larger volume to clear, not a
+smaller one.
+
+**The hairspring's frames span the swing, and a latent coupling had to be cut
+first.** §218 meshed ±1 rad in 41 frames and evaluated the law out to 270° in a
+second, unmeshed `report` tier — a split that existed only because the mesh and
+the movement disagreed. One amplitude means one tier: **189 frames** at §218's
+0.05 rad step (`n − 1 = 2A/step = 188.5 → 188`, odd frame count required so a
+frame lands on θ = 0), and `report` is empty by construction. The
+performed/physical peaks collapse to one population.
+
+The coupling: the builder computed its clamp stiffening by INDEXING the frame
+table (`solved[round((th + windMaxRad)/dTheta)]`), which quietly required the
+frame step to divide `HAIRSPRING_RATIO_THETA`. True at ±1 rad in 41 frames
+(step exactly 0.05) and false the moment the span became the amplitude, since
+2·270°/n is never a divisor of 0.05. The symptom would have been main.js's
+`clampRatioAgrees` assert firing on a spring that was perfectly fine — two
+paths reading two different angles. The ratio is a property of the plan, so it
+is solved at the plan's angle now and the sampling cannot reach it.
+
+**The overcoil's gate moved to the order its theorem is stated at.** §218 gated
+"the pivot force at the performed amplitude under a tenth of the flat spring's"
+and the performed amplitude was 45°, where it read ×0.060. Phillips's condition
+is a FIRST-ORDER statement: with the centroid on the axis the stud does no work
+*at small θ*. One amplitude leaves only two honest choices, and both are now
+taken — the small angle (`HAIRSPRING_RATIO_THETA`, 0.05 rad) gates at
+**×0.0034**, and the full swing reports **×0.296** as the second-order residual
+the theorem permits. Note which way that went: at the angle the theorem
+actually describes, the overcoil cuts the pivot load by ×294, not ×17. The
+same number would have FAILED a 0.1 gate at 270°, and widening it would have
+been the wrong repair.
+
+**The beat axis's density is derived, and it tripled.** The axis walks one
+oscillation; everything the escapement does happens inside the two impulse
+windows, and the finest structure in there is the recoil dip
+(`RECOIL_FRACTION` of the window). The net must place at least two distinct
+poses inside THAT, so
+`n = ceil(2 / (RECOIL_FRACTION · IMPULSE_WIDTH / 2))` = **339**, from an
+authored 96. The 96 was sized when the window was an authored 0.16 and put
+1.92 samples across the dip — under two, so the shipped net sometimes had
+exactly one pose in it; the derived window would have left **0.57**, stepping
+the dip over with nothing to say so. The entry predicted ~260, which is this
+formula at a 50° lift. The axis's span also stopped being a literal `0.4`
+and reads `f / F_BALANCE` — the oscillation period was written twice.
+
+**The safety action is measured at the honest amplitude, and it got TIGHTER.**
+The entry expected this to answer TODO 105's open question; read against that
+item's own text, it does not — 105's three defects are that none of the guard
+clearances are DERIVED, that no axis displaces the fork so the failsafe's
+acting half is untested by construction, and that no horn-to-pin contact is
+isolated. §221 touches none of those. What it does is re-measure the CLEARING
+half under the swing the movement actually makes.
+`tools/probe-221-safety.mjs` (acceptance) sweeps one whole oscillation at the
+beat axis's own derived density and measures the guard pin against the safety
+roller as a signed surface gap:
+
+| row | reading |
+|---|---|
+| the balance actually swung across the sweep | **540.0°** of travel |
+| subject measured at every pose | 339 of 339 finite |
+| guard pin clears the safety roller by `CLEAR_MARGIN` | **min gap 0.1863** against 0.15, worst at balance −111.2° |
+| control MUST-HIT: a timing screw overlaps the rim it is set into | 0.0000 |
+| control MUST-MISS: guard pin never reaches the balance rim | 5.2340 |
+
+**0.1863 against TODO 105's 0.2356**, which that item measured over a beat at
+the old amplitude in 48 samples. The clearance the chosen numbers happen to
+produce is 0.047 tighter than anyone knew, and now stands 0.036 above
+`CLEAR_MARGIN` — which sharpens 105's first defect rather than closing it: a
+number nobody asked for has moved most of the way to the floor, and only a
+derived band would say whether that is generous, tight or wrong.
+
+The entry said the crescent "never leaves the guard pin" at ±45°; measured,
+that is not quite what was true, and the correction is worth keeping. The
+crescent is ±25.8° about the impulse pin's azimuth, so even ±45° carried some
+solid rim past the pin — for 61% of the swing. What ±270° changes is that the
+figure becomes **94%**, and that the rim presents EVERY azimuth to the pin
+rather than a 19° sliver of itself. The pair was thinly exercised before, not
+unexercised.
+
+**The control this probe first shipped with was wrong, in the skill's own
+catalogued way.** The must-hit began as the pallet stone against the slot
+broached for it — a set stone, surely in contact. It measures exactly 0.0500,
+because `SEAT_SHOW` holds the stone proud of the slot walls on purpose: a
+designed GAP, the running-fit trap verbatim. The replacement is a balance
+timing screw against the rim it is screwed into, and its premise is ASSERTED
+rather than assumed — the probe checks the builder's own published radii
+(`rc` 8.95 inside the rim's 7.75–9.0) before believing the overlap it then
+measures. `guardPin` and `safetyRoller` are named meshes now, and the
+crescent's half-angle is published, so the pair is findable by an instrument
+instead of by "the fork's non-ruby child that is not the blank".
+
+### Verified
+

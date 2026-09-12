@@ -15,7 +15,7 @@ import { UI_LANG, setUiLang, LOCALES, t, fmtNum, fmtInt, localizeTree } from './
 // no part's position.
 import {
   SPEC, SPEC_RATES,
-  F_BALANCE, BEAT_DEG, AMPLITUDE_TRUE_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
+  F_BALANCE, BEAT_DEG, AMPLITUDE_DEG, LIFT_DEG, IMPULSE_WIDTH,
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
@@ -1303,23 +1303,32 @@ const rollerR = balanceWheel.userData.rollerR || balanceR * 0.18;
 // arc-length: rollerR·Δθ_pin = notchDepth·(2·FORK_BANK_DEG in rad), where
 // notchDepth is the fork's own local-space reach from pivot to notch floor
 // (mirrors the (forkTop + 0.7·thickness) point makePalletFork's V-notch
-// curve actually lands on) and Δθ_pin is the balance's angular travel over
-// IMPULSE_WIDTH of a beat (closed form: amp·sin(π·IMPULSE_WIDTH), since
-// balanceTheta(τ) = amp·sin(2π·F_BALANCE·τ) and τ_impulse = IMPULSE_WIDTH /
-// (2·F_BALANCE)). Discovered by measuring the built pin/notch meshes and
-// finding they never actually touch (~3.5 units of persistent clearance,
-// even at the "locked" extremes) — this ties them together so a future
-// change to rollerR, amplitude, or fork proportions can't silently
-// reintroduce the gap. Solved BEFORE the fork is built: the builder cuts
-// the pallet stones' impulse faces from the same beat/bank pair.
+// curve actually lands on). Discovered by measuring the built pin/notch
+// meshes and finding they never actually touch (~3.5 units of persistent
+// clearance, even at the "locked" extremes) — this ties them together so a
+// future change to rollerR or fork proportions can't silently reintroduce
+// the gap. Solved BEFORE the fork is built: the builder cuts the pallet
+// stones' impulse faces from the same beat/bank pair.
+//
+// §221 — Δθ_pin IS THE LIFT ANGLE, and that is why amplitude is gone from
+// here. The lift is *defined* as the balance's rotation between unlock and
+// drop, which is exactly the travel the pin makes while it is in the notch;
+// the old expression computed the same travel indirectly as
+// amp·sin(π·IMPULSE_WIDTH) and so inherited whatever amplitude was declared.
+// With the window itself now derived FROM the lift (layout.js), that route is
+// circular as well as amplitude-dependent — and it made the fork's bank, and
+// through it the pallet stones' impulse faces, a function of how readable the
+// drawn swing was. The fork's swing is a property of the escapement: a watch
+// running at 180° and the same watch at 300° bank the same fork over the same
+// stones. Measured, taking the lift at its cited 50° moves the bank from
+// ±2.6° to ±6.0° — 12° bank to bank, where a real Swiss lever sits, the 5.2°
+// it had being a consequence of the 45° fiction rather than of any escapement.
 const notchDepth = 0.8 * forkLeverLength - 0.7 * FORK_T; // matches makePalletFork's V-notch geometry
-const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI * IMPULSE_WIDTH);
 // §36A: balanceTheta(tau) = amp*sin(2*pi*F_BALANCE*tau), so the swing is
-// +/-AMPLITUDE_VISUAL_DEG and the travel is twice that. The hairspring rides
-// the same arbor and takes the same arc. AMPLITUDE_VISUAL_DEG, not
-// AMPLITUDE_TRUE_DEG: the registry must bound the mesh that is actually
-// ANIMATED, and the true 270 deg swing is a physical reference the meshes
-// never perform.
+// +/-AMPLITUDE_DEG and the travel is twice that. The hairspring rides the
+// same arbor and takes the same arc. §221 — one amplitude now, so the
+// registry bounds the swing the meshes actually perform *and* the swing the
+// movement makes; they are the same number.
 // §48 — the winding path reverses because it is driven from BOTH ends: the
 // mainspring unwinds it one way, the keyless works winds it the other. That
 // is a two-way drive, not a missing spring.
@@ -1349,9 +1358,23 @@ declareRestoring('Power-reserve train', '*', 'two-way',
   'geared between the slip-coupled arbor and the reserve hand — winding drives the whole path up, running drives it down');
 declareRestoring('Chain', 'chainRun', 'two-way',
   'the barrel hauls it one way and the fusee the other; winding swaps which end is pulling');
-declareTravel('Balance', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'balanceTheta swings +/-AMPLITUDE_VISUAL_DEG');
-declareTravel('Hairspring', 2 * AMPLITUDE_VISUAL_DEG * DEG2RAD, 'rides the balance arbor');
-const FORK_BANK_DEG = (rollerR * pinImpulseSweepRad) / notchDepth / DEG2RAD / 2;
+// §221 — THE BALANCE AND ITS SPRING NO LONGER DECLARE A TRAVEL, and that is
+// the honest state rather than a regression. A declaration buys a bounded arc
+// in place of the registry's full-circle fallback, and it is only worth having
+// while the arc IS bounded: at ±45° the pair swept 90° and the declaration
+// saved three quarters of a circle each. At the physical ±270° the peak-to-peak
+// travel is 540°, so the impulse pin and the safety roller's crescent visit
+// every azimuth and the full circle is the part's true swept hull — not a
+// conservative bound on it. `declareTravel` refuses a travel of 2π or more for
+// exactly this reason and `bounded` in inspect.js already reads such a
+// declaration as none, so declaring would only have been a warning plus a
+// no-op. The consequence is real and wanted: both units now present a
+// full-circle hull to every sweep, which is a LARGER volume to clear, not a
+// smaller one.
+// rollerR·L = notchDepth·2·bank, with Δθ_pin = L the lift itself (§221 — there
+// is no second name for the lift here; the intermediate `pinImpulseSweepRad`
+// was exactly LIFT_DEG·DEG2RAD once the window stopped being authored).
+const FORK_BANK_DEG = (rollerR * (LIFT_DEG * DEG2RAD)) / notchDepth / DEG2RAD / 2;
 const FORK_RECOIL_DEG = FORK_BANK_DEG * 0.25; // preserves the original 2.5/10 ratio
 // §36A: the fork banks between ±FORK_BANK_DEG and recoils FORK_RECOIL_DEG past
 // the bank on draw, so its extreme-to-extreme travel is 2*(bank + recoil).
@@ -1532,11 +1555,26 @@ if (HAIRSPRING_H_MM < 0.02 - 1e-9 || HAIRSPRING_H_MM > 0.04 + 1e-9)
 if (HAIRSPRING_RIBBON_R >= HAIRSPRING_H / 2)
   console.warn(`TODO 25: solved ribbon radius ${HAIRSPRING_RIBBON_R.toFixed(4)} is not under the half-height ${(HAIRSPRING_H / 2).toFixed(4)} — the section no longer stands on edge and I_sec = a³c/3 no longer describes it.`);
 
+// §221 — THE MESHED FRAMES NOW SPAN THE WHOLE SWING. §218 meshed ±1 rad in 41
+// frames and EVALUATED the law out to the physical 270° in a second, unmeshed
+// `report` tier — a split that existed only because the mesh performed 45°
+// while the movement claimed 270°. With one amplitude there is one tier: the
+// span is the amplitude, and the step is kept at §218's 0.05 rad, which is
+// HAIRSPRING_RATIO_THETA — the linear regime's own scale, and the finest
+// spacing the solve is warm-started across. n − 1 = 2A/step = 188.5 → 188,
+// so 189 frames at 0.0501 rad; ODD is required (makeHairspring's REST_FRAME
+// is (n−1)>>1 and must land on θ = 0 exactly).
+const HAIRSPRING_WIND_MAX_RAD = AMPLITUDE_DEG * DEG2RAD;
+const HAIRSPRING_WIND_FRAMES = (() => {
+  const steps = Math.round(2 * HAIRSPRING_WIND_MAX_RAD / G.HAIRSPRING_RATIO_THETA);
+  return (steps % 2 === 0 ? steps : steps + 1) + 1;   // even step count ⇒ odd frame count ⇒ a frame at θ = 0
+})();
 const hairspring = G.makeHairspring({
   ...HAIRSPRING_PLAN,
   height: HAIRSPRING_H, // shared with the cock's z-solve: its slab sits one margin above this stack
   ribbonR: HAIRSPRING_RIBBON_R,   // TODO 25 tier two — solved from the balance above, not from legibility
-  reportMaxRad: AMPLITUDE_TRUE_DEG * DEG2RAD, // §218 — the law is EVALUATED (not meshed) out to the physical swing
+  windFrames: HAIRSPRING_WIND_FRAMES,
+  windMaxRad: HAIRSPRING_WIND_MAX_RAD,
 });
 
 // --- TODO 25 tier two: THE RATE, NOW A CONSEQUENCE ---------------------------
@@ -1548,9 +1586,9 @@ const hairspring = G.makeHairspring({
 // old plan's length.
 //
 // Amplitude appears nowhere, and that is not an oversight: under the linear
-// (isochronous) model f = √(k/I)/2π has no amplitude term, so neither
-// AMPLITUDE_VISUAL_DEG (45, what the mesh performs) nor AMPLITUDE_TRUE_DEG
-// (270, the physical reference) belongs in it.
+// (isochronous) model f = √(k/I)/2π has no amplitude term, so AMPLITUDE_DEG
+// does not belong in it. (§221 — there used to be two amplitudes to exclude
+// here; the sentence is shorter for the same reason the movement is honest.)
 // §218 — a FATIGUE figure for the ribbon, cited rather than chosen (rule 1,
 // STEEL_E_PA's precedent): Shigley's rotating-beam endurance limit for steels,
 // S'e = 0.5·Sut up to Sut 1400 MPa and 700 MPa above it (Budynas & Nisbett,
@@ -1580,9 +1618,13 @@ const OSCILLATOR = (() => {
     radialShift_mm: MM(r.radialShift),
     len_u: r.len, iters: r.iters, converged: r.converged,
   });
+  // §221 — ONE POPULATION. §218 had `worn` (the frames inside the performed
+  // 45°) and `all` (those plus the unmeshed report tier out to 270°), because
+  // the mesh and the movement disagreed about the swing. They agree now, so
+  // `frames` IS the spring's whole life and `report` is empty by construction
+  // (reportMaxRad defaults to windMaxRad).
   const frames = EL.frames.map(rowSI), report = EL.report.map(rowSI);
   const peak = (rows, key) => rows.reduce((m, r) => Math.max(m, r[key]), 0);
-  const worn = frames.filter((r) => Math.abs(r.thetaRad) <= AMPLITUDE_VISUAL_DEG * DEG2RAD + EL.dTheta / 2 + 1e-9);
   const all = frames.concat(report);
   const lenErr = all.reduce((m, r) => Math.max(m, Math.abs(r.len_u - H.devLen) / H.devLen), 0);
   // the builder's own small-θ stiffening against the plan-level solve the
@@ -1593,17 +1635,35 @@ const OSCILLATOR = (() => {
     .reduce((acc, r) => acc + r.torque_Nm / r.thetaRad, 0) / 2;
   const controlLam = EL.control.reduce((m, c) => Math.max(m, c.lam * EI / OSC_U ** 2 * 1e3), 0);
   // §218 tier two — THE FLAT SPRING BESIDE IT, same section, same plan minus
-  // the overcoil: the reference the overcoil's number is read against, solved
-  // at the performed and physical amplitudes (two solves, not a frame set).
+  // the overcoil: the reference the overcoil's number is read against (solves,
+  // not a frame set).
+  //
+  // §221 — the two angles it is read at are now the SMALL ANGLE and the
+  // AMPLITUDE, and which one gates matters. Phillips's condition is a
+  // first-order statement: with the centroid on the balance axis the stud does
+  // no work *at small θ*. That is what can be held, and it is held two ways —
+  // the clamp ratio at 1 to 1e-6, and the force ratio at the same angle. The
+  // ratio at the full amplitude is the SECOND-ORDER residual the theorem
+  // permits, so it is reported, not gated. §218 gated it at "the performed
+  // amplitude", which was 45° and passed at ×0.060; the same expression at the
+  // real 270° reads ×0.295 — not a regression, and not a defect, but it would
+  // have failed a 0.1 gate and the honest fix is to gate the angle the theorem
+  // is about rather than widen the number.
   const flatPlan = { innerR: HAIRSPRING_PLAN.innerR, outerR: HAIRSPRING_PLAN.outerR, coils: HAIRSPRING_PLAN.coils };
   const flatEl = G.spiralElastica(G.hairspringRest(flatPlan));
   const flatForce = (th) => { const r = flatEl.solve(th); return Math.hypot(r.lam[0], r.lam[1]) * EI / OSC_U ** 2 * 1e3; };
+  // the overcoiled spring's own solver, off the SAME cached rest shape the
+  // section was fitted against (hairspringRest memoises per plan object)
+  const ocEl = G.spiralElastica(G.hairspringRest(HAIRSPRING_PLAN));
+  const ocForce = (th) => { const r = ocEl.solve(th); return Math.hypot(r.lam[0], r.lam[1]) * EI / OSC_U ** 2 * 1e3; };
   const OC = H.overcoil;
   const overcoil = OC ? {
     turns: OC.turns, raise_u: OC.raise, kneeR_u: OC.kneeR, rho1_u: OC.rho1, rho2_u: OC.rho2, endR_u: H.termEndR,
     centroidResidual_u: OC.centroidResidual, converged: OC.converged,
     devLen3d_u: OC.devLen3d, kneeLengthExcessPct: 100 * (OC.devLen3d / H.devLen - 1),
-    flat: { pivotForce_mN: { performed: flatForce(AMPLITUDE_VISUAL_DEG * DEG2RAD), physical: flatForce(AMPLITUDE_TRUE_DEG * DEG2RAD) } },
+    smallAngleRad: G.HAIRSPRING_RATIO_THETA,
+    flat: { pivotForce_mN: { smallAngle: flatForce(G.HAIRSPRING_RATIO_THETA), amplitude: flatForce(HAIRSPRING_WIND_MAX_RAD) } },
+    pivotForce_mN: { smallAngle: ocForce(G.HAIRSPRING_RATIO_THETA) },
   } : null;
   const breathing = {
     law: 'clamped–clamped planar elastica, inextensible segments, EI scaled out (geometry.js spiralElastica)',
@@ -1613,25 +1673,24 @@ const OSCILLATOR = (() => {
     clampRatio: HS_CLAMP.ratio, clampRatioBuilder: EL.clampRatio, clampRatioAgrees: ratioErr < 1e-9,
     kFrames_Nm_per_rad: kFrames, kFramesAgrees: Math.abs(kFrames / k - 1) * 100 <= 0.5,
     control: { maxPivotForce_mN: controlLam, pass: controlLam < 1e-9, rows: EL.control.map((c) => ({ thetaRad: c.theta, pivotForce_mN: c.lam * EI / OSC_U ** 2 * 1e3, kOverPure: c.kOverPure })) },
-    peaks: {
-      performed: { ampDeg: AMPLITUDE_VISUAL_DEG, pivotForce_mN: peak(worn, 'pivotForce_mN'), stress_MPa: peak(worn, 'stress_MPa'), radialShift_mm: peak(worn, 'radialShift_mm'), minCoilGap_mm: worn.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
-      physical:  { ampDeg: AMPLITUDE_TRUE_DEG,   pivotForce_mN: peak(all, 'pivotForce_mN'),  stress_MPa: peak(all, 'stress_MPa'),  radialShift_mm: peak(all, 'radialShift_mm'),  minCoilGap_mm: all.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
-    },
+    peaks: { ampDeg: AMPLITUDE_DEG, pivotForce_mN: peak(all, 'pivotForce_mN'), stress_MPa: peak(all, 'stress_MPa'),
+             radialShift_mm: peak(all, 'radialShift_mm'), minCoilGap_mm: all.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
     overcoil,
     fatigue_MPa: HAIRSPRING_FATIGUE_MPA,
     fatigueSource: "Shigley eq. 6-8: S'e = 0.5·Sut ≤ 700 MPa; spring-steel wire above the 1400 MPa knee",
   };
-  breathing.stressInLimit = breathing.peaks.physical.stress_MPa <= HAIRSPRING_FATIGUE_MPA;
+  breathing.stressInLimit = breathing.peaks.stress_MPa <= HAIRSPRING_FATIGUE_MPA;
   if (overcoil) {
-    // Phillips's theorem, held: with the centroid on the axis the clamp
-    // stiffening is exactly 1 (the stud does no work at small θ) — the
-    // load-bearing assert — and the pivot force at the PERFORMED amplitude
-    // falls to under a tenth of the flat spring's; the physical amplitude's
-    // residual is the second-order term, reported.
+    // Phillips's theorem, held at the order it is stated for: with the
+    // centroid on the axis the clamp stiffening is exactly 1 — the stud does
+    // no work at small θ — and the pivot force at that same small angle falls
+    // to under a tenth of the flat spring's. Both are FIRST-ORDER claims and
+    // both gate. The ratio at the full amplitude is the second-order residual
+    // the theorem permits and is reported beside them (§221).
     overcoil.concentric = Math.abs(HS_CLAMP.ratio - 1) < 1e-6;
-    overcoil.forceRatio = { performed: breathing.peaks.performed.pivotForce_mN / overcoil.flat.pivotForce_mN.performed,
-                            physical: breathing.peaks.physical.pivotForce_mN / overcoil.flat.pivotForce_mN.physical };
-    overcoil.pass = overcoil.converged && overcoil.concentric && overcoil.forceRatio.performed < 0.1;
+    overcoil.forceRatio = { smallAngle: overcoil.pivotForce_mN.smallAngle / overcoil.flat.pivotForce_mN.smallAngle,
+                            amplitude: breathing.peaks.pivotForce_mN / overcoil.flat.pivotForce_mN.amplitude };
+    overcoil.pass = overcoil.converged && overcoil.concentric && overcoil.forceRatio.smallAngle < 0.1;
   }
   return Object.freeze({
     I_kgm2: OSC_I.total, k_Nm_per_rad: k, kPure_Nm_per_rad: kPure, clampRatio: HS_CLAMP.ratio, fImpliedHz: f,
@@ -1662,9 +1721,9 @@ if (!OSCILLATOR.agrees)
   if (!B.control.pass)
     console.warn(`§218: the free-landing control reads a pivot force of ${B.control.maxPivotForce_mN.toExponential(2)} mN — the solver is inventing a constraint reaction`);
   if (B.overcoil && !B.overcoil.pass)
-    console.warn(`§218 tier two: the overcoil is not concentric — centroid residual ${B.overcoil.centroidResidual_u.toExponential(2)} u, clamp ratio ${OSCILLATOR.clampRatio.toFixed(6)}, pivot force ×${B.overcoil.forceRatio.performed.toFixed(3)} of the flat spring's at ${AMPLITUDE_VISUAL_DEG}°`);
+    console.warn(`§218 tier two: the overcoil is not concentric — centroid residual ${B.overcoil.centroidResidual_u.toExponential(2)} u, clamp ratio ${OSCILLATOR.clampRatio.toFixed(6)}, pivot force ×${B.overcoil.forceRatio.smallAngle.toFixed(3)} of the flat spring's at ${B.overcoil.smallAngleRad} rad`);
   if (!B.stressInLimit)
-    console.warn(`§218: the ribbon's outer-fibre stress at ${AMPLITUDE_TRUE_DEG}° is ${B.peaks.physical.stress_MPa.toFixed(0)} MPa, over the ${HAIRSPRING_FATIGUE_MPA} MPa endurance figure`);
+    console.warn(`§218: the ribbon's outer-fibre stress at ${AMPLITUDE_DEG}° is ${B.peaks.stress_MPa.toFixed(0)} MPa, over the ${HAIRSPRING_FATIGUE_MPA} MPa endurance figure`);
 }
 
 // ---------------------------------------------------------------------------
@@ -2022,11 +2081,33 @@ function windLocalAt(turns, t) {
 if (!(MOVEMENT_SENSE * (barrelMeshAngle(1) - barrelMeshAngle(0)) > 0))
   console.warn(`§47: barrelMeshAngle runs AGAINST MOVEMENT_SENSE ${MOVEMENT_SENSE} (${barrelMeshAngle(1) - barrelMeshAngle(0)} over 1 s) — the wind-local law assumes the train advances the barrel arbor in the chain's pay-out sense`);
 
-// Amplitude sags with the state of wind (real movements drop from ~300° to
-// ~200° as the mainspring drains) and the oscillation runs on movement time τ.
-function balanceTheta(tau, tension = 1) {
-  const amp = AMPLITUDE_VISUAL_DEG * (0.55 + 0.45 * tension);
-  return amp * DEG2RAD * Math.sin(2 * Math.PI * F_BALANCE * tau);
+// §221 — THE AMPLITUDE DOES NOT SAG, BECAUSE THIS MOVEMENT HAS A FUSEE. The
+// law here used to scale the swing by (0.55 + 0.45·tension) — 25° at the end
+// of the reserve against 45° full — with the comment "real movements drop from
+// ~300° to ~200° as the mainspring drains". They do; a GOING-BARREL movement
+// does. §104's whole point is that this one does not: the fusee's cut is
+// solved against the going spring's own torque law so the level product
+// springTq·r/K holds to 2.2e-16 across the whole 30-hour reserve, which is
+// the same statement as "the escape wheel receives the same torque at hour 30
+// as at hour 0". A constant impulse into a constant oscillator is a constant
+// amplitude, so the sag was a going-barrel story told on a fusee watch, and
+// the `reserve` and `wind` axes swept it as if it were mechanism.
+//
+// A real fusee watch still loses a few degrees over the reserve to the
+// escapement's and the train's own friction, which the fusee does not
+// compensate because it is not a torque error. Modelling that needs a loss
+// model — a Q for the balance and an energy balance across the escapement —
+// and inventing a slope without one would put back exactly the kind of
+// coefficient this removes. So the amplitude is the constant and the residue
+// is filed (the entry names it), not approximated.
+//
+// The `tension` parameter is GONE rather than ignored: an unread argument
+// every caller still passes is an invitation to start reading it again, and
+// the independence of the swing from the state of wind is the claim this
+// section makes. A loss model would re-introduce it deliberately, with the
+// mechanism written beside it.
+function balanceTheta(tau) {
+  return AMPLITUDE_DEG * DEG2RAD * Math.sin(2 * Math.PI * F_BALANCE * tau);
 }
 
 // ---------------------------------------------------------------------------
@@ -5160,7 +5241,7 @@ hammerGroup.add(hammerTailBar);
 //    so F = τ·π / 1.152 mm = 0.83 mN.
 //  · HACK. The stop lever's ruby brakes the balance rim at r 8.09 u =
 //    3.067 mm (measured off the built pad). Holding a 270°
-//    (AMPLITUDE_TRUE_DEG) swing means absorbing the hairspring's own
+//    (AMPLITUDE_DEG) swing means absorbing the hairspring's own
 //    peak torque k·θ = 1.234e-7 × 4.712 = 5.82e-7 N·m — 0.19 mN of
 //    friction at that radius, so ≈1.3 mN of normal force at a ruby-on-
 //    brass μ 0.15. The pad closes on the rim 0.495 u per 3.413 u of rod
@@ -36983,7 +37064,7 @@ function tick(t) {
   // pin (gear-mesh style) the fork's angular sign must oppose the balance's.
   forkGroup.rotation.z = forkBaseAngle - forkSwingRad(tau);
 
-  const theta = balanceTheta(tau, tension);
+  const theta = balanceTheta(tau);
   balanceGroup.rotation.z = PIN_AIM + theta;
   // The spring's outer end is PINNED (stud on the cock): winding is a
   // geometry change — the inner boundary follows the staff while the

@@ -316,9 +316,55 @@ export const ALARM_SENSE = +1;
 
 export const F_BALANCE = SPEC.vph / 7200; // Hz — balance frequency: vph/3600 beats/s, 2 beats per oscillation
 export const BEAT_DEG = 12;             // escape-wheel advance per beat (half of 24° tooth pitch)
-export const AMPLITUDE_TRUE_DEG = 270;  // "true" balance swing (physical reference, unused for mesh)
-export const AMPLITUDE_VISUAL_DEG = 45; // scaled-down, readable swing actually applied to the mesh
-export const IMPULSE_WIDTH = 0.16;      // fraction of a beat spent in unlock+impulse (rest = locked)
+// §221 — ONE amplitude, and it is the physical one. There used to be two:
+// AMPLITUDE_TRUE_DEG = 270 marked "unused for mesh" beside
+// AMPLITUDE_VISUAL_DEG = 45, "the readable swing actually applied". The mesh
+// performed a sixth of the swing a real balance makes, and the readability
+// number reached into the metal — the fork's bank and the pallet stones'
+// impulse faces were cut from it (see main.js's arc-length derivation), which
+// is rule 2's shortcut at escapement scale. A watch at 270° is what this
+// movement is; the drawn blur at 1× is a fact about a real balance, and the
+// time-scale slider and §206's scrub are where legibility is bought.
+export const AMPLITUDE_DEG = 270;       // balance swing, each way from rest
+// §221 — THE LIFT ANGLE: the balance's rotation between unlock and drop, and
+// the ONE authored angle of the escapement. It is a cited design fact of a
+// Swiss lever rather than anything this movement's geometry produces —
+// Reymondin et al., `The Theory of Horology` (the lever-escapement chapter)
+// and Daniels, `Watchmaking`, put a lever's lift across roughly 38°-52°,
+// 50-52° being the usual modern figure and the 38°-44° family common in
+// older and smaller calibers. Everything else about the impulse derives from
+// it: IMPULSE_WIDTH below, and FORK_BANK_DEG in main.js through the
+// arc-length identity.
+//
+// WHY 40 AND NOT 52: the lift is authored, but not freely — this escapement's
+// own metal bounds it from above, and both bounds were measured rather than
+// guessed. The identity in main.js makes the fork's bank proportional to the
+// lift (bank = lift/8.4392 for this roller and notch), and two things fail as
+// the bank opens:
+//   · the pallet stone's impulse face is a relative SLIDE — the tooth's
+//     advance plus the stone's own retreat — so it lengthens with the bank,
+//     and it must stay under the wheel's advance in one beat (TODO 131's
+//     ceiling in makePalletFork). Measured: the face passes that ceiling at a
+//     bank near 4.90°, i.e. a lift near 41.4°.
+//   · the fork blank enters the escape wheel's swept disc inside CLEAR_MARGIN
+//     at a bank of 5.5° (clean at 5.0°), i.e. a lift near 43.9°.
+// So the cited range's top is not available to this caliber and its bottom is:
+// 40° sits inside 38°-52°, under both measured bounds, and puts the fork at
+// 9.48° bank to bank — inside the 8°-12° a real lever swings, which is a
+// CHECK on the choice rather than the reason for it. The face clears its
+// ceiling by only 0.4% at this lift, which is thin and is reported, not
+// smoothed over: this escapement's stones are near the limit of what its
+// wheel pitch can carry, and raising the lift needs a bigger drop or a
+// different pitch, not a widened assert.
+export const LIFT_DEG = 40;
+// §221 — the fraction of a beat the balance spends inside the lift, DERIVED
+// rather than authored. Under theta = A·sin(wt) the balance is within ±L/2 of
+// rest for |wt| <= asin(L/2A); a beat is half a period, so the window is
+// (2/pi)·asin(L/2A) of it — 0.059 at the lift and amplitude above, against
+// the 0.16 that was authored when the swing was 45°. The two constants could
+// never simply be swapped: 0.16 of a beat at 270° would carry the impulse pin
+// 130° across a notch it clears in a few degrees.
+export const IMPULSE_WIDTH = (2 / Math.PI) * Math.asin((LIFT_DEG / 2) / AMPLITUDE_DEG);
 export const RECOIL_FRACTION = 0.25;    // portion of the impulse window spent on the recoil/draw dip
 export const RECOIL_DEG = 1.0;          // escape wheel recoil during draw
 // FORK_BANK_DEG / FORK_RECOIL_DEG are DERIVED in main.js (after the pallet

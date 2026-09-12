@@ -80,7 +80,11 @@ export function makeBalanceWheel({ radius, thickness })
 // ribbon through a knee into a raised plane and a terminal whose two curvatures are SOLVED
 // so the flexing centreline's centroid sits on the axis — Phillips's condition, which
 // makes that stiffening exactly 1 and the stud's reaction vanish at small angle.
-export function makeHairspring({ innerR, outerR, coils = 12, height, ribbonR, reportMaxRad })
+// §221 — `windFrames`/`windMaxRad` span the BALANCE'S OWN AMPLITUDE (189 frames at
+// ±270°), so `reportMaxRad`'s unmeshed continuation tier is empty: it existed only
+// while the mesh performed less swing than the movement claimed.
+export function makeHairspring({ innerR, outerR, coils = 12, height, ribbonR,
+                                windFrames, windMaxRad, reportMaxRad })
 
 // Going barrel: drum + toothed rim (it IS the great wheel: give it `teeth`,`module`),
 // cutaway sector (~90°) in the lid revealing a spiral mainspring inside, hook at wall,

@@ -87,7 +87,7 @@ const out = await p.evaluate(() => {
       converged: B.converged, lengthHeld: B.lengthHeld, clampRatio: B.clampRatio, clampRatioAgrees: B.clampRatioAgrees,
       k: O.k_Nm_per_rad, kPure: O.kPure_Nm_per_rad, kFrames: B.kFrames_Nm_per_rad, kFramesAgrees: B.kFramesAgrees,
       control: B.control.pass, controlMax_mN: B.control.maxPivotForce_mN, stressInLimit: B.stressInLimit,
-      fatigue_MPa: B.fatigue_MPa, peaks: B.peaks, nReport: B.report.length,
+      fatigue_MPa: B.fatigue_MPa, peaks: B.peaks, nReport: B.report.length, nFrames: B.frames.length,
     },
   };
 });
@@ -109,19 +109,22 @@ if (!out.B) {
   row("builder's clamp ratio = fitted ratio", B.clampRatioAgrees, `×${B.clampRatio.toFixed(6)} (k/kPure ${(B.k / B.kPure).toFixed(6)})`);
   row("frames' torque per radian = k (0.5%)", B.kFramesAgrees, `${B.kFrames.toExponential(5)} vs ${B.k.toExponential(5)} N·m/rad`);
   row('free-landing control reads no pivot force', B.control, `max ${B.controlMax_mN.toExponential(2)} mN`);
-  row(`stress at ${B.peaks.physical.ampDeg}° under the endurance figure`, B.stressInLimit, `${B.peaks.physical.stress_MPa.toFixed(1)} / ${B.fatigue_MPa} MPa`);
+  row(`stress at ${B.peaks.ampDeg}° under the endurance figure`, B.stressInLimit, `${B.peaks.stress_MPa.toFixed(1)} / ${B.fatigue_MPa} MPa`);
   const OC = B.overcoil;
   if (OC) {
     row('overcoil: centroid solve converged', OC.converged, `residual ${OC.centroidResidual_u.toExponential(1)} u in ${out.overcoilUD.iters} iterations; ρ₁ ${OC.rho1_u.toFixed(2)} ρ₂ ${OC.rho2_u.toFixed(2)} u, stud at r ${OC.endR_u.toFixed(2)}`);
     row('overcoil: concentric — clamp ratio 1 to 1e-6 (Phillips, verified)', OC.concentric, `×${B.clampRatio.toFixed(7)}`);
-    row(`overcoil: pivot force at ${B.peaks.performed.ampDeg}° under a tenth of the flat spring's`, OC.forceRatio.performed < 0.1,
-      `${B.peaks.performed.pivotForce_mN.toExponential(2)} vs flat ${OC.flat.pivotForce_mN.performed.toExponential(2)} mN (×${OC.forceRatio.performed.toFixed(3)}); at ${B.peaks.physical.ampDeg}° ×${OC.forceRatio.physical.toFixed(3)} — second order, reported`);
+    // §221 — gated at the SMALL ANGLE, which is the order Phillips's condition
+    // is stated at. §218 gated "the performed amplitude" and that was 45°; one
+    // amplitude means the only choices are the small angle (first order, what
+    // the theorem claims) and the full swing (second order, what it permits).
+    row(`overcoil: pivot force at ${OC.smallAngleRad} rad under a tenth of the flat spring's`, OC.forceRatio.smallAngle < 0.1,
+      `${OC.pivotForce_mN.smallAngle.toExponential(2)} vs flat ${OC.flat.pivotForce_mN.smallAngle.toExponential(2)} mN (×${OC.forceRatio.smallAngle.toFixed(4)}); at ${B.peaks.ampDeg}° ×${OC.forceRatio.amplitude.toFixed(3)} — second order, reported`);
     row('overcoil: the mesh climbs to the raised plane', Math.abs(out.zMax - (out.termEndZ + out.height / 2)) < 0.05,
       `tube top ${out.zMax.toFixed(3)} u vs raise ${out.termEndZ} + half-height ${(out.height / 2).toFixed(3)}`);
   }
   const P = B.peaks;
-  console.log(`report · performed ${P.performed.ampDeg}°: pivot ${P.performed.pivotForce_mN.toFixed(5)} mN, radial excursion ${P.performed.radialShift_mm.toFixed(3)} mm, min coil gap ${P.performed.minCoilGap_mm.toFixed(3)} mm, stress ${P.performed.stress_MPa.toFixed(1)} MPa`);
-  console.log(`report · physical  ${P.physical.ampDeg}°: pivot ${P.physical.pivotForce_mN.toFixed(5)} mN, radial excursion ${P.physical.radialShift_mm.toFixed(3)} mm, min coil gap ${P.physical.minCoilGap_mm.toFixed(3)} mm, stress ${P.physical.stress_MPa.toFixed(1)} MPa (${B.nReport} continuation rows)`);
+  console.log(`report · the whole swing, ±${P.ampDeg}°: pivot ${P.pivotForce_mN.toFixed(5)} mN, radial excursion ${P.radialShift_mm.toFixed(3)} mm, min coil gap ${P.minCoilGap_mm.toFixed(3)} mm, stress ${P.stress_MPa.toFixed(1)} MPa (${B.nFrames} meshed frames, ${B.nReport} continuation rows)`);
 }
 row('boot silent', warns.length === 0, warns.length ? warns.join(' | ') : '');
 if (out.B && out.B.overcoil) {

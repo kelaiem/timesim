@@ -223,8 +223,16 @@ it into prose either.
    elastica of one length of steel, measured on the published polylines;
    the section is fitted to the spring AS CLAMPED; and the overcoil is
    concentric — its centroid solve converged, the clamp ratio 1 to 1e-6,
-   the pivot force at the performed swing under a tenth of a flat
-   spring's. The pivot force itself is a REPORT, tier two's number),
+   the pivot force at the SMALL ANGLE under a tenth of a flat spring's.
+   That angle is `HAIRSPRING_RATIO_THETA`, not the amplitude, and §221 is
+   why: Phillips's condition is a FIRST-ORDER statement, so it is gated at
+   the order it is stated for and the amplitude's second-order residual
+   (×0.296) is REPORTED beside it. §218 gated "the performed swing" while
+   that meant 45°; retiring the second amplitude left only the small angle
+   or the full swing, and the full swing would have failed a gate it was
+   never making a claim about — the fix is to gate the right angle, never
+   to widen the number. The pivot force itself is a REPORT, tier two's
+   number),
    and `equalisation` **0 failures** (TODO 32, closed whole by §104 — the
    going spring's torque law is DERIVED from its ribbon and the fusee cut
    against it: the set-up must land on an integer set-up-ratchet click,
