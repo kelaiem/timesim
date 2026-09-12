@@ -51,7 +51,13 @@ async function boot(sapphire) {
     dialUnit.obj.updateWorldMatrix(true, true);
     dialUnit.obj.traverse((o) => {
       if (!o.isMesh || o.userData.schematic) return;
-      const bb = new THREE.Box3().setFromObject(o);
+      // §220 — the mesh's OWN bounds, not its world box: the Dial unit carries
+      // parts whose pose is integrated by step() (the alarm's motor, eased
+      // members), so two boots differ in WORLD bounds at any setPose, and
+      // this claim read four such boxes as moved metal on an untouched tree.
+      // "The geometry does not move" is a claim about the metal.
+      o.geometry.computeBoundingBox();
+      const bb = o.geometry.boundingBox;
       const m = o.material;
       rows.push({ name: o.name || o.geometry.type, verts: o.geometry.attributes.position.count,
         bb: [bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z].map((v) => +v.toFixed(4)),

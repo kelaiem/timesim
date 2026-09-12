@@ -224,8 +224,81 @@ export const CRYSTAL_GLASS = Object.freeze({
   color: 0xf8fbff, transparent: true, opacity: 0.14, roughness: 0.04, metalness: 0, depthWrite: false,
 });
 export const SAPPHIRE_IOR = 1.77;
-const sapphire = phys({ ...CRYSTAL_GLASS, ior: SAPPHIRE_IOR });
+
+// §220 — THE SMOKED DIAL: one crystal, two coats. A Lange Lumen's smoke is a
+// thin-film COATING on colourless sapphire (it blocks most of the visible
+// spectrum and passes UV — a designed filter, which no bulk-tinted crystal
+// can be), and CRYSTAL_GLASS is already a coating model: a colour at an
+// alpha, no thickness term. So the smoked dial is not a second glass, it is a
+// second RECIPE on this one — the same corundum (SAPPHIRE_IOR, spread from
+// the literal above) under a different coat — and the crystal keeps reading
+// CRYSTAL_GLASS and stays clear. §3's "one glass, not two" is kept as one
+// crystal and broken, on purpose, as one coat.
+//
+// THE LAW, from ONE number: `dial.plate.smoke` is the coat's visible
+// transmittance T (1 = the clear crystal). Light from the room crosses an
+// absorbing coat, reflects off the nickel plate behind the dial, and crosses
+// the coat AGAIN on its way to the eye, so the plate contributes T²·N — not
+// T·N. The coat adds no reflectance of its own worth typing (its specular is
+// corundum's Fresnel, 7.7 % at normal incidence for n 1.77, which `ior`
+// already provides). The renderer blends in ONE pass, so this recipe is
+// solved to make one pass paint the two-pass answer: the clear crystal's own
+// layer (colour C at α_c, above) kept as the surface, the smoke — black at
+// 1 − T² — beneath it, and the pair folded into the single alpha material
+//     opacity = α_c + (1 − α_c)·(1 − T²)      colour = C · α_c / opacity
+// which composites over any ground N to α_c·C + (1 − α_c)·T²·N, the two-pass
+// answer. Written as α_c + (1 − α_c)(1 − T²) rather than 1 − (1 − α_c)T² so
+// that T = 1 returns α_c EXACTLY (no 1 − 0.86 rounding) — the identity
+// control: smokedGlass(1) IS CRYSTAL_GLASS byte for byte, asserted at boot
+// below, and a boot at the default is the shipped picture. The colour is
+// solved per channel in the 8-bit sRGB bytes the recipe is written in, the
+// same arithmetic geometry.js's ground composite uses, so the material and
+// the ink solve read one number. Nothing here is a target: every value is a
+// consequence of T, CRYSTAL_GLASS and the plate behind.
+export function smokedGlass(T) {
+  const ac = CRYSTAL_GLASS.opacity;
+  const opacity = ac + (1 - ac) * (1 - T * T);
+  const C = CRYSTAL_GLASS.color;
+  const ch = (c) => Math.round((c * ac) / opacity);
+  const color = (ch((C >> 16) & 255) << 16) | (ch((C >> 8) & 255) << 8) | ch(C & 255);
+  return { ...CRYSTAL_GLASS, opacity, color };
+}
+// The dial's knob, read once. The loader clamps it to the schema's _bounds;
+// a build with no schema (test-geometry.html's bare makeDial) reads 1.
+export const DIAL_SMOKE_T = Number(aesthetics.dial?.plate?.smoke ?? 1);
+// The dial's glass recipe — what the plate, its walls and the ground behind
+// the print are made of. geometry.js reads THIS, never CRYSTAL_GLASS, at
+// every site the dial's tint enters (§220: three sites, one read).
+export const DIAL_GLASS = Object.freeze(DIAL_SMOKE_T === 1 ? CRYSTAL_GLASS : smokedGlass(DIAL_SMOKE_T));
+{
+  // Boot assert (standing rule 6): the identity control. If this ever fires,
+  // the law no longer passes through the shipped crystal at T = 1 and the
+  // default picture has moved.
+  const id = smokedGlass(1);
+  for (const k of Object.keys(CRYSTAL_GLASS)) {
+    if (id[k] !== CRYSTAL_GLASS[k])
+      console.warn(`§220: smokedGlass(1).${k} = ${id[k]}, CRYSTAL_GLASS.${k} = ${CRYSTAL_GLASS[k]} — the smoke law does not reproduce the clear crystal at T = 1`);
+  }
+}
+// The CLEAR sapphire — CRYSTAL_GLASS plus corundum's ior — is always built,
+// because x-ray needs it: §3's compose-don't-clone self-map was derived for a
+// 0.14 glass being MORE transparent than the 0.28 x-ray glass, and a smoked
+// plate at opacity 0.86 under x-ray would HIDE the works the toggle exists
+// to show. So under x-ray a smoked material is swapped for its clear twin
+// (XRAY_CLEAR, consulted by main.js's x-ray map), and at T = 1 the two are
+// ONE OBJECT, so the map self-maps exactly as §3 shipped it and
+// probe-3-sapphire's material identities hold unchanged.
+const sapphireClear = phys({ ...CRYSTAL_GLASS, ior: SAPPHIRE_IOR });
+sapphireClear.userData.glass = true;
+const sapphire = DIAL_GLASS === CRYSTAL_GLASS ? sapphireClear : phys({ ...DIAL_GLASS, ior: SAPPHIRE_IOR });
 sapphire.userData.glass = true;
+// smoked material → the clear material x-ray installs in its place. A WeakMap
+// rather than a userData slot on purpose: Material.clone() JSON-round-trips
+// userData, and a Material inside it would be serialised, not referenced.
+// geometry.js registers the pocket walls' two-sided pair here too.
+export const XRAY_CLEAR = new WeakMap();
+if (sapphire !== sapphireClear) XRAY_CLEAR.set(sapphire, sapphireClear);
+export const xrayClearFor = (m) => XRAY_CLEAR.get(m) || m;
 
 // Yellow GOLD — for the screwed chatons the upper pivot jewels sit in, and
 // for the balance's anti-shock lyre. A distinct material rather than a reuse
