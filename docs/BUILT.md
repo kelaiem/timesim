@@ -24237,3 +24237,77 @@ collision vs English** on both pages.
 - **`Platinum` is *platina* and so is the plate** — Russian's finding
   (§213) recurs; disambiguated by the alloy menu it sits in.
 - **`index.html`'s `<title>` is not localized in any locale** — still true.
+
+## §210 — Italian — the Romance pair completed, in a native horological register
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(689 keys) and `primer.html` (134 keys) read Italian at 100% in one
+landing, §209's recipe item for item. Twelve locales now.
+
+**Why Italian, and what the control found.** The entry filed it as the
+control locale of the nine — the one that brings no new constraint, so a
+landing that comes back red on Italian has found a defect in the recipe
+rather than in the locale. It came back green: German's marks, a
+`startsWith` matcher nothing in the roster shadows, a glossary that is a
+choice among existing words rather than a coinage (*scappamento ad
+àncora*, *àncora* and *palette*, *bilanciere*, *spirale*, *conoide* for
+the fusee, *ruotismo* for the train, *minuteria*, *ruota a colonne*,
+*tiretto* for the setting lever, *riposo / tiraggio / impulso / caduta*
+for the escapement's phases). The recipe needed nothing Italian did not
+predict, which is the finding the control was for.
+
+**The one measured fact, written on the row.** Chromium 141 writes a
+four-digit figure as `1.000` where Node 22's ICU 78 writes `1000` for the
+same `it-IT` tag — the second instance of §208's "a bare tag answers
+differently per ICU release", confirmed in the page by the boot probe
+(`18.000 · 0,024 · 1.000`). It changes nothing today (no chrome figure has
+four digits; the primer gate compares values) and it is the reason `MARKS`
+rows are measured in the browser the reader has.
+
+**Elision was the one rule Italian had to add to the brief.** Italian
+apostrophizes constantly (*l’àncora*, *dell’asse*, *un’ora*), and a bare
+ASCII apostrophe inside a single-quoted table value is a syntax error that
+renders as a blank table; every value carries the typographic ’ (U+2019),
+which French had already established with one escaped exception in the
+whole file. Zero ASCII apostrophes and zero backslashes in the three
+tables, checked per entry.
+
+**Ten translators against the glossary, three seams reconciled by hand.**
+FULL WIND is *CARICA PIENA* everywhere (one chunk had *CARICA COMPLETA*),
+the §35 link beak is *becco della biella* in prose and *becco biella* on
+the plates (one chunk had *becco di collegamento*), the hack pad is
+*tampone* (one chunk had *pattino*), and the going drum is *tamburo* in the
+chrome as on the page (the chrome's first draft had *bariletto*, which the
+glossary reserves for a barrel).
+
+**Fifteen plate labels overran, every fix in the label — and one fix was
+itself caught.** Twelve on the first pass, three more on the second; one
+shortening dropped `TODO 20` from a caption and the number gate refused it
+(`plate numbers: 1`), so the identifier went back and the words went
+instead. Digits untouched, never the tolerance; the gate reads **0 new
+overflow or collision vs English** on both pages.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **689/689**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Italian**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
+| `#chrome-bar` | it **173.8** against en 170.2 (*Comandi / Vista / Quadrante*); German's 192.4 still the widest |
+| `.hud-ro-label` | Tempo 30.0, *Suona alle* **47.3** against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | OFFLINE_LINE |
+| boot | `?lang=it` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('it-IT')` in the page reads `18.000`, `0,024` and `1.000`; the ladder assert extended with `it`, `it-IT`, `it-CH`, `it_CH` |
+| battery | BATTERY_LINE |
+
+### Residue, recorded
+
+- **No native review pass** — the same IOU every locale carries. The
+  register is the trade's; *conoide* for the fusee is the Italian
+  literature's word and a reader who knows it as *fusée* will find the
+  glossary the place to argue.
+- **`Wind` and `Load` both resolve to *Carica*** — the horological "dare la
+  carica" and the software word for loading a file, in different sections
+  of the panel; a deliberate homograph, noted.
+- **`index.html`'s `<title>` is not localized in any locale** — still true.
