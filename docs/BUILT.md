@@ -24297,9 +24297,9 @@ overflow or collision vs English** on both pages.
 | `#chrome-bar` | it **173.8** against en 170.2 (*Comandi / Vista / Quadrante*); German's 192.4 still the widest |
 | `.hud-ro-label` | Tempo 30.0, *Suona alle* **47.3** against 150 px — one line |
 | §53's 240 px column | no content wider than its box |
-| `offline-check` | OFFLINE_LINE |
+| `offline-check` | **36/36**, precache **45/45** (43 + two tables), the Italian primer served from cache — on a quiet machine; a first run beside two batteries dropped one unrelated row (the Traditional Chinese primer's offline boot) to contention, and the re-run alone read clean |
 | boot | `?lang=it` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('it-IT')` in the page reads `18.000`, `0,024` and `1.000`; the ladder assert extended with `it`, `it-IT`, `it-CH`, `it_CH` |
-| battery | BATTERY_LINE |
+| battery | **40/40 gates**, local (dev container, 3 shards, 2173 s wall, 5168 s of checks — a second battery running beside it); boot silent; fingerprint **3534559869** (57 units, 12 poses) deterministic across virgin boots — IDENTICAL to the base it was measured against, which the tables cannot move: the form of "no geometry moved" every locale landing since §73 has given. §218 landed on `main` before this PR and moved the fingerprint to its own 2050941457; the rebase carries it, and CI's battery on the rebased head is the run on the landed tree |
 
 ### Residue, recorded
 
