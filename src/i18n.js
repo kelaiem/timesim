@@ -434,7 +434,7 @@ Object.assign(DE, {
   'Pearl jitter': 'Perlen-Streuung', 'Ruby colour': 'Rubinfarbe',
   'Steel finish (polished → brushed)': 'Stahl-Finish (poliert → gebürstet)', 'Steel grain angle': 'Stahl-Schliffwinkel',
   'Case metal': 'Gehäusemetall', 'Steel': 'Stahl', '18K yellow gold': '18-karätiges Gelbgold', '18K white gold': '18-karätiges Weißgold', 'Platinum': 'Platin',
-  'Dial colour': 'Zifferblattfarbe', 'Sapphire dial': 'Saphir-Zifferblatt',
+  'Dial colour': 'Zifferblattfarbe', 'Sapphire dial': 'Saphir-Zifferblatt', 'Sapphire dial transmittance': 'Transmission des Saphir-Zifferblatts',
   'Search settings': 'Einstellungen durchsuchen',
 });
 
@@ -729,7 +729,7 @@ Object.assign(ZH, {
   'Pearl jitter': '珍珠抖动', 'Ruby colour': '红宝石颜色',
   'Steel finish (polished → brushed)': '钢材表面（抛光 → 拉丝）', 'Steel grain angle': '钢材拉丝角度',
   'Case metal': '表壳金属', 'Steel': '钢', '18K yellow gold': '18K 黄金', '18K white gold': '18K 白金', 'Platinum': '铂金',
-  'Dial colour': '表盘颜色', 'Sapphire dial': '蓝宝石表盘',
+  'Dial colour': '表盘颜色', 'Sapphire dial': '蓝宝石表盘', 'Sapphire dial transmittance': '蓝宝石表盘透光率',
   'Search settings': '搜索设置',
 });
 
@@ -1195,7 +1195,7 @@ const FR = {
   ['18K yellow gold']: 'Or jaune 18 carats',
   ['18K white gold']: 'Or gris 18 carats',
   ['Platinum']: 'Platine',
-  ['Dial colour']: 'Couleur du cadran', ['Sapphire dial']: 'Cadran en saphir',
+  ['Dial colour']: 'Couleur du cadran', ['Sapphire dial']: 'Cadran en saphir', ['Sapphire dial transmittance']: 'Transmission du cadran en saphir',
   ['Search settings']: 'Rechercher les réglages',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
@@ -1662,7 +1662,7 @@ const JA = {
   ['18K yellow gold']: '18K イエローゴールド',
   ['18K white gold']: '18K ホワイトゴールド',
   ['Platinum']: 'プラチナ',
-  ['Dial colour']: '文字盤の色', ['Sapphire dial']: 'サファイア文字盤',
+  ['Dial colour']: '文字盤の色', ['Sapphire dial']: 'サファイア文字盤', ['Sapphire dial transmittance']: 'サファイア文字盤の透過率',
   ['Search settings']: '設定を検索',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
@@ -2128,7 +2128,7 @@ const ZH_HANT = {
   ['18K yellow gold']: '18K 黃金',
   ['18K white gold']: '18K 白金',
   ['Platinum']: '鉑金',
-  ['Dial colour']: '錶盤顏色', ['Sapphire dial']: '藍寶石錶盤',
+  ['Dial colour']: '錶盤顏色', ['Sapphire dial']: '藍寶石錶盤', ['Sapphire dial transmittance']: '藍寶石錶盤透光率',
   ['Search settings']: '搜尋設定',
 
   // -- guided-script captions and the §36 inspection route, resolved at the
@@ -2601,6 +2601,7 @@ const AR = {
   'Platinum': 'البلاتين',
   'Dial colour': 'لون الميناء',
   'Sapphire dial': 'ميناء من الياقوت الأزرق',
+  'Sapphire dial transmittance': 'نفاذية ميناء الياقوت الأزرق',
   'Search settings': 'البحث في الإعدادات',
   'The minute quick-set works, behind the dial': 'آلية الضبط السريع للدقائق، خلف الميناء',
   'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star': 'اسحب التاج — تتوقف الثواني وتطير إلى الصفر، ويسقط القافز في العجلة النجمية',
@@ -3056,6 +3057,7 @@ const ES = {
   'Platinum': 'Platino',
   'Dial colour': 'Color de la esfera',
   'Sapphire dial': 'Esfera de zafiro',
+  'Sapphire dial transmittance': 'Transmitancia de la esfera de zafiro',
   'Search settings': 'Buscar ajustes',
   'The minute quick-set works, behind the dial': 'El mecanismo de ajuste rápido de minutos, tras la esfera',
   'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star': 'Tira de la corona — los segundos se paran y vuelan a cero, y el sautoir cae en la estrella',
@@ -3508,6 +3510,7 @@ const KO = {
   'Platinum': '플래티넘',
   'Dial colour': '다이얼 색',
   'Sapphire dial': '사파이어 다이얼',
+  'Sapphire dial transmittance': '사파이어 다이얼 투과율',
   'Search settings': '설정 검색',
   'The minute quick-set works, behind the dial': '다이얼 뒤의 분 퀵셋 기구입니다',
   'Pull the crown — the seconds hack and fly to zero, and the jumper drops into the star': '용두를 당기면 — 초침이 정지해 영점으로 날아가고, 점퍼가 스타 휠에 내려앉습니다',
