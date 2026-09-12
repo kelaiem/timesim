@@ -23,6 +23,25 @@
      keep-all is scoped by documentElement.lang, which src/i18n.js writes;
      the rule is inherited, so one declaration on the root covers the page. */
   html:lang(ko) { word-break: keep-all; }
+  /* §212 — Devanagari does not fit a box sized for Latin, and cannot be
+     reworded to. Vowel signs ride above the headline (ि ी े ो ौ ँ) and below
+     the base (ु ू ृ), so the ink of a Hindi run is TALLER than the em box at
+     every one of the sites below, which were all written `font: Npx/1`.
+     MEASURED (tools/probe-212-devanagari-vert.mjs, FreeSans — the face this
+     container resolves; Mangal/Kohinoor/Noto differ and the record says so):
+     Latin inks 8 above the baseline and 2 below, exactly filling a 10px box;
+     Hindi inks up to 10 above and 3 below, needing 1.238 em at the tightest
+     site (the 10.5px chip and stamp, 13px of ink in a 10.5px box — 2.5px out).
+     1.25 is that ratio rounded up, ONE rule rather than per-label wording,
+     because every label would need the wording and the script would still
+     overrun. The SVG plate labels are not here: SVG text is baseline-
+     positioned and has no line box to overflow — what it can do is collide
+     with a neighbour, which explain-i18n --check's plate-fit pass measures. */
+  html:lang(hi) header .stamp,
+  html:lang(hi) details.mech > summary .where,
+  html:lang(hi) .fig-no,
+  html:lang(hi) .readout,
+  html:lang(hi) .chip { line-height: 1.25; }
   :root {
     --bg: #0b0d10;
     --panel: rgba(15,17,20,0.72);
@@ -2700,7 +2719,7 @@
             <circle cx="558" cy="99" r="4" fill="var(--ruby)"/>
             <line x1="230" y1="60" x2="230" y2="88" stroke="var(--text)" stroke-width="1.5" marker-end="url(#arrG)"/>
             <text class="lbl lbl-strong" x="196" y="50">hammer strikes here</text>
-            <text class="val" x="66" y="178">arc length is a LIVE parameter, measured back from the free end — shorten the bar and every partial rises together</text>
+            <text class="val" x="66" y="183">arc length is a LIVE parameter, measured back from the free end — shorten the bar and every partial rises together</text>
             <defs><marker id="arrG" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 8 4 L 0 8 Z" fill="var(--text)"/></marker></defs>
           </svg>
         </div>

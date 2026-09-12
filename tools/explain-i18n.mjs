@@ -187,6 +187,16 @@ const MARKS = {
   // the token class parses either form, so nothing here depends on it.
   es: { group: ['.'], dec: ',' },
   ko: { group: [','], dec: '.' },        // §211 — ko-KR: number-transparent, as ja and zh
+  // §212 — hi-IN is number-transparent too, and measured: its DEFAULT numbering
+  // system is Latin, not Devanagari ('30.0' · '0.024' · '18,000' · '36,000' in
+  // Chromium 141), so this is English's row rather than a digit pin like ar's.
+  // The grouping is INDIAN and diverges only at six digits ('1,00,000'); the
+  // token class strips group marks before parsing, so that form reads as
+  // 100000 if a six-digit quantity ever reaches a page. Devanagari digits
+  // appear only under an explicit -u-nu-deva, which no row asks for; were one
+  // to appear in a translation, \d would not parse it and the value check
+  // would report the quantity DROPPED — the same gate §208 relies on.
+  hi: { group: [','], dec: '.' },
   // §213 — Russian groups with U+00A0 (Chromium 141's own output for ru-RU),
   // French's list with the plain no-break space FIRST; the other two are
   // accepted for the same reason they are for French: a translator's keyboard
