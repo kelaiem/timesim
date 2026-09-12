@@ -112,6 +112,19 @@ const T_SMOKE = 0.45;
 const T_FLIP_DARK = 0.59;
 const T_FLIP_LIGHT = 0.58;
 const T_BELOW_FLOOR_STEP = 0.01; // the slider's step: one step under the schema's floor must warn
+// §224 — THE BAND. _bounds is a [min, max] and so can only say "the floor is
+// 0.41", which §220 wrote believing the interval above it was continuous. It is
+// not: the reserve zone gate warns across T 0.75–0.90 and is silent either side,
+// measured. The cause is the print's own flip. Above T_FLIP_DARK the ticks are
+// dark, and while the ground is still dark a LIGHT zone tone clears both; as the
+// ground brightens through mid grey (#94969a at 0.75) a light tone stops clearing
+// the GROUND by 3:1 while a dark one cannot clear the dark TICKS, and no tone is
+// left. Past 0.91 the ground is bright enough that a middling tone clears the
+// ticks and still sits 3:1 under the ground, and the gate is silent again.
+// Held at both edges here, the same two-sided form the floor gets: an edge
+// nobody boots is an edge that moves in silence.
+const T_BAND = [0.75, 0.90];        // warns, inclusive — the first and last warning step
+const T_BAND_CLEAR = [0.74, 0.91];  // silent, the step either side
 // The works patch, as fractions of the viewport at the Dial preset (900×700):
 // the motion-works wheels left of centre — no print, no hand, no chapter ring.
 const PATCH = { x0: 0.283, y0: 0.374, x1: 0.467, y1: 0.479 };
@@ -121,12 +134,25 @@ const READ_TAU = 6 * 3600 + 30 * 60 - (1 * 3600 + 51 * 60); // 6:30 displayed: t
 const schemaText = readFileSync(join(ROOT, 'src', 'aesthetics.json'), 'utf8');
 const schema = JSON.parse(schemaText);
 const FLOOR_IN_FILE = schema.dial.plate._bounds.smoke[0];
+// THE SHIPPED PICTURE, read from the schema rather than written here — the one
+// boot whose value is deliberately not independent, because its whole subject is
+// "whatever aesthetics.json currently says". T_SMOKE above stays a written
+// constant: it is the value the LAW is verified at, and a probe whose every
+// number came from the file it checks would be checking nothing.
+const SHIP_SAPPHIRE = !!schema.dial.plate.sapphire;
+const SHIP_T = Number(schema.dial.plate.smoke);
 
-async function boot({ sapphire, smoke, liftFloor = false }) {
+async function boot({ sapphire, smoke, liftFloor = false, seedStore = true }) {
   const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } });
-  const seed = { dial: { plate: { sapphire } } };
-  if (smoke !== undefined) seed.dial.plate.smoke = smoke;
-  await ctx.addInitScript((v) => localStorage.setItem('aestheticsOverrides', JSON.stringify(v)), seed);
+  // seedStore:false writes NO override, so the build reads aesthetics.json alone
+  // — the shipped picture as a fresh browser gets it, not a reconstruction of it.
+  // Every other boot seeds both keys: a boot that inherits the schema is testing
+  // the default, not its own subject (probe-3-sapphire shipped that bug, §222).
+  if (seedStore) {
+    const seed = { dial: { plate: { sapphire } } };
+    if (smoke !== undefined) seed.dial.plate.smoke = smoke;
+    await ctx.addInitScript((v) => localStorage.setItem('aestheticsOverrides', JSON.stringify(v)), seed);
+  }
   const page = await ctx.newPage();
   if (liftFloor) {
     // The scan measures the floor, so the loader's clamp to it is lifted for
@@ -214,7 +240,14 @@ async function boot({ sapphire, smoke, liftFloor = false }) {
     crop.getContext('2d').putImageData(g.getImageData(x0, y0, w, h), 0, 0);
     return { png: src.toDataURL('image/png'), crop: crop.toDataURL('image/png'), p10: q(0.10), p90: q(0.90), n: L.length, masked, box: [x0, y0, w, h] };
   }, PATCH);
-  const tag = sapphire ? `sapphire-T${String(smoke ?? 1).replace('.', 'p')}` : 'silvered';
+  // Named from what the BUILD reported (consts.smokeT, the dial's own sapphire
+  // flag), never from this call's arguments: the shipped boot passes neither,
+  // and deriving from the arguments filed the smoked shipped dial as
+  // 'dial-silvered.png' — a frame whose label denied what it showed.
+  const shot = consts.smokeT;
+  const isSapph = !!(before && before.sapphire);
+  const tag = seedStore ? (isSapph ? `sapphire-T${String(shot).replace('.', 'p')}` : 'silvered')
+                        : `shipped-${isSapph ? `sapphire-T${String(shot).replace('.', 'p')}` : 'silvered'}`;
   writeFileSync(join(OUT, `dial-${tag}.png`), Buffer.from(frame.png.split(',')[1], 'base64'));
   writeFileSync(join(OUT, `patch-${tag}.png`), Buffer.from(frame.crop.split(',')[1], 'base64'));
   await ctx.close();
@@ -251,8 +284,12 @@ if (!SCAN) {
   const TL = await boot({ sapphire: true, smoke: T_FLIP_LIGHT });
   const TF = await boot({ sapphire: true, smoke: T_FLOOR });
   const TU = await boot({ sapphire: true, smoke: T_UNDER, liftFloor: true });
+  const SH = await boot({ seedStore: false });   // the shipped picture, no override at all
+  const BW = [];  // §224's band: the two warning edges and the two silent steps beside them
+  for (const T of [...T_BAND, ...T_BAND_CLEAR]) BW.push([T, await boot({ sapphire: true, smoke: T })]);
   await browser.close(); srv.kill();
-  const boots = [['T=1', T1], [`T=${T_SMOKE}`, TS], [`T=${T_FLIP_DARK}`, TD], [`T=${T_FLIP_LIGHT}`, TL], [`T=${T_FLOOR} (the floor)`, TF]];
+  const shipName = `shipped (aesthetics.json: sapphire ${SHIP_SAPPHIRE}, smoke ${SHIP_T})`;
+  const boots = [['T=1', T1], [`T=${T_SMOKE}`, TS], [`T=${T_FLIP_DARK}`, TD], [`T=${T_FLIP_LIGHT}`, TL], [`T=${T_FLOOR} (the floor)`, TF], [shipName, SH]];
   // 1 — silence
   for (const [n, b] of boots) {
     const w = b.before.bootWarns.length + b.consoleWarns.length;
@@ -346,7 +383,58 @@ if (!SCAN) {
     if (!c) { console.log(`     ${n}: crystal mesh not found by name — recipe not checked`); continue; }
     if (c.opacity !== b.consts.CRYSTAL_GLASS.opacity || c.color !== hex6(b.consts.CRYSTAL_GLASS.color)) F(`${n}: the case crystal moved to ${c.color}@${c.opacity}`);
   }
-  OK('the case crystal reads CRYSTAL_GLASS on every boot');
+  // 10 — THE SHIPPED PICTURE. §222 made the smoked dial the default, so the
+  // value a fresh browser builds is no longer one of the constants above and
+  // nothing here covered it. This tier holds whatever the schema currently
+  // says: the knob reaches the build unclamped, the coat obeys the law, the
+  // ground is the composite, and the print takes the pole the flip pair puts
+  // it on. Change the default and this tier follows it; it cannot go stale.
+  {
+    const k = SH.consts;
+    if (SH.before.sapphire !== SHIP_SAPPHIRE) F(`${shipName}: makeDial read sapphire ${SH.before.sapphire}, the schema says ${SHIP_SAPPHIRE}`);
+    else if (!SHIP_SAPPHIRE) OK(`${shipName}: the dial ships SILVERED — the coat is inert and only silence is held here`);
+    if (SHIP_SAPPHIRE) {
+      if (Math.abs(k.smokeT - SHIP_T) > 1e-12) F(`${shipName}: materials.js read ${k.smokeT} — the loader clamped the schema's own default`);
+      else OK(`${shipName}: the schema's default reaches the build unclamped (inside _bounds [${FLOOR_IN_FILE}, 1])`);
+      const law = lawFor(SHIP_T, k.CRYSTAL_GLASS);
+      const bw = SH.before.rows.filter(isBodyOrWall);
+      const off = bw.filter((r) => Math.abs(r.opacity - law.opacity) > 1e-12 || r.color !== law.color);
+      if (off.length) F(`${shipName}: ${off.length} plate part(s) off the law: ${off.map((r) => `${r.name} ${r.color}@${r.opacity}`).join(', ')}`);
+      else OK(`${shipName}: plate body and ${bw.length - 1} walls carry the law — ${law.color} @ ${law.opacity.toFixed(4)}`);
+      const g = SH.before.ink && SH.before.ink.gated;
+      if (!g) F(`${shipName}: no inkContrast record`);
+      else {
+        const expect = groundFor(SHIP_T, k);
+        const grounds = [...new Set(g.wells.map((w) => w.ground))];
+        if (grounds.length !== 1 || grounds[0] !== expect) F(`${shipName}: ground ${grounds.join(' ')} is not the rendered composite ${expect}`);
+        // The pole is DERIVED from the flip pair this run already held, not
+        // hard-coded: at or above T_FLIP_DARK the dark pole wins, at or below
+        // T_FLIP_LIGHT the light one. Between them is a gap no boot measures,
+        // so a default landing there is reported rather than asserted.
+        const printedPole = g.trackInk.toLowerCase() === '#1a1a1a' ? 'dark' : 'light';
+        const want = SHIP_T >= T_FLIP_DARK ? 'dark' : SHIP_T <= T_FLIP_LIGHT ? 'light' : null;
+        const worst = Math.min(g.trackOuter, g.trackInner, ...g.wells.map((w) => w.ratio));
+        if (want && printedPole !== want) F(`${shipName}: the solve printed the ${printedPole} pole (${g.trackInk}); the flip pair puts T ${SHIP_T} on the ${want} one`);
+        else if (!want) console.log(`     ${shipName}: T sits between the flip pair — pole ${printedPole} ${g.trackInk} REPORTED, not asserted`);
+        else OK(`${shipName}: ground ${expect}, the solve printed the ${want} pole ${g.trackInk}, ${worst.toFixed(2)}:1 worst case against ${g.floor}`);
+        if (worst < g.floor) F(`${shipName}: ${worst.toFixed(2)}:1 is under the ${g.floor} floor`);
+      }
+    }
+  }
+  // 11 — §224's BAND, both edges. Not derivable from _bounds, which cannot
+  // express a hole, so it is measured and pinned: each warning step warns from
+  // the zone gate and NOTHING else, each clear step is silent.
+  for (const [T, b] of BW) {
+    const all = [...b.before.bootWarns, ...b.consoleWarns];
+    const zone = all.filter((w) => /^reserve face: the (warning|maximum) zone/.test(w));
+    const other = all.filter((w) => !zone.includes(w));
+    const inBand = T >= T_BAND[0] && T <= T_BAND[1];
+    if (other.length) F(`T=${T}: warned from something other than the zone gate: ${other.join(' | ').slice(0, 200)}`);
+    if (inBand && !zone.length) F(`T=${T} is inside §224's band [${T_BAND.join(', ')}] and boots SILENT — the band moved or closed; re-measure it`);
+    else if (!inBand && zone.length) F(`T=${T} is outside §224's band and the zone gate WARNS — the band is wider than recorded: ${zone[0].slice(0, 160)}`);
+    else if (inBand) OK(`T=${T} (§224's band): ${zone.length} zone-gate warning(s), ${zone[0].match(/holds only ([\d.]+):1/)?.[1]}:1 against the face — and nothing else warns`);
+    else OK(`T=${T} (one step outside the band): silent — the edge is where §224 says`);
+  }
   for (const [n, b] of boots) console.log(`     ${n}: works patch ΔL* ${b.patch.dL.toFixed(1)} (p90/p10 ${b.patch.ratio.toFixed(2)}:1, ${b.patch.masked} hand px masked) — a report; the scan is the instrument`);
   console.log(`frames: ${OUT}/dial-sapphire-T*.png (+ patch-*.png crops)`);
   process.exit(fail ? 1 : 0);
