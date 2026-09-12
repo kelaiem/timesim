@@ -26810,13 +26810,14 @@ html:lang(ko) { word-break: keep-all; }
 #ctl-hud .hud-ro-row { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 /* The label WRAPS rather than ellipsing — §53's lesson, applied before it
    costs anything: a hidden overflow is a label that silently stops saying
-   what it says, and the box already grows to fit its contents. All NINE
+   what it says, and the box already grows to fit its contents. All THIRTEEN
    locales measure inside 150 px on one line today — Spanish's "Suena a las"
    and Korean's "울리는 시각" tie for the long one at 52.8 px (§209, §211),
    past German's "Klingelt um" at 49.5 (§116 measured the others against
    it: en 36.7, fr 37.3, ja 40.0, zh 40.0, zh-Hant 30.0; §208's Arabic
    32.8; §213's Russian "Звонит в" 40.6; §214's Portuguese "Toca às" 34.5;
-   §210's Italian "Suona alle" 47.3) — so the allowance that a
+   §210's Italian "Suona alle" 47.3;
+   §212's Hindi "बजने का समय" 50.6) — so the allowance that a
    locale which does not fit simply gets two lines is still unspent.
    tools/probe-116-locale-fit.mjs is where those numbers come from. */
 #ctl-hud .hud-ro-label {
@@ -27448,6 +27449,10 @@ function setBarState(id, on) {
 // Циферблат", 1.5 px inside German's 192.4, the closest any locale has come.
 // §214's Portuguese measured 176.9 — "Controles / Vista / Mostrador";
 // §210's Italian 173.8 — "Comandi / Vista / Quadrante".
+// §212's Hindi measured 150.0 — "नियंत्रण / दृश्य / डायल", narrower than every
+// Latin-script locale including English, because Devanagari spends its
+// complexity vertically rather than horizontally: the same script that is the
+// TALLEST in ink (probe-212-devanagari-vert) is among the narrowest here.
 // German is still the widest. The bar is also the one piece of chrome
 // that does NOT mirror under dir="rtl": it is pinned to the viewport's
 // top-right, a fact about the screen rather than about the script. So the

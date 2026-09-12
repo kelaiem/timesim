@@ -102,6 +102,12 @@ const browser = await chromium.launch();
 // the measured floor in aesthetics.json's _bounds; the flip pair is where the
 // rendered composite (sheet over body over nickel) hands the solve from the
 // dark pole to the light one — derived in the §220 record, held here.
+// §222 made T_SMOKE the SCHEMA'S DEFAULT, on the strength of these boots. It
+// is still written here rather than read from the schema, and that is the
+// point of it: this is the acceptance the default was chosen against, so if
+// someone moves aesthetics.json's `smoke` the probe must go on holding 0.45
+// and the battery's boot-silence must hold the new value — two independent
+// reads, not one number checking itself.
 const T_SMOKE = 0.45;
 const T_FLIP_DARK = 0.59;
 const T_FLIP_LIGHT = 0.58;
@@ -349,7 +355,7 @@ if (!SCAN) {
 // ---- --scan: the floor --------------------------------------------------------
 const fmt = (b) => `ΔL* ${b.patch.dL.toFixed(2)} (p10 ${b.patch.p10.toFixed(4)}, p90 ${b.patch.p90.toFixed(4)}, ${b.patch.n} px, ${b.patch.masked} hand px masked)`;
 console.log(`scan: works patch ${JSON.stringify(PATCH)} (viewport fractions), floor ΔL* ≥ ${JND_LSTAR} (the CIELAB JND); aesthetics.json's floor ${FLOOR_IN_FILE} lifted to 0 for these boots`);
-const silv = await boot({ sapphire: false });
+const silv = await boot({ sapphire: false, smoke: 1 }); // both keys pinned: never the schema's default (§222 moved it)
 const clear = await boot({ sapphire: true, smoke: 1 });
 console.log(`control  silvered (opaque): ${fmt(silv)}  ${silv.patch.dL < JND_LSTAR ? 'PASS (under the JND — the metric is not reading the print)' : 'FAIL (the metric reads something other than the works)'}`);
 console.log(`control  clear sapphire    : ${fmt(clear)}  ${clear.patch.dL >= 10 * JND_LSTAR ? 'PASS (the works read at T = 1, an order above the JND)' : 'FAIL (the patch is not on the works)'}`);

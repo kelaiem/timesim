@@ -19867,6 +19867,12 @@ Dial preset are in the PR.
 outline), and any depth to the glass beyond the plate's own thickness. The knob is
 the owner's to make the default — one line in the schema — and it ships OFF so the
 shipped picture is the shipped picture. Roadmap §3 has no remainder.
+
+> **§222 made that call.** `dial.plate.sapphire` now ships ON, at §220's coat: the
+> shipped picture is a smoked sapphire dial. The sentence above is left as written
+> because it is what §3 decided and why, and §222 is the decision that overrides
+> it, not a correction of it. Everything else in this entry still describes the
+> knob — including the silvered dial, which is now what unticking the box gets you.
 ## §185 — the dial's colour travels in the link
 
 `?dialcol=rrggbb`. Pick a dial colour, press Copy view, and the person who
@@ -23919,8 +23925,11 @@ at 1 − T² beneath it, the pair folded into one alpha material:
 
 Written as α_c + (1 − α_c)(1 − T²) rather than 1 − (1 − α_c)T² so that T = 1
 returns α_c exactly and `smokedGlass(1)` IS `CRYSTAL_GLASS` byte for byte —
-the identity control, asserted at boot, and the reason a boot at the default
-is the shipped picture. Nothing here is a target: every value is a
+the identity control, asserted at boot, and the reason the ceiling of this
+knob is §3's picture and not an approximation of it. (At landing that was
+also the DEFAULT, and this entry said so; §222 moved the default to 0.45, so
+the assert is now the only thing exercising T = 1 — which is what an identity
+control is for.) Nothing here is a target: every value is a
 consequence of T, `CRYSTAL_GLASS` and the plate behind.
 
 **The coat lives in the matter.** The plate body and both pocket walls take
@@ -24383,3 +24392,219 @@ read the same 0 drift and 0 new plate overflow before and after.
   carica" and the software word for loading a file, in different sections
   of the panel; a deliberate homograph, noted.
 - **`index.html`'s `<title>` is not localized in any locale** — still true.
+
+## §212 — Hindi — Devanagari above and below the line, and a register that splits
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(700 keys) and `primer.html` (134 keys) read Hindi at 100% in one landing,
+§209's recipe item for item. Thirteen locales now.
+
+**The row is measured, and the measurement is the opposite of what a
+Devanagari locale suggests.** `hi-IN`'s DEFAULT numbering system is LATIN
+(Chromium 141: `30.0` · `0.024` · `1,000` · `18,000` · `36,000`), so
+`MARKS.hi` is English's row, not a digit pin like Arabic's `-u-nu-latn`.
+Devanagari digits (`१८,०००`) appear only under an explicit `-u-nu-deva`,
+which no row asks for. The grouping IS Indian — `1,00,000`, three then twos
+— and diverges from English only at six digits; the chrome's largest figure
+is 36,000, five digits, so the lakh grouping never shows today, and the
+checker strips group marks before parsing, so such a quantity would still
+read as 100000 if one ever landed. Both facts are written beside the row
+rather than left for a reader to rediscover.
+
+**The matcher is ANCHORED** — `/^hi(-|$)/`, Korean's precedent — because
+`hif` is Fiji Hindi, a different language, and must fall through to English
+rather than silently borrow this table. The ladder assert carries it as a
+negative row, which is the form a decision takes in that table.
+
+**The register splits, and that is the entry's own deliverable.** Hindi
+engineering prose uses transliterated loanwords for part names and native
+Sanskritic vocabulary for physical quantities, and this table follows that
+split rather than picking one register for everything:
+
+| | choice | why |
+|---|---|---|
+| part names | एस्केपमेंट, बैलेंस व्हील, हेयरस्प्रिंग, मेनस्प्रिंग, बैरल, पैलेट | no Sanskritic coinage is in use; one would read as invented |
+| physical quantities | आवृत्ति, आयाम, जड़त्व, बलाघूर्ण, घर्षण | these ARE the standard scientific words; a loanword reads as lazy |
+| everyday objects | सूइयाँ (hands), दाँत, हथौड़ा, चेन, घड़ी | the word a Hindi speaker already uses for the thing |
+
+Three examples as the entry's acceptance asks: **एस्केपमेंट** because no
+coinage is in use, **आवृत्ति** because it is what a physics textbook prints,
+**सूइयाँ** because it is simply what the hands of a watch are called.
+
+### The vertical measurement, and the one rule derived from it
+
+§208's only vertical finding was two Arabic diacritics pushing a label 2–3 px
+past the line beneath it, and the fix was to reword around them. **Devanagari
+cannot be reworded around**: vowel signs ride above the headline (ि ी े ो ौ ँ)
+and below the base (ु ू ृ), conjuncts stack, and no Hindi label exists without
+matras. So the deliverable is a measurement and one rule.
+
+`tools/probe-212-devanagari-vert.mjs` measures it. At each site the two pages
+size `font: Npx/1`:
+
+| site | box | Latin ink | Hindi ink | over | needs |
+|---|---|---|---|---|---|
+| `.where` / section stamp | 10 | 8 + 2 = 10 | 9 + 3 = 12 | 2.0 | 1.200 |
+| `.readout` | 11 | 8 + 2 = 10 | 10 + 3 = 13 | 2.0 | 1.182 |
+| chip · stamp · `.num` | 10.5 | 8 + 2 = 10 | 10 + 3 = 13 | **2.5** | **1.238** |
+
+Every boxed site is contained by line-height ≥ 1.238, so the rule is
+`line-height: 1.25` — that ratio rounded up, one `:lang(hi)` block over the
+five selectors, with the numbers in its comment. Latin exactly fills its box
+at these sizes, which is why there was no headroom to begin with.
+
+**The probe carries three controls, because a vertical measurement passes
+easily while measuring nothing.** A container with no Devanagari face draws
+`.notdef` boxes whose metrics are uniform, plausible and meaningless, so the
+probe requires क्ष to shape to ONE cluster narrower than the same letters held
+apart by ZWJ (measured 6 against 12). Latin at the same site must come back
+INSIDE its box, or the probe has measured the box and not the script. And an
+ABSENT font family falls back silently and reports the same width as the
+generic run — which reads exactly like a match: the probe's first version
+named Noto Sans Devanagari, Mangal and Kohinoor as serving faces when all
+three are absent here. A deliberately nonexistent family now measures what
+"absent" looks like, and the probe refuses to report unless exactly one
+INSTALLED face is identified.
+
+**The face is named, and it is a limit on the claim.** The stacks name no
+Devanagari family, so the glyphs come from whatever the system resolves —
+Mangal on Windows, Kohinoor on macOS, Noto on most Linux. Here that face is
+**FreeSans**, and 1.25 is FreeSans's number. A reader on Mangal may need more
+or less.
+
+**One collision was NOT Hindi's to absorb.** The SVG plate labels are
+deliberately outside the rule: SVG text is baseline-positioned and has no line
+box to overflow. What it can do is collide with a neighbour, and one pair did
+— `clamp (foot)` over the mode-shape caption, baselines 10 px apart, where
+**English already sits flush at exactly 0 px of gap**. Any script with more ink
+than Latin collides there. Fixed in position space (the caption's baseline
+178 → 183, inside a viewBox 190 deep), because a plate whose two labels touch
+is a spacing defect every tall script would have found.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **700/700**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Hindi**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English, and unchanged by the `line-height` rule (the title's own 13px/1.55 box dominates the header) |
+| `#chrome-bar` | hi **150.0** against en 170.2 — narrower than every Latin-script locale, because Devanagari spends its complexity vertically; the script that is TALLEST in ink is among the narrowest on a bar |
+| `.hud-ro-label` | समय 18.0, *बजने का समय* **50.6** against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **37/37**, precache **47/47** (45 + two tables) |
+| boot | `?lang=hi` on all three documents console-silent; `Intl.NumberFormat('hi-IN')` in the page reads `18,000` · `0.024` · `1,000` — Latin digits, as the row says |
+| `probe-212-devanagari-vert` | controls PASS (shaping, discrimination, one identified face); worst overrun 2.5 px; derived line-height 1.238 → 1.25 |
+
+### Residue, recorded
+
+- **No native review pass** — the IOU every locale carries. The register split
+  is defensible and stated, but which side of it a borderline term falls on is
+  a judgement a Hindi engineer should confirm.
+- **1.25 is FreeSans's number.** The three faces most Hindi readers actually
+  have are absent from this container, and their matra extents differ. The
+  probe names the face it measured; re-running it where Mangal or Noto is
+  installed is the obvious follow-up, and would either confirm the rule or
+  give it a second measured row.
+- **The lakh grouping is unexercised.** `1,00,000` is correct Hindi and no
+  string on either page reaches six digits, so nothing renders it today.
+- **`index.html`'s `<title>` is not localized in any locale** — still true.
+
+## §222 — The smoked sapphire dial becomes the shipped picture
+
+`dial.plate.sapphire` ships `true` and `dial.plate.smoke` ships `0.45`. Two
+values in `src/aesthetics.json`; no code moved, no metal moved. §3 built the
+box sapphire dial and shipped it OFF "so the shipped picture is the shipped
+picture"; §220 built the Lumen coat on it and shipped it at T = 1 for the same
+reason. Both entries said the default was the owner's call, one line in the
+schema. This is that call, and it is written down as a landing rather than
+slipped in as a tweak because a default is a claim about what this project IS —
+the picture in every screenshot, every fresh browser, `test-geometry.html`'s
+`makeDial` panel, and the identity boot the battery holds silent.
+
+### Why T = 0.45, and not any other number in the window
+
+The knob's own bounds are `[0.41, 1]`. That interval is not the choice's
+window, because most of it does not produce the thing the reference names.
+Three constraints cut it down, and the fourth turns out not to bind:
+
+- **The floor, 0.41** (§220, derived): below it the reserve sub-dial's zone
+  gate can no longer place a tone with 3:1 against both the face and the ticks,
+  and boot warns. A default that warns is not a default.
+- **Lange's own qualitative figure**, the only quantity the reference gives:
+  the coating "blocks most of the visible light", so T < 0.5. On the slider's
+  0.01 step the highest value that satisfies it is **0.49**.
+- **The ink solve's flip, at 0.58/0.59** (§220, derived on the rendered
+  composite): above it the print stays on the dark pole, and dark print on a
+  lightly-smoked ground is a grey dial, not a Lumen. Not binding — the whole
+  window above already sits nine steps below the flip — but it is the
+  constraint that makes the *look* the reference's, so it is checked rather
+  than assumed.
+- **The works' own legibility floor, T 0.27** (§220's `--scan`, the CIELAB
+  JND): fourteen steps under the schema's floor, so it never enters.
+
+The admissible window is therefore **[0.41, 0.49]**, and the shipped value is
+its **midpoint, 0.45** — four slider steps of margin from the gate that warns
+below and four from the reference's claim above, which is the only defensible
+place to stand when the two ends are a hard boot gate and a borrowed
+qualitative bound of unknown tightness. It is also, and not by coincidence,
+the value `tools/probe-220-smoke.mjs` has booted as its Lumen-dark case since
+§220 landed: the default is the number the acceptance was already written
+against, not a new one that now needs one.
+
+What that buys, measured on this boot: the plate body and both pocket walls at
+`#2a2b2b` @ 0.8258, the rendered ground `#5f6062`, and the §196 solve printing
+the **light pole `#eaeaea` at 5.23:1** against the 3:1 floor — light print on a
+smoked ground, arriving because the ground moved and the solve read it. Under
+x-ray the body and walls swap to the clear twin at 0.14, so the toggle still
+shows the works.
+
+### One instrument was measuring the default instead of its subject
+
+`tools/probe-3-sapphire.mjs` got its SILVERED boot by writing no override at
+all. That was correct while the schema shipped silvered and it silently became
+a second sapphire boot the moment this change landed — an acceptance test whose
+control is "whatever ships" stops testing what it names, and it does so without
+failing. Both boots now write both keys explicitly, and the sapphire one pins
+`smoke` to 1, because §3's claims are about the CLEAR crystal's recipe and
+§220's coat is the other probe's subject. `probe-220-smoke.mjs` was already
+explicit on `sapphire`; its silvered control now pins `smoke` too, for the same
+reason rather than for a symptom.
+
+`T_SMOKE = 0.45` stays written in that probe rather than read from the schema,
+deliberately: it is the acceptance the default was chosen against, so if the
+schema's `smoke` ever moves, the probe goes on holding 0.45 and the battery's
+boot-silence holds the new value — two independent reads instead of one number
+checking itself.
+
+### Instruments
+
+```
+node tools/probe-3-sapphire.mjs     12 OK, 0 FAIL   (both boots seeded; silvered
+                                                     and clear-sapphire claims unmoved)
+node tools/probe-220-smoke.mjs      21 OK, 0 FAIL   (T=0.45 boots silent, light pole
+                                                     #eaeaea at 5.23:1, x-ray shows the works)
+```
+
+Battery: **41/41 gates pass** in CI on this landing's own job, routed to the
+self-hosted runner by its title (§200; runner `battery-1-3229`, label
+`timesim-battery`), total 759.5 s — fingerprint deterministic at
+**3368155323**, unit digests deterministic (58 units, 43 poses), boot silent,
+spec boots 32/32 with the identity control silent. That last line is the
+load-bearing one now: the identity boot IS the smoked sapphire dial, so the
+§157 ink gate and the reserve zone gate run on the shipped ground rather than
+on a silvered one. Locally, `40/40 gates pass · total 2002.2s` on the dev
+container at the same fingerprint. And 3368155323 is what `origin/main`
+reports on the same machine — measured, not argued: the two trees build the
+same metal.
+
+`smokedGlass(1) ≡ CRYSTAL_GLASS` is still asserted at boot and is now the ONLY
+thing exercising T = 1, since no boot sits there any more. That is what an
+identity control is for, and it is why the assert was written as an assert
+rather than as a comment about the default.
+
+**What this does not change.** No geometry: both probes compare 144 meshes by
+name, vertex count and own bounds across the boots and find them identical, and
+materials enter neither the fingerprint nor any sweep. No API, no link
+parameter (the smoke is browser-local and does not travel). And no claim about
+lume — §220's "not modelled" list is unchanged, and shipping the tint by
+default does not ship the reason Lange's coating exists.

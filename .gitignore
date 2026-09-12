@@ -26,6 +26,15 @@ tools/node_modules/
 # nothing — it leaked in once through an over-broad `git add -A tools/`.
 tools/press-trace.json
 
+# The two dial probes' FRAMES, same class as press-trace.json above: output,
+# not source. probe-3-sapphire.mjs and probe-220-smoke.mjs write a PNG per boot
+# (plus the scan's patch crops) into tools/shot3 and tools/shot220 on every run,
+# so a committed copy would be binary churn nobody diffs — and they are the
+# evidence you paste into a PR, which is where a frame belongs. Directory-only
+# by the trailing slash, so it cannot reach a tools/shot*.mjs that someone
+# writes later.
+tools/shot*/
+
 # Scratch instruments. The underscore prefix is already this repo's marker for
 # a throwaway measuring script, and §163 deleted `tools/_boot.mjs` naming the
 # cause: "added by an over-broad 'git add tools/'". It came back anyway, and

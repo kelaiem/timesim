@@ -67,6 +67,7 @@ const LOADERS = {
   ru: () => import('./explain-i18n.ru.js'),
   pt: () => import('./explain-i18n.pt.js'),
   it: () => import('./explain-i18n.it.js'),
+  hi: () => import('./explain-i18n.hi.js'),
   ja: () => import('./explain-i18n.ja.js'),
   zh: () => import('./explain-i18n.zh.js'),
   'zh-Hant': () => import('./explain-i18n.zh-Hant.js'),
