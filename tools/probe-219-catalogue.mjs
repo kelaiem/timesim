@@ -34,9 +34,13 @@
 // catalogue and 11:1 becomes reachable, at which point the probe names 13:1
 // instead. That is the difference between a refusal and a hard-coded `null`.
 //
-// Two readings disagree with docs/LEGO_FEASIBILITY.md and are REPORTED, not
-// gated — they are about the steel side, which this entry does not touch:
-// the reserve reduction the source computes, and the note's 4.2.
+//   5. the reserve reduction DERIVES from the indicator's scale and the tooth
+//      counts reproduce it. This is TODO 18's assert restated on the fork's
+//      side, and it is here because the note got this row wrong: it carries
+//      4.2, which main.js names in its own comment as the superseded
+//      150°-arc pair. The shipped movement sweeps 300° since §152
+//      (2026-08-21), three weeks before the note was filed. A row read off a
+//      scale cannot go stale without this assert firing.
 //   cd tools && node probe-219-catalogue.mjs      (exit 1 on any gated claim)
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -177,6 +181,17 @@ if (!w2m) { console.error('FAIL: rsvTeethW2 is no longer `SPEC.reserveHours / <n
 const rsvTeethW2 = L.SPEC.reserveHours / Number(w2m[1]);
 const steelReserve = mul(F(L.rsvTeethW1, L.rsvTeethP0), F(rsvTeethW2, L.rsvTeethP1));
 
+// The reduction is not a number, it is a consequence of the SCALE. p0 turns
+// RESERVE_BARREL_TURNS = h·pinion/teeth lock-to-lock (the slip coupling makes
+// it the arbor's own turns), the hand sweeps RESERVE_SWEEP_DEG, so
+// R = turns · 360/sweep. Both inputs are read, not copied: the sweep out of
+// main.js, the turns out of TRAIN and SPEC.
+const swm = mainSrc.match(/const\s+RESERVE_SWEEP_DEG\s*=\s*(\d+)\s*;/);
+if (!swm) { console.error('FAIL: RESERVE_SWEEP_DEG is no longer a literal in main.js — this probe must be re-read against it.'); process.exit(1); }
+const sweepDeg = Number(swm[1]);
+const barrelTurns = F(L.SPEC.reserveHours * T.barrel.pinion, T.barrel.teeth);
+const reserveFromScale = mul(barrelTurns, F(360, sweepDeg));
+
 // RATE_TABLE's law: the fourth wheel turns 1 rev/min, the escape pinion steps
 // it up, and each escape tooth is two beats. vph = 60 · (fourthTeeth/escPinion)
 // · N · 2. The technic escape row is the SAME law at the catalogue's own
@@ -284,14 +299,29 @@ console.log(`THE CLUTCH RULE — 18T (7786) is barred from a going train because
 console.log(`  no invariant chain uses it${usesClutch ? ' — BUT ONE DOES, which contradicts the rule' : '; the exclusion is a rule that currently costs nothing'}\n`);
 if (usesClutch) fail('an invariant chain uses a clutch gear — mesh() is not applying the going-train exclusion');
 
-console.log('REPORTED, NOT GATED — the steel side, which this entry does not touch');
-console.log(`  reserve reduction reads ${show(steelReserve)} from source:`
-          + ` rsvTeethW1/rsvTeethP0 = ${L.rsvTeethW1}/${L.rsvTeethP0},`
-          + ` rsvTeethW2/rsvTeethP1 = ${rsvTeethW2}/${L.rsvTeethP1}`);
-console.log(`    rsvTeethW2 = SPEC.reserveHours / ${w2m[1]} = ${L.SPEC.reserveHours} / ${w2m[1]} = ${rsvTeethW2} (read from src/main.js)`);
-console.log(`    docs/LEGO_FEASIBILITY.md §3.6 and §219's table both say this reduction is 4.2, from "8:28 × 10:12".`);
-console.log(`    A 12-tooth second-stage wheel needs SPEC.reserveHours = ${12 * Number(w2m[1])}; the spec ships ${L.SPEC.reserveHours}.`);
-console.log(`    Whichever is right, the note and the source do not agree, and the note was not measured against it.\n`);
+console.log('THE RESERVE SCALE (claim 5) — the reduction is a consequence, not a number');
+console.log(`  RESERVE_BARREL_TURNS = ${L.SPEC.reserveHours}h · ${T.barrel.pinion}/${T.barrel.teeth} = ${show(barrelTurns)} turns lock-to-lock`);
+console.log(`  RESERVE_SWEEP_DEG    = ${sweepDeg}° (read from src/main.js)`);
+console.log(`  R from the scale     = ${show(barrelTurns)} · 360/${sweepDeg} = ${show(reserveFromScale)}`);
+console.log(`  R from the teeth     = ${L.rsvTeethW1}/${L.rsvTeethP0} × ${rsvTeethW2}/${L.rsvTeethP1} = ${show(steelReserve)}`);
+if (!eq(reserveFromScale, steelReserve)) fail(`the reserve reduction does not follow its own scale — ${show(reserveFromScale)} from the graduation, ${show(steelReserve)} from the counts. This is TODO 18's failure recurring: the display quantity and the gears drifted apart.`);
+else console.log(`  OK — they agree, so the technic row above was solved against the SHIPPED scale\n`);
+
+// The history this row has, because it is the row the note got wrong and the
+// shape of that error is worth keeping: each state was internally consistent,
+// which is exactly why the stale one survived being read.
+console.log('  the same reduction through its regraduations — main.js states the first three:');
+for (const [label, turns, sweep] of [
+  ['120° arc, 3.75-turn arbor (pre-TODO 18)', F(15n, 4n), 120],
+  ['150° arc, 3.75-turn arbor (TODO 18)',     F(15n, 4n), 150],
+  ['150° arc, 1.75-turn arbor (post-§124)',   F(7n, 4n),  150],
+  ['300° arc, 1.75-turn arbor (§152, shipped)', F(7n, 4n), 300],
+]) {
+  const r = mul(turns, F(360, sweep));
+  const here = sweep === sweepDeg && eq(turns, barrelTurns);
+  console.log(`    ${label.padEnd(42)} R = ${show(r).padEnd(6)}${here ? '  ← shipped' : ''}${show(r) === '21/5' ? '  ← the figure docs/LEGO_FEASIBILITY.md §3.6 carries' : ''}`);
+}
+console.log(`  §152 widened the arc on 2026-08-21; the note was filed 2026-09-11, so it was stale on the day it was written.\n`);
 
 console.log(fails.length ? `FAILED — ${fails.length} claim(s)` : 'PASS — every gated claim holds');
 process.exit(fails.length ? 1 : 0);
