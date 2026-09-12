@@ -8577,7 +8577,7 @@ export const MESH_PHASE_WAIVERS = {
   // members still):
   //
   //   idler 2 ⇄ arbor pinion            train ok, alarm ok      → CLOCKED
-  //   cage wheel ⇄ finger pinion        alarmWind ok            → transmits
+  //   cage wheel ⇄ finger pinion        alarmWind ok            → FIXED, see below
   //   keyless setting wheel ⇄ minute w. crown 0|0, handSet ok   → transmits once
   //   leg B pinion ⇄ idler pinion       alarmWind 0|0           → never exercised
   //   wind spur ⇄ transfer wheel        crown 0|0, wind 0|0     → never exercised
@@ -8601,12 +8601,14 @@ export const MESH_PHASE_WAIVERS = {
   // table, and 132 was wrong to call it unchased.
   'alarm setting setting wheel ⇄ idler 1': 'TODO 117',
   'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 132',
-  // Solved by solveGearChain already (`alarm arrest output:`), transmitting at
-  // its ratio, and still 26.880% off over the net against 0.098 of spread: the
-  // build tripwire sees one pose and reads zero there. TODO 116's signature, a
-  // constant the tick introduces after the solve — a different defect from the
-  // other four and NOT closed by clocking.
-  'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 132',
+  // `cage wheel ⇄ finger pinion` IS GONE TOO, and it was a third defect again:
+  // solved, transmitting, and still 26.880% off over the net at 0.098 spread.
+  // The solve was taken in a frame the movement never occupies — `fpSpin`
+  // carries the Geneva finger AND the output pinion, and the tick writes it
+  // `phi + ARREST_FINGER_CLOCK`, so the arbor is never at plain zero, which is
+  // where the solve ran. Solving in the assembled frame instead reads 0.073%.
+  // TODO 116's signature exactly: right at the one pose the build tripwire
+  // sees, constant-wrong everywhere else, and boot silent throughout.
   // TODO 117, not 124, and the SPREAD is what says so: this row reads 0.11% at
   // the build pose and 36.68% over the net. A residual that MOVES is not a
   // mis-set phase — frac(uP + uQ) is invariant while a pair genuinely

@@ -21394,6 +21394,33 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
     { obj: alarmBarrelGear, teeth: ALARM_BARREL_TEETH, name: 'barrel rim' },
     { obj: idlerW, teeth: SUB_IDLER_SOLVED, name: 'idler wheel' },
   ], ALARM_TRAIN_MODULE, ['alarmWind']);
+  // TODO 132 — SOLVE THE OUTPUT STAGE IN THE FRAME IT IS ASSEMBLED IN, which
+  // is not the one it was being solved in. `fpSpin` carries BOTH members of
+  // this arbor: the Geneva finger and the output pinion. The tick writes it
+  // `phi + ARREST_FINGER_CLOCK` — the clock being the assembly registration
+  // described above, which points the pin at the cross's stud — so the arbor
+  // is at ARREST_FINGER_CLOCK when the driver angle is zero and it is NEVER at
+  // plain zero. The solve ran with the group still at zero, phased the pinion
+  // for that frame, and the tick then carried it to a frame a whole
+  // ARREST_FINGER_CLOCK away. Measured, the row read 26.880% of a pitch off
+  // anti-phase with 0.098 of spread: RIGHT at the one pose the solve's own 2%
+  // tripwire sees and constant-wrong at every pose the movement occupies,
+  // which is TODO 116's signature and why boot stayed silent.
+  //
+  // The clocking itself is correct and stays where it is. The comment above
+  // states the design — the pinion's phase belongs to its MESH and the
+  // finger's to the CROSS, one arbor satisfying both only because the two are
+  // clocked against each other — and the pin's world position is read off
+  // `arrestFingerSpin.rotation.z` downstream, so the finger's angle must stay
+  // on this group. What was wrong is only WHERE the solve was taken from.
+  //
+  // So the arbor is put in its assembled pose first and the pinion is phased
+  // there. `alignGear` calibrates its local→world slope by bumping and
+  // re-measuring, so a rotated parent is handled without the solve knowing
+  // about it; `measuredToothPhase` reads world vertices through
+  // updateWorldMatrix(true, true). The tick overwrites this rotation on every
+  // frame, so the assignment is a BUILD pose, not a second owner of the angle.
+  fpSpin.rotation.z = ARREST_FINGER_CLOCK;
   solveGearChain('alarm arrest output:', [
     { obj: subDiff.userData.wheel, teeth: SUB_OUT_TEETH, name: 'cage wheel' },
     { obj: fPin, teeth: SUB_FINGER_TEETH, name: 'finger pinion' },
