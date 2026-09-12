@@ -220,9 +220,10 @@ export const BATTERY = [
     fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'oscillator', opts: {},
-    gate: 'the spring is cut to the beat, in real hairspring stock',
+    gate: 'the spring is cut to the beat as clamped, in real hairspring stock; every wind frame one length of steel, the frames\' torque the k, the control silent (§218)',
     fails: (r) => r.failures,
-    note: (r) => `implied ${r.impliedHz} Hz vs spec ${r.specHz} Hz, ribbon ${r.spring.h_mm.toFixed(4)} mm (stock ${r.spring.windowMm[0]}–${r.spring.windowMm[1]})` },
+    note: (r) => `implied ${r.impliedHz} Hz vs spec ${r.specHz} Hz, ribbon ${r.spring.h_mm.toFixed(4)} mm (stock ${r.spring.windowMm[0]}–${r.spring.windowMm[1]})`
+      + (r.breathing ? `; clamp ×${r.breathing.clampRatio.toFixed(4)}, pivot ${r.breathing.peaks.performed.pivotForce_mN.toFixed(4)} mN @${r.breathing.peaks.performed.ampDeg}° / ${r.breathing.peaks.physical.pivotForce_mN.toFixed(4)} @${r.breathing.peaks.physical.ampDeg}°, stress ${r.breathing.peaks.physical.stress_MPa.toFixed(0)}/${r.breathing.fatigue_MPa} MPa` : '') },
   // TODO 32 — the going spring's torque law is DERIVED now, and this holds
   // the derivation: set-up quantised to the ratchet, the fusee's level
   // product an identity at float noise, and both ribbons' published sections
