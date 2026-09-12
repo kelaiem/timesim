@@ -8563,31 +8563,27 @@ export const TRANSFER_WAIVERS = {};
 // land without deleting its waiver (§137's rule, and the reason §54's stale
 // waivers gate).
 export const MESH_PHASE_WAIVERS = {
-  // TODO 124 — the eight meshes no solveGearChain call covers. The motion
-  // works pair reads exactly 50.00%: a half pitch, tooth meeting tooth on the
-  // line of centres, which is the worst value the measure can take and the
-  // precise defect TODO 15 was filed for. That it is the movement's 12:1 —
-  // standing rule 2's own worked example — is why this is filed loudly.
+  // TODO 132 — the six meshes no solveGearChain call covers. They were waived
+  // against TODO 124 while that item was the nearest owner, which it no longer
+  // is: 124's own subject was the MOTION WORKS, and both of its rows are gone
+  // from this table. Its text always called these six "NOT this item", so they
+  // are rehomed rather than left citing a closed number.
   //
-  // THESE TWO STAY, AND THE SPREAD SAYS WHY. TODO 124's transmission half is
-  // closed (its TRANSMITS_WAIVERS entries are deleted, and `mwArbor` now
-  // carries the negation it was owed), and the proof is in this check's own
-  // spread column: 42.871 → 0.049 and 37.305 → 0.781, since frac(uP + uQ) is
-  // invariant only while a pair genuinely transmits. What is left is a
-  // CONSTANT half pitch — by this table's own rule above, "a phase never
-  // solved", which is the other half of the same item: the motion works is
-  // still the one gear train in the movement with no phase solve of its own.
-  // So the rows are over the bar for a different reason than when they were
-  // written, and closing the item means clocking the build, not re-checking
-  // the sense (tools/probe-124-motionworks-sense.mjs gates that half).
-  'motion works: cannon pinion ⇄ minute wheel': 'TODO 124',
-  'motion works: minute pinion ⇄ hour wheel': 'TODO 124',
-  'keyless: setting wheel ⇄ minute wheel': 'TODO 124',
-  'keyless: wind spur ⇄ transfer wheel': 'TODO 124',
-  'alarm setting setting wheel ⇄ idler 1': 'TODO 124',
-  'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 124',
-  'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 124',
-  'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 124',
+  // What TODO 124 leaves behind for them is a METHOD, and it is worth stating
+  // where the waivers are. That item was two defects wearing one symptom, and
+  // the SPREAD column told them apart: the pair CO-ROTATED (mwArbor lacked
+  // TODO 115's negation) and, underneath, its teeth had never been clocked.
+  // Fixing the sense alone moved the spread 42.871 → 0.049 and 37.305 → 0.781
+  // while leaving a CONSTANT 50.00% — so a large spread means "does not
+  // transmit, fix the sense first" and a flat one means "geared, clock it".
+  // Five of the six below are flat and should take the phase solve directly;
+  // `alarm setting setting wheel ⇄ idler 1` is not, and TODO 132 says so.
+  'keyless: setting wheel ⇄ minute wheel': 'TODO 132',
+  'keyless: wind spur ⇄ transfer wheel': 'TODO 132',
+  'alarm setting setting wheel ⇄ idler 1': 'TODO 132',
+  'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 132',
+  'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 132',
+  'alarm arrest output cage wheel ⇄ finger pinion': 'TODO 132',
   // TODO 117, not 124, and the SPREAD is what says so: this row reads 0.11% at
   // the build pose and 36.68% over the net. A residual that MOVES is not a
   // mis-set phase — frac(uP + uQ) is invariant while a pair genuinely
@@ -8659,7 +8655,7 @@ export function checkMeshPhase(clock) {
       offPct: +(worst.off * 100).toFixed(3), poseIndex: worst.poseIndex,
       // The SPREAD across the net separates two different defects that read
       // alike at one pose. A residual that is CONSTANT is a phase never
-      // solved — the pair is geared, its teeth just sit wrong (TODO 124). One
+      // solved — the pair is geared, its teeth just sit wrong (TODO 132). One
       // that SWEEPS is a pair that does not transmit at all: frac(uP + uQ) is
       // invariant only while both members turn at the ratio the metal says, so
       // a moving residual means the two angles are written independently

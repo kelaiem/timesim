@@ -54,9 +54,19 @@
 // proposes. Before the fix it names the cause; after the fix it is a must-miss
 // on the subject itself, since re-negating must break what the fix repaired.
 //
-// ACCEPTANCE — exits non-zero. It is RED on the tree that shipped it, on
-// purpose: TODO 124 is the finding and this is the gate its fix turns green,
-// the posture probe-coaxial-sense.mjs established for TODO 115.
+// ACCEPTANCE — exits non-zero. It shipped RED on purpose (the posture
+// probe-coaxial-sense.mjs established for TODO 115: the finding lands first and
+// its fix turns the gate green) and it is GREEN now, holding the sense TODO 124
+// restored. Keep it: the defect it catches is a one-character edit away at all
+// times, and nothing else in the battery can see it — two wheels whose angles
+// are written with the wrong relative sign sweep exactly the same volumes as
+// two that are geared, which is why this went unnoticed until §220's sapphire
+// dial made the works visible from the front.
+//
+// It is deliberately INDEPENDENT of the phase clocking that closed the item's
+// other half. Sense and phase are different quantities: a correctly clocked
+// pair can still co-rotate, and this measures the ratio, not the residual.
+// meshPhase gates the clocking; this gates the sense.
 // Run from tools/ with a Playwright Chromium: `node probe-124-motionworks-sense.mjs`.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
