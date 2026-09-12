@@ -24723,6 +24723,18 @@ node tools/probe-220-smoke.mjs        29 OK, 0 FAIL, exit 0
 node tools/probe-224-zone-band.mjs    report — the table above
 ```
 
+Battery: **41/41 gates pass** in CI on this landing's own job, routed to the
+self-hosted runner by its title (§200; runner `battery-2-27d9`, label
+`timesim-battery`), total 782.1 s — `boot silent (rule 6)`, `spec boots: the
+identity control is silent`, fingerprint deterministic at **1519543219**, unit
+digests deterministic (58 units, 43 poses). The two silence gates are the
+load-bearing ones here and they are a SECOND path to this entry's claim: the
+identity boot IS the shipped dial, so the §157 ink gate and the reserve zone
+gate ran on the 0.74 ground and said nothing — the band's lower edge confirmed
+by the battery, independently of the probe that measured it. Locally,
+`40/40 gates pass · total 1581.4s` at the same fingerprint, and `origin/main`
+reports 1519543219 on that same machine: materials moved, geometry did not.
+
 **Not modelled, and said so:** nothing about the band is FIXED here. A zone
 that could carry an outline, or a graded tone, or ticks that do not flip with
 the ground, would each close it — and each is a change to §196's solve with
