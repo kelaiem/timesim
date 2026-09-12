@@ -76,7 +76,10 @@ export function makeBalanceWheel({ radius, thickness })
 // planar elastica of an inextensible ribbon (§218 — constant length, curvature carries
 // the turn, the stud's reaction reported as the lateral load on the pivots), swapped by
 // `userData.setWind(θ)`; `hairspringClampRatio(plan)` is the section-free stiffening
-// the rate solve fits against.
+// the rate solve fits against. `plan.overcoil = { turns, raise, kneeR }` continues the
+// ribbon through a knee into a raised plane and a terminal whose two curvatures are SOLVED
+// so the flexing centreline's centroid sits on the axis — Phillips's condition, which
+// makes that stiffening exactly 1 and the stud's reaction vanish at small angle.
 export function makeHairspring({ innerR, outerR, coils = 12, height, ribbonR, reportMaxRad })
 
 // Going barrel: drum + toothed rim (it IS the great wheel: give it `teeth`,`module`),

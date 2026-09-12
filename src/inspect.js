@@ -2593,7 +2593,6 @@ export const INTRA_UNIT_CONTACTS = [
   // the breathing spiral is a mover by morph, and the parts it is pinned
   // BETWEEN are exactly the parts a spiral has to be pinned between.
   { unit: 'Hairspring', a: 'TubeGeometry#0', b: 'CylinderGeometry#1', why: 'the spiral\'s inner coil is pinned to the COLLET it turns with — makeHairspring starts the curve at the collet radius, so the two share that surface by construction' },
-  { unit: 'Hairspring', a: 'TubeGeometry#0', b: 'TubeGeometry#2', why: 'the raised terminal curve continues from the spiral\'s outer end — one ribbon, two meshes, joined end to end at the fixed outer angle' },
   // §104 — the governor's declared joints. Two axes, each the striking
   // side's own idiom: rotating members drawn coincident over their static
   // studs (the strike sleeve's "one shaft, two meshes"), and the strike
@@ -8301,6 +8300,10 @@ export function checkOscillator(clock) {
     if (!B.kFramesAgrees) failures.push({ what: 'frames torque vs k', kFrames: B.kFrames_Nm_per_rad, k: O.k_Nm_per_rad, tolPct: 0.5 });
     if (!B.control.pass) failures.push({ what: 'free-landing control', maxPivotForce_mN: B.control.maxPivotForce_mN });
     if (!B.stressInLimit) failures.push({ what: 'ribbon stress', stress_MPa: B.peaks.physical.stress_MPa, fatigue_MPa: B.fatigue_MPa });
+    // §218 tier two — the overcoil is concentric (clamp ratio 1 to 1e-6, the
+    // centroid solve converged) and the pivot force at the performed swing is
+    // under a tenth of the flat spring's; the physical residual is a report.
+    if (B.overcoil && !B.overcoil.pass) failures.push({ what: 'overcoil', converged: B.overcoil.converged, concentric: B.overcoil.concentric, forceRatioPerformed: B.overcoil.forceRatio.performed });
   }
   return {
     ok: failures.length === 0,       // a GATE since tier two — the spring is cut to the rate
@@ -8311,7 +8314,7 @@ export function checkOscillator(clock) {
     spring: { k_Nm_per_rad: O.k_Nm_per_rad, kPure_Nm_per_rad: O.kPure_Nm_per_rad, clampRatio: O.clampRatio, ...O.spring, windowMm: O.stockWindowMm },
     breathing: B ? { measured: breathingMeasured, lengthHeld: B.lengthHeld, converged: B.converged,
                      clampRatio: B.clampRatio, kFrames_Nm_per_rad: B.kFrames_Nm_per_rad, control: B.control,
-                     peaks: B.peaks, fatigue_MPa: B.fatigue_MPa, law: B.law } : null,
+                     peaks: B.peaks, fatigue_MPa: B.fatigue_MPa, law: B.law, overcoil: B.overcoil } : null,
     mismatches, failures,
     summary: `implied ${O.fImpliedHz.toFixed(3)} Hz vs spec ${O.fSpecHz} Hz (${O.ratio.toFixed(3)}×) — ${O.agrees ? 'the spring is cut to the beat' : 'DISAGREES'}; ribbon ${O.spring.h_mm.toFixed(4)} mm ${O.spring.inStock ? 'within' : 'OUTSIDE'} real stock ${O.stockWindowMm[0]}–${O.stockWindowMm[1]} mm`,
   };

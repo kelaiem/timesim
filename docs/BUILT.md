@@ -23606,13 +23606,14 @@ three Latin letters do.
 - **`index.html`'s `<title>` is not localized in any locale** — §209's
   observation, still true.
 
-## §218 — the hairspring breathes as steel does: the clamped–clamped elastica as its frame law, the spring fitted as clamped, the coil count derived — PARTIAL, tier one; the Breguet overcoil remains in the roadmap
+## §218 — the hairspring breathes as steel does: the clamped–clamped elastica as its frame law, the spring fitted as clamped, the coil count derived — and the Breguet overcoil, solved so the spring breathes on centre
 
 > Filed 2026-09-11 from two asks in one sitting — make the balance spring's
 > coils tighten on each vibration, and shorten the spring so it flexes more —
-> and tier one shipped the same day. Tier two, the Breguet overcoil, stays in
-> the private roadmap under this number as a DECISION on the pivot-force figure
-> this landing produced; the entry there is rewritten to that remainder.
+> and tier one shipped the same day. Tier two, the Breguet overcoil, was filed
+> as a DECISION on the pivot-force figure tier one produced; the owner took it
+> the next morning and it shipped 2026-09-12 — the record is the last part of
+> this section. The entry is retired whole in the roadmap.
 
 ### What was wrong, measured
 
@@ -23750,3 +23751,85 @@ fingerprint deterministic across virgin boots at **2050941457** — moved from
 `main`'s, correctly: the spring was re-cut and every frame re-shaped. The
 report's `oscillator` payload carries the same figures the probe printed. CI's
 run on the pull request is the merge evidence; the local run is the pre-flight.
+
+### Tier two — the Breguet overcoil (shipped 2026-09-12)
+
+**What it is.** The ribbon continues past the spiral's outer end through a
+KNEE — an S of two arcs of radius `kneeR` in the vertical plane, climbing
+`HAIRSPRING_OVERCOIL_RAISE` = `HAIRSPRING_H + CLEAR_MARGIN` = 0.75 u so the
+raised ribbon's underside clears the spiral's top by the one margin — into a
+second plane, then a TERMINAL of three quarters of a turn of the outer radius,
+made of two arcs whose curvatures are solved (`hairspringRest`, cached per
+plan object so the rate solve, the clamp ratio and the metal share one
+solve). `kneeR` is the collet radius, the tightest bend the ribbon already
+takes: the knee is formed, not flexed, and a formed bend no tighter than an
+existing one is the constraint. The stud clamps the terminal's end in the
+raised plane; the cock's carrier reads the published end (`endAngle`,
+`termEndR` 9.72, `termEndZ` 0.75) as it always did, and the separate static
+terminal tube is gone — the terminal IS the flexing ribbon, one mesh, so
+`INTRA_UNIT_CONTACTS`' spiral ⇄ terminal row went with it.
+
+**Phillips, derived rather than quoted.** The plan asked for Phillips's two
+conditions from the source. The instrument gave the first in one line: under
+a pure moment every element ds of the ribbon turns the rest about itself, so
+the inner end's translation is Δκ·L·ẑ×(r_B − c) with c the centroid of the
+whole flexing centreline; the rigid collet's own rotation moves that end by
+Δκ·L·ẑ×r_B; the two coincide — the spring develops concentrically and the
+stud exerts no force — iff c = 0. Two scalar equations, two curvatures:
+Newton on the centroid, no elastica in the loop, four iterations to 4e-13 u.
+The elastica then VERIFIES it, which is the acceptance the plan set: the
+clamp stiffening reads 1.0000001 with the overcoil against 1.0040 for the
+flat spring, i.e. the stud does no work at small angle. (Phillips's second
+condition, on the curve's own moment, is what makes the concentricity hold
+past first order; the residual it governs is measured below and reported.)
+
+**The terminal's length is a proportion taken inside a measured window.** The
+family was swept from 0.50 to 1.00 turns of R: it solves from 0.55 to 0.90
+and nowhere outside — a half turn admits no solution, 0.95 none, a full turn
+only with a kinked second arc (ρ₂ → 0). At 0.55 the second arc is nearly
+straight and the stud lands at r 11.2, a unit inside the plate's cutaway;
+the radii even out along the window. Three quarters of a turn is the
+classical overcoil proportion, and it is taken INSIDE that window (ρ₁ 6.73,
+ρ₂ 10.02 against R 7.92, stud at r 9.72); the build asserts the solve
+converged, and `tools/probe-218-breathing.mjs` re-runs the sweep at 0.5, the
+shipped proportion and 1.0 through the real builder under the node loader.
+
+**Measured on the built tree** (8 coils, ribbon re-solved to 0.0239 mm for the
+longer active length — 104.6 mm, the knee's 3D length 0.06% over its
+projection, stated):
+
+| | performed 45° | physical 270° |
+|---|---|---|
+| lateral pivot force, flat spring of this section | 0.0047 mN | 0.026 mN |
+| with the overcoil | 0.0003 mN | 0.0078 mN |
+| ratio | ×0.060 | ×0.29 |
+| coils' max radial excursion | 0.099 mm | 0.64 mm |
+| minimum coil gap, in 3D (the raised turn over the outer coil) | 0.26 mm | 0.17 mm |
+| outer-fibre stress | 18 MPa | 111 MPa |
+
+The performed-amplitude ratio is the gate (under a tenth); the physical one
+is the second-order residual Phillips's theorem does not cover, reported. The
+coil-gap row now measures in three dimensions, because the raised turn sits
+directly over the outer coil in projection.
+
+**What it cost, and what it did not touch.** The overcoil is metal in the
+stack: `SPRING_TOP_Z` rose by 0.63 u (the raise plus half a ribbon over the
+flat spring's 0.7·H), and the balance cock's slab and the three-quarter
+plate's floor read it and rise with it — measured the same way on this tree and on `main`, the movement's z box grows 0.56 u (0.21 mm) and the cased assembly's does not grow at all, the case already standing clear of the cock's new top (§187's envelope had the room). The first boot with the
+raised top moved the going train too: `DRUM_TOP_Z`, the fusee's groove band
+and the chain's ceiling all read `SPRING_TOP_Z` as their datum, and §47's
+winding arrest reported no legal beak azimuth at any of its 102 pad
+azimuths. A raised terminal on the balance is not a reason to re-cut the
+mainspring (§104's ribbon height) or re-clock the arrest, so those stations
+keep their own datum, `TRAIN_CEILING_Z` = the flat spring's stack top —
+position space, per P3 — and boot is silent again. No new waivers.
+
+**Held.** `checkOscillator` gains the overcoil row: the centroid solve
+converged, the clamp ratio 1 to 1e-6, the performed-amplitude force ratio
+under 0.1. The probe reads 17/17 on this tree, including the sweep. The
+explainer's free-sprung section gains PLATE 2 (the overcoil, its solved
+radii, the measured ratios) and its caption is rewritten a third time, in
+eight locales; three labels were shortened in translation rather than the
+plate widened, and one Korean label that spelled "three quarters" with digits
+was caught by the number gate and re-spelled. The primer's ribbon figure
+follows (0.024 mm).
