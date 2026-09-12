@@ -23679,7 +23679,7 @@ rules, applied to units as well as marks.
 | §53's 240 px column | no content wider than its box |
 | `offline-check` | **34/34**, precache **41/41** (39 + two tables), the Russian primer served from cache |
 | boot | `?lang=ru` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('ru-RU').format(18000)` in the page reads `18` U+00A0 `000`; the ladder assert extended with `ru`, `ru-RU`, `ru_RU`, `ru-BY` |
-| battery | BATTERY_LINE |
+| battery | **40/40 gates**, local (dev container, 3 shards, 1446 s wall, 3366 s of checks); boot silent; fingerprint **3534559869** (57 units, 12 poses) deterministic across virgin boots — IDENTICAL to `main`'s, which the tables cannot move: §73's, §116's, §208's, §209's and §211's form of "no geometry moved" |
 
 ### Residue, recorded
 
