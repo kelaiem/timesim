@@ -605,7 +605,7 @@ export default {
   ['One pin, eight stations — the cross counts the wind, and the eighth arm has no slot']: '一銷八站——十字數著上鍊，而第八條臂沒有槽',
   ['PLATE 1']: '圖版 1',
   ['LOCKED · disc in the hollow']: '鎖定 · 圓盤在凹弧中',
-  ['index 45.00° = 2π/8']: 'index 45.00° = 2π/8',
+  ['index 45.00° = 2π/8']: '分度 45.00° = 2π/8',
   ['◀ unwind']: '◀ 卸力',
   ['wind ▶']: '上鍊 ▶',
   ['⏸ pause']: '⏸ 暫停',
