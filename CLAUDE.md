@@ -218,7 +218,13 @@ it into prose either.
    from the balance's inertia so `√(k/I)` lands on `F_BALANCE`; the gate
    holds that solve true and holds the ribbon inside real hairspring
    stock, 0.02–0.04 mm. Change the spiral's plan — coils, radii, height —
-   and re-solve; never re-target the beat to match a spring),
+   and re-solve; never re-target the beat to match a spring. Since §218 it
+   also holds the BREATHING: every wind frame is the clamped–clamped
+   elastica of one length of steel, measured on the published polylines;
+   the section is fitted to the spring AS CLAMPED; and the overcoil is
+   concentric — its centroid solve converged, the clamp ratio 1 to 1e-6,
+   the pivot force at the performed swing under a tenth of a flat
+   spring's. The pivot force itself is a REPORT, tier two's number),
    and `equalisation` **0 failures** (TODO 32, closed whole by §104 — the
    going spring's torque law is DERIVED from its ribbon and the fusee cut
    against it: the set-up must land on an integer set-up-ratchet click,

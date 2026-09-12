@@ -2323,22 +2323,113 @@ export function hairspringSegs(coils) { return Math.max(coils * 48, 96); }
 // elastica below holds), and the developed length summed over that very
 // polyline. One sampling, one answer — hairspringDevLen, the rate solve and
 // the metal all read this.
-export function hairspringRest({ innerR, outerR, coils = 12 }) {
+// §218 tier two — THE OVERCOIL, Phillips's way. `plan.overcoil = { turns,
+// raise, kneeR }` continues the ribbon past the spiral's outer end: a KNEE
+// (an S of two arcs of radius kneeR in the vertical plane, climbing `raise`
+// over its run) into a second plane, then a TERMINAL of `turns` of the outer
+// radius in length, made of two arcs whose curvatures κ1, κ2 are SOLVED so
+// the centroid of the whole flexing centreline lands on the balance axis.
+//
+// Why the centroid, in one line: under a pure moment every element ds turns
+// the rest of the ribbon by Δκ·ds about itself, so the inner end's
+// translation is Δκ·L·ẑ×(r_B − c) with c the centroid; the rigid collet's
+// own rotation moves that end by Δκ·L·ẑ×r_B; the two coincide — the spring
+// develops CONCENTRICALLY and the stud exerts no force — iff c = 0. That is
+// Phillips's first condition (Mémoire sur le spiral réglant, 1861), derived
+// rather than quoted, and it is two scalar equations for two curvatures.
+// The elastica below then VERIFIES it: the clamp stiffening reads 1.000000
+// and the small-θ stud reaction vanishes. Second order in θ survives —
+// Phillips's theorem is a small-amplitude statement — and is REPORTED.
+//
+// Measured (8 coils, raise 0.75, terminal length swept 0.50–1.00 turns of
+// R): the family solves from 0.55 to 0.90 turns and not outside — a half turn
+// admits no solution, 0.95 none, a full turn only with a kink (ρ₂ → 0). At
+// 0.55 the second arc is nearly straight (ρ₂ ≈ 1900) and the stud lands at
+// r 11.2, a unit inside the plate's cutaway; the radii even out along the
+// window (0.75: ρ₁ 6.7, ρ₂ 10.0 against R 7.92, four iterations, stud at
+// 9.7). Three quarters of a turn is the classical overcoil proportion, taken
+// INSIDE that measured window; the window, not the proportion, is what the
+// build asserts (a plan whose centroid solve does not converge fails).
+// `tools/probe-218-breathing.mjs` re-runs the sweep.
+const _restCache = new WeakMap();
+export function hairspringRest(plan) {
+  const cached = _restCache.get(plan);
+  if (cached) return cached;
+  const { innerR, outerR, coils = 12, overcoil = null } = plan;
   const segs = hairspringSegs(coils), S0 = coils * Math.PI * 2, dR = outerR - innerR;
-  const pts = [];
-  let len = 0;
-  for (let i = 0; i <= segs; i++) {
-    const t = i / segs, a = t * S0, r = innerR + t * dR;
-    pts.push([Math.cos(a) * r, Math.sin(a) * r]);
-    if (i) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-  }
-  // d/dt of (r cos a, r sin a) with r' = dR and a' = S0 — the tangent the
-  // collet clamps at t = 0 and the stud clamps at t = 1.
   const tangent = (t) => {
     const a = t * S0, r = innerR + t * dR;
     return Math.atan2(dR * Math.sin(a) + r * S0 * Math.cos(a), dR * Math.cos(a) - r * S0 * Math.sin(a));
   };
-  return { pts, phiC0: tangent(0), phiCN: tangent(1), len, segs, S0 };
+  const build = (k1, k2) => {
+    const pts = [], zs = [];
+    let len = 0, len3d = 0;
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs, a = t * S0, r = innerR + t * dR;
+      pts.push([Math.cos(a) * r, Math.sin(a) * r]); zs.push(0);
+      if (i) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    }
+    len3d = len;
+    const out = { pts, zs, phiC0: tangent(0), phiCN: tangent(1), len, len3d, segs, S0, spiralEnd: segs, kneeStart: segs, termStart: segs };
+    if (!overcoil) return out;
+    const { turns, raise, kneeR } = overcoil;
+    let phi = tangent(1);
+    const ds = Math.hypot(pts[segs][0] - pts[segs - 1][0], pts[segs][1] - pts[segs - 1][1]);
+    let x = pts[segs][0], y = pts[segs][1];
+    // the knee: rise = 2·kneeR·(1 − cos β), run = 2·kneeR·sin β
+    const beta = Math.acos(1 - raise / (2 * kneeR)), run = 2 * kneeR * Math.sin(beta);
+    const nK = Math.max(4, Math.round(run / ds));
+    for (let i = 1; i <= nK; i++) {
+      const sArc = (i / nK) * 2 * beta;
+      const z = sArc <= beta ? kneeR * (1 - Math.cos(sArc)) : raise - kneeR * (1 - Math.cos(2 * beta - sArc));
+      x += (run / nK) * Math.cos(phi); y += (run / nK) * Math.sin(phi);
+      pts.push([x, y]); zs.push(z);
+      len += run / nK; len3d += Math.hypot(run / nK, z - zs[zs.length - 2]);
+    }
+    out.termStart = pts.length - 1;
+    const lt = turns * 2 * Math.PI * outerR;
+    const nT = Math.max(16, 2 * Math.round(lt / 2 / ds)), dsT = lt / nT;
+    for (let i = 1; i <= nT; i++) {
+      const k = i <= nT / 2 ? k1 : k2;
+      phi += k * dsT / 2; x += dsT * Math.cos(phi); y += dsT * Math.sin(phi); phi += k * dsT / 2;
+      pts.push([x, y]); zs.push(raise);
+      len += dsT; len3d += dsT;
+    }
+    out.len = len; out.len3d = len3d; out.phiCN = phi;
+    out.endR = Math.hypot(x, y); out.endA = Math.atan2(y, x);
+    out.overcoil = { turns, raise, kneeR, beta, run, lt, k1, k2, rho1: 1 / k1, rho2: 1 / k2 };
+    return out;
+  };
+  let rest;
+  if (!overcoil) rest = build(0, 0);
+  else {
+    // Newton on (κ1, κ2) for centroid = 0, finite-difference Jacobian.
+    const cen = (pts) => {
+      let L = 0, cx = 0, cy = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+        L += l; cx += l * (pts[i][0] + pts[i - 1][0]) / 2; cy += l * (pts[i][1] + pts[i - 1][1]) / 2;
+      }
+      return [cx / L, cy / L];
+    };
+    let k1 = 1 / outerR, k2 = 1.5 / outerR, it = 0, res = Infinity;
+    for (it = 0; it < 40; it++) {
+      rest = build(k1, k2);
+      const F = cen(rest.pts); res = Math.hypot(F[0], F[1]);
+      if (res < 1e-10) break;
+      const h = 1e-5;
+      const Fa = cen(build(k1 + h, k2).pts), Fb = cen(build(k1, k2 + h).pts);
+      const J = [[(Fa[0] - F[0]) / h, (Fb[0] - F[0]) / h], [(Fa[1] - F[1]) / h, (Fb[1] - F[1]) / h]];
+      const det = J[0][0] * J[1][1] - J[0][1] * J[1][0];
+      k1 -= (J[1][1] * F[0] - J[0][1] * F[1]) / det;
+      k2 -= (-J[1][0] * F[0] + J[0][0] * F[1]) / det;
+    }
+    rest.overcoil.centroidResidual = res;
+    rest.overcoil.iters = it;
+    rest.overcoil.converged = res < 1e-10;
+  }
+  _restCache.set(plan, rest);
+  return rest;
 }
 export function hairspringDevLen(plan) { return hairspringRest(plan).len; }
 
@@ -2498,17 +2589,18 @@ export function writeSpiralLine(line, pts) {
   line.geometry.computeBoundingSphere();
 }
 
-export function makeHairspring({ innerR, outerR, coils = 12, height,
-                                 windFrames = 41, windMaxRad = 1.0, reportMaxRad = windMaxRad,
-                                 ribbonR: ribbonROverride = null }) {
+export function makeHairspring(plan) {
+  const { innerR, outerR, coils = 12, height, overcoil = null,
+          windFrames = 41, windMaxRad = 1.0, reportMaxRad = windMaxRad,
+          ribbonR: ribbonROverride = null } = plan;
   const g = new THREE.Group();
   // TODO 25 tier two: the section is SOLVED BY THE CALLER from the balance it
   // must beat with (main.js owns the physics, this file owns the metal). The
   // legibility rule below survives only as the fallback for callers that have
   // no rate to hit — test-geometry.html's part smoke test being the one.
   const ribbonR = ribbonROverride ?? Math.max(((outerR - innerR) / coils) * 0.12, 0.05);
-  const rest = hairspringRest({ innerR, outerR, coils });
-  const { segs, S0 } = rest;   // S0: unwound span; outer end angle ≡ S0
+  const rest = hairspringRest(plan);   // the plan object is the cache key — one solve for the rate, the ratio and the metal
+  const { segs, S0 } = rest;   // S0: unwound span; the spiral's outer end angle ≡ S0
 
   // TODO 25 tier one: the DEVELOPED LENGTH of the as-built (θ = 0) spiral,
   // summed over the same polyline the tube is swept along — one sampling,
@@ -2545,11 +2637,12 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
     const half = Math.floor(segsPerTurn / 2);
     let gap = Infinity, len = 0, shift = 0;
     const P = sol.pts;
+    const Z = rest.zs;   // §218 tier two — the overcoil's plane: a coil under it is separated in z, and the gap is measured in 3D
     for (let i = 0; i < P.length; i++) {
       if (i) len += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
       shift = Math.max(shift, Math.abs(Math.hypot(P[i][0], P[i][1]) - Math.hypot(rest.pts[i][0], rest.pts[i][1])));
       for (let j = i + half; j < P.length; j++) {
-        const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]);
+        const d = Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1], Z[i] - Z[j]);
         if (d < gap) gap = d;
       }
     }
@@ -2574,14 +2667,18 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
   const ratioAt = (th) => { const s = solved[Math.round((th + windMaxRad) / dTheta)]; return s.torque / th; };
   const clampRatio = ((ratioAt(HAIRSPRING_RATIO_THETA) + ratioAt(-HAIRSPRING_RATIO_THETA)) / 2) * el.L;
 
+  // §218 tier two — the path carries the overcoil's z profile. The tube is
+  // stood on edge by scale.z below, which scales the PATH's z as well, so the
+  // profile goes in pre-divided and the scaled mesh lands the true raise.
+  const standZ = Math.max(height / (ribbonR * 2), 1);
   const frames = [];
   for (let k = 0; k < windFrames; k++) {
-    const pts = solved[k].pts.map((p) => new THREE.Vector3(p[0], p[1], 0));
+    const pts = solved[k].pts.map((p, i) => new THREE.Vector3(p[0], p[1], rest.zs[i] / standZ));
     framePolys.push(solved[k].pts.map((p) => [p[0], p[1]]));
-    frames.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), segs, ribbonR, 4, false));
+    frames.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), rest.pts.length - 1, ribbonR, 4, false));
   }
   const tube = new THREE.Mesh(frames[REST_FRAME], MATS.blueSteel);
-  tube.scale.z = Math.max(height / (ribbonR * 2), 1); // stand the ribbon on edge
+  tube.scale.z = standZ; // stand the ribbon on edge
   g.add(tube);
   let curFrame = REST_FRAME;
   g.userData.setWind = (theta) => {
@@ -2602,17 +2699,21 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
   colletGeo.rotateX(Math.PI / 2);
   g.add(new THREE.Mesh(colletGeo, MATS.steel));
 
-  // Raised terminal end-curve from the fixed outer coil end up toward the
-  // stud (which the cock provides). This part never moves.
-  const termPts = [];
-  for (let i = 0; i <= 20; i++) {
-    const t = i / 20;
-    const a = S0 + t * 0.9;
-    const r = outerR + t * ribbonR * 3;
-    termPts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, height * 0.55 * t));
+  if (!overcoil) {
+    // Raised terminal end-curve from the fixed outer coil end up toward the
+    // stud (which the cock provides). This part never moves. (The FLAT
+    // spring's dress — the movement's spring carries an overcoil since §218
+    // tier two, and its terminal is the flexing ribbon itself.)
+    const termPts = [];
+    for (let i = 0; i <= 20; i++) {
+      const t = i / 20;
+      const a = S0 + t * 0.9;
+      const r = outerR + t * ribbonR * 3;
+      termPts.push(new THREE.Vector3(Math.cos(a) * r, Math.sin(a) * r, height * 0.55 * t));
+    }
+    const termGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(termPts), 24, ribbonR, 4, false);
+    g.add(new THREE.Mesh(termGeo, MATS.blueSteel));
   }
-  const termGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(termPts), 24, ribbonR, 4, false);
-  g.add(new THREE.Mesh(termGeo, MATS.blueSteel));
 
   g.userData.r = outerR;
   g.userData.ribbonR = ribbonR;
@@ -2658,9 +2759,17 @@ export function makeHairspring({ innerR, outerR, coils = 12, height,
     const a = ribbonR, c = Math.max(height / 2, ribbonR);
     return { shape: 'rhombus4', a, c, I_u4: (a ** 3) * c / 3 };
   })();
-  g.userData.endAngle = S0 + 0.9;                 // local angle where the STUD must sit
-  g.userData.termEndR = outerR + ribbonR * 3;     // ...at this radius
-  g.userData.termEndZ = height * 0.55;            // ...and this height above mid-plane
+  if (overcoil) {
+    // §218 tier two — the stud clamps the OVERCOIL's end, in the raised plane.
+    g.userData.endAngle = rest.endA;              // local angle where the STUD must sit
+    g.userData.termEndR = rest.endR;              // ...at this radius
+    g.userData.termEndZ = overcoil.raise;         // ...and this height above mid-plane (the raised ribbon's centre)
+    g.userData.overcoil = { ...rest.overcoil, devLen3d: rest.len3d };
+  } else {
+    g.userData.endAngle = S0 + 0.9;                 // local angle where the STUD must sit
+    g.userData.termEndR = outerR + ribbonR * 3;     // ...at this radius
+    g.userData.termEndZ = height * 0.55;            // ...and this height above mid-plane
+  }
   // (termMid — the curb-pin straddle point — is gone with the regulator:
   // the balance is FREE-SPRUNG, timed by its screws alone; the terminal
   // runs uninterrupted from the outer coil to the stud.)
