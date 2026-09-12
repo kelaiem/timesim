@@ -24740,3 +24740,86 @@ that could carry an outline, or a graded tone, or ticks that do not flip with
 the ground, would each close it — and each is a change to §196's solve with
 its own case to make, not a consequence of moving a default. The band is
 measured, documented and pinned; it is not repaired.
+
+## §225 — The shipped coat crosses the band to 0.91, where the reserve zones keep their hue
+
+`dial.plate.smoke` ships **0.91**. The ask was 0.85, which is the middle of
+§224's band and boots with a warning; 0.91 is the first silent step on the
+FAR side of it, where §224 took the last silent step on the near side. Both
+values are the owner's call and neither is dressed as a derivation. What IS
+derived — and this entry's real content — is which steps are available at
+all, and why the two sides of the hole do not look alike.
+
+### The band's edges, derived rather than observed
+
+§224 measured the band and recorded it as measured. It is a consequence of two
+inequalities. §196 holds each reserve sector to 3:1 against BOTH the sub-dial
+face (the ground) and its ticks (the ink), and a tone satisfying both can sit
+in exactly two places:
+
+- **ABOVE the ground.** The brightest tone available is white, so the route is
+  open iff `contrast(white, ground) ≥ 3`.
+- **BETWEEN ground and ink.** The chained-ratio bound `zoneTone`'s own comment
+  already named: a third tone 3:1 from both cannot fit inside a gap narrower
+  than 9:1, so the route is open iff `contrast(ground, ink) ≥ 9`.
+
+Measured on the boot's own ground and solved ink, with the two tests computed
+beside them (`tools/probe-224-zone-band.mjs`):
+
+| T | ground | above (≥3) | between (≥9) | zones warning |
+|---|---|---|---|---|
+| 0.70 | `#898b8e` | **3.42** ✓ | 5.09 | 0 |
+| 0.74 | `#939497` | **3.03** ✓ | 5.74 | 0 |
+| 0.75 | `#94969a` | 2.96 | 5.87 | 4 |
+| 0.80 | `#9fa2a6` | 2.56 | 6.79 | 4 |
+| 0.85 | `#acaeb2` | 2.22 | 7.83 | 4 |
+| 0.90 | `#b9bbbf` | 1.92 | **9.05** ✓ | 2 |
+| **0.91** | `#bcbec3` | 1.86 | **9.36** ✓ | 0 |
+| 1.00 | `#d6d9dd` | 1.42 | **12.29** ✓ | 0 |
+
+**The test is NECESSARY, not sufficient, and the instrument says so.** Neither
+route open means no tone can exist, and that half predicts the band's lower
+edge and its whole interior exactly. A route being open only means the WINDOW
+is non-empty — the tone still has to be a reachable member of it, and a zone
+tone is not free: it is the zone's hue mixed toward a pole, a one-parameter
+ramp quantised to 8-bit sRGB. At T 0.90 the between-window is
+
+    Y ∈ [0.1310, 0.1321]     0.00107 wide
+
+and two of the four zone checks still fail — a ramp landing in the slot for
+one hue and missing for the other. So the probe flags only the sound
+direction (model says no tone exists, boot was silent) and annotates
+open-but-warned as what it is: the width of the window, not a contradiction.
+That distinction was written after the first run flagged 0.90 as a
+disagreement, which it is not.
+
+### Why the two sides of the hole do not look alike
+
+Under the band only the ABOVE route is open, so both reserve sectors are
+driven to a near-white tone and the warning and maximum zones wash out —
+§220 recorded that as a consequence of a dark ground and it is really a
+consequence of which route is open. Over the band the BETWEEN route is open
+instead, and a tone with hue can sit there: **the sectors read green and red
+again**, as they do on the silvered dial. That is the visible reason to prefer
+this side of the hole, and it is the difference between the 0.74 and 0.91
+frames in this landing's PR. The claim is what those frames show, explained by
+the routes above; no instrument here reads the rendered hue.
+
+### What 0.91 is
+
+A light coat: plate body and walls `#797a7c` @ 0.2878, rendered ground
+`#bcbec3`, works patch **ΔL\* 23.3** against 15.9 at §224's 0.74 and 6.3 at
+§222's 0.45 — the movement reads through the dial almost as it does through
+the clear crystal. Above the ink flip, so the print stays the dark pole
+`#1a1a1a`, now at a comfortable **9.36:1**.
+
+It is one step off the band's upper edge, so like 0.74 it has little margin —
+the face tone, the perlage nickel and §196's solve each move that edge, and
+the probe's pinned edges are what will catch it.
+
+**Not modelled, and said so:** the band is still not repaired. An outlined
+zone, a graded tone, or ticks that do not flip pole with the ground would each
+close it, and each is a change to §196's solve with its own case to make. The
+one arithmetic fix considered and rejected: moving the track ink to pure black
+clears 9:1 at T 0.85 (9.45), but it changes the print on every ground and buys
+a window 0.0075 wide.
