@@ -12962,6 +12962,18 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
 // follow (heart cam on the hour wheel + spring follower + the arming clamp)
 // so it TRACKS the hour hand when disarmed. dialFace frame, like the hour
 // wheel it wraps.
+//
+// THE REFERENCE for hiding it is the Parmigiani Fleurier Tonda PF Chronographe
+// Mystérieux (2026, cal. PF053), whose chronograph hands vanish by
+// SUPERIMPOSITION rather than by being taken away: at rest they lie exactly
+// under the time hands and the dial reads as a plain time display, and the
+// pusher splits them out. Same trick here, on one hand instead of five — the
+// blade is cut shorter than the hour hand so it hides exactly beneath it, and
+// the rattrapante follow below is what holds it there. README's Sources
+// carries the citation and the differences (theirs hides a complication that
+// is idle; this hides one that is switched OFF, so hidden is the resting
+// state).
+//
 // Hand plane — bounded by the hand HUBS, not the numerals (the alarm blade's
 // tip never radially reaches the numerals' inner edge; both scale with the
 // dial). History of the binding stack, kept because it is why the lane is
@@ -26301,6 +26313,15 @@ let autoWindRemaining = 0; // radians left to auto-turn (Wind button)
 const AUTO_WIND_RATE = 48; // rad/s — the Wind button's auto-turn speed
 
 // --- Alarm (BUILT §24) -----------------------------------------------------
+// THE REFERENCE is the Jaeger-LeCoultre Memovox (1950, cal. 489): a second
+// mainspring barrel for the alarm beside the going barrel, its own crown to
+// wind and set it, and a hammer let go against a sounding part at the set
+// time. That architecture is what this movement builds; README's Sources
+// carries the citation and the two differences — the Memovox strikes a post
+// on the caseback where this strikes a wire gong, and it reads its alarm time
+// off an inner disc with a triangle where this uses the central hand of
+// §25 C. Nothing of that caliber's geometry is reproduced.
+//
 // A second, independent crown drives a small alarm disc; the disc's detented
 // angle IS the set time (Rule 2 — the target is derived forward from the
 // crown through the disc, never written by the UI). alarmCrownRotation is the

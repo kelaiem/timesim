@@ -329,7 +329,10 @@ decoration applied to it.
 These are traditional techniques and conventions, in general use across
 German horology for well over a century. They belong to the craft, not to any
 one maker. Nothing in the list is exclusive to one house, and none of it is
-borrowed from a specific caliber.
+borrowed from a specific caliber. That is a statement about the FINISHING,
+and it stays true: three specific watches *are* acknowledged under Sources
+below, but for ideas in the complications — an alarm's architecture, a dial's
+smoke, a hand that hides — never for the finish, and never as geometry.
 
 **"Swiss lever" names the escapement's design, not its passport.** The term
 means the straight-line layout (escape-wheel centre, pallet pivot and balance
@@ -363,9 +366,13 @@ it is gladly acknowledged.
 ## Sources
 
 The influence above is one of *ambition*. This section is the other kind of
-debt — the descriptions of how these mechanisms actually work, which the
-movement was built from. Nothing here was traced, measured or copied: these
-are the accounts that were read, and the ones to check this movement against.
+debt, and it has two halves. First the descriptions of how these mechanisms
+actually work, which the movement was built from. Then, at the end, the
+handful of specific WATCHES this movement takes an idea from — a different
+sort of citation, and the one that has to be most careful about what it is
+claiming. Nothing here was traced, measured or copied: these are the accounts
+that were read, the watches that were admired, and the ones to check this
+movement against.
 
 **Fusee & chain.** SJX Watches is the reference for the mechanism and for what
 it is *for* — that a mainspring's torque is usable only across its flat middle,
@@ -408,6 +415,77 @@ imply otherwise.
 clamped-free beam's, not a horological source: the mode constants
 `(βₙL)² = 3.516, 22.03` are standard, and the ~6.3× second partial they give is
 why a struck bar clangs where a string sings.
+
+### Watches this movement takes an idea from
+
+Three, and each is an IDEA rather than a design: an arrangement, or a trick
+of display, that this movement adopts and then builds from its own
+dimensions. No geometry, no dimension and no part of any of these calibers is
+reproduced here, and where this movement does the thing differently — or does
+not do it at all — that is said in the entry rather than left for the reader
+to discover. The finishing note above is unaffected: the Glashütte vocabulary
+it lists stays school-level and unattributed, and these three are
+complications, not finish.
+
+**The alarm — Jaeger-LeCoultre Memovox.** 1950, cal. 489, manually wound. The
+idea taken is the ARCHITECTURE, which is the one every later alarm
+wristwatch argues with: a second mainspring barrel for the alarm standing
+beside the going barrel, its own crown to wind and set it, and a hammer let
+go against a sounding part when the set time arrives. That is what this
+movement is — the alarm barrel, the alarm crown, and the striking works
+`equalisation` holds to their own set-up and gap. Two differences worth
+stating. The Memovox's hammer strikes a post on the caseback; this one
+strikes a wire GONG carried round the movement, whose voice is derived from
+the clamped-free beam rather than from any watch. And a Memovox reads its
+alarm time off an inner rotating disc with a small triangle — where this
+movement uses a central hand, which is the next entry.
+
+- [*Jaeger-LeCoultre Memovox*](https://wiki.grail-watch.com/index.php/Jaeger-LeCoultre_Memovox),
+  Grail Watch Wiki — where the caliber history above comes from. A
+  collectors' reference, not a factory document, and the dates should be
+  read as such.
+
+**The dial's smoke — A. Lange & Söhne "Lumen".** Zeitwerk "Luminous" (2010)
+was the first, then Grand Lange 1 "Lumen" (2013), Grand Lange 1 Moon Phase
+"Lumen" (2016) and Datograph Up/Down "Lumen" (2018); the coating is patented.
+It is a semi-transparent coating on a COLOURLESS sapphire dial: it attenuates
+the visible spectrum so the dial still reads with contrast, while passing the
+ultraviolet that charges luminous material — including material *under* the
+dial, on date discs, plates and wheels, which is why a Lumen shows its own
+works. Two things are taken. The MODEL: the smoke is a coating on clear
+sapphire, not a tinted crystal, which is what §220's `smokedGlass(T)` builds
+and what the entry argues at length (a bulk tint would be thickness-dependent
+and is the wrong physics for this). And the LOOK: light print on a smoked
+ground, which §196's ink solve arrives at by itself as the ground darkens.
+What is **not** taken is the reason the coating exists. The stack is not
+public and is not guessed at here; and this movement has no luminous material
+anywhere, so it takes the tint and not the point of it — `docs/BUILT.md` §220
+says so under "Not modelled", and a lume entry would be its own §. The
+transmittance `dial.plate.smoke` is this project's own knob, derived against
+its own legibility gates; Lange publishes no figure for it. Only the
+qualitative "most of the visible light" is borrowed, and only to put the
+Lumen-dark boot below T 0.5.
+
+- A. Lange & Söhne, [*The "Lumen" models*](https://www.alange-soehne.com/eu-en/timepieces/selections/lumen)
+- A. Lange & Söhne, [*Datograph Up/Down "Lumen"*](https://www.alange-soehne.com/eu-en/timepieces/saxonia/datograph-updown-lumen)
+
+**The hidden alarm hand — Parmigiani Fleurier Tonda PF Chronographe
+Mystérieux.** 2026, cal. PF053. The idea is a hand that vanishes by
+SUPERIMPOSITION rather than by being taken away: at rest its chronograph
+hands lie exactly under the time hands and the dial reads as a plain time
+display; the pusher splits them out and they appear. This movement's alarm
+hand is cut shorter than the hour hand so it hides exactly beneath it, and
+while the alarm is disarmed it tracks the hour hand through a heart cam and a
+sprung follower — a rattrapante's own mechanism, which is what §25 C calls
+it — swinging out to the set time when the alarm is armed, and visibly
+travelling both ways. The differences are large and worth keeping in view:
+Parmigiani's is a chronograph across five coaxial hands on a triple clutch,
+where this is one hand on one heart cam; and theirs hides a complication that
+is merely idle, where this hides one that is switched OFF, so here the hidden
+state is the resting state.
+
+- SJX, [*Hands On: Parmigiani Fleurier Tonda PF Chronographe Mystérieux*](https://watchesbysjx.com/2026/07/parmigiani-fleurier-tonda-pf-chronographe-mysterieux-review.html)
+- Parmigiani Fleurier, [*Novelties 2026*](https://www.parmigiani.com/en/novelties-2026/)
 
 A note on what these citations do and do not license. They describe
 mechanisms; they are not evidence that this movement reproduces them. What

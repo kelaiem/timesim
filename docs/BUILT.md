@@ -1175,6 +1175,14 @@ Parked on §3 rather than built as a case-less placeholder.
 
 ## 25. Alarm striking works + the full alarm complication (BUILT — PRs #7/#8/#12)
 
+**The reference.** The architecture is the Jaeger-LeCoultre Memovox's (1950,
+cal. 489): a second mainspring barrel for the alarm beside the going barrel,
+its own crown to wind and set it, a hammer let go at the set time. README's
+Sources carries the citation, and the two places this parts from it — the
+Memovox strikes a post on the caseback where this strikes a wire gong, and it
+reads its alarm time off an inner disc with a triangle where §25 C below puts
+a central hand. No geometry of that caliber is reproduced.
+
 **Context.** §24 shipped the alarm as a real complication (second crown,
 friction-set disc at 9 o'clock, gong + hammer) AND made the striker
 honestly SPRING-POWERED in logic (public repo, PR #6 / branch
@@ -1342,6 +1350,11 @@ killed by a MEASUREMENT, and the reasons are load-bearing for whoever builds:
    the hour hand. DISARMED, it mechanically FOLLOWS the hour hand — a true
    rattrapante return: heart cam on the hour wheel, spring-loaded follower on
    the alarm tube — so it hides exactly under the hour hand, invisible.
+   HIDING BY SUPERIMPOSITION is the Parmigiani Fleurier Tonda PF Chronographe
+   Mystérieux's idea (2026, cal. PF053), where the chronograph hands lie
+   exactly under the time hands at rest and a pusher splits them out; cited in
+   README's Sources, with the difference that theirs hides a complication
+   merely idle and this hides one switched off.
    ARMED, a clamp holds the alarm tube at the set time and the follower
    lifts; the hand stands at the alarm hour like a Tudor Advisor / Memovox
    pointer. Setting (crown pulled) drives the tube against the clamp-open
@@ -23856,10 +23869,15 @@ evidence; this is the pre-flight.
 
 `dial.plate.smoke` in `src/aesthetics.json` (Advanced → "Sapphire dial
 transmittance", reload-tier ⟳, browser-local, inert unless "Sapphire dial" is
-on): the coat's visible transmittance T, 1 the clear crystal. A Lange Lumen's
-smoke is a thin-film COATING on colourless sapphire — it blocks most of the
-visible spectrum and passes UV so the lume beneath charges, a designed filter
-no bulk-tinted crystal can be — and §3's `CRYSTAL_GLASS` is already a coating
+on): the coat's visible transmittance T, 1 the clear crystal. THE REFERENCE
+is A. Lange & Söhne's "Lumen" dials — Zeitwerk "Luminous" (2010) first, then
+Grand Lange 1 "Lumen" (2013), its Moon Phase (2016) and Datograph Up/Down
+"Lumen" (2018) — cited in README's Sources with what this does and does not
+take from them. Their smoke is a thin-film COATING on colourless sapphire —
+it attenuates the visible spectrum for contrast and passes UV so the lume
+beneath charges, including lume UNDER the dial, which is why a Lumen shows
+its own works — a designed filter no bulk-tinted crystal can be. And §3's
+`CRYSTAL_GLASS` is already a coating
 model (a colour at an alpha, no thickness term). So this is one new number on
 §3's glass, not a second glass: the same corundum (`SAPPHIRE_IOR`, spread from
 the literal) under a different coat, the case crystal untouched. §3's "one

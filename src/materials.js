@@ -225,10 +225,14 @@ export const CRYSTAL_GLASS = Object.freeze({
 });
 export const SAPPHIRE_IOR = 1.77;
 
-// §220 — THE SMOKED DIAL: one crystal, two coats. A Lange Lumen's smoke is a
-// thin-film COATING on colourless sapphire (it blocks most of the visible
-// spectrum and passes UV — a designed filter, which no bulk-tinted crystal
-// can be), and CRYSTAL_GLASS is already a coating model: a colour at an
+// §220 — THE SMOKED DIAL: one crystal, two coats. The reference is A. Lange
+// & Söhne's "Lumen" dials (Zeitwerk "Luminous" 2010 onward; README's Sources
+// carries the citation and what this does NOT take from it — above all the
+// lume the real coating exists to charge, which this movement does not have).
+// Their smoke is a thin-film COATING on colourless sapphire (it attenuates
+// the visible spectrum and passes UV — a designed filter, which no
+// bulk-tinted crystal can be), and CRYSTAL_GLASS is already a coating model:
+// a colour at an
 // alpha, no thickness term. So the smoked dial is not a second glass, it is a
 // second RECIPE on this one — the same corundum (SAPPHIRE_IOR, spread from
 // the literal above) under a different coat — and the crystal keeps reading
