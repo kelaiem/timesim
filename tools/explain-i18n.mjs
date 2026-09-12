@@ -197,6 +197,7 @@ const MARKS = {
   // The chrome formats through 'pt-BR' (src/i18n.js LOCALES says why), and a
   // table must read as the chrome does.
   pt: { group: ['.'], dec: ',' },
+  it: { group: ['.'], dec: ',' },        // §210 — it-IT: German's marks
 };
 const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {
