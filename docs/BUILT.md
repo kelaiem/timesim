@@ -24608,3 +24608,123 @@ materials enter neither the fingerprint nor any sweep. No API, no link
 parameter (the smoke is browser-local and does not travel). And no claim about
 lume — §220's "not modelled" list is unchanged, and shipping the tint by
 default does not ship the reason Lange's coating exists.
+
+## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
+
+`dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
+warning — so the number moved one slider step, and the reason it had to is a
+fact about the knob that §220 did not know and §222 shipped without.
+
+### `_bounds` said [0.41, 1] and there is a hole in the middle
+
+§220 DERIVED the floor: below T 0.41 the reserve sub-dial's zone gate cannot
+place a tone and boot warns. It then took the interval from there to the clear
+crystal to be continuous. It is not. Measured
+(`tools/probe-224-zone-band.mjs`), the same gate warns across **T 0.75–0.90**
+and is silent either side:
+
+| T | ground | print | zone warnings | worst |
+|---|---|---|---|---|
+| 0.70 | `#898b8e` | dark | 0 | — |
+| 0.73 | `#909295` | dark | 0 | — |
+| **0.74** | `#939497` | dark | **0** | — |
+| 0.75 | `#94969a` | dark | 4 | 2.96:1 |
+| 0.80 | `#9fa2a6` | dark | 4 | 2.59:1 |
+| 0.85 | `#acaeb2` | dark | 4 | 2.80:1 |
+| 0.90 | `#b9bbbf` | dark | 2 | 3.02:1 |
+| **0.91** | `#bcbec3` | dark | **0** | — |
+| 1.00 | `#d6d9dd` | dark | 0 | — |
+
+**The cause is the print's own flip**, which is why it is a band and not a
+second floor. §196 holds each coloured sector of the reserve sub-dial to 3:1
+against BOTH the sub-dial face and its ticks. The ticks flip pole with the
+ground, so above the flip they are DARK, and the zone tone then has to be
+light enough to clear them — which it is, comfortably, while the ground is
+still dark. As the coat lightens, the ground climbs through mid grey and that
+light tone stops clearing the GROUND by 3:1, while a dark tone cannot clear the
+dark TICKS. The warning says exactly this in one line:
+
+```
+reserve face: the warning zone's best tone on this ground holds only
+2.96:1 against the face and 17.40:1 against the ticks — need 3.0:1 of both
+```
+
+17.40:1 against the ticks is a near-white tone with room to spare on one side
+and none on the other. Past 0.91 the ground is bright enough that a MIDDLING
+tone clears the dark ticks by 3:1 and still sits 3:1 under the ground, and the
+gate is silent again. 0.90 shows the recovery starting: two zones pass, two
+do not.
+
+**`_bounds` still reads [0.41, 1], and that is not an oversight.** It is a
+[min, max] consumed by a slider and cannot express a hole; narrowing it to
+[0.41, 0.74] would forbid 0.91–1, which are legal. So the hole is documented
+where the knob is (`aesthetics.json`'s `_smokeComment`), caught at boot by the
+gate itself, and PINNED at both edges by `probe-220-smoke.mjs` — 0.75 and 0.90
+must warn from the zone gate and nothing else; 0.74 and 0.91 must be silent.
+An edge nobody boots is an edge that moves in silence.
+
+### The default: 0.74, and what it gives up
+
+§222 shipped 0.45, the midpoint of the Lumen window [0.41, 0.49] that §220's
+floor and Lange's own "blocks most of the visible light" leave between them.
+0.74 is outside that window on purpose. It is the owner's call and the record
+should not dress it as a derivation: the reference is still what the LAW is
+derived from, and is no longer what the DEFAULT is chosen for.
+
+What the lighter coat buys, measured on the same works patch §220's scan uses:
+**ΔL\* 15.9** against 6.3 at §222's 0.45 — the movement reads clearly through
+the dial rather than as a suggestion behind it. What it gives up is the Lumen
+look: 0.74 is above the ink flip, so the print is the **dark pole `#1a1a1a`**,
+5.74:1 on ground `#939497`. Light print on a charcoal ground was the thing
+§220 took from the reference, and this default does not have it.
+
+And **0.74 is an EDGE, not a midpoint** — the last silent step under the band,
+with ZERO margin above where §222's 0.45 had four steps. That is worth knowing
+before touching the face tone, the perlage nickel or §196's solve: any of the
+three moves this edge, and the next value up is a warning rather than a
+slightly different picture.
+
+### The tier that caught it, and why it exists
+
+§222 made the smoked dial the default and argued that the default was safe
+because it was "the number the acceptance was already written against". That
+was true of 0.45 and stopped being true the moment anyone changed it — the
+probe boots six declared constants, and the schema's own value was not one of
+them. `probe-220-smoke.mjs` now boots the SHIPPED PICTURE too, with **no
+override written at all**, so it is what a fresh browser builds rather than a
+reconstruction of it, and holds: the knob reaches the build unclamped, the
+coat obeys the law, the ground is the rendered composite, and the print takes
+the pole the flip pair puts it on. It failed on the first run at 0.75, which
+is the whole point of it.
+
+`T_SMOKE = 0.45` stays a written constant beside it, deliberately: it is the
+value the LAW is verified at, and a probe whose every number came from the
+file it checks would be checking nothing. The shipped-picture tier is the one
+place that reads the schema, because "whatever the file says" is its subject.
+
+This is the same defect §222 fixed in `probe-3-sapphire.mjs` — an instrument
+whose subject was "whatever ships" — arriving from the other direction: there
+the default leaked INTO a control, here the default escaped every boot.
+
+### Instruments
+
+```
+node tools/probe-220-smoke.mjs        29 OK, 0 FAIL, exit 0
+  OK   shipped (aesthetics.json: sapphire true, smoke 0.74) boots silent
+  OK   shipped …: the schema's default reaches the build unclamped (inside _bounds [0.41, 1])
+  OK   shipped …: plate body and 2 walls carry the law — #424243 @ 0.5291
+  OK   shipped …: ground #939497, the solve printed the dark pole #1a1a1a, 5.74:1 worst case against 3
+  OK   T=0.75 (§224's band): 4 zone-gate warning(s), 2.96:1 against the face — and nothing else warns
+  OK   T=0.9  (§224's band): 2 zone-gate warning(s), 3.02:1 against the face — and nothing else warns
+  OK   T=0.74 (one step outside the band): silent — the edge is where §224 says
+  OK   T=0.91 (one step outside the band): silent — the edge is where §224 says
+       shipped …: works patch ΔL* 15.9 (p90/p10 1.79:1) — a report; the scan is the instrument
+
+node tools/probe-224-zone-band.mjs    report — the table above
+```
+
+**Not modelled, and said so:** nothing about the band is FIXED here. A zone
+that could carry an outline, or a graded tone, or ticks that do not flip with
+the ground, would each close it — and each is a change to §196's solve with
+its own case to make, not a consequence of moving a default. The band is
+measured, documented and pinned; it is not repaired.
