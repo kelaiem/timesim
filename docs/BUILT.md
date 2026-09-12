@@ -24173,8 +24173,12 @@ rules, applied to units as well as marks.
 ## §214 — Portuguese — one table for two written standards, the register named
 
 **Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
-(689 keys) and `primer.html` (134 keys) read Portuguese at 100% in one
-landing, §209's recipe item for item. Eleven locales now.
+(700 keys) and `primer.html` (134 keys) read Portuguese at 100% in one
+landing, §209's recipe item for item. Eleven locales now. (Corrected by
+§210's landing: this record was written at 689 explainer keys and the
+landing shipped 700 — §218 tier two's overcoil plate arrived between the
+two and was carried into Portuguese before it merged. The PR body carried
+the corrected figures; this record did not, and now does.)
 
 **Why Portuguese, in the §73 idiom.** Spanish (§209) is the region split on
 the decimal mark; Portuguese is the same split one character over, on the
@@ -24215,7 +24219,7 @@ collision vs English** on both pages.
 
 | | measured |
 |---|---|
-| `explain-i18n --check` | explainer **689/689**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
+| `explain-i18n --check` | explainer **700/700**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
 | `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
 | page headers | **56 px in Portuguese**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
 | `#chrome-bar` | pt **176.9** against en 170.2 (*Controles / Vista / Mostrador*); German's 192.4 still the widest |
@@ -24241,7 +24245,7 @@ collision vs English** on both pages.
 ## §210 — Italian — the Romance pair completed, in a native horological register
 
 **Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
-(689 keys) and `primer.html` (134 keys) read Italian at 100% in one
+(700 keys) and `primer.html` (134 keys) read Italian at 100% in one
 landing, §209's recipe item for item. Twelve locales now.
 
 **Why Italian, and what the control found.** The entry filed it as the
@@ -24287,11 +24291,37 @@ shortening dropped `TODO 20` from a caption and the number gate refused it
 instead. Digits untouched, never the tolerance; the gate reads **0 new
 overflow or collision vs English** on both pages.
 
+**§218 tier two arrived mid-flight, and the table grew by eleven keys.**
+The overcoil (#401) landed on `main` while this branch waited on the
+Portuguese one ahead of it, rewriting the oscillator caption a second time
+and adding the explainer's PLATE 2 — a fig-title, a figcaption and eight
+diagram labels — plus the primer's figure (0.023 → 0.024 mm). Italian was
+holding the tier-one caption, whose English key no longer existed, so the
+checker counted it unmatched and failed the whole run until the rewrite was
+carried across. Ported against the table's own glossary: *gomito* for the
+knee, *ponte del bilanciere* for the cock, *ruotismo* for the going train,
+*virola* and *pitone* unchanged from tier one. `HAIRSPRING_OVERCOIL_RAISE`
+stays verbatim — the explainer's numbers are source form in every language,
+which is the one place tier one's `fmtNum` rule deliberately does not
+apply. Ten keys were added rather than eleven: `PLATE 2` was already in the
+table, because other sections number their figures too.
+
+**One translator error found and corrected: the balance rim.** Both tables
+read *serchio* for the rim — 26 times in the explainer, 6 in the primer —
+and it is not an Italian word. The same tables already carry *cerchione*
+for mechanical rims (the bevel rim, the cross's, a rotating ring) and the
+chrome uses *bordo* for the case edge, so the balance rim was the one rim
+named by a typo, most visibly in the free-sprung section whose whole
+argument is that the rate lives in the rim. Corrected to *cerchio*,
+masculine like the string it replaces, so every article and elision around
+it still agrees. The substitution moved no measured number: the checker
+read the same 0 drift and 0 new plate overflow before and after.
+
 ### Measured
 
 | | measured |
 |---|---|
-| `explain-i18n --check` | explainer **689/689**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
+| `explain-i18n --check` | explainer **700/700**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
 | `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
 | page headers | **56 px in Italian**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
 | `#chrome-bar` | it **173.8** against en 170.2 (*Comandi / Vista / Quadrante*); German's 192.4 still the widest |
@@ -24299,14 +24329,17 @@ overflow or collision vs English** on both pages.
 | §53's 240 px column | no content wider than its box |
 | `offline-check` | **36/36**, precache **45/45** (43 + two tables), the Italian primer served from cache — on a quiet machine; a first run beside two batteries dropped one unrelated row (the Traditional Chinese primer's offline boot) to contention, and the re-run alone read clean |
 | boot | `?lang=it` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('it-IT')` in the page reads `18.000`, `0,024` and `1.000`; the ladder assert extended with `it`, `it-IT`, `it-CH`, `it_CH` |
-| battery | **40/40 gates**, local (dev container, 3 shards, 2173 s wall, 5168 s of checks — a second battery running beside it); boot silent; fingerprint **3534559869** (57 units, 12 poses) deterministic across virgin boots — IDENTICAL to the base it was measured against, which the tables cannot move: the form of "no geometry moved" every locale landing since §73 has given. §218 landed on `main` before this PR and moved the fingerprint to its own 2050941457; the rebase carries it, and CI's battery on the rebased head is the run on the landed tree |
+| battery | RE-MEASURING on the rebased tree — the run below this line was made before §218 tier two moved the fingerprint on `main`, so its number (3534559869, 2173 s wall) describes a base this landing no longer sits on. The row is filled from the rebased run in the commit that follows; CI's battery on the PR head is the evidence either way. |
 
 ### Residue, recorded
 
 - **No native review pass** — the same IOU every locale carries. The
   register is the trade's; *conoide* for the fusee is the Italian
   literature's word and a reader who knows it as *fusée* will find the
-  glossary the place to argue.
+  glossary the place to argue. The *serchio* → *cerchio* correction above
+  was made on the same terms, without a reviewer: a real word replacing a
+  non-word, which is an improvement at any register. A reader who would
+  rather have the trade's *serto* has one substitution to make.
 - **`Wind` and `Load` both resolve to *Carica*** — the horological "dare la
   carica" and the software word for loading a file, in different sections
   of the panel; a deliberate homograph, noted.
