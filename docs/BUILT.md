@@ -23946,12 +23946,16 @@ OK   sapphire: with x-ray ON the glass parts keep their own materials (self-mapp
 OK   sapphire: with x-ray ON 42 metal dial part(s) glass as the toggle asks
 ```
 
-Battery: the landing PR's own job, routed to the self-hosted runner by its
-title (§200), is the merge gate; the verdict lines are pasted in that PR. A
-materials-only change cannot move a report by construction — materials enter
-neither the fingerprint nor any sweep, and the default (silvered) boot builds
-the same geometry through the same loops — which `fingerprint` and the digest
-pair hold.
+Battery: **41/41 gates pass** in CI on the landing PR's own job, routed to the
+self-hosted runner by its title (§200; runner `battery-2-3295`, Linux/ARM64,
+whole run — no cached baseline for the merge base on that platform), total
+802.1 s; fingerprint deterministic at **2050941457**, which is the fingerprint
+`main` carries after §218 — the merged head builds the same metal, as a
+materials-only change must: materials enter neither the fingerprint nor any
+sweep, and the default (silvered) boot builds the same geometry through the
+same loops. A local pre-merge run reproduced the same fact from the other
+side: its two virgin boots straddled the base merge and read 3534559869 and
+2050941457, the pre-§218 and §218 fingerprints exactly.
 
 ### The entry as filed, reconciled
 
