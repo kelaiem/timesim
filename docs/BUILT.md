@@ -23833,3 +23833,21 @@ eight locales; three labels were shortened in translation rather than the
 plate widened, and one Korean label that spelled "three quarters" with digits
 was caught by the number gate and re-spelled. The primer's ribbon figure
 follows (0.024 mm).
+
+### Verified
+
+`node tools/ci-battery.mjs --report …` locally on the dev container (3
+shards): **40/40 gates pass · total 2013.3 s (checks 4385.4 s across 3
+shards)** — boot silent, support/graph clean, `oscillator` PASS with the
+overcoil's rows (implied 2.5 Hz, ribbon 0.0239 mm, clamp ×1.0000, pivot
+0.0003 mN @45° / 0.0078 @270°, stress 111/700 MPa), `stockFloor` 654 rows /
+50 waived (the same debt as `main`, one fewer row — the static terminal tube
+is gone), `intraUnit` clean (3 waived, unchanged), `expectedContacts` 23
+pairs / 1 waived, `equalisation`, `restoring`, `transfers`, `meshPhase`,
+`meshCoverage`, `transmits` all green, `inspection` 0 FORBIDDEN over 58
+units, `clearances` 0 violations over 32 budgets, `sweptOverlap` 0 CONFIRMED
+over 103,866 pairs (tight 3, refuted 21), fingerprint deterministic across
+virgin boots at **3368155323** — moved from tier one's, correctly (the
+spring gained the overcoil's mesh). `probe-218-breathing.mjs` reads 17/17.
+Both document gates green. CI's run on the pull request is the merge
+evidence; this is the pre-flight.
