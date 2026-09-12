@@ -23605,3 +23605,228 @@ three Latin letters do.
   spacing rule was written for Latin units.
 - **`index.html`'s `<title>` is not localized in any locale** — §209's
   observation, still true.
+
+## §220 — A smoked sapphire dial — the Lumen tint as a coating recipe on the shipped glass, not a second crystal
+
+`dial.plate.smoke` in `src/aesthetics.json` (Advanced → "Sapphire dial
+transmittance", reload-tier ⟳, browser-local, inert unless "Sapphire dial" is
+on): the coat's visible transmittance T, 1 the clear crystal. A Lange Lumen's
+smoke is a thin-film COATING on colourless sapphire — it blocks most of the
+visible spectrum and passes UV so the lume beneath charges, a designed filter
+no bulk-tinted crystal can be — and §3's `CRYSTAL_GLASS` is already a coating
+model (a colour at an alpha, no thickness term). So this is one new number on
+§3's glass, not a second glass: the same corundum (`SAPPHIRE_IOR`, spread from
+the literal) under a different coat, the case crystal untouched. §3's "one
+glass, not two" is kept as one crystal and broken, on purpose, as one coat.
+
+### The law, and what it is derived from
+
+Light from the room crosses an absorbing coat, reflects off the nickel plate
+behind the dial, and crosses the coat again, so the plate contributes T²·N to
+what the eye sees. The coat's own specular is corundum's Fresnel (7.7 % at n
+1.77, which `ior` already provides) and an absorbing film adds no diffuse
+reflectance worth typing. The renderer blends in ONE pass, so `smokedGlass(T)`
+(`materials.js`) is solved to make one pass paint the two-pass answer — the
+clear crystal's own layer (colour C at α_c) kept as the surface, a black coat
+at 1 − T² beneath it, the pair folded into one alpha material:
+
+    opacity = α_c + (1 − α_c)·(1 − T²)        colour = C · α_c / opacity
+
+Written as α_c + (1 − α_c)(1 − T²) rather than 1 − (1 − α_c)T² so that T = 1
+returns α_c exactly and `smokedGlass(1)` IS `CRYSTAL_GLASS` byte for byte —
+the identity control, asserted at boot, and the reason a boot at the default
+is the shipped picture. Nothing here is a target: every value is a
+consequence of T, `CRYSTAL_GLASS` and the plate behind.
+
+**The coat lives in the matter.** The plate body and both pocket walls take
+`DIAL_GLASS` (the law at the schema's T; `CRYSTAL_GLASS` itself at 1). The
+three print sheets keep the clear crystal's layer in their texels — a sheet is
+print ON the coated glass, not a second coat — which is also what lets x-ray
+swap the body for its clear twin while the sheets self-map as §3 built them.
+
+**The ground the ink is solved against is the one the renderer paints.** §3's
+`groundAt` composed one layer, the glass over the nickel. But the face sheet
+lies ON the body's front cap (`FINISH_ORDER` draws it last; both blend), so
+the crystal's surface term enters the frame twice, and under smoke the two
+models part by tens of bytes — the sheet's 0.14 of near-white over a dark
+body. `groundAt` now returns sheet over body over nickel, one expression for
+every consumer, and the §196 solve reads that. A consequence for §3's own
+number: at T = 1 the composite is `#d6d9dd`, 12.29:1 to the dark pole, where
+the single layer read `#d0d3d7` and 11.59:1 — the same pole, a shade lighter,
+and now the tone the eye is shown. Derived on that composite, over
+`MATS.perledNickel`:
+
+| T | opacity | colour | ground | dark pole | light pole | printed |
+|---|---|---|---|---|---|---|
+| 1.00 | 0.140 | `#f8fbff` | `#d6d9dd` | **12.29** | 1.18 | dark |
+| 0.80 | 0.450 | `#4d4e4f` | `#9fa2a6` | **6.79** | 2.13 | dark |
+| 0.60 | 0.690 | `#323334` | `#76777b` | **3.89** | 3.72 | dark |
+| 0.59 | 0.591 | `#3b3c3c` | `#747678` | **3.82** | 3.79 | dark |
+| 0.58 | 0.602 | `#3a3a3b` | `#737476` | 3.72 | **3.89** | light |
+| 0.50 | 0.785 | `#2c2d2d` | `#666769` | 3.07 | **4.71** | light |
+| 0.45 | 0.826 | `#2a2b2b` | `#5f6062` | 2.77 | **5.27** | light |
+| 0.41 | 0.855 | `#292929` | `#5a5b5c` | 2.54 | **5.73** | light |
+
+The §196 solve flips to the light pole between 0.59 and 0.58 with no new
+code — light print on smoked glass, the Lumen look, arriving because the
+ground moved and the solve read it — and the flip sits at the ≈ 3.8:1
+both-poles minimum §196 measured as its worst ground: a smoked dial passes
+THROUGH the regime the 3:1 floor was proved against, which is why the §157
+gate is the load-bearing instrument here.
+
+### The floor is derived — and from the print, not the works
+
+The entry filed the knob's floor as the transmittance at which the works
+behind the dial stop reading, to be measured. Measuring it found a tighter
+constraint first. At T = 0.40 the boot WARNED: `reserve face: the warning
+zone's best tone on this ground holds only 2.99:1 against the face and
+17.46:1 against the ticks — need 3.0:1 of both`. §196's zone solve holds
+each coloured sector of the reserve sub-dial to 3:1 against BOTH the face and
+the ticks; on a smoked ground the ticks have gone light, so the only tone
+with room is black, and black holds 3:1 against the face only while the
+ground's relative luminance is ≥ 0.10 ((Y + 0.05)/0.05 ≥ 3). The rendered
+composite crosses 0.10 between T 0.40 (Y 0.0997) and 0.41 (Y 0.1043), so
+**`_bounds.smoke` = [0.41, 1]** — the first slider step that boots silent,
+derived from the gate's own arithmetic rather than measured, and held both
+ways by the probe (0.41 silent; 0.40 with the loader's clamp lifted warns
+from exactly that gate and nothing else). Lange's "blocks most of the visible
+light" (T < 0.5) is still inside the window, and 0.45 is the acceptance's
+Lumen-dark boot. A consequence to know, visible in that boot's frame: on a
+smoked ground the reserve sector's warning and maximum zones SOLVE TO BLACK —
+the hues have no tone with 3:1 of room against both a dark face and light
+ticks, and the solve keeps the contrast and lets the colour go, which is the
+right order.
+
+**The works' own floor, measured, lies below it and is a REPORT.**
+`tools/probe-220-smoke.mjs --scan` boots T downward with the floor lifted,
+renders the Dial preset, and reads a works-only patch of the frame (the
+motion-works wheels left of centre; blued steel — the alarm hand at the
+patch's corner and the works' screw heads — masked by colour; the
+crop written beside each frame so "works only" can be checked by eye). The
+first criterion was SC 1.4.11's 3:1, the print's own floor, and it **failed
+its own clear-dial control**: the works on the clear sapphire read 2.56:1,
+because they are large shapes the eye reads at far lower contrast than the
+small-object floor assumes — a floor that says the works never read at all
+measures the criterion, not the coat. The criterion that answers "stop
+reading" is the CIELAB just-noticeable difference (ΔL* 2.3, CIE 1976; Mahy,
+Van Eycken & Oosterlinck 1994), the lightness separation between the works'
+tenth percentile and the ground's ninetieth in the patch, with the opaque
+silvered dial as the control that must read under it (ΔL* 0.31) and the
+clear dial as the control that must clear it by an order (ΔL* 28.08):
+
+| boot | ΔL* (p90 − p10) | p10 Y | p90 Y | blued px masked | verdict |
+|---|---|---|---|---|---|
+| control: silvered | 0.31 | 0.5836 | 0.5892 | 545 | does not read |
+| control: clear | 28.08 | 0.1475 | 0.4572 | 545 | PASS |
+| T 0.90 | 23.12 | 0.1274 | 0.3467 | 315 | reads |
+| T 0.80 | 18.77 | 0.1011 | 0.2473 | 315 | reads |
+| T 0.70 | 14.79 | 0.0844 | 0.1814 | 129 | reads |
+| T 0.60 | 11.08 | 0.0719 | 0.1337 | 0 | reads |
+| T 0.50 | 8.16 | 0.0626 | 0.1021 | 0 | reads |
+| T 0.40 | 5.42 | 0.0568 | 0.0801 | 0 | reads |
+| T 0.30 | 2.94 | 0.0517 | 0.0630 | 0 | reads |
+| T 0.20 | 1.23 | 0.0485 | 0.0529 | 0 | does not read |
+| T 0.25 | 2.23 | 0.0499 | 0.0582 | 0 | does not read |
+| T 0.28 | 2.60 | 0.0514 | 0.0612 | 0 | reads |
+| T 0.27 | 2.48 | 0.0503 | 0.0595 | 0 | reads |
+| T 0.26 | 2.13 | 0.0503 | 0.0582 | 0 | does not read |
+
+**The works read at T = 0.27 and not at 0.26** — a floor fourteen slider steps under the zone gate's 0.41, so the zones bind and the works' number is a report. The scan prints which binds, and would name the works if their floor ever rose above the schema's.
+
+### X-ray, the decision the entry named
+
+§3's compose-don't-clone self-map was derived for a 0.14 glass being MORE
+transparent than the 0.28 x-ray glass. A smoked plate at opacity 0.83 under
+x-ray would hide the works the toggle exists to show — the toggle's opposite.
+So the clear sapphire is always built, and under x-ray a smoked material is
+swapped for its clear twin (`XRAY_CLEAR` in `materials.js`, a `WeakMap`
+rather than a `userData` slot because `Material.clone()` JSON-round-trips
+`userData`; the walls' two-sided pair registered by `makeDial`) and restored
+after. At T = 1 the smoked and clear materials are ONE OBJECT, so the map
+self-maps exactly as §3 shipped it and `probe-3-sapphire`'s material
+identities hold unchanged. The schematic tier reads no material, so the
+smoke is realistic-view only.
+
+### Instruments
+
+`tools/probe-220-smoke.mjs` (acceptance; §3's shape) boots six times:
+
+```
+OK   T=1 boots silent
+OK   T=0.45 boots silent
+OK   T=0.59 boots silent
+OK   T=0.58 boots silent
+OK   T=0.41 (the floor) boots silent
+OK   T=0.4 (one step under the floor, clamp lifted): 4 warning(s), all from the reserve zone gate — 2.99:1 against the face; the floor is where the schema says
+OK   T=1: plate body and 2 walls at the crystal's recipe #f8fbff @ 0.14 — §3 byte for byte
+OK   T=1: x-ray self-maps every glass part, as §3 shipped it
+OK   T=1: ground #d6d9dd is the rendered composite (sheet over clear body over nickel); ink #1a1a1a holds 12.29:1
+OK   T=0.45: plate body and 2 walls carry the law — #2a2b2b @ 0.8258 = αc + (1 − αc)(1 − T²), C·αc/opacity
+OK   T=0.45: 3 print sheets stay white @ 1 (print on the coat, not a second coat)
+OK   T=0.45: ground #5f6062 is the rendered composite
+OK   T=0.45: the solve printed the light pole #eaeaea, 5.23:1 worst case against 3
+OK   T=0.59: ground #747678 is the rendered composite
+OK   T=0.59: the solve printed the dark pole #1a1a1a, 3.82:1 worst case against 3
+OK   T=0.58: ground #737476 is the rendered composite
+OK   T=0.58: the solve printed the light pole #eaeaea, 3.89:1 worst case against 3
+OK   T=0.45 x-ray ON: plate body and walls swapped to the clear twin #f8fbff @ 0.14 — the works show
+OK   T=0.45: x-ray on→off restores every dial material by identity; sheets self-mapped throughout
+OK   geometry identical between T=1 and T=0.45: 144 meshes, same names, vertex counts and own bounds
+OK   the case crystal reads CRYSTAL_GLASS on every boot
+     T=1: works patch ΔL* 28.0 (p90/p10 2.56:1, 15 hand px masked) — a report; the scan is the instrument
+     T=0.45: works patch ΔL* 6.4 (p90/p10 1.26:1, 0 hand px masked) — a report; the scan is the instrument
+     T=0.59: works patch ΔL* 10.6 (p90/p10 1.48:1, 0 hand px masked) — a report; the scan is the instrument
+     T=0.58: works patch ΔL* 10.2 (p90/p10 1.46:1, 0 hand px masked) — a report; the scan is the instrument
+     T=0.41 (the floor): works patch ΔL* 5.2 (p90/p10 1.21:1, 0 hand px masked) — a report; the scan is the instrument
+```
+
+`tools/probe-3-sapphire.mjs` still holds §3 — and was found broken: its
+"geometry does not move" claim compared WORLD bounds, and the Dial unit
+carries parts whose pose is integrated by `step()`, so two boots differed at
+any pose and the claim failed on an untouched tree (four small boxes). Both
+probes now compare each mesh's own bounds — the metal, not its pose.
+
+```
+OK   silvered boots silent
+OK   sapphire boots silent
+OK   dial geometry identical: 144 meshes, same names, vertex counts and bounds
+OK   sapphire: plate body, 2 walls, 2 well sheets and the face sheet are glass (transparent, depthWrite off, marked)
+OK   sapphire: 133 metal parts (ring, numerals, feet, walls' neighbours) stay opaque; 5 ruby pins transparent on both boots as before
+OK   silvered: plate, walls and print sheets are opaque, as shipped
+OK   sapphire plate reads the crystal's opacity 0.14
+OK   silvered: ink #1a1a1a holds 11.96:1 worst case against floor 3 (grounds #eeece5 #edebe4)
+OK   sapphire: ink #1a1a1a holds 12.29:1 worst case against floor 3 (grounds #d6d9dd)
+OK   sapphire: x-ray on→off restores every dial material
+OK   sapphire: with x-ray ON the glass parts keep their own materials (self-mapped)
+OK   sapphire: with x-ray ON 42 metal dial part(s) glass as the toggle asks
+```
+
+Battery: the landing PR's own job, routed to the self-hosted runner by its
+title (§200), is the merge gate; the verdict lines are pasted in that PR. A
+materials-only change cannot move a report by construction — materials enter
+neither the fingerprint nor any sweep, and the default (silvered) boot builds
+the same geometry through the same loops — which `fingerprint` and the digest
+pair hold.
+
+### The entry as filed, reconciled
+
+- **The floor.** Filed as "measured where the works stop reading"; built as
+  DERIVED from the reserve zone gate, which binds fourteen slider steps
+  above the works' measured floor (0.41 against 0.27). The works' number is recorded above as a report.
+- **The criterion.** Filed as SC 1.4.11's 3:1 for the works; that failed its
+  own clear-dial control and was replaced by the JND, for the reason above.
+- **The ground.** Filed as `groundAt` reading "the dial's recipe" at three
+  collapsed sites; built as the rendered composite (sheet over body over
+  nickel), because the sheets keep the clear layer by design and the solve
+  must read what is painted. §3's T = 1 number moved from 11.59:1 to 12.29:1
+  on the same pole as a consequence.
+- **The flip.** Filed at 0.69/0.68 on a single-layer ground; on the rendered
+  composite it is 0.59/0.58, and that pair is what the probe holds.
+- **The knob's shape** is as filed: a number with `_bounds`, reload-tier,
+  browser-local, the panel disabling it while the sapphire box is off.
+
+**Not modelled, and said so:** the luminous compound the real coating exists
+to charge — no lume exists in the sim, and a lume entry would be its own §;
+a non-neutral or graded smoke; the coat's second pass on specular reflections
+from the works behind (the law corrects the diffuse ground; the environment's
+reflections off the wheels arrive through one pass).

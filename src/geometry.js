@@ -3,7 +3,7 @@
 // centered at the origin, rotating about local +Z. userData.r = pitch/functional
 // radius where meaningful. Real tooth profiles via Shape/ExtrudeGeometry.
 import * as THREE from 'three';
-import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR } from './materials.js';
+import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR } from './materials.js';
 import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
 import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
@@ -6745,14 +6745,34 @@ export function makeDial({
   // it through the one `groundAt`, so none can be given a different answer.
   // The wheels behind the dial are brass and darker than the plate; the dark
   // pole holds above the floor on both, and the gate is what says so at boot.
+  //
+  // §220 — THE SMOKED DIAL puts a COAT on this glass, and the coat lives in
+  // the plate's MATTER: the body and the pocket walls take DIAL_GLASS
+  // (materials.js — CRYSTAL_GLASS itself at `dial.plate.smoke` = 1, the
+  // smoke law's recipe below it), while the print sheets keep the CLEAR
+  // crystal's layer in their texels — a sheet is print laid on the coated
+  // glass, not a second coat, and that is also what lets x-ray swap the body
+  // for its clear twin while the sheets self-map as §3 built them. So the
+  // ground the ink is solved against is what the renderer PAINTS behind it:
+  // the sheet's clear layer over the body's recipe over the nickel. §3
+  // composed ONE layer; the sheet lies on the body's front cap (FINISH_ORDER
+  // draws it last, both blend), so the crystal's surface term enters the
+  // frame twice, and at T = 1 this composite reads #d6d9dd (12.29:1 to the
+  // dark pole) where §3's single layer read #d0d3d7 (11.59:1) — the same
+  // pole, a shade lighter, and now the tone the eye is shown.
+  // Under smoke the two models part by tens of bytes (the sheet's 0.14 of
+  // near-white over a dark body), which is why the solve reads the rendered
+  // one: the pole it picks must be the pole that holds on the painted ground.
   const sapphire = !!(aesthetics.dial.plate && aesthetics.dial.plate.sapphire);
-  const glassTint = '#' + CRYSTAL_GLASS.color.toString(16).padStart(6, '0');
-  const glassFill = `rgba(${hexToRgb(glassTint).join(',')},${CRYSTAL_GLASS.opacity})`; // the sheet's own texels carry the glass: tint at the crystal's alpha, ink at 1
+  const hex6 = (c) => '#' + c.toString(16).padStart(6, '0');
+  const sheetTint = hex6(CRYSTAL_GLASS.color); // the print sheet's own layer: the clear crystal's surface
+  const glassFill = `rgba(${hexToRgb(sheetTint).join(',')},${CRYSTAL_GLASS.opacity})`; // the sheet's own texels carry that layer: tint at the crystal's alpha, ink at 1
   const alphaOver = (top, alpha, under) => {
     const t = hexToRgb(top), u = hexToRgb(under);
     return rgbToHex(t.map((c, i) => Math.round(c * alpha + u[i] * (1 - alpha))));
   };
-  const glassGround = alphaOver(glassTint, CRYSTAL_GLASS.opacity, '#' + MATS.perledNickel.color.getHexString());
+  const plateGround = alphaOver(hex6(DIAL_GLASS.color), DIAL_GLASS.opacity, '#' + MATS.perledNickel.color.getHexString()); // the body's recipe over the nickel — the smoke's T²·N term lives here
+  const glassGround = alphaOver(sheetTint, CRYSTAL_GLASS.opacity, plateGround);
   const groundAt = (f) => (sapphire ? glassGround : dialTintAt(aesthetics.dial.face.color, f));
   // A print sheet on sapphire: the glass recipe with the sheet's canvas as
   // its map. Colour white and opacity 1 because the texels already carry the
@@ -7028,6 +7048,11 @@ export function makeDial({
       : new THREE.MeshStandardMaterial({
         color: 0x8f8d85, metalness: 0.05, roughness: 0.9, side: THREE.DoubleSide,
       });
+    // §220 — a SMOKED wall needs its own two-sided clear twin for x-ray, the
+    // way the body has one (materials.js XRAY_CLEAR); at T = 1 the plate's
+    // material has no twin and the wall self-maps, exactly as §3 shipped it.
+    if (sapphire && XRAY_CLEAR.has(MATS.sapphire))
+      XRAY_CLEAR.set(wallMat, Object.assign(XRAY_CLEAR.get(MATS.sapphire).clone(), { side: THREE.DoubleSide, userData: { glass: true } }));
     subdials.forEach((sd, i) => {
       const recess = wells[i].recess;
       if (!(recess > 0)) return;   // an un-sunk aperture carries no floor or wall to finish
@@ -7342,6 +7367,7 @@ export function makeDial({
 
   g.userData.r = radius;
   g.userData.sapphire = sapphire; // §3 — what the plate is, for probes and the record
+  g.userData.smoke = sapphire ? DIAL_GLASS.opacity : null; // §220 — the coat the plate carries (its recipe's opacity; 0.14 is the clear crystal), for probes
 
   // §157 — THE LEGIBILITY GATE, and the measurement beside it. §196 INVERTED
   // ITS MEANING: the ink is no longer fixed, it is SOLVED against the ground
