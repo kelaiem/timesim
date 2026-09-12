@@ -726,7 +726,27 @@ export const HAIRSPRING_H = 0.6;   // makeHairspring height (its stud/terminal t
 // nesting, no shared band, no collision. The plate keeps its cutaway
 // purely for the view of the oscillator below.
 export const COCK_T = 0.8;
-export const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_H * 0.7; // stud (0.6·H), terminal (0.55·H + ribbon)
+// §218 tier two — THE OVERCOIL'S PLANE. The last three quarters of a turn are
+// raised so the ribbon's underside clears the spiral's top by the one margin:
+// its centre sits H + CLEAR_MARGIN above the spiral's, and the stack's top is
+// that plus half a ribbon. This is the stack cost the entry named — 0.63 u
+// over the flat spring's 0.7·H — and everything that reads SPRING_TOP_Z (the
+// cock's slab, the drum's top, the fusee band, the plate floor) moves with it
+// by construction, which is the honest direction: a raised coil is metal in
+// the stack, not a drawing.
+export const HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN;
+export const SPRING_TOP_Z = L_HAIRSPRING + HAIRSPRING_OVERCOIL_RAISE + HAIRSPRING_H / 2;
+// ...and the one thing that does NOT move with it. The going train's z
+// stations — the drum's lid (the going ribbon's height, which §104's
+// equalisation was solved on), the fusee's groove band (§61/§124), the
+// chain's ceiling (TODO 53) and §47's arrest clocked against that corridor —
+// were solved against the stack's top AS IT WAS, the flat spring's 0.7·H.
+// Booted with them reading the raised top, §47 reported no legal beak
+// azimuth at any of its 102 pad azimuths: a raised terminal on the balance
+// is not a reason to re-cut the mainspring or re-clock the arrest, so those
+// stations keep their datum here. The cock and the plate floor above the
+// balance are what the overcoil is metal in, and they read SPRING_TOP_Z.
+export const TRAIN_CEILING_Z = L_HAIRSPRING + HAIRSPRING_H * 0.7;
 export const COCK_SLAB_BOT = SPRING_TOP_Z + CLEAR_MARGIN;
 export const COCK_SLAB_TOP = COCK_SLAB_BOT + COCK_T;
 export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;

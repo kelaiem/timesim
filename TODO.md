@@ -3002,7 +3002,10 @@ keep the slowest menu row clear of §204's margin band), ribbon 0.0227 mm,
 ratio 1.0040; the rate still lands on 2.5000 Hz as arithmetic, and the gate
 now also holds every wind frame to ONE length of steel, which the frame law
 this item inherited from item 4 did not (±1.59% at ±1 rad, measured on its
-own polyline). The record is `docs/BUILT.md` §218.
+own polyline). The next day §218's tier two added a Breguet overcoil solved
+for concentricity, and the ratio reads 1.000000: the stud's reaction is what
+the fit was correcting for, and the overcoil removes it (ribbon 0.0239 mm on
+the longer active length). The record is `docs/BUILT.md` §218.
 
 ## 26. CLOSED — the dial is a plate, and the wells are pockets machined into it
 

@@ -19,7 +19,7 @@ import {
   RECOIL_FRACTION, RECOIL_DEG,
   CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
-  SPRING_TOP_Z, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
+  SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
   // teeth and pinion teeth per mesh. Builders and tick()'s ratio chain
   // (meshOffset / the going-train ratios) both read it; the flat teeth
@@ -754,7 +754,7 @@ const barrelR = (TRAIN.barrel.module * TRAIN.barrel.teeth) / 2;
 // dropped to the same spring-bound floor, drum and cone compress together.
 const DRUM_R_ACTUAL = 10;
 const DRUM_BOT_Z = L_BARREL + 0.7 + 0.08 + CLEAR_MARGIN;
-const DRUM_TOP_Z = SPRING_TOP_Z;
+const DRUM_TOP_Z = TRAIN_CEILING_Z; // §218 tier two — the train's own ceiling, not the raised spring stack (layout.js says why)
 const DRUM_HEIGHT = DRUM_TOP_Z - DRUM_BOT_Z;
 const COIL_TOP = DRUM_TOP_Z - 0.6; // hook plane: just under the drum's lid (declared here with the drum's band — CHAIN_TQ_REACH reads it as the span's ceiling)
 // (the drum body itself — makeBarrel — is built at the drumGroup assembly
@@ -829,7 +829,7 @@ const FUSEE_BASE_INSET = CLEAR_MARGIN + FUSEE_TILT_Z; // seat collar under the b
 const FUSEE_Z0_MIN = (L_CENTER + 0.5 + 0.08) + CLEAR_MARGIN + (CHAIN_PIN_LEN / 2 + FUSEE_TILT_Z);
 // Highest legal tip: the spring stack top, less a 0.02 float guard so the
 // plate-floor comparator binds on the SPRING, not on rounding at the tip.
-const FUSEE_BAND = SPRING_TOP_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN;
+const FUSEE_BAND = TRAIN_CEILING_Z - 0.02 - FUSEE_TIP_INSET - FUSEE_Z0_MIN; // §218 tier two — TRAIN_CEILING_Z, not the raised spring stack
 const FUSEE_GROOVE_PITCH = FUSEE_BAND / FUSEE_GROOVE_TURNS; // 1.389 at the 30 h default (§124: two grooves — was 0.695 across four)
 const FUSEE_LAND_W = FUSEE_GROOVE_PITCH - FUSEE_GROOVE_W;   // ≈ 0.719 — the z budget's slack, made visible
 if (FUSEE_LAND_W < 0.02)
@@ -861,7 +861,7 @@ const FUSEE_H = FUSEE_BASE_INSET + FUSEE_BAND + FUSEE_TIP_INSET; // ≈ 3.36 —
 // the free span's length has a z leg, and its give is part of the chain
 // conservation the law integrates. Same hoist reason as COIL_TOP's.)
 const FUSEE_BASE_Z = Math.max(
-  SPRING_TOP_Z - L_BARREL - FUSEE_H - 0.1,
+  TRAIN_CEILING_Z - L_BARREL - FUSEE_H - 0.1,   // §218 tier two — the train's ceiling
   FUSEE_Z0_MIN - FUSEE_BASE_INSET - L_BARREL,
 );
 const FUSEE_Z0 = L_BARREL + FUSEE_BASE_Z + FUSEE_BASE_INSET; // world z of the lowest groove
@@ -1486,7 +1486,17 @@ const OSC_I = (() => {
 // OUTSIDE the band it sat inside at 10 coils (0.0388), so §204's one flagged
 // row goes quiet as a consequence. Radii unchanged: the pitch grows, the
 // footprint does not.
-const HAIRSPRING_PLAN = { innerR: Math.max(rollerR * 0.5, 1.5), outerR: balanceR * 0.88, coils: 8 };
+// §218 tier two — THE OVERCOIL. `turns` is the terminal's length in turns of
+// the outer radius: three quarters, the classical proportion AND the measured
+// minimum (geometry.js: a half turn admits no centroid solution, a full turn
+// solves with a kink). `raise` is the one margin over a standing ribbon
+// (layout.js's HAIRSPRING_OVERCOIL_RAISE — the cock's z-solve reads the same
+// number). `kneeR` is the ribbon's tightest EXISTING bend, the collet radius:
+// the knee is formed, not flexed, and a formed bend no tighter than one the
+// ribbon already takes is the constraint. The two curvatures are solved, not
+// chosen — see hairspringRest.
+const HAIRSPRING_PLAN = { innerR: Math.max(rollerR * 0.5, 1.5), outerR: balanceR * 0.88, coils: 8,
+  overcoil: { turns: 0.75, raise: HAIRSPRING_OVERCOIL_RAISE, kneeR: Math.max(rollerR * 0.5, 1.5) } };
 const OSC_K_TARGET = OSC_I.total * (2 * Math.PI * F_BALANCE) ** 2;
 // §218 — the spring is fitted AS CLAMPED. k = EI/L is the pure-bending
 // stiffness; between a collet that turns and a stud that does not, the stud's
@@ -1582,6 +1592,19 @@ const OSCILLATOR = (() => {
   const kFrames = frames.filter((r) => Math.abs(r.thetaRad) <= 0.06 && r.thetaRad !== 0)
     .reduce((acc, r) => acc + r.torque_Nm / r.thetaRad, 0) / 2;
   const controlLam = EL.control.reduce((m, c) => Math.max(m, c.lam * EI / OSC_U ** 2 * 1e3), 0);
+  // §218 tier two — THE FLAT SPRING BESIDE IT, same section, same plan minus
+  // the overcoil: the reference the overcoil's number is read against, solved
+  // at the performed and physical amplitudes (two solves, not a frame set).
+  const flatPlan = { innerR: HAIRSPRING_PLAN.innerR, outerR: HAIRSPRING_PLAN.outerR, coils: HAIRSPRING_PLAN.coils };
+  const flatEl = G.spiralElastica(G.hairspringRest(flatPlan));
+  const flatForce = (th) => { const r = flatEl.solve(th); return Math.hypot(r.lam[0], r.lam[1]) * EI / OSC_U ** 2 * 1e3; };
+  const OC = H.overcoil;
+  const overcoil = OC ? {
+    turns: OC.turns, raise_u: OC.raise, kneeR_u: OC.kneeR, rho1_u: OC.rho1, rho2_u: OC.rho2, endR_u: H.termEndR,
+    centroidResidual_u: OC.centroidResidual, converged: OC.converged,
+    devLen3d_u: OC.devLen3d, kneeLengthExcessPct: 100 * (OC.devLen3d / H.devLen - 1),
+    flat: { pivotForce_mN: { performed: flatForce(AMPLITUDE_VISUAL_DEG * DEG2RAD), physical: flatForce(AMPLITUDE_TRUE_DEG * DEG2RAD) } },
+  } : null;
   const breathing = {
     law: 'clamped–clamped planar elastica, inextensible segments, EI scaled out (geometry.js spiralElastica)',
     frames, report, dThetaRad: EL.dTheta, windMaxRad: EL.windMaxRad, reportMaxRad: EL.reportMaxRad,
@@ -1594,10 +1617,22 @@ const OSCILLATOR = (() => {
       performed: { ampDeg: AMPLITUDE_VISUAL_DEG, pivotForce_mN: peak(worn, 'pivotForce_mN'), stress_MPa: peak(worn, 'stress_MPa'), radialShift_mm: peak(worn, 'radialShift_mm'), minCoilGap_mm: worn.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
       physical:  { ampDeg: AMPLITUDE_TRUE_DEG,   pivotForce_mN: peak(all, 'pivotForce_mN'),  stress_MPa: peak(all, 'stress_MPa'),  radialShift_mm: peak(all, 'radialShift_mm'),  minCoilGap_mm: all.reduce((m, r) => Math.min(m, r.coilGap_mm), Infinity) },
     },
+    overcoil,
     fatigue_MPa: HAIRSPRING_FATIGUE_MPA,
     fatigueSource: "Shigley eq. 6-8: S'e = 0.5·Sut ≤ 700 MPa; spring-steel wire above the 1400 MPa knee",
   };
   breathing.stressInLimit = breathing.peaks.physical.stress_MPa <= HAIRSPRING_FATIGUE_MPA;
+  if (overcoil) {
+    // Phillips's theorem, held: with the centroid on the axis the clamp
+    // stiffening is exactly 1 (the stud does no work at small θ) — the
+    // load-bearing assert — and the pivot force at the PERFORMED amplitude
+    // falls to under a tenth of the flat spring's; the physical amplitude's
+    // residual is the second-order term, reported.
+    overcoil.concentric = Math.abs(HS_CLAMP.ratio - 1) < 1e-6;
+    overcoil.forceRatio = { performed: breathing.peaks.performed.pivotForce_mN / overcoil.flat.pivotForce_mN.performed,
+                            physical: breathing.peaks.physical.pivotForce_mN / overcoil.flat.pivotForce_mN.physical };
+    overcoil.pass = overcoil.converged && overcoil.concentric && overcoil.forceRatio.performed < 0.1;
+  }
   return Object.freeze({
     I_kgm2: OSC_I.total, k_Nm_per_rad: k, kPure_Nm_per_rad: kPure, clampRatio: HS_CLAMP.ratio, fImpliedHz: f,
     breathing,
@@ -1626,6 +1661,8 @@ if (!OSCILLATOR.agrees)
     console.warn(`§218: the frames' torque per radian ${B.kFrames_Nm_per_rad.toExponential(4)} N·m/rad is not the k ${OSCILLATOR.k_Nm_per_rad.toExponential(4)} the rate was computed from (0.5%)`);
   if (!B.control.pass)
     console.warn(`§218: the free-landing control reads a pivot force of ${B.control.maxPivotForce_mN.toExponential(2)} mN — the solver is inventing a constraint reaction`);
+  if (B.overcoil && !B.overcoil.pass)
+    console.warn(`§218 tier two: the overcoil is not concentric — centroid residual ${B.overcoil.centroidResidual_u.toExponential(2)} u, clamp ratio ${OSCILLATOR.clampRatio.toFixed(6)}, pivot force ×${B.overcoil.forceRatio.performed.toFixed(3)} of the flat spring's at ${AMPLITUDE_VISUAL_DEG}°`);
   if (!B.stressInLimit)
     console.warn(`§218: the ribbon's outer-fibre stress at ${AMPLITUDE_TRUE_DEG}° is ${B.peaks.physical.stress_MPa.toFixed(0)} MPa, over the ${HAIRSPRING_FATIGUE_MPA} MPa endurance figure`);
 }
