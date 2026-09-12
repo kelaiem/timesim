@@ -17,6 +17,12 @@
      constants — if a § redesign changes one, this page is part of the
      reconciliation (see CLAUDE.md). -->
 <style>
+  /* §211 — Korean wraps at SPACES, not between syllables. Hangul has CJK glyph
+     metrics and Latin word structure, and word-break: normal treats it as
+     CJK, so a four-syllable word lands two syllables on each of two lines.
+     keep-all is scoped by documentElement.lang, which src/i18n.js writes;
+     the rule is inherited, so one declaration on the root covers the page. */
+  html:lang(ko) { word-break: keep-all; }
   :root {
     --bg: #0b0d10;
     --panel: rgba(15,17,20,0.72);

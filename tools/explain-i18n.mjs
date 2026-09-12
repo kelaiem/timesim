@@ -186,6 +186,7 @@ const MARKS = {
   // es-ES also leaves four digits ungrouped (1000, measured in Chromium 141);
   // the token class parses either form, so nothing here depends on it.
   es: { group: ['.'], dec: ',' },
+  ko: { group: [','], dec: '.' },        // §211 — ko-KR: number-transparent, as ja and zh
 };
 const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {
