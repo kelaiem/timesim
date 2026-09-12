@@ -15600,15 +15600,42 @@ the same rows at a spread of 42.9 and 37.3 percentage points across the
 pose net, which is the same defect seen from the other side:
 `frac(uP + uQ)` is invariant only while a pair genuinely transmits.
 
-**The fix**, therefore, is the negation `mwArbor` was owed, plus the one
-consequence it carries: `minuteStar` is a child of `mwArbor`
-(`src/main.js:12152`), so the jumper's `starTurn` must read the arbor's
-own value rather than a second copy of the sign — one source, the rule
-that keeps working. `mwHourA` stays as it is: it is a movement-frame
+**THE TRANSMISSION HALF IS CLOSED; THE PHASE HALF IS NOT, AND THAT IS
+WHAT THIS ITEM NOW TRACKS.** The fix was the negation `mwArbor` was owed,
+plus the one consequence it carries: `minuteStar` is a child of `mwArbor`
+(`src/main.js:12152`), so the jumper's `starTurn` reads the arbor's own
+rotation rather than a second copy of the sign — one source, the rule
+that keeps working. `mwHourA` was left alone: it is a movement-frame
 quantity derived by ratio, and only the dial-side WRITE was ever wrong.
-Both rows are waived in `TRANSMITS_WAIVERS` and `MESH_PHASE_WAIVERS`
-citing this item; the waivers are gated stale, so deleting them is
-structurally part of the fix.
+
+Measured after the fix, both rows read their signed tooth-count bar
+exactly (−0.333333, −0.250000) and `transmits` named its own two waivers
+stale, so they are deleted — the gate's stale rule working as designed.
+
+**What is left is a different defect wearing the same symptom**, and the
+spread column is what tells them apart. `meshPhase`'s spread collapsed
+**42.871 → 0.049** and **37.305 → 0.781**, because `frac(uP + uQ)` is
+invariant only while a pair genuinely transmits — so the pair now
+transmits. But the residual is a CONSTANT **50.00%** of a pitch: tooth
+meeting tooth on the line of centres at EVERY pose, where before the fix
+it swept and only touched 50% at the worst of them. By this item's own
+rule (`spread ≈ 0` is a phase never solved), what remains is the build
+clocking: the motion works is still the one gear train in the movement
+with no `solveGearChain` call of its own, which is the sentence under
+"Why nothing caught it before" that was always the other half of this.
+
+So the two `MESH_PHASE_WAIVERS` entries STAY, re-cited in place against
+what they now describe, and closing this item means CLOCKING THE BUILD —
+solving the two wheels' tooth-interleaving phase so the teeth enter gaps
+— not re-checking the sense. `tools/probe-124-motionworks-sense.mjs`
+gates the half that is done and will not move when the other half lands.
+
+**A reader looking at the dial should know**: this half of the fix makes
+the motion works mechanically right without making it look better. The
+teeth stood tip-on-tip at some poses before and stand tip-on-tip at all
+of them now, which is the honest cost of fixing the sense before the
+clocking — the two wheels transmit correctly through a phase nobody has
+solved yet.
 
 **Five more meshes are off anti-phase and are NOT this item** — they are
 geared and merely mis-phased, which the spread tells apart from this

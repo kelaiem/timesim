@@ -37049,14 +37049,30 @@ function tick(t) {
   // hand is a child of hourWheelGroup, so rotating the wheel moves it.
   const mwMinuteA = minuteA * MW_RATIO_1;      // minute wheel + its pinion
   const mwHourA = mwMinuteA * MW_RATIO_2;      // hour wheel (and its tube)
-  mwArbor.rotation.z = mwMinuteA;
+  // TODO 124 — dial-side: carries the NEGATED movement-frame angle, the same
+  // rule as cannonPinion above and hourWheelGroup below. `mwArbor` was the one
+  // dialFace child keyed to a going-train quantity that TODO 115's pass missed,
+  // and it sat between two members that both carry the negation — so the minute
+  // wheel CO-ROTATED with the cannon pinion driving it (measured +0.333333
+  // against a bar of −0.333333, tooth tip on tooth tip: `meshPhase` read the
+  // pair at 50.00% of a pitch, the worst value that measure can take). The
+  // ratios were never the defect: MW_RATIO_1/2 are signed tooth-count
+  // quotients, so 12:1 always arrived through the counts — the sign was being
+  // dropped after it arrived. `mwHourA` above stays unnegated because it is a
+  // MOVEMENT-frame quantity; only the dial-side WRITE was ever wrong.
+  // Gated by tools/probe-124-motionworks-sense.mjs.
+  mwArbor.rotation.z = -mwMinuteA;
   // Minute jumper: the star is a child of mwArbor, so its dial-frame turn
-  // is mwMinuteA plus its build phase; the beak's tip rides the V profile
-  // passing its azimuth, on top of the crown-driven lift (crownPullT is
-  // already eased, so engagement is smooth). While running with the crown
-  // in, the lever holds clear of the points by the derived lift.
+  // is the arbor's own rotation plus its build phase; the beak's tip rides
+  // the V profile passing its azimuth, on top of the crown-driven lift
+  // (crownPullT is already eased, so engagement is smooth). While running
+  // with the crown in, the lever holds clear of the points by the derived lift.
   {
-    const starTurn = minuteStar.rotation.z + mwMinuteA;
+    // ONE SOURCE: read the arbor's own rotation rather than re-deriving it from
+    // mwMinuteA. A second copy of that sign is exactly the defect TODO 115
+    // spent two landings on (`linkOuterPtsNear`'s verbatim frame law), and the
+    // star is a child of mwArbor, so this IS its dial-frame turn by definition.
+    const starTurn = minuteStar.rotation.z + mwArbor.rotation.z;
     let u = ((JMP_TIP_AZ - starTurn) / STAR_PITCH) % 1;
     if (u < 0) u += 1;
     const rU = STAR_R - 2 * STAR_DEPTH * Math.min(u, 1 - u); // V profile: tips at u=0, valley at 0.5
