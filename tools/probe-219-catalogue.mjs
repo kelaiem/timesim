@@ -323,5 +323,33 @@ for (const [label, turns, sweep] of [
 }
 console.log(`  §152 widened the arc on 2026-08-21; the note was filed 2026-09-11, so it was stale on the day it was written.\n`);
 
+// REPORTED, not gated — TODO 134. Claim 5 holds at the SHIPPED reserve, and
+// the shipped reserve is the only one it can hold at: rsvTeethW2 = h/5 needs
+// h a multiple of 5, while layout.js snaps h to a multiple of 3 (the retired
+// 2h/3 rule, still in its comment). The default 30 is a multiple of both,
+// which is exactly why every gate stays green and why this needed a sweep to
+// see. Not gated here because the fix is a §22 design decision, not a
+// one-character change — see TODO 134.
+{
+  const menu = [24, 30, 36, 42, 48];                 // main.js's reserve select
+  const reach = [];
+  for (let h = 12; h <= 48; h += 3) reach.push(h);   // what the clamp can produce
+  const w2Of = async (h) => {
+    globalThis.__WATCH_SPEC = { reserveHours: h };
+    const M = await import(join(ROOT, 'src/layout.js') + '?todo134=' + h);
+    return { snapped: M.SPEC.reserveHours, w2: M.SPEC.reserveHours / Number(w2m[1]) };
+  };
+  const bad = [];
+  for (const h of reach) { const r = await w2Of(h); if (!Number.isInteger(r.w2)) bad.push(`${r.snapped}→${r.w2}`); }
+  const badMenu = [];
+  for (const h of menu) { const r = await w2Of(h); if (!Number.isInteger(r.w2)) badMenu.push(`${r.snapped}h→${r.w2}t`); }
+  globalThis.__WATCH_SPEC = undefined;
+  console.log('TODO 134 (reported, not gated) — the reserve clamp guards the retired rule');
+  console.log(`  layout.js snaps h to a multiple of 3; rsvTeethW2 = h/${w2m[1]} needs a multiple of ${w2m[1]}.`);
+  console.log(`  of ${reach.length} reachable values, ${bad.length} give a fractional tooth count: ${bad.join('  ') || 'none'}`);
+  console.log(`  of the ${menu.length} MENU options [${menu.join(', ')}], ${badMenu.length} do: ${badMenu.join('  ') || 'none'}`);
+  console.log(`  the default ${L.SPEC.reserveHours}h is a multiple of both, which is why every gate stays green\n`);
+}
+
 console.log(fails.length ? `FAILED — ${fails.length} claim(s)` : 'PASS — every gated claim holds');
 process.exit(fails.length ? 1 : 0);

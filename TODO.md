@@ -16136,3 +16136,58 @@ DROP chip begins when the wheel has advanced `BEAT_DEG − DROP_DEG`, not at a
 fraction of the window (the primer's chip had the same off-by-a-smoothstep,
 fixed alongside). The model lives twice — once per page, both sim-code-free
 by design — so a change to the stone law is owed to both plates.
+
+## 134. The reserve clamp snaps to a multiple of 3, but the second-stage wheel needs a multiple of 5 — four of the five menu options build a fractional tooth count
+
+`SPEC.reserveHours` is snapped to a multiple of THREE
+(`Math.round(h / 3) * 3`, `layout.js`), and the comment above it says why:
+"the reserve indicator's second-stage wheel takes 2h/3 teeth ... the spec
+must yield an integer wheel". That rule is retired. `rsvTeethW2` is
+`SPEC.reserveHours / 5` (`main.js`, and again at 4450 — the relation lives
+in two places), derived in §22 from the 300° graduation §152 shipped:
+R = (7h/120)·360/300 = 0.07h, stage one is 28/8, so stage two is h/50 and
+with p1 = 10 that is **h/5**. A multiple of 3 satisfies the retired
+constraint and not the live one.
+
+**Measured across every value the spec can take.** Of the thirteen
+multiples of 3 in the clamp's [12, 48] range, only 15, 30 and 45 yield an
+integer:
+
+    12 → 2.4   18 → 3.6   21 → 4.2   24 → 4.8   27 → 5.4   33 → 6.6
+    36 → 7.2   39 → 7.8   42 → 8.4   48 → 9.6        (15, 30, 45 → 3, 6, 9)
+
+**And it is reachable from the UI, not only from a URL.** The reserve
+menu offers `[24, 30, 36, 42, 48]` (`main.js`). Only 30 — the default —
+gives a whole wheel. Picking 48 h builds `rsvWheel2` with `teeth: 9.6`.
+
+**Nothing catches it.** `main.js` says of `rsvTeethW2` that it is "integer
+while the spec keeps h a multiple of 5 (the assert beside
+RESERVE_BARREL_TURNS is the guard when it does not)" — but the assert
+beside `RESERVE_BARREL_TURNS` is §47's, comparing it to
+`WIND_ARREST.engageTurns`. It says nothing about w2 being whole. There is
+no integer guard anywhere; `makeGear` takes the count as given.
+
+**Why it survived.** The same shape as TODO 18, one regraduation later.
+Every local reading agrees with itself: the clamp agrees with its own
+comment, the comment agrees with the retired 2h/3 rule, and the default
+30 h is a multiple of BOTH 3 and 5 — so the shipped movement is correct
+and every gate stays green. Only a non-default reserve exposes it, and the
+fingerprint is taken at the default.
+
+**The fix is not one character, which is why this is filed and not
+patched.** Snapping to 5 instead of 3 fixes the interior but not the
+ceiling: `Math.round(48/5)*5 = 50`, clamped back to 48, is fractional
+again — the clamp snaps THEN bounds, so the boundary re-enters through the
+bound. Three decisions belong to whoever owns §22: whether the cap moves
+to 45 or the order reverses; what the menu should offer (`[25, 30, 35, 40,
+45]` is the nearest honest set, and changes labels users have seen); and
+whether w2 should instead be derived so any h works, re-deriving the sweep
+per spec rather than fixing the graduation. The default must stay 30 so
+the identity spec and the fingerprint do not move.
+
+Whatever is chosen, the guard `main.js` already claims to have should exist:
+w2 integral, asserted at boot, beside the line that mints it.
+
+Found from §219's side — `tools/probe-219-catalogue.mjs` derives the
+reserve reduction from `RESERVE_SWEEP_DEG` rather than reading it, which is
+what turned the stale 4.2 in the LEGO note into this.
