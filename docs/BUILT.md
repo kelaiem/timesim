@@ -24329,7 +24329,7 @@ read the same 0 drift and 0 new plate overflow before and after.
 | §53's 240 px column | no content wider than its box |
 | `offline-check` | **36/36**, precache **45/45** (43 + two tables), the Italian primer served from cache — on a quiet machine; a first run beside two batteries dropped one unrelated row (the Traditional Chinese primer's offline boot) to contention, and the re-run alone read clean |
 | boot | `?lang=it` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('it-IT')` in the page reads `18.000`, `0,024` and `1.000`; the ladder assert extended with `it`, `it-IT`, `it-CH`, `it_CH` |
-| battery | RE-MEASURING on the rebased tree — the run below this line was made before §218 tier two moved the fingerprint on `main`, so its number (3534559869, 2173 s wall) describes a base this landing no longer sits on. The row is filled from the rebased run in the commit that follows; CI's battery on the PR head is the evidence either way. |
+| battery | **42/42 gates pass · total 478.0s (checks 294.5s across 3 shard(s))**, CI on this PR's head (ubuntu-latest); boot silent; **fingerprint A 3368155323** (57 units, 12 poses), deterministic across virgin boots and unit digests likewise (58 units, 43 poses) — IDENTICAL to `main`'s own hash after §218 tier two, which is the whole claim a translation landing owes: tables and roster rows build no geometry. The pre-rebase local run measured 3534559869 against the pre-tier-two base and is not this landing's evidence. The wall is 478 s rather than a full run's ~2200 s because §152's incremental path applied — `4/4 restricted checks unioned back to a whole-movement payload`, so the bar is still the whole movement's. |
 
 ### Residue, recorded
 
