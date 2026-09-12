@@ -8576,18 +8576,23 @@ export const MESH_PHASE_WAIVERS = {
   // two apart and were never read. Measured per declared input (0 | 0 is both
   // members still):
   //
-  //   idler 2 ⇄ arbor pinion            train ok, alarm ok      → transmits
+  //   idler 2 ⇄ arbor pinion            train ok, alarm ok      → CLOCKED
   //   cage wheel ⇄ finger pinion        alarmWind ok            → transmits
   //   keyless setting wheel ⇄ minute w. crown 0|0, handSet ok   → transmits once
   //   leg B pinion ⇄ idler pinion       alarmWind 0|0           → never exercised
   //   wind spur ⇄ transfer wheel        crown 0|0, wind 0|0     → never exercised
   //
-  // So the item's rule stands but its triage did not: only two rows are
+  // So the item's rule stands but its triage did not: only two rows were
   // verified geared on every input they declare, two are unjudgeable until an
   // axis exercises them (the `restoring` lesson — a part no axis MOVES is a
   // part an instrument cannot judge), and the two keyless rows are blocked on
   // TODO 125 regardless, since their 0.1 centre miss exceeds solveGearChain's
   // own 0.05 tripwire and it would refuse them aloud.
+  //
+  // `idler 2 ⇄ arbor pinion` IS GONE from this table: it was the one row that
+  // was simply never clocked, a second-stage solve now covers it, and it reads
+  // 43.107% → 0.057% over the net. This table's own stale gate named its
+  // waiver for deletion, which is the rule working rather than a tidy-up.
   'keyless: setting wheel ⇄ minute wheel': 'TODO 132',
   'keyless: wind spur ⇄ transfer wheel': 'TODO 132',
   // NOT flat and NOT 132's: measured driver-still under the HOUR (0 against the
@@ -8595,7 +8600,6 @@ export const MESH_PHASE_WAIVERS = {
   // it meshes carries `_bd`. That is TODO 117's second open row, already in its
   // table, and 132 was wrong to call it unchased.
   'alarm setting setting wheel ⇄ idler 1': 'TODO 117',
-  'alarm setting: idler 2 ⇄ arbor pinion': 'TODO 132',
   'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 132',
   // Solved by solveGearChain already (`alarm arrest output:`), transmitting at
   // its ratio, and still 26.880% off over the net against 0.098 of spread: the

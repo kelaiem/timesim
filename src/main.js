@@ -15218,10 +15218,37 @@ alarmRotor.add(alarmArborRod);
 // the idler. Same module as the whole train (see ALARM_SET_MODULE).
 {
   const pin = G.makePinion({ name: 'alarmSetArborPinion', module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, mates: [{ teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] }], thickness: ALARM_SET_T, material: MATS.steel });
-  // §194 — the setting chain's LAST mesh, past the end of the phase solve.
-  declareMesh('alarm setting: idler 2 ⇄ arbor pinion', { a: 'alarmSetIdler2', b: 'alarmSetArborPinion', inputs: ['train', 'alarm'], chain: 'alarm setting' });
   pin.position.z = ALARM_SET_Z;
   alarmRotor.add(pin);
+  // TODO 132 — THE SETTING CHAIN'S LAST MESH, CLOCKED. It was declared by hand
+  // here and left unsolved: the `alarm setting:` chain above stops at idler 2
+  // because this pinion does not exist yet when that solve runs, so the last
+  // link never got a phase and measured 43.107% of a pitch off anti-phase —
+  // tooth near tooth on the line of centres — with only 0.098 of spread.
+  //
+  // A flat spread is "geared but never clocked" ONLY when the pair is also
+  // measured transmitting, which is the distinction TODO 132's first triage
+  // missed. This one qualifies on both counts: `transmits` reads -3.700000
+  // against its tooth bar under the hour AND under the crown, exact to six
+  // figures (TODO 117 fixed this row's back-drive sign to get there), so the
+  // SUM invariant a phase solve establishes rides every pose rather than being
+  // true at the build pose alone.
+  //
+  // Second stage, the reserve train's form: idler 2's phase is READ — the
+  // chain above fixed it — and only the pinion turns. It aligns INSIDE
+  // `alarmRotor`, never the rotor itself, because the rotor is what the tick
+  // turns (`-alarmSetRot + 3*_bd`) and it also carries the arbor rod and the
+  // bevel mount; turning it would clock the teeth by moving the whole arbor.
+  // The build phase and the tick rotation compose, exactly as `fPin` composes
+  // inside `fpSpin` on the arrest side.
+  //
+  // solveGearChain declares every pair it phases, so the manual `declareMesh`
+  // that used to sit here is gone: keeping it would be a second row for the
+  // same metal, which is what TODO 124 had to unpick.
+  solveGearChain('alarm setting:', [
+    { obj: alarmSetI2Spin.children.find((o) => o.isGroup || o.isMesh), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' },
+    { obj: pin, teeth: ALARM_SET_PINION_TEETH, name: 'arbor pinion' },
+  ], ALARM_SET_MODULE, ['train', 'alarm']);
 }
 // Lower bearing — §24's collar rode a well-floor bore that no longer exists
 // (the well healed when the indicator moved to the centre stack). The honest
