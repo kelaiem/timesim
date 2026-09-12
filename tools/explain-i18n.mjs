@@ -192,6 +192,11 @@ const MARKS = {
   // accepted for the same reason they are for French: a translator's keyboard
   // and older ICU produce them, and flanked by digits they are unambiguous.
   ru: { group: ['\u00a0', '\u202f', '\u2009'], dec: ',' },
+  // §214 — German's marks, and a decision like Spanish's: pt-PT groups with
+  // U+00A0 and leaves four digits bare, pt-BR points and groups them all.
+  // The chrome formats through 'pt-BR' (src/i18n.js LOCALES says why), and a
+  // table must read as the chrome does.
+  pt: { group: ['.'], dec: ',' },
 };
 const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {

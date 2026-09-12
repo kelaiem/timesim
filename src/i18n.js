@@ -90,6 +90,16 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // both. Its plural rule has four categories, free while no chrome string
 // pluralizes a count — the first templated count anywhere in the chrome
 // would need Intl.PluralRules, and this comment is where that fact lives.
+// §214 — Portuguese is Spanish's split one character over: the region
+// decides the GROUP mark. Measured in Chromium 141, 'pt-BR' formats
+// 30,0 · 0,024 · 1.000 · 18.000 and 'pt-PT' formats 30,0 · 0,024 · 1000 ·
+// 18 000 (U+00A0, four digits ungrouped). One row is one table and the
+// primer's numbers are written in it, so the tag picks: 'pt-BR' — the
+// larger standard, and its marks are already in the roster (German's). A
+// European reader gets 18.000 where their browser would write 18 000,
+// legible if unfamiliar; the second-row fix is §209's, unsupported today.
+// Vocabulary is post-agreement spelling with Brazilian words where the two
+// standards differ. Nothing else in this array begins 'pt'.
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
@@ -97,6 +107,7 @@ export const LOCALES = [
   { code: 'es', face: 'Español', tag: 'es-ES', match: (v) => v.startsWith('es') },
   { code: 'ko', face: '한국어', tag: 'ko-KR', match: (v) => /^ko(-|$)/.test(v) },
   { code: 'ru', face: 'Русский', tag: 'ru-RU', match: (v) => v.startsWith('ru') },
+  { code: 'pt', face: 'Português', tag: 'pt-BR', match: (v) => v.startsWith('pt') },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
   { code: 'zh', face: '简体中文', tag: 'zh-CN', match: (v) => v.startsWith('zh') },
@@ -137,6 +148,9 @@ for (const [input, want] of [
   // (_norm lowercases and maps '_' to '-' before matching, so ko_KR lands too.)
   ['ko', 'ko'], ['ko-KR', 'ko'], ['ko_KR', 'ko'], ['kok', null], ['kok-IN', null],
   ['ru', 'ru'], ['ru-RU', 'ru'], ['ru_RU', 'ru'], ['ru-BY', 'ru'],
+  // §214 — every Portuguese region lands on the one table, the European ones
+  // included; the row's tag, not the reader's region, decides the group mark.
+  ['pt', 'pt'], ['pt-BR', 'pt'], ['pt-PT', 'pt'], ['pt_PT', 'pt'], ['pt-AO', 'pt'],
   ['ja', 'ja'], ['ja-JP', 'ja'],
   // The rows this assert is really for. Every one of these begins 'zh', and
   // the wrong answer is a legible page in the wrong script — no error anywhere.
