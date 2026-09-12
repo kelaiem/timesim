@@ -1,7 +1,14 @@
 // §3 — THE BOX SAPPHIRE DIAL: IS IT GLASS, IS IT THE SAME METAL, CAN THE
 // PRINT STILL BE READ? Acceptance. Boots the identity build twice — the
-// shipped silvered dial, then `dial.plate.sapphire` set through the
-// aesthetics override store — and holds §3's four claims:
+// silvered dial, then §3's CLEAR sapphire one — with `dial.plate.sapphire`
+// and `dial.plate.smoke` BOTH written through the aesthetics override store
+// on both boots, and holds §3's four claims. Both seeded explicitly since
+// §222 made the smoked sapphire dial the schema's default: this probe used to
+// get its silvered boot by writing no override at all, and that boot silently
+// became a sapphire one the moment the default moved — an acceptance test
+// whose control is "whatever ships" stops testing what it names. Its sapphire
+// boot pins `smoke` to 1 for the same reason: §3's claims are about the CLEAR
+// crystal's recipe, and §220's coat is probe-220-smoke.mjs's subject.
 //   1. BOTH BOOT SILENT. The §157 ink gate runs on the sapphire ground (the
 //      crystal's tint over the base plate's nickel) exactly as on the face,
 //      so silence here is the legibility measurement, not its absence.
@@ -35,7 +42,8 @@ const browser = await chromium.launch();
 
 async function boot(sapphire) {
   const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } });
-  if (sapphire) await ctx.addInitScript(() => localStorage.setItem('aestheticsOverrides', JSON.stringify({ dial: { plate: { sapphire: true } } })));
+  // Both keys, both boots — never the schema's default (see the header).
+  await ctx.addInitScript((v) => localStorage.setItem('aestheticsOverrides', JSON.stringify(v)), { dial: { plate: { sapphire, smoke: 1 } } });
   const page = await ctx.newPage();
   const warns = [];
   page.on('pageerror', (e) => warns.push('PAGEERROR ' + String(e)));

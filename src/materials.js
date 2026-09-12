@@ -254,7 +254,11 @@ export const SAPPHIRE_IOR = 1.77;
 // answer. Written as α_c + (1 − α_c)(1 − T²) rather than 1 − (1 − α_c)T² so
 // that T = 1 returns α_c EXACTLY (no 1 − 0.86 rounding) — the identity
 // control: smokedGlass(1) IS CRYSTAL_GLASS byte for byte, asserted at boot
-// below, and a boot at the default is the shipped picture. The colour is
+// below. §222 made 0.45 the schema's default, so the shipped dial is now the
+// smoked one and T = 1 is no longer where the picture sits — which is exactly
+// why the identity stays asserted: the ceiling has to keep returning §3's
+// clear crystal for the reader who slides there, and the assert is the only
+// thing holding the law to it now that no boot exercises it. The colour is
 // solved per channel in the 8-bit sRGB bytes the recipe is written in, the
 // same arithmetic geometry.js's ground composite uses, so the material and
 // the ink solve read one number. Nothing here is a target: every value is a

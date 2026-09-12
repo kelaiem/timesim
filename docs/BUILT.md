@@ -19867,6 +19867,12 @@ Dial preset are in the PR.
 outline), and any depth to the glass beyond the plate's own thickness. The knob is
 the owner's to make the default — one line in the schema — and it ships OFF so the
 shipped picture is the shipped picture. Roadmap §3 has no remainder.
+
+> **§222 made that call.** `dial.plate.sapphire` now ships ON, at §220's coat: the
+> shipped picture is a smoked sapphire dial. The sentence above is left as written
+> because it is what §3 decided and why, and §222 is the decision that overrides
+> it, not a correction of it. Everything else in this entry still describes the
+> knob — including the silvered dial, which is now what unticking the box gets you.
 ## §185 — the dial's colour travels in the link
 
 `?dialcol=rrggbb`. Pick a dial colour, press Copy view, and the person who
@@ -23898,8 +23904,11 @@ at 1 − T² beneath it, the pair folded into one alpha material:
 
 Written as α_c + (1 − α_c)(1 − T²) rather than 1 − (1 − α_c)T² so that T = 1
 returns α_c exactly and `smokedGlass(1)` IS `CRYSTAL_GLASS` byte for byte —
-the identity control, asserted at boot, and the reason a boot at the default
-is the shipped picture. Nothing here is a target: every value is a
+the identity control, asserted at boot, and the reason the ceiling of this
+knob is §3's picture and not an approximation of it. (At landing that was
+also the DEFAULT, and this entry said so; §222 moved the default to 0.45, so
+the assert is now the only thing exercising T = 1 — which is what an identity
+control is for.) Nothing here is a target: every value is a
 consequence of T, `CRYSTAL_GLASS` and the plate behind.
 
 **The coat lives in the matter.** The plate body and both pocket walls take
@@ -24478,3 +24487,103 @@ is a spacing defect every tall script would have found.
 - **The lakh grouping is unexercised.** `1,00,000` is correct Hindi and no
   string on either page reaches six digits, so nothing renders it today.
 - **`index.html`'s `<title>` is not localized in any locale** — still true.
+
+## §222 — The smoked sapphire dial becomes the shipped picture
+
+`dial.plate.sapphire` ships `true` and `dial.plate.smoke` ships `0.45`. Two
+values in `src/aesthetics.json`; no code moved, no metal moved. §3 built the
+box sapphire dial and shipped it OFF "so the shipped picture is the shipped
+picture"; §220 built the Lumen coat on it and shipped it at T = 1 for the same
+reason. Both entries said the default was the owner's call, one line in the
+schema. This is that call, and it is written down as a landing rather than
+slipped in as a tweak because a default is a claim about what this project IS —
+the picture in every screenshot, every fresh browser, `test-geometry.html`'s
+`makeDial` panel, and the identity boot the battery holds silent.
+
+### Why T = 0.45, and not any other number in the window
+
+The knob's own bounds are `[0.41, 1]`. That interval is not the choice's
+window, because most of it does not produce the thing the reference names.
+Three constraints cut it down, and the fourth turns out not to bind:
+
+- **The floor, 0.41** (§220, derived): below it the reserve sub-dial's zone
+  gate can no longer place a tone with 3:1 against both the face and the ticks,
+  and boot warns. A default that warns is not a default.
+- **Lange's own qualitative figure**, the only quantity the reference gives:
+  the coating "blocks most of the visible light", so T < 0.5. On the slider's
+  0.01 step the highest value that satisfies it is **0.49**.
+- **The ink solve's flip, at 0.58/0.59** (§220, derived on the rendered
+  composite): above it the print stays on the dark pole, and dark print on a
+  lightly-smoked ground is a grey dial, not a Lumen. Not binding — the whole
+  window above already sits nine steps below the flip — but it is the
+  constraint that makes the *look* the reference's, so it is checked rather
+  than assumed.
+- **The works' own legibility floor, T 0.27** (§220's `--scan`, the CIELAB
+  JND): fourteen steps under the schema's floor, so it never enters.
+
+The admissible window is therefore **[0.41, 0.49]**, and the shipped value is
+its **midpoint, 0.45** — four slider steps of margin from the gate that warns
+below and four from the reference's claim above, which is the only defensible
+place to stand when the two ends are a hard boot gate and a borrowed
+qualitative bound of unknown tightness. It is also, and not by coincidence,
+the value `tools/probe-220-smoke.mjs` has booted as its Lumen-dark case since
+§220 landed: the default is the number the acceptance was already written
+against, not a new one that now needs one.
+
+What that buys, measured on this boot: the plate body and both pocket walls at
+`#2a2b2b` @ 0.8258, the rendered ground `#5f6062`, and the §196 solve printing
+the **light pole `#eaeaea` at 5.23:1** against the 3:1 floor — light print on a
+smoked ground, arriving because the ground moved and the solve read it. Under
+x-ray the body and walls swap to the clear twin at 0.14, so the toggle still
+shows the works.
+
+### One instrument was measuring the default instead of its subject
+
+`tools/probe-3-sapphire.mjs` got its SILVERED boot by writing no override at
+all. That was correct while the schema shipped silvered and it silently became
+a second sapphire boot the moment this change landed — an acceptance test whose
+control is "whatever ships" stops testing what it names, and it does so without
+failing. Both boots now write both keys explicitly, and the sapphire one pins
+`smoke` to 1, because §3's claims are about the CLEAR crystal's recipe and
+§220's coat is the other probe's subject. `probe-220-smoke.mjs` was already
+explicit on `sapphire`; its silvered control now pins `smoke` too, for the same
+reason rather than for a symptom.
+
+`T_SMOKE = 0.45` stays written in that probe rather than read from the schema,
+deliberately: it is the acceptance the default was chosen against, so if the
+schema's `smoke` ever moves, the probe goes on holding 0.45 and the battery's
+boot-silence holds the new value — two independent reads instead of one number
+checking itself.
+
+### Instruments
+
+```
+node tools/probe-3-sapphire.mjs     12 OK, 0 FAIL   (both boots seeded; silvered
+                                                     and clear-sapphire claims unmoved)
+node tools/probe-220-smoke.mjs      21 OK, 0 FAIL   (T=0.45 boots silent, light pole
+                                                     #eaeaea at 5.23:1, x-ray shows the works)
+```
+
+Battery: **41/41 gates pass** in CI on this landing's own job, routed to the
+self-hosted runner by its title (§200; runner `battery-1-3229`, label
+`timesim-battery`), total 759.5 s — fingerprint deterministic at
+**3368155323**, unit digests deterministic (58 units, 43 poses), boot silent,
+spec boots 32/32 with the identity control silent. That last line is the
+load-bearing one now: the identity boot IS the smoked sapphire dial, so the
+§157 ink gate and the reserve zone gate run on the shipped ground rather than
+on a silvered one. Locally, `40/40 gates pass · total 2002.2s` on the dev
+container at the same fingerprint. And 3368155323 is what `origin/main`
+reports on the same machine — measured, not argued: the two trees build the
+same metal.
+
+`smokedGlass(1) ≡ CRYSTAL_GLASS` is still asserted at boot and is now the ONLY
+thing exercising T = 1, since no boot sits there any more. That is what an
+identity control is for, and it is why the assert was written as an assert
+rather than as a comment about the default.
+
+**What this does not change.** No geometry: both probes compare 144 meshes by
+name, vertex count and own bounds across the boots and find them identical, and
+materials enter neither the fingerprint nor any sweep. No API, no link
+parameter (the smoke is browser-local and does not travel). And no claim about
+lume — §220's "not modelled" list is unchanged, and shipping the tint by
+default does not ship the reason Lange's coating exists.

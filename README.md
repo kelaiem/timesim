@@ -464,7 +464,7 @@ says so under "Not modelled", and a lume entry would be its own §. The
 transmittance `dial.plate.smoke` is this project's own knob, derived against
 its own legibility gates; Lange publishes no figure for it. Only the
 qualitative "most of the visible light" is borrowed, and only to put the
-Lumen-dark boot below T 0.5.
+Lumen-dark coat below T 0.5 — which is where the shipped 0.45 sits (§222).
 
 - A. Lange & Söhne, [*The "Lumen" models*](https://www.alange-soehne.com/eu-en/timepieces/selections/lumen)
 - A. Lange & Söhne, [*Datograph Up/Down "Lumen"*](https://www.alange-soehne.com/eu-en/timepieces/saxonia/datograph-updown-lumen)
