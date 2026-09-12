@@ -23979,3 +23979,92 @@ to charge — no lume exists in the sim, and a lume entry would be its own §;
 a non-neutral or graded smoke; the coat's second pass on specular reflections
 from the works behind (the law corrects the diffuse ground; the environment's
 reflections off the wheels arrive through one pass).
+## §213 — Russian — Cyrillic on the plates, and the widest chrome bar yet
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(689 keys) and `primer.html` (134 keys) read Russian at 100% in one landing,
+§209's recipe item for item. Ten locales now.
+
+**Why Russian, in the §73 idiom.** German has held the width record since
+§73, and the entry predicted Russian would take it: longer words on average,
+and the plates' `.lbl` class forces UPPERCASE with letter-spacing, where
+uppercase Cyrillic is wider still. Measured, the prediction was wrong by
+1.5 px and right in kind: the chrome bar reads **190.9** against German's
+192.4 (English 170.2) — the closest any locale has come, and still second —
+and the plate pass was the widest of the nine after Spanish's, eleven labels
+against Spanish's thirty-seven. The bar's rules read the bar's own rect
+(`chromeFits`), so nothing derived from the width had to move; the comment
+carrying the ordering claim did, and it now says Russian's number.
+
+**The group mark is a space, and it is a different space from French's.**
+`ru-RU` formats `30,0 · 0,024 · 1 000 · 18 000` in Chromium 141 with
+**U+00A0 NO-BREAK SPACE** between the groups — the second space-grouped
+locale in the roster, where French emits U+202F NARROW NO-BREAK SPACE.
+`MARKS.ru` is French's list with the plain no-break space first, for the
+reason §116 wrote on French's row: the three render identically and a
+translator's keyboard produces any of them, while a plain ASCII space stays
+rejected because `5 100` in prose is two quantities. The primer's numbers
+were typed with the real U+00A0 and the boot probe confirmed the chrome
+formats `18 000` the same way. Its plural rule has four categories —
+`one / few / many / other` — and that costs nothing today because no chrome
+string pluralizes a count; the fact is written on the `LOCALES` row, which
+is where the first templated count would find it.
+
+**The glossary is the Russian watch industry's, not a calque.** The Soviet
+industry's vocabulary is complete and still current, so every part had a
+name to choose rather than to coin: анкерный спуск, анкерная вилка and
+палеты, ходовое колесо, баланс and волосок, заводная пружина, барабан,
+**фузея** (the language has the word), цепь, главное колесо, колёсная
+передача, стрелочный механизм, заводная головка, колонное колесо;
+покой / притяжка / импульс / падение for the escapement's phases; копьё for
+the guard pin, эллипс for the roller jewel, собачка for a click against
+защёлка for a driving pawl. `A/h` stays `A/h`, as the trade writes it.
+Смоделировано and симулировано are held apart. Ten translators against
+the glossary; the seams they reported were different parts sharing an
+English word rather than one part with two names (finger is палец on the
+fusee arrest and поводок on the Geneva driver; lock is запор on the alarm
+brake and покой as an escapement phase), and were left as recorded.
+
+**Eleven plate labels overran, every fix in the label.** Nine on the
+explainer, two on the primer, against the English baseline: *p (beat)* is
+*p (такт)* because *полуколебание* would triple the English width in
+uppercase monospace; the wind-train arrow line lost a verb; the great wheel
+and the centre wheel on the primer's train plate both shortened so the
+pair stops colliding (*главное · 120 зубьев* beside *центральное*). Digits
+untouched, never the tolerance; the gate reads **0 new overflow or collision
+vs English** on both pages.
+
+**The explainer keeps Latin units; the primer takes Russian ones.** The
+explainer's numbers are identifiers being quoted, so `mm`, `Hz` and `dBA`
+stay as the source writes them; the primer's are quantities, so they read
+`мм`, `Гц`, `с` beside the decimal comma — the two pages' declared number
+rules, applied to units as well as marks.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **689/689**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Russian**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
+| `#chrome-bar` | ru **190.9** against en 170.2 — second only to German's 192.4, by 1.5 px |
+| `.hud-ro-label` | Время 30.1, Звонит в **40.6** against 150 px — one line, well inside Spanish's and Korean's 52.8 |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **34/34**, precache **41/41** (39 + two tables), the Russian primer served from cache |
+| boot | `?lang=ru` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('ru-RU').format(18000)` in the page reads `18` U+00A0 `000`; the ladder assert extended with `ru`, `ru-RU`, `ru_RU`, `ru-BY` |
+| battery | **40/40 gates**, local (dev container, 3 shards, 1446 s wall, 3366 s of checks); boot silent; fingerprint **3534559869** (57 units, 12 poses) deterministic across virgin boots — IDENTICAL to the base it was measured against, which the tables cannot move: §73's, §116's, §208's, §209's and §211's form of "no geometry moved". §218 then landed on `main` under this PR and moved the fingerprint to its own 2050941457; the merge carries it, and CI's battery on the merged head (**40/40** on the pre-merge head, a full run of 38 min on ubuntu-latest) is the run on the landed tree |
+
+### Residue, recorded
+
+- **No native review pass** — the same IOU every locale carries. The
+  register is the industry's; a reader from the enthusiast forums may know
+  some parts by their loanwords (баланс is shared, but *спираль* for the
+  hairspring is heard beside *волосок*), and the glossary is where that
+  lands.
+- **The four plural categories are unexercised** — no chrome string
+  pluralizes a count. The first that does needs `Intl.PluralRules`, and the
+  row's comment is the marker.
+- **`Platinum` is *платина* and so is the plate** — the only correct Russian
+  for both, disambiguated by the alloy menu it sits in; noted because the
+  glossary rule is one name per part, and here one name serves two.
+- **`index.html`'s `<title>` is not localized in any locale** — still true.

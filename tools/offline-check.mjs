@@ -306,8 +306,8 @@ try {
   // §209 — 37: 35 + Spanish's two tables (one per page). Two per locale is
   // the rule; a locale that shipped one page and not the other is §116's
   // shape and would land at an odd number, which this literal would catch.
-  // §211 — 39: Korean's two tables.
-  check('release: precache complete', counts === 39, `${counts}/39`);
+  // §211 — 39: Korean's two tables. §213 — 41: Russian's.
+  check('release: precache complete', counts === 41, `${counts}/41`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -345,7 +345,7 @@ try {
   // missing table from another, and a per-locale dynamic import is exactly the
   // kind of thing that gets added to a LOADERS map and forgotten in a file
   // name; this loop is what makes each one prove itself from cache.
-  for (const code of ['de', 'fr', 'es', 'ko', 'ja', 'zh', 'zh-Hant', 'ar']) {
+  for (const code of ['de', 'fr', 'es', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'ar']) {
     await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, { waitUntil: 'load' });
     const ok = await page.evaluate((c) =>
       document.documentElement.lang === c
