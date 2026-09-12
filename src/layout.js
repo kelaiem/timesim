@@ -75,10 +75,18 @@ export const SPEC = (() => {
   // turn, one turn per 8 h) grows past what the plate floor can absorb —
   // the three-quarter-plate boot assert is the backstop, this clamp is the
   // courtesy that keeps a typo from tripping it.
-  // Snapped to a multiple of 3: the reserve indicator's second-stage wheel
-  // takes 2h/3 teeth (TODO 18 — its ratio is derived from the scale, so the
-  // spec must yield an integer wheel; see rsvTeethW2 in main.js), and a
-  // tooth count is not a place for rounding error.
+  // Snapped to a multiple of 3 — WHICH GUARDS A RETIRED RULE (TODO 134).
+  // This read "the reserve indicator's second-stage wheel takes 2h/3 teeth",
+  // and that was true of the 150°-arc indicator. Since §152 graduated the arc
+  // to 300°, `rsvTeethW2` is `SPEC.reserveHours / 5` (main.js), so an integer
+  // wheel needs h a multiple of FIVE and this snap does not deliver one: ten
+  // of the thirteen reachable values are fractional, as are four of the five
+  // reserve-menu options. The default 30 is a multiple of both, which is why
+  // the shipped movement is correct and nothing has ever warned. Left as-is
+  // deliberately — moving the snap to 5 re-enters the problem at the ceiling
+  // (round(48/5)·5 = 50, clamped back to 48), so the repair is a §22 decision
+  // about the cap and the menu, not an edit to this line. A tooth count is
+  // still not a place for rounding error.
   const reserveHours = Number.isFinite(Number(raw.reserveHours))
     ? Math.min(48, Math.max(12, Math.round(Number(raw.reserveHours) / 3) * 3)) : 30;
   // §33 step 1 — the crown's azimuth (movement-frame world degrees of the
