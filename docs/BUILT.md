@@ -24122,7 +24122,7 @@ collision vs English** on both pages.
 | §53's 240 px column | no content wider than its box |
 | `offline-check` | **35/35**, precache **43/43** (41 + two tables), the Portuguese primer served from cache |
 | boot | `?lang=pt` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('pt-BR')` in the page reads `18.000` and `0,024`; the ladder assert extended with the five Portuguese rows |
-| battery | BATTERY_LINE |
+| battery | **40/40 gates**, local (dev container, 3 shards, 2300 s wall, 5511 s of checks — two other batteries running beside it); boot silent; fingerprint **3534559869** (57 units, 12 poses) deterministic across virgin boots — IDENTICAL to the base it was measured against, which the tables cannot move: §73's, §116's, §208's, §209's, §211's and §213's form of "no geometry moved". §218 landed on `main` before this PR and moved the fingerprint to its own 2050941457; the rebase carries it, and CI's battery on the rebased head is the run on the landed tree |
 
 ### Residue, recorded
 
