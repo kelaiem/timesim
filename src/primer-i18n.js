@@ -39,6 +39,7 @@ const LOADERS = {
   es: () => import('./primer-i18n.es.js'),
   ko: () => import('./primer-i18n.ko.js'),
   ru: () => import('./primer-i18n.ru.js'),
+  pt: () => import('./primer-i18n.pt.js'),
   ja: () => import('./primer-i18n.ja.js'),
   zh: () => import('./primer-i18n.zh.js'),
   'zh-Hant': () => import('./primer-i18n.zh-Hant.js'),
