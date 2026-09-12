@@ -43,7 +43,10 @@
 // every stored row for numbers no check can read. The FACTS stay here, where
 // the assert that holds them true against the page's own axes reads them.
 export const INSPECTION_SLICES = [
-  { axis: 'beat', poses: 97 },
+  // §221 — 340: the beat axis's n is DERIVED from the escapement's recoil dip
+  // (inspect.js), not authored, so this fact tracks IMPULSE_WIDTH. It read 97
+  // while the window was an authored 0.16 of a beat.
+  { axis: 'beat', poses: 340 },
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
@@ -298,7 +301,7 @@ export function mergeExtrema(parts, axisMeta) {
 // claim about THAT check's loop, and the day one of them stops sweeping an
 // axis, the roster that has to change is its own.
 export const CLEARANCE_SLICES = [
-  { axis: 'beat', poses: 97 },
+  { axis: 'beat', poses: 340 },
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
@@ -317,7 +320,7 @@ export const CLEARANCE_SLICES = [
 ];
 
 export const EXPECTED_CONTACT_SLICES = [
-  { axis: 'beat', poses: 97 },
+  { axis: 'beat', poses: 340 },
   { axis: 'crown', poses: 49 },
   { axis: 'reserve', poses: 61 },
   { axis: 'wind', poses: 721 },
