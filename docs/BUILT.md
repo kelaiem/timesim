@@ -24448,6 +24448,18 @@ node tools/probe-220-smoke.mjs      21 OK, 0 FAIL   (T=0.45 boots silent, light 
                                                      #eaeaea at 5.23:1, x-ray shows the works)
 ```
 
+Battery: **41/41 gates pass** in CI on this landing's own job, routed to the
+self-hosted runner by its title (§200; runner `battery-1-3229`, label
+`timesim-battery`), total 759.5 s — fingerprint deterministic at
+**3368155323**, unit digests deterministic (58 units, 43 poses), boot silent,
+spec boots 32/32 with the identity control silent. That last line is the
+load-bearing one now: the identity boot IS the smoked sapphire dial, so the
+§157 ink gate and the reserve zone gate run on the shipped ground rather than
+on a silvered one. Locally, `40/40 gates pass · total 2002.2s` on the dev
+container at the same fingerprint. And 3368155323 is what `origin/main`
+reports on the same machine — measured, not argued: the two trees build the
+same metal.
+
 `smokedGlass(1) ≡ CRYSTAL_GLASS` is still asserted at boot and is now the ONLY
 thing exercising T = 1, since no boot sits there any more. That is what an
 identity control is for, and it is why the assert was written as an assert
