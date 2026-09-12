@@ -24068,3 +24068,71 @@ rules, applied to units as well as marks.
   for both, disambiguated by the alloy menu it sits in; noted because the
   glossary rule is one name per part, and here one name serves two.
 - **`index.html`'s `<title>` is not localized in any locale** — still true.
+
+## §214 — Portuguese — one table for two written standards, the register named
+
+**Shipped whole.** The chrome (`src/i18n.js`, 444 keys), `explain.html`
+(689 keys) and `primer.html` (134 keys) read Portuguese at 100% in one
+landing, §209's recipe item for item. Eleven locales now.
+
+**Why Portuguese, in the §73 idiom.** Spanish (§209) is the region split on
+the decimal mark; Portuguese is the same split one character over, on the
+GROUP mark. Measured in Chromium 141, `pt-BR` formats `30,0 · 0,024 · 1.000
+· 18.000` and `pt-PT` formats `30,0 · 0,024 · 1000 · 18 000` — the same
+decimal, a different group character (U+00A0), and a different four-digit
+rule. The two entries together make the roster's rule explicit: a row
+carries one tag, a table is typed in one convention, and the choice is
+written on the row. Here the row says `tag: 'pt-BR'` — the larger standard,
+whose marks are already in the roster (German's) — with the measurement and
+the consequence in its comment: a European reader gets `18.000` where their
+browser would write `18 000`, legible if unfamiliar, and the second-row fix
+is §209's, unsupported today. The ladder assert takes `pt`, `pt-BR`,
+`pt-PT`, `pt_PT` and `pt-AO`.
+
+**The register is decided and the alternative recorded.** Post-1990
+orthographic-agreement spelling, so a European reader finds it familiar;
+Brazilian words where the two standards differ, each translator's notes
+carrying the European alternative beside the choice (*balanço* for the
+balance where Portugal says *volante*; *embreagem* / *embraiagem*;
+*mostrador*, *ponteiros*, *caracol* for the fusee — the traditional word in
+both standards — *rodagem* for the train, *roda de colunas*, *pulsador*,
+*sautoir*; *repouso / tiragem / impulso / queda* for the escapement's
+phases). *Modelado* and *simulado* held apart. Ten translators against the
+glossary; two seams reconciled by hand afterwards: the striking wheel is
+*roda de toque* everywhere (one chunk had *roda de percussão*) and the
+winding arrest *batente de corda* (one heading had *trava de corda*).
+
+**Six plate labels overran, every fix in the label.** All six on the
+explainer, none on the primer, against the English baseline — the same
+labels Spanish shortened (the wind-train arrow line, the link beak, the
+alarm crown, the two long plate captions), which is what "Spanish's split
+one character over" predicts: a Romance locale of the same length class.
+Digits untouched, never the tolerance; the gate reads **0 new overflow or
+collision vs English** on both pages.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **689/689**, primer **134/134**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 new plate overflow on both pages — PASS, the whole run |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| page headers | **56 px in Portuguese**, both pages, at 1440/1100/900/830/821/820/700/480 — one line, matching English |
+| `#chrome-bar` | pt **176.9** against en 170.2 (*Controles / Vista / Mostrador*); German's 192.4 still the widest |
+| `.hud-ro-label` | Tempo 30.0, *Toca às* **34.5** against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **35/35**, precache **43/43** (41 + two tables), the Portuguese primer served from cache |
+| boot | `?lang=pt` on all three documents console-silent (the environment's own lines filtered); `Intl.NumberFormat('pt-BR')` in the page reads `18.000` and `0,024`; the ladder assert extended with the five Portuguese rows |
+| battery | BATTERY_LINE |
+
+### Residue, recorded
+
+- **No native review pass** — the same IOU every locale carries. The
+  register is Brazilian; a Portuguese reader will find *balanço* where they
+  say *volante* and *embreagem* for *embraiagem*, and the translators'
+  notes already hold the alternative for each.
+- **`pt-PT` is a second-row question**, exactly §209's: the same words with
+  the other group mark and no grouping under five digits; one code is one
+  file today.
+- **`Platinum` is *platina* and so is the plate** — Russian's finding
+  (§213) recurs; disambiguated by the alloy menu it sits in.
+- **`index.html`'s `<title>` is not localized in any locale** — still true.
