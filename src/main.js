@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { MATS, CRYSTAL_GLASS, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
+import { MATS, CRYSTAL_GLASS, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM, METAL_PARAM } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
@@ -28313,6 +28313,23 @@ function askTour(onProceed) {
     }
   };
   buildAdvanced();
+  // §220 — the smoke slider is a property of the SAPPHIRE dial and means
+  // nothing on a silvered one, so its control follows the sapphire box:
+  // disabled while the box is off, enabled the moment it is ticked (both
+  // reload-tier, so the picture changes on the next boot either way). Rows
+  // are found by their key path — the one English-by-contract handle a
+  // generated row carries — never by label text (CLAUDE.md's rule).
+  {
+    const rowFor = (path) => advFilterables.find((f) => f.row.querySelector('.adv-label')?.title.startsWith(path + ' '))?.row
+      || advFilterables.find((f) => f.row.querySelector('.adv-label')?.title === path)?.row;
+    const smokeIn = rowFor('dial.plate.smoke')?.querySelector('input');
+    const sapphireIn = rowFor('dial.plate.sapphire')?.querySelector('input');
+    if (smokeIn && sapphireIn) {
+      const sync = () => { smokeIn.disabled = !aesthetics.dial.plate.sapphire; };
+      sync();
+      sapphireIn.addEventListener('input', sync);
+    }
+  }
   document.getElementById('advanced-filter').addEventListener('input', (e) => {
     const q = e.target.value.trim().toLowerCase();
     for (const f of advFilterables) f.row.style.display = (!q || f.hay.includes(q)) ? '' : 'none';
@@ -31533,8 +31550,14 @@ for (const m of xrayMeshes) {
   // as it is. A 0.28 clone of a 0.14 glass would make the dial MORE opaque
   // under x-ray — the toggle's opposite — and the print sheet's alpha lives
   // in its texture, which a cloned opacity would double-count.
+  // §220 — unless it is SMOKED: the self-map was derived for a 0.14 glass
+  // being more transparent than the 0.28 x-ray glass, and a smoked plate at
+  // opacity 0.86 would hide the works the toggle exists to show. A smoked
+  // material maps to its CLEAR twin (materials.js XRAY_CLEAR — the same
+  // corundum under the crystal's own coat); at T = 1 there is no twin and
+  // xrayClearFor returns the material itself, §3's self-map verbatim.
   if (m.material.userData && m.material.userData.glass) {
-    xrayClones.set(m.material, m.material);
+    xrayClones.set(m.material, xrayClearFor(m.material));
     m.userData.solidMat = m.material;
     continue;
   }
