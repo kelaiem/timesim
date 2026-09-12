@@ -34,3 +34,7 @@ tools/press-trace.json
 # than as a reminder — a probe worth keeping earns a real name and a header
 # saying what it answers.
 tools/_*.mjs
+
+# A worktree that borrows the main clone's dependency tree does it with a symlink,
+# and `node_modules/` (directory-only) does not ignore a symlink — §211 committed one.
+tools/node_modules
