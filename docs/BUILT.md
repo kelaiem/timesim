@@ -23645,3 +23645,20 @@ boundary-value solve and reports the force that solve implies. The ×6 lever
 on the visible breathing is the amplitude (45° performed against 270°
 physical) and is untouched; the law is valid there so that decision, if
 taken, costs nothing here.
+
+### Verified
+
+`node tools/ci-battery.mjs --report …` locally on the dev container (3 shards):
+**40/40 gates pass · total 2071.3 s (checks 4940.2 s across 3 shards)** — boot
+silent, support 0, graph clean, axisEntry 364 pairs clean, penetration and
+stockFloor (655 rows, 50 waived, the same debt as `main`) green, alarmHandoffs
+13/0 waived, intraUnit and assembly clean, expectedContacts 23 pairs / 1
+waived, `oscillator` PASS with its new rows (implied 2.5 Hz, ribbon 0.0227 mm,
+clamp ×1.0040, pivot 0.0042 mN @45° / 0.0275 @270°, stress 134/700 MPa),
+equalisation, restoring, transfers, meshPhase, meshCoverage, transmits green,
+inspection 0 FORBIDDEN over 58 units, clearances 0 violations over 32 budgets,
+sweptOverlap 0 CONFIRMED over 104,268 pairs (tight 3, refuted 20), the
+fingerprint deterministic across virgin boots at **2050941457** — moved from
+`main`'s, correctly: the spring was re-cut and every frame re-shaped. The
+report's `oscillator` payload carries the same figures the probe printed. CI's
+run on the pull request is the merge evidence; the local run is the pre-flight.
