@@ -23190,6 +23190,32 @@ then seven more reach home. Play winds to the bank, holds, and loops; it
 idles while the section is closed or the tab hidden, and under
 `prefers-reduced-motion` there is no autoplay and a wind snaps to its end.
 
+**Corrected after landing — the blank arm was laid out against the travel.**
+The paragraph above describes what the plate was built to do, and for the arm
+with no slot it described the wrong arm. The cross holds at `R = beta - half·j`
+and is drawn as `rotate(-R)`, so a turn advances the body by `+half` on screen;
+laid out at `+k·half` the arms were enumerated AGAINST that, so arm `k` was the
+arm the pin visits on turn `-k`. The last arm in the loop — the blank — reached
+the entry bearing on turn 1, the pin walked straight through it, and the bank on
+turn 7 landed on arm 1, which is slotted. The layout is `-k·half` now, so arm `k`
+is the arm turn `k` visits and the blank sits one station AHEAD of the arm the
+finger enters first, that being the station which comes round last. Nothing else
+moved: every arm is symmetric about its own axis, so the sign changes only which
+arm carries the label, and the solve, the index assert and the kinematics are
+untouched.
+
+**Why the probe did not catch it.** Claim 3 read "seven winds bank the pin on
+the blank arm" and tested `mxChip`, which is derived from the wind angle `W` and
+knows nothing about the drawing — it said BANKED throughout. It now reads the
+cross AS DRAWN: each arm group's bearing in the cross's own frame against the
+pin's, nearest wins, and whether that arm is the blank one is read off the label
+it carries. Seven turns must engage seven DISTINCT SLOTTED arms and the bank must
+land on the labelled one. Run against the old layout it fails both, naming the
+turn — the control that says the new claim measures something. The walk also
+winds down to a known home first: it used to start from wherever autoplay had
+left `W`, which made "seven winds" seven winds only because the spec comparison
+ahead of it is slow enough to have carried the plate past turn 0.
+
 **Constraints held.** The page stays sim-code-free (it imports nothing new).
 Every string is a literal inside `tr()` or static markup, and all 28 new keys
 carry five locale rows; `explain-i18n.mjs --check` PASS with 0 unmatched, 0
@@ -23202,9 +23228,11 @@ translation (§136's teeth, the column wheel, the gong's level) render
 English in five locales by the page's own design. This landing's keys take
 it to 643/685; the remainder is the pages' standing translation debt.
 
-`tools/probe-145-cross.mjs` (acceptance, 11 claims): the ported solve against
+`tools/probe-145-cross.mjs` (acceptance, 13 claims): the ported solve against
 `geometry.js`'s `genevaSpec` on the build's own inputs (worst 0.129%, the
-quote rounding); the index chip; seven winds bank, the eighth is refused,
+quote rounding); the index chip; home is reached before the walk; the pin walks
+seven distinct slotted arms and banks on the blank one with the finger short of
+entry; a further wind is refused,
 the bank backs out and seven unwinds reach home, a further one is refused;
 scrub reads LOCKED / INDEXING / LOCKED across the window with the cross
 turning one station; reduced motion; no page errors. Battery: none — the
