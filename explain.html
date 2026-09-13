@@ -4074,10 +4074,19 @@
       var beta = S.beta, half = 2 * beta;                    // one station is 2β of cross rotation
       var armW = S.slotW + 2 * STOCK_MIN;                    // the rim-pitch floor: a slot and two walls
       var crossBody = el('g', {}), fingerBody = el('g', {}, fingerG);
-      // hub, then N arms (a rectangle from the hub to the rim), each slotted but the last
+      // hub, then N arms (a rectangle from the hub to the rim), each slotted but the last.
+      // ARM k IS THE ARM THE PIN VISITS ON TURN k, and that fixes the sign: the
+      // cross's hold angle is R = beta - half·j, drawn as rotate(-R), so a turn
+      // ADVANCES the body by +half on screen and an arm keeps its place at the
+      // entry bearing only if it is laid out at -k·half. Laid out at +k·half the
+      // enumeration ran against the travel, so the last arm — the blank — arrived
+      // at the entry bearing on turn 1 and the pin walked straight through it,
+      // while the bank on turn 7 landed on arm 1, which is slotted. The blank
+      // belongs one station AHEAD of the arm the finger enters first, since that
+      // is the station that comes round last.
       el('circle', { cx: 0, cy: 0, r: S.hubR * PX, fill: 'var(--brass-fill)', stroke: 'var(--brass)', 'stroke-width': 1.2 }, crossBody);
       for (var k = 0; k < N; k++) {
-        var g = el('g', { transform: 'rotate(' + (k * half * 180 / Math.PI) + ')' }, crossBody);
+        var g = el('g', { transform: 'rotate(' + (-k * half * 180 / Math.PI) + ')' }, crossBody);
         el('rect', { x: S.hubR * PX * 0.6, y: -armW * PX / 2, width: (S.b - S.hubR * 0.6) * PX, height: armW * PX, fill: 'var(--brass-fill)', stroke: 'var(--brass)', 'stroke-width': 1.2, rx: 1 }, g);
         if (k < N - 1) el('rect', { x: S.slotInner * PX, y: -S.slotW * PX / 2, width: (S.b - S.slotInner) * PX + 1, height: S.slotW * PX, fill: 'var(--bg)', stroke: 'var(--brass)', 'stroke-width': 1 }, g);
         else el('text', { x: (S.slotInner + 0.15) * PX, y: 4, class: 'val', fill: 'var(--ruby)', 'font-size': 9 }, g).textContent = tr('blank');

@@ -3,8 +3,15 @@
 //      d, a, b, slotW, lockR and the bank angle, on the same inputs — the
 //      "same relations" claim, measured rather than trusted;
 //   2. the index chip reads 2π/8 (45.00°), not INVERTED;
-//   3. seven winds bank the pin on the blank arm (chip BANKED, finger short
-//      of the entry angle); an eighth wind is refused (W clamps); unwinding
+//   3. the pin walks seven DISTINCT SLOTTED arms and banks on the BLANK one —
+//      measured off the drawn cross, not off the chip: at each turn the arm
+//      nearest the pin's bearing is read from the DOM, and at the bank it must
+//      be the arm carrying the "blank" label, with the finger short of the
+//      entry angle. The chip alone is state-derived and said BANKED all through
+//      the §145 defect in which the blank was laid out against the travel, so
+//      the pin entered it on turn 1 and banked on a slotted arm. The run starts
+//      from a WOUND-DOWN home rather than from wherever autoplay left it, so
+//      "seven winds" is seven winds; an eighth is refused (W clamps); unwinding
 //      back to zero locks it again;
 //   4. scrubbing the slider into the engagement window reads INDEXING and the
 //      cross angle moves; outside it the cross holds;
@@ -57,22 +64,64 @@ if (worst > 0.005) F(`the plate's solve drifts from genevaSpec by ${(worst * 100
 else OK(`the plate's solve matches genevaSpec within the quote rounding: worst ${(worst * 100).toFixed(3)}% (source d ${cmp.src.d.toFixed(4)}, plate d ${cmp.plate.d}; inputs rounded from ${cmp.inputs.stock.toFixed(4)}/${cmp.inputs.pivot.toFixed(4)})`);
 // 2 — the index
 if (!/45\.00° = 2π\/8/.test(cmp.idx) || /INVERTED/.test(cmp.idx)) F(`index chip: ${cmp.idx}`); else OK(`index chip: ${cmp.idx}`);
-// 3 — wind to the bank, refuse the eighth, unwind
+// 3 — walk the stations, bank on the blank arm, refuse the eighth, unwind
 const chip = () => page.evaluate(() => document.getElementById('mxChip').textContent);
 const readout = () => page.evaluate(() => document.getElementById('mxReadout').textContent);
-await page.evaluate(() => document.getElementById('mxPlay').click()); // stop autoplay
-for (let i = 0; i < 7; i++) { await page.evaluate(() => document.getElementById('mxWind').click()); await page.waitForTimeout(800); }
-let c = await chip(), r = await readout();
-if (!/BANKED/.test(c)) F(`after seven winds: ${c} — ${r}`); else OK(`after seven winds: ${c} — ${r}`);
-await page.evaluate(() => document.getElementById('mxWind').click()); await page.waitForTimeout(800);
+const wind = async () => { await page.evaluate(() => document.getElementById('mxWind').click()); await page.waitForTimeout(800); };
+const unwind = async () => { await page.evaluate(() => document.getElementById('mxUnwind').click()); await page.waitForTimeout(800); };
+const scrubTo = (deg) => page.evaluate((d) => { const sl = document.getElementById('mxSlider'); sl.value = String(d); sl.dispatchEvent(new Event('input')); }, deg);
+// WHICH arm is the pin on? Read the cross as drawn: every arm group's bearing in
+// the cross's own frame, and the pin's, then the nearest. Whether that arm is the
+// blank one is read off the label it carries, not off any angle this file knows.
+const armAtPin = () => page.evaluate(() => {
+  const svg = document.querySelector('#alarm-winding-arrest svg');
+  const crossG = document.getElementById('mxCross');
+  const inv = crossG.getScreenCTM().inverse();
+  const bearing = (el, lx, ly) => {
+    const p = svg.createSVGPoint(); p.x = lx; p.y = ly;
+    const q = p.matrixTransform(el.getScreenCTM()).matrixTransform(inv);
+    return (Math.atan2(q.y, q.x) * 180 / Math.PI + 360) % 360;
+  };
+  const arms = [...crossG.firstElementChild.children].filter((n) => n.tagName === 'g');
+  const pin = [...document.getElementById('mxFinger').querySelectorAll('circle')].find((c) => /ruby/.test(c.getAttribute('fill') || ''));
+  const pinA = bearing(pin, Number(pin.getAttribute('cx')), Number(pin.getAttribute('cy')));
+  const sep = (x, y) => { const v = Math.abs(x - y) % 360; return v > 180 ? 360 - v : v; };
+  let best = 0;
+  arms.forEach((g, k) => { if (sep(bearing(g, 100, 0), pinA) < sep(bearing(arms[best], 100, 0), pinA)) best = k; });
+  return { arm: best, blank: !!arms[best].querySelector('text'), nArms: arms.length,
+    gap: sep(bearing(arms[best], 100, 0), pinA), pinA };
+});
+await page.evaluate(() => document.getElementById('mxPlay').click()); // stop autoplay — W is wherever it left off
+for (let i = 0; i < 9; i++) await unwind();                           // …so wind down to a known home first
+let r = await readout();
+if (!/turn 0 /.test(r)) F(`could not reach home before the walk: ${r}`); else OK(`home before the walk: ${r}`);
+// the seven indexing turns: mid-slot the pin must be inside a SLOTTED arm, and a
+// different one each turn — seven slots, walked once each
+const walked = [];
+for (let i = 0; i < 7; i++) { await scrubTo(180); walked.push(await armAtPin()); await wind(); }
+const onBlank = walked.filter((w) => w.blank);
+const distinct = new Set(walked.map((w) => w.arm));
+if (onBlank.length) F(`the pin walked the blank arm on turn(s) ${walked.map((w, i) => w.blank ? i : null).filter((i) => i !== null).join(', ')} — the blank is laid out against the travel`);
+else if (distinct.size !== 7) F(`seven turns visited ${distinct.size} arms, not 7: ${walked.map((w) => w.arm).join(', ')}`);
+else OK(`the pin walks seven distinct slotted arms (${walked.map((w) => w.arm).join(' → ')}) of ${walked[0].nArms}`);
+await wind();                                                         // the eighth turn runs into the bank
+let c = await chip();
+r = await readout();
+const bank = await armAtPin();
+const fingerDeg = Number((r.match(/finger (-?\d+)°/) || [])[1]);
+if (!/BANKED/.test(c)) F(`after seven indexes and one more turn: ${c} — ${r}`);
+else if (!bank.blank) F(`the bank landed on arm ${bank.arm}, which is slotted — the blank is one station off`);
+else if (!(fingerDeg < 112.5)) F(`the pin banked at finger ${fingerDeg}°, not short of the 112.5° entry angle`);
+else OK(`the bank is on the blank arm ${bank.arm} (${bank.gap.toFixed(2)}° off its centreline), finger ${fingerDeg}° short of entry — ${c}`);
+await wind();
 const r2 = await readout();
-if (r2 !== r) F(`an eighth wind moved the finger: ${r2}`); else OK('an eighth wind is refused — the bank holds');
+if (r2 !== r) F(`a further wind moved the finger past the bank: ${r2}`); else OK('a further wind is refused — the bank holds');
 // the bank is a PARTIAL turn (the finger stopped short of entry), so the first
 // unwind backs out of it to the locked position and seven more reach home
-for (let i = 0; i < 8; i++) { await page.evaluate(() => document.getElementById('mxUnwind').click()); await page.waitForTimeout(800); }
+for (let i = 0; i < 8; i++) await unwind();
 c = await chip(); r = await readout();
 if (!/LOCKED/.test(c) || !/turn 0 /.test(r)) F(`after unwinding: ${c} — ${r}`); else OK(`after backing out of the bank and seven unwinds: ${c} — ${r}`);
-await page.evaluate(() => document.getElementById('mxUnwind').click()); await page.waitForTimeout(500);
+await unwind();
 if ((await readout()) !== r) F('a ninth unwind moved the finger below home'); else OK('a further unwind is refused at home');
 // 4 — scrub into the engagement window
 const scrub = async (deg) => { await page.evaluate((d) => { const s = document.getElementById('mxSlider'); s.value = String(d); s.dispatchEvent(new Event('input')); }, deg); return { chip: await chip(), r: await readout() }; };
