@@ -55,6 +55,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 126 | OPEN | The gong's level stops at the wire — the caseback is the real radiator and that path is not modelled; every §197 figure is a floor |
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
+| 125 | CLOSED | An underived `+ 0.1` sat on every keyless mesh distance at seven live sites (the item said six; crown wheel ⇄ idler was the seventh), putting two declared meshes 1.337% beyond the centre distance their teeth were cut for. DELETED, and the arithmetic decided it rather than taste: KW_MODULE is 0.34, so 0.1 is **0.29 of a module**, where the centre increase buying even a generous horological backlash is under 0.1·m — no backlash rule derives it. Nor was it a convention: 21 of the 23 declared meshes already stood at module·(P+Q)/2 and the only two that did not were the two these expressions site. What it WAS is visible at `ALARM_TUBE_INNER` — this file's 0.1 running clearance for a tube in its bearing, carried across to a centre distance, on a comment ("the same +0.1 slop every keyless mesh uses, see mwFoldD") that was circular. The deletion was a RE-SOLVE as the item predicted: the keyless cluster floors the plate, dialRadius fell 42.922914475499894 → **42.804991398276**, §125's own D4 assert fired in rule-6 form naming the two bounds it had to meet, and D4 re-derives from its comment's closed form 18.777750373095056 → **18.730557557590057** with the bounds meeting to float noise. Price, stated: the seconds well is 0.047 smaller. Dividend: `meshCoverage` now enumerates **23 of 23** declared meshes where it found 21 — the two it could never see were outside its tolerance BECAUSE of the 0.1. `MESH_CENTRE_WAIVERS` is empty; probe-135-registry's claims rewritten, since they encoded this item's open state. Unblocks [TODO 132]'s keyless rows |
 | 132 | OPEN | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; `leg B pinion ⇄ idler pinion` reads 0|0 on its only axis, so nothing can judge it until an axis exercises it (the `restoring` lesson); and both keyless rows are blocked on [TODO 125] — their 0.1 centre miss is over solveGearChain's own 0.05 tripwire, which would refuse them aloud. A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
@@ -15735,10 +15736,10 @@ correction lives here, in the body. Same rule, same reason, as [TODO 124].
 | row | worst | spread | transmits, per declared input | what it actually is |
 |---|---|---|---|---|
 | ~~`alarm setting: idler 2 ⇄ arbor pinion`~~ | ~~43.107%~~ → **0.057%** | 0.049 | train ok, alarm ok | **never solved — CLOCKED, waiver gone** |
-| `keyless: wind spur ⇄ transfer wheel` | 34.345% | 0.244 | crown 0\|0, wind 0\|0 | never exercised; centre 1.337% ([TODO 125]) |
+| `keyless: wind spur ⇄ transfer wheel` | 34.345% | 0.244 | crown 0\|0, wind 0\|0 | never exercised; ~~centre 1.337%~~ **0.000%, [TODO 125] closed** |
 | `alarm arrest: leg B pinion ⇄ idler pinion` | 34.334% | 0.049 | alarmWind 0\|0 | **never exercised** — unjudgeable |
 | ~~`alarm arrest output cage wheel ⇄ finger pinion`~~ | ~~26.880%~~ → **0.073%** | 0.073 | alarmWind ok | **solved in the wrong FRAME — FIXED, waiver gone** |
-| `keyless: setting wheel ⇄ minute wheel` | 22.222% | 0.000 | crown 0\|0, handSet ok | transmits; centre 1.337% ([TODO 125]) |
+| `keyless: setting wheel ⇄ minute wheel` | 22.222% | 0.000 | crown 0\|0, handSet ok | transmits; ~~centre 1.337%~~ **0.000%, [TODO 125] closed** |
 
 `0|0` is `transmits`' own `aSpin|bSpin` pair with both members still.
 
@@ -15828,7 +15829,16 @@ already; nothing new is needed to see it.
   whose relative phase nothing ever changes is harmless and also unverifiable,
   which is the worst combination to land quietly.
 
-- **The two keyless rows — [TODO 125] decides first.** Their centre distance
+- **The two keyless rows — [TODO 125] IS NOW DECIDED, so the blocker is
+  lifted.** It deleted the underived `+ 0.1` and both rows stand at
+  `module·(P+Q)/2` exactly, so `solveGearChain` will no longer refuse them.
+  What remains before clocking is this item's own rule: `setting wheel ⇄
+  minute wheel` transmits on `handSet` and can take a solve;
+  `wind spur ⇄ transfer wheel` still reads `0|0` on both its declared inputs,
+  so it is in the same class as `leg B pinion` above — owed an axis first.
+  The original blocker, for the record:
+
+- ~~**The two keyless rows — [TODO 125] decides first.**~~ Their centre distance
   stands 1.337% beyond the pitch-radius sum their teeth were cut for, and the
   0.1 absolute miss is over `solveGearChain`'s own 0.05 centre tripwire, so a
   solve would refuse them aloud rather than quietly mis-clock them. That is the
@@ -15849,7 +15859,7 @@ reserve train's instance, [TODO 62] the going train's, [TODO 116] the
 build-pose-only reading, [TODO 124] the motion works', [TODO 117] the alarm
 setting branch's undecided kinematics.
 
-## 125. The keyless centre distances carry an underived `+ 0.1`
+## 125. The keyless centre distances carry an underived `+ 0.1` — CLOSED
 
 `layout.js` adds a bare `+ 0.1` to the pitch-radius sum in six places
 when siting the keyless works — `windSpurR + crownWheelR + 0.1` (four
@@ -15892,6 +15902,65 @@ gates the centre distance now (`meshPhase`, 0.5% of the pitch-radius sum)
 with these two rows waived by name against this item, so whichever way it
 is decided — derive and name the allowance, or delete and re-solve — the
 waivers go stale and the gate says so.
+
+## CLOSED: DELETED, and the arithmetic is what decided it
+
+**It was not a backlash allowance, and that is measurable rather than a
+matter of taste.** `KW_MODULE` is 0.34, so `0.1` is **0.29 of a module**.
+The centre-distance increase that buys even a generous horological
+backlash is under 0.1·m — a few hundredths of a module of circumferential
+backlash, divided by 2·tan α. This was three times over that, so no
+backlash rule derives it and naming it would have been inventing a design
+rule to justify an accident.
+
+**And it was not a convention of this movement.** Of the 23 declared
+meshes, 21 already stood at `module·(P+Q)/2` exactly; the only two that
+did not were the two these expressions site. A "slop every keyless mesh
+uses" that no other mesh in the watch uses is not a convention, it is an
+outlier.
+
+**What it actually was is visible two hundred lines up.**
+`ALARM_TUBE_INNER = HOUR_TUBE_OUTER + 0.1` — *"0.1 running clearance on
+the hour tube (its bearing)"*. The keyless siting comment said it was
+using *"the same +0.1 slop every keyless mesh uses (see mwFoldD)"*, and
+`mwFoldD` carried it for the same circular reason. A running fit between
+a tube and its bearing is not the same quantity as the distance between
+two gear axes, and it was carried across as if it were.
+
+**Deleted at all seven live sites** (the item said six; `crown wheel ⇄
+idler` was the seventh). Both rows read **0.000%**, and all 23 declared
+meshes now stand where their teeth were cut for — `MESH_CENTRE_WAIVERS`
+is an empty table.
+
+**The re-solve happened exactly as predicted, and the assert drove it.**
+The keyless cluster FLOORS the plate, so closing it shrank the plate:
+`dialRadius` 42.922914475499894 → **42.804991398276**. §125's own D4
+assert fired in rule-6 form — *"inboard bound 15.2278 vs outboard 15.1334
+(need equal within 0.02); re-derive D4 from its comment's closed form"* —
+and D4 re-derives from that closed form to
+**18.777750373095056 → 18.730557557590057**, at which the two bounds meet
+again to float noise (3.6e-15). Boot is silent.
+
+**The price, stated rather than buried: the seconds well is 0.047
+smaller** (15.2278 → 15.1806). That is the honest consequence of a plate
+that is no longer carrying 0.1 of nothing at each keyless mesh, and the
+well is still exactly as large as the furniture law allows at the new
+plate — the maximization the station was chosen for still holds, which is
+what the assert checks.
+
+**A dividend worth recording**: `meshCoverage`'s enumeration now finds
+**23 of 23** declared meshes in the metal, where it found 21. The two it
+could never see were outside its tolerance *because* they stood 0.1 off
+their pitch sum, so closing the gap closed the blind spot too.
+`probe-135-registry.mjs`'s claims are rewritten accordingly — it used to
+assert that exactly two rows were waived and exactly two were unseen, and
+both of those expectations encoded this item's open state.
+
+**This unblocks [TODO 132]'s two keyless rows**, which were waiting on
+this decision: a phase solve on a pair that does not stand at its centre
+distance is what `solveGearChain`'s own tripwire refuses. They can now be
+clocked — subject to 132's other rule, that `wind spur ⇄ transfer wheel`
+still has no axis that moves either member.
 
 ## 126. The gong's level stops at the wire: the case is the radiator and the path is unmodelled
 

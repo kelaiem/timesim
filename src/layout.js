@@ -925,13 +925,24 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 //
 //     D4 = (railInnerR − DIAL_WALL_HALF − CLEAR_MARGIN
 //           + SUBDIAL_INBOARD_CLEAR) / 2
-//        = (42.922914475499894·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
+//        = (42.804991398276·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
 //
 // printed at full precision below (dialRadius is the keyless-floored plate,
 // FLAT over every station in play, so the closed form is a constant; the
 // dial build asserts the two bounds still meet, which is what re-derives
-// this number if the face ever moves). Well radius 15.2278 — its ring one
+// this number if the face ever moves). Well radius 15.1806 — its ring one
 // margin off the rail's inner edge, its inner edge on the keep-out.
+//
+// TODO 125 RE-DERIVED IT, and that is the assert above doing its job rather
+// than a number being retuned. Deleting the keyless meshes' undderived
+// `+ 0.1` (see the siting solve) let the keyless cluster close onto its own
+// pitch sums, and the keyless cluster is what FLOORS the plate: dialRadius
+// fell 42.922914475499894 → 42.804991398276, the outboard bound followed it,
+// and the station that maximizes the well moved with both. The assert fired
+// with the two bounds 15.2278 against 15.1334 and named the closed form to
+// re-derive from; re-derived, they meet again at 15.1806 to float noise.
+// The well is 0.047 SMALLER than it was, which is the honest price of a
+// plate that is no longer carrying 0.1 of nothing at each keyless mesh.
 // Context that still binds the RANGE, from the Tier B measurement: the
 // plate stays 42.9229 through station 22.90 and grows at 22.95; the
 // two-bar closes at 23.55; the mid-band build asserts (side-sign 16–17 and
@@ -939,7 +950,7 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // station on the post-Tier-B tree. The menu's FAST rates still trade size
 // for rate (the 96-tooth fourth outruns the keyless floor from ≈17.7 —
 // at this station too; their spec rows record it).
-export const D4 = 18.777750373095056;
+export const D4 = 18.730557557590057;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
 // law); the mirror died the day the wells split. The owner's constraint is
@@ -1459,8 +1470,21 @@ export function solveKeyless({
   // KW_MODULE.
   const windSpurR = (KW_MODULE * WIND_SPUR_TEETH) / 2;
   // Winding transfer arbor axis. IDENTITY: one spur-mesh distance outboard
-  // of the barrel along the (barrel-derived) stem, with the same +0.1 slop
-  // every keyless mesh uses (see mwFoldD) — the §13 expression, verbatim.
+  // of the barrel along the (barrel-derived) stem — the §13 expression.
+  //
+  // TODO 125 — THE `+ 0.1` THAT USED TO SIT ON EVERY KEYLESS MESH DISTANCE IS
+  // GONE, and the justification it carried ("the same +0.1 slop every keyless
+  // mesh uses, see mwFoldD") was circular: mwFoldD carried it for the same
+  // reason. Nothing derived it. Two measurements decided it rather than taste.
+  // It is not a backlash allowance: KW_MODULE is 0.34, so 0.1 is 0.29 of a
+  // MODULE, and the centre-distance increase that buys even a generous
+  // horological backlash is under 0.1·m — this was three times over. And it is
+  // not a convention of this movement: 21 of the 23 declared meshes stand at
+  // module·(P+Q)/2 exactly, and the only two that did not were the two these
+  // expressions site. What it WAS is visible at ALARM_TUBE_INNER above — 0.1
+  // is this file's running clearance for a tube in its bearing, carried across
+  // to a centre distance, where a running fit is not the same quantity.
+  // Every keyless mesh now stands where its teeth were cut for.
   //
   // §33 step 2 — with the stem DECOUPLED the crown wheel stays on the stem
   // ray but the barrel no longer lies on it, and the reach solves in two
@@ -1480,11 +1504,11 @@ export function solveKeyless({
   const windIdlerR = (KW_MODULE * KW_WIND_IDLER_TEETH) / 2;
   let cwDist, windIdler = null;
   if (stemAzRad === null) {
-    cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
+    cwDist = barrelDist + windSpurR + crownWheelR;
   } else {
     const along = uWind.x * P.barrel.x + uWind.y * P.barrel.y;
     const c = Math.abs(uWind.x * P.barrel.y - uWind.y * P.barrel.x);
-    const R0 = windSpurR + crownWheelR + 0.1;
+    const R0 = windSpurR + crownWheelR;
     if (c <= R0 - 0.5 && along > 0) {
       // DIRECT: oblique mesh, outboard branch (the identity's topology).
       cwDist = along + Math.sqrt(R0 * R0 - c * c);
@@ -1492,13 +1516,13 @@ export function solveKeyless({
       // IDLER: crown wheel at the ray's nearest point to the barrel.
       cwDist = along;
       const cwPos = { x: uWind.x * cwDist, y: uWind.y * cwDist };
-      const rA = crownWheelR + windIdlerR + 0.1;   // crown wheel ⇄ idler
-      const rB = windSpurR + windIdlerR + 0.1;     // idler ⇄ fusee spur
+      const rA = crownWheelR + windIdlerR;         // crown wheel ⇄ idler
+      const rB = windSpurR + windIdlerR;           // idler ⇄ fusee spur
       const dx = P.barrel.x - cwPos.x, dy = P.barrel.y - cwPos.y;
       const d = Math.hypot(dx, dy);
       if (d > rA + rB) {
         warn(`stem azimuth: the winding idler cannot span crown wheel to fusee spur (${d.toFixed(1)} apart, reach ${(rA + rB).toFixed(1)}) — bring the stem within ~40° of the barrel`);
-        cwDist = barrelDist + windSpurR + crownWheelR + 0.1; // stand the cluster up anyway; the verdicts carry the refusal
+        cwDist = barrelDist + windSpurR + crownWheelR; // stand the cluster up anyway; the verdicts carry the refusal
       } else {
         const a = (rA * rA - rB * rB + d * d) / (2 * d);
         const h = Math.sqrt(Math.max(0, rA * rA - a * a));
@@ -1513,7 +1537,7 @@ export function solveKeyless({
       }
     } else {
       warn('stem azimuth: the stem ray points away from the barrel entirely — the winding path cannot exist');
-      cwDist = barrelDist + windSpurR + crownWheelR + 0.1;
+      cwDist = barrelDist + windSpurR + crownWheelR;
     }
   }
   const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // the FIXED winding pinion (teeth overlap the wheel rim, bevel-style)
@@ -1528,7 +1552,7 @@ export function solveKeyless({
   const swDist = clutchHomeDist + CLUTCH_TRAVEL + windPinionR * 0.55 + settingWheelR;
   // The minute wheel FOLDS perpendicularly off the stem line (see the
   // setting-path assembly for why).
-  const mwFoldD = settingWheelR + minuteWheelR + 0.1;
+  const mwFoldD = settingWheelR + minuteWheelR;
   const minuteArborXY = {
     x: uWind.x * swDist - sideSign * vPerp.x * mwFoldD,
     y: uWind.y * swDist - sideSign * vPerp.y * mwFoldD,
