@@ -15736,10 +15736,10 @@ correction lives here, in the body. Same rule, same reason, as [TODO 124].
 | row | worst | spread | transmits, per declared input | what it actually is |
 |---|---|---|---|---|
 | ~~`alarm setting: idler 2 ⇄ arbor pinion`~~ | ~~43.107%~~ → **0.057%** | 0.049 | train ok, alarm ok | **never solved — CLOCKED, waiver gone** |
-| `keyless: wind spur ⇄ transfer wheel` | 34.345% | 0.244 | crown 0\|0, wind 0\|0 | never exercised; ~~centre 1.337%~~ **0.000%, [TODO 125] closed** |
+| ~~`keyless: wind spur ⇄ transfer wheel`~~ | ~~34.345%~~ → **0.079%** | 0.244 | ~~crown 0\|0, wind 0\|0~~ → **wind ok, reserve ok** | **the `0\|0` was the CHECKER, not the movement — CLOCKED, waiver gone** |
 | `alarm arrest: leg B pinion ⇄ idler pinion` | 34.334% | 0.049 | alarmWind 0\|0 | **never exercised** — unjudgeable |
 | ~~`alarm arrest output cage wheel ⇄ finger pinion`~~ | ~~26.880%~~ → **0.073%** | 0.073 | alarmWind ok | **solved in the wrong FRAME — FIXED, waiver gone** |
-| `keyless: setting wheel ⇄ minute wheel` | 22.222% | 0.000 | crown 0\|0, handSet ok | transmits; ~~centre 1.337%~~ **0.000%, [TODO 125] closed** |
+| ~~`keyless: setting wheel ⇄ minute wheel`~~ | ~~22.222%~~ → **0.043%** | 0.000 | handSet ok (`crown` was never an input) | **never solved — CLOCKED, waiver gone** |
 
 `0|0` is `transmits`' own `aSpin|bSpin` pair with both members still.
 
@@ -15829,13 +15829,49 @@ already; nothing new is needed to see it.
   whose relative phase nothing ever changes is harmless and also unverifiable,
   which is the worst combination to land quietly.
 
-- **The two keyless rows — [TODO 125] IS NOW DECIDED, so the blocker is
-  lifted.** It deleted the underived `+ 0.1` and both rows stand at
-  `module·(P+Q)/2` exactly, so `solveGearChain` will no longer refuse them.
-  What remains before clocking is this item's own rule: `setting wheel ⇄
-  minute wheel` transmits on `handSet` and can take a solve;
-  `wind spur ⇄ transfer wheel` still reads `0|0` on both its declared inputs,
-  so it is in the same class as `leg B pinion` above — owed an axis first.
+- **The two keyless rows — BOTH DONE, and the second one was never "owed an
+  axis".** [TODO 125] lifted the blocker (the `+ 0.1` deleted, both pairs at
+  `module·(P+Q)/2` exactly, so `solveGearChain` no longer refuses them), and
+  each mesh now has a solve of its own beside the going train's, in the rest
+  pose the going arbors already enter: **22.222% → 0.043%** on the setting
+  mesh, **34.345% → 0.079%** on the winding one, over the whole pose net, boot
+  silent, both manual `declareMesh` rows gone (the solve declares every pair it
+  phases) and both waivers named stale by the table's own gate.
+
+  The knob is a BASE CONSTANT rather than a rotation, which is what makes this
+  chain different from every solve before it: `tick()` writes all four rotors
+  each frame as `base + spin`, so a phase left on the object is erased by the
+  first frame. Each solve reads its result back into the base the tick adds to
+  — `minuteWheelBase` for the setting mesh, and a new `transferWheelClock` for
+  the winding one, which is the index at which the transfer wheel is pressed
+  onto the crown wheel's arbor (two blanks on one arbor, the going train's own
+  freedom, used the same way). The datum in each case is the member whose teeth
+  answer to a CROSSED-AXIS mesh no parallel-axis solve can reach — the setting
+  wheel against the sliding clutch, the crown wheel against the winding pinion.
+
+  **`wind spur ⇄ transfer wheel`'s `0|0` was a defect in the CHECKER, and this
+  item repeated it as a fact about the movement.** `transmits` accumulated the
+  NET turn over an axis's full span; `wind` is a CYCLE by construction — out to
+  full wind and back again, because an axis that only ramps leaves the
+  mechanism's own reversal unobserved — so the spur travelled 21.99 rad and
+  came home, and the net was float noise. Read as "the driver does not move",
+  filed under *reported*, and therefore silent. The fix is one line of
+  arithmetic beside the accumulator: keep the PATH LENGTH as well as the net,
+  and call a member still only when it never moved at all. Measured per input
+  now, `wind` **−1.200000** and `reserve` **−1.200000**, both the declared
+  tooth-count bar exactly. Three other rows were unblocked by the same line —
+  `reserve stage one` and `reserve stage two` under `wind` — which is the usual
+  shape of this class: a checker that cannot speak looks exactly like a checker
+  that has nothing to say.
+
+  `crown` was never an input to either pair and both rows declared it for as
+  long as they existed. That axis is the PULL (`crownPullT`), not the turn;
+  the winding pair's real second driver is the mainspring running DOWN through
+  the fusee, which is `reserve`. The rows name what measurably drives them now:
+  `['handSet']` and `['wind', 'reserve']`. (`arrest` moves the winding pair
+  too, at −1.200000 — it is the same input over a narrower band, not a second
+  one, so it is not declared.)
+
   The original blocker, for the record:
 
 - ~~**The two keyless rows — [TODO 125] decides first.**~~ Their centre distance
@@ -15851,8 +15887,14 @@ Before clocking any pair, read three things, not one:
 1. the **spread** — large means it does not transmit, fix that first;
 2. `transmits`' **verdict** on every declared input — `MISMATCH` is a lie,
    `ok` is a working mesh;
-3. `transmits`' **`aSpin`/`bSpin`** — `0|0` means the row was never exercised
-   and neither instrument is judging it, whatever colour it shows.
+3. `transmits`' **`aSpin`/`bSpin`** — `0|0` means the row is not being judged,
+   whatever colour it shows. It does NOT yet mean the row was never exercised:
+   that reading has two causes, and the keyless winding row above had the other
+   one. `aPath`/`bPath` beside them is the deciding column — zero path is a
+   part that never moved, non-zero path with a zero net is a part that moved
+   and came home. Before that column existed there was no way to tell from the
+   payload, which is why this item asserted "never exercised" for a mesh
+   turning three and a half revolutions each way.
 
 Related: [TODO 15] is the original anti-phase idiom, [TODO 48] closed the
 reserve train's instance, [TODO 62] the going train's, [TODO 116] the
