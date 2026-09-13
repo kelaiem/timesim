@@ -56,6 +56,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
 | 125 | CLOSED | An underived `+ 0.1` sat on every keyless mesh distance at seven live sites (the item said six; crown wheel ⇄ idler was the seventh), putting two declared meshes 1.337% beyond the centre distance their teeth were cut for. DELETED, and the arithmetic decided it rather than taste: KW_MODULE is 0.34, so 0.1 is **0.29 of a module**, where the centre increase buying even a generous horological backlash is under 0.1·m — no backlash rule derives it. Nor was it a convention: 21 of the 23 declared meshes already stood at module·(P+Q)/2 and the only two that did not were the two these expressions site. What it WAS is visible at `ALARM_TUBE_INNER` — this file's 0.1 running clearance for a tube in its bearing, carried across to a centre distance, on a comment ("the same +0.1 slop every keyless mesh uses, see mwFoldD") that was circular. The deletion was a RE-SOLVE as the item predicted: the keyless cluster floors the plate, dialRadius fell 42.922914475499894 → **42.804991398276**, §125's own D4 assert fired in rule-6 form naming the two bounds it had to meet, and D4 re-derives from its comment's closed form 18.777750373095056 → **18.730557557590057** with the bounds meeting to float noise. Price, stated: the seconds well is 0.047 smaller. Dividend: `meshCoverage` now enumerates **23 of 23** declared meshes where it found 21 — the two it could never see were outside its tolerance BECAUSE of the 0.1. `MESH_CENTRE_WAIVERS` is empty; probe-135-registry's claims rewritten, since they encoded this item's open state. Unblocks [TODO 132]'s keyless rows |
+| 136 | OPEN | Reported by eye (gears colliding while setting the time) and CONFIRMED by measurement. `meshCandidates` enumerates a pair only when its axes are PARALLEL and its centre distance closes on the pitch-radius sum, so every bevel and crown-wheel mesh is out of scope by construction — `meshCoverage`'s "0 undeclared meshes in the metal" is silent about all of them, and no row can exist for a pair the enumeration never proposes. Measured with `tools/probe-crossed-axis-mesh.mjs`: `crownWheel ⇄ windingPinion` (engaged WINDING) buries **0.2065**, 27% of a tooth height, 181 outline points inside the other's solid; `clutchRim ⇄ settingWheel` (engaged SETTING THE HANDS) buries **0.1372**, 18%. The bar is not chosen — a correct mesh reads ZERO — and the reference for bad is measured beside it: a phase-solved battery-green pair reads 0.0000 as built and **0.1707** with half a pitch injected, so the winding pair is deeper than the deliberate defect. `alarmSetIdler2 ⇄ alarmStemBevel` reads 0.0000, which is what says the measure is not calling every bevel broken. Neither failing pair has a phase solve (solveGearChain reads a line of centres, which crossed axes do not have) and both were documented as unsolved during [TODO 132]'s landing; what was not known is that they foul. They are invisible even to probe-194's out-of-scope COUNT, standing at centre 4.1480 and 4.2374 against rA+rB 4.7600 — outside its 5% band by a rule that does not govern them, since a bevel pair's pitch cones share an APEX. The fix must solve the phase on the bevel's own contact geometry; the instrument is gate-ready the day it lands (bar zero, nothing to choose) and is a REPORT today only because a check that lands red on arrival needs an owner (§54) |
 | 135 | OPEN | The `handSet` axis moves the keyless setting wheel and minute wheel through their whole travel (7.53982 and 6.28319 rad) and moves the cannon pinion, motion works and hands **not at all** — under the walk every check performs (`enterAxis` once, then `setPose` per sample). Found by `transmits` reporting both motion-works rows `driver still` on it, which since the path-length fix means never moved rather than came home. The cause is a time-eased tick law meeting a zero-dt pose: while the jumper is engaged the hands read `jumpDisp`, which approaches its target by `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))`, identically zero when `rawDt` is, and only the `jumpDisp === null` initialiser moves it — so a one-shot reading shows the axis working perfectly and a sweep sees nothing. CLAUDE.md's zero-dt trap reaching a whole sweep rather than one scripted write. Costs `inspection:handSet`, `clearances:handSet` and `expectedContacts:handSet` their entire dial-side population: a collision reachable only while setting the hands is invisible to all three and has been since the axis landed. `tools/probe-handset-reach.mjs` measures it with the control (reset-per-sample and sweep+step both move; the keyless rows are the must-move column). Filed rather than fixed — the three candidate fixes each reach past this item, and all three will surface real findings |
 | 132 | CLOSED | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; **`leg B pinion ⇄ idler pinion` and both keyless rows were the item's SECOND wrong triage**: all three read 0|0 and none was unexercised. The keyless pair was blocked on [TODO 125] (0.1 centre miss over solveGearChain's 0.05 tripwire, which refused them aloud, correctly); 125 lifted it and each took a solve whose knob is a BASE CONSTANT rather than a rotation, since tick() writes those rotors as `base + spin` and a phase left on the object dies on the first frame — **22.222% → 0.043%** and **34.345% → 0.079%**, `minuteWheelBase` and a new `transferWheelClock` (the transfer wheel's index on the crown wheel's arbor). The winding pair's `0|0` was the CHECKER: `transmits` accumulated the NET turn and `wind` is a cycle by construction, so the spur travelled 21.99 rad, came home, and read as a still driver — fixed by keeping the PATH LENGTH beside the net, which also unblocked both reserve stages under `wind`. Leg B's `0|0` was the ROW: it reads the barrel BODY's rim (`arrestAngles` computes `idler` from bodyA alone) and the body turns on `alarmStrike`, while `alarmWind` turns the arbor — leg A's input. Re-declared and clocked by a second stage carrying the chain past the idler wheel to its pinion, **34.334% → 0.008%**. `crown` was likewise never an input to either keyless pair (that axis is the PULL), and the output stage named `alarmWind` alone where a differential's cage is reached by BOTH legs (-2.727273 under each). A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
@@ -15719,6 +15720,71 @@ the rule just stated puts it in the "does not transmit" class rather than
 the mis-phased one — and yet `transmits` passes it unwaived on both its
 declared inputs. Those two readings disagree, and neither has been
 chased. Filed here rather than silently re-labelled.
+
+## 136. Two crossed-axis meshes drive through each other, and the registry cannot see them
+
+Reported by eye — gears colliding when setting the time — and the report was
+right. Measured by `tools/probe-crossed-axis-mesh.mjs`, which had to be written
+because nothing in the battery can ask this question.
+
+**THE REGISTRY CANNOT PROPOSE A CROSSED-AXIS MESH.** `meshCandidates`
+enumerates a pair only when its axes are PARALLEL and its centre distance
+closes on the pitch-radius sum. Every bevel and crown-wheel pair in the
+movement is therefore out of scope by construction, and `meshCoverage`'s
+"0 undeclared meshes in the metal, 23 of 23 declared" is silent about all of
+them — `meshPhase` and `transmits` can only judge rows that exist, and no row
+can exist for a pair the enumeration never proposes.
+
+**The two that carry the keyless works are the ones that fail:**
+
+| pair | engaged while | deepest burial | as a fraction of a tooth |
+|---|---|---|---|
+| `crownWheel ⇄ windingPinion` | WINDING | **0.2065** | **27%** |
+| `clutchRim ⇄ settingWheel` | SETTING THE HANDS | **0.1372** | **18%** |
+| `alarmSetIdler2 ⇄ alarmStemBevel` | setting the alarm | 0.0000 | 0% |
+
+The bar is not a chosen threshold: **a correct mesh reads ZERO**, because its
+flanks touch and neither outline ever enters the other's solid. The reference
+for "bad" is measured beside it — a known-good, phase-solved, battery-green
+mesh (`thirdWheel ⇄ fourthPinion`) reads 0.0000 as built and **0.1707** with
+half a pitch injected. **The winding pair is buried deeper than that
+deliberate defect.** The alarm bevel reading zero is what says the instrument
+is not simply calling every crossed-axis pair broken.
+
+**Why it was never caught.** Neither pair has a phase solve — `solveGearChain`
+reads a line of centres between two parallel axes, which these do not have — so
+their teeth sit where a half-pitch seed put them: `settingWheelBase =
+Math.PI / settingWheelTeeth`, `crownWheelBase = Math.PI / crownWheelTeeth`.
+Both were documented as unsolved in `explain.html` during TODO 132's landing;
+what was not known is that they actually foul.
+
+**And they are invisible even to the EXCLUSION.** probe-194-mesh-population
+reports "4 non-parallel pairs near the pitch sum" and neither of these is among
+them: measured, `crownWheel ⇄ windingPinion` stands at centre 4.1480 against
+rA+rB 4.7600 and `clutchRim ⇄ settingWheel` at 4.2374, so both fall outside
+that scan's 5% band. That is not a tolerance to widen — a bevel pair's pitch
+cones share an APEX and the sum of pitch radii is not the constraint, so the
+four pairs in that count are the ones whose numbers happen to land near a
+metric that does not govern them.
+
+**What the fix needs, and why it is not one line.** A crossed-axis mesh has no
+line of centres, so TODO 15's anti-phase arithmetic does not port. The phase
+has to be solved on the contact geometry a bevel actually has — the pitch cones
+and their shared apex — and the two members' indices then derive from that. The
+instrument to hold it true already exists and is gate-ready the day the fix
+lands: the bar is zero and nothing about it would need choosing. It is a REPORT
+today only because a check that lands red on arrival needs an owner first
+(§54's banner).
+
+**Related, and worth reading together:** [TODO 117] is the OTHER collision an
+eye caught in the same session — the alarm setting branch, where
+`disc rim ⇄ idler 1b` transmits at +1.071429 against a bar of -1.071429, two
+meshed gears co-rotating because one spin group carries two heads whose meshes
+demand different angles. Different fault, different branch, same report. And
+[TODO 135] is the third blind spot of that week: an axis that poses nothing
+past the minute jumper. The family resemblance is worth the shelf space — 5, 6,
+135 and this are all cases where a clean battery meant "nothing looked" rather
+than "nothing is wrong".
 
 ## 135. The handSet axis is blind to everything downstream of the minute jumper
 

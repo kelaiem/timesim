@@ -4,8 +4,8 @@
 
 # The instruments
 
-198 scripts. **99 are ACCEPTANCE tests** — they decide and exit non-zero.
-**99 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+199 scripts. **99 are ACCEPTANCE tests** — they decide and exit non-zero.
+**100 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -179,6 +179,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-column-driver.mjs` |  | acceptance | TODO 103 — the column driver's outline, and the bore it is supposed to turn on. |
 | `probe-colwheel-foul.mjs` |  | report | EYE REPORT: "a phantom / vestigial steel arm collides with the column wheel every other toggle." |
 | `probe-colwheel-id.mjs` |  | report | probe-colwheel-foul named six meshes touching the column wheel at 0. Two are declared rider contacts. This identifies the rest — what they are, where they were built, what material, whether they are NAMED, whether anything DECLARES the contact, and how the gap behaves across the toggle's two parities (the eye report says "every other toggle", so parity is the tell). |
+| `probe-crossed-axis-mesh.mjs` |  | report | DO THE TEETH OF A CROSSED-AXIS MESH INTERLEAVE, OR DRIVE THROUGH EACH OTHER? |
 | `probe-dial-colour-link.mjs` |  | acceptance | DOES THE DIAL'S COLOUR SURVIVE A LINK — AND WHOSE COLOUR WINS? Acceptance. `?dialcol=rrggbb` is FINISH travelling in a URL, which puts it between two things that were previously separate: the aesthetics store (browser-local, persisted, the viewer's own taste) and the share link (a claim about a watch someone else will see). Six behaviours fall out of that, and every one of them is a decision rather than an implementation detail — so they are asserted here rather than left to be rediscovered. |
 | `probe-direction-guards.mjs` |  | acceptance | WHICH REVERSALS WOULD THE BUILD CATCH? — the safety net TODO 115 needed, and now the one that keeps its landing honest. |
 | `probe-drum-azimuth.mjs` |  | report | Where else can the MAINSPRING DRUM stand? |
