@@ -58,9 +58,53 @@ async function probe(T) {
   const zone = all.filter((w) => /^reserve face: the (warning|maximum) zone/.test(w));
   const other = all.filter((w) => !zone.includes(w));
   const worst = zone.map((w) => +(w.match(/holds only ([\d.]+):1/) || [0, 0])[1]).sort((a, b) => a - b)[0];
-  return { T, zone: zone.length, other, ground: r.ground, pole: r.ink === '#1a1a1a' ? 'dark' : 'light', worst };
+  // `ink` travels with the row, not just the pole it implies: the escape-route
+  // arithmetic below needs the actual hex, and deriving it back from 'dark' would
+  // be a second copy of the pole constants.
+  return { T, zone: zone.length, other, ground: r.ground, ink: r.ink, pole: r.ink === '#1a1a1a' ? 'dark' : 'light', worst };
 }
-const say = (r) => console.log(`T ${r.T.toFixed(2)}  ground ${r.ground}  print ${r.pole.padEnd(5)}  zone warns ${String(r.zone).padStart(2)}${r.worst ? `  worst ${r.worst}:1` : ''}${r.other.length ? `  OTHER: ${r.other[0].slice(0, 70)}` : ''}`);
+// §225 — the two ESCAPE ROUTES, computed here from the ground and the ink the
+// boot reported, so the report says WHY each row warns instead of only that it
+// does. A zone tone must hold 3:1 against both the sub-dial face (the ground)
+// and its ticks (the ink), and there are exactly two places such a tone can
+// sit. ABOVE the ground: the brightest tone there is, white, so the route is
+// open iff contrast(white, ground) >= 3. BETWEEN ground and ink: the chained
+// bound zoneTone's own comment names — a third tone 3:1 from both cannot fit
+// inside a gap narrower than 9:1, so the route is open iff
+// contrast(ground, ink) >= 9.
+//
+// THE TEST IS NECESSARY, NOT SUFFICIENT, and saying so is the point. Neither
+// route open means no tone can exist, and that half predicts the band's lower
+// edge and its whole interior exactly. A route being OPEN only means the window
+// is non-empty — the tone still has to be a reachable member of it, and a zone
+// tone is not free: it is the zone's HUE mixed toward a pole, a one-parameter
+// ramp quantised to 8-bit sRGB. At T 0.90 the between-window is 0.00107 wide in
+// luminance and two of the four zone checks still fail, which is exactly what a
+// ramp landing in the slot for one hue and missing for the other looks like. So
+// the flag below fires only on the sound direction — model says MUST WARN and
+// the boot was silent — and never on "open but warned", which is not a
+// contradiction but the width of the window.
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.substr(i, 2), 16));
+const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+const relY = (h) => { const [r, g, b] = hex(h); return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b); };
+const cr = (a, b) => { const A = relY(a), B = relY(b); const [hi, lo] = A > B ? [A, B] : [B, A]; return (hi + 0.05) / (lo + 0.05); };
+const routes = (r) => {
+  if (!r.ground || !r.ink) return { txt: 'routes n/a (no ink record)', predicted: null };
+  const above = cr('#ffffff', r.ground), between = cr(r.ground, r.ink);
+  const open = above >= 3 || between >= 9;
+  return { txt: `above ${above.toFixed(2)}${above >= 3 ? '\u2713' : ' '} between ${between.toFixed(2)}${between >= 9 ? '\u2713' : ' '}`, mustWarn: !open };
+};
+const say = (r) => {
+  const R = routes(r);
+  // Only the sound direction is an alarm: no route open yet the boot said
+  // nothing would mean the model is wrong. Open-but-warned is the window being
+  // too narrow for the hue ramp to reach into, and is annotated, not flagged.
+  const agree = R.mustWarn === null ? ''
+    : (R.mustWarn && r.zone === 0) ? '   <-- MODEL SAYS NO TONE EXISTS, YET THE BOOT WAS SILENT'
+    : (!R.mustWarn && r.zone > 0) ? '   (route open but narrow \u2014 no reachable tone in it)'
+    : '';
+  console.log(`T ${r.T.toFixed(2)}  ground ${r.ground}  print ${r.pole.padEnd(5)}  zone warns ${String(r.zone).padStart(2)}${r.worst ? `  worst ${r.worst}:1` : '        '}  ${R.txt}${agree}${r.other.length ? `  OTHER: ${r.other[0].slice(0, 70)}` : ''}`);
+};
 const seen = new Map();
 const at = async (T) => { T = +T.toFixed(2); if (!seen.has(T)) { const r = await probe(T); seen.set(T, r); say(r); } return seen.get(T); };
 console.log('coarse:');
