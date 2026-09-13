@@ -78,7 +78,15 @@ const out = await page.evaluate(async () => {
     const d = Math.hypot(px, py, pz), sum = a.r + b.r;
     if (d < 1e-6 || sum <= 0) continue;
     const miss = Math.abs(d - sum) / sum;
-    if (dot < 0.999) { if (miss <= 0.05 && dot < 0.9) skewed.push({ a: a.name, b: b.name }); continue; }
+    if (dot < 0.999) {
+      // NAME them. The count alone said four pairs exist and gave a reader no
+      // way to go and look at one; "out of scope" is only honest if it says
+      // WHICH. The axis angle is what puts a pair here, so it is reported.
+      if (miss <= 0.05 && dot < 0.9) skewed.push({ a: a.name || '(unnamed)', aUnit: a.unit, b: b.name || '(unnamed)', bUnit: b.unit,
+        d: +d.toFixed(4), sum: +sum.toFixed(4), miss: +(miss * 100).toFixed(2),
+        deg: +(Math.acos(Math.min(1, dot)) * 180 / Math.PI).toFixed(1) });
+      continue;
+    }
     if (miss > 0.05) continue;
     cands.push({ a: a.name || '(unnamed)', aUnit: a.unit, b: b.name || '(unnamed)', bUnit: b.unit,
       d: +d.toFixed(4), sum: +sum.toFixed(4), miss: +(miss * 100).toFixed(2),
@@ -136,7 +144,10 @@ for (const r of unmet) console.log(`    ${r.site}`);
 console.log(`      (a row here is not automatically wrong — this scan's own`);
 console.log(`       tolerance and overlap test are the reason the two keyless`);
 console.log(`       rows sit outside it; see TODO 125.)`);
-if (out.skewed.length)
+if (out.skewed.length) {
   console.log(`\nOUT OF SCOPE: ${out.skewed.length} non-parallel pair(s) near the pitch sum — bevels are a mesh this scan cannot judge.`);
+  for (const s of out.skewed)
+    console.log(`    ${(s.a).padEnd(22)} ${(s.aUnit || '').padEnd(21)} ${(s.b).padEnd(22)} ${(s.bUnit || '').padEnd(21)} d ${String(s.d).padEnd(9)} ${s.miss}%   axes ${s.deg}° apart`);
+}
 await browser.close(); srv.kill();
 }
