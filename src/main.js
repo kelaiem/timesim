@@ -2065,7 +2065,14 @@ const windSpur = G.makeGear({ name: 'windSpur', module: KW_MODULE, teeth: WIND_S
   ? { teeth: windIdler.teeth, mates: [crownWheelTeeth, WIND_SPUR_TEETH] }
   : { teeth: crownWheelTeeth, mates: [WIND_SPUR_TEETH] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
 windSpur.name = 'windSpur';
-const windSpurBase = Math.PI / WIND_SPUR_TEETH; // half-tooth phase so spur and transfer teeth interlace at rest (crownWheelBase convention)
+// TODO 132 — THE DATUM of the keyless winding mesh. This is a free index, and
+// saying so is the point: the spur is one blank on the barrel arbor (the great
+// wheel beside it is another, and ITS phase is solved against the centre
+// pinion), so nothing upstream constrains where the spur's teeth sit. The
+// transfer wheel is turned to THIS, below, rather than the other way about.
+// The half-pitch seed is TODO 15's old idiom and it never phased anything —
+// the pair measured 34.345% of a pitch off anti-phase over the pose net.
+const windSpurBase = Math.PI / WIND_SPUR_TEETH;
 // makeGear extrudes CENTERED (unlike the old ratchet builder's 0-based
 // extrude), so the group z places the band's middle.
 windSpur.position.z = Z_RATCHET_BOT + RATCHET_T / 2 - L_BARREL;
@@ -4091,7 +4098,12 @@ registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 // middle wheel telescopes out of the ratio), and the path still has TWO
 // meshes, so the winding sense is unchanged too.
 const crownWheel = G.makeGear({ name: 'crownWheel', module: KW_MODULE, teeth: crownWheelTeeth, mates: [windPinionTeeth], thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
-const crownWheelBase = Math.PI / crownWheelTeeth; // half-tooth phase into the spur
+// The crown wheel meshes the WINDING PINION and nothing else — the spur is the
+// transfer wheel's mesh, one level up this arbor, since the wheel stopped
+// reaching the spur directly (the comment above). That mesh's axes CROSS at
+// the stem, so no parallel-axis solve can phase it and this stays a half-pitch
+// index; the pair solveGearChain can reach is the transfer wheel's, below.
+const crownWheelBase = Math.PI / crownWheelTeeth;
 crownWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
 keyless.add(crownWheel);
 // Transfer wheel: hub-less — its band between plate top and great-wheel
@@ -4102,6 +4114,14 @@ const transferWheel = G.makeGear({ name: 'transferWheel', module: KW_MODULE, tee
   : { teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
 transferWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_TRANSFER);
 keyless.add(transferWheel);
+// TODO 132 — the transfer wheel's index ON ITS ARBOR, and the only freedom the
+// keyless winding mesh has. Crown wheel and transfer wheel are one rigid body
+// (transferArbor joins them, and tick() writes the second from the first), but
+// two blanks pressed onto one arbor are indexed at whatever relative angle the
+// assembly calls for — the going train's wheel+pinion pairs are the same
+// freedom, used the same way. SOLVED against the winding spur below; seeded at
+// 0 so the arbor is well defined even if the solve refuses aloud.
+let transferWheelClock = 0;
 const transferArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - Z_KEYLESS, 14), MATS.steel);
 transferArbor.rotation.x = Math.PI / 2;
@@ -4114,12 +4134,13 @@ keyless.add(transferArbor);
 // alarm winding train's idlers do; one extra mesh flips the winding
 // sense, so the spin below carries the extra negation.
 let windIdlerWheel = null;
+let windIdlerClock = 0;   // TODO 132 — the idler's own free index, solved below when the routing parks one
 if (windIdler) {
   windIdlerWheel = G.makeGear({ module: KW_MODULE, teeth: windIdler.teeth, mates: [
     { teeth: crownWheelTeeth, mates: [windIdler.teeth] },
     { teeth: WIND_SPUR_TEETH, mates: [windIdler.teeth] },
   ], thickness: RATCHET_T, boreR: 0.55, spokes: 0, material: MATS.steel, hub: false });
-  windIdlerWheel.name = 'kwWindIdler'; // §33 step 2 — instruments couple by string
+  windIdlerWheel.name = 'kwWindIdler'; // §33 step 2 — instruments couple by string; §194: a declared mesh row NAMES its members, and the solve below declares two
   windIdlerWheel.position.set(windIdler.x, windIdler.y, Z_TRANSFER);
   keyless.add(windIdlerWheel);
   const idlerArbor = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.6, 12), MATS.steel);
@@ -4341,16 +4362,22 @@ const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: 
     { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
     { teeth: SETTING_CAP_TEETH, mates: [minuteWheelTeeth] },
   ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
-// §194 — two KEYLESS meshes, and they are declared with a known discrepancy
-// rather than left out of the registry because they do not fit: both stand at
-// centre distance 7.58 where module·(P+Q)/2 is 7.48. One cause, six sites —
-// layout.js adds a bare `+ 0.1` to the pitch-radius sum (windSpurR +
-// crownWheelR + 0.1, and mwFoldD here), underived and not CLEAR_MARGIN's
-// 0.15. The registry's job is to make that visible, so the rows exist and the
-// centre-distance tier reports them; the constant itself is TODO 125's.
-declareMesh('keyless: setting wheel ⇄ minute wheel', { a: 'settingWheel', b: 'minuteWheel', inputs: ['crown', 'handSet'], chain: 'keyless' });
-declareMesh('keyless: wind spur ⇄ transfer wheel', { a: 'windSpur', b: 'transferWheel', inputs: ['crown', 'wind'], chain: 'keyless' });
-const minuteWheelBase = Math.PI / minuteWheelTeeth;
+// §194 declared these two KEYLESS meshes by hand because nothing phased them;
+// TODO 132 gave them the solve they were owed, and solveGearChain declares
+// every pair it phases, so the rows are gone from here rather than duplicated.
+// (TODO 125 is what unblocked it: both pairs stood 0.1 wide of module·(P+Q)/2
+// on an underived `+ 0.1`, and the solve refuses a chain that misses its
+// pitch-circle sum by more than 0.05 — correctly, since phasing a pair that
+// does not reach is meaningless. They stand at the sum exactly now.)
+// TODO 132 — the setting mesh's one knob, SOLVED below. tick() writes the whole
+// compound arbor from `minuteWheelBase + minuteArborSpin`, so the phase has to
+// live in the base: a rotation left on the object is erased by the first frame.
+// Turning the arbor re-indexes the minute pinion with it, which costs nothing —
+// §136 has that pinion meshing nothing, and the hands arrive through
+// handSetOffset's tooth counts rather than through its angle.
+// The half-pitch seed is TODO 15's idiom; measured, it left the pair 22.222% of
+// a pitch off anti-phase over the pose net.
+let minuteWheelBase = Math.PI / minuteWheelTeeth;
 const minutePinion = G.makePinion({ name: 'minutePinion', module: 0.28, teeth: minutePinionTeeth, mates: [minutePinionTeeth], // §136: meshes NOTHING (see above) — self-Willis display form, not a mesh claim
   thickness: 1.3, material: MATS.steel });
 // Pinion steps toward the DIAL below the wheel (same side as before the
@@ -14695,6 +14722,70 @@ const solveGearChain = (label, chain, module, inputs = []) => {
     { obj: centerPinion, teeth: TRAIN.barrel.pinion, name: 'center pinion' },
     { obj: greatWheel, teeth: TRAIN.barrel.teeth, name: 'great wheel' },
   ], TRAIN.barrel.module, ['train']);
+  // TODO 132 — THE KEYLESS WORKS, the movement's last two unphased spur
+  // meshes. Both carried TODO 15's half-pitch idiom and nothing else, and both
+  // measured a CONSTANT error over the pose net: 22.222% of a pitch on the
+  // setting mesh, 34.345% on the winding one — tooth riding tooth, stable at
+  // every pose because a static build-phase error reads the same everywhere.
+  // §194 declared the pairs anyway (the registry's job is to make a mesh
+  // visible, not to flatter it) and waived them, because the underived `+ 0.1`
+  // in their centre distances exceeded this solver's own 0.05 tripwire: it
+  // would have refused the chain aloud, and rightly, since phasing a pair that
+  // does not reach is meaningless. TODO 125 deleted that constant and both
+  // pairs stand at module·(P+Q)/2 exactly, so the solve can finally run.
+  //
+  // THE KNOB IS A BASE CONSTANT, NOT A ROTATION, which is the one thing this
+  // chain does differently from every solve above. tick() writes all of these
+  // rotors each frame as `base + spin`, so a phase left on the object is
+  // erased by the first frame; each solve reads its result back into the base
+  // the tick adds to. The objects are then put back where they stood, for the
+  // same reason the going arbors are below.
+  //
+  // WHICH POSE, and why it is not zero. The going arbors carry ADDITIVE
+  // constants from meshOffset, so for them a solve at zero is exactly wrong at
+  // every pose the movement occupies (TODO 116). These two pairs are pure
+  // counter-rotations at their tooth ratios — `minuteArborSpin` is
+  // −settingWheelSpin·(setting/minute), and the crown wheel is
+  // −(spur/crown)·spurWorldDelta off the spur's own world delta — so
+  // frac(uP + uQ) established at ANY REACHABLE pose rides every other one,
+  // which is the reserve train's entitlement. Reachable is the load-bearing
+  // word: the spur rides barrelArbor, and its world angle is
+  // `windSpurBase + barrelMeshAngle(0)` at full wind (windLocalAt cancels the
+  // tau term), so it needs the rest pose entered above. Solve with that arbor
+  // anywhere else and the transfer wheel is indexed to a spur position the
+  // watch never puts it in.
+  {
+    const keylessRest = [settingWheel, minuteArbor, windSpur, crownWheel, transferWheel,
+      ...(windIdlerWheel ? [windIdlerWheel] : [])].map((o) => [o, o.rotation.z]);
+    settingWheel.rotation.z = settingWheelBase;                 // settingWheelSpin = 0 at rest
+    minuteArbor.rotation.z = minuteWheelBase;                   // the knob, solved just below
+    windSpur.rotation.z = windSpurBase;                         // windBack = 0 at full wind
+    crownWheel.rotation.z = crownWheelBase;                     // crownWheelSpin = 0 with it
+    transferWheel.rotation.z = crownWheel.rotation.z + transferWheelClock;
+    if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth);
+    // The SETTING mesh. The setting wheel is the datum: its own teeth answer
+    // to the sliding clutch, whose axis lies along the stem — a crossed-axis
+    // mesh no parallel-axis solve can phase — so the one freedom here is the
+    // minute arbor, turned as one blank with the pinion riding (the motion
+    // works' own structure, gauged by the wheel that owns the silhouette).
+    solveGearChain('keyless:', [
+      { obj: settingWheel, teeth: settingWheelTeeth, name: 'setting wheel' },
+      { obj: minuteArbor, gauge: minuteWheel, teeth: minuteWheelTeeth, name: 'minute wheel (+pinion held)' },
+    ], KW_MODULE, ['handSet']);
+    minuteWheelBase = minuteArbor.rotation.z;
+    // The WINDING mesh, spur to transfer wheel — through the idler when the
+    // stem's azimuth parks one (§33 step 2), which is two links and two knobs
+    // rather than one, and the chain follows the routing instead of asserting
+    // a topology the layout may not have built.
+    solveGearChain('keyless:', [
+      { obj: windSpur, teeth: WIND_SPUR_TEETH, name: 'wind spur' },
+      ...(windIdlerWheel ? [{ obj: windIdlerWheel, teeth: windIdler.teeth, name: 'wind idler' }] : []),
+      { obj: transferWheel, teeth: crownWheelTeeth, name: 'transfer wheel' },
+    ], KW_MODULE, ['wind', 'reserve']);
+    if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z + crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth);
+    transferWheelClock = transferWheel.rotation.z - crownWheel.rotation.z;
+    for (const [o, z] of keylessRest) o.rotation.z = z;
+  }
   // tick() owns these every frame; put them back so nothing built after this
   // block reads a world matrix off a pose that only existed for the solve.
   for (const [arbor] of goingRest) arbor.rotation.z = 0;
@@ -37404,8 +37495,8 @@ function tick(t) {
   const spurWorldDelta = windBack + (barrelMeshAngle(tau) - barrelMeshAngle(0));
   const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * spurWorldDelta;
   crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
-  transferWheel.rotation.z = crownWheel.rotation.z; // keyed to the same arbor
-  if (windIdlerWheel) windIdlerWheel.rotation.z = -crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream
+  transferWheel.rotation.z = crownWheel.rotation.z + transferWheelClock; // keyed to the same arbor, at the index the spur mesh was solved to (TODO 132)
+  if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream; TODO 132 phases it
   {
     // Winding spur, let-down square and fusee cone are keyed together;
     // their LOCAL rotation is derived from the bank (−2π per turn still to

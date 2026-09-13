@@ -8583,18 +8583,30 @@ export const MESH_PHASE_WAIVERS = {
   //   wind spur ⇄ transfer wheel        crown 0|0, wind 0|0     → never exercised
   //
   // So the item's rule stands but its triage did not: only two rows were
-  // verified geared on every input they declare, two are unjudgeable until an
-  // axis exercises them (the `restoring` lesson — a part no axis MOVES is a
-  // part an instrument cannot judge), and the two keyless rows are blocked on
-  // TODO 125 regardless, since their 0.1 centre miss exceeds solveGearChain's
-  // own 0.05 tripwire and it would refuse them aloud.
+  // verified geared on every input they declare, two read 0 | 0 (the
+  // `restoring` lesson — a part no axis MOVES is a part an instrument cannot
+  // judge), and the two keyless rows were blocked on TODO 125 regardless,
+  // since their 0.1 centre miss exceeded solveGearChain's own 0.05 tripwire
+  // and it would have refused them aloud.
   //
   // `idler 2 ⇄ arbor pinion` IS GONE from this table: it was the one row that
   // was simply never clocked, a second-stage solve now covers it, and it reads
   // 43.107% → 0.057% over the net. This table's own stale gate named its
   // waiver for deletion, which is the rule working rather than a tidy-up.
-  'keyless: setting wheel ⇄ minute wheel': 'TODO 132',
-  'keyless: wind spur ⇄ transfer wheel': 'TODO 132',
+  //
+  // AND SO ARE BOTH KEYLESS ROWS — and ONE of them was never "never
+  // exercised". TODO 125 unblocked the phase half for both (a solve each,
+  // 22.222% → and 34.345% → inside the bar, recorded in main.js beside the
+  // chain), but the 0 | 0 above was the checker's answer, not the movement's:
+  // `transmits` accumulated the NET turn over an axis's full span, and `wind`
+  // is a CYCLE by construction — out to full wind and back — so the spur
+  // returned home and 21.99 rad of travel netted to float noise. Measured per
+  // input now: `wind` -1.200000, `reserve` -1.200000, both the declared bar
+  // exactly. The path length tells a still member from one that came back, and
+  // the check reads it (see sweepOnce). `crown` was never an input to either
+  // pair — that axis is the PULL, not the turn — and both rows said so for as
+  // long as they existed; the winding pair's real second driver is the spring
+  // running DOWN through the fusee, which is `reserve`.
   // NOT flat and NOT 132's: measured driver-still under the HOUR (0 against the
   // idler's -3.366) — the setting wheel has no back-drive term while the idler
   // it meshes carries `_bd`. That is TODO 117's second open row, already in its
@@ -8913,7 +8925,14 @@ export function checkTransmits(clock) {
     // Divide the frame's handedness out: a mirrored basis reverses apparent
     // rotation, and only the MATERIAL sense is comparable across a mesh.
     const ha = pa.hand, hb = pb.hand;
-    let accA = 0, accB = 0, worst = 0;
+    // TWO accumulators per member, and the second is the one that tells a
+    // still part from a part that came back. `acc` is the NET turn — what a
+    // ratio is taken of — and it is zero for both a member nothing moves and
+    // a member swept out and home again. `abs` is the PATH LENGTH, which is
+    // zero only for the first. See sweepPair's still branch for why that
+    // distinction is not bookkeeping: three of the AXES are cycles by
+    // construction.
+    let accA = 0, accB = 0, absA = 0, absB = 0, worst = 0;
     for (let i = 1; i <= STEPS; i++) {
       clock.setPose(axis.pose((i / STEPS) * span, clock));
       clock.scene.updateMatrixWorld(true);
@@ -8921,9 +8940,9 @@ export function checkTransmits(clock) {
       if (!na || !nb) return { bad: 'rotor vanished mid-sweep' };
       const da = wrap(na.az - pa.az), db = wrap(nb.az - pb.az);
       worst = Math.max(worst, Math.abs(da), Math.abs(db));
-      accA += da; accB += db; pa = na; pb = nb;
+      accA += da; accB += db; absA += Math.abs(da); absB += Math.abs(db); pa = na; pb = nb;
     }
-    return { accA: accA * ha, accB: accB * hb, worst, span, hand: [ha, hb] };
+    return { accA: accA * ha, accB: accB * hb, absA, absB, worst, span, hand: [ha, hb] };
   };
 
   // THE SPAN IS PER ROW, PER INPUT, and it is validated by CONVERGENCE rather
@@ -8953,10 +8972,22 @@ export function checkTransmits(clock) {
           return { ...s1, got, converged: true };
         prev = got;
       } else if (Math.abs(s1.accA) <= TRANSMITS_STILL && s1.worst < TRANSMITS_ALIAS) {
-        // The driver genuinely does not move on this input, at a span whose
-        // steps are unwrappable. That is a fact about the mechanism, not a
-        // measurement failure, and it is reported rather than divided by.
-        return { ...s1, still: true };
+        // TODO 132 — A NET OF ZERO IS NOT A DRIVER STANDING STILL, and reading
+        // it as one made this check silent about every row fed by a CYCLE.
+        // `wind`, `arrest` and `stemSlip` are cycles by construction (an axis
+        // that only ramps leaves the mechanism's own reversal unobserved —
+        // each of those three says so in its comment), so their full span
+        // returns every rotor to where it started and `accA` comes back at
+        // float noise. Measured, the winding spur travels 21.99 rad over the
+        // wind axis and nets to -3e-16: the pair was reported "driver still"
+        // while turning three and a half revolutions each way.
+        //
+        // The PATH LENGTH tells the two apart. Still means the member never
+        // moved at all; a driver that moved and came home is exercised, and
+        // halving the span walks a monotone leg of the same cycle — which is
+        // what the loop below does anyway, and a ratio is scale-invariant, so
+        // it costs samples and nothing else.
+        if (s1.absA <= TRANSMITS_STILL) return { ...s1, still: true };
       }
     }
     return { aliased: true };
@@ -8983,6 +9014,7 @@ export function checkTransmits(clock) {
       if (sw.bad) { row.verdict = 'no rotor'; row.why = sw.bad; malformed.push(row); per.push(row); continue; }
       if (sw.aliased) { row.verdict = 'aliased'; reported.push(row); per.push(row); continue; }
       Object.assign(row, { aSpin: +sw.accA.toFixed(6), bSpin: +sw.accB.toFixed(6),
+        aPath: +sw.absA.toFixed(6), bPath: +sw.absB.toFixed(6),
         maxStep: +sw.worst.toFixed(4), span: sw.span, hand: sw.hand });
       if (sw.still) { row.verdict = 'driver still'; reported.push(row); per.push(row); continue; }
       row.got = +sw.got.toFixed(6);
