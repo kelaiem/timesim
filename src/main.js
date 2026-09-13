@@ -21342,8 +21342,10 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
     module: ALARM_TRAIN_MODULE, teeth: SUB_LEG_TEETH, mates: [{ teeth: SUB_IDLER_SOLVED, mates: [ALARM_BARREL_TEETH, SUB_LEG_TEETH] }],
     thickness: ALARM_WIND_WHEEL_T, material: MATS.steel,
   });
-  // §194 — leg B's own mesh, the compound idler's pinion against the leg.
-  declareMesh('alarm arrest: leg B pinion ⇄ idler pinion', { a: 'pinB', b: 'idlerP', inputs: ['alarmWind'], chain: 'alarm arrest' });
+  // §194 — leg B's own mesh, the compound idler's pinion against the leg. It is
+  // declared by the second-stage solve below (TODO 132) rather than by hand,
+  // the solve declaring every pair it phases; a row here as well would be the
+  // duplicate TODO 124 already paid for once.
   pinB.traverse((o) => { if (o.isMesh) o.name = 'subLegBPinion'; });
   pinBSpin.add(pinB);
   // TODO 60 — THE SLEEVE THAT WAS A POINT. Both its arguments used to reduce to
@@ -21481,10 +21483,42 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
     { obj: alarmWindTargetGear, teeth: ALARM_WIND_W, name: 'arbor wheel' },
     { obj: pinA, teeth: SUB_LEG_TEETH, name: 'leg A pinion' },
   ], ALARM_TRAIN_MODULE, ['alarmWind']);
+  // TODO 132 — LEG B IS DRIVEN BY `alarmStrike`, AND SAYING `alarmWind` MADE IT
+  // UNJUDGEABLE. Leg B reads the barrel BODY's rim (arrestAngles: `idler` is a
+  // function of bodyA and of nothing else), and the body turns on the strike
+  // phase; `alarmWind` turns the ARBOR, which is leg A's input. Both leg B rows
+  // declared `alarmWind` and so read `0 | 0` under the only input they named —
+  // the checker could not speak about them, and TODO 132 recorded that silence
+  // as "never exercised" and filed the pair as owed an axis. The axis existed
+  // all along. Measured on `alarmStrike`: the rim turns the idler wheel at
+  // -3.384615 and the idler pinion turns the leg at -1.153846, both the
+  // tooth-count bar exactly.
   solveGearChain('alarm arrest leg B:', [
     { obj: alarmBarrelGear, teeth: ALARM_BARREL_TEETH, name: 'barrel rim' },
     { obj: idlerW, teeth: SUB_IDLER_SOLVED, name: 'idler wheel' },
-  ], ALARM_TRAIN_MODULE, ['alarmWind']);
+  ], ALARM_TRAIN_MODULE, ['alarmStrike']);
+  // …and the SECOND STAGE, which nothing phased: the chain above stops at the
+  // idler WHEEL, and the mesh that carries leg B's drive out of the idler is
+  // the idler PINION against the leg. It measured 34.334% of a pitch off
+  // anti-phase — tooth on tooth at every pose, the last of TODO 132's six.
+  //
+  // ONE FREEDOM, and it is spent on the leg's blank. The idler's two wheels are
+  // one body (subIdlerBody welds them; §107 counts them as one) and their
+  // relative index is an assembly freedom like any pair of blanks on an arbor —
+  // but stage one committed the WHEEL's teeth to the barrel rim, so the pinion
+  // stays at the authored index and is the datum here. `pinB` answers to
+  // nothing else: it turns with side gear B by law, but the side gear is its own
+  // object inside the spider and its teeth answer to the planets there.
+  //
+  // No pose bracket, and that is a fact about the law rather than an omission:
+  // `idler` and `legB` are proportional to bodyA with NO additive constant, so
+  // the build pose (both spins at zero) is the pose at strike phase 0 — a pose
+  // the movement occupies. The tick writes the two SPIN groups, never these two
+  // blanks, so the solved phases persist the way the going train's do.
+  solveGearChain('alarm arrest leg B:', [
+    { obj: idlerP, teeth: SUB_IDLER_SOLVED, name: 'idler pinion' },
+    { obj: pinB, teeth: SUB_LEG_TEETH, name: 'leg B pinion' },
+  ], ALARM_TRAIN_MODULE, ['alarmStrike']);
   // TODO 132 — SOLVE THE OUTPUT STAGE IN THE FRAME IT IS ASSEMBLED IN, which
   // is not the one it was being solved in. `fpSpin` carries BOTH members of
   // this arbor: the Geneva finger and the output pinion. The tick writes it
@@ -21512,10 +21546,15 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   // updateWorldMatrix(true, true). The tick overwrites this rotation on every
   // frame, so the assignment is a BUILD pose, not a second owner of the angle.
   fpSpin.rotation.z = ARREST_FINGER_CLOCK;
+  // TODO 132 — and the OUTPUT stage is reached by BOTH inputs, which is the
+  // differential's whole point: the cage takes the mean of the two legs, so
+  // winding turns it through leg A and ringing turns it through leg B. It
+  // declared `alarmWind` alone, so half of what drives it went unmeasured.
+  // Measured, the pair reads -2.727273 under each — the same bar by two routes.
   solveGearChain('alarm arrest output:', [
     { obj: subDiff.userData.wheel, teeth: SUB_OUT_TEETH, name: 'cage wheel' },
     { obj: fPin, teeth: SUB_FINGER_TEETH, name: 'finger pinion' },
-  ], SUB_OUT_MODULE, ['alarmWind']);
+  ], SUB_OUT_MODULE, ['alarmWind', 'alarmStrike']);
 
   // Boot asserts (rule 6) — every one of these is a number the build claims.
   if (Math.abs(ARREST_TRAVEL_TURNS - (ARREST_STATIONS - 1)) > 1e-12)
