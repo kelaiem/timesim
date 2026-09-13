@@ -8624,20 +8624,27 @@ const MESH_PHASE_BAR = 0.02;          // solveGearChain's own, see above
 // The bar is §194's own enumeration criterion — 0.5% of the pitch-radius sum,
 // the tolerance the coverage check below enumerates candidates with — so one
 // number says both "this pair meshes" and "this declared mesh stands where
-// its teeth were cut for". The two rows are WAIVED by name, citing the item,
-// and the waiver goes stale the day the item is decided either way.
+// its teeth were cut for".
 //
-// What TODO 125's deletion measured, so nobody repeats it blind: with the
-// six `+ 0.1` removed, both rows read 0.000% — and §125's D4 assert fires,
-// because the seconds well's outboard bound is derived through the plate
-// from the keyless station and moved 15.6277 → 15.1334 (0.49, not 0.1: the
-// plate re-solves). Deleting the constant is therefore a RE-SOLVE of the
-// identity (D4's literal, the fourth's station, the escapement behind it),
-// not a constant edit, and that is the decision the item is still owed.
+// TODO 125 IS DECIDED AND THIS TABLE IS EMPTY. Two keyless rows used to sit
+// here at 1.337%, waived against an undecided constant: an underived `+ 0.1`
+// that `layout.js` added to every keyless mesh distance. It was not a backlash
+// allowance — KW_MODULE is 0.34, so 0.1 is 0.29 of a MODULE and the centre
+// increase buying even a generous horological backlash is under 0.1·m — and it
+// was not a convention of this movement, since the other 21 declared meshes
+// all stood at module·(P+Q)/2 exactly. It was this file's 0.1 running
+// clearance for a tube in its bearing, carried across to a centre distance.
+// Deleted, both rows read 0.000% and ALL 23 declared meshes now stand where
+// their teeth were cut for, so there is nothing left to waive.
+//
+// The deletion was a RE-SOLVE and not a constant edit, exactly as the item
+// predicted: the keyless cluster floors the plate, dialRadius fell
+// 42.922914475499894 → 42.804991398276, and §125's own D4 assert fired naming
+// the two bounds it had to meet. D4 is re-derived from its comment's closed
+// form (18.777750373095056 → 18.730557557590057) and the bounds meet again to
+// float noise; the seconds well is 0.047 smaller for it.
 export const MESH_CD_TOL = 0.005;
 export const MESH_CENTRE_WAIVERS = {
-  'keyless: setting wheel ⇄ minute wheel': 'TODO 125',   // 7.58 against 7.48 — the shared +0.1
-  'keyless: wind spur ⇄ transfer wheel': 'TODO 125',     // the same 0.1, the same constant
 };
 
 export function checkMeshPhase(clock) {

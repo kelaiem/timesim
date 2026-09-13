@@ -3,11 +3,14 @@
 // throttling off, sweep hold — probe-153-fails' drive) for `meshPhase` and
 // `meshCoverage`, then holds what §135 shipped on:
 //   1. meshPhase gates the centre distance: 0 unwaived misses over the 0.5%
-//      bar, exactly the two keyless rows waived (TODO 125), no stale waiver;
-//   2. meshCoverage's enumeration finds the declared meshes (control), reports
-//      0 undeclared pairs in the metal, and the only declared rows it never
-//      sees are the two TODO 125 rows (0.1 off the pitch sum, outside the
-//      enumeration tolerance by construction — §194 said so);
+//      bar, and NO centre waiver at all — TODO 125 closed the last two, so an
+//      empty table is the claim now and any entry is a regression;
+//   2. meshCoverage's enumeration finds EVERY declared mesh (control), and
+//      reports 0 undeclared pairs in the metal. It used to miss two — the
+//      keyless rows stood 0.1 off their pitch sum and fell outside the
+//      enumeration tolerance by construction — and TODO 125 deleting that
+//      `+ 0.1` brought them in. All 23 are now both declared and seen, so a
+//      row the enumeration cannot find is a regression rather than known debt;
 //   3. neither check threw, and both are silent in the boot.
 //   cd tools && node probe-135-registry.mjs        (exit 1 on any claim)
 import { chromium } from 'playwright';
@@ -52,8 +55,10 @@ const mp = results.meshPhase.st.result, mc = results.meshCoverage.st.result;
 if (mp) {
   console.log(`meshPhase in ${results.meshPhase.s.toFixed(0)}s: ${mp.rows.length} rows, centre bar ${mp.centreBarPct}%, misses over it: ${mp.rows.filter((r) => Math.abs(r.cdMissRel) > mp.centreBarPct / 100).map((r) => `${r.site} ${(r.cdMissRel * 100).toFixed(3)}%`).join('; ') || 'none'}`);
   if (mp.centreViolations.length) F(`meshPhase: ${mp.centreViolations.length} unwaived centre-distance miss(es): ${mp.centreViolations.map((r) => r.site).join(', ')}`); else OK('meshPhase: 0 unwaived centre-distance misses over 0.5%');
+  // TODO 125 emptied this table: every declared mesh stands at module·(P+Q)/2,
+  // so a waived centre row is now a regression and not accepted debt.
   const w = mp.centreWaived.map((r) => r.site).sort();
-  if (w.length !== 2 || !w.every((s) => /^keyless:/.test(s))) F(`meshPhase: centre waivers are ${JSON.stringify(w)}, want the two keyless rows`); else OK(`meshPhase: exactly the two keyless rows waived against TODO 125 (${mp.centreWaived.map((r) => (r.cdMissRel * 100).toFixed(3) + '%').join(', ')})`);
+  if (w.length) F(`meshPhase: centre waivers are ${JSON.stringify(w)} — TODO 125 emptied that table, so any entry is a regression`); else OK(`meshPhase: no centre waiver at all, and the worst miss is ${(Math.max(...mp.rows.map((r) => Math.abs(r.cdMissRel))) * 100).toFixed(4)}% (TODO 125 closed)`);
   if (mp.staleCentreWaivers.length) F(`meshPhase: stale centre waivers ${JSON.stringify(mp.staleCentreWaivers)}`); else OK('meshPhase: no stale centre waiver');
   if (mp.violations.length || mp.malformed.length || mp.staleWaivers.length || !mp.controlPass) F(`meshPhase: phase gate not clean (${mp.violations.length} violations, ${mp.malformed.length} malformed, ${mp.staleWaivers.length} stale, controls ${mp.controlPass})`); else OK('meshPhase: the phase gate is as clean as before (§194 waivers unchanged)');
 }
@@ -62,7 +67,7 @@ if (mc) {
   if (!mc.controlPass) F('meshCoverage: control FAIL — found no declared mesh'); else OK(`meshCoverage: control — the enumeration finds ${mc.covered} of the declared meshes`);
   if (mc.undeclared.length) F(`meshCoverage: ${mc.undeclared.length} undeclared mesh(es) in the metal: ${mc.undeclared.map((r) => r.pair).join('; ')}`); else OK('meshCoverage: 0 undeclared meshes in the metal');
   const ns = mc.declaredNotSeen.map((r) => r.site).sort();
-  if (ns.length !== 2 || !ns.every((s) => /^keyless:/.test(s))) F(`meshCoverage: declared rows never seen are ${JSON.stringify(ns)}, want exactly the two TODO 125 rows`); else OK('meshCoverage: the only declared rows outside the enumeration are the two TODO 125 rows, as §194 said');
+  if (ns.length) F(`meshCoverage: declared rows the enumeration never sees are ${JSON.stringify(ns)} — TODO 125 brought the last two in, so this should be empty`); else OK('meshCoverage: every declared mesh is seen in the metal — the two that were not are in since TODO 125 closed the centre gap');
   if (mc.staleWaivers.length) F(`meshCoverage: stale waivers ${JSON.stringify(mc.staleWaivers)}`); else OK('meshCoverage: no stale waiver');
 }
 process.exit(fail ? 1 : 0);
