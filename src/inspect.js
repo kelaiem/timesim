@@ -8612,7 +8612,6 @@ export const MESH_PHASE_WAIVERS = {
   // it meshes carries `_bd`. That is TODO 117's second open row, already in its
   // table, and 132 was wrong to call it unchased.
   'alarm setting setting wheel ⇄ idler 1': 'TODO 117',
-  'alarm arrest: leg B pinion ⇄ idler pinion': 'TODO 132',
   // `cage wheel ⇄ finger pinion` IS GONE TOO, and it was a third defect again:
   // solved, transmitting, and still 26.880% off over the net at 0.098 spread.
   // The solve was taken in a frame the movement never occupies — `fpSpin`

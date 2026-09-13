@@ -56,7 +56,8 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
 | 125 | CLOSED | An underived `+ 0.1` sat on every keyless mesh distance at seven live sites (the item said six; crown wheel ⇄ idler was the seventh), putting two declared meshes 1.337% beyond the centre distance their teeth were cut for. DELETED, and the arithmetic decided it rather than taste: KW_MODULE is 0.34, so 0.1 is **0.29 of a module**, where the centre increase buying even a generous horological backlash is under 0.1·m — no backlash rule derives it. Nor was it a convention: 21 of the 23 declared meshes already stood at module·(P+Q)/2 and the only two that did not were the two these expressions site. What it WAS is visible at `ALARM_TUBE_INNER` — this file's 0.1 running clearance for a tube in its bearing, carried across to a centre distance, on a comment ("the same +0.1 slop every keyless mesh uses, see mwFoldD") that was circular. The deletion was a RE-SOLVE as the item predicted: the keyless cluster floors the plate, dialRadius fell 42.922914475499894 → **42.804991398276**, §125's own D4 assert fired in rule-6 form naming the two bounds it had to meet, and D4 re-derives from its comment's closed form 18.777750373095056 → **18.730557557590057** with the bounds meeting to float noise. Price, stated: the seconds well is 0.047 smaller. Dividend: `meshCoverage` now enumerates **23 of 23** declared meshes where it found 21 — the two it could never see were outside its tolerance BECAUSE of the 0.1. `MESH_CENTRE_WAIVERS` is empty; probe-135-registry's claims rewritten, since they encoded this item's open state. Unblocks [TODO 132]'s keyless rows |
-| 132 | OPEN | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; `leg B pinion ⇄ idler pinion` reads 0|0 on its only axis, so nothing can judge it until an axis exercises it (the `restoring` lesson); and both keyless rows are blocked on [TODO 125] — their 0.1 centre miss is over solveGearChain's own 0.05 tripwire, which would refuse them aloud. A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
+| 135 | OPEN | The `handSet` axis moves the keyless setting wheel and minute wheel through their whole travel (7.53982 and 6.28319 rad) and moves the cannon pinion, motion works and hands **not at all** — under the walk every check performs (`enterAxis` once, then `setPose` per sample). Found by `transmits` reporting both motion-works rows `driver still` on it, which since the path-length fix means never moved rather than came home. The cause is a time-eased tick law meeting a zero-dt pose: while the jumper is engaged the hands read `jumpDisp`, which approaches its target by `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))`, identically zero when `rawDt` is, and only the `jumpDisp === null` initialiser moves it — so a one-shot reading shows the axis working perfectly and a sweep sees nothing. CLAUDE.md's zero-dt trap reaching a whole sweep rather than one scripted write. Costs `inspection:handSet`, `clearances:handSet` and `expectedContacts:handSet` their entire dial-side population: a collision reachable only while setting the hands is invisible to all three and has been since the axis landed. `tools/probe-handset-reach.mjs` measures it with the control (reset-per-sample and sweep+step both move; the keyless rows are the must-move column). Filed rather than fixed — the three candidate fixes each reach past this item, and all three will surface real findings |
+| 132 | CLOSED | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; **`leg B pinion ⇄ idler pinion` and both keyless rows were the item's SECOND wrong triage**: all three read 0|0 and none was unexercised. The keyless pair was blocked on [TODO 125] (0.1 centre miss over solveGearChain's 0.05 tripwire, which refused them aloud, correctly); 125 lifted it and each took a solve whose knob is a BASE CONSTANT rather than a rotation, since tick() writes those rotors as `base + spin` and a phase left on the object dies on the first frame — **22.222% → 0.043%** and **34.345% → 0.079%**, `minuteWheelBase` and a new `transferWheelClock` (the transfer wheel's index on the crown wheel's arbor). The winding pair's `0|0` was the CHECKER: `transmits` accumulated the NET turn and `wind` is a cycle by construction, so the spur travelled 21.99 rad, came home, and read as a still driver — fixed by keeping the PATH LENGTH beside the net, which also unblocked both reserve stages under `wind`. Leg B's `0|0` was the ROW: it reads the barrel BODY's rim (`arrestAngles` computes `idler` from bodyA alone) and the body turns on `alarmStrike`, while `alarmWind` turns the arbor — leg A's input. Re-declared and clocked by a second stage carrying the chain past the idler wheel to its pinion, **34.334% → 0.008%**. `crown` was likewise never an input to either keyless pair (that axis is the PULL), and the output stage named `alarmWind` alone where a differential's cage is reached by BOTH legs (-2.727273 under each). A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
 | 28 | MOSTLY CLOSED | Nothing — its last remainder (the lock's return) closed as item 31 (§102); the heading keeps MOSTLY CLOSED only because the profile/drive rebuild it records was never the whole item |
@@ -15719,11 +15720,89 @@ the mis-phased one — and yet `transmits` passes it unwaived on both its
 declared inputs. Those two readings disagree, and neither has been
 chased. Filed here rather than silently re-labelled.
 
-## 132. Six meshes are mis-phased with no `solveGearChain` call of their own
+## 135. The handSet axis is blind to everything downstream of the minute jumper
 
-The residue of TODO 124, rehomed when that item closed. **This item's first
-triage was wrong and is corrected below**; the measurements that correct it
-are in the table.
+Found while closing [TODO 132]'s last row, by the instrument that item spent its
+life being corrected by: `transmits` reports BOTH motion-works rows
+`driver still` on `handSet`, and since the path-length fix a still verdict means
+the member never moved at all. It is not the metal and it is not the axis.
+
+**Measured** (`tools/probe-handset-reach.mjs`), absolute path swept over the
+whole axis, in radians:
+
+| part | reset before each sample | sweep-style walk | sweep + one `step(dt)` |
+|---|---|---|---|
+| `settingWheel` | 7.53982 | **7.53982** | 7.53982 |
+| `minuteWheel` | 6.28319 | **6.28319** | 6.28319 |
+| `cannonPinion` | 5.02655 | **0.00000** | 5.02490 |
+| `mwMinuteWheel` | 1.67552 | **0.00000** | 1.67497 |
+| `mwHourWheel` | 0.41888 | **0.00000** | 0.41874 |
+
+The keyless half of the chain sweeps its full travel; everything from the cannon
+pinion outward never moves. The middle column is the one that matters, because
+it is the walk every check performs — `enterAxis` once, then `setPose` per
+sample.
+
+**The cause is a time-eased tick law meeting a zero-dt pose.** While the jumper
+is engaged — `crownPullT > 0.5`, which this axis pins at 1 — the hands read
+`jumpDisp`, not `rawSetOffset`:
+
+```js
+jumpDisp += (target - jumpDisp) * (1 - Math.exp(-rawDt / CAM_SNAP_TAU));
+const handSetOffset = jumpDisp !== null ? jumpDisp : rawSetOffset + jumpCorr;
+```
+
+`setPose` ticks with `rawDt = 0`, so that factor is identically zero and
+`jumpDisp` never approaches its target. Only the FIRST engaged tick after a
+reset moves it, through the `if (jumpDisp === null) jumpDisp = target`
+initialiser — which is exactly why a one-shot reading (column one) shows the
+axis working perfectly. CLAUDE.md's "setPose ticks with zero dt" trap is written
+up for scripted writes; this is the same trap reaching a whole sweep.
+
+**What it costs.** `inspection:handSet`, `clearances:handSet` and
+`expectedContacts:handSet` sweep the hand-setting axis with the parts
+hand-setting drives held at the f = 0 pose. A collision that only exists while
+the hands are being set — a motion-works part against the dial, the hour tube
+against a bridge, the cannon pinion against anything — is invisible to all
+three, and has been since the axis was added. The axis's own comment records why
+it exists (a rod standing in the minute wheel's spoke windows passed every
+battery run); that half works, and it is the half that was checked when it
+landed.
+
+**Not yet fixed, and the fix is a choice with consequences**, which is why this
+is filed rather than folded into 132's landing:
+
+- give the sweep engine a dt, so eased laws advance — reaches every axis and
+  every check, and changes what the whole battery sees;
+- have the `handSet` axis step rather than pose — local, but an axis that steps
+  is no longer a pure function of `f`, which is what makes [TODO 54]'s canonical
+  entry and §127's slicing sound;
+- make the jumper's DISPLAY a pure function of the pose with the ease applied
+  only in `frame()` — closest to the §22 separation, and the most invasive.
+
+Whichever lands, expect it to surface real findings rather than none: three
+sweeps are about to start seeing parts they have never moved. That is the point,
+and it should be budgeted as its own change.
+
+Related: [TODO 5] and [TODO 6] are the other two named blind spots; the
+`restoring` audit's rule — a part no axis MOVES is a part an instrument cannot
+judge — is the same lesson, and this is its subtler form: the axis moves the
+part in principle and the tick law refuses it in practice.
+
+## 132. Six meshes are mis-phased with no `solveGearChain` call of their own — CLOSED
+
+The residue of TODO 124, rehomed when that item closed. **CLOSED — all five
+rows fixed** (the sixth was never this item's), and **this item's first triage
+was wrong twice**; the measurements that correct it are in the table.
+
+**What it got wrong is worth more than what it got right**, because the same
+mistake appeared at both ends. Twice this item read a checker's SILENCE as a
+fact about the movement and filed a mesh as "never exercised" — and both times
+the mechanism was being driven perfectly well. Once the checker could not see a
+CYCLE axis (`wind` returns its rotors home, so the net was zero); once the row
+named the wrong AXIS (leg B reads the barrel body, not the arbor). Neither was
+unexercised. `0 | 0` means the row is not being judged, and that is all it
+means — the diagnosis is a separate measurement, and this item twice skipped it.
 
 **THE HEADING IS PART OF THAT ERROR AND IS KEPT ANYWAY.** It says six rows and
 says none is covered by a `solveGearChain` call; measured, one of the six was
@@ -15737,7 +15816,7 @@ correction lives here, in the body. Same rule, same reason, as [TODO 124].
 |---|---|---|---|---|
 | ~~`alarm setting: idler 2 ⇄ arbor pinion`~~ | ~~43.107%~~ → **0.057%** | 0.049 | train ok, alarm ok | **never solved — CLOCKED, waiver gone** |
 | ~~`keyless: wind spur ⇄ transfer wheel`~~ | ~~34.345%~~ → **0.079%** | 0.244 | ~~crown 0\|0, wind 0\|0~~ → **wind ok, reserve ok** | **the `0\|0` was the CHECKER, not the movement — CLOCKED, waiver gone** |
-| `alarm arrest: leg B pinion ⇄ idler pinion` | 34.334% | 0.049 | alarmWind 0\|0 | **never exercised** — unjudgeable |
+| ~~`alarm arrest: leg B pinion ⇄ idler pinion`~~ | ~~34.334%~~ → **0.008%** | 0.049 | ~~alarmWind 0\|0~~ → **alarmStrike ok** | **the WRONG INPUT declared, not unexercised — CLOCKED, waiver gone** |
 | ~~`alarm arrest output cage wheel ⇄ finger pinion`~~ | ~~26.880%~~ → **0.073%** | 0.073 | alarmWind ok | **solved in the wrong FRAME — FIXED, waiver gone** |
 | ~~`keyless: setting wheel ⇄ minute wheel`~~ | ~~22.222%~~ → **0.043%** | 0.000 | handSet ok (`crown` was never an input) | **never solved — CLOCKED, waiver gone** |
 
@@ -15751,6 +15830,14 @@ did not consider** — a pair NEITHER of whose members any axis moves reads flat
 because nothing happens, not because its teeth are right. `transmits` records
 `aSpin` and `bSpin` for every row, including the ones it declines to judge, and
 those columns were never read. Two of the five turn out to be that case.
+
+**And NEITHER of those two was actually that case**, which is the second
+correction. Measured, both were being driven: `wind spur ⇄ transfer wheel`
+reads `0 | 0` because `transmits` accumulated the net turn over a CYCLE axis,
+and `leg B pinion ⇄ idler pinion` because the row named `alarmWind` where the
+mechanism runs on `alarmStrike`. So the third cause the item discovered is real
+— a pair no axis moves does read flat — but it applied to neither row it
+assigned to it. Each is worked below.
 
 This is the `restoring` lesson in another place: *a part no axis MOVES is a
 part an instrument cannot judge*. Shipping a mechanism obliges shipping the
@@ -15823,11 +15910,36 @@ already; nothing new is needed to see it.
   at a pose the mechanism never occupies is a solve for nothing**, and its own
   tripwire cannot see that, because the tripwire runs at exactly that pose.
 
-- **`alarm arrest: leg B pinion ⇄ idler pinion` — ship the axis first.**
-  `alarmWind` moves neither member. Nothing can say whether it transmits, so
-  nothing can say whether clocking it would mean anything. Clocking a pair
-  whose relative phase nothing ever changes is harmless and also unverifiable,
-  which is the worst combination to land quietly.
+- **`alarm arrest: leg B pinion ⇄ idler pinion` — DONE, and "ship the axis
+  first" was the wrong diagnosis twice over.** The axis existed; the row named
+  the wrong one. Leg B reads the barrel BODY's rim — `arrestAngles` computes
+  `idler` from `bodyA` and from nothing else — and the body turns on
+  `alarmStrikePhase`. `alarmWind` turns the ARBOR, which is leg A's input. Both
+  leg B rows declared `alarmWind` alone, so both read `0 | 0` under the only
+  input they named, and this item read that silence as a fact about the
+  movement. Measured over all fifteen axes: on `alarmStrike` the rim turns the
+  idler wheel at **-3.384615** and the idler pinion turns the leg at
+  **-1.153846**, both the tooth-count bar exactly, and no other axis moves
+  either member.
+
+  So the pair was verifiable all along, and clocking it means something. The
+  `alarm arrest leg B:` chain stopped at the idler WHEEL; a second stage now
+  carries it out through the idler PINION to the leg, and the row reads
+  **34.334% → 0.008%** over the pose net — the largest before-figure of the six
+  and the smallest after. ONE freedom, spent on the leg's blank: the idler's
+  two wheels are one body and their relative index is an assembly freedom, but
+  stage one committed the wheel's teeth to the barrel rim, so the pinion stays
+  at its authored index and is the datum. No pose bracket is needed and that is
+  a fact about the law rather than an omission — `idler` and `legB` are
+  proportional to `bodyA` with no additive constant, so the build pose IS the
+  pose at strike phase 0. The manual `declareMesh` is gone (the solve declares
+  what it phases) and the waiver went with it.
+
+  **A fourth row was under-declared by the same reading.** `alarm arrest output
+  cage wheel ⇄ finger pinion` named `alarmWind` alone, but a differential's
+  cage takes the MEAN of its two legs, so winding reaches it through leg A and
+  ringing through leg B. Measured, it reads **-2.727273** under each — the same
+  bar by two routes — and half of what drives it had never been swept.
 
 - **The two keyless rows — BOTH DONE, and the second one was never "owed an
   axis".** [TODO 125] lifted the blocker (the `+ 0.1` deleted, both pairs at
@@ -15895,6 +16007,12 @@ Before clocking any pair, read three things, not one:
    and came home. Before that column existed there was no way to tell from the
    payload, which is why this item asserted "never exercised" for a mesh
    turning three and a half revolutions each way.
+4. **whether the row's declared inputs are the ones that DRIVE it** — walk every
+   axis, not the declared ones. A zero path under an axis the mechanism does not
+   run on says nothing about the mechanism; `leg B pinion ⇄ idler pinion` read
+   `0 | 0` for two years of this item's life because it named the arbor's input
+   for a member the barrel body drives. Both halves of a `0 | 0` are suspect:
+   the row and the checker, before the metal.
 
 Related: [TODO 15] is the original anti-phase idiom, [TODO 48] closed the
 reserve train's instance, [TODO 62] the going train's, [TODO 116] the

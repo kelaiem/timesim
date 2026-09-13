@@ -4,8 +4,8 @@
 
 # The instruments
 
-197 scripts. **99 are ACCEPTANCE tests** — they decide and exit non-zero.
-**98 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+198 scripts. **99 are ACCEPTANCE tests** — they decide and exit non-zero.
+**99 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -188,6 +188,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-fouls2.mjs` |  | report | (no header — this file says nothing about what it answers) |
 | `probe-hand-stack.mjs` |  | acceptance | THE HAND STACK, MEASURED — every indicator's blade/boss z, the crystal chain from live constants, the alarm lane over poses, and the section table a thinning would be judged by. |
 | `probe-handedness.mjs` |  | acceptance | IS THIS PART HANDED? — the three couplings TODO 115 named as unmeasured. |
+| `probe-handset-reach.mjs` |  | report | HOW FAR DOWN THE HAND-SETTING CHAIN DOES THE `handSet` AXIS ACTUALLY REACH? |
 | `probe-interplate-demand.mjs` |  | acceptance | WHAT PINS THE THREE-QUARTER PLATE'S UNDERSIDE — the inter-plate z demand, per station, and the wheel-in-bore inventory. |
 | `probe-ledge-occupancy.mjs` |  | acceptance | WHAT OCCUPIES THE RIM-LEDGE ANNULUS — §186's mounting band, scanned over the pose net. |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
