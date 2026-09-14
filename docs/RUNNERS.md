@@ -30,7 +30,8 @@ The job's `runs-on` is one expression, and it reads in this order:
    `[self-hosted]` in its title, or a manual dispatch whose `runner` input
    says `self-hosted`. A push to `main` never asks, so merges always run
    GitHub-hosted, which also keeps main's baseline on the platform ordinary
-   PRs inherit from.
+   PRs inherit from — and is why the host's own baseline has to be seeded by
+   a dispatch (see the last section).
 4. **And only while the variable permits.** `BATTERY_RUNS_ON` names the
    label and is the availability switch, not the router: unset it and every
    opt-in lands on `ubuntu-latest` in silence.
@@ -132,7 +133,8 @@ Three levels of containment, in increasing order of how much they hide:
    (OrbStack or Docker Desktop for containers; Tart for a full VM) and a
    Linux/ARM64 Playwright Chromium, which exists. This host would then never
    share a baseline with `ubuntu-latest` (X64), which the platform-carrying
-   cache key already handles.
+   cache key already handles — and which is exactly why it needs a dispatch of
+   its own to get one.
 
 Whichever level you pick, the workflow does not change; only the host does.
 The third level is built: the next section.
@@ -397,12 +399,21 @@ queued or running `timesim-battery` jobs first.
   the slow tail of the runner they were measured on, and both files say to
   re-derive them together from several runs. A faster host makes them loose,
   which costs nothing; do not tighten them from one run.
-- **The baseline cache key carries the platform.** A §152 baseline's rows are
-  inherited verbatim into a PR's report, so they must come from the same
-  browser build on the same architecture. A push run on macOS/arm64 seeds only
-  macOS/arm64 PRs; a fork PR on `ubuntu-latest` finds no baseline and runs
-  whole, which is the safe verdict for a fork anyway. Flipping the variable
-  costs one whole run per PR until the next merge re-seeds the new platform.
+- **The baseline cache key carries the platform, and seeding the host's is a
+  DISPATCH.** A §152 baseline's rows are inherited verbatim into a PR's report,
+  so they must come from the same browser build on the same architecture; a
+  fork PR on `ubuntu-latest` finds no baseline and runs whole, which is the safe
+  verdict for a fork anyway. This entry used to say that flipping the variable
+  "costs one whole run per PR until the next merge re-seeds the new platform",
+  and that was wrong in a way worth recording: **merges never route
+  self-hosted** (a push does not ask, entry 3 above), and until this change
+  only a push could write a baseline — so no merge ever re-seeded anything and
+  a self-hosted PR battery was whole *permanently*. It is now seeded by running
+  the workflow by hand on the default branch with `runner: self-hosted`: that
+  run is whole by construction, measures the same tip of `main` the push run
+  does, and writes the entry a self-hosted PR then restores. One dispatch per
+  merge buys the host its incremental path. Skip it and nothing breaks — the
+  PR runs whole, exactly as before.
 - **The Playwright cache lists both browser directories** (`~/.cache` on
   Linux, `~/Library/Caches` on macOS), and `--with-deps` is passed only on
   Linux, where it is the apt work the comment describes. On macOS it was
