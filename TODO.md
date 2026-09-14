@@ -17359,6 +17359,13 @@ Three bars written here were wrong first and the geometry corrected each:
   apexes apart is the bevel's version of opening a spur pair's centre distance —
   it buys backlash and does not end the mesh. The bar is the monotone response.
 
+**The movement is untouched and measured so.** `node tools/ci-battery.mjs
+--no-incremental`, local (3 shards, 1591.4 s): **40/40 gates pass**, boot silent,
+fingerprint 2298207723 deterministic across virgin boots. The only shipped-scene
+change in Landing 1 is `cycloidalGearShape`'s refactor, which `probe-136-roll`
+holds at 24/24. `transfers` still reports its 3 `bevelPair` rows against the
+shear form — that is the debt this item names, and Landing 2 is what moves it.
+
 **One finding about a shipped constant, for Landing 2.** `ALARM_BEVEL_FACE =
 0.65` exceeds `coneR/3 = 0.5657` for a 10-tooth m 0.24 mitre, so the generator
 warns on it. The blank is 15% longer than the proportion allows and its small end
