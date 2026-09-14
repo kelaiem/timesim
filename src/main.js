@@ -25808,7 +25808,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     }
     if (worst < CLEAR_MARGIN - 1e-6)
       console.warn(`§163: the pawl's cut outline comes within ${worst.toFixed(4)} of the saw at (${worstAt}) over its return, under CLEAR_MARGIN ${CLEAR_MARGIN}`);
-    alarmColDriverGroup.userData.drive = { postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), branchClear: +ALARM_DRIVER_BRANCH_CLEAR.toFixed(4), postAzDeg: +(postAz * 180 / Math.PI).toFixed(2), branchScan, spring: ALARM_PAWL_SPRING, jumperAz: ALARM_JUMPER_AZ, jumperSeatR: ALARM_JUMPER_SEAT_R, seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
+    alarmColDriverGroup.userData.drive = { arms: driver.userData.arms, postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), branchClear: +ALARM_DRIVER_BRANCH_CLEAR.toFixed(4), postAzDeg: +(postAz * 180 / Math.PI).toFixed(2), branchScan, spring: ALARM_PAWL_SPRING, jumperAz: ALARM_JUMPER_AZ, jumperSeatR: ALARM_JUMPER_SEAT_R, seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
   }
   // 6. P1, TODO 16's format (§137) — THE RETURN MUST NOT UN-INDEX THE WHEEL.
   //    The pawl's spring drags its nose back over the tooth it has just
@@ -30744,13 +30744,23 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
   addLine(alarmSilRocker, [V(-alarmSilRocker.userData.aF, 0, 0), V(alarmSilRocker.userData.aP, 0, 0)]); // §45 seesaw: finger arm ← pivot → paddle arm
   addLine(alarmJumperArm, [V(0, 0, 0), V(ALARM_JUMPER_L, 0, 0)]); // §173 sautoir: anchor → tip, the blade's own free length
   addLine(alarmLockLever, [V(-2.0, 0, 0), V(ALARM_LOCK_L, 0, 0)]); // §25 D lock: tail beak ← pivot → brake pad
-  // §163 — the column wheel's driver, its two arms from the arbor it turns on
-  // (slot arm at 0, post arm at the derived azimuth), and the pawl's own
-  // centreline, which IS the shape the free-region map produced
+  // §163/§192 — the column wheel's driver: ONE SPOKE PER ARM THE HULL WAS CUT
+  // FROM, read off `makeColumnDriver`'s own record rather than restated here,
+  // plus the pawl's centreline, which IS the shape the free-region map
+  // produced.
+  //
+  // §226 — this drew a hand-written pair (slot arm at 0, post arm at the
+  // derived azimuth) and its comment said "its two arms". The metal has had
+  // THREE since §192 cut the blade's anchor arm, and the one it omitted is
+  // the longest and thinnest of them — r 11.643 tapering to 1.02 u — which
+  // is to say the member an owner is most likely to be squinting at was
+  // missing from the one view in which a part's section cannot hide it.
+  // Nothing was wrong with either spoke it drew; the arm set was simply
+  // written down twice and only one copy learned. It is one source now, so
+  // a fourth arm draws itself.
   {
-    const d = alarmColDriverGroup.userData.drive;
-    addLine(alarmColDriverGroup, [V(ALARM_DRIVER_SLOT_OUT, 0, 0), V(0, 0, 0),
-      V(ALARM_DRIVER_POST_R * Math.cos(d.postAz), ALARM_DRIVER_POST_R * Math.sin(d.postAz), 0)]);
+    for (const a of alarmColDriverGroup.userData.drive.arms)
+      addLine(alarmColDriverGroup, [V(0, 0, 0), V(a.reach * Math.cos(a.az), a.reach * Math.sin(a.az), 0)]);
     addLine(alarmColPawlGroup, alarmColPawlGroup.userData.pawlNodes.map(([u, v]) => V(u, v, 0)));
   }
   // §99 — the barrel click's lever: pivot → beak, makeClick's own length
