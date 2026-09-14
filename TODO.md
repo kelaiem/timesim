@@ -15222,6 +15222,251 @@ stations; it says a short reader has room, not that any particular short
 reader works. The sleeve's relief (§45/§124 cut its web for this arm at one
 azimuth) would need re-deriving for whatever replaces it.
 
+### The OUTPUT path is priced — a coaxial collar fits, with or without the entitlement
+
+`tools/probe-117-takeoff.mjs`, the answer to "price that before building
+anything". Both candidates the paragraph above names — the reader's own axis,
+or a carrier that orbits with it — reduce to the same part: a signal leaving an
+orbiting member without a length that changes with azimuth has to be taken
+COAXIALLY with the orbit, as a collar about the dial centre that the reader
+acts on wherever it stands and that hands off to the fixed lifter at one place.
+So the question priced is: **is there a free coaxial annulus, at what radius
+and height, and with how much section?**
+
+**The measurement collapses to two dimensions, which is why it is exact rather
+than a sweep.** The distance from any point to a coaxial circle of radius R at
+height Z is `hypot(r − R, z − Z)` — azimuth drops out. A full ring is present
+at every azimuth simultaneously, so the free-ring map IS the free (r, z) map,
+with no stations to sample and no swept-hull error available to make. Points
+are taken along triangle EDGES (MODELING.md rule 5), over the same 42-pose net,
+binned at 0.05 in (r, z) on arrival.
+
+Two readings, because the exclusion is a design choice and not a fact:
+
+| collar at | every unit an obstacle | the three coaxial units excluded |
+|---|---|---|
+| r 1, z −5.85 | — | **1.9912** (Alarm disc) |
+| r 2, z −5.35 | — | 1.6325 (Alarm disc) |
+| r 3, z −4.85 | 0.4500 at z −6.35 (Dial) | 1.2000 (Motion works) |
+| r 3.5, z −4.85 | **0.4000** at z −4.35 (Dial) | 0.9513 (Alarm setting idler) |
+| r 4.5, z −9.35 | 0.3500 at z −9.85 (Dial) | 0.8500 (Alarm disc) |
+| cells over `CLEAR_MARGIN` | 76 of 585 | 162 of 585 |
+| cells over the shipped bar 0.0458 | 267 of 585 | 289 of 585 |
+
+The excluded three are `Hour wheel`, `Alarm release disc` and `Dial` — what a
+collar journalled on one of them may use. `Alarm disc` (the alarm HAND's tube)
+is a fourth dial-centred unit and is deliberately kept as an obstacle in both
+columns: it turns at the alarm-setting rate, so a collar on any of the three
+carriers is not rigid with it. Measured, it never binds a winning cell.
+
+**The finding is that the entitlement is not needed.** The reader works at the
+release disc's own height (`Alarm release disc` spans r 2.208–4.608,
+z −5.38 … −4.894), and a collar just inboard of it, at **r 3.5, z −4.35, is
+0.4000 clear with every unit in the movement counted as an obstacle** — 2.7×
+`CLEAR_MARGIN` and 8.7× the shipped station. Under the entitlement the same
+neighbourhood opens to 0.95–1.99. So the open construction question further
+down — what the disc runs on — does not gate this: the collar is affordable
+either way, and that is the point of pricing it before building.
+
+**The hand-off is a FIXED run, and that is what replaces the 28.521 spread.**
+`Alarm release lifter` spans r 4.65–29.144, z −7.042 … −2. Because a collar's
+azimuth is everywhere, the link to it is taken at ONE place and has one length:
+
+| collar | run to the lifter | radial | axial |
+|---|---|---|---|
+| r 3, z −4.85 | **1.650** | 1.650 | 0.000 |
+| r 3.5, z −4.85 | **1.150** | 1.150 | 0.000 |
+| r 4.5, z −9.35 | 2.313 | 0.150 | 2.308 |
+
+Today's orbiting arm runs 2.682 → 31.203 across the orbit. A collar in the
+disc's own plane replaces that with a purely radial 1.150–1.650 that does not
+change with azimuth at all — a link, not a mechanism.
+
+**Controls.** Must-hit: a ring inside the `Hour wheel` unit's envelope
+(r 12.526, z −7.787 — its rim, not its tube) reads 0.0439, BLOCKED. Must-miss:
+a ring at r 60, z 40 reads 53.149, CLEAR. The map is a REPORT and neither bar
+is a gate; what it prices is where a collar may go, not that any particular
+collar works.
+
+**Two corrections this probe needed, both worth carrying forward.** The first
+map pruned obstacles to the candidate band exactly, so a ring near the band's
+edge saw no metal beyond it and read clear *for that reason alone* — every
+radius from 7 outward reported its best cell on the bottom row at a
+suspiciously uniform 0.35. The prune was manufacturing the clearance it was
+measuring. Metal is now gathered `PAD = 4` beyond any distance the map may
+report, and a cell that would report more is capped and flagged (0 cells are,
+so the horizon never binds). The second is that routing the must-miss control
+through that cap made it read exactly `PAD` — a control that can neither pass
+nor fail, indistinguishable from a map that blocks everywhere and caps out. The
+control takes the uncapped distance now, which is the right reading for the
+question it asks: pruning can only have removed metal further away, so the
+figure over-estimates and therefore proves clearance rather than assuming it.
+
+(Sample counts wobble by ~30 in 59,800 between runs — the chain's mesh is
+re-tessellated lazily and is path-dependent, which is why `fingerprint`
+excludes it by name. No reported figure moved across two runs: identical
+winning cells, identical tallies.)
+
+**Residue.** The map says where a ring fits, not what section it needs — that
+is a P1 question for whatever collar is designed, and the map gives the
+allowance to design against rather than the answer. It also says nothing about
+the collar's own bearing, which is the construction question below.
+
+### The take-off, DESIGNED as a straight line — `tools/probe-117-line.mjs`
+
+CLAUDE.md's "design in a line, fold to fit", applied to the one member this
+topology adds. 25 rows, 0 failing, four of them must-fail controls.
+
+**First, a correction to the pricing above, found by reading the code the
+design has to meet.** Two things in it were wrong.
+
+The map's "best cell at each radius" prints one winner per row, and at r 3.5
+that winner (world z −4.35) lies BEHIND the disc. A ring there is free and
+useless: the reader stands between the dial's back face and the disc's track
+and cannot press a ring through the disc. `probe-117-takeoff.mjs` grew a tier
+1b for the question the design actually asks — the best ring per radius INSIDE
+the reader's corridor, world z −8.350 … −5.380, measured as the feeler's own
+envelope floor up to the disc's near face. There the answer is **r 3, world
+z −6.35, 0.4500 clear, nearest metal the Dial**.
+
+And the run priced in tier two goes to the wrong unit. `Alarm release lifter`
+is the SILENCING chain — crown → stem collar → lifter → sleeve → rocker →
+feeler tail — which is an INPUT to the reader. The reader's OUTPUT is the pawl
+beak on the alarm winding climb's contrate band, at r 14.06. That distinction
+turns out to matter less than it looks, for the reason the design turns on:
+**neither interface has to cross the orbit, because the lever does not have to
+orbit.** Only the READER does.
+
+**The line, four members:**
+
+| | member | what it does |
+|---|---|---|
+| 1 | disc | the notch — carries SET only, holds still while armed |
+| 2 | **reader ring** | coaxial, axially free, hour-carried: a pin on its disc-side face at the track radius, a plain annulus on its dial-side face |
+| 3 | release lever | today's feeler lever, its inboard tip re-seated from the disc's track onto the ring's face — **at the same radius** |
+| 4 | pawl beak | unchanged: withdraws from the contrate band |
+
+The pin drops into the notch, the ring follows it down, and the annulus
+presents that drop at every azimuth at once. Today's long lever stops being a
+reader and becomes what it should always have been — a FIXED release lever
+whose input happens to be a ring instead of a track. Everything outboard of its
+tip is inherited untouched: the tail, the bias blade, §45's silence hand-off,
+the jogged run, the riser, the beak, and every §29 step-4 corridor assert.
+
+**The design's whole content is that the take-off carries no ratio.** A ring is
+present at every azimuth simultaneously, so its one free quantity is the RADIUS
+at which the lever reads it. Read it anywhere but the pin's own radius and the
+lever's input arm changes, which forks `ALARM_FEELER_ARM_LEN` and with it the
+withdrawal, the banking stop's gap, the blade's deflection and the silence
+finger's force. Read it AT the pin's radius and the orbit is crossed for
+nothing: gain exactly 1, and the beak's withdrawal is **0.425592 either way** —
+asserted as an equality between the two chains, not resembled.
+
+**The line spec** (the reference a folded build measures back to):
+
+| row | value | the constraint it derives from |
+|---|---|---|
+| take-off radius | 3.05 | = `ALARM_TRACK_RMID`; any other radius forks the lever arm |
+| lever input arm | 2.45 | = `ALARM_FEELER_ARM_LEN`, inherited |
+| take-off gain | **1** | a ring's face moves with its pin, one for one |
+| stroke | 0.10 | = `ALARM_PIN_DROP`, inherited |
+| withdrawal | 0.425592 | unchanged; clears `ALARM_PAWL_ENGAGE` by 0.3656 |
+| pin length | **0.8334** | §54's ceiling on a tip-loaded overhang, λ = 30 |
+| stand-off | 0.9917 | pin + half the ring's stock |
+| ring thickness | 0.3167 … 0.6000 | `STOCK_MIN_U` up to twice the cell's allowance less one margin |
+| load on the ring | 25.08 … 41.80 mN | the bias blade's own k·δ; inside TODO 16's 5–50 mN envelope |
+| seat lost to the pin | 0.82 % | series compliance — the pin is 120× the blade's stiffness |
+| couple arm | 6.100 | the chord between the pin's azimuth and the lever's, worst case |
+| read-error budget | 0.01410 | `ALARM_PAWL_ENGAGE` / the lever's gain — false release |
+| journal length | **4.327** | 2·r·c / that budget |
+| ring return | ≤ 49 N/m | 5 % of the blade, so the armed seat is undisturbed |
+
+**What bounds the ring's stand-off is not the clearance, and that is the result
+worth keeping.** The pin's radius is not available — `ALARM_NOTCH_W` is derived
+from its diameter over the track radius, so a fatter pin re-cuts the notch and
+narrows the trip window §38/TODO 8 already asserts against a tick's advance. So
+§54's ceiling sets the pin's length, and the length sets the plane: **§54 allows
+0.8334 where the corridor would allow 2.8117**, a factor of 3.4. The free-ring
+map's job is then to CONFIRM the plane is empty rather than to choose it — the
+derived plane is world z −6.3717 and the map's free cell is −6.35, agreeing
+inside the map's own 0.5 cell.
+
+**The ring needs a spring, and the reason is the silenced state.** Armed, it
+needs none: the release lever's bias blade seats it through the pin, and moving
+that contact from the track to the ring only makes one force path one member
+longer (0.82 % lost, measured against TODO 79's lesson about series
+compliances). But silencing works by the rocker lifting the lever OFF the ring
+— which also leaves the ring unlocated, and §48/TODO 29's audit is explicit
+that a part which RECIPROCATES either has a restoring element existing as a
+mesh or is driven both ways. So the ring carries a light return, and the
+constraint on it is a CEILING, not a value: in parallel with the blade
+throughout the armed state, it must not disturb the seat the whole §29 chain is
+written on. 49 N/m, 5 % of the blade.
+
+**The one open fold problem, stated rather than absorbed.** The pin bears at
+the HOUR's azimuth and the lever reads at the RELEASE azimuth, so the ring
+carries a couple of arm up to 6.100 — and zero when the pin passes under the
+lever. Its journal has to react that. The tilt is CLEARANCE-limited, not
+force-limited: any couple at all drives the ring to the end of its bore's slack,
+so the load plays no part in the length. What it permits is a read error that
+VARIES with the pin's azimuth, and the variation is what has to be budgeted — a
+constant error would be absorbed by the banking stop.
+
+**The budget is derived from false release, and the first version of this design
+did not derive it.** It budgeted a tenth of the stroke: a number with no reason
+behind it, picked, and then used to conclude that the journal is short.
+Concluding from a picked number is the wrong shape of argument even when the
+conclusion survives. What actually bounds the read error is the beak's own
+metal: a spurious read of δ withdraws the beak by δ × the lever's gain 4.2559,
+and at `ALARM_PAWL_ENGAGE` the alarm has released with nothing under the pin. So
+δ < 0.06 / 4.2559 = **0.01410**, and the journal is **4.327 against the 2.970
+the reader's corridor offers**. The other failure mode — a read error eating the
+genuine drop until the withdrawal no longer clears the engagement by one margin
+— is looser at 0.05066, and which of the two binds is asserted rather than
+assumed.
+
+**And the shortfall survives every budget, which is the part that matters**,
+because the recommendation rests on it:
+
+| budget | read error | journal |
+|---|---|---|
+| the beak keeps ALL its engagement (the hard bound) | 0.01410 | 4.327 |
+| a tenth of the stroke (the picked number this replaced) | 0.01000 | 6.100 |
+| the beak keeps half its engagement | 0.00705 | 8.654 |
+
+The hard bound is the LOOSEST defensible read error — it lets the beak sit on
+the very edge of releasing — so any reserve a fold adds only lengthens the
+journal. All three exceed the corridor.
+
+Two ways out, both position-space: the hub passes through the disc's bore
+(available exactly because the decided topology takes the disc off its hour-tube
+hub), or the fit tightens to 0.00686 against the movement's stated 0.01.
+Neither reaches back into the mechanism, which is the point of finding it in the
+line.
+
+**Take the bore.** A fit is a claim no instrument in this repo can hold — every
+gate here measures geometry — so buying the journal with a tolerance would put
+the design's soundness outside the whole battery, which is the same failure mode
+as a waiver with no instrument behind it. The bore length is geometry, and
+geometry is gated. It is also the cheaper of the two in work: what the decided
+topology vacates when the disc comes off its hour-tube hub IS the length the
+journal is short of, so the fix and the topology change are one change. The fit
+alternative is 0.00686 u — 2.6 µm radial, 5.2 µm diametral — which is inside
+real practice but at its tight end, and it would be bought rather than derived.
+
+**Controls.** A take-off at r 4.0 forks the arm (1.5000 ≠ 2.45) and moves the
+withdrawal (0.6951 ≠ 0.4256); a pin at twice the derived length breaks §54
+(λ 60); a pin of spring stock robs 9 % of the seat, so the stiffness row can
+say no. And the road not taken is priced rather than dismissed: a fixed-length
+link from the orbiting reader runs 2.682 → 31.203 across the orbit, 11.6×, and
+a link is one length.
+
+**Not built.** This is the line, and the item's remaining work is the FOLD:
+siting the ring and its journal, the annular relief the sleeve's web needs
+(§45/§124 cut it for one azimuth; an orbiting pin needs it at every azimuth —
+the residue above predicted this), deleting the `i1b` branch, re-rooting the
+lever's tip, and the `MECH_GRAPH` and battery work that goes with all of it.
+
 The three sites item 15 tables (power-reserve wheels, alarm
 branch idler i1b, alarm winding idlers) are still unmeasured for
 transmission, and so is every other declared mesh in the movement: this
