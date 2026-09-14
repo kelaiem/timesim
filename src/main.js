@@ -25808,7 +25808,7 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     }
     if (worst < CLEAR_MARGIN - 1e-6)
       console.warn(`§163: the pawl's cut outline comes within ${worst.toFixed(4)} of the saw at (${worstAt}) over its return, under CLEAR_MARGIN ${CLEAR_MARGIN}`);
-    alarmColDriverGroup.userData.drive = { postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), branchClear: +ALARM_DRIVER_BRANCH_CLEAR.toFixed(4), postAzDeg: +(postAz * 180 / Math.PI).toFixed(2), branchScan, spring: ALARM_PAWL_SPRING, jumperAz: ALARM_JUMPER_AZ, jumperSeatR: ALARM_JUMPER_SEAT_R, seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
+    alarmColDriverGroup.userData.drive = { arms: driver.userData.arms, postAz, relRest, relPost, phiBottom, stroke: ALARM_PAWL_STROKE, seat: seatPick, worstOutline: +worst.toFixed(4), branchClear: +ALARM_DRIVER_BRANCH_CLEAR.toFixed(4), postAzDeg: +(postAz * 180 / Math.PI).toFixed(2), branchScan, spring: ALARM_PAWL_SPRING, jumperAz: ALARM_JUMPER_AZ, jumperSeatR: ALARM_JUMPER_SEAT_R, seatAz: Math.atan2(seatPick.y, seatPick.x), L: ALARM_PAWL_L, phiFree: ALARM_PAWL_PHI_FREE, phiMin, phiMax };
   }
   // 6. P1, TODO 16's format (§137) — THE RETURN MUST NOT UN-INDEX THE WHEEL.
   //    The pawl's spring drags its nose back over the tooth it has just
@@ -29832,21 +29832,79 @@ const BACK_SWEPT_REGIONS = [
   // hammer and are retired with it — a row nothing measures is a stale
   // declaration, and this table's rule is that every row is measured.
   // The switch cluster's press/castellation swing spreads its metal across
-  // r 17.3–31.3 (measured swept 10.068 at r 17.3–18.1 against build 9.242;
-  // 11.468 at r 30.4–31.3 against build 10.851 — §192's descent re-measured
-  // both, from 10.907 and 13.157). One row at the unit's swept ceiling
-  // (the castellation top), rounded up past margin flicker — conservative
-  // in the inner bins, and the number the flat back was bought against.
-  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 11.47 },
-  // The striking wheel's rotation is not axisymmetric at bin scale:
-  // swept 10.421 at r 33.7–34.6 against build 10.021.
-  { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: 10.43 },
+  // r 17.3–31.3 (measured swept 10.629 at r 17.2–18.0 against build 9.872 —
+  // the inner bins are where this row is LIVE, because the tower's own
+  // metal already fills the outer ones at build pose). One row at the
+  // unit's swept ceiling, rounded up past margin flicker — conservative in
+  // the inner bins, which is §192's choice and is kept.
+  //
+  // RE-AUTHORED, and it was wrong in TWO independent ways — one of them
+  // from the day it was written. Measured by booting §192's own tree
+  // (a178fd7) beside HEAD:
+  //
+  //                       §192 (a178fd7)    HEAD        Δ
+  //   three-quarter plate top   8.9945     9.5554    0.5609
+  //   alarmColCastellations    11.4678    12.0287    0.5609
+  //   alarmJumper* (sautoir)   11.5112    12.0722    0.5609
+  //
+  //   · IT WENT STALE by 0.5609. Nothing in this unit changed — every
+  //     constant the tower's height derives from is bit-identical across
+  //     those two trees. TQ_BOT_Z is MEASURED off whatever stands under the
+  //     three-quarter plate, something below it grew, the plate rose, and
+  //     the whole strike tower rode up 1:1 while this authored row stayed
+  //     where §192 typed it.
+  //   · AND IT NAMED THE WRONG MEMBER, before it went anywhere. §192 wrote
+  //     "the unit's swept ceiling (the castellation top)" and 11.47 was
+  //     exactly the castellation top — but §173's sautoir already stood
+  //     11.5112, 0.0434 ABOVE it, in that same tree. The row was never the
+  //     unit's ceiling; it was the second-tallest member of its own band.
+  //     probe-192-tier-price's control could not catch that, because the
+  //     control was derived from the same sentence as the row — it looked
+  //     up `alarmColCastellations` BY NAME. §226 re-derives it from the
+  //     scan's own per-unit maximum, so the member is free to change hands.
+  //
+  // Nothing was ever unsafe — the fold below is a FLOOR, and the build-pose
+  // scan already read 12.029/12.072 in every outer bin — which is exactly
+  // why both errors survived, and why the assert in BACK_ENVELOPE below now
+  // exists. Re-authoring costs no glass: envMaxAll is the alarm link's
+  // 12.742 either way, and every bin this row lifts lies well inside rStep.
+  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 12.08 },
+  // The striking wheel's rotation is not axisymmetric at bin scale: measured
+  // swept 10.982 at r 33.6–34.5 against build 10.582 (probe-back-envelope,
+  // 43 poses, 2026-09-14).
+  //
+  // RE-AUTHORED with the row above and by the same cause — §192 wrote 10.43
+  // against a then-measured 10.421, and the plate's post-§192 rise carried
+  // this unit up 0.55 with everything else on it. Nothing was watching this
+  // one at all: probe-192-tier-price's control reads the 'Alarm switch' row
+  // only, so the sibling row went stale in total silence and the BACK_ENVELOPE
+  // assert below found it on its first boot.
+  { unit: 'Alarm striking wheel', r0: 31.3, r1: 34.6, z: 10.99 },
   // The pusher-side linkage outboard at the band: measured swept (and
   // canonical-reset) 10.063 over r 48.5–49.4 against a CONSTRUCTION pose
   // that parks it at 7.744 — the one member found so far for which
   // TODO 111's "construction pose = reset pose" measurement does NOT hold,
   // discovered by this scan's own zMidBack assert on its first boot. This
   // row is what the ring skirt's bottom actually derives from.
+  //
+  // §226 CHECKED THIS ONE TOO AND LEFT IT ALONE, deliberately, with an open
+  // question recorded rather than a number changed. Three measurements:
+  //   · it is LOAD-BEARING. Neutering it moves the outer pane's plane
+  //     12.077 → 10.303, drives rStep 38.85 → 47.65 past its own 45.731
+  //     aperture, and fires four case asserts. Its comment is right.
+  //   · the assert below is SILENT on it and correctly so: at the pose this
+  //     scan runs at, the unit does reach into the band, at 8.305.
+  //   · but over the whole pose net — construction, canonical reset and all
+  //     42 axis poses — NO 'Alarm switch' metal stands in r 48.3–49.6 above
+  //     8.305, so the declared 10.08 may be over-stated by as much as 1.775,
+  //     and over-stating a row buys back-envelope for metal nobody stands in.
+  // That is a CASE question, not a declaration one: the number the skirt
+  // derives from cannot be lowered without re-deriving the ring, which is a
+  // geometry change with its own battery. The assert below is one-sided (it
+  // fails a row UNDER its unit, never over it) for exactly this reason —
+  // making it two-sided today would red a shipped boot on a question nobody
+  // has answered yet. probe-192-tier-price reports this row rather than
+  // judging it, and says why.
   { unit: 'Alarm switch', r0: 48.3, r1: 49.6, z: 10.08 },
 ];
 const BACK_ENVELOPE = (() => {
@@ -29854,6 +29912,7 @@ const BACK_ENVELOPE = (() => {
   const rSpan = CASE_R_OUT;   // the annulus the case will occupy is part of the question (the ring's skirt descends inside the bore)
   const bins = new Array(NBIN).fill(-Infinity);
   const owners = new Array(NBIN).fill(null);
+  const regBuild = new Array(BACK_SWEPT_REGIONS.length).fill(-Infinity);
   // Per-mesh unit attribution, so each sample carries its unit's declared
   // allowance: score = z + allowance(unit). The bin keeps the max SCORE —
   // exact for the model "each unit's metal may stand its allowance above
@@ -29875,6 +29934,13 @@ const BACK_ENVELOPE = (() => {
       const s = Math.floor(r / rSpan * NBIN);
       const score = pt.z + allow;
       if (score > bins[s]) { bins[s] = score; owners[s] = unit || o.name || '(unlabelled)'; }
+      // ...and what the ROW'S OWN unit reaches inside each row's band, which
+      // is the quantity the assert below holds the row to. Same walk, so it
+      // cannot measure a different tree than the bins do.
+      for (let i = 0; i < BACK_SWEPT_REGIONS.length; i++) {
+        const R = BACK_SWEPT_REGIONS[i];
+        if (unit === R.unit && r >= R.r0 && r <= R.r1 && pt.z > regBuild[i]) regBuild[i] = pt.z;
+      }
     };
     for (let t = 0; t < n; t += 3) {
       for (let e = 0; e < 3; e++) {
@@ -29975,6 +30041,35 @@ const BACK_ENVELOPE = (() => {
         console.warn(`§198: the gong reaches ${z.toFixed(3)}, past the declared band ceiling ${GONG_BAND_TOP.toFixed(3)} — `
           + 'the constant and the metal have parted');
     }
+  }
+  // A ROW BELOW ITS OWN UNIT'S BUILD POSE IS DESCRIBING NOTHING, and this is
+  // the assert that says so. Every row here declares "the unit's swept
+  // maximum over the row's band", and swept is never under build — so a row
+  // whose z sits below what its own unit already reaches inside its band has
+  // stopped being that measurement, whatever else it is.
+  //
+  // §226 is why it exists. The fold below is a FLOOR, so a row that falls
+  // behind is INERT rather than dangerous: probe-back-envelope's gate keeps
+  // passing (it compares swept metal against the folded bins, which the
+  // build scan has already carried), the glass keeps deriving correctly, and
+  // nothing anywhere says the table has rotted. §192's 'Alarm switch' row sat
+  // 0.602 under its own unit for a fortnight on exactly that silence, after
+  // TQ_BOT_Z — measured, not declared — lifted the plate and the strike
+  // tower with it. A declaration nobody can see go stale is one that will.
+  //
+  // It is deliberately NOT the swept maximum: boot cannot sweep poses
+  // (TODO 111's structural note, the reason this table is authored at all),
+  // so the build pose is the strongest lower bound available here.
+  // probe-back-envelope holds the swept half in CI, and this holds the half
+  // that goes quiet when that one passes.
+  for (let i = 0; i < BACK_SWEPT_REGIONS.length; i++) {
+    const reg = BACK_SWEPT_REGIONS[i];
+    if (regBuild[i] === -Infinity)
+      console.warn(`§187/§226: the declared swept region '${reg.unit}' r ${reg.r0}–${reg.r1} covers no metal of its own unit `
+        + 'at build pose — a row describing a band its unit does not stand in cannot be that unit\'s swept maximum');
+    else if (reg.z < regBuild[i] - 1e-9)
+      console.warn(`§187/§226: the declared swept region '${reg.unit}' r ${reg.r0}–${reg.r1} declares z ${reg.z} against `
+        + `${regBuild[i].toFixed(3)} its own unit already reaches there at BUILD pose — swept is never under build, so the row is stale`);
   }
   // Fold the declared region rows in: a bin's envelope is the max of what
   // the build pose showed (plus its unit's z allowance) and every declared
@@ -30649,13 +30744,23 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
   addLine(alarmSilRocker, [V(-alarmSilRocker.userData.aF, 0, 0), V(alarmSilRocker.userData.aP, 0, 0)]); // §45 seesaw: finger arm ← pivot → paddle arm
   addLine(alarmJumperArm, [V(0, 0, 0), V(ALARM_JUMPER_L, 0, 0)]); // §173 sautoir: anchor → tip, the blade's own free length
   addLine(alarmLockLever, [V(-2.0, 0, 0), V(ALARM_LOCK_L, 0, 0)]); // §25 D lock: tail beak ← pivot → brake pad
-  // §163 — the column wheel's driver, its two arms from the arbor it turns on
-  // (slot arm at 0, post arm at the derived azimuth), and the pawl's own
-  // centreline, which IS the shape the free-region map produced
+  // §163/§192 — the column wheel's driver: ONE SPOKE PER ARM THE HULL WAS CUT
+  // FROM, read off `makeColumnDriver`'s own record rather than restated here,
+  // plus the pawl's centreline, which IS the shape the free-region map
+  // produced.
+  //
+  // §226 — this drew a hand-written pair (slot arm at 0, post arm at the
+  // derived azimuth) and its comment said "its two arms". The metal has had
+  // THREE since §192 cut the blade's anchor arm, and the one it omitted is
+  // the longest and thinnest of them — r 11.643 tapering to 1.02 u — which
+  // is to say the member an owner is most likely to be squinting at was
+  // missing from the one view in which a part's section cannot hide it.
+  // Nothing was wrong with either spoke it drew; the arm set was simply
+  // written down twice and only one copy learned. It is one source now, so
+  // a fourth arm draws itself.
   {
-    const d = alarmColDriverGroup.userData.drive;
-    addLine(alarmColDriverGroup, [V(ALARM_DRIVER_SLOT_OUT, 0, 0), V(0, 0, 0),
-      V(ALARM_DRIVER_POST_R * Math.cos(d.postAz), ALARM_DRIVER_POST_R * Math.sin(d.postAz), 0)]);
+    for (const a of alarmColDriverGroup.userData.drive.arms)
+      addLine(alarmColDriverGroup, [V(0, 0, 0), V(a.reach * Math.cos(a.az), a.reach * Math.sin(a.az), 0)]);
     addLine(alarmColPawlGroup, alarmColPawlGroup.userData.pawlNodes.map(([u, v]) => V(u, v, 0)));
   }
   // §99 — the barrel click's lever: pivot → beak, makeClick's own length

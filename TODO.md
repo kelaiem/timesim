@@ -20,6 +20,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
+| 137 | OPEN | Found by arithmetic while scoping §226, not by any check. `makeColumnPawl` thickens its centreline ±`ALARM_PAWL_HALF_W`, so the arm is cut **0.30 u = 0.1137 mm** against `STOCK_FLOORS.wheel` 0.12 — 5.3% under. Three instruments look at it and none can say so: `stockFloor` reads the geometry-LOCAL box, and a BENT member's box is the bend's envelope (4.3099 × 1.0427 × 0.3167), so its minimum is the extrude DEPTH and reads **exactly the floor**, 0.1200 against 0.1200, while the metal is 0.1137; `slenderness` reads `len/tMid` = 4.13, the same middle extent; `outlines` asks whether the ring is simple, not how thick. And `STOCK_WAIVERS` waives the whole `Alarm switch` unit under TODO 11, so even a corrected row lands in the waived list — a different debt wearing the same excuse, since TODO 11's population is metal KNOWN to be thin. The ruler's fix already exists and this builder does not use it: §169's `userData.stockSection`, added for the two swept springs reading 1.35 and 0.87 against 0.05 mm wire. Step 1 declares the section (no metal moves, the debt becomes visible); step 2 measures the CLASS, which nobody has counted — every `ExtrudeGeometry` whose authored outline is narrower than its box, readable at all only because TODO 100 made `weldGeometry` carry `parameters.shapes` through the weld; step 3 re-sections, which re-runs §163's free-region map because `ALARM_PAWL_BODY` is that map's output at this exact half-width |
 | 104 | OPEN | A declared `INTRA_UNIT_CONTACTS` row SKIPS its pair before measurement, and the table is gated for name validity but never for geometric validity. It has stated something false twice — §169's stud 4.347 clear, §177's bore that was solid metal — both found by accident. Measured over 141 rows: 102 pairs actually overlap, but **nine declare a contact between parts 2.1 to 9.19 apart**, with an EMPTY 0.5–1.0 band that makes the cut a measured separation rather than a tuned number. A second figure needs its caveat: 96 rows excuse nothing under `contacts: []`, but that mixes genuinely-apart pairs with pairs `intraUnit` structurally never compares (same-frame movers are `checkAssembly`'s) — opposite defects, one symptom. Tier A gates the apart-rows; tier B needs a `kind` vocabulary per §137's transfers |
 | 111 | OPEN | The case's seat relief is CUT from a scan that runs once, at build time, at whatever pose the movement is in — so the geometry is a claim about one pose. Item 91 nearly shipped on it: `hackRodPin` reads r 37.801–38.691 at build time and 39.889–40.786 in 33 of the 42 poses the battery visits, half a unit inside a seat with no relief for it. Closed for two populations (build-time occupants, and `LOW_LINKAGE_OBSTACLES` members per standing rule 5) and ungated for a third — any other mover reaching the annulus at some pose. Three fixes in the item; `probe-case-relief.mjs` already asks the question in ~72 s and CI does not run it |
 | 112 | CLOSED | The table stopped restating: every `HAND_SPECS` row now references the hand's BOOT SPEC OBJECT (`HOUR_HAND_SPEC`…`ALARM_HAND_SPEC`), so a row cannot drift from its build. `probe-112-recut.mjs` holds it: both re-cut drivers (flute slider and the §23 panel) reproduce the boot metal byte for byte, and its must-catch control proves the 3.00′→1.16′ collapse is visible to the instrument |
@@ -17013,3 +17014,89 @@ w2 integral, asserted at boot, beside the line that mints it.
 Found from §219's side — `tools/probe-219-catalogue.mjs` derives the
 reserve reduction from `RESERVE_SWEEP_DEG` rather than reading it, which is
 what turned the stale 4.2 in the LEGO note into this.
+
+## 137. The column pawl's arm is cut under the stock floor, and every instrument misses it for a different reason
+
+Found while scoping §226 (the column-wheel driver's section), by arithmetic on
+a literal rather than by any check. The magnitude is six microns; the item is
+about the RULER, not the six microns.
+
+**The metal.** `makeColumnPawl` thickens its mapped centreline with
+`thickenPolyline(r, w)`, which offsets ±w, so the arm and the tail are cut
+**2 × `ALARM_PAWL_HALF_W` = 0.30 u = 0.1137 mm** wide. `STOCK_FLOORS.wheel`
+is **0.12 mm** — "the thin end of the 0.10–0.15 mm band §40 measured for the
+going train", and the default for any part that declares no kind, which this
+one does not. The arm is **5.3% under its own floor**, and the mitre only ever
+makes a corner wider, so 0.30 u is the minimum and not an estimate.
+
+**Three instruments look at this part and none of them can say so.**
+
+| instrument | what it reads on `alarmColPawl` | why it misses |
+|---|---|---|
+| `stockFloor` | 0.3167 u = **0.1200 mm** | the geometry-LOCAL bounding box of a BENT member is the bend's envelope, not its section: extents 4.3099 × 1.0427 × 0.3167, so the minimum is the EXTRUDE DEPTH and the arm's width is never a dimension of the box |
+| `slenderness` | λ = 4.13 | `len / tMid` = 4.3099 / 1.0427 — the middle extent again, and for the same reason |
+| `outlines` (TODO 100) | simple, 0 crossings | it asks whether the cut ring closes without folding, never how thick it is |
+
+The `stockFloor` row is the instructive one: it reads **exactly the floor**,
+0.1200 against 0.1200, while the metal under it is 0.1137. A row sitting
+precisely on a bar is the shape a reader trusts most.
+
+**And the waiver would have hidden it even if the ruler worked.**
+`STOCK_WAIVERS` carries `'Alarm switch': 'TODO 11'`, so a corrected row lands
+in the waived list rather than the violation list. That is not a reason to
+leave it — [TODO 11]'s population is metal *known* to be thin and accepted as
+such; this is metal the ruler *cannot read*, which is a different debt wearing
+the same excuse. Making it visible is the whole of step 1.
+
+**The fix for the ruler already exists and this builder does not use it.**
+§169 added `userData.stockSection` to `stockCensus` for precisely this failure
+— "a hand-swept solid has no honest local box, so a builder that knows its own
+section says so and this reads it" — after measuring the two swept springs at
+1.35 and 0.87 against wire that is 0.05 mm. Its comment ends "the rule this
+restores is the census's own: say so wherever the ruler is wrong." A thickened
+polyline knows its section exactly; it just never said.
+
+**Why the width is a literal, and what re-sectioning costs.**
+`ALARM_PAWL_NOSE_R = 0.20` and `ALARM_PAWL_HALF_W = 0.15` sit under the comment
+"The nose disc and half-width the swept free region was MAPPED with. Changing
+either invalidates the centreline below — the map describes a member of these
+dimensions and no other." `ALARM_PAWL_BODY` is that map's output. So widening
+the arm to the floor is not an edit to a number: it re-runs §163's free-region
+sweep at `w = STOCK_MIN_U / 2 = 0.1583` and re-derives the centreline against
+it (`tools/probe-163-driver.mjs` is the instrument that produced the shipped
+one). The pawl is the only member of the driver inside the tooth annulus, so a
+wider arm has less room, not more, and the map may come back saying so — which
+is a real answer and belongs in the record either way.
+
+**Three steps, report before gate (§36 part two's order, which `stockFloor`
+itself followed).**
+
+1. **Declare the section.** `makeColumnPawl` sets
+   `userData.stockSection = Math.min(2 * w, thickness)` on each body it cuts.
+   No metal moves and the fingerprint cannot shift; what changes is that the
+   census reads 0.1137 and the row becomes a visible waived debt under TODO 11
+   instead of a clean row at the bar. Cheap, and it is the honest state of the
+   part until step 3.
+2. **Measure the CLASS, because `stockSection` is opt-in and nobody has
+   counted who needs it.** §169 found two members by inspection; this is a
+   third, found by reading a constant. The instrument: for every mesh whose
+   geometry is an `ExtrudeGeometry` with readable `parameters.shapes`, compute
+   the cut ring's true minimum width — the narrowest strip containing it, or
+   equivalently twice the largest inscribed disc — and compare that against the
+   local box's minimum extent. Any mesh whose outline is materially narrower
+   than its box is a row the census is over-reporting, and the population is
+   every planar part in the movement rather than the two somebody happened to
+   look at. **TODO 100 is what makes this cheap**: `weldGeometry` now carries
+   the `parameters.shapes` reference through the weld, which is the only reason
+   the authored outline is still readable after boot. Report, triage, then gate.
+3. **Re-section the pawl** at the floor, which means re-running §163's map as
+   above. Only worth doing after step 2 says whether it is one part or a class
+   — re-running one map for six microns is not the same decision as fixing a
+   population.
+
+**Not to be confused with the neighbouring finding.** §226 records that the
+driver (not the pawl) is a 0.120 mm plate over a 4.6 mm reach, λ 38.1 about
+its thin axis, which `slenderness` also cannot see because it measures the
+working plane. Same unit, same blind direction, different instrument and
+different fix — that one is a section derived from a z stratum, filed as a
+roadmap entry because it wants a re-station, not a ruler.

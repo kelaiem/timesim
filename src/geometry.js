@@ -3711,6 +3711,14 @@ export function makeColumnDriver({ boreR, hubR, arms, slot,
   mesh.name = name;
   mesh.userData.outline = pts;
   mesh.userData.slot = { ...slot };
+  // THE ARMS THE HULL WAS ACTUALLY CUT FROM (§226). Recorded for the same
+  // reason `outline` is: a consumer that needs to know what this part HAS
+  // should read it off the part, not keep a second copy. §66's schematic
+  // tier drew two spokes from a hand-written pair and its comment said "two"
+  // for as long as §192's third arm existed — the arm set was written down
+  // twice and only one copy learned. A reader of this draws whatever the
+  // builder cut, so a fourth arm needs no edit anywhere else.
+  mesh.userData.arms = A.map((a) => ({ az: a.az, reach: a.reach, tipR: a.tipR }));
   return mesh;
 }
 

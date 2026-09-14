@@ -24851,3 +24851,61 @@ close it, and each is a change to §196's solve with its own case to make. The
 one arithmetic fix considered and rejected: moving the track ink to pure black
 clears 9:1 at T 0.85 (9.45), but it changes the print on every ground and buys
 a window 0.0075 wide.
+
+## §226 — The column-wheel driver's third arm draws, and the arm set stops being written down twice
+
+**PARTIAL.** This is route C of a three-route entry, shipped on its own
+because it is a correctness fix whatever happens to the other two. The
+remainder — the driver's SECTION, and whether the group folds under the
+three-quarter plate to get it — stays in the roadmap under the same number.
+
+### What was wrong
+
+§66's schematic tier drew the driver as two spokes from its arbor, and the
+comment above them said "its two arms". The driver has had **three** since
+§192 cut the blade's anchor arm, and the missing one is the longest and
+thinnest of them — reach 11.643, tapering to 1.02 u of plan width at the stud
+it was cut to reach. So the member most likely to be squinted at was absent
+from the one view in which a part's section cannot hide it.
+
+Neither spoke it drew was wrong. The defect was duplication: the arm set
+existed twice — once as `makeColumnDriver`'s `arms:` argument, which cuts the
+hull, and once as a hand-written pair of `V(...)` calls in the tier — and only
+one copy learned about §192. That is CLAUDE.md's recurring shape ("the fix
+that keeps working is one SOURCE") at drawing scale rather than at direction
+scale.
+
+Worth recording because it cuts the other way for once: **`explain.html` was
+already right.** Its §192 plate says the stud is riveted into "a THIRD driver
+arm cut to reach it". The prose page knew; the drawing did not.
+
+### What shipped
+
+`makeColumnDriver` records `mesh.userData.arms` — the arms it actually cut,
+beside the `userData.outline` it already published and for the same stated
+reason: a consumer that needs to know what a part HAS should read it off the
+part. The tier emits one spoke per entry. A fourth arm now draws itself.
+
+Measured on the built tree: **3 arms cut, 3 spokes drawn**, each spoke's far
+end landing on its own arm's disc centre to 0 and inside the driver's cut
+outline, every proxy a `Line` on camera layer 1 (§66's two boot-asserted
+invariants unaffected). The verification was mutated to prove it
+discriminates — dropping one arm from the tier's loop reads `3 arm(s) cut, 2
+spoke(s) drawn — MISMATCH` — because a check that has only ever agreed has
+not been shown to disagree.
+
+**No gate was added, deliberately.** The duplication is gone, so the tier
+cannot fall behind this part's metal again; a gate would police a copy that no
+longer exists. §84 (the schematic coverage census) is where a population-wide
+version belongs, and it is still unscoped.
+
+### What this does NOT do
+
+It does not make the driver thicker. The arms are not slender in PLAN —
+TODO 103's hull runs 4.2–4.6 u of solid metal across the body — and what is
+thin is Z: one `STOCK_MIN_U` plate, 0.120 mm, over a 4.6 mm reach, λ 38.1
+about that axis. `checkSlenderness` reads `len / tMid`, the WORKING plane, so
+`Alarm switch` has no row in the shipped report and no gate sees it. That
+section is pinned by a z stratum asserted at equality rather than by a load
+path, which is P3 paying for P1 backwards, and undoing it is the roadmap
+remainder.
