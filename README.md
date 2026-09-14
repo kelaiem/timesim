@@ -433,12 +433,22 @@ wristwatch argues with: a second mainspring barrel for the alarm standing
 beside the going barrel, its own crown to wind and set it, and a hammer let
 go against a sounding part when the set time arrives. That is what this
 movement is — the alarm barrel, the alarm crown, and the striking works
-`equalisation` holds to their own set-up and gap. Two differences worth
+`equalisation` holds to their own set-up and gap. Three differences worth
 stating. The Memovox's hammer strikes a post on the caseback; this one
 strikes a wire GONG carried round the movement, whose voice is derived from
-the clamped-free beam rather than from any watch. And a Memovox reads its
+the clamped-free beam rather than from any watch. A Memovox reads its
 alarm time off an inner rotating disc with a small triangle — where this
-movement uses a central hand, which is the next entry.
+movement uses a central hand, which is the next entry. And the alarm's
+ON/OFF switch is not the reference's at all: this one steps a chronograph's
+COLUMN WHEEL half a pitch per press, and the lock lever's tail beak rides
+its castellations — beak on a column and the brake cannot lift, beak over a
+gap and the lever answers to the release. That is a mechanism borrowed from
+a different complication to do a job the reference does another way, and it
+is the largest departure on this list: the gong and the hand are
+substitutions for parts a Memovox has, where the column wheel is the
+movement's own. It earns the space — the wheel reads to FOUR riders (the
+brake beak, the click, the §35 link beak and the pusher's pawl), which is
+why §35 had to grow it, and why `explain.html` gives it a plate of its own.
 
 - [*Jaeger-LeCoultre Memovox*](https://wiki.grail-watch.com/index.php/Jaeger-LeCoultre_Memovox),
   Grail Watch Wiki — where the caliber history above comes from. A
