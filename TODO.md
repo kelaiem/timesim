@@ -15222,6 +15222,96 @@ stations; it says a short reader has room, not that any particular short
 reader works. The sleeve's relief (§45/§124 cut its web for this arm at one
 azimuth) would need re-deriving for whatever replaces it.
 
+### The OUTPUT path is priced — a coaxial collar fits, with or without the entitlement
+
+`tools/probe-117-takeoff.mjs`, the answer to "price that before building
+anything". Both candidates the paragraph above names — the reader's own axis,
+or a carrier that orbits with it — reduce to the same part: a signal leaving an
+orbiting member without a length that changes with azimuth has to be taken
+COAXIALLY with the orbit, as a collar about the dial centre that the reader
+acts on wherever it stands and that hands off to the fixed lifter at one place.
+So the question priced is: **is there a free coaxial annulus, at what radius
+and height, and with how much section?**
+
+**The measurement collapses to two dimensions, which is why it is exact rather
+than a sweep.** The distance from any point to a coaxial circle of radius R at
+height Z is `hypot(r − R, z − Z)` — azimuth drops out. A full ring is present
+at every azimuth simultaneously, so the free-ring map IS the free (r, z) map,
+with no stations to sample and no swept-hull error available to make. Points
+are taken along triangle EDGES (MODELING.md rule 5), over the same 42-pose net,
+binned at 0.05 in (r, z) on arrival.
+
+Two readings, because the exclusion is a design choice and not a fact:
+
+| collar at | every unit an obstacle | the three coaxial units excluded |
+|---|---|---|
+| r 1, z −5.85 | — | **1.9912** (Alarm disc) |
+| r 2, z −5.35 | — | 1.6325 (Alarm disc) |
+| r 3, z −4.85 | 0.4500 at z −6.35 (Dial) | 1.2000 (Motion works) |
+| r 3.5, z −4.85 | **0.4000** at z −4.35 (Dial) | 0.9513 (Alarm setting idler) |
+| r 4.5, z −9.35 | 0.3500 at z −9.85 (Dial) | 0.8500 (Alarm disc) |
+| cells over `CLEAR_MARGIN` | 76 of 585 | 162 of 585 |
+| cells over the shipped bar 0.0458 | 267 of 585 | 289 of 585 |
+
+The excluded three are `Hour wheel`, `Alarm release disc` and `Dial` — what a
+collar journalled on one of them may use. `Alarm disc` (the alarm HAND's tube)
+is a fourth dial-centred unit and is deliberately kept as an obstacle in both
+columns: it turns at the alarm-setting rate, so a collar on any of the three
+carriers is not rigid with it. Measured, it never binds a winning cell.
+
+**The finding is that the entitlement is not needed.** The reader works at the
+release disc's own height (`Alarm release disc` spans r 2.208–4.608,
+z −5.38 … −4.894), and a collar just inboard of it, at **r 3.5, z −4.35, is
+0.4000 clear with every unit in the movement counted as an obstacle** — 2.7×
+`CLEAR_MARGIN` and 8.7× the shipped station. Under the entitlement the same
+neighbourhood opens to 0.95–1.99. So the open construction question further
+down — what the disc runs on — does not gate this: the collar is affordable
+either way, and that is the point of pricing it before building.
+
+**The hand-off is a FIXED run, and that is what replaces the 28.521 spread.**
+`Alarm release lifter` spans r 4.65–29.144, z −7.042 … −2. Because a collar's
+azimuth is everywhere, the link to it is taken at ONE place and has one length:
+
+| collar | run to the lifter | radial | axial |
+|---|---|---|---|
+| r 3, z −4.85 | **1.650** | 1.650 | 0.000 |
+| r 3.5, z −4.85 | **1.150** | 1.150 | 0.000 |
+| r 4.5, z −9.35 | 2.313 | 0.150 | 2.308 |
+
+Today's orbiting arm runs 2.682 → 31.203 across the orbit. A collar in the
+disc's own plane replaces that with a purely radial 1.150–1.650 that does not
+change with azimuth at all — a link, not a mechanism.
+
+**Controls.** Must-hit: a ring inside the `Hour wheel` unit's envelope
+(r 12.526, z −7.787 — its rim, not its tube) reads 0.0439, BLOCKED. Must-miss:
+a ring at r 60, z 40 reads 53.149, CLEAR. The map is a REPORT and neither bar
+is a gate; what it prices is where a collar may go, not that any particular
+collar works.
+
+**Two corrections this probe needed, both worth carrying forward.** The first
+map pruned obstacles to the candidate band exactly, so a ring near the band's
+edge saw no metal beyond it and read clear *for that reason alone* — every
+radius from 7 outward reported its best cell on the bottom row at a
+suspiciously uniform 0.35. The prune was manufacturing the clearance it was
+measuring. Metal is now gathered `PAD = 4` beyond any distance the map may
+report, and a cell that would report more is capped and flagged (0 cells are,
+so the horizon never binds). The second is that routing the must-miss control
+through that cap made it read exactly `PAD` — a control that can neither pass
+nor fail, indistinguishable from a map that blocks everywhere and caps out. The
+control takes the uncapped distance now, which is the right reading for the
+question it asks: pruning can only have removed metal further away, so the
+figure over-estimates and therefore proves clearance rather than assuming it.
+
+(Sample counts wobble by ~30 in 59,800 between runs — the chain's mesh is
+re-tessellated lazily and is path-dependent, which is why `fingerprint`
+excludes it by name. No reported figure moved across two runs: identical
+winning cells, identical tallies.)
+
+**Residue.** The map says where a ring fits, not what section it needs — that
+is a P1 question for whatever collar is designed, and the map gives the
+allowance to design against rather than the answer. It also says nothing about
+the collar's own bearing, which is the construction question below.
+
 The three sites item 15 tables (power-reserve wheels, alarm
 branch idler i1b, alarm winding idlers) are still unmeasured for
 transmission, and so is every other declared mesh in the movement: this
