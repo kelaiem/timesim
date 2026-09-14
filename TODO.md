@@ -15986,15 +15986,16 @@ can exist for a pair the enumeration never proposes.
 |---|---|---|---|
 | `crownWheel ⇄ windingPinion` | WINDING | **0.2065** | **27%** |
 | `clutchRim ⇄ settingWheel` | SETTING THE HANDS | **0.1372** | **18%** |
-| `alarmSetIdler2 ⇄ alarmStemBevel` | setting the alarm | 0.0000 | 0% |
+| `alarmSetIdler2 ⇄ alarmStemBevel` | setting the alarm | ~~0.0000~~ **unmeasured** | see below |
 
 The bar is not a chosen threshold: **a correct mesh reads ZERO**, because its
 flanks touch and neither outline ever enters the other's solid. The reference
 for "bad" is measured beside it — a known-good, phase-solved, battery-green
 mesh (`thirdWheel ⇄ fourthPinion`) reads 0.0000 as built and **0.1707** with
 half a pitch injected. **The winding pair is buried deeper than that
-deliberate defect.** The alarm bevel reading zero is what says the instrument
-is not simply calling every crossed-axis pair broken.
+deliberate defect.** (This paragraph used to end "the alarm bevel reading zero
+is what says the instrument is not simply calling every crossed-axis pair
+broken". That row is withdrawn — see the fix section.)
 
 **Why it was never caught.** Neither pair has a phase solve — `solveGearChain`
 reads a line of centres between two parallel axes, which these do not have — so
@@ -16012,14 +16013,77 @@ cones share an APEX and the sum of pitch radii is not the constraint, so the
 four pairs in that count are the ones whose numbers happen to land near a
 metric that does not govern them.
 
-**What the fix needs, and why it is not one line.** A crossed-axis mesh has no
-line of centres, so TODO 15's anti-phase arithmetic does not port. The phase
-has to be solved on the contact geometry a bevel actually has — the pitch cones
-and their shared apex — and the two members' indices then derive from that. The
-instrument to hold it true already exists and is gate-ready the day the fix
-lands: the bar is zero and nothing about it would need choosing. It is a REPORT
-today only because a check that lands red on arrival needs an owner first
-(§54's banner).
+**What the fix needs — REWRITTEN, because the first answer was wrong.** This
+section used to say: "the phase has to be solved on the contact geometry a bevel
+actually has — the pitch cones and their shared apex". Measured, that fix cannot
+work, **because these two pairs have no cones**. Reading the builders:
+`crownWheel`, `settingWheel` and `clutchRim` are `G.makeGear`, `windingPinion`
+is `G.makePinion` — FLAT SPUR CUTS, with one member of each pair turned 90°
+(`rotation.x = Math.PI / 2`). Two flat spur cuts meeting at a right angle are
+not a mesh of any kind; their flanks are not conjugate and their tooth bodies
+sweep through each other. The only real bevel pair of the three is the alarm
+corner's, both members `G.makeBevelGear` at a 45° cone.
+
+**The phase floor, measured** (`probe-crossed-axis-mesh.mjs` tier two). Each
+pair has exactly one index knob — the half-pitch seed its blank carries
+(`crownWheelBase`, `settingWheelBase`), the same freedom TODO 132 used on the
+transfer wheel. Sweep that knob through a WHOLE pitch in 24 steps, drive the
+mechanism at each setting, take the deepest burial, and the minimum over the
+knob is the best any indexing can do:
+
+| pair | floor | ceiling | as a fraction of a tooth |
+|---|---|---|---|
+| CONTROL `thirdWheel ⇄ fourthPinion` (parallel, solved) | **0.0000** | 0.1801 | 0% |
+| `crownWheel ⇄ windingPinion` | **0.1811** | 0.2213 | **24%** |
+| `clutchRim ⇄ settingWheel` | **0.0971** | 0.1490 | **13%** |
+
+**The control is the load-bearing row.** A floor above zero proves nothing
+unless the same sweep can FIND a zero where one exists — so the known-good
+parallel pair goes through the identical tier and reads 0.0000 at phase 0.000
+with a ceiling of 0.1801, resolving a real minimum and a real maximum rather
+than printing one number 24 times. Against that, neither crossed pair ever
+drops below 0.097 at any indexing. **No phase solve fixes these. The metal is
+the wrong KIND.**
+
+So the fix is geometric: cut each crossing pair as a form that is conjugate
+across crossed axes — a bevel pair (the alarm corner's `makeBevelGear` idiom,
+already in this repo) or the crown/contrate wheel with a spur pinion that a real
+keyless works actually uses. Note the counts are unequal (20 t against 8 t), so
+a bevel pair here is not a mitre: the cone angles are `atan(20/8)` and
+`atan(8/20)`, and `makeBevelGear` takes `coneAngleDeg` for exactly that. The
+members must be cut as a matched set.
+
+**And the alarm bevel's 0.0000 is WITHDRAWN — it was never measured.** This item
+used to quote that row as the proof the instrument "is not simply calling every
+crossed-axis pair broken". It is not proof of anything. `makeBevelGear` shears
+its extrude in z afterwards (`v.z += hypot(x, y) * taper`) and never centres the
+result, while `parameters.shapes` + `depth` go on describing the flat, uncentred
+prism — and the probe's only guard compared XY extents, which a z-shear leaves
+untouched. Measured, that bevel's metal spans z 0.400..2.058, 1.658 tall and
+centred on 1.229, against a modelled band of 0.650 centred on 0: **the probe was
+testing a region the metal does not occupy, and answering clear about it.** The
+probe now REFUSES any geometry reshaped after extruding, and the role that row
+played is taken by the parallel control above.
+
+**A second defect in the instrument, fixed in the same pass.** The injection
+that mis-phases a member for the control did `T.rotation.z += inject * pitch`
+inside the pose loop. That is right only for a member the tick rewrites every
+pose (`crownWheel`, `settingWheel` — `main.js:37536`, `37851`); a BLANK is not
+rewritten — the going train writes the ARBOR and the blank's index persists — so
+on `thirdWheel` it ACCUMULATED, walking 0.5, 1.0, 1.5 … 8.0 pitches across the
+sweep's 16 steps. It passed anyway, and only because a gear is periodic in one
+pitch, so half and whole alternated and the deepest still landed where the
+control wanted it. An accident of choosing 0.5 — and it would have smeared every
+phase together in the tier above, which is the measurement that needed it right.
+
+**The gate promised here is NOT ready any more, and that is the residue.** The
+old text said the instrument "is gate-ready the day the fix lands". It is not:
+the fix is to cut bevels, and bevels are precisely what the probe now refuses.
+Landing the metal without also teaching the instrument a solid model that
+survives the z-shear would put the repaired mesh beyond measurement — the same
+failure this item exists to record, one turn later. Sequence it the other way
+round: the solid model first, proven on the alarm pair (whose true burial is
+still unknown), then the cut.
 
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where
