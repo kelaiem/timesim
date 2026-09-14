@@ -146,7 +146,44 @@ const out = await page.evaluate(async () => {
     const rGeo = Math.max(Math.abs(bb.min.x), Math.abs(bb.max.x), Math.abs(bb.min.y), Math.abs(bb.max.y));
     if (Math.abs(rPoly - rGeo) > 0.15 * Math.max(rPoly, rGeo))
       return { bad: `shape extent ${rPoly.toFixed(3)} does not match the mesh's ${rGeo.toFixed(3)} — stale reference` };
-    return { contour, holes, hz: depth / 2, mesh, rPoly,
+    // THE SOLID IS DECLARED BY THE BUILDER, NOT INFERRED HERE (§136). The XY
+    // guard above cannot see a z-shear, and `makeBevelGear` applies one AFTER
+    // extruding and never centres the result, while `parameters` goes on
+    // describing the flat uncentred prism. Reading only `parameters`, this
+    // probe tested a band a bevel's metal does not occupy and answered CLEAR —
+    // a reading TODO 136 then quoted as proof the instrument was not simply
+    // calling every crossed-axis pair broken.
+    //
+    // So each builder records `userData.solid = { zLo, zHi, shearZ }` on the
+    // mesh, and the shear is INVERTIBLE (x and y untouched), which makes
+    // point-in-solid exact rather than approximate: un-shear a point and test
+    // it against the flat band.
+    //
+    // The fallback is the old assumption — a prism centred on z = 0 — kept so
+    // an undeclared builder still measures. What makes that safe is the assert
+    // below rather than the assumption itself.
+    const sol = (mesh.userData && mesh.userData.solid)
+      || { zLo: -depth / 2, zHi: depth / 2, shearZ: 0, assumed: true };
+    // VERIFY THE DECLARATION AGAINST THE METAL, every vertex of it. A declared
+    // solid is a claim about this mesh, so it is asserted against the mesh the
+    // way §137 requires a figure an instrument also computes to be asserted
+    // rather than resembled: un-shear each position and it must land inside the
+    // declared band. This catches a wrong shear, a wrong band, a builder that
+    // moved its extrude, and an undeclared reshape — all as one refusal.
+    const P0 = g.attributes.position;
+    const tol = 0.25 * (sol.zHi - sol.zLo);   // the extrude bevel's lip lives in here
+    let worstLo = 0, worstHi = 0;
+    for (let i = 0; i < P0.count; i++) {
+      const x = P0.getX(i), y = P0.getY(i), z = P0.getZ(i);
+      const zu = z - Math.hypot(x, y) * sol.shearZ;
+      if (sol.zLo - zu > worstLo) worstLo = sol.zLo - zu;
+      if (zu - sol.zHi > worstHi) worstHi = zu - sol.zHi;
+    }
+    if (worstLo > tol || worstHi > tol)
+      return { bad: `the ${sol.assumed ? 'ASSUMED' : 'declared'} solid (z ${sol.zLo.toFixed(3)}..${sol.zHi.toFixed(3)}, shear ${sol.shearZ.toFixed(3)}) `
+        + `does not contain this mesh: un-sheared, its vertices run ${worstLo.toFixed(3)} below and ${worstHi.toFixed(3)} above it, against a ${tol.toFixed(3)} lip allowance` };
+    return { contour, holes, hz: (sol.zHi - sol.zLo) / 2, zLo: sol.zLo, zHi: sol.zHi, shearZ: sol.shearZ,
+      declared: !sol.assumed, fit: Math.max(worstLo, worstHi), mesh, rPoly,
       toWorld: mesh.matrixWorld, toLocal: new THREE.Matrix4() };
   };
 
@@ -171,18 +208,27 @@ const out = await page.evaluate(async () => {
   };
   // depth of a LOCAL point inside the prism: 0 outside, else its distance to
   // the nearest wall or face — how far the metal is buried.
+  // Depth of a point inside the solid. The point arrives in the target's LOCAL
+  // frame; un-shear it (the inverse of the builder's `z += hypot(x,y)·taper`)
+  // and the test is the flat band plus the authored outline. For a spur cut
+  // shearZ is 0 and this is exactly what it always was.
   const depthIn = (P, v) => {
-    if (Math.abs(v.z) > P.hz) return 0;
+    const zu = v.z - Math.hypot(v.x, v.y) * P.shearZ;
+    if (zu < P.zLo || zu > P.zHi) return 0;
     if (!inRing(P.contour, v.x, v.y)) return 0;
     for (const h of P.holes) if (inRing(h, v.x, v.y)) return 0;
-    let d = Math.min(distRing(P.contour, v.x, v.y), P.hz - Math.abs(v.z));
+    let d = Math.min(distRing(P.contour, v.x, v.y), zu - P.zLo, P.zHi - zu);
     for (const h of P.holes) d = Math.min(d, distRing(h, v.x, v.y));
     return d;
   };
 
   // A gear's own outline, densified and taken at several heights — the sample
   // set. Densified so a long edge cannot bridge a gap between another's teeth.
-  const samplesOf = (P, step = 0.04, levels = [-0.7, -0.35, 0, 0.35, 0.7]) => {
+  // The samples are points ON THIS PART'S SURFACE in its own local frame, so
+  // they carry the builder's shear FORWARD — the inverse of what depthIn does
+  // to a point arriving from elsewhere. Levels are fractions of the declared
+  // band, inset from both faces so a sample never sits exactly on one.
+  const samplesOf = (P, step = 0.04, levels = [0.15, 0.325, 0.5, 0.675, 0.85]) => {
     const pts = [];
     const ring = P.contour;
     for (let i = 0; i < ring.length; i++) {
@@ -191,7 +237,8 @@ const out = await page.evaluate(async () => {
       const n = Math.max(1, Math.ceil(L / step));
       for (let k = 0; k < n; k++) {
         const t = k / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
-        for (const f of levels) pts.push(new THREE.Vector3(x, y, f * P.hz));
+        const shear = Math.hypot(x, y) * P.shearZ;
+        for (const f of levels) pts.push(new THREE.Vector3(x, y, P.zLo + (P.zHi - P.zLo) * f + shear));
       }
     }
     return pts;
@@ -210,6 +257,23 @@ const out = await page.evaluate(async () => {
       if (!best || m.geometry.attributes.position.count > best.geometry.attributes.position.count) best = m;
     });
     return best;
+  };
+
+  // DO THESE TWO PARTS EVER COME NEAR EACH OTHER? A burial of zero means
+  // nothing if the pair never engages, and this probe shipped a row where it
+  // meant exactly that: the alarm row paired the setting idler with the stem
+  // bevel, two parts standing 2.179 apart with DISJOINT bounding boxes — not a
+  // mesh at all. It read 0.0000 at every phase for that reason, and TODO 136
+  // quoted the zero as proof the instrument was not simply calling every
+  // crossed-axis pair broken. The skill's own rule, learned again: pick a pair
+  // that genuinely overlaps, and make the probe SAY so rather than trusting the
+  // choice. Boxes are a weak test for CONTACT and a decisive one for ABSENCE —
+  // if two AABBs never intersect across a sweep, the solids certainly never
+  // touch and any zero is vacuous.
+  const boxSep = (oA, oB) => {
+    const A = new THREE.Box3().setFromObject(oA), B = new THREE.Box3().setFromObject(oB);
+    return Math.max(0, B.min.x - A.max.x, A.min.x - B.max.x,
+      B.min.y - A.max.y, A.min.y - B.max.y, B.min.z - A.max.z, A.min.z - B.max.z);
   };
 
   const worstNow = (PA, PB, sA, sB) => {
@@ -238,11 +302,22 @@ const out = await page.evaluate(async () => {
     const T = injectInto ? rotorByName(injectInto) : A;
     const pitch = (Math.PI * 2) / (T.userData.teeth || 1);
     const z0 = T.rotation.z;
-    let worst = { deep: -1, n: 0 }, at = 0, moved = 0, prev = null;
+    // RESTORE BEFORE POSING, or the injection ACCUMULATES. `+=` is only right
+    // for a member the tick rewrites every pose (crownWheel, settingWheel do;
+    // main.js:37536, 37851). A BLANK does not — the going train writes the
+    // ARBOR and the blank's index persists — so on thirdWheel the old `+=`
+    // walked 0.5, 1.0, 1.5 … 8.0 pitches across the sweep's 16 steps. It
+    // passed anyway, and only because a gear is periodic in one pitch: half
+    // and whole alternate, so the deepest still landed on the half-pitch
+    // configuration the control wanted. An accident of choosing 0.5, and it
+    // would silently smear phases together for any other fraction — which is
+    // precisely what the phase-floor tier below needs to get right.
+    let worst = { deep: -1, n: 0 }, at = 0, moved = 0, prev = null, closest = Infinity;
     for (let i = 0; i < steps; i++) {
       const f = i / (steps - 1);
       I.enterAxis(C);
-      pose(f);
+      T.rotation.z = z0;                       // undo the previous step's injection
+      pose(f);                                 // the tick may overwrite it (fine) or not (z0 stands)
       if (inject) T.rotation.z += inject * pitch;
       C.scene.updateMatrixWorld(true);
       // GUARD: a sweep that poses nothing measures one pose N times. The
@@ -256,15 +331,21 @@ const out = await page.evaluate(async () => {
       prev = q.clone();
       const w = worstNow(PA, PB, sA, sB);
       if (w.deep > worst.deep) { worst = w; at = f; }
+      const sep = boxSep(ba, bb);
+      if (sep < closest) closest = sep;
     }
     T.rotation.z = z0;
     C.resetInputs();
     C.scene.updateMatrixWorld(true);
     const toothH = 2.25 * (A.userData.module || 0.34);
     log.push(`  ${label}`);
-    log.push(`      outlines ${sA.length} + ${sB.length} pts   prisms r ${PA.rPoly.toFixed(3)} × ±${PA.hz.toFixed(3)} and r ${PB.rPoly.toFixed(3)} × ±${PB.hz.toFixed(3)}   driver swept ${moved.toFixed(3)} rad${moved < 1e-6 ? '  <-- STOOD STILL, nothing was measured' : ''}`);
+    const solidOf = (P, n) => `${n} r ${P.rPoly.toFixed(3)} z ${P.zLo.toFixed(2)}..${P.zHi.toFixed(2)}`
+      + (P.shearZ ? ` sheared ${P.shearZ.toFixed(2)}` : '') + (P.declared ? '' : ' (ASSUMED)') + ` fit ${P.fit.toFixed(3)}`;
+    log.push(`      outlines ${sA.length} + ${sB.length} pts   solids: ${solidOf(PA, aName)} | ${solidOf(PB, bName)}   driver swept ${moved.toFixed(3)} rad${moved < 1e-6 ? '  <-- STOOD STILL, nothing was measured' : ''}`);
     log.push(`      DEEPEST  ${worst.deep.toFixed(4)}   = ${(worst.deep / toothH * 100).toFixed(0)}% of a ${toothH.toFixed(3)} tooth height   (${worst.n} pts buried, at f=${at.toFixed(2)})`);
-    return { deep: worst.deep, moved };
+    if (closest > 0)
+      log.push(`      NOT A PAIR — the two boxes never intersect across this sweep (closest ${closest.toFixed(3)}). A zero here says they never meet, not that they mesh.`);
+    return { deep: worst.deep, moved, closest };
   };
 
   const I = await import('./src/inspect.js');
@@ -290,15 +371,107 @@ const out = await page.evaluate(async () => {
   const ctrlBad = sweep('must-hit   the same pair, HALF A PITCH into the third wheel blank', 'thirdWheel', 'fourthPinion', runTrain,
     { inject: 0.5, injectInto: 'thirdWheel' });
 
+  // ---- TIER TWO — IS THERE ANY PHASE AT WHICH THESE CUTS MESH? -------------
+  //
+  // TODO 136 filed the burial and proposed a fix: "the phase has to be solved
+  // on the contact geometry a bevel actually has — the pitch cones and their
+  // shared apex". Reading the builders says that cannot be right for these two
+  // pairs, because THEY HAVE NO CONES. crownWheel is G.makeGear, windingPinion
+  // is G.makePinion, settingWheel and clutchRim are both G.makeGear — flat SPUR
+  // cuts, mounted with one turned 90° (`rotation.x = Math.PI / 2`). The pair
+  // that reads 0.0000, alarmSetIdler2 ⇄ alarmStemBevel, is the only real bevel
+  // pair of the three: both members G.makeBevelGear at a 45° cone.
+  //
+  // So the question this tier settles is not "what is the right phase" but
+  // whether a right phase EXISTS. Each pair has exactly one index knob — the
+  // half-pitch seed its blank was built with (`crownWheelBase`,
+  // `settingWheelBase`, `ALARM_BEVEL_PHASE`), the same freedom TODO 132 used on
+  // the transfer wheel: two blanks on one arbor are indexed at whatever angle
+  // the assembly calls for. Sweep that knob through a WHOLE pitch, drive the
+  // mechanism at each setting, and take the deepest burial. The minimum over
+  // the knob is the FLOOR: the best any indexing can do.
+  //
+  // A floor of zero means the fix is a phase solve. A floor well above zero
+  // means no indexing saves it and the metal is the wrong KIND — which would
+  // make the item's stated fix impossible rather than merely unbuilt.
+  //
+  // THE CONTROL IS THE LOAD-BEARING PART, per the skill: a floor above zero
+  // proves nothing unless the same sweep can FIND a zero where one exists. So
+  // the known-good parallel pair is run through the identical tier. Its floor
+  // must reach ~0 (it is phase-solved, so some knob setting is correct) AND its
+  // ceiling must reach the half-pitch burial (~0.17), which together show the
+  // tier resolves a real minimum and a real maximum rather than reporting one
+  // number 24 times.
+  const phaseFloor = (label, aName, bName, pose, knobName, { phases = 24, steps = 10 } = {}) => {
+    const A = rotorByName(aName), B = rotorByName(bName), T = rotorByName(knobName);
+    if (!A || !B || !T) { log.push(`  ${label}\n      NO ROTOR ${!A ? aName : !B ? bName : knobName}`); return null; }
+    const PA = prismOf(bodyOf(A)), PB = prismOf(bodyOf(B));
+    if (PA.bad || PB.bad) { log.push(`  ${label}\n      REFUSED — ${PA.bad || PB.bad}`); return null; }
+    const sA = samplesOf(PA), sB = samplesOf(PB);   // hoisted: the outlines do not change with phase
+    const pitch = (Math.PI * 2) / (T.userData.teeth || 1);
+    const z0 = T.rotation.z;
+    const rows = [];
+    let moved = 0, prev = null, closest = Infinity;
+    for (let p = 0; p < phases; p++) {
+      const frac = p / phases;
+      let deep = 0;
+      for (let i = 0; i < steps; i++) {
+        const f = steps === 1 ? 0 : i / (steps - 1);
+        I.enterAxis(C);
+        T.rotation.z = z0;                     // see the note in sweep(): never `+=` twice
+        pose(f);
+        T.rotation.z += frac * pitch;
+        C.scene.updateMatrixWorld(true);
+        const q = new THREE.Quaternion();
+        A.matrixWorld.decompose(new THREE.Vector3(), q, new THREE.Vector3());
+        if (prev !== null) moved += 2 * Math.acos(Math.min(1, Math.abs(q.dot(prev))));
+        prev = q.clone();
+        const w = worstNow(PA, PB, sA, sB);
+        if (w.deep > deep) deep = w.deep;
+        const sep = boxSep(bodyOf(A), bodyOf(B));
+        if (sep < closest) closest = sep;
+      }
+      rows.push({ frac, deep });
+    }
+    T.rotation.z = z0;
+    C.resetInputs();
+    C.scene.updateMatrixWorld(true);
+    const floor = rows.reduce((m, r) => Math.min(m, r.deep), Infinity);
+    const ceil = rows.reduce((m, r) => Math.max(m, r.deep), 0);
+    const best = rows.find((r) => r.deep === floor);
+    const toothH = 2.25 * (A.userData.module || 0.34);
+    log.push(`  ${label}`);
+    log.push(`      knob ${knobName}: ${T.userData.teeth} t, one pitch ${(pitch * 180 / Math.PI).toFixed(1)}°, swept in ${phases} steps${moved < 1e-6 ? '   <-- THE PAIR STOOD STILL, nothing was measured' : ''}`);
+    // The WHOLE table, not the winner — a search whose losers are invisible is
+    // a claim nobody can re-check.
+    log.push(`      burial by phase: ` + rows.map((r) => (r.deep < 0.005 ? '   ·' : r.deep.toFixed(2).padStart(4))).join(''));
+    log.push(`      FLOOR ${floor.toFixed(4)} at phase ${best.frac.toFixed(3)} of a pitch   ceiling ${ceil.toFixed(4)}   `
+      + `(tooth ${toothH.toFixed(3)} — the floor is ${(floor / toothH * 100).toFixed(0)}% of one)`);
+    if (closest > 0)
+      log.push(`      NOT A PAIR — boxes never intersect at any phase (closest ${closest.toFixed(3)}); this row's zeros are vacuous.`);
+    return { floor, ceil, rows, moved, closest };
+  };
+
   log.push('\nSUBJECTS — the crossed-axis meshes, which no registry check can reach');
   const res = [];
   for (const [label, a, b, pose] of [
     ['crownWheel ⇄ windingPinion   (WINDING: the bank swept)', 'crownWheel', 'windingPinion', runWind],
     ['clutchRim ⇄ settingWheel     (SETTING: crown out, setting path swept)', 'clutchRim', 'settingWheel', runSet],
-    ['alarmSetIdler2 ⇄ alarmStemBevel  (ALARM: alarm crown out, swept)', 'alarmSetIdler2', 'alarmStemBevel', runAlarm],
+    ['alarmDiscBevel ⇄ alarmStemBevel  (ALARM: the corner\'s real bevel pair, alarm crown swept)', 'alarmDiscBevel', 'alarmStemBevel', runAlarm],
   ]) res.push([label, sweep(label, a, b, pose)]);
 
-  return { log: log.join('\n'), ctrlGood, ctrlBad, res };
+  log.push('\nTIER TWO — the phase floor: the best any indexing of the one available knob can do');
+  const floors = {};
+  floors.control = phaseFloor('CONTROL  thirdWheel ⇄ fourthPinion — parallel, phase-solved, battery-green',
+    'thirdWheel', 'fourthPinion', runTrain, 'thirdWheel');
+  floors.wind = phaseFloor('crownWheel ⇄ windingPinion   (spur ⇄ spur, axes crossed at the stem)',
+    'crownWheel', 'windingPinion', runWind, 'crownWheel');
+  floors.set = phaseFloor('clutchRim ⇄ settingWheel     (spur ⇄ spur, axes crossed at the stem)',
+    'clutchRim', 'settingWheel', runSet, 'settingWheel');
+  floors.alarm = phaseFloor('alarmDiscBevel ⇄ alarmStemBevel  (a real bevel pair, for contrast)',
+    'alarmDiscBevel', 'alarmStemBevel', runAlarm, 'alarmStemBevel');
+
+  return { log: log.join('\n'), ctrlGood, ctrlBad, res, floors };
 });
 await browser.close(); srv.kill();
 
@@ -309,3 +482,27 @@ const hitOk = out.ctrlBad !== null && out.ctrlBad.deep > 0.15;
 console.log(`  must-miss (as built, should be clear): ${out.ctrlGood === null ? 'NOT MEASURED' : out.ctrlGood.deep.toFixed(4)}  ${missOk ? 'OK' : 'CONTROL FAILED'}`);
 console.log(`  must-hit  (half pitch, should be deep): ${out.ctrlBad === null ? 'NOT MEASURED' : out.ctrlBad.deep.toFixed(4)}  ${hitOk ? 'OK' : 'CONTROL FAILED'}`);
 if (!(missOk && hitOk)) console.log('\n  CONTROLS DID NOT BRACKET THE MEASURE — the subject readings above mean nothing.');
+
+// ---- tier two's verdict ------------------------------------------------------
+const F = out.floors || {};
+if (F.control) {
+  const ctrlFloorOk = F.control.floor < 0.05;          // a solved pair HAS a good phase
+  const ctrlCeilOk = F.control.ceil > 0.15;            // and a bad one, so the sweep resolves both
+  const ctrlMovedOk = F.control.moved > 1e-6;
+  console.log('\n--- tier two: can any phase save these pairs?');
+  console.log(`  CONTROL thirdWheel ⇄ fourthPinion: floor ${F.control.floor.toFixed(4)} (want < 0.05), `
+    + `ceiling ${F.control.ceil.toFixed(4)} (want > 0.15)  ${ctrlFloorOk && ctrlCeilOk && ctrlMovedOk ? 'OK' : 'CONTROL FAILED'}`);
+  for (const [k, name] of [['wind', 'crownWheel ⇄ windingPinion'], ['set', 'clutchRim ⇄ settingWheel'], ['alarm', 'alarmDiscBevel ⇄ alarmStemBevel']]) {
+    if (!F[k]) continue;
+    console.log(`  ${name.padEnd(34)} floor ${F[k].floor.toFixed(4)}   ceiling ${F[k].ceil.toFixed(4)}`);
+  }
+  if (!(ctrlFloorOk && ctrlCeilOk && ctrlMovedOk)) {
+    console.log('  THE TIER CANNOT FIND A ZERO WHERE ONE EXISTS — its floors below mean nothing.');
+  } else {
+    const verdict = (f) => (f === null ? 'not measured' : f.floor < 0.05
+      ? 'a phase EXISTS — an indexing fix is possible'
+      : 'NO phase clears it — indexing cannot fix this pair');
+    console.log(`\n  crownWheel ⇄ windingPinion: ${verdict(F.wind)}`);
+    console.log(`  clutchRim ⇄ settingWheel:   ${verdict(F.set)}`);
+  }
+}

@@ -812,7 +812,18 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
   geo.translate(0, 0, -thickness / 2);
 
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(geo, mat));
+  const body = new THREE.Mesh(geo, mat);
+  // §136 — THE SOLID THIS MESH IS, declared beside the cut. `parameters.shapes`
+  // records the OUTLINE; it does not record what happened to the extrude
+  // afterwards, and a reader that assumes "prism, centred on z=0" is right here
+  // and wrong for `makeBevelGear`, which shears in z and never centres. An
+  // instrument that assumed it measured a band a bevel's metal does not occupy
+  // and reported CLEAR (TODO 136). So the band and the shear travel with the
+  // metal, the way §194 put the tooth count there: declared, not inferred.
+  // On the MESH — `weldGeometry` rebuilds the geometry and carries only `type`
+  // and `parameters`, so geometry userData does not survive the weld.
+  body.userData.solid = { zLo: -thickness / 2, zHi: thickness / 2, shearZ: 0 };
+  g.add(body);
   if (hub) {
     g.add(new THREE.Mesh(ringExtrude(hubR, boreR, thickness * 1.5, 24), mat));
   }
@@ -863,7 +874,9 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
   geo.translate(0, 0, -thickness / 2);
 
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(geo, mat));
+  const body = new THREE.Mesh(geo, mat);
+  body.userData.solid = { zLo: -thickness / 2, zHi: thickness / 2, shearZ: 0 };  // §136 — see makeGear
+  g.add(body);
   // §194 — the tooth count and module travel with the metal, beside the pitch
   // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
   // mesh check must read the counts rather than infer them back out of a
@@ -910,7 +923,17 @@ export function makeBevelGear({ teeth, module, coneAngleDeg = 45, faceWidth = 1.
   geo.computeVertexNormals();
 
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(geo, mat));
+  const body = new THREE.Mesh(geo, mat);
+  // §136 — THE SOLID, and this is the builder the declaration exists for. The
+  // extrude above runs z ∈ [0, faceWidth] and is NOT centred, and the loop then
+  // shears every vertex by `hypot(x, y) * taper`. Both facts are invisible in
+  // `parameters`, which still describes the flat uncentred prism — so an
+  // instrument reading only that tests a region this metal does not occupy.
+  // The shear is a BIJECTION of space with x and y untouched, so the inverse
+  // (z −= hypot(x, y) * taper) maps the metal exactly back onto the prism:
+  // declaring the pair makes point-in-solid exact here rather than approximate.
+  body.userData.solid = { zLo: 0, zHi: faceWidth, shearZ: taper };
+  g.add(body);
   // §194 — the tooth count and module travel with the metal, beside the pitch
   // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
   // mesh check must read the counts rather than infer them back out of a
