@@ -16187,6 +16187,29 @@ corrected station in free space FIRST — two conjugate members at centre distan
 and let the cascade re-solve. Doing it the other way round would spend the
 layout move before knowing the cut is right.
 
+### The line was run, and it REFUSES the form — see [TODO 138]
+
+Built at the derived station (tier three of `probe-crossed-axis-mesh.mjs`): cone
+half-angles 68.199° and 21.801° summing to 90°, one cone distance R = 3.6619,
+the pinion's centre at R·cosγ_p = 3.4000 = r_c, and the cone convention checked
+off the metal (the crown's shear rises 1.3600 at r_c, which is r_p; the pinion's
+rises 3.4000, which is r_c). **All of that is right, and the pair still does not
+mesh:** floor 0.0000 AND ceiling 0.0000, at every index, both senses, and all
+three mountings.
+
+Floor zero with ceiling zero is not a good mesh — it is NOT A MESH, which is the
+distinction tier two's own guard was built to draw. The cause is [TODO 138]:
+`makeBevelGear`'s shear-cone teeth cannot interleave with each other at all, so
+there is no conjugate crossed-axis form in this repo to cut these pairs in.
+
+**So 136 is blocked on 138, and the station correction is the half that survives.**
+The 0.7480 derivation stands whatever the tooth form — both candidate forms agree
+about the station — so `layout.js`'s two `windPinionR * 0.55` terms are wrong
+today and will still be wrong after 138. But correcting them alone would move a
+non-meshing pair to the right place, which is not worth a dial-side cascade on
+its own. Sequence: 138 gives a form that meshes, then 136 cuts these two pairs in
+it and moves the station in the same landing.
+
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where
 `disc rim ⇄ idler 1b` transmits at +1.071429 against a bar of -1.071429, two
@@ -17179,6 +17202,70 @@ w2 integral, asserted at boot, beside the line that mints it.
 Found from §219's side — `tools/probe-219-catalogue.mjs` derives the
 reserve reduction from `RESERVE_SWEEP_DEG` rather than reading it, which is
 what turned the stale 4.2 in the LEGO note into this.
+
+## 138. `makeBevelGear`'s shear-cone teeth can never interleave, so no bevel pair in the movement meshes
+
+Found while running [TODO 136]'s line proof, which built a correct bevel pair
+from first principles and measured it as not a mesh. The build was right; the
+FORM cannot work.
+
+**What the builder makes.** `makeBevelGear` extrudes a flat gear outline through
+`faceWidth` and then shears every vertex: `v.z += hypot(x, y) * tan(coneAngleDeg)`.
+The result is a constant-thickness shell lying on one side of a cone — not a
+bevel tooth, which has flanks cut on the cone with a spherical (octoid) profile.
+
+**Why two of them can never touch except on a line.** Take a pair at a shared
+apex with perpendicular axes and complementary cone angles, which is what a 90°
+pair is. Their tapers then satisfy `tc · tp = 1` exactly. The crown's solid is
+`z − tc·r ∈ [0, fw]` with `r = hypot(x, y)`; the pinion's is `x − tp·ρ ∈ [0, fw]`
+with `ρ = hypot(y, z)`. At y = 0 the first gives `z ≥ tc·x`, and substituting,
+
+> `x − tp·z ≤ x − tp·(tc·x) = x(1 − tp·tc) = 0`
+
+while the pinion's band needs that quantity `≥ 0`. Equality only — which forces
+`z = tc·x`, the tangent line, a set of measure zero. For y ≠ 0 both `r > |x|` and
+`ρ > |z|`, so each inequality only tightens and there is no contact at all.
+**The two solids intersect on a line and nowhere else, at every index, every
+sense and every mounting.**
+
+**Measured, with the control that makes it a finding rather than a null.** The
+pair reads floor 0.0000 / ceiling 0.0000 built at its correct apex. Move the
+pinion's apex 0.3 toward the crown and it reads **0.0223 — at every index**,
+floor equal to ceiling; move it 0.3 away and it reads 0.0000 again. So the
+measure can see burial, and the burial it sees is INDEX-INVARIANT. That is the
+algebra visible: `z − hypot(x,y)·taper` does not change when the gear spins about
+its own axis, so an index can never change whether a point is inside the band. A
+real mesh varies with index — the parallel control runs 0.0000 to 0.1801.
+
+**What it means for the movement.** Three bevel corners ship in this form and
+`transfers` declares all three as `bevelPair`:
+
+| pair | where |
+|---|---|
+| `gearIn ⇄ gearOut` | the motion-works arbor's corners — which CLAUDE.md names as the TEMPLATE for a fold-added part |
+| `discBevel ⇄ stemBevel` | the alarm setting corner |
+| `contrate` + its mate | the alarm winding climb |
+
+None of them can be transmitting through tooth contact, because their teeth never
+occupy the same space. The ANGLES are real — the tick derives them from the tooth
+counts, so rule 2 holds and the ratios are honest — but the contact that would
+carry them is not modelled. In this repo's own vocabulary that is a SIMULATION
+FICTION: *modelled*, not *simulated*. It is not a collision and nothing is
+visibly wrong, which is exactly why it has survived three corners and a declared
+transfer idiom.
+
+**What the fix needs.** A bevel tooth generator that cuts flanks ON the cone
+rather than shearing a flat outline onto it — the octoid/spherical-involute
+profile, or a crown/contrate form where the teeth are cut into the face and a
+spur pinion genuinely drops between them. The bar is already built and needs no
+choosing: `probe-crossed-axis-mesh.mjs` reads zero for a correct pair and a
+varying, index-dependent burial for a wrong one, and its tier three builds a
+candidate pair in free space without touching the movement.
+
+**Related.** [TODO 136] is blocked on this: its two keyless pairs need a
+conjugate crossed-axis form to be cut in, and there is not one yet. 136's station
+correction (0.7480, `layout.js`'s two `windPinionR * 0.55` terms) is independent
+and survives whatever form 138 lands.
 
 ## 137. The column pawl's arm is cut under the stock floor, and every instrument misses it for a different reason
 

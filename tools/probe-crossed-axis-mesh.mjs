@@ -83,17 +83,45 @@
 //
 //   crownWheel ⇄ windingPinion   WINDING   0.2065   27% of a tooth   181 pts
 //   clutchRim  ⇄ settingWheel    SETTING   0.1372   18% of a tooth    48 pts
-//   alarmSetIdler2 ⇄ alarmStemBevel ALARM  0.0000    0%                0 pts
+//   alarmDiscBevel ⇄ alarmStemBevel ALARM  0.0000    0%                0 pts
 //
 // Both keyless bevels carry metal inside metal across their whole travel, and
-// the winding pair is buried DEEPER than the deliberate half-pitch defect. The
-// alarm bevel reading zero is what says the measure is not simply calling every
-// crossed-axis pair broken.
+// the winding pair is buried DEEPER than the deliberate half-pitch defect.
 //
-// REPORT, not a gate, and deliberately: the two failing pairs are undecided
-// debt, and a check that lands red on arrival needs an owner first (§54's
-// banner). It is gate-ready the day TODO 136 is fixed — the bar is zero, and
-// nothing about it would need choosing.
+// The alarm bevel's zero was read as the reassurance that the measure is not
+// simply calling every crossed-axis pair broken. IT IS NOT THAT, and tier three
+// is what corrected it — see below. (An earlier draft pointed this contrast at
+// `alarmSetIdler2 ⇄ alarmStemBevel`, two parts standing 2.179 apart whose boxes
+// never intersect: a pair that cannot touch reads zero for a reason that has
+// nothing to do with teeth. The row names the corner's real bevel pair now, and
+// a NOT A PAIR line fires on any subject whose AABBs never meet.)
+//
+// TIER TWO asks whether INDEXING can save either keyless pair: it sweeps the one
+// knob each has through a whole pitch. Neither reaches zero — floors 0.1811 and
+// 0.0971 against a control that runs 0.0000 to 0.1801 — so TODO 136's prescribed
+// phase fix is impossible and the item was rewritten.
+//
+// TIER THREE is the LINE (CLAUDE.md's "design in a line, fold to fit"): it builds
+// a conjugate 90° pair in FREE SPACE from the shipped counts, at the station the
+// counts demand rather than the one `layout.js` uses, and asks whether the form
+// reads zero before any layout move is spent on it. The station derivation is the
+// by-product worth keeping — the pinion's axis must cross the crown's PITCH
+// CIRCLE, and `layout.js` sites it `windPinionR * 0.55` = 0.7480 further out.
+//
+// THE FORM REFUSED, and that is TODO 138. Built correctly — half-angles 68.199° +
+// 21.801° = 90°, one cone distance, the convention verified off the metal — the
+// pair reads floor 0.0000 AND ceiling 0.0000, at every index, both senses, all
+// three mountings. `makeBevelGear` shears a flat outline onto a cone, and two
+// complementary tapers satisfy tc·tp = 1 exactly, which forces the two bands to
+// meet on the tangent LINE and nowhere else. So the alarm bevel's zero above is
+// not a healthy mesh either: no bevel pair in this movement can transmit through
+// tooth contact, which makes all three declared `bevelPair` transfers simulation
+// fictions until a real bevel tooth generator lands.
+//
+// REPORT, not a gate, and deliberately: the failing pairs are undecided debt,
+// and a check that lands red on arrival needs an owner first (§54's banner). It
+// is gate-ready the day TODO 136 is fixed — the bar is zero, and nothing about it
+// would need choosing — and 136 now waits on TODO 138 for a form to be cut in.
 //
 // cd tools && node probe-crossed-axis-mesh.mjs
 import { chromium } from 'playwright';
@@ -349,6 +377,7 @@ const out = await page.evaluate(async () => {
   };
 
   const I = await import('./src/inspect.js');
+  const G = await import('./src/geometry.js');
 
   // The inputs each pair is driven by — taken from the AXES entries that pose
   // them, never invented here.
@@ -460,6 +489,103 @@ const out = await page.evaluate(async () => {
     ['alarmDiscBevel ⇄ alarmStemBevel  (ALARM: the corner\'s real bevel pair, alarm crown swept)', 'alarmDiscBevel', 'alarmStemBevel', runAlarm],
   ]) res.push([label, sweep(label, a, b, pose)]);
 
+  // ---- TIER THREE — THE LINE: does a conjugate pair mesh at all? -----------
+  //
+  // "Design in a line, fold to fit". Tiers one and two measure the MOVEMENT;
+  // this one builds the pair in FREE SPACE, at the station the arithmetic
+  // demands, and asks whether a conjugate crossed-axis form reads zero before
+  // any layout move is spent on it.
+  //
+  // THE STATION IS NOT A CHOICE. For a 90° pair the cone half-angles come from
+  // the counts (tanγ_c = z_c/z_p), both members share one cone distance
+  // R = r/sinγ, and the pinion's centre stands R·cosγ_p from the apex — which
+  // reduces to r_p/tanγ_p = r_p·(z_c/z_p) = module·z_c/2 = r_c. The pinion's
+  // axis crosses the crown's PITCH CIRCLE. `layout.js` sites it at
+  // `crownWheelR + windPinionR * 0.55` instead, 0.7480 further out, with a
+  // comment saying "teeth overlap the wheel rim, bevel-style" — the intent was
+  // a bevel and the result is two spur rims overlapping.
+  //
+  // WHAT `coneAngleDeg` MEANS HERE, since getting it backwards would build the
+  // wrong cone and measure it honestly: `makeBevelGear` shears by
+  // `hypot(x,y) * tan(coneAngleDeg)`, so the angle is from the PLANE, and the
+  // pitch-cone half-angle γ measured from the AXIS is its complement. The
+  // shipped mitre pair is 45° either way and cannot disambiguate it; this pair
+  // can, and the assert below is that each member's shear rises to the OTHER
+  // member's pitch radius at its own — the apex geometry, read off the metal.
+  //
+  // Mounting is the apex and nothing else. The builder's shear vanishes at
+  // r = 0, so the geometry ORIGIN IS THE APEX: put both origins at one point
+  // with their axes perpendicular and the two pitch cones are tangent along a
+  // line by construction (68.199° + 21.801° = 90°).
+  //
+  // The sweep drives the PINION and derives the crown from the counts — rule 2,
+  // angles travel the gears — over a full turn, for every relative index in one
+  // pitch. The floor is the answer: zero means the form AND the phase are
+  // found, and TODO 136's missing solve is these two numbers.
+  const lineTier = (mod, zc, zp, { phases = 24, steps = 24 } = {}) => {
+    const rc = mod * zc / 2, rp = mod * zp / 2;
+    const gammaC = Math.atan2(zc, zp), gammaP = Math.atan2(zp, zc);
+    const R = rp / Math.sin(gammaP);
+    const deg = (r) => r * 180 / Math.PI;
+    const fw = R / 3;                    // a bevel's face width, the usual third of the cone distance
+    const crown = G.makeBevelGear({ name: 'lineCrown', teeth: zc, module: mod, faceWidth: fw,
+      coneAngleDeg: deg(Math.PI / 2 - gammaC) });
+    const pin = G.makeBevelGear({ name: 'linePinion', teeth: zp, module: mod, faceWidth: fw,
+      coneAngleDeg: deg(Math.PI / 2 - gammaP) });
+    // Both origins AT the apex; the pinion's axis turned onto +x.
+    const root = new THREE.Group();
+    const crownSpin = new THREE.Group(); crownSpin.add(crown); root.add(crownSpin);
+    const pinMount = new THREE.Group();
+    pinMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0));
+    const pinSpin = new THREE.Group(); pinSpin.add(pin); pinMount.add(pinSpin); root.add(pinMount);
+    root.updateMatrixWorld(true);
+
+    const bc = bodyOf(crown), bp = bodyOf(pin);
+    const PC = prismOf(bc), PP = prismOf(bp);
+    if (PC.bad || PP.bad) { log.push(`  LINE REFUSED — ${PC.bad || PP.bad}`); return null; }
+    const sC = samplesOf(PC), sP = samplesOf(PP);
+
+    log.push(`  the pair, from the counts alone:`);
+    log.push(`      z ${zc} / ${zp} at module ${mod}   r_c ${rc.toFixed(4)}  r_p ${rp.toFixed(4)}`);
+    log.push(`      cone half-angles from the axis: crown ${deg(gammaC).toFixed(3)}°  pinion ${deg(gammaP).toFixed(3)}°  sum ${deg(gammaC + gammaP).toFixed(3)}°`);
+    log.push(`      one cone distance R ${R.toFixed(4)} (r_c/sinγ_c ${(rc / Math.sin(gammaC)).toFixed(4)}), face width R/3 ${fw.toFixed(4)}`);
+    log.push(`      STATION: the pinion's centre stands R·cosγ_p = ${(R * Math.cos(gammaP)).toFixed(4)} from the apex — and r_c is ${rc.toFixed(4)}`);
+    // The cone-angle convention, asserted off the built metal rather than
+    // trusted: each member's shear must rise to the OTHER's pitch radius at its
+    // own pitch radius (z = r·tan(90°−γ), and r_c·tanγ_p = r_p by the identity).
+    const riseC = rc * Math.tan(Math.PI / 2 - gammaC), riseP = rp * Math.tan(Math.PI / 2 - gammaP);
+    log.push(`      cone convention check: crown rises ${riseC.toFixed(4)} at r_c (want r_p ${rp.toFixed(4)}), `
+      + `pinion rises ${riseP.toFixed(4)} at r_p (want r_c ${rc.toFixed(4)})`);
+
+    // Sweep: both senses, every relative index in one pitch.
+    const pitchP = (Math.PI * 2) / zp;
+    const out = [];
+    for (const sense of [-1, 1]) {
+      const rows = [];
+      for (let k = 0; k < phases; k++) {
+        const frac = k / phases;
+        let deep = 0;
+        for (let i = 0; i < steps; i++) {
+          const th = (i / steps) * Math.PI * 2;                 // a full pinion turn
+          pinSpin.rotation.z = th + frac * pitchP;
+          crownSpin.rotation.z = sense * th * (zp / zc);        // rule 2: the counts carry it
+          root.updateMatrixWorld(true);
+          const w = worstNow(PC, PP, sC, sP);
+          if (w.deep > deep) deep = w.deep;
+        }
+        rows.push({ frac, deep });
+      }
+      const floor = rows.reduce((m, r) => Math.min(m, r.deep), Infinity);
+      const ceil = rows.reduce((m, r) => Math.max(m, r.deep), 0);
+      const best = rows.find((r) => r.deep === floor);
+      log.push(`  sense ${sense > 0 ? '+' : '−'} (crown = ${sense > 0 ? '+' : '−'}θ·z_p/z_c):`);
+      log.push(`      burial by index: ` + rows.map((r) => (r.deep < 0.005 ? '   ·' : r.deep.toFixed(2).padStart(4))).join(''));
+      log.push(`      FLOOR ${floor.toFixed(4)} at index ${best.frac.toFixed(3)} of a pitch   ceiling ${ceil.toFixed(4)}`);
+      out.push({ sense, floor, ceil, bestFrac: best.frac });
+    }
+    return { rc, rp, R, gammaC, gammaP, fw, riseC, riseP, senses: out };
+  };
+
   log.push('\nTIER TWO — the phase floor: the best any indexing of the one available knob can do');
   const floors = {};
   floors.control = phaseFloor('CONTROL  thirdWheel ⇄ fourthPinion — parallel, phase-solved, battery-green',
@@ -471,7 +597,13 @@ const out = await page.evaluate(async () => {
   floors.alarm = phaseFloor('alarmDiscBevel ⇄ alarmStemBevel  (a real bevel pair, for contrast)',
     'alarmDiscBevel', 'alarmStemBevel', runAlarm, 'alarmStemBevel');
 
-  return { log: log.join('\n'), ctrlGood, ctrlBad, res, floors };
+  log.push('\nTIER THREE — THE LINE: a conjugate pair at the station the counts demand');
+  const crownRot = rotorByName('crownWheel'), pinRot = rotorByName('windingPinion');
+  const line = (crownRot && pinRot)
+    ? lineTier(crownRot.userData.module, crownRot.userData.teeth, pinRot.userData.teeth)
+    : (log.push('  NO ROTOR — cannot read the shipped counts'), null);
+
+  return { log: log.join('\n'), ctrlGood, ctrlBad, res, floors, line };
 });
 await browser.close(); srv.kill();
 
@@ -482,6 +614,32 @@ const hitOk = out.ctrlBad !== null && out.ctrlBad.deep > 0.15;
 console.log(`  must-miss (as built, should be clear): ${out.ctrlGood === null ? 'NOT MEASURED' : out.ctrlGood.deep.toFixed(4)}  ${missOk ? 'OK' : 'CONTROL FAILED'}`);
 console.log(`  must-hit  (half pitch, should be deep): ${out.ctrlBad === null ? 'NOT MEASURED' : out.ctrlBad.deep.toFixed(4)}  ${hitOk ? 'OK' : 'CONTROL FAILED'}`);
 if (!(missOk && hitOk)) console.log('\n  CONTROLS DID NOT BRACKET THE MEASURE — the subject readings above mean nothing.');
+
+// ---- tier three's verdict ----------------------------------------------------
+if (out.line) {
+  const L = out.line;
+  console.log('\n--- tier three: the line');
+  const conv = Math.abs(L.riseC - L.rp) < 1e-9 && Math.abs(L.riseP - L.rc) < 1e-9;
+  console.log(`  cone convention reads off the metal: ${conv ? 'OK' : 'WRONG — the angles are swapped'}`);
+  for (const s of L.senses)
+    console.log(`  sense ${s.sense > 0 ? '+' : '−'}: floor ${s.floor.toFixed(4)}  ceiling ${s.ceil.toFixed(4)}  at index ${s.bestFrac.toFixed(3)}`);
+  const win = L.senses.reduce((a, b) => (a.floor <= b.floor ? a : b));
+  // A MESH IS A FLOOR OF ZERO WITH A CEILING THAT IS NOT. Zero everywhere would
+  // mean the two never engage — tier two's own lesson, applied to a pair built
+  // rather than found.
+  if (win.floor < 0.005 && win.ceil > 0.02)
+    console.log(`\n  THE LINE MESHES: sense ${win.sense > 0 ? '+' : '−'}, index ${win.bestFrac.toFixed(3)} of a pitch, floor ${win.floor.toFixed(4)} — `
+      + `and the ceiling ${win.ceil.toFixed(4)} says the index is doing work rather than the pair never touching.`);
+  else if (win.floor < 0.005)
+    console.log(`\n  FLOOR ZERO BUT CEILING ${win.ceil.toFixed(4)} — every index reads clear, so these two never engage. Not a mesh.\n`
+      + `  That is TODO 138 and it is the FORM, not the mounting: complementary tapers give tc·tp = 1 exactly, so the\n`
+      + `  crown's band forces x − tp·z <= 0 where the pinion's needs >= 0 — equality only, the tangent line, measure zero.\n`
+      + `  Three mountings (none, crown flipped, pinion flipped) all read this. Offset the pinion's apex 0.3 inward and the\n`
+      + `  measure reads 0.0223 at EVERY index — burial this form can produce, and it cannot vary with index, because\n`
+      + `  z − hypot(x,y)·taper is unchanged by a spin about the part's own axis.`);
+  else
+    console.log(`\n  NO INDEX CLEARS IT — floor ${win.floor.toFixed(4)}. A conjugate pair should reach zero, so the form or the convention is wrong.`);
+}
 
 // ---- tier two's verdict ------------------------------------------------------
 const F = out.floors || {};
