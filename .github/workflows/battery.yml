@@ -251,7 +251,9 @@ concurrency:
 #     `[self-hosted]` in its title (§152's escape-hatch idiom, inverted), or
 #     a workflow_dispatch whose `runner` input says so. A push to main never
 #     asks, so merges always run GitHub-hosted — which also keeps main's
-#     baseline on the platform ordinary PRs inherit from.
+#     baseline on the platform ordinary PRs inherit from. A dispatch on the
+#     default branch is how the OTHER platform gets one; see the seeding steps
+#     at the bottom of the job for why that path had to exist.
 #   · And only when `vars.BATTERY_RUNS_ON` is set. It is the AVAILABILITY
 #     switch, not the router: unset it and every opt-in lands on
 #     `ubuntu-latest` in silence, which is the outage remedy — a queued
@@ -460,26 +462,102 @@ jobs:
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
 
-      # Only a run that measured the WHOLE movement may become a baseline, and
-      # only from main: a report carrying `restrictedTo` inherited rows from a
-      # previous baseline, and caching it would let one key error chain forward
-      # through every PR that ever reads it. The check is on the artifact
-      # rather than on the trigger because the artifact is what would be
-      # inherited — a trigger is a claim about a run, and this is the run.
-      - name: Keep this run as the next baseline
-        if: github.event_name == 'push' && success()
+      # §200 — WHO MAY SEED A BASELINE, and why a DISPATCH now may.
+      #
+      # The rule was `push` only. That is right about main and had a consequence
+      # nobody had written down: the baseline key carries the platform (see the
+      # restore above), and a push can NEVER route self-hosted — the `runs-on`
+      # expression reads the host only for a pull_request or a dispatch. So
+      # nothing in this file could write a baseline under a self-hosted
+      # os/arch, and a self-hosted PR battery was not "whole until the next
+      # merge re-seeds it". It was whole PERMANENTLY, because no re-seed
+      # existed. Measured on the run that found this: PR #419 on ubuntu-latest
+      # went incremental — 4/4 restricted checks unioned back to whole-movement
+      # payloads, 265.2 s of checks inside a 7 m 32 s step — while the same PR
+      # routed to the host would have paid for every check, every time, forever.
+      #
+      # A dispatch on the DEFAULT BRANCH closes it. It is already a whole run,
+      # it measures the same tip of main the push run does, and dispatched with
+      # `runner: self-hosted` it writes the entry a self-hosted PR then
+      # restores. One dispatch per merge buys the host its incremental path;
+      # skip it and nothing breaks — the PR simply runs whole, exactly as now.
+      # The default branch, not any ref: a PR restores by `base.sha`, so an
+      # entry for a branch tip is one nothing reads.
+      #
+      # WHAT STILL GUARDS IT is unchanged, and it is the half that matters: only
+      # a run that measured the WHOLE movement may become a baseline. A report
+      # carrying `restrictedTo` inherited rows from a previous baseline, and
+      # caching it would let one key error chain forward through every PR that
+      # ever reads it. The check is on the artifact rather than on the trigger
+      # because the artifact is what would be inherited — a trigger is a claim
+      # about a run, and this is the run. Which is exactly why widening the
+      # trigger is safe HERE and would not have been if the guard sat on the
+      # event.
+      # MAY THIS RUN BECOME A BASELINE? Decided once, in shell, and read by the
+      # three steps below through `steps.seed.outputs.may` — one definition,
+      # because a seeding rule spelled out three times is one that will disagree
+      # with itself. It is a STEP rather than an expression so that it lands in
+      # the summary: this job already makes a point of saying why a run was or
+      # was not incremental, so that "the battery was fast today" never has to
+      # be reverse-engineered, and "who wrote the baseline the next PR inherits"
+      # is the same question one merge later. Both arms are WHOLE runs by
+      # construction — the mode step sends every non-PR event down its
+      # `EVENT != pull_request` branch.
+      - name: May this run become a baseline?
+        id: seed
+        if: success()
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PLATFORM: ${{ runner.os }}/${{ runner.arch }}
         run: |
-          if node -e "process.exit(JSON.parse(require('fs').readFileSync('.battery-out/report.json')).restrictedTo?1:0)"; then
-            mkdir -p .battery-baseline
-            cp .battery-out/report.json .battery-out/digests.json .battery-baseline/
-            ls -l .battery-baseline | sed 's/^/§152 baseline: /' >> "$GITHUB_STEP_SUMMARY"
-          else
+          may=false; why="a pull request inherits a baseline, it does not write one"
+          if [ "$EVENT" = push ]; then
+            may=true; why="a push to $REF — this run IS the baseline"
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$REF" = "$DEFAULT_BRANCH" ]; then
+            may=true; why="a dispatch on the default branch — seeding $PLATFORM"
+          elif [ "$EVENT" = workflow_dispatch ]; then
+            why="a dispatch on '$REF', not the default branch — a PR restores by base.sha, so nothing would read it"
+          fi
+          echo "may=$may" >> "$GITHUB_OUTPUT"
+          echo "§152: may seed a baseline: $may — $why" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Does this platform already have a baseline for this commit?
+        if: steps.seed.outputs.may == 'true' && success()
+        id: seeded
+        uses: actions/cache/restore@v4
+        with:
+          path: .battery-baseline
+          key: battery-baseline-v1-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          lookup-only: true
+
+      # A push saves exactly once per SHA, so before the widening a duplicate
+      # key could not happen; a GitHub-hosted dispatch on a SHA main has already
+      # pushed makes it possible. `actions/cache/save` treats a taken key as a
+      # WARNING and carries on, which is the shape this file keeps refusing — a
+      # broken thing that reads healthy — so the collision is looked up and said
+      # out loud instead of being left to a line in the log.
+      - name: Keep this run as the next baseline
+        if: steps.seed.outputs.may == 'true' && success()
+        env:
+          ALREADY: ${{ steps.seeded.outputs.cache-hit }}
+          PLATFORM: ${{ runner.os }}/${{ runner.arch }}
+        run: |
+          if ! node -e "process.exit(JSON.parse(require('fs').readFileSync('.battery-out/report.json')).restrictedTo?1:0)"; then
             echo "§152: this report is restricted — refusing to cache it as a baseline" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+          if [ "$ALREADY" = "true" ]; then
+            echo "§152: $PLATFORM already has a baseline for $GITHUB_SHA — leaving it alone" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          mkdir -p .battery-baseline
+          cp .battery-out/report.json .battery-out/digests.json .battery-baseline/
+          ls -l .battery-baseline | sed 's/^/§152 baseline: /' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cache it under this commit
-        if: github.event_name == 'push' && success()
+        if: steps.seed.outputs.may == 'true' && success() && steps.seeded.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: .battery-baseline

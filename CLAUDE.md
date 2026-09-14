@@ -525,8 +525,11 @@ prints the variable flip it deliberately does not perform; the job
 summary names the runner that took each run, and `status` ends in a READY /
 NOT READY verdict to read BEFORE opting a PR in — a queued opt-in with no
 runner waits a day in silence. Two consequences to know: the §152
-baseline key carries the platform, so flipping the variable costs one whole run
-per PR until the next merge re-seeds it; and a host's shard count is written on
+baseline key carries the platform, and since a push NEVER routes self-hosted
+the host's baseline is seeded by DISPATCHING the workflow on the default branch
+with `runner: self-hosted` — one dispatch per merge, or every self-hosted PR
+runs the whole battery (this line used to say the next merge re-seeded it, and
+no merge ever did); and a host's shard count is written on
 the host (`--shards K` → the runner's `.env`), never in the workflow, because K
 is a measured property of a machine. `docs/RUNNERS.md` has the rest.
 
