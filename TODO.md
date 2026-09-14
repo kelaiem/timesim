@@ -16076,14 +16076,65 @@ pitch, so half and whole alternated and the deepest still landed where the
 control wanted it. An accident of choosing 0.5 — and it would have smeared every
 phase together in the tier above, which is the measurement that needed it right.
 
-**The gate promised here is NOT ready any more, and that is the residue.** The
-old text said the instrument "is gate-ready the day the fix lands". It is not:
-the fix is to cut bevels, and bevels are precisely what the probe now refuses.
-Landing the metal without also teaching the instrument a solid model that
-survives the z-shear would put the repaired mesh beyond measurement — the same
-failure this item exists to record, one turn later. Sequence it the other way
-round: the solid model first, proven on the alarm pair (whose true burial is
-still unknown), then the cut.
+### The solid model — BUILT, and it took a third defect out of the instrument
+
+The step above left the probe refusing every bevel, which would have put the
+repaired metal beyond measurement the day it was cut. That is now closed.
+
+**The shear is a BIJECTION, so the model is exact rather than approximate.**
+`makeBevelGear` reshapes its extrude with `v.z += hypot(x, y) * taper` and
+leaves x and y alone, so the inverse — `z −= hypot(x, y) * taper` — maps the
+metal exactly back onto the flat prism. Point-in-solid is then: un-shear the
+point, test the band, test the authored outline. Nothing is estimated.
+
+**The builders DECLARE their solid; the probe does not infer it.** `makeGear`,
+`makePinion` and `makeBevelGear` each record
+`userData.solid = { zLo, zHi, shearZ }` on the mesh — §194's idiom, the same
+reason the tooth count travels with the metal. On the MESH and not the
+geometry, because `weldGeometry` rebuilds the geometry and carries only `type`
+and `parameters`. The two spur builders centre their extrude
+(`translate(0, 0, −thickness/2)`) and the bevel does not, which is the other
+half of what `parameters` cannot tell you.
+
+**And the declaration is ASSERTED against the metal, every vertex of it** —
+§137's rule that a figure an instrument also computes must be asserted rather
+than resembled. Each position is un-sheared and must land inside the declared
+band; anything outside refuses the pair. Measured, the bevels fit their
+declaration at **0.000** and the spur cuts at 0.048–0.075, which is the extrude
+bevel's lip and is what the allowance is for.
+
+**The real bevel pair, measured at last:** `alarmDiscBevel ⇄ alarmStemBevel`,
+both members `r 1.409, z 0.00..0.65, sheared 1.00, fit 0.000`, swept a full
+turn of the alarm crown — **0.0000 at all 24 indexings**, boxes intersecting
+throughout. So a conjugate crossed-axis form buries nothing at any phase while
+the two spur-at-90° pairs bury at least 0.097 at every phase. That is the
+contrast this item wanted and previously did not have.
+
+**THE THIRD DEFECT: the row that was supposed to provide that contrast was not
+a pair.** It compared `alarmSetIdler2` with `alarmStemBevel` — measured, those
+two stand **2.179 apart with DISJOINT bounding boxes**. They never touch, which
+is why the row read 0.0000, and the reading said nothing about bevels at all.
+The probe now computes the closest approach of the two bodies' boxes across
+every sweep and prints **NOT A PAIR** when they never intersect, so the next
+mis-chosen pair announces itself instead of reading clear. Boxes are a weak
+test for contact and a decisive one for absence, which is exactly the job.
+
+**The refactor is self-checked.** The new sampling levels (fractions 0.15–0.85
+of the declared band) are identical to the old ones (±0.7 of a half-band) for a
+centred prism, so every spur number had to come back unchanged — and did, to
+the digit: controls 0.0000 / 0.1707, subjects 0.2065 / 0.1372, floors 0.1811 /
+0.0971, ceilings 0.2213 / 0.1490.
+
+**Residue, unexplained.** The bevel pair's CEILING is also 0.0000 — mis-index it
+half a pitch and it still buries nothing. A tight mesh should foul when
+mis-indexed, the way the parallel control does (ceiling 0.1801), so either that
+pair carries generous backlash or the contour-only sampling misses a grazing
+contact. Not chased here; it does not affect the finding (a floor of zero is
+what the contrast needs), but it is the next thing to ask of that pair.
+
+**Sequencing, now that the model exists.** The instrument can measure the form
+the fix will be cut in, so the order is no longer blocked: cut the crossing
+pairs conjugate, and the probe is ready to gate the result at zero.
 
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where
