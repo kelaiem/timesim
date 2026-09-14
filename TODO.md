@@ -16137,6 +16137,56 @@ what the contrast needs), but it is the next thing to ask of that pair.
 the fix will be cut in, so the order is no longer blocked: cut the crossing
 pairs conjugate, and the probe is ready to gate the result at zero.
 
+### The defect is ONE TERM in the layout, and the station is out by 0.7480
+
+`layout.js:1543` — and its own comment says what it was trying to do:
+
+```js
+const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // the FIXED winding
+                                                           // pinion (teeth overlap
+                                                           // the wheel rim, bevel-style)
+```
+
+"Bevel-style" is the intent; overlapping two SPUR rims is what it does. That
+term is the whole fault: `crownWheelR + windPinionR·0.55` = 3.4 + 0.748 =
+**4.1480**, which is the centre distance the probe measured to four figures. The
+setting pair carries the identical term at `layout.js:1552`.
+
+**Where the pinion must actually sit, derived.** For a 90° pair the cone
+half-angles come from the counts: `tanγ_c = z_c/z_p = 20/8` gives γ_c = 68.199°
+and γ_p = 21.801°, summing to 90° exactly. Both members share one cone distance,
+`R = r_p/sinγ_p = r_c/sinγ_c = 3.6619`, and the pinion's centre stands
+`R·cosγ_p` from the apex. That reduces:
+
+> `R·cosγ_p = r_p/tanγ_p = r_p·(z_c/z_p) = module·z_c/2 = r_c`
+
+**so the pinion's axis must cross the crown wheel's PITCH CIRCLE — centre
+distance 3.4000, not 4.1480.** The same number falls out of the crown/face-gear
+form, where the pinion rides over the pitch circle by construction: whichever
+conjugate form is cut, the station is the same, and it is out by exactly
+`windPinionR · 0.55` = **0.7480**.
+
+That is worth stating plainly: the two forms disagree about the TOOTH, and agree
+about the STATION. So the station can be corrected and proved before the form is
+chosen.
+
+**The cascade, measured before touching it.** `pinDist` feeds `pinOutDist`, the
+setting lever's groove (`slMidAlong` and the pull-driven band), and
+`clutchHomeDist`; `clutchHomeDist` feeds the yoke's tracked band and `swDist`;
+`swDist` feeds `minuteArborXY` — the minute wheel's fold, which is the motion
+works. Removing both `·0.55` terms moves the setting wheel inward by **1.4960**
+(0.748 from each), so this reaches the dial side and re-runs the keyless layout
+solve. It is a P3 LAYOUT move in position space, which is the resolution
+CLAUDE.md prescribes — not a lever arm being stretched — but it is not a
+one-line landing.
+
+**Order of work, per "design in a line, fold to fit".** Prove the pair at the
+corrected station in free space FIRST — two conjugate members at centre distance
+3.4000, measured by `probe-crossed-axis-mesh.mjs` until the burial reads zero and
+`transmits` reads the tooth-count ratio — and only then fold: move the station
+and let the cascade re-solve. Doing it the other way round would spend the
+layout move before knowing the cut is right.
+
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where
 `disc rim ⇄ idler 1b` transmits at +1.071429 against a bar of -1.071429, two
