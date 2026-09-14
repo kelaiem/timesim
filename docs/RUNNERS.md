@@ -442,17 +442,19 @@ queued or running `timesim-battery` jobs first.
   the cheap mistake trades the valuable baseline for the marginal one, and it
   does it silently — both runs report success-shaped states while it happens.
 
-  **So the two seeds are mutually exclusive in time and have to be
-  serialised**: let the merge's push run finish (watch for `completed`, not
-  just for the merge), then dispatch. There is no way to have both at once on
-  one ref.
+  **So the two seeds are mutually exclusive in time, and the procedure is:
+  merge, wait for the push run to reach `completed`, then dispatch.** Not
+  "merge, then dispatch" — the waiting is the whole of it, and it is the step
+  that looks skippable. There is no way to have both at once on one ref.
+  Budget for it: the push run is a full battery on `ubuntu-latest`, roughly
+  30–38 min, and the dispatch is another ~17.5 min on the host after that.
 
-  Given that, and given the dispatch has to be fired by hand after every merge
-  and watched so it does not collide, the owner's current call is to **skip
-  the self-hosted baseline entirely** — self-hosted PR runs stay whole
-  (measured ~17.5 min against ~12 min incremental on the GitHub-hosted path),
-  which is the "skip it and nothing breaks" branch above, chosen deliberately
-  rather than by neglect.
+  Worth knowing what the dispatch buys, so the cost is a choice rather than a
+  habit: a seeded host makes a self-hosted PR run incremental (~12 min against
+  the ~17.5 min a whole run measured here), and it has to be re-earned after
+  every merge because the key carries the commit. Skipping it is a supported
+  branch — the entry above says so and means it — and the PR simply runs
+  whole.
 - **The Playwright cache lists both browser directories** (`~/.cache` on
   Linux, `~/Library/Caches` on macOS), and `--with-deps` is passed only on
   Linux, where it is the apt work the comment describes. On macOS it was
