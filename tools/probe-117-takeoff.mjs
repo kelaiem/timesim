@@ -58,6 +58,20 @@
 // proximities and a map demanding 0.15 everywhere asserts something untrue of
 // the tree. Both bars are printed.
 //
+// THE READER'S OWN SIDE IS A THIRD TIER, and it exists because the first
+// reading of this map was read wrongly — by its author, in the summary handed
+// to the owner. "Best cell at each radius" prints one winner per row, and at
+// r 3.5 that winner (world z −4.35) lies BEHIND the disc, on the far side from
+// the reader. A ring there is geometrically free and mechanically useless: the
+// reader stands between the dial's back face and the disc's track, and cannot
+// press a ring through the disc. The free space that matters is the corridor
+// the shipped reader already occupies, bounded by the metal it reads — world z
+// from the feeler's own envelope floor up to the disc's track top — and tier
+// 1b reports the best ring per radius INSIDE it. The other winners are left
+// printed rather than removed: a ring behind the disc is the right answer to a
+// different construction (one reading the disc's back), and deleting it would
+// hide that the map covers both.
+//
 // CONTROLS, both kinds:
 //   · must-hit — a ring on the hour tube's own (r, z) must read BLOCKED. A map
 //     that finds clearance inside known metal is not reading the scene.
@@ -95,6 +109,14 @@ const out = await page.evaluate(async () => {
   const MARGIN = 0.15;            // CLEAR_MARGIN
   const SHIPPED = 0.0458;         // the feeler's own accepted proximity
   const COAXIAL = ['Hour wheel', 'Alarm release disc', 'Dial'];
+  // THE THIRD READING IS A DESIGN'S ACTUAL ENTITLEMENT, and it is narrower than
+  // either of the two above. A ring BORED ON THE HOUR TUBE is entitled to the
+  // tube — it rides it — and to nothing else: the dial it hangs under and the
+  // disc it reads are both still obstacles. Excluding all three coaxial units
+  // prices a best case no single construction can claim, and counting all of
+  // them prices a ring on a bearing that does not exist. Neither is the number
+  // a hour-carried reader is designed against.
+  const CARRIER = ['Hour wheel'];
 
   const poses = [];
   for (const ax of I.AXES) for (const f of [0, 0.5, 1]) poses.push(ax.pose(f));
@@ -226,7 +248,23 @@ const out = await page.evaluate(async () => {
 
   const ptsAll = collect([]);
   const ptsCoax = collect(COAXIAL);
-  const mapAll = scan(ptsAll), mapCoax = scan(ptsCoax);
+  const ptsCarrier = collect(CARRIER);
+  const mapAll = scan(ptsAll), mapCoax = scan(ptsCoax), mapCarrier = scan(ptsCarrier);
+
+  // THE READER'S CORRIDOR, measured rather than declared: from the feeler's own
+  // envelope floor (fz0 — the bracket root at the dial's back face) to the
+  // disc's track top, which is the disc unit's near face in world z. A ring the
+  // orbiting reader can press lies between those two, and nowhere else.
+  const discObj = C.labelEntries.find((e) => e.name === 'Alarm release disc')?.obj;
+  let discNear = null;
+  if (discObj) {
+    discNear = Infinity;
+    for (const pose of poses) {
+      C.setPose(pose); discObj.updateWorldMatrix(true, true);
+      for (const m of meshesOf(discObj)) walk(m, (x, y, z) => { discNear = Math.min(discNear, z); });
+    }
+  }
+  const readerBand = discNear === null ? null : { z0: fz0, z1: discNear };
 
   // CONTROLS
   // The must-hit target is the Hour wheel UNIT's mid-envelope — its WHEEL, not
@@ -284,9 +322,9 @@ const out = await page.evaluate(async () => {
     'Alarm release lifter', 'Alarm release feeler'].map(envOf).filter(Boolean);
 
   C.resetInputs();
-  return { mapAll, mapCoax, ctrlHit, ctrlMiss, lift, tr, tz, PAD, envs,
+  return { mapAll, mapCoax, ctrlHit, ctrlMiss, lift, tr, tz, PAD, envs, readerBand,
     band: { Z0: +Z0.toFixed(2), Z1: +Z1.toFixed(2), R0, R1 },
-    nAll: ptsAll.n, nCoax: ptsCoax.n, nPoses: poses.length,
+    mapCarrier, nAll: ptsAll.n, nCoax: ptsCoax.n, nCarrier: ptsCarrier.n, nPoses: poses.length,
     lifterName: lifter ? (C.labelEntries.find((e) => e.obj === lifter)?.name) : null };
 });
 await browser.close(); srv.kill();
@@ -295,7 +333,7 @@ if (out.fatal) { console.log('FATAL', out.fatal); process.exit(1); }
 const PAD_OUT = out.PAD;
 
 console.log(`TODO 117 — pricing the OUTPUT path for an orbiting reader.`);
-console.log(`pose net ${out.nPoses} poses · ${out.nAll} obstacle samples (${out.nCoax} with the coaxial units excluded)`);
+console.log(`pose net ${out.nPoses} poses · ${out.nAll} obstacle samples (${out.nCoax} coaxial-excluded, ${out.nCarrier} carrier-excluded)`);
 console.log(`band scanned: r ${out.band.R0}..${out.band.R1}, z ${out.band.Z0}..${out.band.Z1}\n`);
 console.log('--- where the neighbours sit (r and z envelopes over the same pose net)');
 for (const e of out.envs)
@@ -335,6 +373,32 @@ const show = (map, title) => {
 };
 const bestAll = show(out.mapAll, 'EVERY unit an obstacle — a collar on its own bearing');
 const bestCoax = show(out.mapCoax, 'COAXIAL units excluded (Hour wheel, Alarm release disc, Dial) — a collar entitled to ride one');
+const bestCarrier = show(out.mapCarrier, 'CARRIER excluded (Hour wheel only) — a ring BORED ON THE HOUR TUBE, the hour-carried reader\'s own entitlement');
+
+// TIER 1b — the same two maps, restricted to the corridor the reader stands in.
+if (out.readerBand) {
+  const { z0, z1 } = out.readerBand;
+  console.log(`--- tier 1b: rings the ORBITING READER can press`);
+  console.log(`  the corridor is world z ${z0.toFixed(3)} … ${z1.toFixed(3)} — the feeler's own envelope floor (the`);
+  console.log(`  bracket root at the dial's back face) up to the disc's track top. A ring outside it is free`);
+  console.log(`  space the reader cannot reach: behind the disc it would have to be pressed THROUGH the disc.`);
+  const inBand = (c) => c.Z >= z0 - 1e-9 && c.Z <= z1 + 1e-9;
+  for (const [map, title] of [[out.mapAll, 'every unit an obstacle'], [out.mapCoax, 'coaxial units excluded'],
+                             [out.mapCarrier, 'carrier excluded (Hour wheel) — the hour-carried reader']]) {
+    console.log(`  ${title}:`);
+    let any = false;
+    for (const row of map) {
+      const cells = row.filter(inBand);
+      if (!cells.length) continue;
+      const b = cells.slice().sort((a, c) => c.d - a.d)[0];
+      if (b.d < 0.15) continue;
+      any = true;
+      console.log(`      r ${String(b.R).padStart(5)}  z ${String(b.Z).padStart(6)}   clear ${b.d.toFixed(4).padStart(8)}   nearest: ${b.who}`);
+    }
+    if (!any) console.log('      no ring in the corridor clears CLEAR_MARGIN');
+  }
+  console.log('');
+}
 
 console.log('--- tier two: the hand-off');
 if (out.lift) console.log(`  ${out.lifterName}: r ${out.lift.r0}..${out.lift.r1}, z ${out.lift.z0}..${out.lift.z1}`);
