@@ -27,10 +27,14 @@
 //
 // Controls (asserted, exit 2): the global swept maximum belongs to the
 // alarm link (the §187 allowance row's own story); the glass relation
-// above holds to float noise; the castellation top matches the declared
-// 'Alarm switch' swept-region ceiling within its authoring rounding; and
-// the ladder is monotonic (each rung's bottom at or above the previous
-// rung's top — interleaved rungs mean the scan grabbed the wrong meshes).
+// above holds to float noise; EVERY declared swept-region row covers its
+// own unit's measured top inside its own r-band and does not overshoot it
+// past the authoring rounding (§226 — this read `alarmColCastellations` by
+// name against the one 'Alarm switch' row, which was the second-tallest
+// member of its band even in §192's tree, and left a sibling row unwatched
+// while it went stale); and the ladder is monotonic (each rung's bottom at
+// or above the previous rung's top — interleaved rungs mean the scan
+// grabbed the wrong meshes).
 //
 // Run: node tools/probe-192-tier-price.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';
@@ -68,6 +72,13 @@ const res = await page.evaluate(async () => {
   // over the alarm-side axes (the strike work's own inputs; the going side
   // does not move this tier).
   const bands = new Map(); // 'unit / mesh' → { b0, b1, s0, s1, sPose }
+  // ...and, beside them, what the declared swept REGION rows' own units reach
+  // INSIDE their own r-bands. A whole-mesh z band cannot answer that: a row is
+  // a claim about a radial window, so a control built on unit-wide maxima can
+  // demand that a row cover metal standing outside the band it declares. §226
+  // — the same scoping the boot assert in BACK_ENVELOPE uses, swept here
+  // rather than at build pose, which is the stronger half.
+  const regionTop = (clock.backEnvelope?.regions || []).map((R) => ({ ...R, z_measured: -Infinity, who: '' }));
   const scan = (poseName, isBuild) => {
     clock.scene.updateMatrixWorld(true);
     for (const e of clock.labelEntries) {
@@ -79,6 +90,11 @@ const res = await page.evaluate(async () => {
         for (let i = 0; i < pos.count; i++) {
           o.localToWorld(v.fromBufferAttribute(pos, i));
           zMin = Math.min(zMin, v.z); zMax = Math.max(zMax, v.z);
+          const r = Math.hypot(v.x, v.y);
+          for (const R of regionTop)
+            if (R.unit === e.name && r >= R.r0 && r <= R.r1 && v.z > R.z_measured) {
+              R.z_measured = v.z; R.who = o.name || o.geometry.type;
+            }
         }
         if (zMax < plateTop - 0.05) return;
         const key = `${e.name} / ${o.name || o.geometry.type}`;
@@ -107,6 +123,8 @@ const res = await page.evaluate(async () => {
     bands: [...bands.entries()].map(([key, b]) => ({ key, ...b })).sort((a, b) => b.s1 - a.s1),
     glass: { zStepUnder: g.zStepUnder, paneInner: g.paneInner, rStep: g.rStep },
     envMaxAll, linkAllow, switchRegionZ: switchRegion ? switchRegion.z : null,
+    regionTop: regionTop.map((R) => ({ unit: R.unit, r0: R.r0, r1: R.r1, z: R.z,
+      measured: R.z_measured === -Infinity ? null : R.z_measured, who: R.who })),
   };
 });
 
@@ -154,11 +172,43 @@ if (tail && res.linkAllow !== null) {
   if (Math.abs(res.glass.zStepUnder - expect) > 1e-6) { ok = false; console.log(`CONTROL FAIL: zStepUnder ${res.glass.zStepUnder.toFixed(4)} ≠ link tail build top ${tail.b1.toFixed(4)} + allowance ${res.linkAllow} + CLEAR_MARGIN — the glass derivation and this probe disagree about what pins the step`); }
   else console.log(`CONTROL PASS: zStepUnder = link tail build top + declared allowance + CLEAR_MARGIN (the 1:1 relation holds)`);
 } else { ok = false; console.log('CONTROL FAIL: link tail band or its declared allowance not found'); }
-const cast = rung('alarmColCastellations');
-if (cast && res.switchRegionZ !== null) {
-  if (Math.abs(cast.b1 - res.switchRegionZ) > 0.011) { ok = false; console.log(`CONTROL FAIL: castellation top ${cast.b1.toFixed(3)} vs declared 'Alarm switch' region ceiling ${res.switchRegionZ} — the declaration went stale (BACK_SWEPT_REGIONS is authored, not derived; §192 must re-author it on any move)`); }
-  else console.log(`CONTROL PASS: castellation top matches the declared 'Alarm switch' region ceiling within its rounding`);
-} else { ok = false; console.log('CONTROL FAIL: castellation band or Alarm switch region row not found'); }
+// EVERY declared swept-region row, each judged in its own r-band, against its
+// own unit, swept. §192's version looked `alarmColCastellations` up BY NAME
+// and compared it against the one 'Alarm switch' row, and §226 found three
+// things wrong with that at once: the name had stopped being the unit's
+// tallest member (§173's sautoir passed it by 0.043 — measured in §192's own
+// tree, so the control was never right), the row had drifted 0.5609 under its
+// unit besides, and a SECOND row — 'Alarm striking wheel' — was stale by the
+// same cause with nothing watching it at all. A control that names one member
+// of one row can only ever confirm the sentence it was written from.
+//
+// Both directions are held. UNDER its unit means the row has stopped being
+// that unit's swept maximum. OVER it past the authoring rounding means the row
+// is buying back-envelope for metal nobody stands in, which costs cased height
+// silently — the failure §192's whole landing was spent undoing.
+// A ROW THIS PROBE'S POSES CANNOT REACH IS REPORTED, NOT FAILED — and the
+// distinction is not defensive, it is the third row's whole reason for
+// existing. This probe scans the tree AS BOOTED and then sweeps the
+// alarm-side axes; `BACK_ENVELOPE` measures during CONSTRUCTION, before the
+// first tick. For every row but one those are the same pose (TODO 111's
+// measurement). The `Alarm switch` r 48.3–49.6 row is the documented
+// exception — the pusher-side linkage parks inside that band at construction
+// and has left it by the time any pose in this probe's set is entered, so
+// measured over construction + canonical reset + all 42 axis poses, THIS
+// probe finds nothing there and would call a load-bearing row empty.
+// Neutering it proves it is load-bearing: the pane plane drops 12.077 →
+// 10.303, rStep 38.85 → 47.65 past its own aperture, and four case asserts
+// fire. The instrument that CAN judge that row is the boot assert in
+// BACK_ENVELOPE, which runs in the same walk as the bins and therefore at the
+// same pose — so it is named here rather than approximated.
+if (!res.regionTop.length) { ok = false; console.log('CONTROL FAIL: the tree declares no swept-region rows — BACK_SWEPT_REGIONS is missing or unexposed'); }
+for (const R of res.regionTop) {
+  const where = `'${R.unit}' r ${R.r0}–${R.r1}`;
+  if (R.measured === null) { console.log(`  report: ${where} declares ${R.z} — no metal of that unit stands in its band at any pose THIS probe sweeps (construction, canonical reset, the alarm axes), so this control cannot judge it; BACK_ENVELOPE's own boot assert measures it at the pose it is declared for`); continue; }
+  if (R.z + 1e-9 < R.measured) { ok = false; console.log(`CONTROL FAIL: ${where} declares ${R.z} against ${R.measured.toFixed(3)} its own unit reaches there (${R.who}) — the row is under its unit, so it is no longer that unit's swept maximum (BACK_SWEPT_REGIONS is authored, not derived; re-author it on any move)`); }
+  else if (R.z - R.measured > 0.011) { ok = false; console.log(`CONTROL FAIL: ${where} declares ${R.z}, ${(R.z - R.measured).toFixed(3)} over the ${R.measured.toFixed(3)} its unit reaches there (${R.who}) — past the authoring rounding, so the row buys envelope nothing stands in`); }
+  else console.log(`CONTROL PASS: ${where} declares ${R.z} over its unit's measured ${R.measured.toFixed(3)} (${R.who}) — within its rounding`);
+}
 if (!monotonic) { ok = false; console.log('CONTROL FAIL: the ladder interleaves — the scan grabbed the wrong meshes for a rung'); }
 else console.log('CONTROL PASS: the ladder is monotonic');
 const bar = rung('alarmLinkBeakBar');
