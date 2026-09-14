@@ -204,12 +204,29 @@ push('and its CHANGE reproduces the silence chain\'s declared figure',
 // ROW 5 — the journal, which is this design's one open structural question.
 // Constraint: the pin bears at the HOUR's azimuth and the lever reads at the
 // RELEASE azimuth, so the ring carries a couple whose arm is the chord between
-// them — 2·takeoffR at worst. The journal reacts it, and the tilt it permits
-// shows up directly as a read error. Budget it the way a working contact is
-// budgeted: SMALLER than the stroke it polices, a tenth of it.
+// them — 2·takeoffR at worst, and ZERO when the pin passes under the lever. The
+// journal reacts it, and the tilt it permits shows up directly as a read error
+// that varies with the pin's azimuth. (A CONSTANT error would be harmless: the
+// banking stop absorbs an offset. It is the variation that has to be budgeted.)
+//
+// THE BUDGET IS DERIVED, and the first draft of this file did not derive it. It
+// budgeted a tenth of the stroke — a number nobody had a reason for, picked, and
+// then used to conclude that the journal is short. Concluding from a picked
+// number is the wrong shape of argument even when the conclusion survives. What
+// actually bounds the read error is FALSE RELEASE: a spurious read of δ
+// withdraws the beak by δ·(the lever's gain), and once that reaches
+// ALARM_PAWL_ENGAGE the alarm has released with no notch under the pin. That is
+// the beak's own metal and the lever's own arms — nothing chosen.
 const coupleArm = 2 * takeoffR;
-const readErrBudget = 0.1 * ALARM_PIN_DROP;
-const journalMin = 2 * takeoffR * FOLD.fitC / readErrBudget;   // L ≥ 2·r·c / budget
+const beakGain = PIVOT_TO_CLIMB / ALARM_FEELER_ARM_LEN;
+const readErrMax = ALARM_PAWL_ENGAGE / beakGain;               // false release — the hard bound
+// The other failure mode, for comparison: a read error the other way EATS the
+// genuine drop, and the release is lost when the shortened travel no longer
+// clears the engagement by one margin. Which of the two binds is a fact about
+// this chain, not an assumption, so it is asserted below rather than asserted in
+// prose.
+const readErrLost = ALARM_PIN_DROP - (ALARM_PAWL_ENGAGE + CLEAR_MARGIN) / beakGain;
+const journalMin = 2 * takeoffR * FOLD.fitC / readErrMax;      // L ≥ 2·r·c / budget
 const corridor = Math.abs(FOLD.trackTopZ - FOLD.dialBackZ);
 push('the couple\'s arm is the chord, and it is stated not assumed', near(coupleArm, 6.1),
   coupleArm.toFixed(3), '2 · the take-off radius');
@@ -217,11 +234,34 @@ push('the couple\'s arm is the chord, and it is stated not assumed', near(couple
 // ring to the end of its bore's slack, so the load above sizes the bearing's
 // contact and plays no part in this length. Asserting that is worth a row,
 // because reading a force into this arithmetic is the obvious mistake.
+push('FALSE RELEASE binds, not lost release — so the budget comes from the beak',
+  readErrMax < readErrLost,
+  `false ${readErrMax.toFixed(5)} vs lost ${readErrLost.toFixed(5)}`,
+  'the tighter of the two is the budget');
+push('the budget is the beak\'s engagement over the lever\'s gain, nothing picked',
+  near(readErrMax, ALARM_PAWL_ENGAGE / beakGain),
+  `${readErrMax.toFixed(5)} = ${ALARM_PAWL_ENGAGE} / ${beakGain.toFixed(4)}`,
+  'ALARM_PAWL_ENGAGE / (PIVOT_TO_CLIMB / ARM_LEN)');
 push('the journal length is a function of the fit and the budget, not the load',
-  near(journalMin, 2 * takeoffR * FOLD.fitC / readErrBudget) && journalMin > 0,
-  `${journalMin.toFixed(3)} = 2·${takeoffR}·${FOLD.fitC} / ${readErrBudget.toFixed(3)}`,
+  near(journalMin, 2 * takeoffR * FOLD.fitC / readErrMax) && journalMin > 0,
+  `${journalMin.toFixed(3)} = 2·${takeoffR}·${FOLD.fitC} / ${readErrMax.toFixed(5)}`,
   'no term in mN');
-const fitForCorridor = readErrBudget * corridor / (2 * takeoffR);
+// THE CONCLUSION MUST NOT DEPEND ON THE BUDGET. The hard bound above is the
+// LOOSEST defensible read error — it lets the beak sit on the very edge of
+// releasing — so any reserve a fold adds only lengthens the journal. Asserting
+// that over a spread of budgets is what makes the shortfall a property of the
+// movement rather than of this file's arithmetic.
+const BUDGETS = [
+  ['the beak keeps ALL its engagement (the hard bound)', readErrMax],
+  ['a tenth of the stroke (the picked number this replaced)', 0.1 * ALARM_PIN_DROP],
+  ['the beak keeps half its engagement', readErrMax / 2],
+];
+const journalAt = (d) => 2 * takeoffR * FOLD.fitC / d;
+push('the shortfall survives EVERY budget, the loosest included',
+  BUDGETS.every(([, d]) => journalAt(d) > corridor),
+  BUDGETS.map(([, d]) => journalAt(d).toFixed(3)).join(' / '),
+  `all > the corridor's ${corridor.toFixed(3)}`);
+const fitForCorridor = readErrMax * corridor / (2 * takeoffR);
 // REPORTED, not asserted. A row that passes BECAUSE the design has a shortfall
 // would fail the day someone fixes it, which is the wrong way round for an
 // acceptance test: the residue belongs in the report and in the item.
@@ -290,7 +330,7 @@ const spec = {
   ringT: +ringT.toFixed(4), ringTMax: +ringTMax.toFixed(4),
   standoff: +standoff.toFixed(4),
   loadMN: +loadMN.toFixed(2), loadChangeMN: +loadChange.toFixed(2), seatLossPct: +(seatLossFrac * 100).toFixed(2),
-  coupleArm: +coupleArm.toFixed(3), journalMin: +journalMin.toFixed(3),
+  coupleArm: +coupleArm.toFixed(3), readErrMax: +readErrMax.toFixed(5), journalMin: +journalMin.toFixed(3),
   ringReturnKMax: +kRetMax.toFixed(1),
 };
 for (const [k, v] of Object.entries(spec)) console.log(`  ${k.padEnd(14)} ${v}`);
@@ -300,6 +340,10 @@ console.log(`  reader corridor world z ${FOLD.dialBackZ} … ${FOLD.trackTopZ}  
 console.log(`  journal         ${journalMin.toFixed(3)} needed, ${corridor.toFixed(3)} available in the corridor`
   + `${journalShort ? '  — SHORT, the line\'s one open fold problem' : ''}`);
 console.log(`                  → the hub passes through the disc's bore, or the fit tightens to ${fitForCorridor.toFixed(5)}`);
+console.log(`  and it holds at every budget, the loosest included:`);
+for (const [why, d] of BUDGETS)
+  console.log(`      ${why.padEnd(52)} read err ${d.toFixed(5)} → journal ${journalAt(d).toFixed(3)}`
+    + `${journalAt(d) > corridor ? '  SHORT' : '  fits'}`);
 console.log(`  load            ${loadDropped.toFixed(2)} … ${loadRiding.toFixed(2)} mN on the ring (change ${loadChange.toFixed(2)} mN — the silence chain's figure)`);
 console.log('\nROWS');
 let bad = 0;

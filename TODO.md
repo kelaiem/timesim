@@ -15315,7 +15315,7 @@ the collar's own bearing, which is the construction question below.
 ### The take-off, DESIGNED as a straight line — `tools/probe-117-line.mjs`
 
 CLAUDE.md's "design in a line, fold to fit", applied to the one member this
-topology adds. 22 rows, 0 failing, four of them must-fail controls.
+topology adds. 25 rows, 0 failing, four of them must-fail controls.
 
 **First, a correction to the pricing above, found by reading the code the
 design has to meet.** Two things in it were wrong.
@@ -15377,7 +15377,8 @@ asserted as an equality between the two chains, not resembled.
 | load on the ring | 25.08 … 41.80 mN | the bias blade's own k·δ; inside TODO 16's 5–50 mN envelope |
 | seat lost to the pin | 0.82 % | series compliance — the pin is 120× the blade's stiffness |
 | couple arm | 6.100 | the chord between the pin's azimuth and the lever's, worst case |
-| journal length | **6.100** | 2·r·c / (a tenth of the stroke) |
+| read-error budget | 0.01410 | `ALARM_PAWL_ENGAGE` / the lever's gain — false release |
+| journal length | **4.327** | 2·r·c / that budget |
 | ring return | ≤ 49 N/m | 5 % of the blade, so the armed seat is undisturbed |
 
 **What bounds the ring's stand-off is not the clearance, and that is the result
@@ -15404,15 +15405,54 @@ written on. 49 N/m, 5 % of the blade.
 
 **The one open fold problem, stated rather than absorbed.** The pin bears at
 the HOUR's azimuth and the lever reads at the RELEASE azimuth, so the ring
-carries a couple of arm up to 6.100 and its journal has to react it. The tilt is
-CLEARANCE-limited, not force-limited — any couple at all drives the ring to the
-end of its bore's slack, so the load plays no part in the length — and budgeting
-the read error at a tenth of the stroke gives **6.100 of journal against the
-2.970 the reader's corridor offers**. Two ways out, both position-space: the hub
-passes through the disc's bore (available exactly because the decided topology
-takes the disc off its hour-tube hub), or the fit tightens to 0.00487 against
-the movement's stated 0.01. Neither reaches back into the mechanism, which is
-the point of finding it in the line.
+carries a couple of arm up to 6.100 — and zero when the pin passes under the
+lever. Its journal has to react that. The tilt is CLEARANCE-limited, not
+force-limited: any couple at all drives the ring to the end of its bore's slack,
+so the load plays no part in the length. What it permits is a read error that
+VARIES with the pin's azimuth, and the variation is what has to be budgeted — a
+constant error would be absorbed by the banking stop.
+
+**The budget is derived from false release, and the first version of this design
+did not derive it.** It budgeted a tenth of the stroke: a number with no reason
+behind it, picked, and then used to conclude that the journal is short.
+Concluding from a picked number is the wrong shape of argument even when the
+conclusion survives. What actually bounds the read error is the beak's own
+metal: a spurious read of δ withdraws the beak by δ × the lever's gain 4.2559,
+and at `ALARM_PAWL_ENGAGE` the alarm has released with nothing under the pin. So
+δ < 0.06 / 4.2559 = **0.01410**, and the journal is **4.327 against the 2.970
+the reader's corridor offers**. The other failure mode — a read error eating the
+genuine drop until the withdrawal no longer clears the engagement by one margin
+— is looser at 0.05066, and which of the two binds is asserted rather than
+assumed.
+
+**And the shortfall survives every budget, which is the part that matters**,
+because the recommendation rests on it:
+
+| budget | read error | journal |
+|---|---|---|
+| the beak keeps ALL its engagement (the hard bound) | 0.01410 | 4.327 |
+| a tenth of the stroke (the picked number this replaced) | 0.01000 | 6.100 |
+| the beak keeps half its engagement | 0.00705 | 8.654 |
+
+The hard bound is the LOOSEST defensible read error — it lets the beak sit on
+the very edge of releasing — so any reserve a fold adds only lengthens the
+journal. All three exceed the corridor.
+
+Two ways out, both position-space: the hub passes through the disc's bore
+(available exactly because the decided topology takes the disc off its hour-tube
+hub), or the fit tightens to 0.00686 against the movement's stated 0.01.
+Neither reaches back into the mechanism, which is the point of finding it in the
+line.
+
+**Take the bore.** A fit is a claim no instrument in this repo can hold — every
+gate here measures geometry — so buying the journal with a tolerance would put
+the design's soundness outside the whole battery, which is the same failure mode
+as a waiver with no instrument behind it. The bore length is geometry, and
+geometry is gated. It is also the cheaper of the two in work: what the decided
+topology vacates when the disc comes off its hour-tube hub IS the length the
+journal is short of, so the fix and the topology change are one change. The fit
+alternative is 0.00686 u — 2.6 µm radial, 5.2 µm diametral — which is inside
+real practice but at its tight end, and it would be bought rather than derived.
 
 **Controls.** A take-off at r 4.0 forks the arm (1.5000 ≠ 2.45) and moves the
 withdrawal (0.6951 ≠ 0.4256); a pin at twice the derived length breaks §54
