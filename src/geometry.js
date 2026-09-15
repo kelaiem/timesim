@@ -3600,6 +3600,13 @@ export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
     module, sideTeeth: teeth, planetTeeth: teeth, faceWidth, margin, stockMin,
     cageBoreR, hubR, planetBoreR, sideBoreR, arborR, fit,
     solvedR: !!solved,   // false = no pitch radius met the three constraints; the caller warns
+    // How far along its own axis the PLANET's bore reaches, which is what a
+    // stub has to fill. TODO 138 Landing 2: the stub's length used to read
+    // `planetBoreR + faceWidth - hubR`, which was the shear law again — at 45°
+    // a bore of radius b sat at z = b, so the bore's radius doubled as its
+    // axial position. With the bore shrunk to what a stub needs, that formula
+    // collapsed the stub to 0.0609 (0.031 mm against a 0.12 floor).
+    planetBoreOutZ: planetBevel.zBoreOut,
     R, planetR: R,
     pinR,                               // the stub is a section, not a fraction
     tipR: tipReach,
@@ -3715,7 +3722,10 @@ export function makeSpiderDifferential({ spec, planets = 2, outModule, outTeeth,
     // …in the CROSSINGS, a quarter turn off the arms.
     const a = Math.PI / 2 + (i / planets) * Math.PI * 2;
     const dir = new THREE.Vector3(Math.cos(a), Math.sin(a), 0);
-    const stubLen = spec.planetBoreR + faceWidth - spec.hubR;
+    // from the cage hub out to the far end of the planet's bore — the span the
+    // stub actually has to carry, read off the blank rather than inferred from
+    // the bore's radius
+    const stubLen = spec.planetBoreOutZ - spec.hubR;
     const stub = new THREE.Mesh(
       new THREE.CylinderGeometry(spec.pinR, spec.pinR, stubLen, 12), mat);
     stub.name = `spiderStub${i}`;

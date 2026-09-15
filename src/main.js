@@ -20585,7 +20585,17 @@ const SUB_CAGE_Z = Math.max(
   SUB_WIND_TOP + CLEAR_MARGIN + SUB_SPEC.halfHeight,
   ALARM_BARREL_TOP + CLEAR_MARGIN + ALARM_WIND_WHEEL_T / 2);
 // Leg B's pinion is the same distance above the apex, by symmetry.
-const SUB_PIN_B_Z = SUB_CAGE_Z + SUB_SPEC.halfHeight + ALARM_WIND_WHEEL_T / 2;
+// Leg B's pinion is the same distance above the apex, by symmetry — but no
+// closer than lets the SLEEVE between it and the side gear's hub face be a
+// section. TODO 138 Landing 2 shrank `halfHeight`: the conical blank's farthest
+// axial point is where its bore meets the back cap, not its TIP as the sheared
+// cone's was, so the envelope came in and the sleeve with it. At
+// `hubFaceZ + halfHeight`'s difference the sleeve was exactly CLEAR_MARGIN long
+// — 0.0568 mm against the §50 floor's 0.12. A clearance is not a section, so the
+// stack opens by the floor instead of the sleeve being cut under it.
+const SUB_PIN_B_Z = Math.max(
+  SUB_CAGE_Z + SUB_SPEC.halfHeight,
+  SUB_CAGE_Z + SUB_SPEC.hubFaceZ + STOCK_MIN_U) + ALARM_WIND_WHEEL_T / 2;
 // THE CAGE'S WHEEL IS AT THE CAGE'S OWN PLANE, because that is the only place
 // it can be. A first cut ran it up a tube above the differential, and that
 // cannot work at all: leg B's pinion is concentric with such a tube and must
