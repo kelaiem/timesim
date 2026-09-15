@@ -15980,7 +15980,7 @@ the mis-phased one — and yet `transmits` passes it unwaived on both its
 declared inputs. Those two readings disagree, and neither has been
 chased. Filed here rather than silently re-labelled.
 
-## 136. CLOSED — Two crossed-axis meshes drove through each other, and the registry could not see them
+## 136. Two crossed-axis meshes drive through each other, and the registry cannot see them — CLOSED
 
 Reported by eye — gears colliding when setting the time — and the report was
 right. Measured by `tools/probe-crossed-axis-mesh.mjs`, which had to be written
