@@ -17371,7 +17371,65 @@ shear form — that is the debt this item names, and Landing 2 is what moves it.
 warns on it. The blank is 15% longer than the proportion allows and its small end
 is thinner than metal should be.
 
-### LANDING 2 — folding the movement onto it (not started)
+### LANDING 2 — folding the movement onto it (in progress)
+
+**Priced first, with `tools/probe-138-fold-price.mjs`**, which is the order
+CLAUDE.md asks for: P0 in free space, then the packaging at P3 with the
+mechanism's dimensions held fixed. Three things came back, and two of them
+changed the design.
+
+**Every corner IS a corner, including the one that looked broken.** At rest the
+alarm setting pair's two apexes stand 5.000 apart — `alarmDiscBevel` at x
+20.4007 against `alarmStemBevel` at 15.4007, the same two radii TODO 78/109
+already names in `main.js` (`_alarmRimD` against `ALARM_CD`). That is not a
+defect: swept through `alarmCrownPullT`, the stem SLIDES between two stations,
+and the apexes coincide EXACTLY at each — pulled in, the stem sits on
+`alarmWindContrate` (winding engaged); pulled out, on `alarmDiscBevel` (setting
+engaged). A rest-pose reading says nothing about a corner that only exists when
+engaged, and the probe's control — a corner built by `addBevelCorner`, which
+must read zero at every pull — is what made the first, wrong reading obvious:
+it came back NaN with the others, because the lookup matched mesh names and
+`addBevelCorner` names the GROUP.
+
+**The blank is now cut at two CONE DISTANCES, not two planes.** Both choices
+leave the flanks alone, so this is not a P0 question and the first build used
+planes. Measured, planes are wrong twice: they let the tooth TIP run past the
+cone distance into material that has no mate, which made the new blank reach
+FURTHER OUT than the sheared one it replaces (r 1.9964 against 1.7576 on the
+motion-works mitre) — a packaging fight over metal that does no work; and they
+make the two members' bands agree only ON the pitch cone. Cut at a cone
+distance the band is shared everywhere, because both members measure ρ from the
+same apex. The re-price is the whole argument for it:
+
+| | old blank (sheared) | new blank (conical) | |
+|---|---|---|---|
+| 4 motion-works corner gears | z 0.400–2.860, r 1.7576 | z 0.850–2.083, r 1.6917 | inside |
+| 3 alarm corner gears | z 0.400–2.058, r 1.4061 | z 0.689–1.649, r 1.3413 | inside |
+| 2 differential sides | z 0.550–1.602, r 1.1929 | z 0.592–1.383, r 1.1296 | inside |
+| 2 differential planets | z 0.701–1.602, r 1.1929 | z 0.592–1.383, r 1.1296 | reaches 0.11 further in |
+
+Nine of eleven blanks are strictly INSIDE the metal they replace, so the fold
+costs nothing there. The two planets reach 0.11 further toward the cage centre,
+which is inside the differential's own action group — a P2 question for
+`intraUnit`, not a P3 one.
+
+**And the instrument had a hole the old band gate was hiding.** `coneDist`
+measured the distance to a wedge spanned by two adjacent outline rays, but
+adjacent rays are nearly PARALLEL, so `a × b` is a tiny vector whose DIRECTION
+is noise and `|P·m̂|` against it can be anything — including zero. The plane-cut
+band gate excluded everything behind the mate's apex and so never exposed it;
+the shared ρ band admits those points, and all five rows came back
+`min clear 0.00003` again. Traced: one sample landing at θ = 134.999° in the
+mate's frame, BEHIND it, scored ~0 against a sliver whose normal was noise,
+where the true distance is ~1.4. The measure is now angular — `d = ρ·sin Δ`
+to the outline's great-circle arcs, endpoints governing any arc shorter than
+1e-7, and `d = ρ` beyond 90° because the nearest point of a one-sided ray set
+is then the apex. Landing 1's committed numbers were not wrong as reported (the
+gate excluded the ill-conditioned samples) but the measure had a hole, and the
+re-run moves them slightly: min clear 0.01265 → 0.01243 on the motion-works
+mitre, same verdict, all seven controls still firing.
+
+**Still to do in this landing**
 
 `makeBevelGear` is still the shear-cone builder and still what the movement
 calls. Landing 2 replaces it, re-stations what needs it, and re-runs the bar.

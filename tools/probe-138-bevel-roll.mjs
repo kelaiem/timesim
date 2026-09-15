@@ -128,64 +128,91 @@ const thetaAt = (outline, phi) => {
 const raysOf = (outline) => outline.map(([phi, th]) => [
   Math.sin(th) * Math.cos(phi), Math.sin(th) * Math.sin(phi), Math.cos(th)]);
 
-// EXACT distance from a point to the cone of rays: per wedge, |P·m̂| if the foot
-// lands inside, else |P × n̂| to an end ray. The apex is the origin in this
-// frame, so no translation enters.
+// EXACT distance from a point to the cone of rays through the apex. The apex is
+// the origin in this frame, so no translation enters, and the whole problem is
+// angular: the nearest point of the cone lies on the ray nearest P in ANGLE, so
+//
+//     d = |P|·sin(Δ)   for Δ ≤ 90°,      d = |P|   beyond that,
+//
+// where Δ is the great-circle angle from P̂ to the outline curve, and beyond 90°
+// the nearest point of a one-sided ray set is the apex itself.
+//
+// PER ARC, AND THE DEGENERATE CASE IS THE WHOLE DIFFICULTY. For the arc from a
+// to b the angle to its great circle is asin(|P̂·m̂|) with m̂ = a×b normalised,
+// usable only when the foot falls inside the arc; otherwise the endpoints
+// govern. But adjacent outline points are nearly PARALLEL directions, so a×b is
+// a tiny vector whose DIRECTION is numerical noise, and |P̂·m̂| against a noisy
+// normal can be anything at all — including zero.
+//
+// That is not hypothetical. The first build of this probe used the wedge form
+// of this test with no degeneracy guard, and the plane-cut band gate happened
+// to hide it by excluding everything behind the mate's apex. Cutting the blanks
+// at a cone distance instead admits those points (ρ is the same on both sides),
+// and the run came back `min clear 0.00003` in all five rows — traced to one
+// sample landing at θ = 134.999° in the mate's frame, BEHIND it, scored ~0
+// against a sliver whose normal was noise. The true distance there is ~1.4.
+// So: an arc shorter than DEGEN is judged by its endpoints, which is exact for
+// a polyline, and the ≤ 90° branch keeps a point behind the apex honest.
+const DEGEN = 1e-7;
+const angTo = (P, n) => {
+  const d = Math.max(-1, Math.min(1, P[0] * n[0] + P[1] * n[1] + P[2] * n[2]));
+  return Math.acos(d);
+};
 const coneDist = (P, rays) => {
-  const [px, py, pz] = P;
-  let best = Infinity;
-  const N = rays.length;
-  for (let i = 0; i < N; i++) {
-    const a = rays[i], b = rays[(i + 1) % N];
-    // wedge normal
+  const rho = Math.hypot(P[0], P[1], P[2]);
+  if (rho < 1e-12) return 0;
+  const p = [P[0] / rho, P[1] / rho, P[2] / rho];
+  let ang = Math.PI;
+  for (let i = 0; i < rays.length; i++) {
+    const a = rays[i], b = rays[(i + 1) % rays.length];
+    let best = Math.min(angTo(p, a), angTo(p, b));        // endpoints, always valid
     let mx = a[1] * b[2] - a[2] * b[1];
     let my = a[2] * b[0] - a[0] * b[2];
     let mz = a[0] * b[1] - a[1] * b[0];
     const mL = Math.hypot(mx, my, mz);
-    if (mL > 1e-12) {
+    if (mL > DEGEN) {
       mx /= mL; my /= mL; mz /= mL;
-      // foot = P − (P·m̂)m̂, then: inside iff the foot is on the same side of ray
-      // a as b is, and of ray b as a is. With m̂ = (a×b)/|a×b| those two read
-      // m̂·(a×f) ≥ 0 and m̂·(b×f) ≤ 0, which are s1 ≥ 0 and s2 ≥ 0 below by the
-      // triple-product identities. GETTING THESE BACKWARDS is not a small
-      // error and does not look like one: it accepts exactly when the foot is
-      // OUTSIDE, so a point on the axis reads |P·m̂| ≈ 0 against the sliver at
-      // its own azimuth and the whole run comes back `min clear 0` with
-      // `worst pen 0` — two readings that cannot both be true, which is the
-      // only reason the first run of this probe was not believed.
-      const d = px * mx + py * my + pz * mz;
-      const fx = px - d * mx, fy = py - d * my, fz = pz - d * mz;
-      const s1 = fx * (my * a[2] - mz * a[1]) + fy * (mz * a[0] - mx * a[2]) + fz * (mx * a[1] - my * a[0]);
-      const s2 = fx * (b[1] * mz - b[2] * my) + fy * (b[2] * mx - b[0] * mz) + fz * (b[0] * my - b[1] * mx);
-      if (s1 >= 0 && s2 >= 0) { const ad = Math.abs(d); if (ad < best) best = ad; continue; }
+      const h = p[0] * mx + p[1] * my + p[2] * mz;         // sin of the angle to the great circle
+      // the foot, and whether it lies within THIS arc rather than its extension
+      const fx = p[0] - h * mx, fy = p[1] - h * my, fz = p[2] - h * mz;
+      const fL = Math.hypot(fx, fy, fz);
+      if (fL > 1e-12) {
+        const f = [fx / fL, fy / fL, fz / fL];
+        const ab = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        const fa = f[0] * a[0] + f[1] * a[1] + f[2] * a[2];
+        const fb = f[0] * b[0] + f[1] * b[1] + f[2] * b[2];
+        if (fa >= ab && fb >= ab) best = Math.min(best, Math.asin(Math.min(1, Math.abs(h))));
+      }
     }
-    // else the nearest point on this wedge is an end ray
-    const cx = py * a[2] - pz * a[1], cy = pz * a[0] - px * a[2], cz = px * a[1] - py * a[0];
-    const d = Math.hypot(cx, cy, cz);   // |P × n̂|, n̂ already unit
-    if (d < best) best = d;
+    if (best < ang) ang = best;
   }
-  return best;
+  return ang <= Math.PI / 2 ? rho * Math.sin(ang) : rho;
 };
 
 // Is a material point inside this gear's blank?  bore ≤ r, z in the face band,
 // and θ under the angular outline. All three, because dropping the band would
 // let a point beyond the blank's end count as buried.
-const inBand = (u, v, w, spec) => w >= spec.zFront && w <= spec.zBack && Math.hypot(u, v) >= spec.boreR;
+const inBand = (u, v, w, spec) => {
+  const rho = Math.hypot(u, v, w);
+  return rho >= spec.coneRi && rho <= spec.coneR && Math.hypot(u, v) >= spec.boreR;
+};
 const underOutline = (u, v, w, outline) =>
   Math.atan2(Math.hypot(u, v), w) <= thetaAt(outline, Math.atan2(v, u));
 
-// WHY THE BAND TEST GATES THE CLEARANCE STATISTIC AND NOT JUST THE PENETRATION
-// ONE. The blanks are cut by planes perpendicular to their own axes, so a tooth
-// TIP reaches past the pitch cone's outer end: at the back plane its cone
-// distance is z/cos θ_tip > coneR. Those overhanging points sit in free space
-// beyond the mate's blank, and the cone-of-rays measure — which knows nothing
-// about where the mate's tooth STOPS — hands back the distance to the mate's
-// tooth surface EXTENDED, which is near zero. Scored as clearance that read
-// `min clear 0.00003` in all five rows, i.e. the ENGAGES control passing for a
-// reason that has nothing to do with the teeth engaging. A clearance is only a
-// clearance where the two bodies share the free coordinate, so a point outside
-// the mate's band is skipped for BOTH statistics. The overhang itself is real
-// and is reported instead of being hidden.
+// THE BAND IS SHARED, AND THAT IS WHY IT IS A CONE DISTANCE AND NOT A PLANE.
+// Both members measure ρ from the SAME apex, so ρ ∈ [coneRi, coneR] is one band
+// for the PAIR: a point at the end of one member's tooth is at the end of the
+// other's, everywhere, not only on the pitch cone.
+//
+// The first build of this generator cut the blanks with planes perpendicular to
+// each axis, and then the bands agreed ONLY on the pitch cone. A tooth TIP
+// reached ρ = z/cos θ_tip past the end of the mate's tooth, into free space
+// where the cone-of-rays measure — which knows nothing about where the mate's
+// tooth STOPS — handed back the distance to the mate's surface EXTENDED, near
+// zero. All five rows read `min clear 0.00003` and the ENGAGES control passed
+// for a reason that had nothing to do with the teeth engaging. The gate still
+// guards BOTH statistics, because a clearance is only a clearance where the two
+// bodies share the free coordinate; it just no longer has anything to forgive.
 
 // ---- the closed-solid control ----------------------------------------------
 // Every edge used exactly twice in opposite directions (watertight) and the
@@ -219,15 +246,16 @@ const roll = (specA, specB, outA, outB, raysA, raysB,
   { injectB = 0, sense = -1, zPick = null, apexOffB = 0 } = {}) => {
   const pitchA = (Math.PI * 2) / specA.teeth, pitchB = (Math.PI * 2) / specB.teeth;
   // sample planes across A's and B's own face bands
-  const planes = (s) => (zPick !== null
-    ? [s.zFront + (s.zBack - s.zFront) * zPick]
-    : Array.from({ length: BAND }, (_, i) => s.zFront + ((s.zBack - s.zFront) * i) / (BAND - 1)));
+  const shells = (s) => (zPick !== null
+    ? [s.coneRi + (s.coneR - s.coneRi) * zPick]
+    : Array.from({ length: BAND }, (_, i) => s.coneRi + ((s.coneR - s.coneRi) * i) / (BAND - 1)));
   const ptsA = [], ptsB = [];
-  for (const z of planes(specA))
-    for (const [phi, th] of outA) ptsA.push([z * Math.tan(th) * Math.cos(phi), z * Math.tan(th) * Math.sin(phi), z]);
-  for (const z of planes(specB))
+  for (const rho of shells(specA))
+    for (const [phi, th] of outA)
+      ptsA.push([rho * Math.sin(th) * Math.cos(phi), rho * Math.sin(th) * Math.sin(phi), rho * Math.cos(th)]);
+  for (const rho of shells(specB))
     for (const [phi, th] of outB)
-      ptsB.push([z * Math.tan(th) * Math.cos(phi), z * Math.tan(th) * Math.sin(phi), z + apexOffB]);
+      ptsB.push([rho * Math.sin(th) * Math.cos(phi), rho * Math.sin(th) * Math.sin(phi), rho * Math.cos(th) + apexOffB]);
 
   let pen = 0, clear = Infinity;
   for (let s = 0; s <= STEPS; s++) {
@@ -314,7 +342,7 @@ for (const row of ROWS) {
   const offOut = roll(specA, specB, outA, outB, raysA, raysB, { apexOffB: +OFF });
 
   const K = 0.6180339887498949;
-  const scaled = (sp) => ({ ...sp, zFront: sp.zFront * K, zBack: sp.zBack * K, boreR: sp.boreR * K });
+  const scaled = (sp) => ({ ...sp, coneRi: sp.coneRi * K, coneR: sp.coneR * K, boreR: sp.boreR * K });
   const small = roll(scaled(specA), scaled(specB), outA, outB, raysA, raysB);
   const scaleWant = K;
   const scaleGot = main.clear > 0 ? small.clear / main.clear : NaN;
@@ -322,12 +350,11 @@ for (const row of ROWS) {
   const wrong = roll(specA, specB, outA, outB, raysA, raysB, { sense: +1 });
   const solid = solidCheck(makeConicalGear({ teeth: row.za, module: row.m, mateTeeth: row.zb,
     faceWidth: row.face ?? undefined }));
-  // The plane-cut blank's tip overhang, reported because the measure above had
-  // to be taught about it: how far past the shared cone distance A's tip corner
-  // reaches at its own back plane. Along the PITCH cone the two blanks begin
-  // and end together by construction (z = ρ·cos γ on one side is z' = ρ·cos γ'
-  // on the other), so this is the tip cone's excess and nothing else.
-  const overhang = specA.zBack / Math.cos(specA.thetaTip) - specA.coneR;
+  // What the blank REACHES from its own axis, the number the fold is priced
+  // against. With the caps at a cone distance there is no overhang left to
+  // report — the tip stops exactly where the mate's tooth stops — so this
+  // column says how far out the metal goes instead.
+  const overhang = specA.tipR;
 
   results.push({
     name: row.name, module: row.m,
@@ -342,7 +369,7 @@ for (const row of ROWS) {
     penBackU: +back.pen.toFixed(5), penFrontU: +front.pen.toFixed(5),
     clearBackU: +back.clear.toFixed(5), clearFrontU: +front.clear.toFixed(5),
     scaleWant: +scaleWant.toFixed(9), scaleGot: +scaleGot.toFixed(9),
-    overhangU: +overhang.toFixed(4),
+    reachU: +overhang.toFixed(4),
     // What Tredgold costs, in the currency the generator already spends. An
     // exactly conjugate pair rolls with backlash/2 standing off each flank, so
     // the shortfall IS the planar-cycloid-vs-spherical-cycloid error, measured
@@ -379,11 +406,11 @@ for (const r of results)
     + `${String(r.vTeethA).padEnd(8)} ${String(r.vTeethB)}`);
 
 console.log('\nTHE ROLL — worst interpenetration over a full tooth pitch, both directions\n');
-console.log('pair                                worst pen   budget ε    min clear   ideal b/2   Tredgold    tip past R  verdict');
+console.log('pair                                worst pen   budget ε    min clear   ideal b/2   Tredgold    blank reach verdict');
 for (const r of results)
   console.log(`${r.name.padEnd(35)} ${String(r.penU).padEnd(11)} ${String(r.budgetU).padEnd(11)} `
     + `${String(r.clearU).padEnd(11)} ${String(r.idealClearU).padEnd(11)} ${String(r.profileErrU).padEnd(11)} `
-    + `${String(r.overhangU).padEnd(11)} ${r.pass ? 'PASS' : '✗ FAIL'}`);
+    + `${String(r.reachU).padEnd(11)} ${r.pass ? 'PASS' : '✗ FAIL'}`);
 
 console.log('\nCONTROLS — a pair that never touches passes the penetration column, so these are the real bar\n');
 console.log('pair                                ENGAGES(min clear)   HALF PITCH   WRONG SENSE   CLOSED SOLID     RULED (scale about the apex by k)');

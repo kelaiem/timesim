@@ -727,24 +727,51 @@ export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAn
   const flat = gearToothSpec({ module: m, teeth: vTeeth, mates: [vTeethMate] });
   const theta = (r) => gamma + Math.atan2(r - backR, coneR);
   const thetaTip = theta(flat.tipR), thetaRoot = theta(flat.rootR);
-  // THE FACE BAND IS CUT BY TWO PLANES PERPENDICULAR TO THE AXIS, at the cone
-  // distances the face width names — z = ρ·cos γ. That is not a convenience:
-  // along the tangency ray the mate's own two planes are z' = ρ·cos γ_mate,
-  // and ρ·sin γ = ρ·cos γ_mate for a 90° pair, so BOTH members' bands begin and
-  // end at the same two cone distances. The engaged face width is the whole
-  // face width, by construction rather than by luck.
+  // THE FACE BAND IS CUT AT TWO CONE DISTANCES, ρ ∈ [coneRi, coneR] — the front
+  // and back cones of real bevel practice, not planes perpendicular to the
+  // axis. Both choices leave the FLANKS alone, so this is not a P0 question,
+  // and the first build of this generator used planes. Measured, planes are
+  // wrong twice over:
+  //
+  //   · they let the tooth TIP run past the cone distance, to ρ = z/cos θ_tip.
+  //     That material has no mate — it stands beyond the end of the other
+  //     member's tooth — and it is what made the blank reach FURTHER OUT than
+  //     the sheared form it replaces (r 1.9964 against 1.7576 on the
+  //     motion-works mitre), turning a free conversion into a packaging fight
+  //     over metal that does no work;
+  //   · and it makes the two members' bands agree only ON the pitch cone,
+  //     where ρ·sin γ = ρ·cos γ_mate. At a cone distance the bands are shared
+  //     EVERYWHERE by construction, because both members measure ρ from the
+  //     same apex.
+  //
+  // Cut here instead, the blank reaches coneR·sin θ_tip = 1.697, inside the old
+  // form's 1.7576, and its z band sits inside the old one too — so the fold
+  // costs nothing in position space (tools/probe-138-fold-price.mjs prices it).
+  const coneRi = coneR - faceW;
+  // The bore is a true cylinder, and its two ends land exactly ON the two band
+  // spheres: a point at cylindrical radius boreR and z = √(ρ² − boreR²) stands
+  // at ρ from the apex. So each cap is a chord of its own sphere, rim to bore,
+  // which is the back cone a real blank is turned with.
+  const zBoreOut = Math.sqrt(Math.max(0, coneR * coneR - boreR * boreR));
+  const zBoreIn = Math.sqrt(Math.max(0, coneRi * coneRi - boreR * boreR));
   const zBack = coneR * Math.cos(gamma);
-  const zFront = (coneR - faceW) * Math.cos(gamma);
+  const zFront = coneRi * Math.cos(gamma);
   if (thetaTip > (85 * Math.PI) / 180)
     console.warn(`TODO 138 bevel ${teeth}t: tip cone at ${((thetaTip * 180) / Math.PI).toFixed(1)}° — `
       + `a plane-bounded blank cannot hold a face gear this flat`);
-  if (boreR >= zFront * Math.tan(thetaRoot))
+  // The bore must stay inside the small end's root cone, or the cap has no
+  // material between the two. This is the CONICAL analogue of minGearTeeth's
+  // spur floor (does the root CIRCLE clear the bore?) — asked about a root that
+  // is a CONE standing off the axis, which is why the spur floor's rejection of
+  // these members at 10 teeth was answering the wrong question (TODO 85).
+  if (boreR >= coneRi * Math.sin(thetaRoot))
     console.warn(`TODO 138 bevel ${teeth}t: bore ${boreR} reaches the root cone `
-      + `(${(zFront * Math.tan(thetaRoot)).toFixed(4)}) at the small end — no blank material left`);
+      + `(${(coneRi * Math.sin(thetaRoot)).toFixed(4)}) at the small end — no blank material left`);
   return {
     module: m, teeth, mateTeeth, shaftAngle: SIGMA, gamma, gammaMate,
-    pitchR, coneR, faceW, backR, vTeeth, vTeethMate, flat,
-    thetaTip, thetaRoot, zFront, zBack, boreR, theta,
+    pitchR, coneR, coneRi, faceW, backR, vTeeth, vTeethMate, flat,
+    thetaTip, thetaRoot, zFront, zBack, zBoreIn, zBoreOut, boreR, theta,
+    tipR: coneR * Math.sin(thetaTip),     // the farthest the blank reaches from its axis
   };
 }
 
@@ -761,10 +788,12 @@ export function bevelOutline(spec) {
   return out;
 }
 
-// The blank: bore ≤ r ≤ z·tan Θ(φ), between the two face planes. Four rings of
-// the same length (outer and bore, at each plane) and four quad strips — outer
-// wall, bore wall, and the two annular faces. Every strip is non-degenerate
-// because Θ ≥ θ_root > θ_bore everywhere, so no face has zero area and
+// The blank: the spherical shell segment ρ ∈ [coneRi, coneR] under the angular
+// outline Θ(φ), bored along the axis. Four rings of the same length — outline
+// and bore, at each cone distance — and four quad strips: the toothed outer
+// wall (apex-ruled, the working surface), the bore cylinder, and the two caps,
+// each a chord from its rim to the bore. Every strip is non-degenerate because
+// Θ ≥ θ_root > θ_bore everywhere, so no face has zero area and
 // `computeVertexNormals` never sees a null cross product.
 //
 // CLOSED ON PURPOSE, including the two faces nobody sees once it is mounted:
@@ -776,30 +805,35 @@ export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngl
   const spec = bevelToothSpec({ module, teeth, mateTeeth, faceWidth, shaftAngleDeg, boreR });
   const outline = bevelOutline(spec);
   const N = outline.length;
-  const { zFront, zBack } = spec;
+  const { coneR, coneRi, zBoreIn, zBoreOut } = spec;
   const pos = [];
-  const ring = (z, useOutline) => {
+  // A ring on the sphere of radius rho: the outline itself, or the bore circle
+  // whose z puts it at exactly that same rho.
+  const ring = (rho, zBore, useOutline) => {
     const base = pos.length / 3;
     for (let k = 0; k < N; k++) {
       const [phi, th] = outline[k];
-      const r = useOutline ? z * Math.tan(th) : boreR;
+      const r = useOutline ? rho * Math.sin(th) : boreR;
+      const z = useOutline ? rho * Math.cos(th) : zBore;
       pos.push(r * Math.cos(phi), r * Math.sin(phi), z);
     }
     return base;
   };
-  const oF = ring(zFront, true), oB = ring(zBack, true);
-  const bF = ring(zFront, false), bB = ring(zBack, false);
+  const oF = ring(coneRi, zBoreIn, true), oB = ring(coneR, zBoreOut, true);
+  const bF = ring(coneRi, zBoreIn, false), bB = ring(coneR, zBoreOut, false);
   const idx = [];
   const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
   for (let k = 0; k < N; k++) {
     const k1 = (k + 1) % N;
-    // outer wall: +φ then +z gives φ̂ × ẑ = r̂, outward
+    // outer wall: +φ then outward along ρ gives φ̂ × ρ̂, pointing away from the
+    // axis — this is the working surface, and it is apex-ruled because both its
+    // ends lie on the ray θ = Θ(φ)
     quad(oF + k, oF + k1, oB + k1, oB + k);
     // bore wall: the same circuit reversed, so its normal points at the axis
     quad(bF + k, bB + k, bB + k1, bF + k1);
-    // front face at zFront: +φ̂ then +r̂ gives φ̂ × r̂ = −ẑ
+    // front cap, chord from the bore out to the inner rim
     quad(bF + k, bF + k1, oF + k1, oF + k);
-    // back face at zBack: the mirror circuit, +ẑ
+    // back cap, the mirror circuit
     quad(bB + k, oB + k, oB + k1, bB + k1);
   }
   const geo = new THREE.BufferGeometry();
@@ -814,7 +848,7 @@ export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngl
   // one is neither a prism nor a sheared prism: point-in-solid is an angular
   // outline test, so the instruments are handed the outline itself rather than
   // a z-band they would have to infer a shear from.
-  body.userData.solid = { kind: 'apexCone', zLo: zFront, zHi: zBack, boreR, outline };
+  body.userData.solid = { kind: 'apexCone', rhoLo: coneRi, rhoHi: coneR, boreR, outline };
   g.add(body);
   g.userData.r = spec.pitchR;
   g.userData.teeth = teeth;
