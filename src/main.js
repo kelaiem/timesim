@@ -119,6 +119,12 @@ const CROWN_RAD_PER_TURN = -(WIND_SPUR_TEETH / crownWheelTeeth) * SPUR_RAD_PER_T
 // few percent.
 const BEVEL_INDEX_TOL = 0.05;                 // fraction of one pitch
 const bevelCornerGuards = [];
+// …and that they ran BEFORE the first pose is itself a claim, so `tick` says so
+// rather than a comment asking. Moving the run below `tick(0)` makes the guard
+// a function of restored state again, silently — which is exactly how it
+// shipped the first time.
+let BEVEL_GUARDS_RAN = false;
+let BEVEL_GUARDS_TICKED = false;
 const KW_WIND_WHEEL_SIDE = -1;   // ASSERTED against crownWheelMount at its build
 // The SETTING corner's own side, the same question at the other station and
 // forced rather than chosen: the stem runs through that station on its way to
@@ -37841,6 +37847,18 @@ function updateLabels() {
 }
 
 function tick(t) {
+  // TODO 139 — the index guard runs at the BUILD POSE, and this is the first
+  // thing that leaves it. A guard that ran after the restored state was applied
+  // measured whatever the last session saved, and that is how it shipped the
+  // first time: silent on a fresh profile, warning on a reload. Stated as an
+  // assert rather than a comment, because the ordering is invisible at both
+  // sites and nothing else would notice it moving.
+  if (!BEVEL_GUARDS_TICKED) {
+    BEVEL_GUARDS_TICKED = true;
+    if (!BEVEL_GUARDS_RAN)
+      console.warn('TODO 139: tick() reached the movement before the bevel corners\' index guard ran, '
+        + 'so that guard would measure the RESTORED pose rather than the build pose it is a claim about');
+  }
   // dt since the last tick — needed because τ is now a genuinely integrated
   // quantity (the balance's own accumulated phase), not a pure function of
   // t. Clamped so a long stall (e.g. a backgrounded tab) can't blow up the
@@ -39497,6 +39515,27 @@ function tick(t) {
 // undermined one says so.
 checkPlateWindows('movement complete');
 
+// TODO 139 — THE BEVEL CORNERS' INDEX GUARD, and WHERE it runs is half of it.
+//
+// It must see CURRENT world matrices, because what it measures is where a tooth
+// points in world space and a guard reading the same stale frame as the solve
+// would agree with it about everything — that is the hole the defect fell
+// through, so it cannot run at each corner's own build.
+//
+// And it must see the BUILD POSE, which is the only pose the index is a claim
+// about. `tick(0)` one line below applies the RESTORED state, and every
+// stem-side member of both keyless corners rides the stem: `windClutch` and
+// `windPinionGroup` take `-windStemRot`, which is a function of the saved
+// `barrelWindTurns`. Measured after it, the reading is a function of what the
+// last session saved — the setting corner's rim came back HALF A PITCH from
+// where it was built, and boot warned. Rule 6 is not "silent on a fresh
+// profile"; it is silent, so this runs before the first pose and after nothing.
+{
+  scene.updateMatrixWorld(true);
+  for (const check of bevelCornerGuards) check();
+  BEVEL_GUARDS_RAN = true;
+}
+
 tick(0); // seed correct initial pose before the first paint
 updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14
 assertUnitGroups();   // §10: the partition assert, once the Chain's lazy label makes the universe complete (level 2: solves the sub-layers too)
@@ -40418,14 +40457,6 @@ if (routeApplySolve) {
   G.weldAssert(scene);
 }
 
-// TODO 139 — the bevel corners' index guard, RUN HERE and not at each corner's
-// own build. What it measures is where a tooth points in world space, and at
-// build time the scene's world matrices are not current — which is the very
-// hole the defect fell through, so a guard that ran early would have shared it.
-{
-  scene.updateMatrixWorld(true);
-  for (const check of bevelCornerGuards) check();
-}
 
 // §194 — the rotors' own two claims, asserted at boot per standing rule 6, so
 // the mesh registry below rests on metal that has already agreed with itself.
