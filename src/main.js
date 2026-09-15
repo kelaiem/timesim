@@ -109,6 +109,16 @@ const CROWN_RAD_PER_TURN = -(WIND_SPUR_TEETH / crownWheelTeeth) * SPUR_RAD_PER_T
 // point: with the wheel underneath, the crown winds the OTHER way round. That is
 // a gearing outcome walked through the chain, which is what CLAUDE.md asks of
 // every direction-committed site, rather than a preference stated here.
+// TODO 139 — the bevel corners' index guard, declared here because the corners
+// REGISTER with it as they are built and `assertBevelCorner`'s registry must
+// exist by then. The guard itself runs at the end of boot, where the scene's
+// world matrices are current — which is the whole point of it (see
+// `assertBevelCorner`). Tolerance: a twentieth of a pitch. The two defects it
+// exists for are 0.13 of one; anything at that scale is a phase error, and
+// nothing smaller is worth a boot warning against a cut whose own backlash is a
+// few percent.
+const BEVEL_INDEX_TOL = 0.05;                 // fraction of one pitch
+const bevelCornerGuards = [];
 const KW_WIND_WHEEL_SIDE = -1;   // ASSERTED against crownWheelMount at its build
 // The SETTING corner's own side, the same question at the other station and
 // forced rather than chosen: the stem runs through that station on its way to
@@ -4401,9 +4411,10 @@ assertWheelSide(crownWheelMount, KW_WIND_WHEEL_SIDE, 'keyless winding corner');
 // mount, and every vector in the plane the two axes span shares it. So the
 // bisector indexes a 20:8 corner exactly as it indexes a 1:1 one.
 const crownWheelBase = (() => {
-  const ray = bevelCornerRay(new THREE.Vector3(0, 0, 1), new THREE.Vector3(uWind.x, uWind.y, 0));
-  windPinion.rotation.z = bevelCornerSpin(windPinionMount, ray, windPinionTeeth, true);
-  return bevelCornerSpin(crownWheelMount, ray, crownWheelTeeth, false);
+  const ray = bevelCornerRay(bevelCornerAxis(crownWheelMount), bevelCornerAxis(windPinionMount));
+  windPinion.rotation.z = bevelCornerSpin(windPinion, ray, windPinionTeeth, true);
+  assertBevelCorner(crownWheel, crownWheelTeeth, windPinion, windPinionTeeth, 'keyless WINDING corner');
+  return bevelCornerSpin(crownWheel, ray, crownWheelTeeth, false);
 })();
 {
   // The pinion's saw ring, on its outboard face, teeth toward the clutch.
@@ -5249,10 +5260,11 @@ windClutchMount.add(windClutch);
   // carries a tooth on the line of contact and the rim a gap. Read at the rest
   // pose, where windClutch.rotation.y is the coupling's 0.005 clocking only.
   {
-    const ray = bevelCornerRay(new THREE.Vector3(0, 0, 1), new THREE.Vector3(uWind.x, uWind.y, 0));
-    rim.rotation.z = bevelCornerSpin(rimMount, ray, windPinionTeeth, true);
+    const ray = bevelCornerRay(bevelCornerAxis(settingBevelMount), bevelCornerAxis(rimMount));
+    rim.rotation.z = bevelCornerSpin(rim, ray, windPinionTeeth, true);
     settingBevelBase = bevelCornerSpin(settingBevel, ray, settingWheelTeeth, false);
     settingBevel.rotation.z = settingBevelBase;
+    assertBevelCorner(settingBevel, settingWheelTeeth, rim, windPinionTeeth, 'keyless SETTING corner');
   }
   // The mating saw ring, teeth INBOARD toward the pinion — sense +1 with
   // the +π/2 mirror mount (see the pinion ring's comment: the pair lands
@@ -13431,10 +13443,101 @@ const ALARM_CORNER_SENSE = -1;
 function bevelCornerRay(axisA, axisB) {
   return axisA.clone().add(axisB).normalize();
 }
-function bevelCornerSpin(mount, ray, teeth, gap) {
-  mount.updateMatrixWorld(true);
-  const q = new THREE.Quaternion();
-  mount.matrixWorld.decompose(new THREE.Vector3(), q, new THREE.Vector3());
+// A member's axis, MEASURED off the object whose +Z it is — a mount, or the
+// gear itself, which carries the same +Z because only `rotation.z` is ever
+// written on it — rather than restated at the call site. TODO 136 turned the crown wheel's and the setting bevel's mounts
+// through PI, which made the literal `(0, 0, 1)` both keyless sites passed a
+// claim about the metal that had stopped being true. It survived only because
+// the azimuth about either axis is the same for every vector in the plane the
+// two axes span, and the two candidate rays differ there by exactly PI — four
+// pitches of an 8-tooth pinion, ten of a 20-tooth wheel, integers both. A
+// right answer standing on a false premise is a defect waiting for the next
+// count. `updateWorldMatrix(true, false)` walks UP; see bevelCornerSpin.
+function bevelCornerAxis(mount) {
+  mount.updateWorldMatrix(true, false);
+  return new THREE.Vector3(0, 0, 1).transformDirection(mount.matrixWorld).normalize();
+}
+// TODO 139 — THE GUARD, and it measures the metal rather than restating the
+// solve. Where a tooth actually points is a fact about the built scene; which
+// index was computed for it is a claim. This re-reads both members AFTER the
+// scene's world matrices are current, in world space, and asks the corner's
+// own condition: on the line of contact one member presents a TOOTH and the
+// other a GAP. The frame bug it exists for passed every gate in the battery,
+// because nothing there measures a corner's index — and it would have fired on
+// it at 0.126 and 0.133 of a pitch.
+//
+// A corner may be WAIVED, and the waiver is audited the way §137 audits its
+// own: a waiver naming a corner that is IN index is itself a failure, so a
+// fix cannot leave its waiver behind. The waiver string cites the TODO, which
+// is the repo's standing convention for accepted debt.
+function assertBevelCorner(gearA, teethA, gearB, teethB, what, waiver = null) {
+  bevelCornerGuards.push(() => {
+    const uA = bevelCornerAxis(gearA), uB = bevelCornerAxis(gearB);
+    // The pitch angle comes from the counts — tan γ_A = z_A/z_B — and that
+    // closed form is a SHAFT ANGLE OF 90° only. Measured rather than assumed,
+    // because a corner whose axes are not square makes γ silently wrong and
+    // every number below with it.
+    if (Math.abs(uA.dot(uB)) > 1e-6)
+      console.warn(`TODO 139 ${what}: the axes are ${(Math.acos(Math.abs(uA.dot(uB))) * 180 / Math.PI).toFixed(3)}° `
+        + `from square, and this guard's pitch angle is derived for a right-angle corner`);
+    const gA = Math.atan2(teethA, teethB);    // the pitch angle, from the counts
+    const inPl = uB.clone().addScaledVector(uA, -uB.dot(uA)).normalize();
+    const ray = uA.clone().multiplyScalar(Math.cos(gA)).addScaledVector(inPl, Math.sin(gA)).normalize();
+    // each member's own tooth 0 is at its local +X (bevelOutline centres tooth
+    // i at i*2PI/z) — measured here, not assumed, by reading the axis the
+    // builder actually cut against
+    const off = (g, u, teeth) => {
+      const x = new THREE.Vector3(1, 0, 0).transformDirection(g.matrixWorld).normalize();
+      const rp = ray.clone().addScaledVector(u, -ray.dot(u)).normalize();
+      const xp = x.clone().addScaledVector(u, -x.dot(u)).normalize();
+      const a = Math.atan2(u.clone().cross(rp).dot(xp), rp.dot(xp));
+      const pitch = (Math.PI * 2) / teeth;
+      let f = ((a % pitch) + pitch) % pitch / pitch;
+      return f > 0.5 ? f - 1 : f;
+    };
+    const fA = off(gearA, uA, teethA), fB = off(gearB, uB, teethB);
+    // A must carry a tooth on the ray and B a gap: |fA| ~ 0 and |fB| ~ 0.5.
+    const missA = Math.abs(fA), missB = Math.abs(0.5 - Math.abs(fB));
+    const out = missA > BEVEL_INDEX_TOL || missB > BEVEL_INDEX_TOL;
+    if (out && !waiver)
+      console.warn(`TODO 139 ${what}: the corner is out of index on the metal — `
+        + `${gearA.name || 'A'} carries its tooth ${fA.toFixed(4)} of a pitch off the contact ray `
+        + `(wants 0) and ${gearB.name || 'B'} its gap ${(0.5 - Math.abs(fB)).toFixed(4)} off it `
+        + `(wants 0), against a ${BEVEL_INDEX_TOL} budget. The teeth do not interleave here.`);
+    if (!out && waiver)
+      console.warn(`TODO 139 ${what}: STALE WAIVER — the corner measures IN index `
+        + `(${fA.toFixed(4)} / ${(0.5 - Math.abs(fB)).toFixed(4)} of a pitch) and is still waived by `
+        + `"${waiver}". Delete the waiver with the fix.`);
+  });
+}
+// TODO 139 — IT READS THE GEAR, NOT A MOUNT, AND IT WALKS UP.
+//
+// `Object3D.updateMatrixWorld(force)` recomputes this object and its
+// DESCENDANTS from `this.parent.matrixWorld` AS IT STANDS. It never walks UP.
+// At build time nothing has updated the keyless or alarm groups, so their
+// `matrixWorld` is still the identity a fresh Object3D carries, and a mount
+// read through it comes back MISSING every ancestor rotation. Both stem-side
+// mounts hang under a group that carries the stem's own azimuth —
+// `windPinionGroup` and `windClutch` at `stemAngle - PI/2` = 0.95993,
+// `alarmSpinner` at `alarmStemAngle - PI/2` = -1.57080 — and that is exactly
+// what was dropped. The plate-side mounts hang off `keyless`, whose world
+// transform IS the identity, so they were computed correctly: hence ONE
+// member of each corner wrong, by a different amount per corner, which is why
+// no single systematic offset described it.
+//
+// Measured on the tree that shipped it, in pitch fractions off the METAL
+// (tools/probe-bevel-corner-index.mjs):
+//
+//   windingPinion   shipped 0.49179   a stale read gives 0.49190   want 0.39270
+//   clutchRim       shipped 0.29361   a stale read gives 0.29350   want 0.39770
+//
+// `getWorldQuaternion` calls `updateWorldMatrix(true, false)`, which does walk
+// up. And the argument is the GEAR now: the caller cannot pass one object's
+// frame while writing `rotation.z` on another's — the setting corner did
+// exactly that (`bevelCornerSpin(settingBevel, …)` against every other site's
+// mount) and was right only because that gear's `rotation.z` was still 0.
+function bevelCornerSpin(gear, ray, teeth, gap) {
+  const q = gear.parent.getWorldQuaternion(new THREE.Quaternion());
   const local = ray.clone().applyQuaternion(q.invert());
   const pitch = (Math.PI * 2) / teeth;
   const r = Math.atan2(local.y, local.x) - (gap ? pitch / 2 : 0);
@@ -15897,13 +16000,28 @@ alarmSpinner.add(stemBevelMount);
 // them interleave; `ALARM_BEVEL_PHASE`'s bare half-pitch assumed both gears'
 // tooth 0 already lay on that ray, and neither does.
 {
-  const rayAxis = (m) => {
-    m.updateMatrixWorld(true);
-    return new THREE.Vector3(0, 0, 1).transformDirection(m.matrixWorld).normalize();
-  };
-  const ray = bevelCornerRay(rayAxis(discBevelMount), rayAxis(stemBevelMount));
-  discBevel.rotation.z = bevelCornerSpin(discBevelMount, ray, ALARM_BEVEL_TEETH, false);
-  stemBevel.rotation.z = bevelCornerSpin(stemBevelMount, ray, ALARM_BEVEL_TEETH, true);
+  // TODO 139 — this block's own `rayAxis` was the third copy of one law and the
+  // only one that measured its axes; it read them through
+  // `updateMatrixWorld(true)`, which does not walk UP, so the corner had both
+  // its ray and its stem-side spin computed in a frame the part is not in.
+  // `bevelCornerAxis` is that law once, and it walks up.
+  const ray = bevelCornerRay(bevelCornerAxis(discBevelMount), bevelCornerAxis(stemBevelMount));
+  discBevel.rotation.z = bevelCornerSpin(discBevel, ray, ALARM_BEVEL_TEETH, false);
+  stemBevel.rotation.z = bevelCornerSpin(stemBevel, ray, ALARM_BEVEL_TEETH, true);
+  // WAIVED, TODO 140. Measured at the rest pose, the disc carries its tooth
+  // 0.3750 of a pitch off the contact ray and the stem its gap 0.0000 — and the
+  // 0.3750 is not this block's arithmetic. `bevelCornerSpin` indexes both halves
+  // at BUILD, where `alarmRotor.rotation.z` is 0; the movement's rest pose puts
+  // it at -2.90597, which is -4.625 pitches of a 10-tooth bevel and wraps to
+  // exactly the miss. So the disc's index is solved at a pose the movement never
+  // occupies. The two terms of that rotor angle are NOT alike: `3 * _bd`, the
+  // hour carrying the friction-set disc, IS mirrored into the stem by
+  // `alarmCrownCreep` (§194 F), and `-alarmSetRot`, the angle the CROWN put
+  // there through this very corner, is not — so standing rule 2 is unsatisfied
+  // on one term of one sum. Closing it is TODO 140 and is a change to what the
+  // crown displays, not to this index.
+  assertBevelCorner(discBevel, ALARM_BEVEL_TEETH, stemBevel, ALARM_BEVEL_TEETH, 'alarm SETTING corner',
+    'TODO 140 — the disc\'s rest angle carries alarmSetRot, which the stem does not mirror');
 }
 // §137 — the alarm corner's transfer row: addBevelCorner's idiom re-used at
 // the alarm stem (the disc-side gear lives in 'Alarm setting arbor', the
@@ -40231,6 +40349,15 @@ if (routeApplySolve) {
   const w = G.weldTree(scene);
   WELD_CENSUS = { ...w, saved: w.before - w.after };
   G.weldAssert(scene);
+}
+
+// TODO 139 — the bevel corners' index guard, RUN HERE and not at each corner's
+// own build. What it measures is where a tooth points in world space, and at
+// build time the scene's world matrices are not current — which is the very
+// hole the defect fell through, so a guard that ran early would have shared it.
+{
+  scene.updateMatrixWorld(true);
+  for (const check of bevelCornerGuards) check();
 }
 
 // §194 — the rotors' own two claims, asserted at boot per standing rule 6, so

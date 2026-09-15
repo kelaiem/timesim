@@ -578,7 +578,14 @@ const out = await page.evaluate(async () => {
   const res = [];
   for (const [label, a, b, pose] of [
     ['crownWheel ⇄ windingPinion   (WINDING: the bank swept)', 'crownWheel', 'windingPinion', runWind],
-    ['clutchRim ⇄ settingWheel     (SETTING: crown out, setting path swept)', 'clutchRim', 'settingWheel', runSet],
+    // TODO 139 — THE MATE IS `settingBevel`, NOT `settingWheel`. TODO 136 made the
+    // setting wheel a COMPOUND below the stem — a flat spur that meshes the
+    // minute wheel, and a bevel above it that meshes the clutch — and this row
+    // kept naming the spur. A spur 4.2 away from the rim cannot bury anything,
+    // so the row read 0.0000 at every phase of its whole sweep and could not
+    // have failed: a stale selector wearing a clean result. Its replacement
+    // measures the pair that exists.
+    ['clutchRim ⇄ settingBevel     (SETTING: crown out, setting path swept)', 'clutchRim', 'settingBevel', runSet],
     ['alarmDiscBevel ⇄ alarmStemBevel  (ALARM: the corner\'s real bevel pair, alarm crown swept)', 'alarmDiscBevel', 'alarmStemBevel', runAlarm],
   ]) res.push([label, sweep(label, a, b, pose)]);
 
@@ -605,8 +612,8 @@ const out = await page.evaluate(async () => {
     'thirdWheel', 'fourthPinion', runTrain, 'thirdWheel');
   floors.wind = phaseFloor('crownWheel ⇄ windingPinion   (spur ⇄ spur, axes crossed at the stem)',
     'crownWheel', 'windingPinion', runWind, 'crownWheel');
-  floors.set = phaseFloor('clutchRim ⇄ settingWheel     (spur ⇄ spur, axes crossed at the stem)',
-    'clutchRim', 'settingWheel', runSet, 'settingWheel');
+  floors.set = phaseFloor('clutchRim ⇄ settingBevel     (the second keyless corner)',
+    'clutchRim', 'settingBevel', runSet, 'settingBevel');
   floors.alarm = phaseFloor('alarmDiscBevel ⇄ alarmStemBevel  (a real bevel pair, for contrast)',
     'alarmDiscBevel', 'alarmStemBevel', runAlarm, 'alarmStemBevel');
 
@@ -631,7 +638,7 @@ if (F.control) {
   console.log('\n--- tier two: can any phase save these pairs?');
   console.log(`  CONTROL thirdWheel ⇄ fourthPinion: floor ${F.control.floor.toFixed(4)} (want < 0.05), `
     + `ceiling ${F.control.ceil.toFixed(4)} (want > 0.15)  ${ctrlFloorOk && ctrlCeilOk && ctrlMovedOk ? 'OK' : 'CONTROL FAILED'}`);
-  for (const [k, name] of [['wind', 'crownWheel ⇄ windingPinion'], ['set', 'clutchRim ⇄ settingWheel'], ['alarm', 'alarmDiscBevel ⇄ alarmStemBevel']]) {
+  for (const [k, name] of [['wind', 'crownWheel ⇄ windingPinion'], ['set', 'clutchRim ⇄ settingBevel'], ['alarm', 'alarmDiscBevel ⇄ alarmStemBevel']]) {
     if (!F[k]) continue;
     console.log(`  ${name.padEnd(34)} floor ${F[k].floor.toFixed(4)}   ceiling ${F[k].ceil.toFixed(4)}`);
   }
@@ -642,6 +649,6 @@ if (F.control) {
       ? 'a phase EXISTS — an indexing fix is possible'
       : 'NO phase clears it — indexing cannot fix this pair');
     console.log(`\n  crownWheel ⇄ windingPinion: ${verdict(F.wind)}`);
-    console.log(`  clutchRim ⇄ settingWheel:   ${verdict(F.set)}`);
+    console.log(`  clutchRim ⇄ settingBevel:   ${verdict(F.set)}`);
   }
 }
