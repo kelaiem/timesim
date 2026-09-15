@@ -1426,6 +1426,12 @@ export const YOKE_TIP_HALF = 0.6 + 0.12;
 // reference plane now (the cone's big end, the whole stock), where it used to be
 // half a declared thickness plus the extrude bevel's outward growth. A cone has
 // no extrude, so the bevel term goes with it.
+// The tick parks the clutch a hairline off the analytic seat (coincident
+// planes are the case the BVH instruments cannot arbitrate — the tick's
+// comment has the full §99 story); every reach derivation around it budgets
+// it, because the DISPLAYED metal stands this much farther out than the
+// closed-form stack.
+export const SEAT_RELIEF = 0.005;
 // …and TODO 136 adds a THIRD wall, from the other end of the stroke. At full
 // pull the setting wheel is a CONE standing off the stem, and its blank
 // overhangs the stem on both sides of the corner's apex — so the collar, which
@@ -1437,7 +1443,7 @@ export const YOKE_FORK_OUT = Math.min(
   -(KW_BEVEL.rimBack + HUB_COLLAR_T / 2 - SAW_FIT),
   -(KW_BEVEL.rimBack + CLEAR_MARGIN + YOKE_TIP_HALF)
     + (HUB_COLLAR_T / 2 + YOKE_PRONG_R + SAW_FIT),
-  KW_BEVEL.rimFaceOut - (KW_BEVEL.setTipR + CLEAR_MARGIN) - HUB_COLLAR_T / 2);
+  KW_BEVEL.rimFaceOut - (KW_BEVEL.setTipR + CLEAR_MARGIN) - HUB_COLLAR_T / 2 - SEAT_RELIEF);
 export const YOKE_FORK_IN = YOKE_FORK_OUT - (HUB_COLLAR_T + 2 * (YOKE_PRONG_R + SAW_FIT));
 export const YOKE_TRACK_OFF = (YOKE_FORK_IN + YOKE_FORK_OUT) / 2;
 export const SAW_RING_ROOT = YOKE_FORK_IN - HUB_COLLAR_T / 2 + SAW_FIT - SAW_BASE_T;
@@ -1462,12 +1468,6 @@ export const STEM_CLUTCH_OFF =
 // interleave — asserted at the build (toothH + margin, against a ~1.3
 // travel).
 export const CLUTCH_TRAVEL = CROWN_PULL_DIST - STEM_CLUTCH_OFF;
-// The tick parks the clutch a hairline off the analytic seat (coincident
-// planes are the case the BVH instruments cannot arbitrate — the tick's
-// comment has the full §99 story); every reach derivation below budgets
-// it, because the DISPLAYED metal stands this much farther out than the
-// closed-form stack.
-export const SEAT_RELIEF = 0.005;
 // The stem's setting-lever GROOVE, outboard of everything the clutch can
 // reach: at home plus cam-over lift plus the seat relief, the RIM's
 // BEVELED outboard face — the clutch's leading edge — stands at
