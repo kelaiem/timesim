@@ -72,6 +72,26 @@ const out = await page.evaluate(async () => {
     return meshes.length ? { root: grp, meshes } : null;
   };
 
+  // PASS ONE: measure every declared member's bore, because the face width is a
+  // PAIR property and a member cannot compute it without its mate's.
+  for (const r of ROWS) {
+    const hit = find(r.name);
+    if (!hit) continue;
+    hit.root.updateMatrixWorld(true);
+    const inv0 = new THREE.Matrix4().copy(hit.root.matrixWorld).invert();
+    const v0 = new THREE.Vector3();
+    let b = Infinity;
+    for (const m of hit.meshes) {
+      const pos = m.geometry.attributes.position;
+      const toRoot = new THREE.Matrix4().multiplyMatrices(inv0, m.matrixWorld);
+      for (let i = 0; i < pos.count; i++) {
+        v0.fromBufferAttribute(pos, i).applyMatrix4(toRoot);
+        b = Math.min(b, Math.hypot(v0.x, v0.y));
+      }
+    }
+    r.bore = +b.toFixed(4);
+  }
+
   const rows = [];
   for (const r of ROWS) {
     const hit = find(r.name);
@@ -81,18 +101,33 @@ const out = await page.evaluate(async () => {
     const inv = new THREE.Matrix4().copy(hit.root.matrixWorld).invert();
     const lb = new THREE.Box3(), wb = new THREE.Box3();
     const v = new THREE.Vector3();
+    // THE BORE IS MEASURED, NOT RESTATED. The innermost metal in the member's
+    // own frame is its bore, so reading it off the vertices keeps one source —
+    // the clutch rim's is an expression in main.js
+    // (`STEM_R*0.98 + CLEAR_MARGIN + 2*KW_GEAR_BEVEL + SAW_FIT`) and copying it
+    // here would be a second.
+    let bore = Infinity;
     for (const m of hit.meshes) {
       wb.union(new THREE.Box3().setFromObject(m));
       const pos = m.geometry.attributes.position;
       const toRoot = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld);
-      for (let i = 0; i < pos.count; i++) lb.expandByPoint(v.fromBufferAttribute(pos, i).applyMatrix4(toRoot));
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(toRoot);
+        lb.expandByPoint(v);
+        const rc = Math.hypot(v.x, v.y);
+        if (rc < bore) bore = rc;
+      }
     }
+    r.bore = +bore.toFixed(4);
     const o = (v2) => +v2.toFixed(4);
     r.meshCount = hit.meshes.length;
     // the conical replacement, from the same counts, with the face width the
     // generator derives (coneR/3, the classical blank proportion)
-    const sp = G.bevelToothSpec({ module: r.module, teeth: r.teeth, mateTeeth: r.mateTeeth, boreR: r.bore });
-    const gcone = G.makeConicalGear({ teeth: r.teeth, module: r.module, mateTeeth: r.mateTeeth, boreR: r.bore });
+    const mateBore = (ROWS.find((x) => x.name === r.mate) || {}).bore;
+    const sp = G.bevelToothSpec({ module: r.module, teeth: r.teeth, mateTeeth: r.mateTeeth,
+      boreR: r.bore, mateBoreR: mateBore });
+    const gcone = G.makeConicalGear({ teeth: r.teeth, module: r.module, mateTeeth: r.mateTeeth,
+      boreR: r.bore, mateBoreR: mateBore });
     const cb = new THREE.Box3().setFromObject(gcone);
     rows.push({
       ...r,
@@ -111,7 +146,7 @@ const out = await page.evaluate(async () => {
       // deep dish rather than the flat plate a face gear actually is. Reporting
       // both is what separates "the teeth do not fit" from "the web does not".
       bandZ: [o(sp.coneRi * Math.cos(sp.thetaTip)), o(sp.coneR * Math.cos(sp.thetaRoot))],
-      boreZ: o(sp.zBoreOut),
+      webZ: [o(sp.coneRi * Math.cos(sp.thetaRoot)), o(sp.coneR * Math.cos(sp.thetaRoot))],
       gammaDeg: o((sp.gamma * 180) / Math.PI),
       coneR: o(sp.coneR), faceW: o(sp.faceW),
       // WHERE THE MEMBER'S CENTRE MUST STAND from the pair's shared apex
@@ -138,14 +173,14 @@ for (const r of R) {
 }
 
 console.log('\nAXIAL EXTENT, in the member\'s own frame — a spur disc straddles its plane, a cone does NOT\n');
-console.log('member           old z            blank z          TEETH z          web reaches');
+console.log('member           bore     old z            blank z          TEETH z          the web');
 for (const r of R) {
   if (r.missing) continue;
   const teethSpan = (r.bandZ[1] - r.bandZ[0]).toFixed(3);
-  console.log(`${r.name.padEnd(16)} ${`${r.oldLocalZ[0]}…${r.oldLocalZ[1]}`.padEnd(16)} `
+  console.log(`${r.name.padEnd(16)} ${String(r.bore).padEnd(8)} ${`${r.oldLocalZ[0]}…${r.oldLocalZ[1]}`.padEnd(16)} `
     + `${`${r.newLocalZ[0]}…${r.newLocalZ[1]}`.padEnd(16)} `
     + `${`${r.bandZ[0]}…${r.bandZ[1]}`.padEnd(16)} `
-    + `${r.boreZ} at the bore   (teeth only ${teethSpan} thick)`);
+    + `web ${r.webZ[0]}…${r.webZ[1]}   (blank ${(r.newLocalZ[1] - r.newLocalZ[0]).toFixed(3)} thick)`);
 }
 
 console.log('\nTHE STATION — a member\'s centre stands R·cos γ from the pair\'s shared apex,\nwhich at Σ = 90° is the MATE\'s pitch radius\n');
@@ -156,6 +191,21 @@ for (const r of R) {
   console.log(`${r.name.padEnd(16)} ${String(r.stationFromApex).padEnd(9)} ${String(r.matePitchR).padEnd(14)} ${ok ? 'yes' : '✗ NO'}`);
 }
 
+// THE BAND IS A PAIR PROPERTY, so the two members must compute the same face
+// width or they are not a pair at all — their bands would begin and end at
+// different cone distances and the teeth would only partly overlap.
+console.log('\nONE BAND PER PAIR — both members must derive the same face width\n');
+let bandBad = 0;
+for (const r of R) {
+  if (r.missing) continue;
+  const mate = R.find((x) => x.name === r.mate);
+  if (!mate || mate.missing) continue;
+  const ok = Math.abs(r.faceW - mate.faceW) < 1e-9;
+  if (!ok) bandBad++;
+  console.log(`  ${r.name.padEnd(16)} face ${String(r.faceW).padEnd(9)} vs ${mate.name.padEnd(16)} `
+    + `face ${String(mate.faceW).padEnd(9)} ${ok ? 'one band' : '✗ TWO BANDS — not a pair'}`);
+}
+
 console.log(`\n${missing.length} declared row(s) matched nothing`
   + (missing.length ? ' — the table is stale, and that is a failure, not a clean run' : ''));
-process.exit(missing.length ? 1 : 0);
+process.exit(missing.length || bandBad ? 1 : 0);
