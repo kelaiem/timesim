@@ -16367,6 +16367,38 @@ rather than re-pointed — the setting wheel left the stem bushing's reach
 entirely (1.5502, past `DECLARED_CONTACT_REACH`), so keeping them would have
 recorded a joint that is not there.
 
+**The acceptance.** Full battery, local, `--no-incremental`: **40/40**. The rows
+this item moved — `intraUnit` 0 unwaived / 0 unmatched / 0 declared rows that
+excuse nothing, `meshCoverage` 23 of 23 declared and 0 undeclared,
+`expectedContacts` 0 unwaived floor rows, `inspection` 0 FORBIDDEN,
+`sweptOverlap` 0 CONFIRMED, `clearances` 0 violations, `assembly` 0 undeclared
+splits in scope. Free space holds too: `probe-138-bevel-roll` 5/5 with all seven
+controls firing, `probe-138-fold-price` 4/4 members matching the specs they were
+cut to, one band per pair at 0.8007, every station on the mate's pitch radius.
+
+**And four of the last red rows were the INSTRUMENT or the ARITHMETIC, not the
+metal** — worth carrying because each is a general shape:
+
+- a hole drawn as a POLYGON is smaller than its radius, and this blank's
+  azimuths are a tooth outline's, sparse across the gaps, so a 0.6 bore over a
+  0.45 stem measured 0.1405. The ring is dilated so the hole is boreR
+  everywhere, which is `flatsR`'s convention pointed at a hole;
+- `probe-138-fold-price` then had to read the bore across its FLATS instead of
+  at its vertices, and its two bore measurements had to become ONE function:
+  correcting only the second split every pair into two bands, because a row
+  whose mate was not yet re-measured derived a different face width from the
+  same pair — the exact defect that table exists to catch, arriving from the
+  instrument;
+- a bound that budgets `SEAT_RELIEF` at one end of a stroke must budget it at
+  the other: the clutch parks 0.005 farther out than the closed-form stack, and
+  the collar's new wall read 0.145;
+- and a SAMPLED MAXIMUM IS A LOWER BOUND. The spine's cap takes the max of a
+  bound over a grid of the setting wheel's blank, so the true worst point can
+  lie between two samples — 0.1499 against 0.15, a miss of 1e-4 that is the
+  grid's spacing and not float noise. The spacing is ADDED to the bound rather
+  than refined away, which makes the cap sound at any sample count instead of
+  lucky at a large one.
+
 **What is NOT closed by this**, and belongs to the item it came from:
 `meshCandidates` still cannot PROPOSE a crossed-axis pair — it enumerates
 parallel axes only, so these two corners are declared by hand and no coverage
