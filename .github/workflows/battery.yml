@@ -290,6 +290,16 @@ concurrency:
 # (deploy) stay on GitHub-hosted runners and are not routed by this variable.
 # docs/RUNNERS.md carries the rest: the approval-policy recommendation, the
 # host's own isolation, and how a host's shard count is set on the host.
+# §227 — READ-ONLY, AND NOW EXPLICIT. The job reads another run's artifact and
+# conclusion to decide whether a merge can inherit its verdict, which needs
+# `actions: read`; everything else it does (the cache, its own artifact upload)
+# runs on the runtime token and needs no grant at all. Spelled out rather than
+# inherited from the repository default, because a job that can skip a merge
+# gate should say on its face that it cannot write anything.
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   battery:
     # A `labeled` event runs the job only for the two labels that change what
@@ -420,6 +430,87 @@ jobs:
           echo "§152: $why" >> "$GITHUB_STEP_SUMMARY"
           echo "§152: $why"
 
+      # §227 — THE DECIDER IS CHECKED BEFORE IT DECIDES. Milliseconds, no
+      # browser, and it runs on every event: `tools/**` and
+      # `.github/workflows/**` are both deliberately absent from this
+      # workflow's paths-ignore, so the population that could break the
+      # promotion rule is exactly the population this step sees. Placed ABOVE
+      # the decision so a broken checker fails the job rather than quietly
+      # deciding with it.
+      - name: The promotion checker refuses for every reason it claims (§227)
+        run: node tools/probe-227-promote.mjs
+
+      # ---- §227: could this push have inherited the PR's verdict? -----------
+      #
+      # A merge measures the same bytes twice: the PR's run measured
+      # `refs/pull/N/merge`, and the merge lands a commit with the SAME TREE
+      # that this run measures again. The obvious fix — let the PR write the
+      # baseline — is dead on arrival, because Actions caches are BRANCH-SCOPED
+      # and a PR-written cache cannot be read from main. (If it could, §200
+      # would never have needed its dispatch-on-main workaround to seed a
+      # host.) Artifacts are repo-scoped for READS, so the promotion runs the
+      # other way round: main pulls the PR's verdict rather than the PR pushing
+      # it.
+      #
+      # THIS TIER ONLY WATCHES. It computes the decision and writes it to the
+      # summary, and then the battery runs anyway. That is deliberate: this is
+      # the one step in the repository that could make a merge gate NOT RUN, and
+      # a skip nobody has seen be correct is exactly the "gate nobody has seen
+      # fire" that CLAUDE.md warns about, pointed the other way. The flip is one
+      # `if:` on the battery step, to be taken once these lines have agreed with
+      # reality over real merges.
+      #
+      # EVERY FAILURE PATH HERE MEANS RUN. No artifact, an expired one, an API
+      # that does not answer, a zip that will not open, a tree that does not
+      # match — each one falls through to `promote=false` and says which.
+      - name: Could this push have inherited a pull request's verdict? (§227, shadow)
+        if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+        id: promote
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLATFORM: ${{ runner.os }}/${{ runner.arch }}
+          OS: ${{ runner.os }}
+          ARCH: ${{ runner.arch }}
+        run: |
+          set -u
+          say() { echo "§227: $1" | tee -a "$GITHUB_STEP_SUMMARY"; }
+          promote=false
+          TREE=$(git rev-parse "HEAD^{tree}")
+          NAME="battery-tree-${OS}-${ARCH}-${TREE}"
+          API="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}"
+          say "this commit is tree ${TREE}; looking for ${NAME}"
+          art=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+                  -H "Accept: application/vnd.github+json" \
+                  "${API}/actions/artifacts?name=${NAME}&per_page=1" || echo '')
+          id=$(printf '%s' "$art" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s).artifacts||[];const g=a.find(x=>!x.expired);process.stdout.write(g?String(g.id):'')}catch{process.stdout.write('')}})" || echo '')
+          runid=$(printf '%s' "$art" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const a=JSON.parse(s).artifacts||[];const g=a.find(x=>!x.expired);process.stdout.write(g&&g.workflow_run?String(g.workflow_run.id):'')}catch{process.stdout.write('')}})" || echo '')
+          if [ -z "$id" ]; then
+            say "no unexpired artifact by that name — nothing to inherit, running the battery"
+          else
+            rm -rf .battery-candidate && mkdir -p .battery-candidate
+            if curl -sSL -H "Authorization: Bearer $GH_TOKEN" \
+                 "${API}/actions/artifacts/${id}/zip" -o .battery-candidate/a.zip \
+               && unzip -q -o .battery-candidate/a.zip -d .battery-candidate; then
+              concl=$(curl -sS -H "Authorization: Bearer $GH_TOKEN" \
+                        "${API}/actions/runs/${runid}" \
+                      | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(String(JSON.parse(s).conclusion||''))}catch{process.stdout.write('')}})" || echo '')
+              if node tools/battery-promote.mjs \
+                   --provenance .battery-candidate/provenance.json \
+                   --report .battery-candidate/report.json \
+                   --tree "$TREE" --platform "$PLATFORM" \
+                   --repo "$GITHUB_REPOSITORY" --conclusion "$concl" | tee -a "$GITHUB_STEP_SUMMARY"; then
+                promote=true
+              fi
+            else
+              say "artifact ${id} would not download or unzip — running the battery"
+            fi
+          fi
+          echo "promote=$promote" >> "$GITHUB_OUTPUT"
+          if [ "$promote" = true ]; then
+            say "SHADOW: this run could have been skipped. It runs anyway — tier one only watches."
+          fi
+
       - name: Run the battery
         run: |
           mkdir -p .battery-out
@@ -461,6 +552,75 @@ jobs:
         run: |
           node tools/probe-187-casing-path.mjs
           node tools/probe-back-envelope.mjs
+
+      # ---- §227: what this run measured, so a merge can tell ----------------
+      #
+      # The tree, not the commit. A merge commit is a different OBJECT from the
+      # PR's merge preview by construction, so comparing SHAs would never match
+      # and comparing nothing would inherit a verdict about different bytes.
+      # The tree is the same object when the bytes are the same, which is the
+      # only question worth asking.
+      #
+      # Written even on a run that may not be promoted (a restricted one, a
+      # fork's) because the FILE is a record of what happened; it is the
+      # PUBLISH step below that is choosy, and `battery-promote.mjs` checks
+      # every clause again on the reading side. Two independent refusals for
+      # one rule is the shape this file already uses for seeding.
+      - name: Record what this run measured (§227)
+        if: success()
+        id: provenance
+        env:
+          PLATFORM: ${{ runner.os }}/${{ runner.arch }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+        run: |
+          set -u
+          TREE=$(git rev-parse "HEAD^{tree}")
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('.battery-out/report.json')).restrictedTo?0:1)"; then
+            RESTRICTED=true
+          else
+            RESTRICTED=false
+          fi
+          cat > .battery-out/provenance.json <<JSON
+          {
+            "promoteFormat": 1,
+            "tree": "$TREE",
+            "commit": "$GITHUB_SHA",
+            "platform": "$PLATFORM",
+            "event": "$GITHUB_EVENT_NAME",
+            "headRepo": "$HEAD_REPO",
+            "runId": "$GITHUB_RUN_ID",
+            "restricted": $RESTRICTED
+          }
+          JSON
+          echo "tree=$TREE" >> "$GITHUB_OUTPUT"
+          echo "restricted=$RESTRICTED" >> "$GITHUB_OUTPUT"
+          echo "§227: measured tree $TREE on $PLATFORM, restricted=$RESTRICTED" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # PUBLISH IT UNDER THE TREE, for a later merge to find by name.
+      #
+      # Three conditions, and the third is the security one. A `pull_request`
+      # event takes its WORKFLOW from the base branch but the CODE it runs from
+      # the PR's head, so a fork could ship a harness that writes a green report
+      # having measured nothing. §200 already tests the head repo before it
+      # reads anything else when choosing a host; a verdict deserves the same
+      # line. `battery-promote.mjs` refuses a fork's provenance again on the
+      # reading side, so neither half is the only thing standing there.
+      #
+      # `overwrite` because a re-run of the same PR on the same tree produces
+      # the same name, and upload-artifact@v4 treats a taken name as an ERROR —
+      # which would turn a harmless second run into a red battery.
+      - name: Publish this verdict for the merge to inherit (§227)
+        if: >-
+          success() && steps.provenance.outputs.restricted == 'false'
+          && (github.event_name != 'pull_request'
+              || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/upload-artifact@v4
+        with:
+          name: battery-tree-${{ runner.os }}-${{ runner.arch }}-${{ steps.provenance.outputs.tree }}
+          path: .battery-out/
+          include-hidden-files: true
+          retention-days: 14
+          overwrite: true
 
       # §200 — WHO MAY SEED A BASELINE, and why a DISPATCH now may.
       #
