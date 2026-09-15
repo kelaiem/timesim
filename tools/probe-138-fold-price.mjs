@@ -1,21 +1,26 @@
-// TODO 138 Landing 2 — WHAT DOES THE FOLD COST, IN POSITION SPACE?
-// Report, browser, on the shipped tree. Prices the conversion of every bevel
-// gear in the movement from the shear-cone form to the apex-ruled one BEFORE
-// any of it is cut, which is CLAUDE.md's order of work: prove the group at P0
-// in free space (Landing 1, done), then hunt the packaging at P3 with the
-// mechanism's dimensions held fixed. Answers three questions the fold turns on:
-// where each gear's APEX actually is and whether a pair's two apexes coincide
-// (the new form meshes only if they do, and the old form never touched at any
-// station so nothing has ever tested it); how each blank's ENVELOPE changes,
-// old local extent against new, in the gear's own frame and in world; and what
-// stands inside any region the new blank reaches that the old one did not.
+// WHAT DOES IT COST, IN POSITION SPACE, TO CUT A PAIR AS CONICAL GEARS?
+// Report, browser, on the shipped tree. Prices a spur-or-sheared member's
+// replacement by `makeConicalGear` BEFORE any of it is cut, which is CLAUDE.md's
+// order of work: prove the group at P0 in free space, then hunt the packaging at
+// P3 with the mechanism's dimensions held fixed. Answers, per member: what the
+// metal occupies TODAY in its own frame and in world; what the conical blank
+// would occupy at the same apex; and whether that reaches anywhere the old one
+// did not — a shrink is nearly free, a GROWTH is a P3 conflict to solve by
+// moving a station, never by trimming a tooth.
 //
-// The shear form's blank is not the cone it looks like: the extrude runs
-// z ∈ [0, faceWidth] and every vertex then moves z += hypot(x,y)·taper, so the
-// body spans z from 0 to faceWidth + tipR·taper — for the motion-works mitre
-// that is 0 → 2.855, against the conical blank's 1.0 → 1.5. A shrink is the
-// expected direction and is nearly free; a GROWTH anywhere is a P3 conflict to
-// solve by moving a station, never by trimming the tooth.
+// It also prices the STATION, because for a crossed-axis pair the two are one
+// question. Two cones on a shared apex put the member's centre at R·cos γ from
+// that apex, and for Σ = 90° that reduces to `module·z_mate/2` — the MATE's
+// pitch radius. A row declaring a current separation that differs is quoting
+// the correction the fold has to make.
+//
+// IT DECLARES ITS SUBJECTS RATHER THAN DISCOVERING THEM, and that is the repair
+// this file needed. It used to find its subjects by `userData.solid.shearZ` —
+// the shear-cone declaration — and when TODO 138 Landing 2 retired that builder
+// the probe went on running and printed "0 bevel gear(s) in the metal", a clean
+// report of no work at all. A discovered population can empty itself silently;
+// a declared one cannot, so an unmatched row is a FAILURE here and an empty
+// table refuses.
 //
 // cd tools && node probe-138-fold-price.mjs
 import { chromium } from 'playwright';
@@ -37,159 +42,120 @@ const out = await page.evaluate(async () => {
   const THREE = await import('three');
   const G = await import('./src/geometry.js');
   const C = window.__clock;
+
+  // TODO 136's four: two crossed pairs carrying the keyless works, cut today as
+  // FLAT SPUR wheels with one member of each turned 90°. Counts and module are
+  // layout.js's (KW_MODULE 0.34; crown and setting 20 t, pinion and clutch rim
+  // 8 t), named here so a change there shows up as a diff.
+  const ROWS = [
+    { name: 'crownWheel', mate: 'windingPinion', teeth: 20, mateTeeth: 8, module: 0.34, bore: 0.7 },
+    { name: 'windingPinion', mate: 'crownWheel', teeth: 8, mateTeeth: 20, module: 0.34, bore: 0.7 },
+    { name: 'settingWheel', mate: 'clutchRim', teeth: 20, mateTeeth: 8, module: 0.34, bore: 0.7 },
+    { name: 'clutchRim', mate: 'settingWheel', teeth: 8, mateTeeth: 20, module: 0.34, bore: 0.7 },
+  ];
+
+  // A MEMBER IS A GROUP OF MESHES, not one mesh, and pricing its envelope means
+  // unioning them. The first version of this took the last mesh matching the
+  // name and priced the crown wheel at r 1.12 — its HUB — against a 3.52 cone,
+  // and reported the fold "reaching further out" on the strength of it. A
+  // 20-tooth wheel at module 0.34 has a tip near 3.6, which is what said so.
+  const find = (name) => {
+    let grp = null;
+    C.scene.traverse((o) => { if (o.name === name && o.children && o.children.length) grp = o; });
+    if (!grp) {
+      let m = null;
+      C.scene.traverse((o) => { if (o.isMesh && o.name === name) m = o; });
+      return m ? { root: m, meshes: [m] } : null;
+    }
+    const meshes = [];
+    grp.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.attributes.position) meshes.push(o); });
+    return meshes.length ? { root: grp, meshes } : null;
+  };
+
   const rows = [];
-
-  // EVERY bevel in the metal, found by the shear declaration rather than by a
-  // name list — a list would go stale the moment a corner is added, and this
-  // question is exactly "did we find them all".
-  const found = [];
-  C.scene.traverse((o) => {
-    if (o.isMesh && o.userData.solid && o.userData.solid.shearZ) found.push(o);
-  });
-
-  for (const mesh of found) {
-    const grp = mesh.parent;                      // makeBevelGear's Group
-    const teeth = grp.userData.teeth, module = grp.userData.module;
-    mesh.updateMatrixWorld(true);
-    const g = mesh.geometry;
-    g.computeBoundingBox();
-    const lb = g.boundingBox;
-    // the apex: the gear group's own origin, in world
-    const apex = new THREE.Vector3().setFromMatrixPosition(grp.matrixWorld);
-    const axis = new THREE.Vector3(0, 0, 1).transformDirection(grp.matrixWorld).normalize();
-    const wb = new THREE.Box3().setFromObject(mesh);
+  for (const r of ROWS) {
+    const hit = find(r.name);
+    if (!hit) { rows.push({ ...r, missing: true }); continue; }
+    hit.root.updateMatrixWorld(true);
+    // local extent in the MEMBER's own frame, unioned over its meshes
+    const inv = new THREE.Matrix4().copy(hit.root.matrixWorld).invert();
+    const lb = new THREE.Box3(), wb = new THREE.Box3();
+    const v = new THREE.Vector3();
+    for (const m of hit.meshes) {
+      wb.union(new THREE.Box3().setFromObject(m));
+      const pos = m.geometry.attributes.position;
+      const toRoot = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld);
+      for (let i = 0; i < pos.count; i++) lb.expandByPoint(v.fromBufferAttribute(pos, i).applyMatrix4(toRoot));
+    }
+    const o = (v2) => +v2.toFixed(4);
+    r.meshCount = hit.meshes.length;
+    // the conical replacement, from the same counts, with the face width the
+    // generator derives (coneR/3, the classical blank proportion)
+    const sp = G.bevelToothSpec({ module: r.module, teeth: r.teeth, mateTeeth: r.mateTeeth, boreR: r.bore });
+    const gcone = G.makeConicalGear({ teeth: r.teeth, module: r.module, mateTeeth: r.mateTeeth, boreR: r.bore });
+    const cb = new THREE.Box3().setFromObject(gcone);
     rows.push({
-      name: mesh.name || grp.name || '(unnamed)', group: grp.name || '',
-      teeth, module,
-      taper: o0(mesh.userData.solid.shearZ), faceW: o0(mesh.userData.solid.zHi - mesh.userData.solid.zLo),
-      localZ: [o(lb.min.z), o(lb.max.z)], localR: o(Math.max(Math.abs(lb.min.x), lb.max.x, Math.abs(lb.min.y), lb.max.y)),
-      apex: [o(apex.x), o(apex.y), o(apex.z)],
-      axis: [o(axis.x), o(axis.y), o(axis.z)],
+      ...r,
+      meshCount: r.meshCount,
+      oldLocalR: o(Math.max(Math.abs(lb.min.x), lb.max.x, Math.abs(lb.min.y), lb.max.y)),
+      oldLocalZ: [o(lb.min.z), o(lb.max.z)],
       worldMin: [o(wb.min.x), o(wb.min.y), o(wb.min.z)],
       worldMax: [o(wb.max.x), o(wb.max.y), o(wb.max.z)],
+      newLocalR: o(Math.max(Math.abs(cb.min.x), cb.max.x, Math.abs(cb.min.y), cb.max.y)),
+      newLocalZ: [o(cb.min.z), o(cb.max.z)],
+      // WHERE THE TEETH ARE, separately from the blank that carries them. The
+      // toothed band is ρ ∈ [coneRi, coneR] over θ ∈ [θ_root, θ_tip], so its axial
+      // reach is coneRi·cos θ_tip … coneR·cos θ_root. The BLANK reaches further
+      // because its web runs inboard at constant cone distance, down to where
+      // the bore cuts it at √(coneR² − bore²) — which for a shallow cone is a
+      // deep dish rather than the flat plate a face gear actually is. Reporting
+      // both is what separates "the teeth do not fit" from "the web does not".
+      bandZ: [o(sp.coneRi * Math.cos(sp.thetaTip)), o(sp.coneR * Math.cos(sp.thetaRoot))],
+      boreZ: o(sp.zBoreOut),
+      gammaDeg: o((sp.gamma * 180) / Math.PI),
+      coneR: o(sp.coneR), faceW: o(sp.faceW),
+      // WHERE THE MEMBER'S CENTRE MUST STAND from the pair's shared apex
+      stationFromApex: o(sp.coneR * Math.cos(sp.gamma)),
+      matePitchR: o((r.module * r.mateTeeth) / 2),
     });
   }
-  function o(v) { return +v.toFixed(4); }
-  function o0(v) { return +v.toFixed(4); }
-
-  // The new form's local extent, from the SAME inputs, via the real spec.
-  for (const r of rows) {
-    try {
-      // The face width is DERIVED, not inherited: coneR/3 is the classical
-      // blank proportion and the shipped numbers exceed it on 7 of 11 gears.
-      // Pricing the fold against the number the fold would actually use.
-      const sp = G.bevelToothSpec({ module: r.module, teeth: r.teeth, mateTeeth: r.teeth, boreR: 0.4 });
-      // Read the extent off the BUILT mesh rather than restating the blank's
-      // shape here — a second copy of that law is exactly the defect this item
-      // keeps finding (the shear law lives in subtractorSpec's prose too).
-      const g2 = G.makeConicalGear({ teeth: r.teeth, module: r.module, mateTeeth: r.teeth, boreR: 0.4 });
-      const bb2 = new THREE.Box3().setFromObject(g2);
-      r.newZ = [o(bb2.min.z), o(bb2.max.z)];
-      r.newR = o(Math.max(Math.abs(bb2.min.x), bb2.max.x, Math.abs(bb2.min.y), bb2.max.y));
-      r.newFace = o(sp.faceW);
-      r.gammaDeg = o((sp.gamma * 180) / Math.PI);
-      r.coneR = o(sp.coneR);
-      r.faceCap = o(sp.coneR / 3);
-    } catch (e) { r.err = String(e); }
-  }
-  // APEX SEPARATION ACROSS THE POSE NET, which is the question the static
-  // reading above cannot answer. The alarm SETTING corner engages only when the
-  // crown is pulled (runAlarm in probe-crossed-axis-mesh poses
-  // alarmCrownPullT: 1), so at rest its two gears stand apart and a rest-pose
-  // apex reading says nothing about whether the corner is a corner. The new
-  // form meshes only where the two apexes are ONE POINT, so this is P0: measure
-  // the separation through the engagement, not at one end of it.
-  const pairs = [
-    ['alarmDiscBevel', 'alarmStemBevel', 'the declared setting corner'],
-    ['alarmStemBevel', 'alarmWindContrate', 'the two that already share an apex at rest'],
-    ['mwCornerDropIn', 'mwCornerDropOut', 'control — a corner built by addBevelCorner'],
-  ];
-  // Found the SAME way the table above labels them, which is the point: a
-  // bevel's name may sit on the mesh (alarmDiscBevel) or on the Group that
-  // makeBevelGear returned (addBevelCorner writes `${tag}In` there). Matching
-  // only meshes found nothing and every row including the CONTROL came back
-  // NaN — which is the control earning its place, because the two real rows
-  // would have read as a finding.
-  const apexOf = (name) => {
-    let grp = null;
-    C.scene.traverse((o) => {
-      if (!o.isMesh || !o.userData.solid || !o.userData.solid.shearZ) return;
-      if (o.name === name || (o.parent && o.parent.name === name)) grp = o.parent;
-    });
-    if (!grp) return null;
-    grp.updateMatrixWorld(true);
-    return new THREE.Vector3().setFromMatrixPosition(grp.matrixWorld);
-  };
-  const sweepApex = [];
-  for (const [a, b, note] of pairs) {
-    const samples = [];
-    for (let i = 0; i <= 20; i++) {
-      const f = i / 20;
-      C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
-        alarmCrownRotation: 0, alarmOn: 1, alarmCrownPullT: f });
-      C.scene.updateMatrixWorld(true);
-      const pa = apexOf(a), pb = apexOf(b);
-      if (pa && pb) samples.push({ f: +f.toFixed(2), d: +pa.distanceTo(pb).toFixed(4) });
-    }
-    C.resetInputs(); C.scene.updateMatrixWorld(true);
-    const min = samples.reduce((m, s) => (s.d < m.d ? s : m), samples[0] || { f: 0, d: NaN });
-    sweepApex.push({ a, b, note, min, samples });
-  }
-  return { rows, sweepApex };
+  return { rows };
 });
 await browser.close(); srv.kill();
 
 const R = out.rows;
-console.log(`${R.length} bevel gear(s) in the metal, found by their shear declaration\n`);
-console.log('gear                      teeth  module  γ      coneR   face    face cap  verdict');
-for (const r of R)
-  console.log(`${r.name.padEnd(25)} ${String(r.teeth).padEnd(6)} ${String(r.module).padEnd(7)} `
-    + `${String(r.gammaDeg).padEnd(6)} ${String(r.coneR).padEnd(7)} ${String(r.faceW).padEnd(7)} `
-    + `${String(r.faceCap).padEnd(9)} ${r.faceW > r.faceCap ? '✗ face over coneR/3' : 'OK'}`);
+const missing = R.filter((r) => r.missing);
+if (!R.length) { console.log('THE TABLE IS EMPTY — nothing was priced. This is a refusal, not a clean report.'); process.exit(1); }
 
-console.log('\nENVELOPE, in the gear\'s own frame — the shear blank against the conical one\n');
-console.log('gear                      old z            old r    new z            new r    Δz span   Δr');
+console.log(`${R.length} member(s) declared, ${R.length - missing.length} found in the metal\n`);
+console.log('member           teeth  γ°      coneR   face    old r    new r    Δr       verdict');
 for (const r of R) {
-  r.inside = r.newZ[0] >= r.localZ[0] - 1e-9 && r.newZ[1] <= r.localZ[1] + 1e-9 && r.newR <= r.localR + 1e-9;
-  const oldSpan = r.localZ[1] - r.localZ[0], newSpan = r.newZ[1] - r.newZ[0];
-  console.log(`${r.name.padEnd(25)} ${`${r.localZ[0]}…${r.localZ[1]}`.padEnd(16)} ${String(r.localR).padEnd(8)} `
-    + `${`${r.newZ[0]}…${r.newZ[1]}`.padEnd(16)} ${String(r.newR).padEnd(8)} `
-    + `${(newSpan - oldSpan).toFixed(3).padStart(8)}  ${(r.newR - r.localR).toFixed(3).padStart(7)}`
-    + `  ${r.inside ? 'inside the old blank' : '✗ REACHES OUTSIDE — site it, do not trim it'}`);
+  if (r.missing) { console.log(`${r.name.padEnd(16)} ✗ NOT IN THE METAL — a declared row that matched nothing`); continue; }
+  const d = r.newLocalR - r.oldLocalR;
+  console.log(`${r.name.padEnd(16)} ${String(r.teeth).padEnd(6)} ${String(r.gammaDeg).padEnd(7)} ${String(r.coneR).padEnd(7)} `
+    + `${String(r.faceW).padEnd(7)} ${String(r.oldLocalR).padEnd(8)} ${String(r.newLocalR).padEnd(8)} `
+    + `${d.toFixed(3).padStart(7)}  ${d <= 0 ? 'inside the old rim' : '✗ REACHES FURTHER OUT — site it, do not trim it'}`);
 }
 
-// APEX COINCIDENCE — the fold's one hard precondition, and the thing the old
-// form could never have tested because it never touched at any station.
-console.log('\nAPEXES — the new form meshes only if a pair\'s two apexes are one point\n');
-const key = (a) => a.map((v) => v.toFixed(3)).join(',');
-const byApex = new Map();
+console.log('\nAXIAL EXTENT, in the member\'s own frame — a spur disc straddles its plane, a cone does NOT\n');
+console.log('member           old z            blank z          TEETH z          web reaches');
 for (const r of R) {
-  const k = key(r.apex);
-  if (!byApex.has(k)) byApex.set(k, []);
-  byApex.get(k).push(r);
-}
-console.log('apex (world)                   gears sharing it');
-for (const [k, list] of byApex)
-  console.log(`  ${k.padEnd(30)} ${list.length}: ${list.map((r) => r.name).join(', ')}`
-    + (list.length >= 2 ? '' : '   ← ALONE, so its mate\'s apex is somewhere else'));
-
-console.log('\nWORLD BOXES — where each blank actually stands, and whether a "pair" is even adjacent\n');
-console.log('gear                      axis                    world x          world y          world z');
-for (const r of R)
-  console.log(`${r.name.padEnd(25)} ${r.axis.join(',').padEnd(23)} `
-    + `${`${r.worldMin[0]}…${r.worldMax[0]}`.padEnd(16)} ${`${r.worldMin[1]}…${r.worldMax[1]}`.padEnd(16)} `
-    + `${`${r.worldMin[2]}…${r.worldMax[2]}`}`);
-
-console.log('\nAPEX SEPARATION THROUGH THE ALARM CROWN\'S PULL — the corner engages only when pulled\n');
-for (const p of out.sweepApex) {
-  console.log(`  ${p.a} \u21c4 ${p.b}   (${p.note})`);
-  console.log(`      by pull:  ` + p.samples.map((s) => s.d.toFixed(2)).join(' '));
-  console.log(`      CLOSEST the two apexes ever come: ${p.min.d} at pull ${p.min.f}`
-    + (p.min.d < 1e-3 ? '   \u2014 one point, so this IS a corner' : '   \u2014 NOT ONE POINT: no tooth form meshes here'));
+  if (r.missing) continue;
+  const teethSpan = (r.bandZ[1] - r.bandZ[0]).toFixed(3);
+  console.log(`${r.name.padEnd(16)} ${`${r.oldLocalZ[0]}…${r.oldLocalZ[1]}`.padEnd(16)} `
+    + `${`${r.newLocalZ[0]}…${r.newLocalZ[1]}`.padEnd(16)} `
+    + `${`${r.bandZ[0]}…${r.bandZ[1]}`.padEnd(16)} `
+    + `${r.boreZ} at the bore   (teeth only ${teethSpan} thick)`);
 }
 
-const lone = [...byApex.values()].filter((l) => l.length < 2);
-const overFace = R.filter((r) => r.faceW > r.faceCap);
-const grew = R.filter((r) => !r.inside);
-console.log(`\n${R.length} gears · ${byApex.size} distinct apexes · ${lone.length} with no partner at the same point`);
-console.log(`${overFace.length} over the coneR/3 face proportion · ${grew.length} whose blank reaches outside the old one (a P3 conflict to site, not to trim)`);
+console.log('\nTHE STATION — a member\'s centre stands R·cos γ from the pair\'s shared apex,\nwhich at Σ = 90° is the MATE\'s pitch radius\n');
+console.log('member           R·cos γ   mate pitch r   agree');
+for (const r of R) {
+  if (r.missing) continue;
+  const ok = Math.abs(r.stationFromApex - r.matePitchR) < 1e-3;
+  console.log(`${r.name.padEnd(16)} ${String(r.stationFromApex).padEnd(9)} ${String(r.matePitchR).padEnd(14)} ${ok ? 'yes' : '✗ NO'}`);
+}
+
+console.log(`\n${missing.length} declared row(s) matched nothing`
+  + (missing.length ? ' — the table is stale, and that is a failure, not a clean run' : ''));
+process.exit(missing.length ? 1 : 0);

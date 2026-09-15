@@ -16223,6 +16223,58 @@ non-meshing pair to the right place, which is not worth a dial-side cascade on
 its own. Sequence: 138 gives a form that meshes, then 136 cuts these two pairs in
 it and moves the station in the same landing.
 
+### The fold, priced — and it is the WEB that does not fit, not the teeth
+
+[TODO 138] landed the conjugate form, so 136 is unblocked and the line is
+already proven for both of these pairs: `probe-138-bevel-roll` carries
+`crownWheel ⇄ windingPinion` and `settingWheel ⇄ clutchRim` as rows, both at
+**0.00000 penetration** with min clear 0.01304 and all seven controls firing.
+P0 is done in free space. What is left is the fold.
+
+**The station derivation is confirmed independently.** `probe-138-fold-price`
+now computes each member's `R·cos γ` from the pair's shared apex and compares it
+with the MATE's pitch radius — two paths to one number, asserted rather than
+resembled. They agree exactly: **1.3600** for the 20-tooth members, **3.4000**
+for the 8-tooth. So `layout.js`'s two `windPinionR * 0.55` terms are wrong by
+0.7480 apiece, as this item has said, and the correction is simply to delete
+them: `pinDist = cwDist + crownWheelR` and `swDist = clutchHomeDist +
+CLUTCH_TRAVEL + settingWheelR`.
+
+**Radially the fold is free.** Every member SHRINKS:
+
+| member | old r | conical r | |
+|---|---|---|---|
+| `crownWheel`, `settingWheel` | 3.9654 | 3.5157 | −0.450 |
+| `windingPinion`, `clutchRim` | 1.4720 | 1.3933 | −0.079 |
+
+**Axially it is not, and the reason is worth separating.** A spur disc straddles
+its plane; a cone does not, and these members' blanks span 0.678–3.594 in their
+own frames. But the TEETH are not what reaches:
+
+| member | teeth occupy | thickness | web reaches |
+|---|---|---|---|
+| `crownWheel`, `settingWheel` (γ 68.199°) | 0.678–1.472 | **0.793** | **3.594** at the bore |
+| `windingPinion`, `clutchRim` (γ 21.801°) | 2.251–3.534 | 1.283 | 3.594 at the bore |
+
+For the near-face members the toothed band is a 0.79-thick ring sitting about
+1.1 off the old plane — tractable. The 3.594 is the WEB: `makeConicalGear` runs
+its blank inboard at constant CONE DISTANCE, so the bore cuts it at
+√(coneR² − bore²), and at γ = 68° that is a **deep dish where a real face gear is
+a flat plate**. On the crown wheel, whose axis is vertical, it would stand 3.59
+proud of the corner on the arbor the transfer wheel shares.
+
+**So the next step is a blank shape, not a tooth.** The toothed band must stay
+apex-ruled between two cone distances — that is what makes the teeth interleave
+and the two members' bands shared — but the WEB inboard of the root cone should
+be bounded by planes, as it is on real bevel and face gears. That spends nothing
+at P0: the flanks are untouched. Sized from the same numbers, a plane-bounded
+web gives the crown wheel a 0.45-thick ring at z 0.908–1.361, against the
+1.65-thick disc it replaces.
+
+Cone distances were right for the 45° mitres of [TODO 138] and are wrong here;
+that the two cases want different web treatment is the thing to carry, not a
+number.
+
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where
 `disc rim ⇄ idler 1b` transmits at +1.071429 against a bar of -1.071429, two
