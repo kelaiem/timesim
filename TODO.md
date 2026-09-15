@@ -17450,10 +17450,14 @@ readout of the alarm setting — defensible, and the simplest honest thing; or
 (b) the index is re-solved at the moment of engagement, which is what the metal
 does and needs an engagement event the tick does not currently have.
 
-**Waived where it is, and the waiver is audited.** `assertBevelCorner` at the
-corner's build carries the waiver string, and the guard warns if a WAIVED
-corner measures IN index — so the fix cannot leave its waiver behind. Same
-convention as `SLENDER_WAIVERS` and §137's transfer waivers.
+**Reported, not waived, because there is nothing here to waive it AT.** The
+boot guard this item was found by is gone — see [TODO 139] for why a corner's
+index cannot be asserted at boot, and note the finding that killed it lands
+here: **at the BUILD pose this corner is perfectly indexed, 0.0000 / 0.0000.**
+Its miss is a property of the REST pose alone, which is exactly the item —
+the index is solved at a pose the movement never occupies. `tools/probe-bevel-corner-index.mjs`
+measures it at a controlled pose and reports it, and the corner's own build
+carries the diagnosis in a comment rather than a waiver string.
 
 ### AND THE TWO MOTION-WORKS CORNERS, WHICH ARE THE SAME ITEM
 
@@ -17485,12 +17489,10 @@ motion works' rest pose — a mesh phase the §137 transfer rows, the intra-unit
 tiers and `meshPhase` all read. That is a re-measure, not a substitution, and
 it belongs with this item's own decision rather than bolted to a frame fix.
 
-**Registered with the guard, WAIVED, so the debt is visible at boot and not
-only in a probe.** `addBevelCorner` now calls `assertBevelCorner` for the pair
-it builds, citing this item. The waiver is audited the same way the alarm
-corner's is: convert a corner and it measures IN index, the guard warns that
-its waiver is stale, and deleting the waiver becomes structurally part of the
-fix.
+**Reported by the probe, for the same reason the alarm half is** — the boot
+guard that would have carried them is gone (see [TODO 139]), because a corner's
+index is a property of a pose and boot has none. `addBevelCorner` states the
+measurement in a comment beside the seed instead.
 
 ## 139. The alarm setting corner is not a closed loop when engaged: the hour back-drives the disc past a crown that cannot follow — WITHDRAWN
 
@@ -17738,13 +17740,39 @@ tooth positions, which no frame bug can get at.
   rays differ in azimuth by exactly π, four pitches of an 8-tooth pinion and ten
   of a 20-tooth wheel, integers both — and the alarm's own `rayAxis`, the only
   one that measured, through the same hole as the index.
-- **A boot guard that measures the metal rather than restating the solve.**
-  `assertBevelCorner` registers each corner at its build and runs at the end of
-  boot, where the world matrices are current — which is the very hole the defect
-  fell through, so a guard that ran early would have shared it. Budget: a
-  twentieth of a pitch, against defects of 0.126 and 0.133. A corner may be
-  WAIVED citing a TODO, and a waiver naming a corner that measures IN index is
-  itself a warning, so a fix cannot leave its waiver behind.
+- **A boot guard was written for this and then REMOVED, and the removal is the
+  more useful half of the record.** It measured the metal — where each member's
+  tooth points in world, against the pair's contact ray — and it worked: it
+  found TODO 140's alarm corner on its first run, on a corner nobody had
+  suspected. It shipped in this branch and CI killed it, on a row no local run
+  reaches (`offline`: "release: console silent throughout (rule 6)").
+
+  **A corner's index is a property of a POSE, and boot has no pose.** Traced:
+  `main.js` carries a top-level `await loadState()`, so module evaluation
+  suspends and a SAVED `barrelWindTurns` lands in the wind variables; then
+  `tick(0)` — "seed correct initial pose before the first paint" — applies it,
+  and every stem-side member of both keyless corners rides the stem
+  (`windClutch` and `windPinionGroup` take `-windStemRot`). A guard after that
+  measures what the last session saved. Locally there is no saved state, the
+  wind defaults to full, and the rim sits where it was built, so it was silent;
+  the offline check reloads, a different wind persists, and the rim came back
+  HALF A PITCH out. **Rule 6 is not "silent on a fresh profile."**
+
+  Moving it to just BEFORE `tick(0)` — current matrices, build pose — does not
+  save it, and measuring that was worth more than the guard: at the BUILD pose
+  the ALARM corner reads 0.0000/0.0000, perfectly indexed, while the WINDING
+  corner reads its crown wheel 0.0556 out, because `crownWheel.rotation.z` is
+  only posed from `crownWheelBase` by the tick. So the build pose and the rest
+  pose each satisfy a DIFFERENT subset of the corners, and no third pose exists
+  at boot. The claim needs a posed movement, which is why every battery check
+  runs against `resetInputs`/`setPose` — and it is `tools/probe-bevel-corner-index.mjs`'s,
+  where it is measured at a controlled pose with four controls, and where it
+  keeps reporting the alarm corner and the two motion-works corners as TODO
+  140's.
+
+  It could not simply have been widened into silence, either: the budget it
+  wanted was a twentieth of a pitch against defects of 0.126 and 0.133, and the
+  restored-wind excursion is half a pitch.
 
 Measured after, same instrument, all four controls passing and boot silent:
 

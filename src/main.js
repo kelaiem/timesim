@@ -109,22 +109,6 @@ const CROWN_RAD_PER_TURN = -(WIND_SPUR_TEETH / crownWheelTeeth) * SPUR_RAD_PER_T
 // point: with the wheel underneath, the crown winds the OTHER way round. That is
 // a gearing outcome walked through the chain, which is what CLAUDE.md asks of
 // every direction-committed site, rather than a preference stated here.
-// TODO 139 — the bevel corners' index guard, declared here because the corners
-// REGISTER with it as they are built and `assertBevelCorner`'s registry must
-// exist by then. The guard itself runs at the end of boot, where the scene's
-// world matrices are current — which is the whole point of it (see
-// `assertBevelCorner`). Tolerance: a twentieth of a pitch. The two defects it
-// exists for are 0.13 of one; anything at that scale is a phase error, and
-// nothing smaller is worth a boot warning against a cut whose own backlash is a
-// few percent.
-const BEVEL_INDEX_TOL = 0.05;                 // fraction of one pitch
-const bevelCornerGuards = [];
-// …and that they ran BEFORE the first pose is itself a claim, so `tick` says so
-// rather than a comment asking. Moving the run below `tick(0)` makes the guard
-// a function of restored state again, silently — which is exactly how it
-// shipped the first time.
-let BEVEL_GUARDS_RAN = false;
-let BEVEL_GUARDS_TICKED = false;
 const KW_WIND_WHEEL_SIDE = -1;   // ASSERTED against crownWheelMount at its build
 // The SETTING corner's own side, the same question at the other station and
 // forced rather than chosen: the stem runs through that station on its way to
@@ -4419,7 +4403,6 @@ assertWheelSide(crownWheelMount, KW_WIND_WHEEL_SIDE, 'keyless winding corner');
 const crownWheelBase = (() => {
   const ray = bevelCornerRay(bevelCornerAxis(crownWheelMount), bevelCornerAxis(windPinionMount));
   windPinion.rotation.z = bevelCornerSpin(windPinion, ray, windPinionTeeth, true);
-  assertBevelCorner(crownWheel, crownWheelTeeth, windPinion, windPinionTeeth, 'keyless WINDING corner');
   return bevelCornerSpin(crownWheel, ray, crownWheelTeeth, false);
 })();
 {
@@ -4932,14 +4915,13 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   // — so what makes these two mesh is that the RELATIVE condition survives it
   // anyway: the differences come to 0.5007 and the sums to -0.5000, a half pitch
   // apart either way. That is a property of where `setFromUnitVectors` happened
-  // to land two minimal rotations, not of anything solved, and it is why they
-  // are registered with the index guard WAIVED rather than gated.
+  // to land two minimal rotations, not of anything solved, which is TODO 140.
+  // Measured by tools/probe-bevel-corner-index.mjs, which is where this claim
+  // has to live: it needs a POSED movement, and boot has no pose.
   gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
 
   keyless.add(mountIn, mountOut);
-  assertBevelCorner(gearIn, BEVEL_TEETH, gearOut, BEVEL_TEETH, `motion-works corner ${tag || '(untagged)'}`,
-    'TODO 140 — addBevelCorner seeds a bare BEVEL_PHASE instead of solving the index against the contact ray');
   return { gearIn, gearOut };
 }
 
@@ -5283,7 +5265,6 @@ windClutchMount.add(windClutch);
     rim.rotation.z = bevelCornerSpin(rim, ray, windPinionTeeth, true);
     settingBevelBase = bevelCornerSpin(settingBevel, ray, settingWheelTeeth, false);
     settingBevel.rotation.z = settingBevelBase;
-    assertBevelCorner(settingBevel, settingWheelTeeth, rim, windPinionTeeth, 'keyless SETTING corner');
   }
   // The mating saw ring, teeth INBOARD toward the pinion — sense +1 with
   // the +π/2 mirror mount (see the pinion ring's comment: the pair lands
@@ -13476,59 +13457,6 @@ function bevelCornerAxis(mount) {
   mount.updateWorldMatrix(true, false);
   return new THREE.Vector3(0, 0, 1).transformDirection(mount.matrixWorld).normalize();
 }
-// TODO 139 — THE GUARD, and it measures the metal rather than restating the
-// solve. Where a tooth actually points is a fact about the built scene; which
-// index was computed for it is a claim. This re-reads both members AFTER the
-// scene's world matrices are current, in world space, and asks the corner's
-// own condition: on the line of contact one member presents a TOOTH and the
-// other a GAP. The frame bug it exists for passed every gate in the battery,
-// because nothing there measures a corner's index — and it would have fired on
-// it at 0.126 and 0.133 of a pitch.
-//
-// A corner may be WAIVED, and the waiver is audited the way §137 audits its
-// own: a waiver naming a corner that is IN index is itself a failure, so a
-// fix cannot leave its waiver behind. The waiver string cites the TODO, which
-// is the repo's standing convention for accepted debt.
-function assertBevelCorner(gearA, teethA, gearB, teethB, what, waiver = null) {
-  bevelCornerGuards.push(() => {
-    const uA = bevelCornerAxis(gearA), uB = bevelCornerAxis(gearB);
-    // The pitch angle comes from the counts — tan γ_A = z_A/z_B — and that
-    // closed form is a SHAFT ANGLE OF 90° only. Measured rather than assumed,
-    // because a corner whose axes are not square makes γ silently wrong and
-    // every number below with it.
-    if (Math.abs(uA.dot(uB)) > 1e-6)
-      console.warn(`TODO 139 ${what}: the axes are ${(Math.acos(Math.abs(uA.dot(uB))) * 180 / Math.PI).toFixed(3)}° `
-        + `from square, and this guard's pitch angle is derived for a right-angle corner`);
-    const gA = Math.atan2(teethA, teethB);    // the pitch angle, from the counts
-    const inPl = uB.clone().addScaledVector(uA, -uB.dot(uA)).normalize();
-    const ray = uA.clone().multiplyScalar(Math.cos(gA)).addScaledVector(inPl, Math.sin(gA)).normalize();
-    // each member's own tooth 0 is at its local +X (bevelOutline centres tooth
-    // i at i*2PI/z) — measured here, not assumed, by reading the axis the
-    // builder actually cut against
-    const off = (g, u, teeth) => {
-      const x = new THREE.Vector3(1, 0, 0).transformDirection(g.matrixWorld).normalize();
-      const rp = ray.clone().addScaledVector(u, -ray.dot(u)).normalize();
-      const xp = x.clone().addScaledVector(u, -x.dot(u)).normalize();
-      const a = Math.atan2(u.clone().cross(rp).dot(xp), rp.dot(xp));
-      const pitch = (Math.PI * 2) / teeth;
-      let f = ((a % pitch) + pitch) % pitch / pitch;
-      return f > 0.5 ? f - 1 : f;
-    };
-    const fA = off(gearA, uA, teethA), fB = off(gearB, uB, teethB);
-    // A must carry a tooth on the ray and B a gap: |fA| ~ 0 and |fB| ~ 0.5.
-    const missA = Math.abs(fA), missB = Math.abs(0.5 - Math.abs(fB));
-    const out = missA > BEVEL_INDEX_TOL || missB > BEVEL_INDEX_TOL;
-    if (out && !waiver)
-      console.warn(`TODO 139 ${what}: the corner is out of index on the metal — `
-        + `${gearA.name || 'A'} carries its tooth ${fA.toFixed(4)} of a pitch off the contact ray `
-        + `(wants 0) and ${gearB.name || 'B'} its gap ${(0.5 - Math.abs(fB)).toFixed(4)} off it `
-        + `(wants 0), against a ${BEVEL_INDEX_TOL} budget. The teeth do not interleave here.`);
-    if (!out && waiver)
-      console.warn(`TODO 139 ${what}: STALE WAIVER — the corner measures IN index `
-        + `(${fA.toFixed(4)} / ${(0.5 - Math.abs(fB)).toFixed(4)} of a pitch) and is still waived by `
-        + `"${waiver}". Delete the waiver with the fix.`);
-  });
-}
 // TODO 139 — IT READS THE GEAR, NOT A MOUNT, AND IT WALKS UP.
 //
 // `Object3D.updateMatrixWorld(force)` recomputes this object and its
@@ -16027,20 +15955,19 @@ alarmSpinner.add(stemBevelMount);
   const ray = bevelCornerRay(bevelCornerAxis(discBevelMount), bevelCornerAxis(stemBevelMount));
   discBevel.rotation.z = bevelCornerSpin(discBevel, ray, ALARM_BEVEL_TEETH, false);
   stemBevel.rotation.z = bevelCornerSpin(stemBevel, ray, ALARM_BEVEL_TEETH, true);
-  // WAIVED, TODO 140. Measured at the rest pose, the disc carries its tooth
-  // 0.3750 of a pitch off the contact ray and the stem its gap 0.0000 — and the
-  // 0.3750 is not this block's arithmetic. `bevelCornerSpin` indexes both halves
-  // at BUILD, where `alarmRotor.rotation.z` is 0; the movement's rest pose puts
-  // it at -2.90597, which is -4.625 pitches of a 10-tooth bevel and wraps to
-  // exactly the miss. So the disc's index is solved at a pose the movement never
-  // occupies. The two terms of that rotor angle are NOT alike: `3 * _bd`, the
-  // hour carrying the friction-set disc, IS mirrored into the stem by
+  // TODO 140, and it is a REPORT rather than an assert because it cannot be one
+  // here. Measured at the movement's rest pose, the disc carries its tooth
+  // 0.3750 of a pitch off the contact ray while the stem's gap sits on it —
+  // and the 0.3750 is not this block's arithmetic. `bevelCornerSpin` indexes
+  // both halves at BUILD, where `alarmRotor.rotation.z` is 0; the rest pose
+  // puts it at -2.90597, which is -4.625 pitches of a 10-tooth bevel and wraps
+  // to exactly the miss. So the disc's index is solved at a pose the movement
+  // never occupies. The two terms of that rotor angle are NOT alike: `3 * _bd`,
+  // the hour carrying the friction-set disc, IS mirrored into the stem by
   // `alarmCrownCreep` (§194 F), and `-alarmSetRot`, the angle the CROWN put
   // there through this very corner, is not — so standing rule 2 is unsatisfied
   // on one term of one sum. Closing it is TODO 140 and is a change to what the
   // crown displays, not to this index.
-  assertBevelCorner(discBevel, ALARM_BEVEL_TEETH, stemBevel, ALARM_BEVEL_TEETH, 'alarm SETTING corner',
-    'TODO 140 — the disc\'s rest angle carries alarmSetRot, which the stem does not mirror');
 }
 // §137 — the alarm corner's transfer row: addBevelCorner's idiom re-used at
 // the alarm stem (the disc-side gear lives in 'Alarm setting arbor', the
@@ -37847,18 +37774,6 @@ function updateLabels() {
 }
 
 function tick(t) {
-  // TODO 139 — the index guard runs at the BUILD POSE, and this is the first
-  // thing that leaves it. A guard that ran after the restored state was applied
-  // measured whatever the last session saved, and that is how it shipped the
-  // first time: silent on a fresh profile, warning on a reload. Stated as an
-  // assert rather than a comment, because the ordering is invisible at both
-  // sites and nothing else would notice it moving.
-  if (!BEVEL_GUARDS_TICKED) {
-    BEVEL_GUARDS_TICKED = true;
-    if (!BEVEL_GUARDS_RAN)
-      console.warn('TODO 139: tick() reached the movement before the bevel corners\' index guard ran, '
-        + 'so that guard would measure the RESTORED pose rather than the build pose it is a claim about');
-  }
   // dt since the last tick — needed because τ is now a genuinely integrated
   // quantity (the balance's own accumulated phase), not a pure function of
   // t. Clamped so a long stall (e.g. a backgrounded tab) can't blow up the
@@ -39514,27 +39429,6 @@ function tick(t) {
 // is cut, so the solve could not see its footings; this is where a window that
 // undermined one says so.
 checkPlateWindows('movement complete');
-
-// TODO 139 — THE BEVEL CORNERS' INDEX GUARD, and WHERE it runs is half of it.
-//
-// It must see CURRENT world matrices, because what it measures is where a tooth
-// points in world space and a guard reading the same stale frame as the solve
-// would agree with it about everything — that is the hole the defect fell
-// through, so it cannot run at each corner's own build.
-//
-// And it must see the BUILD POSE, which is the only pose the index is a claim
-// about. `tick(0)` one line below applies the RESTORED state, and every
-// stem-side member of both keyless corners rides the stem: `windClutch` and
-// `windPinionGroup` take `-windStemRot`, which is a function of the saved
-// `barrelWindTurns`. Measured after it, the reading is a function of what the
-// last session saved — the setting corner's rim came back HALF A PITCH from
-// where it was built, and boot warned. Rule 6 is not "silent on a fresh
-// profile"; it is silent, so this runs before the first pose and after nothing.
-{
-  scene.updateMatrixWorld(true);
-  for (const check of bevelCornerGuards) check();
-  BEVEL_GUARDS_RAN = true;
-}
 
 tick(0); // seed correct initial pose before the first paint
 updateChainIfMoved(); // first chain build (and its lazy label) — was inside the seed tick before §14

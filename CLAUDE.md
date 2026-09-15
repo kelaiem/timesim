@@ -837,6 +837,19 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   walk up — prefer them anywhere the answer is a world quantity. The audited
   residue is in the item: every other build-time site sits under `movement`,
   which is untransformed, so they are right for the wrong reason.
+- **BOOT HAS NO POSE, so a claim about one cannot be a boot assert.** `main.js`
+  carries a top-level `await loadState()` and then `tick(0)` to "seed correct
+  initial pose before the first paint" — so by the end of module evaluation the
+  movement stands at whatever the LAST SESSION SAVED, not at anything canonical.
+  TODO 139 shipped a boot guard on a bevel corner's index and CI killed it on
+  `offline`'s reload rows: silent on a fresh profile, half a pitch out after a
+  reload, because every stem-side member rides `-windStemRot`. Moving it above
+  `tick(0)` does not rescue it either — measured, the build pose and the rest
+  pose satisfy DIFFERENT subsets of the three corners and no third pose exists
+  there. Rule 6 is not "silent on a fresh profile": a build-time assert may hold
+  a derivation (the achieved and required numbers), and anything needing a posed
+  movement belongs in an instrument, which is why every battery check runs
+  against `resetInputs`/`setPose`.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
   **Disarmed at the source by §81**: every mesh now reaches the scene

@@ -60,11 +60,24 @@
 // 0.0000 / 0.5000 on the winding corner and 0.0000 / 0.4938 on the setting
 // one, the 0.0062 being the clutch's deliberate 0.005 rad seat clocking.
 //
-// The ALARM corner still reads 0.3750 and is WAIVED at its build, citing
-// TODO 140: its index is solved with `alarmRotor.rotation.z` at 0 and the
-// movement's rest pose puts it at -2.90597, which wraps to exactly that. The
-// waiver is AUDITED — the boot guard warns if a waived corner measures IN
-// index — so the fix cannot leave it behind.
+// The ALARM corner still reads 0.3750, and that is TODO 140: its index is
+// solved with `alarmRotor.rotation.z` at 0 and the movement's rest pose puts it
+// at -2.90597, which wraps to exactly that.
+//
+// WHY THIS IS A PROBE AND NOT A BOOT ASSERT, which cost a CI cycle to learn. A
+// boot guard doing exactly this shipped on the branch and was removed: a
+// corner's index is a property of a POSE, and boot has none. `main.js` carries
+// a top-level `await loadState()`, so a SAVED barrelWindTurns lands in the wind
+// variables and `tick(0)` then applies it, spinning every stem-side member
+// about the stem -- so a guard after it measures what the last session saved
+// (silent on a fresh profile, half a pitch out after a reload, which is how CI
+// caught it). And moving it BEFORE that tick does not save it: measured, at the
+// build pose the ALARM corner reads 0.0000/0.0000 while the WINDING corner's
+// crown wheel reads 0.0556 out, because `crownWheel.rotation.z` is only posed
+// from its base by the tick. The two poses satisfy different subsets and there
+// is no third. A claim that needs a posed movement belongs where poses are
+// controlled -- here, after `resetInputs()`, which is why every battery check
+// is shaped the same way.
 //
 // Burial, measured by probe-crossed-axis-mesh on the same trees, is the same
 // finding from the other side: the winding corner fell 0.2653 -> 0.0760 and the
@@ -298,7 +311,7 @@ for (const key of ['WINDING', 'SETTING']) {
     `${key} ${r[1].nm} carries a GAP on the ray (${r[1].ctr.toFixed(4)}, miss ${(0.5 - Math.abs(r[1].ctr)).toFixed(4)})`);
 }
 console.log('\n--- reported, not gated');
-console.log('  ALARM       waived at its build, TODO 140 — the disc is indexed at a pose the movement never occupies');
+console.log('  ALARM       TODO 140 — the disc is indexed at a pose the movement never occupies');
 console.log('  CTRL-DROP / CTRL-RISE  TODO 140 — the motion-works corners never adopted bevelCornerSpin; their');
 console.log('              bare half-pitch satisfies the RELATIVE condition only, and on opposite');
 console.log('              combinations, because the two corners have opposite handedness');
