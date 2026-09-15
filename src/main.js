@@ -38147,15 +38147,30 @@ function tick(t) {
       // the alarm — a consequence of the gearing, walked through it rather than
       // declared, exactly as TODO 115 found for the winding crown.
       alarmSetRot += ALARM_CORNER_SENSE * aDelta;
-    } else if (alarmCrownPullT < 0.5 && aDelta > 0) {
+    } else if (alarmCrownPullT < 0.5 && aDelta * ALARM_CORNER_SENSE > 0) {
       // §99: winding turns the ARBOR only — the body (and the striker one
       // mesh down from it) stands parked, so the strike phase does not move
       // with a wind any more (§25 C backed it out here because the wound
       // member WAS the body). The one-way is the click's law, now modelled
       // as metal: the ratchet's saw cams the click out on this sense and
-      // its steep bank holds the return; a backward crown free-slips at the
-      // stem⇄contrate bevel without unbanking.
-      alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ARREST_WIND_CEILING); // §106: the ceiling is the cross's bank, read off the stop-work
+      // its steep bank holds the return; a crown turned the other way
+      // free-slips at the stem⇄contrate bevel without unbanking.
+      //
+      // TODO 138 Landing 2 — AND THE CROWN'S TURN CROSSES THAT BEVEL, so it
+      // arrives at the arbor REVERSED. `ALARM_WIND_RATIO` is "arbor turns per
+      // crown turn" through the tooth counts with the idlers dropping out, and
+      // the corner's sign was the one factor it did not carry: measured, the
+      // stem and contrate swung +1 where two cones on a shared apex demand −1.
+      //
+      // The RATCHET does not move for this. Its saw is cut against the ARBOR's
+      // winding direction, and the arbor still turns the same way for an
+      // increasing `alarmBarrelWind`; what reverses is which way a hand turns
+      // the crown — a consequence of the gearing, walked through it rather than
+      // declared, exactly as TODO 115 found for the going train's crown. The
+      // guard above turns with it, and so does the `alarmWind` axis's pose,
+      // because a pose table is direction-committed too.
+      alarmBarrelWind = clamp(alarmBarrelWind
+        + ALARM_CORNER_SENSE * (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ARREST_WIND_CEILING); // §106: the ceiling is the cross's bank, read off the stop-work
       alarmWindWasActive = true;
       alarmWindIdleT = 0;
     } else if (alarmWindWasActive) {
@@ -39540,7 +39555,10 @@ window.__clock = {
     if (p.alarmWindRotation !== undefined) {
       alarmCrownRotation = p.alarmWindRotation;
       lastAlarmCrownRotation = p.alarmWindRotation; // no delta leaks into the next tick
-      alarmBarrelWind = clamp((p.alarmWindRotation / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
+      // the same crossing as tick()'s, through the one source — TODO 138's
+      // lesson from the setting path, where correcting only the delta site left
+      // every sweep and the whole pose net reading the old sense
+      alarmBarrelWind = clamp(ALARM_CORNER_SENSE * (p.alarmWindRotation / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
     }
     // §25 striking axis — §99 rewrote the contract. Phase and wind WERE one
     // mechanical quantity (the §25 C body was both the wound and the meshed

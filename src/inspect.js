@@ -1059,7 +1059,12 @@ export const AXES = [
     n: 109,
     pose: (f, clock) => ({
       tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
-      alarmWindRotation: f * (clock ? clock.alarmWindCrownTurns : 1.75 / (12 / 44)) * 2 * Math.PI,
+      // NEGATIVE ON PURPOSE (TODO 138 Landing 2). The crown's turn reaches the
+      // alarm arbor through the stem⇄contrate BEVEL, which reverses it, so the
+      // hand turns this way to wind. A pose table is direction-committed: left
+      // positive, this axis would sweep the free-slipping side and measure the
+      // winding train standing still at zero wind for its whole span.
+      alarmWindRotation: -f * (clock ? clock.alarmWindCrownTurns : 1.75 / (12 / 44)) * 2 * Math.PI,
       alarmOn: 0, alarmReleased: 0, alarmCrownPullT: 0,
     }),
   },

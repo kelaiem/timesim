@@ -72,18 +72,34 @@ const out = await page.evaluate(async () => {
   const signedAngle = (a, b, u) => Math.atan2(new THREE.Vector3().crossVectors(a, b).dot(u), a.dot(b));
 
   const CORNERS = [
+    // EACH DRIVE IS THE AXIS'S OWN POSE, copied from inspect.js's AXES rather
+    // than invented here. The first version of this probe guessed them, and two
+    // of the four corners came back with a member standing still: the
+    // motion-works pair moves on `setPathRot` ALONE (the `handSet` axis, and
+    // adding windStemSlip was what pinned it), and the alarm's winding corner
+    // is written by `alarmWindRotation`, not `alarmCrownRotation`. A pose the
+    // watch never reaches measures nothing, and says so.
+    // THE MOTION-WORKS PAIR NEEDS THE EASE TO RUN. Its driving value is
+    // `handSetOffset`, which while the crown is out comes from `jumpDisp` — the
+    // minute jumper's DETENTED display — and setPose ticks with zero dt, so an
+    // eased quantity cannot move under it (CLAUDE.md's trap, and TODO 135's
+    // subject). Posed alone, both members stood still and the probe said so
+    // rather than scoring 0/0 as agreement. Stepping lets the detent settle.
     { name: 'motion works, drop corner', a: 'mwCornerDropIn', b: 'mwCornerDropOut',
-      drive: (f) => { const t = f * (C.setPathPerMinuteWheelRev || 0);
-        C.setPose({ tau: 0.05, crownPullT: 1, leverEngage: 1, tension: 1, setPathRot: t, windStemSlip: t }); } },
+      drive: (f) => { C.setPose({ tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1,
+        setPathRot: f * (C.setPathPerMinuteWheelRev || 0) });
+        for (let k = 0; k < 40; k++) C.step(0.05); } },
     { name: 'motion works, rise corner', a: 'mwCornerRiseIn', b: 'mwCornerRiseOut',
-      drive: (f) => { const t = f * (C.setPathPerMinuteWheelRev || 0);
-        C.setPose({ tau: 0.05, crownPullT: 1, leverEngage: 1, tension: 1, setPathRot: t, windStemSlip: t }); } },
+      drive: (f) => { C.setPose({ tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1,
+        setPathRot: f * (C.setPathPerMinuteWheelRev || 0) });
+        for (let k = 0; k < 40; k++) C.step(0.05); } },
     { name: 'alarm SETTING, stem to disc', a: 'alarmStemBevel', b: 'alarmDiscBevel',
       drive: (f) => C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
         alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }) },
     { name: 'alarm WINDING, stem to contrate', a: 'alarmStemBevel', b: 'alarmWindContrate',
       drive: (f) => C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
-        alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 0 }) },
+        alarmWindRotation: -f * (C.alarmWindCrownTurns || 1.75 / (12 / 44)) * 2 * Math.PI,
+        alarmOn: 0, alarmReleased: 0, alarmCrownPullT: 0 }) },
   ];
 
   const rows = [];

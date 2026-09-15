@@ -17214,6 +17214,63 @@ Found from §219's side — `tools/probe-219-catalogue.mjs` derives the
 reserve reduction from `RESERVE_SWEEP_DEG` rather than reading it, which is
 what turned the stale 4.2 in the LEGO note into this.
 
+## 139. The alarm setting corner is not a closed loop when engaged: the hour back-drives the disc past a crown that cannot follow
+
+Found while chasing [TODO 138] Landing 2's residual index error, which turned
+out not to be an index error at all.
+
+**What the tick writes.** `alarmRotor.rotation.z = -alarmSetRot + 3 * _bd`,
+where `_bd = ALARM_BD_SIGN * hourDialA`. The first term is the crown's turn
+arriving through the setting corner; the second is the friction-set disc being
+carried by the hour wheel. Both are real, and the disc genuinely does both
+things — that is what a friction-set alarm disc IS.
+
+**What is missing is the other half of the coupling.** The corner is a bevel
+pair, so when it is ENGAGED the disc and the crown are one kinematic loop: the
+hour cannot turn the disc without either turning the crown through the corner or
+slipping at the friction coupling. Neither is modelled. `alarmSpinner.rotation.y`
+carries `alarmCrownRotation` alone and knows nothing about the hour, so while
+engaged the disc rotates past a stationary crown through teeth that are now
+conjugate.
+
+**Measured.** `alarmRotor.rotation.z` reads −2.90589 at tau 0 and −2.90624 at
+tau 0.75 with the crown pulled and its rotation pinned at 0 — the disc moving
+under a stem that is not. The offset itself is 0.375 of a tooth pitch at the
+pose the sweeps use (−2.90597 / 0.62832 = −4.625 pitches), and over 12 h the
+`3 * _bd` term sweeps three full turns, thirty pitches for a ten-tooth gear,
+CONTINUOUSLY. So the corner's relative index is a function of the hour and **no
+fixed build-time phase can mesh it at every hour** — which is why 138's
+`bevelCornerSpin` helper, correct in principle, could not close the gap: there
+is no constant for it to compute.
+
+**Why it has never shown.** The sheared blanks never touched at any station, so
+the disc could rotate past the stem through as many teeth as it liked and
+nothing measured anything. The pair only becomes over-constrained once the teeth
+interleave, which is [TODO 138] Landing 2.
+
+**The scale of the error in practice is small, and that is not a defence.**
+A setting operation lasts seconds, over which the hour moves almost nothing, so
+a session's phase is near-constant — which is exactly why a build-time constant
+looks like it nearly works. The defect is structural: two members declared as a
+`bevelPair` transfer, with conjugate teeth, whose angles are written from two
+independent sources while engaged.
+
+**What the fix needs.** A decision about what the corner does when engaged, and
+then one source for both members' angles. Either the hour's back-drive turns the
+crown too (the loop closes, and `alarmSpinner` reads the hour while engaged), or
+the friction coupling SLIPS and the disc's hour term is suppressed while engaged
+(the loop opens, and the disc reads only the crown). Real alarm watches do the
+second — the friction coupling is what lets you set the alarm against a running
+movement — so that is the likely answer, but it is a mechanism decision and it
+should be made against the metal rather than here. Once the loop is closed or
+opened deliberately, 138's index helper has a constant to compute and the corner
+meshes at every hour.
+
+**Related.** [TODO 138] Landing 2 carries the corner's SENSE fix, which is
+separate and already landed: the crown's turn now crosses the corner reversed,
+and the pair's phase floor went from 0.2108, where no index cleared it, to
+0.0000. What remains at the shipped index — 0.1108 of burial — is this item.
+
 ## 138. `makeBevelGear`'s shear-cone teeth can never interleave, so no bevel pair in the movement meshes
 
 Found while running [TODO 136]'s line proof, which built a correct bevel pair
@@ -17514,11 +17571,37 @@ time where that term does not exist yet. The motion-works corners are unaffected
 — they already satisfy the sense (`gearOut = BEVEL_PHASE − handSetOffset`
 against `gearIn = +handSetOffset`), which is what makes them the control.
 
-**Two corners the probe could not exercise**, reported rather than passed: the
-motion-works pair needs a drive that moves `handSetOffset`, and the alarm
-WINDING corner's contrate did not turn under `alarmCrownRotation`. Both came
-back "A MEMBER STOOD STILL", which is the guard doing its job — a ratio of 0/0
-must not read as agreement.
+**All four corners are measured now, and the WINDING one was wrong too.**
+The two that first came back "A MEMBER STOOD STILL" were the guard doing its job
+— a ratio of 0/0 must not read as agreement — and both were the probe's drives,
+not the movement:
+
+- the motion-works pair moves on `setPathRot` ALONE (adding `windStemSlip`
+  pinned it), and its driving value `handSetOffset` comes from `jumpDisp`, the
+  minute jumper's DETENTED display. `setPose` ticks with zero dt, so an eased
+  quantity cannot move under it — CLAUDE.md's own trap, and [TODO 135]'s
+  subject. Stepping lets the detent settle, and the pair then measures **−1 on
+  both corners**: they were right all along, which is what makes them the
+  control;
+- the alarm WINDING corner is written by `alarmWindRotation`, not
+  `alarmCrownRotation`. Driven by its own axis it measured **+1 against −1** —
+  the same defect as the setting corner, one path over.
+
+**The winding path is fixed the same way, and the ratchet does not move for it.**
+`ALARM_WIND_RATIO` is "arbor turns per crown turn" through the tooth counts with
+the idlers dropping out, and the corner's sign was the one factor it did not
+carry. Both banking sites now cross the corner — the tick's delta and
+`setPose`'s absolute, the lesson from the setting path where correcting one left
+every sweep reading the old sense. The saw is cut against the ARBOR's winding
+direction and the arbor still turns the same way for an increasing
+`alarmBarrelWind`; what reverses is which way a hand turns the crown, exactly as
+TODO 115 found for the going train's. **The `alarmWind` axis's pose reverses with
+it**, because a pose table is direction-committed: left positive it would sweep
+the free-slipping side and measure the winding train standing still at zero wind
+for its whole span.
+
+Measured after both fixes, all four corners: **−1, −1, −1, −1** against the
+−1 the cones demand.
 
 **Superseded below: the burial's first reading.**
 `probe-crossed-axis-mesh` reads `alarmDiscBevel ⇄ alarmStemBevel` at 0.2169,
