@@ -2507,6 +2507,15 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
       }
       return inside ? -best : best;
     };
+    // §226 — THE RATCHET TOOTH AS A DIMENSION, on §169's `skirtH` precedent.
+    // The teeth are the movement's own visual unit at this station: a reader
+    // looking at the column wheel through the back sees them, so a
+    // neighbouring part that wants to read as metal rather than as a wire is
+    // sized against THEM. Recorded here, beside the cut that makes them,
+    // rather than re-derived at the caller — a second copy of `baseR * 0.22`
+    // is one dimension written down twice, which is the defect this file
+    // keeps finding in itself.
+    g.userData.ratchetTooth = { teethN, tipR: tip, rootR: rr, depth: tip - rr, pitch: (Math.PI * 2) / teethN };
     g.userData.sawClear = sawClear;
     g.userData.sawSeatAt = (a, tipR) => {
       const c = Math.cos(a), s = Math.sin(a);

@@ -26112,11 +26112,60 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
                      y: rootAt.y - STOCK_MIN_R10 * snF };   // along the same tail line (local −x)
   const anchorR = Math.hypot(anchorAt.x, anchorAt.y);
   const anchorAz = Math.atan2(anchorAt.y, anchorAt.x);
-  // The anchor arm's tip: the stud plus a §50-floor wall around it, the post
-  // arm's own rule. Its reach is the longest thing on the driver, so the §68
-  // plate-edge bound is re-asserted for it below with the achieved numbers.
-  const anchorArmTipR = STOCK_MIN_R10 + STOCK_MIN_U;
+  // §226 — THE FEATURE WIDTH IS AUTHORED; THE WALL IS ITS CONSEQUENCE. This
+  // inverts what stood here, and the inversion is the whole change.
+  //
+  // Every tip disc used to be `<core> + STOCK_MIN_U` — the hole, plus the
+  // thinnest wall §50 permits — so the WALL was the authored quantity and the
+  // part's visible width was whatever fell out of it. That is a floor
+  // standing in for a design: §50's number is a minimum a section may not go
+  // under, never a statement about what this lever should look like, and
+  // measured (`tools/probe-226-driver-width.mjs`) there was about ten times
+  // that wall available before any metal objects.
+  //
+  // So the width is derived from a constraint instead, and the constraint is
+  // legibility — §226 makes it a stated design value, the owner's ruling, on
+  // the footing README gives the column wheel as this movement's own
+  // contribution. The reference is the RATCHET TOOTH the pawl indexes: it is
+  // the movement's own visual unit at this station, a reader looking through
+  // the back sees the teeth and the driver in one glance, and a part that
+  // reads thinner than the teeth it drives reads as a wire. Taken off the
+  // wheel that cuts them, never re-derived here.
+  //
+  // Measured at the shipped numbers: tooth depth 1.2540 u = 0.4752 mm, so
+  // every feature becomes 1.2540 u wide where the two stud arms were 0.9663
+  // (77% of a tooth) and the slot arm 1.0663 (85%). That is 13–16% of each
+  // arm's measured ceiling, so the widening is nowhere near what the
+  // surrounding metal allows.
+  const ALARM_DRIVER_FEATURE_W = alarmColumnWheel.userData.ratchetTooth.depth;
+  const ALARM_DRIVER_TIP_R = ALARM_DRIVER_FEATURE_W / 2;
+  // The anchor arm's tip. Its reach is the longest thing on the driver, so the
+  // §68 plate-edge bound is re-asserted for it below with the achieved
+  // numbers (measured slack at the new width: 18.77 u, not a constraint here).
+  const anchorArmTipR = ALARM_DRIVER_TIP_R;
   const slotHalfW = STOCK_MIN_R10 + PIVOT_BORE_CLEAR;             // a running fit on the pin
+  // §50's floor is now an ASSERT rather than a target: the width is chosen
+  // against the tooth, and this is what stops that choice cutting a wall
+  // thinner than the movement's stock minimum. It reads each arm's OWN tipR
+  // rather than the shared constant — an arm given its own width later must
+  // still be checked, and a guard that tests the constant instead of the cut
+  // would pass it in silence.
+  //
+  // THIS GENERALISES §192's ASSERT, which is retired into it rather than
+  // dropped. That one made the same claim for the anchor arm alone ("the stud
+  // is not held"), in the same inequality; with a second arm now walling the
+  // same STOCK_MIN_R10 core the two would have been one fact written twice,
+  // and only one copy would learn if the rule moved.
+  const ALARM_DRIVER_ARM_CORES = [
+    ['pusher-pin slot', slotHalfW, ALARM_DRIVER_TIP_R],
+    ['pawl post', STOCK_MIN_R10, ALARM_DRIVER_TIP_R],
+    ['blade-spring anchor', STOCK_MIN_R10, anchorArmTipR],   // §192 — the stud must stand on metal
+  ];
+  for (const [what, core, tipR] of ALARM_DRIVER_ARM_CORES)
+    if (tipR - core < STOCK_MIN_U - 1e-9)
+      console.warn(`§226/§192: the driver's ${what} arm walls its ${core.toFixed(4)} core with only `
+        + `${(tipR - core).toFixed(4)}, under STOCK_MIN_U ${STOCK_MIN_U.toFixed(4)} — at a feature width of `
+        + `${ALARM_DRIVER_FEATURE_W.toFixed(4)} (one ratchet tooth) that core is not held`);
   alarmColDriverGroup = new THREE.Group();
   alarmColDriverGroup.position.set(ALARM_COL_POS.x, ALARM_COL_POS.y, ALARM_DRIVER_BOT_Z);
   alarmColDriverGroup.rotation.z = ALARM_DRIVER_REST_A;
@@ -26124,8 +26173,13 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   const driver = G.makeColumnDriver({
     boreR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR,          // the stud it turns on, plus the movement's running clearance
     hubR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR + STOCK_MIN_U,
-    arms: [{ az: 0, reach: ALARM_DRIVER_SLOT_OUT, tipR: slotHalfW + STOCK_MIN_U },
-           { az: postAz, reach: ALARM_DRIVER_POST_R, tipR: STOCK_MIN_R10 + STOCK_MIN_U },
+    // §226 — one width for all three, so the part reads as one part. The
+    // arms are cut at the tooth's depth; the hub keeps its own rule below,
+    // because it is sized by its BEARING and is already 1.54 teeth wide,
+    // and because growth there is measured to be 1.4–11.8% visible: the
+    // column wheel's own base sits directly over it.
+    arms: [{ az: 0, reach: ALARM_DRIVER_SLOT_OUT, tipR: ALARM_DRIVER_TIP_R },
+           { az: postAz, reach: ALARM_DRIVER_POST_R, tipR: ALARM_DRIVER_TIP_R },
            // §192 — the blade's anchor arm: the metal §163's stud never had.
            { az: anchorAz, reach: anchorR, tipR: anchorArmTipR }],
     slot: { az: 0, inner: ALARM_DRIVER_SLOT_IN, outer: ALARM_DRIVER_SLOT_OUT, halfW: slotHalfW },
@@ -26175,15 +26229,15 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
     stud.rotation.x = Math.PI / 2;
     stud.position.set(anchorAt.x, anchorAt.y, (ALARM_COL_DRIVER_T + studTopZ) / 2);
     alarmColDriverGroup.add(stud);
-    // THE STUD STANDS ON METAL, asserted rather than assumed — the assert
-    // §163's stud never had, and the exact claim it falsified. The arm was
-    // CUT to reach the stud's own station, so the check is that the anchor
-    // disc's rim holds the stud with a full wall around it; TODO 103's hull
-    // warn in makeColumnDriver covers the other failure (an arm asked for
-    // and swallowed), and §182's declared-joint audit measures the pair in
-    // the battery.
-    if (anchorArmTipR < STOCK_MIN_R10 + STOCK_MIN_U - 1e-9)
-      console.warn(`§192: the anchor arm's tip disc is ${anchorArmTipR.toFixed(4)} against the stud's ${STOCK_MIN_R10.toFixed(4)} plus a ${STOCK_MIN_U.toFixed(4)} wall — the stud is not held`);
+    // THE STUD STANDS ON METAL — the assert §163's stud never had, and the
+    // exact claim it falsified. RETIRED INTO §226's per-arm loop above, which
+    // makes the same inequality for every arm against its own core and its
+    // own tipR: when the second arm started walling the same STOCK_MIN_R10
+    // this was one fact written down twice. Not deleted, because the claim is
+    // still owed and a reader looking for it should find where it went.
+    // TODO 103's hull warn in makeColumnDriver covers the other failure (an
+    // arm asked for and swallowed), and §182's declared-joint audit measures
+    // the pair in the battery.
     // §68's plate-edge bound, re-asserted for the driver's longest reach: the
     // anchor arm is the furthest thing this group swings.
     {

@@ -414,6 +414,47 @@ queued or running `timesim-battery` jobs first.
   does, and writes the entry a self-hosted PR then restores. One dispatch per
   merge buys the host its incremental path. Skip it and nothing breaks — the
   PR runs whole, exactly as before.
+
+  **AND THE DISPATCH WILL CANCEL THE MERGE'S OWN PUSH RUN IF YOU FIRE IT TOO
+  SOON, WHICH DESTROYS THE BASELINE YOU CARE MORE ABOUT.** `battery.yml`
+  carries
+
+  ```yaml
+  concurrency:
+    group: battery-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+  ```
+
+  and the group is keyed on `github.ref`. A merge's push run and a seeding
+  dispatch are BOTH on `refs/heads/main`, so they land in the same group and
+  the newer one cancels the older. The dispatch is always the newer one.
+
+  Measured, the first time anyone followed the instruction above: run 830
+  (push, seeding `Linux/X64`) started 23:06:33 and was **cancelled 23:11:53**
+  by run 831 (dispatch, seeding `Linux/ARM64`), which then sat `pending` while
+  it waited. Cancelling the dispatch did not bring the push run back — it had
+  already been signalled — so 830 had to be re-run by hand (`run_attempt: 2`,
+  still a `push`, so it kept its right to seed).
+
+  The asymmetry is what makes this worth a paragraph rather than a footnote.
+  The push run seeds the platform EVERY ordinary PR and every fork PR inherits
+  from; the dispatch seeds the one only a deliberately opted-in PR reads. So
+  the cheap mistake trades the valuable baseline for the marginal one, and it
+  does it silently — both runs report success-shaped states while it happens.
+
+  **So the two seeds are mutually exclusive in time, and the procedure is:
+  merge, wait for the push run to reach `completed`, then dispatch.** Not
+  "merge, then dispatch" — the waiting is the whole of it, and it is the step
+  that looks skippable. There is no way to have both at once on one ref.
+  Budget for it: the push run is a full battery on `ubuntu-latest`, roughly
+  30–38 min, and the dispatch is another ~17.5 min on the host after that.
+
+  Worth knowing what the dispatch buys, so the cost is a choice rather than a
+  habit: a seeded host makes a self-hosted PR run incremental (~12 min against
+  the ~17.5 min a whole run measured here), and it has to be re-earned after
+  every merge because the key carries the commit. Skipping it is a supported
+  branch — the entry above says so and means it — and the PR simply runs
+  whole.
 - **The Playwright cache lists both browser directories** (`~/.cache` on
   Linux, `~/Library/Caches` on macOS), and `--with-deps` is passed only on
   Linux, where it is the apt work the comment describes. On macOS it was
