@@ -991,7 +991,13 @@ export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngl
   g.userData.r = spec.pitchR;
   g.userData.teeth = teeth;
   g.userData.module = module;
-  g.userData.bevel = spec;
+  // NOT `userData.bevel`, which this file already uses for a NUMBER — the
+  // extrude bevel's XY growth, read by the heart cam's clearance arithmetic. A
+  // cone spec under that name reads as a size wherever the number is expected
+  // and silently produces NaN; measured, the §66 schematic pass took
+  // `bevel.coneR` off a seconds-cam arbor and moved its pitch circle to NaN,
+  // which left the §39 depth assert reporting a NaN movement.
+  g.userData.cone = spec;
   if (name) g.name = name;
   return g;
 }

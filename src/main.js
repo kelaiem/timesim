@@ -661,7 +661,7 @@ function meshCandidates(tol) {
     if (o.name && o.userData && typeof o.userData.r === 'number' && o.userData.r > 0 && !o.userData.schematic) rotors.push(o);
   });
   scene.updateMatrixWorld(true);
-  const q = new THREE.Quaternion(), box = new THREE.Box3();
+  const q = new THREE.Quaternion(), box = new THREE.Box3(), _mcBox = new THREE.Box3();
   const info = rotors.map((o) => {
     o.getWorldQuaternion(q);
     const n = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
@@ -673,7 +673,22 @@ function meshCandidates(tol) {
     const big = Math.abs(n.x) >= Math.abs(n.y) && Math.abs(n.x) >= Math.abs(n.z) ? n.x : Math.abs(n.y) >= Math.abs(n.z) ? n.y : n.z;
     if (big < 0) n.negate();
     const c = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
-    box.setFromObject(o);
+    // THE RIM'S EXTENT IS A CLAIM ABOUT METAL, so it is measured over the
+    // meshes and the §66 display is pruned — `setFromObject` would take the
+    // schematic pitch-circle Line parented INTO this rotor with it. That was
+    // harmless while every rotor was a flat disc (the circle lies in the
+    // blank's own plane), and TODO 136's bevels broke it: a cone's proxy sits
+    // at the pair's APEX, outside the blank entirely, so the crown wheel and
+    // the setting bevel each reported a rim reaching 0.79 further down their
+    // axis than their metal does. The setting bevel then read as OVERLAPPING
+    // the minute wheel it stands clear above, and the enumeration proposed a
+    // mesh that is not there. Same prune `collectUnits` applies, same reason.
+    box.makeEmpty();
+    o.traverse((m) => {
+      if (!m.isMesh || m.userData.schematic) return;
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      box.union(_mcBox.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld));
+    });
     let lo = Infinity, hi = -Infinity;
     for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
       const s = x * n.x + y * n.y + z * n.z; if (s < lo) lo = s; if (s > hi) hi = s;
@@ -4506,31 +4521,54 @@ windSpinner.add(crown);
 // and the counts are EQUAL so the ratio telescopes out exactly as
 // crownWheel/transferWheel's does. Nothing downstream changes: settingWheelTeeth
 // is still the count the setting path walks.
+// THE ASSEMBLY GOES BELOW THE STEM, and that is a P3 resolution in position
+// space rather than anything spent inside the corner. The stem RUNS THROUGH this
+// station — it passes out to the crown, and today it threads the setting wheel's
+// own bore — so the wheel's two halves cannot sit on opposite sides of it: an
+// arbor joining them would cross the stem, which is exactly what the first cut
+// of this did (measured: settingArbor intersecting windStem, stemSquare and both
+// groove collars). Above the stem there is 2.1 to the plate and the bevel's blank
+// alone wants 1.47 of it; below there is the whole dial-side band. So the bevel
+// trails DOWN from the corner's apex and the spur half hangs under it, one body,
+// clear of the stem's whole travel.
+const SETTING_SPUR_T = 1.1;
+const SETTING_SPUR_Z = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi - CLEAR_MARGIN - SETTING_SPUR_T / 2;
 const settingWheel = G.makeGear({ name: 'settingWheel', module: KW_MODULE, teeth: settingWheelTeeth, mates: [
     { teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] },
-  ], thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+  ], thickness: SETTING_SPUR_T, boreR: 0.7, spokes: 0, material: MATS.steel });
 // TODO 50 — named so the clutch pair's floors row can EXCLUDE the pulled
 // setting mesh by contact selector (makeGear returns a group; the selector
 // matches mesh names).
 settingWheel.traverse((o) => { if (o.isMesh) o.name = 'settingWheel'; });
 const settingWheelBase = Math.PI / settingWheelTeeth;
-settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
+settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, SETTING_SPUR_Z);
 keyless.add(settingWheel);
 // The BEVEL half, mounted at the corner's apex — which is where this arbor's
 // axis crosses the stem, i.e. the spur wheel's own centre at the keyless plane.
 // Its blank trails UP the arbor from there (the crown wheel's convention), so it
 // stands clear above the spur and the two are one rigid body on one arbor.
 let settingBevelBase = 0;   // the setting corner's index — solved at the clutch's build, where both mounts exist
+// The mount stands at the corner's apex — on the stem line, at the keyless plane
+// — and is turned through π so the blank trails DOWN it. THAT FLIP REVERSES THE
+// SPIN: a π turn about X maps local +Z onto world −Z, so a local `rotation.z` of
+// +φ IS a world rotation of −φ, and the bevel must carry the NEGATED spin to be
+// the same rigid body as the spur below it. Same seam as `dialFace`'s, read from
+// the same side; the index `bevelCornerSpin` returns is already in this frame and
+// is not negated with it.
+const settingBevelMount = new THREE.Group();
+settingBevelMount.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
+settingBevelMount.rotation.x = Math.PI;
+keyless.add(settingBevelMount);
 const settingBevel = G.makeConicalGear({ name: 'settingBevel', module: KW_MODULE, teeth: settingWheelTeeth,
   mateTeeth: windPinionTeeth, boreR: KW_CROWN_BORE, mateBoreR: KW_RIM_BORE, material: MATS.steel });
 settingBevel.traverse((o) => { if (o.isMesh) o.name = 'settingBevel'; });
-settingBevel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
-keyless.add(settingBevel);
+settingBevelMount.add(settingBevel);
 // …and the arbor that makes them one part. It runs from the spur's underside to
 // the bevel's web, bored through both at KW_CROWN_BORE — transferArbor's idiom,
 // one wheel up.
 const settingArbor = (() => {
-  const zLo = Z_KEYLESS - 1.1 / 2, zHi = Z_KEYLESS + KW_SPEC.settingWheel.zWebHi;
+  const zHi = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi;   // the bevel's web, its lowest face
+  const zLo = SETTING_SPUR_Z - SETTING_SPUR_T / 2;       // the spur's underside
   const arbor = new THREE.Mesh(new THREE.CylinderGeometry(KW_CROWN_BORE, KW_CROWN_BORE, zHi - zLo, 14), MATS.steel);
   arbor.name = 'settingArbor';
   arbor.rotation.x = Math.PI / 2;
@@ -4576,8 +4614,11 @@ const MINUTE_Z_STEP = 1.8;
 // meshing; only the centre-line direction rotates.
 // (mwFoldD / minuteArborXY are hoisted with the XY layout.)
 const minuteArbor = new THREE.Group();
-minuteArbor.position.set(minuteArborXY.x, minuteArborXY.y, Z_KEYLESS);
-minutePinion.position.z = -MINUTE_Z_STEP;
+// TODO 136 — the minute wheel meshes the setting SPUR, so it rides the spur's
+// plane, wherever the corner put it. And its pinion flips to the plate side:
+// under the spur's new plane a step DOWN would put it through the dial sheet.
+minuteArbor.position.set(minuteArborXY.x, minuteArborXY.y, SETTING_SPUR_Z);
+minutePinion.position.z = MINUTE_Z_STEP;
 minuteArbor.add(minuteWheel, minutePinion);
 keyless.add(minuteArbor);
 // Motion-works arbor toward the dial centre — the minute pinion is nowhere
@@ -4601,9 +4642,9 @@ const Z_SETTING = -3.0; // traverse plane: between the plate's back bevel (−2.
 const settingArborXY = { x: minuteArborXY.x, y: minuteArborXY.y };
 // The arbor's own shaft: from the minute pinion's plane UP to the corner.
 const settingDrop = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - (Z_KEYLESS - MINUTE_Z_STEP), 10), MATS.steel);
+  new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - (SETTING_SPUR_Z + MINUTE_Z_STEP), 10), MATS.steel);
 settingDrop.rotation.x = Math.PI / 2;
-settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + Z_KEYLESS - MINUTE_Z_STEP) / 2);
+settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + SETTING_SPUR_Z + MINUTE_Z_STEP) / 2);
 keyless.add(settingDrop);
 
 function makeRodSegment(a, b, radius) {
@@ -30823,10 +30864,19 @@ const SCHEMATIC = { proxies: [], on: false };
         && !optedOut(o)) sites.push(o);
   });
   for (const site of sites) {
+    // A CONE'S PITCH CIRCLE IS NOT IN ITS MOUNTING PLANE. A bevel's blank is
+    // measured from the pair's shared apex, and the mount sits AT that apex —
+    // so a proxy drawn at the site's own origin would put the pitch circle
+    // where there is no metal and claim the wheel's teeth stand in the stem's
+    // plane. The circle belongs at coneR·cos γ along the axis, which is where
+    // the pitch cone crosses it (TODO 136; `makeConicalGear` records the spec).
+    const bev = site.userData.cone;
+    const zPitch = bev ? bev.coneR * Math.cos(bev.gamma) : 0;
     const loop = new THREE.Line(circGeo(site.userData.r), MAT_WHEEL);
     const spoke = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
       [new THREE.Vector3(0, 0, 0), new THREE.Vector3(site.userData.r, 0, 0)]), MAT_SPOKE);
     for (const pr of [loop, spoke]) {
+      pr.position.z = zPitch;
       pr.userData.schematic = true;
       pr.layers.set(1); // the tier's own render layer — the solid camera never sees it
       site.add(pr);
@@ -38276,7 +38326,7 @@ function tick(t) {
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
   // …and its BEVEL half turns with it: one arbor, one blank pair (TODO 136).
   // Indexed on its own corner, so the spin is what travels, not the angle.
-  settingBevel.rotation.z = settingBevelBase + settingWheelSpin;
+  settingBevel.rotation.z = settingBevelBase - settingWheelSpin;   // negated: its mount is turned through π (see the build)
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
   // Motion-works bevel corners: each meshing pair reverses sense (same as
   // any two external gears meshing), so the sign flips at every corner —
