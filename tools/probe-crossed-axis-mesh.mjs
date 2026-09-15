@@ -186,6 +186,14 @@ const out = await page.evaluate(async () => {
       // prism branch does: developed, each vertex must land inside the polygon,
       // and its cone distance inside the band. Every term is a LENGTH.
       let worst = 0, why = '';
+      // ONE tolerance for the whole declaration, hoisted so the web's planes are
+      // judged by the same allowance as the band's cone distances. It has to be
+      // FLOAT32-sized rather than algebraic: positions are stored as float32, so
+      // a vertex the builder placed exactly ON z = zWebHi reads a few 1e-7 above
+      // it, and a 1e-9 epsilon called that an escape — the crown wheel's bore
+      // ring, 1.2312 "inside the inner cone distance" while sitting on the web
+      // plane it was cut to.
+      const tol = 2e-3 * sc.rhoHi;
       for (let i = 0; i < P2.count; i++) {
         const x = P2.getX(i), y = P2.getY(i), z = P2.getZ(i);
         const rho = Math.hypot(x, y, z);
@@ -196,15 +204,14 @@ const out = await page.evaluate(async () => {
         // inside the inner cone distance, which is exactly what the band-only
         // test used to call a refusal.
         const rc = Math.hypot(x, y);
-        const inWeb = z >= sc.zWebLo - 1e-9 && z <= sc.zWebHi + 1e-9
-          && rc >= sc.boreR - 1e-9 && rc <= z * sc.tanRoot + 1e-9;
+        const inWeb = z >= sc.zWebLo - tol && z <= sc.zWebHi + tol
+          && rc >= sc.boreR - tol && rc <= z * sc.tanRoot + tol;
         if (inWeb) continue;
         const terms = [[sc.rhoLo - rho, 'inside the inner cone distance'],
           [rho - sc.rhoHi, 'outside the outer cone distance'],
           [out, 'outside the developed outline']];
         for (const [v, w] of terms) if (v > worst) { worst = v; why = w; }
       }
-      const tol = 2e-3 * sc.rhoHi;
       if (worst > tol)
         return { bad: `the declared apex-cone solid (ρ ${sc.rhoLo.toFixed(3)}..${sc.rhoHi.toFixed(3)}) does not `
           + `contain this mesh: vertices run ${worst.toFixed(4)} ${why}, against a ${tol.toFixed(4)} allowance` };
