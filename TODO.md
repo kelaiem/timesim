@@ -57,6 +57,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
 | 125 | CLOSED | An underived `+ 0.1` sat on every keyless mesh distance at seven live sites (the item said six; crown wheel ⇄ idler was the seventh), putting two declared meshes 1.337% beyond the centre distance their teeth were cut for. DELETED, and the arithmetic decided it rather than taste: KW_MODULE is 0.34, so 0.1 is **0.29 of a module**, where the centre increase buying even a generous horological backlash is under 0.1·m — no backlash rule derives it. Nor was it a convention: 21 of the 23 declared meshes already stood at module·(P+Q)/2 and the only two that did not were the two these expressions site. What it WAS is visible at `ALARM_TUBE_INNER` — this file's 0.1 running clearance for a tube in its bearing, carried across to a centre distance, on a comment ("the same +0.1 slop every keyless mesh uses, see mwFoldD") that was circular. The deletion was a RE-SOLVE as the item predicted: the keyless cluster floors the plate, dialRadius fell 42.922914475499894 → **42.804991398276**, §125's own D4 assert fired in rule-6 form naming the two bounds it had to meet, and D4 re-derives from its comment's closed form 18.777750373095056 → **18.730557557590057** with the bounds meeting to float noise. Price, stated: the seconds well is 0.047 smaller. Dividend: `meshCoverage` now enumerates **23 of 23** declared meshes where it found 21 — the two it could never see were outside its tolerance BECAUSE of the 0.1. `MESH_CENTRE_WAIVERS` is empty; probe-135-registry's claims rewritten, since they encoded this item's open state. Unblocks [TODO 132]'s keyless rows |
+| 139 | WITHDRAWN | Filed from a symptom and reasoned to a cause without measuring the second member. It claimed `alarmSpinner.rotation.y` "carries `alarmCrownRotation` alone and knows nothing about the hour"; `alarmCrownCreep` had been accumulating `-3 * Δ_bd` there since §194 F, three weeks earlier. Measured over six engaged hours, rotor and spinner move −0.00654 and +0.00654 per hour and `rotor + spin` is CONSTANT — the 1:1 mitre's conjugate relation, a loop that is closed while engaged and opens when the crown is pushed in. So the conclusion fails too: the relative index does NOT vary with the hour, there IS a build-time constant, and sweeping the one index knob finds it (floor **0.0000** at phase 0.875). **A symptom consistent with a story is not evidence for it.** What the chase found instead is the item's value: `probe-crossed-axis-mesh` had been REFUSING every conical row since [TODO 136] gave the blank a flat web the solid declaration did not name, and with it measuring again — and TODO 136's two keyless corners finally added to `probe-138-coupling`, which that item cut and never put in the table — **both read +2.5 against a wanted −2.5**: right magnitude, inverted sense, because moving a wheel below the stem and negating its local angle leaves the WORLD motion right and the MESH inverted. Fixed as a named factor in both chains (`KW_WIND_WHEEL_SIDE`/`KW_SET_WHEEL_SIDE`), guarded by `assertWheelSide` and mutation-tested; the crown now winds and sets the other way round, which is the gearing's consequence and is carried, not suppressed. 6/6 corners conjugate, battery 40/40. RESIDUE, and it is a plain indexing error rather than this item: `bevelCornerSpin` misses the best index on BOTH corners (alarm 0.1108 shipped / 0.0000 at 0.875; winding 0.2653 / 0.0571 at 0.833) and not by one systematic offset. Three hypotheses refuted in the item so the next reader does not spend them again |
 | 136 | CLOSED | Reported by eye (gears colliding while setting the time) and confirmed by `tools/probe-crossed-axis-mesh.mjs`: `crownWheel ⇄ windingPinion` buried **0.2065** (27% of a tooth) and `clutchRim ⇄ settingWheel` **0.1372** (18%), deeper than the deliberate half-pitch defect the control injects — because two flat SPUR cuts meeting at a right angle are not a mesh of any kind and no indexing could have fixed them (floors 0.1811 / 0.0971 over a whole pitch). Blocked on [TODO 138] for a conjugate crossed-axis FORM, then landed whole: both corners are Σ = 90° BEVEL pairs, cut on cones whose half-angles come from the counts (68.199°/21.801°) and sharing the apex where the axes cross, with the stations derived from it — a member's pitch plane stands coneR·cos γ from the apex, which at a right angle is the MATE's pitch radius, so `layout.js`'s two `windPinionR * 0.55` terms were wrong by 0.7480 apiece and are deleted. The index is a solve after all, just not the parallel-axis one: a tooth of the wheel and a gap of the pinion on the pair's line of contact. **The FOLD cost more than the corner** — the setting wheel became a compound below the stem (its two halves cannot straddle a stem that runs through the station), the minute pinion's step reversed and is solved against the traverse rod, the traverse plane went under the crown wheel's cone, the winding pinion gained a coupling boss at the §50 stock floor, the clutch's spine cap and hub collar got new bounds against a blank that overhangs the stem on both sides of the apex, the plate's keyless floor learned the stem bushing was now its outermost member, and D4 re-derived with the plate. Two instruments were wrong in ways only a cone could show: `meshCandidates` took its axial extents from `setFromObject` and so measured the §66 schematic proxy (at the APEX, 0.79 outside the metal), and `userData.bevel` was both a NUMBER and a cone SPEC, which produced a NaN movement depth. RESIDUE, unchanged by the repair: `meshCandidates` still cannot PROPOSE a crossed-axis pair, so both corners are declared by hand and no coverage check can find the next one — the item's opening finding, and [TODO 139] is where the same blindness is filed for the alarm corner |
 | 135 | OPEN | The `handSet` axis moves the keyless setting wheel and minute wheel through their whole travel (7.53982 and 6.28319 rad) and moves the cannon pinion, motion works and hands **not at all** — under the walk every check performs (`enterAxis` once, then `setPose` per sample). Found by `transmits` reporting both motion-works rows `driver still` on it, which since the path-length fix means never moved rather than came home. The cause is a time-eased tick law meeting a zero-dt pose: while the jumper is engaged the hands read `jumpDisp`, which approaches its target by `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))`, identically zero when `rawDt` is, and only the `jumpDisp === null` initialiser moves it — so a one-shot reading shows the axis working perfectly and a sweep sees nothing. CLAUDE.md's zero-dt trap reaching a whole sweep rather than one scripted write. Costs `inspection:handSet`, `clearances:handSet` and `expectedContacts:handSet` their entire dial-side population: a collision reachable only while setting the hands is invisible to all three and has been since the axis landed. `tools/probe-handset-reach.mjs` measures it with the control (reset-per-sample and sweep+step both move; the keyless rows are the must-move column). Filed rather than fixed — the three candidate fixes each reach past this item, and all three will surface real findings |
 | 132 | CLOSED | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; **`leg B pinion ⇄ idler pinion` and both keyless rows were the item's SECOND wrong triage**: all three read 0|0 and none was unexercised. The keyless pair was blocked on [TODO 125] (0.1 centre miss over solveGearChain's 0.05 tripwire, which refused them aloud, correctly); 125 lifted it and each took a solve whose knob is a BASE CONSTANT rather than a rotation, since tick() writes those rotors as `base + spin` and a phase left on the object dies on the first frame — **22.222% → 0.043%** and **34.345% → 0.079%**, `minuteWheelBase` and a new `transferWheelClock` (the transfer wheel's index on the crown wheel's arbor). The winding pair's `0|0` was the CHECKER: `transmits` accumulated the NET turn and `wind` is a cycle by construction, so the spur travelled 21.99 rad, came home, and read as a still driver — fixed by keeping the PATH LENGTH beside the net, which also unblocked both reserve stages under `wind`. Leg B's `0|0` was the ROW: it reads the barrel BODY's rim (`arrestAngles` computes `idler` from bodyA alone) and the body turns on `alarmStrike`, while `alarmWind` turns the arbor — leg A's input. Re-declared and clocked by a second stage carrying the chain past the idler wheel to its pinion, **34.334% → 0.008%**. `crown` was likewise never an input to either keyless pair (that axis is the PULL), and the output stage named `alarmWind` alone where a differential's cage is reached by BOTH legs (-2.727273 under each). A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
@@ -16403,8 +16404,9 @@ metal** — worth carrying because each is a general shape:
 `meshCandidates` still cannot PROPOSE a crossed-axis pair — it enumerates
 parallel axes only, so these two corners are declared by hand and no coverage
 check can find the next one. That is this item's opening finding, unchanged by
-the repair, and [TODO 139] is where the same blindness is filed for the alarm
-corner's open loop.
+the repair, and it stays HERE: it was filed onward to [TODO 139] as "the same
+blindness for the alarm corner", but that item is WITHDRAWN and its loop was
+never open, so nothing carries this residue but this paragraph.
 
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where
@@ -17399,7 +17401,7 @@ Found from §219's side — `tools/probe-219-catalogue.mjs` derives the
 reserve reduction from `RESERVE_SWEEP_DEG` rather than reading it, which is
 what turned the stale 4.2 in the LEGO note into this.
 
-## 139. The alarm setting corner is not a closed loop when engaged: the hour back-drives the disc past a crown that cannot follow
+## 139. The alarm setting corner is not a closed loop when engaged: the hour back-drives the disc past a crown that cannot follow — WITHDRAWN
 
 Found while chasing [TODO 138] Landing 2's residual index error, which turned
 out not to be an index error at all.
@@ -17455,6 +17457,123 @@ meshes at every hour.
 separate and already landed: the crown's turn now crosses the corner reversed,
 and the pair's phase floor went from 0.2108, where no index cleared it, to
 0.0000. What remains at the shipped index — 0.1108 of burial — is this item.
+
+### THE DIAGNOSIS ABOVE IS WRONG, AND IT WAS WRONG WHEN IT WAS WRITTEN
+
+Everything above stands as the record of a wrong answer, because the way it is
+wrong is the useful part. Measured, on the tree that filed it:
+
+**The crown DOES follow the hour.** `alarmSpinner.rotation.y` is
+`alarmCrownRotation + alarmCrownCreep`, and the creep term accumulates
+`-3 * Δ_bd` while the crown is pulled — §29 step 2's own machinery, added by
+§194 F on 2026-08-31, three weeks BEFORE this item claimed it did not exist.
+The item's central sentence, "`alarmSpinner.rotation.y` carries
+`alarmCrownRotation` alone and knows nothing about the hour", is false about
+the file it was written against.
+
+Over six simulated hours with the corner engaged, `alarmCrownRotation` pinned:
+
+| | rotor per hour | spinner per hour | `rotor + spin` |
+|---|---|---|---|
+| **engaged** | −0.00654 | +0.00654 | **constant** |
+| disengaged | −0.00654 | 0 | drifts |
+
+Equal and opposite is the 1:1 mitre's conjugate relation exactly. The loop is
+CLOSED while engaged and opens when the crown is pushed in, which is what a
+disengaged bevel should do. `probe-138-coupling` says the same thing from the
+metal: `alarm SETTING, stem to disc` reads ratio −1 against a wanted −1, apex
+gap 0.
+
+**So its conclusion is wrong too.** The item says "no fixed build-time phase can
+mesh it at every hour — there is no constant for it to compute". Since the
+relative index does not vary with the hour, there is one, and the instrument
+finds it: sweeping the one index knob through a whole pitch gives **FLOOR
+0.0000 at phase 0.875**, ceiling 0.2475. The 0.1108 is real and reproduced, and
+it is a plain INDEXING error worth one constant — not the mechanism decision
+about friction slip this item asks for. **Nothing here needs a decision about
+what the corner does when engaged.** It already does the right thing.
+
+**How the item came to be wrong is worth more than the item.** It was filed
+from a symptom (`alarmRotor.rotation.z` moving while `alarmCrownRotation` was
+pinned) and reasoned to a cause without measuring the second member. The rotor
+WAS moving — correctly, with the hour — and so was the crown; the measurement
+that would have separated "the crown does not follow" from "the crown follows
+and the index is wrong" is one line, and was not taken. **A symptom consistent
+with a story is not evidence for it**, and the repository's own habit — state
+the bar, then measure both sides of it — is what the item skipped.
+
+### WHAT IT FOUND INSTEAD: [TODO 136] SHIPPED TWO CO-ROTATING CORNERS
+
+Chasing the index led to the instrument, and the instrument was out of service:
+`probe-crossed-axis-mesh` REFUSED every conical row, because TODO 136 gave the
+blank a flat web and `makeConicalGear` still declared its solid as the band
+ρ ∈ [coneRi, coneR] — which the web's points lie inside by construction. Both
+are repaired (the builder declares both regions; the verification takes one
+float32-sized tolerance, since a vertex cut exactly onto z = zWebHi reads a few
+1e-7 above it once stored).
+
+With it measuring again, and with the two keyless corners added to
+`probe-138-coupling` — TODO 136 cut them and never put them in its table, so
+nothing had ever measured their drive:
+
+| corner | ratio | wanted | |
+|---|---|---|---|
+| keyless WINDING, crown wheel to pinion | **+2.5** | −2.5 | co-rotating |
+| keyless SETTING, setting bevel to clutch | **+2.5** | −2.5 | co-rotating |
+
+The MAGNITUDE was right (20/8, so the gearing was right) and the sense was not.
+TODO 136 moved both wheels BELOW the stem and carried the flip into the
+rigid-body write correctly — a flipped mount takes the negated local angle, so
+each wheel's WORLD motion is unchanged and the transfer wheel still agrees —
+and that is precisely what left the MESH inverted. A wheel on the other side of
+a pinion turns the other way to mesh it.
+
+`STEM_RAD_PER_TURN`'s own comment had already named the place: "only the last
+relation carries a convention — the pinion turns about the stem and the crown
+wheel about z — and it is stated once, here." TODO 136 made "about z" false
+without touching the statement. The side is a named factor in both chains now
+(`KW_WIND_WHEEL_SIDE`, `KW_SET_WHEEL_SIDE`), guarded at each mount by
+`assertWheelSide` and mutation-tested, and the consequence is carried rather
+than suppressed: **with the wheels underneath, the crown winds the other way
+round and sets the hands the other way round.**
+
+Measured after: 6 of 6 corners conjugate; the winding pair's phase floor
+0.2666 → 0.0571. Battery 40/40.
+
+### WHAT IS ACTUALLY LEFT, AND IT IS SMALLER THAN THIS ITEM
+
+The INDEX, on two corners rather than one, with the sense no longer confounding
+it:
+
+| pair | at the shipped index | best index available |
+|---|---|---|
+| `alarmDiscBevel ⇄ alarmStemBevel` | 0.1108 (21% of a tooth) | **0.0000** at phase 0.875 |
+| `crownWheel ⇄ windingPinion` | 0.2653 (35%) | **0.0571** at phase 0.833 |
+
+Both have a build-time constant that would clear them and neither is sitting on
+it, so `bevelCornerSpin` computes something wrong — and NOT one systematic
+offset, since the two optima differ. Three hypotheses are REFUTED and recorded
+so the next reader does not spend them again:
+
+- **the contact ray's sign under a flipped mount.** The bisector points up and
+  the true ray down, but the azimuth about either axis is unchanged by that (any
+  vector in the plane the two axes span shares it), and about the pinion's axis
+  the two differ by exactly 180° — 4 pitches for an 8-tooth pinion, so no error.
+- **tooth zero not sitting at azimuth 0.** A scan said the tip was at 0.884 of a
+  pitch; the scan was wrong. A tooth tip is a FLAT of four points and the scan
+  took the single extremum instead of its midpoint. Measured properly,
+  `cycloidalToothPath`'s tip midpoint is dAz 0.0000 — the convention
+  `bevelCornerSpin` assumes is correct. (SKILL.md's "vertices are not the
+  surface", wearing a different hat.)
+- **live spin contaminating the reading.** The pinions' spins measure ~0 at the
+  rest pose, so the ~0.13 of a pitch by which each pinion's gap misses the ray
+  is its BUILD index. The two pinions' indices sum to exactly one pitch
+  (0.4918 + 0.2936 = 0.7854), so `bevelCornerSpin` is at least self-consistent
+  across their mirrored mounts.
+
+What it needs is an instrument rather than a fourth guess: the corner's index
+measured against the contact ray with a must-hit and a must-miss control, which
+is what the two failed scans above lacked.
 
 ## 138. `makeBevelGear`'s shear-cone teeth can never interleave, so no bevel pair in the movement meshes
 
@@ -17848,6 +17967,13 @@ Still open, each filed where it belongs rather than absorbed here:
   index is a function of the hour and 0.1108 of burial stands at the shipped
   index. `bevelCornerRay`/`bevelCornerSpin` are in place for the day that item
   gives them a constant to compute.
+  **This bullet is wrong and the item is WITHDRAWN.** The loop is closed while
+  engaged — `alarmCrownCreep` had been carrying the hour into the crown since
+  §194 F, and measured, `rotor + spin` is constant over six engaged hours. The
+  index is therefore NOT a function of the hour, the constant those two helpers
+  want exists, and sweeping the one index knob lands the pair at 0.0000. What
+  stands at the shipped index is a plain indexing error, on this corner and on
+  the winding one; read 139's own tail for the three refuted hypotheses.
 - **[TODO 136]** — unblocked now: its two keyless pairs have a conjugate
   crossed-axis form to be cut in, and the 0.7480 station correction lands with
   them. `probe-crossed-axis-mesh` still measures them at 0.2065 and 0.1372.
