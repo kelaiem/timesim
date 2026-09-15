@@ -4,7 +4,7 @@
 
 # The instruments
 
-205 scripts. **104 are ACCEPTANCE tests** — they decide and exit non-zero.
+206 scripts. **105 are ACCEPTANCE tests** — they decide and exit non-zero.
 **101 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -175,6 +175,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-alarmr-handle.mjs` |  | acceptance | THE ALARM CORNER'S RADIUS — is a spec'd value one the movement can build? |
 | `probe-back-envelope.mjs` |  | acceptance | WHAT STANDS ABOVE THE THREE-QUARTER PLATE — the back envelope, per member and per station, SWEPT over the pose net. |
 | `probe-bearing-candidates.mjs` |  | report | TODO 109 step 1 — WHO HOLDS THESE PARTS? The scan that has to run before a single `userData.bearings` line is written. |
+| `probe-bevel-corner-index.mjs` |  | acceptance | WHERE IS EACH MEMBER OF A BEVEL CORNER'S TOOTH, RELATIVE TO THE PAIR'S LINE OF CONTACT? ACCEPTANCE, and the instrument TODO 139 needed after three hypotheses about the same 0.13 of a pitch were each refuted by measurement. |
 | `probe-bezel-cover.mjs` |  | acceptance | HOW NARROW CAN THE BEZEL GO — the join-hiding requirement, measured instead of stated. |
 | `probe-boot-warns.mjs` |  | report | What boot says. Rule 6 wants silence; this is the fast way to ask, without standing up the whole battery just to read a warning. |
 | `probe-bore-cut.mjs` |  | report | TODO 107 (and TODO 95 row 4) — is the geneva finger disc's BORE actually cut? The arbor's own side edges cross the disc's surface twice, at exactly the disc's two face planes, from a radius of 0.185 — inside the 0.2347 bore it is supposed to pass through freely. That can only mean cap triangles span the hole. This counts them: every triangle whose centroid falls inside the bore radius is metal where the drawing says air. `src/geometry.js` already records this failure once — an `absarc` at `curveSegments: 1` collapsing to a single segment — and replaced it with an explicit 64-gon. This asks whether that replacement finished the job. REPORT. |

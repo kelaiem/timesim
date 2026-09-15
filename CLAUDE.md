@@ -656,7 +656,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 174 measuring scripts and this file names 14. The rest are named for the
+`tools/` holds 206 measuring scripts and this file names 14. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -673,8 +673,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **80 of
-them are ACCEPTANCE tests** that exit non-zero, and **94 are REPORTS** that
+The index also carries the split that decides how to read a result: **105 of
+them are ACCEPTANCE tests** that exit non-zero, and **101 are REPORTS** that
 print and leave the judgement to you. A report saying `0 violations` has not
 passed anything.
 
@@ -823,6 +823,33 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   direction-committed cut and it belongs in that table; a row that comes back
   SILENT is an unguarded commitment, and one that comes back NO-OP tested
   nothing.
+- **`updateMatrixWorld(true)` does not walk UP.** three.js recomputes that
+  object and its DESCENDANTS from `this.parent.matrixWorld` exactly as it
+  stands. Call it at BUILD time and the ancestors are still carrying the
+  identity a fresh `Object3D` is born with, so a world quantity read through it
+  comes back missing every ancestor rotation — silently, with a plausible
+  number. TODO 139: `bevelCornerSpin` indexed both keyless corners that way and
+  each stem-side member came out 0.13 of a tooth pitch wrong, because those
+  mounts hang under a group carrying the stem's azimuth while the plate-side
+  mounts hang off `keyless`, whose world transform IS the identity. One member
+  of each corner wrong, by a different amount per corner, and every gate green.
+  `getWorldQuaternion` / `getWorldPosition` / `updateWorldMatrix(true, false)`
+  walk up — prefer them anywhere the answer is a world quantity. The audited
+  residue is in the item: every other build-time site sits under `movement`,
+  which is untransformed, so they are right for the wrong reason.
+- **BOOT HAS NO POSE, so a claim about one cannot be a boot assert.** `main.js`
+  carries a top-level `await loadState()` and then `tick(0)` to "seed correct
+  initial pose before the first paint" — so by the end of module evaluation the
+  movement stands at whatever the LAST SESSION SAVED, not at anything canonical.
+  TODO 139 shipped a boot guard on a bevel corner's index and CI killed it on
+  `offline`'s reload rows: silent on a fresh profile, half a pitch out after a
+  reload, because every stem-side member rides `-windStemRot`. Moving it above
+  `tick(0)` does not rescue it either — measured, the build pose and the rest
+  pose satisfy DIFFERENT subsets of the three corners and no third pose exists
+  there. Rule 6 is not "silent on a fresh profile": a build-time assert may hold
+  a derivation (the achieved and required numbers), and anything needing a posed
+  movement belongs in an instrument, which is why every battery check runs
+  against `resetInputs`/`setPose`.
 - **three-mesh-bvh crashes on non-indexed geometry** — build the other
   side's bounds tree first; indexing is a side effect of `bvhFor`.
   **Disarmed at the source by §81**: every mesh now reaches the scene

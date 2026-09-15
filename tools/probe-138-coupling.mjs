@@ -96,6 +96,23 @@ const out = await page.evaluate(async () => {
     { name: 'alarm SETTING, stem to disc', a: 'alarmStemBevel', b: 'alarmDiscBevel',
       drive: (f) => C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
         alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }) },
+    // TODO 136's two keyless corners, added by TODO 139 — they were cut as bevel
+    // pairs and never added HERE, so nothing measured whether the movement drives
+    // them conjugately. The winding one is swept by the bank (the crown wheel's
+    // own input); the setting one by the crown PULLED, which is the only state
+    // where the clutch rim and the setting wheel's bevel half are engaged.
+    { name: 'keyless WINDING, crown wheel to pinion', a: 'crownWheel', b: 'windingPinion',
+      drive: (f) => C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0,
+        tension: 1 - 0.5 * f }) },
+    // The setting corner needs an input that turns the CLUTCH, which rides the
+    // stem — `setPathRot` poses the setting path DOWNSTREAM of it, so the rim
+    // stands still and the row reads "no ratio" rather than a wrong one. Driven
+    // by the crown itself, pulled, which is the only state where the rim and
+    // the setting wheel's bevel half are engaged at all.
+    { name: 'keyless SETTING, setting bevel to clutch', a: 'settingBevel', b: 'clutchRim',
+      drive: (f) => { C.setPose({ tau: 0.13, crownPullT: 1, leverEngage: 0, tension: 1 });
+        C.setCrownRotation(f * 2 * Math.PI);
+        for (let k = 0; k < 40; k++) C.step(0.05); } },
     { name: 'alarm WINDING, stem to contrate', a: 'alarmStemBevel', b: 'alarmWindContrate',
       drive: (f) => C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
         alarmWindRotation: -f * (C.alarmWindCrownTurns || 1.75 / (12 / 44)) * 2 * Math.PI,

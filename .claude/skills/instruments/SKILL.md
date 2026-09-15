@@ -58,6 +58,34 @@ one line — and pick a pair that genuinely overlaps: a bore on a stud is a
 RUNNING FIT and does not intersect, which is how the first control here was
 itself wrong.
 
+**A control that compares a quantity with itself cannot fail.** TODO 139's
+hypothesis was that a build-time solve read a STALE world matrix. The probe
+written to test it took a "stale" reading and a walked-up one and reported
+`STALE − TRUE = 0.0000` on every member — a clean, confident refutation of a
+hypothesis that was true. Both readings had been taken after
+`scene.updateMatrixWorld(true)`, where nothing is stale any more, so the two
+paths were one path. The rule the miss gives you: when the hypothesis is
+"quantity X was computed in the wrong CONDITIONS", a probe that recreates the
+computation under the RIGHT conditions measures nothing — you have to either
+reproduce the wrong conditions, or measure the RESULT somewhere the conditions
+cannot reach. Here the second was decisive: the built metal's own tooth
+positions, in world space, which no frame bug can reach.
+
+**`updateMatrixWorld(true)` does not walk UP.** three.js recomputes this object
+and its DESCENDANTS from `this.parent.matrixWorld` exactly as it stands. Call
+it at build time, before anything has updated the ancestors, and you read a
+frame missing every ancestor rotation — silently, with a plausible number.
+`getWorldQuaternion` / `getWorldPosition` / `updateWorldMatrix(true, false)`
+walk up; prefer them anywhere the answer is a world quantity.
+
+**`Math.sign` of a quantity that is zero by construction.** A probe derived
+which side of a bevel's apex the metal lay on as
+`sign((meshOrigin − apex) · axis)` — and the mesh's origin IS the apex, so the
+sign was float noise. Three of six members went to the far side of their own
+apex and the scan read 0% metal at the pitch cone of a gear that has teeth. If
+a builder puts the feature somewhere by construction, read it from the
+construction, not from a difference that should be zero.
+
 **One ordering is not an order-independence test.** §182 fixed
 `meshIntegrity`'s shard-order dependence twice and both times the acceptance —
 `support` then the check — agreed it was fixed. It was not: `support` builds a
