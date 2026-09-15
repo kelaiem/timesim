@@ -54,8 +54,8 @@ import {
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
-  STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
-  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
+  STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
+  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
@@ -1811,6 +1811,7 @@ const KW_SPEC = {
     rimFaceOut: KW_SPEC.clutchRim.zWebLo,
     rimBack: KW_SPEC.clutchRim.zWebHi - KW_SPEC.clutchRim.zWebLo,
     rimTip: KW_SPEC.clutchRim.zWebLo - KW_SPEC.clutchRim.zTipLo,
+    setTipR: KW_SPEC.settingWheel.tipR,
   };
   for (const [k, v] of Object.entries(want))
     if (Math.abs(v - KW_BEVEL[k]) > 5e-6)
@@ -1831,6 +1832,14 @@ const KW_SPEC = {
       : Math.sqrt(Math.max(0, cw.coneR * cw.coneR - r * r));
     reach = Math.max(reach, rad);
   }
+  // YOKE_FORK_OUT's third wall is a RADIAL bound, and that is only the binding
+  // one while the clutch's hub collar is wider than the setting wheel's blank is
+  // high off the stem — otherwise the collar could pass under the cone's mouth
+  // and the axial standoff would be smaller than the tip circle asks.
+  if (!(HUB_COLLAR_R >= KW_SPEC.settingWheel.zTipLo))
+    console.warn(`TODO 136 setting corner: hub collar r ${HUB_COLLAR_R} no longer reaches the setting `
+      + `wheel's blank (its lowest metal stands ${KW_SPEC.settingWheel.zTipLo.toFixed(4)} off the stem) — `
+      + 'YOKE_FORK_OUT\'s tip-circle bound is the wrong shape for this pair');
   const face = KW_SPEC.windPinion.zWebHi + WIND_PINION_BOSS;
   if (face < reach + CLEAR_MARGIN)
     console.warn(`TODO 136 winding pinion: its coupling face stands ${face.toFixed(4)} from the corner's apex `
@@ -4201,6 +4210,11 @@ const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the winding s
 const transferWheel = G.makeGear({ name: 'transferWheel', module: KW_MODULE, teeth: crownWheelTeeth, mates: [windIdler
   ? { teeth: windIdler.teeth, mates: [crownWheelTeeth, WIND_SPUR_TEETH] }
   : { teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+// TODO 136 — NAMED, with the rest of this arbor's stack. The fold renumbered
+// the unit and stranded five INTRA_UNIT_CONTACTS rows that named these by index;
+// the table's own comments have called that the stale-row trap three times now,
+// so the answer is the one they keep recommending rather than new indices.
+transferWheel.traverse((o) => { if (o.isMesh) o.name = 'transferWheel'; });
 transferWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_TRANSFER);
 keyless.add(transferWheel);
 // TODO 132 — the transfer wheel's index ON ITS ARBOR, and the only freedom the
@@ -4213,6 +4227,7 @@ keyless.add(transferWheel);
 let transferWheelClock = 0;
 const transferArbor = new THREE.Mesh(
   new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - Z_KEYLESS, 14), MATS.steel);
+transferArbor.name = 'transferArbor';
 transferArbor.rotation.x = Math.PI / 2;
 transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + Z_KEYLESS) / 2);
 keyless.add(transferArbor);
@@ -4243,6 +4258,7 @@ if (windIdler) {
 // longer at −half a thickness: the blank's small end stands zTipLo above the
 // apex, so the screw hangs from there.
 const cwScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 12), MATS.blueSteel);
+cwScrew.name = 'cwScrew';
 cwScrew.rotation.x = Math.PI / 2;
 cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS + KW_SPEC.crownWheel.zTipLo - 0.5);
 keyless.add(cwScrew);
@@ -4289,10 +4305,27 @@ windPinionMount.add(windPinion);
   // blank's own root-cone circle at its big end, so the shoulder is flush with
   // the face it grows from rather than a second diameter nobody turned.
   const bossR = KW_SPEC.windPinion.coneR * Math.sin(KW_SPEC.windPinion.thetaRoot);
-  const boss = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, WIND_PINION_BOSS, 20), MATS.steel);
+  // A BORED ANNULUS, because the stem's square slides through this member
+  // exactly as it slides through the cone — same bore, and a solid shoulder
+  // would be metal where the stem is. Extruded from explicit point loops (an
+  // arc contour duplicates its seam point, the degenerate-triangle class that
+  // flips sampledVerdict's parity raycast) and CLOSED at both ends, because an
+  // open body reads as a colliding one.
+  //
+  // And the extrude's own axis is what orients it: +Z turned onto +Y, which is
+  // the stem in this group. The first cut copied the saw ring's `rotation.x`
+  // onto a CylinderGeometry whose axis is already +Y — that turned the boss
+  // broadside and projected 1.92 of it along the stem, which the pair sweep
+  // duly read as the clutch sleeve buried in the pinion.
+  const bossLoop = (r, n) => Array.from({ length: n },
+    (_, i) => new THREE.Vector2(r * Math.cos((2 * Math.PI * i) / n), r * Math.sin((2 * Math.PI * i) / n)));
+  const bossShape = new THREE.Shape(bossLoop(bossR, 20));
+  bossShape.holes.push(new THREE.Path(bossLoop(KW_PIN_BORE, 20)));
+  const bossGeo = new THREE.ExtrudeGeometry(bossShape, { depth: WIND_PINION_BOSS, bevelEnabled: false });
+  bossGeo.translate(0, 0, -WIND_PINION_BOSS);   // grow INBOARD from the coupling face at the group's origin
+  bossGeo.rotateX(-Math.PI / 2);                // extrude axis +Z → +Y, the stem
+  const boss = new THREE.Mesh(bossGeo, MATS.steel);
   boss.name = 'windingPinion';
-  boss.rotation.x = Math.PI / 2;
-  boss.position.y = -WIND_PINION_BOSS / 2;
   windPinionGroup.add(boss);
 }
 // THE CORNER'S INDEX. A crossed pair cannot be phased by any parallel-axis
@@ -4456,7 +4489,7 @@ windSpinner.add(stem);
   // the FOOT's near face (half its 2.2 box) must clear that by the margin.
   const grooveOuterLocal = GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2;
   const bushDist = Math.max(plateR - 2,
-    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + 1.1);
+    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF);
   const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
   // Torus plane ⊥ stem: its hole must point along the stem axis.
   bush.rotation.z = stemAngle;
@@ -4465,7 +4498,8 @@ windSpinner.add(stem);
   bush.position.set(uWind.x * bushDist, uWind.y * bushDist, Z_KEYLESS);
   keyless.add(bush);
   const footTop = -1.4; // 0.6 into the plate's back face (−2)
-  const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, footTop - Z_KEYLESS), MATS.nickel);
+  const foot = new THREE.Mesh(
+    new THREE.BoxGeometry(2 * STEM_BUSH_FOOT_HALF, 2 * STEM_BUSH_FOOT_HALF, footTop - Z_KEYLESS), MATS.nickel);
   // Aligned to the STEM, not the world axes: bushDist's derivation above
   // budgets the foot's stem-direction half-extent as 1.1, and a world-
   // aligned box would present its half-DIAGONAL (1.56) to the groove
@@ -4475,8 +4509,8 @@ windSpinner.add(stem);
   keyless.add(foot);
   // Rule 6 — the boss's other wall: pushed outboard by the groove, the
   // whole foot must still stand ON the plate.
-  if (!(bushDist + 1.1 <= plateR))
-    console.warn(`TODO 50: stem bushing foot reaches ${(bushDist + 1.1).toFixed(2)} — off the plate's ${plateR.toFixed(2)} rim`);
+  if (!(bushDist + STEM_BUSH_FOOT_HALF <= plateR))
+    console.warn(`TODO 50: stem bushing foot reaches ${(bushDist + STEM_BUSH_FOOT_HALF).toFixed(4)} — off the plate's ${plateR.toFixed(4)} rim`);
 }
 
 // (CROWN_PULL_DIST — the stem's outward slide when hacking — is declared up
@@ -4531,8 +4565,16 @@ windSpinner.add(crown);
 // alone wants 1.47 of it; below there is the whole dial-side band. So the bevel
 // trails DOWN from the corner's apex and the spur half hangs under it, one body,
 // clear of the stem's whole travel.
+//
+// Its plane is SOLVED below, once both wheels it has to separate exist — the
+// spur's own and the minute wheel's, whose reaches are READ from the blanks
+// (makeGear grows a wheel past its nominal thickness: the extrude bevel and the
+// hub ring put the 1.1 spur 1.65 tall). A first cut used half the nominal
+// thickness and left the minute wheel's rim overlapping the bevel's tooth band
+// by 0.05 — enough for meshCoverage to propose a mesh between them, which is
+// what a rim reaching into another wheel's teeth IS.
 const SETTING_SPUR_T = 1.1;
-const SETTING_SPUR_Z = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi - CLEAR_MARGIN - SETTING_SPUR_T / 2;
+let SETTING_SPUR_Z = 0;
 const settingWheel = G.makeGear({ name: 'settingWheel', module: KW_MODULE, teeth: settingWheelTeeth, mates: [
     { teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] },
   ], thickness: SETTING_SPUR_T, boreR: 0.7, spokes: 0, material: MATS.steel });
@@ -4541,8 +4583,7 @@ const settingWheel = G.makeGear({ name: 'settingWheel', module: KW_MODULE, teeth
 // matches mesh names).
 settingWheel.traverse((o) => { if (o.isMesh) o.name = 'settingWheel'; });
 const settingWheelBase = Math.PI / settingWheelTeeth;
-settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, SETTING_SPUR_Z);
-keyless.add(settingWheel);
+keyless.add(settingWheel);   // …positioned below, once its plane is solved
 // The BEVEL half, mounted at the corner's apex — which is where this arbor's
 // axis crosses the stem, i.e. the spur wheel's own centre at the keyless plane.
 // Its blank trails UP the arbor from there (the crown wheel's convention), so it
@@ -4563,12 +4604,26 @@ const settingBevel = G.makeConicalGear({ name: 'settingBevel', module: KW_MODULE
   mateTeeth: windPinionTeeth, boreR: KW_CROWN_BORE, mateBoreR: KW_RIM_BORE, material: MATS.steel });
 settingBevel.traverse((o) => { if (o.isMesh) o.name = 'settingBevel'; });
 settingBevelMount.add(settingBevel);
-// …and the arbor that makes them one part. It runs from the spur's underside to
-// the bevel's web, bored through both at KW_CROWN_BORE — transferArbor's idiom,
-// one wheel up.
+const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: minuteWheelTeeth, mates: [
+    { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
+    { teeth: SETTING_CAP_TEETH, mates: [minuteWheelTeeth] },
+  ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
+// THE SETTING SPUR'S PLANE, solved against the blanks rather than the nominals.
+// The bevel's web is the lowest crown-corner face; below it must come a margin,
+// then whichever of the two wheels reaches further from its own plane — they are
+// coplanar, so one clearance serves both.
+{
+  const half = (o) => { const b = new THREE.Box3().setFromObject(o); return Math.max(-b.min.z, b.max.z); };
+  SETTING_SPUR_Z = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi - CLEAR_MARGIN
+    - Math.max(half(settingWheel), half(minuteWheel));
+  settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, SETTING_SPUR_Z);
+}
+// …and the arbor that makes the corner's two halves one part. It runs from the
+// spur's top face up to the bevel's web, bored through both at KW_CROWN_BORE —
+// transferArbor's idiom, one wheel up, and entirely below the stem.
 const settingArbor = (() => {
   const zHi = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi;   // the bevel's web, its lowest face
-  const zLo = SETTING_SPUR_Z - SETTING_SPUR_T / 2;       // the spur's underside
+  const zLo = SETTING_SPUR_Z;
   const arbor = new THREE.Mesh(new THREE.CylinderGeometry(KW_CROWN_BORE, KW_CROWN_BORE, zHi - zLo, 14), MATS.steel);
   arbor.name = 'settingArbor';
   arbor.rotation.x = Math.PI / 2;
@@ -4576,11 +4631,6 @@ const settingArbor = (() => {
   keyless.add(arbor);
   return arbor;
 })();
-
-const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: minuteWheelTeeth, mates: [
-    { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
-    { teeth: SETTING_CAP_TEETH, mates: [minuteWheelTeeth] },
-  ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
 // §194 declared these two KEYLESS meshes by hand because nothing phased them;
 // TODO 132 gave them the solve they were owed, and solveGearChain declares
 // every pair it phases, so the rows are gone from here rather than duplicated.
@@ -4599,11 +4649,32 @@ const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: 
 let minuteWheelBase = Math.PI / minuteWheelTeeth;
 const minutePinion = G.makePinion({ name: 'minutePinion', module: 0.28, teeth: minutePinionTeeth, mates: [minutePinionTeeth], // §136: meshes NOTHING (see above) — self-Willis display form, not a mesh claim
   thickness: 1.3, material: MATS.steel });
-// Pinion steps toward the DIAL below the wheel (same side as before the
-// move, keeping the compound stack's read direction): 1.8 rather than the
-// old 2.0 so the pinion's underside holds one margin over the dial face —
-// the whole cluster is only ~2.9 above the dial now.
-const MINUTE_Z_STEP = 1.8;
+// TRAVERSE PLANE — a window before TODO 136 and a derived floor since. It sits
+// between the plate's back bevel (−2.3) and the reserve gear plane (Z_RSV −4.2,
+// w1 tops at −3.7), and −3.0 was a comfortable middle. The crown wheel is a CONE
+// now, mounted at the corner's apex on the keyless plane and trailing UP its own
+// arbor, so its blank stands in that window: measured, the traverse rod passes
+// 2.003 from the wheel's axis — inside its 3.518 tip circle — and the blank's
+// lowest metal over that crossing is its tip ray at Z_KEYLESS + zTipLo. So the
+// rod goes UNDER it by the margin. (Over is not available: the wheel's web tops
+// at −2.628 and the plate's bevel is at −2.3.)
+const SETTING_ROD_R = 0.35;   // the traverse rod's own radius, one declaration
+const Z_SETTING = Math.min(-3.0,
+  Z_KEYLESS + KW_SPEC.crownWheel.zTipLo - CLEAR_MARGIN - SETTING_ROD_R);
+// The pinion stepped toward the DIAL below the wheel, 1.8 rather than the old
+// 2.0 so its underside held one margin over the dial face. TODO 136 REVERSED
+// THE STEP: the corner's apex is on the stem line, so the setting wheel's two
+// halves had to go below it, the minute wheel followed its spur's plane, and a
+// step DOWN from there puts the pinion through the dial sheet. Stepping UP
+// instead, the bound is the motion-works TRAVERSE rod the pinion now stands
+// under — so the step is SOLVED against it rather than kept at 1.8, which
+// measured left the pinion 0.11 into the rod. The 1.8 is still the ceiling: the
+// step that reads as one compound stack, never more than it.
+const MINUTE_Z_STEP = (() => {
+  const b = new THREE.Box3().setFromObject(minutePinion);
+  const room = (Z_SETTING - SETTING_ROD_R - CLEAR_MARGIN) - SETTING_SPUR_Z - b.max.z;
+  return Math.min(1.8, room);
+})();
 // The minute wheel FOLDS perpendicularly off the stem line instead of
 // continuing outward: straight-line continuation would put it (and its own
 // radius) well past the plate rim. Folded to the side AWAY from the setting
@@ -4619,6 +4690,8 @@ const minuteArbor = new THREE.Group();
 // under the spur's new plane a step DOWN would put it through the dial sheet.
 minuteArbor.position.set(minuteArborXY.x, minuteArborXY.y, SETTING_SPUR_Z);
 minutePinion.position.z = MINUTE_Z_STEP;
+minuteWheel.traverse((o) => { if (o.isMesh) o.name = 'minuteWheel'; });
+minutePinion.traverse((o) => { if (o.isMesh) o.name = 'minutePinion'; });
 minuteArbor.add(minuteWheel, minutePinion);
 keyless.add(minuteArbor);
 // Motion-works arbor toward the dial centre — the minute pinion is nowhere
@@ -4638,11 +4711,11 @@ keyless.add(minuteArbor);
 // still driven by handSetOffset in tick() (same representational-coupling
 // convention as the reserve train), threaded through each corner pair with
 // alternating sign, not just teleported to the far end.
-const Z_SETTING = -3.0; // traverse plane: between the plate's back bevel (−2.3) and the reserve gear plane (Z_RSV −4.2, w1 tops at −3.7)
 const settingArborXY = { x: minuteArborXY.x, y: minuteArborXY.y };
 // The arbor's own shaft: from the minute pinion's plane UP to the corner.
 const settingDrop = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - (SETTING_SPUR_Z + MINUTE_Z_STEP), 10), MATS.steel);
+  new THREE.CylinderGeometry(SETTING_ROD_R, SETTING_ROD_R, Z_SETTING - (SETTING_SPUR_Z + MINUTE_Z_STEP), 10), MATS.steel);
+settingDrop.name = 'settingDrop';
 settingDrop.rotation.x = Math.PI / 2;
 settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + SETTING_SPUR_Z + MINUTE_Z_STEP) / 2);
 keyless.add(settingDrop);
@@ -4729,10 +4802,15 @@ const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(C
 const SETTING_CAP_XY = { x: MW_WORLD.x + capU.x * capMeshD, y: MW_WORLD.y + capU.y * capMeshD };
 const settingB = new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_SETTING);
 const settingU = settingB.clone().sub(settingA).normalize();
-keyless.add(makeRodSegment(settingA, settingB, 0.35));
+{
+  const traverse = makeRodSegment(settingA, settingB, SETTING_ROD_R);
+  traverse.name = 'settingTraverse';
+  keyless.add(traverse);
+}
 
 const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5
 const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
+settingRise.name = 'settingRise';
 settingRise.rotation.x = Math.PI / 2;
 settingRise.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (Z_SETTING + Z_CANNON_PINION) / 2);
 keyless.add(settingRise);
@@ -4747,14 +4825,17 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
   const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
-  if (tag) gearIn.name = `${tag}In`;   // §137: a transfer row names its members (§54's rule)
+  // §137: a transfer row names its members (§54's rule) — and TODO 136 put the
+  // name on the MESHES too, because an intra-unit row's selector matches mesh
+  // names and these had been riding index labels the keyless fold renumbered.
+  if (tag) { gearIn.name = `${tag}In`; gearIn.traverse((o) => { if (o.isMesh) o.name = `${tag}In`; }); }
   mountIn.add(gearIn);
 
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
   const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
-  if (tag) gearOut.name = `${tag}Out`;
+  if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
   gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
 
@@ -4792,6 +4873,7 @@ for (const [site, tag] of [['motion works: rise→traverse corner', 'mwCornerDro
 // from the minute wheel's axis, in the minute wheel's own plane — it
 // engages REAL teeth. Rest phase aims a half-tooth gap at the wheel.
 const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
+settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
 settingCap.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_CANNON_PINION);
 const SETTING_CAP_PHASE =
   Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
@@ -4836,8 +4918,9 @@ registerSub('Keyless works', 'Setting cap', settingCap);
 // against the spring, so the fork tracks it, not the stem. Hub collars
 // slimmed 1.5 → 1.2 back then: the yoke's arm passes UNDER them, and every
 // 0.1 of hub radius is 0.1 of yoke drop — depth the dial gap no longer has
-// to spare.
-const HUB_COLLAR_R = 1.2;
+// to spare. (HUB_COLLAR_R moved to layout.js with TODO 136: YOKE_FORK_OUT's
+// third wall is about this radius, and a constant a layout bound reads belongs
+// beside the bound.)
 {
   const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, GROOVE_COLLAR_T, 12);
   for (const dy of [-GROOVE_HALF, GROOVE_HALF]) {

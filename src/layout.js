@@ -925,12 +925,12 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 //
 //     D4 = (railInnerR − DIAL_WALL_HALF − CLEAR_MARGIN
 //           + SUBDIAL_INBOARD_CLEAR) / 2
-//        = (41.12326949616903·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
+//        = (41.1242632573607·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
 //
 // printed at full precision below (dialRadius is the keyless-floored plate,
 // FLAT over every station in play, so the closed form is a constant; the
 // dial build asserts the two bounds still meet, which is what re-derives
-// this number if the face ever moves). Well radius 14.5075 — its ring one
+// this number if the face ever moves). Well radius 14.5079 — its ring one
 // margin off the rail's inner edge, its inner edge on the keep-out.
 //
 // TODO 125 RE-DERIVED IT, and that is the assert above doing its job rather
@@ -949,9 +949,9 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // number. Cutting the two keyless corners as real bevels deleted a fictitious
 // 0.55·windPinionR of rim overlap at each of them AND shortened the winding
 // pinion to a cone, so the cluster the plate encloses got shorter twice over:
-// dialRadius 42.804991398276 → 41.12326949616903, railInnerR 34.2620 → 32.9151,
+// dialRadius 42.804991398276 → 41.1242632573607, railInnerR 34.2620 → 32.9159,
 // and the two bounds stood 15.1806 against 13.8345. Re-derived, they meet at
-// 14.5075. The well is 0.673 smaller, which is what the plate stops carrying
+// 14.5079. The well is 0.673 smaller, which is what the plate stops carrying
 // when the keyless works measure their own stations.
 // Context that still binds the RANGE, from the Tier B measurement: the
 // plate stays 42.9229 through station 22.90 and grows at 22.95; the
@@ -960,7 +960,7 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // station on the post-Tier-B tree. The menu's FAST rates still trade size
 // for rate (the 96-tooth fourth outruns the keyless floor from ≈17.7 —
 // at this station too; their spec rows record it).
-export const D4 = 18.057532452366843;
+export const D4 = 18.057930155595752;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
 // law); the mirror died the day the wells split. The owner's constraint is
@@ -1315,11 +1315,15 @@ export const STEM_R = 0.45;           // the stem's shaft radius (main.js builds
 // the cone's root angle needs lives there). main.js therefore ASSERTS every row
 // against the spec it actually cuts — CLAUDE.md's rule for a figure an
 // instrument also computes. A drifted row is a boot warning, not a silent move.
+//   setTipR    = the setting wheel's blank reach from its own axis — the fifth
+//                row, and the one the CLUTCH's body has to stand clear of at
+//                full pull (see YOKE_FORK_OUT)
 export const KW_BEVEL = {
   pinFaceOut: 3.533868,
   rimFaceOut: 2.728037,
   rimBack: 0.805831,
   rimTip: 0.121098,
+  setTipR: 3.517671,
 };
 // The pinion's COUPLING BOSS — the turned shoulder outboard of its cone that
 // carries the saw ring. It exists because the crown wheel's rim overhangs the
@@ -1386,6 +1390,18 @@ export const YOKE_ARM = YK_C - (CLUTCH_SLEEVE_R + YOKE_PRONG_R + CLEAR_MARGIN);
 //     collar's face; SAW_RING_ROOT is its root plane, where the female
 //     tips land at full seat.
 export const HUB_COLLAR_T = 0.4;
+// The collars' radius. Slimmed 1.5 → 1.2 at TODO 50's split: the yoke's arm
+// passes UNDER them and every 0.1 of hub radius is 0.1 of yoke drop, depth the
+// dial gap has no more of. It lives here since TODO 136 because YOKE_FORK_OUT's
+// third wall is a claim about this radius reaching the setting wheel's blank.
+export const HUB_COLLAR_R = 1.2;
+// The stem bushing's foot is a 2.2 box aligned to the stem, so 1.1 is its
+// half-extent along it — the term both the foot's own station and the plate's
+// keyless floor are written in terms of. One declaration since TODO 136, which
+// is when the two stopped agreeing: the fold pulled the setting wheel 2.83
+// inboard while the stem's stroke barely moved, so the BUSHING became the
+// outermost thing on this plate and the floor that had covered it stopped.
+export const STEM_BUSH_FOOT_HALF = 1.1;
 // A KW_MODULE spur's extrude bevel, which grows its faces outward —
 // geometry.js's gearBevel(module, thickness), mirrored here because layout sits
 // below geometry in the module graph. The battery holds the mirror true: a
@@ -1410,10 +1426,18 @@ export const YOKE_TIP_HALF = 0.6 + 0.12;
 // reference plane now (the cone's big end, the whole stock), where it used to be
 // half a declared thickness plus the extrude bevel's outward growth. A cone has
 // no extrude, so the bevel term goes with it.
+// …and TODO 136 adds a THIRD wall, from the other end of the stroke. At full
+// pull the setting wheel is a CONE standing off the stem, and its blank
+// overhangs the stem on both sides of the corner's apex — so the collar, which
+// is wider than the blank's lowest point is high, has to stand clear of the tip
+// CIRCLE rather than of a disc's face: every collar point is within
+// HUB_COLLAR_R of the stem and therefore inside the blank's z band, which leaves
+// the separation purely radial. main.js asserts that premise against the cut.
 export const YOKE_FORK_OUT = Math.min(
   -(KW_BEVEL.rimBack + HUB_COLLAR_T / 2 - SAW_FIT),
   -(KW_BEVEL.rimBack + CLEAR_MARGIN + YOKE_TIP_HALF)
-    + (HUB_COLLAR_T / 2 + YOKE_PRONG_R + SAW_FIT));
+    + (HUB_COLLAR_T / 2 + YOKE_PRONG_R + SAW_FIT),
+  KW_BEVEL.rimFaceOut - (KW_BEVEL.setTipR + CLEAR_MARGIN) - HUB_COLLAR_T / 2);
 export const YOKE_FORK_IN = YOKE_FORK_OUT - (HUB_COLLAR_T + 2 * (YOKE_PRONG_R + SAW_FIT));
 export const YOKE_TRACK_OFF = (YOKE_FORK_IN + YOKE_FORK_OUT) / 2;
 export const SAW_RING_ROOT = YOKE_FORK_IN - HUB_COLLAR_T / 2 + SAW_FIT - SAW_BASE_T;
@@ -1707,6 +1731,13 @@ export function solveKeyless({
     plateR,
     swDist + settingWheelR + 1,
     Math.hypot(swDist, mwFoldD) + minuteWheelR + 1,
+    // …and past the STEM BUSHING's foot, which TODO 136 made the outermost
+    // member: the bushing is pushed out by the stem's groove at full pull
+    // (main.js's bushDist, second branch) and its far face stands one foot-half
+    // beyond that. Main asserts the foot stands ON the plate; before this term
+    // it stood exactly on the rim.
+    pinDist + CROWN_PULL_DIST + (GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2)
+      + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF + STEM_BUSH_FOOT_HALF,
   );
 
   // --- Dial-side locals the plate radius fixes (moved from the dial build,
