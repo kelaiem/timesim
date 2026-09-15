@@ -4917,10 +4917,23 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
   const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
   if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
+  // TODO 140 — A BARE HALF PITCH, AND IT IS NOT A SOLVE. The corner's real
+  // condition is that on the pair's LINE OF CONTACT one member presents a tooth
+  // and the other a gap, which `bevelCornerSpin` computes from each mount's own
+  // frame; this seed assumes instead that both gears' tooth 0 already lies on
+  // that ray. Measured off the metal, neither does — drop reads its two members
+  // at -0.3479 and +0.1528 of a pitch from the ray, rise at -0.3472 and -0.1528
+  // — so what makes these two mesh is that the RELATIVE condition survives it
+  // anyway: the differences come to 0.5007 and the sums to -0.5000, a half pitch
+  // apart either way. That is a property of where `setFromUnitVectors` happened
+  // to land two minimal rotations, not of anything solved, and it is why they
+  // are registered with the index guard WAIVED rather than gated.
   gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
 
   keyless.add(mountIn, mountOut);
+  assertBevelCorner(gearIn, BEVEL_TEETH, gearOut, BEVEL_TEETH, `motion-works corner ${tag || '(untagged)'}`,
+    'TODO 140 — addBevelCorner seeds a bare BEVEL_PHASE instead of solving the index against the contact ray');
   return { gearIn, gearOut };
 }
 

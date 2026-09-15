@@ -73,11 +73,14 @@
 // shipped index — so what is left on them, about 9% of a tooth height, is not
 // an index error at all.
 //
-// The two MOTION-WORKS corners are reported and not judged: they never adopted
-// `bevelCornerSpin` and carry a bare half-pitch, so the absolute condition
-// above is not their convention. They satisfy the RELATIVE one — Drop reads a
-// difference of 0.5007 and Rise a sum of -0.5000 — which is why they mesh, and
-// that is an accident of where `setFromUnitVectors` landed rather than a solve.
+// The two MOTION-WORKS corners are reported and not judged, and are TODO 140's
+// second half. They never adopted `bevelCornerSpin`: `addBevelCorner` seeds a
+// bare half pitch, so the absolute condition above is false on all four
+// members. What survives is the RELATIVE one — and it lands on the DIFFERENCE
+// in Drop (0.5007) and the SUM in Rise (-0.5000), because those two corners
+// are built with opposite handedness, so the triple (u_A, u_B, u_A x u_B)
+// flips between them. Two accidents half a pitch apart to four figures, not a
+// solve. Both are registered with the boot guard WAIVED to that item.
 //
 // cd tools && node probe-bevel-corner-index.mjs
 import { chromium } from 'playwright';
@@ -296,7 +299,8 @@ for (const key of ['WINDING', 'SETTING']) {
 }
 console.log('\n--- reported, not gated');
 console.log('  ALARM       waived at its build, TODO 140 — the disc is indexed at a pose the movement never occupies');
-console.log('  CTRL-DROP / CTRL-RISE  the motion-works corners never adopted bevelCornerSpin; their bare');
-console.log('              half-pitch satisfies the RELATIVE condition only (see this file\'s header)');
+console.log('  CTRL-DROP / CTRL-RISE  TODO 140 — the motion-works corners never adopted bevelCornerSpin; their');
+console.log('              bare half-pitch satisfies the RELATIVE condition only, and on opposite');
+console.log('              combinations, because the two corners have opposite handedness');
 console.log(`\n${fails.length ? `${fails.length} FAILURE(S)` : 'all claims hold'}`);
 process.exit(fails.length ? 1 : 0);
