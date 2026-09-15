@@ -17429,6 +17429,70 @@ gate excluded the ill-conditioned samples) but the measure had a hole, and the
 re-run moves them slightly: min clear 0.01265 → 0.01243 on the motion-works
 mitre, same verdict, all seven controls still firing.
 
+**The conversion is in, and the movement boots silent.** `makeBevelGear` is
+retired; all five call sites build `makeConicalGear`, whose pitch angle is
+DERIVED from the counts rather than defaulted to 45°. Four numbers that restated
+the shear law in a second place now read the blank the builder cuts:
+`subtractorSpec`'s `halfHeight` and `hubFaceZ`, `ALARM_BEVEL_FACE` (0.65 chosen
+→ 0.5657 = coneR/3 derived), and `reachCap`.
+
+**The differential's size chain had to be re-derived, and that is a finding in
+its own right.** `planetBoreR = hubR + margin` was doing two jobs and only one
+on purpose: at 45° the shear put a vertex at radius r at z = r, so a bore of
+radius b ALSO placed the blank's inner face b from the cage centre. The conical
+blank separates the roles — the inner end stands at `coneRi`, the bore is a hole
+— so the bore becomes `pinR + fit` and the hub clearance becomes a constraint on
+`coneRi`. Left alone, the 0.7014 bore stood outside its own root cone (0.6046):
+a planet with no metal between its hole and its teeth.
+
+`R = planetBoreR + stockMin` went with it. That read "the rim is stock again",
+which is a FLAT DISC's rim — measured in the plane from bore to pitch circle.
+A bevel has no such rim: its root is a cone and its thinnest section is at the
+small end. The pitch radius is SOLVED now, searched upward for the first value
+whose blank clears the cage hub, clears both bores at the small end, and cuts a
+tooth at or above the §50 floor. It lands at **R 1.0100** where the flat-disc
+rule happened to put 1.0181, for reasons that had nothing to do with any of it.
+Three wrong versions of that solve, each caught by measuring rather than
+reasoning: demanding a stock RIM between bore and root (no radius under the
+budget meets it — and the sheared blank it replaces had 0.2747 against a 0.3167
+floor, so the bar would have been new); constraining only the planet's bore when
+the SIDE gear's 0.55 is the binding one; and returning null for uncuttable
+candidates, which collapsed the search at every radius where the budget bit and
+reported "no pitch radius" for a set that solves from 0.95 up.
+
+**A candidate must not narrate.** `spiderSpec` is called once per leg count by a
+search that expects most candidates to fail, so an unsolved radius is REPORTED
+beside `cuttable`/`teethOk`/`fitsBudget` and the caller warns once. Warning
+inside put one line per rejected leg into a boot standing rule 6 requires to be
+silent, and buried the one line that meant something.
+
+**OPEN, and the next thing to work: the alarm corner now measures BURIED.**
+`probe-crossed-axis-mesh` reads `alarmDiscBevel ⇄ alarmStemBevel` at 0.2169,
+40% of a tooth, with a phase floor of 0.2108 — no index clears it, so it is not
+an indexing problem. The apexes coincide at the engaged pose (measured), the
+axes are 90° apart, and both blanks are identical, so the geometry is right.
+The reading to compare it against is probe-138-bevel-roll's WRONG SENSE control,
+which buries 0.171–0.248: **this looks like the tick law's coupling, not the
+teeth.** The shear form never touched at any station, so any sense "worked"
+there and nothing has ever tested this one. Diagnose it before running the
+battery — it is a P0 question, and it is exactly what converting to real teeth
+exists to expose.
+
+Two instrument fixes came out of the conversion, both worth carrying:
+- **`probe-crossed-axis-mesh` learned the conical solid**, and the test is on a
+  RING at the real azimuth φ against the back-cone radius, not against an
+  angular outline. The §136 flank is RADIAL, so in (φ, θ) the outline has
+  vertical runs — 40 of a 10-tooth bevel's 130 steps do not increase in φ — and
+  `θ ≤ Θ(φ)` has no well-defined Θ there: it put a vertex of the gear's own mesh
+  7.46° outside the solid containing it. Developing properly (`a = φ·cos γ`) is
+  worse, not better: it unrolls the gear into a SECTOR of 2π·cos γ, and a
+  crossing count against a curve that does not close read 1.0840. Plotted
+  against φ the ring closes exactly, at the stated cost that azimuthal distances
+  scale by 1/cos γ — never an under-report, the safe direction for a depth.
+- **Its tier three is retired**, because probe-138-bevel-roll answers that
+  question better and two answers to one question is the defect this repo keeps
+  finding.
+
 **Still to do in this landing**
 
 `makeBevelGear` is still the shear-cone builder and still what the movement

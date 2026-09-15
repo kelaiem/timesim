@@ -4480,8 +4480,12 @@ const CAP_BEARING = (() => {
   const reachRsv = Math.max(
     G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 }),
     G.gearOuterR({ module: m1, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 }));
-  // and the corner's is its bevel, the widest thing on this arbor in that band
-  const reachCap = (BEVEL_MODULE * BEVEL_TEETH) / 2 + BEVEL_MODULE * 0.85;
+  // and the corner's is its bevel, the widest thing on this arbor in that band.
+  // TODO 138 Landing 2: READ from the blank the builder cuts — coneR·sin θ_tip —
+  // rather than the spur expression pitchR + 0.85·module, which described a flat
+  // disc this member has never been.
+  const reachCap = G.bevelToothSpec({
+    module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH }).tipR;
   const need = reachRsv + reachCap + CLEAR_MARGIN;
   const at = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -4520,14 +4524,14 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   const mountIn = new THREE.Group();
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
-  const gearIn = G.makeBevelGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
   if (tag) gearIn.name = `${tag}In`;   // §137: a transfer row names its members (§54's rule)
   mountIn.add(gearIn);
 
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
-  const gearOut = G.makeBevelGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
   if (tag) gearOut.name = `${tag}Out`;
   gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
@@ -12997,7 +13001,15 @@ const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD };
 // at −6.15 (clear of the floor) and the stem bevel tops out at −2.70 (clear of
 // the plate).
 const Z_ALARM_CORNER = -4.1;
-const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65, ALARM_BEVEL_PHASE = Math.PI / ALARM_BEVEL_TEETH;
+const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_PHASE = Math.PI / ALARM_BEVEL_TEETH;
+// TODO 138 Landing 2 — DERIVED, not chosen. A bevel's face width is bounded by
+// the classical blank proportion coneR/3: an apex-ruled tooth scales with cone
+// distance, so at F = coneR the small end has no section left to be metal. The
+// shipped 0.65 exceeded this member's 0.5657 by 15% and the generator warned on
+// it. Read from the spec the builder cuts rather than restated here.
+const ALARM_BEVEL_FACE = G.bevelToothSpec({
+  module: ALARM_BEVEL_MODULE, teeth: ALARM_BEVEL_TEETH, mateTeeth: ALARM_BEVEL_TEETH,
+}).faceW;
 
 // --- 'Alarm disc' — the CENTRAL rattrapante alarm hand (§25 C, stage 1) -----
 // Replaces §24's sub-dial pointer. The alarm indicator is now a co-axial hand
@@ -15394,7 +15406,7 @@ const ALARM_ARBOR_BUSH_R = 0.85;
   alarmArborUnit.add(bush);
 }
 // Disc bevel at the corner, axis −z (its shaft trails down to the pointer).
-const discBevel = G.makeBevelGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+const discBevel = G.makeConicalGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
 discBevel.name = 'alarmDiscBevel'; // §137: named for the corner's transfer row
 const discBevelMount = new THREE.Group();
 discBevelMount.position.set(0, 0, Z_ALARM_CORNER);
@@ -15434,7 +15446,7 @@ alarmSpinner.rotation.order = 'ZYX';
 alarmSpinner.rotation.z = alarmStemAngle - Math.PI / 2;
 alarmCrownUnit.add(alarmSpinner);
 // Stem bevel at the inner end (the corner), axis along the stem (local +Y).
-const stemBevel = G.makeBevelGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+const stemBevel = G.makeConicalGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
 stemBevel.name = 'alarmStemBevel'; // §137: the transfer row names its members
 stemBevel.rotation.z = ALARM_BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
 const stemBevelMount = new THREE.Group();
@@ -19799,7 +19811,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   rod.rotation.x = Math.PI / 2;
   rod.position.z = (rodTop + Z_ALARM_CORNER) / 2;
   climb.add(rod);
-  const contrate = G.makeBevelGear({ name: 'contrate', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+  const contrate = G.makeConicalGear({ name: 'contrate', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
   contrate.traverse((o) => { if (o.isMesh) o.name = 'alarmWindContrate'; }); // §29 step 4: the pawl budget selects this by name
   const cMount = new THREE.Group();
   cMount.position.z = Z_ALARM_CORNER;
