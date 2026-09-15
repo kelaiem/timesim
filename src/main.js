@@ -4443,20 +4443,30 @@ const SLEEVE_BOT = SAW_RING_ROOT + CLEAR_MARGIN;
 // measure a buried surface exactly like a free one.
 const SLEEVE_TOP = (() => {
   const sw = KW_SPEC.settingWheel, R = CLUTCH_SLEEVE_R;
+  const NS = 128;
   let need = 0;   // the largest X any blank point demands
-  for (let i = 0; i <= 48; i++) {
-    const rho = sw.coneRi + ((sw.coneR - sw.coneRi) * i) / 48;
-    for (let j = 0; j <= 48; j++) {
-      const th = sw.thetaRoot + ((sw.thetaTip - sw.thetaRoot) * j) / 48;
+  for (let i = 0; i <= NS; i++) {
+    const rho = sw.coneRi + ((sw.coneR - sw.coneRi) * i) / NS;
+    for (let j = 0; j <= NS; j++) {
+      const th = sw.thetaRoot + ((sw.thetaTip - sw.thetaRoot) * j) / NS;
       const h = rho * Math.sin(th), z = rho * Math.cos(th);
       const dz = Math.max(0, z - R);
       if (dz >= CLEAR_MARGIN) continue;   // this point clears the spine at any X
       need = Math.max(need, h + Math.sqrt(CLEAR_MARGIN * CLEAR_MARGIN - dz * dz));
     }
   }
+  // A SAMPLED MAXIMUM IS A LOWER BOUND, and the sweep asks for the real one.
+  // `need` is a max over a grid, so the true worst point can lie between two
+  // samples — and it did: at 48 steps the spine measured 0.1499 against its
+  // 0.15 floor, a miss of 1e-4 that is the grid's own spacing, not float noise.
+  // The spacing is therefore ADDED rather than refined away (h moves at most
+  // this much between neighbours, in ρ and in θ), which makes the bound sound
+  // at any NS instead of lucky at a large one.
+  const step = Math.max((sw.coneR - sw.coneRi) / NS,
+    sw.coneR * (sw.thetaTip - sw.thetaRoot) / NS);
   return Math.min(
     -SAW_FIT,   // nothing may trail the rim: the spine stops a weld inside its outboard face, which IS the clutch's reference plane
-    KW_BEVEL.rimFaceOut - need - SEAT_RELIEF);  // the tick parks the clutch SEAT_RELIEF farther out than the closed-form stack
+    KW_BEVEL.rimFaceOut - need - step - SEAT_RELIEF);  // the tick parks the clutch SEAT_RELIEF farther out than the closed-form stack
 })();
 const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
 // The square's top carries the sleeve's whole reach (home + cam-over lift
