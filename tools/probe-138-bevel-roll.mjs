@@ -84,9 +84,13 @@ const ROWS = [
   // src/main.js BEVEL_TEETH = 10, BEVEL_MODULE = 0.3 — the motion-works arbor's
   // two corners (gearIn ⇄ gearOut), CLAUDE.md's template for a fold-added part.
   { name: 'mw corner  gearIn ⇄ gearOut', m: 0.30, za: 10, zb: 10, face: null },
-  // ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65
-  { name: 'alarm      discBevel ⇄ stemBevel', m: 0.24, za: 10, zb: 10, face: 0.65 },
-  { name: 'alarm      contrate ⇄ climb', m: 0.24, za: 10, zb: 10, face: 0.65 },
+  // ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24. ALARM_BEVEL_FACE is no
+  // longer a constant — Landing 2 made main.js read `bevelToothSpec(...).faceW`
+  // because the shipped 0.65 stood 15% past this member's coneR/3 — so these
+  // rows leave `face` null for the same reason, and a face width written here
+  // would be a second copy of a number the generator owns.
+  { name: 'alarm      discBevel ⇄ stemBevel', m: 0.24, za: 10, zb: 10, face: null },
+  { name: 'alarm      contrate ⇄ climb', m: 0.24, za: 10, zb: 10, face: null },
   // TODO 136's keyless pairs: spur rims crossed at the stem today, buried
   // 0.2065 and 0.1372 deep, with no indexing that clears them.
   { name: 'keyless    crownWheel ⇄ windingPinion', m: 0.34, za: 20, zb: 8, face: null },

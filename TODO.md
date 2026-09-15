@@ -57,7 +57,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
 | 125 | CLOSED | An underived `+ 0.1` sat on every keyless mesh distance at seven live sites (the item said six; crown wheel ⇄ idler was the seventh), putting two declared meshes 1.337% beyond the centre distance their teeth were cut for. DELETED, and the arithmetic decided it rather than taste: KW_MODULE is 0.34, so 0.1 is **0.29 of a module**, where the centre increase buying even a generous horological backlash is under 0.1·m — no backlash rule derives it. Nor was it a convention: 21 of the 23 declared meshes already stood at module·(P+Q)/2 and the only two that did not were the two these expressions site. What it WAS is visible at `ALARM_TUBE_INNER` — this file's 0.1 running clearance for a tube in its bearing, carried across to a centre distance, on a comment ("the same +0.1 slop every keyless mesh uses, see mwFoldD") that was circular. The deletion was a RE-SOLVE as the item predicted: the keyless cluster floors the plate, dialRadius fell 42.922914475499894 → **42.804991398276**, §125's own D4 assert fired in rule-6 form naming the two bounds it had to meet, and D4 re-derives from its comment's closed form 18.777750373095056 → **18.730557557590057** with the bounds meeting to float noise. Price, stated: the seconds well is 0.047 smaller. Dividend: `meshCoverage` now enumerates **23 of 23** declared meshes where it found 21 — the two it could never see were outside its tolerance BECAUSE of the 0.1. `MESH_CENTRE_WAIVERS` is empty; probe-135-registry's claims rewritten, since they encoded this item's open state. Unblocks [TODO 132]'s keyless rows |
-| 136 | OPEN | Reported by eye (gears colliding while setting the time) and CONFIRMED by measurement. `meshCandidates` enumerates a pair only when its axes are PARALLEL and its centre distance closes on the pitch-radius sum, so every bevel and crown-wheel mesh is out of scope by construction — `meshCoverage`'s "0 undeclared meshes in the metal" is silent about all of them, and no row can exist for a pair the enumeration never proposes. Measured with `tools/probe-crossed-axis-mesh.mjs`: `crownWheel ⇄ windingPinion` (engaged WINDING) buries **0.2065**, 27% of a tooth height, 181 outline points inside the other's solid; `clutchRim ⇄ settingWheel` (engaged SETTING THE HANDS) buries **0.1372**, 18%. The bar is not chosen — a correct mesh reads ZERO — and the reference for bad is measured beside it: a phase-solved battery-green pair reads 0.0000 as built and **0.1707** with half a pitch injected, so the winding pair is deeper than the deliberate defect. `alarmSetIdler2 ⇄ alarmStemBevel` reads 0.0000, which is what says the measure is not calling every bevel broken. Neither failing pair has a phase solve (solveGearChain reads a line of centres, which crossed axes do not have) and both were documented as unsolved during [TODO 132]'s landing; what was not known is that they foul. They are invisible even to probe-194's out-of-scope COUNT, standing at centre 4.1480 and 4.2374 against rA+rB 4.7600 — outside its 5% band by a rule that does not govern them, since a bevel pair's pitch cones share an APEX. The fix must solve the phase on the bevel's own contact geometry; the instrument is gate-ready the day it lands (bar zero, nothing to choose) and is a REPORT today only because a check that lands red on arrival needs an owner (§54) |
+| 136 | CLOSED | Reported by eye (gears colliding while setting the time) and confirmed by `tools/probe-crossed-axis-mesh.mjs`: `crownWheel ⇄ windingPinion` buried **0.2065** (27% of a tooth) and `clutchRim ⇄ settingWheel` **0.1372** (18%), deeper than the deliberate half-pitch defect the control injects — because two flat SPUR cuts meeting at a right angle are not a mesh of any kind and no indexing could have fixed them (floors 0.1811 / 0.0971 over a whole pitch). Blocked on [TODO 138] for a conjugate crossed-axis FORM, then landed whole: both corners are Σ = 90° BEVEL pairs, cut on cones whose half-angles come from the counts (68.199°/21.801°) and sharing the apex where the axes cross, with the stations derived from it — a member's pitch plane stands coneR·cos γ from the apex, which at a right angle is the MATE's pitch radius, so `layout.js`'s two `windPinionR * 0.55` terms were wrong by 0.7480 apiece and are deleted. The index is a solve after all, just not the parallel-axis one: a tooth of the wheel and a gap of the pinion on the pair's line of contact. **The FOLD cost more than the corner** — the setting wheel became a compound below the stem (its two halves cannot straddle a stem that runs through the station), the minute pinion's step reversed and is solved against the traverse rod, the traverse plane went under the crown wheel's cone, the winding pinion gained a coupling boss at the §50 stock floor, the clutch's spine cap and hub collar got new bounds against a blank that overhangs the stem on both sides of the apex, the plate's keyless floor learned the stem bushing was now its outermost member, and D4 re-derived with the plate. Two instruments were wrong in ways only a cone could show: `meshCandidates` took its axial extents from `setFromObject` and so measured the §66 schematic proxy (at the APEX, 0.79 outside the metal), and `userData.bevel` was both a NUMBER and a cone SPEC, which produced a NaN movement depth. RESIDUE, unchanged by the repair: `meshCandidates` still cannot PROPOSE a crossed-axis pair, so both corners are declared by hand and no coverage check can find the next one — the item's opening finding, and [TODO 139] is where the same blindness is filed for the alarm corner |
 | 135 | OPEN | The `handSet` axis moves the keyless setting wheel and minute wheel through their whole travel (7.53982 and 6.28319 rad) and moves the cannon pinion, motion works and hands **not at all** — under the walk every check performs (`enterAxis` once, then `setPose` per sample). Found by `transmits` reporting both motion-works rows `driver still` on it, which since the path-length fix means never moved rather than came home. The cause is a time-eased tick law meeting a zero-dt pose: while the jumper is engaged the hands read `jumpDisp`, which approaches its target by `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))`, identically zero when `rawDt` is, and only the `jumpDisp === null` initialiser moves it — so a one-shot reading shows the axis working perfectly and a sweep sees nothing. CLAUDE.md's zero-dt trap reaching a whole sweep rather than one scripted write. Costs `inspection:handSet`, `clearances:handSet` and `expectedContacts:handSet` their entire dial-side population: a collision reachable only while setting the hands is invisible to all three and has been since the axis landed. `tools/probe-handset-reach.mjs` measures it with the control (reset-per-sample and sweep+step both move; the keyless rows are the must-move column). Filed rather than fixed — the three candidate fixes each reach past this item, and all three will surface real findings |
 | 132 | CLOSED | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; **`leg B pinion ⇄ idler pinion` and both keyless rows were the item's SECOND wrong triage**: all three read 0|0 and none was unexercised. The keyless pair was blocked on [TODO 125] (0.1 centre miss over solveGearChain's 0.05 tripwire, which refused them aloud, correctly); 125 lifted it and each took a solve whose knob is a BASE CONSTANT rather than a rotation, since tick() writes those rotors as `base + spin` and a phase left on the object dies on the first frame — **22.222% → 0.043%** and **34.345% → 0.079%**, `minuteWheelBase` and a new `transferWheelClock` (the transfer wheel's index on the crown wheel's arbor). The winding pair's `0|0` was the CHECKER: `transmits` accumulated the NET turn and `wind` is a cycle by construction, so the spur travelled 21.99 rad, came home, and read as a still driver — fixed by keeping the PATH LENGTH beside the net, which also unblocked both reserve stages under `wind`. Leg B's `0|0` was the ROW: it reads the barrel BODY's rim (`arrestAngles` computes `idler` from bodyA alone) and the body turns on `alarmStrike`, while `alarmWind` turns the arbor — leg A's input. Re-declared and clocked by a second stage carrying the chain past the idler wheel to its pinion, **34.334% → 0.008%**. `crown` was likewise never an input to either keyless pair (that axis is the PULL), and the output stage named `alarmWind` alone where a differential's cage is reached by BOTH legs (-2.727273 under each). A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
@@ -15980,7 +15980,7 @@ the mis-phased one — and yet `transmits` passes it unwaived on both its
 declared inputs. Those two readings disagree, and neither has been
 chased. Filed here rather than silently re-labelled.
 
-## 136. Two crossed-axis meshes drive through each other, and the registry cannot see them
+## 136. Two crossed-axis meshes drive through each other, and the registry cannot see them — CLOSED
 
 Reported by eye — gears colliding when setting the time — and the report was
 right. Measured by `tools/probe-crossed-axis-mesh.mjs`, which had to be written
@@ -16222,6 +16222,189 @@ today and will still be wrong after 138. But correcting them alone would move a
 non-meshing pair to the right place, which is not worth a dial-side cascade on
 its own. Sequence: 138 gives a form that meshes, then 136 cuts these two pairs in
 it and moves the station in the same landing.
+
+### The fold, priced — and it is the WEB that does not fit, not the teeth
+
+[TODO 138] landed the conjugate form, so 136 is unblocked and the line is
+already proven for both of these pairs: `probe-138-bevel-roll` carries
+`crownWheel ⇄ windingPinion` and `settingWheel ⇄ clutchRim` as rows, both at
+**0.00000 penetration** with min clear 0.01304 and all seven controls firing.
+P0 is done in free space. What is left is the fold.
+
+**The station derivation is confirmed independently.** `probe-138-fold-price`
+now computes each member's `R·cos γ` from the pair's shared apex and compares it
+with the MATE's pitch radius — two paths to one number, asserted rather than
+resembled. They agree exactly: **1.3600** for the 20-tooth members, **3.4000**
+for the 8-tooth. So `layout.js`'s two `windPinionR * 0.55` terms are wrong by
+0.7480 apiece, as this item has said, and the correction is simply to delete
+them: `pinDist = cwDist + crownWheelR` and `swDist = clutchHomeDist +
+CLUTCH_TRAVEL + settingWheelR`.
+
+**Radially the fold is free.** Every member SHRINKS:
+
+| member | old r | conical r | |
+|---|---|---|---|
+| `crownWheel`, `settingWheel` | 3.9654 | 3.5157 | −0.450 |
+| `windingPinion`, `clutchRim` | 1.4720 | 1.3933 | −0.079 |
+
+**Axially it is not, and the reason is worth separating.** A spur disc straddles
+its plane; a cone does not, and these members' blanks span 0.678–3.594 in their
+own frames. But the TEETH are not what reaches:
+
+| member | teeth occupy | thickness | web reaches |
+|---|---|---|---|
+| `crownWheel`, `settingWheel` (γ 68.199°) | 0.678–1.472 | **0.793** | **3.594** at the bore |
+| `windingPinion`, `clutchRim` (γ 21.801°) | 2.251–3.534 | 1.283 | 3.594 at the bore |
+
+For the near-face members the toothed band is a 0.79-thick ring sitting about
+1.1 off the old plane — tractable. The 3.594 is the WEB: `makeConicalGear` runs
+its blank inboard at constant CONE DISTANCE, so the bore cuts it at
+√(coneR² − bore²), and at γ = 68° that is a **deep dish where a real face gear is
+a flat plate**. On the crown wheel, whose axis is vertical, it would stand 3.59
+proud of the corner on the arbor the transfer wheel shares.
+
+**So the next step is a blank shape, not a tooth.** The toothed band must stay
+apex-ruled between two cone distances — that is what makes the teeth interleave
+and the two members' bands shared — but the WEB inboard of the root cone should
+be bounded by planes, as it is on real bevel and face gears. That spends nothing
+at P0: the flanks are untouched. Sized from the same numbers, a plane-bounded
+web gives the crown wheel a 0.45-thick ring at z 0.908–1.361, against the
+1.65-thick disc it replaces.
+
+Cone distances were right for the 45° mitres of [TODO 138] and are wrong here;
+that the two cases want different web treatment is the thing to carry, not a
+number.
+
+### CUT, FOLDED AND LANDED — and the fold cost more than the corner did
+
+Both corners are Σ = 90° bevel pairs now, cut by [TODO 138]'s generator, and
+the two `windPinionR * 0.55` terms are gone from `layout.js`. What each member
+had to become, and what the movement had to give up to hold them:
+
+| member | was | is |
+|---|---|---|
+| `crownWheel` | spur disc, r 3.9654, straddling the keyless plane | cone, r 3.5177, plate standing **1.150–1.472 ABOVE** the stem |
+| `windingPinion` | spur disc, r 1.4720, 1.6 thick | cone + coupling boss, r 1.4161, blank 2.639–3.534 from the apex |
+| `settingWheel` | one spur disc doing two jobs | a COMPOUND: a bevel half the clutch meshes, a spur half the minute wheel meshes, one arbor |
+| `clutchRim` | spur disc, r 1.4720 | cone, r 1.3933, blank 2.607–3.534 from the apex |
+
+**The station is the apex condition, and it is asserted rather than restated.**
+Both pitch cones stand on the point where the wheel's axis crosses the stem, and
+a member's pitch plane is coneR·cos γ from it — which at Σ = 90° is the MATE's
+pitch radius. `probe-138-fold-price` computes both paths and compares them:
+**1.3600** for the 20-tooth members, **3.4000** for the 8-tooth, agreeing
+exactly, one band per pair, all four members matching the spec they were cut to.
+
+**The corner's INDEX is a solve after all.** This item said a crossed pair
+"stays a half-pitch index rather than a solve, because the instrument that
+solves a phase reads a line of centres between two parallel axes" — true of
+that instrument and false of the mechanism. A bevel pair has a LINE OF CONTACT,
+and both members are clocked to it: a tooth of the wheel and a gap of the pinion
+centred on the same ray, `addBevelCorner`'s own convention. `bevelCornerRay`
+returns the axes' bisector, which is the contact ray only for a mitre — but all
+`bevelCornerSpin` reads is the ray's AZIMUTH about each mount, and every vector
+in the plane the two axes span shares it, so the bisector indexes a 20:8 corner
+exactly as it indexes a 1:1 one.
+
+**THE FOLD IS WHERE THE WORK WAS**, and every item of it is position-space, per
+the design-priority rule. The corner's dimensions never moved:
+
+- **The setting wheel's two halves cannot straddle the stem.** The stem RUNS
+  THROUGH that station on its way to the crown — it already threaded this
+  wheel's own bore — so an arbor joining a bevel half above to a spur half below
+  intersects it. Measured on the first cut: `settingArbor` into `windStem`,
+  `stemSquare` and both groove collars. Above the stem there is 2.1 to the plate
+  and the bevel's blank alone wants 1.47; below there is the whole dial-side
+  band. So the bevel trails DOWN, the spur hangs under it, and the minute wheel
+  rides the spur's plane. The flip negates the bevel's spin — a π turn about X
+  maps local +Z onto world −Z, `dialFace`'s seam read from the same side.
+- **The minute pinion's step reversed** with it, and 1.8 — derived against the
+  dial face it used to point at — left it 0.11 inside the motion-works traverse.
+  Solved against that rod now, 1.8 kept as the ceiling.
+- **The traverse plane goes UNDER the crown wheel.** The wheel's blank now
+  stands in the −2.3…−3.7 window the traverse used; measured, the rod passes
+  2.003 from the wheel's axis, inside its 3.518 tip circle. Over is not
+  available (the web tops at −2.628, the plate's bevel at −2.3), so `Z_SETTING`
+  derives from the blank's tip ray and the margin.
+- **The winding pinion gained a COUPLING BOSS.** Its cone's own outboard face
+  leaves the saw ring 0.016 clear of the crown wheel's 3.5177 tip circle; the
+  clearance asks 0.134 and the §50 stock floor asks 0.3167 and wins.
+- **The clutch's hub collar needed a third wall** and the clutch spine's
+  outboard cap a new shape. Both are the same finding: at full pull the setting
+  wheel is a cone standing off the stem whose blank overhangs it on BOTH sides
+  of the apex, so "centre distance minus the wheel's outer radius" describes a
+  surface that is not there. The spine's cap is solved against the blank
+  (sampled over the whole ρ, θ band); the collar, being wider than the blank's
+  lowest metal is high, clears the tip CIRCLE instead — a bound whose premise
+  `main.js` asserts.
+- **The plate's keyless floor stopped covering the stem bushing.** The fold
+  pulled the setting wheel 2.83 inboard while the stem's stroke barely moved, so
+  the bushing became the outermost member and its foot stood exactly on the rim
+  (41.12 against 41.12 — caught by its own assert, by a float hair). The floor
+  carries the bushing's reach now, and `D4` re-derived with the plate for the
+  second time in its life, from the same closed form and for the same reason:
+  dialRadius 42.8050 → 41.1243, the seconds well 15.1806 → 14.5079.
+
+**Two instruments were wrong in ways only a cone could show.**
+`meshCandidates` took each rotor's axial extent from `setFromObject`, which
+includes the §66 schematic pitch-circle Line parented INTO it — harmless while
+every rotor was a flat disc, because the circle lies in the blank's own plane,
+and wrong for a cone whose proxy sits at the pair's APEX, 0.79 outside the
+metal. The setting bevel then read as overlapping the minute wheel it stands
+clear above, and the enumeration proposed a mesh that is not there. And the
+proxy was in the wrong place to begin with: a bevel's pitch circle belongs at
+coneR·cos γ along the axis, not at the mount. Separately, `userData.bevel` was
+TWO THINGS — a NUMBER (the extrude bevel's XY growth, read by the heart cam's
+clearance arithmetic) and, since [TODO 138], a cone SPEC. Reading `bevel.coneR`
+off a seconds-cam arbor gave NaN and left the §39 depth assert reporting a NaN
+movement. The cone spec is `userData.cone` now.
+
+**Eleven INTRA_UNIT_CONTACTS selectors went stale on the fold**, which is the
+trap that table's own comments have described three times. They are NAMED now,
+and naming showed that two §47 rows described one body twice: the crown wheel's
+"companion" and the transfer wheel are the same blank. Two rows are retired
+rather than re-pointed — the setting wheel left the stem bushing's reach
+entirely (1.5502, past `DECLARED_CONTACT_REACH`), so keeping them would have
+recorded a joint that is not there.
+
+**The acceptance.** Full battery, local, `--no-incremental`: **40/40**. The rows
+this item moved — `intraUnit` 0 unwaived / 0 unmatched / 0 declared rows that
+excuse nothing, `meshCoverage` 23 of 23 declared and 0 undeclared,
+`expectedContacts` 0 unwaived floor rows, `inspection` 0 FORBIDDEN,
+`sweptOverlap` 0 CONFIRMED, `clearances` 0 violations, `assembly` 0 undeclared
+splits in scope. Free space holds too: `probe-138-bevel-roll` 5/5 with all seven
+controls firing, `probe-138-fold-price` 4/4 members matching the specs they were
+cut to, one band per pair at 0.8007, every station on the mate's pitch radius.
+
+**And four of the last red rows were the INSTRUMENT or the ARITHMETIC, not the
+metal** — worth carrying because each is a general shape:
+
+- a hole drawn as a POLYGON is smaller than its radius, and this blank's
+  azimuths are a tooth outline's, sparse across the gaps, so a 0.6 bore over a
+  0.45 stem measured 0.1405. The ring is dilated so the hole is boreR
+  everywhere, which is `flatsR`'s convention pointed at a hole;
+- `probe-138-fold-price` then had to read the bore across its FLATS instead of
+  at its vertices, and its two bore measurements had to become ONE function:
+  correcting only the second split every pair into two bands, because a row
+  whose mate was not yet re-measured derived a different face width from the
+  same pair — the exact defect that table exists to catch, arriving from the
+  instrument;
+- a bound that budgets `SEAT_RELIEF` at one end of a stroke must budget it at
+  the other: the clutch parks 0.005 farther out than the closed-form stack, and
+  the collar's new wall read 0.145;
+- and a SAMPLED MAXIMUM IS A LOWER BOUND. The spine's cap takes the max of a
+  bound over a grid of the setting wheel's blank, so the true worst point can
+  lie between two samples — 0.1499 against 0.15, a miss of 1e-4 that is the
+  grid's spacing and not float noise. The spacing is ADDED to the bound rather
+  than refined away, which makes the cap sound at any sample count instead of
+  lucky at a large one.
+
+**What is NOT closed by this**, and belongs to the item it came from:
+`meshCandidates` still cannot PROPOSE a crossed-axis pair — it enumerates
+parallel axes only, so these two corners are declared by hand and no coverage
+check can find the next one. That is this item's opening finding, unchanged by
+the repair, and [TODO 139] is where the same blindness is filed for the alarm
+corner's open loop.
 
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where

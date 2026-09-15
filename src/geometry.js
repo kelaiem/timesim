@@ -680,13 +680,21 @@ export function cycloidalGearShape(spec) {
 // Landing 2 rather than for this one.
 // ---------------------------------------------------------------------------
 
+const CLEAR_MARGIN_G = 0.15;   // the ONE margin (rule 1); geometry.js's local copy of main's
+
 // The classical face-width proportion. An apex-ruled tooth scales with cone
 // distance, so at F = coneR the small end has no section at all; a third is the
 // bound real practice draws and it is a PROPORTION, not an error budget — see
 // the note above for why the error it is usually said to bound is not there.
 const BEVEL_FACE_FRAC = 1 / 3;
+// The metal a member must keep between its bore and its root cone where the
+// blank is thinnest — at the small end. Not a new margin: it is CLEAR_MARGIN_G,
+// the one clearance this file already has (standing rule 1 forbids a second),
+// used here as the thinnest web anyone would cut rather than as a gap.
+const BEVEL_WEB_MIN = CLEAR_MARGIN_G;
 
-export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAngleDeg = 90, boreR = 0.4, quiet = false }) {
+export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAngleDeg = 90,
+  boreR = 0.4, mateBoreR, quiet = false }) {
   // `quiet` exists for SOLVES that try candidate sizes (subtractorSpec's pitch
   // radius search): a rejected candidate must not narrate, or boot stops being
   // silent (standing rule 6) and the one warning that matters is lost in them.
@@ -710,11 +718,6 @@ export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAn
   if (Math.abs(coneR - mateConeR) > 1e-9 * coneR)
     warn(`TODO 138 bevel ${teeth}t: cone distance ${coneR.toFixed(6)} disagrees with the `
       + `mate's ${mateConeR.toFixed(6)} — the pitch cones do not share an apex`);
-  const faceW = faceWidth ?? coneR * BEVEL_FACE_FRAC;
-  if (faceW > coneR * BEVEL_FACE_FRAC + 1e-9)
-    warn(`TODO 138 bevel ${teeth}t: face width ${faceW.toFixed(4)} exceeds coneR/3 `
-      + `${(coneR * BEVEL_FACE_FRAC).toFixed(4)} — the tooth scales to nothing at the apex, so the small `
-      + `end is too thin to be metal`);
   // The back cone, two ways: R_b = pitchR/cos γ by definition, and coneR·tan γ
   // by the apex triangle. Two paths to one number, so they are ASSERTED to
   // agree rather than one of them simply being trusted (CLAUDE.md: a figure an
@@ -731,6 +734,59 @@ export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAn
   const flat = gearToothSpec({ module: m, teeth: vTeeth, mates: [vTeethMate] });
   const theta = (r) => gamma + Math.atan2(r - backR, coneR);
   const thetaTip = theta(flat.tipR), thetaRoot = theta(flat.rootR);
+  // The mate's root cone, derived the same way from ITS virtual count. Needed
+  // because the web bound below is the PAIR's, and the two members stand their
+  // roots off the axis at different angles (66.3° against 15.2° on TODO 136's
+  // 20:8 keyless corner) — so the mate's bore has to be asked about against the
+  // mate's own root cone, never against this member's.
+  const backRMate = (m * mateTeeth) / 2 / Math.cos(gammaMate);
+  const flatMate = gearToothSpec({ module: m, teeth: vTeethMate, mates: [vTeeth] });
+  const thetaRootMate = gammaMate + Math.atan2(flatMate.rootR - backRMate, coneR);
+  // THE FACE WIDTH IS A PAIR PROPERTY, and it is bounded twice over.
+  //
+  // Both members' bands are ρ ∈ [coneRi, coneR] from the SAME apex, so one face
+  // width serves the pair — which is why this takes the mate's bore as well as
+  // its own. The classical bound is coneR/3, the blank proportion. The other is
+  // the WEB: inboard of the root cone a member is metal from its bore out to
+  // `ρ·sin θ_root`, and at the SMALL end that is thinnest. Measured on TODO
+  // 136's keyless pinion — 8 teeth, module 0.34, bored 0.6 for the stem's square
+  // — a coneR/3 face width leaves `coneRi·sin θ_root = 0.639` against that bore:
+  // 0.039 of web, which is not a rim. So the face width comes in until the
+  // thinner member's web is real.
+  //
+  // Neither bound is a choice. coneR/3 says a tooth scales to nothing at the
+  // apex; this one says a wheel needs metal between its hole and its teeth.
+  //
+  // And the bound is SYMMETRIC by construction: each bore is asked about
+  // against its own member's root cone, and the pair takes the worse of the
+  // two. Swap the members and the same max survives, so both return one face
+  // width — which is what makes the band a pair property rather than two
+  // members' coincidence (tools/probe-138-fold-price.mjs gates that).
+  const webFloorFor = (b, th) => (b + BEVEL_WEB_MIN) / Math.sin(th);
+  const faceCapWeb = coneR - Math.max(
+    webFloorFor(boreR, thetaRoot),
+    webFloorFor(mateBoreR ?? boreR, thetaRootMate));
+  const faceCap = Math.min(coneR * BEVEL_FACE_FRAC, faceCapWeb);
+  const faceW = faceWidth ?? Math.max(0, faceCap);
+  if (faceW > coneR * BEVEL_FACE_FRAC + 1e-9)
+    warn(`TODO 138 bevel ${teeth}t: face width ${faceW.toFixed(4)} exceeds coneR/3 `
+      + `${(coneR * BEVEL_FACE_FRAC).toFixed(4)} — the tooth scales to nothing at the apex, so the small `
+      + `end is too thin to be metal`);
+  // The two bounds are judged DIFFERENTLY, and the difference is which kind of
+  // claim each one is. coneR/3 is a PROPORTION of the cut — true of any bevel,
+  // however it was sized — so it is warned about whoever chose the face width.
+  // The web is a SECTION, and sections in this movement are `stockFloor`'s
+  // judgement on the built mesh (§50), not a bar the generator imposes: a caller
+  // that DECLARES a face width has declared the section with it, and
+  // `spiderSpec` declares one deliberately thinner than this, on the measured
+  // ground that the blank it replaces shipped thinner still. So the web bound
+  // shapes the DERIVED width — where the generator is the one choosing, and
+  // should choose honestly — and the only thing warned about for a declared one
+  // is the hard guard below, where the bore eats the root cone outright.
+  if (faceWidth === undefined && faceCapWeb <= 0)
+    warn(`TODO 138 bevel ${teeth}t: no face width leaves ${BEVEL_WEB_MIN} of web at the small end `
+      + `(bores ${boreR} / ${mateBoreR ?? boreR} against coneR ${coneR.toFixed(4)}) — this pair cannot be `
+      + 'cut with metal between its hole and its teeth');
   // THE FACE BAND IS CUT AT TWO CONE DISTANCES, ρ ∈ [coneRi, coneR] — the front
   // and back cones of real bevel practice, not planes perpendicular to the
   // axis. Both choices leave the FLANKS alone, so this is not a P0 question,
@@ -774,8 +830,20 @@ export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAn
   return {
     module: m, teeth, mateTeeth, shaftAngle: SIGMA, gamma, gammaMate,
     pitchR, coneR, coneRi, faceW, backR, vTeeth, vTeethMate, flat,
-    thetaTip, thetaRoot, zFront, zBack, zBoreIn, zBoreOut, boreR, theta,
+    thetaTip, thetaRoot, thetaRootMate, zFront, zBack, zBoreIn, zBoreOut, boreR, theta,
     tipR: coneR * Math.sin(thetaTip),     // the farthest the blank reaches from its axis
+    // THE TWO FLAT FACES, and they are the blank's MOUNTING planes: the web is
+    // bounded by the planes where the root cone crosses the band's two ends, so
+    // these are the annuli a collar, a saw ring or a screw seats against. Cited
+    // here rather than recomputed at each site — makeConicalGear cuts to them
+    // and TODO 136's keyless stations measure from them.
+    zWebLo: coneRi * Math.cos(thetaRoot),
+    zWebHi: coneR * Math.cos(thetaRoot),
+    zTipLo: coneRi * Math.cos(thetaTip),  // the blank's small-end extremity — tooth tips, not a face
+    // The web where the blank is thinnest — bore to root cone at the SMALL end.
+    // REPORTED rather than gated (see the face-width bounds above); §50's
+    // instrument is what judges a section on the built mesh.
+    webLo: coneRi * Math.sin(thetaRoot) - boreR,
   };
 }
 
@@ -829,54 +897,94 @@ export function bevelOutlineRing(spec) {
   });
 }
 
-// The blank: the spherical shell segment ρ ∈ [coneRi, coneR] under the angular
-// outline Θ(φ), bored along the axis. Four rings of the same length — outline
-// and bore, at each cone distance — and four quad strips: the toothed outer
-// wall (apex-ruled, the working surface), the bore cylinder, and the two caps,
-// each a chord from its rim to the bore. Every strip is non-degenerate because
-// Θ ≥ θ_root > θ_bore everywhere, so no face has zero area and
-// `computeVertexNormals` never sees a null cross product.
+// The blank: a TOOTHED BAND on the cone and a FLAT WEB inboard of it.
+//
+// The band is ρ ∈ [coneRi, coneR] between the root cone and the angular outline
+// Θ(φ) — apex-ruled, shared with the mate, and the only part that meshes. The
+// web is the metal from the root cone in to the bore, and it is bounded by two
+// PLANES at z = ρ·cos θ_root for ρ = coneRi and coneR, which is exactly where the
+// root cone crosses the band's two ends. So the two regions join along the root
+// cone with nothing to reconcile.
+//
+// THE WEB IS FLAT BECAUSE A FACE GEAR IS A PLATE. Running the blank inboard at
+// constant CONE DISTANCE instead — which is what this builder did first, and
+// which is right for a 45° mitre — puts the bore at √(coneR² − bore²), and for a
+// shallow cone that is a deep dish. Measured on TODO 136's keyless crown wheel
+// (γ = 68.199°): the teeth are a 0.793-thick ring, and the spherical web carried
+// the blank 3.594 up its own axis to reach them — on the arbor the transfer
+// wheel shares. Flat, the whole member is 0.794 thick.
+//
+// Six rings of equal length and six quad strips, one closed meridian swept once
+// around: bore → web → front cap → THE RULED FLANK → back cap → web → bore. In a
+// tooth GAP the two cap strips collapse (Θ = θ_root), and that is harmless
+// because every vertex still carries a non-degenerate neighbour — the root-cone
+// rings through the web strips, the outline rings through the ruled flank — so
+// `computeVertexNormals` never sees a vertex with only null cross products.
 //
 // CLOSED ON PURPOSE, including the two faces nobody sees once it is mounted:
 // `meshClearance`'s near-zero guard is a PARITY RAYCAST and an open body makes
 // the crossing count odd, which is how the chain once read as colliding with a
 // spring 3.7 units away (TODO 27).
 export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngleDeg = 90,
-  boreR = 0.4, material, name = '' }) {
-  const spec = bevelToothSpec({ module, teeth, mateTeeth, faceWidth, shaftAngleDeg, boreR });
+  boreR = 0.4, mateBoreR, material, name = '' }) {
+  // `mateBoreR` is not decoration: the face width is the PAIR's (see
+  // bevelToothSpec), so a member built without its mate's bore derives a band
+  // the mate cannot honour, and the two ends of one corner disagree about where
+  // the teeth are. Every call site that knows the mate's bore passes it.
+  const spec = bevelToothSpec({ module, teeth, mateTeeth, faceWidth, shaftAngleDeg, boreR, mateBoreR });
   const outline = bevelOutline(spec);
   const N = outline.length;
-  const { coneR, coneRi, zBoreIn, zBoreOut } = spec;
+  const { coneR, coneRi, thetaRoot, zWebLo, zWebHi } = spec;
   const pos = [];
-  // A ring on the sphere of radius rho: the outline itself, or the bore circle
-  // whose z puts it at exactly that same rho.
-  const ring = (rho, zBore, useOutline) => {
+  // One ring per meridian station. `at(k)` gives that station's (r, z) for the
+  // azimuth's own outline angle, so the whole blank is six sweeps of one loop.
+  const ring = (at) => {
     const base = pos.length / 3;
     for (let k = 0; k < N; k++) {
       const [phi, th] = outline[k];
-      const r = useOutline ? rho * Math.sin(th) : boreR;
-      const z = useOutline ? rho * Math.cos(th) : zBore;
+      const [r, z] = at(th);
       pos.push(r * Math.cos(phi), r * Math.sin(phi), z);
     }
     return base;
   };
-  const oF = ring(coneRi, zBoreIn, true), oB = ring(coneR, zBoreOut, true);
-  const bF = ring(coneRi, zBoreIn, false), bB = ring(coneR, zBoreOut, false);
-  const idx = [];
-  const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+  // A HOLE DRAWN AS A POLYGON IS SMALLER THAN ITS RADIUS, and this blank's
+  // azimuths are the TOOTH OUTLINE's — clustered on the flanks and sparse across
+  // the gaps, because all six rings share one loop so the strips stay quads. So
+  // the bore's widest chord spans most of a tooth gap, and drawn through points
+  // at boreR it leaves metal poking in to boreR·cos(Δφ/2). Measured on the
+  // 8-tooth clutch rim: a 0.6 bore over a 0.45 stem read 0.1405 against the 0.15
+  // floor — the missing 0.0095 is exactly that chord. The ring is dilated so the
+  // HOLE is boreR everywhere, which is `flatsR`'s convention (a section is what
+  // it measures across the flats) applied to a hole instead of a shaft.
+  let boreGap = 0;
   for (let k = 0; k < N; k++) {
-    const k1 = (k + 1) % N;
-    // outer wall: +φ then outward along ρ gives φ̂ × ρ̂, pointing away from the
-    // axis — this is the working surface, and it is apex-ruled because both its
-    // ends lie on the ray θ = Θ(φ)
-    quad(oF + k, oF + k1, oB + k1, oB + k);
-    // bore wall: the same circuit reversed, so its normal points at the axis
-    quad(bF + k, bB + k, bB + k1, bF + k1);
-    // front cap, chord from the bore out to the inner rim
-    quad(bF + k, bF + k1, oF + k1, oF + k);
-    // back cap, the mirror circuit
-    quad(bB + k, oB + k, oB + k1, bB + k1);
+    const a = outline[k][0], b = outline[(k + 1) % N][0];
+    let d = b - a; while (d <= -Math.PI) d += Math.PI * 2; while (d > Math.PI) d -= Math.PI * 2;
+    boreGap = Math.max(boreGap, Math.abs(d));
   }
+  const boreDrawR = boreR / Math.cos(boreGap / 2);
+  const R0 = ring(() => [boreDrawR, zWebLo]);                               // bore, web side lo
+  const R1 = ring(() => [coneRi * Math.sin(thetaRoot), zWebLo]);            // root cone, inner
+  const R2 = ring((th) => [coneRi * Math.sin(th), coneRi * Math.cos(th)]);  // outline, inner
+  const R3 = ring((th) => [coneR * Math.sin(th), coneR * Math.cos(th)]);    // outline, outer
+  const R4 = ring(() => [coneR * Math.sin(thetaRoot), zWebHi]);             // root cone, outer
+  const R5 = ring(() => [boreDrawR, zWebHi]);                               // bore, web side hi
+  const idx = [];
+  // Wound so the meridian's own circuit gives outward normals; the closed-solid
+  // control in probe-138-bevel-roll asserts the signed volume is positive, which
+  // is what makes that a measured claim rather than a reasoned one.
+  const strip = (a, b) => {
+    for (let k = 0; k < N; k++) {
+      const k1 = (k + 1) % N;
+      idx.push(a + k, b + k1, b + k, a + k, a + k1, b + k1);
+    }
+  };
+  strip(R0, R1);   // web, lower face
+  strip(R1, R2);   // front cap, root cone out to the outline
+  strip(R2, R3);   // THE RULED FLANK — the working surface
+  strip(R3, R4);   // back cap, outline in to the root cone
+  strip(R4, R5);   // web, upper face
+  strip(R5, R0);   // the bore
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   geo.setIndex(idx);
@@ -899,7 +1007,13 @@ export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngl
   g.userData.r = spec.pitchR;
   g.userData.teeth = teeth;
   g.userData.module = module;
-  g.userData.bevel = spec;
+  // NOT `userData.bevel`, which this file already uses for a NUMBER — the
+  // extrude bevel's XY growth, read by the heart cam's clearance arithmetic. A
+  // cone spec under that name reads as a size wherever the number is expected
+  // and silently produces NaN; measured, the §66 schematic pass took
+  // `bevel.coneR` off a seconds-cam arbor and moved its pitch circle to NaN,
+  // which left the §39 depth assert reporting a NaN movement.
+  g.userData.cone = spec;
   if (name) g.name = name;
   return g;
 }
@@ -3434,7 +3548,6 @@ function polyArea(p) {
   return s / 2;
 }
 
-const CLEAR_MARGIN_G = 0.15;   // the ONE margin (rule 1); geometry.js's local copy of main's
 
 // ---------------------------------------------------------------------------
 // SPIDER DIFFERENTIAL (BUILT §129) — the one member that can SUBTRACT two

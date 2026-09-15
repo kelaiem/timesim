@@ -54,8 +54,8 @@ import {
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
-  STEM_R, WIND_PINION_T, CLUTCH_RIM_T, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
-  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, YOKE_FORK_IN, YOKE_FORK_OUT,
+  STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
+  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
@@ -661,7 +661,7 @@ function meshCandidates(tol) {
     if (o.name && o.userData && typeof o.userData.r === 'number' && o.userData.r > 0 && !o.userData.schematic) rotors.push(o);
   });
   scene.updateMatrixWorld(true);
-  const q = new THREE.Quaternion(), box = new THREE.Box3();
+  const q = new THREE.Quaternion(), box = new THREE.Box3(), _mcBox = new THREE.Box3();
   const info = rotors.map((o) => {
     o.getWorldQuaternion(q);
     const n = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
@@ -673,7 +673,22 @@ function meshCandidates(tol) {
     const big = Math.abs(n.x) >= Math.abs(n.y) && Math.abs(n.x) >= Math.abs(n.z) ? n.x : Math.abs(n.y) >= Math.abs(n.z) ? n.y : n.z;
     if (big < 0) n.negate();
     const c = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
-    box.setFromObject(o);
+    // THE RIM'S EXTENT IS A CLAIM ABOUT METAL, so it is measured over the
+    // meshes and the §66 display is pruned — `setFromObject` would take the
+    // schematic pitch-circle Line parented INTO this rotor with it. That was
+    // harmless while every rotor was a flat disc (the circle lies in the
+    // blank's own plane), and TODO 136's bevels broke it: a cone's proxy sits
+    // at the pair's APEX, outside the blank entirely, so the crown wheel and
+    // the setting bevel each reported a rim reaching 0.79 further down their
+    // axis than their metal does. The setting bevel then read as OVERLAPPING
+    // the minute wheel it stands clear above, and the enumeration proposed a
+    // mesh that is not there. Same prune `collectUnits` applies, same reason.
+    box.makeEmpty();
+    o.traverse((m) => {
+      if (!m.isMesh || m.userData.schematic) return;
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      box.union(_mcBox.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld));
+    });
     let lo = Infinity, hi = -Infinity;
     for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
       const s = x * n.x + y * n.y + z * n.z; if (s < lo) lo = s; if (s > hi) hi = s;
@@ -1758,6 +1773,85 @@ const HAND_RAD_PER_SET_RAD = -(windPinionTeeth / minuteWheelTeeth) * (minutePini
   if (Math.abs(rawSetOffset - HAND_RAD_PER_SET_RAD) > 1e-12)
     console.warn(`setting path: closed form ${HAND_RAD_PER_SET_RAD} disagrees with the forward chain ${rawSetOffset}`);
 }
+// ---------------------------------------------------------------------------
+// TODO 136 — THE TWO KEYLESS CORNERS, CUT. Both crossed-axis meshes on the stem
+// are Σ = 90° BEVEL PAIRS: the crown wheel's arbor and the setting wheel's arbor
+// both stand perpendicular to the stem, so each pair's two pitch cones share the
+// apex where the axes cross. Before this, both were SPUR discs parked with their
+// rims overlapping by 55% of the pinion's radius — a mesh that measured 0.2065
+// and 0.1372 deep with no indexing that cleared it, which is the whole of the
+// item.
+//
+// The four specs are declared HERE, above the layout solve, because the solve's
+// stations measure from planes of these cuts and because the stack constants in
+// layout.js carry those planes as literals it cannot derive (see KW_BEVEL). The
+// bores are the members' own: the crown wheel and setting wheel ride 0.7 arbors,
+// the pinion is bored loose over the stem's square, and the clutch rim bores over
+// the square plus the margin — its old bore carried two extrude-bevel bites and
+// a spare, and a cone has no extrude to bite it.
+// …and the clutch rim's bore carries the ROUND journal, not the square: the
+// square's half-diagonal is STEM_R·0.98 and the round shaft's radius is
+// STEM_R itself, so the round section is the wider of the two and the rim
+// stands over it partway through the wind (measured at wind f=0.4722, a bore
+// sized to the square left 0.1316 against the 0.15 floor).
+const KW_RIM_BORE = STEM_R + CLEAR_MARGIN;
+const KW_CROWN_BORE = 0.7, KW_PIN_BORE = 0.6;
+const KW_SPEC = {
+  crownWheel: G.bevelToothSpec({ module: KW_MODULE, teeth: crownWheelTeeth, mateTeeth: windPinionTeeth,
+    boreR: KW_CROWN_BORE, mateBoreR: KW_PIN_BORE }),
+  windPinion: G.bevelToothSpec({ module: KW_MODULE, teeth: windPinionTeeth, mateTeeth: crownWheelTeeth,
+    boreR: KW_PIN_BORE, mateBoreR: KW_CROWN_BORE }),
+  settingWheel: G.bevelToothSpec({ module: KW_MODULE, teeth: settingWheelTeeth, mateTeeth: windPinionTeeth,
+    boreR: KW_CROWN_BORE, mateBoreR: KW_RIM_BORE }),
+  clutchRim: G.bevelToothSpec({ module: KW_MODULE, teeth: windPinionTeeth, mateTeeth: settingWheelTeeth,
+    boreR: KW_RIM_BORE, mateBoreR: KW_CROWN_BORE }),
+};
+// …and ASSERTED against layout.js's literals, which is the only thing that keeps
+// those four numbers honest: layout cannot import geometry (the cycloidal solve
+// the cone's root angle needs lives there), so the planes travel as data and the
+// cut is the authority. A drift here moves the whole clutch stack silently.
+{
+  const want = {
+    pinFaceOut: KW_SPEC.windPinion.zWebHi,
+    rimFaceOut: KW_SPEC.clutchRim.zWebLo,
+    rimBack: KW_SPEC.clutchRim.zWebHi - KW_SPEC.clutchRim.zWebLo,
+    rimTip: KW_SPEC.clutchRim.zWebLo - KW_SPEC.clutchRim.zTipLo,
+    setTipR: KW_SPEC.settingWheel.tipR,
+  };
+  for (const [k, v] of Object.entries(want))
+    if (Math.abs(v - KW_BEVEL[k]) > 5e-6)
+      console.warn(`TODO 136 keyless bevel: layout.js declares KW_BEVEL.${k} = ${KW_BEVEL[k]} but the cut `
+        + `spec gives ${v.toFixed(6)} — the clutch stack is measuring from a plane the metal does not have`);
+  // And the BOSS must buy what it exists for: the pinion's saw ring seats on its
+  // outboard face, and a ring point at radius r from the stem stands at height r
+  // over the apex, where the crown wheel's blank reaches out to r·tan θ_tip (the
+  // tip ray) or √(coneR² − r²) past its big end. The ring's whole radial span is
+  // swept rather than the worst case being argued, because the maximum is
+  // interior (it lands at the blank's own widest point, not at either end).
+  const cw = KW_SPEC.crownWheel;
+  let reach = 0;
+  for (let i = 0; i <= 64; i++) {
+    const r = STEM_SAW_SPEC.rIn + ((STEM_SAW_SPEC.rOut - STEM_SAW_SPEC.rIn) * i) / 64;
+    const rad = r <= cw.coneR * Math.cos(cw.thetaTip)
+      ? r * Math.tan(cw.thetaTip)
+      : Math.sqrt(Math.max(0, cw.coneR * cw.coneR - r * r));
+    reach = Math.max(reach, rad);
+  }
+  // YOKE_FORK_OUT's third wall is a RADIAL bound, and that is only the binding
+  // one while the clutch's hub collar is wider than the setting wheel's blank is
+  // high off the stem — otherwise the collar could pass under the cone's mouth
+  // and the axial standoff would be smaller than the tip circle asks.
+  if (!(HUB_COLLAR_R >= KW_SPEC.settingWheel.zTipLo))
+    console.warn(`TODO 136 setting corner: hub collar r ${HUB_COLLAR_R} no longer reaches the setting `
+      + `wheel's blank (its lowest metal stands ${KW_SPEC.settingWheel.zTipLo.toFixed(4)} off the stem) — `
+      + 'YOKE_FORK_OUT\'s tip-circle bound is the wrong shape for this pair');
+  const face = KW_SPEC.windPinion.zWebHi + WIND_PINION_BOSS;
+  if (face < reach + CLEAR_MARGIN)
+    console.warn(`TODO 136 winding pinion: its coupling face stands ${face.toFixed(4)} from the corner's apex `
+      + `but the crown wheel's blank reaches ${reach.toFixed(4)} across the saw ring's band — the boss `
+      + `(${WIND_PINION_BOSS.toFixed(4)}) must carry it past ${(reach + CLEAR_MARGIN).toFixed(4)}`);
+}
+
 // ---------------------------------------------------------------------------
 // KEYLESS WORKS XY LAYOUT + plate/dial frame (§13 step 3b) — the SOLVE lives
 // in layout.js now (solveKeyless), pure like solveLayout: the stem line, the
@@ -4097,21 +4191,48 @@ registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 // what it was when the crown wheel meshed the ratchet directly (the
 // middle wheel telescopes out of the ratio), and the path still has TWO
 // meshes, so the winding sense is unchanged too.
-const crownWheel = G.makeGear({ name: 'crownWheel', module: KW_MODULE, teeth: crownWheelTeeth, mates: [windPinionTeeth], thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
-// The crown wheel meshes the WINDING PINION and nothing else — the spur is the
-// transfer wheel's mesh, one level up this arbor, since the wheel stopped
-// reaching the spur directly (the comment above). That mesh's axes CROSS at
-// the stem, so no parallel-axis solve can phase it and this stays a half-pitch
-// index; the pair solveGearChain can reach is the transfer wheel's, below.
-const crownWheelBase = Math.PI / crownWheelTeeth;
-crownWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
-keyless.add(crownWheel);
+// TODO 136 — A CONE, and mounted at the pair's APEX. The crown wheel meshes the
+// WINDING PINION and nothing else (the spur is the transfer wheel's mesh, one
+// level up this arbor), and that mesh's axes CROSS at the stem — so this is half
+// of a Σ = 90° bevel pair, not a spur disc parked against one. The mount sits
+// where the two axes meet, on the stem line at Z_KEYLESS.
+//
+// IT TRAILS DOWN, against addBevelCorner's convention (a gear keyed to a shaft
+// end has its body behind the pitch point) and for a measured reason. Trailing
+// UP its arbor, the blank stands zWebLo…zWebHi = 1.150…1.472 above the stem —
+// which is the band the motion works' TRAVERSE crosses, 2.003 from this axis and
+// so inside its 3.518 tip circle. There is no plane for that rod on either side:
+// over the wheel is the base plate's back bevel at −2.3 against a web topping at
+// −2.628, and under it the reserve's own w1 tops at −3.53 against a rod that
+// would have to reach −3.455. The window is 0.225 for a 0.7 rod.
+//
+// So the wheel goes below the stem instead, where the pinion's cone meets it
+// just as well (the pinion's teeth are a full revolution about the stem, so
+// which side the wheel stands on is free) and the traverse keeps its plane. The
+// arbor still climbs to the transfer wheel; a wheel keyed part-way along an
+// arbor is ordinary, which is what makes this the cheap side to spend.
+//
+// The flip NEGATES the spin, the setting bevel's seam read at the other corner:
+// a π turn about X maps local +Z onto world −Z.
+const crownWheelMount = new THREE.Group();
+crownWheelMount.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
+crownWheelMount.rotation.x = Math.PI;
+keyless.add(crownWheelMount);
+const crownWheel = G.makeConicalGear({ name: 'crownWheel', module: KW_MODULE, teeth: crownWheelTeeth,
+  mateTeeth: windPinionTeeth, boreR: KW_CROWN_BORE, mateBoreR: KW_PIN_BORE, material: MATS.steel });
+crownWheel.traverse((o) => { if (o.isMesh) o.name = 'crownWheel'; });
+crownWheelMount.add(crownWheel);
 // Transfer wheel: hub-less — its band between plate top and great-wheel
 // underside is only ~1.2 tall, and the stock hub ring would eat both gaps.
 const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the winding spur
 const transferWheel = G.makeGear({ name: 'transferWheel', module: KW_MODULE, teeth: crownWheelTeeth, mates: [windIdler
   ? { teeth: windIdler.teeth, mates: [crownWheelTeeth, WIND_SPUR_TEETH] }
   : { teeth: WIND_SPUR_TEETH, mates: [crownWheelTeeth] }], thickness: RATCHET_T, boreR: 0.7, spokes: 0, material: MATS.steel, hub: false });
+// TODO 136 — NAMED, with the rest of this arbor's stack. The fold renumbered
+// the unit and stranded five INTRA_UNIT_CONTACTS rows that named these by index;
+// the table's own comments have called that the stale-row trap three times now,
+// so the answer is the one they keep recommending rather than new indices.
+transferWheel.traverse((o) => { if (o.isMesh) o.name = 'transferWheel'; });
 transferWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_TRANSFER);
 keyless.add(transferWheel);
 // TODO 132 — the transfer wheel's index ON ITS ARBOR, and the only freedom the
@@ -4122,10 +4243,15 @@ keyless.add(transferWheel);
 // freedom, used the same way. SOLVED against the winding spur below; seeded at
 // 0 so the arbor is well defined even if the solve refuses aloud.
 let transferWheelClock = 0;
+// TODO 136 — it reaches DOWN to the crown wheel's web now, not merely to the
+// keyless plane: the wheel hangs below the corner's apex, so the arbor that
+// keys it has to get there.
+const _cwArborLo = Z_KEYLESS - KW_SPEC.crownWheel.zWebHi;
 const transferArbor = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - Z_KEYLESS, 14), MATS.steel);
+  new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - _cwArborLo, 14), MATS.steel);
+transferArbor.name = 'transferArbor';
 transferArbor.rotation.x = Math.PI / 2;
-transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + Z_KEYLESS) / 2);
+transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + _cwArborLo) / 2);
 keyless.add(transferArbor);
 // §33 step 2 — THE WINDING IDLER, built only when the spec'd stem parks
 // one (solveKeyless returns its solved two-circle position). It bridges
@@ -4150,9 +4276,13 @@ if (windIdler) {
 }
 // The crown wheel's blued screw — on the arbor's dial-side end now (its
 // old spot atop the wheel is where the arbor leaves for the plate bore).
+// TODO 136 — it seats against the wheel's DIAL-SIDE face, and a cone's is no
+// longer at −half a thickness: the blank's small end stands zTipLo above the
+// apex, so the screw hangs from there.
 const cwScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 12), MATS.blueSteel);
+cwScrew.name = 'cwScrew';
 cwScrew.rotation.x = Math.PI / 2;
-cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS - 0.55 - 0.5);
+cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS - KW_SPEC.crownWheel.zWebHi - 0.5);
 keyless.add(cwScrew);
 
 // Everything on the stem axis lives in one spinner group (local +Y = outward).
@@ -4174,11 +4304,68 @@ keyless.add(windPinionGroup);
 // this fixed pinion loose (the square spans the pinion's station at every
 // pull — the stem is a turned part and its round journal starts outboard),
 // the way a real winding pinion rides its stem without being keyed to it.
-const windPinion = G.makePinion({ name: 'windPinion', module: KW_MODULE, teeth: windPinionTeeth, mates: [{ teeth: crownWheelTeeth, mates: [windPinionTeeth] }], thickness: WIND_PINION_T,
-  material: MATS.steel, boreR: 0.6 }); // past the square's half-diagonal AND the extrude bevel's inward bite — loose over the square, never keyed
+//
+// TODO 136 — THE OTHER HALF OF THE CORNER, cut as a cone and mounted at the same
+// apex. windPinionGroup's origin is the pinion's COUPLING FACE (the boss's
+// outboard end), so the cone's apex sits back down the stem by the boss plus the
+// blank's own reach — the mount below is the group's local −Y, and local +Y is
+// outward, which is why the axis mount turns −π/2 rather than the +π/2 a disc's
+// plane took.
+const windPinionMount = new THREE.Group();
+windPinionMount.position.y = -(KW_SPEC.windPinion.zWebHi + WIND_PINION_BOSS);
+windPinionMount.rotation.x = -Math.PI / 2;   // mount local +Z (the blank's trail) → +Y, outward along the stem
+windPinionGroup.add(windPinionMount);
+const windPinion = G.makeConicalGear({ name: 'windPinion', module: KW_MODULE, teeth: windPinionTeeth,
+  mateTeeth: crownWheelTeeth, boreR: KW_PIN_BORE, mateBoreR: KW_CROWN_BORE, material: MATS.steel });
 windPinion.name = 'windingPinion';
-windPinion.rotation.x = Math.PI / 2; // gear plane ⊥ stem → axis along the stem
-windPinionGroup.add(windPinion);
+windPinion.traverse((o) => { if (o.isMesh) o.name = 'windingPinion'; });
+windPinionMount.add(windPinion);
+{
+  // THE COUPLING BOSS — the turned shoulder that carries the saw ring clear of
+  // the crown wheel's overhanging rim (layout.js's WIND_PINION_BOSS has the
+  // clearance the boss buys, and the block above asserts it). Radius: the
+  // blank's own root-cone circle at its big end, so the shoulder is flush with
+  // the face it grows from rather than a second diameter nobody turned.
+  const bossR = KW_SPEC.windPinion.coneR * Math.sin(KW_SPEC.windPinion.thetaRoot);
+  // A BORED ANNULUS, because the stem's square slides through this member
+  // exactly as it slides through the cone — same bore, and a solid shoulder
+  // would be metal where the stem is. Extruded from explicit point loops (an
+  // arc contour duplicates its seam point, the degenerate-triangle class that
+  // flips sampledVerdict's parity raycast) and CLOSED at both ends, because an
+  // open body reads as a colliding one.
+  //
+  // And the extrude's own axis is what orients it: +Z turned onto +Y, which is
+  // the stem in this group. The first cut copied the saw ring's `rotation.x`
+  // onto a CylinderGeometry whose axis is already +Y — that turned the boss
+  // broadside and projected 1.92 of it along the stem, which the pair sweep
+  // duly read as the clutch sleeve buried in the pinion.
+  const bossLoop = (r, n) => Array.from({ length: n },
+    (_, i) => new THREE.Vector2(r * Math.cos((2 * Math.PI * i) / n), r * Math.sin((2 * Math.PI * i) / n)));
+  const bossShape = new THREE.Shape(bossLoop(bossR, 20));
+  bossShape.holes.push(new THREE.Path(bossLoop(KW_PIN_BORE, 20)));
+  const bossGeo = new THREE.ExtrudeGeometry(bossShape, { depth: WIND_PINION_BOSS, bevelEnabled: false });
+  bossGeo.translate(0, 0, -WIND_PINION_BOSS);   // grow INBOARD from the coupling face at the group's origin
+  bossGeo.rotateX(-Math.PI / 2);                // extrude axis +Z → +Y, the stem
+  const boss = new THREE.Mesh(bossGeo, MATS.steel);
+  boss.name = 'windingPinion';
+  windPinionGroup.add(boss);
+}
+// THE CORNER'S INDEX. A crossed pair cannot be phased by any parallel-axis
+// solve, and before TODO 136 that was written down as "so this stays a half-pitch
+// index" — true of a pair that never touched. It touches now, so the two members
+// are clocked to the pair's LINE OF CONTACT: a tooth of the wheel and a gap of
+// the pinion centred on the same ray, which is addBevelCorner's convention and
+// the only relative index at which cycloidal flanks interleave.
+//
+// `bevelCornerRay` returns the axes' bisector, which is the contact ray only for
+// a mitre — but all `bevelCornerSpin` reads is the ray's AZIMUTH about each
+// mount, and every vector in the plane the two axes span shares it. So the
+// bisector indexes a 20:8 corner exactly as it indexes a 1:1 one.
+const crownWheelBase = (() => {
+  const ray = bevelCornerRay(new THREE.Vector3(0, 0, 1), new THREE.Vector3(uWind.x, uWind.y, 0));
+  windPinion.rotation.z = bevelCornerSpin(windPinionMount, ray, windPinionTeeth, true);
+  return bevelCornerSpin(crownWheelMount, ray, crownWheelTeeth, false);
+})();
 {
   // The pinion's saw ring, on its outboard face, teeth toward the clutch.
   // BOTH rings are cut to the same `windSign` and mounted as mirror mounts
@@ -4195,7 +4382,7 @@ windPinionGroup.add(windPinion);
   // holds all of this in metal.
   const ring = G.makeSawCoupling({ spec: STEM_SAW_SPEC, baseT: SAW_BASE_T, sense: windSign, name: 'windPinionSaw' }); // TODO 115: the drive faces bear in the WINDING direction, which reverses with the movement
   ring.rotation.x = -Math.PI / 2;    // ring local +Z (teeth) → +Y (outboard)
-  ring.position.y = WIND_PINION_T / 2 - SAW_FIT; // base sunk a SAW_FIT weld into the pinion's face — no knife-edge abutment; STEM_CLUTCH_OFF subtracts this sink
+  ring.position.y = -SAW_FIT; // base sunk a SAW_FIT weld into the pinion's coupling face (the group's own origin since TODO 136) — no knife-edge abutment; STEM_CLUTCH_OFF subtracts this sink
   windPinionGroup.add(ring);
 }
 
@@ -4232,11 +4419,55 @@ const SLEEVE_BOT = SAW_RING_ROOT + CLEAR_MARGIN;
 // CLEAR_MARGIN clears every wheel point at every z, by the triangle
 // inequality, with no slab arithmetic to get wrong (a first cut credited
 // the wheel's 1.1 thickness and its own bevel ate the credit).
-const SLEEVE_TOP = Math.min(
-  CLUTCH_RIM_T / 2 - SAW_FIT,
-  (windPinionR * 0.55 + settingWheelR)
-    - G.gearOuterR({ module: KW_MODULE, teeth: settingWheelTeeth, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }, { teeth: windPinionTeeth, mates: [settingWheelTeeth] }], thickness: 1.1 })  // 1.1 = the setting wheel's thickness (its build)
-    - CLEAR_MARGIN - SEAT_RELIEF);  // the tick parks the clutch SEAT_RELIEF farther out than the closed-form stack
+// TODO 136 — and the SECOND cap is SOLVED against the setting wheel's blank
+// rather than against a disc's outer radius, because the blank is not a disc: it
+// is a cone standing zTipLo…zWebHi ABOVE the stem, reaching h ∈ [coneRi·sinθ_root,
+// coneR·sinθ_tip] out from its own axis, and its UNDERSIDE overhangs the stem on
+// both sides of the apex. The old expression — centre distance minus the wheel's
+// outer radius — described the disc's rim and is simply the wrong surface now.
+//
+// The spine is a cylinder of CLUTCH_SLEEVE_R about the stem ending at the
+// clutch-local plane SLEEVE_TOP; at full pull the corner's apex stands
+// KW_BEVEL.rimFaceOut outboard of the clutch's reference. Working in apex
+// coordinates (x along the stem, the blank about z), a blank point sits at
+// (−h, 0, z) at its nearest azimuth and the spine's end cap is a disc at x = −X:
+// the clearance is √((X − h)² + max(0, z − R)²), so each blank point BOUNDS X
+// from below, and the worst one caps SLEEVE_TOP. Sampled over the whole (ρ, θ)
+// band, which covers the flank, both caps and both webs at once.
+//
+// It matters: the sphere-about-the-apex bound one reaches for first (every blank
+// point is ≥ coneRi from the apex) is far too crude — it refuses a spine that
+// measures 0.79 clear, because it ignores that the metal is a plate standing off
+// the axis. And the crude bound in the other direction — "the spine hides inside
+// the rim's bore" — is true of the METAL and false of the INSTRUMENTS, which
+// measure a buried surface exactly like a free one.
+const SLEEVE_TOP = (() => {
+  const sw = KW_SPEC.settingWheel, R = CLUTCH_SLEEVE_R;
+  const NS = 128;
+  let need = 0;   // the largest X any blank point demands
+  for (let i = 0; i <= NS; i++) {
+    const rho = sw.coneRi + ((sw.coneR - sw.coneRi) * i) / NS;
+    for (let j = 0; j <= NS; j++) {
+      const th = sw.thetaRoot + ((sw.thetaTip - sw.thetaRoot) * j) / NS;
+      const h = rho * Math.sin(th), z = rho * Math.cos(th);
+      const dz = Math.max(0, z - R);
+      if (dz >= CLEAR_MARGIN) continue;   // this point clears the spine at any X
+      need = Math.max(need, h + Math.sqrt(CLEAR_MARGIN * CLEAR_MARGIN - dz * dz));
+    }
+  }
+  // A SAMPLED MAXIMUM IS A LOWER BOUND, and the sweep asks for the real one.
+  // `need` is a max over a grid, so the true worst point can lie between two
+  // samples — and it did: at 48 steps the spine measured 0.1499 against its
+  // 0.15 floor, a miss of 1e-4 that is the grid's own spacing, not float noise.
+  // The spacing is therefore ADDED rather than refined away (h moves at most
+  // this much between neighbours, in ρ and in θ), which makes the bound sound
+  // at any NS instead of lucky at a large one.
+  const step = Math.max((sw.coneR - sw.coneRi) / NS,
+    sw.coneR * (sw.thetaTip - sw.thetaRoot) / NS);
+  return Math.min(
+    -SAW_FIT,   // nothing may trail the rim: the spine stops a weld inside its outboard face, which IS the clutch's reference plane
+    KW_BEVEL.rimFaceOut - need - step - SEAT_RELIEF);  // the tick parks the clutch SEAT_RELIEF farther out than the closed-form stack
+})();
 const SQ_BOT = SLEEVE_BOT - CLEAR_MARGIN;
 // The square's top carries the sleeve's whole reach (home + cam-over lift
 // + the seat relief) plus the margin, PLUS the round shoulder's SAW_FIT
@@ -4290,7 +4521,7 @@ windSpinner.add(stem);
   // the FOOT's near face (half its 2.2 box) must clear that by the margin.
   const grooveOuterLocal = GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2;
   const bushDist = Math.max(plateR - 2,
-    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + 1.1);
+    pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF);
   const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
   // Torus plane ⊥ stem: its hole must point along the stem axis.
   bush.rotation.z = stemAngle;
@@ -4299,7 +4530,8 @@ windSpinner.add(stem);
   bush.position.set(uWind.x * bushDist, uWind.y * bushDist, Z_KEYLESS);
   keyless.add(bush);
   const footTop = -1.4; // 0.6 into the plate's back face (−2)
-  const foot = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, footTop - Z_KEYLESS), MATS.nickel);
+  const foot = new THREE.Mesh(
+    new THREE.BoxGeometry(2 * STEM_BUSH_FOOT_HALF, 2 * STEM_BUSH_FOOT_HALF, footTop - Z_KEYLESS), MATS.nickel);
   // Aligned to the STEM, not the world axes: bushDist's derivation above
   // budgets the foot's stem-direction half-extent as 1.1, and a world-
   // aligned box would present its half-DIAGONAL (1.56) to the groove
@@ -4309,8 +4541,8 @@ windSpinner.add(stem);
   keyless.add(foot);
   // Rule 6 — the boss's other wall: pushed outboard by the groove, the
   // whole foot must still stand ON the plate.
-  if (!(bushDist + 1.1 <= plateR))
-    console.warn(`TODO 50: stem bushing foot reaches ${(bushDist + 1.1).toFixed(2)} — off the plate's ${plateR.toFixed(2)} rim`);
+  if (!(bushDist + STEM_BUSH_FOOT_HALF <= plateR))
+    console.warn(`TODO 50: stem bushing foot reaches ${(bushDist + STEM_BUSH_FOOT_HALF).toFixed(4)} — off the plate's ${plateR.toFixed(4)} rim`);
 }
 
 // (CROWN_PULL_DIST — the stem's outward slide when hacking — is declared up
@@ -4346,22 +4578,91 @@ windSpinner.add(crown);
 // representational hop across the plate/dial gap, same convention already
 // used for the power-reserve arbor, not a literal continuous mesh into the
 // dial's flipped coordinate frame.
+// TODO 136 — THE INTERMEDIATE SETTING WHEEL IS A COMPOUND, because it does two
+// jobs with two different geometries: it meshes the MINUTE WHEEL on a parallel
+// axis (spur teeth, in the keyless plane) and the CLUTCH RIM on a crossed one
+// (bevel teeth, on a cone standing off that plane). A real caliber cuts both on
+// one blank — rim teeth and face teeth; this movement models it the way it
+// already models the crown wheel's two jobs, as two blanks pressed on one arbor,
+// and the counts are EQUAL so the ratio telescopes out exactly as
+// crownWheel/transferWheel's does. Nothing downstream changes: settingWheelTeeth
+// is still the count the setting path walks.
+// THE ASSEMBLY GOES BELOW THE STEM, and that is a P3 resolution in position
+// space rather than anything spent inside the corner. The stem RUNS THROUGH this
+// station — it passes out to the crown, and today it threads the setting wheel's
+// own bore — so the wheel's two halves cannot sit on opposite sides of it: an
+// arbor joining them would cross the stem, which is exactly what the first cut
+// of this did (measured: settingArbor intersecting windStem, stemSquare and both
+// groove collars). Above the stem there is 2.1 to the plate and the bevel's blank
+// alone wants 1.47 of it; below there is the whole dial-side band. So the bevel
+// trails DOWN from the corner's apex and the spur half hangs under it, one body,
+// clear of the stem's whole travel.
+//
+// Its plane is SOLVED below, once both wheels it has to separate exist — the
+// spur's own and the minute wheel's, whose reaches are READ from the blanks
+// (makeGear grows a wheel past its nominal thickness: the extrude bevel and the
+// hub ring put the 1.1 spur 1.65 tall). A first cut used half the nominal
+// thickness and left the minute wheel's rim overlapping the bevel's tooth band
+// by 0.05 — enough for meshCoverage to propose a mesh between them, which is
+// what a rim reaching into another wheel's teeth IS.
+const SETTING_SPUR_T = 1.1;
+let SETTING_SPUR_Z = 0;
 const settingWheel = G.makeGear({ name: 'settingWheel', module: KW_MODULE, teeth: settingWheelTeeth, mates: [
     { teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] },
-    { teeth: windPinionTeeth, mates: [settingWheelTeeth] },   // the clutch rim, when pulled
-  ], thickness: 1.1, boreR: 0.7, spokes: 0, material: MATS.steel });
+  ], thickness: SETTING_SPUR_T, boreR: 0.7, spokes: 0, material: MATS.steel });
 // TODO 50 — named so the clutch pair's floors row can EXCLUDE the pulled
 // setting mesh by contact selector (makeGear returns a group; the selector
 // matches mesh names).
 settingWheel.traverse((o) => { if (o.isMesh) o.name = 'settingWheel'; });
 const settingWheelBase = Math.PI / settingWheelTeeth;
-settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
-keyless.add(settingWheel);
-
+keyless.add(settingWheel);   // …positioned below, once its plane is solved
+// The BEVEL half, mounted at the corner's apex — which is where this arbor's
+// axis crosses the stem, i.e. the spur wheel's own centre at the keyless plane.
+// Its blank trails UP the arbor from there (the crown wheel's convention), so it
+// stands clear above the spur and the two are one rigid body on one arbor.
+let settingBevelBase = 0;   // the setting corner's index — solved at the clutch's build, where both mounts exist
+// The mount stands at the corner's apex — on the stem line, at the keyless plane
+// — and is turned through π so the blank trails DOWN it. THAT FLIP REVERSES THE
+// SPIN: a π turn about X maps local +Z onto world −Z, so a local `rotation.z` of
+// +φ IS a world rotation of −φ, and the bevel must carry the NEGATED spin to be
+// the same rigid body as the spur below it. Same seam as `dialFace`'s, read from
+// the same side; the index `bevelCornerSpin` returns is already in this frame and
+// is not negated with it.
+const settingBevelMount = new THREE.Group();
+settingBevelMount.position.set(uWind.x * swDist, uWind.y * swDist, Z_KEYLESS);
+settingBevelMount.rotation.x = Math.PI;
+keyless.add(settingBevelMount);
+const settingBevel = G.makeConicalGear({ name: 'settingBevel', module: KW_MODULE, teeth: settingWheelTeeth,
+  mateTeeth: windPinionTeeth, boreR: KW_CROWN_BORE, mateBoreR: KW_RIM_BORE, material: MATS.steel });
+settingBevel.traverse((o) => { if (o.isMesh) o.name = 'settingBevel'; });
+settingBevelMount.add(settingBevel);
 const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: minuteWheelTeeth, mates: [
     { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
     { teeth: SETTING_CAP_TEETH, mates: [minuteWheelTeeth] },
   ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
+// THE SETTING SPUR'S PLANE, solved against the blanks rather than the nominals.
+// The bevel's web is the lowest crown-corner face; below it must come a margin,
+// then whichever of the two wheels reaches further from its own plane — they are
+// coplanar, so one clearance serves both.
+{
+  const half = (o) => { const b = new THREE.Box3().setFromObject(o); return Math.max(-b.min.z, b.max.z); };
+  SETTING_SPUR_Z = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi - CLEAR_MARGIN
+    - Math.max(half(settingWheel), half(minuteWheel));
+  settingWheel.position.set(uWind.x * swDist, uWind.y * swDist, SETTING_SPUR_Z);
+}
+// …and the arbor that makes the corner's two halves one part. It runs from the
+// spur's top face up to the bevel's web, bored through both at KW_CROWN_BORE —
+// transferArbor's idiom, one wheel up, and entirely below the stem.
+const settingArbor = (() => {
+  const zHi = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi;   // the bevel's web, its lowest face
+  const zLo = SETTING_SPUR_Z;
+  const arbor = new THREE.Mesh(new THREE.CylinderGeometry(KW_CROWN_BORE, KW_CROWN_BORE, zHi - zLo, 14), MATS.steel);
+  arbor.name = 'settingArbor';
+  arbor.rotation.x = Math.PI / 2;
+  arbor.position.set(uWind.x * swDist, uWind.y * swDist, (zLo + zHi) / 2);
+  keyless.add(arbor);
+  return arbor;
+})();
 // §194 declared these two KEYLESS meshes by hand because nothing phased them;
 // TODO 132 gave them the solve they were owed, and solveGearChain declares
 // every pair it phases, so the rows are gone from here rather than duplicated.
@@ -4380,11 +4681,30 @@ const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: 
 let minuteWheelBase = Math.PI / minuteWheelTeeth;
 const minutePinion = G.makePinion({ name: 'minutePinion', module: 0.28, teeth: minutePinionTeeth, mates: [minutePinionTeeth], // §136: meshes NOTHING (see above) — self-Willis display form, not a mesh claim
   thickness: 1.3, material: MATS.steel });
-// Pinion steps toward the DIAL below the wheel (same side as before the
-// move, keeping the compound stack's read direction): 1.8 rather than the
-// old 2.0 so the pinion's underside holds one margin over the dial face —
-// the whole cluster is only ~2.9 above the dial now.
-const MINUTE_Z_STEP = 1.8;
+// TRAVERSE PLANE: between the plate's back bevel (−2.3) and the reserve gear
+// plane (Z_RSV −4.2, w1 tops at −3.53 measured), −3.0 a comfortable middle.
+// TODO 136 is why the window is written down as a window: the crown wheel is a
+// cone now, and trailing UP its arbor its blank would stand right here — the
+// traverse passes 2.003 from that axis, inside its 3.518 tip circle, and the
+// 0.225 left between the wheel's tip ray and w1's top does not take a 0.7 rod.
+// The wheel went below the stem instead (see its build), which is the cheaper
+// side to spend and leaves this plane exactly where it was.
+const SETTING_ROD_R = 0.35;   // the traverse rod's own radius, one declaration
+const Z_SETTING = -3.0;
+// The pinion stepped toward the DIAL below the wheel, 1.8 rather than the old
+// 2.0 so its underside held one margin over the dial face. TODO 136 REVERSED
+// THE STEP: the corner's apex is on the stem line, so the setting wheel's two
+// halves had to go below it, the minute wheel followed its spur's plane, and a
+// step DOWN from there puts the pinion through the dial sheet. Stepping UP
+// instead, the bound is the motion-works TRAVERSE rod the pinion now stands
+// under — so the step is SOLVED against it rather than kept at 1.8, which
+// measured left the pinion 0.11 into the rod. The 1.8 is still the ceiling: the
+// step that reads as one compound stack, never more than it.
+const MINUTE_Z_STEP = (() => {
+  const b = new THREE.Box3().setFromObject(minutePinion);
+  const room = (Z_SETTING - SETTING_ROD_R - CLEAR_MARGIN) - SETTING_SPUR_Z - b.max.z;
+  return Math.min(1.8, room);
+})();
 // The minute wheel FOLDS perpendicularly off the stem line instead of
 // continuing outward: straight-line continuation would put it (and its own
 // radius) well past the plate rim. Folded to the side AWAY from the setting
@@ -4395,8 +4715,13 @@ const MINUTE_Z_STEP = 1.8;
 // meshing; only the centre-line direction rotates.
 // (mwFoldD / minuteArborXY are hoisted with the XY layout.)
 const minuteArbor = new THREE.Group();
-minuteArbor.position.set(minuteArborXY.x, minuteArborXY.y, Z_KEYLESS);
-minutePinion.position.z = -MINUTE_Z_STEP;
+// TODO 136 — the minute wheel meshes the setting SPUR, so it rides the spur's
+// plane, wherever the corner put it. And its pinion flips to the plate side:
+// under the spur's new plane a step DOWN would put it through the dial sheet.
+minuteArbor.position.set(minuteArborXY.x, minuteArborXY.y, SETTING_SPUR_Z);
+minutePinion.position.z = MINUTE_Z_STEP;
+minuteWheel.traverse((o) => { if (o.isMesh) o.name = 'minuteWheel'; });
+minutePinion.traverse((o) => { if (o.isMesh) o.name = 'minutePinion'; });
 minuteArbor.add(minuteWheel, minutePinion);
 keyless.add(minuteArbor);
 // Motion-works arbor toward the dial centre — the minute pinion is nowhere
@@ -4416,13 +4741,13 @@ keyless.add(minuteArbor);
 // still driven by handSetOffset in tick() (same representational-coupling
 // convention as the reserve train), threaded through each corner pair with
 // alternating sign, not just teleported to the far end.
-const Z_SETTING = -3.0; // traverse plane: between the plate's back bevel (−2.3) and the reserve gear plane (Z_RSV −4.2, w1 tops at −3.7)
 const settingArborXY = { x: minuteArborXY.x, y: minuteArborXY.y };
 // The arbor's own shaft: from the minute pinion's plane UP to the corner.
 const settingDrop = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - (Z_KEYLESS - MINUTE_Z_STEP), 10), MATS.steel);
+  new THREE.CylinderGeometry(SETTING_ROD_R, SETTING_ROD_R, Z_SETTING - (SETTING_SPUR_Z + MINUTE_Z_STEP), 10), MATS.steel);
+settingDrop.name = 'settingDrop';
 settingDrop.rotation.x = Math.PI / 2;
-settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + Z_KEYLESS - MINUTE_Z_STEP) / 2);
+settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + SETTING_SPUR_Z + MINUTE_Z_STEP) / 2);
 keyless.add(settingDrop);
 
 function makeRodSegment(a, b, radius) {
@@ -4507,10 +4832,15 @@ const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(C
 const SETTING_CAP_XY = { x: MW_WORLD.x + capU.x * capMeshD, y: MW_WORLD.y + capU.y * capMeshD };
 const settingB = new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_SETTING);
 const settingU = settingB.clone().sub(settingA).normalize();
-keyless.add(makeRodSegment(settingA, settingB, 0.35));
+{
+  const traverse = makeRodSegment(settingA, settingB, SETTING_ROD_R);
+  traverse.name = 'settingTraverse';
+  keyless.add(traverse);
+}
 
 const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5
 const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
+settingRise.name = 'settingRise';
 settingRise.rotation.x = Math.PI / 2;
 settingRise.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (Z_SETTING + Z_CANNON_PINION) / 2);
 keyless.add(settingRise);
@@ -4525,14 +4855,17 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
   const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
-  if (tag) gearIn.name = `${tag}In`;   // §137: a transfer row names its members (§54's rule)
+  // §137: a transfer row names its members (§54's rule) — and TODO 136 put the
+  // name on the MESHES too, because an intra-unit row's selector matches mesh
+  // names and these had been riding index labels the keyless fold renumbered.
+  if (tag) { gearIn.name = `${tag}In`; gearIn.traverse((o) => { if (o.isMesh) o.name = `${tag}In`; }); }
   mountIn.add(gearIn);
 
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
   const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
-  if (tag) gearOut.name = `${tag}Out`;
+  if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
   gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
 
@@ -4570,6 +4903,7 @@ for (const [site, tag] of [['motion works: rise→traverse corner', 'mwCornerDro
 // from the minute wheel's axis, in the minute wheel's own plane — it
 // engages REAL teeth. Rest phase aims a half-tooth gap at the wheel.
 const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
+settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
 settingCap.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_CANNON_PINION);
 const SETTING_CAP_PHASE =
   Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
@@ -4584,6 +4918,8 @@ registerSub('Keyless works', 'Crown-wheel screw', cwScrew);
 registerSub('Keyless works', 'Winding pinion', windPinionGroup);
 registerSub('Keyless works', 'Winding stem', windSpinner, { tickOwned: true });
 registerSub('Keyless works', 'Setting wheel', settingWheel);
+registerSub('Keyless works', 'Setting bevel', settingBevel);
+registerSub('Keyless works', 'Setting arbor', settingArbor);
 registerSub('Keyless works', 'Minute-wheel arbor', minuteArbor);
 registerSub('Keyless works', 'Setting drop', settingDrop);
 registerSub('Keyless works', 'Setting rise', settingRise);
@@ -4612,8 +4948,9 @@ registerSub('Keyless works', 'Setting cap', settingCap);
 // against the spring, so the fork tracks it, not the stem. Hub collars
 // slimmed 1.5 → 1.2 back then: the yoke's arm passes UNDER them, and every
 // 0.1 of hub radius is 0.1 of yoke drop — depth the dial gap no longer has
-// to spare.
-const HUB_COLLAR_R = 1.2;
+// to spare. (HUB_COLLAR_R moved to layout.js with TODO 136: YOKE_FORK_OUT's
+// third wall is about this radius, and a constant a layout bound reads belongs
+// beside the bound.)
 {
   const collarGeo = new THREE.CylinderGeometry(0.75, 0.75, GROOVE_COLLAR_T, 12);
   for (const dy of [-GROOVE_HALF, GROOVE_HALF]) {
@@ -4851,14 +5188,32 @@ windClutchMount.add(windClutch);
   // bevel bites, and the movement's SAW_FIT spare (measured: nominal
   // 0.72 put the lip 0.122 off the square's corners). The spine's 0.75
   // still overlaps the bitten lip — the weld the body needs.
-  const rim = G.makeGear({ name: 'clutchRim', module: KW_MODULE, teeth: windPinionTeeth, mates: [{ teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] }], thickness: CLUTCH_RIM_T,
-    boreR: STEM_R * 0.98 + CLEAR_MARGIN + 2 * KW_GEAR_BEVEL + SAW_FIT, spokes: 0, material: MATS.steel, hub: false });
-  // makeGear returns a GROUP — the floors row's contact selector matches
-  // MESH names, so the name goes on the meshes, not (only) the wrapper.
+  // TODO 136 — THE SETTING RIM IS A CONE, the far half of the second keyless
+  // corner. Its apex is the plane where the setting wheel's axis crosses the
+  // stem, KW_BEVEL.rimFaceOut OUTBOARD of the clutch's own reference — so the
+  // blank trails INBOARD from there, which is the mount's −π/2 (local +Z, the
+  // trail direction, lands on −Y). The bore lost two extrude-bevel bites and the
+  // machining spare with the extrude: a cone's bore is a turned cylinder.
+  const rimMount = new THREE.Group();
+  rimMount.position.y = KW_BEVEL.rimFaceOut;
+  rimMount.rotation.x = Math.PI / 2;      // mount local +Z (the blank's trail) → −Y, inboard
+  windClutch.add(rimMount);
+  const rim = G.makeConicalGear({ name: 'clutchRim', module: KW_MODULE, teeth: windPinionTeeth,
+    mateTeeth: settingWheelTeeth, boreR: KW_RIM_BORE, mateBoreR: KW_CROWN_BORE, material: MATS.steel });
+  // the floors row's contact selector matches MESH names, so the name goes on
+  // the meshes, not (only) the wrapper.
   rim.name = 'clutchRim';
   rim.traverse((o) => { if (o.isMesh) o.name = 'clutchRim'; });
-  rim.rotation.x = Math.PI / 2;
-  windClutch.add(rim);
+  rimMount.add(rim);
+  // The setting corner's index, the winding corner's convention: the wheel
+  // carries a tooth on the line of contact and the rim a gap. Read at the rest
+  // pose, where windClutch.rotation.y is the coupling's 0.005 clocking only.
+  {
+    const ray = bevelCornerRay(new THREE.Vector3(0, 0, 1), new THREE.Vector3(uWind.x, uWind.y, 0));
+    rim.rotation.z = bevelCornerSpin(rimMount, ray, windPinionTeeth, true);
+    settingBevelBase = bevelCornerSpin(settingBevel, ray, settingWheelTeeth, false);
+    settingBevel.rotation.z = settingBevelBase;
+  }
   // The mating saw ring, teeth INBOARD toward the pinion — sense +1 with
   // the +π/2 mirror mount (see the pinion ring's comment: the pair lands
   // on sawCouplingLiftAt's index, δ = −windStemSlip, faces bearing at 0).
@@ -14813,11 +15168,12 @@ const solveGearChain = (label, chain, module, inputs = []) => {
     const keylessRest = [settingWheel, minuteArbor, windSpur, crownWheel, transferWheel,
       ...(windIdlerWheel ? [windIdlerWheel] : [])].map((o) => [o, o.rotation.z]);
     settingWheel.rotation.z = settingWheelBase;                 // settingWheelSpin = 0 at rest
+    settingBevel.rotation.z = settingBevelBase;                 // …and its bevel half, same arbor
     minuteArbor.rotation.z = minuteWheelBase;                   // the knob, solved just below
     windSpur.rotation.z = windSpurBase;                         // windBack = 0 at full wind
     crownWheel.rotation.z = crownWheelBase;                     // crownWheelSpin = 0 with it
-    transferWheel.rotation.z = crownWheel.rotation.z + transferWheelClock;
-    if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth);
+    transferWheel.rotation.z = transferWheelClock;               // …and the arbor's world angle is 0 there (TODO 136: the wheel's own base is LOCAL to its flipped mount)
+    if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock;
     // The SETTING mesh. The setting wheel is the datum: its own teeth answer
     // to the sliding clutch, whose axis lies along the stem — a crossed-axis
     // mesh no parallel-axis solve can phase — so the one freedom here is the
@@ -14837,8 +15193,8 @@ const solveGearChain = (label, chain, module, inputs = []) => {
       ...(windIdlerWheel ? [{ obj: windIdlerWheel, teeth: windIdler.teeth, name: 'wind idler' }] : []),
       { obj: transferWheel, teeth: crownWheelTeeth, name: 'transfer wheel' },
     ], KW_MODULE, ['wind', 'reserve']);
-    if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z + crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth);
-    transferWheelClock = transferWheel.rotation.z - crownWheel.rotation.z;
+    if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z;   // the arbor's world angle is 0 at this pose
+    transferWheelClock = transferWheel.rotation.z;
     for (const [o, z] of keylessRest) o.rotation.z = z;
   }
   // tick() owns these every frame; put them back so nothing built after this
@@ -30621,10 +30977,19 @@ const SCHEMATIC = { proxies: [], on: false };
         && !optedOut(o)) sites.push(o);
   });
   for (const site of sites) {
+    // A CONE'S PITCH CIRCLE IS NOT IN ITS MOUNTING PLANE. A bevel's blank is
+    // measured from the pair's shared apex, and the mount sits AT that apex —
+    // so a proxy drawn at the site's own origin would put the pitch circle
+    // where there is no metal and claim the wheel's teeth stand in the stem's
+    // plane. The circle belongs at coneR·cos γ along the axis, which is where
+    // the pitch cone crosses it (TODO 136; `makeConicalGear` records the spec).
+    const bev = site.userData.cone;
+    const zPitch = bev ? bev.coneR * Math.cos(bev.gamma) : 0;
     const loop = new THREE.Line(circGeo(site.userData.r), MAT_WHEEL);
     const spoke = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
       [new THREE.Vector3(0, 0, 0), new THREE.Vector3(site.userData.r, 0, 0)]), MAT_SPOKE);
     for (const pr of [loop, spoke]) {
+      pr.position.z = zPitch;
       pr.userData.schematic = true;
       pr.layers.set(1); // the tier's own render layer — the solid camera never sees it
       site.add(pr);
@@ -37756,9 +38121,15 @@ function tick(t) {
   // which is why there is nothing left here for a sense to be missing from.
   const spurWorldDelta = windBack + (barrelMeshAngle(tau) - barrelMeshAngle(0));
   const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * spurWorldDelta;
-  crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
-  transferWheel.rotation.z = crownWheel.rotation.z + transferWheelClock; // keyed to the same arbor, at the index the spur mesh was solved to (TODO 132)
-  if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream; TODO 132 phases it
+  // TODO 136 — the crown wheel hangs BELOW the corner's apex on a flipped mount,
+  // so its own rotation.z is the NEGATED arbor angle. Everything else keyed to
+  // that arbor reads the arbor's WORLD angle (crownWheelSpin) directly rather
+  // than through the flipped member — the same rule dialFace's seam states, and
+  // the reason it is spelled out here is that reading it through the wheel is
+  // exactly what would leave the transfer wheel counter-rotating in silence.
+  crownWheel.rotation.z = crownWheelBase - crownWheelSpin;
+  transferWheel.rotation.z = crownWheelSpin + transferWheelClock; // keyed to the same arbor, at the index the spur mesh was solved to (TODO 132)
+  if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheelSpin * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream; TODO 132 phases it
   {
     // Winding spur, let-down square and fusee cone are keyed together;
     // their LOCAL rotation is derived from the bank (−2π per turn still to
@@ -38072,6 +38443,9 @@ function tick(t) {
   mainspring.setWind(mainspring.sweepFull - drumRot);
 
   settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
+  // …and its BEVEL half turns with it: one arbor, one blank pair (TODO 136).
+  // Indexed on its own corner, so the spin is what travels, not the angle.
+  settingBevel.rotation.z = settingBevelBase - settingWheelSpin;   // negated: its mount is turned through π (see the build)
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
   // Motion-works bevel corners: each meshing pair reverses sense (same as
   // any two external gears meshing), so the sign flips at every corner —

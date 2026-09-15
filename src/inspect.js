@@ -2257,7 +2257,7 @@ export const EXPECTED_CONTACT_FLOORS = [
       // (no clutchSleeve ⇄ windStem row: the stem is a TURNED part — its
       // round journal starts outboard of the square section, past the
       // sleeve's whole ride band, so the pipe never reaches it)
-      ['clutchRim', 'settingWheel'],    // pulled out: the setting mesh the old pinion carried
+      ['clutchRim', 'settingBevel'],    // pulled out: the setting mesh the old pinion carried — TODO 136 cut it as a bevel pair, and the wheel's BEVEL half is the member that meshes (its spur half drives the minute wheel)
     ],
   },
   {
@@ -2425,7 +2425,10 @@ export const INTRA_UNIT_CONTACTS = [
   // teeth overlapping the crown wheel's rim — the working bevel-style mesh
   // — under the name of the square joint, which lives on the CLUTCH pair's
   // floors row now.
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#5', b: 'ExtrudeGeometry#0', why: 'winding pinion teeth overlap the crown wheel rim — the working mesh, bevel-style' },
+  // TODO 136 — NAMED, and the why is true at last: "bevel-style" was the intent
+  // and two crossed SPUR rims were the metal. It is a real Σ = 90° bevel pair
+  // now, so this row excuses a working mesh rather than a fiction.
+  { unit: 'Keyless works', a: 'windingPinion', b: 'crownWheel', why: 'the winding corner\'s working mesh — a 20:8 bevel pair sharing the apex where the crown wheel\'s axis crosses the stem' },
   // 'CylinderGeometry#7' until TODO 50 named the stem's round journal (the
   // turned-part split — see the strike sleeve above for why that stales a row).
   { unit: 'Keyless works', a: 'windStem', b: 'BoxGeometry#31', why: 'stem in its bushing block' },
@@ -2447,10 +2450,14 @@ export const INTRA_UNIT_CONTACTS = [
   // crown-class collar the old why meant — laps the stem bushing at the
   // plate rim, and a numeric selector over a roster the split re-numbered
   // is exactly the stale-row trap.
-  { unit: 'Keyless works', a: 'settingWheel', b: 'TorusGeometry#30', why: 'setting wheel at its bushing torus' },
-  { unit: 'Keyless works', a: 'settingWheel', b: 'BoxGeometry#31', why: 'setting wheel at the bushing block face' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#36', b: 'CylinderGeometry#37', why: 'setting wheel on its stud' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#44', b: 'CylinderGeometry#39', why: 'minute-arbor wheel on its arbor' },
+  // TODO 136 moved this whole assembly BELOW the stem (the bevel corner's apex
+  // is on the stem line, so its two halves cannot straddle it), which took the
+  // setting wheel out of the bushing's reach entirely — measured 1.5502 apart,
+  // past DECLARED_CONTACT_REACH. The rows that excused those laps are RETIRED
+  // rather than kept as the record of a joint that is no longer there.
+  { unit: 'Keyless works', a: 'settingWheel', b: 'settingArbor', why: 'TODO 136 — the setting corner is a COMPOUND: its spur half (the minute-wheel mesh) and its bevel half (the clutch mesh) are one body on one arbor, crownWheel/transferWheel\'s own idiom' },
+  { unit: 'Keyless works', a: 'settingBevel', b: 'settingArbor', why: 'TODO 136 — the bevel half on the same arbor, the other end of that stack' },
+  { unit: 'Keyless works', a: 'minutePinion', b: 'settingDrop', why: 'the minute arbor\'s pinion on the rod that rises from its plane to the motion-works traverse — one arbor, two meshes (named since TODO 136; it rode an index label the keyless fold renumbered)' },
   // TODO 38 W4's wind axis lifted the fixture-vs-fixture blindness on the
   // fusee stack: the ratchet and the great wheel became MOVERS the moment an
   // axis wound them, and two standing contacts that were always there became
@@ -2491,11 +2498,13 @@ export const INTRA_UNIT_CONTACTS = [
   // "a part no axis MOVES is a part it cannot judge", met here by parts
   // becoming visible rather than by a waiver. Every row below is a rigid
   // joint by construction, measured at the pose the check reports.
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#3', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives (index labels: the wheels and the arbor are coaxial at the winding station)' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#0', b: 'CylinderGeometry#4', why: '§47: the same wheel seated on the arbor\'s collar below it — the axial seat that seats the wheel on its shoulder' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#3', why: '§47: the crown wheel\'s companion body on the same arbor, one keyed stack' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#1', b: 'CylinderGeometry#4', why: '§47: that body on the same collar — the stack is seated as one' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#2', b: 'CylinderGeometry#3', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
+  // §47's rows, NAMED by TODO 136 — the fold renumbered this unit and stranded
+  // all five. Two of them turned out to describe one body twice: the crown
+  // wheel's "companion" and the transfer wheel are the same blank, which is
+  // exactly what an index label hides and a name does not.
+  { unit: 'Keyless works', a: 'crownWheel', b: 'transferArbor', why: '§47: the crown wheel keyed on its arbor — the arbor passes through the wheel it drives' },
+  { unit: 'Keyless works', a: 'crownWheel', b: 'cwScrew', why: '§47: the same wheel seated on the blued screw below it — the axial seat that seats the wheel on its shoulder' },
+  { unit: 'Keyless works', a: 'transferWheel', b: 'transferArbor', why: '§47: the TRANSFER wheel at the plate-top end of the same arbor — keyed to it, which is why tick() poses the two wheels from one angle' },
   { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#14', why: '§47: a maintaining pawl on its own pivot pin — the pawl rides the pin it rocks about (both pawls carry the same mesh name, so this row covers the pair the check reports)' },
   { unit: 'Fusee & great wheel', a: 'maintPawl', b: 'CylinderGeometry#16', why: '§47: the second maintaining pawl on its own pin — the same joint at the other station' },
   // §47 — the arrest's own declared joints: the finger on its stud (a bored
@@ -2550,7 +2559,8 @@ export const INTRA_UNIT_CONTACTS = [
   // joints themselves are real — each corner gear is keyed to the rod it drives
   // — and §182's reach audit measures them; what was wrong was the description,
   // written from measured proximity without identifying the meshes.
-  { unit: 'Keyless works', a: 'BufferGeometry#43', b: 'CylinderGeometry#39', why: 'mwCornerRiseOut, the rise corner\'s outboard bevel, keyed to the vertical rod it drives (measures MARGINAL \u2014 the flag flips run-to-run at the d\u22481e-4 boundary; the joint is real either way)' },
+  { unit: 'Keyless works', a: 'settingCap', b: 'settingRise', why: 'the setting cap on the rod that carries the traverse down to the motion works — one arbor, two meshes (TODO 136 shortened the rise when the traverse plane dropped under the crown wheel\'s cone, which brought the two into contact)' },
+  { unit: 'Keyless works', a: 'mwCornerRiseOut', b: 'settingRise', why: 'the rise corner\'s outboard bevel, keyed to the vertical rod it drives (measures MARGINAL \u2014 the flag flips run-to-run at the d\u22481e-4 boundary; the joint is real either way)' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
   // keyless arbor sit at the measurement boundary and the flag flips
@@ -2558,8 +2568,8 @@ export const INTRA_UNIT_CONTACTS = [
   // the next, wandering across poses). The joints are real — wheels
   // pressed on their arbor, the power-reserve convention — and declaring
   // them is what stops the battery flickering on float noise.
-  { unit: 'Keyless works', a: 'BufferGeometry#41', b: 'CylinderGeometry#38', why: 'mwCornerDropOut, the drop corner\'s outboard bevel, keyed to the traverse rod (d\u22481e-4 marginal, like its neighbour row)' },
-  { unit: 'Keyless works', a: 'BufferGeometry#42', b: 'CylinderGeometry#38', why: 'mwCornerRiseIn, the rise corner\'s inboard bevel, keyed to the same traverse rod (same marginal cluster)' },
+  { unit: 'Keyless works', a: 'mwCornerDropOut', b: 'settingTraverse', why: 'the drop corner\'s outboard bevel, keyed to the traverse rod (d\u22481e-4 marginal, like its neighbour row)' },
+  { unit: 'Keyless works', a: 'mwCornerRiseIn', b: 'settingTraverse', why: 'the rise corner\'s inboard bevel, keyed to the same traverse rod (same marginal cluster)' },
   { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
   // (§182 retired 'alarmIndexWedge ⇄ ShapeGeometry#3'. It read "the index wedge
   // stands proud THROUGH the face sheet by design", and TODO 26 had already
