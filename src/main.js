@@ -1789,7 +1789,12 @@ const HAND_RAD_PER_SET_RAD = -(windPinionTeeth / minuteWheelTeeth) * (minutePini
 // the pinion is bored loose over the stem's square, and the clutch rim bores over
 // the square plus the margin — its old bore carried two extrude-bevel bites and
 // a spare, and a cone has no extrude to bite it.
-const KW_RIM_BORE = STEM_R * 0.98 + CLEAR_MARGIN;
+// …and the clutch rim's bore carries the ROUND journal, not the square: the
+// square's half-diagonal is STEM_R·0.98 and the round shaft's radius is
+// STEM_R itself, so the round section is the wider of the two and the rim
+// stands over it partway through the wind (measured at wind f=0.4722, a bore
+// sized to the square left 0.1316 against the 0.15 floor).
+const KW_RIM_BORE = STEM_R + CLEAR_MARGIN;
 const KW_CROWN_BORE = 0.7, KW_PIN_BORE = 0.6;
 const KW_SPEC = {
   crownWheel: G.bevelToothSpec({ module: KW_MODULE, teeth: crownWheelTeeth, mateTeeth: windPinionTeeth,
@@ -4190,20 +4195,33 @@ registerExplode(keyless, 0, 4, -1); // dial-side unit: explodes toward the dial
 // WINDING PINION and nothing else (the spur is the transfer wheel's mesh, one
 // level up this arbor), and that mesh's axes CROSS at the stem — so this is half
 // of a Σ = 90° bevel pair, not a spur disc parked against one. The mount sits
-// where the two axes meet, on the stem line at Z_KEYLESS, and the blank trails UP
-// its own arbor from there (addBevelCorner's convention: a gear keyed to a shaft
-// has its body behind the pitch point). Its plate therefore stands
-// zWebLo…zWebHi = 1.150…1.472 ABOVE the stem, which is where a real crown
-// wheel's face teeth reach down from.
+// where the two axes meet, on the stem line at Z_KEYLESS.
 //
-// No parallel-axis solve can phase a crossed pair, so the index stays the
-// half-pitch seed; the pair solveGearChain can reach is the transfer wheel's,
-// below.
+// IT TRAILS DOWN, against addBevelCorner's convention (a gear keyed to a shaft
+// end has its body behind the pitch point) and for a measured reason. Trailing
+// UP its arbor, the blank stands zWebLo…zWebHi = 1.150…1.472 above the stem —
+// which is the band the motion works' TRAVERSE crosses, 2.003 from this axis and
+// so inside its 3.518 tip circle. There is no plane for that rod on either side:
+// over the wheel is the base plate's back bevel at −2.3 against a web topping at
+// −2.628, and under it the reserve's own w1 tops at −3.53 against a rod that
+// would have to reach −3.455. The window is 0.225 for a 0.7 rod.
+//
+// So the wheel goes below the stem instead, where the pinion's cone meets it
+// just as well (the pinion's teeth are a full revolution about the stem, so
+// which side the wheel stands on is free) and the traverse keeps its plane. The
+// arbor still climbs to the transfer wheel; a wheel keyed part-way along an
+// arbor is ordinary, which is what makes this the cheap side to spend.
+//
+// The flip NEGATES the spin, the setting bevel's seam read at the other corner:
+// a π turn about X maps local +Z onto world −Z.
+const crownWheelMount = new THREE.Group();
+crownWheelMount.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
+crownWheelMount.rotation.x = Math.PI;
+keyless.add(crownWheelMount);
 const crownWheel = G.makeConicalGear({ name: 'crownWheel', module: KW_MODULE, teeth: crownWheelTeeth,
   mateTeeth: windPinionTeeth, boreR: KW_CROWN_BORE, mateBoreR: KW_PIN_BORE, material: MATS.steel });
 crownWheel.traverse((o) => { if (o.isMesh) o.name = 'crownWheel'; });
-crownWheel.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS);
-keyless.add(crownWheel);
+crownWheelMount.add(crownWheel);
 // Transfer wheel: hub-less — its band between plate top and great-wheel
 // underside is only ~1.2 tall, and the stock hub ring would eat both gaps.
 const Z_TRANSFER = Z_RATCHET_BOT + RATCHET_T / 2; // coplanar with the winding spur
@@ -4225,11 +4243,15 @@ keyless.add(transferWheel);
 // freedom, used the same way. SOLVED against the winding spur below; seeded at
 // 0 so the arbor is well defined even if the solve refuses aloud.
 let transferWheelClock = 0;
+// TODO 136 — it reaches DOWN to the crown wheel's web now, not merely to the
+// keyless plane: the wheel hangs below the corner's apex, so the arbor that
+// keys it has to get there.
+const _cwArborLo = Z_KEYLESS - KW_SPEC.crownWheel.zWebHi;
 const transferArbor = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - Z_KEYLESS, 14), MATS.steel);
+  new THREE.CylinderGeometry(0.7, 0.7, Z_TRANSFER - _cwArborLo, 14), MATS.steel);
 transferArbor.name = 'transferArbor';
 transferArbor.rotation.x = Math.PI / 2;
-transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + Z_KEYLESS) / 2);
+transferArbor.position.set(uWind.x * cwDist, uWind.y * cwDist, (Z_TRANSFER + _cwArborLo) / 2);
 keyless.add(transferArbor);
 // §33 step 2 — THE WINDING IDLER, built only when the spec'd stem parks
 // one (solveKeyless returns its solved two-circle position). It bridges
@@ -4260,7 +4282,7 @@ if (windIdler) {
 const cwScrew = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.0, 12), MATS.blueSteel);
 cwScrew.name = 'cwScrew';
 cwScrew.rotation.x = Math.PI / 2;
-cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS + KW_SPEC.crownWheel.zTipLo - 0.5);
+cwScrew.position.set(uWind.x * cwDist, uWind.y * cwDist, Z_KEYLESS - KW_SPEC.crownWheel.zWebHi - 0.5);
 keyless.add(cwScrew);
 
 // Everything on the stem axis lives in one spinner group (local +Y = outward).
@@ -4342,7 +4364,7 @@ windPinionMount.add(windPinion);
 const crownWheelBase = (() => {
   const ray = bevelCornerRay(new THREE.Vector3(0, 0, 1), new THREE.Vector3(uWind.x, uWind.y, 0));
   windPinion.rotation.z = bevelCornerSpin(windPinionMount, ray, windPinionTeeth, true);
-  return bevelCornerSpin(crownWheel, ray, crownWheelTeeth, false);
+  return bevelCornerSpin(crownWheelMount, ray, crownWheelTeeth, false);
 })();
 {
   // The pinion's saw ring, on its outboard face, teeth toward the clutch.
@@ -4649,18 +4671,16 @@ const settingArbor = (() => {
 let minuteWheelBase = Math.PI / minuteWheelTeeth;
 const minutePinion = G.makePinion({ name: 'minutePinion', module: 0.28, teeth: minutePinionTeeth, mates: [minutePinionTeeth], // §136: meshes NOTHING (see above) — self-Willis display form, not a mesh claim
   thickness: 1.3, material: MATS.steel });
-// TRAVERSE PLANE — a window before TODO 136 and a derived floor since. It sits
-// between the plate's back bevel (−2.3) and the reserve gear plane (Z_RSV −4.2,
-// w1 tops at −3.7), and −3.0 was a comfortable middle. The crown wheel is a CONE
-// now, mounted at the corner's apex on the keyless plane and trailing UP its own
-// arbor, so its blank stands in that window: measured, the traverse rod passes
-// 2.003 from the wheel's axis — inside its 3.518 tip circle — and the blank's
-// lowest metal over that crossing is its tip ray at Z_KEYLESS + zTipLo. So the
-// rod goes UNDER it by the margin. (Over is not available: the wheel's web tops
-// at −2.628 and the plate's bevel is at −2.3.)
+// TRAVERSE PLANE: between the plate's back bevel (−2.3) and the reserve gear
+// plane (Z_RSV −4.2, w1 tops at −3.53 measured), −3.0 a comfortable middle.
+// TODO 136 is why the window is written down as a window: the crown wheel is a
+// cone now, and trailing UP its arbor its blank would stand right here — the
+// traverse passes 2.003 from that axis, inside its 3.518 tip circle, and the
+// 0.225 left between the wheel's tip ray and w1's top does not take a 0.7 rod.
+// The wheel went below the stem instead (see its build), which is the cheaper
+// side to spend and leaves this plane exactly where it was.
 const SETTING_ROD_R = 0.35;   // the traverse rod's own radius, one declaration
-const Z_SETTING = Math.min(-3.0,
-  Z_KEYLESS + KW_SPEC.crownWheel.zTipLo - CLEAR_MARGIN - SETTING_ROD_R);
+const Z_SETTING = -3.0;
 // The pinion stepped toward the DIAL below the wheel, 1.8 rather than the old
 // 2.0 so its underside held one margin over the dial face. TODO 136 REVERSED
 // THE STEP: the corner's apex is on the stem line, so the setting wheel's two
@@ -15142,8 +15162,8 @@ const solveGearChain = (label, chain, module, inputs = []) => {
     minuteArbor.rotation.z = minuteWheelBase;                   // the knob, solved just below
     windSpur.rotation.z = windSpurBase;                         // windBack = 0 at full wind
     crownWheel.rotation.z = crownWheelBase;                     // crownWheelSpin = 0 with it
-    transferWheel.rotation.z = crownWheel.rotation.z + transferWheelClock;
-    if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth);
+    transferWheel.rotation.z = transferWheelClock;               // …and the arbor's world angle is 0 there (TODO 136: the wheel's own base is LOCAL to its flipped mount)
+    if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock;
     // The SETTING mesh. The setting wheel is the datum: its own teeth answer
     // to the sliding clutch, whose axis lies along the stem — a crossed-axis
     // mesh no parallel-axis solve can phase — so the one freedom here is the
@@ -15163,8 +15183,8 @@ const solveGearChain = (label, chain, module, inputs = []) => {
       ...(windIdlerWheel ? [{ obj: windIdlerWheel, teeth: windIdler.teeth, name: 'wind idler' }] : []),
       { obj: transferWheel, teeth: crownWheelTeeth, name: 'transfer wheel' },
     ], KW_MODULE, ['wind', 'reserve']);
-    if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z + crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth);
-    transferWheelClock = transferWheel.rotation.z - crownWheel.rotation.z;
+    if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z;   // the arbor's world angle is 0 at this pose
+    transferWheelClock = transferWheel.rotation.z;
     for (const [o, z] of keylessRest) o.rotation.z = z;
   }
   // tick() owns these every frame; put them back so nothing built after this
@@ -38091,9 +38111,15 @@ function tick(t) {
   // which is why there is nothing left here for a sense to be missing from.
   const spurWorldDelta = windBack + (barrelMeshAngle(tau) - barrelMeshAngle(0));
   const crownWheelSpin = -(WIND_SPUR_TEETH / crownWheelTeeth) * spurWorldDelta;
-  crownWheel.rotation.z = crownWheelBase + crownWheelSpin;
-  transferWheel.rotation.z = crownWheel.rotation.z + transferWheelClock; // keyed to the same arbor, at the index the spur mesh was solved to (TODO 132)
-  if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheel.rotation.z * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream; TODO 132 phases it
+  // TODO 136 — the crown wheel hangs BELOW the corner's apex on a flipped mount,
+  // so its own rotation.z is the NEGATED arbor angle. Everything else keyed to
+  // that arbor reads the arbor's WORLD angle (crownWheelSpin) directly rather
+  // than through the flipped member — the same rule dialFace's seam states, and
+  // the reason it is spelled out here is that reading it through the wheel is
+  // exactly what would leave the transfer wheel counter-rotating in silence.
+  crownWheel.rotation.z = crownWheelBase - crownWheelSpin;
+  transferWheel.rotation.z = crownWheelSpin + transferWheelClock; // keyed to the same arbor, at the index the spur mesh was solved to (TODO 132)
+  if (windIdlerWheel) windIdlerWheel.rotation.z = windIdlerClock - crownWheelSpin * (crownWheelTeeth / windIdler.teeth); // §33 step 2 — one mesh, negated, counts dropping out downstream; TODO 132 phases it
   {
     // Winding spur, let-down square and fusee cone are keyed together;
     // their LOCAL rotation is derived from the bank (−2π per turn still to

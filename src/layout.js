@@ -925,12 +925,12 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 //
 //     D4 = (railInnerR − DIAL_WALL_HALF − CLEAR_MARGIN
 //           + SUBDIAL_INBOARD_CLEAR) / 2
-//        = (41.1242632573607·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
+//        = (41.15568279135727·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
 //
 // printed at full precision below (dialRadius is the keyless-floored plate,
 // FLAT over every station in play, so the closed form is a constant; the
 // dial build asserts the two bounds still meet, which is what re-derives
-// this number if the face ever moves). Well radius 14.5079 — its ring one
+// this number if the face ever moves). Well radius 14.5205 — its ring one
 // margin off the rail's inner edge, its inner edge on the keep-out.
 //
 // TODO 125 RE-DERIVED IT, and that is the assert above doing its job rather
@@ -949,9 +949,9 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // number. Cutting the two keyless corners as real bevels deleted a fictitious
 // 0.55·windPinionR of rim overlap at each of them AND shortened the winding
 // pinion to a cone, so the cluster the plate encloses got shorter twice over:
-// dialRadius 42.804991398276 → 41.1242632573607, railInnerR 34.2620 → 32.9159,
+// dialRadius 42.804991398276 → 41.15568279135727, railInnerR 34.2620 → 32.9410,
 // and the two bounds stood 15.1806 against 13.8345. Re-derived, they meet at
-// 14.5079. The well is 0.673 smaller, which is what the plate stops carrying
+// 14.5205. The well is 0.673 smaller, which is what the plate stops carrying
 // when the keyless works measure their own stations.
 // Context that still binds the RANGE, from the Tier B measurement: the
 // plate stays 42.9229 through station 22.90 and grows at 22.95; the
@@ -960,7 +960,7 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // station on the post-Tier-B tree. The menu's FAST rates still trade size
 // for rate (the 96-tooth fourth outruns the keyless floor from ≈17.7 —
 // at this station too; their spec rows record it).
-export const D4 = 18.057930155595752;
+export const D4 = 18.07050425310118;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
 // law); the mirror died the day the wells split. The owner's constraint is
@@ -1320,9 +1320,9 @@ export const STEM_R = 0.45;           // the stem's shaft radius (main.js builds
 //                full pull (see YOKE_FORK_OUT)
 export const KW_BEVEL = {
   pinFaceOut: 3.533868,
-  rimFaceOut: 2.728037,
-  rimBack: 0.805831,
-  rimTip: 0.121098,
+  rimFaceOut: 2.761171,
+  rimBack: 0.772698,
+  rimTip: 0.122568,
   setTipR: 3.517671,
 };
 // The pinion's COUPLING BOSS — the turned shoulder outboard of its cone that
