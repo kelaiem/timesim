@@ -24984,7 +24984,85 @@ ten times the wall, at no cost in cased height, because the outline is a
 convex hull of discs whose every radius is a functional core plus one minimum
 wall. The arms read slender because a §50 floor is standing in for a design.
 
-Nor does it make the driver visible: 57.9% of it is hidden, **48.1% by the
-column wheel's own skirt**, which sits above the driver and so cannot be
-uncovered by any window in the plate below. Both are the roadmap remainder,
-together with the fold.
+Nor does it make the driver visible: 57.9% of it is hidden, and the occluder
+sits above the driver and so cannot be uncovered by any window in the plate
+below. (Measured properly in part three, that occluder is `alarmColBase` at
+84.7%, not the ratchet skirt at 2.0% — the prose here said skirt.) The width
+is taken in part three; the fold stays the roadmap remainder.
+
+---
+
+## §226 part three — the arms cut one ratchet tooth wide, and the authored quantity inverted
+
+**Also PARTIAL** (the fold remains). This is the width half, and the change
+that matters is not the dimension but *which quantity the source states*.
+
+### The wall was authored; now the width is
+
+Every tip disc read `<core> + STOCK_MIN_U` — the hole, plus the thinnest wall
+§50 permits. So the WALL was the authored quantity and the part's visible
+width was whatever fell out of it. That is a floor standing in for a design:
+§50's number is a minimum a section may not go under, never a statement about
+what this lever should look like. Measured with
+`tools/probe-226-driver-width.mjs`, about **ten times** that wall was available
+before any metal objects.
+
+The width is authored now and the wall is its consequence. The constraint is
+legibility — a stated design value for this entry on the owner's ruling — and
+the reference is the **ratchet tooth the pawl indexes**: the movement's own
+visual unit at this station, since a reader looking through the back sees the
+teeth and the driver in one glance, and a part thinner than the teeth it
+drives reads as a wire rather than as metal.
+
+    tooth depth    1.2540 u = 0.4752 mm     (12 teeth, off the wheel's own cut)
+    tipR           0.4831 / 0.5331  ->  0.6270, all three arms
+    feature width  0.9663 / 1.0663  ->  1.2540 u       77% / 85%  ->  100%
+
+The tooth comes from `makeColumnWheel`'s new `userData.ratchetTooth`, recorded
+beside the cut that makes it, on §169's `skirtH` precedent — a second copy of
+`baseR * 0.22` at the caller is one dimension written down twice.
+
+The resulting walls are 0.4605 on the two stud arms and 0.4105 on the slot
+arm, both over the floor, and §50 is now an **assert** rather than a target.
+§192's anchor assert is retired into that loop rather than dropped: it made
+the same inequality for one arm, and with a second arm walling the same
+`STOCK_MIN_R10` core the two would have been one fact written twice. The loop
+reads each arm's OWN `tipR`, not the shared constant — an arm given its own
+width later must still be checked, and a guard testing the constant would pass
+it in silence.
+
+### The section did not move, and that is measured
+
+Both faces of the driver's stratum are tight at exactly `CLEAR_MARGIN`
+(0.15000 below to the three-quarter plate, 0.15000 above to the ratchet
+skirt), so a local boss is no cheaper than global thickening — every micron is
+1:1 into cased height wherever it is put, and "partial thickening" has no
+cheaper form available here. And the driver is already **97.4% of the ratchet
+band**; the last 2.7% costs 0.0062 mm of case but breaks
+
+    0.6004 + 2 × CLEAR_MARGIN = 0.9004   <- exactly route B's free band
+    0.6167 + 2 × CLEAR_MARGIN = 0.9167   <- 0.0163 more than the fold has
+
+so tooth-height parity and fold-compatibility are mutually exclusive. Taking
+the parity would cost the section the one property that made part two
+defensible: cut once, survives the fold.
+
+### What it bought, and what it cost
+
+Driver metal **+6.8%** (96,145 → 102,688 cells at 0.02 u); visible fraction
+**41.3% → 43.4%**. The visibility gain is smaller than the area gain because
+some new metal lands under `alarmColBase`, which is exactly what the
+visibility weighting predicted and why the hub was left at bore-plus-wall.
+Between 3.2 and 4.2 u of measured ceiling remains unused on every arm.
+
+**Nothing else moved at all.** Both trees ran a full battery — 40/40 gates
+each — and the two `--report` payloads were diffed leaf by leaf: **132,602
+numeric leaves, 132,547 of them non-timing, including 123,906 float geometric
+values in `inspection` alone. Every one identical.** The only differences are
+per-slice wall times. That is the acceptance this repository asks for, because
+a gate reports only whether its failure list is empty and a report can move
+while staying empty — and the leaf count is quoted because a diff that
+compares nothing looks exactly like one that finds nothing.
+
+Fingerprint `3387950801` → `2171540218`: the geometry did change, which is
+what makes the unchanged rows a result rather than a tautology.
