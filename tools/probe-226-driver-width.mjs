@@ -469,12 +469,61 @@ const R = await page.evaluate(async ({ CELL, CAP, SAMPLES }) => {
   }
   const hubR = hLo;
 
+  // EACH ARM IS NAMED BY THE METAL IT CARRIES, never by its index. The first
+  // version of this probe labelled the arms from a build-order note list —
+  // but `makeColumnDriver` SORTS its arms by azimuth before cutting, so all
+  // three labels were rotated and the visibility tier credited the wrong arm.
+  // The tip-disc centres coincide with the parts they hold to ~1e-15, so the
+  // association is a measurement, not a guess.
+  const carriers = new Map();
+  {
+    const dInv = new THREE.Matrix4().copy(driver.matrixWorld).invert();
+    const named = [];
+    clock.scene.traverse((o) => {
+      if (o.isMesh && ['alarmColPawlPost', 'alarmColPawlSpringStud', 'alarmPusherRiser'].includes(o.name)) named.push(o);
+    });
+    for (const a of arms) {
+      const cx = a.reach * Math.cos(a.az), cy = a.reach * Math.sin(a.az);
+      let best = null, bd = Infinity;
+      for (const o of named) {
+        const q = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld).applyMatrix4(dInv);
+        const d = Math.hypot(q.x - cx, q.y - cy);
+        if (d < bd) { bd = d; best = o.name; }
+      }
+      carriers.set(a, { part: best, dist: bd });
+    }
+  }
+  const ROLE = { alarmColPawlPost: 'pawl post', alarmColPawlSpringStud: 'anchor / blade stud', alarmPusherRiser: 'pusher-pin slot' };
   const discs = [{ what: 'hub', cx: 0, cy: 0, r: hubR, note: 'bore + PIVOT_BORE_CLEAR + STOCK_MIN_U' }];
-  arms.forEach((a, i) => discs.push({
-    what: `arm ${i} @ ${(a.az * 180 / Math.PI).toFixed(1)}°`,
-    cx: a.reach * Math.cos(a.az), cy: a.reach * Math.sin(a.az), r: a.tipR,
-    note: ['slotHalfW + STOCK_MIN_U (pusher-pin slot)', 'STOCK_MIN_R10 + STOCK_MIN_U (pawl post)', 'anchorArmTipR (blade stud)'][i] || '',
-  }));
+  arms.forEach((a) => {
+    const c = carriers.get(a);
+    discs.push({
+      what: `${ROLE[c.part] || c.part} @ ${(a.az * 180 / Math.PI).toFixed(1)}°`,
+      cx: a.reach * Math.cos(a.az), cy: a.reach * Math.sin(a.az), r: a.tipR,
+      note: `carries ${c.part} (tip-disc centre to ${c.dist.toExponential(1)}), reach ${a.reach.toFixed(3)}`,
+      carrier: c.part, carrierDist: c.dist,
+    });
+  });
+
+  // ---- THE REFERENCE DIMENSION: the ratchet tooth the pawl indexes -------
+  // §226's design target is that the driver's features read at roughly the
+  // size of the ratchet teeth below the column wheel. Taken off `ratchetPoly`
+  // — the very polygon the skirt is extruded from — rather than re-derived,
+  // so the target cannot drift from the cut.
+  let tooth = null;
+  {
+    let wheel = null;
+    clock.scene.traverse((o) => { if (o.userData && o.userData.ratchetPoly) wheel = o; });
+    if (wheel) {
+      const poly = wheel.userData.ratchetPoly.map((q) => ({ x: q.x, y: q.y, r: Math.hypot(q.x, q.y) }));
+      const teethN = poly.length / 2;
+      let tipR = -Infinity, rootR = Infinity;
+      for (const q of poly) { tipR = Math.max(tipR, q.r); rootR = Math.min(rootR, q.r); }
+      const pitchRad = 2 * Math.PI / teethN;
+      tooth = { teethN, tipR, rootR, depth: tipR - rootR,
+        pitchAtMid: pitchRad * (tipR + rootR) / 2, bandH: wheel.userData.skirtH };
+    }
+  }
 
   // ---- the real field, and the controls ---------------------------------
   const real = buildOcc(false, true);
@@ -692,7 +741,7 @@ const R = await page.evaluate(async ({ CELL, CAP, SAMPLES }) => {
     poses: poses.length,
     jointNames: Array.from(jointNames).sort(),
     rigidNames,
-    hubR, shippedClear, shippedHits, shippedHitsJoints, plateGap, detector,
+    hubR, shippedClear, shippedHits, shippedHitsJoints, plateGap, detector, tooth,
     baseVisible, baseCells, growthVis, seeThroughNames,
     occluders: Array.from(occluderCensus.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10),
     rows, contrib,
