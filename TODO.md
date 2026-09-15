@@ -17466,7 +17466,61 @@ beside `cuttable`/`teethOk`/`fitsBudget` and the caller warns once. Warning
 inside put one line per rejected leg into a boot standing rule 6 requires to be
 silent, and buried the one line that meant something.
 
-**OPEN, and the next thing to work: the alarm corner now measures BURIED.**
+### The coupling, diagnosed — a bevel corner REVERSES, and the crown was not crossing it
+
+`tools/probe-138-coupling.mjs` (new) drives each corner's real input and tracks
+a marker fixed in each body, measuring the SIGNED swing about that gear's own
+axis. Reading `rotation.z` instead would restate whatever the builder assigned,
+which is the thing under suspicion.
+
+**The condition, derived.** Two cones on a shared apex roll without slip only if
+their RELATIVE angular velocity lies along the contact ray; everything else is
+sliding. With `d = cos γ_A·û_A + cos γ_B·û_B` that forces
+`ω_B = −ω_A·tan γ_A = −ω_A·z_A/z_B`, and this corner is a mitre, so the
+magnitude is 1 and the **sense is −1**. `ratio: 1` in the corner's transfer row
+is the magnitude; the sign is the half that row does not carry.
+
+**Measured: +1 against the −1 the cones demand.** The crown's turn was banked
+into the setting path unchanged — `alarmSetRot += aDelta` — as though the bevel
+pair were a shaft coupling. Standing rule 2's exact failure mode: an angle
+ASSIGNED where a real train would have produced it.
+
+**It was written down TWICE**, which is why the first fix measured no change at
+all. `tick()` banks a DELTA through the corner; `setPose` assigns the ABSOLUTE
+angle (`alarmSetRot = p.alarmCrownRotation`) — and every sweep, and the entire
+pose net, comes through the second one. Correcting only the delta site left the
+probe still reading +1. `ALARM_CORNER_SENSE` is the one source both read now.
+CLAUDE.md names this defect in the direction-guard section; it is the same shape
+here, in a tick law rather than a cut.
+
+**Why nothing caught it before.** The sheared blanks never touched at any
+station, so any sense worked — probe-crossed-axis-mesh measured that pair at
+0.0000 and TODO 136 once quoted the zero as reassurance that the instrument was
+not condemning every crossed-axis pair. With conjugate teeth a wrong sense
+GRINDS. Corrected, the pair's phase floor goes from **0.2108 (no index clears
+it) to 0.0000 with a ceiling of 0.2475** — the control's own signature, an index
+that does work rather than a pair that never touches.
+
+**Still open, and now a small one: the INDEX.** At the shipped index the pair
+still measures 0.1108 buried; the clearing index is 0.875 of a pitch. The cause
+is measured, not guessed: `alarmRotor.rotation.z` is **−2.90597 rad at rest**,
+not zero, so the disc's mount frame at rest is 0.375 of a pitch from the
+build-time frame the new `bevelCornerSpin` helper derives its azimuth in — and
+0.875 = 0.5 + 0.375 exactly. The helper is right in principle (a corner's index
+is the contact ray's azimuth read in each mount's own frame, less half a pitch
+for the member that must gap) and wrong in its FRAME. It must be solved at the
+canonical rest pose, after the tick has written the rotor, rather than at build
+time where that term does not exist yet. The motion-works corners are unaffected
+— they already satisfy the sense (`gearOut = BEVEL_PHASE − handSetOffset`
+against `gearIn = +handSetOffset`), which is what makes them the control.
+
+**Two corners the probe could not exercise**, reported rather than passed: the
+motion-works pair needs a drive that moves `handSetOffset`, and the alarm
+WINDING corner's contrate did not turn under `alarmCrownRotation`. Both came
+back "A MEMBER STOOD STILL", which is the guard doing its job — a ratio of 0/0
+must not read as agreement.
+
+**Superseded below: the burial's first reading.**
 `probe-crossed-axis-mesh` reads `alarmDiscBevel ⇄ alarmStemBevel` at 0.2169,
 40% of a tooth, with a phase floor of 0.2108 — no index clears it, so it is not
 an indexing problem. The apexes coincide at the engaged pose (measured), the
