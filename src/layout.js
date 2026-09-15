@@ -925,12 +925,12 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 //
 //     D4 = (railInnerR − DIAL_WALL_HALF − CLEAR_MARGIN
 //           + SUBDIAL_INBOARD_CLEAR) / 2
-//        = (42.804991398276·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
+//        = (41.12326949616903·(2·0.46)·0.87 − 0.2 − 0.15 + 3.55…) / 2
 //
 // printed at full precision below (dialRadius is the keyless-floored plate,
 // FLAT over every station in play, so the closed form is a constant; the
 // dial build asserts the two bounds still meet, which is what re-derives
-// this number if the face ever moves). Well radius 15.1806 — its ring one
+// this number if the face ever moves). Well radius 14.5075 — its ring one
 // margin off the rail's inner edge, its inner edge on the keep-out.
 //
 // TODO 125 RE-DERIVED IT, and that is the assert above doing its job rather
@@ -943,6 +943,16 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // re-derive from; re-derived, they meet again at 15.1806 to float noise.
 // The well is 0.047 SMALLER than it was, which is the honest price of a
 // plate that is no longer carrying 0.1 of nothing at each keyless mesh.
+//
+// TODO 136 RE-DERIVED IT AGAIN, the same way and for the same reason — which
+// is the argument for keeping the assert rather than for distrusting the
+// number. Cutting the two keyless corners as real bevels deleted a fictitious
+// 0.55·windPinionR of rim overlap at each of them AND shortened the winding
+// pinion to a cone, so the cluster the plate encloses got shorter twice over:
+// dialRadius 42.804991398276 → 41.12326949616903, railInnerR 34.2620 → 32.9151,
+// and the two bounds stood 15.1806 against 13.8345. Re-derived, they meet at
+// 14.5075. The well is 0.673 smaller, which is what the plate stops carrying
+// when the keyless works measure their own stations.
 // Context that still binds the RANGE, from the Tier B measurement: the
 // plate stays 42.9229 through station 22.90 and grows at 22.95; the
 // two-bar closes at 23.55; the mid-band build asserts (side-sign 16–17 and
@@ -950,7 +960,7 @@ export const BARREL_STEP_DEG = -35;        // center sits down-right of barrel �
 // station on the post-Tier-B tree. The menu's FAST rates still trade size
 // for rate (the 96-tooth fourth outruns the keyless floor from ≈17.7 —
 // at this station too; their spec rows record it).
-export const D4 = 18.730557557590057;
+export const D4 = 18.057532452366843;
 // §125 Tier B — THE RESERVE STATION'S OWN ANCHOR. Tier A had the reserve
 // MIRROR the seconds station (the wells were one radius, so symmetry was the
 // law); the mirror died the day the wells split. The owner's constraint is
@@ -1287,8 +1297,38 @@ export const sawSeatOffset = (spec, sense) => (sense < 0 ? spec.backlashFrac * s
 //     it to the setting-wheel station and the yoke's tracked band, which
 //     is the whole P3 cost of the split, paid in position space.
 export const STEM_R = 0.45;           // the stem's shaft radius (main.js builds to this)
-export const WIND_PINION_T = 1.6;     // the fixed winding pinion's thickness
-export const CLUTCH_RIM_T = 1.1;      // the clutch's setting rim — crownWheel's own class
+// TODO 136 — THE TWO STEM MEMBERS ARE CONES NOW, so their stations are planes of
+// a cut, not halves of a declared thickness. Both keyless corners are Σ = 90°
+// bevels (crown wheel ⇄ winding pinion, setting wheel ⇄ clutch rim), and a
+// bevel's blank is measured from the pair's shared APEX — which sits where the
+// wheel's vertical axis crosses the stem. These are the four planes this file's
+// stack arithmetic needs, all of them `bevelToothSpec` outputs at KW_MODULE with
+// the counts and bores main.js cuts to:
+//
+//   pinFaceOut = pin.zWebHi              — the pinion's big-end web face
+//   rimFaceOut = rim.zWebLo              — the clutch rim's small-end web face
+//   rimBack    = rim.zWebHi − rim.zWebLo — the rim's whole axial stock
+//   rimTip     = rim.zWebLo − rim.zTipLo — its tooth tips, outboard of that face
+//
+// They are LITERALS here and only here, because layout.js cannot import
+// geometry.js (the dependency runs the other way, and the cycloidal tooth solve
+// the cone's root angle needs lives there). main.js therefore ASSERTS every row
+// against the spec it actually cuts — CLAUDE.md's rule for a figure an
+// instrument also computes. A drifted row is a boot warning, not a silent move.
+export const KW_BEVEL = {
+  pinFaceOut: 3.533868,
+  rimFaceOut: 2.728037,
+  rimBack: 0.805831,
+  rimTip: 0.121098,
+};
+// The pinion's COUPLING BOSS — the turned shoulder outboard of its cone that
+// carries the saw ring. It exists because the crown wheel's rim overhangs the
+// cone's own outboard face: a ring point at radius 1.017 from the stem stands
+// only 0.016 clear of the wheel's 3.5177 tip circle, so the ring has to move
+// out. The clearance alone asks 0.134; the §50 stock floor asks more and wins,
+// which is why this is STOCK_MIN_U rather than the clearance expression. main.js
+// asserts the clearance the boss must buy.
+export const WIND_PINION_BOSS = STOCK_MIN_U;
 export const STEM_SAW_SPEC = sawCouplingSpec({
   rOut: (KW_MODULE * windPinionTeeth) / 2,
   rIn: STEM_R + PIVOT_MIN_U,
@@ -1346,11 +1386,16 @@ export const YOKE_ARM = YK_C - (CLUTCH_SLEEVE_R + YOKE_PRONG_R + CLEAR_MARGIN);
 //     collar's face; SAW_RING_ROOT is its root plane, where the female
 //     tips land at full seat.
 export const HUB_COLLAR_T = 0.4;
-// The rim's extrude bevel grows its faces outward — geometry.js's
-// gearBevel(module, thickness), mirrored here because layout sits below
-// geometry in the module graph. The battery holds the mirror true: a
+// A KW_MODULE spur's extrude bevel, which grows its faces outward —
+// geometry.js's gearBevel(module, thickness), mirrored here because layout sits
+// below geometry in the module graph. The battery holds the mirror true: a
 // drifted copy shows up as the very clearance failure this bound closes.
-export const KW_GEAR_BEVEL = Math.min(CLUTCH_RIM_T * 0.18, KW_MODULE * 0.22);
+// TODO 136 moved the reference wheel: this read the clutch RIM's 1.1, and the
+// rim is a cone now with no extrude and no bevel. The thinnest KW_MODULE spur
+// left is the minute wheel's 1.0 — and the module term binds at both, so the
+// value is unchanged, which is the only reason this is a re-derivation rather
+// than a move.
+export const KW_GEAR_BEVEL = Math.min(1.0 * 0.18, KW_MODULE * 0.22);
 // makeYoke's tip pad half-width (0.6 at prongGap 0) plus its own bevel
 // growth (thickness 1 × 0.12) — the arm metal nearest the rim.
 export const YOKE_TIP_HALF = 0.6 + 0.12;
@@ -1361,9 +1406,13 @@ export const YOKE_TIP_HALF = 0.6 + 0.12;
 // 1.7+ below the stem, straight through the arm's z-band, so the along
 // gap is the only separation that pair has. Measured before this bound:
 // 0.109 against the 0.15 floor.
+// TODO 136 — the rim's inboard face is KW_BEVEL.rimBack behind the clutch's
+// reference plane now (the cone's big end, the whole stock), where it used to be
+// half a declared thickness plus the extrude bevel's outward growth. A cone has
+// no extrude, so the bevel term goes with it.
 export const YOKE_FORK_OUT = Math.min(
-  -(CLUTCH_RIM_T / 2 + HUB_COLLAR_T / 2 - SAW_FIT),
-  -(CLUTCH_RIM_T / 2 + KW_GEAR_BEVEL + CLEAR_MARGIN + YOKE_TIP_HALF)
+  -(KW_BEVEL.rimBack + HUB_COLLAR_T / 2 - SAW_FIT),
+  -(KW_BEVEL.rimBack + CLEAR_MARGIN + YOKE_TIP_HALF)
     + (HUB_COLLAR_T / 2 + YOKE_PRONG_R + SAW_FIT));
 export const YOKE_FORK_IN = YOKE_FORK_OUT - (HUB_COLLAR_T + 2 * (YOKE_PRONG_R + SAW_FIT));
 export const YOKE_TRACK_OFF = (YOKE_FORK_IN + YOKE_FORK_OUT) / 2;
@@ -1371,8 +1420,12 @@ export const SAW_RING_ROOT = YOKE_FORK_IN - HUB_COLLAR_T / 2 + SAW_FIT - SAW_BAS
 // The pinion→RIM distance at full seat: the pinion's half plus its ring's
 // sunk base and tooth height reach the female tips' plane, and the male
 // root plane (SAW_RING_ROOT, clutch-local) must land exactly there.
+// TODO 136 — pinDist IS the pinion's coupling face now (the boss's outboard
+// end, where the male ring seats), so the leading `WIND_PINION_T / 2` that
+// carried the old disc's half-thickness is zero and gone. The stack it closes is
+// unchanged: sink, base, one seated tooth height, against the female root plane.
 export const STEM_CLUTCH_OFF =
-  (WIND_PINION_T / 2 - SAW_FIT + SAW_BASE_T + STEM_SAW_SPEC.toothH) - SAW_RING_ROOT;
+  (-SAW_FIT + SAW_BASE_T + STEM_SAW_SPEC.toothH) - SAW_RING_ROOT;
 // The clutch's OWN throw — derived so the pulled clutch lands EXACTLY on
 // the station the old dual-purpose pinion proved: clutchHome +
 // CLUTCH_TRAVEL = pinDist + CROWN_PULL_DIST. The setting wheel, the
@@ -1406,7 +1459,7 @@ export const GROOVE_HALF = 0.95;     // collar stations sit ± this about the gr
 // irrational tooth height loses to epsilon (measured: 0.1500 flagged) —
 // the movement's fit quantum is the machining spare, as on the rim bore.
 export const GROOVE_LOCAL = STEM_CLUTCH_OFF + STEM_SAW_SPEC.toothH + SEAT_RELIEF
-  + CLUTCH_RIM_T / 2 + KW_GEAR_BEVEL
+  + KW_BEVEL.rimTip   // TODO 136 — the rim's LEADING EDGE is its tooth tips, past the reference face
   + GROOVE_COLLAR_T / 2 + GROOVE_HALF + CLEAR_MARGIN + SAW_FIT;
 
 // ---------------------------------------------------------------------------
@@ -1540,7 +1593,24 @@ export function solveKeyless({
       cwDist = barrelDist + windSpurR + crownWheelR;
     }
   }
-  const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // the FIXED winding pinion (teeth overlap the wheel rim, bevel-style)
+  // TODO 136 — THE STATION IS THE APEX CONDITION, not a rim overlap. The crown
+  // wheel's axis (vertical, at cwDist) and the stem cross, so the pair is a
+  // Σ = 90° bevel and both cones stand on that crossing point. A member's pitch
+  // plane is then coneR·cos γ from the apex along its own axis, and at Σ = 90°
+  // that is exactly the MATE's pitch radius — so the winding pinion's plane
+  // stands crownWheelR outboard of the crown wheel's axis, and the crown wheel's
+  // plane stands windPinionR off the stem (main.js mounts it there).
+  //
+  // The `+ windPinionR * 0.55` this replaces was the fiction TODO 136 exists to
+  // close: two SPUR discs on crossed axes, parked with their rims overlapping by
+  // 55% of the pinion's radius because that looked like a mesh. Measured, the
+  // two rims were buried 0.2065 deep in each other and no indexing cleared them.
+  //
+  // …and the pinion's own reference plane is its COUPLING FACE, one boss beyond
+  // the cone's big end (KW_BEVEL.pinFaceOut): the whole clutch stack measures
+  // from the plane the saw ring seats on, which is what lets STEM_CLUTCH_OFF
+  // stay pure sink-plus-base-plus-tooth arithmetic.
+  const pinDist = cwDist + KW_BEVEL.pinFaceOut + WIND_PINION_BOSS;
   const pinOutDist = pinDist + CROWN_PULL_DIST;              // the stem's own outward travel
   // TODO 50 — the SLIDING CLUTCH is what meshes the setting wheel now. Its
   // home sits STEM_CLUTCH_OFF outboard of the pinion (the coupling's stack:
@@ -1549,7 +1619,12 @@ export function solveKeyless({
   // OLD setting station — swDist is untouched by the split (see the
   // constant's comment for the refused alternative).
   const clutchHomeDist = pinDist + STEM_CLUTCH_OFF;
-  const swDist = clutchHomeDist + CLUTCH_TRAVEL + windPinionR * 0.55 + settingWheelR;
+  // The setting corner is the same condition on the other pair: the pulled
+  // clutch's pitch plane stands the setting wheel's pitch radius inboard of the
+  // apex, which sits on the setting wheel's own axis. (The second
+  // `windPinionR * 0.55` — the setting rim carries the winding pinion's count,
+  // so the fudge was written with the pinion's radius on both corners.)
+  const swDist = clutchHomeDist + CLUTCH_TRAVEL + KW_BEVEL.rimFaceOut;
   // The minute wheel FOLDS perpendicularly off the stem line (see the
   // setting-path assembly for why).
   const mwFoldD = settingWheelR + minuteWheelR;

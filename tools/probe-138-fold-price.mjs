@@ -50,8 +50,8 @@ const out = await page.evaluate(async () => {
   const ROWS = [
     { name: 'crownWheel', mate: 'windingPinion', teeth: 20, mateTeeth: 8, module: 0.34, bore: 0.7 },
     { name: 'windingPinion', mate: 'crownWheel', teeth: 8, mateTeeth: 20, module: 0.34, bore: 0.7 },
-    { name: 'settingWheel', mate: 'clutchRim', teeth: 20, mateTeeth: 8, module: 0.34, bore: 0.7 },
-    { name: 'clutchRim', mate: 'settingWheel', teeth: 8, mateTeeth: 20, module: 0.34, bore: 0.7 },
+    { name: 'settingBevel', mate: 'clutchRim', teeth: 20, mateTeeth: 8, module: 0.34, bore: 0.7 },  // TODO 136 landed the compound: 'settingWheel' is the SPUR half now, which meshes the minute wheel
+    { name: 'clutchRim', mate: 'settingBevel', teeth: 8, mateTeeth: 20, module: 0.34, bore: 0.7 },
   ];
 
   // A MEMBER IS A GROUP OF MESHES, not one mesh, and pricing its envelope means

@@ -772,10 +772,21 @@ export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAn
     warn(`TODO 138 bevel ${teeth}t: face width ${faceW.toFixed(4)} exceeds coneR/3 `
       + `${(coneR * BEVEL_FACE_FRAC).toFixed(4)} — the tooth scales to nothing at the apex, so the small `
       + `end is too thin to be metal`);
-  if (faceW > faceCapWeb + 1e-9)
-    warn(`TODO 138 bevel ${teeth}t: face width ${faceW.toFixed(4)} leaves the thinner member's web under `
-      + `${BEVEL_WEB_MIN} at the small end (cap ${faceCapWeb.toFixed(4)}) — a wheel with no metal between `
-      + `its bore and its teeth`);
+  // The two bounds are judged DIFFERENTLY, and the difference is which kind of
+  // claim each one is. coneR/3 is a PROPORTION of the cut — true of any bevel,
+  // however it was sized — so it is warned about whoever chose the face width.
+  // The web is a SECTION, and sections in this movement are `stockFloor`'s
+  // judgement on the built mesh (§50), not a bar the generator imposes: a caller
+  // that DECLARES a face width has declared the section with it, and
+  // `spiderSpec` declares one deliberately thinner than this, on the measured
+  // ground that the blank it replaces shipped thinner still. So the web bound
+  // shapes the DERIVED width — where the generator is the one choosing, and
+  // should choose honestly — and the only thing warned about for a declared one
+  // is the hard guard below, where the bore eats the root cone outright.
+  if (faceWidth === undefined && faceCapWeb <= 0)
+    warn(`TODO 138 bevel ${teeth}t: no face width leaves ${BEVEL_WEB_MIN} of web at the small end `
+      + `(bores ${boreR} / ${mateBoreR ?? boreR} against coneR ${coneR.toFixed(4)}) — this pair cannot be `
+      + 'cut with metal between its hole and its teeth');
   // THE FACE BAND IS CUT AT TWO CONE DISTANCES, ρ ∈ [coneRi, coneR] — the front
   // and back cones of real bevel practice, not planes perpendicular to the
   // axis. Both choices leave the FLANKS alone, so this is not a P0 question,
@@ -821,6 +832,18 @@ export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAn
     pitchR, coneR, coneRi, faceW, backR, vTeeth, vTeethMate, flat,
     thetaTip, thetaRoot, thetaRootMate, zFront, zBack, zBoreIn, zBoreOut, boreR, theta,
     tipR: coneR * Math.sin(thetaTip),     // the farthest the blank reaches from its axis
+    // THE TWO FLAT FACES, and they are the blank's MOUNTING planes: the web is
+    // bounded by the planes where the root cone crosses the band's two ends, so
+    // these are the annuli a collar, a saw ring or a screw seats against. Cited
+    // here rather than recomputed at each site — makeConicalGear cuts to them
+    // and TODO 136's keyless stations measure from them.
+    zWebLo: coneRi * Math.cos(thetaRoot),
+    zWebHi: coneR * Math.cos(thetaRoot),
+    zTipLo: coneRi * Math.cos(thetaTip),  // the blank's small-end extremity — tooth tips, not a face
+    // The web where the blank is thinnest — bore to root cone at the SMALL end.
+    // REPORTED rather than gated (see the face-width bounds above); §50's
+    // instrument is what judges a section on the built mesh.
+    webLo: coneRi * Math.sin(thetaRoot) - boreR,
   };
 }
 
@@ -903,12 +926,15 @@ export function bevelOutlineRing(spec) {
 // the crossing count odd, which is how the chain once read as colliding with a
 // spring 3.7 units away (TODO 27).
 export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngleDeg = 90,
-  boreR = 0.4, material, name = '' }) {
-  const spec = bevelToothSpec({ module, teeth, mateTeeth, faceWidth, shaftAngleDeg, boreR });
+  boreR = 0.4, mateBoreR, material, name = '' }) {
+  // `mateBoreR` is not decoration: the face width is the PAIR's (see
+  // bevelToothSpec), so a member built without its mate's bore derives a band
+  // the mate cannot honour, and the two ends of one corner disagree about where
+  // the teeth are. Every call site that knows the mate's bore passes it.
+  const spec = bevelToothSpec({ module, teeth, mateTeeth, faceWidth, shaftAngleDeg, boreR, mateBoreR });
   const outline = bevelOutline(spec);
   const N = outline.length;
-  const { coneR, coneRi, thetaRoot } = spec;
-  const zWebLo = coneRi * Math.cos(thetaRoot), zWebHi = coneR * Math.cos(thetaRoot);
+  const { coneR, coneRi, thetaRoot, zWebLo, zWebHi } = spec;
   const pos = [];
   // One ring per meridian station. `at(k)` gives that station's (r, z) for the
   // azimuth's own outline angle, so the whole blank is six sweeps of one loop.
