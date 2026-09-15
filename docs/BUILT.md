@@ -24899,7 +24899,7 @@ cannot fall behind this part's metal again; a gate would police a copy that no
 longer exists. §84 (the schematic coverage census) is where a population-wide
 version belongs, and it is still unscoped.
 
-### What this does NOT do
+### What route C does NOT do
 
 It does not make the driver thicker. The arms are not slender in PLAN —
 TODO 103's hull runs 4.2–4.6 u of solid metal across the body — and what is
@@ -24907,5 +24907,84 @@ thin is Z: one `STOCK_MIN_U` plate, 0.120 mm, over a 4.6 mm reach, λ 38.1
 about that axis. `checkSlenderness` reads `len / tMid`, the WORKING plane, so
 `Alarm switch` has no row in the shipped report and no gate sees it. That
 section is pinned by a z stratum asserted at equality rather than by a load
-path, which is P3 paying for P1 backwards, and undoing it is the roadmap
-remainder.
+path, which is P3 paying for P1 backwards.
+
+---
+
+## §226 part two — the section, an owner's call with a derived number
+
+**Also PARTIAL.** Route A of the same entry, shipped the same day as route C.
+`ALARM_COL_DRIVER_T` goes from `STOCK_MIN_U` (0.120 mm) to **0.6004 u =
+0.228 mm**, 1.9×. Three things had to be true for that to be honest, and the
+comment beside the constant carries all three.
+
+### The load does not govern, and that was measured before a number was written
+
+The driver's only out-of-plane load is the overturning moment the pawl's post
+feeds in: the nose force acts 0.2337 mm above the driver's mid-plane and needs
+16.11 mN at the root circle to beat the sautoir's detent. At the OLD floor
+section that moment deflects the post arm 2.19e-4 rad — **0.0125°** — and in
+its own plane the arm is 1.6 mm deep.
+
+So a load-derived section sanctions the floor or less. The roadmap entry had
+specified "derive the thickness from its own load path"; run honestly that
+criterion returns 0.120 mm, the very number it was written to replace. **The
+entry's acceptance criterion was wrong**, and it is recorded here rather than
+quietly dropped — it is also why "refuse route A" reduced, on inspection, to
+"keep the floor".
+
+### So the decision is the owner's, on the §222/§224/§225 precedent
+
+Standing rule 1 forbids a number that appears because it LOOKED right. It does
+not forbid a named decision with its reason written down, and this repository
+already ships values recorded AS the owner's call (`dial.plate.smoke` three
+times over). The reasons, stated: a lever of this span is built from heavier
+stock than the thinnest sheet in the movement; §50's floor is a FLOOR and not
+a spec; and this is the part a reader most wants to watch move — the
+movement's own contribution rather than the Memovox's, which is why `README.md`
+now states the column wheel as the third of three departures from the
+reference caliber.
+
+### But the number is still DERIVED — by the band the fold will give it
+
+Measured under the three-quarter plate, the free band between the plate's
+underside (8.7454) and the next metal (7.845) is **0.9004** once the pusher's
+own reach and riser move with the group, leaving
+
+    0.9004 − 2 × CLEAR_MARGIN = 0.6004
+
+of stock. Taking that section now means it is cut once and survives the fold,
+instead of being re-litigated at it. The constraint is route B's band, not the
+mechanism's load — and the comment says which.
+
+### The price is paid in cased height, 1:1, measured by building both ways
+
+Every member of the tower rises by the thickness delta and the back glass
+rides with it: `zStepUnder` **12.8921 → 13.1759**, +0.108 mm, and the step now
+stands 1.099 u = 0.42 mm proud against 0.815 u.
+
+The 0.593 u between the castellations and the link tail is **not** headroom —
+the alarm link rides the wheel, which is the thing measurement settled and the
+reason route A cannot be had for free. §226's fold refunds the whole of it and
+0.177 mm besides.
+
+`BACK_SWEPT_REGIONS`' `Alarm switch` row was re-authored 12.08 → 12.36, and
+**the boot assert added in route C's landing is what demanded it** — on the
+first boot of the thickened driver, before any sweep ran, naming the number
+(12.3559, `alarmJumperBlade` — still the sautoir, not the castellations). That
+is the guard working on a real design change rather than on a synthetic one.
+
+### What part two does NOT do
+
+It does not take the PLAN width, which `tools/probe-226-driver-width.mjs`
+(added afterwards, five controls PASS) then measured as nearly free: the
+tightest disc — the pawl-post arm — grows **3.3567 u = 1.272 mm** before any
+metal objects, against a shipped wall of one `STOCK_MIN_U` = 0.3167 u. About
+ten times the wall, at no cost in cased height, because the outline is a
+convex hull of discs whose every radius is a functional core plus one minimum
+wall. The arms read slender because a §50 floor is standing in for a design.
+
+Nor does it make the driver visible: 57.9% of it is hidden, **48.1% by the
+column wheel's own skirt**, which sits above the driver and so cannot be
+uncovered by any window in the plate below. Both are the roadmap remainder,
+together with the fold.
