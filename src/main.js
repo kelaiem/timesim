@@ -22100,7 +22100,41 @@ const ALARM_COL_SKIRT_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;
 // — the fork writes the constraint down and keeps the 0.06 it was carrying
 // loose.
 const ALARM_COL_BASE_H = 2 * (ALARM_COL_BORE_R - 0.06) + 0.05 - ALARM_COL_SKIRT_H;
-const ALARM_COL_DRIVER_T = STOCK_MIN_U;   // the driver runs at §50's floor, like every blade here
+// §226 — THE DRIVER RUNS THICKER THAN ITS LOAD ASKS. That is an owner's
+// call (the §222/§224/§225 precedent: a decision recorded AS a decision, not
+// dressed as a derivation) — but the NUMBER is not chosen, and this is where
+// it comes from.
+//
+// THE LOAD DOES NOT GOVERN, measured. The driver's only out-of-plane load is
+// the overturning moment the pawl's post feeds into it: the nose force acts
+// 0.6166 u = 0.2337 mm above the driver's mid-plane, and beating the
+// sautoir's detent needs 16.11 mN at the root circle. At the FLOOR section
+// that moment deflects the post arm 2.19e-4 rad — 0.0125° — and in its own
+// plane the arm is 1.6 mm deep and stiffer still. So a section derived from
+// the mechanism would sanction STOCK_MIN_U or less, and §50's floor is a
+// FLOOR, not a spec. A lever of this span is simply built from heavier stock
+// than the thinnest sheet in the movement, and it is the part a reader most
+// wants to see move (README's third stated departure from the Memovox).
+//
+// WHAT THE NUMBER IS DERIVED FROM is the band the fold will give it. §226's
+// remaining half puts this driver UNDER the three-quarter plate; measured
+// there, the free band between the plate's underside (8.7454) and the next
+// metal (7.845) is 0.9004 once the pusher's own reach and riser move with it
+// — and a driver in that band wants a running margin at each face:
+//
+//      0.9004 − 2·CLEAR_MARGIN = 0.6004
+//
+// Taking that section NOW means it is derived once and survives the fold,
+// instead of being cut twice. Going thicker is available and is not free:
+// past this the fold would have to displace the metal at 7.845 as well.
+//
+// THE PRICE IS PAID IN CASED HEIGHT, 1:1, and it is measured rather than
+// argued: built both ways, every member of the tower rises by the thickness
+// delta and the back glass rides with it (zStepUnder 12.8921 → 13.1759,
+// +0.108 mm), because the alarm link RIDES the wheel — the 0.593 u between
+// the castellations and the link tail is not headroom. The fold refunds the
+// whole of it and 0.177 mm besides.
+const ALARM_COL_DRIVER_T = 0.9004 - 2 * CLEAR_MARGIN;   // 0.6004 u = 0.228 mm — see above
 // §192 — THE PAWL'S SPRING LEFT THE Z-STACK, so the raise no longer carries a
 // spring term at all. §169's torsion coil stood in its own
 // (coils + 1)·SPRING_FLAT_U stratum between the driver's top face and the
@@ -29946,7 +29980,13 @@ const BACK_SWEPT_REGIONS = [
   // why both errors survived, and why the assert in BACK_ENVELOPE below now
   // exists. Re-authoring costs no glass: envMaxAll is the alarm link's
   // 12.742 either way, and every bin this row lifts lies well inside rStep.
-  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 12.08 },
+  //
+  // §226 route A moved it again, and the assert below is what said so — on
+  // the first boot of the thickened driver, before any sweep ran: the whole
+  // tower rides the driver's section, so this row rises with it. Re-authored
+  // from the measurement it printed, 12.3559 (alarmJumperBlade — still the
+  // sautoir, not the castellations), rounded up past margin flicker.
+  { unit: 'Alarm switch', r0: 17.3, r1: 31.3, z: 12.36 },
   // The striking wheel's rotation is not axisymmetric at bin scale: measured
   // swept 10.982 at r 33.6–34.5 against build 10.582 (probe-back-envelope,
   // 43 poses, 2026-09-14).
