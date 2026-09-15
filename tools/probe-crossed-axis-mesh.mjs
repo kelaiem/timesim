@@ -173,23 +173,45 @@ const out = await page.evaluate(async () => {
       const g2 = mesh.geometry, P2 = g2.attributes.position;
       const desc = { kind: 'apexCone', rhoLo: sc.rhoLo, rhoHi: sc.rhoHi, boreR: sc.boreR,
         outline: sc.outline, poly: sc.ringPoly, gamma: sc.gamma, backR: sc.backR, coneR: sc.coneR,
+        // TODO 136's FLAT WEB — the second region of the same blank (see the
+        // builder's declaration). Carried through so both the verification
+        // below and `depthIn` can ask which region a point is in.
+        zWebLo: sc.zWebLo, zWebHi: sc.zWebHi, tanRoot: sc.tanRoot,
         declared: true, mesh, rPoly: sc.rhoHi, zLo: sc.rhoLo, zHi: sc.rhoHi, shearZ: 0,
         toWorld: mesh.matrixWorld, toLocal: new THREE.Matrix4() };
+      if (!(sc.zWebLo >= 0) || !(sc.tanRoot > 0))
+        return { bad: 'the apex-cone declaration carries no web (zWebLo/tanRoot) — a blank cut '
+          + 'since TODO 136 has one, so this is a stale declaration rather than a webless part' };
       // VERIFY THE DECLARATION AGAINST THE METAL, every vertex, exactly as the
       // prism branch does: developed, each vertex must land inside the polygon,
       // and its cone distance inside the band. Every term is a LENGTH.
       let worst = 0, why = '';
+      // ONE tolerance for the whole declaration, hoisted so the web's planes are
+      // judged by the same allowance as the band's cone distances. It has to be
+      // FLOAT32-sized rather than algebraic: positions are stored as float32, so
+      // a vertex the builder placed exactly ON z = zWebHi reads a few 1e-7 above
+      // it, and a 1e-9 epsilon called that an escape — the crown wheel's bore
+      // ring, 1.2312 "inside the inner cone distance" while sitting on the web
+      // plane it was cut to.
+      const tol = 2e-3 * sc.rhoHi;
       for (let i = 0; i < P2.count; i++) {
         const x = P2.getX(i), y = P2.getY(i), z = P2.getZ(i);
         const rho = Math.hypot(x, y, z);
         const [fx, fy] = toFlat(desc, x, y, z);
         const out = inRing(sc.ringPoly, fx, fy) ? 0 : distRing(sc.ringPoly, fx, fy);
+        // THE WEB IS THE OTHER REGION, and a vertex in it is contained. It is
+        // bounded by two planes and the root cone; a point there is legitimately
+        // inside the inner cone distance, which is exactly what the band-only
+        // test used to call a refusal.
+        const rc = Math.hypot(x, y);
+        const inWeb = z >= sc.zWebLo - tol && z <= sc.zWebHi + tol
+          && rc >= sc.boreR - tol && rc <= z * sc.tanRoot + tol;
+        if (inWeb) continue;
         const terms = [[sc.rhoLo - rho, 'inside the inner cone distance'],
           [rho - sc.rhoHi, 'outside the outer cone distance'],
           [out, 'outside the developed outline']];
         for (const [v, w] of terms) if (v > worst) { worst = v; why = w; }
       }
-      const tol = 2e-3 * sc.rhoHi;
       if (worst > tol)
         return { bad: `the declared apex-cone solid (ρ ${sc.rhoLo.toFixed(3)}..${sc.rhoHi.toFixed(3)}) does not `
           + `contain this mesh: vertices run ${worst.toFixed(4)} ${why}, against a ${tol.toFixed(4)} allowance` };
@@ -290,7 +312,12 @@ const out = await page.evaluate(async () => {
   const depthIn = (P, v) => {
     if (P.kind === 'apexCone') {
       const rho = Math.hypot(v.x, v.y, v.z), rc = Math.hypot(v.x, v.y);
-      if (rho < P.rhoLo || rho > P.rhoHi || rc < P.boreR) return 0;
+      if (rc < P.boreR) return 0;                       // the bore, common to both regions
+      // THE WEB (TODO 136): a plate between two planes, walled by the root cone.
+      if (v.z >= P.zWebLo && v.z <= P.zWebHi && rc <= v.z * P.tanRoot)
+        return Math.min(rc - P.boreR, v.z - P.zWebLo, P.zWebHi - v.z, v.z * P.tanRoot - rc);
+      // THE TOOTHED BAND — the region that meshes.
+      if (rho < P.rhoLo || rho > P.rhoHi) return 0;
       const [fx, fy] = toFlat(P, v.x, v.y, v.z);
       if (!inRing(P.poly, fx, fy)) return 0;
       // a LENGTH in the developed plane — the same currency the prism branch
@@ -551,7 +578,14 @@ const out = await page.evaluate(async () => {
   const res = [];
   for (const [label, a, b, pose] of [
     ['crownWheel ⇄ windingPinion   (WINDING: the bank swept)', 'crownWheel', 'windingPinion', runWind],
-    ['clutchRim ⇄ settingWheel     (SETTING: crown out, setting path swept)', 'clutchRim', 'settingWheel', runSet],
+    // TODO 139 — THE MATE IS `settingBevel`, NOT `settingWheel`. TODO 136 made the
+    // setting wheel a COMPOUND below the stem — a flat spur that meshes the
+    // minute wheel, and a bevel above it that meshes the clutch — and this row
+    // kept naming the spur. A spur 4.2 away from the rim cannot bury anything,
+    // so the row read 0.0000 at every phase of its whole sweep and could not
+    // have failed: a stale selector wearing a clean result. Its replacement
+    // measures the pair that exists.
+    ['clutchRim ⇄ settingBevel     (SETTING: crown out, setting path swept)', 'clutchRim', 'settingBevel', runSet],
     ['alarmDiscBevel ⇄ alarmStemBevel  (ALARM: the corner\'s real bevel pair, alarm crown swept)', 'alarmDiscBevel', 'alarmStemBevel', runAlarm],
   ]) res.push([label, sweep(label, a, b, pose)]);
 
@@ -578,8 +612,8 @@ const out = await page.evaluate(async () => {
     'thirdWheel', 'fourthPinion', runTrain, 'thirdWheel');
   floors.wind = phaseFloor('crownWheel ⇄ windingPinion   (spur ⇄ spur, axes crossed at the stem)',
     'crownWheel', 'windingPinion', runWind, 'crownWheel');
-  floors.set = phaseFloor('clutchRim ⇄ settingWheel     (spur ⇄ spur, axes crossed at the stem)',
-    'clutchRim', 'settingWheel', runSet, 'settingWheel');
+  floors.set = phaseFloor('clutchRim ⇄ settingBevel     (the second keyless corner)',
+    'clutchRim', 'settingBevel', runSet, 'settingBevel');
   floors.alarm = phaseFloor('alarmDiscBevel ⇄ alarmStemBevel  (a real bevel pair, for contrast)',
     'alarmDiscBevel', 'alarmStemBevel', runAlarm, 'alarmStemBevel');
 
@@ -604,7 +638,7 @@ if (F.control) {
   console.log('\n--- tier two: can any phase save these pairs?');
   console.log(`  CONTROL thirdWheel ⇄ fourthPinion: floor ${F.control.floor.toFixed(4)} (want < 0.05), `
     + `ceiling ${F.control.ceil.toFixed(4)} (want > 0.15)  ${ctrlFloorOk && ctrlCeilOk && ctrlMovedOk ? 'OK' : 'CONTROL FAILED'}`);
-  for (const [k, name] of [['wind', 'crownWheel ⇄ windingPinion'], ['set', 'clutchRim ⇄ settingWheel'], ['alarm', 'alarmDiscBevel ⇄ alarmStemBevel']]) {
+  for (const [k, name] of [['wind', 'crownWheel ⇄ windingPinion'], ['set', 'clutchRim ⇄ settingBevel'], ['alarm', 'alarmDiscBevel ⇄ alarmStemBevel']]) {
     if (!F[k]) continue;
     console.log(`  ${name.padEnd(34)} floor ${F[k].floor.toFixed(4)}   ceiling ${F[k].ceil.toFixed(4)}`);
   }
@@ -615,6 +649,6 @@ if (F.control) {
       ? 'a phase EXISTS — an indexing fix is possible'
       : 'NO phase clears it — indexing cannot fix this pair');
     console.log(`\n  crownWheel ⇄ windingPinion: ${verdict(F.wind)}`);
-    console.log(`  clutchRim ⇄ settingWheel:   ${verdict(F.set)}`);
+    console.log(`  clutchRim ⇄ settingBevel:   ${verdict(F.set)}`);
   }
 }
