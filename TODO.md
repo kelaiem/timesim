@@ -9326,10 +9326,12 @@ the same:
   **The floor must match the generator that cuts the member** — that is the
   rule the mistake bought.
 
-  **That work is [TODO 138], and its Landing 1 has shipped.**
+  **That work is [TODO 138], and it has LANDED.**
   `bevelToothSpec` + `makeConicalGear` cut the §136 cycloid on the cone,
-  proven conjugate in free space on five pairs including this one; 138's
-  Landing 2 converts the builder and closes this bullet. The floor rule above
+  proven conjugate in free space on five pairs including this one, and 138's
+  Landing 2 converted every call site — so THIS BULLET IS CLOSED: no builder
+  cuts a trapezoid on a cone any more, and the battery is 40/40 on the result.
+  The barrel below is the item's remaining half. The floor rule above
   survives it and stops being a blocker, because the floor was answering a SPUR
   question — does the cut root CIRCLE clear the bore? — about a conical part,
   whose root is a CONE standing off the axis at every plane of its band. The
@@ -17603,7 +17605,7 @@ for its whole span.
 Measured after both fixes, all four corners: **−1, −1, −1, −1** against the
 −1 the cones demand.
 
-**Superseded below: the burial's first reading.**
+**The burial's first reading**, kept because the diagnosis turns on it:
 `probe-crossed-axis-mesh` reads `alarmDiscBevel ⇄ alarmStemBevel` at 0.2169,
 40% of a tooth, with a phase floor of 0.2108 — no index clears it, so it is not
 an indexing problem. The apexes coincide at the engaged pose (measured), the
@@ -17630,7 +17632,46 @@ Two instrument fixes came out of the conversion, both worth carrying:
   question better and two answers to one question is the defect this repo keeps
   finding.
 
-**Still to do in this landing**
+**And the battery came back 40/40 on the converted movement.** Two gates broke
+on the first run and both were the shear law's last copies — `spiderStub`'s
+length reading `planetBoreR + faceWidth - hubR` (at 45° the bore's RADIUS
+doubled as its axial POSITION, so a shrunk bore collapsed the stub to 0.031 mm
+against a 0.12 floor), and `subSleeveB` coming out exactly CLEAR_MARGIN long
+because the conical blank's farthest axial point is its BORE, not its tip, so
+`halfHeight` came in correctly and the sleeve with it. A clearance is not a
+section, so `SUB_PIN_B_Z` opens the stack by the §50 floor. Three `intraUnit`
+selectors went stale in the same run, and they had said the wrong thing before
+they went stale: indices 40–43 of Keyless works are the four motion-works BEVEL
+GEARS, described in the table as "crown-end wheel pressed on the long keyless
+arbor". The joints are real — each corner gear is keyed to the rod it drives —
+and it was the description that was wrong, written from measured proximity
+without identifying the meshes.
+
+Fingerprint 959829604, boot silent, `--no-incremental`, local.
+
+### LANDING 2 IS DONE, and what it leaves
+
+| | |
+|---|---|
+| `makeBevelGear` | retired; five call sites on `makeConicalGear` |
+| pitch angle | DERIVED from the counts, not defaulted to 45° |
+| blanks | cut at two cone distances; 9 of 11 strictly inside the metal they replace |
+| the four corners | all measure ω_B/ω_A = −1, the ratio two rolling cones demand |
+| battery | 40/40 |
+| [TODO 85] | its first bullet closes with this — no builder cuts a trapezoid on a cone any more |
+
+Still open, each filed where it belongs rather than absorbed here:
+- **[TODO 139]** — the setting corner is not a closed loop when engaged, so its
+  index is a function of the hour and 0.1108 of burial stands at the shipped
+  index. `bevelCornerRay`/`bevelCornerSpin` are in place for the day that item
+  gives them a constant to compute.
+- **[TODO 136]** — unblocked now: its two keyless pairs have a conjugate
+  crossed-axis form to be cut in, and the 0.7480 station correction lands with
+  them. `probe-crossed-axis-mesh` still measures them at 0.2065 and 0.1372.
+- **[TODO 85]**'s second bullet, the barrel, is untouched and still its own
+  landing.
+
+**What this landing set out to do** (all of it, kept as the record)
 
 `makeBevelGear` is still the shear-cone builder and still what the movement
 calls. Landing 2 replaces it, re-stations what needs it, and re-runs the bar.
