@@ -95,7 +95,29 @@ const DEG2RAD = Math.PI / 180;
 // it is stated once, here, instead of being hidden inside a product.
 const SPUR_RAD_PER_TURN = -MOVEMENT_SENSE * 2 * Math.PI;                              // windLocalAt's reserve term, per turn banked
 const CROWN_RAD_PER_TURN = -(WIND_SPUR_TEETH / crownWheelTeeth) * SPUR_RAD_PER_TURN;  // one mesh: the transfer counter-rotates the spur
-const STEM_RAD_PER_TURN = (crownWheelTeeth / windPinionTeeth) * CROWN_RAD_PER_TURN;   // the crown wheel drives the pinion on the stem
+// TODO 139 — AND WHICH SIDE THE WHEEL SITS ON IS PART OF THAT CONVENTION. The
+// comment above says "the crown wheel about z", and TODO 136 made that false:
+// the wheel hangs BELOW the stem (its blank would otherwise stand in the motion
+// works' traverse), so its own axis — the one the conjugate condition is written
+// about, pointing away from the pair's shared apex — is −z. A wheel on the other
+// side of a pinion turns the OTHER way to mesh it, so the corner's sense is a
+// function of the side and cannot stay a bare sign in a product.
+//
+// Measured, left out: `probe-138-coupling` read this pair at ratio +2.5 against
+// a wanted −2.5 — the magnitude right (20/8, so the gearing was right) and the
+// sense wrong, both members co-rotating. The consequence is real and is the
+// point: with the wheel underneath, the crown winds the OTHER way round. That is
+// a gearing outcome walked through the chain, which is what CLAUDE.md asks of
+// every direction-committed site, rather than a preference stated here.
+const KW_WIND_WHEEL_SIDE = -1;   // ASSERTED against crownWheelMount at its build
+// The SETTING corner's own side, the same question at the other station and
+// forced rather than chosen: the stem runs through that station on its way to
+// the crown, so the setting wheel's two halves cannot straddle it and the bevel
+// half hangs underneath. Its consequence is the mirror of the winding one —
+// the crown sets the hands the other way round.
+const KW_SET_WHEEL_SIDE = -1;    // ASSERTED against settingBevelMount at its build
+const STEM_RAD_PER_TURN = KW_WIND_WHEEL_SIDE
+  * (crownWheelTeeth / windPinionTeeth) * CROWN_RAD_PER_TURN;   // the crown wheel drives the pinion on the stem
 const windSign = Math.sign(STEM_RAD_PER_TURN);   // +1 if positive crownRotation winds
 
 // Boot-assert visibility (§29 step 0's postscript): console.warn is the
@@ -1764,10 +1786,11 @@ const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayo
 // rotation a wanted hand movement costs. Both directions therefore come
 // from the tooth counts — the identity is asserted below rather than
 // trusted, since the two forms live 5000 lines apart.
-const HAND_RAD_PER_SET_RAD = -(windPinionTeeth / minuteWheelTeeth) * (minutePinionTeeth / cannonPinionTeeth);
+const HAND_RAD_PER_SET_RAD = KW_SET_WHEEL_SIDE
+  * -(windPinionTeeth / minuteWheelTeeth) * (minutePinionTeeth / cannonPinionTeeth);
 {
   const probe = 1; // one radian into the setting path, walked exactly as tick() walks it
-  const settingWheelSpin = -probe * (windPinionTeeth / settingWheelTeeth);
+  const settingWheelSpin = KW_SET_WHEEL_SIDE * -probe * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
   const rawSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
   if (Math.abs(rawSetOffset - HAND_RAD_PER_SET_RAD) > 1e-12)
@@ -4350,6 +4373,22 @@ windPinionMount.add(windPinion);
   boss.name = 'windingPinion';
   windPinionGroup.add(boss);
 }
+
+// TODO 139 GUARD — THE DECLARED SIDE MUST BE THE SIDE THE MOUNT IS ON. The sense
+// of a bevel corner's whole chain hangs off this one factor, and nothing in the
+// battery measures a direction, so the declaration and the metal are made to
+// move together here: the mount's own +Z is the wheel's axis away from the
+// apex, and its world z-component IS the side. Flip the mount without flipping
+// the constant and the pair co-rotates in silence — which is exactly what
+// TODO 136 shipped.
+function assertWheelSide(mount, declared, what) {
+  const a = new THREE.Vector3(0, 0, 1).applyQuaternion(mount.getWorldQuaternion(new THREE.Quaternion()));
+  const side = Math.sign(a.z);
+  if (side !== declared)
+    console.warn(`TODO 139 ${what}: the mount puts the wheel's axis on side ${side} but the chain is `
+      + `derived for ${declared} — the pair would co-rotate (ratio +z/z instead of −z/z)`);
+}
+assertWheelSide(crownWheelMount, KW_WIND_WHEEL_SIDE, 'keyless winding corner');
 // THE CORNER'S INDEX. A crossed pair cannot be phased by any parallel-axis
 // solve, and before TODO 136 that was written down as "so this stays a half-pitch
 // index" — true of a pair that never touched. It touches now, so the two members
@@ -4653,6 +4692,7 @@ const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: 
 // …and the arbor that makes the corner's two halves one part. It runs from the
 // spur's top face up to the bevel's web, bored through both at KW_CROWN_BORE —
 // transferArbor's idiom, one wheel up, and entirely below the stem.
+assertWheelSide(settingBevelMount, KW_SET_WHEEL_SIDE, 'keyless setting corner');
 const settingArbor = (() => {
   const zHi = Z_KEYLESS - KW_SPEC.settingWheel.zWebHi;   // the bevel's web, its lowest face
   const zLo = SETTING_SPUR_Z;
@@ -37826,7 +37866,7 @@ function tick(t) {
 
   // Setting path: settingWheel -> minuteArbor (compound wheel+pinion) ->
   // the RAW hand-set angle, derived forward through the real tooth counts.
-  const settingWheelSpin = -setPathRot * (windPinionTeeth / settingWheelTeeth);
+  const settingWheelSpin = KW_SET_WHEEL_SIDE * -setPathRot * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
   const rawSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
   // MINUTE QUICK-SET, DETENTED DISPLAY: while the crown is out, the jumper
