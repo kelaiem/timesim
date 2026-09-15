@@ -72,24 +72,59 @@ const out = await page.evaluate(async () => {
     return meshes.length ? { root: grp, meshes } : null;
   };
 
-  // PASS ONE: measure every declared member's bore, because the face width is a
-  // PAIR property and a member cannot compute it without its mate's.
-  for (const r of ROWS) {
-    const hit = find(r.name);
-    if (!hit) continue;
-    hit.root.updateMatrixWorld(true);
+  // THE BORE IS MEASURED, NOT RESTATED — the innermost metal in the member's own
+  // frame is its bore, so reading it off the metal keeps one source (the clutch
+  // rim's is an expression in main.js and copying it here would be a second).
+  //
+  // ACROSS THE FLATS, not at the vertices. A hole is a polygon, and
+  // makeConicalGear DILATES its bore ring so the hole is boreR everywhere — the
+  // outline's azimuths are a tooth profile's, sparse across the gaps, so the
+  // widest chord spans most of a tooth. Reading the vertices measures the
+  // dilated ring (0.606 for a 0.6 bore on the 8-tooth members) and the probe
+  // would then re-derive a face width the builder never cut. The inscribed
+  // radius is what the hole IS, and it is the min over the bore's EDGES —
+  // SKILL.md's "vertices mistaken for the surface", in its own catalogue.
+  const boreOf = (hit) => {
     const inv0 = new THREE.Matrix4().copy(hit.root.matrixWorld).invert();
     const v0 = new THREE.Vector3();
     let b = Infinity;
     for (const m of hit.meshes) {
       const pos = m.geometry.attributes.position;
+      const idx = m.geometry.index;
       const toRoot = new THREE.Matrix4().multiplyMatrices(inv0, m.matrixWorld);
-      for (let i = 0; i < pos.count; i++) {
-        v0.fromBufferAttribute(pos, i).applyMatrix4(toRoot);
-        b = Math.min(b, Math.hypot(v0.x, v0.y));
+      const pts = [];
+      for (let i = 0; i < pos.count; i++) pts.push(v0.fromBufferAttribute(pos, i).applyMatrix4(toRoot).clone());
+      const tri = idx ? idx.array : null;
+      const n = tri ? tri.length : pos.count;
+      for (let i = 0; i + 2 < n; i += 3) {
+        const a3 = tri ? [tri[i], tri[i + 1], tri[i + 2]] : [i, i + 1, i + 2];
+        for (let e = 0; e < 3; e++) {
+          const P = pts[a3[e]], Q = pts[a3[(e + 1) % 3]];
+          const dx = Q.x - P.x, dy = Q.y - P.y;
+          const L2 = dx * dx + dy * dy;
+          let t = L2 > 0 ? -(P.x * dx + P.y * dy) / L2 : 0;
+          t = Math.max(0, Math.min(1, t));
+          b = Math.min(b, Math.hypot(P.x + t * dx, P.y + t * dy));
+        }
       }
     }
-    r.bore = +b.toFixed(4);
+    return b;
+  };
+
+  // PASS ONE: measure every declared member's bore, because the face width is a
+  // PAIR property and a member cannot compute it without its mate's.
+  //
+  // ONE measurement, shared with the pass below — they used to be two, and the
+  // second was corrected while the first was not. Measured, that alone split
+  // every pair into TWO BANDS: a row whose mate had not yet been re-measured
+  // read the old value and derived a different face width from the same pair,
+  // which is precisely the defect the last table on this page exists to catch,
+  // arriving from the instrument instead of the metal.
+  for (const r of ROWS) {
+    const hit = find(r.name);
+    if (!hit) continue;
+    hit.root.updateMatrixWorld(true);
+    r.bore = +boreOf(hit).toFixed(4);
   }
 
   const rows = [];
@@ -102,23 +137,25 @@ const out = await page.evaluate(async () => {
     const lb = new THREE.Box3(), wb = new THREE.Box3();
     const v = new THREE.Vector3();
     // THE BORE IS MEASURED, NOT RESTATED. The innermost metal in the member's
-    // own frame is its bore, so reading it off the vertices keeps one source —
-    // the clutch rim's is an expression in main.js
-    // (`STEM_R*0.98 + CLEAR_MARGIN + 2*KW_GEAR_BEVEL + SAW_FIT`) and copying it
-    // here would be a second.
-    let bore = Infinity;
+    // own frame is its bore, so reading it off the metal keeps one source —
+    // the clutch rim's is an expression in main.js and copying it here would be
+    // a second.
+    //
+    // ACROSS THE FLATS, not at the vertices. A hole is a polygon, and the
+    // generator DILATES its bore ring so the hole is boreR everywhere (the
+    // outline's azimuths are a tooth profile's, sparse across the gaps, so the
+    // widest chord spans most of a tooth). Reading the vertices measures the
+    // dilated ring — 0.606 for a 0.6 bore on the 8-tooth members — and the
+    // probe would then re-derive a face width the builder never cut. The
+    // inscribed radius is what the hole IS, and it is the min over the bore's
+    // EDGES: the classic "vertices mistaken for the surface" reading, from
+    // .claude/skills/instruments/SKILL.md's catalogue.
     for (const m of hit.meshes) {
       wb.union(new THREE.Box3().setFromObject(m));
       const pos = m.geometry.attributes.position;
       const toRoot = new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld);
-      for (let i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(toRoot);
-        lb.expandByPoint(v);
-        const rc = Math.hypot(v.x, v.y);
-        if (rc < bore) bore = rc;
-      }
+      for (let i = 0; i < pos.count; i++) lb.expandByPoint(v.fromBufferAttribute(pos, i).applyMatrix4(toRoot));
     }
-    r.bore = +bore.toFixed(4);
     const o = (v2) => +v2.toFixed(4);
     r.meshCount = hit.meshes.length;
     // the conical replacement, from the same counts, with the face width the

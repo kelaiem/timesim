@@ -947,12 +947,28 @@ export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngl
     }
     return base;
   };
-  const R0 = ring(() => [boreR, zWebLo]);                                   // bore, web side lo
+  // A HOLE DRAWN AS A POLYGON IS SMALLER THAN ITS RADIUS, and this blank's
+  // azimuths are the TOOTH OUTLINE's — clustered on the flanks and sparse across
+  // the gaps, because all six rings share one loop so the strips stay quads. So
+  // the bore's widest chord spans most of a tooth gap, and drawn through points
+  // at boreR it leaves metal poking in to boreR·cos(Δφ/2). Measured on the
+  // 8-tooth clutch rim: a 0.6 bore over a 0.45 stem read 0.1405 against the 0.15
+  // floor — the missing 0.0095 is exactly that chord. The ring is dilated so the
+  // HOLE is boreR everywhere, which is `flatsR`'s convention (a section is what
+  // it measures across the flats) applied to a hole instead of a shaft.
+  let boreGap = 0;
+  for (let k = 0; k < N; k++) {
+    const a = outline[k][0], b = outline[(k + 1) % N][0];
+    let d = b - a; while (d <= -Math.PI) d += Math.PI * 2; while (d > Math.PI) d -= Math.PI * 2;
+    boreGap = Math.max(boreGap, Math.abs(d));
+  }
+  const boreDrawR = boreR / Math.cos(boreGap / 2);
+  const R0 = ring(() => [boreDrawR, zWebLo]);                               // bore, web side lo
   const R1 = ring(() => [coneRi * Math.sin(thetaRoot), zWebLo]);            // root cone, inner
   const R2 = ring((th) => [coneRi * Math.sin(th), coneRi * Math.cos(th)]);  // outline, inner
   const R3 = ring((th) => [coneR * Math.sin(th), coneR * Math.cos(th)]);    // outline, outer
   const R4 = ring(() => [coneR * Math.sin(thetaRoot), zWebHi]);             // root cone, outer
-  const R5 = ring(() => [boreR, zWebHi]);                                   // bore, web side hi
+  const R5 = ring(() => [boreDrawR, zWebHi]);                               // bore, web side hi
   const idx = [];
   // Wound so the meridian's own circuit gives outward normals; the closed-solid
   // control in probe-138-bevel-roll asserts the signed volume is positive, which
