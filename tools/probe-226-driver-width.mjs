@@ -89,6 +89,18 @@
 // under-reports metal too thin to hold a cell centre. The VERDICT does not use
 // it — the growth column comes from the dilated marks alone.
 //
+// SECOND TIER — WHAT IS SEEN. Fitting is not the whole question: growth under
+// an occluder buys mass, growth in the open buys legibility, and §226 makes
+// legibility a stated design value. Each cell is scored by the fraction of
+// poses at which nothing covers it ABOVE the driver's top face, viewed from
+// the exhibition caseback (high world z). Two things this gets wrong if done
+// naively, both now controls: a WINDOW IS NOT A WALL (caseBackCrystal is
+// transparent, opacity 0.14 — counted as an occluder it made the driver read
+// 100.0% hidden, C8), and the DENOMINATOR IS THE DRIVER'S OWN METAL rather
+// than its hull, because the hull fills the pivot bore and the pin slot and
+// counting holes as driver flatters every figure. C6 holds the result against
+// an independently measured 57.9% hidden.
+//
 // A REPORT (it prints a table and exits 0 on its measurements) with ACCEPTANCE
 // CONTROLS (it exits 1 if a control fails, because a control that is allowed to
 // fail quietly is not a control):
@@ -105,6 +117,15 @@
 //   C5 THE GROUND IS GROUND BY MEASUREMENT — the three-quarter plate, the one
 //      part skipped wholesale, is asserted to clear the driver in z by at
 //      least CLEAR_MARGIN. Skipping it is then a reading, not an assumption.
+//   C6 TWO METHODS AGREE — the visible fraction reproduces a separately
+//      measured 57.9% hidden within 6 points. A visibility number nothing
+//      corroborates is a picture, not a measurement.
+//   C7 THE DOMINANT OCCLUDER IS NAMED — and it is the column wheel's own
+//      body, which sits ABOVE the driver, so no window cut in the plate
+//      BELOW can uncover what it hides. That is the load-bearing fact for
+//      route B and it is measured here rather than assumed.
+//   C8 THE CASEBACK IS A WINDOW — see-through is read off the MATERIAL, never
+//      a name list, and caseBackCrystal must be in that set.
 //
 // Usage: cd tools && node probe-226-driver-width.mjs [out.json]
 //        env CELL=0.02 CAP=8.0 SAMPLES=5
@@ -500,6 +521,150 @@ const R = await page.evaluate(async ({ CELL, CAP, SAMPLES }) => {
       boundBy: h.marked > 0 ? 'metal' : 'grid edge (UNMEASURED — a lower bound, not a ceiling)' });
   }
 
+  // ---- WHAT IS SEEN, not just what fits ------------------------------
+  // Growth under an occluder buys mass; growth in the open buys legibility,
+  // which is the whole point of the entry. The viewer is the exhibition
+  // caseback, at HIGH world z (§187's stepped glass; zStepUnder 13.18), so a
+  // cell is occluded at a pose iff some non-driver metal covers it in xy
+  // ABOVE the driver's top face.
+  //
+  // This is done in the DRIVER'S frame like everything else, and that is
+  // sound here for a measured reason rather than by assumption: the driver is
+  // a flat plate turning about z, so its local z is parallel to world z (its
+  // 0.6004 of local thickness spans exactly 0.6004 of world z). Occlusion
+  // along world z is therefore occlusion along local z, and a cell fixed to
+  // the driver can be counted in the frame it is fixed to.
+  //
+  // NOTHING is excluded from the occluder set except the driver itself — the
+  // pawl, its post and the skirt are real metal and really do block the view.
+  // That is the opposite of the obstacle set above, on purpose: a declared
+  // joint is not a collision, but it is very much an occluder.
+  const zTop = zBase + thickness;
+  const seen = new Uint16Array(nx * ny);       // poses at which the cell is clear
+  const occluderCensus = new Map();
+
+  // A WINDOW IS NOT A WALL. The exhibition caseback is glass, so a mesh that
+  // transmits most of its light does not occlude what is behind it. Read off
+  // the MATERIAL, never a name list, and printed so a reader can audit which
+  // meshes were treated as see-through — counting caseBackCrystal (opacity
+  // 0.14) as an occluder made the driver read 100.0% hidden, which is what
+  // C6 caught.
+  const seeThrough = (o) => {
+    const m = o.material;
+    if (!m || !m.transparent) return false;
+    return (m.opacity != null && m.opacity < 0.5) || (m.transmission > 0);
+  };
+  const seeThroughNames = candidates.filter(seeThrough).map(nameOf).sort();
+
+  // THE DENOMINATOR IS THE DRIVER'S OWN METAL, not its hull: the hull fills
+  // the pivot bore and the pusher-pin slot, which are holes, and counting
+  // them as driver would flatter every visibility figure. Rasterised from the
+  // part's own triangles, so the holes are where the builder cut them.
+  const baseSet = new Set();
+  {
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+    const pos = driver.geometry.getAttribute('position');
+    const index = driver.geometry.getIndex();
+    const n = index ? index.count : pos.count;
+    for (let t = 0; t < n; t += 3) {
+      const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+      A.fromBufferAttribute(pos, a); B.fromBufferAttribute(pos, b); C.fromBufferAttribute(pos, c);
+      const d0 = (B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y);
+      if (Math.abs(d0) <= 1e-12) continue;
+      const tx0 = Math.min(A.x, B.x, C.x), tx1 = Math.max(A.x, B.x, C.x);
+      const ty0 = Math.min(A.y, B.y, C.y), ty1 = Math.max(A.y, B.y, C.y);
+      const i0 = Math.max(0, Math.floor((tx0 - x0) / CELL)), i1 = Math.min(nx - 1, Math.ceil((tx1 - x0) / CELL));
+      const j0 = Math.max(0, Math.floor((ty0 - y0) / CELL)), j1 = Math.min(ny - 1, Math.ceil((ty1 - y0) / CELL));
+      for (let j = j0; j <= j1; j++) {
+        const py = y0 + (j + 0.5) * CELL;
+        for (let i = i0; i <= i1; i++) {
+          const k = j * nx + i;
+          if (baseSet.has(k)) continue;
+          const px = x0 + (i + 0.5) * CELL;
+          const u = ((B.y - C.y) * (px - C.x) + (C.x - B.x) * (py - C.y)) / d0;
+          const v = ((C.y - A.y) * (px - C.x) + (A.x - C.x) * (py - C.y)) / d0;
+          if (u >= 0 && v >= 0 && u + v <= 1) baseSet.add(k);
+        }
+      }
+    }
+  }
+  {
+    const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+    const dInv = new THREE.Matrix4(), M = new THREE.Matrix4();
+    const cover = new Uint8Array(nx * ny);
+    let lastAx = null;
+    for (const p of poses) {
+      if (p.axis !== lastAx) { I.enterAxis(clock); lastAx = p.axis; }
+      clock.setPose(p.axis.pose(p.f));
+      clock.scene.updateMatrixWorld(true);
+      dInv.copy(driver.matrixWorld).invert();
+      cover.fill(0);
+      for (const o of candidates) {
+        if (o === driver) continue;
+        if (seeThrough(o)) continue;               // a window is not a wall
+        M.multiplyMatrices(dInv, o.matrixWorld);
+        const pos = o.geometry.getAttribute('position');
+        const index = o.geometry.getIndex();
+        const n = index ? index.count : pos.count;
+        let censusHits = 0;
+        for (let t = 0; t < n; t += 3) {
+          const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+          A.fromBufferAttribute(pos, a).applyMatrix4(M);
+          B.fromBufferAttribute(pos, b).applyMatrix4(M);
+          C.fromBufferAttribute(pos, c).applyMatrix4(M);
+          if (Math.max(A.z, B.z, C.z) <= zTop) continue;      // below the top face: cannot occlude
+          const d0 = (B.y - C.y) * (A.x - C.x) + (C.x - B.x) * (A.y - C.y);
+          if (Math.abs(d0) <= 1e-12) continue;
+          const tx0 = Math.min(A.x, B.x, C.x), tx1 = Math.max(A.x, B.x, C.x);
+          const ty0 = Math.min(A.y, B.y, C.y), ty1 = Math.max(A.y, B.y, C.y);
+          if (tx1 < x0 || tx0 > x1 || ty1 < y0 || ty0 > y1) continue;
+          const i0 = Math.max(0, Math.floor((tx0 - x0) / CELL)), i1 = Math.min(nx - 1, Math.ceil((tx1 - x0) / CELL));
+          const j0 = Math.max(0, Math.floor((ty0 - y0) / CELL)), j1 = Math.min(ny - 1, Math.ceil((ty1 - y0) / CELL));
+          for (let j = j0; j <= j1; j++) {
+            const py = y0 + (j + 0.5) * CELL;
+            for (let i = i0; i <= i1; i++) {
+              const k = j * nx + i;
+              const px = x0 + (i + 0.5) * CELL;
+              const u = ((B.y - C.y) * (px - C.x) + (C.x - B.x) * (py - C.y)) / d0;
+              const v = ((C.y - A.y) * (px - C.x) + (A.x - C.x) * (py - C.y)) / d0;
+              if (!(u >= 0 && v >= 0 && u + v <= 1)) continue;
+              // census counts the SHIPPED outline's cells this mesh covers,
+              // per pose, so the dominant occluder is named not assumed
+              if (!cover[k] && baseSet.has(k)) censusHits++;
+              cover[k] = 1;
+            }
+          }
+        }
+        if (censusHits) { const nm = nameOf(o); occluderCensus.set(nm, (occluderCensus.get(nm) || 0) + censusHits); }
+      }
+      for (let k = 0; k < cover.length; k++) if (!cover[k]) seen[k]++;
+    }
+  }
+  const nPose = poses.length;
+  const visFrac = (k) => seen[k] / nPose;
+
+  // The shipped driver's own visible fraction, and the added-metal question:
+  // for each disc, how much of the growth is SEEN.
+  let baseCells = 0, baseSeen = 0;
+  for (const k of baseSet) { baseCells++; baseSeen += visFrac(k); }
+  const baseVisible = baseCells ? baseSeen / baseCells : 0;
+
+  const growthVis = [];
+  for (const d of discs) {
+    const row = { what: d.what, steps: [] };
+    const ceiling = (rows.find((r) => r.what === d.what) || {}).max;
+    for (const frac of [0.25, 0.5, 0.75, 1.0]) {
+      if (ceiling == null) continue;
+      const r = d.r + (ceiling - d.r) * frac;
+      const h = hullOf(outline.concat(discPts(d.cx, d.cy, r)));
+      let cells = 0, vis = 0;
+      overHull(h, (k) => { if (baseSet.has(k)) return; cells++; vis += visFrac(k); });
+      row.steps.push({ r, addedCells: cells, addedArea: cells * CELL * CELL,
+        visibleArea: vis * CELL * CELL, visFrac: cells ? vis / cells : 0 });
+    }
+    growthVis.push(row);
+  }
+
   // C2 — THE DETECTOR LIVES, tested independently of how big the grid is:
   // put a small disc ON a cell the scan marked and require the outline that
   // contains it to read blocked. The earlier version of this control grew a
@@ -528,6 +693,8 @@ const R = await page.evaluate(async ({ CELL, CAP, SAMPLES }) => {
     jointNames: Array.from(jointNames).sort(),
     rigidNames,
     hubR, shippedClear, shippedHits, shippedHitsJoints, plateGap, detector,
+    baseVisible, baseCells, growthVis, seeThroughNames,
+    occluders: Array.from(occluderCensus.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10),
     rows, contrib,
   };
 }, { CELL, CAP, SAMPLES });
@@ -553,6 +720,23 @@ console.log('');
 console.log('nearest metal contributing to the field (cells marked):');
 for (const [n, c] of R.contrib) console.log(`  ${String(c).padStart(7)}  ${n}`);
 console.log('');
+console.log(`see-through by material, excluded from the occluder set (${R.seeThroughNames.length}): ${R.seeThroughNames.filter((n) => !n.startsWith('(unnamed')).join(', ')}`);
+console.log(`WHAT IS SEEN. The shipped driver is ${(100 * R.baseVisible).toFixed(1)}% visible through the back over ${R.poses} poses (${(100 * (1 - R.baseVisible)).toFixed(1)}% hidden), ${R.baseCells} cells.`);
+console.log('occluders of the shipped outline (pose-cells covered):');
+{
+  const tot = R.occluders.reduce((a, b) => a + b[1], 0);
+  for (const [n, c] of R.occluders) console.log(`  ${(100 * c / Math.max(1, tot)).toFixed(1).padStart(5)}%  ${String(c).padStart(8)}  ${n}`);
+}
+console.log('');
+console.log('GROWTH, WEIGHTED BY WHETHER IT IS SEEN — added metal per disc, toward its metal ceiling:');
+for (const g of R.growthVis) {
+  if (!g.steps.length) { console.log(`${g.what.padEnd(24)}  (no ceiling in range)`); continue; }
+  console.log(`${g.what}`);
+  console.log('      r      added u^2   visible u^2   of added');
+  for (const st of g.steps)
+    console.log(`  ${st.r.toFixed(4).padStart(7)} ${st.addedArea.toFixed(3).padStart(11)} ${st.visibleArea.toFixed(3).padStart(13)} ${(100 * st.visFrac).toFixed(1).padStart(8)}%`);
+}
+console.log('');
 let fail = 0;
 const ctl = (name, pass, detail) => { console.log(`${pass ? 'PASS' : 'FAIL'}  ${name} — ${detail}`); if (!pass) fail++; };
 ctl('C1 self-consistency', R.shippedHits === 0,
@@ -563,6 +747,12 @@ ctl('C3 the exclusion does work', R.shippedHitsJoints > 0,
   `putting the four declared joints BACK makes the shipped outline admit ${R.shippedHitsJoints} marked cells — the withdrawn first version's bug, reproduced on purpose`);
 ctl('C4 the field is not empty', R.grid.occupied > 0 && R.contrib.length > 0,
   `${R.grid.occupied} marked cells from ${R.contrib.length}+ meshes`);
+ctl('C8 the caseback is a window', R.seeThroughNames.some((n) => /caseBackCrystal/.test(n)),
+  `${R.seeThroughNames.length} meshes are see-through by MATERIAL (not by a name list), caseBackCrystal among them — counting the back crystal as an occluder is what made this read 100.0% hidden`);
+ctl('C6 the visible fraction reproduces an independent measurement', Math.abs((1 - R.baseVisible) - 0.579) <= 0.06,
+  `shipped driver ${(100 * (1 - R.baseVisible)).toFixed(1)}% hidden against 57.9% measured separately (session scan, back view) — two methods, same part; a gap here means one of them is wrong`);
+ctl('C7 the dominant occluder is the column wheel\'s own skirt', R.occluders.length > 0 && /alarmColSkirt|alarmColCastellations|alarmColBase/.test(R.occluders[0][0]),
+  `top occluder is ${R.occluders.length ? R.occluders[0][0] : 'none'} — the skirt sits ABOVE the driver, so no window in the plate BELOW can uncover what it hides`);
 ctl('C5 the ground is ground by measurement', R.plateGap != null && R.plateGap >= R.CLEAR_MARGIN - 1e-6,
   `the three-quarter plate clears the driver in z by ${R.plateGap == null ? 'n/a' : R.plateGap.toFixed(6)} u against CLEAR_MARGIN ${R.CLEAR_MARGIN} — the driver turns ON it, so it is floor, not wall`);
 if (process.argv[2]) { writeFileSync(process.argv[2], JSON.stringify(R, null, 1)); console.log(`\nwrote ${process.argv[2]}`); }
