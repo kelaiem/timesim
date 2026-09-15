@@ -83,17 +83,45 @@
 //
 //   crownWheel ⇄ windingPinion   WINDING   0.2065   27% of a tooth   181 pts
 //   clutchRim  ⇄ settingWheel    SETTING   0.1372   18% of a tooth    48 pts
-//   alarmSetIdler2 ⇄ alarmStemBevel ALARM  0.0000    0%                0 pts
+//   alarmDiscBevel ⇄ alarmStemBevel ALARM  0.0000    0%                0 pts
 //
 // Both keyless bevels carry metal inside metal across their whole travel, and
-// the winding pair is buried DEEPER than the deliberate half-pitch defect. The
-// alarm bevel reading zero is what says the measure is not simply calling every
-// crossed-axis pair broken.
+// the winding pair is buried DEEPER than the deliberate half-pitch defect.
 //
-// REPORT, not a gate, and deliberately: the two failing pairs are undecided
-// debt, and a check that lands red on arrival needs an owner first (§54's
-// banner). It is gate-ready the day TODO 136 is fixed — the bar is zero, and
-// nothing about it would need choosing.
+// The alarm bevel's zero was read as the reassurance that the measure is not
+// simply calling every crossed-axis pair broken. IT IS NOT THAT, and tier three
+// is what corrected it — see below. (An earlier draft pointed this contrast at
+// `alarmSetIdler2 ⇄ alarmStemBevel`, two parts standing 2.179 apart whose boxes
+// never intersect: a pair that cannot touch reads zero for a reason that has
+// nothing to do with teeth. The row names the corner's real bevel pair now, and
+// a NOT A PAIR line fires on any subject whose AABBs never meet.)
+//
+// TIER TWO asks whether INDEXING can save either keyless pair: it sweeps the one
+// knob each has through a whole pitch. Neither reaches zero — floors 0.1811 and
+// 0.0971 against a control that runs 0.0000 to 0.1801 — so TODO 136's prescribed
+// phase fix is impossible and the item was rewritten.
+//
+// TIER THREE is the LINE (CLAUDE.md's "design in a line, fold to fit"): it builds
+// a conjugate 90° pair in FREE SPACE from the shipped counts, at the station the
+// counts demand rather than the one `layout.js` uses, and asks whether the form
+// reads zero before any layout move is spent on it. The station derivation is the
+// by-product worth keeping — the pinion's axis must cross the crown's PITCH
+// CIRCLE, and `layout.js` sites it `windPinionR * 0.55` = 0.7480 further out.
+//
+// THE FORM REFUSED, and that is TODO 138. Built correctly — half-angles 68.199° +
+// 21.801° = 90°, one cone distance, the convention verified off the metal — the
+// pair reads floor 0.0000 AND ceiling 0.0000, at every index, both senses, all
+// three mountings. `makeBevelGear` shears a flat outline onto a cone, and two
+// complementary tapers satisfy tc·tp = 1 exactly, which forces the two bands to
+// meet on the tangent LINE and nowhere else. So the alarm bevel's zero above is
+// not a healthy mesh either: no bevel pair in this movement can transmit through
+// tooth contact, which makes all three declared `bevelPair` transfers simulation
+// fictions until a real bevel tooth generator lands.
+//
+// REPORT, not a gate, and deliberately: the failing pairs are undecided debt,
+// and a check that lands red on arrival needs an owner first (§54's banner). It
+// is gate-ready the day TODO 136 is fixed — the bar is zero, and nothing about it
+// would need choosing — and 136 now waits on TODO 138 for a form to be cut in.
 //
 // cd tools && node probe-crossed-axis-mesh.mjs
 import { chromium } from 'playwright';
@@ -120,7 +148,54 @@ const out = await page.evaluate(async () => {
   // A gear's ExtrudeGeometry is a polygon swept through `depth`. Inside the
   // core band the prism is the solid exactly; the bevel only insets the two
   // faces, so a core test under-reports and never invents.
+  // THE CONICAL SOLID IS TESTED ON ITS RING, not against an angular outline. The §136 flank is RADIAL, so in (φ, θ) the outline has vertical runs
+  // and one azimuth carries several θ — measured, 40 of a 10-tooth bevel's 130
+  // steps do not increase in φ. A `θ ≤ Θ(φ)` test has no well-defined Θ there
+  // and put a vertex of the gear's own mesh 7.46° outside the solid containing
+  // it. Developed, the same outline is the simple closed polygon TODO 100
+  // already gates, and the ordinary crossing count applies.
+  const toFlat = (P, x, y, z) => {
+    const th = Math.atan2(Math.hypot(x, y), z), phi = Math.atan2(y, x);
+    const r = P.backR + P.coneR * Math.tan(th - P.gamma);
+    return [r * Math.cos(phi), r * Math.sin(phi)];
+  };
+
   const prismOf = (mesh) => {
+    // TODO 138 Landing 2 — THE CONICAL SOLID, which is neither a prism nor a
+    // sheared one. Its boundary is an ANGULAR outline about the shared apex
+    // between two cone distances, so there is no z-band to un-shear into and no
+    // authored 2D shape to read: `makeConicalGear` hands the outline over
+    // directly. The per-vertex assert below is the same covenant the prism
+    // branch keeps — a declared solid is a claim about THIS mesh, so it is
+    // checked against every vertex rather than trusted.
+    const sc = mesh.userData && mesh.userData.solid;
+    if (sc && sc.kind === 'apexCone') {
+      const g2 = mesh.geometry, P2 = g2.attributes.position;
+      const desc = { kind: 'apexCone', rhoLo: sc.rhoLo, rhoHi: sc.rhoHi, boreR: sc.boreR,
+        outline: sc.outline, poly: sc.ringPoly, gamma: sc.gamma, backR: sc.backR, coneR: sc.coneR,
+        declared: true, mesh, rPoly: sc.rhoHi, zLo: sc.rhoLo, zHi: sc.rhoHi, shearZ: 0,
+        toWorld: mesh.matrixWorld, toLocal: new THREE.Matrix4() };
+      // VERIFY THE DECLARATION AGAINST THE METAL, every vertex, exactly as the
+      // prism branch does: developed, each vertex must land inside the polygon,
+      // and its cone distance inside the band. Every term is a LENGTH.
+      let worst = 0, why = '';
+      for (let i = 0; i < P2.count; i++) {
+        const x = P2.getX(i), y = P2.getY(i), z = P2.getZ(i);
+        const rho = Math.hypot(x, y, z);
+        const [fx, fy] = toFlat(desc, x, y, z);
+        const out = inRing(sc.ringPoly, fx, fy) ? 0 : distRing(sc.ringPoly, fx, fy);
+        const terms = [[sc.rhoLo - rho, 'inside the inner cone distance'],
+          [rho - sc.rhoHi, 'outside the outer cone distance'],
+          [out, 'outside the developed outline']];
+        for (const [v, w] of terms) if (v > worst) { worst = v; why = w; }
+      }
+      const tol = 2e-3 * sc.rhoHi;
+      if (worst > tol)
+        return { bad: `the declared apex-cone solid (ρ ${sc.rhoLo.toFixed(3)}..${sc.rhoHi.toFixed(3)}) does not `
+          + `contain this mesh: vertices run ${worst.toFixed(4)} ${why}, against a ${tol.toFixed(4)} allowance` };
+      desc.fit = worst;
+      return desc;
+    }
     const g = mesh.geometry, pr = g.parameters;
     if (!pr || !pr.shapes) return { bad: 'no authored shape on this geometry' };
     const shapes = Array.isArray(pr.shapes) ? pr.shapes : [pr.shapes];
@@ -213,6 +288,15 @@ const out = await page.evaluate(async () => {
   // and the test is the flat band plus the authored outline. For a spur cut
   // shearZ is 0 and this is exactly what it always was.
   const depthIn = (P, v) => {
+    if (P.kind === 'apexCone') {
+      const rho = Math.hypot(v.x, v.y, v.z), rc = Math.hypot(v.x, v.y);
+      if (rho < P.rhoLo || rho > P.rhoHi || rc < P.boreR) return 0;
+      const [fx, fy] = toFlat(P, v.x, v.y, v.z);
+      if (!inRing(P.poly, fx, fy)) return 0;
+      // a LENGTH in the developed plane — the same currency the prism branch
+      // reports, and commensurate with the movement's linear budgets.
+      return Math.min(distRing(P.poly, fx, fy), rho - P.rhoLo, P.rhoHi - rho, rc - P.boreR);
+    }
     const zu = v.z - Math.hypot(v.x, v.y) * P.shearZ;
     if (zu < P.zLo || zu > P.zHi) return 0;
     if (!inRing(P.contour, v.x, v.y)) return 0;
@@ -230,6 +314,16 @@ const out = await page.evaluate(async () => {
   // band, inset from both faces so a sample never sits exactly on one.
   const samplesOf = (P, step = 0.04, levels = [0.15, 0.325, 0.5, 0.675, 0.85]) => {
     const pts = [];
+    if (P.kind === 'apexCone') {
+      // on the toothed surface itself, at cone distances across the face band
+      for (const [phi, th] of P.outline)
+        for (const f of levels) {
+          const rho = P.rhoLo + (P.rhoHi - P.rhoLo) * f;
+          pts.push(new THREE.Vector3(rho * Math.sin(th) * Math.cos(phi),
+            rho * Math.sin(th) * Math.sin(phi), rho * Math.cos(th)));
+        }
+      return pts;
+    }
     const ring = P.contour;
     for (let i = 0; i < ring.length; i++) {
       const [x0, y0] = ring[i], [x1, y1] = ring[(i + 1) % ring.length];
@@ -349,6 +443,7 @@ const out = await page.evaluate(async () => {
   };
 
   const I = await import('./src/inspect.js');
+  const G = await import('./src/geometry.js');
 
   // The inputs each pair is driven by — taken from the AXES entries that pose
   // them, never invented here.
@@ -459,6 +554,23 @@ const out = await page.evaluate(async () => {
     ['clutchRim ⇄ settingWheel     (SETTING: crown out, setting path swept)', 'clutchRim', 'settingWheel', runSet],
     ['alarmDiscBevel ⇄ alarmStemBevel  (ALARM: the corner\'s real bevel pair, alarm crown swept)', 'alarmDiscBevel', 'alarmStemBevel', runAlarm],
   ]) res.push([label, sweep(label, a, b, pose)]);
+
+  // ---- TIER THREE — RETIRED, and where it went ------------------------------
+  // This probe once built a conjugate pair in FREE SPACE here, at the station
+  // the counts demand, and asked whether the form read zero before any layout
+  // move was spent on it. It answered: floor 0.0000 AND ceiling 0.0000, at
+  // every index, both senses, all three mountings — which is NOT A MESH, and
+  // became TODO 138.
+  //
+  // That question now belongs to tools/probe-138-bevel-roll.mjs, which answers
+  // it better: analytically rather than by point sampling, in pure Node with no
+  // browser, at the derived phase and ratio rather than a swept index, with
+  // seven controls including the one this tier lacked — a pair that never
+  // touches passes any penetration column. Two answers to one question is the
+  // defect this repo keeps finding, so there is one.
+  //
+  // What stays here is what only a browser can ask: do the pairs IN THE
+  // MOVEMENT interleave, at the poses the tick laws actually put them in.
 
   log.push('\nTIER TWO — the phase floor: the best any indexing of the one available knob can do');
   const floors = {};
