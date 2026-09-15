@@ -1001,8 +1001,22 @@ export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngl
   // bore, and the developed polygon plus the three constants that invert the
   // maps onto it. The angular outline rides along for drawing and for the
   // builder's own asserts, but it is NOT what point-in-solid should use.
+  //
+  // TWO REGIONS SINCE TODO 136, because the blank has two. The band is the
+  // toothed part and is what meshes; inboard of the root cone the web is a
+  // PLATE, bounded by the planes z = zWebLo and z = zWebHi, and its points lie
+  // INSIDE the band's inner cone distance — measured, 0.128 inside on the alarm
+  // corner's bevel and 1.515 on TODO 136's crown wheel. A declaration that
+  // names only the band therefore describes a solid the builder does not cut,
+  // and `probe-crossed-axis-mesh` refused every row rather than measure one
+  // (which is the honest failure, and why the drift was visible at all).
+  //
+  // The web's outer wall is the root cone itself, r = z·tan θ_root, so the two
+  // regions meet along it with nothing to reconcile — the same join the ring
+  // comment above describes, said in the form an instrument can test.
   body.userData.solid = { kind: 'apexCone', rhoLo: coneRi, rhoHi: coneR, boreR, outline,
-    ringPoly: bevelOutlineRing(spec), gamma: spec.gamma, backR: spec.backR, coneR };
+    ringPoly: bevelOutlineRing(spec), gamma: spec.gamma, backR: spec.backR, coneR,
+    zWebLo, zWebHi, tanRoot: Math.tan(thetaRoot) };
   g.add(body);
   g.userData.r = spec.pitchR;
   g.userData.teeth = teeth;

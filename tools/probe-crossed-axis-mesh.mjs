@@ -173,8 +173,15 @@ const out = await page.evaluate(async () => {
       const g2 = mesh.geometry, P2 = g2.attributes.position;
       const desc = { kind: 'apexCone', rhoLo: sc.rhoLo, rhoHi: sc.rhoHi, boreR: sc.boreR,
         outline: sc.outline, poly: sc.ringPoly, gamma: sc.gamma, backR: sc.backR, coneR: sc.coneR,
+        // TODO 136's FLAT WEB — the second region of the same blank (see the
+        // builder's declaration). Carried through so both the verification
+        // below and `depthIn` can ask which region a point is in.
+        zWebLo: sc.zWebLo, zWebHi: sc.zWebHi, tanRoot: sc.tanRoot,
         declared: true, mesh, rPoly: sc.rhoHi, zLo: sc.rhoLo, zHi: sc.rhoHi, shearZ: 0,
         toWorld: mesh.matrixWorld, toLocal: new THREE.Matrix4() };
+      if (!(sc.zWebLo >= 0) || !(sc.tanRoot > 0))
+        return { bad: 'the apex-cone declaration carries no web (zWebLo/tanRoot) — a blank cut '
+          + 'since TODO 136 has one, so this is a stale declaration rather than a webless part' };
       // VERIFY THE DECLARATION AGAINST THE METAL, every vertex, exactly as the
       // prism branch does: developed, each vertex must land inside the polygon,
       // and its cone distance inside the band. Every term is a LENGTH.
@@ -184,6 +191,14 @@ const out = await page.evaluate(async () => {
         const rho = Math.hypot(x, y, z);
         const [fx, fy] = toFlat(desc, x, y, z);
         const out = inRing(sc.ringPoly, fx, fy) ? 0 : distRing(sc.ringPoly, fx, fy);
+        // THE WEB IS THE OTHER REGION, and a vertex in it is contained. It is
+        // bounded by two planes and the root cone; a point there is legitimately
+        // inside the inner cone distance, which is exactly what the band-only
+        // test used to call a refusal.
+        const rc = Math.hypot(x, y);
+        const inWeb = z >= sc.zWebLo - 1e-9 && z <= sc.zWebHi + 1e-9
+          && rc >= sc.boreR - 1e-9 && rc <= z * sc.tanRoot + 1e-9;
+        if (inWeb) continue;
         const terms = [[sc.rhoLo - rho, 'inside the inner cone distance'],
           [rho - sc.rhoHi, 'outside the outer cone distance'],
           [out, 'outside the developed outline']];
@@ -290,7 +305,12 @@ const out = await page.evaluate(async () => {
   const depthIn = (P, v) => {
     if (P.kind === 'apexCone') {
       const rho = Math.hypot(v.x, v.y, v.z), rc = Math.hypot(v.x, v.y);
-      if (rho < P.rhoLo || rho > P.rhoHi || rc < P.boreR) return 0;
+      if (rc < P.boreR) return 0;                       // the bore, common to both regions
+      // THE WEB (TODO 136): a plate between two planes, walled by the root cone.
+      if (v.z >= P.zWebLo && v.z <= P.zWebHi && rc <= v.z * P.tanRoot)
+        return Math.min(rc - P.boreR, v.z - P.zWebLo, P.zWebHi - v.z, v.z * P.tanRoot - rc);
+      // THE TOOTHED BAND — the region that meshes.
+      if (rho < P.rhoLo || rho > P.rhoHi) return 0;
       const [fx, fy] = toFlat(P, v.x, v.y, v.z);
       if (!inRing(P.poly, fx, fy)) return 0;
       // a LENGTH in the developed plane — the same currency the prism branch
