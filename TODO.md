@@ -9325,6 +9325,19 @@ the same:
   11 teeth where the trapezoid needs 10 and killed the arrest station's solve.
   **The floor must match the generator that cuts the member** — that is the
   rule the mistake bought.
+
+  **That work is [TODO 138], and it has LANDED.**
+  `bevelToothSpec` + `makeConicalGear` cut the §136 cycloid on the cone,
+  proven conjugate in free space on five pairs including this one, and 138's
+  Landing 2 converted every call site — so THIS BULLET IS CLOSED: no builder
+  cuts a trapezoid on a cone any more, and the battery is 40/40 on the result.
+  The barrel below is the item's remaining half. The floor rule above
+  survives it and stops being a blocker, because the floor was answering a SPUR
+  question — does the cut root CIRCLE clear the bore? — about a conical part,
+  whose root is a CONE standing off the axis at every plane of its band. The
+  conical analogue is `boreR < zFront·tan θ_root`, which `bevelToothSpec` guards
+  and every pair passes at 10 teeth; and the profile's own count is not 10
+  anyway, since Tredgold gives a 45° mitre a virtual 14.142.
 - **`makeBarrel`.** Converting it moves the barrel's cavity by +0.226 u, which
   lands squarely in §104's equalisation solve — the going spring's torque law
   is derived from its ribbon and the fusee cut against it, and the alarm half's
@@ -16137,6 +16150,79 @@ what the contrast needs), but it is the next thing to ask of that pair.
 the fix will be cut in, so the order is no longer blocked: cut the crossing
 pairs conjugate, and the probe is ready to gate the result at zero.
 
+### The defect is ONE TERM in the layout, and the station is out by 0.7480
+
+`layout.js:1543` — and its own comment says what it was trying to do:
+
+```js
+const pinDist = cwDist + crownWheelR + windPinionR * 0.55; // the FIXED winding
+                                                           // pinion (teeth overlap
+                                                           // the wheel rim, bevel-style)
+```
+
+"Bevel-style" is the intent; overlapping two SPUR rims is what it does. That
+term is the whole fault: `crownWheelR + windPinionR·0.55` = 3.4 + 0.748 =
+**4.1480**, which is the centre distance the probe measured to four figures. The
+setting pair carries the identical term at `layout.js:1552`.
+
+**Where the pinion must actually sit, derived.** For a 90° pair the cone
+half-angles come from the counts: `tanγ_c = z_c/z_p = 20/8` gives γ_c = 68.199°
+and γ_p = 21.801°, summing to 90° exactly. Both members share one cone distance,
+`R = r_p/sinγ_p = r_c/sinγ_c = 3.6619`, and the pinion's centre stands
+`R·cosγ_p` from the apex. That reduces:
+
+> `R·cosγ_p = r_p/tanγ_p = r_p·(z_c/z_p) = module·z_c/2 = r_c`
+
+**so the pinion's axis must cross the crown wheel's PITCH CIRCLE — centre
+distance 3.4000, not 4.1480.** The same number falls out of the crown/face-gear
+form, where the pinion rides over the pitch circle by construction: whichever
+conjugate form is cut, the station is the same, and it is out by exactly
+`windPinionR · 0.55` = **0.7480**.
+
+That is worth stating plainly: the two forms disagree about the TOOTH, and agree
+about the STATION. So the station can be corrected and proved before the form is
+chosen.
+
+**The cascade, measured before touching it.** `pinDist` feeds `pinOutDist`, the
+setting lever's groove (`slMidAlong` and the pull-driven band), and
+`clutchHomeDist`; `clutchHomeDist` feeds the yoke's tracked band and `swDist`;
+`swDist` feeds `minuteArborXY` — the minute wheel's fold, which is the motion
+works. Removing both `·0.55` terms moves the setting wheel inward by **1.4960**
+(0.748 from each), so this reaches the dial side and re-runs the keyless layout
+solve. It is a P3 LAYOUT move in position space, which is the resolution
+CLAUDE.md prescribes — not a lever arm being stretched — but it is not a
+one-line landing.
+
+**Order of work, per "design in a line, fold to fit".** Prove the pair at the
+corrected station in free space FIRST — two conjugate members at centre distance
+3.4000, measured by `probe-crossed-axis-mesh.mjs` until the burial reads zero and
+`transmits` reads the tooth-count ratio — and only then fold: move the station
+and let the cascade re-solve. Doing it the other way round would spend the
+layout move before knowing the cut is right.
+
+### The line was run, and it REFUSES the form — see [TODO 138]
+
+Built at the derived station (tier three of `probe-crossed-axis-mesh.mjs`): cone
+half-angles 68.199° and 21.801° summing to 90°, one cone distance R = 3.6619,
+the pinion's centre at R·cosγ_p = 3.4000 = r_c, and the cone convention checked
+off the metal (the crown's shear rises 1.3600 at r_c, which is r_p; the pinion's
+rises 3.4000, which is r_c). **All of that is right, and the pair still does not
+mesh:** floor 0.0000 AND ceiling 0.0000, at every index, both senses, and all
+three mountings.
+
+Floor zero with ceiling zero is not a good mesh — it is NOT A MESH, which is the
+distinction tier two's own guard was built to draw. The cause is [TODO 138]:
+`makeBevelGear`'s shear-cone teeth cannot interleave with each other at all, so
+there is no conjugate crossed-axis form in this repo to cut these pairs in.
+
+**So 136 is blocked on 138, and the station correction is the half that survives.**
+The 0.7480 derivation stands whatever the tooth form — both candidate forms agree
+about the station — so `layout.js`'s two `windPinionR * 0.55` terms are wrong
+today and will still be wrong after 138. But correcting them alone would move a
+non-meshing pair to the right place, which is not worth a dial-side cascade on
+its own. Sequence: 138 gives a form that meshes, then 136 cuts these two pairs in
+it and moves the station in the same landing.
+
 **Related, and worth reading together:** [TODO 117] is the OTHER collision an
 eye caught in the same session — the alarm setting branch, where
 `disc rim ⇄ idler 1b` transmits at +1.071429 against a bar of -1.071429, two
@@ -17129,6 +17215,531 @@ w2 integral, asserted at boot, beside the line that mints it.
 Found from §219's side — `tools/probe-219-catalogue.mjs` derives the
 reserve reduction from `RESERVE_SWEEP_DEG` rather than reading it, which is
 what turned the stale 4.2 in the LEGO note into this.
+
+## 139. The alarm setting corner is not a closed loop when engaged: the hour back-drives the disc past a crown that cannot follow
+
+Found while chasing [TODO 138] Landing 2's residual index error, which turned
+out not to be an index error at all.
+
+**What the tick writes.** `alarmRotor.rotation.z = -alarmSetRot + 3 * _bd`,
+where `_bd = ALARM_BD_SIGN * hourDialA`. The first term is the crown's turn
+arriving through the setting corner; the second is the friction-set disc being
+carried by the hour wheel. Both are real, and the disc genuinely does both
+things — that is what a friction-set alarm disc IS.
+
+**What is missing is the other half of the coupling.** The corner is a bevel
+pair, so when it is ENGAGED the disc and the crown are one kinematic loop: the
+hour cannot turn the disc without either turning the crown through the corner or
+slipping at the friction coupling. Neither is modelled. `alarmSpinner.rotation.y`
+carries `alarmCrownRotation` alone and knows nothing about the hour, so while
+engaged the disc rotates past a stationary crown through teeth that are now
+conjugate.
+
+**Measured.** `alarmRotor.rotation.z` reads −2.90589 at tau 0 and −2.90624 at
+tau 0.75 with the crown pulled and its rotation pinned at 0 — the disc moving
+under a stem that is not. The offset itself is 0.375 of a tooth pitch at the
+pose the sweeps use (−2.90597 / 0.62832 = −4.625 pitches), and over 12 h the
+`3 * _bd` term sweeps three full turns, thirty pitches for a ten-tooth gear,
+CONTINUOUSLY. So the corner's relative index is a function of the hour and **no
+fixed build-time phase can mesh it at every hour** — which is why 138's
+`bevelCornerSpin` helper, correct in principle, could not close the gap: there
+is no constant for it to compute.
+
+**Why it has never shown.** The sheared blanks never touched at any station, so
+the disc could rotate past the stem through as many teeth as it liked and
+nothing measured anything. The pair only becomes over-constrained once the teeth
+interleave, which is [TODO 138] Landing 2.
+
+**The scale of the error in practice is small, and that is not a defence.**
+A setting operation lasts seconds, over which the hour moves almost nothing, so
+a session's phase is near-constant — which is exactly why a build-time constant
+looks like it nearly works. The defect is structural: two members declared as a
+`bevelPair` transfer, with conjugate teeth, whose angles are written from two
+independent sources while engaged.
+
+**What the fix needs.** A decision about what the corner does when engaged, and
+then one source for both members' angles. Either the hour's back-drive turns the
+crown too (the loop closes, and `alarmSpinner` reads the hour while engaged), or
+the friction coupling SLIPS and the disc's hour term is suppressed while engaged
+(the loop opens, and the disc reads only the crown). Real alarm watches do the
+second — the friction coupling is what lets you set the alarm against a running
+movement — so that is the likely answer, but it is a mechanism decision and it
+should be made against the metal rather than here. Once the loop is closed or
+opened deliberately, 138's index helper has a constant to compute and the corner
+meshes at every hour.
+
+**Related.** [TODO 138] Landing 2 carries the corner's SENSE fix, which is
+separate and already landed: the crown's turn now crosses the corner reversed,
+and the pair's phase floor went from 0.2108, where no index cleared it, to
+0.0000. What remains at the shipped index — 0.1108 of burial — is this item.
+
+## 138. `makeBevelGear`'s shear-cone teeth can never interleave, so no bevel pair in the movement meshes
+
+Found while running [TODO 136]'s line proof, which built a correct bevel pair
+from first principles and measured it as not a mesh. The build was right; the
+FORM cannot work.
+
+**What the builder makes.** `makeBevelGear` extrudes a flat gear outline through
+`faceWidth` and then shears every vertex: `v.z += hypot(x, y) * tan(coneAngleDeg)`.
+The result is a constant-thickness shell lying on one side of a cone — not a
+bevel tooth, which has flanks cut on the cone with a spherical (octoid) profile.
+
+**Why two of them can never touch except on a line.** Take a pair at a shared
+apex with perpendicular axes and complementary cone angles, which is what a 90°
+pair is. Their tapers then satisfy `tc · tp = 1` exactly. The crown's solid is
+`z − tc·r ∈ [0, fw]` with `r = hypot(x, y)`; the pinion's is `x − tp·ρ ∈ [0, fw]`
+with `ρ = hypot(y, z)`. At y = 0 the first gives `z ≥ tc·x`, and substituting,
+
+> `x − tp·z ≤ x − tp·(tc·x) = x(1 − tp·tc) = 0`
+
+while the pinion's band needs that quantity `≥ 0`. Equality only — which forces
+`z = tc·x`, the tangent line, a set of measure zero. For y ≠ 0 both `r > |x|` and
+`ρ > |z|`, so each inequality only tightens and there is no contact at all.
+**The two solids intersect on a line and nowhere else, at every index, every
+sense and every mounting.**
+
+**Measured, with the control that makes it a finding rather than a null.** The
+pair reads floor 0.0000 / ceiling 0.0000 built at its correct apex. Move the
+pinion's apex 0.3 toward the crown and it reads **0.0223 — at every index**,
+floor equal to ceiling; move it 0.3 away and it reads 0.0000 again. So the
+measure can see burial, and the burial it sees is INDEX-INVARIANT. That is the
+algebra visible: `z − hypot(x,y)·taper` does not change when the gear spins about
+its own axis, so an index can never change whether a point is inside the band. A
+real mesh varies with index — the parallel control runs 0.0000 to 0.1801.
+
+**What it means for the movement.** Three bevel corners ship in this form and
+`transfers` declares all three as `bevelPair`:
+
+| pair | where |
+|---|---|
+| `gearIn ⇄ gearOut` | the motion-works arbor's corners — which CLAUDE.md names as the TEMPLATE for a fold-added part |
+| `discBevel ⇄ stemBevel` | the alarm setting corner |
+| `contrate` + its mate | the alarm winding climb |
+
+None of them can be transmitting through tooth contact, because their teeth never
+occupy the same space. The ANGLES are real — the tick derives them from the tooth
+counts, so rule 2 holds and the ratios are honest — but the contact that would
+carry them is not modelled. In this repo's own vocabulary that is a SIMULATION
+FICTION: *modelled*, not *simulated*. It is not a collision and nothing is
+visibly wrong, which is exactly why it has survived three corners and a declared
+transfer idiom.
+
+### LANDING 1 — the generator exists and is proven in free space
+
+`bevelToothSpec` + `bevelOutline` + `makeConicalGear` in `src/geometry.js`, held
+by `tools/probe-138-bevel-roll.mjs`. Nothing consumes them: `makeBevelGear` still
+ships the shear-cone form and the movement is untouched, which is §136 Landing
+1's precedent and CLAUDE.md's own order of work — prove the group at P0 in free
+space first, fold afterwards.
+
+**The tooth is not invented.** It is the §136 cycloid — the same law
+`probe-136-roll` already proves conjugate on 24 of the movement's meshes —
+developed on the BACK CONE and ruled to the apex. Two maps, each derived:
+
+| | | constraint it comes from |
+|---|---|---|
+| virtual count | `z_v = z / cos γ` | Tredgold: the back cone unrolls to a spur gear |
+| radial → polar | `θ(r) = γ + atan((r − R_b) / coneR)` | the back-cone element is perpendicular to the pitch-cone element at the pitch point, and both stand at `coneR` from the apex |
+| azimuth → azimuth | `φ(a) = a / cos γ` | unrolling a cone of half-angle 90−γ multiplies azimuth by cos γ |
+| pitch angle | `tan γ = sin Σ / (z_mate/z + cos Σ)` | the pitch cones roll without slip — standing rule 2, from the counts |
+
+The consequence that has to hold does: one virtual pitch `2π/z_v` maps to exactly
+`2π/z`, one real pitch, so the teeth close the circle with nothing to fudge. And
+`z_v` is why `cycloidalToothPath` had to be factored out of `cycloidalGearShape`
+— it is not an integer, so the ring loop cannot walk it, while every constant
+inside the tooth is unchanged. The profile law is in one place; a law written
+twice is CLAUDE.md's direction-guard defect with a longer fuse.
+
+**Measured, five pairs, worst interpenetration over a full tooth pitch in both
+directions** — the three the movement ships plus TODO 136's two:
+
+| pair | γA / γB | worst pen | budget ε | min clear | ideal b/2 | Tredgold's cost |
+|---|---|---|---|---|---|---|
+| `gearIn ⇄ gearOut` (m 0.30) | 45° / 45° | 0.00000 | 0.00942 | 0.01265 | 0.01885 | 0.0062 |
+| `discBevel ⇄ stemBevel` (m 0.24) | 45° / 45° | 0.00000 | 0.00754 | 0.00955 | 0.01508 | 0.0055 |
+| `contrate ⇄ climb` (m 0.24) | 45° / 45° | 0.00000 | 0.00754 | 0.00955 | 0.01508 | 0.0055 |
+| `crownWheel ⇄ windingPinion` (m 0.34) | 68.199° / 21.801° | 0.00000 | 0.01068 | 0.01426 | 0.02136 | 0.0071 |
+| `settingWheel ⇄ clutchRim` (m 0.34) | 68.199° / 21.801° | 0.00000 | 0.01068 | 0.01426 | 0.02136 | 0.0071 |
+
+Zero penetration against the same chord budget the spur teeth are held to, which
+is right because it is the same profile. The pass bar is not the interesting
+column though — see the controls.
+
+**What the approximation actually is, which is NOT what it looks like.** The
+obvious story is that Tredgold holds the back-cone profile constant along the
+face width, so the error grows toward the small end and `F ≤ coneR/3` bounds it.
+That story is wrong, and the instrument says so: scale the whole assembly about
+the apex by k and every measured clearance scales by exactly k, to 1e-6. Nothing
+about the fit varies along the face, because an apex-ruled tooth IS what a
+straight bevel has. The real error is in the PROFILE alone — the planar cycloid
+mapped to angles is not the exact spherical one — and it is uniform. Its size is
+the last column above: an exactly conjugate pair rolls with `backlash/2` standing
+off each flank, and the shortfall is the error, about a third of the backlash
+with the rest surviving as working clearance. It must stay under `backlash/2` or
+the teeth bind, which is the same statement as the minimum clearance staying
+positive, and that is gated. So `F ≤ coneR/3` is kept as the classical BLANK
+PROPORTION — everything scales to nothing at the apex — not as an error bound.
+
+**Seven controls, because the defect this whole item is about passes any
+penetration column.** A pair that never touches reads 0.00000 forever; that is
+exactly what the shear-cone form does.
+
+| control | what it breaks | reading |
+|---|---|---|
+| ENGAGES | — | min clear 0.0096–0.0143, small against a 0.48–0.66 tooth; a pair that never touches is caught here and nowhere else |
+| HALF PITCH | the index | 0.152–0.220 of burial |
+| WRONG SENSE | the roll | 0.171–0.240 |
+| CLOSED SOLID | the mesh | watertight, positive volume — an open body reads as colliding (TODO 27), a closed one built inside-out reads as empty |
+| RULED | — | scale by k = 0.6180339887: clearances scale by 0.618033989 against 0.618033989 |
+| APEX, toward | the shared apex | buries 0.028–0.040 against budgets of 0.0075–0.0107 |
+| APEX, away | the shared apex | clearance grows, 0.0096 → 0.0112 etc. |
+
+Three bars written here were wrong first and the geometry corrected each:
+- the wedge-inside test had **both signs inverted**, which accepts exactly when
+  the foot is outside. A point on the axis then read ≈0 against the sliver at
+  its own azimuth, and the run came back `min clear 0.00000` with
+  `worst pen 0.00000` — two readings that cannot both be true, which is the only
+  reason the first run was not believed;
+- `min clear` was polluted by **the tip overhang**. The blanks are cut by planes
+  perpendicular to their own axes, so a tip reaches `z/cos θ_tip > coneR`; those
+  points sit beyond the mate's blank entirely, and the cone measure — which knows
+  nothing of where the mate's tooth STOPS — handed back the distance to the
+  mate's surface extended, near zero. All five rows read `0.00003` and the
+  ENGAGES control passed for a reason with nothing to do with engaging. A
+  clearance is only a clearance where both bodies share the free coordinate;
+- the RULED control first compared the **front plane against the back**,
+  expecting `zFront/zBack`. It read 0.6710 against 0.6667 and 0.6335 against
+  0.6170 — and the gap was real, because the band gate is an absolute z-window
+  so the two runs do not measure the same surviving point set. Scaling the bands
+  WITH the points is what makes it an identity instead of nearly true, and
+  'nearly true' is not something to open a tolerance for;
+- the APEX control first asked the away direction to RELEASE the pair. It does
+  not: clearance goes 0.01265 → 0.0152 and the teeth still mesh. Pulling the
+  apexes apart is the bevel's version of opening a spur pair's centre distance —
+  it buys backlash and does not end the mesh. The bar is the monotone response.
+
+**The movement is untouched and measured so.** `node tools/ci-battery.mjs
+--no-incremental`, local (3 shards, 1591.4 s): **40/40 gates pass**, boot silent,
+fingerprint 2298207723 deterministic across virgin boots. The only shipped-scene
+change in Landing 1 is `cycloidalGearShape`'s refactor, which `probe-136-roll`
+holds at 24/24. `transfers` still reports its 3 `bevelPair` rows against the
+shear form — that is the debt this item names, and Landing 2 is what moves it.
+
+**One finding about a shipped constant, for Landing 2.** `ALARM_BEVEL_FACE =
+0.65` exceeds `coneR/3 = 0.5657` for a 10-tooth m 0.24 mitre, so the generator
+warns on it. The blank is 15% longer than the proportion allows and its small end
+is thinner than metal should be.
+
+### LANDING 2 — folding the movement onto it (in progress)
+
+**Priced first, with `tools/probe-138-fold-price.mjs`**, which is the order
+CLAUDE.md asks for: P0 in free space, then the packaging at P3 with the
+mechanism's dimensions held fixed. Three things came back, and two of them
+changed the design.
+
+**Every corner IS a corner, including the one that looked broken.** At rest the
+alarm setting pair's two apexes stand 5.000 apart — `alarmDiscBevel` at x
+20.4007 against `alarmStemBevel` at 15.4007, the same two radii TODO 78/109
+already names in `main.js` (`_alarmRimD` against `ALARM_CD`). That is not a
+defect: swept through `alarmCrownPullT`, the stem SLIDES between two stations,
+and the apexes coincide EXACTLY at each — pulled in, the stem sits on
+`alarmWindContrate` (winding engaged); pulled out, on `alarmDiscBevel` (setting
+engaged). A rest-pose reading says nothing about a corner that only exists when
+engaged, and the probe's control — a corner built by `addBevelCorner`, which
+must read zero at every pull — is what made the first, wrong reading obvious:
+it came back NaN with the others, because the lookup matched mesh names and
+`addBevelCorner` names the GROUP.
+
+**The blank is now cut at two CONE DISTANCES, not two planes.** Both choices
+leave the flanks alone, so this is not a P0 question and the first build used
+planes. Measured, planes are wrong twice: they let the tooth TIP run past the
+cone distance into material that has no mate, which made the new blank reach
+FURTHER OUT than the sheared one it replaces (r 1.9964 against 1.7576 on the
+motion-works mitre) — a packaging fight over metal that does no work; and they
+make the two members' bands agree only ON the pitch cone. Cut at a cone
+distance the band is shared everywhere, because both members measure ρ from the
+same apex. The re-price is the whole argument for it:
+
+| | old blank (sheared) | new blank (conical) | |
+|---|---|---|---|
+| 4 motion-works corner gears | z 0.400–2.860, r 1.7576 | z 0.850–2.083, r 1.6917 | inside |
+| 3 alarm corner gears | z 0.400–2.058, r 1.4061 | z 0.689–1.649, r 1.3413 | inside |
+| 2 differential sides | z 0.550–1.602, r 1.1929 | z 0.592–1.383, r 1.1296 | inside |
+| 2 differential planets | z 0.701–1.602, r 1.1929 | z 0.592–1.383, r 1.1296 | reaches 0.11 further in |
+
+Nine of eleven blanks are strictly INSIDE the metal they replace, so the fold
+costs nothing there. The two planets reach 0.11 further toward the cage centre,
+which is inside the differential's own action group — a P2 question for
+`intraUnit`, not a P3 one.
+
+**And the instrument had a hole the old band gate was hiding.** `coneDist`
+measured the distance to a wedge spanned by two adjacent outline rays, but
+adjacent rays are nearly PARALLEL, so `a × b` is a tiny vector whose DIRECTION
+is noise and `|P·m̂|` against it can be anything — including zero. The plane-cut
+band gate excluded everything behind the mate's apex and so never exposed it;
+the shared ρ band admits those points, and all five rows came back
+`min clear 0.00003` again. Traced: one sample landing at θ = 134.999° in the
+mate's frame, BEHIND it, scored ~0 against a sliver whose normal was noise,
+where the true distance is ~1.4. The measure is now angular — `d = ρ·sin Δ`
+to the outline's great-circle arcs, endpoints governing any arc shorter than
+1e-7, and `d = ρ` beyond 90° because the nearest point of a one-sided ray set
+is then the apex. Landing 1's committed numbers were not wrong as reported (the
+gate excluded the ill-conditioned samples) but the measure had a hole, and the
+re-run moves them slightly: min clear 0.01265 → 0.01243 on the motion-works
+mitre, same verdict, all seven controls still firing.
+
+**The conversion is in, and the movement boots silent.** `makeBevelGear` is
+retired; all five call sites build `makeConicalGear`, whose pitch angle is
+DERIVED from the counts rather than defaulted to 45°. Four numbers that restated
+the shear law in a second place now read the blank the builder cuts:
+`subtractorSpec`'s `halfHeight` and `hubFaceZ`, `ALARM_BEVEL_FACE` (0.65 chosen
+→ 0.5657 = coneR/3 derived), and `reachCap`.
+
+**The differential's size chain had to be re-derived, and that is a finding in
+its own right.** `planetBoreR = hubR + margin` was doing two jobs and only one
+on purpose: at 45° the shear put a vertex at radius r at z = r, so a bore of
+radius b ALSO placed the blank's inner face b from the cage centre. The conical
+blank separates the roles — the inner end stands at `coneRi`, the bore is a hole
+— so the bore becomes `pinR + fit` and the hub clearance becomes a constraint on
+`coneRi`. Left alone, the 0.7014 bore stood outside its own root cone (0.6046):
+a planet with no metal between its hole and its teeth.
+
+`R = planetBoreR + stockMin` went with it. That read "the rim is stock again",
+which is a FLAT DISC's rim — measured in the plane from bore to pitch circle.
+A bevel has no such rim: its root is a cone and its thinnest section is at the
+small end. The pitch radius is SOLVED now, searched upward for the first value
+whose blank clears the cage hub, clears both bores at the small end, and cuts a
+tooth at or above the §50 floor. It lands at **R 1.0100** where the flat-disc
+rule happened to put 1.0181, for reasons that had nothing to do with any of it.
+Three wrong versions of that solve, each caught by measuring rather than
+reasoning: demanding a stock RIM between bore and root (no radius under the
+budget meets it — and the sheared blank it replaces had 0.2747 against a 0.3167
+floor, so the bar would have been new); constraining only the planet's bore when
+the SIDE gear's 0.55 is the binding one; and returning null for uncuttable
+candidates, which collapsed the search at every radius where the budget bit and
+reported "no pitch radius" for a set that solves from 0.95 up.
+
+**A candidate must not narrate.** `spiderSpec` is called once per leg count by a
+search that expects most candidates to fail, so an unsolved radius is REPORTED
+beside `cuttable`/`teethOk`/`fitsBudget` and the caller warns once. Warning
+inside put one line per rejected leg into a boot standing rule 6 requires to be
+silent, and buried the one line that meant something.
+
+### The coupling, diagnosed — a bevel corner REVERSES, and the crown was not crossing it
+
+`tools/probe-138-coupling.mjs` (new) drives each corner's real input and tracks
+a marker fixed in each body, measuring the SIGNED swing about that gear's own
+axis. Reading `rotation.z` instead would restate whatever the builder assigned,
+which is the thing under suspicion.
+
+**The condition, derived.** Two cones on a shared apex roll without slip only if
+their RELATIVE angular velocity lies along the contact ray; everything else is
+sliding. With `d = cos γ_A·û_A + cos γ_B·û_B` that forces
+`ω_B = −ω_A·tan γ_A = −ω_A·z_A/z_B`, and this corner is a mitre, so the
+magnitude is 1 and the **sense is −1**. `ratio: 1` in the corner's transfer row
+is the magnitude; the sign is the half that row does not carry.
+
+**Measured: +1 against the −1 the cones demand.** The crown's turn was banked
+into the setting path unchanged — `alarmSetRot += aDelta` — as though the bevel
+pair were a shaft coupling. Standing rule 2's exact failure mode: an angle
+ASSIGNED where a real train would have produced it.
+
+**It was written down TWICE**, which is why the first fix measured no change at
+all. `tick()` banks a DELTA through the corner; `setPose` assigns the ABSOLUTE
+angle (`alarmSetRot = p.alarmCrownRotation`) — and every sweep, and the entire
+pose net, comes through the second one. Correcting only the delta site left the
+probe still reading +1. `ALARM_CORNER_SENSE` is the one source both read now.
+CLAUDE.md names this defect in the direction-guard section; it is the same shape
+here, in a tick law rather than a cut.
+
+**Why nothing caught it before.** The sheared blanks never touched at any
+station, so any sense worked — probe-crossed-axis-mesh measured that pair at
+0.0000 and TODO 136 once quoted the zero as reassurance that the instrument was
+not condemning every crossed-axis pair. With conjugate teeth a wrong sense
+GRINDS. Corrected, the pair's phase floor goes from **0.2108 (no index clears
+it) to 0.0000 with a ceiling of 0.2475** — the control's own signature, an index
+that does work rather than a pair that never touches.
+
+**Still open, and now a small one: the INDEX.** At the shipped index the pair
+still measures 0.1108 buried; the clearing index is 0.875 of a pitch. The cause
+is measured, not guessed: `alarmRotor.rotation.z` is **−2.90597 rad at rest**,
+not zero, so the disc's mount frame at rest is 0.375 of a pitch from the
+build-time frame the new `bevelCornerSpin` helper derives its azimuth in — and
+0.875 = 0.5 + 0.375 exactly. The helper is right in principle (a corner's index
+is the contact ray's azimuth read in each mount's own frame, less half a pitch
+for the member that must gap) and wrong in its FRAME. It must be solved at the
+canonical rest pose, after the tick has written the rotor, rather than at build
+time where that term does not exist yet. The motion-works corners are unaffected
+— they already satisfy the sense (`gearOut = BEVEL_PHASE − handSetOffset`
+against `gearIn = +handSetOffset`), which is what makes them the control.
+
+**All four corners are measured now, and the WINDING one was wrong too.**
+The two that first came back "A MEMBER STOOD STILL" were the guard doing its job
+— a ratio of 0/0 must not read as agreement — and both were the probe's drives,
+not the movement:
+
+- the motion-works pair moves on `setPathRot` ALONE (adding `windStemSlip`
+  pinned it), and its driving value `handSetOffset` comes from `jumpDisp`, the
+  minute jumper's DETENTED display. `setPose` ticks with zero dt, so an eased
+  quantity cannot move under it — CLAUDE.md's own trap, and [TODO 135]'s
+  subject. Stepping lets the detent settle, and the pair then measures **−1 on
+  both corners**: they were right all along, which is what makes them the
+  control;
+- the alarm WINDING corner is written by `alarmWindRotation`, not
+  `alarmCrownRotation`. Driven by its own axis it measured **+1 against −1** —
+  the same defect as the setting corner, one path over.
+
+**The winding path is fixed the same way, and the ratchet does not move for it.**
+`ALARM_WIND_RATIO` is "arbor turns per crown turn" through the tooth counts with
+the idlers dropping out, and the corner's sign was the one factor it did not
+carry. Both banking sites now cross the corner — the tick's delta and
+`setPose`'s absolute, the lesson from the setting path where correcting one left
+every sweep reading the old sense. The saw is cut against the ARBOR's winding
+direction and the arbor still turns the same way for an increasing
+`alarmBarrelWind`; what reverses is which way a hand turns the crown, exactly as
+TODO 115 found for the going train's. **The `alarmWind` axis's pose reverses with
+it**, because a pose table is direction-committed: left positive it would sweep
+the free-slipping side and measure the winding train standing still at zero wind
+for its whole span.
+
+Measured after both fixes, all four corners: **−1, −1, −1, −1** against the
+−1 the cones demand.
+
+**The burial's first reading**, kept because the diagnosis turns on it:
+`probe-crossed-axis-mesh` reads `alarmDiscBevel ⇄ alarmStemBevel` at 0.2169,
+40% of a tooth, with a phase floor of 0.2108 — no index clears it, so it is not
+an indexing problem. The apexes coincide at the engaged pose (measured), the
+axes are 90° apart, and both blanks are identical, so the geometry is right.
+The reading to compare it against is probe-138-bevel-roll's WRONG SENSE control,
+which buries 0.171–0.248: **this looks like the tick law's coupling, not the
+teeth.** The shear form never touched at any station, so any sense "worked"
+there and nothing has ever tested this one. Diagnose it before running the
+battery — it is a P0 question, and it is exactly what converting to real teeth
+exists to expose.
+
+Two instrument fixes came out of the conversion, both worth carrying:
+- **`probe-crossed-axis-mesh` learned the conical solid**, and the test is on a
+  RING at the real azimuth φ against the back-cone radius, not against an
+  angular outline. The §136 flank is RADIAL, so in (φ, θ) the outline has
+  vertical runs — 40 of a 10-tooth bevel's 130 steps do not increase in φ — and
+  `θ ≤ Θ(φ)` has no well-defined Θ there: it put a vertex of the gear's own mesh
+  7.46° outside the solid containing it. Developing properly (`a = φ·cos γ`) is
+  worse, not better: it unrolls the gear into a SECTOR of 2π·cos γ, and a
+  crossing count against a curve that does not close read 1.0840. Plotted
+  against φ the ring closes exactly, at the stated cost that azimuthal distances
+  scale by 1/cos γ — never an under-report, the safe direction for a depth.
+- **Its tier three is retired**, because probe-138-bevel-roll answers that
+  question better and two answers to one question is the defect this repo keeps
+  finding.
+
+**And the battery came back 40/40 on the converted movement.** Two gates broke
+on the first run and both were the shear law's last copies — `spiderStub`'s
+length reading `planetBoreR + faceWidth - hubR` (at 45° the bore's RADIUS
+doubled as its axial POSITION, so a shrunk bore collapsed the stub to 0.031 mm
+against a 0.12 floor), and `subSleeveB` coming out exactly CLEAR_MARGIN long
+because the conical blank's farthest axial point is its BORE, not its tip, so
+`halfHeight` came in correctly and the sleeve with it. A clearance is not a
+section, so `SUB_PIN_B_Z` opens the stack by the §50 floor. Three `intraUnit`
+selectors went stale in the same run, and they had said the wrong thing before
+they went stale: indices 40–43 of Keyless works are the four motion-works BEVEL
+GEARS, described in the table as "crown-end wheel pressed on the long keyless
+arbor". The joints are real — each corner gear is keyed to the rod it drives —
+and it was the description that was wrong, written from measured proximity
+without identifying the meshes.
+
+Fingerprint 959829604, boot silent, `--no-incremental`, local.
+
+### LANDING 2 IS DONE, and what it leaves
+
+| | |
+|---|---|
+| `makeBevelGear` | retired; five call sites on `makeConicalGear` |
+| pitch angle | DERIVED from the counts, not defaulted to 45° |
+| blanks | cut at two cone distances; 9 of 11 strictly inside the metal they replace |
+| the four corners | all measure ω_B/ω_A = −1, the ratio two rolling cones demand |
+| battery | 40/40 |
+| [TODO 85] | its first bullet closes with this — no builder cuts a trapezoid on a cone any more |
+
+Still open, each filed where it belongs rather than absorbed here:
+- **[TODO 139]** — the setting corner is not a closed loop when engaged, so its
+  index is a function of the hour and 0.1108 of burial stands at the shipped
+  index. `bevelCornerRay`/`bevelCornerSpin` are in place for the day that item
+  gives them a constant to compute.
+- **[TODO 136]** — unblocked now: its two keyless pairs have a conjugate
+  crossed-axis form to be cut in, and the 0.7480 station correction lands with
+  them. `probe-crossed-axis-mesh` still measures them at 0.2065 and 0.1372.
+- **[TODO 85]**'s second bullet, the barrel, is untouched and still its own
+  landing.
+
+**What this landing set out to do** (all of it, kept as the record)
+
+`makeBevelGear` is still the shear-cone builder and still what the movement
+calls. Landing 2 replaces it, re-stations what needs it, and re-runs the bar.
+What is known now:
+
+- **Every bevel in the movement is a MITRE**, so γ = 45° on both sides and the
+  builder's old default happened to be the one angle it gets right. The three
+  keyless-corner gears, the two alarm-corner gears, the alarm contrate and the
+  differential's sides and planets are all equal-count 90° pairs.
+- **`addBevelCorner`'s two stations are already right, and are the only two
+  verified.** It mounts both gears with their origins AT the shaft intersection
+  (`mountIn.position.copy(point)`, `mountOut` the same), which IS the shared
+  apex this form needs — so those should mesh without moving. The alarm's
+  corner (`discBevelMount` / `stemBevelMount`) and the contrate's (`cMount`) are
+  built separately against `Z_ALARM_CORNER` rather than through that helper, and
+  whether their two apexes actually coincide has NOT been established here —
+  measure it, do not assume it, and note that the shear form would look
+  identical either way because it never touched at any station.
+- **`coneAngleDeg` must become a pitch angle from the AXIS, derived from the
+  counts.** Today it is an angle from the PLANE and defaults to 45°; the two
+  agree only for a mitre, which is why nothing has ever disambiguated it.
+- **The blank's z-extent changes.** The sheared extrude runs `z ∈ [0, fw]` before
+  a shear that grows with r; the conical blank runs `z ∈ [R_i cos γ, R_o cos γ]`.
+  That is a P3 packaging question for the corners' neighbours, resolved in
+  position space, and nothing in it may reach back into the tooth.
+- **`userData.solid` gains a third kind.** `{ kind: 'apexCone', zLo, zHi, boreR,
+  outline }` is neither a prism nor a sheared prism, so `probe-crossed-axis-mesh`
+  must learn it — and its tier three flips from REFUSES to MESHES in the same
+  landing, which is the acceptance.
+- **The differential's members need a MATES LIST, not one `mateTeeth`.** A
+  planet meshes BOTH side gears, which is `gearToothSpec`'s locality rule one
+  level up. It happens to be exact today because `subtractorSpec` gives sides
+  and planets the SAME count, so the single-mate call already names the right
+  virtual count — but that is a coincidence of this spec, not a property of the
+  signature, and it should not be allowed to become one.
+- **`subtractorSpec` restates the shear law and must be re-derived.** Its
+  `halfHeight` and its TODO 60 hub seat are both written from "a vertex at
+  radius r lands at z in [r, r + faceWidth]", which is the shear, in prose, in a
+  second file. That is CLAUDE.md's own recurring defect — one law written down
+  twice with only one copy carrying a change — and Landing 2 is where the second
+  copy has to go, not be patched. The conical blank's seat is the flat annulus
+  at `z = zBack` from the bore out to `zBack·tan θ_root`, which is a different
+  number.
+- **[TODO 136] unblocks.** Its two keyless pairs get cut in this form and the
+  0.7480 station correction lands with them, in one change.
+- **[TODO 85]'s first bullet closes with it.** 85 left `makeBevelGear` on the
+  trapezoid because "a cycloidal spur profile on a bevel is a different lie from
+  a trapezoid on one, not a smaller one", and named the fix — "a bevel spec (a
+  crown/octoid tooth on a cone)" — as its own piece of work. This is that work.
+  85 also recorded the blocker: applying `minGearTeeth`'s cycloidal floor to
+  these members demanded 11 teeth where the trapezoid needs 10 and killed the
+  arrest station's solve, which is why 85 wrote "the floor must match the
+  generator that cuts the member".
+  **That blocker dissolves rather than needing a waiver**, and for a reason
+  worth having in writing. `minGearTeeth` asks whether the cut ROOT CIRCLE
+  clears the BORE — a flat-disc question. A bevel's root is a CONE that stands
+  off the axis at every plane of its band, so the analogous constraint is
+  `boreR < zFront·tan θ_root`, which `bevelToothSpec` guards and which all five
+  pairs pass at 10 teeth. And the profile's own count is not 10 anyway: Tredgold
+  gives a 45° mitre a VIRTUAL 14.142, comfortably past the floor that rejected
+  it. The floor was answering a spur question about a conical part.
+
+**Related.** [TODO 136] is blocked on Landing 2: its two keyless pairs need a
+conjugate crossed-axis form to be cut in. 136's station correction (0.7480,
+`layout.js`'s two `windPinionR * 0.55` terms) is independent and survives
+whatever form lands — and this one agrees with it, since `bevelToothSpec`
+derives the mate's centre as `coneR·cos γ_mate`, which at Σ = 90° is the
+member's own pitch radius.
 
 ## 137. The column pawl's arm is cut under the stock floor, and every instrument misses it for a different reason
 

@@ -1059,7 +1059,12 @@ export const AXES = [
     n: 109,
     pose: (f, clock) => ({
       tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
-      alarmWindRotation: f * (clock ? clock.alarmWindCrownTurns : 1.75 / (12 / 44)) * 2 * Math.PI,
+      // NEGATIVE ON PURPOSE (TODO 138 Landing 2). The crown's turn reaches the
+      // alarm arbor through the stem⇄contrate BEVEL, which reverses it, so the
+      // hand turns this way to wind. A pose table is direction-committed: left
+      // positive, this axis would sweep the free-slipping side and measure the
+      // winding train standing still at zero wind for its whole span.
+      alarmWindRotation: -f * (clock ? clock.alarmWindCrownTurns : 1.75 / (12 / 44)) * 2 * Math.PI,
       alarmOn: 0, alarmReleased: 0, alarmCrownPullT: 0,
     }),
   },
@@ -2537,7 +2542,15 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushTop', why: '§202: the selector rod sliding in its three-quarter-plate bush at PIVOT_BORE_CLEAR — the rod\'s upper bearing, declared on the rod' },
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushBack', why: '§202: the same rod in its back-plate bush — the lower bearing' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#43', b: 'CylinderGeometry#39', why: 'the minute-arbor pair\'s other wheel, same shaft as #44 (this row measures MARGINAL — flag flips run-to-run at the d≈1e-4 boundary; the joint is real either way)' },
+  // TODO 138 Landing 2 — RE-POINTED, and the three rows below said the wrong
+  // thing before it. Indices 40–43 of this unit are the motion-works BEVEL
+  // GEARS, not wheels on arbors: the conversion from the sheared extrude to
+  // `makeConicalGear` turned their geometry into a BufferGeometry and the
+  // selectors stopped matching, which is the only reason anyone looked. The
+  // joints themselves are real — each corner gear is keyed to the rod it drives
+  // — and §182's reach audit measures them; what was wrong was the description,
+  // written from measured proximity without identifying the meshes.
+  { unit: 'Keyless works', a: 'BufferGeometry#43', b: 'CylinderGeometry#39', why: 'mwCornerRiseOut, the rise corner\'s outboard bevel, keyed to the vertical rod it drives (measures MARGINAL \u2014 the flag flips run-to-run at the d\u22481e-4 boundary; the joint is real either way)' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
   // keyless arbor sit at the measurement boundary and the flag flips
@@ -2545,8 +2558,8 @@ export const INTRA_UNIT_CONTACTS = [
   // the next, wandering across poses). The joints are real — wheels
   // pressed on their arbor, the power-reserve convention — and declaring
   // them is what stops the battery flickering on float noise.
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#41', b: 'CylinderGeometry#38', why: 'crown-end wheel pressed on the long keyless arbor (d≈1e-4 marginal, like its neighbour row)' },
-  { unit: 'Keyless works', a: 'ExtrudeGeometry#42', b: 'CylinderGeometry#38', why: 'centre-end wheel pressed on the same arbor (same marginal cluster)' },
+  { unit: 'Keyless works', a: 'BufferGeometry#41', b: 'CylinderGeometry#38', why: 'mwCornerDropOut, the drop corner\'s outboard bevel, keyed to the traverse rod (d\u22481e-4 marginal, like its neighbour row)' },
+  { unit: 'Keyless works', a: 'BufferGeometry#42', b: 'CylinderGeometry#38', why: 'mwCornerRiseIn, the rise corner\'s inboard bevel, keyed to the same traverse rod (same marginal cluster)' },
   { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
   // (§182 retired 'alarmIndexWedge ⇄ ShapeGeometry#3'. It read "the index wedge
   // stands proud THROUGH the face sheet by design", and TODO 26 had already

@@ -503,9 +503,16 @@ export function gearToothSpec({ module: m, teeth, mates }) {
     infeasible,
   };
 }
-// The outline: computed polylines only (no curveSegments dependence), the
-// root land arc sampled under π/(2N) per edge for the phase gauge.
-export function cycloidalGearShape(spec) {
+// ONE TOOTH of the §136 profile, as [r, dAz] pairs measured from the tooth's own
+// centre azimuth and spanning exactly one pitch (2π/N of the spec's teeth).
+//
+// FACTORED OUT of cycloidalGearShape for TODO 138. A bevel's profile is the
+// same cycloid developed on the BACK CONE, where Tredgold gives it a VIRTUAL
+// tooth count z/cosγ — not an integer, so the ring loop below cannot walk it,
+// while every constant in the profile itself is unchanged. The law therefore
+// lives HERE, once, and both builders place copies of it: CLAUDE.md's recurring
+// defect is one law written down twice with only one copy carrying a change.
+export function cycloidalToothPath(spec) {
   const { teeth: N, pitchR: Rp, faceGenR: rho, addendum: h, rootR, tipR,
     halfThickAng: th, clearance: c, chordErr: eps, module: m } = spec;
   if (spec.infeasible.length)
@@ -530,41 +537,371 @@ export function cycloidalGearShape(spec) {
   const topAz = cyRetreat(Rp, rho, h);
   const filletAz = c / Rp;             // fillet's azimuthal reach at the root
   const pts = [];
-  const put = (r, a) => pts.push([r * Math.cos(a), r * Math.sin(a)]);
+  const put = (r, a) => pts.push([r, a]);
   const pitch = (2 * Math.PI) / N;
-  for (let i = 0; i < N; i++) {
-    const cAz = i * pitch;
-    // right side of the tooth (lower azimuth): fillet, flank, face up
-    put(rootR, cAz - th - filletAz);
-    put(rootR + c, cAz - th);
-    for (let k = 1; k <= faceSegs; k++) {
-      const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
-      // flank is the radial segment root→pitch; the face starts AT the pitch
-      // point, so k = 0 (the cusp) is the flank's top and needs no echo.
-      if (k === 1) put(Rp, cAz - th);
-      put(Rp + e[2], cAz - th + e[3]);
-    }
-    // tip land between the two face ends (the cap guarantees it holds a 2ε round)
-    put(tipR, cAz - th + topAz);
-    put(tipR, cAz + th - topAz);
-    // left side down (mirror)
-    for (let k = faceSegs; k >= 1; k--) {
-      const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
-      put(Rp + e[2], cAz + th - e[3]);
-      if (k === 1) put(Rp, cAz + th);
-    }
-    put(rootR + c, cAz + th);
-    put(rootR, cAz + th + filletAz);
-    // root land arc to the next tooth, each edge under π/(2N) of azimuth
-    const a0 = cAz + th + filletAz, a1 = cAz + pitch - th - filletAz;
-    const segs = Math.max(1, Math.ceil((a1 - a0) / (Math.PI / (2 * N))));
-    for (let k = 1; k < segs; k++) put(rootR, a0 + ((a1 - a0) * k) / segs);
+  // right side of the tooth (lower azimuth): fillet, flank, face up
+  put(rootR, -th - filletAz);
+  put(rootR + c, -th);
+  for (let k = 1; k <= faceSegs; k++) {
+    const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
+    // flank is the radial segment root→pitch; the face starts AT the pitch
+    // point, so k = 0 (the cusp) is the flank's top and needs no echo.
+    if (k === 1) put(Rp, -th);
+    put(Rp + e[2], -th + e[3]);
   }
+  // tip land between the two face ends (the cap guarantees it holds a 2ε round)
+  put(tipR, -th + topAz);
+  put(tipR, th - topAz);
+  // left side down (mirror)
+  for (let k = faceSegs; k >= 1; k--) {
+    const e = cyEpi(Rp, rho, (psiTop * k) / faceSegs);
+    put(Rp + e[2], th - e[3]);
+    if (k === 1) put(Rp, th);
+  }
+  put(rootR + c, th);
+  put(rootR, th + filletAz);
+  // root land arc to the next tooth, each edge under π/(2N) of azimuth
+  const a0 = th + filletAz, a1 = pitch - th - filletAz;
+  const segs = Math.max(1, Math.ceil((a1 - a0) / (Math.PI / (2 * N))));
+  for (let k = 1; k < segs; k++) put(rootR, a0 + ((a1 - a0) * k) / segs);
+  return pts;
+}
+
+// The outline: computed polylines only (no curveSegments dependence), the
+// root land arc sampled under π/(2N) per edge for the phase gauge.
+export function cycloidalGearShape(spec) {
+  const N = spec.teeth;
+  const tooth = cycloidalToothPath(spec);
+  const pitch = (2 * Math.PI) / N;
+  const pts = [];
+  for (let i = 0; i < N; i++)
+    for (const [r, d] of tooth) pts.push([r * Math.cos(i * pitch + d), r * Math.sin(i * pitch + d)]);
   const shape = new THREE.Shape();
   shape.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) shape.lineTo(pts[i][0], pts[i][1]);
   shape.closePath();
   return shape;
+}
+
+// ---------------------------------------------------------------------------
+// TODO 138 — THE BEVEL TOOTH, CUT ON THE CONE.
+//
+// Landing 1: the generator exists and is proven in free space by
+// tools/probe-138-bevel-roll.mjs. Nothing consumes it yet — `makeBevelGear`
+// below still ships the shear-cone form, and Landing 2 is what folds the
+// movement's three bevel corners (and TODO 136's two keyless pairs) onto this.
+//
+// WHY THE OLD FORM CANNOT WORK, since this generator's whole shape is a
+// response to it. `makeBevelGear` extrudes a FLAT gear outline and then shears
+// every vertex by `hypot(x, y) * tan(coneAngle)`: the tooth height stays
+// RADIAL and the solid is a constant-thickness shell lying on one side of a
+// cone. Two such shells at complementary tapers have tc·tp = 1 exactly, which
+// forces their bands to meet on the tangent LINE and nowhere else — measured,
+// floor 0.0000 AND ceiling 0.0000 at every index, both senses, all three
+// mountings. A bevel tooth's height is not radial; it is ANGULAR, measured
+// about the shared apex, and that is the one thing the shear cannot express.
+//
+// WHAT A STRAIGHT BEVEL ACTUALLY IS. Every tooth surface is generated by a
+// line through the apex, so on any sphere centred there the tooth's section is
+// the SAME region in angular coordinates (θ from the axis, φ about it) — the
+// section only scales with ρ. So the solid is exactly
+//
+//     { ρ·dir(θ, φ) : θ ≤ Θ(φ) }  cut to a face band,
+//
+// and the whole design reduces to ONE question: what is the angular outline
+// Θ(φ)? That is the only place a profile choice enters, and it is where the
+// two members' conjugacy lives or dies.
+//
+// THE PROFILE IS THE §136 CYCLOID, DEVELOPED ON THE BACK CONE (Tredgold). The
+// back cone is the cone through the pitch circle whose elements are
+// PERPENDICULAR to the pitch cone's; it is developable, and unrolling it gives
+// a plane in which the tooth is an ordinary spur tooth. So the profile is not
+// invented here — it is `gearToothSpec` + `cycloidalToothPath`, the same law
+// probe-136-roll proves conjugate on 24 of the movement's meshes, read at a
+// VIRTUAL tooth count:
+//
+//     virtual teeth  z_v = z / cos γ       (the classical Tredgold count)
+//     back-cone R_b  = pitchR / cos γ      ( = coneR · tan γ, asserted below)
+//
+// and z_v is why `cycloidalToothPath` had to be factored out of
+// `cycloidalGearShape`: z_v is NOT an integer, so the ring loop cannot walk it
+// while every constant inside the tooth is unchanged.
+//
+// THE TWO MAPS, each derived rather than fitted:
+//
+//   · RADIAL → POLAR.  θ(r) = γ + atan((r − R_b) / coneR). The back-cone
+//     element is perpendicular to the pitch-cone element at the pitch point and
+//     both points stand at coneR from the apex, so a distance t along the back
+//     cone subtends exactly atan(t/coneR) about the apex. (Substituting the
+//     back cone's own parameterisation reproduces this identically, which is
+//     the check that it is exact and not a small-angle story.)
+//
+//   · AZIMUTHAL → AZIMUTHAL.  φ(a) = a / cos γ. Unrolling a cone of half-angle
+//     90°−γ multiplies azimuth by cos γ, so the inverse divides. The
+//     consequence is the one that has to hold: one virtual pitch 2π/z_v maps to
+//     2π cos γ / z / cos γ = 2π/z — EXACTLY one real pitch, so the teeth close
+//     the circle with no seam to fudge.
+//
+// WHY THE PAIR THEN ROLLS. A real rotation dφ carries the pitch point through
+// arc r_p·dφ; in the developed plane that is a virtual rotation dφ·cos γ. Both
+// members' pitch points trace the SAME arc, so the two virtual gears roll
+// without slip exactly when the real pair turns at the real ratio z_b/z_a —
+// which arrives from the tooth counts, standing rule 2, and is not asserted
+// here a second time. Conjugacy in the developed plane is then the §136
+// generator's own guarantee.
+//
+// THE APPROXIMATION, STATED — AND IT IS NOT THE ONE IT LOOKS LIKE. The obvious
+// story is that Tredgold holds the back-cone profile constant along the face
+// width, so the error grows toward the small end and F ≤ coneR/3 bounds it.
+// That story is wrong here, and the instrument is what says so: the solid is
+// SELF-SIMILAR about the apex — the angular outline does not vary with ρ and
+// every measured length is ρ·sin(angle) — so scaling the whole assembly by k
+// scales every clearance by exactly k, held to 1e-6 in probe-138-bevel-roll's
+// RULED control. Nothing about the fit varies along the face, because an
+// apex-ruled tooth IS what a straight bevel has; there is no face-width term to
+// bound.
+//
+// The real approximation is in the PROFILE alone: the planar cycloid mapped to
+// angles is not the exact SPHERICAL cycloid, and that error is uniform along
+// the face. Its size is measured in the currency the generator already spends.
+// An exactly conjugate pair rolls with backlash/2 standing off each flank; the
+// measured minimum clearance falls short of that, and the shortfall IS the
+// error: 0.0062 u of 0.0189 for the motion-works mitre, 0.0055 of 0.0151 for
+// the alarm's, 0.0071 of 0.0214 for the keyless pair — about a third of the
+// backlash, with the rest surviving as working clearance. It must stay under
+// backlash/2 or the teeth bind, which is the same statement as the minimum
+// clearance staying positive, and that is gated.
+//
+// So F ≤ coneR/3 is kept as the classical BLANK PROPORTION, not as an error
+// bound: everything scales to nothing at the apex, so a face width approaching
+// the cone distance leaves the small end with teeth too thin to be metal. The
+// warning below says that, and it currently fires on ALARM_BEVEL_FACE = 0.65
+// against coneR/3 = 0.5657 — a real finding about a shipped constant, for
+// Landing 2 rather than for this one.
+// ---------------------------------------------------------------------------
+
+// The classical face-width proportion. An apex-ruled tooth scales with cone
+// distance, so at F = coneR the small end has no section at all; a third is the
+// bound real practice draws and it is a PROPORTION, not an error budget — see
+// the note above for why the error it is usually said to bound is not there.
+const BEVEL_FACE_FRAC = 1 / 3;
+
+export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAngleDeg = 90, boreR = 0.4, quiet = false }) {
+  // `quiet` exists for SOLVES that try candidate sizes (subtractorSpec's pitch
+  // radius search): a rejected candidate must not narrate, or boot stops being
+  // silent (standing rule 6) and the one warning that matters is lost in them.
+  const warn = quiet ? () => {} : (msg) => console.warn(msg);
+  // PITCH ANGLES COME FROM THE COUNTS (standing rule 2), never from a chosen
+  // cone angle: the two pitch cones roll without slip, so tan γ = sin Σ /
+  // (z_mate/z + cos Σ) and γ + γ_mate = Σ. At Σ = 90° this is just
+  // γ = atan(z/z_mate) — and a mitre pair (equal counts) lands on 45°, which
+  // is the one case the old builder's default happened to get right.
+  const SIGMA = (shaftAngleDeg * Math.PI) / 180;
+  const gamma = Math.atan2(Math.sin(SIGMA), mateTeeth / teeth + Math.cos(SIGMA));
+  const gammaMate = SIGMA - gamma;
+  const pitchR = (m * teeth) / 2;
+  // ONE CONE DISTANCE, and it is the pair's, not the member's: both members'
+  // pitch circles lie on the same sphere about the shared apex. That is the
+  // station TODO 136 found `layout.js` breaking — the mate's centre stands
+  // coneR·cos γ_mate from the apex, which for Σ = 90° is the member's own
+  // pitch radius, so the mate's AXIS crosses this member's PITCH CIRCLE.
+  const coneR = pitchR / Math.sin(gamma);
+  const mateConeR = (m * mateTeeth) / 2 / Math.sin(gammaMate);
+  if (Math.abs(coneR - mateConeR) > 1e-9 * coneR)
+    warn(`TODO 138 bevel ${teeth}t: cone distance ${coneR.toFixed(6)} disagrees with the `
+      + `mate's ${mateConeR.toFixed(6)} — the pitch cones do not share an apex`);
+  const faceW = faceWidth ?? coneR * BEVEL_FACE_FRAC;
+  if (faceW > coneR * BEVEL_FACE_FRAC + 1e-9)
+    warn(`TODO 138 bevel ${teeth}t: face width ${faceW.toFixed(4)} exceeds coneR/3 `
+      + `${(coneR * BEVEL_FACE_FRAC).toFixed(4)} — the tooth scales to nothing at the apex, so the small `
+      + `end is too thin to be metal`);
+  // The back cone, two ways: R_b = pitchR/cos γ by definition, and coneR·tan γ
+  // by the apex triangle. Two paths to one number, so they are ASSERTED to
+  // agree rather than one of them simply being trusted (CLAUDE.md: a figure an
+  // instrument also computes must assert against it).
+  const backR = pitchR / Math.cos(gamma);
+  if (Math.abs(backR - coneR * Math.tan(gamma)) > 1e-9 * backR)
+    warn(`TODO 138 bevel ${teeth}t: back-cone radius ${backR.toFixed(6)} != coneR·tanγ `
+      + `${(coneR * Math.tan(gamma)).toFixed(6)}`);
+  const vTeeth = teeth / Math.cos(gamma);
+  const vTeethMate = mateTeeth / Math.cos(gammaMate);
+  // The developed-plane profile IS the spur generator's, at the virtual counts.
+  // Pair-closed: a bevel corner's two members mesh with each other and nothing
+  // else, which is exactly what a bare number in `mates` means.
+  const flat = gearToothSpec({ module: m, teeth: vTeeth, mates: [vTeethMate] });
+  const theta = (r) => gamma + Math.atan2(r - backR, coneR);
+  const thetaTip = theta(flat.tipR), thetaRoot = theta(flat.rootR);
+  // THE FACE BAND IS CUT AT TWO CONE DISTANCES, ρ ∈ [coneRi, coneR] — the front
+  // and back cones of real bevel practice, not planes perpendicular to the
+  // axis. Both choices leave the FLANKS alone, so this is not a P0 question,
+  // and the first build of this generator used planes. Measured, planes are
+  // wrong twice over:
+  //
+  //   · they let the tooth TIP run past the cone distance, to ρ = z/cos θ_tip.
+  //     That material has no mate — it stands beyond the end of the other
+  //     member's tooth — and it is what made the blank reach FURTHER OUT than
+  //     the sheared form it replaces (r 1.9964 against 1.7576 on the
+  //     motion-works mitre), turning a free conversion into a packaging fight
+  //     over metal that does no work;
+  //   · and it makes the two members' bands agree only ON the pitch cone,
+  //     where ρ·sin γ = ρ·cos γ_mate. At a cone distance the bands are shared
+  //     EVERYWHERE by construction, because both members measure ρ from the
+  //     same apex.
+  //
+  // Cut here instead, the blank reaches coneR·sin θ_tip = 1.697, inside the old
+  // form's 1.7576, and its z band sits inside the old one too — so the fold
+  // costs nothing in position space (tools/probe-138-fold-price.mjs prices it).
+  const coneRi = coneR - faceW;
+  // The bore is a true cylinder, and its two ends land exactly ON the two band
+  // spheres: a point at cylindrical radius boreR and z = √(ρ² − boreR²) stands
+  // at ρ from the apex. So each cap is a chord of its own sphere, rim to bore,
+  // which is the back cone a real blank is turned with.
+  const zBoreOut = Math.sqrt(Math.max(0, coneR * coneR - boreR * boreR));
+  const zBoreIn = Math.sqrt(Math.max(0, coneRi * coneRi - boreR * boreR));
+  const zBack = coneR * Math.cos(gamma);
+  const zFront = coneRi * Math.cos(gamma);
+  if (thetaTip > (85 * Math.PI) / 180)
+    warn(`TODO 138 bevel ${teeth}t: tip cone at ${((thetaTip * 180) / Math.PI).toFixed(1)}° — `
+      + `a plane-bounded blank cannot hold a face gear this flat`);
+  // The bore must stay inside the small end's root cone, or the cap has no
+  // material between the two. This is the CONICAL analogue of minGearTeeth's
+  // spur floor (does the root CIRCLE clear the bore?) — asked about a root that
+  // is a CONE standing off the axis, which is why the spur floor's rejection of
+  // these members at 10 teeth was answering the wrong question (TODO 85).
+  if (boreR >= coneRi * Math.sin(thetaRoot))
+    warn(`TODO 138 bevel ${teeth}t: bore ${boreR} reaches the root cone `
+      + `(${(coneRi * Math.sin(thetaRoot)).toFixed(4)}) at the small end — no blank material left`);
+  return {
+    module: m, teeth, mateTeeth, shaftAngle: SIGMA, gamma, gammaMate,
+    pitchR, coneR, coneRi, faceW, backR, vTeeth, vTeethMate, flat,
+    thetaTip, thetaRoot, zFront, zBack, zBoreIn, zBoreOut, boreR, theta,
+    tipR: coneR * Math.sin(thetaTip),     // the farthest the blank reaches from its axis
+  };
+}
+
+// The angular outline: `teeth` copies of the developed profile, mapped by the
+// two maps above. Returned as [[φ, θ], …] walked once around.
+//
+// IT IS NOT A FUNCTION OF φ, and assuming it was cost a working afternoon. The
+// §136 flank is RADIAL by the Willis degeneracy — that is the whole reason the
+// profile is conjugate — so in (φ, θ) each flank is a VERTICAL run and one
+// azimuth carries several θ. Measured on a 10-tooth alarm bevel, 40 of the
+// outline's 130 steps do not increase in φ. A `θ ≤ Θ(φ)` test therefore has
+// no well-defined Θ and reads whichever branch it lands on: it put a vertex of
+// the gear's own mesh 7.46° "outside" the solid that contains it.
+//
+// So point-in-solid is done in the DEVELOPED PLANE, where the same outline is
+// the simple closed polygon TODO 100's `outlines` gate already holds it to be,
+// and `bevelOutlineFlat` below is that polygon. The inverse maps are the two
+// forward ones read backwards: r = backR + coneR·tan(θ − γ), a = φ·cos γ.
+export function bevelOutline(spec) {
+  const tooth = cycloidalToothPath(spec.flat);
+  const pitch = (Math.PI * 2) / spec.teeth;
+  const invCos = 1 / Math.cos(spec.gamma);
+  const out = [];
+  for (let i = 0; i < spec.teeth; i++)
+    for (const [r, dAz] of tooth) out.push([i * pitch + dAz * invCos, spec.theta(r)]);
+  return out;
+}
+
+// THE TEST RING: the same outline plotted at the REAL azimuth φ against the
+// back-cone radius r. A closed simple ring of `teeth` teeth about the origin —
+// topologically a spur outline — so an instrument tests a point against it with
+// the ordinary crossing count it already has, instead of inventing a test for a
+// boundary that is multivalued in θ.
+//
+// NOT the developed plane, and the difference cost a run. Developing properly
+// uses a = φ·cos γ, which unrolls the gear into a SECTOR of angle 2π·cos γ —
+// 4.443 rad for a mitre, not a closed ring — and a crossing count against a
+// curve that does not close reports whatever the closing chord happens to cut:
+// measured, a vertex of the gear's own mesh read 1.0840 outside the solid that
+// contains it. Plotting against φ closes the ring exactly, because the forward
+// map φ = i·2π/z + dAz/cos γ is 2π-periodic by construction.
+//
+// THE ONE COST, stated: azimuthal distances come out scaled by 1/cos γ (×1.414
+// at a mitre) because φ is the real azimuth and the profile's own is a·. Radial
+// distances are exact. So a depth read from this ring is never an UNDER-report,
+// which is the safe direction for a penetration measure.
+export function bevelOutlineRing(spec) {
+  return bevelOutline(spec).map(([phi, th]) => {
+    const r = spec.backR + spec.coneR * Math.tan(th - spec.gamma);
+    return [r * Math.cos(phi), r * Math.sin(phi)];
+  });
+}
+
+// The blank: the spherical shell segment ρ ∈ [coneRi, coneR] under the angular
+// outline Θ(φ), bored along the axis. Four rings of the same length — outline
+// and bore, at each cone distance — and four quad strips: the toothed outer
+// wall (apex-ruled, the working surface), the bore cylinder, and the two caps,
+// each a chord from its rim to the bore. Every strip is non-degenerate because
+// Θ ≥ θ_root > θ_bore everywhere, so no face has zero area and
+// `computeVertexNormals` never sees a null cross product.
+//
+// CLOSED ON PURPOSE, including the two faces nobody sees once it is mounted:
+// `meshClearance`'s near-zero guard is a PARITY RAYCAST and an open body makes
+// the crossing count odd, which is how the chain once read as colliding with a
+// spring 3.7 units away (TODO 27).
+export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngleDeg = 90,
+  boreR = 0.4, material, name = '' }) {
+  const spec = bevelToothSpec({ module, teeth, mateTeeth, faceWidth, shaftAngleDeg, boreR });
+  const outline = bevelOutline(spec);
+  const N = outline.length;
+  const { coneR, coneRi, zBoreIn, zBoreOut } = spec;
+  const pos = [];
+  // A ring on the sphere of radius rho: the outline itself, or the bore circle
+  // whose z puts it at exactly that same rho.
+  const ring = (rho, zBore, useOutline) => {
+    const base = pos.length / 3;
+    for (let k = 0; k < N; k++) {
+      const [phi, th] = outline[k];
+      const r = useOutline ? rho * Math.sin(th) : boreR;
+      const z = useOutline ? rho * Math.cos(th) : zBore;
+      pos.push(r * Math.cos(phi), r * Math.sin(phi), z);
+    }
+    return base;
+  };
+  const oF = ring(coneRi, zBoreIn, true), oB = ring(coneR, zBoreOut, true);
+  const bF = ring(coneRi, zBoreIn, false), bB = ring(coneR, zBoreOut, false);
+  const idx = [];
+  const quad = (a, b, c, d) => { idx.push(a, b, c, a, c, d); };
+  for (let k = 0; k < N; k++) {
+    const k1 = (k + 1) % N;
+    // outer wall: +φ then outward along ρ gives φ̂ × ρ̂, pointing away from the
+    // axis — this is the working surface, and it is apex-ruled because both its
+    // ends lie on the ray θ = Θ(φ)
+    quad(oF + k, oF + k1, oB + k1, oB + k);
+    // bore wall: the same circuit reversed, so its normal points at the axis
+    quad(bF + k, bB + k, bB + k1, bF + k1);
+    // front cap, chord from the bore out to the inner rim
+    quad(bF + k, bF + k1, oF + k1, oF + k);
+    // back cap, the mirror circuit
+    quad(bB + k, oB + k, oB + k1, bB + k1);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  geo.computeBoundingSphere();
+
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(geo, material || MATS.steel);
+  // §136's solid declaration, for the kind of body it did not anticipate. This
+  // one is neither a prism nor a sheared prism: point-in-solid is an angular
+  // outline test, so the instruments are handed the outline itself rather than
+  // a z-band they would have to infer a shear from.
+  // The declaration an instrument needs to test a point EXACTLY: the band, the
+  // bore, and the developed polygon plus the three constants that invert the
+  // maps onto it. The angular outline rides along for drawing and for the
+  // builder's own asserts, but it is NOT what point-in-solid should use.
+  body.userData.solid = { kind: 'apexCone', rhoLo: coneRi, rhoHi: coneR, boreR, outline,
+    ringPoly: bevelOutlineRing(spec), gamma: spec.gamma, backR: spec.backR, coneR };
+  g.add(body);
+  g.userData.r = spec.pitchR;
+  g.userData.teeth = teeth;
+  g.userData.module = module;
+  g.userData.bevel = spec;
+  if (name) g.name = name;
+  return g;
 }
 
 // Punch a central bore plus `spokes` crescent (annular-sector) cutouts into a
@@ -891,62 +1228,16 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
 }
 
 // ---------------------------------------------------------------------------
-// Bevel gear — small conical gear for a shaft corner (default 45° half-angle,
-// i.e. a standard miter pair for two shafts meeting at 90°). Built from the
-// same flat tooth-outline as makePinion, then sheared so every vertex moves
-// z += r·tan(coneAngle): the flat disc becomes a shallow cone whose apex sits
-// at the local origin (r=0). Mount with the origin AT the shaft intersection
-// and local +Z pointing back into the gear's own shaft (away from the other
-// gear it meshes with) — same convention as a real bevel gear keyed to the
-// end of its arbor, body trailing back along the shaft from the pitch point.
+// RETIRED (TODO 138 Landing 2). `makeBevelGear` extruded a flat outline and
+// sheared it onto a cone, which is not a bevel tooth: the tooth's height stayed
+// RADIAL, the solid was a constant-thickness shell, and two such shells at
+// complementary tapers meet on the tangent LINE and nowhere else — measured,
+// floor 0.0000 AND ceiling 0.0000 at every index, both senses, all three
+// mountings. Every call site now builds `makeConicalGear` above, whose flanks
+// are cut ON the cone and whose pitch angle is DERIVED from the tooth counts
+// rather than defaulted to 45° (the one value the old signature got right,
+// and only because every bevel in this movement happens to be a mitre).
 // ---------------------------------------------------------------------------
-export function makeBevelGear({ teeth, module, coneAngleDeg = 45, faceWidth = 1.1, boreR = 0.4, material, name = '' }) {
-  const mat = material || MATS.steel;
-  const pitchR = pitchRadius(module, teeth);
-  const tipR = pitchR + module * 0.85;
-  const rootR = pitchR - module * 0.95;
-  const shape = gearOutlineShape(teeth, rootR, pitchR, tipR, { tipFrac: 0.26, flankFrac: 0.42 });
-  const bore = new THREE.Path();
-  bore.absarc(0, 0, boreR, 0, Math.PI * 2, true);
-  shape.holes.push(bore);
-
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: faceWidth, bevelEnabled: false, curveSegments: 3 });
-  const taper = Math.tan(THREE.MathUtils.degToRad(coneAngleDeg));
-  const pos = geo.attributes.position;
-  const v = new THREE.Vector3();
-  for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i);
-    v.z += Math.hypot(v.x, v.y) * taper;
-    pos.setXYZ(i, v.x, v.y, v.z);
-  }
-  pos.needsUpdate = true;
-  geo.computeVertexNormals();
-
-  const g = new THREE.Group();
-  const body = new THREE.Mesh(geo, mat);
-  // §136 — THE SOLID, and this is the builder the declaration exists for. The
-  // extrude above runs z ∈ [0, faceWidth] and is NOT centred, and the loop then
-  // shears every vertex by `hypot(x, y) * taper`. Both facts are invisible in
-  // `parameters`, which still describes the flat uncentred prism — so an
-  // instrument reading only that tests a region this metal does not occupy.
-  // The shear is a BIJECTION of space with x and y untouched, so the inverse
-  // (z −= hypot(x, y) * taper) maps the metal exactly back onto the prism:
-  // declaring the pair makes point-in-solid exact here rather than approximate.
-  body.userData.solid = { zLo: 0, zHi: faceWidth, shearZ: taper };
-  g.add(body);
-  // §194 — the tooth count and module travel with the metal, beside the pitch
-  // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
-  // mesh check must read the counts rather than infer them back out of a
-  // radius: standing rule 2 is that a ratio arrives from tooth counts, so
-  // recording both lets the check derive the ratio twice and ASSERT the two
-  // agree — the bar a figure an instrument also computes has to meet.
-  g.userData.r = pitchR;
-  g.userData.teeth = teeth;
-  g.userData.module = module;
-  if (name) g.name = name;   // §194: a declared mesh row NAMES its two members
-  return g;
-}
-
 // ---------------------------------------------------------------------------
 // Escape wheel — 15 forward-leaning club teeth (Swiss lever style)
 // ---------------------------------------------------------------------------
@@ -3194,15 +3485,93 @@ export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
   // first time this was written.
   const cageBoreR = arborR + fit;
   const hubR = cageBoreR + stockMin;
-  const planetBoreR = hubR + margin;
-  const R = planetBoreR + stockMin;
+  // TODO 138 Landing 2 — THE PLANET'S BORE IS A HOLE FOR ITS STUB, AND NOTHING
+  // ELSE. Under the shear form it was doing two jobs at once and only one of
+  // them on purpose: at 45° the shear put a vertex at radius r at z = r, so a
+  // bore of radius b ALSO placed the blank's inner face b from the cage centre,
+  // and `planetBoreR = hubR + margin` was really buying hub clearance through
+  // the bore. The conical blank separates the roles — the inner end stands at
+  // the cone distance coneRi, the bore is a hole — so the bore shrinks to what
+  // a stub needs and the hub clearance becomes a constraint on coneRi below.
+  //
+  // Left as it was, the bore (0.7014) stood outside the blank's own root cone
+  // at the small end (0.6046) and the generator said so: a planet with no metal
+  // between its hole and its teeth.
+  const pinR = stockMin / 2;                 // the stub is a section, not a fraction
+  const planetBoreR = pinR + fit;
+  //
+  // AND THE PITCH RADIUS IS NOW SOLVED, NOT ASSIGNED. `R = planetBoreR +
+  // stockMin` read "the rim is stock again", which is a FLAT DISC's rim —
+  // measured in the plane, from the bore out to the pitch circle. A bevel has
+  // no such rim: its root is a CONE, its thinnest section is at the SMALL end,
+  // and both constraints below depend on the cut itself (through the face
+  // width, the module and the §136 dedendum). So the pitch radius is searched
+  // upward for the first value whose blank actually clears the hub and leaves a
+  // stock rim — the same shape of solve, and for the same reason, as
+  // minGearTeeth's "search up from the hard leg for the first count whose cut
+  // root clears the bore".
+  const moduleMinSolve = stockMin / (Math.PI / 2);
+  const budgetRSolve = tipBudget !== undefined ? tipBudget / Math.SQRT2 : undefined;
+  const sideBoreRSolve = Math.max(cageBoreR, thickness / 2 + margin);
+  // The candidate at a pitch radius, with the count and module picked exactly as
+  // they always were — the budget buys the module and the module buys the count.
+  // This deliberately does NOT reject an uncuttable or over-budget candidate:
+  // those are `cuttable` and `fitsBudget`, which main.js's leg-count loop reads
+  // to choose a different leg. An earlier version returned null for them and the
+  // search collapsed at every radius where the budget bit, reporting "no pitch
+  // radius" for a set that in fact solves from R ≈ 0.95 up.
+  const shapeAt = (Rc) => {
+    const mMax = budgetRSolve !== undefined ? (budgetRSolve - Rc) / 0.85 : Infinity;
+    const t = mMax > 0 ? Math.max(preferTeeth, Math.ceil((2 * Rc) / mMax)) : 400;
+    const mod = (2 * Rc) / t;
+    const fw = Math.max(stockMin, mod * 2);
+    const bev = bevelToothSpec({ module: mod, teeth: t, mateTeeth: t, faceWidth: fw,
+      boreR: planetBoreR, quiet: true });
+    return { R: Rc, teeth: t, module: mod, faceWidth: fw, bev };
+  };
+  // Two constraints, and BOTH BORES, because the side gear's is the binding one:
+  // it must pass the arbor (0.55 as built) where a planet only passes its stub.
+  //
+  //  (1) the planet's inner end stands clear of the cage hub it sits against;
+  //  (2) neither bore swallows the root cone at the SMALL end, where the blank
+  //      is nearest the axis — the conical analogue of minGearTeeth's question,
+  //      and exactly what the generator itself guards.
+  //
+  // What is deliberately NOT asserted here is a stock RIM between bore and root.
+  // The first version of this solve demanded `≥ bore + stockMin` and no pitch
+  // radius under the budget could meet it — but measured, the sheared blank it
+  // replaces had 0.2747 of rim against the 0.3167 floor and has been shipping
+  // that way, so the bar would have been a NEW one, imposed by this landing, and
+  // breaking the layout to satisfy it would be paying for a section rule out of
+  // P3. Sections are `stockFloor`'s judgement on the real mesh, as always; this
+  // solve only refuses a blank with no material there at all.
+  //  (3) and the tooth it cuts is at or above the §50 section floor. That is not
+  //      an afterthought bolted on: without it the search returns the SMALLEST
+  //      radius the two geometric constraints allow, which measured is R 0.930
+  //      cutting a 0.1860 module against a 0.2016 floor — a set that clears its
+  //      own bores and could not be cut. With it the search lands at R 1.008,
+  //      which is where the flat-disc rule happened to put it (1.0181) for
+  //      reasons that had nothing to do with any of this.
+  const clearsBoth = (c) => c && c.bev.coneRi >= hubR + margin
+    && Math.max(planetBoreR, sideBoreRSolve) < c.bev.coneRi * Math.sin(c.bev.thetaRoot)
+    && c.module >= moduleMinSolve;
+  let solved = null;
+  for (let n = 1; n <= 600 && !solved; n++) { const c = shapeAt(n * 0.01); if (clearsBoth(c)) solved = c; }
+  // A CANDIDATE DOES NOT NARRATE. `spiderSpec` is called once per leg count by
+  // main.js's search, which expects most candidates to be rejected — so an
+  // unsolved radius is REPORTED as `solvedR`, beside `cuttable`, `teethOk` and
+  // `fitsBudget`, and the caller warns once about the leg count it could not
+  // place. Warning here instead put one line per rejected leg into a boot that
+  // standing rule 6 requires to be silent, and buried the one line that meant
+  // something.
+  const R = solved ? solved.R : planetBoreR + stockMin;
   // THE BUDGET IS SPENT ON THE SWEPT RADIUS, NOT THE TIP. A 45° cone's rim is a
   // circle standing one tip radius OFF the cage's axis as well as one tip
   // radius out along its own, so a planet's farthest point from that axis is
   // √2·tip — the same lesson as a rotor's footprint being its annulus rather
   // than its resting silhouette, one dimension down. Sizing to the tip put the
   // planets 1.63 into a corner that leaves 1.16 and told the siting solve 1.15.
-  const budgetR = tipBudget !== undefined ? tipBudget / Math.SQRT2 : undefined;
+  const budgetR = budgetRSolve;
   const moduleMax = budgetR !== undefined ? (budgetR - R) / 0.85 : Infinity;
   // A TOOTH IS A SECTION TOO, so the §50 floor reaches it. A standard tooth is
   // π·module/2 thick at the pitch line, and nothing in this movement is cut
@@ -3210,44 +3579,71 @@ export function spiderSpec({ arborR, stockMin, margin = CLEAR_MARGIN_G,
   // therefore a ceiling on the count. Without it, a spec asked to fit a budget
   // it cannot fit will happily shrink the module until it does: this returned a
   // 114-tooth wheel at module 0.018 (0.007 mm teeth) and called it a solution.
-  const moduleMin = stockMin / (Math.PI / 2);
-  const teeth = Math.max(preferTeeth, Math.ceil((2 * R) / moduleMax));
-  const module = (2 * R) / teeth;
-  const faceWidth = Math.max(stockMin, module * 2);
+  const moduleMin = moduleMinSolve;
+  const teeth = solved ? solved.teeth : Math.max(preferTeeth, Math.ceil((2 * R) / moduleMax));
+  const module = solved ? solved.module : (2 * R) / teeth;
+  const faceWidth = solved ? solved.faceWidth : Math.max(stockMin, module * 2);
   // The side gears run OUTSIDE the cage's own wheel, not on the same shoulder:
   // their cones start at |z| equal to their bore, so a bore inside the wheel's
   // half-thickness puts the cone's inner edge inside the wheel's metal.
-  const sideBoreR = Math.max(cageBoreR, thickness / 2 + margin);
+  const sideBoreR = sideBoreRSolve;
+  // The blanks the builder will actually cut, so every extent below is READ
+  // rather than re-derived. `moduleMax` above stays on the old 0.85-addendum
+  // estimate on purpose: it is a PRE-solve used to choose the module before a
+  // spec exists, and it is conservative in the safe direction — the conical
+  // tip lands at coneR·sin θ_tip, inside that estimate on every member here
+  // (1.1296 against 1.1912). The real reach is then measured, not assumed.
+  const sideBevel = bevelToothSpec({ module, teeth, mateTeeth: teeth, faceWidth, boreR: sideBoreR, quiet: true });
+  const planetBevel = bevelToothSpec({ module, teeth, mateTeeth: teeth, faceWidth, boreR: planetBoreR, quiet: true });
+  const tipReach = planetBevel.tipR;
   return {
     module, sideTeeth: teeth, planetTeeth: teeth, faceWidth, margin, stockMin,
     cageBoreR, hubR, planetBoreR, sideBoreR, arborR, fit,
+    solvedR: !!solved,   // false = no pitch radius met the three constraints; the caller warns
+    // How far along its own axis the PLANET's bore reaches, which is what a
+    // stub has to fill. TODO 138 Landing 2: the stub's length used to read
+    // `planetBoreR + faceWidth - hubR`, which was the shear law again — at 45°
+    // a bore of radius b sat at z = b, so the bore's radius doubled as its
+    // axial position. With the bore shrunk to what a stub needs, that formula
+    // collapsed the stub to 0.0609 (0.031 mm against a 0.12 floor).
+    planetBoreOutZ: planetBevel.zBoreOut,
     R, planetR: R,
-    pinR: stockMin / 2,                 // the stub is a section, not a fraction
-    tipR: R + module * 0.85,
+    pinR,                               // the stub is a section, not a fraction
+    tipR: tipReach,
     // what the assembly actually SWEEPS about the cage's axis — the number the
     // siting solve and the budget must both be given
-    sweptR: (R + module * 0.85) * Math.SQRT2,
+    sweptR: tipReach * Math.SQRT2,
     // half the axial extent of the CONES — what the z-stack above and below has
     // to be given. The sleeves start here, not at the apex: a side gear's hub
     // extends AWAY from the planets in a real differential, and running it
     // inward instead is what had the two sleeves meeting in the middle of the
     // gear set with the planets driven straight through them.
-    halfHeight: R + module * 0.85 + faceWidth * Math.SQRT1_2 + margin,
-    // WHERE A HUB ACTUALLY SEATS, which is NOT halfHeight (TODO 60).
-    // makeBevelGear extrudes the flat outline along z and then shears it
-    // (`v.z += hypot(v.x, v.y) * taper`, taper = 1 at 45°), so a vertex at
-    // radius r lands at z in [r, r + faceWidth]. The cone's back surface is
-    // therefore z = r + faceWidth, sloping from the bore outward — and at the
-    // BORE it is the flat annulus a sleeve butts against. halfHeight is the
-    // swept ENVELOPE and stands outboard of every point of metal, so a sleeve
-    // ended there stops in mid-air: measured, 0.672 short on both legs, which
-    // is exactly the hole TODO 60 found under leg B's deleted ring.
-    hubFaceZ: sideBoreR + faceWidth,
-    teethOk: teeth >= minGearTeeth(module, planetBoreR),   // §136: BEVEL — trapezoid floor, see makeBevelGear
+    //
+    // TODO 138 Landing 2 — BOTH OF THESE READ THE BLANK NOW, and that is the
+    // point of the change. Until then they restated `makeBevelGear`'s shear law
+    // in prose here ("a vertex at radius r lands at z in [r, r + faceWidth]"),
+    // a second copy of a law that lived in the builder — CLAUDE.md's recurring
+    // defect, and the one that cost TODO 60 its 0.672 hole under leg B. The
+    // conical blank is bounded by two CONE DISTANCES, so its farthest point
+    // from the apex along the axis is where the bore meets the back cap,
+    // z = √(coneR² − boreR²), and a sleeve butts on that same flat annulus.
+    // One derivation, consumed twice, from the spec the builder itself cuts.
+    halfHeight: sideBevel.zBoreOut + margin,
+    // WHERE A HUB ACTUALLY SEATS, which is NOT halfHeight (TODO 60): halfHeight
+    // carries the clearance margin and stands outboard of every point of metal,
+    // so a sleeve ended there stops in mid-air.
+    hubFaceZ: sideBevel.zBoreOut,
+    // §136/TODO 85: the floor must match the generator that cuts the member, and
+    // the member is CONICAL now. minGearTeeth asks whether the cut root CIRCLE
+    // clears the bore — a flat-disc question — and rejected these members at 10
+    // teeth for it. A bevel's root is a CONE standing off the axis, so the
+    // constraint is that the bore clears it at the SMALL end, which is what
+    // bevelToothSpec guards and what this now reports.
+    teethOk: planetBoreR < planetBevel.coneRi * Math.sin(planetBevel.thetaRoot),
     moduleMin,
     cuttable: module >= moduleMin - 1e-12,
     fitsBudget: module >= moduleMin - 1e-12
-      && (tipBudget === undefined || (R + module * 0.85) * Math.SQRT2 <= tipBudget),
+      && (tipBudget === undefined || tipReach * Math.SQRT2 <= tipBudget),
     // the differential relation itself, as a function rather than a comment
     carrierOf: (thetaA, thetaB) => (thetaA + thetaB) / 2,
     planetOf: (thetaA, thetaB) => -(thetaA - thetaB) / 2,
@@ -3269,10 +3665,13 @@ export function makeSpiderDifferential({ spec, planets = 2, outModule, outTeeth,
                                          outMates, thickness, material }) {
   const mat = material || MATS.steel;
   const { module, sideTeeth, planetTeeth, faceWidth } = spec;
+  if (!spec.solvedR)
+    console.warn('spider differential: no pitch radius between 0.01 and 6 cuts a conical gear set that '
+      + 'clears the cage hub, clears both bores at the small end, and holds the §50 section floor '
+      + '— a LAYOUT finding, not a number to widen');
   if (!spec.teethOk)
-    console.warn(`spider differential: ${sideTeeth} teeth at module ${module.toFixed(3)} on a `
-      + `${spec.planetBoreR.toFixed(3)} planet bore is under minGearTeeth `
-      + `${minGearTeeth(module, spec.planetBoreR)} — the wheel would have no rim`);
+    console.warn(`spider differential: the ${spec.planetBoreR.toFixed(3)} planet bore reaches its own `
+      + `root cone at the small end — a planet with no metal between its hole and its teeth`);
   if (!spec.fitsBudget)
     console.warn(`spider differential: the cones reach ${spec.tipR.toFixed(3)}, outside the `
       + 'budget the surrounding metal leaves');
@@ -3281,11 +3680,11 @@ export function makeSpiderDifferential({ spec, planets = 2, outModule, outTeeth,
   // One mount per gear: a group whose local +Z is that gear's own shaft
   // direction (makeBevelGear's convention), holding a SPIN group inside it so
   // the gear's rotation is always about its own axis whatever the mount did.
-  const mount = (axis, teeth, bore, phase) => {
+  const mount = (axis, teeth, bore, phase, mate) => {
     const m = new THREE.Group();
     m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis);
     const spin = new THREE.Group();
-    const gear = makeBevelGear({ teeth, module, faceWidth, boreR: bore, material: mat });
+    const gear = makeConicalGear({ teeth, module, mateTeeth: mate, faceWidth, boreR: bore, material: mat });
     gear.rotation.z = phase;
     spin.add(gear);
     m.add(spin);
@@ -3308,8 +3707,10 @@ export function makeSpiderDifferential({ spec, planets = 2, outModule, outTeeth,
   // They are INSIDE the cage group so the apex stays one point however the cage
   // turns; each carries only its angle relative to the cage, and pose() adds
   // the rest back.
-  const A = mount(new THREE.Vector3(0, 0, -1), sideTeeth, spec.sideBoreR, 0);
-  const B = mount(new THREE.Vector3(0, 0, 1), sideTeeth, spec.sideBoreR, 0);
+  // a side gear's mate is a PLANET, and a planet's is a side — equal counts in
+  // this spec, but the signature must not depend on that being true
+  const A = mount(new THREE.Vector3(0, 0, -1), sideTeeth, spec.sideBoreR, 0, planetTeeth);
+  const B = mount(new THREE.Vector3(0, 0, 1), sideTeeth, spec.sideBoreR, 0, planetTeeth);
   A.gear.children[0].name = 'spiderSideA';
   B.gear.children[0].name = 'spiderSideB';
   const sideA = A.spin, sideB = B.spin;
@@ -3321,14 +3722,17 @@ export function makeSpiderDifferential({ spec, planets = 2, outModule, outTeeth,
     // …in the CROSSINGS, a quarter turn off the arms.
     const a = Math.PI / 2 + (i / planets) * Math.PI * 2;
     const dir = new THREE.Vector3(Math.cos(a), Math.sin(a), 0);
-    const stubLen = spec.planetBoreR + faceWidth - spec.hubR;
+    // from the cage hub out to the far end of the planet's bore — the span the
+    // stub actually has to carry, read off the blank rather than inferred from
+    // the bore's radius
+    const stubLen = spec.planetBoreOutZ - spec.hubR;
     const stub = new THREE.Mesh(
       new THREE.CylinderGeometry(spec.pinR, spec.pinR, stubLen, 12), mat);
     stub.name = `spiderStub${i}`;
     stub.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     stub.position.copy(dir).multiplyScalar(spec.hubR + stubLen / 2);
     cage.add(stub);
-    const P = mount(dir, planetTeeth, spec.planetBoreR, Math.PI / planetTeeth);
+    const P = mount(dir, planetTeeth, spec.planetBoreR, Math.PI / planetTeeth, sideTeeth);
     P.gear.children[0].name = `spiderPlanet${i}`;
     cage.add(P.m);
     // EVERY planet takes the SAME spin about its OWN outward axis, which is

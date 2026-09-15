@@ -4480,8 +4480,12 @@ const CAP_BEARING = (() => {
   const reachRsv = Math.max(
     G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 }),
     G.gearOuterR({ module: m1, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 }));
-  // and the corner's is its bevel, the widest thing on this arbor in that band
-  const reachCap = (BEVEL_MODULE * BEVEL_TEETH) / 2 + BEVEL_MODULE * 0.85;
+  // and the corner's is its bevel, the widest thing on this arbor in that band.
+  // TODO 138 Landing 2: READ from the blank the builder cuts — coneR·sin θ_tip —
+  // rather than the spur expression pitchR + 0.85·module, which described a flat
+  // disc this member has never been.
+  const reachCap = G.bevelToothSpec({
+    module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH }).tipR;
   const need = reachRsv + reachCap + CLEAR_MARGIN;
   const at = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -4520,14 +4524,14 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   const mountIn = new THREE.Group();
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
-  const gearIn = G.makeBevelGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
   if (tag) gearIn.name = `${tag}In`;   // §137: a transfer row names its members (§54's rule)
   mountIn.add(gearIn);
 
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
-  const gearOut = G.makeBevelGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE });
+  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
   if (tag) gearOut.name = `${tag}Out`;
   gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
@@ -12997,7 +13001,58 @@ const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD };
 // at −6.15 (clear of the floor) and the stem bevel tops out at −2.70 (clear of
 // the plate).
 const Z_ALARM_CORNER = -4.1;
-const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_FACE = 0.65, ALARM_BEVEL_PHASE = Math.PI / ALARM_BEVEL_TEETH;
+const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_PHASE = Math.PI / ALARM_BEVEL_TEETH;
+// TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
+// not a convention. Two of them on a shared apex roll without slip only if their
+// RELATIVE angular velocity lies along the contact ray; everything else is
+// sliding. With d = cos γ_A·û_A + cos γ_B·û_B that forces
+//
+//     ω_B = −ω_A · cos γ_B / cos γ_A = −ω_A · tan γ_A = −ω_A · z_A/z_B
+//
+// and this corner is a MITRE, so the magnitude is 1 and the sense is −1: the
+// two members turn EQUAL AND OPPOSITE about their own axes. `ratio: 1` in the
+// corner's transfer row is the magnitude; this is the half that row does not
+// carry.
+//
+// Measured, not declared: tools/probe-138-coupling.mjs drives the corner's real
+// input and tracks a marker fixed in each body, and the swing ratio is the
+// number it reports. The motion-works corners already satisfy it —
+// `cornerDrop.gearOut = BEVEL_PHASE − handSetOffset` against
+// `gearIn = +handSetOffset` — which is what makes them the control.
+const ALARM_CORNER_SENSE = -1;
+// TODO 138 Landing 2 — AND THE INDEX IS DERIVED TOO, from the corner rather
+// than assumed. `bevelOutline` centres tooth i at azimuth i·2π/z in the gear's
+// OWN frame, so "half a tooth" only interleaves a pair if both gears' tooth 0
+// already lies on the contact ray. It does not: each mount carries whatever
+// azimuth reference `setFromUnitVectors` happened to produce, and for the alarm
+// corner that put the clearing index at 0.875 of a pitch, not 0.5 — measured,
+// 0.1080 of burial still standing after the sense was corrected.
+//
+// The condition is the one probe-138-bevel-roll derives: one member presents a
+// TOOTH on the contact ray, the other a GAP. So each gear's spin is the ray's
+// azimuth READ IN ITS OWN MOUNT FRAME, less half a pitch for the member that
+// must gap. For a shaft angle of 90° the ray bisects the two axes, which is
+// why it is simply their normalised sum.
+function bevelCornerRay(axisA, axisB) {
+  return axisA.clone().add(axisB).normalize();
+}
+function bevelCornerSpin(mount, ray, teeth, gap) {
+  mount.updateMatrixWorld(true);
+  const q = new THREE.Quaternion();
+  mount.matrixWorld.decompose(new THREE.Vector3(), q, new THREE.Vector3());
+  const local = ray.clone().applyQuaternion(q.invert());
+  const pitch = (Math.PI * 2) / teeth;
+  const r = Math.atan2(local.y, local.x) - (gap ? pitch / 2 : 0);
+  return ((r % pitch) + pitch) % pitch;
+}
+// TODO 138 Landing 2 — DERIVED, not chosen. A bevel's face width is bounded by
+// the classical blank proportion coneR/3: an apex-ruled tooth scales with cone
+// distance, so at F = coneR the small end has no section left to be metal. The
+// shipped 0.65 exceeded this member's 0.5657 by 15% and the generator warned on
+// it. Read from the spec the builder cuts rather than restated here.
+const ALARM_BEVEL_FACE = G.bevelToothSpec({
+  module: ALARM_BEVEL_MODULE, teeth: ALARM_BEVEL_TEETH, mateTeeth: ALARM_BEVEL_TEETH,
+}).faceW;
 
 // --- 'Alarm disc' — the CENTRAL rattrapante alarm hand (§25 C, stage 1) -----
 // Replaces §24's sub-dial pointer. The alarm indicator is now a co-axial hand
@@ -15394,7 +15449,7 @@ const ALARM_ARBOR_BUSH_R = 0.85;
   alarmArborUnit.add(bush);
 }
 // Disc bevel at the corner, axis −z (its shaft trails down to the pointer).
-const discBevel = G.makeBevelGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+const discBevel = G.makeConicalGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
 discBevel.name = 'alarmDiscBevel'; // §137: named for the corner's transfer row
 const discBevelMount = new THREE.Group();
 discBevelMount.position.set(0, 0, Z_ALARM_CORNER);
@@ -15434,13 +15489,26 @@ alarmSpinner.rotation.order = 'ZYX';
 alarmSpinner.rotation.z = alarmStemAngle - Math.PI / 2;
 alarmCrownUnit.add(alarmSpinner);
 // Stem bevel at the inner end (the corner), axis along the stem (local +Y).
-const stemBevel = G.makeBevelGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+const stemBevel = G.makeConicalGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
 stemBevel.name = 'alarmStemBevel'; // §137: the transfer row names its members
-stemBevel.rotation.z = ALARM_BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
+
 const stemBevelMount = new THREE.Group();
 stemBevelMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 1, 0));
 stemBevelMount.add(stemBevel);
 alarmSpinner.add(stemBevelMount);
+// THE CORNER'S INDEX, derived from the two mounts once both exist. The disc
+// presents a TOOTH on the contact ray and the stem a GAP, which is what makes
+// them interleave; `ALARM_BEVEL_PHASE`'s bare half-pitch assumed both gears'
+// tooth 0 already lay on that ray, and neither does.
+{
+  const rayAxis = (m) => {
+    m.updateMatrixWorld(true);
+    return new THREE.Vector3(0, 0, 1).transformDirection(m.matrixWorld).normalize();
+  };
+  const ray = bevelCornerRay(rayAxis(discBevelMount), rayAxis(stemBevelMount));
+  discBevel.rotation.z = bevelCornerSpin(discBevelMount, ray, ALARM_BEVEL_TEETH, false);
+  stemBevel.rotation.z = bevelCornerSpin(stemBevelMount, ray, ALARM_BEVEL_TEETH, true);
+}
 // §137 — the alarm corner's transfer row: addBevelCorner's idiom re-used at
 // the alarm stem (the disc-side gear lives in 'Alarm setting arbor', the
 // stem-side one here in 'Alarm crown'; the row hangs on the crown, whose
@@ -19799,7 +19867,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   rod.rotation.x = Math.PI / 2;
   rod.position.z = (rodTop + Z_ALARM_CORNER) / 2;
   climb.add(rod);
-  const contrate = G.makeBevelGear({ name: 'contrate', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, faceWidth: ALARM_BEVEL_FACE });
+  const contrate = G.makeConicalGear({ name: 'contrate', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
   contrate.traverse((o) => { if (o.isMesh) o.name = 'alarmWindContrate'; }); // §29 step 4: the pawl budget selects this by name
   const cMount = new THREE.Group();
   cMount.position.z = Z_ALARM_CORNER;
@@ -20517,7 +20585,17 @@ const SUB_CAGE_Z = Math.max(
   SUB_WIND_TOP + CLEAR_MARGIN + SUB_SPEC.halfHeight,
   ALARM_BARREL_TOP + CLEAR_MARGIN + ALARM_WIND_WHEEL_T / 2);
 // Leg B's pinion is the same distance above the apex, by symmetry.
-const SUB_PIN_B_Z = SUB_CAGE_Z + SUB_SPEC.halfHeight + ALARM_WIND_WHEEL_T / 2;
+// Leg B's pinion is the same distance above the apex, by symmetry — but no
+// closer than lets the SLEEVE between it and the side gear's hub face be a
+// section. TODO 138 Landing 2 shrank `halfHeight`: the conical blank's farthest
+// axial point is where its bore meets the back cap, not its TIP as the sheared
+// cone's was, so the envelope came in and the sleeve with it. At
+// `hubFaceZ + halfHeight`'s difference the sleeve was exactly CLEAR_MARGIN long
+// — 0.0568 mm against the §50 floor's 0.12. A clearance is not a section, so the
+// stack opens by the floor instead of the sleeve being cut under it.
+const SUB_PIN_B_Z = Math.max(
+  SUB_CAGE_Z + SUB_SPEC.halfHeight,
+  SUB_CAGE_Z + SUB_SPEC.hubFaceZ + STOCK_MIN_U) + ALARM_WIND_WHEEL_T / 2;
 // THE CAGE'S WHEEL IS AT THE CAGE'S OWN PLANE, because that is the only place
 // it can be. A first cut ran it up a tube above the differential, and that
 // cannot work at all: leg B's pinion is concentric with such a tube and must
@@ -38101,16 +38179,48 @@ function tick(t) {
     const aDelta = alarmCrownRotation - lastAlarmCrownRotation;
     lastAlarmCrownRotation = alarmCrownRotation;
     if (alarmCrownPullT > 0.5) {
-      alarmSetRot += aDelta;
-    } else if (alarmCrownPullT < 0.5 && aDelta > 0) {
+      // THE CROWN'S TURN CROSSES THE CORNER, so it arrives reversed. Banking
+      // `+aDelta` handed it to the setting path as though the bevel pair were a
+      // shaft coupling — standing rule 2's exact failure mode, an angle
+      // ASSIGNED where a real train would have produced it.
+      //
+      // It could not be seen until the teeth were real. The sheared blanks
+      // never touched at any station (probe-crossed-axis-mesh read that pair at
+      // 0.0000 and TODO 136 once quoted the zero as reassurance), so any sense
+      // "worked". With conjugate teeth a wrong sense GRINDS: the pair measured
+      // buried 0.2169, 40% of a tooth, with a phase floor of 0.2108 — no index
+      // clears it, because indexing cannot fix a sense.
+      //
+      // Everything downstream reads `alarmSetRot`, so they all move together:
+      // the hand through alarmDiscAngle(), the trip through discRotForTrip, the
+      // tube. What changes for a reader is which way the crown turns to advance
+      // the alarm — a consequence of the gearing, walked through it rather than
+      // declared, exactly as TODO 115 found for the winding crown.
+      alarmSetRot += ALARM_CORNER_SENSE * aDelta;
+    } else if (alarmCrownPullT < 0.5 && aDelta * ALARM_CORNER_SENSE > 0) {
       // §99: winding turns the ARBOR only — the body (and the striker one
       // mesh down from it) stands parked, so the strike phase does not move
       // with a wind any more (§25 C backed it out here because the wound
       // member WAS the body). The one-way is the click's law, now modelled
       // as metal: the ratchet's saw cams the click out on this sense and
-      // its steep bank holds the return; a backward crown free-slips at the
-      // stem⇄contrate bevel without unbanking.
-      alarmBarrelWind = clamp(alarmBarrelWind + (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ARREST_WIND_CEILING); // §106: the ceiling is the cross's bank, read off the stop-work
+      // its steep bank holds the return; a crown turned the other way
+      // free-slips at the stem⇄contrate bevel without unbanking.
+      //
+      // TODO 138 Landing 2 — AND THE CROWN'S TURN CROSSES THAT BEVEL, so it
+      // arrives at the arbor REVERSED. `ALARM_WIND_RATIO` is "arbor turns per
+      // crown turn" through the tooth counts with the idlers dropping out, and
+      // the corner's sign was the one factor it did not carry: measured, the
+      // stem and contrate swung +1 where two cones on a shared apex demand −1.
+      //
+      // The RATCHET does not move for this. Its saw is cut against the ARBOR's
+      // winding direction, and the arbor still turns the same way for an
+      // increasing `alarmBarrelWind`; what reverses is which way a hand turns
+      // the crown — a consequence of the gearing, walked through it rather than
+      // declared, exactly as TODO 115 found for the going train's crown. The
+      // guard above turns with it, and so does the `alarmWind` axis's pose,
+      // because a pose table is direction-committed too.
+      alarmBarrelWind = clamp(alarmBarrelWind
+        + ALARM_CORNER_SENSE * (aDelta / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ARREST_WIND_CEILING); // §106: the ceiling is the cross's bank, read off the stop-work
       alarmWindWasActive = true;
       alarmWindIdleT = 0;
     } else if (alarmWindWasActive) {
@@ -39394,7 +39504,15 @@ window.__clock = {
     if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
     if (p.alarmCrownRotation !== undefined) { // §24 alarm axis — poses "crown wound to here in SET mode"
       alarmCrownRotation = p.alarmCrownRotation;
-      alarmSetRot = p.alarmCrownRotation;           // §25 C: the set path banks it directly
+      // THE SAME CROSSING AS tick()'S, and it has to carry the same sense.
+      // TODO 138 Landing 2 found this one written twice: tick banks a DELTA
+      // through the corner while setPose assigns the ABSOLUTE angle, and only
+      // the delta site was corrected first — so the probe went on reading +1
+      // after the fix, because every sweep and the whole pose net come through
+      // HERE. CLAUDE.md's recurring defect exactly: one direction written down
+      // twice with only one copy carrying the change. `ALARM_CORNER_SENSE` is
+      // the one source both sites read.
+      alarmSetRot = ALARM_CORNER_SENSE * p.alarmCrownRotation;   // §25 C: the set path banks it through the corner
       lastAlarmCrownRotation = p.alarmCrownRotation; // and no delta leaks into the next tick
     }
     if (p.alarmCrownPullT !== undefined) { alarmCrownPullT = p.alarmCrownPullT; alarmCrownOut = p.alarmCrownPullT > 0.5; } // §25 C winding clutch
@@ -39487,7 +39605,10 @@ window.__clock = {
     if (p.alarmWindRotation !== undefined) {
       alarmCrownRotation = p.alarmWindRotation;
       lastAlarmCrownRotation = p.alarmWindRotation; // no delta leaks into the next tick
-      alarmBarrelWind = clamp((p.alarmWindRotation / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
+      // the same crossing as tick()'s, through the one source — TODO 138's
+      // lesson from the setting path, where correcting only the delta site left
+      // every sweep and the whole pose net reading the old sense
+      alarmBarrelWind = clamp(ALARM_CORNER_SENSE * (p.alarmWindRotation / (Math.PI * 2)) * ALARM_WIND_RATIO, 0, ALARM_BARREL_TURNS);
     }
     // §25 striking axis — §99 rewrote the contract. Phase and wind WERE one
     // mechanical quantity (the §25 C body was both the wound and the meshed
