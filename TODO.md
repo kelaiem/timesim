@@ -57,7 +57,8 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 | 127 | OPEN | The gong's PITCH is set by where a stud can be screwed down: the plate's balance opening forbids a foot between az −5° and −75°, so the arc is ~97° and the fundamental 1381 Hz where the ear wants 2.5 kHz |
 | 128 | OPEN | The hammer spring CHANGES LENGTH as the hammer swings — 36% of itself over the draw — so TODO 14's blade is a rubber band and the fall's angular frequency still cannot come from it. ~26 dB of the gong's level is in this item |
 | 125 | CLOSED | An underived `+ 0.1` sat on every keyless mesh distance at seven live sites (the item said six; crown wheel ⇄ idler was the seventh), putting two declared meshes 1.337% beyond the centre distance their teeth were cut for. DELETED, and the arithmetic decided it rather than taste: KW_MODULE is 0.34, so 0.1 is **0.29 of a module**, where the centre increase buying even a generous horological backlash is under 0.1·m — no backlash rule derives it. Nor was it a convention: 21 of the 23 declared meshes already stood at module·(P+Q)/2 and the only two that did not were the two these expressions site. What it WAS is visible at `ALARM_TUBE_INNER` — this file's 0.1 running clearance for a tube in its bearing, carried across to a centre distance, on a comment ("the same +0.1 slop every keyless mesh uses, see mwFoldD") that was circular. The deletion was a RE-SOLVE as the item predicted: the keyless cluster floors the plate, dialRadius fell 42.922914475499894 → **42.804991398276**, §125's own D4 assert fired in rule-6 form naming the two bounds it had to meet, and D4 re-derives from its comment's closed form 18.777750373095056 → **18.730557557590057** with the bounds meeting to float noise. Price, stated: the seconds well is 0.047 smaller. Dividend: `meshCoverage` now enumerates **23 of 23** declared meshes where it found 21 — the two it could never see were outside its tolerance BECAUSE of the 0.1. `MESH_CENTRE_WAIVERS` is empty; probe-135-registry's claims rewritten, since they encoded this item's open state. Unblocks [TODO 132]'s keyless rows |
-| 140 | OPEN | Found by [TODO 139]'s new boot guard, on its first run, on a corner that guard was not written for. Measured at the rest pose off the metal: `alarmDiscBevel` carries its tooth **0.3750 of a pitch** off the contact ray where the convention wants 0, burial **0.2131** (39% of a tooth), and `probe-crossed-axis-mesh` floors at 0.0000 AT PHASE 0.375 — the same number from the other side, so the pair is one constant from meshing and is not on it. The 0.3750 is not the index block's arithmetic: `bevelCornerSpin` indexes both halves at BUILD where `alarmRotor.rotation.z` is 0, and the rest pose puts it at −2.90597, which is −4.625 pitches of a 10-tooth bevel and wraps to exactly the miss. **The two terms of that rotor angle are not alike**: `3 * _bd` (the hour carrying the friction-set disc) IS mirrored into the stem by `alarmCrownCreep` since §194 F, and `-alarmSetRot` — the angle the CROWN put there through this very corner — is not, so standing rule 2 is unsatisfied on one term of one sum. That much of 139's withdrawn diagnosis was right, about the term it did not name. No build constant can close it (`alarmSetRot` varies with the set time), so the fix is to what the CROWN displays, and it has a design question first: disengaged, the crown is free and the relative index is not a kinematic consequence — either the crown carries the disc's total either way (making the knob a readout of the setting) or the index is re-solved at engagement, which is what the metal does and needs an engagement event the tick has not got. Waived at the corner's build with an AUDITED waiver — the guard warns if a waived corner measures IN index, so the fix cannot leave it behind. **The two MOTION-WORKS corners are the same item and are now in its scope**: `addBevelCorner` seeds a bare `BEVEL_PHASE` and never adopted `bevelCornerSpin`, so the ABSOLUTE condition is false on all four members (−0.3479/+0.1528 and −0.3472/−0.1528 of a pitch from the ray). They mesh only because the RELATIVE condition survives — and it lands on the DIFFERENCE in one and the SUM in the other, 0.5007 and −0.5000, because the two corners have opposite handedness. Two accidents, not a solve. Both are registered with the index guard and waived to this item, so the debt is visible at boot rather than only in a probe; converting them moves the motion works' rest pose, which §137's transfer rows, the intra-unit tiers and `meshPhase` all read, so it is a re-measure and belongs with this item's decision |
+| 141 | OPEN | The centre stack's coupling BEHAVES correctly and is not a mechanism. Measured with `tools/probe-alarm-disc-coupling.mjs` (both controls green): DISARMED with tau advancing the `Alarm disc` rides the hour at ratio **1.00000** (dHour −0.52342, dDisc −0.52343); ARMED it **HOLDS** at ratio 0.00000 while the hour runs up to it; SETTING with tau frozen it follows the crown at exactly **1/3** (0.13333 per 0.4 rad) with the hour still at 0.00012. All three are what the metal should do — so this is not a behaviour bug and nothing on the dial is wrong. What is wrong is that the regime is SELECTED rather than decided: `tubeTarget = (alarmSelShownT > 0.5 \|\| alarmArmFreed) ? -alarmAngle : hourDialA`, eased toward by `alarmTubeShownA += wrapPi(target − shown)·(1 − exp(−rawDt/τ))`. The seat's own declaration ('Alarm setting wheel') says "ARMED it turns the tube; DISARMED the tube follows the heart underneath it and **slips**" — and nothing slips, because no torque exists anywhere in the path. Half the OR is honest: `alarmArmFreed` is read from the cone's cap, a member's pose, which §45 did on purpose. The other half is a display selector. **The ratios cannot catch this** — a seat and a ternary produce the same three numbers; what separates them is whether the tube can be made to slip. Fix: derive `τ_slip` two-sidedly on §24's cannon-pinion precedent (it must HOLD the tube against the follower nose's drag on the heart or the hand lags the hour; it must SLIP before the setting train back-drives the hour wheel, the same bound the reset rod already publishes from the going ribbon's energy over the reserve), decide the regime by comparing driving torque to it, and make the tube's angle banked state advanced by whichever member drives it. Blocked on POSE COVERAGE before it can be gated: no axis varies `alarmCrownPullT` ([TODO 140]'s residue) and none poses "disarmed, tau varying" ([TODO 129]'s), so all three regimes are reachable only by the probe |
+| 140 | CLOSED | Found by [TODO 139]'s new boot guard, on its first run, on a corner that guard was not written for. Measured at the rest pose off the metal: `alarmDiscBevel` carries its tooth **0.3750 of a pitch** off the contact ray where the convention wants 0, burial **0.2131** (39% of a tooth), and `probe-crossed-axis-mesh` floors at 0.0000 AT PHASE 0.375 — the same number from the other side, so the pair is one constant from meshing and is not on it. The 0.3750 is not the index block's arithmetic: `bevelCornerSpin` indexes both halves at BUILD where `alarmRotor.rotation.z` is 0, and the rest pose puts it at −2.90597, which is −4.625 pitches of a 10-tooth bevel and wraps to exactly the miss. **The two terms of that rotor angle are not alike**: `3 * _bd` (the hour carrying the friction-set disc) IS mirrored into the stem by `alarmCrownCreep` since §194 F, and `-alarmSetRot` — the angle the CROWN put there through this very corner — is not, so standing rule 2 is unsatisfied on one term of one sum. That much of 139's withdrawn diagnosis was right, about the term it did not name. No build constant can close it (`alarmSetRot` varies with the set time), so the fix is to what the CROWN displays, and it has a design question first: disengaged, the crown is free and the relative index is not a kinematic consequence — either the crown carries the disc's total either way (making the knob a readout of the setting) or the index is re-solved at engagement, which is what the metal does and needs an engagement event the tick has not got. Waived at the corner's build with an AUDITED waiver — the guard warns if a waived corner measures IN index, so the fix cannot leave it behind. **The two MOTION-WORKS corners are the same item and are now in its scope**: `addBevelCorner` seeds a bare `BEVEL_PHASE` and never adopted `bevelCornerSpin`, so the ABSOLUTE condition is false on all four members (−0.3479/+0.1528 and −0.3472/−0.1528 of a pitch from the ray). They mesh only because the RELATIVE condition survives — and it lands on the DIFFERENCE in one and the SUM in the other, 0.5007 and −0.5000, because the two corners have opposite handedness. Two accidents, not a solve. Both are registered with the index guard and waived to this item, so the debt is visible at boot rather than only in a probe; converting them moves the motion works' rest pose, which §137's transfer rows, the intra-unit tiers and `meshPhase` all read, so it is a re-measure and belongs with this item's decision  **LANDED (alarm half)**: the index is RE-SOLVED AT ENGAGEMENT, the owner's call and the metal's. A prerequisite went first — the corner's TWO drives disagreed about its sense (crown −1, the HOUR through the same teeth +1), so the pair was not one coupling; the ungated restatement was deleted rather than flipped and the hour now reaches the arbor once, as `alarmArborHourA`. That bought the invariant the re-solve needs: engaged, `d = rotor − spinner` does not move and the teeth interleave when d is a whole number of pitches. Engagement takes the shortest stem rotation making it so — the tip chamfers' cam, never more than half a pitch, the knob clicking in. The moment needs no second threshold, and that is DERIVED: a correctly-indexed pair never touches (its gap is the 0.00267 u of backlash the §136 cut reserves), so there is no contact instant, and d drifts only with the hour at 4.4e-4 rad/s against a 0.3 s ease — any instant in the throw freezes the same index to 2e-4 of a pitch. Six engagements land on valleys 0, 0, 0, 1, 2 and 5, each exactly in mesh, against a parted control that drifts 0.2222. MODELLED not simulated: the cam's force path is not walked, its outcome is. **AND THE MOTION-WORKS HALF LANDED**: `addBevelCorner` takes `bevelCornerSpin` at last, and the build-time solve is legitimate there — unlike the alarm corner — because both mounts hang off `keyless`, whose world transform is the identity, so their frames move with no input. The seed turned out to be written TWICE (the build's `BEVEL_PHASE` and `tick()` restating it as its own base), so either edit alone would have been silently undone; the index is solved once now and only the SPIN travels, the shape `settingWheelBase` already had beside it. All four members satisfy the ABSOLUTE condition where none did: −0.3479/+0.1528 and −0.3472/−0.1528 → **−0.0007/−0.4993** and **+0.0007/+0.4993**, the residual being the scan's resolution. Both corners are GATED now rather than reported, mutation-tested firing 4/4 on the restored seed, and `BEVEL_PHASE` plus the long-dead `ALARM_BEVEL_PHASE` are deleted |
 | 139 | WITHDRAWN — TWO LANDINGS UNDER IT | Filed from a symptom and reasoned to a cause without measuring the second member. It claimed `alarmSpinner.rotation.y` "carries `alarmCrownRotation` alone and knows nothing about the hour"; `alarmCrownCreep` had been accumulating `-3 * Δ_bd` there since §194 F, three weeks earlier. Measured over six engaged hours, rotor and spinner move −0.00654 and +0.00654 per hour and `rotor + spin` is CONSTANT — the 1:1 mitre's conjugate relation, a loop that is closed while engaged and opens when the crown is pushed in. So the conclusion fails too: the relative index does NOT vary with the hour, there IS a build-time constant, and sweeping the one index knob finds it (floor **0.0000** at phase 0.875). **A symptom consistent with a story is not evidence for it.** What the chase found instead is the item's value: `probe-crossed-axis-mesh` had been REFUSING every conical row since [TODO 136] gave the blank a flat web the solid declaration did not name, and with it measuring again — and TODO 136's two keyless corners finally added to `probe-138-coupling`, which that item cut and never put in the table — **both read +2.5 against a wanted −2.5**: right magnitude, inverted sense, because moving a wheel below the stem and negating its local angle leaves the WORLD motion right and the MESH inverted. Fixed as a named factor in both chains (`KW_WIND_WHEEL_SIDE`/`KW_SET_WHEEL_SIDE`), guarded by `assertWheelSide` and mutation-tested; the crown now winds and sets the other way round, which is the gearing's consequence and is carried, not suppressed. 6/6 corners conjugate, battery 40/40. RESIDUE, and it is a plain indexing error rather than this item: `bevelCornerSpin` misses the best index on BOTH corners (alarm 0.1108 shipped / 0.0000 at 0.875; winding 0.2653 / 0.0571 at 0.833) and not by one systematic offset. Three hypotheses were refuted before the instrument was built; the fourth, the right one, was ALSO refuted first by a control that compared a quantity with itself. `tools/probe-bevel-corner-index.mjs` settled it off the METAL — sweep the contact ray about each member's axis through one pitch, ask its solid metal-or-void at the pitch cone, the tooth is one run. **`updateMatrixWorld(true)` recomputes from `parent.matrixWorld` AS IT STANDS and never walks UP**: at build time the keyless and alarm groups still carry a fresh `Object3D`'s identity, and both STEM-side mounts hang under a group holding the stem's azimuth, so that rotation was dropped — while the PLATE-side mounts hang off `keyless`, whose world transform IS the identity and which therefore came out exact. One member of each corner wrong, by a different amount each, and the stale-frame arithmetic reproduces the shipped numbers to 1e-4 (0.49190 vs 0.49179; 0.29350 vs 0.29361). Fixed at the source: `getWorldQuaternion` walks up, `bevelCornerSpin` takes the GEAR so no caller can pass one object's frame while writing another's `rotation.z`, and `bevelCornerAxis` is the axis reader ONCE where three sites had three copies. **A boot guard now measures the metal rather than restating the solve**, with audited waivers. After: winding 0.0000/0.5000, setting 0.0000/0.4938 (the 0.0062 is the clutch's own seat clocking), burial 0.2653 → 0.0760 and both corners now FLOOR at the shipped index. Residue, both named: the alarm corner is [TODO 140], and `probe-crossed-axis-mesh`'s SETTING row had been naming `settingWheel` — the spur, 4.2 away — so it read 0.0000 at every phase and could not have failed |
 | 136 | CLOSED | Reported by eye (gears colliding while setting the time) and confirmed by `tools/probe-crossed-axis-mesh.mjs`: `crownWheel ⇄ windingPinion` buried **0.2065** (27% of a tooth) and `clutchRim ⇄ settingWheel` **0.1372** (18%), deeper than the deliberate half-pitch defect the control injects — because two flat SPUR cuts meeting at a right angle are not a mesh of any kind and no indexing could have fixed them (floors 0.1811 / 0.0971 over a whole pitch). Blocked on [TODO 138] for a conjugate crossed-axis FORM, then landed whole: both corners are Σ = 90° BEVEL pairs, cut on cones whose half-angles come from the counts (68.199°/21.801°) and sharing the apex where the axes cross, with the stations derived from it — a member's pitch plane stands coneR·cos γ from the apex, which at a right angle is the MATE's pitch radius, so `layout.js`'s two `windPinionR * 0.55` terms were wrong by 0.7480 apiece and are deleted. The index is a solve after all, just not the parallel-axis one: a tooth of the wheel and a gap of the pinion on the pair's line of contact. **The FOLD cost more than the corner** — the setting wheel became a compound below the stem (its two halves cannot straddle a stem that runs through the station), the minute pinion's step reversed and is solved against the traverse rod, the traverse plane went under the crown wheel's cone, the winding pinion gained a coupling boss at the §50 stock floor, the clutch's spine cap and hub collar got new bounds against a blank that overhangs the stem on both sides of the apex, the plate's keyless floor learned the stem bushing was now its outermost member, and D4 re-derived with the plate. Two instruments were wrong in ways only a cone could show: `meshCandidates` took its axial extents from `setFromObject` and so measured the §66 schematic proxy (at the APEX, 0.79 outside the metal), and `userData.bevel` was both a NUMBER and a cone SPEC, which produced a NaN movement depth. RESIDUE, unchanged by the repair: `meshCandidates` still cannot PROPOSE a crossed-axis pair, so both corners are declared by hand and no coverage check can find the next one — the item's opening finding, and [TODO 139] is where the same blindness is filed for the alarm corner |
 | 135 | OPEN | The `handSet` axis moves the keyless setting wheel and minute wheel through their whole travel (7.53982 and 6.28319 rad) and moves the cannon pinion, motion works and hands **not at all** — under the walk every check performs (`enterAxis` once, then `setPose` per sample). Found by `transmits` reporting both motion-works rows `driver still` on it, which since the path-length fix means never moved rather than came home. The cause is a time-eased tick law meeting a zero-dt pose: while the jumper is engaged the hands read `jumpDisp`, which approaches its target by `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))`, identically zero when `rawDt` is, and only the `jumpDisp === null` initialiser moves it — so a one-shot reading shows the axis working perfectly and a sweep sees nothing. CLAUDE.md's zero-dt trap reaching a whole sweep rather than one scripted write. Costs `inspection:handSet`, `clearances:handSet` and `expectedContacts:handSet` their entire dial-side population: a collision reachable only while setting the hands is invisible to all three and has been since the axis landed. `tools/probe-handset-reach.mjs` measures it with the control (reset-per-sample and sweep+step both move; the keyless rows are the must-move column). Filed rather than fixed — the three candidate fixes each reach past this item, and all three will surface real findings |
@@ -17402,7 +17403,81 @@ Found from §219's side — `tools/probe-219-catalogue.mjs` derives the
 reserve reduction from `RESERVE_SWEEP_DEG` rather than reading it, which is
 what turned the stale 4.2 in the LEGO note into this.
 
-## 140. The alarm corner is indexed at a pose the movement never occupies: the disc's rest angle carries alarmSetRot and the stem does not mirror it
+## 141. The Alarm disc's seat on the Hour wheel is a ternary on a target, not a coupling with a slip torque
+
+**The behaviour is already right, and that is why this is easy to miss.**
+Asked to make the `Alarm disc` turn independently of the `Hour wheel`, the
+first useful act was to measure whether it already does.
+`tools/probe-alarm-disc-coupling.mjs` drives the three regimes the seat's own
+declaration names, with `step()` rather than `setPose()` — the tube's
+transition eases on `rawDt` and a zero-dt pose flattens it — and both controls
+green (the hour turned in every regime; the `Dial` never did):
+
+| regime | dHour | dDisc | ratio | the seat should |
+|---|---|---|---|---|
+| DISARMED, tau advancing | −0.52342 | −0.52343 | **1.00000** | ride the hour, tucked under the hour hand |
+| ARMED, tau advancing | −0.52340 | 0.00000 | **0.00000** | hold the set time while the hour runs up |
+| SETTING, tau frozen | 0.00012 | 0.13333 per 0.4 of crown | **1/3** | follow the crown, hour undisturbed |
+
+Nothing on the dial is wrong and no ratio is off. The alarm hand holds its
+setting, hides under the hour hand when disarmed, and sweeps from the crown
+without dragging the time with it.
+
+**What is missing is the force path.** The tick law picks a target —
+
+```js
+const tubeTarget = (alarmSelShownT > 0.5 || alarmArmFreed) ? -alarmAngle : hourDialA;
+alarmTubeShownA += wrapPi(tubeTarget - alarmTubeShownA) * (1 - Math.exp(-rawDt / τ));
+```
+
+— so the two regimes are BRANCHES and the angle is an eased assignment. The
+seat's declaration beside the metal ('Alarm setting wheel') says something
+stronger: *"ARMED it turns the tube; DISARMED the tube follows the heart
+underneath it and **slips**, so the crown's set position is kept."* Nothing
+slips, because there is no torque anywhere in the path — the seat cannot be
+overpowered, cannot be under-tightened, and has no number.
+
+Half the condition is honest and should be kept: `alarmArmFreed` is read from
+the cone's cap — the lifting sleeve's own pose — which §45 did deliberately
+rather than setting a flag. The other half, `alarmSelShownT > 0.5`, is a
+display selector deciding a mechanical regime.
+
+**The measurement cannot settle it, and that is the useful part of the
+finding.** A real friction seat and a ternary on a target produce the SAME
+three ratios; every number in the table above is equally consistent with both.
+What distinguishes them is whether the tube can be made to slip, and that
+question has no representation in the model, so no sweep of poses can ever ask
+it. This is the CLAUDE.md distinction exactly: the coupling is MODELLED — the
+seat is real metal, bore 3.05 on the 3.0 tube, and the two regimes it produces
+are the right ones — and it is not SIMULATED, because no causal path carries
+torque across it.
+
+**The fix, and its constraint.** `τ_slip` is derivable two-sidedly, on §24's
+cannon-pinion precedent and in the form the reset rod already uses for the
+display arbor's coupling:
+
+- **Lower bound — it must HOLD.** While the tube rides the heart, the seat
+  carries the follower nose's drag on the heart profile plus the hand's own
+  inertia. Below that the alarm hand lags the hour and the tuck drifts.
+- **Upper bound — it must SLIP first.** Setting must not back-drive the hour
+  wheel through the heart, so `τ_slip` ≤ the torque the motion works can take
+  at the hour wheel without disturbing the going train — the same bound the
+  reset rod publishes from the going ribbon's energy over the reserve
+  (½k(θ_full² − θ_setup²) = 3.43e-3 J), rather than a number chosen to work.
+
+Then the regime is DECIDED by comparing the driving torque against `τ_slip`,
+and the tube's angle becomes banked state advanced by whichever member is
+driving it — not a target chosen by an OR.
+
+**Blocked on pose coverage before any of it can be GATED**, which is why this
+is filed rather than attempted: no axis varies `alarmCrownPullT` ([TODO 140]'s
+residue) and none poses "disarmed with tau varying" ([TODO 129]'s), so all
+three regimes above are reachable only by this item's probe. A seat rebuilt
+without those axes would be a force path no sweep could judge — the same
+blind spot that let the whole alarm branch ship keyed to the hour's old sign.
+The axes come first.
+
+## 140. The alarm corner is indexed at a pose the movement never occupies: the disc's rest angle carries alarmSetRot and the stem does not mirror it — CLOSED
 
 Found by the boot guard [TODO 139] shipped, on its first run, on a corner that
 guard was not written for.
@@ -17459,7 +17534,139 @@ the index is solved at a pose the movement never occupies. `tools/probe-bevel-co
 measures it at a controlled pose and reports it, and the corner's own build
 carries the diagnosis in a comment rather than a waiver string.
 
-### AND THE TWO MOTION-WORKS CORNERS, WHICH ARE THE SAME ITEM
+**That diagnosis is now CLOSED for this half — see the landing below.** The
+probe's row will keep reporting the corner at its BUILD index, because that is
+what the probe poses; what the tick does at engagement is a different question
+and the invariant check is what holds it. Reading the probe's alarm row as an
+open defect after this landing would be reading the wrong instrument.
+
+### LANDED FOR THE ALARM HALF — THE INDEX IS RE-SOLVED AT ENGAGEMENT
+
+The owner's call, and it is the one the metal makes: a bevel pushed into mesh
+takes whatever index engagement leaves it, so the index is not a constant to be
+solved once.
+
+**A prerequisite had to land first, and finding it is the useful part.** The
+corner has TWO drives — the crown at the stem, and the hour arriving through the
+centre stack, where the alarm tube rides the hour-wheel tube and the setting
+wheel rides that. `probe-138-coupling` swept only the crown, so nothing had ever
+asked whether the two agree. Measured:
+
+| drive | ratio | wanted |
+|---|---|---|
+| the crown | −1 | −1 |
+| the HOUR through the same teeth | **+1** | −1 |
+
+Same two gears, 1:1 both times, opposite senses — so the pair was not one
+coupling at all. **Which site was wrong is not a coin toss**, and the comment
+three lines above the arbor's own term is the precedent: TODO 117 fixed a sign
+here once and recorded that `ALARM_BD_SIGN` was NOT the place, because i1 and i2
+read that same constant correctly and only one member's USE of it was inverted.
+The arbor's `3 * _bd` is that derivation and `probe-mesh-transmission` gates its
+meshes; the creep's `-3 * (_bd - last)` was an ungated restatement. So it was
+not flipped but DELETED: the hour reaches the arbor once, as `alarmArborHourA`,
+with the factor read from the tooth counts rather than written as a literal 3,
+and the stem takes its delta through the mitre. All seven corners in the
+movement now measure conjugate under every drive that reaches them.
+
+**The invariant that bought.** Both members take the same local delta from both
+drives, so while engaged `d = alarmRotor.rotation.z − alarmSpinner.rotation.y`
+does not move; it is 0 at build, where the index was solved, so the teeth
+interleave exactly when d is a whole number of pitches. Before the sense fix d
+moved at 6× the hour and no re-solve could have held — which is why the order
+was forced.
+
+**Engagement takes the shortest rotation of the free stem making d a whole
+number of pitches.** A tooth drops into a gap, or lands on a tooth and the tip
+chamfers cam it to the nearest valley — never more than half a pitch, and the
+knob visibly clicks. The no-clash case is the same expression returning zero.
+Banked through disengagement, `alarmCrownCreep`'s own discipline one block up.
+
+**MODELLED, not simulated**, in this repo's sense: the cam has a real force path
+— flank angle against the stem's friction — and this does not walk it; it lands
+the outcome that path reaches. What IS driven is which outcome, computed from
+the two members' own angles at the moment the drive engages.
+
+**The threshold is not a second constant, and that is derived rather than
+asserted.** Measured off the metal, a correctly-indexed pair NEVER TOUCHES: its
+gap is the **0.00267 u** of backlash the §136 cut reserves, growing to 4.35 u
+fully pushed in. So there is no contact instant to find — only the interval over
+which the tips can cam — and the choice within it is arithmetic: disengaged, the
+stem is free and d drifts only with the hour, at 3·(2π/12 h) = 4.4e-4 rad/s,
+while the pull's ease settles in about 0.3 s. Any instant in the throw freezes
+the same index to within 2e-4 of a pitch, four orders under the half pitch at
+stake. So it uses the transition the drive already has.
+
+**Measured after**, six engagements, each preceded by parting the corner:
+
+| tau | crown | d (rad) | d as pitches | off a whole pitch |
+|---|---|---|---|---|
+| 0.13 | 0 | 0.00000 | 0 | 0.000000 |
+| 0.13 | 1.7 | 0.00000 | 0 | 0.000000 |
+| 900 | 0 | 0.00000 | 0 | 0.000000 |
+| 900 | −2.3 | 0.62832 | **1** | 0.000000 |
+| 5000 | 4.1 | 1.25664 | **2** | 0.000000 |
+| 20000 | −0.9 | 3.14159 | **5** | 0.000000 |
+
+Landing on a DIFFERENT valley each time — 0, 0, 0, 1, 2, 5 — is what shows the
+re-solve doing work rather than returning a constant. Control: parted and the
+hour drifted, d sits 0.2222 of a pitch off, so the zeros are a measurement and
+not a tautology. Boot silent.
+
+**Four instruments came back CLEAN while measuring nothing on the way here**,
+and the tell was the SHAPE of each answer rather than its value — a uniform
+column, or one that did not move when its input did. A control that compared a
+quantity with itself; `Math.sign` of a value that is zero by construction; a
+`setPose` sweep flattened by the zero-dt ease (CLAUDE.md's own trap, walked into
+anyway); and a BVH `closestPointToGeometry` returning 0 unconditionally, which
+would have produced "first contact at pullT 0.000" — a clean number, pure
+artifact, ready to be hard-coded with a derivation comment. Two more were
+CONTROLS miscalibrated against a healthy instrument (a body-to-body distance
+expected to equal the centre shift; a meshed pair expected to touch at zero when
+its cut reserves backlash) — a control that cries wolf is its own defect,
+because it gets learned around. The rule earned: an unsigned distance cannot see
+interference, so a clash reads exactly like a clearance.
+
+### THE RESIDUE: THE INDEX IS BANKED STATE, AND NO AXIS SWEEPS THE ENGAGEMENT
+
+`alarmCornerIndex` is a session accumulator — solved at a disengaged→engaged
+transition and banked through the next disengagement, because parting a bevel
+turns nothing. That makes the corner's pose PATH-DEPENDENT, which is the one
+property §81's sharding and §127's slicing are not free to ignore, so it sits
+in `resetInputs` beside `alarmCrownCreep` and `secondsZeroRef` rather than in a
+tolerance. `enterAxis` IS `resetInputs`, so a slice and a whole run enter any
+axis with the index at zero and the same pose sequence follows.
+
+Measured rather than argued, because a construction argument is what this repo
+distrusts: `probe-127-split` over `alarm` + `alarmToggle` merges to a payload
+byte-identical to the whole run, and `axisEntry` holds 364 ordered pairs at 0
+violations. Across the whole battery the change moved exactly one row —
+`alarmHandoffs`' `stem collar ⇄ lifter head`, 0.01 → 0.0168 disarmed and armed,
+0.0195 setting, against a tolerance of 0.03 — which is the collar riding the
+stem's re-solved index, and the only substantive diff in a 3.7 MB report whose
+other movement is all `*Ms`.
+
+**But NO AXIS VARIES `alarmCrownPullT`, so the pose net never sweeps the
+engagement itself.** The `alarm` axis is the only one that names it and holds it
+at 1 for all 96 poses; `stemSlip`, `alarmToggle` and `alarmPress` never mention
+it, so `setPose` leaves it at the disengaged default. Since `resetInputs` starts
+the corner parted, the `alarm` axis's FIRST pose is its one and only engagement
+event and the remaining 95 ride the banked index. The consequence is that the
+CAMMING STROKE — up to half a pitch of stem rotation while the tip chamfers
+drive the member to the nearest valley — is in no sweep at all. Nothing measures
+what that rotation carries the stem collar, the lifter head or any other feature
+on that stem through, and the six engagements this item verified were driven by
+its own probe, not by the net.
+
+This is the blind spot CLAUDE.md names for `restoring` — a part no axis MOVES is
+a part the instruments cannot judge — and TODO 129 was the same shape: a
+combination no axis poses is a combination no gate defends. The fix is an axis
+that RAMPS `alarmCrownPullT` through the throw and back, the way `stemSlip`
+ramps the going stem through a saw pitch, and it is owed before the camming can
+be called swept. Until it exists, read every green alarm-corner row as measuring
+the ENDPOINTS of the engagement and not the travel between them.
+
+### AND THE TWO MOTION-WORKS CORNERS, WHICH ARE THE SAME ITEM — LANDED
 
 `addBevelCorner` never adopted `bevelCornerSpin` at all. It seeds
 `gearOut.rotation.z = BEVEL_PHASE`, a bare half pitch, on the assumption that
@@ -17493,6 +17700,45 @@ it belongs with this item's own decision rather than bolted to a frame fix.
 guard that would have carried them is gone (see [TODO 139]), because a corner's
 index is a property of a pose and boot has none. `addBevelCorner` states the
 measurement in a comment beside the seed instead.
+
+**LANDED, and the build-time solve is legitimate HERE for a reason worth
+keeping.** Both of these mounts hang directly off `keyless`, whose world
+transform is the identity, so their frames do not move with any input and one
+solve is valid at every pose. That is what separates them from the alarm corner,
+whose stem-side mount rides the stem's azimuth and therefore has no build-time
+answer at all — the same distinction [TODO 139] found the hard way, read from
+where the mounts hang rather than from the corner's kind.
+
+**The seed was written TWICE and only one copy would have carried the fix.**
+`addBevelCorner` seeded `gearOut.rotation.z = BEVEL_PHASE`, and `tick()`
+restated the same constant every frame as the base of its own write
+(`BEVEL_PHASE ∓ handSetOffset`), so changing the build alone would have been
+overwritten at the first tick and changing the tick alone would have left the
+built pose wrong — CLAUDE.md's recurring defect, in a place nothing had called a
+direction. The index is solved once now and returned as `baseIn`/`baseOut`; tick
+adds only the SPIN, which is the shape `settingWheelBase` and `settingBevelBase`
+already had three lines above it.
+
+Measured off the metal by `probe-bevel-corner-index.mjs`, the ABSOLUTE condition
+now holds on all four members where it had held on none:
+
+| member | before | after | wants |
+|---|---|---|---|
+| `mwCornerDropIn` | −0.3479 | **−0.0007** | 0.000 (tooth on the ray) |
+| `mwCornerDropOut` | +0.1528 | **−0.4993** | ±0.500 (gap on the ray) |
+| `mwCornerRiseIn` | −0.3472 | **+0.0007** | 0.000 |
+| `mwCornerRiseOut` | −0.1528 | **+0.4993** | ±0.500 |
+
+The residual 0.0007 is the scan's own resolution. Both corners are GATED by that
+probe now rather than reported — deleting the exemption is part of the fix — and
+the gate was mutation-tested: restoring the bare seed fails it 4/4 and reproduces
+−0.3479 / +0.1528 / −0.3472 / −0.1528 exactly, which is this item's original
+measurement arriving from the other direction.
+
+`BEVEL_PHASE` is deleted, and so is `ALARM_BEVEL_PHASE`, which had been dead
+since [TODO 138] gave that corner the solve — both were reachable only from
+comments. A half-pitch constant left lying beside a solved corner is the next
+seed waiting to be reached for.
 
 ## 139. The alarm setting corner is not a closed loop when engaged: the hour back-drives the disc past a crown that cannot follow — WITHDRAWN
 
