@@ -27,6 +27,7 @@
 const UNIT_MM = 0.72 / 1.9;                 // layout.js — CHAIN_PITCH_MM / CHAIN_PITCH
 const CLEAR_MARGIN = 0.15;                  // layout.js — the ONE margin
 const SPRING_FLAT_U = 0.05 / UNIT_MM;       // layout.js — spring flat stock
+const STOCK_MIN_U = 0.12 / UNIT_MM;         // layout.js — §50's floor stock
 const STEEL_E_PA = 200e9;                   // layout.js — the one steel
 const DETENT_MN = [5, 50];                  // layout.js SELECTOR_DETENT_WINDOW_MN — TODO 16's envelope, INHERITED and never forkable
 const ALARM_PIN_DROP = 0.10;                // main.js
@@ -37,8 +38,28 @@ const ALARM_FEELER_BEAR_R = ALARM_FEELER_ARM_LEN * 0.45;
 const ALARM_FEELER_SPR_FREE = 0.7;          // main.js — stud outboard of the pivot
 const ALARM_FEELER_SEAT_DROP = ALARM_PIN_DROP + CLEAR_MARGIN;  // main.js
 
-// MEASURED off the built tree in this session, not assumed (world z):
-const Z = { trackTop: -5.38, feelerArm: -5.86, ring: -6.3722, dialBack: -8.35 };
+
+
+// DERIVED from main.js's own constants, in DIAL-LOCAL z where the dial sits at
+// ~0 and more negative runs toward the track. It said "measured off the built
+// tree" when first written and it was not — feelerArm carried -5.86 world,
+// which is nothing the tree reports; the arm's mid-plane is -5.55. The literals
+// were wrong and the rows below were right anyway, which is the worst way to be
+// right. Read from the source now, so the numbers move when the movement does.
+const ALARM_FEELER_T = STOCK_MIN_U;         // main.js — §51 floor stock
+const ALARM_FEELER_TOP = -2.69;             // main.js — sleeve envelope less one margin
+const ALARM_TRACK_TOP = -3.02;              // main.js — FEELER_TOP - FEELER_T - PIN_SHANK
+const READER_RING_LOCAL = -2.0283;          // the collar as built: TRACK_TOP + pinLenMax + ringT/2
+const Z = {
+  trackTop: ALARM_TRACK_TOP,
+  armTop: ALARM_FEELER_TOP,
+  armBottom: ALARM_FEELER_TOP - ALARM_FEELER_T,
+  ring: READER_RING_LOCAL,
+};
+// In dial-local, "toward the dial" is LESS negative — the opposite of the world
+// convention, because dialFace is turned 180° about Y. Every comparison below
+// is written in local, so `ring > armTop` means the ring is dial-side of the arm.
+const ringIsDialSideOfArm_local = Z.ring > Z.armTop;
 
 const cantileverK_N_per_m = (a_u, c_u, L_u) => {
   const m = UNIT_MM / 1000;
@@ -52,15 +73,26 @@ const push = (what, ok, got, want) => { rows.push({ what, ok, got, want }); };
 // "Toward the dial" is MORE NEGATIVE world z (the dial's back face is the most
 // negative member of the stack), so the ring being more negative than the arm
 // means the ring is on the DIAL side and the arm is on the TRACK side.
-const ringIsDialSideOfArm = Z.ring < Z.feelerArm;
+const ringIsDialSideOfArm = ringIsDialSideOfArm_local;
 push('the ring sits on the DIAL side of the lever\'s arm', ringIsDialSideOfArm,
-  `ring ${Z.ring}, arm ${Z.feelerArm}`, 'ring more negative');
+  `ring ${Z.ring.toFixed(4)}, arm top ${Z.armTop.toFixed(4)} (local)`, 'ring less negative');
 push('…so the lever must reach TOWARD the dial to touch it, reversing its bias',
   ringIsDialSideOfArm, 'bias must press the arm dial-ward', 'the opposite of today\'s "down onto the disc"');
-// And the reader's pin, standing from the ring to the track, must cross the arm.
-push('the reader\'s pin CROSSES the arm\'s plane to reach the track',
-  Z.ring < Z.feelerArm && Z.feelerArm < Z.trackTop,
-  `${Z.ring} → ${Z.trackTop} passes ${Z.feelerArm}`, 'the arm lies between them');
+// And the reader's pin, standing from the ring to the track, crosses the arm's
+// WHOLE THICKNESS — not merely its plane.
+push('the reader\'s pin CROSSES the arm to reach the track',
+  Z.ring > Z.armTop && Z.armBottom > Z.trackTop,
+  `${Z.ring.toFixed(4)} → ${Z.trackTop.toFixed(4)} passes ${Z.armTop.toFixed(4)}..${Z.armBottom.toFixed(4)}`,
+  'the arm lies between them');
+// THE ROW THAT KILLS THE POSITION-SPACE ESCAPE. Moving the ring to the track
+// side needs a gap there, and the gap is ALARM_PIN_SHANK — what the shipped pin
+// spans, and all there is.
+const trackSideGap = Z.armBottom - Z.trackTop;
+const ringNeeds = STOCK_MIN_U + ALARM_PIN_DROP + CLEAR_MARGIN;  // thickness + travel + margin to the track
+push('there is NO room on the track side — the ring cannot simply move there',
+  ringNeeds > trackSideGap,
+  `needs ${ringNeeds.toFixed(4)}, the gap is ${trackSideGap.toFixed(4)}`,
+  'short by ' + (ringNeeds - trackSideGap).toFixed(4));
 
 // ROW 2 — the force the blade supplies today, which is what must be replaced.
 const kBlade = cantileverK_N_per_m(SPRING_FLAT_U, SPRING_FLAT_U, ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R);
@@ -96,8 +128,9 @@ push('the opposed pair\'s total load leaves the detent envelope',
   `${ringMustSupply_mN.toFixed(2)} mN`, `≤ ${DETENT_MN[1]} mN`);
 
 // CONTROLS — the rows above are only meaningful if the arithmetic can say no.
-push('CONTROL a ring on the TRACK side of the arm needs no reversal at all',
-  !(Z.trackTop < Z.feelerArm), 'series, as the line assumed', 'the conflict is stack-order dependent');
+push('CONTROL the stack order is what decides it, and the track side is shut',
+  trackSideGap < STOCK_MIN_U, `track-side gap ${trackSideGap.toFixed(4)} < one ring thickness`,
+  'a track-side ring would need no reversal, and does not fit');
 push('CONTROL the blade alone sits INSIDE the envelope, so the excess is the second spring\'s',
   seatRiding <= DETENT_MN[1], `${seatRiding.toFixed(2)} mN`, `≤ ${DETENT_MN[1]}`);
 

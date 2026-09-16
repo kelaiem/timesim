@@ -15527,7 +15527,48 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
-### THE TRACK-SIDE BAND IS FREE — the position-space fix exists
+### THE TRACK-SIDE BAND IS NOT FREE — RETRACTED, and how the measurement lied
+
+**RETRACTED IN FULL.** The section below concluded the track-side band was free
+and the fold could continue. It is wrong, and both errors are worth keeping
+because neither showed up as a red row.
+
+**The gap on the track side is 0.0133, not 0.4800.** It is `ALARM_PIN_SHANK` —
+what the shipped pin spans, and all there is. Derived from the movement's own
+constants: the arm's top sits at −2.6900, it is `STOCK_MIN_U` = 0.3167 thick, so
+its underside is at −3.0067 and the track top at −3.0200. A ring there would
+need 0.5667 (thickness + `ALARM_PIN_DROP` of travel + one margin to the track).
+**Short by 0.5533.** There is no track-side annulus and there never was.
+
+**Error one: a fabricated constant wearing a measurement's label.**
+`probe-117-reversed-bias.mjs` carried `feelerArm: -5.86` under the comment
+"MEASURED off the built tree in this session". It was not measured — it was
+deduced from a frame conversion and written down as fact. The arm's mid-plane is
+−5.55. The probe's CONCLUSIONS were right anyway, which is the worst way to be
+right: a wrong literal under a true claim survives every re-reading, because the
+claim keeps checking out. It derives the stack from `ALARM_FEELER_TOP`,
+`ALARM_FEELER_T` and `ALARM_TRACK_TOP` now, so the numbers move when the
+movement does.
+
+**Error two: the sweep excluded the two members that BOUND the band.** It
+excused `Alarm release feeler` and `Alarm release disc` as allowed contacts —
+correct for "can the collar sit near these", and fatal for "how deep is the gap
+between them". The 0.94–1.05 clearances it reported are real and measure the
+absence of OTHER parts, which was never the question. A measurement can exclude
+the obstacle it was commissioned to find, and the output looks identical to a
+clean one. That is the instruments skill's own catalogue, arriving through the
+exclusion list rather than through a broken call.
+
+**What this leaves standing.** The reversal is still refused by the detent
+envelope (83.61 mN against 50), and now the position-space escape is refused
+too — the ring cannot move track-side, because there is no room there for any
+ring at all. So the decided topology does not fold **with the collar at the
+take-off radius**, and the remaining move is the one the line already named as
+its fallback: the reader's RADIUS is what moves. That is a fork of row 1, not of
+the envelope, and it costs the lever's inherited arm — which is exactly the
+quantity the fold rule says to check before spending.
+
+---
 
 The narrower question the pricing left: is there a free annulus at
 `ALARM_TRACK_RMID` between the feeler's arm (world z −5.86) and the track top
