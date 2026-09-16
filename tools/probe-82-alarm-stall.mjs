@@ -172,8 +172,42 @@ const V = await page.evaluate(async () => {
     if (Lg <= 1e-9) continue;
     seg.push({ kind: (i === 0 || i === cuts.length - 2) ? 'overhang' : 'span', L_u: Lg, i });
   }
-  const rodEnd = seg[0] && seg[0].kind === 'overhang' ? seg[0] : null;
-  const forkEnd = seg.length > 1 && seg[seg.length - 1].kind === 'overhang' ? seg[seg.length - 1] : null;
+  let rodEnd = seg[0] && seg[0].kind === 'overhang' ? seg[0] : null;
+  let forkEnd = seg.length > 1 && seg[seg.length - 1].kind === 'overhang' ? seg[seg.length - 1] : null;
+  // §232 — THE OVERHANGS ARE NECK STOCK, AND THEY ARE THEIR OWN MESHES NOW.
+  // The shaft is a turned bar: a full-section body carrying all three bushes,
+  // necked at each end where a crank is keyed. The body therefore ENDS at its
+  // outermost bearings and has no overhangs of its own — measured off the body
+  // alone the two end segments collapse to ~0 and kBend returns 9.5e17 N/m, a
+  // member so stiff it vanishes from a series sum. That is not a rigid shaft,
+  // it is a missing one, and it flattered the stall by 38 mN when §232 first
+  // built the necks.
+  //
+  // Read from the metal, not from the source: each neck is a sibling in the
+  // same group, so the cantilever is the length of it that stands PAST the
+  // body's end — which is also past the outermost bearing, the body ending
+  // there. Falls back to the old single-section derivation when no neck exists,
+  // so the probe still reads a uniform shaft.
+  const neckOf = (nm) => byName(nm);
+  const axisExtent = (mesh) => {
+    mesh.geometry.computeBoundingBox();
+    const b = mesh.geometry.boundingBox;
+    const e = { x: b.max.x - b.min.x, y: b.max.y - b.min.y, z: b.max.z - b.min.z };
+    const L = Math.max(e.x, e.y, e.z);
+    return { L, c: mesh.position.x, r: mesh.geometry.parameters ? mesh.geometry.parameters.radiusTop : Math.min(e.x, e.y, e.z) / 2 };
+  };
+  const bodyX = { c: shaftMesh.position.x, L: stock };
+  for (const [nm, slot] of [['alarmLinkNeckRod', 'rod'], ['alarmLinkNeckFork', 'fork']]) {
+    const m = neckOf(nm);
+    if (!m) continue;
+    const a = axisExtent(m);
+    // the free cantilever: how far this neck reaches beyond the body's nearer end
+    const past = a.c > bodyX.c
+      ? (a.c + a.L / 2) - (bodyX.c + bodyX.L / 2)
+      : (bodyX.c - bodyX.L / 2) - (a.c - a.L / 2);
+    const memb = { kind: 'overhang', L_u: past, r_u: a.r, i: -1 };
+    if (slot === 'rod') rodEnd = memb; else forkEnd = memb;
+  }
   const spans = seg.filter((s) => s.kind === 'span');
   const span = spans[0] || null;   // the span next to the rod end — what its cantilever rotates against
 
@@ -199,9 +233,9 @@ const V = await page.evaluate(async () => {
   });
   add('beak tail blade', kRect(td[0], td[1], td[2], 3), n(posed.rod),
     'flat blade, rectangular by construction; loaded at the tail tip by the rod reaction');
-  if (rodEnd) add('shaft, rod-end overhang', kBend(shaftR, rodEnd.L_u, 3) / coupling, n(posed.rod),
+  if (rodEnd) add('shaft, rod-end overhang', kBend(rodEnd.r_u || shaftR, rodEnd.L_u, 3) / coupling, n(posed.rod),
     `coupled by (L+a)/a = ${coupling.toFixed(3)}; ABSENT from every previously published figure`);
-  if (forkEnd) add('shaft, fork-end overhang', kBend(shaftR, forkEnd.L_u, 3), n(posed.pin),
+  if (forkEnd) add('shaft, fork-end overhang', kBend(forkEnd.r_u || shaftR, forkEnd.L_u, 3), n(posed.pin),
     'the only one §137 Landing 2 sized the section against');
   spans.forEach((sp, j) => add(`shaft, span ${j + 1} (${sp.L_u.toFixed(2)} u)`, kBend(shaftR, sp.L_u, 48), n(posed.pin),
     'simply supported, load at midspan — one member per gap between hangers (§202)'));
