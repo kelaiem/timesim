@@ -15527,6 +15527,63 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
+### THE JOG FITS — the fork is the fallback, not the move
+
+`probe-117-fork-room.mjs` extended through the TRANSITION radii, because a band
+measured only where the ring sits is a claim about the jog made without looking
+at where the jog happens. r 3.30 and 3.50 are not candidate take-off radii; they
+are the radii a jogged tip must climb back through to rejoin its own plane
+outboard of the ring.
+
+| r | disc's dial-most face | band (design) | with the feeler counted | the stack fits? |
+|---|---|---|---|---|
+| 2.20 | −5.2105 | 4.9932 | 4.9932 | YES |
+| 2.40 | −5.3805 | 4.8232 | 4.8232 | YES |
+| 2.60 | −5.3805 | 1.4412 | 1.4412 | YES |
+| 2.80 | −5.3805 | 1.4029 | 0.0091 | YES |
+| **3.05** | −5.3805 | **1.4029** | 0.0091 | **YES** |
+| 3.30 | −5.3805 | 1.4029 | 0.0091 | YES |
+| 3.50 | −5.2105 | 1.5729 | **0.2100** | YES |
+
+**The stack fits at every radius measured, the shipped one included**, so the
+take-off radius does not have to move at all. The design's stack from the disc's
+face — one margin, the ring at `STOCK_MIN_U`, its `ALARM_PIN_DROP` of travel,
+then the lever's tip at `ALARM_FEELER_T` — is 0.8833 against 1.4029 of measured
+band, leaving **0.5195** over. What has to move is the lever's inboard end: its
+dial-side face stands at world −5.7372 today and the jogged tip's would stand at
+−6.1639 at rest and −6.2639 dropped, a **jog of 0.4267**, all of it inside the
+band and none of it touching a mechanism quantity. The arm is a flat bar today
+(`BoxGeometry(ALARM_FEELER_ARM_LEN, 2·ALARM_PIN_R, ALARM_FEELER_T)`), which is
+why the space was never in question and never looked available.
+
+**The r 3.50 row is the one that proves the scan is reading the real stack.** It
+was added for the transition and it happens to measure the feeler's own arm from
+underneath: outboard of the track annulus the disc's floor steps 0.17 back to its
+body top (−5.2105), and the nearest feeler metal below it reads **0.2100** —
+which is exactly `ALARM_FEELER_TOP − ALARM_FEELER_T` against `ALARM_DISC_TOP`,
+the shipped arm's own static gap over the disc. Nothing in the probe knows those
+constants. Getting them back out of a world-frame scan, at a radius chosen for an
+unrelated reason, is the strongest agreement this measurement offers.
+
+**What stays true of the fork.** It is now the FALLBACK rather than the move, and
+it is fully priced if the jog runs into something the band cannot see (the
+lever's section through the jog, the sleeve's relief, the tip's own approach):
+every bar clears at r 2.40, and the bound to watch there is the item's open
+construction question — a ring is a flange off its bearing and cannot sit inboard
+of what carries it, and a reader bored on the hour tube with §50 wall reaches
+2.827.
+
+**A note on the instrument, because two of its own errors are in this table.**
+The first radial prune kept any mesh whose far corner fell inside the must-miss
+band at r 40, which is every mesh in the movement — it read as a prune and did
+nothing, and the walk spent its time on metal 30 units from any question being
+asked. Rewriting it forced the scan into two passes (the disc alone to fix each
+band's floor, then everything else keeping one number per band per class), which
+also bounds the memory that had made the seven-band run unfinishable. **Every
+figure from the first five bands reproduced to the last digit across that
+rewrite** — two implementations, one answer, which is worth more than either run
+alone.
+
 ### THE TRACK-SIDE BAND, MEASURED — and the retraction measured the ARM, not the SPACE
 
 `tools/probe-117-fork-room.mjs`, the geometry the fork's pricing deliberately
@@ -15627,7 +15684,7 @@ re-reads the number.
 ### THE RADIUS FORK IS PRICED, AND EVERY BAR SURVIVES IT — `probe-117-fork-radius.mjs`
 
 With the reversal refused by the envelope and the track-side band refused by
-0.0133 of room, the line's own fallback is the only move left: **the reader's
+0.04 of room (one ALARM_PIN_SHANK — see the correction below), the line's own fallback is the only move left: **the reader's
 RADIUS is what moves**. That is a fork of line row 1 — a spec quantity, not an
 envelope — and the fold rule says price what it changes before cutting. Priced,
 18 rows, 0 failing, three of them must-fail controls.

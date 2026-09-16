@@ -90,7 +90,12 @@ const out = await page.evaluate(async () => {
   const ENTITLED = ['Hour wheel', 'Dial'];
   const FLOOR_UNIT = 'Alarm release disc';
 
-  const CANDIDATES = [2.20, 2.40, 2.60, 2.80, 3.05];
+  // 2.20 … 3.05 are the fork's candidate take-off radii. 3.30 and 3.50 are not
+  // candidates at all: they are the TRANSITION, the radii a jogged lever tip
+  // must climb back through to rejoin its own plane outboard of the ring, and
+  // a band measured only where the ring sits would be a claim about the jog
+  // made without looking at where the jog happens.
+  const CANDIDATES = [2.20, 2.40, 2.60, 2.80, 3.05, 3.30, 3.50];
 
   const poses = [];
   for (const ax of I.AXES) for (const f of [0, 0.5, 1]) poses.push(ax.pose(f));
@@ -123,44 +128,86 @@ const out = await page.evaluate(async () => {
   // One pass over the net, bucketing every sample into whichever candidate
   // bands its radius falls in. Azimuth drops out: a ring is present at every
   // azimuth at once, so a sample anywhere on the band is a sample on the ring.
-  const mk = () => ({ discMinZ: Infinity, discMaxZ: -Infinity, obstacles: [], entitled: [], feeler: [] });
+  const mk = () => ({ discMinZ: Infinity, discMaxZ: -Infinity,
+                      obstacle: { z: -Infinity, who: null }, entitled: { z: -Infinity, who: null },
+                      feeler: { z: -Infinity, who: null } });
   const bands = CANDIDATES.map(mk);
   const CONTROL_FAR = 40;                     // must-miss band
   const farBand = mk();
 
+  // WHICH MESHES CAN REACH A BAND, and this prune is a CORRECTION. The first
+  // version kept any mesh whose far corner fell inside the must-miss band's
+  // radius, which is every mesh in the movement — the prune read as one and did
+  // nothing, and the walk spent its time on metal 30 units from any question
+  // being asked. A mesh reaches a band only if the band's radius lies between
+  // the mesh's nearest and furthest distance from the dial centre. Pruning on
+  // that cannot manufacture a span: a mesh failing it contributes no sample to
+  // any band by construction rather than by assumption.
+  const RMAX = Math.max(...CANDIDATES) + HALF;
+  const reaches = (box) => {
+    const xs = [box.min.x - cx, box.max.x - cx], ys = [box.min.y - cy, box.max.y - cy];
+    const nx = (xs[0] <= 0 && xs[1] >= 0) ? 0 : Math.min(Math.abs(xs[0]), Math.abs(xs[1]));
+    const ny = (ys[0] <= 0 && ys[1] >= 0) ? 0 : Math.min(Math.abs(ys[0]), Math.abs(ys[1]));
+    const nearR = Math.hypot(nx, ny);
+    let farR = 0;
+    for (const x of xs) for (const y of ys) farR = Math.max(farR, Math.hypot(x, y));
+    return { band: nearR <= RMAX && farR >= CANDIDATES[0] - HALF,
+             control: nearR <= CONTROL_FAR + HALF && farR >= CONTROL_FAR - HALF };
+  };
+
+  // PASS ONE — the disc alone, to fix each band's FLOOR. It has to be its own
+  // pass: the floor is a minimum over the whole net, and nothing else in the
+  // band can be judged against it until it is known. Doing both at once is what
+  // forced the first version to hold every sample in memory.
+  const discObj = C.labelEntries.find((e) => e.name === FLOOR_UNIT)?.obj;
+  if (!discObj) return { fatal: 'no ' + FLOOR_UNIT + ' unit' };
+  for (const pose of poses) {
+    C.setPose(pose);
+    discObj.updateWorldMatrix(true, true);
+    for (const m of meshesOf(discObj)) {
+      const rr = reaches(new THREE.Box3().setFromObject(m));
+      if (!rr.band && !rr.control) continue;
+      walk(m, (x, y, z) => {
+        const r = Math.hypot(x - cx, y - cy);
+        for (let i = 0; i < CANDIDATES.length; i++) {
+          if (Math.abs(r - CANDIDATES[i]) > HALF) continue;
+          bands[i].discMinZ = Math.min(bands[i].discMinZ, z);
+          bands[i].discMaxZ = Math.max(bands[i].discMaxZ, z);
+        }
+        if (Math.abs(r - CONTROL_FAR) <= HALF) {
+          farBand.discMinZ = Math.min(farBand.discMinZ, z);
+          farBand.discMaxZ = Math.max(farBand.discMaxZ, z);
+        }
+      });
+    }
+  }
+
+  // PASS TWO — everything else, keeping only the HIGHEST sample below each
+  // band's floor per class. One number per band per class, so the walk's memory
+  // does not grow with the scene.
+  const keep = (slot, z, name) => { if (z > slot.z) { slot.z = z; slot.who = name; } };
   for (const pose of poses) {
     C.setPose(pose);
     for (const { name, obj } of C.labelEntries) {
-      obj.updateWorldMatrix(true, true);
-      const isFloor = name === FLOOR_UNIT;
-      const isDesign = DESIGN.includes(name);
+      if (name === FLOOR_UNIT) continue;
       const isEnt = ENTITLED.includes(name);
       const isFeeler = name === 'Alarm release feeler';
+      if (DESIGN.includes(name) && !isFeeler) continue;   // the reader is the part being sited
+      obj.updateWorldMatrix(true, true);
       for (const m of meshesOf(obj)) {
-        const box = new THREE.Box3().setFromObject(m);
-        // Radial prune only, and generously: a band reaches at most r+HALF, so
-        // metal beyond r 8 cannot belong to any band. Pruning in z is what
-        // would manufacture a span, so none is done.
-        const far = Math.max(
-          Math.hypot(box.max.x - cx, box.max.y - cy), Math.hypot(box.min.x - cx, box.min.y - cy),
-          Math.hypot(box.max.x - cx, box.min.y - cy), Math.hypot(box.min.x - cx, box.max.y - cy));
-        if (far < CANDIDATES[0] - HALF && !(box.max.x === box.min.x)) { /* still may span centre */ }
-        if (far > CONTROL_FAR + HALF + 1 && far > 8) continue;
+        const rr = reaches(new THREE.Box3().setFromObject(m));
+        if (!rr.band && !rr.control) continue;
         walk(m, (x, y, z) => {
           const r = Math.hypot(x - cx, y - cy);
           for (let i = 0; i < CANDIDATES.length; i++) {
             if (Math.abs(r - CANDIDATES[i]) > HALF) continue;
             const b = bands[i];
-            if (isFloor) { b.discMinZ = Math.min(b.discMinZ, z); b.discMaxZ = Math.max(b.discMaxZ, z); }
-            else if (isFeeler) b.feeler.push({ z, name });
-            else if (isDesign) { /* the reader itself — the part being sited */ }
-            else if (isEnt) b.entitled.push({ z, name });
-            else b.obstacles.push({ z, name });
+            if (!(z < b.discMinZ)) continue;
+            if (isFeeler) keep(b.feeler, z, name);
+            else if (isEnt) keep(b.entitled, z, name);
+            else keep(b.obstacle, z, name);
           }
-          if (Math.abs(r - CONTROL_FAR) <= HALF) {
-            if (isFloor) { farBand.discMinZ = Math.min(farBand.discMinZ, z); farBand.discMaxZ = Math.max(farBand.discMaxZ, z); }
-            else farBand.obstacles.push({ z, name });
-          }
+          if (Math.abs(r - CONTROL_FAR) <= HALF && z < farBand.discMinZ) keep(farBand.obstacle, z, name);
         });
       }
     }
@@ -169,10 +216,10 @@ const out = await page.evaluate(async () => {
   // The band a ring may occupy: dial-ward of the disc's dial-most face, and
   // track-ward of the nearest other metal. In WORLD z the dial is the more
   // negative side, so "dial-ward of the disc" means z BELOW the disc's min.
-  const spanOf = (b, pool) => {
+  const spanOf = (b, slots) => {
     if (!isFinite(b.discMinZ)) return null;
     let ceil = -Infinity, who = null;
-    for (const s of pool) if (s.z < b.discMinZ && s.z > ceil) { ceil = s.z; who = s.name; }
+    for (const sl of slots) if (sl.z > ceil) { ceil = sl.z; who = sl.who; }
     return { floorZ: b.discMinZ, ceilZ: isFinite(ceil) ? ceil : null, who, span: isFinite(ceil) ? b.discMinZ - ceil : null };
   };
 
@@ -183,9 +230,9 @@ const out = await page.evaluate(async () => {
       discPresent: isFinite(b.discMinZ),
       discMinZ: isFinite(b.discMinZ) ? +b.discMinZ.toFixed(4) : null,
       discMaxZ: isFinite(b.discMaxZ) ? +b.discMaxZ.toFixed(4) : null,
-      design: spanOf(b, b.obstacles),                       // the design's own band
-      withFeeler: spanOf(b, [...b.obstacles, ...b.feeler]),  // the shipped state, for the control
-      toEntitled: spanOf(b, [...b.obstacles, ...b.entitled]),// where the dial/carrier floor sits
+      design: spanOf(b, [b.obstacle]),                       // the design's own band
+      withFeeler: spanOf(b, [b.obstacle, b.feeler]),         // the shipped state, for the control
+      toEntitled: spanOf(b, [b.obstacle, b.entitled]),       // where the dial/carrier floor sits
     };
   });
 
@@ -207,10 +254,15 @@ if (out.fatal) { console.log('FATAL', out.fatal); process.exit(1); }
 
 const fmt = (x, n = 4) => (x === null || x === undefined ? '   —   ' : x.toFixed(n).padStart(8));
 console.log(`\n  THE TRACK-SIDE BAND AT THE FORKED RADIUS (TODO 117) — ${out.poses} poses\n`);
-console.log('     r    disc?   disc face    band (design)   bounded by                    with the feeler counted');
+console.log('     r    disc?   disc face    band (design)   bounded by                    with the feeler counted   stack fits?');
 for (const row of out.rows) {
   const d = row.design, w = row.withFeeler;
-  console.log(`  ${row.r.toFixed(2).padStart(5)}    ${row.discPresent ? 'yes' : ' NO'}   ${fmt(row.discMinZ)}   ${fmt(d?.span)}   ${(d?.who || '—').padEnd(28)}  ${fmt(w?.span)}`);
+  // THE STACK, named so the column means something: from the disc's face,
+  // one margin, the ring, its ALARM_PIN_DROP of travel, then the lever's tip.
+  // That is what has to fit dial-ward of the track for the blade to keep its
+  // sense — probe-117-reversed-bias.mjs's whole finding in one sum.
+  const fits = d?.span != null && d.span >= out.bars.ringAndTip;
+  console.log(`  ${row.r.toFixed(2).padStart(5)}    ${row.discPresent ? 'yes' : ' NO'}   ${fmt(row.discMinZ)}   ${fmt(d?.span)}   ${(d?.who || '—').padEnd(28)}  ${fmt(w?.span)}        ${fits ? 'YES' : 'no '}`);
 }
 console.log(`\n  a ring needs ${out.bars.ring.toFixed(4)} (stock + ALARM_PIN_DROP + one margin to the track)`);
 console.log(`  a ring AND the lever's tip need ${out.bars.ringAndTip.toFixed(4)}`);

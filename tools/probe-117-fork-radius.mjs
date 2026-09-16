@@ -5,8 +5,8 @@
 // twice at ALARM_TRACK_RMID, both times by measurement and both times on the
 // same side of the feeler's arm: reversing the bias blade costs 83.61 mN
 // against TODO 16's 5–50 mN detent envelope (probe-117-reversed-bias.mjs), and
-// the position-space escape — a ring on the TRACK side of the arm — has 0.0133
-// of room where it needs 0.5667. The line named the remaining move itself: the
+// the position-space escape — a ring on the TRACK side of the arm — has one
+// ALARM_PIN_SHANK of room, 0.04, where it needs 0.5667. The line named the remaining move itself: the
 // reader's RADIUS is what moves. That is a fork of line row 1, a spec quantity,
 // and the fold rule says price the quantities the fork changes BEFORE cutting.
 //
