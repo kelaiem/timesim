@@ -17552,6 +17552,45 @@ its cut reserves backlash) — a control that cries wolf is its own defect,
 because it gets learned around. The rule earned: an unsigned distance cannot see
 interference, so a clash reads exactly like a clearance.
 
+### THE RESIDUE: THE INDEX IS BANKED STATE, AND NO AXIS SWEEPS THE ENGAGEMENT
+
+`alarmCornerIndex` is a session accumulator — solved at a disengaged→engaged
+transition and banked through the next disengagement, because parting a bevel
+turns nothing. That makes the corner's pose PATH-DEPENDENT, which is the one
+property §81's sharding and §127's slicing are not free to ignore, so it sits
+in `resetInputs` beside `alarmCrownCreep` and `secondsZeroRef` rather than in a
+tolerance. `enterAxis` IS `resetInputs`, so a slice and a whole run enter any
+axis with the index at zero and the same pose sequence follows.
+
+Measured rather than argued, because a construction argument is what this repo
+distrusts: `probe-127-split` over `alarm` + `alarmToggle` merges to a payload
+byte-identical to the whole run, and `axisEntry` holds 364 ordered pairs at 0
+violations. Across the whole battery the change moved exactly one row —
+`alarmHandoffs`' `stem collar ⇄ lifter head`, 0.01 → 0.0168 disarmed and armed,
+0.0195 setting, against a tolerance of 0.03 — which is the collar riding the
+stem's re-solved index, and the only substantive diff in a 3.7 MB report whose
+other movement is all `*Ms`.
+
+**But NO AXIS VARIES `alarmCrownPullT`, so the pose net never sweeps the
+engagement itself.** The `alarm` axis is the only one that names it and holds it
+at 1 for all 96 poses; `stemSlip`, `alarmToggle` and `alarmPress` never mention
+it, so `setPose` leaves it at the disengaged default. Since `resetInputs` starts
+the corner parted, the `alarm` axis's FIRST pose is its one and only engagement
+event and the remaining 95 ride the banked index. The consequence is that the
+CAMMING STROKE — up to half a pitch of stem rotation while the tip chamfers
+drive the member to the nearest valley — is in no sweep at all. Nothing measures
+what that rotation carries the stem collar, the lifter head or any other feature
+on that stem through, and the six engagements this item verified were driven by
+its own probe, not by the net.
+
+This is the blind spot CLAUDE.md names for `restoring` — a part no axis MOVES is
+a part the instruments cannot judge — and TODO 129 was the same shape: a
+combination no axis poses is a combination no gate defends. The fix is an axis
+that RAMPS `alarmCrownPullT` through the throw and back, the way `stemSlip`
+ramps the going stem through a saw pitch, and it is owed before the camming can
+be called swept. Until it exists, read every green alarm-corner row as measuring
+the ENDPOINTS of the engagement and not the travel between them.
+
 ### AND THE TWO MOTION-WORKS CORNERS, WHICH ARE THE SAME ITEM
 
 `addBevelCorner` never adopted `bevelCornerSpin` at all. It seeds
