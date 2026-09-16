@@ -145,6 +145,17 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS, SET }) => {
           alarmLinkHanger1: 'the bracket carrying bush 1 — its foot is derived from the bush OD, so it rises with the shaft',
           alarmLinkHanger2: 'ditto bush 2',
           alarmLinkHanger3: 'ditto bush 3',
+          // §232, and the THIRD instance of the same trap in three sections
+          // (§230's pusher collar, §231's return bracket, this). Measured, the
+          // rod's nearest point to the shaft AXIS is 0.2635 at shaft-local
+          // s = -16.693 — exactly where the crank sits, at the end face, and
+          // nowhere along the 33-unit run. It is the linkage's own joint one
+          // part removed (`alarmLinkCrankRim ⇄ alarmLinkRod` is declared), and
+          // the crank's arm is built ON the shaft's surface, so a fatter shaft
+          // carries the crank rim and the rod's eye outward with it. Holding it
+          // still measures a movement that would not exist.
+          alarmLinkRod: 'joined through the crank rim (declared), and the crank is built on the shaft surface — the rod moves out with the radius',
+          alarmLinkBeakTail: 'formed ON the rod (declared, "one member, two meshes"), so it travels with it',
         } },
     ],
     switch231: [
