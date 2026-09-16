@@ -15551,13 +15551,7 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   tail.position.x = -ALARM_FEELER_TAIL / 2;
   alarmFeelerLever.add(tail);
   // The pin: shank from inside the arm down to the riding tip.
-  // TODO 117 step 1 — THE PIN READS THE COLLAR, NOT THE TRACK. Its tip lands on
-  // the ring's dial-side face, and the ring's own thickness is what lets one
-  // track carry two members: the reader's pin spans the track top up to the
-  // ring's UNDERSIDE, this one sits from the ring's TOPSIDE up into the arm.
-  // Same radius, never the same z — which is the whole answer to the collision
-  // stage 1 found (feeler ⇄ reader FORBIDDEN over 4 train poses).
-  const pinLen = (ALARM_FEELER_TOP - ALARM_FEELER_T / 2) - (READER_RING_Z + READER_RING_T / 2) + 0.02; // arm mid → the collar's face, +0.02 seat
+  const pinLen = (ALARM_FEELER_TOP - ALARM_FEELER_T / 2) - ALARM_TRACK_TOP + 0.02; // arm mid → track top, +0.02 seat
   const pin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PIN_R, ALARM_PIN_R, pinLen, 12), MATS.ruby);
   pin.name = 'alarmFeelerPin'; // penetration-budget selector
   pin.rotation.x = Math.PI / 2;
@@ -39409,17 +39403,6 @@ function tick(t) {
   // height is what stops it. Seat one CLEAR_MARGIN below the deepest the pin
   // can drop, so the spring is still loaded at the bottom of the notch.
   const feelerDrop = Math.min(alarmPinDropPhys, ALARM_FEELER_SEAT_DROP); // §45 stage 2: the physical pin — a held/lifted lever shows it
-  // TODO 117 step 1 — THE COLLAR IS IN THE PATH NOW. The reader's pin rides the
-  // track and the ring carries its drop axially; the lever's pin rests on the
-  // ring's face and wears what the ring does. So the chain is
-  //   notch → reader pin → ring → feeler pin → lever
-  // where it used to be notch → feeler pin → lever, and the trip's ARITHMETIC is
-  // untouched: alarmPinDropPhys still decides the moment. That is the line's
-  // row 1 made physical — a ring's face moves with the pin ONE FOR ONE, so the
-  // lever's rock below is unchanged by the orbit being crossed.
-  // Local z DECREASES toward the track (the dial sits at local ~0, the track at
-  // ALARM_TRACK_TOP), so a drop is negative here.
-  alarmReaderUnit.position.z = -feelerDrop;
   alarmFeelerLever.rotation.y = -feelerDrop / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
   // §48/TODO 13 — the blade follows the arm it presses, root fixed at the stud.
   if (alarmFeelerSpringBlade && alarmFeelerBearPoint) {

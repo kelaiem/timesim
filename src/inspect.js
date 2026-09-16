@@ -327,9 +327,8 @@ export const MECH_GRAPH = {
     ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
     ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
-    ['Hour wheel', 'Alarm release reader'],  // TODO 117: the hour carries the reader ROUND to meet the notch — the moving half of the decided topology
-    ['Alarm release disc', 'Alarm release reader'], // TODO 117 step 1: the raised track carries the reader's pin; the notch's arrival under it IS the drop
-    ['Alarm release reader', 'Alarm release feeler'], // TODO 117 step 1: …and the ring carries that drop axially to the lever's pin, gain 1 (the line's row 1)
+    ['Hour wheel', 'Alarm release reader'],  // TODO 117 stage 1: the hour carries the reader ROUND to meet the notch — the moving half of the decided topology.
+                                              // STAGE 1 IS INERT: nothing downstream reads this collar yet, so no drive edge leaves it. The trip still runs the feeler row below.
     ['Alarm release disc', 'Alarm release feeler'], // §29 step 3: the raised track carries the pin; the notch's arrival
                                                     // under it IS the drop — the azimuth-independent detection
     ['Alarm release feeler', 'Alarm winding train'], // §29 step 4: the tail's beak in the climb's contrate band is the
@@ -669,7 +668,6 @@ const EXPECTED_PAIRS = [
   ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
   ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
   ['Alarm release disc', 'Alarm release reader'], // TODO 117 stage 1: the collar's pin rides the SAME track — its tip lands on ALARM_TRACK_TOP by construction, so this is a working contact from the moment the metal exists
-  ['Alarm release reader', 'Alarm release feeler'], // TODO 117 step 1: the lever's pin seats on the ring's dial-side face — the hand-off the collar exists to make
   ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
