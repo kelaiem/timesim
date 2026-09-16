@@ -4798,7 +4798,7 @@ function makeRodSegment(a, b, radius) {
   return mesh;
 }
 
-const BEVEL_TEETH = 10, BEVEL_MODULE = 0.3, BEVEL_PHASE = Math.PI / BEVEL_TEETH;
+const BEVEL_TEETH = 10, BEVEL_MODULE = 0.3;
 const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING);
 // The arbor terminates at the MOTION WORKS' MINUTE WHEEL — the wheel a real
 // setting path drives — not at the dial centre. (The old dial-centre
@@ -4906,23 +4906,29 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
   const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
   if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
-  // TODO 140 — A BARE HALF PITCH, AND IT IS NOT A SOLVE. The corner's real
-  // condition is that on the pair's LINE OF CONTACT one member presents a tooth
-  // and the other a gap, which `bevelCornerSpin` computes from each mount's own
-  // frame; this seed assumes instead that both gears' tooth 0 already lies on
-  // that ray. Measured off the metal, neither does — drop reads its two members
-  // at -0.3479 and +0.1528 of a pitch from the ray, rise at -0.3472 and -0.1528
-  // — so what makes these two mesh is that the RELATIVE condition survives it
-  // anyway: the differences come to 0.5007 and the sums to -0.5000, a half pitch
-  // apart either way. That is a property of where `setFromUnitVectors` happened
-  // to land two minimal rotations, not of anything solved, which is TODO 140.
-  // Measured by tools/probe-bevel-corner-index.mjs, which is where this claim
-  // has to live: it needs a POSED movement, and boot has no pose.
-  gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
 
   keyless.add(mountIn, mountOut);
-  return { gearIn, gearOut };
+  // TODO 140 — SOLVED, not seeded. The index is computed AFTER the mounts are
+  // parented, because `bevelCornerAxis` walks UP and a mount that is not yet in
+  // the tree reports the frame it will never be in ([TODO 139]'s whole finding).
+  //
+  // Unlike the keyless and alarm corners, both of these mounts hang directly off
+  // `keyless`, whose world transform is the identity — so their frames do not
+  // move with any input and this build-time solve is valid at EVERY pose. That
+  // is what makes a build solve legitimate here and illegitimate there; it is a
+  // fact about where the mounts hang, not a general licence.
+  const ray = bevelCornerRay(bevelCornerAxis(mountIn), bevelCornerAxis(mountOut));
+  const baseIn = bevelCornerSpin(gearIn, ray, BEVEL_TEETH, false);   // tooth on the ray
+  const baseOut = bevelCornerSpin(gearOut, ray, BEVEL_TEETH, true);  // gap on the ray
+  gearIn.rotation.z = baseIn;
+  gearOut.rotation.z = baseOut;
+  // The BASES travel to tick(), which adds only the spin — the same shape as
+  // `settingWheelBase`/`settingBevelBase` beside them. Returning them is what
+  // keeps the index written ONCE: tick used to restate `BEVEL_PHASE` itself, so
+  // the seed and the tick were two copies of one number and only one of them
+  // would have carried this solve.
+  return { gearIn, gearOut, baseIn, baseOut };
 }
 
 const Z_UP = new THREE.Vector3(0, 0, 1);
@@ -13408,7 +13414,7 @@ const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD };
 // at −6.15 (clear of the floor) and the stem bevel tops out at −2.70 (clear of
 // the plate).
 const Z_ALARM_CORNER = -4.1;
-const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_PHASE = Math.PI / ALARM_BEVEL_TEETH;
+const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24;
 // TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
 // not a convention. Two of them on a shared apex roll without slip only if their
 // RELATIVE angular velocity lies along the contact ray; everything else is
@@ -13424,8 +13430,10 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_PHASE = Mat
 // Measured, not declared: tools/probe-138-coupling.mjs drives the corner's real
 // input and tracks a marker fixed in each body, and the swing ratio is the
 // number it reports. The motion-works corners already satisfy it —
-// `cornerDrop.gearOut = BEVEL_PHASE − handSetOffset` against
-// `gearIn = +handSetOffset` — which is what makes them the control.
+// `cornerDrop.gearOut = baseOut − handSetOffset` against
+// `gearIn = baseIn + handSetOffset` — which is what makes them the control. The
+// bases differ per member since TODO 140 solved them; the SENSE this relies on
+// is the −/+ on the spin, which is untouched by that.
 const ALARM_CORNER_SENSE = -1;
 // TODO 138 Landing 2 — AND THE INDEX IS DERIVED TOO, from the corner rather
 // than assumed. `bevelOutline` centres tooth i at azimuth i·2π/z in the gear's
@@ -15944,7 +15952,7 @@ stemBevelMount.add(stemBevel);
 alarmSpinner.add(stemBevelMount);
 // THE CORNER'S INDEX, derived from the two mounts once both exist. The disc
 // presents a TOOTH on the contact ray and the stem a GAP, which is what makes
-// them interleave; `ALARM_BEVEL_PHASE`'s bare half-pitch assumed both gears'
+// them interleave; the bare half-pitch this replaced assumed both gears'
 // tooth 0 already lay on that ray, and neither does.
 {
   // TODO 139 — this block's own `rayAxis` was the third copy of one law and the
@@ -27552,7 +27560,8 @@ let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 // roller actually moved it this frame. An inspection surface, not state:
 // nothing reads it back (see __clock.resetContact / probe-reset-contact.mjs).
 let resetContactNow = { d: 0, free: Math.PI, pushed: false, off: 0 };
-let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
+let alarmCornerIndex = 0, alarmCornerWasEngaged = false; // TODO 140: the alarm corner's index, re-solved when the stem slides into mesh
+let alarmCrownCreep = 0, alarmCrownCreepLastA = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle (TODO 140: the ARBOR's hour angle, not the raw _bd — the stem reads the arbor)
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
 let alarmPinDropPhys = 0; // §45 stage 2: the drop the HELD tail permits — min(disc's law, rocker cap); negative = lifted out
 let alarmSelShownT = 0; // §34: the selector ring's eased slide — the column parity's physical consequence, and what the tube law reads
@@ -38827,10 +38836,15 @@ function tick(t) {
   // any two external gears meshing), so the sign flips at every corner —
   // drop(+) → traverse(−) → rise(+), landing back on +handSetOffset for the
   // rise/settingCap side since there are 2 corners.
-  cornerDrop.gearIn.rotation.z = handSetOffset;
-  cornerDrop.gearOut.rotation.z = BEVEL_PHASE - handSetOffset;
-  cornerRise.gearIn.rotation.z = -handSetOffset;
-  cornerRise.gearOut.rotation.z = BEVEL_PHASE + handSetOffset;
+  // TODO 140 — the BASE is the corner's solved index, not a bare half pitch.
+  // `BEVEL_PHASE` used to be restated here, which made the build seed and this
+  // line two copies of one quantity; the index is solved once in
+  // `addBevelCorner` now and only the SPIN travels, exactly as the setting
+  // wheel and its bevel do three lines above.
+  cornerDrop.gearIn.rotation.z = cornerDrop.baseIn + handSetOffset;
+  cornerDrop.gearOut.rotation.z = cornerDrop.baseOut - handSetOffset;
+  cornerRise.gearIn.rotation.z = cornerRise.baseIn - handSetOffset;
+  cornerRise.gearOut.rotation.z = cornerRise.baseOut + handSetOffset;
   // Cap pinion at the dial end of the motion-works arbor: spins with the
   // same handSetOffset that actually drives the hands, so the part sitting
   // right beside the cannon pinion visibly turns in step with it — the
@@ -39281,7 +39295,17 @@ function tick(t) {
   // (`tools/probe-mesh-transmission.mjs`. Nothing reads this angle back —
   // the rotor is posed, never sensed — so the correction moves the arbor
   // rod and its bevel mount and nothing else.)
-  alarmRotor.rotation.z = -alarmSetRot + 3 * _bd; // 3 = ALARM_DISC_TEETH/ALARM_SET_PINION_TEETH
+  //
+  // TODO 140 — ONE SOURCE for the hour's arrival at this arbor, because it
+  // reaches TWO members. The factor is the disc-to-pinion reduction and the
+  // sign is TODO 117's derivation above; the STEM is coupled to this arbor
+  // through the mitre, so the stem's own hour term IS this one and is read
+  // from here. It used to be restated in the creep block below — and restated
+  // with the opposite sign, which made the corner turn one way for the crown
+  // and the other for the hour. CLAUDE.md's recurring defect: one direction
+  // written down twice, only one copy carrying the sense.
+  const alarmArborHourA = (ALARM_DISC_TEETH / ALARM_SET_PINION_TEETH) * _bd;
+  alarmRotor.rotation.z = -alarmSetRot + alarmArborHourA;
   alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH)
     - _bd * (ALARM_DISC_TEETH / ALARM_SET_I2_TEETH);
   alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH)
@@ -39509,10 +39533,77 @@ function tick(t) {
   // the accumulated creep in the knob's position (disengaging a bevel moves
   // nothing), so the shown angle is continuous through every transition —
   // the §25 lockstep discipline. A session accumulator ⇒ resetInputs owns it.
-  if (alarmCrownOut && alarmCrownCreepLastBd !== null)
-    alarmCrownCreep += -3 * (_bd - alarmCrownCreepLastBd);
-  alarmCrownCreepLastBd = _bd;
-  alarmSpinner.rotation.y = alarmCrownRotation + alarmCrownCreep; // free stem, continuous with the drag
+  //
+  // TODO 140 — THE SENSE IS THE ARBOR'S, NOT A SECOND OPINION ABOUT IT. This
+  // site used to carry its own `-3 * (_bd - last)`, and measured
+  // (probe-138-coupling's hour row) the corner then read ratio +1 where two
+  // rolling cones demand −1 — while the CROWN row on the same two gears read
+  // −1 correctly. Same teeth, two drive paths, opposite senses.
+  //
+  // Which site was wrong is not a coin toss: the arbor's term is TODO 117's
+  // DERIVATION from the three external meshes and `probe-mesh-transmission`
+  // gates those, so the arbor is the source and this was the restatement. The
+  // stem takes the arbor's own delta through the mitre — and the mitre's
+  // relation in these two local frames is SAME SIGN, which is measured rather
+  // than reasoned: under the crown both members take `+aDelta` locally and the
+  // probe reads the world swings as equal and opposite, ratio −1.
+  if (alarmCrownOut && alarmCrownCreepLastA !== null)
+    alarmCrownCreep += alarmArborHourA - alarmCrownCreepLastA;
+  alarmCrownCreepLastA = alarmArborHourA;
+  //
+  // TODO 140 — THE INDEX IS RE-SOLVED AT ENGAGEMENT, because that is what the
+  // metal does. `bevelCornerSpin` solves this corner's index at BUILD, with the
+  // rotor at 0; the movement's rest pose puts the rotor at -2.90597, which is
+  // -4.625 pitches of a 10-tooth bevel — so the build index describes a pose
+  // the watch never occupies, and no build CONSTANT can fix it, because the
+  // rotor's angle carries `alarmSetRot` and varies with the set time.
+  //
+  // THE INVARIANT, and it is what the sense fix above bought. Both members take
+  // the SAME local delta from both drives — `+aDelta` from the crown, the
+  // arbor's own `+dA` from the hour — so while the pair is engaged
+  //
+  //     d = alarmRotor.rotation.z − alarmSpinner.rotation.y
+  //
+  // does not move. It is 0 at build, where the index was solved, so the teeth
+  // interleave exactly when d ≡ 0 (mod one pitch). Before the sense fix d moved
+  // at 6× the hour and no re-solve could have held.
+  //
+  // WHAT ENGAGEMENT DOES. Sliding the stem in, a tooth either drops into a gap
+  // or lands on a tooth and the tip chamfers cam it round to the nearest valley
+  // — never more than half a pitch, and the knob visibly clicks. So the stem
+  // takes the SHORTEST rotation that makes d a whole number of pitches. Zero
+  // when the teeth already line up, which is the no-clash case falling out of
+  // the same expression rather than being special-cased.
+  //
+  // MODELLED, not simulated, and the distinction is CLAUDE.md's: the cam action
+  // has a real force path (flank angle against the stem's friction) and this
+  // does not walk it — it lands the outcome that path reaches. What IS driven
+  // is which outcome: it is computed from the two members' own angles at the
+  // moment the drive engages, not chosen.
+  //
+  // WHY THE MOMENT NEED NOT BE DERIVED MORE FINELY THAN "the drive engaged".
+  // Measured off the metal: a correctly-indexed pair NEVER touches — its gap is
+  // the 0.00267 u of backlash the §136 cut reserves, growing to 4.35 u fully
+  // pushed in — so there is no contact instant to find, only the interval over
+  // which the tips can cam. It does not matter where in that interval this is
+  // taken, and that is arithmetic rather than hope: while disengaged the stem
+  // is free and d drifts only with the hour, at 3·(2π/12 h) = 4.4e-4 rad/s,
+  // while the pull's ease settles in about 0.3 s. So any instant in the throw
+  // gives the same frozen index to within 1.3e-4 rad — 2e-4 of a pitch, four
+  // orders under the half pitch at stake. The transition the drive already uses
+  // is therefore the one used here, rather than a second threshold beside it.
+  const alarmBevelPitch = (Math.PI * 2) / ALARM_BEVEL_TEETH;
+  if (alarmCrownOut && !alarmCornerWasEngaged) {
+    const d = alarmRotor.rotation.z - (alarmCrownRotation + alarmCrownCreep + alarmCornerIndex);
+    // the nearest valley: wrap the mismatch into ±half a pitch
+    const k = Math.round(d / alarmBevelPitch);
+    alarmCornerIndex += d - k * alarmBevelPitch;
+  }
+  // BANKED through disengagement, the creep's own discipline one block up:
+  // parting a bevel turns nothing, so the knob's angle stays continuous and the
+  // next engagement re-solves from wherever the free stem has been left.
+  alarmCornerWasEngaged = alarmCrownOut;
+  alarmSpinner.rotation.y = alarmCrownRotation + alarmCrownCreep + alarmCornerIndex; // free stem, continuous with the drag
 
   // Alarm striking works (BUILT §25 A; §99 split the members' states). The
   // BODY's angle is a pure function of the STRIKE PHASE — body and striking
@@ -40235,7 +40326,8 @@ window.__clock = {
     // Invalidate it so the next tick re-bakes from assembled geometry.
     lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
-    alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
+    alarmCrownCreep = 0; alarmCrownCreepLastA = null; // §29 step 2: the crown's banked back-drive creep
+    alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero

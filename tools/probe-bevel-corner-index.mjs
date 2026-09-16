@@ -303,7 +303,12 @@ say(Object.values(out.rows).every((r) => r.every((m) => m.r.runs.length === 1 ||
 say(bootWarnings.length === 0,
   `boot is silent${bootWarnings.length ? ` — ${bootWarnings.length}: ${bootWarnings[0]}` : ''}`);
 console.log('\n--- the corners bevelCornerSpin indexes');
-for (const key of ['WINDING', 'SETTING']) {
+// TODO 140 — CTRL-DROP and CTRL-RISE JOIN THE GATE. They were reported rather
+// than gated for as long as `addBevelCorner` seeded a bare half pitch, because
+// the absolute condition was false on all four members and only the RELATIVE one
+// survived. Both corners take the solve now, so the claim is holdable and is
+// held: deleting the exemption is part of the fix, not a follow-up to it.
+for (const key of ['WINDING', 'SETTING', 'CTRL-DROP', 'CTRL-RISE']) {
   const r = out.rows[key];
   if (!r) { say(false, `${key}: NOT MEASURED`); continue; }
   say(Math.abs(r[0].ctr) <= BUDGET, `${key} ${r[0].nm} carries a TOOTH on the ray (${r[0].ctr.toFixed(4)})`);
@@ -311,9 +316,7 @@ for (const key of ['WINDING', 'SETTING']) {
     `${key} ${r[1].nm} carries a GAP on the ray (${r[1].ctr.toFixed(4)}, miss ${(0.5 - Math.abs(r[1].ctr)).toFixed(4)})`);
 }
 console.log('\n--- reported, not gated');
-console.log('  ALARM       TODO 140 — the disc is indexed at a pose the movement never occupies');
-console.log('  CTRL-DROP / CTRL-RISE  TODO 140 — the motion-works corners never adopted bevelCornerSpin; their');
-console.log('              bare half-pitch satisfies the RELATIVE condition only, and on opposite');
-console.log('              combinations, because the two corners have opposite handedness');
+console.log('  ALARM       TODO 140 — the disc is indexed at a pose the movement never occupies,');
+console.log('              so its index is re-solved at ENGAGEMENT and cannot be read at rest');
 console.log(`\n${fails.length ? `${fails.length} FAILURE(S)` : 'all claims hold'}`);
 process.exit(fails.length ? 1 : 0);

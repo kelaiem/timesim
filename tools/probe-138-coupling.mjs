@@ -96,6 +96,19 @@ const out = await page.evaluate(async () => {
     { name: 'alarm SETTING, stem to disc', a: 'alarmStemBevel', b: 'alarmDiscBevel',
       drive: (f) => C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
         alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }) },
+    // TODO 140 — THE SAME CORNER, DRIVEN BY THE OTHER THING THAT DRIVES IT.
+    // The row above sweeps the CROWN. The hour also reaches this pair, through
+    // `alarmCrownCreep` (§194 F) on one side and `3 * _bd` on the rotor's own
+    // angle on the other, and nothing has ever measured whether those two
+    // paths agree with each other about the corner. A pair driven by two
+    // relations is not one coupling, and re-solving its index at engagement
+    // would stand on that.
+    { name: 'alarm SETTING, the HOUR back-drive through the same teeth', a: 'alarmStemBevel', b: 'alarmDiscBevel',
+      // tau far enough to move the HOUR: it reaches this corner as 3*_bd and
+      // _bd is the hour wheel's dial angle, so a short sweep gives a swing near
+      // float noise — and a sign read off noise is not a finding.
+      drive: (f) => C.setPose({ tau: 0.13 + f * 1800, crownPullT: 0, leverEngage: 0, tension: 1,
+        alarmCrownRotation: 0, alarmOn: 1, alarmCrownPullT: 1 }) },
     // TODO 136's two keyless corners, added by TODO 139 — they were cut as bevel
     // pairs and never added HERE, so nothing measured whether the movement drives
     // them conjugately. The winding one is swept by the bank (the crown wheel's
