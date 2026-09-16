@@ -22642,7 +22642,27 @@ const ALARM_COL_POS = {
 // main.js throws at import: `__clock` never appears and the console stays
 // empty, which is this file's own documented tell and the FOURTH time it has
 // been paid here.
-const ALARM_COL_RIDER_NOSE_R = 0.28;
+// §226 — THE RIDERS' NOSE, SIZED AGAINST THE MOVEMENT'S OWN UNIT. Every rider
+// presented a 0.28 tip: a bare literal, the last one left in this mechanism's
+// contact geometry. It is half a RATCHET TOOTH now — the same reference the
+// driver's arms were cut to, because a reader sees the teeth, the driver and
+// these noses in one glance, and a tip thinner than the teeth it reads is a
+// wire touching a gear.
+//
+// READ FROM `geometry.js`, NOT COPIED. The depth is `baseR * (TIP_K - ROOT_K)`
+// and this constant is declared hundreds of lines before the wheel is built —
+// the temporal dead zone the comment above already records — so it cannot ask
+// the built part. `ratchetToothDepth` is the one source both the cut and this
+// derivation read.
+//
+// IT IS NOT A TIP CHANGE. The wheel sizes its flat tops around this radius
+// (`flatHalf = (riderNoseR + CLEAR_MARGIN) / baseR`), and the lock rocker
+// solves its arm as a CHORD against a fixed post wall through
+// ALARM_ROCKER_READ_R = BASE_R + this — so widening it re-cuts the
+// castellations AND shortens that arm, while tightening the ceiling the same
+// arm's chamfer must fit under. The guards below hold the result; this comment
+// does not argue it.
+const ALARM_COL_RIDER_NOSE_R = G.ratchetToothDepth(ALARM_COL_BASE_R) / 2;
 // The lock beak's azimuth about the wheel, in profileAt's own convention. It is
 // ZERO, and naming it is the point: the fold KEPT the reading station exactly
 // where it was — B0 lies on the wheel→pivot ray, the same ray the wheel's phase

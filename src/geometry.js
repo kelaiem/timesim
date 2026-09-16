@@ -2282,6 +2282,17 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
 // tick() poses against, so the cut columns and the ridden profile cannot
 // drift apart (the §25 A cam convention).
 // ---------------------------------------------------------------------------
+// §226 — THE RATCHET'S RADII, AS ONE SOURCE. `makeColumnWheel` cuts the saw
+// between these two factors of `baseR`, and a CALLER now needs the tooth's
+// depth as well: the riders' nose is sized against it, and that constant is
+// declared hundreds of lines before the wheel exists, so it cannot read the
+// built part's `userData`. Copying `baseR * 0.22` to the call site is the
+// defect this file keeps finding in itself — one dimension written down twice,
+// with only one copy learning when it moves — so both sides read these.
+export const RATCHET_ROOT_K = 0.9;
+export const RATCHET_TIP_K = 1.12;
+export const ratchetToothDepth = (baseR) => baseR * (RATCHET_TIP_K - RATCHET_ROOT_K);
+
 export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 0.55, colInner = 0.95, boreR = 0.3, material, riderNoseR = 0.28, skirtH = STOCK_MIN_U, rCham = 0 }) {
   const mat = material || MATS.blueSteel;
   const g = new THREE.Group();
@@ -2445,7 +2456,7 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
   // case pusher's pawl indexes. Real column wheels are driven exactly here.
   {
     const teethN = columns * 2;
-    const rr = baseR * 0.9, tip = baseR * 1.12;
+    const rr = baseR * RATCHET_ROOT_K, tip = baseR * RATCHET_TIP_K;
     // SAW DIRECTION — mirrored in y (owner's call, and the measurement agrees).
     // As first cut, each tooth fell tip→root with rising angle, so its cliff
     // caught a pawl travelling +theta: the teeth were cut to be driven CCW
