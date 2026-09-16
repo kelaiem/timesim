@@ -25185,3 +25185,158 @@ is not reachable from a dev container), quoting its leaf COUNT so a diff that
 compares nothing cannot pass for one that finds nothing. Clean over several
 trees and the clause can be relaxed with evidence named; one moved row and the
 clause was right, with the row that proved it.
+
+---
+
+## §229 — The alarm link's beak reads the whole castellation tier, and the lever inverts
+
+**Filed from a sighting, not from the roadmap.** The owner could see the
+column wheel index and the lock rocker throw, and could not see the *link*
+beak — the follower that carries "armed / disarmed" out to the selector
+collar — move at all. Measured, it moved **0.0218** of a **0.6167** tier:
+3.5% of the cam it rides.
+
+### Why it was 3.5%, and why that is a defect rather than a look
+
+The nose's fall is capped by the SEAT — the selector ring's own travel,
+reflected back through the beak lever. Two things made that cap tiny.
+
+The first is a loop. `ALARM_COL_SEAT_DROP_SPEC` is a property of the
+*linkage* (ring travel ÷ lever ratio), and it was quoted at the *wheel*,
+where it fed `ALARM_COL_H`'s `max()` — the tier the linkage then reads.
+§192's own comment admits it: "the spec is the fixed point of the fork it
+feeds". The competition under that `max()` was never real either: the lock
+rocker's term is 0.6167 and the link's was 0.1718, so the link's ride had
+no say in the tier at any point.
+
+The second is the lever. It **amplified**, arms 0.220 — so the nose's fall
+was the rod's 0.0991 travel *divided* by 4.55. A follower reading 3.5% of
+its cam is not reading the cam: flank tolerance, wear and pose error are
+all the same size as the signal. It is a P1 finding (a ratio inherited from
+routing rather than designed), and the invisibility is the symptom that
+found it.
+
+### The causality turns round
+
+The tier is the rocker's alone — value unchanged at 0.6167, a floor-stock
+beak riding the column outer faces with one running margin at each — and
+the seat drop is DERIVED from it:
+
+    seat drop = tier − CLEAR_MARGIN = 0.4667
+
+which is exactly the bound §192's own assert already policed ("the beak
+would ride the gap floor, not the seat"). What used to be a measured fixed
+point is now a consequence, and the LEVER re-derives to meet it:
+
+    beakLen / tailLen = seat drop / |rodTravel| = 4.709
+
+The lever is collinear by construction, so the two arms are complementary
+(`beakLen + tailLen = wrLen − landR`) and the **station** is the only free
+variable that sets their ratio. The pivot therefore walks out along the ray
+the lever already occupies, 6.701 → 14.013, and the BAR takes over the span
+the tail used to hold. §172's saw-tip rule, which used to *be* the station,
+is demoted to the floor the station must clear (assert 1, unchanged).
+
+**Position-space currency only**, which is what the design priority
+prescribes. The §229 corridor scan measured the post's plan clearance to
+the nearest metal outside the unit: **0.8696** at the derived station
+against **0.1995** at the shipped one.
+
+| | before | after |
+|---|---|---|
+| beak nose z throw | 0.0218 | **0.4972** (81% of the tier) |
+| rod travel | 0.0993 | 0.0993 |
+| ring travel | 0.1900 | 0.1900 |
+| lock pad radial throw | 0.4684 | 0.4684 |
+
+The mechanism's **output is untouched**; only the read changed. That is the
+result — a 23× larger signal for the same delivered motion.
+
+### The rod travel is a spec now, and that is not the mistake it looks like
+
+The station needs `|rodTravel|`, which falls out of the registration solve
+*after* the arm is built (the solve needs the arm's z). §169's COILS
+convention is the standing answer: quote it where it is needed, re-derive it
+live where it is produced, warn if the two part. The deleted
+`ALARM_LINK_ROD_TRAVEL = 0.42` had no such assert, which is exactly how it
+sat wrong for the life of §35; `ALARM_LINK_ROD_TRAVEL_SPEC` is held to 1e-3
+by the solve itself.
+
+### The nose stops being two literals
+
+It was `BoxGeometry(0.35, 0.18, …)` — and 0.18 is well under the movement's
+own 0.3167 stock floor. A wire laid across a 0.6167 tier, and the one face
+in this mechanism whose job is to *show* which state the wheel is in.
+
+- **Azimuth** is the widest the column's own flat carries, one running
+  margin in from each edge **at the radius the nose actually lands on**:
+  `colFlatHalf · landR − CLEAR_MARGIN` = **0.969**. The land radius is the
+  part the wheel's rule cannot supply — `flatHalf = (riderNoseR +
+  CLEAR_MARGIN) / baseR` sizes the flat as an *angle* from a rider riding at
+  `baseR`, and this beak lands mid-castellation, inboard of it, so the arc
+  it is given is smaller than that rule assumes.
+- **Radially** it takes **one ratchet tooth** (1.254) — §226's reference,
+  the width the driver's three arms and every rider nose already carry.
+
+Three consequences travelled with it:
+
+1. **A flat follower rests on the highest point under its FOOTPRINT**, not
+   under its centre. At 0.18 that was worth 1% of a flank and could be
+   ignored; at this width it is a quarter of one. `alarmLinkNoseSurface` is
+   the one source, read by the arm's clearance sweep and by the tick's pose
+   law, sampled at a spacing budgeted from `CLEAR_MARGIN / 10`.
+2. **The sections swap arms with the ratio.** The bar is the long arm now
+   (9.358) and the tail the short one (1.987), so each takes whichever of
+   §54's ceiling and §50's floor governs, and both are asserted against both
+   bounds — where §172 held only the tail and only against the floor.
+3. **The readability check reached for `0.35 / 2`** — the nose's RADIAL
+   extent used as its azimuthal half-width. Conservative by 1.9×, so nothing
+   shipped wrong, but it is one source now.
+
+### The arms are cut one ratchet tooth wide as well
+
+`STOCK_MIN_U` stopped being a legal width the moment the bar became the long
+arm: §54's ceiling is about a free length against a section and applies in
+**both** plan dimensions, and 9.358 at 0.3167 is λ 29.6 sideways. The floor
+is therefore `beakLen / SLENDER_TARGET` in width too. What the arms are CUT
+to is one ratchet tooth, clearing that floor 3.6× — the owner's legibility
+call, taken deliberately *above* a derived minimum rather than pinned to it,
+and the same width the driver's arms, the rider noses and this lever's own
+beak now carry. The room is measured: over the whole ray from the wheel to
+the rod there is **no metal at all** in the arms' z band outside the unit.
+
+The wider bar costs what it should — its corners reach azimuths where the
+flank has not dropped as far as it has under the nose, so the swept lift
+rises 0.150 → 0.273 and the beak grows to match. That number comes out of
+the same sweep that has always priced it.
+
+### §137's stall was re-measured, not re-quoted
+
+The tail blade went **305 → 24146 N/m** with the arm swap (and 4× again on
+the width), so its share of the series compliance fell from 2.6% to
+effectively nothing. `tools/probe-82-alarm-stall.mjs` reads **6.68 mN**
+where it read 6.17 — still inside the 5–50 mN detent band, still governed
+by the shaft's two spans.
+
+That **kills the premise** `SLENDER_WAIVERS['Alarm link']` gave for not
+taking the section fix: "at r 0.28 the shaft's compliance all but vanishes
+and the beak tail blade (305 N/m) governs alone". It cannot govern anything
+now. The conclusion survives on the shaft's own members — stiffening the
+spans is what removes the compliance and nothing soft is left behind them —
+and the entry says so, and points at the probe rather than at itself.
+
+### What this did NOT fix, with the measurement that says why
+
+The driver's **pawl** — the blue arm that literally pushes the ratchet teeth
+— keeps its 0.20 nose and 0.15 half-width. Its centreline was mapped through
+the saw's swept free region *at those dimensions*, and the build's own sweep
+reports the cut outline coming within **0.1513** of the saw over the return,
+against `CLEAR_MARGIN` 0.15. There is **0.0013** of headroom. Widening it is
+a re-mapping of the centreline (`tools/probe-163-driver.mjs`'s job), not a
+parameter bump, and it is filed as its own landing.
+
+**Battery:** 40/40 gates, local. Boot silent. `alarmHandoffs` 13 hand-offs /
+0 waived, `intraUnit` 0 unwaived, `sweptOverlap` 0 CONFIRMED, `transfers` 0
+unwaived envelope misses, `clearances` 0 violations.
+
+---

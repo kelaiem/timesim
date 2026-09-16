@@ -24460,6 +24460,23 @@ const alarmLinkParts = {};
   // file's traps list names; it is read now, not repeated.)
   const noseR = ALARM_LINK_NOSE_LAND_R;  // nose lands mid-castellation
   const beakLen = pivDist - noseR;
+  // §229 — AND THE PLAN WIDTH IS A §54 QUESTION TOO, which floor stock no longer
+  // answers. §54's ceiling is about a FREE LENGTH against a section, and it
+  // applies in both plan dimensions: at 9.358 long and STOCK_MIN_U wide this
+  // arm would run λ 29.6 sideways — over the 27 ceiling — even with its depth
+  // solved. The floor is therefore beakLen / SLENDER_TARGET in width as well.
+  //
+  // What it is CUT to is one ratchet tooth, §226's feature width, which clears
+  // that floor 3.6× — the owner's legibility call, taken deliberately above a
+  // derived minimum rather than pinned to it, and the same width the driver's
+  // three arms, every rider nose and this lever's own beak already carry. The
+  // room is measured, not assumed: over the whole ray from the wheel to the
+  // rod there is no metal at all in this z band outside the unit (the §229
+  // width scan — the nearest is the wheel's own castellations, which the
+  // sweep below prices).
+  const ALARM_LINK_ARM_W = G.ratchetToothDepth(ALARM_COL_BASE_R);
+  if (ALARM_LINK_ARM_W < beakLen / SLENDER_TARGET - 1e-9)
+    console.warn(`§229: the beak bar is ${ALARM_LINK_ARM_W.toFixed(4)} wide over a ${beakLen.toFixed(3)} run — λ ${(beakLen / ALARM_LINK_ARM_W).toFixed(1)} in plan, over the ${SLENDER_TARGET} ceiling`);
   //
   // AND THE GAP IS SWEPT, NOT ASSUMED — §120's precedent, because a static
   // CLEAR_MARGIN over the column top plane is NOT enough here and the first cut
@@ -24478,7 +24495,7 @@ const alarmLinkParts = {};
   const _beakBarLift = (() => {
     const p = alarmColumnWheel.userData.profileAt;
     const colH = ALARM_COL_H;
-    const halfW = STOCK_MIN_U / 2;
+    const halfW = ALARM_LINK_ARM_W / 2;      // §229: the bar's own width, not a copy of the floor it used to be
     let need = CLEAR_MARGIN;                       // the floor, with no tilt and no width
     const STEPS = 240;
     for (let i = 0; i < STEPS; i++) {
@@ -24517,7 +24534,7 @@ const alarmLinkParts = {};
   // is tall and thin, not square"), and it grows UPWARD so the underside that
   // carries the nose and the rod-top contact does not move.
   const ALARM_LINK_BAR_H = Math.max(STOCK_MIN_U, beakLen / SLENDER_TARGET);
-  const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, ALARM_LINK_BAR_H), MATS.steel);
+  const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, ALARM_LINK_ARM_W, ALARM_LINK_BAR_H), MATS.steel);
   beakBar.name = 'alarmLinkBeakBar';  // §54
   beakBar.position.x = beakLen / 2;
   beakBar.position.z = (ALARM_LINK_BAR_H - STOCK_MIN_U) / 2;   // underside unmoved — the nose hangs off it
@@ -24558,7 +24575,7 @@ const alarmLinkParts = {};
   // ceiling and the floor have met" and left as a warning. It is a max() now,
   // and what is asserted below is the ratio itself.
   const ALARM_LINK_TAIL_H = Math.max(STOCK_MIN_U, tailLen / SLENDER_TARGET);
-  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, ALARM_LINK_TAIL_H), MATS.steel);
+  const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, ALARM_LINK_ARM_W, ALARM_LINK_TAIL_H), MATS.steel);
   beakTail.name = 'alarmLinkBeakTail'; // §54: was λ 83.7 — TODO 16's headline member
   beakTail.position.x = -tailLen / 2;
   beakTail.position.z = (ALARM_LINK_TAIL_H - STOCK_MIN_U) / 2;   // underside unmoved
@@ -25304,7 +25321,7 @@ const alarmLinkParts = {};
   // agreeing with it by eye. It is still first-order and not a measured load
   // path; what it claims is the comparison, and TODO 79 owns the fix.
   {
-    const kTail = cantileverK_N_per_m(STOCK_MIN_U, ALARM_LINK_TAIL_H, tailLen);
+    const kTail = cantileverK_N_per_m(ALARM_LINK_ARM_W, ALARM_LINK_TAIL_H, tailLen);   // §229: the arm's real width, which is no longer the stock floor
     const rodTravelU = Math.abs(alarmLinkParts.forward.rodTravel);
     const tailStallMN = kTail * rodTravelU * UNIT_MM; // N/m × (u→m) × 1000 = mN
     declareTransfer('alarm arming: beak lever (castellations → rod)', {
