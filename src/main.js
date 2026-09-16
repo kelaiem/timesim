@@ -62,6 +62,7 @@ import {
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
   SLENDER_OVERHANG_K,                         // §54: an overhang's effective length — §36 sizes against what the check MEASURES
+  SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
 } from './layout.js';
 
@@ -15390,6 +15391,84 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
   const sleeve = new THREE.Mesh(ringGeo(0.5, 0.62, Math.abs(ALARM_BAND_Z - ALARM_SET_Z)), MATS.steel);
   sleeve.position.z = (ALARM_BAND_Z - ALARM_SET_Z) / 2;
   alarmSetI1Spin.add(sleeve);
+}
+// --- 'Alarm release reader' — TODO 117 stage 1, the ORBITING COLLAR --------
+// The decided topology (TODO 117): the disc carries the SET only and holds
+// still, and the HOUR carries the reader round to meet it. The trip stops
+// being a difference the gearing has to compute and becomes a plain
+// coincidence, so no differential is needed and nothing injects the hour into
+// the setting train.
+//
+// STAGE 1 BUILDS THE METAL AND WIRES NOTHING. The trip still runs the §29
+// step 3 feeler below, and the disc still carries its hour term. That is
+// deliberate: the alarm's timing is broken at every intermediate state where
+// the disc has lost the hour and this reader does not yet carry it, so the
+// collar is sited and measured on its own first. What this landing may claim
+// is only that the part FITS and ORBITS — nothing about the trip.
+//
+// EVERY NUMBER HERE IS THE LINE'S (tools/probe-117-line.mjs, 25 rows), and it
+// is READ from the same constants rather than restated, so a line quantity and
+// its metal cannot drift apart.
+//
+//  · the take-off radius is the pin's OWN radius. The fold rule forbids paying
+//    for packaging with a lever arm, and reading the ring where the pin already
+//    stands leaves ALARM_FEELER_ARM_LEN exactly as built — displacement gain 1,
+//    so the beak's withdrawal is unchanged by crossing the orbit.
+//  · the pin's LENGTH is §54's ceiling on a tip-loaded overhang, not a chosen
+//    stand-off. Its radius is unavailable (ALARM_NOTCH_W derives from the
+//    diameter), so the ceiling bounds the length and the length bounds the
+//    ring's plane. Measured, §54 BINDS and the corridor does not (0.8334
+//    against the corridor's 2.8117) — the stand-off is a structural number.
+//  · the ring is a plain annulus at §50's floor in both section directions.
+const READER_PIN_LEN = (SLENDER_MAX * (ALARM_PIN_R / 2)) / SLENDER_OVERHANG_K;
+const READER_RING_T = STOCK_MIN_U;                 // §50's floor, axially
+const READER_STANDOFF = READER_PIN_LEN + READER_RING_T / 2;
+// DIAL-LOCAL, and the sign is the seam TODO 115 keeps catching: dialFace is
+// turned 180° about Y, so world z = Z_DIAL − local z and the reader's corridor
+// — which runs toward MORE NEGATIVE world z, away from the dial — is INCREASING
+// local z. The stand-off therefore ADDS here and subtracts in the line's world
+// figures. Both land the plane at world −6.3718 against the free-ring map's
+// −6.35 ± 0.25 cell.
+const READER_RING_Z = ALARM_TRACK_TOP + READER_STANDOFF;
+const alarmReaderUnit = new THREE.Group();
+// HOUR-CARRIED: parented into the hour wheel's own group, so the collar orbits
+// with the hour and needs no drive of its own. That IS the topology — the
+// reader moving is what replaces the differential.
+hourWheelGroup.add(alarmReaderUnit);
+registerLabel('Alarm release reader', alarmReaderUnit);
+registerExplode(alarmReaderUnit, 0, 2, 1); // dial-side, like the disc it reads
+{
+  // The collar: a coaxial annulus about the dial centre, straddling the
+  // take-off radius. Coaxial is not a style choice — a signal leaving an
+  // orbiting member without a length that changes with azimuth HAS to be taken
+  // about the orbit's own axis (the line priced the alternative: a fixed link
+  // runs 2.682 → 31.203 across the orbit, 11.6×, and a link is one length).
+  const ring = new THREE.Mesh(ringGeo(
+    ALARM_TRACK_RMID - READER_RING_T / 2, ALARM_TRACK_RMID + READER_RING_T / 2, READER_RING_T), MATS.steel);
+  ring.name = 'alarmReaderRing';
+  ring.position.z = READER_RING_Z;
+  alarmReaderUnit.add(ring);
+  // The pin, standing off the ring's track-side face to the track's own top.
+  // Its far end lands ON ALARM_TRACK_TOP by construction, which is what makes
+  // the stand-off a derivation rather than a fit.
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PIN_R, ALARM_PIN_R, READER_PIN_LEN, 12), MATS.steel);
+  pin.name = 'alarmReaderPin';
+  pin.rotation.x = Math.PI / 2;
+  pin.position.set(ALARM_TRACK_RMID, 0, READER_RING_Z - READER_RING_T / 2 - READER_PIN_LEN / 2);
+  alarmReaderUnit.add(pin);
+  // Build asserts — the derivation, with achieved and required (rule 6). These
+  // hold a BUILD-TIME relation, never a pose: the collar's frame is the hour
+  // wheel's, which no input moves at build.
+  const pinTipZ = READER_RING_Z - READER_RING_T / 2 - READER_PIN_LEN;
+  if (Math.abs(pinTipZ - ALARM_TRACK_TOP) > 1e-9)
+    console.warn(`§117 reader: pin tip ${pinTipZ.toFixed(4)} misses the track top ${ALARM_TRACK_TOP.toFixed(4)} — the stand-off is not the pin's length`);
+  if (READER_RING_T < STOCK_MIN_U - 1e-12)
+    console.warn(`§117 reader: ring section ${READER_RING_T.toFixed(4)} under §50's floor ${STOCK_MIN_U.toFixed(4)}`);
+  // NOT asserted here, deliberately: "the lever's arm is inherited, not forked"
+  // is a relation between the take-off radius and ALARM_FEELER_ARM_LEN, which is
+  // declared BELOW this block. Writing it here could only compare the take-off
+  // radius with itself — an assert that cannot fail, which is worse than none.
+  // tools/probe-117-line.mjs holds it against the real arm (row 1).
 }
 // --- '(§29 step 3) Alarm release feeler' — the FIXED reader ---------------
 // A rocking lever on a dial-hung bracket at the release azimuth: pin down
@@ -36067,6 +36146,7 @@ const UNIT_GROUPS = new Map([
     ['Alarm crown', 6], ['Alarm setting arbor', 5], ['Alarm setting idler', 4],
     ['Alarm setting wheel', 3], ['Alarm disc', 2],
     ['Alarm release disc', 2], ['Alarm release feeler', 3],
+    ['Alarm release reader', 2], // TODO 117 stage 1: the disc's own stratum — it orbits in the disc band, reading the same track
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
     ['Alarm governor', 8], // §104: one step past the striking wheel it hangs off, before the hammer it paces

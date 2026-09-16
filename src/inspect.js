@@ -200,6 +200,7 @@ export const MECH_GRAPH = {
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
+    ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/345, the selector's pattern one band deeper)
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
@@ -326,6 +327,8 @@ export const MECH_GRAPH = {
     ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
     ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
                                                    // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
+    ['Hour wheel', 'Alarm release reader'],  // TODO 117 stage 1: the hour carries the reader ROUND to meet the notch — the moving half of the decided topology.
+                                              // STAGE 1 IS INERT: nothing downstream reads this collar yet, so no drive edge leaves it. The trip still runs the feeler row below.
     ['Alarm release disc', 'Alarm release feeler'], // §29 step 3: the raised track carries the pin; the notch's arrival
                                                     // under it IS the drop — the azimuth-independent detection
     ['Alarm release feeler', 'Alarm winding train'], // §29 step 4: the tail's beak in the climb's contrate band is the
@@ -664,6 +667,7 @@ const EXPECTED_PAIRS = [
                                             // clearances to Dial furniture are boot-asserted analytically
   ['Alarm setting idler', 'Alarm release disc'],  // §29: the i1b ⇄ rim mesh (the re-phasing branch)
   ['Alarm release disc', 'Alarm release feeler'], // §29: the pin ON the track — the working read contact
+  ['Alarm release disc', 'Alarm release reader'], // TODO 117 stage 1: the collar's pin rides the SAME track — its tip lands on ALARM_TRACK_TOP by construction, so this is a working contact from the moment the metal exists
   ['Alarm release feeler', 'Alarm winding train'], // §29: the beak IN the contrate band — the detent contact
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
