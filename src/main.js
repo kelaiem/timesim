@@ -25694,6 +25694,7 @@ const ALARM_PRESS_S = 0.12;
 // disguised timeout of 0.15·ln(1e6) = 2.07 s: every re-press inside two
 // seconds of the last one was swallowed with the head visibly back home.
 const ALARM_RETURN_S = ALARM_PRESS_S;
+let alarmPusherGuideMesh = null;            // §230: seated after the return collar it must clear
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
 // Cheap because the algebra above reduces the whole geometry to one sign.
@@ -25973,23 +25974,16 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // PLACE, and `INTRA_UNIT_CONTACTS` declared the sliding fit — which SKIPS
   // the pair before measurement, so the declaration bought silence for the
   // very thing it was describing. That is TODO 104's whole subject.
-  const bossD = plateR - 1.2;
-  boss.position.set(_pushU.x * bossD, _pushU.y * bossD, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the axis runs under the plate; the boss's half-span is what derived its depth
+  // §230 — THE STATION MOVES DOWNSTREAM, because it is derived from a member
+  // that does not exist yet. It read `plateR - 1.2`, and the 1.2 was a bare
+  // literal with no constraint behind it; what the bearing actually has to do
+  // is clear the RETURN COLLAR that rides the same stem, and the collar's
+  // station is a consequence of the return spring, which is sized against the
+  // pawl's drag, which is built a thousand lines below. So the mesh is captured
+  // here and seated there, with both §182 asserts travelling with it — a
+  // station and the assert that holds it belong at the same place.
+  alarmPusherGuideMesh = boss;
   alarmSwitchUnit.add(boss);
-  // …and assert both halves of being a bearing, in the stem's own frame:
-  // ON the line, and AROUND the shaft across the whole stroke. The group
-  // retreats by ALARM_PUSH_TRAVEL when pressed, so the boss's station
-  // measured in group-local s runs bossS → bossS + travel; the stem occupies
-  // [ALARM_PUSH_INNER, stemOuterS] there at every T.
-  {
-    const dx = boss.position.x - _pushBase.x, dy = boss.position.y - _pushBase.y;
-    const off = dx * _pushPerp.x + dy * _pushPerp.y;
-    const bossS = dx * _pushU.x + dy * _pushU.y;
-    if (Math.abs(off) > 1e-6)
-      console.warn(`§182: the pusher's guide boss stands ${off.toFixed(4)} off the stem's own line — a bearing beside its shaft is not one`);
-    if (bossS < ALARM_PUSH_INNER || bossS + ALARM_PUSH_TRAVEL > stemOuterS)
-      console.warn(`§182: the guide boss sits at s ${bossS.toFixed(3)}→${(bossS + ALARM_PUSH_TRAVEL).toFixed(3)} against a stem spanning ${ALARM_PUSH_INNER.toFixed(3)}–${stemOuterS.toFixed(3)} — the shaft leaves its bearing inside the stroke`);
-  }
   // §43 riser-slot tripwire (the §35/§68 rod-bore pattern): the plate's slot
   // is a literal cut long before these constants exist — assert the derived
   // riser track (rest → pressed, at the riser's own radius + CLEAR_MARGIN)
@@ -26938,6 +26932,44 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   const abutS = barOuterAtRest + CLEAR_MARGIN + bracketT + abutT / 2;
   ALARM_PUSH_ABUT_S = abutS;
   const collarS = abutS + abutT / 2 + installed + collarT / 2;
+  // §230 — AND HERE IS THE GUIDE BOSS'S STATION, derived at last.
+  //
+  // The bearing and the return collar ride the SAME stem, and the collar is
+  // the one that moves: its station is the spring stack's end, so it walks
+  // whenever the return spring's installed length changes — and that length is
+  // ALARM_SPRING_HEADROOM × the pawl's drag, three mechanisms upstream. §230's
+  // wider pawl swings a longer stroke, which stiffens its spring, which moves
+  // this collar, and `intraUnit` found the collar inside the boss at rest. The
+  // literal `plateR - 1.2` could not have followed it, which is what made it a
+  // bug in waiting rather than merely an undeserved number.
+  //
+  // REST IS THE WORST POSE: the group retreats by ALARM_PUSH_TRAVEL on the
+  // press, carrying the collar INBOARD away from the boss, so the rest station
+  // is where the two are closest and the clearance is taken there. Both are
+  // rings on one axis and the collar's outer radius exceeds the boss's bore, so
+  // they cannot pass through each other — the margin has to be AXIAL.
+  const _guideBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;   // the base, ON the push axis (block-scoped above; the same expression, not a second definition of the axis)
+  const bossD = _guideBaseS + collarS + collarT / 2 + ALARM_PUSH_GUIDE_TUBE + CLEAR_MARGIN;
+  alarmPusherGuideMesh.position.set(_pushU.x * bossD, _pushU.y * bossD,
+                                    ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
+  // …and assert every half of being a bearing, in the stem's own frame: ON the
+  // line, AROUND the shaft across the whole stroke, and ON THE PLATE that
+  // carries it — which is the constraint the 1.2 inset was standing in for and
+  // never stated.
+  {
+    const stemOuterS = CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL - _guideBaseS;
+    const dx = alarmPusherGuideMesh.position.x - _pushBase.x;
+    const dy = alarmPusherGuideMesh.position.y - _pushBase.y;
+    const off = dx * _pushPerp.x + dy * _pushPerp.y;
+    const bossS = dx * _pushU.x + dy * _pushU.y;
+    if (Math.abs(off) > 1e-6)
+      console.warn(`§182: the pusher's guide boss stands ${off.toFixed(4)} off the stem's own line — a bearing beside its shaft is not one`);
+    const stemInner = alarmPusherGroup.userData.stem.inner;   // the span §71 publishes, not a second copy of it
+    if (bossS < stemInner || bossS + ALARM_PUSH_TRAVEL > stemOuterS)
+      console.warn(`§182: the guide boss sits at s ${bossS.toFixed(3)}→${(bossS + ALARM_PUSH_TRAVEL).toFixed(3)} against a stem spanning ${stemInner.toFixed(3)}–${stemOuterS.toFixed(3)} — the shaft leaves its bearing inside the stroke`);
+    if (bossD + ALARM_PUSH_GUIDE_RING + ALARM_PUSH_GUIDE_TUBE > plateR - 1e-9)
+      console.warn(`§230: the pusher's guide boss reaches r ${(bossD + ALARM_PUSH_GUIDE_RING + ALARM_PUSH_GUIDE_TUBE).toFixed(3)} against a plate ending at ${plateR.toFixed(3)} — the bearing has walked off the metal that carries it`);
+  }
   // WHERE THE BRACKET RISES, and it cannot rise where a bracket would like to.
   // Between the stem's bore and the plate's underside there is 0.76 − 0.37 =
   // 0.39 of radius, and a leg at §50's floor wants its own width plus a margin
