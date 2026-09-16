@@ -4,7 +4,7 @@
 
 # The instruments
 
-212 scripts. **110 are ACCEPTANCE tests** — they decide and exit non-zero.
+213 scripts. **111 are ACCEPTANCE tests** — they decide and exit non-zero.
 **102 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -58,6 +58,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-117-line.mjs` | §117 | acceptance | §117 — THE RELEASE TAKE-OFF, AS A STRAIGHT LINE. |
 | `probe-117-reversed-bias.mjs` | §117 | acceptance | ACCEPTANCE — WHAT DOES REVERSING THE FEELER'S BIAS BLADE COST? |
 | `probe-117-takeoff.mjs` | §117 | acceptance | IF THE READER ORBITS, HOW DOES ITS SIGNAL GET OUT? — TODO 117's price. |
+| `probe-117-trip.mjs` | §117 | acceptance | ACCEPTANCE — DOES THE ALARM STILL RING AT THE TIME IT IS SET TO? |
 | `probe-119-crown-roll.mjs` | §119 | report | §119 — WHAT NO GATE MEASURES: does a crown turn with the knurling under the finger, in every view? |
 | `probe-119-pad-targets.mjs` | §119 | acceptance | §119 — WHAT NO GATE MEASURES: can a thumb hit each control on the pad? |
 | `probe-120-governor.mjs` | §120 | report | §120 — the governor's bearings, read off a real boot. |

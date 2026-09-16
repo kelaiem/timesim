@@ -15328,7 +15328,13 @@ const solveGearChain = (label, chain, module, inputs = []) => {
 // it clear (6.0 achieved, asserted at the feeler). The release azimuth is
 // a free phase (Φ absorbs it); only the TAIL's corridor cares, and it
 // dog-legs back to the climb one band above the gear lane (step 4).
-const ALARM_RELEASE_PHASE = Math.PI - ALARM_RELEASE_AZ; // dialFace mirror: a disc-local-az-0 feature sits at world ALARM_RELEASE_AZ when rotation.z == this
+// TODO 117 retired this constant's LAST READER. It put the notch at the lever's
+// own azimuth, which was the fixed reader's whole requirement; the reader
+// orbits now and finds the notch wherever it stands, so a phase here would
+// only move the alarm away from its own hand. Deleting it rather than leaving
+// it unread: a constant nothing derives from is rule 1 in reverse.
+// (ALARM_RELEASE_AZ itself stays — the LEVER is still at that azimuth, and its
+// bracket, its tail run and its beak are all sited from it.)
 const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
 const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.85), inside the rim's root circle (3.30)
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
@@ -15336,7 +15342,17 @@ const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: 
 // opposite to the tube; the notch az at trip is setting-independent) —
 // the mirror-frame algebra has too many hands. The boot assert below
 // re-verifies the third invariant numerically on every load.
-const ALARM_DISC_SIGN = 1;   // set-term sign in the disc's dial-frame law
+// TODO 117 — THE SET TERM'S SIGN, RE-DERIVED BY THE FOLD. It was +1 while the
+// disc carried hour + set and a FIXED pin read it: there the coincidence was
+// `disc == ALARM_RELEASE_PHASE`, and the set term had to cancel the hour's.
+// With the reader hour-borne the coincidence is `disc == hourDialA`, so the
+// set term enters with the opposite sign and the disc must simply BE the alarm
+// hand's angle: the movement's own trip condition, written in the §29 branch
+// assert below, is hourDialA == −alarmAngle. Left at +1 the alarm rings at a
+// time that walks with the setting — measured, the hour and alarm hands parted
+// by 2.93 rad across three settings (probe-117-trip.mjs, which exists because
+// nothing in the battery measures a TIME).
+const ALARM_DISC_SIGN = -1;  // set-term sign in the disc's dial-frame law
 const ALARM_BD_SIGN = 1;     // hour back-drive sign through the branch
 {
   if (Math.abs(ALARM_SET_I2_TEETH / ALARM_DISC_TEETH - ALARM_SET_I2_TEETH / ALARM_SET_WHEEL_TEETH) > 1e-12)
@@ -15422,21 +15438,30 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
 //    for packaging with a lever arm, and reading the ring where the pin already
 //    stands leaves ALARM_FEELER_ARM_LEN exactly as built — displacement gain 1,
 //    so the beak's withdrawal is unchanged by crossing the orbit.
-//  · the pin's LENGTH is §54's ceiling on a tip-loaded overhang, not a chosen
-//    stand-off. Its radius is unavailable (ALARM_NOTCH_W derives from the
-//    diameter), so the ceiling bounds the length and the length bounds the
-//    ring's plane. Measured, §54 BINDS and the corridor does not (0.8334
-//    against the corridor's 2.8117) — the stand-off is a structural number.
+//  · the pin's LENGTH is the RING'S CLEARANCE OVER THE TRACK, and that is a
+//    correction to the line. The line derived it from §54's ceiling because it
+//    was siting the ring as far from the track as the free-ring map allowed;
+//    the fold does not want that — it wants the ring as CLOSE to the track as
+//    the mechanism permits, so the lever's tip can reach it from the dial side
+//    without the bias blade reversing (probe-117-reversed-bias.mjs priced the
+//    reversal at 83.61 mN against a 50 mN envelope). The ring must clear the
+//    track by one margin AT FULL DROP, so the pin spans ALARM_PIN_DROP of
+//    travel plus CLEAR_MARGIN and nothing else. §54 goes SLACK, which is what a
+//    ceiling does when a part gets shorter — asserted below, never assumed.
 //  · the ring is a plain annulus at §50's floor in both section directions.
-const READER_PIN_LEN = (SLENDER_MAX * (ALARM_PIN_R / 2)) / SLENDER_OVERHANG_K;
+const READER_PIN_LEN = ALARM_PIN_DROP + CLEAR_MARGIN;
+const READER_PIN_LEN_MAX = (SLENDER_MAX * (ALARM_PIN_R / 2)) / SLENDER_OVERHANG_K;  // §54's ceiling on a tip-loaded overhang
 const READER_RING_T = STOCK_MIN_U;                 // §50's floor, axially
 const READER_STANDOFF = READER_PIN_LEN + READER_RING_T / 2;
 // DIAL-LOCAL, and the sign is the seam TODO 115 keeps catching: dialFace is
-// turned 180° about Y, so world z = Z_DIAL − local z and the reader's corridor
-// — which runs toward MORE NEGATIVE world z, away from the dial — is INCREASING
-// local z. The stand-off therefore ADDS here and subtracts in the line's world
-// figures. Both land the plane at world −6.3718 against the free-ring map's
-// −6.35 ± 0.25 cell.
+// turned 180° about Y, so world z = Z_DIAL − local z and the corridor between
+// the track and the DIAL — which is where the ring goes — runs toward MORE
+// NEGATIVE world z and therefore INCREASING local z. The stand-off adds here
+// and subtracts in world. (The earlier comment here had that sentence's second
+// clause backwards, calling more negative world "away from the dial"; the dial
+// back face measures world −8.35 and the track top −5.3805, so more negative
+// world is TOWARD it. The arithmetic was right and the gloss was wrong, which
+// is how the fold spent two landings looking for room on the far side.)
 const READER_RING_Z = ALARM_TRACK_TOP + READER_STANDOFF;
 const alarmReaderUnit = new THREE.Group();
 // HOUR-CARRIED: parented into the hour wheel's own group, so the collar orbits
@@ -15445,6 +15470,16 @@ const alarmReaderUnit = new THREE.Group();
 hourWheelGroup.add(alarmReaderUnit);
 registerLabel('Alarm release reader', alarmReaderUnit);
 registerExplode(alarmReaderUnit, 0, 2, 1); // dial-side, like the disc it reads
+// THE DRIVEN LIFT IS ITS OWN GROUP, and that is not tidiness. updateExplode
+// writes `position.z = baseZ` on every REGISTERED unit every frame, so a tick
+// law written onto alarmReaderUnit.position.z would be erased on the next
+// paint — silently, and only in the live app, since a posed battery run never
+// gets there. registerExplode's own comment records that trap costing a
+// session once already (the handsGroup 3.2/2.5 divergence). The collar's axial
+// travel therefore lives one level in, exactly as the feeler's rock lives on
+// alarmFeelerLever inside alarmFeelerUnit.
+const alarmReaderLift = new THREE.Group();
+alarmReaderUnit.add(alarmReaderLift);
 {
   // The collar: a coaxial annulus about the dial centre, straddling the
   // take-off radius. Coaxial is not a style choice — a signal leaving an
@@ -15455,7 +15490,7 @@ registerExplode(alarmReaderUnit, 0, 2, 1); // dial-side, like the disc it reads
     ALARM_TRACK_RMID - READER_RING_T / 2, ALARM_TRACK_RMID + READER_RING_T / 2, READER_RING_T), MATS.steel);
   ring.name = 'alarmReaderRing';
   ring.position.z = READER_RING_Z;
-  alarmReaderUnit.add(ring);
+  alarmReaderLift.add(ring);
   // The pin, standing off the ring's track-side face to the track's own top.
   // Its far end lands ON ALARM_TRACK_TOP by construction, which is what makes
   // the stand-off a derivation rather than a fit.
@@ -15463,7 +15498,7 @@ registerExplode(alarmReaderUnit, 0, 2, 1); // dial-side, like the disc it reads
   pin.name = 'alarmReaderPin';
   pin.rotation.x = Math.PI / 2;
   pin.position.set(ALARM_TRACK_RMID, 0, READER_RING_Z - READER_RING_T / 2 - READER_PIN_LEN / 2);
-  alarmReaderUnit.add(pin);
+  alarmReaderLift.add(pin);
   // Build asserts — the derivation, with achieved and required (rule 6). These
   // hold a BUILD-TIME relation, never a pose: the collar's frame is the hour
   // wheel's, which no input moves at build.
@@ -15472,6 +15507,17 @@ registerExplode(alarmReaderUnit, 0, 2, 1); // dial-side, like the disc it reads
     console.warn(`§117 reader: pin tip ${pinTipZ.toFixed(4)} misses the track top ${ALARM_TRACK_TOP.toFixed(4)} — the stand-off is not the pin's length`);
   if (READER_RING_T < STOCK_MIN_U - 1e-12)
     console.warn(`§117 reader: ring section ${READER_RING_T.toFixed(4)} under §50's floor ${STOCK_MIN_U.toFixed(4)}`);
+  // §54 is a CEILING, so the shortened pin must be under it rather than on it.
+  // Asserting the relation keeps the two derivations honest about which one
+  // governs: the clearance does, and the slenderness merely permits it.
+  if (READER_PIN_LEN > READER_PIN_LEN_MAX + 1e-12)
+    console.warn(`§117 reader: pin ${READER_PIN_LEN.toFixed(4)} over §54's ceiling ${READER_PIN_LEN_MAX.toFixed(4)} (λ ${(SLENDER_OVERHANG_K * READER_PIN_LEN / (ALARM_PIN_R / 2)).toFixed(1)})`);
+  // The ring must still clear the track when the pin is fully dropped — the
+  // constraint the pin's length IS, written as the thing it protects rather
+  // than as the number it produced.
+  const ringToTrackDropped = READER_PIN_LEN - ALARM_PIN_DROP;
+  if (ringToTrackDropped < CLEAR_MARGIN - 1e-12)
+    console.warn(`§117 reader: ring clears the track by ${ringToTrackDropped.toFixed(4)} at full drop, under one margin ${CLEAR_MARGIN}`);
   // NOT asserted here, deliberately: "the lever's arm is inherited, not forked"
   // is a relation between the take-off radius and ALARM_FEELER_ARM_LEN, which is
   // declared BELOW this block. Writing it here could only compare the take-off
@@ -15551,20 +15597,67 @@ alarmFeelerLever.rotation.z = _phiF; // local +x = inboard, toward the pin
 alarmFeelerUnit.add(alarmFeelerLever);
 registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 level 2
 {
-  const arm = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_ARM_LEN, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.steel);
-  arm.position.x = ALARM_FEELER_ARM_LEN / 2;
+  // THE LEVER STOPS BEING A READER (TODO 117). Its pin is gone: two members
+  // cannot read one track, and the collar reads it now. What the lever reads
+  // instead is the collar's DIAL-SIDE face, which it must therefore reach from
+  // the dial side — and the whole difficulty of this fold was that its arm
+  // stands in the way of its own tip. The arm's plane is pinned by the alarm
+  // release sleeve (ALARM_FEELER_TOP is that envelope less one margin) AT THE
+  // SLEEVE'S RADIUS, not here, so the inboard end is free to JOG toward the
+  // dial and pass under the ring. Measured (probe-117-fork-room.mjs, 42 poses):
+  // the band between the disc's face and the next metal at this radius is
+  // 1.4029, the stack below spends 0.8833 of it, and the bound is the alarm
+  // hand's tube. The retraction that said there was no room here measured
+  // where the arm IS.
+  //
+  // Lever-local: +x runs INBOARD from the pivot and +z runs toward the DIAL
+  // (the pin it replaces sat at negative z, toward the track). Three members,
+  // overlapping so the group is one connected body for §107:
+  //   arm  — pivot out to the jog, in the sleeve's own plane, unchanged
+  //   jog  — the step, clear of the ring's outer edge by one margin
+  //   tip  — under the ring, its track-side face ON the ring's dial-side face
+  const FEELER_JOG_R = ALARM_TRACK_RMID + READER_RING_T / 2 + CLEAR_MARGIN + ALARM_FEELER_T / 2;
+  const FEELER_ARM_RUN = ALARM_FEELER_PIVOT_R - FEELER_JOG_R;   // pivot → the jog's centre
+  const FEELER_TIP_END = ALARM_FEELER_PIVOT_R - (ALARM_TRACK_RMID - READER_RING_T / 2); // the ring's inner edge
+  // The tip's contact face is the ring's dial-side face, SEATED — the same
+  // 0.02 the pin used to take into the track, and for the same reason: two
+  // exactly coincident planes are ambiguous to the instruments and z-fight in
+  // the view, where a seated contact reads as the contact it is. The equality
+  // is written as one expression rather than as two numbers that agree.
+  const FEELER_TIP_SEAT = 0.02;   // as the pin's own seat, retired with it
+  const FEELER_TIP_FACE = (READER_RING_Z + READER_RING_T / 2) - _armMidZ - FEELER_TIP_SEAT;  // lever-local
+  const FEELER_TIP_Z = FEELER_TIP_FACE + ALARM_FEELER_T / 2;              // its box centre
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(FEELER_ARM_RUN, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.steel);
+  arm.position.x = FEELER_ARM_RUN / 2;
   alarmFeelerLever.add(arm);
   const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_TAIL, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.steel);
   tail.name = 'alarmFeelerTail'; // §45 stage 2 hand-off selector (string-coupled)
   tail.position.x = -ALARM_FEELER_TAIL / 2;
   alarmFeelerLever.add(tail);
-  // The pin: shank from inside the arm down to the riding tip.
-  const pinLen = (ALARM_FEELER_TOP - ALARM_FEELER_T / 2) - ALARM_TRACK_TOP + 0.02; // arm mid → track top, +0.02 seat
-  const pin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_PIN_R, ALARM_PIN_R, pinLen, 12), MATS.ruby);
-  pin.name = 'alarmFeelerPin'; // penetration-budget selector
-  pin.rotation.x = Math.PI / 2;
-  pin.position.set(ALARM_FEELER_ARM_LEN, 0, -pinLen / 2 + 0.02);
-  alarmFeelerLever.add(pin);
+  // The jog: a post from the arm's plane down to the tip's, sitting OUTBOARD of
+  // the ring. Its inboard face clears the ring's outer edge by one margin,
+  // which is what FEELER_JOG_R's half-thickness term buys.
+  const jogSpan = FEELER_TIP_Z + ALARM_FEELER_T;   // arm's dial face → tip's dial face
+  const jog = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_T, 2 * ALARM_PIN_R, jogSpan), MATS.steel);
+  jog.name = 'alarmFeelerJog';
+  // Centred so it spans the arm's dial face to the tip's: [−T/2, TIP_Z + T/2].
+  jog.position.set(FEELER_ARM_RUN, 0, FEELER_TIP_Z / 2);
+  alarmFeelerLever.add(jog);
+  // The tip: spans the ring's full radial width, so the contact's centroid is
+  // ALARM_TRACK_RMID and ALARM_FEELER_ARM_LEN is genuinely inherited — the
+  // line's displacement gain of exactly 1.
+  const tipLen = FEELER_TIP_END - FEELER_ARM_RUN;
+  const tip = new THREE.Mesh(new THREE.BoxGeometry(tipLen, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.ruby);
+  tip.name = 'alarmFeelerTip'; // penetration-budget selector (was alarmFeelerPin)
+  tip.position.set(FEELER_ARM_RUN + tipLen / 2, 0, FEELER_TIP_Z);
+  alarmFeelerLever.add(tip);
+  // Build asserts — the derivation, achieved and required (rule 6).
+  if (Math.abs((ALARM_FEELER_PIVOT_R - (FEELER_ARM_RUN + tipLen / 2)) - ALARM_TRACK_RMID) > READER_RING_T / 2 + CLEAR_MARGIN)
+    console.warn(`§117 feeler: the tip's mid radius ${(ALARM_FEELER_PIVOT_R - (FEELER_ARM_RUN + tipLen / 2)).toFixed(4)} has left the ring at ${ALARM_TRACK_RMID}`);
+  if (FEELER_JOG_R - ALARM_FEELER_T / 2 < ALARM_TRACK_RMID + READER_RING_T / 2 + CLEAR_MARGIN - 1e-12)
+    console.warn(`§117 feeler: the jog's inboard face ${(FEELER_JOG_R - ALARM_FEELER_T / 2).toFixed(4)} crowds the ring's rim ${(ALARM_TRACK_RMID + READER_RING_T / 2).toFixed(4)}`);
+  if (FEELER_TIP_Z <= ALARM_FEELER_T / 2)
+    console.warn(`§117 feeler: the tip ${FEELER_TIP_Z.toFixed(4)} has not cleared the arm's own plane — no jog`);
   // Return spring: a blade from the outboard lug pressing the arm down —
   // force representational, flex driven in tick from the actual drop.
   // §51 strata spend: the blade at real spring stock — 0.08 u = 0.03 mm, the
@@ -15645,7 +15738,14 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   const TAIL_RUN_ROOT_X = 0.35;
   const jog = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, Math.abs(_tailRunZ) + ALARM_FEELER_T), MATS.steel);
   const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_PAWL_DIST, 2 * ALARM_TAIL_RUN_HALFW, ALARM_TAIL_RUN_T), MATS.steel);
-  tail.position.set(ALARM_PAWL_DIST / 2, 0, _tailRunZ);
+  // NAMED because an INTRA_UNIT_CONTACTS row points at this joint, and an
+  // unnamed mesh is addressed by its INDEX in the unit's mesh list. TODO 117
+  // added one member to the lever ahead of it and every index behind shifted
+  // by one, so the row slid off its joint onto the neighbouring pair — the
+  // run⇄riser corner went unexcused and the battery caught it as a fresh MM
+  // intersection in metal nobody had touched. TODO 50's fix, applied again:
+  // name the mesh and the declaration cannot drift.
+  tail.name = 'alarmTailRun';
   // §54 / TODO 78, asked by TODO 109 — WHERE THIS RUN IS HELD. Geometry-local
   // x about the run's centre, so the jog's station (tailG-local
   // TAIL_RUN_ROOT_X) is that less half the run's length. On the MESH, never
@@ -15663,6 +15763,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   //
   // Measured 35.1 → 85.1. Whole-stock λ was calling a tip-loaded cantilever
   // a span, which flatters it by K = ∛16; the larger number is the true one.
+  tail.position.set(ALARM_PAWL_DIST / 2, 0, _tailRunZ);
   tail.userData.bearings = { axis: 'x', stations: [TAIL_RUN_ROOT_X - ALARM_PAWL_DIST / 2] };
   const tailG = new THREE.Group();
   tailG.rotation.z = dirL;
@@ -15673,6 +15774,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // riser + beak ride the flex group at the tail's end
   const beakTopL = (-7 - (_pawlBandTop - ALARM_PAWL_ENGAGE / 2)) - _armMidZ; // beak CENTRE, so its span is [bandTop − engage, bandTop] (world → dial-local → lever-local)
   const riser = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, Math.abs(beakTopL - _tailRunZ)), MATS.steel);
+  riser.name = 'alarmPawlRiser';  // named for the same reason as alarmTailRun — see there
   riser.position.z = (beakTopL + _tailRunZ) / 2; // spans the jogged run's plane down to the beak
   alarmPawlFlex.add(riser);
   const beak = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, ALARM_PAWL_ENGAGE), MATS.steel);
@@ -15743,17 +15845,28 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   const closure = Math.abs(Math.hypot(ALARM_SET_I1.x - P.dial.x, ALARM_SET_I1.y - P.dial.y)
     - ALARM_BRANCH_MODULE * (ALARM_SET_I1_TEETH + ALARM_DISC_TEETH) / 2);
   if (closure > 1e-9) console.warn(`§29 branch: i1b⇄rim mesh fails to close by ${closure.toFixed(4)}`);
-  // the trip invariance — the whole POINT of the differential, verified
-  // numerically: for two different settings, (hour == set) must put the
-  // notch at the SAME world azimuth (the release az).
+  // THE TRIP INVARIANCE, RE-AIMED BY TODO 117. It used to say: for two
+  // settings, (hour == set) must put the notch at the same WORLD azimuth, the
+  // release az — the invariant of a FIXED reader, and the whole point of the
+  // differential that fed it. The reader orbits now, so the notch is at the
+  // release azimuth only once every twelve hours and that statement is simply
+  // false of this movement.
+  //
+  // What replaces it is the relation the fold actually rests on: THE NOTCH IS
+  // CUT WHERE THE ALARM HAND POINTS. The hand's dial-local angle is the tube's
+  // armed target and the notch's is alarmNotchA(); the reader's pin rides the
+  // hour wheel at the hour hand's own build azimuth, so pin-meets-notch and
+  // hand-meets-hand are one event exactly when those two expressions agree.
+  // They are written in different places by different laws — that is what makes
+  // this an assert and not a restatement; change the tube's target and this
+  // fires. (It cannot check the build AZIMUTHS, which are geometry at a pose:
+  // probe-117-trip.mjs measures those off the two hands' own tips.)
   for (const setRot of [1.0, 4.7]) {
-    const aSet = setRot * ALARM_SET_RATIO;
-    const hourAtTrip = -aSet;                               // the §25 B trip: the hour wheel's dial-local angle (hourDialA) == tube (−alarmAngle)
-    const discRot = hourAtTrip + ALARM_DISC_SIGN * aSet + ALARM_RELEASE_PHASE;
-    const notchWorld = Math.PI - discRot;                   // dialFace mirror of the disc-local-az-0 gap
-    const err = Math.abs(wrapPi(notchWorld - ALARM_RELEASE_AZ));
+    const tubeArmed = -(setRot * ALARM_SET_RATIO);          // alarmTubeGroup's armed target, −alarmDiscAngle()
+    const notch = ALARM_DISC_SIGN * (setRot * ALARM_SET_RATIO);
+    const err = Math.abs(wrapPi(notch - tubeArmed));
     if (err > 1e-9)
-      console.warn(`§29 trip invariance: setting ${setRot} puts the notch ${err.toFixed(4)} rad off the release az — the disc law's set sign is wrong`);
+      console.warn(`§29 trip invariance: at setting ${setRot} the notch stands ${err.toFixed(4)} rad from the alarm hand — the disc law's set sign is wrong`);
   }
 }
 // The hand: hour-hand profile, a touch shorter so the hour hand can cover it
@@ -37865,6 +37978,31 @@ function alarmDiscAngle() {
   const a = alarmSetRot * ALARM_SET_RATIO; // §25 C winding: the SET path's banked rotation — winding does not move the hand
   return ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 }
+// TODO 117 — THE NOTCH'S DIAL-FRAME ANGLE, WRITTEN ONCE. Four sites read the
+// coincidence (the trip's drop, the disc's pose, the step-over guard, the
+// agreement assert) and the fold MOVES it: the disc used to carry the hour and
+// be read by a pin fixed at the release azimuth; now the disc carries the SET
+// alone and the READER carries the hour round to meet it. A move like that
+// is CLAUDE.md's recurring defect waiting to happen — one direction written
+// down four times, one copy left behind — so the law lives here and every site
+// calls it.
+//
+// The disc's law loses its hour term and nothing replaces it: with the reader
+// hour-borne, the coincidence is `alarmNotchA() − hourDialA`, and the hour
+// arrives by the reader ORBITING rather than by the disc being driven. That is
+// the whole decided topology in one function.
+function alarmNotchA() {
+  // No phase term, and its absence is the derivation. The notch is cut WHERE
+  // THE ALARM HAND POINTS — the hand's dial-local angle is the tube's armed
+  // target, −alarmDiscAngle(), and the reader's pin sits on the hour wheel at
+  // the same build azimuth as the hour hand. So pin-meets-notch and
+  // hand-meets-hand are the same event with nothing between them.
+  // ALARM_RELEASE_PHASE was what put the notch at the LEVER's azimuth, and the
+  // lever no longer reads the notch: it reads the ring, which carries the drop
+  // to every azimuth at once. A phase here would be an alarm that rings a fixed
+  // amount away from its own hand.
+  return ALARM_DISC_SIGN * alarmDiscAngle();
+}
 function alarmMarkIndex() {
   // Which quarter-hour mark the HAND is nearest — for the readout and the
   // ding target. (Not a physical detent; the friction coupling has none.)
@@ -38736,11 +38874,21 @@ function tick(t) {
     // state). The later disc block re-derives the identical value for the
     // visual pose; both are pure functions of the same inputs.
     {
-      discRotForTrip = hourDialA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+      discRotForTrip = alarmNotchA();
       const discRotNow = discRotForTrip;
       const pinArcHalf = ALARM_PIN_R / ALARM_TRACK_RMID;
       const gapHalf = ALARM_NOTCH_W / 2;
-      const align = Math.abs(wrapPi(discRotNow - ALARM_RELEASE_PHASE));
+      // TODO 117 — the pin that reads this notch is the READER's, and the
+      // reader is parented into hourWheelGroup at its own azimuth zero, so its
+      // dial-frame angle IS hourDialA. The old form subtracted
+      // ALARM_RELEASE_PHASE because the pin then stood on the lever, fixed at
+      // the release azimuth. Subtracting the wrong azimuth is not a tolerance:
+      // with an hour-borne pin and the disc's old hour term the offset between
+      // pin and notch is a function of the SET alone, so the metal would drop
+      // into a notch that is not under it. The lever no longer needs to be at
+      // the coincidence at all — it reads the RING, which presents the drop at
+      // every azimuth at once.
+      const align = Math.abs(wrapPi(discRotNow - hourDialA));
       alarmPinDropNow = align >= gapHalf + pinArcHalf ? 0
         : align <= gapHalf - pinArcHalf ? ALARM_PIN_DROP
         : ALARM_PIN_DROP * ((gapHalf + pinArcHalf - align) / (2 * pinArcHalf));
@@ -38782,7 +38930,7 @@ function tick(t) {
         || Math.abs(setPathRot - alarmPrevSetPathRot) > 1e-9;
       alarmPrevSetRot = alarmSetRot;
       alarmPrevSetPathRot = setPathRot;
-      const centred = wrapPi(discRotForTrip - ALARM_RELEASE_PHASE);
+      const centred = wrapPi(discRotForTrip - hourDialA);   // TODO 117: against the READER's azimuth, as the drop above
       // …the TIME crown counts as a hand too: quick-setting swings the
       // hour phase under the disc, so a set-drag crossing is the user's
       // hand, not a missed alarm — the boot sync's 'pull' phase proved it
@@ -38825,9 +38973,21 @@ function tick(t) {
       // cannot move under a zero-dt setPose tick (the documented trap), so
       // a posed jump would false-fire the assert while the pin is exactly
       // where the mechanism puts it.
-      const relTarget = wrapPi(hourDialA + alarmDiscAngle());
+      // TODO 117 — SAY WHAT THIS STILL CHECKS. It used to compare two paths to
+      // the coincidence: the disc's posed law and the hand's angle through the
+      // train. The fold made the notch ONE expression (alarmNotchA), so both
+      // sides now descend from it and the comparison is an identity — it can
+      // no longer catch a drift between derivations, because there is only one
+      // derivation left. Kept, honestly downgraded: it is a WINDOW invariant on
+      // the notch's own geometry, and it still fires if the cap chain or the
+      // drop's interpolation ever bottoms a pin outside the notch's arc.
+      // THE CROSS-PATH AGREEMENT MOVED TO AN INSTRUMENT, which is where a claim
+      // about a POSE belongs (rule 6): probe-handedness.mjs measures the pin
+      // bottoming against the hour hand's and alarm hand's WORLD azimuths, off
+      // the metal, at three settings.
+      const relTarget = wrapPi(alarmNotchA() - hourDialA);
       if (Math.abs(relTarget) > ALARM_NOTCH_W)
-        console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad from coincidence — detector and arithmetic disagree (window ${ALARM_NOTCH_W})`);
+        console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad outside the notch's arc (window ${ALARM_NOTCH_W})`);
       alarmReleased = true;              // both holds now off: the brake lifted at arming, the pawl just withdrew
       alarmDropSpent = true;
       // Fast-forward exists to REACH this moment, so hand the moment back at
@@ -39398,11 +39558,15 @@ function tick(t) {
     - _bd * (ALARM_DISC_TEETH / ALARM_SET_I2_TEETH);
   alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH)
     + _bd * (ALARM_DISC_TEETH / ALARM_SET_I1_TEETH);
-  // The disc's one law — total in both regimes (running: follows the hour
-  // through the friction seat; setting: re-phased through the branch): its
-  // dial-frame angle is hour + set-term + the release phase, so the notch
-  // sits at the release azimuth exactly when the hands coincide.
-  alarmDiscGroup.rotation.z = hourDialA + ALARM_DISC_SIGN * (alarmSetRot * ALARM_SET_RATIO) + ALARM_RELEASE_PHASE;
+  // The disc's one law, and TODO 117 took the hour out of it. It used to be
+  // hour + set + phase — a difference the setting train had to compute, which
+  // is the three-law contradiction that item exists for: a plain gear train is
+  // bidirectional, so the hour injected at the branch flowed back up the whole
+  // setting chain and no member carried the set alone. The disc carries SET
+  // ONLY now and holds where the crown left it; the hour reaches the trip by
+  // carrying the READER round instead. Same expression as the trip's, by call
+  // rather than by restatement.
+  alarmDiscGroup.rotation.z = alarmNotchA();
   // §29 step 3: the pin RIDES the track — its lift IS the surface under it,
   // a pure function of the disc's angle (no ease, no state: setPose poses
   // it exactly). alarmPinDropNow was computed up at the strike section this
@@ -39410,7 +39574,21 @@ function tick(t) {
   // §48/TODO 13 — the blade presses the arm DOWN onto the disc; the pin's
   // height is what stops it. Seat one CLEAR_MARGIN below the deepest the pin
   // can drop, so the spring is still loaded at the bottom of the notch.
+  // TODO 117 — THE READER IS WHAT RIDES THE TRACK NOW, and the lever reads the
+  // reader. The collar translates axially by the pin's own drop: it is a rigid
+  // annulus, so its dial-side face presents that drop at EVERY azimuth at once,
+  // which is the whole reason the take-off is a ring rather than a link. Its
+  // frame is hourWheelGroup's, a dialFace child, so dial-local z applies and
+  // TRACK-ward is decreasing z — the same seam the collar's stand-off adds on.
+  // The travel is bounded by the banking stop over the tail, not by the notch's
+  // floor, so it is ALARM_PIN_DROP and never the notch's depth.
+  const readerDrop = Math.min(alarmPinDropPhys, ALARM_PIN_DROP);
+  alarmReaderLift.position.z = -readerDrop;
   const feelerDrop = Math.min(alarmPinDropPhys, ALARM_FEELER_SEAT_DROP); // §45 stage 2: the physical pin — a held/lifted lever shows it
+  // GAIN 1, and it is the same rock law as before because the fold spent
+  // nothing to cross the orbit: the tip reads the ring at the pin's own radius,
+  // so ALARM_FEELER_ARM_LEN is inherited and the beak's withdrawal is unchanged
+  // (probe-117-line.mjs asserts that as an equality between the two chains).
   alarmFeelerLever.rotation.y = -feelerDrop / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
   // §48/TODO 13 — the blade follows the arm it presses, root fixed at the stud.
   if (alarmFeelerSpringBlade && alarmFeelerBearPoint) {

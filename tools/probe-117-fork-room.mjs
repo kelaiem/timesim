@@ -90,12 +90,14 @@ const out = await page.evaluate(async () => {
   const ENTITLED = ['Hour wheel', 'Dial'];
   const FLOOR_UNIT = 'Alarm release disc';
 
-  // 2.20 … 3.05 are the fork's candidate take-off radii. 3.30 and 3.50 are not
+  // 2.20 … 3.05 are the fork's candidate take-off radii. 3.30 … 3.70 are not
   // candidates at all: they are the TRANSITION, the radii a jogged lever tip
   // must climb back through to rejoin its own plane outboard of the ring, and
   // a band measured only where the ring sits would be a claim about the jog
-  // made without looking at where the jog happens.
-  const CANDIDATES = [2.20, 2.40, 2.60, 2.80, 3.05, 3.30, 3.50];
+  // made without looking at where the jog happens. The outermost covers the
+  // jog post's own far side — as built it spans r 3.358 … 3.675, and 3.50's
+  // band reaches 3.658, which is not the same as reaching 3.675.
+  const CANDIDATES = [2.20, 2.40, 2.60, 2.80, 3.05, 3.30, 3.50, 3.70];
 
   const poses = [];
   for (const ax of I.AXES) for (const f of [0, 0.5, 1]) poses.push(ax.pose(f));

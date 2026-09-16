@@ -15527,6 +15527,143 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
+### THE FOLD IS BUILT — and the three-law contradiction is CLOSED
+
+The jog, the collar's re-siting and the topology landed together, because they
+had to: an hour-borne reader with the disc's old hour term drops its pin where
+there is no notch, and the item's own staging says any two of the three break
+the trip. **Battery 40/40, boot silent, fingerprint deterministic.**
+
+**What the metal does now.** From the disc's face, toward the dial:
+
+| member | world z | derived from |
+|---|---|---|
+| disc track top | −5.3805 | `ALARM_TRACK_TOP` |
+| reader's pin | −5.6305 … −5.3805 | `READER_PIN_LEN` = `ALARM_PIN_DROP + CLEAR_MARGIN` |
+| reader's ring | −5.9472 … −5.6305 | `STOCK_MIN_U`, §50's floor |
+| lever's jogged tip | −6.2438 … −5.9271 | seated 0.02 on the ring's dial face |
+| nearest other metal | −6.7834 | the alarm hand's tube — 0.5396 spare |
+
+**The pin's length stopped being §54's ceiling and became the ring's clearance
+over the track.** The line derived it from slenderness because it was siting the
+ring as far from the track as the free-ring map allowed; the fold wants the
+opposite — the ring as CLOSE to the track as the mechanism permits, so the
+lever's tip can reach it from the dial side without the blade reversing. The
+ring must clear the track by one margin at full drop, so the pin spans
+`ALARM_PIN_DROP + CLEAR_MARGIN` = 0.25 and nothing else. §54 goes SLACK (λ 9.0
+against the ceiling's 30), which is what a ceiling does when a part gets
+shorter — asserted at build, not assumed.
+
+**The lever's jog is three members where there was one bar.** The arm keeps the
+sleeve's own plane out to r 3.517, a post steps down clear of the ring's outer
+edge by one margin, and the tip runs under the ring spanning its full radial
+width — so the contact's centroid is `ALARM_TRACK_RMID` and
+`ALARM_FEELER_ARM_LEN` is genuinely inherited. The line's displacement gain of
+exactly 1 survives the fold, and the rock law in tick is unchanged.
+
+**The reader's travel lives one level in, and that is not tidiness.**
+`updateExplode` writes `position.z = baseZ` on every REGISTERED unit every
+frame, so a tick law written onto `alarmReaderUnit.position.z` would be erased
+on the next paint — silently, and only in the live app, since a posed battery
+run never reaches a frame. `registerExplode`'s own comment records that trap
+costing a session once already. The lift is `alarmReaderLift`, exactly as the
+feeler's rock lives on `alarmFeelerLever` inside `alarmFeelerUnit`.
+
+**THE THREE LAWS, ALL THREE HOLDING.** This is the item's open half, and it
+closes by taking the hour out of the disc rather than by adding a differential:
+
+1. **The gearing.** Disc and setting wheel are one 1:1 pair and must carry the
+   same angle. Disc = `ALARM_DISC_SIGN · alarmDiscAngle()` = `−alarmSetRot·RATIO`;
+   setting wheel = `−alarmSetRot·RATIO`. Equal. **`transmits` reports 0 waived**
+   — the waiver that stood on `disc rim ⇄ idler 1b` went STALE and the battery
+   failed naming it, which is precisely the receipt a waiver's staleness gate
+   exists to hand over.
+2. **The disc carries the trip**, and it is measured rather than argued:
+   `tools/probe-117-trip.mjs`, 4 rows 0 failing. The pin bottoms when the hour
+   hand's world azimuth meets the alarm hand's, at a **constant 0.00102 rad
+   across three settings, spread 0.00000** — half of one sample of hand angle,
+   which is the plateau's own quantisation.
+3. **The armed coupling.** `relB = wrapPi(alarmTubeShownA − wheelAngle)`, tube
+   armed target `−alarmDiscAngle()`, wheel `−alarmSetRot·RATIO`: identically 0.
+   The face cam no longer cycles under its pin twice a day, because nothing
+   injects the hour into the setting train any more.
+
+**And the branch does not have to go.** The blast-radius map was written for
+deleting `i1b` — six sites, two of them asserts that would go silent. With the
+hour out of the disc, the branch is simply how the crown's setting reaches the
+disc, and it transmits at its tooth ratios under every declared input. Deleting
+it is now a choice about part count, not a correctness fix, and the rim's tooth
+count keeps the constraint it was solved against. That is a change to this
+item's plan and it is recorded as one.
+
+**What moved in the trip's code, and why it is one expression.** Four sites read
+the coincidence and the fold moves it, which is CLAUDE.md's recurring defect
+waiting to happen. `alarmNotchA()` is the single law now and every site calls
+it. `align` is measured against `hourDialA` — the reader's own dial-frame
+azimuth, since the collar is parented into `hourWheelGroup` at azimuth zero —
+where it used to subtract `ALARM_RELEASE_PHASE` for a pin standing on the lever.
+`ALARM_DISC_SIGN` is **−1**: with a fixed pin the coincidence was
+`disc == PHASE` and the set term had to cancel the hour's; with an hour-borne
+pin it is `disc == hourDialA` and the set term enters the other way. Left at +1
+the alarm rang at a time that WALKED with the setting — measured, the two hands
+parted by 2.93 rad across three settings, which is what the new probe was
+written to catch and did.
+
+**`ALARM_RELEASE_PHASE` is retired.** It put the notch at the LEVER's azimuth,
+which was the fixed reader's whole requirement; the reader orbits now and finds
+the notch wherever it stands, so a phase there would only move the alarm away
+from its own hand. Its last reader was the §29 trip-invariance assert, which is
+re-aimed rather than deleted: the old statement — for two settings, (hour ==
+set) must put the notch at the same WORLD azimuth — is simply false of this
+movement, and what replaces it is the relation the fold rests on, THE NOTCH IS
+CUT WHERE THE ALARM HAND POINTS, held between two expressions written in
+different places by different laws.
+
+**One guard was honestly downgraded rather than quietly kept.** The in-tick
+"detector and arithmetic disagree" assert compared the disc's posed law against
+the hand's angle through the train. Both now descend from `alarmNotchA()`, so
+the comparison is an IDENTITY and can no longer catch a drift between
+derivations — there is only one derivation left. It stays as a window invariant
+on the notch's own arc, saying so in its own comment, and the cross-path
+agreement moved to `probe-117-trip.mjs`, which is where a claim about a POSE
+belongs (rule 6).
+
+**A declaration slid off its joint, and the battery caught it.** Adding one mesh
+to the lever shifted every index behind it by one, and
+`INTRA_UNIT_CONTACTS`'s row for the tail run's corner — addressed as
+`BoxGeometry#8 ⇄ BoxGeometry#9` — landed on the neighbouring pair, leaving the
+real corner unexcused as a fresh MM intersection in metal nobody had touched.
+The fix is TODO 50's, applied again: `alarmTailRun` and `alarmPawlRiser` are
+named and the row addresses names. Its `why` was corrected in the same edit —
+TODO 109 had already measured that this pair is the run's far END, the riser,
+not the "cheek mid-guide" the row claimed, and filed the discrepancy against
+TODO 104 as a row describing the wrong KIND of joint. That much of 104 is paid.
+
+**`Alarm release feeler` ⇄ `Hour wheel` is EXPECTED, measured not assumed.** The
+reader hangs under `hourWheelGroup` and `collectUnits` does no exclusion, so the
+Hour wheel's traverse carries the collar's ring and the lever's tip reads as
+touching the hour wheel — the `Alarm winding train` ⇄ `Dial` precedent. Over the
+42-pose net the feeler's nearest approach to the hour wheel's OWN metal is
+**0.3917** (`alarmFeelerTip` ⇄ `hourTube`, at jumperEngage f=1), 2.6×
+`CLEAR_MARGIN`, against **0.0073** to the nested reader.
+
+**Residue, named.**
+
+- **The disc holds still with nothing holding it.** Its law no longer follows
+  the hour, but its friction hub on the hour tube is still there — a pose with
+  no force path, which is exactly the class of debt this file exists to catch.
+  This is the open construction question the DECIDED section already files (the
+  hub comes off, or the disc gains a detent), and it now has teeth: before the
+  fold the hub was doing the work the law described, and now it is not.
+- **`meshPhase` still waives two rows against this item.** Transmission is
+  closed; phase is not. The gate confirms both waivers are still live (it fails
+  on a stale one), so the residual is real — and its cause is now narrower than
+  "a contradiction nobody has decided": the pair transmits at its tooth ratios,
+  so what is left is a CLOCKING question about the build solve's index, not a
+  law in conflict. Re-solving the branch's index is the fix path.
+- The reader's own bearing is still undesigned — the collar is parented rather
+  than journalled, and the line's 4.327 journal is priced but not cut.
+
 ### THE JOG FITS — the fork is the fallback, not the move
 
 `probe-117-fork-room.mjs` extended through the TRANSITION radii, because a band
@@ -15555,6 +15692,16 @@ dial-side face stands at world −5.7372 today and the jogged tip's would stand 
 band and none of it touching a mechanism quantity. The arm is a flat bar today
 (`BoxGeometry(ALARM_FEELER_ARM_LEN, 2·ALARM_PIN_R, ALARM_FEELER_T)`), which is
 why the space was never in question and never looked available.
+
+(That table was measured BEFORE the fold, so its "with the feeler counted"
+column describes the lever as it then stood — a flat bar with a pin. Re-run on
+the built fold it reads **0.0400** at r 3.30, which is `ALARM_PIN_SHANK` exactly:
+the jogged arm's underside standing one pin shank off the track, the constant
+the retraction quoted as 0.0133 and got wrong, now coming back out of a
+world-frame scan. The r 3.70 row was added with the jog: its 0.9314 is the
+conservative RING answer over the whole annulus and every pose, which is what
+this probe measures — the jog occupies one azimuth, and its actual clearances
+are the battery's, which passes them.)
 
 **The r 3.50 row is the one that proves the scan is reading the real stack.** It
 was added for the transition and it happens to measure the feeler's own arm from
