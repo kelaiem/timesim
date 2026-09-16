@@ -367,7 +367,55 @@ const out = await p.evaluate(async () => {
       outNodes.push(path[bestJ]);
       i = bestJ;
     }
-    return outNodes;
+    return mitreSafe(poses, L, rn, w, outNodes, pad);
+  }
+  // A MITRE IS NOT A CAPSULE, and until §230 this probe only ever produced the
+  // capsule. `slackOf` thickens a centreline into the union of discs along it,
+  // which cannot fold whatever the nodes do; `thickenPolyline` in geometry.js
+  // cuts a MITRED polygon, whose corner reaches w / sin(θ/2) back along both
+  // segments and folds when either is shorter than that. At the shipped
+  // half-width the difference never bit. At one ratchet tooth it bit three
+  // times, and each time the BUILD found it rather than this probe — a map that
+  // cannot be cut is not a map.
+  //
+  // So a node survives only if BOTH its segments outrun its own mitre. A node
+  // that does not is dropped and the join re-verified through the corridor;
+  // if dropping it fouls, the node stays and the caller's `cut` row reports the
+  // fold rather than this quietly returning a shape the build will refuse.
+  function mitreSafe(poses, L, rn, w, nodes, pad) {
+    const seg = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+    for (let guard = 0; guard < nodes.length + 4; guard++) {
+      let worst = -1, worstAt = -1;
+      for (let k = 1; k < nodes.length - 1; k++) {
+        const a = nodes[k - 1], c = nodes[k], d = nodes[k + 1];
+        const l1 = seg(a, c), l2 = seg(c, d);
+        if (l1 === 0 || l2 === 0) continue;
+        const u = [(c[0] - a[0]) / l1, (c[1] - a[1]) / l1];
+        const v = [(d[0] - c[0]) / l2, (d[1] - c[1]) / l2];
+        const turn = Math.acos(Math.max(-1, Math.min(1, u[0] * v[0] + u[1] * v[1])));
+        const half = (Math.PI - turn) / 2;                  // half the INTERIOR angle
+        const reach = half > 1e-6 ? w / Math.sin(half) : Infinity;
+        const over = reach - Math.min(l1, l2);
+        if (over > 1e-9 && over > worst) { worst = over; worstAt = k; }
+      }
+      if (worstAt < 0) return nodes;                        // every corner outruns its mitre
+      const trial = nodes.slice(0, worstAt).concat(nodes.slice(worstAt + 1));
+      if (trial.length >= 2 && slackOf(poses, L, rn, w, trial, pad).ok) { nodes = trial; continue; }
+      // Dropping the node fouls, so try SLIDING it back along its longer
+      // segment: a shallower corner both shortens the mitre's reach and
+      // lengthens the segment it was overrunning.
+      let slid = null;
+      for (const f of [0.75, 0.6, 0.5, 0.4, 0.3]) {
+        const a = nodes[worstAt - 1], c = nodes[worstAt];
+        const moved = [a[0] + (c[0] - a[0]) * f, a[1] + (c[1] - a[1]) * f];
+        const t2 = nodes.slice(); t2[worstAt] = [+moved[0].toFixed(3), +moved[1].toFixed(3)];
+        if (slackOf(poses, L, rn, w, t2, pad).ok) { slid = t2; break; }
+      }
+      if (!slid) { nodes.folds = true; return nodes; }       // REPORTED, never silently passed
+      nodes = slid;
+    }
+    nodes.folds = true;
+    return nodes;
   }
 
   // ——— IS THERE A SHAPED MEMBER AT ALL? ———
@@ -526,14 +574,21 @@ const out = await p.evaluate(async () => {
   // CONTROL: at the shipped radius the tier must admit the shipped half-width.
   // A width scan that cannot find the part the movement already carries is
   // measuring something else.
-  const pickBranch = (Rq) => {
-    const seat = seatFor(rn);
+  // THE NOSE RADIUS THREADS THROUGH, and the first cut of this tier did not
+  // thread it. `seatFor(rn)` was reached for at the module's shipped 0.20 while
+  // the free region below was mapped at the candidate nose — so the branch and
+  // the ARM LENGTH belonged to one seat and the corridor to another, and the
+  // build's own coupling guard duly reported an arm 0.0079 from the map it was
+  // handed. The seat is a function of the nose; every consumer of it here takes
+  // the nose it is actually asking about.
+  const pickBranch = (Rq, rnUse) => {
+    const seat = seatFor(rnUse);
     const azSeat = Math.atan2(seat.y, seat.x);
     let best = null;
     for (const offDeg of [8, 16, 24, 28, 32, 36, 40, 44, 50, 56]) {
       const azq0 = azSeat + returnDir * (offDeg * Math.PI / 180);
       const L = Math.hypot(seat.x - Rq * Math.cos(azq0), seat.y - Rq * Math.sin(azq0));
-      const r = sweep(Rq, azq0, L, rn, w);
+      const r = sweep(Rq, azq0, L, rnUse, w);
       const cleared = !r.lost && r.lift >= r.needLift - 1e-3 && r.landed <= 0.05;
       if (!cleared) continue;
       if (!best || r.worstBar > best.worstBar) best = { offDeg, azq0, L, ...r };
@@ -541,7 +596,7 @@ const out = await p.evaluate(async () => {
     return best;
   };
   const widestAt = (Rq, rnUse) => {
-    const br = pickBranch(Rq);
+    const br = pickBranch(Rq, rnUse);
     if (!br) return { Rq, indexes: false };
     const reach = (ww) => freeRegion(Rq, br.azq0, br.L, rnUse, ww, CLEAR_MARGIN_G).reachable;
     if (!reach(w)) return { Rq, offDeg: br.offDeg, L: +br.L.toFixed(4), indexes: true, halfW: null };
@@ -558,6 +613,7 @@ const out = await p.evaluate(async () => {
   };
   const widthRows = [];
   for (const Rq of [RQ_DERIVED, 7.3, 7.6, 7.9, 8.3, 8.8]) widthRows.push(widestAt(Rq, rn));
+  // (the ladder above is at the SHIPPED nose by design — it is the radius survey)
   // and whether a wider NOSE changes the answer: the seat moves out with rn,
   // so the two are not independent and scanning w alone would hide it.
   //
@@ -608,7 +664,7 @@ const out = await p.evaluate(async () => {
   const TOOTH = tip - rr0;
   const oneToothClears = (Rq) => {
     const halfW = TOOTH / 2, rnW = TOOTH / 2;
-    const br = pickBranch(Rq);
+    const br = pickBranch(Rq, rnW);
     if (!br) return null;
     const fr = freeRegion(Rq, br.azq0, br.L, rnW, halfW, CLEAR_MARGIN_G);
     if (!fr.reachable) return null;
@@ -660,7 +716,7 @@ const out = await p.evaluate(async () => {
   const fixedPoint = (() => {
     const halfW = TOOTH / 2, rnW = TOOTH / 2;
     const Rq = RQ_CHOSEN;
-    const br = pickBranch(Rq);
+    const br = pickBranch(Rq, rnW);
     if (!br) return { Rq, halfW, rnW, indexes: false };
     const fr = freeRegion(Rq, br.azq0, br.L, rnW, halfW, CLEAR_MARGIN_G);
     if (!fr.reachable) return { Rq, halfW, rnW, indexes: true, offDeg: br.offDeg, L: +br.L.toFixed(4), reachable: false, why: fr.why };
@@ -798,7 +854,8 @@ if (out.noseRows.length) {
   else {
     console.log(`    pivot ${f.offDeg}\u00b0 off the seat, arm L ${f.L}, nose r ${f.rnW.toFixed(3)}, lift ${f.lift.toFixed(3)} vs ${f.needLift.toFixed(3)} needed, free area ${f.area}`);
     console.log(`    widest half-width this radius would take: ${f.widestHere ?? '\u2014'} \u2014 one tooth spends ${f.widestHere ? (100 * f.halfW / f.widestHere).toFixed(0) + '%' : '?'} of it`);
-    if (f.cut) console.log(`    straightened outline: ${f.cut.ok ? 'CLEARS' : 'FOULS'} ${(f.cut.worst >= 0 ? '+' : '') + f.cut.worst} at (${f.cut.worstAt?.join(', ')})`);
+    if (f.cut) console.log(`    straightened outline: ${f.cut.ok ? 'CLEARS' : 'FOULS'} ${(f.cut.worst >= 0 ? '+' : '') + f.cut.worst} at (${f.cut.worstAt?.join(', ')})`
+      + (f.nodes?.folds ? '  \u2014 but a CORNER STILL FOLDS under the mitre: the build cannot cut this path at this width' : ''));
     if (f.nodes) console.log('    centreline: ' + f.nodes.map(([u, v]) => `(${u}, ${v})`).join(' \u2192 '));
   }
   console.log(`\n    THE ROW THE BUILD CUTS \u2014 radius ${out.RQ_CHOSEN.toFixed(4)}, the curve's best slack (bracketed both sides):`);

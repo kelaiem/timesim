@@ -26112,7 +26112,7 @@ const ALARM_PAWL_BAND_Z = ((ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_
 // and the post's azimuth on the driver is then DERIVED from it rather than
 // chosen (the seats sit at fixed azimuths in the wheel, so this angle picks
 // the branch).
-const ALARM_PAWL_TRAIL = 44 * DEG2RAD;   // §230: re-picked with the radius — the branch the map clears at 7.6941 (was 40° at 7.06710)
+const ALARM_PAWL_TRAIL = 36 * DEG2RAD;   // §230: re-picked with the radius AND the nose — the branch the map clears at 7.6941 (was 40° at 7.06710)
 // The RETURN's sense in the wheel's frame. On the drive the driver and wheel
 // turn together, so their relative angle is constant; on the return the click
 // holds the wheel and the driver alone runs back up its carry. Its sign is the
@@ -26136,8 +26136,8 @@ const ALARM_PAWL_RETURN_DIR = -alarmColumnWheel.userData.ratchetDrive;
 // step between nodes 1 and 2 — invisible at the old half-width 0.15, and at
 // 0.627 the build reported the outline folding at both of them. The two nodes
 // are one corner.
-const ALARM_PAWL_BODY = [[0.01, 0], [2.89, 0.98], [5.25, 1.00], [5.25, 0.08]];
-const ALARM_PAWL_L_SPEC = 5.3476;                   // the arm the centreline was mapped at
+const ALARM_PAWL_BODY = [[0.01, 0], [2.45, 0.76], [3.95, 0.76], [4.45, 0.08]];
+const ALARM_PAWL_L_SPEC = 4.5361;                   // the arm the centreline was mapped at
 // The seat solve's resolution: a coarse walk to bracket the first free angle,
 // then bisection, so the answer is exact to 1e-5 rad without 2000 samples in a
 // tick. The walk's span covers twice the pawl's stroke, which is what the
