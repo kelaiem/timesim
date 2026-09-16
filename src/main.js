@@ -60,6 +60,7 @@ import {
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
+  eulerCriticalLoad_N,              // §231: the one Euler law, read by §137's bent link and the pusher's reach bar alike
   ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
   SLENDER_OVERHANG_K,                         // §54: an overhang's effective length — §36 sizes against what the check MEASURES
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
@@ -5740,7 +5741,7 @@ function priceRigidBentLink(elbow, len_u, stroke_u) {
   const e_u = Math.abs(elbow.e);
   const m = UNIT_MM / 1000;                               // m per unit
   const I = Math.PI * (ROD_R * m) ** 4 / 4;               // m⁴
-  const eulerP_N = Math.PI * Math.PI * STEEL_E_PA * I / (len_u * m) ** 2;
+  const eulerP_N = eulerCriticalLoad_N(I, len_u, 1);   // §231: one law; K = 1, both knuckles pinned by their own pins
   const eulerFrac = (F_mN / 1000) / eulerP_N;
   const bow_u = e_u * eulerFrac / (1 - eulerFrac);
   const give_u = Math.PI * Math.PI * e_u * bow_u / (2 * len_u);
@@ -25673,10 +25674,68 @@ const ALARM_DRIVER_BOT_Z = TQ_TOP_Z + CLEAR_MARGIN;
 const ALARM_DRIVER_TOP_Z = ALARM_DRIVER_BOT_Z + ALARM_COL_DRIVER_T;
 // The reach bar's section. Both were literals — 0.30 across and 0.24 thick —
 // and both sat UNDER §50's floor, which is what a bar cut from real stock
-// cannot be. At the floor in both directions, so the section is a consequence
-// of the stock rather than of what fitted.
-const ALARM_PUSH_REACH_W = STOCK_MIN_U;
+// cannot be, so both went to the floor. §231 asks the question the floor was
+// standing in for.
+//
+// §231 — THIS BAR IS A COLUMN, and §50's floor was never an answer to that.
+// It is the member that carries a finger's press from the stem inboard to the
+// riser: six units long, loaded ALONG its own length, at the input end of the
+// arming chain. A strut loaded that way does not fail by yielding, it BUCKLES,
+// and until now nothing anywhere asked at what load — while the case had
+// already declared the load in as many words. CASE_PUSHER_INPUT_N's own
+// comment calls its top "the structural ceiling a pusher train must survive",
+// and this bar is the load-carrying member of one.
+//
+// TWO LOADS, AND THE BAR IS SIZED ON THE SECOND. What the bar carries IN USE
+// is the arming chain's resistance — TODO 92's block below prices it at ≈ 9.4
+// mN along this very axis — and against that even §50's floor stood 174x
+// clear. What it must SURVIVE is a heavy press, and the survival case is the
+// live one here rather than the theoretical one: the same block asserts that
+// the head stays CLEAR_MARGIN off the case at full press ("the case would
+// limit the throw, or take it"), so nothing bottoms this stroke and a finger
+// that keeps pressing keeps loading the chain. That is why the ceiling and not
+// the working load is the number this section is derived against.
+//
+// Euler (layout.js's one law): P_cr = π²EI/(K·L)², least I about the THIN
+// axis, I = W·T³/12. So the PLAN width buys the margin linearly and the
+// thickness cubically — but the width is also the direction the owner's
+// legibility call reads in, and the one §226, §229 and §230 each spent, so it
+// is the one spent here.
+//
+// K = 2, THE CONSERVATIVE READING, and the choice is the whole derivation.
+// Both ends are located: the outboard end laps the stem in its guide bearing,
+// the inboard end climbs a riser to the driver's pin. But that pin sits in the
+// driver's SLOT, and a slot does not stop translation along itself — nothing
+// in the geometry pins that end against sway. K enters squared, so the
+// favourable pinned–pinned reading would flatter this bar fourfold, and a
+// strut is sized against the end condition it actually has:
+//
+//     W_floor = P·(K·L)²·12 / (π²·E·T³)      [= 0.9664 at the shipped L and T]
+//
+// At §50's floor the bar carried 1.639 N against a 5 N ceiling — 0.33x, a
+// section inherited from the stock rather than derived from the load, which is
+// exactly the P1 defect ("a ratio inherited from routing is a defect even
+// while every sweep is green") that §226 part three named for this complex.
+//
+// What it is CUT to is ONE RATCHET TOOTH — the identical feature width §226
+// gave the driver's arms, §229 the link's beak and both its arms, and §230 the
+// driver pawl and its nose. Here that is not only the legibility call: the
+// tooth is the first of those widths that also CLEARS the derived floor
+// (1.30x), so the owner's reference and the structural floor pick the same
+// number and the assert below holds both. The corridor was measured, not
+// assumed — tools/probe-231-lever-width.mjs walks the bar's own geometry out
+// to 3.2 u over the pose net and finds nothing in the way; what the width
+// closes on is the DESIGNED CLEAR_MARGIN gap to the return bracket's arm, and
+// it floors there rather than falling through it.
+//
+// THICKNESS DOES NOT MOVE. The same ladder gives T a wall at 1.22 (the
+// three-quarter plate), so there is room — but the width already clears the
+// ceiling, and z is the axis this repo does not spend without a reason.
+const ALARM_PUSH_REACH_W = G.ratchetToothDepth(ALARM_COL_BASE_R);
 const ALARM_PUSH_REACH_T = STOCK_MIN_U;
+// The end condition above, named once so the assert and the record cannot
+// quote different ones.
+const ALARM_PUSH_REACH_K = 2;
 // A finger's press stroke. This is the ONLY rate left in the chain: the
 // wheel used to carry its own 0.10 s ease toward the counter, and with the
 // pawl driving there is nothing left to ease — the wheel goes exactly where
@@ -25875,13 +25934,16 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
       + `CLEAR_MARGIN ${CLEAR_MARGIN}) — the case would limit the throw, or take it`);
   // P1, TODO 16's format (§137) — WHAT THE FINGER BRINGS, against what the
   // chain asks of it. The head is 2 mm across precisely so a fingertip can
-  // locate and press it, and a fingertip on a cap that size delivers 1–10 N
-  // without deliberation. What waits for it, priced at its own sites: the
-  // column's detent is the click blade's ≈ 15 mN at the nose, which reaches
-  // this stem as ≈ 9.4 mN along the press axis (the pawl's block below does
-  // that division), plus the lock lever's return blade and the link beak
-  // riding the same castellations — every one of them a single-figure-mN
-  // rider off a flat spring at SPRING_FLAT_U stock.
+  // locate and press it, and a fingertip on a cap that size delivers what
+  // CASE_PUSHER_INPUT_N declares without deliberation. (§231: this line used
+  // to say "1–10 N" while layout.js's constant said 1–5 — the same quantity
+  // written down twice with only one copy able to learn, and the copy that
+  // matters is the declared envelope. It reads the constant now.) What waits
+  // for it, priced at its own sites: the column's detent is the click blade's
+  // ≈ 15 mN at the nose, which reaches this stem as ≈ 9.4 mN along the press
+  // axis (the pawl's block below does that division), plus the lock lever's
+  // return blade and the link beak riding the same castellations — every one
+  // of them a single-figure-mN rider off a flat spring at SPRING_FLAT_U stock.
   //
   // So the input stands two to three orders over the load, the same shape of
   // margin the lock lever's own return blade records against this pusher.
@@ -25891,6 +25953,19 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // ERGONOMIC constraint standing alone, and the riders' sections are set by
   // §50's stock floors rather than by this chain. A rider that ever needs
   // real force would have to be argued here first.
+  //
+  // §231 IS THAT ARGUMENT, and it amends the paragraph above rather than
+  // sitting beside it. What the reasoning skipped is that a member can be
+  // sized by the force it must SURVIVE even where it is never sized by the
+  // force it must DELIVER. Every rider here is a lever carrying single-figure
+  // mN and the conclusion holds for all of them — but the REACH BAR is not a
+  // rider, it is a COLUMN: the one member in the chain loaded along its own
+  // length, where the failure is buckling and the design load is the input
+  // envelope's ceiling, not the load downstream. Measured at §50's floor it
+  // buckled at 1.639 N against CASE_PUSHER_INPUT_N's 5 — so "not force
+  // limited" was true of the chain's WORK and false of this one member's
+  // section. Its width is derived at ALARM_PUSH_REACH_W and asserted where the
+  // bar is cut. Nothing else here changed: the riders' §50 sections stand.
   // The pin's CARRIER. §163 turns this end of the pusher inside out. The pin
   // has to sit within ±travel/2 of the foot of the perpendicular — that is
   // what makes the sweep a whole tooth — which puts it at radius 5.01–5.19
@@ -25923,6 +25998,33 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
     const reachMid = barIn + reachLen / 2;
     reach.position.set(_pushU.x * reachMid, _pushU.y * reachMid, 0);
     alarmPusherGroup.add(reach);
+    // §231 — AND HERE IS WHERE THE COLUMN IS SIZED, because this is the first
+    // line that knows how long it is: `reachLen` falls out of ALARM_PUSH_INNER
+    // and the pin's half-travel, both block-scoped and both downstream of the
+    // width's own declaration. Two bounds, both quoted with their numbers, in
+    // §229's shape — the width is held ABOVE the buckling floor it was derived
+    // from and above §50's stock floor, and the cut is one ratchet tooth over
+    // whichever governs.
+    {
+      const m = UNIT_MM / 1000;
+      const I = (ALARM_PUSH_REACH_W * m) * (ALARM_PUSH_REACH_T * m) ** 3 / 12;   // m⁴, thin axis = T
+      const pcr_N = eulerCriticalLoad_N(I, reachLen, ALARM_PUSH_REACH_K);
+      const ceil_N = CASE_PUSHER_INPUT_N[1];
+      if (pcr_N < ceil_N)
+        console.warn(`§231: the reach bar buckles at ${pcr_N.toFixed(3)} N (K=${ALARM_PUSH_REACH_K}, L=${reachLen.toFixed(4)}) `
+          + `against the ${ceil_N} N a case pusher must survive — the strut is under its own input envelope`);
+      if (ALARM_PUSH_REACH_W < STOCK_MIN_U || ALARM_PUSH_REACH_T < STOCK_MIN_U)
+        console.warn(`§231: the reach bar's section ${ALARM_PUSH_REACH_W.toFixed(4)} x ${ALARM_PUSH_REACH_T.toFixed(4)} `
+          + `falls under §50's floor ${STOCK_MIN_U.toFixed(4)} — a bar cut from real stock cannot`);
+      // the floor the width was DERIVED from, re-derived here from the live
+      // length and compared against the tooth it was cut to (§169's convention:
+      // quote where needed, re-derive where produced, warn if the two part).
+      const wFloor = ceil_N * (ALARM_PUSH_REACH_K * reachLen * m) ** 2 * 12
+        / (Math.PI * Math.PI * STEEL_E_PA * (ALARM_PUSH_REACH_T * m) ** 3);
+      if (ALARM_PUSH_REACH_W < wFloor)
+        console.warn(`§231: the reach bar is cut ${ALARM_PUSH_REACH_W.toFixed(4)} wide against a buckling floor of `
+          + `${wFloor.toFixed(4)} — the tooth no longer clears the load it was chosen over`);
+    }
   }
   // §137 — the pusher's transfer row, and the PAWL'S FORCE AT THE SAW ROOT
   // (TODO 63: the input end of the arming chain had no arithmetic). The

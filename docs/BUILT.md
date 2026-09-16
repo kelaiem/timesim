@@ -25459,3 +25459,143 @@ a small member inside it does not move the box. §152's `unitDigests` is the
 per-mesh measure and is gated beside it. Checked rather than assumed, because an
 unchanged fingerprint across a real geometry change is exactly what a blind spot
 would look like.
+
+## §231 — The Alarm switch's lever pass: the reach bar is a column, and the floor was never an answer to that
+
+**The third of §230's remainder, and the first to find a load path rather than
+a look.** §226 established the owner's reference (every feature reads one
+RATCHET TOOTH deep, 1.2540 u off the column wheel's own `ratchetPoly`), §229
+cut the link's beak and both arms to it, §230 the driver pawl and its nose.
+What was left in this unit was a handful of members still at `STOCK_MIN_U` in a
+plan dimension — §50's floor standing in for a design.
+
+### The census first, because "41 levers" was a coarse count
+
+Measured (`stockCensus` over the unit), `Alarm switch` is **27 meshes**, of
+which **15** sit at or within a hundredth of `STOCK_MIN_U`. They are not 15
+candidates:
+
+| | meshes | why not |
+|---|---|---|
+| springs | `alarmColPawlSpring`, `alarmJumperBlade`, `alarmPusherReturnSpring` | a blade's section IS its rate, and the rates feed §137's declared windows |
+| pivots, studs, pins, bearings | `alarmColStud`, `alarmJumperStud`, `alarmColPawlPost`, `alarmColPawlSpringStud`, `alarmPusherRiser`, `alarmPusherGuide`, `alarmPusherCaseLiner` | sized by the bearing they run in, or by the slot they drive |
+| already cut to the tooth | `alarmColPawl` + boss + nose + tail (§230), `alarmColDriver` (§226) | done |
+| coupled to a solve | `alarmJumperTip`, `alarmJumperShank` | the shank's radius is a TERM in the seat constraint — `seatR(tipR) − STOCK_MIN_R10 ≥ ALARM_COL_BASE_R + CLEAR_MARGIN` — so widening it walks `ALARM_JUMPER_TIP_R` out, moves the detent seat and changes the torque §137 and the pusher both read. A force change wearing a legibility costume, which is the springs' exclusion by another route |
+
+That leaves **five**: the reach bar, the return bracket's arm and post, and the
+two spring seats. One of them turned out to have a real structural question
+underneath, and the other four turned out to be blocked by the same station.
+
+### The reach bar is the one member in the chain that is a COLUMN
+
+`alarmPusherReach` carries a finger's press from the stem inboard to the riser:
+6.0212 long, loaded ALONG its own length. A strut loaded that way does not fail
+by yielding, it BUCKLES — and nothing anywhere had asked at what load, while
+`CASE_PUSHER_INPUT_N`'s own comment had already declared one ("the high end the
+structural ceiling a pusher train must survive").
+
+Euler, `P_cr = π²EI/(K·L)²`, least `I` about the thin axis (`I = W·T³/12`):
+
+| section | `P_cr` at K=1 | `P_cr` at K=2 |
+|---|---|---|
+| `STOCK_MIN_U` (shipped) | 6.554 N | **1.639 N** |
+| one ratchet tooth | 25.953 N | **6.488 N** |
+
+**K = 2 is the reading taken, and the choice is the whole derivation.** Both
+ends are located — the outboard end laps the stem in its guide bearing, the
+inboard end climbs a riser to the driver's pin — but that pin sits in the
+driver's *slot*, and a slot does not stop translation along itself. Nothing in
+the geometry pins that end against sway, and K enters SQUARED, so the
+favourable pinned–pinned reading would flatter this bar fourfold. At §50's
+floor the bar stood at **0.33× the 5 N ceiling**; at one tooth it stands at
+**1.30×**. The floor it is derived against is
+
+    W_floor = P·(K·L)²·12 / (π²·E·T³) = 0.9664
+
+so the tooth is not only the legibility call here — it is the first of the
+reference's widths that also clears the derived floor, and the two pick the
+same number. **Thickness does not move**: the ladder gives `T` a wall at 1.2177
+(the three-quarter plate), so there is room, but the width already clears the
+ceiling and z is not spent without a reason.
+
+### Two loads, and the bar is sized on the second
+
+What the bar carries IN USE is the arming chain's resistance, which TODO 92's
+own block prices at **≈ 9.4 mN** along this very axis — against which even
+§50's floor stood 174× clear. What it must SURVIVE is a heavy press, and the
+survival case is the live one: the same block asserts the head stays
+`CLEAR_MARGIN` off the case at full press ("the case would limit the throw, or
+take it"), so **nothing bottoms this stroke** and a finger that keeps pressing
+keeps loading the chain.
+
+### It amends a paragraph rather than sitting beside it
+
+TODO 92's block had already concluded that **"THE PRESS IS NOT FORCE LIMITED
+anywhere … a rider that ever needs real force would have to be argued here
+first."** §231 is that argument, and the step the reasoning skipped is that a
+member can be sized by the force it must SURVIVE even where it is never sized
+by the force it must DELIVER. The conclusion holds for every *rider* in the
+chain — single-figure mN off flat springs — and fails for the one *column*. The
+paragraph now says so in place; the riders' §50 sections stand.
+
+Two smaller repairs fell out of reading it. `main.js` said a fingertip delivers
+"1–10 N" while `layout.js`'s `CASE_PUSHER_INPUT_N` said 1–5 — the same quantity
+written down twice with only one copy able to learn — so the prose reads the
+constant now. And the Euler expression itself existed once already, inline in
+§137's `priceRigidBentLink`, and was about to be written a second time: it is
+`eulerCriticalLoad_N` in `layout.js` now, beside `cantileverK_N_per_m`, and
+both sites read it. **K has no default there on purpose** — a strut whose end
+condition nobody stated is a strut nobody has sized.
+
+### What the other four cannot take, and the measurement that says so
+
+`tools/probe-231-lever-width.mjs` (a REPORT) walks each member's OWN geometry,
+scaled along the width axis, out to 3.2 u over the pose net. But the binding
+constraint on the bracket and the seats is one the ladder **structurally cannot
+see**, and that is the finding worth carrying forward: `bracketT`, `abutT` and
+`collarT` are all TERMS IN A STATION CHAIN — `abutS → collarS → bossD` — so
+widening any of them walks the pusher's guide boss outboard 1:1. Measured, that
+boss stands **0.3042** from the rim of the plate that carries it (§230's own
+third assert is what would catch it). So the bracket's along-axis width has
+0.3042 of room, not a tooth's 0.937, and the ladder's "no wall out to 3.2" is
+an answer to a question about a movement that would not exist at that width.
+The post's across-width reads a wall at 0.6771 for the same reason inverted —
+`postW` would carry it *away* from the stem the ladder shows it closing on.
+
+Recorded, not spent: a **station-coupled** scan is what those three want, and
+this instrument is explicitly not it.
+
+### The instrument, and the two controls that earned their keep
+
+Four controls, and two of them failed on the first run and were right to:
+
+- **C1 FIDELITY** — at the shipped width the proxy must reproduce the real
+  member's own nearest gap. The first cut used a BOX of the member's bounding
+  extents, and C1 caught it on the first bored part: the return abutment is an
+  annulus, **a box fills its bore**, and the proxy read 0.0219 closer than the
+  member it stood for. The proxy is the member's own geometry scaled now
+  (2.5e-5), and the abutment's answer MOVED — 0.8573 → 1.0375 — so the box had
+  been reporting a false wall, which is §230's capsule lesson arriving in a
+  second costume.
+- **C3 RATE** — the gap may close by at most δ/2 per δ of width and never open.
+  The first cut had this as an EQUALITY at −0.5 and failed all eight rows at
+  exactly 0.5, i.e. on `Δgap/Δw = 0` — which is the *correct* reading when the
+  governing neighbour is not in the growth direction. A control that fires on
+  correct behaviour is worse than none, because the next reader learns to
+  ignore it. It is a band now.
+- **C2 MONOTONE** and **C4 CAN SAY NO** (probe-wide: 4/8 rows were driven under
+  `CLEAR_MARGIN`, so the ladder can say no; a row that never blocks is an open
+  corridor, reported as a fact rather than as a failure).
+
+### What it cost and what it bought
+
+| | before | after |
+|---|---|---|
+| `ALARM_PUSH_REACH_W` | `STOCK_MIN_U` 0.3167 (0.120 mm) | **one ratchet tooth, 1.2540 (0.4752 mm)** |
+| buckling margin, K=2 | 0.33× the 5 N ceiling | **1.30×** |
+| `ALARM_PUSH_REACH_T` | 0.3167 | 0.3167 — unmoved |
+| nearest metal to the bar | 0.3459 | 0.15, the DESIGNED `CLEAR_MARGIN` axial gap to the return arm, which the width floors on rather than falls through |
+
+Nothing downstream moved: `barOuterAtRest` reads the stem, not the bar's width,
+so `abutS`, `collarS` and `bossD` — §230's chain — are untouched by
+construction.
