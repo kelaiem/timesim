@@ -27334,7 +27334,7 @@ let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 // roller actually moved it this frame. An inspection surface, not state:
 // nothing reads it back (see __clock.resetContact / probe-reset-contact.mjs).
 let resetContactNow = { d: 0, free: Math.PI, pushed: false, off: 0 };
-let alarmCrownCreep = 0, alarmCrownCreepLastBd = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle
+let alarmCrownCreep = 0, alarmCrownCreepLastA = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle (TODO 140: the ARBOR's hour angle, not the raw _bd — the stem reads the arbor)
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
 let alarmPinDropPhys = 0; // §45 stage 2: the drop the HELD tail permits — min(disc's law, rocker cap); negative = lifted out
 let alarmSelShownT = 0; // §34: the selector ring's eased slide — the column parity's physical consequence, and what the tube law reads
@@ -39059,7 +39059,17 @@ function tick(t) {
   // (`tools/probe-mesh-transmission.mjs`. Nothing reads this angle back —
   // the rotor is posed, never sensed — so the correction moves the arbor
   // rod and its bevel mount and nothing else.)
-  alarmRotor.rotation.z = -alarmSetRot + 3 * _bd; // 3 = ALARM_DISC_TEETH/ALARM_SET_PINION_TEETH
+  //
+  // TODO 140 — ONE SOURCE for the hour's arrival at this arbor, because it
+  // reaches TWO members. The factor is the disc-to-pinion reduction and the
+  // sign is TODO 117's derivation above; the STEM is coupled to this arbor
+  // through the mitre, so the stem's own hour term IS this one and is read
+  // from here. It used to be restated in the creep block below — and restated
+  // with the opposite sign, which made the corner turn one way for the crown
+  // and the other for the hour. CLAUDE.md's recurring defect: one direction
+  // written down twice, only one copy carrying the sense.
+  const alarmArborHourA = (ALARM_DISC_TEETH / ALARM_SET_PINION_TEETH) * _bd;
+  alarmRotor.rotation.z = -alarmSetRot + alarmArborHourA;
   alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH)
     - _bd * (ALARM_DISC_TEETH / ALARM_SET_I2_TEETH);
   alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH)
@@ -39287,9 +39297,23 @@ function tick(t) {
   // the accumulated creep in the knob's position (disengaging a bevel moves
   // nothing), so the shown angle is continuous through every transition —
   // the §25 lockstep discipline. A session accumulator ⇒ resetInputs owns it.
-  if (alarmCrownOut && alarmCrownCreepLastBd !== null)
-    alarmCrownCreep += -3 * (_bd - alarmCrownCreepLastBd);
-  alarmCrownCreepLastBd = _bd;
+  //
+  // TODO 140 — THE SENSE IS THE ARBOR'S, NOT A SECOND OPINION ABOUT IT. This
+  // site used to carry its own `-3 * (_bd - last)`, and measured
+  // (probe-138-coupling's hour row) the corner then read ratio +1 where two
+  // rolling cones demand −1 — while the CROWN row on the same two gears read
+  // −1 correctly. Same teeth, two drive paths, opposite senses.
+  //
+  // Which site was wrong is not a coin toss: the arbor's term is TODO 117's
+  // DERIVATION from the three external meshes and `probe-mesh-transmission`
+  // gates those, so the arbor is the source and this was the restatement. The
+  // stem takes the arbor's own delta through the mitre — and the mitre's
+  // relation in these two local frames is SAME SIGN, which is measured rather
+  // than reasoned: under the crown both members take `+aDelta` locally and the
+  // probe reads the world swings as equal and opposite, ratio −1.
+  if (alarmCrownOut && alarmCrownCreepLastA !== null)
+    alarmCrownCreep += alarmArborHourA - alarmCrownCreepLastA;
+  alarmCrownCreepLastA = alarmArborHourA;
   alarmSpinner.rotation.y = alarmCrownRotation + alarmCrownCreep; // free stem, continuous with the drag
 
   // Alarm striking works (BUILT §25 A; §99 split the members' states). The
@@ -40013,7 +40037,7 @@ window.__clock = {
     // Invalidate it so the next tick re-bakes from assembled geometry.
     lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
-    alarmCrownCreep = 0; alarmCrownCreepLastBd = null; // §29 step 2: the crown's banked back-drive creep
+    alarmCrownCreep = 0; alarmCrownCreepLastA = null; // §29 step 2: the crown's banked back-drive creep
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
