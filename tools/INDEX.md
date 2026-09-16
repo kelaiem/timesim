@@ -4,8 +4,8 @@
 
 # The instruments
 
-206 scripts. **105 are ACCEPTANCE tests** — they decide and exit non-zero.
-**101 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+207 scripts. **105 are ACCEPTANCE tests** — they decide and exit non-zero.
+**102 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -168,6 +168,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-95-interpenetration.mjs` | §95 | report | TODO 95 — does a claimed interpenetration SURVIVE a witness that is valid on the meshes it is applied to? Parity needs a CLOSED surface, so this probe never assumes one: it counts boundary edges (keyed by POSITION — three.js duplicates vertices per face, so an index-keyed count calls a plain box open) and then picks the only sound test available for that pair — both closed → sample each SURFACE, parity against the other exactly one open → sample the OPEN one's surface, parity against the CLOSED both open → REFUSE, and say so; no witness here is valid Surfaces, never vertices: a barycentric grid over every triangle. The row this instrument exists for was retracted on a VERTEX-only radial span that read 5.260 where the surface reaches 1.216. REPORT. |
 | `probe-95-passthrough.mjs` | §95 | report | TODO 95 — find every mesh pair where the WRAPPER disagrees with the LIBRARY. |
 | `probe-95-pierce-trace.mjs` | §95 | report | TODO 95 — WHERE does the pass-through witness fire, and on what edge? Replicates `_sampledVerdictInner`'s witness loop for BOTH directions of a pair (set PAIR='["unit",sel,"unit",sel]') and prints, for each edge that fires: the direction, the edge's endpoints and length in the dst-local frame, the RAW raycast distances and the ones the dedupe kept. |
+| `probe-alarm-disc-coupling.mjs` |  | report | REPORT — DOES THE 'Alarm disc' COUPLE TO AND DECOUPLE FROM THE 'Hour wheel' AS METAL, OR DOES IT FOLLOW AN ASSERTED TARGET? |
 | `probe-alarm-placement.mjs` |  | report | THE PLACEMENT GATE: does the alarm striking module FIT under the three-quarter plate once the mainspring drum's side departs? |
 | `probe-alarm-relayout.mjs` |  | report | Relayout feasibility: if the BARREL SIDE (fusee cone, mainspring drum, chain, set-up work) vacated its sector, would a pocket open under the three-quarter plate big enough to take the alarm striking module? |
 | `probe-alarm-tier-split.mjs` |  | report | THE TIER-SPLIT GATE — §112 design (a): can the alarm's POWER TIERS live under the three-quarter plate while the strike group stays on top? |
