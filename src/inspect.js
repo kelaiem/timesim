@@ -690,6 +690,8 @@ const EXPECTED_PAIRS = [
                                             // is a dialFace descendant, so the Dial's traverse carries its beak
                                             // (the Dial ⇄ Hour wheel precedent; collectUnits does no exclusion)
   ['Alarm release feeler', 'Dial'],         // the nesting artifact (dialFace descendant), like the disc's row
+  ['Alarm release reader', 'Dial'],         // TODO 117: the same nesting artifact — the collar hangs under hourWheelGroup, a dialFace descendant
+  ['Alarm release reader', 'Hour wheel'],   // TODO 117: the collar is MOUNTED on the hour wheel — being carried by it is the topology, so the contact is the support itself
   ['Alarm winding train', 'Alarm crown'],   // §25 C: pulled-out bevel mesh
   ['Alarm winding train', 'Alarm barrel'],  // §99: idler ⇄ arbor-wheel mesh (was the rim; the floors row below names the contact)
   ['Alarm click', 'Alarm barrel'],          // §99: the click's beak parked on the arbor ratchet's saw — the hold itself
@@ -6908,6 +6910,7 @@ export const STOCK_KIND_BY_MESH = {
   alarmHammerSpringStud: 'pivot',  // ...and the grounded stud it hangs from
   alarmPinSpringB: 'spring',
   alarmFeelerPin: 'pivot',
+  alarmReaderPin: 'pivot',        // TODO 117: the orbiting reader's pin — ALARM_PIN_R exactly as the feeler's, so it is the same kind of member; ⌀ 0.1061 mm against the 0.07 pivot floor
   alarmSelPin: 'pivot',
   alarmPinB: 'pivot',
   alarmLinkCentrePin: 'pivot',    // TODO 20 fork — the crank pin riding the groove: pin stock (⌀ 0.105 mm ≥ the 0.07 pivot floor)

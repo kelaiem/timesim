@@ -15478,6 +15478,55 @@ say no. And the road not taken is priced rather than dismissed: a fixed-length
 link from the orbiting reader runs 2.682 → 31.203 across the orbit, 11.6×, and
 a link is one length.
 
+### STAGE 1 BUILT THE COLLAR — AND THE BATTERY REFUSED THE STAGING, NOT THE PART
+
+The collar is cut, sited and boot-silent: ring at `ALARM_TRACK_RMID`, section at
+§50's floor both ways, pin length `SLENDER_MAX·(ALARM_PIN_R/2)/SLENDER_OVERHANG_K`
+= 0.8334 (§54's ceiling, which BINDS — the corridor allows 2.8117), stand-off
+landing the ring's plane at world **−6.3722** against the free-ring map's
+−6.35 ± 0.25 cell. Every quantity is READ from the line's own constants. The
+part fits where the line said it would.
+
+**The staging is what failed.** Battery 37/40, and the row that matters is
+`inspection: Alarm release feeler ⇄ Alarm release reader`, FORBIDDEN over
+4 of 97 train poses. The cause is not a siting error and no repositioning fixes
+it: **both members read the SAME track at the SAME radius**, the feeler from a
+fixed station and the collar from an orbit, so the orbit must sweep through the
+station. Two readers cannot share one track.
+
+That refutes this item's own "build it inert first" plan, written one commit
+earlier. The plan assumed the collar could stand beside the live §29 feeler
+while nothing read it, and the geometry says otherwise — the collar's whole
+purpose is to occupy every azimuth of the track, which is precisely the set the
+feeler's station belongs to. **Stages 1 and 2 must merge**: the reader cannot be
+landed until the fixed feeler stops being a reader, because the conflict is over
+the track, not over the trip.
+
+So the corrected order is three steps, not four, and the first is bigger than
+planned:
+
+1. **The reader replaces the feeler at the track** — collar built (done), the
+   feeler's PIN and arm withdrawn from the track radius, the lever re-rooted onto
+   the collar's face. The trip still reads a difference, but it reads it through
+   the collar. One battery.
+2. **The disc loses its hour term and the branch goes**, together, both
+   `MESH_PHASE_WAIVERS` rows deleted with them.
+3. The relief, the rim's re-cut, and the asserts that clear a tip which no longer
+   exists (the blast radius above).
+
+Two smaller findings, both fixed in place rather than waived:
+
+- The line derives the pin's LENGTH from §54 and never held its SECTION against
+  §50 — `stockFloor` caught the new pin at **0.1061 mm against the 0.12 floor**.
+  It is not a thin pin, it is a misclassified one: `ALARM_PIN_R` is the feeler
+  pin's own radius and that member is declared `'pivot'`, whose floor is 0.07.
+  The reader's pin is the same kind of member and is now declared so. A waiver
+  here would have bought silence for a part the movement already builds legally.
+- `Alarm release reader ⇄ Hour wheel` and `⇄ Dial` read FORBIDDEN at every pose
+  and are neither: the first IS the mount (being hour-carried is the topology),
+  the second is the dialFace nesting artifact the feeler's own row already
+  carries. Both declared EXPECTED.
+
 ### THE FOLD'S BLAST RADIUS, MAPPED — six sites, not one
 
 Before any metal moves, where `i1b` actually reaches. Deleting it is not a
