@@ -15527,6 +15527,67 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
+### THE RADIUS FORK IS PRICED, AND EVERY BAR SURVIVES IT — `probe-117-fork-radius.mjs`
+
+With the reversal refused by the envelope and the track-side band refused by
+0.0133 of room, the line's own fallback is the only move left: **the reader's
+RADIUS is what moves**. That is a fork of line row 1 — a spec quantity, not an
+envelope — and the fold rule says price what it changes before cutting. Priced,
+18 rows, 0 failing, three of them must-fail controls.
+
+**The fork's reach is structural, which is why its SIGN is knowable rather than
+guessable.** `ALARM_FEELER_BEAR_R` is defined as `ARM_LEN * 0.45`, so the
+bearing rides the fork and the lever ratio at the blade cannot move. The fork
+therefore reaches the blade through its FREE LENGTH alone — `SPR_FREE + BEAR_R`
+— and k ∝ 1/L³. Inboard the arm grows, the blade lengthens, and the seat gets
+SOFTER. **The fork walks away from the ceiling it was feared to walk into.**
+
+|   r |   arm | blade L |  k N/m | seat mN | withdrawal | budget | journal |
+|---|---|---|---|---|---|---|---|
+| 2.20 | 3.300 | 2.1850 | 550.5 | 14.08 … 23.47 | 0.3160 | 0.01899 | **2.317** |
+| 2.40 | 3.100 | 2.0950 | 624.5 | 15.98 … 26.63 | 0.3364 | 0.01784 | **2.691** |
+| 2.60 | 2.900 | 2.0050 | 712.5 | 18.22 … 30.37 | 0.3596 | 0.01669 | 3.116 |
+| 2.80 | 2.700 | 1.9150 | 817.7 | 20.92 … 34.86 | 0.3862 | 0.01554 | 3.604 |
+| **3.05** | 2.450 | 1.8025 | 980.6 | 25.08 … 41.80 | 0.4256 | 0.01410 | 4.327 |
+
+Every candidate keeps the seat inside TODO 16's 5–50 mN envelope, and the
+envelope's FLOOR — the bar the fork does walk towards — is not reached until
+**r 0.199**, an order of magnitude inboard of anything wanted. Every candidate
+keeps the beak's withdrawal clear of `ALARM_PAWL_ENGAGE` by one margin (0.3160
+against 0.2100 at the worst). The silence finger's force falls with the seat and
+for the same reason, 51.21 → 38.72 mN; it is REPORTED, because its transfer row
+declares a `load` and no `envelope` and nothing in the battery holds it.
+
+**And the fork pays a debt the line had to borrow against.** The journal was
+4.327 against a 2.970 corridor, and the line spent the disc's vacated hub bore
+to afford it — the one place the design reached outside itself. The fork
+shortens it twice over: a smaller radius carries less read error for the same
+tilt, and a smaller gain tolerates more of it. **From r 2.534 inboard the
+journal fits the corridor the reader already has**, so "take the bore" becomes
+an option rather than a requirement. That is not why to fork, but it is what a
+fork is supposed to look like when it is the right one.
+
+**Controls.** An OUTBOARD take-off at r 4.00 seats at 94.18 mN and blows the
+envelope, so the envelope row can say no; a take-off at r 0.50 starves the
+withdrawal to 0.2085 against the 0.2100 bar, so that row can say no; and the
+seat moves 18.34 mN across the window, so the rows are not comparing a quantity
+with itself. At the shipped radius the arithmetic reproduces
+`probe-117-line.mjs`'s published seat (25.08 … 41.80 mN) and journal (4.327) by
+an independent path — a reference, not a control, since `PIVOT_TO_CLIMB` is
+quoted from that probe and the withdrawal row is therefore definitional.
+
+**What this does NOT say, stated because the item has made this error once.**
+Whether a ring, a notch and a lever tip FIT at the forked radius is geometry
+over the built tree, not arithmetic over constants: the disc's hub
+(`HOUR_TUBE_OUTER + 0.05 + STOCK_MIN_U`), the reader's own journal and the
+lever's inboard jog all live in that space, and `ALARM_TRACK_RMID`'s own comment
+bounds the annulus at 2.85 "outside the hub". Answering that from literals is
+exactly the fabricated-constant failure recorded above. **The next measurement
+is the free-ring map asked at the forked radius** — where can a ring sit on the
+TRACK side of the lever's tip, inboard of where the arm is overhead — and it is
+`probe-117-takeoff.mjs`'s question, asked again with a new r. Nothing is cut
+until it answers.
+
 ### THE TRACK-SIDE BAND IS NOT FREE — RETRACTED, and how the measurement lied
 
 **RETRACTED IN FULL.** The section below concluded the track-side band was free
