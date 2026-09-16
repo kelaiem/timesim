@@ -15478,6 +15478,57 @@ say no. And the road not taken is priced rather than dismissed: a fixed-length
 link from the orbiting reader runs 2.682 → 31.203 across the orbit, 11.6×, and
 a link is one length.
 
+### THE FOLD'S BLAST RADIUS, MAPPED — six sites, not one
+
+Before any metal moves, where `i1b` actually reaches. Deleting it is not a
+block delete: five sites outside its own build read it, and three of them are
+ASSERTS that would go silent rather than fail.
+
+| site | `src/main.js` | what it does with `i1b` |
+|---|---|---|
+| the build | 15381–15389 | makes the gear, clocks it, parents it to `alarmSetI1Spin` |
+| the declared mesh | 15386 | `declareMesh('alarm setting: disc rim ⇄ idler 1b')` — the row that measures **+1.071429 against a wanted −1.071429** |
+| the layout obstacle | 14582 | `i1b (band lane)` with an EXACT tip, consumed by the siting solve |
+| the feeler's bracket assert | 15622–15625 | `dToI1 − i1bTip − 0.31 < CLEAR_MARGIN` — the 0.44 rad read-station offset exists to clear this tip |
+| the release run's routing | 15548–15550 | the jog that takes the run under the band gears is cut to clear `i1b` |
+| the rim's tooth count | 14402–14404 | `ALARM_DISC_TEETH = 30` and `ALARM_BRANCH_MODULE` are both solved AGAINST 28, so the rim's cut is a function of the branch |
+
+The last one is the one to plan for: the disc's rim is not incidental metal that
+survives the branch's deletion. Its 30 T and its module were both derived to mesh
+`i1b` at the lane's centre distance, so once nothing meshes it the rim is a cut
+with no constraint behind it — rule 1 in reverse. It goes with the branch, and
+the disc becomes a plain notched disc.
+
+Two of those five are the reason this cannot land in one jump: the bracket
+assert and the run's jog are both CLEARANCES AGAINST A PART THAT WILL NOT EXIST.
+Delete the gear and they stop constraining anything while still reading true,
+which is a guard going silent rather than firing — the failure mode
+`probe-direction-guards` exists to catch elsewhere. Either they are re-derived
+against the collar's orbit in the same change, or the fold has re-sited the
+feeler against a ghost.
+
+**Staging, so every stopping point leaves the alarm honest.** The trip is broken
+at every intermediate state where the disc has lost its hour term and the reader
+does not yet carry it, so the order is forced:
+
+1. **The collar, built and sited, inert.** Ring at `ALARM_TRACK_RMID`, its
+   journal through the disc's bore (the length the corridor is short of is
+   exactly what the hub vacates), the orbiting pin at §54's ceiling. Nothing
+   reads it yet; the trip still runs the old path. Verifiable on its own:
+   sections against §50's floor, the free-ring map, boot silence.
+2. **The hand-off, wired.** The lever's tip re-rooted onto the collar's face,
+   the sleeve's web relieved annularly (§45/§124 cut it for ONE azimuth; an
+   orbiting pin needs every azimuth), the withdrawal re-measured against the
+   line's 0.425592.
+3. **The reader rides the hour, the disc loses its hour term, the branch goes.**
+   All three together, because any two without the third breaks the trip. Both
+   `MESH_PHASE_WAIVERS` rows are deleted as part of it, not after.
+
+The acceptance is already named above and does not move: `probe-mesh-transmission`
+all-rows-ok under every input the mesh actually sees, and the pin still bottoming
+at full `ALARM_PIN_DROP` when the hour hand's azimuth meets the alarm hand's —
+`probe-handedness`' 0.02185 rad, identical at all three settings.
+
 **Not built.** This is the line, and the item's remaining work is the FOLD:
 siting the ring and its journal, the annular relief the sleeve's web needs
 (§45/§124 cut it for one azimuth; an orbiting pin needs it at every azimuth —
