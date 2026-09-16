@@ -4,7 +4,7 @@
 
 # The instruments
 
-207 scripts. **105 are ACCEPTANCE tests** — they decide and exit non-zero.
+209 scripts. **107 are ACCEPTANCE tests** — they decide and exit non-zero.
 **102 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -14,6 +14,7 @@ when a question was asked; the summaries are what it answered.
 | instrument | § | kind | what it answers, in its own words |
 |---|---|---|---|
 | `battery-checks.mjs` |  | report | §152 — WHAT A CHECK COMPUTES, split from the harness that schedules it. |
+| `battery-promote.mjs` |  | acceptance | §227 — MAY THIS PUSH PROMOTE A PULL REQUEST'S BATTERY INSTEAD OF RE-RUNNING? |
 | `battery-split.mjs` |  | report | §127 — the battery's partition atom, and the reassembly that makes it legal. |
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
 | `build-pages.mjs` |  | acceptance | §88 — turn one extracted payload tree into one deployable GitHub Pages environment. The workflow (.github/workflows/pages.yml) extracts the tree with `git archive` — the same payload definition release.yml uses, so Pages and QA serve the same bytes — and this script finishes it. |
@@ -130,6 +131,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-220-smoke.mjs` | §220 | acceptance | §220 — THE SMOKED SAPPHIRE DIAL: IS THE LAW THE ONE WRITTEN, DOES T = 1 STAY THE SHIPPED CRYSTAL, DOES THE PRINT FLIP WHERE THE COMPOSITE SAYS, DOES X-RAY STILL SHOW THE WORKS? Acceptance (exit 1 on any claim), plus a `--scan` REPORT that measures the knob's floor. |
 | `probe-224-zone-band.mjs` | §224 | report | §224 — WHERE DOES THE RESERVE ZONE GATE WARN AS THE COAT LIGHTENS? A REPORT (prints; judge it yourself), and the instrument that found §224's band. |
 | `probe-226-driver-width.mjs` | §226 | acceptance | §226 — HOW MUCH WIDER CAN THE COLUMN-WHEEL DRIVER'S ARMS BE CUT? |
+| `probe-227-promote.mjs` | §227 | acceptance | §227 — DOES THE PROMOTION CHECKER REFUSE FOR EACH REASON IT CLAIMS TO? |
 | `probe-3-sapphire.mjs` | §3 | acceptance | §3 — THE BOX SAPPHIRE DIAL: IS IT GLASS, IS IT THE SAME METAL, CAN THE PRINT STILL BE READ? Acceptance. Boots the identity build twice — the silvered dial, then §3's CLEAR sapphire one — with `dial.plate.sapphire` and `dial.plate.smoke` BOTH written through the aesthetics override store on both boots, and holds §3's four claims. Both seeded explicitly since §222 made the smoked sapphire dial the schema's default: this probe used to get its silvered boot by writing no override at all, and that boot silently became a sapphire one the moment the default moved — an acceptance test whose control is "whatever ships" stops testing what it names. Its sapphire boot pins `smoke` to 1 for the same reason: §3's claims are about the CLEAR crystal's recipe, and §220's coat is probe-220-smoke.mjs's subject. 1. BOTH BOOT SILENT. The §157 ink gate runs on the sapphire ground (the crystal's tint over the base plate's nickel) exactly as on the face, so silence here is the legibility measurement, not its absence. 2. THE GEOMETRY DOES NOT MOVE. Every mesh under the Dial unit: same names, same vertex counts, same bounding boxes, silvered or sapphire. A finish knob that moved metal would be a spec, and this is not one. 3. THE RIGHT PARTS ARE GLASS. Sapphire: the plate body, both pocket walls, the face sheet and both well sheets are transparent at the crystal's opacity with depthWrite off; the chapter ring, the applied numerals and the feet are opaque metal. Silvered: none of the dial is transparent. The crystal itself reads the same recipe on both boots. 4. X-RAY COMPOSES. On the sapphire dial the toggle installs the dial's own materials (self-mapped) and restores them; the plate behind still glasses; nothing on the dial changes material across on→off. Also writes two PNGs from the Dial preset for the record — a report, not a gate, since a software-GL frame is what it is. cd tools && node probe-3-sapphire.mjs [outdir] (exit 1 on any claim) |
 | `probe-36-apply.mjs` | §36 | acceptance | §36 Apply — the acceptance, and the only place the APPLIED tree is judged. |
 | `probe-50-clutch.mjs` | §50 | report | TODO 50 — the stem clutch, measured in the movement. |
