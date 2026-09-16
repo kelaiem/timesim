@@ -4798,7 +4798,7 @@ function makeRodSegment(a, b, radius) {
   return mesh;
 }
 
-const BEVEL_TEETH = 10, BEVEL_MODULE = 0.3, BEVEL_PHASE = Math.PI / BEVEL_TEETH;
+const BEVEL_TEETH = 10, BEVEL_MODULE = 0.3;
 const settingA = new THREE.Vector3(settingArborXY.x, settingArborXY.y, Z_SETTING);
 // The arbor terminates at the MOTION WORKS' MINUTE WHEEL — the wheel a real
 // setting path drives — not at the dial centre. (The old dial-centre
@@ -4906,23 +4906,29 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
   const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
   if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
-  // TODO 140 — A BARE HALF PITCH, AND IT IS NOT A SOLVE. The corner's real
-  // condition is that on the pair's LINE OF CONTACT one member presents a tooth
-  // and the other a gap, which `bevelCornerSpin` computes from each mount's own
-  // frame; this seed assumes instead that both gears' tooth 0 already lies on
-  // that ray. Measured off the metal, neither does — drop reads its two members
-  // at -0.3479 and +0.1528 of a pitch from the ray, rise at -0.3472 and -0.1528
-  // — so what makes these two mesh is that the RELATIVE condition survives it
-  // anyway: the differences come to 0.5007 and the sums to -0.5000, a half pitch
-  // apart either way. That is a property of where `setFromUnitVectors` happened
-  // to land two minimal rotations, not of anything solved, which is TODO 140.
-  // Measured by tools/probe-bevel-corner-index.mjs, which is where this claim
-  // has to live: it needs a POSED movement, and boot has no pose.
-  gearOut.rotation.z = BEVEL_PHASE; // half-tooth phase so teeth interleave at rest
   mountOut.add(gearOut);
 
   keyless.add(mountIn, mountOut);
-  return { gearIn, gearOut };
+  // TODO 140 — SOLVED, not seeded. The index is computed AFTER the mounts are
+  // parented, because `bevelCornerAxis` walks UP and a mount that is not yet in
+  // the tree reports the frame it will never be in ([TODO 139]'s whole finding).
+  //
+  // Unlike the keyless and alarm corners, both of these mounts hang directly off
+  // `keyless`, whose world transform is the identity — so their frames do not
+  // move with any input and this build-time solve is valid at EVERY pose. That
+  // is what makes a build solve legitimate here and illegitimate there; it is a
+  // fact about where the mounts hang, not a general licence.
+  const ray = bevelCornerRay(bevelCornerAxis(mountIn), bevelCornerAxis(mountOut));
+  const baseIn = bevelCornerSpin(gearIn, ray, BEVEL_TEETH, false);   // tooth on the ray
+  const baseOut = bevelCornerSpin(gearOut, ray, BEVEL_TEETH, true);  // gap on the ray
+  gearIn.rotation.z = baseIn;
+  gearOut.rotation.z = baseOut;
+  // The BASES travel to tick(), which adds only the spin — the same shape as
+  // `settingWheelBase`/`settingBevelBase` beside them. Returning them is what
+  // keeps the index written ONCE: tick used to restate `BEVEL_PHASE` itself, so
+  // the seed and the tick were two copies of one number and only one of them
+  // would have carried this solve.
+  return { gearIn, gearOut, baseIn, baseOut };
 }
 
 const Z_UP = new THREE.Vector3(0, 0, 1);
@@ -13408,7 +13414,7 @@ const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD };
 // at −6.15 (clear of the floor) and the stem bevel tops out at −2.70 (clear of
 // the plate).
 const Z_ALARM_CORNER = -4.1;
-const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_PHASE = Math.PI / ALARM_BEVEL_TEETH;
+const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24;
 // TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
 // not a convention. Two of them on a shared apex roll without slip only if their
 // RELATIVE angular velocity lies along the contact ray; everything else is
@@ -13424,8 +13430,10 @@ const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24, ALARM_BEVEL_PHASE = Mat
 // Measured, not declared: tools/probe-138-coupling.mjs drives the corner's real
 // input and tracks a marker fixed in each body, and the swing ratio is the
 // number it reports. The motion-works corners already satisfy it —
-// `cornerDrop.gearOut = BEVEL_PHASE − handSetOffset` against
-// `gearIn = +handSetOffset` — which is what makes them the control.
+// `cornerDrop.gearOut = baseOut − handSetOffset` against
+// `gearIn = baseIn + handSetOffset` — which is what makes them the control. The
+// bases differ per member since TODO 140 solved them; the SENSE this relies on
+// is the −/+ on the spin, which is untouched by that.
 const ALARM_CORNER_SENSE = -1;
 // TODO 138 Landing 2 — AND THE INDEX IS DERIVED TOO, from the corner rather
 // than assumed. `bevelOutline` centres tooth i at azimuth i·2π/z in the gear's
@@ -15944,7 +15952,7 @@ stemBevelMount.add(stemBevel);
 alarmSpinner.add(stemBevelMount);
 // THE CORNER'S INDEX, derived from the two mounts once both exist. The disc
 // presents a TOOTH on the contact ray and the stem a GAP, which is what makes
-// them interleave; `ALARM_BEVEL_PHASE`'s bare half-pitch assumed both gears'
+// them interleave; the bare half-pitch this replaced assumed both gears'
 // tooth 0 already lay on that ray, and neither does.
 {
   // TODO 139 — this block's own `rayAxis` was the third copy of one law and the
@@ -38610,10 +38618,15 @@ function tick(t) {
   // any two external gears meshing), so the sign flips at every corner —
   // drop(+) → traverse(−) → rise(+), landing back on +handSetOffset for the
   // rise/settingCap side since there are 2 corners.
-  cornerDrop.gearIn.rotation.z = handSetOffset;
-  cornerDrop.gearOut.rotation.z = BEVEL_PHASE - handSetOffset;
-  cornerRise.gearIn.rotation.z = -handSetOffset;
-  cornerRise.gearOut.rotation.z = BEVEL_PHASE + handSetOffset;
+  // TODO 140 — the BASE is the corner's solved index, not a bare half pitch.
+  // `BEVEL_PHASE` used to be restated here, which made the build seed and this
+  // line two copies of one quantity; the index is solved once in
+  // `addBevelCorner` now and only the SPIN travels, exactly as the setting
+  // wheel and its bevel do three lines above.
+  cornerDrop.gearIn.rotation.z = cornerDrop.baseIn + handSetOffset;
+  cornerDrop.gearOut.rotation.z = cornerDrop.baseOut - handSetOffset;
+  cornerRise.gearIn.rotation.z = cornerRise.baseIn - handSetOffset;
+  cornerRise.gearOut.rotation.z = cornerRise.baseOut + handSetOffset;
   // Cap pinion at the dial end of the motion-works arbor: spins with the
   // same handSetOffset that actually drives the hands, so the part sitting
   // right beside the cannon pinion visibly turns in step with it — the
