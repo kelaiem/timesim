@@ -27334,6 +27334,7 @@ let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 // roller actually moved it this frame. An inspection surface, not state:
 // nothing reads it back (see __clock.resetContact / probe-reset-contact.mjs).
 let resetContactNow = { d: 0, free: Math.PI, pushed: false, off: 0 };
+let alarmCornerIndex = 0, alarmCornerWasEngaged = false; // TODO 140: the alarm corner's index, re-solved when the stem slides into mesh
 let alarmCrownCreep = 0, alarmCrownCreepLastA = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle (TODO 140: the ARBOR's hour angle, not the raw _bd — the stem reads the arbor)
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
 let alarmPinDropPhys = 0; // §45 stage 2: the drop the HELD tail permits — min(disc's law, rocker cap); negative = lifted out
@@ -39314,7 +39315,60 @@ function tick(t) {
   if (alarmCrownOut && alarmCrownCreepLastA !== null)
     alarmCrownCreep += alarmArborHourA - alarmCrownCreepLastA;
   alarmCrownCreepLastA = alarmArborHourA;
-  alarmSpinner.rotation.y = alarmCrownRotation + alarmCrownCreep; // free stem, continuous with the drag
+  //
+  // TODO 140 — THE INDEX IS RE-SOLVED AT ENGAGEMENT, because that is what the
+  // metal does. `bevelCornerSpin` solves this corner's index at BUILD, with the
+  // rotor at 0; the movement's rest pose puts the rotor at -2.90597, which is
+  // -4.625 pitches of a 10-tooth bevel — so the build index describes a pose
+  // the watch never occupies, and no build CONSTANT can fix it, because the
+  // rotor's angle carries `alarmSetRot` and varies with the set time.
+  //
+  // THE INVARIANT, and it is what the sense fix above bought. Both members take
+  // the SAME local delta from both drives — `+aDelta` from the crown, the
+  // arbor's own `+dA` from the hour — so while the pair is engaged
+  //
+  //     d = alarmRotor.rotation.z − alarmSpinner.rotation.y
+  //
+  // does not move. It is 0 at build, where the index was solved, so the teeth
+  // interleave exactly when d ≡ 0 (mod one pitch). Before the sense fix d moved
+  // at 6× the hour and no re-solve could have held.
+  //
+  // WHAT ENGAGEMENT DOES. Sliding the stem in, a tooth either drops into a gap
+  // or lands on a tooth and the tip chamfers cam it round to the nearest valley
+  // — never more than half a pitch, and the knob visibly clicks. So the stem
+  // takes the SHORTEST rotation that makes d a whole number of pitches. Zero
+  // when the teeth already line up, which is the no-clash case falling out of
+  // the same expression rather than being special-cased.
+  //
+  // MODELLED, not simulated, and the distinction is CLAUDE.md's: the cam action
+  // has a real force path (flank angle against the stem's friction) and this
+  // does not walk it — it lands the outcome that path reaches. What IS driven
+  // is which outcome: it is computed from the two members' own angles at the
+  // moment the drive engages, not chosen.
+  //
+  // WHY THE MOMENT NEED NOT BE DERIVED MORE FINELY THAN "the drive engaged".
+  // Measured off the metal: a correctly-indexed pair NEVER touches — its gap is
+  // the 0.00267 u of backlash the §136 cut reserves, growing to 4.35 u fully
+  // pushed in — so there is no contact instant to find, only the interval over
+  // which the tips can cam. It does not matter where in that interval this is
+  // taken, and that is arithmetic rather than hope: while disengaged the stem
+  // is free and d drifts only with the hour, at 3·(2π/12 h) = 4.4e-4 rad/s,
+  // while the pull's ease settles in about 0.3 s. So any instant in the throw
+  // gives the same frozen index to within 1.3e-4 rad — 2e-4 of a pitch, four
+  // orders under the half pitch at stake. The transition the drive already uses
+  // is therefore the one used here, rather than a second threshold beside it.
+  const alarmBevelPitch = (Math.PI * 2) / ALARM_BEVEL_TEETH;
+  if (alarmCrownOut && !alarmCornerWasEngaged) {
+    const d = alarmRotor.rotation.z - (alarmCrownRotation + alarmCrownCreep + alarmCornerIndex);
+    // the nearest valley: wrap the mismatch into ±half a pitch
+    const k = Math.round(d / alarmBevelPitch);
+    alarmCornerIndex += d - k * alarmBevelPitch;
+  }
+  // BANKED through disengagement, the creep's own discipline one block up:
+  // parting a bevel turns nothing, so the knob's angle stays continuous and the
+  // next engagement re-solves from wherever the free stem has been left.
+  alarmCornerWasEngaged = alarmCrownOut;
+  alarmSpinner.rotation.y = alarmCrownRotation + alarmCrownCreep + alarmCornerIndex; // free stem, continuous with the drag
 
   // Alarm striking works (BUILT §25 A; §99 split the members' states). The
   // BODY's angle is a pure function of the STRIKE PHASE — body and striking
@@ -40038,6 +40092,7 @@ window.__clock = {
     lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
     alarmCrownCreep = 0; alarmCrownCreepLastA = null; // §29 step 2: the crown's banked back-drive creep
+    alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
   // underlying state variables directly, then evaluates tick() with a zero
