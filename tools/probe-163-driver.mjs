@@ -492,8 +492,87 @@ const out = await p.evaluate(async () => {
       : { nodes: null, pad: CLEAR_MARGIN_G, area: padded.area, ok: false, why: padded.why };
   }
   setDepth(tip - rr0);
+
+  // ——— §230 — HOW WIDE CAN THIS PAWL BE CUT, AND WHAT DOES WIDTH COST? ———
+  //
+  // §226 made the RATCHET TOOTH this mechanism's feature width, and §229 cut
+  // the link beak and its arms to it. The pawl is the member that visibly
+  // pushes those teeth and it is still 0.30 across — under the movement's own
+  // stock floor. Measured at the shipped station, its outline clears the saw by
+  // 0.0017: there is nothing to spend where it stands.
+  //
+  // THE MOVE IS POSITION-SPACE, which is what the design priority prescribes
+  // when a corridor is spent. `RQ_DERIVED` is a FLOOR (the boss must clear the
+  // tips by one margin), not a fixture — push the pivot outward and the whole
+  // pawl travels with it, away from the teeth, while the nose reaches further
+  // in to the same seat. This tier asks what that buys, and it asks it through
+  // the same swept free region the centreline already comes from rather than
+  // through a second model.
+  //
+  // THE BISECTION TESTS REACHABILITY, not the straightened outline. A cell in
+  // `freeRegion(..., w, pad)` already requires w + pad of clearance at every
+  // step of the return, so "pivot and nose lie in one region" IS the question
+  // "does a member of half-width w exist". Straightening it into segments is a
+  // different and stricter claim (a chord cuts the corner the staircase went
+  // round), so it is measured ONCE at the answer, not inside the loop.
+  //
+  // CONTROL: at the shipped radius the tier must admit the shipped half-width.
+  // A width scan that cannot find the part the movement already carries is
+  // measuring something else.
+  const pickBranch = (Rq) => {
+    const seat = seatFor(rn);
+    const azSeat = Math.atan2(seat.y, seat.x);
+    let best = null;
+    for (const offDeg of [8, 16, 24, 28, 32, 36, 40, 44, 50, 56]) {
+      const azq0 = azSeat + returnDir * (offDeg * Math.PI / 180);
+      const L = Math.hypot(seat.x - Rq * Math.cos(azq0), seat.y - Rq * Math.sin(azq0));
+      const r = sweep(Rq, azq0, L, rn, w);
+      const cleared = !r.lost && r.lift >= r.needLift - 1e-3 && r.landed <= 0.05;
+      if (!cleared) continue;
+      if (!best || r.worstBar > best.worstBar) best = { offDeg, azq0, L, ...r };
+    }
+    return best;
+  };
+  const widestAt = (Rq, rnUse) => {
+    const br = pickBranch(Rq);
+    if (!br) return { Rq, indexes: false };
+    const reach = (ww) => freeRegion(Rq, br.azq0, br.L, rnUse, ww, CLEAR_MARGIN_G).reachable;
+    if (!reach(w)) return { Rq, offDeg: br.offDeg, L: +br.L.toFixed(4), indexes: true, halfW: null };
+    let lo = w, hi = 1.10;                       // above a whole tooth of half-width; if the bisection ever RETURNS the ceiling the ladder is too short and the row says so
+    for (let it = 0; it < 6; it++) { const mid = (lo + hi) / 2; if (reach(mid)) lo = mid; else hi = mid; }
+    // the straightened outline, measured once at the answer
+    const poses = returnPoses(Rq, br.azq0, br.L, rnUse);
+    const padded = freeRegion(Rq, br.azq0, br.L, rnUse, lo, CLEAR_MARGIN_G);
+    const simple = padded.reachable ? simplifyPath(poses, br.L, rnUse, lo, padded.path, CLEAR_MARGIN_G) : null;
+    const cut = simple ? slackOf(poses, br.L, rnUse, lo, simple, CLEAR_MARGIN_G) : null;
+    return { Rq, offDeg: br.offDeg, L: +br.L.toFixed(4), indexes: true,
+             halfW: +lo.toFixed(3), width: +(2 * lo).toFixed(3), area: padded.area,
+             nodes: simple, cut };
+  };
+  const widthRows = [];
+  for (const Rq of [RQ_DERIVED, 7.3, 7.6, 7.9, 8.3, 8.8]) widthRows.push(widestAt(Rq, rn));
+  // and whether a wider NOSE changes the answer: the seat moves out with rn,
+  // so the two are not independent and scanning w alone would hide it.
+  //
+  // AND THE SHIPPED RADIUS IS SCANNED TOO, not only the ladder's best. The
+  // first cut of this tier walked the nose at the widest radius alone, which
+  // silently assumes the post has to move — and if the nose does the work on
+  // its own, the post moving is a cost nothing asked for (a longer driver arm,
+  // a longer pawl, a re-sited spring). Ask both and let the difference decide.
+  const noseRows = [];
+  {
+    const bestRow = widthRows.filter((r) => r.halfW).sort((a, b) => b.halfW - a.halfW)[0];
+    const radii = [RQ_DERIVED];
+    if (bestRow && Math.abs(bestRow.Rq - RQ_DERIVED) > 1e-9) radii.push(bestRow.Rq);
+    for (const Rq2 of radii) for (const rn2 of [0.30, 0.45, 0.627]) {
+      const r = widestAt(Rq2, rn2);
+      noseRows.push({ rn: rn2, shipped: Math.abs(Rq2 - RQ_DERIVED) < 1e-9, ...r });
+    }
+  }
+  setDepth(tip - rr0);
   return {
     rr, tip, PITCH, drive, returnDir, teeth: N / 2, derivedRow, derivedShaped, derivedOutline, RQ_DERIVED,
+    widthRows, noseRows, toothDepth: +(tip - rr0).toFixed(4),
     cornerInteriorDeg: +(seatFor(0.2).half * 180 / Math.PI).toFixed(2),
     seatR: +Math.hypot(seatFor(0.2).x, seatFor(0.2).y).toFixed(4),
     rn, w, MARGIN, rows, shaped,
@@ -567,6 +646,40 @@ if (out.derivedOutline) {
   else console.log('   ' + o.nodes.map(([u, v]) => `(${u}, ${v})`).join(' \u2192 '));
   if (o.nodes) console.log(`  worst slack over the whole return: ${(o.worst >= 0 ? '+' : '') + o.worst}`
     + ` at (${o.worstAt?.join(', ')}) \u2014 ${o.ok ? 'THE CUT OUTLINE CLEARS' : 'THE CUT OUTLINE FOULS \u2014 the straight segments cut a corner the staircase went round'}`);
+}
+
+// ——— §230 — the width study. A REPORT: it prints what each pivot radius buys
+// and leaves the choice to whoever is spending the cased height and the layout.
+const ctlRow = out.widthRows.find((r) => Math.abs(r.Rq - out.RQ_DERIVED) < 1e-9);
+console.log(`\n\u00a7230 \u2014 WHAT A PIVOT RADIUS BUYS IN WIDTH (nose r ${out.rn}, one ratchet tooth = ${out.toothDepth})`);
+console.log(`  CONTROL ${ctlRow && ctlRow.halfW && ctlRow.halfW >= out.w - 1e-9 ? 'PASS' : 'FAIL'}: at the shipped radius the scan admits the shipped half-width ${out.w}`
+  + `${ctlRow && ctlRow.halfW ? ` (it finds ${ctlRow.halfW})` : ' \u2014 it does not, so every row below is measuring something else'}`);
+console.log(`\n   pivot Rq    arm L    widest half-width   full width   vs a tooth   straightened outline`);
+for (const r of out.widthRows) {
+  if (!r.indexes) { console.log(`   ${r.Rq.toFixed(3)}        \u2014        never indexes at any branch`); continue; }
+  if (!r.halfW) { console.log(`   ${r.Rq.toFixed(3)}    ${String(r.L).padStart(6)}    no member at the shipped ${out.w}`); continue; }
+  const pct = (100 * r.width / out.toothDepth).toFixed(0);
+  console.log(`   ${r.Rq.toFixed(3)}    ${String(r.L).padStart(6)}    ${r.halfW.toFixed(3)}               ${r.width.toFixed(3)}        ${pct.padStart(3)}%       `
+    + (r.cut ? `${r.cut.ok ? 'clears' : 'FOULS'} ${(r.cut.worst >= 0 ? '+' : '') + r.cut.worst} at (${r.cut.worstAt?.join(', ')})` : 'no straight outline'));
+}
+if (out.noseRows.length) {
+  console.log(`\n  and the NOSE \u2014 the seat moves out with it, so the two are not independent:`);
+  for (const r of out.noseRows) {
+    if (!r.indexes) { console.log(`   nose r ${r.rn.toFixed(3)}  \u2014 never indexes`); continue; }
+    console.log(`   nose r ${r.rn.toFixed(3)}  Rq ${r.Rq.toFixed(3)}${r.shipped ? ' (SHIPPED radius)' : '               '}  arm ${String(r.L).padStart(6)}  widest half-width ${String(r.halfW ?? '\u2014').padStart(5)}`
+      + `  full ${String(r.width ?? '\u2014').padStart(5)} = ${r.width ? (100 * r.width / out.toothDepth).toFixed(0) + '% of a tooth' : '\u2014'}`
+      + (r.cut ? `  outline ${r.cut.ok ? 'clears' : 'FOULS'} ${(r.cut.worst >= 0 ? '+' : '') + r.cut.worst}` : '')
+      + (r.halfW && r.halfW > 1.09 ? '  \u2190 AT THE BISECTION CEILING, the true width is larger' : ''));
+  }
+}
+{
+  const top = out.widthRows.filter((r) => r.halfW && r.cut && r.cut.ok).sort((a, b) => b.halfW - a.halfW)[0];
+  if (top) {
+    console.log(`\n  WIDEST CUTTABLE: half-width ${top.halfW} (full ${top.width}, ${(100 * top.width / out.toothDepth).toFixed(0)}% of a tooth) at Rq ${top.Rq.toFixed(3)}, arm ${top.L}, ${top.offDeg}\u00b0 off the seat`);
+    if (top.nodes) console.log('   centreline: ' + top.nodes.map(([u, v]) => `(${u}, ${v})`).join(' \u2192 '));
+  } else {
+    console.log('\n  NO radius in the ladder admits a straightened outline wider than the shipped one.');
+  }
 }
 
 process.exit(asCut && asCut.reachable && out.derivedShaped?.reachable && out.derivedOutline?.ok ? 0 : 1);
