@@ -25066,3 +25066,122 @@ compares nothing looks exactly like one that finds nothing.
 
 Fingerprint `3387950801` → `2171540218`: the geometry did change, which is
 what makes the unchanged rows a result rather than a tautology.
+
+---
+
+## §227 tier one — a merge can inherit a pull request's battery verdict, watched before it acts
+
+**PARTIAL.** The mechanism WATCHES; it does not yet skip anything. The flip is
+one `if:` and what it waits on is recorded at the foot of this section.
+
+### What was wasteful
+
+Every merge measures the same movement twice. The PR's battery run measures
+`refs/pull/N/merge`; the merge then lands a commit with the **same tree**, and
+the push-to-`main` run measures it again — 36.4 min on the merge that produced
+§226, whose only product is the cache entry the next PR reads. On a repo whose
+self-hosted host does the same work in 13.5 min, that is the expensive half
+being paid twice.
+
+### Why the obvious version cannot work
+
+Let the PR write the baseline, and main reads it. Dead on arrival: **Actions
+caches are branch-scoped**, so a cache written from a PR ref is unreadable
+from `main`. The repository's own history is the evidence rather than the
+documentation — if that scoping were otherwise, §200 would never have needed
+its dispatch-on-`main` workaround to seed a self-hosted host at all.
+
+Artifacts *are* repo-scoped for reads. So the promotion runs the other way
+round: **main pulls the PR's verdict rather than the PR pushing it.**
+
+### The decision is a script, so it can be tested
+
+`tools/battery-promote.mjs` holds the rule, out of the YAML. Five clauses, and
+every one is a reason to RUN — promotion needs all of them at once, which is
+§152's "every way this can go wrong resolves towards MORE work" applied to the
+thing that would skip the work entirely:
+
+1. **The tree matches.** Not the commit — a merge commit is a different object
+   from the PR's merge preview by construction. The failure this exists for is
+   quiet: a PR's `synchronize` fires when the HEAD moves and **not** when the
+   base does, so a merge preview can be stale against a base that advanced
+   under it.
+2. **The platform matches.** §200 put os/arch in the baseline key for this.
+3. **The source was same-repo.** The security clause. A `pull_request` takes
+   its WORKFLOW from the base branch but the CODE it runs from the PR's head,
+   so a fork could ship a `ci-battery.mjs` that writes a green report having
+   measured nothing, and a promotion trusting it would skip the real gate on
+   the merge. §200 already tests the head repo before reading anything else
+   when choosing a host; a verdict deserves the same line.
+4. **The run concluded `success`.** The report cannot carry this — it is
+   uploaded on `always()` so a red run's report can be read, and holds
+   `formatVersion`, `fingerprint`, `checks` and no verdict. Greenness is read
+   off the RUN, never off the artifact the run produced.
+5. **The run was whole.** §152 refuses to CACHE a restricted report; this
+   refuses to PROMOTE one, so a baseline never becomes a copy of a copy.
+
+`tools/probe-227-promote.mjs` fires all five plus a happy-path control and an
+ordering pin (a candidate failing two clauses names the tree first, the most
+useful fact for a reader). It runs inside `battery.yml` **above** the step that
+uses the checker, so a broken decider fails the job instead of deciding with
+it — and `tools/**` and `.github/workflows/**` are both absent from that
+workflow's `paths-ignore`, which makes the battery's own trigger exactly the
+population that can break this rule.
+
+### Tier one only watches, and that is the design
+
+This is the one step in the repository that could make a merge gate NOT RUN. A
+skip nobody has seen be correct is the "gate nobody has seen fire" pointed the
+other way, so the decision is computed, written to the step summary, and the
+battery runs regardless.
+
+### What the first two runs established
+
+**The publish clause fired both ways, which is better evidence than two passes.**
+PR #427's own run was incremental (it hit the ARM64 baseline and finished in
+4m31s), so its report carried `restrictedTo` and the publish was **skipped**.
+After a base merge the same PR ran whole, and the publish **fired**, producing
+`battery-tree-Linux-ARM64-95af3178…` — a name whose tree equals
+`git rev-parse HEAD^{tree}` of the branch head exactly.
+
+That bounds the feature honestly: promotion can only apply to PR runs that ran
+WHOLE, because an incremental run never held a whole verdict to transfer. The
+economics point the right way though — incremental runs are the cheap ones, so
+**the saving lands where the spending is**.
+
+**The first shadow decision was a refusal, and the right one.** On `8c08685`:
+
+    §227: this commit is tree 95af3178c8f330ea71e497093bd863b82d7f011c;
+          looking for battery-tree-Linux-X64-95af3178c8f330ea71e497093bd863b82d7f011c
+    §227: no unexpired artifact by that name — nothing to inherit, running the battery
+
+The tree arithmetic is therefore **measured, not argued**: the push run computed
+the same tree the PR run measured. And the platform clause is live — the PR ran
+self-hosted, pushes to `main` are always GitHub-hosted (§200), so the name did
+not exist.
+
+### What tier two waits on
+
+The platform clause means a `[self-hosted]` PR can never promote. Whether that
+clause should be relaxed turns on a question this landing raised and did not
+settle: **does the verdict transfer across architectures?**
+
+Measured on one identical tree (`3d2a4d39…`, shared by `d6157f1` and
+`e59d18c`), Linux/ARM64 and Linux/X64 agree on the fingerprint `2904621754`,
+on 41/41 gates, and on every printed quantity — including `2.2e-16`,
+`0.37536`, `17.36` and `0.5167 u (0.633%)`. The evidence points at yes.
+
+**It is nonetheless the wrong granularity to decide on.** Those are the gate
+SUMMARY lines: counts and a dozen quantities. The report holds ~132,000
+numeric leaves, and the ones §152's incremental path INHERITS are float minima
+the summaries never print. Two architectures can agree on every count and
+differ in the last ulp of a distance. A verdict that transfers at gate
+granularity but not at row granularity would still be wrong to promote, and
+would fail in the quietest possible way.
+
+So the flip has a precondition, filed in the roadmap under the same number: a
+**cross-platform leaf-by-leaf report diff**, run in CI (the artifact blob host
+is not reachable from a dev container), quoting its leaf COUNT so a diff that
+compares nothing cannot pass for one that finds nothing. Clean over several
+trees and the clause can be relaxed with evidence named; one moved row and the
+clause was right, with the row that proved it.
