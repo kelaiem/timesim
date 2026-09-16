@@ -26019,10 +26019,44 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
 }
 
 // ————— §163: the driver's and the pawl's dimensions, every one derived —————
+// §230 — THE PAWL'S SECTION, AND WHY IT IS HOISTED ABOVE THE PIVOT RADIUS.
+//
+// This is the member a reader watches push the teeth, and it was 0.30 across
+// on a 1.254 tooth — 24%, under the movement's own stock floor, a wire against
+// the gear it drives. §226 made the RATCHET TOOTH this mechanism's feature
+// width and §229 cut the link beak and its arms to it; this is the part that
+// most obviously owes it.
+//
+// Both figures are HALF A TOOTH, which is the same constant every rider nose
+// in this mechanism already carries (§226's `ratchetToothDepth / 2`), read from
+// geometry.js rather than copied. The body is therefore ONE TOOTH across and
+// the nose is one tooth in diameter — one width, one reference, one glance.
+//
+// They are declared HERE, above the boss, because the pivot's radius is derived
+// against whichever member centred on that pivot is widest, and at this width
+// that member is no longer the boss (0.533) but the BODY (0.627). A constant
+// that changes which member governs has to be in scope before the derivation
+// that reads it.
+const ALARM_PAWL_HALF_W = G.ratchetToothDepth(ALARM_COL_BASE_R) / 2;
+const ALARM_PAWL_NOSE_R = G.ratchetToothDepth(ALARM_COL_BASE_R) / 2;
 // The pawl's PIVOT BOSS — bore plus wall, both at their own floors. Named here
 // because it is the member the pivot's radius has to be derived against, and it
 // is the one a first pass got wrong.
-const ALARM_PAWL_BOSS_R = STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U;
+//
+// §230 — AND IT CANNOT BE NARROWER THAN THE ARM IT CARRIES. At floor stock the
+// boss was the widest thing on the pivot and the arm met it comfortably; at one
+// tooth the arm is wider, and the build said so in its own words — "the boss
+// 0.533 does not reach its clipped arms at 0.843 — the pawl is three parts".
+// A boss is where an arm is bored over a post, so it is at least as wide as the
+// arm, and the floors below are the OTHER bound on it rather than the whole of
+// it.
+// And the amount is the BUILDER's own construction rule, not a guess:
+// makeColumnPawl clips the centreline inside `boreR + w` and relies on the boss
+// to fill what it cut, so the boss's WALL has to exceed the arm's half-width,
+// not merely equal it. The excess is one STOCK_MIN_U because that is the
+// thinnest piece of metal this movement has a name for.
+const ALARM_PAWL_BOSS_R = STOCK_MIN_R10 + PIVOT_BORE_CLEAR
+  + Math.max(STOCK_MIN_U, ALARM_PAWL_HALF_W + STOCK_MIN_U);
 // THE PAWL'S PIVOT rises through the SKIRT'S OWN z-band to reach the teeth, so
 // what stands there must clear the tip circle by one CLEAR_MARGIN. Scanned for
 // whichever radius measured best the probe answers 6.6, which buries the pivot
@@ -26037,6 +26071,22 @@ const ALARM_PAWL_BOSS_R = STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U;
 // right and the face it was measured from was not. What caught it was
 // probe-87-pawl, the acceptance test — the build's own sweep swept the pawl's
 // two body outlines and not its boss, so it agreed with itself.
+//
+// §230 — AND THE THIRD CORRECTION NEEDS NO NEW NUMBER AT ALL, which is the
+// happiest kind. The expression is unchanged; what moved is the BOSS inside it.
+// Cut the arm one tooth across and the boss has to be bore + that half-width +
+// a wall (the builder clips the centreline inside `boreR + w` and the boss must
+// cover what it cut), so the boss goes 0.533 -> 1.1601 and this radius follows
+// it from 7.0671 to 7.6941 by the same rule that always governed it: whatever
+// is centred on this pivot clears the tip circle by one CLEAR_MARGIN.
+//
+// A LADDER RUNG IS NOT A DERIVATION, and this block briefly carried one. §230's
+// width study solved a radius of 7.6000 off its own measured curve — but that
+// study models the pawl as a CONSTANT-WIDTH CAPSULE and never models the boss,
+// so the corridor it measured belongs to a part the builder does not make. At
+// the shipped half-width the two agree closely enough to hide it; at one tooth
+// the boss more than doubles and dominates. The number here is derived from the
+// metal instead, and the study's own residue is recorded with it.
 const ALARM_DRIVER_POST_R = ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_PAWL_BOSS_R;
 // The SLOT spans the pin's own reach over the stroke — d at the foot, and
 // hypot(d, travel/2) at either end — plus one margin of end freedom, because a
@@ -26051,17 +26101,18 @@ const ALARM_DRIVER_SLOT_OUT = Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF) + C
 // cut a running margin taller at each face (ALARM_COL_SKIRT_H) and the pawl
 // sits one margin up from its floor.
 const ALARM_PAWL_BAND_Z = ((ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - ALARM_COL_SKIRT_H + CLEAR_MARGIN) - ALARM_DRIVER_BOT_Z;
-// The nose disc and half-width the swept free region was MAPPED with. Changing
-// either invalidates the centreline below — the map describes a member of
-// these dimensions and no other.
-const ALARM_PAWL_NOSE_R = 0.20;
-const ALARM_PAWL_HALF_W = 0.15;
+// (§230: the nose disc and half-width the swept free region was MAPPED with are
+// hoisted above ALARM_PAWL_BOSS_R now, because the pivot's radius is derived
+// against whichever member is widest and at one tooth that is the body. The
+// rule they carried is unchanged and still load-bearing: changing either
+// invalidates the centreline below — the map describes a member of THESE
+// dimensions and no other.)
 // How far the pivot trails the seat. Free in principle and not in practice: it
 // is the one value in the probe's scan that clears at the derived post radius,
 // and the post's azimuth on the driver is then DERIVED from it rather than
 // chosen (the seats sit at fixed azimuths in the wheel, so this angle picks
 // the branch).
-const ALARM_PAWL_TRAIL = 40 * DEG2RAD;
+const ALARM_PAWL_TRAIL = 44 * DEG2RAD;   // §230: re-picked with the radius — the branch the map clears at 7.6941 (was 40° at 7.06710)
 // The RETURN's sense in the wheel's frame. On the drive the driver and wheel
 // turn together, so their relative angle is constant; on the return the click
 // holds the wheel and the driver alone runs back up its carry. Its sign is the
@@ -26074,8 +26125,19 @@ const ALARM_PAWL_RETURN_DIR = -alarmColumnWheel.userData.ratchetDrive;
 // annulus, so the spring would have to work at the pivot — the crowding TODO
 // 63 files against the click's blade, met here by giving the pawl something to
 // bear on outside the tips.
-const ALARM_PAWL_BODY = [[0.01, 0], [2.21, 0.84], [2.45, 0.88], [4.45, 0.88], [4.45, 0.08]];
-const ALARM_PAWL_L_SPEC = 4.5430;                   // the arm the centreline was mapped at
+// §230 — RE-MAPPED, not rescaled. The nodes below are the free region's own
+// path at the new radius, width and nose, straightened by the probe's greedy
+// verifier (every run checked rather than eyeballed) — the old five nodes
+// described a 0.30-wide member on a 4.543 arm and mean nothing here.
+// AND ITS SHORT STAIR IS MERGED, because a MITRE IS NOT A CAPSULE. The probe
+// thickens a centreline into the union of discs along it, which cannot fold;
+// the build cuts a mitred polygon, whose corner reach is w / sin(θ/2) and which
+// folds when two nodes are closer than that. The path came back with a 0.243
+// step between nodes 1 and 2 — invisible at the old half-width 0.15, and at
+// 0.627 the build reported the outline folding at both of them. The two nodes
+// are one corner.
+const ALARM_PAWL_BODY = [[0.01, 0], [2.89, 0.98], [5.25, 1.00], [5.25, 0.08]];
+const ALARM_PAWL_L_SPEC = 5.3476;                   // the arm the centreline was mapped at
 // The seat solve's resolution: a coarse walk to bracket the first free angle,
 // then bisection, so the answer is exact to 1e-5 rad without 2000 samples in a
 // tick. The walk's span covers twice the pawl's stroke, which is what the
