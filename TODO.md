@@ -15527,6 +15527,46 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
+### THE Z STACK INTERLEAVES — the reader and the feeler cannot both reach the track
+
+Step 1 was attempted and REVERTED, and what it found is a constraint the line
+does not carry. The plan was to re-root the lever's pin onto the collar's face,
+on the reasoning that the ring's own thickness would separate the two members —
+reader's pin below the ring, feeler's pin above it, same radius, never the same
+z. **The z stack does not go that way.** Measured off the built tree:
+
+| member | world z |
+|---|---|
+| disc track top | −5.38 |
+| **feeler arm** | **−5.86** |
+| **reader ring** (free-ring map's cell) | **−6.37** |
+| dial back | −8.35 |
+
+The map's only free annulus is on the DIAL SIDE of the feeler's arm. So the
+reader's pin, standing from the ring to the track, must CROSS the feeler's plane
+to get there — the two do not stack, they interleave. That is the same fact the
+stage-1 collision reported, seen in z instead of in azimuth, and no thickness
+fixes it.
+
+**What it costs the design.** For the lever to read the collar it must reach
+TOWARD the dial and rest on the ring's underside, which reverses the sense of
+§48/TODO 13's bias blade: today it "presses the arm DOWN onto the disc", and it
+would have to press the arm UP onto the ring. That is a real redesign of the
+feeler's spring, not a re-rooting, and it must be priced before the next attempt
+— the blade's seat, its preload and the ALARM_FEELER_SEAT_DROP relation all read
+the current sense.
+
+**The instrument lesson, which is the transferable part.** The reverted step
+MEASURED CLEAN on its own hand-off probe: ring travel 0.100000, lever rock ×
+ARM_LEN 0.100000, gain 1.0000 exactly. It was wrong anyway. The probe read
+ROTATIONS, and the lever's rock law was untouched by the change, so it
+reproduced the right number over metal that did not exist — `pinLen` had gone
+NEGATIVE and three.js had built an inverted cylinder. `meshIntegrity` caught it
+(`alarmFeelerPin`, signedVolume −0.0548, unwaived) and the hand-off probe could
+not have. A kinematic check over an unchanged law is not evidence about
+geometry: when a change moves a DATUM, the thing to measure is the metal's
+extent, not the motion it carries.
+
 ### THE FOLD'S BLAST RADIUS, MAPPED — six sites, not one
 
 Before any metal moves, where `i1b` actually reaches. Deleting it is not a
