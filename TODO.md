@@ -15527,6 +15527,53 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
+### THE TRACK-SIDE BAND IS FREE — the position-space fix exists
+
+The narrower question the pricing left: is there a free annulus at
+`ALARM_TRACK_RMID` between the feeler's arm (world z −5.86) and the track top
+(−5.38)? Measured, with the five units the collar is SUPPOSED to touch excluded
+(the disc it reads, the lever that seats on it, itself, its mount, the dial it
+nests under) and points taken along triangle EDGES rather than vertices:
+
+| ring plane (world z) | nearest obstacle | what it is |
+|---|---|---|
+| −5.80 | 0.9433 | Alarm disc (the hand's tube) |
+| −5.64 | 0.9807 | Alarm release sleeve |
+| −5.44 | **1.0491** | Alarm release sleeve |
+
+A ring needs 0.2583 — half its section plus its travel — before any margin.
+**All ten candidate planes clear that**, the best by 1.0491.
+
+**And the arithmetic allows it too, which had to be checked first.** The band is
+0.4800 deep; the ring is `STOCK_MIN_U` = 0.3167 thick and travels
+`ALARM_PIN_DROP` = 0.1000, so 0.4167 is spent and 0.0633 is slack. It would be
+impossible if the ring owed `CLEAR_MARGIN` to each neighbour — 0.7167 against
+0.4800 — but it owes neither: the feeler's pin SEATS on it and the reader's pin
+passes THROUGH it. Both are working contacts, and a working contact is not a
+clearance.
+
+**Why this reads roomier than the original map, which is the methodological
+point.** `probe-117-takeoff` ranked −6.35 best with 0.4500, counting EVERY unit
+as an obstacle — including the disc the collar exists to read and the lever it
+exists to drive. Counting those forbids the design by construction, which is why
+its answer landed on the dial side. The exclusion is not a relaxation; it is the
+difference between asking "where is there empty space" and "where can this part
+go".
+
+**What it costs the line, stated as the fork it is.** Row 3 derives the ring's
+plane as `trackTop − (pinLenMax + ringT/2)`, with `pinLenMax` at §54's CEILING,
+and asserts the plane lands in the map's cell. Moving the ring track-side
+changes that row: the stand-off is now bounded by the ARM'S PLANE, not by the
+pin's slenderness, and §54 stops binding — it becomes slack, which is sound
+because a ceiling is a maximum and the pin gets SHORTER (λ falls). That is a
+declared FORK in the fold rule's sense: one changed row, re-deriving its value
+from the movement constraint that forced it. The envelope is untouched, which is
+the part that was never forkable.
+
+So the order is restored to the line's own logic: the blade keeps its sense, the
+series claim in row 4 becomes true again, no second spring exists, and the
+collar's plane is the one quantity that moves.
+
 ### THE REVERSAL IS PRICED, AND THE ENVELOPE REFUSES IT — `probe-117-reversed-bias.mjs`
 
 Asked what reversing the bias blade costs. It is not affordable, and the reason
