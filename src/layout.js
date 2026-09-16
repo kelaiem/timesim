@@ -616,6 +616,26 @@ export const cantileverK_N_per_m = (a_u, c_u, L_u) => {
   const I = (a_u * m) * (c_u * m) ** 3 / 12;      // m⁴, thin axis = c
   return 3 * STEEL_E_PA * I / (L_u * m) ** 3;
 };
+// §231 — THE ONE EULER LAW. A slender member loaded ALONG its own length does
+// not fail by yielding, it BUCKLES, and P_cr = π²EI/(K·L)² is the first
+// question to ask of one. The expression lived inline inside main.js's
+// `priceRigidBentLink` (§137's beam-column pricing) and was about to be
+// written a second time for the pusher's reach bar — "one law written twice",
+// the defect CLAUDE.md's direction-guard entry names, where only one copy ever
+// learns when it moves. Both sites read this one.
+//
+// K IS THE CALLER'S CLAIM ABOUT THE ENDS, and it has no default on purpose:
+// 1 for pinned–pinned (both ends located against translation, free to rotate),
+// 2 where one end is free to sway. A strut whose end condition nobody stated
+// is a strut nobody has sized, and K enters SQUARED — the difference between
+// the two readings is a factor of four in the load the member survives.
+//
+// I is in m⁴ (the caller's section, computed the way cantileverK_N_per_m
+// computes its own), L in units, the answer in newtons.
+export const eulerCriticalLoad_N = (I_m4, L_u, K) => {
+  const m = UNIT_MM / 1000;                       // m per unit — §39's pin
+  return Math.PI * Math.PI * STEEL_E_PA * I_m4 / (K * L_u * m) ** 2;
+};
 // §137 — THE DETENT ENVELOPE, declared instead of asserted in prose.
 // TODO 16 sized the arming chain against "a detented selector ring plausibly
 // needs 5–50 mN" and that band was never anyone's constant — it lived in the

@@ -19282,3 +19282,66 @@ its thin axis, which `slenderness` also cannot see because it measures the
 working plane. Same unit, same blind direction, different instrument and
 different fix — that one is a section derived from a z stratum, filed as a
 roadmap entry because it wants a re-station, not a ruler.
+
+---
+
+## 142. Nothing in the pusher train declares where an over-press ends
+
+**Found by §231, which depends on the answer.** The alarm pusher's stroke has
+no declared end-stop. TODO 92's own block asserts the head stays `CLEAR_MARGIN`
+clear of the case at full press — *"the case would limit the throw, or take
+it"* — so the case is deliberately NOT the stop, and the spring is not either
+(`freeLen = solid + preloadDefl + ALARM_PUSH_TRAVEL + CLEAR_MARGIN`, so it
+never goes solid). A finger that keeps pressing past `ALARM_PUSH_TRAVEL`
+therefore keeps loading the chain, and nothing in the model says which member
+takes it or at what travel.
+
+In a real watch it is a shoulder on the stem against its bearing, or the
+pusher's own collar — a declared surface with a declared gap. Here it is
+nobody's.
+
+**Why this is debt rather than a curiosity.** §231 sized the reach bar against
+`CASE_PUSHER_INPUT_N`'s 5 N ceiling *precisely because* nothing bottoms the
+stroke, and that derivation is only as good as this absence. If a stop were
+declared, and it were upstream of the bar, the bar's design load would be the
+arming resistance (≈ 9.4 mN) instead and the section would be a different
+question. The section is right for the movement as it stands; the movement as
+it stands has an undeclared load path.
+
+**The fix, in order.** (1) Decide which surface is the stop — the stem's
+shoulder against the guide boss is the natural candidate and both parts already
+exist. (2) Declare its gap at that station the way every other gap here is
+declared, and assert it against `ALARM_PUSH_TRAVEL` so the stop cannot fall
+inside the working stroke. (3) Then re-read §231's derivation: if the stop is
+upstream of the reach bar, say so beside `ALARM_PUSH_REACH_W` — the width would
+still be legal (it clears §50's floor and the owner's reference width either
+way), but the *reason* written there would no longer be the governing one, and
+a reason that has stopped governing is exactly what this file exists to catch.
+
+## 143. The crown pull's input force is prose, not a declared envelope like `CASE_PUSHER_INPUT_N`
+
+**One input has a constant and the other has a sentence.** `layout.js` declares
+`CASE_PUSHER_INPUT_N = [1, 5]` with its basis written in (measured
+chronograph-pusher actuation forces; the top named as "the structural ceiling a
+pusher train must survive"), and §137's rows and now §231's buckling floor are
+derived against it. The CROWN PULL has no such constant: the selector rocker's
+force block in `main.js` quotes *"a crown pull that arrives at the collar ramp
+as a finger's 1–10 N"* as bare prose, and nothing derives anything from it or
+holds it.
+
+§231 found this looking for the pusher's ceiling, because the pusher block had
+the same "1–10 N" phrase written into it — one quantity written down twice with
+only one copy able to learn, which is the defect CLAUDE.md's direction-guard
+entry names in another register. §231 repaired the pusher copy (it reads the
+constant now); this one is a different input and could not be repaired the same
+way, because the constant it should read does not exist.
+
+**The fix.** Declare `CASE_CROWN_PULL_N` in `layout.js` beside
+`CASE_PUSHER_INPUT_N`, with its basis cited the same way — a crown pull is not
+a pusher press and should not borrow the pusher's band on the strength of both
+being fingers. Then have the rocker's block read it, and check whether anything
+in that chain is sized against it or merely compared to it. The block's own
+named residue (neither return blade's PRELOAD is a derived constant, so its
+forces are "bounded, not gated") is the reason to expect the answer is
+"compared to" — which would make this the first step of holding that chain the
+way §54 holds the lay shaft's.
