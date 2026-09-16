@@ -22504,15 +22504,35 @@ const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;
 // than its riders strictly need) is recorded at TODO 11's annotation rather
 // than silently kept at 2.3× the derived height.
 //
-// The seat drop is a SPEC here because the wheel is cut long before the link
-// that measures it exists — §169's COILS convention: the link build re-derives
-// F.seatNoseDrop from live constants and warns if the two part.
-// (0.0237 before §192's own sections landed — the drop reads the folded
-// linkage, so the spec is the fixed point of the fork it feeds: COL_H's max()
-// is governed by the rocker term either way, so one re-derivation converges.)
-const ALARM_COL_SEAT_DROP_SPEC = 0.0218;
-const ALARM_COL_H = Math.max(STOCK_MIN_U + 2 * CLEAR_MARGIN,
-                             ALARM_COL_SEAT_DROP_SPEC + CLEAR_MARGIN);
+// §229 — THE TIER IS THE ROCKER'S, AND THE LINK'S RIDE IS DERIVED FROM IT.
+//
+// The two terms above were written as competitors under a max(), and the
+// competition was never real: the rocker's term is 0.6167 and the link's was
+// 0.1718, so the link's ride had no say in the tier at all. Worse, it had the
+// causality backwards. The seat drop is how far the beak FALLS before the
+// ring's travel, reflected back through the lever, catches it — a property of
+// the LINKAGE, quoted here as a spec and then fed back into the wheel the
+// linkage reads. §192's own comment admits the loop ("the spec is the fixed
+// point of the fork it feeds").
+//
+// Measured, that loop settled on a beak that fell 0.0218 of a 0.6167 tier:
+// 3.5% of the feature it rides. A follower reading 3.5% of its cam is not
+// reading the cam — any wear, any pose tolerance, any flank error is the same
+// size as the signal — and it is invisible, which is how the defect surfaced.
+//
+// So the tier is now the ROCKER's alone (unchanged in value, 0.6167: a §50
+// floor-stock beak riding the column outer faces with one running margin at
+// each face), and the link's ride is the DEEPEST that tier can give:
+//
+//     seat drop = tier − CLEAR_MARGIN
+//
+// — the beak falls until the seat catches it one running margin above the gap
+// floor, which is exactly the bound §192's own assert below already policed
+// ("the beak would ride the gap floor, not the seat"). What used to be a
+// measured fixed point is now a consequence, and the LEVER is what re-derives
+// to meet it (the beak's pivot station, at the arm's build).
+const ALARM_COL_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;   // the lock rocker's beak: floor stock, one running margin at each column face
+const ALARM_COL_SEAT_DROP_SPEC = ALARM_COL_H - CLEAR_MARGIN;
 const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
 // §68's second move — the RAISED STRATUM. Inboard of the rim the
 // three-quarter plate runs under the wheel, and the collar-bound lever z
@@ -24220,6 +24240,72 @@ const ALARM_LINK_BEAK_TRUE = Math.atan2(ALARM_LINK_ROD_XY.y - ALARM_COL_POS.y,
 const ALARM_LINK_BEAK_OFF = SPEC.alarmModAzDeg !== null
   ? Math.round(ALARM_LINK_BEAK_TRUE / (2 * ALARM_COL_STEP)) * (2 * ALARM_COL_STEP)
   : (2 * Math.PI / 6) * 2;  // 120°: two full column pitches — identical parity
+// §229 — THE BEAK NOSE'S PLAN SECTION, both dimensions derived from the cam
+// it reads. It was `BoxGeometry(0.35, 0.18, …)`: two bare literals, and the
+// narrower of them 0.18 — well under the movement's own 0.3167 stock floor.
+// A wire laid across a 0.6167 tier, and the only face in this mechanism that
+// is supposed to TELL you which state the wheel is in.
+//
+// AZIMUTH is bounded by the column's own FLAT. makeColumnWheel cuts that flat
+// to `colFlatHalf` half-angle around each column centre, and a follower wider
+// than it stands on a flank corner instead of on the top it claims to read.
+// The widest the flat carries, one running margin in from each edge AT THE
+// RADIUS THE NOSE ACTUALLY LANDS ON:
+//
+//     halfW = colFlatHalf · landR − CLEAR_MARGIN
+//
+// The land radius matters and is the part the wheel's own rule cannot supply:
+// `flatHalf = (riderNoseR + CLEAR_MARGIN) / baseR` sizes the flat as an ANGLE
+// from a rider riding at baseR, and this beak lands mid-castellation, INBOARD
+// of that — so the arc it is actually given is smaller than the wheel's rule
+// assumes. Measured here rather than inherited.
+//
+// RADIALLY the castellation annulus is baseR − colInner wide with the nose
+// centred in it, so a running margin at each face leaves far more room than
+// the nose needs. It takes ONE RATCHET TOOTH — §226's reference, the width
+// the driver's three arms and every rider nose are already cut to — because a
+// reader sees the teeth, the driver and this beak in one glance and a
+// different width in each is three parts pretending not to be one mechanism.
+const ALARM_LINK_NOSE_W_AZ = 2 * (alarmColumnWheel.userData.colFlatHalf * ALARM_LINK_NOSE_LAND_R - CLEAR_MARGIN);
+const ALARM_LINK_NOSE_W_RAD = G.ratchetToothDepth(ALARM_COL_BASE_R);
+// The angular footprint that width subtends at the landing radius — ONE
+// source, consulted by the readability check, the bar's clearance sweep and
+// the tick's own pose law. Before §229 the check reached for `0.35 / 2`, the
+// nose's RADIAL extent used as if it were the azimuthal one: conservative by
+// 1.9× and therefore harmless, but a second copy of a dimension all the same.
+const ALARM_LINK_NOSE_HALF_AZ = Math.atan2(ALARM_LINK_NOSE_W_AZ / 2, ALARM_LINK_NOSE_LAND_R);
+// Rule 6, both ways, with the achieved and required numbers.
+if (ALARM_LINK_NOSE_W_AZ < STOCK_MIN_U - 1e-9)
+  console.warn(`§229: the column's flat gives the link beak only ${ALARM_LINK_NOSE_W_AZ.toFixed(4)} of nose at r ${ALARM_LINK_NOSE_LAND_R.toFixed(3)}, under the ${STOCK_MIN_U.toFixed(4)} stock floor — the flat is sized at baseR and this rider lands inboard of it`);
+if (ALARM_LINK_NOSE_W_RAD + 2 * CLEAR_MARGIN > ALARM_COL_BASE_R - ALARM_COL_INNER + 1e-9)
+  console.warn(`§229: a ${ALARM_LINK_NOSE_W_RAD.toFixed(4)} radial nose plus a margin at each face wants ${(ALARM_LINK_NOSE_W_RAD + 2 * CLEAR_MARGIN).toFixed(4)} of a ${(ALARM_COL_BASE_R - ALARM_COL_INNER).toFixed(4)} castellation annulus`);
+// THE SURFACE THE NOSE ACTUALLY RIDES. A flat-bottomed follower rests on the
+// HIGHEST point under it, not on the point under its centre — and at 0.18
+// wide that distinction was worth 1% of a flank and could be ignored. At the
+// width above it is worth a quarter of one, so the profile is read over the
+// footprint everywhere the nose's height is wanted: the clearance sweep that
+// stations the arm, and the tick's own pose law.
+//
+// ITS SAMPLE COUNT IS A BUDGET, not a round number. profileAt is piecewise
+// linear, so a sampled max under-reads the true one by at most the flank's
+// slope times the spacing — and that error puts the nose's underside that far
+// INSIDE the flank it is riding. Budgeted at a tenth of the movement's one
+// clearance margin, which is comfortably inside what the handoff rows price a
+// working ride at: the flank climbs colH over `colFlank` radians, so
+//
+//     spacing = (CLEAR_MARGIN / 10) · colFlank / colH
+//
+// and the count is the half-footprint over that (the loop runs ±N, so N
+// intervals span the half-footprint).
+const ALARM_LINK_NOSE_SAMPLES = Math.max(8, Math.ceil(ALARM_LINK_NOSE_HALF_AZ
+  / ((CLEAR_MARGIN / 10) * alarmColumnWheel.userData.colFlank / ALARM_COL_H)));
+const alarmLinkNoseSurface = (phi) => {
+  const p = alarmColumnWheel.userData.profileAt;
+  const N = ALARM_LINK_NOSE_SAMPLES;
+  let m = 0;
+  for (let i = -N; i <= N; i++) m = Math.max(m, p(phi + (i / N) * ALARM_LINK_NOSE_HALF_AZ));
+  return m;
+};
 // Can the nose actually read the toggle at a given wheel placement? The
 // wheel's own law (profileAt — the mesh's single source) sampled across
 // the nose's angular FOOTPRINT: disarmed needs full material under some
@@ -24229,7 +24315,7 @@ const ALARM_LINK_BEAK_OFF = SPEC.alarmModAzDeg !== null
 // boot judges.
 function alarmLinkReadClean(colX, colY, lockEngaged) {
   const trueOff = Math.atan2(ALARM_LINK_ROD_XY.y - colY, ALARM_LINK_ROD_XY.x - colX) - lockEngaged;
-  const noseHalf = Math.atan2(0.35 / 2, (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2);
+  const noseHalf = ALARM_LINK_NOSE_HALF_AZ;
   const p = alarmColumnWheel.userData.profileAt;
   let onTop = false, armedFree = true;
   for (let a = trueOff - noseHalf; a <= trueOff + noseHalf + 1e-9; a += noseHalf / 8) {
@@ -24247,6 +24333,18 @@ function alarmLinkReadClean(colX, colY, lockEngaged) {
 // is DELETED: defined for the life of §35, referenced nowhere, and wrong
 // (the tick moved the rod 0.19). The rod's travel is now a registration-
 // solve OUTPUT, alarmLinkParts.forward.rodTravel.)
+//
+// §229 — AND HERE IS THAT OUTPUT AS A SPEC, which is not the same mistake.
+// The beak's PIVOT STATION is now derived from the lever ratio the seat drop
+// demands (see the arm's build), and that ratio is seatDrop / |rodTravel| —
+// but |rodTravel| falls out of the registration solve, which runs AFTER the
+// arm is built because it needs the arm's own z. §169's COILS convention is
+// the standing answer to that ordering: quote the figure where it is needed,
+// re-derive it live where it is produced, and warn if the two part. The
+// deleted constant had no such assert, which is exactly why it could sit
+// wrong for the life of a section; this one is held to 1e-3 by the solve
+// itself and cannot.
+const ALARM_LINK_ROD_TRAVEL_SPEC = 0.09932;
 const alarmLinkUnit = new THREE.Group();
 movement.add(alarmLinkUnit);
 registerLabel('Alarm link', alarmLinkUnit);
@@ -24279,7 +24377,36 @@ const alarmLinkParts = {};
   // Same rule §171 gave the lock beak's riser one tier up, and the same reason:
   // anything crossing the saw's z band clears the tip circle by one
   // CLEAR_MARGIN, measured from its own outer face rather than its axis.
-  const pivDist = ALARM_COL_TIP_R + CLEAR_MARGIN + STOCK_MIN_R10;   // 6.701, was 6.05
+  //
+  // §229 — AND THE STATION IS NOW THE LEVER RATIO, with §172's rule above
+  // demoted from the value to the FLOOR it has to clear (assert 1 below).
+  //
+  // The lever is collinear by construction: the nose lands at
+  // ALARM_LINK_NOSE_LAND_R, the pivot sits on the wheel→rod ray, the tail
+  // ends over the rod at wrLen. The two arms are therefore complementary —
+  // beakLen + tailLen = wrLen − landR — and the station is the one free
+  // variable that sets their ratio.
+  //
+  // It has to REDUCE. The nose falls the whole seat drop while the rod makes
+  // its solved travel, so
+  //
+  //     beakLen / tailLen = seat drop / |rodTravel|
+  //
+  // which is 4.709 with the two figures above: the input arm nearly five
+  // times the output arm, where the shipped station gave 0.220 and AMPLIFIED
+  // a 0.0218 read into the rod's 0.0991. Amplifying a 3.5% read is what made
+  // this beak's ride invisible, and a lever that reads its cam WHOLE and
+  // reduces is both the legible one and the robust one — the signal is now
+  // larger than the flank tolerances instead of the same size as them.
+  //
+  // Position-space currency only: the pivot walks along the ray the lever
+  // already occupies, and the BAR takes over the span the tail used to hold.
+  // Measured before the move (tools/, the §229 corridor scan): the post has
+  // 0.8696 of plan clearance to the nearest metal outside the unit at the
+  // derived station, against 0.1995 at the shipped one.
+  const beakToTail = ALARM_COL_SEAT_DROP_SPEC / ALARM_LINK_ROD_TRAVEL_SPEC;
+  const pivDist = ALARM_LINK_NOSE_LAND_R
+    + (wrLen - ALARM_LINK_NOSE_LAND_R) * (beakToTail / (1 + beakToTail));
   const beakPiv = { x: ALARM_COL_POS.x + uwr.x * pivDist, y: ALARM_COL_POS.y + uwr.y * pivDist };
   const beakArm = new THREE.Group();
   // §54 postscript — THE SAME EULER-ORDER TRAP THE SHAFT ALREADY CARRIES A FIX
@@ -24327,7 +24454,11 @@ const alarmLinkParts = {};
   // The nose's radius and the arm that reaches it are hoisted above the sweep
   // below, which needs beakLen to turn the nose's fall into the arm's tilt.
   // Both are pure functions of pivDist and the wheel's own radii.
-  const noseR = (ALARM_COL_INNER + ALARM_COL_BASE_R) / 2; // nose lands mid-castellation
+  // (§229: the landing radius is the hoisted ALARM_LINK_NOSE_LAND_R — the same
+  // constant the rocker's chamfer ceiling is measured against. It was restated
+  // here from the same two radii, which is the one-number-twice defect this
+  // file's traps list names; it is read now, not repeated.)
+  const noseR = ALARM_LINK_NOSE_LAND_R;  // nose lands mid-castellation
   const beakLen = pivDist - noseR;
   //
   // AND THE GAP IS SWEPT, NOT ASSUMED — §120's precedent, because a static
@@ -24352,7 +24483,14 @@ const alarmLinkParts = {};
     const STEPS = 240;
     for (let i = 0; i < STEPS; i++) {
       const phi = (i / STEPS) * (2 * ALARM_COL_STEP);        // one whole column pitch
-      const drop = colH * (1 - p(phi + ALARM_LINK_BEAK_OFF)); // the nose's fall — the tick's own law
+      // §229 — the tick's own law, WHOLE: the nose rests on the highest point
+      // under its footprint (alarmLinkNoseSurface), and the SEAT catches the
+      // fall at ALARM_COL_SEAT_DROP_SPEC. The sweep used the bare centre
+      // profile and the uncapped tier, which over-stated the tilt 28× while
+      // the seat drop was 0.0218 and made this lift a number about a motion
+      // the arm does not perform. Both halves are the pose law now.
+      const drop = Math.min(colH * (1 - alarmLinkNoseSurface(phi + ALARM_LINK_BEAK_OFF)),
+                            ALARM_COL_SEAT_DROP_SPEC);
       const tilt = drop / beakLen;
       for (let r = ALARM_COL_INNER; r <= ALARM_COL_BASE_R + 1e-9; r += (ALARM_COL_BASE_R - ALARM_COL_INNER) / 12) {
         const x = pivDist - r;                      // arm-local distance from the pivot
@@ -24370,11 +24508,21 @@ const alarmLinkParts = {};
   beakArm.position.set(beakPiv.x, beakPiv.y, ALARM_COL_TOP_Z + _beakBarLift + STOCK_MIN_U / 2);
   const beakAim = Math.atan2(ALARM_COL_POS.y - beakPiv.y, ALARM_COL_POS.x - beakPiv.x);
   beakArm.rotation.z = beakAim;
-  const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, STOCK_MIN_U), MATS.steel); // TODO 11: floor stock BOTH ways — plate-top lever, free upward and sideways (first pass thickened z only and the census promptly made width the new thin dimension)
+  // §229 — THE SECTIONS SWAP ARMS WITH THE RATIO. The bar was floor stock both
+  // ways because it was the SHORT arm (2.05) and the tail carried §54's depth
+  // over its 9.30 run. The station move exchanges them — the bar is 9.36 now
+  // and the tail 1.99 — so the §54 ceiling and the §50 floor change hands with
+  // them. Each member takes whichever governs, by the same law and in the same
+  // direction (deep where the load acts, floor stock across it: §54's "a lever
+  // is tall and thin, not square"), and it grows UPWARD so the underside that
+  // carries the nose and the rod-top contact does not move.
+  const ALARM_LINK_BAR_H = Math.max(STOCK_MIN_U, beakLen / SLENDER_TARGET);
+  const beakBar = new THREE.Mesh(new THREE.BoxGeometry(beakLen, STOCK_MIN_U, ALARM_LINK_BAR_H), MATS.steel);
   beakBar.name = 'alarmLinkBeakBar';  // §54
   beakBar.position.x = beakLen / 2;
+  beakBar.position.z = (ALARM_LINK_BAR_H - STOCK_MIN_U) / 2;   // underside unmoved — the nose hangs off it
   beakArm.add(beakBar);
-  const beakNose = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, ALARM_BEAK_NOSE_H), MATS.steel);
+  const beakNose = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LINK_NOSE_W_RAD, ALARM_LINK_NOSE_W_AZ, ALARM_BEAK_NOSE_H), MATS.steel);
   beakNose.name = 'alarmLinkBeak';
   // Hung from the bar rather than centred on the arm: its TOP is the bar's top
   // (fully let in, no half-thickness tab) and its BOTTOM lands exactly on the
@@ -24404,7 +24552,12 @@ const alarmLinkParts = {};
   // deeper tail than the prose claimed — TODO 121's third find).
   // It grows UPWARD ONLY — the underside carries the rod-top contact, and
   // dropping it would both bury the rod and close on the plate 1.02 away.
-  const ALARM_LINK_TAIL_H = tailLen / SLENDER_TARGET;
+  // §229: whichever of the two governs. With the station move this arm is the
+  // SHORT one and λ's demand (1.99/27 = 0.0736) falls under §50's floor, so
+  // the floor is what the metal is — the case §172's assert 4 named as "the
+  // ceiling and the floor have met" and left as a warning. It is a max() now,
+  // and what is asserted below is the ratio itself.
+  const ALARM_LINK_TAIL_H = Math.max(STOCK_MIN_U, tailLen / SLENDER_TARGET);
   const beakTail = new THREE.Mesh(new THREE.BoxGeometry(tailLen, STOCK_MIN_U, ALARM_LINK_TAIL_H), MATS.steel);
   beakTail.name = 'alarmLinkBeakTail'; // §54: was λ 83.7 — TODO 16's headline member
   beakTail.position.x = -tailLen / 2;
@@ -24438,12 +24591,20 @@ const alarmLinkParts = {};
     const noseUnder = beakArm.position.z + (STOCK_MIN_U / 2 - ALARM_BEAK_NOSE_H / 2) - ALARM_BEAK_NOSE_H / 2;
     if (Math.abs(noseUnder - ALARM_COL_TOP_Z) > 1e-9)
       console.warn(`§172: the link beak's nose rests at ${noseUnder.toFixed(4)} against the column top plane ${ALARM_COL_TOP_Z.toFixed(4)} — TODO 20's declared read is off by ${(noseUnder - ALARM_COL_TOP_Z).toFixed(4)}`);
-    // 4. the tail's §54 section still clears §50's floor. tailLen SHRANK by the
-    //    post's move (the pivot walked toward the rod), and its height is
-    //    tailLen/SLENDER_TARGET — so the ceiling and the floor now approach each
-    //    other from opposite ends and the gap between them is worth naming.
-    if (ALARM_LINK_TAIL_H < STOCK_MIN_U - 1e-9)
-      console.warn(`§172: the beak tail's derived depth ${ALARM_LINK_TAIL_H.toFixed(4)} (tailLen ${tailLen.toFixed(3)} / SLENDER_TARGET ${SLENDER_TARGET}) is under the ${STOCK_MIN_U.toFixed(4)} stock floor — the §54 ceiling and the §50 floor have met and the section needs solving, not scaling`);
+    // 4. the arms' sections sit between §54's ceiling and §50's floor. §172
+    //    wrote this when the tail was the long arm and could only shrink into
+    //    the floor; §229 swapped the arms, so the check is over both members
+    //    and against both bounds.
+    // §229 — BOTH arms, against BOTH bounds. §172's version held only the tail
+    // and only against the floor, which was the right half while the tail was
+    // the long arm; the station move makes the bar the long one and the two
+    // checks have to travel with the ratio rather than with the member names.
+    for (const [what, L, h] of [['bar', beakLen, ALARM_LINK_BAR_H], ['tail', tailLen, ALARM_LINK_TAIL_H]]) {
+      if (h < STOCK_MIN_U - 1e-9)
+        console.warn(`§229: the beak ${what}'s depth ${h.toFixed(4)} is under the ${STOCK_MIN_U.toFixed(4)} stock floor`);
+      if (L / h > SLENDER_TARGET + 1e-9)
+        console.warn(`§229: the beak ${what} runs ${L.toFixed(3)} at depth ${h.toFixed(4)} — λ ${(L / h).toFixed(1)} over the ${SLENDER_TARGET} ceiling`);
+    }
   }
   alarmLinkUnit.add(beakArm);
   alarmLinkParts.beakArm = beakArm;
@@ -25053,7 +25214,21 @@ const alarmLinkParts = {};
     // case gets the assert it never had.
     if (Math.abs(F.seatNoseDrop - ALARM_COL_SEAT_DROP_SPEC) > 1e-3)
       say('seat nose drop parted from its spec', `${F.seatNoseDrop.toFixed(4)} vs ALARM_COL_SEAT_DROP_SPEC ${ALARM_COL_SEAT_DROP_SPEC} — re-derive the spec at the wheel, never re-target the linkage`);
-    if (ALARM_COL_H < F.seatNoseDrop + CLEAR_MARGIN - 1e-9)
+    // §229 — and the OTHER half of the same convention. The pivot's station is
+    // derived from ALARM_LINK_ROD_TRAVEL_SPEC, quoted where the arm is cut
+    // because this solve runs after it; here is where the solve says whether
+    // the quote is still true. Without this the station would silently encode
+    // a stroke the rod no longer makes — which is precisely how the deleted
+    // ALARM_LINK_ROD_TRAVEL = 0.42 survived a whole section.
+    if (Math.abs(Math.abs(F.rodTravel) - ALARM_LINK_ROD_TRAVEL_SPEC) > 1e-3)
+      say('rod travel parted from its spec', `${Math.abs(F.rodTravel).toFixed(4)} vs ALARM_LINK_ROD_TRAVEL_SPEC ${ALARM_LINK_ROD_TRAVEL_SPEC} — the beak's pivot station is cut from this ratio, so re-quote it here and let the station follow`);
+    // §229 — this one now sits AT equality by construction (the spec above IS
+    // colH − CLEAR_MARGIN), so what it can still catch is the solve drifting
+    // off the spec, and it is held to the same 1e-3 that catches it one line
+    // up rather than to a float epsilon that would fire on rounding. The
+    // claim is unchanged: the beak must be caught by the seat, not by the
+    // gap floor.
+    if (ALARM_COL_H < F.seatNoseDrop + CLEAR_MARGIN - 1e-3)
       say('the tier starves the seat drop', `colH ${ALARM_COL_H.toFixed(4)} vs seatNoseDrop ${F.seatNoseDrop.toFixed(4)} + CLEAR_MARGIN ${CLEAR_MARGIN} — the beak would ride the gap floor, not the seat`);
     if (Math.sign(F.rodTravel) !== Math.sign(travelW))
       say('rod and ring travel disagree in sign', `${F.rodTravel.toFixed(3)} vs ${travelW.toFixed(3)}`);
@@ -25137,7 +25312,7 @@ const alarmLinkParts = {};
       load: { value: tailStallMN, unit: 'mN',
         source: 'tail-blade cantilever k over its §54-derived deep section × the registration solve\'s |rodTravel| (the live stroke — the 0.42-unit plan constant both prior records quoted is retired by the solve\'s own comment trail)' },
       quantities: { armIn_u: beakLen, armOut_u: tailLen, ratio: tailLen / beakLen },
-      why: 'a pivoted lever with two designed arms about the beak post — the built arms measure the displacement gain TODO 63 re-took (7.1×, not the 36.5× the old record assumed)',
+      why: '§229: a pivoted lever with two DESIGNED arms about the beak post, and the design is the ratio itself — the input arm reads the castellation tier whole (the seat drop, one running margin above the gap floor) and the output arm reduces it to the rod\'s solved travel, so the arms are 4.709 : 1 the other way. It amplified 4.55× until §229, which is what let the nose read 3.5% of the cam it rides',
     });
     // The rod-end overhang, from the bush declaration rather than a quoted
     // number: 3EI/L³ on the round section (I = πr⁴/4, the same model §137's
@@ -25154,7 +25329,13 @@ const alarmLinkParts = {};
     // and the two must agree. The governing member is the one the record
     // names, so a change of governor is a boot warning rather than a silent
     // re-ranking. Both re-measured with the third hanger (§202).
-    const ALARM_LINK_STALL_PROBE_MN = 6.17;           // §202: tools/probe-82-alarm-stall.mjs, three hangers, spans 14.70 + 14.70 — inside the 5–50 mN band
+    // §229 moved this: 6.17 → 6.68. The beak tail blade went from the LONG
+    // arm to the short one (9.30 → 1.99) and took the §54 depth off with it,
+    // so its rate rose 305 → 24146 N/m and its share of the series compliance
+    // fell from 2.6% to 0.03%. Nothing else in the chain moved; the spans
+    // still govern, and the chain is still an order under the detent band's
+    // floor, which is TODO 79's to close.
+    const ALARM_LINK_STALL_PROBE_MN = 6.68;           // §229: tools/probe-82-alarm-stall.mjs, three hangers, spans 14.70 + 14.70 — inside the 5–50 mN band
     const ALARM_LINK_GOVERNING = 'shaft, span';       // a prefix: one of the shaft's spans governs; which one is a tie between equals
     // The shaft's free lengths, all from the same ALARM_LINK_BUSH_T the
     // bearings declaration and the hangers read, so the consumers cannot drift.
@@ -38894,7 +39075,11 @@ function tick(t) {
     {
       const F = alarmLinkParts.forward;
       const colH = alarmColumnWheel.userData.colH;
-      const profile = alarmColumnWheel.userData.profileAt(alarmColShownA + ALARM_LINK_BEAK_OFF);
+      // §229: the nose rests on the highest point under its FOOTPRINT, which
+      // at 0.18 wide was the centre to within 1% of a flank and at the width
+      // the flat now carries is not. One source with the clearance sweep and
+      // the readability check.
+      const profile = alarmLinkNoseSurface(alarmColShownA + ALARM_LINK_BEAK_OFF);
       const noseDrop = Math.min(colH * (1 - profile), F.seatNoseDrop);
       alarmLinkParts.beakArm.rotation.y = F.noseRySign * (noseDrop / alarmLinkParts.beakLen);
       // The tail's far end — the rod's station — rises by the lever ratio;
