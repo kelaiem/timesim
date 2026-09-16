@@ -12381,9 +12381,17 @@ const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin b
 // §51 final spend, retried with the whole band DERIVED (the first attempt's
 // collision was measured against planes that hung off frozen literals).
 const ALARM_DISC_BODY_T = STOCK_MIN_U; // disc body at floor stock (the rim's teeth share this plane)
-const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −3.02
-const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.19 (body top)
-const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.51
+// The three quoted planes were STALE — they were written when ALARM_FEELER_T was
+// 0.10 and never re-quoted when §51 put the feeler on floor stock, so the
+// expressions and their comments described different stacks. TODO 117's
+// retraction read the comments rather than the expressions and concluded the
+// arm stands 0.0133 off the track; it stands one ALARM_PIN_SHANK off it, 0.04,
+// which is what the constant is FOR. Measured back off the built tree by
+// probe-117-fork-room.mjs, which reproduces ALARM_TRACK_H between the disc's
+// two dial-most planes. Re-quote a plane when you move the stock under it.
+const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −3.0467
+const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.2167 (body top)
+const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.5333
 // Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
 // plane to mesh it; the minute pinion and hour wheel share a second plane.
 // Both stay clear of the sub-dial well floors (each well's own recess since

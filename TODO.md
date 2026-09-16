@@ -15527,6 +15527,103 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
+### THE TRACK-SIDE BAND, MEASURED — and the retraction measured the ARM, not the SPACE
+
+`tools/probe-117-fork-room.mjs`, the geometry the fork's pricing deliberately
+left open. Over the 42-pose net, in the ring's own radial footprint
+(±`STOCK_MIN_U`/2 of each candidate), the band dial-ward of the disc's face and
+track-ward of everything else. 4 control rows, 0 failing.
+
+The exclusions are the design's own members — `Alarm release feeler` and
+`Alarm release reader` — because counting the lever's PRESENT arm as an obstacle
+to the lever's FUTURE tip forbids the design by construction, which is
+`probe-117-takeoff.mjs`'s own recorded first error. `Alarm release disc` is
+neither excluded nor an obstacle: it is the band's floor, measured, because the
+notch is cut in it.
+
+| r | disc's dial-most face | band (design) | bounded by | with the feeler counted |
+|---|---|---|---|---|
+| 2.20 | −5.2105 | **4.9932** | Alarm disc | 4.9932 |
+| 2.40 | −5.3805 | **4.8232** | Alarm disc | 4.8232 |
+| 2.60 | −5.3805 | **1.4412** | Alarm disc | 1.4412 |
+| 2.80 | −5.3805 | **1.4029** | Alarm disc | 0.0091 |
+| 3.05 | −5.3805 | **1.4029** | Alarm disc | 0.0091 |
+
+A ring needs 0.5667; a ring and the lever's tip need 0.8833.
+
+**The finding is at the last row, and it is not the fork.** The band at the
+SHIPPED radius is 1.4029 — 1.6× what a ring and a tip need — and what closes it
+to 0.0091 is the feeler's own pin. So the space on the track side was always
+there; what is not there is room *in the plane the arm currently occupies*.
+**The retraction measured where the arm IS. It is the arm that has to move, and
+the arm's plane is not pinned at this radius**: `ALARM_FEELER_TOP` is the alarm
+release sleeve's envelope less one margin, and the sleeve stands at the sleeve's
+radius, not at 3.05 — measured, the nearest metal dial-ward of the disc at r 3.05
+is the alarm HAND's tube at 1.4029, and the sleeve is not in the band at all.
+
+That reopens something the item had closed. "There is no track-side annulus and
+there never was" is true of the built plane and false of the space, and the
+cheapest move may be a JOG of the lever's inboard end into the band rather than a
+fork of the radius at all — the lever already carries a jogged run further out
+(`main.js:15548`), so the idiom is the mechanism's own.
+
+**What the fork still buys, if the jog does not work out.** Inboard the band
+grows by an order of magnitude, and it grows for a reason the table shows: the
+disc's dial-most face steps 0.17 track-ward at r 2.20 because the raised TRACK
+does not reach inboard of its annulus and the BODY TOP is the floor there. So a
+fork carries the track band inboard with it — part of the fork, not an obstacle
+to it. Combined with `probe-117-fork-radius.mjs`, every bar at r 2.40:
+
+| bar | at r 2.40 | required |
+|---|---|---|
+| seat, against the detent envelope | 15.98 … 26.63 mN | inside 5–50 |
+| beak's withdrawal | 0.3364 | ≥ 0.2100 |
+| journal | 2.691 | ≤ 2.970, the corridor it already has |
+| track-side band | 4.8232 | ≥ 0.8833 |
+
+**The bound nobody has measured yet, and it is the item's own open construction
+question.** A ring is a flange off its bearing, so it cannot sit inboard of what
+carries it. A reader bored on the hour tube with §50 wall reaches
+`HOUR_TUBE_OUTER + fit + STOCK_MIN_U` = 2.827, which is OUTBOARD of every
+candidate the band favours — so under that construction the fork's window is
+empty and the jog is the only move. Under any other (the disc's own seat, a
+carrier off the hour wheel's rim, a post) it is not. That arithmetic is over
+source constants and is NOT a measurement, which is exactly why it is written
+here as the next question rather than as a refutation: what the reader runs on
+and what the disc runs on is the construction question the DECIDED section files
+as open, and it now has two numbers attached to it.
+
+**Controls.** The shipped radius reads SHUT with the feeler counted (0.0091
+against the 0.5667 a ring needs), so the scan cannot be finding room where the
+movement already reads. The disc's two dial-most planes — the raised track
+outboard, the body top inboard — measure **0.1700** apart, reproducing
+`ALARM_TRACK_H` from two of the scan's own bands: the strongest check available
+without leaving the world frame, since a wrong transform or the wrong metal
+cannot produce a source constant by accident. No disc metal exists at r 40, so
+the "is there anything to cut a notch in" test can say no; disc metal is found at
+every candidate, so the bands are on real metal.
+
+**And a correction the controls forced, which is the same defect twice.** This
+probe's first run stepped its edge walk at `CLEAR_MARGIN`/4 = 0.0375 and reported
+the shipped band as 0.0312 — a span BELOW its own sample spacing, so it was
+measuring the walk rather than the metal. The step is 0.01 now and the figure is
+0.0091. Then the control it was written against turned out to be wrong in the
+same direction: **the item's 0.0133 for the arm-to-track gap is not that gap.**
+`ALARM_PIN_SHANK` is **0.04** and `ALARM_TRACK_TOP` is defined as
+`ALARM_FEELER_TOP − ALARM_FEELER_T − ALARM_PIN_SHANK` = −3.0467, so the arm
+stands one pin shank off the track by construction. The retraction read the
+source's `// −3.02` COMMENT instead of its expression, and that comment was
+stale — written when `ALARM_FEELER_T` was 0.10 and never re-quoted when §51 put
+the feeler on floor stock. Three planes were stale together (−3.02, −3.19,
+−3.51 against −3.0467, −3.2167, −3.5333); all three are re-quoted, and the
+measurement confirms them independently — the disc's body top lands at world
+−5.2105 and its track top at −5.3805, exactly `ALARM_TRACK_H` apart.
+
+Neither error changed a conclusion, which is the third time this item has had to
+write that sentence. A stale comment beside a live expression is the same trap as
+a fabricated literal under a true claim: the claim keeps checking out, so nobody
+re-reads the number.
+
 ### THE RADIUS FORK IS PRICED, AND EVERY BAR SURVIVES IT — `probe-117-fork-radius.mjs`
 
 With the reversal refused by the envelope and the track-side band refused by
@@ -15593,6 +15690,15 @@ until it answers.
 **RETRACTED IN FULL.** The section below concluded the track-side band was free
 and the fold could continue. It is wrong, and both errors are worth keeping
 because neither showed up as a red row.
+
+**And this retraction is itself half-corrected — see the measured-band section
+above.** Its arithmetic quotes 0.0133 for the arm-to-track gap; the gap is
+`ALARM_PIN_SHANK` = **0.04**, and the 0.0133 came from reading a STALE source
+comment rather than its expression. More importantly its CONCLUSION is narrower
+than it reads: 0.04 is where the arm IS, not what the space allows. Measured
+with the lever excluded as the part being redesigned, the band at the shipped
+radius is **1.4029**. "There is no track-side annulus and there never was" is
+true of the built plane and false of the space.
 
 **The gap on the track side is 0.0133, not 0.4800.** It is `ALARM_PIN_SHANK` —
 what the shipped pin spans, and all there is. Derived from the movement's own
