@@ -25340,3 +25340,122 @@ parameter bump, and it is filed as its own landing.
 unwaived envelope misses, `clearances` 0 violations.
 
 ---
+
+---
+
+## §230 — The driver's pawl cut one ratchet tooth across, and the three models that had to agree first
+
+**PARTIAL** — the pawl half. The alarm complex's other 41 levers stay in the
+private roadmap under the same number.
+
+`alarmColPawl` is the member a reader watches push the teeth, and it was **0.30
+across on a 1.254 tooth** — 24%, under the movement's own stock floor, a wire
+against the gear it drives. §226 made the ratchet tooth this mechanism's
+feature width and §229 cut the link beak and its arms to it; this was the part
+that most obviously owed it.
+
+    ALARM_PAWL_HALF_W   0.15  ->  0.627   body ONE TOOTH across
+    ALARM_PAWL_NOSE_R   0.20  ->  0.627   nose one tooth in diameter
+    ALARM_PAWL_BOSS_R   0.533 ->  1.1601
+    ALARM_DRIVER_POST_R 7.0671 -> 7.6941  (expression UNCHANGED)
+    ALARM_PAWL_TRAIL    40°   ->  36°
+    ALARM_PAWL_BODY, ALARM_PAWL_L_SPEC    re-mapped, 4.5430 -> 4.5361
+
+Both section figures are `ratchetToothDepth / 2`, read from `geometry.js` — the
+identical constant every rider nose and the link beak already carry. One width,
+one reference, one glance.
+
+### The pivot radius took no new number
+
+Its rule never changed: whatever is centred on that pivot clears the tip circle
+by one `CLEAR_MARGIN`. What moved is the **boss** inside it. `makeColumnPawl`
+clips the centreline inside `boreR + w` and the boss has to cover what it cut,
+so a one-tooth arm takes the boss to `bore + halfW + a wall` and the radius
+follows by the rule it always had. The section constants are hoisted above the
+boss because at this width the member governing the pivot's clearance is no
+longer the boss but the **arm**, and a constant that changes which member
+governs must be in scope before the derivation that reads it. That is the third
+correction to this radius, all three the same shape: §163 measured it from the
+post, §169 from the boss, §230 from the arm.
+
+### Three models of one pawl, and they did not agree
+
+This is the transferable part, because each disagreement shipped a confident
+wrong answer first and the **build's own asserts** caught every one.
+
+**1. The width study models a capsule; the builder makes a boss.** §230's tier
+on `probe-163-driver.mjs` solved a pivot radius of 7.6000 off a measured curve
+— and `freeRegion` models the pawl as a constant-width capsule and never models
+the boss at all. At half-width 0.15 the omission hides. At one tooth the boss
+more than doubles and dominates, so the corridor the study measured belonged to
+a part the builder does not make. **That solved 7.6000 is retired**; the tier
+now maps at the radius the metal implies and its curve is demoted to what it
+is — a survey of the arm's corridor, useful and not sufficient.
+
+**2. A mitre is not a capsule.** `slackOf` thickens a centreline into the union
+of discs along it, which cannot fold whatever the nodes do. `thickenPolyline`
+cuts a **mitred polygon**, whose corner reaches `w / sin(θ/2)` back along both
+segments and folds when either is shorter. Invisible at 0.15; at one tooth it
+bit three times. `simplifyPath` ends in `mitreSafe` now: a corner overrunning
+its own mitre is dropped, or slid back along its longer segment, each
+re-verified through the corridor — and when neither works the row says the path
+**cannot be cut** rather than reporting a clean capsule.
+
+**3. The seat was never the defect.** The build's miter
+`C + rn(n1+n2)/(1+n1·n2)` and the probe's `C + rn/sin(half)` along the bisector
+are the *same* inscribed-disc centre, exactly, and both place the pivot by the
+same rule. What differed was *which* seat: the tier reached for `seatFor(rn)` at
+the module's shipped 0.20 while mapping the corridor at the candidate nose, so
+the branch and the arm length belonged to one seat and the corridor to another.
+The nose threads through now and the coupling guard closes dead-on — **arm
+4.5361 against a map made at 4.5361**. Unifying the two constructions was the
+obvious repair and would have rewritten a correct shipped derivation to chase an
+instrument bug. Measuring first is the only reason it didn't happen.
+
+### And the pusher, three mechanisms downstream
+
+`intraUnit` failed on `alarmPusherCollar ⇄ alarmPusherGuide` — nowhere near the
+pawl, and entirely caused by it. The chain is derived at every step:
+
+    wider pawl -> stroke 0.196 -> 0.252
+                -> springTheta = 2 x stroke, so the pawl's spring stiffens
+                -> the pusher's return is ALARM_SPRING_HEADROOM x the pawl's drag
+                -> its preload deflection grows
+                -> installed = freeLen - preloadDefl moves
+                -> the collar's station is that stack's end, and it walked into its guide
+
+What could not follow was the guide's own station, `plateR - 1.2`. The 1.2 had
+no constraint behind it — an inset that looked right — so when the member it
+shares a stem with moved, it stayed. Standing rule 1's "a number that appears
+because it looked right is a bug in waiting", arriving.
+
+It is derived now: **one `CLEAR_MARGIN` outboard of the return collar's rest
+station**, which is where the two are closest (the group retreats on the press,
+carrying the collar inboard and away). Both are rings on one axis and the
+collar's outer radius exceeds the boss's bore, so they cannot pass through each
+other and the margin has to be axial. The **placement moved a thousand lines
+downstream** to where the collar exists, and both §182 asserts travelled with
+it — a station and the assert that holds it belong in one place. A third assert
+joins them: the boss must still sit on the plate that carries it, which is what
+the 1.2 was standing in for and never said.
+
+Measured: collar-to-guide centre distance **0.1425 → 0.4283**.
+
+### What it cost and what it bought
+
+| | before | after |
+|---|---|---|
+| pawl body | 0.30 (24% of a tooth) | **1.254 (100%)** |
+| nose diameter | 0.40 | **1.254** |
+| outline clear of the saw | 0.1513 | 0.15 |
+| `stockFloor` waivers | 49 | **48** — the pawl's own floor row retires on merit |
+
+**Battery 40/40, local. Boot silent.** `alarmHandoffs` 13 hand-offs / 0 waived,
+`sweptOverlap` 0 CONFIRMED, `outlines` controls PASS, `intraUnit` 0 unwaived,
+`slenderness` 0 stale. Fingerprint `2195613915` — unchanged across the pusher
+fix, and correctly so: it is a per-**unit bounding box** over poses, and the
+Alarm switch unit's box is set by the pusher's head at the case wall, so moving
+a small member inside it does not move the box. §152's `unitDigests` is the
+per-mesh measure and is gated beside it. Checked rather than assumed, because an
+unchanged fingerprint across a real geometry change is exactly what a blind spot
+would look like.

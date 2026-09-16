@@ -25694,6 +25694,7 @@ const ALARM_PRESS_S = 0.12;
 // disguised timeout of 0.15·ln(1e6) = 2.07 s: every re-press inside two
 // seconds of the last one was swallowed with the head visibly back home.
 const ALARM_RETURN_S = ALARM_PRESS_S;
+let alarmPusherGuideMesh = null;            // §230: seated after the return collar it must clear
 const alarmPusherGroup = new THREE.Group(); // slides along −_pushU on press
 // §43 postscript: the pawl must be able to PUSH the wheel the way it indexes.
 // Cheap because the algebra above reduces the whole geometry to one sign.
@@ -25973,23 +25974,16 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   // PLACE, and `INTRA_UNIT_CONTACTS` declared the sliding fit — which SKIPS
   // the pair before measurement, so the declaration bought silence for the
   // very thing it was describing. That is TODO 104's whole subject.
-  const bossD = plateR - 1.2;
-  boss.position.set(_pushU.x * bossD, _pushU.y * bossD, ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL); // the axis runs under the plate; the boss's half-span is what derived its depth
+  // §230 — THE STATION MOVES DOWNSTREAM, because it is derived from a member
+  // that does not exist yet. It read `plateR - 1.2`, and the 1.2 was a bare
+  // literal with no constraint behind it; what the bearing actually has to do
+  // is clear the RETURN COLLAR that rides the same stem, and the collar's
+  // station is a consequence of the return spring, which is sized against the
+  // pawl's drag, which is built a thousand lines below. So the mesh is captured
+  // here and seated there, with both §182 asserts travelling with it — a
+  // station and the assert that holds it belong at the same place.
+  alarmPusherGuideMesh = boss;
   alarmSwitchUnit.add(boss);
-  // …and assert both halves of being a bearing, in the stem's own frame:
-  // ON the line, and AROUND the shaft across the whole stroke. The group
-  // retreats by ALARM_PUSH_TRAVEL when pressed, so the boss's station
-  // measured in group-local s runs bossS → bossS + travel; the stem occupies
-  // [ALARM_PUSH_INNER, stemOuterS] there at every T.
-  {
-    const dx = boss.position.x - _pushBase.x, dy = boss.position.y - _pushBase.y;
-    const off = dx * _pushPerp.x + dy * _pushPerp.y;
-    const bossS = dx * _pushU.x + dy * _pushU.y;
-    if (Math.abs(off) > 1e-6)
-      console.warn(`§182: the pusher's guide boss stands ${off.toFixed(4)} off the stem's own line — a bearing beside its shaft is not one`);
-    if (bossS < ALARM_PUSH_INNER || bossS + ALARM_PUSH_TRAVEL > stemOuterS)
-      console.warn(`§182: the guide boss sits at s ${bossS.toFixed(3)}→${(bossS + ALARM_PUSH_TRAVEL).toFixed(3)} against a stem spanning ${ALARM_PUSH_INNER.toFixed(3)}–${stemOuterS.toFixed(3)} — the shaft leaves its bearing inside the stroke`);
-  }
   // §43 riser-slot tripwire (the §35/§68 rod-bore pattern): the plate's slot
   // is a literal cut long before these constants exist — assert the derived
   // riser track (rest → pressed, at the riser's own radius + CLEAR_MARGIN)
@@ -26019,10 +26013,44 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
 }
 
 // ————— §163: the driver's and the pawl's dimensions, every one derived —————
+// §230 — THE PAWL'S SECTION, AND WHY IT IS HOISTED ABOVE THE PIVOT RADIUS.
+//
+// This is the member a reader watches push the teeth, and it was 0.30 across
+// on a 1.254 tooth — 24%, under the movement's own stock floor, a wire against
+// the gear it drives. §226 made the RATCHET TOOTH this mechanism's feature
+// width and §229 cut the link beak and its arms to it; this is the part that
+// most obviously owes it.
+//
+// Both figures are HALF A TOOTH, which is the same constant every rider nose
+// in this mechanism already carries (§226's `ratchetToothDepth / 2`), read from
+// geometry.js rather than copied. The body is therefore ONE TOOTH across and
+// the nose is one tooth in diameter — one width, one reference, one glance.
+//
+// They are declared HERE, above the boss, because the pivot's radius is derived
+// against whichever member centred on that pivot is widest, and at this width
+// that member is no longer the boss (0.533) but the BODY (0.627). A constant
+// that changes which member governs has to be in scope before the derivation
+// that reads it.
+const ALARM_PAWL_HALF_W = G.ratchetToothDepth(ALARM_COL_BASE_R) / 2;
+const ALARM_PAWL_NOSE_R = G.ratchetToothDepth(ALARM_COL_BASE_R) / 2;
 // The pawl's PIVOT BOSS — bore plus wall, both at their own floors. Named here
 // because it is the member the pivot's radius has to be derived against, and it
 // is the one a first pass got wrong.
-const ALARM_PAWL_BOSS_R = STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U;
+//
+// §230 — AND IT CANNOT BE NARROWER THAN THE ARM IT CARRIES. At floor stock the
+// boss was the widest thing on the pivot and the arm met it comfortably; at one
+// tooth the arm is wider, and the build said so in its own words — "the boss
+// 0.533 does not reach its clipped arms at 0.843 — the pawl is three parts".
+// A boss is where an arm is bored over a post, so it is at least as wide as the
+// arm, and the floors below are the OTHER bound on it rather than the whole of
+// it.
+// And the amount is the BUILDER's own construction rule, not a guess:
+// makeColumnPawl clips the centreline inside `boreR + w` and relies on the boss
+// to fill what it cut, so the boss's WALL has to exceed the arm's half-width,
+// not merely equal it. The excess is one STOCK_MIN_U because that is the
+// thinnest piece of metal this movement has a name for.
+const ALARM_PAWL_BOSS_R = STOCK_MIN_R10 + PIVOT_BORE_CLEAR
+  + Math.max(STOCK_MIN_U, ALARM_PAWL_HALF_W + STOCK_MIN_U);
 // THE PAWL'S PIVOT rises through the SKIRT'S OWN z-band to reach the teeth, so
 // what stands there must clear the tip circle by one CLEAR_MARGIN. Scanned for
 // whichever radius measured best the probe answers 6.6, which buries the pivot
@@ -26037,6 +26065,22 @@ const ALARM_PAWL_BOSS_R = STOCK_MIN_R10 + PIVOT_BORE_CLEAR + STOCK_MIN_U;
 // right and the face it was measured from was not. What caught it was
 // probe-87-pawl, the acceptance test — the build's own sweep swept the pawl's
 // two body outlines and not its boss, so it agreed with itself.
+//
+// §230 — AND THE THIRD CORRECTION NEEDS NO NEW NUMBER AT ALL, which is the
+// happiest kind. The expression is unchanged; what moved is the BOSS inside it.
+// Cut the arm one tooth across and the boss has to be bore + that half-width +
+// a wall (the builder clips the centreline inside `boreR + w` and the boss must
+// cover what it cut), so the boss goes 0.533 -> 1.1601 and this radius follows
+// it from 7.0671 to 7.6941 by the same rule that always governed it: whatever
+// is centred on this pivot clears the tip circle by one CLEAR_MARGIN.
+//
+// A LADDER RUNG IS NOT A DERIVATION, and this block briefly carried one. §230's
+// width study solved a radius of 7.6000 off its own measured curve — but that
+// study models the pawl as a CONSTANT-WIDTH CAPSULE and never models the boss,
+// so the corridor it measured belongs to a part the builder does not make. At
+// the shipped half-width the two agree closely enough to hide it; at one tooth
+// the boss more than doubles and dominates. The number here is derived from the
+// metal instead, and the study's own residue is recorded with it.
 const ALARM_DRIVER_POST_R = ALARM_COL_TIP_R + CLEAR_MARGIN + ALARM_PAWL_BOSS_R;
 // The SLOT spans the pin's own reach over the stroke — d at the foot, and
 // hypot(d, travel/2) at either end — plus one margin of end freedom, because a
@@ -26051,17 +26095,18 @@ const ALARM_DRIVER_SLOT_OUT = Math.hypot(ALARM_DRIVE_OFFSET, ALARM_PIN_HALF) + C
 // cut a running margin taller at each face (ALARM_COL_SKIRT_H) and the pawl
 // sits one margin up from its floor.
 const ALARM_PAWL_BAND_Z = ((ALARM_LOCK_Z + ALARM_COL_SPIN_REL) - ALARM_COL_BASE_H / 2 - ALARM_COL_SKIRT_H + CLEAR_MARGIN) - ALARM_DRIVER_BOT_Z;
-// The nose disc and half-width the swept free region was MAPPED with. Changing
-// either invalidates the centreline below — the map describes a member of
-// these dimensions and no other.
-const ALARM_PAWL_NOSE_R = 0.20;
-const ALARM_PAWL_HALF_W = 0.15;
+// (§230: the nose disc and half-width the swept free region was MAPPED with are
+// hoisted above ALARM_PAWL_BOSS_R now, because the pivot's radius is derived
+// against whichever member is widest and at one tooth that is the body. The
+// rule they carried is unchanged and still load-bearing: changing either
+// invalidates the centreline below — the map describes a member of THESE
+// dimensions and no other.)
 // How far the pivot trails the seat. Free in principle and not in practice: it
 // is the one value in the probe's scan that clears at the derived post radius,
 // and the post's azimuth on the driver is then DERIVED from it rather than
 // chosen (the seats sit at fixed azimuths in the wheel, so this angle picks
 // the branch).
-const ALARM_PAWL_TRAIL = 40 * DEG2RAD;
+const ALARM_PAWL_TRAIL = 36 * DEG2RAD;   // §230: re-picked with the radius AND the nose — the branch the map clears at 7.6941 (was 40° at 7.06710)
 // The RETURN's sense in the wheel's frame. On the drive the driver and wheel
 // turn together, so their relative angle is constant; on the return the click
 // holds the wheel and the driver alone runs back up its carry. Its sign is the
@@ -26074,8 +26119,19 @@ const ALARM_PAWL_RETURN_DIR = -alarmColumnWheel.userData.ratchetDrive;
 // annulus, so the spring would have to work at the pivot — the crowding TODO
 // 63 files against the click's blade, met here by giving the pawl something to
 // bear on outside the tips.
-const ALARM_PAWL_BODY = [[0.01, 0], [2.21, 0.84], [2.45, 0.88], [4.45, 0.88], [4.45, 0.08]];
-const ALARM_PAWL_L_SPEC = 4.5430;                   // the arm the centreline was mapped at
+// §230 — RE-MAPPED, not rescaled. The nodes below are the free region's own
+// path at the new radius, width and nose, straightened by the probe's greedy
+// verifier (every run checked rather than eyeballed) — the old five nodes
+// described a 0.30-wide member on a 4.543 arm and mean nothing here.
+// AND ITS SHORT STAIR IS MERGED, because a MITRE IS NOT A CAPSULE. The probe
+// thickens a centreline into the union of discs along it, which cannot fold;
+// the build cuts a mitred polygon, whose corner reach is w / sin(θ/2) and which
+// folds when two nodes are closer than that. The path came back with a 0.243
+// step between nodes 1 and 2 — invisible at the old half-width 0.15, and at
+// 0.627 the build reported the outline folding at both of them. The two nodes
+// are one corner.
+const ALARM_PAWL_BODY = [[0.01, 0], [2.45, 0.76], [3.95, 0.76], [4.45, 0.08]];
+const ALARM_PAWL_L_SPEC = 4.5361;                   // the arm the centreline was mapped at
 // The seat solve's resolution: a coarse walk to bracket the first free angle,
 // then bisection, so the answer is exact to 1e-5 rad without 2000 samples in a
 // tick. The walk's span covers twice the pawl's stroke, which is what the
@@ -26876,6 +26932,44 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   const abutS = barOuterAtRest + CLEAR_MARGIN + bracketT + abutT / 2;
   ALARM_PUSH_ABUT_S = abutS;
   const collarS = abutS + abutT / 2 + installed + collarT / 2;
+  // §230 — AND HERE IS THE GUIDE BOSS'S STATION, derived at last.
+  //
+  // The bearing and the return collar ride the SAME stem, and the collar is
+  // the one that moves: its station is the spring stack's end, so it walks
+  // whenever the return spring's installed length changes — and that length is
+  // ALARM_SPRING_HEADROOM × the pawl's drag, three mechanisms upstream. §230's
+  // wider pawl swings a longer stroke, which stiffens its spring, which moves
+  // this collar, and `intraUnit` found the collar inside the boss at rest. The
+  // literal `plateR - 1.2` could not have followed it, which is what made it a
+  // bug in waiting rather than merely an undeserved number.
+  //
+  // REST IS THE WORST POSE: the group retreats by ALARM_PUSH_TRAVEL on the
+  // press, carrying the collar INBOARD away from the boss, so the rest station
+  // is where the two are closest and the clearance is taken there. Both are
+  // rings on one axis and the collar's outer radius exceeds the boss's bore, so
+  // they cannot pass through each other — the margin has to be AXIAL.
+  const _guideBaseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;   // the base, ON the push axis (block-scoped above; the same expression, not a second definition of the axis)
+  const bossD = _guideBaseS + collarS + collarT / 2 + ALARM_PUSH_GUIDE_TUBE + CLEAR_MARGIN;
+  alarmPusherGuideMesh.position.set(_pushU.x * bossD, _pushU.y * bossD,
+                                    ALARM_LOCK_Z + ALARM_PUSH_AXIS_REL);
+  // …and assert every half of being a bearing, in the stem's own frame: ON the
+  // line, AROUND the shaft across the whole stroke, and ON THE PLATE that
+  // carries it — which is the constraint the 1.2 inset was standing in for and
+  // never stated.
+  {
+    const stemOuterS = CASE_R_OUT + CLEAR_MARGIN + ALARM_PUSH_TRAVEL - _guideBaseS;
+    const dx = alarmPusherGuideMesh.position.x - _pushBase.x;
+    const dy = alarmPusherGuideMesh.position.y - _pushBase.y;
+    const off = dx * _pushPerp.x + dy * _pushPerp.y;
+    const bossS = dx * _pushU.x + dy * _pushU.y;
+    if (Math.abs(off) > 1e-6)
+      console.warn(`§182: the pusher's guide boss stands ${off.toFixed(4)} off the stem's own line — a bearing beside its shaft is not one`);
+    const stemInner = alarmPusherGroup.userData.stem.inner;   // the span §71 publishes, not a second copy of it
+    if (bossS < stemInner || bossS + ALARM_PUSH_TRAVEL > stemOuterS)
+      console.warn(`§182: the guide boss sits at s ${bossS.toFixed(3)}→${(bossS + ALARM_PUSH_TRAVEL).toFixed(3)} against a stem spanning ${stemInner.toFixed(3)}–${stemOuterS.toFixed(3)} — the shaft leaves its bearing inside the stroke`);
+    if (bossD + ALARM_PUSH_GUIDE_RING + ALARM_PUSH_GUIDE_TUBE > plateR - 1e-9)
+      console.warn(`§230: the pusher's guide boss reaches r ${(bossD + ALARM_PUSH_GUIDE_RING + ALARM_PUSH_GUIDE_TUBE).toFixed(3)} against a plate ending at ${plateR.toFixed(3)} — the bearing has walked off the metal that carries it`);
+  }
   // WHERE THE BRACKET RISES, and it cannot rise where a bracket would like to.
   // Between the stem's bore and the plate's underside there is 0.76 − 0.37 =
   // 0.39 of radius, and a leg at §50's floor wants its own width plus a margin
