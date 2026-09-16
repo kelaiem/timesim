@@ -15527,6 +15527,50 @@ Two smaller findings, both fixed in place rather than waived:
   the second is the dialFace nesting artifact the feeler's own row already
   carries. Both declared EXPECTED.
 
+### THE REVERSAL IS PRICED, AND THE ENVELOPE REFUSES IT — `probe-117-reversed-bias.mjs`
+
+Asked what reversing the bias blade costs. It is not affordable, and the reason
+is a budget the fold rule says is never forkable.
+
+**Row 4 of the line rests on a stacking order it could not have known.** It says
+the blade "already seats the pin, and moving the contact from the track to the
+ring's face only makes that force path ONE MEMBER LONGER" — a SERIES claim, and
+a fair one in free space, where a line has no stacking order. Folded, the lever's
+arm lies BETWEEN the ring and the track, so a lever biased onto the ring's
+underside pushes the ring AWAY from the track. The path is not longer, it is
+OPPOSED, and the 0.82% series-compliance figure prices the wrong thing.
+
+| quantity | value |
+|---|---|
+| the blade's stiffness | 980.6 N/m |
+| its seating force, riding → dropped | 41.80 → 25.08 mN (inside the 5–50 envelope) |
+| **the ring's own return, now that it must seat the pin AND fight the blade** | **882.5 N/m** |
+| the line's cap on a ring return (5% of the blade) | 49.0 N/m |
+| **over the cap by** | **18.0×** |
+| the opposed pair's total load at the bearing | **83.61 mN** against a 50 mN ceiling |
+
+**The envelope is what refuses it.** 83.61 mN is outside TODO 16's 5–50 mN
+detent window, and that window is INHERITED from the reference and never
+forkable — §35's 26.79 tail failed as a fork for exactly this reason. The
+control row isolates the blame: the blade alone is 41.80 mN and sits inside the
+envelope, so every milliNewton of the excess belongs to the second spring the
+reversal forces.
+
+**So the reversal is refused and the fix is POSITION-SPACE**, which is where the
+design priority says a conflict like this must be solved. The probe's first
+control states the lever: *a ring on the TRACK side of the arm needs no reversal
+at all* — the conflict is stack-order dependent, not intrinsic. Put the ring
+between the arm and the track and the line's series claim becomes true again,
+the blade keeps its sense, and no second spring exists to price.
+
+**The next measurement is therefore the free-ring map again, asked a narrower
+question**: is there a free annulus at `ALARM_TRACK_RMID` on the TRACK side of
+the feeler's arm — world z between −5.86 and −5.38? `probe-117-takeoff.mjs`
+ranked −6.35 best over the whole corridor, which is the dial side; it was never
+asked to rank cells within that 0.48-deep band. If one exists, the fold
+continues with the line intact. If none does, the reader's radius is what moves
+— not its spring, and not the envelope.
+
 ### THE Z STACK INTERLEAVES — the reader and the feeler cannot both reach the track
 
 Step 1 was attempted and REVERTED, and what it found is a constraint the line

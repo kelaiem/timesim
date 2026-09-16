@@ -4,7 +4,7 @@
 
 # The instruments
 
-209 scripts. **107 are ACCEPTANCE tests** — they decide and exit non-zero.
+210 scripts. **108 are ACCEPTANCE tests** — they decide and exit non-zero.
 **102 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -54,6 +54,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-115-window.mjs` | §115 | report | §115 — the governor window, read off a real boot: what the solve wanted, what the keep field left, which keep binds where, and how much of the governor the finished plate actually shows. |
 | `probe-116-locale-fit.mjs` | §116 | acceptance | §116 — WHAT NO GATE MEASURES: does each locale still FIT? |
 | `probe-117-line.mjs` | §117 | acceptance | §117 — THE RELEASE TAKE-OFF, AS A STRAIGHT LINE. |
+| `probe-117-reversed-bias.mjs` | §117 | acceptance | ACCEPTANCE — WHAT DOES REVERSING THE FEELER'S BIAS BLADE COST? |
 | `probe-117-takeoff.mjs` | §117 | acceptance | IF THE READER ORBITS, HOW DOES ITS SIGNAL GET OUT? — TODO 117's price. |
 | `probe-119-crown-roll.mjs` | §119 | report | §119 — WHAT NO GATE MEASURES: does a crown turn with the knurling under the finger, in every view? |
 | `probe-119-pad-targets.mjs` | §119 | acceptance | §119 — WHAT NO GATE MEASURES: can a thumb hit each control on the pad? |
