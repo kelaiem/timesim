@@ -7122,12 +7122,23 @@ const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // That number is TODO 16's, not TODO 79's, and it changed the item's
 // arithmetic: λ ≤ 27 on a 14.70 span wants r ≥ 0.2722, which is INSIDE the
 // 0.2850 the corridor allows for the first time — the section fix is legal
-// now. It is not taken here because it overshoots: at r 0.28 the shaft's
-// compliance all but vanishes and the beak tail blade (305 N/m) governs
-// alone, delivering ≈ 65 mN at the tab against a 5–50 mN window. The next
-// move is TODO 16's to make — size the tail and the shaft together so the
-// chain lands inside the window — and the row stays waived under it until
-// then.
+// now. It is not taken here because it overshoots.
+//
+// §229 KILLED THE REASON THIS ENTRY GAVE FOR THAT, and the conclusion
+// survives it. The reason read: "at r 0.28 the shaft's compliance all but
+// vanishes and the beak tail blade (305 N/m) governs alone, delivering ≈ 65
+// mN at the tab". That blade is the beak's TAIL, and §229 swapped the beak
+// lever's arms — the tail went from 9.30 u to 1.99 u and gave the §54 depth
+// to the bar — so its rate is 24146 N/m now and it carries 0.03% of the
+// series compliance where it carried 2.6%. It cannot govern anything. What
+// the overshoot rests on instead is the shaft's own members: stiffening the
+// spans is what removes the compliance, and there is no soft member left
+// behind them to catch the chain. The next move is still TODO 16's — size
+// the tail and the shaft together so the chain lands inside the window — and
+// whoever takes it should re-run tools/probe-82-alarm-stall.mjs at the
+// candidate section rather than quote a figure from here: this comment has
+// now been wrong about which member governs once, which is exactly the
+// failure the §137 row beside it asserts against instead of arguing.
 //
 // TODO 109 STEP 3 — the seven unwaived rows, waived because they are TRIAGED
 // now, not to green the report. TODO 78 closed with "do not add waivers to
