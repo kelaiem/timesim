@@ -155,6 +155,34 @@ for (const [name, r_u, note] of out.candidates) {
 }
 console.log(`  (disc gear record: ${JSON.stringify(out.discRec)})\n`);
 
+// --- THE PAD'S OWN REACTION, which the table above does not price ----------
+// A pad pressing the disc's face pushes the disc toward the movement, and the
+// disc's whole underside — hub and body, one plane at ALARM_DISC_BOT — would
+// bear on the HOUR WHEEL, which turns. A thrust face that turns is a second
+// drag, μ·(F_pin + F_pad)·r_seat, in the same budget as the hold. Priced at
+// two seat radii: the whole underside (its friction-effective radius, ⅔(R³−r³)/
+// (R²−r²)) and a hub shoulder alone (the smallest seat the metal could offer).
+// Against a GROUNDED seat the same product changes sign — a fixed face under
+// the disc is a second hold, not a second drag — which is the whole reason a
+// thrust plate is the construction and a pad alone is not.
+{
+  const F = H.pinF_mN, mu = H.mu, rT = H.trackR_u * UNIT_MM, rP = (out.discRec ? out.discRec.r - 1.25 * (2 * out.discRec.r / out.discRec.teeth) : 4.125) * UNIT_MM;
+  const hubR = D ? [D.rIn, D.rOut] : [2.55, 2.8667], bodyR = [D ? D.rIn : 2.55, out.discRec ? out.discRec.r + (2 * out.discRec.r / out.discRec.teeth) : 4.6];
+  const rEff = ([a, b]) => (2 / 3) * (b ** 3 - a ** 3) / (b ** 2 - a ** 2) * UNIT_MM;
+  const need = H.headroomRequired;
+  // turning seat: μ[F_pad·rP − (F_pad + F)·rS] ≥ need·μ·F·rT  →  F_pad ≥ F·(need·rT + rS)/(rP − rS)
+  const turning = (rS) => F * (need * rT + rS) / (rP - rS);
+  // grounded seat: μ[F·rS + F_pad·(rP + rS)] ≥ need·μ·F·rT  →  F_pad ≥ F·(need·rT − rS)/(rP + rS)
+  const grounded = (rS) => F * (need * rT - rS) / (rP + rS);
+  console.log(`  THE PAD'S REACTION (μ ${mu}, pad at the root circle ${(rP / UNIT_MM).toFixed(3)} u, pin ${F.toFixed(2)} mN, headroom ${need}):`);
+  console.log(`    seat on the TURNING hour wheel, whole underside (r_eff ${(rEff(bodyR) / UNIT_MM).toFixed(3)} u)   F_pad ≥ ${turning(rEff(bodyR)) > 0 ? turning(rEff(bodyR)).toFixed(1) : '∞ (seat radius ≥ pad radius)'} mN`);
+  console.log(`    seat on the TURNING hour wheel, a hub shoulder only (r_eff ${(rEff(hubR) / UNIT_MM).toFixed(3)} u)  F_pad ≥ ${turning(rEff(hubR)).toFixed(1)} mN`);
+  console.log(`    seat GROUNDED under the hub (r_eff ${(rEff(hubR) / UNIT_MM).toFixed(3)} u)                          F_pad ≥ ${grounded(rEff(hubR)).toFixed(1)} mN`);
+  console.log(`    seat GROUNDED under the body (r_eff ${(rEff(bodyR) / UNIT_MM).toFixed(3)} u)                         F_pad ≥ ${grounded(rEff(bodyR)).toFixed(1)} mN\n`);
+  push('REPORT a pad reacting on the turning hour wheel is outside the envelope at every seat radius the metal offers',
+    true, `${turning(rEff(hubR)).toFixed(1)} mN at a hub shoulder, ${rEff(bodyR) >= rP ? '∞' : turning(rEff(bodyR)).toFixed(1)} over the whole underside`, 'a report — the arithmetic that makes the grounded seat the construction');
+}
+
 // --- rows -----------------------------------------------------------------
 push('CONTROL the reader’s pin moves RELATIVE TO THE DISC under the hour (so it slides, so it drags)',
   out.hasPin && out.hasDisc && out.relMove > 1e-3, `${out.relMove.toFixed(4)} u over 3 h (Δaz ${out.relAz.toFixed(4)} rad)`, '> 0.001');

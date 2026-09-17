@@ -19594,23 +19594,61 @@ envelope left, μ 0.2 on both sides of the budget. Its P3 question — what else
 occupies that annulus at the pad's azimuth, and the bracket's drop from the
 sheet — is a clearance scan not yet run, and it is the next measurement.
 
-**Three decisions this leaves the owner, with numbers attached:**
+**The pad alone is refused by its own reaction** — the row the table above
+does not price, found before any metal was cut. A pad pressing the disc's face
+pushes the disc toward the movement, and the disc's whole underside — hub and
+body, one plane at `ALARM_DISC_BOT` — is 0.15 above the HOUR WHEEL, which
+turns. A thrust face that turns is a second drag in the same budget,
+μ·(F_pin + F_pad)·r_seat, and the arithmetic (`probe-144-set-hold.mjs`, the
+REPORT row) is decisive:
 
-1. **The pad on the disc's face** (above): friction-set stays true to §25 C,
-   the force is inside the envelope with 8.3 mN to spare, and it costs a
-   bracket, a blade and a clearance scan.
-2. **A jumper instead.** A detent holds through its ramp, not through μ, so
-   its force is an order lower — but §25 C rejected a click for
-   authenticity (real alarm watches friction-set), the rim's 30 teeth are
-   24-minute stops against the dial's quarter marks, and a 48-tooth star
-   could not fit the band the first time.
-3. **Re-derive the seat lower.** The drag is proportional to the blade's
-   seat, and the pin needs only enough to follow the track and drop — but the
-   same blade seats the beak that holds the striking barrel through the
-   climb, so a lighter seat is re-priced against that hold first.
+| the disc's axial seat | F_pad needed | envelope |
+|---|---|---|
+| the turning hour wheel, whole underside (r_eff 3.790) | **726 mN** | out by an order |
+| the turning hour wheel, a hub shoulder only (r_eff 2.711) | **158 mN** | out |
+| a GROUNDED seat under the hub (r_eff 2.711) | **17.7 mN** | inside |
+| a GROUNDED seat under the body (r_eff 3.790) | **12.7 mN** | inside |
+
+A fixed face under the disc changes the sign of that term — a grounded seat is
+a second HOLD, not a second drag — so the construction is a THRUST PLATE, and
+the pad is the light thing that rides on top of it. That is TODO 117's "the
+disc's own seat", reached from the force side. It also says what the disc has
+today: no axial location at all, a radial fit on a plain tube with the pin
+pushing it toward a wheel it must not touch. The jumper route is closed by the
+same geometry (a radial beak cannot reach a star on the face without passing
+through the rim teeth's plane, and a star raised above the track collides with
+the feeler's arm at the release azimuth), and a lighter seat does not rescue a
+friction hold on a turning face (62 mN at 5 mN of pin load).
+
+**Is there room for the seat?** Measured (`probe-144-disc-room.mjs`, 42 poses,
+by 10° of world azimuth): the pad cell above the disc's face is free at every
+azimuth but the feeler's (330°); a bracket's lug column outside the hour
+wheel's tips is free at 10°, 70–90°, 110–150°, 200°, 230°, 260–280° and
+310–320°; and under the hour wheel nothing but the motion works' own star and
+minute wheel (120–230°) lies within 1.3 of its underside. The stratum is the
+problem, not the azimuth: a §50-floor plate plus one margin needs **0.467**
+under the disc, and the motion-works stack has **0.135** before the minute
+wheel's underside meets the base plate's margin (`MW_Z2` → `MW_Z1 = MW_Z2 −
+1.5` → `mwBot` against `Z_DIAL − (−2.0)`), plus **0.068** the star slice could
+give up before its own 0.2 floor. Short by **0.264** — and the cannon pinion's
+0.1 overreach past the minute wheel (`CANNON_T`) sits inside the same margin,
+so the honest figure is **0.364**. The two motion-works wheels are 0.8 thick,
+2.5× the §50 floor; taking 0.18 from each pays it, and both stay above 0.6.
+
+**So the decision is one construction, with its cost stated:**
+
+1. **A thrust plate and a pad.** A dial-hung bracket at a free azimuth, a web
+   passing under the disc, a fixed annulus the hub (or body) seats on; the
+   hour-wheel stack lowered 0.467, paid by deriving the star slice to its floor
+   and thinning both motion-works wheels 0.8 → ~0.62; a flat spring from the
+   same bracket seating the disc's face at 13–18 mN. Three existing units
+   re-stratified, one new fixed part, one new spring, the motion-works region
+   of every sweep re-measured.
+2. **File it.** The disc stays posed, the instrument stays red, and this
+   section is the record of why nothing cheaper is honest.
 
 `window.__clock.alarmSetHold` publishes the drag, the requirement and
-`holder: null`; the probe reads it and is **red by design** (9 rows, 2 failing:
+`holder: null`; the probe reads it and is **red by design** (10 rows, 2 failing:
 "a holding element is DECLARED" and "it clears the drag by 3×") until the hold is
 cut — TODO 117's pattern, the instrument ahead of the metal. It is not in the
 battery, deliberately: a boot assert on a known miss would warn at every boot.
