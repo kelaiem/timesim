@@ -19538,8 +19538,9 @@ topology holds.
 ## 145. The turning catalogue: twelve bars the movement cannot turn
 
 §233 declared a third slenderness — `TURN_LD_MAX = 20` in `layout.js`, gated by
-the `turning` check — and the movement arrived twelve bars over it. Each is
-waived in `TURN_WAIVERS` citing this item. This is that list, with the fix path
+the `turning` check — and the movement arrived twelve bars over it. Each was
+waived in `TURN_WAIVERS` citing this item; **ten remain** after §234 Landing 1
+(the two arrest columns closed, see the block under group C). This is that list, with the fix path
 for each group, so the waivers can be deleted one group at a time; per §137's
 staleness rule, deleting a waiver whose bar is no longer over the ceiling is
 structurally part of the fix, and leaving one behind fails the check.
@@ -19625,6 +19626,48 @@ force — check `probe-82-alarm-stall.mjs` before and after, the way §232 did.
 
 **Start here.** It is the group with no layout consequence, and closing it
 proves the waiver-deletion loop works before the expensive groups are attempted.
+
+> **§234 Landing 1 (2026-09-17) — measured, and the group did not survive
+> contact.** "A section change alone could close all three" was true of none
+> of them. Four couplings were measured before anything was cut
+> (`tools/probe-234-group-c.mjs`, on the shipped tree and on scratch trees):
+>
+> - **Tooth counts do not move.** `minGearTeeth` reads 5 at `PIVOT_MIN_U` and
+>   5 at the target-derived 0.236 u; both station solves floor at 8; the
+>   idler stays at its solved 14.
+> - **The Geneva does.** `ARREST_SPEC.arborR` is an input to `genevaSpec` and
+>   the horn floor GOVERNS its centre distance today (d = 4.114 = dFromHorn),
+>   so the one shared radius at 0.236 grows the whole stop-work 20%
+>   (d → 4.919, lockR 1.390 → 1.698). That coupling is the FINGER's — the
+>   cross's horn passes the finger's bore lip — and the finger's arbor is
+>   L/D 17.5, already under the target.
+> - **The stall does not read the rod.** `probe-82`'s "rod-end overhang" is
+>   the lay SHAFT's neck past its last bush; the rod is a push rod, outside the
+>   compliance sum. r 0.553 measured byte-identical (81.02 mN). The claim
+>   above that fattening it "moves a force" was wrong.
+> - **The rod is SITE-limited.** §202's frozen station asserts room against the
+>   column at a 0.45 footprint; at r 0.553 it warns (0.115 of 0.15), at 0.518
+>   it reads 0.150 and still warns by float. Cap ≈ 0.517 u — L/D 19.2, under
+>   the ceiling, over the target — and the ladder's real wall beyond that is
+>   the back crystal at ⌀ ~1.2 u (whose z §187 derives from the envelope).
+>
+> **What closed: the two arrest columns**, by decoupling. `ARREST_COLUMN_R`
+> (`main.js`, beside the leg solve) is derived from `TURN_LD_TARGET` and the
+> tower's built height, with the finger's Geneva-sized arbor left on the spec.
+> The height depends on the spider spec, which is bored over this radius, so
+> the legs are solved twice — at the floor to learn the length, then at the
+> radius it asks for — and boot asserts the second pass moved neither the leg
+> count nor the length. The z-stack became ONE law (`arrestStack`) read by the
+> derivation and the build. Columns ⌀ 0.140 → 0.179 mm, L/D 23.0 → 18.0; their
+> two rows retired from `TURN_WAIVERS`. Battery 41/41 locally; `stockFloor`,
+> `intraUnit`, `assembly` and `inspection` unchanged at 0 unwaived. A
+> `§38/TODO 8` warning the pose net raises under the checks fires identically
+> on unchanged `main` — a control, not a finding.
+>
+> **What moved out: the rod**, to group A's landing — its site is the §112
+> solve's output, and re-solving that with the true bore footprint and an L/D
+> term is Landing 3's work, not a section. Its waiver stays, reason rewritten.
+> Group C is therefore CLOSED as a group: two rows fixed, one re-triaged.
 
 ### What is NOT in this catalogue
 

@@ -9694,13 +9694,15 @@ export const TURN_WAIVERS = {
   'Alarm switch::alarmPusherStem+alarmPusherCap': 'TODO 145 group B',
   'Keyless works::settingTraverse': 'TODO 145 group B',
   'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
-  // GROUP C — arbors INSIDE the movement, where both length and diameter are
-  // the mechanism's own and either could move. These are the rows a section
-  // change alone could close, and the two arrest arbors are the closest to
-  // the ceiling of anything here (23.0 against 20).
-  'Alarm link::alarmLinkRod': 'TODO 145 group C',
-  'Alarm winding arrest::alarmArrestArbor': 'TODO 145 group C',
-  'Alarm winding arrest::subIdlerArbor': 'TODO 145 group C',
+  // GROUP C — arbors INSIDE the movement. Filed as "a section change alone
+  // closes all three"; §234 Landing 1 measured that for none of them, and
+  // closed the two it could. The arrest COLUMNS are ARREST_COLUMN_R now, cut
+  // to TURN_LD_TARGET beside the leg solve with the finger's Geneva-sized
+  // arbor left alone (their rows retired here, per §137's staleness rule).
+  // The ROD is SITE-limited, not section-limited: §202's frozen station warns
+  // at boot above r ≈ 0.517 (L/D 19.2 — under the ceiling, over the target),
+  // and its site is the §112 solve's output, which is Landing 3's machinery.
+  'Alarm link::alarmLinkRod': 'TODO 145 group C (site-limited; re-solved with group A)',
 };
 
 export async function checkTurning(clock, opts = {}) {

@@ -52,6 +52,7 @@ import {
   FUSEE_TILT_Z,                               // §124 (TODO 46): the base tilt's funded down-reach — Z0_MIN and the base inset consume it
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
+  TURN_LD_TARGET,                            // §233/§234: the turning ceiling's build-to figure — the arrest columns are cut to it
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
@@ -18893,8 +18894,70 @@ let ALARM_RATCHET_POLY = null;
 // is forced from its bore outward (spiderSpec's header has that order), and
 // what it needs is its SWEPT radius, not its tip — the number sizing it to the
 // tip missed by √2 and is what this loop exists to stop anyone missing again.
-const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
-  meshCD: ARREST_CD } = (() => {
+// §234 — THE TOWER'S TWO COLUMNS ARE CUT TO THE TURNING TARGET, and the finger's
+// arbor is not: they are different parts with different couplings, and one
+// shared radius had been standing in for both.
+//
+// The finger's arbor is ARREST_SPEC.arborR, an INPUT to genevaSpec: the cross's
+// horn passes the finger's bore lip, so that radius sets the stop-work's centre
+// distance — measured, the horn floor GOVERNS it today (d = 4.114 = dFromHorn),
+// and raising the shared radius to the turning target grew the whole cross 20%
+// (tools/probe-234-group-c.mjs). The finger's arbor is 6.5 u long and reads
+// L/D 17.5, under the target; it keeps the floor and the Geneva keeps its size.
+//
+// The tower's column and the idler's are 8.5 u long — the tower's height —
+// and at the pivot floor read L/D 23.0 against TURN_LD_MAX's 20. They carry no
+// cross. So their radius is derived HERE from the target and the built length:
+//
+//     ARREST_COLUMN_R = max(PIVOT_MIN_U, columnLen / (2 · TURN_LD_TARGET))
+//
+// with one circularity to close honestly: the column's length is the tower's
+// stack, the stack reads the spider spec's cone (halfHeight, hubFaceZ), and the
+// spider spec is bored over this very radius. So the legs are solved TWICE —
+// once at the floor to learn the length, once at the radius the length asks
+// for — and boot asserts that the second pass changed neither the leg count
+// nor the length by enough to move the radius. Measured, it changes neither:
+// the cone's axial numbers do not read the bore. The assert is what makes
+// that a fact the build holds rather than one this comment remembers.
+//
+// THE STACK IS ONE LAW, `arrestStack`, read by this derivation AND by the
+// build below (SUB_WIND_TOP, SUB_CAGE_Z, SUB_PIN_B_Z and the columns' top all
+// come from it) — a stack written twice would be the chain's frame-law defect
+// in a new costume.
+const arrestStack = (spec) => {
+  // The apex sits as low as the WIND WHEEL allows, not as low as the leg
+  // pinion does. Side A's cone hangs below the apex, and the obstacle down
+  // there is not the pinion it is rigid with — it is that pinion's mesh
+  // partner, whose band is taller than the pinion's own. (ARREST_PIN_Z is
+  // ALARM_WIND_TIER_Z — leg A shares the arbor wheel's mesh plane.)
+  const windTop = ALARM_WIND_TIER_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL;
+  // …and it must ALSO clear the barrel's lid, because the cage's RIM is wide
+  // where its cones are not: the cones fit beside the barrel inside
+  // SUB_BESIDE_R, and the wheel they hang on does not. So the apex is
+  // whichever of the two obstacles under it binds.
+  const cageZ = Math.max(
+    windTop + CLEAR_MARGIN + spec.halfHeight,
+    ALARM_BARREL_TOP + CLEAR_MARGIN + ALARM_WIND_WHEEL_T / 2);
+  // Leg B's pinion is the same distance above the apex, by symmetry — but no
+  // closer than lets the SLEEVE between it and the side gear's hub face be a
+  // section. TODO 138 Landing 2 shrank `halfHeight`: the conical blank's
+  // farthest axial point is where its bore meets the back cap, not its TIP as
+  // the sheared cone's was, so the envelope came in and the sleeve with it. At
+  // `hubFaceZ + halfHeight`'s difference the sleeve was exactly CLEAR_MARGIN
+  // long — 0.0568 mm against the §50 floor's 0.12. A clearance is not a
+  // section, so the stack opens by the floor instead of the sleeve being cut
+  // under it.
+  const pinBZ = Math.max(
+    cageZ + spec.halfHeight,
+    cageZ + spec.hubFaceZ + STOCK_MIN_U) + ALARM_WIND_WHEEL_T / 2;
+  // The columns: planted 0.5 into the base plate's top face, standing 0.2
+  // proud of the topmost pinion's face — the two literals the column calls
+  // carried, hoisted so the derivation and the build read one length.
+  const columnBase = ALARM_U_FLOOR - 0.5;
+  const columnTop = pinBZ + ALARM_WIND_WHEEL_T / 2 + 0.2;
+  return { windTop, cageZ, pinBZ, columnBase, columnTop, columnLen: columnTop - columnBase };
+};
+const solveLegs = (arborR) => {
   // TWO wheels stand on the barrel's axis, not one, and the bound is the
   // LARGER: its toothed wall and the arbor's own wind wheel. Both from
   // gearOuterR rather than the nominal tip circle, because §115's relieved
@@ -18920,7 +18983,7 @@ const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
       thickness: ALARM_WIND_WHEEL_T }));
     const besideR = meshCD - onAxis - CLEAR_MARGIN;
     const spec = G.spiderSpec({
-      arborR: PIVOT_MIN_U, stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
+      arborR, stockMin: STOCK_MIN_U, margin: CLEAR_MARGIN,
       thickness: ALARM_WIND_WHEEL_T, tipBudget: besideR,
     });
     if (spec.fitsBudget && spec.teethOk) return { legTeeth: leg, spec, besideR, meshCD };
@@ -18933,9 +18996,26 @@ const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
     module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_W, mates: [ARREST_PINION_TEETH],
     thickness: ALARM_WIND_WHEEL_T })) - CLEAR_MARGIN;
   return { legTeeth: ARREST_PINION_TEETH, besideR, meshCD,
-    spec: G.spiderSpec({ arborR: PIVOT_MIN_U, stockMin: STOCK_MIN_U,
+    spec: G.spiderSpec({ arborR, stockMin: STOCK_MIN_U,
       margin: CLEAR_MARGIN, thickness: ALARM_WIND_WHEEL_T }) };
-})();
+};
+// pass one, at the floor, to learn the length the radius has to answer for
+const _legsAtFloor = solveLegs(PIVOT_MIN_U);
+const ARREST_COLUMN_R = Math.max(PIVOT_MIN_U,
+  arrestStack(_legsAtFloor.spec).columnLen / (2 * TURN_LD_TARGET));
+// pass two, at that radius — the one the build uses
+const { legTeeth: SUB_LEG_TEETH, spec: SUB_SPEC, besideR: SUB_BESIDE_R,
+  meshCD: ARREST_CD } = solveLegs(ARREST_COLUMN_R);
+const ARREST_STACK = arrestStack(SUB_SPEC);
+{
+  const ld = ARREST_STACK.columnLen / (2 * ARREST_COLUMN_R);
+  if (SUB_LEG_TEETH !== _legsAtFloor.legTeeth)
+    console.warn(`§234: the arrest legs solved to ${SUB_LEG_TEETH} teeth at the column radius ${ARREST_COLUMN_R.toFixed(4)} `
+      + `but ${_legsAtFloor.legTeeth} at the floor — the column's bore moved a count, and the fixed point is not one`);
+  if (ld > TURN_LD_TARGET + 1e-9)
+    console.warn(`§234: the arrest columns stand ${ARREST_STACK.columnLen.toFixed(4)} at r ${ARREST_COLUMN_R.toFixed(4)} — `
+      + `L/D ${ld.toFixed(2)} over the ${TURN_LD_TARGET} target; the second pass lengthened the tower`);
+}
 // THE OUTPUT STAGE IS DERIVED FROM THE LEGS, not chosen beside them. The gain
 // must come out 4, and gain = (W/LEG)·(OUT/FINGER)/2, so OUT/FINGER = 8·LEG/W
 // = 2·LEG/11 exactly. Fix the finger's pinion at 11 and the cage's wheel is
@@ -21213,7 +21293,11 @@ const ARREST_SPEC = G.genevaSpec({
   // a quarter of the alarm arbor's torque (11 t on 44 t), k·θ at full wind
   // gives T = 9.8e-5 N·m, and τ = 2T/πr³ at r = 0.07 mm is 182 MPa against
   // hardened steel's ~600 MPa shear. The stall alone would ask 0.179 u — just
-  // under the floor — so the floor governs.
+  // under the floor — so the floor governs. §234: this is the FINGER's arbor
+  // (6.5 u, L/D 17.5 under the turning target) and it is what the Geneva is
+  // sized against; the tower's and idler's 8.5 u columns are ARREST_COLUMN_R,
+  // cut to TURN_LD_TARGET beside the leg solve, and read this only for the
+  // horn assert below.
   arborR: PIVOT_MIN_U,
 });
 const ARREST_PLATE_T = STOCK_MIN_U;      // the cross and finger are floor stock
@@ -21248,30 +21332,13 @@ const ARREST_PIN_Z = ALARM_WIND_TIER_Z;  // leg A shares the arbor wheel's mesh 
 // far above — the three are one derivation and cannot be written apart.)
 const SUB_BEVEL_TEETH = SUB_SPEC.sideTeeth;
 const SUB_BEVEL_MODULE = SUB_SPEC.module;
-// The apex sits as low as the WIND WHEEL allows, not as low as the leg pinion
-// does. Side A's cone hangs below the apex, and the obstacle down there is not
-// the pinion it is rigid with — it is that pinion's mesh partner, whose band is
-// taller than the pinion's own.
-const SUB_WIND_TOP = ARREST_PIN_Z + ALARM_WIND_WHEEL_T / 2 + ALARM_GEAR_BEVEL;
-// …and it must ALSO clear the barrel's lid, because the cage's RIM is wide
-// where its cones are not: the cones fit beside the barrel inside
-// SUB_BESIDE_R, and the wheel they hang on does not. So the apex is whichever
-// of the two obstacles under it binds.
-const SUB_CAGE_Z = Math.max(
-  SUB_WIND_TOP + CLEAR_MARGIN + SUB_SPEC.halfHeight,
-  ALARM_BARREL_TOP + CLEAR_MARGIN + ALARM_WIND_WHEEL_T / 2);
-// Leg B's pinion is the same distance above the apex, by symmetry.
-// Leg B's pinion is the same distance above the apex, by symmetry — but no
-// closer than lets the SLEEVE between it and the side gear's hub face be a
-// section. TODO 138 Landing 2 shrank `halfHeight`: the conical blank's farthest
-// axial point is where its bore meets the back cap, not its TIP as the sheared
-// cone's was, so the envelope came in and the sleeve with it. At
-// `hubFaceZ + halfHeight`'s difference the sleeve was exactly CLEAR_MARGIN long
-// — 0.0568 mm against the §50 floor's 0.12. A clearance is not a section, so the
-// stack opens by the floor instead of the sleeve being cut under it.
-const SUB_PIN_B_Z = Math.max(
-  SUB_CAGE_Z + SUB_SPEC.halfHeight,
-  SUB_CAGE_Z + SUB_SPEC.hubFaceZ + STOCK_MIN_U) + ALARM_WIND_WHEEL_T / 2;
+// The z-stack is `arrestStack`'s (§234, beside the leg solve): the wind-wheel
+// apex, the cage, leg B's pinion and the columns' top are one law, read here
+// for the build and read above to size the columns. The reasoning for each
+// term is written on the law, not repeated here.
+const SUB_WIND_TOP = ARREST_STACK.windTop;
+const SUB_CAGE_Z = ARREST_STACK.cageZ;
+const SUB_PIN_B_Z = ARREST_STACK.pinBZ;
 // THE CAGE'S WHEEL IS AT THE CAGE'S OWN PLANE, because that is the only place
 // it can be. A first cut ran it up a tube above the differential, and that
 // cannot work at all: leg B's pinion is concentric with such a tube and must
@@ -21377,7 +21444,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // it costs the station outright that is a LAYOUT finding, not a number to widen.
   const LEG_B_REACH = (() => {
     let t = 0;
-    for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_SPEC.arborR + 0.05, [ALARM_BARREL_TEETH]));
+    for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_COLUMN_R + 0.05, [ALARM_BARREL_TEETH]));
       z <= ALARM_BARREL_TEETH; z++) t = Math.max(t, tip(SUB_LEG_TEETH, [z]));
     return t;
   })();
@@ -21392,7 +21459,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, mates: [SUB_OUT_TEETH], thickness: T }) + M,
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR + M,   // the pin sweeps a FULL circle
     cross: ARREST_SPEC.b + M,
-    arbor: ARREST_SPEC.arborR + M,
+    arbor: ARREST_COLUMN_R + M,
     stud: ARREST_SPEC.studR + M,
   };
   // the obstacle solids, from the tree as built so far: per MESH, with its
@@ -21629,9 +21696,9 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // finger's pinion.
   const reach = {
     legA: tip(SUB_LEG_TEETH, [ALARM_WIND_W]), legB: LEG_B_REACH, spider: SUB_SPEC.tipR,
-    spiderSwept: SUB_SPEC.sweptR, col: ARREST_SPEC.arborR,
+    spiderSwept: SUB_SPEC.sweptR, col: ARREST_COLUMN_R,
     outW: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_OUT_TEETH, mates: [SUB_FINGER_TEETH], thickness: T }),
-    idlerBody: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U,
+    idlerBody: ARREST_COLUMN_R + 0.05 + STOCK_MIN_U,
     fPin: G.gearOuterR({ module: SUB_OUT_MODULE, teeth: SUB_FINGER_TEETH, mates: [SUB_OUT_TEETH], thickness: T }),
     finger: ARREST_SPEC.a + ARREST_SPEC.pinR,
     cross: ARREST_SPEC.b, stud: ARREST_SPEC.studR,
@@ -21661,7 +21728,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // this is what a fold is ALLOWED to spend — corners and idlers are
   // position-space, and the line spec is what proves this one carries no ratio.
   const IDLER_COUNTS = [];
-  for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_SPEC.arborR + 0.05, [ALARM_BARREL_TEETH]));
+  for (let z = Math.max(8, G.minGearTeeth(ALARM_TRAIN_MODULE, ARREST_COLUMN_R + 0.05, [ALARM_BARREL_TEETH]));
     z <= ALARM_BARREL_TEETH; z++) IDLER_COUNTS.push(z);
 
   let best = null;
@@ -22017,7 +22084,7 @@ registerExplode(alarmArrestUnit, 0, 9); // rides with the back stack, like the w
 let arrestPinionSpin = null, arrestFingerSpin = null, arrestCrossSpin = null, arrestCrossMesh = null;
 let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
 {
-  const PLATE_Z = ALARM_U_FLOOR - 0.5;
+  const PLATE_Z = ARREST_STACK.columnBase;   // §234: the same base the column radius was derived against
   const column = (x, y, r, top, name) => {
     const m = new THREE.Mesh(
       new THREE.CylinderGeometry(r, r, top - PLATE_Z, 12), MATS.steel);
@@ -22061,7 +22128,7 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   // the gear set with the planets driven straight through both — four more of
   // the twelve rows the intra-unit tier returned.
   const sleeve = (spin, zFrom, zTo, name) =>
-    tube(spin, ARREST_SPEC.arborR + 0.05, SUB_SPEC.hubR, zFrom, zTo, name);
+    tube(spin, ARREST_COLUMN_R + 0.05, SUB_SPEC.hubR, zFrom, zTo, name);
 
   // --- LEG A: the arbor's wind wheel, one mesh, on the lower side gear -------
   const spin = new THREE.Group();
@@ -22134,15 +22201,14 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   // pinion shares the idler pinion's plane BECAUSE THEY MESH — so this lands
   // at the same 7.9939 the sibling column already occupies under a green
   // battery, rather than at a height nothing has tested.
-  column(arrestPos.x, arrestPos.y, ARREST_SPEC.arborR,
-    SUB_PIN_B_Z + ALARM_WIND_WHEEL_T / 2 + 0.2, 'alarmArrestArbor');
+  column(arrestPos.x, arrestPos.y, ARREST_COLUMN_R, ARREST_STACK.columnTop, 'alarmArrestArbor');
 
   // --- THE COMPOUND IDLER: the SIGN, and the tower's z freedom ---------------
   const idlerSpin = new THREE.Group();
   idlerSpin.position.set(subIdlerPos.x, subIdlerPos.y, 0);
   const idlerW = G.makeGear({ name: 'idlerW',
     module: ALARM_TRAIN_MODULE, teeth: SUB_IDLER_SOLVED, mates: [{ teeth: ALARM_BARREL_TEETH, mates: [ALARM_STRIKE_PINION_TEETH, SUB_IDLER_SOLVED] }], thickness: ALARM_WIND_WHEEL_T,
-    boreR: ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U, spokes: 4, material: MATS.brass,
+    boreR: ARREST_COLUMN_R + 0.05 + STOCK_MIN_U, spokes: 4, material: MATS.brass,
   });
   idlerW.traverse((o) => { if (o.isMesh && !o.name) o.name = 'subIdlerWheel'; });
   idlerW.position.z = SUB_IDLER_W_Z;
@@ -22156,12 +22222,11 @@ let subIdlerSpin = null, subPinBSpin = null, subDiff = null;
   idlerSpin.add(idlerP);
   // the body between the idler's two wheels turns WITH them — one connected
   // body (§107) — and is bored over the stud it runs on, same rule as the tower
-  tube(idlerSpin, ARREST_SPEC.arborR + 0.05, ARREST_SPEC.arborR + 0.05 + STOCK_MIN_U,
+  tube(idlerSpin, ARREST_COLUMN_R + 0.05, ARREST_COLUMN_R + 0.05 + STOCK_MIN_U,
     SUB_IDLER_W_Z, SUB_IDLER_P_Z, 'subIdlerBody');
   alarmArrestUnit.add(idlerSpin);
   subIdlerSpin = idlerSpin;
-  column(subIdlerPos.x, subIdlerPos.y, ARREST_SPEC.arborR,
-    SUB_IDLER_P_Z + ALARM_WIND_WHEEL_T / 2 + 0.2, 'subIdlerArbor');
+  column(subIdlerPos.x, subIdlerPos.y, ARREST_COLUMN_R, ARREST_STACK.columnTop, 'subIdlerArbor');
 
   // --- THE OUTPUT STAGE and the Geneva, on their own arbor ------------------
   const fpSpin = new THREE.Group();
