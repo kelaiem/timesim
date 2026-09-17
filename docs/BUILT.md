@@ -25948,10 +25948,24 @@ Local, 3 shards, `--report`: **41/41 gates pass** on the landed tree, boot
 silent, `turning` 0 unwaived / 0 stale with **10 waived** (was 12), 28 wanting
 a follower rest (was 26 — the two columns, now at exactly the target),
 `stockFloor` 49 waived unchanged, `intraUnit` / `assembly` / `inspection` 0
-unwaived, `inspection` 82 contacting pairs (was 83). Fingerprint 2090690558
-unchanged — it is per-unit boxes, and a column's radius does not move its
-unit's box; the §152 digests move, and CI's digest gate is where that shows.
-The `--report` diff against `main` is recorded on the pull request.
+unwaived, `inspection` 82 contacting pairs — the same 82 a local run of `main`
+reads (the 83 in #437's body was CI's count, and comparing the two was a
+mistake this record does not repeat). Fingerprint 2090690558 unchanged — it is
+per-unit boxes, and a column's radius does not move its unit's box; the §152
+digests move, and CI's digest gate is where that shows.
+
+**The `--report` diff against `main`** (a local `main` run, 41/41, 2142.9 s,
+diffed per check with timing counters stripped): **21 of 28 checks
+byte-identical.** Four moved only in their timing/census counters
+(`clearances`, `expectedContacts`, `sweptOverlap`, and `inspection`, whose
+exact-call count rose by 77 with no row moving). `turning` moved exactly as
+intended — the two column rows out of the over-ceiling set (waived 12 → 10)
+and into `needRest` at 18.0 (26 → 28). `intraUnit`'s two declared rows for the
+tower's sleeves on their column measure nearer (0.1876 → 0.1621: the bore is
+`ARREST_COLUMN_R + 0.05`, so the fit follows the radius) and stay well inside
+`DECLARED_CONTACT_REACH`. `meshIntegrity`'s `zeroArea` report drifted on six
+rows at the 1e-19 level — the arrest unit's re-tessellated revolves — in a
+tier that gates nothing.
 
 One correction to the previous record: #437's body said CI's 42 was "main's 41
 plus `turning`". Locally main plus `turning` is 41; the 42nd is CI's
