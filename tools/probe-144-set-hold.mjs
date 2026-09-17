@@ -22,13 +22,17 @@
 //
 // THE HOLD is whatever grounds the setting train against that drag, cleared
 // by ALARM_SPRING_HEADROOM (§169's precedent for a drag against a detent).
-// The movement declares none today, so the record's `holder` is null and this
-// probe is RED BY DESIGN until one is cut — TODO 117's own pattern: the
-// instrument stays red until the metal exists. What it prints meanwhile is the
-// DESIGN TABLE: the F·r a friction hold needs, and the normal force that means
-// at every smooth radius the train actually offers (read off the built
-// meshes), against the inherited 5–50 mN detent envelope. That table is the
-// decision, priced, and it is why this is not a report.
+// When this was written the movement declared none — the record's `holder`
+// was null and the probe was RED BY DESIGN until one was cut, TODO 117's own
+// pattern: the instrument ahead of the metal. It prints the DESIGN TABLE that
+// decided the construction: the F·r a friction hold needs and the normal
+// force that means at every smooth radius the train offers (read off the
+// built meshes) against the inherited 5–50 mN detent envelope, and then the
+// row the table alone did not price — a pad's own REACTION, which on the
+// turning hour wheel is a second drag (158–726 mN) and on a grounded seat a
+// second hold (13–18 mN). That row is why the hold is a thrust plate under
+// the disc ('Alarm release seat') with a pad on top, and the record now names
+// it and publishes its torque; the table stays as the record of the choice.
 //
 // CONTROLS, and they are why a number here means anything:
 //   · must-hit — the reader's pin MOVES RELATIVE TO THE DISC under the hour

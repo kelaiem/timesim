@@ -200,6 +200,7 @@ export const MECH_GRAPH = {
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
     ['Alarm release disc', 'Hour wheel'],    // §29 step 2: the hub riding the hour tube in the disc band — the BEARING only since TODO 117: the seat was the drive too while the disc carried the hour, and it carries the set alone now (TODO 144 prices what holds it)
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
+    ['Alarm release seat', 'Dial'],          // TODO 144: the seat's two posts hang from the sheet's back face at two free azimuths (130°, 270°) — the feeler bracket's own mounting
     ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/345, the selector's pattern one band deeper)
@@ -666,6 +667,9 @@ const EXPECTED_PAIRS = [
                                           // the true Dial sheet is measured 0.05 clear of the idler
   ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
   ['Alarm release disc', 'Hour wheel'],     // §29: the friction seat (bore +0.05 running fit on the tube)
+  ['Alarm release disc', 'Alarm release seat'], // TODO 144: the disc SEATS on the plate (its whole underside, sunk ALARM_SEAT_SINK) and the pad's foot seats on its face
+  ['Alarm release seat', 'Hour wheel'],      // TODO 144: the plate's bore is the hub's own +0.05 running clearance over the turning tube
+  ['Alarm release seat', 'Dial'],            // TODO 144: the posts stand on the sheet's back face (the feeler bracket's mounting) — and the nesting artifact, like the disc's row
   ['Alarm release disc', 'Dial'],           // the NESTING artifact, not a contact: collectUnits does no
                                             // nested-label exclusion, so the Dial unit contains the disc's
                                             // own meshes (the Dial ⇄ Hour wheel precedent); the disc's real
@@ -2040,6 +2044,23 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // TODO 144 — the release disc's SEAT. Its underside rides the plate (hub,
+  // body and teeth, one plane sunk the seated-contact 0.02) and the pad's foot
+  // rides its face; everything else the two units own keeps the margin — the
+  // blade over the rim's teeth in particular, which is what makes a plane one
+  // margin off a plane a measured fact rather than a coincidence.
+  {
+    a: 'Alarm release disc', b: 'Alarm release seat', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmDiscHub', 'alarmSeatPlate'], ['alarmDiscBody', 'alarmSeatPlate'],
+      ['alarmDiscBody', 'alarmSeatWeb'],      // the rim's teeth ride the webs' inboard ends, which are the seat's own face continued
+      ['alarmDiscBody', 'alarmSeatPad'],
+    ],
+  },
+  {
+    a: 'Alarm release seat', b: 'Hour wheel', min: CLEAR_MARGIN,
+    contacts: [['alarmSeatPlate', 'hourTube']],   // the bore's running clearance on the tube; the reader collar nested under the hour wheel keeps the margin from the blade
+  },
   // §202 — the two case liners: each pair is EXPECTED for exactly one press
   // fit, and everything else the unit owns keeps the margin from the case.
   {

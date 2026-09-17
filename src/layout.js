@@ -663,6 +663,22 @@ export const SELECTOR_DETENT_WINDOW_MN = Object.freeze([5, 50]);
 // An input band, not a target: chains are sized against their DOWNSTREAM
 // windows (the detent envelope above), and this states what the finger has.
 export const CASE_PUSHER_INPUT_N = Object.freeze([1, 5]);
+// §169 / TODO 144 — THE DRAG-AGAINST-HOLD MARGIN, an envelope like the two above
+// (hoisted from main.js's §169 block by TODO 144, which prices a second hold —
+// the alarm release disc's seat — against it).
+// The margin between any two spring forces in the arming chain — how much weaker
+// than the detent the pawl's return drag must be, and (§164) how much stronger
+// than that drag the pusher's own return must be. One number for both because
+// it is one argument: every side of both comparisons is first-order beam
+// arithmetic off the SAME modulus, and layout.js says what that is worth in its
+// own words — the absolutes carry maybe a factor of two, "the RATIOS are what
+// conclusions rest on". So the margin has to clear the ratio's error, not the
+// absolutes' — 3× does, and it is what the mechanism can actually be built to.
+// (A first pass asked for an order of magnitude on the grounds that a 2× margin
+// sits inside the arithmetic's error. That reasoning applies the absolute
+// caveat to a ratio, and it costs a real blade: 10× wants 5.49 u of free
+// length against 3.67, with the anchor half again as far out.)
+export const ALARM_SPRING_HEADROOM = 3;
 // RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
 // oscillator hangs under the open plate cutaway, and the plate's own floor
 // binds on the hairspring stack (the fusee was dropped to make that true —

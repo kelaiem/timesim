@@ -1863,15 +1863,20 @@
       hour − set, which needs two inputs summing into one output with no back-flow — and the
       branch that did the summing is a plain gear train, which is bidirectional. So the hour
       flowed back up the whole setting chain and no member carried the set alone. Moving the
-      reading onto the hour removes the differential instead of adding one. Open debt: the
-      disc holds still with nothing declared holding it. TODO 144 priced the load, and it is
-      not the hub &mdash; the hub's oil film on the turning hour tube is a viscous term some
-      six orders under it &mdash; but the reader's own pin, which slides on the track under the
-      bias blade's riding seat (18.81 mN at the pin, 0.45 of the 41.80 mN the spring
-      delivers, re-levered about the lever's pivot) and drags the disc round with the hour at
+      reading onto the hour removes the differential instead of adding one. What holds the
+      disc still is TODO 144's seat. The load is not the hub &mdash; its oil film on the turning
+      hour tube is a viscous term some six orders under it &mdash; but the reader's own pin,
+      which slides on the track under the bias blade's riding seat (18.81 mN at the pin, 0.45 of
+      the 41.80 mN the spring delivers, re-levered about the lever's pivot) and drags the disc
+      round with the hour at
       <code>MU_STEEL</code>&nbsp;&middot;&nbsp;F&nbsp;&middot;&nbsp;<code>ALARM_TRACK_RMID</code>,
-      4.35e-3 N&middot;mm, all day. A friction hold has to beat that at
-      <code>ALARM_SPRING_HEADROOM</code>, and where it goes is the open construction question.</p>
+      4.35e-3 N&middot;mm, all day. A pad on the disc's face alone cannot hold it: its reaction
+      lands on the hour wheel, which turns, and a thrust face that turns is a second drag. So a
+      fixed thrust plate sits under the disc, a bridge hung from the dial sheet on two posts, and
+      a pad from the same bracket presses the disc onto it &mdash; both reactions become holds,
+      14.66 mN at the pad clearing the drag by <code>ALARM_SPRING_HEADROOM</code>. The stratum it
+      takes came from the motion works, whose two wheels were 0.8 thick by literal and are now
+      <code>MW_WHEEL_T</code>, the thickest the stack can afford.</p>
 
       <!-- —————— PLATE 1 : PLAN VIEW —————— -->
       <figure>
