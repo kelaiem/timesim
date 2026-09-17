@@ -554,6 +554,28 @@ export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
 // check's: anything SIZED against §54's ceiling has to size against what §54
 // actually measures, and §36's applied arbors do (see routeApplySolve).
 export const SLENDER_OVERHANG_K = Math.cbrt(48 / 3);   // 2.5198
+// §233's TURNING ceiling, L/D — the OTHER slenderness, and the pair above does
+// not imply it. §54's λ asks whether a member bends IN SERVICE, over the free
+// span between its bearings; this asks whether it bends UNDER THE TOOL, over
+// the whole bar standing out of the chuck. A member can pass one and fail the
+// other by a factor of four, and §232's lay shaft does: λ 27, L/D 104.
+//
+// The constraint is the cut itself. A turning tool pushes SIDEWAYS on the
+// work, so a slender bar deflects away from it — the cut comes out tapered,
+// then it chatters, then the finish tears. The practical limits are the ones
+// every machining reference gives: L/D 10 with the far end unsupported, L/D 20
+// with a follower rest or between centres. Past that a bar is not turned at
+// all; it is ground, or it is drawn wire.
+//
+// THE GATE IS THE SUPPORTED LIMIT, not the unsupported one, because supporting
+// the work is a choice the shop makes and the geometry cannot express. 10 is
+// REPORTED beside it as "this one needs a rest", which is a cost, not a
+// refusal.
+export const TURN_LD_MAX = 20;
+export const TURN_LD_UNSUPPORTED = 10;
+// What to BUILD to, on SLENDER_TARGET's reasoning exactly: sizing to the
+// boundary lets float rounding pick the side. Same 10% headroom, same reason.
+export const TURN_LD_TARGET = TURN_LD_MAX * 0.9;       // 18
 // FLAT-SPRING stock. §50's spring floor is 0.03 mm and its own basis says why
 // that is a floor and not a target: "real hairsprings run 0.02-0.04 mm; flat
 // springs THICKER". A click detent or a feeler return is a flat blade, not a
