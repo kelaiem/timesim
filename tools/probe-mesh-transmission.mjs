@@ -192,7 +192,16 @@ const verdict = (r, key, invert = false) => {
   const s = r.spin[key];
   if (!s) return null;
   const want = (invert ? 1 : -1) * (r.rA / r.rB);
-  if (Math.abs(s.a) < STILL) return { still: true, a: s.a, b: s.b, want };
+  // TODO 144 — A STILL DRIVER IS TWO DIFFERENT ANSWERS and conflating them is
+  // how a real defect hid for a whole landing. If the driven member is still
+  // TOO, this input simply does not reach this chain, which under TODO 117's
+  // topology is the CORRECT reading for every alarm row under the hour. If the
+  // driven member MOVES while its driver stands, that member is being turned
+  // by something that is not this mesh — and when no other declared mesh is
+  // driving it either, it is turning off nothing at all. That is ORPHAN
+  // motion, and it is a defect in any chain, not debt to report.
+  if (Math.abs(s.a) < STILL)
+    return { still: true, orphan: Math.abs(s.b) >= STILL, a: s.a, b: s.b, want };
   const got = s.b / s.a;
   return { got, want, ok: Math.abs(got - want) <= TOL * Math.abs(want), a: s.a, b: s.b };
 };
@@ -213,9 +222,19 @@ for (const key of ['going', 'hour', 'crown']) {
       if (r.chain === 'going') bad++;
       continue;
     }
+    if (v.still && v.orphan) {
+      // ORPHAN — gated in EVERY chain. The driven member turns while its driver
+      // stands, so whatever moves it is not this mesh. TODO 144 was exactly
+      // this row: `setting wheel → i1` read a still driver against a driven
+      // −9.617 under the hour, because the setting train kept a back-drive
+      // term after TODO 117 removed the disc's hour that fed it.
+      console.log(`    FAIL ${r.label.padEnd(30)} ORPHAN — driver STILL (${f(v.a)}) while the driven turned ${f(v.b)}: nothing on this mesh is moving it`);
+      bad++;
+      continue;
+    }
     if (v.still) {
-      console.log(`    ${r.chain === 'going' ? 'FAIL' : 'rep '} ${r.label.padEnd(30)} driver STILL (${f(v.a)}) while the driven turned ${f(v.b)} — not transmitting`);
-      if (r.chain === 'going') bad++; else alarmBad++;
+      // Both still: this input does not reach this chain. Correct, not debt.
+      console.log(`    idle ${r.label.padEnd(30)} both still — this input does not drive this chain`);
       continue;
     }
     const mark = v.ok ? 'ok  ' : (r.chain === 'going' ? 'FAIL' : 'rep ');
@@ -242,7 +261,11 @@ for (const r of goingRows) {
 }
 if (ctlBad) console.log(`\n  ${ctlBad} control(s) failed — the comparison cannot tell a geared pair from an ungeared one. Do not read the rows above as findings.`);
 
-console.log(`\n${alarmBad} alarm row(s) do not transmit — REPORTED, not gated: see TODO 117.`);
+// TODO 144 — what is still REPORTED here is a row whose ratio is readable and
+// wrong, which is a phasing/derivation question. A still chain is no longer
+// counted as debt at all (it is `idle` above), and an ORPHAN is no longer
+// reported — it is gated, in every chain.
+console.log(`\n${alarmBad} alarm row(s) transmit at the wrong ratio — REPORTED, not gated: see TODO 117.`);
 const total = bad + ctlBad;
 console.log(`\n${total === 0 ? 'PASS' : `FAIL — ${bad} going/reach row(s), ${ctlBad} control(s)`}`);
 await browser.close(); srv.kill();

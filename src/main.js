@@ -15354,7 +15354,14 @@ const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: 
 // by 2.93 rad across three settings (probe-117-trip.mjs, which exists because
 // nothing in the battery measures a TIME).
 const ALARM_DISC_SIGN = -1;  // set-term sign in the disc's dial-frame law
-const ALARM_BD_SIGN = 1;     // hour back-drive sign through the branch
+// TODO 144 retired ALARM_BD_SIGN. It was the hour back-drive's sign through
+// the branch, and its one reader was the `_bd` term the setting train carried.
+// With the hour out of the disc there is no back-drive to give a sense to, and
+// a direction constant for a coupling that does not exist is worse than none:
+// it reads as a live declaration the direction guards would be expected to
+// hold. The sense it recorded is preserved where it is still true — in the
+// derivation comment at the train's tick law, which says what the chain WAS
+// and why it no longer runs.
 {
   if (Math.abs(ALARM_SET_I2_TEETH / ALARM_DISC_TEETH - ALARM_SET_I2_TEETH / ALARM_SET_WHEEL_TEETH) > 1e-12)
     console.warn('§29 disc branch: rim ratio no longer mirrors the lane pair — the differential encodes the wrong rate');
@@ -27957,7 +27964,14 @@ let secondsZeroRef = fourthAt0; // matches the original fixed 12:00:00 reference
 // nothing reads it back (see __clock.resetContact / probe-reset-contact.mjs).
 let resetContactNow = { d: 0, free: Math.PI, pushed: false, off: 0 };
 let alarmCornerIndex = 0, alarmCornerWasEngaged = false; // TODO 140: the alarm corner's index, re-solved when the stem slides into mesh
-let alarmCrownCreep = 0, alarmCrownCreepLastA = null; // §29 step 2: hour back-drive banked into the pulled crown's shown angle (TODO 140: the ARBOR's hour angle, not the raw _bd — the stem reads the arbor)
+// TODO 144 — HELD AT 0, and kept as a named term rather than dropped. §29
+// step 2 banked the hour's back-drive into the pulled crown's shown angle;
+// TODO 117 removed the hour from the disc and TODO 144 removed the arbor term
+// this tracked, so nothing writes it any more. The knob's shown angle is the
+// sum of three session accumulators, and deleting one from that sum would
+// silently re-home the knob — so the name stays, at zero, as the seat for an
+// hour that no longer reaches this train.
+let alarmCrownCreep = 0;
 let alarmPinDropNow = 0; // §29 step 3: the pin's CURRENT drop — a pure function of the disc's angle, recomputed every tick (no reset needed; nothing accumulates)
 let alarmPinDropPhys = 0; // §45 stage 2: the drop the HELD tail permits — min(disc's law, rocker cap); negative = lifted out
 let alarmSelShownT = 0; // §34: the selector ring's eased slide — the column parity's physical consequence, and what the tube law reads
@@ -39717,43 +39731,31 @@ function tick(t) {
   // the 90° bevel pair's handedness absorbs it (representational sign, as
   // §24's bevels always were). Derived forward: arbor −setRot → i2 +setRot/4
   // → i1 −setRot/4 → wheel world +setRot/3 = the armed tube's world sense.
-  // §29 step 2: the branch makes the setting train TOTAL — the crown term
-  // (unchanged, §25's verified identity) plus the hour's back-drive through
-  // the disc's friction seat. The back-drive flows in BOTH crown positions:
-  // pushed in, the rod idles free (the pull IS the clutch); pulled out,
-  // nothing detents the crown's ROTATION, so the train slowly back-turns
-  // the pulled crown — real Memovox behaviour — and the hub slips only
-  // under the user's own setting torque, which is the re-phasing.
-  const _bd = ALARM_BD_SIGN * hourDialA; // TODO 129: the hour the DISC carries, not the raw movement-frame angle
-  // TODO 117 — the BACK-DRIVE term's sign is +, not −. The crown term is
-  // right and stays: measured, i2 → arbor pinion transmits at exactly
-  // −3.700 (= −r_i2/r_pinion) under the crown. Under the HOUR the same
-  // mesh read +3.700 — the same magnitude with the wrong sign, so the
-  // arbor turned the way the gearing forbids while the crown path was
-  // faultless. Derived rather than flipped by inspection: the chain from
-  // the disc is three external meshes (disc → i1b·i1 → i2 → pinion), so
-  // the pinion must run at −(r_i2/r_pin)·ω_i2, and ω_i2 already carries
-  // the hour correctly (its own two meshes measure ok under both inputs).
-  // ALARM_BD_SIGN is NOT the place to fix it — i1 and i2 read that same
-  // constant and are correct; only this member's use of it was inverted.
-  // (`tools/probe-mesh-transmission.mjs`. Nothing reads this angle back —
-  // the rotor is posed, never sensed — so the correction moves the arbor
-  // rod and its bevel mount and nothing else.)
   //
-  // TODO 140 — ONE SOURCE for the hour's arrival at this arbor, because it
-  // reaches TWO members. The factor is the disc-to-pinion reduction and the
-  // sign is TODO 117's derivation above; the STEM is coupled to this arbor
-  // through the mitre, so the stem's own hour term IS this one and is read
-  // from here. It used to be restated in the creep block below — and restated
-  // with the opposite sign, which made the corner turn one way for the crown
-  // and the other for the hour. CLAUDE.md's recurring defect: one direction
-  // written down twice, only one copy carrying the sense.
-  const alarmArborHourA = (ALARM_DISC_TEETH / ALARM_SET_PINION_TEETH) * _bd;
-  alarmRotor.rotation.z = -alarmSetRot + alarmArborHourA;
-  alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH)
-    - _bd * (ALARM_DISC_TEETH / ALARM_SET_I2_TEETH);
-  alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH)
-    + _bd * (ALARM_DISC_TEETH / ALARM_SET_I1_TEETH);
+  // TODO 144 — THE HOUR IS GONE FROM THIS TRAIN, and the terms that carried it
+  // are deleted rather than zeroed. Every member here used to take a
+  // back-drive term `_bd = ALARM_BD_SIGN · hourDialA`, justified in its own
+  // comment as "the hour's back-drive THROUGH THE DISC'S FRICTION SEAT" over
+  // the chain "disc → i1b·i1 → i2 → pinion". TODO 117 removed the hour from
+  // the disc — it carries the SET alone and stands still — so that chain has
+  // no hour at its head and there is nothing to back-drive. The terms survived
+  // the fold and went on turning these members off a source that no longer
+  // exists: measured, six sim-hours of hour motion with the alarm crown
+  // untouched turned the idler 3.3660 and the arbor 9.4248 while the disc and
+  // the setting wheel stood still. Those are exactly 30/28 and 30/10 of the
+  // hour's own π — the back-drive coefficients, running on nothing.
+  //
+  // A term with no source is not set to zero, it is removed: zero would be a
+  // number with no constraint behind it (rule 1), and the next reader would
+  // have to work out whether it meant "no coupling" or "coupling that happens
+  // to cancel". The whole setting train is CROWN-ONLY now, which is what
+  // `alarmSetWheelGroup` already was — and that disagreement is how the defect
+  // was visible at all: `transmits` read `alarm setting setting wheel ⇄ idler 1`
+  // as a STILL driver turning a moving follower under the train input. The
+  // wheel was right and the idlers were wrong.
+  alarmRotor.rotation.z = -alarmSetRot;
+  alarmSetI2Spin.rotation.z = alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I2_TEETH);
+  alarmSetI1Spin.rotation.z = -alarmSetRot * (ALARM_SET_PINION_TEETH / ALARM_SET_I1_TEETH);
   // The disc's one law, and TODO 117 took the hour out of it. It used to be
   // hour + set + phase — a difference the setting train had to compute, which
   // is the three-law contradiction that item exists for: a plain gear train is
@@ -39987,31 +39989,24 @@ function tick(t) {
       alarmPusherReturnSpring.geometry =
         alarmPusherReturnFrames[Math.round(alarmPusherT * (alarmPusherReturnFrames.length - 1))];
   }
-  // §29 step 2: PULLED, the crown's bevel is meshed to the rod, and the rod
-  // creeps with the hour back-drive (see the branch above) — so the crown
-  // visibly back-turns with it, 1:1 through the bevel pair, on top of the
-  // user's own drag. Pushed in, the stem rides the winding contrate and the
-  // set-side creep never reaches it. BANKED, not gated: pushing in freezes
-  // the accumulated creep in the knob's position (disengaging a bevel moves
-  // nothing), so the shown angle is continuous through every transition —
-  // the §25 lockstep discipline. A session accumulator ⇒ resetInputs owns it.
+  // TODO 144 — THE CROWN'S CREEP IS GONE WITH ITS CAUSE. §29 step 2 gave the
+  // pulled crown a visible back-turn: "the rod creeps with the hour back-drive
+  // (see the branch above) — so the crown visibly back-turns with it, 1:1
+  // through the bevel pair, on top of the user's own drag", banked rather than
+  // gated so pushing in froze the accumulation. Every word of that was true of
+  // a movement whose disc carried the hour and drove this train backwards.
+  // TODO 117 took the hour out of the disc, so the rod has nothing to creep
+  // with, and TODO 144 deleted the arbor's hour term that this read. What is
+  // removed here is the behaviour, not merely its input: a creep accumulator
+  // reading a term that is identically zero is dead machinery that still looks
+  // load-bearing, and the next reader would have to prove it inert.
   //
-  // TODO 140 — THE SENSE IS THE ARBOR'S, NOT A SECOND OPINION ABOUT IT. This
-  // site used to carry its own `-3 * (_bd - last)`, and measured
-  // (probe-138-coupling's hour row) the corner then read ratio +1 where two
-  // rolling cones demand −1 — while the CROWN row on the same two gears read
-  // −1 correctly. Same teeth, two drive paths, opposite senses.
-  //
-  // Which site was wrong is not a coin toss: the arbor's term is TODO 117's
-  // DERIVATION from the three external meshes and `probe-mesh-transmission`
-  // gates those, so the arbor is the source and this was the restatement. The
-  // stem takes the arbor's own delta through the mitre — and the mitre's
-  // relation in these two local frames is SAME SIGN, which is measured rather
-  // than reasoned: under the crown both members take `+aDelta` locally and the
-  // probe reads the world swings as equal and opposite, ratio −1.
-  if (alarmCrownOut && alarmCrownCreepLastA !== null)
-    alarmCrownCreep += alarmArborHourA - alarmCrownCreepLastA;
-  alarmCrownCreepLastA = alarmArborHourA;
+  // `alarmCrownCreep` survives as a NAME in the shown angle below, at a
+  // constant 0, because the knob's angle is the sum of three session
+  // accumulators and dropping one from that sum silently re-homes the knob.
+  // It is initialised and reset in one place and written nowhere — if the hour
+  // ever reaches this train again (the disc's own seat is TODO 117's open
+  // construction question), this is where it lands.
   //
   // TODO 140 — THE INDEX IS RE-SOLVED AT ENGAGEMENT, because that is what the
   // metal does. `bevelCornerSpin` solves this corner's index at BUILD, with the
@@ -40788,7 +40783,7 @@ window.__clock = {
     // Invalidate it so the next tick re-bakes from assembled geometry.
     lastChainTension = Infinity;
     secondsZeroRef = fourthAt0; // §29 step 0: the seconds-reset cam's banked reference — a crown-pull session accumulates it (the heart cam snaps to fourthA), and it decides where the small-seconds hand and its cam sit ever after
-    alarmCrownCreep = 0; alarmCrownCreepLastA = null; // §29 step 2: the crown's banked back-drive creep
+    alarmCrownCreep = 0;                 // TODO 144: nothing writes it now; reset kept so the knob's sum has one owner
     alarmCornerIndex = 0; alarmCornerWasEngaged = false; // TODO 140: and the corner's re-solved index — a session accumulator, so resetInputs owns it
   },
   // Inspection hook: force the mechanism into an exact pose. Assigns the
