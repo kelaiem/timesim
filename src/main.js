@@ -24421,7 +24421,21 @@ const ALARM_LINK_CHORD_LEN = Math.hypot(
 // governing free length is the ROD-END OVERHANG (12.487 u, λₑ 127.6), not the
 // 19.550 u bush-to-bush span (λₑ 79.3). Splitting the span leaves the reported
 // λ where it is. See the bearing declaration at the shaft build below.
-const ALARM_LINK_SHAFT_R = 0.1233;
+// §232 — THE SECTION IS DERIVED NOW, AND IT MOVED to the chord solve where
+// its inputs live (search ALARM_LINK_SHAFT_NECK_R below). It was the literal
+// 0.1233: the first four-place value above §137 Landing 2's FORCE floor
+// (3EI/L³ ≥ 2800 N/m over the 0.9286 mm drive end, r ≥ 0.123222 → 2807 N/m).
+// That floor still binds and is still asserted; it simply stopped being the
+// thing that SIZES the shaft.
+//
+// Two claims that stood here were false by the time §232 read them, both
+// honest when written. (1) "§54's ceiling is met by shortening spans, not by
+// fattening members" — the owner ruled legibility a stated design value in
+// §226, and this member is 0.0934 mm of steel on the dial side. (2) A TODO 78
+// paragraph held that the governing free length was the ROD-END OVERHANG
+// (12.487 u, λₑ 127.6), so splitting a span would leave λ where it stood.
+// §202 shipped the third bush and CLOSED TODO 79: the overhang is short now
+// and a SPAN governs, so splitting it is exactly what moves λ.
 const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unchanged: the cranks sit on the NECKS
 // The arm sits ON the shaft's surface. At the old literal 0.22 a crank would
 // now be buried inside a shaft of radius 0.402 — which is exactly why this
@@ -24430,6 +24444,25 @@ const ALARM_LINK_CRANK_T = 0.12;                         // arm section — unch
 const ALARM_LINK_CRANK_OFF = 0.22;                       // arm centre, radially off the shaft axis
 // Top face of the arm, measured from the shaft axis.
 const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   // 0.28
+// §232 — THE NECK, which makes the sentence four lines up TRUE at last.
+// "The arm sits ON the shaft's surface" never was: at the shipped 0.1233 the
+// arm floated 0.0367 clear of its own arbor, and at the section §54 wants it
+// would be BURIED inside it. One move fixes both, and it is the one a
+// watchmaker makes — TURN THE SHAFT DOWN where the cranks sit. The neck's
+// radius is not a new number but the arm's own inner face, so
+// ALARM_LINK_CRANK_OFF does not budge; and that matters because §137's crank
+// row declares it as `armIn_u`, making this offset a LEVER ARM. Deriving the
+// arm from a fattened shaft instead moved it 0.22 → 0.3075, took the crank
+// ratio 2.545 → 1.821 and the series stall to 92.4 mN against a 5–50 mN
+// envelope that is inherited and never forkable — measured, at boot, before
+// this route was taken. The full section goes between the BUSHES, where the
+// slenderness actually is. ALARM_LINK_CRANK_T's comment has said "the cranks
+// sit on the NECKS" all along; there were no necks.
+const ALARM_LINK_SHAFT_NECK_R = ALARM_LINK_CRANK_OFF - ALARM_LINK_CRANK_T / 2;   // 0.16
+// A shoulder's depth: each neck passes INTO the body by its own radius, so the
+// three meshes are one connected body rather than three flush faces — §173's
+// jumper was read as a part in three pieces for exactly that reason.
+const ALARM_LINK_NECK_LAP = ALARM_LINK_SHAFT_NECK_R;
 // (TODO 9's ALARM_LINK_ROD_SEAT = 0.079 — "read off the model and pasted
 // back in", standing rule 1's confessed failure case — and the
 // ALARM_LINK_ROD_FOOT chain built on it are RETIRED by TODO 20. The rod's
@@ -24859,6 +24892,23 @@ const alarmLinkParts = {};
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
   const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
   const fullChordLen = Math.hypot(chord.x, chord.y);
+  // §232 — THE SHAFT'S THREE LENGTHS, in one chain with no fixed point in it.
+  // Each step feeds the next and nothing loops back, which is why this reads
+  // as arithmetic rather than as a solve: the NECK sets the stub, the stub
+  // sets the rod-end station, the stations leave a span, and the span sets the
+  // body's section. Every one of them lands on λ = SLENDER_TARGET.
+  const ALARM_LINK_FORK_STATION = 2.45;   // station one — the fork-end pocket §68 measured, the tightest station on the chord
+  // the stub is NECK stock and §54 charges an overhang ∛16 of its length, so
+  // this is the longest cantilever the neck may carry at the target:
+  const ALARM_LINK_NECK_STUB_L = SLENDER_TARGET * 2 * ALARM_LINK_SHAFT_NECK_R / SLENDER_OVERHANG_K;
+  // …and the bush stands one LAP further in, because the stub the check
+  // measures includes the shoulder buried in the body.
+  const ALARM_LINK_ROD_END_OVERHANG = ALARM_LINK_NECK_STUB_L - ALARM_LINK_NECK_LAP;
+  // what the two outer stations leave, halved by the middle one (a run's
+  // bending compliance is a sum of L³, least when the spans are equal), and
+  // the section that puts THAT span on the target:
+  const ALARM_LINK_SHAFT_R = (fullChordLen - ALARM_LINK_FORK_STATION - ALARM_LINK_ROD_END_OVERHANG)
+    / (4 * SLENDER_TARGET);
   if (Math.abs(fullChordLen - ALARM_LINK_CHORD_LEN) > 1e-9)
     console.warn(`§54: the hoisted chord ${ALARM_LINK_CHORD_LEN.toFixed(4)} disagrees with the built one `
       + `${fullChordLen.toFixed(4)} — the shaft was sized against a length it does not have`);
@@ -24907,7 +24957,6 @@ const alarmLinkParts = {};
   // end inboard has more than 7 u of in-plane room (the alarm setting
   // idler's arbor is the nearest wall, at s 12.5), the dial's sheets are
   // 0.54 under the hanger's foot, and both its controls pass.
-  const ALARM_LINK_ROD_END_OVERHANG = SLENDER_TARGET * 2 * ALARM_LINK_SHAFT_R / SLENDER_OVERHANG_K;
   // AND THE MIDDLE STATION SPLITS THE RUN. With both end stations fixed by
   // their own constraints — station one by the fork-end pocket §68 measured
   // (t 2.45, room 0.63 to the column's surface, the tightest station on the
@@ -24919,7 +24968,7 @@ const alarmLinkParts = {};
   // alarm setting idler's arbor is the wall, at every station inboard of
   // t 24), so the move spends nothing in position space.
   const ALARM_LINK_BUSH_T = (() => {
-    const t1 = 2.45, t3 = fullChordLen - ALARM_LINK_ROD_END_OVERHANG;
+    const t1 = ALARM_LINK_FORK_STATION, t3 = fullChordLen - ALARM_LINK_ROD_END_OVERHANG;   // §232: one definition of station one
     return [t1, (t1 + t3) / 2, t3];
   })();
   const shaft = new THREE.Group();
@@ -25046,7 +25095,17 @@ const alarmLinkParts = {};
   // probe had in it. The same note's 0.297 at the inner end IS reproduced,
   // at 0.2957, and it is still `Dial/alarmSelTab` — the crank's own
   // declared working contact, not an obstruction.)
-  const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, chordLen, 8), MATS.steel);
+  // §232 — THE METAL IS A TURNED BAR: a full-section BODY carrying all three
+  // bushes, and a NECK stub at each end where a crank is keyed. Three meshes,
+  // §173's jumper anatomy, because one stepped LatheGeometry would be worse
+  // than useless here: checkSlenderness reads a mesh's own box, so a single
+  // stepped mesh would show it the WIDEST diameter and quietly flatter the
+  // necks — the member would be judged on metal that is not there. Three
+  // meshes each get judged on their own section, which is the point.
+  const _shaftT1 = ALARM_LINK_FORK_STATION;
+  const _shaftT3 = fullChordLen - ALARM_LINK_ROD_END_OVERHANG;
+  const _bodyMidT = (_shaftT1 + _shaftT3) / 2;
+  const shaftRod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_R, ALARM_LINK_SHAFT_R, _shaftT3 - _shaftT1, 8), MATS.steel);
   shaftRod.name = 'alarmLinkShaft';   // §54: a slenderness row that cannot name its member is not actionable
   // §54 / TODO 78 — WHERE THIS SHAFT IS HELD. λ is a FREE-LENGTH measure and
   // this rod's free lengths are not its stock length: it runs in two hanger
@@ -25071,12 +25130,30 @@ const alarmLinkParts = {};
   // array's order — hence the sort, which derives the ordering the validator
   // requires instead of trusting a future third station to arrive in it.
   const shaftMidT = (ALARM_FORK_RETREAT + fullChordLen) / 2;
+  // §232: the stations are MESH-local, and the body is no longer centred on
+  // the chord — it spans bush one to bush three — so they are measured from
+  // ITS centre. Reading them from the chord's midpoint would have put every
+  // bearing a constant offset out and the check would still have reported
+  // three tidy free lengths, none of them the ones that exist.
   shaftRod.userData.bearings = {
     axis: 'y',
-    stations: ALARM_LINK_BUSH_T.map((t) => shaftMidT - t).sort((a, b) => a - b),
+    stations: ALARM_LINK_BUSH_T.map((t) => _bodyMidT - t).sort((a, b) => a - b),
   };
   shaftRod.rotation.z = Math.PI / 2;
+  shaftRod.position.x = _bodyMidT - shaftMidT;
   shaft.add(shaftRod);
+  // …and the two necks, each lapped into the body by a shoulder's depth.
+  for (const [nm, tA, tB] of [
+    ['alarmLinkNeckFork', ALARM_FORK_RETREAT, _shaftT1 + ALARM_LINK_NECK_LAP],
+    ['alarmLinkNeckRod', _shaftT3 - ALARM_LINK_NECK_LAP, fullChordLen],
+  ]) {
+    const len = tB - tA;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_SHAFT_NECK_R, ALARM_LINK_SHAFT_NECK_R, len, 8), MATS.steel);
+    neck.name = nm;
+    neck.rotation.z = Math.PI / 2;
+    neck.position.x = (tA + tB) / 2 - shaftMidT;
+    shaft.add(neck);
+  }
   // TODO 20 — each drive sits in its own KEY: a wrapper whose rotation
   // about the shaft's length is that member's phase on the arbor. Real
   // cranks are keyed where their contacts need them; forcing both ends to
@@ -25568,8 +25645,21 @@ const alarmLinkParts = {};
     // fell from 2.6% to 0.03%. Nothing else in the chain moved; the spans
     // still govern, and the chain is still an order under the detent band's
     // floor, which is TODO 79's to close.
-    const ALARM_LINK_STALL_PROBE_MN = 6.68;           // §229: tools/probe-82-alarm-stall.mjs, three hangers, spans 14.70 + 14.70 — inside the 5–50 mN band
-    const ALARM_LINK_GOVERNING = 'shaft, span';       // a prefix: one of the shaft's spans governs; which one is a tie between equals
+    // §232 RE-MEASURED, not re-quoted. The shaft is a turned bar now — body
+    // 0.2664 between the bushes, necks 0.16 where the cranks key — so the
+    // compliance the old thin rod contributed is gone and the chain finally
+    // DRIVES its ring: 6.68 → 81.02 mN, past the 50 mN top of the detent band.
+    // That is TODO 82's headline finding closed ("the transfer is
+    // ROD-END-LIMITED and an order of magnitude below the band"), and its own
+    // precondition honoured — it forbade re-deriving the section "before
+    // TODO 79's stations are re-solved", which §202 did.
+    const ALARM_LINK_STALL_PROBE_MN = 81.02;          // §232: tools/probe-82-alarm-stall.mjs on the necked shaft
+    // The governor moved with the section: the spans were the soft members
+    // while the whole rod was 0.1233, and now the NECK's rod-end cantilever is.
+    // That is the honest outcome — the compliance is where the metal is thin —
+    // and it is a boot warning rather than a silent re-ranking precisely so a
+    // change of governor has to be looked at.
+    const ALARM_LINK_GOVERNING = 'shaft, rod-end overhang';
     // The shaft's free lengths, all from the same ALARM_LINK_BUSH_T the
     // bearings declaration and the hangers read, so the consumers cannot drift.
     // THE METAL DOES NOT START AT t = 0: it spans chord t in
@@ -25592,7 +25682,7 @@ const alarmLinkParts = {};
     // (L+a)/a. SLENDER_OVERHANG_K's ∛16 ≈ 1.4 is that factor's LAMBDA-space
     // cube root and is not interchangeable with it.
     const coupling = (spanU + overhangU) / overhangU;
-    const kRodEnd = kBend(ALARM_LINK_SHAFT_R, overhangU, 3) / coupling;
+    const kRodEnd = kBend(ALARM_LINK_SHAFT_NECK_R, overhangU, 3) / coupling;   // §232: the rod end is NECK stock, not body
     // The two reflection ratios are NOT the same kind of number, and saying so
     // is the point. nRod is a real solve OUTPUT — the rod's travel is whatever
     // the rim envelope gives at the armed roll — and TODO 82's posed probe
@@ -25609,7 +25699,7 @@ const alarmLinkParts = {};
       { name: 'beak tail blade', k: kTail, n: nRod },
       { name: 'shaft, rod-end overhang', k: kRodEnd, n: nRod },
       ...spans.map((L, i) => ({ name: `shaft, span ${i + 1} (t ${stations[i].toFixed(2)} → ${stations[i + 1].toFixed(2)})`, k: kBend(ALARM_LINK_SHAFT_R, L, 48), n: nPin })),
-      { name: 'shaft, fork-end overhang', k: kBend(ALARM_LINK_SHAFT_R, forkEndU, 3), n: nPin },
+      { name: 'shaft, fork-end overhang', k: kBend(ALARM_LINK_SHAFT_NECK_R, forkEndU, 3), n: nPin },   // §232: neck stock
     ];
     const compliance = series.reduce((t, m) => t + m.n * m.n / m.k, 0);
     const kEff = 1 / compliance;
@@ -25637,7 +25727,12 @@ const alarmLinkParts = {};
         governs: governs.name, nRod, nPin,
         members: series.map((m) => ({ name: m.name, k_N_per_m: m.k, n: m.n,
           complianceShare: (m.n * m.n / m.k) / compliance })) },
-      envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: deliveredMN },
+      // §232 — 'covers', not 'within'. This figure is what the chain DELIVERS
+      // to the selector's detent, not a detent's own force, so it must dominate
+      // the band rather than sit in it. Held to membership, this check passed
+      // the chain for being too weak to drive its own ring — the defect TODO 82
+      // measured and TODO 16 diagnosed before it.
+      envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: deliveredMN, rel: 'covers' },
       why: 'roll about the shaft between two keyed cranks — the pivoted idiom done right and then undone by a chord that grew under it: summed in series the rod-end overhang carries most of the compliance, the delivered stall misses the detent window by an order, and the row is waived citing TODO 79 (position space, and NOT the third bush — that splits a span which does not govern)',
     });
   }
@@ -25691,9 +25786,21 @@ const alarmLinkParts = {};
     bush.name = `alarmLinkHangerBush${hi + 1}`;   // §202: named — a third station renumbers every positional selector
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
-    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // reverted with the shaft — it runs the same congested dial-side column
+    // §232 — THE BRACKET LANDS ON THE BUSH IT CARRIES. Its foot was
+    // `ALARM_LINK_SHAFT_Z + 0.15`: one CLEAR_MARGIN above an AXIS, which is not
+    // a station — it is a number that happened to clear a 0.1233 rod by 0.0267
+    // and could not follow the section anywhere. At §232's body it is inside
+    // the shaft, and `intraUnit` said so in five rows (all three hangers against
+    // the body, two against the necks). The bush's OUTER surface is the real
+    // station, because that is the part the bracket is welded to, and it
+    // follows the radius by construction exactly as the bore already did
+    // (§137 Landing 2). It also retires the reading that made a corridor scan
+    // call this bracket the shaft's wall at 0.0289.
+    const hangerFootZ = ALARM_LINK_SHAFT_Z + bushBore + ALARM_LINK_BUSH_WALL;
+    const hangerH = (-2) - hangerFootZ;
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, hangerH), MATS.nickel); // runs the same congested dial-side column
     hanger.name = `alarmLinkHanger${hi + 1}`;
-    hanger.position.set(hx, hy, ((-2) + ALARM_LINK_SHAFT_Z) / 2 + 0.15);
+    hanger.position.set(hx, hy, hangerFootZ + hangerH / 2);
     alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);
   });

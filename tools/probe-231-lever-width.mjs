@@ -1,4 +1,9 @@
-// §231 — HOW MUCH WIDER CAN EACH OF THE ALARM SWITCH'S FLOOR-STOCK LEVERS BE CUT?
+// §231/§232 — HOW MUCH WIDER CAN A FLOOR-STOCK MEMBER BE CUT?
+//
+// Two member sets so far, chosen with SET= (default `switch231`):
+//   · switch231 — §231's Alarm switch levers, each grown along ONE plan axis.
+//   · link232   — §232's alarm link lay shaft, grown RADIALLY (a round bar has
+//     no single width; both axes perpendicular to its length move together).
 //
 // §226 established the owner's reference (every feature reads one RATCHET
 // TOOTH deep, 1.2540 u off the column wheel's own ratchetPoly), §229 cut the
@@ -105,6 +110,7 @@ const ROOT = process.env.ROOT || '..';
 const SAMPLES = +(process.env.SAMPLES || 5);
 const WMAX = +(process.env.WMAX || 3.2);
 const STEPS = +(process.env.STEPS || 17);
+const SET = process.env.SET || 'switch231';
 
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 process.on('exit', () => srv.kill());
@@ -115,7 +121,7 @@ page.on('pageerror', (e) => console.error('PAGEERROR', String(e)));
 await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', timeout: 60000 });
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
 
-const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS }) => {
+const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS, SET }) => {
   const THREE = await import('./vendor/three.module.js');
   const I = await import('./src/inspect.js');
   const { CLEAR_MARGIN, UNIT_MM } = await import('./src/layout.js');
@@ -124,7 +130,35 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS }) => {
   // The MEMBERS, and the LOCAL AXIS each one's width runs along. A box is
   // widened about its own centre, so the axis is all this needs to know; the
   // member's other two dimensions are read off its own geometry and held.
-  const MEMBERS = [
+  // A member grown RADIALLY scales the two axes perpendicular to `axis`; one
+  // grown along `axis` scales only that. `follows` names meshes that are the
+  // member's own SUSPENSION and move with it — the skill's "the ground is not
+  // an obstacle" trap, and §232 walked into it: the lay shaft's nearest metal
+  // is its own hanger post at 0.0289, which is not a wall but the bracket
+  // carrying its bush. Each entry states WHY it follows, because an unjustified
+  // exclusion is how a corridor scan comes back clean while measuring nothing.
+  const SETS = {
+    link232: [
+      { mesh: 'alarmLinkShaft', axis: 'y', radial: true,
+        what: 'the alarm link lay shaft\'s DIAMETER (ALARM_LINK_SHAFT_R)',
+        follows: {
+          alarmLinkHanger1: 'the bracket carrying bush 1 — its foot is derived from the bush OD, so it rises with the shaft',
+          alarmLinkHanger2: 'ditto bush 2',
+          alarmLinkHanger3: 'ditto bush 3',
+          // §232, and the THIRD instance of the same trap in three sections
+          // (§230's pusher collar, §231's return bracket, this). Measured, the
+          // rod's nearest point to the shaft AXIS is 0.2635 at shaft-local
+          // s = -16.693 — exactly where the crank sits, at the end face, and
+          // nowhere along the 33-unit run. It is the linkage's own joint one
+          // part removed (`alarmLinkCrankRim ⇄ alarmLinkRod` is declared), and
+          // the crank's arm is built ON the shaft's surface, so a fatter shaft
+          // carries the crank rim and the rod's eye outward with it. Holding it
+          // still measures a movement that would not exist.
+          alarmLinkRod: 'joined through the crank rim (declared), and the crank is built on the shaft surface — the rod moves out with the radius',
+          alarmLinkBeakTail: 'formed ON the rod (declared, "one member, two meshes"), so it travels with it',
+        } },
+    ],
+    switch231: [
     { mesh: 'alarmPusherReach',          axis: 'y', what: 'the reach bar\'s plan width (ALARM_PUSH_REACH_W)' },
     { mesh: 'alarmPusherReach',          axis: 'z', what: 'the reach bar\'s thickness (ALARM_PUSH_REACH_T) — the z-costing direction' },
     { mesh: 'alarmPusherReturnArm',      axis: 'x', what: 'the return bracket\'s arm, along the press axis (bracketT)' },
@@ -133,7 +167,10 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS }) => {
     { mesh: 'alarmPusherReturnPost',     axis: 'y', what: 'the return bracket\'s post, across it (bracketT)' },
     { mesh: 'alarmPusherCollar',         axis: 'y', what: 'the return collar\'s thickness on the stem (collarT)' },
     { mesh: 'alarmPusherReturnAbutment', axis: 'z', what: 'the return abutment\'s thickness (abutT)' },
-  ];
+    ],
+  };
+  const MEMBERS = SETS[SET];
+  if (!MEMBERS) throw new Error(`unknown SET '${SET}' — declared: ${Object.keys(SETS).join(', ')}`);
 
   const unitOf = new Map();
   for (const e of clock.labelEntries) e.obj.traverse((o) => { if (!unitOf.has(o)) unitOf.set(o, e.name); });
@@ -208,13 +245,18 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS }) => {
       if (r.b === M.mesh) joints.add(r.a);
     }
     const rigid = rigidWith(target);
-    const obstacles = all.filter((o) => o !== target && !rigid.has(o) && !joints.has(o.name));
+    const follows = M.follows || {};
+    const obstacles = all.filter((o) => o !== target && !rigid.has(o)
+      && !joints.has(o.name) && !(o.name in follows));
 
     target.geometry.computeBoundingBox();
     const bb = target.geometry.boundingBox;
     const dim = { x: bb.max.x - bb.min.x, y: bb.max.y - bb.min.y, z: bb.max.z - bb.min.z };
     const ctr = { x: (bb.max.x + bb.min.x) / 2, y: (bb.max.y + bb.min.y) / 2, z: (bb.max.z + bb.min.z) / 2 };
-    const shipped = dim[M.axis];
+    // For a radial member the quantity grown is the DIAMETER — the extent
+    // across, not along. `axis` names the LENGTH for a radial row.
+    const perp = ['x', 'y', 'z'].filter((a) => a !== M.axis);
+    const shipped = M.radial ? Math.max(dim[perp[0]], dim[perp[1]]) : dim[M.axis];
 
     const widths = [];
     for (let i = 0; i < STEPS; i++) widths.push(shipped + (WMAX - shipped) * (i / (STEPS - 1)));
@@ -227,7 +269,11 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS }) => {
     const proxies = widths.map((w) => {
       const g = target.geometry.clone();
       const k = w / shipped;
-      const sc = { ...S, [M.axis]: k };
+      // RADIAL: both axes perpendicular to the length move; otherwise just the
+      // one named axis. A round bar has no single width to grow.
+      const sc = M.radial
+        ? { x: M.axis === 'x' ? 1 : k, y: M.axis === 'y' ? 1 : k, z: M.axis === 'z' ? 1 : k }
+        : { ...S, [M.axis]: k };
       g.translate(-ctr.x, -ctr.y, -ctr.z);
       g.scale(sc.x, sc.y, sc.z);
       g.translate(ctr.x, ctr.y, ctr.z);
@@ -298,7 +344,8 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS }) => {
     let lastOk = null;
     for (const r of ladder) { if (r.gap != null && r.gap >= CLEAR_MARGIN) lastOk = r; else break; }
     out.push({
-      mesh: M.mesh, axis: M.axis, what: M.what,
+      mesh: M.mesh, axis: M.axis, radial: !!M.radial, what: M.what,
+      follows: Object.keys(follows),
       shipped: +shipped.toFixed(4), shipped_mm: +(shipped * UNIT_MM).toFixed(4),
       realGap: isFinite(realMin) ? +realMin.toFixed(4) : null, realOwner,
       widestOk: lastOk ? lastOk.w : null, widestOkGap: lastOk ? lastOk.gap : null, widestOkOwner: lastOk ? lastOk.owner : null,
@@ -313,14 +360,14 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS }) => {
     });
   }
   return { clearMargin: CLEAR_MARGIN, unitMm: UNIT_MM, poses: poses.length, axes: I.AXES.length, samplesPerAxis: SAMPLES, rows: out };
-}, { SAMPLES, WMAX, STEPS });
+}, { SAMPLES, WMAX, STEPS, SET });
 
 console.log(`§231 lever-width ladder — ${R.axes} axes x ${R.samplesPerAxis} = ${R.poses} poses, CLEAR_MARGIN ${R.clearMargin}`);
 console.log('');
 for (const r of R.rows) {
   if (r.error) { console.log(`${r.mesh} [${r.axis}]  ERROR ${r.error}`); continue; }
   const c = r.controls;
-  console.log(`${r.mesh}  [${r.axis}]  — ${r.what}`);
+  console.log(`${r.mesh}  [${r.axis}${r.radial ? ' RADIAL' : ''}]  — ${r.what}`);
   console.log(`   shipped ${r.shipped} u (${r.shipped_mm} mm), own nearest gap ${r.realGap} to ${r.realOwner}`);
   console.log(`   widest rung holding CLEAR_MARGIN: ${r.widestOk} (gap ${r.widestOkGap}, wall ${r.widestOkOwner})`);
   console.log(`   first rung under it:               ${r.firstBlocked} (gap ${r.firstBlockedGap}, wall ${r.firstBlockedOwner})`);
