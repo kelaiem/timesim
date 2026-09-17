@@ -198,7 +198,7 @@ export const MECH_GRAPH = {
                                              // running fit is its bearing (rattrapante centre stack)
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
-    ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
+    ['Alarm release disc', 'Hour wheel'],    // §29 step 2: the hub riding the hour tube in the disc band — the BEARING only since TODO 117: the seat was the drive too while the disc carried the hour, and it carries the set alone now (TODO 144 prices what holds it)
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
     ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
@@ -324,9 +324,13 @@ export const MECH_GRAPH = {
                                              // parity the brake beak reads, now carried away as metal
     ['Alarm link', 'Alarm selector'],        // §35: the centre crank on the ring's drive tab — the run's last
                                              // contact; the pusher press now moves the whole chain
-    ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
-    ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
-                                                   // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
+    // TODO 144 — 'Hour wheel' → 'Alarm release disc' is DELETED here, not kept
+    // as history: §29 step 2's friction seat drove the disc with time, TODO 117
+    // took the hour out of the disc, and a drive edge for a coupling that no
+    // longer turns anything is the same lie as the `_bd` term this item removed
+    // from the tick law. The hub is a bearing; its row is in `support`.
+    ['Alarm setting idler', 'Alarm release disc'], // §29 step 2: i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
+                                                   // DIRECTLY — one mesh, the tube path's mirror ratio; the disc's ONE drive since TODO 117
     ['Hour wheel', 'Alarm release reader'],  // TODO 117 stage 1: the hour carries the reader ROUND to meet the notch — the moving half of the decided topology.
                                               // STAGE 1 IS INERT: nothing downstream reads this collar yet, so no drive edge leaves it. The trip still runs the feeler row below.
     ['Alarm release disc', 'Alarm release reader'], // TODO 117: the raised track carries the READER's pin now; the notch's arrival

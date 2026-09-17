@@ -59,6 +59,7 @@ import {
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
+  MU_STEEL,                                   // TODO 144: the one steel-on-steel friction coefficient — the disc's drag and its hold are priced on it
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   eulerCriticalLoad_N,              // §231: the one Euler law, read by §137's bent link and the pusher's reach bar alike
   ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
@@ -15337,7 +15338,7 @@ const solveGearChain = (label, chain, module, inputs = []) => {
 // (ALARM_RELEASE_AZ itself stays — the LEVER is still at that azimuth, and its
 // bracket, its tail run and its beak are all sited from it.)
 const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
-const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.85), inside the rim's root circle (3.30)
+const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.8667); the rim's root circle is 4.125 (30 T at module 0.3), so the body's face runs smooth from 3.25 out to it — TODO 144's candidate pad annulus
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
 // invariants (disc tracks hour when idle; setting re-phases it equal and
 // opposite to the tube; the notch az at trip is setting-independent) —
@@ -15371,8 +15372,12 @@ dialFace.add(alarmDiscGroup);
 registerLabel('Alarm release disc', alarmDiscGroup);
 registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry local z
 {
-  // Friction hub — the running seat ON the hour tube (bore +0.05, the
-  // setting wheel's snug-fit precedent: the fit IS the coupling).
+  // Hub — the RUNNING SEAT on the hour tube (bore +0.05, the setting wheel's
+  // fit). §29 called the fit the coupling as well: the seat was the DRIVE that
+  // carried the disc round with the hour. TODO 117 took the hour out of the
+  // disc, so this is a bearing on a turning shaft and nothing more, and what
+  // holds the disc against the reader's pin is TODO 144's open hold — the
+  // alarmSetHoldRecord at the feeler prices it — not this fit.
   // TODO 11 tranche five: the WALL is stock, and 0.35 − 0.05 = 0.30 made it
   // 0.1137 mm — under the floor. Written as bore + STOCK_MIN_U so the wall
   // reads as the thing being sized, not as the gap between two radii.
@@ -15701,6 +15706,77 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   blade.position.set(anchor.x, anchor.y, ALARM_FEELER_TOP + 0.06);
   alarmFeelerUnit.add(blade);
   alarmFeelerSpringBlade = blade;
+}
+// §137 — THE READ STATION'S FORCE, declared beside its metal (TODO 144: the
+// row TODO 117 never wrote). The bias blade is a grounded cantilever bearing on
+// the lever at BEAR_R; the lever's tip at ARM_LEN seats on the READER's ring,
+// and the reader's own pin rides the disc's track under that same force — the
+// blade's seat, re-levered about the pivot. Riding, the blade is deflected
+// ALARM_FEELER_SEAT_DROP·(BEAR_R/ARM_LEN) at the bear point; dropped (the notch
+// under the pin) one ALARM_PIN_DROP less. Both ends are published; the riding
+// figure is the load the track carries all day and the one the hold is priced on.
+//
+// A CORRECTION TO TODO 117's ROW 4 (probe-117-line.mjs), which took the blade's
+// bear-point force AS the ring's load. The ring carries BEAR_R/ARM_LEN of it —
+// moment balance about the pivot — so the contact sees 0.45 of the spring's
+// figure, and the envelope the fold inherits is judged at the CONTACT.
+const ALARM_FEELER_SPRING = (() => {
+  const k = cantileverK_N_per_m(SPRING_FLAT_U, SPRING_FLAT_U, ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R);
+  const lever = ALARM_FEELER_BEAR_R / ALARM_FEELER_ARM_LEN;   // bear-point travel per pin drop, and pin force per bear force
+  const bearF_mN = (drop_u) => 1000 * k * (drop_u * lever * UNIT_MM / 1000);
+  const riding = bearF_mN(ALARM_FEELER_SEAT_DROP), dropped = bearF_mN(ALARM_FEELER_SEAT_DROP - ALARM_PIN_DROP);
+  return Object.freeze({
+    k_N_per_m: k, bladeT_u: SPRING_FLAT_U, bladeW_u: SPRING_FLAT_U,
+    freeLen_u: ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R, seatDrop_u: ALARM_FEELER_SEAT_DROP, pinDrop_u: ALARM_PIN_DROP,
+    bearF_mN_riding: riding, bearF_mN_dropped: dropped,
+    pinF_mN_riding: riding * lever, pinF_mN_dropped: dropped * lever,
+  });
+})();
+declareTransfer('alarm release: bias blade (stud → lever → the reader’s pin on the track)', {
+  unit: 'Alarm release feeler', meshes: ['alarmFeelerSpring', 'alarmFeelerSpringStud'], idiom: 'crank',
+  load: { value: ALARM_FEELER_SPRING.pinF_mN_riding, unit: 'mN',
+    source: 'the blade’s 3EI/L³ (cantileverK_N_per_m over the built SPRING_FLAT_U section and its anchor→bear chord), deflected ALARM_FEELER_SEAT_DROP·(BEAR_R/ARM_LEN) at the bear point while the pin rides, re-levered BEAR_R/ARM_LEN about the pivot onto the pin' },
+  quantities: { ...ALARM_FEELER_SPRING, armIn_u: ALARM_FEELER_BEAR_R, armOut_u: ALARM_FEELER_ARM_LEN, ratio: ALARM_FEELER_ARM_LEN / ALARM_FEELER_BEAR_R },
+  envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: ALARM_FEELER_SPRING.pinF_mN_riding },
+  why: `a grounded blade pressing a pivoted lever short of its tip is a crank: the blade bears at ${ALARM_FEELER_BEAR_R.toFixed(4)} and the pin works at ${ALARM_FEELER_ARM_LEN.toFixed(4)}, so the ${ALARM_FEELER_SPRING.bearF_mN_riding.toFixed(2)} mN the spring delivers arrives at the contact as ${ALARM_FEELER_SPRING.pinF_mN_riding.toFixed(2)} mN riding and ${ALARM_FEELER_SPRING.pinF_mN_dropped.toFixed(2)} mN dropped — inside the envelope at both ends, and the riding figure is what the reader’s pin presses on the disc’s track under the hour all day`,
+});
+// TODO 144 — WHAT HOLDS THE DISC, accounted. The disc's law is alarmNotchA():
+// the set alone, still under the hour. Its hub is a running fit on the HOUR
+// TUBE, which turns, so the question §29 answered with "the seat is the drive"
+// has to be answered again with the drive gone: what holds the disc where the
+// crown left it? Priced here over the movement's own constants and PUBLISHED
+// (window.__clock.alarmSetHold), so the instrument that holds it —
+// tools/probe-144-set-hold.mjs — reads the movement's figures rather than
+// copies of them.
+//   · THE LOAD IS THE READER'S PIN, NOT THE HUB. The hour carries the reader
+//     round and its pin slides on the track under the blade's riding seat: a
+//     drag of μ·F·r about the disc's axis, continuous. The hub's oil film on
+//     the turning tube is a viscous term some six orders under it at ten times
+//     any watch oil's viscosity (the probe bounds it); the seat that used to be
+//     the drive is not the residue's load.
+//   · THE HOLD is whatever grounds the setting train against that drag, at
+//     ALARM_SPRING_HEADROOM — §169's precedent for a drag priced against a
+//     hold. The movement declares NONE today: §25 C's "friction-set" named a
+//     mechanism and never sized one, so `holder` is null until one is cut.
+//     A record and not a boot assert, on purpose: an assert on a known miss
+//     is a warning at every boot, which rule 6 forbids, and the probe is the
+//     instrument that stays red until the hold exists.
+// A function rather than a constant because ALARM_SPRING_HEADROOM is declared
+// further down the file; it is read at call time, after boot.
+let _alarmSetHold = null;
+function alarmSetHoldRecord() {
+  if (!_alarmSetHold) {
+    _alarmSetHold = Object.freeze({
+      mu: MU_STEEL,
+      pinF_mN: ALARM_FEELER_SPRING.pinF_mN_riding,
+      trackR_u: ALARM_TRACK_RMID,
+      dragTq_Nmm: MU_STEEL * (ALARM_FEELER_SPRING.pinF_mN_riding / 1000) * (ALARM_TRACK_RMID * UNIT_MM),
+      headroomRequired: ALARM_SPRING_HEADROOM,
+      holder: null,        // the member that grounds the setting train — none declared
+      holdTq_Nmm: null,    // its holding torque about the disc's axis
+    });
+  }
+  return _alarmSetHold;
 }
 // --- §29 step 4: the TAIL and the CONTRATE PAWL ---------------------------
 // The tail runs STRAIGHT from the pivot to the climb (the probe cleared the
@@ -40633,6 +40709,7 @@ window.__clock = {
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get acoustics() { return GONG_ACOUSTICS; },  // §197 — the gong's blow, modes and radiated level, off the built metal
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows
   rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin (and its frame's handedness), for the transmission sweep

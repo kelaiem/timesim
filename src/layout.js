@@ -591,6 +591,15 @@ export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the pla
 // oscillator solve) that could only drift apart; this is that number named
 // once, with both prior sites re-sourced as consumers.
 export const STEEL_E_PA = 200e9;  // Pa — carbon/spring steel Young's modulus (§56's value)
+// TODO 144 — THE ONE FRICTION COEFFICIENT for steel sliding on steel, named.
+// It was already load-bearing before it had a name: sawCouplingSpec below has
+// stood its friction cone on `mu = 0.2` since TODO 50, so a second copy written
+// at the alarm disc's track would be the recurring defect (one number, two
+// sites) with a coefficient. A dry-to-lightly-oiled steel pair — conservative
+// for a DRAG (a well-oiled pin reads lower) and the honest value for a HOLD (a
+// friction spring is not oiled), which is why one number serves both sides of
+// the hold budget rather than a flattering pair.
+export const MU_STEEL = 0.2;
 // §164 — the other two numbers a SPRING needs, beside the one modulus. Both
 // were about to be written a second time inside main.js: the yield was already
 // there as a bare 800e6 inside SPRING_STRAIN_MAX, and a shear modulus was about
@@ -1234,7 +1243,7 @@ export const YK_C = 7.5;       // yoke pivot's lateral offset, opposite side of 
 //     is the declared one (the coplanar-solids case the proximity
 //     instruments misread).
 // ---------------------------------------------------------------------------
-export function sawCouplingSpec({ rOut, rIn, teeth, rampOverFriction = 2, mu = 0.2,
+export function sawCouplingSpec({ rOut, rIn, teeth, rampOverFriction = 2, mu = MU_STEEL,
                                   tipFrac = 0.15, valleyFrac = 0.30 }) {
   const rMean = (rOut + rIn) / 2;
   const pitch = (Math.PI * 2) / teeth;          // rad of relative angle per tooth
