@@ -7155,7 +7155,14 @@ const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // a corridor is spent, and the one resolution that does not pay for packaging
 // out of P1. None of these numbers is an estimate: re-run the probe.
 export const SLENDER_WAIVERS = {
-  'Alarm link': 'TODO 16',
+  // §232 RETIRED 'Alarm link' (was TODO 16, λ 59.6 on the lay shaft). Not
+  // waived away and not re-scoped — the member was cut. The shaft is a turned
+  // bar now, body 0.2664 between the bushes and necks 0.16 where the cranks
+  // key, and every free length lands on SLENDER_TARGET: λ 27.0 on each span,
+  // λₑ 27.0 on the rod-end neck. §54's covenant is why this deletion is part
+  // of the change rather than a tidy-up afterwards — a waiver naming a unit
+  // with no over-ceiling row is itself a gated failure, so the fix cannot
+  // land without it.
   // λ 85.1, the §29 step-4 tail run. Wants +0.2390 u per side; the alarm
   // setting idler stands 0.2933 away and leaves 0.1433.
   'Alarm release feeler': 'TODO 109',

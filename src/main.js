@@ -25579,9 +25579,21 @@ const alarmLinkParts = {};
     bush.name = `alarmLinkHangerBush${hi + 1}`;   // §202: named — a third station renumbers every positional selector
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
-    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, (-2) - ALARM_LINK_SHAFT_Z), MATS.nickel); // reverted with the shaft — it runs the same congested dial-side column
+    // §232 — THE BRACKET LANDS ON THE BUSH IT CARRIES. Its foot was
+    // `ALARM_LINK_SHAFT_Z + 0.15`: one CLEAR_MARGIN above an AXIS, which is not
+    // a station — it is a number that happened to clear a 0.1233 rod by 0.0267
+    // and could not follow the section anywhere. At §232's body it is inside
+    // the shaft, and `intraUnit` said so in five rows (all three hangers against
+    // the body, two against the necks). The bush's OUTER surface is the real
+    // station, because that is the part the bracket is welded to, and it
+    // follows the radius by construction exactly as the bore already did
+    // (§137 Landing 2). It also retires the reading that made a corridor scan
+    // call this bracket the shaft's wall at 0.0289.
+    const hangerFootZ = ALARM_LINK_SHAFT_Z + bushBore + ALARM_LINK_BUSH_WALL;
+    const hangerH = (-2) - hangerFootZ;
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, hangerH), MATS.nickel); // runs the same congested dial-side column
     hanger.name = `alarmLinkHanger${hi + 1}`;
-    hanger.position.set(hx, hy, ((-2) + ALARM_LINK_SHAFT_Z) / 2 + 0.15);
+    hanger.position.set(hx, hy, hangerFootZ + hangerH / 2);
     alarmLinkUnit.add(bush);
     alarmLinkUnit.add(hanger);
   });
