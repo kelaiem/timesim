@@ -109,6 +109,30 @@ export const BATTERY = [
     gate: '0 degenerate and 0 unwaived',
     fails: (r) => [...r.degenerate, ...r.violations],
     note: (r) => `${r.rowsChecked} rows, ${r.waivedCount} waived (accepted debt)` },
+  // §233 — the THIRD slenderness, and it GATES on arrival rather than
+  // reporting first, which is a departure from §36's usual order and is
+  // deliberate. The usual reason to land a tier as a report is that the
+  // movement is red and gating would switch the check off on day one (§54's
+  // banner). Here the movement IS red — twelve bars — and the answer is the
+  // stockFloor convention instead: every one of them is DECLARED in
+  // TURN_WAIVERS citing TODO 145 with its fix path, so the red is visible,
+  // countable and shrinks as the debt is paid, and any THIRTEENTH bar fails
+  // the build. A report would have left the twelve equally visible and the
+  // thirteenth silent.
+  //
+  // Staleness gates beside it on §137's rule: a waiver naming a bar that is
+  // no longer over the ceiling is a standing excuse whose debt was paid,
+  // waiting for a new offender to hide under, so deleting a fix's waiver is
+  // structurally part of the fix. `needRest` and `ambiguous` stay REPORTS —
+  // one is a cost, the other is the instrument naming what it refused to
+  // speak about rather than passing it in silence.
+  { name: 'turning', opts: {},
+    gate: 'control PASS, 0 unwaived bars over L/D 20 and 0 stale waivers — needRest and ambiguous rows are REPORTS',
+    fails: (r) => [
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...r.violations, ...r.staleWaivers],
+    note: (r) => `${r.barsChecked} bars, ${r.waivedCount} waived (accepted debt), `
+      + `${r.needRestCount} want a follower rest, ${r.ambiguousCount} refused as axis-ambiguous` },
   // §54 / TODO 78 — §50's floor and this ceiling are one pair, and this half
   // had never run in CI: `checkSlenderness` was exported and never registered
   // in inspect.js's CHECKS, so every λ in the source was a hand number and

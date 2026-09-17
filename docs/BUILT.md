@@ -25697,3 +25697,145 @@ rod-end overhang at λₑ 127.6 (§202's third bush made a SPAN govern, so split
 it was exactly what would move λ); and that the crank offset "became derived
 rather than re-tuned" (it stayed the literal 0.22 while the radius moved under
 it).
+
+## §233 — The third slenderness: whether the bar survives being MADE
+
+The owner's finding was an eye's: the alarm link's lay shaft, seen through the
+dial, "seems thinner than a hair" — and thinness costs, not structurally but in
+construction, finish, assembly and legibility. That is a MANUFACTURABILITY
+criterion and the repo had no instrument for it. It had two floors on a section
+and neither asks the question:
+
+| | asks |
+|---|---|
+| §50 `STOCK_FLOORS` | is the metal thick enough to BE metal? |
+| §54 `SLENDER_MAX` | does the member bend IN SERVICE, over its free span? |
+| **§233 `TURN_LD_MAX`** | **does the bar bend UNDER THE TOOL, over its whole length?** |
+
+A member passes the first two and fails the third by a factor of four. The lay
+shaft is λ 27 (passes §54) and over §50's floor (passes `stockFloor`) at L/D
+104. §54's λ and this one are different LENGTHS, which is why one does not
+imply the other: λ measures the free span between bearings, because that is
+what buckles when the mechanism pushes; turning sees the whole bar, because the
+whole bar is standing out of the chuck.
+
+The constraint is the cut itself. A turning tool pushes sideways on the work,
+so a slender bar deflects away from it — the cut comes out tapered, then it
+chatters, then the finish tears. The practical limits are the ones every
+machining reference gives: L/D 10 unsupported, L/D 20 with a follower rest or
+between centres. **The gate is the SUPPORTED limit**, because supporting the
+work is a choice the shop makes and the geometry cannot express it; 10 is
+reported beside it as a cost, not a refusal.
+
+### The workpiece is the BAR, not the mesh
+
+This is the whole reason it is a check rather than a column on `stockFloor`.
+A turned member built from several coaxial meshes is ONE piece of stock: the
+lay shaft is a body between two necks, three meshes of L/D 54, 4.7 and 10.7 —
+each of which passes alone and two of which pass comfortably. As the bar it is,
+it is 104.
+
+But **coaxial is not the same as consecutive**, and the first clustering forgot
+it. A bush, a liner or a tube around a shaft is perfectly coaxial and is a
+different part — you turn the shaft, you turn the bush, you press one into the
+other. Merged, the alarm crown's stem swallowed its own tube liner and the
+alarm link's rod swallowed both its bushes, and the check said "one piece of
+stock" about an assembly. The distinction needs no declaration because it is
+geometric: members of one bar sit at CONSECUTIVE stations, so their axial spans
+are disjoint, while a bush sits at the SAME station with its span inside its
+shaft's. A turned step may still lap its neighbour a little (§232's necks lap
+their body by `ALARM_LINK_NECK_LAP`, about a tenth of the shorter member), so
+the rule is a fraction rather than zero — and the two populations are two
+orders apart, which is what a classifier is allowed to look like.
+
+The clustering seeds LONGEST FIRST for the same reason. Seeded in scene order,
+a bush could be picked up first and its own shaft rejected against it as
+concentric — the same two parts, split the other way round, decided by
+traversal order rather than by geometry.
+
+### Three wrong rulers, and the control that caught two of them
+
+Every way of measuring this that came to hand first was wrong, and each was
+plausible in print.
+
+**The population.** Run without kinds, the feature tier answered "79% of
+members are under the metal-printing floor" and led with `alarmIndexLine` at
+0.0076 mm. That is a registration MARKING, PRINTED on the disc's face — nobody
+mills it, so it cannot fail a milling floor, and neither can a hairspring, a
+mainspring ribbon or a stamped hand. §50 already declares what every mesh IS in
+`STOCK_KIND_BY_MESH` / `STOCK_KIND_BY_PART`, so the audit reads the same table
+rather than inventing a second opinion.
+
+**Roundness.** The turning tier read `stockCensus`'s `via` field, which does not
+mean what its name suggests: `via` is `'axial'`/`'radial'` only for a §36
+REGISTRY REVOLVE, and being a revolve there means the part SPINS IN THE
+MOVEMENT — nothing whatever to do with being turned on a lathe. Read that way
+it called an `ExtrudeGeometry` round, missed every static cylinder in the watch
+(the lay shaft among them), and answered "4 of 168" for a question it had not
+asked. A body of revolution is one BY CONSTRUCTION, so the test is the
+geometry's type.
+
+**The axis.** three.js builds both revolve types about local +Y, and this repo
+routinely bakes a quarter turn into the vertices to lay a bar along another
+axis, after which +Y is ACROSS the bar. Assuming it read the case spring bar's
+diameter as 20.00 mm — which is its LENGTH, because with the axis across the
+bar half the span becomes the radius. So the axis is found by the property that
+defines one: a body of revolution is narrowest about its axis, and about any
+other axis the span enters the radius. Searching the three local axes is not
+enough either — a fusee washer is baked at no quarter turn, and its nearest
+local axis gave 0.125 mm against a constructed 1.450 — so the direction is
+refined by descent. The REFUSAL is that same property read backwards: a
+direction is an axis only if tilting away from it makes the body WIDER, and
+where it does not, the body is a disc, not a bar, and the check says so rather
+than quoting a ratio.
+
+**The control is the load-bearing part, not a formality.** Measured ⌀ must
+equal CONSTRUCTED ⌀ (times world scale) for every plain cylinder, so a ruler
+that echoed `geometry.parameters` could not pass it. It caught both axis errors
+and nothing else did: 1233% worst, then 91%, now 0.00% over 248 cylinders.
+Neither was visible in the rows, which stayed plausible throughout — **a bar
+read across its axis comes back SHORT and FAT, which is the safe direction, and
+a check that is wrong in the safe direction is a check that passes.**
+
+### It gates on arrival, with twelve waivers
+
+The movement arrived twelve bars over the ceiling, which is normally the
+argument for landing a tier as a REPORT — §54's banner names gating a red
+movement as how a check gets switched off. This takes `stockFloor`'s route
+instead: every one of the twelve is DECLARED in `TURN_WAIVERS` citing TODO 145
+with its fix path, so the red is visible, countable, and shrinks as the debt is
+paid — and a THIRTEENTH bar fails the build, where a report would have left the
+twelve equally visible and the thirteenth silent. Staleness gates beside it on
+§137's rule, so deleting a fix's waiver is structurally part of the fix.
+
+TODO 145 groups the twelve by fix path, because none of the three is "make the
+member thicker where it stands":
+
+- **A, the lay shaft** (L/D 104.3). No section fixes it — its length is two
+  stations the §232 fold put 12.65 mm apart, and its diameter is §232's necks,
+  which sit at §50's floor and cannot rise without moving `ALARM_LINK_CRANK_OFF`,
+  which is §137's `armIn_u`, a lever arm. A **P3 LAYOUT problem**, solved in
+  position space.
+- **B, eight members that cross the movement or reach the case band.** Their
+  length is the case's; their diameter is wrong — 0.24–0.42 mm where a real
+  crown stem runs 0.9–1.2. Cut from arbor stock where they are stems.
+- **C, three arbors inside the movement**, where both length and diameter are
+  the mechanism's own. The only group a section change alone could close, and
+  where TODO 145 says to start.
+
+### The half that did not get promoted
+
+`tools/probe-233-manufacturability.mjs` carries both tiers and they now sit on
+opposite sides of §36's convention. The FEATURE tier stays a report with its
+thresholds in the probe rather than `layout.js` — a `layout.js` constant is one
+the BUILD derives from, and nothing derives from these. It is also the less
+useful half: 57% of machined members fall under the finest of them, which is
+mostly a statement about SCALE (a real caliber's parts ARE 0.1–0.3 mm) rather
+than about this design. Only 12 of 212 bars exceed the turning ceiling.
+Slenderness discriminates where feature size does not, which is why that is the
+half that became a gate.
+
+The probe CALLS `turnedBars` rather than copying it. This repo's recurring
+defect is one law written down twice — the chain's frame law is the worked
+example — and a report that agreed with its gate only by coincidence would be
+worse than no report.

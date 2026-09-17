@@ -17,6 +17,9 @@
 //   alarmHandoffs every declared hand-off of the §35 arming run within ±tol
 //                of touch at both parities, or waived citing its TODO item
 //   stockFloor   0 degenerate AND 0 unwaived (waived rows reported as debt)
+//   turning      0 unwaived bars over L/D 20 AND 0 stale waivers (§233 —
+//                the turning ceiling; waived rows reported as debt, and the
+//                follower-rest and axis-ambiguous tiers are reports)
 //   intraUnit    0 unwaived intersections inside a unit — movers vs
 //                fixtures over every unit, fixture pairs and cross-frame
 //                mover pairs inside INTRA_TIER_SCOPE — and 0 unmatched
@@ -251,6 +254,11 @@ const COSTS = {
   'stemClutchHandoff': 1,
   'strikeHandoff': 1,      // §198 — three posed phases, two rows
   'stockFloor': 6,
+  // §233 — one swept registry (shared with stockFloor's cost, but measured
+  // separately since it is its own call), then a per-mesh axis descent over
+  // 272 revolves. No pose sweep and no BVH. Refresh it like every row with
+  // --report; seeded from the first local run.
+  'turning': 5,
   // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
   // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no
   // pose sweep. TODO 78's bearing walk adds a handful of Box3.setFromObject
