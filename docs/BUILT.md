@@ -25961,9 +25961,12 @@ byte-identical.** Four moved only in their timing/census counters
 exact-call count rose by 77 with no row moving). `turning` moved exactly as
 intended — the two column rows out of the over-ceiling set (waived 12 → 10)
 and into `needRest` at 18.0 (26 → 28). `intraUnit`'s two declared rows for the
-tower's sleeves on their column measure nearer (0.1876 → 0.1621: the bore is
-`ARREST_COLUMN_R + 0.05`, so the fit follows the radius) and stay well inside
-`DECLARED_CONTACT_REACH`. `meshIntegrity`'s `zeroArea` report drifted on six
+side gears seated in their cage (`spiderSideA ⇄ spiderCageWheel` and its
+mirror) measure nearer, 0.1876 → 0.1621: the spider spec is re-solved at the
+column's bore, so the side gears' hub and cone move with it and the seat
+measures a different fit — still a fit, well inside `DECLARED_CONTACT_REACH`.
+A first draft of this sentence blamed the sleeves on the column; the rows
+name the side gears, and the record says what the rows say. `meshIntegrity`'s `zeroArea` report drifted on six
 rows at the 1e-19 level — the arrest unit's re-tessellated revolves — in a
 tier that gates nothing.
 
