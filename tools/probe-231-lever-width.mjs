@@ -158,6 +158,22 @@ const R = await page.evaluate(async ({ SAMPLES, WMAX, STEPS, SET }) => {
           alarmLinkBeakTail: 'formed ON the rod (declared, "one member, two meshes"), so it travels with it',
         } },
     ],
+    // §234 Landing 1 — the selector ROD, grown radially. Its bushes, the beak
+    // tail and the crank rim are declared joints (INTRA_UNIT_CONTACTS) and
+    // drop out through `joints`. The two PLATES are excluded here with the
+    // reason written in: the only plate metal near this rod is the hole it
+    // passes through, and that hole is ALARM_LINK_ROD_PLATE_BORE_R, which
+    // §202 derives from the bush OD, which is derived from the rod's section.
+    // Holding the hole still while the rod grows reads the hole's own wall as
+    // a corridor — the ground counted as an obstacle, the skill's first trap.
+    rod234: [
+      { mesh: 'alarmLinkRod', axis: 'y', radial: true,
+        what: 'the selector rod\'s DIAMETER (ALARM_LINK_ROD_R_SECTION) — TODO 145 group C',
+        follows: {
+          backPlate: '§202: its hole at the rod is ALARM_LINK_ROD_PLATE_BORE_R, cut from the bush OD, cut from the rod — it re-bores with the section',
+          threeQuarterPlate: 'ditto — the same derived hole, top plate',
+        } },
+    ],
     switch231: [
     { mesh: 'alarmPusherReach',          axis: 'y', what: 'the reach bar\'s plan width (ALARM_PUSH_REACH_W)' },
     { mesh: 'alarmPusherReach',          axis: 'z', what: 'the reach bar\'s thickness (ALARM_PUSH_REACH_T) — the z-costing direction' },
