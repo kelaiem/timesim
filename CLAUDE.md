@@ -270,6 +270,19 @@ it into prose either.
    that one number were each honest on the inventory they had; the fifth
    had the whole inventory and combined it wrongly, which is the failure
    an assert catches and a careful reader does not),
+   and `transmits` **0 unwaived ratio mismatches, 0 unwaived ORPHANS, 0
+   malformed, 0 stale waivers, controls PASS** (§194 — does every declared mesh
+   actually turn its neighbour by the amount the metal says, asked once PER
+   DECLARED INPUT? A pair can be perfectly anti-phased and not be geared at
+   all, which is why this is a different check from `meshPhase`. **A still
+   driver is two answers and TODO 144 split them**: both members still means
+   the input does not reach that chain, which is correct wherever a chain has
+   one driver, and is REPORTED; a still driver with a MOVING follower is an
+   ORPHAN — that member is turned by something which is not this mesh — and
+   gates. It was reported for both until TODO 144, and the movement shipped a
+   whole landing with the alarm setting train turning off a back-drive whose
+   source TODO 117 had removed. The driven side is judged on its PATH, so a
+   member that swings out and back cannot hide in a zero net),
    and `turning` **control PASS, 0 unwaived bars over `TURN_LD_MAX`, 0 stale
    waivers** (§233 — the THIRD slenderness, and the pair either side of it does
    not imply it: §50's floor asks whether the metal is thick enough to BE
@@ -681,7 +694,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 215 measuring scripts and this file names 14. The rest are named for the
+`tools/` holds 216 measuring scripts and this file names 14. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -698,7 +711,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **112 of
+The index also carries the split that decides how to read a result: **113 of
 them are ACCEPTANCE tests** that exit non-zero, and **103 are REPORTS** that
 print and leave the judgement to you. A report saying `0 violations` has not
 passed anything.
