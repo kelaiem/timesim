@@ -15478,6 +15478,649 @@ say no. And the road not taken is priced rather than dismissed: a fixed-length
 link from the orbiting reader runs 2.682 → 31.203 across the orbit, 11.6×, and
 a link is one length.
 
+### STAGE 1 BUILT THE COLLAR — AND THE BATTERY REFUSED THE STAGING, NOT THE PART
+
+The collar is cut, sited and boot-silent: ring at `ALARM_TRACK_RMID`, section at
+§50's floor both ways, pin length `SLENDER_MAX·(ALARM_PIN_R/2)/SLENDER_OVERHANG_K`
+= 0.8334 (§54's ceiling, which BINDS — the corridor allows 2.8117), stand-off
+landing the ring's plane at world **−6.3722** against the free-ring map's
+−6.35 ± 0.25 cell. Every quantity is READ from the line's own constants. The
+part fits where the line said it would.
+
+**The staging is what failed.** Battery 37/40, and the row that matters is
+`inspection: Alarm release feeler ⇄ Alarm release reader`, FORBIDDEN over
+4 of 97 train poses. The cause is not a siting error and no repositioning fixes
+it: **both members read the SAME track at the SAME radius**, the feeler from a
+fixed station and the collar from an orbit, so the orbit must sweep through the
+station. Two readers cannot share one track.
+
+That refutes this item's own "build it inert first" plan, written one commit
+earlier. The plan assumed the collar could stand beside the live §29 feeler
+while nothing read it, and the geometry says otherwise — the collar's whole
+purpose is to occupy every azimuth of the track, which is precisely the set the
+feeler's station belongs to. **Stages 1 and 2 must merge**: the reader cannot be
+landed until the fixed feeler stops being a reader, because the conflict is over
+the track, not over the trip.
+
+So the corrected order is three steps, not four, and the first is bigger than
+planned:
+
+1. **The reader replaces the feeler at the track** — collar built (done), the
+   feeler's PIN and arm withdrawn from the track radius, the lever re-rooted onto
+   the collar's face. The trip still reads a difference, but it reads it through
+   the collar. One battery.
+2. **The disc loses its hour term and the branch goes**, together, both
+   `MESH_PHASE_WAIVERS` rows deleted with them.
+3. The relief, the rim's re-cut, and the asserts that clear a tip which no longer
+   exists (the blast radius above).
+
+Two smaller findings, both fixed in place rather than waived:
+
+- The line derives the pin's LENGTH from §54 and never held its SECTION against
+  §50 — `stockFloor` caught the new pin at **0.1061 mm against the 0.12 floor**.
+  It is not a thin pin, it is a misclassified one: `ALARM_PIN_R` is the feeler
+  pin's own radius and that member is declared `'pivot'`, whose floor is 0.07.
+  The reader's pin is the same kind of member and is now declared so. A waiver
+  here would have bought silence for a part the movement already builds legally.
+- `Alarm release reader ⇄ Hour wheel` and `⇄ Dial` read FORBIDDEN at every pose
+  and are neither: the first IS the mount (being hour-carried is the topology),
+  the second is the dialFace nesting artifact the feeler's own row already
+  carries. Both declared EXPECTED.
+
+### THE FOLD IS BUILT — and the three-law contradiction is CLOSED
+
+The jog, the collar's re-siting and the topology landed together, because they
+had to: an hour-borne reader with the disc's old hour term drops its pin where
+there is no notch, and the item's own staging says any two of the three break
+the trip. **Battery 40/40, boot silent, fingerprint deterministic.**
+
+**What the metal does now.** From the disc's face, toward the dial:
+
+| member | world z | derived from |
+|---|---|---|
+| disc track top | −5.3805 | `ALARM_TRACK_TOP` |
+| reader's pin | −5.6305 … −5.3805 | `READER_PIN_LEN` = `ALARM_PIN_DROP + CLEAR_MARGIN` |
+| reader's ring | −5.9472 … −5.6305 | `STOCK_MIN_U`, §50's floor |
+| lever's jogged tip | −6.2438 … −5.9271 | seated 0.02 on the ring's dial face |
+| nearest other metal | −6.7834 | the alarm hand's tube — 0.5396 spare |
+
+**The pin's length stopped being §54's ceiling and became the ring's clearance
+over the track.** The line derived it from slenderness because it was siting the
+ring as far from the track as the free-ring map allowed; the fold wants the
+opposite — the ring as CLOSE to the track as the mechanism permits, so the
+lever's tip can reach it from the dial side without the blade reversing. The
+ring must clear the track by one margin at full drop, so the pin spans
+`ALARM_PIN_DROP + CLEAR_MARGIN` = 0.25 and nothing else. §54 goes SLACK (λ 9.0
+against the ceiling's 30), which is what a ceiling does when a part gets
+shorter — asserted at build, not assumed.
+
+**The lever's jog is three members where there was one bar.** The arm keeps the
+sleeve's own plane out to r 3.517, a post steps down clear of the ring's outer
+edge by one margin, and the tip runs under the ring spanning its full radial
+width — so the contact's centroid is `ALARM_TRACK_RMID` and
+`ALARM_FEELER_ARM_LEN` is genuinely inherited. The line's displacement gain of
+exactly 1 survives the fold, and the rock law in tick is unchanged.
+
+**The reader's travel lives one level in, and that is not tidiness.**
+`updateExplode` writes `position.z = baseZ` on every REGISTERED unit every
+frame, so a tick law written onto `alarmReaderUnit.position.z` would be erased
+on the next paint — silently, and only in the live app, since a posed battery
+run never reaches a frame. `registerExplode`'s own comment records that trap
+costing a session once already. The lift is `alarmReaderLift`, exactly as the
+feeler's rock lives on `alarmFeelerLever` inside `alarmFeelerUnit`.
+
+**THE THREE LAWS, ALL THREE HOLDING.** This is the item's open half, and it
+closes by taking the hour out of the disc rather than by adding a differential:
+
+1. **The gearing.** Disc and setting wheel are one 1:1 pair and must carry the
+   same angle. Disc = `ALARM_DISC_SIGN · alarmDiscAngle()` = `−alarmSetRot·RATIO`;
+   setting wheel = `−alarmSetRot·RATIO`. Equal. **`transmits` reports 0 waived**
+   — the waiver that stood on `disc rim ⇄ idler 1b` went STALE and the battery
+   failed naming it, which is precisely the receipt a waiver's staleness gate
+   exists to hand over.
+2. **The disc carries the trip**, and it is measured rather than argued:
+   `tools/probe-117-trip.mjs`, 4 rows 0 failing. The pin bottoms when the hour
+   hand's world azimuth meets the alarm hand's, at a **constant 0.00102 rad
+   across three settings, spread 0.00000** — half of one sample of hand angle,
+   which is the plateau's own quantisation.
+3. **The armed coupling.** `relB = wrapPi(alarmTubeShownA − wheelAngle)`, tube
+   armed target `−alarmDiscAngle()`, wheel `−alarmSetRot·RATIO`: identically 0.
+   The face cam no longer cycles under its pin twice a day, because nothing
+   injects the hour into the setting train any more.
+
+**And the branch does not have to go.** The blast-radius map was written for
+deleting `i1b` — six sites, two of them asserts that would go silent. With the
+hour out of the disc, the branch is simply how the crown's setting reaches the
+disc, and it transmits at its tooth ratios under every declared input. Deleting
+it is now a choice about part count, not a correctness fix, and the rim's tooth
+count keeps the constraint it was solved against. That is a change to this
+item's plan and it is recorded as one.
+
+**What moved in the trip's code, and why it is one expression.** Four sites read
+the coincidence and the fold moves it, which is CLAUDE.md's recurring defect
+waiting to happen. `alarmNotchA()` is the single law now and every site calls
+it. `align` is measured against `hourDialA` — the reader's own dial-frame
+azimuth, since the collar is parented into `hourWheelGroup` at azimuth zero —
+where it used to subtract `ALARM_RELEASE_PHASE` for a pin standing on the lever.
+`ALARM_DISC_SIGN` is **−1**: with a fixed pin the coincidence was
+`disc == PHASE` and the set term had to cancel the hour's; with an hour-borne
+pin it is `disc == hourDialA` and the set term enters the other way. Left at +1
+the alarm rang at a time that WALKED with the setting — measured, the two hands
+parted by 2.93 rad across three settings, which is what the new probe was
+written to catch and did.
+
+**`ALARM_RELEASE_PHASE` is retired.** It put the notch at the LEVER's azimuth,
+which was the fixed reader's whole requirement; the reader orbits now and finds
+the notch wherever it stands, so a phase there would only move the alarm away
+from its own hand. Its last reader was the §29 trip-invariance assert, which is
+re-aimed rather than deleted: the old statement — for two settings, (hour ==
+set) must put the notch at the same WORLD azimuth — is simply false of this
+movement, and what replaces it is the relation the fold rests on, THE NOTCH IS
+CUT WHERE THE ALARM HAND POINTS, held between two expressions written in
+different places by different laws.
+
+**One guard was honestly downgraded rather than quietly kept.** The in-tick
+"detector and arithmetic disagree" assert compared the disc's posed law against
+the hand's angle through the train. Both now descend from `alarmNotchA()`, so
+the comparison is an IDENTITY and can no longer catch a drift between
+derivations — there is only one derivation left. It stays as a window invariant
+on the notch's own arc, saying so in its own comment, and the cross-path
+agreement moved to `probe-117-trip.mjs`, which is where a claim about a POSE
+belongs (rule 6).
+
+**A declaration slid off its joint, and the battery caught it.** Adding one mesh
+to the lever shifted every index behind it by one, and
+`INTRA_UNIT_CONTACTS`'s row for the tail run's corner — addressed as
+`BoxGeometry#8 ⇄ BoxGeometry#9` — landed on the neighbouring pair, leaving the
+real corner unexcused as a fresh MM intersection in metal nobody had touched.
+The fix is TODO 50's, applied again: `alarmTailRun` and `alarmPawlRiser` are
+named and the row addresses names. Its `why` was corrected in the same edit —
+TODO 109 had already measured that this pair is the run's far END, the riser,
+not the "cheek mid-guide" the row claimed, and filed the discrepancy against
+TODO 104 as a row describing the wrong KIND of joint. That much of 104 is paid.
+
+**`Alarm release feeler` ⇄ `Hour wheel` is EXPECTED, measured not assumed.** The
+reader hangs under `hourWheelGroup` and `collectUnits` does no exclusion, so the
+Hour wheel's traverse carries the collar's ring and the lever's tip reads as
+touching the hour wheel — the `Alarm winding train` ⇄ `Dial` precedent. Over the
+42-pose net the feeler's nearest approach to the hour wheel's OWN metal is
+**0.3917** (`alarmFeelerTip` ⇄ `hourTube`, at jumperEngage f=1), 2.6×
+`CLEAR_MARGIN`, against **0.0073** to the nested reader.
+
+**Residue, named.**
+
+- **The disc holds still with nothing holding it.** Its law no longer follows
+  the hour, but its friction hub on the hour tube is still there — a pose with
+  no force path, which is exactly the class of debt this file exists to catch.
+  This is the open construction question the DECIDED section already files (the
+  hub comes off, or the disc gains a detent), and it now has teeth: before the
+  fold the hub was doing the work the law described, and now it is not.
+- **`meshPhase` still waives two rows against this item.** Transmission is
+  closed; phase is not. The gate confirms both waivers are still live (it fails
+  on a stale one), so the residual is real — and its cause is now narrower than
+  "a contradiction nobody has decided": the pair transmits at its tooth ratios,
+  so what is left is a CLOCKING question about the build solve's index, not a
+  law in conflict. Re-solving the branch's index is the fix path.
+- The reader's own bearing is still undesigned — the collar is parented rather
+  than journalled, and the line's 4.327 journal is priced but not cut.
+
+### THE JOG FITS — the fork is the fallback, not the move
+
+`probe-117-fork-room.mjs` extended through the TRANSITION radii, because a band
+measured only where the ring sits is a claim about the jog made without looking
+at where the jog happens. r 3.30 and 3.50 are not candidate take-off radii; they
+are the radii a jogged tip must climb back through to rejoin its own plane
+outboard of the ring.
+
+| r | disc's dial-most face | band (design) | with the feeler counted | the stack fits? |
+|---|---|---|---|---|
+| 2.20 | −5.2105 | 4.9932 | 4.9932 | YES |
+| 2.40 | −5.3805 | 4.8232 | 4.8232 | YES |
+| 2.60 | −5.3805 | 1.4412 | 1.4412 | YES |
+| 2.80 | −5.3805 | 1.4029 | 0.0091 | YES |
+| **3.05** | −5.3805 | **1.4029** | 0.0091 | **YES** |
+| 3.30 | −5.3805 | 1.4029 | 0.0091 | YES |
+| 3.50 | −5.2105 | 1.5729 | **0.2100** | YES |
+
+**The stack fits at every radius measured, the shipped one included**, so the
+take-off radius does not have to move at all. The design's stack from the disc's
+face — one margin, the ring at `STOCK_MIN_U`, its `ALARM_PIN_DROP` of travel,
+then the lever's tip at `ALARM_FEELER_T` — is 0.8833 against 1.4029 of measured
+band, leaving **0.5195** over. What has to move is the lever's inboard end: its
+dial-side face stands at world −5.7372 today and the jogged tip's would stand at
+−6.1639 at rest and −6.2639 dropped, a **jog of 0.4267**, all of it inside the
+band and none of it touching a mechanism quantity. The arm is a flat bar today
+(`BoxGeometry(ALARM_FEELER_ARM_LEN, 2·ALARM_PIN_R, ALARM_FEELER_T)`), which is
+why the space was never in question and never looked available.
+
+(That table was measured BEFORE the fold, so its "with the feeler counted"
+column describes the lever as it then stood — a flat bar with a pin. Re-run on
+the built fold it reads **0.0400** at r 3.30, which is `ALARM_PIN_SHANK` exactly:
+the jogged arm's underside standing one pin shank off the track, the constant
+the retraction quoted as 0.0133 and got wrong, now coming back out of a
+world-frame scan. The r 3.70 row was added with the jog: its 0.9314 is the
+conservative RING answer over the whole annulus and every pose, which is what
+this probe measures — the jog occupies one azimuth, and its actual clearances
+are the battery's, which passes them.)
+
+**The r 3.50 row is the one that proves the scan is reading the real stack.** It
+was added for the transition and it happens to measure the feeler's own arm from
+underneath: outboard of the track annulus the disc's floor steps 0.17 back to its
+body top (−5.2105), and the nearest feeler metal below it reads **0.2100** —
+which is exactly `ALARM_FEELER_TOP − ALARM_FEELER_T` against `ALARM_DISC_TOP`,
+the shipped arm's own static gap over the disc. Nothing in the probe knows those
+constants. Getting them back out of a world-frame scan, at a radius chosen for an
+unrelated reason, is the strongest agreement this measurement offers.
+
+**What stays true of the fork.** It is now the FALLBACK rather than the move, and
+it is fully priced if the jog runs into something the band cannot see (the
+lever's section through the jog, the sleeve's relief, the tip's own approach):
+every bar clears at r 2.40, and the bound to watch there is the item's open
+construction question — a ring is a flange off its bearing and cannot sit inboard
+of what carries it, and a reader bored on the hour tube with §50 wall reaches
+2.827.
+
+**A note on the instrument, because two of its own errors are in this table.**
+The first radial prune kept any mesh whose far corner fell inside the must-miss
+band at r 40, which is every mesh in the movement — it read as a prune and did
+nothing, and the walk spent its time on metal 30 units from any question being
+asked. Rewriting it forced the scan into two passes (the disc alone to fix each
+band's floor, then everything else keeping one number per band per class), which
+also bounds the memory that had made the seven-band run unfinishable. **Every
+figure from the first five bands reproduced to the last digit across that
+rewrite** — two implementations, one answer, which is worth more than either run
+alone.
+
+### THE TRACK-SIDE BAND, MEASURED — and the retraction measured the ARM, not the SPACE
+
+`tools/probe-117-fork-room.mjs`, the geometry the fork's pricing deliberately
+left open. Over the 42-pose net, in the ring's own radial footprint
+(±`STOCK_MIN_U`/2 of each candidate), the band dial-ward of the disc's face and
+track-ward of everything else. 4 control rows, 0 failing.
+
+The exclusions are the design's own members — `Alarm release feeler` and
+`Alarm release reader` — because counting the lever's PRESENT arm as an obstacle
+to the lever's FUTURE tip forbids the design by construction, which is
+`probe-117-takeoff.mjs`'s own recorded first error. `Alarm release disc` is
+neither excluded nor an obstacle: it is the band's floor, measured, because the
+notch is cut in it.
+
+| r | disc's dial-most face | band (design) | bounded by | with the feeler counted |
+|---|---|---|---|---|
+| 2.20 | −5.2105 | **4.9932** | Alarm disc | 4.9932 |
+| 2.40 | −5.3805 | **4.8232** | Alarm disc | 4.8232 |
+| 2.60 | −5.3805 | **1.4412** | Alarm disc | 1.4412 |
+| 2.80 | −5.3805 | **1.4029** | Alarm disc | 0.0091 |
+| 3.05 | −5.3805 | **1.4029** | Alarm disc | 0.0091 |
+
+A ring needs 0.5667; a ring and the lever's tip need 0.8833.
+
+**The finding is at the last row, and it is not the fork.** The band at the
+SHIPPED radius is 1.4029 — 1.6× what a ring and a tip need — and what closes it
+to 0.0091 is the feeler's own pin. So the space on the track side was always
+there; what is not there is room *in the plane the arm currently occupies*.
+**The retraction measured where the arm IS. It is the arm that has to move, and
+the arm's plane is not pinned at this radius**: `ALARM_FEELER_TOP` is the alarm
+release sleeve's envelope less one margin, and the sleeve stands at the sleeve's
+radius, not at 3.05 — measured, the nearest metal dial-ward of the disc at r 3.05
+is the alarm HAND's tube at 1.4029, and the sleeve is not in the band at all.
+
+That reopens something the item had closed. "There is no track-side annulus and
+there never was" is true of the built plane and false of the space, and the
+cheapest move may be a JOG of the lever's inboard end into the band rather than a
+fork of the radius at all — the lever already carries a jogged run further out
+(`main.js:15548`), so the idiom is the mechanism's own.
+
+**What the fork still buys, if the jog does not work out.** Inboard the band
+grows by an order of magnitude, and it grows for a reason the table shows: the
+disc's dial-most face steps 0.17 track-ward at r 2.20 because the raised TRACK
+does not reach inboard of its annulus and the BODY TOP is the floor there. So a
+fork carries the track band inboard with it — part of the fork, not an obstacle
+to it. Combined with `probe-117-fork-radius.mjs`, every bar at r 2.40:
+
+| bar | at r 2.40 | required |
+|---|---|---|
+| seat, against the detent envelope | 15.98 … 26.63 mN | inside 5–50 |
+| beak's withdrawal | 0.3364 | ≥ 0.2100 |
+| journal | 2.691 | ≤ 2.970, the corridor it already has |
+| track-side band | 4.8232 | ≥ 0.8833 |
+
+**The bound nobody has measured yet, and it is the item's own open construction
+question.** A ring is a flange off its bearing, so it cannot sit inboard of what
+carries it. A reader bored on the hour tube with §50 wall reaches
+`HOUR_TUBE_OUTER + fit + STOCK_MIN_U` = 2.827, which is OUTBOARD of every
+candidate the band favours — so under that construction the fork's window is
+empty and the jog is the only move. Under any other (the disc's own seat, a
+carrier off the hour wheel's rim, a post) it is not. That arithmetic is over
+source constants and is NOT a measurement, which is exactly why it is written
+here as the next question rather than as a refutation: what the reader runs on
+and what the disc runs on is the construction question the DECIDED section files
+as open, and it now has two numbers attached to it.
+
+**Controls.** The shipped radius reads SHUT with the feeler counted (0.0091
+against the 0.5667 a ring needs), so the scan cannot be finding room where the
+movement already reads. The disc's two dial-most planes — the raised track
+outboard, the body top inboard — measure **0.1700** apart, reproducing
+`ALARM_TRACK_H` from two of the scan's own bands: the strongest check available
+without leaving the world frame, since a wrong transform or the wrong metal
+cannot produce a source constant by accident. No disc metal exists at r 40, so
+the "is there anything to cut a notch in" test can say no; disc metal is found at
+every candidate, so the bands are on real metal.
+
+**And a correction the controls forced, which is the same defect twice.** This
+probe's first run stepped its edge walk at `CLEAR_MARGIN`/4 = 0.0375 and reported
+the shipped band as 0.0312 — a span BELOW its own sample spacing, so it was
+measuring the walk rather than the metal. The step is 0.01 now and the figure is
+0.0091. Then the control it was written against turned out to be wrong in the
+same direction: **the item's 0.0133 for the arm-to-track gap is not that gap.**
+`ALARM_PIN_SHANK` is **0.04** and `ALARM_TRACK_TOP` is defined as
+`ALARM_FEELER_TOP − ALARM_FEELER_T − ALARM_PIN_SHANK` = −3.0467, so the arm
+stands one pin shank off the track by construction. The retraction read the
+source's `// −3.02` COMMENT instead of its expression, and that comment was
+stale — written when `ALARM_FEELER_T` was 0.10 and never re-quoted when §51 put
+the feeler on floor stock. Three planes were stale together (−3.02, −3.19,
+−3.51 against −3.0467, −3.2167, −3.5333); all three are re-quoted, and the
+measurement confirms them independently — the disc's body top lands at world
+−5.2105 and its track top at −5.3805, exactly `ALARM_TRACK_H` apart.
+
+Neither error changed a conclusion, which is the third time this item has had to
+write that sentence. A stale comment beside a live expression is the same trap as
+a fabricated literal under a true claim: the claim keeps checking out, so nobody
+re-reads the number.
+
+### THE RADIUS FORK IS PRICED, AND EVERY BAR SURVIVES IT — `probe-117-fork-radius.mjs`
+
+With the reversal refused by the envelope and the track-side band refused by
+0.04 of room (one ALARM_PIN_SHANK — see the correction below), the line's own fallback is the only move left: **the reader's
+RADIUS is what moves**. That is a fork of line row 1 — a spec quantity, not an
+envelope — and the fold rule says price what it changes before cutting. Priced,
+18 rows, 0 failing, three of them must-fail controls.
+
+**The fork's reach is structural, which is why its SIGN is knowable rather than
+guessable.** `ALARM_FEELER_BEAR_R` is defined as `ARM_LEN * 0.45`, so the
+bearing rides the fork and the lever ratio at the blade cannot move. The fork
+therefore reaches the blade through its FREE LENGTH alone — `SPR_FREE + BEAR_R`
+— and k ∝ 1/L³. Inboard the arm grows, the blade lengthens, and the seat gets
+SOFTER. **The fork walks away from the ceiling it was feared to walk into.**
+
+|   r |   arm | blade L |  k N/m | seat mN | withdrawal | budget | journal |
+|---|---|---|---|---|---|---|---|
+| 2.20 | 3.300 | 2.1850 | 550.5 | 14.08 … 23.47 | 0.3160 | 0.01899 | **2.317** |
+| 2.40 | 3.100 | 2.0950 | 624.5 | 15.98 … 26.63 | 0.3364 | 0.01784 | **2.691** |
+| 2.60 | 2.900 | 2.0050 | 712.5 | 18.22 … 30.37 | 0.3596 | 0.01669 | 3.116 |
+| 2.80 | 2.700 | 1.9150 | 817.7 | 20.92 … 34.86 | 0.3862 | 0.01554 | 3.604 |
+| **3.05** | 2.450 | 1.8025 | 980.6 | 25.08 … 41.80 | 0.4256 | 0.01410 | 4.327 |
+
+Every candidate keeps the seat inside TODO 16's 5–50 mN envelope, and the
+envelope's FLOOR — the bar the fork does walk towards — is not reached until
+**r 0.199**, an order of magnitude inboard of anything wanted. Every candidate
+keeps the beak's withdrawal clear of `ALARM_PAWL_ENGAGE` by one margin (0.3160
+against 0.2100 at the worst). The silence finger's force falls with the seat and
+for the same reason, 51.21 → 38.72 mN; it is REPORTED, because its transfer row
+declares a `load` and no `envelope` and nothing in the battery holds it.
+
+**And the fork pays a debt the line had to borrow against.** The journal was
+4.327 against a 2.970 corridor, and the line spent the disc's vacated hub bore
+to afford it — the one place the design reached outside itself. The fork
+shortens it twice over: a smaller radius carries less read error for the same
+tilt, and a smaller gain tolerates more of it. **From r 2.534 inboard the
+journal fits the corridor the reader already has**, so "take the bore" becomes
+an option rather than a requirement. That is not why to fork, but it is what a
+fork is supposed to look like when it is the right one.
+
+**Controls.** An OUTBOARD take-off at r 4.00 seats at 94.18 mN and blows the
+envelope, so the envelope row can say no; a take-off at r 0.50 starves the
+withdrawal to 0.2085 against the 0.2100 bar, so that row can say no; and the
+seat moves 18.34 mN across the window, so the rows are not comparing a quantity
+with itself. At the shipped radius the arithmetic reproduces
+`probe-117-line.mjs`'s published seat (25.08 … 41.80 mN) and journal (4.327) by
+an independent path — a reference, not a control, since `PIVOT_TO_CLIMB` is
+quoted from that probe and the withdrawal row is therefore definitional.
+
+**What this does NOT say, stated because the item has made this error once.**
+Whether a ring, a notch and a lever tip FIT at the forked radius is geometry
+over the built tree, not arithmetic over constants: the disc's hub
+(`HOUR_TUBE_OUTER + 0.05 + STOCK_MIN_U`), the reader's own journal and the
+lever's inboard jog all live in that space, and `ALARM_TRACK_RMID`'s own comment
+bounds the annulus at 2.85 "outside the hub". Answering that from literals is
+exactly the fabricated-constant failure recorded above. **The next measurement
+is the free-ring map asked at the forked radius** — where can a ring sit on the
+TRACK side of the lever's tip, inboard of where the arm is overhead — and it is
+`probe-117-takeoff.mjs`'s question, asked again with a new r. Nothing is cut
+until it answers.
+
+### THE TRACK-SIDE BAND IS NOT FREE — RETRACTED, and how the measurement lied
+
+**RETRACTED IN FULL.** The section below concluded the track-side band was free
+and the fold could continue. It is wrong, and both errors are worth keeping
+because neither showed up as a red row.
+
+**And this retraction is itself half-corrected — see the measured-band section
+above.** Its arithmetic quotes 0.0133 for the arm-to-track gap; the gap is
+`ALARM_PIN_SHANK` = **0.04**, and the 0.0133 came from reading a STALE source
+comment rather than its expression. More importantly its CONCLUSION is narrower
+than it reads: 0.04 is where the arm IS, not what the space allows. Measured
+with the lever excluded as the part being redesigned, the band at the shipped
+radius is **1.4029**. "There is no track-side annulus and there never was" is
+true of the built plane and false of the space.
+
+**The gap on the track side is 0.0133, not 0.4800.** It is `ALARM_PIN_SHANK` —
+what the shipped pin spans, and all there is. Derived from the movement's own
+constants: the arm's top sits at −2.6900, it is `STOCK_MIN_U` = 0.3167 thick, so
+its underside is at −3.0067 and the track top at −3.0200. A ring there would
+need 0.5667 (thickness + `ALARM_PIN_DROP` of travel + one margin to the track).
+**Short by 0.5533.** There is no track-side annulus and there never was.
+
+**Error one: a fabricated constant wearing a measurement's label.**
+`probe-117-reversed-bias.mjs` carried `feelerArm: -5.86` under the comment
+"MEASURED off the built tree in this session". It was not measured — it was
+deduced from a frame conversion and written down as fact. The arm's mid-plane is
+−5.55. The probe's CONCLUSIONS were right anyway, which is the worst way to be
+right: a wrong literal under a true claim survives every re-reading, because the
+claim keeps checking out. It derives the stack from `ALARM_FEELER_TOP`,
+`ALARM_FEELER_T` and `ALARM_TRACK_TOP` now, so the numbers move when the
+movement does.
+
+**Error two: the sweep excluded the two members that BOUND the band.** It
+excused `Alarm release feeler` and `Alarm release disc` as allowed contacts —
+correct for "can the collar sit near these", and fatal for "how deep is the gap
+between them". The 0.94–1.05 clearances it reported are real and measure the
+absence of OTHER parts, which was never the question. A measurement can exclude
+the obstacle it was commissioned to find, and the output looks identical to a
+clean one. That is the instruments skill's own catalogue, arriving through the
+exclusion list rather than through a broken call.
+
+**What this leaves standing.** The reversal is still refused by the detent
+envelope (83.61 mN against 50), and now the position-space escape is refused
+too — the ring cannot move track-side, because there is no room there for any
+ring at all. So the decided topology does not fold **with the collar at the
+take-off radius**, and the remaining move is the one the line already named as
+its fallback: the reader's RADIUS is what moves. That is a fork of row 1, not of
+the envelope, and it costs the lever's inherited arm — which is exactly the
+quantity the fold rule says to check before spending.
+
+---
+
+The narrower question the pricing left: is there a free annulus at
+`ALARM_TRACK_RMID` between the feeler's arm (world z −5.86) and the track top
+(−5.38)? Measured, with the five units the collar is SUPPOSED to touch excluded
+(the disc it reads, the lever that seats on it, itself, its mount, the dial it
+nests under) and points taken along triangle EDGES rather than vertices:
+
+| ring plane (world z) | nearest obstacle | what it is |
+|---|---|---|
+| −5.80 | 0.9433 | Alarm disc (the hand's tube) |
+| −5.64 | 0.9807 | Alarm release sleeve |
+| −5.44 | **1.0491** | Alarm release sleeve |
+
+A ring needs 0.2583 — half its section plus its travel — before any margin.
+**All ten candidate planes clear that**, the best by 1.0491.
+
+**And the arithmetic allows it too, which had to be checked first.** The band is
+0.4800 deep; the ring is `STOCK_MIN_U` = 0.3167 thick and travels
+`ALARM_PIN_DROP` = 0.1000, so 0.4167 is spent and 0.0633 is slack. It would be
+impossible if the ring owed `CLEAR_MARGIN` to each neighbour — 0.7167 against
+0.4800 — but it owes neither: the feeler's pin SEATS on it and the reader's pin
+passes THROUGH it. Both are working contacts, and a working contact is not a
+clearance.
+
+**Why this reads roomier than the original map, which is the methodological
+point.** `probe-117-takeoff` ranked −6.35 best with 0.4500, counting EVERY unit
+as an obstacle — including the disc the collar exists to read and the lever it
+exists to drive. Counting those forbids the design by construction, which is why
+its answer landed on the dial side. The exclusion is not a relaxation; it is the
+difference between asking "where is there empty space" and "where can this part
+go".
+
+**What it costs the line, stated as the fork it is.** Row 3 derives the ring's
+plane as `trackTop − (pinLenMax + ringT/2)`, with `pinLenMax` at §54's CEILING,
+and asserts the plane lands in the map's cell. Moving the ring track-side
+changes that row: the stand-off is now bounded by the ARM'S PLANE, not by the
+pin's slenderness, and §54 stops binding — it becomes slack, which is sound
+because a ceiling is a maximum and the pin gets SHORTER (λ falls). That is a
+declared FORK in the fold rule's sense: one changed row, re-deriving its value
+from the movement constraint that forced it. The envelope is untouched, which is
+the part that was never forkable.
+
+So the order is restored to the line's own logic: the blade keeps its sense, the
+series claim in row 4 becomes true again, no second spring exists, and the
+collar's plane is the one quantity that moves.
+
+### THE REVERSAL IS PRICED, AND THE ENVELOPE REFUSES IT — `probe-117-reversed-bias.mjs`
+
+Asked what reversing the bias blade costs. It is not affordable, and the reason
+is a budget the fold rule says is never forkable.
+
+**Row 4 of the line rests on a stacking order it could not have known.** It says
+the blade "already seats the pin, and moving the contact from the track to the
+ring's face only makes that force path ONE MEMBER LONGER" — a SERIES claim, and
+a fair one in free space, where a line has no stacking order. Folded, the lever's
+arm lies BETWEEN the ring and the track, so a lever biased onto the ring's
+underside pushes the ring AWAY from the track. The path is not longer, it is
+OPPOSED, and the 0.82% series-compliance figure prices the wrong thing.
+
+| quantity | value |
+|---|---|
+| the blade's stiffness | 980.6 N/m |
+| its seating force, riding → dropped | 41.80 → 25.08 mN (inside the 5–50 envelope) |
+| **the ring's own return, now that it must seat the pin AND fight the blade** | **882.5 N/m** |
+| the line's cap on a ring return (5% of the blade) | 49.0 N/m |
+| **over the cap by** | **18.0×** |
+| the opposed pair's total load at the bearing | **83.61 mN** against a 50 mN ceiling |
+
+**The envelope is what refuses it.** 83.61 mN is outside TODO 16's 5–50 mN
+detent window, and that window is INHERITED from the reference and never
+forkable — §35's 26.79 tail failed as a fork for exactly this reason. The
+control row isolates the blame: the blade alone is 41.80 mN and sits inside the
+envelope, so every milliNewton of the excess belongs to the second spring the
+reversal forces.
+
+**So the reversal is refused and the fix is POSITION-SPACE**, which is where the
+design priority says a conflict like this must be solved. The probe's first
+control states the lever: *a ring on the TRACK side of the arm needs no reversal
+at all* — the conflict is stack-order dependent, not intrinsic. Put the ring
+between the arm and the track and the line's series claim becomes true again,
+the blade keeps its sense, and no second spring exists to price.
+
+**The next measurement is therefore the free-ring map again, asked a narrower
+question**: is there a free annulus at `ALARM_TRACK_RMID` on the TRACK side of
+the feeler's arm — world z between −5.86 and −5.38? `probe-117-takeoff.mjs`
+ranked −6.35 best over the whole corridor, which is the dial side; it was never
+asked to rank cells within that 0.48-deep band. If one exists, the fold
+continues with the line intact. If none does, the reader's radius is what moves
+— not its spring, and not the envelope.
+
+### THE Z STACK INTERLEAVES — the reader and the feeler cannot both reach the track
+
+Step 1 was attempted and REVERTED, and what it found is a constraint the line
+does not carry. The plan was to re-root the lever's pin onto the collar's face,
+on the reasoning that the ring's own thickness would separate the two members —
+reader's pin below the ring, feeler's pin above it, same radius, never the same
+z. **The z stack does not go that way.** Measured off the built tree:
+
+| member | world z |
+|---|---|
+| disc track top | −5.38 |
+| **feeler arm** | **−5.86** |
+| **reader ring** (free-ring map's cell) | **−6.37** |
+| dial back | −8.35 |
+
+The map's only free annulus is on the DIAL SIDE of the feeler's arm. So the
+reader's pin, standing from the ring to the track, must CROSS the feeler's plane
+to get there — the two do not stack, they interleave. That is the same fact the
+stage-1 collision reported, seen in z instead of in azimuth, and no thickness
+fixes it.
+
+**What it costs the design.** For the lever to read the collar it must reach
+TOWARD the dial and rest on the ring's underside, which reverses the sense of
+§48/TODO 13's bias blade: today it "presses the arm DOWN onto the disc", and it
+would have to press the arm UP onto the ring. That is a real redesign of the
+feeler's spring, not a re-rooting, and it must be priced before the next attempt
+— the blade's seat, its preload and the ALARM_FEELER_SEAT_DROP relation all read
+the current sense.
+
+**The instrument lesson, which is the transferable part.** The reverted step
+MEASURED CLEAN on its own hand-off probe: ring travel 0.100000, lever rock ×
+ARM_LEN 0.100000, gain 1.0000 exactly. It was wrong anyway. The probe read
+ROTATIONS, and the lever's rock law was untouched by the change, so it
+reproduced the right number over metal that did not exist — `pinLen` had gone
+NEGATIVE and three.js had built an inverted cylinder. `meshIntegrity` caught it
+(`alarmFeelerPin`, signedVolume −0.0548, unwaived) and the hand-off probe could
+not have. A kinematic check over an unchanged law is not evidence about
+geometry: when a change moves a DATUM, the thing to measure is the metal's
+extent, not the motion it carries.
+
+### THE FOLD'S BLAST RADIUS, MAPPED — six sites, not one
+
+Before any metal moves, where `i1b` actually reaches. Deleting it is not a
+block delete: five sites outside its own build read it, and three of them are
+ASSERTS that would go silent rather than fail.
+
+| site | `src/main.js` | what it does with `i1b` |
+|---|---|---|
+| the build | 15381–15389 | makes the gear, clocks it, parents it to `alarmSetI1Spin` |
+| the declared mesh | 15386 | `declareMesh('alarm setting: disc rim ⇄ idler 1b')` — the row that measures **+1.071429 against a wanted −1.071429** |
+| the layout obstacle | 14582 | `i1b (band lane)` with an EXACT tip, consumed by the siting solve |
+| the feeler's bracket assert | 15622–15625 | `dToI1 − i1bTip − 0.31 < CLEAR_MARGIN` — the 0.44 rad read-station offset exists to clear this tip |
+| the release run's routing | 15548–15550 | the jog that takes the run under the band gears is cut to clear `i1b` |
+| the rim's tooth count | 14402–14404 | `ALARM_DISC_TEETH = 30` and `ALARM_BRANCH_MODULE` are both solved AGAINST 28, so the rim's cut is a function of the branch |
+
+The last one is the one to plan for: the disc's rim is not incidental metal that
+survives the branch's deletion. Its 30 T and its module were both derived to mesh
+`i1b` at the lane's centre distance, so once nothing meshes it the rim is a cut
+with no constraint behind it — rule 1 in reverse. It goes with the branch, and
+the disc becomes a plain notched disc.
+
+Two of those five are the reason this cannot land in one jump: the bracket
+assert and the run's jog are both CLEARANCES AGAINST A PART THAT WILL NOT EXIST.
+Delete the gear and they stop constraining anything while still reading true,
+which is a guard going silent rather than firing — the failure mode
+`probe-direction-guards` exists to catch elsewhere. Either they are re-derived
+against the collar's orbit in the same change, or the fold has re-sited the
+feeler against a ghost.
+
+**Staging, so every stopping point leaves the alarm honest.** The trip is broken
+at every intermediate state where the disc has lost its hour term and the reader
+does not yet carry it, so the order is forced:
+
+1. **The collar, built and sited, inert.** Ring at `ALARM_TRACK_RMID`, its
+   journal through the disc's bore (the length the corridor is short of is
+   exactly what the hub vacates), the orbiting pin at §54's ceiling. Nothing
+   reads it yet; the trip still runs the old path. Verifiable on its own:
+   sections against §50's floor, the free-ring map, boot silence.
+2. **The hand-off, wired.** The lever's tip re-rooted onto the collar's face,
+   the sleeve's web relieved annularly (§45/§124 cut it for ONE azimuth; an
+   orbiting pin needs every azimuth), the withdrawal re-measured against the
+   line's 0.425592.
+3. **The reader rides the hour, the disc loses its hour term, the branch goes.**
+   All three together, because any two without the third breaks the trip. Both
+   `MESH_PHASE_WAIVERS` rows are deleted as part of it, not after.
+
+The acceptance is already named above and does not move: `probe-mesh-transmission`
+all-rows-ok under every input the mesh actually sees, and the pin still bottoming
+at full `ALARM_PIN_DROP` when the hour hand's azimuth meets the alarm hand's —
+`probe-handedness`' 0.02185 rad, identical at all three settings.
+
 **Not built.** This is the line, and the item's remaining work is the FOLD:
 siting the ring and its journal, the annular relief the sleeve's web needs
 (§45/§124 cut it for one azimuth; an orbiting pin needs it at every azimuth —

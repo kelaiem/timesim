@@ -1845,23 +1845,35 @@
 
   <!-- ===================== ALARM FEELER (full plates) ===================== -->
   <details class="mech" id="alarm-feeler" open>
-    <summary>Alarm release feeler — reading the set time by touch<span class="where">alarm · src/main.js:6433</span></summary>
+    <summary>Alarm release — a collar reads the set time, a fixed lever frees the train<span class="where">alarm · src/main.js:6433</span></summary>
     <div class="mech-body">
-      <p>The fixed reader of the alarm train, in the Vulcain Cricket / JLC Memovox pattern.
-      A spring-biased lever rides a raised track on the alarm disc; the disc turns with the
-      <em>difference</em> between the hour wheel and the set time, so its one notch arrives
-      under the lever's pin exactly at coincidence. The pin falls, the tail rises to a banked
-      stop, and the withdrawal of the climb pawl frees the strike train. No boolean anywhere:
-      causality enters at the crown and arrives at the gong through closed contacts (the
-      repo's P0 rule), and each hand-off below is a measured row of the
-      <code>alarmHandoffs</code> battery.</p>
+      <p>The read station of the alarm train, in the Vulcain Cricket / JLC Memovox pattern —
+      and it is <em>two</em> members. An hour-carried collar orbits with the hour wheel, its
+      pin riding a raised track on the alarm disc; the disc holds still, carrying the
+      <em>set time alone</em>, so the orbiting pin meets the disc's one notch exactly at
+      coincidence. The pin falls into it, and the collar's ring carries that drop to a fixed
+      spring-biased lever — a ring because it is present at every azimuth at once, which is
+      the only way a signal leaves an orbiting member without a link whose length would have
+      to change with azimuth. The lever's tail rises to a banked stop, and the withdrawal of
+      the climb pawl frees the strike train. No boolean anywhere: causality enters at the
+      crown and arrives at the gong through closed contacts (the repo's P0 rule), and each
+      hand-off below is a measured row of the <code>alarmHandoffs</code> battery.</p>
+
+      <p>It was one member until TODO 117. A <em>fixed</em> reader forces the disc to encode
+      hour − set, which needs two inputs summing into one output with no back-flow — and the
+      branch that did the summing is a plain gear train, which is bidirectional. So the hour
+      flowed back up the whole setting chain and no member carried the set alone. Moving the
+      reading onto the hour removes the differential instead of adding one. Open debt: the
+      disc now holds still while the friction hub that used to drag it round is still on the
+      hour tube, so its stillness is <em>modelled</em> and not yet driven — the disc's own
+      seat is TODO 117's remaining construction question.</p>
 
       <!-- —————— PLATE 1 : PLAN VIEW —————— -->
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">Plan view — the read station at the release azimuth</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 780 430" width="780" height="430" role="img"
-               aria-label="Top-down view of the alarm disc with its raised track and notch, and the feeler lever bracket outboard of the rim">
+               aria-label="Top-down view of the alarm disc with its raised track and notch, the hour-carried collar whose pin rides the track, and the fixed release lever outboard of the rim">
             <circle cx="230" cy="215" r="150" fill="var(--brass-fill)" opacity="0.35"/>
             <circle cx="230" cy="215" r="150" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
             <circle cx="230" cy="215" r="60" fill="none" stroke="var(--brass)" stroke-width="1"/>
@@ -1876,13 +1888,14 @@
             <rect x="388" y="188" width="14" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
             <rect x="388" y="230" width="14" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1"/>
             <line x1="395" y1="192" x2="395" y2="238" stroke="var(--steel)" stroke-width="2.5"/>
+            <circle cx="230" cy="215" r="91.5" fill="none" stroke="var(--ruby)" stroke-width="7" opacity="0.5"/>
             <rect x="319" y="209.5" width="76" height="11" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
-            <circle cx="321.5" cy="215" r="6.5" fill="var(--ruby)"/>
+            <circle cx="290" cy="138" r="6.5" fill="var(--ruby)"/>
             <rect x="395" y="211" width="27" height="8" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
             <rect x="413" y="206" width="14" height="18" fill="none" stroke="var(--steel)" stroke-width="1.4" stroke-dasharray="3 2"/>
 
             <text class="lbl lbl-strong" x="96" y="72">alarm disc</text>
-            <text class="val val-brass" x="96" y="86">encodes hour − set time</text>
+            <text class="val val-brass" x="96" y="86">carries the set time alone — holds still</text>
 
             <text class="lbl lbl-strong" x="428" y="94">raised track</text>
             <text class="val val-brass" x="428" y="108">r 2.85..3.25 · +0.17 proud</text>
@@ -1892,10 +1905,15 @@
             <text class="val val-brass" x="480" y="344">gap 0.14 rad = pin ⌀ 0.28 + slop</text>
             <path class="leader" d="M 477 333 L 330 300"/>
 
-            <text class="lbl lbl-strong" x="255" y="395">pin ⌀ 0.28, riding the ridge</text>
-            <path class="leader" d="M 300 382 L 321 224"/>
+            <text class="lbl lbl-strong" x="255" y="395">collar's pin ⌀ 0.28, riding the ridge</text>
+            <text class="val val-ruby" x="255" y="409">orbits with the hour wheel</text>
+            <path class="leader" d="M 300 382 L 288 146"/>
 
-            <text class="lbl lbl-strong" x="560" y="140">bracket lugs · pivot r 5.50</text>
+            <text class="lbl lbl-strong" x="40" y="180">collar ring · r 3.05</text>
+            <text class="val val-ruby" x="40" y="194">present at every azimuth</text>
+            <path class="leader" d="M 120 186 L 141 202"/>
+
+            <text class="lbl lbl-strong" x="560" y="140">release lever · pivot r 5.50</text>
             <text class="val val-steel" x="560" y="154">inboard faces clear rim tips</text>
             <text class="val val-steel" x="560" y="167">by CLEAR_MARGIN (asserted)</text>
             <path class="leader" d="M 557 145 L 404 192"/>
@@ -1914,10 +1932,12 @@
             <text class="val" x="332" y="170">arm 2.45</text>
           </svg>
         </div>
-        <figcaption>The disc turns with the difference between the hour wheel and the set
-        time, so its notch arrives at this fixed station exactly at coincidence. The lever's
-        arm crosses the spinning rim to put its pin on the track; bracket, pivot and stop are
-        static, hung from the dial sheet. Scale ≈ true in plan.</figcaption>
+        <figcaption>The disc holds still at the set time; the collar's pin comes round to it
+        on the hour wheel, so pin and notch coincide exactly when the two hands do. The lever
+        does not have to be there for that — it reads the collar's ring, which carries the
+        drop to every azimuth at once, and its own arm crosses the spinning rim only to reach
+        that ring. Bracket, pivot and stop are static, hung from the dial sheet.
+        Scale ≈ true in plan.</figcaption>
       </figure>
 
       <!-- —————— PLATE 2 : INTERACTIVE SECTION —————— -->
@@ -1934,7 +1954,7 @@
         </div>
         <div class="fig-body">
           <svg viewBox="0 0 780 360" width="780" height="360" role="img"
-               aria-label="Interactive side section: the feeler lever pivoting as the notch passes under its pin">
+               aria-label="Interactive side section: the collar's pin dropping into the notch and the release lever following the collar's ring down">
             <g id="trackGroup" class="anim">
               <rect x="-400" y="272" width="1100" height="30" fill="var(--brass-fill)" opacity="0.4"/>
               <line x1="-400" y1="272" x2="700" y2="272" stroke="var(--brass)" stroke-width="1"/>
@@ -1957,7 +1977,7 @@
 
             <rect x="688" y="38" width="12" height="40" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
             <path d="M 694 78 C 610 92, 500 100, 424 138" fill="none" stroke="var(--ruby)" stroke-width="2.5" opacity="0.85"/>
-            <text class="lbl lbl-strong" x="640" y="170">return blade — §48, always pushing</text>
+            <text class="lbl lbl-strong" x="640" y="170">return blade — §48, still pushing DOWN</text>
             <text class="val val-ruby" x="640" y="184">free seat 0.25 = drop + margin</text>
             <path class="leader" d="M 637 166 L 540 118"/>
 
@@ -1976,15 +1996,18 @@
 
             <g id="leverGroup" class="anim">
               <rect x="250" y="143" width="310" height="14" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
-              <rect x="243" y="157" width="14" height="46" fill="var(--ruby)" opacity="0.9"/>
-              <circle cx="250" cy="205" r="9" fill="var(--ruby)"/>
+              <rect x="214" y="157" width="72" height="12" fill="var(--ruby)" opacity="0.55"/>
+              <rect x="243" y="169" width="14" height="30" fill="var(--ruby)" opacity="0.9"/>
+              <circle cx="250" cy="203" r="9" fill="var(--ruby)"/>
               <rect x="560" y="145" width="88" height="10" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.4"/>
             </g>
             <circle cx="560" cy="150" r="6" fill="var(--bg)" stroke="var(--text)" stroke-width="1.6"/>
             <text class="lbl lbl-strong" x="520" y="200">pivot</text>
             <path class="leader" d="M 540 195 L 557 156"/>
 
-            <text class="lbl lbl-strong" x="120" y="150">arm 2.45 → pin</text>
+            <text class="lbl lbl-strong" x="96" y="140">arm 2.45 → tip, on the ring</text>
+            <text class="val val-ruby" x="96" y="154">ring and pin orbit;</text>
+            <text class="val val-ruby" x="96" y="167">the lever does not</text>
 
             <g id="dropDim">
               <line class="dim" x1="200" y1="214" x2="200" y2="250" id="dropDimLine"/>
@@ -2214,7 +2237,8 @@
       quarter mark), while a central alarm hand rides its own tube through the hand stack,
       styled as a steel shadow of the hour hand so parked it disappears under it. Winding: the
       same crown pushed home spools the alarm barrel through its own train. Striking: when the
-      feeler trips (full entry above), the alarm barrel drives the striking wheel, and the
+      collar's pin drops into the notch and the release lever follows it (full entry above),
+      the alarm barrel drives the striking wheel, and the
       hammer — its fall a real sprung member, not a spring <em>law</em> (§48) — beats the
       gong; the ring runs down as the barrel empties, or stops early if the crown is pulled
       (§45's arrest, plate 4 above).</p>
@@ -2247,7 +2271,7 @@
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The alarm at a glance — where each entry lives</span></div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 170" width="780" height="170" role="img" aria-label="Overview of the alarm: setting and winding into the disc and barrel, the feeler reading coincidence, the strike train and gong, the silence hold">
+          <svg viewBox="0 0 780 170" width="780" height="170" role="img" aria-label="Overview of the alarm: setting and winding into the disc and barrel, the collar reading coincidence on the hour, the strike train and gong, the silence hold">
             <rect x="20" y="30" width="130" height="40" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
             <text class="lbl lbl-strong" x="30" y="48">alarm crown</text><text class="val" x="30" y="62">set · wind · silence</text>
             <rect x="200" y="14" width="130" height="34" fill="none" stroke="var(--brass)" stroke-width="1.2"/>
@@ -2271,9 +2295,10 @@
           </svg>
         </div>
         <figcaption>The overview: the crown sets the disc and winds the barrel; arming (the
-        column wheel → §35 link) enables the release; the feeler trips at coincidence and
-        the barrel drives hammer onto gong; the §45 rocker holds the feeler's tail to
-        silence or arrest. Each box has its own entry with plates on this page.</figcaption>
+        column wheel → §35 link) enables the release; the hour carries the collar round to the
+        disc's notch, the release lever reads the collar's ring and the barrel drives hammer
+        onto gong; the §45 rocker holds the lever's tail to silence or arrest. Each box has
+        its own entry with plates on this page.</figcaption>
       </figure>
       <p class="note">The arming run — pusher → pawl → column wheel → ring — is DRIVEN from
       its input rather than posed from its output: the press carries the pawl, the pawl
