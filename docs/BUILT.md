@@ -25858,3 +25858,119 @@ Cost 6.6 s measured, against `stockFloor`'s 6 — one swept registry and a
 per-mesh axis descent over 272 revolves, no pose sweep and no BVH. The seeded
 `COSTS` row was 5 and is corrected to 7, since a stale cost buys wall clock and
 never a verdict.
+
+## §234 — TODO 145's group C measured before it was cut: two columns closed, the rod re-triaged
+
+**PARTIAL** — Landing 1 of three. The roadmap entry names the order; Landings 2
+(the stems, group B) and 3 (the lay shaft and now the rod, group A) stay in the
+private roadmap under the same number.
+
+The entry filed group C as "the only group a section change alone could close"
+and said to measure three couplings first. The measurements were the landing:
+**for none of the three rows was the claim true**, and finding that out before
+cutting anything is what the entry's order was for.
+
+    ARREST_COLUMN_R      0.1847 -> 0.2361 u   (PIVOT_MIN_U -> columnLen / (2·TURN_LD_TARGET))
+    alarmArrestArbor     ⌀ 0.140 -> 0.179 mm  L/D 23.0 -> 18.0
+    subIdlerArbor        ⌀ 0.140 -> 0.179 mm  L/D 23.0 -> 18.0
+    alarmArrestFingerArbor  unchanged         L/D 17.5 (the Geneva's arbor; under the target)
+    ARREST_SPEC.arborR   unchanged            the Geneva keeps d 4.114
+    TURN_WAIVERS         12 -> 10             the two column rows retired
+    alarmLinkRod         unchanged            site-limited at r ≈ 0.517 (L/D 19.2); moves to Landing 3
+
+### Four couplings, measured (`tools/probe-234-group-c.mjs`)
+
+**Tooth counts.** Both arrest station solves take their lower bound from
+`minGearTeeth(ALARM_TRAIN_MODULE, arborR + 0.05, [barrel])` under
+`Math.max(8, …)`. It reads 5 at the floor and 5 at 0.236; the 8 governs; the
+idler stays at its solved 14. The entry's first measurement, and it came back
+clean.
+
+**The Geneva.** `ARREST_SPEC.arborR` is an INPUT to `genevaSpec`, whose centre
+distance is `max(pitch, web, horn)` with `hornFloor = arborR + 0.05 + margin`.
+Measured with the spec's own inputs, **the horn governs today** — `d = 4.114 =
+dFromHorn` — so raising the one shared radius to 0.236 grows the whole
+stop-work 20% (d → 4.919, a 1.574 → 1.882, lockR 1.390 → 1.698). That is a
+mechanism change wearing a section costume, and it is not the columns'
+coupling: the horn passes the *finger's* bore lip, and the finger's arbor is
+6.5 u at L/D 17.5, under the target already. The two over-ceiling columns carry
+no cross. One shared constant had been standing in for two parts.
+
+**The stall.** `probe-82`'s compliance chain has a "rod-end overhang" and it is
+the lay SHAFT's neck past its last bush, not the rod; the rod is a push rod and
+is not in the sum. At rod r 0.553 the probe's output is byte-identical to
+baseline (81.02 mN). The roadmap entry said the stall read the rod's section —
+wrong, and the easy kind: the rod's section is free as far as force goes.
+
+**The rod's site.** §202 froze the rod's station against a 0.45 footprint and
+asserts `room = colClear + 0.45 − plateBore ≥ CLEAR_MARGIN` at boot. At 0.553 it
+warns (0.115); at 0.518 it reads 0.150 and still warns by float. The cap is a
+hair under 0.518 u: **L/D 19.2, under the ceiling and over the target**, so the
+rod cannot reach 18 in place. The width ladder (`probe-231`, set `rod234`)
+agrees in the other direction: the rod's nearest metal at ship, the shaft's
+neck at 0.109, is FLAT across the first three rungs — axial, not a wall — and
+the real wall beyond the site cap is the case's back crystal at ⌀ ~1.2 u, whose
+z §187 derives from the envelope at boot. The site is the §112 solve's output,
+so the rod's fix is that solve re-run with the true bore footprint and an L/D
+term — Landing 3's machinery. It moves to group A.
+
+### The columns, decoupled — and the stack made one law
+
+`ARREST_COLUMN_R = max(PIVOT_MIN_U, columnLen / (2 · TURN_LD_TARGET))`, beside
+the leg solve. One circularity to close honestly: the column's length is the
+tower's z-stack, the stack reads the spider spec's cone (`halfHeight`,
+`hubFaceZ`), and the spider spec is bored over this radius. So `solveLegs` runs
+twice — at the floor to learn the length, then at the radius the length asks
+for — and boot asserts the second pass changed neither the leg count nor the
+length by enough to move the radius. Measured, it changes neither (the cone's
+axial numbers do not read the bore); the assert is what makes that a fact the
+build holds rather than one a comment remembers.
+
+The stack itself — `SUB_WIND_TOP`, `SUB_CAGE_Z`, `SUB_PIN_B_Z`, the columns'
+base and top — was four consts 2,400 lines from the spec that needed them. It is
+one function now, `arrestStack(spec)`, read by the derivation and by the build;
+the two literals the column calls carried (planted 0.5 into the plate, 0.2
+proud of the top pinion) live on the law. A stack written twice would have been
+the chain's frame-law defect in a new costume. The finger's arbor, the finger's
+column and the horn assert are the only readers of `ARREST_SPEC.arborR` left.
+
+### The control that earned its keep
+
+Under the four checks, the pose net raises `§38/TODO 8: the alarm's coincidence
+was crossed in ONE tick … alarms will be missed`. On the landed tree that reads
+like this landing's doing. It fires identically, word for word, on unchanged
+`main` under the same checks — which is why the probe prints boot warnings and
+check-time warnings apart, and why it was run on both trees. Not a finding.
+
+### The bar
+
+Local, 3 shards, `--report`: **41/41 gates pass** on the landed tree, boot
+silent, `turning` 0 unwaived / 0 stale with **10 waived** (was 12), 28 wanting
+a follower rest (was 26 — the two columns, now at exactly the target),
+`stockFloor` 49 waived unchanged, `intraUnit` / `assembly` / `inspection` 0
+unwaived, `inspection` 82 contacting pairs — the same 82 a local run of `main`
+reads (the 83 in #437's body was CI's count, and comparing the two was a
+mistake this record does not repeat). Fingerprint 2090690558 unchanged — it is
+per-unit boxes, and a column's radius does not move its unit's box; the §152
+digests move, and CI's digest gate is where that shows.
+
+**The `--report` diff against `main`** (a local `main` run, 41/41, 2142.9 s,
+diffed per check with timing counters stripped): **21 of 28 checks
+byte-identical.** Four moved only in their timing/census counters
+(`clearances`, `expectedContacts`, `sweptOverlap`, and `inspection`, whose
+exact-call count rose by 77 with no row moving). `turning` moved exactly as
+intended — the two column rows out of the over-ceiling set (waived 12 → 10)
+and into `needRest` at 18.0 (26 → 28). `intraUnit`'s two declared rows for the
+side gears seated in their cage (`spiderSideA ⇄ spiderCageWheel` and its
+mirror) measure nearer, 0.1876 → 0.1621: the spider spec is re-solved at the
+column's bore, so the side gears' hub and cone move with it and the seat
+measures a different fit — still a fit, well inside `DECLARED_CONTACT_REACH`.
+A first draft of this sentence blamed the sleeves on the column; the rows
+name the side gears, and the record says what the rows say. `meshIntegrity`'s `zeroArea` report drifted on six
+rows at the 1e-19 level — the arrest unit's re-tessellated revolves — in a
+tier that gates nothing.
+
+One correction to the previous record: #437's body said CI's 42 was "main's 41
+plus `turning`". Locally main plus `turning` is 41; the 42nd is CI's
+`unit digests deterministic across virgin boots`, which does not run locally.
+
