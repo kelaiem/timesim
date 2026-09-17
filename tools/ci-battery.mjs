@@ -256,9 +256,9 @@ const COSTS = {
   'stockFloor': 6,
   // §233 — one swept registry (shared with stockFloor's cost, but measured
   // separately since it is its own call), then a per-mesh axis descent over
-  // 272 revolves. No pose sweep and no BVH. Refresh it like every row with
-  // --report; seeded from the first local run.
-  'turning': 5,
+  // 272 revolves. No pose sweep and no BVH. Measured 6.6 s on the first full
+  // local run, which is the number here; refresh it like every row.
+  'turning': 7,
   // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
   // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no
   // pose sweep. TODO 78's bearing walk adds a handful of Box3.setFromObject

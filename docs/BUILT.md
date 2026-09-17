@@ -25839,3 +25839,22 @@ The probe CALLS `turnedBars` rather than copying it. This repo's recurring
 defect is one law written down twice — the chain's frame law is the worked
 example — and a report that agreed with its gate only by coincidence would be
 worse than no report.
+
+### The bar
+
+Local, 3 shards, `--report`: **41/41 gates pass** (§232's 40 plus `turning`),
+1386.3 s total, 2932.1 s of check time. Boot silent. Fingerprint 4067918685
+across both virgin boots, unmoved by this change — the check reads geometry and
+builds none.
+
+```
+gate PASS  turning: control PASS, 0 unwaived bars over L/D 20 and 0 stale waivers
+           — needRest and ambiguous rows are REPORTS
+           (219 bars, 12 waived (accepted debt), 26 want a follower rest,
+            27 refused as axis-ambiguous)
+```
+
+Cost 6.6 s measured, against `stockFloor`'s 6 — one swept registry and a
+per-mesh axis descent over 272 revolves, no pose sweep and no BVH. The seeded
+`COSTS` row was 5 and is corrected to 7, since a stale cost buys wall clock and
+never a verdict.
