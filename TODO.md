@@ -19366,3 +19366,172 @@ named residue (neither return blade's PRELOAD is a derived constant, so its
 forces are "bounded, not gated") is the reason to expect the answer is
 "compared to" — which would make this the first step of holding that chain the
 way §54 holds the lay shaft's.
+
+## 144. The alarm setting branch still carried the hour after TODO 117 removed its source — CLOSED
+
+**Found by the owner, watching the movement.** Setting the TIME turned the two
+coaxial idlers of the alarm setting train, and the alarm setting arbor with
+them, while the alarm disc and the alarm setting wheel stood still. Nothing
+drives those idlers when the time is being set, and nothing should move them.
+
+**Measured before the fix**, six sim-hours of hour motion with the alarm crown
+untouched and the time crown in:
+
+| member | moves under the hour alone |
+|---|---|
+| Alarm setting idler | **3.3660** |
+| Alarm setting arbor | **9.4248** |
+| Alarm release disc | 0 |
+| Alarm setting wheel | 0 |
+
+Six hours is π of hour rotation, so those are 30/10 and 30/28 of it exactly —
+`ALARM_DISC_TEETH / ALARM_SET_PINION_TEETH` and
+`ALARM_DISC_TEETH / ALARM_SET_I1_TEETH`, the back-drive coefficients, running
+at full strength on an input that no longer exists.
+
+**The cause is a term TODO 117 should have taken with it.** `main.js` carried
+`const _bd = ALARM_BD_SIGN * hourDialA`, read by `alarmRotor`,
+`alarmSetI1Spin` and `alarmSetI2Spin`, and its own comment named the source
+exactly: *"the hour's back-drive THROUGH THE DISC'S FRICTION SEAT"*, over the
+chain *"disc → i1b·i1 → i2 → pinion"*. TODO 117 removed the hour from the disc
+— it carries the SET alone and holds still — so that chain has no hour at its
+head and there is nothing to back-drive. The injection was deleted and the
+consequences were left, which is the same defect the item was about, read
+backwards.
+
+**The fix is deletion, not zeroing.** `_bd` and every term reading it are gone,
+`ALARM_BD_SIGN` is retired with its one reader, and the crown's back-drive
+creep (§29 step 2 — the pulled crown visibly back-turning with the hour) goes
+with its cause: that behaviour is real Memovox behaviour of a movement whose
+disc carries the hour, and this one does not. A term set to 0 would be a number
+with no constraint behind it (rule 1) and would leave the next reader to work
+out whether it meant "no coupling" or "coupling that cancels".
+`alarmCrownCreep` survives as a NAME at a constant 0 because the knob's shown
+angle is a sum of three session accumulators and dropping one silently re-homes
+the knob — it is the seat for an hour that no longer reaches this train.
+
+The whole setting train is CROWN-ONLY now, which is what `alarmSetWheelGroup`
+already was — and that disagreement is how the defect was visible at all.
+
+**Measured after**, the same two legs, in WORLD (`probe-144-branch-still.mjs`,
+8 rows 0 failing):
+
+| unit | under the hour | under the alarm crown |
+|---|---|---|
+| Alarm crown | 0.000000 | 9.854000 |
+| Alarm setting arbor | 0.000000 | 2.000000 |
+| Alarm setting idler | 0.000000 | 0.900969 |
+| Alarm setting wheel | 0.000000 | 3.853813 |
+| Alarm release disc | 0.000000 | 0.866025 |
+| Alarm release reader | 5.027069 | 0.000000 |
+
+**The probe's own first draft would have passed the defect**, and that is worth
+keeping. It read each unit's CHILDREN's local rotations and reported the whole
+chain still — including under the alarm crown, where it plainly is not. Two of
+these units carry their angle on the unit's OWN object (`alarmDiscGroup`,
+`alarmSetWheelGroup`) and the reader carries its orbit on an ANCESTOR
+(`hourWheelGroup`), so a local-rotation reading structurally cannot see the
+motion being judged. Every row is world matrices now, and the controls are what
+make the zeros mean anything: the same five members, measured the same way,
+move under the crown.
+
+### Why no gate caught it, and the gate that does now
+
+The battery measures geometry, not causality; nothing in it measures whether a
+member that moves has anything moving it. `probe-mesh-transmission` DID see it
+— `alarm setting setting wheel ⇄ idler 1` under the hour read a still driver
+against a driven −9.617 — but filed it as `driver STILL … not transmitting`,
+REPORTED and never gated. TODO 117 predicted precisely this and left it: *"the
+probe's present 'driver STILL … not transmitting' rows become the right answer,
+and the check needs the per-mesh declaration of WHICH INPUTS drive it before it
+can tell the two apart."* The row was in the payload read when 117's transmits
+waiver was deleted, and `0 unwaived ratio mismatches` was taken as the whole
+answer.
+
+**A still driver is two different answers, and conflating them is what hid
+this.** The check now splits them without needing that declaration table:
+
+- driver still AND driven still → `idle`, "this input does not drive this
+  chain". Correct under TODO 117's topology for every alarm row under the hour,
+  and no longer counted as debt at all.
+- driver still AND driven MOVING → **ORPHAN**, gated in every chain. The driven
+  member is turned by something that is not this mesh, and when no declared
+  mesh is driving it either, by nothing at all.
+
+**The gate was seen to fire.** Re-introducing the back-drive term and re-running
+it reports two ORPHAN rows and exits non-zero, and `probe-144-branch-still`
+fails 2 of 8. Worth noting WHERE: the orphans are at the branch's HEAD (disc rim
+→ i1b, setting wheel → i1), while the downstream pairs still read their correct
+ratios, because both members there carry the fabricated term consistently. The
+test finds where motion ENTERS a chain with no source, which is the one place
+it can be caught.
+
+### It paid a phase debt too, and that narrows TODO 117's residue
+
+The battery came back 39/40 on the fix, and the failure was the good kind:
+`meshPhase` reported a STALE WAIVER. `alarm setting setting wheel ⇄ idler 1`
+had been waived against TODO 117 since §194 handed it over, and it now reads
+**0.059%** off anti-phase against the 2% bar. It read **37.44%** when item 116's
+phase instrument first found it.
+
+Nothing was re-clocked. That waiver's own comment had the diagnosis exactly
+right and did not draw the conclusion: *"measured driver-still under the HOUR
+(0 against the idler's −3.366) — the setting wheel has no back-drive term while
+the idler it meshes carries `_bd`."* Two members of one mesh sitting in
+different frames cannot be anti-phased over a net that moves one of them, so
+the 37.44% was never a phasing error to fix — it was this defect, measured from
+a third direction. Remove `_bd` and the pair is one frame again and the phase
+closes on its own.
+
+So TODO 117's remaining phase debt is ONE row, not two: `alarm setting: disc
+rim ⇄ idler 1b`, still 10% off and still waived. That one is a genuine clocking
+question about the branch's build index, which is what 117's residue narrowed
+to — and now it is the whole of it.
+
+**Three debts on one term.** `transmits`' waiver went stale when TODO 117 took
+the hour out of the disc; `meshPhase`'s went stale when TODO 144 took the term
+that hour used to feed; and the motion itself stopped. All three were the same
+fact seen from different instruments, and each staleness gate reported it
+without being asked — which is the covenant those gates exist for.
+
+### The gate moved into the battery, and it was seen to fire
+
+`probe-mesh-transmission.mjs` is hand-run, so a recurrence would still have
+been invisible to CI. The same split is in §194's `transmits` check now, which
+runs on every PR: `ORPHAN` is a violation, waivable by the same table as a
+ratio mismatch, and both-still stays REPORTED. The driven side is judged on its
+PATH rather than its net, for the reason the driver already was — a member that
+swings out and back has a net of zero and has still moved, and a still driver
+cannot account for either half. Measured, all eight still rows read `bPath` 0,
+so the stronger test cost nothing.
+
+Proved by mutation, the `probe-direction-guards` discipline: re-introducing the
+back-drive term and running `transmits` gives **2 ORPHAN violations** —
+`setting wheel ⇄ idler 1` and `disc rim ⇄ idler 1b`, both `aSpin 0` against
+`bSpin −9.617138` — and 0 on the fix. CLAUDE.md's rule 4 now carries the check,
+which it never did: §194 shipped `transmits` and the standing bar was never
+updated to name it.
+
+**And the mutation test lied once first.** Its first run reported `0 violations`
+AND `0 reported`, which reads like a gate that does not fire. It was polling
+`I.status()` with no argument and testing a `.done` field that does not exist,
+so it timed out into an empty object and printed zeros off it. A clean result
+with zero rows in EVERY bucket is the tell — a real pass has reported rows —
+and it is the instruments skill's own catalogue entry: the probe measured
+nothing and said so in the shape of a pass.
+
+**Residue.** The orphan rule is local — it asks whether THIS mesh's driver
+moved, not whether any declared driver of that member did. A member legitimately
+driven from another mesh under the same input would read ORPHAN on the idle one.
+Nothing in the movement does that today (measured: the rule is silent on every
+chain at every input), but the general form wants the per-mesh input declaration
+TODO 117 named, and §194's `transmits` gate wants the same thing. Filed there
+rather than duplicated here.
+
+And the deeper residue is unchanged and now doubly visible: **the disc holds
+still while its friction hub is still on the hour tube.** If that hub grips, the
+hour reaches the disc and this whole branch should carry it again; if it does
+not, the disc needs its own seat or detent. TODO 117's open construction
+question decides which, and this item is written on the assumption its decided
+topology holds.
+

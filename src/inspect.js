@@ -8704,11 +8704,17 @@ export const MESH_PHASE_WAIVERS = {
   // pair — that axis is the PULL, not the turn — and both rows said so for as
   // long as they existed; the winding pair's real second driver is the spring
   // running DOWN through the fusee, which is `reserve`.
-  // NOT flat and NOT 132's: measured driver-still under the HOUR (0 against the
-  // idler's -3.366) — the setting wheel has no back-drive term while the idler
-  // it meshes carries `_bd`. That is TODO 117's second open row, already in its
-  // table, and 132 was wrong to call it unchased.
-  'alarm setting setting wheel ⇄ idler 1': 'TODO 117',
+  // `alarm setting setting wheel ⇄ idler 1` IS GONE — TODO 144 paid it. Its
+  // diagnosis here was exact and is worth keeping as the record: "measured
+  // driver-still under the HOUR (0 against the idler's −3.366) — the setting
+  // wheel has no back-drive term while the idler it meshes carries `_bd`".
+  // That asymmetry WAS the defect, not a phasing error: two members of one
+  // mesh in different frames cannot be anti-phased over a net that moves one
+  // of them. TODO 117 removed the hour from the disc, which left `_bd` with no
+  // source; TODO 144 removed `_bd`, and the row fell from 37.44% off to
+  // **0.059%** against the 2% bar without anything being re-clocked. The
+  // staleness gate is what said so — it failed the battery naming this waiver,
+  // which is the covenant working exactly as §54 and §137 wrote it.
   // `cage wheel ⇄ finger pinion` IS GONE TOO, and it was a third defect again:
   // solved, transmitting, and still 26.880% off over the net at 0.098 spread.
   // The solve was taken in a frame the movement never occupies — `fpSpin`
@@ -9115,6 +9121,38 @@ export function checkTransmits(clock) {
       Object.assign(row, { aSpin: +sw.accA.toFixed(6), bSpin: +sw.accB.toFixed(6),
         aPath: +sw.absA.toFixed(6), bPath: +sw.absB.toFixed(6),
         maxStep: +sw.worst.toFixed(4), span: sw.span, hand: sw.hand });
+      // TODO 144 — A STILL DRIVER IS TWO DIFFERENT ANSWERS, and lumping them
+      // is what let a real defect run for a whole landing. Both still means
+      // this input does not reach this chain, which is the CORRECT reading
+      // wherever a chain has one driver (every alarm setting row under the
+      // hour, since TODO 117 made that train crown-only). A still driver with
+      // a MOVING follower is the other thing entirely: that member is being
+      // turned by something which is not this mesh, and when no declared mesh
+      // is driving it either, by nothing at all. TODO 144 was exactly that row
+      // — `setting wheel ⇄ idler 1` read aSpin 0 against bSpin −9.617 under
+      // the hour, because the setting train kept a back-drive term after the
+      // disc that fed it stopped carrying the hour — and this check REPORTED
+      // it, so CI passed the movement with a member turning off nothing.
+      //
+      // Gated in every chain, and waivable by the same table as a mismatch:
+      // a legitimate orphan would be a member driven from another mesh under
+      // the same input, which nothing in the movement does today (measured —
+      // all eight still rows read bSpin 0). The general form wants the
+      // per-mesh input declaration §194 and TODO 117 both name; until then
+      // this catches the case that has actually happened.
+      // The driven side is judged on its PATH, not its net, for the same reason
+      // the driver is (`s1.absA` above): a member that swings out and back has
+      // a net of zero and has still moved, and a still driver cannot account
+      // for either half of that. Measured, all eight still rows read bPath 0,
+      // so the stronger test costs nothing and catches the case the net misses.
+      if (sw.still && sw.absB > TRANSMITS_STILL) {
+        row.verdict = 'ORPHAN';
+        row.why = 'driver still while the driven turned — nothing on this mesh is moving it';
+        row.waiver = TRANSMITS_WAIVERS[r.site] || null;
+        (row.waiver ? waived : violations).push(row);
+        per.push(row);
+        continue;
+      }
       if (sw.still) { row.verdict = 'driver still'; reported.push(row); per.push(row); continue; }
       row.got = +sw.got.toFixed(6);
       row.verdict = Math.abs(row.got - wantTeeth) <= TRANSMITS_TOL * Math.abs(wantTeeth) ? 'ok' : 'MISMATCH';
