@@ -7211,7 +7211,14 @@ const SLENDER_EXEMPT_KINDS = new Set(['spring', 'marking']);
 // a corridor is spent, and the one resolution that does not pay for packaging
 // out of P1. None of these numbers is an estimate: re-run the probe.
 export const SLENDER_WAIVERS = {
-  'Alarm link': 'TODO 16',
+  // §232 RETIRED 'Alarm link' (was TODO 16, λ 59.6 on the lay shaft). Not
+  // waived away and not re-scoped — the member was cut. The shaft is a turned
+  // bar now, body 0.2664 between the bushes and necks 0.16 where the cranks
+  // key, and every free length lands on SLENDER_TARGET: λ 27.0 on each span,
+  // λₑ 27.0 on the rod-end neck. §54's covenant is why this deletion is part
+  // of the change rather than a tidy-up afterwards — a waiver naming a unit
+  // with no over-ceiling row is itself a gated failure, so the fix cannot
+  // land without it.
   // λ 85.1, the §29 step-4 tail run. Wants +0.2390 u per side; the alarm
   // setting idler stands 0.2933 away and leaves 0.1433.
   'Alarm release feeler': 'TODO 109',
@@ -9167,6 +9174,8 @@ export function checkTransfers(clock) {
     if (!row.why) problems.malformed.push('no why');
     if (row.envelope && !(row.envelope.name in TRANSFER_ENVELOPES))
       problems.malformed.push(`envelope '${row.envelope?.name}' is not a declared window`);
+    if (row.envelope && row.envelope.rel && !TRANSFER_ENVELOPE_RELS.has(row.envelope.rel))
+      problems.malformed.push(`envelope relation '${row.envelope.rel}' is not one of ${[...TRANSFER_ENVELOPE_RELS].join(', ')}`);
     if (row.unit && !unitNames.has(row.unit)) problems.stale.push(`unit '${row.unit}' not in the scene`);
     else if (row.unit && Array.isArray(row.meshes) && row.meshes.length) {
       const have = meshNamesOf(row.unit);
@@ -9187,8 +9196,10 @@ export function checkTransfers(clock) {
     }
     if (row.envelope && row.envelope.name in TRANSFER_ENVELOPES) {
       const [lo, hi] = TRANSFER_ENVELOPES[row.envelope.name];
-      if (!(row.envelope.value >= lo && row.envelope.value <= hi))
-        problems.envelope = { window: row.envelope.name, lo, hi, value: row.envelope.value };
+      const rel = row.envelope.rel || 'within';
+      const ok = rel === 'covers' ? row.envelope.value >= hi
+        : row.envelope.value >= lo && row.envelope.value <= hi;
+      if (!ok) problems.envelope = { window: row.envelope.name, lo, hi, rel, value: row.envelope.value };
     }
     return problems;
   };
@@ -9228,6 +9239,30 @@ export function checkTransfers(clock) {
   };
 }
 
+// §232 — WHAT A ROW'S FIGURE IS TO ITS WINDOW, because there are two kinds and
+// this check only ever knew one. A declared window like
+// SELECTOR_DETENT_WINDOW_MN states what a DETENT PLAUSIBLY NEEDS (layout.js
+// says so: "a detented selector ring plausibly needs 5-50 mN"), and two very
+// different quantities get measured against it:
+//
+//   'within' (the default, and every row that existed before this) — the row's
+//     figure is a detent's OWN force, so it belongs inside the band. §137's
+//     switch-click torque row is the type: "a miss is a finding against the
+//     click, never a reason to retune the window".
+//   'covers' — the row's figure is what a DRIVER DELIVERS to that detent. A
+//     driver is not a member of the band, it must DOMINATE it: deliver at
+//     least the band's top and it can move any detent the band admits.
+//
+// Holding a driver to 'within' gets the test backwards, and it did. TODO 82
+// measured the arming chain at 1.58 mN and wrote the verdict down — "the
+// transfer is ROD-END-LIMITED and an order of magnitude BELOW the band ... it
+// does not sit inside it at 48 mN ... TODO 16's original verdict, short by one
+// to two orders of magnitude, is restored" — while this check was passing the
+// row for being small. Under 'covers' the shipped tree FAILS, which is the
+// evidence that this is a correction and not a widening: the window is
+// untouched (5-50, inherited, never forkable), and the relation that replaced
+// membership is STRICTER for the geometry that was passing.
+export const TRANSFER_ENVELOPE_RELS = new Set(['within', 'covers']);
 export const STOCK_WAIVERS = {
   'Alarm release feeler': 'TODO 11', 'Alarm disc': 'TODO 11', 'Alarm switch': 'TODO 11',
   'Alarm selector': 'TODO 11', 'Alarm setting wheel': 'TODO 11', 'Alarm link': 'TODO 11',

@@ -25599,3 +25599,101 @@ Four controls, and two of them failed on the first run and were right to:
 Nothing downstream moved: `barOuterAtRest` reads the stem, not the bar's width,
 so `abutS`, `collarS` and `bossD` — §230's chain — are untouched by
 construction.
+
+## §232 — The alarm link's lay shaft is a turned bar, and the arming chain finally drives its ring
+
+**Filed from a sighting, like §229.** The owner could see this rod through the
+dial side and called it thinner than a hair. Measured, it was **0.0934 mm over
+12.65 mm**, sitting 1.2–1.5 u off a dial at z −8.93 — λ **59.6** against a
+ceiling of 30, waived twice (`slenderness` TODO 16, `stockFloor` TODO 11). The
+eye was right, and the reason it was thin turned out to be the interesting part.
+
+### The thin shaft WAS the chain's compliance
+
+Fattening it is not a finish change. This rod is the softest member of the
+arming chain, so its section sets what the chain can deliver to the selector's
+detent:
+
+| | span stiffness | k_eff | delivered |
+|---|---|---|---|
+| shipped 0.1233 | 222 N/m | 106 N/m | **6.68 mN** |
+| §232 body 0.2664 | 4834 N/m | 1125 N/m | **81.02 mN** |
+
+### Why a NECK and not simply a fatter rod
+
+`ALARM_LINK_CRANK_OFF` is §137's `armIn_u` — a **lever arm**. The route that
+looks obvious (fatten the shaft, and let the crank arm ride its surface as its
+own comment demands) moved the arm 0.22 → 0.3075, took the crank's ratio
+2.545 → 1.821, broke §229's registration specs in four places and put the
+series stall at 92.4 mN. All measured, at boot, before that route was
+abandoned.
+
+The neck's radius is **the arm's own inner face**, so `CRANK_OFF` does not
+move and nothing in the force path moves with it. It also makes the sentence
+that has sat beside `ALARM_LINK_CRANK_T` for sections true for the first time —
+*"the cranks sit on the NECKS"* — when there were no necks, and at 0.1233 the
+arm floated **0.0367 clear of its own arbor**.
+
+### The chain, with no fixed point in it
+
+    NECK_R   = CRANK_OFF − CRANK_T/2                        = 0.16
+    STUB_L   = SLENDER_TARGET · 2·NECK_R / K                = 3.4288   (λₑ 27.000)
+    OVERHANG = STUB_L − LAP
+    SHAFT_R  = (chord − t1 − OVERHANG) / (4·SLENDER_TARGET)  = 0.2664   (λ  27.000)
+
+Three meshes, §173's jumper anatomy, lapped a shoulder's depth so they are one
+connected body. **Not one stepped `LatheGeometry`**: `checkSlenderness` reads a
+mesh's own box, so a stepped mesh would show it the widest diameter and judge
+the necks on metal that is not there.
+
+### The envelope was asking the wrong question
+
+`SELECTOR_DETENT_WINDOW_MN` states what a detent plausibly **needs**. Two
+different quantities were being measured against it with one relation, so §137
+gains a declared one — `within` (a detent's own force belongs inside the band;
+the default, and every pre-existing row) and `covers` (a **driver** must
+dominate it: deliver the band's top and it moves any detent the band admits).
+
+Held to membership, the check was passing this chain **for being too weak to
+drive its own ring** — the defect TODO 82 had measured and written down while
+the gate read green. The window is untouched (5–50, inherited, never forkable);
+only the relation changed, and it is **stricter**: under `covers` the shipped
+tree FAILS. That is the evidence this is a correction and not a widening. TODO
+82's own precondition — *do not re-derive the section before TODO 79's stations
+are re-solved* — was satisfied by §202.
+
+### Three instruments had to learn the part before they could judge it
+
+- **`probe-231-lever-width`** gained a RADIAL mode (a round bar has no single
+  width) and a `follows` table. Its ground-as-obstacle readings, in order: the
+  hanger post at 0.0289, the rod at 0.1445. Locating the second settled it —
+  the rod's nearest approach to the axis is 0.2635 at shaft-local s = −16.693,
+  **exactly the crank station**, and nowhere along the 33-unit run. The real
+  wall is `Dial / alarmSelTab` and the approach is oblique: −0.077 of gap per
+  unit of diameter where head-on would be −0.5.
+- **`probe-82-alarm-stall`** read the body alone, and the body ENDS at its
+  outermost bearings — so the end segments collapsed to ~0 and `kBend` returned
+  **9.5e17 N/m**, a member so stiff it vanishes from a series sum. That is not
+  a rigid shaft, it is a missing one, and it flattered the stall by 88 mN.
+- **The hanger's foot** was `SHAFT_Z + 0.15` — one `CLEAR_MARGIN` above an
+  AXIS, which is not a station. `intraUnit` caught it in five rows. It derives
+  from the bush's outer surface now, and that also retires the approach the
+  corridor scan had misread.
+
+### What moved
+
+| | before | after |
+|---|---|---|
+| section | 0.0934 mm | **0.2008 mm** (2.15×) |
+| λ | 59.6 | **27.000** span, **27.000** rod-end neck |
+| delivered force | 6.68 mN | **81.02 mN** (band top 50) |
+| drive-end stiffness | 2807 N/m | 7958 N/m |
+| `slenderness` waiver | TODO 16 | **retired — the member was cut** |
+
+Three stale claims were corrected where they sat, all honest when written: that
+§54's ceiling is met by shortening spans rather than fattening members (§226
+ruled legibility a stated design value); that the governing free length was the
+rod-end overhang at λₑ 127.6 (§202's third bush made a SPAN govern, so splitting
+it was exactly what would move λ); and that the crank offset "became derived
+rather than re-tuned" (it stayed the literal 0.22 while the radius moved under
+it).

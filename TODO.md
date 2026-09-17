@@ -9094,6 +9094,27 @@ cite this item — and never compare its rows across partitions.
 
 ## 82. CLOSED — the alarm transfer's stall was prose, and its stroke was a constant the file had deleted
 
+> **§232 — THE SHORTFALL THIS ITEM MEASURED IS NOW CLOSED TOO.** Item 82 was
+> closed as a MEASUREMENT (the stall became a probe instead of a paragraph),
+> and it left its headline finding open behind it: *"the transfer is
+> ROD-END-LIMITED and an order of magnitude below the band ... TODO 16's
+> original verdict, short by one to two orders of magnitude, is restored."*
+> That is no longer true of the movement. The lay shaft is a turned bar — body
+> 0.2664 between the bushes, necks 0.16 where the cranks key — and the
+> compliance the old 0.1233 rod contributed is gone: **stall 6.68 → 81.02 mN**,
+> past the 50 mN top of the detent band, measured by this item's own probe.
+>
+> Two things §232 needed from this item and found here. Its PRECONDITION —
+> *"do not re-derive [the section] against these numbers before TODO 79's
+> stations are re-solved"* — was satisfied by §202, which re-solved them and
+> closed TODO 79. And its verdict is what identified the GATE as wrong rather
+> than the geometry: §137 held the delivered force to membership of the
+> 5–50 mN window, so it passed this chain for being too weak to drive its own
+> ring, exactly while this item said so in prose. §137 has a declared envelope
+> relation now (`within` for a detent's own force, `covers` for a driver's),
+> and the window itself is untouched.
+
+
 The pusher→ring force budget has been written down four times — TODO 16's
 **1.5 mN**, TODO 63's **1.6 mN**, §137 Landing 2's **48 mN**, TODO 79's
 **3.3 mN** — and never once computed. It lived as one prose paragraph in
