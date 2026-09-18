@@ -19696,10 +19696,13 @@ so the honest figure is **0.364**. The two motion-works wheels are 0.8 thick,
   margin by the same derivation they always had, green before only by the
   luck of which floats the old `0.8` and `1.5` literals produced. **A derived
   margin IS an exact tie**, and a tie is not a violation: the two floor gates
-  (`clearances`, `expectedContacts`) now compare with `FLOOR_TIE_EPS` 1e-9,
-  as every boot assert in the movement already does — seven orders under
-  the smallest fit the file names, so nothing a cut could produce is greened
-  by it. The boot asserts' `- 1e-9` and the gates' were two answers to one
+  (`clearances`, `expectedContacts`) now compare with `FLOOR_TIE_EPS`. Its
+  first value was the boot asserts' 1e-9, and the beak refused it again at
+  0.15 − 3.4e-8 — a mesh is not a double: vertices are Float32, one ulp at
+  this movement's coordinates is 2⁻²³·64 ≈ 7.6e-6, and two faces can each be
+  one off. The tolerance is that, derived (1.5e-5), three orders under the
+  smallest fit the file names, so nothing a cut could produce is greened by
+  it. The boot asserts' `- 1e-9` and the gates' were two answers to one
   question, and the gates had the fragile one.
 
 `window.__clock.alarmSetHold` publishes the drag, the requirement and the

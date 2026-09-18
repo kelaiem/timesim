@@ -3664,12 +3664,16 @@ const SUPPORT_TOL = 0.5; // a mounted part touches (0) or is set into its fixtur
 // did that first; then, with the motion-works stack re-solved, the star under
 // the hour wheel and the jumper's beak — both exactly one margin by the same
 // derivation they always had, and both green before only by the luck of which
-// floats the old literals produced. The boot asserts already compare with
-// `- 1e-9` for exactly this reason; the two floor gates now do the same. A
-// margin genuinely spent reads 0.14 or 0.10, never 0.149999999999; 1e-9 is
-// seven orders under the smallest fit this file names (0.05) and cannot green
-// a row that is short by anything a cut could produce.
-const FLOOR_TIE_EPS = 1e-9;
+// floats the old literals produced. The boot asserts compare with `- 1e-9`
+// for this reason, and that was the first value here — and it was the wrong
+// SIZE, because a mesh is not a double: vertices are stored as Float32, so a
+// face placed at 3.18023450 lands at 3.1802345 and the beak read 0.15 − 3.4e-8.
+// One Float32 ulp at the coordinates this movement uses (under 64 u) is
+// 2⁻²³·64 ≈ 7.6e-6, and two faces can each be one off, so the tie tolerance is
+// that, derived. A margin genuinely spent reads 0.14 or 0.10, never 0.14998;
+// 1.5e-5 is three orders under the smallest fit this file names (0.05) and
+// cannot green a row that is short by anything a cut could produce.
+const FLOOR_TIE_EPS = 2 * Math.pow(2, -23) * 64;   // two Float32 vertices, one ulp each, at |coordinate| < 64 u
 
 function resolveNode(clock, allUnits, name) {
   const unit = allUnits.find((u) => u.name === name);
