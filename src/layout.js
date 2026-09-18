@@ -630,6 +630,18 @@ export const SPRING_SIGMA_Y_PA = 800e6;
 // Shear yield by von Mises — what a COIL is limited by, where a blade is
 // limited by SPRING_SIGMA_Y_PA directly. One yield, two loadings.
 export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
+// §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
+// in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
+// on the winder and its rate is not held — the spring-design handbooks' 4–12.
+// It exists because the pusher's return coil rides its stem: the stem's stock
+// sets the coil, the coil sets the WIRE, and a stem cut to stem stock
+// (STEM_STOCK_R_U) took the 0.05 mm wire's index from 6.6 to 15.8 without a
+// number changing hands. The wire is solved to the TARGET (0.9 · max, on
+// TURN_LD_TARGET's reasoning — never to the boundary a check compares
+// against) and the coil is asserted inside the envelope at boot.
+export const SPRING_INDEX_MIN = 4;
+export const SPRING_INDEX_MAX = 12;
+export const SPRING_INDEX_TARGET = SPRING_INDEX_MAX * 0.9;   // 10.8
 // End-loaded cantilever stiffness in N/m from section width a, thickness c
 // (bending direction) and free length L, all in MODEL UNITS — the 3EI/L³ that
 // TODO 16 and the §54 report both already compute longhand. I = a·c³/12.
@@ -1339,6 +1351,16 @@ export const sawSeatOffset = (spec, sense) => (sense < 0 ? spec.backlashFrac * s
 //     it to the setting-wheel station and the yoke's tracked band, which
 //     is the whole P3 cost of the split, paid in position space.
 export const STEM_R = 0.45;           // the stem's shaft radius (main.js builds to this)
+// §234 — STEM STOCK, the floor a stem is CUT from (TODO 145 group B). Real
+// stems are threaded to the tap series — tap 7 is ⌀0.70 mm, tap 8 ⌀0.80,
+// 9 ⌀0.90, 10 ⌀1.00 — and tap 7 is the smallest a stem is cut to; the thread
+// is the stem's thinnest station, so a shaft under it is not stem stock at
+// all. Declared as a RADIUS in units because every stem here is built as a
+// cylinder of one, and only the floor is declared because only the floor
+// has a consumer: the alarm pusher (main.js, ALARM_PUSH_STEM_R) is cut to it;
+// the other group-B bars land one at a time against the same number.
+export const STEM_STOCK_MIN_MM = 0.70;
+export const STEM_STOCK_R_U = STEM_STOCK_MIN_MM / 2 / UNIT_MM;   // 0.924 u
 // TODO 136 — THE TWO STEM MEMBERS ARE CONES NOW, so their stations are planes of
 // a cut, not halves of a declared thickness. Both keyless corners are Σ = 90°
 // bevels (crown wheel ⇄ winding pinion, setting wheel ⇄ clutch rim), and a

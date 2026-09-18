@@ -25974,3 +25974,146 @@ One correction to the previous record: #437's body said CI's 42 was "main's 41
 plus `turning`". Locally main plus `turning` is 41; the 42nd is CI's
 `unit digests deterministic across virgin boots`, which does not run locally.
 
+### Landing 2, first member — the stem stock declared and the alarm pusher cut from it
+
+**Still PARTIAL.** Landing 2 is group B, eight bars that cross the movement or
+reach the case band, and the entry's rule is one member at a time with the
+first refusal stopping the spend. The first member landed, and what it found on
+the way was not about the stem.
+
+    STEM_STOCK_R_U        new, layout.js     tap 7 = ⌀0.70 mm -> r 0.9236 u (the floor only)
+    ALARM_PUSH_STEM_R     0.32 -> 0.9236 u   a bare literal -> the stock floor
+    alarmPusherStem+Cap   ⌀ 0.243 -> 0.700 mm, 9.86 mm long, L/D 40.7 -> 14.1 (needRest)
+    TURN_WAIVERS          10 -> 9
+    Z_GONG                6.054 -> 4.847     2 · Δr through the guide ring; head owner unchanged
+    BACK_ENVELOPE NBIN    60 -> 352          CASE_R_OUT / CLEAR_MARGIN, bins 0.88 -> 0.15 u
+    glass step rStep      38.854 -> 38.834   the one case number the finer bins move
+    skirt bottom          10.23 unchanged
+    return coil wire      0.050 -> 0.075 mm   solved to SPRING_INDEX_TARGET (new, layout.js): C 6.6 -> 10.8
+    return coil           32 -> 8 coils, k 52.1 -> 71.8 N/m, 62.9 -> 83.1 mN at full press
+    stem bearing decl.    guide station read off the boss (was the retired literal plateR − 1.2)
+
+**The stock.** Real stems are threaded to the tap series — tap 7 is ⌀0.70 mm,
+8 is 0.80, 9 is 0.90, 10 is 1.00 — and tap 7 is the smallest a stem is cut to.
+The thread is the stem's thinnest station, so a shaft under it is not stem
+stock. `STEM_STOCK_R_U` sits beside `STEM_R` in `layout.js`, a radius in units
+on `PIVOT_MIN_U`'s pattern, and only the floor is declared: a ceiling with no
+consumer would be a knob. Two constraints bear on the pusher's radius and the
+stock is the larger — the turning target asks bar / (2 · TURN_LD_TARGET) =
+0.723 u of the 26.0 u stem-and-cap bar — so the stem reads the stock, and the
+target is HELD where the bar's length is known, at the cap's build, as a boot
+assert with the achieved and required numbers. Stock governs at L/D 14.1; the
+assert is what says so if the stem ever lengthens past 33 u.
+
+**What it costs is the pusher's own z, as the entry predicted.** The guide ring
+is bored over the stem, the axis stands lower by the ring's growth and the gong
+band's ceiling follows the stem's underside, so the ring drops exactly 2 · Δr =
+1.21 u. Read at the new radius: the hammer head's height is still owned by the
+impedance match (μ 1.20), the annulus floor is the clamp head's as before, and
+the skirt's bottom is 10.23 as before. The entry's P3 question — does the
+dropped band fit — was answered yes by the sweeps (`stockFloor`, `intraUnit`,
+`assembly`, `inspection` all 0 unwaived on the landed tree).
+
+**But every bracket from r 0.50 upward booted with a warning, and it named the
+wrong part.** §198's skirt tripwire read "the caseback skirt's floor is governed
+by Alarm hammer at 10.582" at 0.50, 0.60, 0.72 and 0.92 alike, with the same
+number each time. The hammer had not moved in z at all: its post tops 10.582 at
+r 0.32 too. What had moved was its RADIUS, by 0.02 u. A lower ring is a shorter
+gong block, a shorter block needs less radius for the same root stiffness,
+`GONG_R = R_ANNULUS_OUT − GONG_POST_R` grows, the strike geometry follows it
+and the hammer post's outer edge went from 47.48 to 47.50 at r 0.50 (47.54 at
+the landed radius) — across the back envelope's bin wall at exactly r 47.50
+(bin 54 of 60). The skirt's inner wall is
+at 47.95; the post stands 0.45 u INSIDE it and never under it. But a reader of
+the envelope takes every bin that overlaps its band, and a 0.88 u bin that the
+post's edge has entered by 0.005 u carries the post's whole height into the
+skirt band: the skirt bottom read 10.73, the whole case back thickened 0.50 u
+(`zMidBack` 12.08 → 12.58), and the assert that exists to keep the ring from
+paying for case thickness fired at the case paying for a bin. On unchanged
+`main` that edge is 0.02 u from the wall.
+
+**The fix is the envelope's resolution, derived.** `NBIN = 60` was a literal
+with no constraint. The constraint is the reader's: metal standing up to one
+bin width outside a band can govern it, and `CLEAR_MARGIN` is the distance at
+which metal is clear, so a bin must be no wider than the one margin or the
+envelope can be governed by metal that is clear of the band. `NBIN =
+Math.ceil(CASE_R_OUT / CLEAR_MARGIN)` = 352 bins of 0.150 u. Measured on the
+SHIPPED geometry before the stem was touched, the refinement moves one case
+number — the glass step's radius, 38.854 → 38.834, its wall standing 0.020 u
+nearer the metal it clears by the same margin — and nothing else: `envMaxAll`,
+`zStepUnder`, `zMidBack` and the skirt bottom are byte-identical. At the new
+stem the post's bin (317, r 47.53–47.68) and the skirt band's first bin (319,
+from 47.83) no longer touch. Both CI acceptances that read the envelope pass on
+the landed tree: `probe-back-envelope` (§187 GATE PASS, GLASS PASS, both
+controls) and `probe-187-casing-path` (exit 0, the bore wall seen). The
+probe's own swept histogram keeps its 60 bins over its own span; the gate
+compares in the declaration's bins, so it followed the change with no edit.
+
+**The first battery run failed, on the stem, and the failure was a copy.**
+`slenderness` read "a declared bearing with no mesh at it" at station −3.47 of
+the pusher stem. §202 declared the stem's three bearings — abutment, guide,
+case liner — and wrote the guide's station as `(plateR − 1.2) − baseS`. That
+is the literal §230 retired from the boss's own build ("could not have
+followed it, which is what made it a bug in waiting"), still standing in the
+declaration as a second copy of the station. It landed inside the boss's box
+on `main` because nothing had moved since. The fatter stem moved the abutment
+outboard by Δr, the return collar with it and the boss with the collar, and
+the copy pointed at air. The declaration reads the boss's built position now,
+projected on the press axis exactly as the stem's own centre is — one source,
+the chain's frame-law rule applied to a bearing table.
+
+**And the return coil had quietly stopped being a spring anyone winds.** The
+coil rides the stem (`coilR = stem + clearance + wireR`), so the stem's stock
+set the coil and the coil's index D/d went from 6.6 to 15.8 on the same
+0.05 mm wire, with the coil count solved from stress falling 32 → 7 and the
+rate 52 → 17.6 N/m. The block's own comment read "near enough at C ≈ 6.6".
+Compression springs are wound at an index of 4 to 12; over that the coil
+tangles on the winder and its rate is not held. `SPRING_INDEX_MIN`, `_MAX`
+and `_TARGET` (4, 12, 0.9 · 12 = 10.8 — TURN_LD_TARGET's reasoning) are
+declared in `layout.js` beside the spring steel, and the wire is SOLVED to the
+target rather than taken from the stock table: `wireR = (stem + clear) /
+(C_target − 1)`, the stock floor standing under it. At the shipped stem that
+is 0.075 mm wire on a 0.81 mm coil, C 10.8, 8 coils, k 71.8 N/m, 83 mN at full
+press against 62.9 on `main` — a firmer return, from a wire a coiler would
+choose. The coil is asserted inside the envelope at boot, and its headroom
+under the three-quarter plate — with the guide ring and the coil both riding
+the stem it reduces to wireR ≤ the guide's tube — is held with the numbers
+rather than remembered as "0.76 above the press axis", which it no longer is.
+
+The order of work this landing followed is the one CLAUDE.md asks for: the
+member was cut to its stock first, the corridor hunted at P3 with the section
+held fixed, and the P3 conflict turned out to be in the INSTRUMENT's position
+space — a bin wall — which is where it was resolved. The two P1 findings were
+inside the group, found by the battery and by reading the payload rather than
+the PASS column, and fixed in the group.
+
+### The bar, first member
+
+Local, 3 shards, `--report`: **41/41 gates pass** (2305 s), boot silent,
+`turning` 0 unwaived / 0 stale with **9 waived** (was 10), 28 `needRest` (the
+pusher bar in, the liner-and-collar bar out — the collar is a disc at the new
+faces and is refused as axis-ambiguous instead), `slenderness` 0 unsupported
+declarations (the first run's one failure, fixed above), `stockFloor` 49
+waived unchanged (the return coil's wire is 0.075 mm now and still under the
+0.12 floor, still TODO 11's), `intraUnit` / `assembly` / `inspection` 0
+unwaived, `inspection` 82 contacting pairs. Fingerprint 2927961671 unchanged.
+`probe-back-envelope` GATE PASS + GLASS PASS and `probe-187-casing-path`
+exit 0 on the landed tree, both controls silent. The §38/TODO 8 check-time
+warning fires as on `main` (Landing 1's control).
+
+**The `--report` diff against Landing 1's landed tree** (the base, timing
+counters stripped): **18 of 28 checks byte-identical.** `turning` moved as
+intended. `stockFloor`'s two waived pusher rows moved in place only (the guide
+torus's ring radius 0.49 → 1.09, the wire 0.050 → 0.075 mm). `intraUnit`'s
+two declared fit rows on the stem — abutment 0.0477 → 0.0471, guide 0.0449 →
+0.0406 — are still fits at `PIVOT_BORE_CLEAR`. `meshIntegrity`'s census
+reads the coil at 1452 triangles (8 coils, was 3852 for 32). Four checks moved
+in reports only, and every one of them is the strike group reading the ring
+1.21 u lower: `transfers`' lifting-lever load 0.04249 → 0.04265 mN (the fall
+law's implied hammer-spring rate, +0.4%, a longer crank), `inspection`'s one
+EXPECTED row `Alarm hammer ⇄ Alarm lifting lever` listing more contacting
+poses along the strike axis, `axisEntry`'s leak report (lever 1.652 → 1.640,
+hammer 1.408 → 1.412), and `sweptOverlap`'s REFUTED tier re-measuring the
+hammer's refined gaps to the case (0.457 → 0.400, still refuted) and the
+plate. Three checks moved in timing counters alone.
+
