@@ -19992,23 +19992,30 @@ longer than the tube a real case needs.
 > already derives from the collar radius), which is a derived cascade rather
 > than a wall, but it is part of the price.
 >
-> **So step 4 is a CORNER REDESIGN or a LAYOUT MOVE, and both are the owner's
-> call.** Two honest resolutions, the same shape as step 5's:
+> **So step 4 is a CORNER REDESIGN — the owner's call, taken 2026-09-18 after
+> both resolutions were measured.** The two that were put up:
 >
-> - **Grow the corner.** Re-cut both bevels at ≥17 teeth with the real bore,
+> - **Grow the corner. CHOSEN.** Re-cut both bevels at ≥17 teeth with the real bore,
 >   re-cut the winding climb contrate against the new stem bevel, move the
 >   setting arbor's bearing cock, and re-derive the collar and the lifter
 >   station. That is three mechanisms for one bar.
-> - **Move the corner outboard**, which is position space and is what the
->   priority order prefers. The stem is long because the corner is DEEP: it is
->   cut from `ALARM_CD` out to the case, so the corner's radius and the stem's
->   length trade one for one. Measured: at stem stock the target wants the bar
->   ≤ 33.2496 u, so the stem ≤ 29.4063 and the corner moves **13.9486 u
->   outboard, from r 15.4007 to r 29.3493** — against a plate rim at r 41.1557
->   and the stem's own bush at 39.1557, so there is room in plan. The whole
->   setting corner travels with it (arbor, disc bevel, cock, the setting train
->   behind it, the lifter's station), which is a layout solve of the §13/§22/§33
->   kind and not a section change.
+> - **Move the corner outboard** — position space, which the priority order
+>   prefers. The stem is long because the corner is DEEP: it is cut from
+>   `ALARM_CD` out to the case, so the corner's radius and the stem's length
+>   trade one for one, and at stem stock the target wants the corner at
+>   r 29.3493 against r 15.4007 today. **MEASURED AND REFUSED AS SCOPED**
+>   (`tools/probe-234-corner-move.mjs`): the plate rim has room at that radius
+>   and the plate rim is not the binding constraint. `ALARM_CD` is
+>   `solveKeyless`'s own output, and moving it drags the setting arbor out with
+>   it at `ALARM_CD + CROWN_PULL_DIST` while idler 1 stays put — so the dogleg's
+>   reach grows while its gearing does not. The movement says so itself at every
+>   candidate: **red at 18** (i2 fouls the winding climb by 1.53, and §94 tier B's
+>   interior bound reports no bearing clears every wall), **out of reach at 19.9**
+>   (i2 37 t needs ≥ 38), **no route at any bearing from 22**, and at the 29.35
+>   the target asks for, i2 would need **69 t against 37**. The move must pass a
+>   wall 4.5 u out to reach a target 14 u out. It survives only as a move PLUS a
+>   setting-train re-gear PLUS a corridor re-route, which is strictly larger than
+>   growing the corner, not smaller.
 >
 > Nothing was cut. The two waivers stand, reasons rewritten to say which of the
 > two resolutions each is waiting on.

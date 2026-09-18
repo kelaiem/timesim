@@ -26229,19 +26229,36 @@ lifter head's z follows it, which is a derived cascade rather than a wall
 (`ALARM_LIFT_HEAD_TOP` already reads the collar radius), but it is part of the
 price.
 
-**So the entry's claim is refused, and the decision is the owner's.** Step 4 is
-either a CORNER REDESIGN — both bevels re-cut at ≥17 teeth, the winding climb
-re-cut against the new stem bevel, the arbor's bearing cock moved, the collar
-and lifter station re-derived, three mechanisms for one bar — or a LAYOUT MOVE,
-which is the currency the priority order prefers. The stem is long because the
-corner is DEEP: it is cut from `ALARM_CD` out to the case, so the corner's
-radius and the stem's length trade one for one. Measured, at stem stock the
-target wants the bar ≤ 33.2496 u, so the stem ≤ 29.4063 and the corner moves
-13.9486 u outboard, r 15.4007 → r 29.3493, against a plate rim at r 41.1557 and
-the stem's own bush at 39.1557 — there is room in plan, and the whole setting
-corner travels with it. That is a §13/§22/§33 layout solve, filed rather than
-absorbed, which is what P3 says to do when no arrangement exists without
-spending P0–P2.
+**So the entry's claim is refused.** Step 4 is a CORNER REDESIGN — both bevels
+re-cut at ≥17 teeth, the winding climb re-cut against the new stem bevel, the
+arbor's bearing cock moved, the collar and lifter station re-derived, three
+mechanisms for one bar.
+
+**The layout move was offered beside it and does not survive measurement.**
+The stem is long because the corner is DEEP — it is cut from `ALARM_CD` out to
+the case, so the corner's radius and the stem's length trade one for one, and
+at stem stock the target wants the corner at r 29.3493 against 15.4007 today.
+The plate rim has room there, and the plate rim is not the binding constraint:
+`ALARM_CD` is `solveKeyless`'s own output, and moving it carries the setting
+arbor out at `ALARM_CD + CROWN_PULL_DIST` while idler 1 stays where it is, so
+the setting dogleg's reach grows while its gearing does not.
+`tools/probe-234-corner-move.mjs` patches that one declaration on scratch trees
+and lets the SHIPPED asserts speak at each candidate:
+
+    ALARM_CD   stem span   L/D at stem stock   what the movement said
+    15.4007     43.3548          25.6          silent (the control)
+    18.0000     40.7556          24.1          i2 fouls the winding climb by 1.53; no bearing clears every wall
+    19.9000     38.8556          23.1          i2 37 t needs ≥ 38 — no route at the built bearing
+    25.6500     33.1056          20.0          the dogleg closes at NO bearing; needs ≥ 57 t
+    29.3500     29.4056          18.0          needs ≥ 69 t
+
+The move has to pass a wall 4.5 u out to reach a target 14 u out, and even the
+CEILING rather than the target wants 21.8 — still past it. So it survives only
+as a move PLUS a setting-train re-gear PLUS a corridor re-route, which is
+strictly larger than growing the corner rather than smaller. **The instrument's
+middle control is what makes the substitution legal**: a tree patched with the
+solve's own answer must reproduce the unpatched tree exactly, warning count and
+stem span both, or the sweep is measuring a different watch. It does.
 
 **Nothing was cut.** The two waivers stand with their reasons rewritten to name
 which resolution each is waiting on, and the group-B comment no longer states a
