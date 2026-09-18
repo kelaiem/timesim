@@ -62,6 +62,7 @@ import {
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
+  MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   eulerCriticalLoad_N,              // §231: the one Euler law, read by §137's bent link and the pusher's reach bar alike
   ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
@@ -12418,20 +12419,62 @@ const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    //
 // + 0.1 — which is exactly why the tube may pass through that z band and may
 // not pass through the two parts on the offset stud.
 //
-// So the chain now lands on the HOUR wheel, one margin plus its own bevelled
-// half-thickness below the disc body, and the minute wheel hangs 1.5 behind
-// it — that 1.5 still the jumper star's slice, which simply changes sides.
-// Every star/lever/stud z derives from the pair and follows.
-const MW_Z2 = ALARM_DISC_BOT - CLEAR_MARGIN - (0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22)); // hour wheel + minute pinion — DIAL-most
-const MW_Z1 = MW_Z2 - 1.5;   // minute wheel, in the cannon pinion's plane — the 1.5 IS the star slice spacing
-// The motion works' dial-most face — what the alarm stack above must clear.
+// So the chain lands on the HOUR wheel — since TODO 144 with the release
+// disc's SEAT between them — and the minute wheel hangs one star slice behind
+// it. Every star/lever/stud z derives from the pair and follows.
+//
+// TODO 144 — THE SEAT'S STRATUM, and the wheels' thickness SOLVED from it.
+// The release disc holds still against its reader's pin only if something
+// grounded holds it, and a pad alone reacts on the turning hour wheel (priced
+// in probe-144-set-hold.mjs: 158–726 mN against a 5–50 mN envelope). So a fixed
+// THRUST PLATE goes between the disc's underside and the hour wheel: the disc
+// seats on it, the pad presses the disc onto it, and both reactions become
+// holds. The plate is §50 floor stock, the disc's underside sinks the seated-
+// contact convention into its face, and the hour wheel's top clears its
+// underside by one margin. What that costs is stratum, and the stack pays for
+// it in the one dimension that was never derived: both motion-works wheels
+// were 0.8 thick by literal. Their thickness is now the thickest the stack
+// can afford — solved so the cannon pinion's end lands exactly one margin off
+// the base plate's dial-side face — with the star slice declared at §50's
+// floor rather than left as whatever a 1.5 literal happened to leave.
+const ALARM_SEAT_T = STOCK_MIN_U;               // the plate: a fixed annulus carrying 34 mN
+const ALARM_SEAT_SINK = 0.02;                    // the seated-contact convention (FEELER_TIP_SEAT): two coincident planes are ambiguous to the instruments
+const ALARM_SEAT_TOP = ALARM_DISC_BOT + ALARM_SEAT_SINK;   // dial-local: the disc's underside sits this far into the plate's face
+const ALARM_SEAT_BOT = ALARM_SEAT_TOP - ALARM_SEAT_T;
+const STAR_T = STOCK_MIN_U;                      // the jumper star and its beak: §50's floor, declared (it was 0.268, the residue of a literal)
+const MW_PLATE_FACE_LOCAL = Z_DIAL - (-2.0);     // the base plate's dial-side face (world −2.0), dial-local — the stack's floor
+const MW_BEVEL = (T, m) => Math.min(T * 0.18, m * 0.22);   // the gear builder's bevel, the term every plane here spelled out by hand
+const MW_WHEEL_T = (() => {
+  // From the seat's underside down to the plate's margin, every term a margin,
+  // a thickness or a bevelled half-thickness:
+  //   MW_Z2      = ALARM_SEAT_BOT − CM − SINK − (T/2 + bev₂)                the hour wheel's centre (the sink: a plane one
+  //                                                                        margin off a plane must never read as the margin's own edge)
+  //   MW_Z1      = MW_Z2 − (T/2 + bev₂) − CM − STAR_T − CM − (T/2 + bev₁)   the minute wheel's centre
+  //   CANNON_END = MW_Z1 − (T/2 + bev₁) − 0.1                              the pinion's coverage overreach
+  //   CANNON_END − CM = MW_PLATE_FACE_LOCAL                                 landing ON the margin
+  // The bevel is min(0.18·T, 0.22·m); at the module bound (T ≥ 1.22·m, asserted
+  // below) it is a constant and T falls out linearly:
+  const bev = MW_BEVEL(Infinity, MW_MODULE_1) + MW_BEVEL(Infinity, MW_MODULE_2);
+  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - 0.1 - 2 * bev - MW_PLATE_FACE_LOCAL) / 2;
+  if (T < 1.22 * Math.max(MW_MODULE_1, MW_MODULE_2))
+    console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under the bevel's module bound ${(1.22 * Math.max(MW_MODULE_1, MW_MODULE_2)).toFixed(4)} — the linear solve does not hold`);
+  if (T < STOCK_MIN_U)
+    console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under §50's floor ${STOCK_MIN_U.toFixed(4)} — the seat's stratum cannot be paid for here`);
+  return T;
+})();
+const MW_Z2 = ALARM_SEAT_BOT - CLEAR_MARGIN - ALARM_SEAT_SINK - (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)); // hour wheel + minute pinion — DIAL-most; the seat's sink rides on the margin so the sweep never meets it at an exact tie
+// The star slice is DERIVED between the two wheels' faces — its thickness plus
+// one margin each side — rather than the 1.5 the stack carried by literal.
+const MW_SLICE = (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)) + CLEAR_MARGIN + STAR_T + CLEAR_MARGIN + (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1));
+const MW_Z1 = MW_Z2 - MW_SLICE;   // minute wheel, in the cannon pinion's plane
+// The motion works' dial-most face — what the seat above must clear.
 // One expression, consumed by every band assert that used to re-spell it.
-const MW_TOP = MW_Z2 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);
+const MW_TOP = MW_Z2 + MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2);
 // The cannon pinion's leaves must COVER the minute wheel's band with face
 // engagement to spare — 0.1 past its bevelled underside, the floor the old
 // hand-tracked coverage assert used. Derived from the plane it has to reach,
 // so the chain can deepen again without anyone re-counting leaves.
-const CANNON_T = -0.5 - (MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22) - 0.1);
+const CANNON_T = -0.5 - (MW_Z1 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_1) - 0.1);
 const CANNON_END = -0.5 - CANNON_T;
 const cannonPinion = G.makePinion({ name: 'cannonPinion', module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [MW_MINUTE_TEETH], thickness: CANNON_T, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
@@ -12440,8 +12483,8 @@ dialFace.add(cannonPinion);
 // minute wheel toward the plate, so the pinion's end is the deepest thing on
 // the centre axis. It must still stand off the plate's dial-side face.
 {
-  const PLATE_DIAL_FACE_LOCAL = Z_DIAL - (-2.0);
-  if (CANNON_END - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL)
+  const PLATE_DIAL_FACE_LOCAL = MW_PLATE_FACE_LOCAL;
+  if (CANNON_END - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL - 1e-9)   // TODO 144: the stack is SOLVED to land on this margin, so equality is the design
     console.warn(`TODO 21: the cannon pinion's end ${CANNON_END.toFixed(2)} is inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)}, need ${CLEAR_MARGIN})`);
 }
 // §34: the chain grew downward — assert the landing still clears the plate
@@ -12451,11 +12494,11 @@ dialFace.add(cannonPinion);
 // the dial moved — the same stale-absolute class as the §35 keyless floor,
 // now derived the same way.
 {
-  const PLATE_DIAL_FACE_LOCAL = Z_DIAL - (-2.0);   // world −2.0 in dialFace-local
+  const PLATE_DIAL_FACE_LOCAL = MW_PLATE_FACE_LOCAL;   // world −2.0 in dialFace-local
   // TODO 21: the plate-most wheel is the MINUTE wheel now, not the hour
   // wheel — the same assert, pointed at whichever one the re-stack put last.
-  const mwBot = MW_Z1 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);
-  if (mwBot - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL)
+  const mwBot = MW_Z1 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_1);
+  if (mwBot - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL - 1e-9)
     console.warn(`§34: minute wheel's underside ${mwBot.toFixed(2)} inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)})`);
 }
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
@@ -12470,7 +12513,7 @@ registerLabel('Motion works', motionWorks);
 const mwArbor = new THREE.Group();
 mwArbor.position.set(MW_STUD.x, MW_STUD.y, 0);
 const mwMinuteWheel = G.makeGear({ name: 'mwMinuteWheel',
-  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth], thickness: 0.8, boreR: 0.5, spokes: 4, material: MATS.brass,
+  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth], thickness: MW_WHEEL_T, boreR: 0.5, spokes: 4, material: MATS.brass,   // TODO 144: solved at the stack
 });
 mwMinuteWheel.position.z = MW_Z1;
 const mwMinutePinion = G.makePinion({ name: 'mwMinutePinion',
@@ -12516,7 +12559,7 @@ const hourWheelGroup = new THREE.Group();
 dialFace.add(hourWheelGroup);
 registerLabel('Hour wheel', hourWheelGroup);
 const mwHourWheel = G.makeGear({ name: 'mwHourWheel',
-  module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH], thickness: 0.8,
+  module: MW_MODULE_2, teeth: MW_HOUR_TEETH, mates: [MW_PINION_TEETH], thickness: MW_WHEEL_T,   // TODO 144: solved at the stack
   boreR: HOUR_TUBE_OUTER, spokes: 4, material: MATS.brass, hub: false,
 });
 // §194 — the MOTION WORKS, the movement's 12:1. It was the one chain with no
@@ -12586,11 +12629,13 @@ const STAR_PITCH = (Math.PI * 2) / STAR_POINTS;
 // face up to the hour wheel's underside. Named for the faces that bound it
 // rather than for the parts, so the next re-order cannot leave this reading
 // backwards while still computing a positive thickness.
-const _mwSliceBot = MW_Z1 + 0.8 / 2 + Math.min(0.8 * 0.18, MW_MODULE_1 * 0.22);   // minute wheel's top face
-const _mwSliceTop = MW_Z2 - 0.8 / 2 - Math.min(0.8 * 0.18, MW_MODULE_2 * 0.22);   // hour wheel's underside
-const STAR_T = (_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN;
-if (STAR_T < 0.2)
-  console.warn(`minute quick-set: star slice collapsed to ${STAR_T.toFixed(2)} between the motion-works planes`);
+const _mwSliceBot = MW_Z1 + MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1);   // minute wheel's top face
+const _mwSliceTop = MW_Z2 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_2);   // hour wheel's underside
+// TODO 144 — STAR_T is DECLARED at the stack (§50's floor) and the spacing is
+// derived from it, so the slice is VERIFIED here rather than computed: the two
+// faces must stand exactly STAR_T + 2·CLEAR_MARGIN apart.
+if (Math.abs((_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN - STAR_T) > 1e-9)
+  console.warn(`minute quick-set: the star slice between the motion-works planes is ${((_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN).toFixed(4)}, not the declared STAR_T ${STAR_T.toFixed(4)}`);
 const STAR_BOT = _mwSliceBot + CLEAR_MARGIN;        // 0-based extrude sits here
 const STAR_MID = STAR_BOT + STAR_T / 2;
 // §136 — the star must stay inside the minute wheel's ROOT circle so it never
@@ -13662,8 +13707,8 @@ const ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2; // WORLD gear plane (≈ �
   const mwTop = MW_TOP;   // TODO 21: the dial-most face is the hour wheel's now — one name, defined at the planes
   if (heartBot - ALARM_FEELER_TOP < CLEAR_MARGIN - 1e-9)
     console.warn(`§29 stack: feeler top ${ALARM_FEELER_TOP.toFixed(2)} inside the heart's margin (heart bottom ${heartBot.toFixed(2)}, need ${CLEAR_MARGIN})`);
-  if (ALARM_DISC_BOT - mwTop < CLEAR_MARGIN - 1e-9)
-    console.warn(`§29 stack: disc bottom ${ALARM_DISC_BOT.toFixed(2)} inside the minute wheel's margin (mw top ${mwTop.toFixed(2)}, need ${CLEAR_MARGIN})`);
+  if (ALARM_SEAT_BOT - mwTop < CLEAR_MARGIN - 1e-9)   // TODO 144: the seat's underside is the disc-side face the hour wheel answers to now
+    console.warn(`§29 stack: seat bottom ${ALARM_SEAT_BOT.toFixed(2)} inside the hour wheel's margin (mw top ${mwTop.toFixed(2)}, need ${CLEAR_MARGIN})`);
 }
 const alarmTubeGroup = new THREE.Group();
 dialFace.add(alarmTubeGroup);
@@ -15340,7 +15385,7 @@ const solveGearChain = (label, chain, module, inputs = []) => {
 // (ALARM_RELEASE_AZ itself stays — the LEVER is still at that azimuth, and its
 // bracket, its tail run and its beak are all sited from it.)
 const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
-const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.85), inside the rim's root circle (3.30)
+const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.8667); the rim's root circle is 4.125 (30 T at module 0.3), so the body's face runs smooth from 3.25 out to it — TODO 144's candidate pad annulus
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
 // invariants (disc tracks hour when idle; setting re-phases it equal and
 // opposite to the tube; the notch az at trip is setting-independent) —
@@ -15374,8 +15419,13 @@ dialFace.add(alarmDiscGroup);
 registerLabel('Alarm release disc', alarmDiscGroup);
 registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry local z
 {
-  // Friction hub — the running seat ON the hour tube (bore +0.05, the
-  // setting wheel's snug-fit precedent: the fit IS the coupling).
+  // Hub — the RUNNING SEAT on the hour tube (bore +0.05, the setting wheel's
+  // fit). §29 called the fit the coupling as well: the seat was the DRIVE that
+  // carried the disc round with the hour. TODO 117 took the hour out of the
+  // disc, so this is a bearing on a turning shaft and nothing more; what holds
+  // the disc against the reader's pin is TODO 144's SEAT — the fixed thrust
+  // plate under this hub and the pad that presses the disc onto it — not
+  // this fit.
   // TODO 11 tranche five: the WALL is stock, and 0.35 − 0.05 = 0.30 made it
   // 0.1137 mm — under the floor. Written as bore + STOCK_MIN_U so the wall
   // reads as the thing being sized, not as the gap between two radii.
@@ -15705,6 +15755,259 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   alarmFeelerUnit.add(blade);
   alarmFeelerSpringBlade = blade;
 }
+// §137 — THE READ STATION'S FORCE, declared beside its metal (TODO 144: the
+// row TODO 117 never wrote). The bias blade is a grounded cantilever bearing on
+// the lever at BEAR_R; the lever's tip at ARM_LEN seats on the READER's ring,
+// and the reader's own pin rides the disc's track under that same force — the
+// blade's seat, re-levered about the pivot. Riding, the blade is deflected
+// ALARM_FEELER_SEAT_DROP·(BEAR_R/ARM_LEN) at the bear point; dropped (the notch
+// under the pin) one ALARM_PIN_DROP less. Both ends are published; the riding
+// figure is the load the track carries all day and the one the hold is priced on.
+//
+// A CORRECTION TO TODO 117's ROW 4 (probe-117-line.mjs), which took the blade's
+// bear-point force AS the ring's load. The ring carries BEAR_R/ARM_LEN of it —
+// moment balance about the pivot — so the contact sees 0.45 of the spring's
+// figure, and the envelope the fold inherits is judged at the CONTACT.
+const ALARM_FEELER_SPRING = (() => {
+  const k = cantileverK_N_per_m(SPRING_FLAT_U, SPRING_FLAT_U, ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R);
+  const lever = ALARM_FEELER_BEAR_R / ALARM_FEELER_ARM_LEN;   // bear-point travel per pin drop, and pin force per bear force
+  const bearF_mN = (drop_u) => 1000 * k * (drop_u * lever * UNIT_MM / 1000);
+  const riding = bearF_mN(ALARM_FEELER_SEAT_DROP), dropped = bearF_mN(ALARM_FEELER_SEAT_DROP - ALARM_PIN_DROP);
+  return Object.freeze({
+    k_N_per_m: k, bladeT_u: SPRING_FLAT_U, bladeW_u: SPRING_FLAT_U,
+    freeLen_u: ALARM_FEELER_SPR_FREE + ALARM_FEELER_BEAR_R, seatDrop_u: ALARM_FEELER_SEAT_DROP, pinDrop_u: ALARM_PIN_DROP,
+    bearF_mN_riding: riding, bearF_mN_dropped: dropped,
+    pinF_mN_riding: riding * lever, pinF_mN_dropped: dropped * lever,
+  });
+})();
+declareTransfer('alarm release: bias blade (stud → lever → the reader’s pin on the track)', {
+  unit: 'Alarm release feeler', meshes: ['alarmFeelerSpring', 'alarmFeelerSpringStud'], idiom: 'crank',
+  load: { value: ALARM_FEELER_SPRING.pinF_mN_riding, unit: 'mN',
+    source: 'the blade’s 3EI/L³ (cantileverK_N_per_m over the built SPRING_FLAT_U section and its anchor→bear chord), deflected ALARM_FEELER_SEAT_DROP·(BEAR_R/ARM_LEN) at the bear point while the pin rides, re-levered BEAR_R/ARM_LEN about the pivot onto the pin' },
+  quantities: { ...ALARM_FEELER_SPRING, armIn_u: ALARM_FEELER_BEAR_R, armOut_u: ALARM_FEELER_ARM_LEN, ratio: ALARM_FEELER_ARM_LEN / ALARM_FEELER_BEAR_R },
+  envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: ALARM_FEELER_SPRING.pinF_mN_riding },
+  why: `a grounded blade pressing a pivoted lever short of its tip is a crank: the blade bears at ${ALARM_FEELER_BEAR_R.toFixed(4)} and the pin works at ${ALARM_FEELER_ARM_LEN.toFixed(4)}, so the ${ALARM_FEELER_SPRING.bearF_mN_riding.toFixed(2)} mN the spring delivers arrives at the contact as ${ALARM_FEELER_SPRING.pinF_mN_riding.toFixed(2)} mN riding and ${ALARM_FEELER_SPRING.pinF_mN_dropped.toFixed(2)} mN dropped — inside the envelope at both ends, and the riding figure is what the reader’s pin presses on the disc’s track under the hour all day`,
+});
+// --- 'Alarm release seat' — TODO 144: WHAT HOLDS THE DISC ----------------------
+// The disc's law is alarmNotchA(): the set alone, still under the hour. Its hub
+// is a running fit on the HOUR TUBE, which turns, and the hour carries the
+// READER round with its pin sliding on the disc's track under the bias blade's
+// riding seat — a drag of μ·F·r about the disc's axis, all day (the hub's oil
+// film is six orders under it; the seat that used to be the drive is not the
+// load). §25 C's "friction-set" named a hold and never sized one.
+//
+// THE CONSTRUCTION, and why it is this one. A pad on the disc's face is the
+// only smooth surface inside the envelope (41.7 mN at the root circle), and a
+// pad alone is refused by its own reaction: it presses the disc toward the
+// movement, and the disc's whole underside was 0.15 above the hour wheel,
+// which turns — a thrust face that turns is a second drag in the same budget
+// (158 mN at a hub shoulder, 726 over the whole underside). A GROUNDED face
+// under the disc flips the sign of that term: the pin's seat and the pad's
+// reaction both become holds. So: a fixed THRUST PLATE under the disc, a
+// bridge hung from the dial sheet on two posts at free azimuths, and a light
+// pad from the same bracket seating the disc's face. TODO 117's "the disc's
+// own seat", reached from the force side.
+//
+// THE PLATE. An annulus at the seat's stratum (declared at the stack, where
+// the motion works pay for it), bored the hub's own running clearance over
+// the tube, reaching one margin past the rim's tips so the whole underside
+// rides it — teeth included, a date ring's guide plate being the idiom — and
+// RELIEVED where idler 1b's tips reach in: i1b shares the disc's z band exactly
+// and the plate's face sinks ALARM_SEAT_SINK into that band, so inside the
+// sector where the full radius would come within a margin of i1b's tip
+// circle the edge steps in to the radius that does not.
+//
+// THE POSTS. One at each of two free azimuths (probe-144-disc-room.mjs, 42
+// poses: 110–150° and 260–280° are empty of every other unit from the sheet
+// down past the disc), outside the setting wheel's tips by a margin at the
+// dial end, §54-sized as the cantilevers they are from the sheet to the seat.
+// A web from each post carries the plate, so the plate is a bridge between
+// two feet and not an overhang.
+//
+// THE PAD. A blade of the movement's flat-spring stock on a stud beside one
+// post, aimed obliquely so its line never comes within a margin of the raised
+// track, bearing through a foot on the disc's face between the track and the
+// root circle. Its force is SOLVED from the hold: with the seat grounded the
+// hold is μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] and it must clear the drag
+// by ALARM_SPRING_HEADROOM, the same margin every drag-against-hold budget in
+// the arming chain answers to. The blade's preload is then F_pad over its own
+// 3EI/L³, asserted above the seat's sink (so the disc's axial ambiguity cannot
+// unload it) and under the spring stock's strain limit.
+const ALARM_SEAT_AZ = [130, 270].map((d) => d * DEG2RAD);   // world — the free bands, one each side
+const ALARM_SEAT_BORE = HOUR_TUBE_OUTER + 0.05;             // the hub's own running clearance on the tube
+const _discTipR = G.gearOuterR({ module: ALARM_BRANCH_MODULE, teeth: ALARM_DISC_TEETH, mates: [ALARM_SET_I1_TEETH], thickness: ALARM_DISC_BODY_T, bevel: false });
+const _discRootR = (ALARM_BRANCH_MODULE * ALARM_DISC_TEETH) / 2 - 1.25 * ALARM_BRANCH_MODULE;   // the rim's root circle (the branch asserts' own 1.25·m)
+const ALARM_SEAT_R_OUT = _discTipR + CLEAR_MARGIN;
+const _i1bTipR = G.gearOuterR({ module: ALARM_BRANCH_MODULE, teeth: ALARM_SET_I1_TEETH, mates: [ALARM_DISC_TEETH], thickness: ALARM_DISC_BODY_T, bevel: false });
+const _i1Dist = Math.hypot(ALARM_SET_I1.x - P.dial.x, ALARM_SET_I1.y - P.dial.y);           // = ALARM_SET_DW1; the branch's closure assert holds it
+const _i1PhiL = Math.atan2(ALARM_SET_I1.y - P.dial.y, -(ALARM_SET_I1.x - P.dial.x));        // i1's dial-local azimuth (world (x, y) ↔ dial-local (−x, y))
+const ALARM_SEAT_R_RELIEF = _i1Dist - _i1bTipR - CLEAR_MARGIN;
+const ALARM_SEAT_RELIEF_HALF = Math.acos((ALARM_SEAT_R_OUT ** 2 + _i1Dist ** 2 - (_i1bTipR + CLEAR_MARGIN) ** 2) / (2 * ALARM_SEAT_R_OUT * _i1Dist));
+const _setTipR = G.gearOuterR({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, mates: [ALARM_SET_I1_TEETH], thickness: ALARM_SET_T, bevel: false });
+const ALARM_SEAT_POST_L = -0.05 - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2);                        // the sheet's back face down to the webs' mid-plane: the post stands ON the web, half a plate above the hour wheel's margin
+const ALARM_SEAT_POST_RAD = 2 * SLENDER_OVERHANG_K * ALARM_SEAT_POST_L / SLENDER_MAX;        // §54: λₑ = K·L/(r/2) ≤ SLENDER_MAX, as a cantilever from the sheet
+const ALARM_SEAT_POST_R = _setTipR + CLEAR_MARGIN + ALARM_SEAT_POST_RAD;                     // centre radius: one margin outside the setting wheel's tips at the dial end
+const ALARM_SEAT_WEB_W = 0.7;                                                                 // the setting cock's arm width (the bracket idiom this copies)
+const ALARM_SEAT_STUD_R = 0.0924 / Math.cos(Math.PI / 10);                                    // pin stock: a 10-gon whose flats measure the 0.07 mm pivot floor exactly (the tail pin's convention, alarmSilPivot)
+const ALARM_SEAT_STUD_T = 0.9;                                                                // tangential offset of the stud from the post, away from the blade's sweep — the post's radius + the stud's + one margin, with room
+const ALARM_SEAT_BLADE_W = 2 * SPRING_FLAT_U;                                                 // flat stock, two widths: the feeler blade's section doubled so the preload lands mid-window
+const ALARM_SEAT_PAD_R = ALARM_PIN_R;                                                          // the foot: the reader pin's own radius
+const ALARM_SEAT_BLADE_Z = ALARM_DISC_TOP + CLEAR_MARGIN + ALARM_SEAT_SINK;                   // the blade's underside: one margin over the rim's teeth, plus the sink so a plane one margin off a plane never reads as the margin's own edge
+const ALARM_SEAT_TRACK_CLEAR = ALARM_TRACK_RMID + ALARM_TRACK_HALFW + CLEAR_MARGIN;           // the blade's line keeps this far from the axis: the raised track plus a margin
+const ALARM_SEAT_PAD_RADIUS = (ALARM_SEAT_TRACK_CLEAR + _discRootR) / 2;                      // the foot lands mid-way across the smooth annulus, track edge to root circle
+const alarmSeatUnit = new THREE.Group();
+dialFace.add(alarmSeatUnit);
+registerLabel('Alarm release seat', alarmSeatUnit);
+registerExplode(alarmSeatUnit, 0, 2, 1); // dialFace child: children carry local z
+let ALARM_SEAT = null;   // the published hold arithmetic — filled by the build below, read by alarmSetHoldRecord
+{
+  const U = UNIT_MM / 1000;
+  // --- the plate ---
+  const shape = new THREE.Shape();
+  const a0 = _i1PhiL + ALARM_SEAT_RELIEF_HALF, a1 = _i1PhiL - ALARM_SEAT_RELIEF_HALF;
+  shape.absarc(0, 0, ALARM_SEAT_R_OUT, a0, a1 + Math.PI * 2, false);     // the long way round at the full radius
+  shape.absarc(0, 0, ALARM_SEAT_R_RELIEF, a1, a0, false);                // across the relief sector, stepped in (the path closes the two radial edges)
+  const bore = new THREE.Path();
+  bore.absarc(0, 0, ALARM_SEAT_BORE, 0, Math.PI * 2, true);
+  shape.holes.push(bore);
+  const plate = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: ALARM_SEAT_T, bevelEnabled: false }), MATS.nickel);
+  plate.name = 'alarmSeatPlate';
+  plate.position.z = ALARM_SEAT_BOT;
+  alarmSeatUnit.add(plate);
+  // --- posts, webs, bars ---
+  const frames = ALARM_SEAT_AZ.map((az) => {
+    const u = { x: -Math.cos(az), y: Math.sin(az) };            // dial-local outward radial
+    const t = { x: -u.y, y: u.x };                              // dial-local tangential
+    const phi = Math.atan2(u.y, u.x);
+    return { u, t, phi };
+  });
+  for (const [k, f] of frames.entries()) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_SEAT_POST_RAD, ALARM_SEAT_POST_RAD, ALARM_SEAT_POST_L, 16), MATS.nickel);
+    post.name = 'alarmSeatPost';
+    post.rotation.x = Math.PI / 2;
+    post.position.set(f.u.x * ALARM_SEAT_POST_R, f.u.y * ALARM_SEAT_POST_R, -0.05 - ALARM_SEAT_POST_L / 2);
+    alarmSeatUnit.add(post);
+    // the web: from inside the plate's edge (overlapping it, so the bracket is
+    // one body for §107) out to the post's axis, at the plate's own stratum
+    const webIn = ALARM_SEAT_R_OUT - 0.3, webOut = ALARM_SEAT_POST_R;
+    const web = new THREE.Mesh(new THREE.BoxGeometry(webOut - webIn, ALARM_SEAT_WEB_W, ALARM_SEAT_T), MATS.nickel);
+    web.name = 'alarmSeatWeb';
+    web.position.set(f.u.x * (webIn + webOut) / 2, f.u.y * (webIn + webOut) / 2, ALARM_SEAT_BOT + ALARM_SEAT_T / 2);
+    web.rotation.z = f.phi;
+    alarmSeatUnit.add(web);
+    if (k === 0) {
+      // the first post also carries the pad's stud, on a short tangential bar
+      const barSpan = ALARM_SEAT_STUD_T + ALARM_SEAT_STUD_R + ALARM_SEAT_POST_RAD;   // from the post's far edge to the stud's far edge
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(2 * ALARM_SEAT_POST_RAD, barSpan, ALARM_SEAT_T), MATS.nickel);
+      bar.name = 'alarmSeatBar';
+      const mid = (ALARM_SEAT_POST_RAD - (ALARM_SEAT_STUD_T + ALARM_SEAT_STUD_R)) / 2;   // tangential centre of the bar: the post's far edge to the stud's far edge
+      bar.position.set(f.u.x * ALARM_SEAT_POST_R + f.t.x * mid, f.u.y * ALARM_SEAT_POST_R + f.t.y * mid, ALARM_SEAT_BOT + ALARM_SEAT_T / 2);
+      bar.rotation.z = f.phi;
+      alarmSeatUnit.add(bar);
+    }
+  }
+  // --- the pad's blade ---
+  const f = frames[0];
+  const S = { x: f.u.x * ALARM_SEAT_POST_R - f.t.x * ALARM_SEAT_STUD_T, y: f.u.y * ALARM_SEAT_POST_R - f.t.y * ALARM_SEAT_STUD_T };   // the stud, on the bar, away from the post
+  const rS = Math.hypot(S.x, S.y);
+  const sHat = { x: S.x / rS, y: S.y / rS };
+  const perp = { x: sHat.y, y: -sHat.x };                     // one perpendicular; take the one pointing AWAY from the post
+  const away = (perp.x * -f.t.x + perp.y * -f.t.y) > 0 ? perp : { x: -perp.x, y: -perp.y };
+  const sinPhi = ALARM_SEAT_TRACK_CLEAR / rS, cosPhi = Math.sqrt(1 - sinPhi * sinPhi);
+  const e = { x: -cosPhi * sHat.x + sinPhi * away.x, y: -cosPhi * sHat.y + sinPhi * away.y };   // the blade's direction: inward, turned until its line clears the track by a margin
+  const L = rS * cosPhi - Math.sqrt(ALARM_SEAT_PAD_RADIUS ** 2 - ALARM_SEAT_TRACK_CLEAR ** 2);   // stud to the foot's centre, the first crossing of the pad's radius
+  const Pt = { x: S.x + e.x * L, y: S.y + e.y * L };
+  const zBladeMid = ALARM_SEAT_BLADE_Z + SPRING_FLAT_U / 2;
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_SEAT_STUD_R, ALARM_SEAT_STUD_R, (zBladeMid + SPRING_FLAT_U / 2) - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2), 10), MATS.nickel);
+  stud.name = 'alarmSeatBladeStud';
+  stud.rotation.x = Math.PI / 2;
+  stud.position.set(S.x, S.y, ((zBladeMid + SPRING_FLAT_U / 2) + (ALARM_SEAT_BOT + ALARM_SEAT_T / 2)) / 2);
+  alarmSeatUnit.add(stud);
+  const bladeGeo = new THREE.BoxGeometry(L + ALARM_SEAT_PAD_R, ALARM_SEAT_BLADE_W, SPRING_FLAT_U);
+  bladeGeo.translate((L + ALARM_SEAT_PAD_R) / 2, 0, 0);       // origin at the clamped end, the tip one foot-radius past the foot's centre
+  const blade = new THREE.Mesh(bladeGeo, MATS.blueSteel);
+  blade.name = 'alarmSeatBlade';
+  blade.position.set(S.x, S.y, zBladeMid);
+  blade.rotation.z = Math.atan2(e.y, e.x);
+  alarmSeatUnit.add(blade);
+  const footH = ALARM_SEAT_BLADE_Z - (ALARM_DISC_TOP - ALARM_SEAT_SINK);   // from the blade's underside down to the sink into the face
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_SEAT_PAD_R, ALARM_SEAT_PAD_R, footH, 12), MATS.steel);
+  foot.name = 'alarmSeatPad';
+  foot.rotation.x = Math.PI / 2;
+  foot.position.set(Pt.x, Pt.y, ALARM_SEAT_BLADE_Z - footH / 2);
+  alarmSeatUnit.add(foot);
+  // --- the arithmetic, published ---
+  const rEff = (a, b) => (2 / 3) * (b ** 3 - a ** 3) / (b ** 2 - a ** 2);     // friction-effective radius of an annulus
+  const seatR_u = rEff(ALARM_SEAT_BORE, ALARM_SEAT_R_RELIEF);                 // CONSERVATIVE: the annulus the relief leaves whole all the way round
+  const padR_u = Math.hypot(Pt.x, Pt.y);
+  const pinF_N = ALARM_FEELER_SPRING.pinF_mN_riding / 1000;
+  const drag_Nmm = MU_STEEL * pinF_N * (ALARM_TRACK_RMID * UNIT_MM);
+  // μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] ≥ HEADROOM·μ·F_pin·r_track, solved for F_pad:
+  const padF_N = pinF_N * (ALARM_SPRING_HEADROOM * ALARM_TRACK_RMID - seatR_u) / (seatR_u + padR_u);
+  const hold_Nmm = MU_STEEL * ((pinF_N + padF_N) * seatR_u + padF_N * padR_u) * UNIT_MM;
+  const k = cantileverK_N_per_m(ALARM_SEAT_BLADE_W, SPRING_FLAT_U, L);
+  const preload_u = padF_N / k / U;
+  const strain = 3 * (SPRING_FLAT_U * U) * (preload_u * U) / (2 * (L * U) ** 2);
+  ALARM_SEAT = Object.freeze({
+    padF_mN: padF_N * 1000, seatR_u, padR_u, holdTq_Nmm: hold_Nmm, dragTq_Nmm: drag_Nmm,
+    bladeL_u: L, bladeW_u: ALARM_SEAT_BLADE_W, bladeT_u: SPRING_FLAT_U, k_N_per_m: k, preload_u, strain,
+    postR_u: ALARM_SEAT_POST_R, postRad_u: ALARM_SEAT_POST_RAD, postL_u: ALARM_SEAT_POST_L,
+    plateBore_u: ALARM_SEAT_BORE, plateOut_u: ALARM_SEAT_R_OUT, plateRelief_u: ALARM_SEAT_R_RELIEF, reliefHalf_rad: ALARM_SEAT_RELIEF_HALF,
+  });
+  // --- the asserts (rule 6): the derivation's achieved and required numbers ---
+  const say = (nm, ok, got, need) => { if (!ok) console.warn(`TODO 144 seat ${nm}: ${got}, need ${need}`); };
+  say('hold clears the drag', hold_Nmm >= ALARM_SPRING_HEADROOM * drag_Nmm - 1e-12, `${hold_Nmm.toExponential(3)} N·mm`, `≥ ${(ALARM_SPRING_HEADROOM * drag_Nmm).toExponential(3)}`);
+  say('pad force inside the detent envelope', padF_N * 1000 >= SELECTOR_DETENT_WINDOW_MN[0] && padF_N * 1000 <= SELECTOR_DETENT_WINDOW_MN[1], `${(padF_N * 1000).toFixed(2)} mN`, `${SELECTOR_DETENT_WINDOW_MN[0]}–${SELECTOR_DETENT_WINDOW_MN[1]}`);
+  say('preload exceeds the seat\'s sink', preload_u >= ALARM_SEAT_SINK, `${preload_u.toFixed(4)} u`, `≥ ${ALARM_SEAT_SINK}`);
+  say('blade strain under the stock\'s limit', strain <= SPRING_SIGMA_Y_PA / STEEL_E_PA, `${strain.toExponential(3)}`, `≤ ${(SPRING_SIGMA_Y_PA / STEEL_E_PA).toExponential(3)}`);
+  say('foot inside the smooth annulus', padR_u - ALARM_SEAT_PAD_R >= ALARM_SEAT_TRACK_CLEAR - 1e-9 && padR_u + ALARM_SEAT_PAD_R <= _discRootR + 1e-9, `${(padR_u - ALARM_SEAT_PAD_R).toFixed(4)}…${(padR_u + ALARM_SEAT_PAD_R).toFixed(4)}`, `${ALARM_SEAT_TRACK_CLEAR.toFixed(4)}…${_discRootR.toFixed(4)}`);
+  say('plate clears i1b\'s tips at the relief', ALARM_SEAT_R_RELIEF > ALARM_SEAT_BORE + STOCK_MIN_U, `${ALARM_SEAT_R_RELIEF.toFixed(4)}`, `> bore + a wall`);
+  say('posts stand off the setting wheel\'s tips', ALARM_SEAT_POST_R - ALARM_SEAT_POST_RAD - _setTipR >= CLEAR_MARGIN - 1e-9, `${(ALARM_SEAT_POST_R - ALARM_SEAT_POST_RAD - _setTipR).toFixed(4)}`, `≥ ${CLEAR_MARGIN}`);
+  say('stud clears its post', ALARM_SEAT_STUD_T - ALARM_SEAT_POST_RAD - ALARM_SEAT_STUD_R >= CLEAR_MARGIN - 1e-9, `${(ALARM_SEAT_STUD_T - ALARM_SEAT_POST_RAD - ALARM_SEAT_STUD_R).toFixed(4)}`, `≥ ${CLEAR_MARGIN}`);
+  declareTransfer('alarm release: the seat pad (bracket blade → the disc’s face)', {
+    unit: 'Alarm release seat', meshes: ['alarmSeatBlade', 'alarmSeatBladeStud', 'alarmSeatPad'], idiom: 'groundedBlade',
+    load: { value: padF_N * 1000, unit: 'mN',
+      source: 'SOLVED from the hold: μ·[(F_pin + F_pad)·r_seat + F_pad·r_pad] must clear the reader pin’s drag μ·F_pin·ALARM_TRACK_RMID by ALARM_SPRING_HEADROOM, with r_seat the friction-effective radius of the plate annulus the relief leaves whole and r_pad the foot’s own radius; the blade’s preload is that force over its 3EI/L³' },
+    quantities: { armIn_u: L, armOut_u: L, ratio: 1, k_N_per_m: k, preload_u, strain, seatR_u, padR_u, holdTq_Nmm: hold_Nmm, dragTq_Nmm: drag_Nmm, headroom: hold_Nmm / drag_Nmm },
+    envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: padF_N * 1000 },
+    why: `a grounded blade pressing its own foot is the groundedBlade idiom at ratio 1. It seats ${(padF_N * 1000).toFixed(2)} mN on the disc’s face at r ${padR_u.toFixed(3)}, which with the pin’s ${ALARM_FEELER_SPRING.pinF_mN_riding.toFixed(2)} mN on a GROUNDED plate (r_eff ${seatR_u.toFixed(3)}) holds ${hold_Nmm.toExponential(3)} N·mm against ${drag_Nmm.toExponential(3)} of drag — ${(hold_Nmm / drag_Nmm).toFixed(2)}× — with a preload of ${preload_u.toFixed(4)} u on a ${L.toFixed(3)} blade at ${(100 * strain / (SPRING_SIGMA_Y_PA / STEEL_E_PA)).toFixed(0)}% of the stock’s strain limit`,
+  });
+}
+// TODO 144 — WHAT HOLDS THE DISC, accounted. The disc's law is alarmNotchA():
+// the set alone, still under the hour. Its hub is a running fit on the HOUR
+// TUBE, which turns, so the question §29 answered with "the seat is the drive"
+// has to be answered again with the drive gone: what holds the disc where the
+// crown left it? Priced here over the movement's own constants and PUBLISHED
+// (window.__clock.alarmSetHold), so the instrument that holds it —
+// tools/probe-144-set-hold.mjs — reads the movement's figures rather than
+// copies of them.
+//   · THE LOAD IS THE READER'S PIN, NOT THE HUB. The hour carries the reader
+//     round and its pin slides on the track under the blade's riding seat: a
+//     drag of μ·F·r about the disc's axis, continuous. The hub's oil film on
+//     the turning tube is a viscous term some six orders under it at ten times
+//     any watch oil's viscosity (the probe bounds it); the seat that used to be
+//     the drive is not the residue's load.
+//   · THE HOLD is the seat above — 'Alarm release seat' — at
+//     ALARM_SPRING_HEADROOM, §169's precedent for a drag priced against a
+//     hold. Until it was cut this record published `holder: null`, and the
+//     probe was red by design; it reads the seat's own arithmetic now.
+let _alarmSetHold = null;
+function alarmSetHoldRecord() {
+  if (!_alarmSetHold) {
+    _alarmSetHold = Object.freeze({
+      mu: MU_STEEL,
+      pinF_mN: ALARM_FEELER_SPRING.pinF_mN_riding,
+      trackR_u: ALARM_TRACK_RMID,
+      dragTq_Nmm: MU_STEEL * (ALARM_FEELER_SPRING.pinF_mN_riding / 1000) * (ALARM_TRACK_RMID * UNIT_MM),
+      headroomRequired: ALARM_SPRING_HEADROOM,
+      holder: 'Alarm release seat',           // the member that grounds the disc: the thrust plate, and the pad that presses the disc onto it
+      holdTq_Nmm: ALARM_SEAT.holdTq_Nmm,      // its holding torque about the disc's axis
+      padF_mN: ALARM_SEAT.padF_mN, seatR_u: ALARM_SEAT.seatR_u, padR_u: ALARM_SEAT.padR_u,
+      preload_u: ALARM_SEAT.preload_u, strain: ALARM_SEAT.strain,
+    });
+  }
+  return _alarmSetHold;
+}
 // --- §29 step 4: the TAIL and the CONTRATE PAWL ---------------------------
 // The tail runs STRAIGHT from the pivot to the climb (the probe cleared the
 // line: it passes 4.3 from i1's sleeve, far over the gear lane), one band
@@ -15846,8 +16149,8 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // i1b's swept tips vs the minute-wheel circle — XY only matters if the z
   // bands touch; they are separated by the chain, so assert THAT instead:
   const mwTopL = MW_TOP;  // TODO 21: as above — the band assert follows the re-stack by construction
-  if (ALARM_DISC_BOT - mwTopL < CLEAR_MARGIN - 1e-9)
-    console.warn(`§29 branch: band gears' underside ${ALARM_DISC_BOT.toFixed(2)} inside the minute wheel's margin (top ${mwTopL.toFixed(2)})`);
+  if (ALARM_SEAT_BOT - mwTopL < CLEAR_MARGIN - 1e-9)   // TODO 144: the seat plate lies between the band gears and the hour wheel
+    console.warn(`§29 branch: seat plate's underside ${ALARM_SEAT_BOT.toFixed(2)} inside the hour wheel's margin (top ${mwTopL.toFixed(2)})`);
   // i1b vs the minute-wheel circle in ITS OWN plane (the sleeve crosses nothing, but the tips do XY-wise at other azimuths — z-separated; the real XY bind is the RIM):
   say('i1 sleeve vs minute wheel', Math.hypot(ALARM_SET_I1.x - mwc.x, ALARM_SET_I1.y - mwc.y) - mwTip - 0.62);
   // the rim's tips vs the follower annulus above are z-separated by the
@@ -26645,19 +26948,10 @@ const ALARM_PAWL_L_SPEC = 4.5361;                   // the arm the centreline wa
 // tick. The walk's span covers twice the pawl's stroke, which is what the
 // spring's preload puts between its free angle and the most open seat.
 const ALARM_PAWL_DPHI = 0.002, ALARM_PAWL_SCAN_N = 400, ALARM_PAWL_CYCLE_N = 96;
-// The margin between any two spring forces in this chain — how much weaker
-// than the detent the pawl's return drag must be, and (§164) how much stronger
-// than that drag the pusher's own return must be. One number for both because
-// it is one argument: every side of both comparisons is first-order beam
-// arithmetic off the SAME modulus, and layout.js says what that is worth in its
-// own words — the absolutes carry maybe a factor of two, "the RATIOS are what
-// conclusions rest on". So the margin has to clear the ratio's error, not the
-// absolutes' — 3× does, and it is what the mechanism can actually be built to.
-// (A first pass asked for an order of magnitude on the grounds that a 2× margin
-// sits inside the arithmetic's error. That reasoning applies the absolute
-// caveat to a ratio, and it costs a real blade: 10× wants 5.49 u of free
-// length against 3.67, with the anchor half again as far out.)
-const ALARM_SPRING_HEADROOM = 3;
+// ALARM_SPRING_HEADROOM — the margin between any two spring forces in this
+// chain — is a budget ENVELOPE and lives in layout.js beside the detent window
+// since TODO 144 (the alarm release seat is priced against it 11,000 lines
+// above this block, and a const cannot be read before its line).
 // THE DRIVER'S ANGLE IS THE PIN'S AZIMUTH — that is what a radial slot means,
 // and it is written once here so no consumer has to re-derive a sign. The
 // coefficient is the saw's own drive direction: with the pin at perpendicular
@@ -36713,6 +37007,7 @@ const UNIT_GROUPS = new Map([
     ['Alarm setting wheel', 3], ['Alarm disc', 2],
     ['Alarm release disc', 2], ['Alarm release feeler', 3],
     ['Alarm release reader', 2], // TODO 117 stage 1: the disc's own stratum — it orbits in the disc band, reading the same track
+    ['Alarm release seat', 1], // TODO 144: the fixed plate the disc seats on — one step under the disc toward the hour wheel it stands off
     // back side, unfolding away: the power chain in torque order
     ['Alarm winding train', 3], ['Alarm barrel', 5], ['Alarm striking wheel', 7],
     ['Alarm governor', 8], // §104: one step past the striking wheel it hangs off, before the hammer it paces
@@ -40761,6 +41056,7 @@ window.__clock = {
   get equalisation() { return EQUALISATION; }, // TODO 32 — the spring law's absolute arithmetic, for the inspector's gate
   get acoustics() { return GONG_ACOUSTICS; },  // §197 — the gong's blow, modes and radiated level, off the built metal
   get transfers() { return transferAudit(); }, // §137 — every corner's idiom and its force arithmetic, for the transfer audit
+  get alarmSetHold() { return alarmSetHoldRecord(); }, // TODO 144 — the release disc's drag and what holds it (null until a hold is cut), for probe-144-set-hold
   get meshes() { return meshAudit(); },        // §194 — every declared gear mesh, its two named members and the inputs that drive it
   meshCandidates(tol) { return meshCandidates(tol); }, // §135 item 4 — every pair of rotors that MESHES in the metal at the current pose, by §194's criteria, for the coverage check to diff against the rows
   rotorAzimuth(name) { return rotorAzimuth(name); },        // §194 — a rotor's world spin (and its frame's handedness), for the transmission sweep

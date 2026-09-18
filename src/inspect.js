@@ -199,8 +199,9 @@ export const MECH_GRAPH = {
                                              // running fit is its bearing (rattrapante centre stack)
     ['Alarm setting wheel', 'Alarm disc'],   // §25 C stage 3: friction-rides the alarm tube (bore 3.05 on 3.0)
     ['Alarm setting idler', 'plate'],        // §25 C stage 3: stud from the base plate's underside
-    ['Alarm release disc', 'Hour wheel'],    // §29 step 2: friction hub riding the hour tube in the disc band — the seat is both bearing and drive
+    ['Alarm release disc', 'Hour wheel'],    // §29 step 2: the hub riding the hour tube in the disc band — the BEARING only since TODO 117: the seat was the drive too while the disc carried the hour, and it carries the set alone now (TODO 144 prices what holds it)
     ['Alarm release feeler', 'Dial'],        // §29 step 3: the bracket's lugs hang from the sheet's back face at the release azimuth
+    ['Alarm release seat', 'Dial'],          // TODO 144: the seat's two posts hang from the sheet's back face at two free azimuths (130°, 270°) — the feeler bracket's own mounting
     ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
     ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/345, the selector's pattern one band deeper)
@@ -325,9 +326,13 @@ export const MECH_GRAPH = {
                                              // parity the brake beak reads, now carried away as metal
     ['Alarm link', 'Alarm selector'],        // §35: the centre crank on the ring's drive tab — the run's last
                                              // contact; the pusher press now moves the whole chain
-    ['Hour wheel', 'Alarm release disc'],    // §29 step 2: the friction seat drives the disc with time…
-    ['Alarm setting idler', 'Alarm release disc'], // …and i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
-                                                   // DIRECTLY — one mesh, the tube path's mirror ratio, re-phasing on set
+    // TODO 144 — 'Hour wheel' → 'Alarm release disc' is DELETED here, not kept
+    // as history: §29 step 2's friction seat drove the disc with time, TODO 117
+    // took the hour out of the disc, and a drive edge for a coupling that no
+    // longer turns anything is the same lie as the `_bd` term this item removed
+    // from the tick law. The hub is a bearing; its row is in `support`.
+    ['Alarm setting idler', 'Alarm release disc'], // §29 step 2: i1's compound band pinion (i1b, 28) meshes the disc's rim (30)
+                                                   // DIRECTLY — one mesh, the tube path's mirror ratio; the disc's ONE drive since TODO 117
     ['Hour wheel', 'Alarm release reader'],  // TODO 117 stage 1: the hour carries the reader ROUND to meet the notch — the moving half of the decided topology.
                                               // STAGE 1 IS INERT: nothing downstream reads this collar yet, so no drive edge leaves it. The trip still runs the feeler row below.
     ['Alarm release disc', 'Alarm release reader'], // TODO 117: the raised track carries the READER's pin now; the notch's arrival
@@ -663,6 +668,9 @@ const EXPECTED_PAIRS = [
                                           // the true Dial sheet is measured 0.05 clear of the idler
   ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
   ['Alarm release disc', 'Hour wheel'],     // §29: the friction seat (bore +0.05 running fit on the tube)
+  ['Alarm release disc', 'Alarm release seat'], // TODO 144: the disc SEATS on the plate (its whole underside, sunk ALARM_SEAT_SINK) and the pad's foot seats on its face
+  ['Alarm release seat', 'Hour wheel'],      // TODO 144: the plate's bore is the hub's own +0.05 running clearance over the turning tube
+  ['Alarm release seat', 'Dial'],            // TODO 144: the posts stand on the sheet's back face (the feeler bracket's mounting) — and the nesting artifact, like the disc's row
   ['Alarm release disc', 'Dial'],           // the NESTING artifact, not a contact: collectUnits does no
                                             // nested-label exclusion, so the Dial unit contains the disc's
                                             // own meshes (the Dial ⇄ Hour wheel precedent); the disc's real
@@ -2037,6 +2045,23 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // TODO 144 — the release disc's SEAT. Its underside rides the plate (hub,
+  // body and teeth, one plane sunk the seated-contact 0.02) and the pad's foot
+  // rides its face; everything else the two units own keeps the margin — the
+  // blade over the rim's teeth in particular, which is what makes a plane one
+  // margin off a plane a measured fact rather than a coincidence.
+  {
+    a: 'Alarm release disc', b: 'Alarm release seat', min: CLEAR_MARGIN,
+    contacts: [
+      ['alarmDiscHub', 'alarmSeatPlate'], ['alarmDiscBody', 'alarmSeatPlate'],
+      ['alarmDiscBody', 'alarmSeatWeb'],      // the rim's teeth ride the webs' inboard ends, which are the seat's own face continued
+      ['alarmDiscBody', 'alarmSeatPad'],
+    ],
+  },
+  {
+    a: 'Alarm release seat', b: 'Hour wheel', min: CLEAR_MARGIN,
+    contacts: [['alarmSeatPlate', 'hourTube']],   // the bore's running clearance on the tube; the reader collar nested under the hour wheel keeps the margin from the blade
+  },
   // §202 — the two case liners: each pair is EXPECTED for exactly one press
   // fit, and everything else the unit owns keeps the margin from the case.
   {
@@ -2357,7 +2382,7 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   const census = censusStop();
   const results = rows.map((row, i) => {
     const capped = !isFinite(state[i].min);
-    const meets = capped || state[i].min >= row.min;
+    const meets = capped || state[i].min >= row.min - FLOOR_TIE_EPS;   // TODO 144: a derived margin is an exact tie
     return {
       pair: `${row.a} ⇄ ${row.b}`,
       min: capped ? `≥ ${(row.min + refineBand).toFixed(2)}` : +state[i].min.toFixed(4),
@@ -3632,6 +3657,24 @@ const STRUCTURE_NODES = {
 // stacked on another bridge.
 const GROUND_NODES = ['plate', 'Three-quarter plate'];
 const SUPPORT_TOL = 0.5; // a mounted part touches (0) or is set into its fixture
+// TODO 144 — A DERIVED MARGIN IS AN EXACT TIE, AND A TIE IS NOT A VIOLATION.
+// Every clearance in this movement is DERIVED (rule 1): a face is placed one
+// CLEAR_MARGIN off the face it answers to, in exact arithmetic. The sweep then
+// measures that gap between two tessellated solids in floats and gets
+// 0.15 − 3e-17, and `>= 0.15` refuses it. The seat's posts over the hour wheel
+// did that first; then, with the motion-works stack re-solved, the star under
+// the hour wheel and the jumper's beak — both exactly one margin by the same
+// derivation they always had, and both green before only by the luck of which
+// floats the old literals produced. The boot asserts compare with `- 1e-9`
+// for this reason, and that was the first value here — and it was the wrong
+// SIZE, because a mesh is not a double: vertices are stored as Float32, so a
+// face placed at 3.18023450 lands at 3.1802345 and the beak read 0.15 − 3.4e-8.
+// One Float32 ulp at the coordinates this movement uses (under 64 u) is
+// 2⁻²³·64 ≈ 7.6e-6, and two faces can each be one off, so the tie tolerance is
+// that, derived. A margin genuinely spent reads 0.14 or 0.10, never 0.14998;
+// 1.5e-5 is three orders under the smallest fit this file names (0.05) and
+// cannot green a row that is short by anything a cut could produce.
+const FLOOR_TIE_EPS = 2 * Math.pow(2, -23) * 64;   // two Float32 vertices, one ulp each, at |coordinate| < 64 u
 
 function resolveNode(clock, allUnits, name) {
   const unit = allUnits.find((u) => u.name === name);
@@ -3710,7 +3753,7 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
       required: bud.min,
       at: capped ? '(never within band)' : `${state[i].at.axis} f=${state[i].at.f}`,
       meshes: capped ? undefined : (state[i].meshes ? state[i].meshes.join(' ⇄ ') : undefined), // TODO 10
-      ok: capped || state[i].min >= bud.min,
+      ok: capped || state[i].min >= bud.min - FLOOR_TIE_EPS,   // TODO 144: a derived margin is an exact tie
     };
   });
   console.table(results);
@@ -6961,6 +7004,9 @@ export const STOCK_KIND_BY_MESH = {
   alarmHammerSpringStud: 'pivot',  // ...and the grounded stud it hangs from
   alarmPinSpringB: 'spring',
   alarmReaderPin: 'pivot',        // TODO 117: the orbiting reader's pin — ALARM_PIN_R exactly as the feeler's, so it is the same kind of member; ⌀ 0.1061 mm against the 0.07 pivot floor
+  alarmSeatBlade: 'spring',       // TODO 144: the seat's pad blade — SPRING_FLAT_U stock, two widths wide, the feeler blade's own section
+  alarmSeatBladeStud: 'pivot',    // TODO 144: its grounded stud — pin stock at the 0.07 pivot floor exactly (the tail pin's 10-gon convention)
+  alarmSeatPad: 'pivot',          // TODO 144: the foot on the disc's face — ALARM_PIN_R, the reader pin's own radius, so the same kind of member
   alarmSelPin: 'pivot',
   alarmPinB: 'pivot',
   alarmLinkCentrePin: 'pivot',    // TODO 20 fork — the crank pin riding the groove: pin stock (⌀ 0.105 mm ≥ the 0.07 pivot floor)

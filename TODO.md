@@ -15676,6 +15676,11 @@ touching the hour wheel — the `Alarm winding train` ⇄ `Dial` precedent. Over
   This is the open construction question the DECIDED section already files (the
   hub comes off, or the disc gains a detent), and it now has teeth: before the
   fold the hub was doing the work the law described, and now it is not.
+  **TODO 144 measured it and CLOSED it**: the load is not the hub but the
+  reader's own pin, sliding on the track under 18.81 mN of the blade's seat —
+  4.35e-3 N·mm of drag, continuous — and the disc now seats on a fixed thrust
+  plate (`Alarm release seat`) with a 14.66 mN pad pressing it on, holding
+  3.00× the drag. `tools/probe-144-set-hold.mjs` is green.
 - **`meshPhase` still waives two rows against this item.** Transmission is
   closed; phase is not. The gate confirms both waivers are still live (it fails
   on a stale one), so the residual is real — and its cause is now narrower than
@@ -19369,6 +19374,9 @@ way §54 holds the lay shaft's.
 
 ## 144. The alarm setting branch still carried the hour after TODO 117 removed its source — CLOSED
 
+The term is gone, and the disc has a SEAT: what holds it is measured, cut and
+gated at the end of this item.
+
 **Found by the owner, watching the movement.** Setting the TIME turned the two
 coaxial idlers of the alarm setting train, and the alarm setting arbor with
 them, while the alarm disc and the alarm setting wheel stood still. Nothing
@@ -19534,6 +19542,183 @@ hour reaches the disc and this whole branch should carry it again; if it does
 not, the disc needs its own seat or detent. TODO 117's open construction
 question decides which, and this item is written on the assumption its decided
 topology holds.
+
+### The residue, measured — what holds the disc (OPEN, priced)
+
+Both items named the hub as the thing to worry about, and the hub is not the
+load. Measured over the movement's own constants (`tools/probe-144-set-hold.mjs`,
+reading the figures the movement now PUBLISHES rather than copies of them):
+
+| quantity | value | source |
+|---|---|---|
+| bias blade, `alarmFeelerSpring` | k **980.6 N/m** | `cantileverK_N_per_m` over `SPRING_FLAT_U`² and the anchor→bear chord 1.8025 |
+| the spring's force at its bear point | **41.80 mN** riding, 25.08 dropped | deflected `ALARM_FEELER_SEAT_DROP`·(BEAR_R/ARM_LEN) |
+| the force at the PIN | **18.81 mN** riding, 11.29 dropped | × 0.45, BEAR_R/ARM_LEN, moment balance about the lever's pivot |
+| drag on the disc | **4.349e-3 N·mm**, continuous | `MU_STEEL` 0.2 · 18.81 mN · `ALARM_TRACK_RMID` 3.05 u |
+| the hub's oil film | ≤ **8.0e-9 N·mm** | Petroff over the built hub (bore 2.55, 0.4867 long, fit 0.05) at 1 Pa·s — ten times any watch oil |
+| what a hold must present | ≥ **1.305e-2 N·mm** at the disc | `ALARM_SPRING_HEADROOM` 3 × the drag, §169's rule for a drag against a hold |
+| what holds it | **nothing declared** | §25 C's "friction-set" named a mechanism and never sized one |
+
+The hour carries the READER round and its pin slides on the disc's raised
+track under the blade's riding seat, all day: that sliding friction is the load,
+and it is six orders over the film on the turning tube. The seat that used to
+be the drive is a bearing and nothing else — the hub is not the residue.
+
+**A correction to TODO 117's row 4.** `probe-117-line.mjs` took the blade's
+bear-point force (41.80 mN) AS the ring's load and judged it against the
+envelope. The ring carries BEAR_R/ARM_LEN of it — the lever bears at 1.1025 and
+works at 2.45 — so the contact sees **18.81 mN**, and the "8.2 mN of headroom at
+the top" that item recorded was the spring's headroom, not the contact's. The
+§137 row TODO 117 never wrote now exists beside the blade
+(`alarm release: bias blade (stud → lever → the reader's pin on the track)`,
+idiom crank, both ends published, envelope judged at the contact), and the
+`transfers` gate carries it: 17 rows, 0 malformed / stale / mismatched.
+
+**The design table, read off the metal.** A friction hold at μ needs
+F·r ≥ 1.305e-2 N·mm at the disc; where the member turns faster than the disc
+the torque it must hold is smaller by that ratio, and the arbor turns 3× (the
+10/30 the crown already delivers). Every smooth radius the train offers:
+
+| member | r (u) | ω/ω_disc | F needed | 5–50 mN |
+|---|---|---|---|---|
+| setting arbor rod, at the cock | 0.450 | 3 | 127.5 mN | OUTSIDE |
+| a brake drum on the arbor, no wider than the cock bush (the post stands one bearing outboard) | 0.850 | 3 | 67.5 mN | OUTSIDE |
+| the disc's dial-ward FACE, at the root circle — the smooth annulus from the track's outer edge (3.25) to the teeth | **4.125** | 1 | **41.7 mN** | inside, 8.3 under the top |
+| the disc's rim, teeth and all | 4.608 | 1 | 37.4 mN | inside, on teeth |
+| the setting wheel's rim | 4.608 | 1 | 37.4 mN | inside, on teeth, 0.05 behind the dial sheet |
+
+So the arbor is refused by the numbers — its 3:1 does not pay for its radius —
+and the one smooth surface that works is the disc's own face, outboard of the
+track, under an axial pad from a dial-hung bracket (the feeler bracket's own
+idiom, at another azimuth). That is a friction hold at 41.7 mN with 8.3 mN of
+envelope left, μ 0.2 on both sides of the budget. Its P3 question — what else
+occupies that annulus at the pad's azimuth, and the bracket's drop from the
+sheet — is a clearance scan not yet run, and it is the next measurement.
+
+**The pad alone is refused by its own reaction** — the row the table above
+does not price, found before any metal was cut. A pad pressing the disc's face
+pushes the disc toward the movement, and the disc's whole underside — hub and
+body, one plane at `ALARM_DISC_BOT` — is 0.15 above the HOUR WHEEL, which
+turns. A thrust face that turns is a second drag in the same budget,
+μ·(F_pin + F_pad)·r_seat, and the arithmetic (`probe-144-set-hold.mjs`, the
+REPORT row) is decisive:
+
+| the disc's axial seat | F_pad needed | envelope |
+|---|---|---|
+| the turning hour wheel, whole underside (r_eff 3.790) | **726 mN** | out by an order |
+| the turning hour wheel, a hub shoulder only (r_eff 2.711) | **158 mN** | out |
+| a GROUNDED seat under the hub (r_eff 2.711) | **17.7 mN** | inside |
+| a GROUNDED seat under the body (r_eff 3.790) | **12.7 mN** | inside |
+
+A fixed face under the disc changes the sign of that term — a grounded seat is
+a second HOLD, not a second drag — so the construction is a THRUST PLATE, and
+the pad is the light thing that rides on top of it. That is TODO 117's "the
+disc's own seat", reached from the force side. It also says what the disc has
+today: no axial location at all, a radial fit on a plain tube with the pin
+pushing it toward a wheel it must not touch. The jumper route is closed by the
+same geometry (a radial beak cannot reach a star on the face without passing
+through the rim teeth's plane, and a star raised above the track collides with
+the feeler's arm at the release azimuth), and a lighter seat does not rescue a
+friction hold on a turning face (62 mN at 5 mN of pin load).
+
+**Is there room for the seat?** Measured (`probe-144-disc-room.mjs`, 42 poses,
+by 10° of world azimuth): the pad cell above the disc's face is free at every
+azimuth but the feeler's (330°); a bracket's lug column outside the hour
+wheel's tips is free at 10°, 70–90°, 110–150°, 200°, 230°, 260–280° and
+310–320°; and under the hour wheel nothing but the motion works' own star and
+minute wheel (120–230°) lies within 1.3 of its underside. The stratum is the
+problem, not the azimuth: a §50-floor plate plus one margin needs **0.467**
+under the disc, and the motion-works stack has **0.135** before the minute
+wheel's underside meets the base plate's margin (`MW_Z2` → `MW_Z1 = MW_Z2 −
+1.5` → `mwBot` against `Z_DIAL − (−2.0)`), plus **0.068** the star slice could
+give up before its own 0.2 floor. Short by **0.264** — and the cannon pinion's
+0.1 overreach past the minute wheel (`CANNON_T`) sits inside the same margin,
+so the honest figure is **0.364**. The two motion-works wheels are 0.8 thick,
+2.5× the §50 floor; taking 0.18 from each pays it, and both stay above 0.6.
+
+**The owner chose the thrust plate, and it is BUILT — `Alarm release seat`.**
+
+- **The plate.** A fixed annulus at the seat's stratum, bored the hub's own
+  +0.05 running clearance over the tube, reaching one margin past the rim's
+  tips so the whole underside rides it (teeth included — a date ring's guide
+  plate is the idiom), its face sunk `ALARM_SEAT_SINK` 0.02 into the disc's
+  underside (the seated-contact convention), and RELIEVED over a ±22° sector
+  at idler 1b's azimuth: i1b shares the disc's z band exactly, so inside the
+  sector where the full radius would come within a margin of its tip circle the
+  edge steps in to `ALARM_SEAT_R_RELIEF`, which clears it by exactly one.
+- **The posts.** Two, at world 130° and 270° — the free bands the room scan
+  found — one margin outside the setting wheel's tips at the dial end, each a
+  cantilever from the sheet to the seat's underside and §54-sized as one:
+  r = 2·`SLENDER_OVERHANG_K`·L/`SLENDER_MAX` = 0.635. A web from each carries
+  the plate, so it is a bridge between two feet and not an overhang.
+- **The pad.** A blade of the flat-spring stock, two widths wide, on a stud
+  beside the 130° post (pin stock, a 10-gon whose flats measure the 0.07 mm
+  pivot floor exactly — the tail pin's convention), aimed obliquely so its line keeps one margin from the
+  raised track, bearing through a foot of the reader pin's own radius on the
+  disc's face mid-way between the track's edge and the root circle
+  (r 3.7625). Its force is SOLVED from the hold, μ·[(F_pin + F_pad)·r_seat +
+  F_pad·r_pad] ≥ 3 × the drag with r_seat the friction-effective radius of the
+  annulus the relief leaves whole (3.494, conservative): **14.66 mN**, inside
+  the envelope; the hold is **1.305e-2 N·mm, 3.00×** the drag by construction.
+  The preload is that force over the blade's own 3EI/L³: **0.0614 u** on a
+  2.63 blade, 3.1× the seat's sink (so the disc's axial ambiguity cannot
+  unload it) at 44 % of the stock's strain limit. All eight relations are
+  boot asserts with their achieved and required numbers.
+- **The stratum, paid for.** The plate needs `ALARM_SEAT_T` (§50's floor)
+  plus a margin between the disc and the hour wheel. The motion-works stack
+  had 0.135 before the base plate's margin and its two wheels were **0.8
+  thick by literal** — the one underived dimension in it. `MW_WHEEL_T` is now
+  SOLVED, the thickest the stack can afford with the cannon pinion's end
+  landing exactly one margin off the base plate's face — plus the seat's
+  0.02 sink on the hour wheel's margin, so the sweep never meets that margin at
+  an exact tie: **0.6347** (0.240 mm,
+  a real hour wheel). The star slice is no longer whatever a `1.5` literal
+  left between the wheels (0.268): `STAR_T` is declared at §50's floor and the
+  spacing is derived from it, verified at the slice.
+- **Declared.** `MECH_GRAPH` support (the posts on the sheet), three EXPECTED
+  pairs, two `EXPECTED_CONTACT_FLOORS` rows naming the seat's contacts (hub
+  and body on the plate, the rim on the webs' inboard ends, the foot on the
+  face, the bore on the tube) so everything else the two units own keeps the
+  margin — the blade over the rim's teeth in particular; a §137 row for the
+  pad (`groundedBlade`, envelope judged); the unit group; the chrome's twelve
+  locales (which also gained `Alarm release reader`, never localized since
+  TODO 117); `ALARM_SPRING_HEADROOM` hoisted to `layout.js` as the envelope it
+  is. `window.__clock.alarmSetHold` names its holder and publishes the torque;
+  `probe-144-set-hold.mjs` is GREEN, 10 rows 0 failing, its design table kept
+  as the record of the choice. The battery's first pass caught two things
+  the fast gates cannot: the blade, stud and foot carried no stock KIND and
+  were judged as wheels (declared now, as the reader pin's are), and the
+  posts stood exactly one margin off the hour wheel's top — the sweep read
+  0.15 against a floor of 0.15 and refused the tie. The posts now stand on
+  the webs' mid-plane and the hour wheel's margin carries the seat's sink.
+  The second pass then refused two more ties that were not the seat's at
+  all — the star under the hour wheel and the jumper's beak, each exactly one
+  margin by the same derivation they always had, green before only by the
+  luck of which floats the old `0.8` and `1.5` literals produced. **A derived
+  margin IS an exact tie**, and a tie is not a violation: the two floor gates
+  (`clearances`, `expectedContacts`) now compare with `FLOOR_TIE_EPS`. Its
+  first value was the boot asserts' 1e-9, and the beak refused it again at
+  0.15 − 3.4e-8 — a mesh is not a double: vertices are Float32, one ulp at
+  this movement's coordinates is 2⁻²³·64 ≈ 7.6e-6, and two faces can each be
+  one off. The tolerance is that, derived (1.5e-5), three orders under the
+  smallest fit the file names, so nothing a cut could produce is greened by
+  it. The boot asserts' `- 1e-9` and the gates' were two answers to one
+  question, and the gates had the fragile one.
+
+`window.__clock.alarmSetHold` publishes the drag, the requirement and the
+holder; while the holder was null the probe was **red by design** (10 rows, 2
+failing: "a holding element is DECLARED" and "it clears the drag by 3×") — TODO
+117's pattern, the instrument ahead of the metal, and it went green when the
+seat below was cut.
+
+**Corrected with it**, because a declaration that survived the deletion is the
+same defect as the term: the `MECH_GRAPH` drive edge `Hour wheel → Alarm release
+disc` ("the friction seat drives the disc with time") is deleted, the support row
+and the hub's own comment say bearing and not drive, the track's comment no
+longer places the rim's root at 3.30 (it is 4.125), `MU_STEEL` is named once in
+`layout.js` where `sawCouplingSpec` had carried the same 0.2 anonymously since
+TODO 50, and the explainer's alarm-feeler entry states the measured load in
+place of "the disc's own seat is the question".
 
 ## 145. The turning catalogue: twelve bars the movement cannot turn
 
