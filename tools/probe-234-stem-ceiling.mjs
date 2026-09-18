@@ -24,8 +24,8 @@
 // measures ONE number: the largest `ALARM_STEM_R` whose tree still boots
 // silent.
 //
-// HOW. `ALARM_STEM_R` is derived from the census bar and §233's target, so a
-// candidate is a SCRATCH TREE with that one declaration replaced by a literal,
+// HOW. A candidate is a SCRATCH TREE with `ALARM_STEM_R`'s declaration replaced
+// by a literal,
 // booted headless, with every warning the shipped asserts raise collected
 // verbatim. Nothing here judges the corridor; the §45 asserts do, and this
 // reports what they said. Everything downstream — the bevel's bore and tooth
@@ -55,7 +55,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const ANCHOR = 'const ALARM_STEM_R = Math.max(STEM_STOCK_R_U, ALARM_STEM_BAR / (2 * TURN_LD_TARGET));';
+// The anchor is the SHIPPED declaration, matched exactly and failing loudly if
+// it moves — which it already has once, and the guard caught it: the sweep was
+// written while `ALARM_STEM_R` was still the turning-target expression, and the
+// landing that followed pinned it at 0.42 with the corridor written beside it.
+// An exact anchor that stops the run beats a regex that quietly patches
+// something else (probe-234-corner-move.mjs holds the same line).
+const ANCHOR = 'const ALARM_STEM_R = 0.42;';
 const PORT = process.env.PORT || 8507;
 const STEM_STOCK_R_U = 0.9236;   // layout.js STEM_STOCK_R_U (tap 7, ⌀0.70 mm)
 const RS = (process.env.RS ? process.env.RS.split(',').map(Number)

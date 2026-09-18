@@ -26425,13 +26425,22 @@ was never the hard part — and that two of the numbers the corner stood on were
 records of a movement that had since been re-cut.
 
 **The corner's plane was a literal, and is now derived.** `Z_ALARM_CORNER` was
-`-4.1`. The stem bevel is a disc ⊥ the stem, so its reach toward the base plate
-is the blank's own `tipR`, and the plane is now the HIGHEST one standing
-`CLEAR_MARGIN` off the plate's dial-side face — high on purpose, because the §45
-lifter's whole guide stack hangs from this plane and every unit spent here is
-spent again down there. The plate's face is READ OFF THE PLATE rather than
-recomputed from `BACK_PLATE_T` and `makeBackPlate`'s bevel fraction, which would
-be the same number in two files.
+`-4.1`; it is now the HIGHEST plane standing `CLEAR_MARGIN` off the base plate's
+dial-side face — high on purpose, because the §45 lifter's whole guide stack
+hangs from this plane and every unit spent here is spent again down there. It
+lands on −3.9000, 0.2 above the literal. The plate's face is READ OFF THE PLATE
+rather than recomputed from `BACK_PLATE_T` and `makeBackPlate`'s bevel fraction,
+which would be the same number in two files.
+
+**And the reach it clears is the WORST member's, not the gear's.** Two members
+ride the plane: the stem bevel, a disc ⊥ the stem reaching its blank's own
+`tipR` (1.3088), and the stem BUSHING, a torus about the same plane reaching
+ring + tube (1.45) — the crown's actual route to `plate` in the support graph.
+The first cut derived against the bevel and left the bushing **0.0456** off the
+plate, under `CLEAR_MARGIN`, with all 41 gates passing: the only thing that
+moved was `support`'s `Alarm crown → plate` row, 0.15 → 0.046. The bushing's two
+radii were bare literals at its builder and are declared up at the plane that
+derives from them.
 
 **And one spec, not three.** The pair's `bevelToothSpec` is taken once at the
 corner's declaration and answers everything the blank decides: the face width the
@@ -26490,17 +26499,19 @@ though it is not what shipped here. At the turning target the bore forces **16**
 teeth (not the ≥17 the entry predicted: 17 was matching the old face width, a
 preference), the winding climb is untouched, the cock re-derives, and the §45
 lifter's run measures **0.6822 clear** where the bounding boxes had predicted
-0.5361 of overlap. What ships is the corner at its design 10, because the stem
+0.5361 of overlap — measured on the branch that grew it, against that branch's
+own plane. What ships is the corner at its design 10, because the stem
 that would force 16 cannot be cut — see below.
 
 **What stops the stem is the §45 lifter's plunger corridor, and it is spent at
 the radius the movement already ships.** The crown's collar is a ring pressed on
 this stem, so its underside drops one for one with the radius, and the lifter's
 plunger hangs from that underside down to the release sleeve's tab plane:
-corridor 1.336 against a guide stack of 1.3161 — 0.009 of slack.
+on the movement as it shipped that corridor was 1.336 against a guide stack of
+1.3161 — 0.009 of slack, and lifting the corner's plane 0.2 bought 0.2 more.
 `tools/probe-234-stem-ceiling.mjs` sweeps the radius on scratch trees and lets
-the §45 asserts speak: clear at 0.55, short by 0.122 at 0.60, by 0.522 at stem
-stock and by 1.242 at §233's turning target. Its DEGENERACY control is why this
+the §45 asserts speak: on the landed tree it closes between 0.42 and 0.50 (short
+by 0.117 at 0.50), by 0.522 at stem stock and by 1.242 at §233's turning target. Its DEGENERACY control is why this
 landing exists at all — at the shipped 0.42 the whole derived chain boots SILENT,
 so the honest corner lands whether or not the stem ever grows.
 

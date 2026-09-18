@@ -9739,10 +9739,11 @@ export const TURN_WAIVERS = {
   // What these rows now wait on is neither the corner nor the layout. The
   // crown's COLLAR is a ring pressed on this stem, so its underside drops one
   // for one with the radius, and the §45 release lifter's plunger hangs from
-  // that underside down to the release sleeve's tab plane — a corridor 1.336
-  // long against a guide stack of 1.3161. probe-234-stem-ceiling sweeps the
-  // radius on scratch trees and the corridor closes between 0.55 and 0.60:
-  // stem stock misses by 0.522, the turning target by 1.242. Its floor is
+  // that underside down to the release sleeve's tab plane — a corridor that was
+  // 1.336 long against a guide stack of 1.3161 on the movement as it shipped.
+  // probe-234-stem-ceiling sweeps the radius on scratch trees and the corridor
+  // closes between 0.42 and 0.50: stem stock misses by 0.522, the turning
+  // target by 1.242. Its floor is
   // pinned to the HOUR TUBE (`ALARM_SLEEVE_TOP` hangs one CLEAR_MARGIN under
   // the heart cam), so closing these rows is a change to how the lifter READS
   // the collar — a yoke at axis height spends no z on the collar's radius, a

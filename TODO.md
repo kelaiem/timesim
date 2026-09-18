@@ -20046,11 +20046,14 @@ longer than the tube a real case needs.
 > at the radius the movement already ships.** The crown's collar is a ring
 > pressed on this stem, so its underside drops one for one with the radius; the
 > lifter's plunger hangs from that underside down to the release sleeve's tab
-> plane. Corridor 1.336, guide stack 1.3161 — **0.009 of slack**.
-> `tools/probe-234-stem-ceiling.mjs` sweeps the radius on scratch trees and lets
-> the §45 asserts speak: clear at 0.55, short by 0.122 at 0.60, by **0.522 at
-> stem stock** and by **1.242 at the turning target**. Its degeneracy control is
-> what let the rest land: at the shipped 0.42 the whole derived chain boots
+> plane. On the movement as it shipped that corridor was 1.336 against a guide
+> stack of 1.3161 — **0.009 of slack**; deriving the corner's plane lifted it 0.2
+> and bought 0.2 more, which is why the plane is derived HIGH and why that is
+> still not a growth budget. `tools/probe-234-stem-ceiling.mjs` sweeps the radius
+> on scratch trees and lets the §45 asserts speak: on the landed tree the
+> corridor closes between **0.42 and 0.50** (short by 0.117 at 0.50), by **0.522
+> at stem stock** and by **1.242 at the turning target**. Its degeneracy control
+> is what let the rest land: at the shipped 0.42 the whole derived chain boots
 > SILENT.
 >
 > The corridor's floor is not a knob — `ALARM_SLEEVE_TOP` hangs one CLEAR_MARGIN

@@ -13714,13 +13714,15 @@ const ALARM_STEM_BAR = ALARM_STEM_LEN + ALARM_CROWN_BODY_H - ALARM_CROWN_BODY_IN
 // plane below now clears, but because the CROWN'S COLLAR is a ring pressed on
 // this stem, so its underside drops one for one with the radius, and the §45
 // release lifter's plunger hangs from that underside down to the release
-// sleeve's tab plane. That corridor is 1.336 long and the guide stack spends
-// 1.3161 of it: 0.009 of slack at the radius the movement shipped.
+// sleeve's tab plane. On the movement as it shipped that corridor was 1.336 long
+// against a guide stack of 1.3161 — 0.009 of slack. Deriving the plane above
+// lifted the corner 0.2 and bought 0.2 more of it, which is why the plane is
+// derived HIGH; it is still not a growth budget.
 //
 // Measured rather than reasoned — `tools/probe-234-stem-ceiling.mjs` patches
 // this one declaration on scratch trees and lets the §45 asserts speak. The
-// corridor closes between 0.55 and 0.60; stem stock (0.9236) misses by 0.522
-// and the turning target by 1.242. Its DEGENERACY control is why everything
+// corridor closes between 0.42 and 0.50 on this tree; stem stock (0.9236) misses
+// by 0.522 and the turning target by 1.242. Its DEGENERACY control is why everything
 // else in this block could land anyway: at 0.42 the whole derived chain — bore,
 // tooth count, corner plane, bearing cock — boots SILENT, so it collapses onto
 // the shipped design at the shipped radius.
