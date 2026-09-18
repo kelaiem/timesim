@@ -97,11 +97,23 @@ async function boot(source, label) {
     .catch(() => { ok = false; });
   if (ok) await page.waitForFunction(() => !!window.__clock, null, { timeout: 90000 }).catch(() => { ok = false; });
   let m = null;
-  if (ok) m = await page.evaluate(() => {
+  if (ok) m = await page.evaluate(async () => {
     const c = window.__clock;
+    const I = await import('./src/inspect.js');
     const named = (n) => { let f = null; c.scene.traverse((o) => { if (!f && o.name === n) f = o; }); return f; };
     const st = named('alarmStem');
-    return { stemR: st?.geometry?.parameters?.radiusTop ?? null };
+    // The collar's MEASURED headroom under the base plate — the bound §235's
+    // guard states. Reported per row so the silent rows say something positive
+    // rather than only "nothing warned": the corner's plane is DERIVED from the
+    // bevel, so a fatter stem drops the whole corner and buys the fatter collar
+    // its own headroom, and this column is where that shows.
+    const plate = named('backPlate');
+    const collars = []; c.scene.traverse((o) => { if (o.isMesh && o.name === 'alarmStemCollar') collars.push(o); });
+    c.resetInputs?.(); c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmCrownPullT: 1 });
+    c.scene.updateMatrixWorld(true);
+    let head = null;
+    if (plate && collars.length) head = Math.min(...collars.map((o) => I.meshClearance(o, plate, Infinity)));
+    return { stemR: st?.geometry?.parameters?.radiusTop ?? null, head };
   }).catch(() => null);
   await page.close();
   return { label, ok, warns, ...(m || {}) };
@@ -131,18 +143,31 @@ const shipped = rows.find((x) => Math.abs(x.r - 0.42) < 1e-9);
 const degen = shipped && shipped.ok && !shortfall(shipped.warns);
 console.log(`  DEGENERACY: at the pre-§234 radius 0.42 the tree boots with ${shipped ? shipped.warns.length : '—'} warning(s) and ${degen ? 'NO §45 shortfall — OK, the whole derivation collapses onto the shipped design' : 'a §45 shortfall — FAILED: the apparatus warns where the shipped movement does not, so no row below is about the corridor'}`);
 
+// §235's collar-under-the-plate guard is what makes the "0 other warnings"
+// column mean anything, and a guard nobody has seen fire is a comment. So it is
+// MUTATED here — the collar's fat plateau fattened past any plate — and the
+// tree must then say so. probe-direction-guards.mjs holds the same line.
+const FAT = 'const ALARM_COLLAR_FAT_R = ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL;';
+let guardRow = { warns: [], ok: false };
+if (ORIG.includes(FAT)) {
+  guardRow = await boot(ORIG.replace(FAT, 'const ALARM_COLLAR_FAT_R = ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL + 2.0;   // probe: mutate to prove the §235 guard fires'), 'guard mutation');
+}
+const guardFired = guardRow.warns.some((w) => /§235: the crown collar's fat plateau/.test(w));
+console.log(`  GUARD    : the §235 collar-under-the-plate guard, MUTATED (fat plateau +2.0) → ${guardFired ? 'it FIRED — OK, so a silent row below is a measurement' : 'IT DID NOT FIRE — every "0 other warnings" below is untested'}`);
+for (const w of guardRow.warns.filter((w) => /§235/.test(w))) console.log('      · ' + w.slice(0, 190));
+
 const sf = rows.map((x) => ({ r: x.r, s: shortfall(x.warns) }));
 const withS = sf.filter((x) => x.s);
 const mono = withS.every((x, i) => i === 0 || x.s.got <= withS[i - 1].s.got + 1e-9);
 console.log(`  MONOTONE : the §45 shortfall worsens as the stem fattens, on every row  ${mono ? 'OK' : 'FAILED — the stack is not hanging off the collar'}`);
 
 console.log('\n--- WHAT EACH RADIUS COSTS');
-console.log('  stem r    ⌀ mm     §45 blade over the chord   need     other warnings');
+console.log('  stem r    ⌀ mm     §45 blade over the chord   need   collar→plate   other warnings');
 for (const x of rows) {
   const s = shortfall(x.warns);
   const others = x.warns.filter((w) => !/§45 lifter blade bottom/.test(w)).length;
   const mark = !s ? '  ← the corridor still holds' : '';
-  console.log(`  ${f(x.r, 4).padStart(7)}  ${f(x.r * 2 * 0.379, 3).padStart(6)}   ${(s ? f(s.got, 3) : 'clear').padStart(12)}          ${s ? f(s.need, 2) : '   —'}     ${String(others).padStart(3)}${x.ok ? '' : '  DID NOT BOOT'}${mark}`);
+  console.log(`  ${f(x.r, 4).padStart(7)}  ${f(x.r * 2 * 0.379, 3).padStart(6)}   ${(s ? f(s.got, 3) : 'clear').padStart(12)}          ${s ? f(s.need, 2) : '   —'}   ${f(x.head, 3).padStart(10)}   ${String(others).padStart(3)}${x.ok ? '' : '  DID NOT BOOT'}${mark}`);
 }
 
 const lastOk = [...rows].reverse().find((x) => x.ok && !shortfall(x.warns));
