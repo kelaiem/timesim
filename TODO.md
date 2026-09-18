@@ -19726,7 +19726,8 @@ place of "the disc's own seat is the question".
 the `turning` check — and the movement arrived twelve bars over it. Each was
 waived in `TURN_WAIVERS` citing this item; **nine remain** after §234 Landing 1
 (the two arrest columns closed, see the block under group C) and the first
-member of Landing 2 (the alarm pusher stem, see the block under group B). This is that list, with the fix path
+member of Landing 2 (the alarm pusher stem, see the blocks under group B —
+the second block is two members MEASURED and not cut). This is that list, with the fix path
 for each group, so the waivers can be deleted one group at a time; per §137's
 staleness rule, deleting a waiver whose bar is no longer over the ceiling is
 structurally part of the fix, and leaving one behind fails the check.
@@ -19837,6 +19838,35 @@ longer than the tube a real case needs.
 > `main`). The coil's own headroom under the plate reduces to wireR ≤ the
 > guide ring's tube and is asserted with the numbers. Seven group-B rows
 > remain, one member at a time against the same constant.
+
+> **§234 Landing 2, step 3 measured (2026-09-18) — neither keyless member is
+> a section change, and both were measured before either was cut.**
+>
+> **The setting traverse is SITE-limited.** `SETTING_ROD_R` (`main.js`) at
+> stem stock boots silent — no bore reads it — and then fails three gates:
+> `intraUnit` (`mwCornerDropIn ⇄ settingTraverse`), `inspection` and
+> `sweptOverlap` (`Keyless works ⇄ Power-reserve train`, 0.215). Measured,
+> the rod's z window is the reserve train's first wheel (top −3.532) below and
+> the motion-works corner's drop-in bevel (bottom −2.150) above: 1.38 u, and
+> two margins leave 1.08 for the rod's diameter, r ≤ 0.54 — L/D 25 at its
+> 10.28 mm, over even the ceiling. The ceiling wants 1.66 u of window, the
+> target 1.81, stock 2.15. So the traverse cannot reach 20 in place and this
+> is a LAYOUT change (the reserve gear plane `Z_RSV`, or the corner's stack)
+> to file and solve in position space; the waiver's reason says so.
+>
+> **The winding stem is a TRAIN change** — the Geneva's finding again, one
+> landing later. Booted at `STEM_R = STEM_STOCK_R_U` (bore 1.074 u): the
+> 8-tooth winding pinion's bore reaches its root cone at the small end (0.960)
+> and the crown-wheel pair keeps no web between hole and teeth — TODO 138's
+> two hard guards, both firing. A winding pinion bored for a real stem is a
+> bigger pinion: at 10 teeth both guards go silent, and what remains is
+> TODO 136's `KW_BEVEL` plane table in `layout.js` (five literals asserted
+> against the cut spec — `rimFaceOut` 2.761 → 3.124, `rimBack` 0.773 →
+> 0.416, all five drift) and the setting corner's hub-collar bound
+> (`YOKE_FORK_OUT`, "the wrong shape for this pair"). So the stem moves the
+> winding ratio (20/8 → 20/10), re-derives the corner's declared planes and
+> re-solves the collar bound — filed as its own landing in roadmap §234
+> (step 3b), not absorbed into a section change. Nothing in this step was cut.
 
 ### Group C — arbors inside the movement (3 rows)
 
