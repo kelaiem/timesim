@@ -13651,18 +13651,35 @@ const alarmWorld = (() => {
 })();
 const _alarmRimD = Math.hypot(alarmWorld.x, alarmWorld.y);
 const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD }; // outward radial (world) to the case rim
-// Bevel-corner plane, wedged into the tight band between the BASE PLATE
-// (bottom face −2.3) and the well floor (Z_DIAL + SUBDIAL_RECESS = −6.5). The
+// Bevel-corner plane, wedged into the tight band above the sub-dial works. The
 // two bevels reach out of the corner in opposite directions: the disc bevel
-// trails −z down the arbor toward the pointer (must stop short of the floor),
-// and the stem bevel — a disk ⊥ the stem — reaches +z toward the plate (must
-// stop short of it). Both are held clear of the plate by the same CLEAR_MARGIN
-// the rest of the movement uses. The base plate is NOT a swept unit, so this
-// clearance is verified by hand, not by the battery — an earlier build put the
-// detent star at −2.3…−1.6, buried in the plate, and every clean run missed it.
-// Reach ≈ faceWidth + tipR (45° cone) ≈ 2.05; corner −4.1 → disc cone bottoms
-// at −6.15 (clear of the floor) and the stem bevel tops out at −2.70 (clear of
-// the plate).
+// trails −z down the arbor toward the pointer, and the stem bevel — a disk ⊥
+// the stem — reaches +z toward the plate. Both are held clear by the same
+// CLEAR_MARGIN the rest of the movement uses. The base plate is NOT a swept
+// unit, so this clearance is verified by hand, not by the battery — an earlier
+// build put the detent star at −2.3…−1.6, buried in the plate, and every clean
+// run missed it.
+//
+// §234 step 4 — AND BECAUSE IT IS VERIFIED BY HAND, THIS COMMENT IS THE RECORD,
+// so it was measured rather than re-read. `tools/probe-234-corner-z.mjs`
+// surveys the column instead of quoting it, and two of the three figures that
+// stood here were stale:
+//
+//   · the CEILING holds — `backPlate`'s dial-side face measures −2.3, 1.8000
+//     above this plane, and it is the binding wall above.
+//   · the FLOOR was named as "the well floor (Z_DIAL + SUBDIAL_RECESS = −6.5)".
+//     Z_DIAL is −8.4 now, so that expression is −7.9 — and the well floor does
+//     not bind in this column at all. The nearest metal below is the §45
+//     release lifter's run (top −6.0919, ANOTHER unit) and the setting arbor's
+//     own bearing cock (top −6.3080, this group's own).
+//   · the REACH was carried as "≈ faceWidth + tipR (45° cone) ≈ 2.05", giving a
+//     disc bottoming at −6.15. Measured off the built blanks' world boxes, the
+//     disc reaches 1.3792 DOWN (bottom −5.4792) and the stem bevel 1.3088 UP
+//     (top −2.7912). The approximation was 0.67 pessimistic on the side that
+//     matters least and 0.09 optimistic on the side that binds.
+//
+// The live numbers, then: 1.8000 of headroom above and 2.2080 to the cock
+// below, against reaches of 1.3088 and 1.3792.
 const Z_ALARM_CORNER = -4.1;
 const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24;
 // TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
