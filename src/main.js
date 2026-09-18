@@ -17100,7 +17100,13 @@ const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade
   head.rotation.x = Math.PI / 2;
   head.position.set(hx, 0, headTop - ALARM_LIFT_HEAD_H / 2);
   alarmLifter.add(head);
-  const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, (headTop - ALARM_LIFT_HEAD_H) - ALARM_LIFT_RUN_Z, 10), MATS.steel);
+  // §235 — ABS, because the link's SENSE is not a law. The pad follows the cam
+  // down and the run stays on the sleeve's tab plane, so past a certain stem the
+  // pad passes below it and this link RISES instead of descending. Written as a
+  // signed difference it came out with a negative height, which `stockFloor`
+  // read as a 0.0287 mm section and `meshIntegrity` as an inverted body — two
+  // gates describing a build bug as a material one.
+  const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, Math.abs((headTop - ALARM_LIFT_HEAD_H) - ALARM_LIFT_RUN_Z), 10), MATS.steel);
   plunger.name = 'alarmLifterPlunger'; // pin-class stock, declared (kind table)
   plunger.rotation.x = Math.PI / 2;
   plunger.position.set(hx, 0, ((headTop - ALARM_LIFT_HEAD_H) + ALARM_LIFT_RUN_Z) / 2);
@@ -17269,15 +17275,16 @@ const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade
   // Below, the old bound is kept because it still measures something true —
   // and it is the one the plunger design could not hold once the stem grew.
   say('blade bottom clears the chord top', (ALARM_LIFT_BLADE_Z - SPRING_FLAT_U / 2) - (ALARM_LIFT_RUN_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
-  // AND THE ONE THAT MOVING THE BLADE TOOK AWAY. With the spring up at the
-  // prongs, nothing downstairs watched the PAD any more — and the pad is what
-  // still follows the cam down. Measured, at the turning target it had sunk
-  // past the sleeve's own tab plane and the plunger between them came out with
-  // a NEGATIVE height, which `stockFloor` read as a 0.0287 mm section and
-  // `meshIntegrity` as an inverted body. Neither of those names the defect; this
-  // does, and it is the yoke's real remaining bound.
-  say('yoke pad stands above the sleeve tab plane',
-    (ALARM_YOKE_WEB_TOP - STOCK_MIN_U) - (ALARM_LIFT_RUN_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
+  // AND THE ONE THAT MOVING THE BLADE TOOK AWAY — stated as what it physically
+  // is, which took two goes. With the spring up at the prongs, nothing
+  // downstairs watched the PAD any more, and the pad is what still follows the
+  // cam down. The first version of this assert said the pad must stand above
+  // the sleeve's TAB PLANE, and that is a build assumption wearing a bound's
+  // clothes: the pad sits at r 28.2 and the sleeve's outer rim is 4.65, so they
+  // share a z and nothing else, and the link between pad and run is free to
+  // rise instead of descend. What is real is that the link must BE a link.
+  say('pad-to-run link has a section to be cut from',
+    Math.abs((ALARM_YOKE_WEB_TOP - STOCK_MIN_U) - ALARM_LIFT_RUN_Z) - 2 * 0.15, 0);
   // and the derivation's pin, one member up: the bore holds PRONG at full
   // depression, with the blade's own underside clear of the eye's top face.
   say('blade clears the eye top at full depression',
