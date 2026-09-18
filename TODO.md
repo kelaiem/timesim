@@ -19951,6 +19951,68 @@ longer than the tube a real case needs.
 > block's re-wording invalidates its seven translations by design and rides
 > a page landing (§228's precedent).
 
+> **§234 Landing 2, step 4 (2026-09-18) — MEASURED, and the alarm crown's two
+> rows are not a section change either.** `tools/probe-234-step4.mjs` (a
+> REPORT, group C's instrument written for group B) measured the four
+> couplings on the shipped tree before anything was cut. Three of them refuse
+> the entry's "a section change plus a P3 re-clear", and the third is the one
+> that decides it.
+>
+> **Stem stock does not close the row.** The bar `turning` clusters is the
+> stem plus the crown knob, 47.1982 u over ⌀0.84, and at `STEM_STOCK_R_U`
+> (r 0.9236) it still reads **L/D 25.6** — 23.5 even with the knob split out.
+> Only the TARGET radius closes it: r 1.3111 u with the knob, 1.2043 without,
+> i.e. ⌀0.994 or ⌀0.913 mm, both inside real crown-stem stock (0.9–1.2 mm) and
+> the number the entry predicted. So this row cannot be paid for with the
+> stock floor the pusher used; it needs the ceiling's own arithmetic.
+>
+> **The bevel bored over that stem breaks BOTH of its meshes.** The stem
+> carries the alarm setting corner at its inner end, bored today at
+> `bevelToothSpec`'s DEFAULT 0.4 — which is already 0.02 SMALLER than the
+> r 0.42 stem it rides, a separate inconsistency worth knowing. Bored honestly
+> at r + `PIVOT_BORE_CLEAR` = 1.3611, the real generator gives **no blank at
+> all under 14 teeth** and needs **17** to keep today's face width (0.5657),
+> which grows each member's tip radius 1.3456 → 2.1109. And the stem bevel has
+> TWO mates, not one: the setting arbor's disc bevel when the crown is PULLED
+> OUT, and the alarm winding train's climb contrate when it is PUSHED IN.
+> Measured at 17 teeth, the rest mesh reads **0.4738 where it reads 0.0000
+> today** — the climb is gone, and the contrate is a different pair with its
+> own tooth count. Re-cutting the corner re-cuts the winding climb.
+>
+> **And the grown disc bevel runs into its own bearing cock.** At 17 teeth it
+> stands **0.0583** from `alarmArborCockArm`, under `CLEAR_MARGIN`, and that is
+> INSIDE the unit where the pair sweep cannot see it (TODO 5). The cock carries
+> the arbor's bearing, so it is not free to move out of the way.
+>
+> **The collars and the §45 lifter station re-derive as well.** At any radius
+> from stem stock upward the stem is FATTER than its own collar's thin section
+> (`ALARM_COLLAR_THIN_R` 0.55), which is nonsense as metal — measured, the fat
+> stem reads 0.0000 to `alarmLifterPlunger` at every candidate. The collar must
+> grow with the stem and the lifter's head z follows it (`ALARM_LIFT_HEAD_TOP`
+> already derives from the collar radius), which is a derived cascade rather
+> than a wall, but it is part of the price.
+>
+> **So step 4 is a CORNER REDESIGN or a LAYOUT MOVE, and both are the owner's
+> call.** Two honest resolutions, the same shape as step 5's:
+>
+> - **Grow the corner.** Re-cut both bevels at ≥17 teeth with the real bore,
+>   re-cut the winding climb contrate against the new stem bevel, move the
+>   setting arbor's bearing cock, and re-derive the collar and the lifter
+>   station. That is three mechanisms for one bar.
+> - **Move the corner outboard**, which is position space and is what the
+>   priority order prefers. The stem is long because the corner is DEEP: it is
+>   cut from `ALARM_CD` out to the case, so the corner's radius and the stem's
+>   length trade one for one. Measured: at stem stock the target wants the bar
+>   ≤ 33.2496 u, so the stem ≤ 29.4063 and the corner moves **13.9486 u
+>   outboard, from r 15.4007 to r 29.3493** — against a plate rim at r 41.1557
+>   and the stem's own bush at 39.1557, so there is room in plan. The whole
+>   setting corner travels with it (arbor, disc bevel, cock, the setting train
+>   behind it, the lifter's station), which is a layout solve of the §13/§22/§33
+>   kind and not a section change.
+>
+> Nothing was cut. The two waivers stand, reasons rewritten to say which of the
+> two resolutions each is waiting on.
+
 ### Group C — arbors inside the movement (3 rows)
 
 ```
