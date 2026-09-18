@@ -26624,3 +26624,14 @@ is tessellation flats on a press fit, and `Alarm release lifter` at 4.7787 — t
 yoke's two brackets are separate islands, each standing on the base plate's
 dial-side face, which is the same grounding the single bracket always had and the
 same convention the unit's existing split already carried.
+
+**What this owes `explain.html`, stated rather than ticked.** The silence-chain
+plate's PROSE survives the change — "the head climbs onto the raised land,
+lifting the whole lifter" is still exactly what happens, the pad still rides the
+collar's step and the whole member still moves 1:1, and `explain-quotes` passes
+because no constant it quotes moved. What is one plate behind is the DRAWING:
+it renders the member as a bare plunger under the cam, with no prongs either
+side and the guide and spring still downstairs. That is a page landing's work
+under §228's precedent — re-wording or re-drawing a block invalidates its seven
+translations by design — so it is filed here rather than half-done in a battery
+landing.
