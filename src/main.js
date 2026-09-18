@@ -16995,16 +16995,20 @@ const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_REL_AZ;
 // DIFFERENCE `alarmCollarRAt(s) − ALARM_COLLAR_THIN_R`, so the cam's law is the
 // sleeve's travel as before and only the datum moves.
 const ALARM_COLLAR_THIN_R = ALARM_STEM_R + STOCK_MIN_U;
+// §235 — the FAT plateau's radius, named because the yoke's every station is
+// derived from it: the cam's widest is what its guides have to stand clear of.
+// It was spelled `ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL` at four sites.
+const ALARM_COLLAR_FAT_R = ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL;
 const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
-  : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL
+  : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_FAT_R
   : ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL * (ALARM_COLLAR_RAMP.out - s) / (ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in);
 {
   // the collar itself rides the spinner (slides with the pull for free)
   const thin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_THIN_R, ALARM_COLLAR_S1 - ALARM_COLLAR_RAMP.out, 16), MATS.steel);
   thin.position.y = (ALARM_COLLAR_RAMP.out + ALARM_COLLAR_S1) / 2;
-  const ramp = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in, 16), MATS.steel);
+  const ramp = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_FAT_R, ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in, 16), MATS.steel);
   ramp.position.y = (ALARM_COLLAR_RAMP.in + ALARM_COLLAR_RAMP.out) / 2;
-  const fat = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_RAMP.in - ALARM_COLLAR_S0, 16), MATS.steel);
+  const fat = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_FAT_R, ALARM_COLLAR_FAT_R, ALARM_COLLAR_RAMP.in - ALARM_COLLAR_S0, 16), MATS.steel);
   fat.position.y = (ALARM_COLLAR_S0 + ALARM_COLLAR_RAMP.in) / 2;
   for (const m of [thin, ramp, fat]) { m.name = 'alarmStemCollar'; alarmSpinner.add(m); }
 }
@@ -17017,30 +17021,52 @@ movement.add(alarmLifterUnit);
 registerLabel('Alarm release lifter', alarmLifterUnit);
 registerExplode(alarmLifterUnit, 0, 2, -1);
 const alarmLifter = new THREE.Group(); // the moving L — tick slides it in world z
-const alarmLifterBladeGroup = new THREE.Group(); // return blade root (tick flexes it)
-const ALARM_LIFT_BLADE_LEN = Math.hypot(0.7, 1.3);
+// §235 — ONE blade PER PRONG, mirrored with the brackets that carry them. The
+// tick flexes both through the same root rotation, so the pair is one spring
+// law with two members, not two laws.
+const alarmLifterBladeGroups = [new THREE.Group(), new THREE.Group()];
+const ALARM_LIFT_BLADE_LEN = 0.7;   // post centre → its own prong's axis, along the stem
 const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); // run centreline = the tab's rest plane, world
-// TODO 42 (closed): the guide stack — eye, blade stub, blade root — is ONE
-// derived chain, pinned from the TOP. The item's own prescription
-// (ez ≥ stub z + STOCK_MIN_U + CLEAR_MARGIN) has no solution with the stub
-// held at its first-cut station: from the stub's rest top to the collar's
-// pulled underside (fat radius under the corner) the corridor is 0.255, and
-// an eye needs STOCK_MIN_U + 2·CLEAR_MARGIN = 0.62 — TODO 23's arithmetic,
-// one guide up, same verdict. So the chain solves DOWNWARD instead. The
-// eye's top face sits exactly where the plunger's top arrives at full
-// depression: the HIGHEST station at which the bore still holds plunger at
-// every pose (any higher and the head, not the plunger, is what the bore
-// reads at full travel — the eye is the plunger's guide, and this bound also
-// keeps the head clear of the bore, which makes the stub comment's "riding
-// clear" claim true at last). The stub then drops to hold the item's
-// inequality at equality below the eye's bottom face, and the blade root
-// keeps its as-built bearing relation to the stub — bottom faces flush, the
-// tip riding the stub's underside — made exact instead of rounded.
+// §235 — A YOKE, NOT A PLUNGER UNDER THE CAM. TODO 42 solved this stack
+// DOWNWARD: the head reads the collar from underneath, so its top is
+// `Z_ALARM_CORNER − collar radius`, and eye, stub and blade hung below that
+// head in one derived chain. That works, and it spends the CAM'S WHOLE RADIUS
+// in z — which is why §234 measured the corridor to the release sleeve's tab
+// plane closing between 0.42 and 0.50 of stem radius, with the sleeve's own
+// floor pinned to the hour tube and TODO 145 group B unable to cut its section
+// at all (`tools/probe-234-stem-ceiling.mjs`).
+//
+// A real keyless works does not read a sliding collar from underneath; a YOKE
+// straddles it. So this one does: the pad still touches under the collar (the
+// hand-off is unchanged, and the member is still a 1:1 slider), but two PRONGS
+// rise either side of the stem from a web under the pad, and the guides and the
+// return spring act on those prongs — BESIDE the collar, at the stem's own AXIS
+// height. That station does not move when the collar fattens, so the stack no
+// longer hangs off the cam's radius; only the pad and the web follow it down,
+// into the 3.0+ of free air the probe measured below the stem outboard of r 23.
+//
+// The ceiling is the one thing this cannot spend: measured along the whole stem
+// (r 18 to 30), the base plate's dial-side face stands 1.60 above the stem's
+// axis and nothing else is nearer. Every station below is stated as a rise off
+// the axis so that budget can be read, and the asserts hold it.
 const ALARM_LIFT_HEAD_TOP = Z_ALARM_CORNER - ALARM_COLLAR_THIN_R - 0.01; // top 0.01 under the collar's thin section at rest (the fork clearance figure)
 const ALARM_LIFT_HEAD_H = 0.24;
-const ALARM_LIFT_EYE_Z = (ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H - ALARM_SLEEVE_TRAVEL) - STOCK_MIN_U / 2; // eye top = plunger top at full depression
-const ALARM_LIFT_STUB_Z = ALARM_LIFT_EYE_Z - STOCK_MIN_U - CLEAR_MARGIN; // stub top = eye bottom − CLEAR_MARGIN, at the REST pose — the closest approach; travel only opens it
-const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2; // blade bottom face flush with the stub's
+const ALARM_YOKE_PIN_R = 0.15;                                    // prong stock — the plunger's own section, pivot class
+const ALARM_YOKE_EYE_R_IN = ALARM_YOKE_PIN_R + 0.02;              // the running fit the old plunger eye carried
+const ALARM_YOKE_EYE_R_OUT = ALARM_YOKE_EYE_R_IN + STOCK_MIN_U;   // the RING carries the bore, at sheet floor
+// The prongs stand where their GUIDES clear the cam: it is the eye's inner
+// wall, not the prong, that comes nearest the collar, so the collar's fattest
+// radius plus one margin plus the ring's own wall is the station.
+const ALARM_YOKE_PRONG_Y = ALARM_COLLAR_FAT_R + CLEAR_MARGIN + ALARM_YOKE_EYE_R_OUT;
+const ALARM_YOKE_EYE_Z = Z_ALARM_CORNER;   // the guides sit on the stem's AXIS — the one height beside the cam that a fatter cam does not move
+const ALARM_YOKE_WEB_TOP = ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H;   // the web hangs under the pad, so nothing but the pad ever touches the cam
+// The prong's top SHOULDER is what the return blade bears up under, and it is
+// pinned from the eye rather than from the pad: at full depression the blade's
+// underside must still stand one margin clear of the eye's top face.
+const ALARM_YOKE_SHOULDER_BOT = (ALARM_YOKE_EYE_Z + STOCK_MIN_U / 2)
+  + CLEAR_MARGIN + SPRING_FLAT_U + ALARM_SLEEVE_TRAVEL;
+const ALARM_YOKE_SHOULDER_T = STOCK_MIN_U;
+const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade top bearing on the shoulder's underside at rest
 {
   const hx = ALARM_LIFT_HEAD_R;
   // domed head, top 0.01 under the collar's thin section at rest (the fork
@@ -17056,17 +17082,33 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   plunger.rotation.x = Math.PI / 2;
   plunger.position.set(hx, 0, ((headTop - ALARM_LIFT_HEAD_H) + ALARM_LIFT_RUN_Z) / 2);
   alarmLifter.add(plunger);
-  // blade stub — the return blade bears up under this, one CLEAR_MARGIN
-  // under the guide eye at rest (the derived stack above; rest is the
-  // closest approach, since the L's whole travel is downward from it)
-  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, STOCK_MIN_U, 10), MATS.steel);
-  stub.rotation.x = Math.PI / 2;
-  stub.position.set(hx, 0, ALARM_LIFT_STUB_Z);
-  alarmLifter.add(stub);
+  // §235 — THE YOKE ITSELF: a web under the pad carrying two prongs that rise
+  // either side of the stem, each capped by the shoulder the return blade
+  // bears up under. The web hangs under the PAD rather than level with it, so
+  // the cam is touched by one face and one face only — the hand-off stays the
+  // single contact it was.
+  const yokeWeb = new THREE.Mesh(new THREE.BoxGeometry(STOCK_MIN_U, 2 * ALARM_YOKE_PRONG_Y, STOCK_MIN_U), MATS.steel);
+  yokeWeb.name = 'alarmYokeWeb';
+  yokeWeb.position.set(hx, 0, ALARM_YOKE_WEB_TOP - STOCK_MIN_U / 2);
+  alarmLifter.add(yokeWeb);
+  for (const s of [-1, 1]) {
+    const prongLen = (ALARM_YOKE_SHOULDER_BOT) - (ALARM_YOKE_WEB_TOP - STOCK_MIN_U);
+    const prong = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_YOKE_PIN_R, ALARM_YOKE_PIN_R, prongLen, 10), MATS.steel);
+    prong.name = 'alarmYokeProng'; // pin-class stock, declared (kind table)
+    prong.rotation.x = Math.PI / 2;
+    prong.position.set(hx, s * ALARM_YOKE_PRONG_Y, (ALARM_YOKE_WEB_TOP - STOCK_MIN_U) + prongLen / 2);
+    alarmLifter.add(prong);
+    const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, ALARM_YOKE_SHOULDER_T, 10), MATS.steel);
+    shoulder.name = 'alarmYokeShoulder';
+    shoulder.rotation.x = Math.PI / 2;
+    shoulder.position.set(hx, s * ALARM_YOKE_PRONG_Y, ALARM_YOKE_SHOULDER_BOT + ALARM_YOKE_SHOULDER_T / 2);
+    alarmLifter.add(shoulder);
+  }
   // tangential chord az 0 → run az, then the radial run inboard to the fork
   const az = ALARM_LIFT_RUN_AZ;
   const p0 = { x: hx, y: 0 }, p1 = { x: hx * Math.cos(az), y: hx * Math.sin(az) };
   const chord = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(p1.x - p0.x, p1.y - p0.y) + 0.3, STOCK_MIN_U + 0.01, STOCK_MIN_U), MATS.steel);
+  chord.name = 'alarmLifterChord';   // §235: named, so no declaration selects it by geometry INDEX
   chord.position.set((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, ALARM_LIFT_RUN_Z);
   chord.rotation.z = Math.atan2(p1.y - p0.y, p1.x - p0.x);
   alarmLifter.add(chord);
@@ -17087,6 +17129,7 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
     alarmLifter.add(plate);
   }
   const web = new THREE.Mesh(new THREE.BoxGeometry(STOCK_MIN_U, 0.34, gap + 2 * STOCK_MIN_U), MATS.steel);
+  web.name = 'alarmLifterForkWeb';
   web.position.set(Math.cos(az) * (rIn + 0.31), Math.sin(az) * (rIn + 0.31), ALARM_LIFT_RUN_Z);
   web.rotation.z = az;
   alarmLifter.add(web);
@@ -17103,40 +17146,48 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   // now passes the run's swept top — that corridor no longer exists at
   // all. Guidance keeps two stations without it: this eye at the
   // plunger, the cheek mid-guide at the run.
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - 0.35), 10), MATS.nickel);
-  post.position.set(hx + 0.7, 1.3, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
-  post.rotation.x = Math.PI / 2;
-  alarmLifterUnit.add(post);
+  // §235 — a bracket PER PRONG, mirrored about the stem. Two of them is the
+  // yoke's own structure, not a doubling for its own sake: the pad takes the
+  // cam's push on the axis and the guides answer it at ±ALARM_YOKE_PRONG_Y, so
+  // a single-sided guide would carry that couple alone. The posts keep the
+  // as-built 0.7 outboard offset and stand on the base plate's dial-side face,
+  // the alarm arbor's cock pattern.
   registerSub('Alarm release lifter', 'Release lifter', alarmLifter, { tickOwned: true }); // §10 level 2 — tick presses it toward the dial
-  registerSub('Alarm release lifter', 'Lifter post', post);
-  {
-    const ez = ALARM_LIFT_EYE_Z;
-    const eyeROut = 0.17 + STOCK_MIN_U;  // the RING carries the bore (0.02 running fit over the 0.15 plunger)
-    const span = Math.hypot(0.7, 1.3);   // post centre → plunger axis
-    // TODO 23: the arm ends at the eye ring's OUTER wall — an arm run to
-    // the axis is solid where the plunger travels (a box cannot carry a
-    // bore). Outer end keeps the as-built 0.15 overhang past the post.
-    const armLen = (span + 0.15) - eyeROut;
-    const mid = (-0.15 + (span - eyeROut)) / 2; // station along post→axis, from the post centre
+  for (const sgn of [-1, 1]) {
+    const py = sgn * ALARM_YOKE_PRONG_Y;
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - 0.35), 10), MATS.nickel);
+    post.name = 'alarmLifterPost';
+    post.position.set(hx + 0.7, py, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
+    post.rotation.x = Math.PI / 2;
+    alarmLifterUnit.add(post);
+    registerSub('Alarm release lifter', 'Lifter post', post);
+    // TODO 23's rule, kept: the arm ends at the eye ring's OUTER wall, because
+    // an arm run to the axis is solid where the prong travels (a box cannot
+    // carry a bore). Outer end keeps the as-built 0.15 overhang past the post.
+    const armLen = (0.7 + 0.15) - ALARM_YOKE_EYE_R_OUT;
     const arm = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.32, STOCK_MIN_U), MATS.nickel);
-    arm.position.set(hx + 0.7 - (0.7 / span) * mid, 1.3 - (1.3 / span) * mid, ez);
-    arm.rotation.z = Math.atan2(-1.3, -0.7);
+    arm.name = 'alarmLifterBracketArm';
+    arm.position.set(hx + 0.7 + 0.15 - armLen / 2, py, ALARM_YOKE_EYE_Z);
     alarmLifterUnit.add(arm);
-    const eye = new THREE.Mesh(ringGeo(0.17, eyeROut, STOCK_MIN_U), MATS.nickel);
-    eye.position.set(hx, 0, ez);
+    const eye = new THREE.Mesh(ringGeo(ALARM_YOKE_EYE_R_IN, ALARM_YOKE_EYE_R_OUT, STOCK_MIN_U), MATS.nickel);
+    eye.name = 'alarmLifterEye';
+    eye.position.set(hx, py, ALARM_YOKE_EYE_Z);
     alarmLifterUnit.add(eye);
   }
   // return blade: root at the bracket post, tip bearing UP under the
   // plunger's stub (thin in z — the flex direction; slaved in tick via the
   // root group so the tip follows the stub's real travel, §48's convention)
-  alarmLifterBladeGroup.position.set(hx + 0.7, 1.3, ALARM_LIFT_BLADE_Z);
-  alarmLifterBladeGroup.rotation.order = 'ZYX';
-  alarmLifterBladeGroup.rotation.z = Math.atan2(-1.3, -0.7);
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_BLADE_LEN, 0.2, SPRING_FLAT_U), MATS.blueSteel);
-  blade.name = 'alarmLifterBlade';
-  blade.position.x = ALARM_LIFT_BLADE_LEN / 2;
-  alarmLifterBladeGroup.add(blade);
-  alarmLifterUnit.add(alarmLifterBladeGroup);
+  for (const [i, sgn] of [[0, -1], [1, 1]]) {
+    const g = alarmLifterBladeGroups[i];
+    g.position.set(hx + 0.7, sgn * ALARM_YOKE_PRONG_Y, ALARM_LIFT_BLADE_Z);
+    g.rotation.order = 'ZYX';
+    g.rotation.z = Math.PI;   // rooted at the post, reaching inboard along the stem to its prong
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_BLADE_LEN, 0.2, SPRING_FLAT_U), MATS.blueSteel);
+    blade.name = 'alarmLifterBlade';
+    blade.position.x = ALARM_LIFT_BLADE_LEN / 2;
+    g.add(blade);
+    alarmLifterUnit.add(g);
+  }
   // mid-guide: post beside the run with two vertical CHEEKS flanking it
   // tangentially — lateral guidance that leaves the vertical travel free, so
   // the long span is guided, not cantilevered (P1: the run only ever carries
@@ -17145,18 +17196,21 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   const mgR = 14, mgOff = 0.5; // post stands one 0.5 tangential stand-off from the run's centreline
   const mgP = { x: Math.cos(az) * mgR - Math.sin(az) * mgOff, y: Math.sin(az) * mgR + Math.cos(az) * mgOff };
   const mg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - 0.5), 10), MATS.nickel);
+  mg.name = 'alarmLifterGuidePost';
   mg.position.set(mgP.x, mgP.y, (-2 + ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - 0.5) / 2);
   mg.rotation.x = Math.PI / 2;
   alarmLifterUnit.add(mg);
   const cheekH = 0.16 + ALARM_SLEEVE_TRAVEL + 0.2;
   for (const s of [-1, 1]) {
     const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.7, STOCK_MIN_U, cheekH), MATS.nickel);
+    cheek.name = 'alarmLifterCheek';
     cheek.position.set(Math.cos(az) * mgR - Math.sin(az) * s * (0.2 + STOCK_MIN_U / 2), Math.sin(az) * mgR + Math.cos(az) * s * (0.2 + STOCK_MIN_U / 2),
       ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL / 2);
     cheek.rotation.z = az;
     alarmLifterUnit.add(cheek);
   }
   const cheekBridge = new THREE.Mesh(new THREE.BoxGeometry(0.7, mgOff + 0.35, STOCK_MIN_U), MATS.nickel);
+  cheekBridge.name = 'alarmLifterCheekBridge';
   cheekBridge.position.set((mgP.x + Math.cos(az) * mgR) / 2, (mgP.y + Math.sin(az) * mgR) / 2,
     ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - STOCK_MIN_U / 2 - 0.25);
   cheekBridge.rotation.z = az;
@@ -17175,17 +17229,27 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   say('collar inboard tip clear of the cluster at rest', (ALARM_CD + ALARM_COLLAR_S0) - ALARM_LIFT_CLUSTER_OUT, CLEAR_MARGIN - 1e-6);
   // the ramp's rise IS the sleeve travel — the tick law reads this same fn
   say('collar rise = sleeve travel', 1e-9 + (alarmCollarRAt(ALARM_COLLAR_S0) - alarmCollarRAt(ALARM_COLLAR_S1)) - ALARM_SLEEVE_TRAVEL, 0);
-  // TODO 42 — the guide stack's two open ends, with the achieved numbers.
-  // Above: the collar's deepest underside (fat radius, crown pulled) over the
-  // eye's top face — the bound that made the item's own window EMPTY until
-  // the stub dropped. Below: the blade's bottom face over the chord's top —
-  // pose-invariant, because the tip and the chord co-travel, so the rest
-  // figure is the figure at every depression.
-  say('collar (pulled, fat) clears the eye top', (Z_ALARM_CORNER - (ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL)) - (ALARM_LIFT_EYE_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
+  // §235 — THE YOKE'S OWN ENDS, and they are a different set from TODO 42's
+  // because the stack no longer hangs off the cam. What the guides must clear
+  // is the cam SIDEWAYS, and what nothing may exceed is the plate overhead.
+  //
+  // The ceiling first: measured along the whole stem, the base plate's
+  // dial-side face is the nearest metal above it, and the yoke's tallest
+  // member is a prong shoulder. Read off the plate, never restated.
+  say('prong shoulder under the base plate', PLATE_DIAL_FACE - (ALARM_YOKE_SHOULDER_BOT + ALARM_YOKE_SHOULDER_T), CLEAR_MARGIN);
+  // Sideways: it is the EYE's inner wall, not the prong, that comes nearest
+  // the cam, and the cam is fattest with the crown pulled.
+  say('eye bore clears the collar at its fattest', (ALARM_YOKE_PRONG_Y - ALARM_YOKE_EYE_R_OUT) - ALARM_COLLAR_FAT_R, CLEAR_MARGIN);
+  // The web hangs under the pad, so the pad is the only face the cam touches —
+  // at the fattest plateau, where the yoke stands at full depression.
+  say('web clears the collar with the crown pulled', (Z_ALARM_CORNER - ALARM_COLLAR_FAT_R) - (ALARM_YOKE_WEB_TOP - ALARM_SLEEVE_TRAVEL), 0);
+  // Below, the old bound is kept because it still measures something true —
+  // and it is the one the plunger design could not hold once the stem grew.
   say('blade bottom clears the chord top', (ALARM_LIFT_BLADE_Z - SPRING_FLAT_U / 2) - (ALARM_LIFT_RUN_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
-  // and the derivation's pin: the bore holds PLUNGER at full depression —
-  // equality by construction today; a warn here means someone moved one side
-  say('eye bore holds plunger at full depression', (ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H - ALARM_SLEEVE_TRAVEL) - (ALARM_LIFT_EYE_Z + STOCK_MIN_U / 2), 0);
+  // and the derivation's pin, one member up: the bore holds PRONG at full
+  // depression, with the blade's own underside clear of the eye's top face.
+  say('blade clears the eye top at full depression',
+    (ALARM_LIFT_BLADE_Z - SPRING_FLAT_U / 2 - ALARM_SLEEVE_TRAVEL) - (ALARM_YOKE_EYE_Z + STOCK_MIN_U / 2), CLEAR_MARGIN - 1e-9);
 }
 // §45 — the BICONDITIONAL, asserted (the entry's acceptance): Hidden ⟺
 // ¬Armed ∧ ¬Setting, at all four corners, evaluated on the mechanism's own
@@ -40251,7 +40315,8 @@ function tick(t) {
     alarmSleeveLiftNow = alarmCollarRAt(sHead) - ALARM_COLLAR_THIN_R; // 0 → ALARM_SLEEVE_TRAVEL
     alarmLifter.position.z = -alarmSleeveLiftNow + subDrillZ(alarmLifter);                     // world: pressed toward the dial (+ §10 level 2's drill)
     alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow + subDrillZ(alarmSleeve); // dial-local +z ≡ the same world direction (+ the drill)
-    alarmLifterBladeGroup.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
+    for (const g of alarmLifterBladeGroups)
+      g.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
     const skirtTopZ = (ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow) - ALARM_SLEEVE_T;
     const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
     const hUp = skirtTopZ - tipZ; // how far the skirt's top edge stands above the tip

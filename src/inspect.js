@@ -2658,7 +2658,7 @@ export const INTRA_UNIT_CONTACTS = [
   // at a different member in silence. Exactly §171's fix on the lock lever's
   // own pivot post, and TODO 50's on the stem journal, for the third time.
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'alarmStrikeSleeve', why: 'lock collar pressed on the strike arbor — the sleeve IS that arbor\'s turned step' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'alarmLifterPost', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColPawlNose', why: '§163: the driver pawl\'s NOSE seated in a root corner of the saw — the seat is solved against ratchetPoly at every pose (the same polygon the teeth were cut from), not parked at a measured-once distance, and alarmHandoffs asserts it every run' },
   // Surfaced the moment the signature above started reading geometry swaps
   // (TODO 1). Both are the hairspring's two ends, and both were always there:
@@ -2693,12 +2693,21 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm setting arbor — the §22/§23 setting-cock furniture:
   { unit: 'Alarm setting arbor', a: 'CylinderGeometry#3', b: 'alarmArborCockArm', why: '§121: the setting cock\'s arm pressed on its pillar (0.13 of the pillar 0.15 deep in the arm — a seated post, TODO 12\'s cock idiom)' },
   { unit: 'Alarm setting arbor', a: 'alarmArborCockArm', b: 'alarmArborCockBush', why: '§121: the bush pressed into the cock arm\'s eye — §23\'s bearing-cock convention, arm ends at its ring' },
-  // Alarm release lifter — §103's derived guide stack:
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#8', b: 'BoxGeometry#9', why: '§121: guide pin seated in its bracket arm (kiss at d<1e-4 — a designed seat, not a foul)' },
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#12', b: 'BoxGeometry#14', why: '§121: the mid-guide post in its upper cheek block (§103\'s stack — the cheek is one of the two guidance stations)' },
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#12', b: 'BoxGeometry#15', why: '§121: the same post socketed in the lower cheek block (0.44 of the post in the block — the socket)' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'alarmLifterBlade', why: '§121: the blade rooted in the plunger — §103: the stack derives downward, blade root rides the stub' },
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'alarmLifterBlade', why: '§121: the plunger EYE the blade runs through — §103\'s first guidance station; a working slide, not a joint' },
+  // Alarm release lifter — §235's YOKE. Every selector here was a geometry
+  // INDEX until §235 (`CylinderGeometry#8`, `BoxGeometry#14`…), and an index is
+  // a position in the unit's mesh list: adding the yoke's members renumbered
+  // them all, which is §182's failure mode exactly — a row that still matches,
+  // now naming a different pair, buying silence for whatever lands between the
+  // two it used to name. Two of the old rows had already drifted that way and
+  // said so in their own text: `CylinderGeometry#2` was called "the plunger
+  // EYE" and was the blade STUB, and `BoxGeometry#15` was called "the lower
+  // cheek block" and is the cheek BRIDGE. The meshes carry names now.
+  { unit: 'Alarm release lifter', a: 'alarmLifterPost', b: 'alarmLifterBracketArm', why: '§121: the bracket post seated in its arm (kiss at d<1e-4 — a designed seat, not a foul)' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBracketArm', b: 'alarmLifterEye', why: '§235: the guide ring carried on its bracket arm — the arm ends at the ring\'s outer wall (TODO 23\'s rule)' },
+  { unit: 'Alarm release lifter', a: 'alarmYokeProng', b: 'alarmLifterEye', why: '§235: the yoke\'s prong in its guide bore — the guidance station, a working slide beside the cam' },
+  { unit: 'Alarm release lifter', a: 'alarmYokeShoulder', b: 'alarmLifterBlade', why: '§235: the return blade bearing UP under the prong\'s shoulder — the yoke\'s spring, pinned to the eye rather than to the cam' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterGuidePost', b: 'alarmLifterCheek', why: '§121: the mid-guide post in its cheek blocks (§103\'s stack — the cheeks are the second guidance station)' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterGuidePost', b: 'alarmLifterCheekBridge', why: '§121: the same post socketed in the cheek bridge (0.44 of the post in the block — the socket)' },
   // Alarm gong — §56:
   { unit: 'Alarm gong', a: 'alarmGongArc', b: 'alarmGongPost', why: '§121: the wire\'s foot brazed to its post — the gong\'s ONLY fixing (§56: the far end rings free, and the clamped-free bar is the voice)' },
   // Alarm click — §99's click on its post:
@@ -7125,6 +7134,7 @@ export const STOCK_KIND_BY_MESH = {
   alarmGovRingCollar: 'pivot',
   alarmLifterPlunger: 'pivot',
   alarmLifterHead: 'pivot',
+  alarmYokeProng: 'pivot',   // §235: the yoke's prongs are the plunger's own section, guided in bores
   alarmLifterBlade: 'spring',
   // §45 stage 2:
   alarmSilPivot: 'pivot',
