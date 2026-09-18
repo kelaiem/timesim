@@ -12444,21 +12444,22 @@ const MW_BEVEL = (T, m) => Math.min(T * 0.18, m * 0.22);   // the gear builder's
 const MW_WHEEL_T = (() => {
   // From the seat's underside down to the plate's margin, every term a margin,
   // a thickness or a bevelled half-thickness:
-  //   MW_Z2      = ALARM_SEAT_BOT − CM − (T/2 + bev₂)                       the hour wheel's centre
+  //   MW_Z2      = ALARM_SEAT_BOT − CM − SINK − (T/2 + bev₂)                the hour wheel's centre (the sink: a plane one
+  //                                                                        margin off a plane must never read as the margin's own edge)
   //   MW_Z1      = MW_Z2 − (T/2 + bev₂) − CM − STAR_T − CM − (T/2 + bev₁)   the minute wheel's centre
   //   CANNON_END = MW_Z1 − (T/2 + bev₁) − 0.1                              the pinion's coverage overreach
   //   CANNON_END − CM = MW_PLATE_FACE_LOCAL                                 landing ON the margin
   // The bevel is min(0.18·T, 0.22·m); at the module bound (T ≥ 1.22·m, asserted
   // below) it is a constant and T falls out linearly:
   const bev = MW_BEVEL(Infinity, MW_MODULE_1) + MW_BEVEL(Infinity, MW_MODULE_2);
-  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - STAR_T - 0.1 - 2 * bev - MW_PLATE_FACE_LOCAL) / 2;
+  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - 0.1 - 2 * bev - MW_PLATE_FACE_LOCAL) / 2;
   if (T < 1.22 * Math.max(MW_MODULE_1, MW_MODULE_2))
     console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under the bevel's module bound ${(1.22 * Math.max(MW_MODULE_1, MW_MODULE_2)).toFixed(4)} — the linear solve does not hold`);
   if (T < STOCK_MIN_U)
     console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under §50's floor ${STOCK_MIN_U.toFixed(4)} — the seat's stratum cannot be paid for here`);
   return T;
 })();
-const MW_Z2 = ALARM_SEAT_BOT - CLEAR_MARGIN - (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)); // hour wheel + minute pinion — DIAL-most
+const MW_Z2 = ALARM_SEAT_BOT - CLEAR_MARGIN - ALARM_SEAT_SINK - (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)); // hour wheel + minute pinion — DIAL-most; the seat's sink rides on the margin so the sweep never meets it at an exact tie
 // The star slice is DERIVED between the two wheels' faces — its thickness plus
 // one margin each side — rather than the 1.5 the stack carried by literal.
 const MW_SLICE = (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)) + CLEAR_MARGIN + STAR_T + CLEAR_MARGIN + (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1));
@@ -15840,11 +15841,11 @@ const _i1PhiL = Math.atan2(ALARM_SET_I1.y - P.dial.y, -(ALARM_SET_I1.x - P.dial.
 const ALARM_SEAT_R_RELIEF = _i1Dist - _i1bTipR - CLEAR_MARGIN;
 const ALARM_SEAT_RELIEF_HALF = Math.acos((ALARM_SEAT_R_OUT ** 2 + _i1Dist ** 2 - (_i1bTipR + CLEAR_MARGIN) ** 2) / (2 * ALARM_SEAT_R_OUT * _i1Dist));
 const _setTipR = G.gearOuterR({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, mates: [ALARM_SET_I1_TEETH], thickness: ALARM_SET_T, bevel: false });
-const ALARM_SEAT_POST_L = -0.05 - ALARM_SEAT_BOT;                                             // the sheet's back face down to the seat's underside
+const ALARM_SEAT_POST_L = -0.05 - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2);                        // the sheet's back face down to the webs' mid-plane: the post stands ON the web, half a plate above the hour wheel's margin
 const ALARM_SEAT_POST_RAD = 2 * SLENDER_OVERHANG_K * ALARM_SEAT_POST_L / SLENDER_MAX;        // §54: λₑ = K·L/(r/2) ≤ SLENDER_MAX, as a cantilever from the sheet
 const ALARM_SEAT_POST_R = _setTipR + CLEAR_MARGIN + ALARM_SEAT_POST_RAD;                     // centre radius: one margin outside the setting wheel's tips at the dial end
 const ALARM_SEAT_WEB_W = 0.7;                                                                 // the setting cock's arm width (the bracket idiom this copies)
-const ALARM_SEAT_STUD_R = 0.09;                                                               // the feeler's own blade stud
+const ALARM_SEAT_STUD_R = 0.0924 / Math.cos(Math.PI / 10);                                    // pin stock: a 10-gon whose flats measure the 0.07 mm pivot floor exactly (the tail pin's convention, alarmSilPivot)
 const ALARM_SEAT_STUD_T = 0.9;                                                                // tangential offset of the stud from the post, away from the blade's sweep — the post's radius + the stud's + one margin, with room
 const ALARM_SEAT_BLADE_W = 2 * SPRING_FLAT_U;                                                 // flat stock, two widths: the feeler blade's section doubled so the preload lands mid-window
 const ALARM_SEAT_PAD_R = ALARM_PIN_R;                                                          // the foot: the reader pin's own radius
@@ -15914,7 +15915,7 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   const L = rS * cosPhi - Math.sqrt(ALARM_SEAT_PAD_RADIUS ** 2 - ALARM_SEAT_TRACK_CLEAR ** 2);   // stud to the foot's centre, the first crossing of the pad's radius
   const Pt = { x: S.x + e.x * L, y: S.y + e.y * L };
   const zBladeMid = ALARM_SEAT_BLADE_Z + SPRING_FLAT_U / 2;
-  const stud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_SEAT_STUD_R, ALARM_SEAT_STUD_R, (zBladeMid + SPRING_FLAT_U / 2) - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2), 8), MATS.nickel);
+  const stud = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_SEAT_STUD_R, ALARM_SEAT_STUD_R, (zBladeMid + SPRING_FLAT_U / 2) - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2), 10), MATS.nickel);
   stud.name = 'alarmSeatBladeStud';
   stud.rotation.x = Math.PI / 2;
   stud.position.set(S.x, S.y, ((zBladeMid + SPRING_FLAT_U / 2) + (ALARM_SEAT_BOT + ALARM_SEAT_T / 2)) / 2);

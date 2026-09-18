@@ -19652,15 +19652,16 @@ so the honest figure is **0.364**. The two motion-works wheels are 0.8 thick,
   r = 2·`SLENDER_OVERHANG_K`·L/`SLENDER_MAX` = 0.635. A web from each carries
   the plate, so it is a bridge between two feet and not an overhang.
 - **The pad.** A blade of the flat-spring stock, two widths wide, on a stud
-  beside the 130° post, aimed obliquely so its line keeps one margin from the
+  beside the 130° post (pin stock, a 10-gon whose flats measure the 0.07 mm
+  pivot floor exactly — the tail pin's convention), aimed obliquely so its line keeps one margin from the
   raised track, bearing through a foot of the reader pin's own radius on the
   disc's face mid-way between the track's edge and the root circle
   (r 3.7625). Its force is SOLVED from the hold, μ·[(F_pin + F_pad)·r_seat +
   F_pad·r_pad] ≥ 3 × the drag with r_seat the friction-effective radius of the
   annulus the relief leaves whole (3.494, conservative): **14.66 mN**, inside
   the envelope; the hold is **1.305e-2 N·mm, 3.00×** the drag by construction.
-  The preload is that force over the blade's own 3EI/L³: **0.0637 u** on a
-  2.665 blade, 3.2× the seat's sink (so the disc's axial ambiguity cannot
+  The preload is that force over the blade's own 3EI/L³: **0.0614 u** on a
+  2.63 blade, 3.1× the seat's sink (so the disc's axial ambiguity cannot
   unload it) at 44 % of the stock's strain limit. All eight relations are
   boot asserts with their achieved and required numbers.
 - **The stratum, paid for.** The plate needs `ALARM_SEAT_T` (§50's floor)
@@ -19668,7 +19669,9 @@ so the honest figure is **0.364**. The two motion-works wheels are 0.8 thick,
   had 0.135 before the base plate's margin and its two wheels were **0.8
   thick by literal** — the one underived dimension in it. `MW_WHEEL_T` is now
   SOLVED, the thickest the stack can afford with the cannon pinion's end
-  landing exactly one margin off the base plate's face: **0.6447** (0.244 mm,
+  landing exactly one margin off the base plate's face — plus the seat's
+  0.02 sink on the hour wheel's margin, so the sweep never meets that margin at
+  an exact tie: **0.6347** (0.240 mm,
   a real hour wheel). The star slice is no longer whatever a `1.5` literal
   left between the wheels (0.268): `STAR_T` is declared at §50's floor and the
   spacing is derived from it, verified at the slice.
@@ -19682,7 +19685,12 @@ so the honest figure is **0.364**. The two motion-works wheels are 0.8 thick,
   TODO 117); `ALARM_SPRING_HEADROOM` hoisted to `layout.js` as the envelope it
   is. `window.__clock.alarmSetHold` names its holder and publishes the torque;
   `probe-144-set-hold.mjs` is GREEN, 10 rows 0 failing, its design table kept
-  as the record of the choice.
+  as the record of the choice. The battery's first pass caught two things
+  the fast gates cannot: the blade, stud and foot carried no stock KIND and
+  were judged as wheels (declared now, as the reader pin's are), and the
+  posts stood exactly one margin off the hour wheel's top — the sweep read
+  0.15 against a floor of 0.15 and refused the tie. The posts now stand on
+  the webs' mid-plane and the hour wheel's margin carries the seat's sink.
 
 `window.__clock.alarmSetHold` publishes the drag, the requirement and the
 holder; while the holder was null the probe was **red by design** (10 rows, 2

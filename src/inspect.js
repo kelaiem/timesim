@@ -6985,6 +6985,9 @@ export const STOCK_KIND_BY_MESH = {
   alarmHammerSpringStud: 'pivot',  // ...and the grounded stud it hangs from
   alarmPinSpringB: 'spring',
   alarmReaderPin: 'pivot',        // TODO 117: the orbiting reader's pin — ALARM_PIN_R exactly as the feeler's, so it is the same kind of member; ⌀ 0.1061 mm against the 0.07 pivot floor
+  alarmSeatBlade: 'spring',       // TODO 144: the seat's pad blade — SPRING_FLAT_U stock, two widths wide, the feeler blade's own section
+  alarmSeatBladeStud: 'pivot',    // TODO 144: its grounded stud — pin stock at the 0.07 pivot floor exactly (the tail pin's 10-gon convention)
+  alarmSeatPad: 'pivot',          // TODO 144: the foot on the disc's face — ALARM_PIN_R, the reader pin's own radius, so the same kind of member
   alarmSelPin: 'pivot',
   alarmPinB: 'pivot',
   alarmLinkCentrePin: 'pivot',    // TODO 20 fork — the crank pin riding the groove: pin stock (⌀ 0.105 mm ≥ the 0.07 pivot floor)
