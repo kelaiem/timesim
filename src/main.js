@@ -16701,7 +16701,13 @@ const ALARM_ARBOR_BUSH_R = 0.85;
 
 {
   const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD };
-  const postXY = { x: alarmWorld.x + u.x * 1.4, y: alarmWorld.y + u.y * 1.4 };
+  // §235 — the post stands clear of the WHEEL IT CARRIES, derived. The 1.4 here
+  // was a literal that suited a 10-tooth bevel; at the bore the turning target
+  // asks for, the blank reaches past it and `intraUnit` read the disc bevel
+  // through its own bearing cock's post.
+  const COCK_POST_R = 0.4;
+  const cockStand = ALARM_BEVEL_SPEC.tipR + CLEAR_MARGIN + COCK_POST_R;
+  const postXY = { x: alarmWorld.x + u.x * cockStand, y: alarmWorld.y + u.y * cockStand };
   // TODO 23: the station derives against BOTH moving neighbours. Above,
   // the corner bevel's underside reaches z −6.158 (tooth tips out to
   // r 1.41 — over the whole arm), so the cock's top face sits one
@@ -16724,7 +16730,7 @@ const ALARM_ARBOR_BUSH_R = 0.85;
   const BEVEL_UNDERSIDE = Z_ALARM_CORNER - ALARM_BEVEL_SPEC.zWebHi;
   const BUSH_Z = BEVEL_UNDERSIDE - CLEAR_MARGIN - COCK_T / 2;
   const BUSH_R_OUT = ALARM_ARBOR_BUSH_R;
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, -2 - BUSH_Z, 10), MATS.nickel);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(COCK_POST_R, COCK_POST_R, -2 - BUSH_Z, 10), MATS.nickel);
   post.rotation.x = Math.PI / 2;
   post.position.set(postXY.x, postXY.y, (-2 + BUSH_Z) / 2);
   alarmArborUnit.add(post);
@@ -17222,7 +17228,26 @@ const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade
   // the long span is guided, not cantilevered (P1: the run only ever carries
   // the arm spring's reflected preload, mN-scale, but an unguided 16-unit
   // reach would still be the §35 tail's class of "nobody asked for this")
-  const mgR = 14, mgOff = 0.5; // post stands one 0.5 tangential stand-off from the run's centreline
+  // §235 — THE MID-GUIDE'S STATION, derived from the wheel it has to pass. It
+  // was the literal 14, and it suited a corner whose contrate was a 10-tooth
+  // blank one plane higher. The climb contrate is cut from the SAME
+  // `ALARM_BEVEL_SPEC` as the corner, so it grows with the bore and falls with
+  // the plane — measured, it arrived on this guide's inner cheek at 0.0000 and
+  // the pair sweep called the whole unit FORBIDDEN.
+  //
+  // In the lifter's own frame the run leaves the centre at `az` and the
+  // contrate stands at (ALARM_CD, 0), so the station is the last one INBOARD
+  // whose guide furniture clears the blank's disc: solve the chord, take the
+  // near root. Inboard rather than outboard because outboard of the contrate
+  // the run is already among the corner cluster's own bearings.
+  const mgOff = 0.5;           // post stands one 0.5 tangential stand-off from the run's centreline
+  const MG_REACH = 0.9;        // the furniture's own bounding radius about the station: cheeks, post at mgOff, bridge
+  const mgClear = ALARM_BEVEL_SPEC.tipR + CLEAR_MARGIN + MG_REACH;
+  const mgPerp = ALARM_CD * Math.sin(az), mgAlong = ALARM_CD * Math.cos(az);
+  if (mgClear <= Math.abs(mgPerp))
+    console.warn(`§235: the run passes ${Math.abs(mgPerp).toFixed(3)} from the climb contrate's axis and its guide needs `
+      + `${mgClear.toFixed(3)} — no station on this run clears the blank, so the mid-guide has nowhere to stand`);
+  const mgR = mgAlong - Math.sqrt(Math.max(0, mgClear * mgClear - mgPerp * mgPerp));
   const mgP = { x: Math.cos(az) * mgR - Math.sin(az) * mgOff, y: Math.sin(az) * mgR + Math.cos(az) * mgOff };
   const mg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - 0.5), 10), MATS.nickel);
   mg.name = 'alarmLifterGuidePost';
