@@ -1513,10 +1513,52 @@ export const SAW_FIT = 0.05;
 // (STEM_CLUTCH_OFF itself moved below the fork-band constants it now
 // stacks over — the RIM leads the clutch and the fork band sits INBOARD
 // of it, so the pinion→rim distance includes that band.)
-// The clutch spine's radius — over its deepest bore (the saw ring's
-// rIn + SAW_FIT = 0.685) by a real radial weld; every other bore on the
-// body (rim, collars) is cut over it. main.js builds the pipe to this.
-export const CLUTCH_SLEEVE_R = 0.75;
+// The stem's SQUARE, mirrored — main.js cuts the sleeve's own bore (and,
+// since §234 step 3b's collar fix, the hub collars' bore too) to the
+// square's side (STEM_R·√2·0.98, "a hair under inscribed so the corners
+// stay inside the stem's own silhouette") plus one SAW_FIT running fit,
+// exactly main.js's local `sqHole`. layout.js cannot import geometry.js's
+// or main.js's locals (the dependency runs the other way), so this is a
+// MIRROR of that arithmetic, in the corner-reach form the radii below
+// need (a bore's own farthest point from the axis is its half-diagonal,
+// side/√2 = side·√2/2). main.js asserts the built `sqHole` against it at
+// boot (rule 1's "constant DERIVED, with the constraint in the comment",
+// applied to a mirrored formula rather than a picked number).
+export const STEM_SQ_BORE_REACH = (STEM_R * Math.SQRT2 * 0.98 + SAW_FIT) * Math.SQRT2 / 2;
+// §234 step 3b — THE SPINE'S OWN BORE NOW EXCEEDS ITS OLD RADIUS. The pipe
+// is cut with the square bore above; a bare 0.75 (sized, per the retired
+// comment here, to sit over the saw ring's OLD rIn+SAW_FIT of 0.685) left
+// the corner four-cornered "wall" negative — the built mesh's farthest
+// vertex measured 0.9405, its own bore's reach, not 0.75, because an
+// ExtrudeGeometry hole that exceeds its outer loop triangulates however
+// earcut likes (docs/MODELING.md's warning, TODO 100's own precedent).
+// That degenerate spine was the root of BOTH §234 expectedContacts misses:
+// the sleeve's phantom corners swept past the yoke prong every quarter
+// turn of winding, and (a separate defect, fixed beside it) the hub
+// collars' bore inherited the same undersized 0.62.
+//
+// The wall past the bore is SAW_FIT, not the §50 wheel floor: this joint
+// is not a load path (nothing bears radially on the spine's own OD here —
+// the rim and collars weld onto it, and a weld reads its own kind by the
+// same convention SAW_BASE_T/WIND_PINION_BOSS use for a THICKNESS, not a
+// wall past a bore). The bore-vs-OD relationship this constant closes is
+// exactly the one every other joint on this same body already uses SAW_FIT
+// for — "the movement's fit quantum," spent here as real wall instead of a
+// running gap (GROOVE_LOCAL's own comment names the identical trade against
+// the rim's bore) — so a fresh margin is not being invented, the
+// established one is being asked to cover one more bore. TAKING THE §50
+// FLOOR INSTEAD IS NOT AVAILABLE: HUB_COLLAR_R (TODO 136, re-derived
+// against the setting wheel's blank, a DIFFERENT constraint) caps how far
+// this radius can grow before the yoke's arm loses the collar's face band
+// at the stroke ends (main.js's own "Rule 6" build assert) — measured, the
+// §50-floor wall (bore + STOCK_MIN_U ≈ 1.257) already fails that assert at
+// ANY finite YK_C (the stroke-end reach's own infimum, CLUTCH_SLEEVE_R +
+// CLEAR_MARGIN, exceeds HUB_COLLAR_R before the arm even enters it), where
+// the SAW_FIT wall (≈ 0.990) clears it with the same margin every other
+// joint here is asked to hold to. HUB_COLLAR_R growing further is out of
+// this landing's scope (§234 step 3b names it settled); this is the
+// largest spine the fork's own geometry can still ride.
+export const CLUTCH_SLEEVE_R = STEM_SQ_BORE_REACH + SAW_FIT;
 export const YOKE_PRONG_R = 0.4;      // the fork's prong post (makeYoke cuts to this)
 // The yoke arm's DERIVED reach. The prong is a vertical post crossing
 // the stem's plane, so it must never stand on the stem line — the old
@@ -1547,6 +1589,34 @@ export const YOKE_ARM = YK_C - (CLUTCH_SLEEVE_R + YOKE_PRONG_R + CLEAR_MARGIN);
 //     collar's face; SAW_RING_ROOT is its root plane, where the female
 //     tips land at full seat.
 export const HUB_COLLAR_T = 0.4;
+// §234 step 3b — THE COLLARS' BORE. Both collars sit ON the sleeve's own
+// axial span (SLEEVE_BOT..SLEEVE_TOP encloses both YOKE_FORK_IN and
+// YOKE_FORK_OUT — main.js's own build comment: "bored discs riding the
+// sleeve"), so a collar cut to a round hole smaller than the SQUARE's own
+// corner reach buries into the square regardless of whether the sleeve's
+// solid wall also happens to fill that station — two separate meshes, and
+// the pair sweep judges the two directly. This was a bare 0.62 (0.17 over
+// the OLD STEM_R's 0.45, per the build comment there), which the retooth
+// left stale: the square's corner reach grew to STEM_R's own new figure and
+// a fixed literal did not follow it, and the accidental margin that literal
+// used to hold (0.17, against a smaller square) closed to a burial without
+// the constant itself moving. Cut to the SAME bore the sleeve is cut to
+// (main.js's `sqHole`, mirrored above as STEM_SQ_BORE_REACH) rather than
+// re-picking a margin: the collars ride the identical shaft through the
+// identical hole, the real-machining reading of "both bored to the same
+// reamer." It lands strictly inside CLUTCH_SLEEVE_R (the spine's OD, itself
+// STEM_SQ_BORE_REACH plus a wall — see its own comment), so the collar
+// still welds onto real spine metal exactly as the build comment (main.js)
+// describes; and it clears the bare square by only a running fit, not the
+// movement's CLEAR_MARGIN, which inspect.js's EXPECTED_CONTACT_FLOORS now
+// excuses by NAME (the sleeve's identical joint already was) rather than by
+// the coincidence the old literal relied on. Growing this bore past the
+// sleeve's own OD to buy CLEAR_MARGIN from the square instead is not
+// available without either growing CLUTCH_SLEEVE_R past the yoke fork's own
+// stroke-end reach (that constant's comment) or growing HUB_COLLAR_R
+// (TODO 136, out of this landing's scope) — both P0/P2 costs a running-fit
+// joint does not need to spend.
+export const HUB_COLLAR_BORE_R = STEM_SQ_BORE_REACH;
 // The collars' radius. Slimmed 1.5 → 1.2 at TODO 50's split: the yoke's arm
 // passes UNDER them and every 0.1 of hub radius is 0.1 of yoke drop, depth the
 // dial gap has no more of. It lives here since TODO 136 because YOKE_FORK_OUT's

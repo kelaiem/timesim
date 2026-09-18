@@ -2307,6 +2307,21 @@ export const EXPECTED_CONTACT_FLOORS = [
       // round journal starts outboard of the square section, past the
       // sleeve's whole ride band, so the pipe never reaches it)
       ['clutchRim', 'settingBevel'],    // pulled out: the setting mesh the old pinion carried — TODO 136 cut it as a bevel pair, and the wheel's BEVEL half is the member that meshes (its spur half drives the minute wheel)
+      // §234 step 3b — BOTH hub collars ride the sleeve's own axial span
+      // (main.js: "bored discs riding the sleeve"), and are cut to the
+      // SAME bore the sleeve is (layout.js's HUB_COLLAR_BORE_R ===
+      // STEM_SQ_BORE_REACH — one hole, the real-machining "both bored to
+      // the same reamer" reading): a running fit around the identical
+      // square, not a margin from it. Before the retooth the collars'
+      // bare-0.62 hole happened to clear the OLD, smaller square by more
+      // than CLEAR_MARGIN, so this pair was excused by distance rather
+      // than by declaration; STEM_R's growth closed that accidental
+      // margin (measured 0 — the literal did not scale) and re-cutting the
+      // bore to the square's own reach reopened only a running-fit gap
+      // (~0.024, the same order as the sleeve's own joint above), which
+      // this row now excuses on purpose instead of by omission.
+      ['clutchHubCollarIn', 'stemSquare'],
+      ['clutchHubCollarOut', 'stemSquare'],
     ],
   },
   {
