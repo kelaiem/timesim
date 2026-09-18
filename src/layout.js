@@ -554,6 +554,28 @@ export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
 // check's: anything SIZED against §54's ceiling has to size against what §54
 // actually measures, and §36's applied arbors do (see routeApplySolve).
 export const SLENDER_OVERHANG_K = Math.cbrt(48 / 3);   // 2.5198
+// §233's TURNING ceiling, L/D — the OTHER slenderness, and the pair above does
+// not imply it. §54's λ asks whether a member bends IN SERVICE, over the free
+// span between its bearings; this asks whether it bends UNDER THE TOOL, over
+// the whole bar standing out of the chuck. A member can pass one and fail the
+// other by a factor of four, and §232's lay shaft does: λ 27, L/D 104.
+//
+// The constraint is the cut itself. A turning tool pushes SIDEWAYS on the
+// work, so a slender bar deflects away from it — the cut comes out tapered,
+// then it chatters, then the finish tears. The practical limits are the ones
+// every machining reference gives: L/D 10 with the far end unsupported, L/D 20
+// with a follower rest or between centres. Past that a bar is not turned at
+// all; it is ground, or it is drawn wire.
+//
+// THE GATE IS THE SUPPORTED LIMIT, not the unsupported one, because supporting
+// the work is a choice the shop makes and the geometry cannot express. 10 is
+// REPORTED beside it as "this one needs a rest", which is a cost, not a
+// refusal.
+export const TURN_LD_MAX = 20;
+export const TURN_LD_UNSUPPORTED = 10;
+// What to BUILD to, on SLENDER_TARGET's reasoning exactly: sizing to the
+// boundary lets float rounding pick the side. Same 10% headroom, same reason.
+export const TURN_LD_TARGET = TURN_LD_MAX * 0.9;       // 18
 // FLAT-SPRING stock. §50's spring floor is 0.03 mm and its own basis says why
 // that is a floor and not a target: "real hairsprings run 0.02-0.04 mm; flat
 // springs THICKER". A click detent or a feeler return is a flat blade, not a
@@ -617,6 +639,18 @@ export const SPRING_SIGMA_Y_PA = 800e6;
 // Shear yield by von Mises — what a COIL is limited by, where a blade is
 // limited by SPRING_SIGMA_Y_PA directly. One yield, two loadings.
 export const SPRING_TAU_Y_PA = SPRING_SIGMA_Y_PA / Math.sqrt(3);
+// §234 — A COIL'S INDEX, D/d: the envelope a compression spring can be WOUND
+// in. Under 4 the wire cracks on the coiling arbor; over 12 the coil tangles
+// on the winder and its rate is not held — the spring-design handbooks' 4–12.
+// It exists because the pusher's return coil rides its stem: the stem's stock
+// sets the coil, the coil sets the WIRE, and a stem cut to stem stock
+// (STEM_STOCK_R_U) took the 0.05 mm wire's index from 6.6 to 15.8 without a
+// number changing hands. The wire is solved to the TARGET (0.9 · max, on
+// TURN_LD_TARGET's reasoning — never to the boundary a check compares
+// against) and the coil is asserted inside the envelope at boot.
+export const SPRING_INDEX_MIN = 4;
+export const SPRING_INDEX_MAX = 12;
+export const SPRING_INDEX_TARGET = SPRING_INDEX_MAX * 0.9;   // 10.8
 // End-loaded cantilever stiffness in N/m from section width a, thickness c
 // (bending direction) and free length L, all in MODEL UNITS — the 3EI/L³ that
 // TODO 16 and the §54 report both already compute longhand. I = a·c³/12.
@@ -1342,6 +1376,16 @@ export const sawSeatOffset = (spec, sense) => (sense < 0 ? spec.backlashFrac * s
 //     it to the setting-wheel station and the yoke's tracked band, which
 //     is the whole P3 cost of the split, paid in position space.
 export const STEM_R = 0.45;           // the stem's shaft radius (main.js builds to this)
+// §234 — STEM STOCK, the floor a stem is CUT from (TODO 145 group B). Real
+// stems are threaded to the tap series — tap 7 is ⌀0.70 mm, tap 8 ⌀0.80,
+// 9 ⌀0.90, 10 ⌀1.00 — and tap 7 is the smallest a stem is cut to; the thread
+// is the stem's thinnest station, so a shaft under it is not stem stock at
+// all. Declared as a RADIUS in units because every stem here is built as a
+// cylinder of one, and only the floor is declared because only the floor
+// has a consumer: the alarm pusher (main.js, ALARM_PUSH_STEM_R) is cut to it;
+// the other group-B bars land one at a time against the same number.
+export const STEM_STOCK_MIN_MM = 0.70;
+export const STEM_STOCK_R_U = STEM_STOCK_MIN_MM / 2 / UNIT_MM;   // 0.924 u
 // TODO 136 — THE TWO STEM MEMBERS ARE CONES NOW, so their stations are planes of
 // a cut, not halves of a declared thickness. Both keyless corners are Σ = 90°
 // bevels (crown wheel ⇄ winding pinion, setting wheel ⇄ clutch rim), and a

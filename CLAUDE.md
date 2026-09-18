@@ -282,7 +282,32 @@ it into prose either.
    gates. It was reported for both until TODO 144, and the movement shipped a
    whole landing with the alarm setting train turning off a back-drive whose
    source TODO 117 had removed. The driven side is judged on its PATH, so a
-   member that swings out and back cannot hide in a zero net)
+   member that swings out and back cannot hide in a zero net),
+   and `turning` **control PASS, 0 unwaived bars over `TURN_LD_MAX`, 0 stale
+   waivers** (§233 — the THIRD slenderness, and the pair either side of it does
+   not imply it: §50's floor asks whether the metal is thick enough to BE
+   metal, §54's λ whether the member bends IN SERVICE over its free span, and
+   this whether the bar bends UNDER THE TOOL over its whole length. §232's lay
+   shaft is λ 27 and L/D 104. **The workpiece is the BAR, not the mesh** — that
+   is the whole reason it is not a column on `stockFloor`: coaxial meshes at
+   CONSECUTIVE stations are one piece of stock (the lay shaft is three meshes
+   of L/D 54, 4.7 and 10.7, each passing alone), while a bush or liner
+   CONCENTRIC with a shaft is a different part and is split back out.
+   Roundness is the geometry's TYPE, never the census's `via` — `via` reads
+   'axial' for a §36 REGISTRY REVOLVE, which means the part SPINS IN THE
+   MOVEMENT and says nothing about a lathe. The axis is FOUND, by the property
+   that a body of revolution is narrowest about its axis, refined by descent
+   because this repo bakes rotations into vertices (assuming local +Y read the
+   case spring bar's ⌀ as its 20 mm LENGTH); a direction that tilting does not
+   widen is REFUSED as a disc rather than quoted. **The control is the
+   load-bearing part**: measured ⌀ must equal CONSTRUCTED ⌀ over every plain
+   cylinder, which is the only thing that caught either axis error — both were
+   wrong in the safe direction, reading bars short and fat, and a check wrong
+   in the safe direction is a check that passes. It GATES on arrival with all
+   twelve failing bars declared in `TURN_WAIVERS` against TODO 145, on
+   `stockFloor`'s convention rather than §54's report covenant: a thirteenth
+   bar fails the build, where a report would have left it silent. `needRest`
+   (L/D 10–20, wanting a follower rest) and `ambiguous` are REPORTS),
    and `slenderness` **0 stale waivers** (§54's report, reachable at last —
    its rows stay a REPORT by §54's own covenant and the unwaived residue is
    TODO 78's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a
@@ -669,7 +694,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 217 measuring scripts and this file names 14. The rest are named for the
+`tools/` holds 219 measuring scripts and this file names 14. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -686,7 +711,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **113 of
+The index also carries the split that decides how to read a result: **115 of
 them are ACCEPTANCE tests** that exit non-zero, and **104 are REPORTS** that
 print and leave the judgement to you. A report saying `0 violations` has not
 passed anything.

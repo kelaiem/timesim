@@ -37,7 +37,8 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
-  SLENDER_OVERHANG_K, MOVEMENT_SENSE } from './layout.js';        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  SLENDER_OVERHANG_K, MOVEMENT_SENSE,
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -9395,6 +9396,393 @@ export async function checkStockFloor(clock, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// §233 — CAN THE BAR BE TURNED? The third slenderness, and the pair either
+// side of it does not imply it.
+//
+//   §50's STOCK_FLOORS   is the metal thick enough to BE metal?
+//   §54's SLENDER_MAX    does the member bend IN SERVICE, over its free span?
+//   this                 does the bar bend UNDER THE TOOL, over its whole length?
+//
+// A member passes the first two and fails this by a factor of four: §232's lay
+// shaft is λ 27 and L/D 104. The owner found it by eye — "thinner than a hair"
+// — which is the tell that a real property had no instrument. TURN_LD_MAX's
+// comment in layout.js carries the machining constraint; what belongs here is
+// how the number is MEASURED, because every way of measuring it that came to
+// hand first was wrong.
+//
+// THE WORKPIECE IS THE BAR, NOT THE MESH. This is the whole reason the check
+// exists rather than a column on stockFloor. A turned member built from
+// several coaxial meshes is ONE piece of stock on the lathe: the lay shaft is
+// a body between two necks, three meshes of L/D 54, 4.7 and 10.7, each of
+// which passes alone and two of which pass comfortably. As the bar it is,
+// it is 104. So round meshes of one unit sharing an axis LINE — same
+// direction AND the same line, not merely parallel — are clustered, and a
+// cluster of one is a bar too.
+//
+// BUT COAXIAL IS NOT THE SAME AS CONSECUTIVE, and the first cut of the
+// clustering forgot it. A bush, a liner or a tube AROUND a shaft is perfectly
+// coaxial with it and is a different part — you turn the shaft, you turn the
+// bush, you press one into the other. Merged, the alarm crown's stem swallowed
+// its own tube liner and the alarm link's rod swallowed both its bushes, and
+// the check said "one piece of stock" about an assembly. The distinction is
+// geometric and needs no declaration: members of one bar sit at CONSECUTIVE
+// stations along it, so their axial spans are disjoint, while a bush sits at
+// the SAME station and its span lies inside its shaft's. A turned step may
+// still lap its neighbour a little — §232's necks lap their body by
+// ALARM_LINK_NECK_LAP, about a tenth of the shorter member — so the rule is a
+// fraction rather than zero, and the two cases are two orders apart.
+//
+// ROUNDNESS IS THE GEOMETRY'S TYPE. The first cut of this read `stockCensus`'s
+// `via` field, which does not mean what its name suggests: `via` is
+// 'axial'/'radial' only for a §36 REGISTRY REVOLVE, and being a revolve there
+// means the part SPINS IN THE MOVEMENT — nothing whatever to do with being
+// turned on a lathe. Read that way it called an ExtrudeGeometry round, missed
+// every static cylinder in the watch (the lay shaft among them), and answered
+// a question nobody had asked.
+//
+// AND THE AXIS IS FOUND, NOT ASSUMED. three.js builds both revolve types about
+// local +Y, and this repo routinely bakes a quarter turn into the vertices to
+// lay a bar along another axis, after which +Y is ACROSS the bar. Assuming it
+// read the case spring bar's diameter as 20.00 mm — which is its LENGTH,
+// because with the axis across the bar half the span becomes the radius. So
+// the axis is found by the property that defines one: a body of revolution is
+// narrowest about its axis, and about any other axis the span enters the
+// radius. Searching the three local axes is not enough either — a fusee washer
+// is baked at no quarter turn, and its nearest local axis gave 0.125 mm
+// against a constructed 1.450 — so the direction is refined by descent.
+//
+// THE REFUSAL IS THAT SAME PROPERTY READ BACKWARDS. A direction is an axis
+// only if tilting away from it makes the body WIDER. Where it does not, the
+// body is as narrow in two directions at once — a disc, not a bar — and this
+// says so rather than quoting a ratio. That costs nothing for turning, since a
+// disc's L/D is far under any limit; what it protects is the clustering, where
+// a disc admitted on a mis-fitted axis would drag a bar's governing diameter
+// down to half its own thickness.
+//
+// THE GOVERNING DIAMETER IS THE NARROWEST, measured as the OUTER radius per
+// axial bin — max within a bin, so a solid's r = 0 cap centre cannot lower it,
+// which is the trap `stockCensus` documents for its own radial band. A stepped
+// bar therefore reads at its thin step and a bush at its OD, which is what the
+// tool sees in each case. It is the conservative reading of a stepped bar
+// (you would turn the fat sections first), and it is the right one for this
+// question: the thin step is cut last, with the whole length already standing
+// out.
+const TURN_BINS = 64;
+const TURN_REVOLVE_TYPES = new Set(['CylinderGeometry', 'LatheGeometry']);
+// One line, not two: a cluster is one bar only if the second member's axis
+// lies ON the first's, so the offset between the two axis lines must vanish.
+// 0.01 u is 3.8 µm — under a tenth of the tightest running fit in the
+// movement (CHAIN_RIVET_FIT, 0.013 u), so two members this close to collinear
+// are the same turned axis and not two stations that happen to line up.
+const TURN_AXIS_OFFSET_U = 0.01;
+// How much two members of ONE bar may overlap along it. A lap between turned
+// steps is ~10% of the shorter member; a bush on a shaft is 100% of the bush.
+// Half is nowhere near either, which is what a classifier between two
+// populations two orders apart is allowed to look like (DECLARED_CONTACT_REACH
+// is the precedent — the number sits in the empty gap, it is not a bound).
+const TURN_LAP_MAX_FRAC = 0.5;
+// Tilting this far off a true axis must widen the body by 2% or it is not a
+// bar. The angle is a measurement, not a taste: at 8.6° a bar of L/D 10 —
+// the least slender thing this needs to speak about — widens by 15%, so the
+// test has seven times the margin it needs on the shortest member it judges,
+// and a disc (which widens by well under 1%) cannot pass it.
+const TURN_AMBIG_TILT = 0.15;
+const TURN_AMBIG_WIDEN = 1.02;
+
+const turnMul = (m, x, y, z, w) => [
+  m[0] * x + m[4] * y + m[8] * z + m[12] * w,
+  m[1] * x + m[5] * y + m[9] * z + m[13] * w,
+  m[2] * x + m[6] * y + m[10] * z + m[14] * w,
+];
+const turnNorm = (v) => { const L = Math.hypot(...v); return [v[0] / L, v[1] / L, v[2] / L]; };
+const turnSub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const turnDot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const turnCross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+// two directions across the axis, for tilting and for reading radial scale
+const turnTangents = (a) => {
+  const up = Math.abs(a[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  const u = turnNorm(turnCross(a, up));
+  return [u, turnCross(a, u)];
+};
+const turnTilt = (a, t, ang) => {
+  const k = Math.tan(ang);
+  return turnNorm([a[0] + t[0] * k, a[1] + t[1] * k, a[2] + t[2] * k]);
+};
+
+// Span along the axis and the narrowest OUTER diameter, over one or more
+// members' world vertices. Returns units.
+function turnMeasure(axis, origin, groups) {
+  let tMin = Infinity, tMax = -Infinity;
+  const all = [];
+  for (const pts of groups) for (const p of pts) {
+    const d = turnSub(p, origin);
+    const t = turnDot(d, axis);
+    all.push([t, Math.hypot(d[0] - t * axis[0], d[1] - t * axis[1], d[2] - t * axis[2])]);
+    if (t < tMin) tMin = t;
+    if (t > tMax) tMax = t;
+  }
+  const span = tMax - tMin;
+  if (!(span > 1e-6)) return null;
+  const outer = new Array(TURN_BINS).fill(-1);
+  for (const [t, r] of all) {
+    let b = Math.floor((t - tMin) / span * TURN_BINS);
+    if (b >= TURN_BINS) b = TURN_BINS - 1;
+    if (r > outer[b]) outer[b] = r;
+  }
+  const gov = Math.min(...outer.filter((r) => r >= 0));
+  if (!(gov > 1e-6)) return null;
+  return { lenU: span, diaU: 2 * gov };
+}
+
+// THE POPULATION IS stockCensus's, deliberately — the same registry, the same
+// nearest-ancestor dedupe — so the two tiers cannot disagree about which
+// meshes exist or which unit owns one. A member this reports and stockFloor
+// does not would be a second opinion about the movement's inventory, which is
+// how two instruments start describing different watches.
+export async function turnedBars(clock, opts = {}) {
+  const reg = opts.registry || await buildSweptRegistry(clock, opts);
+  const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+  const hops = (mesh, name) => {
+    const target = unitObj.get(name);
+    let n = 0;
+    for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+    return Infinity;
+  };
+  const byMesh = new Map();
+  for (const v of reg._volumes) {
+    const prev = byMesh.get(v.mesh);
+    if (!prev || hops(v.mesh, v.unit) < hops(v.mesh, prev.unit)) byMesh.set(v.mesh, v);
+  }
+  const round = [], ambiguous = [], notRound = [];
+  for (const v of byMesh.values()) {
+    const g = v.mesh.geometry;
+    const name = v.mesh.name || '(unnamed)';
+    if (!TURN_REVOLVE_TYPES.has(g.type)) { notRound.push(name); continue; }
+    const pos = g.attributes && g.attributes.position;
+    if (!pos || !pos.count) { notRound.push(name); continue; }
+    // TODO 139's trap: the answer is a WORLD quantity, so walk UP.
+    v.mesh.updateWorldMatrix(true, false);
+    const m = v.mesh.matrixWorld.elements;
+    const origin = turnMul(m, 0, 0, 0, 1);
+    const pts = [];
+    for (let i = 0; i < pos.count; i++) pts.push(turnMul(m, pos.getX(i), pos.getY(i), pos.getZ(i), 1));
+    const maxRadius = (a) => {
+      let maxR = 0;
+      for (const p of pts) {
+        const d = turnSub(p, origin), t = turnDot(d, a);
+        const r = Math.hypot(d[0] - t * a[0], d[1] - t * a[1], d[2] - t * a[2]);
+        if (r > maxR) maxR = r;
+      }
+      return maxR;
+    };
+    let axis = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+      .map((e) => turnNorm(turnMul(m, e[0], e[1], e[2], 0)))
+      .reduce((best, a) => (maxRadius(a) < maxRadius(best) ? a : best));
+    let best = maxRadius(axis);
+    for (let step = 0.35; step > 1e-4; step *= 0.6) {
+      let moved = true;
+      while (moved) {
+        moved = false;
+        for (const t of turnTangents(axis)) for (const sgn of [1, -1]) {
+          const a = turnTilt(axis, t, sgn * step), r = maxRadius(a);
+          if (r < best * (1 - 1e-9)) { axis = a; best = r; moved = true; }
+        }
+      }
+    }
+    const widen = turnTangents(axis)
+      .flatMap((t) => [1, -1].map((sgn) => maxRadius(turnTilt(axis, t, sgn * TURN_AMBIG_TILT)) / best));
+    if (Math.min(...widen) < TURN_AMBIG_WIDEN) {
+      ambiguous.push({ part: v.unit, mesh: name, where: whereOf(v.mesh),
+        widen: +Math.min(...widen).toFixed(4) });
+      continue;
+    }
+    // the world SCALE across the axis, so a CONSTRUCTED radius can be compared
+    // against the measured one — the control below, and the only reason the
+    // two axis errors were ever caught
+    const inv = v.mesh.matrixWorld.clone().invert().elements;
+    const radial = turnTangents(axis).map((t) => {
+      const l = turnNorm([inv[0] * t[0] + inv[4] * t[1] + inv[8] * t[2],
+                          inv[1] * t[0] + inv[5] * t[1] + inv[9] * t[2],
+                          inv[2] * t[0] + inv[6] * t[1] + inv[10] * t[2]]);
+      return Math.hypot(...turnMul(m, l[0], l[1], l[2], 0));
+    });
+    round.push({ part: v.unit, mesh: name, where: whereOf(v.mesh), type: g.type,
+      kind: STOCK_KIND_BY_MESH[name] || STOCK_KIND_BY_PART[v.unit] || 'wheel',
+      axis, origin, pts,
+      // a straight cylinder only: a cone's narrow end falls inside a bin, and a
+      // revolve squashed by a non-uniform scale is not round and has no single
+      // constructed diameter to compare
+      paramDiaU: g.parameters && g.parameters.radiusTop === g.parameters.radiusBottom
+        && Math.max(...radial) <= Math.min(...radial) * 1.01
+        ? 2 * g.parameters.radiusTop * Math.max(...radial) : null });
+  }
+
+  // cluster by axis LINE within a unit — same direction, zero offset
+  const byUnit = new Map();
+  for (const r of round) { if (!byUnit.has(r.part)) byUnit.set(r.part, []); byUnit.get(r.part).push(r); }
+  const bars = [];
+  for (const [unit, unsorted] of byUnit) {
+    // LONGEST FIRST, because the seed becomes the bar's backbone and everything
+    // else is judged against it. Seeded in scene order instead, a BUSH could be
+    // picked up first and its own shaft rejected against it as concentric —
+    // the same two parts, split the other way round, decided by traversal
+    // order rather than by geometry.
+    const members = unsorted.slice().sort((x, y) => {
+      const sp = (q) => { let lo = Infinity, hi = -Infinity;
+        for (const p of q.pts) { const t = turnDot(turnSub(p, q.origin), q.axis);
+          if (t < lo) lo = t; if (t > hi) hi = t; }
+        return hi - lo; };
+      return sp(y) - sp(x) || x.mesh.localeCompare(y.mesh);
+    });
+    const used = new Set();
+    for (let i = 0; i < members.length; i++) {
+      if (used.has(i)) continue;
+      const a = members[i], cluster = [a];
+      used.add(i);
+      // every span is read in the SEED's frame, so "along the bar" means one
+      // thing for the whole cluster
+      const spanOf = (x) => {
+        let lo = Infinity, hi = -Infinity;
+        for (const p of x.pts) {
+          const t = turnDot(turnSub(p, a.origin), a.axis);
+          if (t < lo) lo = t;
+          if (t > hi) hi = t;
+        }
+        return [lo, hi];
+      };
+      const spans = [spanOf(a)];
+      for (let j = i + 1; j < members.length; j++) {
+        if (used.has(j)) continue;
+        const b = members[j];
+        if (Math.abs(turnDot(a.axis, b.axis)) < 1 - 1e-4) continue;
+        const d = turnSub(b.origin, a.origin), t = turnDot(d, a.axis);
+        const off = Math.hypot(d[0] - t * a.axis[0], d[1] - t * a.axis[1], d[2] - t * a.axis[2]);
+        if (off > TURN_AXIS_OFFSET_U) continue;
+        // consecutive, not concentric — against EVERY member already in the
+        // cluster, because a bush may surround a member the seed does not reach
+        const sb = spanOf(b);
+        const concentric = spans.some(([lo, hi]) => {
+          const ov = Math.min(hi, sb[1]) - Math.max(lo, sb[0]);
+          return ov > TURN_LAP_MAX_FRAC * Math.min(hi - lo, sb[1] - sb[0]);
+        });
+        if (concentric) continue;
+        cluster.push(b); spans.push(sb); used.add(j);
+      }
+      const mm = turnMeasure(a.axis, a.origin, cluster.map((x) => x.pts));
+      if (!mm) continue;
+      bars.push({ part: unit, meshes: cluster.map((x) => x.mesh),
+        kind: cluster[0].kind,
+        lenMM: +(mm.lenU * UNIT_MM).toFixed(4), diaMM: +(mm.diaU * UNIT_MM).toFixed(4),
+        LD: +(mm.lenU / mm.diaU).toFixed(1),
+        where: cluster.map((x) => x.where) });
+    }
+  }
+  // THE CONTROL, and it is the load-bearing part of this instrument rather
+  // than a formality. A ruler that echoed `geometry.parameters` would agree
+  // with every expectation and measure nothing, so the test is that the
+  // measurement READS THE METAL: for every plain cylinder, the diameter this
+  // finds from its vertices must equal the one it was constructed with, times
+  // its world scale. Both of the axis errors above were caught here and by
+  // nothing else — assuming local +Y read 1233% wrong at worst, and searching
+  // only the three local axes 91%. Neither was visible in the rows, which
+  // stayed plausible throughout: a bar read across its axis comes back SHORT
+  // and FAT, which is the safe direction, and a check that is wrong in the
+  // safe direction is a check that passes.
+  let ctlWorst = 0, ctlWorstAt = null, ctlN = 0;
+  for (const r of round) {
+    if (r.paramDiaU === null) continue;
+    const mm = turnMeasure(r.axis, r.origin, [r.pts]);
+    if (!mm) continue;
+    ctlN++;
+    const e = Math.abs(mm.diaU - r.paramDiaU) / r.paramDiaU;
+    if (e > ctlWorst) { ctlWorst = e; ctlWorstAt = `${r.part} / ${r.mesh}`; }
+  }
+  const control = `${ctlWorst < 0.02 ? 'PASS' : 'FAIL'} — measured vs constructed ⌀ over `
+    + `${ctlN} plain cylinders, worst ${(100 * ctlWorst).toFixed(2)}%`
+    + (ctlWorstAt ? ` (${ctlWorstAt})` : '');
+  bars.sort((x, y) => y.LD - x.LD || x.part.localeCompare(y.part) || x.meshes.join().localeCompare(y.meshes.join()));
+  ambiguous.sort((x, y) => x.part.localeCompare(y.part) || x.mesh.localeCompare(y.mesh));
+  return { bars, ambiguous, control, roundMeshes: round.length,
+    notRoundMeshes: notRound.length, meshesConsidered: byMesh.size };
+}
+
+// WHAT A WAIVER BUYS AND WHAT IT COSTS. Keyed by `part::mesh-list`, so a
+// waiver names ONE bar rather than excusing a whole unit — the stockFloor
+// table is per-part and that granularity is wrong here, where a unit can
+// carry one unturnable bar and four sound ones. A row cites its TODO, and a
+// waiver naming a bar that is no longer over the ceiling is itself a failure
+// (§137's staleness rule, §54's precedent): deleting a fix's waiver is
+// structurally part of the fix.
+export const TURN_WAIVERS = {
+  // TODO 145 is the catalogue, and its three groups are why one item covers
+  // twelve rows: each group has ONE fix path, and none of them is "make the
+  // member thicker where it stands".
+  //
+  // GROUP A — the bar the owner found by eye. Its length is set by two
+  // stations the fold put 12.65 mm apart and its diameter by §232's necks at
+  // the stock floor; there is no section that fixes it, which makes it a P3
+  // LAYOUT problem — solved by moving the stations, not by thinning or
+  // fattening anything. It is the headline row and the reason this check
+  // exists.
+  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A',
+  // GROUP B — members that CROSS the movement or reach the case band. Their
+  // length is the case's, not a design choice: a crown stem is long because
+  // the case is 20 mm across. What is wrong is the DIAMETER — these were cut
+  // from arbor stock when they are stems, and a real crown stem runs 0.9-1.2
+  // mm where these run 0.24-0.42. The fix is to re-derive them from stem
+  // stock and re-clear the corridors they then occupy, which is a section
+  // change plus a P3 re-clear, not a waiver to widen.
+  'Hack rod::rodSegOut': 'TODO 145 group B',
+  'Hack rod::rodSegIn': 'TODO 145 group B',
+  'Reset rod::rodSegOut+rodSegIn': 'TODO 145 group B',
+  'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B',
+  'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B',
+  'Keyless works::settingTraverse': 'TODO 145 group B',
+  'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
+  // GROUP C — arbors INSIDE the movement. Filed as "a section change alone
+  // closes all three"; §234 Landing 1 measured that for none of them, and
+  // closed the two it could. The arrest COLUMNS are ARREST_COLUMN_R now, cut
+  // to TURN_LD_TARGET beside the leg solve with the finger's Geneva-sized
+  // arbor left alone (their rows retired here, per §137's staleness rule).
+  // The ROD is SITE-limited, not section-limited: §202's frozen station warns
+  // at boot above r ≈ 0.517 (L/D 19.2 — under the ceiling, over the target),
+  // and its site is the §112 solve's output, which is Landing 3's machinery.
+  'Alarm link::alarmLinkRod': 'TODO 145 group C (site-limited; re-solved with group A)',
+};
+
+export async function checkTurning(clock, opts = {}) {
+  const census = await turnedBars(clock, opts);
+  const violations = [], waived = [], needRest = [];
+  for (const b of census.bars) {
+    const key = `${b.part}::${b.meshes.join('+')}`;
+    if (b.LD > TURN_LD_MAX) {
+      if (TURN_WAIVERS[key]) waived.push({ ...b, key, debt: TURN_WAIVERS[key] });
+      else violations.push({ ...b, key });
+    } else if (b.LD > TURN_LD_UNSUPPORTED) needRest.push({ ...b, key });
+  }
+  const over = new Set([...violations, ...waived].map((r) => r.key));
+  const staleWaivers = Object.keys(TURN_WAIVERS).filter((k) => !over.has(k))
+    .map((k) => ({ key: k, debt: TURN_WAIVERS[k],
+      why: 'waiver names a bar that is not over the ceiling — the debt was paid; delete the waiver' }));
+  return {
+    ok: violations.length === 0 && staleWaivers.length === 0
+      && String(census.control).startsWith('PASS'),
+    control: census.control,
+    gate: `control PASS, 0 unwaived bars over L/D ${TURN_LD_MAX} AND 0 stale waivers; a waived row is accepted debt citing its TODO item, visible in the report, not a pass`,
+    maxLD: TURN_LD_MAX, unsupportedLD: TURN_LD_UNSUPPORTED,
+    violations, waived, waivedCount: waived.length, staleWaivers,
+    // REPORTS, not gates. `needRest` is a cost (the bar wants a follower rest
+    // or centres), and `ambiguous` is this instrument naming what it refused
+    // to speak about rather than passing it in silence.
+    needRest, needRestCount: needRest.length,
+    ambiguous: census.ambiguous, ambiguousCount: census.ambiguous.length,
+    barsChecked: census.bars.length,
+    roundMeshes: census.roundMeshes, notRoundMeshes: census.notRoundMeshes,
+    meshesConsidered: census.meshesConsidered,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // TODO 40 row 3 — A CHAIN IS A FIXED LENGTH OF STEEL, and until this nothing
 // in the battery said so. The row named the gap in as many words: "the chain
 // is display-only, the sweeps see a rebuilt mesh as a mover and never compare
@@ -9638,6 +10026,12 @@ const CHECKS = {
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
   axisEntry: (clock, opts) => checkAxisEntry(clock, opts),               // TODO 54 — canonical axis entry holds over every ordered pair; the leak the sweeps used to carry is measured beside it
   stockFloor: (clock, opts) => checkStockFloor(clock, opts),
+  // §233 — §50's floor and §54's ceiling ask about the metal and about
+  // service; this asks whether the bar survives being MADE. Registered
+  // here in the same change that exports it, because `slenderness` and
+  // `restoring` were both exported and never registered and each spent a
+  // section answering "unknown check".
+  turning: (clock, opts) => checkTurning(clock, opts),
   // §54's slenderness ceiling. It was EXPORTED AND NEVER REGISTERED HERE, so
   // `start(clock, 'slenderness')` answered "unknown check", every λ quoted in
   // the source was a hand-run number nothing reproduced, and SLENDER_WAIVERS

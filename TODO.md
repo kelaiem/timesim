@@ -19720,3 +19720,198 @@ longer places the rim's root at 3.30 (it is 4.125), `MU_STEEL` is named once in
 TODO 50, and the explainer's alarm-feeler entry states the measured load in
 place of "the disc's own seat is the question".
 
+## 145. The turning catalogue: twelve bars the movement cannot turn
+
+§233 declared a third slenderness — `TURN_LD_MAX = 20` in `layout.js`, gated by
+the `turning` check — and the movement arrived twelve bars over it. Each was
+waived in `TURN_WAIVERS` citing this item; **nine remain** after §234 Landing 1
+(the two arrest columns closed, see the block under group C) and the first
+member of Landing 2 (the alarm pusher stem, see the block under group B). This is that list, with the fix path
+for each group, so the waivers can be deleted one group at a time; per §137's
+staleness rule, deleting a waiver whose bar is no longer over the ceiling is
+structurally part of the fix, and leaving one behind fails the check.
+
+**Why this is a new item and not a line in TODO 78.** §54's λ asks whether a
+member bends in service, over the free span between its bearings. This asks
+whether it bends under the tool, over the whole bar standing out of the chuck.
+They are different lengths and they disagree by a factor of four on the worst
+row here: λ 27, L/D 104.
+
+### Group A — the lay shaft (1 row, L/D 104.3)
+
+```
+104.3  ⌀ 0.1213 × 12.65 mm  Alarm link / alarmLinkShaft + alarmLinkNeckRod + alarmLinkNeckFork
+```
+
+The one the owner found by eye ("thinner than a hair"), and the reason the
+check exists. Its LENGTH is two stations the §232 fold put 12.65 mm apart; its
+DIAMETER is the §232 necks, which sit at §50's stock floor and cannot come down
+— and cannot go up either, because `ALARM_LINK_SHAFT_NECK_R` is derived from
+`ALARM_LINK_CRANK_OFF - ALARM_LINK_CRANK_T / 2` and the crank offset is §137's
+`armIn_u`, a lever arm. Fattening the neck moves the arm, which §232 measured:
+ratio 2.545 → 1.821, §229's registration broken in four places.
+
+So there is no section that fixes this, which makes it a **P3 LAYOUT problem**
+under CLAUDE.md's priority order — solved in position space by moving the
+stations the shaft spans, never by thinning or fattening a member. That is the
+re-siting already identified and not yet filed as its own entry; when it is,
+this row moves to it.
+
+### Group B — members that cross the movement or reach the case band (8 rows)
+
+```
+ 63.5  ⌀ 0.2653 × 16.85 mm  Hack rod / rodSegOut
+ 62.2  ⌀ 0.2653 × 16.51 mm  Reset rod / rodSegOut + rodSegIn
+ 56.2  ⌀ 0.3183 × 17.89 mm  Alarm crown / alarmStem + (unnamed)
+ 40.7  ⌀ 0.2425 ×  9.86 mm  Alarm switch / alarmPusherStem + alarmPusherCap
+ 38.8  ⌀ 0.2653 × 10.28 mm  Keyless works / settingTraverse
+ 37.0  ⌀ 0.2653 ×  9.80 mm  Hack rod / rodSegIn
+ 35.3  ⌀ 0.3411 × 12.06 mm  Keyless works / windStem + (unnamed)
+ 30.9  ⌀ 0.4168 × 12.86 mm  Alarm crown / alarmStemTubeLiner + alarmStemCollar ×3
+```
+
+**Their length is the case's and is not negotiable** — a crown stem is long
+because the case is 20 mm across, and shortening it would mean the crown does
+not reach the band. What is wrong is the DIAMETER: these run 0.24–0.42 mm where
+a real crown stem runs 0.9–1.2 mm. They appear to have been cut from arbor
+stock, which is right for a wheel arbor spanning two plates and wrong for a
+member a finger turns through a case wall.
+
+**The fix** is to derive these from stem stock rather than arbor stock — which
+needs a declared constant with its basis, on `STOCK_MIN_U`'s pattern, not a
+number per member — and then re-clear the corridors the fattened members
+occupy. Expect the re-clear to be the expensive half and to be a P3 problem in
+position space: several of these run through the low corridor
+(`LOW_LINKAGE_OBSTACLES`), and a stem that triples in diameter is a new
+footprint there. Do the stem stock first and measure what it costs before
+committing to all eight.
+
+**One of these rows is not a stem at all** — the alarm crown's tube liner and
+its three collars cluster as a bar of their own because the check reads a
+member concentric with a shaft as a separate part, which it is. Check whether
+the liner is really a 12.86 mm tube at 0.42 mm wall, or whether it is modelled
+longer than the tube a real case needs.
+
+> **§234 Landing 2, first member (2026-09-17) — the stock is declared and the
+> pusher is cut from it.** `STEM_STOCK_R_U` in `layout.js`: tap 7, ⌀0.70 mm,
+> r 0.924 u, the smallest tap a stem is threaded to, with only the floor
+> declared because only the floor has a consumer. `ALARM_PUSH_STEM_R` reads
+> it — the stock governs (the turning target asks 0.723 u of a 26.0 u bar and
+> is held as a boot assert at the cap's build, where the bar's length is
+> known). The row above: **⌀ 0.243 → 0.700 mm, L/D 40.7 → 14.1**, waiver
+> retired, the bar now a `needRest` report.
+>
+> **What it cost, and the finding.** The guide ring is bored over the stem, the
+> axis stands lower by the ring's growth and the gong band's ceiling follows
+> the stem's underside: the ring dropped 2 · Δr = 1.21 u (Z_GONG 6.054 → 4.847).
+> The hammer head's height is still owned by the impedance match (μ 1.20), the
+> annulus floor is unchanged, and the caseback skirt's bottom is unchanged at
+> 10.23 — but not at first. Every bracket from r 0.50 up booted with §198's
+> "the caseback skirt's floor is governed by Alarm hammer at 10.582", and the
+> hammer had not moved a hair in z. A shorter gong block is stiffer, so its
+> radius shrinks, the ring stands 0.02 u further out, and the hammer post's
+> outer edge — 0.45 u INSIDE the skirt's wall at 47.95 — crossed the back
+> envelope's bin wall at r 47.50. At 60 bins (0.88 u wide) that bin then owned
+> the skirt band, and the whole back thickened 0.50 u for a post the skirt
+> never stands over. On unchanged `main` that edge is 0.02 u from firing. The
+> bin count was a literal; it is `CASE_R_OUT / CLEAR_MARGIN` now (352 bins of
+> 0.150 u — a bin no wider than the one margin, so metal that is clear of a
+> band cannot govern it), and on the shipped geometry that moves one case
+> number, the glass step's radius, by 0.020 u. `probe-back-envelope` and
+> `probe-187-casing-path` pass on the landed tree.
+>
+> **Two more things the fatter stem found, both in the group.** (1) The first
+> battery run failed `slenderness` on the stem itself: "a declared bearing
+> with no mesh at it". The §202 bearing declaration carried `(plateR − 1.2)`
+> for the guide boss's station — the literal §230 retired from the boss's own
+> build and left standing in the declaration, a law written twice — and it
+> landed inside the boss's box only for as long as nothing moved. The stem
+> moved the abutment, the collar and the boss inboard; the literal pointed at
+> air. The declaration reads the boss's built position now. (2) The return
+> coil rides the stem, so the stem's stock set the coil and the coil's index
+> D/d went from 6.6 to 15.8 on the stock wire — outside anything a coiler
+> winds — with 7 coils where there had been 32. `SPRING_INDEX_MIN/MAX/TARGET`
+> (4 / 12 / 10.8) are declared in `layout.js` and the wire is solved to the
+> target, `wireR = (stem + clear) / (C_target − 1)`, the stock floor under it:
+> 0.075 mm wire, C 10.8, 8 coils, k 71.8 N/m, 83 mN at full press (was 62.9 on
+> `main`). The coil's own headroom under the plate reduces to wireR ≤ the
+> guide ring's tube and is asserted with the numbers. Seven group-B rows
+> remain, one member at a time against the same constant.
+
+### Group C — arbors inside the movement (3 rows)
+
+```
+ 33.2  ⌀ 0.2274 ×  7.55 mm  Alarm link / alarmLinkRod
+ 23.0  ⌀ 0.1400 ×  3.22 mm  Alarm winding arrest / alarmArrestArbor
+ 23.0  ⌀ 0.1400 ×  3.22 mm  Alarm winding arrest / subIdlerArbor
+```
+
+**The only group where both length and diameter are the mechanism's own**, so
+either could move and a section change alone could close all three. The two
+arrest arbors are the closest of anything here to the ceiling — 23.0 against
+20, so 15% on the diameter clears them — and they are at `PIVOT_MIN_U`-scale
+stock (0.14 mm) where the check's ceiling and §50's floor are both in play at
+once: a 15% fatter arbor is 0.161 mm, still inside real pivot stock (0.07–0.12
+is the floor's basis; these are already over it). `alarmLinkRod` is §232's
+rod-end and carries TODO 79/82's compliance arithmetic, so fattening it moves a
+force — check `probe-82-alarm-stall.mjs` before and after, the way §232 did.
+
+**Start here.** It is the group with no layout consequence, and closing it
+proves the waiver-deletion loop works before the expensive groups are attempted.
+
+> **§234 Landing 1 (2026-09-17) — measured, and the group did not survive
+> contact.** "A section change alone could close all three" was true of none
+> of them. Four couplings were measured before anything was cut
+> (`tools/probe-234-group-c.mjs`, on the shipped tree and on scratch trees):
+>
+> - **Tooth counts do not move.** `minGearTeeth` reads 5 at `PIVOT_MIN_U` and
+>   5 at the target-derived 0.236 u; both station solves floor at 8; the
+>   idler stays at its solved 14.
+> - **The Geneva does.** `ARREST_SPEC.arborR` is an input to `genevaSpec` and
+>   the horn floor GOVERNS its centre distance today (d = 4.114 = dFromHorn),
+>   so the one shared radius at 0.236 grows the whole stop-work 20%
+>   (d → 4.919, lockR 1.390 → 1.698). That coupling is the FINGER's — the
+>   cross's horn passes the finger's bore lip — and the finger's arbor is
+>   L/D 17.5, already under the target.
+> - **The stall does not read the rod.** `probe-82`'s "rod-end overhang" is
+>   the lay SHAFT's neck past its last bush; the rod is a push rod, outside the
+>   compliance sum. r 0.553 measured byte-identical (81.02 mN). The claim
+>   above that fattening it "moves a force" was wrong.
+> - **The rod is SITE-limited.** §202's frozen station asserts room against the
+>   column at a 0.45 footprint; at r 0.553 it warns (0.115 of 0.15), at 0.518
+>   it reads 0.150 and still warns by float. Cap ≈ 0.517 u — L/D 19.2, under
+>   the ceiling, over the target — and the ladder's real wall beyond that is
+>   the back crystal at ⌀ ~1.2 u (whose z §187 derives from the envelope).
+>
+> **What closed: the two arrest columns**, by decoupling. `ARREST_COLUMN_R`
+> (`main.js`, beside the leg solve) is derived from `TURN_LD_TARGET` and the
+> tower's built height, with the finger's Geneva-sized arbor left on the spec.
+> The height depends on the spider spec, which is bored over this radius, so
+> the legs are solved twice — at the floor to learn the length, then at the
+> radius it asks for — and boot asserts the second pass moved neither the leg
+> count nor the length. The z-stack became ONE law (`arrestStack`) read by the
+> derivation and the build. Columns ⌀ 0.140 → 0.179 mm, L/D 23.0 → 18.0; their
+> two rows retired from `TURN_WAIVERS`. Battery 41/41 locally; `stockFloor`,
+> `intraUnit`, `assembly` and `inspection` unchanged at 0 unwaived. A
+> `§38/TODO 8` warning the pose net raises under the checks fires identically
+> on unchanged `main` — a control, not a finding.
+>
+> **What moved out: the rod**, to group A's landing — its site is the §112
+> solve's output, and re-solving that with the true bore footprint and an L/D
+> term is Landing 3's work, not a section. Its waiver stays, reason rewritten.
+> Group C is therefore CLOSED as a group: two rows fixed, one re-triaged.
+
+### What is NOT in this catalogue
+
+26 bars sit between L/D 10 and 20 — turnable, but wanting a follower rest or
+centres. They are reported by the check as `needRest` and gate nothing, because
+supporting the work is a choice the shop makes and the geometry cannot express
+it. If the movement is ever specified for a process that cannot support a bar,
+that tier becomes the gate and this list grows by 26.
+
+27 revolves are refused as axis-ambiguous — discs, where tilting off the fitted
+axis does not widen the body, so no turning ratio can honestly be quoted. They
+are reported by name rather than passed in silence. A disc's L/D is far under
+any limit, so nothing is hidden there; what would be hidden, if they were
+admitted, is a bar whose governing diameter got dragged down to half a disc's
+thickness.
