@@ -54,7 +54,7 @@ import {
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   TURN_LD_TARGET,                            // §233/§234: the turning ceiling's build-to figure — the arrest columns are cut to it
   STEM_STOCK_R_U,                            // §234 Landing 2: the stem-stock floor the alarm pusher is cut to
-  LINK_T_U, linkWidthFor,                    // §234 step 5: the stamped hack and reset links' sheet and their plan-width rule
+  LINK_T_U, LINK_BODY_W_U, linkEyeDiaForPin, // §234 step 5: the stamped hack and reset links' sheet, body width and eye rule
   SPRING_INDEX_MIN, SPRING_INDEX_MAX, SPRING_INDEX_TARGET,   // §234: the coiling envelope the return coil's wire is solved in
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
@@ -3392,7 +3392,7 @@ function zTopOfAnnulus(obj, c, rMin) {
 }
 function xyRadiusAbout(obj, c, zMax = Infinity, zMin = -Infinity) {
   obj.updateMatrixWorld(true);
-  const v = new THREE.Vector3();
+  const v = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3();
   let r = 0;
   obj.traverse((o) => {
     if (!o.isMesh || !o.geometry?.attributes?.position) return;
@@ -3400,6 +3400,28 @@ function xyRadiusAbout(obj, c, zMax = Infinity, zMin = -Infinity) {
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
       if (v.z <= zMax && v.z >= zMin) r = Math.max(r, Math.hypot(v.x - c.x, v.y - c.y));
+    }
+    // §234 — A SHAFT THROUGH THE BAND HAS NO VERTEX IN IT. A CylinderGeometry
+    // carries vertices only on its two rims, so a staff that crosses a z band
+    // end to end read as ABSENT from it — the instruments skill's "vertices
+    // mistaken for the surface", and how the third arbor's lower staff (z −1
+    // to 2.82, r 0.5) was missing from the low corridor's table until a
+    // wider link landed on it. Where a cylinder's axis crosses the band, its
+    // radius counts along the crossing.
+    const g = o.geometry;
+    if (g.type === 'CylinderGeometry' && g.parameters) {
+      const p = g.parameters, h = p.height / 2, rc = Math.max(p.radiusTop, p.radiusBottom);
+      a.set(0, -h, 0).applyMatrix4(o.matrixWorld); b.set(0, h, 0).applyMatrix4(o.matrixWorld);
+      const lo = Math.min(a.z, b.z), hi = Math.max(a.z, b.z);
+      if (hi < zMin || lo > zMax || hi - lo < 1e-9) return;
+      const scale = o.matrixWorld.getMaxScaleOnAxis();
+      for (let k = 0; k <= 8; k++) {
+        const t = k / 8, z = lo + (hi - lo) * t;
+        if (z < zMin || z > zMax) continue;
+        const tt = (a.z <= b.z) ? t : 1 - t;
+        const x = a.x + (b.x - a.x) * tt, y = a.y + (b.y - a.y) * tt;
+        r = Math.max(r, Math.hypot(x - c.x, y - c.y) + rc * scale);
+      }
     }
   });
   return r;
@@ -5043,14 +5065,29 @@ const Z_SETTING_LEVER = Z_KEYLESS - (0.75 + CLEAR_MARGIN + 0.5 + 0.1);
 // A real caliber's hack lever and reset hammer are stampings, and the owner
 // chose that over re-routing the corridor for a fatter turned rod. The sheet
 // is layout.js's LINK_T_U (§50's floor — the corridor allows no more, see the
-// stack assert below); each link's WIDTH is layout.js's linkWidthFor over its
-// own pin-to-pin chord (§54's ceiling in plan), derived where the chord is
-// known: RESET_LINK_W beside the reset solve, HACK_LINK_W from the stop-work
-// solve itself. The round rod's ROD_R (0.35, a bare literal at L/D 62–64) and
+// stack assert below); each is NECKED — a body at layout.js's blanking floor
+// LINK_BODY_W_U and a round eye at each end sized by linkEyeDiaForPin over the
+// 0.45 post family both ride — one blank for the pair, the load floors
+// asserted beside each row. The round rod's ROD_R (0.35, a bare literal at L/D 62–64) and
 // its formed KNUCKLE (1.15 × ROD_R, the tube's widest point) are gone with the
 // tube: a strip's widest point is its own edge, and every clearance question
 // about these links is asked at their plan half-width, W / 2.
 const LINK_T = LINK_T_U;
+// THE BODY'S WIDTH, two floors and the higher governs. The blanking floor
+// (layout.js, ≈ 2t) is what a die can cut; the SECTION floor is that the
+// stamping be no weaker in the bend's plane than the turned rod it replaces —
+// §137 Gate A prices every bend by the in-plane I, and a section change that
+// lowered it would be paying the turning gate out of the link's stiffness.
+// The rod was ⌀0.7 u (ROD_R 0.35, retired here): I = πr⁴/4; the strip's is
+// T·W³/12, so W ≥ ∛(12·I_rod / T) = 0.765 u. Measured at the blanking floor
+// alone (0.633) the hack link's priced give at the detent ceiling was 54% of
+// its stroke against the tube's 28% and σ 191 MPa against 120; at 0.765 both
+// read as the tube did. The corridor was bracketed with the third arbor's
+// staff in the table (below): a body wider than ≈ 1.0 u routes nowhere, so
+// 0.765 is inside what the layout allows without being set by it.
+const REPLACED_ROD_R = 0.35;                                                   // the tube this stamping replaces — the section floor's basis, not a live dimension
+const LINK_W = Math.max(LINK_BODY_W_U, Math.cbrt(12 * (Math.PI * REPLACED_ROD_R ** 4 / 4) / LINK_T));   // 0.765 u
+const LINK_EYE_D = linkEyeDiaForPin(G.SETTING_LEVER_POST_R, PIVOT_BORE_CLEAR); // 1.633 u — the setting lever's post and the hack pin are one stock (HACK_PIN_R below is asserted equal)
 const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 // The rods run LOW now — between the base plate and the GREAT WHEEL's
 // underside. The mid-band (just under the plate floor) is closed by the
@@ -5608,19 +5645,24 @@ hammerGroup.add(hammerTailBar);
 // TODO 63's finding is that a straight two-force link and a link with 28
 // units of offset are the same object to every instrument here; this is
 // the arithmetic that decides whether the rigid bend is defensible as
-// MATTER. Section (§234): a stamped strip W × T with T = LINK_T (§50's floor,
-// 0.12 mm) and W = the link's chord / SLENDER_TARGET — reset 1.614 u
-// (0.612 mm), hack 2.45 u (0.93 mm). The bend's offset e is a PLAN quantity,
-// so its moment acts in the strip's plane, the STRONG axis: Z = T·W²/6 and
-// I = T·W³/12 (reset 7.5e-12 m³ / 2.3e-15 m⁴, hack 1.72e-11 / 8.0e-15 —
-// 4× and 9× the tube's Z of 1.833e-12 m³, 9× and 33× its I of 2.432e-16 m⁴,
-// for the same load), at
-// the 200 GPa both SLENDER_E_PA and OSC_STEEL_E already carry for this steel.
-// The strip's WEAK axis, W·T³/12, is the axis a straight strut buckles about
-// and is held separately at the detent ceiling beside each row (the
-// `eulerFracThin` quantity and its boot assert). The numbers below were the
-// round rod's and are kept as the record of what the section change bought;
-// the LIVE figures are the rows' own (priceRigidBentLink).
+// MATTER. Section (§234): a stamped NECKED link — body W = LINK_W × sheet
+// T = LINK_T (0.765 × 0.317 u, 0.29 × 0.12 mm), the same blank for both
+// links, with a round eye over each pin. The bend's offset e is a PLAN
+// quantity, so its moment acts in the body's plane, the STRONG axis:
+// Z = T·W²/6 = 1.68e-12 m³ and I = T·W³/12 = 2.43e-16 m⁴ — the I is the
+// ⌀0.7 tube's BY CONSTRUCTION (LINK_W's section floor solves W from it),
+// the Z 0.92× the tube's 1.833e-12, at the 200 GPa both SLENDER_E_PA and
+// OSC_STEEL_E already carry for this steel. So the flat section prices the
+// hack link's dogleg as the tube did (σ ≈ 138 MPa at the ceiling where the
+// tube read 120, the difference being Z and the wider blank's e 12.2 against
+// 11.6; give ≈ 32% of stroke against 28%), and what the row ADDS is the
+// yield check: σ at ELBOW_E_MAX, the worst dogleg the solver may return, is
+// held under SPRING_SIGMA_Y_PA (316 MPa against 800). The strip's WEAK axis,
+// W·T³/12, is the axis a straight strut buckles about and is held separately
+// at the detent ceiling beside each row (the `eulerFracThin` quantity and
+// its boot assert: 0.38 hack, 0.17 reset). The numbers below were the round
+// rod's and are kept as the record the flat section was priced against; the
+// LIVE figures are the rows' own (priceRigidBentLink).
 //
 // THE LOADS, derived from the driven member rather than assumed — both
 // by virtual work, so no lever ratio has to be measured off the metal:
@@ -5694,14 +5736,23 @@ const CORRIDOR_Z_BOT = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - LINK_T / 2;
 const TRANSFER_SWEPT_R = xyRadiusAbout(transferWheel,
   { x: uWind.x * cwDist, y: uWind.y * cwDist }, GW_UNDER_Z, CORRIDOR_Z_BOT);
 const WIND_SPUR_SWEPT_R = xyRadiusAbout(windSpur, P.barrel, GW_UNDER_Z, CORRIDOR_Z_BOT);
-// §234 — the rows carry the LINK's plan half-width (`halfW`, W / 2), which is
-// per link now that width follows chord: the reset link prices its corridor at
-// its own width, the stop-work solve at the width its candidate's chord asks.
+// §234 — THE THIRD ARBOR, the corridor's missing wall. Its lower staff runs
+// from the pinion down through the band to the base plate's jewel (r 0.5),
+// and it was never a row because the ⌀0.7 tube happened to pass it: the flat
+// hack link at 2.45 wide landed on it (inspection: Hack rod ⇄ Third wheel
+// FORBIDDEN over the pulled half of the crown stroke) with the corridor solve
+// reporting 3.05 of clearance against a table that did not know the staff
+// was there. Measured in the band, like the transfer wheel and the spur.
+const THIRD_STAFF_R = xyRadiusAbout(thirdArbor, P.third, GW_UNDER_Z, CORRIDOR_Z_BOT);
+// §234 — the rows carry the LINK's plan half-width (`halfW`, W / 2) as an
+// argument rather than a shared constant, so the reset solve, the stop-work
+// solve and the §86 envelope check (at 0) each say which blank they price.
 const lowRodObstaclesFor = (p, kw, halfW) => [
   { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: TRANSFER_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the transfer wheel', of: () => transferWheel },
   { x: p.barrel.x, y: p.barrel.y, r: WIND_SPUR_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the winding spur', of: () => windSpur },
   { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the centre arbor’s lower collar', of: () => centerArbor },
   { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar', of: () => fourthArbor },
+  { x: p.third.x, y: p.third.y, r: THIRD_STAFF_R + halfW + CLEAR_MARGIN, what: 'the third arbor’s lower staff', of: () => thirdArbor },   // §234
   // §125 Tier B — the escape arbor joins the corridor's walls: no route ever
   // passed it until the mirrored hack rod's southern dogleg did (inspection
   // read Escape wheel ⇄ Hack rod FORBIDDEN on the first route the widened
@@ -5721,10 +5772,9 @@ const lowRodObstaclesFor = (p, kw, halfW) => [
 // The keyless radii the corridor reads, captured like the solver's own
 // inputs — the stem handle re-solves these, the train handles do not.
 const LOW_ROD_KEYLESS = { uWind, cwDist, crownWheelR, windSpurR };
-// §234 — the reset link's width from its chord (the chord is the rod length:
-// the reset solve found e = 0 and the link is straight), and its corridor
-// priced at that width.
-const RESET_LINK_W = linkWidthFor(RESET_ROD_LEN);
+// §234 — the reset link is cut from the pair's one blank, and its corridor is
+// priced at that half-width.
+const RESET_LINK_W = LINK_W;
 const RESET_ROD_OBSTACLES = lowRodObstaclesFor(P, LOW_ROD_KEYLESS, RESET_LINK_W / 2);
 // Mesh in the pose frame the placement code already uses: local +Y is the
 // chord (post end at −len/2), so position-at-midpoint + rotation.z works
@@ -5742,9 +5792,16 @@ const RESET_ROD_OBSTACLES = lowRodObstaclesFor(P, LOW_ROD_KEYLESS, RESET_LINK_W 
 // end each carries so intraUnit's report cannot collapse two pairs into one)
 // has nothing left to distinguish. The mesh publishes the elbow it was cut to
 // in userData.link, which is where probe-137-elbow reads it back from.
-function makeFlatLinkMesh(len, f, e, W, T, name) {
+function makeFlatLinkMesh(len, f, e, W, T, eyeD, name) {
   const g = new THREE.Group();
-  const h = W / 2;
+  const h = W / 2, R = Math.max(eyeD / 2, h);
+  // §234 — THE EYES. Each end is a disc of radius R about its pin, and the
+  // body's straight edges run into it: an edge offset h from the axis meets a
+  // disc of radius R at √(R² − h²) short of the pin, and the eye's arc turns
+  // from that meeting point round the pin's far side to the other edge's. At
+  // R = h (no eye) the meeting point is the pin itself and the arc is the
+  // stadium's cap — one construction, both cases.
+  const sEye = Math.sqrt(Math.max(0, R * R - h * h));
   const pts = Math.abs(e) > 1e-9
     ? [{ x: 0, y: -len / 2 }, { x: e, y: -len / 2 + f * len }, { x: 0, y: len / 2 }]
     : [{ x: 0, y: -len / 2 }, { x: 0, y: len / 2 }];
@@ -5781,13 +5838,18 @@ function makeFlatLinkMesh(len, f, e, W, T, name) {
     push(P.x + mx / mL * h / cosHalf, P.y + my / mL * h / cosHalf);
   };
   const r0 = right(u0), rN = right(uN), l0 = left(u0), lN = left(uN);
-  push(P0.x + r0.x * h, P0.y + r0.y * h);
+  const eyeArc = (c, aR, aL) => {                // about c: from the right edge's meeting point CCW to the left edge's, radius R
+    const n = Math.max(2, Math.ceil((aL - aR) / (Math.PI / 2) * N));
+    for (let i = 0; i <= n; i++) { const t = aR + (aL - aR) * i / n; push(c.x + Math.cos(t) * R, c.y + Math.sin(t) * R); }
+  };
+  const phi = Math.atan2(sEye, h);               // the meeting point's angle off the edge normal, toward the pin
+  push(P0.x + u0.x * sEye + r0.x * h, P0.y + u0.y * sEye + r0.y * h);
   if (segs.length === 2) corner('right', r0, rN);
-  push(PN.x + rN.x * h, PN.y + rN.y * h);
-  arc(PN, ang(rN), ang(rN) + Math.PI);            // driven-end cap: right → left through +u
+  push(PN.x - uN.x * sEye + rN.x * h, PN.y - uN.y * sEye + rN.y * h);
+  eyeArc(PN, ang(rN) - phi, ang(rN) + Math.PI + phi);          // driven-end eye: right → left through +u
   if (segs.length === 2) corner('left', lN, l0);
-  push(P0.x + l0.x * h, P0.y + l0.y * h);
-  arc(P0, ang(l0), ang(l0) + Math.PI);            // post-end cap: left → right through −u
+  push(P0.x + u0.x * sEye + l0.x * h, P0.y + u0.y * sEye + l0.y * h);
+  eyeArc(P0, ang(l0) - phi, ang(l0) + Math.PI + phi);          // post-end eye: left → right through −u
   if (Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) < 1e-9) out.pop();
   const shape = new THREE.Shape();
   out.forEach(([x, y], i) => (i === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y)));
@@ -5796,7 +5858,7 @@ function makeFlatLinkMesh(len, f, e, W, T, name) {
   geo.translate(0, 0, -T / 2);
   const link = new THREE.Mesh(geo, MATS.steel);
   link.name = name;
-  link.userData.link = { len, f, e, W, T, arcN: N };   // arcN: the cap tessellation, so a read-back can bound its own chord sag
+  link.userData.link = { len, f, e, W, T, eyeD: 2 * R, arcN: N };   // arcN: the arcs' tessellation, so a read-back can bound its own chord sag
   g.add(link);
   return g;
 }
@@ -5844,6 +5906,7 @@ function priceRigidBentLink(elbow, len_u, stroke_u, W_u, T_u) {
   return {
     moment_mNmm: F_mN * e_u * UNIT_MM,
     sigma_MPa: (F_mN / 1000) * (e_u * UNIT_MM) / Z_plan_mm3,
+    sigmaAtEMax_MPa: (F_mN / 1000) * (ELBOW_E_MAX * UNIT_MM) / Z_plan_mm3,
     offset_e_u: e_u, eulerFrac, eulerFracThin, eulerThin_N, give_u,
     giveFracOfStroke: stroke_u > 0 ? give_u / stroke_u : Infinity,
     W_u, T_u,
@@ -5854,6 +5917,11 @@ function priceRigidBentLink(elbow, len_u, stroke_u, W_u, T_u) {
 function assertLinkStrut(name, price) {
   if (!(price.eulerFracThin < 1))
     console.warn(`§234: the ${name} buckles about its weak axis at ${(price.eulerThin_N * 1000).toFixed(1)} mN — under the ${SELECTOR_DETENT_WINDOW_MN[1]} mN detent ceiling it is priced at (W ${price.W_u.toFixed(3)} × T ${price.T_u.toFixed(3)} u)`);
+  // and the body's in-plane bending at the WORST bend the solver can pick
+  // (ELBOW_E_MAX) must stay under the one steel's yield — the floor the body
+  // width is held above, quoted at the bound so it survives a re-solved route
+  if (!(price.sigmaAtEMax_MPa < SPRING_SIGMA_Y_PA / 1e6))
+    console.warn(`§234: the ${name}'s body would yield at ELBOW_E_MAX — σ ${price.sigmaAtEMax_MPa.toFixed(0)} MPa against ${(SPRING_SIGMA_Y_PA / 1e6).toFixed(0)} at W ${price.W_u.toFixed(3)} × T ${price.T_u.toFixed(3)} u`);
 }
 // Reset rod: endpoint pairs sampled over the stroke with the SAME
 // branch-tracked two-circle solve tick() uses.
@@ -5873,7 +5941,7 @@ const RESET_ROD_ELBOW = (() => {
     console.warn(`reset rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
   return best;
 })();
-const resetRod = makeFlatLinkMesh(RESET_ROD_LEN, RESET_ROD_ELBOW.f, RESET_ROD_ELBOW.e, RESET_LINK_W, LINK_T, 'resetLink');
+const resetRod = makeFlatLinkMesh(RESET_ROD_LEN, RESET_ROD_ELBOW.f, RESET_ROD_ELBOW.e, RESET_LINK_W, LINK_T, LINK_EYE_D, 'resetLink');
 movement.add(resetRod);
 registerLabel('Reset rod', resetRod);
 // §137 — the reset rod's transfer row: a rigid bent link, priced at its own
@@ -5894,7 +5962,7 @@ registerLabel('Reset rod', resetRod);
       source: 'the detent envelope\'s ceiling as the bounding axial load — nothing in the finger-driven low linkage is designed to deliver more' },
     quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
       eulerFrac: price.eulerFrac, eulerFracThin: price.eulerFracThin, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke,
-      W_u: price.W_u, T_u: price.T_u },
+      sigmaAtEMax_MPa: price.sigmaAtEMax_MPa, W_u: price.W_u, T_u: price.T_u },
     why: `displacement along a chord with a routing bend and no pivot — a flat stamped strip (§234, W ${price.W_u.toFixed(3)} × T ${price.T_u.toFixed(3)} u), legitimate only priced: σ ${price.sigma_MPa.toFixed(1)} MPa in the strip's plane at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}% in plane and ${(price.eulerFracThin * 100).toFixed(1)}% about the weak axis, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor (give scales with the load)`,
   });
 }
@@ -6003,7 +6071,7 @@ const STOPWORK_AT_POST = {
   // the banded (great-wheel) row, and a width RULE for the plan, because the
   // hack link's width follows the chord the station solve is still choosing.
   linkHalfT: LINK_T / 2,
-  linkHalfWFor: (chord) => linkWidthFor(chord) / 2,
+  linkHalfW: LINK_W / 2,
   bearingObstaclesAt: stopBearingObstaclesAt,
   // §125 Tier B — the HACK rod's corridor gains the reset hammer's swept
   // disc. The shared LOW_ROD_OBSTACLES list never carried it because no
@@ -6116,6 +6184,8 @@ const hackPinEng = STOPWORK_INPUTS.postEng, hackPinRel = STOPWORK_INPUTS.postRel
 // pin would be the reduction paid for twice. §50's floor is therefore
 // asserted, not aimed at — the pin's thinnest dimension is its diameter:
 const HACK_PIN_R = G.SETTING_LEVER_POST_R;
+if (Math.abs(linkEyeDiaForPin(HACK_PIN_R, PIVOT_BORE_CLEAR) - LINK_EYE_D) > 1e-9)   // §234: the one blank's eyes were cut for this pin
+  console.warn(`§234: the hack pin r ${HACK_PIN_R} asks an eye ${linkEyeDiaForPin(HACK_PIN_R, PIVOT_BORE_CLEAR).toFixed(3)} across against the pair's ${LINK_EYE_D.toFixed(3)}`);
 if (2 * HACK_PIN_R < STOCK_MIN_U)
   console.warn(`hack-rod pin: ⌀ ${(2 * HACK_PIN_R).toFixed(3)} under the §50 floor ${STOCK_MIN_U.toFixed(3)}`);
 if (HACK_PIN_OWN) {
@@ -6536,7 +6606,7 @@ if (STOP_BRACKET_CLEAR < HACK_CLEAR_MARGIN - 1e-6)
       (CLEAR_MARGIN - worst).toFixed(2));
 }
 
-const hackRod = makeFlatLinkMesh(HACK_ROD_LEN, HACK_ROD_ELBOW.f, HACK_ROD_ELBOW.e, HACK_LINK_W, LINK_T, 'hackLink');
+const hackRod = makeFlatLinkMesh(HACK_ROD_LEN, HACK_ROD_ELBOW.f, HACK_ROD_ELBOW.e, HACK_LINK_W, LINK_T, LINK_EYE_D, 'hackLink');
 movement.add(hackRod);
 registerLabel('Hack rod', hackRod);
 // §137 — the hack rod's transfer row: the DEEP bend. §125 Tier B's southern
@@ -6556,7 +6626,7 @@ registerLabel('Hack rod', hackRod);
       source: 'the detent envelope\'s ceiling as the bounding axial load — the same bound the reset rod is priced at' },
     quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
       eulerFrac: price.eulerFrac, eulerFracThin: price.eulerFracThin, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke,
-      W_u: price.W_u, T_u: price.T_u },
+      sigmaAtEMax_MPa: price.sigmaAtEMax_MPa, W_u: price.W_u, T_u: price.T_u },
     why: `the movement's deepest routing bend (§125 Tier B's dogleg), a flat stamped strip (§234, W ${price.W_u.toFixed(3)} × T ${price.T_u.toFixed(3)} u), priced: σ ${price.sigma_MPa.toFixed(1)} MPa in the strip's plane at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}% in plane and ${(price.eulerFracThin * 100).toFixed(1)}% about the weak axis, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor — the bend is the low linkage's compliance concentrator, stated`,
   });
 }
@@ -6642,6 +6712,8 @@ const LOW_LINKAGE_OBSTACLES = (() => {
     const E = { x: a.x + ux * L * elbow.f + nx * elbow.e, y: a.y + uy * L * elbow.f + ny * elbow.e };
     obs.push({ ax: a.x, ay: a.y, bx: E.x, by: E.y, r: halfW });
     obs.push({ ax: E.x, ay: E.y, bx: b.x, by: b.y, r: halfW });
+    obs.push({ x: a.x, y: a.y, r: LINK_EYE_D / 2 });   // the eyes, at the pins
+    obs.push({ x: b.x, y: b.y, r: LINK_EYE_D / 2 });
   };
   let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
   let psi = STOP_PSI0;

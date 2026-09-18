@@ -87,17 +87,22 @@ const R = await page.evaluate(async () => {
       return null;
     }
     const strip = strips[0];
-    const { len, f, e, W, T, arcN } = strip.userData.link;
+    const { len, f, e, W, T, eyeD, arcN } = strip.userData.link;
     strip.geometry.computeBoundingBox();
     const bb = strip.geometry.boundingBox;
     const ext = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
     // §234: the DECLARED elbow against the cut metal — three residuals.
-    const want = [W + Math.abs(e), len + W, T];
+    // §234: a NECKED link — body W between two eyes of diameter eyeD on the pins. Along
+    // the chord the eyes set the length; across it the wider of the body's reach at the
+    // bend (h + |e| on the bend's side, h on the other) and the eye's radius, each side.
+    const h = W / 2, R = Math.max((eyeD || W) / 2, h);
+    const xMax = Math.max(h + Math.max(e, 0), R), xMin = Math.max(h + Math.max(-e, 0), R);
+    const want = [xMax + xMin, len + 2 * R, T];
     const resid = Math.max(...want.map((w, i) => Math.abs(ext[i] - w)));
     // the caps and the outer corner are polygons of arcN points per quarter, so the
     // box reads short of the true circle by the chord sag h·(1 − cos(π/2N)) at most —
     // the tolerance is that sag, derived from the declared tessellation, plus float
-    const sag = (W / 2) * (1 - Math.cos(Math.PI / (2 * (arcN || 12)))) + 1e-6;
+    const sag = R * (1 - Math.cos(Math.PI / (2 * (arcN || 12)))) + 1e-6;
     if (resid > sag) fails.push(`'${name}' strip read-back residual ${resid.toExponential(2)} — the extrude's box [${ext.map((x) => x.toFixed(4)).join(', ')}] is not the ${want.map((x) => x.toFixed(4)).join(' × ')} the declared link describes`);
     const Ey = -len / 2 + f * len;
     const L1 = Math.hypot(e, Ey + len / 2), L2 = Math.hypot(e, len / 2 - Ey);   // the two straight runs of the strip
@@ -105,7 +110,7 @@ const R = await page.evaluate(async () => {
       unit: name, obj: e0.obj,
       e: +e.toFixed(6), f: +f.toFixed(6), len: +len.toFixed(6),
       seg1: +L1.toFixed(6), seg2: +L2.toFixed(6),
-      W: +W.toFixed(4), T: +T.toFixed(4),
+      W: +W.toFixed(4), T: +T.toFixed(4), eyeD: +(eyeD || W).toFixed(4),
       readBackResidual: +resid.toExponential(3),
       e_mm: +(e * UNIT_MM).toFixed(4), len_mm: +(len * UNIT_MM).toFixed(4),
       seg1_mm: +(L1 * UNIT_MM).toFixed(4), seg2_mm: +(L2 * UNIT_MM).toFixed(4),

@@ -554,16 +554,32 @@ export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
 //     the tail bar and the great wheel and asserts the stack; measured, two
 //     links with a margin between them would want T ≤ 0.247 u, under the
 //     floor, so they are cut AT it and stand 0.045 apart where they cross.
-//   · WIDTH is §54's ceiling applied IN PLAN over the link's pin-to-pin span,
-//     the rule §229 gave the alarm link's beak: a two-force link's free length
-//     is the chord between its bearings, and its in-plane λ = span / width is
-//     built to SLENDER_TARGET, never merely under SLENDER_MAX. The stock floor
-//     stands under it for a link too short to need the rule.
-// The bend's moment (§137 Gate A) acts in the strip's PLANE, its strong axis;
-// the weak axis is a straight strut's Euler axis and main.js holds it against
-// the detent ceiling beside the row.
+//   · The link is NECKED, as a stamped lever is: a narrow BODY and a round
+//     EYE at each end. The eye is the PIN's — a link's end wraps the pin it
+//     rides with a wall of stock either side, so its diameter is 2 · (pin
+//     radius + the running fit + §50's floor); both links ride the setting
+//     lever's post family. The body is the BLANKING floor: a feature narrower
+//     than twice the sheet tears or curls in the die (sheet-metal blanking
+//     practice's ≈ 2t minimum), so the body is at least 2 · LINK_T_U — and
+//     main.js holds it above a SECTION floor too, no weaker in the bend's
+//     plane than the ⌀0.7 rod it replaces (0.765 u governs). The load-derived
+//     floors sit under that and are ASSERTED beside each row in main.js rather
+//     than built to: the bend's moment acts in the strip's plane (Z = T·W²/6,
+//     held under the one steel's yield at ELBOW_E_MAX), and the weak axis
+//     W·T³/12 is a straight strut's Euler axis, held under the detent ceiling.
+// MEASURED AND REFUSED FIRST, TWICE. §54's ceiling applied in plan over the
+// chord (W = chord / SLENDER_TARGET, the rule §229 gave the alarm link's
+// beak) cut the hack link 2.45 u wide — a ROD's rule: a strip bends about its
+// thin axis, which no width answers and the Euler assert already holds. Then
+// one blank at the eye's width (1.633 u) for the whole length: with the
+// third arbor's staff in the corridor table (main.js, §234) no station about
+// the balance routes a hack link wider than ≈ 1.0 u, so a full-width blank
+// fails at P3 where a necked one — the body 0.633 u between the eyes — passes
+// the same corridor the ⌀0.7 tube did, with the eyes standing where the tube's
+// ends already stood, on their pins.
 export const LINK_T_U = STOCK_MIN_U;
-export const linkWidthFor = (span_u) => Math.max(STOCK_MIN_U, span_u / SLENDER_TARGET);
+export const LINK_BODY_W_U = 2 * STOCK_MIN_U;                                            // 0.633 u — the blanking floor, ≈ 2t
+export const linkEyeDiaForPin = (pinR_u, fit_u) => 2 * (pinR_u + fit_u + STOCK_MIN_U);   // fit_u: the movement's one running fit, main.js's PIVOT_BORE_CLEAR — passed, not re-declared
 // An OVERHANG past the last bearing bends like a cantilever, and §54 charges
 // it a length multiplier for that — ∛(48/3), the ratio of a midspan-loaded
 // simple beam's stiffness to a tip-loaded cantilever's, taken into LAMBDA
@@ -2275,7 +2291,7 @@ export function solveStopWork({
   TQ_TOP_Z,           // the balance cock's height — the mast's case-fit ceiling
   ROD2_PLANE_Z,       // the low rod plane
   linkHalfT,          // §234: the flat link's half-thickness — the height a banded row is met at
-  linkHalfWFor,       // §234: (chord) → the link's plan half-width (layout.js's linkWidthFor / 2)
+  linkHalfW,          // §234: the flat link's body half-width (main.js's LINK_W / 2 — one blank for both links)
   bearingObstaclesAt, // (P) → circles the bearing scan must keep the crank clear of
   obstaclesFor,       // §234: (halfW) → the corridor table the link's elbow is scored against, at that plan half-width
   rubyFlare,          // geometry.js's HACK_RUBY_FLARE
@@ -2453,12 +2469,8 @@ export function solveStopWork({
       const tt = tailTopIn(fr, psi);
       poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
     }
-    // §234 — the link's width follows its chord (layout.js's rule), and the
-    // corridor is priced at THAT width: a candidate station with a longer rod
-    // is scored against rows that already carry the wider blank it would need.
-    const halfW = linkHalfWFor(len);
-    const opts = { eMax: ELBOW_E_MAX, plateLimit: plateR - halfW - CLEAR_MARGIN };
-    return solveElbow(len, poses, obstaclesFor(halfW), linkHalfT,
+    const opts = { eMax: ELBOW_E_MAX, plateLimit: plateR - linkHalfW - CLEAR_MARGIN };
+    return solveElbow(len, poses, obstaclesFor(linkHalfW), linkHalfT,
       coarse ? { ...opts, fStep: 0.25, eStep: 1 } : opts);
   };
   const STOP_BEARING = (() => {
@@ -2606,9 +2618,8 @@ export function solveStopWork({
       // corridor model could not see the great wheel.
       poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
     }
-    const halfW = linkHalfWFor(HACK_ROD_LEN);
-    const best = solveElbow(HACK_ROD_LEN, poses, obstaclesFor(halfW), linkHalfT,
-      { eMax: ELBOW_E_MAX, plateLimit: plateR - halfW - CLEAR_MARGIN });
+    const best = solveElbow(HACK_ROD_LEN, poses, obstaclesFor(linkHalfW), linkHalfT,
+      { eMax: ELBOW_E_MAX, plateLimit: plateR - linkHalfW - CLEAR_MARGIN });
     if (best.atBound?.length)
       corners.push({ what: 'the hack rod\'s bend', value: `f ${best.f.toFixed(2)}, e ${best.e.toFixed(1)}`,
         bound: best.atBound.join(' and ') });
@@ -2633,6 +2644,6 @@ export function solveStopWork({
     stopTailTopAt, stopSolvePsi, HACK_ROD_LEN, STOP_PSI0,
     STOP_PAD_TOP_LZ, STOP_PAD_Y, STOP_PAD_X,
     HACK_ROD_ELBOW,
-    HACK_LINK_W: 2 * linkHalfWFor(HACK_ROD_LEN),   // §234: the blank the elbow was priced at — main.js cuts to this, not to a second computation
+    HACK_LINK_W: 2 * linkHalfW,   // §234: the blank the elbow was priced at — main.js cuts to this, not to a second computation
   };
 }
