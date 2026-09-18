@@ -26117,3 +26117,49 @@ hammer 1.408 → 1.412), and `sweptOverlap`'s REFUTED tier re-measuring the
 hammer's refined gaps to the case (0.457 → 0.400, still refuted) and the
 plate. Three checks moved in timing counters alone.
 
+### Landing 2, step 3 measured — neither keyless member is a section change
+
+    SETTING_ROD_R         unchanged (0.35)   SITE-limited: z window 1.38 u, the ceiling needs 1.66
+    windStem              unchanged          a TRAIN change: TODO 138 fires on the 8-tooth pinion at a stock bore
+    TURN_WAIVERS          9, two reasons rewritten with the measurement
+
+**The traverse looked like the easy one.** No bore reads `SETTING_ROD_R` —
+the motion-works traverse runs corner to corner with no bush — and at stem
+stock the tree BOOTS silent (the z-room `MINUTE_Z_STEP` solves against it and
+found room). The battery said otherwise: 38/41, `intraUnit` on
+`mwCornerDropIn ⇄ settingTraverse`, and `inspection` plus `sweptOverlap` on
+`Keyless works ⇄ Power-reserve train` (overlap 0.215, refined gap 0). Measured
+at stock, the rod spans z −3.924 … −2.076; the reserve train's first wheel
+tops at −3.532 below it and the corner's drop-in bevel bottoms at −2.150 above
+it. That window is 1.38 u. Two margins leave 1.08 u for a diameter — r ≤ 0.54,
+L/D 25 over the rod's 10.28 mm, still over the ceiling. The ceiling asks
+1.66 u of window, the target 1.81, stock 2.15. The entry's own rule for this
+case is stop and file: the traverse is SITE-limited exactly as the alarm link
+rod was in Landing 1, and its fix is the plane it runs in (`Z_RSV`, or the
+corner's stack), position space, its own filing. The section change was
+reverted; the waiver stays and its reason now carries the measurement.
+
+**The winding stem is not a section change either, and the roadmap said it
+was.** Step 3 reads "the change is one line and every consumer is a P3
+re-clear". Booted at `STEM_R = STEM_STOCK_R_U` the tree is not a P3 problem:
+TODO 138's two hard guards fire on the keyless corner — the 8-tooth winding
+pinion's bore (1.074 u) reaches its root cone at the small end (0.960), and
+the crown-wheel pair has no face width that leaves `BEVEL_WEB_MIN` of web
+between hole and teeth. That is the Geneva's finding from Landing 1 in the
+keyless works: a pinion bored for a real stem is a BIGGER pinion. Bracketed,
+10 teeth silences both guards; what remains at 10 or 12 is TODO 136's
+`KW_BEVEL` plane table in `layout.js` — five literals the corner's stack
+arithmetic reads, each asserted at boot against the spec main.js cuts, and all
+five drift (`rimFaceOut` 2.761 → 3.124, `rimBack` 0.773 → 0.416, `rimTip`,
+`pinFaceOut`, `setTipR`) — and the setting corner's hub-collar bound
+(`YOKE_FORK_OUT`'s tip-circle shape, which the assert itself calls the wrong
+shape for the pair). Cutting the winding stem to stock is therefore a TRAIN
+change: the winding ratio moves (20/8 → 20/10), the corner's declared planes
+re-derive from the new cut, the collar bound re-solves. It goes to the roadmap
+as step 3b with these numbers; this landing cuts nothing.
+
+Two of the roadmap's three "one line" claims for group B have now failed
+measurement the same way the entry's group-C claim did, and for the same
+reason: a member's radius is a station in someone else's derivation. The
+member that DID land, the pusher, was the one whose neighbours all derived
+from it.
