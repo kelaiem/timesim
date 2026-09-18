@@ -20071,8 +20071,39 @@ longer than the tube a real case needs.
 > - **Move the corner's station** — refused above for the setting dogleg.
 >
 > The yoke is the one that answers the mechanism rather than the packaging, and
-> it is the owner's call because it redesigns a shipped member. Until then the
-> two rows keep their waivers, with the corridor written into the reason.
+> it is the owner's call because it redesigns a shipped member.
+>
+> **§235 BUILT IT (2026-09-18), and GROUP B IS CLOSED** (BUILT §235). The pad
+> still touches under the collar, but two prongs rise either side of the stem and
+> the guides and return blades act on them BESIDE the cam, at the stem's own axis
+> height — a station a fatter collar does not move. `ALARM_STEM_R` is the turning
+> target now, ⌀0.318 → ⌀0.994 mm, and THREE waivers are retired rather than
+> reworded: both of group B's `turning` rows and `slenderness`' `Alarm crown`
+> row, which had argued for "a second bearing, not a section". 41/41 gates, boot
+> silent, and against merged `main` exactly two verdict fields moved — `turning`
+> waived 6 → 4, and `assembly`'s out-of-scope report 28 → 29.
+>
+> Four findings from it belong to this item rather than to §235, because each is
+> a way an instrument agreed with a wrong answer:
+>
+> - the first sweep was SILENT at every radius because nothing checked the crown
+>   collar against the BASE PLATE, which is not a swept unit. The guard exists
+>   now and a mutation control fires it.
+> - moving the return spring up to the prongs deleted the only assert watching
+>   the PAD, which still follows the cam down. The sweep read "clear" while the
+>   pad sank 0.914 past the sleeve's plane — surfacing as a 0.0287 mm section and
+>   an inverted body, neither of which names the defect.
+> - that replacement assert was then too STRONG, forbidding a pad/plane relation
+>   that cannot collide at all (r 28.2 against a 4.65 rim).
+> - and both of the remaining collisions were LITERALS sited against the old
+>   blank — the cock's 1.4 stand-off and the mid-guide's `mgR = 14`. When a
+>   blank's size becomes derived, every literal placed against its old size is a
+>   defect waiting for the first change, and what bites is the furniture around
+>   the wheel rather than the wheel.
+>
+> What group B leaves behind: nothing. Four `turning` waivers stand across the
+> whole movement, none of them this group's — `Alarm link` × 2 and
+> `Keyless works` × 2, which are steps 3a, 3b and Landing 3.
 
 ### Group C — arbors inside the movement (3 rows)
 
