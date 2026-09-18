@@ -26416,3 +26416,222 @@ is. A link with a real bore over a real pin, and a stack the corridor could
 hold with margins, is a P0 filing of its own, and is TODO 146. The
 explainer's one sentence naming "a thin hack rod" stays for a page landing
 (§228's precedent: re-wording a block invalidates its seven translations by design).
+
+### Landing 3 — the alarm corner, derived: two stale numbers, and the wall that is not the corner
+
+The owner chose to GROW the alarm corner (Landing 2 step 4 measured both
+resolutions and refused the outboard move). Building it found that the corner
+was never the hard part — and that two of the numbers the corner stood on were
+records of a movement that had since been re-cut.
+
+**The corner's plane was a literal, and is now derived.** `Z_ALARM_CORNER` was
+`-4.1`; it is now the HIGHEST plane standing `CLEAR_MARGIN` off the base plate's
+dial-side face — high on purpose, because the §45 lifter's whole guide stack
+hangs from this plane and every unit spent here is spent again down there. It
+lands on −3.9000, 0.2 above the literal. The plate's face is READ OFF THE PLATE
+rather than recomputed from `BACK_PLATE_T` and `makeBackPlate`'s bevel fraction,
+which would be the same number in two files.
+
+**And the reach it clears is the WORST member's, not the gear's.** Two members
+ride the plane: the stem bevel, a disc ⊥ the stem reaching its blank's own
+`tipR` (1.3088), and the stem BUSHING, a torus about the same plane reaching
+ring + tube (1.45) — the crown's actual route to `plate` in the support graph.
+The first cut derived against the bevel and left the bushing **0.0456** off the
+plate, under `CLEAR_MARGIN`, with all 41 gates passing: the only thing that
+moved was `support`'s `Alarm crown → plate` row, 0.15 → 0.046. The bushing's two
+radii were bare literals at its builder and are declared up at the plane that
+derives from them.
+
+**And one spec, not three.** The pair's `bevelToothSpec` is taken once at the
+corner's declaration and answers everything the blank decides: the face width the
+builders cut to, the corner's plane, and the bearing cock's ceiling. The cock had
+been answering it with a LITERAL — `BEVEL_UNDERSIDE = -6.158`, "the §25 C corner
+bevel's lowest tooth extent, measured on the built gear" — against a gear whose
+box bottoms at −5.4792. 0.68 of slack that read as a decision.
+
+**The bores are declared now, and they are PRESS fits.** Both members had taken
+`bevelToothSpec`'s DEFAULT 0.4. On the disc side that was exactly right and right
+by luck — 0.4 is `alarmArborRod`'s own radius — and it is stated rather than
+inherited now. On the stem side it was 0.02 UNDER the r 0.42 stem it rides:
+interference, which in a tree that models the ASSEMBLED state reads to the
+instruments as two solids sharing metal. The assembled bore of a keyed wheel is
+its shaft's radius, so that is what it is. `PIVOT_BORE_CLEAR` is deliberately NOT
+spent here: it is a pivot's side-shake in a bearing, and this bevel is keyed to
+the stem — it turns with it and slides with it when the crown is pulled. The
+first cut of this landing did spend it, and the report diff showed what that
+buys: 0.05 of air between a wheel and the arbor it is pressed on, with `assembly`
+reporting the Alarm crown splitting into two bodies. No gate moved; the diff is
+what saw it.
+
+**The tooth count is a FLOOR from the bore, not the bore's answer.** A bigger
+bore buys a narrower face at a fixed count, and a face under §50's floor is not
+metal — so the bore sets a minimum. The corner's own count is 10, which §137's
+transfer row and §138's index are written against, and nothing wants it smaller;
+`Math.max` is the whole rule. The first cut took the minimum outright and quietly
+shrank the shipped corner to 9 teeth, with the transfer row's `armIn_u`/`armOut_u`
+following from 10 to 9 — a change no constraint had asked for. Every gate passed
+that too.
+
+**The band was measured, because the base plate is not a swept unit.**
+`tools/probe-234-corner-z.mjs` surveys the corner's whole column instead of
+quoting the comment that had been its only record — and two of that comment's
+three figures were stale. The ceiling held (the plate's face, 1.8000 above the
+plane). The FLOOR had been named as "the well floor (`Z_DIAL + SUBDIAL_RECESS` =
+−6.5)"; `Z_DIAL` is −8.4 now, so that expression is −7.9, and the well floor does
+not bind in this column at all. The REACH had been carried as "≈ faceWidth + tipR
+≈ 2.05" against measured reaches of 1.3792 down and 1.3088 up.
+
+Three of that probe's own controls failed before any of this was true, and each
+was an instrument bug rather than a finding: a merge key that collided on
+'(unnamed)' and unioned a unit's meshes into one row that was no part at all;
+the corner's own metal being a SUBTREE, so matching the bevel groups' names saw
+no mesh and reported an empty column; and the pose key `crownPullT`, the WINDING
+crown's, which left both surveys standing at the same pose with the stem bevel
+3.97 inboard and out of frame. A fourth was the rotated-bounding-box trap:
+`Box3.setFromObject` overstated the stem bevel's reach by 17% (2.3418 against a
+`tipR` of 1.9981) because the corner's index spin stands that blank ~10° round.
+The disc bevel does not inflate — its axis IS world z — which is how two
+identical blanks came back with different reaches and gave it away. Reaches are
+read off vertices now.
+
+**With all that, the GROWN pair fits too** — measured on the branch that grew it,
+though it is not what shipped here. At the turning target the bore forces **16**
+teeth (not the ≥17 the entry predicted: 17 was matching the old face width, a
+preference), the winding climb is untouched, the cock re-derives, and the §45
+lifter's run measures **0.6822 clear** where the bounding boxes had predicted
+0.5361 of overlap — measured on the branch that grew it, against that branch's
+own plane. What ships is the corner at its design 10, because the stem
+that would force 16 cannot be cut — see below.
+
+**What stops the stem is the §45 lifter's plunger corridor, and it is spent at
+the radius the movement already ships.** The crown's collar is a ring pressed on
+this stem, so its underside drops one for one with the radius, and the lifter's
+plunger hangs from that underside down to the release sleeve's tab plane:
+on the movement as it shipped that corridor was 1.336 against a guide stack of
+1.3161 — 0.009 of slack, and lifting the corner's plane 0.2 bought 0.2 more.
+`tools/probe-234-stem-ceiling.mjs` sweeps the radius on scratch trees and lets
+the §45 asserts speak: on the landed tree it closes between 0.42 and 0.50 (short
+by 0.117 at 0.50), by 0.522 at stem stock and by 1.242 at §233's turning target. Its DEGENERACY control is why this
+landing exists at all — at the shipped 0.42 the whole derived chain boots SILENT,
+so the honest corner lands whether or not the stem ever grows.
+
+So `ALARM_STEM_R` is declared at its as-built 0.42 with that measurement written
+beside it, and TODO 145 group B keeps its two waivers. The remaining fix is a
+change to how the §45 lifter READS the collar — a yoke at axis height spends no z
+on the collar's radius, a plunger under it spends all of it — which is a P1/P2
+question inside the one action group (crown → collar → lifter → release sleeve)
+and the owner's to call, because it redesigns a shipped member.
+
+## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
+
+TODO 145 group B asked for the alarm crown's stem to be cut from arbor stock to
+a real crown stem. §234 measured, three times, that it could not be: not for
+want of room at the corner (Landing 3 derived that plane and the grown pair
+fit), and not for want of a layout move (the outboard move was refused on the
+setting dogleg). What stopped it was how the §45 release lifter READ the collar.
+
+**The defect, stated as a rule.** TODO 42 solved the lifter's guide stack
+downward: the head reads the collar from underneath, so its top is
+`Z_ALARM_CORNER − collar radius`, and eye, stub and blade hang below that head
+in one derived chain. That works, and it spends THE CAM'S WHOLE RADIUS in z.
+Measured (`tools/probe-234-stem-ceiling.mjs`), the corridor from the collar's
+underside to the release sleeve's tab plane was 1.336 against a guide stack of
+1.3161 — 0.009 of slack at the radius the movement already shipped — and the
+corridor's floor is pinned to the HOUR TUBE (`ALARM_SLEEVE_TOP` hangs one
+`CLEAR_MARGIN` under the heart cam's band). It closed between 0.42 and 0.50 of
+stem radius, so stem stock was out of reach, never mind §233's target.
+
+**The yoke.** A real keyless works does not read a sliding collar from
+underneath; a yoke straddles it. The pad still touches under the collar — the
+hand-off is unchanged and the member is still a 1:1 slider — but two PRONGS rise
+either side of the stem from a web under the pad, and the guides and the return
+blades act on those prongs BESIDE the cam, at the stem's own AXIS height. That
+station does not move when the collar fattens. Only the pad and the web follow
+it down, into free air.
+
+Both brackets are mirrored because the yoke's own structure asks for it: the pad
+takes the cam's push on the axis and the guides answer it at ±`ALARM_YOKE_PRONG_Y`,
+so a single-sided guide would carry that couple alone. One blade per prong, both
+flexed by the same root rotation — one spring law with two members.
+
+**Sited against measurement.** Marching a probe out from the stem's axis along
+its whole length (r 18 to 30) puts the base plate's dial-side face 1.60 above the
+axis, uniformly, with nothing nearer, and nothing within 3.0 below it outboard of
+r 23. Two earlier readings were wrong and are recorded as such: that the lifter's
+station is "outboard of every plate" (an AABB misread — the plate is a disc of
+~50 u and covers all of it), and a bisection for that ceiling that walked
+straight past the plate into the free air above it, because it assumed
+clear-below and blocked-above.
+
+**The section, at last.** `ALARM_STEM_R` is `max(STEM_STOCK_R_U,
+ALARM_STEM_BAR / (2 · TURN_LD_TARGET))` — 1.3112, ⌀0.994 mm, inside real
+crown-stem stock, where a bare literal 0.42 had stood at L/D 56.2. Stock alone
+does not close the row (the bar still reads 25.6 at the floor), so the target is
+the section. THREE waivers are retired rather than reworded: both TODO 145
+group B `turning` rows, and `slenderness`' `Alarm crown` row, which had argued
+that what it wanted was "a second bearing, not a section" — true of arbor stock
+at that length, and not true once the section is cut.
+
+**What the instruments caught that the gates did not.** Four things, and they
+are the record worth keeping:
+
+- The first sweep came back SILENT at every radius, because nothing checked the
+  crown's collar against the BASE PLATE — which is not a swept unit, as the note
+  beside `Z_ALARM_CORNER` says, citing a detent star that shipped buried in it
+  with every run clean. That guard exists now, beside the collar it judges, and
+  the sweep carries a MUTATION control that fattens the plateau past any plate
+  and requires it to fire.
+- The alarm that the collar could not fit under the plate at the target was
+  wrong, and the reason is the landing next door: the corner's plane is DERIVED,
+  the bevel's tooth count steps with the bore, and each step drops the corner and
+  carries the collar down with it. A fatter stem buys its own headroom, in
+  integer jumps.
+- Moving the spring up to the prongs DELETED the only assert watching the pad,
+  which still follows the cam down. The sweep then read "clear" at every radius
+  while the pad sank 0.914 past the sleeve's plane, surfacing as a 0.0287 mm
+  section in `stockFloor` and an inverted body in `meshIntegrity` — two gates
+  describing a signed-length bug in the vocabulary of metal. The sweep reads the
+  WORST §45 assert now, whichever binds, and prints which one.
+- And the replacement assert was itself too strong, forbidding a pad/plane
+  relation that cannot collide (r 28.2 against a sleeve rim of 4.65). The link
+  between pad and run is free to RISE instead of descend; what is physically
+  required is that it be a link.
+
+**Two literals sited against the old blank.** The bearing cock's post stood 1.4
+outboard of the setting arbor and the lifter's mid-guide at `mgR = 14`; the
+grown bevel reached through the first, and the climb contrate — cut from the same
+`ALARM_BEVEL_SPEC`, so it grew with the bore AND fell with the plane — landed on
+the second at 0.0000, taking `Alarm release lifter ⇄ Alarm winding train`
+FORBIDDEN with a CONFIRMED 0.139 swept overlap. Both are resolved in POSITION
+SPACE, as a P3 conflict must be: the post's stand-off derives from the wheel it
+carries, and the mid-guide solves the chord for the last station inboard whose
+furniture clears the blank's disc, warning if no station on the run does.
+
+**And every `INTRA_UNIT_CONTACTS` selector for this unit was a geometry INDEX.**
+An index is a position in the unit's mesh list, so adding the yoke renumbered
+them all — §182's failure mode exactly, a row that still matches while naming a
+different pair. Two had already drifted that way and said so in their own text:
+`CylinderGeometry#2` was called "the plunger EYE" and was the blade STUB,
+`BoxGeometry#15` "the lower cheek block" and is the cheek BRIDGE. Every mesh in
+the unit carries a name now and the table selects by it.
+
+**Measured.** 41/41 gates, boot silent. Against merged `main`'s own report, 17 of
+28 checks byte-identical and exactly TWO verdict-bearing fields moved: `turning`
+waived 6 → 4 (the two retired rows; `barsChecked` 219 → 224 and `needRest`
+28 → 33 are the yoke's own bars, a report), and `assembly` out-of-scope 28 → 29.
+The new `assembly` rows are reported, not gated: `Alarm crown` at 0.0043, which
+is tessellation flats on a press fit, and `Alarm release lifter` at 4.7787 — the
+yoke's two brackets are separate islands, each standing on the base plate's
+dial-side face, which is the same grounding the single bracket always had and the
+same convention the unit's existing split already carried.
+
+**What this owes `explain.html`, stated rather than ticked.** The silence-chain
+plate's PROSE survives the change — "the head climbs onto the raised land,
+lifting the whole lifter" is still exactly what happens, the pad still rides the
+collar's step and the whole member still moves 1:1, and `explain-quotes` passes
+because no constant it quotes moved. What is one plate behind is the DRAWING:
+it renders the member as a bare plunger under the cam, with no prongs either
+side and the guide and spring still downstairs. That is a page landing's work
+under §228's precedent — re-wording or re-drawing a block invalidates its seven
+translations by design — so it is filed here rather than half-done in a battery
+landing.

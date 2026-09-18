@@ -20019,6 +20019,91 @@ longer than the tube a real case needs.
 >
 > Nothing was cut. The two waivers stand, reasons rewritten to say which of the
 > two resolutions each is waiting on.
+>
+> **§234 Landing 3 (2026-09-18) — THE CORNER WAS GROWN, AND IT WAS NOT THE
+> WALL.** The chosen resolution was built, and three of the four prices above
+> were cheaper than this entry priced them. At the target bore the count is
+> **16**, not ≥17 — 17 was matching the old face width, a preference; 16 is what
+> the bore FORCES, which is the honest reading (the bore is a floor on the count,
+> never its answer: the corner's own count is 10 and nothing wants it smaller).
+> The winding climb
+> survives untouched (the stem bevel still measures 0.0000 to
+> `alarmWindContrate`). And the disc bevel does not crowd its bearing cock,
+> because that cock was standing on a stale literal: `BEVEL_UNDERSIDE = -6.158`,
+> "measured on the built gear", against a gear whose box bottoms at −5.4792 —
+> 0.68 of slack that read as a decision. It derives from the blank now.
+>
+> The corner's own PLANE was a literal too (`-4.1`) and is now derived: the stem
+> bevel is a disc ⊥ the stem, so its reach at the plate is the blank's `tipR`,
+> and the plane is the highest one standing CLEAR_MARGIN off the base plate's
+> dial-side face — high on purpose, because the §45 guide stack hangs from it.
+> `tools/probe-234-corner-z.mjs` surveys that column (and corrected the comment
+> that was its only record: the base plate is not a swept unit). At the grown
+> size the pair fits, with the §45 lifter's run **0.6822 clear** — the boxes had
+> predicted 0.5361 of overlap, and the boxes were wrong.
+>
+> **WHAT ACTUALLY STOPS IT is the §45 lifter's plunger corridor, and it is spent
+> at the radius the movement already ships.** The crown's collar is a ring
+> pressed on this stem, so its underside drops one for one with the radius; the
+> lifter's plunger hangs from that underside down to the release sleeve's tab
+> plane. On the movement as it shipped that corridor was 1.336 against a guide
+> stack of 1.3161 — **0.009 of slack**; deriving the corner's plane lifted it 0.2
+> and bought 0.2 more, which is why the plane is derived HIGH and why that is
+> still not a growth budget. `tools/probe-234-stem-ceiling.mjs` sweeps the radius
+> on scratch trees and lets the §45 asserts speak: on the landed tree the
+> corridor closes between **0.42 and 0.50** (short by 0.117 at 0.50), by **0.522
+> at stem stock** and by **1.242 at the turning target**. Its degeneracy control
+> is what let the rest land: at the shipped 0.42 the whole derived chain boots
+> SILENT.
+>
+> The corridor's floor is not a knob — `ALARM_SLEEVE_TOP` hangs one CLEAR_MARGIN
+> under the heart cam's band and the heart is pressed on the HOUR TUBE, so
+> lowering it is a motion-works change. **So the remaining fix is a change to how
+> the §45 lifter READS the collar**, and that is a P1/P2 question inside the one
+> action group (crown → collar → lifter → release sleeve), not a P3 fit:
+>
+> - **A yoke at axis height.** A fork straddling the stem reads the collar's ramp
+>   on its FLANKS, so it spends no z on the collar's radius at all — which is
+>   what real keyless works do, and the reason a plunger-from-below worked here
+>   was that the stem was 0.42, thinner than any real crown stem. Frees ~1.63.
+> - **Lower the sleeve's plane**, which means moving the heart cam on the hour
+>   tube. Deeper, and it reaches into the motion works for a stem's sake.
+> - **Move the corner's station** — refused above for the setting dogleg.
+>
+> The yoke is the one that answers the mechanism rather than the packaging, and
+> it is the owner's call because it redesigns a shipped member.
+>
+> **§235 BUILT IT (2026-09-18), and GROUP B IS CLOSED** (BUILT §235). The pad
+> still touches under the collar, but two prongs rise either side of the stem and
+> the guides and return blades act on them BESIDE the cam, at the stem's own axis
+> height — a station a fatter collar does not move. `ALARM_STEM_R` is the turning
+> target now, ⌀0.318 → ⌀0.994 mm, and THREE waivers are retired rather than
+> reworded: both of group B's `turning` rows and `slenderness`' `Alarm crown`
+> row, which had argued for "a second bearing, not a section". 41/41 gates, boot
+> silent, and against merged `main` exactly two verdict fields moved — `turning`
+> waived 6 → 4, and `assembly`'s out-of-scope report 28 → 29.
+>
+> Four findings from it belong to this item rather than to §235, because each is
+> a way an instrument agreed with a wrong answer:
+>
+> - the first sweep was SILENT at every radius because nothing checked the crown
+>   collar against the BASE PLATE, which is not a swept unit. The guard exists
+>   now and a mutation control fires it.
+> - moving the return spring up to the prongs deleted the only assert watching
+>   the PAD, which still follows the cam down. The sweep read "clear" while the
+>   pad sank 0.914 past the sleeve's plane — surfacing as a 0.0287 mm section and
+>   an inverted body, neither of which names the defect.
+> - that replacement assert was then too STRONG, forbidding a pad/plane relation
+>   that cannot collide at all (r 28.2 against a 4.65 rim).
+> - and both of the remaining collisions were LITERALS sited against the old
+>   blank — the cock's 1.4 stand-off and the mid-guide's `mgR = 14`. When a
+>   blank's size becomes derived, every literal placed against its old size is a
+>   defect waiting for the first change, and what bites is the furniture around
+>   the wheel rather than the wheel.
+>
+> What group B leaves behind: nothing. Four `turning` waivers stand across the
+> whole movement, none of them this group's — `Alarm link` × 2 and
+> `Keyless works` × 2, which are steps 3a, 3b and Landing 3.
 
 ### Group C — arbors inside the movement (3 rows)
 

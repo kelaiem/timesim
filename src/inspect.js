@@ -2658,7 +2658,7 @@ export const INTRA_UNIT_CONTACTS = [
   // at a different member in silence. Exactly §171's fix on the lock lever's
   // own pivot post, and TODO 50's on the stem journal, for the third time.
   { unit: 'Alarm striking wheel', a: 'alarmLockCollar', b: 'alarmStrikeSleeve', why: 'lock collar pressed on the strike arbor — the sleeve IS that arbor\'s turned step' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'CylinderGeometry#8', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBlade', b: 'alarmLifterPost', why: 'return blade root anchored at the bracket post — §48\'s slaved-blade convention' },
   { unit: 'Alarm switch', a: 'alarmColSkirt', b: 'alarmColPawlNose', why: '§163: the driver pawl\'s NOSE seated in a root corner of the saw — the seat is solved against ratchetPoly at every pose (the same polygon the teeth were cut from), not parked at a measured-once distance, and alarmHandoffs asserts it every run' },
   // Surfaced the moment the signature above started reading geometry swaps
   // (TODO 1). Both are the hairspring's two ends, and both were always there:
@@ -2693,12 +2693,21 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm setting arbor — the §22/§23 setting-cock furniture:
   { unit: 'Alarm setting arbor', a: 'CylinderGeometry#3', b: 'alarmArborCockArm', why: '§121: the setting cock\'s arm pressed on its pillar (0.13 of the pillar 0.15 deep in the arm — a seated post, TODO 12\'s cock idiom)' },
   { unit: 'Alarm setting arbor', a: 'alarmArborCockArm', b: 'alarmArborCockBush', why: '§121: the bush pressed into the cock arm\'s eye — §23\'s bearing-cock convention, arm ends at its ring' },
-  // Alarm release lifter — §103's derived guide stack:
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#8', b: 'BoxGeometry#9', why: '§121: guide pin seated in its bracket arm (kiss at d<1e-4 — a designed seat, not a foul)' },
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#12', b: 'BoxGeometry#14', why: '§121: the mid-guide post in its upper cheek block (§103\'s stack — the cheek is one of the two guidance stations)' },
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#12', b: 'BoxGeometry#15', why: '§121: the same post socketed in the lower cheek block (0.44 of the post in the block — the socket)' },
-  { unit: 'Alarm release lifter', a: 'alarmLifterPlunger', b: 'alarmLifterBlade', why: '§121: the blade rooted in the plunger — §103: the stack derives downward, blade root rides the stub' },
-  { unit: 'Alarm release lifter', a: 'CylinderGeometry#2', b: 'alarmLifterBlade', why: '§121: the plunger EYE the blade runs through — §103\'s first guidance station; a working slide, not a joint' },
+  // Alarm release lifter — §235's YOKE. Every selector here was a geometry
+  // INDEX until §235 (`CylinderGeometry#8`, `BoxGeometry#14`…), and an index is
+  // a position in the unit's mesh list: adding the yoke's members renumbered
+  // them all, which is §182's failure mode exactly — a row that still matches,
+  // now naming a different pair, buying silence for whatever lands between the
+  // two it used to name. Two of the old rows had already drifted that way and
+  // said so in their own text: `CylinderGeometry#2` was called "the plunger
+  // EYE" and was the blade STUB, and `BoxGeometry#15` was called "the lower
+  // cheek block" and is the cheek BRIDGE. The meshes carry names now.
+  { unit: 'Alarm release lifter', a: 'alarmLifterPost', b: 'alarmLifterBracketArm', why: '§121: the bracket post seated in its arm (kiss at d<1e-4 — a designed seat, not a foul)' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterBracketArm', b: 'alarmLifterEye', why: '§235: the guide ring carried on its bracket arm — the arm ends at the ring\'s outer wall (TODO 23\'s rule)' },
+  { unit: 'Alarm release lifter', a: 'alarmYokeProng', b: 'alarmLifterEye', why: '§235: the yoke\'s prong in its guide bore — the guidance station, a working slide beside the cam' },
+  { unit: 'Alarm release lifter', a: 'alarmYokeShoulder', b: 'alarmLifterBlade', why: '§235: the return blade bearing UP under the prong\'s shoulder — the yoke\'s spring, pinned to the eye rather than to the cam' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterGuidePost', b: 'alarmLifterCheek', why: '§121: the mid-guide post in its cheek blocks (§103\'s stack — the cheeks are the second guidance station)' },
+  { unit: 'Alarm release lifter', a: 'alarmLifterGuidePost', b: 'alarmLifterCheekBridge', why: '§121: the same post socketed in the cheek bridge (0.44 of the post in the block — the socket)' },
   // Alarm gong — §56:
   { unit: 'Alarm gong', a: 'alarmGongArc', b: 'alarmGongPost', why: '§121: the wire\'s foot brazed to its post — the gong\'s ONLY fixing (§56: the far end rings free, and the clamped-free bar is the voice)' },
   // Alarm click — §99's click on its post:
@@ -7125,6 +7134,7 @@ export const STOCK_KIND_BY_MESH = {
   alarmGovRingCollar: 'pivot',
   alarmLifterPlunger: 'pivot',
   alarmLifterHead: 'pivot',
+  alarmYokeProng: 'pivot',   // §235: the yoke's prongs are the plunger's own section, guided in bores
   alarmLifterBlade: 'spring',
   // §45 stage 2:
   alarmSilPivot: 'pivot',
@@ -7269,14 +7279,13 @@ export const SLENDER_WAIVERS = {
   // λ 85.1, the §29 step-4 tail run. Wants +0.2390 u per side; the alarm
   // setting idler stands 0.2933 away and leaves 0.1433.
   'Alarm release feeler': 'TODO 109',
-  // λ 76.6, the stem — and the worst-placed of them all now that its bearing
-  // is declared. Wants +0.6519 u per side; its nearest neighbour is already
-  // 0.0100 INSIDE the margin, and it is a working contact rather than an
-  // obstruction (Alarm crown ⇄ Alarm release lifter is an EXPECTED pair, §45:
-  // the head rides the stem collar). What this row actually wants is a SECOND
-  // BEARING, not a section: one bush 25.5222 u from the inner end is what
-  // makes it a cantilever.
-  'Alarm crown': 'TODO 109',
+  // RETIRED by §235. This read λ 76.6 on the alarm stem and said what the row
+  // actually wanted was a second bearing rather than a section — which was true
+  // of a stem cut at r 0.42, arbor stock standing in for a crown stem. §235's
+  // yoke let the section be cut to §233's turning target instead, and the row
+  // went with it: `slenderness` reports no over-ceiling row for this unit, so
+  // the waiver names a unit that no longer has one. Deleting it is part of the
+  // fix — §54's own rule, and what makes a stale waiver a gate failure.
   // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
   // stands 0.2507 away and leaves 0.1007.
   'Alarm release lifter': 'TODO 109',
@@ -9728,16 +9737,16 @@ export const TURN_WAIVERS = {
   // the winding stem is a TRAIN change, and the alarm crown's two rows are a
   // corner redesign. Stem stock is where each starts, not where any of them
   // ends — and none of them is a waiver to widen.
-  // §234 step 4 MEASURED these two (probe-234-step4.mjs) and the group's
-  // "section change plus a P3 re-clear" is false for them: stem stock leaves
-  // the bar at L/D 25.6, so only the TARGET radius closes it, and a bevel
-  // bored over THAT stem needs 17 teeth — which loses the winding climb's
-  // mesh and puts the disc bevel 0.0583 from its own bearing cock. Waiting on
-  // the owner's choice between growing the corner and moving it outboard
-  // (13.9486 u, position space); the two rows close together either way,
-  // because the collars are pressed on the stem and the liner is bored over it.
-  'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B (§234 step 4: not a section change — a corner redesign or a layout move, measured and filed)',
-  'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B (§234 step 4: closes with the stem above — the collars are pressed on it)',
+  // §234 step 4 / §235 — RETIRED, both of them, because the metal was cut.
+  // The entry filed these as "a section change plus a P3 re-clear" and that was
+  // false: stem stock leaves the bar at L/D 25.6, so only the turning TARGET
+  // closes it, and the target could not be cut while the §45 release lifter
+  // read the crown's collar from UNDERNEATH — its guide stack hung off the
+  // cam's radius, so a fatter stem drove the stack into the release sleeve's
+  // tab plane, a corridor measured closing between 0.42 and 0.50.
+  // §235's yoke reads the collar from BESIDE it, at the stem's own axis, and
+  // the section went in: `ALARM_STEM_R` is the target now, both rows measure
+  // under the ceiling, and neither needs a waiver.
   'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
   'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
   // GROUP C — arbors INSIDE the movement. Filed as "a section change alone

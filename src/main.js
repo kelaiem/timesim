@@ -13645,26 +13645,158 @@ const alarmCornerGeomAt = (r) => {
 };
 const ALARM_CORNER_GEOM = alarmCornerGeomAt(ALARM_CD);
 const ALARM_ARBOR_R = ALARM_CORNER_GEOM.arborR;
+// §234 step 4 — the DISC bevel's bore is the setting arbor's own radius (it is
+// pressed on), not the stem's. It happened to equal `bevelToothSpec`'s default,
+// so the corner read right on this side by luck; it is declared now because the
+// pair's face width is the worse of the two webs and both bores must be passed.
+const ALARM_SET_ARBOR_BORE = 0.4;   // alarmArborRod's CylinderGeometry radius, below
 const alarmWorld = (() => {
   const g = ALARM_CORNER_GEOM;
   return { x: g.world.x, y: g.world.y };
 })();
 const _alarmRimD = Math.hypot(alarmWorld.x, alarmWorld.y);
 const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD }; // outward radial (world) to the case rim
-// Bevel-corner plane, wedged into the tight band between the BASE PLATE
-// (bottom face −2.3) and the well floor (Z_DIAL + SUBDIAL_RECESS = −6.5). The
+// Bevel-corner plane, wedged into the tight band above the sub-dial works. The
 // two bevels reach out of the corner in opposite directions: the disc bevel
-// trails −z down the arbor toward the pointer (must stop short of the floor),
-// and the stem bevel — a disk ⊥ the stem — reaches +z toward the plate (must
-// stop short of it). Both are held clear of the plate by the same CLEAR_MARGIN
-// the rest of the movement uses. The base plate is NOT a swept unit, so this
-// clearance is verified by hand, not by the battery — an earlier build put the
-// detent star at −2.3…−1.6, buried in the plate, and every clean run missed it.
-// Reach ≈ faceWidth + tipR (45° cone) ≈ 2.05; corner −4.1 → disc cone bottoms
-// at −6.15 (clear of the floor) and the stem bevel tops out at −2.70 (clear of
-// the plate).
-const Z_ALARM_CORNER = -4.1;
-const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24;
+// trails −z down the arbor toward the pointer, and the stem bevel — a disk ⊥
+// the stem — reaches +z toward the plate. Both are held clear by the same
+// CLEAR_MARGIN the rest of the movement uses. The base plate is NOT a swept
+// unit, so this clearance is verified by hand, not by the battery — an earlier
+// build put the detent star at −2.3…−1.6, buried in the plate, and every clean
+// run missed it.
+//
+// §234 step 4 — AND BECAUSE IT IS VERIFIED BY HAND, THIS COMMENT IS THE RECORD,
+// so it was measured rather than re-read. `tools/probe-234-corner-z.mjs`
+// surveys the column instead of quoting it, and two of the three figures that
+// stood here were stale:
+//
+//   · the CEILING holds — `backPlate`'s dial-side face measures −2.3, 1.8000
+//     above this plane, and it is the binding wall above.
+//   · the FLOOR was named as "the well floor (Z_DIAL + SUBDIAL_RECESS = −6.5)".
+//     Z_DIAL is −8.4 now, so that expression is −7.9 — and the well floor does
+//     not bind in this column at all. The nearest metal below is the §45
+//     release lifter's run (top −6.0919, ANOTHER unit) and the setting arbor's
+//     own bearing cock (top −6.3080, this group's own).
+//   · the REACH was carried as "≈ faceWidth + tipR (45° cone) ≈ 2.05", giving a
+//     disc bottoming at −6.15. Measured off the built blanks' world boxes, the
+//     disc reaches 1.3792 DOWN (bottom −5.4792) and the stem bevel 1.3088 UP
+//     (top −2.7912). The approximation was 0.67 pessimistic on the side that
+//     matters least and 0.09 optimistic on the side that binds.
+//
+// The live numbers, then: 1.8000 of headroom above and 2.2080 to the cock
+// below, against reaches of 1.3088 and 1.3792.
+const ALARM_BEVEL_MODULE = 0.24;
+// §234 Landing 2 step 4 (TODO 145 group B) — THE ALARM CROWN'S STEM, AND THE
+// CORNER IT MAKES THE BEVEL CUT. Hoisted here, above the corner it sizes,
+// because the bevel's BORE is the stem's, the tooth count follows the bore, and
+// the corner's own PLANE follows the blank that count produces.
+//
+// The stem was `ALARM_STEM_R = 0.42`, a bare literal at L/D 56.2 — arbor stock
+// where a real crown stem runs 0.9–1.2 mm. Two constraints bear on the radius
+// and the LARGER governs, the alarm pusher's rule (§234 first member) with the
+// other term winning this time: the stem-stock floor is 0.9236 and §233's
+// turning target asks bar / (2 · TURN_LD_TARGET) of a 47.2 u bar, which is
+// 1.3111. So stock does NOT close this row — measured, at the floor the bar
+// still reads L/D 25.6 — and the target is what the section is cut to.
+//
+// THE BAR is the stem PLUS the crown knob, because `turning` clusters coaxial
+// meshes at consecutive stations as one piece of stock. That is arguable for a
+// crown (a real one is threaded on, a separate part) and the honest thing is to
+// size against the census AS IT READS rather than against the reading we would
+// prefer; the difference is 8% of the radius and it is not the binding call.
+const ALARM_CROWN_BODY_H = 4.55;                     // §203/§41: matched to the winding crown, and the knob's own reach past the stem
+const ALARM_CROWN_BODY_INSET = 0.7;                  // the knob's inner face sits this far in from the stem's tip
+const ALARM_STEM_LEN = CASE_R_OUT + 2 / UNIT_MM + ALARM_CROWN_BODY_INSET - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
+const ALARM_STEM_BAR = ALARM_STEM_LEN + ALARM_CROWN_BODY_H - ALARM_CROWN_BODY_INSET; // what the census clusters: stem + the knob past its tip
+// AND THE SECTION, at last. Two constraints bear on the radius and the LARGER
+// governs, the alarm pusher's rule (§234's first member) with the other term
+// winning here: the stem-stock floor is 0.9236 and §233's turning target asks
+// bar / (2 · TURN_LD_TARGET) of a 47.2 u bar, which is 1.3112. Stock does NOT
+// close this row — measured, at the floor the bar still reads L/D 25.6 — so the
+// target is what the section is cut to.
+//
+// It took §235 to make that cuttable. The §45 release lifter used to read this
+// collar from UNDERNEATH, so its guide stack hung off the cam's radius and a
+// fatter stem drove eye, stub and blade into the release sleeve's tab plane —
+// a corridor that closed between 0.42 and 0.50, with the sleeve's own floor
+// pinned to the hour tube. The yoke reads the collar from BESIDE it instead,
+// and `tools/probe-234-stem-ceiling.mjs` sweeps the radius on scratch trees to
+// say so: silent at every candidate through 1.3112, with the collar measuring
+// 0.295 clear of the base plate at the target against a 0.15 margin.
+//
+// That headroom is not luck and it is not monotone in the radius (0.359, 0.366,
+// 0.351, 0.204, 0.295 across the sweep): the corner's PLANE is derived from the
+// bevel, the bevel's tooth count steps with the bore, and each step drops the
+// corner — carrying this collar down with it. A fatter stem buys its own room,
+// in integer jumps, which is what those steps are.
+const ALARM_STEM_R = Math.max(STEM_STOCK_R_U, ALARM_STEM_BAR / (2 * TURN_LD_TARGET));
+// A PRESS FIT, not a running one, and the difference is what the bevel does:
+// it is KEYED to the stem — it turns with it and slides with it when the crown
+// is pulled — so the assembled bore IS the stem's radius. `PIVOT_BORE_CLEAR` is
+// a pivot's side-shake in a bearing, which this is not; measured, spending it
+// here opened 0.05 between a wheel and the arbor it is pressed on and
+// `assembly` reported the unit splitting into two bodies because of it. The
+// same holds on the other side, where the shipped default 0.4 was already the
+// arbor rod's own radius — right by luck, and declared now.
+const ALARM_STEM_BORE = ALARM_STEM_R;
+// THE BORE IS A FLOOR ON THE TOOTH COUNT, not the count itself. `bevelToothSpec`
+// brings the face width in until the blank keeps metal between its hole and its
+// root cone at the small end, so a bigger bore buys a narrower face at a fixed
+// count — and a face narrower than §50's floor is not metal at all. What that
+// gives is a MINIMUM; the corner's own count is 10, which §137's transfer row
+// and §138's index are written against, and nothing here wants it smaller. So
+// the bore raises the count and never lowers it. (The first cut of this took
+// the minimum outright and quietly shrank the shipped corner to 9 teeth, with
+// the transfer row's arms following it from 10 to 9 — a change no constraint
+// had asked for, caught in the report diff and not by any gate.)
+const ALARM_BEVEL_TEETH_DESIGN = 10;   // §25 C / §138: the corner as cut
+const ALARM_BEVEL_TEETH = (() => {
+  for (let t = 8; t <= 60; t++) {
+    const spec = G.bevelToothSpec({ module: ALARM_BEVEL_MODULE, teeth: t, mateTeeth: t,
+      boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE, quiet: true });
+    if (spec.faceW >= STOCK_MIN_U) return Math.max(ALARM_BEVEL_TEETH_DESIGN, t);
+  }
+  console.warn(`§234: no bevel count under 60 leaves a §50-floor face at bore ${ALARM_STEM_BORE.toFixed(4)}`);
+  return ALARM_BEVEL_TEETH_DESIGN;
+})();
+// ONE spec for the pair, because every dimension below is a question about the
+// same blank: the face width the builders cut to, the corner's plane, and the
+// bearing cock's ceiling. Three sites used to answer it three ways — the cock's
+// was a LITERAL, `BEVEL_UNDERSIDE = -6.158`, "measured on the built gear", and
+// it was 0.68 stale.
+const ALARM_BEVEL_SPEC = G.bevelToothSpec({
+  module: ALARM_BEVEL_MODULE, teeth: ALARM_BEVEL_TEETH, mateTeeth: ALARM_BEVEL_TEETH,
+  boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE,
+});
+// THE CORNER'S PLANE, DERIVED. It was `-4.1`, a literal with 0.57 of slack over
+// the plate; the grown blank has none to spare, so the plane is now the HIGHEST
+// one that clears — and high is the right direction, because the §45 lifter's
+// whole guide stack hangs off this plane and every unit of drop here is spent
+// down there.
+//
+// The wall is the base plate's dial-side face, READ OFF THE PLATE rather than
+// recomputed from `BACK_PLATE_T` and `makeBackPlate`'s bevel fraction, which
+// would be the same number written in two files. The plate is built above and
+// sits under `movement`, which is untransformed, so its world box is its box.
+const PLATE_DIAL_FACE = new THREE.Box3().setFromObject(backPlate).min.z;
+// TWO members ride this plane and reach up from it, and the reach is the WORSE
+// of them. The stem bevel is a disc ⊥ the stem, so its reach is the blank's own
+// `tipR` — "the farthest the blank reaches from its axis". The stem BUSHING is
+// a torus about the same plane, so its reach is ring + tube, and it is the
+// bigger of the two: 1.45 against 1.3088. Deriving against the bevel alone left
+// the bushing 0.0456 off the plate — under CLEAR_MARGIN, with every gate
+// passing and only the report's `support` row moving (`Alarm crown → plate`,
+// 0.15 → 0.046). The bushing's two radii were bare literals at its builder
+// below; they are named here because this plane is derived from them.
+// §235 — THE BUSHING IS BORED OVER THE STEM, so its hole is the stem's radius
+// plus a running fit, and its ring radius follows. It was the literal 0.95
+// against a 0.45 hole, which fitted the r 0.42 stem it was cut for and nothing
+// else: at the turning target the stem is thicker than the hole and `intraUnit`
+// read the stem straight through its own bearing.
+const ALARM_BUSH_TUBE_R = 0.5;    // the torus's tube — the bushing's wall
+const ALARM_BUSH_RING_R = ALARM_STEM_R + PIVOT_BORE_CLEAR + ALARM_BUSH_TUBE_R;
+const ALARM_CORNER_REACH_UP = Math.max(ALARM_BEVEL_SPEC.tipR, ALARM_BUSH_RING_R + ALARM_BUSH_TUBE_R);
+const Z_ALARM_CORNER = PLATE_DIAL_FACE - CLEAR_MARGIN - ALARM_CORNER_REACH_UP;
 // TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
 // not a convention. Two of them on a shared apex roll without slip only if their
 // RELATIVE angular velocity lies along the contact ray; everything else is
@@ -13752,10 +13884,10 @@ function bevelCornerSpin(gear, ray, teeth, gap) {
 // the classical blank proportion coneR/3: an apex-ruled tooth scales with cone
 // distance, so at F = coneR the small end has no section left to be metal. The
 // shipped 0.65 exceeded this member's 0.5657 by 15% and the generator warned on
-// it. Read from the spec the builder cuts rather than restated here.
-const ALARM_BEVEL_FACE = G.bevelToothSpec({
-  module: ALARM_BEVEL_MODULE, teeth: ALARM_BEVEL_TEETH, mateTeeth: ALARM_BEVEL_TEETH,
-}).faceW;
+// it. Read from the spec the builder cuts rather than restated here — and since
+// §234 that is the ONE spec taken at the corner's own declaration, not a second
+// call with the same arguments.
+const ALARM_BEVEL_FACE = ALARM_BEVEL_SPEC.faceW;
 
 // --- 'Alarm disc' — the CENTRAL rattrapante alarm hand (§25 C, stage 1) -----
 // Replaces §24's sub-dial pointer. The alarm indicator is now a co-axial hand
@@ -16569,7 +16701,13 @@ const ALARM_ARBOR_BUSH_R = 0.85;
 
 {
   const u = { x: alarmWorld.x / ALARM_CD, y: alarmWorld.y / ALARM_CD };
-  const postXY = { x: alarmWorld.x + u.x * 1.4, y: alarmWorld.y + u.y * 1.4 };
+  // §235 — the post stands clear of the WHEEL IT CARRIES, derived. The 1.4 here
+  // was a literal that suited a 10-tooth bevel; at the bore the turning target
+  // asks for, the blank reaches past it and `intraUnit` read the disc bevel
+  // through its own bearing cock's post.
+  const COCK_POST_R = 0.4;
+  const cockStand = ALARM_BEVEL_SPEC.tipR + CLEAR_MARGIN + COCK_POST_R;
+  const postXY = { x: alarmWorld.x + u.x * cockStand, y: alarmWorld.y + u.y * cockStand };
   // TODO 23: the station derives against BOTH moving neighbours. Above,
   // the corner bevel's underside reaches z −6.158 (tooth tips out to
   // r 1.41 — over the whole arm), so the cock's top face sits one
@@ -16582,10 +16720,17 @@ const ALARM_ARBOR_BUSH_R = 0.85;
   // drifting: the bush drops 0.008 and its 1.38 of air over the setting
   // pinion is spent down to 1.37.
   const COCK_T = STOCK_MIN_U;
-  const BEVEL_UNDERSIDE = -6.158; // the §25 C corner bevel's lowest tooth extent, measured on the built gear
+  // §234 step 4 — DERIVED from the blank, not measured off it once. This was
+  // `-6.158`, "the §25 C corner bevel's lowest tooth extent, measured on the
+  // built gear", and the gear has been re-cut twice since: measured, the disc
+  // bevel's box bottomed at −5.4792, so the cock sat 0.68 lower than its own
+  // stated rule required — slack that read as a decision. `zWebHi` is the
+  // blank's back face from the shared apex, which is what the corner's plane
+  // puts the bevel's underside at.
+  const BEVEL_UNDERSIDE = Z_ALARM_CORNER - ALARM_BEVEL_SPEC.zWebHi;
   const BUSH_Z = BEVEL_UNDERSIDE - CLEAR_MARGIN - COCK_T / 2;
   const BUSH_R_OUT = ALARM_ARBOR_BUSH_R;
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, -2 - BUSH_Z, 10), MATS.nickel);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(COCK_POST_R, COCK_POST_R, -2 - BUSH_Z, 10), MATS.nickel);
   post.rotation.x = Math.PI / 2;
   post.position.set(postXY.x, postXY.y, (-2 + BUSH_Z) / 2);
   alarmArborUnit.add(post);
@@ -16609,7 +16754,9 @@ const ALARM_ARBOR_BUSH_R = 0.85;
   alarmArborUnit.add(bush);
 }
 // Disc bevel at the corner, axis −z (its shaft trails down to the pointer).
-const discBevel = G.makeConicalGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
+const discBevel = G.makeConicalGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE,
+  mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE,
+  boreR: ALARM_SET_ARBOR_BORE, mateBoreR: ALARM_STEM_BORE });   // §234: pressed on the arbor, mating the stem's blank
 discBevel.name = 'alarmDiscBevel'; // §137: named for the corner's transfer row
 const discBevelMount = new THREE.Group();
 discBevelMount.position.set(0, 0, Z_ALARM_CORNER);
@@ -16649,7 +16796,9 @@ alarmSpinner.rotation.order = 'ZYX';
 alarmSpinner.rotation.z = alarmStemAngle - Math.PI / 2;
 alarmCrownUnit.add(alarmSpinner);
 // Stem bevel at the inner end (the corner), axis along the stem (local +Y).
-const stemBevel = G.makeConicalGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
+const stemBevel = G.makeConicalGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE,
+  mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE,
+  boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE });   // §234: bored over the stem it rides
 stemBevel.name = 'alarmStemBevel'; // §137: the transfer row names its members
 
 const stemBevelMount = new THREE.Group();
@@ -16701,12 +16850,11 @@ declareTransfer('alarm setting: stem→disc bevel corner', {
 // Stem length from the PUSHED-IN rest radius (the climb, ALARM_CD) — the
 // spinner slides OUT from there, so basing it on the arbor's outboard radius
 // left the knob 5 short, buried against the dial rim (the sweep caught it).
-const alarmStemLen = CASE_R_OUT + 2 / UNIT_MM + 0.7 - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
+const alarmStemLen = ALARM_STEM_LEN;   // §234: hoisted to the corner, which is sized from it
 // The stem's ONE support, hoisted out of the bushing block below so the
 // bush and the declaration that names it cannot drift apart: move the boss
 // and the free lengths move with it.
 const ALARM_STEM_BUSH_DIST = plateR - 2;   // the plate rim, where the boss is bored (the −2 is inherited with the bush)
-const ALARM_STEM_R = 0.42;
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_STEM_R, ALARM_STEM_R, alarmStemLen, 12), MATS.steel);
 alarmStem.name = 'alarmStem';   // §202: named, so the tube liner's joint row and the §54 row can address it
 alarmStem.position.y = alarmStemLen / 2;
@@ -16788,15 +16936,17 @@ alarmSpinner.add(alarmStem);
 // growth extends OUTWARD along the stem into free air past the rim — the
 // inner face, the stem interface and the bushing are untouched, which is
 // what the earlier "placement change" scoping worry turned out to miss.
-const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.caseMetal }); // §203: case exterior
+const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: ALARM_CROWN_BODY_H, material: MATS.caseMetal }); // §203: case exterior; the height is the corner's, which sizes the stem's bar
 alarmCrownKnob.rotation.x = -Math.PI / 2; // builder +Z face → outward along +Y
-alarmCrownKnob.position.y = alarmStemLen - 0.7;
+alarmCrownKnob.position.y = alarmStemLen - ALARM_CROWN_BODY_INSET;
 alarmSpinner.add(alarmCrownKnob);
 // Stem bushing — the stem's support at the plate rim (its route to 'plate' in
 // the support graph), a bored boss the stem spins through. Static.
 {
   const bushDist = ALARM_STEM_BUSH_DIST;   // declared with the stem it supports
-  const alarmBush = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.5, 10, 20), MATS.nickel);
+  // §234: the two radii are declared up at the corner's plane, which derives
+  // from them — this bushing is the member that reaches nearest the base plate.
+  const alarmBush = new THREE.Mesh(new THREE.TorusGeometry(ALARM_BUSH_RING_R, ALARM_BUSH_TUBE_R, 10, 20), MATS.nickel);
   alarmBush.rotation.z = alarmStemAngle;
   alarmBush.rotation.y = Math.PI / 2;
   alarmBush.rotation.order = 'ZYX';
@@ -16843,19 +16993,49 @@ const ALARM_LIFT_HEAD_R = ALARM_CD + ALARM_COLLAR_RAMP.out + 0.4; // head reads 
 // is rotated onto the corner below — its head sits at the unit's local az 0,
 // which IS the corner, and its run one tab-offset round from there.
 const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_REL_AZ;
-const ALARM_COLLAR_THIN_R = 0.55;
+// §234 step 4 — THE COLLAR IS PRESSED ON THE STEM, so it cannot be thinner than
+// it. It was 0.55 against an r 0.42 stem; at the stem's turning-target section
+// that literal would be INSIDE its own arbor, which is not a part. The thin
+// plateau is the stem plus a wall at §50's floor — a pressed collar's wall, the
+// same derivation `ALARM_LINK_ROD_BUSH_OD` uses next door. The RISE above it is
+// untouched: every consumer (the lifter's head, the silence finger) reads the
+// DIFFERENCE `alarmCollarRAt(s) − ALARM_COLLAR_THIN_R`, so the cam's law is the
+// sleeve's travel as before and only the datum moves.
+const ALARM_COLLAR_THIN_R = ALARM_STEM_R + STOCK_MIN_U;
+// §235 — the FAT plateau's radius, named because the yoke's every station is
+// derived from it: the cam's widest is what its guides have to stand clear of.
+// It was spelled `ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL` at four sites.
+const ALARM_COLLAR_FAT_R = ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL;
 const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
-  : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL
+  : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_FAT_R
   : ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL * (ALARM_COLLAR_RAMP.out - s) / (ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in);
 {
   // the collar itself rides the spinner (slides with the pull for free)
   const thin = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_THIN_R, ALARM_COLLAR_S1 - ALARM_COLLAR_RAMP.out, 16), MATS.steel);
   thin.position.y = (ALARM_COLLAR_RAMP.out + ALARM_COLLAR_S1) / 2;
-  const ramp = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in, 16), MATS.steel);
+  const ramp = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R, ALARM_COLLAR_FAT_R, ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in, 16), MATS.steel);
   ramp.position.y = (ALARM_COLLAR_RAMP.in + ALARM_COLLAR_RAMP.out) / 2;
-  const fat = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL, ALARM_COLLAR_RAMP.in - ALARM_COLLAR_S0, 16), MATS.steel);
+  const fat = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_COLLAR_FAT_R, ALARM_COLLAR_FAT_R, ALARM_COLLAR_RAMP.in - ALARM_COLLAR_S0, 16), MATS.steel);
   fat.position.y = (ALARM_COLLAR_S0 + ALARM_COLLAR_RAMP.in) / 2;
   for (const m of [thin, ramp, fat]) { m.name = 'alarmStemCollar'; alarmSpinner.add(m); }
+}
+// §235 — THE CAM UNDER AN UN-SWEPT PLATE, guarded. The base plate is not a
+// swept unit (the note beside `Z_ALARM_CORNER` says so, and cites a detent star
+// that shipped buried in it with every run clean), and the alarm crown's collar
+// turns and slides directly beneath it. Nothing measured that: the §45 asserts
+// held the LIFTER against the collar and the battery holds unit against unit,
+// so a collar grown past the plate's face would have been silent in both.
+//
+// Measured, the plate's dial-side face stands 1.60 above this stem's axis along
+// its whole length, and the collar's fattest plateau is what reaches for it.
+// This is the bound that decides how fat the stem may be cut, now that §235's
+// yoke has taken the §45 corridor out of that question.
+{
+  const head = PLATE_DIAL_FACE - (Z_ALARM_CORNER + ALARM_COLLAR_FAT_R);
+  if (head < CLEAR_MARGIN - 1e-9)
+    console.warn(`§235: the crown collar's fat plateau reaches ${(Z_ALARM_CORNER + ALARM_COLLAR_FAT_R).toFixed(3)} `
+      + `against the base plate's face at ${PLATE_DIAL_FACE.toFixed(3)} — ${head.toFixed(3)} of headroom, need ${CLEAR_MARGIN} `
+      + '(the plate is NOT a swept unit, so this clearance is verified here or nowhere)');
 }
 const alarmLifterUnit = new THREE.Group();
 // §76: the whole L rides the alarm corner. Its head reads the crown's stem
@@ -16866,30 +17046,56 @@ movement.add(alarmLifterUnit);
 registerLabel('Alarm release lifter', alarmLifterUnit);
 registerExplode(alarmLifterUnit, 0, 2, -1);
 const alarmLifter = new THREE.Group(); // the moving L — tick slides it in world z
-const alarmLifterBladeGroup = new THREE.Group(); // return blade root (tick flexes it)
-const ALARM_LIFT_BLADE_LEN = Math.hypot(0.7, 1.3);
+// §235 — ONE blade PER PRONG, mirrored with the brackets that carry them. The
+// tick flexes both through the same root rotation, so the pair is one spring
+// law with two members, not two laws.
+const alarmLifterBladeGroups = [new THREE.Group(), new THREE.Group()];
 const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); // run centreline = the tab's rest plane, world
-// TODO 42 (closed): the guide stack — eye, blade stub, blade root — is ONE
-// derived chain, pinned from the TOP. The item's own prescription
-// (ez ≥ stub z + STOCK_MIN_U + CLEAR_MARGIN) has no solution with the stub
-// held at its first-cut station: from the stub's rest top to the collar's
-// pulled underside (fat radius under the corner) the corridor is 0.255, and
-// an eye needs STOCK_MIN_U + 2·CLEAR_MARGIN = 0.62 — TODO 23's arithmetic,
-// one guide up, same verdict. So the chain solves DOWNWARD instead. The
-// eye's top face sits exactly where the plunger's top arrives at full
-// depression: the HIGHEST station at which the bore still holds plunger at
-// every pose (any higher and the head, not the plunger, is what the bore
-// reads at full travel — the eye is the plunger's guide, and this bound also
-// keeps the head clear of the bore, which makes the stub comment's "riding
-// clear" claim true at last). The stub then drops to hold the item's
-// inequality at equality below the eye's bottom face, and the blade root
-// keeps its as-built bearing relation to the stub — bottom faces flush, the
-// tip riding the stub's underside — made exact instead of rounded.
+// §235 — A YOKE, NOT A PLUNGER UNDER THE CAM. TODO 42 solved this stack
+// DOWNWARD: the head reads the collar from underneath, so its top is
+// `Z_ALARM_CORNER − collar radius`, and eye, stub and blade hung below that
+// head in one derived chain. That works, and it spends the CAM'S WHOLE RADIUS
+// in z — which is why §234 measured the corridor to the release sleeve's tab
+// plane closing between 0.42 and 0.50 of stem radius, with the sleeve's own
+// floor pinned to the hour tube and TODO 145 group B unable to cut its section
+// at all (`tools/probe-234-stem-ceiling.mjs`).
+//
+// A real keyless works does not read a sliding collar from underneath; a YOKE
+// straddles it. So this one does: the pad still touches under the collar (the
+// hand-off is unchanged, and the member is still a 1:1 slider), but two PRONGS
+// rise either side of the stem from a web under the pad, and the guides and the
+// return spring act on those prongs — BESIDE the collar, at the stem's own AXIS
+// height. That station does not move when the collar fattens, so the stack no
+// longer hangs off the cam's radius; only the pad and the web follow it down,
+// into the 3.0+ of free air the probe measured below the stem outboard of r 23.
+//
+// The ceiling is the one thing this cannot spend: measured along the whole stem
+// (r 18 to 30), the base plate's dial-side face stands 1.60 above the stem's
+// axis and nothing else is nearer. Every station below is stated as a rise off
+// the axis so that budget can be read, and the asserts hold it.
 const ALARM_LIFT_HEAD_TOP = Z_ALARM_CORNER - ALARM_COLLAR_THIN_R - 0.01; // top 0.01 under the collar's thin section at rest (the fork clearance figure)
 const ALARM_LIFT_HEAD_H = 0.24;
-const ALARM_LIFT_EYE_Z = (ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H - ALARM_SLEEVE_TRAVEL) - STOCK_MIN_U / 2; // eye top = plunger top at full depression
-const ALARM_LIFT_STUB_Z = ALARM_LIFT_EYE_Z - STOCK_MIN_U - CLEAR_MARGIN; // stub top = eye bottom − CLEAR_MARGIN, at the REST pose — the closest approach; travel only opens it
-const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2; // blade bottom face flush with the stub's
+const ALARM_YOKE_PIN_R = 0.15;                                    // prong stock — the plunger's own section, pivot class
+const ALARM_YOKE_EYE_R_IN = ALARM_YOKE_PIN_R + 0.02;              // the running fit the old plunger eye carried
+const ALARM_YOKE_EYE_R_OUT = ALARM_YOKE_EYE_R_IN + STOCK_MIN_U;   // the RING carries the bore, at sheet floor
+// The prongs stand where their GUIDES clear the cam: it is the eye's inner
+// wall, not the prong, that comes nearest the collar, so the collar's fattest
+// radius plus one margin plus the ring's own wall is the station.
+const ALARM_YOKE_PRONG_Y = ALARM_COLLAR_FAT_R + CLEAR_MARGIN + ALARM_YOKE_EYE_R_OUT;
+const ALARM_YOKE_EYE_Z = Z_ALARM_CORNER;   // the guides sit on the stem's AXIS — the one height beside the cam that a fatter cam does not move
+const ALARM_YOKE_WEB_TOP = ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H;   // the web hangs under the pad, so nothing but the pad ever touches the cam
+// The prong's top SHOULDER is what the return blade bears up under, and it is
+// pinned from the eye rather than from the pad: at full depression the blade's
+// underside must still stand one margin clear of the eye's top face.
+const ALARM_YOKE_SHOULDER_BOT = (ALARM_YOKE_EYE_Z + STOCK_MIN_U / 2)
+  + CLEAR_MARGIN + SPRING_FLAT_U + ALARM_SLEEVE_TRAVEL;
+const ALARM_YOKE_SHOULDER_T = STOCK_MIN_U;
+// The blade bears under the shoulder's ANNULUS, so it stops halfway between the
+// prong it must not touch and the shoulder's rim. Run to the prong's axis (0.7)
+// it passes straight through the prong, which is what `intraUnit`'s MM tier read.
+const ALARM_YOKE_SHOULDER_R = 0.3;
+const ALARM_LIFT_BLADE_LEN = 0.7 - (ALARM_YOKE_PIN_R + ALARM_YOKE_SHOULDER_R) / 2;
+const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade top bearing on the shoulder's underside at rest
 {
   const hx = ALARM_LIFT_HEAD_R;
   // domed head, top 0.01 under the collar's thin section at rest (the fork
@@ -16900,22 +17106,44 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   head.rotation.x = Math.PI / 2;
   head.position.set(hx, 0, headTop - ALARM_LIFT_HEAD_H / 2);
   alarmLifter.add(head);
-  const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, (headTop - ALARM_LIFT_HEAD_H) - ALARM_LIFT_RUN_Z, 10), MATS.steel);
+  // §235 — ABS, because the link's SENSE is not a law. The pad follows the cam
+  // down and the run stays on the sleeve's tab plane, so past a certain stem the
+  // pad passes below it and this link RISES instead of descending. Written as a
+  // signed difference it came out with a negative height, which `stockFloor`
+  // read as a 0.0287 mm section and `meshIntegrity` as an inverted body — two
+  // gates describing a build bug as a material one.
+  const plunger = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, Math.abs((headTop - ALARM_LIFT_HEAD_H) - ALARM_LIFT_RUN_Z), 10), MATS.steel);
   plunger.name = 'alarmLifterPlunger'; // pin-class stock, declared (kind table)
   plunger.rotation.x = Math.PI / 2;
   plunger.position.set(hx, 0, ((headTop - ALARM_LIFT_HEAD_H) + ALARM_LIFT_RUN_Z) / 2);
   alarmLifter.add(plunger);
-  // blade stub — the return blade bears up under this, one CLEAR_MARGIN
-  // under the guide eye at rest (the derived stack above; rest is the
-  // closest approach, since the L's whole travel is downward from it)
-  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, STOCK_MIN_U, 10), MATS.steel);
-  stub.rotation.x = Math.PI / 2;
-  stub.position.set(hx, 0, ALARM_LIFT_STUB_Z);
-  alarmLifter.add(stub);
+  // §235 — THE YOKE ITSELF: a web under the pad carrying two prongs that rise
+  // either side of the stem, each capped by the shoulder the return blade
+  // bears up under. The web hangs under the PAD rather than level with it, so
+  // the cam is touched by one face and one face only — the hand-off stays the
+  // single contact it was.
+  const yokeWeb = new THREE.Mesh(new THREE.BoxGeometry(STOCK_MIN_U, 2 * ALARM_YOKE_PRONG_Y, STOCK_MIN_U), MATS.steel);
+  yokeWeb.name = 'alarmYokeWeb';
+  yokeWeb.position.set(hx, 0, ALARM_YOKE_WEB_TOP - STOCK_MIN_U / 2);
+  alarmLifter.add(yokeWeb);
+  for (const s of [-1, 1]) {
+    const prongLen = (ALARM_YOKE_SHOULDER_BOT) - (ALARM_YOKE_WEB_TOP - STOCK_MIN_U);
+    const prong = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_YOKE_PIN_R, ALARM_YOKE_PIN_R, prongLen, 10), MATS.steel);
+    prong.name = 'alarmYokeProng'; // pin-class stock, declared (kind table)
+    prong.rotation.x = Math.PI / 2;
+    prong.position.set(hx, s * ALARM_YOKE_PRONG_Y, (ALARM_YOKE_WEB_TOP - STOCK_MIN_U) + prongLen / 2);
+    alarmLifter.add(prong);
+    const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_YOKE_SHOULDER_R, ALARM_YOKE_SHOULDER_R, ALARM_YOKE_SHOULDER_T, 10), MATS.steel);
+    shoulder.name = 'alarmYokeShoulder';
+    shoulder.rotation.x = Math.PI / 2;
+    shoulder.position.set(hx, s * ALARM_YOKE_PRONG_Y, ALARM_YOKE_SHOULDER_BOT + ALARM_YOKE_SHOULDER_T / 2);
+    alarmLifter.add(shoulder);
+  }
   // tangential chord az 0 → run az, then the radial run inboard to the fork
   const az = ALARM_LIFT_RUN_AZ;
   const p0 = { x: hx, y: 0 }, p1 = { x: hx * Math.cos(az), y: hx * Math.sin(az) };
   const chord = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(p1.x - p0.x, p1.y - p0.y) + 0.3, STOCK_MIN_U + 0.01, STOCK_MIN_U), MATS.steel);
+  chord.name = 'alarmLifterChord';   // §235: named, so no declaration selects it by geometry INDEX
   chord.position.set((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, ALARM_LIFT_RUN_Z);
   chord.rotation.z = Math.atan2(p1.y - p0.y, p1.x - p0.x);
   alarmLifter.add(chord);
@@ -16936,6 +17164,7 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
     alarmLifter.add(plate);
   }
   const web = new THREE.Mesh(new THREE.BoxGeometry(STOCK_MIN_U, 0.34, gap + 2 * STOCK_MIN_U), MATS.steel);
+  web.name = 'alarmLifterForkWeb';
   web.position.set(Math.cos(az) * (rIn + 0.31), Math.sin(az) * (rIn + 0.31), ALARM_LIFT_RUN_Z);
   web.rotation.z = az;
   alarmLifter.add(web);
@@ -16952,60 +17181,90 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   // now passes the run's swept top — that corridor no longer exists at
   // all. Guidance keeps two stations without it: this eye at the
   // plunger, the cheek mid-guide at the run.
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - 0.35), 10), MATS.nickel);
-  post.position.set(hx + 0.7, 1.3, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
-  post.rotation.x = Math.PI / 2;
-  alarmLifterUnit.add(post);
+  // §235 — a bracket PER PRONG, mirrored about the stem. Two of them is the
+  // yoke's own structure, not a doubling for its own sake: the pad takes the
+  // cam's push on the axis and the guides answer it at ±ALARM_YOKE_PRONG_Y, so
+  // a single-sided guide would carry that couple alone. The posts keep the
+  // as-built 0.7 outboard offset and stand on the base plate's dial-side face,
+  // the alarm arbor's cock pattern.
   registerSub('Alarm release lifter', 'Release lifter', alarmLifter, { tickOwned: true }); // §10 level 2 — tick presses it toward the dial
-  registerSub('Alarm release lifter', 'Lifter post', post);
-  {
-    const ez = ALARM_LIFT_EYE_Z;
-    const eyeROut = 0.17 + STOCK_MIN_U;  // the RING carries the bore (0.02 running fit over the 0.15 plunger)
-    const span = Math.hypot(0.7, 1.3);   // post centre → plunger axis
-    // TODO 23: the arm ends at the eye ring's OUTER wall — an arm run to
-    // the axis is solid where the plunger travels (a box cannot carry a
-    // bore). Outer end keeps the as-built 0.15 overhang past the post.
-    const armLen = (span + 0.15) - eyeROut;
-    const mid = (-0.15 + (span - eyeROut)) / 2; // station along post→axis, from the post centre
+  for (const sgn of [-1, 1]) {
+    const py = sgn * ALARM_YOKE_PRONG_Y;
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - 0.35), 10), MATS.nickel);
+    post.name = 'alarmLifterPost';
+    post.position.set(hx + 0.7, py, (-2 + ALARM_LIFT_RUN_Z - 0.35) / 2);
+    post.rotation.x = Math.PI / 2;
+    alarmLifterUnit.add(post);
+    registerSub('Alarm release lifter', 'Lifter post', post);
+    // TODO 23's rule, kept: the arm ends at the eye ring's OUTER wall, because
+    // an arm run to the axis is solid where the prong travels (a box cannot
+    // carry a bore). Outer end keeps the as-built 0.15 overhang past the post.
+    const armLen = (0.7 + 0.15) - ALARM_YOKE_EYE_R_OUT;
     const arm = new THREE.Mesh(new THREE.BoxGeometry(armLen, 0.32, STOCK_MIN_U), MATS.nickel);
-    arm.position.set(hx + 0.7 - (0.7 / span) * mid, 1.3 - (1.3 / span) * mid, ez);
-    arm.rotation.z = Math.atan2(-1.3, -0.7);
+    arm.name = 'alarmLifterBracketArm';
+    arm.position.set(hx + 0.7 + 0.15 - armLen / 2, py, ALARM_YOKE_EYE_Z);
     alarmLifterUnit.add(arm);
-    const eye = new THREE.Mesh(ringGeo(0.17, eyeROut, STOCK_MIN_U), MATS.nickel);
-    eye.position.set(hx, 0, ez);
+    const eye = new THREE.Mesh(ringGeo(ALARM_YOKE_EYE_R_IN, ALARM_YOKE_EYE_R_OUT, STOCK_MIN_U), MATS.nickel);
+    eye.name = 'alarmLifterEye';
+    eye.position.set(hx, py, ALARM_YOKE_EYE_Z);
     alarmLifterUnit.add(eye);
   }
   // return blade: root at the bracket post, tip bearing UP under the
   // plunger's stub (thin in z — the flex direction; slaved in tick via the
   // root group so the tip follows the stub's real travel, §48's convention)
-  alarmLifterBladeGroup.position.set(hx + 0.7, 1.3, ALARM_LIFT_BLADE_Z);
-  alarmLifterBladeGroup.rotation.order = 'ZYX';
-  alarmLifterBladeGroup.rotation.z = Math.atan2(-1.3, -0.7);
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_BLADE_LEN, 0.2, SPRING_FLAT_U), MATS.blueSteel);
-  blade.name = 'alarmLifterBlade';
-  blade.position.x = ALARM_LIFT_BLADE_LEN / 2;
-  alarmLifterBladeGroup.add(blade);
-  alarmLifterUnit.add(alarmLifterBladeGroup);
+  for (const [i, sgn] of [[0, -1], [1, 1]]) {
+    const g = alarmLifterBladeGroups[i];
+    g.position.set(hx + 0.7, sgn * ALARM_YOKE_PRONG_Y, ALARM_LIFT_BLADE_Z);
+    g.rotation.order = 'ZYX';
+    g.rotation.z = Math.PI;   // rooted at the post, reaching inboard along the stem to its prong
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_LIFT_BLADE_LEN, 0.2, SPRING_FLAT_U), MATS.blueSteel);
+    blade.name = 'alarmLifterBlade';
+    blade.position.x = ALARM_LIFT_BLADE_LEN / 2;
+    g.add(blade);
+    alarmLifterUnit.add(g);
+  }
   // mid-guide: post beside the run with two vertical CHEEKS flanking it
   // tangentially — lateral guidance that leaves the vertical travel free, so
   // the long span is guided, not cantilevered (P1: the run only ever carries
   // the arm spring's reflected preload, mN-scale, but an unguided 16-unit
   // reach would still be the §35 tail's class of "nobody asked for this")
-  const mgR = 14, mgOff = 0.5; // post stands one 0.5 tangential stand-off from the run's centreline
+  // §235 — THE MID-GUIDE'S STATION, derived from the wheel it has to pass. It
+  // was the literal 14, and it suited a corner whose contrate was a 10-tooth
+  // blank one plane higher. The climb contrate is cut from the SAME
+  // `ALARM_BEVEL_SPEC` as the corner, so it grows with the bore and falls with
+  // the plane — measured, it arrived on this guide's inner cheek at 0.0000 and
+  // the pair sweep called the whole unit FORBIDDEN.
+  //
+  // In the lifter's own frame the run leaves the centre at `az` and the
+  // contrate stands at (ALARM_CD, 0), so the station is the last one INBOARD
+  // whose guide furniture clears the blank's disc: solve the chord, take the
+  // near root. Inboard rather than outboard because outboard of the contrate
+  // the run is already among the corner cluster's own bearings.
+  const mgOff = 0.5;           // post stands one 0.5 tangential stand-off from the run's centreline
+  const MG_REACH = 0.9;        // the furniture's own bounding radius about the station: cheeks, post at mgOff, bridge
+  const mgClear = ALARM_BEVEL_SPEC.tipR + CLEAR_MARGIN + MG_REACH;
+  const mgPerp = ALARM_CD * Math.sin(az), mgAlong = ALARM_CD * Math.cos(az);
+  if (mgClear <= Math.abs(mgPerp))
+    console.warn(`§235: the run passes ${Math.abs(mgPerp).toFixed(3)} from the climb contrate's axis and its guide needs `
+      + `${mgClear.toFixed(3)} — no station on this run clears the blank, so the mid-guide has nowhere to stand`);
+  const mgR = mgAlong - Math.sqrt(Math.max(0, mgClear * mgClear - mgPerp * mgPerp));
   const mgP = { x: Math.cos(az) * mgR - Math.sin(az) * mgOff, y: Math.sin(az) * mgR + Math.cos(az) * mgOff };
   const mg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, -2 - (ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - 0.5), 10), MATS.nickel);
+  mg.name = 'alarmLifterGuidePost';
   mg.position.set(mgP.x, mgP.y, (-2 + ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - 0.5) / 2);
   mg.rotation.x = Math.PI / 2;
   alarmLifterUnit.add(mg);
   const cheekH = 0.16 + ALARM_SLEEVE_TRAVEL + 0.2;
   for (const s of [-1, 1]) {
     const cheek = new THREE.Mesh(new THREE.BoxGeometry(0.7, STOCK_MIN_U, cheekH), MATS.nickel);
+    cheek.name = 'alarmLifterCheek';
     cheek.position.set(Math.cos(az) * mgR - Math.sin(az) * s * (0.2 + STOCK_MIN_U / 2), Math.sin(az) * mgR + Math.cos(az) * s * (0.2 + STOCK_MIN_U / 2),
       ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL / 2);
     cheek.rotation.z = az;
     alarmLifterUnit.add(cheek);
   }
   const cheekBridge = new THREE.Mesh(new THREE.BoxGeometry(0.7, mgOff + 0.35, STOCK_MIN_U), MATS.nickel);
+  cheekBridge.name = 'alarmLifterCheekBridge';
   cheekBridge.position.set((mgP.x + Math.cos(az) * mgR) / 2, (mgP.y + Math.sin(az) * mgR) / 2,
     ALARM_LIFT_RUN_Z - ALARM_SLEEVE_TRAVEL - STOCK_MIN_U / 2 - 0.25);
   cheekBridge.rotation.z = az;
@@ -17024,17 +17283,37 @@ const ALARM_LIFT_BLADE_Z = ALARM_LIFT_STUB_Z - (STOCK_MIN_U - SPRING_FLAT_U) / 2
   say('collar inboard tip clear of the cluster at rest', (ALARM_CD + ALARM_COLLAR_S0) - ALARM_LIFT_CLUSTER_OUT, CLEAR_MARGIN - 1e-6);
   // the ramp's rise IS the sleeve travel — the tick law reads this same fn
   say('collar rise = sleeve travel', 1e-9 + (alarmCollarRAt(ALARM_COLLAR_S0) - alarmCollarRAt(ALARM_COLLAR_S1)) - ALARM_SLEEVE_TRAVEL, 0);
-  // TODO 42 — the guide stack's two open ends, with the achieved numbers.
-  // Above: the collar's deepest underside (fat radius, crown pulled) over the
-  // eye's top face — the bound that made the item's own window EMPTY until
-  // the stub dropped. Below: the blade's bottom face over the chord's top —
-  // pose-invariant, because the tip and the chord co-travel, so the rest
-  // figure is the figure at every depression.
-  say('collar (pulled, fat) clears the eye top', (Z_ALARM_CORNER - (ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL)) - (ALARM_LIFT_EYE_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
+  // §235 — THE YOKE'S OWN ENDS, and they are a different set from TODO 42's
+  // because the stack no longer hangs off the cam. What the guides must clear
+  // is the cam SIDEWAYS, and what nothing may exceed is the plate overhead.
+  //
+  // The ceiling first: measured along the whole stem, the base plate's
+  // dial-side face is the nearest metal above it, and the yoke's tallest
+  // member is a prong shoulder. Read off the plate, never restated.
+  say('prong shoulder under the base plate', PLATE_DIAL_FACE - (ALARM_YOKE_SHOULDER_BOT + ALARM_YOKE_SHOULDER_T), CLEAR_MARGIN);
+  // Sideways: it is the EYE's inner wall, not the prong, that comes nearest
+  // the cam, and the cam is fattest with the crown pulled.
+  say('eye bore clears the collar at its fattest', (ALARM_YOKE_PRONG_Y - ALARM_YOKE_EYE_R_OUT) - ALARM_COLLAR_FAT_R, CLEAR_MARGIN);
+  // The web hangs under the pad, so the pad is the only face the cam touches —
+  // at the fattest plateau, where the yoke stands at full depression.
+  say('web clears the collar with the crown pulled', (Z_ALARM_CORNER - ALARM_COLLAR_FAT_R) - (ALARM_YOKE_WEB_TOP - ALARM_SLEEVE_TRAVEL), 0);
+  // Below, the old bound is kept because it still measures something true —
+  // and it is the one the plunger design could not hold once the stem grew.
   say('blade bottom clears the chord top', (ALARM_LIFT_BLADE_Z - SPRING_FLAT_U / 2) - (ALARM_LIFT_RUN_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
-  // and the derivation's pin: the bore holds PLUNGER at full depression —
-  // equality by construction today; a warn here means someone moved one side
-  say('eye bore holds plunger at full depression', (ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H - ALARM_SLEEVE_TRAVEL) - (ALARM_LIFT_EYE_Z + STOCK_MIN_U / 2), 0);
+  // AND THE ONE THAT MOVING THE BLADE TOOK AWAY — stated as what it physically
+  // is, which took two goes. With the spring up at the prongs, nothing
+  // downstairs watched the PAD any more, and the pad is what still follows the
+  // cam down. The first version of this assert said the pad must stand above
+  // the sleeve's TAB PLANE, and that is a build assumption wearing a bound's
+  // clothes: the pad sits at r 28.2 and the sleeve's outer rim is 4.65, so they
+  // share a z and nothing else, and the link between pad and run is free to
+  // rise instead of descend. What is real is that the link must BE a link.
+  say('pad-to-run link has a section to be cut from',
+    Math.abs((ALARM_YOKE_WEB_TOP - STOCK_MIN_U) - ALARM_LIFT_RUN_Z) - 2 * 0.15, 0);
+  // and the derivation's pin, one member up: the bore holds PRONG at full
+  // depression, with the blade's own underside clear of the eye's top face.
+  say('blade clears the eye top at full depression',
+    (ALARM_LIFT_BLADE_Z - SPRING_FLAT_U / 2 - ALARM_SLEEVE_TRAVEL) - (ALARM_YOKE_EYE_Z + STOCK_MIN_U / 2), CLEAR_MARGIN - 1e-9);
 }
 // §45 — the BICONDITIONAL, asserted (the entry's acceptance): Hidden ⟺
 // ¬Armed ∧ ¬Setting, at all four corners, evaluated on the mechanism's own
@@ -40100,7 +40379,8 @@ function tick(t) {
     alarmSleeveLiftNow = alarmCollarRAt(sHead) - ALARM_COLLAR_THIN_R; // 0 → ALARM_SLEEVE_TRAVEL
     alarmLifter.position.z = -alarmSleeveLiftNow + subDrillZ(alarmLifter);                     // world: pressed toward the dial (+ §10 level 2's drill)
     alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow + subDrillZ(alarmSleeve); // dial-local +z ≡ the same world direction (+ the drill)
-    alarmLifterBladeGroup.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
+    for (const g of alarmLifterBladeGroups)
+      g.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
     const skirtTopZ = (ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow) - ALARM_SLEEVE_T;
     const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
     const hUp = skirtTopZ - tipZ; // how far the skirt's top edge stands above the tip
