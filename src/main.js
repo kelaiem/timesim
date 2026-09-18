@@ -53,6 +53,8 @@ import {
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   TURN_LD_TARGET,                            // §233/§234: the turning ceiling's build-to figure — the arrest columns are cut to it
+  STEM_STOCK_R_U,                            // §234 Landing 2: the stem-stock floor the alarm pusher is cut to
+  SPRING_INDEX_MIN, SPRING_INDEX_MAX, SPRING_INDEX_TARGET,   // §234: the coiling envelope the return coil's wire is solved in
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
@@ -16968,7 +16970,20 @@ const GONG_RIM_Z = PLATE_RIM.back;                 // the annulus's own floor pl
 // §198 — THE PUSHER STEM'S CROSSING sets it, and the numbers are the
 // pusher's own (hoisted from its build: the stem's radius, and the guide
 // ring that stands the stem's axis one margin under the plate's underside).
-const ALARM_PUSH_STEM_R = 0.32;
+// §234 (TODO 145 group B) — THE STEM IS CUT FROM STEM STOCK: layout.js's tap-7
+// floor, ⌀0.70 mm, r 0.924 u. Two constraints bear on this radius and the
+// stock is the larger. The turning target asks bar / (2 · TURN_LD_TARGET) of
+// it — 0.723 u for the 26.0 u stem-and-cap bar — and that is HELD where the
+// bar's length is known, at the cap's build, as a boot assert: the stock
+// governs today (L/D 14.1), and the assert is what says so if the stem ever
+// lengthens past 33 u. The old 0.32 was a bare literal at L/D 40.7, a bar no
+// lathe holds, and the one waiver this landing retires. What it costs is the
+// pusher's own z: the guide ring grows with the bore it carries, the axis
+// stands lower by the ring's growth and the gong band's ceiling follows the
+// stem's underside — the ring drops 2 · Δr = 1.21 u — and every reader of
+// that band (the annulus floor, the head's band, the skirt's floor) re-derives
+// below and is asserted where it is read.
+const ALARM_PUSH_STEM_R = STEM_STOCK_R_U;
 const ALARM_PUSH_GUIDE_TUBE = 0.12;                                        // ring stock (§50 floor)
 const ALARM_PUSH_GUIDE_BORE = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR;        // a running fit, not a press fit
 const ALARM_PUSH_GUIDE_RING = ALARM_PUSH_GUIDE_BORE + ALARM_PUSH_GUIDE_TUBE;
@@ -26289,6 +26304,18 @@ if (alarmPusherGroup.position.z - ALARM_PUSH_STEM_R < GONG_BAND_TOP + CLEAR_MARG
   cap.position.set(_pushU.x * (stemOuterS + PUSHER_HEAD_LEN / 2),
                    _pushU.y * (stemOuterS + PUSHER_HEAD_LEN / 2), 0);
   alarmPusherGroup.add(cap);
+  // §234 — the turning target, held where the BAR's length is known. The
+  // stem's radius is the stock floor (layout.js); this is the second
+  // constraint on it, over the workpiece the `turning` check measures — stem
+  // and cap are coaxial at consecutive stations, one piece of stock — and
+  // the governing ⌀ is the stem's. Over the target at that stock, the stem
+  // is re-derived from its length, never waived.
+  {
+    const barLen = stemLen + PUSHER_HEAD_LEN, ld = barLen / (2 * ALARM_PUSH_STEM_R);
+    if (ld > TURN_LD_TARGET + 1e-9)
+      console.warn(`§234: the alarm pusher bar is L/D ${ld.toFixed(1)} (${barLen.toFixed(2)} u at r ${ALARM_PUSH_STEM_R.toFixed(3)}) `
+        + `— over the turning target ${TURN_LD_TARGET}; the stem-stock floor no longer covers this bar`);
+  }
   if (PUSHER_HEAD_R * UNIT_MM < 1.0 - 1e-9)
     console.warn(`§43: pusher head ${(PUSHER_HEAD_R * UNIT_MM).toFixed(3)} mm radius is under the 1 mm ergonomic floor`);
   // TODO 92 — WHAT THE HEAD ACTUALLY CLEARS AT FULL PRESS, measured off the
@@ -27349,14 +27376,21 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   const dragF_N = (ALARM_PAWL_SPRING.dragTq_Nmm / 1000) / (ALARM_PAWL_ARM * UNIT_MM / 1000);
   const preload_N = ALARM_SPRING_HEADROOM * dragF_N;
   // ---- THE WIRE AND THE COIL, both set by what they wrap.
-  // The wire is the round analogue of the movement's own spring stock: a
-  // hairspring is thinner than this and a blade here is exactly this.
-  const wireR = SPRING_FLAT_U / 2;
-  // The mean coil radius is the stem plus a running clearance plus half the
-  // wire — the coil rides the stem, so the stem sizes it.
+  // The wire's FLOOR is the round analogue of the movement's own spring stock
+  // (a hairspring is thinner than this and a blade here is exactly this), and
+  // its SIZE is the coil's: the mean coil rides the stem — coilR = stem +
+  // running clearance + half the wire — so the index D/d = (stem + clear)/wireR
+  // + 1 falls out of the stem, and it is the wire that has to answer for it.
+  // §234 — a stem cut to stem stock took the stock wire's index from 6.6 to
+  // 15.8, outside anything a coiler winds, so the wire is SOLVED to the
+  // declared target: wireR = (stem + clear) / (SPRING_INDEX_TARGET − 1), the
+  // stock floor standing under it (0.075 mm wire at the shipped stem, C 10.8).
+  const wireR = Math.max(SPRING_FLAT_U / 2, (ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR) / (SPRING_INDEX_TARGET - 1));
   const coilR = ALARM_PUSH_STEM_R + PIVOT_BORE_CLEAR + wireR;
   const C = (2 * coilR) / (2 * wireR);            // spring index D/d
-  const KW = 1 + 0.5 / C;                         // Wahl's correction, near enough at C ≈ 6.6
+  if (!(C >= SPRING_INDEX_MIN - 1e-9 && C <= SPRING_INDEX_MAX + 1e-9))
+    console.warn(`§234: the return coil's index D/d ${C.toFixed(2)} is outside the coiling envelope ${SPRING_INDEX_MIN}–${SPRING_INDEX_MAX} (wire ⌀${(2 * wireR * UNIT_MM).toFixed(3)} mm on a ⌀${(2 * coilR * UNIT_MM).toFixed(3)} mm coil)`);
+  const KW = 1 + 0.5 / C;                         // the direct-shear factor, as shipped (C is inside the envelope now, not ≈ 6.6)
   // ---- HOW MANY COILS, from the stress the wire may work to.
   // For a compression spring the shear stress at a given DEFLECTION is
   //     τ = K·G·d·δ / (π·D²·n)
@@ -27398,10 +27432,17 @@ let alarmPusherReturnSpring = null, alarmPusherReturnFrames = null;
   // stem is not bored for the bar.
   const collarT = STOCK_MIN_U, abutT = STOCK_MIN_U;
   // The two faces the coil bears on cover it and no more. What caps them is the
-  // PLATE: its underside is 0.76 above the press axis, and a disc that reaches
-  // past coilR + wireR buys nothing while spending that headroom.
+  // PLATE: its underside stands CLEAR_MARGIN + ALARM_PUSH_GUIDE_HALF above the
+  // press axis (0.76 at the old 0.32 stem, 1.36 at stem stock — the guide ring
+  // grew with the bore it carries), and a disc that reaches past coilR + wireR
+  // buys nothing while spending that headroom. §234 — the coil's own OD is that
+  // same faceR, and with the guide's half-span and the coil both riding the
+  // stem the headroom condition reduces to wireR ≤ ALARM_PUSH_GUIDE_TUBE; held
+  // here with the numbers rather than remembered.
   const faceR = coilR + wireR;
   const collarR = faceR, abutR = faceR;
+  if (faceR + CLEAR_MARGIN > CLEAR_MARGIN + ALARM_PUSH_GUIDE_HALF + 1e-9)
+    console.warn(`§234: the return coil's faces reach ${faceR.toFixed(3)} off the press axis against a plate underside ${(CLEAR_MARGIN + ALARM_PUSH_GUIDE_HALF).toFixed(3)} above it — the wire (${wireR.toFixed(4)}) has outgrown the guide's tube (${ALARM_PUSH_GUIDE_TUBE})`);
   // The abutment is FIXED, so it must clear the reach bar's outer end at EVERY
   // pose, not at rest: the bar sweeps its own travel, and a ring bored for the
   // stem is not bored for the bar. The BRACKET that hangs it sits inboard of
@@ -31349,7 +31390,19 @@ const BACK_SWEPT_REGIONS = [
   { unit: 'Alarm switch', r0: 48.3, r1: 49.6, z: 10.08 },
 ];
 const BACK_ENVELOPE = (() => {
-  const NBIN = 60;
+  // §234 — THE BIN IS NO WIDER THAN THE ONE MARGIN. A reader asks this
+  // envelope about a band [r0, r1) and takes every bin that overlaps it, so
+  // metal standing up to one bin width OUTSIDE the band can govern it. At the
+  // 60 bins this was authored with (0.88 u wide) the alarm hammer's post,
+  // whose outer edge is 0.45 u INSIDE the caseback skirt's wall, governed
+  // the skirt band the moment its edge crossed the bin wall at r 47.50 —
+  // 0.02 u of ring-radius creep, and the whole back thickened 0.50 u for a
+  // post the skirt never stands over. CLEAR_MARGIN is the distance at which
+  // metal is clear, so a bin narrower than it cannot be governed by metal
+  // that is: measured on the shipped tree, the refinement moves one case
+  // number, the glass step's radius, by 0.020 u (its wall stands that much
+  // nearer the metal it clears by the same margin), and nothing else.
+  const NBIN = Math.ceil(CASE_R_OUT / CLEAR_MARGIN);   // 352 bins of 0.150 u
   const rSpan = CASE_R_OUT;   // the annulus the case will occupy is part of the question (the ring's skirt descends inside the bore)
   const bins = new Array(NBIN).fill(-Infinity);
   const owners = new Array(NBIN).fill(null);
@@ -31810,8 +31863,8 @@ registerLabel('Case', caseSolid);
   // --- the pusher's bore liner, on the press axis
   {
     const sleeve = findMesh(caseSolid, 'casePusherBoreSleeve');
-    if (!sleeve || !alarmPusherStemMesh || ALARM_PUSH_ABUT_S === null) {
-      console.warn('§202: the pusher\'s case sleeve, stem or abutment station is missing — no case bearing declared');
+    if (!sleeve || !alarmPusherStemMesh || !alarmPusherGuideMesh || ALARM_PUSH_ABUT_S === null) {
+      console.warn('§202: the pusher\'s case sleeve, stem, guide or abutment station is missing — no case bearing declared');
     } else {
       const { lo, hi } = along(sleeve, _pushBase, _pushU);           // along the press axis from the pawl's base
       const m = liner(ALARM_PUSH_GUIDE_BORE, CASE_PUSHER_D / 2 - 0.01, hi - lo, 'alarmPusherCaseLiner');
@@ -31821,14 +31874,24 @@ registerLabel('Case', caseSolid);
       alarmSwitchUnit.add(m);
       // The stem's three stations, in its own geometry-local y (cylinder +Y
       // along the press axis): the abutment (§164's second bearing, declared
-      // at last), the rim guide (bossD is measured from the world origin on
-      // an axis that passes through it — §170), and the liner.
-      const sc = new THREE.Vector3();
+      // at last), the rim guide, and the liner.
+      // §234 — THE GUIDE'S STATION IS READ OFF THE GUIDE. This declaration
+      // carried `(plateR - 1.2) - baseS` for it: the literal §230 retired from
+      // the boss's own build, left standing here as a second copy of the
+      // station — and a copy that happened to land inside the boss's box for
+      // as long as nothing moved. Cutting the stem to stem stock moved the
+      // abutment outboard by Δr, the return collar with it, and the boss with
+      // the collar (§230's chain); the literal stayed, and `slenderness` read
+      // a declared bearing with no metal at it. One source now: the boss's
+      // built position, projected on the press axis the same way the stem's
+      // centre is.
+      const sc = new THREE.Vector3(), gc = new THREE.Vector3();
       alarmPusherStemMesh.updateWorldMatrix(true, false);
       alarmPusherStemMesh.getWorldPosition(sc);
+      alarmPusherGuideMesh.updateWorldMatrix(true, false);
+      alarmPusherGuideMesh.getWorldPosition(gc);
       const sCentre = (sc.x - _pushBase.x) * _pushU.x + (sc.y - _pushBase.y) * _pushU.y;
-      const baseS = _pushBase.x * _pushU.x + _pushBase.y * _pushU.y;
-      const guideS = (plateR - 1.2) - baseS;
+      const guideS = (gc.x - _pushBase.x) * _pushU.x + (gc.y - _pushBase.y) * _pushU.y;
       alarmPusherStemMesh.userData.bearings = {
         axis: 'y',
         stations: [ALARM_PUSH_ABUT_S - sCentre, guideS - sCentre, mid - sCentre].sort((a, b) => a - b),

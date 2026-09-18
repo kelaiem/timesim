@@ -19539,8 +19539,9 @@ topology holds.
 
 §233 declared a third slenderness — `TURN_LD_MAX = 20` in `layout.js`, gated by
 the `turning` check — and the movement arrived twelve bars over it. Each was
-waived in `TURN_WAIVERS` citing this item; **ten remain** after §234 Landing 1
-(the two arrest columns closed, see the block under group C). This is that list, with the fix path
+waived in `TURN_WAIVERS` citing this item; **nine remain** after §234 Landing 1
+(the two arrest columns closed, see the block under group C) and the first
+member of Landing 2 (the alarm pusher stem, see the block under group B). This is that list, with the fix path
 for each group, so the waivers can be deleted one group at a time; per §137's
 staleness rule, deleting a waiver whose bar is no longer over the ceiling is
 structurally part of the fix, and leaving one behind fails the check.
@@ -19605,6 +19606,52 @@ its three collars cluster as a bar of their own because the check reads a
 member concentric with a shaft as a separate part, which it is. Check whether
 the liner is really a 12.86 mm tube at 0.42 mm wall, or whether it is modelled
 longer than the tube a real case needs.
+
+> **§234 Landing 2, first member (2026-09-17) — the stock is declared and the
+> pusher is cut from it.** `STEM_STOCK_R_U` in `layout.js`: tap 7, ⌀0.70 mm,
+> r 0.924 u, the smallest tap a stem is threaded to, with only the floor
+> declared because only the floor has a consumer. `ALARM_PUSH_STEM_R` reads
+> it — the stock governs (the turning target asks 0.723 u of a 26.0 u bar and
+> is held as a boot assert at the cap's build, where the bar's length is
+> known). The row above: **⌀ 0.243 → 0.700 mm, L/D 40.7 → 14.1**, waiver
+> retired, the bar now a `needRest` report.
+>
+> **What it cost, and the finding.** The guide ring is bored over the stem, the
+> axis stands lower by the ring's growth and the gong band's ceiling follows
+> the stem's underside: the ring dropped 2 · Δr = 1.21 u (Z_GONG 6.054 → 4.847).
+> The hammer head's height is still owned by the impedance match (μ 1.20), the
+> annulus floor is unchanged, and the caseback skirt's bottom is unchanged at
+> 10.23 — but not at first. Every bracket from r 0.50 up booted with §198's
+> "the caseback skirt's floor is governed by Alarm hammer at 10.582", and the
+> hammer had not moved a hair in z. A shorter gong block is stiffer, so its
+> radius shrinks, the ring stands 0.02 u further out, and the hammer post's
+> outer edge — 0.45 u INSIDE the skirt's wall at 47.95 — crossed the back
+> envelope's bin wall at r 47.50. At 60 bins (0.88 u wide) that bin then owned
+> the skirt band, and the whole back thickened 0.50 u for a post the skirt
+> never stands over. On unchanged `main` that edge is 0.02 u from firing. The
+> bin count was a literal; it is `CASE_R_OUT / CLEAR_MARGIN` now (352 bins of
+> 0.150 u — a bin no wider than the one margin, so metal that is clear of a
+> band cannot govern it), and on the shipped geometry that moves one case
+> number, the glass step's radius, by 0.020 u. `probe-back-envelope` and
+> `probe-187-casing-path` pass on the landed tree.
+>
+> **Two more things the fatter stem found, both in the group.** (1) The first
+> battery run failed `slenderness` on the stem itself: "a declared bearing
+> with no mesh at it". The §202 bearing declaration carried `(plateR − 1.2)`
+> for the guide boss's station — the literal §230 retired from the boss's own
+> build and left standing in the declaration, a law written twice — and it
+> landed inside the boss's box only for as long as nothing moved. The stem
+> moved the abutment, the collar and the boss inboard; the literal pointed at
+> air. The declaration reads the boss's built position now. (2) The return
+> coil rides the stem, so the stem's stock set the coil and the coil's index
+> D/d went from 6.6 to 15.8 on the stock wire — outside anything a coiler
+> winds — with 7 coils where there had been 32. `SPRING_INDEX_MIN/MAX/TARGET`
+> (4 / 12 / 10.8) are declared in `layout.js` and the wire is solved to the
+> target, `wireR = (stem + clear) / (C_target − 1)`, the stock floor under it:
+> 0.075 mm wire, C 10.8, 8 coils, k 71.8 N/m, 83 mN at full press (was 62.9 on
+> `main`). The coil's own headroom under the plate reduces to wireR ≤ the
+> guide ring's tube and is asserted with the numbers. Seven group-B rows
+> remain, one member at a time against the same constant.
 
 ### Group C — arbors inside the movement (3 rows)
 

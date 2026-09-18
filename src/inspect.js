@@ -9691,7 +9691,6 @@ export const TURN_WAIVERS = {
   'Reset rod::rodSegOut+rodSegIn': 'TODO 145 group B',
   'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B',
   'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B',
-  'Alarm switch::alarmPusherStem+alarmPusherCap': 'TODO 145 group B',
   'Keyless works::settingTraverse': 'TODO 145 group B',
   'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
   // GROUP C — arbors INSIDE the movement. Filed as "a section change alone
