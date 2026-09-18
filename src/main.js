@@ -17012,6 +17012,24 @@ const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
   fat.position.y = (ALARM_COLLAR_S0 + ALARM_COLLAR_RAMP.in) / 2;
   for (const m of [thin, ramp, fat]) { m.name = 'alarmStemCollar'; alarmSpinner.add(m); }
 }
+// §235 — THE CAM UNDER AN UN-SWEPT PLATE, guarded. The base plate is not a
+// swept unit (the note beside `Z_ALARM_CORNER` says so, and cites a detent star
+// that shipped buried in it with every run clean), and the alarm crown's collar
+// turns and slides directly beneath it. Nothing measured that: the §45 asserts
+// held the LIFTER against the collar and the battery holds unit against unit,
+// so a collar grown past the plate's face would have been silent in both.
+//
+// Measured, the plate's dial-side face stands 1.60 above this stem's axis along
+// its whole length, and the collar's fattest plateau is what reaches for it.
+// This is the bound that decides how fat the stem may be cut, now that §235's
+// yoke has taken the §45 corridor out of that question.
+{
+  const head = PLATE_DIAL_FACE - (Z_ALARM_CORNER + ALARM_COLLAR_FAT_R);
+  if (head < CLEAR_MARGIN - 1e-9)
+    console.warn(`§235: the crown collar's fat plateau reaches ${(Z_ALARM_CORNER + ALARM_COLLAR_FAT_R).toFixed(3)} `
+      + `against the base plate's face at ${PLATE_DIAL_FACE.toFixed(3)} — ${head.toFixed(3)} of headroom, need ${CLEAR_MARGIN} `
+      + '(the plate is NOT a swept unit, so this clearance is verified here or nowhere)');
+}
 const alarmLifterUnit = new THREE.Group();
 // §76: the whole L rides the alarm corner. Its head reads the crown's stem
 // collar, so it goes where the crown goes — rigidly, one rotation, rather
