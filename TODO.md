@@ -19691,6 +19691,16 @@ so the honest figure is **0.364**. The two motion-works wheels are 0.8 thick,
   posts stood exactly one margin off the hour wheel's top — the sweep read
   0.15 against a floor of 0.15 and refused the tie. The posts now stand on
   the webs' mid-plane and the hour wheel's margin carries the seat's sink.
+  The second pass then refused two more ties that were not the seat's at
+  all — the star under the hour wheel and the jumper's beak, each exactly one
+  margin by the same derivation they always had, green before only by the
+  luck of which floats the old `0.8` and `1.5` literals produced. **A derived
+  margin IS an exact tie**, and a tie is not a violation: the two floor gates
+  (`clearances`, `expectedContacts`) now compare with `FLOOR_TIE_EPS` 1e-9,
+  as every boot assert in the movement already does — seven orders under
+  the smallest fit the file names, so nothing a cut could produce is greened
+  by it. The boot asserts' `- 1e-9` and the gates' were two answers to one
+  question, and the gates had the fragile one.
 
 `window.__clock.alarmSetHold` publishes the drag, the requirement and the
 holder; while the holder was null the probe was **red by design** (10 rows, 2

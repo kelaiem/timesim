@@ -2381,7 +2381,7 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   const census = censusStop();
   const results = rows.map((row, i) => {
     const capped = !isFinite(state[i].min);
-    const meets = capped || state[i].min >= row.min;
+    const meets = capped || state[i].min >= row.min - FLOOR_TIE_EPS;   // TODO 144: a derived margin is an exact tie
     return {
       pair: `${row.a} ⇄ ${row.b}`,
       min: capped ? `≥ ${(row.min + refineBand).toFixed(2)}` : +state[i].min.toFixed(4),
@@ -3656,6 +3656,20 @@ const STRUCTURE_NODES = {
 // stacked on another bridge.
 const GROUND_NODES = ['plate', 'Three-quarter plate'];
 const SUPPORT_TOL = 0.5; // a mounted part touches (0) or is set into its fixture
+// TODO 144 — A DERIVED MARGIN IS AN EXACT TIE, AND A TIE IS NOT A VIOLATION.
+// Every clearance in this movement is DERIVED (rule 1): a face is placed one
+// CLEAR_MARGIN off the face it answers to, in exact arithmetic. The sweep then
+// measures that gap between two tessellated solids in floats and gets
+// 0.15 − 3e-17, and `>= 0.15` refuses it. The seat's posts over the hour wheel
+// did that first; then, with the motion-works stack re-solved, the star under
+// the hour wheel and the jumper's beak — both exactly one margin by the same
+// derivation they always had, and both green before only by the luck of which
+// floats the old literals produced. The boot asserts already compare with
+// `- 1e-9` for exactly this reason; the two floor gates now do the same. A
+// margin genuinely spent reads 0.14 or 0.10, never 0.149999999999; 1e-9 is
+// seven orders under the smallest fit this file names (0.05) and cannot green
+// a row that is short by anything a cut could produce.
+const FLOOR_TIE_EPS = 1e-9;
 
 function resolveNode(clock, allUnits, name) {
   const unit = allUnits.find((u) => u.name === name);
@@ -3734,7 +3748,7 @@ export async function checkClearances(clock, { budgets = CLEARANCE_BUDGETS, axes
       required: bud.min,
       at: capped ? '(never within band)' : `${state[i].at.axis} f=${state[i].at.f}`,
       meshes: capped ? undefined : (state[i].meshes ? state[i].meshes.join(' ⇄ ') : undefined), // TODO 10
-      ok: capped || state[i].min >= bud.min,
+      ok: capped || state[i].min >= bud.min - FLOOR_TIE_EPS,   // TODO 144: a derived margin is an exact tie
     };
   });
   console.table(results);
