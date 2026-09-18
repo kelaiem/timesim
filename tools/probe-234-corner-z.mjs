@@ -156,6 +156,7 @@ const R = await page.evaluate(async (radius) => {
   // probe exists to state, so it cannot be the one number it takes from a box.
   // The disc bevel does not inflate (its axis IS world z), which is exactly how
   // two identical blanks came back with different reaches and gave it away.
+  const meshOfAny = (g) => { let m = null; g.traverse((o) => { if (!m && o.isMesh && !o.userData?.schematic) m = o; }); return m; };
   const vertZ = (o) => {
     let lo = Infinity, hi = -Infinity;
     o.updateWorldMatrix(true, true);
@@ -237,6 +238,28 @@ const R = await page.evaluate(async (radius) => {
   const dB = bbox(disc), sB = bbox(stem);
   const plate = named('backPlate');
 
+  // EVERY member riding the corner's plane, not just the two bevels. The first
+  // version reported only the gears, and the member nearest the plate turned out
+  // to be neither: the stem BUSHING is a torus about this plane reaching ring +
+  // tube = 1.45, against the bevel's 1.3088. A plane derived from the bevel left
+  // the bushing 0.0456 off the plate and every gate passed. So the reach is the
+  // worst member's, and the probe says which member it is.
+  const riders = [];
+  for (const nm of ['Alarm crown', 'Alarm setting arbor']) {
+    const u = (c.labelEntries || []).find((e) => e.name === nm);
+    u?.obj?.traverse((o) => {
+      if (!o.isMesh || o.userData?.schematic) return;
+      const vz = vertZ(o);
+      if (!isFinite(vz.zhi) || vz.zhi <= cw.z) return;
+      riders.push({ unit: nm, name: o.name || `(unnamed ${o.geometry.type})`, up: vz.zhi - cw.z,
+        toPlate: plate ? I.meshClearance(o, plate.isMesh ? plate : meshOfAny(plate), Infinity) : null });
+    });
+  }
+  // Sorted by what BINDS — the clearance to the plate — not by reach. The crown
+  // knob reaches 5.5 above the plane and is 8 to 12 from the plate, because it
+  // stands outboard at the case; reach alone would bury the member that matters.
+  riders.sort((a, b) => (a.toPlate ?? Infinity) - (b.toPlate ?? Infinity));
+
   const sawDisc = [...merged.values()].some((r) => r.id === disc.uuid || (r.own && r.zhi <= cw.z + 1e-9));
   const sawStem = [...merged.values()].some((r) => r.id === stem.uuid || (r.own && r.zhi > cw.z));
   const sawOwn = [...merged.values()].filter((r) => r.own).length;
@@ -260,8 +283,7 @@ const R = await page.evaluate(async (radius) => {
   // hung on the live mount, walked down in world z, and asked for its real
   // clearance through `inspect.js`'s own `meshClearance` — the measure the
   // battery's gates use — until it stands exactly CLEAR_MARGIN off the plate.
-  const meshOf = (g) => { let m = null; g.traverse((o) => { if (!m && o.isMesh && !o.userData?.schematic) m = o; }); return m; };
-  const plateMesh = plate && plate.isMesh ? plate : (plate ? meshOf(plate) : null);
+  const plateMesh = plate && plate.isMesh ? plate : (plate ? meshOfAny(plate) : null);
   const hangAt = (mount, dz, boreR, mateBoreR, teeth, faceW) => {
     const g = G.makeConicalGear({ name: 'cand', teeth, module: MOD, mateTeeth: teeth, faceWidth: faceW, boreR, mateBoreR });
     g.matrixAutoUpdate = false;
@@ -269,7 +291,7 @@ const R = await page.evaluate(async (radius) => {
     c.scene.add(g); g.updateMatrixWorld(true);
     return g;
   };
-  const clearTo = (g, target) => { const m = meshOf(g); return (m && target) ? I.meshClearance(m, target, Infinity) : null; };
+  const clearTo = (g, target) => { const m = meshOfAny(g); return (m && target) ? I.meshClearance(m, target, Infinity) : null; };
 
   c.resetInputs?.(); c.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 1, alarmCrownPullT: 1 });
   c.scene.updateMatrixWorld(true);
@@ -297,6 +319,7 @@ const R = await page.evaluate(async (radius) => {
     disc: dB, stem: sB,
     plate: plate ? bbox(plate) : null,
     rows: [...merged.values()].sort((p, q) => q.zhi - p.zhi),
+    riders: riders.slice(0, 8),
     controls: { sawDisc, sawStem, sawOwn, filterIn, filterOut, stemX },
     consts: { Z_DIAL: L.Z_DIAL, CLEAR_MARGIN: L.CLEAR_MARGIN, STOCK_MIN_U: L.STOCK_MIN_U,
       STEM_STOCK_R_U: L.STEM_STOCK_R_U, PIVOT_BORE_CLEAR: L.PIVOT_BORE_CLEAR,
@@ -331,6 +354,9 @@ console.log(`  disc bevel : z ${f(R.disc.zlo)} … ${f(R.disc.zhi)}   → ${f(CZ
 console.log(`  stem bevel : z ${f(R.stem.zlo)} … ${f(R.stem.zhi)}   → ${f(R.stem.zhi - CZ)} UP from the corner, ${f(CZ - R.stem.zlo)} down   (its box would say ${f(R.stem.boxZlo)} … ${f(R.stem.boxZhi)} — the rotated-box inflation)`);
 const top = Math.max(R.disc.zhi, R.stem.zhi), bot = Math.min(R.disc.zlo, R.stem.zlo);
 console.log(`  the corner's own span: ${f(bot)} … ${f(top)}  (${f(top - bot)} tall)`);
+console.log(`\n  EVERY member riding the plane, NEAREST THE PLATE FIRST (the plane must clear the worst, not the gears):`);
+console.log('    to the plate   up-reach   unit / mesh');
+for (const r of (R.riders || [])) console.log(`    ${f(r.toPlate).padStart(11)}   ${f(r.up).padStart(8)}   ${r.unit} / ${r.name}`);
 
 const above = R.rows.filter((r) => !r.own && r.zlo >= top - 1e-9).sort((p, q) => p.zlo - q.zlo);
 const below = R.rows.filter((r) => !r.own && r.zhi <= bot + 1e-9).sort((p, q) => q.zhi - p.zhi);

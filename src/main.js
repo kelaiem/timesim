@@ -13776,14 +13776,24 @@ const ALARM_BEVEL_SPEC = G.bevelToothSpec({
 // whole guide stack hangs off this plane and every unit of drop here is spent
 // down there.
 //
-// The stem bevel is a disc ⊥ the stem, so its reach toward the plate is the
-// blank's own `tipR` — "the farthest the blank reaches from its axis" — and the
-// wall is the base plate's dial-side face, READ OFF THE PLATE rather than
+// The wall is the base plate's dial-side face, READ OFF THE PLATE rather than
 // recomputed from `BACK_PLATE_T` and `makeBackPlate`'s bevel fraction, which
 // would be the same number written in two files. The plate is built above and
 // sits under `movement`, which is untransformed, so its world box is its box.
 const PLATE_DIAL_FACE = new THREE.Box3().setFromObject(backPlate).min.z;
-const Z_ALARM_CORNER = PLATE_DIAL_FACE - CLEAR_MARGIN - ALARM_BEVEL_SPEC.tipR;
+// TWO members ride this plane and reach up from it, and the reach is the WORSE
+// of them. The stem bevel is a disc ⊥ the stem, so its reach is the blank's own
+// `tipR` — "the farthest the blank reaches from its axis". The stem BUSHING is
+// a torus about the same plane, so its reach is ring + tube, and it is the
+// bigger of the two: 1.45 against 1.3088. Deriving against the bevel alone left
+// the bushing 0.0456 off the plate — under CLEAR_MARGIN, with every gate
+// passing and only the report's `support` row moving (`Alarm crown → plate`,
+// 0.15 → 0.046). The bushing's two radii were bare literals at its builder
+// below; they are named here because this plane is derived from them.
+const ALARM_BUSH_RING_R = 0.95;   // major radius of the stem bushing's torus
+const ALARM_BUSH_TUBE_R = 0.5;    // its tube — ring + tube is the bushing's reach off the plane
+const ALARM_CORNER_REACH_UP = Math.max(ALARM_BEVEL_SPEC.tipR, ALARM_BUSH_RING_R + ALARM_BUSH_TUBE_R);
+const Z_ALARM_CORNER = PLATE_DIAL_FACE - CLEAR_MARGIN - ALARM_CORNER_REACH_UP;
 // TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
 // not a convention. Two of them on a shared apex roll without slip only if their
 // RELATIVE angular velocity lies along the contact ray; everything else is
@@ -16925,7 +16935,9 @@ alarmSpinner.add(alarmCrownKnob);
 // the support graph), a bored boss the stem spins through. Static.
 {
   const bushDist = ALARM_STEM_BUSH_DIST;   // declared with the stem it supports
-  const alarmBush = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.5, 10, 20), MATS.nickel);
+  // §234: the two radii are declared up at the corner's plane, which derives
+  // from them — this bushing is the member that reaches nearest the base plate.
+  const alarmBush = new THREE.Mesh(new THREE.TorusGeometry(ALARM_BUSH_RING_R, ALARM_BUSH_TUBE_R, 10, 20), MATS.nickel);
   alarmBush.rotation.z = alarmStemAngle;
   alarmBush.rotation.y = Math.PI / 2;
   alarmBush.rotation.order = 'ZYX';
