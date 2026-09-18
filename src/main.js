@@ -13788,8 +13788,13 @@ const PLATE_DIAL_FACE = new THREE.Box3().setFromObject(backPlate).min.z;
 // passing and only the report's `support` row moving (`Alarm crown → plate`,
 // 0.15 → 0.046). The bushing's two radii were bare literals at its builder
 // below; they are named here because this plane is derived from them.
-const ALARM_BUSH_RING_R = 0.95;   // major radius of the stem bushing's torus
-const ALARM_BUSH_TUBE_R = 0.5;    // its tube — ring + tube is the bushing's reach off the plane
+// §235 — THE BUSHING IS BORED OVER THE STEM, so its hole is the stem's radius
+// plus a running fit, and its ring radius follows. It was the literal 0.95
+// against a 0.45 hole, which fitted the r 0.42 stem it was cut for and nothing
+// else: at the turning target the stem is thicker than the hole and `intraUnit`
+// read the stem straight through its own bearing.
+const ALARM_BUSH_TUBE_R = 0.5;    // the torus's tube — the bushing's wall
+const ALARM_BUSH_RING_R = ALARM_STEM_R + PIVOT_BORE_CLEAR + ALARM_BUSH_TUBE_R;
 const ALARM_CORNER_REACH_UP = Math.max(ALARM_BEVEL_SPEC.tipR, ALARM_BUSH_RING_R + ALARM_BUSH_TUBE_R);
 const Z_ALARM_CORNER = PLATE_DIAL_FACE - CLEAR_MARGIN - ALARM_CORNER_REACH_UP;
 // TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
@@ -17039,7 +17044,6 @@ const alarmLifter = new THREE.Group(); // the moving L — tick slides it in wor
 // tick flexes both through the same root rotation, so the pair is one spring
 // law with two members, not two laws.
 const alarmLifterBladeGroups = [new THREE.Group(), new THREE.Group()];
-const ALARM_LIFT_BLADE_LEN = 0.7;   // post centre → its own prong's axis, along the stem
 const ALARM_LIFT_RUN_Z = Z_DIAL - (ALARM_SLEEVE_Z_REST - ALARM_SLEEVE_T / 2); // run centreline = the tab's rest plane, world
 // §235 — A YOKE, NOT A PLUNGER UNDER THE CAM. TODO 42 solved this stack
 // DOWNWARD: the head reads the collar from underneath, so its top is
@@ -17080,6 +17084,11 @@ const ALARM_YOKE_WEB_TOP = ALARM_LIFT_HEAD_TOP - ALARM_LIFT_HEAD_H;   // the web
 const ALARM_YOKE_SHOULDER_BOT = (ALARM_YOKE_EYE_Z + STOCK_MIN_U / 2)
   + CLEAR_MARGIN + SPRING_FLAT_U + ALARM_SLEEVE_TRAVEL;
 const ALARM_YOKE_SHOULDER_T = STOCK_MIN_U;
+// The blade bears under the shoulder's ANNULUS, so it stops halfway between the
+// prong it must not touch and the shoulder's rim. Run to the prong's axis (0.7)
+// it passes straight through the prong, which is what `intraUnit`'s MM tier read.
+const ALARM_YOKE_SHOULDER_R = 0.3;
+const ALARM_LIFT_BLADE_LEN = 0.7 - (ALARM_YOKE_PIN_R + ALARM_YOKE_SHOULDER_R) / 2;
 const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade top bearing on the shoulder's underside at rest
 {
   const hx = ALARM_LIFT_HEAD_R;
@@ -17112,7 +17121,7 @@ const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade
     prong.rotation.x = Math.PI / 2;
     prong.position.set(hx, s * ALARM_YOKE_PRONG_Y, (ALARM_YOKE_WEB_TOP - STOCK_MIN_U) + prongLen / 2);
     alarmLifter.add(prong);
-    const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, ALARM_YOKE_SHOULDER_T, 10), MATS.steel);
+    const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_YOKE_SHOULDER_R, ALARM_YOKE_SHOULDER_R, ALARM_YOKE_SHOULDER_T, 10), MATS.steel);
     shoulder.name = 'alarmYokeShoulder';
     shoulder.rotation.x = Math.PI / 2;
     shoulder.position.set(hx, s * ALARM_YOKE_PRONG_Y, ALARM_YOKE_SHOULDER_BOT + ALARM_YOKE_SHOULDER_T / 2);
@@ -17260,6 +17269,15 @@ const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade
   // Below, the old bound is kept because it still measures something true —
   // and it is the one the plunger design could not hold once the stem grew.
   say('blade bottom clears the chord top', (ALARM_LIFT_BLADE_Z - SPRING_FLAT_U / 2) - (ALARM_LIFT_RUN_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
+  // AND THE ONE THAT MOVING THE BLADE TOOK AWAY. With the spring up at the
+  // prongs, nothing downstairs watched the PAD any more — and the pad is what
+  // still follows the cam down. Measured, at the turning target it had sunk
+  // past the sleeve's own tab plane and the plunger between them came out with
+  // a NEGATIVE height, which `stockFloor` read as a 0.0287 mm section and
+  // `meshIntegrity` as an inverted body. Neither of those names the defect; this
+  // does, and it is the yoke's real remaining bound.
+  say('yoke pad stands above the sleeve tab plane',
+    (ALARM_YOKE_WEB_TOP - STOCK_MIN_U) - (ALARM_LIFT_RUN_Z + STOCK_MIN_U / 2), CLEAR_MARGIN);
   // and the derivation's pin, one member up: the bore holds PRONG at full
   // depression, with the blade's own underside clear of the eye's top face.
   say('blade clears the eye top at full depression',

@@ -61,7 +61,7 @@ import path from 'node:path';
 // landing that followed pinned it at 0.42 with the corridor written beside it.
 // An exact anchor that stops the run beats a regex that quietly patches
 // something else (probe-234-corner-move.mjs holds the same line).
-const ANCHOR = 'const ALARM_STEM_R = 0.42;';
+const ANCHOR = 'const ALARM_STEM_R = Math.max(STEM_STOCK_R_U, ALARM_STEM_BAR / (2 * TURN_LD_TARGET));';
 const PORT = process.env.PORT || 8507;
 const STEM_STOCK_R_U = 0.9236;   // layout.js STEM_STOCK_R_U (tap 7, ⌀0.70 mm)
 const RS = (process.env.RS ? process.env.RS.split(',').map(Number)
@@ -119,13 +119,21 @@ async function boot(source, label) {
   return { label, ok, warns, ...(m || {}) };
 }
 
-// the §45 shortfall, read out of the assert's own text rather than recomputed
+// The WORST §45 shortfall, whichever of the block's asserts it is, read out of
+// the assert's own text rather than recomputed. It used to name ONE assert —
+// the blade over the chord — and that stopped being the binding one the moment
+// §235 moved the spring up to the prongs: the sweep then reported "clear" at
+// every radius while the yoke's PAD was sinking past the sleeve's tab plane. A
+// probe that names one assert measures that assert, not the question.
 const shortfall = (warns) => {
+  let worst = null;
   for (const w of warns) {
-    const m = /§45 lifter blade bottom clears the chord top: (-?\d+\.\d+), need (-?\d+\.\d+)/.exec(w);
-    if (m) return { got: Number(m[1]), need: Number(m[2]) };
+    const m = /§45 lifter (.+?): (-?\d+\.\d+), need (-?\d+\.\d+)/.exec(w);
+    if (!m) continue;
+    const row = { what: m[1], got: Number(m[2]), need: Number(m[3]) };
+    if (!worst || (row.got - row.need) < (worst.got - worst.need)) worst = row;
   }
-  return null;
+  return worst;
 };
 const f = (x, n = 4) => (x === null || x === undefined ? '—' : Number(x).toFixed(n));
 
@@ -162,12 +170,12 @@ const mono = withS.every((x, i) => i === 0 || x.s.got <= withS[i - 1].s.got + 1e
 console.log(`  MONOTONE : the §45 shortfall worsens as the stem fattens, on every row  ${mono ? 'OK' : 'FAILED — the stack is not hanging off the collar'}`);
 
 console.log('\n--- WHAT EACH RADIUS COSTS');
-console.log('  stem r    ⌀ mm     §45 blade over the chord   need   collar→plate   other warnings');
+console.log('  stem r    ⌀ mm     worst §45 assert            need   collar→plate   what binds');
 for (const x of rows) {
   const s = shortfall(x.warns);
-  const others = x.warns.filter((w) => !/§45 lifter blade bottom/.test(w)).length;
+  const others = x.warns.filter((w) => !/§45 lifter /.test(w)).length;
   const mark = !s ? '  ← the corridor still holds' : '';
-  console.log(`  ${f(x.r, 4).padStart(7)}  ${f(x.r * 2 * 0.379, 3).padStart(6)}   ${(s ? f(s.got, 3) : 'clear').padStart(12)}          ${s ? f(s.need, 2) : '   —'}   ${f(x.head, 3).padStart(10)}   ${String(others).padStart(3)}${x.ok ? '' : '  DID NOT BOOT'}${mark}`);
+  console.log(`  ${f(x.r, 4).padStart(7)}  ${f(x.r * 2 * 0.379, 3).padStart(6)}   ${(s ? f(s.got, 3) : 'clear').padStart(12)}          ${s ? f(s.need, 2) : '   —'}   ${f(x.head, 3).padStart(10)}   ${(s ? s.what : (others ? others + ' other' : '—')).slice(0, 34)}${x.ok ? '' : '  DID NOT BOOT'}${mark}`);
 }
 
 const lastOk = [...rows].reverse().find((x) => x.ok && !shortfall(x.warns));
