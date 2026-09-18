@@ -19951,6 +19951,54 @@ longer than the tube a real case needs.
 > block's re-wording invalidates its seven translations by design and rides
 > a page landing (§228's precedent).
 
+> **§234 Landing 2, step 3b BUILT (2026-09-18) — the winding stem cut to
+> stock, and TURN_WAIVERS' last keyless row retired.** `windPinionTeeth`
+> 8 → 10 (`layout.js`), the smallest count step 3 measured clears both of
+> TODO 138's hard guards — the stem-stock bore leaves real web at the small
+> end on both the crown-wheel and setting corners. `STEM_R` moves off its
+> bare 0.45 literal onto `STEM_STOCK_R_U` (0.9236, ⌀0.70 mm) — the turning
+> target alone would ask r 0.884, but stock is wider and governs, the same
+> as the alarm pusher's in Landing 2's first member. The re-cut moves
+> everything step 3 predicted it would, each re-derived rather than
+> re-guessed: `KW_BEVEL`'s five literals (`rimFaceOut` 3.124, `rimBack`
+> 0.416, `pinFaceOut` 3.539, `rimTip` 0.147, `setTipR` 3.517, all asserted
+> live against `bevelToothSpec` at boot), `KW_PIN_BORE` (now derived —
+> `STEM_R·0.98 + CLEAR_MARGIN`, the running fit over the stem's own square,
+> where it had been a bare 0.6 close to but not exactly that sum),
+> `HUB_COLLAR_R` (1.2 → 1.273, re-derived off `KW_SPEC.settingWheel.zTipLo`,
+> the guard that once read "the wrong shape for this pair"), and `D4`
+> (18.0705 → 18.2148, the small-seconds well's THIRD re-derivation — TODO
+> 125, TODO 136, now this — each time the keyless cluster's footprint moves
+> `dialRadius`/`railInnerR`). Boot went from two warnings (the collar, then
+> `D4`) to silent once both were re-solved rather than padded. The turning
+> census confirms the bar itself: windStem now measures L/D 17.2 at ⌀0.700
+> mm, under `TURN_LD_MAX`, and its `TURN_WAIVERS` row (the group's last
+> keyless one, filed against this item) is retired — the census's own
+> `staleWaivers` check is what caught it.
+>
+> **`tools/probe-bevel-corner-index.mjs` found a second, unrelated defect in
+> ITSELF while grading the cut, and it is fixed alongside.** The probe reads
+> all four bevel corners after one `resetInputs()` with no pose set — sound
+> for WINDING (crown wheel and winding pinion are both fixed to their own
+> arbors, unrelated to the sliding clutch), but the SETTING corner's
+> `clutchRim` only stands near `settingBevel`'s apex with the crown PULLED;
+> at rest it is `CLUTCH_TRAVEL` away, meshed with the winding pinion
+> instead. `resetInputs()` does not reset `crownPullT`, and does not force a
+> tick either way, so the probe had always been reading that corner at
+> whatever the boot's own eased animation happened to leave `crownPullT` —
+> uncontrolled, and reproducible only by accident. The 8-tooth blank's wide
+> band absorbed the resulting apex miss without tripping its own COVERAGE
+> control; the finer 10-tooth one this step cut did not, and read 0 or 2
+> runs depending on the instant the harness's `page.evaluate()` landed,
+> crashing the probe outright on one such instant. The fix poses
+> `crownPullT: 0` for WINDING/ALARM/CONTROL and `1` — engaged — for SETTING,
+> which makes every corner's read a function of the geometry again: SETTING
+> now measures 0.0000/0.4924 (miss 0.0076 from the clutch's own 0.005 rad
+> seat clocking, a larger fraction of the finer pitch than it was of the
+> 8-tooth one's 0.4938/0.0062), deterministically, across repeated runs.
+> `explain.html`'s keyless-works plate is updated with it: 20 teeth against
+> 10, half-angles 63.435°/26.565°, the pinion's own pitch radius 1.7.
+
 > **§234 Landing 2, step 4 (2026-09-18) — MEASURED, and the alarm crown's two
 > rows are not a section change either.** `tools/probe-234-step4.mjs` (a
 > REPORT, group C's instrument written for group B) measured the four

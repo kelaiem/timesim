@@ -1825,7 +1825,14 @@ const HAND_RAD_PER_SET_RAD = KW_SET_WHEEL_SIDE
 // stands over it partway through the wind (measured at wind f=0.4722, a bore
 // sized to the square left 0.1316 against the 0.15 floor).
 const KW_RIM_BORE = STEM_R + CLEAR_MARGIN;
-const KW_CROWN_BORE = 0.7, KW_PIN_BORE = 0.6;
+const KW_CROWN_BORE = 0.7;   // the crown/setting wheels' own arbors — unrelated to the winding stem's radius
+// §234 step 3b — "bored loose over the stem's square" IS the constraint: the
+// pinion's round bore must clear the square's half-diagonal (STEM_R·0.98) by
+// the movement's one running fit, CLEAR_MARGIN. It was a literal 0.6 against
+// the pre-cut square's half-diagonal of 0.441 — 0.159 of clearance, close to
+// but not exactly CLEAR_MARGIN, and stem stock's fatter square needs the real
+// derivation rather than a second guess at the old literal.
+const KW_PIN_BORE = STEM_R * 0.98 + CLEAR_MARGIN;
 const KW_SPEC = {
   crownWheel: G.bevelToothSpec({ module: KW_MODULE, teeth: crownWheelTeeth, mateTeeth: windPinionTeeth,
     boreR: KW_CROWN_BORE, mateBoreR: KW_PIN_BORE }),
@@ -4590,7 +4597,13 @@ windSpinner.add(stem);
   const grooveOuterLocal = GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2;
   const bushDist = Math.max(plateR - 2,
     pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF);
-  const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
+  // §234 step 3b — the bore is the running fit over the stem's own ROUND
+  // journal (`STEM_R`, not the square it passes below), which was a bare
+  // 1.05/0.55 (hole 0.50) sized for the old 0.45 literal and left `windStem`
+  // 0.42 through its own support once the journal grew to stem stock. The
+  // wall (0.55, the ring's radial metal) is unrelated to the stem and is kept.
+  const bushWallR = 0.55;
+  const bush = new THREE.Mesh(new THREE.TorusGeometry(STEM_R + CLEAR_MARGIN + bushWallR, bushWallR, 10, 20), MATS.nickel);
   // Torus plane ⊥ stem: its hole must point along the stem axis.
   bush.rotation.z = stemAngle;
   bush.rotation.y = Math.PI / 2;

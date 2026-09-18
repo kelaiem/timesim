@@ -9748,7 +9748,17 @@ export const TURN_WAIVERS = {
   // the section went in: `ALARM_STEM_R` is the target now, both rows measure
   // under the ceiling, and neither needs a waiver.
   'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
-  'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
+  // §234 step 3b — RETIRED. The entry filed this as a TRAIN change and it
+  // was: TODO 138's two hard guards fired on the 8-tooth winding pinion at
+  // stem-stock bore (no web left, both members), and 10 teeth is the
+  // smallest count whose derived face width clears §50's floor. That re-cuts
+  // BOTH keyless bevel corners (the clutch rim shares the pinion's tooth
+  // count), so `KW_BEVEL`'s five literals, `KW_PIN_BORE`, `HUB_COLLAR_R` and
+  // (through the keyless cluster's own footprint) `D4` all re-derive with
+  // it — each asserted against the live spec or the live geometry, so a
+  // fourth re-cut would warn rather than drift silently. `STEM_R` is the
+  // stem stock floor: the turning target alone asks r 0.884, stock is wider
+  // at 0.924 and governs, the same as the alarm pusher's. L/D 35.3 → 17.2.
   // GROUP C — arbors INSIDE the movement. Filed as "a section change alone
   // closes all three"; §234 Landing 1 measured that for none of them, and
   // closed the two it could. The arrest COLUMNS are ARREST_COLUMN_R now, cut
