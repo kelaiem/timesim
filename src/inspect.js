@@ -7279,14 +7279,13 @@ export const SLENDER_WAIVERS = {
   // λ 85.1, the §29 step-4 tail run. Wants +0.2390 u per side; the alarm
   // setting idler stands 0.2933 away and leaves 0.1433.
   'Alarm release feeler': 'TODO 109',
-  // λ 76.6, the stem — and the worst-placed of them all now that its bearing
-  // is declared. Wants +0.6519 u per side; its nearest neighbour is already
-  // 0.0100 INSIDE the margin, and it is a working contact rather than an
-  // obstruction (Alarm crown ⇄ Alarm release lifter is an EXPECTED pair, §45:
-  // the head rides the stem collar). What this row actually wants is a SECOND
-  // BEARING, not a section: one bush 25.5222 u from the inner end is what
-  // makes it a cantilever.
-  'Alarm crown': 'TODO 109',
+  // RETIRED by §235. This read λ 76.6 on the alarm stem and said what the row
+  // actually wanted was a second bearing rather than a section — which was true
+  // of a stem cut at r 0.42, arbor stock standing in for a crown stem. §235's
+  // yoke let the section be cut to §233's turning target instead, and the row
+  // went with it: `slenderness` reports no over-ceiling row for this unit, so
+  // the waiver names a unit that no longer has one. Deleting it is part of the
+  // fix — §54's own rule, and what makes a stale waiver a gate failure.
   // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
   // stands 0.2507 away and leaves 0.1007.
   'Alarm release lifter': 'TODO 109',
