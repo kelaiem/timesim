@@ -26310,6 +26310,6 @@ setting lever's post, the hack pin, the hammer's tail tip, the crank's tail
 top — exactly as the tube's end was, with the pin passing through the eye's
 solid: the same EXPECTED contact the tubes carried, now shaped like what it
 is. A link with a real bore over a real pin, and a stack the corridor could
-hold with margins, is a P0 filing of its own. The explainer's one sentence
-naming "a thin hack rod" stays for a page landing (§228's precedent:
-re-wording a block invalidates its seven translations by design).
+hold with margins, is a P0 filing of its own, and is TODO 146. The
+explainer's one sentence naming "a thin hack rod" stays for a page landing
+(§228's precedent: re-wording a block invalidates its seven translations by design).

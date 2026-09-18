@@ -19946,8 +19946,8 @@ longer than the tube a real case needs.
 > crank's tail top) exactly as the tube's end was, with the pin passing
 > through the eye's solid — the same EXPECTED contact the tubes carried, not
 > a bored eye over a pin. A link with a real bore, and a stack the corridor
-> could hold with margins, is a P0 filing of its own, not this section
-> change. `explain.html` still says "a thin hack rod" in one sentence; that
+> could hold with margins, is a P0 filing of its own — TODO 146, filed — not
+> this section change. `explain.html` still says "a thin hack rod" in one sentence; that
 > block's re-wording invalidates its seven translations by design and rides
 > a page landing (§228's precedent).
 
@@ -20028,3 +20028,68 @@ are reported by name rather than passed in silence. A disc's L/D is far under
 any limit, so nothing is hidden there; what would be hidden, if they were
 admitted, is a bar whose governing diameter got dragged down to half a disc's
 thickness.
+
+## 146. The hack and reset links ride their pins through solid eyes, not bores
+
+§234 step 5 re-sectioned the hack and reset rods as flat stamped levers and
+said, in three records, that a link with a REAL BORE over a real pin is "a P0
+filing of its own". This is that filing.
+
+**What is modelled.** `makeFlatLinkMesh` (`main.js` ~5795) cuts each end of the
+strip as a DISC of radius `LINK_EYE_D / 2` centred on its pin — "each end is a
+disc of radius R about its pin", one closed outline, no hole. The pin then
+passes through that disc's solid metal. Four joints are built this way:
+
+| link | inboard pin | driven pin |
+|---|---|---|
+| `resetLink` | the setting lever's post (`SETTING_LEVER_POST_R` 0.45) | the reset hammer's tail tip |
+| `hackLink` | the lever's hack pin (`HACK_PIN_R`, asserted equal to the post) | the stop crank's tail top |
+
+**Why no instrument objects.** All four unit pairs are declared EXPECTED
+(`inspect.js` ~580–583), so `inspection` grades them EXPECTED rather than
+FORBIDDEN and `sweptOverlap` never confirms them. None of the four carries an
+`EXPECTED_CONTACT_FLOORS` row, so TODO 6's blanket excuse covers the WHOLE pair,
+not just the joint: anything else those two units did to each other would be
+excused by the same declaration. The tubes had exactly this defect before the
+re-section — the eyes did not introduce it, they only made it visible, because a
+tube end passing through a pin looks like a joint and a disc swallowing a pin
+looks like what it is.
+
+**The eye is already sized as though it were bored, which is the tell.**
+`linkEyeDiaForPin(pinR, fit)` in `layout.js` is `2 · (pinR + fit + STOCK_MIN_U)`
+— a bore at the running fit, plus a wall of stock either side. At the post it
+gives 1.633 u: bore ⌀1.0, wall 0.317 each side. Every number for the bore
+already exists and is already spent on metal; what is missing is the hole.
+
+**The fix, and why it is P0 then P3.**
+
+1. **Cut the bore.** `makeFlatLinkMesh` builds one `THREE.Shape`; add a hole
+   ring per eye at `pinR + PIVOT_BORE_CLEAR`. §177 is the precedent and the
+   warning: the column driver FILLED its pivot bore because earcut resolves a
+   folded ring however it likes, so the hole must be a SIMPLE polygon wound
+   against the outline, and `outlines` must read both rings simple (it gates
+   that). Both pins are one stock, so one bore radius serves all four eyes.
+2. **Declare the joint.** Add the four pairs to `EXPECTED_CONTACT_FLOORS` with
+   the eye and pin meshes named as the contact, so the rest of each pair is held
+   to `CLEAR_MARGIN` — the excuse then buys the joint and nothing else. Check
+   `INTRA_UNIT_CONTACTS` for rows the bore makes stale (§182: a declared row
+   whose parts never come within `DECLARED_CONTACT_REACH` FAILS).
+3. **Find the stack room in POSITION space.** Two bored links on one post are
+   two levers on one stud, which is what a caliber does — and the corridor
+   cannot hold them a margin apart: measured at §234, two sheets with a margin
+   between them want T ≤ 0.247 u, under §50's floor. Today they are cut AT the
+   floor and stand 0.045 u apart (asserted at boot). Boring the eyes does not
+   change that arithmetic, so if the joint is to have clearance the room comes
+   from the corridor: a different plane for one link, a different station for
+   the post, or the hack link on its own pin (§87 already provides for that).
+   **Never by thinning the sheet** — it is on §50's floor — and never by opening
+   `CLEAR_MARGIN`. The consumers that re-derive with a plane are `ROD_PLANE_Z`,
+   `ROD2_PLANE_Z`, `POST_TOP_Z`, `CORRIDOR_Z_BOT` and the stack assert; all five
+   are already written as derivations, so moving one is a one-line change plus a
+   P3 re-clear.
+
+**What this is worth.** The joint is the one place in these two linkages where
+the model says "these parts occupy the same space and that is fine". Every other
+contact in the movement is a surface against a surface. Until the bore exists,
+`priceRigidBentLink`'s pin-to-pin span, the §54 chord and the eye's own wall are
+all describing a link that could not be assembled.
