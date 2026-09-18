@@ -7860,7 +7860,12 @@ gate re-verifying every row's own relations each run — click detent
 derives), pawl ≈13.8 mN at the saw root, silence finger ≈51 mN, the bends
 priced live (`priceRigidBentLink`: M = F·e, σ, Euler fraction, axial
 give — the reset rod's solved offset is ZERO, so its bend does not exist;
-the hack rod's dogleg gives ≈3–32% of its stroke across the load band).
+the hack rod's dogleg gives ≈3–32% of its stroke across the load band —
+**re-priced by §234 on the FLAT section both links are cut from now**: the
+bend's moment acts in the body's plane and the body is sized to the tube's
+in-plane I, so the hack link reads σ ≈ 138 MPa and 32% give at the ceiling
+where the round rod read 120 MPa and 28% — a wash by construction — and
+the row now also holds σ at `ELBOW_E_MAX` under the steel's yield).
 And the tail-stall's **0.158 mm is itself a retired constant**: the
 source's own trail (`ALARM_LINK_ROD_TRAVEL = 0.42 — solve OUTPUT,
 alarmLinkParts.forward.rodTravel`) replaced the plan stroke with the
@@ -8826,10 +8831,10 @@ subtree. Fourth copy of that idiom; consolidating them stays TODO 4's.
 |---|---|---|---|---|
 | `Alarm link` / `alarmLinkShaft` | **127.6** | 30 | 36 N/m | TODO 16 |
 | `Alarm release lifter` / `alarmLifterRun` | 71.3 | 30 | 16.5 N/m | — |
-| `Hack rod` / (unnamed) | 65.0 | 30 | 48.4 N/m | — |
-| `Reset rod` / (unnamed) | 48.8 | 30 | 114.4 N/m | — |
+| `Hack rod` / (unnamed) | 65.0 | 30 | 48.4 N/m | — (CLOSED by §234: a flat stamped link; the check reads its dogleg's box at λ ≈ 5, and its row asserts the strut's Euler fraction instead — see 145) |
+| `Reset rod` / (unnamed) | 48.8 | 30 | 114.4 N/m | — (CLOSED by §234, the same way; the box reads chord over EYE, ≈ 28) |
 | `Keyless works` / (unnamed) | 40.4 | 30 | 190.9 N/m | — |
-| `Hack rod` / (unnamed) | 37.7 | 30 | 248.1 N/m | — |
+| `Hack rod` / (unnamed) | 37.7 | 30 | 248.1 N/m | — (CLOSED by §234) |
 | `Alarm crown` / (unnamed) | 35.4 | 30 | 359.3 N/m | — |
 | `Alarm release feeler` / (unnamed) | 35.1 | 30 | 43.7 N/m | — |
 | `Alarm link` / `alarmLinkRod` | 31.4 | 30 | 367.3 N/m | TODO 16 |
@@ -19724,10 +19729,11 @@ place of "the disc's own seat is the question".
 
 §233 declared a third slenderness — `TURN_LD_MAX = 20` in `layout.js`, gated by
 the `turning` check — and the movement arrived twelve bars over it. Each was
-waived in `TURN_WAIVERS` citing this item; **nine remain** after §234 Landing 1
-(the two arrest columns closed, see the block under group C) and the first
-member of Landing 2 (the alarm pusher stem, see the blocks under group B —
-the second block is two members MEASURED and not cut). This is that list, with the fix path
+waived in `TURN_WAIVERS` citing this item; **six remain** after §234 Landing 1
+(the two arrest columns closed, see the block under group C) and Landing 2's
+first member and its step 5 (the alarm pusher stem, and the hack and reset
+rods re-sectioned as flat stamped levers — see the blocks under group B; the
+middle block is two members MEASURED and not cut). This is that list, with the fix path
 for each group, so the waivers can be deleted one group at a time; per §137's
 staleness rule, deleting a waiver whose bar is no longer over the ceiling is
 structurally part of the fix, and leaving one behind fails the check.
@@ -19867,6 +19873,83 @@ longer than the tube a real case needs.
 > winding ratio (20/8 → 20/10), re-derives the corner's declared planes and
 > re-solves the collar bound — filed as its own landing in roadmap §234
 > (step 3b), not absorbed into a section change. Nothing in this step was cut.
+
+> **§234 Landing 2, step 5 (2026-09-18) — the owner's decision, and the three
+> rod rows closed by it: the hack and reset rods are FLAT STAMPED LEVERS.**
+> The entry's second resolution, chosen over re-routing the corridor: a real
+> caliber's hack lever and reset hammer are stampings, and a flat link is no
+> body of revolution for `turning` to judge — correctly, since nobody turns
+> one. Each is ONE extruded NECKED strip now (`makeFlatLinkMesh`, meshes
+> `hackLink` and `resetLink`) in the tube's own pose frame, one blank for
+> both: sheet `LINK_T_U` = §50's floor (0.317 u, 0.12 mm — the corridor
+> allows no more: two links a margin apart would want T ≤ 0.247 u, so they
+> are cut AT the floor and stand 0.045 apart where they cross, asserted); a
+> BODY `LINK_W` 0.765 u (0.29 mm), the higher of the blanking floor
+> `LINK_BODY_W_U` = 2t (0.633, what a die can cut) and a SECTION floor — no
+> weaker in the bend's plane than the ⌀0.7 tube it replaces, W = ∛(12·I_rod
+> / T); and a round EYE at each end `linkEyeDiaForPin(post r, fit)` = 1.633 u
+> over the 0.45 post family both ride (pin + running fit + a wall of stock
+> each side). The knuckle (`ROD_KNUCKLE_R`, 1.15 × `ROD_R`) is gone with the
+> tube — a strip's widest point is its own edge — and every corridor row
+> takes the body's plan half-width as an argument (`obstaclesFor(halfW)`),
+> the eyes as circles on their pins. Both elbow solves re-ran and clear: the
+> reset link straight as before, the hack link's dogleg at e 12.2 (was 11.6),
+> f 0.30.
+>
+> **Two width rules were cut and REFUSED before that one, and the corridor
+> grew a wall.** §54's ceiling in plan (W = chord / `SLENDER_TARGET`, §229's
+> rule for the beak) cut the hack link 2.45 u wide and the battery went
+> 40/41: `inspection` FORBIDDEN `Hack rod ⇄ Third wheel` over the pulled half
+> of the crown stroke, against a corridor solve reporting 3.05 of clearance.
+> The third arbor's lower staff (r 0.5) runs through the corridor and had
+> never been a row, because the tube happened to pass it by 0.179 — and
+> `xyRadiusAbout` could not have seen it, since a `CylinderGeometry`'s
+> vertices are all on its caps and a band scan through the middle of a shaft
+> finds none; it samples the axis through the band now, and the staff is a
+> row (`THIRD_STAFF_R`). With the wall in the table the plan rule routes
+> nowhere; nor does one blank at the eye's width (1.633); the corridor
+> bracketed at body half-widths 0.40 routes, 0.50 routes into the mast
+> assert, 0.60 and up no route — so a body wider than ≈ 1.0 u has no station,
+> and 0.765 is inside what the layout allows without being SET by it. The
+> plan rule was also a rod's rule: a strip bends about its thin axis, which
+> no width answers and the Euler assert below already holds.
+>
+> **§137 Gate A re-derived for the flat section** (`priceRigidBentLink`):
+> the bend's offset is a plan quantity, so its moment acts in the body's
+> PLANE — Z = T·W²/6, I = T·W³/12, the strong axis; the I is the tube's by
+> construction. At the 50 mN ceiling the hack link reads σ 138 MPa (the
+> tube: 120 — Z is 0.92× and the wider blank's dogleg is 12.2 against 11.6),
+> in-plane Euler fraction 6.5% (6.5%), axial give 32% of its stroke (28%):
+> the section change is priced as a wash, which is what the section floor
+> asks. What the row ADDS is the yield check — σ at `ELBOW_E_MAX`, the worst
+> dogleg the solver may return, held under `SPRING_SIGMA_Y_PA` (316 against
+> 800 MPa) — and the weak axis W·T³/12, what a straight strut buckles about,
+> held under 1 at the ceiling: `eulerFracThin` 0.17 (reset) and 0.38 (hack).
+> At the blanking floor alone (0.633) the hack link read σ 191 MPa and 54%
+> give, which is what the section floor exists to refuse. Three waivers
+> retired — `Hack rod::rodSegOut` (L/D 63.5), `Hack rod::rodSegIn` (37.0),
+> `Reset rod::rodSegOut+rodSegIn` (62.2) — and TODO 109's two
+> `SLENDER_WAIVERS` rows with them (over-ceiling catalogue 8 → 5).
+>
+> **What §54 reads for a necked link, said honestly.** `slenderness` takes
+> λ off the mesh's BOUNDING BOX, so the reset link reads its chord over its
+> EYE (≈ 28, under the 30 ceiling by the eye's width, not by design) and
+> the hack link's dogleg reads ≈ 5. The body's own in-plane λ is 57 and 86,
+> its thin-axis λ 137 and 208, and the check sees none of them. For a
+> two-force link the measure that means something is the strut's Euler
+> fraction at its load, which is what the rows assert; the λ rows are §54's
+> report by its own covenant and would not gate either way. TODO 109's
+> rows are marked closed on that basis.
+>
+> **What this step does NOT change, said plainly.** Each eye is CENTRED on
+> its pin (the setting lever's post, the hack pin, the hammer's tail tip, the
+> crank's tail top) exactly as the tube's end was, with the pin passing
+> through the eye's solid — the same EXPECTED contact the tubes carried, not
+> a bored eye over a pin. A link with a real bore, and a stack the corridor
+> could hold with margins, is a P0 filing of its own, not this section
+> change. `explain.html` still says "a thin hack rod" in one sentence; that
+> block's re-wording invalidates its seven translations by design and rides
+> a page landing (§228's precedent).
 
 ### Group C — arbors inside the movement (3 rows)
 

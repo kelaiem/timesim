@@ -10,18 +10,18 @@
 // THE BUILT GEOMETRY, which is the better source anyway: it measures what
 // shipped rather than what the solver returned.
 //
-// How the read-back works, and why it is exact. `makeElbowRodMesh(len, f, e)`
-// builds the rod in a pose frame whose local +Y is the chord, post end at
-// −len/2, and puts a knuckle sphere at rod-local (e, −len/2 + f·len). So the
-// knuckle's own position gives e directly and Ey = −len/2 + f·len; the first
-// segment's cylinder height gives L1 = hypot(e, Ey + len/2), and
-//
-//     len = 2·(√(L1² − e²) − Ey),      f = (Ey + len/2) / len
-//
-// closes it. The second segment is then a CHECK, not an input: √(L2² − e²)
-// must equal len/2 − Ey, and the probe fails if it does not — a residual
-// there would mean the mesh is not the two-segment link this arithmetic
-// assumes, and every number downstream would be fiction.
+// How the read-back works, and why it is exact. §234 made both links FLAT
+// STAMPED STRIPS — one ExtrudeGeometry each, `makeFlatLinkMesh(len, f, e, W,
+// T)`, in the same pose frame the tube used (local +Y the chord, post end at
+// −len/2, elbow at (e, −len/2 + f·len)) — and the mesh publishes the elbow it
+// was cut to in `userData.link`. That is a declaration, so the probe holds it
+// to the metal: the strip's bounding box must read len + W along the chord
+// (semicircular ends over the pins), W + |e| across it and T through it, and a
+// residual on any of the three fails — a box that disagrees would mean the
+// mesh is not the strip the numbers describe, and every figure downstream
+// would be fiction. (Before §234 the read-back inverted two cylinders and a
+// knuckle sphere; the two-segment residual it checked has no metal left to
+// check against.)
 //
 // THE STROKE IS STEPPED, NOT POSED — twice, on purpose. `setPose` ticks with
 // zero dt, so anything eased cannot move under it (CLAUDE.md's first trap),
@@ -80,38 +80,41 @@ const R = await page.evaluate(async () => {
   const readRod = (name) => {
     const e0 = c.labelEntries.find((x) => x.name === name);
     if (!e0) { fails.push(`no '${name}' unit in labelEntries`); return null; }
-    const segs = [], knuckles = [];
-    e0.obj.traverse((o) => {
-      if (!o.isMesh) return;
-      if (o.geometry.type === 'CylinderGeometry') segs.push(o);
-      else if (o.geometry.type === 'SphereGeometry') knuckles.push(o);
-    });
-    if (segs.length !== 2 || knuckles.length !== 1) {
-      fails.push(`'${name}' is not a two-segment elbow: ${segs.length} cylinders, ${knuckles.length} knuckles`);
+    const strips = [];
+    e0.obj.traverse((o) => { if (o.isMesh && o.geometry.type === 'ExtrudeGeometry' && o.userData.link) strips.push(o); });
+    if (strips.length !== 1) {
+      fails.push(`'${name}' is not one flat stamped link: ${strips.length} extruded strips carrying userData.link`);
       return null;
     }
-    // seg ONE is the post-side one: its centre sits below the knuckle in local y.
-    segs.sort((a, b) => a.position.y - b.position.y);
-    const K = knuckles[0].position;
-    const e = K.x, Ey = K.y;
-    const L1 = segs[0].geometry.parameters.height, L2 = segs[1].geometry.parameters.height;
-    const rodR = segs[0].geometry.parameters.radiusTop;
-    const knuckleR = knuckles[0].geometry.parameters.radius;
-    const len = 2 * (Math.sqrt(Math.max(0, L1 * L1 - e * e)) - Ey);
-    const f = (Ey + len / 2) / len;
-    // The second segment is the CHECK, never an input.
-    const resid = Math.sqrt(Math.max(0, L2 * L2 - e * e)) - (len / 2 - Ey);
-    if (Math.abs(resid) > 1e-6) fails.push(`'${name}' elbow read-back residual ${resid.toExponential(2)} — the mesh is not the link this arithmetic assumes`);
-    if (Math.abs(segs[1].geometry.parameters.radiusTop - rodR) > 1e-9) fails.push(`'${name}' segments differ in radius`);
+    const strip = strips[0];
+    const { len, f, e, W, T, eyeD, arcN } = strip.userData.link;
+    strip.geometry.computeBoundingBox();
+    const bb = strip.geometry.boundingBox;
+    const ext = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
+    // §234: the DECLARED elbow against the cut metal — three residuals.
+    // §234: a NECKED link — body W between two eyes of diameter eyeD on the pins. Along
+    // the chord the eyes set the length; across it the wider of the body's reach at the
+    // bend (h + |e| on the bend's side, h on the other) and the eye's radius, each side.
+    const h = W / 2, R = Math.max((eyeD || W) / 2, h);
+    const xMax = Math.max(h + Math.max(e, 0), R), xMin = Math.max(h + Math.max(-e, 0), R);
+    const want = [xMax + xMin, len + 2 * R, T];
+    const resid = Math.max(...want.map((w, i) => Math.abs(ext[i] - w)));
+    // the caps and the outer corner are polygons of arcN points per quarter, so the
+    // box reads short of the true circle by the chord sag h·(1 − cos(π/2N)) at most —
+    // the tolerance is that sag, derived from the declared tessellation, plus float
+    const sag = R * (1 - Math.cos(Math.PI / (2 * (arcN || 12)))) + 1e-6;
+    if (resid > sag) fails.push(`'${name}' strip read-back residual ${resid.toExponential(2)} — the extrude's box [${ext.map((x) => x.toFixed(4)).join(', ')}] is not the ${want.map((x) => x.toFixed(4)).join(' × ')} the declared link describes`);
+    const Ey = -len / 2 + f * len;
+    const L1 = Math.hypot(e, Ey + len / 2), L2 = Math.hypot(e, len / 2 - Ey);   // the two straight runs of the strip
     return {
       unit: name, obj: e0.obj,
       e: +e.toFixed(6), f: +f.toFixed(6), len: +len.toFixed(6),
       seg1: +L1.toFixed(6), seg2: +L2.toFixed(6),
-      rodR: +rodR.toFixed(4), knuckleR: +knuckleR.toFixed(4),
+      W: +W.toFixed(4), T: +T.toFixed(4), eyeD: +(eyeD || W).toFixed(4),
       readBackResidual: +resid.toExponential(3),
       e_mm: +(e * UNIT_MM).toFixed(4), len_mm: +(len * UNIT_MM).toFixed(4),
       seg1_mm: +(L1 * UNIT_MM).toFixed(4), seg2_mm: +(L2 * UNIT_MM).toFixed(4),
-      rodR_mm: +(rodR * UNIT_MM).toFixed(4),
+      W_mm: +(W * UNIT_MM).toFixed(4), T_mm: +(T * UNIT_MM).toFixed(4),
       eOverEMax: +(e / ELBOW_E_MAX).toFixed(4),
       // THE FINDING THAT DECIDES HALF OF GATE A. `solveElbow` scans e over
       // ±eMax and takes the LEAST bend that clears (§85 C3), so e = 0 is a
@@ -122,9 +125,10 @@ const R = await page.evaluate(async () => {
       // an §86 corner value rather than a solved one.
       bent: Math.abs(e) > 1e-9,
       fAtScanLowerBound: Math.abs(f - 0.25) < 1e-9,
-      // the arithmetic Gate A needs, at the built e and at the solver's bound
-      section: { I_m4: Math.PI * (rodR * UNIT_MM * 1e-3) ** 4 / 4, c_m: rodR * UNIT_MM * 1e-3 },
-      knuckleLocal: [+K.x.toFixed(6), +K.y.toFixed(6), +K.z.toFixed(6)],
+      // the arithmetic Gate A needs, at the built e and at the solver's bound —
+      // §234: the strip's in-plane section (the bend's moment acts in its plane)
+      section: { I_m4: (T * UNIT_MM * 1e-3) * (W * UNIT_MM * 1e-3) ** 3 / 12, c_m: W / 2 * UNIT_MM * 1e-3 },
+      elbowLocal: [+e.toFixed(6), +Ey.toFixed(6), 0],
     };
   };
   const rods = [readRod('Reset rod'), readRod('Hack rod')].filter(Boolean);
@@ -277,12 +281,12 @@ await browser.close(); srv.kill();
 writeFileSync(OUT, JSON.stringify(R, null, 2));
 const f = (x, n = 4) => (x === null || x === undefined ? 'n/a' : Number(x).toFixed(n));
 console.log(`\n§137 ELBOW RODS — ROOT=${ROOT}`);
-console.log(`  rod                e        f        len      seg1     seg2     rodR    e/ELBOW_E_MAX  read-back residual`);
+console.log(`  rod                e        f        len      seg1     seg2     W       T       e/ELBOW_E_MAX  read-back residual`);
 for (const r of R.rods)
-  console.log(`  ${r.unit.padEnd(12)} ${f(r.e).padStart(9)} ${f(r.f).padStart(8)} ${f(r.len).padStart(9)} ${f(r.seg1).padStart(8)} ${f(r.seg2).padStart(8)} ${f(r.rodR, 3).padStart(7)} ${f(r.eOverEMax, 3).padStart(10)}   ${r.readBackResidual}`);
+  console.log(`  ${r.unit.padEnd(12)} ${f(r.e).padStart(9)} ${f(r.f).padStart(8)} ${f(r.len).padStart(9)} ${f(r.seg1).padStart(8)} ${f(r.seg2).padStart(8)} ${f(r.W, 3)} ${f(r.T, 3).padStart(7)} ${f(r.eOverEMax, 3).padStart(10)}   ${r.readBackResidual}`);
 console.log(`  in mm:`);
 for (const r of R.rods)
-  console.log(`  ${r.unit.padEnd(12)} e ${f(r.e_mm, 3)} mm · len ${f(r.len_mm, 3)} mm · segments ${f(r.seg1_mm, 3)} / ${f(r.seg2_mm, 3)} mm · rod r ${f(r.rodR_mm, 4)} mm`);
+  console.log(`  ${r.unit.padEnd(12)} e ${f(r.e_mm, 3)} mm · len ${f(r.len_mm, 3)} mm · segments ${f(r.seg1_mm, 3)} / ${f(r.seg2_mm, 3)} mm · strip ${f(r.W_mm, 3)} × ${f(r.T_mm, 3)} mm`);
 for (const r of R.rods)
   console.log(`  ${r.unit.padEnd(12)} ${r.bent ? `BENT — e ${f(r.e, 3)} u (${f(r.e_mm, 3)} mm), ${f(100 * r.eOverEMax, 1)}% of ELBOW_E_MAX ${R.elbowEMax}` : 'STRAIGHT — e = 0, so M = F·e = 0 and the bend arithmetic has no subject'}` +
     (r.bent ? '' : `; f ${f(r.f, 2)} is the scan's lower bound, not a solved value`));

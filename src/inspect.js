@@ -7280,18 +7280,11 @@ export const SLENDER_WAIVERS = {
   // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
   // stands 0.2507 away and leaves 0.1007.
   'Alarm release lifter': 'TODO 109',
-  // λ 64.8 on rodSegOut, which is the member that GOVERNS this rod: wants
-  // +0.4056 u per side against 0.2659 spare to the reset rod. Its inner
-  // segment (λ 37.5, +0.0872) is the one row in the item whose corridor would
-  // take the growth — and ROD_R refuses it anyway: shared by both rods, with
-  // ROD_KNUCKLE_R at 1.15× and ROD2_PLANE_Z derived from it, so growing it by
-  // δ closes the reset-rod ⇄ hack-knuckle gap by 2.15δ and caps δ at 0.0637.
-  // Sectioning the inner segment alone would lower a reported number while
-  // leaving the part as weak, which is designing for the checker.
-  'Hack rod': 'TODO 109',
-  // λ 48.8 on rodSegOut. Wants +0.2189 u per side; the hack rod's own knuckle
-  // stands 0.2869 away and leaves 0.1369.
-  'Reset rod': 'TODO 109',
+  // (§234 retired the Hack rod and Reset rod rows here — the two are flat
+  // stamped links now, their widths cut to §54's target over their chords, so
+  // no over-ceiling row remains for a waiver to name. §54's covenant again: a
+  // waiver naming a unit with no over-ceiling row is itself a gated failure,
+  // so the deletion is part of the change, not a tidy-up.)
   // λ 41.2, the setting arbor's traverse rod, and the item's one pure LAYOUT
   // row: it wants +0.1305 u per side against 0.0320 spare to the power-reserve
   // train — but it is also supported by NOTHING over 28.84 u (10.9 mm) between
@@ -9732,9 +9725,6 @@ export const TURN_WAIVERS = {
   // mm where these run 0.24-0.42. The fix is to re-derive them from stem
   // stock and re-clear the corridors they then occupy, which is a section
   // change plus a P3 re-clear, not a waiver to widen.
-  'Hack rod::rodSegOut': 'TODO 145 group B',
-  'Hack rod::rodSegIn': 'TODO 145 group B',
-  'Reset rod::rodSegOut+rodSegIn': 'TODO 145 group B',
   'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B',
   'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B',
   'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
