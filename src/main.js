@@ -13645,6 +13645,11 @@ const alarmCornerGeomAt = (r) => {
 };
 const ALARM_CORNER_GEOM = alarmCornerGeomAt(ALARM_CD);
 const ALARM_ARBOR_R = ALARM_CORNER_GEOM.arborR;
+// §234 step 4 — the DISC bevel's bore is the setting arbor's own radius (it is
+// pressed on), not the stem's. It happened to equal `bevelToothSpec`'s default,
+// so the corner read right on this side by luck; it is declared now because the
+// pair's face width is the worse of the two webs and both bores must be passed.
+const ALARM_SET_ARBOR_BORE = 0.4;   // alarmArborRod's CylinderGeometry radius, below
 const alarmWorld = (() => {
   const g = ALARM_CORNER_GEOM;
   return { x: g.world.x, y: g.world.y };
@@ -13680,8 +13685,95 @@ const alarmDir = { x: alarmWorld.x / _alarmRimD, y: alarmWorld.y / _alarmRimD };
 //
 // The live numbers, then: 1.8000 of headroom above and 2.2080 to the cock
 // below, against reaches of 1.3088 and 1.3792.
-const Z_ALARM_CORNER = -4.1;
-const ALARM_BEVEL_TEETH = 10, ALARM_BEVEL_MODULE = 0.24;
+const ALARM_BEVEL_MODULE = 0.24;
+// §234 Landing 2 step 4 (TODO 145 group B) — THE ALARM CROWN'S STEM, AND THE
+// CORNER IT MAKES THE BEVEL CUT. Hoisted here, above the corner it sizes,
+// because the bevel's BORE is the stem's, the tooth count follows the bore, and
+// the corner's own PLANE follows the blank that count produces.
+//
+// The stem was `ALARM_STEM_R = 0.42`, a bare literal at L/D 56.2 — arbor stock
+// where a real crown stem runs 0.9–1.2 mm. Two constraints bear on the radius
+// and the LARGER governs, the alarm pusher's rule (§234 first member) with the
+// other term winning this time: the stem-stock floor is 0.9236 and §233's
+// turning target asks bar / (2 · TURN_LD_TARGET) of a 47.2 u bar, which is
+// 1.3111. So stock does NOT close this row — measured, at the floor the bar
+// still reads L/D 25.6 — and the target is what the section is cut to.
+//
+// THE BAR is the stem PLUS the crown knob, because `turning` clusters coaxial
+// meshes at consecutive stations as one piece of stock. That is arguable for a
+// crown (a real one is threaded on, a separate part) and the honest thing is to
+// size against the census AS IT READS rather than against the reading we would
+// prefer; the difference is 8% of the radius and it is not the binding call.
+const ALARM_CROWN_BODY_H = 4.55;                     // §203/§41: matched to the winding crown, and the knob's own reach past the stem
+const ALARM_CROWN_BODY_INSET = 0.7;                  // the knob's inner face sits this far in from the stem's tip
+const ALARM_STEM_LEN = CASE_R_OUT + 2 / UNIT_MM + ALARM_CROWN_BODY_INSET - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
+const ALARM_STEM_BAR = ALARM_STEM_LEN + ALARM_CROWN_BODY_H - ALARM_CROWN_BODY_INSET; // what the census clusters: stem + the knob past its tip
+// AND THE SECTION IS THE ONE THING HERE THAT DID NOT CHANGE, because it cannot
+// yet. `Math.max(STEM_STOCK_R_U, ALARM_STEM_BAR / (2 * TURN_LD_TARGET))` is
+// 1.3112 and it does not fit — not for want of room at the corner, which the
+// plane below now clears, but because the CROWN'S COLLAR is a ring pressed on
+// this stem, so its underside drops one for one with the radius, and the §45
+// release lifter's plunger hangs from that underside down to the release
+// sleeve's tab plane. That corridor is 1.336 long and the guide stack spends
+// 1.3161 of it: 0.009 of slack at the radius the movement shipped.
+//
+// Measured rather than reasoned — `tools/probe-234-stem-ceiling.mjs` patches
+// this one declaration on scratch trees and lets the §45 asserts speak. The
+// corridor closes between 0.55 and 0.60; stem stock (0.9236) misses by 0.522
+// and the turning target by 1.242. Its DEGENERACY control is why everything
+// else in this block could land anyway: at 0.42 the whole derived chain — bore,
+// tooth count, corner plane, bearing cock — boots SILENT, so it collapses onto
+// the shipped design at the shipped radius.
+//
+// The floor of that corridor is not a knob either: `ALARM_SLEEVE_TOP` hangs one
+// CLEAR_MARGIN under the heart cam's band and the heart is pressed on the HOUR
+// TUBE. So closing TODO 145 group B is a change to how the §45 lifter READS the
+// collar (a yoke at axis height spends no z on the collar's radius; a plunger
+// under it spends all of it), or to the corner's station — not a section change
+// and not this landing's. The row keeps its `TURN_WAIVERS` entry.
+const ALARM_STEM_R = 0.42;
+const ALARM_STEM_BORE = ALARM_STEM_R + PIVOT_BORE_CLEAR;   // a running fit — the bevel is bored over the stem it rides
+// THE TOOTH COUNT IS DERIVED FROM THAT BORE, not chosen. `bevelToothSpec` brings
+// the face width in until the blank keeps metal between its hole and its root
+// cone at the small end, so a bigger bore buys a narrower face at a fixed count
+// — and a face narrower than §50's floor is not metal at all. The smallest count
+// whose DERIVED face clears the floor is the honest answer. Measured at this
+// bore: 13 t and under have no blank, 14–15 t leave 0.04–0.24 (under the floor),
+// 16 t leaves 0.4305. Ten teeth was right for the 0.4 bore the builder DEFAULTED
+// to — which was itself 0.02 SMALLER than the r 0.42 stem it rode, a blank bored
+// narrower than its own arbor, found by §234's measurement rather than looked for.
+const ALARM_BEVEL_TEETH = (() => {
+  for (let t = 8; t <= 60; t++) {
+    const spec = G.bevelToothSpec({ module: ALARM_BEVEL_MODULE, teeth: t, mateTeeth: t,
+      boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE, quiet: true });
+    if (spec.faceW >= STOCK_MIN_U) return t;
+  }
+  console.warn(`§234: no bevel count under 60 leaves a §50-floor face at bore ${ALARM_STEM_BORE.toFixed(4)}`);
+  return 10;
+})();
+// ONE spec for the pair, because every dimension below is a question about the
+// same blank: the face width the builders cut to, the corner's plane, and the
+// bearing cock's ceiling. Three sites used to answer it three ways — the cock's
+// was a LITERAL, `BEVEL_UNDERSIDE = -6.158`, "measured on the built gear", and
+// it was 0.68 stale.
+const ALARM_BEVEL_SPEC = G.bevelToothSpec({
+  module: ALARM_BEVEL_MODULE, teeth: ALARM_BEVEL_TEETH, mateTeeth: ALARM_BEVEL_TEETH,
+  boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE,
+});
+// THE CORNER'S PLANE, DERIVED. It was `-4.1`, a literal with 0.57 of slack over
+// the plate; the grown blank has none to spare, so the plane is now the HIGHEST
+// one that clears — and high is the right direction, because the §45 lifter's
+// whole guide stack hangs off this plane and every unit of drop here is spent
+// down there.
+//
+// The stem bevel is a disc ⊥ the stem, so its reach toward the plate is the
+// blank's own `tipR` — "the farthest the blank reaches from its axis" — and the
+// wall is the base plate's dial-side face, READ OFF THE PLATE rather than
+// recomputed from `BACK_PLATE_T` and `makeBackPlate`'s bevel fraction, which
+// would be the same number written in two files. The plate is built above and
+// sits under `movement`, which is untransformed, so its world box is its box.
+const PLATE_DIAL_FACE = new THREE.Box3().setFromObject(backPlate).min.z;
+const Z_ALARM_CORNER = PLATE_DIAL_FACE - CLEAR_MARGIN - ALARM_BEVEL_SPEC.tipR;
 // TODO 138 Landing 2 — A BEVEL CORNER REVERSES, and that is a fact about cones,
 // not a convention. Two of them on a shared apex roll without slip only if their
 // RELATIVE angular velocity lies along the contact ray; everything else is
@@ -13769,10 +13861,10 @@ function bevelCornerSpin(gear, ray, teeth, gap) {
 // the classical blank proportion coneR/3: an apex-ruled tooth scales with cone
 // distance, so at F = coneR the small end has no section left to be metal. The
 // shipped 0.65 exceeded this member's 0.5657 by 15% and the generator warned on
-// it. Read from the spec the builder cuts rather than restated here.
-const ALARM_BEVEL_FACE = G.bevelToothSpec({
-  module: ALARM_BEVEL_MODULE, teeth: ALARM_BEVEL_TEETH, mateTeeth: ALARM_BEVEL_TEETH,
-}).faceW;
+// it. Read from the spec the builder cuts rather than restated here — and since
+// §234 that is the ONE spec taken at the corner's own declaration, not a second
+// call with the same arguments.
+const ALARM_BEVEL_FACE = ALARM_BEVEL_SPEC.faceW;
 
 // --- 'Alarm disc' — the CENTRAL rattrapante alarm hand (§25 C, stage 1) -----
 // Replaces §24's sub-dial pointer. The alarm indicator is now a co-axial hand
@@ -16599,7 +16691,14 @@ const ALARM_ARBOR_BUSH_R = 0.85;
   // drifting: the bush drops 0.008 and its 1.38 of air over the setting
   // pinion is spent down to 1.37.
   const COCK_T = STOCK_MIN_U;
-  const BEVEL_UNDERSIDE = -6.158; // the §25 C corner bevel's lowest tooth extent, measured on the built gear
+  // §234 step 4 — DERIVED from the blank, not measured off it once. This was
+  // `-6.158`, "the §25 C corner bevel's lowest tooth extent, measured on the
+  // built gear", and the gear has been re-cut twice since: measured, the disc
+  // bevel's box bottomed at −5.4792, so the cock sat 0.68 lower than its own
+  // stated rule required — slack that read as a decision. `zWebHi` is the
+  // blank's back face from the shared apex, which is what the corner's plane
+  // puts the bevel's underside at.
+  const BEVEL_UNDERSIDE = Z_ALARM_CORNER - ALARM_BEVEL_SPEC.zWebHi;
   const BUSH_Z = BEVEL_UNDERSIDE - CLEAR_MARGIN - COCK_T / 2;
   const BUSH_R_OUT = ALARM_ARBOR_BUSH_R;
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, -2 - BUSH_Z, 10), MATS.nickel);
@@ -16626,7 +16725,9 @@ const ALARM_ARBOR_BUSH_R = 0.85;
   alarmArborUnit.add(bush);
 }
 // Disc bevel at the corner, axis −z (its shaft trails down to the pointer).
-const discBevel = G.makeConicalGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
+const discBevel = G.makeConicalGear({ name: 'discBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE,
+  mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE,
+  boreR: ALARM_SET_ARBOR_BORE, mateBoreR: ALARM_STEM_BORE });   // §234: pressed on the arbor, mating the stem's blank
 discBevel.name = 'alarmDiscBevel'; // §137: named for the corner's transfer row
 const discBevelMount = new THREE.Group();
 discBevelMount.position.set(0, 0, Z_ALARM_CORNER);
@@ -16666,7 +16767,9 @@ alarmSpinner.rotation.order = 'ZYX';
 alarmSpinner.rotation.z = alarmStemAngle - Math.PI / 2;
 alarmCrownUnit.add(alarmSpinner);
 // Stem bevel at the inner end (the corner), axis along the stem (local +Y).
-const stemBevel = G.makeConicalGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
+const stemBevel = G.makeConicalGear({ name: 'stemBevel', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE,
+  mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE,
+  boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE });   // §234: bored over the stem it rides
 stemBevel.name = 'alarmStemBevel'; // §137: the transfer row names its members
 
 const stemBevelMount = new THREE.Group();
@@ -16718,12 +16821,11 @@ declareTransfer('alarm setting: stem→disc bevel corner', {
 // Stem length from the PUSHED-IN rest radius (the climb, ALARM_CD) — the
 // spinner slides OUT from there, so basing it on the arbor's outboard radius
 // left the knob 5 short, buried against the dial rim (the sweep caught it).
-const alarmStemLen = CASE_R_OUT + 2 / UNIT_MM + 0.7 - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
+const alarmStemLen = ALARM_STEM_LEN;   // §234: hoisted to the corner, which is sized from it
 // The stem's ONE support, hoisted out of the bushing block below so the
 // bush and the declaration that names it cannot drift apart: move the boss
 // and the free lengths move with it.
 const ALARM_STEM_BUSH_DIST = plateR - 2;   // the plate rim, where the boss is bored (the −2 is inherited with the bush)
-const ALARM_STEM_R = 0.42;
 const alarmStem = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_STEM_R, ALARM_STEM_R, alarmStemLen, 12), MATS.steel);
 alarmStem.name = 'alarmStem';   // §202: named, so the tube liner's joint row and the §54 row can address it
 alarmStem.position.y = alarmStemLen / 2;
@@ -16805,9 +16907,9 @@ alarmSpinner.add(alarmStem);
 // growth extends OUTWARD along the stem into free air past the rim — the
 // inner face, the stem interface and the bushing are untouched, which is
 // what the earlier "placement change" scoping worry turned out to miss.
-const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: 4.55, material: MATS.caseMetal }); // §203: case exterior
+const alarmCrownKnob = G.makeCrown({ bodyR: 5.425, bodyH: ALARM_CROWN_BODY_H, material: MATS.caseMetal }); // §203: case exterior; the height is the corner's, which sizes the stem's bar
 alarmCrownKnob.rotation.x = -Math.PI / 2; // builder +Z face → outward along +Y
-alarmCrownKnob.position.y = alarmStemLen - 0.7;
+alarmCrownKnob.position.y = alarmStemLen - ALARM_CROWN_BODY_INSET;
 alarmSpinner.add(alarmCrownKnob);
 // Stem bushing — the stem's support at the plate rim (its route to 'plate' in
 // the support graph), a bored boss the stem spins through. Static.
@@ -16860,7 +16962,15 @@ const ALARM_LIFT_HEAD_R = ALARM_CD + ALARM_COLLAR_RAMP.out + 0.4; // head reads 
 // is rotated onto the corner below — its head sits at the unit's local az 0,
 // which IS the corner, and its run one tab-offset round from there.
 const ALARM_LIFT_RUN_AZ = ALARM_SLEEVE_TAB_REL_AZ;
-const ALARM_COLLAR_THIN_R = 0.55;
+// §234 step 4 — THE COLLAR IS PRESSED ON THE STEM, so it cannot be thinner than
+// it. It was 0.55 against an r 0.42 stem; at the stem's turning-target section
+// that literal would be INSIDE its own arbor, which is not a part. The thin
+// plateau is the stem plus a wall at §50's floor — a pressed collar's wall, the
+// same derivation `ALARM_LINK_ROD_BUSH_OD` uses next door. The RISE above it is
+// untouched: every consumer (the lifter's head, the silence finger) reads the
+// DIFFERENCE `alarmCollarRAt(s) − ALARM_COLLAR_THIN_R`, so the cam's law is the
+// sleeve's travel as before and only the datum moves.
+const ALARM_COLLAR_THIN_R = ALARM_STEM_R + STOCK_MIN_U;
 const alarmCollarRAt = (s) => s >= ALARM_COLLAR_RAMP.out ? ALARM_COLLAR_THIN_R
   : s <= ALARM_COLLAR_RAMP.in ? ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL
   : ALARM_COLLAR_THIN_R + ALARM_SLEEVE_TRAVEL * (ALARM_COLLAR_RAMP.out - s) / (ALARM_COLLAR_RAMP.out - ALARM_COLLAR_RAMP.in);

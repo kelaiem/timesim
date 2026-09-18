@@ -33,6 +33,9 @@
 //   · MUST-HIT — the corner's own two bevels must appear in the survey. A
 //     column scan that cannot see the part at its own centre is scanning
 //     somewhere else, and would report a comfortably empty band.
+//   · The corner's own reach is read off VERTICES; see `vertZ`. A Box3 inflates
+//     a part standing at an angle about its own axis, and the stem bevel does
+//     exactly that — its box overstated the reach by 17%.
 //   · FILTER — the survey disc is tested in both directions on a synthetic
 //     point, just inside and just outside. This is deliberately NOT a must-miss
 //     on a far part: footprints are AABBs, so a large rotated part
@@ -145,7 +148,29 @@ const R = await page.evaluate(async (radius) => {
     else { p.zlo = Math.min(p.zlo, r.zlo); p.zhi = Math.max(p.zhi, r.zhi); p.foot = Math.min(p.foot, r.foot); p.poses.push(r.pose); }
   }
 
-  const bbox = (o) => { const bx = new THREE.Box3().setFromObject(o); return { zlo: bx.min.z, zhi: bx.max.z, r: Math.max(bx.max.x - bx.min.x, bx.max.y - bx.min.y) / 2 }; };
+  // THE CORNER'S OWN REACH IS READ OFF THE VERTICES, not off a Box3.
+  // `Box3.setFromObject` transforms the eight corners of a LOCAL box and takes
+  // their AABB, so a part rotated about its own axis inflates. Measured: the
+  // stem bevel's blank is r 1.9915 and its box read 2.3418 — 17% — because the
+  // corner's index spin stands the blank ~10° round. That is the number this
+  // probe exists to state, so it cannot be the one number it takes from a box.
+  // The disc bevel does not inflate (its axis IS world z), which is exactly how
+  // two identical blanks came back with different reaches and gave it away.
+  const vertZ = (o) => {
+    let lo = Infinity, hi = -Infinity;
+    o.updateWorldMatrix(true, true);
+    o.traverse((m) => {
+      if (!m.isMesh || !m.geometry?.attributes?.position || m.userData?.schematic) return;
+      const pos = m.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+        if (v.z < lo) lo = v.z; if (v.z > hi) hi = v.z;
+      }
+    });
+    return { zlo: lo, zhi: hi };
+  };
+  const bbox = (o) => { const bx = new THREE.Box3().setFromObject(o); const vz = vertZ(o);
+    return { ...vz, boxZlo: bx.min.z, boxZhi: bx.max.z, r: Math.max(bx.max.x - bx.min.x, bx.max.y - bx.min.y) / 2 }; };
 
   // ---- TIER 2: what the column WOULD hold. The bar first, off the census that
   // gates it rather than off a number typed here; then one blank per candidate
@@ -301,9 +326,9 @@ console.log(`  REPRODUCTION: the corner plane read off the disc bevel's mount is
 console.log(`  declared, for comparison: Z_DIAL ${f(R.consts.Z_DIAL, 2)}, CLEAR_MARGIN ${f(R.consts.CLEAR_MARGIN, 2)}, STOCK_MIN_U ${f(R.consts.STOCK_MIN_U, 4)}`);
 if (R.plate) console.log(`  backPlate's own box in this column: z ${f(R.plate.zlo)} … ${f(R.plate.zhi)}`);
 
-console.log(`\n--- THE CORNER'S OWN REACH (world boxes, not faceWidth + tipR)`);
-console.log(`  disc bevel : z ${f(R.disc.zlo)} … ${f(R.disc.zhi)}   → ${f(CZ - R.disc.zlo)} DOWN from the corner, ${f(R.disc.zhi - CZ)} up`);
-console.log(`  stem bevel : z ${f(R.stem.zlo)} … ${f(R.stem.zhi)}   → ${f(R.stem.zhi - CZ)} UP from the corner, ${f(CZ - R.stem.zlo)} down`);
+console.log(`\n--- THE CORNER'S OWN REACH (world VERTICES, not faceWidth + tipR and not a box)`);
+console.log(`  disc bevel : z ${f(R.disc.zlo)} … ${f(R.disc.zhi)}   → ${f(CZ - R.disc.zlo)} DOWN from the corner, ${f(R.disc.zhi - CZ)} up   (its box would say ${f(R.disc.boxZlo)} … ${f(R.disc.boxZhi)})`);
+console.log(`  stem bevel : z ${f(R.stem.zlo)} … ${f(R.stem.zhi)}   → ${f(R.stem.zhi - CZ)} UP from the corner, ${f(CZ - R.stem.zlo)} down   (its box would say ${f(R.stem.boxZlo)} … ${f(R.stem.boxZhi)} — the rotated-box inflation)`);
 const top = Math.max(R.disc.zhi, R.stem.zhi), bot = Math.min(R.disc.zlo, R.stem.zlo);
 console.log(`  the corner's own span: ${f(bot)} … ${f(top)}  (${f(top - bot)} tall)`);
 

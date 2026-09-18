@@ -9730,13 +9730,26 @@ export const TURN_WAIVERS = {
   // ends — and none of them is a waiver to widen.
   // §234 step 4 MEASURED these two (probe-234-step4.mjs) and the group's
   // "section change plus a P3 re-clear" is false for them: stem stock leaves
-  // the bar at L/D 25.6, so only the TARGET radius closes it, and a bevel
-  // bored over THAT stem needs 17 teeth — which loses the winding climb's
-  // mesh and puts the disc bevel 0.0583 from its own bearing cock. Waiting on
-  // the owner's choice between growing the corner and moving it outboard
-  // (13.9486 u, position space); the two rows close together either way,
-  // because the collars are pressed on the stem and the liner is bored over it.
-  'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B (§234 step 4: not a section change — a corner redesign or a layout move, measured and filed)',
+  // the bar at L/D 25.6, so only the TARGET radius closes it — and a bevel
+  // bored honestly over THAT stem grows, which the owner chose to pay for.
+  // The corner then came in: §234's second landing derives its PLANE from the
+  // blank and the plate, and probe-234-corner-z measures the grown pair fitting
+  // that column with the §45 lifter's run 0.6822 clear.
+  //
+  // What these rows now wait on is neither the corner nor the layout. The
+  // crown's COLLAR is a ring pressed on this stem, so its underside drops one
+  // for one with the radius, and the §45 release lifter's plunger hangs from
+  // that underside down to the release sleeve's tab plane — a corridor 1.336
+  // long against a guide stack of 1.3161. probe-234-stem-ceiling sweeps the
+  // radius on scratch trees and the corridor closes between 0.55 and 0.60:
+  // stem stock misses by 0.522, the turning target by 1.242. Its floor is
+  // pinned to the HOUR TUBE (`ALARM_SLEEVE_TOP` hangs one CLEAR_MARGIN under
+  // the heart cam), so closing these rows is a change to how the lifter READS
+  // the collar — a yoke at axis height spends no z on the collar's radius, a
+  // plunger under it spends all of it. Filed, not widened: no tolerance here
+  // moved, and the two rows still close together, because the collars are
+  // pressed on the stem and the liner is bored over it.
+  'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B (§234 step 4: not a section change — the §45 lifter\'s plunger corridor is spent at the shipped radius, measured and filed)',
   'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B (§234 step 4: closes with the stem above — the collars are pressed on it)',
   'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
   'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
