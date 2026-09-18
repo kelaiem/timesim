@@ -26164,6 +26164,109 @@ reason: a member's radius is a station in someone else's derivation. The
 member that DID land, the pusher, was the one whose neighbours all derived
 from it.
 
+### Landing 2, step 4 — the alarm crown's stem: MEASURED, and refused
+
+    probe-234-step4.mjs   new, tools/       the group-B twin of probe-234-group-c: measure the couplings before cutting
+    TURN_WAIVERS          9 -> 9            nothing cut; the two Alarm crown reasons rewritten to say what each waits on
+    TODO 146              new               the pin-joint P0 step 5 promised in three records and never filed
+
+**What was asked.** TODO 145 group B files eight stem rows as "a section
+change plus a P3 re-clear". Three of its claims had already failed measurement
+— the pusher landed at stem stock, the setting traverse turned out SITE-limited
+and the winding stem a TRAIN change — and this asked the same question of the
+last two rows that must close together, `Alarm crown::alarmStem+(unnamed)` at
+L/D 56.2 and `Alarm crown::alarmStemTubeLiner+alarmStemCollar×3` at 30.9. They
+are one question because the collars are pressed on the stem and the liner is
+bored over it.
+
+**The instrument.** `probe-234-step4.mjs` is a REPORT with four tiers and three
+controls, written on `probe-234-group-c`'s pattern (`ROOT=` points it at a
+scratch tree; it exits non-zero only when that tree will not boot). It measures
+the BAR from `turning`'s own census, the BEVEL from the real generator
+(`bevelToothSpec`, not a copy of its arithmetic), the ROOM by BUILDING each
+candidate blank with `makeConicalGear` and placing it at the live member's world
+transform, and the FAT STEM as a cylinder over the stem's own span — every gap
+through `inspect.js`'s own `meshClearance`. Its controls are a must-hit (the
+blank rebuilt at today's spec measures 0.0000 against the shipped bevel, so the
+placement is right), a must-miss (9.5360 to the balance, so not everything reads
+as near) and a reproduction (the two rows read the battery's 56.2 and 30.9).
+
+**Four findings, and the third decides it.**
+
+**Stem stock does not close the row.** The bar is the stem PLUS the crown knob,
+47.1982 u, and at `STEM_STOCK_R_U` it still reads L/D 25.6 — 23.5 even with the
+knob split out, which the census clusters as one piece of stock though a crown
+is a separate part in any real caliber. Only the TARGET radius closes it:
+1.3111 u with the knob, 1.2043 without, ⌀0.994 and ⌀0.913 mm, both inside real
+crown-stem stock and the figure the entry predicted. The pusher's answer — cut
+it at the stock floor — is not available here.
+
+**The bevel bored over that stem has to grow, and growing it loses a mesh.**
+The stem carries the alarm setting corner at its inner end, bored today at
+`bevelToothSpec`'s DEFAULT 0.4 while the stem it rides is r 0.42: the blank is
+already bored 0.02 SMALLER than its own stem, which is a separate inconsistency
+this measurement found rather than the one it went looking for. Bored honestly
+at r + `PIVOT_BORE_CLEAR` = 1.3611, the generator leaves NO blank under 14 teeth
+and needs 17 to keep today's face width, growing each member's tip radius
+1.3456 → 2.1109. And the stem bevel has TWO mates: the setting arbor's disc
+bevel when the crown is pulled out, and the alarm winding train's climb contrate
+when it is pushed in. At 17 teeth the rest mesh measures 0.4738 where it
+measures 0.0000 today — the climb is gone, and the contrate is a different pair
+with its own tooth count.
+
+**The grown disc bevel runs into its own bearing cock**, 0.0583 from
+`alarmArborCockArm` at 17 teeth, under `CLEAR_MARGIN` — and INSIDE the unit,
+where the pair sweep structurally cannot see it (TODO 5). The probe measures
+that tier on purpose for exactly this reason: a blank growing into its own cock
+is the defect nothing else in the battery would report. The cock carries the
+arbor's bearing, so it is not free to move aside.
+
+**The collars and the §45 lifter station re-derive too.** At any radius from
+stem stock up, the stem is fatter than its own collar's thin section
+(`ALARM_COLLAR_THIN_R` 0.55) — nonsense as metal, and measured as 0.0000 to
+`alarmLifterPlunger` at every candidate. The collar grows with the stem and the
+lifter head's z follows it, which is a derived cascade rather than a wall
+(`ALARM_LIFT_HEAD_TOP` already reads the collar radius), but it is part of the
+price.
+
+**So the entry's claim is refused.** Step 4 is a CORNER REDESIGN — both bevels
+re-cut at ≥17 teeth, the winding climb re-cut against the new stem bevel, the
+arbor's bearing cock moved, the collar and lifter station re-derived, three
+mechanisms for one bar.
+
+**The layout move was offered beside it and does not survive measurement.**
+The stem is long because the corner is DEEP — it is cut from `ALARM_CD` out to
+the case, so the corner's radius and the stem's length trade one for one, and
+at stem stock the target wants the corner at r 29.3493 against 15.4007 today.
+The plate rim has room there, and the plate rim is not the binding constraint:
+`ALARM_CD` is `solveKeyless`'s own output, and moving it carries the setting
+arbor out at `ALARM_CD + CROWN_PULL_DIST` while idler 1 stays where it is, so
+the setting dogleg's reach grows while its gearing does not.
+`tools/probe-234-corner-move.mjs` patches that one declaration on scratch trees
+and lets the SHIPPED asserts speak at each candidate:
+
+    ALARM_CD   stem span   L/D at stem stock   what the movement said
+    15.4007     43.3548          25.6          silent (the control)
+    18.0000     40.7556          24.1          i2 fouls the winding climb by 1.53; no bearing clears every wall
+    19.9000     38.8556          23.1          i2 37 t needs ≥ 38 — no route at the built bearing
+    25.6500     33.1056          20.0          the dogleg closes at NO bearing; needs ≥ 57 t
+    29.3500     29.4056          18.0          needs ≥ 69 t
+
+The move has to pass a wall 4.5 u out to reach a target 14 u out, and even the
+CEILING rather than the target wants 21.8 — still past it. So it survives only
+as a move PLUS a setting-train re-gear PLUS a corridor re-route, which is
+strictly larger than growing the corner rather than smaller. **The instrument's
+middle control is what makes the substitution legal**: a tree patched with the
+solve's own answer must reproduce the unpatched tree exactly, warning count and
+stem span both, or the sweep is measuring a different watch. It does.
+
+**Nothing was cut.** The two waivers stand with their reasons rewritten to name
+which resolution each is waiting on, and the group-B comment no longer states a
+fix that four of its five measured rows have refused. This is the third time in
+§234 that "a section change" has turned out to be a station in someone else's
+derivation, and the instrument that keeps finding it is the one that measures
+the couplings BEFORE the cut.
+
 ### Landing 2, step 5 — the hack and reset rods as flat stamped levers (the owner's decision)
 
     LINK_T_U              new, layout.js     the stamped sheet = §50's floor, 0.317 u (0.12 mm)
@@ -26310,6 +26413,6 @@ setting lever's post, the hack pin, the hammer's tail tip, the crank's tail
 top — exactly as the tube's end was, with the pin passing through the eye's
 solid: the same EXPECTED contact the tubes carried, now shaped like what it
 is. A link with a real bore over a real pin, and a stack the corridor could
-hold with margins, is a P0 filing of its own. The explainer's one sentence
-naming "a thin hack rod" stays for a page landing (§228's precedent:
-re-wording a block invalidates its seven translations by design).
+hold with margins, is a P0 filing of its own, and is TODO 146. The
+explainer's one sentence naming "a thin hack rod" stays for a page landing
+(§228's precedent: re-wording a block invalidates its seven translations by design).

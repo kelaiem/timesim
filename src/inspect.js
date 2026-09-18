@@ -9722,11 +9722,22 @@ export const TURN_WAIVERS = {
   // length is the case's, not a design choice: a crown stem is long because
   // the case is 20 mm across. What is wrong is the DIAMETER — these were cut
   // from arbor stock when they are stems, and a real crown stem runs 0.9-1.2
-  // mm where these run 0.24-0.42. The fix is to re-derive them from stem
-  // stock and re-clear the corridors they then occupy, which is a section
-  // change plus a P3 re-clear, not a waiver to widen.
-  'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B',
-  'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B',
+  // mm where these run 0.24-0.42. The fix was filed as "re-derive them from
+  // stem stock and re-clear the corridors", and §234 has now measured four of
+  // the five: the pusher landed that way, the setting traverse is SITE-limited,
+  // the winding stem is a TRAIN change, and the alarm crown's two rows are a
+  // corner redesign. Stem stock is where each starts, not where any of them
+  // ends — and none of them is a waiver to widen.
+  // §234 step 4 MEASURED these two (probe-234-step4.mjs) and the group's
+  // "section change plus a P3 re-clear" is false for them: stem stock leaves
+  // the bar at L/D 25.6, so only the TARGET radius closes it, and a bevel
+  // bored over THAT stem needs 17 teeth — which loses the winding climb's
+  // mesh and puts the disc bevel 0.0583 from its own bearing cock. Waiting on
+  // the owner's choice between growing the corner and moving it outboard
+  // (13.9486 u, position space); the two rows close together either way,
+  // because the collars are pressed on the stem and the liner is bored over it.
+  'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B (§234 step 4: not a section change — a corner redesign or a layout move, measured and filed)',
+  'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B (§234 step 4: closes with the stem above — the collars are pressed on it)',
   'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
   'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
   // GROUP C — arbors INSIDE the movement. Filed as "a section change alone

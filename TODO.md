@@ -19946,10 +19946,79 @@ longer than the tube a real case needs.
 > crank's tail top) exactly as the tube's end was, with the pin passing
 > through the eye's solid — the same EXPECTED contact the tubes carried, not
 > a bored eye over a pin. A link with a real bore, and a stack the corridor
-> could hold with margins, is a P0 filing of its own, not this section
-> change. `explain.html` still says "a thin hack rod" in one sentence; that
+> could hold with margins, is a P0 filing of its own — TODO 146, filed — not
+> this section change. `explain.html` still says "a thin hack rod" in one sentence; that
 > block's re-wording invalidates its seven translations by design and rides
 > a page landing (§228's precedent).
+
+> **§234 Landing 2, step 4 (2026-09-18) — MEASURED, and the alarm crown's two
+> rows are not a section change either.** `tools/probe-234-step4.mjs` (a
+> REPORT, group C's instrument written for group B) measured the four
+> couplings on the shipped tree before anything was cut. Three of them refuse
+> the entry's "a section change plus a P3 re-clear", and the third is the one
+> that decides it.
+>
+> **Stem stock does not close the row.** The bar `turning` clusters is the
+> stem plus the crown knob, 47.1982 u over ⌀0.84, and at `STEM_STOCK_R_U`
+> (r 0.9236) it still reads **L/D 25.6** — 23.5 even with the knob split out.
+> Only the TARGET radius closes it: r 1.3111 u with the knob, 1.2043 without,
+> i.e. ⌀0.994 or ⌀0.913 mm, both inside real crown-stem stock (0.9–1.2 mm) and
+> the number the entry predicted. So this row cannot be paid for with the
+> stock floor the pusher used; it needs the ceiling's own arithmetic.
+>
+> **The bevel bored over that stem breaks BOTH of its meshes.** The stem
+> carries the alarm setting corner at its inner end, bored today at
+> `bevelToothSpec`'s DEFAULT 0.4 — which is already 0.02 SMALLER than the
+> r 0.42 stem it rides, a separate inconsistency worth knowing. Bored honestly
+> at r + `PIVOT_BORE_CLEAR` = 1.3611, the real generator gives **no blank at
+> all under 14 teeth** and needs **17** to keep today's face width (0.5657),
+> which grows each member's tip radius 1.3456 → 2.1109. And the stem bevel has
+> TWO mates, not one: the setting arbor's disc bevel when the crown is PULLED
+> OUT, and the alarm winding train's climb contrate when it is PUSHED IN.
+> Measured at 17 teeth, the rest mesh reads **0.4738 where it reads 0.0000
+> today** — the climb is gone, and the contrate is a different pair with its
+> own tooth count. Re-cutting the corner re-cuts the winding climb.
+>
+> **And the grown disc bevel runs into its own bearing cock.** At 17 teeth it
+> stands **0.0583** from `alarmArborCockArm`, under `CLEAR_MARGIN`, and that is
+> INSIDE the unit where the pair sweep cannot see it (TODO 5). The cock carries
+> the arbor's bearing, so it is not free to move out of the way.
+>
+> **The collars and the §45 lifter station re-derive as well.** At any radius
+> from stem stock upward the stem is FATTER than its own collar's thin section
+> (`ALARM_COLLAR_THIN_R` 0.55), which is nonsense as metal — measured, the fat
+> stem reads 0.0000 to `alarmLifterPlunger` at every candidate. The collar must
+> grow with the stem and the lifter's head z follows it (`ALARM_LIFT_HEAD_TOP`
+> already derives from the collar radius), which is a derived cascade rather
+> than a wall, but it is part of the price.
+>
+> **So step 4 is a CORNER REDESIGN — the owner's call, taken 2026-09-18 after
+> both resolutions were measured.** The two that were put up:
+>
+> - **Grow the corner. CHOSEN.** Re-cut both bevels at ≥17 teeth with the real bore,
+>   re-cut the winding climb contrate against the new stem bevel, move the
+>   setting arbor's bearing cock, and re-derive the collar and the lifter
+>   station. That is three mechanisms for one bar.
+> - **Move the corner outboard** — position space, which the priority order
+>   prefers. The stem is long because the corner is DEEP: it is cut from
+>   `ALARM_CD` out to the case, so the corner's radius and the stem's length
+>   trade one for one, and at stem stock the target wants the corner at
+>   r 29.3493 against r 15.4007 today. **MEASURED AND REFUSED AS SCOPED**
+>   (`tools/probe-234-corner-move.mjs`): the plate rim has room at that radius
+>   and the plate rim is not the binding constraint. `ALARM_CD` is
+>   `solveKeyless`'s own output, and moving it drags the setting arbor out with
+>   it at `ALARM_CD + CROWN_PULL_DIST` while idler 1 stays put — so the dogleg's
+>   reach grows while its gearing does not. The movement says so itself at every
+>   candidate: **red at 18** (i2 fouls the winding climb by 1.53, and §94 tier B's
+>   interior bound reports no bearing clears every wall), **out of reach at 19.9**
+>   (i2 37 t needs ≥ 38), **no route at any bearing from 22**, and at the 29.35
+>   the target asks for, i2 would need **69 t against 37**. The move must pass a
+>   wall 4.5 u out to reach a target 14 u out. It survives only as a move PLUS a
+>   setting-train re-gear PLUS a corridor re-route, which is strictly larger than
+>   growing the corner, not smaller.
+>
+> Nothing was cut. The two waivers stand, reasons rewritten to say which of the
+> two resolutions each is waiting on.
 
 ### Group C — arbors inside the movement (3 rows)
 
@@ -20028,3 +20097,68 @@ are reported by name rather than passed in silence. A disc's L/D is far under
 any limit, so nothing is hidden there; what would be hidden, if they were
 admitted, is a bar whose governing diameter got dragged down to half a disc's
 thickness.
+
+## 146. The hack and reset links ride their pins through solid eyes, not bores
+
+§234 step 5 re-sectioned the hack and reset rods as flat stamped levers and
+said, in three records, that a link with a REAL BORE over a real pin is "a P0
+filing of its own". This is that filing.
+
+**What is modelled.** `makeFlatLinkMesh` (`main.js` ~5795) cuts each end of the
+strip as a DISC of radius `LINK_EYE_D / 2` centred on its pin — "each end is a
+disc of radius R about its pin", one closed outline, no hole. The pin then
+passes through that disc's solid metal. Four joints are built this way:
+
+| link | inboard pin | driven pin |
+|---|---|---|
+| `resetLink` | the setting lever's post (`SETTING_LEVER_POST_R` 0.45) | the reset hammer's tail tip |
+| `hackLink` | the lever's hack pin (`HACK_PIN_R`, asserted equal to the post) | the stop crank's tail top |
+
+**Why no instrument objects.** All four unit pairs are declared EXPECTED
+(`inspect.js` ~580–583), so `inspection` grades them EXPECTED rather than
+FORBIDDEN and `sweptOverlap` never confirms them. None of the four carries an
+`EXPECTED_CONTACT_FLOORS` row, so TODO 6's blanket excuse covers the WHOLE pair,
+not just the joint: anything else those two units did to each other would be
+excused by the same declaration. The tubes had exactly this defect before the
+re-section — the eyes did not introduce it, they only made it visible, because a
+tube end passing through a pin looks like a joint and a disc swallowing a pin
+looks like what it is.
+
+**The eye is already sized as though it were bored, which is the tell.**
+`linkEyeDiaForPin(pinR, fit)` in `layout.js` is `2 · (pinR + fit + STOCK_MIN_U)`
+— a bore at the running fit, plus a wall of stock either side. At the post it
+gives 1.633 u: bore ⌀1.0, wall 0.317 each side. Every number for the bore
+already exists and is already spent on metal; what is missing is the hole.
+
+**The fix, and why it is P0 then P3.**
+
+1. **Cut the bore.** `makeFlatLinkMesh` builds one `THREE.Shape`; add a hole
+   ring per eye at `pinR + PIVOT_BORE_CLEAR`. §177 is the precedent and the
+   warning: the column driver FILLED its pivot bore because earcut resolves a
+   folded ring however it likes, so the hole must be a SIMPLE polygon wound
+   against the outline, and `outlines` must read both rings simple (it gates
+   that). Both pins are one stock, so one bore radius serves all four eyes.
+2. **Declare the joint.** Add the four pairs to `EXPECTED_CONTACT_FLOORS` with
+   the eye and pin meshes named as the contact, so the rest of each pair is held
+   to `CLEAR_MARGIN` — the excuse then buys the joint and nothing else. Check
+   `INTRA_UNIT_CONTACTS` for rows the bore makes stale (§182: a declared row
+   whose parts never come within `DECLARED_CONTACT_REACH` FAILS).
+3. **Find the stack room in POSITION space.** Two bored links on one post are
+   two levers on one stud, which is what a caliber does — and the corridor
+   cannot hold them a margin apart: measured at §234, two sheets with a margin
+   between them want T ≤ 0.247 u, under §50's floor. Today they are cut AT the
+   floor and stand 0.045 u apart (asserted at boot). Boring the eyes does not
+   change that arithmetic, so if the joint is to have clearance the room comes
+   from the corridor: a different plane for one link, a different station for
+   the post, or the hack link on its own pin (§87 already provides for that).
+   **Never by thinning the sheet** — it is on §50's floor — and never by opening
+   `CLEAR_MARGIN`. The consumers that re-derive with a plane are `ROD_PLANE_Z`,
+   `ROD2_PLANE_Z`, `POST_TOP_Z`, `CORRIDOR_Z_BOT` and the stack assert; all five
+   are already written as derivations, so moving one is a one-line change plus a
+   P3 re-clear.
+
+**What this is worth.** The joint is the one place in these two linkages where
+the model says "these parts occupy the same space and that is fine". Every other
+contact in the movement is a surface against a surface. Until the bore exists,
+`priceRigidBentLink`'s pin-to-pin span, the §54 chord and the eye's own wall are
+all describing a link that could not be assembled.
