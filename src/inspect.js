@@ -9738,30 +9738,16 @@ export const TURN_WAIVERS = {
   // the winding stem is a TRAIN change, and the alarm crown's two rows are a
   // corner redesign. Stem stock is where each starts, not where any of them
   // ends — and none of them is a waiver to widen.
-  // §234 step 4 MEASURED these two (probe-234-step4.mjs) and the group's
-  // "section change plus a P3 re-clear" is false for them: stem stock leaves
-  // the bar at L/D 25.6, so only the TARGET radius closes it — and a bevel
-  // bored honestly over THAT stem grows, which the owner chose to pay for.
-  // The corner then came in: §234's second landing derives its PLANE from the
-  // blank and the plate, and probe-234-corner-z measures the grown pair fitting
-  // that column with the §45 lifter's run 0.6822 clear.
-  //
-  // What these rows now wait on is neither the corner nor the layout. The
-  // crown's COLLAR is a ring pressed on this stem, so its underside drops one
-  // for one with the radius, and the §45 release lifter's plunger hangs from
-  // that underside down to the release sleeve's tab plane — a corridor that was
-  // 1.336 long against a guide stack of 1.3161 on the movement as it shipped.
-  // probe-234-stem-ceiling sweeps the radius on scratch trees and the corridor
-  // closes between 0.42 and 0.50: stem stock misses by 0.522, the turning
-  // target by 1.242. Its floor is
-  // pinned to the HOUR TUBE (`ALARM_SLEEVE_TOP` hangs one CLEAR_MARGIN under
-  // the heart cam), so closing these rows is a change to how the lifter READS
-  // the collar — a yoke at axis height spends no z on the collar's radius, a
-  // plunger under it spends all of it. Filed, not widened: no tolerance here
-  // moved, and the two rows still close together, because the collars are
-  // pressed on the stem and the liner is bored over it.
-  'Alarm crown::alarmStem+(unnamed)': 'TODO 145 group B (§234 step 4: not a section change — the §45 lifter\'s plunger corridor is spent at the shipped radius, measured and filed)',
-  'Alarm crown::alarmStemTubeLiner+alarmStemCollar+alarmStemCollar+alarmStemCollar': 'TODO 145 group B (§234 step 4: closes with the stem above — the collars are pressed on it)',
+  // §234 step 4 / §235 — RETIRED, both of them, because the metal was cut.
+  // The entry filed these as "a section change plus a P3 re-clear" and that was
+  // false: stem stock leaves the bar at L/D 25.6, so only the turning TARGET
+  // closes it, and the target could not be cut while the §45 release lifter
+  // read the crown's collar from UNDERNEATH — its guide stack hung off the
+  // cam's radius, so a fatter stem drove the stack into the release sleeve's
+  // tab plane, a corridor measured closing between 0.42 and 0.50.
+  // §235's yoke reads the collar from BESIDE it, at the stem's own axis, and
+  // the section went in: `ALARM_STEM_R` is the target now, both rows measure
+  // under the ceiling, and neither needs a waiver.
   'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
   'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
   // GROUP C — arbors INSIDE the movement. Filed as "a section change alone

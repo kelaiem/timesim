@@ -13708,32 +13708,28 @@ const ALARM_CROWN_BODY_H = 4.55;                     // §203/§41: matched to t
 const ALARM_CROWN_BODY_INSET = 0.7;                  // the knob's inner face sits this far in from the stem's tip
 const ALARM_STEM_LEN = CASE_R_OUT + 2 / UNIT_MM + ALARM_CROWN_BODY_INSET - ALARM_CD; // through the case's alarm tube, same standoff as the winding stem
 const ALARM_STEM_BAR = ALARM_STEM_LEN + ALARM_CROWN_BODY_H - ALARM_CROWN_BODY_INSET; // what the census clusters: stem + the knob past its tip
-// AND THE SECTION IS THE ONE THING HERE THAT DID NOT CHANGE, because it cannot
-// yet. `Math.max(STEM_STOCK_R_U, ALARM_STEM_BAR / (2 * TURN_LD_TARGET))` is
-// 1.3112 and it does not fit — not for want of room at the corner, which the
-// plane below now clears, but because the CROWN'S COLLAR is a ring pressed on
-// this stem, so its underside drops one for one with the radius, and the §45
-// release lifter's plunger hangs from that underside down to the release
-// sleeve's tab plane. On the movement as it shipped that corridor was 1.336 long
-// against a guide stack of 1.3161 — 0.009 of slack. Deriving the plane above
-// lifted the corner 0.2 and bought 0.2 more of it, which is why the plane is
-// derived HIGH; it is still not a growth budget.
+// AND THE SECTION, at last. Two constraints bear on the radius and the LARGER
+// governs, the alarm pusher's rule (§234's first member) with the other term
+// winning here: the stem-stock floor is 0.9236 and §233's turning target asks
+// bar / (2 · TURN_LD_TARGET) of a 47.2 u bar, which is 1.3112. Stock does NOT
+// close this row — measured, at the floor the bar still reads L/D 25.6 — so the
+// target is what the section is cut to.
 //
-// Measured rather than reasoned — `tools/probe-234-stem-ceiling.mjs` patches
-// this one declaration on scratch trees and lets the §45 asserts speak. The
-// corridor closes between 0.42 and 0.50 on this tree; stem stock (0.9236) misses
-// by 0.522 and the turning target by 1.242. Its DEGENERACY control is why everything
-// else in this block could land anyway: at 0.42 the whole derived chain — bore,
-// tooth count, corner plane, bearing cock — boots SILENT, so it collapses onto
-// the shipped design at the shipped radius.
+// It took §235 to make that cuttable. The §45 release lifter used to read this
+// collar from UNDERNEATH, so its guide stack hung off the cam's radius and a
+// fatter stem drove eye, stub and blade into the release sleeve's tab plane —
+// a corridor that closed between 0.42 and 0.50, with the sleeve's own floor
+// pinned to the hour tube. The yoke reads the collar from BESIDE it instead,
+// and `tools/probe-234-stem-ceiling.mjs` sweeps the radius on scratch trees to
+// say so: silent at every candidate through 1.3112, with the collar measuring
+// 0.295 clear of the base plate at the target against a 0.15 margin.
 //
-// The floor of that corridor is not a knob either: `ALARM_SLEEVE_TOP` hangs one
-// CLEAR_MARGIN under the heart cam's band and the heart is pressed on the HOUR
-// TUBE. So closing TODO 145 group B is a change to how the §45 lifter READS the
-// collar (a yoke at axis height spends no z on the collar's radius; a plunger
-// under it spends all of it), or to the corner's station — not a section change
-// and not this landing's. The row keeps its `TURN_WAIVERS` entry.
-const ALARM_STEM_R = 0.42;
+// That headroom is not luck and it is not monotone in the radius (0.359, 0.366,
+// 0.351, 0.204, 0.295 across the sweep): the corner's PLANE is derived from the
+// bevel, the bevel's tooth count steps with the bore, and each step drops the
+// corner — carrying this collar down with it. A fatter stem buys its own room,
+// in integer jumps, which is what those steps are.
+const ALARM_STEM_R = Math.max(STEM_STOCK_R_U, ALARM_STEM_BAR / (2 * TURN_LD_TARGET));
 // A PRESS FIT, not a running one, and the difference is what the bevel does:
 // it is KEYED to the stem — it turns with it and slides with it when the crown
 // is pulled — so the assembled bore IS the stem's radius. `PIVOT_BORE_CLEAR` is
