@@ -7860,7 +7860,10 @@ gate re-verifying every row's own relations each run — click detent
 derives), pawl ≈13.8 mN at the saw root, silence finger ≈51 mN, the bends
 priced live (`priceRigidBentLink`: M = F·e, σ, Euler fraction, axial
 give — the reset rod's solved offset is ZERO, so its bend does not exist;
-the hack rod's dogleg gives ≈3–32% of its stroke across the load band).
+the hack rod's dogleg gives ≈3–32% of its stroke across the load band —
+**re-priced by §234 on the FLAT section both links are cut from now**: the
+bend's moment acts in the strip's plane, so the hack link reads σ 14.6 MPa
+and 1.1% give at the ceiling where the round rod read 120 MPa and 28%).
 And the tail-stall's **0.158 mm is itself a retired constant**: the
 source's own trail (`ALARM_LINK_ROD_TRAVEL = 0.42 — solve OUTPUT,
 alarmLinkParts.forward.rodTravel`) replaced the plan stroke with the
@@ -8826,10 +8829,10 @@ subtree. Fourth copy of that idiom; consolidating them stays TODO 4's.
 |---|---|---|---|---|
 | `Alarm link` / `alarmLinkShaft` | **127.6** | 30 | 36 N/m | TODO 16 |
 | `Alarm release lifter` / `alarmLifterRun` | 71.3 | 30 | 16.5 N/m | — |
-| `Hack rod` / (unnamed) | 65.0 | 30 | 48.4 N/m | — |
-| `Reset rod` / (unnamed) | 48.8 | 30 | 114.4 N/m | — |
+| `Hack rod` / (unnamed) | 65.0 | 30 | 48.4 N/m | — (CLOSED by §234: a flat stamped link, λ 27.0 in plan) |
+| `Reset rod` / (unnamed) | 48.8 | 30 | 114.4 N/m | — (CLOSED by §234, the same way) |
 | `Keyless works` / (unnamed) | 40.4 | 30 | 190.9 N/m | — |
-| `Hack rod` / (unnamed) | 37.7 | 30 | 248.1 N/m | — |
+| `Hack rod` / (unnamed) | 37.7 | 30 | 248.1 N/m | — (CLOSED by §234) |
 | `Alarm crown` / (unnamed) | 35.4 | 30 | 359.3 N/m | — |
 | `Alarm release feeler` / (unnamed) | 35.1 | 30 | 43.7 N/m | — |
 | `Alarm link` / `alarmLinkRod` | 31.4 | 30 | 367.3 N/m | TODO 16 |
@@ -19724,10 +19727,11 @@ place of "the disc's own seat is the question".
 
 §233 declared a third slenderness — `TURN_LD_MAX = 20` in `layout.js`, gated by
 the `turning` check — and the movement arrived twelve bars over it. Each was
-waived in `TURN_WAIVERS` citing this item; **nine remain** after §234 Landing 1
-(the two arrest columns closed, see the block under group C) and the first
-member of Landing 2 (the alarm pusher stem, see the blocks under group B —
-the second block is two members MEASURED and not cut). This is that list, with the fix path
+waived in `TURN_WAIVERS` citing this item; **six remain** after §234 Landing 1
+(the two arrest columns closed, see the block under group C) and Landing 2's
+first member and its step 5 (the alarm pusher stem, and the hack and reset
+rods re-sectioned as flat stamped levers — see the blocks under group B; the
+middle block is two members MEASURED and not cut). This is that list, with the fix path
 for each group, so the waivers can be deleted one group at a time; per §137's
 staleness rule, deleting a waiver whose bar is no longer over the ceiling is
 structurally part of the fix, and leaving one behind fails the check.
@@ -19867,6 +19871,48 @@ longer than the tube a real case needs.
 > winding ratio (20/8 → 20/10), re-derives the corner's declared planes and
 > re-solves the collar bound — filed as its own landing in roadmap §234
 > (step 3b), not absorbed into a section change. Nothing in this step was cut.
+
+> **§234 Landing 2, step 5 (2026-09-18) — the owner's decision, and the three
+> rod rows closed by it: the hack and reset rods are FLAT STAMPED LEVERS.**
+> The entry's second resolution, chosen over re-routing the corridor: a real
+> caliber's hack lever and reset hammer are stampings, and a flat link is no
+> body of revolution for `turning` to judge — correctly, since nobody turns
+> one. Each is ONE extruded strip now (`makeFlatLinkMesh`, meshes `hackLink`
+> and `resetLink`) in the tube's own pose frame: thickness `LINK_T_U` =
+> §50's floor (0.317 u, 0.12 mm — the corridor allows no more: two links a
+> margin apart would want T ≤ 0.247 u, so they are cut AT the floor and
+> stand 0.045 apart where they cross, asserted), width `linkWidthFor(chord)`
+> = chord / `SLENDER_TARGET` (§54's ceiling in plan, §229's rule): reset
+> 1.614 u (0.612 mm) over its 43.57 u straight chord, hack 2.446 u
+> (0.927 mm) over 66.04 u. The knuckle (`ROD_KNUCKLE_R`, 1.15 × `ROD_R`) is
+> gone with the tube — a strip's widest point is its own edge — and every
+> corridor row takes the link's plan half-width instead, per link, so the
+> stop-work solve prices each candidate station at the width its chord asks
+> (`linkHalfWFor`, `obstaclesFor`). Both elbow solves re-ran at the wider
+> blanks and clear: the reset link straight as before, the hack link's
+> dogleg at e 13.2 (was 11.6), f 0.30.
+>
+> **§137 Gate A re-derived for the flat section** (`priceRigidBentLink`):
+> the bend's offset is a plan quantity, so its moment acts in the strip's
+> PLANE — Z = T·W²/6, I = T·W³/12, the strong axis. At the 50 mN ceiling the
+> hack link reads σ 14.6 MPa (the tube: 120), Euler fraction 0.2% (6.5%),
+> axial give 1.07% of its stroke (28%). The weak axis W·T³/12 is what a
+> straight strut buckles about and is held separately: `eulerFracThin`
+> 7.8% (reset) and 11.9% (hack) of the ceiling, asserted under 1 at boot
+> (§231's test). Three waivers retired — `Hack rod::rodSegOut` (L/D 63.5),
+> `Hack rod::rodSegIn` (37.0), `Reset rod::rodSegOut+rodSegIn` (62.2) —
+> and TODO 109's two `SLENDER_WAIVERS` rows with them (the strips' λ read
+> 27.0 in plan; the over-ceiling catalogue drops 8 → 5).
+>
+> **What this step does NOT change, said plainly.** The pin joints are what
+> they were: each strip's rounded end is centred on its pin (the setting
+> lever's post, the hack pin, the hammer's tail tip, the crank's tail top)
+> exactly as the tube's end was, with no eye cut and the pin passing through
+> the strip's end — the same EXPECTED contact the tubes carried. A stamped
+> link with an eye over a real pin and a stack the corridor could hold is a
+> P0 filing of its own, not this section change. `explain.html` still says
+> "a thin hack rod" in one sentence; that block's re-wording invalidates its
+> seven translations by design and rides a page landing (§228's precedent).
 
 ### Group C — arbors inside the movement (3 rows)
 

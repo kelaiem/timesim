@@ -26163,3 +26163,103 @@ measurement the same way the entry's group-C claim did, and for the same
 reason: a member's radius is a station in someone else's derivation. The
 member that DID land, the pusher, was the one whose neighbours all derived
 from it.
+
+### Landing 2, step 5 — the hack and reset rods as flat stamped levers (the owner's decision)
+
+    LINK_T_U              new, layout.js     the stamped sheet = §50's floor, 0.317 u (0.12 mm)
+    linkWidthFor(chord)   new, layout.js     max(STOCK_MIN_U, chord / SLENDER_TARGET) — §54's ceiling in plan
+    resetLink             ONE strip, W 1.614 × T 0.317 u over a 43.57 u straight chord (was two ⌀0.7 tubes + a knuckle)
+    hackLink              ONE strip, W 2.446 × T 0.317 u over a 66.04 u chord, e 13.2 / f 0.30 (was e 11.6 / f 0.35)
+    ROD_R, ROD_KNUCKLE_R  retired            0.35 and 1.15 × 0.35, bare literals; the plan radius is W / 2 per link now
+    ROD2_PLANE_Z          0.721 -> 0.912     ceiling-bound: GW_UNDER_Z − margin − T/2 (the plane rose by the half-thickness the sheet lost)
+    POST_TOP_Z            1.421 unchanged    by construction
+    hack link, priced     σ 120 -> 14.6 MPa, Euler 6.5% -> 0.2%, give 28% -> 1.07% of stroke (at the 50 mN ceiling)
+    weak-axis Euler       new                7.8% (reset) / 11.9% (hack) of the ceiling, asserted under 1
+    TURN_WAIVERS          9 -> 6             the three rod rows retired
+    SLENDER_WAIVERS       Hack rod, Reset rod retired (TODO 109); over-ceiling rows 8 -> 5
+
+**The decision.** The roadmap's step 5 put two honest resolutions to the
+owner — re-route the corridor for a fatter turned rod, or re-section the two
+rods as the flat stamped levers a real caliber's hack lever and reset hammer
+ARE — and recommended the second as the design truth rather than an
+accommodation. The owner chose it. A flat link is not a body of revolution,
+so `turning` stops judging it, correctly: nobody turns one.
+
+**The section, both numbers derived.** THICKNESS is the sheet, and the sheet
+is §50's floor because the corridor allows nothing thicker: the two links lie
+one over the other where they converge on the setting lever's post, so the
+hack link's underside must clear the reset link's top between the reset plane
+(the tail bar's mid-plane, floor-bound) and the great wheel's margin. With a
+margin between them as well the sheet could be at most (GW_UNDER_Z −
+CLEAR_MARGIN − ROD_PLANE_Z − CLEAR_MARGIN) / 1.5 = 0.247 u — UNDER the floor —
+so the corridor cannot hold two stamped links a margin apart, which is why the
+pair was EXPECTED contact as tubes and stays so, and why the sheet is cut AT
+the floor: cut there they stand 0.045 u apart where they cross, and boot
+asserts they do not overlap. WIDTH is §54's ceiling applied in plan over the
+link's pin-to-pin span, the rule §229 gave the alarm link's beak: a two-force
+link's free length is the chord between its bearings, and its in-plane λ =
+chord / W is built to `SLENDER_TARGET`. Reset 43.57 / 27 = 1.614 u, hack
+66.04 / 27 = 2.446 u; the stock floor stands under the rule for a link too
+short to need it.
+
+**What the tube's knuckle was, and where its job went.** `ROD_KNUCKLE_R` was
+the tube's widest point, and every corridor row carried it: a strip's widest
+point is its own edge, so the rows carry the link's plan half-width instead,
+and PER LINK, because width follows chord and the two chords differ. The
+stop-work solve scores each candidate station at the width that station's
+chord would ask (`linkHalfWFor`, `obstaclesFor`) rather than at one shared
+radius, and hands back `HACK_LINK_W` so main.js cuts the blank it priced
+rather than recomputing one. The consumers' table (`LOW_LINKAGE_OBSTACLES`)
+is two stadiums per link at that half-width — which is the strip's exact
+silhouette, so the knuckle circle it used to push is not owed. Both elbow
+solves re-ran at the wider blanks and clear; the hack link's least bend moved
+from e 11.6 to 13.2 (f 0.35 → 0.30) to thread the wider strip, the reset link
+is straight as before.
+
+**The mesh.** One `ExtrudeGeometry` per link (`makeFlatLinkMesh`), the
+outline the union of a stadium along each straight run — parallel edges,
+semicircular ends over the pins, a rounded outer corner and a mitred inner one
+at the bend — written as an explicit polygon (the Geneva disc's lesson about
+`absarc` under `curveSegments: 1`) and extruded about the plane. One mesh
+where the tube was three: a stamping has no joint at its bend, and §137's rule
+that the two segments be named for the end each carries (so `intraUnit`'s
+report could not collapse two pairs into one) has nothing left to
+distinguish. The mesh publishes the elbow it was cut to in `userData.link`,
+which is where `probe-137-elbow` now reads it back — held to the metal by
+three bounding-box residuals rather than the two-cylinders-and-a-sphere
+inversion it used to run. `outlines` reads the two new rings simple.
+
+**And the read-back earned its keep on the first run.** The first cut of the
+outline builder turned both end caps the wrong way — a semicircle folded back
+INSIDE the strip's end instead of round the pin — and `outlines` read the
+ring simple, because it was: a concave cap makes a valid polygon, just not
+the strip. What caught it was the probe's box residual (43.57 along the chord
+where the declared link says 45.19), which is the instruments skill's rule
+in one line: a check that passes has not measured the thing unless it
+measures the thing. The loop is one counter-clockwise walk now, every arc
+emitted with its angle increasing, and the residual is bounded by the caps'
+own chord sag (the mesh publishes its tessellation, `arcN`, so the probe
+derives the bound rather than being handed one).
+
+**§137 Gate A, re-derived.** The bend's offset e is a PLAN quantity, so its
+moment F·e acts in the strip's plane — the strong axis: Z = T·W²/6 and
+I = T·W³/12, four and nine times the tube's Z and I for the reset link, nine
+and thirty-three times for the hack. At the detent ceiling the hack link's
+dogleg reads σ 14.6 MPa where the round rod read 120, an in-plane Euler
+fraction of 0.2% where it read 6.5%, and an axial give of 1.07% of its stroke
+where it read 28% — the "low linkage's compliance concentrator" §137 named is
+mostly gone, and the number was the round section's. The strip's WEAK axis,
+W·T³/12, is the axis a straight strut buckles about under the same load, so
+each row now carries `eulerFracThin` and boot holds it under 1: 7.8% (reset)
+and 11.9% (hack) of the 50 mN ceiling. The transfers check re-verifies each
+row's moment = load · e as before; the section is the row's own.
+
+**What is NOT changed, said plainly.** The pin joints are what they were.
+Each strip's rounded end is centred on its pin — the setting lever's post, the
+hack pin, the hammer's tail tip, the crank's tail top — exactly as the tube's
+end was, with no eye cut and the pin passing through the strip's end: the
+same EXPECTED contact the tubes carried, now visible for what it is. A stamped
+link with a real eye over a real pin, and a stack the corridor could hold
+with margins, is a P0 filing of its own. The explainer's one sentence naming
+"a thin hack rod" stays for a page landing (§228's precedent: re-wording a
+block invalidates its seven translations by design).

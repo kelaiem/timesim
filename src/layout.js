@@ -545,6 +545,25 @@ export const SLENDER_MAX = 30;
 // 10% headroom, so a part that drifts slightly still passes and one that
 // drifts a lot still fails.
 export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
+// §234 (TODO 145 group B, step 5) — A STAMPED LINK'S SECTION. The hack and
+// reset links are flat stamped levers, not turned rods (the owner's call: a
+// real caliber's hack lever and reset hammer ARE stampings, and a flat link is
+// no body of revolution for `turning` to judge). Two numbers, two constraints:
+//   · THICKNESS is the sheet, and the sheet is §50's floor because the low
+//     corridor allows nothing thicker — main.js derives the two planes from
+//     the tail bar and the great wheel and asserts the stack; measured, two
+//     links with a margin between them would want T ≤ 0.247 u, under the
+//     floor, so they are cut AT it and stand 0.045 apart where they cross.
+//   · WIDTH is §54's ceiling applied IN PLAN over the link's pin-to-pin span,
+//     the rule §229 gave the alarm link's beak: a two-force link's free length
+//     is the chord between its bearings, and its in-plane λ = span / width is
+//     built to SLENDER_TARGET, never merely under SLENDER_MAX. The stock floor
+//     stands under it for a link too short to need the rule.
+// The bend's moment (§137 Gate A) acts in the strip's PLANE, its strong axis;
+// the weak axis is a straight strut's Euler axis and main.js holds it against
+// the detent ceiling beside the row.
+export const LINK_T_U = STOCK_MIN_U;
+export const linkWidthFor = (span_u) => Math.max(STOCK_MIN_U, span_u / SLENDER_TARGET);
 // An OVERHANG past the last bearing bends like a cantilever, and §54 charges
 // it a length multiplier for that — ∛(48/3), the ratio of a midspan-loaded
 // simple beam's stiffness to a tip-loaded cantilever's, taken into LAMBDA
@@ -2144,7 +2163,11 @@ function maxZInside(p, q, zp, zq, c) {
 // its far end HANGS from a raised pivot and climbs as the crank swings — so
 // the test is per-segment and per-pose: a banded row bites only where the rod
 // rises into its body.
-export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eStep = 0.2, eMax = 6, plateLimit = Infinity } = {}) {
+export function solveElbow(len, posesAB, obstacles, halfZ = 0, { fStep = 0.05, eStep = 0.2, eMax = 6, plateLimit = Infinity } = {}) {
+  // `halfZ` is the link's half-extent in z — the height a banded row (one
+  // with `zAbove`) is met at. §234: for the round rod it was the knuckle
+  // radius; a flat link's plan half-width rides in the obstacle rows instead
+  // (lowRodObstaclesFor takes it), so the two extents are no longer one number.
   // §85 step C3 — WHAT THE SEARCH IS FOR. This scan used to maximise
   // worst-case clearance, and a maximiser with no cost for bending bends as
   // far as it is allowed: the shipped rod sat at f 0.25, e −6.0 — BOTH box
@@ -2188,8 +2211,8 @@ export function solveElbow(len, posesAB, obstacles, rodR = 0, { fStep = 0.05, eS
             // Each half is judged on its own height: the post half runs low
             // and under the wheel, the crank half is the one that climbs.
             const z1 = maxZInside(a, E, za, zE, o), z2 = maxZInside(E, b, zE, zb, o);
-            const d1 = z1 !== null && z1 + rodR >= o.zAbove ? segCircleClear(a, E, o) : Infinity;
-            const d2 = z2 !== null && z2 + rodR >= o.zAbove ? segCircleClear(E, b, o) : Infinity;
+            const d1 = z1 !== null && z1 + halfZ >= o.zAbove ? segCircleClear(a, E, o) : Infinity;
+            const d2 = z2 !== null && z2 + halfZ >= o.zAbove ? segCircleClear(E, b, o) : Infinity;
             d = Math.min(d1, d2);
           }
           if (d < worst) { worst = d; worstAt = o; }
@@ -2251,9 +2274,10 @@ export function solveStopWork({
   TQ_CUT,             // the three-quarter plate's open wedge { aim, phiOpen }
   TQ_TOP_Z,           // the balance cock's height — the mast's case-fit ceiling
   ROD2_PLANE_Z,       // the low rod plane
-  rodR,               // the rod's own radius — the height a banded row is met at
+  linkHalfT,          // §234: the flat link's half-thickness — the height a banded row is met at
+  linkHalfWFor,       // §234: (chord) → the link's plan half-width (layout.js's linkWidthFor / 2)
   bearingObstaclesAt, // (P) → circles the bearing scan must keep the crank clear of
-  lowRodObstacles,    // the corridor table the rod's elbow is scored against
+  obstaclesFor,       // §234: (halfW) → the corridor table the link's elbow is scored against, at that plan half-width
   rubyFlare,          // geometry.js's HACK_RUBY_FLARE
   warn = () => {},
 }) {
@@ -2429,8 +2453,12 @@ export function solveStopWork({
       const tt = tailTopIn(fr, psi);
       poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
     }
-    const opts = { eMax: ELBOW_E_MAX, plateLimit: plateR - rodR - CLEAR_MARGIN };
-    return solveElbow(len, poses, lowRodObstacles, rodR,
+    // §234 — the link's width follows its chord (layout.js's rule), and the
+    // corridor is priced at THAT width: a candidate station with a longer rod
+    // is scored against rows that already carry the wider blank it would need.
+    const halfW = linkHalfWFor(len);
+    const opts = { eMax: ELBOW_E_MAX, plateLimit: plateR - halfW - CLEAR_MARGIN };
+    return solveElbow(len, poses, obstaclesFor(halfW), linkHalfT,
       coarse ? { ...opts, fStep: 0.25, eStep: 1 } : opts);
   };
   const STOP_BEARING = (() => {
@@ -2578,8 +2606,9 @@ export function solveStopWork({
       // corridor model could not see the great wheel.
       poses.push({ a: post, b: { x: tt.x, y: tt.y }, za: ROD2_PLANE_Z, zb: tt.z });
     }
-    const best = solveElbow(HACK_ROD_LEN, poses, lowRodObstacles, rodR,
-      { eMax: ELBOW_E_MAX, plateLimit: plateR - rodR - CLEAR_MARGIN });
+    const halfW = linkHalfWFor(HACK_ROD_LEN);
+    const best = solveElbow(HACK_ROD_LEN, poses, obstaclesFor(halfW), linkHalfT,
+      { eMax: ELBOW_E_MAX, plateLimit: plateR - halfW - CLEAR_MARGIN });
     if (best.atBound?.length)
       corners.push({ what: 'the hack rod\'s bend', value: `f ${best.f.toFixed(2)}, e ${best.e.toFixed(1)}`,
         bound: best.atBound.join(' and ') });
@@ -2604,5 +2633,6 @@ export function solveStopWork({
     stopTailTopAt, stopSolvePsi, HACK_ROD_LEN, STOP_PSI0,
     STOP_PAD_TOP_LZ, STOP_PAD_Y, STOP_PAD_X,
     HACK_ROD_ELBOW,
+    HACK_LINK_W: 2 * linkHalfWFor(HACK_ROD_LEN),   // §234: the blank the elbow was priced at — main.js cuts to this, not to a second computation
   };
 }

@@ -54,6 +54,7 @@ import {
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
   TURN_LD_TARGET,                            // §233/§234: the turning ceiling's build-to figure — the arrest columns are cut to it
   STEM_STOCK_R_U,                            // §234 Landing 2: the stem-stock floor the alarm pusher is cut to
+  LINK_T_U, linkWidthFor,                    // §234 step 5: the stamped hack and reset links' sheet and their plan-width rule
   SPRING_INDEX_MIN, SPRING_INDEX_MAX, SPRING_INDEX_TARGET,   // §234: the coiling envelope the return coil's wire is solved in
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
@@ -5038,14 +5039,18 @@ const Z_SETTING_LEVER = Z_KEYLESS - (0.75 + CLEAR_MARGIN + 0.5 + 0.1);
 // Reset-rod plane — declared HERE (ahead of both the lever and the rod
 // linkage below) because it sizes the lever's tail post: the post's whole
 // job is to carry the two rod pins.
-const ROD_R = 0.35; // rod radius — reset and hack rods share it
-// The KNUCKLE is the rod's widest point, not the tube: an elbow rod's bend
-// carries a ball a little proud of the shaft. Every clearance question about
-// these rods is really about this radius, and asking it about ROD_R
-// understates the part by 0.05 — which §85 C3 surfaced the moment its
-// least-bend objective stopped leaving slack for the model's own optimism
-// (CI: Reset rod ⇄ the winding spur at 0.0849 against a 0.15 floor).
-const ROD_KNUCKLE_R = ROD_R * 1.15;
+// §234 (TODO 145 group B, step 5) — THE TWO LINKS ARE FLAT STAMPED LEVERS.
+// A real caliber's hack lever and reset hammer are stampings, and the owner
+// chose that over re-routing the corridor for a fatter turned rod. The sheet
+// is layout.js's LINK_T_U (§50's floor — the corridor allows no more, see the
+// stack assert below); each link's WIDTH is layout.js's linkWidthFor over its
+// own pin-to-pin chord (§54's ceiling in plan), derived where the chord is
+// known: RESET_LINK_W beside the reset solve, HACK_LINK_W from the stop-work
+// solve itself. The round rod's ROD_R (0.35, a bare literal at L/D 62–64) and
+// its formed KNUCKLE (1.15 × ROD_R, the tube's widest point) are gone with the
+// tube: a strip's widest point is its own edge, and every clearance question
+// about these links is asked at their plan half-width, W / 2.
+const LINK_T = LINK_T_U;
 const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 // The rods run LOW now — between the base plate and the GREAT WHEEL's
 // underside. The mid-band (just under the plate floor) is closed by the
@@ -5059,9 +5064,23 @@ const FUSEE_TOP_Z = L_BARREL + FUSEE_BASE_Z + FUSEE_H;
 const ROD_TAILBAR_T = 0.8;
 const GW_UNDER_Z = L_BARREL - 1.4 / 2 - Math.min(1.4 * 0.18, 0.36 * 0.22);
 const ROD_PLANE_Z = CLEAR_MARGIN + ROD_TAILBAR_T / 2;              // floor-bound: 0.55
-const ROD2_PLANE_Z = GW_UNDER_Z - CLEAR_MARGIN - ROD_R;            // ceiling-bound: 0.72
+const ROD2_PLANE_Z = GW_UNDER_Z - CLEAR_MARGIN - LINK_T / 2;       // ceiling-bound: 0.912 at the stamped sheet (was 0.72 for the ⌀0.7 tube)
 if (ROD2_PLANE_Z < ROD_PLANE_Z)
   console.warn(`rod corridor collapsed: hack plane ${ROD2_PLANE_Z.toFixed(2)} under reset plane ${ROD_PLANE_Z.toFixed(2)}`);
+// §234 — THE STACK. The two flat links lie one over the other where their
+// routes converge (both ride the setting lever's post at the shipped spec), so
+// the hack link's underside must clear the reset link's top — two thicknesses
+// between the reset plane and the great wheel's margin. With a margin between
+// them as well the sheet could be at most (GW_UNDER_Z − CLEAR_MARGIN −
+// ROD_PLANE_Z − CLEAR_MARGIN) / 1.5 = 0.247 u, UNDER §50's floor: the corridor
+// cannot hold two stamped links a margin apart, which is why the pair is
+// declared EXPECTED (they touched as tubes) and why the sheet is cut AT the
+// floor and not above it. What is held is that they do not overlap.
+{
+  const resetTop = ROD_PLANE_Z + LINK_T / 2, hackBot = ROD2_PLANE_Z - LINK_T / 2;
+  if (hackBot < resetTop - 1e-9)
+    console.warn(`§234: the hack link's underside ${hackBot.toFixed(3)} is under the reset link's top ${resetTop.toFixed(3)} — the two stamped links overlap in the corridor`);
+}
 // The two rods CANNOT keep the old 2r+gap vertical separation in this
 // 0.22-unit corridor — where their routes converge their tubes touch,
 // exactly as two levers stacked on one stud do. That contact is declared
@@ -5081,7 +5100,7 @@ if (Z_SECONDS_ARBOR - CAM_T / 2 < ROD_PLANE_Z + ROD_TAILBAR_T / 2 + CLEAR_MARGIN
 // post no longer crosses the three-quarter plate AT ALL — it tops out ~1.4,
 // so the plate loses its arc slot (see tqSlots).
 const HACK_ROD_PIN_LAND = 0.35; // post material kept above the top pin
-const POST_TOP_Z = ROD2_PLANE_Z + ROD_R + HACK_ROD_PIN_LAND;
+const POST_TOP_Z = ROD2_PLANE_Z + LINK_T / 2 + HACK_ROD_PIN_LAND;   // §234: unchanged by construction — the plane rose by exactly the half-thickness the sheet lost
 const settingLever = G.makeSettingLever({
   beakLen: Math.hypot(SL_C, CROWN_PULL_DIST / 2),
   tailLen: SL_TAIL,
@@ -5589,9 +5608,19 @@ hammerGroup.add(hammerTailBar);
 // TODO 63's finding is that a straight two-force link and a link with 28
 // units of offset are the same object to every instrument here; this is
 // the arithmetic that decides whether the rigid bend is defensible as
-// MATTER. Section: ROD_R 0.35 u = 0.1326 mm, so I = πr⁴/4 = 2.432e-16 m⁴
-// and Z = I/c = 1.833e-12 m³, at the 200 GPa both SLENDER_E_PA and
-// OSC_STEEL_E already carry for this steel (EI = 4.864e-5 N·m²).
+// MATTER. Section (§234): a stamped strip W × T with T = LINK_T (§50's floor,
+// 0.12 mm) and W = the link's chord / SLENDER_TARGET — reset 1.614 u
+// (0.612 mm), hack 2.45 u (0.93 mm). The bend's offset e is a PLAN quantity,
+// so its moment acts in the strip's plane, the STRONG axis: Z = T·W²/6 and
+// I = T·W³/12 (reset 7.5e-12 m³ / 2.3e-15 m⁴, hack 1.72e-11 / 8.0e-15 —
+// 4× and 9× the tube's Z of 1.833e-12 m³, 9× and 33× its I of 2.432e-16 m⁴,
+// for the same load), at
+// the 200 GPa both SLENDER_E_PA and OSC_STEEL_E already carry for this steel.
+// The strip's WEAK axis, W·T³/12, is the axis a straight strut buckles about
+// and is held separately at the detent ceiling beside each row (the
+// `eulerFracThin` quantity and its boot assert). The numbers below were the
+// round rod's and are kept as the record of what the section change bought;
+// the LIVE figures are the rows' own (priceRigidBentLink).
 //
 // THE LOADS, derived from the driven member rather than assumed — both
 // by virtual work, so no lever ratio has to be measured off the metal:
@@ -5661,20 +5690,23 @@ hammerGroup.add(hammerTailBar);
 // tip circle by 0.094 — which is the number CI measured as 0.0849 on the reset
 // rod. The parts are rigid, so their radius is a constant even when a spec
 // moves their station; only the centre travels.
-const CORRIDOR_Z_BOT = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - ROD_KNUCKLE_R;
+const CORRIDOR_Z_BOT = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - LINK_T / 2;
 const TRANSFER_SWEPT_R = xyRadiusAbout(transferWheel,
   { x: uWind.x * cwDist, y: uWind.y * cwDist }, GW_UNDER_Z, CORRIDOR_Z_BOT);
 const WIND_SPUR_SWEPT_R = xyRadiusAbout(windSpur, P.barrel, GW_UNDER_Z, CORRIDOR_Z_BOT);
-const lowRodObstaclesFor = (p, kw) => [
-  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: TRANSFER_SWEPT_R + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the transfer wheel', of: () => transferWheel },
-  { x: p.barrel.x, y: p.barrel.y, r: WIND_SPUR_SWEPT_R + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the winding spur', of: () => windSpur },
-  { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the centre arbor’s lower collar', of: () => centerArbor },
-  { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar', of: () => fourthArbor },
+// §234 — the rows carry the LINK's plan half-width (`halfW`, W / 2), which is
+// per link now that width follows chord: the reset link prices its corridor at
+// its own width, the stop-work solve at the width its candidate's chord asks.
+const lowRodObstaclesFor = (p, kw, halfW) => [
+  { x: kw.uWind.x * kw.cwDist, y: kw.uWind.y * kw.cwDist, r: TRANSFER_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the transfer wheel', of: () => transferWheel },
+  { x: p.barrel.x, y: p.barrel.y, r: WIND_SPUR_SWEPT_R + halfW + CLEAR_MARGIN, what: 'the winding spur', of: () => windSpur },
+  { x: p.center.x, y: p.center.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the centre arbor’s lower collar', of: () => centerArbor },
+  { x: p.fourth.x, y: p.fourth.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the fourth arbor’s lower collar', of: () => fourthArbor },
   // §125 Tier B — the escape arbor joins the corridor's walls: no route ever
   // passed it until the mirrored hack rod's southern dogleg did (inspection
   // read Escape wheel ⇄ Hack rod FORBIDDEN on the first route the widened
   // elbow found). Same collar model as the fourth, one arbor on.
-  { x: p.escape.x, y: p.escape.y, r: 1.4 * 1.7 + ROD_KNUCKLE_R + CLEAR_MARGIN, what: 'the escape arbor’s lower collar', of: () => escapeArbor },
+  { x: p.escape.x, y: p.escape.y, r: 1.4 * 1.7 + halfW + CLEAR_MARGIN, what: 'the escape arbor’s lower collar', of: () => escapeArbor },
   // §85 step C1 — THE GREAT WHEEL, the body this corridor is named after and
   // never contained. The fusee station was represented by the winding SPUR
   // (r ≈ 5.0) because that is what the rod passes beside; the body it passes
@@ -5683,40 +5715,89 @@ const lowRodObstaclesFor = (p, kw) => [
   // GW_UNDER_Z — the same constant ROD2_PLANE_Z is derived FROM, so the row
   // states the corridor's own premise instead of assuming it, and bites
   // exactly where the rod climbs out of the band that premise bought.
-  { x: p.barrel.x, y: p.barrel.y, r: LAYOUT_INPUTS.swept.great + ROD_KNUCKLE_R + CLEAR_MARGIN,
+  { x: p.barrel.x, y: p.barrel.y, r: LAYOUT_INPUTS.swept.great + halfW + CLEAR_MARGIN,
     zAbove: GW_UNDER_Z, what: 'the great wheel', of: () => greatWheel },
 ];
 // The keyless radii the corridor reads, captured like the solver's own
 // inputs — the stem handle re-solves these, the train handles do not.
 const LOW_ROD_KEYLESS = { uWind, cwDist, crownWheelR, windSpurR };
-const LOW_ROD_OBSTACLES = lowRodObstaclesFor(P, LOW_ROD_KEYLESS);
+// §234 — the reset link's width from its chord (the chord is the rod length:
+// the reset solve found e = 0 and the link is straight), and its corridor
+// priced at that width.
+const RESET_LINK_W = linkWidthFor(RESET_ROD_LEN);
+const RESET_ROD_OBSTACLES = lowRodObstaclesFor(P, LOW_ROD_KEYLESS, RESET_LINK_W / 2);
 // Mesh in the pose frame the placement code already uses: local +Y is the
 // chord (post end at −len/2), so position-at-midpoint + rotation.z works
 // exactly as it did for the straight tube.
-function makeElbowRodMesh(len, f, e) {
+// §234 — THE FLAT LINK. One stamped strip of width W and thickness T along the
+// polyline post → elbow → driven end, in the same pose frame the tube used
+// (local +Y is the chord, post end at −len/2, elbow at (e, −len/2 + f·len)) so
+// tick's placement is untouched. Its outline is the strip's own silhouette —
+// the union of a stadium of radius W/2 along each segment: parallel edges,
+// semicircular ends over the pins, a rounded outer corner at the bend and a
+// mitred inner one — written as an EXPLICIT POLYGON (the Geneva disc's lesson:
+// an absarc under curveSegments 1 collapses) and extruded T thick about the
+// plane. ONE mesh where the tube was two segments and a knuckle: a stamping
+// has no joint at its bend, and the §137 naming rule (segments named for the
+// end each carries so intraUnit's report cannot collapse two pairs into one)
+// has nothing left to distinguish. The mesh publishes the elbow it was cut to
+// in userData.link, which is where probe-137-elbow reads it back from.
+function makeFlatLinkMesh(len, f, e, W, T, name) {
   const g = new THREE.Group();
-  const a = { x: 0, y: -len / 2 }, b = { x: 0, y: len / 2 };
-  const E = { x: e, y: -len / 2 + f * len };
-  // §137: the two segments are named for the END EACH CARRIES, not with one
-  // shared name. A row's identity is (unit, tier, meshes), so two segments
-  // sharing a name COLLAPSE two distinct reported pairs into one — measured
-  // against the base report, `intraUnit`'s out-of-scope list silently fell
-  // 186 → 184 for exactly that reason. A report that shrinks because two
-  // members became indistinguishable is worse than the unnamed geometry
-  // labels it replaced. In/Out follow the direction the transfer row
-  // declares (post → tail), matching the bevel corners' own convention.
-  for (const [i, [p, q]] of [[a, E], [E, b]].entries()) {
-    const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy);
-    const seg = new THREE.Mesh(new THREE.CylinderGeometry(ROD_R, ROD_R, L, 8), MATS.steel);
-    seg.name = i === 0 ? 'rodSegIn' : 'rodSegOut';
-    seg.position.set((p.x + q.x) / 2, (p.y + q.y) / 2, 0);
-    seg.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
-    g.add(seg);
-  }
-  const knuckle = new THREE.Mesh(new THREE.SphereGeometry(ROD_KNUCKLE_R, 10, 8), MATS.steel);
-  knuckle.name = 'rodKnuckle';  // a formed boss over the bend — it makes no pivot claim (§137)
-  knuckle.position.set(E.x, E.y, 0);
-  g.add(knuckle);
+  const h = W / 2;
+  const pts = Math.abs(e) > 1e-9
+    ? [{ x: 0, y: -len / 2 }, { x: e, y: -len / 2 + f * len }, { x: 0, y: len / 2 }]
+    : [{ x: 0, y: -len / 2 }, { x: 0, y: len / 2 }];
+  const N = 12;   // points per quarter of arc — a stamping's edge, not a bearing surface
+  // ONE COUNTER-CLOCKWISE LOOP: the right edge walked post → driven end, the
+  // driven-end cap turned through +u, the left edge walked back, the post-end
+  // cap turned through −u. Every arc is emitted with its angle INCREASING, so
+  // the loop cannot fold — the first cut of this builder turned both caps the
+  // other way and probe-137-elbow's read-back caught the box reading the bare
+  // chord: the caps were lying inside the strip.
+  const out = [];
+  const push = (x, y) => { const l = out[out.length - 1]; if (!l || Math.hypot(l[0] - x, l[1] - y) > 1e-9) out.push([x, y]); };
+  const arc = (c, a0, a1) => {           // centre c, radius h, from a0 CCW to a1 (lifted above a0); endpoints included
+    while (a1 < a0 - 1e-12) a1 += Math.PI * 2;
+    const n = Math.max(2, Math.ceil((a1 - a0) / (Math.PI / 2) * N));
+    for (let i = 0; i <= n; i++) { const t = a0 + (a1 - a0) * i / n; push(c.x + Math.cos(t) * h, c.y + Math.sin(t) * h); }
+  };
+  const dir = (p, q) => { const dx = q.x - p.x, dy = q.y - p.y, L = Math.hypot(dx, dy); return { x: dx / L, y: dy / L }; };
+  const segs = []; for (let i = 0; i + 1 < pts.length; i++) segs.push(dir(pts[i], pts[i + 1]));
+  const right = (u) => ({ x: u.y, y: -u.x }), left = (u) => ({ x: -u.y, y: u.x });
+  const ang = (v) => Math.atan2(v.y, v.x);
+  const u0 = segs[0], uN = segs[segs.length - 1];
+  const P0 = pts[0], PN = pts[pts.length - 1];
+  // the elbow, if there is one: on the CONVEX side an arc (angle increasing in
+  // the walk direction), on the CONCAVE side the mitre where the two offset
+  // edges meet, P + m · h / cos(θ/2)
+  const corner = (side, nA, nB) => {           // walking from normal nA to normal nB about the elbow
+    const P = pts[1], u1 = segs[1];
+    const cross = u0.x * u1.y - u0.y * u1.x;    // > 0: the path turns LEFT, so the right edge is convex
+    const convex = side === 'right' ? cross > 0 : cross < 0;
+    if (convex) { arc(P, ang(nA), ang(nB)); return; }
+    const mx = nA.x + nB.x, my = nA.y + nB.y, mL = Math.hypot(mx, my) || 1;
+    const cosHalf = Math.sqrt(Math.max(0.04, (u0.x * u1.x + u0.y * u1.y + 1) / 2));   // cos(θ/2) from cos θ
+    push(P.x + mx / mL * h / cosHalf, P.y + my / mL * h / cosHalf);
+  };
+  const r0 = right(u0), rN = right(uN), l0 = left(u0), lN = left(uN);
+  push(P0.x + r0.x * h, P0.y + r0.y * h);
+  if (segs.length === 2) corner('right', r0, rN);
+  push(PN.x + rN.x * h, PN.y + rN.y * h);
+  arc(PN, ang(rN), ang(rN) + Math.PI);            // driven-end cap: right → left through +u
+  if (segs.length === 2) corner('left', lN, l0);
+  push(P0.x + l0.x * h, P0.y + l0.y * h);
+  arc(P0, ang(l0), ang(l0) + Math.PI);            // post-end cap: left → right through −u
+  if (Math.hypot(out[0][0] - out[out.length - 1][0], out[0][1] - out[out.length - 1][1]) < 1e-9) out.pop();
+  const shape = new THREE.Shape();
+  out.forEach(([x, y], i) => (i === 0 ? shape.moveTo(x, y) : shape.lineTo(x, y)));
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false, curveSegments: 1 });
+  geo.translate(0, 0, -T / 2);
+  const link = new THREE.Mesh(geo, MATS.steel);
+  link.name = name;
+  link.userData.link = { len, f, e, W, T, arcN: N };   // arcN: the cap tessellation, so a read-back can bound its own chord sag
+  g.add(link);
   return g;
 }
 // §137 — THE BEND, PRICED (TODO 63: "a real bent connecting rod carries a
@@ -5728,7 +5809,7 @@ function makeElbowRodMesh(len, f, e) {
 // carry the conclusions).
 //
 //   moment    M        = F·e                 — what the knuckle's section eats
-//   stress    σ        = M / (π·r³/4)        — solid round bar at ROD_R
+//   stress    σ        = M / (T·W²/6)        — the flat strip in its own plane (§234; was π·r³/4, the round bar)
 //   bow gain  P/P_E    = F / (π²EI/L²)       — the Euler fraction; the bow
 //                        the load ADDS is e·(P/P_E)/(1 − P/P_E)
 //   axial give Δ       ≈ π²·e·δbow/(2L)      — the chord shortens as the bow
@@ -5741,21 +5822,38 @@ function makeElbowRodMesh(len, f, e) {
 // bend at that ceiling bounds every honest working load from above. The row
 // carries the give as a fraction of the rod's own stroke — the number that
 // says whether the bend is cosmetic or load-bearing at this scale.
-function priceRigidBentLink(elbow, len_u, stroke_u) {
+// §234 — priced for the FLAT section. The offset e is a plan quantity, so the
+// moment F·e bends the strip in its own plane: Z = T·W²/6, I = T·W³/12 (the
+// strong axis) carry the stress and the bow. The strip's weak axis W·T³/12 is
+// the axis a straight strut buckles about under the same axial load, so the
+// row carries that Euler fraction too and boot holds it under 1 — the link
+// survives the detent ceiling as a column, §231's test for the reach bar.
+function priceRigidBentLink(elbow, len_u, stroke_u, W_u, T_u) {
   const F_mN = SELECTOR_DETENT_WINDOW_MN[1];
   const e_u = Math.abs(elbow.e);
   const m = UNIT_MM / 1000;                               // m per unit
-  const I = Math.PI * (ROD_R * m) ** 4 / 4;               // m⁴
-  const eulerP_N = eulerCriticalLoad_N(I, len_u, 1);   // §231: one law; K = 1, both knuckles pinned by their own pins
+  const W = W_u * m, T = T_u * m;
+  const I_plan = T * W ** 3 / 12, I_thin = W * T ** 3 / 12;   // m⁴
+  const Z_plan_mm3 = (T_u * UNIT_MM) * (W_u * UNIT_MM) ** 2 / 6;
+  const eulerP_N = eulerCriticalLoad_N(I_plan, len_u, 1);      // §231: one law; K = 1, both ends pinned by their own pins
+  const eulerThin_N = eulerCriticalLoad_N(I_thin, len_u, 1);
   const eulerFrac = (F_mN / 1000) / eulerP_N;
+  const eulerFracThin = (F_mN / 1000) / eulerThin_N;
   const bow_u = e_u * eulerFrac / (1 - eulerFrac);
   const give_u = Math.PI * Math.PI * e_u * bow_u / (2 * len_u);
   return {
     moment_mNmm: F_mN * e_u * UNIT_MM,
-    sigma_MPa: (F_mN / 1000) * (e_u * UNIT_MM) / (Math.PI * (ROD_R * UNIT_MM) ** 3 / 4),
-    offset_e_u: e_u, eulerFrac, give_u,
+    sigma_MPa: (F_mN / 1000) * (e_u * UNIT_MM) / Z_plan_mm3,
+    offset_e_u: e_u, eulerFrac, eulerFracThin, eulerThin_N, give_u,
     giveFracOfStroke: stroke_u > 0 ? give_u / stroke_u : Infinity,
+    W_u, T_u,
   };
+}
+// the boot assert both rows share: a flat strut under the detent ceiling must
+// not reach its weak-axis Euler load, or the link folds before it pushes.
+function assertLinkStrut(name, price) {
+  if (!(price.eulerFracThin < 1))
+    console.warn(`§234: the ${name} buckles about its weak axis at ${(price.eulerThin_N * 1000).toFixed(1)} mN — under the ${SELECTOR_DETENT_WINDOW_MN[1]} mN detent ceiling it is priced at (W ${price.W_u.toFixed(3)} × T ${price.T_u.toFixed(3)} u)`);
 }
 // Reset rod: endpoint pairs sampled over the stroke with the SAME
 // branch-tracked two-circle solve tick() uses.
@@ -5769,13 +5867,13 @@ const RESET_ROD_ELBOW = (() => {
     // Flat, both ends on the reset plane (§85 C1: heights are declared now).
     poses.push({ a: post, b: { x: r.q.x, y: r.q.y }, za: ROD_PLANE_Z, zb: ROD_PLANE_Z });
   }
-  const best = solveElbow(RESET_ROD_LEN, poses, LOW_ROD_OBSTACLES, ROD_KNUCKLE_R,
-    { eMax: ELBOW_E_MAX, plateLimit: plateR - ROD_KNUCKLE_R - CLEAR_MARGIN }); // §85 C3: least bend, plate-bounded
+  const best = solveElbow(RESET_ROD_LEN, poses, RESET_ROD_OBSTACLES, LINK_T / 2,
+    { eMax: ELBOW_E_MAX, plateLimit: plateR - RESET_LINK_W / 2 - CLEAR_MARGIN }); // §85 C3: least bend, plate-bounded; §234: at the strip's own half-width
   if (best.clear < 0)
     console.warn(`reset rod elbow: best clearance ${best.clear.toFixed(2)} — the low corridor is fouled`);
   return best;
 })();
-const resetRod = makeElbowRodMesh(RESET_ROD_LEN, RESET_ROD_ELBOW.f, RESET_ROD_ELBOW.e);
+const resetRod = makeFlatLinkMesh(RESET_ROD_LEN, RESET_ROD_ELBOW.f, RESET_ROD_ELBOW.e, RESET_LINK_W, LINK_T, 'resetLink');
 movement.add(resetRod);
 registerLabel('Reset rod', resetRod);
 // §137 — the reset rod's transfer row: a rigid bent link, priced at its own
@@ -5788,14 +5886,16 @@ registerLabel('Reset rod', resetRod);
 // nothing's.
 {
   const p0 = tailPostWorldAt(0), p1 = tailPostWorldAt(1);
-  const price = priceRigidBentLink(RESET_ROD_ELBOW, RESET_ROD_LEN, Math.hypot(p1.x - p0.x, p1.y - p0.y));
+  const price = priceRigidBentLink(RESET_ROD_ELBOW, RESET_ROD_LEN, Math.hypot(p1.x - p0.x, p1.y - p0.y), RESET_LINK_W, LINK_T);
+  assertLinkStrut('reset link', price);
   declareTransfer('reset linkage: elbow rod (setting-lever post → hammer tail)', {
-    unit: 'Reset rod', meshes: ['rodSegIn', 'rodSegOut', 'rodKnuckle'], idiom: 'rigidBentLink',
+    unit: 'Reset rod', meshes: ['resetLink'], idiom: 'rigidBentLink',
     load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
       source: 'the detent envelope\'s ceiling as the bounding axial load — nothing in the finger-driven low linkage is designed to deliver more' },
     quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
-      eulerFrac: price.eulerFrac, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke },
-    why: `displacement along a chord with a routing bend and no pivot — legitimate only priced: σ ${price.sigma_MPa.toFixed(1)} MPa at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}%, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor (give scales with the load)`,
+      eulerFrac: price.eulerFrac, eulerFracThin: price.eulerFracThin, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke,
+      W_u: price.W_u, T_u: price.T_u },
+    why: `displacement along a chord with a routing bend and no pivot — a flat stamped strip (§234, W ${price.W_u.toFixed(3)} × T ${price.T_u.toFixed(3)} u), legitimate only priced: σ ${price.sigma_MPa.toFixed(1)} MPa in the strip's plane at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}% in plane and ${(price.eulerFracThin * 100).toFixed(1)}% about the weak axis, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor (give scales with the load)`,
   });
 }
 // Per-frame solve: track the intersection branch continuously from the
@@ -5895,9 +5995,15 @@ const stopBearingObstaclesAt = (p) => [
 // mode solves this linkage for candidate layouts, and a preview that priced
 // the rod at the post while boot builds it at the pin is §85's error with its
 // sign flipped — a shadow reporting a mast the watch does not have.
+const STOPWORK_HAMMER_BAND = { measured: false, lo: 0, hi: 0, rMax: 0 };   // §234: the hammer's swept band, measured once for every obstaclesFor call
 const STOPWORK_AT_POST = {
   P, balanceR, BAL_OUTER_R, postEng, postRel, tailPostWorldAt,
-  plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z, rodR: ROD_KNUCKLE_R,
+  plateR, TQ_CUT, TQ_TOP_Z, ROD2_PLANE_Z,
+  // §234: the flat link's two extents are two numbers — the sheet's half for
+  // the banded (great-wheel) row, and a width RULE for the plan, because the
+  // hack link's width follows the chord the station solve is still choosing.
+  linkHalfT: LINK_T / 2,
+  linkHalfWFor: (chord) => linkWidthFor(chord) / 2,
   bearingObstaclesAt: stopBearingObstaclesAt,
   // §125 Tier B — the HACK rod's corridor gains the reset hammer's swept
   // disc. The shared LOW_ROD_OBSTACLES list never carried it because no
@@ -5909,7 +6015,7 @@ const STOPWORK_AT_POST = {
   // The row extends ONLY this solve's list — the reset rod's own elbow
   // TERMINATES on the hammer's tail, so the shared list must stay blind to
   // it or that solve refuses its own destination.
-  lowRodObstacles: [...LOW_ROD_OBSTACLES,
+  obstaclesFor: (halfW) => [...lowRodObstaclesFor(P, LOW_ROD_KEYLESS, halfW),
     // The hammer's true swept region is the ARC its lever covers between
     // parked and struck — NOT a full disc about its pivot (a first cut used
     // xyRadiusAbout's whole-rotation disc, which walled off the entire
@@ -5917,7 +6023,11 @@ const STOPWORK_AT_POST = {
     // Covering discs along the lever at both stroke ends and mid-swing,
     // each the lever's half-width plus the roller and the rod's own
     // radius+margin, state the same claim at the metal's actual size.
-    ...(() => {
+    // §234: the band is MEASURED ONCE and cached — obstaclesFor is called per
+    // candidate station by the bearing scan now (each at its own width), and a
+    // vertex walk of the hammer on every call would price the scan in seconds.
+    ...((halfW) => {
+      if (!STOPWORK_HAMMER_BAND.measured) {
       // MEASURED from the built hammer, not re-derived: a first cut placed
       // these discs from hammerBaseAngle and missed the metal entirely (the
       // lever's local frame composes with the solved retract, and the rod's
@@ -5948,10 +6058,14 @@ const STOPWORK_AT_POST = {
         }
       });
       const dSeat = -hammerGroup.rotation.z; // parked → seated sweep
-      const lo = azLo + Math.min(0, dSeat), hi = azHi + Math.max(0, dSeat);
+      STOPWORK_HAMMER_BAND.lo = azLo + Math.min(0, dSeat); STOPWORK_HAMMER_BAND.hi = azHi + Math.max(0, dSeat);
+      STOPWORK_HAMMER_BAND.rMax = rMax; STOPWORK_HAMMER_BAND.measured = true;
+      }
+      const { lo, hi, rMax } = STOPWORK_HAMMER_BAND;
+      const piv = hammerPivotPos;
       const rollR = hammerLever.userData.rollerR || 1.0;
-      const rDisc = HAMMER_W / 2 + rollR + ROD_KNUCKLE_R + CLEAR_MARGIN;
-      const out = [{ x: piv.x, y: piv.y, r: 2.5 + ROD_KNUCKLE_R + CLEAR_MARGIN,
+      const rDisc = HAMMER_W / 2 + rollR + halfW + CLEAR_MARGIN;
+      const out = [{ x: piv.x, y: piv.y, r: 2.5 + halfW + CLEAR_MARGIN,
                      what: 'the reset hammer’s hub', of: () => hammerGroup }];
       for (let k = 0; k < 5; k++) {
         const a = lo + ((hi - lo) * k) / 4;
@@ -5960,7 +6074,7 @@ const STOPWORK_AT_POST = {
                      r: rDisc, what: 'the reset hammer’s swing', of: () => hammerGroup });
       }
       return out;
-    })()],
+    })(halfW)],
   rubyFlare: G.HACK_RUBY_FLARE,
 };
 // The same inputs with the rod moved onto its own pin, plus the fraction that
@@ -6072,6 +6186,7 @@ const {
   stopTailTopAt, stopSolvePsi, HACK_ROD_LEN, STOP_PSI0,
   STOP_PAD_TOP_LZ, STOP_PAD_Y, STOP_PAD_X,
   HACK_ROD_ELBOW,
+  HACK_LINK_W,   // §234: the strip width the elbow was priced at — cut to it, never recomputed here
 } = solveStopWork({ ...STOPWORK_INPUTS, warn: (m) => console.warn(m) });
 
 // --- Build: the rotating crank first, then the static bracket AROUND it.
@@ -6421,7 +6536,7 @@ if (STOP_BRACKET_CLEAR < HACK_CLEAR_MARGIN - 1e-6)
       (CLEAR_MARGIN - worst).toFixed(2));
 }
 
-const hackRod = makeElbowRodMesh(HACK_ROD_LEN, HACK_ROD_ELBOW.f, HACK_ROD_ELBOW.e);
+const hackRod = makeFlatLinkMesh(HACK_ROD_LEN, HACK_ROD_ELBOW.f, HACK_ROD_ELBOW.e, HACK_LINK_W, LINK_T, 'hackLink');
 movement.add(hackRod);
 registerLabel('Hack rod', hackRod);
 // §137 — the hack rod's transfer row: the DEEP bend. §125 Tier B's southern
@@ -6433,14 +6548,16 @@ registerLabel('Hack rod', hackRod);
 // is the bend's real price stated, not a defect invented — the BUILT record
 // carries the comparison.
 {
-  const price = priceRigidBentLink(HACK_ROD_ELBOW, HACK_ROD_LEN, POST_STROKE);
+  const price = priceRigidBentLink(HACK_ROD_ELBOW, HACK_ROD_LEN, POST_STROKE, HACK_LINK_W, LINK_T);
+  assertLinkStrut('hack link', price);
   declareTransfer('stop work: elbow rod (setting-lever pin → stop-crank tail)', {
-    unit: 'Hack rod', meshes: ['rodSegIn', 'rodSegOut', 'rodKnuckle'], idiom: 'rigidBentLink',
+    unit: 'Hack rod', meshes: ['hackLink'], idiom: 'rigidBentLink',
     load: { value: SELECTOR_DETENT_WINDOW_MN[1], unit: 'mN',
       source: 'the detent envelope\'s ceiling as the bounding axial load — the same bound the reset rod is priced at' },
     quantities: { offset_e_u: price.offset_e_u, moment_mNmm: price.moment_mNmm, sigma_MPa: price.sigma_MPa,
-      eulerFrac: price.eulerFrac, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke },
-    why: `the movement's deepest routing bend (§125 Tier B's dogleg), priced: σ ${price.sigma_MPa.toFixed(1)} MPa at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}%, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor — the bend is the low linkage's compliance concentrator, stated`,
+      eulerFrac: price.eulerFrac, eulerFracThin: price.eulerFracThin, give_u: price.give_u, giveFracOfStroke: price.giveFracOfStroke,
+      W_u: price.W_u, T_u: price.T_u },
+    why: `the movement's deepest routing bend (§125 Tier B's dogleg), a flat stamped strip (§234, W ${price.W_u.toFixed(3)} × T ${price.T_u.toFixed(3)} u), priced: σ ${price.sigma_MPa.toFixed(1)} MPa in the strip's plane at the ceiling, Euler fraction ${(price.eulerFrac * 100).toFixed(2)}% in plane and ${(price.eulerFracThin * 100).toFixed(1)}% about the weak axis, axial give ${(price.giveFracOfStroke * 100).toFixed(2)}% of the stroke at the ceiling and ${(price.giveFracOfStroke * 100 * SELECTOR_DETENT_WINDOW_MN[0] / SELECTOR_DETENT_WINDOW_MN[1]).toFixed(2)}% at the window floor — the bend is the low linkage's compliance concentrator, stated`,
   });
 }
 
@@ -6490,18 +6607,20 @@ const CORNER_REPORT = [...STOPWORK_CORNERS];
 // radius plus the margin — which is exactly what its author intended it to
 // mean, now checked rather than assumed.
 {
-  const zBot = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - ROD_KNUCKLE_R;
-  for (const o of LOW_ROD_OBSTACLES) {
+  // §234: the rows are built at halfW 0 here, so what is checked is the
+  // METAL's radius against the metal — the link's half-width is the caller's
+  // term now, added per link, and not a claim this row makes.
+  const zBot = Math.min(ROD_PLANE_Z, ROD2_PLANE_Z) - LINK_T / 2;
+  for (const o of lowRodObstaclesFor(P, LOW_ROD_KEYLESS, 0)) {
     if (!o.of) continue;                       // an unnamed row is §86's own debt
     const obj = o.of();
     const measured = o.zAbove === undefined
       ? xyRadiusAbout(obj, o, GW_UNDER_Z, zBot) // in the corridor band
       : xyRadiusAbout(obj, o, Infinity, o.zAbove); // the body the corridor passes under
-    const need = measured + ROD_KNUCKLE_R + CLEAR_MARGIN;
+    const need = measured + CLEAR_MARGIN;
     if (measured > 0 && o.r < need - 1e-9)
       console.warn(`§86 envelope: the corridor's circle for ${o.what} is ${o.r.toFixed(3)}, `
-        + `under the ${measured.toFixed(3)} it measures plus rod ${ROD_KNUCKLE_R.toFixed(3)} `
-        + `and margin ${CLEAR_MARGIN} — need ${need.toFixed(3)}`);
+        + `under the ${measured.toFixed(3)} it measures plus margin ${CLEAR_MARGIN} — need ${need.toFixed(3)}`);
   }
 }
 
@@ -6515,13 +6634,14 @@ const CORNER_REPORT = [...STOPWORK_CORNERS];
 // parts' OWN radii — each consumer adds its own reach plus CLEAR_MARGIN.
 const LOW_LINKAGE_OBSTACLES = (() => {
   const obs = [];
-  const pushElbow = (a, b, elbow) => {
+  // §234: each link's two stadiums at its OWN plan half-width — which is the
+  // strip's exact silhouette, so no knuckle circle is owed at the bend.
+  const pushElbow = (a, b, elbow, halfW) => {
     const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
     const ux = dx / L, uy = dy / L, nx = uy, ny = -ux;
     const E = { x: a.x + ux * L * elbow.f + nx * elbow.e, y: a.y + uy * L * elbow.f + ny * elbow.e };
-    obs.push({ ax: a.x, ay: a.y, bx: E.x, by: E.y, r: ROD_R });
-    obs.push({ ax: E.x, ay: E.y, bx: b.x, by: b.y, r: ROD_R });
-    obs.push({ x: E.x, y: E.y, r: ROD_KNUCKLE_R });
+    obs.push({ ax: a.x, ay: a.y, bx: E.x, by: E.y, r: halfW });
+    obs.push({ ax: E.x, ay: E.y, bx: b.x, by: b.y, r: halfW });
   };
   let q = hammerTailTipAt(hammerBaseAngle + HAMMER_SWING_RAD, HAMMER_TAIL_DELTA.delta);
   let psi = STOP_PSI0;
@@ -6538,7 +6658,7 @@ const LOW_LINKAGE_OBSTACLES = (() => {
     const post = tailPostWorldAt(i / 12);
     obs.push({ x: post.x, y: post.y, r: G.SETTING_LEVER_POST_R });
     q = intersectTail(post, RESET_ROD_LEN, q).q;
-    pushElbow(post, q, RESET_ROD_ELBOW);
+    pushElbow(post, q, RESET_ROD_ELBOW, RESET_LINK_W / 2);
     obs.push({ ax: hammerPivotPos.x, ay: hammerPivotPos.y, bx: q.x, by: q.y, r: 0.7 });
     {
       // rot from the solved tail tip — the same inversion solveHammerRotation
@@ -6556,7 +6676,7 @@ const LOW_LINKAGE_OBSTACLES = (() => {
     const pin = hackPinWorldAt(i / 12);
     if (HACK_PIN_OWN) obs.push({ x: pin.x, y: pin.y, r: HACK_PIN_R });
     psi = stopSolvePsi(pin, psi);
-    pushElbow(pin, stopTailTopAt(psi), HACK_ROD_ELBOW);
+    pushElbow(pin, stopTailTopAt(psi), HACK_ROD_ELBOW, HACK_LINK_W / 2);
   }
   return obs;
 })();
@@ -35670,7 +35790,7 @@ function stopWorkShadowWarns(candP, kwOverride = null) {
     const r = solveStopWork({
       ...onHackPin({
         ...STOPWORK_AT_POST, ...kw, P: candP,
-        lowRodObstacles: lowRodObstaclesFor(candP, { ...LOW_ROD_KEYLESS, ...kw }),
+        obstaclesFor: (halfW) => lowRodObstaclesFor(candP, { ...LOW_ROD_KEYLESS, ...kw }, halfW),
       }, kw.settingLeverPivot).inputs,
       warn: (m) => warns.push(m),
     });
