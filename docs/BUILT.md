@@ -26438,10 +26438,30 @@ corner's declaration and answers everything the blank decides: the face width th
 builders cut to, the corner's plane, and the bearing cock's ceiling. The cock had
 been answering it with a LITERAL — `BEVEL_UNDERSIDE = -6.158`, "the §25 C corner
 bevel's lowest tooth extent, measured on the built gear" — against a gear whose
-box bottoms at −5.4792. 0.68 of slack that read as a decision. The bevels are
-also bored honestly now: the corner had been cut at `bevelToothSpec`'s DEFAULT
-0.4 while the stem it rides is r 0.42, a blank bored 0.02 smaller than its own
-arbor, which §234's measurement found rather than went looking for.
+box bottoms at −5.4792. 0.68 of slack that read as a decision.
+
+**The bores are declared now, and they are PRESS fits.** Both members had taken
+`bevelToothSpec`'s DEFAULT 0.4. On the disc side that was exactly right and right
+by luck — 0.4 is `alarmArborRod`'s own radius — and it is stated rather than
+inherited now. On the stem side it was 0.02 UNDER the r 0.42 stem it rides:
+interference, which in a tree that models the ASSEMBLED state reads to the
+instruments as two solids sharing metal. The assembled bore of a keyed wheel is
+its shaft's radius, so that is what it is. `PIVOT_BORE_CLEAR` is deliberately NOT
+spent here: it is a pivot's side-shake in a bearing, and this bevel is keyed to
+the stem — it turns with it and slides with it when the crown is pulled. The
+first cut of this landing did spend it, and the report diff showed what that
+buys: 0.05 of air between a wheel and the arbor it is pressed on, with `assembly`
+reporting the Alarm crown splitting into two bodies. No gate moved; the diff is
+what saw it.
+
+**The tooth count is a FLOOR from the bore, not the bore's answer.** A bigger
+bore buys a narrower face at a fixed count, and a face under §50's floor is not
+metal — so the bore sets a minimum. The corner's own count is 10, which §137's
+transfer row and §138's index are written against, and nothing wants it smaller;
+`Math.max` is the whole rule. The first cut took the minimum outright and quietly
+shrank the shipped corner to 9 teeth, with the transfer row's `armIn_u`/`armOut_u`
+following from 10 to 9 — a change no constraint had asked for. Every gate passed
+that too.
 
 **The band was measured, because the base plate is not a swept unit.**
 `tools/probe-234-corner-z.mjs` surveys the corner's whole column instead of
@@ -26465,11 +26485,13 @@ The disc bevel does not inflate — its axis IS world z — which is how two
 identical blanks came back with different reaches and gave it away. Reaches are
 read off vertices now.
 
-**With all that, the grown pair fits.** 16 teeth (not the ≥17 the entry
-predicted — 17 was matching the old face width, a preference; 16 is the smallest
-count whose derived face clears §50's floor at the real bore), the winding climb
-untouched, the cock re-deriving, and the §45 lifter's run **0.6822 clear** where
-the bounding boxes had predicted 0.5361 of overlap.
+**With all that, the GROWN pair fits too** — measured on the branch that grew it,
+though it is not what shipped here. At the turning target the bore forces **16**
+teeth (not the ≥17 the entry predicted: 17 was matching the old face width, a
+preference), the winding climb is untouched, the cock re-derives, and the §45
+lifter's run measures **0.6822 clear** where the bounding boxes had predicted
+0.5361 of overlap. What ships is the corner at its design 10, because the stem
+that would force 16 cannot be cut — see below.
 
 **What stops the stem is the §45 lifter's plunger corridor, and it is spent at
 the radius the movement already ships.** The crown's collar is a ring pressed on

@@ -13732,24 +13732,34 @@ const ALARM_STEM_BAR = ALARM_STEM_LEN + ALARM_CROWN_BODY_H - ALARM_CROWN_BODY_IN
 // under it spends all of it), or to the corner's station — not a section change
 // and not this landing's. The row keeps its `TURN_WAIVERS` entry.
 const ALARM_STEM_R = 0.42;
-const ALARM_STEM_BORE = ALARM_STEM_R + PIVOT_BORE_CLEAR;   // a running fit — the bevel is bored over the stem it rides
-// THE TOOTH COUNT IS DERIVED FROM THAT BORE, not chosen. `bevelToothSpec` brings
-// the face width in until the blank keeps metal between its hole and its root
-// cone at the small end, so a bigger bore buys a narrower face at a fixed count
-// — and a face narrower than §50's floor is not metal at all. The smallest count
-// whose DERIVED face clears the floor is the honest answer. Measured at this
-// bore: 13 t and under have no blank, 14–15 t leave 0.04–0.24 (under the floor),
-// 16 t leaves 0.4305. Ten teeth was right for the 0.4 bore the builder DEFAULTED
-// to — which was itself 0.02 SMALLER than the r 0.42 stem it rode, a blank bored
-// narrower than its own arbor, found by §234's measurement rather than looked for.
+// A PRESS FIT, not a running one, and the difference is what the bevel does:
+// it is KEYED to the stem — it turns with it and slides with it when the crown
+// is pulled — so the assembled bore IS the stem's radius. `PIVOT_BORE_CLEAR` is
+// a pivot's side-shake in a bearing, which this is not; measured, spending it
+// here opened 0.05 between a wheel and the arbor it is pressed on and
+// `assembly` reported the unit splitting into two bodies because of it. The
+// same holds on the other side, where the shipped default 0.4 was already the
+// arbor rod's own radius — right by luck, and declared now.
+const ALARM_STEM_BORE = ALARM_STEM_R;
+// THE BORE IS A FLOOR ON THE TOOTH COUNT, not the count itself. `bevelToothSpec`
+// brings the face width in until the blank keeps metal between its hole and its
+// root cone at the small end, so a bigger bore buys a narrower face at a fixed
+// count — and a face narrower than §50's floor is not metal at all. What that
+// gives is a MINIMUM; the corner's own count is 10, which §137's transfer row
+// and §138's index are written against, and nothing here wants it smaller. So
+// the bore raises the count and never lowers it. (The first cut of this took
+// the minimum outright and quietly shrank the shipped corner to 9 teeth, with
+// the transfer row's arms following it from 10 to 9 — a change no constraint
+// had asked for, caught in the report diff and not by any gate.)
+const ALARM_BEVEL_TEETH_DESIGN = 10;   // §25 C / §138: the corner as cut
 const ALARM_BEVEL_TEETH = (() => {
   for (let t = 8; t <= 60; t++) {
     const spec = G.bevelToothSpec({ module: ALARM_BEVEL_MODULE, teeth: t, mateTeeth: t,
       boreR: ALARM_STEM_BORE, mateBoreR: ALARM_SET_ARBOR_BORE, quiet: true });
-    if (spec.faceW >= STOCK_MIN_U) return t;
+    if (spec.faceW >= STOCK_MIN_U) return Math.max(ALARM_BEVEL_TEETH_DESIGN, t);
   }
   console.warn(`§234: no bevel count under 60 leaves a §50-floor face at bore ${ALARM_STEM_BORE.toFixed(4)}`);
-  return 10;
+  return ALARM_BEVEL_TEETH_DESIGN;
 })();
 // ONE spec for the pair, because every dimension below is a question about the
 // same blank: the face width the builders cut to, the corner's plane, and the

@@ -20022,9 +20022,11 @@ longer than the tube a real case needs.
 >
 > **§234 Landing 3 (2026-09-18) — THE CORNER WAS GROWN, AND IT WAS NOT THE
 > WALL.** The chosen resolution was built, and three of the four prices above
-> were cheaper than this entry priced them. The tooth count is **16**, not ≥17 —
-> 17 was matching the old face width, a preference; 16 is the smallest count
-> whose DERIVED face clears §50's floor at the real bore. The winding climb
+> were cheaper than this entry priced them. At the target bore the count is
+> **16**, not ≥17 — 17 was matching the old face width, a preference; 16 is what
+> the bore FORCES, which is the honest reading (the bore is a floor on the count,
+> never its answer: the corner's own count is 10 and nothing wants it smaller).
+> The winding climb
 > survives untouched (the stem bevel still measures 0.0000 to
 > `alarmWindContrate`). And the disc bevel does not crowd its bearing cock,
 > because that cock was standing on a stale literal: `BEVEL_UNDERSIDE = -6.158`,
