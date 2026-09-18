@@ -26522,6 +26522,89 @@ on the collar's radius, a plunger under it spends all of it — which is a P1/P2
 question inside the one action group (crown → collar → lifter → release sleeve)
 and the owner's to call, because it redesigns a shipped member.
 
+### Landing 2, step 3b — the winding stem cut to stock, and TURN_WAIVERS' last keyless row retired
+
+    windPinionTeeth       8 → 10           the smallest count that clears TODO 138's guards at stem stock
+    STEM_R                0.45 → 0.9236    off the bare literal, onto STEM_STOCK_R_U (⌀0.70 mm)
+    KW_BEVEL               five literals    re-derived, asserted live against bevelToothSpec
+    KW_PIN_BORE            0.6 → derived    STEM_R·0.98 + CLEAR_MARGIN, the running fit over the stem's own square
+    HUB_COLLAR_R            1.2 → 1.273     re-derived off KW_SPEC.settingWheel.zTipLo
+    CLUTCH_SLEEVE_R         0.75 → derived  the sleeve's own bore's corner reach + SAW_FIT
+    HUB_COLLAR_BORE_R       0.62 → derived  the SAME bore the sleeve is cut to
+    D4                      18.0705 → 18.2148   the small-seconds well, re-derived a third time
+    TURN_WAIVERS            windStem row retired   L/D 35.3 → 17.2
+
+Step 3 measured this as a TRAIN change rather than the roadmap's predicted "one
+line, every consumer a P3 re-clear," and filed it as its own landing: at
+`STEM_R = STEM_STOCK_R_U` (the alarm pusher's own floor, stock wider than the
+turning target alone would ask) TODO 138's two hard guards fire on the 8-tooth
+winding pinion — no web left between hole and root cone, on both the crown-wheel
+and setting corners. 10 teeth is the smallest count that clears both, and it
+moves `windPinionTeeth` on BOTH keyless bevel corners at once (the clutch rim is
+cut to the pinion's own count), so `KW_BEVEL`'s five literals in `layout.js`
+re-derive with it, each asserted live against `bevelToothSpec` at boot rather
+than picked to match. `KW_PIN_BORE` moves the same way — it had been a literal
+close to but not exactly `STEM_R·0.98 + CLEAR_MARGIN`, the actual running fit
+over the stem's own square, and stem stock's fatter square needed the real
+derivation rather than a second guess at the old number.
+
+Cutting the stem to stock cascaded through the whole keyless cluster's
+footprint, and each site re-derived rather than absorbed a fresh literal:
+`HUB_COLLAR_R` (the guard that once read "the wrong shape for this pair" against
+`KW_SPEC.settingWheel.zTipLo`) and `D4` (the small-seconds well's floor, now
+re-derived a THIRD time — TODO 125, TODO 136, and this — each time the keyless
+cluster's own footprint moves `dialRadius`/`railInnerR`). Both were boot warnings
+before their re-derivation and are silent after.
+
+**The full battery caught two more regressions the retooth opened, both a bare
+bore that had cleared the OLD, thinner stem by accident and did not scale with
+it.** `intraUnit` found `windStem` (the round journal, now `STEM_R` 0.9236)
+running straight through its own support bushing — a `TorusGeometry(1.05, 0.55)`
+whose hole (0.50) was sized to the retired 0.45 literal. The bore is now
+`STEM_R + CLEAR_MARGIN`, the running fit over the journal, with the ring's own
+wall (0.55, unrelated to the stem) kept as-is. `expectedContacts` found the
+clutch spine's OWN bore exceeding its declared OD: `CLUTCH_SLEEVE_R` was a
+literal 0.75, sized to the saw ring's old 0.685 bore, and at stem stock the
+sleeve's own square bore (`main.js`'s `sqHole`, mirrored in `layout.js` as
+`STEM_SQ_BORE_REACH` — the dependency runs the other way, so this is a mirrored
+formula rather than an import) exceeds 0.75 outright. The built mesh's farthest
+vertex measured its own bore's reach, not the declared radius — an
+`ExtrudeGeometry` hole wider than its outer loop triangulates however `earcut`
+likes, and no `outlines` check catches a hole exceeding its OD (a self-crossing
+RING is a different defect with the same instrument). The sleeve is now cut to
+its bore's corner reach plus `SAW_FIT` (the same fit quantum every other joint
+on this body already spends as a wall rather than a running gap), asserted live
+against the built `sqHole` at boot. The two hub collars rode the same undersized
+0.62 literal — both sit on the sleeve's own axial span, so the fix is the SAME
+bore the sleeve is cut to (`HUB_COLLAR_BORE_R`, "both bored to the same
+reamer"), and the reopened running-fit gap to `stemSquare` is now declared by
+name in `EXPECTED_CONTACT_FLOORS` rather than excused by the old literal's
+accidental distance.
+
+**`tools/probe-bevel-corner-index.mjs` had a latent determinism bug of its
+own, found while grading the retooth.** The SETTING corner's `clutchRim` only
+sits near `settingBevel`'s apex with the crown pulled — at rest it is
+`CLUTCH_TRAVEL` away, meshed with the winding pinion instead — but the probe
+read all four corners after one bare `resetInputs()`, which neither resets
+`crownPullT` nor forces a tick, so it was reading that corner at whatever the
+boot's own eased animation happened to leave `crownPullT`: uncontrolled, and
+reproducible only by accident. The 8-tooth blank's wide band absorbed the
+resulting apex miss without tripping its own coverage control; the finer
+10-tooth one this landing cut did not, and read 0 or 2 runs depending on the
+instant the harness's `page.evaluate()` landed. The probe now poses
+`crownPullT: 0` for WINDING/ALARM/CONTROL and `1` (engaged) for SETTING, and
+reads deterministically: 0.0000/0.4924 (miss 0.0076 from the clutch's own
+0.005 rad seat clocking, a larger fraction of the finer pitch than it was of
+the 8-tooth one's 0.0062).
+
+`explain.html`'s keyless-works plate is updated with the new counts (20 teeth
+against 10, half-angles 63.435°/26.565°, the pinion's own pitch radius 1.7) and
+the turning census confirms the bar itself: `windStem` measures L/D 17.2 at
+⌀0.700 mm, under `TURN_LD_MAX`, and its `TURN_WAIVERS` row — the keyless
+group's last one — is retired. Full battery: 41/41, matching the unmodified
+tree's own 41/41, with every changed report row traceable to a constant this
+landing intentionally moved.
+
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
 TODO 145 group B asked for the alarm crown's stem to be cut from arbor stock to
