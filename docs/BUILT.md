@@ -26605,6 +26605,61 @@ group's last one — is retired. Full battery: 41/41, matching the unmodified
 tree's own 41/41, with every changed report row traceable to a constant this
 landing intentionally moved.
 
+### Landing 2, step 3a — the setting traverse: the bare literal is gone, the ceiling is not
+
+Step 3 had filed this as SITE-limited off a z-window arithmetic (1.38 u
+between the reserve train's first wheel and the motion-works corner's bevel)
+that was never re-checked against the shipped mesh. It read the same numbers
+step 3b's retooth left behind by coincidence, not by re-measurement, and it
+named the wrong specific neighbour.
+
+**Re-measured off the built meshes** (`meshClearance`, the battery's own
+function, scanning the real 27.47 u traverse against every mesh in `Keyless
+works` and `Power-reserve train`) rather than trusted: the governing
+neighbour is `reservePinion0` — the reserve train's FIRST member off the
+barrel arbor, not `rsvWheel1` as filed. Its measured top (−3.532) happens to
+match the filed number exactly, which is how the wrong mesh went unnoticed.
+A SECOND, independent neighbour governs once the first is relaxed:
+`rsvArbExt` (the visible barrel-arbor extension, r 0.55), which crosses
+`Z_SETTING`'s plane at the barrel's own XY regardless of `Z_RSV` — absent
+from the filed two-obstacle picture entirely. `SETTING_ROD_R` now derives
+from the first (`(Z_SETTING − RSV_P0_TOP_Z) − CLEAR_MARGIN` = 0.382, up from
+the bare 0.35 literal), with a boot-time coherence guard against the built
+mesh — the reserve train builds thousands of lines later in the file, so the
+hand-off is a measured constant, not a live query, exactly as the block's own
+neighbouring "w1 tops at −3.53 measured" comment already was.
+
+**All three position-space candidates the filing left open were tried and
+measured insufficient.** Shrinking the motion-works corner (`BEVEL_MODULE`/
+`BEVEL_TEETH`) turned out irrelevant — the corner never appears among this
+rod's true nearest neighbours — and directionally backwards from the
+filing's own guess: shrinking it moves its OWN metal CLOSER to its apex
+(`bevelToothSpec`'s `zWebLo` scales with module). Moving `Z_RSV` relaxes
+`reservePinion0`'s bound to r 0.48 by −4.7 and then SATURATES exactly there,
+governed by `rsvArbExt` instead — pushed to −6.0, no further gain, still
+short of `TURN_LD_MAX`'s 0.687. Re-siting the traverse's path via
+`CAP_BEARING` (already a free parameter, with real slack against its own
+reserve-cone constraint) makes no measurable difference to r_max either,
+forced to 20° or to 60°: `B` swings on too small a circle to redirect a
+27.47 u line's approach to the distant barrel arbor. A necked rod does not
+help: `turnedBars` clusters coaxial meshes at consecutive stations into ONE
+bar judged on the narrowest diameter over the WHOLE span, so thinning only
+the ~3 u pinched stretch (confirmed the single contiguous violation runs
+arc-length 19.48–22.48 u, nothing elsewhere) would lower the judged diameter
+while the judged length stays the full run.
+
+**Closing this for real needs a genuine FOLD** — a new bevel corner kinking
+the traverse off its single axis line near the barrel, so the census judges
+two shorter bars instead of one. That is new mechanism (its own transfer
+row, phase index, and a clearance re-check against everything it newly
+passes near), out of this step's scope; filed as its own follow-up landing.
+`TURN_WAIVERS`' `Keyless works::settingTraverse` row is re-worded rather than
+retired, now citing the real two-neighbour constraint. Full battery: 41/41
+against a fresh `main` worktree, every changed report row traceable to the
+radius delta (0.35 → 0.382) — `turning`'s waived row, and the two declared
+`intraUnit` joints on this rod, both drop by exactly that amount and nothing
+else moves.
+
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
 TODO 145 group B asked for the alarm crown's stem to be cut from arbor stock to
