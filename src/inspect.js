@@ -2613,6 +2613,14 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush1', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations; §202 named the bushes, since a third station renumbers every positional selector)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush2', why: 'lay shaft in hanger bush 2' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
+  // §234 Landing 5 — these two rows are SAME-FRAME MOVERS (both necks are
+  // rigid with the shaft they are pressed into, one connected body under
+  // `assembly`'s domain), so no `intraUnit` tier compares them and they buy
+  // no skip: the row exists only to document why the census (`turnedBars`)
+  // reads three parts here rather than one, not to claim the joint is
+  // audited. Read plainly: this is a NOTE, not a measured contact.
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckFork', why: '§234 Landing 5 (NOTE, not an audited contact — same-frame movers, no tier compares them): the fork-end neck PRESSED into the body\'s counterbore (bore r = neck r − SAW_FIT, genuine interference) — the stub embeds 51% of its own length, over turnedBars\' TURN_LAP_MAX_FRAC, so the census reads it as a separate pressed part rather than a turned shoulder' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckRod', why: '§234 Landing 5 (NOTE, not an audited contact — same-frame movers, no tier compares them): the rod-end neck, same press-fit construction; its own bar\'s L/D is measured live by `turning`, no longer inherited from a waiver here' },
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushTop', why: '§202: the selector rod sliding in its three-quarter-plate bush at PIVOT_BORE_CLEAR — the rod\'s upper bearing, declared on the rod' },
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushBack', why: '§202: the same rod in its back-plate bush — the lower bearing' },
   // TODO 138 Landing 2 — RE-POINTED, and the three rows below said the wrong
@@ -9623,9 +9631,9 @@ export async function turnedBars(clock, opts = {}) {
                           inv[2] * t[0] + inv[6] * t[1] + inv[10] * t[2]]);
       return Math.hypot(...turnMul(m, l[0], l[1], l[2], 0));
     });
-    round.push({ part: v.unit, mesh: name, where: whereOf(v.mesh), type: g.type,
+    round.push({ part: v.unit, mesh: name, meshObj: v.mesh, where: whereOf(v.mesh), type: g.type,
       kind: STOCK_KIND_BY_MESH[name] || STOCK_KIND_BY_PART[v.unit] || 'wheel',
-      axis, origin, pts,
+      axis, origin, pts, diaU: 2 * best,
       // a straight cylinder only: a cone's narrow end falls inside a bin, and a
       // revolve squashed by a non-uniform scale is not round and has no single
       // constructed diameter to compare
@@ -9634,11 +9642,129 @@ export async function turnedBars(clock, opts = {}) {
         ? 2 * g.parameters.radiusTop * Math.max(...radial) : null });
   }
 
+  // §234 Landing 5 (course-corrected) — BRIDGING A GAP IS A CLAIM ABOUT WHAT
+  // FILLS IT, not about how close two spans sit. A pressed stub abutting a
+  // SOLID shaft with a blind counterbore is two pieces of stock (see the
+  // necks beside `alarmLinkShaft`); a pivot stub either side of a wheel
+  // pressed onto the same arbor is ONE piece of stock, continuing THROUGH
+  // the wheel's own bore. A flat "the gap is small" test cannot tell these
+  // apart — both gaps run a few units wide — so this reads what OCCUPIES the
+  // gap instead: BORED THROUGH (the arbor could physically continue inside
+  // it) or SOLID (it cannot). `TURN_LAP_MAX_FRAC`'s clustering above finds
+  // who overlaps; this finds who merely stands between.
+  const worldPtsCache = new Map();
+  const worldPtsOf = (mesh) => {
+    if (worldPtsCache.has(mesh)) return worldPtsCache.get(mesh);
+    const pos = mesh.geometry.attributes && mesh.geometry.attributes.position;
+    let pts = [];
+    if (pos && pos.count) {
+      mesh.updateWorldMatrix(true, false); // TODO 139: walk up, don't recompute in place
+      const m = mesh.matrixWorld.elements;
+      pts = new Array(pos.count);
+      for (let i = 0; i < pos.count; i++) pts[i] = turnMul(m, pos.getX(i), pos.getY(i), pos.getZ(i), 1);
+    }
+    worldPtsCache.set(mesh, pts);
+    return pts;
+  };
+  // Does material belonging to THIS unit, centred on a's axis line, cover the
+  // gap [gapLo, gapHi] (in a's frame) with nothing but bored-through members?
+  // A member with no point near the axis merely has a matching t-range, not a
+  // seat on this axis; `rGate` is the same concentricity idea
+  // `TURN_AXIS_OFFSET_U` applies to two round members, scaled to the members
+  // being spliced since a wheel's own OD says nothing about the size of its
+  // bore.
+  const gapBridged = (a, b, unitVolumes, gapLo, gapHi) => {
+    const covering = [];
+    // The line to measure against is the one through BOTH members' origins —
+    // the bar's own line, which is what let them pass the concentric test —
+    // not one member's fitted direction: a 2.7 u eight-segment stub's
+    // descent-found axis carries a few tenths of a degree, invisible at the
+    // stub and 0.09 u at a body's centroid fourteen units down the bar
+    // (measured: `alarmLinkShaft` read as unseated on its own necks' line).
+    const ab = turnSub(b.origin, a.origin);
+    const abLen = Math.hypot(ab[0], ab[1], ab[2]);
+    // …with a's own SENSE, because gapLo/gapHi arrive in a's frame (t along
+    // a.axis from a.origin) and a line pointed the other way would read every
+    // span on the wrong side of the gap.
+    const abSign = turnDot(ab, a.axis) < 0 ? -1 : 1;
+    const axis = abLen > TURN_AXIS_OFFSET_U ? [abSign * ab[0] / abLen, abSign * ab[1] / abLen, abSign * ab[2] / abLen] : a.axis;
+    const along = (p) => { const d = turnSub(p, a.origin); const t = turnDot(d, axis); return [t, Math.hypot(d[0] - t * axis[0], d[1] - t * axis[1], d[2] - t * axis[2])]; };
+    for (const v of unitVolumes) {
+      if (v.mesh === a.meshObj || v.mesh === b.meshObj) continue;
+      const pts = worldPtsOf(v.mesh);
+      if (!pts.length) continue;
+      // Is this member SEATED on a's axis line? Its centroid must sit on the
+      // line, within a tolerance that scales with the member's own size (a
+      // tooth's asymmetry scales with its wheel; TURN_AXIS_OFFSET_U is the
+      // floor for a plain collar). The first cut asked instead whether any
+      // vertex came within 0.75 of the stubs' diameter of the axis, which is
+      // a question about the BORE's size — and a wheel pressed on a thicker
+      // arbor has a bore the pivot stubs never approach, so six through-
+      // arbors (the centre, third and fourth wheels, the fusee staff, the
+      // pallet fork, the setting lever) read as unbridged and split.
+      let vLo = Infinity, vHi = -Infinity, maxR = 0;
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      const tr = new Array(pts.length);
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        const [t, r] = along(p);
+        tr[i] = [t, r];
+        if (t < vLo) vLo = t;
+        if (t > vHi) vHi = t;
+        if (r > maxR) maxR = r;
+        for (let k = 0; k < 3; k++) { if (p[k] < lo[k]) lo[k] = p[k]; if (p[k] > hi[k]) hi[k] = p[k]; }
+      }
+      // The seat is read at the member's EXTENTS' centre, not its vertex
+      // mean: a body of revolution is centrally symmetric, so its box
+      // centre lies on its axis, while its vertex mean does not — a Lathe's
+      // seam (φ = 0 and 2π) survives the weld as two vertices per ring, and
+      // nine points standing for eight lean toward φ = 0 by r/9 (measured:
+      // `alarmLinkShaft`'s mean sat 0.09 off the line its box centre was on).
+      const seat = along([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2])[1];
+      if (seat > Math.max(TURN_AXIS_OFFSET_U, 0.05 * maxR)) continue;
+      if (vHi < gapLo - TURN_AXIS_OFFSET_U || vLo > gapHi + TURN_AXIS_OFFSET_U) continue;
+      // Could an arbor run THROUGH this member? Read off its own VERTICES,
+      // never its `parameters` (a weld drops a Lathe's profile; `type` and
+      // the scalar params survive, `points` does not — the first cut asked
+      // the profile and, finding none, bridged the very body it exists to
+      // refuse). An on-axis vertex is a POLE: a hub or collet drawn solid
+      // to the axis carries its poles at its two END faces, because the
+      // arbor is there (this repo's convention for a wheel pressed on a
+      // through-arbor — the centre, third and fourth wheels, the fusee
+      // staff, the pallet fork and the setting lever all read as one bar
+      // through theirs, and must keep doing so); a cylinder's cap centres
+      // sit at its ends the same way. A BLIND COUNTERBORE is the one shape
+      // that puts a pole strictly INSIDE the member's length — the bore's
+      // bottom, solid stock between two pressed stubs (`alarmLinkShaft`) —
+      // and no arbor continues through that.
+      const eps = Math.max(TURN_AXIS_OFFSET_U, 1e-3 * (vHi - vLo));
+      let interiorPole = false;
+      for (const [t, r] of tr) if (r < TURN_AXIS_OFFSET_U && t > vLo + eps && t < vHi - eps) { interiorPole = true; break; }
+      if (interiorPole) return false; // a blind-bored member blocks the gap
+      covering.push([Math.max(vLo, gapLo), Math.min(vHi, gapHi)]);
+    }
+    // Everything else bridges, exactly as before this test existed — air
+    // included. The first cut demanded the gap be COVERED by bored-through
+    // material and refused air or a hole in the coverage; measured, that
+    // split six bars main reads as one (the centre wheel's hub leaves 0.08
+    // between two extrudes, the fusee staff's stack 0.15, the alarm crown's
+    // liner and collars sit on a stem the concentric split had already
+    // taken out from between them). §233's rule is "coaxial at consecutive
+    // stations is one stock", and the ONLY thing this test adds is the one
+    // shape that rule cannot be true through: solid stock standing between
+    // two pressed stubs. A refusal here is a positive finding about the
+    // metal; the absence of one changes nothing.
+    return true;
+  };
+
   // cluster by axis LINE within a unit — same direction, zero offset
   const byUnit = new Map();
   for (const r of round) { if (!byUnit.has(r.part)) byUnit.set(r.part, []); byUnit.get(r.part).push(r); }
   const bars = [];
   for (const [unit, unsorted] of byUnit) {
+    // every mesh this unit owns, round or not — the population `gapBridged`
+    // reads to decide what fills a gap between two round candidates
+    const unitVolumes = [...byMesh.values()].filter((v) => v.unit === unit);
     // LONGEST FIRST, because the seed becomes the bar's backbone and everything
     // else is judged against it. Seeded in scene order instead, a BUSH could be
     // picked up first and its own shaft rejected against it as concentric —
@@ -9683,6 +9809,28 @@ export async function turnedBars(clock, opts = {}) {
           return ov > TURN_LAP_MAX_FRAC * Math.min(hi - lo, sb[1] - sb[0]);
         });
         if (concentric) continue;
+        // §234 Landing 5 — AND CONSECUTIVE MEANS TOUCHING, OR BRIDGED BY
+        // BORED-THROUGH MATERIAL. Two round members overlap or abut directly
+        // (ov ≥ −TURN_AXIS_OFFSET_U) — every stepped bar in this movement is
+        // cut from one length of stock, so its sections do that — OR a gap
+        // between them is filled by this unit's own member(s) that are
+        // hollow all the way along (`gapBridged`): a pivot stub either side
+        // of a wheel pressed onto the same arbor is one piece of stock,
+        // continuing through the wheel's bore (`Center wheel`, `Third
+        // wheel`, `Fourth wheel`, `Escape wheel`, `Fusee & great wheel`,
+        // `Pallet fork`, `Setting lever`, `Alarm crown` all read this way
+        // and must keep reading this way). A gap with nothing in it, or with
+        // a SOLID member in it (a shaft with a blind counterbore, pressed
+        // stubs either side of it — `alarmLinkShaft`'s own two necks), is
+        // two pieces of stock, not one bar.
+        let bridge = false;
+        for (const [lo, hi] of spans) {
+          const ov = Math.min(hi, sb[1]) - Math.max(lo, sb[0]);
+          if (ov > -TURN_AXIS_OFFSET_U) { bridge = true; break; }
+          const [first, second] = lo <= sb[0] ? [[lo, hi], sb] : [sb, [lo, hi]];
+          if (gapBridged(a, b, unitVolumes, first[1], second[0])) { bridge = true; break; }
+        }
+        if (!bridge) continue;
         cluster.push(b); spans.push(sb); used.add(j);
       }
       const mm = turnMeasure(a.axis, a.origin, cluster.map((x) => x.pts));
@@ -9770,7 +9918,20 @@ export const TURN_WAIVERS = {
   // measured here (there is none left to try that this landing's own record
   // has not already tried under Landing 1/2's names) closes the gap; TODO
   // 145's own record carries the three-option design write-up.
-  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A (§234 Landing 4: MEASURED — no candidate at any tested section 0.2664–0.927 clears both TURN_LD_TARGET and its own corridor; the L/D-18 target chord is never the refusal, the corridor and the crank contacts are, independently)',
+  // §234 Landing 5 — BUILT, then COURSE-CORRECTED. The clustered 3-mesh bar
+  // above is retired: the stratum rose to idlerTop + CLEAR_MARGIN + r_target
+  // (r_target = bodyLen/(2·TURN_LD_TARGET), the turning-target floor
+  // governing over the λ-derived term), the body reads L/D 18.0 alone, and
+  // the necks are PRESSED stubs (51% embedded, over TURN_LAP_MAX_FRAC) — the
+  // census now reads three separate bars, not one. The first cut of this
+  // landing also carried a waiver here for the rod-side stub, because its
+  // EXPOSED length was `ALARM_LINK_ROD_END_OVERHANG` computed from §54's λ
+  // CEILING on the neck's cantilever — an upper BOUND worn as the built
+  // length. That is TODO 145's own failure mode one level down: no waiver is
+  // owed to a number that was never a real constraint. The overhang is now
+  // DERIVED from what bush 3 must actually clear (see its own comment, at
+  // the §232 chain) and the ceiling is asserted, not spent — the rod-side
+  // stub clears TURN_LD_MAX on the built metal, same as the fork-side one.
   // GROUP B — members that CROSS the movement or reach the case band. Their
   // length is the case's, not a design choice: a crown stem is long because
   // the case is 20 mm across. What is wrong is the DIAMETER — these were cut

@@ -23827,15 +23827,21 @@ KNEE — an S of two arcs of radius `kneeR` in the vertical plane, climbing
 `HAIRSPRING_OVERCOIL_RAISE` = `HAIRSPRING_H + CLEAR_MARGIN` = 0.75 u so the
 raised ribbon's underside clears the spiral's top by the one margin — into a
 second plane, then a TERMINAL of three quarters of a turn of the outer radius,
-made of two arcs whose curvatures are solved (`hairspringRest`, cached per
-plan object so the rate solve, the clamp ratio and the metal share one
-solve). `kneeR` is the collet radius, the tightest bend the ribbon already
-takes: the knee is formed, not flexed, and a formed bend no tighter than an
-existing one is the constraint. The stud clamps the terminal's end in the
+whose curvature varies along its own arc as `κ(s) = a0 + a1·s + a2·s²` with the
+three coefficients solved (`hairspringRest`, cached per plan object so the rate
+solve, the clamp ratio and the metal share one solve). `kneeR` is the collet
+radius, the tightest bend the ribbon already takes: the knee is formed, not
+flexed, and a formed bend no tighter than an existing one is the constraint —
+and since TODO 147 that rule governs the TERMINAL too, which the solve is free
+to shape and could otherwise kink. The stud clamps the terminal's end in the
 raised plane; the cock's carrier reads the published end (`endAngle`,
-`termEndR` 9.72, `termEndZ` 0.75) as it always did, and the separate static
+`termEndR` 7.1175, `termEndZ` 0.75) as it always did, and the separate static
 terminal tube is gone — the terminal IS the flexing ribbon, one mesh, so
 `INTRA_UNIT_CONTACTS`' spiral ⇄ terminal row went with it.
+
+*(As first shipped the terminal was two constant-curvature arcs and `termEndR`
+read 9.72. Both of those are TODO 147's corrections, described in the two
+paragraphs below; the rest of this entry stands as written.)*
 
 **Phillips, derived rather than quoted.** The plan asked for Phillips's two
 conditions from the source. The instrument gave the first in one line: under
@@ -23851,16 +23857,44 @@ flat spring, i.e. the stud does no work at small angle. (Phillips's second
 condition, on the curve's own moment, is what makes the concentricity hold
 past first order; the residual it governs is measured below and reported.)
 
-**The terminal's length is a proportion taken inside a measured window.** The
-family was swept from 0.50 to 1.00 turns of R: it solves from 0.55 to 0.90
-and nowhere outside — a half turn admits no solution, 0.95 none, a full turn
-only with a kinked second arc (ρ₂ → 0). At 0.55 the second arc is nearly
-straight and the stud lands at r 11.2, a unit inside the plate's cutaway;
-the radii even out along the window. Three quarters of a turn is the
-classical overcoil proportion, and it is taken INSIDE that window (ρ₁ 6.73,
-ρ₂ 10.02 against R 7.92, stud at r 9.72); the build asserts the solve
-converged, and `tools/probe-218-breathing.mjs` re-runs the sweep at 0.5, the
-shipped proportion and 1.0 through the real builder under the node loader.
+**Where the terminal ENDS is a condition, not an output (TODO 147).** As first
+shipped it was neither: two arcs gave the solve two unknowns, Phillips's two
+equations consumed both, and the end radius was whatever fell out — 9.72
+against an outer coil of 7.92. A Breguet terminal that finishes outside the
+spring it rises over has paid this section's whole cost in stack height and
+collected nothing, and that stud also stood outside the balance's own swept
+circle (rim 9.0, screw tips 9.3), with the cock's carrier cantilevering past
+the timing screws to meet it. Measured before rewriting it, the two-arc family
+cannot be talked into landing inboard: its end radius has a FOLD, holding
+1.22–1.41·R across the whole length window it solves in, and an 8 × 8 seed scan
+at the shipped proportion finds exactly one root whose curvatures a ribbon could
+take. So the fix is a third degree of freedom in the SHAPE — κ varying along the
+arc, which is what a drawn Phillips terminal is — solved against the two
+centroid equations plus `endR = studR`. `HAIRSPRING_STUD_R` is one full coil
+pitch inboard of the outer coil: the stud stands over the SECOND coil, one pitch
+and not a fraction because it is a POST with a footprint, and one coil step is
+the smallest that carries the post's whole width (0.65, the same
+`HAIRSPRING_STUD_POST` the carrier cuts from) inboard of 0.8025 of pitch. Stud
+at 7.1175, post reaching 7.4425 against the coil's 7.9200; the carrier's arm
+runs 2.6 u shorter and stops short of the screws.
+
+**The terminal's length is a proportion inside a window with a physical wall at
+each end.** The length stays the classical three-quarter turn — and stays
+DECLARED, which is why the developed length does not move at all (the terminal's
+segments sum to it exactly), so the section the rate was solved from is
+untouched: 275.9937 u and 2.5000 Hz before and after. With the stud pinned, the
+window's edges are no longer the solver's reach. Below about half a turn the
+ribbon would have to be bent tighter than the collet the knee is already formed
+round (0.40 turns reaches no root; the roots either side want ρ 0.18–1.3 against
+1.5). Above about 0.92 the terminal's own arc swings outside the balance's swept
+circle (9.2744 at 0.92, 9.3020 at 0.93). At 0.75 the solve converges in five
+iterations from a seed that continues the spiral's own end curvature, to ρ 5.71
+→ 5.94 along the terminal — a bend an order slacker than the collet — with a
+centroid residual of 6.0e-14 u and a stud residual of 1.3e-12 u.
+`tools/probe-218-breathing.mjs` re-runs the sweep at 0.40, the shipped
+proportion and 1.0 through the real builder under the node loader; the upper
+wall is the boot assert's, because it is the built wheel's swept radius and the
+probe has no business restating it.
 
 **Measured on the built tree** (8 coils, ribbon re-solved to 0.0239 mm for the
 longer active length — 104.6 mm, the knee's 3D length 0.06% over its
@@ -23869,11 +23903,11 @@ projection, stated):
 | | performed 45° | physical 270° |
 |---|---|---|
 | lateral pivot force, flat spring of this section | 0.0047 mN | 0.026 mN |
-| with the overcoil | 0.0003 mN | 0.0078 mN |
-| ratio | ×0.060 | ×0.29 |
-| coils' max radial excursion | 0.099 mm | 0.64 mm |
+| with the overcoil | 0.0002 mN | 0.0065 mN |
+| ratio | ×0.052 | ×0.246 |
+| coils' max radial excursion | 0.091 mm | 0.60 mm |
 | minimum coil gap, in 3D (the raised turn over the outer coil) | 0.26 mm | 0.17 mm |
-| outer-fibre stress | 18 MPa | 111 MPa |
+| outer-fibre stress | 18 MPa | 110 MPa |
 
 The performed-amplitude ratio is the gate (under a tenth); the physical one
 is the second-order residual Phillips's theorem does not cover, reported. The
@@ -23894,7 +23928,11 @@ position space, per P3 — and boot is silent again. No new waivers.
 
 **Held.** `checkOscillator` gains the overcoil row: the centroid solve
 converged, the clamp ratio 1 to 1e-6, the performed-amplitude force ratio
-under 0.1. The probe reads 17/17 on this tree, including the sweep. The
+under 0.1 — and since TODO 147 the stud's post standing wholly inboard of the
+outer coil and no terminal bend tighter than the collet, with a second boot
+assert holding the whole terminal inside the balance's measured swept radius.
+The probe reads 17/17 on this tree, including the sweep (20/20 since TODO 147
+added its three). The
 explainer's free-sprung section gains PLATE 2 (the overcoil, its solved
 radii, the measured ratios) and its caption is rewritten a third time, in
 eight locales; three labels were shortened in translation rather than the
@@ -26778,6 +26816,121 @@ hash moves because the metal did. Nothing else moved —
 `probe-l3-shaft-ld-filter.mjs` and the two scratch dry-run probes this
 landing used to find the honest footprint are documented in the tool's own
 header; no new mechanism, no widened margin, `CLEAR_MARGIN` untouched.
+
+### Landing 5, Phase 0 — the lay shaft's body measured alone: the wall is the stratum
+
+Landing 4 left group A with three options and a refusal read through the
+§112 solve's box model — a whole chord at one section, and a corridor
+figure (max r 0.285) that two earlier instruments had located at the CRANK
+stations. Option 1, a fat body with the necks as pressed stubs, had never
+been measured because nobody had measured the body between its bush
+stations as its own question.
+
+`tools/probe-234-shaft-body-corridor.mjs` does: the body's axis read off its
+built `matrixWorld`, a real BVH probe every 0.5 u over the 43-pose net, and
+the free radius kept SPLIT by which way the nearest wall lies. Its first cut
+labelled the wall by the obstacle's bounding-sphere centre and called the
+alarm setting idler an in-plane neighbour; the idler is a 9 u disc whose
+centre is 4.4 u off the axis in plan while its top face lies 0.435 straight
+below it. The number was right and the label was wrong, and the label is the
+half that decides which landing closes the row.
+
+**Every binding wall on the body is below the axis.** The idler's top face
+(z −8.033) holds the free radius at **0.285** across three crossings of its
+outline (chord t ≈ 14.4–17.5, 19.4–22.5, and 0.31 near 28.5); the dial plate
+(z −8.40, 0.802 under the axis) caps it at **0.6517** everywhere else — under
+the 0.708 ceiling on its own. Above the axis nothing stands within 2.24; in
+plan nothing within 1.05. Controls: the shipped 0.2664 clears every station,
+and the overrun reproduces the crank-station walls (`alarmSelTab` 0.11–0.22,
+the ring's groove at the pin).
+
+So option 1 as priced is closed — at this stratum a separate body still reads
+L/D ≥ 50 — and the stratum is exactly what Landing 4's chord search could not
+vary. The target fits with the axis at `idlerTop + CLEAR_MARGIN + r_target` =
+**−7.097**, a rise of **0.501 u** (ceiling 0.423), after which above reads
+≥ 1.74 and plan ≥ 1.05 at every body station. `ALARM_LINK_SHAFT_Z` becomes the
+higher of §51's partner plane and that derivation. The costs are filed under
+TODO 145 group A as six re-derivations — the centre crank pin's rest angle
+(the P0 one, §229's registration re-solved and measured), the rod-end
+contacts, the hangers and the middle station (which sits over the idler's
+first lobe and moves off it), the pressed stubs the census still needs, the
+stall chain, and the §51 keyless-floor tripwire — none of them a lever arm.
+The waiver row is re-worded to name the stratum and stands until the rise is
+built.
+
+### Landing 5 — built: the stratum raised, the body bored, the necks pressed, and what the gate refused first
+
+**The derivations.** `ALARM_LINK_SHAFT_R = max(λ-derived, bodyLen /
+(2·TURN_LD_TARGET))` — the turning term governs at **r 0.8609** on a 30.99 u
+body, L/D **18.0** by construction. `ALARM_LINK_SHAFT_Z` is the highest of
+three floors: §51's partner plane (−7.598), the idler's top face and the dial
+plate, each plus `CLEAR_MARGIN` plus the hanger BUSH's OD (**1.001** — the
+widest thing riding at that radius, hoisted from the hanger loop). The idler
+term governs: axis **−6.8824**, a rise of **0.716 u**; measured after the
+rise the free radius reads a flat 1.001 across the idler's whole crossing,
+the term to the digit. Bush 3's station derives from what it must clear at
+the rod end — the crank's half-thickness, the rod's section, two margins and
+its own half-length, **1.043 u** — and λ's ceiling on the neck's cantilever
+is asserted, never spent; the middle station is the equal-span midpoint
+(15.50 / 15.50). The centre pin's arm is closed-form from the offset, the
+travel and the SAME 0.35 rad span the rim finger's corridor derived:
+**0.8339** (was 0.56), resting 59° below horizontal. The body is a Lathe with
+two blind counterbores at `ALARM_LINK_SHAFT_NECK_R − SAW_FIT`, the necks
+pressed 51% of their length into them (stubs 2.755 and 2.130 u; L/D 8.6 and
+6.7). `ALARM_LINK_ROD_TRAVEL_SPEC` 0.0993 → **0.1002**, the rim crank's rest
+angle following the rod's re-derived foot at the unchanged span. Every
+hand-off inside ±0.03 with no tolerance moved; `probe-82` **1006.54 mN** (was
+81.02), the rod-end overhang still governing.
+
+**What the gate refused, and why each refusal was right.** The first cut of
+this landing passed 41 gates and was not accepted, because four things in
+it were numbers that existed to make the picture right. The pin's roll span
+had been bracketed against two gates to 0.30 rad — moving the rod's travel
+spec and the beak's lever ratio, §35's class of fix; what actually refused
+the derived 0.35 was the FORK's side webs, a ±0.25 literal sized for a level
+pin, which the pin's new 0.22 u slide along the groove walked straight
+into (hand-off −0.1165, penetration 0.116). The block's width and centre
+derive from the same rest/armed samples that set its height now, and the
+solve closed at 0.35 unmodified (+0.0147 armed). A new `TURN_WAIVERS` row had
+been written for the rod-end stub because its exposed length was λ's ceiling
+worn as a station; derived from the clearance it is 1.04, not 3.27, and the
+stub clears. The stratum's `max()` had reserved room for the body over the
+idler only, and the hanger bushes over the dial plate landed at exactly
+0.150 by coincidence; the third floor makes that derived. And `turnedBars`
+had been taught that coaxial members must TOUCH to be one bar — which
+un-read six through-arbors that main reads as one (a pivot stub either side
+of a wheel pressed on the same arbor: the centre, third and fourth wheels,
+the fusee staff, the pallet fork, the setting lever). A second attempt asked
+that bored-through material COVER the gap and split the same six. The rule
+that holds is the smallest one: §233's "coaxial at consecutive stations is
+one stock" stays, and a gap is refused only when a member seated on the
+line carries a POLE strictly inside its length — a blind counterbore's
+bottom, the one shape no arbor continues through — read off vertices (the
+weld drops a Lathe's profile), seated by the box centre (a Lathe's seam
+survives the weld as two vertices and leans the vertex mean r/9 off the
+axis), along the line through both members' origins (a 2.7 u stub's fitted
+direction is 0.09 off at the body's centre). Control: every other unit's
+`turning` rows identical to main.
+
+**The instrument that had to be corrected to accept the landing.** `probe-82`
+and the boot's series sum had agreed at 81.02 mN for four records and parted
+by 4% here, because the shaft stopped governing the chain and two of the
+probe's own shortcuts surfaced: it reflected the pin by its path (the arc's
+slide does no work on the ring — the ratio is the displacement along the
+load, 1.0, as the solve holds) and it cubed the tail blade's width instead
+of its thickness (15.7× too stiff, under 1% of the chain until now). Both
+corrected, the two paths meet to the digit. `probe-234-shaft-body-corridor`'s
+control (a) had read a Lathe body's OD as null and passed; it fails on null
+now.
+
+**The bar.** Local `--shards 3 --report` on this head **41/41** (1434 s), CI on
+the self-hosted `battery-1-7400` **42/42 · 937.9 s**, fingerprint 3363748923
+on both, boot silent. `turning` waived 2 → 1 with nothing added; needRest
+identical to main plus the body's own L/D-18 row; ambiguous +3 (the hanger
+bushes, now discs). Every other moved row against main is the alarm link's
+own: three hand-offs re-measured inside ±0.03, the crank row's load 81.02 →
+1006.54 mN, two refuted swept rows refining (0.216, 0.197) and one new refuted
+row at exactly 0.15 against the idler — the stratum term to the digit.
 
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 

@@ -2786,11 +2786,13 @@ export function hairspringSegs(coils) { return Math.max(coils * 48, 96); }
 // polyline. One sampling, one answer — hairspringDevLen, the rate solve and
 // the metal all read this.
 // §218 tier two — THE OVERCOIL, Phillips's way. `plan.overcoil = { turns,
-// raise, kneeR }` continues the ribbon past the spiral's outer end: a KNEE
-// (an S of two arcs of radius kneeR in the vertical plane, climbing `raise`
-// over its run) into a second plane, then a TERMINAL of `turns` of the outer
-// radius in length, made of two arcs whose curvatures κ1, κ2 are SOLVED so
-// the centroid of the whole flexing centreline lands on the balance axis.
+// raise, kneeR, studR }` continues the ribbon past the spiral's outer end: a
+// KNEE (an S of two arcs of radius kneeR in the vertical plane, climbing
+// `raise` over its run) into a second plane, then a TERMINAL of `turns` of the
+// outer radius in length, whose curvature varies along its own arc as
+// κ(s) = a0 + a1·s + a2·s². The three coefficients are SOLVED against three
+// conditions: the centroid of the whole flexing centreline on the balance axis
+// (Phillips, twice — x and y) and the far end at `studR` (TODO 147).
 //
 // Why the centroid, in one line: under a pure moment every element ds turns
 // the rest of the ribbon by Δκ·ds about itself, so the inner end's
@@ -2803,15 +2805,27 @@ export function hairspringSegs(coils) { return Math.max(coils * 48, 96); }
 // and the small-θ stud reaction vanishes. Second order in θ survives —
 // Phillips's theorem is a small-amplitude statement — and is REPORTED.
 //
-// Measured (8 coils, raise 0.75, terminal length swept 0.50–1.00 turns of
-// R): the family solves from 0.55 to 0.90 turns and not outside — a half turn
-// admits no solution, 0.95 none, a full turn only with a kink (ρ₂ → 0). At
-// 0.55 the second arc is nearly straight (ρ₂ ≈ 1900) and the stud lands at
-// r 11.2, a unit inside the plate's cutaway; the radii even out along the
-// window (0.75: ρ₁ 6.7, ρ₂ 10.0 against R 7.92, four iterations, stud at
-// 9.7). Three quarters of a turn is the classical overcoil proportion, taken
-// INSIDE that measured window; the window, not the proportion, is what the
-// build asserts (a plan whose centroid solve does not converge fails).
+// WHY THE CURVATURE VARIES, and why the stud is a CONDITION (TODO 147). The
+// terminal was first cut as two constant-curvature arcs of half the length
+// each — two unknowns, both consumed by Phillips's two equations, which left
+// the end radius an OUTPUT nobody constrained. It came out at 9.72 against an
+// outer coil of 7.92: a Breguet terminal that ends OUTSIDE the spring it rises
+// over, and outside the balance's own swept circle (rim 9.0, screw tips 9.3),
+// with the cock's stud carrier cantilevering out past the timing screws to
+// meet it. That is the whole benefit the raise is paid for, not collected.
+// Measured before rewriting it: the two-arc family cannot be made to land
+// inboard. Its endR has a FOLD — sweeping the terminal's length across the
+// whole window it solves in (0.55–0.90 turns) holds the stud at 1.22–1.41·R
+// with a minimum of 1.22, and an 8×8 seed scan at the shipped proportion finds
+// exactly one root whose curvatures a ribbon could take. Every inward-ending
+// root needs ρ → 0, a kink. So the fix is a third degree of freedom in the
+// SHAPE, not a better seed: κ linear-plus-quadratic in arc length, which is
+// what a drawn Phillips terminal is anyway. Three quarters of a turn stays the
+// classical proportion and the LENGTH stays declared, so the developed length
+// — and with it the section the rate was solved from — does not move at all.
+// At studR = outerR − one coil pitch the solve converges in six iterations
+// from the seed below to ρ 5.71 → 5.94 along the terminal, a bend an order
+// slacker than the collet the knee is already formed round.
 // `tools/probe-218-breathing.mjs` re-runs the sweep.
 const _restCache = new WeakMap();
 export function hairspringRest(plan) {
@@ -2823,7 +2837,7 @@ export function hairspringRest(plan) {
     const a = t * S0, r = innerR + t * dR;
     return Math.atan2(dR * Math.sin(a) + r * S0 * Math.cos(a), dR * Math.cos(a) - r * S0 * Math.sin(a));
   };
-  const build = (k1, k2) => {
+  const build = (a0, a1, a2) => {
     const pts = [], zs = [];
     let len = 0, len3d = 0;
     for (let i = 0; i <= segs; i++) {
@@ -2834,7 +2848,7 @@ export function hairspringRest(plan) {
     len3d = len;
     const out = { pts, zs, phiC0: tangent(0), phiCN: tangent(1), len, len3d, segs, S0, spiralEnd: segs, kneeStart: segs, termStart: segs };
     if (!overcoil) return out;
-    const { turns, raise, kneeR } = overcoil;
+    const { turns, raise, kneeR, studR } = overcoil;
     let phi = tangent(1);
     const ds = Math.hypot(pts[segs][0] - pts[segs - 1][0], pts[segs][1] - pts[segs - 1][1]);
     let x = pts[segs][0], y = pts[segs][1];
@@ -2851,21 +2865,32 @@ export function hairspringRest(plan) {
     out.termStart = pts.length - 1;
     const lt = turns * 2 * Math.PI * outerR;
     const nT = Math.max(16, 2 * Math.round(lt / 2 / ds)), dsT = lt / nT;
+    let kAbsMax = 0, termMaxR = 0;
     for (let i = 1; i <= nT; i++) {
-      const k = i <= nT / 2 ? k1 : k2;
+      // κ at the segment's MIDPOINT (midpoint rule), so the discrete curve is
+      // second-order in dsT and the solve below sees a smooth residual.
+      const s = (i - 0.5) * dsT, k = a0 + a1 * s + a2 * s * s;
+      kAbsMax = Math.max(kAbsMax, Math.abs(k));
       phi += k * dsT / 2; x += dsT * Math.cos(phi); y += dsT * Math.sin(phi); phi += k * dsT / 2;
       pts.push([x, y]); zs.push(raise);
       len += dsT; len3d += dsT;
+      termMaxR = Math.max(termMaxR, Math.hypot(x, y));
     }
     out.len = len; out.len3d = len3d; out.phiCN = phi;
     out.endR = Math.hypot(x, y); out.endA = Math.atan2(y, x);
-    out.overcoil = { turns, raise, kneeR, beta, run, lt, k1, k2, rho1: 1 / k1, rho2: 1 / k2 };
+    out.overcoil = { turns, raise, kneeR, studR, beta, run, lt, a0, a1, a2,
+      rhoStart: 1 / a0, rhoEnd: 1 / (a0 + a1 * lt + a2 * lt * lt),
+      rhoMin: 1 / kAbsMax, termMaxR };
     return out;
   };
   let rest;
-  if (!overcoil) rest = build(0, 0);
+  if (!overcoil) rest = build(0, 0, 0);
   else {
-    // Newton on (κ1, κ2) for centroid = 0, finite-difference Jacobian.
+    // Newton on (a0, a1, a2) against THREE conditions: centroid x, centroid y
+    // (Phillips, above) and the terminal's end radius (the stud, TODO 147).
+    // Finite-difference Jacobian, damped — the family's far field carries no
+    // root, so a full step that does not reduce the residual is halved.
+    const { studR } = overcoil;
     const cen = (pts) => {
       let L = 0, cx = 0, cy = 0;
       for (let i = 1; i < pts.length; i++) {
@@ -2874,19 +2899,52 @@ export function hairspringRest(plan) {
       }
       return [cx / L, cy / L];
     };
-    let k1 = 1 / outerR, k2 = 1.5 / outerR, it = 0, res = Infinity;
+    const resid = (v) => { const b = build(v[0], v[1], v[2]); const c = cen(b.pts); return [c[0], c[1], b.endR - studR]; };
+    const nrm = (F) => Math.max(Math.abs(F[0]), Math.abs(F[1]), Math.abs(F[2]));
+    // 3×3 solve of J·dv = −F, Gauss–Jordan with partial pivoting. The columns
+    // differ by four orders (a2 scales as s²), so pivot rather than Cramer.
+    const lin = (J, F) => {
+      const A = J.map((r, i) => [...r, -F[i]]);
+      for (let c = 0; c < 3; c++) {
+        let p = c;
+        for (let r = c + 1; r < 3; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+        [A[c], A[p]] = [A[p], A[c]];
+        if (!(Math.abs(A[c][c]) > 0)) return null;
+        for (let r = 0; r < 3; r++) {
+          if (r === c) continue;
+          const f = A[r][c] / A[c][c];
+          for (let k = c; k < 4; k++) A[r][k] -= f * A[c][k];
+        }
+      }
+      return [A[0][3] / A[0][0], A[1][3] / A[1][1], A[2][3] / A[2][2]];
+    };
+    // SEED: continue the spiral's own end curvature straight through (a1 = a2
+    // = 0). The terminal is a curve the outer coil grows into, not a new one,
+    // so the curve that jumps nothing is where the search starts.
+    let v = [1 / outerR, 0, 0], it = 0, res = Infinity;
     for (it = 0; it < 40; it++) {
-      rest = build(k1, k2);
-      const F = cen(rest.pts); res = Math.hypot(F[0], F[1]);
+      const F = resid(v); res = nrm(F);
       if (res < 1e-10) break;
-      const h = 1e-5;
-      const Fa = cen(build(k1 + h, k2).pts), Fb = cen(build(k1, k2 + h).pts);
-      const J = [[(Fa[0] - F[0]) / h, (Fb[0] - F[0]) / h], [(Fa[1] - F[1]) / h, (Fb[1] - F[1]) / h]];
-      const det = J[0][0] * J[1][1] - J[0][1] * J[1][0];
-      k1 -= (J[1][1] * F[0] - J[0][1] * F[1]) / det;
-      k2 -= (-J[1][0] * F[0] + J[0][0] * F[1]) / det;
+      const h = 1e-8, J = [[], [], []];
+      for (let j = 0; j < 3; j++) {
+        const w = v.slice(); w[j] += h; const Fj = resid(w);
+        for (let i = 0; i < 3; i++) J[i][j] = (Fj[i] - F[i]) / h;
+      }
+      const dv = lin(J, F);
+      if (!dv) break;
+      let lam = 1, ok = false;
+      for (let t = 0; t < 40; t++) {
+        const w = [v[0] + lam * dv[0], v[1] + lam * dv[1], v[2] + lam * dv[2]];
+        if (w.every(Number.isFinite) && nrm(resid(w)) < res) { v = w; ok = true; break; }
+        lam /= 2;
+      }
+      if (!ok) break;
     }
-    rest.overcoil.centroidResidual = res;
+    rest = build(v[0], v[1], v[2]);
+    const F = [...cen(rest.pts), rest.endR - studR];
+    res = nrm(F);
+    rest.overcoil.centroidResidual = Math.hypot(F[0], F[1]);
+    rest.overcoil.studResidual = Math.abs(F[2]);
     rest.overcoil.iters = it;
     rest.overcoil.converged = res < 1e-10;
   }

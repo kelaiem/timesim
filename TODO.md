@@ -19842,6 +19842,238 @@ this row moves to it.
 > numbers. No candidate anywhere in the search closes it; the waiver stands
 > until one of the three above is taken.
 
+> **§234 Landing 5, Phase 0 (2026-09-19) — the body measured ALONE, station by
+> station, and the wall is BELOW the shaft, which changes what closes it.**
+> Landing 4 scored a whole candidate chord at one section through the §112
+> solve's box model, and `probe-231-lever-width SET=link232` measured the
+> crank stations; nobody had asked what the BODY between its bush stations
+> (t1..t3, 28.77 u) sees on its own, with the necks left as fixed-radius
+> stubs — which is option 1's construction.
+> `tools/probe-234-shaft-body-corridor.mjs` asks exactly that: it reads the
+> body's axis off its built `matrixWorld`, walks a real BVH probe along it
+> every 0.5 u over the full `digestPoses` net (43 poses), every non-schematic
+> mesh outside the Alarm link unit as an obstacle, and keeps the free radius
+> per station SPLIT by which way the nearest wall lies — below the axis,
+> above it, in plan — read off the obstacle's AABB closest point (its first
+> cut used the bounding-sphere centre and called a disc under the shaft an
+> in-plane wall; the label was wrong and the number was right). Controls:
+> the shipped 0.2664 clears every body station (worst 0.285, PASS); the
+> overrun into the crank stations reproduces the known end walls
+> (`alarmSelTab` 0.11–0.22, the ring's groove at the pin — the mechanism).
+>
+> **The profile.** Every binding wall on the body is `z-`. The alarm
+> setting idler's TOP FACE (z −8.033, a 0.317 sheet on the dial plate) lies
+> **0.435 straight below the axis** (z −7.598 — the axis crosses over the
+> disc, 4.39 from its centre against a 4.62 radius), so three crossings of
+> its outline hold the free radius at **0.285** over chord t ≈ 14.4–17.5 and
+> 19.4–22.5 and at 0.31 near t 28.5; everywhere else the DIAL PLATE (z −8.40,
+> 0.802 below the axis) caps it at **0.6517** — under the 0.708 ceiling on
+> its own, so at this stratum even a body with no idler under it reads
+> L/D 22. Above the axis nothing stands within **2.24** (the idler's own
+> cock); in plan nothing within **1.05**. That is the whole finding: the
+> body cannot be fatter AT THIS STRATUM, and the stratum is the one thing
+> Landing 4's chord search could not vary. Option 1 as priced — bore the
+> body, press the stubs, leave the axis where it is — is CLOSED: a separate
+> body would still read L/D ≥ 50.
+>
+> **What it opens: the stratum, derived.** The body fits the target when
+> the axis stands `idlerTop + CLEAR_MARGIN + r_target` = −8.033 + 0.15 +
+> 0.786 = **−7.097**, a rise of **0.501 u** (0.19 mm; the ceiling needs
+> 0.423) — after which the room above reads ≥ 1.74 and in plan ≥ 1.05 at
+> every body station, so the target fits everywhere, not at a lucky
+> station. `ALARM_LINK_SHAFT_Z` is today "the ring's mid-plane" (§51's
+> partner plane, chosen so the centre crank's pin rests horizontal); it
+> becomes the HIGHER of that and this derivation. What the rise costs,
+> each a re-derivation and none a lever arm — the record to build against:
+>
+> 1. **The centre crank pin** (`ALARM_FORK_PIN_ARM_R` 0.56, `ALARM_FORK_PIN_R`
+>    0.14) was derived on "rests horizontal because the groove's mid-plane
+>    sits on the axis plane". With the axis 0.5 above the groove the pin
+>    rests at asin(0.5/0.56) ≈ 63°, which is not a rest angle anyone would
+>    design; the arm re-derives for the offset (a longer arm, a moderate
+>    rest angle, the same 0.19 stroke inside its roll span) and §229's
+>    registration solve re-runs and is MEASURED — P0, the one cost that can
+>    refuse the landing.
+> 2. **The rod-end contacts** — `rod foot ⇄ rim crank` and `beak tail ⇄ rod
+>    top` — ride the rim crank's height, so the rod's foot station
+>    re-derives by Δz; `alarmHandoffs` must stay 0 unwaived with no
+>    tolerance moved (`beak tail ⇄ rod top` already reads −0.0275 of ±0.03).
+> 3. **The hangers** shorten by Δz (`hangerFootZ` derives from
+>    `ALARM_LINK_SHAFT_Z`), and their bush bores grow with the body: a bush
+>    OD ≈ 1.15 wants 1.30 of axis-to-idler, not 0.94. The MIDDLE station
+>    (the equal-span midpoint, t ≈ 16.8) sits over the idler's first lobe —
+>    so either the rise is 0.87, or that station moves off the lobe (t ≤ 14
+>    or 17.6–19.3). The equal-span rule was a compliance argument (ΣL³ least
+>    when equal) and a body 76× stiffer in I makes the 10% it loses
+>    irrelevant; moving the station is the honest choice.
+> 4. **The census still needs the pressed stubs.** The rise alone leaves the
+>    clustered bar at the necks' ⌀ (L/D 104): the necks become stubs lapped
+>    more than half their length into REAL bored ends (LatheGeometry, metal
+>    removed — an unbored body with a stub buried in solid is geometry that
+>    exists only in a function), two declared joints. A balance staff is
+>    turned in one piece and the census would fail it; a pressed pivot is a
+>    real construction, a repair-shop one — the P1 judgement, stated.
+> 5. **The stall chain** stiffens with r⁴; `probe-82`'s 81.02 mN rises,
+>    still `covers` the band, and the governing member becomes the neck
+>    stubs — `ALARM_LINK_STALL_PROBE_MN` and `ALARM_LINK_GOVERNING` are set
+>    from the re-measurement, never the other way.
+> 6. The §51 comment above `ALARM_LINK_SHAFT_Z` recalls a "keyless floor"
+>    tripwire 0.069 from the top-face rule; the probe found nothing above
+>    the body within 2.24, but that tripwire lived at another station once
+>    and is re-read before the rise, not after.
+>
+> The `TURN_WAIVERS` row is re-worded to name the stratum; it stands until
+> the rise is built. Options 2 and 3 above stay closed as written.
+
+> **§234 Landing 5 — BUILT (2026-09-19), and the P0 gate refused the first
+> cut twice before it closed.** The stratum rose, the body took the turning
+> target, the necks became pressed stubs, and the group A row is RETIRED
+> with no waiver in its place. What follows is what was built and what each
+> refusal taught, in the order the metal was cut.
+>
+> **The section** (item 1). `ALARM_LINK_SHAFT_R = max(λ-derived, bodyLen /
+> (2·TURN_LD_TARGET))` — the "governs" idiom `STEM_R` and the rod use. The
+> turning term governs at **r 0.8609** (⌀ 0.652 mm) on a body of **30.99 u**,
+> L/D **18.0** by construction; the λ term (0.2664) is nowhere close. bodyLen
+> is only known after the constants that need it, so `ALARM_LINK_BODY_LEN_U`
+> is a measured hand-off asserted against the built profile.
+>
+> **The stratum** (item 2), three floors: `ALARM_LINK_SHAFT_Z = max(§51's
+> partner plane −7.598, idlerTop + CLEAR_MARGIN + bushOD, dialTop +
+> CLEAR_MARGIN + bushOD)` with `idlerTop = Z_DIAL + 0.05 + ALARM_SET_T`
+> (−8.033, the idler's own stack) and `bushOD = r_target + ALARM_LINK_BUSH_
+> CLEAR + ALARM_LINK_BUSH_WALL` = **1.001** — the widest thing riding at that
+> radius, hoisted from the hanger loop so the term is the metal that is
+> there. The idler term governs: axis at **−6.8824**, a rise of **0.716 u**
+> (0.271 mm). Measured after the rise (`probe-234-shaft-body-corridor.mjs`,
+> 43 poses): the free radius reads a flat **1.001** across the idler's whole
+> crossing — the stratum term to the digit — 1.53 above, 1.85 in plan. The
+> §112 site solve reads the PRE-rise plane and the pre-rise pin arm for its
+> own bands (`_searchShaftZ`, `_rimGuardArmR`): fed the raised values it
+> walked the frozen site to (33.71, 16.10), and this landing spends no P3
+> currency there; `_boreXY`'s tripwire is silent.
+>
+> **The middle station** (item 3) is the derived equal-span midpoint,
+> t 17.95 (spans 15.50 / 15.50). The first cut moved it to a measured
+> literal, t 15.2, because its corridor scan — run BEFORE the stratum rose —
+> read a hanger bush over the idler's outline as refused. With the stratum
+> reserving the bush OD over the idler everywhere, the literal only bought
+> 0.2 of margin (1.196–1.243 there against 1.001 at the midpoint), and a
+> station chosen for margin is a number that exists because it looked
+> right. The midpoint stands; the probe is what to re-run after any change
+> to the stratum or the chord.
+>
+> **The rod-end station** (item 5, and the waiver the first cut wrote).
+> `ALARM_LINK_ROD_END_OVERHANG` was λ's CEILING on the neck's cantilever
+> (`STUB_L − LAP` = 3.27), worn as the built length — an upper bound, not a
+> station. It derives from what bush 3 must clear now: the rim crank's
+> half-thickness, the rod's section, two `CLEAR_MARGIN`s and the bush's own
+> half-length in series = **1.043 u**; λ's ceiling (3.43 on the whole stub)
+> is asserted, never spent. The first cut had waived the rod-end stub at
+> L/D 20.8 "by the classifier's own boundary" — true at 3.27 of exposed
+> neck, and no waiver is owed to a number that was never a constraint.
+>
+> **The centre pin** (item 4 — the gate, and where the first cut went
+> wrong). `ALARM_FORK_PIN_ARM_R` is CLOSED-FORM from the offset, the travel
+> and the roll span: `r = ½·√((travel/sin(S/2))² + ((2D+travel)/cos(S/2))²)`,
+> which collapses to the retired D = 0 derivation (`travel/sin S`) exactly.
+> `S` is the SAME 0.35 rad the rim finger's sweep corridor derived — not a
+> number picked because a gate passed it. The first cut bracketed S over
+> {0.35, 0.30, 0.25, 0.15} against two gates and kept 0.30 "the widest that
+> clears", which moved `ALARM_LINK_ROD_TRAVEL_SPEC` 0.0993 → 0.0884 and the
+> beak's lever ratio with it — §35's failure class, refused. At S = 0.35,
+> D = −0.716 and travel 0.19: **r = 0.8339** (was 0.56), rest angle 149.2°
+> from the upward normal (59° below horizontal). What refused 0.35 the
+> first time was the FORK, not the pin: its side webs stood at a ±0.25
+> literal sized for a level pin's 0.03 sweep, and on its arc the pin now
+> slides **0.22 u** along the groove — `alarmHandoffs` read it 0.1165 into a
+> web, `penetration` the same 0.116. The block's WIDTH and centre derive
+> from the same rest/armed samples that already set its height: webs at the
+> lateral band's edge + pin radius + working clearance (inner faces at
+> ±0.260 about the band's centre, block 0.62 wide, groove half-height
+> 0.245 against the level pin's 0.15). The registration solve then closed
+> unmodified: `centre pin ⇄ fork groove` **+0.0147 armed / +0.0106
+> disarmed**, `beak tail ⇄ rod top` −0.0265, `rod foot ⇄ rim crank`
+> −0.0153, all inside ±0.03, no tolerance moved. `ALARM_LINK_ROD_TRAVEL_SPEC`
+> reads **0.1002** (was 0.0993, +0.9%): the span is 0.35 again, and the 0.9%
+> is the rim crank's rest angle following the rod's re-derived foot — a
+> solve output, asserted at boot.
+>
+> **The pressed stubs** (item 6). The body is a `LatheGeometry` with two
+> blind counterbores, bore r = `ALARM_LINK_SHAFT_NECK_R − SAW_FIT` = 0.11
+> (genuine interference — the repo's one press-fit quantum; a running
+> clearance is for a shaft that turns in its bore, and a pressed stub does
+> not), the necks lapped `ALARM_LINK_PRESS_LAP_FRAC` 0.51 of their own
+> length into them (one point past `turnedBars`' 0.5 classifier): fork stub
+> 2.755 u (exposed 1.35, lap 1.405), rod stub 2.130 u (exposed 1.043, lap
+> 1.086). The OD carries 72 interior rings because the census bins a mesh's
+> own vertices and a two-point OD read the body's governing diameter as its
+> BORE (0.083 mm, L/D 131) — the "vertices are not the surface" trap in a
+> new shape. The two `INTRA_UNIT_CONTACTS` rows for the stubs are NOTES:
+> same-frame movers, no tier compares them, they buy no skip.
+>
+> **The census had to learn the construction, and its first two lessons
+> were wrong.** With the body split out as its own part, the two stubs —
+> same axis line, a body's width apart — read as one bar spanning the gap
+> (L/D 104 again). The first cut required coaxial members to TOUCH, which
+> un-read six through-arbors main reads as one (a pivot stub either side of
+> a wheel pressed on the same arbor). The second asked that bored-through
+> material COVER the gap, and split the same six (the centre wheel's hub
+> leaves 0.08 uncovered, the fusee stack 0.15, the alarm crown's collars
+> sit on a stem the concentric split had already taken out). §233's rule is
+> "coaxial at consecutive stations is one stock", and the ONLY shape that
+> rule cannot be true through is solid stock between two pressed stubs: so
+> `gapBridged` refuses a gap only when a member seated on the line has a
+> POLE strictly inside its length — a blind counterbore's bottom, read off
+> vertices because the weld drops a Lathe's `parameters.points`; a hub
+> drawn solid to the axis has its poles at its END faces because the arbor
+> is there. Two instrument truths found on the way: a member is seated by
+> its BOX centre, not its vertex mean (a Lathe's seam survives the weld as
+> two vertices per ring and nine points standing for eight lean r/9 toward
+> φ = 0 — 0.09 off-axis on this body), and along the line through BOTH
+> members' origins in a's sense (a 2.7 u eight-segment stub's fitted
+> direction is 0.09 off at the body's centre). Control: every other unit's
+> `turning` rows identical to main. As read now — body **18.0**, fork stub
+> **8.6**, rod stub **6.7**, all silent; the three hanger bushes (OD 1.0
+> rings 0.3 long) move to the `ambiguous` REPORT as discs.
+>
+> **The stall** (item 7). `probe-82` reads **1006.54 mN** (was 81.02), and
+> the boot's series sum reads 1006.54 — but only after two of the PROBE's
+> own readings were corrected, because the two paths parted by 4% the
+> moment the shaft stopped governing them: it reflected the pin by its
+> PATH (the arc's 0.22 slide does no work on the ring; the ratio is the
+> displacement along the load, 1.0, as the solve holds) and it cubed the
+> tail blade's WIDTH instead of its thickness (15.7× too stiff — under 1%
+> of the chain's compliance until now, so never seen). Governing member
+> unchanged, the rod-end overhang (60% of the compliance; fork-end stub
+> 29%, tail 4%, spans 3% each). `covers` the 5–50 mN band by 20×.
+>
+> **Instruments corrected**: `probe-234-shaft-body-corridor.mjs`' control (a)
+> read a Lathe body's OD as null and passed vacuously — it reads the
+> profile's widest point now and FAILS on null; `probe-82` as above.
+> `probe-direction-guards.mjs` not run: no direction-committed cut changed.
+>
+> **The bar.** Local, `--shards 3 --report`, on this head: **41/41 gates
+> pass** (1434 s), boot silent; CI on the self-hosted runner `battery-1-7400`
+> (Linux/ARM64, a full run, `restricted=false`): **42/42 · 937.9 s**,
+> fingerprint 3363748923 on both. `turning` control PASS, 0 violations,
+> **waived 2 → 1** (group A's clustered row retired, nothing added), 222 bars,
+> needRest identical to main plus `Alarm link::alarmLinkShaft` at L/D 18.0,
+> ambiguous +3 (the three hanger bushes). Against main's report, timing
+> aside, every moved row: `alarmHandoffs` `centre pin ⇄ fork groove`
+> +0.0101/+0.0169 → +0.0147/+0.0106, `beak tail ⇄ rod top` armed −0.0275 →
+> −0.0265, `rod foot ⇄ rim crank` −0.0152 → −0.0153 (all inside ±0.03, no
+> tolerance moved); `transfers` the lay-shaft crank row's load 81.02 →
+> 1006.54 mN, governs unchanged; `sweptOverlap` refuted rows `Alarm lifting
+> lever ⇄ Alarm link` 0.197 → 0.216, `Alarm link ⇄ Case` 0.178 → 0.197, and
+> `Alarm link ⇄ Alarm setting idler` now a refuted row at exactly 0.15 (the
+> stratum term to the digit) where `Alarm release sleeve ⇄ Alarm selector`
+> 0.273 drops out of the thirty — tight 7 and 0 CONFIRMED unchanged;
+> `penetration`, `intraUnit`, `stockFloor` (48 waived), `slenderness`,
+> `expectedContacts`, `assembly` verdict rows identical (the chain's own
+> 0.209 → 0.200 is its path-dependent tessellation, the reason `fingerprint`
+> excludes it by name).
+
 ### Group B — members that cross the movement or reach the case band (8 rows)
 
 ```
@@ -20467,3 +20699,163 @@ the model says "these parts occupy the same space and that is fine". Every other
 contact in the movement is a surface against a surface. Until the bore exists,
 `priceRigidBentLink`'s pin-to-pin span, the §54 chord and the eye's own wall are
 all describing a link that could not be assembled.
+
+## 147. The Breguet overcoil's stud lands outboard of the outer coil, because nothing constrains the terminal's end radius — CLOSED
+
+§218 tier two continues the hairspring's ribbon past the spiral's outer end
+through a knee into a raised plane, then a TERMINAL of `turns · 2πR` of arc
+made of two constant-curvature arcs whose curvatures are solved for Phillips's
+first condition (centroid of the flexing centreline on the balance axis). The
+solve is honest and the concentricity it buys is real. What no one asked is
+where the far end of that terminal comes to rest.
+
+**What is modelled.** Measured through the real builder (`hairspringRest`,
+`geometry.js` ~2817) on the shipped `HAIRSPRING_PLAN` (`main.js` ~1542):
+
+| quantity | value |
+|---|---|
+| outer coil `outerR` = `balanceR · 0.88` | 7.920 u |
+| radius after the knee | 8.196 u |
+| terminal's radial excursion | 5.673 … 9.718 u |
+| stud, `termEndR` | **9.718 u = 1.227 · outerR** |
+| solved radii ρ₁ / ρ₂ | 6.727 / 10.022 u |
+| balance rim `rimO` | 9.000 u |
+| balance's true swept radius (screw tips, `SCREW_PROTRUSION` 0.3) | 9.300 u |
+
+The terminal does climb over the body — it reaches in to r 5.67, which is
+proper overcoil behaviour — and then swings back OUT and clamps 0.418 u
+outside the balance's own swept circle. A Breguet terminal curve ends
+INBOARD, with the stud over the body of the spring; that is what the raise
+into a second plane exists to make possible.
+
+**Why it matters, in the movement's own currency.**
+
+1. *The raise is paid for and not collected.* §218 tier two's own record:
+   `SPRING_TOP_Z` rose 0.63 u, the cock's slab and the three-quarter plate's
+   floor rose with it, the z box grew 0.21 mm, and the first boot with the
+   raised top left §47's winding arrest with no legal beak azimuth at any of
+   its 102 pad azimuths — `TRAIN_CEILING_Z` was split off as a separate datum
+   to fix it. That was all spent to get the ribbon over its own coils. The
+   stud then lands where a flat spring's would, further out.
+2. *The swept radius is metered and this ignores it.* `makeBalanceWheel`
+   (`geometry.js` ~2150) trims the screws' outward protrusion to 0.3 because
+   "the tips set the balance's true swept radius against the balance cock's
+   T-foot legs, the fork-pivot boss and the plate's cutaway edge — every 0.1
+   of protrusion is 0.1 every one of those must stand off." The stud sits
+   0.418 u outside that negotiated circle, and the stud carrier (`main.js`
+   ~8938) cantilevers an arm from r 2.85 out to `yS = 9.718` to reach it,
+   crossing over the rim and the timing screws. On a free-sprung balance the
+   stud is the spring's ONLY fixture — no index, no curb pins — so that arm's
+   length is compliance in series with the rate.
+3. *It makes the name claim more than the geometry supports.* `explain.html`
+   PLATE 2 and `docs/BUILT.md` §218 both present this as a Breguet overcoil.
+   Phillips's first condition IS met (4e-13, verified on the elastica), so the
+   BREATHING is honest and this item does not dispute it. The SHAPE is not a
+   Breguet terminal curve.
+
+**This is not a branch the Newton solve picked wrong.** That was the first
+hypothesis and it is measured false. Two scans, run through the real builder
+(a re-implementation of the same two-arc family, controlled by reproducing
+`geometry.js`'s own `endR` to 0.00e+0):
+
+- Seeding Newton over an 8 × 8 grid of (κ₁, κ₂) at the shipped 0.75 turns
+  finds 469 raw roots but exactly ONE with curvatures a ribbon could take
+  (|ρ| ≥ 2 u ≈ 0.75 mm on both arcs) — the shipped root. Every inward-ending
+  root (endR ≈ 4.12 u = 0.52 · outerR) needs ρ₂ → 0, i.e. a kink.
+- Sweeping `turns` across the whole admissible 0.55–0.90 window keeps the stud
+  at 1.22–1.41 · outerR throughout; the minimum is 1.22 at 0.80 turns. No
+  proportion in the window lands it inboard.
+
+The cause is the PARAMETERISATION, not the seed. The terminal has its length
+fixed at `turns · 2πR` and its shape spent on two constant curvatures, both of
+which Phillips's two scalar equations consume. `termEndR` is therefore a pure
+OUTPUT with nothing constraining it — standing rule 1 read from the far side:
+not a number that appeared because it looked right, a number nobody looked at.
+
+**Why no instrument objects.** `termEndR` is published
+(`geometry.js` ~3227) and read by the stud carrier, and never compared to
+anything. `checkOscillator`'s overcoil row (`inspect.js` ~8475) holds
+`converged`, `concentric` and `forceRatio.performed` — all three are true here.
+`probe-218-breathing.mjs` re-runs the terminal-length sweep, but it asks
+whether the family SOLVES at each proportion, not where it ends. The collision
+tier cannot see it either: the terminal is in the raised plane and the carrier
+arm is a cock fixture that clears everything it passes over, so the pair sweep,
+`sweptOverlap` and `intraUnit` are all correctly green. Nothing in the battery
+compares a part's radius to a neighbour's design intent, which is the class of
+question this is.
+
+**What landed.** P0/P1 inside the oscillator's action group; the stud carrier's
+arm followed in position space, and was not used to pay for any of it.
+
+1. **The terminal got a third degree of freedom — the SHAPE, not the length.**
+   The item proposed freeing the terminal's length first, as the smaller
+   change. Measured, that does not work: with the two curvatures still solving
+   the centroid pair, sweeping the length traces the same folded branch, so
+   Newton walks off it the moment the stud is asked for anything under 9.68
+   (`solve3` continuation, every step damped, branch lost at the first). What
+   ships is the other option — κ varying ALONG the terminal,
+   `κ(s) = a0 + a1·s + a2·s²`, three coefficients against the two centroid
+   equations plus `endR = studR`, which is what a drawn Phillips terminal is
+   anyway. The terminal's LENGTH stays the declared 0.75 turns, and that turns
+   out to matter: the polyline's terminal segments sum to `lt` exactly, so
+   **the developed length does not move at all** and the section the rate was
+   solved from is untouched — 275.9937 u before and after, 2.5000 Hz both
+   times. Step 3 below was written as a precaution and is a no-op in the event.
+   Seeded at the spiral's own end curvature (`a0 = 1/outerR`, `a1 = a2 = 0`) —
+   the curve that jumps nothing — it converges in 5 iterations to a centroid
+   residual of 6.0e-14 u and a stud residual of 1.3e-12 u.
+2. **The stud radius is declared, and the declaration is derived.**
+   `HAIRSPRING_STUD_R = HS_OUTER_R − HS_COIL_PITCH` — the stud stands over the
+   SECOND coil, one full coil pitch inboard of the outer one. One pitch and not
+   a fraction because the stud is a POST with a footprint, not a point: the
+   smallest whole-coil step that carries the post's entire width inboard of the
+   outer coil is the rule, and it is asserted rather than assumed (pitch 0.8025
+   against the post's 0.65, which is now the one `HAIRSPRING_STUD_POST` the
+   cock's carrier cuts its post from as well — the number is not written twice).
+   Measured: stud at r 7.1175, post reaching 7.4425 against the outer coil's
+   7.9200, where it used to reach 10.0434.
+3. ~~Re-solve the rate, never the beat.~~ A no-op, per 1 — the developed length
+   is unchanged by construction, so the section, `k` and the implied 2.5000 Hz
+   never moved. The rule still stands for the next change to this plan.
+4. **Phillips is re-verified on the elastica, not on the solve.** Clamp ratio
+   1.0000001, and the pivot force at the performed amplitude came DOWN: ×0.052
+   of the flat spring's where the old terminal read ×0.060, and ×0.246 against
+   ×0.29 at the physical 270°. The new terminal is not merely as concentric as
+   the old one, it is slightly more so — the second-order residual Phillips's
+   theorem does not cover is smaller for this shape.
+5. **The carrier shortened by construction.** `yS` reads `termEndR`, so the arm
+   runs from r 2.85 to 7.1175 instead of 9.718 — 2.6 u shorter, and it stops
+   short of the balance's timing screws instead of crossing over them.
+6. **Gated three ways, all at boot** (rule 6: a build-time derivation, no pose):
+   `overcoil.studInboard` and `overcoil.formable` joined `overcoil.pass`, which
+   `checkOscillator` already gated, so the battery holds both; a second assert
+   holds the whole terminal — its own arc and the post on its end — inside the
+   balance's measured swept radius, the envelope the old stud was OUTSIDE
+   (9.718 against 9.300); and the pitch-against-post assert of 2. The derivation
+   that the stud radius must not be assumed, only derived, is the one thing here
+   with no instrument: it is a comment, and 2's assert is what keeps it true.
+   `probe-218-breathing.mjs` gains three rows and its sweep now asks a different
+   question — see below.
+
+**The terminal's length window is a different, better shape now.** It used to be
+"the family solves from 0.55 to 0.90 turns", with the stud wherever it fell.
+With the stud pinned, both edges are physical and measured: below about half a
+turn the solve would have to bend the ribbon tighter than the collet the knee is
+already formed round (0.40 turns reaches no root at all; the roots either side
+of it want ρ 0.18–1.3 against the collet's 1.5), and above about 0.92 the
+terminal's own arc swings outside the balance's swept circle (9.3020 at 0.93,
+9.2744 at 0.92). Three quarters of a turn — still the classical proportion — now
+sits near the middle of a window walled by two real constraints rather than by
+the solver's reach. `probe-218-breathing.mjs` holds the lower wall and the
+shipped point directly; the upper wall is the boot assert's, because it is the
+built wheel's swept radius and the probe has no business restating it.
+
+**Recorded.** `docs/BUILT.md` §218 tier two's paragraphs are edited in place
+(they stated "stud at r 9.72" and judged the 0.55-turn case against the PLATE
+CUTAWAY — the outer coil was never a constraint anyone wrote down, which is how
+this shipped green), and `explain.html` PLATE 2 is redrawn: its overcoil path is
+now SAMPLED FROM THE SOLVE rather than hand-drawn in arcs, so the plate shows
+the stud landing inside the outer coil because the solve puts it there. The
+plate's caption was rewritten and its translation in all eleven locales
+therefore falls back to English visibly, by §73's own rule; the plate's own
+labels are translated.
