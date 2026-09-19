@@ -2307,6 +2307,21 @@ export const EXPECTED_CONTACT_FLOORS = [
       // round journal starts outboard of the square section, past the
       // sleeve's whole ride band, so the pipe never reaches it)
       ['clutchRim', 'settingBevel'],    // pulled out: the setting mesh the old pinion carried — TODO 136 cut it as a bevel pair, and the wheel's BEVEL half is the member that meshes (its spur half drives the minute wheel)
+      // §234 step 3b — BOTH hub collars ride the sleeve's own axial span
+      // (main.js: "bored discs riding the sleeve"), and are cut to the
+      // SAME bore the sleeve is (layout.js's HUB_COLLAR_BORE_R ===
+      // STEM_SQ_BORE_REACH — one hole, the real-machining "both bored to
+      // the same reamer" reading): a running fit around the identical
+      // square, not a margin from it. Before the retooth the collars'
+      // bare-0.62 hole happened to clear the OLD, smaller square by more
+      // than CLEAR_MARGIN, so this pair was excused by distance rather
+      // than by declaration; STEM_R's growth closed that accidental
+      // margin (measured 0 — the literal did not scale) and re-cutting the
+      // bore to the square's own reach reopened only a running-fit gap
+      // (~0.024, the same order as the sleeve's own joint above), which
+      // this row now excuses on purpose instead of by omission.
+      ['clutchHubCollarIn', 'stemSquare'],
+      ['clutchHubCollarOut', 'stemSquare'],
     ],
   },
   {
@@ -9748,7 +9763,17 @@ export const TURN_WAIVERS = {
   // the section went in: `ALARM_STEM_R` is the target now, both rows measure
   // under the ceiling, and neither needs a waiver.
   'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
-  'Keyless works::windStem+(unnamed)': 'TODO 145 group B',
+  // §234 step 3b — RETIRED. The entry filed this as a TRAIN change and it
+  // was: TODO 138's two hard guards fired on the 8-tooth winding pinion at
+  // stem-stock bore (no web left, both members), and 10 teeth is the
+  // smallest count whose derived face width clears §50's floor. That re-cuts
+  // BOTH keyless bevel corners (the clutch rim shares the pinion's tooth
+  // count), so `KW_BEVEL`'s five literals, `KW_PIN_BORE`, `HUB_COLLAR_R` and
+  // (through the keyless cluster's own footprint) `D4` all re-derive with
+  // it — each asserted against the live spec or the live geometry, so a
+  // fourth re-cut would warn rather than drift silently. `STEM_R` is the
+  // stem stock floor: the turning target alone asks r 0.884, stock is wider
+  // at 0.924 and governs, the same as the alarm pusher's. L/D 35.3 → 17.2.
   // GROUP C — arbors INSIDE the movement. Filed as "a section change alone
   // closes all three"; §234 Landing 1 measured that for none of them, and
   // closed the two it could. The arrest COLUMNS are ARREST_COLUMN_R now, cut

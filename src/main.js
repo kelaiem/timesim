@@ -59,7 +59,7 @@ import {
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
-  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, YOKE_FORK_IN, YOKE_FORK_OUT,
+  CLUTCH_SLEEVE_R, YOKE_PRONG_R, YOKE_ARM, HUB_COLLAR_T, HUB_COLLAR_R, HUB_COLLAR_BORE_R, STEM_SQ_BORE_REACH, YOKE_FORK_IN, YOKE_FORK_OUT,
   YOKE_TRACK_OFF, SAW_RING_ROOT, GROOVE_COLLAR_T, GROOVE_HALF, SEAT_RELIEF, KW_GEAR_BEVEL,
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
@@ -1825,7 +1825,14 @@ const HAND_RAD_PER_SET_RAD = KW_SET_WHEEL_SIDE
 // stands over it partway through the wind (measured at wind f=0.4722, a bore
 // sized to the square left 0.1316 against the 0.15 floor).
 const KW_RIM_BORE = STEM_R + CLEAR_MARGIN;
-const KW_CROWN_BORE = 0.7, KW_PIN_BORE = 0.6;
+const KW_CROWN_BORE = 0.7;   // the crown/setting wheels' own arbors — unrelated to the winding stem's radius
+// §234 step 3b — "bored loose over the stem's square" IS the constraint: the
+// pinion's round bore must clear the square's half-diagonal (STEM_R·0.98) by
+// the movement's one running fit, CLEAR_MARGIN. It was a literal 0.6 against
+// the pre-cut square's half-diagonal of 0.441 — 0.159 of clearance, close to
+// but not exactly CLEAR_MARGIN, and stem stock's fatter square needs the real
+// derivation rather than a second guess at the old literal.
+const KW_PIN_BORE = STEM_R * 0.98 + CLEAR_MARGIN;
 const KW_SPEC = {
   crownWheel: G.bevelToothSpec({ module: KW_MODULE, teeth: crownWheelTeeth, mateTeeth: windPinionTeeth,
     boreR: KW_CROWN_BORE, mateBoreR: KW_PIN_BORE }),
@@ -4590,7 +4597,13 @@ windSpinner.add(stem);
   const grooveOuterLocal = GROOVE_LOCAL + GROOVE_HALF + GROOVE_COLLAR_T / 2;
   const bushDist = Math.max(plateR - 2,
     pinDist + CROWN_PULL_DIST + grooveOuterLocal + CLEAR_MARGIN + STEM_BUSH_FOOT_HALF);
-  const bush = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.55, 10, 20), MATS.nickel);
+  // §234 step 3b — the bore is the running fit over the stem's own ROUND
+  // journal (`STEM_R`, not the square it passes below), which was a bare
+  // 1.05/0.55 (hole 0.50) sized for the old 0.45 literal and left `windStem`
+  // 0.42 through its own support once the journal grew to stem stock. The
+  // wall (0.55, the ring's radial metal) is unrelated to the stem and is kept.
+  const bushWallR = 0.55;
+  const bush = new THREE.Mesh(new THREE.TorusGeometry(STEM_R + CLEAR_MARGIN + bushWallR, bushWallR, 10, 20), MATS.nickel);
   // Torus plane ⊥ stem: its hole must point along the stem axis.
   bush.rotation.z = stemAngle;
   bush.rotation.y = Math.PI / 2;
@@ -5274,10 +5287,20 @@ windClutchMount.add(windClutch);
   // collars — bores over the sleeve's outside and WELDS onto it (real
   // radial overlap, no knife-edge abutments: coincident caps are the
   // coplanar case the instruments cannot arbitrate).
-  const SLEEVE_R = CLUTCH_SLEEVE_R;      // layout.js owns it (the yoke arm's reach derives from it); over the saw ring's 0.685 bore and every other bore — the spine everything welds to
+  const SLEEVE_R = CLUTCH_SLEEVE_R;      // layout.js owns it (the yoke arm's reach derives from it) — over its OWN bore's corner reach by a real wall, §234 step 3b
   // (The spine's [SLEEVE_BOT, SLEEVE_TOP] span is derived at the stem's
   // own build, one chain with the square section that fills its bore.)
   const sqHole = STEM_R * Math.SQRT2 * 0.98 + 0.05; // the square's side plus the 0.05 running fit (the movement's, see SAW_FIT)
+  // Boot assert (rule 1/7) — layout.js's STEM_SQ_BORE_REACH mirrors this
+  // exact arithmetic (it needs the bore's reach before this file builds
+  // anything, and cannot import from it), in corner-reach rather than side
+  // form: a drifted copy would silently reopen the §234 step 3b defect
+  // (the bore poking past the spine's own OD, which no `outlines` check
+  // catches — a hole exceeding its outer loop is not a self-crossing RING).
+  if (Math.abs((sqHole / 2) * Math.SQRT2 - STEM_SQ_BORE_REACH) > 1e-9)
+    console.warn(`§234 stem clutch: sleeve bore corner reach ${((sqHole / 2) * Math.SQRT2).toFixed(4)} `
+      + `does not match layout.js's STEM_SQ_BORE_REACH ${STEM_SQ_BORE_REACH.toFixed(4)} — CLUTCH_SLEEVE_R `
+      + 'and HUB_COLLAR_BORE_R are derived from a stale mirror');
   // Contours are EXPLICIT point loops, never absarc: an arc contour
   // duplicates its seam point and the extrude walls that point with a
   // zero-area quad — the degenerate-triangle class that flips
@@ -5381,11 +5404,14 @@ windClutchMount.add(windClutch);
   // 0.0003. The gate is a battery run away rather than a boot away; the
   // alternative is an assert that measures nothing, and that is worse.
   // Hub collars for the yoke's fork (moved here from the stem group) —
-  // bored discs riding the sleeve (0.62 bore into the 0.75 spine), 0.17
-  // clear of the stem inside.
+  // bored discs riding the sleeve. §234 step 3b — HUB_COLLAR_BORE_R (layout.js)
+  // is the same bore the sleeve is cut to (STEM_SQ_BORE_REACH): both collars
+  // sit on the sleeve's own span, so a smaller hole buries into the square
+  // itself, not merely into the sleeve's now-larger OD (see layout.js's
+  // comment on the constant for the retired 0.62/0.75 pair this replaces).
   {
     const shape = new THREE.Shape(loopPts(HUB_COLLAR_R, 20));
-    const hole = new THREE.Path(loopPts(0.62, 20).reverse()); // hole winds opposite the outer loop
+    const hole = new THREE.Path(loopPts(HUB_COLLAR_BORE_R, 20).reverse()); // hole winds opposite the outer loop
     shape.holes.push(hole);
     const geo = new THREE.ExtrudeGeometry(shape, { depth: HUB_COLLAR_T, bevelEnabled: false });
     geo.translate(0, 0, -HUB_COLLAR_T / 2);

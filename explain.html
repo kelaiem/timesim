@@ -1456,13 +1456,16 @@
       the clutch's rim to the setting bevel, both turning through a right angle at the stem
       &mdash; and until TODO 136 they were not meshes at all: two flat spur cuts parked with
       their rims overlapping, 27% and 18% of a tooth buried in each other at every indexing a
-      half-pitch seed could reach. They are BEVEL PAIRS now, 20 teeth against 8, cut on cones
-      whose half-angles come from the counts (68.199&deg; and 21.801&deg;, summing to the
-      right angle) and which share the apex where the two axes cross. A member's pitch plane
-      then stands one cone distance&middot;cos&gamma; from that apex, which at a right angle
-      is the MATE's pitch radius &mdash; so the pinion's plane sits 3.4 outboard of the crown
-      wheel's axis and the wheel's plate sits 1.36 off the stem, where the layout had been
-      carrying an extra 0.748 of rim overlap at each corner. The index is a solve after all,
+      half-pitch seed could reach. They are BEVEL PAIRS now, 20 teeth against 10 (&sect;234 Landing
+      2 re-cut the winding pinion from 8: the stem is stem-stock, not a bare literal, and 8 teeth
+      left no web between the bore and the root cone), cut on cones whose half-angles come from
+      the counts (63.435&deg; and 26.565&deg;, summing to the right angle) and which share the
+      apex where the two axes cross. A member's pitch plane then stands one cone
+      distance&middot;cos&gamma; from that apex, which at a right angle is the MATE's pitch
+      radius &mdash; so the pinion's plane sits 3.4 outboard of the crown wheel's axis and the
+      wheel's plate sits 1.7 off the stem, where the layout had been carrying an extra 0.748 of
+      rim overlap at each corner (a &sect;136-era figure, from the flat-spur design this pair
+      replaced). The index is a solve after all,
       just not the parallel-axis one: a tooth of the wheel and a gap of the pinion, both
       centred on the pair's line of contact. That last sentence was a claim about the metal
       for as long as it stood, and the metal did not satisfy it. TODO 139 measured both
@@ -1472,8 +1475,9 @@
       exact. The solve had read its mount's frame before the scene's world matrices were
       current, so the stem's own azimuth was simply missing from it; the wheels' mounts hang
       off an untransformed group, where that mistake costs nothing. Both corners now measure
-      a tooth on the ray at 0.0000 and a gap at 0.5000 and 0.4938, the last being the clutch's
-      own seat clocking and not a residue. The guard that would hold that is NOT at boot, and
+      a tooth on the ray at 0.0000 and a gap at 0.5000 and 0.4924, the last being the clutch's
+      own seat clocking (0.005 rad, a larger fraction of the finer 10-tooth pitch than it was
+      of the 8-tooth one) and not a residue. The guard that would hold that is NOT at boot, and
       the attempt to put one there is the more useful half of the story: an index is a property
       of a POSE, and by the end of module evaluation this movement stands at whatever the last
       session saved, so the assert was silent on a fresh profile and half a pitch out after a

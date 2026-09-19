@@ -56,9 +56,27 @@
 // not, which is the shape of the cause: `bevelCornerSpin` read its mount
 // through `updateMatrixWorld(true)`, which recomputes from `parent.matrixWorld`
 // as it stands and never walks UP, and both stem-side mounts hang under a
-// group carrying the stem's own azimuth. After the fix the same scan reads
+// group carrying the stem's own azimuth. After the fix the same scan read
 // 0.0000 / 0.5000 on the winding corner and 0.0000 / 0.4938 on the setting
-// one, the 0.0062 being the clutch's deliberate 0.005 rad seat clocking.
+// one (then 8-tooth), the 0.0062 being the clutch's deliberate 0.005 rad seat
+// clocking. §234 step 3b re-cut `windPinionTeeth` 8 → 10 (both corners share
+// it — the clutch rim is cut to the pinion's own count) and the same reads
+// are now 0.0000 / 0.5000 and 0.0000 / 0.4924, the clocking's fixed 0.005 rad
+// now 0.0080 of the FINER pitch (measured 0.0076 — the difference is the
+// engaged pose's own small residual, below).
+//
+// THE SETTING CORNER IS ONLY A MESH WITH THE CROWN PULLED, which the retooth
+// also found: `clutchRim` slides on the stem, `settingBevel` does not, and at
+// crownPullT 0 (rest) the two stand `CLUTCH_TRAVEL` apart — clutchRim is
+// meshed with `windingPinion` instead. This probe used to read the corner
+// wherever the boot's own eased `crownPullT` happened to leave it, uncontrolled
+// and non-reproducible (`resetInputs()` doesn't reset `crownPullT`, and doesn't
+// force a tick, so a reset wouldn't reach the built scene without one either).
+// The 8-tooth blank's wider band absorbed the resulting apex miss without
+// tripping COVERAGE; the finer 10-tooth one did not — `clutchRim` read 0 or 2
+// runs depending on the instant the browser reached this eval, which is what
+// exposed the gap. Posing `crownPullT: 0` for WINDING/ALARM/CTRL and `1` for
+// SETTING (below) makes every corner's read a function of the geometry again.
 //
 // The ALARM corner still reads 0.3750, and that is TODO 140: its index is
 // solved with `alarmRotor.rotation.z` at 0 and the movement's rest pose puts it
@@ -131,6 +149,19 @@ const out = await page.evaluate(async () => {
   const C = window.__clock;
   const L = [];
   if (C.resetInputs) C.resetInputs();
+  // §234 step 3b found this probe reading the SETTING corner at whatever
+  // crownPullT the boot's own eased rAF ticking happened to leave running —
+  // `resetInputs()` does not reset crownPullT (nor does it force a tick, so a
+  // reset wouldn't reach the built scene without one), and this probe never
+  // called setPose. `clutchRim` only SITS near `settingBevel`'s apex when the
+  // crown is pulled — at rest it is CLUTCH_TRAVEL away, meshed with the
+  // winding pinion instead — so the reading was luck-of-the-boot: close
+  // enough to resolve one clean tooth run on an 8-tooth rim, close enough to
+  // straddle a tooth edge (2 runs, then 0) on the finer 10-tooth one the
+  // retooth cut. Posing both ends explicitly makes every corner's read a
+  // function of the geometry, not of how much real time elapsed before this
+  // evaluate() ran.
+  C.setPose({ crownPullT: 0 });   // WINDING/ALARM/CTRL corners: crown pushed in
   C.scene.updateMatrixWorld(true);
   // SKIP THE SCHEMATIC TIER. Its proxies carry the rotor's name and its own
   // pose, and taking the first match put alarmStemBevel's "apex" 5.000 from the
@@ -263,7 +294,13 @@ const out = await page.evaluate(async () => {
 
   const rows = [];
   rows.push(['WINDING', corner('WINDING  crownWheel ⇄ windingPinion', 'crownWheel', 'windingPinion')]);
+  // The setting corner only exists as a mesh with the crown PULLED — read it
+  // there, not at the rest pose the block above set.
+  C.setPose({ crownPullT: 1 });
+  C.scene.updateMatrixWorld(true);
   rows.push(['SETTING', corner('SETTING  settingBevel ⇄ clutchRim', 'settingBevel', 'clutchRim')]);
+  C.setPose({ crownPullT: 0 });
+  C.scene.updateMatrixWorld(true);
   rows.push(['ALARM', corner('ALARM    alarmDiscBevel ⇄ alarmStemBevel', 'alarmDiscBevel', 'alarmStemBevel')]);
   rows.push(['CTRL-DROP', corner('CONTROL  mwCornerDropIn ⇄ mwCornerDropOut', 'mwCornerDropIn', 'mwCornerDropOut')]);
   rows.push(['CTRL-RISE', corner('CONTROL  mwCornerRiseIn ⇄ mwCornerRiseOut', 'mwCornerRiseIn', 'mwCornerRiseOut')]);
