@@ -9741,7 +9741,36 @@ export const TURN_WAIVERS = {
   // LAYOUT problem — solved by moving the stations, not by thinning or
   // fattening anything. It is the headline row and the reason this check
   // exists.
-  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A',
+  //
+  // §234 Landing 4 — MEASURED, not argued, and the measurement holds at both
+  // ends of the search. `tools/probe-l3-shaft-ld-filter.mjs` filters the
+  // §112 rod-site solve's own (rc, tab) candidate population by
+  // (chordLen − 1.1)/(2s) ≤ TURN_LD_TARGET for s ∈ {0.2664 (shipped), 0.30,
+  // 0.40, 0.445, 0.553, 0.927 (the turning target at today's chord)}, scored
+  // at the HONEST piecewise footprint (the rod's own column split by the two
+  // plate-bush z-slices — the fix Landing 4 gave the rod's site solve, not a
+  // blanket guess) and the shaft's own chord scored at that section's real
+  // bush OD (s + 0.02 + 0.12). A chord short enough to clear the L/D filter
+  // exists at every tested s — the filter is never the thing that refuses —
+  // but no combination of (short chord, thick-enough section) also clears
+  // ANY obstacle: candidates short enough to sit near the column read
+  // c ≈ −s (the rod's OWN column, not the shaft, already occupies that
+  // ground), and at s = 0.927 — the target's own answer at essentially
+  // today's chord — the shaft's corridor reads c = −0.577 to −0.602,
+  // reproducing §137's already-measured real wall (`probe-137-jumper-
+  // envelope.mjs`'s alarm setting idler, max legal r 0.2850) independently
+  // of the column-footprint question. 0.2850 is not merely short of the
+  // turning target's 0.927 at today's chord, it is short of TURN_LD_MAX's
+  // own r ≈ 0.836 too. And §137/§232's OWN constraint stands unmoved:
+  // `ALARM_LINK_SHAFT_NECK_R = ALARM_LINK_CRANK_OFF − ALARM_LINK_CRANK_T/2`
+  // makes the crank's lever arm a function of the neck it sits on, so even a
+  // corridor that permitted r 0.927 would bury the crank's rim finger (tip
+  // reach 0.425) and the centre pin's arm (0.56) inside the body — a third,
+  // independent refusal alongside the corridor's. No position-space move
+  // measured here (there is none left to try that this landing's own record
+  // has not already tried under Landing 1/2's names) closes the gap; TODO
+  // 145's own record carries the three-option design write-up.
+  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A (§234 Landing 4: MEASURED — no candidate at any tested section 0.2664–0.927 clears both TURN_LD_TARGET and its own corridor; the L/D-18 target chord is never the refusal, the corridor and the crank contacts are, independently)',
   // GROUP B — members that CROSS the movement or reach the case band. Their
   // length is the case's, not a design choice: a crown stem is long because
   // the case is 20 mm across. What is wrong is the DIAMETER — these were cut
@@ -9762,7 +9791,41 @@ export const TURN_WAIVERS = {
   // §235's yoke reads the collar from BESIDE it, at the stem's own axis, and
   // the section went in: `ALARM_STEM_R` is the target now, both rows measure
   // under the ceiling, and neither needs a waiver.
-  'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
+  // §234 Landing 2 step 3a — RE-MEASURED, not retired: the bare literal is
+  // gone (SETTING_ROD_R now derives from RSV_P0_TOP_Z, main.js), but the
+  // radius that derivation reaches, 0.382 (L/D 35.96), is still over the
+  // ceiling. The step-3a filing named the wrong specific neighbour
+  // (`rsvWheel1`) and missed a second one; re-measured here, off the real
+  // built meshes rather than the filed z-window arithmetic:
+  //   · the TRUE governing neighbour is `reservePinion0` (the reserve
+  //     train's first member off the barrel arbor, not the wheel it meshes
+  //     — its top happens to read the same −3.53, which is what let the
+  //     misattribution stand), a pure-Z bound;
+  //   · a SECOND, independent neighbour, `rsvArbExt` (the visible barrel-
+  //     arbor extension, r 0.55), crosses Z_SETTING's plane at the same XY
+  //     regardless of Z_RSV — it caps r at 0.48 no matter how far Z_RSV is
+  //     pushed (measured to Z_RSV −6.0, no further gain past −4.7).
+  // Three position-space candidates were tried and each measured
+  // insufficient: growing/shrinking the motion-works corner (irrelevant —
+  // it never appears among this rod's true nearest neighbours, and
+  // shrinking it moves its OWN metal closer to the apex, backwards from
+  // what's needed); moving Z_RSV (saturates at r 0.48, governed by
+  // rsvArbExt, well under the ceiling's 0.687); re-siting the traverse's
+  // path via CAP_BEARING (already a free parameter — forced to 20° and to
+  // 60°, combined with Z_RSV −4.7, r_max does not move at all, since B
+  // swings on a small circle far too short to redirect a 27.47u line's
+  // approach to the distant barrel arbor). A NECKED rod does not help
+  // either: `turnedBars` clusters coaxial meshes at consecutive stations —
+  // one axis line — into ONE bar judged on the NARROWEST diameter over the
+  // WHOLE span (see this file's own "lay shaft... as the bar it is, it is
+  // 104"), so thinning only the pinched ~3u stretch would just lower the
+  // judged diameter while the judged length stays the full run. Closing
+  // this needs a genuine FOLD — a new bevel corner kinking the traverse off
+  // its single axis line near the barrel, so the two resulting legs are
+  // judged as separate, shorter bars — which is new mechanism (its own P0
+  // transfer row, phase index, clearances), out of step 3a's scope; filed
+  // as its own follow-up landing.
+  'Keyless works::settingTraverse': 'TODO 145 group B (§234 Landing 2 step 3a: SITE-limited, re-measured — reservePinion0 + rsvArbExt cap r at 0.48 even with Z_RSV and CAP_BEARING pushed to their own limits, under the ceiling\'s 0.687; closing it needs a new fold — an added bevel corner — filed as follow-up)',
   // §234 step 3b — RETIRED. The entry filed this as a TRAIN change and it
   // was: TODO 138's two hard guards fired on the 8-tooth winding pinion at
   // stem-stock bore (no web left, both members), and 10 teeth is the
@@ -9779,10 +9842,25 @@ export const TURN_WAIVERS = {
   // closed the two it could. The arrest COLUMNS are ARREST_COLUMN_R now, cut
   // to TURN_LD_TARGET beside the leg solve with the finger's Geneva-sized
   // arbor left alone (their rows retired here, per §137's staleness rule).
-  // The ROD is SITE-limited, not section-limited: §202's frozen station warns
-  // at boot above r ≈ 0.517 (L/D 19.2 — under the ceiling, over the target),
-  // and its site is the §112 solve's output, which is Landing 3's machinery.
-  'Alarm link::alarmLinkRod': 'TODO 145 group C (site-limited; re-solved with group A)',
+  //
+  // §234 Landing 4 RETIRED the rod's row, and it was the site after all —
+  // but not because the §112 solve had no answer. `ALARM_LINK_ROD_BORE_R`
+  // (the column's scoring footprint) was a frozen 0.45 against a real bore
+  // that had grown to 0.677 and was headed for 0.930 at the turning target;
+  // §202 kept the gap alive with a "room" assert rather than re-scoring,
+  // because a BLANKET re-score at the honest footprint taxes the column the
+  // full bore width over its whole run and prices the shipped site itself
+  // out (measured: best 0.111 against the 0.15 margin, 1.997 u from the
+  // frozen site — the same over-conservative failure `scoreChord`'s own
+  // piecewise split already fixed once for the crank zone). The honest fix
+  // is the same one: `ALARM_LINK_COL_BUSH_Z` scores the bore radius only
+  // across the two plate thicknesses the rod actually bores through, and
+  // the bare rod body (`ALARM_LINK_ROD_R_SECTION`, itself now derived —
+  // `ALARM_LINK_ROD_LEN_U`/(2·TURN_LD_TARGET) — the built rodLen's own
+  // hand-off, `SETTING_ROD_R`'s idiom) everywhere else in the column band.
+  // Piecewise, the joint solve lands within float of the frozen site
+  // (colClear 0.456, zero boot warnings) — the site was never the problem,
+  // the solve's own footprint was. L/D 33.2 → 18.0.
 };
 
 export async function checkTurning(clock, opts = {}) {
