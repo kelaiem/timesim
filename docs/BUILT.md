@@ -26885,7 +26885,14 @@ corrected, the two paths meet to the digit. `probe-234-shaft-body-corridor`'s
 control (a) had read a Lathe body's OD as null and passed; it fails on null
 now.
 
-**The bar.** [to be filled from the battery]
+**The bar.** Local `--shards 3 --report` on this head **41/41** (1434 s), CI on
+the self-hosted `battery-1-7400` **42/42 · 937.9 s**, fingerprint 3363748923
+on both, boot silent. `turning` waived 2 → 1 with nothing added; needRest
+identical to main plus the body's own L/D-18 row; ambiguous +3 (the hanger
+bushes, now discs). Every other moved row against main is the alarm link's
+own: three hand-offs re-measured inside ±0.03, the crank row's load 81.02 →
+1006.54 mN, two refuted swept rows refining (0.216, 0.197) and one new refuted
+row at exactly 0.15 against the idler — the stratum term to the digit.
 
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 

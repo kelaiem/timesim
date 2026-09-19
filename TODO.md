@@ -20053,7 +20053,26 @@ this row moves to it.
 > profile's widest point now and FAILS on null; `probe-82` as above.
 > `probe-direction-guards.mjs` not run: no direction-committed cut changed.
 >
-> **The bar.** [to be filled from the battery]
+> **The bar.** Local, `--shards 3 --report`, on this head: **41/41 gates
+> pass** (1434 s), boot silent; CI on the self-hosted runner `battery-1-7400`
+> (Linux/ARM64, a full run, `restricted=false`): **42/42 · 937.9 s**,
+> fingerprint 3363748923 on both. `turning` control PASS, 0 violations,
+> **waived 2 → 1** (group A's clustered row retired, nothing added), 222 bars,
+> needRest identical to main plus `Alarm link::alarmLinkShaft` at L/D 18.0,
+> ambiguous +3 (the three hanger bushes). Against main's report, timing
+> aside, every moved row: `alarmHandoffs` `centre pin ⇄ fork groove`
+> +0.0101/+0.0169 → +0.0147/+0.0106, `beak tail ⇄ rod top` armed −0.0275 →
+> −0.0265, `rod foot ⇄ rim crank` −0.0152 → −0.0153 (all inside ±0.03, no
+> tolerance moved); `transfers` the lay-shaft crank row's load 81.02 →
+> 1006.54 mN, governs unchanged; `sweptOverlap` refuted rows `Alarm lifting
+> lever ⇄ Alarm link` 0.197 → 0.216, `Alarm link ⇄ Case` 0.178 → 0.197, and
+> `Alarm link ⇄ Alarm setting idler` now a refuted row at exactly 0.15 (the
+> stratum term to the digit) where `Alarm release sleeve ⇄ Alarm selector`
+> 0.273 drops out of the thirty — tight 7 and 0 CONFIRMED unchanged;
+> `penetration`, `intraUnit`, `stockFloor` (48 waived), `slenderness`,
+> `expectedContacts`, `assembly` verdict rows identical (the chain's own
+> 0.209 → 0.200 is its path-dependent tessellation, the reason `fingerprint`
+> excludes it by name).
 
 ### Group B — members that cross the movement or reach the case band (8 rows)
 
