@@ -1,4 +1,4 @@
-// §234 Landing 4 addendum — WHAT IS THE FREE RADIUS OF THE LAY SHAFT'S BODY
+// §234 Landing 5, Phase 0 — WHAT IS THE FREE RADIUS OF THE LAY SHAFT'S BODY
 // ALONE, STATION BY STATION, IF THE NECKS BECOME SEPARATE PRESSED STUBS?
 //
 // TODO 145 group A's `turnedBars` census clusters `alarmLinkShaft` (the
@@ -133,7 +133,15 @@ const R = await page.evaluate(async ({ STEP, OVERRUN, SEARCH }) => {
   const bodyLen = body.geometry.parameters && body.geometry.parameters.height != null
     ? body.geometry.parameters.height
     : (body.geometry.boundingBox.max.y - body.geometry.boundingBox.min.y);
-  const shippedR = body.geometry.parameters ? body.geometry.parameters.radiusTop : null;
+  // the body's OD: a CylinderGeometry says it outright; a LatheGeometry (the
+  // bored body since §234 Landing 5) carries it as its profile's widest
+  // point. Null here made control (a) pass vacuously once — never again.
+  const shippedR = (() => {
+    const par = body.geometry.parameters || {};
+    if (Number.isFinite(par.radiusTop)) return par.radiusTop;
+    if (Array.isArray(par.points) && par.points.length) return Math.max(...par.points.map((q) => q.x));
+    return null;
+  })();
   const halfLen = bodyLen / 2;
 
   // stations, in mesh-local Y (which IS the chord axis, by construction):
@@ -284,7 +292,7 @@ for (const k of ['below', 'above', 'plan']) {
 }
 if (R.worstOverrun) console.log(`WORST OVERRUN STATION (neck/crank territory): y=${R.worstOverrun.y}  freeR=${R.worstOverrun.freeR}  wall=${R.worstOverrun.owner}  dir=${R.worstOverrun.dir}  pose#${R.worstOverrun.poseIdx}`);
 console.log('');
-console.log(`CONTROL (a) shipped body r ${R.shippedR} clears body-only worst freeR ${R.worstBody.freeR}: ${R.worstBody.freeR >= R.shippedR ? 'PASS' : 'FAIL — the shipped tree should read clean here'}`);
+console.log(`CONTROL (a) shipped body r ${R.shippedR} clears body-only worst freeR ${R.worstBody.freeR}: ${R.shippedR == null ? 'FAIL — the body\'s OD could not be read, so this control measured nothing' : (R.worstBody.freeR >= R.shippedR ? 'PASS' : 'FAIL — the shipped tree should read clean here')}`);
 if (R.worstOverrun) console.log(`CONTROL (b) overrun worst (${R.worstOverrun.freeR}) tighter than body worst (${R.worstBody.freeR}): ${R.worstOverrun.freeR < R.worstBody.freeR ? 'PASS' : 'FAIL — expected the crank-station wall to bind harder than mid-body'}`);
 console.log('');
 console.log(`Target r 0.786 (TURN_LD_TARGET=18 over ${R.bodyLen} u): ${R.worstBody.freeR >= 0.786 ? 'FITS' : `SHORT by ${(0.786 - R.worstBody.freeR).toFixed(4)}`}`);

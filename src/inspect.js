@@ -9666,26 +9666,6 @@ export async function turnedBars(clock, opts = {}) {
     worldPtsCache.set(mesh, pts);
     return pts;
   };
-  // Hollow along its whole AUTHORED length ⇒ an arbor could continue inside
-  // it. Three shapes say so from their own construction, one says the
-  // opposite, and everything else keeps the pre-§234 reading (bridge) so a
-  // type this cannot classify never moves a bar it used to pass.
-  const isBoredThrough = (mesh) => {
-    const g = mesh.geometry, par = g.parameters;
-    if (g.type === 'TorusGeometry') return true; // a ring, by construction
-    if (g.type === 'ExtrudeGeometry') {
-      const shapes = par && par.shapes ? (Array.isArray(par.shapes) ? par.shapes : [par.shapes]) : [];
-      return shapes.some((sh) => sh && sh.holes && sh.holes.length > 0);
-    }
-    if (g.type === 'LatheGeometry') {
-      const pts = par && par.points;
-      // no on-axis point anywhere in the authored profile ⇒ a shell all the
-      // way along; a blind bore or a solid end PUTS a point at r = 0 there
-      // (see `alarmLinkShaft`'s own two counterbore bottoms).
-      return pts && pts.length ? !pts.some((p) => Math.abs(p.x) < 1e-6) : true;
-    }
-    return true; // CylinderGeometry / BufferGeometry of unknown bore — bridge, unchanged
-  };
   // Does material belonging to THIS unit, centred on a's axis line, cover the
   // gap [gapLo, gapHi] (in a's frame) with nothing but bored-through members?
   // A member with no point near the axis merely has a matching t-range, not a
@@ -9694,33 +9674,87 @@ export async function turnedBars(clock, opts = {}) {
   // being spliced since a wheel's own OD says nothing about the size of its
   // bore.
   const gapBridged = (a, b, unitVolumes, gapLo, gapHi) => {
-    const rGate = 0.75 * Math.max(a.diaU, b.diaU);
     const covering = [];
+    // The line to measure against is the one through BOTH members' origins —
+    // the bar's own line, which is what let them pass the concentric test —
+    // not one member's fitted direction: a 2.7 u eight-segment stub's
+    // descent-found axis carries a few tenths of a degree, invisible at the
+    // stub and 0.09 u at a body's centroid fourteen units down the bar
+    // (measured: `alarmLinkShaft` read as unseated on its own necks' line).
+    const ab = turnSub(b.origin, a.origin);
+    const abLen = Math.hypot(ab[0], ab[1], ab[2]);
+    // …with a's own SENSE, because gapLo/gapHi arrive in a's frame (t along
+    // a.axis from a.origin) and a line pointed the other way would read every
+    // span on the wrong side of the gap.
+    const abSign = turnDot(ab, a.axis) < 0 ? -1 : 1;
+    const axis = abLen > TURN_AXIS_OFFSET_U ? [abSign * ab[0] / abLen, abSign * ab[1] / abLen, abSign * ab[2] / abLen] : a.axis;
+    const along = (p) => { const d = turnSub(p, a.origin); const t = turnDot(d, axis); return [t, Math.hypot(d[0] - t * axis[0], d[1] - t * axis[1], d[2] - t * axis[2])]; };
     for (const v of unitVolumes) {
       if (v.mesh === a.meshObj || v.mesh === b.meshObj) continue;
       const pts = worldPtsOf(v.mesh);
       if (!pts.length) continue;
-      let vLo = Infinity, vHi = -Infinity, minR = Infinity;
-      for (const p of pts) {
-        const d = turnSub(p, a.origin), t = turnDot(d, a.axis);
-        const r = Math.hypot(d[0] - t * a.axis[0], d[1] - t * a.axis[1], d[2] - t * a.axis[2]);
+      // Is this member SEATED on a's axis line? Its centroid must sit on the
+      // line, within a tolerance that scales with the member's own size (a
+      // tooth's asymmetry scales with its wheel; TURN_AXIS_OFFSET_U is the
+      // floor for a plain collar). The first cut asked instead whether any
+      // vertex came within 0.75 of the stubs' diameter of the axis, which is
+      // a question about the BORE's size — and a wheel pressed on a thicker
+      // arbor has a bore the pivot stubs never approach, so six through-
+      // arbors (the centre, third and fourth wheels, the fusee staff, the
+      // pallet fork, the setting lever) read as unbridged and split.
+      let vLo = Infinity, vHi = -Infinity, maxR = 0;
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      const tr = new Array(pts.length);
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        const [t, r] = along(p);
+        tr[i] = [t, r];
         if (t < vLo) vLo = t;
         if (t > vHi) vHi = t;
-        if (r < minR) minR = r;
+        if (r > maxR) maxR = r;
+        for (let k = 0; k < 3; k++) { if (p[k] < lo[k]) lo[k] = p[k]; if (p[k] > hi[k]) hi[k] = p[k]; }
       }
-      if (minR > rGate) continue;
+      // The seat is read at the member's EXTENTS' centre, not its vertex
+      // mean: a body of revolution is centrally symmetric, so its box
+      // centre lies on its axis, while its vertex mean does not — a Lathe's
+      // seam (φ = 0 and 2π) survives the weld as two vertices per ring, and
+      // nine points standing for eight lean toward φ = 0 by r/9 (measured:
+      // `alarmLinkShaft`'s mean sat 0.09 off the line its box centre was on).
+      const seat = along([(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2])[1];
+      if (seat > Math.max(TURN_AXIS_OFFSET_U, 0.05 * maxR)) continue;
       if (vHi < gapLo - TURN_AXIS_OFFSET_U || vLo > gapHi + TURN_AXIS_OFFSET_U) continue;
-      if (!isBoredThrough(v.mesh)) return false; // a SOLID member blocks the gap
+      // Could an arbor run THROUGH this member? Read off its own VERTICES,
+      // never its `parameters` (a weld drops a Lathe's profile; `type` and
+      // the scalar params survive, `points` does not — the first cut asked
+      // the profile and, finding none, bridged the very body it exists to
+      // refuse). An on-axis vertex is a POLE: a hub or collet drawn solid
+      // to the axis carries its poles at its two END faces, because the
+      // arbor is there (this repo's convention for a wheel pressed on a
+      // through-arbor — the centre, third and fourth wheels, the fusee
+      // staff, the pallet fork and the setting lever all read as one bar
+      // through theirs, and must keep doing so); a cylinder's cap centres
+      // sit at its ends the same way. A BLIND COUNTERBORE is the one shape
+      // that puts a pole strictly INSIDE the member's length — the bore's
+      // bottom, solid stock between two pressed stubs (`alarmLinkShaft`) —
+      // and no arbor continues through that.
+      const eps = Math.max(TURN_AXIS_OFFSET_U, 1e-3 * (vHi - vLo));
+      let interiorPole = false;
+      for (const [t, r] of tr) if (r < TURN_AXIS_OFFSET_U && t > vLo + eps && t < vHi - eps) { interiorPole = true; break; }
+      if (interiorPole) return false; // a blind-bored member blocks the gap
       covering.push([Math.max(vLo, gapLo), Math.min(vHi, gapHi)]);
     }
-    if (!covering.length) return false; // nothing stands in the gap at all — air
-    covering.sort((x, y) => x[0] - y[0]);
-    let covered = gapLo;
-    for (const [lo, hi] of covering) {
-      if (lo > covered + TURN_AXIS_OFFSET_U) return false; // a hole in the coverage
-      if (hi > covered) covered = hi;
-    }
-    return covered >= gapHi - TURN_AXIS_OFFSET_U;
+    // Everything else bridges, exactly as before this test existed — air
+    // included. The first cut demanded the gap be COVERED by bored-through
+    // material and refused air or a hole in the coverage; measured, that
+    // split six bars main reads as one (the centre wheel's hub leaves 0.08
+    // between two extrudes, the fusee staff's stack 0.15, the alarm crown's
+    // liner and collars sit on a stem the concentric split had already
+    // taken out from between them). §233's rule is "coaxial at consecutive
+    // stations is one stock", and the ONLY thing this test adds is the one
+    // shape that rule cannot be true through: solid stock standing between
+    // two pressed stubs. A refusal here is a positive finding about the
+    // metal; the absence of one changes nothing.
+    return true;
   };
 
   // cluster by axis LINE within a unit — same direction, zero offset

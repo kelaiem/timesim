@@ -124,11 +124,24 @@ const V = await page.evaluate(async () => {
   if (stepOn.alarmOn === stepOff.alarmOn) fail.push('the pusher press did not flip the parity within 4000 ticks');
 
   // ---- The travels, both ways.
+  // The PIN's reflection ratio is its displacement ALONG THE LOAD — the
+  // ring's own travel direction, the groove's normal — not its path length.
+  // Off the axis plane (§234 Landing 5, D ≠ 0) the pin's arc also slides
+  // 0.2 u along the groove, and sliding does no work on the ring: counted as
+  // path it read n 1.53 for a member the solve moves exactly one ring travel
+  // (n 1), and the two paths this figure is asserted between parted by a
+  // third. At D = 0 the slide was 0.06 and the shortcut cost 1.5%, which is
+  // the 3% tolerance's origin. The path length is kept as a report.
+  const along = (on, off, u) => Math.abs((on[0] - off[0]) * u[0] + (on[1] - off[1]) * u[1] + (on[2] - off[2]) * u[2]);
+  const ringVec = [posedOn.ringW[0] - posedOff.ringW[0], posedOn.ringW[1] - posedOff.ringW[1], posedOn.ringW[2] - posedOff.ringW[2]];
+  const ringLen = Math.hypot(...ringVec);
+  const ringDir = ringLen > 1e-9 ? ringVec.map((v) => v / ringLen) : [0, 0, 1];
   const posed = {
     rod: Math.abs(posedOn.rodZ - posedOff.rodZ),
     roll: Math.abs(posedOn.shaftRoll - posedOff.shaftRoll),
-    ring: dist(posedOn.ringW, posedOff.ringW),
-    pin: dist(posedOn.pinW, posedOff.pinW),
+    ring: ringLen,
+    pin: along(posedOn.pinW, posedOff.pinW, ringDir),
+    pinPath: dist(posedOn.pinW, posedOff.pinW),
     rim: dist(posedOn.rimW, posedOff.rimW),
     tailMeshCentre: dist(posedOn.tailW, posedOff.tailW),
   };
@@ -238,8 +251,17 @@ const V = await page.evaluate(async () => {
     name, k_N_per_m: +k.toFixed(2), n: +ratio.toFixed(4),
     reflectedCompliance: ratio * ratio / k, note,
   });
-  add('beak tail blade', kRect(td[0], td[1], td[2], 3), n(posed.rod),
-    'flat blade, rectangular by construction; loaded at the tail tip by the rod reaction');
+  // kRect(a, c, L) cubes c: c is the THICKNESS in the bending direction and a
+  // the width across it. The rod loads the tail vertically, and the tail's
+  // thin dimension is vertical (0.3167 against a 1.254 width), so the blade
+  // bends the easy way — c = td[0], the thinnest, a = td[1]. The first cut
+  // passed them the other way round and cubed the width: a blade 15.7×
+  // stiffer than the boot's cantileverK_N_per_m(ALARM_LINK_ARM_W,
+  // ALARM_LINK_TAIL_H, tailLen) computes, invisible while the tail carried
+  // under 1% of the chain's compliance and a 4% disagreement between the two
+  // paths the moment §234 Landing 5's shaft stopped governing them.
+  add('beak tail blade', kRect(td[1], td[0], td[2], 3), n(posed.rod),
+    'flat blade, rectangular by construction; loaded at the tail tip by the rod reaction, bending about its thin dimension');
   if (rodEnd) add('shaft, rod-end overhang', kBend(rodEnd.r_u || shaftR, rodEnd.L_u, 3) / coupling, n(posed.rod),
     `coupled by (L+a)/a = ${coupling.toFixed(3)}; ABSENT from every previously published figure`);
   if (forkEnd) add('shaft, fork-end overhang', kBend(forkEnd.r_u || shaftR, forkEnd.L_u, 3), n(posed.pin),

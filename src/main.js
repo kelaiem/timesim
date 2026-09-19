@@ -26150,39 +26150,32 @@ const alarmLinkParts = {};
   // AND THE MIDDLE STATION SPLITS THE RUN. With both end stations fixed by
   // their own constraints — station one by the fork-end pocket §68 measured
   // (t 2.45, room 0.63 to the column's surface, the tightest station on the
-  // chord), station three by the rod end's λ target — the middle station's
-  // one job is to divide the run between them, and a run's bending
-  // compliance is a sum of L³ over its spans, least when the spans are
-  // equal. §68's literal t 22 left 19.55 + 9.85; the geometric midpoint
-  // (t ≈ 16.83, at today's chord) would leave 14.38 + 14.38 — EXCEPT that
-  // §234 Landing 5's corridor re-scan (below) puts it inside the idler's own
-  // footprint.
+  // chord), station three by what bush 3 must clear at the rod end (its own
+  // derivation above) — the middle station's one job is to divide the run
+  // between them, and a run's bending compliance is a sum of L³ over its
+  // spans, least when the spans are equal. §68's literal t 22 left
+  // 19.55 + 9.85; the midpoint leaves the two spans equal.
   //
-  // §234 Landing 5 item 3 — MOVED OFF THE LOBE, MEASURED. A fresh run of
-  // `tools/probe-234-shaft-body-corridor.mjs` (STEP 0.5, the full 43-pose
-  // net, converted from the probe's mesh-local station to chord-t via
-  // t = bodyMidT − y) finds the body crosses the alarm setting idler's
-  // footprint in THREE bands, not the one lobe the geometric midpoint
-  // assumes: t ≈ [3.2, 7.2], [10.7, 14.2] and [15.7, 19.2], each dropping the
-  // free radius to the same 0.285 floor Phase 0 measured at the shipped
-  // section. Between the second and third lobes there is one clean gap,
-  // t ≈ [14.6, 16.0], where the nearest wall reverts to the dial plate's own
-  // 0.6517 at every sampled pose — no idler approach at all. A hanger BUSH
-  // there (OD radius `ALARM_LINK_SHAFT_R + ALARM_LINK_BUSH_CLEAR +
-  // ALARM_LINK_BUSH_WALL` ≈ 0.94 at the Landing-5 section) needs the
-  // PRE-RISE clearance to be within `ALARM_LINK_SHAFT_Z`'s own rise
-  // (≈ 0.51) of that OD radius — 0.6517 clears 0.94 − 0.51 = 0.43 with
-  // margin to spare, where every station inside the three lobes (≤ 0.30) does
-  // not. t 15.2 sits in the middle of the gap, symmetric about neither lobe:
-  // spans 12.75 and 16.02 (ΣL³ 6183 against the equal-split 5950, 3.9%
-  // worse) — the loss a body 76× stiffer in I than the necks it replaced
-  // makes irrelevant (§232's own comment on this same trade). Re-run the
-  // probe after any change here — the station is chosen from THIS geometry,
-  // not from the pre-Landing-5 chord's numbers.
+  // §234 Landing 5 — THE IDLER DOES NOT REFUSE THIS STATION, BY CONSTRUCTION.
+  // The first cut of this landing moved the station to a measured literal
+  // (t 15.2, "the gap between the idler's second and third crossings") because
+  // its corridor scan found the body crossing the alarm setting idler's
+  // outline in three bands and read a hanger bush there as refused. That was
+  // true at the stratum the scan ran at. `ALARM_LINK_SHAFT_Z` now reserves
+  // `idlerTop + CLEAR_MARGIN + ALARM_LINK_BUSH_OD_U` — the BUSH's OD, the
+  // widest thing riding at that radius — at EVERY station, so a bush over
+  // the idler's outline stands exactly CLEAR_MARGIN off its top face wherever
+  // it lands. Measured on the raised tree (`tools/probe-234-shaft-body-
+  // corridor.mjs`, 43 poses): the free radius reads a flat 1.001 across the
+  // idler's whole crossing (bush OD 1.001 — the stratum term to the digit),
+  // and 1.196–1.243 in the window the literal had picked. The literal bought
+  // 0.2 of margin the derivation does not need, and a station chosen for
+  // margin is a number that exists because it looked right — so the
+  // equal-span midpoint stands, derived, and the probe is the instrument to
+  // re-run after any change to the stratum or the chord.
   const ALARM_LINK_BUSH_T = (() => {
     const t1 = ALARM_LINK_FORK_STATION, t3 = fullChordLen - ALARM_LINK_ROD_END_OVERHANG;   // §232: one definition of station one
-    const t2 = 15.2;   // §234 Landing 5 item 3 — the corridor gap's measured middle, off all three idler lobes
-    return [t1, t2, t3];
+    return [t1, (t1 + t3) / 2, t3];
   })();
   const shaft = new THREE.Group();
   shaft.position.set((innerEnd.x + ALARM_LINK_ROD_XY.x) / 2, (innerEnd.y + ALARM_LINK_ROD_XY.y) / 2, ALARM_LINK_SHAFT_Z);
@@ -26754,39 +26747,58 @@ const alarmLinkParts = {};
       // stays the band's midpoint — [0.35, 0.95] of the pin's span is the
       // fork's COVERAGE spec, not a free variable to slide.
       const midL = tipL.clone().addScaledVector(dirL, ALARM_FORK_SEAT);
+      // §234 Landing 5 — THE ARC HAS A WIDTH TOO. The same four samples that
+      // set the groove's height set the block's LATERAL band: the pin's
+      // perpendicular offset from its own rest line at both rolls (zero at
+      // rest by construction, ≈ r·Δsin at armed — 0.03 when the pin rested
+      // level at D = 0, an order more once it hangs off the axis plane).
+      // The webs stand outside that band by the pin's radius and its
+      // working clearance, and the block is centred on the band, not on
+      // the rest line — the first course-corrected cut derived the height
+      // and left the webs at a ±0.25 literal sized for the level pin, and
+      // `alarmHandoffs` read the pin 0.1165 into a web at the armed roll.
+      const _lat = (p) => (p.x - tipL.x) * -dirL.y + (p.y - tipL.y) * dirL.x;
+      const latBand = [tipL, rootL, tipA, rootA].map(_lat);
+      const latMid = (Math.min(...latBand) + Math.max(...latBand)) / 2;
+      const latHalf = (Math.max(...latBand) - Math.min(...latBand)) / 2;
+      const ALARM_FORK_WEB_T = 0.05;
+      const webInner = latHalf + ALARM_FORK_PIN_R + ALARM_FORK_CLEAR;   // inner face, off the band's centre
+      const blockW = 2 * (webInner + ALARM_FORK_WEB_T);                  // the plates span web to web
+      const ALARM_FORK_BLOCK_L = 0.6;                                     // [0.35, 0.95] of the pin's span, the coverage spec
+      const blockC = midL.clone().addScaledVector(new THREE.Vector3(-dirL.y, dirL.x, 0), latMid);
       {
         const _rimR = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH / 2 + 1)
           + Math.min(ALARM_SEL_T * 0.18, ALARM_SET_MODULE * 0.22) + CLEAR_MARGIN;
         const ux = dirL.x, uy = dirL.y;
         let _cMin = Infinity;
-        for (const [a, b] of [[0.3, 0.3], [0.3, -0.3], [-0.3, 0.3], [-0.3, -0.3]])
-          _cMin = Math.min(_cMin, Math.hypot(midL.x + a * ux - b * uy, midL.y + a * uy + b * ux));
+        for (const a of [ALARM_FORK_BLOCK_L / 2, -ALARM_FORK_BLOCK_L / 2]) for (const b of [blockW / 2, -blockW / 2])
+          _cMin = Math.min(_cMin, Math.hypot(blockC.x + a * ux - b * uy, blockC.y + a * uy + b * ux));
         if (_cMin < _rimR)
           console.warn(`§112: the fork block's inner corner reaches r ${_cMin.toFixed(3)} — the setting wheel's rim + margin wants ${_rimR.toFixed(3)} (the link solve's rim guard let a bad chord angle through)`);
       }
       const grp = new THREE.Group();
-      grp.position.set(midL.x, midL.y, grooveMidZ);
+      grp.position.set(blockC.x, blockC.y, grooveMidZ);
       grp.rotation.z = Math.atan2(dirL.y, dirL.x);
       // Plates above and below the pin; the block closes at its SIDES —
-      // webs outside the pin's lateral band (pin r 0.14 + 0.03 sweep,
-      // web inner faces at ±0.25) — because the pin's own line runs the
-      // full x of the slot: a web across x is a wall the pin transfixes,
-      // which is the exact defect the fork exists to retire. The jaw
-      // spacing is `grooveHalfH` (measured above), not the fixed
-      // ALARM_FORK_GROOVE_H — the pin's own excursion through its arc, plus
-      // its radius and working clearance.
+      // webs outside the pin's lateral band (`webInner`, derived above) —
+      // because the pin's own line runs the full x of the slot: a web
+      // across x is a wall the pin transfixes, which is the exact defect
+      // the fork exists to retire. The jaw spacing is `grooveHalfH`
+      // (measured above), not the fixed ALARM_FORK_GROOVE_H — the pin's own
+      // excursion through its arc, plus its radius and working clearance.
       for (const s of [1, -1]) {
-        const plate = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, ALARM_SEL_T), MATS.nickel);
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FORK_BLOCK_L, blockW, ALARM_SEL_T), MATS.nickel);
         plate.name = 'alarmSelTab';
         plate.position.z = s * (grooveHalfH + ALARM_SEL_T / 2);
         grp.add(plate);
       }
       for (const s of [1, -1]) {
-        const web = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 2 * grooveHalfH + 2 * ALARM_SEL_T), MATS.nickel);
+        const web = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FORK_BLOCK_L, ALARM_FORK_WEB_T, 2 * grooveHalfH + 2 * ALARM_SEL_T), MATS.nickel);
         web.name = 'alarmSelTab';
-        web.position.y = s * 0.275;
+        web.position.y = s * (webInner + ALARM_FORK_WEB_T / 2);
         grp.add(web);
       }
+      F.forkLatBand = { latMid, latHalf, webInner, blockW };
       alarmSelRing.add(grp);
       // ONE bracket bar, at the WORLD-UPPER plate level only: the lower
       // level crosses the setting wheel's band on its way out to the fork
@@ -26800,7 +26812,7 @@ const alarmLinkParts = {};
       // stock in both free dimensions — the lesson §51 paid for on the feeler
       // blade, where thickening the dimension that was not the thinnest
       // changed nothing the census measures. It still clears the fork block's
-      // webs, whose inner faces stand at ±0.25.
+      // webs, whose inner faces stand at ±webInner (derived above).
       const bar = new THREE.Mesh(new THREE.BoxGeometry(brLen, STOCK_MIN_U, ALARM_SEL_T), MATS.nickel);
       bar.name = 'alarmSelForkBracket';
       bar.position.set(Math.cos(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), Math.sin(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), grooveMidZ + upLocal * (grooveHalfH + ALARM_SEL_T / 2));
@@ -26967,7 +26979,7 @@ const alarmLinkParts = {};
     // ROD-END-LIMITED and an order of magnitude below the band"), and its own
     // precondition honoured — it forbade re-deriving the section "before
     // TODO 79's stations are re-solved", which §202 did.
-    const ALARM_LINK_STALL_PROBE_MN = 908.5;           // §234 Landing 5, course-corrected: tools/probe-82-alarm-stall.mjs on the raised, honestly-derived-overhang shaft at the closed-form, 0.35-rad pin arm (was 81.02 pre-Landing-5; 171.87 was this landing's since-corrected first cut) — still `covers` its own SELECTOR_DETENT_WINDOW_MN envelope
+    const ALARM_LINK_STALL_PROBE_MN = 1006.54;         // §234 Landing 5: tools/probe-82-alarm-stall.mjs on the raised, bored body with its pressed necks, the rod-end bush at its clearance-derived station, the middle station at the equal-span midpoint, and the pin arm at the derived 0.35 rad span (was 81.02 before this landing). Two of the probe's own readings had to be corrected first for the two paths to meet: the pin's reflection ratio is its displacement ALONG THE LOAD (the ring's travel), not its path (the arc now slides 0.2 u along the groove, and sliding does no work), and the tail blade bends about its THIN dimension (the probe had cubed its width). Still `covers` the 5–50 mN band, by 20×
     // The governor moved with the section: the spans were the soft members
     // while the whole rod was 0.1233, and now the NECK's rod-end cantilever is.
     // That is the honest outcome — the compliance is where the metal is thin —
