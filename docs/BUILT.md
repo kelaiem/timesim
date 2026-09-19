@@ -23827,15 +23827,21 @@ KNEE — an S of two arcs of radius `kneeR` in the vertical plane, climbing
 `HAIRSPRING_OVERCOIL_RAISE` = `HAIRSPRING_H + CLEAR_MARGIN` = 0.75 u so the
 raised ribbon's underside clears the spiral's top by the one margin — into a
 second plane, then a TERMINAL of three quarters of a turn of the outer radius,
-made of two arcs whose curvatures are solved (`hairspringRest`, cached per
-plan object so the rate solve, the clamp ratio and the metal share one
-solve). `kneeR` is the collet radius, the tightest bend the ribbon already
-takes: the knee is formed, not flexed, and a formed bend no tighter than an
-existing one is the constraint. The stud clamps the terminal's end in the
+whose curvature varies along its own arc as `κ(s) = a0 + a1·s + a2·s²` with the
+three coefficients solved (`hairspringRest`, cached per plan object so the rate
+solve, the clamp ratio and the metal share one solve). `kneeR` is the collet
+radius, the tightest bend the ribbon already takes: the knee is formed, not
+flexed, and a formed bend no tighter than an existing one is the constraint —
+and since TODO 147 that rule governs the TERMINAL too, which the solve is free
+to shape and could otherwise kink. The stud clamps the terminal's end in the
 raised plane; the cock's carrier reads the published end (`endAngle`,
-`termEndR` 9.72, `termEndZ` 0.75) as it always did, and the separate static
+`termEndR` 7.1175, `termEndZ` 0.75) as it always did, and the separate static
 terminal tube is gone — the terminal IS the flexing ribbon, one mesh, so
 `INTRA_UNIT_CONTACTS`' spiral ⇄ terminal row went with it.
+
+*(As first shipped the terminal was two constant-curvature arcs and `termEndR`
+read 9.72. Both of those are TODO 147's corrections, described in the two
+paragraphs below; the rest of this entry stands as written.)*
 
 **Phillips, derived rather than quoted.** The plan asked for Phillips's two
 conditions from the source. The instrument gave the first in one line: under
@@ -23851,16 +23857,44 @@ flat spring, i.e. the stud does no work at small angle. (Phillips's second
 condition, on the curve's own moment, is what makes the concentricity hold
 past first order; the residual it governs is measured below and reported.)
 
-**The terminal's length is a proportion taken inside a measured window.** The
-family was swept from 0.50 to 1.00 turns of R: it solves from 0.55 to 0.90
-and nowhere outside — a half turn admits no solution, 0.95 none, a full turn
-only with a kinked second arc (ρ₂ → 0). At 0.55 the second arc is nearly
-straight and the stud lands at r 11.2, a unit inside the plate's cutaway;
-the radii even out along the window. Three quarters of a turn is the
-classical overcoil proportion, and it is taken INSIDE that window (ρ₁ 6.73,
-ρ₂ 10.02 against R 7.92, stud at r 9.72); the build asserts the solve
-converged, and `tools/probe-218-breathing.mjs` re-runs the sweep at 0.5, the
-shipped proportion and 1.0 through the real builder under the node loader.
+**Where the terminal ENDS is a condition, not an output (TODO 147).** As first
+shipped it was neither: two arcs gave the solve two unknowns, Phillips's two
+equations consumed both, and the end radius was whatever fell out — 9.72
+against an outer coil of 7.92. A Breguet terminal that finishes outside the
+spring it rises over has paid this section's whole cost in stack height and
+collected nothing, and that stud also stood outside the balance's own swept
+circle (rim 9.0, screw tips 9.3), with the cock's carrier cantilevering past
+the timing screws to meet it. Measured before rewriting it, the two-arc family
+cannot be talked into landing inboard: its end radius has a FOLD, holding
+1.22–1.41·R across the whole length window it solves in, and an 8 × 8 seed scan
+at the shipped proportion finds exactly one root whose curvatures a ribbon could
+take. So the fix is a third degree of freedom in the SHAPE — κ varying along the
+arc, which is what a drawn Phillips terminal is — solved against the two
+centroid equations plus `endR = studR`. `HAIRSPRING_STUD_R` is one full coil
+pitch inboard of the outer coil: the stud stands over the SECOND coil, one pitch
+and not a fraction because it is a POST with a footprint, and one coil step is
+the smallest that carries the post's whole width (0.65, the same
+`HAIRSPRING_STUD_POST` the carrier cuts from) inboard of 0.8025 of pitch. Stud
+at 7.1175, post reaching 7.4425 against the coil's 7.9200; the carrier's arm
+runs 2.6 u shorter and stops short of the screws.
+
+**The terminal's length is a proportion inside a window with a physical wall at
+each end.** The length stays the classical three-quarter turn — and stays
+DECLARED, which is why the developed length does not move at all (the terminal's
+segments sum to it exactly), so the section the rate was solved from is
+untouched: 275.9937 u and 2.5000 Hz before and after. With the stud pinned, the
+window's edges are no longer the solver's reach. Below about half a turn the
+ribbon would have to be bent tighter than the collet the knee is already formed
+round (0.40 turns reaches no root; the roots either side want ρ 0.18–1.3 against
+1.5). Above about 0.92 the terminal's own arc swings outside the balance's swept
+circle (9.2744 at 0.92, 9.3020 at 0.93). At 0.75 the solve converges in five
+iterations from a seed that continues the spiral's own end curvature, to ρ 5.71
+→ 5.94 along the terminal — a bend an order slacker than the collet — with a
+centroid residual of 6.0e-14 u and a stud residual of 1.3e-12 u.
+`tools/probe-218-breathing.mjs` re-runs the sweep at 0.40, the shipped
+proportion and 1.0 through the real builder under the node loader; the upper
+wall is the boot assert's, because it is the built wheel's swept radius and the
+probe has no business restating it.
 
 **Measured on the built tree** (8 coils, ribbon re-solved to 0.0239 mm for the
 longer active length — 104.6 mm, the knee's 3D length 0.06% over its
@@ -23869,11 +23903,11 @@ projection, stated):
 | | performed 45° | physical 270° |
 |---|---|---|
 | lateral pivot force, flat spring of this section | 0.0047 mN | 0.026 mN |
-| with the overcoil | 0.0003 mN | 0.0078 mN |
-| ratio | ×0.060 | ×0.29 |
-| coils' max radial excursion | 0.099 mm | 0.64 mm |
+| with the overcoil | 0.0002 mN | 0.0065 mN |
+| ratio | ×0.052 | ×0.246 |
+| coils' max radial excursion | 0.091 mm | 0.60 mm |
 | minimum coil gap, in 3D (the raised turn over the outer coil) | 0.26 mm | 0.17 mm |
-| outer-fibre stress | 18 MPa | 111 MPa |
+| outer-fibre stress | 18 MPa | 110 MPa |
 
 The performed-amplitude ratio is the gate (under a tenth); the physical one
 is the second-order residual Phillips's theorem does not cover, reported. The
@@ -23894,7 +23928,11 @@ position space, per P3 — and boot is silent again. No new waivers.
 
 **Held.** `checkOscillator` gains the overcoil row: the centroid solve
 converged, the clamp ratio 1 to 1e-6, the performed-amplitude force ratio
-under 0.1. The probe reads 17/17 on this tree, including the sweep. The
+under 0.1 — and since TODO 147 the stud's post standing wholly inboard of the
+outer coil and no terminal bend tighter than the collet, with a second boot
+assert holding the whole terminal inside the balance's measured swept radius.
+The probe reads 17/17 on this tree, including the sweep (20/20 since TODO 147
+added its three). The
 explainer's free-sprung section gains PLATE 2 (the overcoil, its solved
 radii, the measured ratios) and its caption is rewritten a third time, in
 eight locales; three labels were shortened in translation rather than the

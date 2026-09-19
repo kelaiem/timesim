@@ -22,10 +22,18 @@
 // the stud does no work at small angle), the pivot force at the performed
 // swing under a tenth of the flat spring's with the same section (the
 // physical residual — second order in θ — is reported), and the mesh carries
-// the raised plane (the tube's path climbs to `raise` at the stud). It also
-// re-runs the terminal-length SWEEP the plan's `turns` was taken inside:
-// the family must solve at the shipped proportion and fail outside its
-// measured window, or the "inside a measured window" claim is a comment.
+// the raised plane (the tube's path climbs to `raise` at the stud).
+//
+// TODO 147 adds the two rows that say it is a BREGUET terminal and not just a
+// Phillips one — the stud's post standing wholly inboard of the outer coil,
+// and no bend in the terminal tighter than the collet the knee is already
+// formed round — and changes the question the terminal-length SWEEP asks.
+// With the stud a CONDITION rather than an output, the length's window has a
+// physical wall at each end: shorter and the ribbon cannot be formed to the
+// curve, longer and the terminal's arc leaves the balance's swept circle. The
+// sweep holds the lower wall and the shipped point; the upper wall belongs to
+// main.js's boot assert, which measures the built wheel — restating it here
+// would be a second copy of a number this probe does not own.
 //
 // Exit 1 on any failure; the pass line carries the numbers.
 //
@@ -112,7 +120,14 @@ if (!out.B) {
   row(`stress at ${B.peaks.physical.ampDeg}° under the endurance figure`, B.stressInLimit, `${B.peaks.physical.stress_MPa.toFixed(1)} / ${B.fatigue_MPa} MPa`);
   const OC = B.overcoil;
   if (OC) {
-    row('overcoil: centroid solve converged', OC.converged, `residual ${OC.centroidResidual_u.toExponential(1)} u in ${out.overcoilUD.iters} iterations; ρ₁ ${OC.rho1_u.toFixed(2)} ρ₂ ${OC.rho2_u.toFixed(2)} u, stud at r ${OC.endR_u.toFixed(2)}`);
+    row('overcoil: centroid + stud solve converged', OC.converged, `centroid residual ${OC.centroidResidual_u.toExponential(1)} u, stud residual ${OC.studResidual_u.toExponential(1)} u, in ${out.overcoilUD.iters} iterations; κ(s) = ${OC.a0.toExponential(4)} ${OC.a1 >= 0 ? '+' : '−'} ${Math.abs(OC.a1).toExponential(4)}·s ${OC.a2 >= 0 ? '+' : '−'} ${Math.abs(OC.a2).toExponential(4)}·s²`);
+    // TODO 147 — the two rows the old family could not have passed: the stud's
+    // POST stands wholly inboard of the outer coil (what the raise is paid
+    // for), and the curve the solve shaped is one a ribbon can be formed to.
+    row('overcoil: the stud stands inboard of the outer coil (Breguet, not just Phillips)', OC.studInboard,
+      `stud at r ${OC.endR_u.toFixed(4)} (declared ${OC.studR_u.toFixed(4)}), post reaches ${(OC.endR_u + OC.postHalf_u).toFixed(4)} against the outer coil's ${OC.outerR_u.toFixed(4)}; terminal's own max radius ${OC.termMaxR_u.toFixed(4)}`);
+    row('overcoil: no terminal bend tighter than the collet the knee is formed round', OC.formable,
+      `ρ ${OC.rhoStart_u.toFixed(2)} → ${OC.rhoEnd_u.toFixed(2)}, tightest ${OC.rhoMin_u.toFixed(2)} u against the collet's ${OC.kneeR_u.toFixed(2)}`);
     row('overcoil: concentric — clamp ratio 1 to 1e-6 (Phillips, verified)', OC.concentric, `×${B.clampRatio.toFixed(7)}`);
     row(`overcoil: pivot force at ${B.peaks.performed.ampDeg}° under a tenth of the flat spring's`, OC.forceRatio.performed < 0.1,
       `${B.peaks.performed.pivotForce_mN.toExponential(2)} vs flat ${OC.flat.pivotForce_mN.performed.toExponential(2)} mN (×${OC.forceRatio.performed.toFixed(3)}); at ${B.peaks.physical.ampDeg}° ×${OC.forceRatio.physical.toFixed(3)} — second order, reported`);
@@ -125,17 +140,26 @@ if (!out.B) {
 }
 row('boot silent', warns.length === 0, warns.length ? warns.join(' | ') : '');
 if (out.B && out.B.overcoil) {
-  // THE SWEEP, through the real builder under the three-node loader: the
-  // family must solve at the shipped proportion and NOT at a half or a full
-  // turn (the full turn "solves" only with a kinked second arc, ρ₂ → 0).
+  // THE SWEEP, through the real builder under the three-node loader. Since
+  // TODO 147 the stud is a CONDITION, not an output, so the sweep asks a
+  // different question: with the stud pinned, where is the terminal length's
+  // window, and is the shipped proportion inside it? Both edges are physical
+  // now. BELOW it the solve has to bend the ribbon tighter than the collet the
+  // knee is already formed round (0.40 turns: ρ 0.25 against 1.5) or reaches no
+  // root at all. ABOVE it the terminal's own arc swings outside the balance's
+  // swept circle — the boot assert in main.js is that edge's gate, measured
+  // against the built wheel; what this holds is that the reach GROWS with the
+  // proportion, so the shipped one is inside a window and not on its wall.
   const { spawnSync } = await import('node:child_process');
   const script = `
     import * as G from '${new URL('../src/geometry.js', import.meta.url).href}';
     const base = { innerR: ${out.spiral.innerR}, outerR: ${out.spiral.outerR}, coils: ${out.spiral.coils} };
+    const oc = { raise: ${out.overcoilUD.raise}, kneeR: ${out.overcoilUD.kneeR}, studR: ${out.overcoilUD.studR} };
     const rows = [];
-    for (const turns of [0.5, ${out.B.overcoil.turns}, 1.0]) {
-      const rest = G.hairspringRest({ ...base, overcoil: { turns, raise: ${out.overcoilUD.raise}, kneeR: ${out.overcoilUD.kneeR} } });
-      rows.push({ turns, converged: rest.overcoil.converged, rho1: rest.overcoil.rho1, rho2: rest.overcoil.rho2 });
+    for (const turns of [0.40, ${out.B.overcoil.turns}, 1.0]) {
+      const rest = G.hairspringRest({ ...base, overcoil: { ...oc, turns } });
+      const o = rest.overcoil;
+      rows.push({ turns, converged: o.converged, rhoMin: o.rhoMin, termMaxR: o.termMaxR, endR: rest.endR, kneeR: o.kneeR });
     }
     console.log(JSON.stringify(rows));`;
   const r = spawnSync(process.execPath, ['--import', new URL('./three-node-loader.mjs', import.meta.url).pathname, '--input-type=module', '-e', script], { cwd: join(ROOT, 'tools'), encoding: 'utf8' });
@@ -143,10 +167,16 @@ if (out.B && out.B.overcoil) {
   if (!rows) row('overcoil sweep ran', false, (r.stderr || '').slice(0, 300));
   else {
     const at = (t) => rows.find((x) => Math.abs(x.turns - t) < 1e-9);
-    const shipped = at(out.B.overcoil.turns), half = at(0.5), full = at(1.0);
-    row(`overcoil sweep: solves at the shipped ${out.B.overcoil.turns} turns`, shipped.converged, `ρ₁ ${shipped.rho1.toFixed(2)} ρ₂ ${shipped.rho2.toFixed(2)}`);
-    row('overcoil sweep: no solution at half a turn', !half.converged, half.converged ? `unexpectedly solved (ρ₁ ${half.rho1.toFixed(2)}, ρ₂ ${half.rho2.toFixed(2)})` : 'as measured');
-    row('overcoil sweep: a full turn is a kink or nothing', !full.converged || Math.abs(full.rho2) < 0.05, full.converged ? `ρ₂ ${full.rho2.toFixed(3)}` : 'no solution');
+    const shipped = at(out.B.overcoil.turns), under = at(0.40), over = at(1.0);
+    const formable = (x) => x.converged && x.rhoMin >= x.kneeR;
+    row(`overcoil sweep: solves formably at the shipped ${out.B.overcoil.turns} turns, stud where declared`,
+      formable(shipped) && Math.abs(shipped.endR - out.overcoilUD.studR) < 1e-8,
+      `ρ tightest ${shipped.rhoMin.toFixed(2)} against the collet's ${shipped.kneeR.toFixed(2)}, stud r ${shipped.endR.toFixed(4)}`);
+    row('overcoil sweep: below the window the ribbon cannot be formed to the curve', !formable(under),
+      under.converged ? `0.40 turns wants ρ ${under.rhoMin.toFixed(3)} against the collet's ${under.kneeR.toFixed(2)}` : '0.40 turns reaches no root');
+    row("overcoil sweep: the terminal's reach grows with the proportion (the upper edge is the balance's swept circle, gated at boot)",
+      over.converged && over.termMaxR > shipped.termMaxR,
+      `${shipped.termMaxR.toFixed(4)} at ${shipped.turns} turns → ${over.termMaxR.toFixed(4)} at 1.0`);
   }
 }
 console.log(fails.length ? `\nFAIL — ${fails.length} row(s): ${fails.join('; ')}` : '\nPASS — the hairspring breathes as steel does');
