@@ -19842,6 +19842,89 @@ this row moves to it.
 > numbers. No candidate anywhere in the search closes it; the waiver stands
 > until one of the three above is taken.
 
+> **§234 Landing 5, Phase 0 (2026-09-19) — the body measured ALONE, station by
+> station, and the wall is BELOW the shaft, which changes what closes it.**
+> Landing 4 scored a whole candidate chord at one section through the §112
+> solve's box model, and `probe-231-lever-width SET=link232` measured the
+> crank stations; nobody had asked what the BODY between its bush stations
+> (t1..t3, 28.77 u) sees on its own, with the necks left as fixed-radius
+> stubs — which is option 1's construction.
+> `tools/probe-234-shaft-body-corridor.mjs` asks exactly that: it reads the
+> body's axis off its built `matrixWorld`, walks a real BVH probe along it
+> every 0.5 u over the full `digestPoses` net (43 poses), every non-schematic
+> mesh outside the Alarm link unit as an obstacle, and keeps the free radius
+> per station SPLIT by which way the nearest wall lies — below the axis,
+> above it, in plan — read off the obstacle's AABB closest point (its first
+> cut used the bounding-sphere centre and called a disc under the shaft an
+> in-plane wall; the label was wrong and the number was right). Controls:
+> the shipped 0.2664 clears every body station (worst 0.285, PASS); the
+> overrun into the crank stations reproduces the known end walls
+> (`alarmSelTab` 0.11–0.22, the ring's groove at the pin — the mechanism).
+>
+> **The profile.** Every binding wall on the body is `z-`. The alarm
+> setting idler's TOP FACE (z −8.033, a 0.317 sheet on the dial plate) lies
+> **0.435 straight below the axis** (z −7.598 — the axis crosses over the
+> disc, 4.39 from its centre against a 4.62 radius), so three crossings of
+> its outline hold the free radius at **0.285** over chord t ≈ 14.4–17.5 and
+> 19.4–22.5 and at 0.31 near t 28.5; everywhere else the DIAL PLATE (z −8.40,
+> 0.802 below the axis) caps it at **0.6517** — under the 0.708 ceiling on
+> its own, so at this stratum even a body with no idler under it reads
+> L/D 22. Above the axis nothing stands within **2.24** (the idler's own
+> cock); in plan nothing within **1.05**. That is the whole finding: the
+> body cannot be fatter AT THIS STRATUM, and the stratum is the one thing
+> Landing 4's chord search could not vary. Option 1 as priced — bore the
+> body, press the stubs, leave the axis where it is — is CLOSED: a separate
+> body would still read L/D ≥ 50.
+>
+> **What it opens: the stratum, derived.** The body fits the target when
+> the axis stands `idlerTop + CLEAR_MARGIN + r_target` = −8.033 + 0.15 +
+> 0.786 = **−7.097**, a rise of **0.501 u** (0.19 mm; the ceiling needs
+> 0.423) — after which the room above reads ≥ 1.74 and in plan ≥ 1.05 at
+> every body station, so the target fits everywhere, not at a lucky
+> station. `ALARM_LINK_SHAFT_Z` is today "the ring's mid-plane" (§51's
+> partner plane, chosen so the centre crank's pin rests horizontal); it
+> becomes the HIGHER of that and this derivation. What the rise costs,
+> each a re-derivation and none a lever arm — the record to build against:
+>
+> 1. **The centre crank pin** (`ALARM_FORK_PIN_ARM_R` 0.56, `ALARM_FORK_PIN_R`
+>    0.14) was derived on "rests horizontal because the groove's mid-plane
+>    sits on the axis plane". With the axis 0.5 above the groove the pin
+>    rests at asin(0.5/0.56) ≈ 63°, which is not a rest angle anyone would
+>    design; the arm re-derives for the offset (a longer arm, a moderate
+>    rest angle, the same 0.19 stroke inside its roll span) and §229's
+>    registration solve re-runs and is MEASURED — P0, the one cost that can
+>    refuse the landing.
+> 2. **The rod-end contacts** — `rod foot ⇄ rim crank` and `beak tail ⇄ rod
+>    top` — ride the rim crank's height, so the rod's foot station
+>    re-derives by Δz; `alarmHandoffs` must stay 0 unwaived with no
+>    tolerance moved (`beak tail ⇄ rod top` already reads −0.0275 of ±0.03).
+> 3. **The hangers** shorten by Δz (`hangerFootZ` derives from
+>    `ALARM_LINK_SHAFT_Z`), and their bush bores grow with the body: a bush
+>    OD ≈ 1.15 wants 1.30 of axis-to-idler, not 0.94. The MIDDLE station
+>    (the equal-span midpoint, t ≈ 16.8) sits over the idler's first lobe —
+>    so either the rise is 0.87, or that station moves off the lobe (t ≤ 14
+>    or 17.6–19.3). The equal-span rule was a compliance argument (ΣL³ least
+>    when equal) and a body 76× stiffer in I makes the 10% it loses
+>    irrelevant; moving the station is the honest choice.
+> 4. **The census still needs the pressed stubs.** The rise alone leaves the
+>    clustered bar at the necks' ⌀ (L/D 104): the necks become stubs lapped
+>    more than half their length into REAL bored ends (LatheGeometry, metal
+>    removed — an unbored body with a stub buried in solid is geometry that
+>    exists only in a function), two declared joints. A balance staff is
+>    turned in one piece and the census would fail it; a pressed pivot is a
+>    real construction, a repair-shop one — the P1 judgement, stated.
+> 5. **The stall chain** stiffens with r⁴; `probe-82`'s 81.02 mN rises,
+>    still `covers` the band, and the governing member becomes the neck
+>    stubs — `ALARM_LINK_STALL_PROBE_MN` and `ALARM_LINK_GOVERNING` are set
+>    from the re-measurement, never the other way.
+> 6. The §51 comment above `ALARM_LINK_SHAFT_Z` recalls a "keyless floor"
+>    tripwire 0.069 from the top-face rule; the probe found nothing above
+>    the body within 2.24, but that tripwire lived at another station once
+>    and is re-read before the rise, not after.
+>
+> The `TURN_WAIVERS` row is re-worded to name the stratum; it stands until
+> the rise is built. Options 2 and 3 above stay closed as written.
+
 ### Group B — members that cross the movement or reach the case band (8 rows)
 
 ```

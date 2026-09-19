@@ -9770,7 +9770,7 @@ export const TURN_WAIVERS = {
   // measured here (there is none left to try that this landing's own record
   // has not already tried under Landing 1/2's names) closes the gap; TODO
   // 145's own record carries the three-option design write-up.
-  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A (§234 Landing 4: MEASURED — no candidate at any tested section 0.2664–0.927 clears both TURN_LD_TARGET and its own corridor; the L/D-18 target chord is never the refusal, the corridor and the crank contacts are, independently)',
+  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A (§234 Landing 5 Phase 0: MEASURED station by station — the body\'s every wall is BELOW the axis: the alarm setting idler\'s top face 0.435 under it caps r at 0.285, the dial plate 0.802 under it at 0.6517; above ≥ 2.24, in plan ≥ 1.05. Closes with the axis raised 0.501 to idlerTop + CLEAR_MARGIN + r_target and the necks as pressed stubs — the stratum landing, filed)',
   // GROUP B — members that CROSS the movement or reach the case band. Their
   // length is the case's, not a design choice: a crown stem is long because
   // the case is 20 mm across. What is wrong is the DIAMETER — these were cut

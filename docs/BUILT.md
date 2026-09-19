@@ -26779,6 +26779,47 @@ hash moves because the metal did. Nothing else moved —
 landing used to find the honest footprint are documented in the tool's own
 header; no new mechanism, no widened margin, `CLEAR_MARGIN` untouched.
 
+### Landing 5, Phase 0 — the lay shaft's body measured alone: the wall is the stratum
+
+Landing 4 left group A with three options and a refusal read through the
+§112 solve's box model — a whole chord at one section, and a corridor
+figure (max r 0.285) that two earlier instruments had located at the CRANK
+stations. Option 1, a fat body with the necks as pressed stubs, had never
+been measured because nobody had measured the body between its bush
+stations as its own question.
+
+`tools/probe-234-shaft-body-corridor.mjs` does: the body's axis read off its
+built `matrixWorld`, a real BVH probe every 0.5 u over the 43-pose net, and
+the free radius kept SPLIT by which way the nearest wall lies. Its first cut
+labelled the wall by the obstacle's bounding-sphere centre and called the
+alarm setting idler an in-plane neighbour; the idler is a 9 u disc whose
+centre is 4.4 u off the axis in plan while its top face lies 0.435 straight
+below it. The number was right and the label was wrong, and the label is the
+half that decides which landing closes the row.
+
+**Every binding wall on the body is below the axis.** The idler's top face
+(z −8.033) holds the free radius at **0.285** across three crossings of its
+outline (chord t ≈ 14.4–17.5, 19.4–22.5, and 0.31 near 28.5); the dial plate
+(z −8.40, 0.802 under the axis) caps it at **0.6517** everywhere else — under
+the 0.708 ceiling on its own. Above the axis nothing stands within 2.24; in
+plan nothing within 1.05. Controls: the shipped 0.2664 clears every station,
+and the overrun reproduces the crank-station walls (`alarmSelTab` 0.11–0.22,
+the ring's groove at the pin).
+
+So option 1 as priced is closed — at this stratum a separate body still reads
+L/D ≥ 50 — and the stratum is exactly what Landing 4's chord search could not
+vary. The target fits with the axis at `idlerTop + CLEAR_MARGIN + r_target` =
+**−7.097**, a rise of **0.501 u** (ceiling 0.423), after which above reads
+≥ 1.74 and plan ≥ 1.05 at every body station. `ALARM_LINK_SHAFT_Z` becomes the
+higher of §51's partner plane and that derivation. The costs are filed under
+TODO 145 group A as six re-derivations — the centre crank pin's rest angle
+(the P0 one, §229's registration re-solved and measured), the rod-end
+contacts, the hangers and the middle station (which sits over the idler's
+first lobe and moves off it), the pressed stubs the census still needs, the
+stall chain, and the §51 keyless-floor tripwire — none of them a lever arm.
+The waiver row is re-worded to name the stratum and stands until the rise is
+built.
+
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
 TODO 145 group B asked for the alarm crown's stem to be cut from arbor stock to
