@@ -2656,7 +2656,7 @@ const PIVOT_BORE_CLEAR = 0.05;
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 19.4056; // rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5: the rim crank's height rides the raised stratum, so the rod's foot moved with it
+const ALARM_LINK_ROD_LEN_U = 19.2039; // rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it
 const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5533
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.603 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.921 — a wall at the §50 floor
@@ -24992,10 +24992,34 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 28.7682;   // t3 − t1, measured (see the assert beside ALARM_LINK_SHAFT_R)
+const ALARM_LINK_BODY_LEN_U = 30.9951;   // t3 − t1, measured (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+// §137 Landing 2's shipped bearing values, hoisted (were local to the
+// hanger-bush build loop, far below) — the stratum's dial-clearance term
+// needs the bush's own OD before that loop runs, at the SAME radius the
+// bush is actually cut to.
+const ALARM_LINK_BUSH_CLEAR = 0.02;   // running fit, shipped value
+const ALARM_LINK_BUSH_WALL = 0.12;    // stock-floor wall — the bush is a real part
+// r_target, the shaft's own governing radius floor (bodyLen/(2·TURN_LD_
+// TARGET) — see ALARM_LINK_SHAFT_R below), widened to the WIDEST feature
+// actually riding at that radius: a hanger bush's OD, not the bare shaft.
+const ALARM_LINK_R_TARGET_U = ALARM_LINK_BODY_LEN_U / (2 * TURN_LD_TARGET);
+const ALARM_LINK_BUSH_OD_U = ALARM_LINK_R_TARGET_U + ALARM_LINK_BUSH_CLEAR + ALARM_LINK_BUSH_WALL;
+// §234 Landing 5, course-corrected — THREE floors, not two: the shaft must
+// clear the SELECTOR partner plane (§51), the ALARM SETTING IDLER's top
+// face (Phase 0), and the DIAL PLATE itself — all three read at the widest
+// feature actually riding this axis, the hanger bush's OD, not the bare
+// shaft radius (a bush stands at every one of the three stations, so using
+// the narrower body radius here would let a bush reach past whichever
+// obstacle its own station is nearest). The dial term used to be absent:
+// the shipped stratum cleared the dial's own back face by 0.15 with
+// nothing deriving it, which is exactly rule 1's bug — a number that looked
+// right. If a future fold puts the idler UNDER a bush's own station rather
+// than the bare body, both terms already use the same bushOD, so nothing
+// here has to change to stay honest.
 const ALARM_LINK_SHAFT_Z = Math.max(
   Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2),
-  (Z_DIAL + 0.05 + ALARM_SET_T) + CLEAR_MARGIN + ALARM_LINK_BODY_LEN_U / (2 * TURN_LD_TARGET));
+  (Z_DIAL + 0.05 + ALARM_SET_T) + CLEAR_MARGIN + ALARM_LINK_BUSH_OD_U,
+  Z_DIAL + CLEAR_MARGIN + ALARM_LINK_BUSH_OD_U);
 // AZ 210, not 212. Moved 2 deg toward 12 o'clock so the rod stands nearer the
 // dial's vertical centreline, which is where the linkage reads as one line
 // rather than as a strut off in the corner. 2 deg is the WHOLE budget, not a
@@ -25100,43 +25124,34 @@ const _linkBeakAz0 = Math.atan2(alarmLockPivot.y - ALARM_COL_POS.y, alarmLockPiv
 // selection only matters for the SIGN of the roll, not for how far it has
 // to turn.
 const ALARM_FORK_PIN_ARM_R = (() => {
-  // §234 Landing 5 — RE-MEASURED, not inherited: the retired 0.35 budget was
-  // sized against the RIM crank's own lateral sweep (span 0.35 → sweep
-  // ≈ 0.10, inside the 0.2685 ray-probed corridor) because at D = 0 that was
-  // the only working contact the arm's own geometry touched. D ≠ 0 puts a
-  // SECOND, tighter contact in play — the PIN itself, in the fork's groove
-  // (`alarmHandoffs`'s "centre pin ⇄ fork groove" row) — because the pin no
-  // longer rests level: it rides an ARC through the groove instead of
-  // crossing it near-radially, and the wider that arc's span, the further
-  // its ends walk out of the fixed groove band the fork was built on (built
-  // ON the pin's REST position, below). Measured directly against both
-  // gates the registration solve and the battery hold — `alarmHandoffs`'s
-  // tolerance (±0.03) and `§112`'s fork-corridor assert (the block's inner
-  // corner against the setting wheel's rim) — across a bracket of span
-  // budgets: 0.35 fails the pin/groove row (armed −0.0392); 0.15 clears it
-  // with room but reopens the corridor (corner 4.652 against 5.007 wanted);
-  // 0.30 is the widest budget (smallest arm, least corridor risk) that
-  // still clears BOTH — armed −0.0151, disarmed 0.0129, corridor silent.
-  // The RIM sweep itself is looser at a smaller span (it scales with span,
-  // not against it) so nothing gives there; the fork/pin contact is what
-  // now governs the budget, the same way the RIM governed it at D = 0.
-  const SPAN_BUDGET = 0.30;
+  // §234 Landing 5, course-corrected — the SAME 0.35 rad budget the retired
+  // D = 0 derivation used (sized against the RIM crank's own lateral sweep:
+  // span 0.35 → sweep ≈ 0.10, inside the 0.2685 ray-probed corridor), not a
+  // number picked because it passed a gate. D ≠ 0 does not change what the
+  // rim needs — `ALARM_LINK_CRANK_OFF`, `ALARM_LINK_CRANK_T` and `rimLen`
+  // don't move in this landing — so the SAME budget at the new offset is the
+  // same constraint, re-solved.
+  //
+  // CLOSED FORM, not a bisection: span(r) = |acos(D/r) − acos((D+travelW)/r)|
+  // = S. Write θ1 = acos(D/r), θ2 = acos((D+travelW)/r), φ = (θ1+θ2)/2, so
+  // θ1 − θ2 = S is fixed. Sum-to-product on cosθ1 − cosθ2 = travelW/r gives
+  // sin(φ) = −travelW / (2r·sin(S/2)); summing cosθ1 + cosθ2 = (2D+travelW)/r
+  // gives cos(φ) = (2D+travelW) / (2r·cos(S/2)). Squaring and adding
+  // (sin²φ+cos²φ=1) eliminates φ entirely:
+  //
+  //   r = ½·√( (travelW/sin(S/2))² + ((2D+travelW)/cos(S/2))² )
+  //
+  // which reproduces the retired D = 0 derivation exactly (r = travelW/sinS)
+  // — algebra, not a coincidence: at D = 0 the bracket collapses to
+  // (travelW/2)²·(1/sin² + 1/cos²)(S/2) = (travelW/2)²·4/sin²S.
+  const SPAN_BUDGET = 0.35;
   alarmSelectorUnit.updateWorldMatrix(true, true);
   const grooveMidRest = new THREE.Vector3(0, 0, 0).applyMatrix4(alarmSelRing.matrixWorld).z;
   const D = grooveMidRest - ALARM_LINK_SHAFT_Z;
   const zCol = new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.parent.matrixWorld);
   const travelW = -ALARM_SEL_TRAVEL * Math.sign(zCol.z);
-  const span = (r) => {
-    const a = Math.max(-1, Math.min(1, D / r));
-    const b = Math.max(-1, Math.min(1, (D + travelW) / r));
-    return Math.abs(Math.acos(a) - Math.acos(b));
-  };
-  let lo = Math.max(Math.abs(D), Math.abs(D + travelW)) + 1e-6, hi = Math.max(lo * 4, 4);
-  for (let i = 0; i < 80; i++) {
-    const mid = (lo + hi) / 2;
-    if (span(mid) > SPAN_BUDGET) lo = mid; else hi = mid;
-  }
-  return hi;
+  const S = SPAN_BUDGET;
+  return 0.5 * Math.hypot(travelW / Math.sin(S / 2), (2 * D + travelW) / Math.cos(S / 2));
 })();
 // §112 — the fork block's seat along the pin line (the [0.35, 0.95]
 // coverage band's midpoint) — one source for the fork build AND the rim
@@ -25566,13 +25581,16 @@ const ALARM_LINK_CRANK_TOP = ALARM_LINK_CRANK_OFF + ALARM_LINK_CRANK_T / 2;   //
 // slenderness actually is. ALARM_LINK_CRANK_T's comment has said "the cranks
 // sit on the NECKS" all along; there were no necks.
 const ALARM_LINK_SHAFT_NECK_R = ALARM_LINK_CRANK_OFF - ALARM_LINK_CRANK_T / 2;   // 0.16
-// A shoulder's depth: this SIZES the rod-end overhang below (unchanged by
-// §234 Landing 5, on that item's own constraint — the exposed length is
-// fixed). It is no longer the lap the metal is CUT to: Landing 5 presses the
-// necks deeper (`ALARM_LINK_NECK_PRESS_LAP_FORK`/`_ROD`, at the shaft build)
-// so `turnedBars` reads three parts, not §173's "one connected body" — see
-// that derivation for why a shoulder's depth stopped being enough.
-const ALARM_LINK_NECK_LAP = ALARM_LINK_SHAFT_NECK_R;
+// §234 Landing 5 — the neck's actual embedment fraction, hoisted (the shaft
+// build below and the rod-end overhang derivation just past it both need it,
+// and the search that chose 0.51 lives at the shaft build's own comment):
+// over TURN_LAP_MAX_FRAC (0.5), so `turnedBars` reads three parts, not one
+// connected body.
+const ALARM_LINK_PRESS_LAP_FRAC = 0.51;
+// The hanger bush's own axial length (the bush build, at the shaft's own
+// three stations) — hoisted because the rod-end overhang derivation below
+// needs the bush's HALF-length to know where its outer face lands.
+const ALARM_LINK_BUSH_LEN = 0.3;
 // (TODO 9's ALARM_LINK_ROD_SEAT = 0.079 — "read off the model and pasted
 // back in", standing rule 1's confessed failure case — and the
 // ALARM_LINK_ROD_FOOT chain built on it are RETIRED by TODO 20. The rod's
@@ -25703,7 +25721,7 @@ function alarmLinkReadClean(colX, colY, lockEngaged) {
 // deleted constant had no such assert, which is exactly why it could sit
 // wrong for the life of a section; this one is held to 1e-3 by the solve
 // itself and cannot.
-const ALARM_LINK_ROD_TRAVEL_SPEC = 0.08840;   // §234 Landing 5: re-measured at the fork-groove-governed pin arm (item 4) — the rim finger's contact geometry shares the raised stratum
+const ALARM_LINK_ROD_TRAVEL_SPEC = 0.10020;   // §234 Landing 5, course-corrected, re-measured: the SHAFT's own roll SPAN is exactly SPAN_BUDGET (0.35 rad) again, as it was pre-Landing-5 — but rollRest itself is a registration-solve OUTPUT, fit to the rod's own foot datum, and that foot moved slightly (the honest ALARM_LINK_ROD_END_OVERHANG re-derivation and the raised, dial-clearance-derived stratum both touch the rod's build) — so the sinusoid the rim crank reads is evaluated at a slightly different absolute angle even though its own shape (ALARM_LINK_CRANK_OFF/_T, rimLen) never moved. Was 0.09932 pre-Landing-5; the boot warning below re-measures and asserts against THIS number
 const alarmLinkUnit = new THREE.Group();
 movement.add(alarmLinkUnit);
 registerLabel('Alarm link', alarmLinkUnit);
@@ -26002,18 +26020,39 @@ const alarmLinkParts = {};
   // The LAY SHAFT: one straight arbor, ring to rod, on two plate bushes.
   const chord = { x: ALARM_LINK_ROD_XY.x - ALARM_LINK_INNER_XY.x, y: ALARM_LINK_ROD_XY.y - ALARM_LINK_INNER_XY.y };
   const fullChordLen = Math.hypot(chord.x, chord.y);
-  // §232 — THE SHAFT'S THREE LENGTHS, in one chain with no fixed point in it.
-  // Each step feeds the next and nothing loops back, which is why this reads
-  // as arithmetic rather than as a solve: the NECK sets the stub, the stub
-  // sets the rod-end station, the stations leave a span, and the span sets the
-  // body's section. Every one of them lands on λ = SLENDER_TARGET.
+  // §232 — THE SHAFT'S THREE LENGTHS. §234 Landing 5, course-corrected: the
+  // chain used to read NECK ⇒ STUB ⇒ STATION, treating §54's λ CEILING on
+  // the neck's cantilever as the built overhang itself — an upper bound
+  // worn as a floor, TODO 145's own failure mode restated at this scale.
+  // The station is now DERIVED from the honest clearance it exists to hold,
+  // and the ceiling is what it was always meant to be: an assert.
   const ALARM_LINK_FORK_STATION = 2.45;   // station one — the fork-end pocket §68 measured, the tightest station on the chord
-  // the stub is NECK stock and §54 charges an overhang ∛16 of its length, so
-  // this is the longest cantilever the neck may carry at the target:
+  // §234 Landing 5, course-corrected — BUSH 3's STATION, FROM WHAT IT MUST
+  // CLEAR. Moving inward from the chord's very tip: the rim crank's own
+  // finger sits centred there, reaching ±ALARM_LINK_CRANK_T/2 along the
+  // chord regardless of roll (a rotation about the shaft's own length
+  // cannot widen a box's extent along that length); clear it by
+  // CLEAR_MARGIN. Next, the selector rod's own section
+  // (ALARM_LINK_ROD_R_SECTION) runs this same neighbourhood and needs its
+  // own CLEAR_MARGIN. The bush's OUTER face — not its centreline — is what
+  // must stand beyond both, so its own half-length closes the chain. Each
+  // reach is charged in series (not a max of the two): the crank sits AT
+  // the tip and the rod's envelope stands inboard of it, so clearing only
+  // the nearer of the two would let the bush's own barrel reach into
+  // whichever it did not check.
+  const ALARM_LINK_ROD_END_OVERHANG = (ALARM_LINK_CRANK_T / 2) + CLEAR_MARGIN
+    + ALARM_LINK_ROD_R_SECTION + CLEAR_MARGIN + ALARM_LINK_BUSH_LEN / 2;
+  // …against the CEILING — the longest cantilever the neck may carry at the
+  // target, §54 charging an overhang ∛16 of its length (SLENDER_OVERHANG_K),
+  // read on the STUB the census measures (exposed + the lap buried in the
+  // body, ALARM_LINK_PRESS_LAP_FRAC's own embedment ratio) rather than the
+  // exposed length alone — a bare assert now, never a target:
   const ALARM_LINK_NECK_STUB_L = SLENDER_TARGET * 2 * ALARM_LINK_SHAFT_NECK_R / SLENDER_OVERHANG_K;
-  // …and the bush stands one LAP further in, because the stub the check
-  // measures includes the shoulder buried in the body.
-  const ALARM_LINK_ROD_END_OVERHANG = ALARM_LINK_NECK_STUB_L - ALARM_LINK_NECK_LAP;
+  {
+    const stubL = ALARM_LINK_ROD_END_OVERHANG / (1 - ALARM_LINK_PRESS_LAP_FRAC);
+    if (stubL > ALARM_LINK_NECK_STUB_L + 1e-9)
+      console.warn(`§232/§234: the rod-end neck's own stub ${stubL.toFixed(4)} (overhang ${ALARM_LINK_ROD_END_OVERHANG.toFixed(4)} at embedment ${ALARM_LINK_PRESS_LAP_FRAC}) exceeds its §54 ceiling ${ALARM_LINK_NECK_STUB_L.toFixed(4)} — thicken the neck (ALARM_LINK_CRANK_OFF, a lever arm) or move the clearance the overhang is derived from`);
+  }
   // what the two outer stations leave, halved by the middle one (a run's
   // bending compliance is a sum of L³, least when the spans are equal), and
   // the section that puts THAT span on the target:
@@ -26044,10 +26083,21 @@ const alarmLinkParts = {};
   // read off the idler's own build) must hold regardless.
   {
     const idlerTopZ = Z_DIAL + 0.05 + ALARM_SET_T;
-    if (ALARM_LINK_SHAFT_Z < idlerTopZ + CLEAR_MARGIN + ALARM_LINK_SHAFT_R - 1e-6)
+    const bushOD = ALARM_LINK_SHAFT_R + ALARM_LINK_BUSH_CLEAR + ALARM_LINK_BUSH_WALL;
+    if (ALARM_LINK_SHAFT_Z < idlerTopZ + CLEAR_MARGIN + bushOD - 1e-6)
       console.warn(`§234 Landing 5: the shaft stratum ${ALARM_LINK_SHAFT_Z.toFixed(4)} clears the idler `
         + `top ${idlerTopZ.toFixed(4)} by only ${(ALARM_LINK_SHAFT_Z - idlerTopZ).toFixed(4)} — the `
-        + `${ALARM_LINK_SHAFT_R.toFixed(4)} body wants ${(idlerTopZ + CLEAR_MARGIN + ALARM_LINK_SHAFT_R).toFixed(4)}`);
+        + `${bushOD.toFixed(4)} bush OD wants ${(idlerTopZ + CLEAR_MARGIN + bushOD).toFixed(4)}`);
+    // …and the dial plate's own back face — the stratum's third floor,
+    // re-verified against the real built bush OD.
+    if (ALARM_LINK_SHAFT_Z < Z_DIAL + CLEAR_MARGIN + bushOD - 1e-6)
+      console.warn(`§234 Landing 5: the shaft stratum ${ALARM_LINK_SHAFT_Z.toFixed(4)} clears the dial `
+        + `plate ${Z_DIAL.toFixed(4)} by only ${(ALARM_LINK_SHAFT_Z - Z_DIAL).toFixed(4)} — the `
+        + `${bushOD.toFixed(4)} bush OD wants ${(Z_DIAL + CLEAR_MARGIN + bushOD).toFixed(4)}`);
+    if (Math.abs(bushOD - ALARM_LINK_BUSH_OD_U) > 0.01)
+      console.warn(`§234 Landing 5: the hoisted bush OD ${ALARM_LINK_BUSH_OD_U.toFixed(4)} used to derive `
+        + `ALARM_LINK_SHAFT_Z has drifted from the built ${bushOD.toFixed(4)} — re-measure and update `
+        + `ALARM_LINK_BUSH_OD_U (or its ALARM_LINK_R_TARGET_U/BUSH_CLEAR/BUSH_WALL inputs)`);
   }
   if (Math.abs(fullChordLen - ALARM_LINK_CHORD_LEN) > 1e-9)
     console.warn(`§54: the hoisted chord ${ALARM_LINK_CHORD_LEN.toFixed(4)} disagrees with the built one `
@@ -26285,11 +26335,9 @@ const alarmLinkParts = {};
   // OVERHANG` on the rod side, `_shaftT1 − ALARM_FORK_RETREAT` on the fork
   // side, both already governing the crank/pin stations — so growing the
   // embedment only eats further into the BODY's own solid stock, never
-  // moving a contact. f = 0.51 is the smallest round margin past the
-  // classifier's exact 0.5 (not a coincidence of float noise sitting ON the
-  // boundary), which also MINIMISES what the stub's own census row pays in
-  // L/D — see the rod-side waiver below, where that floor is the point.
-  const ALARM_LINK_PRESS_LAP_FRAC = 0.51;
+  // moving a contact. f = 0.51 (hoisted above, beside the neck radius) is
+  // the smallest round margin past the classifier's exact 0.5 (not a
+  // coincidence of float noise sitting ON the boundary).
   const _pressLap = (exposedU) => (ALARM_LINK_PRESS_LAP_FRAC / (1 - ALARM_LINK_PRESS_LAP_FRAC)) * exposedU;
   const ALARM_LINK_NECK_PRESS_LAP_FORK = _pressLap(_shaftT1 - ALARM_FORK_RETREAT);
   const ALARM_LINK_NECK_PRESS_LAP_ROD = _pressLap(ALARM_LINK_ROD_END_OVERHANG);
@@ -26666,12 +26714,29 @@ const alarmLinkParts = {};
     // closes the root side; two bracket bars carry the block back to the
     // ring's rim at the plate levels.
     {
-      shaft.rotation.x = F.rollRest;
-      alarmLinkParts.centreKey.updateWorldMatrix(true, false);
-      const km = alarmLinkParts.centreKey.matrixWorld;
       const ringInv = alarmSelRing.matrixWorld.clone().invert();
-      const tipL = new THREE.Vector3(-ALARM_FORK_RETREAT, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km).applyMatrix4(ringInv);
-      const rootL = new THREE.Vector3(0, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km).applyMatrix4(ringInv);
+      // §234 Landing 5, course-corrected — THE PIN RIDES AN ARC (D ≠ 0), so
+      // "built on the pin's REST position" is only half the pin's own
+      // travel. Sample its ring-local ends at BOTH rolls the stroke visits
+      // — rest and armed — and let the groove's height and mid-plane be the
+      // band those four points actually occupy, plus the pin's own
+      // diameter and working clearance. At D = 0 this reproduces the old
+      // fixed ALARM_FORK_GROOVE_H exactly (the band collapses to one point).
+      const pinEndsAt = (roll) => {
+        shaft.rotation.x = roll;
+        alarmLinkParts.centreKey.updateWorldMatrix(true, false);
+        const km2 = alarmLinkParts.centreKey.matrixWorld;
+        return [
+          new THREE.Vector3(-ALARM_FORK_RETREAT, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km2).applyMatrix4(ringInv),
+          new THREE.Vector3(0, 0, ALARM_FORK_PIN_ARM_R).applyMatrix4(km2).applyMatrix4(ringInv),
+        ];
+      };
+      const [tipL, rootL] = pinEndsAt(F.rollRest);
+      const [tipA, rootA] = pinEndsAt(F.rollArmed);
+      shaft.rotation.x = F.rollRest; // restore before the rest of the solve reads the tree
+      const zBand = [tipL.z, rootL.z, tipA.z, rootA.z];
+      const grooveMidZ = (Math.min(...zBand) + Math.max(...zBand)) / 2;
+      const grooveHalfH = (Math.max(...zBand) - Math.min(...zBand)) / 2 + ALARM_FORK_PIN_R + ALARM_FORK_CLEAR;
       const dirL = rootL.clone().sub(tipL); dirL.z = 0; dirL.normalize();
       // Band [0.35, 0.95] of the pin's span — OUTBOARD, past the alarm
       // setting wheel's rim: the wheel's top plane leaves only 0.03 of z
@@ -26700,21 +26765,24 @@ const alarmLinkParts = {};
           console.warn(`§112: the fork block's inner corner reaches r ${_cMin.toFixed(3)} — the setting wheel's rim + margin wants ${_rimR.toFixed(3)} (the link solve's rim guard let a bad chord angle through)`);
       }
       const grp = new THREE.Group();
-      grp.position.set(midL.x, midL.y, 0);
+      grp.position.set(midL.x, midL.y, grooveMidZ);
       grp.rotation.z = Math.atan2(dirL.y, dirL.x);
       // Plates above and below the pin; the block closes at its SIDES —
       // webs outside the pin's lateral band (pin r 0.14 + 0.03 sweep,
       // web inner faces at ±0.25) — because the pin's own line runs the
       // full x of the slot: a web across x is a wall the pin transfixes,
-      // which is the exact defect the fork exists to retire.
+      // which is the exact defect the fork exists to retire. The jaw
+      // spacing is `grooveHalfH` (measured above), not the fixed
+      // ALARM_FORK_GROOVE_H — the pin's own excursion through its arc, plus
+      // its radius and working clearance.
       for (const s of [1, -1]) {
         const plate = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, ALARM_SEL_T), MATS.nickel);
         plate.name = 'alarmSelTab';
-        plate.position.z = s * (ALARM_FORK_GROOVE_H + ALARM_SEL_T) / 2;
+        plate.position.z = s * (grooveHalfH + ALARM_SEL_T / 2);
         grp.add(plate);
       }
       for (const s of [1, -1]) {
-        const web = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, ALARM_FORK_GROOVE_H + 2 * ALARM_SEL_T), MATS.nickel);
+        const web = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 2 * grooveHalfH + 2 * ALARM_SEL_T), MATS.nickel);
         web.name = 'alarmSelTab';
         web.position.y = s * 0.275;
         grp.add(web);
@@ -26735,7 +26803,7 @@ const alarmLinkParts = {};
       // webs, whose inner faces stand at ±0.25.
       const bar = new THREE.Mesh(new THREE.BoxGeometry(brLen, STOCK_MIN_U, ALARM_SEL_T), MATS.nickel);
       bar.name = 'alarmSelForkBracket';
-      bar.position.set(Math.cos(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), Math.sin(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), upLocal * (ALARM_FORK_GROOVE_H + ALARM_SEL_T) / 2);
+      bar.position.set(Math.cos(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), Math.sin(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), grooveMidZ + upLocal * (grooveHalfH + ALARM_SEL_T / 2));
       bar.rotation.z = azF;
       alarmSelRing.add(bar);
     }
@@ -26899,7 +26967,7 @@ const alarmLinkParts = {};
     // ROD-END-LIMITED and an order of magnitude below the band"), and its own
     // precondition honoured — it forbade re-deriving the section "before
     // TODO 79's stations are re-solved", which §202 did.
-    const ALARM_LINK_STALL_PROBE_MN = 171.87;          // §234 Landing 5: tools/probe-82-alarm-stall.mjs on the raised, pressed-stub shaft at the fork-groove-governed pin arm (was 81.02) — still `covers` the 5-50 mN band
+    const ALARM_LINK_STALL_PROBE_MN = 908.5;           // §234 Landing 5, course-corrected: tools/probe-82-alarm-stall.mjs on the raised, honestly-derived-overhang shaft at the closed-form, 0.35-rad pin arm (was 81.02 pre-Landing-5; 171.87 was this landing's since-corrected first cut) — still `covers` its own SELECTOR_DETENT_WINDOW_MN envelope
     // The governor moved with the section: the spans were the soft members
     // while the whole rod was 0.1233, and now the NECK's rod-end cantilever is.
     // That is the honest outcome — the compliance is where the metal is thin —
@@ -27025,10 +27093,11 @@ const alarmLinkParts = {};
     // either this joint is deliberately tighter than a plate pivot's
     // side-shake or it inherited a number; nothing in the history says
     // which, and this landing does not guess.
-    const ALARM_LINK_BUSH_CLEAR = 0.02;                       // running fit, shipped value (see above)
-    const ALARM_LINK_BUSH_WALL = 0.12;                        // stock-floor wall — the bush is a real part
+    // ALARM_LINK_BUSH_CLEAR / _WALL are hoisted (beside ALARM_LINK_BUSH_LEN,
+    // above ALARM_LINK_SHAFT_Z) — the stratum's own dial-clearance term needs
+    // the bush's OD before this loop runs.
     const bushBore = ALARM_LINK_SHAFT_R + ALARM_LINK_BUSH_CLEAR;
-    const bush = new THREE.Mesh(ringGeo(bushBore, bushBore + ALARM_LINK_BUSH_WALL, 0.3), MATS.nickel);
+    const bush = new THREE.Mesh(ringGeo(bushBore, bushBore + ALARM_LINK_BUSH_WALL, ALARM_LINK_BUSH_LEN), MATS.nickel);
     bush.name = `alarmLinkHangerBush${hi + 1}`;   // §202: named — a third station renumbers every positional selector
     bush.position.set(hx, hy, ALARM_LINK_SHAFT_Z);
     bush.rotation.y = Math.PI / 2;
