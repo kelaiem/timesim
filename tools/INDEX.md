@@ -4,7 +4,7 @@
 
 # The instruments
 
-223 scripts. **119 are ACCEPTANCE tests** — they decide and exit non-zero.
+224 scripts. **120 are ACCEPTANCE tests** — they decide and exit non-zero.
 **104 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -215,6 +215,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-handedness.mjs` |  | acceptance | IS THIS PART HANDED? — the three couplings TODO 115 named as unmeasured. |
 | `probe-handset-reach.mjs` |  | report | HOW FAR DOWN THE HAND-SETTING CHAIN DOES THE `handSet` AXIS ACTUALLY REACH? |
 | `probe-interplate-demand.mjs` |  | acceptance | WHAT PINS THE THREE-QUARTER PLATE'S UNDERSIDE — the inter-plate z demand, per station, and the wheel-in-bore inventory. |
+| `probe-l3-shaft-ld-filter.mjs` |  | acceptance | §234 Landing 3 — CAN ANY SHAFT SECTION CLEAR TURN_LD_TARGET AND ITS OWN CORRIDOR TOGETHER? A REPORT. (INDEX.md's `kind` column says acceptance because the classifier keys on `process.exit`, and this exits only when a tree will not boot at all — `probe-234-group-c.mjs` and the other §234 probes carry the same label for the same reason.) |
 | `probe-ledge-occupancy.mjs` |  | acceptance | WHAT OCCUPIES THE RIM-LEDGE ANNULUS — §186's mounting band, scanned over the pose net. |
 | `probe-lockriser-depth.mjs` |  | acceptance | HOW DEEP is a RISER in the ratchet skirt, and does it alternate? |
 | `probe-lug-geom.mjs` |  | acceptance | THE LUGS, READ OFF THE METAL — the derived radial chain held to layout.js's declaration, and the §190 wrap gap measured off the analytic bar surface. |

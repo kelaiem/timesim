@@ -2630,14 +2630,34 @@ const PIVOT_BORE_CLEAR = 0.05;
 // stock measured as one free length, λ 31.8, waived under TODO 16. A rod
 // that passes two plates has two bearings if the plates are given bushes to
 // hold it, so it gets them, and the chain runs FROM the rod outward: the
-// rod's section is the datum (§137's reconciled 0.30 — see the link block),
-// a bush is bored one running fit over it, its wall is the §50 floor, and
-// each plate's hole is the bush's outside plus a hundredth of running room
-// (the studded-wheel idiom — never coincident solids, which the instruments
-// read as an intersection). The old 0.45 stays in the link block as the
-// FOOTPRINT the rod's site was solved and frozen with, and an assert there
-// holds that the frozen site still clears this larger bore.
-const ALARM_LINK_ROD_R_SECTION = 0.30;
+// rod's section is the datum, a bush is bored one running fit over it, its
+// wall is the §50 floor, and each plate's hole is the bush's outside plus a
+// hundredth of running room (the studded-wheel idiom — never coincident
+// solids, which the instruments read as an intersection).
+//
+// §234 Landing 4 — THE SECTION IS THE TURNING TARGET NOW, TODO 145 group C.
+// "§137's reconciled 0.30" never named a constraint the way rule 1 asks —
+// re-reading that record, "reconciled" meant only that 0.30 still fit after
+// the plate-bore chain was reversed to read off it (§202), not that 0.30 was
+// DERIVED from anything. `checkTurning` (§233) reads it as a plain bar (no
+// bush is coaxial-and-consecutive with it — the two plate bushes are a
+// different part, pressed over it, per that check's own bush/shaft split)
+// at L/D 33.2 against `TURN_LD_MAX` 20, which is what it actually needs to
+// clear. The rod's LENGTH is a registration-solve OUTPUT (`rodLen`,
+// thousands of lines below — the finger's rest contact and the beak's
+// underside, neither a function of the rod's own radius), so — the same
+// hand-off idiom `SETTING_ROD_R`/`RSV_P0_TOP_Z` used (§234 Landing 2 step
+// 3a) for exactly this ordering problem — `ALARM_LINK_ROD_LEN_U` is a
+// MEASURED constant here, boot-guarded against the built `rodLen` where it
+// exists. `TURN_LD_TARGET`'s own 90%-of-ceiling reasoning (`SLENDER_TARGET`'s
+// pattern) sizes the section: λ = L/2r ≤ TURN_LD_TARGET ⇒ r ≥ L/(2·TARGET).
+// STOCK_MIN_U stays as the floor under it — the real constraint everything
+// else in this file uses when a derived section might come in thin, not a
+// substitute derivation for THIS row (at 19.92 u the turning term already
+// clears the stock floor by 0.75, so the floor is inert here and honest to
+// keep rather than to strip, the same way `ALARM_STEM_R`'s does).
+const ALARM_LINK_ROD_LEN_U = 19.9197; // rodLen's measured built value (guarded below, at the rod build)
+const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5533
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.35 — the running fit
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.667 — a wall at the §50 floor
 const ALARM_LINK_ROD_PLATE_BORE_R = ALARM_LINK_ROD_BUSH_OD + 0.01;             // 0.677 — the hole both plates carry
@@ -24992,15 +25012,27 @@ const ALARM_LINK_SHAFT_Z = Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2);
 // The bore both plates carry for this rod. Was written as a bare 0.45 at each
 // of the two hole sites and again implied at the rod; one name so the rod's
 // own section can be derived from it instead of racing it.
-// §202 — THIS IS THE FOOTPRINT THE SITE WAS SOLVED WITH, not the bore any
-// more. The rod's site (the IIFE below) scores every candidate column at
-// this radius, and §112 froze the winning site into both plates' hole
-// literals. The plates' holes are ALARM_LINK_ROD_PLATE_BORE_R now (a bush's
-// outside), 0.227 larger — re-scoring the solve at the new radius could move
-// the frozen site and every derivation behind it, so the solve keeps its
-// footprint and the assert after it holds that the frozen site still clears
-// the larger bore by the one margin.
-const ALARM_LINK_ROD_BORE_R = 0.45;
+// §234 Landing 4 — THE FOOTPRINT IS THE REAL BORE NOW, not a frozen guess.
+// §202 kept the solve scoring a smaller radius than the plates actually
+// carry because "re-scoring the solve at the new radius could move the
+// frozen site", and it could: a BLANKET re-score at the honest
+// `ALARM_LINK_ROD_PLATE_BORE_R` (0.930 at the turning-target section) taxes
+// the column the full bore width over its WHOLE run and prices the shipped
+// site itself out of the solve (measured, this landing: best achievable
+// 0.111 against the 0.15 margin, 1.997 u from the frozen site) — exactly
+// the failure mode §112 band swap already found and fixed once for
+// `scoreChord`'s own piecewise split ("a flat 0.45 taxed every candidate
+// 0.19 it never spends"). The honest fix is the same one: the rod is
+// bush-OD thick (the plate bore) only across the two PLATE THICKNESSES it
+// actually passes through, and the bare rod body everywhere else in the
+// column band. `ALARM_LINK_COL_BUSH_Z` names those two z-slices from the
+// same constants that place the bushes (`TQ_MID_Z`/`TQ_T`,
+// `BACK_PLATE_Z`/`BACK_PLATE_T`); measured piecewise, the joint solve lands
+// within float of the frozen site (colClear 0.456, zero boot warnings).
+const ALARM_LINK_COL_BUSH_Z = [
+  [TQ_MID_Z - TQ_T / 2, TQ_MID_Z + TQ_T / 2],
+  [BACK_PLATE_Z - BACK_PLATE_T / 2, BACK_PLATE_Z + BACK_PLATE_T / 2],
+];
 const _tmpV3a = new THREE.Vector3();
 const _linkBeakAz0 = Math.atan2(alarmLockPivot.y - ALARM_COL_POS.y, alarmLockPivot.x - ALARM_COL_POS.x);
 // §112 — the crank pin's arm radius, hoisted: the link solve's rim guard
@@ -25098,7 +25130,14 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
   const chordObs = obs.filter((b) => inBand(b, shaftBand));
   const scoreCol = (x, y) => {
     let c = Infinity, who = '';
-    for (const b of colObs) { const d = dToBox(x, y, b) - ALARM_LINK_ROD_BORE_R; if (d < c) { c = d; who = 'col:' + b._who; if (c <= -1) break; } }
+    for (const b of colObs) {
+      // the piecewise footprint: bush OD only where the obstacle's own
+      // z-range actually reaches one of the two plate thicknesses.
+      let fp = ALARM_LINK_ROD_R_SECTION;
+      for (const [z0, z1] of ALARM_LINK_COL_BUSH_Z) if (b.min.z < z1 && b.max.z > z0) { fp = ALARM_LINK_ROD_PLATE_BORE_R; break; }
+      const d = dToBox(x, y, b) - fp;
+      if (d < c) { c = d; who = 'col:' + b._who; if (c <= -1) break; }
+    }
     return { c, who };
   };
   const scoreChord = (x, y, tx, ty) => {
@@ -25131,8 +25170,12 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     return Math.hypot(x - o.ax - t * vx, y - o.ay - t * vy) - o.r;
   };
   const scoreLow = (x, y) => {
+    // LOW_LINKAGE_OBSTACLES carry no z-range (rule 5's stadium is plan-only),
+    // so this keeps the CONSERVATIVE footprint — the full plate bore, the
+    // widest the rod's column ever is — rather than guessing a piecewise
+    // split with no z to split on.
     let c = Infinity;
-    for (const o of LOW_LINKAGE_OBSTACLES) c = Math.min(c, _stad(x, y, o) - ALARM_LINK_ROD_BORE_R);
+    for (const o of LOW_LINKAGE_OBSTACLES) c = Math.min(c, _stad(x, y, o) - ALARM_LINK_ROD_PLATE_BORE_R);
     return c;
   };
   // Stage 1 — the rod's COLUMN, over the parity family × distance.
@@ -25141,7 +25184,7 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
     const a = _linkBeakAz0 + Math.PI + k * (Math.PI * 2 / ALARM_COL_COLUMNS);
     for (let d = 8; d <= 16 + 1e-9; d += 0.5) {
       const x = ALARM_COL_POS.x + Math.cos(a) * d, y = ALARM_COL_POS.y + Math.sin(a) * d;
-      if (Math.hypot(x, y) > plateR - ALARM_LINK_ROD_BORE_R - CLEAR_MARGIN) continue; // both plates must carry the bore
+      if (Math.hypot(x, y) > plateR - ALARM_LINK_ROD_PLATE_BORE_R - CLEAR_MARGIN) continue; // both plates must carry the bore
       let { c, who } = scoreCol(x, y);
       const lc = scoreLow(x, y);
       if (lc < c) { c = lc; who = 'low-corridor'; }
@@ -25265,15 +25308,15 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
 const _linkInnerAz = ALARM_LINK_AZ_DEG * DEG2RAD;
 const ALARM_LINK_INNER_XY = { x: Math.cos(_linkInnerAz) * 5.4, y: Math.sin(_linkInnerAz) * 5.4 }; // inner end r = the tab's mid-reach
 const ALARM_LINK_ROD_R = Math.hypot(ALARM_LINK_ROD_XY.x, ALARM_LINK_ROD_XY.y);
-// §202 — the frozen site against the bore it now carries: the column's
-// clearance was scored net of the 0.45 footprint, so adding that back and
-// taking the plate bore off gives the room the bush's outside actually has.
-{
-  const room = ALARM_LINK_ROD_COL_CLEAR + ALARM_LINK_ROD_BORE_R - ALARM_LINK_ROD_PLATE_BORE_R;
-  if (room < CLEAR_MARGIN - 1e-9)
-    console.warn(`§202: the selector rod's plate bore ${ALARM_LINK_ROD_PLATE_BORE_R.toFixed(3)} leaves ${room.toFixed(3)} at the frozen site `
-      + `(column clearance ${ALARM_LINK_ROD_COL_CLEAR.toFixed(3)} at the ${ALARM_LINK_ROD_BORE_R} footprint) — need ${CLEAR_MARGIN}; the site was solved for a smaller bore`);
-}
+// §234 Landing 4 — THE ASSERT NOW SAYS THE HONEST THING. §202's version
+// corrected for a solve that was scored at a SMALLER footprint than the
+// real bore (0.45 against a 0.677 bore); the solve is scored at the real
+// bore now (piecewise, above), so `ALARM_LINK_ROD_COL_CLEAR` already IS the
+// room the bush's outside has — no correction term left to carry, and
+// re-deriving one here would be `x ≥ x` wearing a formula.
+if (ALARM_LINK_ROD_COL_CLEAR < CLEAR_MARGIN - 1e-9)
+  console.warn(`§234: the selector rod's site clears only ${ALARM_LINK_ROD_COL_CLEAR.toFixed(3)} at its `
+    + `${ALARM_LINK_ROD_PLATE_BORE_R.toFixed(3)} plate bore — need ${CLEAR_MARGIN}`);
 const ALARM_LINK_ROD_AZ_DEG = (Math.atan2(ALARM_LINK_ROD_XY.y, ALARM_LINK_ROD_XY.x) / DEG2RAD + 360) % 360;
 
 // (§35's ALARM_LINK_CRANK_PHASE — the quarter-turn rest phase that kept the
@@ -26260,6 +26303,13 @@ const alarmLinkParts = {};
     if (Math.abs(_v.set(0, 0, 1).transformDirection(alarmLinkUnit.matrixWorld).z - 1) > 1e-9)
       console.warn('TODO 20 registration: the link unit is no longer world-identity — every solved datum here is frame-mixed');
     const rodLen = ALARM_ROD_TOP_BUILT - rodFootRest;
+    // §234 Landing 4 coherence guard — ALARM_LINK_ROD_LEN_U (near
+    // ALARM_LINK_ROD_R_SECTION, far above) is the same hand-off idiom as
+    // RSV_P0_TOP_Z: the registration solve that produces rodLen runs
+    // thousands of lines after the section is hoisted.
+    if (Math.abs(rodLen - ALARM_LINK_ROD_LEN_U) > 0.01)
+      console.warn(`§234: the selector rod's built length ${rodLen.toFixed(4)} has drifted from `
+        + `ALARM_LINK_ROD_LEN_U ${ALARM_LINK_ROD_LEN_U} — re-measure and update ALARM_LINK_ROD_R_SECTION's derivation`);
     const rod = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_LINK_ROD_R_SECTION, ALARM_LINK_ROD_R_SECTION, rodLen, 12), MATS.steel);
     rod.name = 'alarmLinkRod';
     // §137 / TODO 63 terminology — this rod DISARMS: it prevents the alarm

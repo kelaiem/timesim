@@ -9741,7 +9741,36 @@ export const TURN_WAIVERS = {
   // LAYOUT problem — solved by moving the stations, not by thinning or
   // fattening anything. It is the headline row and the reason this check
   // exists.
-  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A',
+  //
+  // §234 Landing 4 — MEASURED, not argued, and the measurement holds at both
+  // ends of the search. `tools/probe-l3-shaft-ld-filter.mjs` filters the
+  // §112 rod-site solve's own (rc, tab) candidate population by
+  // (chordLen − 1.1)/(2s) ≤ TURN_LD_TARGET for s ∈ {0.2664 (shipped), 0.30,
+  // 0.40, 0.445, 0.553, 0.927 (the turning target at today's chord)}, scored
+  // at the HONEST piecewise footprint (the rod's own column split by the two
+  // plate-bush z-slices — the fix Landing 4 gave the rod's site solve, not a
+  // blanket guess) and the shaft's own chord scored at that section's real
+  // bush OD (s + 0.02 + 0.12). A chord short enough to clear the L/D filter
+  // exists at every tested s — the filter is never the thing that refuses —
+  // but no combination of (short chord, thick-enough section) also clears
+  // ANY obstacle: candidates short enough to sit near the column read
+  // c ≈ −s (the rod's OWN column, not the shaft, already occupies that
+  // ground), and at s = 0.927 — the target's own answer at essentially
+  // today's chord — the shaft's corridor reads c = −0.577 to −0.602,
+  // reproducing §137's already-measured real wall (`probe-137-jumper-
+  // envelope.mjs`'s alarm setting idler, max legal r 0.2850) independently
+  // of the column-footprint question. 0.2850 is not merely short of the
+  // turning target's 0.927 at today's chord, it is short of TURN_LD_MAX's
+  // own r ≈ 0.836 too. And §137/§232's OWN constraint stands unmoved:
+  // `ALARM_LINK_SHAFT_NECK_R = ALARM_LINK_CRANK_OFF − ALARM_LINK_CRANK_T/2`
+  // makes the crank's lever arm a function of the neck it sits on, so even a
+  // corridor that permitted r 0.927 would bury the crank's rim finger (tip
+  // reach 0.425) and the centre pin's arm (0.56) inside the body — a third,
+  // independent refusal alongside the corridor's. No position-space move
+  // measured here (there is none left to try that this landing's own record
+  // has not already tried under Landing 1/2's names) closes the gap; TODO
+  // 145's own record carries the three-option design write-up.
+  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A (§234 Landing 4: MEASURED — no candidate at any tested section 0.2664–0.927 clears both TURN_LD_TARGET and its own corridor; the L/D-18 target chord is never the refusal, the corridor and the crank contacts are, independently)',
   // GROUP B — members that CROSS the movement or reach the case band. Their
   // length is the case's, not a design choice: a crown stem is long because
   // the case is 20 mm across. What is wrong is the DIAMETER — these were cut
@@ -9813,10 +9842,25 @@ export const TURN_WAIVERS = {
   // closed the two it could. The arrest COLUMNS are ARREST_COLUMN_R now, cut
   // to TURN_LD_TARGET beside the leg solve with the finger's Geneva-sized
   // arbor left alone (their rows retired here, per §137's staleness rule).
-  // The ROD is SITE-limited, not section-limited: §202's frozen station warns
-  // at boot above r ≈ 0.517 (L/D 19.2 — under the ceiling, over the target),
-  // and its site is the §112 solve's output, which is Landing 3's machinery.
-  'Alarm link::alarmLinkRod': 'TODO 145 group C (site-limited; re-solved with group A)',
+  //
+  // §234 Landing 4 RETIRED the rod's row, and it was the site after all —
+  // but not because the §112 solve had no answer. `ALARM_LINK_ROD_BORE_R`
+  // (the column's scoring footprint) was a frozen 0.45 against a real bore
+  // that had grown to 0.677 and was headed for 0.930 at the turning target;
+  // §202 kept the gap alive with a "room" assert rather than re-scoring,
+  // because a BLANKET re-score at the honest footprint taxes the column the
+  // full bore width over its whole run and prices the shipped site itself
+  // out (measured: best 0.111 against the 0.15 margin, 1.997 u from the
+  // frozen site — the same over-conservative failure `scoreChord`'s own
+  // piecewise split already fixed once for the crank zone). The honest fix
+  // is the same one: `ALARM_LINK_COL_BUSH_Z` scores the bore radius only
+  // across the two plate thicknesses the rod actually bores through, and
+  // the bare rod body (`ALARM_LINK_ROD_R_SECTION`, itself now derived —
+  // `ALARM_LINK_ROD_LEN_U`/(2·TURN_LD_TARGET) — the built rodLen's own
+  // hand-off, `SETTING_ROD_R`'s idiom) everywhere else in the column band.
+  // Piecewise, the joint solve lands within float of the frozen site
+  // (colClear 0.456, zero boot warnings) — the site was never the problem,
+  // the solve's own footprint was. L/D 33.2 → 18.0.
 };
 
 export async function checkTurning(clock, opts = {}) {

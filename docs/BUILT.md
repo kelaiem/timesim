@@ -25876,7 +25876,7 @@ cutting anything is what the entry's order was for.
     alarmArrestFingerArbor  unchanged         L/D 17.5 (the Geneva's arbor; under the target)
     ARREST_SPEC.arborR   unchanged            the Geneva keeps d 4.114
     TURN_WAIVERS         12 -> 10             the two column rows retired
-    alarmLinkRod         unchanged            site-limited at r ≈ 0.517 (L/D 19.2); moves to Landing 3
+    alarmLinkRod         unchanged            site-limited at r ≈ 0.517 (L/D 19.2); moves to Landing 4
 
 ### Four couplings, measured (`tools/probe-234-group-c.mjs`)
 
@@ -25912,7 +25912,7 @@ neck at 0.109, is FLAT across the first three rungs — axial, not a wall — an
 the real wall beyond the site cap is the case's back crystal at ⌀ ~1.2 u, whose
 z §187 derives from the envelope at boot. The site is the §112 solve's output,
 so the rod's fix is that solve re-run with the true bore footprint and an L/D
-term — Landing 3's machinery. It moves to group A.
+term — Landing 4's machinery. It moves to group A.
 
 ### The columns, decoupled — and the stack made one law
 
@@ -26659,6 +26659,114 @@ against a fresh `main` worktree, every changed report row traceable to the
 radius delta (0.35 → 0.382) — `turning`'s waived row, and the two declared
 `intraUnit` joints on this rod, both drop by exactly that amount and nothing
 else moves.
+
+### Landing 4 — the lay shaft and the rod: one closed by an honest footprint, one a measured refusal
+
+(Numbered 4, not 3: Landing 1's own text above already forward-referenced
+"Landing 3" for this rod work, but §234's build order shipped the alarm
+corner — this section's own "Landing 3" a few pages up — first. Rather than
+rename shipped, battery-verified history, this work takes the next number.)
+
+**PARTIAL.** TODO 145's last two `turning` rows, both on the `Alarm link`
+unit: the lay shaft (group A) and the selector rod (group C, moved here by
+Landing 1). The private roadmap named the fix for each — an L/D filter ahead
+of the §112 rod-site solve's own siting search for the shaft, the rod's true
+bore footprint carried into that same solve for the rod — and warned the
+shaft would likely be the hard part. It was, and it stayed refused; the rod
+closed, but not for the reason filed.
+
+**The rod: the site was never the problem, the solve's own footprint was.**
+`ALARM_LINK_ROD_BORE_R` — the radius the §112 solve scores the rod's COLUMN
+at, from the shaft up through both plates — was frozen at 0.45 while the
+real plate bore it stands in for grew past it (0.677, then 0.930 at the
+turning target), covered by a §202 "room" assert rather than re-scored: "a
+blanket re-score at the new radius could move the frozen site." It could,
+and measuring it is what this landing was for. **A BLANKET re-score at the
+honest 0.930 does move it** — taxing the column the full bore width over its
+WHOLE run prices the shipped site itself out of the solve (best achievable
+0.111 against the 0.15 margin, 1.997 u from the frozen site, at a governing
+neighbour — `Alarm lifting lever` — the old 0.45 footprint never priced in
+at all). That is the same failure mode `scoreChord` already fixed once, for
+its own crank-zone split ("a flat 0.45 taxed every candidate 0.19 it never
+spends"), and the fix is the same one: `ALARM_LINK_COL_BUSH_Z` scores the
+bore radius only across the TWO PLATE THICKNESSES the rod actually bores
+through (at `TQ_MID_Z`/`TQ_T` and `BACK_PLATE_Z`/`BACK_PLATE_T`), and the
+bare rod body (`ALARM_LINK_ROD_R_SECTION`) everywhere else in the column
+band — never a blanket guess. Scored piecewise, the joint solve lands within
+float of the frozen site (Δ 0.0028 u, inside the build's own 0.25 tripwire)
+at **colClear 0.456** — down from 0.559 at the old smaller footprint, but
+still 3× the margin.
+
+**The rod's section is derived now**, on `SETTING_ROD_R`'s own hand-off
+idiom (§234 Landing 2 step 3a): the rod's LENGTH is a registration-solve
+output computed thousands of lines after the section is hoisted, so
+`ALARM_LINK_ROD_LEN_U` (19.9197, the built `rodLen`) is a measured constant
+there, boot-guarded against the built mesh where it exists — exactly the
+`RSV_P0_TOP_Z` pattern. `ALARM_LINK_ROD_R_SECTION = max(STOCK_MIN_U,
+ALARM_LINK_ROD_LEN_U / (2 · TURN_LD_TARGET))` = **0.5533** (⌀0.2274 mm →
+⌀0.4194 mm, **L/D 33.2 → 18.0**, on the target by construction).
+`STOCK_MIN_U` stays as the real floor under it — the "§137 reconciled 0.30"
+it replaces never named a constraint standing rule 1 would recognise
+(re-read, "reconciled" meant the old literal still happened to fit after the
+plate-bore chain was reversed onto it, not that it was derived from
+anything) — and the floor is inert at this length, 0.75 u of headroom under
+the turning term. `probe-82-alarm-stall.mjs` reads 81.02 mN,
+**byte-identical**: Landing 1's own finding (the stall's compliance chain
+reads the SHAFT's rod-end overhang, not the rod — the rod is a push rod,
+outside the sum) holds a second time at the section actually cut, not just
+at a probed candidate. `TURN_WAIVERS`' `Alarm link::alarmLinkRod` row is
+retired.
+
+**The shaft: MEASURED at both ends of the search, and it does not close.**
+`tools/probe-l3-shaft-ld-filter.mjs` filters the §112 solve's own (rc, tab)
+candidate population by `(chordLen − ALARM_FORK_RETREAT) / (2s) ≤
+TURN_LD_TARGET` for six candidate sections s — 0.2664 (shipped, λ-sized),
+0.30, 0.40, 0.445, 0.553, and 0.927 (the turning target's own answer at
+today's chord) — scored at that section's honest bush OD in the shaft's own
+corridor and the rod's own honest piecewise column footprint (above). **A
+chord short enough to clear the filter exists at every section tested — the
+filter is never what refuses.** What refuses: candidates short enough to
+help (chord 10.3–19.4 u depending on s) sit close enough to the column that
+the ROD's OWN column occupies the ground first, reading exactly −s at every
+section up to 0.553 (the candidate stands ON the rod's own obstacle
+boundary, not the shaft's). At s = 0.927 the winning candidate IS
+essentially the shipped site, and its corridor reads **−0.602 (L/D 18) /
+−0.577 (L/D 20)** — reproducing, from an independent instrument, the alarm
+setting idler's already-measured real wall (`probe-137-jumper-envelope.mjs`,
+max legal r 0.2850): short of the turning target's r 0.927 by more than 3×,
+short of the bare `TURN_LD_MAX` ceiling's r ≈ 0.836 by nearly 3×. A third,
+independent refusal stands beside the corridor's: `ALARM_LINK_SHAFT_NECK_R`
+ties the crank's lever arm to the neck radius (§137's `armIn_u`), so a body
+over ~0.40 buries the crank rim finger's contact (reach 0.425) and the
+centre pin's arm (0.56) — and every section the L/D filter admitted, 0.40
+and up, already crosses that line. No arrangement satisfies the L/D target,
+the corridor, and the crank contacts together; the waiver stands, reworded
+with these numbers rather than retired.
+
+**Three closing paths, priced, none taken — the owner's call**, filed in
+full under TODO 145 group A: crank stubs at neck stock pressed into a bored
+end of a turning-sized body (`turnedBars`' own lap rule says when the census
+would read that as two real parts rather than one bar, but whether the
+press fit is real machining at this scale — ⌀0.121 mm into ⌀0.703 mm — or
+geometry built to satisfy a census is a material judgement this record
+does not make); re-deriving the crank for a fat body (priced already by
+§232: stall 92.4 mN against a never-forkable 5–50 mN envelope — closed as
+written, needing new mechanism rather than a section); and a shorter chord
+via the corner's own re-siting (this landing's own short-chord candidates
+are refused by the ROD's column, not the shaft's, so the fix is the
+column's own station, out of a section change's reach).
+
+**The bar.** Local, `--shards 3`, `--report`: **41/41 gates pass**, boot
+silent, `turning` **2 waived** (was 3: `Alarm link::alarmLinkShaft…` reworded,
+`Alarm link::alarmLinkRod` retired, `Keyless works::settingTraverse`
+untouched — step 3a's own row), 0 stale, control PASS. `stockFloor`,
+`intraUnit`, `assembly` and `expectedContacts` unchanged at 0 unwaived.
+Against a fresh `origin/main` worktree (which predates step 3a and carries
+its own delta too), every changed row traces to the rod's radius
+(0.30 → 0.5533) or to step 3a's already-recorded `SETTING_ROD_R` change —
+`probe-l3-shaft-ld-filter.mjs` and the two scratch dry-run probes this
+landing used to find the honest footprint are documented in the tool's own
+header; no new mechanism, no widened margin, `CLEAR_MARGIN` untouched.
 
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
