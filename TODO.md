@@ -19925,146 +19925,135 @@ this row moves to it.
 > The `TURN_WAIVERS` row is re-worded to name the stratum; it stands until
 > the rise is built. Options 2 and 3 above stay closed as written.
 
-> **§234 Landing 5 — BUILT (2026-09-19).** The stratum rose, the necks
-> became pressed stubs, and the P0 gate very nearly refused it — the centre
-> pin's own re-derivation had a second constraint Phase 0 did not know
-> about, found only by measuring the built tree.
+> **§234 Landing 5 — BUILT (2026-09-19), and the P0 gate refused the first
+> cut twice before it closed.** The stratum rose, the body took the turning
+> target, the necks became pressed stubs, and the group A row is RETIRED
+> with no waiver in its place. What follows is what was built and what each
+> refusal taught, in the order the metal was cut.
 >
-> **The section** (item 1). `ALARM_LINK_SHAFT_R` is now the "governs" idiom:
-> `max(λ-derived, bodyLen / (2·TURN_LD_TARGET))`. bodyLen = t3 − t1 is
-> **28.7682**, unchanged by this landing (asserted against a hoisted
-> estimate, `ALARM_LINK_BODY_LEN_U`, needed before the chord's own corridor
-> solve runs) — the turning-target floor governs at **r = 0.79912** (⌀ 0.606
-> mm), the λ-derived term (0.2664) nowhere close.
+> **The section** (item 1). `ALARM_LINK_SHAFT_R = max(λ-derived, bodyLen /
+> (2·TURN_LD_TARGET))` — the "governs" idiom `STEM_R` and the rod use. The
+> turning term governs at **r 0.8609** (⌀ 0.652 mm) on a body of **30.99 u**,
+> L/D **18.0** by construction; the λ term (0.2664) is nowhere close. bodyLen
+> is only known after the constants that need it, so `ALARM_LINK_BODY_LEN_U`
+> is a measured hand-off asserted against the built profile.
 >
-> **The stratum** (item 2). `idlerTopZ = Z_DIAL + 0.05 + ALARM_SET_T` reads
-> **−8.03333** off the idler's own build, not a pasted literal.
-> `ALARM_LINK_SHAFT_Z = max(§51 partner plane, idlerTop + CLEAR_MARGIN +
-> r_target)` lands on **−7.08422**, a rise of **0.51412** (0.195 mm) over
-> the §51 plane (−7.59833). No hanger bush ends up over the idler's
-> footprint (below), so the "bush OD where a station sits over the idler"
-> half of the rule never triggers — every crossing station is plain body.
-> **The search must not see the rise**: `ALARM_LINK_SHAFT_Z` feeds the
-> §112 corridor solve's own self z-bands (`shaftBand`/`colBand`/`tabBand`),
-> and raising it there walked the frozen site off (34.32, 16.89) to
-> (33.71, 16.10) — measured, before the fix. The three bands now read the
-> pre-rise plane directly (`_searchShaftZ`), and the rim guard's pin-arm
-> term is pinned to the pre-rise 0.56 the same way — both frozen for the
-> SEARCH only; the built metal uses the raised, re-derived values
-> everywhere else. `_boreXY`'s tripwire is silent with this fix in place.
+> **The stratum** (item 2), three floors: `ALARM_LINK_SHAFT_Z = max(§51's
+> partner plane −7.598, idlerTop + CLEAR_MARGIN + bushOD, dialTop +
+> CLEAR_MARGIN + bushOD)` with `idlerTop = Z_DIAL + 0.05 + ALARM_SET_T`
+> (−8.033, the idler's own stack) and `bushOD = r_target + ALARM_LINK_BUSH_
+> CLEAR + ALARM_LINK_BUSH_WALL` = **1.001** — the widest thing riding at that
+> radius, hoisted from the hanger loop so the term is the metal that is
+> there. The idler term governs: axis at **−6.8824**, a rise of **0.716 u**
+> (0.271 mm). Measured after the rise (`probe-234-shaft-body-corridor.mjs`,
+> 43 poses): the free radius reads a flat **1.001** across the idler's whole
+> crossing — the stratum term to the digit — 1.53 above, 1.85 in plan. The
+> §112 site solve reads the PRE-rise plane and the pre-rise pin arm for its
+> own bands (`_searchShaftZ`, `_rimGuardArmR`): fed the raised values it
+> walked the frozen site to (33.71, 16.10), and this landing spends no P3
+> currency there; `_boreXY`'s tripwire is silent.
 >
-> **The middle station** (item 3). A fresh station-by-station corridor scan
-> (`probe-234-shaft-body-corridor.mjs`, current chord) finds three idler
-> lobes, not the two Phase 0's prose named — the fresh numbers are what
-> govern, converted from the probe's own mesh-local station via
-> t = bodyMidT − y: t ≈ [3.2, 7.2], [10.7, 14.2], [15.7, 19.2], each bottoming
-> at the same 0.285 floor Phase 0 measured (at the shipped section). One
-> clean gap sits between the second and third lobes, t ≈ [14.6, 16.0],
-> where the wall reverts to the dial plate's own 0.6517 at every sampled
-> pose. **t = 15.2**, spans 12.75 / 16.0182 (ΣL³ 6183 against the
-> equal-split 5950, 3.9% worse — irrelevant at a body 76× stiffer in I than
-> the necks it replaced, §232's own reasoning for the same trade). Re-run
-> after the move: no bush stands over a lobe.
+> **The middle station** (item 3) is the derived equal-span midpoint,
+> t 17.95 (spans 15.50 / 15.50). The first cut moved it to a measured
+> literal, t 15.2, because its corridor scan — run BEFORE the stratum rose —
+> read a hanger bush over the idler's outline as refused. With the stratum
+> reserving the bush OD over the idler everywhere, the literal only bought
+> 0.2 of margin (1.196–1.243 there against 1.001 at the midpoint), and a
+> station chosen for margin is a number that exists because it looked
+> right. The midpoint stands; the probe is what to re-run after any change
+> to the stratum or the chord.
 >
-> **The centre pin** (item 4 — the gate). `ALARM_FORK_PIN_ARM_R`'s own
-> kinematics are exact in closed form (a point at local (0,0,r) rolled about
-> the shaft's own axis reaches world z = shaftZ + r·cos ψ — no other
-> rotation in the chain touches z), so `D = grooveMidRest − shaftZ` and
-> `span(r) = |acos(D/r) − acos((D+travelW)/r)|` reproduce the retired
-> derivation exactly at D = 0. Bisecting `span(r) ≤ SPAN_BUDGET` for the
-> smallest r is a straight re-use of the §112 budget — **until the built
-> tree's own `alarmHandoffs` refused it**: at the retired 0.35 rad budget
-> (r = 0.5757), "centre pin ⇄ fork groove" reads disarmed +0.0108 (OK) but
-> **armed −0.0392** (FAIL, over the ±0.03 gate) — the fork's plates are
-> built ON the pin's REST position, and at D ≠ 0 the pin no longer sits
-> level, so the same roll span that used to leave it centred in the groove
-> now walks it out the far side. No boot assert existed for this (the
-> rim-sweep assert is a different joint) — only the posed gate caught it.
-> **A second constraint governs the budget now, not the rim's.** Bracketed
-> directly against both gates the arm has to clear —
-> `alarmHandoffs`'s ±0.03 and §112's fork-corridor assert (the block's
-> inner corner against the setting wheel's rim + margin) — over
-> SPAN_BUDGET ∈ {0.35, 0.30, 0.25, 0.15}: 0.35 fails the groove row; 0.15
-> clears it with room (armed 0.0103) but reopens the corridor (corner 4.652
-> against 5.007 wanted); **0.30 is the widest budget — smallest arm, least
-> corridor spend — that clears both** (armed −0.0151, disarmed 0.0129,
-> corridor silent). `ALARM_FORK_PIN_ARM_R` = **0.76407** (was 0.56), pin
-> rest angle **42.3° below horizontal** (was ≈ 0 by construction pre-rise).
-> §229's registration solve re-ran unmodified and closed: every hand-off
-> in `alarmHandoffs` reads OK, `dPhi`/`rollArmed`/`rodTravel` all solved
-> outputs, nothing hand-tuned.
+> **The rod-end station** (item 5, and the waiver the first cut wrote).
+> `ALARM_LINK_ROD_END_OVERHANG` was λ's CEILING on the neck's cantilever
+> (`STUB_L − LAP` = 3.27), worn as the built length — an upper bound, not a
+> station. It derives from what bush 3 must clear now: the rim crank's
+> half-thickness, the rod's section, two `CLEAR_MARGIN`s and the bush's own
+> half-length in series = **1.043 u**; λ's ceiling (3.43 on the whole stub)
+> is asserted, never spent. The first cut had waived the rod-end stub at
+> L/D 20.8 "by the classifier's own boundary" — true at 3.27 of exposed
+> neck, and no waiver is owed to a number that was never a constraint.
 >
-> **The rod-end contacts** (item 5) followed automatically — the
-> registration solve is a function of the built tree, not a frozen table.
-> `ALARM_LINK_ROD_LEN_U` (hoisted, hand-off idiom) moved 19.9197 → **19.4056**;
-> `ALARM_LINK_ROD_TRAVEL_SPEC` moved 0.09932 → **0.08840**; both reconciled
-> silently against the solve's own live output. `beak tail ⇄ rod top` reads
-> −0.0236 of ±0.03 armed, `rod foot ⇄ rim crank` −0.0146/−0.01 — both OK,
-> unwaived.
+> **The centre pin** (item 4 — the gate, and where the first cut went
+> wrong). `ALARM_FORK_PIN_ARM_R` is CLOSED-FORM from the offset, the travel
+> and the roll span: `r = ½·√((travel/sin(S/2))² + ((2D+travel)/cos(S/2))²)`,
+> which collapses to the retired D = 0 derivation (`travel/sin S`) exactly.
+> `S` is the SAME 0.35 rad the rim finger's sweep corridor derived — not a
+> number picked because a gate passed it. The first cut bracketed S over
+> {0.35, 0.30, 0.25, 0.15} against two gates and kept 0.30 "the widest that
+> clears", which moved `ALARM_LINK_ROD_TRAVEL_SPEC` 0.0993 → 0.0884 and the
+> beak's lever ratio with it — §35's failure class, refused. At S = 0.35,
+> D = −0.716 and travel 0.19: **r = 0.8339** (was 0.56), rest angle 149.2°
+> from the upward normal (59° below horizontal). What refused 0.35 the
+> first time was the FORK, not the pin: its side webs stood at a ±0.25
+> literal sized for a level pin's 0.03 sweep, and on its arc the pin now
+> slides **0.22 u** along the groove — `alarmHandoffs` read it 0.1165 into a
+> web, `penetration` the same 0.116. The block's WIDTH and centre derive
+> from the same rest/armed samples that already set its height: webs at the
+> lateral band's edge + pin radius + working clearance (inner faces at
+> ±0.260 about the band's centre, block 0.62 wide, groove half-height
+> 0.245 against the level pin's 0.15). The registration solve then closed
+> unmodified: `centre pin ⇄ fork groove` **+0.0147 armed / +0.0106
+> disarmed**, `beak tail ⇄ rod top` −0.0265, `rod foot ⇄ rim crank`
+> −0.0153, all inside ±0.03, no tolerance moved. `ALARM_LINK_ROD_TRAVEL_SPEC`
+> reads **0.1002** (was 0.0993, +0.9%): the span is 0.35 again, and the 0.9%
+> is the rim crank's rest angle following the rod's re-derived foot — a
+> solve output, asserted at boot.
 >
-> **The pressed stubs** (item 6). `TURN_LAP_MAX_FRAC` (0.5, `inspect.js`,
-> mirrored — the dependency runs the other way) is a classifier boundary,
-> not a target: `ALARM_LINK_PRESS_LAP_FRAC = 0.51`, one point past it,
-> gives embedded = 1.0408 × exposed. Bore r = neck r − `SAW_FIT` (0.11) —
-> genuine interference, the repo's one press-fit quantum, not a second one
-> invented; line-to-line cannot be built as two non-overlapping solids.
-> The body became a `LatheGeometry` with two blind counterbores — and
-> needed 72 interior OD points (every 0.4 u) after the first cut measured
-> the body's own governing diameter as the BORE's (0.0834 mm, L/D 130.8):
-> `turnedBars` bins a mesh's OWN vertices, and a two-point OD ring leaves
-> every bin between them empty, so the census read straight through the
-> body to the only vertices left near each end. **A second census defect,
-> found the same way**: once the body was excluded as its own bar, the two
-> now-disjoint necks — same axis line, zero overlap, a whole body's-width
-> gap between them — read as "not concentric" (the classifier only checks
-> overlap against the LAP threshold, never a maximum gap) and silently
-> merged into one 28 u "bar" spanning the gap. `turnedBars` now also
-> requires the two spans to actually TOUCH (`ov > −TURN_AXIS_OFFSET_U`)
-> before merging — every real stepped bar in this movement already does;
-> only two pressed stubs either side of an excluded body did not.
+> **The pressed stubs** (item 6). The body is a `LatheGeometry` with two
+> blind counterbores, bore r = `ALARM_LINK_SHAFT_NECK_R − SAW_FIT` = 0.11
+> (genuine interference — the repo's one press-fit quantum; a running
+> clearance is for a shaft that turns in its bore, and a pressed stub does
+> not), the necks lapped `ALARM_LINK_PRESS_LAP_FRAC` 0.51 of their own
+> length into them (one point past `turnedBars`' 0.5 classifier): fork stub
+> 2.755 u (exposed 1.35, lap 1.405), rod stub 2.130 u (exposed 1.043, lap
+> 1.086). The OD carries 72 interior rings because the census bins a mesh's
+> own vertices and a two-point OD read the body's governing diameter as its
+> BORE (0.083 mm, L/D 131) — the "vertices are not the surface" trap in a
+> new shape. The two `INTRA_UNIT_CONTACTS` rows for the stubs are NOTES:
+> same-frame movers, no tier compares them, they buy no skip.
 >
-> **The census, as it reads today**: body alone, L/D **18.0** (target, by
-> construction); `alarmLinkNeckFork`, L/D **8.6** (clears); `alarmLinkNeckRod`,
-> L/D **20.8** (does not — see below). `turning` control PASS, 0 stale
-> waivers, 1 new unwaived-but-waived row.
+> **The census had to learn the construction, and its first two lessons
+> were wrong.** With the body split out as its own part, the two stubs —
+> same axis line, a body's width apart — read as one bar spanning the gap
+> (L/D 104 again). The first cut required coaxial members to TOUCH, which
+> un-read six through-arbors main reads as one (a pivot stub either side of
+> a wheel pressed on the same arbor). The second asked that bored-through
+> material COVER the gap, and split the same six (the centre wheel's hub
+> leaves 0.08 uncovered, the fusee stack 0.15, the alarm crown's collars
+> sit on a stem the concentric split had already taken out). §233's rule is
+> "coaxial at consecutive stations is one stock", and the ONLY shape that
+> rule cannot be true through is solid stock between two pressed stubs: so
+> `gapBridged` refuses a gap only when a member seated on the line has a
+> POLE strictly inside its length — a blind counterbore's bottom, read off
+> vertices because the weld drops a Lathe's `parameters.points`; a hub
+> drawn solid to the axis has its poles at its END faces because the arbor
+> is there. Two instrument truths found on the way: a member is seated by
+> its BOX centre, not its vertex mean (a Lathe's seam survives the weld as
+> two vertices per ring and nine points standing for eight lean r/9 toward
+> φ = 0 — 0.09 off-axis on this body), and along the line through BOTH
+> members' origins in a's sense (a 2.7 u eight-segment stub's fitted
+> direction is 0.09 off at the body's centre). Control: every other unit's
+> `turning` rows identical to main. As read now — body **18.0**, fork stub
+> **8.6**, rod stub **6.7**, all silent; the three hanger bushes (OD 1.0
+> rings 0.3 long) move to the `ambiguous` REPORT as discs.
 >
-> **`TURN_WAIVERS`, re-targeted, not retired.** The clustered 3-mesh row is
-> gone; `Alarm link::alarmLinkNeckRod` replaces it. The classifier's own
-> boundary puts a FLOOR under this stub's L/D independent of how far past
-> 50% the lap is cut — total ≥ 2 · exposed as the embedded fraction → 0.5⁺,
-> so L/D ≥ exposed / neckR = **20.43**, over `TURN_LD_MAX` (20) by
-> construction, before any margin for a robust (not float-noise) split. At
-> the 0.51 fraction actually cut it reads 20.8. The exposed length
-> (`ALARM_LINK_ROD_END_OVERHANG`) and the neck radius
-> (`ALARM_LINK_SHAFT_NECK_R = ALARM_LINK_CRANK_OFF − ALARM_LINK_CRANK_T/2`)
-> are both fixed by other constraints this landing does not spend — the
-> neck radius is the crank's own lever arm. Retiring this waiver needs a
-> fatter neck, i.e. a different `ALARM_LINK_CRANK_OFF` — filed with this
-> item's existing three-option record, unresolved by any of the three.
+> **The stall** (item 7). `probe-82` reads **1006.54 mN** (was 81.02), and
+> the boot's series sum reads 1006.54 — but only after two of the PROBE's
+> own readings were corrected, because the two paths parted by 4% the
+> moment the shaft stopped governing them: it reflected the pin by its
+> PATH (the arc's 0.22 slide does no work on the ring; the ratio is the
+> displacement along the load, 1.0, as the solve holds) and it cubed the
+> tail blade's WIDTH instead of its thickness (15.7× too stiff — under 1%
+> of the chain's compliance until now, so never seen). Governing member
+> unchanged, the rod-end overhang (60% of the compliance; fork-end stub
+> 29%, tail 4%, spans 3% each). `covers` the 5–50 mN band by 20×.
 >
-> **The stall** (item 7). `tools/probe-82-alarm-stall.mjs` (fixed to read
-> the body's radius off a Lathe's bounding box, not a Cylinder-only
-> `parameters.radiusTop` that no longer exists — the same "vertices are not
-> the surface" family as the census fix above): **81.02 → 171.87 mN**,
-> still `covers` the 5–50 mN band with room. The governing member is
-> unchanged, **`shaft, rod-end overhang`** — it was already neck stock
-> before this landing (§232 cut it that way), so this landing's rise did
-> not hand it the governorship, it already held it; what moved is the two
-> SPAN terms, stiffened ~80× by the body's new turning-target section, and
-> the third station's new position (span 1/2 swap from the move in item 3).
+> **Instruments corrected**: `probe-234-shaft-body-corridor.mjs`' control (a)
+> read a Lathe body's OD as null and passed vacuously — it reads the
+> profile's widest point now and FAILS on null; `probe-82` as above.
+> `probe-direction-guards.mjs` not run: no direction-committed cut changed.
 >
-> **Boot is silent** on a virgin profile — every guard this landing's own
-> code carries (the stratum re-check, the hoisted-value reconciliations,
-> the registration solve's own asserts, the §137 transfer assert) fires
-> clean. `node tools/probe-direction-guards.mjs` was not run: no
-> direction-committed cut changed (this landing moves things in Z and
-> re-sections stock; the escapement, dial seam, motor, keyless chain and
-> winding arrest are all untouched).
->
-> The `TURN_WAIVERS` row is re-worded a second time, naming the census
-> floor rather than the stratum; it stands until `ALARM_LINK_CRANK_OFF`
-> itself is re-derived, which is out of section-change reach as written in
-> option 2's own closed record above.
+> **The bar.** [to be filled from the battery]
 
 ### Group B — members that cross the movement or reach the case band (8 rows)
 
