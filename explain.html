@@ -247,9 +247,10 @@
   <details class="mech" id="vocabulary">
     <summary>Vocabulary &mdash; the words the rest of this page uses without stopping<span class="where">how to read the entries</span></summary>
     <div class="mech-body">
-      <p>Three families of word do most of the work below, and the entries lean on all three
+      <p>Five families of word do most of the work below, and the entries lean on all five
       without pausing. None of it is watchmaking's vocabulary &mdash; it is this project's, and
-      it exists because the movement is checked by instruments rather than by eye. The same
+      it exists because the movement is checked by instruments rather than by eye; the shape
+      words are the one loan, ordinary geometry held here to one meaning each. The same
       words carry the same meanings in the repository's own documents.</p>
       <figure>
         <div class="fig-head"><span class="fig-no">TABLE</span><span class="fig-title">Where a part sits</span></div>
@@ -281,6 +282,53 @@
                   deliberately no second one: a part is a margin clear of its neighbours or it
                   is a defect, and a mechanism that needs its own looser number is a mechanism
                   that has not been solved.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </figure>
+      <figure>
+        <div class="fig-head"><span class="fig-no">TABLE</span><span class="fig-title">Shape and direction</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Word</th><th>What it means here</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>azimuth</td>
+                  <td>Angular position ABOUT an axis &mdash; where a part sits around a circle,
+                  as distinct from how far out it sits and how high. It is usually the cheapest
+                  quantity to change when a mechanism has to be packed into real space, which is
+                  why entries below say an azimuth was <em>scored</em> or <em>solved</em> against
+                  the corridors rather than drawn.</td></tr>
+              <tr><td>annulus</td>
+                  <td>The flat ring between an inner and an outer radius. Most of the free room
+                  in this movement is annular &mdash; between a plate's rim and the case bore,
+                  between a hub and a wheel's root circle &mdash; so a part's allowance is stated
+                  as the annulus it may occupy rather than as a box, and its footprint is the
+                  annulus it sweeps rather than its resting silhouette.</td></tr>
+              <tr><td>chord</td>
+                  <td>A straight run between two points of a curve. It appears as a shape (the
+                  escapement's impulse face is the chord of the tooth tip's own path) and as an
+                  error term (a tessellated curve's chords lie INSIDE the metal, so a drawn
+                  circle is always a little small &mdash; which is the direction a clearance
+                  check can afford to be wrong in).</td></tr>
+              <tr><td>tangent</td>
+                  <td>The direction a curve is going where something touches it, which in a train
+                  is the direction force can actually be delivered. A tangent between two circles
+                  has two branches, and taking the wrong one reverses a mechanism while changing
+                  nothing you can see &mdash; which is why direction is declared once and
+                  guarded against the metal.</td></tr>
+              <tr><td>throw</td>
+                  <td>A displacement stated as motion rather than as size: how far a cam, finger
+                  or eccentric MOVES its follower across its working travel. A budget is sized
+                  against a part's throw; its radius is a different number and sizing against
+                  that is how a budget ends up larger than the stroke it polices.</td></tr>
+              <tr><td>envelope</td>
+                  <td>The bounding surface a derived law gives, as opposed to a profile someone
+                  drew: the fusee's groove is cut to the envelope its radius law hands it, and the
+                  lathed core beneath is that same envelope relieved for the chain stack leaning
+                  on it. A budget's <em>envelope</em> is the other sense of the word &mdash; an
+                  allowed range, inherited rather than chosen.</td></tr>
             </tbody>
           </table>
         </div>
@@ -331,6 +379,55 @@
                   will fix it. It is not a pass and it never buys itself by widening a
                   tolerance: the row keeps failing and stays visible in the report. This page
                   states the open debt of each mechanism for the same reason.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </figure>
+      <figure>
+        <div class="fig-head"><span class="fig-no">TABLE</span><span class="fig-title">How a mechanism is designed</span></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Word</th><th>What it means here</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>action group</td>
+                  <td>Everything that carries ONE input to ONE output &mdash; pusher to pawl to
+                  column to ring, crown through the keyless works to the hands. It is the unit of
+                  design the way a unit is the unit of measurement: a group is proved from the
+                  inside first &mdash; the causality arrives, the members can do the job as matter
+                  &mdash; and only then made to fit the space around it.</td></tr>
+              <tr><td>the line</td>
+                  <td>A new group is designed STRAIGHT first: input at one end, output at the
+                  other, no packaging. In a line it is structurally impossible to pay for an
+                  awkward route with a longer lever, so the quantities the line settles &mdash;
+                  mesh ratios, arm lengths, displacement gains, stall forces &mdash; become the
+                  reference the built version is measured back to.</td></tr>
+              <tr><td>fold</td>
+                  <td>Folding that line into the space the movement actually has. A fold may only
+                  spend position: azimuth about a mesh point, a different stratum, a moved
+                  station, an added corner or idler. It may not spend the mechanism &mdash; a
+                  lever that grew because the route was tight is the defect this whole vocabulary
+                  exists to name.</td></tr>
+              <tr><td>fork</td>
+                  <td>A departure from the line's numbers that is DECLARED, each changed quantity
+                  re-derived in place from the constraint that forced it. A fold keeps the
+                  mechanism and moves it; a fork changes what the mechanism is, so it is named in
+                  the source &mdash; the alarm's lifting lever carries this page's one. Force and
+                  section budgets are inherited and are never forkable.</td></tr>
+              <tr><td>corner</td>
+                  <td>A place where motion changes direction, treated as a real part with its own
+                  duties rather than as a bend in a drawing. Each one states which of the seven
+                  named idioms it is &mdash; a bevel pair, an idler dogleg, a crank, a rigid bent
+                  link, a riser, a pin in a slot, a grounded blade &mdash; and the force or lever
+                  arithmetic that earns it.
+                  Distinct from a pallet stone's <em>locking corner</em> in the escapement below,
+                  which is an edge of metal.</td></tr>
+              <tr><td>idler</td>
+                  <td>A wheel added for routing rather than for ratio &mdash; equal counts in and
+                  out, so it shifts a drive sideways, or reverses it, without changing what
+                  arrives at the far end. Idlers and corners are the two parts a fold is allowed
+                  to add, and each is a real part with its own sections and clearances.</td></tr>
             </tbody>
           </table>
         </div>

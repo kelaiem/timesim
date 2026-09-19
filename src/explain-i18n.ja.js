@@ -33,7 +33,7 @@ export default {
   // ---- vocabulary (the glossary block: where a part sits, what the
   //      instruments claim, and the two words used strictly) ----
   ['Vocabulary — the words the rest of this page uses without stopping<span class="where">how to read the entries</span>']: '用語 — このページの残りが説明なしに使う言葉<span class="where">各項目の読み方</span>',
-  ['Three families of word do most of the work below, and the entries lean on all three without pausing. None of it is watchmaking\'s vocabulary — it is this project\'s, and it exists because the movement is checked by instruments rather than by eye. The same words carry the same meanings in the repository\'s own documents.']: '以下では三つの語族がほとんどの働きを担っており、各項目は立ち止まることなくその三つに寄りかかっている。どれも時計製作の用語ではなく、このプロジェクトの用語である。機械が目視ではなく計測器によって検査されるからこそ存在する語彙であり、同じ言葉はリポジトリ自身の文書でも同じ意味を持つ。',
+  ['Five families of word do most of the work below, and the entries lean on all five without pausing. None of it is watchmaking\'s vocabulary — it is this project\'s, and it exists because the movement is checked by instruments rather than by eye; the shape words are the one loan, ordinary geometry held here to one meaning each. The same words carry the same meanings in the repository\'s own documents.']: '以下では五つの語族がほとんどの働きを担っており、各項目は立ち止まることなくその五つに寄りかかっている。どれも時計製作の用語ではなく、このプロジェクトの用語である。ただし形を表す語だけは借り物で、ありふれた幾何学の言葉をここではそれぞれ一つの意味に絞って使う。機械が目視ではなく計測器によって検査されるからこそ存在する語彙であり、同じ言葉はリポジトリ自身の文書でも同じ意味を持つ。',
   ['Where a part sits']: '部品がどこに座るか',
   ['What the instruments claim']: '計測器が何を主張するか',
   ['Two words this project uses strictly']: 'このプロジェクトが厳密に使う二語',
