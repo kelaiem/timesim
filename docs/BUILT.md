@@ -26763,7 +26763,18 @@ untouched — step 3a's own row), 0 stale, control PASS. `stockFloor`,
 `intraUnit`, `assembly` and `expectedContacts` unchanged at 0 unwaived.
 Against a fresh `origin/main` worktree (which predates step 3a and carries
 its own delta too), every changed row traces to the rod's radius
-(0.30 → 0.5533) or to step 3a's already-recorded `SETTING_ROD_R` change —
+(0.30 → 0.5533) or to step 3a's already-recorded `SETTING_ROD_R` change.
+Named, timing columns aside: `turning` waived 3 → 2 and needRest 34 → 35
+(`Alarm link::alarmLinkRod` at L/D 18.0 is in the 10–20 follower-rest band,
+a REPORT); `alarmHandoffs` `beak tail ⇄ rod top` armed −0.015 → **−0.0275**
+and `rod foot ⇄ rim crank` disarmed/setting 0.0215 → −0.01 — the rod's own
+two contacts, re-measured against its fatter surface, both inside the
+±0.03 tolerance and the first now at 92% of it, which is worth knowing
+before anything else moves the rod's top; `sweptOverlap`'s two refuted
+`Alarm link` rows (⇄ `Alarm lifting lever`, ⇄ `Case`) refine to 0.197 and
+0.1776, still over `CLEAR_MARGIN`; `slenderness`
+`Keyless works::settingTraverse` λ 39.2 → 36 is step 3a's; the fingerprint
+hash moves because the metal did. Nothing else moved —
 `probe-l3-shaft-ld-filter.mjs` and the two scratch dry-run probes this
 landing used to find the honest footprint are documented in the tool's own
 header; no new mechanism, no widened margin, `CLEAR_MARGIN` untouched.
