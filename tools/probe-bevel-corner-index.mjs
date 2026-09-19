@@ -304,6 +304,11 @@ const out = await page.evaluate(async () => {
   rows.push(['ALARM', corner('ALARM    alarmDiscBevel ⇄ alarmStemBevel', 'alarmDiscBevel', 'alarmStemBevel')]);
   rows.push(['CTRL-DROP', corner('CONTROL  mwCornerDropIn ⇄ mwCornerDropOut', 'mwCornerDropIn', 'mwCornerDropOut')]);
   rows.push(['CTRL-RISE', corner('CONTROL  mwCornerRiseIn ⇄ mwCornerRiseOut', 'mwCornerRiseIn', 'mwCornerRiseOut')]);
+  // §234 fold — the third motion-works corner, and the first NON-MITRE through
+  // this probe (Σ ≈ 150°): `corner` reads each blank's own pitch angle off its
+  // solid, so nothing here assumes 45°, and the row is a control like its two
+  // neighbours — solved by the same `bevelCornerSpin` at build.
+  rows.push(['CTRL-FOLD', corner('CONTROL  mwCornerFoldIn ⇄ mwCornerFoldOut', 'mwCornerFoldIn', 'mwCornerFoldOut')]);
 
   L.push('\nMUST-HIT — inject +0.25 pitch into alarmDiscBevel; the reading must move by exactly 0.25');
   const D = byName('alarmDiscBevel'); const z0 = D.rotation.z;

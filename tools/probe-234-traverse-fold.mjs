@@ -11,55 +11,72 @@
 // FOLD: one added bevel corner K splitting the run into two legs judged
 // separately by `turnedBars` (a kink off the axis LINE is what splits a bar).
 //
-// THE SOLVE, all of it read off the metal and none of it chosen:
-//   · LEG_R = (plate back face − Z_SETTING) − CLEAR_MARGIN — the section the
-//     corridor's OTHER wall leaves once the reserve pinch is dodged; the same
-//     "governing neighbour − margin" law SETTING_ROD_R itself was derived by,
-//     with the neighbour changed by the fold from reservePinion0 to the plate.
-//   · leg 2 (K→B) must MISS the reserve column in plan, because at LEG_R its
-//     underside is below reservePinion0's top: D = p0's tip radius (max vertex
-//     radius about the barrel axis) + LEG_R + CLEAR_MARGIN, and the barrel-arbor
-//     extension's own radius + LEG_R + margin as the second bound (the larger
-//     governs). Swung about B, the least such swing is
-//     β = asin(D / |B − barrel|) − φ, φ the barrel's own bearing off BA.
-//     That ray exists on EITHER side of the column — swing by φ − asin(D/dB)
-//     to pass it on the far side from the transfer arbor, or by φ + asin(D/dB)
-//     to pass it on the near side — and the first cut of this probe took the
-//     smaller swing without asking what else stood there. The answer was the
-//     WINDING TRANSFER ARBOR (the crown-wheel arbor, r 0.7, climbing through
-//     the plate 1.92 u off the run's mid-point): K landed 0.45 u from its axis
-//     and leg 2's line 0.28 u from it, and the probe read "no wall in plan"
-//     because the arbor is a Keyless works member and the whole unit had been
-//     excluded as ground. The skill's trap, verbatim. Now BOTH rays are solved,
-//     the transfer arbor is a second closed-form bound (each leg's line must
-//     pass its axis by arborR + LEG_R + CLEAR_MARGIN), and the exclusion is the
-//     SEVEN meshes the fold actually replaces or re-keys — the traverse, the
-//     four corner blanks at A and B, the drop and the rise — nothing else.
-//   · K is the point on the chosen ray with |AK| = |KB| — the split that gives
-//     both legs the same L/D, i.e. the same margin under the target; any other
-//     split spends one leg's margin on the other's. The deflection at K is then
-//     2β and the bevel pair's shaft angle Σ = 180° − 2β, which `bevelToothSpec`
-//     takes directly (pitch angle γ = Σ/2 for equal counts).
-// Nothing here is a knob: change the plate, the reserve pinion, the transfer
-// arbor or the corner's counts and K moves with them.
+// THE SOLVE, all of it read off the metal and none of it chosen — and it took
+// three cuts to get the SHAPE of it right, each refused by measurement:
+//   1. one section for both legs (the plate's 0.55) and the equal-leg split on
+//      the small-swing ray: K landed 0.45 u from the WINDING TRANSFER ARBOR
+//      (the crown-wheel arbor, r 0.7, 1.92 u off the run's mid-point) and the
+//      probe said "no wall in plan" because it had excluded the whole Keyless
+//      works unit as ground. The skill's trap, verbatim. The exclusion is now
+//      the SEVEN meshes the fold replaces or re-keys (traverse, the four
+//      corner blanks at A and B, drop, rise) and nothing else.
+//   2. the same on the other ray (K on the barrel's side): leg 1 at 29° ran
+//      INTO the Yoke 4–6 u from A (inside its body, not near it), and leg 2 at
+//      r 0.55 sat 0.075 into the reserve train's margin — the w1/p1 stratum
+//      under the barrel side tops 0.1 below reservePinion0, so the plate is
+//      not that leg's governing wall at all.
+//   3. this one. The two legs have DIFFERENT governing neighbours, so each
+//      takes its own section by the same law SETTING_ROD_R was derived by
+//      (governing neighbour − CLEAR_MARGIN):
+//        LEG1_R = (plate back face − Z_SETTING) − CLEAR_MARGIN      (0.55)
+//        LEG2_R = (Z_SETTING − RSV_P0_TOP_Z) − CLEAR_MARGIN         (0.382, the traverse's own)
+//      and each swings exactly as far as ITS wall forces:
+//        β2 — leg 2 from B, toward the barrel's side, until the barrel-arbor
+//             extension (r extR, vertical through the plane at the barrel's
+//             XY) is passed by extR + LEG2_R + CLEAR_MARGIN:
+//             β2 = φ + asin(need / |B − barrel|). At LEG2_R the leg still
+//             passes OVER reservePinion0 exactly as the traverse does today.
+//        α  — leg 1 from A, toward the same side, the LARGEST swing whose
+//             first run clears the Yoke at LEG1_R over the whole pose net
+//             (the Yoke moves with crownPullT). MEASURED here, by walking
+//             the leg at each candidate angle — the Yoke is a fork, not a
+//             circle, and a closed form for it would be a guess. Largest,
+//             because K = the two rays' intersection and |AK| shrinks as α
+//             grows: the Yoke is the constraint that binds before the
+//             equal-margin split would (13.1° wanted, measured ~11° allowed).
+//      K is the intersection; the deflection at K is α + β2 and the bevel
+//      pair's shaft angle Σ = 180° − (α + β2), which `bevelToothSpec` takes
+//      directly (γ = Σ/2 for equal counts). The mirror-image fold on the
+//      transfer arbor's side degenerates (α ≤ 2° before the arbor, β2 ≤ 1°
+//      before the column: Σ → 177°, leg 2 ≈ 21 u at 0.382, L/D 27, over the
+//      gate) and is refused in the closed form below, not by taste.
+// Nothing here is a knob: change the plate, the reserve pinion, the arbor
+// extension, the Yoke or the corner's counts and K moves with them.
 //
-// WHAT IS MEASURED (over the full pose net, `digestPoses`, for BOTH sides,
-// with only the seven replaced/re-keyed meshes excluded):
+// WHAT IS MEASURED (over the full pose net, `digestPoses`, the seven
+// replaced meshes excluded and nothing else):
 //   1. CONTROL (a): the straight run A→B walked by THIS probe's segment walker
 //      must reproduce the mesh-based probe's pinch (worst free r ≈ 0.382 under
 //      the reserve, and 0.55 against the plate above) — otherwise the walker is
 //      not seeing the metal the other instrument saw.
-//   2. Leg 1 (A→K) and leg 2 (K→B), station by station, free radius split by
-//      side (below / above / plan). Every station must read ≥ LEG_R; the plate
-//      above reading EXACTLY LEG_R is the derivation closing, not a miss.
-//   3. The corner blanks: K's two gears at their new axes, A's outboard gear
-//      and B's inboard gear re-aimed along the legs — each blank sampled on its
-//      tip circle and at half radius, in its own plane. Walls BELOW and IN PLAN
-//      are findings; the base plate ABOVE is expected (A's corner already bores
-//      the plate to its tip circle, BACK_PLATE_HOLES) and is reported as the
-//      recess K needs, not as a miss.
-//   4. CONTROL (b): the bevel spec at Σ must be external (γ < 90°) and cut
-//      with a face width > 0 at bore LEG_R — printed, with any generator warning.
+//   2. The α scan: leg 1's first ALPHA_RUN u at LEG1_R for every candidate
+//      angle, the worst station per angle; α_max is the largest angle that
+//      clears, and the table is printed whole.
+//   3. Leg 1 (A→K) at LEG1_R and leg 2 (K→B) at LEG2_R, station by station,
+//      free radius split by side. Every station must read ≥ its leg's r; a
+//      wall reading EXACTLY the leg's r is the derivation closing, not a miss.
+//   4. The corner blanks — K's two gears at Σ, A's outboard and B's inboard
+//      mitres re-aimed along the legs — sampled on the BLANK ITSELF: the
+//      spherical cap of radius coneR about the apex out to the tip cone's
+//      angle, plus the small-end tip ring at coneRi. (The first cuts sampled a
+//      flat disc of radius tipR AT the apex plane, which a 45° mitre never
+//      fills — it read A's re-aimed blank into the minute pinion that the
+//      shipped blank, the same cone turned about z, has never touched.)
+//      Walls BELOW and IN PLAN are findings; the base plate ABOVE is expected
+//      at K (A's corner already bores the plate to its tip circle,
+//      BACK_PLATE_HOLES) and is reported as the recess K needs.
+//   5. CONTROL (b): the bevel spec at Σ must be external (γ < 90°) and cut
+//      with a face width > 0 at the legs' bores — printed, with any warning.
 //
 // NOT probe-234-shaft-body-corridor.mjs (that walks an EXISTING mesh's own
 // axis; this walks CANDIDATE segments that have no mesh yet). NOT
@@ -68,7 +85,7 @@
 // (the sautoir anchor's fold, a different part and a 2D box scan).
 //
 // Usage: cd tools && node probe-234-traverse-fold.mjs [out.json]
-//        env STEP=0.5 SEARCH=3.0
+//        env STEP=0.5 SEARCH=3.0 ALPHA_RUN=12 ALPHA_MIN=0 ALPHA_MAX=30 ALPHA_STEP=1 (ALPHA_FIXED=n skips the scan)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
@@ -77,6 +94,11 @@ const PORT = process.env.PORT || 8562;
 const ROOT = process.env.ROOT || '..';
 const STEP = +(process.env.STEP || 0.5);
 const SEARCH = +(process.env.SEARCH || 3.0);
+const ALPHA_RUN = +(process.env.ALPHA_RUN || 12);
+const ALPHA_MAX = +(process.env.ALPHA_MAX || 30);
+const ALPHA_MIN = +(process.env.ALPHA_MIN || 0);
+const ALPHA_STEP = +(process.env.ALPHA_STEP || 1);
+const ALPHA_FIXED = process.env.ALPHA_FIXED != null ? +process.env.ALPHA_FIXED : null;   // skip the scan and walk the fold at this α (re-runs after a scan)
 
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 process.on('exit', () => srv.kill());
@@ -90,7 +112,7 @@ await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', time
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
 const bootWarns = warns.length;
 
-const R = await page.evaluate(async ({ STEP, SEARCH }) => {
+const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED }) => {
   const THREE = await import('./vendor/three.module.js');
   const I = await import('./src/inspect.js');
   const G = await import('./src/geometry.js');
@@ -125,7 +147,7 @@ const R = await page.evaluate(async ({ STEP, SEARCH }) => {
   const Z = A.z;
   const plate = byName.get('backPlate'); if (!plate) throw new Error('backPlate not found');
   const plateBack = new THREE.Box3().setFromObject(plate).min.z;
-  const LEG_R = (plateBack - Z) - CLEAR_MARGIN;
+  const LEG1_R = (plateBack - Z) - CLEAR_MARGIN;
   const barrel = { x: clock.P.barrel.x, y: clock.P.barrel.y };
   const p0g = clock.scene.getObjectByName('reservePinion0'); if (!p0g) throw new Error('reservePinion0 not found');
   p0g.updateWorldMatrix(true, true);
@@ -146,47 +168,62 @@ const R = await page.evaluate(async ({ STEP, SEARCH }) => {
   const tArbR = tArb.geometry.parameters?.radiusTop ?? null;
   if (tArbR == null) throw new Error('transferArbor is not a plain cylinder — its radius cannot be read');
   // ---- the solve ----
-  const p0Binds = (Z - LEG_R) < p0Top + CLEAR_MARGIN;   // at LEG_R the leg's underside is below p0's top: its TIP circle must be missed in plan
-  const D_p0 = p0Tip + LEG_R + CLEAR_MARGIN, D_ext = extR + LEG_R + CLEAR_MARGIN;
-  const D = Math.max(p0Binds ? D_p0 : 0, D_ext);
+  const LEG2_R = (Z - p0Top) - CLEAR_MARGIN;                       // the traverse's own law, re-derived here off the same pinion
+  const leg2OverP0 = Math.abs(LEG2_R - rodR) < 1e-3;              // control: this IS the shipped SETTING_ROD_R
   const u = B.clone().sub(A); const Lab = u.length(); u.normalize();
   const n = new THREE.Vector3(-u.y, u.x, 0);
   const across = (barrel.x - A.x) * n.x + (barrel.y - A.y) * n.y;   // barrel's side of AB, signed
   const along = (barrel.x - A.x) * u.x + (barrel.y - A.y) * u.y;
+  const side = across >= 0 ? 1 : -1;                                // K swings to the barrel's side
   const dB = Math.hypot(barrel.x - B.x, barrel.y - B.y);
   const BA = A.clone().sub(B).normalize();
   const toBar = new THREE.Vector3(barrel.x - B.x, barrel.y - B.y, 0).normalize();
   const phi = Math.acos(Math.min(1, Math.max(-1, BA.dot(toBar))));
-  const needArb = tArbR + LEG_R + CLEAR_MARGIN;
-  const distLine = (P, Q, X) => { const d = Q.clone().sub(P); const L = d.length(); d.normalize(); return Math.abs((X.x - P.x) * -d.y + (X.y - P.y) * d.x); };
+  const needCol = extR + LEG2_R + CLEAR_MARGIN;
+  const beta2 = phi + Math.asin(needCol / dB);
+  const needArb = tArbR + LEG1_R + CLEAR_MARGIN;
+  const distLine = (P, Q, X) => { const d = Q.clone().sub(P); d.normalize(); return Math.abs((X.x - P.x) * -d.y + (X.y - P.y) * d.x); };
+  const distSeg = (P, Q, X) => { const d = Q.clone().sub(P); const L = d.length(); d.normalize(); const t = Math.min(L, Math.max(0, (X.x - P.x) * d.x + (X.y - P.y) * d.y)); return Math.hypot(P.x + d.x * t - X.x, P.y + d.y * t - X.y); };
   const teeth = 10, module = 0.3; // BEVEL_TEETH / BEVEL_MODULE — the motion-works corners' counts (read as the shipped gears' pitch: below)
   const gearA = byName.get('mwCornerDropOut');
   const shippedPitchR = gearA?.parent?.userData?.r ?? null;
-  const barrelSide = across >= 0 ? 1 : -1;   // which side of AB the barrel column stands on
-  const solveSide = (side) => {
-    // side = the side of AB that K swings to. Passing the column on the side AWAY
-    // from K is the small swing (asin − φ); passing it on K's own side is the
-    // large one (asin + φ). φ is the column's bearing off BA, on barrelSide.
-    const beta = side === barrelSide ? Math.asin(D / dB) + phi : Math.asin(D / dB) - phi;
-    const ell = (Lab / 2) / Math.cos(beta);
-    const K = A.clone().addScaledVector(u, Lab / 2).addScaledVector(n, side * (Lab / 2) * Math.tan(beta));
-    const sigmaDeg = 180 - 2 * (beta * 180 / Math.PI);
+  const rot = (v, ang) => new THREE.Vector3(v.x * Math.cos(ang) - v.y * Math.sin(ang), v.x * Math.sin(ang) + v.y * Math.cos(ang), 0);
+  const leg1DirAt = (alpha) => rot(u, side * alpha);               // leg 1 from A swung toward K's side
+  const leg2Ray = rot(BA, -side * beta2);                           // leg 2 from B, swung toward the same side (BA's left normal is −n)
+  const intersect = (P, d1, Q, d2) => { const det = d1.x * -d2.y - d1.y * -d2.x; const t = ((Q.x - P.x) * -d2.y - (Q.y - P.y) * -d2.x) / det; return P.clone().addScaledVector(d1, t); };
+  const foldFor = (alphaDeg) => {
+    const alpha = alphaDeg * Math.PI / 180;
+    const K = intersect(A, leg1DirAt(alpha), B, leg2Ray);
     const leg1 = K.clone().sub(A).normalize(), leg2 = B.clone().sub(K).normalize();
+    const deflDeg = alphaDeg + beta2 * 180 / Math.PI;
+    const sigmaDeg = 180 - deflDeg;
     const specWarns = [];
     const origWarn = console.warn; console.warn = (m) => specWarns.push(String(m));
-    const spec = G.bevelToothSpec({ module, teeth, mateTeeth: teeth, shaftAngleDeg: sigmaDeg, boreR: LEG_R, mateBoreR: LEG_R });
+    const spec = G.bevelToothSpec({ module, teeth, mateTeeth: teeth, shaftAngleDeg: sigmaDeg, boreR: LEG1_R, mateBoreR: LEG2_R });
     console.warn = origWarn;
     const gammaDeg = Math.atan2(Math.sin(sigmaDeg * Math.PI / 180), 1 + Math.cos(sigmaDeg * Math.PI / 180)) * 180 / Math.PI;
-    return { side, betaDeg: beta * 180 / Math.PI, K: K.toArray(), ell, legLen1: A.distanceTo(K), legLen2: K.distanceTo(B),
-      missBarrel2: distLine(K, B, new THREE.Vector3(barrel.x, barrel.y, 0)), missBarrel1: distLine(A, K, new THREE.Vector3(barrel.x, barrel.y, 0)),
-      missArb1: distLine(A, K, tArbXY), missArb2: distLine(K, B, tArbXY), needArb,
-      sigmaDeg, gammaDeg, ldLeg: ell / (2 * LEG_R), ldLegAtRodR: ell / (2 * rodR),
-      spec: Object.fromEntries(Object.entries(spec).filter(([, x]) => typeof x === 'number')), specWarns, K3: K, leg1, leg2 };
+    return { alphaDeg, beta2Deg: beta2 * 180 / Math.PI, K: K.toArray(), legLen1: A.distanceTo(K), legLen2: K.distanceTo(B),
+      ld1: A.distanceTo(K) / (2 * LEG1_R), ld2: K.distanceTo(B) / (2 * LEG2_R),
+      missCol2: distLine(K, B, new THREE.Vector3(barrel.x, barrel.y, 0)), missCol1: distSeg(A, K, new THREE.Vector3(barrel.x, barrel.y, 0)),
+      missArb1: distSeg(A, K, tArbXY), missArb2: distSeg(K, B, tArbXY),
+      deflDeg, sigmaDeg, gammaDeg, spec: Object.fromEntries(Object.entries(spec).filter(([, x]) => typeof x === 'number')), specWarns, K3: K, leg1, leg2 };
   };
-  const sides = { plus: solveSide(1), minus: solveSide(-1) };
-  const spec90 = G.bevelToothSpec({ module, teeth, mateTeeth: teeth, shaftAngleDeg: 90, boreR: LEG_R, mateBoreR: LEG_R, quiet: true });
-  // the transfer arbor's own bearing off the run, for the record
+  // the equal-margin split, for the record (what α WOULD be if nothing stood in the way)
+  const alphaEqualDeg = Math.asin(Math.min(1, Math.sin(beta2) * LEG2_R / LEG1_R)) * 180 / Math.PI;
+  const spec90 = G.bevelToothSpec({ module, teeth, mateTeeth: teeth, shaftAngleDeg: 90, boreR: LEG1_R, mateBoreR: LEG1_R, quiet: true });
   const arbAlong = (tArbXY.x - A.x) * u.x + (tArbXY.y - A.y) * u.y, arbAcross = (tArbXY.x - A.x) * n.x + (tArbXY.y - A.y) * n.y;
+  // the mirror fold, closed form only: leg 2 passing the column on the far side, leg 1 bounded by the transfer arbor
+  const mirror = (() => {
+    const b2 = phi - Math.asin(needCol / dB);
+    const ray2 = rot(BA, -side * b2);
+    // leg 1 swung away from the barrel's side until it grazes the transfer arbor at needArb
+    const dA = Math.hypot(tArbXY.x - A.x, tArbXY.y - A.y);
+    const bearing = Math.atan2(arbAcross, arbAlong); // arbor's bearing off AB (signed toward +n)
+    const aMax = -(bearing) - Math.asin(needArb / dA) * (arbAcross < 0 ? -1 : 1); // toward the arbor's side, stopping short of it
+    const a = Math.max(0, Math.abs(aMax)) * (arbAcross < 0 ? -1 : 1);
+    const K = intersect(A, rot(u, a), B, ray2);
+    return { beta2Deg: b2 * 180 / Math.PI, alphaDeg: a * 180 / Math.PI, legLen1: A.distanceTo(K), legLen2: K.distanceTo(B), ld2: K.distanceTo(B) / (2 * LEG2_R), sigmaDeg: 180 - Math.abs(a * 180 / Math.PI) - Math.abs(b2 * 180 / Math.PI) };
+  })();
 
   // ---- the walker ----
   const poses = I.digestPoses(clock);
@@ -198,118 +235,144 @@ const R = await page.evaluate(async ({ STEP, SEARCH }) => {
   const boxCache = new Map();
   const worldBox = (o) => { let b = boxCache.get(o); if (!b) { b = new THREE.Box3().setFromObject(o); boxCache.set(o, b); } return b; };
   const fresh = () => ({ gap: Infinity, owner: null, poseIdx: null });
-  // sets of sample points, each a { pts: [Vector3], rows } — all scanned in ONE pass over the pose net
+  // sets of sample points, each a { pts: [Vector3], rows }; `walk` scans a batch over the whole pose net
   const sets = {};
-  const addSet = (key, pts, meta) => { sets[key] = { meta, pts, rows: pts.map((p, i) => ({ i, p: [+p.x.toFixed(4), +p.y.toFixed(4), +p.z.toFixed(4)], gap: Infinity, owner: null, poseIdx: null, dir: null, below: fresh(), above: fresh(), plan: fresh() })) }; };
+  const addSet = (key, pts, meta) => { sets[key] = { meta, pts, rows: pts.map((p, i) => ({ i, p: [+p.x.toFixed(4), +p.y.toFixed(4), +p.z.toFixed(4)], gap: Infinity, owner: null, poseIdx: null, dir: null, below: fresh(), above: fresh(), plan: fresh() })) }; return sets[key]; };
   const segPts = (P, Q) => { const L = P.distanceTo(Q), d = Q.clone().sub(P).normalize(); const pts = []; for (let t = 0; t <= L + 1e-9; t += STEP) pts.push(P.clone().addScaledVector(d, Math.min(t, L))); if (L - (pts.length - 1) * STEP > 1e-6) pts.push(Q.clone()); return pts; };
-  addSet('lineAB', segPts(A, B), { kind: 'control', from: 'A', to: 'B', r: rodR });
-  // blank samples: the tip circle and the half-radius circle in the plane ⟂ the gear's axis, 24 azimuths each
-  const blankPts = (c, ax, tipR) => { const a = ax.clone().normalize(); const t1 = Math.abs(a.z) < 0.9 ? new THREE.Vector3(0, 0, 1).cross(a).normalize() : new THREE.Vector3(1, 0, 0).cross(a).normalize(); const t2 = a.clone().cross(t1).normalize(); const pts = []; for (const rr of [tipR, tipR / 2]) for (let k = 0; k < 24; k++) { const th = (k / 24) * 2 * Math.PI; pts.push(c.clone().addScaledVector(t1, rr * Math.cos(th)).addScaledVector(t2, rr * Math.sin(th))); } return pts; };
-  for (const [tag, S] of Object.entries(sides)) {
-    addSet(`${tag}:leg1`, segPts(A, S.K3), { kind: 'leg', side: tag, from: 'A', to: 'K', r: LEG_R });
-    addSet(`${tag}:leg2`, segPts(S.K3, B), { kind: 'leg', side: tag, from: 'K', to: 'B', r: LEG_R });
-    addSet(`${tag}:blankK_in`, blankPts(S.K3, S.leg1, S.spec.tipR), { kind: 'blank', side: tag, at: 'K', axis: 'leg1' });
-    addSet(`${tag}:blankK_out`, blankPts(S.K3, S.leg2, S.spec.tipR), { kind: 'blank', side: tag, at: 'K', axis: 'leg2' });
-    addSet(`${tag}:blankA_out`, blankPts(A, S.leg1, spec90.tipR), { kind: 'blank', side: tag, at: 'A', axis: 'leg1' });
-    addSet(`${tag}:blankB_in`, blankPts(B, S.leg2, spec90.tipR), { kind: 'blank', side: tag, at: 'B', axis: 'leg2' });
-  }
-  const allPts = Object.values(sets).flatMap((s) => s.rows.map((r, i) => ({ s, r, p: s.pts[i] })));
-  const bbox = new THREE.Box3(); for (const q of allPts) bbox.expandByPoint(q.p);
-  const bc = bbox.getCenter(new THREE.Vector3()), br = bbox.getSize(new THREE.Vector3()).length() / 2;
   const probeMat = new THREE.Matrix4();
-  let lastAxis = null;
-  for (let pi = 0; pi < poses.length; pi++) {
-    const p = poses[pi];
-    if (p.axis !== lastAxis) { I.enterAxis(clock); lastAxis = p.axis; }
-    clock.setPose(p); clock.scene.updateMatrixWorld(true); boxCache.clear();
-    const near = [];
-    for (const o of obstacles) { const s = worldSphere(o); if (Math.hypot(s.x - bc.x, s.y - bc.y, s.z - bc.z) <= s.r + br + SEARCH + PROBE_R) near.push(o); }
-    for (const q of allPts) {
-      const pt = q.p;
-      probeMat.identity().setPosition(pt); probe.matrix.copy(probeMat); probe.matrixWorld.copy(probeMat);
-      let best = Infinity, bestOwner = null, bestVec = null;
-      for (const o of near) {
-        const s = worldSphere(o);
-        if (Math.hypot(s.x - pt.x, s.y - pt.y, s.z - pt.z) > s.r + SEARCH + PROBE_R) continue;
-        const d = I.meshClearance(probe, o, SEARCH);
-        if (!(d < SEARCH)) continue;
-        const bx = worldBox(o);
-        const cx = Math.min(Math.max(pt.x, bx.min.x), bx.max.x), cy = Math.min(Math.max(pt.y, bx.min.y), bx.max.y), cz = Math.min(Math.max(pt.z, bx.min.z), bx.max.z);
-        const vv = { dx: cx - pt.x, dy: cy - pt.y, dz: cz - pt.z };
-        const vertical = Math.abs(vv.dz) > Math.hypot(vv.dx, vv.dy);
-        const key = vertical ? (vv.dz < 0 ? 'below' : 'above') : 'plan';
-        const owner = `${unitOf.get(o) || '?'} / ${nameOf(o)}`;
-        if (d < q.r[key].gap) q.r[key] = { gap: d, owner, poseIdx: pi };
-        if (d < best) { best = d; bestOwner = owner; bestVec = vv; }
+  const walk = (batch) => {
+    const allPts = batch.flatMap((s) => s.rows.map((r, i) => ({ s, r, p: s.pts[i] })));
+    const bbox = new THREE.Box3(); for (const q of allPts) bbox.expandByPoint(q.p);
+    const bc = bbox.getCenter(new THREE.Vector3()), br = bbox.getSize(new THREE.Vector3()).length() / 2;
+    let lastAxis = null;
+    for (let pi = 0; pi < poses.length; pi++) {
+      const p = poses[pi];
+      if (p.axis !== lastAxis) { I.enterAxis(clock); lastAxis = p.axis; }
+      clock.setPose(p); clock.scene.updateMatrixWorld(true); boxCache.clear();
+      const near = [];
+      for (const o of obstacles) { const s = worldSphere(o); if (Math.hypot(s.x - bc.x, s.y - bc.y, s.z - bc.z) <= s.r + br + SEARCH + PROBE_R) near.push(o); }
+      for (const q of allPts) {
+        const pt = q.p;
+        probeMat.identity().setPosition(pt); probe.matrix.copy(probeMat); probe.matrixWorld.copy(probeMat);
+        let best = Infinity, bestOwner = null, bestVec = null;
+        for (const o of near) {
+          const s = worldSphere(o);
+          if (Math.hypot(s.x - pt.x, s.y - pt.y, s.z - pt.z) > s.r + SEARCH + PROBE_R) continue;
+          const d = I.meshClearance(probe, o, SEARCH);
+          if (!(d < SEARCH)) continue;
+          const bx = worldBox(o);
+          const cx = Math.min(Math.max(pt.x, bx.min.x), bx.max.x), cy = Math.min(Math.max(pt.y, bx.min.y), bx.max.y), cz = Math.min(Math.max(pt.z, bx.min.z), bx.max.z);
+          const vv = { dx: cx - pt.x, dy: cy - pt.y, dz: cz - pt.z };
+          const vertical = Math.abs(vv.dz) > Math.hypot(vv.dx, vv.dy);
+          const key = vertical ? (vv.dz < 0 ? 'below' : 'above') : 'plan';
+          const owner = `${unitOf.get(o) || '?'} / ${nameOf(o)}${o.name ? '' : ` [${o.geometry.type.replace('Geometry', '')} z ${bx.min.z.toFixed(2)}..${bx.max.z.toFixed(2)}]`}`;
+          if (d < q.r[key].gap) q.r[key] = { gap: d, owner, poseIdx: pi };
+          if (d < best) { best = d; bestOwner = owner; bestVec = vv; }
+        }
+        if (best < q.r.gap) { q.r.gap = best; q.r.owner = bestOwner; q.r.poseIdx = pi; q.r.dir = Math.abs(bestVec.dz) > Math.hypot(bestVec.dx, bestVec.dy) ? (bestVec.dz < 0 ? 'z-' : 'z+') : 'xy'; }
       }
-      if (best < q.r.gap) { q.r.gap = best; q.r.owner = bestOwner; q.r.poseIdx = pi; q.r.dir = Math.abs(bestVec.dz) > Math.hypot(bestVec.dx, bestVec.dy) ? (bestVec.dz < 0 ? 'z-' : 'z+') : 'xy'; }
     }
+  };
+  const freeOf = (g) => (isFinite(g) ? +(PROBE_R + g - CLEAR_MARGIN).toFixed(4) : null);
+  const worstFree = (set) => set.rows.reduce((a, b) => (b.gap < a.gap ? b : a), set.rows[0]);
+  // PASS 1 — the control run and the α scan
+  const pass1 = [addSet('lineAB', segPts(A, B), { kind: 'control', from: 'A', to: 'B', r: rodR })];
+  const alphas = []; if (ALPHA_FIXED == null) { for (let a = ALPHA_MIN; a <= ALPHA_MAX + 1e-9; a += ALPHA_STEP) alphas.push(+a.toFixed(3)); } else alphas.push(ALPHA_FIXED);
+  for (const a of alphas) { const d = leg1DirAt(a * Math.PI / 180); pass1.push(addSet(`alpha:${a}`, segPts(A, A.clone().addScaledVector(d, ALPHA_RUN)), { kind: 'alpha', alphaDeg: a, r: LEG1_R })); }
+  walk(pass1);
+  let alphaMax = null;
+  for (const a of alphas) if (freeOf(worstFree(sets[`alpha:${a}`]).gap) >= LEG1_R - 1e-4) alphaMax = a;
+  if (ALPHA_FIXED != null && alphaMax == null) throw new Error(`ALPHA_FIXED ${ALPHA_FIXED}° does not clear the Yoke at LEG1_R — re-run the scan`);
+  // PASS 2 — the fold at α_max: both legs and the four blanks
+  // the blank on its own cone: spherical cap of radius coneR out to θ_tip (3 rings × 16), plus the small-end tip ring at coneRi
+  const blankPts = (c, ax, sp) => { const a = ax.clone().normalize(); const t1 = Math.abs(a.z) < 0.9 ? new THREE.Vector3(0, 0, 1).cross(a).normalize() : new THREE.Vector3(1, 0, 0).cross(a).normalize(); const t2 = a.clone().cross(t1).normalize(); const thTip = Math.asin(Math.min(1, sp.tipR / sp.coneR)); const pts = []; const ring = (rho, th) => { for (let k = 0; k < 16; k++) { const ph = (k / 16) * 2 * Math.PI; pts.push(c.clone().addScaledVector(a, rho * Math.cos(th)).addScaledVector(t1, rho * Math.sin(th) * Math.cos(ph)).addScaledVector(t2, rho * Math.sin(th) * Math.sin(ph))); } }; for (let r = 1; r <= 3; r++) ring(sp.coneR, thTip * r / 3); ring(sp.coneR - sp.faceW, thTip); return pts; };
+  if (alphaMax != null) {
+    const F = foldFor(alphaMax);
+    walk([
+      addSet('leg1', segPts(A, F.K3), { kind: 'leg', alphaDeg: alphaMax, from: 'A', to: 'K', r: LEG1_R }),
+      addSet('leg2', segPts(F.K3, B), { kind: 'leg', alphaDeg: alphaMax, from: 'K', to: 'B', r: LEG2_R }),
+      addSet('blankK_in', blankPts(F.K3, F.leg1, F.spec), { kind: 'blank', at: 'K', axis: 'leg1' }),
+      addSet('blankK_out', blankPts(F.K3, F.leg2, F.spec), { kind: 'blank', at: 'K', axis: 'leg2' }),
+      addSet('blankA_out', blankPts(A, F.leg1, spec90), { kind: 'blank', at: 'A', axis: 'leg1' }),
+      addSet('blankB_in', blankPts(B, F.leg2, spec90), { kind: 'blank', at: 'B', axis: 'leg2' }),
+    ]);
   }
   clock.scene.remove(probe); probeGeom.dispose();
-  const free = (g) => (isFinite(g) ? +(PROBE_R + g - CLEAR_MARGIN).toFixed(4) : null);
+  const free = freeOf;
   const out = {};
   for (const [k, s] of Object.entries(sets)) {
     out[k] = { meta: s.meta, rows: s.rows.map((r) => ({ i: r.i, p: r.p, freeR: free(r.gap), owner: r.owner, poseIdx: r.poseIdx, dir: r.dir, below: { freeR: free(r.below.gap), owner: r.below.owner }, above: { freeR: free(r.above.gap), owner: r.above.owner }, plan: { freeR: free(r.plan.gap), owner: r.plan.owner } })) };
   }
   return {
-    inputs: { A: A.toArray(), B: B.toArray(), Lab, rodR, plateBack, LEG_R, barrel, p0Tip, p0Top, extR, p0Binds, D_p0, D_ext, D, dB, phiDeg: phi * 180 / Math.PI, along, across, barrelSide, tArbXY: [tArbXY.x, tArbXY.y], tArbR, arbAlong, arbAcross, needArb, CLEAR_MARGIN, TURN_LD_MAX, TURN_LD_TARGET, shippedPitchR, spec90tipR: spec90.tipR, poseCount: poses.length },
-    sides: Object.fromEntries(Object.entries(sides).map(([k, S]) => [k, { ...S, K3: undefined, leg1: undefined, leg2: undefined }])),
+    inputs: { A: A.toArray(), B: B.toArray(), Lab, rodR, plateBack, LEG1_R, LEG2_R, leg2OverP0, barrel, p0Tip, p0Top, extR, needCol, dB, phiDeg: phi * 180 / Math.PI, along, across, side, tArbXY: [tArbXY.x, tArbXY.y], tArbR, arbAlong, arbAcross, needArb, alphaEqualDeg, beta2Deg: beta2 * 180 / Math.PI, CLEAR_MARGIN, TURN_LD_MAX, TURN_LD_TARGET, shippedPitchR, spec90: { tipR: spec90.tipR, coneR: spec90.coneR, faceW: spec90.faceW }, poseCount: poses.length, alphas, ALPHA_RUN },
+    folds: Object.fromEntries(alphas.map((a) => [a, { ...foldFor(a), K3: undefined, leg1: undefined, leg2: undefined }])),
+    alphaMax,
+    mirror,
     sets: out,
   };
-}, { STEP, SEARCH });
+}, { STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED });
 
 const f4 = (x) => (x == null ? '—' : (+x).toFixed(4));
 const inp = R.inputs;
-console.log('§234 — the setting traverse FOLD, solved off the metal on both sides and measured over the pose net');
+console.log('§234 — the setting traverse FOLD: each leg at its own wall, K where the two boundary rays meet, measured over the pose net');
 console.log(`  A ${inp.A.map(f4).join(', ')}   B ${inp.B.map(f4).join(', ')}   |AB| ${f4(inp.Lab)}   shipped rod r ${f4(inp.rodR)} (L/D ${(inp.Lab / (2 * inp.rodR)).toFixed(1)})`);
-console.log(`  plate back face z ${f4(inp.plateBack)} → LEG_R = (${f4(inp.plateBack)} − ${f4(inp.A[2])}) − ${inp.CLEAR_MARGIN} = ${f4(inp.LEG_R)}`);
-console.log(`  barrel (${f4(inp.barrel.x)}, ${f4(inp.barrel.y)}): along ${f4(inp.along)}, across ${f4(inp.across)} of AB (side ${inp.barrelSide}); p0 tip r ${f4(inp.p0Tip)}, top z ${f4(inp.p0Top)} (binds at LEG_R: ${inp.p0Binds}); arbor ext r ${f4(inp.extR)}`);
-console.log(`  D = max(p0 ${f4(inp.D_p0)}, ext ${f4(inp.D_ext)}) = ${f4(inp.D)};  |B−barrel| ${f4(inp.dB)}, φ ${inp.phiDeg.toFixed(3)}°`);
-console.log(`  transfer arbor (${f4(inp.tArbXY[0])}, ${f4(inp.tArbXY[1])}) r ${f4(inp.tArbR)}: along ${f4(inp.arbAlong)}, across ${f4(inp.arbAcross)} of AB — each leg's line must pass it by ${f4(inp.needArb)}`);
+console.log(`  LEG1_R = (plate back ${f4(inp.plateBack)} − ${f4(inp.A[2])}) − ${inp.CLEAR_MARGIN} = ${f4(inp.LEG1_R)};  LEG2_R = (${f4(inp.A[2])} − p0 top ${f4(inp.p0Top)}) − ${inp.CLEAR_MARGIN} = ${f4(inp.LEG2_R)} (= shipped SETTING_ROD_R: ${inp.leg2OverP0 ? 'yes' : 'NO'})`);
+console.log(`  barrel (${f4(inp.barrel.x)}, ${f4(inp.barrel.y)}): along ${f4(inp.along)}, across ${f4(inp.across)} of AB (K swings to side ${inp.side}); p0 tip r ${f4(inp.p0Tip)}; arbor ext r ${f4(inp.extR)} → leg 2 passes the column by ${f4(inp.needCol)}: β2 = φ ${inp.phiDeg.toFixed(3)}° + asin(${f4(inp.needCol)}/${f4(inp.dB)}) = ${inp.beta2Deg.toFixed(3)}°`);
+console.log(`  transfer arbor (${f4(inp.tArbXY[0])}, ${f4(inp.tArbXY[1])}) r ${f4(inp.tArbR)}: along ${f4(inp.arbAlong)}, across ${f4(inp.arbAcross)} — leg 1 must pass it by ${f4(inp.needArb)}`);
+console.log(`  equal-margin split would want α ${inp.alphaEqualDeg.toFixed(3)}° (sin α = sin β2 · LEG2_R/LEG1_R); the α scan below says what the Yoke allows`);
+console.log(`  MIRROR fold (transfer arbor's side), closed form: β2 ${R.mirror.beta2Deg.toFixed(3)}°, α ${R.mirror.alphaDeg.toFixed(3)}° → legs ${f4(R.mirror.legLen1)} / ${f4(R.mirror.legLen2)}, leg 2 L/D ${R.mirror.ld2.toFixed(1)} at LEG2_R (gate ${inp.TURN_LD_MAX}), Σ ${R.mirror.sigmaDeg.toFixed(1)}° → ${R.mirror.ld2 > inp.TURN_LD_MAX ? 'REFUSED (over the gate)' : 'not refused by the gate'}`);
 console.log('');
-for (const [tag, S] of Object.entries(R.sides)) {
-  console.log(`SIDE ${tag} (K on the ${S.side > 0 ? '+n' : '−n'} side of AB):  β ${S.betaDeg.toFixed(3)}°  K (${S.K.map(f4).join(', ')})  legs ${f4(S.legLen1)} / ${f4(S.legLen2)}  Σ ${S.sigmaDeg.toFixed(2)}° γ ${S.gammaDeg.toFixed(2)}°  L/D ${S.ldLeg.toFixed(2)} at LEG_R (${S.ldLegAtRodR.toFixed(2)} at 0.382)`);
-  console.log(`  closed-form bounds: leg 2 passes the barrel axis at ${f4(S.missBarrel2)} (need ${f4(inp.D)}: ${S.missBarrel2 >= inp.D - 1e-6 ? 'ok' : 'MISS'}); leg 1 at ${f4(S.missBarrel1)}; transfer arbor — leg 1 ${f4(S.missArb1)}, leg 2 ${f4(S.missArb2)} (need ${f4(inp.needArb)}: ${S.missArb1 >= inp.needArb && S.missArb2 >= inp.needArb ? 'ok' : 'REFUSED'})`);
-  console.log(`  bevel spec at Σ, bore LEG_R: tipR ${f4(S.spec.tipR)} (90° mitre ${f4(inp.spec90tipR)}), coneR ${f4(S.spec.coneR)}, faceW ${f4(S.spec.faceW)}, pitchR ${f4(S.spec.pitchR)} (shipped ${f4(inp.shippedPitchR)}); CONTROL (b) external and cut: ${S.gammaDeg < 90 && S.spec.faceW > 0 && S.specWarns.length === 0 ? 'PASS' : 'FAIL'} ${S.specWarns.join(' | ')}`);
-}
-console.log('');
+const worstOf = (key, f) => { const s = R.sets[key]; return s.rows.reduce((a, b) => ((f(b) ?? Infinity) < (f(a) ?? Infinity) ? b : a), s.rows[0]); };
 const table = (key, title, r) => {
   const s = R.sets[key];
   console.log(`${title} (${s.rows.length} stations, r ${f4(r)})`);
   console.log('   i     x        y        z      freeR   owner                                      dir  below    above    plan');
   for (const row of s.rows) console.log(`  ${String(row.i).padStart(3)} ${row.p.map((x) => x.toFixed(3).padStart(8)).join(' ')}  ${String(row.freeR).padStart(7)}  ${String(row.owner).padEnd(42)} ${String(row.dir).padEnd(4)} ${String(row.below.freeR).padStart(7)} ${String(row.above.freeR).padStart(7)} ${String(row.plan.freeR).padStart(7)}`);
-  const pick = (f) => s.rows.reduce((a, b) => ((f(b) ?? Infinity) < (f(a) ?? Infinity) ? b : a), s.rows[0]);
-  const worst = pick((x) => x.freeR), wb = pick((x) => x.below.freeR), wa = pick((x) => x.above.freeR), wp = pick((x) => x.plan.freeR);
+  const worst = worstOf(key, (x) => x.freeR), wb = worstOf(key, (x) => x.below.freeR), wa = worstOf(key, (x) => x.above.freeR), wp = worstOf(key, (x) => x.plan.freeR);
   console.log(`  worst: freeR ${worst.freeR} at #${worst.i} (${worst.owner}, ${worst.dir}); below ${wb.below.freeR} (${wb.below.owner}); above ${wa.above.freeR} (${wa.above.owner}); plan ${wp.plan.freeR} (${wp.plan.owner})`);
   console.log('');
   return { worst, wb, wa, wp };
 };
 const ctl = table('lineAB', 'CONTROL (a): the straight run A→B, this walker', inp.rodR);
-const okA = ctl.worst.freeR != null && Math.abs(ctl.worst.freeR - inp.rodR) < 0.02 && ctl.wa.above.freeR != null && Math.abs(ctl.wa.above.freeR - inp.LEG_R) < 0.02;
-console.log(`CONTROL (a) reproduces the pinch (worst ${ctl.worst.freeR} ≈ shipped r ${f4(inp.rodR)}) and the plate cap (above ${ctl.wa.above.freeR} ≈ LEG_R ${f4(inp.LEG_R)}): ${okA ? 'PASS' : 'FAIL — the walker is not seeing what probe-234-shaft-body-corridor saw'}`);
+const okA = ctl.worst.freeR != null && Math.abs(ctl.worst.freeR - inp.rodR) < 0.02 && ctl.wa.above.freeR != null && Math.abs(ctl.wa.above.freeR - inp.LEG1_R) < 0.02;
+console.log(`CONTROL (a) reproduces the pinch (worst ${ctl.worst.freeR} ≈ shipped r ${f4(inp.rodR)}) and the plate cap (above ${ctl.wa.above.freeR} ≈ LEG1_R ${f4(inp.LEG1_R)}): ${okA ? 'PASS' : 'FAIL — the walker is not seeing what probe-234-shaft-body-corridor saw'}`);
 console.log('');
-const verdict = {};
-for (const tag of Object.keys(R.sides)) {
-  const l1 = table(`${tag}:leg1`, `SIDE ${tag} — LEG 1: A → K`, inp.LEG_R), l2 = table(`${tag}:leg2`, `SIDE ${tag} — LEG 2: K → B`, inp.LEG_R);
-  const legs = [['leg 1', l1], ['leg 2', l2]];
-  for (const [name, l] of legs) console.log(`SIDE ${tag} ${name} at LEG_R ${f4(inp.LEG_R)}: worst freeR ${l.worst.freeR} → ${l.worst.freeR >= inp.LEG_R - 1e-4 ? 'CLEARS' : `SHORT by ${(inp.LEG_R - l.worst.freeR).toFixed(4)} (${l.worst.owner}, ${l.worst.dir})`}`);
+console.log(`THE α SCAN — leg 1's first ${inp.ALPHA_RUN} u at LEG1_R ${f4(inp.LEG1_R)}, worst station per angle over ${inp.poseCount} poses`);
+console.log('   α°     worst    at u    owner                                      dir   | fold at this α: legs, L/D, Σ');
+const alphaMax = R.alphaMax;
+for (const a of inp.alphas) {
+  const w = worstOf(`alpha:${a}`, (x) => x.freeR); const F = R.folds[a];
+  const ok = w.freeR >= inp.LEG1_R - 1e-4;
+  console.log(`  ${String(a).padStart(5)}  ${String(w.freeR).padStart(7)}  ${(w.i * STEP).toFixed(1).padStart(5)}  ${String(w.owner).padEnd(42)} ${String(w.dir).padEnd(4)} ${ok ? 'ok ' : 'HIT'} | ${f4(F.legLen1)} / ${f4(F.legLen2)}  L/D ${F.ld1.toFixed(2)} / ${F.ld2.toFixed(2)}  Σ ${F.sigmaDeg.toFixed(2)}°`);
+}
+console.log(`  α_max (largest clearing angle in the scan): ${alphaMax == null ? 'NONE' : alphaMax + '°'}  — monotone? ${inp.alphas.filter((a) => a <= (alphaMax ?? -1)).every((a) => worstOf(`alpha:${a}`, (x) => x.freeR).freeR >= inp.LEG1_R - 1e-4) ? 'yes' : 'NO — read the table'}`);
+console.log('');
+if (alphaMax != null) {
+  const a = alphaMax, F = R.folds[a];
+  console.log(`THE FOLD at α_max ${a}°:  K (${F.K.map(f4).join(', ')})  legs ${f4(F.legLen1)} / ${f4(F.legLen2)}  L/D ${F.ld1.toFixed(2)} at LEG1_R, ${F.ld2.toFixed(2)} at LEG2_R (target ${inp.TURN_LD_TARGET}, gate ${inp.TURN_LD_MAX});  deflection ${F.deflDeg.toFixed(3)}°, Σ ${F.sigmaDeg.toFixed(3)}°, γ ${F.gammaDeg.toFixed(3)}°`);
+  console.log(`  closed-form bounds: leg 2 passes the barrel axis at ${f4(F.missCol2)} (need ${f4(inp.needCol)}: ${F.missCol2 >= inp.needCol - 1e-6 ? 'EXACT/ok' : 'MISS'}); leg 1's segment to the barrel axis ${f4(F.missCol1)}; transfer arbor — leg 1 ${f4(F.missArb1)}, leg 2 ${f4(F.missArb2)} (need ${f4(inp.needArb)}: ${F.missArb1 >= inp.needArb && F.missArb2 >= inp.needArb ? 'ok' : 'REFUSED'})`);
+  console.log(`  bevel spec at Σ, bores LEG1_R/LEG2_R: tipR ${f4(F.spec.tipR)} (90° mitre ${f4(inp.spec90.tipR)}), coneR ${f4(F.spec.coneR)}, faceW ${f4(F.spec.faceW)}, pitchR ${f4(F.spec.pitchR)} (shipped ${f4(inp.shippedPitchR)}); CONTROL (b) external and cut: ${F.gammaDeg < 90 && F.spec.faceW > 0 && F.specWarns.length === 0 ? 'PASS' : 'FAIL'} ${F.specWarns.join(' | ')}`);
+  console.log('');
+  const l1 = table('leg1', `LEG 1: A → K at α_max`, inp.LEG1_R), l2 = table('leg2', `LEG 2: K → B`, inp.LEG2_R);
+  console.log(`leg 1 at LEG1_R ${f4(inp.LEG1_R)}: worst freeR ${l1.worst.freeR} → ${l1.worst.freeR >= inp.LEG1_R - 1e-4 ? 'CLEARS' : `SHORT by ${(inp.LEG1_R - l1.worst.freeR).toFixed(4)} (${l1.worst.owner}, ${l1.worst.dir})`}`);
+  console.log(`leg 2 at LEG2_R ${f4(inp.LEG2_R)}: worst freeR ${l2.worst.freeR} → ${l2.worst.freeR >= inp.LEG2_R - 1e-4 ? 'CLEARS' : `SHORT by ${(inp.LEG2_R - l2.worst.freeR).toFixed(4)} (${l2.worst.owner}, ${l2.worst.dir})`}`);
   let blankFindings = 0;
-  for (const [key, title] of [['blankK_in', 'K, inboard blank (axis leg 1)'], ['blankK_out', 'K, outboard blank (axis leg 2)'], ['blankA_out', 'A, outboard blank re-aimed along leg 1'], ['blankB_in', 'B, inboard blank re-aimed along leg 2']]) {
-    const s = R.sets[`${tag}:${key}`];
+  for (const [key, title] of [['blankK_in', 'K, inboard blank (axis leg 1)'], ['blankK_out', 'K, outboard blank (axis leg 2)'], ['blankA_out', 'A, outboard mitre re-aimed along leg 1'], ['blankB_in', 'B, inboard mitre re-aimed along leg 2']]) {
+    const s = R.sets[key];
     const byOwner = new Map();
-    for (const r of s.rows) for (const side of ['below', 'above', 'plan']) { const o = r[side].owner; if (!o) continue; const cur = byOwner.get(o); const fr = r[side].freeR; if (!cur || fr < cur.freeR) byOwner.set(o, { freeR: fr, side, i: r.i }); }
-    const rows = [...byOwner.entries()].sort((a, b) => a[1].freeR - b[1].freeR);
-    console.log(`SIDE ${tag} BLANK ${title}: ${rows.length} neighbours within ${SEARCH}`);
+    for (const r of s.rows) for (const sd of ['below', 'above', 'plan']) { const o = r[sd].owner; if (!o) continue; const cur = byOwner.get(o); const fr = r[sd].freeR; if (!cur || fr < cur.freeR) byOwner.set(o, { freeR: fr, side: sd, i: r.i }); }
+    const rows = [...byOwner.entries()].sort((x, y) => x[1].freeR - y[1].freeR);
+    console.log(`BLANK ${title}: ${rows.length} neighbours within ${SEARCH}`);
     for (const [o, x] of rows) console.log(`    ${String(x.freeR).padStart(8)}  ${x.side.padEnd(5)}  ${o}   (sample #${x.i})`);
     const findings = rows.filter(([o, x]) => x.freeR < 0 && !/backPlate/.test(o));
     blankFindings += findings.length;
     console.log(`  → ${findings.length ? `${findings.length} wall(s) INSIDE the blank's margin (not the plate): ${findings.map(([o, x]) => `${o} ${x.freeR}`).join('; ')}` : 'no wall inside the blank\'s margin except the base plate (the recess a corner needs, A\'s precedent)'}`);
   }
-  verdict[tag] = { legs: legs.every(([, l]) => l.worst.freeR >= inp.LEG_R - 1e-4), blanks: blankFindings === 0, bounds: R.sides[tag].missArb1 >= inp.needArb && R.sides[tag].missArb2 >= inp.needArb };
   console.log('');
-}
-console.log('VERDICT per side (legs clear at LEG_R / blanks clear of everything but the plate / closed-form bounds):');
-for (const [tag, v] of Object.entries(verdict)) console.log(`  ${tag}: legs ${v.legs ? 'ok' : 'SHORT'}, blanks ${v.blanks ? 'ok' : 'WALLED'}, bounds ${v.bounds ? 'ok' : 'REFUSED'}  →  ${v.legs && v.blanks && v.bounds ? 'BUILDABLE' : 'refused'}`);
+  const legsOk = l1.worst.freeR >= inp.LEG1_R - 1e-4 && l2.worst.freeR >= inp.LEG2_R - 1e-4;
+  const boundsOk = F.missArb1 >= inp.needArb && F.missArb2 >= inp.needArb && F.missCol2 >= inp.needCol - 1e-6;
+  console.log(`VERDICT at α_max ${a}°: legs ${legsOk ? 'ok' : 'SHORT'}, blanks ${blankFindings === 0 ? 'ok' : 'WALLED'}, bounds ${boundsOk ? 'ok' : 'REFUSED'}, both legs under the gate ${F.ld1 <= inp.TURN_LD_MAX && F.ld2 <= inp.TURN_LD_MAX ? 'yes' : 'NO'} (target ${F.ld1 <= inp.TURN_LD_TARGET && F.ld2 <= inp.TURN_LD_TARGET ? 'met' : 'not met — reported, not gated'})  →  ${legsOk && blankFindings === 0 && boundsOk && F.ld1 <= inp.TURN_LD_MAX && F.ld2 <= inp.TURN_LD_MAX ? 'BUILDABLE' : 'refused'}`);
+} else console.log('VERDICT: no α in the scan clears the Yoke — the fold cannot be laid on this side at LEG1_R');
 console.log(`boot warnings (WebGL driver noise included): ${bootWarns}`);
 const outPath = process.argv[2];
 if (outPath) { writeFileSync(outPath, JSON.stringify(R, null, 1)); console.log(`wrote ${outPath}`); }
