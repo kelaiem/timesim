@@ -1,4 +1,4 @@
-// §234 Landing 3 — CAN ANY SHAFT SECTION CLEAR TURN_LD_TARGET AND ITS OWN
+// §234 Landing 4 — CAN ANY SHAFT SECTION CLEAR TURN_LD_TARGET AND ITS OWN
 // CORRIDOR TOGETHER? A REPORT.
 // (INDEX.md's `kind` column says acceptance because the classifier keys on
 // `process.exit`, and this exits only when a tree will not boot at all —
@@ -15,7 +15,7 @@
 // even TURN_LD_MAX's own ceiling would ask at today's chord) — this widens
 // the search to every candidate the §112 rod-site solve itself considers,
 // not just today's chord, and scores it with the SAME piecewise footprint
-// Landing 3 gave the solve for the rod (never a blanket guess — see the
+// Landing 4 gave the solve for the rod (never a blanket guess — see the
 // header note on `ALARM_LINK_COL_BUSH_Z` in `src/main.js`).
 //
 // HOW. A SCRATCH TREE (the `probe-234-stem-ceiling.mjs` pattern: an exact
