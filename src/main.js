@@ -1531,16 +1531,32 @@ const OSC_I = (() => {
 // row goes quiet as a consequence. Radii unchanged: the pitch grows, the
 // footprint does not.
 // §218 tier two — THE OVERCOIL. `turns` is the terminal's length in turns of
-// the outer radius: three quarters, the classical proportion AND the measured
-// minimum (geometry.js: a half turn admits no centroid solution, a full turn
-// solves with a kink). `raise` is the one margin over a standing ribbon
-// (layout.js's HAIRSPRING_OVERCOIL_RAISE — the cock's z-solve reads the same
-// number). `kneeR` is the ribbon's tightest EXISTING bend, the collet radius:
-// the knee is formed, not flexed, and a formed bend no tighter than one the
-// ribbon already takes is the constraint. The two curvatures are solved, not
-// chosen — see hairspringRest.
-const HAIRSPRING_PLAN = { innerR: Math.max(rollerR * 0.5, 1.5), outerR: balanceR * 0.88, coils: 8,
-  overcoil: { turns: 0.75, raise: HAIRSPRING_OVERCOIL_RAISE, kneeR: Math.max(rollerR * 0.5, 1.5) } };
+// the outer radius: three quarters, the classical proportion. `raise` is the
+// one margin over a standing ribbon (layout.js's HAIRSPRING_OVERCOIL_RAISE —
+// the cock's z-solve reads the same number). `kneeR` is the ribbon's tightest
+// EXISTING bend, the collet radius: the knee is formed, not flexed, and a
+// formed bend no tighter than one the ribbon already takes is the constraint.
+// The terminal's curvature law is solved, not chosen — see hairspringRest.
+const HS_INNER_R = Math.max(rollerR * 0.5, 1.5);
+const HS_OUTER_R = balanceR * 0.88;
+const HS_COILS = 8;
+const HS_COIL_PITCH = (HS_OUTER_R - HS_INNER_R) / HS_COILS;
+// TODO 147 — WHERE THE STUD LANDS, which used to be whatever the solve emitted.
+// A Breguet terminal is raised so its end can come back IN over the body of the
+// spring; one that ends outboard has paid the raise's cost in stack height and
+// collected nothing (it also put the stud outside the balance's own swept
+// circle, a radius makeBalanceWheel meters to 0.1 u against three neighbours).
+// The stud therefore stands over the SECOND coil: one full coil pitch inboard
+// of the outer coil. One pitch and not a fraction because the stud is a POST
+// with a footprint, not a point — the smallest whole-coil step that carries the
+// post's entire width inboard of the outer coil is the constraint, and it is
+// asserted below rather than assumed (pitch 0.8025 against the post's 0.65).
+const HAIRSPRING_STUD_POST = 0.65;         // the stud post's side, consumed again by the cock's carrier
+const HAIRSPRING_STUD_R = HS_OUTER_R - HS_COIL_PITCH;
+if (HS_COIL_PITCH < HAIRSPRING_STUD_POST)
+  console.warn(`TODO 147: the spiral's coil pitch ${HS_COIL_PITCH.toFixed(4)} is under the stud post's ${HAIRSPRING_STUD_POST} — one coil step no longer carries the post inboard of the outer coil, so the stud radius below is not derived by the rule it cites.`);
+const HAIRSPRING_PLAN = { innerR: HS_INNER_R, outerR: HS_OUTER_R, coils: HS_COILS,
+  overcoil: { turns: 0.75, raise: HAIRSPRING_OVERCOIL_RAISE, kneeR: HS_INNER_R, studR: HAIRSPRING_STUD_R } };
 const OSC_K_TARGET = OSC_I.total * (2 * Math.PI * F_BALANCE) ** 2;
 // §218 — the spring is fitted AS CLAMPED. k = EI/L is the pure-bending
 // stiffness; between a collet that turns and a stud that does not, the stud's
@@ -1644,7 +1660,15 @@ const OSCILLATOR = (() => {
   const flatForce = (th) => { const r = flatEl.solve(th); return Math.hypot(r.lam[0], r.lam[1]) * EI / OSC_U ** 2 * 1e3; };
   const OC = H.overcoil;
   const overcoil = OC ? {
-    turns: OC.turns, raise_u: OC.raise, kneeR_u: OC.kneeR, rho1_u: OC.rho1, rho2_u: OC.rho2, endR_u: H.termEndR,
+    turns: OC.turns, raise_u: OC.raise, kneeR_u: OC.kneeR,
+    // TODO 147 — the terminal's curvature law, its tightest bend, and where it
+    // put the stud against where it was TOLD to (studR_u is the constraint,
+    // endR_u the metal; studResidual_u is the gap between them).
+    a0: OC.a0, a1: OC.a1, a2: OC.a2, rhoStart_u: OC.rhoStart, rhoEnd_u: OC.rhoEnd, rhoMin_u: OC.rhoMin,
+    studR_u: OC.studR, endR_u: H.termEndR, studResidual_u: OC.studResidual,
+    termMaxR_u: OC.termMaxR, outerR_u: HAIRSPRING_PLAN.outerR, postHalf_u: HAIRSPRING_STUD_POST / 2,
+    studInboard: H.termEndR + HAIRSPRING_STUD_POST / 2 <= HAIRSPRING_PLAN.outerR,
+    formable: OC.rhoMin >= OC.kneeR,
     centroidResidual_u: OC.centroidResidual, converged: OC.converged,
     devLen3d_u: OC.devLen3d, kneeLengthExcessPct: 100 * (OC.devLen3d / H.devLen - 1),
     flat: { pivotForce_mN: { performed: flatForce(AMPLITUDE_VISUAL_DEG * DEG2RAD), physical: flatForce(AMPLITUDE_TRUE_DEG * DEG2RAD) } },
@@ -1675,7 +1699,12 @@ const OSCILLATOR = (() => {
     overcoil.concentric = Math.abs(HS_CLAMP.ratio - 1) < 1e-6;
     overcoil.forceRatio = { performed: breathing.peaks.performed.pivotForce_mN / overcoil.flat.pivotForce_mN.performed,
                             physical: breathing.peaks.physical.pivotForce_mN / overcoil.flat.pivotForce_mN.physical };
-    overcoil.pass = overcoil.converged && overcoil.concentric && overcoil.forceRatio.performed < 0.1;
+    // TODO 147 — and it is a BREGUET terminal: the stud's post stands wholly
+    // inboard of the outer coil (what the raise is paid for), and no bend in
+    // the terminal is tighter than the collet the knee is already formed round
+    // (the knee's own rule, applied to the curve the solve is free to shape).
+    overcoil.pass = overcoil.converged && overcoil.concentric && overcoil.forceRatio.performed < 0.1
+                    && overcoil.studInboard && overcoil.formable;
   }
   return Object.freeze({
     I_kgm2: OSC_I.total, k_Nm_per_rad: k, kPure_Nm_per_rad: kPure, clampRatio: HS_CLAMP.ratio, fImpliedHz: f,
@@ -1706,7 +1735,7 @@ if (!OSCILLATOR.agrees)
   if (!B.control.pass)
     console.warn(`§218: the free-landing control reads a pivot force of ${B.control.maxPivotForce_mN.toExponential(2)} mN — the solver is inventing a constraint reaction`);
   if (B.overcoil && !B.overcoil.pass)
-    console.warn(`§218 tier two: the overcoil is not concentric — centroid residual ${B.overcoil.centroidResidual_u.toExponential(2)} u, clamp ratio ${OSCILLATOR.clampRatio.toFixed(6)}, pivot force ×${B.overcoil.forceRatio.performed.toFixed(3)} of the flat spring's at ${AMPLITUDE_VISUAL_DEG}°`);
+    console.warn(`§218 tier two / TODO 147: the overcoil does not hold — centroid residual ${B.overcoil.centroidResidual_u.toExponential(2)} u, stud residual ${B.overcoil.studResidual_u.toExponential(2)} u, clamp ratio ${OSCILLATOR.clampRatio.toFixed(6)}, pivot force ×${B.overcoil.forceRatio.performed.toFixed(3)} of the flat spring's at ${AMPLITUDE_VISUAL_DEG}°, stud post reaches r ${(B.overcoil.endR_u + B.overcoil.postHalf_u).toFixed(4)} against the outer coil's ${B.overcoil.outerR_u.toFixed(4)}, tightest terminal bend ρ ${B.overcoil.rhoMin_u.toFixed(3)} against the collet's ${B.overcoil.kneeR_u.toFixed(3)}`);
   if (!B.stressInLimit)
     console.warn(`§218: the ribbon's outer-fibre stress at ${AMPLITUDE_TRUE_DEG}° is ${B.peaks.physical.stress_MPa.toFixed(0)} MPa, over the ${HAIRSPRING_FATIGUE_MPA} MPa endurance figure`);
 }
@@ -1773,6 +1802,21 @@ const LAYOUT_INPUTS = {
   // layout.js's D4 constant, so identity never even re-multiplies a float.
   ...(SPEC.d4 !== null ? { d4: SPEC.d4 } : {}),
 };
+// TODO 147 — THE SPRING STANDS INSIDE THE BALANCE IT SPRINGS. makeBalanceWheel
+// trims its timing screws' protrusion because the tips set the balance's true
+// swept radius, and every neighbour — the cock's T-foot legs, the fork-pivot
+// boss, the plate's cutaway — stands off THAT circle. A hairspring reaching
+// outside it makes the spring, not the balance, the thing those three clear,
+// which is what the overcoil's terminal used to do (stud at 9.72 against a
+// swept 9.30). Measured off the built wheel, so the screws' tip corners count.
+{
+  const OC = hairspring.userData.overcoil;
+  if (OC) {
+    const reach = Math.max(OC.termMaxR, hairspring.userData.termEndR + HAIRSPRING_STUD_POST / 2);
+    if (reach > LAYOUT_INPUTS.swept.balance)
+      console.warn(`TODO 147: the hairspring's terminal reaches r ${reach.toFixed(4)} — outside the balance's own swept radius ${LAYOUT_INPUTS.swept.balance.toFixed(4)}, so the spring and not the wheel is now what the cock and the plate must clear.`);
+  }
+}
 const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayout({
   ...LAYOUT_INPUTS,
   warn: (m) => console.warn(m),
@@ -8951,7 +8995,10 @@ const balanceCock = G.makeCock({
     boss.position.set(0, yS, 0.01);
     carrier.add(boss);
     const postBot = (studWorldZ - 0.25) - (COCK_MID_Z + COCK_T / 2); // cock-face-local
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.27 - postBot), MATS.steel);
+    // TODO 147: the post's side is the constraint HAIRSPRING_STUD_R is derived
+    // from (one coil pitch must carry this whole footprint inboard of the outer
+    // coil), so it is that constant and not a second copy of the number.
+    const post = new THREE.Mesh(new THREE.BoxGeometry(HAIRSPRING_STUD_POST, HAIRSPRING_STUD_POST, 0.27 - postBot), MATS.steel);
     post.name = 'hairspringStud';
     post.position.set(0, yS, (0.27 + postBot) / 2);
     carrier.add(post);
