@@ -99,6 +99,20 @@ const ALPHA_MAX = +(process.env.ALPHA_MAX || 30);
 const ALPHA_MIN = +(process.env.ALPHA_MIN || 0);
 const ALPHA_STEP = +(process.env.ALPHA_STEP || 1);
 const ALPHA_FIXED = process.env.ALPHA_FIXED != null ? +process.env.ALPHA_FIXED : null;   // skip the scan and walk the fold at this α (re-runs after a scan)
+// KRULE — which derivation of K is walked in pass 2:
+//   'plus'  — the barrel's side: leg 1 at the Yoke's measured bound, leg 2 on
+//             the column's near-side ray (cut 3 above). MEASURED REFUSED on the
+//             folded tree: the corner's blanks stand inside rsvWheel1's rim
+//             (tip r 5.28, 0.43 u from K in plan) and the mitre at B, re-aimed
+//             19° toward that side, runs into the minute star — K is boxed
+//             between the Yoke (|BK| ≤ 11.1) and w1 (|BK| ≥ 12.8).
+//   'arbor' — the transfer arbor's side, cut 4: BOTH legs at the plate's
+//             section (neither runs over reservePinion0 there — asserted), K
+//             on AB's perpendicular bisector (equal legs, equal margin) held
+//             off the transfer arbor's axis by exactly the blank's own reach,
+//             coneR + arborR + CLEAR_MARGIN. One constraint, one point; the
+//             corner's Σ follows from where that puts K.
+const KRULE = process.env.KRULE || 'arbor';
 
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 process.on('exit', () => srv.kill());
@@ -112,7 +126,7 @@ await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', time
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
 const bootWarns = warns.length;
 
-const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED }) => {
+const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED, KRULE }) => {
   const THREE = await import('./vendor/three.module.js');
   const I = await import('./src/inspect.js');
   const G = await import('./src/geometry.js');
@@ -216,6 +230,42 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
       missArb1: distSeg(A, K, tArbXY), missArb2: distSeg(K, B, tArbXY),
       deflDeg, sigmaDeg, gammaDeg, spec: Object.fromEntries(Object.entries(spec).filter(([, x]) => typeof x === 'number')), specWarns, K3: K, leg1, leg2 };
   };
+  // KRULE 'arbor' — both legs at LEG1_R, K on the bisector at the blank's reach from the transfer arbor
+  const foldArbor = () => {
+    const sideK = -side;                                              // away from the barrel, toward the transfer arbor
+    const M = A.clone().addScaledVector(u, Lab / 2);
+    const mAlong = (tArbXY.x - A.x) * u.x + (tArbXY.y - A.y) * u.y, mAcross = ((tArbXY.x - A.x) * n.x + (tArbXY.y - A.y) * n.y) * sideK; // arbor in (along, toward-K) coords
+    // K = M + n·sideK·h; |K − arbor| = need(coneR(Σ(h))) — a fixed point in h, converged by iteration (coneR barely moves with Σ)
+    let h = 3, spec = null, sigmaDeg = 0, need = 0;
+    for (let it = 0; it < 12; it++) {
+      const K = M.clone().addScaledVector(n, sideK * h);
+      const leg1 = K.clone().sub(A).normalize(), leg2 = B.clone().sub(K).normalize();
+      sigmaDeg = Math.acos(Math.min(1, Math.max(-1, leg1.clone().negate().dot(leg2)))) * 180 / Math.PI;
+      spec = G.bevelToothSpec({ module, teeth, mateTeeth: teeth, shaftAngleDeg: sigmaDeg, boreR: LEG1_R, mateBoreR: LEG1_R, quiet: true });
+      need = spec.coneR + tArbR + CLEAR_MARGIN;
+      // the bisector point at distance `need` from the arbor: (Lab/2 − mAlong)² + (h − mAcross)² = need², the root on the far side of the arbor
+      const dx = Lab / 2 - mAlong; const disc = need * need - dx * dx;
+      if (disc < 0) throw new Error(`arbor rule: the bisector never comes within ${need.toFixed(3)} of the transfer arbor (along offset ${dx.toFixed(3)})`);
+      const hNew = mAcross + Math.sqrt(disc);
+      if (Math.abs(hNew - h) < 1e-9) { h = hNew; break; }
+      h = hNew;
+    }
+    const K = M.clone().addScaledVector(n, sideK * h);
+    const leg1 = K.clone().sub(A).normalize(), leg2 = B.clone().sub(K).normalize();
+    const specWarns = [];
+    const origWarn = console.warn; console.warn = (m) => specWarns.push(String(m));
+    spec = G.bevelToothSpec({ module, teeth, mateTeeth: teeth, shaftAngleDeg: sigmaDeg, boreR: LEG1_R, mateBoreR: LEG1_R });
+    console.warn = origWarn;
+    const gammaDeg = Math.atan2(Math.sin(sigmaDeg * Math.PI / 180), 1 + Math.cos(sigmaDeg * Math.PI / 180)) * 180 / Math.PI;
+    const alphaDeg = Math.atan2(h, Lab / 2) * 180 / Math.PI;
+    const bar3 = new THREE.Vector3(barrel.x, barrel.y, 0);
+    const needP0 = p0Tip + LEG1_R + CLEAR_MARGIN;                      // a leg at LEG1_R must miss p0's TIP circle in plan (its underside is below p0's top)
+    return { rule: 'arbor', alphaDeg, beta2Deg: alphaDeg, K: K.toArray(), h, legLen1: A.distanceTo(K), legLen2: K.distanceTo(B),
+      ld1: A.distanceTo(K) / (2 * LEG1_R), ld2: K.distanceTo(B) / (2 * LEG1_R), r2: LEG1_R,
+      missCol2: distSeg(K, B, bar3), missCol1: distSeg(A, K, bar3), needP0, needColAt1: extR + LEG1_R + CLEAR_MARGIN,
+      missArb1: distSeg(A, K, tArbXY), missArb2: distSeg(K, B, tArbXY), needArb, distKArb: Math.hypot(K.x - tArbXY.x, K.y - tArbXY.y), needK: need,
+      deflDeg: 180 - sigmaDeg, sigmaDeg, gammaDeg, spec: Object.fromEntries(Object.entries(spec).filter(([, x]) => typeof x === 'number')), specWarns, K3: K, leg1, leg2 };
+  };
   // the equal-margin split, for the record (what α WOULD be if nothing stood in the way)
   const alphaEqualDeg = Math.asin(Math.min(1, Math.sin(beta2) * LEG2_R / LEG1_R)) * 180 / Math.PI;
   const spec90 = G.bevelToothSpec({ module, teeth, mateTeeth: teeth, shaftAngleDeg: 90, boreR: LEG1_R, mateBoreR: LEG1_R, quiet: true });
@@ -285,7 +335,7 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
   const worstFree = (set) => set.rows.reduce((a, b) => (b.gap < a.gap ? b : a), set.rows[0]);
   // PASS 1 — the control run and the α scan
   const pass1 = [addSet('lineAB', segPts(A, B), { kind: 'control', from: 'A', to: 'B', r: rodRef })];
-  const alphas = []; if (ALPHA_FIXED == null) { for (let a = ALPHA_MIN; a <= ALPHA_MAX + 1e-9; a += ALPHA_STEP) alphas.push(+a.toFixed(3)); } else alphas.push(ALPHA_FIXED);
+  const alphas = []; if (KRULE === 'arbor') { /* no Yoke scan: that side's bound is the arbor, closed form */ } else if (ALPHA_FIXED == null) { for (let a = ALPHA_MIN; a <= ALPHA_MAX + 1e-9; a += ALPHA_STEP) alphas.push(+a.toFixed(3)); } else alphas.push(ALPHA_FIXED);
   for (const a of alphas) { const d = leg1DirAt(a * Math.PI / 180); pass1.push(addSet(`alpha:${a}`, segPts(A, A.clone().addScaledVector(d, ALPHA_RUN)), { kind: 'alpha', alphaDeg: a, r: LEG1_R })); }
   walk(pass1);
   let alphaMax = null;
@@ -294,11 +344,13 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
   // PASS 2 — the fold at α_max: both legs and the four blanks
   // the blank on its own cone: spherical cap of radius coneR out to θ_tip (3 rings × 16), plus the small-end tip ring at coneRi
   const blankPts = (c, ax, sp) => { const a = ax.clone().normalize(); const t1 = Math.abs(a.z) < 0.9 ? new THREE.Vector3(0, 0, 1).cross(a).normalize() : new THREE.Vector3(1, 0, 0).cross(a).normalize(); const t2 = a.clone().cross(t1).normalize(); const thTip = Math.asin(Math.min(1, sp.tipR / sp.coneR)); const pts = []; const ring = (rho, th) => { for (let k = 0; k < 16; k++) { const ph = (k / 16) * 2 * Math.PI; pts.push(c.clone().addScaledVector(a, rho * Math.cos(th)).addScaledVector(t1, rho * Math.sin(th) * Math.cos(ph)).addScaledVector(t2, rho * Math.sin(th) * Math.sin(ph))); } }; for (let r = 1; r <= 3; r++) ring(sp.coneR, thTip * r / 3); ring(sp.coneR - sp.faceW, thTip); return pts; };
-  if (alphaMax != null) {
-    const F = foldFor(alphaMax);
+  const Fa = KRULE === 'arbor' ? foldArbor() : null;
+  if (KRULE === 'arbor' || alphaMax != null) {
+    const F = KRULE === 'arbor' ? Fa : foldFor(alphaMax);
+    const r2 = KRULE === 'arbor' ? LEG1_R : LEG2_R;
     walk([
       addSet('leg1', segPts(A, F.K3), { kind: 'leg', alphaDeg: alphaMax, from: 'A', to: 'K', r: LEG1_R }),
-      addSet('leg2', segPts(F.K3, B), { kind: 'leg', alphaDeg: alphaMax, from: 'K', to: 'B', r: LEG2_R }),
+      addSet('leg2', segPts(F.K3, B), { kind: 'leg', alphaDeg: alphaMax, from: 'K', to: 'B', r: r2 }),
       addSet('blankK_in', blankPts(F.K3, F.leg1, F.spec), { kind: 'blank', at: 'K', axis: 'leg1' }),
       addSet('blankK_out', blankPts(F.K3, F.leg2, F.spec), { kind: 'blank', at: 'K', axis: 'leg2' }),
       addSet('blankA_out', blankPts(A, F.leg1, spec90), { kind: 'blank', at: 'A', axis: 'leg1' }),
@@ -314,11 +366,12 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
   return {
     inputs: { A: A.toArray(), B: B.toArray(), Lab, rodR: rodRef, folded: !tr, rsvInfo, plateBack, LEG1_R, LEG2_R, leg2OverP0, barrel, p0Tip, p0Top, extR, needCol, dB, phiDeg: phi * 180 / Math.PI, along, across, side, tArbXY: [tArbXY.x, tArbXY.y], tArbR, arbAlong, arbAcross, needArb, alphaEqualDeg, beta2Deg: beta2 * 180 / Math.PI, CLEAR_MARGIN, TURN_LD_MAX, TURN_LD_TARGET, shippedPitchR, spec90: { tipR: spec90.tipR, coneR: spec90.coneR, faceW: spec90.faceW }, poseCount: poses.length, alphas, ALPHA_RUN },
     folds: Object.fromEntries(alphas.map((a) => [a, { ...foldFor(a), K3: undefined, leg1: undefined, leg2: undefined }])),
-    alphaMax,
+    alphaMax, KRULE,
+    arbor: Fa ? { ...Fa, K3: undefined, leg1: undefined, leg2: undefined } : null,
     mirror,
     sets: out,
   };
-}, { STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED });
+}, { STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED, KRULE });
 
 const f4 = (x) => (x == null ? '—' : (+x).toFixed(4));
 const inp = R.inputs;
@@ -356,7 +409,33 @@ for (const a of inp.alphas) {
 }
 console.log(`  α_max (largest clearing angle in the scan): ${alphaMax == null ? 'NONE' : alphaMax + '°'}  — monotone? ${inp.alphas.filter((a) => a <= (alphaMax ?? -1)).every((a) => worstOf(`alpha:${a}`, (x) => x.freeR).freeR >= inp.LEG1_R - 1e-4) ? 'yes' : 'NO — read the table'}`);
 console.log('');
-if (alphaMax != null) {
+if (R.KRULE === 'arbor') {
+  const F = R.arbor;
+  console.log(`THE FOLD, KRULE arbor: K (${F.K.map(f4).join(', ')}) on the bisector, ${f4(F.h)} off the run toward the transfer arbor;  |K − arbor| ${f4(F.distKArb)} = coneR + arborR + margin ${f4(F.needK)} (${Math.abs(F.distKArb - F.needK) < 1e-6 ? 'EXACT' : 'MISMATCH'})`);
+  console.log(`  legs ${f4(F.legLen1)} / ${f4(F.legLen2)} both at LEG1_R ${f4(inp.LEG1_R)}: L/D ${F.ld1.toFixed(2)} / ${F.ld2.toFixed(2)} (target ${inp.TURN_LD_TARGET}, gate ${inp.TURN_LD_MAX});  swing ${F.alphaDeg.toFixed(3)}° each end, deflection ${F.deflDeg.toFixed(3)}°, Σ ${F.sigmaDeg.toFixed(3)}°, γ ${F.gammaDeg.toFixed(3)}°`);
+  console.log(`  closed-form bounds: leg 2 to the barrel axis ${f4(F.missCol2)} (p0's tip circle at LEG1_R needs ${f4(F.needP0)}: ${F.missCol2 >= F.needP0 ? 'clear — leg 2 does NOT run over p0, so the plate is its wall' : 'INSIDE — leg 2 runs over p0 and must take LEG2_R'}; the column needs ${f4(F.needColAt1)}); leg 1 to the barrel ${f4(F.missCol1)}; transfer arbor — leg 1 ${f4(F.missArb1)}, leg 2 ${f4(F.missArb2)} (need ${f4(inp.needArb)}: ${F.missArb1 >= inp.needArb && F.missArb2 >= inp.needArb ? 'ok' : 'REFUSED'})`);
+  console.log(`  bevel spec at Σ, bores LEG1_R/LEG1_R: tipR ${f4(F.spec.tipR)} (90° mitre ${f4(inp.spec90.tipR)}), coneR ${f4(F.spec.coneR)}, faceW ${f4(F.spec.faceW)}, pitchR ${f4(F.spec.pitchR)}; CONTROL (b) external and cut: ${F.gammaDeg < 90 && F.spec.faceW > 0 && F.specWarns.length === 0 ? 'PASS' : 'FAIL'} ${F.specWarns.join(' | ')}`);
+  console.log('');
+  const l1 = table('leg1', 'LEG 1: A → K', inp.LEG1_R), l2 = table('leg2', 'LEG 2: K → B', inp.LEG1_R);
+  console.log(`leg 1 at LEG1_R ${f4(inp.LEG1_R)}: worst freeR ${l1.worst.freeR} → ${l1.worst.freeR >= inp.LEG1_R - 1e-4 ? 'CLEARS' : `SHORT by ${(inp.LEG1_R - l1.worst.freeR).toFixed(4)} (${l1.worst.owner}, ${l1.worst.dir})`}`);
+  console.log(`leg 2 at LEG1_R ${f4(inp.LEG1_R)}: worst freeR ${l2.worst.freeR} → ${l2.worst.freeR >= inp.LEG1_R - 1e-4 ? 'CLEARS' : `SHORT by ${(inp.LEG1_R - l2.worst.freeR).toFixed(4)} (${l2.worst.owner}, ${l2.worst.dir})`}`);
+  let blankFindings = 0;
+  for (const [key, title] of [['blankK_in', 'K, inboard blank (axis leg 1)'], ['blankK_out', 'K, outboard blank (axis leg 2)'], ['blankA_out', 'A, outboard mitre re-aimed along leg 1'], ['blankB_in', 'B, inboard mitre re-aimed along leg 2']]) {
+    const s = R.sets[key];
+    const byOwner = new Map();
+    for (const r of s.rows) for (const sd of ['below', 'above', 'plan']) { const o = r[sd].owner; if (!o) continue; const cur = byOwner.get(o); const fr = r[sd].freeR; if (!cur || fr < cur.freeR) byOwner.set(o, { freeR: fr, side: sd, i: r.i }); }
+    const rows = [...byOwner.entries()].sort((x, y) => x[1].freeR - y[1].freeR);
+    console.log(`BLANK ${title}: ${rows.length} neighbours within ${SEARCH}`);
+    for (const [o, x] of rows) console.log(`    ${String(x.freeR).padStart(8)}  ${x.side.padEnd(5)}  ${o}   (sample #${x.i})`);
+    const findings = rows.filter(([o, x]) => x.freeR < 0 && !/backPlate/.test(o));
+    blankFindings += findings.length;
+    console.log(`  → ${findings.length ? `${findings.length} wall(s) INSIDE the blank's margin (not the plate): ${findings.map(([o, x]) => `${o} ${x.freeR}`).join('; ')}` : 'no wall inside the blank\'s margin except the base plate (the recess a corner needs, A\'s precedent)'}`);
+  }
+  const legsOk = l1.worst.freeR >= inp.LEG1_R - 1e-4 && l2.worst.freeR >= inp.LEG1_R - 1e-4;
+  const boundsOk = F.missArb1 >= inp.needArb && F.missArb2 >= inp.needArb && F.missCol2 >= F.needP0;
+  console.log('');
+  console.log(`VERDICT (arbor rule): legs ${legsOk ? 'ok' : 'SHORT'}, blanks ${blankFindings === 0 ? 'ok' : 'WALLED'}, bounds ${boundsOk ? 'ok' : 'REFUSED'}, both legs under the gate ${F.ld1 <= inp.TURN_LD_MAX && F.ld2 <= inp.TURN_LD_MAX ? 'yes' : 'NO'} (target ${F.ld1 <= inp.TURN_LD_TARGET && F.ld2 <= inp.TURN_LD_TARGET ? 'met' : 'not met — reported, not gated'})  →  ${legsOk && blankFindings === 0 && boundsOk && F.ld1 <= inp.TURN_LD_MAX && F.ld2 <= inp.TURN_LD_MAX ? 'BUILDABLE' : 'refused'}`);
+} else if (alphaMax != null) {
   const a = alphaMax, F = R.folds[a];
   console.log(`THE FOLD at α_max ${a}°:  K (${F.K.map(f4).join(', ')})  legs ${f4(F.legLen1)} / ${f4(F.legLen2)}  L/D ${F.ld1.toFixed(2)} at LEG1_R, ${F.ld2.toFixed(2)} at LEG2_R (target ${inp.TURN_LD_TARGET}, gate ${inp.TURN_LD_MAX});  deflection ${F.deflDeg.toFixed(3)}°, Σ ${F.sigmaDeg.toFixed(3)}°, γ ${F.gammaDeg.toFixed(3)}°`);
   console.log(`  closed-form bounds: leg 2 passes the barrel axis at ${f4(F.missCol2)} (need ${f4(inp.needCol)}: ${F.missCol2 >= inp.needCol - 1e-6 ? 'EXACT/ok' : 'MISS'}); leg 1's segment to the barrel axis ${f4(F.missCol1)}; transfer arbor — leg 1 ${f4(F.missArb1)}, leg 2 ${f4(F.missArb2)} (need ${f4(inp.needArb)}: ${F.missArb1 >= inp.needArb && F.missArb2 >= inp.needArb ? 'ok' : 'REFUSED'})`);
