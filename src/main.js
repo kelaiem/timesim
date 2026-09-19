@@ -4771,8 +4771,59 @@ const minutePinion = G.makePinion({ name: 'minutePinion', module: 0.28, teeth: m
 // 0.225 left between the wheel's tip ray and w1's top does not take a 0.7 rod.
 // The wheel went below the stem instead (see its build), which is the cheaper
 // side to spend and leaves this plane exactly where it was.
-const SETTING_ROD_R = 0.35;   // the traverse rod's own radius, one declaration
 const Z_SETTING = -3.0;
+// §234 Landing 2 step 3a — SETTING_ROD_R, re-derived off the actual pinch
+// (was a bare 0.35 literal). The reserve train is built far later in this
+// file (Z_RSV et al.), so — same hand-off as this block's own "w1 tops at
+// −3.53 measured" a few lines up — the governing neighbour's Z is a MEASURED
+// constant, not a live query; `RSV_P0_TOP_Z` is asserted against the built
+// mesh once it exists (see reservePinion0's own build).
+//
+// RE-MEASURED (§234 Landing 2 step 3a), because step 3b's keyless retooth
+// moved things since the step-3a finding was filed: the true governing
+// neighbour is `reservePinion0` (the reserve train's FIRST member off the
+// barrel arbor, not `rsvWheel1` as the filed finding said — its top happens
+// to read the same −3.53, which is what let the misattribution stand), top
+// z RSV_P0_TOP_Z. A second, independent obstacle sits at the SAME XY
+// (`rsvArbExt`, the visible barrel-arbor extension, r 0.55) — it crosses
+// Z_SETTING's plane on its way from the barrel down to p0 REGARDLESS of
+// Z_RSV, which is why it stays live even where reservePinion0's own Z bound
+// is pushed clear (measured: r_max saturates at 0.48 once Z_RSV is pushed
+// past about −4.7, and does not move further even at Z_RSV −6.0).
+//
+// reservePinion0 governs AT THE CURRENT Z_RSV (0.382 < the arbExt/XY
+// ceiling's 0.48), so this derives from it alone:
+//   SETTING_ROD_R = (Z_SETTING − RSV_P0_TOP_Z) − CLEAR_MARGIN
+const RSV_P0_TOP_Z = -3.532; // reservePinion0's measured world top (see above)
+const SETTING_ROD_R = (Z_SETTING - RSV_P0_TOP_Z) - CLEAR_MARGIN; // 0.382, up from the old bare 0.35
+// This does NOT reach TURN_LD_MAX (ceiling wants window ≈1.66u / r 0.687;
+// target wants 1.81u / r 0.763) — three position-space candidates were
+// tried and each measured insufficient before landing this:
+//   · GROW/SHRINK the motion-works corner (BEVEL_TEETH/BEVEL_MODULE):
+//     irrelevant — the corner never appears in the neighbour list this rod
+//     actually pinches against (reservePinion0/rsvArbExt, not the corner),
+//     and shrinking it moves ITS OWN metal CLOSER to the apex (backwards —
+//     zWebLo scales with module), so this direction does not apply here.
+//   · MOVE Z_RSV: relaxes reservePinion0's bound almost linearly at first
+//     (0.382 → 0.480 by Z_RSV −4.7) but then SATURATES exactly there —
+//     rsvArbExt's presence at Z_SETTING's plane does not depend on Z_RSV at
+//     all, and measured, pushing Z_RSV to −6.0 buys nothing further.
+//   · RE-SITE the traverse's path (CAP_BEARING, already a free parameter):
+//     measured with CAP_BEARING forced to 20° and to 60° (its own solve's
+//     search ceiling), combined with Z_RSV −4.7 — r_max is UNCHANGED at
+//     0.480 either way. B sits on a small circle (`capMeshD`) around the
+//     motion works, far short enough that swinging it does not meaningfully
+//     move a 27.47u line's closest approach to the distant barrel arbor.
+// A NECKED (stepped) rod does not help either: `turnedBars` clusters
+// coaxial meshes at consecutive stations — same axis LINE — into ONE bar
+// judged on the NARROWEST diameter over the WHOLE span (see its own
+// comment, "the lay shaft... as the bar it is, it is 104"), so thinning
+// only the pinched stretch would just make the census's governing diameter
+// smaller while the judged length stays the full 27.47u.
+// Closing this for real needs a genuine FOLD — a new bevel corner kinking
+// the run off its single axis line near the barrel so the two resulting
+// legs are judged separately — which is new mechanism, out of this step's
+// scope; filed as the step's own follow-up. The waiver below carries this.
 // The pinion stepped toward the DIAL below the wheel, 1.8 rather than the old
 // 2.0 so its underside held one margin over the dial face. TODO 136 REVERSED
 // THE STEP: the corner's apex is on the stem line, so the setting wheel's two
@@ -13563,6 +13614,18 @@ const rsvArbor0 = new THREE.Group(); // p0 — slip-coupled on the barrel arbor 
 rsvArbor0.position.set(P.barrel.x, P.barrel.y, Z_RSV);
 rsvArbor0.add(reservePinion0);
 reserveTrain.add(rsvArbor0);
+// §234 step 3a coherence guard — RSV_P0_TOP_Z (near SETTING_ROD_R, far above
+// this point in the file) is a hand-off across the build order: the setting
+// traverse's radius derives from this pinion's top z before the pinion
+// exists. If rsvModule0/rsvTeethP0/Z_RSV ever move, this catches the drift
+// rather than leaving SETTING_ROD_R quietly wrong (standing rule 6).
+{
+  reservePinion0.updateWorldMatrix(true, false); // walks UP — updateMatrixWorld(true) does not (TODO 139's trap)
+  const _p0Top = new THREE.Box3().setFromObject(reservePinion0).max.z;
+  if (Math.abs(_p0Top - RSV_P0_TOP_Z) > 0.01)
+    console.warn(`§234: reservePinion0's built top z ${_p0Top.toFixed(4)} has drifted from `
+      + `RSV_P0_TOP_Z ${RSV_P0_TOP_Z} — re-measure and update SETTING_ROD_R's derivation`);
+}
 // Visible barrel-arbor extension: from inside the barrel, through the back
 // plate, down to p0 in the under-dial space.
 const rsvExtTop = L_BARREL + 2;

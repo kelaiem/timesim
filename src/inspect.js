@@ -9762,7 +9762,41 @@ export const TURN_WAIVERS = {
   // §235's yoke reads the collar from BESIDE it, at the stem's own axis, and
   // the section went in: `ALARM_STEM_R` is the target now, both rows measure
   // under the ceiling, and neither needs a waiver.
-  'Keyless works::settingTraverse': 'TODO 145 group B (§234: SITE-limited — its z window between the reserve train\'s first wheel and the motion-works corner is 1.38 u, under even the ceiling\'s 1.66; a layout change, filed)',
+  // §234 Landing 2 step 3a — RE-MEASURED, not retired: the bare literal is
+  // gone (SETTING_ROD_R now derives from RSV_P0_TOP_Z, main.js), but the
+  // radius that derivation reaches, 0.382 (L/D 35.96), is still over the
+  // ceiling. The step-3a filing named the wrong specific neighbour
+  // (`rsvWheel1`) and missed a second one; re-measured here, off the real
+  // built meshes rather than the filed z-window arithmetic:
+  //   · the TRUE governing neighbour is `reservePinion0` (the reserve
+  //     train's first member off the barrel arbor, not the wheel it meshes
+  //     — its top happens to read the same −3.53, which is what let the
+  //     misattribution stand), a pure-Z bound;
+  //   · a SECOND, independent neighbour, `rsvArbExt` (the visible barrel-
+  //     arbor extension, r 0.55), crosses Z_SETTING's plane at the same XY
+  //     regardless of Z_RSV — it caps r at 0.48 no matter how far Z_RSV is
+  //     pushed (measured to Z_RSV −6.0, no further gain past −4.7).
+  // Three position-space candidates were tried and each measured
+  // insufficient: growing/shrinking the motion-works corner (irrelevant —
+  // it never appears among this rod's true nearest neighbours, and
+  // shrinking it moves its OWN metal closer to the apex, backwards from
+  // what's needed); moving Z_RSV (saturates at r 0.48, governed by
+  // rsvArbExt, well under the ceiling's 0.687); re-siting the traverse's
+  // path via CAP_BEARING (already a free parameter — forced to 20° and to
+  // 60°, combined with Z_RSV −4.7, r_max does not move at all, since B
+  // swings on a small circle far too short to redirect a 27.47u line's
+  // approach to the distant barrel arbor). A NECKED rod does not help
+  // either: `turnedBars` clusters coaxial meshes at consecutive stations —
+  // one axis line — into ONE bar judged on the NARROWEST diameter over the
+  // WHOLE span (see this file's own "lay shaft... as the bar it is, it is
+  // 104"), so thinning only the pinched ~3u stretch would just lower the
+  // judged diameter while the judged length stays the full run. Closing
+  // this needs a genuine FOLD — a new bevel corner kinking the traverse off
+  // its single axis line near the barrel, so the two resulting legs are
+  // judged as separate, shorter bars — which is new mechanism (its own P0
+  // transfer row, phase index, clearances), out of step 3a's scope; filed
+  // as its own follow-up landing.
+  'Keyless works::settingTraverse': 'TODO 145 group B (§234 Landing 2 step 3a: SITE-limited, re-measured — reservePinion0 + rsvArbExt cap r at 0.48 even with Z_RSV and CAP_BEARING pushed to their own limits, under the ceiling\'s 0.687; closing it needs a new fold — an added bevel corner — filed as follow-up)',
   // §234 step 3b — RETIRED. The entry filed this as a TRAIN change and it
   // was: TODO 138's two hard guards fired on the 8-tooth winding pinion at
   // stem-stock bore (no web left, both members), and 10 teeth is the

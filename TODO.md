@@ -20149,9 +20149,70 @@ longer than the tube a real case needs.
 >   defect waiting for the first change, and what bites is the furniture around
 >   the wheel rather than the wheel.
 >
-> What group B leaves behind: nothing. Four `turning` waivers stand across the
-> whole movement, none of them this group's — `Alarm link` × 2 and
-> `Keyless works` × 2, which are steps 3a, 3b and Landing 3.
+> **§234 Landing 2, step 3a BUILT (2026-09-19) — the bare literal is gone;
+> the ceiling is not.** `SETTING_ROD_R` no longer reads `0.35` with no
+> derivation behind it — `main.js` now derives it as `(Z_SETTING −
+> RSV_P0_TOP_Z) − CLEAR_MARGIN`, boot-guarded against the built mesh it
+> hands off from (§234 step 3's own ordering problem: the reserve train is
+> built thousands of lines later in the file). It lands at 0.382 (⌀0.291
+> mm, L/D 35.96) — up from 0.35, but still short of `TURN_LD_MAX`'s 0.687
+> and `TURN_LD_TARGET`'s 0.763, so the `turning` waiver stays.
+>
+> **Re-measured first, because step 3b moved the ground under the filed
+> finding.** The z-window arithmetic (1.38 u, r ≤ 0.54) was never re-checked
+> against the shipped mesh; it read the same numbers by coincidence, not by
+> re-measurement. `tools/_setting234*.mjs` scratch probes (deleted; the
+> method is recorded here) queried `meshClearance` — the same function the
+> battery uses — against every mesh in `Keyless works` and `Power-reserve
+> train`, at the traverse's own axis. Two findings the filed numbers missed:
+>
+> - the governing neighbour is `reservePinion0`, not `rsvWheel1` — the
+>   reserve train's FIRST member off the barrel arbor. Its top happens to
+>   measure the same −3.532 the filed finding quoted for "the first wheel",
+>   which is exactly how the wrong mesh went unnoticed;
+> - a SECOND, independent neighbour governs once the first is pushed clear:
+>   `rsvArbExt`, the visible barrel-arbor extension (r 0.55), crosses
+>   `Z_SETTING`'s plane at the barrel's own XY regardless of `Z_RSV` — it
+>   was never in the filed finding's two-obstacle picture at all.
+>
+> **All three P3 candidates were tried and each measured insufficient.**
+> Growing or shrinking the motion-works corner (`BEVEL_MODULE`/`BEVEL_TEETH`)
+> turned out to be irrelevant — the corner never appears among this rod's
+> true nearest neighbours — and, measured directly (`bevelToothSpec` at
+> module 0.2/0.3/0.4), shrinking it moves ITS OWN metal CLOSER to its apex
+> (`zWebLo` scales with module), the opposite of what the filed finding's
+> "shrink the corner's stack" guess assumed. Moving `Z_RSV` relaxes
+> `reservePinion0`'s bound to r 0.48 by −4.7, then SATURATES exactly there —
+> `rsvArbExt` doesn't move with it — and pushing to −6.0 buys nothing
+> further. Re-siting the traverse's path (`CAP_BEARING`, already a free
+> parameter with generous slack against its own p1-cone constraint — forced
+> to 20° and to 60°, its own solve's search ceiling, the real clearance to
+> `reservePinion1` barely moves, 1.91 → 1.93) makes no difference to r_max
+> either, combined with the Z_RSV move or without: `B` swings on too small a
+> circle to redirect a 27.47u line's approach to the distant barrel arbor. A
+> NECKED rod was considered and refused by the check's own stated rule —
+> `turnedBars` clusters coaxial meshes at consecutive stations into ONE bar
+> judged on the narrowest diameter over the WHOLE span (`src/inspect.js`'s
+> own "the lay shaft... as the bar it is, it is 104"), so thinning only the
+> ~3u pinched stretch would lower the judged diameter while the judged
+> length stays the full run — measured directly, sampling clearance along
+> the rod at both the ceiling and the target radius: both read one
+> CONTIGUOUS violation from arc-length 19.48 to 22.48, nothing elsewhere.
+>
+> **Closing this for real needs a genuine FOLD, not a bigger version of any
+> of the above**: a new bevel corner kinking the traverse off its single
+> axis line near the barrel, so the two resulting legs are judged as
+> separate, shorter bars. That is new mechanism — its own P0 transfer row,
+> phase index, clearances against everything it now passes near — and step
+> 3a stops here rather than spend it half-considered; filed as its own
+> follow-up landing. Boot silent, 41/41 gates, and against merged `main`
+> the only moved fields are `SETTING_ROD_R`'s derivation and the
+> `Keyless works::settingTraverse` waiver's text.
+>
+> What group B leaves behind: one open row, `Keyless works::settingTraverse`
+> (step 3a, above). Three `turning` waivers stand across the whole movement
+> in total — `Alarm link` × 2 (Landing 1's group A and group C rows) and
+> this group's one.
 
 ### Group C — arbors inside the movement (3 rows)
 
