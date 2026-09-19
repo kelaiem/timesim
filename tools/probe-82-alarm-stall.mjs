@@ -157,7 +157,13 @@ const V = await page.evaluate(async () => {
   const sb = shaftMesh.geometry.boundingBox;
   const ext = { x: sb.max.x - sb.min.x, y: sb.max.y - sb.min.y, z: sb.max.z - sb.min.z };
   const stock = Math.max(ext.x, ext.y, ext.z);
-  const shaftR = shaftMesh.geometry.parameters ? shaftMesh.geometry.parameters.radiusTop : Math.min(ext.x, ext.y, ext.z) / 2;
+  // §234 Landing 5 — the body is a LatheGeometry now (two press-fit
+  // counterbores, item 6), whose `parameters` is truthy (points/segments)
+  // but carries no `radiusTop`: the old truthiness check read `undefined`
+  // for a real body. Fall back whenever radiusTop is not a finite number,
+  // not only when `parameters` itself is absent.
+  const shaftR = Number.isFinite(shaftMesh.geometry.parameters?.radiusTop)
+    ? shaftMesh.geometry.parameters.radiusTop : Math.min(ext.x, ext.y, ext.z) / 2;
   const stations = (shaftMesh.userData.bearings || {}).stations || [];
   const cuts = [-stock / 2, ...stations, stock / 2].sort((a, b) => a - b);
   // §202 — ANY NUMBER OF STATIONS. The rod end is the LOW-y end of the shaft
@@ -194,7 +200,8 @@ const V = await page.evaluate(async () => {
     const b = mesh.geometry.boundingBox;
     const e = { x: b.max.x - b.min.x, y: b.max.y - b.min.y, z: b.max.z - b.min.z };
     const L = Math.max(e.x, e.y, e.z);
-    return { L, c: mesh.position.x, r: mesh.geometry.parameters ? mesh.geometry.parameters.radiusTop : Math.min(e.x, e.y, e.z) / 2 };
+    return { L, c: mesh.position.x, r: Number.isFinite(mesh.geometry.parameters?.radiusTop)
+      ? mesh.geometry.parameters.radiusTop : Math.min(e.x, e.y, e.z) / 2 };
   };
   const bodyX = { c: shaftMesh.position.x, L: stock };
   for (const [nm, slot] of [['alarmLinkNeckRod', 'rod'], ['alarmLinkNeckFork', 'fork']]) {

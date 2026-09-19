@@ -2613,6 +2613,8 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush1', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations; §202 named the bushes, since a third station renumbers every positional selector)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush2', why: 'lay shaft in hanger bush 2' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckFork', why: '§234 Landing 5: the fork-end neck PRESSED into the body\'s counterbore (bore r = neck r − SAW_FIT, genuine interference) — the stub embeds 51% of its own length, over turnedBars\' TURN_LAP_MAX_FRAC, so the census reads it as a separate pressed part rather than a turned shoulder' },
+  { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkNeckRod', why: '§234 Landing 5: the rod-end neck, same press-fit construction — the deeper embedment (the rod-end overhang is longer) is what pushes this stub\'s own bar to L/D ≈ 20.85, TURN_WAIVERS\' rod-neck row' },
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushTop', why: '§202: the selector rod sliding in its three-quarter-plate bush at PIVOT_BORE_CLEAR — the rod\'s upper bearing, declared on the rod' },
   { unit: 'Alarm link', a: 'alarmLinkRod', b: 'alarmLinkRodBushBack', why: '§202: the same rod in its back-plate bush — the lower bearing' },
   // TODO 138 Landing 2 — RE-POINTED, and the three rows below said the wrong
@@ -9683,6 +9685,22 @@ export async function turnedBars(clock, opts = {}) {
           return ov > TURN_LAP_MAX_FRAC * Math.min(hi - lo, sb[1] - sb[0]);
         });
         if (concentric) continue;
+        // §234 Landing 5 — AND CONSECUTIVE MEANS TOUCHING. Every stepped bar
+        // in this movement is cut from one length of stock, so its sections
+        // overlap or abut (ov ≥ 0); nothing here has ever been two pieces
+        // with an air gap between them. Without this, two round members
+        // that share an axis LINE but sit at opposite ends of a THIRD,
+        // EXCLUDED member (a body pressed apart from both — see the necks
+        // beside `alarmLinkShaft`) read as "not concentric" (their spans
+        // don't overlap at all, so `ov` is negative and never exceeds the
+        // concentric threshold) and silently merge into one bar spanning
+        // the gap — measured, before this: `alarmLinkNeckFork` +
+        // `alarmLinkNeckRod`, 28 u of "bar" with the body's own 28.77 u
+        // union in between. `TURN_AXIS_OFFSET_U` is this file's own
+        // tolerance for "the same line"; reused here for "the same
+        // splice" — under it, a gap is rounding, not two parts.
+        const touches = spans.some(([lo, hi]) => Math.min(hi, sb[1]) - Math.max(lo, sb[0]) > -TURN_AXIS_OFFSET_U);
+        if (!touches) continue;
         cluster.push(b); spans.push(sb); used.add(j);
       }
       const mm = turnMeasure(a.axis, a.origin, cluster.map((x) => x.pts));
@@ -9770,7 +9788,27 @@ export const TURN_WAIVERS = {
   // measured here (there is none left to try that this landing's own record
   // has not already tried under Landing 1/2's names) closes the gap; TODO
   // 145's own record carries the three-option design write-up.
-  'Alarm link::alarmLinkShaft+alarmLinkNeckRod+alarmLinkNeckFork': 'TODO 145 group A (§234 Landing 5 Phase 0: MEASURED station by station — the body\'s every wall is BELOW the axis: the alarm setting idler\'s top face 0.435 under it caps r at 0.285, the dial plate 0.802 under it at 0.6517; above ≥ 2.24, in plan ≥ 1.05. Closes with the axis raised 0.501 to idlerTop + CLEAR_MARGIN + r_target and the necks as pressed stubs — the stratum landing, filed)',
+  // §234 Landing 5 — BUILT. The clustered 3-mesh bar above is retired: the
+  // stratum rose to idlerTop + CLEAR_MARGIN + r_target (r_target =
+  // bodyLen/(2·TURN_LD_TARGET), the turning-target floor governing over the
+  // λ-derived term), the body reads L/D 18.0 alone, and the necks are
+  // PRESSED stubs (51% embedded, over TURN_LAP_MAX_FRAC) — the census now
+  // reads three separate bars, not one. The fork-side stub clears (L/D
+  // 8.6). The rod-side stub does not, and cannot: its EXPOSED length is
+  // `ALARM_LINK_ROD_END_OVERHANG` (3.269 u), fixed by the crank station
+  // (item 6's own constraint — unchanged by this landing), and its
+  // diameter is fixed by `ALARM_LINK_SHAFT_NECK_R` (0.16, = CRANK_OFF −
+  // CRANK_T/2 — a lever arm this landing does not spend). The press
+  // classifier's own boundary (embedded > exposed, TURN_LAP_MAX_FRAC = 0.5)
+  // puts a FLOOR under the stub's own bar independent of how far past 50%
+  // the lap is cut: total ≥ 2 · exposed as the fraction → 0.5⁺, so
+  // L/D ≥ exposed / neckR = 20.43 — over TURN_LD_MAX (20) by construction,
+  // before any margin is added for a robust (not float-noise) split. At the
+  // 0.51 fraction actually cut (embedded 3.402 u, total 6.671 u) it reads
+  // L/D 20.85. Retiring this waiver needs a fatter neck, and the neck's
+  // radius is the crank's own lever arm — the same P1 constraint TODO 145's
+  // three-option write-up already priced for the whole clustered bar.
+  'Alarm link::alarmLinkNeckRod': 'TODO 145 group A (§234 Landing 5 — the press classifier\'s own boundary puts a 20.43 floor under this stub\'s L/D, over TURN_LD_MAX by construction at the fixed exposed length and neck radius; cut at 20.85. Fix needs a fatter neck, i.e. moving ALARM_LINK_CRANK_OFF — a lever arm, filed with TODO 145\'s existing three-option record)',
   // GROUP B — members that CROSS the movement or reach the case band. Their
   // length is the case's, not a design choice: a crown stem is long because
   // the case is 20 mm across. What is wrong is the DIAMETER — these were cut
