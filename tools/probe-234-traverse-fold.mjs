@@ -1,6 +1,33 @@
 // §234 step 3a follow-up — WHERE DOES THE SETTING TRAVERSE FOLD, AND DOES EACH
 // LEG CLEAR AT THE SECTION THE PLATE LEAVES IT? A REPORT, with controls.
 //
+// VERDICT AS OF §234's fold landing: NO SINGLE-CORNER SITE EXISTS, on either
+// side, and the map below is the finding. Both derivable K rules were cut in
+// `main.js`, booted, and measured over the pose net on the folded tree
+// (`KRULE=plus` at α 12°, `KRULE=arbor`), and both were refused by metal the
+// straight run threads between:
+//   · the mitre at B is PINNED by the minute wheel's own rim and the star,
+//     both centred on the minute-wheel stud 0.4 u outside B at the traverse's
+//     own plane (z −3.03..−2.25 and −3.5..−3.18): re-aimed 19° toward the
+//     barrel or 17.5° toward the transfer arbor its blank reads −0.13 into
+//     them, while at 9.3° it clears — and both K rules need 17–19° there;
+//   · on the barrel's side the corner's blanks stand inside rsvWheel1's rim
+//     (tip r 5.28, 0.43 u from K in plan), and the reserve train's own swing
+//     solve, replicated with its blocker named, clears them by 0.10 at −15°
+//     (0.05 short of CLEAR_MARGIN) before the setting cap stops p1 at −16°;
+//   · on the transfer arbor's side leg 1 at the 17.5° the arbor's reach
+//     forces runs through the stem cluster 7–12 u from A (yoke prong, clutch
+//     saw, winding pinion — the straight run passes them at 0.8–1.3).
+// What is left is the near-collinear kink (deflection ≲ 5°, Σ ≥ 175°) whose
+// angle no constraint sets — a number chosen for the census, refused by rule
+// 1 — and two POSITION-SPACE routes filed against TODO 145 group B: re-site
+// B on its own free bearing (`CAP_BEARING`) so a swung leg 2 leaves the
+// minute wheel radially, which re-opens the barrel side if w1's swing then
+// clears; or retire the rod for a wheel train in the keyless plane, the way
+// a caliber carries setting motion (roadmap). The fold's build code is NOT in
+// the tree; this probe, run on the shipped tree, reproduces every number
+// above from its own controls.
+//
 // `Keyless works::settingTraverse` is the last `TURN_WAIVERS` row: a 27.47 u
 // rod at r 0.382 (L/D 36) whose section is pinned by the reserve train's first
 // pinion under it (`RSV_P0_TOP_Z`) over ~2.5 u of its run, and by the base

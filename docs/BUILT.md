@@ -26894,6 +26894,70 @@ own: three hand-offs re-measured inside ±0.03, the crank row's load 81.02 →
 1006.54 mN, two refuted swept rows refining (0.216, 0.197) and one new refuted
 row at exactly 0.15 against the idler — the stratum term to the digit.
 
+### Landing 6 — the setting traverse fold: measured on the built metal, refused on both sides
+
+Step 3a's follow-up was filed as a corner without a site. This landing found
+the site the hard way — by cutting the fold into `main.js` twice, once per
+derivable rule, booting each and measuring it over the full pose net — and
+the answer is that no single-corner fold stands anywhere along this run. The
+build is reverted; the instrument and the map are what shipped.
+
+**The instrument.** `tools/probe-234-traverse-fold.mjs` reads A and B off the
+two mitre corners' apexes, derives each leg's section by the law
+`SETTING_ROD_R` itself uses (governing neighbour − `CLEAR_MARGIN`: the base
+plate's presented back face for leg 1, 0.55; the `reservePinion0` pinch for
+any leg still running over that pinion, 0.382), solves K under a named rule,
+and walks the straight run (its control — worst 0.382 under p0, 0.55 against
+the plate, matching `probe-234-shaft-body-corridor` to the digit), both
+legs, and all four corner blanks on their own cones over the 43 digest poses.
+It excludes exactly the seven meshes a fold replaces. Its first cut excluded
+the whole Keyless works unit as ground and put K 0.45 u from the winding
+transfer arbor while reporting "no wall in plan" — the instruments skill's
+trap, verbatim, kept in its header.
+
+**Rule 1, the barrel's side** (`KRULE=plus`): leg 1 swings as far as the Yoke
+allows (measured 0.5° steps: 12° clears, 14° hits its prong post 5.5 u from
+A), leg 2 the least swing that passes the barrel-arbor column on its near
+side — 19.08°, forced because at 0.382 a 13.75 u target leg cannot be reached
+from the far-side ray (26 u). K (−13.10, 13.82), legs 17.39/11.06 u, L/D
+15.8/14.5, Σ 148.9°. **The legs clear; the corner does not**: `rsvWheel1`'s
+rim (tip r 5.28) passes 0.43 u from K and the blanks stand 1.56 u into its
+band. The reserve train's own w1 swing solve, replicated with its blocker
+named, clears the corner by 0.10 at −15° — 0.05 short of the margin — with
+the setting cap stopping p1 beyond −16°; and the mitre at B, re-aimed 19°,
+reads −0.13 into the minute star.
+
+**Rule 2, the transfer arbor's side** (`KRULE=arbor`): both legs at 0.55 (leg
+2 no longer runs over p0 there, asserted), K on the perpendicular bisector
+held off the arbor's axis by exactly the blank's reach, coneR + 0.7 + margin
+= 2.42. K (−21.60, 12.57), equal legs 14.40, L/D 13.1, Σ 145.1°, 17.45° at
+each end. The corner clears; **leg 1 does not**, running through the stem
+cluster 7–12 u from A (yoke prong 0.05, clutch saw −0.02, winding pinion and
+its saw −0.13) that the straight run passes at 0.8–1.3; and the mitre at B,
+re-aimed 17.5° the other way, reads −0.13 into the minute wheel's own rim.
+
+**The finding is B.** The minute wheel's rim (z −3.03..−2.25, the traverse's
+own plane) and the star (−3.5..−3.18) are centred on the minute-wheel stud
+0.4 u outside B: the mitre there clears at 9.3° of re-aim and is inside them
+at 17.5° either way, while both rules need 17–19°. What remains is the
+near-collinear kink (deflection ≲ 5°, Σ ≥ 175°) whose angle no constraint
+sets — a number chosen for the census, refused by rule 1. TODO 145 group B
+carries the two position-space routes: re-site B on `CAP_BEARING` so the
+swung leg leaves the minute wheel radially (then w1's swing needs 0.05), or
+retire the rod for a wheel train in the keyless plane (roadmap).
+
+**What shipped.** `addBevelCorner` takes `{ shaftAngleDeg, boreIn, boreOut }`
+(defaults are the two shipped mitres; the angle is asserted against the axes
+handed in) and returns the one spec it cut; tick threads `handSetOffset`
+through `MW_CORNERS` from the cap end (the drop enters at (−1)^N, so a third
+corner would carry its own sense by construction); `PLATE_BEVEL_T_F` is
+exported from the plate builder; the corner-index and coupling probes carry a
+`mwCornerFold` row. Every written angle is what it was, and the last
+`TURN_WAIVERS` row stays, reworded to this measurement.
+
+**The bar.** Local `--report` on this head, diffed against Landing 5's
+merged report — recorded in the pull request.
+
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
 TODO 145 group B asked for the alarm crown's stem to be cut from arbor stock to
