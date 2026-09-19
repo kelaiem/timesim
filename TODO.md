@@ -20699,3 +20699,130 @@ the model says "these parts occupy the same space and that is fine". Every other
 contact in the movement is a surface against a surface. Until the bore exists,
 `priceRigidBentLink`'s pin-to-pin span, the §54 chord and the eye's own wall are
 all describing a link that could not be assembled.
+
+## 147. The Breguet overcoil's stud lands outboard of the outer coil, because nothing constrains the terminal's end radius
+
+§218 tier two continues the hairspring's ribbon past the spiral's outer end
+through a knee into a raised plane, then a TERMINAL of `turns · 2πR` of arc
+made of two constant-curvature arcs whose curvatures are solved for Phillips's
+first condition (centroid of the flexing centreline on the balance axis). The
+solve is honest and the concentricity it buys is real. What no one asked is
+where the far end of that terminal comes to rest.
+
+**What is modelled.** Measured through the real builder (`hairspringRest`,
+`geometry.js` ~2817) on the shipped `HAIRSPRING_PLAN` (`main.js` ~1542):
+
+| quantity | value |
+|---|---|
+| outer coil `outerR` = `balanceR · 0.88` | 7.920 u |
+| radius after the knee | 8.196 u |
+| terminal's radial excursion | 5.673 … 9.718 u |
+| stud, `termEndR` | **9.718 u = 1.227 · outerR** |
+| solved radii ρ₁ / ρ₂ | 6.727 / 10.022 u |
+| balance rim `rimO` | 9.000 u |
+| balance's true swept radius (screw tips, `SCREW_PROTRUSION` 0.3) | 9.300 u |
+
+The terminal does climb over the body — it reaches in to r 5.67, which is
+proper overcoil behaviour — and then swings back OUT and clamps 0.418 u
+outside the balance's own swept circle. A Breguet terminal curve ends
+INBOARD, with the stud over the body of the spring; that is what the raise
+into a second plane exists to make possible.
+
+**Why it matters, in the movement's own currency.**
+
+1. *The raise is paid for and not collected.* §218 tier two's own record:
+   `SPRING_TOP_Z` rose 0.63 u, the cock's slab and the three-quarter plate's
+   floor rose with it, the z box grew 0.21 mm, and the first boot with the
+   raised top left §47's winding arrest with no legal beak azimuth at any of
+   its 102 pad azimuths — `TRAIN_CEILING_Z` was split off as a separate datum
+   to fix it. That was all spent to get the ribbon over its own coils. The
+   stud then lands where a flat spring's would, further out.
+2. *The swept radius is metered and this ignores it.* `makeBalanceWheel`
+   (`geometry.js` ~2150) trims the screws' outward protrusion to 0.3 because
+   "the tips set the balance's true swept radius against the balance cock's
+   T-foot legs, the fork-pivot boss and the plate's cutaway edge — every 0.1
+   of protrusion is 0.1 every one of those must stand off." The stud sits
+   0.418 u outside that negotiated circle, and the stud carrier (`main.js`
+   ~8938) cantilevers an arm from r 2.85 out to `yS = 9.718` to reach it,
+   crossing over the rim and the timing screws. On a free-sprung balance the
+   stud is the spring's ONLY fixture — no index, no curb pins — so that arm's
+   length is compliance in series with the rate.
+3. *It makes the name claim more than the geometry supports.* `explain.html`
+   PLATE 2 and `docs/BUILT.md` §218 both present this as a Breguet overcoil.
+   Phillips's first condition IS met (4e-13, verified on the elastica), so the
+   BREATHING is honest and this item does not dispute it. The SHAPE is not a
+   Breguet terminal curve.
+
+**This is not a branch the Newton solve picked wrong.** That was the first
+hypothesis and it is measured false. Two scans, run through the real builder
+(a re-implementation of the same two-arc family, controlled by reproducing
+`geometry.js`'s own `endR` to 0.00e+0):
+
+- Seeding Newton over an 8 × 8 grid of (κ₁, κ₂) at the shipped 0.75 turns
+  finds 469 raw roots but exactly ONE with curvatures a ribbon could take
+  (|ρ| ≥ 2 u ≈ 0.75 mm on both arcs) — the shipped root. Every inward-ending
+  root (endR ≈ 4.12 u = 0.52 · outerR) needs ρ₂ → 0, i.e. a kink.
+- Sweeping `turns` across the whole admissible 0.55–0.90 window keeps the stud
+  at 1.22–1.41 · outerR throughout; the minimum is 1.22 at 0.80 turns. No
+  proportion in the window lands it inboard.
+
+The cause is the PARAMETERISATION, not the seed. The terminal has its length
+fixed at `turns · 2πR` and its shape spent on two constant curvatures, both of
+which Phillips's two scalar equations consume. `termEndR` is therefore a pure
+OUTPUT with nothing constraining it — standing rule 1 read from the far side:
+not a number that appeared because it looked right, a number nobody looked at.
+
+**Why no instrument objects.** `termEndR` is published
+(`geometry.js` ~3227) and read by the stud carrier, and never compared to
+anything. `checkOscillator`'s overcoil row (`inspect.js` ~8475) holds
+`converged`, `concentric` and `forceRatio.performed` — all three are true here.
+`probe-218-breathing.mjs` re-runs the terminal-length sweep, but it asks
+whether the family SOLVES at each proportion, not where it ends. The collision
+tier cannot see it either: the terminal is in the raised plane and the carrier
+arm is a cock fixture that clears everything it passes over, so the pair sweep,
+`sweptOverlap` and `intraUnit` are all correctly green. Nothing in the battery
+compares a part's radius to a neighbour's design intent, which is the class of
+question this is.
+
+**The fix.** P0/P1 inside the oscillator's action group; the stud carrier's
+arm follows in position space (P3) and must not be used to pay for it.
+
+1. **Give the terminal a third degree of freedom.** Two conditions cannot fix
+   three quantities. Either free the terminal LENGTH alongside the two
+   curvatures (three unknowns, two centroid equations, one declared stud
+   radius), or give the terminal continuously varying curvature — the actual
+   Phillips terminal curve — and solve the centroid condition subject to the
+   end constraint. The first is the smaller change and stays inside
+   `hairspringRest`'s existing shape.
+2. **Declare the stud radius as a constraint, with the constraint written in
+   the comment.** The physical statement is that the stud sits over the body
+   of the spring, inside the outer coil — so an upper bound at `outerR` at
+   worst, and a target inboard of it. It must be a DERIVED bound, not a
+   target picked to look right: the candidates are the outer coil itself, or
+   the coil the terminal passes over, or the carrier ring's own reach. Pick
+   one and write why.
+3. **Re-solve the rate, never the beat.** Changing the terminal's length
+   changes the developed length, so the ribbon's section must be re-solved
+   from the balance's inertia so `√(k/I)` still lands on `F_BALANCE`, and the
+   ribbon must stay inside 0.02–0.04 mm stock. `checkOscillator` gates both.
+   Do NOT re-target the beat to match a spring that came out convenient.
+4. **Re-verify Phillips on the elastica, not on the solve.** The clamp ratio
+   must still read 1 to 1e-6 and the performed-amplitude pivot force must stay
+   under a tenth of the flat spring's — the acceptance §218 set, and the only
+   thing that proves the new terminal is still concentric.
+5. **Shorten the carrier and re-clear it.** `yS` reads `termEndR`, so the arm
+   shortens by construction; the ring, boss, post and side pin all follow. The
+   §54 chord and any `SLENDER_WAIVERS` row for the carrier want re-reading
+   after, and the arm no longer crossing the timing screws is the point, not a
+   side effect.
+6. **Gate it.** A boot assert comparing `termEndR` against the declared bound
+   with both numbers, per rule 6 — the bound is a build-time derivation, not a
+   claim about a pose, so it belongs at boot rather than in a sweep. Extend
+   `probe-218-breathing.mjs`'s sweep to report the end radius beside the
+   solving window, so the next person reading the window sees both.
+
+**Record when it lands.** `docs/BUILT.md` §218 tier two states "stud at r 9.72"
+and judges the 0.55-turn case by whether it clears the PLATE CUTAWAY — the
+outer coil was never a constraint anyone wrote down, which is how this shipped
+green. Edit that paragraph in place rather than appending a correction, and
+refresh `explain.html` PLATE 2's solved radii in the same landing.
