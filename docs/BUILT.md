@@ -26779,6 +26779,121 @@ hash moves because the metal did. Nothing else moved —
 landing used to find the honest footprint are documented in the tool's own
 header; no new mechanism, no widened margin, `CLEAR_MARGIN` untouched.
 
+### Landing 5, Phase 0 — the lay shaft's body measured alone: the wall is the stratum
+
+Landing 4 left group A with three options and a refusal read through the
+§112 solve's box model — a whole chord at one section, and a corridor
+figure (max r 0.285) that two earlier instruments had located at the CRANK
+stations. Option 1, a fat body with the necks as pressed stubs, had never
+been measured because nobody had measured the body between its bush
+stations as its own question.
+
+`tools/probe-234-shaft-body-corridor.mjs` does: the body's axis read off its
+built `matrixWorld`, a real BVH probe every 0.5 u over the 43-pose net, and
+the free radius kept SPLIT by which way the nearest wall lies. Its first cut
+labelled the wall by the obstacle's bounding-sphere centre and called the
+alarm setting idler an in-plane neighbour; the idler is a 9 u disc whose
+centre is 4.4 u off the axis in plan while its top face lies 0.435 straight
+below it. The number was right and the label was wrong, and the label is the
+half that decides which landing closes the row.
+
+**Every binding wall on the body is below the axis.** The idler's top face
+(z −8.033) holds the free radius at **0.285** across three crossings of its
+outline (chord t ≈ 14.4–17.5, 19.4–22.5, and 0.31 near 28.5); the dial plate
+(z −8.40, 0.802 under the axis) caps it at **0.6517** everywhere else — under
+the 0.708 ceiling on its own. Above the axis nothing stands within 2.24; in
+plan nothing within 1.05. Controls: the shipped 0.2664 clears every station,
+and the overrun reproduces the crank-station walls (`alarmSelTab` 0.11–0.22,
+the ring's groove at the pin).
+
+So option 1 as priced is closed — at this stratum a separate body still reads
+L/D ≥ 50 — and the stratum is exactly what Landing 4's chord search could not
+vary. The target fits with the axis at `idlerTop + CLEAR_MARGIN + r_target` =
+**−7.097**, a rise of **0.501 u** (ceiling 0.423), after which above reads
+≥ 1.74 and plan ≥ 1.05 at every body station. `ALARM_LINK_SHAFT_Z` becomes the
+higher of §51's partner plane and that derivation. The costs are filed under
+TODO 145 group A as six re-derivations — the centre crank pin's rest angle
+(the P0 one, §229's registration re-solved and measured), the rod-end
+contacts, the hangers and the middle station (which sits over the idler's
+first lobe and moves off it), the pressed stubs the census still needs, the
+stall chain, and the §51 keyless-floor tripwire — none of them a lever arm.
+The waiver row is re-worded to name the stratum and stands until the rise is
+built.
+
+### Landing 5 — built: the stratum raised, the body bored, the necks pressed, and what the gate refused first
+
+**The derivations.** `ALARM_LINK_SHAFT_R = max(λ-derived, bodyLen /
+(2·TURN_LD_TARGET))` — the turning term governs at **r 0.8609** on a 30.99 u
+body, L/D **18.0** by construction. `ALARM_LINK_SHAFT_Z` is the highest of
+three floors: §51's partner plane (−7.598), the idler's top face and the dial
+plate, each plus `CLEAR_MARGIN` plus the hanger BUSH's OD (**1.001** — the
+widest thing riding at that radius, hoisted from the hanger loop). The idler
+term governs: axis **−6.8824**, a rise of **0.716 u**; measured after the
+rise the free radius reads a flat 1.001 across the idler's whole crossing,
+the term to the digit. Bush 3's station derives from what it must clear at
+the rod end — the crank's half-thickness, the rod's section, two margins and
+its own half-length, **1.043 u** — and λ's ceiling on the neck's cantilever
+is asserted, never spent; the middle station is the equal-span midpoint
+(15.50 / 15.50). The centre pin's arm is closed-form from the offset, the
+travel and the SAME 0.35 rad span the rim finger's corridor derived:
+**0.8339** (was 0.56), resting 59° below horizontal. The body is a Lathe with
+two blind counterbores at `ALARM_LINK_SHAFT_NECK_R − SAW_FIT`, the necks
+pressed 51% of their length into them (stubs 2.755 and 2.130 u; L/D 8.6 and
+6.7). `ALARM_LINK_ROD_TRAVEL_SPEC` 0.0993 → **0.1002**, the rim crank's rest
+angle following the rod's re-derived foot at the unchanged span. Every
+hand-off inside ±0.03 with no tolerance moved; `probe-82` **1006.54 mN** (was
+81.02), the rod-end overhang still governing.
+
+**What the gate refused, and why each refusal was right.** The first cut of
+this landing passed 41 gates and was not accepted, because four things in
+it were numbers that existed to make the picture right. The pin's roll span
+had been bracketed against two gates to 0.30 rad — moving the rod's travel
+spec and the beak's lever ratio, §35's class of fix; what actually refused
+the derived 0.35 was the FORK's side webs, a ±0.25 literal sized for a level
+pin, which the pin's new 0.22 u slide along the groove walked straight
+into (hand-off −0.1165, penetration 0.116). The block's width and centre
+derive from the same rest/armed samples that set its height now, and the
+solve closed at 0.35 unmodified (+0.0147 armed). A new `TURN_WAIVERS` row had
+been written for the rod-end stub because its exposed length was λ's ceiling
+worn as a station; derived from the clearance it is 1.04, not 3.27, and the
+stub clears. The stratum's `max()` had reserved room for the body over the
+idler only, and the hanger bushes over the dial plate landed at exactly
+0.150 by coincidence; the third floor makes that derived. And `turnedBars`
+had been taught that coaxial members must TOUCH to be one bar — which
+un-read six through-arbors that main reads as one (a pivot stub either side
+of a wheel pressed on the same arbor: the centre, third and fourth wheels,
+the fusee staff, the pallet fork, the setting lever). A second attempt asked
+that bored-through material COVER the gap and split the same six. The rule
+that holds is the smallest one: §233's "coaxial at consecutive stations is
+one stock" stays, and a gap is refused only when a member seated on the
+line carries a POLE strictly inside its length — a blind counterbore's
+bottom, the one shape no arbor continues through — read off vertices (the
+weld drops a Lathe's profile), seated by the box centre (a Lathe's seam
+survives the weld as two vertices and leans the vertex mean r/9 off the
+axis), along the line through both members' origins (a 2.7 u stub's fitted
+direction is 0.09 off at the body's centre). Control: every other unit's
+`turning` rows identical to main.
+
+**The instrument that had to be corrected to accept the landing.** `probe-82`
+and the boot's series sum had agreed at 81.02 mN for four records and parted
+by 4% here, because the shaft stopped governing the chain and two of the
+probe's own shortcuts surfaced: it reflected the pin by its path (the arc's
+slide does no work on the ring — the ratio is the displacement along the
+load, 1.0, as the solve holds) and it cubed the tail blade's width instead
+of its thickness (15.7× too stiff, under 1% of the chain until now). Both
+corrected, the two paths meet to the digit. `probe-234-shaft-body-corridor`'s
+control (a) had read a Lathe body's OD as null and passed; it fails on null
+now.
+
+**The bar.** Local `--shards 3 --report` on this head **41/41** (1434 s), CI on
+the self-hosted `battery-1-7400` **42/42 · 937.9 s**, fingerprint 3363748923
+on both, boot silent. `turning` waived 2 → 1 with nothing added; needRest
+identical to main plus the body's own L/D-18 row; ambiguous +3 (the hanger
+bushes, now discs). Every other moved row against main is the alarm link's
+own: three hand-offs re-measured inside ±0.03, the crank row's load 81.02 →
+1006.54 mN, two refuted swept rows refining (0.216, 0.197) and one new refuted
+row at exactly 0.15 against the idler — the stratum term to the digit.
+
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
 TODO 145 group B asked for the alarm crown's stem to be cut from arbor stock to
