@@ -95,6 +95,11 @@ const ROOT = process.env.ROOT || '..';
 const STEP = +(process.env.STEP || 0.5);
 const OVERRUN = +(process.env.OVERRUN || 5);
 const SEARCH = +(process.env.SEARCH || 3.0);
+// §234 step 3a follow-up — the probe generalised to ANY straight round mesh:
+// MESH names it, UNIT names the unit whose own meshes are the ground it stands
+// in (excluded). Defaults are the lay shaft this was written for.
+const MESH = process.env.MESH || 'alarmLinkShaft';
+const UNIT = process.env.UNIT || 'Alarm link';
 
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 process.on('exit', () => srv.kill());
@@ -105,7 +110,7 @@ page.on('pageerror', (e) => console.error('PAGEERROR', String(e)));
 await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', timeout: 60000 });
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
 
-const R = await page.evaluate(async ({ STEP, OVERRUN, SEARCH }) => {
+const R = await page.evaluate(async ({ STEP, OVERRUN, SEARCH, MESH, UNIT }) => {
   const THREE = await import('./vendor/three.module.js');
   const I = await import('./src/inspect.js');
   const { CLEAR_MARGIN, UNIT_MM } = await import('./src/layout.js');
@@ -120,14 +125,14 @@ const R = await page.evaluate(async ({ STEP, OVERRUN, SEARCH }) => {
   });
   const byName = new Map();
   for (const o of all) if (o.name && !byName.has(o.name)) byName.set(o.name, o);
-  const body = byName.get('alarmLinkShaft');
-  if (!body) throw new Error('alarmLinkShaft not found in the scene');
+  const body = byName.get(MESH);
+  if (!body) throw new Error(`${MESH} not found in the scene`);
 
   const unitOf = new Map();
   for (const e of clock.labelEntries) e.obj.traverse((o) => { if (!unitOf.has(o)) unitOf.set(o, e.name); });
   const nameOf = (o) => o.name || '(unnamed)';
 
-  const obstacles = all.filter((o) => o !== body && unitOf.get(o) !== 'Alarm link');
+  const obstacles = all.filter((o) => o !== body && unitOf.get(o) !== UNIT);
 
   body.geometry.computeBoundingBox();
   const bodyLen = body.geometry.parameters && body.geometry.parameters.height != null
@@ -274,9 +279,9 @@ const R = await page.evaluate(async ({ STEP, OVERRUN, SEARCH }) => {
     axisZ: +center.z.toFixed(4),
     stations: out, worstBody, worstOverrun, worstBodyBySide,
   };
-}, { STEP, OVERRUN, SEARCH });
+}, { STEP, OVERRUN, SEARCH, MESH, UNIT });
 
-console.log(`§234 group A — shaft body corridor, station by station`);
+console.log(`§234 — ${MESH} (${UNIT}) corridor, station by station`);
 console.log(`  body: len ${R.bodyLen} u (t1..t3 span), shipped r ${R.shippedR}, axis z ${R.axisZ}, CLEAR_MARGIN ${R.clearMargin}, ${R.poseCount} poses`);
 console.log('');
 console.log('  y        inBody  freeR    rawGap   owner                                  dir  pose#   below    above    plan');
