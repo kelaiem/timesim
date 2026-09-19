@@ -34,7 +34,7 @@ export default {
   // ---- vocabulary (the glossary block: where a part sits, what the
   //      instruments claim, and the two words used strictly) ----
   ['Vocabulary — the words the rest of this page uses without stopping<span class="where">how to read the entries</span>']: '术语 — 本页其余部分不加解释就在使用的词<span class="where">如何阅读这些条目</span>',
-  ['Three families of word do most of the work below, and the entries lean on all three without pausing. None of it is watchmaking\'s vocabulary — it is this project\'s, and it exists because the movement is checked by instruments rather than by eye. The same words carry the same meanings in the repository\'s own documents.']: '下面的条目主要依靠三类词，而且用起来从不停顿。这些都不是钟表业的词汇，而是本项目的词汇；它们之所以存在，是因为这枚机芯由仪器检验，而不是靠肉眼。同样的词在仓库自己的文档里含义相同。',
+  ['Five families of word do most of the work below, and the entries lean on all five without pausing. None of it is watchmaking\'s vocabulary — it is this project\'s, and it exists because the movement is checked by instruments rather than by eye; the shape words are the one loan, ordinary geometry held here to one meaning each. The same words carry the same meanings in the repository\'s own documents.']: '下面的条目主要依靠五类词，而且用起来从不停顿。这些都不是钟表业的词汇，而是本项目的词汇；它们之所以存在，是因为这枚机芯由仪器检验，而不是靠肉眼。只有表示形状的那类词是外借来的，是寻常的几何学用语，在这里各自只取一个意思。同样的词在仓库自己的文档里含义相同。',
   ['Where a part sits']: '零件坐在哪里',
   ['What the instruments claim']: '仪器主张什么',
   ['Two words this project uses strictly']: '本项目严格使用的两个词',
