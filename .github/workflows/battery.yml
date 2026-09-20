@@ -226,38 +226,50 @@ on:
         options: [ubuntu-latest, self-hosted]
         default: ubuntu-latest
 
-# A force-push mid-run should kill the stale run — the battery is long enough
-# that queued duplicates would otherwise stack up behind it.
+# WHAT MAY CANCEL WHAT, and the rule is one line: a run that WRITES A BASELINE
+# is never cancelled by a run that writes a DIFFERENT one.
 #
-# AND THE EVENT IS PART OF THE KEY, because two runs on one ref are not always
-# the same run. Measured twice, at §237's merge and again at §238's: the
-# push-to-`main` run (917) was CANCELLED ~100 s in by the `runner: self-hosted`
-# dispatch that seeds the host's baseline (918), and the same pair appears at
-# 913/914 a merge earlier. Same ref, same group, and BOTH ARE BASELINES —
-# §152's key carries the PLATFORM, and §200's rule is that a push NEVER routes
-# self-hosted, so on the default branch the event name IS the platform seam.
-# Neither run supersedes the other and the survivor is whichever was dispatched
-# last, which is not a decision anybody made.
+# `cancel-in-progress` was added for a real case and that case is still here —
+# a force-push mid-run should kill the stale run, because the battery is long
+# enough that queued duplicates would stack up behind it. But the group was
+# `${{ github.ref }}` alone, and on the DEFAULT BRANCH that is not one run: it
+# is every baseline §152 stores. Measured, in ten minutes of one busy
+# afternoon, three runs died that nothing intended to kill:
 #
-# The symptom is quiet and it is paid for later: a cancelled push run leaves
-# the merged tree with no ubuntu-latest verdict, so §152's "every merged tree
-# gets a full battery" quietly does not hold there, and the next GitHub-hosted
-# pull request re-runs every check instead of inheriting rows it was entitled
-# to. Nothing goes red; the bill arrives as 30 minutes on somebody else's PR.
+#   917  push f84933d      cancelled by 918, the dispatch seeding the host
+#   918  dispatch f84933d  cancelled by 919, the next merge's push
+#   919  push 382b591      cancelled by 920, the merge 4 s behind it
 #
-# What must still collide, and still does: every pull-request event is
-# `pull_request` — `labeled` is one of its TYPES, not an event of its own — so
-# §200's label opt-in still supersedes the hosted run it replaces, and a
-# force-push still kills the stale run on its branch. Two dispatches on one ref
-# still cancel each other, which is right: that is the same seeding job twice.
+# and 913/914 are the same pair one merge earlier. Every one of those was a
+# baseline for a (platform, commit) §152 keys separately — the survivor is
+# whichever fired last, which is not a decision anybody made.
 #
-# The event name is a PROXY for the platform and it is only as true as §200's
-# rule. Route a push self-hosted and this key stops being the seam; the fix
-# then is to key on the routing expression itself, which is not done here
-# because that expression would be written down twice.
+# The cost is quiet and deferred, which is why it ran this long unnoticed: a
+# cancelled push run leaves that merged tree with no ubuntu-latest verdict, so
+# §152's "every merged tree still gets a full battery" silently does not hold
+# there, and the next hosted pull request re-runs every check instead of
+# inheriting rows it was entitled to. A cancelled DISPATCH is worse in one way
+# — §200's seeding is one dispatch per merge, so the self-hosted baseline just
+# stays stale at whatever commit last survived, and every self-hosted PR pays
+# a full battery until someone notices. Nothing goes red either way.
+#
+# So the group carries the SEAM ITSELF. A pull request keys on its ref and
+# still cancels: `labeled` is a TYPE of `pull_request`, not an event of its
+# own, so §200's label opt-in still supersedes the hosted run it replaces, and
+# a force-push still kills the stale run. Everything else keys on the COMMIT
+# and the event — a push never cancels and is never cancelled, because each
+# merge's verdict is owed to that tree, while two dispatches at one commit
+# still supersede each other, that being the same seeding job twice.
+#
+# Why the event name rather than the routed host, which is what a baseline is
+# really keyed by: §200's rule is that a push NEVER routes self-hosted, so on
+# the default branch the event IS the platform seam. It is a proxy, true only
+# while that rule holds. Route a push self-hosted and this has to be re-derived
+# from the routing expression — not done now, because that expression would
+# then be written down twice.
 concurrency:
-  group: battery-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  group: battery-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 # §200 — WHERE THIS JOB RUNS IS DECIDED HERE, BY TRUST FIRST AND BY A VARIABLE
 # SECOND.
