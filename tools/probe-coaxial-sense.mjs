@@ -128,7 +128,7 @@ const out = await page.evaluate(() => {
   // descendant of the train that turns on the hand's own axis. That set is
   // asserted non-empty and asserted to agree with itself, because a selector
   // that silently matched nothing would leave this control passing vacuously.
-  const rsvHandMesh = named('reserveShaft');       // any part of the hand carries the hand's spin
+  const rsvHandMesh = named('reserveBody');       // any part of the hand carries the hand's spin
   const rsvBoss = named('reserveBoss');            // …and the boss is centred on its axis
   const rsvTrain = unit('Power-reserve train');
   const rsvParts = {}; let rsvAxisXY = null, rsvCandidates = 0;

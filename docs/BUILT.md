@@ -9893,7 +9893,9 @@ one unit — TODO 5's still-invisible class, recorded in the TODO rather
 than as dead declarations. The drum-bore⇄arbor bearing is cross-unit
 inside an EXPECTED pair with no floors row — TODO 6's catalogued residue.
 The new meshes are kinded (`mainspringDrumArbor`, `mainspringDrumStaff` —
-shaft stock over the pivot floor by an order of magnitude) rather than
+since renamed `mainspringDrumPivot`, §236's prerequisite: it is the drum
+arbor's lower pivot, and `mainspringDrumArbor` beside it already held the
+other word — shaft stock over the pivot floor by an order of magnitude) rather than
 left to swell the unit's default-kind waiver.
 
 ## §101 — the click faces the right way: reverse-cut saw, a beak cut to the tooth space, and the give-back enacted (TODO 37 follow-up)
@@ -20044,7 +20046,8 @@ the §121 morph-frame concern. TODO 101's leaf-through-tube overlap shrank
 fifteen-fold (0.2885 → 0.0188 deep, re-measured by
 `probe-95-interpenetration.mjs`); the leaf is still unbored, so the item
 stays open with its waiver refreshed, naming `alarmShaft` now that the
-mesh has a name.
+mesh has a name (renamed `alarmBody` by §236's prerequisite — it is a hand's
+body, and `shaft` now names only a lay shaft and a screw's shank).
 
 **The reserve well rejoins the deep-well class.** §153 cut it barely
 recessed (a derived 0.24) because the old blade's sweep lane

@@ -58,11 +58,11 @@ const snapshot = () => page.evaluate(async () => {
   const hasMesh = (g, name) => { let f = false; g.traverse((o) => { if (o.name === name) f = true; }); return f; };
   const hours = groups.filter((g) => g.userData.kind === 'hour').sort((a, b) => b.userData.length - a.userData.length);
   const named = {
-    smallSecondsHand: groups.find((g) => hasMesh(g, 'smallSecondsShaft')),
-    reserveHand: groups.find((g) => hasMesh(g, 'reserveShaft')),
+    smallSecondsHand: groups.find((g) => hasMesh(g, 'smallSecondsBody')),
+    reserveHand: groups.find((g) => hasMesh(g, 'reserveBody')),
     hourHand: hours[0],
     alarmHand: hours[1],
-    minuteHand: groups.find((g) => g.userData.kind === 'minute' && !hasMesh(g, 'reserveShaft') && !hasMesh(g, 'smallSecondsShaft')),
+    minuteHand: groups.find((g) => g.userData.kind === 'minute' && !hasMesh(g, 'reserveBody') && !hasMesh(g, 'smallSecondsBody')),
   };
   const missing = Object.entries(named).filter(([, g]) => !g).map(([n]) => n);
   if (missing.length) return { error: `cannot find: ${missing.join(', ')}` };

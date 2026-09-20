@@ -2098,7 +2098,7 @@ export const EXPECTED_CONTACT_FLOORS = [
     // at main.js:13354); the leaf sits in the same z band and inherited none
     // of it. Long-standing, and invisible until TODO 95's witness: the raw
     // intersection was being published as clearance.
-    waived: 'TODO 101: the alarm hand LEAF (alarmShaft since §188 named it) carries metal where the tube runs — 0.0188 deep over 150 of 4800 tube-surface samples (0.2885 before §188 cut the leaf to stock); the BOSS beside it holds the derived 2.667',
+    waived: 'TODO 101: the alarm hand BODY (alarmBody — §188 named it, the §236 prerequisite took it off `shaft`) carries metal where the tube runs — 0.0188 deep over 150 of 4800 tube-surface samples (0.2885 before §188 cut the leaf to stock); the BOSS beside it holds the derived 2.667',
     contacts: [
       ['alarmNose', 'alarmHeart'],        // §29 working contact — penetration budget + alarmHandoffs own it
       ['alarmFollowerBar', 'alarmHeart'], // §45 flank sweep owns this at the 0.03 working figure
@@ -2137,8 +2137,8 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Heart cam (seconds reset)', b: 'Small seconds', min: CLEAR_MARGIN,
     contacts: [
       ['secondsArborHub', 'smallSecondsBoss'],   // the hand's collet ON the hub — the display joint
-      ['secondsArborHub', 'smallSecondsShaft'],  // the blade crosses the axis over that hub
-      ['secondsArborRod', 'smallSecondsShaft'],  // …and over the rod's last 0.15 behind it
+      ['secondsArborHub', 'smallSecondsBody'],  // the body crosses the axis over that hub
+      ['secondsArborRod', 'smallSecondsBody'],  // …and over the rod's last 0.15 behind it
       ['secondsArborRod', 'smallSecondsBoss'],   // same joint, collet side
     ],
   },
@@ -2150,8 +2150,8 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Heart cam (seconds reset)', b: 'Dial', min: CLEAR_MARGIN,
     contacts: [
       ['secondsArborHub', 'smallSecondsBoss'],   // the four rows above, re-attributed
-      ['secondsArborHub', 'smallSecondsShaft'],
-      ['secondsArborRod', 'smallSecondsShaft'],
+      ['secondsArborHub', 'smallSecondsBody'],
+      ['secondsArborRod', 'smallSecondsBody'],
       ['secondsArborRod', 'smallSecondsBoss'],
       ['secondsArborHub', 'dialPlate'],          // the hub passes the well floor's bore (SUBDIAL_BORE_R is derived from its radius)
       ['secondsArborRod', 'dialPlate'],          // and the rod behind it through the same bore
@@ -2202,7 +2202,7 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Power reserve', b: 'Power-reserve train', min: CLEAR_MARGIN,
     contacts: [
       ['reserveBoss', 'rsvHandArbor'],   // the collet ON the arbor — the display joint
-      ['reserveShaft', 'rsvHandArbor'],  // the blade crosses the axis over that collet
+      ['reserveBody', 'rsvHandArbor'],  // the body crosses the axis over that collet
     ],
   },
   {
@@ -2213,7 +2213,7 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Dial', b: 'Power-reserve train', min: CLEAR_MARGIN,
     contacts: [
       ['reserveBoss', 'rsvHandArbor'],   // the two rows above, re-attributed
-      ['reserveShaft', 'rsvHandArbor'],
+      ['reserveBody', 'rsvHandArbor'],
       ['rsvHandArbor', 'dialPlate'],         // the arbor passes the sector floor's bore (SUBDIAL_BORE_R is derived from its radius) and stands out of the plate to the proud hand (§153)
       ['rsvHandArbor', 'reserveSubdialFace'], // …and crosses the printed floor's plane inside that bore (the face is a zero-volume decal)
     ],
@@ -2508,7 +2508,7 @@ export const INTRA_UNIT_CONTACTS = [
   // COINCIDE exactly (a knife-edge no instrument can arbitrate); the plate
   // rise moved the abutment's phase into this check's sight, and the joint
   // is now an overlap with its name — one arbor, two meshes.
-  { unit: 'Fusee & great wheel', a: 'fuseeTopShaft', b: 'fuseeUpperStaff', why: 'one arbor in two meshes — the windTop continuation welds into the pivot staff at the plate mid-plane' },
+  { unit: 'Fusee & great wheel', a: 'fuseeTopArbor', b: 'fuseeUpperPivot', why: 'one arbor in two meshes — the windTop continuation welds into the pivot staff at the plate mid-plane' },
   // Both were 'ExtrudeGeometry#32' until TODO 50 named the setting wheel
   // (the clutch pair's floors row needed the name): the wheel — the
   // crown-class collar the old why meant — laps the stem bushing at the
@@ -7024,9 +7024,9 @@ export const STOCK_KIND_BY_MESH = {
   // moves their λ ceiling to hand's 50 — and the width-governed λ the check
   // actually measures is ≈ 13 (see HAND_STOCK_MM's comment for why the
   // thickness-direction λ 48 lives in prose, not in a gate).
-  hourShaft: 'hand', hourTip: 'hand', hourBoss: 'hand',
-  minuteShaft: 'hand', minuteTip: 'hand', minuteBoss: 'hand',
-  alarmShaft: 'hand', alarmTip: 'hand', alarmBoss: 'hand',
+  hourBody: 'hand', hourTip: 'hand', hourBoss: 'hand',
+  minuteBody: 'hand', minuteTip: 'hand', minuteBoss: 'hand',
+  alarmBody: 'hand', alarmTip: 'hand', alarmBoss: 'hand',
   alarmIndexLine: 'marking',       // §34 registration line, cited above
   alarmFeelerSpring: 'spring',     // §40\'s first honesty nominee — a real blade
   alarmDiscTrack: 'marking',       // printed track on the disc face
@@ -7083,7 +7083,7 @@ export const STOCK_KIND_BY_MESH = {
   // sleeve is: the census reports each mesh's extent, and both sections
   // clear the pivot floor by an order of magnitude (⌀ 1.8 u and 1.2 u).
   mainspringDrumArbor: 'pivot',
-  mainspringDrumStaff: 'pivot',
+  mainspringDrumPivot: 'pivot',
   // TODO 11 tranche two:
   alarmNose: 'pivot',          // the follower's ruby nose-pin — pin stock (0.09 mm ≥ the 0.07 pivot floor); its 0.24 u height is §29-bound co-planar with the heart, declared not thickened
   // §173 — the SAUTOIR, kinded as the three things it is. The blade replaces

@@ -12649,7 +12649,7 @@ blade at full scale, replacing the 0.5-z-scaled five-times-stock section):
 fifteen-fold because the tube's wall now crosses 0.2 mm of steel instead of
 0.29 u of it, but the leaf is still unbored where the tube runs, so the item
 stays open and the repair below stands unchanged. (The waived row's meshes
-read `alarmShaft ⇄ hourTube` now — §188 named the central hands' meshes, so
+read `alarmBody ⇄ hourTube` now — §188 named the central hands' meshes, so
 the row names parts instead of `ExtrudeGeometry#20`.)
 
 Sampled the other way — 216 world points on the tube's wall (r 2.05 / 2.275 /

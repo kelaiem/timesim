@@ -2169,6 +2169,13 @@ export function makeBalanceWheel({ radius, thickness, staffHeight = thickness * 
   const staffGeo = new THREE.CylinderGeometry(thickness * 0.35, thickness * 0.35, sTop + sBot, 16);
   staffGeo.rotateX(Math.PI / 2);
   const staff = new THREE.Mesh(staffGeo, MATS.steel);
+  // §236's prerequisite: the movement's ONE true staff, named at last. It had
+  // carried the word correctly in this builder's locals and parameters since
+  // it was cut, and nowhere a reader or a selector could see it — while the
+  // only two `.name`d staffs in the movement were both arbors. Naming it
+  // changes no kind: `Balance` is absent from STOCK_KIND_BY_PART, so this mesh
+  // took the part default before and takes it now; only the label moves.
+  staff.name = 'balanceStaff';
   staff.position.z = (sTop - sBot) / 2;
   g.add(staff);
 
@@ -8541,7 +8548,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   const burRod = (rBase, planBase) => {
     const grp = new THREE.Group();
     const tipLen = planBase * 2.6; // curved taper is a PLAN feature (§188): it eases the width out, so its length follows the plan base, not the stock
-    const shaftLen = tail + length - tipLen;
+    const bodyLen = tail + length - tipLen;
     const apothem = rBase * 0.5; // corner height of the top face
     // §158 — WIDTH AND DEPTH ARE TWO QUESTIONS, and the equilateral section
     // answered them with one number. The keel depth is a STOCK question
@@ -8564,15 +8571,15 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     sec.lineTo(halfW, apothem);
     sec.quadraticCurveTo(0, apothem + 2 * crown, -halfW, apothem);
     sec.closePath();
-    const shaftGeo = new THREE.ExtrudeGeometry(sec, {
-      depth: shaftLen, bevelEnabled: false, curveSegments: 12,
+    const bodyGeo = new THREE.ExtrudeGeometry(sec, {
+      depth: bodyLen, bevelEnabled: false, curveSegments: 12,
     });
     // extrusion axis → local +Y (hand length), section +y → local +Z (viewer)
-    shaftGeo.rotateX(Math.PI / 2);
-    shaftGeo.rotateZ(Math.PI);
-    shaftGeo.translate(0, -tail, 0);
-    const shaft = new THREE.Mesh(facetFlat(shaftGeo), MATS.bluedHand);
-    if (namePrefix) shaft.name = `${namePrefix}Shaft`;
+    bodyGeo.rotateX(Math.PI / 2);
+    bodyGeo.rotateZ(Math.PI);
+    bodyGeo.translate(0, -tail, 0);
+    const body = new THREE.Mesh(facetFlat(bodyGeo), MATS.bluedHand);
+    if (namePrefix) body.name = `${namePrefix}Body`;
     // Tip: a LOFT scaled about the TOP-FACE PLANE (y = apothem), not the
     // axis — so the fluted upper surface runs dead STRAIGHT through to
     // the tip while the width and the keel sweep up to meet it (the
@@ -8615,7 +8622,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     tipGeo.translate(0, length - tipLen, 0);
     const tip = new THREE.Mesh(tipGeo, MATS.bluedHand);
     if (namePrefix) tip.name = `${namePrefix}Tip`;
-    grp.add(shaft, tip);
+    grp.add(body, tip);
     return grp;
   };
 
