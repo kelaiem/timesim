@@ -4882,7 +4882,7 @@ const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                 
 // moved. MEASURED by tools/probe-234-traverse-fold.mjs (its α scan at 0.25°,
 // printed as the heading of the last clearing ray) and carried on the
 // RSV_P0_TOP_Z idiom; the battery's Yoke ⇄ Keyless works sweep is the gate.
-const MW_FOLD_LEG1_HEADING_DEG = -46.96;
+const MW_FOLD_LEG1_HEADING_DEG = -46.87;   // the scan at 0.25°: this ray reads 0.55 exactly, the next (−46.62°) 0.5374
 // (§234 Landing 2 step 3a measured that no SECTION closes the straight run —
 // the ceiling wanted r 0.687 in a 1.38 u window, and moving Z_RSV, swinging
 // CAP_BEARING, shrinking the corner and necking the rod were each tried and

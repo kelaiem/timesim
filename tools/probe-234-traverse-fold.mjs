@@ -400,6 +400,16 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
       addSet('blankK_out', blankPts(F.K3, F.leg2, F.spec), { kind: 'blank', at: 'K', axis: 'leg2' }),
       addSet('blankA_out', blankPts(A, F.leg1, spec90), { kind: 'blank', at: 'A', axis: 'leg1' }),
       addSet('blankB_in', blankPts(B, F.leg2.clone().negate(), spec90), { kind: 'blank', at: 'B', axis: '−leg2' }),
+      // CONTROLS for the two re-aimed mitres: the same blanks laid on the
+      // straight run's own direction (α = 0 at A, β2 = 0 at B) — the metal
+      // the shipped mitres present. A wall a re-aimed blank meets that its
+      // straight-run twin meets too is PRE-EXISTING (the drop corner's
+      // outboard mitre dips into the minute pinion's tip cylinder on the
+      // shipped tree — `minutePinion ⇄ mwCornerDropOut`, an MM row the
+      // battery reports out of scope) and is reported, not counted against
+      // the fold.
+      addSet('blankA_out0', blankPts(A, u, spec90), { kind: 'blank-control', at: 'A', axis: 'run' }),
+      addSet('blankB_in0', blankPts(B, u.clone().negate(), spec90), { kind: 'blank-control', at: 'B', axis: '−run' }),
     ]);
   }
   clock.scene.remove(probe); probeGeom.dispose();
@@ -491,16 +501,21 @@ if (R.KRULE === 'arbor') {
   console.log(`leg 1 at LEG1_R ${f4(inp.LEG1_R)}: worst freeR ${l1.worst.freeR} → ${l1.worst.freeR >= inp.LEG1_R - 1e-4 ? 'CLEARS' : `SHORT by ${(inp.LEG1_R - l1.worst.freeR).toFixed(4)} (${l1.worst.owner}, ${l1.worst.dir})`}`);
   console.log(`leg 2 at LEG2_R ${f4(inp.LEG2_R)}: worst freeR ${l2.worst.freeR} → ${l2.worst.freeR >= inp.LEG2_R - 1e-4 ? 'CLEARS' : `SHORT by ${(inp.LEG2_R - l2.worst.freeR).toFixed(4)} (${l2.worst.owner}, ${l2.worst.dir})`}`);
   let blankFindings = 0;
+  const wallsOf = (key) => { const s = R.sets[key]; const byOwner = new Map(); for (const r of s.rows) for (const sd of ['below', 'above', 'plan']) { const o = r[sd].owner; if (!o) continue; const cur = byOwner.get(o); const fr = r[sd].freeR; if (!cur || fr < cur.freeR) byOwner.set(o, { freeR: fr, side: sd, i: r.i }); } return byOwner; };
+  const preExisting = { blankA_out: wallsOf('blankA_out0'), blankB_in: wallsOf('blankB_in0') };
   for (const [key, title] of [['blankK_in', 'K, inboard blank (axis leg 1)'], ['blankK_out', 'K, outboard blank (axis leg 2)'], ['blankA_out', 'A, outboard mitre re-aimed along leg 1'], ['blankB_in', 'B, inboard mitre re-aimed along leg 2']]) {
-    const s = R.sets[key];
-    const byOwner = new Map();
-    for (const r of s.rows) for (const sd of ['below', 'above', 'plan']) { const o = r[sd].owner; if (!o) continue; const cur = byOwner.get(o); const fr = r[sd].freeR; if (!cur || fr < cur.freeR) byOwner.set(o, { freeR: fr, side: sd, i: r.i }); }
+    const byOwner = wallsOf(key);
     const rows = [...byOwner.entries()].sort((x, y) => x[1].freeR - y[1].freeR);
     console.log(`BLANK ${title}: ${rows.length} neighbours within ${SEARCH}`);
-    for (const [o, x] of rows) console.log(`    ${String(x.freeR).padStart(8)}  ${x.side.padEnd(5)}  ${o}   (sample #${x.i})`);
-    const findings = rows.filter(([o, x]) => x.freeR < 0 && !/backPlate/.test(o));
+    for (const [o, x] of rows) console.log(`    ${String(x.freeR).padStart(8)}  ${x.side.padEnd(5)}  ${o}   (sample #${x.i})${preExisting[key] && (preExisting[key].get(o)?.freeR ?? 1) < 0 ? '   [also inside on the straight run — pre-existing]' : ''}`);
+    const findings = rows.filter(([o, x]) => x.freeR < 0 && !/backPlate/.test(o) && !(preExisting[key] && (preExisting[key].get(o)?.freeR ?? 1) < 0));
+    const pre = rows.filter(([o, x]) => x.freeR < 0 && !/backPlate/.test(o) && preExisting[key] && (preExisting[key].get(o)?.freeR ?? 1) < 0);
     blankFindings += findings.length;
-    console.log(`  → ${findings.length ? `${findings.length} wall(s) INSIDE the blank's margin (not the plate): ${findings.map(([o, x]) => `${o} ${x.freeR}`).join('; ')}` : 'no wall inside the blank\'s margin except the base plate (the recess a corner needs, A\'s precedent)'}`);
+    console.log(`  → ${findings.length ? `${findings.length} wall(s) INSIDE the blank's margin (not the plate): ${findings.map(([o, x]) => `${o} ${x.freeR}`).join('; ')}` : 'no wall inside the blank\'s margin except the base plate (the recess a corner needs, A\'s precedent)'}${pre.length ? `; ${pre.length} pre-existing (${pre.map(([o]) => o).join(', ')})` : ''}`);
+  }
+  for (const [key, title] of [['blankA_out0', 'CONTROL — A\'s outboard mitre on the straight run'], ['blankB_in0', 'CONTROL — B\'s inboard mitre on the straight run']]) {
+    const rows = [...wallsOf(key).entries()].filter(([o, x]) => x.freeR < 0 && !/backPlate/.test(o));
+    console.log(`${title}: ${rows.length ? rows.map(([o, x]) => `${o} ${x.freeR}`).join('; ') : 'clear'}`);
   }
   console.log('');
   const legsOk = l1.worst.freeR >= inp.LEG1_R - 1e-4 && l2.worst.freeR >= inp.LEG2_R - 1e-4;
