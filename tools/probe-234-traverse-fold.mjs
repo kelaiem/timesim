@@ -1,32 +1,34 @@
 // §234 step 3a follow-up — WHERE DOES THE SETTING TRAVERSE FOLD, AND DOES EACH
 // LEG CLEAR AT THE SECTION THE PLATE LEAVES IT? A REPORT, with controls.
 //
-// VERDICT AS OF §234's fold landing: NO SINGLE-CORNER SITE EXISTS, on either
-// side, and the map below is the finding. Both derivable K rules were cut in
-// `main.js`, booted, and measured over the pose net on the folded tree
-// (`KRULE=plus` at α 12°, `KRULE=arbor`), and both were refused by metal the
-// straight run threads between:
-//   · the mitre at B is PINNED by the minute wheel's own rim and the star,
-//     both centred on the minute-wheel stud 0.4 u outside B at the traverse's
-//     own plane (z −3.03..−2.25 and −3.5..−3.18): re-aimed 19° toward the
-//     barrel or 17.5° toward the transfer arbor its blank reads −0.13 into
-//     them, while at 9.3° it clears — and both K rules need 17–19° there;
-//   · on the barrel's side the corner's blanks stand inside rsvWheel1's rim
-//     (tip r 5.28, 0.43 u from K in plan), and the reserve train's own swing
-//     solve, replicated with its blocker named, clears them by 0.10 at −15°
-//     (0.05 short of CLEAR_MARGIN) before the setting cap stops p1 at −16°;
-//   · on the transfer arbor's side leg 1 at the 17.5° the arbor's reach
-//     forces runs through the stem cluster 7–12 u from A (yoke prong, clutch
-//     saw, winding pinion — the straight run passes them at 0.8–1.3).
-// What is left is the near-collinear kink (deflection ≲ 5°, Σ ≥ 175°) whose
-// angle no constraint sets — a number chosen for the census, refused by rule
-// 1 — and two POSITION-SPACE routes filed against TODO 145 group B: re-site
-// B on its own free bearing (`CAP_BEARING`) so a swung leg 2 leaves the
-// minute wheel radially, which re-opens the barrel side if w1's swing then
-// clears; or retire the rod for a wheel train in the keyless plane, the way
-// a caliber carries setting motion (roadmap). The fold's build code is NOT in
-// the tree; this probe, run on the shipped tree, reproduces every number
-// above from its own controls.
+// VERDICT AS OF §234 Landing 7 — THE FOLD IS BUILT, on the barrel's side, and
+// this probe walks the built tree: `KRULE=plus LEG1_HEADING=-46.87` reads
+// BUILDABLE (legs ok, blanks ok, bounds ok, both under the target). Landing 6
+// had refused both sides, and its refusal of THIS side was an instrument
+// artefact: the inboard blanks were sampled forward of the apex (the wrong
+// side of K along leg 1), which is what put "rsvWheel1's rim 0.43 u from K"
+// inside the corner's own margin; sampled on the blank as cut, the corner's
+// real blocker was the reserve's w1 rim against K's OUTBOARD blank plus the
+// cap pinion against p1 — both of which the reserve's w1 swing and the cap's
+// bearing, solved JOINTLY in main.js (`CAP_SOLVE` builds each candidate B's
+// metal and asks `solveReserveSwing`), now clear at bearing +17.25°, swing −5°.
+// "The finding is B" (the mitre at B pinned by the minute wheel's rim and the
+// star) was the same artefact read at B: at the solved bearing B's inboard
+// mitre re-aimed along leg 2 reads clear here (control below), and the star
+// is 1.7 u under it. The mirror fold (transfer arbor's side) stays refused in
+// closed form — Σ 162°, leg 2 L/D 29.6 — and is printed below the solve.
+// `tools/probe-234-cap-bearing.mjs` reads the bearing scan back off the tree.
+//
+// What this probe measured on the way (kept because each cost a cut):
+//   · the Yoke bound is a HEADING, −46.87°, not a swing off a run that moves
+//     with B (`MW_FOLD_LEG1_HEADING_DEG` in main.js carries it; the α scan
+//     here prints the heading of the last clearing ray);
+//   · on a folded tree the straight A→B run is the fold's reference line and
+//     crosses the barrel column (control (a) reports it rather than grading
+//     the pinch);
+//   · the fold corner's blanks at Σ ≈ 152° are nearly face gears and fall
+//     under §50's floor at the template module — main.js solves the module
+//     up (`foldModuleFor`) and this probe's blank sampling reads the cut.
 //
 // `Keyless works::settingTraverse` is the last `TURN_WAIVERS` row: a 27.47 u
 // rod at r 0.382 (L/D 36) whose section is pinned by the reserve train's first
@@ -452,7 +454,14 @@ const table = (key, title, r) => {
 };
 const ctl = table('lineAB', 'CONTROL (a): the straight run A→B, this walker', inp.rodR);
 const okA = ctl.worst.freeR != null && Math.abs(ctl.worst.freeR - inp.rodR) < 0.02 && ctl.wa.above.freeR != null && Math.abs(ctl.wa.above.freeR - inp.LEG1_R) < 0.02;
-console.log(`CONTROL (a) reproduces the pinch (worst ${ctl.worst.freeR} ≈ shipped r ${f4(inp.rodR)}) and the plate cap (above ${ctl.wa.above.freeR} ≈ LEG1_R ${f4(inp.LEG1_R)}): ${okA ? 'PASS' : 'FAIL — the walker is not seeing what probe-234-shaft-body-corridor saw'}`);
+// On a FOLDED tree the straight run A→B is the fold's reference line, not a
+// bar anyone shipped: B rides the solved cap bearing (17° from the short way
+// in since the fold landed), and from there the line crosses the barrel-arbor
+// column the fold's leg 2 swings around — so "reproduces the pinch" is not a
+// claim it can make. The plate cap still holds (the plate is everywhere), and
+// the run's worst wall is REPORTED as what the fold exists to avoid.
+if (inp.folded) console.log(`CONTROL (a) on a folded tree: the plate cap holds (above ${ctl.wa.above.freeR} ≈ LEG1_R ${f4(inp.LEG1_R)}: ${ctl.wa.above.freeR != null && Math.abs(ctl.wa.above.freeR - inp.LEG1_R) < 0.02 ? 'PASS' : 'FAIL — the walker is not seeing the plate'}); the straight run from A to the FOLD's B is not the shipped bar — its worst wall, freeR ${ctl.worst.freeR} at ${ctl.worst.owner}, is what the fold's legs swing around (reported, not graded)`);
+else console.log(`CONTROL (a) reproduces the pinch (worst ${ctl.worst.freeR} ≈ shipped r ${f4(inp.rodR)}) and the plate cap (above ${ctl.wa.above.freeR} ≈ LEG1_R ${f4(inp.LEG1_R)}): ${okA ? 'PASS' : 'FAIL — the walker is not seeing what probe-234-shaft-body-corridor saw'}`);
 console.log('');
 console.log(`THE α SCAN — leg 1's first ${inp.ALPHA_RUN} u at LEG1_R ${f4(inp.LEG1_R)}, worst station per angle over ${inp.poseCount} poses`);
 console.log(`  run heading ${inp.runHeadingDeg.toFixed(3)}° (A→B, world); a ray's heading = run + side·α`);

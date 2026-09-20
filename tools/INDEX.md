@@ -4,7 +4,7 @@
 
 # The instruments
 
-226 scripts. **120 are ACCEPTANCE tests** — they decide and exit non-zero.
+227 scripts. **121 are ACCEPTANCE tests** — they decide and exit non-zero.
 **106 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -141,6 +141,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-227-promote.mjs` | §227 | acceptance | §227 — DOES THE PROMOTION CHECKER REFUSE FOR EACH REASON IT CLAIMS TO? |
 | `probe-231-lever-width.mjs` | §231 | report | §231/§232 — HOW MUCH WIDER CAN A FLOOR-STOCK MEMBER BE CUT? |
 | `probe-233-manufacturability.mjs` | §233 | acceptance | §233 — CAN THE MOVEMENT'S MEMBERS ACTUALLY BE MADE? |
+| `probe-234-cap-bearing.mjs` | §234 | acceptance | §234 fold — WHERE DID THE CAP BEARING SETTLE, AND WHAT REFUSED EVERY BEARING NEARER THE SHORT WAY IN? A REPORT, with two controls. |
 | `probe-234-corner-move.mjs` | §234 | acceptance | §234 step 4 — HOW FAR CAN THE ALARM CORNER MOVE OUTBOARD? A REPORT. (INDEX.md's `kind` column says acceptance because the classifier keys on `process.exit`, and this exits only when a tree will not boot at all — `probe-234-group-c.mjs` and `probe-234-step4.mjs` carry the same label for the same reason.) |
 | `probe-234-corner-z.mjs` | §234 | acceptance | §234 step 4 — WHAT ARE THE REAL WALLS OF THE ALARM CORNER'S Z COLUMN? A REPORT. (INDEX.md's `kind` column says acceptance because the classifier keys on `process.exit`, and this exits only when the tree will not boot at all — `probe-234-step4.mjs`, `probe-234-group-c.mjs` and `probe-234-corner-move.mjs` carry the same label for the same reason.) |
 | `probe-234-group-c.mjs` | §234 | acceptance | §234 Landing 1 — CAN TODO 145's GROUP C BE CLOSED BY SECTION ALONE? |

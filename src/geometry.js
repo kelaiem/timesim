@@ -1152,6 +1152,31 @@ export function minGearTeeth(module, boreR = 1, mates = null) {
 // them — a bound that re-derives its subject from a copy goes stale the moment
 // the subject moves, which is the drift this whole function exists to catch.
 const gearBevel = (module, thickness, on) => (on ? Math.min(thickness * 0.18, module * 0.22) : 0);
+const pinionBevel = (module, thickness) => Math.min(thickness * 0.15, module * 0.2);   // makePinion's, the same shape at a pinion's proportions
+// makeGear's hub ring: a wall around the bore is a member, so its wall
+// answers to STOCK_MIN_U (the third term); the proportion is what makes a
+// hub look pared rather than sized. Declared here so `gearFaceReach` reads
+// the SAME law the builder cuts (one expression each, as above).
+const gearHubR = (pitchR, boreR, hub) => (hub ? Math.max(boreR * 1.6, boreR + STOCK_MIN_U, pitchR * 0.085) : boreR * 1.6);
+const GEAR_HUB_H_F = 1.5;                       // the hub ring's height as a multiple of the wheel's thickness (unbevelled)
+// §234 — WHERE A WHEEL'S FACES STAND, AS CUT, for a solve that has to hold
+// something off a wheel before that wheel exists. Both generators extrude
+// `depth: thickness` with the bevel ON, and an extrude's bevelThickness stands
+// proud of BOTH faces (TODO 98's finding on the pallet fork): the body is
+// thickness + 2·bevel tall, not thickness. The reserve train's swing solve
+// read ±thickness/2 and left the setting fold's blank 0.066 u from
+// rsvWheel1's face while believing it held CLEAR_MARGIN — the bevel's 0.075
+// at each face was the whole difference, and the battery's inspection sweep
+// found it as a tooth-periodic contact along the wind axis. `body` is the
+// half-height of the toothed body; `hub` the wheel's hub ring (taller, at
+// hubR about the axis; a pinion has none). The reserve build asserts both
+// against the metal it cuts (rule 6).
+export function gearFaceReach({ module, teeth, mates, thickness, boreR = 1, pinion = false, hub = true, bevel: bevelOn = true }) {
+  if (pinion) return { body: thickness / 2 + pinionBevel(module, thickness), hub: null };
+  const spec = gearToothSpec({ module, teeth, mates: gearMates(mates, teeth, 'gearFaceReach') });
+  return { body: thickness / 2 + gearBevel(module, thickness, bevelOn),
+    hub: { half: (thickness * GEAR_HUB_H_F) / 2, r: gearHubR(spec.pitchR, boreR, hub) } };
+}
 // §136 — THE BEVEL'S MITER, which TIP_RELIEF used to hide. The extrude offsets
 // the outline outward by `bevel` PERPENDICULAR TO EACH EDGE, so at a convex
 // vertex the offset point lands on the bisector at `bevel / sin(θ/2)`, not at
@@ -1258,7 +1283,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
   // pared rather than sized), with the floor under it as the third term: a
   // ring around a bore is a member, so its WALL answers to STOCK_MIN_U, not
   // to whatever fraction of the bore it happened to be.
-  const hubR = hub ? Math.max(boreR * 1.6, boreR + STOCK_MIN_U, pitchR * 0.085) : boreR * 1.6;
+  const hubR = gearHubR(pitchR, boreR, hub);   // one law with gearFaceReach (§234)
   const innerR = Math.max(hubR + module * 0.35, boreR * 2.0);
   const outerR = rootR - module * 0.7;
   const useSpokes = outerR > innerR + module ? spokes : 0;
@@ -1290,7 +1315,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
   body.userData.solid = { zLo: -thickness / 2, zHi: thickness / 2, shearZ: 0 };
   g.add(body);
   if (hub) {
-    g.add(new THREE.Mesh(ringExtrude(hubR, boreR, thickness * 1.5, 24), mat));
+    g.add(new THREE.Mesh(ringExtrude(hubR, boreR, thickness * GEAR_HUB_H_F, 24), mat));
   }
   // §194 — the tooth count and module travel with the metal, beside the pitch
   // radius that is DERIVED from them (gearToothSpec: Rp = module·teeth/2). A
@@ -1327,7 +1352,7 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
   bore.absarc(0, 0, boreR ?? Math.max(module * 0.35, 0.4), 0, Math.PI * 2, true);
   shape.holes.push(bore);
 
-  const bevel = Math.min(thickness * 0.15, module * 0.2);
+  const bevel = pinionBevel(module, thickness);   // one law with gearFaceReach (§234)
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: true,

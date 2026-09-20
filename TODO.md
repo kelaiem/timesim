@@ -19725,15 +19725,24 @@ longer places the rim's root at 3.30 (it is 4.125), `MU_STEEL` is named once in
 TODO 50, and the explainer's alarm-feeler entry states the measured load in
 place of "the disc's own seat is the question".
 
-## 145. The turning catalogue: twelve bars the movement cannot turn
+## 145. The turning catalogue: twelve bars the movement cannot turn — CLOSED
+
+> **Status. CLOSED 2026-09-20 — `TURN_WAIVERS` is EMPTY.** All twelve rows
+> were retired by a CUT, none by a widened tolerance: group C's two arrest
+> columns (§234 Landing 1) and its rod (Landing 4); group B's alarm pusher
+> stem (Landing 2), the hack and reset rods as flat stamped levers (Landing 2
+> step 5), the winding stem (step 3b), the alarm crown's stem and liner
+> (§235's yoke), and the setting traverse, last, as a FOLD (Landing 7, the
+> block at the foot of group B); group A's lay shaft as a turned bar with
+> pressed stubs (Landing 5). The `turning` check reads 223 bars, 0 waived,
+> 0 stale, control PASS. The blocks below are the measurements in the order
+> they were made, kept because four of the twelve closed by something other
+> than what this item filed for them.
 
 §233 declared a third slenderness — `TURN_LD_MAX = 20` in `layout.js`, gated by
 the `turning` check — and the movement arrived twelve bars over it. Each was
-waived in `TURN_WAIVERS` citing this item; **six remain** after §234 Landing 1
-(the two arrest columns closed, see the block under group C) and Landing 2's
-first member and its step 5 (the alarm pusher stem, and the hack and reset
-rods re-sectioned as flat stamped levers — see the blocks under group B; the
-middle block is two members MEASURED and not cut). This is that list, with the fix path
+waived in `TURN_WAIVERS` citing this item; **none remain** (see the status
+above — this paragraph read "six remain" until §234 Landing 7). This is that list, with the fix path
 for each group, so the waivers can be deleted one group at a time; per §137's
 staleness rule, deleting a waiver whose bar is no longer over the ceiling is
 structurally part of the fix, and leaving one behind fails the check.
@@ -20596,6 +20605,45 @@ longer than the tube a real case needs.
 > fold probe's first cut excluded the whole Keyless works unit as ground and
 > put K 0.45 u from the transfer arbor — the instruments skill's trap,
 > recorded in its header with the two refusals that followed it.
+>
+> **§234 Landing 7 — the fold BUILT (2026-09-20), and this row is RETIRED with
+> nothing in its place.** Route 1, above, taken: B re-sited on `CAP_BEARING`,
+> solved JOINTLY with the reserve's w1 swing. `CAP_SOLVE` walks the cap's
+> bearing about the minute wheel, builds each candidate's whole setting metal
+> with the movement's own builder (`buildSettingMetal` — fold, legs, rise,
+> three corners, pinion) into a scratch group, and asks the reserve's own swing
+> solve (`solveReserveSwing`, hoisted so both call one function) whether some
+> swing clears it; the shipped build is the same builder at the solved B and
+> the reserve confirms on the cut tree. Result: **bearing +17.25°, swing −5°**,
+> K (−13.58, 14.48), Σ 152.32°, legs 16.59 u at 0.55 (L/D **15.08**) and
+> 11.44 u at 0.382 (L/D **14.97**), both under the target; the corner's module
+> solved UP to 0.3487 so its face-gear-like blanks meet §50's floor
+> (0.3174 u against 0.3167); boot silent; `probe-234-traverse-fold` BUILDABLE
+> on the built tree. `TURN_WAIVERS` is EMPTY. `SLENDER_WAIVERS`' `Keyless
+> works` row went with it (TODO 109's layout row — both legs under §54's
+> ceiling).
+>
+> **Erratum to Landing 6.** "The finding is B" was an instrument artefact:
+> the probe's inboard blanks were sampled forward of the apex, which is what
+> read `rsvWheel1`'s rim into the corner's margin and B's mitre into the star.
+> Sampled on the blank as cut, the barrel side's blockers were w1's rim
+> against K's OUTBOARD blank and the cap pinion against p1 — both movable by
+> the reserve's swing and the cap's bearing — and B's mitre at the solved
+> bearing reads clear, the star 1.70 u under it. The transfer-arbor side's
+> refusal stands.
+>
+> **Two solves refused on the way**, both in BUILT §234 Landing 7: a
+> closed-form envelope that disagreed with the vertex solve by tooth depths;
+> and the reserve solve's own z-band, read off the nominal half-thickness while
+> both gear generators' extrude bevels stand proud of both faces (TODO 98) —
+> the battery caught that one as a tooth-periodic `Keyless works ⇄
+> Power-reserve train` contact (0.066 at rest, 0 at every 28th of a turn), and
+> `gearFaceReach` in geometry.js is the one law now, asserted against the cut
+> w1 and p1 at the reserve build. And the scan's step is DERIVED: at 1° grids
+> the honest band walked the bearing to +40° (re-siting the quick-set jumper
+> 108°) past windows shut by a tenth of a step; both steps are now half the
+> margin's arc at the station each moves, to the quarter-degree (0.5° swing,
+> 0.75° bearing). `tools/probe-234-cap-bearing.mjs` reads the scan back.
 
 ### Group C — arbors inside the movement (3 rows)
 
