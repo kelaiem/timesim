@@ -5045,51 +5045,83 @@ const CAP_BEARING = (() => {
     return new THREE.Vector3(MW_WORLD.x + (toKeyless.x * cs - toKeyless.y * sn) * capMeshD,
       MW_WORLD.y + (toKeyless.x * sn + toKeyless.y * cs) * capMeshD, Z_SETTING);
   };
-  // §234 fold — THE SECOND CLAUSE. The fold's corner K stands over the reserve
+  const at = (dl) => { const c = capAt(dl); return Math.hypot(c.x - st.x, c.y - st.y); };
+  // STAGE 1 — unchanged since §136: the least bearing at which the cap corner
+  // clears the reserve pair at its COLLINEAR station.
+  const stage1 = (() => {
+    if (at(0) >= need) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
+    for (let d = 1; d <= 60; d++)
+      for (const sgn of [1, -1])
+        if (at(sgn * d * DEG2RAD) >= need) return sgn * d * DEG2RAD;
+    console.warn(`setting traverse: no cap bearing within ±60° clears the reserve pair `
+      + `(need ${need.toFixed(3)}, best ${Math.max(at(60 * DEG2RAD), at(-60 * DEG2RAD)).toFixed(3)}) `
+      + '— keeping the short way in; the battery judges it');
+    return 0;
+  })();
+  // STAGE 2 — §234's fold. The fold's corner K stands over the reserve
   // wheel's rim (w1, tip r 5.28, its band −4.95..−3.45 against the corner's
   // blanks reaching to −4.8), so the reserve MUST swing its w1/p1 station
   // about the barrel — the swing solve it already owns for exactly this — and
-  // measured on the built tree, that swing's window for w1 (≤ −14°, past the
-  // fold corner) and for p1 (≥ −13°, short of this cap) did not overlap by
-  // 0.03–0.06 u. This cap is the wall on p1's side, and it sits on a FREE
-  // bearing; so the bearing is solved against the swing it forces: the least
-  // bearing (in the scan's own order) at which SOME reserve swing s within
-  // ±30° clears all three at once, in closed form —
-  //   (1) the cap corner's blank against the pair at its station s (the
-  //       original clause, at the station the pair will actually stand),
-  //   (2) the fold corner's blank (its cone distance, from the spec at the
-  //       Σ that B gives it) against w1's tip circle at s,
-  //   (3) this cap's tip circle against p1's at s.
-  // Each proxy is the member's WHOLE reach (a sphere for the blank, a tip
-  // circle for a wheel), so it is conservative; the reserve's own vertex
-  // solve, which runs after the keyless works are cut, is the measurement
-  // that confirms it — and warns if it cannot. The two solves stay acyclic:
-  // this one asks only closed-form questions, the reserve's reads the metal.
+  // measured on the built tree at stage 1's bearing, that swing's window for
+  // w1 (≤ −14°, past the fold corner) and for p1 (≥ −13°, short of this cap)
+  // did not overlap by 0.03–0.06 u. This cap is the wall on p1's side and it
+  // sits on a free bearing, so the bearing takes the SMALLEST correction from
+  // stage 1's answer at which SOME reserve swing s within ±30° clears all of
+  // the following at once, in closed form —
+  //   (1) the cap corner's blank against the pair at its station s (stage 1's
+  //       own clause, at the station the pair will actually stand),
+  //   (2) the fold corner's blank (its cone distance, from the spec at the Σ
+  //       that B gives it) against w1's tip circle at s,
+  //   (3) this cap's tip circle against p1's at s — p1's tip re-derived at s
+  //       through the reserve's own fixed point (the swing moves w1's station,
+  //       the station sets stage two's module, the module sets p1's tip; the
+  //       §136 note above: "the swing chases its own tail"),
+  //   (4) the fold corner's blank and both legs against the winding transfer
+  //       arbor (r 0.7 at cwDist along the stem) — the mid-run obstacle the
+  //       fold probe's first cut missed, and the one that refuses the "short
+  //       way in": from there the fold's K lands 1.2 u from that arbor.
+  // Each proxy is the member's WHOLE reach (a sphere for a blank, a tip circle
+  // for a wheel), so it is conservative; the reserve's own vertex solve, which
+  // runs after the keyless works are cut, is the measurement that confirms it
+  // and warns if it cannot. The two solves stay acyclic: this asks closed-form
+  // questions only, the reserve's reads the metal. And the correction is
+  // SMALL by construction (the scan starts at stage 1's answer), because the
+  // Yoke bound on leg 1's swing (MW_FOLD_ALPHA_MEASURED_DEG) was measured for
+  // the run as stage 1 lays it — a bearing far from stage 1's would need that
+  // bound re-measured, which is why stage 1 is kept rather than folded in.
   const w1Tip = G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 });
-  const p1Tip = G.gearOuterR({ module: m1, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 });
   const capTip = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [MW_MINUTE_TEETH], thickness: 1.6 });
-  const stAt = (s) => { const cs = Math.cos(s), sn = Math.sin(s); return { x: P.barrel.x + (u.x * cs - u.y * sn) * rsvD0, y: P.barrel.y + (u.x * sn + u.y * cs) * rsvD0 }; };
+  const arbor = { x: uWind.x * cwDist, y: uWind.y * cwDist };   // the winding transfer arbor's axis (BACK_PLATE_HOLES' first bore)
+  const ARBOR_R = 0.7;                                          // its shaft (the bore is cut 0.7 + 0.05, above)
+  const distSeg = (P0, P1, X) => { const dx = P1.x - P0.x, dy = P1.y - P0.y; const L2 = dx * dx + dy * dy; const t = Math.max(0, Math.min(1, ((X.x - P0.x) * dx + (X.y - P0.y) * dy) / L2)); return Math.hypot(P0.x + dx * t - X.x, P0.y + dy * t - X.y); };
+  const stAt = (sw) => { const cs = Math.cos(sw), sn = Math.sin(sw); return { x: P.barrel.x + (u.x * cs - u.y * sn) * rsvD0, y: P.barrel.y + (u.x * sn + u.y * cs) * rsvD0 }; };
   const foldWindowOpen = (dl) => {
     const cap = capAt(dl);
     const F = solveSettingFold(cap);
     const kReach = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
       shaftAngleDeg: F.shaftAngleDeg, boreR: MW_LEG1_R, mateBoreR: MW_LEG2_R, quiet: true }).coneR;
+    // (4) is swing-independent
+    if (Math.hypot(F.K.x - arbor.x, F.K.y - arbor.y) < kReach + ARBOR_R + CLEAR_MARGIN) return false;
+    if (distSeg(settingA, F.K, arbor) < MW_LEG1_R + ARBOR_R + CLEAR_MARGIN) return false;
+    if (distSeg(F.K, cap, arbor) < MW_LEG2_R + ARBOR_R + CLEAR_MARGIN) return false;
     for (let sd = 0; sd <= 30; sd++) for (const sg of sd === 0 ? [1] : [1, -1]) {
-      const st = stAt(sg * sd * DEG2RAD);
-      const okPair = Math.hypot(cap.x - st.x, cap.y - st.y) >= need;                                        // (1)
-      const okW1 = Math.hypot(F.K.x - st.x, F.K.y - st.y) - w1Tip - kReach >= CLEAR_MARGIN;              // (2)
-      const okP1 = Math.hypot(cap.x - st.x, cap.y - st.y) - p1Tip - capTip >= CLEAR_MARGIN;              // (3)
+      const stS = stAt(sg * sd * DEG2RAD);
+      const m1S = (2 * Math.hypot(pivot.x - stS.x, pivot.y - stS.y)) / (rsvTeethP1 + w2);
+      const p1TipS = G.gearOuterR({ module: m1S, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 });
+      const okPair = Math.hypot(cap.x - stS.x, cap.y - stS.y) >= need;                                       // (1)
+      const okW1 = Math.hypot(F.K.x - stS.x, F.K.y - stS.y) - w1Tip - kReach >= CLEAR_MARGIN;             // (2)
+      const okP1 = Math.hypot(cap.x - stS.x, cap.y - stS.y) - p1TipS - capTip >= CLEAR_MARGIN;            // (3)
       if (okPair && okW1 && okP1) return true;
     }
     return false;
   };
-  if (foldWindowOpen(0)) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
-  for (let d = 1; d <= 60; d++)
+  if (foldWindowOpen(stage1)) return stage1;
+  for (let d = 1; d <= 15; d++)
     for (const sgn of [1, -1])
-      if (foldWindowOpen(sgn * d * DEG2RAD)) return sgn * d * DEG2RAD;
-  console.warn('setting traverse: no cap bearing within ±60° leaves the reserve pair a swing that clears '
-    + 'its own station, the fold corner and this cap at once — keeping the short way in; the battery judges it');
-  return 0;
+      if (foldWindowOpen(stage1 + sgn * d * DEG2RAD)) return stage1 + sgn * d * DEG2RAD;
+  console.warn('setting traverse: no cap bearing within ±15° of the reserve-pair solve leaves the reserve a swing that '
+    + 'clears its station, the fold corner, this cap and the transfer arbor at once — keeping stage 1\'s bearing; the battery judges it');
+  return stage1;
 })();
 const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(CAP_BEARING),
                y: toKeyless.x * Math.sin(CAP_BEARING) + toKeyless.y * Math.cos(CAP_BEARING) };
