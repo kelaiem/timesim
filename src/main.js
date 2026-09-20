@@ -5200,6 +5200,8 @@ const CAP_BEARING = (() => {
     }
     return best;
   };
+  // DIAGNOSTIC (temporary): the window at each small bearing
+  console.warn('CAPDIAG ' + [-15, -12, -10, -8, -6, -4, -2, 0, 2, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20].map((d) => { const w = window(d * DEG2RAD); return `${d}:${w.clause}=${isFinite(w.m) ? w.m.toFixed(3) : '-inf'}@${w.s}`; }).join(' | '));
   let nearest = { d: 0, ...window(0) };
   if (nearest.m >= 0) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
   for (let d = 1; d <= 60; d++)
