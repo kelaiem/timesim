@@ -2640,8 +2640,12 @@ export const INTRA_UNIT_CONTACTS = [
   // the next, wandering across poses). The joints are real — wheels
   // pressed on their arbor, the power-reserve convention — and declaring
   // them is what stops the battery flickering on float noise.
-  { unit: 'Keyless works', a: 'mwCornerDropOut', b: 'settingTraverse', why: 'the drop corner\'s outboard bevel, keyed to the traverse rod (d\u22481e-4 marginal, like its neighbour row)' },
-  { unit: 'Keyless works', a: 'mwCornerRiseIn', b: 'settingTraverse', why: 'the rise corner\'s inboard bevel, keyed to the same traverse rod (same marginal cluster)' },
+  // §234 fold — the traverse is two legs and a third corner: each leg keys
+  // into the blank at each of its ends, four joints where there were two.
+  { unit: 'Keyless works', a: 'mwCornerDropOut', b: 'settingTraverse1', why: 'the drop corner\'s outboard bevel, keyed to leg 1 of the folded traverse (d\u22481e-4 marginal, like its neighbour row)' },
+  { unit: 'Keyless works', a: 'mwCornerFoldIn', b: 'settingTraverse1', why: 'the fold corner\'s inboard bevel, keyed to the far end of leg 1 (§234 — the corner that split the bar)' },
+  { unit: 'Keyless works', a: 'mwCornerFoldOut', b: 'settingTraverse2', why: 'the fold corner\'s outboard bevel, keyed to leg 2 (§234)' },
+  { unit: 'Keyless works', a: 'mwCornerRiseIn', b: 'settingTraverse2', why: 'the rise corner\'s inboard bevel, keyed to leg 2 of the folded traverse (same marginal cluster)' },
   { unit: 'Maintaining detent', a: 'click', b: 'CylinderGeometry#3', why: 'click on its pivot stud' },
   // (§182 retired 'alarmIndexWedge ⇄ ShapeGeometry#3'. It read "the index wedge
   // stands proud THROUGH the face sheet by design", and TODO 26 had already
@@ -7317,12 +7321,13 @@ export const SLENDER_WAIVERS = {
   // no over-ceiling row remains for a waiver to name. §54's covenant again: a
   // waiver naming a unit with no over-ceiling row is itself a gated failure,
   // so the deletion is part of the change, not a tidy-up.)
-  // λ 41.2, the setting arbor's traverse rod, and the item's one pure LAYOUT
-  // row: it wants +0.1305 u per side against 0.0320 spare to the power-reserve
-  // train — but it is also supported by NOTHING over 28.84 u (10.9 mm) between
-  // its two bevel corners. A traverse that long runs in a cock; the fix is to
-  // add metal in position space, not to thicken the bar.
-  'Keyless works': 'TODO 109',
+  // (§234's fold RETIRED the Keyless works entry — λ 41.2, the setting
+  // arbor's traverse rod, TODO 109's one pure LAYOUT row: it wanted +0.1305 u
+  // per side against 0.0320 spare to the power-reserve train and was
+  // supported by nothing over 28.84 u between its two bevel corners. The rod
+  // is two legs on two axis lines now, each under §54's ceiling, and this
+  // table's own staleness gate named the entry for deletion — the covenant
+  // working as designed.)
 };
 
 // Young's modulus for the movement's steels/brasses, order of magnitude. The
@@ -9986,13 +9991,15 @@ export const TURN_WAIVERS = {
   // judged as separate, shorter bars — which is new mechanism (its own P0
   // transfer row, phase index, clearances), out of step 3a's scope; filed
   // as its own follow-up landing.
-  // §234 Landing 6 — the fold was MEASURED, cut twice and refused twice (see
-  // TODO 145 group B and docs/BUILT.md §234 "Landing 6"): both derivable corner
-  // sites are boxed by metal the straight run threads between — the minute
-  // wheel's rim and the star pin the mitre at B to ≲ 9° of re-aim, and both
-  // rules need 17–19° there. The row stays, its fix now a position-space
-  // route (re-site B on CAP_BEARING, or retire the rod for a wheel train).
-  'Keyless works::settingTraverse': 'TODO 145 group B (§234 Landing 2 step 3a: SITE-limited — reservePinion0 + rsvArbExt cap one straight bar at 0.48 under the ceiling\'s 0.687; §234 Landing 6 MEASURED the fold and refused it on both sides — the mitre at B is pinned by the minute wheel\'s rim and the star; fix path is P3: re-site B via CAP_BEARING, or a wheel train in place of the rod)',
+  // §234 step 3a's FOLD — RETIRED, with nothing in its place. The row above
+  // this comment's paragraph described a straight 27.47 u bar; it is two
+  // legs on two axis lines now — `settingTraverse1` A→K at 0.55 (the plate's
+  // window) and `settingTraverse2` K→B at 0.382 (the same reservePinion0
+  // pinch, now that leg's alone) — each a bar of its own under the target.
+  // The corner K is derived in main.js at the fold's build: each leg swung
+  // exactly as far as its own wall forces (the Yoke, measured; the barrel-
+  // arbor column, closed form). The table is EMPTY: every one of §233's
+  // twelve rows has been retired by a cut, none by a widened tolerance.
   // §234 step 3b — RETIRED. The entry filed this as a TRAIN change and it
   // was: TODO 138's two hard guards fired on the 8-tooth winding pinion at
   // stem-stock bore (no web left, both members), and 10 teeth is the

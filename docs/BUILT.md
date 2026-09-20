@@ -27023,6 +27023,573 @@ stripped, and the four that "moved" (`inspection`, `clearances`,
 same row. The run preceded the waiver's text reword by a few minutes; the
 reword changes no key and no verdict, and CI runs the final tree.
 
+### Landing 7 — the fold BUILT: B re-sited on the cap's bearing, solved jointly with the reserve's swing, and `TURN_WAIVERS` is empty
+
+Landing 6's route 1, taken. The setting traverse is two legs on two axis
+lines now — `settingTraverse1` A→K at r 0.55 and `settingTraverse2` K→B at
+0.382 — joined at a third bevel corner K, and the last `turning` waiver in the
+movement is retired with nothing in its place. TODO 145 closes with it: every
+one of §233's twelve bars has been retired by a cut, none by a widened
+tolerance.
+
+**Erratum to Landing 6.** "The finding is B" was an instrument artefact. The
+probe's inboard blanks were sampled FORWARD of the apex — on the wrong side of
+K along leg 1 — which is what put `rsvWheel1`'s rim "0.43 u from K" inside the
+corner's own margin, and what read B's re-aimed mitre into the minute star.
+Sampled on the blank as cut (the probe's header carries the correction), the
+barrel side's real blockers were the reserve's w1 rim against K's OUTBOARD
+blank and the cap pinion against p1 — exactly the two members the reserve's
+own swing and the cap's bearing can move — and at the solved bearing B's
+inboard mitre reads clear with the star 1.70 u under it. Landing 6's
+refusal of the transfer arbor's side stands (Σ 162°, leg 2 L/D 29.6 in closed
+form; the probe still prints it).
+
+**The fold, in closed form from any B** (`solveSettingFold`). Leg 1 leaves A on
+the measured Yoke HEADING, `MW_FOLD_LEG1_HEADING_DEG = −46.87°` — a heading,
+not a swing off the run, because the Yoke stands where it stands while the
+run's direction follows B; the α scan at 0.25° reads 0.55 exactly on that ray
+and 0.5374 on the next. Leg 2 leaves B tilted toward K's side by the least
+swing that passes the barrel-arbor extension on its near side, β2 = φ +
+asin(need / |B − barrel|) with need = 0.55 + 0.382 + `CLEAR_MARGIN` = 1.082;
+K is where the rays meet, and the deflection α + β2 sets the corner's shaft
+angle Σ = 180° − (α + β2). K's SIDE is read off the heading (the sign of the
+turn from the run's heading to the Yoke's, wrapped), not off the barrel: the
+first form took the barrel's side of the run, which flips within 6° of the
+short way in while the heading stands still, and the fold's whole frame
+flipped with it. φ is signed the same way.
+
+**The corner's module is solved against §50's floor.** At Σ ≈ 152° a 10-tooth
+pair is nearly two face gears — a blank is a thin flat ring — and cut at the
+template `BEVEL_MODULE` 0.3 it measured 0.0911 mm across its axis, under the
+0.12 mm wheel floor every part is held to. `foldModuleFor` iterates the
+generator on the blank it cuts until both blanks' thinnest extent (read as the
+census reads it, the geometry-local box's least side) reaches `STOCK_MIN_U`:
+0.3487 at the solved Σ 152.32°, extent 0.3174 u against 0.3167. The
+corner-index and coupling probes carry its row.
+
+**One builder for the metal, one solve for the site.** `buildSettingMetal(cap,
+parent)` cuts everything between A and the cap pinion — the fold, both legs,
+the rise, the three corners, the pinion — into whatever group it is handed.
+`CAP_SOLVE` walks the cap's bearing about the minute wheel (0 first, then
+±1 step, ±2, …), builds each candidate B's metal with that builder into a
+scratch group, reads its vertices and edge midpoints exactly as the reserve's
+solve reads the cut tree, and asks `solveReserveSwing` — the reserve train's
+own w1 swing solve, hoisted above it so both call ONE function — whether some
+swing within ±30° clears it; the candidate must also clear the winding
+transfer arbor's own cylinder, the clause that refuses the short way in. The
+movement's build then calls the same builder at the solved B into `keyless`,
+and the reserve build calls the same solve on the cut tree and warns if the
+two answers part. §136's clause (the cap corner's tip circle held off p1's at
+the collinear station) is retired: it was holding a reach the metal lost when
+TODO 138 cut the corner to its cone, and it was that over-read, not the metal,
+that had closed the window.
+
+Two forms of the site solve were cut and refused before this one:
+
+- **A closed-form envelope** — each blank as the body of revolution its
+  generator cuts, each reserve member as its tip circle, the ring inside a
+  band read as a chord segment across the axis. It disagreed with the vertex
+  solve by tooth depths (an envelope reads a ring whole; the vertex test reads
+  the gaps) and at the 0.3306 module found no window at all; the two solves
+  had to be the same function.
+- **The nominal z-band.** The reserve's solve held w1's tip circle off keyless
+  points within Z_RSV ± (0.5 + margin), the wheel's nominal half-thickness.
+  Both gear generators extrude `depth: thickness` with the bevel ON, and an
+  extrude's bevel stands proud of BOTH faces (TODO 98's finding on the pallet
+  fork): w1 is 1.15 tall, its face at −3.625, and the band's edge at −3.55
+  left the fold's outboard blank 0.066 u over that face while the solve
+  believed a margin. The battery found it: 40/41, `inspection` FORBIDDEN
+  `Keyless works ⇄ Power-reserve train` at 132/721 wind poses — a
+  tooth-periodic contact, `mwCornerFoldOut ⇄ rsvWheel1` 0.0659 at rest and 0
+  at every 28th of a turn. `gearFaceReach` in geometry.js is the one law now
+  (the generators' bevel and hub expressions moved into it, and the reserve
+  build asserts the cut w1 and p1 against it to 1e-5); the solve's bands read
+  it, per candidate for p1, whose bevel rides its module.
+
+**The scan's step is derived from the margin it polices.** With the honest
+band at 1° grids the solve walked out to bearing +40° and swing −24° and
+re-sited the minute quick-set jumper 108° (its own bearing scan yielding to the
+moved cap — legal, and a boot warning). Every bearing from +17° to +39° had
+been shut by 0.012–0.13 u, a tenth of a step: one degree of swing carries w1's
+station 0.107 u, so a 1° scan can step over a window one margin wide. Both
+steps are now the coarsest quarter-degree under HALF the margin's arc at the
+station each scan moves — ⌊(CLEAR_MARGIN / 2 / rsvD0) / 0.25°⌋ · 0.25° = 0.5°
+for the swing, the same law at `capMeshD` = 0.75° for the bearing — so a
+one-margin window is sampled at least twice. The scan then lands at
+**bearing +17.25°, swing −5°**, and boot is silent; every bearing nearer the
+short way in is refused by a named clause (`tools/probe-234-cap-bearing.mjs`
+reads the table back off the tree, with the built legs and the cut w1 as its
+controls): 0 to ±4° "legs over the turning target" (leg 2 runs 16–20 u there),
++5° to +16.5° the reserve's p1 (against the cap pinion in its band, by
+0.17–0.60), −5° to −7° the legs again, and from −8° "the rays do not meet on
+the barrel's side" (β2 ≤ 0).
+
+**The numbers.** A (−24.921, 26.581), K (−13.581, 14.476), B (−10.534, 3.455);
+run heading −58.11°, α 11.24° off it toward side +1, β2 16.43° (φ 6.77°);
+Σ 152.32°. Leg 1 16.587 u at r 0.55 → L/D **15.08**; leg 2 11.435 u at r 0.382
+→ L/D **14.97**; target 18, ceiling 20. Reserve w1 swung −5° off the line;
+stage two's module re-derived from the swung station. Plate bored at K to the
+blank's coneR + margin. `tools/probe-234-traverse-fold.mjs` on the built tree
+(`KRULE=plus LEG1_HEADING=-46.87`): leg 1 worst free r 0.55 against the base
+plate (its derivation closing), leg 2 0.382 against `reservePinion0` (the same),
+all four blanks clear of everything but the plate recess a corner needs, B's
+inboard mitre clear, verdict BUILDABLE. The straight run's control is a report
+on a folded tree — from A to the fold's B it crosses the barrel column the fold
+exists to avoid.
+
+**Retired with it.** `TURN_WAIVERS`' `Keyless works::settingTraverse` row
+(the table is empty); `SLENDER_WAIVERS`' `Keyless works` entry (λ 41.2, TODO
+109's one pure layout row — both legs are under §54's ceiling and the table's
+own staleness gate named the entry). Four `INTRA_UNIT_CONTACTS` rows declare
+the corners' joints to their legs. Nothing widened: `CLEAR_MARGIN` is the one
+margin throughout, the detent windows are untouched, and the module solve
+RAISES the corner to the floor rather than waiving under it.
+
+**The bar.** Local `--report` (3 shards) on this head **41/41** (2085.9 s),
+boot silent, fingerprint **1821360697**. The run before the band fix was
+40/41 on `inspection` alone (the contact above); the run before the step
+derivation was 41/41 with a boot warning (the jumper). Diffed against the
+merge base's report (`main` at the Landing 6 merge, fingerprint 987499931,
+41/41, measured in a worktree with the same harness): 14 of 28 checks
+byte-identical with timing stripped, and every check that moved, moved on the
+fold's own rows — `turning`, `slenderness`, `transfers`, `intraUnit` (its
+declared rows and three out-of-scope FF rows renamed for the two legs), the
+mesh censuses (`outlines`, `meshIntegrity`, `sweptOverlap`'s registry: two
+path rotors and one static for the new corner and legs), `meshPhase` and
+`meshCoverage` on the one reserve mesh the swing moves, `stockFloor`'s row
+count (672 → 675) — and `inspection`, `clearances` and `expectedContacts`
+moved only in their `census` counters, not one row. `turning` 223 bars, **0 waived**, 0 stale; `slenderness` 2 over
+ceiling (was 3 — the traverse's λ 36 row gone), 0 stale; `intraUnit` 159
+declared rows, the four fold rows measured at 0–0.006 u (`compared: true`);
+`transfers` 19 (the fold corner's bevelPair row added); `meshPhase` and
+`meshCoverage` move only on `reserve stage two p1 ⇄ w2`, the swung station's
+new centre distance (8.5306 → 8.5705, offPct 0.048 → 0.039, credible). Both
+legs appear in `turning`'s `needRest` report (L/D 15.1 and 15.0, a follower
+rest wanted between 10 and 20) — a report, as §233 declared it.
+
+### The roadmap entry, moved here whole and reconciled
+
+The private roadmap filed §234 as THREE landings; it took seven in this record
+and one section of its own (§235), and the plan's claims were corrected by
+measurement at nearly every step — each correction is a blockquote inside the
+plan below, written as the landing shipped. The entry is moved here verbatim
+(links to other roadmap entries flattened to their § numbers), the way a plan
+that shipped is kept rather than a plan that described an abandoned approach.
+Its acceptance list is met: `TURN_WAIVERS` is empty with the `turning` check
+green, `transmits`/`meshPhase`/`transfers`/`alarmHandoffs` moved only where a
+landing says why, probe-82's stall was re-recorded (Landing 5: 1006.54 mN,
+boot and probe agreeing), and public TODO 145 is CLOSED with every row
+accounted for. The one thing the plan never priced — which member would need
+a fold — is Landing 7 above.
+
+#### 234. Close TODO 145 — the three landings that empty `TURN_WAIVERS` (as filed)
+
+> **Status. PARTIAL — LANDING 1 SHIPPED 2026-09-17, LANDING 2 STARTED** (public
+> `docs/BUILT.md` §234): group C measured before it was cut, the two arrest
+> columns closed by decoupling their radius from the finger's Geneva-sized
+> arbor, the rod re-triaged to Landing 3 as SITE-limited; then Landing 2's
+> steps 1 and 2 — the stem stock declared and the alarm pusher cut from it —
+> with the finding that the skirt trip it raised was the back envelope's bin
+> width, now derived. Steps 3–5 remain. Filed 2026-09-17 out of §233's
+> landing (public `docs/BUILT.md` §233, timesim PR #437) and the owner's ask
+> that the slenderness constraint be ENFORCED rather than reported. Number claimed through the public repo's
+> `tools/claim-item.mjs` (`docs/item-numbers/BUILT-0234.md`). The catalogue
+> itself is public **TODO 145**; this entry is the ORDER and the measurements,
+> so that item can be closed one group at a time without re-deriving any of it.
+
+**What "closed" means.** `TURN_WAIVERS` in `src/inspect.js` is empty with the
+`turning` check green. The staleness gate does the bookkeeping: a waiver whose
+bar is no longer over the ceiling FAILS, so deleting each waiver is
+structurally part of its fix and no landing can leave one behind.
+
+**Every number here is built to `TURN_LD_TARGET` (18), not the ceiling (20)**,
+on `SLENDER_TARGET`'s reasoning — never build to the boundary a check compares
+against. TODO 145 quotes "15%" for the arrest arbors; that is the ceiling
+figure and the build-to figure is 28%. At each bar's current length,
+`⌀ ≥ L / 36`:
+
+| bar | L mm | ⌀ now | ⌀ needed (r in u) | × |
+|---|---|---|---|---|
+| **C** arrest arbors ×2 | 3.22 | 0.140 | 0.179 (r 0.236) | 1.28 |
+| **C** `alarmLinkRod` | 7.55 | 0.227 | 0.419 (r 0.553) | 1.84 |
+| **B** pusher stem — **SHIPPED at 0.700 (r 0.924), the stock floor; L/D 14.1** | 9.86 | 0.243 | 0.548 (r 0.723) | 2.26 |
+| **B** `settingTraverse` | 10.28 | 0.265 | 0.571 (r 0.754) | 2.15 |
+| **B** `windStem` | 12.06 | 0.341 | 0.670 (r 0.884) | 1.96 |
+| **B** alarm stem | 17.89 | 0.318 | 0.994 (r 1.311) | 3.12 |
+| **B** reset / hack rods | 16.5–16.9 | 0.265 | 0.92–0.94 (r 1.21–1.24) | 3.5 |
+| **A** lay shaft | 12.65 | 0.121 (neck) | 0.703 (r 0.927) | 5.8 |
+
+##### Landing 1 — Group C: three rows, one PR, no layout consequence — SHIPPED, and the claim did not survive
+
+> **Measured (BUILT §234).** "A section change alone closes all three" was true
+> of none of them. Tooth counts do not move (5 at both radii under a floor of
+> 8). The GENEVA does — the horn floor governs its centre distance, so the one
+> shared `ARREST_SPEC.arborR` at 0.236 grows the cross 20% — and that is the
+> finger's coupling, not the two over-ceiling columns', so the columns got
+> their own `ARREST_COLUMN_R` (cut to `TURN_LD_TARGET` from the tower's built
+> height, a two-pass leg solve with a boot assert, the stack made one law) and
+> the finger kept the spec. Columns L/D 23.0 → 18.0; two waivers retired;
+> battery 41/41. The STALL does not read the rod at all (probe-82's "rod-end
+> overhang" is the shaft's neck; r 0.553 byte-identical), so the paragraph
+> below on `kBend` is wrong. The ROD is SITE-limited — §202's frozen station
+> warns above r ≈ 0.517, L/D 19.2, under the ceiling and over the target — and
+> its site is the §112 solve's output, so it moves to Landing 3. What follows
+> is the plan as filed, kept for the record.
+
+
+**The arrest arbors.** Both are `ARREST_SPEC.arborR = PIVOT_MIN_U`
+(`main.js` ~21217) — sized to §50's pivot FLOOR on arbors 8.5 u long, whose
+length is the tower's (`SUB_PIN_B_Z + T/2 + 0.2`) and cannot shorten. Raise
+`arborR` to r ≥ 0.236 u, derived in place from `TURN_LD_TARGET` and that
+height; still inside real pivot stock. Three things read it and each is
+re-read, not assumed:
+
+- the idler wheel, pinion and tower bores (`arborR + 0.05 + STOCK_MIN_U`)
+  follow by construction;
+- **`minGearTeeth(ALARM_TRAIN_MODULE, arborR + 0.05, …)` at ~21380 and ~21664
+  is a TOOTH-COUNT solve that reads the arbor.** If +0.05 u crosses a tooth
+  boundary, `SUB_LEG_TEETH` / `LEG_B_REACH` move and `transmits` will say so.
+  **This is the first measurement of the whole entry** — one node call at
+  0.185 and 0.236 — because if it moves, Group C has a train consequence and
+  TODO 145's "no layout consequence" was wrong;
+- the `spiderSpec` keep-outs (`col: ARREST_SPEC.arborR`).
+
+**`alarmLinkRod`.** `ALARM_LINK_ROD_R_SECTION = 0.30` (`main.js` ~2628) →
+0.553 u. §202 made the rod the DATUM — bushes are bored over it, the plates'
+holes follow the bushes — so the chain propagates. Two couplings:
+
+- TODO 79/82's stall figure: `probe-82-alarm-stall.mjs` reads the rod-end's
+  section through `kBend`. A stiffer rod-end RAISES the delivered force and the
+  envelope relation has been `covers` since §232, so more is fine — but re-run
+  the probe and move `ALARM_LINK_STALL_PROBE_MN` and the boot assert's expected
+  figure the way §232 did;
+- the §202 site solve scored column clearance net of a 0.45 footprint, and a
+  0.553 rod plus its bush wall may not clear. `tools/probe-231-lever-width.mjs
+  SET=link232` already grows this rod radially over the pose net; run it first
+  and its rate band names the wall.
+
+Acceptance: three waivers deleted, `turning` 9 waived / 0 stale, `transmits`
+unchanged, `--report` diffed against base, `probe-82` before and after in the
+PR body.
+
+##### Landing 2 — Group B: a declared constant, then one member at a time — STARTED
+
+> **Steps 1 and 2 SHIPPED 2026-09-17 (BUILT §234).** The constant is
+> `STEM_STOCK_R_U` (tap 7, ⌀0.70 mm, r 0.924 u — the smallest tap a stem is
+> threaded to; only the floor, because only the floor has a consumer), and the
+> pusher reads it: the stock governs over the turning target (0.924 against
+> the 0.723 the 26.0 u bar asks), which is held as a boot assert at the cap's
+> build. L/D 40.7 → 14.1, waiver retired. The P3 question the paragraph below
+> asks was answered by measurement and the answer was not the gong: the ring
+> drops 1.21 u (twice Δr, through the guide ring), the head's height is still
+> the impedance match's and the skirt's bottom does not move — but every
+> bracket from r 0.50 tripped §198's "skirt governed by Alarm hammer" with the
+> hammer unmoved in z, because a shorter gong block is stiffer and thinner, the
+> ring stands 0.02 u further out, and the hammer post's edge crossed a back
+> envelope bin wall at r 47.50 (the skirt's wall is at 47.95). At 60 bins that
+> thickened the case back 0.50 u for a post the skirt never stands over, and
+> `main` is 0.02 u from the same trip. The bin count is derived now
+> (`CASE_R_OUT / CLEAR_MARGIN`, 352 bins of 0.150 u); on the shipped geometry
+> it moves the glass step's radius by 0.020 u and nothing else. Two more
+> findings inside the group, both fixed: the §202 bearing declaration still
+> carried `plateR − 1.2` for the guide's station (the literal §230 retired; it
+> reads the boss now), and the return coil's index went 6.6 → 15.8 on the
+> stock wire, so `SPRING_INDEX_*` is declared and the wire solved to it (0.075
+> mm, C 10.8). Expect the alarm stem's tube liner and any coil that rides a
+> stem to meet the same two questions.
+>
+> **Step 3 MEASURED 2026-09-18, nothing cut — neither keyless member is a
+> section change.** The setting traverse (`SETTING_ROD_R`) boots silent at
+> stock (no bore reads it) and fails three gates: measured, its z window is
+> the reserve train's first wheel (top −3.532) to the corner's drop-in bevel
+> (bottom −2.150), 1.38 u, where the ceiling needs 1.66, the target 1.81 and
+> stock 2.15 — SITE-limited like Landing 1's rod, r ≤ 0.54 in place (L/D 25).
+> **Step 3a is a LAYOUT change**: the plane it runs in (`Z_RSV` −4.2, or the
+> corner's stack), position space, to file with its own numbers. And at
+> `STEM_R = STEM_STOCK_R_U` TODO 138's two hard guards fire on the keyless
+> corner: the 8-tooth winding pinion's bore (1.074 u) reaches its root cone at
+> the small end (0.960), and the crown-wheel pair keeps no web between hole
+> and teeth. Bracketed, 10 teeth silences both; what remains at 10 or 12 is
+> TODO 136's `KW_BEVEL` plane table (five literals in `layout.js`, all
+> drifting against the cut — `rimFaceOut` 2.761 → 3.124, `rimBack` 0.773 →
+> 0.416) and the setting corner's hub-collar bound (`YOKE_FORK_OUT`). That is
+> the Geneva's finding again: a pinion bored for a real stem is a bigger
+> pinion, the winding ratio moves (20/8 → 20/10), and the corner's declared
+> planes re-derive. **Step 3b — the winding stem as a TRAIN change**:
+> `windPinionTeeth` 8 → 10 with the ratio's consequence walked through the
+> keyless chain (which way the crown turns is a consequence, and guarded), the
+> five `KW_BEVEL` rows re-derived from the cut rather than re-typed,
+> `YOKE_FORK_OUT`'s bound re-solved for the pair's real shape, then the P3
+> re-clear the step already expected. Two of group B's three "one line"
+> claims have now failed measurement the way group C's did: a member's radius
+> is a station in someone else's derivation.
+>
+> **Step 5 DECIDED and SHIPPED 2026-09-18 (BUILT §234).** The owner chose
+> the flat stamped levers. Each rod is one extruded NECKED strip now, one
+> blank for both: sheet `LINK_T_U` = §50's floor (the corridor allows no
+> more — two links a margin apart would want 0.247 u, under the floor, so
+> they are cut AT it and stand 0.045 apart where they cross, asserted); body
+> `LINK_W` 0.765 u, the higher of the blanking floor `LINK_BODY_W_U` (≈ 2t,
+> 0.633) and a SECTION floor — no weaker in the bend's plane than the ⌀0.7
+> tube it replaces, W = ∛(12·I_rod / T); eyes `linkEyeDiaForPin` = 2 · (pin
+> r + running fit + floor) = 1.633 u over the 0.45 post family. Two width
+> rules were cut and REFUSED first: §54 in plan (chord / `SLENDER_TARGET`,
+> 1.614 / 2.446 u) went 40/41 — `inspection` FORBIDDEN `Hack rod ⇄ Third
+> wheel` against a corridor solve reporting 3.05 of room, because the third
+> arbor's lower staff had never been a corridor row and `xyRadiusAbout`
+> could not see a cylinder whose vertices are all on its caps (it samples the
+> axis through the band now; `THIRD_STAFF_R` is the fifth row) — and with
+> the wall in the table neither that rule nor a full-eye-width blank routes
+> anywhere; a body over ≈ 1.0 u has no station about the balance. `ROD_KNUCKLE_R`
+> went with the tube; every corridor row takes the body's half-width as an
+> argument. §137 Gate A re-derived on the flat section: with the I matched the hack link's
+> bend prices as the tube did (σ ≈ 138 MPa and 32% give at the ceiling against
+> 120 and 28%); what the row adds is σ at `ELBOW_E_MAX` under yield (316 of
+> 800 MPa) and the weak-axis Euler fraction under 1 (0.17 / 0.38). Three
+> `TURN_WAIVERS` and TODO 109's two `SLENDER_WAIVERS` retired — noting that
+> §54's bounding-box λ reads a necked link's chord over its EYE, so the rods
+> pass it by the eye's width, not by design; the strut's Euler assert is the
+> measure that means something there. Not changed: the pin joints (eyes
+> centred on their pins, no bore; the same EXPECTED contact), filed as TODO
+> 146; the explainer's "thin hack rod" sentence, a page landing.
+
+The item's diagnosis holds and the tell is arithmetic: **at real stem stock
+every stem row passes without further argument.** A caliber's crown stem is
+0.9–1.2 mm at the thread and the alarm stem needs 0.994.
+
+1. **Declare the stock** in `layout.js` beside `STEM_R`: `STEM_STOCK_U`, with
+   its basis cited the way `PIVOT_MIN_U` cites "real train pivots run
+   0.07–0.12 mm". `STEM_R = 0.45` is a bare literal today ("main.js builds to
+   this"); this turns it into a derivation.
+2. **One member first — the alarm pusher stem** (`ALARM_PUSH_STEM_R = 0.32`,
+   `main.js` ~16970). Shortest of the eight and the simplest neighbourhood:
+   the guide bore is derived (`+ PIVOT_BORE_CLEAR`) and the one obstacle is in
+   the same block, `GONG_BAND_TOP = (ALARM_PUSH_AXIS_Z − ALARM_PUSH_STEM_R) −
+   CLEAR_MARGIN − 0.01`. A 2.26× stem drops the gong band ~0.4 u; whether that
+   fits is a P3 question the battery answers. **If this one cannot land, stop
+   and file the layout change** before spending anything on the other seven.
+3. **The keyless stems** — `STEM_R` (`windStem`) and `SETTING_ROD_R`
+   (`settingTraverse`), one PR. `STEM_R`'s consumers are all derived from it
+   (`KW_RIM_BORE`, the square's `sqHole`, the saw coupling, the clutch, the
+   crown wheel bore, the bevel corners), so the change is one line and every
+   consumer is a P3 re-clear. The traverse's z-room is explicit at
+   `main.js` ~4747.
+4. **The alarm stem and its liner** (`ALARM_STEM_R = 0.42`, 3.1×). The
+   liner-plus-collars row closes with it — a liner bored over a fatter stem is
+   fatter. **MEASURED 2026-09-18 and REFUSED** (BUILT §234, step 4;
+   `tools/probe-234-step4.mjs`): stem stock leaves the bar at L/D 25.6, so only
+   the TARGET radius closes it — and a bevel bored over THAT stem needs 17 teeth,
+   which loses the winding climb's mesh (0.4738 where it reads 0.0000 today) and
+   stands the disc bevel 0.0583 from its own bearing cock, inside the unit where
+   the pair sweep cannot see it. Either a corner redesign across three mechanisms,
+   or the corner moves 13.9486 u outboard (r 15.4007 → 29.3493, plate rim
+   41.1557) so stem stock suffices — but the plate rim is not the binding
+   constraint, and `tools/probe-234-corner-move.mjs` REFUSED that half: moving
+   `ALARM_CD` carries the setting arbor out with it while idler 1 stays put, so
+   the dogleg is red at 18, out of reach at 19.9 and closes at no bearing from
+   22, against a target at 29.35. **The owner chose to GROW THE CORNER
+   (2026-09-18), like step 5's decision.** Nothing was cut in the measuring
+   landing; both waivers stand with rewritten reasons.
+
+   **BUILT 2026-09-18, and the corner was not the wall** (BUILT §234 Landing 3).
+   Three of the four prices above were cheaper than this entry priced them: the
+   count is **16**, not ≥17 (17 was matching the old face width, a preference);
+   the winding climb survives untouched; and the disc bevel does not crowd its
+   cock, because that cock stood on a stale literal (`BEVEL_UNDERSIDE = -6.158`
+   against a gear bottoming at −5.4792 — 0.68 of slack reading as a decision).
+   The corner's own plane was a literal too and is derived now — the highest
+   plane standing CLEAR_MARGIN off the base plate's face, clearing the WORST
+   member riding it, which is not the gear: the stem BUSHING is a torus reaching
+   1.45 against the bevel's `tipR` of 1.3088, and deriving against the bevel left
+   it 0.0456 off the plate with all 41 gates passing and only `support`'s own row
+   moving (0.15 → 0.046). `tools/probe-234-corner-z.mjs` surveys that column and
+   corrected the comment that was its only record, the base plate being
+   un-swept. At the grown size the pair FITS, the §45 lifter's run 0.6822
+   clear where the bounding boxes had predicted 0.5361 of overlap.
+
+   **What stops the stem is the §45 lifter's plunger corridor, spent at the
+   radius the movement already ships.** The crown's collar is a ring pressed on
+   the stem, so its underside drops one for one with the radius, and the lifter's
+   plunger hangs from it down to the release sleeve's tab plane: on the movement
+   as it shipped, corridor 1.336 against a guide stack of 1.3161 — 0.009 of
+   slack, and deriving the corner's plane bought 0.2 more.
+   `tools/probe-234-stem-ceiling.mjs` sweeps it on the landed tree: closes
+   between 0.42 and 0.50 (short by 0.117 at 0.50), 0.522 at stem stock, 1.242 at
+   the turning target. Its floor is pinned to the HOUR TUBE (`ALARM_SLEEVE_TOP` hangs
+   one CLEAR_MARGIN under the heart cam), so the remaining fix is **how the §45
+   lifter READS the collar** — a yoke at axis height spends no z on the collar's
+   radius, a plunger under it spends all of it — a P1/P2 question inside the one
+   action group (crown → collar → lifter → release sleeve) and the owner's to
+   call, because it redesigns a shipped member. The honest corner landed anyway:
+   at the shipped 0.42 the whole derived chain boots SILENT, which is the sweep's
+   degeneracy control.
+
+   **THE OWNER CHOSE THE YOKE and §235 BUILT IT (2026-09-18) — GROUP B IS
+   CLOSED** (BUILT §235). The pad still touches under the collar, but two prongs
+   rise either side of the stem and the guides and return blades act on them
+   BESIDE the cam, at the stem's own axis height — a station a fatter collar does
+   not move. `ALARM_STEM_R` is the turning target, ⌀0.318 → ⌀0.994 mm, and THREE
+   waivers are RETIRED rather than reworded: both of group B's `turning` rows and
+   `slenderness`' `Alarm crown` row. 41/41 gates, boot silent; against merged
+   `main` exactly two verdict fields moved (`turning` waived 6 → 4, `assembly`'s
+   out-of-scope report 28 → 29, both new rows named in the record). The two
+   collisions it opened were resolved in POSITION SPACE — the bearing cock's post
+   and the lifter's mid-guide, both literals sited against the old blank.
+
+   The finding to carry out of it is not the yoke. It is that FOUR separate
+   instruments agreed with a wrong answer before any of them caught it: a sweep
+   silent because nothing checked the cam against an un-swept base plate; an
+   assert deleted by the very change it was policing, leaving the sweep reading
+   "clear" while the pad sank 0.914 past the sleeve's plane; a replacement assert
+   too strong, forbidding a relation between parts 23 u apart; and two literals
+   sited against a blank whose size had since become derived. When a dimension
+   becomes derived, every literal placed against its old value is a defect
+   waiting for the first change — and what bites is the furniture around the
+   wheel, not the wheel.
+5. **Hack and reset rods — THE DECISION, and it is the owner's.** `ROD_R =
+   0.35` runs in what the source calls "this 0.22-unit corridor" under the
+   great wheel (`ROD2_PLANE_Z = GW_UNDER_Z − CLEAR_MARGIN − ROD_R`; boot warns
+   "rod corridor collapsed" when it closes). A 3.5× rod cannot exist there.
+   Two honest resolutions:
+   - **re-route**, in position space (§13/§22/§33 machinery) — the corridor
+     §85 already fought over;
+   - **re-section as flat stamped levers**, which is what a real caliber's
+     hack lever and reset hammer ARE. A flat link is not a body of revolution,
+     so `turning` stops judging it — correctly, since nobody turns one. The
+     cost is real: §137 GATE A computed what the bend carries for the ROUND
+     section (`main.js` ~5588, `I = πr⁴/4`), so a flat section re-derives that
+     row, and `ROD_KNUCKLE_R` goes away with the elbow it models.
+
+   The recommendation is the second: it is the design truth, not an
+   accommodation. Make the call before step 5 starts, not during it.
+
+##### Landing 3 — Group A: the lay shaft, a solve change — and the rod, since Landing 1
+
+> **Since Landing 1, this landing owns `alarmLinkRod` too.** Its section is
+> free (not in the stall chain) but its STATION is not: §202 froze it against
+> a 0.45 footprint and the site check caps the rod at r ≈ 0.517. The same §112
+> re-solve that gets the lay shaft's chord under the target should carry the
+> rod's true bore footprint (`ALARM_LINK_ROD_PLATE_BORE_R` at the target
+> section, 0.930) so the rod lands at 18 in the same solve.
+
+
+The shaft's length is not a literal. It is the chord from
+`ALARM_LINK_INNER_XY` (the selector tab's mid-reach, r = 5.4 — the INPUT, and
+immovable) to `ALARM_LINK_ROD_XY`, which is the **output of the §112 siting
+solve** (`main.js` ~24270–24320): it searches `rodCands × tab azimuths` and
+keeps the best CLEARANCE score. Chord length is not in the objective, which is
+why it is 33.4 u — nothing ever asked.
+
+**The fix is a term in that solve**: `L/D ≤ TURN_LD_TARGET`, at the body's
+section, as a FILTER on `(rc, tab)` pairs ahead of `scoreChord`. Position space
+only — the fold's own currency. Then:
+
+- if a candidate survives, `ALARM_LINK_SHAFT_R` re-derives itself (it is
+  already `f(fullChordLen)`) and §229's registration solve re-runs against the
+  new station. MEASURE it: §232 showed that solve breaks in four places when
+  the crank geometry moves;
+- if NO candidate survives at any pitch step, that is the §112 solve saying the
+  constraint is unsatisfiable in this layout — the finding to file, with the
+  best chord it CAN reach, never a number to widen.
+
+**The neck stays the problem either way.** The bar's governing ⌀ is the
+0.121 mm necks and they are pinned: `NECK_R = CRANK_OFF − CRANK_T / 2`, and
+`CRANK_OFF` is §137's `armIn_u`, a lever arm. A shorter chord alone does not
+get the necked bar under 18 unless it drops to ~2.2 mm, which it cannot. So
+the neck goes too, and the only route that does not move the arm is the one
+§232 avoided: key the cranks on the FULL body with the arm's inner attachment
+moved outboard by the section difference while its outer reach is held, so
+`CRANK_OFF` is exactly preserved. §232 measured "fatten and let the arm ride
+its surface" and rejected it (ratio 2.545 → 1.821) — because the arm was
+allowed to move. Held fixed, it is a different change and wants its own
+measurement. Expect this to be the hard part of the item.
+
+> **MEASURED 2026-09-19 (BUILT §234, recorded there as "Landing 4" — the
+> public record had already spent "Landing 3" on step 4's alarm corner).**
+>
+> **The rod closed, and the plan above had the mechanism wrong.** It was
+> not the §112 chord that capped the rod at r ≈ 0.517; it was the
+> FOOTPRINT the solve scored it with. §202 froze a 0.45 bore against every
+> obstacle at every z, but a bore exists only where a plate is, so the
+> honest footprint is piecewise: the rod's own radius in free air, the plate
+> bore (`ALARM_LINK_ROD_PLATE_BORE_R`) only against obstacles whose z-range
+> overlaps a plate slice (`ALARM_LINK_COL_BUSH_Z`, the three-quarter and
+> back plates). Re-scored that way the site moves 0.0028 u — inside the
+> `_boreXY` tripwire's 0.25, so the frozen literal at `BACK_PLATE_HOLES` and
+> `tqHoles` stands — and `colClear` reads 0.456 at the section the turning
+> target asks for. That section is then `STEM_R`'s idiom, `max(STOCK_MIN_U,
+> rodLen / (2·TURN_LD_TARGET))` = 0.5533, L/D 33.2 → 18.0. `rodLen` is only
+> known after the constants that need it, so `ALARM_LINK_ROD_LEN_U` is a
+> measured hand-off, boot-guarded at the rod build against the built mesh
+> (`RSV_P0_TOP_Z`'s precedent from step 3a). §202's room assert is re-cut
+> against `CLEAR_MARGIN` rather than the retired literal. probe-82 is
+> byte-identical (81.02 mN): the compliance chain reads the shaft, exactly as
+> Landing 1 corrected. Waiver RETIRED.
+>
+> **The shaft is a measured refusal, and the refusal is not the chord.** The
+> filter this entry asked for was built as `tools/probe-l3-shaft-ld-filter.mjs`
+> — a scratch-tree dry-run of the §112 solve dumping all 2499 `(rc, azw)`
+> candidates, filtered client-side by L/D at six sections, 0.2664 (the λ
+> derivation), 0.30, 0.40, 0.445, 0.553 and 0.927 (what turning needs at the
+> shipped chord); its control reproduces the shipped site and azimuth. At
+> every section a candidate SURVIVES the L/D filter — chords of 10.5 to 13.4 u
+> exist at L/D ≤ 18 — and at every section the best of them scores negative
+> (−0.55 to −0.67, the rod's column against the alarm setting train); at
+> 0.927 the only L/D-clearing candidates are the shipped station's
+> neighbours, and their chord score is −0.60. So the two constraints are
+> refused by different walls, independently: short chords by the column,
+> long chords by the section. The structural fact underneath is the one the
+> paragraph above half-saw: a λ-sized shaft has L/D ≈ 54·(chord−1.1)/
+> (chord−3.8) > 54 for ANY chord, so no siting closes it — only a fatter
+> body does, and the corridor walls (the selector tab at 0.2957, the setting
+> idler at 0.435 against a legal 0.2850, hanger station one 0.587 against
+> 0.41) and the crank finger (radial bar to 0.445 against a contact at 0.425)
+> refuse every section from 0.30 up. Waiver RE-WORDED to say exactly that.
+> Public TODO 145 group A carries the three priced options, the owner's to
+> choose: crank stubs pressed into a BORED body (the neck goes, `CRANK_OFF`
+> is held by construction); re-derive the crank so its arm keys on the full
+> body; or a shorter chord through the corner's own re-siting — this
+> landing's short-chord candidates are refused by the ROD's column, so that
+> route is the column's station, which a section change cannot reach.
+>
+> **What this leaves of §234.** Group C closed whole (Landing 1 and this).
+> Group B closed by §235. The keyless group closed except the setting
+> traverse (step 3a's fold, filed there). Group A: this measurement and the
+> owner's choice. `TURN_WAIVERS` holds TWO rows, both re-worded with their
+> measurement, neither a number anyone widened.
+
+##### What to do first, concretely
+
+1. One node call: `minGearTeeth` at `arborR` 0.185 and 0.236 — does a tooth
+   count move?
+2. `SET=link232 node tools/probe-231-lever-width.mjs` on the rod — where is
+   its wall?
+3. `probe-82` at rod r = 0.553.
+
+Three clean answers make Landing 1 an afternoon and prove the waiver-deletion
+loop. If (1) moves a tooth count, stop and re-plan Group C before Group B.
+
+##### Feasibility · Cost · Battery
+
+Landing 1 is cheap and measurable in advance. Landing 2 is one declared
+constant plus up to four P3 re-clears of unknown cost, gated one member at a
+time so the first refusal stops the spend; step 5 is a redesign either way.
+Landing 3 is a solve change whose outcome the solve itself decides. Every
+landing runs the whole battery (`src/inspect.js` and `src/main.js` are not on
+`paths-ignore`), and each PR's acceptance is `--report` diffed against base
+with the moved rows named.
+
+##### Acceptance
+
+- `TURN_WAIVERS` empty; `turning` 0 unwaived, 0 stale, control PASS.
+- `transmits`, `meshPhase`, `transfers` and `alarmHandoffs` unchanged unless
+  the entry says why, with the measurement.
+- `probe-82`'s stall figure re-recorded after Landing 1, still `covers` the
+  detent window.
+- Public TODO 145 marked CLOSED with the three landings' records, and every
+  row of its catalogue accounted for — closed, or moved to a named successor
+  with the measurement that says why.
+
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
 TODO 145 group B asked for the alarm crown's stem to be cut from arbor stock to

@@ -52,7 +52,7 @@ import {
   FUSEE_TILT_Z,                               // §124 (TODO 46): the base tilt's funded down-reach — Z0_MIN and the base inset consume it
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
   STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
-  TURN_LD_TARGET,                            // §233/§234: the turning ceiling's build-to figure — the arrest columns are cut to it
+  TURN_LD_TARGET, TURN_LD_MAX,               // §233/§234: the turning ceiling's build-to figure (and the ceiling, published with the fold for its probe) — the arrest columns are cut to it
   STEM_STOCK_R_U,                            // §234 Landing 2: the stem-stock floor the alarm pusher is cut to
   LINK_T_U, LINK_BODY_W_U, linkEyeDiaForPin, // §234 step 5: the stamped hack and reset links' sheet, body width and eye rule
   SPRING_INDEX_MIN, SPRING_INDEX_MAX, SPRING_INDEX_TARGET,   // §234: the coiling envelope the return coil's wire is solved in
@@ -4860,34 +4860,37 @@ const Z_SETTING = -3.0;
 //   SETTING_ROD_R = (Z_SETTING − RSV_P0_TOP_Z) − CLEAR_MARGIN
 const RSV_P0_TOP_Z = -3.532; // reservePinion0's measured world top (see above)
 const SETTING_ROD_R = (Z_SETTING - RSV_P0_TOP_Z) - CLEAR_MARGIN; // 0.382, up from the old bare 0.35
-// This does NOT reach TURN_LD_MAX (ceiling wants window ≈1.66u / r 0.687;
-// target wants 1.81u / r 0.763) — three position-space candidates were
-// tried and each measured insufficient before landing this:
-//   · GROW/SHRINK the motion-works corner (BEVEL_TEETH/BEVEL_MODULE):
-//     irrelevant — the corner never appears in the neighbour list this rod
-//     actually pinches against (reservePinion0/rsvArbExt, not the corner),
-//     and shrinking it moves ITS OWN metal CLOSER to the apex (backwards —
-//     zWebLo scales with module), so this direction does not apply here.
-//   · MOVE Z_RSV: relaxes reservePinion0's bound almost linearly at first
-//     (0.382 → 0.480 by Z_RSV −4.7) but then SATURATES exactly there —
-//     rsvArbExt's presence at Z_SETTING's plane does not depend on Z_RSV at
-//     all, and measured, pushing Z_RSV to −6.0 buys nothing further.
-//   · RE-SITE the traverse's path (CAP_BEARING, already a free parameter):
-//     measured with CAP_BEARING forced to 20° and to 60° (its own solve's
-//     search ceiling), combined with Z_RSV −4.7 — r_max is UNCHANGED at
-//     0.480 either way. B sits on a small circle (`capMeshD`) around the
-//     motion works, far short enough that swinging it does not meaningfully
-//     move a 27.47u line's closest approach to the distant barrel arbor.
-// A NECKED (stepped) rod does not help either: `turnedBars` clusters
-// coaxial meshes at consecutive stations — same axis LINE — into ONE bar
-// judged on the NARROWEST diameter over the WHOLE span (see its own
-// comment, "the lay shaft... as the bar it is, it is 104"), so thinning
-// only the pinched stretch would just make the census's governing diameter
-// smaller while the judged length stays the full 27.47u.
-// Closing this for real needs a genuine FOLD — a new bevel corner kinking
-// the run off its single axis line near the barrel so the two resulting
-// legs are judged separately — which is new mechanism, out of this step's
-// scope; filed as the step's own follow-up. The waiver below carries this.
+// §234 fold — SETTING_ROD_R is now the section of the DROP and of LEG 2 of the
+// folded traverse (K→B, the leg that still passes over reservePinion0); leg 1
+// (A→K) has the plate as its only wall and takes MW_LEG1_R, declared here
+// because the minute pinion's step (MINUTE_Z_STEP, below) stands under A where
+// leg 1 begins and must clear the FATTER member. The barrel-arbor extension's
+// radius is the fold's other closed-form bound, hoisted from its build (the
+// reserve train is cut thousands of lines later) so the two sites share one
+// number rather than agreeing by coincidence.
+const RSV_ARB_EXT_R = 0.55;                                                              // rsvArbExt's radius — its build reads this
+const Z_RSV = -4.2;         // the reserve train's gear plane in the plate→dial gap (plate back −2.3, dial −7) — hoisted from its build for the same reason
+const RSV_Z_STEP = 1.5;     // its wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
+const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5 (hoisted: the cap's z-band is read below)
+const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
+const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                           // 0.55
+// The Yoke's bound on leg 1, as the world HEADING of leg 1's direction from
+// A (degrees, atan2 in the movement's XY): the heading closest to the
+// barrel's side whose first 12 u at MW_LEG1_R clear the Yoke's prong post
+// (5.5 u from A) over the whole pose net (it moves with crownPullT). A
+// heading, not a swing off the run, because the Yoke stands where it stands
+// while the run's direction follows B — B rides a solved bearing (CAP_BEARING
+// below, since §234 solved jointly with the reserve's swing), and the first
+// cut recorded the bound as a swing and had to re-measure it every time B
+// moved. MEASURED by tools/probe-234-traverse-fold.mjs (its α scan at 0.25°,
+// printed as the heading of the last clearing ray) and carried on the
+// RSV_P0_TOP_Z idiom; the battery's Yoke ⇄ Keyless works sweep is the gate.
+const MW_FOLD_LEG1_HEADING_DEG = -46.87;   // the scan at 0.25°: this ray reads 0.55 exactly, the next (−46.62°) 0.5374
+// (§234 Landing 2 step 3a measured that no SECTION closes the straight run —
+// the ceiling wanted r 0.687 in a 1.38 u window, and moving Z_RSV, swinging
+// CAP_BEARING, shrinking the corner and necking the rod were each tried and
+// refused; docs/BUILT.md §234 keeps the numbers. The answer was the FOLD
+// built below: two legs on two axis lines, each a bar of its own.)
 // The pinion stepped toward the DIAL below the wheel, 1.8 rather than the old
 // 2.0 so its underside held one margin over the dial face. TODO 136 REVERSED
 // THE STEP: the corner's apex is on the stem line, so the setting wheel's two
@@ -4899,7 +4902,7 @@ const SETTING_ROD_R = (Z_SETTING - RSV_P0_TOP_Z) - CLEAR_MARGIN; // 0.382, up fr
 // step that reads as one compound stack, never more than it.
 const MINUTE_Z_STEP = (() => {
   const b = new THREE.Box3().setFromObject(minutePinion);
-  const room = (Z_SETTING - SETTING_ROD_R - CLEAR_MARGIN) - SETTING_SPUR_Z - b.max.z;
+  const room = (Z_SETTING - MW_LEG1_R - CLEAR_MARGIN) - SETTING_SPUR_Z - b.max.z;   // §234 fold: leg 1 (the fatter member) begins over this pinion
   return Math.min(1.8, room);
 })();
 // The minute wheel FOLDS perpendicularly off the stem line instead of
@@ -4990,57 +4993,473 @@ const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborX
 // fallback, and its worst case — so the reserve needs no swing of its own and
 // the two solves cannot chase each other. Acyclic by construction: the corner
 // yields first, then the reserve's scan runs against the built traverse.
-const CAP_BEARING = (() => {
-  // the reserve's collinear station: w1 and p1 share this arbor
-  const pivot = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
-  const spanD = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
-  const u = { x: (pivot.x - P.barrel.x) / spanD, y: (pivot.y - P.barrel.y) / spanD };
-  const st = { x: P.barrel.x + u.x * rsvD0, y: P.barrel.y + u.y * rsvD0 };
-  const w2 = SPEC.reserveHours / 5;
-  const m1 = (2 * (spanD - rsvD0)) / (rsvTeethP1 + w2);
-  // the pair's reach is the LARGER member's — p1's since the 300° step-up
-  const reachRsv = Math.max(
-    G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 }),
-    G.gearOuterR({ module: m1, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 }));
-  // and the corner's is its bevel, the widest thing on this arbor in that band.
-  // TODO 138 Landing 2: READ from the blank the builder cuts — coneR·sin θ_tip —
-  // rather than the spur expression pitchR + 0.85·module, which described a flat
-  // disc this member has never been.
-  const reachCap = G.bevelToothSpec({
-    module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH }).tipR;
-  const need = reachRsv + reachCap + CLEAR_MARGIN;
-  const at = (dl) => {
+// §234 fold — THE FOLD, SOLVED IN CLOSED FORM FROM ANY B. Declared here, above
+// the cap bearing's solve, because that solve has to know where the fold's
+// corner K would land for each candidate B (see the second clause it gained).
+// Leg 2's section is the traverse's own law (over reservePinion0); leg 1's
+// swing is the Yoke's measured bound; leg 2's swing is the least that passes
+// the barrel-arbor column on its near side; K is where those rays meet.
+const MW_LEG2_R = SETTING_ROD_R;                                                       // 0.382 — over reservePinion0, the same pinch
+// §234 fold — THE FOLD CORNER'S MODULE IS SOLVED AGAINST §50's FLOOR. At the
+// shallow shaft angle the fold gets (Σ ≈ 157°, the deflection the Yoke and
+// the barrel column leave it) a 10-tooth pair is nearly a pair of face gears:
+// its blank is a thin flat ring, and cut at the template's BEVEL_MODULE it
+// measured 0.0911 mm across its axis — under the wheel floor (0.12 mm) the
+// battery holds every part to. The template module was sized for a mitre,
+// whose blank is a fat cone; this corner's is not, so its module is the
+// SMALLEST at which both blanks' thinnest extent — read exactly as the census
+// reads it, the geometry-local box's least side — is at STOCK_MIN_U. Solved
+// by iteration on the blank the generator cuts (the extent scales with the
+// module at a fixed bore, sublinearly), for the Σ each candidate B gives.
+const STOCK_MIN_U_FOLD = STOCK_MIN_U;
+function foldBlankThinnest(shaftAngleDeg, module) {
+  let thin = Infinity;
+  for (const [boreR, mateBoreR] of [[MW_LEG1_R, MW_LEG2_R], [MW_LEG2_R, MW_LEG1_R]]) {
+    const g = G.makeConicalGear({ teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, material: MATS.steel });
+    g.traverse((o) => { if (!o.isMesh) return; o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox;
+      thin = Math.min(thin, b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z); o.geometry.dispose(); });
+  }
+  return thin;
+}
+function foldModuleFor(shaftAngleDeg) {
+  let m = BEVEL_MODULE;
+  for (let it = 0; it < 8; it++) {
+    const thin = foldBlankThinnest(shaftAngleDeg, m);
+    if (thin >= STOCK_MIN_U_FOLD - 1e-9) return m;
+    m *= (STOCK_MIN_U_FOLD / thin) * (1 + 1e-3);   // scale toward the floor; the extent is sublinear in m, so this converges from below in a few steps
+  }
+  return m;
+}
+// §234 fold — THE RESERVE'S SWING SOLVE IS ONE FUNCTION, declared here above
+// the cap bearing's solve because that solve CALLS it. The reserve train
+// (built far below) swings w1's bearing off the barrel→pivot line to clear
+// the setting traverse; the cap bearing is chosen so that some such swing
+// exists; and the two used to answer that question with two different
+// instruments — the reserve reading the cut metal's vertices, the cap
+// bearing a closed-form envelope of tip circles — which disagreed by tooth
+// depths (an envelope reads a ring whole; the vertex test reads the gaps),
+// so a bearing the scan accepted could be one the reserve refused. Now the
+// scan BUILDS each candidate's metal with the same builder the movement
+// uses (`buildSettingMetal`, into a scratch group) and asks THIS function;
+// the reserve asks it again on the shipped metal and warns if the two
+// answers part. The inputs the solve needs come up with it; the reserve
+// build below points here rather than restating them.
+//
+// World-frame anchors: barrel arbor axis → sub-dial pivot axis. reserveGroup
+// sits on the Y-flipped dialFace, so dial-local (x, y) lands at world
+// (P.dial.x − x, P.dial.y + y) — derived from RESERVE_LOCAL so moving the
+// sub-dial moves the whole reduction train's target with it.
+const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
+// §22: the second-stage wheel is DERIVED from the reserve, for every spec
+// rather than only the default. The chain of constraint: p0 turns
+// RESERVE_BARREL_TURNS (= h·pinion/teeth) lock-to-lock, the hand sweeps
+// RESERVE_SWEEP_DEG (300°), so R = (7h/120)·360/300 = 0.07·h; stage one
+// is 28/8 = 3.5, so stage two must be R/3.5 = 0.02·h = h/50, and with
+// p1 = 10 that is w2 = h/5 — integer while the spec keeps h a multiple
+// of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
+// does not). At the 30 h default: w2 = 6.
+const rsvTeethW2 = SPEC.reserveHours / 5;
+const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
+const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
+// §125 Tier B — W1'S BEARING SWINGS OFF THE LINE when the line is occupied.
+// The mirrored setting traverse's cap corner stands where the collinear w1
+// rim ran (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN;
+// the face gap measured ~0.07). A mesh's centre distance is fixed but its
+// BEARING is free — the fold currency — so w1 takes the smallest swing
+// about the barrel that clears the BUILT traverse (both bevel-corner cones
+// and the connecting rod) by the one margin, and stage two's module then
+// derives from the TRUE w1→station distance.
+// swing = 0 keeps every original expression verbatim (the a+(b−a)≠b rule).
+const rsvW1TipR = (rsvModule0 * (rsvTeethW1 + 2)) / 2;
+const RSV_W1_BORE_R = 0.5;   // rsvWheel1's bore (its build below reads this); the hub's radius follows it through gearFaceReach
+// The wall is MEASURED, not modelled: a cone-radius model of the corner
+// gears under-read the metal (the bevel bodies trail off the corner points
+// along their shafts), so the scan reads the traverse's vertices and holds
+// each wheel's tip circle off every one of them.
+//
+// Vertices AND triangle-edge midpoints: the traverse gears are coarse
+// extrudes, and a facet's midpoint sags inside its endpoints — measured, the
+// vertex-only wall under-read the nearest bevel flank by ~0.06 and accepted a
+// swing the face metric refuses.
+function meshPoints(root, pts = []) {
+  root.updateMatrixWorld(true);
+  const _kv = new THREE.Vector3(), _kv2 = new THREE.Vector3();
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      _kv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+      pts.push([_kv.x, _kv.y, _kv.z]);
+      if (i + 1 < pos.count) {
+        _kv2.fromBufferAttribute(pos, i + 1).applyMatrix4(o.matrixWorld);
+        pts.push([(_kv.x + _kv2.x) / 2, (_kv.y + _kv2.y) / 2, (_kv.z + _kv2.z) / 2]);
+      }
+    }
+  });
+  return pts;
+}
+// §136 — THIS SOLVE USED TO CLEAR THE WRONG WHEEL, AND ONLY ITS OWN SLICE.
+// Two independent misses, both of which §136's +0.224 on p1 walked straight
+// into (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN at every
+// pose of four axes, against the cap corner's DOWN-pointing bevel):
+//
+//   · it bounded `rsvW1TipR` alone, while p1 shares the arbor and is 1.62
+//     BIGGER — a fact the pair group's comment at the reserve build records
+//     ("the 300° step-up made p1 the pair's larger member, so the combined
+//     silhouette stopped being w1's"). The swing solve was never brought
+//     into line with it;
+//   · it scanned w1's z-band only, [Z_RSV ± (0.5 + margin)]. p1's plane is a
+//     whole RSV_Z_STEP deeper, so the bevel cone's lower half — the metal p1
+//     actually reaches — sat outside the slab entirely.
+//
+// It is now a FIXED POINT, because the member being cleared is sized by the
+// quantity the swing sets: swing → w1's station → the true w1→pivot distance →
+// rsvModule1 → p1's tip. Each candidate recomputes that chain and both members
+// are held off the traverse, each over its OWN band. p1's reach comes from
+// gearOuterR, not the nominal (m·(N+2))/2 — §115 exists because the nominal
+// tip circle under-reads a built body.
+//
+// Returns { swing, clear } — the least swing (0 first, then ±1 step, ±2, … to
+// ±30°) at which both members clear every point by CLEAR_MARGIN — or, when
+// none does, { swing: null, bestC, bestSwing, bestMember }: the closest any
+// swing came, for the caller's warning.
+//
+// THE STEP IS DERIVED FROM THE MARGIN IT POLICES, at the station the swing
+// moves: one degree of swing carries w1's station rsvD0·(π/180) = 0.107 u, and
+// a window one CLEAR_MARGIN wide in that displacement must be SAMPLED at least
+// twice or a scan can step over it (§125 stepped at 1° and the §234 fold's
+// scan missed opening bearings by 0.012 u, a tenth of a step). So the step is
+// the coarsest quarter-degree under half the margin's arc at rsvD0 —
+// ⌊(CLEAR_MARGIN / 2 / rsvD0) / 0.25°⌋ · 0.25° — and the cap-bearing scan's is
+// the same law at ITS station (capMeshD). Coarser would skip windows; finer
+// buys nothing a margin can see.
+const RSV_SWING_STEP_DEG = Math.floor((CLEAR_MARGIN / 2 / rsvD0) / (0.25 * DEG2RAD)) * 0.25;   // 0.50 at rsvD0 6.12
+const RSV_SWING_MAX_DEG = 30;
+function solveReserveSwing(pts) {
+  // Each member's z-band is its FACE REACH AS CUT plus one margin — not its
+  // nominal half-thickness. w1 is cut 1.0 thick and p1 1.2, and both
+  // generators' extrude bevels stand proud of both faces (`gearFaceReach`,
+  // the one law the generators cut to): the first form of this band read
+  // ±t/2 and accepted a swing that left the fold corner's blank 0.066 u
+  // over w1's face, which the inspection sweep then found as a tooth-periodic
+  // contact along the wind axis. w1's reach is fixed; p1's bevel rides its
+  // module, which the swing sets, so p1's band is per candidate (sifted here
+  // to the widest it can be, tested exactly below).
+  const w1Reach = G.gearFaceReach({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R });
+  const w1Lo = Z_RSV - w1Reach.body - CLEAR_MARGIN, w1Hi = Z_RSV + w1Reach.body + CLEAR_MARGIN;
+  const hubLo = Z_RSV - w1Reach.hub.half - CLEAR_MARGIN, hubHi = Z_RSV + w1Reach.hub.half + CLEAR_MARGIN;
+  const p1Z = Z_RSV - RSV_Z_STEP;
+  const p1ReachMax = G.gearFaceReach({ module: Infinity, thickness: 1.2, pinion: true }).body;   // the bevel's thickness term alone bounds it
+  const p1LoMax = p1Z - p1ReachMax - CLEAR_MARGIN, p1HiMax = p1Z + p1ReachMax + CLEAR_MARGIN;
+  const inW1 = [], inHub = [], inP1 = [];   // each band's points, sifted once for the whole scan
+  for (const q of pts) {
+    if (q[2] >= w1Lo && q[2] <= w1Hi) inW1.push(q);
+    if (q[2] >= hubLo && q[2] <= hubHi) inHub.push(q);
+    if (q[2] >= p1LoMax && q[2] <= p1HiMax) inP1.push(q);
+  }
+  const clearAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
-    const x = MW_WORLD.x + (toKeyless.x * cs - toKeyless.y * sn) * capMeshD;
-    const y = MW_WORLD.y + (toKeyless.x * sn + toKeyless.y * cs) * capMeshD;
-    return Math.hypot(x - st.x, y - st.y);
+    const ux = rsvU.x * cs - rsvU.y * sn, uy = rsvU.x * sn + rsvU.y * cs;
+    const wx = P.barrel.x + ux * rsvD0, wy = P.barrel.y + uy * rsvD0;
+    // the fixed point: this candidate's own stage-two module, hence p1's reach
+    const m1 = (2 * Math.hypot(rsvPivotXY.x - wx, rsvPivotXY.y - wy))
+      / (rsvTeethP1 + rsvTeethW2);
+    if (!(m1 > 0)) return { c: -Infinity, member: 'p1 (no module)' };
+    const p1TipR = G.gearOuterR({ module: m1, teeth: rsvTeethP1,
+      mates: [rsvTeethW2], thickness: 1.2 });
+    const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
+    const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
+    let c = Infinity, member = 'none';
+    for (const q of inW1) { const d = Math.hypot(wx - q[0], wy - q[1]) - rsvW1TipR; if (d < c) { c = d; member = 'w1'; } }
+    for (const q of inHub) { const d = Math.hypot(wx - q[0], wy - q[1]) - w1Reach.hub.r; if (d < c) { c = d; member = 'w1 hub'; } }
+    for (const q of inP1) { if (q[2] < p1Lo || q[2] > p1Hi) continue; const d = Math.hypot(wx - q[0], wy - q[1]) - p1TipR; if (d < c) { c = d; member = 'p1'; } }
+    return { c, member };
   };
-  if (at(0) >= need) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
-  for (let d = 1; d <= 60; d++)
-    for (const sgn of [1, -1])
-      if (at(sgn * d * DEG2RAD) >= need) return sgn * d * DEG2RAD;
-  console.warn(`setting traverse: no cap bearing within ±60° clears the reserve pair `
-    + `(need ${need.toFixed(3)}, best ${Math.max(at(60 * DEG2RAD), at(-60 * DEG2RAD)).toFixed(3)}) `
-    + '— keeping the short way in; the battery judges it');
-  return 0;
+  let best = { c: -Infinity, member: 'none', swing: 0 };
+  const at = (dl) => {
+    const r = clearAt(dl);
+    if (r.c > best.c) best = { c: r.c, member: r.member, swing: dl };
+    return r.c >= CLEAR_MARGIN ? { swing: dl, clear: r.c } : null;
+  };
+  const r0 = at(0);
+  if (r0) return r0;
+  for (let d = RSV_SWING_STEP_DEG; d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG)
+    for (const sgn of [1, -1]) {
+      const r = at(sgn * d * DEG2RAD);
+      if (r) return r;
+    }
+  return { swing: null, bestC: best.c, bestSwing: best.swing, bestMember: best.member };
+}
+const Z_UP = new THREE.Vector3(0, 0, 1);
+function solveSettingFold(B) {
+  const u = B.clone().sub(settingA).normalize();                 // A→B, the straight run's direction
+  // K's side of the run is the side the measured HEADING leaves it on: leg 1
+  // swings from the run's own heading to MW_FOLD_LEG1_HEADING_DEG, and the
+  // sign of that turn (wrapped to ±180°) is the side — CCW for +1, CW for −1.
+  // Read off the heading, not off the barrel: the first form took the
+  // barrel's side of the run, which flips when B carries the run across the
+  // barrel's axis (it does, within 6° of the short way in), and the fold's
+  // whole frame flipped with it while the heading stood still.
+  let turn = MW_FOLD_LEG1_HEADING_DEG - Math.atan2(u.y, u.x) / DEG2RAD;
+  turn = ((turn + 540) % 360) - 180;
+  const side = turn >= 0 ? 1 : -1;
+  const alphaDeg = side * turn;                                  // leg 1's swing off THIS run, toward K's side
+  const dB = Math.hypot(P.barrel.x - B.x, P.barrel.y - B.y);
+  const BA = u.clone().negate();
+  const toBar = new THREE.Vector3(P.barrel.x - B.x, P.barrel.y - B.y, 0).normalize();
+  // the column's bearing off BA, SIGNED toward K's side: positive when the
+  // barrel stands on the side leg 2 swings to (the near-side pass), negative
+  // when it stands across the run from K
+  const phi = -side * Math.atan2(BA.x * toBar.y - BA.y * toBar.x, BA.dot(toBar));
+  const needCol = RSV_ARB_EXT_R + MW_LEG2_R + CLEAR_MARGIN;
+  const beta2 = phi + Math.asin(Math.min(1, needCol / dB));
+  const alpha = alphaDeg * DEG2RAD;
+  const rot = (v, ang) => new THREE.Vector3(v.x * Math.cos(ang) - v.y * Math.sin(ang), v.x * Math.sin(ang) + v.y * Math.cos(ang), 0);
+  const d1 = rot(u, side * alpha);                                // leg 1's direction from A — the measured heading, by construction
+  // BA's left normal is −n (BA = −u), so tilting leg 2 toward the barrel's
+  // side is a rotation by −side·β2 — the sign the boot guard at the build
+  // caught the first time this was written the other way (K landed behind A).
+  const d2 = rot(BA, -side * beta2);                              // leg 2's ray from B, toward the barrel's side
+  // K = the intersection of A + t·d1 and B + s·d2
+  const det = d1.x * -d2.y - d1.y * -d2.x;
+  const t = ((B.x - settingA.x) * -d2.y - (B.y - settingA.y) * -d2.x) / det;
+  const K = settingA.clone().addScaledVector(d1, t);
+  const leg1U = K.clone().sub(settingA).normalize(), leg2U = B.clone().sub(K).normalize();
+  const deflection = alpha + beta2;
+  const shaftAngleDeg = 180 - deflection / DEG2RAD;
+  return { K, leg1U, leg2U, side, phi, beta2, alpha, alphaDeg, shaftAngleDeg, needCol,
+    len1: settingA.distanceTo(K), len2: K.distanceTo(B) };
+}
+// §234 fold — THE SETTING METAL FROM ITS CAP CORNER, ONE BUILDER. Everything
+// between the minute arbor's corner at A and the cap pinion at B is a
+// function of B alone: the fold (solveSettingFold), the two legs, the rise,
+// the three bevel corners and the cap pinion. The cap-bearing solve below
+// builds each CANDIDATE B's metal with this function into a scratch group
+// and asks the reserve's own swing solve about it; the movement's build
+// calls it once more, at the solved B, into `keyless`. One builder, so the
+// metal the scan judged IS the metal that ships — the reserve's confirming
+// solve on the cut tree is what holds that.
+//
+// `candidate` true refuses a B that has no fold worth building (returns
+// { F, refused }); the shipped build warns instead and builds anyway, so a
+// solve that found no window still leaves a tree the battery can judge.
+function buildSettingMetal(cap, parent, { candidate = false } = {}) {
+  const F = solveSettingFold(cap);
+  let refused = null;
+  // A bearing that turns the run past the measured Yoke heading has no fold
+  // on the barrel's side (leg 1 would swing the other way) — refused before
+  // a blank is cut for it: the first scan without this found its window at
+  // a bearing where the corner had flattened to Σ 172°, two face gears.
+  if (!(F.alphaDeg > 0 && F.alphaDeg < 30)) refused = `leg 1 swing ${F.alphaDeg.toFixed(1)}° off the run`;
+  // …a bearing whose leg 2 needs no swing to pass the column has no fold
+  // either: leg 1 leaves the run toward the barrel's side and a leg 2 laid
+  // along the run never meets it there.
+  else if (!(F.beta2 > 0)) refused = `leg 2 swing ${(F.beta2 / DEG2RAD).toFixed(1)}° — the rays do not meet on the barrel's side`;
+  // …and a bearing whose legs would exceed the turning target is not the
+  // fold this solve exists to house — the legs are what the fold is FOR.
+  // Without this the scan, refused near the short way in, walked out to a
+  // bearing whose leg 1 ran 28.6 u (L/D 26) and called that a window.
+  else if (F.len1 > 2 * MW_LEG1_R * TURN_LD_TARGET || F.len2 > 2 * MW_LEG2_R * TURN_LD_TARGET)
+    refused = `legs ${F.len1.toFixed(1)} / ${F.len2.toFixed(1)} u over the turning target`;
+  if (refused) {
+    if (candidate) return { F, refused };
+    console.warn(`§234 fold: the cap corner B the bearing solve settled on has no fold worth building (${refused}) — building it anyway; the battery judges it`);
+  }
+  const module = foldModuleFor(F.shaftAngleDeg);
+  const leg1 = makeRodSegment(settingA, F.K, MW_LEG1_R);
+  leg1.name = 'settingTraverse1';
+  const leg2 = makeRodSegment(F.K, cap, MW_LEG2_R);
+  leg2.name = 'settingTraverse2';
+  parent.add(leg1, leg2);
+  const rise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
+  rise.name = 'settingRise';
+  rise.rotation.x = Math.PI / 2;
+  rise.position.set(cap.x, cap.y, (Z_SETTING + Z_CANNON_PINION) / 2);
+  parent.add(rise);
+  // rise → traverse and traverse → drop: two corners, both exactly 90°. The
+  // first corner's vertical gear stands tip-up at the shaft's top end; its
+  // cone reaches into the plate's z-band, which is why the base plate carries
+  // a clearance recess bored at exactly this axis (see the plate build).
+  // §234 fold — the two mitres key to the LEGS (their outboard/inboard
+  // members aimed along leg 1 and leg 2, and bored for those rods), and a
+  // third corner at K joins the legs at the derived shaft angle. Its blanks
+  // are bored for the leg each is keyed to: leg 1's 0.55 inboard, leg 2's
+  // 0.382 outboard — the face width is the pair's and `bevelToothSpec` takes
+  // both.
+  const cornerDrop = addBevelCorner(settingA, Z_UP, F.leg1U, 'mwCornerDrop', { boreOut: MW_LEG1_R, parent });
+  const cornerFold = addBevelCorner(F.K, F.leg1U.clone().negate(), F.leg2U, 'mwCornerFold',
+    { shaftAngleDeg: F.shaftAngleDeg, boreIn: MW_LEG1_R, boreOut: MW_LEG2_R, module, parent });
+  const cornerRise = addBevelCorner(cap, F.leg2U.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise', { boreIn: MW_LEG2_R, parent });
+  // The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
+  // from the minute wheel's axis, in the minute wheel's own plane — it
+  // engages REAL teeth.
+  const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
+  settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
+  settingCap.position.set(cap.x, cap.y, Z_CANNON_PINION);
+  parent.add(settingCap);
+  return { F, module, leg1, leg2, rise, cornerDrop, cornerFold, cornerRise, settingCap };
+}
+const CAP_SOLVE = (() => {
+  const capAt = (dl) => {
+    const cs = Math.cos(dl), sn = Math.sin(dl);
+    return new THREE.Vector3(MW_WORLD.x + (toKeyless.x * cs - toKeyless.y * sn) * capMeshD,
+      MW_WORLD.y + (toKeyless.x * sn + toKeyless.y * cs) * capMeshD, Z_SETTING);
+  };
+  // §234 — SOLVED JOINTLY WITH THE RESERVE'S SWING, on the metal the reserve
+  // solve will read. §136's clause held this corner's bevel tip circle
+  // (reachCap) off the LARGER reserve member's tip (p1's, reachRsv) at the
+  // pair's collinear station, because the sheared bevel of the day dragged
+  // to z −5.86, into p1's plane. TODO 138 cut that bevel to its cone: the
+  // corner's blanks reach to −4.7 now and p1's band starts at −4.95, so the
+  // clause was holding a reach the metal no longer has — by p1's 1.6 u over
+  // w1 — and it was that over-read, not the metal, that closed the fold's
+  // window. The fold made the reserve's swing NECESSARY (its corner stands
+  // over w1's rim), so the bearing is solved against the swing it forces:
+  // the least bearing (0 first, then ±1 step, ±2, … — the a+(b−a)≠b rule;
+  // the step is derived where the scan runs, below) at
+  // which the reserve's OWN solve — `solveReserveSwing`, the function the
+  // reserve build calls on the cut tree — finds a swing within ±30° that
+  // clears the candidate's metal, built for the purpose by the movement's
+  // own builder (`buildSettingMetal`) beside everything the keyless works
+  // already hold at this line. Not an envelope: the first form of this
+  // solve read each blank as a body of revolution and each wheel as its tip
+  // circle, and disagreed with the vertex solve by a tooth depth (an
+  // envelope reads a ring whole) — a bearing it opened, the reserve refused.
+  //
+  // One clause the reserve's solve cannot carry: the candidate's fold must
+  // also clear the WINDING TRANSFER ARBOR (the vertical shaft through this
+  // plane on the short way in — it is what refuses the bearings nearest 0),
+  // read off that shaft's own cylinder against every candidate point.
+  const arb = { x: transferArbor.position.x, y: transferArbor.position.y,
+    r: transferArbor.geometry.parameters.radiusTop,
+    zLo: transferArbor.position.z - transferArbor.geometry.parameters.height / 2,
+    zHi: transferArbor.position.z + transferArbor.geometry.parameters.height / 2 };
+  const staticPts = meshPoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too
+  const disposeTree = (g) => g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+  // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
+  const window = (dl) => {
+    const scratch = new THREE.Group();
+    const M = buildSettingMetal(capAt(dl), scratch, { candidate: true });
+    if (M.refused) return { m: -Infinity, clause: M.refused, s: 0 };
+    const cand = meshPoints(scratch);
+    disposeTree(scratch);
+    let arbM = Infinity;
+    for (const q of cand) {
+      const dz = q[2] < arb.zLo ? arb.zLo - q[2] : q[2] > arb.zHi ? q[2] - arb.zHi : 0;
+      const dr = Math.max(0, Math.hypot(q[0] - arb.x, q[1] - arb.y) - arb.r);
+      arbM = Math.min(arbM, Math.hypot(dr, dz) - CLEAR_MARGIN);
+    }
+    if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
+    const r = solveReserveSwing(staticPts.concat(cand));
+    if (r.swing === null) return { m: r.bestC - CLEAR_MARGIN, clause: `reserve ${r.bestMember}`, s: r.bestSwing / DEG2RAD };
+    return { m: Math.min(arbM, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
+  };
+  // every bearing tried is RECORDED (the clause, its margin, the best swing)
+  // and published on window.__clock.settingFold for
+  // tools/probe-234-cap-bearing.mjs — the derivation is silent at boot when it
+  // succeeds, and a solve nobody can read back is a number that looked right.
+  const scan = [];
+  const tried = (d, w) => { scan.push({ d, clause: w.clause, m: w.m, s: isFinite(w.m) ? w.s : null }); return w; };
+  // the step: the same sampling law as the reserve's swing (RSV_SWING_STEP_DEG),
+  // at the cap's own station — half a margin's arc at capMeshD, to the quarter-degree
+  const STEP = Math.floor((CLEAR_MARGIN / 2 / capMeshD) / (0.25 * DEG2RAD)) * 0.25;   // 0.75 at capMeshD 5.7
+  let nearest = { d: 0, ...tried(0, window(0)) };
+  if (nearest.m >= 0) return { bearing: 0, swing: nearest.swing, scan };   // the a+(b−a)≠b rule: no swing keeps every original expression
+  for (let d = STEP; d <= 60 + 1e-9; d += STEP)
+    for (const sgn of [1, -1]) {
+      const w = tried(sgn * d, window(sgn * d * DEG2RAD));
+      if (w.m >= 0) return { bearing: sgn * d * DEG2RAD, swing: w.swing, scan };
+      if (w.m > nearest.m) nearest = { d: sgn * d, ...w };
+    }
+  console.warn(`setting traverse: no cap bearing within ±60° leaves the reserve a swing that clears the fold, this corner, the cap and the transfer arbor `
+    + `at once — keeping the short way in; the battery judges it. Nearest: ${nearest.d > 0 ? '+' : ''}${nearest.d}° at swing ${nearest.s}°, ${nearest.clause} ${nearest.m.toFixed(3)}`);
+  return { bearing: 0, swing: null, scan };
 })();
+const CAP_BEARING = CAP_SOLVE.bearing;
+const CAP_BEARING_SWING = CAP_SOLVE.swing;   // the reserve swing the bearing was solved against — the reserve build confirms it on the cut tree
 const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(CAP_BEARING),
                y: toKeyless.x * Math.sin(CAP_BEARING) + toKeyless.y * Math.cos(CAP_BEARING) };
 const SETTING_CAP_XY = { x: MW_WORLD.x + capU.x * capMeshD, y: MW_WORLD.y + capU.y * capMeshD };
 const settingB = new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_SETTING);
-const settingU = settingB.clone().sub(settingA).normalize();
+const settingU = settingB.clone().sub(settingA).normalize();   // the STRAIGHT run's direction — the fold's reference line
+// §234 step 3a FOLD — the traverse is TWO legs and a third corner, and the
+// last `TURN_WAIVERS` row retires with it.
+//
+// The straight run A→B (27.47 u) could not be a bar: measured station by
+// station over the pose net (tools/probe-234-traverse-fold.mjs, control (a)),
+// the base plate's back face caps its radius at 0.55 at EVERY station and
+// reservePinion0 at 0.382 over ~2.5 u under the barrel, against a ceiling
+// that wants 0.687 and a target 0.763 — no section fits, so the bar is SPLIT.
+// A kink off the run's single axis line is what splits it (`turnedBars`
+// clusters coaxial consecutive meshes into one bar), and the corner's
+// position is DERIVED, not chosen: the two legs have different governing
+// neighbours, so each takes its own section by the law SETTING_ROD_R itself
+// was derived by (governing neighbour − CLEAR_MARGIN) and swings exactly as
+// far as its own wall forces. K is where the two boundary rays meet.
+//
+//   leg 1, A→K:  MW_LEG1_R = (plate back face − Z_SETTING) − CLEAR_MARGIN
+//                (0.55 — the plate's back face is its only wall once it no
+//                longer runs under the barrel). Laid on the measured HEADING
+//                MW_FOLD_LEG1_HEADING_DEG — the direction closest to the
+//                barrel's side whose first run clears the YOKE, which stands on that side 4–6 u from A
+//                and moves with crownPullT. Largest because |AK| shrinks as
+//                the swing grows, and the equal-margin split (sin α =
+//                sin β2 · LEG2_R/LEG1_R, 13.1°) lies beyond what the Yoke
+//                allows, so the Yoke governs. A fork is not a circle: the
+//                bound is MEASURED by the probe walking the leg at every
+//                candidate angle over the whole pose net, and carried here as
+//                a constant on the RSV_P0_TOP_Z idiom. The gate that holds it
+//                is the battery's own Yoke ⇄ Keyless works clearance sweep.
+//   leg 2, K→B:  MW_LEG2_R = SETTING_ROD_R — the traverse's own law, because
+//                this leg is the one that still passes OVER reservePinion0.
+//                At that section its target length is 2·0.382·18 = 13.75 u,
+//                and with leg 1's swing capped by the Yoke that is only
+//                reachable with leg 2's ray on the barrel column's NEAR side
+//                (on the far side, the straight run's, the two rays meet
+//                1.6 u from A and leg 2 is 26 u long). Near-side rays must
+//                pass the barrel-arbor extension (rsvArbExt, r RSV_ARB_EXT_R,
+//                vertical through this plane at the barrel's XY) by
+//                RSV_ARB_EXT_R + LEG2_R + CLEAR_MARGIN, and the least swing
+//                that does is
+//                  β2 = φ + asin(need / |B − barrel|),  φ the column's bearing
+//                off BA. Least, because a larger swing lengthens leg 1 (K
+//                slides toward B along leg 1's ray... and away from A along
+//                leg 2's): both legs are at a bound, which is what makes K a
+//                derivation rather than a choice.
+//
+// The mirror fold — K on the run's OTHER side — is refused in closed form,
+// not by taste: there leg 1 is bounded by the winding transfer arbor
+// (`transferArbor`, r 0.7, 1.92 u off the run's mid-point, which the probe's
+// first cut had excluded as ground and put K 0.45 u from) at about 2°, and
+// leg 2 by the same column at about 1°, so the corner degenerates (Σ ≈ 177°,
+// two crown gears face to face) and leg 2 runs ~21 u at 0.382, L/D 27, over
+// the gate it exists to clear. The probe prints both.
+//
+// Each leg is one bar of its own: L/D ≈ 16 (leg 1 at 0.55) and ≈ 14 (leg 2 at
+// 0.382) against `TURN_LD_TARGET` 18 — both under the target, so no
+// `turning` row remains to waive. The deflection at K is α + β2 and the
+// corner's shaft angle Σ = 180° − (α + β2): not a mitre, an ANGULAR bevel pair,
+// which `bevelToothSpec` cuts from the counts at any Σ (γ = Σ/2 for equal
+// counts, so the corner-index ray still bisects the axes — see bevelCornerRay).
+// The fold is solved ONCE, by `solveSettingFold` above the cap-bearing solve
+// (which has to ask it where K lands for each candidate B), and cut here from
+// the same answer.
+const SETTING_METAL = buildSettingMetal(settingB, keyless);
+const MW_FOLD = SETTING_METAL.F;
 {
-  const traverse = makeRodSegment(settingA, settingB, SETTING_ROD_R);
-  traverse.name = 'settingTraverse';
-  keyless.add(traverse);
+  if (!(MW_FOLD.alphaDeg > 0 && MW_FOLD.alphaDeg < 30))
+    console.warn(`§234 fold: leg 1's swing off the run reads ${MW_FOLD.alphaDeg.toFixed(3)}° — the measured heading `
+      + `MW_FOLD_LEG1_HEADING_DEG ${MW_FOLD_LEG1_HEADING_DEG} no longer lies within the fold's range of the run B gives (re-measure it)`);
+  // the column bound, re-read off the result: a figure computed two ways
+  const missCol = Math.abs((P.barrel.x - MW_FOLD.K.x) * -MW_FOLD.leg2U.y + (P.barrel.y - MW_FOLD.K.y) * MW_FOLD.leg2U.x);
+  if (Math.abs(missCol - MW_FOLD.needCol) > 1e-9)
+    console.warn(`§234 fold: leg 2 passes the barrel column at ${missCol.toFixed(6)}, solved for ${MW_FOLD.needCol.toFixed(6)}`);
+  // each leg against the target it was sized under — a derivation, so a warn, not a pose claim
+  for (const [name, L, r] of [['settingTraverse1', MW_FOLD.len1, MW_LEG1_R], ['settingTraverse2', MW_FOLD.len2, MW_LEG2_R]])
+    if (L / (2 * r) > TURN_LD_TARGET)
+      console.warn(`§234 fold: ${name} L/D ${(L / (2 * r)).toFixed(2)} over TURN_LD_TARGET ${TURN_LD_TARGET} (L ${L.toFixed(3)}, r ${r.toFixed(4)})`);
 }
-
-const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5
-const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
-settingRise.name = 'settingRise';
-settingRise.rotation.x = Math.PI / 2;
-settingRise.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, (Z_SETTING + Z_CANNON_PINION) / 2);
-keyless.add(settingRise);
+const settingRise = SETTING_METAL.rise;
 
 // Bevel-gear corner: two small conical gears sharing an apex at `point`, one
 // keyed to each of the two meeting shafts. axisIn/axisOut point AWAY from
@@ -5055,7 +5474,7 @@ keyless.add(settingRise);
 // The shaft angle is ASSERTED against the axes handed in — a Σ that disagrees
 // with the metal's own angle would cut a pair whose pitch cones do not roll on
 // the axes they are mounted on, and nothing downstream would notice.
-function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreIn, boreOut } = {}) {
+function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreIn, boreOut, module = BEVEL_MODULE, parent = keyless } = {}) {
   {
     const sigmaAxes = Math.acos(Math.min(1, Math.max(-1, axisIn.dot(axisOut)))) * 180 / Math.PI;
     if (Math.abs(sigmaAxes - shaftAngleDeg) > 1e-6)
@@ -5064,7 +5483,7 @@ function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreI
   const mountIn = new THREE.Group();
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
-  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut });
+  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut });
   // §137: a transfer row names its members (§54's rule) — and TODO 136 put the
   // name on the MESHES too, because an intra-unit row's selector matches mesh
   // names and these had been riding index labels the keyless fold renumbered.
@@ -5074,17 +5493,17 @@ function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreI
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
-  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreOut, mateBoreR: boreIn });
+  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreOut, mateBoreR: boreIn });
   if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
   mountOut.add(gearOut);
 
-  keyless.add(mountIn, mountOut);
+  parent.add(mountIn, mountOut);   // §234: `keyless`, or the cap-bearing solve's scratch group for a candidate B
   // TODO 140 — SOLVED, not seeded. The index is computed AFTER the mounts are
   // parented, because `bevelCornerAxis` walks UP and a mount that is not yet in
   // the tree reports the frame it will never be in ([TODO 139]'s whole finding).
   //
   // Unlike the keyless and alarm corners, both of these mounts hang directly off
-  // `keyless`, whose world transform is the identity — so their frames do not
+  // `keyless` (or a fresh scratch group), whose world transform is the identity — so their frames do not
   // move with any input and this build-time solve is valid at EVERY pose. That
   // is what makes a build solve legitimate here and illegitimate there; it is a
   // fact about where the mounts hang, not a general licence.
@@ -5098,26 +5517,37 @@ function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreI
   // keeps the index written ONCE: tick used to restate `BEVEL_PHASE` itself, so
   // the seed and the tick were two copies of one number and only one of them
   // would have carried this solve.
-  // §234 — the ONE spec this corner was cut to, for a caller that sizes
-  // furniture against the blank (a plate bore, a cock's stand-off): the same
-  // arguments the two gears were built with, so it is the metal's, not a
-  // second guess (the alarm corner's ALARM_BEVEL_SPEC idiom, per corner).
-  const spec = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut, quiet: true });
-  return { gearIn, gearOut, baseIn, baseOut, spec };
+  // §234 — the ONE spec this corner was cut to, for the callers that size
+  // furniture against the blank (the fold's plate bore); the same arguments
+  // the two gears were built with, so it is the metal's, not a second guess.
+  const spec = G.bevelToothSpec({ module, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut, quiet: true });
+  return { gearIn, gearOut, baseIn, baseOut, spec, module };
 }
 
-const Z_UP = new THREE.Vector3(0, 0, 1);
-// rise → traverse and traverse → drop: two corners, both exactly 90°. The
-// first corner's vertical gear stands tip-up at the shaft's top end; its
-// cone reaches into the plate's z-band, which is why the base plate carries
-// a clearance recess bored at exactly this axis (see the plate build).
-const cornerDrop = addBevelCorner(settingA, Z_UP, settingU, 'mwCornerDrop');
-const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise');
+// The three corners are cut by `buildSettingMetal` above (the same call the
+// cap-bearing solve made for each candidate B); the fold corner's module is
+// the floor solve's, taken from the same build.
+const { cornerDrop, cornerFold, cornerRise } = SETTING_METAL;
+const MW_FOLD_MODULE = SETTING_METAL.module;
+// the derivation, re-read off the blanks as cut (achieved vs required — rule 6's shape)
+const MW_FOLD_BLANK_THINNEST = foldBlankThinnest(MW_FOLD.shaftAngleDeg, MW_FOLD_MODULE);
+if (MW_FOLD_BLANK_THINNEST < STOCK_MIN_U_FOLD - 1e-9)
+  console.warn(`§234 fold: the corner's blanks measure ${MW_FOLD_BLANK_THINNEST.toFixed(4)} u across at module ${MW_FOLD_MODULE.toFixed(4)}, under STOCK_MIN_U ${STOCK_MIN_U_FOLD.toFixed(4)}`);
 // The corner LIST is what tick threads the setting sign through, drop first,
 // and its length is the one source of the entry sign: the cap leaves the last
-// corner at +handSetOffset, so the drop enters at (−1)^N.
-const MW_CORNERS = [cornerDrop, cornerRise];
+// corner at +handSetOffset, so the drop enters at (−1)^N. Three corners now:
+// the drop's gear enters at −handSetOffset, which is the sign of the arbor it
+// is keyed to (see tick).
+const MW_CORNERS = [cornerDrop, cornerFold, cornerRise];
 const MW_FOLD_SENSE = (-1) ** MW_CORNERS.length;
+// The plate is bored at K as it is at A: the fold's blanks stand in the base
+// plate's z-band (Σ ≈ 150° puts their cone distance coneR nearly across the
+// axis, so they reach to Z_SETTING + coneR ≈ −1.3 against a back face at
+// −2.3). A's precedent bores the plate to the gear's TIP circle + margin —
+// for a vertical axis that is the plan footprint; for K's horizontal axes the
+// footprint is the blank's sphere of radius coneR about the apex, so the bore
+// is coneR + CLEAR_MARGIN. Consumed by the plate's `holes` at its build.
+const MW_FOLD_PLATE_HOLE = { x: MW_FOLD.K.x, y: MW_FOLD.K.y, r: cornerFold.spec.coneR + CLEAR_MARGIN };
 // §137 — the corners' transfer rows: the movement's TEMPLATE idiom, declared
 // first. Rotation through an angle earns a bevel pair; the ratio is 1:1
 // because the TOOTH COUNTS are equal (the counts stand in for the arms — an
@@ -5129,6 +5559,7 @@ const MW_FOLD_SENSE = (-1) ** MW_CORNERS.length;
 // A posed corner claiming a force figure would be exactly the lie §137's
 // audit exists to catch.
 for (const [site, tag] of [['motion works: rise→traverse corner', 'mwCornerDrop'],
+                           ['motion works: traverse fold corner', 'mwCornerFold'],
                            ['motion works: traverse→drop corner', 'mwCornerRise']]) {
   declareTransfer(site, {
     unit: 'Keyless works', meshes: [`${tag}In`, `${tag}Out`], idiom: 'bevelPair',
@@ -5137,15 +5568,13 @@ for (const [site, tag] of [['motion works: rise→traverse corner', 'mwCornerDro
     why: 'a plain rod meeting another rod at an angle has nothing at the joint that could transmit rotation around the corner; equal counts make the pair 1:1 and the sign inversion is enacted per mesh in tick',
   });
 }
-// The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
-// from the minute wheel's axis, in the minute wheel's own plane — it
-// engages REAL teeth. Rest phase aims a half-tooth gap at the wheel.
-const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
-settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
-settingCap.position.set(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_CANNON_PINION);
+// The cap pinion at the arbor's top (cut by `buildSettingMetal`: module
+// MW_MODULE_1, one mesh distance from the minute wheel's axis, in the minute
+// wheel's own plane — it engages REAL teeth). Rest phase aims a half-tooth
+// gap at the wheel.
+const settingCap = SETTING_METAL.settingCap;
 const SETTING_CAP_PHASE =
   Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
-keyless.add(settingCap);
 // §10 level 2, the keyless table — the pieces on the winding and setting
 // paths, named for what the code builds. The winding stem is tick-written
 // (its pull travel) and composes its drill offset in tick.
@@ -6382,6 +6811,7 @@ const backPlate = G.makeBackPlate({
   rim: { r: BASE_RIM_R, notches: CASE_NOTCHES },
   holes: [
     ...BACK_PLATE_HOLES,
+    MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
     ...CASE_CLAMP_AZ.map((a) => ({
       x: Math.cos(a) * R_CLAMP, y: Math.sin(a) * R_CLAMP, r: CASE_CLAMP_BORE_R,
     })),
@@ -6405,6 +6835,19 @@ const backPlate = G.makeBackPlate({
 });
 backPlate.name = 'backPlate';
 backPlate.position.set(0, 0, BACK_PLATE_Z);
+// §234 fold coherence guard — MW_LEG1_R derives from the face this plate
+// PRESENTS to the dial side (PLATE_BACK_FACE: the extrude's bevel thickness
+// stands proud of the slab), thousands of lines above where the plate is cut.
+// Measure the built mesh. The first version of this guard read the bevel's
+// in-plane SIZE (plateR·PLATE_BEVEL_F) for its thickness and fired at once —
+// which is the guard doing its job on the derivation, not on the plate.
+{
+  backPlate.updateWorldMatrix(true, false);
+  const _back = new THREE.Box3().setFromObject(backPlate).min.z;
+  if (Math.abs(_back - PLATE_BACK_FACE) > 0.01)
+    console.warn(`§234: the base plate's built back face z ${_back.toFixed(4)} has drifted from `
+      + `PLATE_BACK_FACE ${PLATE_BACK_FACE.toFixed(4)} — re-derive MW_LEG1_R`);
+}
 backPlate.receiveShadow = true;
 movement.add(backPlate);
 registerExplode(backPlate, BACK_PLATE_Z, 0);
@@ -13487,13 +13930,11 @@ movement.add(reserveTrain);
 registerLabel('Power-reserve train', reserveTrain);
 registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 
-// World-frame anchors: barrel arbor axis → sub-dial pivot axis. reserveGroup
-// sits on the Y-flipped dialFace, so dial-local (x, y) lands at world
-// (P.dial.x − x, P.dial.y + y) — derived from RESERVE_LOCAL so moving the
-// sub-dial moves the whole reduction train's target with it.
-const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
-const Z_RSV = -4.2;         // gear plane in the plate→dial gap (plate back −2.3, dial −7)
-const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
+// (rsvPivotXY — the world-frame pivot anchor — Z_RSV, RSV_Z_STEP, rsvTeethW2,
+// rsvSpanD, rsvU and rsvW1TipR are declared beside the setting traverse's
+// fold, far above, with `solveReserveSwing`: §234's cap-bearing solve asks
+// the reserve's own swing question before this train is cut. Same numbers,
+// one declaration each.)
 
 // TOOTH COUNTS DERIVED FROM THE SCALE, not chosen. The pinion p0 is
 // slip-coupled to the barrel arbor, so it must turn what that arbor turns
@@ -13520,102 +13961,29 @@ const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at
 // that the module does not reach, so this is a clearance question, not a
 // stock one — the battery's rows re-measure it.
 // §22: the second-stage wheel is DERIVED from the reserve, for every spec
-// rather than only the default. The chain of constraint: p0 turns
-// RESERVE_BARREL_TURNS (= h·pinion/teeth) lock-to-lock, the hand sweeps
-// RESERVE_SWEEP_DEG (300°), so R = (7h/120)·360/300 = 0.07·h; stage one
-// is 28/8 = 3.5, so stage two must be R/3.5 = 0.02·h = h/50, and with
-// p1 = 10 that is w2 = h/5 — integer while the spec keeps h a multiple
-// of 5 (the assert beside RESERVE_BARREL_TURNS is the guard when it
-// does not). At the 30 h default: w2 = 6.
-const rsvTeethW2 = SPEC.reserveHours / 5;
-const rsvSpanD = Math.hypot(rsvPivotXY.x - P.barrel.x, rsvPivotXY.y - P.barrel.y);
-const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.barrel.y) / rsvSpanD };
+// rather than only the default — rsvTeethW2 = h/5, derived where it is
+// declared (with the swing solve, above).
 // Split the barrel→pivot span into the two mesh centre-distances by solving
 // the second stage's module: d0 = m0·(P0+W1)/2, d1 = span − d0 = m1·(P1+W2)/2.
-// §125 Tier B — W1'S BEARING SWINGS OFF THE LINE when the line is occupied.
-// The mirrored setting traverse's cap corner stands where the collinear w1
-// rim ran (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN;
-// the face gap measured ~0.07). A mesh's centre distance is fixed but its
-// BEARING is free — the fold currency — so w1 takes the smallest swing
-// about the barrel that clears the BUILT traverse (both bevel-corner cones
-// and the connecting rod, which exist by this line) by the one margin, and
-// stage two's module then derives from the TRUE w1→station distance.
-// swing = 0 keeps every original expression verbatim (the a+(b−a)≠b rule).
-const rsvW1TipR = (rsvModule0 * (rsvTeethW1 + 2)) / 2;
-// §136 — THIS SOLVE USED TO CLEAR THE WRONG WHEEL, AND ONLY ITS OWN SLICE.
-// Two independent misses, both of which §136's +0.224 on p1 walked straight
-// into (inspection read Keyless works ⇄ Power-reserve train FORBIDDEN at every
-// pose of four axes, against the cap corner's DOWN-pointing bevel):
-//
-//   · it bounded `rsvW1TipR` alone, while p1 shares the arbor and is 1.62
-//     BIGGER — a fact this file already states 140 lines below, where the pair
-//     group's comment records that "the 300° step-up made p1 the pair's larger
-//     member, so the combined silhouette stopped being w1's". The swing solve
-//     was never brought into line with it;
-//   · it scanned w1's z-band only, [Z_RSV ± (0.5 + margin)]. p1's plane is a
-//     whole RSV_Z_STEP deeper, so the bevel cone's lower half — the metal p1
-//     actually reaches — sat outside the slab entirely.
-//
-// It is now a FIXED POINT, because the member being cleared is sized by the
-// quantity the swing sets: swing → w1's station → the true w1→pivot distance →
-// rsvModule1 → p1's tip. Each candidate recomputes that chain and both members
-// are held off the traverse, each over its OWN band. p1's reach comes from
-// gearOuterR, not the nominal (m·(N+2))/2 — §115 exists because the nominal
-// tip circle under-reads a built body.
+// §125 Tier B — W1'S BEARING SWINGS OFF THE LINE when the line is occupied
+// (the rule, its §136 fixed-point form and the solve itself are declared
+// with the setting traverse's fold, above: `solveReserveSwing`). This is
+// the CONFIRMATION — the same function on the keyless works as CUT, which
+// by this line hold the traverse the cap-bearing solve built a candidate
+// of. The cap bearing was chosen so that this call finds a swing; if it
+// finds a different one, the candidate metal was not the shipped metal, and
+// that is a defect in the builder, not in the reserve (rule 6: warned).
 const rsvSwing = (() => {
-  // The wall is MEASURED, not modelled: a cone-radius model of the corner
-  // gears under-read the metal (the bevel bodies trail off the corner points
-  // along their shafts), so the scan reads the BUILT keyless traverse's
-  // vertices and holds each wheel's tip circle off every one of them.
-  //
-  // Vertices AND triangle-edge midpoints: the traverse gears are coarse
-  // extrudes, and a facet's midpoint sags inside its endpoints — measured, the
-  // vertex-only wall under-read the nearest bevel flank by ~0.06 and accepted a
-  // swing the face metric refuses.
-  const pts = [];
-  keyless.updateMatrixWorld(true);
-  const _kv = new THREE.Vector3(), _kv2 = new THREE.Vector3();
-  keyless.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes?.position) return;
-    const pos = o.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      _kv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-      pts.push([_kv.x, _kv.y, _kv.z]);
-      if (i + 1 < pos.count) {
-        _kv2.fromBufferAttribute(pos, i + 1).applyMatrix4(o.matrixWorld);
-        pts.push([(_kv.x + _kv2.x) / 2, (_kv.y + _kv2.y) / 2, (_kv.z + _kv2.z) / 2]);
-      }
-    }
-  });
-  // half-thickness + one margin, per member: w1 is cut 1.0 thick, p1 1.2
-  const w1Lo = Z_RSV - 0.5 - CLEAR_MARGIN, w1Hi = Z_RSV + 0.5 + CLEAR_MARGIN;
-  const p1Z = Z_RSV - RSV_Z_STEP;
-  const p1Lo = p1Z - 0.6 - CLEAR_MARGIN, p1Hi = p1Z + 0.6 + CLEAR_MARGIN;
-  const clearAt = (dl) => {
-    const cs = Math.cos(dl), sn = Math.sin(dl);
-    const ux = rsvU.x * cs - rsvU.y * sn, uy = rsvU.x * sn + rsvU.y * cs;
-    const wx = P.barrel.x + ux * rsvD0, wy = P.barrel.y + uy * rsvD0;
-    // the fixed point: this candidate's own stage-two module, hence p1's reach
-    const m1 = (2 * Math.hypot(rsvPivotXY.x - wx, rsvPivotXY.y - wy))
-      / (rsvTeethP1 + rsvTeethW2);
-    if (!(m1 > 0)) return -Infinity;
-    const p1TipR = G.gearOuterR({ module: m1, teeth: rsvTeethP1,
-      mates: [rsvTeethW2], thickness: 1.2 });
-    let c = Infinity;
-    for (const q of pts) {
-      const d = Math.hypot(wx - q[0], wy - q[1]);
-      if (q[2] >= w1Lo && q[2] <= w1Hi) c = Math.min(c, d - rsvW1TipR);
-      if (q[2] >= p1Lo && q[2] <= p1Hi) c = Math.min(c, d - p1TipR);
-    }
-    return c;
-  };
-  if (clearAt(0) >= CLEAR_MARGIN) return 0;
-  for (let d = 1; d <= 30; d++)
-    for (const sgn of [1, -1])
-      if (clearAt(sgn * d * DEG2RAD) >= CLEAR_MARGIN) return sgn * d * DEG2RAD;
-  console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse '
-    + 'for BOTH w1 and p1 — keeping the line; the battery judges it');
-  return 0;
+  const r = solveReserveSwing(meshPoints(keyless));
+  if (r.swing === null) {
+    console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse '
+      + `for BOTH w1 and p1 — keeping the line; the battery judges it (closest ${r.bestMember} at ${(r.bestSwing / DEG2RAD).toFixed(0)}°, ${r.bestC.toFixed(3)} against CLEAR_MARGIN ${CLEAR_MARGIN})`);
+    return 0;
+  }
+  if (CAP_BEARING_SWING === null || Math.abs(r.swing - CAP_BEARING_SWING) > 1e-12)
+    console.warn(`reserve train: the swing solved on the cut keyless works (${(r.swing / DEG2RAD).toFixed(0)}°) is not the one the cap bearing was solved against `
+      + `(${CAP_BEARING_SWING === null ? 'none' : (CAP_BEARING_SWING / DEG2RAD).toFixed(0) + '°'}) — the candidate metal buildSettingMetal cut for the scan differs from what shipped`);
+  return r.swing;
 })();
 const rsvW1U = rsvSwing === 0 ? rsvU
   : { x: rsvU.x * Math.cos(rsvSwing) - rsvU.y * Math.sin(rsvSwing),
@@ -13688,8 +14056,23 @@ const rsvTrainWarnsAt = (station, sdR = reserveWellR, m1Override = null) => {
 for (const m of rsvTrainWarnsAt(RESERVE_LOCAL, reserveWellR, rsvModule1)) console.warn(m);
 
 const reservePinion0 = G.makePinion({ name: 'reservePinion0', module: rsvModule0, teeth: rsvTeethP0, mates: [rsvTeethW1], thickness: 1.2, material: MATS.steel });
-const rsvWheel1 = G.makeGear({ name: 'rsvWheel1', module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: 0.5, spokes: 4, material: MATS.brass });
+const rsvWheel1 = G.makeGear({ name: 'rsvWheel1', module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R, spokes: 4, material: MATS.brass });
 const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1, teeth: rsvTeethP1, mates: [rsvTeethW2], thickness: 1.2, material: MATS.steel });
+// §234 — the swing solve's z-bands were read off `gearFaceReach` before these
+// two existed; now they exist, the reach is re-read off the metal (a figure
+// computed two ways, rule 6's shape): the body's and the hub's half-heights
+// and the hub's radius, each to float slack.
+{
+  const zHalf = (m) => { m.geometry.computeBoundingBox(); const b = m.geometry.boundingBox; return Math.max(-b.min.z, b.max.z); };
+  const rMax = (m) => { const pos = m.geometry.attributes.position; let r = 0; for (let i = 0; i < pos.count; i++) r = Math.max(r, Math.hypot(pos.getX(i), pos.getY(i))); return r; };
+  const w1 = G.gearFaceReach({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R });
+  const p1 = G.gearFaceReach({ module: rsvModule1, thickness: 1.2, pinion: true });
+  const [w1Body, w1Hub] = rsvWheel1.children.filter((o) => o.isMesh);
+  const [p1Body] = reservePinion1.children.filter((o) => o.isMesh);
+  for (const [name, got, want] of [['rsvWheel1 body', zHalf(w1Body), w1.body], ['rsvWheel1 hub height', zHalf(w1Hub), w1.hub.half], ['rsvWheel1 hub radius', rMax(w1Hub), w1.hub.r], ['reservePinion1 body', zHalf(p1Body), p1.body]])
+    if (Math.abs(got - want) > 1e-5)
+      console.warn(`reserve train: ${name} measures ${got.toFixed(5)} as cut, gearFaceReach says ${want.toFixed(5)} — the swing solve's band is not the metal's`);
+}
 const rsvWheel2 = G.makeGear({ name: 'rsvWheel2', module: rsvModule1, teeth: rsvTeethW2, mates: [rsvTeethP1], thickness: 1.0, boreR: 0.5, spokes: 0, material: MATS.brass });
 // (TODO 48 — the `Math.PI / teeth` half-pitch idiom that used to sit here
 // phased each wheel against its OWN local +x, with no reference to the line
@@ -13720,7 +14103,7 @@ reserveTrain.add(rsvArbor0);
 // plate, down to p0 in the under-dial space.
 const rsvExtTop = L_BARREL + 2;
 const rsvArbExt = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.55, 0.55, rsvExtTop - Z_RSV, 12), MATS.steel);
+  new THREE.CylinderGeometry(RSV_ARB_EXT_R, RSV_ARB_EXT_R, rsvExtTop - Z_RSV, 12), MATS.steel);   // §234 fold reads this radius as a closed-form bound (hoisted)
 rsvArbExt.rotation.x = Math.PI / 2;
 rsvArbExt.position.set(P.barrel.x, P.barrel.y, (rsvExtTop + Z_RSV) / 2);
 reserveTrain.add(rsvArbExt);
@@ -14009,9 +14392,8 @@ const ALARM_CORNER_SENSE = -1;
 // azimuth READ IN ITS OWN MOUNT FRAME, less half a pitch for the member that
 // must gap. The ray bisects the two axes for ANY shaft angle when the counts
 // are equal (γ = Σ/2 each, the pitch cones meeting on the bisector), which is
-// why it is simply their normalised sum; an unequal pair at a non-mitre angle
-// would need γ_A here, and none exists yet (§234's fold probe cut one at
-// Σ ≈ 145–161° in measurement only — see that probe's header).
+// why it is simply their normalised sum — §234's fold corner at Σ ≈ 150° is
+// the first non-mitre through here and rides the same line.
 function bevelCornerRay(axisA, axisB) {
   return axisA.clone().add(axisB).normalize();
 }
@@ -42050,6 +42432,21 @@ let WELD_CENSUS = null;   // §81 tranche A — filled by the weld pass at the e
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
+  // §234 fold — the setting traverse's fold and the cap-bearing scan that
+  // sited it, read-only, for tools/probe-234-cap-bearing.mjs (a derivation
+  // that is silent at boot when it succeeds, read back here).
+  settingFold: Object.freeze({
+    bearingDeg: CAP_BEARING / DEG2RAD, swingDeg: rsvSwing / DEG2RAD,
+    rsvLineDeg: Math.atan2(rsvU.y, rsvU.x) / DEG2RAD,
+    A: { x: settingA.x, y: settingA.y }, K: { x: MW_FOLD.K.x, y: MW_FOLD.K.y }, B: { x: settingB.x, y: settingB.y },
+    runHeadingDeg: Math.atan2(settingU.y, settingU.x) / DEG2RAD, leg1HeadingDeg: MW_FOLD_LEG1_HEADING_DEG,
+    alphaDeg: MW_FOLD.alphaDeg, side: MW_FOLD.side, beta2Deg: MW_FOLD.beta2 / DEG2RAD, phiDeg: MW_FOLD.phi / DEG2RAD, needCol: MW_FOLD.needCol,
+    shaftAngleDeg: MW_FOLD.shaftAngleDeg, module: MW_FOLD_MODULE, templateModule: BEVEL_MODULE,
+    blankThinnest: MW_FOLD_BLANK_THINNEST, stockMinU: STOCK_MIN_U_FOLD,
+    len1: MW_FOLD.len1, len2: MW_FOLD.len2, leg1R: MW_LEG1_R, leg2R: MW_LEG2_R,
+    turnLdTarget: TURN_LD_TARGET, turnLdMax: TURN_LD_MAX,
+    scan: CAP_SOLVE.scan.map((r) => ({ ...r })),
+  }),
   // §10 level 2 — the sub-table, read-only, for probes: what the drill knows.
   get subEntries() { return subEntries.map((s) => ({ parentUnit: s.parentUnit, displayName: s.displayName, baseZ: s.baseZ.get(s.obj), subLayer: s.subLayer, z: s.obj.position.z, tickOwned: s.tickOwned, bodies: s.objs.length })); },
   setDrill(amount) { drillAmount = amount; drillSlider.value = String(Math.round(amount * 100)); },
