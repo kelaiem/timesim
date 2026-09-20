@@ -27706,3 +27706,89 @@ side and the guide and spring still downstairs. That is a page landing's work
 under §228's precedent — re-wording or re-drawing a block invalidates its seven
 translations by design — so it is filed here rather than half-done in a battery
 landing.
+
+## §236 — The vocabulary rename: a hand's member is a body, and two staffs were pivots
+
+§236's own feature — glossary links on the two static pages — is not built.
+This is its PREREQUISITE, which had to land first: tier two would attach a
+definition to an English word, and three of the words were not one word each.
+
+**What was wrong, measured.** `shaft` named three unrelated things across ten
+identifiers. Six were a HAND's middle member (`hourShaft`, `minuteShaft`,
+`alarmShaft` — all classified `'hand'` in `inspect.js`'s kind table, in the
+`boss`/`shaft`/`tip` anatomy — plus `smallSecondsShaft` and `reserveShaft`).
+Two were rotating members (`fuseeTopShaft`, and `alarmLinkShaft`, which is
+§232's lay shaft and the one horologically defensible use). One,
+`screwShaftD`, is a fastener's shank. `staff` was worse because it was
+inverted: the only two `.name`d staffs in the movement were both arbors, while
+`makeBalanceWheel` cut the movement's one true balance staff as a mesh that was
+never named at all.
+
+**Why `body`, since three better-sounding words were tried and refused.**
+`blade` is 664 occurrences meaning a SPRING's flexing member — `groundedBlade`
+is one of §137's seven transfer idioms and §48's schematic runs a blade pass.
+`leaf` is a PINION's teeth, which is the horological sense ("a seven-leaf
+pinion", "one snap per leaf"), plus §78's leaf-spring glyph. `neck` is 26
+occurrences meaning a turned-down section of a bar — the lay shaft's necks,
+`alarmLinkNeckRod` — a machining sense on rotating bars, which is the domain
+this rename separates hands FROM.
+
+One measurement refutes all three at once: **`makeHand` cuts a BUR ROD.** Each
+kind is three numbers (`widthFactor`, `tailFactor`, `bossSizeFactor`; hour
+0.15/0.22/0.05, minute 0.09/0.22/0.035), the plan half-width is
+`length · widthFactor · 0.35 · √3/2`, and the section is a triangular rod, keel
+down, of `shaftLen` plus a `tipLen = planBase · 2.6` taper. One monotonic
+factor: there is no widening into a leaf, so there is no waist for a neck to
+be. Each refused word names a feature of a SHAPED hand, and these are tapered
+rods with a tip fan. **Naming a member for a shape the geometry does not cut is
+the same defect as `shaft`** — so committing a second instance of it inside the
+fix would have been the worst possible place. `body` is the member every hand
+has; `leaf` and `neck` become available if a shaped hand is ever cut, and would
+then mean what they say.
+
+**The two staffs are PIVOTS, not arbors, and the filed plan said arbor.**
+`fuseeUpperStaff` is built by `addUpperPivot()`, the function named for what it
+makes → `fuseeUpperPivot`. `mainspringDrumStaff` is a short cylinder below
+`mainspringDrumArbor`, **which already exists three lines above it**, so
+`arbor` would have minted a duplicate name — and `inspect.js`'s kind table
+already called the mesh `'pivot'` → `mainspringDrumPivot`. `fuseeTopShaft`
+genuinely is an arbor section (its `INTRA_UNIT_CONTACTS` row reads "one arbor
+in two meshes") → `fuseeTopArbor`. And the balance staff is named
+`balanceStaff` at last; naming it changes no kind, because `Balance` is absent
+from `STOCK_KIND_BY_PART` and the mesh took the part default before and after.
+
+**The acceptance, which is the part worth copying.** A rename must move labels
+and nothing else, so the gate was a `--report` diff against a base run, walked
+in parallel with timing fields excluded: battery 41/41 locally on both sides
+and 41/41 in CI; **fingerprint `3476485608` identical**, units 59, poses 12;
+36 label moves; 8 prose moves (the TODO 101 waiver text, and member lists that
+re-sort because `minuteBody` sorts before `minuteBoss` where `minuteShaft`
+sorted after); and ONE structural difference, which is the naming working.
+`restoring`'s `sweptAs` for `Balance` went 3 entries to 4: that list is
+deduplicated and its key is built
+`` `${v.meshName || v.mesh?.name || v.kind}/…` ``, so an unnamed mesh falls
+back to its KIND — two volumes both read `revolve/covered:arc` and collapsed
+into one. Named, one is `balanceStaff/covered:arc` and stops colliding. The
+count of swept volumes is unchanged; a label stopped hiding behind another
+label, which is what naming the balance staff was for.
+
+**Reach, against the estimate.** The plan sized this at 12 sites and counted
+`src/*.js` only. The true reach is 18: four probes select these meshes by name
+(`probe-112-recut`, `probe-153-boot`, `probe-coaxial-sense`,
+`probe-90-lockhold`), `TODO.md` item 101 carries a live waiver's text, and this
+file carries two historical citations — annotated with the rename rather than
+rewritten, because a record of what a landing did should not be made to say
+something it did not.
+
+**Two harness findings, because the next rename meets both.** `node --check` is
+NOT a syntax gate for this source: it parses these files as CommonJS and passed
+an apostrophe that had closed a single-quoted waiver string, where `import()`
+caught it at once — and the app still booted, because `inspect.js` loads apart
+from the movement, so a broken instrument hides behind a healthy watch. And
+`probe-coaxial-sense` fails on clean `main` in a dev container, so it is not
+evidence either way about a change; stash and re-run before believing it.
+
+**What remains.** §236's two tiers — project terms linking to the explainer's
+glossary, horological terms linking outward — are unbuilt, and the outbound
+target is undecided. Both stay filed in the private roadmap under the same
+number.
