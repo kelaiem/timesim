@@ -58,6 +58,25 @@ const VA = '0.0.0-offline-check-a', VB = '0.0.0-offline-check-b', VC = '0.0.0-of
 // cannot be written here without saying where the release is served from. That
 // is the whole content of the change this mirrors: before it, the name was the
 // version alone, and two releases sharing an origin evicted each other.
+// EVERY navigation in this file waits on `load` with THIS budget, because a
+// boot here is a whole watch movement coming up under a service worker on
+// SwiftShader, and Playwright's 30 s default is not sized for that. Measured
+// on the dev container: 18.5 s for the first environment, 19.6 s for the
+// second — the slowest, since it comes up in a context that already has a
+// full instance live. That is 1.35x of headroom on a job whose own header
+// records this box and CI differing by an order of magnitude in the direction
+// nobody predicted, and CI spent it twice: first on the second boot, then,
+// once that had a budget, on the offline reload right after it. The failure
+// walked to the next unbudgeted navigation because ELEVEN of the twelve were
+// inheriting the default while every `waitForFunction` beside them had been
+// given 60 s explicitly. One constant, so the next one cannot drift.
+//
+// This is not a tolerance on anything the suite asserts: no row here measures
+// how FAST a boot is. The two-environment boots — the slowest pair, and the
+// ones that failed — print what they took, so the margin is visible rather
+// than implied: if those numbers start creeping toward the budget, that is a
+// real finding about the app and not a reason to raise this.
+const NAV = { waitUntil: 'load', timeout: 60000 };
 const cacheName = (scopePath, version) => `timesim-${scopePath}-${version}`;
 
 const freePort = () => new Promise((res, rej) => {
@@ -274,7 +293,7 @@ try {
   const page = await ctx.newPage();
   const noise = [];
   wireNoise(page, noise);
-  await page.goto(`http://127.0.0.1:${relPort}/index.html`, { waitUntil: 'load' });
+  await page.goto(`http://127.0.0.1:${relPort}/index.html`, NAV);
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30000 });
   check('release: worker active and controlling on first load', true);
@@ -313,12 +332,12 @@ try {
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
   await ctx.setOffline(true);
-  await page.reload({ waitUntil: 'load' });
+  await page.reload(NAV);
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   check('OFFLINE: index.html boots, movement up', true);
   const ver = await page.evaluate(() => document.querySelector('meta[name="app-version"]')?.content);
   check('OFFLINE: served build is the stamped release', ver === VA, String(ver));
-  await page.goto(`http://127.0.0.1:${relPort}/index.html?lang=de`, { waitUntil: 'load' });
+  await page.goto(`http://127.0.0.1:${relPort}/index.html?lang=de`, NAV);
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   check('OFFLINE: deep link (?lang=de) boots', true);
   // §116 — zh-Hant is the one code carrying a SCRIPT subtag, so it is the one
@@ -326,14 +345,14 @@ try {
   // as something other than a two-letter word. Asserting the resolved lang and
   // not merely that the page booted is the point: falling back to Simplified
   // would boot perfectly.
-  await page.goto(`http://127.0.0.1:${relPort}/index.html?lang=zh-Hant`, { waitUntil: 'load' });
+  await page.goto(`http://127.0.0.1:${relPort}/index.html?lang=zh-Hant`, NAV);
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   const hantLang = await page.evaluate(() => document.documentElement.lang);
   check('OFFLINE: deep link (?lang=zh-Hant) boots and stays Traditional', hantLang === 'zh-Hant', hantLang);
-  await page.goto(`http://127.0.0.1:${relPort}/explain.html`, { waitUntil: 'load' });
+  await page.goto(`http://127.0.0.1:${relPort}/explain.html`, NAV);
   const explainOk = await page.evaluate(() => document.querySelectorAll('details.mech').length > 0);
   check('OFFLINE: explain.html loads with content', explainOk);
-  await page.goto(`http://127.0.0.1:${relPort}/primer.html`, { waitUntil: 'load' });
+  await page.goto(`http://127.0.0.1:${relPort}/primer.html`, NAV);
   const primerOk = await page.evaluate(() => document.querySelectorAll('details.mech').length > 0);
   check('OFFLINE: primer.html loads with content (also the mis-listed-seed assert — see header)', primerOk);
   // §95 tier two — a LOCALIZED boot, offline. The locale tables arrive by
@@ -347,13 +366,13 @@ try {
   // kind of thing that gets added to a LOADERS map and forgotten in a file
   // name; this loop is what makes each one prove itself from cache.
   for (const code of ['de', 'fr', 'es', 'pt', 'it', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'ar']) {
-    await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, { waitUntil: 'load' });
+    await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, NAV);
     const ok = await page.evaluate((c) =>
       document.documentElement.lang === c
       && !/^What you are looking at/.test(document.querySelector('p.intro')?.textContent || ''), code);
     check(`OFFLINE: primer.html localizes (${code} table came from the cache)`, ok);
   }
-  await page.goto(`http://127.0.0.1:${relPort}/index.html`, { waitUntil: 'load' });
+  await page.goto(`http://127.0.0.1:${relPort}/index.html`, NAV);
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   await ctx.setOffline(false);
 
@@ -494,7 +513,7 @@ try {
   const dpage = await dctx.newPage();
   const dnoise = [];
   wireNoise(dpage, dnoise);
-  await dpage.goto(`http://127.0.0.1:${devPort}/index.html`, { waitUntil: 'load' });
+  await dpage.goto(`http://127.0.0.1:${devPort}/index.html`, NAV);
   await dpage.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   const devRegs = await dpage.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length);
   check('dev: source tree registers NO worker', devRegs === 0);
@@ -543,22 +562,11 @@ try {
   mark('two environments under one origin');
   const mctx = await browser.newContext();
   const mnoise = [];
-  // The `goto` carries an EXPLICIT budget, and it is the one wait in this
-  // function that used to inherit Playwright's 30 s default while its two
-  // neighbours below were given 60 s and 30 s. That asymmetry failed CI twice
-  // on `/b/` — never `/a/` — and the reason is in the timing line: this is a
-  // SECOND full instance booting in a context that already has one live, so it
-  // is the slowest boot the suite performs. Measured on the dev container,
-  // 18.5 s for /a/ and 19.6 s for /b/, which left 1.35x of headroom on a job
-  // whose own header records CI and this box differing by an order of
-  // magnitude in the direction nobody predicted. The row measures CACHE
-  // behaviour, not speed, so the budget is not a tolerance on any claim it
-  // makes; the timing is printed so the margin is visible rather than implied.
   const bootAt = async (path) => {
     const p = await mctx.newPage();
     wireNoise(p, mnoise);
     const t0 = Date.now();
-    await p.goto(`http://127.0.0.1:${multiPort}${path}index.html`, { waitUntil: 'load', timeout: 60000 });
+    await p.goto(`http://127.0.0.1:${multiPort}${path}index.html`, NAV);
     console.log(`  ${path} booted in ${((Date.now() - t0) / 1000).toFixed(1)}s (budget 60 s)`);
     await p.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
     await p.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30000 });
@@ -572,10 +580,10 @@ try {
     mkeys.length === 2 && mkeys.join() === want.join(), mkeys.join(' '));
 
   await mctx.setOffline(true);
-  await pa.reload({ waitUntil: 'load' });
+  await pa.reload(NAV);
   await pa.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   const va = await pa.evaluate(() => document.querySelector('meta[name="app-version"]')?.content);
-  await pb.reload({ waitUntil: 'load' });
+  await pb.reload(NAV);
   await pb.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
   const vb = await pb.evaluate(() => document.querySelector('meta[name="app-version"]')?.content);
   // Named for what it holds, not for what it would be nice to hold: see the
