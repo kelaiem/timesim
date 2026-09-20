@@ -4985,6 +4985,42 @@ const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborX
 // fallback, and its worst case — so the reserve needs no swing of its own and
 // the two solves cannot chase each other. Acyclic by construction: the corner
 // yields first, then the reserve's scan runs against the built traverse.
+// §234 fold — THE FOLD, SOLVED IN CLOSED FORM FROM ANY B. Declared here, above
+// the cap bearing's solve, because that solve has to know where the fold's
+// corner K would land for each candidate B (see the second clause it gained).
+// Leg 2's section is the traverse's own law (over reservePinion0); leg 1's
+// swing is the Yoke's measured bound; leg 2's swing is the least that passes
+// the barrel-arbor column on its near side; K is where those rays meet.
+const MW_LEG2_R = SETTING_ROD_R;                                                       // 0.382 — over reservePinion0, the same pinch
+const MW_FOLD_ALPHA_DEG = MW_FOLD_ALPHA_MEASURED_DEG;                                  // the Yoke's bound on leg 1's swing, measured (see the constant)
+function solveSettingFold(B) {
+  const u = B.clone().sub(settingA).normalize();                 // A→B, the straight run's direction
+  const n = new THREE.Vector3(-u.y, u.x, 0);                     // its left normal
+  const bar = new THREE.Vector3(P.barrel.x - settingA.x, P.barrel.y - settingA.y, 0);
+  const side = bar.dot(n) >= 0 ? 1 : -1;                         // the barrel's side of the run — K swings there
+  const dB = Math.hypot(P.barrel.x - B.x, P.barrel.y - B.y);
+  const BA = u.clone().negate();
+  const toBar = new THREE.Vector3(P.barrel.x - B.x, P.barrel.y - B.y, 0).normalize();
+  const phi = Math.acos(Math.min(1, Math.max(-1, BA.dot(toBar))));
+  const needCol = RSV_ARB_EXT_R + MW_LEG2_R + CLEAR_MARGIN;
+  const beta2 = phi + Math.asin(needCol / dB);
+  const alpha = MW_FOLD_ALPHA_DEG * DEG2RAD;
+  const rot = (v, ang) => new THREE.Vector3(v.x * Math.cos(ang) - v.y * Math.sin(ang), v.x * Math.sin(ang) + v.y * Math.cos(ang), 0);
+  const d1 = rot(u, side * alpha);                                // leg 1's direction from A
+  // BA's left normal is −n (BA = −u), so tilting leg 2 toward the barrel's
+  // side is a rotation by −side·β2 — the sign the boot guard at the build
+  // caught the first time this was written the other way (K landed behind A).
+  const d2 = rot(BA, -side * beta2);                              // leg 2's ray from B, toward the barrel's side
+  // K = the intersection of A + t·d1 and B + s·d2
+  const det = d1.x * -d2.y - d1.y * -d2.x;
+  const t = ((B.x - settingA.x) * -d2.y - (B.y - settingA.y) * -d2.x) / det;
+  const K = settingA.clone().addScaledVector(d1, t);
+  const leg1U = K.clone().sub(settingA).normalize(), leg2U = B.clone().sub(K).normalize();
+  const deflection = alpha + beta2;
+  const shaftAngleDeg = 180 - deflection / DEG2RAD;
+  return { K, leg1U, leg2U, side, phi, beta2, alpha, shaftAngleDeg, needCol,
+    len1: settingA.distanceTo(K), len2: K.distanceTo(B) };
+}
 const CAP_BEARING = (() => {
   // the reserve's collinear station: w1 and p1 share this arbor
   const pivot = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
@@ -5004,19 +5040,55 @@ const CAP_BEARING = (() => {
   const reachCap = G.bevelToothSpec({
     module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH }).tipR;
   const need = reachRsv + reachCap + CLEAR_MARGIN;
-  const at = (dl) => {
+  const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
-    const x = MW_WORLD.x + (toKeyless.x * cs - toKeyless.y * sn) * capMeshD;
-    const y = MW_WORLD.y + (toKeyless.x * sn + toKeyless.y * cs) * capMeshD;
-    return Math.hypot(x - st.x, y - st.y);
+    return new THREE.Vector3(MW_WORLD.x + (toKeyless.x * cs - toKeyless.y * sn) * capMeshD,
+      MW_WORLD.y + (toKeyless.x * sn + toKeyless.y * cs) * capMeshD, Z_SETTING);
   };
-  if (at(0) >= need) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
+  // §234 fold — THE SECOND CLAUSE. The fold's corner K stands over the reserve
+  // wheel's rim (w1, tip r 5.28, its band −4.95..−3.45 against the corner's
+  // blanks reaching to −4.8), so the reserve MUST swing its w1/p1 station
+  // about the barrel — the swing solve it already owns for exactly this — and
+  // measured on the built tree, that swing's window for w1 (≤ −14°, past the
+  // fold corner) and for p1 (≥ −13°, short of this cap) did not overlap by
+  // 0.03–0.06 u. This cap is the wall on p1's side, and it sits on a FREE
+  // bearing; so the bearing is solved against the swing it forces: the least
+  // bearing (in the scan's own order) at which SOME reserve swing s within
+  // ±30° clears all three at once, in closed form —
+  //   (1) the cap corner's blank against the pair at its station s (the
+  //       original clause, at the station the pair will actually stand),
+  //   (2) the fold corner's blank (its cone distance, from the spec at the
+  //       Σ that B gives it) against w1's tip circle at s,
+  //   (3) this cap's tip circle against p1's at s.
+  // Each proxy is the member's WHOLE reach (a sphere for the blank, a tip
+  // circle for a wheel), so it is conservative; the reserve's own vertex
+  // solve, which runs after the keyless works are cut, is the measurement
+  // that confirms it — and warns if it cannot. The two solves stay acyclic:
+  // this one asks only closed-form questions, the reserve's reads the metal.
+  const w1Tip = G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 });
+  const p1Tip = G.gearOuterR({ module: m1, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 });
+  const capTip = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [MW_MINUTE_TEETH], thickness: 1.6 });
+  const stAt = (s) => { const cs = Math.cos(s), sn = Math.sin(s); return { x: P.barrel.x + (u.x * cs - u.y * sn) * rsvD0, y: P.barrel.y + (u.x * sn + u.y * cs) * rsvD0 }; };
+  const foldWindowOpen = (dl) => {
+    const cap = capAt(dl);
+    const F = solveSettingFold(cap);
+    const kReach = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
+      shaftAngleDeg: F.shaftAngleDeg, boreR: MW_LEG1_R, mateBoreR: MW_LEG2_R, quiet: true }).coneR;
+    for (let sd = 0; sd <= 30; sd++) for (const sg of sd === 0 ? [1] : [1, -1]) {
+      const st = stAt(sg * sd * DEG2RAD);
+      const okPair = Math.hypot(cap.x - st.x, cap.y - st.y) >= need;                                        // (1)
+      const okW1 = Math.hypot(F.K.x - st.x, F.K.y - st.y) - w1Tip - kReach >= CLEAR_MARGIN;              // (2)
+      const okP1 = Math.hypot(cap.x - st.x, cap.y - st.y) - p1Tip - capTip >= CLEAR_MARGIN;              // (3)
+      if (okPair && okW1 && okP1) return true;
+    }
+    return false;
+  };
+  if (foldWindowOpen(0)) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
   for (let d = 1; d <= 60; d++)
     for (const sgn of [1, -1])
-      if (at(sgn * d * DEG2RAD) >= need) return sgn * d * DEG2RAD;
-  console.warn(`setting traverse: no cap bearing within ±60° clears the reserve pair `
-    + `(need ${need.toFixed(3)}, best ${Math.max(at(60 * DEG2RAD), at(-60 * DEG2RAD)).toFixed(3)}) `
-    + '— keeping the short way in; the battery judges it');
+      if (foldWindowOpen(sgn * d * DEG2RAD)) return sgn * d * DEG2RAD;
+  console.warn('setting traverse: no cap bearing within ±60° leaves the reserve pair a swing that clears '
+    + 'its own station, the fold corner and this cap at once — keeping the short way in; the battery judges it');
   return 0;
 })();
 const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(CAP_BEARING),
@@ -5083,40 +5155,16 @@ const settingU = settingB.clone().sub(settingA).normalize();   // the STRAIGHT r
 // corner's shaft angle Σ = 180° − (α + β2): not a mitre, an ANGULAR bevel pair,
 // which `bevelToothSpec` cuts from the counts at any Σ (γ = Σ/2 for equal
 // counts, so the corner-index ray still bisects the axes — see bevelCornerRay).
-const MW_LEG2_R = SETTING_ROD_R;                                                       // 0.382 — over reservePinion0, the same pinch
-const MW_FOLD_ALPHA_DEG = MW_FOLD_ALPHA_MEASURED_DEG;                                  // the Yoke's bound on leg 1's swing, measured (see the constant)
-const MW_FOLD = (() => {
-  const u = settingU;                                            // A→B
-  const n = new THREE.Vector3(-u.y, u.x, 0);                     // its left normal
-  const bar = new THREE.Vector3(P.barrel.x - settingA.x, P.barrel.y - settingA.y, 0);
-  const side = bar.dot(n) >= 0 ? 1 : -1;                         // the barrel's side of the run — K swings there
-  const dB = Math.hypot(P.barrel.x - settingB.x, P.barrel.y - settingB.y);
-  const BA = u.clone().negate();
-  const toBar = new THREE.Vector3(P.barrel.x - settingB.x, P.barrel.y - settingB.y, 0).normalize();
-  const phi = Math.acos(Math.min(1, Math.max(-1, BA.dot(toBar))));
-  const needCol = RSV_ARB_EXT_R + MW_LEG2_R + CLEAR_MARGIN;
-  const beta2 = phi + Math.asin(needCol / dB);
-  const alpha = MW_FOLD_ALPHA_DEG * DEG2RAD;
-  const rot = (v, ang) => new THREE.Vector3(v.x * Math.cos(ang) - v.y * Math.sin(ang), v.x * Math.sin(ang) + v.y * Math.cos(ang), 0);
-  const d1 = rot(u, side * alpha);                                // leg 1's direction from A
-  // BA's left normal is −n (BA = −u), so tilting leg 2 toward the barrel's
-  // side is a rotation by −side·β2 — the sign the boot guard below caught
-  // the first time this was written the other way (K landed behind A).
-  const d2 = rot(BA, -side * beta2);                              // leg 2's ray from B, toward the barrel's side
-  // K = the intersection of A + t·d1 and B + s·d2
-  const det = d1.x * -d2.y - d1.y * -d2.x;
-  const t = ((settingB.x - settingA.x) * -d2.y - (settingB.y - settingA.y) * -d2.x) / det;
-  const K = settingA.clone().addScaledVector(d1, t);
-  const leg1U = K.clone().sub(settingA).normalize(), leg2U = settingB.clone().sub(K).normalize();
-  const deflection = alpha + beta2;
-  const shaftAngleDeg = 180 - deflection / DEG2RAD;
+// The fold is solved ONCE, by `solveSettingFold` above the cap-bearing solve
+// (which has to ask it where K lands for each candidate B), and cut here from
+// the same answer.
+const MW_FOLD = solveSettingFold(settingB);
+{
   // the column bound, re-read off the result: a figure computed two ways
-  const missCol = Math.abs((P.barrel.x - K.x) * -leg2U.y + (P.barrel.y - K.y) * leg2U.x);
-  if (Math.abs(missCol - needCol) > 1e-9)
-    console.warn(`§234 fold: leg 2 passes the barrel column at ${missCol.toFixed(6)}, solved for ${needCol.toFixed(6)}`);
-  return { K, leg1U, leg2U, side, phi, beta2, alpha, shaftAngleDeg, needCol,
-    len1: settingA.distanceTo(K), len2: K.distanceTo(settingB) };
-})();
+  const missCol = Math.abs((P.barrel.x - MW_FOLD.K.x) * -MW_FOLD.leg2U.y + (P.barrel.y - MW_FOLD.K.y) * MW_FOLD.leg2U.x);
+  if (Math.abs(missCol - MW_FOLD.needCol) > 1e-9)
+    console.warn(`§234 fold: leg 2 passes the barrel column at ${missCol.toFixed(6)}, solved for ${MW_FOLD.needCol.toFixed(6)}`);
+}
 {
   const leg1 = makeRodSegment(settingA, MW_FOLD.K, MW_LEG1_R);
   leg1.name = 'settingTraverse1';
