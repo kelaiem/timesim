@@ -5036,38 +5036,128 @@ const CAP_BEARING = (() => {
   const pivot = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
   const spanD = Math.hypot(pivot.x - P.barrel.x, pivot.y - P.barrel.y);
   const u = { x: (pivot.x - P.barrel.x) / spanD, y: (pivot.y - P.barrel.y) / spanD };
-  const st = { x: P.barrel.x + u.x * rsvD0, y: P.barrel.y + u.y * rsvD0 };
   const w2 = SPEC.reserveHours / 5;
-  const m1 = (2 * (spanD - rsvD0)) / (rsvTeethP1 + w2);
-  // the pair's reach is the LARGER member's — p1's since the 300° step-up
-  const reachRsv = Math.max(
-    G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 }),
-    G.gearOuterR({ module: m1, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 }));
-  // and the corner's is its bevel, the widest thing on this arbor in that band.
-  // TODO 138 Landing 2: READ from the blank the builder cuts — coneR·sin θ_tip —
-  // rather than the spur expression pitchR + 0.85·module, which described a flat
-  // disc this member has never been.
-  const reachCap = G.bevelToothSpec({
-    module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH }).tipR;
-  const need = reachRsv + reachCap + CLEAR_MARGIN;
   const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
     return new THREE.Vector3(MW_WORLD.x + (toKeyless.x * cs - toKeyless.y * sn) * capMeshD,
       MW_WORLD.y + (toKeyless.x * sn + toKeyless.y * cs) * capMeshD, Z_SETTING);
   };
-  const at = (dl) => { const c = capAt(dl); return Math.hypot(c.x - st.x, c.y - st.y); };
-  // STAGE 1 — unchanged since §136: the least bearing at which the cap corner
-  // clears the reserve pair at its COLLINEAR station.
-  const stage1 = (() => {
-    if (at(0) >= need) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
-    for (let d = 1; d <= 60; d++)
-      for (const sgn of [1, -1])
-        if (at(sgn * d * DEG2RAD) >= need) return sgn * d * DEG2RAD;
-    console.warn(`setting traverse: no cap bearing within ±60° clears the reserve pair `
-      + `(need ${need.toFixed(3)}, best ${Math.max(at(60 * DEG2RAD), at(-60 * DEG2RAD)).toFixed(3)}) `
-      + '— keeping the short way in; the battery judges it');
-    return 0;
-  })();
+  // §234 — SOLVED JOINTLY WITH THE RESERVE'S SWING, as the metal the reserve
+  // solve will read. §136's clause held this corner's bevel tip circle
+  // (reachCap) off the LARGER reserve member's tip (p1's, reachRsv) at the
+  // pair's collinear station, because the sheared bevel of the day dragged
+  // to z −5.86, into p1's plane. TODO 138 cut that bevel to its cone: the
+  // corner's blanks reach to −4.7 now and p1's band starts at −4.95, so the
+  // clause was holding a reach the metal no longer has — by p1's 1.6 u over
+  // w1 — and it was that over-read, not the metal, that closed the fold's
+  // window. The fold made the reserve's swing NECESSARY (its corner stands
+  // over w1's rim), so the bearing is solved against the swing it forces:
+  // the least bearing (0 first, then ±1°, ±2°, … — the a+(b−a)≠b rule) at
+  // which SOME reserve swing s within ±30° clears every member below, each
+  // read as the BODY OF REVOLUTION its generator cuts, in the z-band it
+  // actually enters, against that band's wheel — which is exactly the test
+  // the reserve's own vertex solve makes after the keyless works are cut,
+  // less the tooth gaps (an envelope reads the tip ring whole). That solve
+  // is the confirmation and warns if it disagrees; the two stay acyclic
+  // because this one only asks closed-form questions.
+  //
+  // The members that can stand in the reserve's bands:
+  //   · this corner's two mitre blanks at B — the one pointing DOWN the rise
+  //     (a horizontal tip ring at −3 − its axial reach) and the one trailing
+  //     back along leg 2 (rings dipping below the axis);
+  //   · the fold corner's two blanks at K, trailing along leg 1 and leg 2;
+  //   · the cap pinion itself at Z_CANNON_PINION (1.6 thick) — p1's band;
+  //   · the rise rod at B, from Z_SETTING down to the cap — both bands;
+  //   · and, swing-independent, the transfer arbor against K's blanks and
+  //     both legs (the clause that refuses the short way in).
+  // The bands are the reserve solve's own: Z_RSV ± (0.5 + margin) for w1,
+  // (Z_RSV − RSV_Z_STEP) ± (0.6 + margin) for p1. p1's tip is re-derived per
+  // swing through the reserve's fixed point (the swing moves the station,
+  // the station sets stage two's module, the module sets p1's tip).
+  const w1Tip = G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 });
+  const capTip = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [MW_MINUTE_TEETH], thickness: 1.6 });
+  const BAND = { w1: [Z_RSV - 0.5 - CLEAR_MARGIN, Z_RSV + 0.5 + CLEAR_MARGIN], p1: [Z_RSV - RSV_Z_STEP - 0.6 - CLEAR_MARGIN, Z_RSV - RSV_Z_STEP + 0.6 + CLEAR_MARGIN] };
+  const arbor = { x: uWind.x * cwDist, y: uWind.y * cwDist };   // the winding transfer arbor's axis (BACK_PLATE_HOLES' first bore)
+  const ARBOR_R = 0.7;                                          // its shaft (the bore is cut 0.7 + 0.05, above)
+  const distSeg = (P0, P1, X) => { const dx = P1.x - P0.x, dy = P1.y - P0.y; const L2 = dx * dx + dy * dy; const t = Math.max(0, Math.min(1, ((X.x - P0.x) * dx + (X.y - P0.y) * dy) / L2)); return Math.hypot(P0.x + dx * t - X.x, P0.y + dy * t - X.y); };
+  const stAt = (sw) => { const cs = Math.cos(sw), sn = Math.sin(sw); return { x: P.barrel.x + (u.x * cs - u.y * sn) * rsvD0, y: P.barrel.y + (u.x * sn + u.y * cs) * rsvD0 }; };
+  // a blank's rings (r about its axis, z along it), from the generator itself
+  const ringsOf = (shaftAngleDeg, boreR, mateBoreR) => {
+    const g = G.makeConicalGear({ teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, material: MATS.steel });
+    const rings = [];
+    g.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) rings.push([Math.hypot(pos.getX(i), pos.getY(i)), pos.getZ(i)]);
+      o.geometry.dispose(); });
+    return rings;
+  };
+  // how far a body of revolution (apex C, unit axis a, rings) reaches
+  // HORIZONTALLY into the band [lo, hi] toward a station, as its worst ring
+  const envelopeMargin = (C, a, rings, st, tip, [lo, hi]) => {
+    let m = Infinity;
+    const horizontal = Math.abs(a.z) < 1e-9;
+    for (const [r, zAx] of rings) {
+      const cx = C.x + a.x * zAx, cy = C.y + a.y * zAx, cz = C.z + a.z * zAx;
+      let reach;
+      if (horizontal) {                       // the ring stands in a vertical plane: it dips r below its centre
+        if (cz >= lo && cz <= hi) reach = r;
+        else { const dz = cz > hi ? cz - hi : lo - cz; if (r <= dz) continue; reach = Math.sqrt(r * r - dz * dz); }
+      } else {                                // a horizontal ring at height cz
+        if (cz < lo || cz > hi) continue; reach = r;
+      }
+      m = Math.min(m, Math.hypot(cx - st.x, cy - st.y) - reach - tip - CLEAR_MARGIN);
+    }
+    return m;
+  };
+  const mitreDown = ringsOf(90, 0.4, MW_LEG2_R);        // mwCornerRiseOut: keyed to the rise (bore 0.4, the default), mate bored for leg 2
+  const mitreIn = ringsOf(90, MW_LEG2_R, 0.4);          // mwCornerRiseIn: keyed to leg 2
+  const DOWN = new THREE.Vector3(0, 0, -1);
+  const capZ = [Z_CANNON_PINION - 0.8, Z_CANNON_PINION + 0.8];
+  const capIn = (band) => capZ[0] <= band[1] && capZ[1] >= band[0];
+  const riseIn = (band) => Z_CANNON_PINION <= band[1] && Z_SETTING >= band[0];   // the rise rod spans Z_CANNON_PINION..Z_SETTING
+  const RISE_R = 0.35;
+  // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
+  const window = (dl) => {
+    const cap = capAt(dl);
+    const F = solveSettingFold(cap);
+    const foldOut = ringsOf(F.shaftAngleDeg, MW_LEG2_R, MW_LEG1_R), foldIn = ringsOf(F.shaftAngleDeg, MW_LEG1_R, MW_LEG2_R);
+    const kReach = Math.max(...foldOut.map(([r, z]) => Math.hypot(r, z)));
+    const arb = Math.min(
+      Math.hypot(F.K.x - arbor.x, F.K.y - arbor.y) - (kReach + ARBOR_R + CLEAR_MARGIN),
+      distSeg(settingA, F.K, arbor) - (MW_LEG1_R + ARBOR_R + CLEAR_MARGIN),
+      distSeg(F.K, cap, arbor) - (MW_LEG2_R + ARBOR_R + CLEAR_MARGIN));
+    const legIn = F.leg1U.clone().negate(), legOut = F.leg2U, backIn = F.leg2U.clone().negate();
+    let best = { m: -Infinity };
+    for (let sd = 0; sd <= 30; sd++) for (const sg of sd === 0 ? [1] : [1, -1]) {
+      const st = stAt(sg * sd * DEG2RAD);
+      const m1S = (2 * Math.hypot(pivot.x - st.x, pivot.y - st.y)) / (rsvTeethP1 + w2);
+      const p1Tip = G.gearOuterR({ module: m1S, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 });
+      const rows = [];
+      for (const [name, tip, band] of [['w1', w1Tip, BAND.w1], ['p1', p1Tip, BAND.p1]]) {
+        rows.push([`${name}·capDown`, envelopeMargin(cap, DOWN, mitreDown, st, tip, band)]);
+        rows.push([`${name}·capIn`, envelopeMargin(cap, backIn, mitreIn, st, tip, band)]);
+        rows.push([`${name}·foldOut`, envelopeMargin(F.K, legOut, foldOut, st, tip, band)]);
+        rows.push([`${name}·foldIn`, envelopeMargin(F.K, legIn, foldIn, st, tip, band)]);
+        if (capIn(band)) rows.push([`${name}·cap`, Math.hypot(cap.x - st.x, cap.y - st.y) - capTip - tip - CLEAR_MARGIN]);
+        if (riseIn(band)) rows.push([`${name}·rise`, Math.hypot(cap.x - st.x, cap.y - st.y) - RISE_R - tip - CLEAR_MARGIN]);
+      }
+      rows.push(['arbor', arb]);
+      let worst = rows[0]; for (const r of rows) if (r[1] < worst[1]) worst = r;
+      if (worst[1] > best.m) best = { m: worst[1], clause: worst[0], s: sg * sd };
+    }
+    return best;
+  };
+  let nearest = { d: 0, ...window(0) };
+  if (nearest.m >= 0) return 0;   // the a+(b−a)≠b rule: no swing keeps every original expression
+  for (let d = 1; d <= 60; d++)
+    for (const sgn of [1, -1]) {
+      const w = window(sgn * d * DEG2RAD);
+      if (w.m >= 0) return sgn * d * DEG2RAD;
+      if (w.m > nearest.m) nearest = { d: sgn * d, ...w };
+    }
+  console.warn(`setting traverse: no cap bearing within ±60° leaves the reserve a swing that clears the fold, this corner, the cap and the transfer arbor `
+    + `at once — keeping the short way in; the battery judges it. Nearest: ${nearest.d > 0 ? '+' : ''}${nearest.d}° at swing ${nearest.s}°, ${nearest.clause} ${nearest.m.toFixed(3)}`);
+  return 0;
+})();
   // STAGE 2 — §234's fold. The fold's corner K stands over the reserve
   // wheel's rim (w1, tip r 5.28, its band −4.95..−3.45 against the corner's
   // blanks reaching to −4.8), so the reserve MUST swing its w1/p1 station
