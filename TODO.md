@@ -20520,9 +20520,82 @@ longer than the tube a real case needs.
 > `Keyless works::settingTraverse` waiver's text.
 >
 > What group B leaves behind: one open row, `Keyless works::settingTraverse`
-> (step 3a, above). Three `turning` waivers stand across the whole movement
-> in total — `Alarm link` × 2 (Landing 1's group A and group C rows) and
-> this group's one.
+> (step 3a, above) — since §234 Landing 5 retired group A's, the ONLY
+> `turning` waiver in the movement.
+>
+> **§234 Landing 6 — the fold MEASURED on the built metal and REFUSED on both
+> sides (2026-09-19).** Step 3a filed the fix as "a new bevel corner kinking
+> the traverse off its axis line near the barrel" without measuring where
+> such a corner could stand. `tools/probe-234-traverse-fold.mjs` now does:
+> it solves K off the metal, walks both legs and all four re-aimed blanks
+> over the full pose net, and was run on the shipped tree AND on two folded
+> trees actually cut into `main.js` (both since reverted — nothing of the
+> fold is in the tree). The section law is the one this row's own
+> `SETTING_ROD_R` uses, governing neighbour − `CLEAR_MARGIN`: leg 1 (A→K)
+> takes the base plate's presented back face (0.55), leg 2 (K→B) keeps the
+> `reservePinion0` pinch (0.382) wherever it still runs over that pinion.
+> Two derivable corner sites exist and each was cut, booted and measured:
+>
+> - **The barrel's side.** Leg 1 swings as far as the Yoke allows (its
+>   prong post 5.5 u from A; measured over 43 poses at 0.5° — 12° clears,
+>   14° hits), leg 2 the least swing that passes the barrel-arbor column on
+>   its near side (φ + asin(need/|B−barrel|) = 19.08°, forced because at
+>   0.382 leg 2 may be at most 13.75 u and the far-side ray gives 26).
+>   K = (−13.10, 13.82), legs 17.39/11.06 u, L/D 15.8/14.5, Σ 148.9°. The
+>   legs CLEAR (leg 1 worst 0.55 against the plate, leg 2 0.382 against
+>   p0 — the derivations closing). The CORNER does not: `rsvWheel1`'s rim
+>   (tip r 5.28, z −4.95..−3.45) passes 0.43 u from K in plan and the
+>   blanks reach 1.56 u into its band. The reserve train's own w1 swing
+>   solve — the free parameter built to yield to the traverse — was
+>   replicated with its blocker named: it clears the corner by 0.10 at −15°,
+>   0.05 short of the margin, and beyond −16° the setting cap stops p1. And
+>   the mitre at B, re-aimed 19°, reads −0.13 into the minute STAR.
+> - **The transfer arbor's side.** Both legs at 0.55 (leg 2 no longer runs
+>   over p0 there — asserted in the solve), K on AB's perpendicular
+>   bisector held off `transferArbor`'s axis by exactly the blank's own
+>   reach, coneR + 0.7 + margin = 2.42 u: K = (−21.60, 12.57), legs 14.40
+>   each, L/D 13.1, Σ 145.1°, swing 17.45° at both ends. The corner clears
+>   (the arbor at 0.06 free by construction, the crown wheel's cone 0.80
+>   below). Leg 1 does not: at that swing it runs through the stem cluster
+>   7–12 u from A — yoke prong 0.05, clutch saw −0.02, `windPinionSaw` and
+>   `windingPinion` −0.13 (inside) — which the straight run passes at
+>   0.8–1.3. And the mitre at B, re-aimed 17.5° the other way, reads −0.13
+>   into the minute wheel's own rim.
+>
+> **The finding is B.** Both rules need leg 2 to leave B at 17–19°, and the
+> mitre there is PINNED: the minute wheel's rim (z −3.03..−2.25 — the
+> traverse's own plane) and the star (−3.5..−3.18) are centred on the
+> minute-wheel stud 0.4 u outside B, so the blank clears at 9.3° and is
+> inside them at 17.5° either way. What the map leaves is the near-collinear
+> kink (leg 1 ≤ 2°, leg 2 ≤ 2.9° before the arbor: deflection ≲ 5°, Σ ≥
+> 175°, two crown gears face to face) whose angle NO constraint sets from
+> below — a number chosen to split the census's bar, refused by standing
+> rule 1 — so the row stays waived rather than closed by a fold-in-name.
+>
+> **Fix paths, both position-space (P3), neither taken here:**
+> 1. Re-site B on its own free bearing — `CAP_BEARING` orbits the cap about
+>    the minute wheel and currently returns 0 — so that the swung leg 2
+>    leaves the minute wheel RADIALLY (the shipped mitre's orientation, the
+>    one the rim tolerates); the barrel side then needs only w1's swing to
+>    clear the corner, which it misses today by 0.05. The reserve's swing
+>    solve and `CAP_BEARING`'s are acyclic by construction (the corner
+>    yields first), so this is one solve, not two chasing each other.
+> 2. Retire the rod. A caliber carries setting motion to the motion works
+>    with spur wheels in the keyless plane, not a 20 mm rod of ⌀0.29 mm; the
+>    traverse is the movement's representational hop (its drive is still
+>    assigned in tick — `MECH_GRAPH.todo`), and replacing it with a wheel
+>    train would close this row and that debt together. Roadmap.
+>
+> Kept from the attempt, all behaviour-preserving: `addBevelCorner` takes a
+> shaft angle and per-member bores (asserted against the axes handed in)
+> and returns the one spec it cut; tick threads the setting sign through
+> `MW_CORNERS` from the cap end, so an odd corner count would enter the
+> drop at (−1)^N by construction; `PLATE_BEVEL_T_F` is exported (the
+> plate's presented face was being re-typed); and the two corner probes
+> carry a row for the fold corner that the next attempt will need. The
+> fold probe's first cut excluded the whole Keyless works unit as ground and
+> put K 0.45 u from the transfer arbor — the instruments skill's trap,
+> recorded in its header with the two refusals that followed it.
 
 ### Group C — arbors inside the movement (3 rows)
 

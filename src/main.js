@@ -5047,11 +5047,24 @@ keyless.add(settingRise);
 // the corner, back into each gear's own shaft body — a gear keyed to the end
 // of an arbor has its body trailing back along that arbor from the pitch
 // point, same as a real bevel gear.
-function addBevelCorner(point, axisIn, axisOut, tag) {
+// §234 step 3a fold — the corner takes its SHAFT ANGLE and its BORES from the
+// caller: the fold corner K is not a mitre (Σ = 180° − 2β, derived where K
+// is), and a gear keyed to a leg of radius SETTING_LEG_R is bored for THAT
+// rod, not for the 0.4 default a 0.382 drop happens to fit. Both defaults are
+// the two shipped corners' own values, so passing nothing builds what shipped.
+// The shaft angle is ASSERTED against the axes handed in — a Σ that disagrees
+// with the metal's own angle would cut a pair whose pitch cones do not roll on
+// the axes they are mounted on, and nothing downstream would notice.
+function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreIn, boreOut } = {}) {
+  {
+    const sigmaAxes = Math.acos(Math.min(1, Math.max(-1, axisIn.dot(axisOut)))) * 180 / Math.PI;
+    if (Math.abs(sigmaAxes - shaftAngleDeg) > 1e-6)
+      console.warn(`bevel corner ${tag}: shaft angle ${shaftAngleDeg.toFixed(4)}° disagrees with the axes' own ${sigmaAxes.toFixed(4)}°`);
+  }
   const mountIn = new THREE.Group();
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
-  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
+  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut });
   // §137: a transfer row names its members (§54's rule) — and TODO 136 put the
   // name on the MESHES too, because an intra-unit row's selector matches mesh
   // names and these had been riding index labels the keyless fold renumbered.
@@ -5061,7 +5074,7 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
-  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH });
+  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreOut, mateBoreR: boreIn });
   if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
   mountOut.add(gearOut);
 
@@ -5085,7 +5098,12 @@ function addBevelCorner(point, axisIn, axisOut, tag) {
   // keeps the index written ONCE: tick used to restate `BEVEL_PHASE` itself, so
   // the seed and the tick were two copies of one number and only one of them
   // would have carried this solve.
-  return { gearIn, gearOut, baseIn, baseOut };
+  // §234 — the ONE spec this corner was cut to, for a caller that sizes
+  // furniture against the blank (a plate bore, a cock's stand-off): the same
+  // arguments the two gears were built with, so it is the metal's, not a
+  // second guess (the alarm corner's ALARM_BEVEL_SPEC idiom, per corner).
+  const spec = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut, quiet: true });
+  return { gearIn, gearOut, baseIn, baseOut, spec };
 }
 
 const Z_UP = new THREE.Vector3(0, 0, 1);
@@ -5095,6 +5113,11 @@ const Z_UP = new THREE.Vector3(0, 0, 1);
 // a clearance recess bored at exactly this axis (see the plate build).
 const cornerDrop = addBevelCorner(settingA, Z_UP, settingU, 'mwCornerDrop');
 const cornerRise = addBevelCorner(settingB, settingU.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise');
+// The corner LIST is what tick threads the setting sign through, drop first,
+// and its length is the one source of the entry sign: the cap leaves the last
+// corner at +handSetOffset, so the drop enters at (−1)^N.
+const MW_CORNERS = [cornerDrop, cornerRise];
+const MW_FOLD_SENSE = (-1) ** MW_CORNERS.length;
 // §137 — the corners' transfer rows: the movement's TEMPLATE idiom, declared
 // first. Rotation through an angle earns a bevel pair; the ratio is 1:1
 // because the TOOTH COUNTS are equal (the counts stand in for the arms — an
@@ -13984,8 +14007,11 @@ const ALARM_CORNER_SENSE = -1;
 // The condition is the one probe-138-bevel-roll derives: one member presents a
 // TOOTH on the contact ray, the other a GAP. So each gear's spin is the ray's
 // azimuth READ IN ITS OWN MOUNT FRAME, less half a pitch for the member that
-// must gap. For a shaft angle of 90° the ray bisects the two axes, which is
-// why it is simply their normalised sum.
+// must gap. The ray bisects the two axes for ANY shaft angle when the counts
+// are equal (γ = Σ/2 each, the pitch cones meeting on the bisector), which is
+// why it is simply their normalised sum; an unequal pair at a non-mitre angle
+// would need γ_A here, and none exists yet (§234's fold probe cut one at
+// Σ ≈ 145–161° in measurement only — see that probe's header).
 function bevelCornerRay(axisA, axisB) {
   return axisA.clone().add(axisB).normalize();
 }
@@ -40812,18 +40838,30 @@ function tick(t) {
   settingBevel.rotation.z = settingBevelBase - settingWheelSpin;   // negated: its mount is turned through π (see the build)
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
   // Motion-works bevel corners: each meshing pair reverses sense (same as
-  // any two external gears meshing), so the sign flips at every corner —
-  // drop(+) → traverse(−) → rise(+), landing back on +handSetOffset for the
-  // rise/settingCap side since there are 2 corners.
+  // any two external gears meshing), so the sign flips at every corner. The
+  // chain is threaded FROM THE CAP END, because the cap is the member whose
+  // sense something else fixes — it meshes the minute wheel, which turns with
+  // the hands — so the last corner's outboard gear leaves at +handSetOffset
+  // and the sign alternates back to the drop: with N corners the drop's gear
+  // enters at (−1)^N · handSetOffset (`MW_FOLD_SENSE`, derived from the corner
+  // list's own length where the corners are built). Two corners entered at
+  // +; §234's fold made it three and the entry sign went −, which is the
+  // right way round for the drop's own arbor (minuteArborSpin and
+  // rawSetOffset carry opposite signs through the representational hop, so a
+  // three-corner run is the one the hop's sign agrees with).
   // TODO 140 — the BASE is the corner's solved index, not a bare half pitch.
   // `BEVEL_PHASE` used to be restated here, which made the build seed and this
   // line two copies of one quantity; the index is solved once in
   // `addBevelCorner` now and only the SPIN travels, exactly as the setting
   // wheel and its bevel do three lines above.
-  cornerDrop.gearIn.rotation.z = cornerDrop.baseIn + handSetOffset;
-  cornerDrop.gearOut.rotation.z = cornerDrop.baseOut - handSetOffset;
-  cornerRise.gearIn.rotation.z = cornerRise.baseIn - handSetOffset;
-  cornerRise.gearOut.rotation.z = cornerRise.baseOut + handSetOffset;
+  {
+    let s = MW_FOLD_SENSE;
+    for (const c of MW_CORNERS) {
+      c.gearIn.rotation.z = c.baseIn + s * handSetOffset;
+      c.gearOut.rotation.z = c.baseOut - s * handSetOffset;
+      s = -s;
+    }
+  }
   // Cap pinion at the dial end of the motion-works arbor: spins with the
   // same handSetOffset that actually drives the hands, so the part sitting
   // right beside the cannon pinion visibly turns in step with it — the

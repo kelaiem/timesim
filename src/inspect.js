@@ -9986,7 +9986,13 @@ export const TURN_WAIVERS = {
   // judged as separate, shorter bars — which is new mechanism (its own P0
   // transfer row, phase index, clearances), out of step 3a's scope; filed
   // as its own follow-up landing.
-  'Keyless works::settingTraverse': 'TODO 145 group B (§234 Landing 2 step 3a: SITE-limited, re-measured — reservePinion0 + rsvArbExt cap r at 0.48 even with Z_RSV and CAP_BEARING pushed to their own limits, under the ceiling\'s 0.687; closing it needs a new fold — an added bevel corner — filed as follow-up)',
+  // §234 Landing 6 — the fold was MEASURED, cut twice and refused twice (see
+  // TODO 145 group B and docs/BUILT.md §234 "Landing 6"): both derivable corner
+  // sites are boxed by metal the straight run threads between — the minute
+  // wheel's rim and the star pin the mitre at B to ≲ 9° of re-aim, and both
+  // rules need 17–19° there. The row stays, its fix now a position-space
+  // route (re-site B on CAP_BEARING, or retire the rod for a wheel train).
+  'Keyless works::settingTraverse': 'TODO 145 group B (§234 Landing 2 step 3a: SITE-limited — reservePinion0 + rsvArbExt cap one straight bar at 0.48 under the ceiling\'s 0.687; §234 Landing 6 MEASURED the fold and refused it on both sides — the mitre at B is pinned by the minute wheel\'s rim and the star; fix path is P3: re-site B via CAP_BEARING, or a wheel train in place of the rod)',
   // §234 step 3b — RETIRED. The entry filed this as a TRAIN change and it
   // was: TODO 138's two hard guards fired on the 8-tooth winding pinion at
   // stem-stock bore (no web left, both members), and 10 teeth is the

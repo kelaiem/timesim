@@ -5523,6 +5523,13 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 // same expression the builder swells the metal with, rather than copying
 // 0.008 and letting the two drift.
 export const PLATE_BEVEL_F = 0.008;
+// The plate extrude's bevel THICKNESS as a fraction of the plate's thickness —
+// the face the metal actually presents stands this far outside the authored
+// slab on both sides. Exported (§234) because the setting traverse's leg 1
+// derives its section from the base plate's presented back face, and a
+// figure read off one site and typed at another is the drift its boot guard
+// exists to catch.
+export const PLATE_BEVEL_T_F = 0.15;
 export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null }) {
   const bevelSize = radius * PLATE_BEVEL_F;
   const shape = new THREE.Shape();
@@ -5598,7 +5605,7 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: true,
-    bevelThickness: thickness * 0.15,
+    bevelThickness: thickness * PLATE_BEVEL_T_F,
     bevelSize,
     bevelSegments: 2,
     curveSegments: 72,

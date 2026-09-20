@@ -93,6 +93,13 @@ const out = await page.evaluate(async () => {
       drive: (f) => { C.setPose({ tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1,
         setPathRot: f * (C.setPathPerMinuteWheelRev || 0) });
         for (let k = 0; k < 40; k++) C.step(0.05); } },
+    // §234 fold — the third motion-works corner, an ANGULAR pair (Σ ≈ 150°,
+    // not a mitre); equal counts, so the swing ratio it must show is −1 like
+    // the two mitres either side of it.
+    { name: 'motion works, fold corner', a: 'mwCornerFoldIn', b: 'mwCornerFoldOut',
+      drive: (f) => { C.setPose({ tau: 0.05, crownPullT: 1, leverEngage: 0, tension: 1,
+        setPathRot: f * (C.setPathPerMinuteWheelRev || 0) });
+        for (let k = 0; k < 40; k++) C.step(0.05); } },
     { name: 'alarm SETTING, stem to disc', a: 'alarmStemBevel', b: 'alarmDiscBevel',
       drive: (f) => C.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,
         alarmCrownRotation: f * 2 * Math.PI, alarmOn: 1, alarmCrownPullT: 1 }) },
