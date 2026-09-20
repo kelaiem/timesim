@@ -27792,3 +27792,91 @@ evidence either way about a change; stash and re-run before believing it.
 glossary, horological terms linking outward — are unbuilt, and the outbound
 target is undecided. Both stay filed in the private roadmap under the same
 number.
+
+## §238 — The boot screen: the wait says what it is instead of showing black
+
+The movement is BUILT, not loaded. `main.js` cuts every part at module-
+evaluation time, which means that between the first byte of that module and the
+finished watch there is no frame, no paint and no event loop — one synchronous
+block. Measured on this repo's SwiftShader container
+(`tools/probe-238-boot-screen.mjs`), that block is **25–27 s** and the page's
+**first-contentful-paint landed at 31.7 s**; on a GPU it is a few seconds. For
+all of it the viewer looked at `#0b0d10`, with nothing to say whether the app
+was working, broken, or not there at all.
+
+**What shipped is a screen in `index.html` itself** — a ring, a headline and a
+delayed second line — and the reason it is in the document rather than in a
+module is that a module cannot be on the glass before the block it exists to
+cover. Four properties, and three of them are invisible to anyone reading the
+markup:
+
+1. **It is painted before the build starts.** The entry script yields a frame
+   — `requestAnimationFrame` twice — before it imports `main.js`. It USED to
+   work by accident: the module came off the network, and the browser happened
+   to paint during the fetch. Served from §79's worker cache it need not, and
+   "happened to" is not a guarantee. Measured: first-contentful-paint **88 ms**,
+   build block starts **131 ms** (it was 31 720 ms before).
+2. **It keeps moving while the main thread is dead.** Every animation on the
+   screen is on `transform` or `opacity` alone, which Chromium ticks on the
+   COMPOSITOR thread. Measured through a CDP screencast — which delivers
+   composited frames to the harness and so needs no main thread — **1546 of
+   1547 frames inside the block differ from the frame before**. This is the
+   claim a future edit is most likely to break in silence: animate the ring's
+   `width` instead of its `transform` and the screen freezes for 27 s while
+   still looking perfectly correct in a screenshot. Hence the probe.
+   The same reason decides the second line: it arrives on a 4 s ANIMATION
+   DELAY, not a `setTimeout`, because a timer would not fire until the build
+   had finished and the admission was no longer wanted.
+3. **It is in the reader's language, in time to be read.** The strings are
+   authored in English in the markup, like every other string in this app, and
+   swapped by `i18n.js`'s table (§73 tier one) — in the entry script, BEFORE
+   the block, since afterwards there is no frame left to show a translation in.
+   Importing `i18n.js` there also settles `documentElement`'s `lang` and `dir`
+   in the same breath (that module writes both at import), so an Arabic reader
+   reads an RTL boot screen for the wait rather than one that flips at the end
+   of it. All twelve tables carry the four
+   strings.
+4. **It leaves, on the first PAINTED frame.** Not at the end of module
+   evaluation: that moment has the scene built and nothing drawn, so retiring
+   there would hand the viewer one frame of the same black, arriving at the end
+   of the wait instead of the start. `frame()` has rendered by the time the
+   retire runs, so the fade and the movement's first pixels are one frame.
+   Measured: `#boot` gone **1041 ms** after `__clock`, and what it uncovered is
+   **33.8% ink** — the movement, against ~0.2% for the screen itself and ~0%
+   for an empty canvas.
+
+**The entry is now two stages, and that changed one thing worth knowing.**
+`<script type="module" src="./src/main.js">` became a static import of
+`i18n.js` and a dynamic `import('./src/main.js')` after the frame barrier. A
+dynamic import REJECTS where a script tag would have thrown, so TODO 30's
+diagnosis surface had to be kept by hand: the catch publishes
+`window.__bootError` when nothing else has, and rethrows on a timeout so the
+uncaught-error path — `pageerror`, the console, `battery-checks.mjs`'s
+"the build never finished booting" report — is exactly what it was. The catch
+also gives a dead build a face: the ring stops and the screen says the movement
+did not build, where a spinner turning over a corpse would be a claim that work
+is happening. Two `modulepreload` links put `main.js` and `three.module.js` on
+the wire at parse time, so the frame barrier costs a frame and not a round
+trip; and the `load` event no longer waits for `main.js`, which every probe in
+`tools/` already tolerated because they all wait on `__clock`.
+
+**The instrument.** `tools/probe-238-boot-screen.mjs` is an acceptance test
+over all four claims with both controls: a must-miss under
+`prefers-reduced-motion: reduce`, where `index.html` stops the ring on purpose
+and the same window must go still (it delivers **0 frames**, because a
+screencast delivers on change) — without it, a capture pathway that re-encoded
+an unchanging frame each tick would read as animation — and a must-hit that
+fails `main.js` on the wire and requires the failure state, `__bootError` and
+an uncaught error. It also records the fact that sent it to the screencast in
+the first place: `page.screenshot()` needs the page's main thread, so every
+attempt during the block times out after 30 s. It runs BY HAND — three cold
+boots, about 2.5 minutes — and is not gated: the battery already runs on every
+`index.html` change (that file is not on `paths-ignore`), and what it cannot
+see is exactly this screen, which is why the claims are written down in
+CLAUDE.md's trap list beside the probe that holds them. Landed at **8/8**.
+
+**What this does NOT do, stated plainly.** It does not make the build faster,
+and it does not report progress — it cannot, because the build is one
+uninterruptible block and a progress bar over it would be a fiction with no
+measurement behind it. The screen covers the symptom honestly; the cause is
+filed in the private roadmap as its own entry.
