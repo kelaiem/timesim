@@ -4871,13 +4871,18 @@ const SETTING_ROD_R = (Z_SETTING - RSV_P0_TOP_Z) - CLEAR_MARGIN; // 0.382, up fr
 const RSV_ARB_EXT_R = 0.55;                                                              // rsvArbExt's radius — its build reads this
 const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
 const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                           // 0.55
-// The Yoke's bound on leg 1's swing toward the barrel's side of the run, in
-// degrees: the LARGEST swing whose first 12 u at MW_LEG1_R clear the Yoke's
-// prong post (5.5 u from A) over the whole pose net (it moves with
-// crownPullT). MEASURED by tools/probe-234-traverse-fold.mjs — its α scan at
-// 0.25°: 12.25° reads 0.55 exactly, 12.50° reads 0.5466 — carried on the
+// The Yoke's bound on leg 1, as the world HEADING of leg 1's direction from
+// A (degrees, atan2 in the movement's XY): the heading closest to the
+// barrel's side whose first 12 u at MW_LEG1_R clear the Yoke's prong post
+// (5.5 u from A) over the whole pose net (it moves with crownPullT). A
+// heading, not a swing off the run, because the Yoke stands where it stands
+// while the run's direction follows B — B rides a solved bearing (CAP_BEARING
+// below, since §234 solved jointly with the reserve's swing), and the first
+// cut recorded the bound as a swing and had to re-measure it every time B
+// moved. MEASURED by tools/probe-234-traverse-fold.mjs (its α scan at 0.25°,
+// printed as the heading of the last clearing ray) and carried on the
 // RSV_P0_TOP_Z idiom; the battery's Yoke ⇄ Keyless works sweep is the gate.
-const MW_FOLD_ALPHA_MEASURED_DEG = 12.25;
+const MW_FOLD_LEG1_HEADING_DEG = -46.96;
 // (§234 Landing 2 step 3a measured that no SECTION closes the straight run —
 // the ceiling wanted r 0.687 in a 1.38 u window, and moving Z_RSV, swinging
 // CAP_BEARING, shrinking the corner and necking the rod were each tried and
@@ -4992,21 +4997,23 @@ const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborX
 // swing is the Yoke's measured bound; leg 2's swing is the least that passes
 // the barrel-arbor column on its near side; K is where those rays meet.
 const MW_LEG2_R = SETTING_ROD_R;                                                       // 0.382 — over reservePinion0, the same pinch
-const MW_FOLD_ALPHA_DEG = MW_FOLD_ALPHA_MEASURED_DEG;                                  // the Yoke's bound on leg 1's swing, measured (see the constant)
 function solveSettingFold(B) {
   const u = B.clone().sub(settingA).normalize();                 // A→B, the straight run's direction
   const n = new THREE.Vector3(-u.y, u.x, 0);                     // its left normal
   const bar = new THREE.Vector3(P.barrel.x - settingA.x, P.barrel.y - settingA.y, 0);
   const side = bar.dot(n) >= 0 ? 1 : -1;                         // the barrel's side of the run — K swings there
+  // leg 1's swing off THIS run is the measured heading less the run's own,
+  // taken toward the barrel's side (a CCW swing for side +1, CW for −1)
+  const alphaDeg = side * (MW_FOLD_LEG1_HEADING_DEG - Math.atan2(u.y, u.x) / DEG2RAD);
   const dB = Math.hypot(P.barrel.x - B.x, P.barrel.y - B.y);
   const BA = u.clone().negate();
   const toBar = new THREE.Vector3(P.barrel.x - B.x, P.barrel.y - B.y, 0).normalize();
   const phi = Math.acos(Math.min(1, Math.max(-1, BA.dot(toBar))));
   const needCol = RSV_ARB_EXT_R + MW_LEG2_R + CLEAR_MARGIN;
   const beta2 = phi + Math.asin(needCol / dB);
-  const alpha = MW_FOLD_ALPHA_DEG * DEG2RAD;
+  const alpha = alphaDeg * DEG2RAD;
   const rot = (v, ang) => new THREE.Vector3(v.x * Math.cos(ang) - v.y * Math.sin(ang), v.x * Math.sin(ang) + v.y * Math.cos(ang), 0);
-  const d1 = rot(u, side * alpha);                                // leg 1's direction from A
+  const d1 = rot(u, side * alpha);                                // leg 1's direction from A — the measured heading, by construction
   // BA's left normal is −n (BA = −u), so tilting leg 2 toward the barrel's
   // side is a rotation by −side·β2 — the sign the boot guard at the build
   // caught the first time this was written the other way (K landed behind A).
@@ -5018,7 +5025,7 @@ function solveSettingFold(B) {
   const leg1U = K.clone().sub(settingA).normalize(), leg2U = B.clone().sub(K).normalize();
   const deflection = alpha + beta2;
   const shaftAngleDeg = 180 - deflection / DEG2RAD;
-  return { K, leg1U, leg2U, side, phi, beta2, alpha, shaftAngleDeg, needCol,
+  return { K, leg1U, leg2U, side, phi, beta2, alpha, alphaDeg, shaftAngleDeg, needCol,
     len1: settingA.distanceTo(K), len2: K.distanceTo(B) };
 }
 const CAP_BEARING = (() => {
@@ -5084,11 +5091,14 @@ const CAP_BEARING = (() => {
   // for a wheel), so it is conservative; the reserve's own vertex solve, which
   // runs after the keyless works are cut, is the measurement that confirms it
   // and warns if it cannot. The two solves stay acyclic: this asks closed-form
-  // questions only, the reserve's reads the metal. And the correction is
-  // SMALL by construction (the scan starts at stage 1's answer), because the
-  // Yoke bound on leg 1's swing (MW_FOLD_ALPHA_MEASURED_DEG) was measured for
-  // the run as stage 1 lays it — a bearing far from stage 1's would need that
-  // bound re-measured, which is why stage 1 is kept rather than folded in.
+  // questions only, the reserve's reads the metal. Stage 1 is kept rather
+  // than folded in so the correction is the SMALLEST departure from the
+  // bearing the reserve pair alone would have chosen (§136's answer), not a
+  // fresh scan from the short way in — the first cut of this clause scanned
+  // from 0 and put B at the short way in, whose fold corner lands 1.2 u from
+  // the transfer arbor. The Yoke bound is a world heading
+  // (MW_FOLD_LEG1_HEADING_DEG), so leg 1 keeps its measured ray at whatever
+  // bearing this returns.
   const w1Tip = G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 });
   const capTip = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [MW_MINUTE_TEETH], thickness: 1.6 });
   const arbor = { x: uWind.x * cwDist, y: uWind.y * cwDist };   // the winding transfer arbor's axis (BACK_PLATE_HOLES' first bore)
@@ -5145,9 +5155,9 @@ const settingU = settingB.clone().sub(settingA).normalize();   // the STRAIGHT r
 //
 //   leg 1, A→K:  MW_LEG1_R = (plate back face − Z_SETTING) − CLEAR_MARGIN
 //                (0.55 — the plate's back face is its only wall once it no
-//                longer runs under the barrel). Swung toward the barrel's side
-//                of the run by MW_FOLD_ALPHA — the LARGEST swing whose first
-//                run clears the YOKE, which stands on that side 4–6 u from A
+//                longer runs under the barrel). Laid on the measured HEADING
+//                MW_FOLD_LEG1_HEADING_DEG — the direction closest to the
+//                barrel's side whose first run clears the YOKE, which stands on that side 4–6 u from A
 //                and moves with crownPullT. Largest because |AK| shrinks as
 //                the swing grows, and the equal-margin split (sin α =
 //                sin β2 · LEG2_R/LEG1_R, 13.1°) lies beyond what the Yoke
@@ -5192,6 +5202,9 @@ const settingU = settingB.clone().sub(settingA).normalize();   // the STRAIGHT r
 // the same answer.
 const MW_FOLD = solveSettingFold(settingB);
 {
+  if (!(MW_FOLD.alphaDeg > 0 && MW_FOLD.alphaDeg < 30))
+    console.warn(`§234 fold: leg 1's swing off the run reads ${MW_FOLD.alphaDeg.toFixed(3)}° — the measured heading `
+      + `MW_FOLD_LEG1_HEADING_DEG ${MW_FOLD_LEG1_HEADING_DEG} no longer lies on the barrel's side of the run B gives (re-measure it)`);
   // the column bound, re-read off the result: a figure computed two ways
   const missCol = Math.abs((P.barrel.x - MW_FOLD.K.x) * -MW_FOLD.leg2U.y + (P.barrel.y - MW_FOLD.K.y) * MW_FOLD.leg2U.x);
   if (Math.abs(missCol - MW_FOLD.needCol) > 1e-9)

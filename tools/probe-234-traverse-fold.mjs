@@ -126,6 +126,11 @@ const ALPHA_MAX = +(process.env.ALPHA_MAX || 30);
 const ALPHA_MIN = +(process.env.ALPHA_MIN || 0);
 const ALPHA_STEP = +(process.env.ALPHA_STEP || 1);
 const ALPHA_FIXED = process.env.ALPHA_FIXED != null ? +process.env.ALPHA_FIXED : null;   // skip the scan and walk the fold at this α (re-runs after a scan)
+// LEG1_HEADING — the Yoke bound as leg 1's WORLD heading in degrees (the form
+// main.js carries, MW_FOLD_LEG1_HEADING_DEG): the probe converts it to a swing
+// off the current run and walks the fold there, so the same constant measures
+// the same ray whatever bearing B rides. The α scan prints each ray's heading.
+const LEG1_HEADING = process.env.LEG1_HEADING != null ? +process.env.LEG1_HEADING : null;
 // KRULE — which derivation of K is walked in pass 2:
 //   'plus'  — the barrel's side: leg 1 at the Yoke's measured bound, leg 2 on
 //             the column's near-side ray (cut 3 above). MEASURED REFUSED on the
@@ -153,7 +158,7 @@ await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load', time
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
 const bootWarns = warns.length;
 
-const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED, KRULE }) => {
+const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED, KRULE, LEG1_HEADING }) => {
   const THREE = await import('./vendor/three.module.js');
   const I = await import('./src/inspect.js');
   const G = await import('./src/geometry.js');
@@ -362,12 +367,15 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
   const worstFree = (set) => set.rows.reduce((a, b) => (b.gap < a.gap ? b : a), set.rows[0]);
   // PASS 1 — the control run and the α scan
   const pass1 = [addSet('lineAB', segPts(A, B), { kind: 'control', from: 'A', to: 'B', r: rodRef })];
-  const alphas = []; if (KRULE === 'arbor') { /* no Yoke scan: that side's bound is the arbor, closed form */ } else if (ALPHA_FIXED == null) { for (let a = ALPHA_MIN; a <= ALPHA_MAX + 1e-9; a += ALPHA_STEP) alphas.push(+a.toFixed(3)); } else alphas.push(ALPHA_FIXED);
+  const runHeadingDeg = Math.atan2(u.y, u.x) * 180 / Math.PI;
+  const headingOf = (a) => runHeadingDeg + side * a;                                   // a ray's world heading from its swing off the run
+  const alphaFixed = LEG1_HEADING != null ? side * (LEG1_HEADING - runHeadingDeg) : ALPHA_FIXED;
+  const alphas = []; if (KRULE === 'arbor') { /* no Yoke scan: that side's bound is the arbor, closed form */ } else if (alphaFixed == null) { for (let a = ALPHA_MIN; a <= ALPHA_MAX + 1e-9; a += ALPHA_STEP) alphas.push(+a.toFixed(3)); } else alphas.push(+alphaFixed.toFixed(4));
   for (const a of alphas) { const d = leg1DirAt(a * Math.PI / 180); pass1.push(addSet(`alpha:${a}`, segPts(A, A.clone().addScaledVector(d, ALPHA_RUN)), { kind: 'alpha', alphaDeg: a, r: LEG1_R })); }
   walk(pass1);
   let alphaMax = null;
   for (const a of alphas) if (freeOf(worstFree(sets[`alpha:${a}`]).gap) >= LEG1_R - 1e-4) alphaMax = a;
-  if (ALPHA_FIXED != null && alphaMax == null) throw new Error(`ALPHA_FIXED ${ALPHA_FIXED}° does not clear the Yoke at LEG1_R — re-run the scan`);
+  if (alphaFixed != null && alphaMax == null) throw new Error(`the fixed swing ${alphaFixed.toFixed(3)}° (heading ${LEG1_HEADING ?? '—'}) does not clear the Yoke at LEG1_R — re-run the scan`);
   // PASS 2 — the fold at α_max: both legs and the four blanks
   // the blank on its own cone: spherical cap of radius coneR out to θ_tip (3 rings × 16), plus the small-end tip ring at coneRi
   const blankPts = (c, ax, sp) => { const a = ax.clone().normalize(); const t1 = Math.abs(a.z) < 0.9 ? new THREE.Vector3(0, 0, 1).cross(a).normalize() : new THREE.Vector3(1, 0, 0).cross(a).normalize(); const t2 = a.clone().cross(t1).normalize(); const thTip = Math.asin(Math.min(1, sp.tipR / sp.coneR)); const pts = []; const ring = (rho, th) => { for (let k = 0; k < 16; k++) { const ph = (k / 16) * 2 * Math.PI; pts.push(c.clone().addScaledVector(a, rho * Math.cos(th)).addScaledVector(t1, rho * Math.sin(th) * Math.cos(ph)).addScaledVector(t2, rho * Math.sin(th) * Math.sin(ph))); } }; for (let r = 1; r <= 3; r++) ring(sp.coneR, thTip * r / 3); ring(sp.coneR - sp.faceW, thTip); return pts; };
@@ -401,14 +409,14 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
     out[k] = { meta: s.meta, rows: s.rows.map((r) => ({ i: r.i, p: r.p, freeR: free(r.gap), owner: r.owner, poseIdx: r.poseIdx, dir: r.dir, below: { freeR: free(r.below.gap), owner: r.below.owner }, above: { freeR: free(r.above.gap), owner: r.above.owner }, plan: { freeR: free(r.plan.gap), owner: r.plan.owner } })) };
   }
   return {
-    inputs: { A: A.toArray(), B: B.toArray(), Lab, rodR: rodRef, folded: !tr, rsvInfo, plateBack, LEG1_R, LEG2_R, leg2OverP0, barrel, p0Tip, p0Top, extR, needCol, dB, phiDeg: phi * 180 / Math.PI, along, across, side, tArbXY: [tArbXY.x, tArbXY.y], tArbR, arbAlong, arbAcross, needArb, alphaEqualDeg, beta2Deg: beta2 * 180 / Math.PI, CLEAR_MARGIN, TURN_LD_MAX, TURN_LD_TARGET, shippedPitchR, spec90: { tipR: spec90.tipR, coneR: spec90.coneR, faceW: spec90.faceW }, poseCount: poses.length, alphas, ALPHA_RUN },
+    inputs: { A: A.toArray(), B: B.toArray(), Lab, rodR: rodRef, folded: !tr, rsvInfo, runHeadingDeg, headings: Object.fromEntries(alphas.map((a) => [a, headingOf(a)])), plateBack, LEG1_R, LEG2_R, leg2OverP0, barrel, p0Tip, p0Top, extR, needCol, dB, phiDeg: phi * 180 / Math.PI, along, across, side, tArbXY: [tArbXY.x, tArbXY.y], tArbR, arbAlong, arbAcross, needArb, alphaEqualDeg, beta2Deg: beta2 * 180 / Math.PI, CLEAR_MARGIN, TURN_LD_MAX, TURN_LD_TARGET, shippedPitchR, spec90: { tipR: spec90.tipR, coneR: spec90.coneR, faceW: spec90.faceW }, poseCount: poses.length, alphas, ALPHA_RUN },
     folds: Object.fromEntries(alphas.map((a) => [a, { ...foldFor(a), K3: undefined, leg1: undefined, leg2: undefined }])),
     alphaMax, KRULE,
     arbor: Fa ? { ...Fa, K3: undefined, leg1: undefined, leg2: undefined } : null,
     mirror,
     sets: out,
   };
-}, { STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED, KRULE });
+}, { STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA_MAX, ALPHA_STEP, ALPHA_FIXED, KRULE, LEG1_HEADING });
 
 const f4 = (x) => (x == null ? '—' : (+x).toFixed(4));
 const inp = R.inputs;
@@ -437,14 +445,15 @@ const okA = ctl.worst.freeR != null && Math.abs(ctl.worst.freeR - inp.rodR) < 0.
 console.log(`CONTROL (a) reproduces the pinch (worst ${ctl.worst.freeR} ≈ shipped r ${f4(inp.rodR)}) and the plate cap (above ${ctl.wa.above.freeR} ≈ LEG1_R ${f4(inp.LEG1_R)}): ${okA ? 'PASS' : 'FAIL — the walker is not seeing what probe-234-shaft-body-corridor saw'}`);
 console.log('');
 console.log(`THE α SCAN — leg 1's first ${inp.ALPHA_RUN} u at LEG1_R ${f4(inp.LEG1_R)}, worst station per angle over ${inp.poseCount} poses`);
-console.log('   α°     worst    at u    owner                                      dir   | fold at this α: legs, L/D, Σ');
+console.log(`  run heading ${inp.runHeadingDeg.toFixed(3)}° (A→B, world); a ray's heading = run + side·α`);
+console.log('   α°   heading°   worst    at u    owner                                      dir   | fold at this α: legs, L/D, Σ');
 const alphaMax = R.alphaMax;
 for (const a of inp.alphas) {
   const w = worstOf(`alpha:${a}`, (x) => x.freeR); const F = R.folds[a];
   const ok = w.freeR >= inp.LEG1_R - 1e-4;
-  console.log(`  ${String(a).padStart(5)}  ${String(w.freeR).padStart(7)}  ${(w.i * STEP).toFixed(1).padStart(5)}  ${String(w.owner).padEnd(42)} ${String(w.dir).padEnd(4)} ${ok ? 'ok ' : 'HIT'} | ${f4(F.legLen1)} / ${f4(F.legLen2)}  L/D ${F.ld1.toFixed(2)} / ${F.ld2.toFixed(2)}  Σ ${F.sigmaDeg.toFixed(2)}°`);
+  console.log(`  ${String(a).padStart(5)}  ${inp.headings[a].toFixed(3).padStart(8)}  ${String(w.freeR).padStart(7)}  ${(w.i * STEP).toFixed(1).padStart(5)}  ${String(w.owner).padEnd(42)} ${String(w.dir).padEnd(4)} ${ok ? 'ok ' : 'HIT'} | ${f4(F.legLen1)} / ${f4(F.legLen2)}  L/D ${F.ld1.toFixed(2)} / ${F.ld2.toFixed(2)}  Σ ${F.sigmaDeg.toFixed(2)}°`);
 }
-console.log(`  α_max (largest clearing angle in the scan): ${alphaMax == null ? 'NONE' : alphaMax + '°'}  — monotone? ${inp.alphas.filter((a) => a <= (alphaMax ?? -1)).every((a) => worstOf(`alpha:${a}`, (x) => x.freeR).freeR >= inp.LEG1_R - 1e-4) ? 'yes' : 'NO — read the table'}`);
+console.log(`  α_max (largest clearing angle in the scan): ${alphaMax == null ? 'NONE' : alphaMax + '° — heading ' + inp.headings[alphaMax].toFixed(3) + '° (the constant main.js carries as MW_FOLD_LEG1_HEADING_DEG)'}  — monotone? ${inp.alphas.filter((a) => a <= (alphaMax ?? -1)).every((a) => worstOf(`alpha:${a}`, (x) => x.freeR).freeR >= inp.LEG1_R - 1e-4) ? 'yes' : 'NO — read the table'}`);
 console.log('');
 if (R.KRULE === 'arbor') {
   const F = R.arbor;
