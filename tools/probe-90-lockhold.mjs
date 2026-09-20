@@ -120,7 +120,7 @@ const out = await p.evaluate(async () => {
   }
 
   // CONTROL 2, must-miss — a body on the other side of the movement.
-  const far = find('chainRun') || find('fuseeTopShaft');
+  const far = find('chainRun') || find('fuseeTopArbor');
   let ctlMiss = null, ctlMissName = null;
   if (far) {
     clock.setPose({ tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1,

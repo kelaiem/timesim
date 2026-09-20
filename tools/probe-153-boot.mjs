@@ -23,7 +23,7 @@ const out = await p.evaluate(() => {
   const scene = c.scene;
   let hand = null, arbor = null, floor = null;
   scene.traverse((o) => {
-    if (o.name === 'reserveShaft') hand = o.parent.parent; // shaft → burRod group → hand group
+    if (o.name === 'reserveBody') hand = o.parent.parent; // body → burRod group → hand group
     if (o.name === 'rsvHandArbor') arbor = o;
     if (o.name === 'reserveSubdialFace') floor = o;
   });
@@ -33,16 +33,16 @@ const out = await p.evaluate(() => {
   const angles = {};
   for (const t of [0, 0.5, 1]) {
     c.setPose({ tension: t });
-    // hand group: find by traversing for the group whose child mesh is reserveShaft
+    // hand group: find by traversing for the group whose child mesh is reserveBody
     let g = null;
-    scene.traverse((o) => { if (o.name === 'reserveShaft') g = o.parent.parent; });
+    scene.traverse((o) => { if (o.name === 'reserveBody') g = o.parent.parent; });
     // local rotation.z of the hand group; front math angle = 90 + rot(deg)
     angles[t] = 90 + (g.rotation.z * 180 / Math.PI);
   }
   // world planes
   scene.updateMatrixWorld(true);
   let g = null;
-  scene.traverse((o) => { if (o.name === 'reserveShaft') g = o.parent.parent; });
+  scene.traverse((o) => { if (o.name === 'reserveBody') g = o.parent.parent; });
   const hv = new g.position.constructor();
   g.getWorldPosition(hv);
   const fz = (() => { // sector floor world z (its geometry is baked at dial coords, mesh at origin of dial group)

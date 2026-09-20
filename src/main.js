@@ -1378,7 +1378,7 @@ const pinImpulseSweepRad = (AMPLITUDE_VISUAL_DEG * DEG2RAD) * Math.sin(Math.PI *
 // and both parts reciprocate under the §105 confirm tier's 4× re-sampling.
 declareRestoring('Fusee & great wheel', '*', 'two-way',
   'mainspring drives it while running; the keyless works drives it the other way while winding — the wind axis performs both strokes');
-declareRestoring('Power reserve', 'reserveShaft', 'two-way',
+declareRestoring('Power reserve', 'reserveBody', 'two-way',
   'the slip-coupled arbor is driven up by winding and down by running — both directions are driven, and both are now swept');
 // The wind axis's first FIND, minutes after it existed: the reserve TRAIN —
 // the gearing between the slip-coupled arbor and the hand — entered the §48
@@ -3386,12 +3386,12 @@ addUpperPivot(escapeArbor, { chaton: true });
 // power is safely released at the bench. A winding arbor runs in a plain
 // bushed bore, not a jewel — and no jewel could pass the square anyway.
 {
-  // NAMED (TODO 53's landing): the windTop continuation abuts this staff at
+  // NAMED (TODO 53's landing): the windTop continuation abuts this pivot at
   // the plate's mid-plane, and the joint is declared in
   // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
   // coincidence and became a joint.
   const staff = addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
-  if (staff) staff.name = 'fuseeUpperStaff';
+  if (staff) staff.name = 'fuseeUpperPivot';
 }
 // Square across-corners = staff diameter (0.5·2), so the filed square
 // passes the plate's own bore without opening it.
@@ -3413,7 +3413,7 @@ const windTop = new THREE.Group();
   // precedent.
   const weld = STOCK_MIN_U / 2;
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, TQ_TOP_Z - TQ_MID_Z + weld, 12), MATS.steel);
-  shaft.name = 'fuseeTopShaft';
+  shaft.name = 'fuseeTopArbor';
   shaft.rotation.x = Math.PI / 2;
   shaft.position.z = (TQ_MID_Z - weld + TQ_TOP_Z) / 2 - L_BARREL;
   windTop.add(shaft);
@@ -8396,7 +8396,7 @@ const setupWork = new THREE.Group();
   az.add(arbor);
   const staff = new THREE.Mesh(
     new THREE.CylinderGeometry(0.6, 0.6, arborBotZ - PIVOT_SEAT_Z, 12), MATS.steel);
-  staff.name = 'mainspringDrumStaff';
+  staff.name = 'mainspringDrumPivot';
   staff.rotation.x = Math.PI / 2;
   staff.position.z = (arborBotZ + PIVOT_SEAT_Z) / 2;
   az.add(staff);
