@@ -694,7 +694,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 219 measuring scripts and this file names 14. The rest are named for the
+`tools/` holds 228 measuring scripts and this file names 15. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -711,8 +711,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **115 of
-them are ACCEPTANCE tests** that exit non-zero, and **104 are REPORTS** that
+The index also carries the split that decides how to read a result: **122 of
+them are ACCEPTANCE tests** that exit non-zero, and **106 are REPORTS** that
 print and leave the judgement to you. A report saying `0 violations` has not
 passed anything.
 
@@ -923,6 +923,24 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   a face the instruments READ**: cap every body, including the faces buried
   inside a joint, and look for cheap geometry somewhere that isn't load
   bearing for a check.
+- **BOOT IS ONE SYNCHRONOUS BLOCK, and only the compositor can cover it.**
+  Every part is cut during `main.js`'s module evaluation, so between that
+  module's first byte and the finished watch there is no frame, no paint and no
+  event loop — measured on the SwiftShader container, 25–27 s. §238's boot
+  screen therefore lives in `index.html` (a module cannot be on the glass
+  before the block it covers), the entry script yields a frame before it
+  imports `main.js`, and **every animation on that screen is on `transform` or
+  `opacity` alone** — which Chromium ticks on the compositor thread while the
+  main thread is dead. Animate a `width` or a `left` there and the screen
+  freezes for the whole build while still looking perfectly correct in a
+  screenshot; for the same reason the delayed second line rides an
+  `animation-delay` and never a `setTimeout`, which would not fire until the
+  wait was over. `tools/probe-238-boot-screen.mjs` holds all of it, and records
+  the trap that sent it to a CDP screencast: `page.screenshot()` needs the
+  page's main thread, so it TIMES OUT during the block. The entry being a
+  dynamic `import()` is also why the boot-failure surface is written by hand —
+  a rejection is not a throw, and `window.__bootError` (TODO 30) is what the
+  battery reads when a build dies.
 - **Metals are `metalness ≈ 1`** and render black without `scene.environment`
   (a procedural PMREM studio). Any new page needs the same.
 - **Camera preset tweens run ~0.9 s** and overwrite scripted camera writes

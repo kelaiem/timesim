@@ -394,6 +394,13 @@ const DE = {
   'mm, assuming your display is exactly 96 px/inch.': 'mm, sofern Ihr Display exakt 96 px/Zoll hat.',
   'Browsers cannot measure the screen they draw on, so this is a definition, not a measurement.': 'Browser können den Bildschirm, auf den sie zeichnen, nicht vermessen — dies ist eine Definition, keine Messung.',
   'Calibrate with a bank card to make it true.': 'Mit einer Bankkarte kalibrieren, damit es stimmt.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': 'Das Werk wird gebaut',
+  'Every part is cut from code — nothing is loaded from a file.': 'Jedes Teil wird aus Code geschnitten — nichts wird aus einer Datei geladen.',
+  'The movement did not build': 'Das Werk ließ sich nicht bauen',
+  'The browser console has the error.': 'Die Browser-Konsole nennt den Fehler.',
 };
 
 // Unit + group display names (German), keyed by the canonical MECH_GRAPH
@@ -700,6 +707,13 @@ const ZH = {
   'mm, assuming your display is exactly 96 px/inch.': '毫米，假设显示器恰为 96 px/英寸。',
   'Browsers cannot measure the screen they draw on, so this is a definition, not a measurement.': '浏览器无法测量它所绘制的屏幕，因此这是定义，不是测量。',
   'Calibrate with a bank card to make it true.': '用银行卡校准即可使其准确。',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': '正在构建机芯',
+  'Every part is cut from code — nothing is loaded from a file.': '每个零件都由代码切削而成，没有任何东西从文件加载。',
+  'The movement did not build': '机芯构建失败',
+  'The browser console has the error.': '错误信息在浏览器控制台中。',
 };
 
 Object.assign(ZH, {
@@ -1304,6 +1318,13 @@ const FR = {
   ['And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.']: 'Et le passif, dit tout haut : tout l’ensemble du réveil est taillé dans une matière de 0,015–0,10 mm contre un plancher de 0,12 mm — du quart à la moitié de l’épaisseur réelle. Le mouvement l’inscrit contre lui-même plutôt que de le cacher.',
   ['Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.']: 'Maintenant l’établi. « Reconfigurer » cercle neuf stations, et chaque anneau en est une que vous pouvez déplacer. Tirez-le : le plan se résout à nouveau sous le pointeur — il refuse une position où le rouage ne ferme pas, et nomme le mur qu’il a touché.',
   ['Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.']: '« Démarrage d’essai » construit votre candidat en arrière-plan et rapporte ce que disent ses vraies assertions structurelles, en une quinzaine de secondes. « Copier la vue » emporte désormais la conception, pas seulement la vue. Les anneaux sont à vous.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  ['Building the movement']: 'Construction du mouvement',
+  ['Every part is cut from code — nothing is loaded from a file.']: 'Chaque pièce est taillée par le code — rien n’est chargé depuis un fichier.',
+  ['The movement did not build']: 'Le mouvement n’a pas pu être construit',
+  ['The browser console has the error.']: 'La console du navigateur indique l’erreur.',
 };
 
 // ---------------------------------------------------------------------------
@@ -1772,6 +1793,13 @@ const JA = {
   ['And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.']: 'そして負債を声に出して：目覚まし機構一式は 0.015–0.10 mm の材から切られており、下限は 0.12 mm — 実寸の四分の一から半分です。機械はそれを隠さず、自らに対して記帳しています。',
   ['Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.']: 'さて作業台です。「再配置」は九つのステーションに輪をかけ、その輪はどれも動かせるものです。引いてみると、レイアウトはポインタの下で解き直されます — 輪列が閉じない配置は拒み、どの壁に当たったかを告げます。',
   ['Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.']: '「試験起動」はあなたの案を背後で組み立て、その本物の構造アサートが何と言うかを、およそ十五秒で報告します。「ビューをコピー」は今や視点だけでなく設計も運びます。輪はあなたのものです。',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  ['Building the movement']: 'ムーブメントを組み立てています',
+  ['Every part is cut from code — nothing is loaded from a file.']: 'すべての部品はコードから削り出されます。ファイルから読み込むものはありません。',
+  ['The movement did not build']: 'ムーブメントを組み立てられませんでした',
+  ['The browser console has the error.']: 'エラーはブラウザーのコンソールにあります。',
 };
 
 // ---------------------------------------------------------------------------
@@ -2239,6 +2267,13 @@ const ZH_HANT = {
   ['And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.']: '還有帳，說出口：整組鬧響機構是用 0.015–0.10 mm 的料切出來的，下限是 0.12 mm — 只有實際厚度的四分之一到二分之一。機芯把這筆記在自己頭上，而不是藏起來。',
   ['Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.']: '現在是工作檯。「重新配置」給九個工位各套上一個環，每個環都是你可以移動的工位。拖它，佈局就在指標底下重新求解 — 它會拒絕輪系無法閉合的位置，並告訴你撞到了哪一道牆。',
   ['Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.']: '「試跑啟動」在背景裡把你的方案建起來，用大約十五秒回報它真正的結構斷言怎麼說。「複製視圖」現在連設計一起帶走，不只是視角。這些環是你的。',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  ['Building the movement']: '正在建構機芯',
+  ['Every part is cut from code — nothing is loaded from a file.']: '每個零件都由程式碼切削而成，沒有任何東西從檔案載入。',
+  ['The movement did not build']: '機芯建構失敗',
+  ['The browser console has the error.']: '錯誤訊息在瀏覽器主控台中。',
 };
 
 // ---------------------------------------------------------------------------
@@ -2705,6 +2740,13 @@ const AR = {
   'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': 'وسجل الأمانة، بصوت عالٍ: مجمّع المنبه بأكمله مقطوع من خامة 0.015–0.10 مم مقابل حدّ أدنى 0.12 مم — أي ربع السُّمك الحقيقي إلى نصفه. الحركة تسجّل ذلك على نفسها بدل أن تخفيه.',
   'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': 'والآن طاولة العمل. إعادة التهيئة ترسم حلقات حول تسع محطات، وكل حلقة يمكنك تحريكها. اسحبها فيُعاد حلّ التخطيط تحت المؤشر — يرفض وضعية لا تستطيع سلسلة التروس إغلاقها، ويخبرك بأي جدار اصطدم.',
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': 'الإقلاع التجريبي يبني مرشَّحك في الخلفية ويبلّغ بما تقوله تحققاته البنيوية الحقيقية، في نحو خمس عشرة ثانية. نسخ العرض يحمل التصميم الآن، لا العرض فقط. الحلقات لك.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': 'يجري بناء الحركة',
+  'Every part is cut from code — nothing is loaded from a file.': 'كل قطعة تُقطع من الشيفرة — لا شيء يُحمَّل من ملف.',
+  'The movement did not build': 'تعذّر بناء الحركة',
+  'The browser console has the error.': 'وحدة تحكّم المتصفّح تعرض الخطأ.',
 };
 
 // ---------------------------------------------------------------------------
@@ -3162,6 +3204,13 @@ const ES = {
   'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': 'Y el libro de cuentas, en voz alta: todo el conjunto del despertador está cortado en espesores de 0,015–0,10 mm contra un mínimo de 0,12 mm — de un cuarto a la mitad del espesor real. El movimiento lo anota contra sí mismo en vez de esconderlo.',
   'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': 'Ahora el banco. «Reconfigurar» rodea nueve estaciones con anillos, y cada anillo es uno que puedes mover. Arrástralo y la disposición se resuelve de nuevo bajo el puntero — rechaza una pose que el rodaje no pueda cerrar, y te dice contra qué pared chocó.',
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': '«Arranque de prueba» construye tu candidato en segundo plano e informa de lo que dicen sus verdaderos asertos estructurales, en unos quince segundos. «Copiar vista» lleva ahora el diseño, no solo la vista. Los anillos son tuyos.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': 'Construyendo el movimiento',
+  'Every part is cut from code — nothing is loaded from a file.': 'Cada pieza se talla desde el código — no se carga nada de un archivo.',
+  'The movement did not build': 'El movimiento no se pudo construir',
+  'The browser console has the error.': 'La consola del navegador tiene el error.',
 };
 
 // ---------------------------------------------------------------------------
@@ -3616,6 +3665,13 @@ const KO = {
   'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': '그리고 장부를 소리 내어 읽자면: 알람 복합체 전체는 0.12 mm 하한에 대해 0.015–0.10 mm 소재 두께로 깎여 있습니다 — 실제 두께의 사분의 일에서 절반입니다. 무브먼트는 그것을 숨기지 않고 스스로에게 기록합니다.',
   'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': '이제 작업대입니다. 재구성은 아홉 개의 스테이션에 링을 두르고, 그 링은 하나하나 움직일 수 있는 것입니다. 끌면 배치가 포인터 아래에서 다시 풀립니다 — 윤열이 닫히지 않는 포즈는 거부하고, 어느 벽에 부딪혔는지 알려 줍니다.',
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': '시험 부팅은 후보안을 백그라운드에서 조립해, 실제 구조 어서트가 뭐라고 하는지 약 십오 초 만에 보고합니다. 뷰 복사는 이제 뷰만이 아니라 설계도 담아 갑니다. 링은 당신의 것입니다.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': '무브먼트를 만드는 중',
+  'Every part is cut from code — nothing is loaded from a file.': '모든 부품은 코드로 깎습니다 — 파일에서 불러오는 것은 없습니다.',
+  'The movement did not build': '무브먼트를 만들지 못했습니다',
+  'The browser console has the error.': '브라우저 콘솔에 오류가 있습니다.',
 };
 
 // ---------------------------------------------------------------------------
@@ -4071,6 +4127,13 @@ const RU = {
   'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': 'И реестр долгов вслух: весь комплекс будильника нарезан из материала 0,015–0,10 мм при нижнем пределе 0,12 мм — от четверти до половины настоящей толщины. Механизм записывает это против себя, а не прячет.',
   'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': 'Теперь верстак. «Перекомпоновка» обводит кольцом девять позиций, и каждое кольцо можно сдвинуть. Потяните его — и компоновка пересчитывается под указателем: она отвергает положение, при котором передача не замыкается, и говорит, в какую стену упёрлась.',
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': '«Пробный запуск» собирает ваш вариант в фоне и сообщает, что говорят его настоящие структурные проверки, примерно за пятнадцать секунд. «Копировать вид» теперь несёт с собой конструкцию, а не только вид. Кольца ваши.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': 'Сборка механизма',
+  'Every part is cut from code — nothing is loaded from a file.': 'Каждая деталь вырезается кодом — ничего не загружается из файла.',
+  'The movement did not build': 'Механизм не удалось собрать',
+  'The browser console has the error.': 'Ошибка записана в консоль браузера.',
 };
 
 // ---------------------------------------------------------------------------
@@ -4527,6 +4590,13 @@ const PT = {
   'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': 'E o livro-razão, em voz alta: todo o conjunto do despertador é cortado em espessuras de 0,015–0,10 mm contra um mínimo de 0,12 mm — de um quarto à metade da espessura real. O movimento registra isso contra si mesmo em vez de escondê-lo.',
   'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': 'Agora a bancada. «Reconfigurar» circunda nove estações com anéis, e cada anel é um que você pode mover. Arraste-o e o layout se resolve de novo sob o cursor — ele recusa uma pose que a rodagem não consegue fechar, e diz qual parede atingiu.',
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': '«Inicialização de teste» constrói seu candidato em segundo plano e relata o que dizem suas verdadeiras asserções estruturais, em cerca de quinze segundos. «Copiar vista» leva agora o design, não só a vista. Os anéis são seus.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': 'Construindo o movimento',
+  'Every part is cut from code — nothing is loaded from a file.': 'Cada peça é cortada a partir do código — nada é carregado de um arquivo.',
+  'The movement did not build': 'O movimento não foi construído',
+  'The browser console has the error.': 'O console do navegador tem o erro.',
 };
 
 // ---------------------------------------------------------------------------
@@ -4982,6 +5052,13 @@ const IT = {
   'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': 'E il registro, ad alta voce: l’intero complesso della sveglia è tagliato in spessori di 0,015–0,10 mm contro un minimo di 0,12 mm — da un quarto a metà dello spessore reale. Il movimento lo annota contro se stesso invece di nasconderlo.',
   'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': 'Ora il banco. «Riconfigura» cerchia nove stazioni, e ogni anello è uno che puoi muovere. Trascinalo e la disposizione si risolve di nuovo sotto il puntatore — rifiuta una posa che il ruotismo non può chiudere, e ti dice quale parete ha urtato.',
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': '«Avvio di prova» costruisce il tuo candidato in secondo piano e riferisce cosa dicono le sue vere asserzioni strutturali, in circa quindici secondi. «Copia vista» porta ora il progetto, non solo la vista. Gli anelli sono tuoi.',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': 'Costruzione del movimento',
+  'Every part is cut from code — nothing is loaded from a file.': 'Ogni componente è tagliato dal codice — nulla viene caricato da un file.',
+  'The movement did not build': 'Il movimento non è stato costruito',
+  'The browser console has the error.': 'La console del browser riporta l’errore.',
 };
 
 // §212 — HINDI (tier one). Same register as src/explain-i18n.hi.js: loanwords
@@ -5434,6 +5511,13 @@ const HI = {
   'And the ledger, out loud: the whole alarm complex is cut at 0.015–0.10 mm stock against a 0.12 mm floor — quarter to half real thickness. The movement files that against itself rather than hiding it.': 'और हिसाब, खुलकर: पूरा अलार्म समूह 0.015–0.10 मिमी स्टॉक पर काटा गया है, जबकि न्यूनतम सीमा 0.12 मिमी है — असली मोटाई का चौथाई से आधा। मूवमेंट इसे छिपाने के बजाय अपने ही खिलाफ दर्ज करता है।',
   'Now the workbench. Reconfigure rings nine stations, and each ring is one you can move. Drag it and the layout re-solves under the pointer — it refuses a pose the train cannot close, and tells you which wall it hit.': 'अब वर्कबेंच। रीकॉन्फ़िगर नौ स्टेशनों को घेरता है, और हर घेरा वह है जिसे आप हिला सकते हैं। उसे खींचें और लेआउट पॉइंटर के नीचे दोबारा हल हो जाता है — यह ऐसी स्थिति ठुकरा देता है जिसे ट्रेन बंद नहीं कर सकती, और बताता है कि वह किस दीवार से टकराया।',
   'Trial boot builds your candidate in the background and reports what its real structural asserts say, in about fifteen seconds. Copy view carries the design now, not just the view. The rings are yours.': 'ट्रायल बूट आपके उम्मीदवार को पृष्ठभूमि में बनाता है और लगभग पंद्रह सेकंड में बताता है कि उसके असली संरचनात्मक असर्ट क्या कहते हैं। कॉपी व्यू अब सिर्फ़ दृश्य नहीं, डिज़ाइन भी ले जाता है। घेरे आपके हैं।',
+  // -- §238 the boot screen. index.html paints it before any module is
+  //    evaluated and this table reaches it through the entry script's
+  //    localizeTree(), so the wait is in the reader's language too.
+  'Building the movement': 'मूवमेंट बनाया जा रहा है',
+  'Every part is cut from code — nothing is loaded from a file.': 'हर पुर्ज़ा कोड से काटा जाता है — कुछ भी फ़ाइल से लोड नहीं होता।',
+  'The movement did not build': 'मूवमेंट नहीं बन सका',
+  'The browser console has the error.': 'त्रुटि ब्राउज़र कंसोल में है।',
 };
 
 export const TABLES = { de: DE, fr: FR, es: ES, ko: KO, ru: RU, pt: PT, it: IT, hi: HI, ja: JA, zh: ZH, 'zh-Hant': ZH_HANT, ar: AR };

@@ -42486,6 +42486,31 @@ function advanceFrame(realDt) {
   renderer.render(scene, camera);
 }
 
+// §238 — THE BOOT SCREEN'S RETIRE, and it belongs to the first PAINTED FRAME
+// rather than to the end of this module. Those are different moments: module
+// evaluation ends with every part cut and nothing drawn yet, so dropping the
+// screen there would hand the viewer one frame of empty canvas — the same
+// black it exists to cover, arriving at the end of the wait instead of the
+// start. frame() has rendered by the time this runs, so the fade and the
+// movement's first pixels are in one frame.
+let bootScreen = document.getElementById('boot');
+function retireBootScreen() {
+  const el = bootScreen;
+  bootScreen = null;                     // one-shot: frame() runs 60×/s
+  if (!el) return;
+  el.classList.add('done');              // opacity only — index.html's rule
+  // And it LEAVES the DOM. It covers the viewport and carries aria-live, so a
+  // faded-but-present overlay would keep announcing itself to a screen reader
+  // and (before .done's pointer-events) would swallow every drag OrbitControls
+  // expects. transitionend is the normal path; the timeout is the one that has
+  // to exist, because a tab hidden through the whole fade fires no
+  // transitionend at all and "never removed" is not a failure mode this is
+  // allowed to have.
+  const drop = () => el.remove();
+  el.addEventListener('transitionend', drop, { once: true });
+  setTimeout(drop, 1200);
+}
+
 function frame(now) {
   const frameMs = now - lastNow;
   const realDt = Math.min(frameMs / 1000, REAL_DT_CLAMP);
@@ -42498,7 +42523,12 @@ function frame(now) {
   }
   autoTierUpdate(now); // §14: Auto quality steps down while frames sustained miss vsync
 
-  if (sweepHold === 0) advanceFrame(realDt); // sweep hold: geometry frozen, page alive
+  if (sweepHold === 0) {
+    advanceFrame(realDt);                   // sweep hold: geometry frozen, page alive
+    // §238 — INSIDE the render, not beside it: the screen is allowed to go
+    // only once a frame has actually been drawn under it.
+    if (bootScreen) retireBootScreen();
+  }
 
   // Paint the readout ~2×/s — touching the DOM every frame would itself cost
   // frames, which a frame-time readout of all things must not do.

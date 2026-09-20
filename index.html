@@ -12,7 +12,74 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0d10; }
   #app { position: fixed; inset: 0; }
   canvas { display: block; }
+
+  /* §238 — THE BOOT SCREEN, and why it lives in this document rather than in
+     a module. Building the movement is ONE synchronous block: main.js cuts
+     every part at module-evaluation time, so nothing — not a frame, not a
+     paint — happens between the first byte of that module and the finished
+     watch. Measured on a SwiftShader software-GL container (CI's path), that
+     is a 27.5 s long task and a first-contentful-paint at 31.7 s; on a GPU it
+     is a few seconds. Either way the viewer was looking at #0b0d10 for all of it.
+     Three properties this screen needs, and a module-built one cannot have:
+       · PAINTED BEFORE THE BLOCK — the entry script below yields a frame
+         before it imports main.js, so this is on glass whether the module
+         arrives from the network or from the §79 worker's cache.
+       · STILL MOVING DURING THE BLOCK — every animation here is on transform
+         or opacity alone, which Chromium ticks on the compositor thread. The
+         main thread is dead for the whole build; the screen is not. That is
+         also why `.boot-note` arrives by animation delay rather than by a
+         timer: a setTimeout would not fire until the build had finished and
+         the note was no longer wanted.
+       · UNABLE TO FAIL — no module, no font, no image, no network. If this
+         cannot render, nothing could.
+     The dark-on-dark palette is the HUD's (#0b0d10 ground, #eaf0f7 ink,
+     #8fa6bf muted), so the fade in §238's retire step reveals the scene
+     rather than crossing a colour. */
+  #boot {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; padding: 24px; box-sizing: border-box; text-align: center;
+    background: #0b0d10; color: #eaf0f7;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  /* The retire: opacity only, and `display` is never touched — a transition
+     the compositor can run, on the one frame where the scene's first pixels
+     land. main.js removes the element on transitionend. */
+  #boot.done { opacity: 0; transition: opacity 0.45s ease; pointer-events: none; }
+  #boot .boot-ring {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.12);
+    border-top-color: #7a3ad8;            /* the chrome's one accent */
+    animation: bootSpin 1.1s linear infinite;
+  }
+  #boot .boot-head { margin: 0; font-size: 15px; letter-spacing: 0.01em; }
+  /* The second line is an ADMISSION, so it arrives only once the wait has
+     become one: 4 s of delay, then a fade the compositor owns. */
+  #boot .boot-note {
+    margin: 0; max-width: 34ch; color: #8fa6bf; font-size: 13px;
+    opacity: 0; animation: bootNote 0.8s ease 4s both;
+  }
+  @keyframes bootSpin { to { transform: rotate(360deg); } }
+  @keyframes bootNote { from { opacity: 0; } to { opacity: 1; } }
+  /* The failure state (the entry script's catch): the ring stops — a spinner
+     over a dead build is a claim that work is happening — and the note stops
+     waiting for its 4 s, because at that point it carries the diagnosis. */
+  #boot.failed .boot-ring { animation: none; border-top-color: rgba(255,255,255,0.12); }
+  #boot.failed .boot-note { animation: none; opacity: 1; }
+  /* §72's tier, applied here: a viewer who has asked for less motion gets a
+     static ring and the note immediately, because with the spinner stopped
+     the note is the only thing left saying the page is alive. */
+  @media (prefers-reduced-motion: reduce) {
+    #boot .boot-ring { animation: none; }
+    #boot .boot-note { animation-delay: 0s; }
+  }
 </style>
+<!-- §238 — the entry script imports i18n.js first and main.js only after a
+     frame has been painted, which would otherwise serialize two fetches that
+     used to overlap. These preloads put the module graph on the wire at parse
+     time, so the paint barrier costs a frame and not a round trip. -->
+<link rel="modulepreload" href="./src/main.js" />
+<link rel="modulepreload" href="./vendor/three.module.js" />
 <script type="importmap">
 {
   "imports": {
@@ -24,6 +91,11 @@
 </head>
 <body>
 <div id="app"></div>
+<div id="boot" role="status" aria-live="polite">
+  <div class="boot-ring" aria-hidden="true"></div>
+  <p class="boot-head">Building the movement</p>
+  <p class="boot-note">Every part is cut from code — nothing is loaded from a file.</p>
+</div>
 <script>
   // §22 — the watch spec, read from the URL BEFORE any module loads. It must
   // be a plain pre-module script: layout.js derives F_BALANCE and the train
@@ -89,6 +161,62 @@
     if (Object.keys(s).length) globalThis.__WATCH_SPEC = s;
   })();
 </script>
-<script type="module" src="./src/main.js"></script>
+<script type="module">
+  // §238 — THE ENTRY, in two stages, because the boot screen makes two
+  // promises the old one-line <script src> could not keep.
+  //
+  // 1. IT IS IN THE READER'S LANGUAGE. The screen's strings are authored in
+  //    English in the markup above, exactly like every other string in this
+  //    app, and resolved at the display site by i18n.js's table (§73 tier
+  //    one). That import has to happen BEFORE the build blocks the thread —
+  //    afterwards there is no frame left to show a translation in. Importing
+  //    it here also settles documentElement's lang and dir in the same breath
+  //    (i18n.js writes both at import), so an Arabic reader reads an RTL boot
+  //    screen for the wait rather than one that flips at the end of it.
+  // 2. IT IS ON GLASS BEFORE THE BUILD STARTS. Module evaluation is one
+  //    synchronous block, so the LAST paint before it is the one the viewer
+  //    watches for the whole wait. The browser happened to paint in time
+  //    while main.js came off the network; served from the §79 worker's
+  //    cache it need not, and "happened to" is not a guarantee. So: yield
+  //    until a frame has actually been committed, THEN import.
+  //
+  // The rAF pair is the frame ("the callback ran, then the next one, so a
+  // paint went out between them"), and the timeout is its escape: a
+  // BACKGROUND TAB gets no animation frames at all, and a boot screen is not
+  // worth a watch that never builds. 250 ms is two orders of magnitude
+  // clear of a 60 Hz frame and invisible against a build measured in
+  // seconds. Whichever fires first wins; the loser is a no-op.
+  import { t, localizeTree } from './src/i18n.js';
+  // Guarded, and the guard is the point: everything below this line is the
+  // app, and the app must not fail to start because its loading screen is
+  // missing. A markup edit that loses #boot costs the screen, never the watch.
+  const boot = document.getElementById('boot');
+  if (boot) localizeTree(boot);
+  await new Promise((resolve) => {
+    let settled = false;
+    const go = () => { if (!settled) { settled = true; resolve(); } };
+    requestAnimationFrame(() => requestAnimationFrame(go));
+    setTimeout(go, 250);
+  });
+  import('./src/main.js').catch((err) => {
+    // A build that dies used to leave a black page; with a boot screen over
+    // it, it would leave a ring turning forever — a screen claiming work is
+    // happening when none is. Say what happened instead, and keep the
+    // failure loud for everything downstream: window.__bootError is the
+    // surface TODO 30 gave the battery (main.js publishes it for errors it
+    // is alive to see; a rejected import is the case it cannot), and the
+    // rethrow keeps the uncaught-error path — pageerror, the console —
+    // exactly as it was when this was a <script src>.
+    if (!window.__bootError) {
+      window.__bootError = { message: String((err && err.message) || err), stack: (err && err.stack) || null };
+    }
+    if (boot) {
+      boot.classList.add('failed');
+      boot.querySelector('.boot-head').textContent = t('The movement did not build');
+      boot.querySelector('.boot-note').textContent = t('The browser console has the error.');
+    }
+    setTimeout(() => { throw err; });
+  });
+</script>
 </body>
 </html>
