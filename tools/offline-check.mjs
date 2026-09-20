@@ -543,10 +543,23 @@ try {
   mark('two environments under one origin');
   const mctx = await browser.newContext();
   const mnoise = [];
+  // The `goto` carries an EXPLICIT budget, and it is the one wait in this
+  // function that used to inherit Playwright's 30 s default while its two
+  // neighbours below were given 60 s and 30 s. That asymmetry failed CI twice
+  // on `/b/` — never `/a/` — and the reason is in the timing line: this is a
+  // SECOND full instance booting in a context that already has one live, so it
+  // is the slowest boot the suite performs. Measured on the dev container,
+  // 18.5 s for /a/ and 19.6 s for /b/, which left 1.35x of headroom on a job
+  // whose own header records CI and this box differing by an order of
+  // magnitude in the direction nobody predicted. The row measures CACHE
+  // behaviour, not speed, so the budget is not a tolerance on any claim it
+  // makes; the timing is printed so the margin is visible rather than implied.
   const bootAt = async (path) => {
     const p = await mctx.newPage();
     wireNoise(p, mnoise);
-    await p.goto(`http://127.0.0.1:${multiPort}${path}index.html`, { waitUntil: 'load' });
+    const t0 = Date.now();
+    await p.goto(`http://127.0.0.1:${multiPort}${path}index.html`, { waitUntil: 'load', timeout: 60000 });
+    console.log(`  ${path} booted in ${((Date.now() - t0) / 1000).toFixed(1)}s (budget 60 s)`);
     await p.waitForFunction(() => !!window.__clock, null, { timeout: 60000 });
     await p.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 30000 });
     return p;
