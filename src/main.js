@@ -5154,6 +5154,12 @@ const CAP_BEARING = (() => {
     // a blank is cut for it: the first scan without this found its window at
     // a bearing where the corner had flattened to Σ 172°, two face gears.
     if (!(F.alphaDeg > 0 && F.alphaDeg < 30)) return { m: -Infinity, clause: `leg 1 swing ${F.alphaDeg.toFixed(1)}° off the run`, s: 0 };
+    // …and a bearing whose legs would exceed the turning target is not the
+    // fold this solve exists to house — the legs are what the fold is FOR.
+    // Without this the scan, refused near the short way in, walked out to a
+    // bearing whose leg 1 ran 28.6 u (L/D 26) and called that a window.
+    if (F.len1 > 2 * MW_LEG1_R * TURN_LD_TARGET || F.len2 > 2 * MW_LEG2_R * TURN_LD_TARGET)
+      return { m: -Infinity, clause: `legs ${F.len1.toFixed(1)} / ${F.len2.toFixed(1)} u over the turning target`, s: 0 };
     const mFold = foldModuleFor(F.shaftAngleDeg);
     const foldOut = ringsOf(F.shaftAngleDeg, MW_LEG2_R, MW_LEG1_R, mFold), foldIn = ringsOf(F.shaftAngleDeg, MW_LEG1_R, MW_LEG2_R, mFold);
     const kReach = Math.max(...foldOut.map(([r, z]) => Math.hypot(r, z)));
