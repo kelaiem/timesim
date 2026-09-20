@@ -164,6 +164,16 @@ export const SPEC = (() => {
   // KEYLESS_INPUTS passes no radius at all, so the station derives from
   // dialRadius · 0.39 and identity stays bit-exact.
   const rsvr = Number.isFinite(Number(raw.rsvr)) ? Number(raw.rsvr) : null;
+  // §237 — THE HAIRSPRING STUD'S RADIUS, which is also the cock's stud
+  // carrier arm: the two are one number by construction, because the stud has
+  // to sit where the terminal ends or it is not holding the spring. TODO 147
+  // made this a solve CONDITION rather than an output, so the handle is just
+  // that condition exposed. Like d4/rsvr/alarmr, NOT clamped here — the
+  // window is two physical facts that live in main.js with the metal (the
+  // post clearing the carrier's own ring root, and standing inboard of the
+  // outer coil), and main.js clamps against them and says so. null = as
+  // designed: HAIRSPRING_STUD_R derives from the coil pitch, bit-exact.
+  const studr = Number.isFinite(Number(raw.studr)) ? Number(raw.studr) : null;
   // §98 — THE ALARM CORNER'S RADIUS, §76's missing pin. The corner's
   // DEFAULT tracks the plate (alarmCornerR = dialRadius·0.39 since §94
   // tier B), so a grown balance grows the plate and carries the whole
@@ -211,7 +221,7 @@ export const SPEC = (() => {
     ? ((Number(raw.alarmGovAzDeg) % 360) + 360) % 360 : null;
   const alarmGovAnchorAzDeg = Number.isFinite(Number(raw.alarmGovAnchorAzDeg))
     ? ((Number(raw.alarmGovAnchorAzDeg) % 360) + 360) % 360 : null;
-  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr });
+  return Object.freeze({ vph, reserveHours, crownAzDeg, barrelStepDeg, escapeStepDeg, balanceStepDeg, alarmAzDeg, alarmModAzDeg, alarmBarrelAzDeg, alarmGovAzDeg, alarmGovAnchorAzDeg, stemAzDeg, d4, rsvr, alarmr, subdialr, dialr, studr });
 })();
 
 // §36 APPLY — THE ROUTE IS A DOCUMENT. Part three shipped routing as a SPEC:

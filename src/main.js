@@ -1552,9 +1552,42 @@ const HS_COIL_PITCH = (HS_OUTER_R - HS_INNER_R) / HS_COILS;
 // post's entire width inboard of the outer coil is the constraint, and it is
 // asserted below rather than assumed (pitch 0.8025 against the post's 0.65).
 const HAIRSPRING_STUD_POST = 0.65;         // the stud post's side, consumed again by the cock's carrier
-const HAIRSPRING_STUD_R = HS_OUTER_R - HS_COIL_PITCH;
+const HAIRSPRING_CARRIER_ROOT = 2.85;      // where the carrier's arm leaves its ring; the ring itself is 2.55–2.95, trimmed inside the shock head's half-width
+const HAIRSPRING_STUD_R_DEFAULT = HS_OUTER_R - HS_COIL_PITCH;
 if (HS_COIL_PITCH < HAIRSPRING_STUD_POST)
-  console.warn(`TODO 147: the spiral's coil pitch ${HS_COIL_PITCH.toFixed(4)} is under the stud post's ${HAIRSPRING_STUD_POST} — one coil step no longer carries the post inboard of the outer coil, so the stud radius below is not derived by the rule it cites.`);
+  console.warn(`TODO 147: the spiral's coil pitch ${HS_COIL_PITCH.toFixed(4)} is under the stud post's ${HAIRSPRING_STUD_POST} — one coil step no longer carries the post inboard of the outer coil, so the default stud radius is not derived by the rule it cites.`);
+// §237 — THE STUD'S RADIUS AS A HANDLE (?studr=), and with it the cock's
+// carrier arm: `yS` reads `termEndR`, so moving where the terminal lands IS
+// moving how far the arm reaches. TODO 147 made this a solve condition, so
+// the handle is that condition exposed rather than new machinery.
+//
+// The WINDOW is two physical facts, not a taste, and both are derived from
+// the post's own width because the post is what has to fit at each end:
+//   · inboard  — the post must clear the carrier's ring root, or the arm has
+//     no root left to leave from;
+//   · outboard — the post must stand wholly inside the outer coil, which is
+//     the Breguet condition TODO 147 landed and the whole point of the raise.
+// Clamped rather than refused, on `reserveHours`' precedent: the courtesy
+// that keeps a typo from tripping a boot assert. A clamp that BITES says so,
+// because a URL silently meaning something else is worse than a warning.
+//
+// Both ends are quoted at the URL'S OWN PRECISION — 4 dp, rounded INWARD.
+// `?studr=` is TEXT, so a bound carrying binary tail digits is a bound a
+// reader cannot type and a clamp that lands a hair off every row of the
+// panel's menu; measured, `?studr=2` held at 3.1750000000000003 and grew a
+// duplicate menu row reading the same 1.20 mm as the real one. Rounding
+// INWARD rather than to nearest is the direction the physics allows: a bound
+// quoted looser than the metal is a bound that does not hold.
+const studRQ = (r, dir) => (dir < 0 ? Math.floor(r * 1e4) : dir > 0 ? Math.ceil(r * 1e4) : Math.round(r * 1e4)) / 1e4;
+const HAIRSPRING_STUD_R_MIN = studRQ(HAIRSPRING_CARRIER_ROOT + HAIRSPRING_STUD_POST / 2, +1);
+const HAIRSPRING_STUD_R_MAX = studRQ(HS_OUTER_R - HAIRSPRING_STUD_POST / 2, -1);
+const HAIRSPRING_STUD_R = (() => {
+  if (SPEC.studr === null) return HAIRSPRING_STUD_R_DEFAULT;
+  const held = Math.min(HAIRSPRING_STUD_R_MAX, Math.max(HAIRSPRING_STUD_R_MIN, SPEC.studr));
+  if (Math.abs(held - SPEC.studr) > 1e-9)
+    console.warn(`§237: ?studr=${SPEC.studr} is outside the window the carrier and the outer coil leave — held at ${held.toFixed(4)} (${HAIRSPRING_STUD_R_MIN.toFixed(4)}–${HAIRSPRING_STUD_R_MAX.toFixed(4)}).`);
+  return held;
+})();
 const HAIRSPRING_PLAN = { innerR: HS_INNER_R, outerR: HS_OUTER_R, coils: HS_COILS,
   overcoil: { turns: 0.75, raise: HAIRSPRING_OVERCOIL_RAISE, kneeR: HS_INNER_R, studR: HAIRSPRING_STUD_R } };
 const OSC_K_TARGET = OSC_I.total * (2 * Math.PI * F_BALANCE) ** 2;
@@ -9454,8 +9487,8 @@ const balanceCock = G.makeCock({
     ring.position.z = 0.02;
     carrier.add(ring);
     const yS = hsUD.termEndR;                        // carrier-local stud centre
-    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.8, yS - 2.85, STOCK_MIN_U), MATS.steel); // TODO 12: floor stock
-    armC.position.set(0, (2.85 + yS) / 2, 0.13);
+    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.8, yS - HAIRSPRING_CARRIER_ROOT, STOCK_MIN_U), MATS.steel); // TODO 12: floor stock
+    armC.position.set(0, (HAIRSPRING_CARRIER_ROOT + yS) / 2, 0.13);
     carrier.add(armC);
     const boss = ringMesh(0.42, 1.0, STOCK_MIN_U, MATS.steel); // TODO 12: floor stock
     boss.position.set(0, yS, 0.01);
@@ -30389,6 +30422,7 @@ panel.innerHTML = `
       <div class="row label-small"><span>Fast-forward</span><button id="btn-ff">Off</button></div>
       <div class="row label-small"><span>Beat rate</span><select id="spec-vph"></select></div>
       <div class="row label-small"><span>Reserve spec</span><select id="spec-reserve"></select></div>
+      <div class="row label-small"><span>Stud radius</span><select id="spec-studr"></select></div>
       <div class="row label-small" id="spec-verdict" style="display:none; color:#e0a355;"><span></span></div>
       <div class="row label-small"><span>Spring torque</span><span class="tq"><i id="bar-spring"></i></span></div>
       <div class="row label-small"><span>Train torque</span><span class="tq"><i id="bar-train" class="flat"></i></span></div>
@@ -32168,15 +32202,23 @@ document.getElementById('btn-ff').addEventListener('click', () => {
 });
 updateCrownUI();
 
-// --- §22: the spec knobs — beat rate and reserve -----------------------------
-// RELOAD-TIER, deliberately (the §23 subdial-size precedent): both knobs
-// re-derive GEOMETRY — the train's fourth⇄escape counts, the fusee cone, the
-// solved layout downstream — and a movement that re-gears itself mid-run
-// would be a different watch wearing the same session. Changing either
+// --- §22: the spec knobs — beat rate, reserve, and the stud's radius ---------
+// RELOAD-TIER, deliberately (the §23 subdial-size precedent): every knob here
+// re-derives GEOMETRY — the train's fourth⇄escape counts, the fusee cone, the
+// solved layout downstream, and (§237) the hairspring's whole terminal solve —
+// and a movement that re-gears itself mid-run
+// would be a different watch wearing the same session. Changing any of them
 // rewrites the URL's §22 params and reloads; the pre-module script in
 // index.html reads them back into the spec before layout.js evaluates.
 // State (camera, wind, τ) survives via the §28 state layer, same as any
 // reload.
+//
+// §237 puts the stud beside the beat rate rather than in a section of its own
+// because what groups these rows is their TIER, not their topic: they are the
+// three things on this panel that reload the page, and they share the verdict
+// row underneath that reports whether the respun spec closes. Time is also
+// where it belongs on topic — the stud is the far end of the oscillator whose
+// near end is the beat rate, and the same solve cuts both.
 {
   const vphSel = document.getElementById('spec-vph');
   for (const r of SPEC_RATES) {
@@ -32201,15 +32243,65 @@ updateCrownUI();
     rsvSel.appendChild(o);
     rsvSel.value = String(SPEC.reserveHours);
   }
+  // §237 — THE STUD'S RADIUS. The menu is DERIVED, not a taste: the coil pitch
+  // is the spiral's own unit of radius, so the question a bench actually asks
+  // of an overcoil — how many coils in does the terminal land? — is the menu.
+  // N pitches inboard of the outer coil, N = 1 being TODO 147's shipped rule
+  // and so the default, walking in until the next step would fall through the
+  // carrier's root. The two ENDS are the window itself (the post standing
+  // wholly inside the outer coil; the post clearing the carrier's ring root),
+  // which is why no entry here can trip the clamp's warning — a menu whose
+  // rows boot with a console warning would be a menu of broken watches.
+  // Every radius re-derives from HS_OUTER_R and HS_COIL_PITCH, so a spec that
+  // respins the spiral respins the menu with it rather than quoting a stale
+  // ladder. Displayed in mm through §39's UNIT_MM, because 2.70 mm is a stud
+  // radius a reader can put against a real balance and a bare 7.12 is not.
+  // A menu row IS a URL value and a URL value is TEXT, so every row but the
+  // default is quantised through `studRQ` — the same quantiser the window's
+  // own ends went through, for the same reason: a row that round-trips to a
+  // neighbour 1e-15 away reloads as a spiral the menu can no longer find, and
+  // grows a duplicate row reading identically to the one just picked. The
+  // ends are already quantised, so they go in verbatim.
+  const studSel = document.getElementById('spec-studr');
+  const studRadii = [HAIRSPRING_STUD_R_MAX];
+  for (let n = 1; ; n++) {
+    const r = HS_OUTER_R - n * HS_COIL_PITCH;
+    if (r <= HAIRSPRING_STUD_R_MIN) break;
+    // n = 1 is TODO 147's shipped rule, so it carries the derived float
+    // VERBATIM — the identity spec has to stay bit-exact, not 4-dp-exact.
+    studRadii.push(n === 1 ? HAIRSPRING_STUD_R_DEFAULT : studRQ(r, 0));
+  }
+  studRadii.push(HAIRSPRING_STUD_R_MIN);
+  for (const r of [...new Set(studRadii)].sort((a, b) => b - a)) {
+    const o = document.createElement('option');
+    // The VALUE is the movement-unit radius ?studr= takes — canonical, never
+    // localized (§73's rule); only the mm reading beside it is display.
+    o.value = String(r);
+    o.textContent = `${fmtNum(MM(r), 2)} mm`;
+    studSel.appendChild(o);
+  }
+  studSel.value = String(HAIRSPRING_STUD_R);
+  if (Number(studSel.value) !== HAIRSPRING_STUD_R) { // a URL radius off the menu (clamped or custom) still shows honestly
+    const o = document.createElement('option');
+    o.value = String(HAIRSPRING_STUD_R);
+    o.textContent = `${fmtNum(MM(HAIRSPRING_STUD_R), 2)} mm`;
+    studSel.appendChild(o);
+    studSel.value = String(HAIRSPRING_STUD_R);
+  }
   const reloadWithSpec = () => {
     const p = new URLSearchParams(location.search);
     const setOrClear = (k, v, dflt) => { if (v === dflt) p.delete(k); else p.set(k, String(v)); };
     setOrClear('vph', Number(vphSel.value), 18000);
     setOrClear('reserveh', Number(rsvSel.value), 30);
+    // The default option carries the derived float VERBATIM, so picking it
+    // clears the param rather than pinning a rounded copy of it — one digit
+    // of rounding here would be a different spiral wearing the same URL.
+    setOrClear('studr', Number(studSel.value), HAIRSPRING_STUD_R_DEFAULT);
     location.search = p.toString(); // navigates; the identity spec keeps a clean URL
   };
   vphSel.addEventListener('change', reloadWithSpec);
   rsvSel.addEventListener('change', reloadWithSpec);
+  studSel.addEventListener('change', reloadWithSpec);
   // THE VERDICT, in the panel and not only the console. A non-default spec
   // re-solves real geometry, and some specs do not close at the shipped
   // layout: the boot asserts (rule 6) then name exactly what failed — the
@@ -37324,6 +37416,7 @@ function reconfShowStatus() {
     if (SPEC.d4 !== null) parts.push(`small-seconds station ${SPEC.d4.toFixed(2)} from the centre`);
     if (SPEC.rsvr !== null) parts.push(`reserve station ${SPEC.rsvr.toFixed(2)} from the centre`);
     if (SPEC.alarmr !== null) parts.push(`alarm corner ${SPEC.alarmr.toFixed(2)} from the centre`);
+    if (SPEC.studr !== null) parts.push(`hairspring stud ${HAIRSPRING_STUD_R.toFixed(2)} from the balance axis`);
     if (SPEC.subdialr !== null) parts.push(`sub-dial radius ${SPEC.subdialr.toFixed(2)}`);
     // The spec line quotes solver-tier values and stays English with them
     // (the i18n.js residue); the empty-spec sentence is chrome, so it

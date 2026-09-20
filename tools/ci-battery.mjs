@@ -897,6 +897,27 @@ const SPEC_POINTS = [
   // §22's two knobs, at both ends of their clamped ranges.
   { name: 'vph=28800', q: 'vph=28800', expect: 'any', why: '§22 — the fastest rate in RATE_TABLE, a re-geared escape mesh' },
   { name: 'reserveh=48', q: 'reserveh=48', expect: 'any', why: "§22 — the reserve clamp's upper end, the deepest fusee groove stack" },
+  // §237 — the hairspring stud's radius, which is TODO 147's solve condition
+  // exposed and the cock's carrier arm with it (`yS` reads `termEndR`, so the
+  // two move as one). Four points, each measured on this tree before it was
+  // written down, and the three inside the window are declared SILENT rather
+  // than 'any' on purpose: the whole claim of this handle is that the terminal
+  // re-solves across the window, and a solve that stopped converging — or a
+  // spring that left real stock, or a carrier arm that went negative — would
+  // announce itself as a boot warn at exactly these ends.
+  //   · 7.595 is the OUTBOARD end: the post standing wholly inside the outer
+  //     coil, the Breguet condition TODO 147 landed;
+  //   · 4.71 is the interior, four coil pitches in — a genuinely different
+  //     spiral, not a nudge off the default's 7.1175;
+  //   · 3.1751 is the INBOARD end: the post clearing the carrier's ring root,
+  //     quoted at the URL's own 4 dp and rounded inward;
+  //   · 2 is past that end, and is the guard on the clamp: it must WARN with
+  //     both bounds and BUILD (a stud inside its own carrier is nonsense, not
+  //     NaN) — one warn, measured.
+  { name: 'studr=7.595', q: 'studr=7.595', expect: 'silent', why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
+  { name: 'studr=4.71', q: 'studr=4.71', expect: 'silent', why: '§237 — four coil pitches in, the interior of the window; measured silent' },
+  { name: 'studr=3.1751', q: 'studr=3.1751', expect: 'silent', why: "§237 — the inboard end, the post clearing the carrier's root; measured silent" },
+  { name: 'studr=2', q: 'studr=2', expect: 'any', why: '§237 — past the inboard end: must warn with both bounds and BUILD, never NaN' },
   // §36 Apply — THE CANONICAL ROUTE, and it is a spec point rather than a
   // probe's private fixture because that is what keeps it honest: every
   // battery run boots it, so a change that stops a route applying is caught
