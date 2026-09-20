@@ -27129,8 +27129,16 @@ RAISES the corner to the floor rather than waiving under it.
 boot silent, fingerprint **1821360697**. The run before the band fix was
 40/41 on `inspection` alone (the contact above); the run before the step
 derivation was 41/41 with a boot warning (the jumper). Diffed against the
-merge base's report (`main` at the Landing 6 merge, measured in a worktree —
-the diff is recorded in the commit that follows this record's). `turning` 223 bars, **0 waived**, 0 stale; `slenderness` 2 over
+merge base's report (`main` at the Landing 6 merge, fingerprint 987499931,
+41/41, measured in a worktree with the same harness): 14 of 28 checks
+byte-identical with timing stripped, and every check that moved, moved on the
+fold's own rows — `turning`, `slenderness`, `transfers`, `intraUnit` (its
+declared rows and three out-of-scope FF rows renamed for the two legs), the
+mesh censuses (`outlines`, `meshIntegrity`, `sweptOverlap`'s registry: two
+path rotors and one static for the new corner and legs), `meshPhase` and
+`meshCoverage` on the one reserve mesh the swing moves, `stockFloor`'s row
+count (672 → 675) — and `inspection`, `clearances` and `expectedContacts`
+moved only in their `census` counters, not one row. `turning` 223 bars, **0 waived**, 0 stale; `slenderness` 2 over
 ceiling (was 3 — the traverse's λ 36 row gone), 0 stale; `intraUnit` 159
 declared rows, the four fold rows measured at 0–0.006 u (`compared: true`);
 `transfers` 19 (the fold corner's bevelPair row added); `meshPhase` and
