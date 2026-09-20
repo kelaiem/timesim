@@ -5119,6 +5119,11 @@ const CAP_BEARING = (() => {
   const window = (dl) => {
     const cap = capAt(dl);
     const F = solveSettingFold(cap);
+    // A bearing that turns the run past the measured Yoke heading has no fold
+    // on the barrel's side (leg 1 would swing the other way) — refused before
+    // a blank is cut for it: the first scan without this found its window at
+    // a bearing where the corner had flattened to Σ 172°, two face gears.
+    if (!(F.alphaDeg > 0 && F.alphaDeg < 30)) return { m: -Infinity, clause: `leg 1 swing ${F.alphaDeg.toFixed(1)}° off the run`, s: 0 };
     const foldOut = ringsOf(F.shaftAngleDeg, MW_LEG2_R, MW_LEG1_R), foldIn = ringsOf(F.shaftAngleDeg, MW_LEG1_R, MW_LEG2_R);
     const kReach = Math.max(...foldOut.map(([r, z]) => Math.hypot(r, z)));
     const arb = Math.min(
