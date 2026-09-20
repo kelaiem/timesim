@@ -27793,6 +27793,94 @@ glossary, horological terms linking outward — are unbuilt, and the outbound
 target is undecided. Both stay filed in the private roadmap under the same
 number.
 
+## §237 — The stud's radius is a spec handle, and the cock's carrier arm comes with it
+
+TODO 147 made the overcoil's landing radius a solve CONDITION rather than an
+output: `hairspringRest` solves κ(s) = a0 + a1·s + a2·s² against Phillips's two
+centroid equations plus `endR = studR`, and `HAIRSPRING_STUD_R` supplies the
+third. This exposes that condition as `?studr=`, a §22 spec-tier handle, with a
+menu in the panel beside the beat rate.
+
+**There was no new machinery to build, which is the point of recording it.** The
+handle is one constant becoming one SPEC row. What makes it worth a section is
+what it drags with it: the cock's stud carrier reads `hsUD.termEndR` for its arm
+length, so moving where the terminal lands IS moving how far the arm reaches.
+The two are one number by construction — a stud anywhere else is not holding the
+spring — and the arm's ROOT (2.85, where it leaves the carrier's ring) was a
+literal typed twice in the builder. It is `HAIRSPRING_CARRIER_ROOT` now, because
+a window's bound cannot derive from a number that exists only inside a
+`BoxGeometry` call.
+
+**The window is two physical facts, both measured off the post.** `?studr=` is
+clamped, not refused — `reserveHours`' precedent, the courtesy that keeps a typo
+from tripping a boot assert — and both ends derive from `HAIRSPRING_STUD_POST`
+(0.65), because the post is what has to fit at each end:
+
+- **inboard**, `HAIRSPRING_CARRIER_ROOT + POST/2` = **3.1751**: below this the
+  post overlaps the ring the arm leaves from, and the arm has no root left;
+- **outboard**, `HS_OUTER_R − POST/2` = **7.5950**: above this the post is no
+  longer wholly inside the outer coil, which is the Breguet condition TODO 147
+  landed and the whole reason the terminal is raised at all.
+
+The default is unchanged and stays bit-exact: `HS_OUTER_R − HS_COIL_PITCH` =
+7.1175, one full coil pitch inboard, TODO 147's own rule.
+
+**Both bounds are quoted at the URL's own precision — 4 dp, rounded INWARD.**
+That is not tidiness. `?studr=` is text, so a bound carrying binary tail digits
+is a bound a reader cannot type and a clamp that lands a hair off every row of
+the menu: measured before the fix, `?studr=2` held at 3.1750000000000003 and the
+panel grew a duplicate row reading the same 1.20 mm as the real one. INWARD
+rather than to-nearest is the direction the physics allows — a bound quoted
+looser than the metal is a bound that does not hold.
+
+**The menu is derived, not a taste.** The coil pitch is the spiral's own unit of
+radius, so the question a bench actually asks of an overcoil — *how many coils
+in does the terminal land?* — is the menu: N pitches inboard of the outer coil,
+N = 1 being the shipped default, walking in until the next step would fall
+through the carrier's root, with the two window ends closing the list. Seven
+rows at the identity spec, and every radius re-derives from `HS_OUTER_R` and
+`HS_COIL_PITCH`, so a spec that respins the spiral respins the menu with it
+rather than quoting a stale ladder:
+
+```
+7.5950 → 2.88 mm      the post wholly inside the outer coil
+7.1175 → 2.70 mm      one pitch in — TODO 147's shipped rule, the default
+6.3150 → 2.39 mm
+5.5125 → 2.09 mm
+4.7100 → 1.78 mm
+3.9075 → 1.48 mm
+3.1751 → 1.20 mm      the post clearing the carrier's root
+```
+
+No row can trip the clamp's warning, which is deliberate: a menu whose rows boot
+with a console warning would be a menu of broken watches. Read in mm through
+§39's `UNIT_MM`, because 2.70 mm is a stud radius someone can put against a real
+balance and a bare 7.1175 is not. The VALUE stays the movement-unit radius
+`?studr=` takes — §73's rule that display translates and values do not — and
+every row but the default is quantised through the same `studRQ` the bounds went
+through, so a row round-trips through the URL as itself rather than as a
+neighbour 1e-15 away.
+
+**RELOAD-TIER, and it sits with the beat rate rather than in a section of its
+own.** Geometry re-derives on the way in (§23's subdial precedent), so the
+control rewrites the URL and reloads exactly as the two §22 knobs do, sharing
+their `reloadWithSpec` and the `spec-verdict` row under them. What groups those
+three rows is their TIER, not their topic — they are the only rows on this panel
+that reload the page. Time is also where it belongs on topic: the stud is the
+far end of the oscillator whose near end is the beat rate, and one solve cuts
+both.
+
+**Measured.** Four new `SPEC_POINTS`, and three of them are declared SILENT
+rather than `any` on purpose — the whole claim of this handle is that the
+terminal re-solves across the window, so a solve that stopped converging, a
+spring that left real stock or a carrier arm that went negative would announce
+itself as a boot warn at exactly these ends. `studr=7.595`, `studr=4.71` and
+`studr=3.1751` each boot silent; `studr=2` warns once with both bounds and
+BUILDS, which is the guard on the clamp — a stud inside its own carrier is
+nonsense, not NaN. The identity spec is untouched in every byte: the default
+expression did not move, the carrier's root is the same 2.85 it always was, and
+`?studr=` absent means `SPEC.studr === null` means the derived default.
+
 ## §238 — The boot screen: the wait says what it is instead of showing black
 
 The movement is BUILT, not loaded. `main.js` cuts every part at module-
