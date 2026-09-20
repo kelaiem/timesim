@@ -35,6 +35,12 @@
 // main.js's boot assert, which measures the built wheel — restating it here
 // would be a second copy of a number this probe does not own.
 //
+// TODO 148 MOVED BOTH WALLS OUT, which is the tell that the fix was real: with
+// the knee carrying the terminal's curvature instead of running straight, the
+// terminal no longer spends its first third undoing 15° of outward heading, so
+// the family solves formably from 0.40 turns to about 1.20 where it used to
+// manage 0.50 to 0.92. The shipped three quarters did not move.
+//
 // Exit 1 on any failure; the pass line carries the numbers.
 //
 // Run: cd tools && node probe-218-breathing.mjs            (this checkout)
@@ -156,7 +162,7 @@ if (out.B && out.B.overcoil) {
     const base = { innerR: ${out.spiral.innerR}, outerR: ${out.spiral.outerR}, coils: ${out.spiral.coils} };
     const oc = { raise: ${out.overcoilUD.raise}, kneeR: ${out.overcoilUD.kneeR}, studR: ${out.overcoilUD.studR} };
     const rows = [];
-    for (const turns of [0.40, ${out.B.overcoil.turns}, 1.0]) {
+    for (const turns of [0.35, ${out.B.overcoil.turns}, 1.25]) {
       const rest = G.hairspringRest({ ...base, overcoil: { ...oc, turns } });
       const o = rest.overcoil;
       rows.push({ turns, converged: o.converged, rhoMin: o.rhoMin, termMaxR: o.termMaxR, endR: rest.endR, kneeR: o.kneeR });
@@ -167,16 +173,16 @@ if (out.B && out.B.overcoil) {
   if (!rows) row('overcoil sweep ran', false, (r.stderr || '').slice(0, 300));
   else {
     const at = (t) => rows.find((x) => Math.abs(x.turns - t) < 1e-9);
-    const shipped = at(out.B.overcoil.turns), under = at(0.40), over = at(1.0);
+    const shipped = at(out.B.overcoil.turns), under = at(0.35), over = at(1.25);
     const formable = (x) => x.converged && x.rhoMin >= x.kneeR;
     row(`overcoil sweep: solves formably at the shipped ${out.B.overcoil.turns} turns, stud where declared`,
       formable(shipped) && Math.abs(shipped.endR - out.overcoilUD.studR) < 1e-8,
       `ρ tightest ${shipped.rhoMin.toFixed(2)} against the collet's ${shipped.kneeR.toFixed(2)}, stud r ${shipped.endR.toFixed(4)}`);
     row('overcoil sweep: below the window the ribbon cannot be formed to the curve', !formable(under),
-      under.converged ? `0.40 turns wants ρ ${under.rhoMin.toFixed(3)} against the collet's ${under.kneeR.toFixed(2)}` : '0.40 turns reaches no root');
+      under.converged ? `0.35 turns wants ρ ${under.rhoMin.toFixed(3)} against the collet's ${under.kneeR.toFixed(2)}` : '0.35 turns reaches no root');
     row("overcoil sweep: the terminal's reach grows with the proportion (the upper edge is the balance's swept circle, gated at boot)",
       over.converged && over.termMaxR > shipped.termMaxR,
-      `${shipped.termMaxR.toFixed(4)} at ${shipped.turns} turns → ${over.termMaxR.toFixed(4)} at 1.0`);
+      `${shipped.termMaxR.toFixed(4)} at ${shipped.turns} turns → ${over.termMaxR.toFixed(4)} at 1.25`);
   }
 }
 console.log(fails.length ? `\nFAIL — ${fails.length} row(s): ${fails.join('; ')}` : '\nPASS — the hairspring breathes as steel does');

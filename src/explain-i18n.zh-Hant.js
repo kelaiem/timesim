@@ -235,11 +235,11 @@ export default {
   ['knee: raised one ribbon height plus the margin']: '膝：抬高一條鋼帶的高度加上餘量',
   ['HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75']: 'HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75',
   ['terminal: three quarters of a turn, curvature solved along it']: '末端：四分之三圈，曲率沿弧解出',
-  ['ρ 5.71 → 5.94 down the arc, tightest 5.79 against R 7.92']: 'ρ 5.71 → 5.94 沿弧變化，最緊處 5.79，相對於 R 7.92',
+  ['ρ 8.56 → 9.26 down the arc, tightest 6.75 against R 7.92']: 'ρ 8.56 → 9.26 沿弧變化，最緊處 6.75，相對於 R 7.92',
   ['stud one coil pitch inside the outer coil: r 7.1175']: '外樁內移一個圈距：r 7.1175',
   ['centroid of the whole ribbon on the axis']: '整條鋼帶的重心落在軸上',
   ['so the stud exerts no force at small swing — Phillips, 1861']: '故小擺幅下外樁不施加任何力 — Phillips，1861',
-  ['measured: pivot load ×0.052 at 45°, ×0.246 at 270°']: '實測：軸尖負荷 45° 時 ×0.052，270° 時 ×0.246',
+  ['measured: pivot load ×0.042 at 45°, ×0.167 at 270°']: '實測：軸尖負荷 45° 時 ×0.042，270° 時 ×0.167',
   ['flat spring 0.0047 mN → overcoil 0.0002 mN at the drawn swing']: '平游絲 0.0047 mN → 寶璣游絲 0.0002 mN（繪出的擺幅下）',
   // ---- zero-reset (20) ----
   ['The seconds display can be snapped back to zero without stopping the train — the stopwatch architecture, applied to the small seconds. The display rides a <b>slip-coupled arbor</b> (a friction fit on the fourth wheel\'s axis), and that arbor carries a <b>heart cam</b>: a spiral whose radius falls continuously to a single lowest point. On reset, a spring-driven <b>hammer</b> falls against the heart\'s edge; wherever the cam happens to be, the pressure on a falling-radius spiral produces torque toward the low point, so the heart rotates until the hammer\'s pad seats in the notch — and the low point is cut at the display\'s zero. The train never feels it: the slip coupling pays for the jump.']: '秒顯示可以在不停輪系的情況下一舉歸零 — 碼錶的架構，用在小秒針上。顯示騎在一根<b>摩擦耦合的軸</b>上（在四番車軸上的摩擦配合），該軸帶着一枚<b>心形凸輪</b>：半徑連續降至單一最低點的螺線。歸零時，簧力驅動的<b>錘</b>落在心形邊緣：不論凸輪停在哪，壓在半徑漸降的螺線上都產生朝低點的扭矩，心形便轉到錘墊落座於凹口為止 — 而低點恰切在顯示的零位。輪系毫無所覺:摩擦耦合替這一跳買單。',

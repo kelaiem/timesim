@@ -513,11 +513,11 @@ export default {
   ['knee: raised one ribbon height plus the margin']: '膝：抬高一条钢带的高度加上余量',
   ['HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75']: 'HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75',
   ['terminal: three quarters of a turn, curvature solved along it']: '末端：四分之三圈，曲率沿弧解出',
-  ['ρ 5.71 → 5.94 down the arc, tightest 5.79 against R 7.92']: 'ρ 5.71 → 5.94 沿弧变化，最紧处 5.79，相对于 R 7.92',
+  ['ρ 8.56 → 9.26 down the arc, tightest 6.75 against R 7.92']: 'ρ 8.56 → 9.26 沿弧变化，最紧处 6.75，相对于 R 7.92',
   ['stud one coil pitch inside the outer coil: r 7.1175']: '外桩内移一个圈距：r 7.1175',
   ['centroid of the whole ribbon on the axis']: '整条钢带的重心落在轴上',
   ['so the stud exerts no force at small swing — Phillips, 1861']: '故小摆幅下外桩不施加任何力 — Phillips，1861',
-  ['measured: pivot load ×0.052 at 45°, ×0.246 at 270°']: '实测：轴尖载荷 45° 时 ×0.052，270° 时 ×0.246',
+  ['measured: pivot load ×0.042 at 45°, ×0.167 at 270°']: '实测：轴尖载荷 45° 时 ×0.042，270° 时 ×0.167',
   ['flat spring 0.0047 mN → overcoil 0.0002 mN at the drawn swing']: '平游丝 0.0047 mN → 宝玑游丝 0.0002 mN（绘出的摆幅下）',
 
   // ---- zero reset, rebuilt (§73 follow-up) ----

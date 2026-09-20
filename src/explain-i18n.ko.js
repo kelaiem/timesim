@@ -229,11 +229,11 @@ export default {
   ['knee: raised one ribbon height plus the margin']: '무릎: 리본 한 높이와 여유만큼 올림',
   ['HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75']: 'HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75',
   ['terminal: three quarters of a turn, curvature solved along it']: '말단: 사분의 삼 바퀴, 곡률은 호를 따라 풀어서 구함',
-  ['ρ 5.71 → 5.94 down the arc, tightest 5.79 against R 7.92']: 'ρ 5.71 → 5.94 호를 따라, 가장 급한 값 5.79, R 7.92 대비',
+  ['ρ 8.56 → 9.26 down the arc, tightest 6.75 against R 7.92']: 'ρ 8.56 → 9.26 호를 따라, 가장 급한 값 6.75, R 7.92 대비',
   ['stud one coil pitch inside the outer coil: r 7.1175']: '스터드는 코일 피치 하나 안쪽: r 7.1175',
   ['centroid of the whole ribbon on the axis']: '리본 전체의 무게중심이 축 위에',
   ['so the stud exerts no force at small swing — Phillips, 1861']: '따라서 작은 진폭에서 스터드는 힘을 가하지 않음 — Phillips, 1861',
-  ['measured: pivot load ×0.052 at 45°, ×0.246 at 270°']: '측정: 피벗 하중 45°에서 ×0.052, 270°에서 ×0.246',
+  ['measured: pivot load ×0.042 at 45°, ×0.167 at 270°']: '측정: 피벗 하중 45°에서 ×0.042, 270°에서 ×0.167',
   ['flat spring 0.0047 mN → overcoil 0.0002 mN at the drawn swing']: '평 헤어스프링 0.0047 mN → 오버코일 0.0002 mN (그려진 진폭에서)',
   // ---- zero-reset (20) ----
   ['The seconds display can be snapped back to zero without stopping the train — the stopwatch architecture, applied to the small seconds. The display rides a <b>slip-coupled arbor</b> (a friction fit on the fourth wheel\'s axis), and that arbor carries a <b>heart cam</b>: a spiral whose radius falls continuously to a single lowest point. On reset, a spring-driven <b>hammer</b> falls against the heart\'s edge; wherever the cam happens to be, the pressure on a falling-radius spiral produces torque toward the low point, so the heart rotates until the hammer\'s pad seats in the notch — and the low point is cut at the display\'s zero. The train never feels it: the slip coupling pays for the jump.']: '초 표시는 윤열을 멈추지 않고도 단번에 영점으로 되돌릴 수 있습니다 — 스톱워치의 구조를 스몰 세컨드에 적용한 것입니다. 표시부는 <b>슬립 결합 아버</b>(포스 휠의 축에 마찰 끼움된 것)에 실려 있고, 그 아버가 <b>하트 캠</b>을 지닙니다: 반지름이 단 하나의 최저점까지 연속적으로 줄어드는 나선입니다. 리셋 시에는 스프링으로 구동되는 <b>해머</b>가 하트의 가장자리에 떨어집니다; 캠이 어디에 있든, 반지름이 줄어드는 나선에 가해지는 압력은 최저점을 향한 토크를 만들어 내므로, 해머의 패드가 노치에 안착할 때까지 하트가 회전합니다 — 그리고 그 최저점은 표시부의 영점에 맞춰 깎여 있습니다. 윤열은 아무것도 느끼지 못합니다: 슬립 결합이 그 점프의 대가를 치릅니다.',
