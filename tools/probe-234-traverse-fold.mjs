@@ -378,10 +378,20 @@ const R = await page.evaluate(async ({ STEP, SEARCH, ALPHA_RUN, ALPHA_MIN, ALPHA
     walk([
       addSet('leg1', segPts(A, F.K3), { kind: 'leg', alphaDeg: alphaMax, from: 'A', to: 'K', r: LEG1_R }),
       addSet('leg2', segPts(F.K3, B), { kind: 'leg', alphaDeg: alphaMax, from: 'K', to: 'B', r: r2 }),
-      addSet('blankK_in', blankPts(F.K3, F.leg1, F.spec), { kind: 'blank', at: 'K', axis: 'leg1' }),
+      // A blank keyed to a leg TRAILS BACK ALONG THAT LEG from the apex
+      // (addBevelCorner: "axisIn/axisOut point AWAY from the corner, back into
+      // each gear's own shaft body"). So the inboard blank at K lies along
+      // −leg1 (toward A) and the inboard blank at B along −leg2 (toward K);
+      // the outboard blanks at A and K lie along +leg1 and +leg2. Landing 6's
+      // runs sampled the two INBOARD blanks forward of their apex — beyond B
+      // into the dial-side furniture around the cap, and beyond K toward B —
+      // which is where its "mitre at B pinned by the minute wheel's rim and
+      // the star" came from. That finding is re-measured here, on the
+      // correct side, and its header record amended below.
+      addSet('blankK_in', blankPts(F.K3, F.leg1.clone().negate(), F.spec), { kind: 'blank', at: 'K', axis: '−leg1' }),
       addSet('blankK_out', blankPts(F.K3, F.leg2, F.spec), { kind: 'blank', at: 'K', axis: 'leg2' }),
       addSet('blankA_out', blankPts(A, F.leg1, spec90), { kind: 'blank', at: 'A', axis: 'leg1' }),
-      addSet('blankB_in', blankPts(B, F.leg2, spec90), { kind: 'blank', at: 'B', axis: 'leg2' }),
+      addSet('blankB_in', blankPts(B, F.leg2.clone().negate(), spec90), { kind: 'blank', at: 'B', axis: '−leg2' }),
     ]);
   }
   clock.scene.remove(probe); probeGeom.dispose();
