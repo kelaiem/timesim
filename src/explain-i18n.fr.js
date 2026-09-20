@@ -69,6 +69,17 @@ export default {
   ['hand-off']: 'passage de relais (hand-off)',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: 'Un contact affirmé, mesuré fermé aux deux extrémités de son mouvement. La transmission d’effort est précisément là où une image peut mentir le plus efficacement — des pièces peuvent sembler s’entraîner l’une l’autre avec un jeu visible — donc chaque contact affirmé est mesuré plutôt que dessiné.',
   ['waiver']: 'dérogation (waiver)',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['strata, lanes']: 'strates, couloirs libres, strata, lanes',
+  ['poses, posed']: 'poses, posé, posée, posed',
+  ['hand-offs']: 'passages de relais, hand-offs',
+  ['waivers']: 'dérogations, waivers',
+  ['↩ back to the text']: '↩ retour au texte',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: 'Une ligne en échec qui est ACCEPTÉE, par écrit, en citant la dette qui la corrigera. Ce n’est pas une réussite et elle ne s’achète jamais en élargissant une tolérance : la ligne continue d’échouer et reste visible dans le rapport. C’est pour la même raison que cette page énonce la dette ouverte de chaque mécanisme.',
   ['derived']: 'dérivé (derived)',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'Le nombre vient d’une contrainte, et la contrainte est écrite à côté de lui. L’inverse est un nombre qui existe parce qu’il avait l’air juste, ce que ce projet traite comme un bogue en attente — « dérivé » est donc une affirmation sur D’OÙ VIENT un nombre, pas sur sa qualité.',

@@ -53,6 +53,20 @@ export default {
   ['hand-off']: 'передача (hand-off)',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: 'Заявленный контакт, измеренный замкнутым на обоих концах своего движения. Передача силы — именно то место, где картинка лжёт убедительнее всего: детали могут выглядеть ведущими друг друга при видимом зазоре, — поэтому каждый заявленный контакт измеряется, а не рисуется.',
   ['waiver']: 'исключение (waiver)',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['stations']: 'позиции, позицию, позицией, позиций, позициям, позициях, stations',
+  ['strata, lanes']: 'слоя, слою, слое, слоем, слои, слоёв, слоям, дорожки, дорожке, дорожку, дорожкой, дорожек, strata, lanes',
+  ['poses, posed']: 'положения, положению, положении, положением, положений, положениям, poses, posed',
+  ['hand-offs']: 'передачи, передаче, передачу, передачей, передач, hand-offs',
+  ['waivers']: 'исключения, исключению, исключении, исключением, исключений, waivers',
+  ['corridors']: 'коридора, коридору, коридором, коридоре, коридоры, коридоров, corridors',
+  ['budgets']: 'бюджета, бюджету, бюджетом, бюджете, бюджеты, бюджетов, budgets',
+  ['↩ back to the text']: '↩ назад к тексту',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: 'Проваленная строка, ПРИНЯТАЯ письменно со ссылкой на пункт долга, который её исправит. Это не зачёт, и оно никогда не покупает себя расширением допуска: строка продолжает проваливаться и остаётся видимой в отчёте. По той же причине эта страница называет открытый долг каждого механизма.',
   ['derived']: 'выведено (derived)',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'Число пришло из ограничения, и ограничение записано рядом с ним. Противоположность — число, существующее потому, что выглядело правильно, что этот проект считает ошибкой в ожидании, — так что «выведено» есть утверждение о том, откуда число ВЗЯЛОСЬ, а не о том, насколько оно хорошо.',

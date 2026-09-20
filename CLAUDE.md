@@ -28,6 +28,27 @@ in the same landing; plate numbers quote the real source constants, and
 entries state their mechanism's open TODO debt rather than hiding it.
 The page is sim-code-free, so explainer landings don't touch the battery.
 
+**Its Vocabulary block is LINKED from the prose** (§236 tier one):
+`src/glossary-links.js` runs right after `localizeExplainer()` and wraps the
+first use of each term in each entry. It cannot be authored into the HTML —
+an `<a>` in the source changes that block's `innerHTML` key and invalidates
+its translation in twelve tables — so the term list is read off the RENDERED
+glossary (German prose matches German terms for free) and the inflected forms
+live in hidden `.gloss-variants` elements, whose CONTENT the tier-two engine
+translates while their `data-term` stays canonical English. Two rules when
+touching it. **A link is a claim**, so a word the page uses in another sense
+is not linked at all: `AMBIGUOUS` refuses it everywhere, `SENSE_CLASH` in one
+entry, and both are held to `SLENDER_WAIVERS`' rule — a row naming a word the
+glossary no longer defines, or an entry where the word never appears, FAILS.
+Eleven of the thirty words are refused, three of them (`axis`, `margin`,
+`envelope`) measured into the table by reading the first build's links in
+context rather than predicted. **And a block's key is its AUTHORED markup**:
+`collectTranslatable` strips `a.gloss` before keying, which is why the
+injection must still run SECOND — `localizeDoc` assigns `innerHTML` and would
+wipe the links. `node tools/glossary-links.mjs` gates both halves (the page's
+text identical to the same page with the module stubbed out, in every locale)
+on the fast explainer workflow, never the battery.
+
 The sim's schematic mode (§66) is a parallel **Line-only** tier on
 camera layer 1: any rotor whose builder records `userData.r` gets its
 pitch-circle proxy for free, and contact dots are lit by

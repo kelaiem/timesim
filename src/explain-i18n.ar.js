@@ -67,6 +67,20 @@ export default {
   ['hand-off']: 'التسليم',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: 'تلامس مُدّعى، يُقاس منغلقًا عند طرفي حركته. ونقل القوة هو بالضبط الموضع الذي تستطيع فيه الصورة أن تكذب بأكثر ما يكون إقناعًا — فقد تبدو الأجزاء وكأن بعضها يدير بعضًا وبينها فجوة ظاهرة — ولذلك يُقاس كل تلامس مُدّعى بدلًا من أن يُرسم.',
   ['waiver']: 'الإعفاء',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['stations']: 'محطة, محطات, المحطات, stations',
+  ['strata, lanes']: 'طبقة, طبقات, الطبقات, ممر, ممرات, الممرات, strata, lanes',
+  ['corridors']: 'رواق, أروقة, الأروقة, corridors',
+  ['poses, posed']: 'وضعية, وضعيات, الوضعيات, poses, posed',
+  ['budgets']: 'ميزانية, ميزانيات, الميزانيات, budgets',
+  ['hand-offs']: 'تسليم, عمليات التسليم, hand-offs',
+  ['waivers']: 'إعفاء, إعفاءات, الإعفاءات, waivers',
+  ['↩ back to the text']: '↩ العودة إلى النص',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: 'صفّ فاشل مقبول بالفعل، كتابةً، مع الإحالة إلى بند الدَين الذي سيصلحه. ليس نجاحًا، ولا يشتري نفسه أبدًا بتوسيع تفاوت: فالصفّ يظل فاشلًا ويبقى ظاهرًا في التقرير. وتذكر هذه الصفحة الدَين المفتوح لكل آلية للسبب نفسه.',
   ['derived']: 'مشتق',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'جاء الرقم من قيد، والقيد مكتوب بجانبه. ونقيضه رقم موجود لأنه بدا صحيحًا، وهو ما يعدّه هذا المشروع خللًا ينتظر وقوعه — ولذلك فإن «مشتق» ادعاء عن المصدر الذي أتى منه الرقم، لا عن مدى جودته.',

@@ -64,6 +64,13 @@ export default {
   ['hand-off']: '受け渡し（hand-off）',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: '主張された接触であり、その運動の両端で閉じていることを計測されたもの。力の伝達こそ絵が最も説得力をもって嘘をつける場所であり — 目に見える隙間を空けたまま部品同士が駆動しているように見えうる — だから主張された接触はすべて、描かれるのではなく計測される。',
   ['waiver']: '免除（waiver）',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['↩ back to the text']: '↩ 本文に戻る',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: '失敗している行のうち、それを直す負債項目を挙げて、文書の上で「受理」されたもの。合格ではなく、公差を広げて自分を買うことも決してない。行は失敗し続け、報告の中に見えたままである。このページが各機構の未返済の負債を述べるのも同じ理由による。',
   ['derived']: '導出された（derived）',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'その数は制約から来ており、制約はその横に書かれている。反対は、見た目が良かったから存在する数であり、このプロジェクトはそれを待機中の不具合として扱う。つまり「導出された」とは、数が「どこから来たか」についての主張であって、その良し悪しについての主張ではない。',

@@ -108,6 +108,10 @@
 #                      pages' i18n modules and imports src/i18n.js in turn —
 #                      the arrow points away from the app, so nothing on
 #                      index.html's graph reaches it
+#   src/glossary-links  §236's glossary linker — a static import of
+#                       explain.html and of nothing else. Same arrow as the
+#                       line above: it reaches INTO the explainer, and
+#                       index.html loads only src/main.js
 #   test-geometry.html a separate page. The battery never opens it
 #   sw.js              the battery "runs the source tree and so deliberately
 #                      has no worker at all" (CLAUDE.md). offline.yml owns it
@@ -199,6 +203,7 @@ on:
       - 'src/explain-i18n*.js'
       - 'src/primer-i18n*.js'
       - 'src/page-i18n.js'
+      - 'src/glossary-links.js'
       - 'test-geometry.html'
       - 'sw.js'
       - '.githooks/**'

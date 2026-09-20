@@ -65,6 +65,13 @@ export default {
   ['hand-off']: '交接（hand-off）',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: '被主张的接触，并在其运动的两端都被测得是闭合的。传力恰恰是图像最能理直气壮撒谎的地方 — 零件可以看上去在互相驱动，中间却留着可见的缝 — 所以每一个被主张的接触都是测出来的，而不是画出来的。',
   ['waiver']: '豁免（waiver）',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['↩ back to the text']: '↩ 返回正文',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: '一条失败的行，被书面「接受」，并注明将会修复它的欠账条目。它不是通过，也从不靠放宽公差来给自己买单：这一行继续失败，并继续显示在报告里。本页逐一说明每个机构的未清欠账，出于同样的理由。',
   ['derived']: '推导得出（derived）',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: '这个数来自一条约束，而约束就写在它旁边。反面是「因为看着合适所以存在」的数，本项目把那当作等待发作的缺陷。所以「推导得出」是关于一个数「从哪里来」的主张，而不是关于它有多好。',

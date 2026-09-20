@@ -27788,10 +27788,129 @@ from the movement, so a broken instrument hides behind a healthy watch. And
 `probe-coaxial-sense` fails on clean `main` in a dev container, so it is not
 evidence either way about a change; stash and re-run before believing it.
 
-**What remains.** §236's two tiers — project terms linking to the explainer's
-glossary, horological terms linking outward — are unbuilt, and the outbound
-target is undecided. Both stay filed in the private roadmap under the same
-number.
+### Tier one — the explainer links its own vocabulary
+
+The Vocabulary block defines **30 project words across 27 rows** and linked to
+none of them: the definition existed and was unreachable from the prose that
+used it. It does now — **82 first uses across 20 entries in English**, 42 to 63
+in the other twelve locales.
+
+**The whole design follows from one fact: the links cannot be authored.**
+`src/page-i18n.js` keys every rich block by its normalized `innerHTML`, so an
+`<a>` written into `explain.html` would change that key and invalidate that
+block's translation in twelve tables at a stroke. `src/glossary-links.js`
+therefore runs at RUNTIME, immediately after `localizeExplainer()`. Three
+consequences, each of which looks like a free choice and is not:
+
+- **The term list is read off the RENDERED glossary.** After localization the
+  first column IS the term list in the reader's language, so German prose
+  matches German terms for free. A list kept beside the table would be this
+  repository's recurring defect — one fact written down twice.
+- **Inflected forms are CONTENT, not an attribute.** `localizeDoc` assigns
+  `el.innerHTML`, and an element's own attributes are not part of its
+  `innerHTML` — the same fact that makes the rows' `id`s free of translation
+  cost. A `data-also` could never be translated, so the forms live in hidden
+  `.gloss-variants` elements whose CONTENT the existing engine translates,
+  while the `data-term` beside them stays canonical English: a VALUE, the same
+  class as `data-cam`.
+- **Opt-outs are data in the module**, for the same reason — a marker wrapped
+  round a word in the prose would rekey that block too.
+
+**A block's key is its AUTHORED markup, and that had to be made true.** The
+first build shipped the linker and `explain-i18n --check` went from 0 unmatched
+keys to 39 in every locale: the checker walks the live DOM, and the injection
+had changed the key of every block it touched. The fix is in the engine rather
+than in the checker — `collectTranslatable` strips `a.gloss` wrappers before
+keying — because the statement "the key describes what the author wrote" is
+true of the whole tier, not a special case for one feature. **The entry's own
+plan had this wrong**: it specified the gate as "`collectTranslatable()`
+returns the same key set before and after injection," which cannot hold while
+the key is raw `innerHTML`, because wrapping a word in an `<a>` changes it by
+construction. The real invariant is that the page's TEXT does not move.
+
+**What it refuses to do is the load-bearing half, and it refuses eleven of the
+thirty.** A link is a claim that a word means what the glossary says, so an
+ambiguous word is not linked at all. Eight were predicted (`row` is a CSS flex
+row, `floor` is the drum's floor, `corner` and `fork` are parts of the
+escapement). **Three were MEASURED, by reading all 105 links of the first
+build in context** — `axis` was the mechanism's axis of rotation in nine uses
+of thirteen, against the glossary's "one input swept end to end"; `margin`
+named a 0.108 travel bound and a "running margin at each face" beside the entry
+insisting there is exactly ONE margin and it is 0.15; and `envelope` named
+`sndTone`'s ADSR. A term the page mostly uses in the OTHER sense is the worst
+case for a linker, because the link looks most authoritative exactly where it
+is wrong. That refusal rate is the finding rather than an embarrassment: on a
+page whose subject is mechanisms, a third of the project's abstract vocabulary
+is also the mechanism's own.
+
+Two more refusals are finer-grained, because `annulus` and `chord` are the two
+words a reader most needs a glossary for and each collides in exactly ONE
+entry — the epicyclic ring gear in `alarm-winding-arrest`, the musical chord in
+`gong`. `SENSE_CLASH` names the entry and the word, and losing seven true links
+to avoid two false ones was the wrong trade. Both tables are held to
+`SLENDER_WAIVERS`' rule: a row naming a word the glossary no longer defines, or
+an entry where the word never appears, buys silence for nothing and FAILS.
+Separately, a term at the TAIL of a hyphenated compound is skipped as an
+OCCURRENCE rather than as a term — `crossed-axis` is a mesh geometry and
+`sun-planet-annulus` is not a flat ring — and the walk goes on looking, so
+`straight-chord flanks` costs `chord` nothing.
+
+**A whole word is three different things, and `\b` is only one of them.**
+JavaScript's `\w` is ASCII, so `\b` before `ステーション` or `коридор` asks for a
+preceding ASCII letter and can never hold: every non-Latin locale would have
+matched nothing at all, silently, while English looked healthy. The rule is
+chosen by the form's script — `\b` for Latin; a plain substring for Han,
+Hiragana and Katakana, which have no spaces to bound against and no inflection
+to need them; a word START plus growth to the end of the eojeol for Hangul,
+because Korean particles attach without a space and listing them would be
+endless; and a whole word bounded by non-letters for everything else.
+Open-ended STEM matching was tried for that last class and refused on
+measurement: it reached six Russian cases cheaply and matched `लेन` (lane)
+inside `लेना` (to take), and it underlined two thirds of a word. Inflections
+are declared instead, which is what the variants table is for. Growing the
+match was tried across all scripts too, and in Japanese `ステーション` became
+`ステーションも同じ定数だけ上がりました` — the clause, because `\p{L}` does not stop
+where a Japanese word does.
+
+**Two locale findings came from the same measurement.** Ten of the twelve
+tables render a term cell as `Native (english)` — `Station (station)`,
+`工位（station）` with FULLWIDTH parens — which is the translators' convention for
+a coined word, keeping the source term so a reader can carry it back to the
+code. Read whole, that is a string no prose contains: German linked 7 against
+English's 82. The cell names one thing twice, so both names are forms. And the
+CJK tables punctuate the two-word rows with U+FF0F, so an ASCII-only split
+stopped pairing `層／レーン` and matched the whole cell instead. With both fixed
+and the variants translated, Japanese went 7 → 52, Chinese 7 → 50, Traditional
+Chinese 1 → 44, Arabic 1 → 42, Russian 0 → 51.
+
+**`tools/glossary-links.mjs`** is the gate, on the fast browser-based workflow
+beside `explain-i18n --check`, never the battery. It holds the structure (every
+`href` resolves into `#vocabulary`, every `id` is `termId(data-term)`, ids
+unique, no link nested or inside `code`), both tables' staleness, and ONE LINK
+PER TERM PER ENTRY — the rule the module implements, which per-block linking
+would break while still resolving every `href`. Its load-bearing half is the
+text comparison: the page with the module stubbed out, against the page with
+its links unwrapped, in EVERY locale. Three controls make that mean something —
+the stubbed reference must carry zero links (or the "reference" is the live
+page and the equality is a tautology), a linker that eats one character must be
+detected, and English must carry at least twenty links (a linker that linked
+nothing would pass every text comparison by doing nothing). Legibility is
+REPORTED rather than gated: the densest block carries five links, and a number
+to fail against would be taste, not a measurement.
+
+`src/glossary-links.js` joins `battery.yml`'s `paths-ignore` — it is a static
+import of `explain.html` and of nothing else, the same arrow as the i18n
+modules beside it — and `offline.yml`'s paths, because it reaches the precache
+manifest through the stamper's module walk and took that count 47 → 48.
+
+**What remains.** Tier two — horological terms linking outward to an in-repo
+`terms.html` — is unbuilt and stays filed in the private roadmap under the same
+number. Two things tier one leaves behind it: the twelve newest Vocabulary
+terms (`azimuth`, `annulus`, `chord`, `tangent`, `throw`, `envelope`, `action
+group`, `the line`, `fold`, `fork`, `corner`, `idler`) have no translation in
+any locale, so they render and link in English everywhere; and the variants
+tables are filled for seven locales, the five that need none being CJK, Korean
+and Hindi, whose rules above reach their forms without one.
 
 ## §237 — The stud's radius is a spec handle, and the cock's carrier arm comes with it
 

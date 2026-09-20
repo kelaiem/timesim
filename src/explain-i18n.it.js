@@ -53,6 +53,19 @@ export default {
   ['hand-off']: 'passaggio (hand-off)',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: 'Un contatto dichiarato, misurato chiuso a entrambi gli estremi del suo moto. La trasmissione della forza è esattamente il punto in cui un disegno può mentire in modo più convincente — le parti possono sembrare spingersi a vicenda con un vuoto visibile — perciò ogni contatto dichiarato viene misurato anziché disegnato.',
   ['waiver']: 'esenzione (waiver)',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['stations']: 'stazioni, stations',
+  ['strata, lanes']: 'strati, corsie, strata, lanes',
+  ['corridors']: 'corridoi, corridors',
+  ['poses, posed']: 'pose, posato, poses, posed',
+  ['hand-offs']: 'passaggi, hand-offs',
+  ['waivers']: 'esenzioni, waivers',
+  ['↩ back to the text']: '↩ torna al testo',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: 'Una riga che fallisce ed è ACCETTATA, per iscritto, citando la voce di debito che la correggerà. Non è un superamento e non si paga mai allargando una tolleranza: la riga continua a fallire e resta visibile nel rapporto. Questa pagina dichiara il debito aperto di ogni meccanismo per la stessa ragione.',
   ['derived']: 'derivato (derived)',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'Il numero è venuto da un vincolo, e il vincolo è scritto accanto. L’opposto è un numero che esiste perché sembrava giusto, che questo progetto tratta come un bug in attesa — perciò "derivato" è un’affermazione su DA DOVE VIENE un numero, non su quanto sia buono.',

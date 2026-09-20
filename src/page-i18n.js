@@ -38,10 +38,32 @@ export const RICH_SELECTORS = [
   '.controls > span:not(.readout)',
   '.controls button',
   'svg text',
+  // §236 tier one — the glossary linker's inflected forms. They are CONTENT
+  // and not an attribute for exactly the reason this list exists: localizeDoc
+  // assigns el.innerHTML, and an element's own attributes are not part of its
+  // innerHTML, so a `data-also` could never be translated. German inflects by
+  // case and Russian six ways, so the forms are per-locale data or the linker
+  // only ever works in English.
+  '.gloss-variants',
 ];
 export const LABEL_SELECTOR = '.controls label';
 
 export const norm = (s) => s.replace(/\s+/g, ' ').trim();
+
+// §236 tier one — A BLOCK'S KEY IS ITS AUTHORED MARKUP, and a glossary link is
+// INJECTED. Without this the key a block is looked up by would depend on
+// whether the linker had already run: every block carrying a link would go
+// unmatched here, drop to English in localizeDoc, and read to
+// tools/explain-i18n.mjs as a stale translation — a feature that adds no words
+// silently invalidating a dozen locales' prose. Stripping the wrapper is not a
+// special case for one feature so much as the statement that the key describes
+// what the author wrote.
+const authoredHTML = (el) => {
+  if (!el.querySelector || !el.querySelector('a.gloss')) return el.innerHTML;
+  const c = el.cloneNode(true);
+  for (const a of c.querySelectorAll('a.gloss')) a.replaceWith(...a.childNodes);
+  return c.innerHTML;
+};
 
 // Every translatable node on the page, with the section it belongs to.
 // kind: 'rich' (innerHTML-keyed) | 'svg' (plate label) | 'text' (label text node)
@@ -52,7 +74,7 @@ export function collectTranslatable(doc = document) {
     for (const el of doc.querySelectorAll(sel)) {
       if (seen.has(el)) continue;
       seen.add(el);
-      const key = norm(el.innerHTML);
+      const key = norm(authoredHTML(el));
       if (!key) continue;
       out.push({ key, el, sect: el.closest('details.mech')?.id || 'page', kind: el.matches('svg text') ? 'svg' : 'rich' });
     }
