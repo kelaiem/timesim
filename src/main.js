@@ -5000,6 +5000,36 @@ const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborX
 // swing is the Yoke's measured bound; leg 2's swing is the least that passes
 // the barrel-arbor column on its near side; K is where those rays meet.
 const MW_LEG2_R = SETTING_ROD_R;                                                       // 0.382 — over reservePinion0, the same pinch
+// §234 fold — THE FOLD CORNER'S MODULE IS SOLVED AGAINST §50's FLOOR. At the
+// shallow shaft angle the fold gets (Σ ≈ 157°, the deflection the Yoke and
+// the barrel column leave it) a 10-tooth pair is nearly a pair of face gears:
+// its blank is a thin flat ring, and cut at the template's BEVEL_MODULE it
+// measured 0.0911 mm across its axis — under the wheel floor (0.12 mm) the
+// battery holds every part to. The template module was sized for a mitre,
+// whose blank is a fat cone; this corner's is not, so its module is the
+// SMALLEST at which both blanks' thinnest extent — read exactly as the census
+// reads it, the geometry-local box's least side — is at STOCK_MIN_U. Solved
+// by iteration on the blank the generator cuts (the extent scales with the
+// module at a fixed bore, sublinearly), for the Σ each candidate B gives.
+const STOCK_MIN_U_FOLD = STOCK_MIN_U;
+function foldBlankThinnest(shaftAngleDeg, module) {
+  let thin = Infinity;
+  for (const [boreR, mateBoreR] of [[MW_LEG1_R, MW_LEG2_R], [MW_LEG2_R, MW_LEG1_R]]) {
+    const g = G.makeConicalGear({ teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, material: MATS.steel });
+    g.traverse((o) => { if (!o.isMesh) return; o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox;
+      thin = Math.min(thin, b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z); o.geometry.dispose(); });
+  }
+  return thin;
+}
+function foldModuleFor(shaftAngleDeg) {
+  let m = BEVEL_MODULE;
+  for (let it = 0; it < 8; it++) {
+    const thin = foldBlankThinnest(shaftAngleDeg, m);
+    if (thin >= STOCK_MIN_U_FOLD - 1e-9) return m;
+    m *= (STOCK_MIN_U_FOLD / thin) * (1 + 1e-3);   // scale toward the floor; the extent is sublinear in m, so this converges from below in a few steps
+  }
+  return m;
+}
 function solveSettingFold(B) {
   const u = B.clone().sub(settingA).normalize();                 // A→B, the straight run's direction
   const n = new THREE.Vector3(-u.y, u.x, 0);                     // its left normal
@@ -5082,8 +5112,8 @@ const CAP_BEARING = (() => {
   const distSeg = (P0, P1, X) => { const dx = P1.x - P0.x, dy = P1.y - P0.y; const L2 = dx * dx + dy * dy; const t = Math.max(0, Math.min(1, ((X.x - P0.x) * dx + (X.y - P0.y) * dy) / L2)); return Math.hypot(P0.x + dx * t - X.x, P0.y + dy * t - X.y); };
   const stAt = (sw) => { const cs = Math.cos(sw), sn = Math.sin(sw); return { x: P.barrel.x + (u.x * cs - u.y * sn) * rsvD0, y: P.barrel.y + (u.x * sn + u.y * cs) * rsvD0 }; };
   // a blank's rings (r about its axis, z along it), from the generator itself
-  const ringsOf = (shaftAngleDeg, boreR, mateBoreR) => {
-    const g = G.makeConicalGear({ teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, material: MATS.steel });
+  const ringsOf = (shaftAngleDeg, boreR, mateBoreR, module = BEVEL_MODULE) => {
+    const g = G.makeConicalGear({ teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, material: MATS.steel });
     const rings = [];
     g.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position;
       for (let i = 0; i < pos.count; i++) rings.push([Math.hypot(pos.getX(i), pos.getY(i)), pos.getZ(i)]);
@@ -5124,7 +5154,8 @@ const CAP_BEARING = (() => {
     // a blank is cut for it: the first scan without this found its window at
     // a bearing where the corner had flattened to Σ 172°, two face gears.
     if (!(F.alphaDeg > 0 && F.alphaDeg < 30)) return { m: -Infinity, clause: `leg 1 swing ${F.alphaDeg.toFixed(1)}° off the run`, s: 0 };
-    const foldOut = ringsOf(F.shaftAngleDeg, MW_LEG2_R, MW_LEG1_R), foldIn = ringsOf(F.shaftAngleDeg, MW_LEG1_R, MW_LEG2_R);
+    const mFold = foldModuleFor(F.shaftAngleDeg);
+    const foldOut = ringsOf(F.shaftAngleDeg, MW_LEG2_R, MW_LEG1_R, mFold), foldIn = ringsOf(F.shaftAngleDeg, MW_LEG1_R, MW_LEG2_R, mFold);
     const kReach = Math.max(...foldOut.map(([r, z]) => Math.hypot(r, z)));
     const arb = Math.min(
       Math.hypot(F.K.x - arbor.x, F.K.y - arbor.y) - (kReach + ARBOR_R + CLEAR_MARGIN),
@@ -5271,7 +5302,7 @@ keyless.add(settingRise);
 // The shaft angle is ASSERTED against the axes handed in — a Σ that disagrees
 // with the metal's own angle would cut a pair whose pitch cones do not roll on
 // the axes they are mounted on, and nothing downstream would notice.
-function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreIn, boreOut } = {}) {
+function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreIn, boreOut, module = BEVEL_MODULE } = {}) {
   {
     const sigmaAxes = Math.acos(Math.min(1, Math.max(-1, axisIn.dot(axisOut)))) * 180 / Math.PI;
     if (Math.abs(sigmaAxes - shaftAngleDeg) > 1e-6)
@@ -5280,7 +5311,7 @@ function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreI
   const mountIn = new THREE.Group();
   mountIn.position.copy(point);
   mountIn.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisIn);
-  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut });
+  const gearIn = G.makeConicalGear({ name: 'gearIn', teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut });
   // §137: a transfer row names its members (§54's rule) — and TODO 136 put the
   // name on the MESHES too, because an intra-unit row's selector matches mesh
   // names and these had been riding index labels the keyless fold renumbered.
@@ -5290,7 +5321,7 @@ function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreI
   const mountOut = new THREE.Group();
   mountOut.position.copy(point);
   mountOut.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axisOut);
-  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreOut, mateBoreR: boreIn });
+  const gearOut = G.makeConicalGear({ name: 'gearOut', teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreOut, mateBoreR: boreIn });
   if (tag) { gearOut.name = `${tag}Out`; gearOut.traverse((o) => { if (o.isMesh) o.name = `${tag}Out`; }); }
   mountOut.add(gearOut);
 
@@ -5317,8 +5348,8 @@ function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreI
   // §234 — the ONE spec this corner was cut to, for the callers that size
   // furniture against the blank (the fold's plate bore); the same arguments
   // the two gears were built with, so it is the metal's, not a second guess.
-  const spec = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut, quiet: true });
-  return { gearIn, gearOut, baseIn, baseOut, spec };
+  const spec = G.bevelToothSpec({ module, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR: boreIn, mateBoreR: boreOut, quiet: true });
+  return { gearIn, gearOut, baseIn, baseOut, spec, module };
 }
 
 const Z_UP = new THREE.Vector3(0, 0, 1);
@@ -5332,8 +5363,15 @@ const Z_UP = new THREE.Vector3(0, 0, 1);
 // bored for the leg each is keyed to: leg 1's 0.55 inboard, leg 2's 0.382
 // outboard — the face width is the pair's and `bevelToothSpec` takes both.
 const cornerDrop = addBevelCorner(settingA, Z_UP, MW_FOLD.leg1U, 'mwCornerDrop', { boreOut: MW_LEG1_R });
+const MW_FOLD_MODULE = foldModuleFor(MW_FOLD.shaftAngleDeg);
 const cornerFold = addBevelCorner(MW_FOLD.K, MW_FOLD.leg1U.clone().negate(), MW_FOLD.leg2U, 'mwCornerFold',
-  { shaftAngleDeg: MW_FOLD.shaftAngleDeg, boreIn: MW_LEG1_R, boreOut: MW_LEG2_R });
+  { shaftAngleDeg: MW_FOLD.shaftAngleDeg, boreIn: MW_LEG1_R, boreOut: MW_LEG2_R, module: MW_FOLD_MODULE });
+{
+  // the derivation, re-read off the blanks as cut (achieved vs required — rule 6's shape)
+  const thin = foldBlankThinnest(MW_FOLD.shaftAngleDeg, MW_FOLD_MODULE);
+  if (thin < STOCK_MIN_U_FOLD - 1e-9)
+    console.warn(`§234 fold: the corner's blanks measure ${thin.toFixed(4)} u across at module ${MW_FOLD_MODULE.toFixed(4)}, under STOCK_MIN_U ${STOCK_MIN_U_FOLD.toFixed(4)}`);
+}
 const cornerRise = addBevelCorner(settingB, MW_FOLD.leg2U.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise', { boreIn: MW_LEG2_R });
 // The corner LIST is what tick threads the setting sign through, drop first,
 // and its length is the one source of the entry sign: the cap leaves the last

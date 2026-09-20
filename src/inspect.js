@@ -7321,12 +7321,13 @@ export const SLENDER_WAIVERS = {
   // no over-ceiling row remains for a waiver to name. §54's covenant again: a
   // waiver naming a unit with no over-ceiling row is itself a gated failure,
   // so the deletion is part of the change, not a tidy-up.)
-  // λ 41.2, the setting arbor's traverse rod, and the item's one pure LAYOUT
-  // row: it wants +0.1305 u per side against 0.0320 spare to the power-reserve
-  // train — but it is also supported by NOTHING over 28.84 u (10.9 mm) between
-  // its two bevel corners. A traverse that long runs in a cock; the fix is to
-  // add metal in position space, not to thicken the bar.
-  'Keyless works': 'TODO 109',
+  // (§234's fold RETIRED the Keyless works entry — λ 41.2, the setting
+  // arbor's traverse rod, TODO 109's one pure LAYOUT row: it wanted +0.1305 u
+  // per side against 0.0320 spare to the power-reserve train and was
+  // supported by nothing over 28.84 u between its two bevel corners. The rod
+  // is two legs on two axis lines now, each under §54's ceiling, and this
+  // table's own staleness gate named the entry for deletion — the covenant
+  // working as designed.)
 };
 
 // Young's modulus for the movement's steels/brasses, order of magnitude. The
