@@ -20932,3 +20932,94 @@ the stud landing inside the outer coil because the solve puts it there. The
 plate's caption was rewritten and its translation in all eleven locales
 therefore falls back to English visibly, by §73's own rule; the plate's own
 labels are translated.
+
+## 148. The overcoil's knee runs straight in plan, so the terminal swings outside the coils it is raised to pass over — CLOSED
+
+TODO 147 made the terminal's END a condition and solved it to land one coil
+pitch inside the outer coil. It did not look at what the terminal does in
+BETWEEN, and the answer was: it leaves the body entirely. Found by reading
+`primer.html`'s PLATE 2 — the drawing was faithful and the geometry was not.
+
+**What was modelled.** `hairspringRest`'s knee climbs `raise` through an S of
+two arcs of radius `kneeR` in the VERTICAL plane, and while it climbs it
+advanced `run` = 1.9843 u **in a straight line in plan** — `phi` held fixed.
+Measured on the shipped tree:
+
+| | straight knee (as shipped) |
+|---|---|
+| spiral's outer end | r 7.9200 |
+| knee exit, where the terminal starts | r **8.1958** |
+| heading at knee exit | **14.9° outward** of azimuthal |
+| terminal's furthest reach | r **8.8484 = 1.117 · outerR** |
+| tightest bend in the terminal | ρ 5.79 |
+
+Two costs, and the second is the larger. The straight run carries the ribbon
+0.2758 out past the coil it just left; and because a straight chord swings the
+RADIUS VECTOR through 14° while the heading stays put, it hands the terminal a
+ribbon pointed 15° outward. The terminal then spends its first third turning
+that back, and climbs to 1.117·R doing it. On the plate, 7 of 19 sampled points
+of the terminal lie outside the outer coil — the ribbon is raised to pass OVER
+the body and then spends the first part of its run beside it instead.
+
+**Why it is wrong rather than merely ugly.** A knee is a bend in the vertical
+plane. Bending a ribbon up out of its plane does not straighten it in plan —
+the metal keeps whatever plan curvature it had. A straight plan run is a
+SECOND, unasked-for bend, and it was never derived from anything: it fell out
+of holding `phi` fixed in the loop that climbs z.
+
+**What landed.** One line. The knee carries the terminal's own starting
+curvature `a0` in plan, so the plan curvature is ONE continuous law from the
+spiral's end to the stud, with the z-climb superimposed over the knee's share
+of it. The knee's ARC LENGTH is untouched, which is why this is cheap:
+
+| | straight | knee carries `a0` |
+|---|---|---|
+| knee exit | 8.1958 | **7.9700** |
+| heading at knee exit | 14.9° | **3.6°** |
+| terminal's furthest reach | 8.8484 (1.117·R) | **8.1987 (1.035·R)** |
+| tightest bend | ρ 5.79 | ρ **6.75** — slacker |
+| stud | 7.1175 | 7.1175 — unmoved |
+| developed length | 275.993691 | **275.993691 — bit-identical** |
+| implied beat | 2.5000 Hz | 2.5000 Hz |
+
+The rate is untouched for the same reason TODO 147's was: the knee's length is
+`run` either way, so `devLen` cannot move and the section solved against it does
+not either. And the spring got MORE concentric again — the pivot force at the
+performed swing fell from ×0.052 of a flat spring's to **×0.042**, and the
+second-order residual at the physical 270° from ×0.246 to **×0.167**.
+
+**The alternative, measured and rejected.** Curving the knee at the OUTER
+COIL's own curvature (1/outerR) instead reads knee exit 7.9517, heading 2.7°,
+reach 8.1491 (1.029·R) — marginally better. It was not taken: it needs a second
+constant beside the terminal's law for 0.05 u of reach, where `a0` makes the
+plan curvature one continuous function. Rule 1's preference for one source.
+
+**What the fix moved that nothing asked it to.** The terminal-length window
+WIDENED, which is the tell that the terminal was previously fighting the knee
+rather than the geometry: the family now solves formably from **0.40 turns to
+about 1.20**, where it managed 0.50–0.92 before. The shipped three-quarter turn
+did not move — it is still the classical proportion, now nearer the middle of a
+wider window. Also measured and recorded for whoever asks next: the terminal's
+reach is MINIMISED around 0.55 turns, where it reads 7.8954 and never leaves
+the outer coil at all. That is a fact about the family, not a reason to
+re-target `turns`; a proportion chosen to flatter a drawing is exactly the
+number rule 1 forbids.
+
+**What holds it.** No new gate. `overcoil.kneeExitR` is published beside the
+rest so the hand-over radius is visible in the payload, and the three rows
+TODO 147 added already fail if the terminal stops landing inboard or starts
+wanting a bend tighter than the collet. `probe-218-breathing.mjs`'s sweep
+re-measures the window's lower wall at 0.35 turns (it solves there, but wants
+ρ 1.233 against the collet's 1.50, so the ribbon cannot be formed to it).
+
+**The residue, named.** 1.035·R is not 1.0: the terminal still passes 0.28 mm
+outside the outer coil at its widest, about 2 px at plate scale. It is inside
+the balance's swept circle, the boot assert holds that, and both plates now
+show a curve that reads as lying over the body. Closing the last 3.5% means
+either re-targeting `turns` (forbidden above) or giving the knee its own
+z-profile freedom, which is a bigger change than this defect justifies.
+
+**Recorded.** `docs/BUILT.md` §218 tier two edited in place; `explain.html`
+PLATE 2 and `primer.html` PLATE 2 both re-traced from the new solve, with the ρ
+figures and both pivot-force ratios re-quoted, and the primer's caption
+re-translated in all twelve locales because its numbers moved.

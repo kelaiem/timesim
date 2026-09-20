@@ -23878,23 +23878,43 @@ the smallest that carries the post's whole width (0.65, the same
 at 7.1175, post reaching 7.4425 against the coil's 7.9200; the carrier's arm
 runs 2.6 u shorter and stops short of the screws.
 
+**The KNEE keeps turning in plan (TODO 148).** The S that lifts the ribbon is a
+bend in the VERTICAL plane, and for its first two landings it advanced 1.9843 u
+in a STRAIGHT line in plan while it climbed — `phi` held fixed in the loop that
+raises z. Bending a ribbon up out of its plane does not straighten it in plan,
+so that was a second, unasked-for bend, and it cost twice: the straight run
+carried the ribbon out to r 8.1958 past the coil it had just left, and because a
+straight chord swings the radius vector through 14° while the heading stays put,
+it handed the terminal a ribbon pointed 14.9° OUTWARD. The terminal spent its
+first third turning that back and reached 1.117·outerR doing it — raised to pass
+over the body, and running beside it instead; on the primer's plate, 7 of 19
+sampled points lay outside the outer coil. The knee now carries the terminal's
+own starting curvature `a0`, so the plan curvature is one continuous law from the
+spiral's end to the stud. Knee exit 7.9700, heading 3.6°, furthest reach 8.1987 =
+1.035·outerR, tightest bend ρ 6.75 where it was 5.79 — slacker, not tighter. The
+knee's ARC LENGTH is untouched either way, which is why the developed length is
+bit-identical and the rate never moved.
+
 **The terminal's length is a proportion inside a window with a physical wall at
 each end.** The length stays the classical three-quarter turn — and stays
 DECLARED, which is why the developed length does not move at all (the terminal's
 segments sum to it exactly), so the section the rate was solved from is
-untouched: 275.9937 u and 2.5000 Hz before and after. With the stud pinned, the
-window's edges are no longer the solver's reach. Below about half a turn the
-ribbon would have to be bent tighter than the collet the knee is already formed
-round (0.40 turns reaches no root; the roots either side want ρ 0.18–1.3 against
-1.5). Above about 0.92 the terminal's own arc swings outside the balance's swept
-circle (9.2744 at 0.92, 9.3020 at 0.93). At 0.75 the solve converges in five
-iterations from a seed that continues the spiral's own end curvature, to ρ 5.71
-→ 5.94 along the terminal — a bend an order slacker than the collet — with a
-centroid residual of 6.0e-14 u and a stud residual of 1.3e-12 u.
-`tools/probe-218-breathing.mjs` re-runs the sweep at 0.40, the shipped
-proportion and 1.0 through the real builder under the node loader; the upper
-wall is the boot assert's, because it is the built wheel's swept radius and the
-probe has no business restating it.
+untouched: 275.9937 u and 2.5000 Hz through both landings. With the stud pinned,
+the window's edges are no longer the solver's reach: below it the ribbon would
+have to be bent tighter than the collet the knee is already formed round, above
+it the terminal's own arc swings outside the balance's swept circle. TODO 148
+WIDENED that window, which is the tell that the terminal had been fighting the
+knee rather than the geometry — the family solved formably from 0.50 to 0.92
+turns with the straight knee and from **0.40 to about 1.20** with the curved one
+(0.35 solves but wants ρ 1.233 against the collet's 1.50; 1.25 reaches 9.4431
+against a swept 9.3121). The shipped three quarters did not move and now sits
+nearer the middle. At 0.75 the solve converges in five iterations from a seed
+that continues the spiral's own end curvature, to ρ 8.56 → 9.26 along the
+terminal, with a centroid residual of 3.2e-12 u and a stud residual of 8.6e-11 u.
+`tools/probe-218-breathing.mjs` re-runs the sweep at 0.35, the shipped proportion
+and 1.25 through the real builder under the node loader; the upper wall is the
+boot assert's, because it is the built wheel's swept radius and the probe has no
+business restating it.
 
 **Measured on the built tree** (8 coils, ribbon re-solved to 0.0239 mm for the
 longer active length — 104.6 mm, the knee's 3D length 0.06% over its
@@ -23903,11 +23923,11 @@ projection, stated):
 | | performed 45° | physical 270° |
 |---|---|---|
 | lateral pivot force, flat spring of this section | 0.0047 mN | 0.026 mN |
-| with the overcoil | 0.0002 mN | 0.0065 mN |
-| ratio | ×0.052 | ×0.246 |
-| coils' max radial excursion | 0.091 mm | 0.60 mm |
+| with the overcoil | 0.0002 mN | 0.0044 mN |
+| ratio | ×0.042 | ×0.167 |
+| coils' max radial excursion | 0.078 mm | 0.54 mm |
 | minimum coil gap, in 3D (the raised turn over the outer coil) | 0.26 mm | 0.17 mm |
-| outer-fibre stress | 18 MPa | 110 MPa |
+| outer-fibre stress | 18 MPa | 109 MPa |
 
 The performed-amplitude ratio is the gate (under a tenth); the physical one
 is the second-order residual Phillips's theorem does not cover, reported. The
@@ -23932,7 +23952,7 @@ under 0.1 — and since TODO 147 the stud's post standing wholly inboard of the
 outer coil and no terminal bend tighter than the collet, with a second boot
 assert holding the whole terminal inside the balance's measured swept radius.
 The probe reads 17/17 on this tree, including the sweep (20/20 since TODO 147
-added its three). The
+added its three; TODO 148 moved the sweep's walls rather than adding rows). The
 explainer's free-sprung section gains PLATE 2 (the overcoil, its solved
 radii, the measured ratios) and its caption is rewritten a third time, in
 eight locales; three labels were shortened in translation rather than the

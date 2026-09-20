@@ -526,11 +526,11 @@ export default {
   ['knee: raised one ribbon height plus the margin']: 'Knie: um eine Bandhöhe plus den Rand angehoben',
   ['HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75']: 'HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75',
   ['terminal: three quarters of a turn, curvature solved along it']: 'Endkurve: drei Viertel Windung, Krümmung entlang gelöst',
-  ['ρ 5.71 → 5.94 down the arc, tightest 5.79 against R 7.92']: 'ρ 5.71 → 5.94 entlang des Bogens, engster 5.79 gegen R 7.92',
+  ['ρ 8.56 → 9.26 down the arc, tightest 6.75 against R 7.92']: 'ρ 8.56 → 9.26 entlang des Bogens, engster 6.75 gegen R 7.92',
   ['stud one coil pitch inside the outer coil: r 7.1175']: 'Klötzchen eine Windungsteilung innen: r 7.1175',
   ['centroid of the whole ribbon on the axis']: 'Schwerpunkt des ganzen Bandes auf der Achse',
   ['so the stud exerts no force at small swing — Phillips, 1861']: 'keine Klötzchenkraft bei kleinem Ausschlag — Phillips, 1861',
-  ['measured: pivot load ×0.052 at 45°, ×0.246 at 270°']: 'gemessen: Zapfenlast ×0.052 bei 45°, ×0.246 bei 270°',
+  ['measured: pivot load ×0.042 at 45°, ×0.167 at 270°']: 'gemessen: Zapfenlast ×0.042 bei 45°, ×0.167 bei 270°',
   ['flat spring 0.0047 mN → overcoil 0.0002 mN at the drawn swing']: 'flach 0.0047 mN → Endkurve 0.0002 mN beim Ausschlag',
 
   // ---- zero reset, rebuilt (§73 follow-up) ----

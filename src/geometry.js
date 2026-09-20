@@ -2852,15 +2852,21 @@ export function hairspringRest(plan) {
     let phi = tangent(1);
     const ds = Math.hypot(pts[segs][0] - pts[segs - 1][0], pts[segs][1] - pts[segs - 1][1]);
     let x = pts[segs][0], y = pts[segs][1];
-    // the knee: rise = 2·kneeR·(1 − cos β), run = 2·kneeR·sin β
+    // the knee: rise = 2·kneeR·(1 − cos β), run = 2·kneeR·sin β. The S is a
+    // bend in the VERTICAL plane, so in PLAN the ribbon keeps turning — it
+    // carries the terminal's own starting curvature a0 through the knee
+    // (TODO 148), which makes the plan curvature ONE continuous law from the
+    // spiral's end to the stud with the z-climb superimposed over the knee's
+    // share of it. Running the knee straight instead cost 15° of outward
+    // heading, and unwinding that was the terminal's whole outward bulge.
     const beta = Math.acos(1 - raise / (2 * kneeR)), run = 2 * kneeR * Math.sin(beta);
-    const nK = Math.max(4, Math.round(run / ds));
+    const nK = Math.max(4, Math.round(run / ds)), dsK = run / nK;
     for (let i = 1; i <= nK; i++) {
       const sArc = (i / nK) * 2 * beta;
       const z = sArc <= beta ? kneeR * (1 - Math.cos(sArc)) : raise - kneeR * (1 - Math.cos(2 * beta - sArc));
-      x += (run / nK) * Math.cos(phi); y += (run / nK) * Math.sin(phi);
+      phi += a0 * dsK / 2; x += dsK * Math.cos(phi); y += dsK * Math.sin(phi); phi += a0 * dsK / 2;
       pts.push([x, y]); zs.push(z);
-      len += run / nK; len3d += Math.hypot(run / nK, z - zs[zs.length - 2]);
+      len += dsK; len3d += Math.hypot(dsK, z - zs[zs.length - 2]);
     }
     out.termStart = pts.length - 1;
     const lt = turns * 2 * Math.PI * outerR;
@@ -2880,7 +2886,11 @@ export function hairspringRest(plan) {
     out.endR = Math.hypot(x, y); out.endA = Math.atan2(y, x);
     out.overcoil = { turns, raise, kneeR, studR, beta, run, lt, a0, a1, a2,
       rhoStart: 1 / a0, rhoEnd: 1 / (a0 + a1 * lt + a2 * lt * lt),
-      rhoMin: 1 / kAbsMax, termMaxR };
+      rhoMin: 1 / kAbsMax, termMaxR,
+      // TODO 148 — where the knee hands the ribbon over. A knee that runs
+      // straight leaves this well outside the outer coil and pointed outward;
+      // both are what the terminal then has to spend its first third undoing.
+      kneeExitR: Math.hypot(pts[out.termStart][0], pts[out.termStart][1]) };
     return out;
   };
   let rest;

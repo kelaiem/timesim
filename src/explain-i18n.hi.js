@@ -239,11 +239,11 @@ export default {
   ['knee: raised one ribbon height plus the margin']: 'घुटना: एक रिबन ऊँचाई और मार्जिन जितना ऊपर',
   ['HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75']: 'HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75',
   ['terminal: three quarters of a turn, curvature solved along it']: 'टर्मिनल: पौन चक्कर, वक्रता उसकी लंबाई पर हल की गई',
-  ['ρ 5.71 → 5.94 down the arc, tightest 5.79 against R 7.92']: 'ρ 5.71 → 5.94 चाप के साथ, न्यूनतम 5.79 बनाम R 7.92',
+  ['ρ 8.56 → 9.26 down the arc, tightest 6.75 against R 7.92']: 'ρ 8.56 → 9.26 चाप के साथ, न्यूनतम 6.75 बनाम R 7.92',
   ['stud one coil pitch inside the outer coil: r 7.1175']: 'स्टड एक कुंडली-अंतराल भीतर: r 7.1175',
   ['centroid of the whole ribbon on the axis']: 'पूरे रिबन का केंद्रक अक्ष पर',
   ['so the stud exerts no force at small swing — Phillips, 1861']: 'इसलिए छोटे स्विंग पर स्टड कोई बल नहीं डालता — फिलिप्स, 1861',
-  ['measured: pivot load ×0.052 at 45°, ×0.246 at 270°']: 'मापा गया: पिवट भार 45° पर ×0.052, 270° पर ×0.246',
+  ['measured: pivot load ×0.042 at 45°, ×0.167 at 270°']: 'मापा गया: पिवट भार 45° पर ×0.042, 270° पर ×0.167',
   ['flat spring 0.0047 mN → overcoil 0.0002 mN at the drawn swing']: 'चपटी स्प्रिंग 0.0047 mN → ओवरकॉइल 0.0002 mN, खींचे गए स्विंग पर',
   // ---- zero-reset (20) ----
   ['The seconds display can be snapped back to zero without stopping the train — the stopwatch architecture, applied to the small seconds. The display rides a <b>slip-coupled arbor</b> (a friction fit on the fourth wheel\'s axis), and that arbor carries a <b>heart cam</b>: a spiral whose radius falls continuously to a single lowest point. On reset, a spring-driven <b>hammer</b> falls against the heart\'s edge; wherever the cam happens to be, the pressure on a falling-radius spiral produces torque toward the low point, so the heart rotates until the hammer\'s pad seats in the notch — and the low point is cut at the display\'s zero. The train never feels it: the slip coupling pays for the jump.']: 'सेकंड प्रदर्शन को ट्रेन रोके बिना शून्य पर वापस झटका जा सकता है — स्टॉपवॉच की रचना, छोटे सेकंड पर लागू। प्रदर्शन एक <b>स्लिप-कपल्ड आर्बर</b> पर चलता है (चौथे व्हील की धुरी पर घर्षण फिट), और वह आर्बर एक <b>हार्ट कैम</b> ढोता है: एक स्पाइरल जिसकी त्रिज्या लगातार घटकर एक ही निम्नतम बिंदु तक आती है। रीसेट पर स्प्रिंग से चलने वाला एक <b>हथौड़ा</b> हार्ट के किनारे पर गिरता है; कैम जहाँ भी हो, घटती त्रिज्या वाली स्पाइरल पर पड़ा दाब निम्न बिंदु की ओर बलाघूर्ण पैदा करता है, इसलिए हार्ट तब तक घूमता है जब तक हथौड़े का पैड खाँचे में न बैठ जाए — और वह निम्न बिंदु प्रदर्शन के शून्य पर काटा गया है। ट्रेन को इसका अहसास तक नहीं होता: छलाँग की कीमत स्लिप कपलिंग चुकाती है।',
