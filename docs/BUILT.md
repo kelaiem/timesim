@@ -24698,6 +24698,59 @@ parameter (the smoke is browser-local and does not travel). And no claim about
 lume — §220's "not modelled" list is unchanged, and shipping the tint by
 default does not ship the reason Lange's coating exists.
 
+## §223 — Both Chinese tables completed, and the filed gap re-priced
+
+§223 is the entry for "every locale complete on both pages." This is its
+CHINESE landing; the entry stays PARTIAL in the private roadmap for the rest.
+
+**It surfaced the way the entry says this class always surfaces, which is the
+part worth keeping.** §223 was filed because a reader said a section of
+`explain.html` rendered English under Traditional Chinese. It was filed again,
+in substance, by a reader saying the Simplified page "doesn't seem to have the
+term linking yet" — and the links were all there. `gear-teeth` is the FIRST
+entry on the page and all five of its prose blocks were English in `zh`, so the
+first thing a Chinese reader met was English prose carrying English glossary
+links. §236's linker did not cause that; it made a pre-existing gap legible,
+which is the one useful thing about it. `explain-i18n --check` read 0 unmatched
+before and 0 after, exactly as the entry predicted it would: a key that was
+never translated is not drift.
+
+**What was translated.** Simplified 88.7% → 98.0%: the two newest Vocabulary
+tables (26 keys — twelve terms and their definitions, and the two table
+captions), `gear-teeth` (15), `gong` (24, including the whole PLATE 3 chain),
+and the four long blocks in `keyless`, `column-wheel`, `winding-arrest` and
+`free-sprung`. Traditional 94.2% → 98.0%: the same Vocabulary tables plus
+`keyless` and `free-sprung`. Both residues are 15 keys and both are the same
+15 — §236's `.gloss-variants` rows, deliberately English for CJK, because
+neither script inflects and the linker's CJK rule reaches the term without
+them. Glossary links followed: Simplified 50 → 73 and Traditional 44 → 67, with
+every matched word now Chinese where 17 and 3 respectively had been English.
+
+The Traditional table is not the Simplified one converted, and its own header
+says so: it reads 模擬, 錶冠 and 接觸比 where Simplified reads 仿真, 表冠 and
+重合度. Each was written against its own table's established register — 齒軸,
+節圓, 齒隙, 柱輪, 棘爪, 喙, 跳簧 — rather than against the English.
+
+**The entry's own table was over-counted, and one locale by all of it.** §223
+priced the gap as "distinct keys missing" and listed `ar` at 30 on the
+explainer, worst sections `alarm-feeler 21, fusee 7, escapement 3`. Those keys
+are `0.10`, `+12°`, `<code>ALARM_PIN_R</code>` — bare constants and quoted
+identifiers, which `explain-i18n --check` already classes INVARIANT and
+excludes from its denominator, because this page's contract is that a number
+and an identifier are never translated. Measured with that same rule applied:
+`ar` 66 raw → **36 real, 30 invariant**, and its entire filed gap was the
+invariant half. `de` and `zh` each carried 30 of them too. A translator brief
+written from the filed table would have sent someone to translate `4.26`.
+
+Re-priced today, after this landing, the explainer's real gaps are `ja` 85,
+`fr` 81, `de` 78, `ru` 47, `ko` 43, `hi` 38, `it` 37, `ar` 36, `es`/`pt` 36,
+`zh`/`zh-Hant` 15 — and the largest cluster in EVERY locale is now
+`vocabulary` at 34–41, which did not exist when §223 was filed. It is §236's
+two new Vocabulary tables and its variants rows, shipped English. The entry's
+own thesis, restated by its own subject matter: translating the total closes
+today's gap and buys nothing about tomorrow's, because nothing yet makes a
+landing carry its locales.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
@@ -27911,6 +27964,27 @@ group`, `the line`, `fold`, `fork`, `corner`, `idler`) have no translation in
 any locale, so they render and link in English everywhere; and the variants
 tables are filled for seven locales, the five that need none being CJK, Korean
 and Hindi, whose rules above reach their forms without one.
+
+### Tier one's first defect: the underline was tuned for a Latin descender
+
+Reported by a reader, in the only way this class of thing is ever found: "the
+Chinese localization doesn't seem to have the term linking yet." Every link was
+there — 44 of them in Traditional. `text-underline-offset: 2px` clears a Latin
+descender and clears nothing else, and a Han, Kana or Hangul glyph has no
+descender: its strokes run to the baseline and fill the em box. Measured at 4×
+on 預算, the dots sat ON the bottom strokes and read as part of the character,
+which at 1× is to say they did not read at all. 4px is the smallest offset that
+separates them; 5px was measured too and already reads as belonging to the line
+below. The rule is `html:lang(zh|ja|ko) a.gloss`, following the
+`html:lang(ko) { word-break: keep-all }` precedent beside it — `:lang(zh)`
+matches `zh-Hant` by the hyphen-prefix rule, and `documentElement.lang` carries
+the locale CODE, so all four are covered and Latin keeps its 2px.
+
+**The finding underneath it is that a check can hold every claim and still let
+this through.** `glossary-links.mjs` proves the links resolve, that the tables
+are live, and that the page's text does not move — and it counted 44 links in
+Traditional while a reader saw none. Nothing here measures whether a mark is
+VISIBLE, and nothing cheaply can; what the gate could have caught, it did.
 
 ## §237 — The stud's radius is a spec handle, and the cock's carrier arm comes with it
 

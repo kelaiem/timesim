@@ -220,6 +220,19 @@
   }
   a.gloss:hover { text-decoration-color: var(--head-hover); color: var(--head-hover); }
   a.gloss:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* 2px clears a LATIN DESCENDER, and that is the whole of what it clears. A
+     Han, Kana or Hangul glyph has no descender — its strokes run to the
+     baseline and fill the em box — so at 2px the dots land ON the character:
+     measured at 4× on 預算, they touch the bottom strokes and read as part of
+     the glyph, which at 1× is to say they do not read at all. This was
+     reported as "Chinese has no term linking" when every link was there.
+     4px is the smallest offset at which the dots separate; the line box is
+     13px text on 20.15px, so there is room, and 5px was measured too and
+     already reads as belonging to the line below. :lang(zh) matches zh-Hant
+     as well, by the hyphen-prefix rule. */
+  html:lang(zh) a.gloss,
+  html:lang(ja) a.gloss,
+  html:lang(ko) a.gloss { text-underline-offset: 4px; }
 
   /* The jump lands inside a table of 28 rows, so the row has to say which one
      it was. A background wash rather than a scroll position: the browser puts
