@@ -4869,6 +4869,9 @@ const SETTING_ROD_R = (Z_SETTING - RSV_P0_TOP_Z) - CLEAR_MARGIN; // 0.382, up fr
 // reserve train is cut thousands of lines later) so the two sites share one
 // number rather than agreeing by coincidence.
 const RSV_ARB_EXT_R = 0.55;                                                              // rsvArbExt's radius — its build reads this
+const Z_RSV = -4.2;         // the reserve train's gear plane in the plate→dial gap (plate back −2.3, dial −7) — hoisted from its build for the same reason
+const RSV_Z_STEP = 1.5;     // its wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
+const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5 (hoisted: the cap's z-band is read below)
 const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
 const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                           // 0.55
 // The Yoke's bound on leg 1, as the world HEADING of leg 1's direction from
@@ -5077,8 +5080,9 @@ const CAP_BEARING = (() => {
   // the following at once, in closed form —
   //   (1) the cap corner's blank against the pair at its station s (stage 1's
   //       own clause, at the station the pair will actually stand),
-  //   (2) the fold corner's blank (its cone distance, from the spec at the Σ
-  //       that B gives it) against w1's tip circle at s,
+  //   (2) the fold corner's outboard blank, as the body of revolution the
+  //       generator cuts at the Σ that B gives it, against w1's tip circle
+  //       at s within w1's own z-band,
   //   (3) this cap's tip circle against p1's at s — p1's tip re-derived at s
   //       through the reserve's own fixed point (the swing moves w1's station,
   //       the station sets stage two's module, the module sets p1's tip; the
@@ -5101,36 +5105,75 @@ const CAP_BEARING = (() => {
   // bearing this returns.
   const w1Tip = G.gearOuterR({ module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0 });
   const capTip = G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [MW_MINUTE_TEETH], thickness: 1.6 });
+  // The reserve's own z-bands, exactly as its swing solve draws them (w1 is
+  // cut 1.0 thick, p1 1.2, each plus one margin) — the same numbers, so what
+  // this clause admits the vertex solve admits.
+  const w1Hi = Z_RSV + 0.5 + CLEAR_MARGIN;
+  const p1Lo = Z_RSV - RSV_Z_STEP - 0.6 - CLEAR_MARGIN, p1Hi = Z_RSV - RSV_Z_STEP + 0.6 + CLEAR_MARGIN;
+  const capInP1Band = (Z_CANNON_PINION - 0.8) <= p1Hi && (Z_CANNON_PINION + 0.8) >= p1Lo;   // the cap is 1.6 thick
+  // The fold corner's OUTBOARD blank — the one that trails along leg 2 toward
+  // the barrel side — as a BODY OF REVOLUTION about its own axis: each vertex
+  // is a ring (r about the axis, z along it), and a ring reaches into w1's
+  // band only where its lowest arc dips below w1Hi, by √(r² − (Z_SETTING −
+  // w1Hi)²) horizontally from the axis. That is the envelope the reserve's
+  // vertex solve will read off the cut blank, less the tooth gaps — a sphere
+  // of coneR over-read it by ~0.5 here, which is what let the window close
+  // and open on a 0.09° change of the Yoke heading.
+  const dzW1 = Z_SETTING - w1Hi;
+  const blankRings = (shaftAngleDeg) => {
+    const g = G.makeConicalGear({ teeth: BEVEL_TEETH, module: BEVEL_MODULE, mateTeeth: BEVEL_TEETH, shaftAngleDeg,
+      boreR: MW_LEG2_R, mateBoreR: MW_LEG1_R, material: MATS.steel });
+    const rings = [];
+    g.traverse((o) => { if (!o.isMesh) return; const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) { const r = Math.hypot(pos.getX(i), pos.getY(i)); if (r > dzW1) rings.push([r, pos.getZ(i)]); }
+      o.geometry.dispose(); });
+    return rings;
+  };
   const arbor = { x: uWind.x * cwDist, y: uWind.y * cwDist };   // the winding transfer arbor's axis (BACK_PLATE_HOLES' first bore)
   const ARBOR_R = 0.7;                                          // its shaft (the bore is cut 0.7 + 0.05, above)
   const distSeg = (P0, P1, X) => { const dx = P1.x - P0.x, dy = P1.y - P0.y; const L2 = dx * dx + dy * dy; const t = Math.max(0, Math.min(1, ((X.x - P0.x) * dx + (X.y - P0.y) * dy) / L2)); return Math.hypot(P0.x + dx * t - X.x, P0.y + dy * t - X.y); };
   const stAt = (sw) => { const cs = Math.cos(sw), sn = Math.sin(sw); return { x: P.barrel.x + (u.x * cs - u.y * sn) * rsvD0, y: P.barrel.y + (u.x * sn + u.y * cs) * rsvD0 }; };
-  const foldWindowOpen = (dl) => {
+  // Returns the window's worst clause margin at the best swing (≥ 0 means
+  // open), so a refusal can say which clause and by how much.
+  const foldWindow = (dl) => {
     const cap = capAt(dl);
     const F = solveSettingFold(cap);
     const kReach = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
       shaftAngleDeg: F.shaftAngleDeg, boreR: MW_LEG1_R, mateBoreR: MW_LEG2_R, quiet: true }).coneR;
+    const rings = blankRings(F.shaftAngleDeg);
     // (4) is swing-independent
-    if (Math.hypot(F.K.x - arbor.x, F.K.y - arbor.y) < kReach + ARBOR_R + CLEAR_MARGIN) return false;
-    if (distSeg(settingA, F.K, arbor) < MW_LEG1_R + ARBOR_R + CLEAR_MARGIN) return false;
-    if (distSeg(F.K, cap, arbor) < MW_LEG2_R + ARBOR_R + CLEAR_MARGIN) return false;
+    const arb = Math.min(
+      Math.hypot(F.K.x - arbor.x, F.K.y - arbor.y) - (kReach + ARBOR_R + CLEAR_MARGIN),
+      distSeg(settingA, F.K, arbor) - (MW_LEG1_R + ARBOR_R + CLEAR_MARGIN),
+      distSeg(F.K, cap, arbor) - (MW_LEG2_R + ARBOR_R + CLEAR_MARGIN));
+    let best = { m: -Infinity, s: 0, pair: 0, w1: 0, p1: 0 };
     for (let sd = 0; sd <= 30; sd++) for (const sg of sd === 0 ? [1] : [1, -1]) {
       const stS = stAt(sg * sd * DEG2RAD);
       const m1S = (2 * Math.hypot(pivot.x - stS.x, pivot.y - stS.y)) / (rsvTeethP1 + w2);
       const p1TipS = G.gearOuterR({ module: m1S, teeth: rsvTeethP1, mates: [w2], thickness: 1.2 });
-      const okPair = Math.hypot(cap.x - stS.x, cap.y - stS.y) >= need;                                       // (1)
-      const okW1 = Math.hypot(F.K.x - stS.x, F.K.y - stS.y) - w1Tip - kReach >= CLEAR_MARGIN;             // (2)
-      const okP1 = Math.hypot(cap.x - stS.x, cap.y - stS.y) - p1TipS - capTip >= CLEAR_MARGIN;            // (3)
-      if (okPair && okW1 && okP1) return true;
+      const pair = Math.hypot(cap.x - stS.x, cap.y - stS.y) - need;                                          // (1)
+      let w1 = Infinity;                                                                                   // (2)
+      for (const [r, zAx] of rings) {
+        const bx = F.K.x + F.leg2U.x * zAx, by = F.K.y + F.leg2U.y * zAx;                                   // the ring's centre, along leg 2
+        w1 = Math.min(w1, Math.hypot(bx - stS.x, by - stS.y) - Math.sqrt(r * r - dzW1 * dzW1) - w1Tip - CLEAR_MARGIN);
+      }
+      const p1 = capInP1Band ? Math.hypot(cap.x - stS.x, cap.y - stS.y) - p1TipS - capTip - CLEAR_MARGIN : Infinity;   // (3)
+      const m = Math.min(pair, w1, p1, arb);
+      if (m > best.m) best = { m, s: sg * sd, pair, w1, p1, arb };
     }
-    return false;
+    return best;
   };
-  if (foldWindowOpen(stage1)) return stage1;
+  if (foldWindow(stage1).m >= 0) return stage1;
+  let nearest = { d: 0, ...foldWindow(stage1) };
   for (let d = 1; d <= 15; d++)
-    for (const sgn of [1, -1])
-      if (foldWindowOpen(stage1 + sgn * d * DEG2RAD)) return stage1 + sgn * d * DEG2RAD;
-  console.warn('setting traverse: no cap bearing within ±15° of the reserve-pair solve leaves the reserve a swing that '
-    + 'clears its station, the fold corner, this cap and the transfer arbor at once — keeping stage 1\'s bearing; the battery judges it');
+    for (const sgn of [1, -1]) {
+      const w = foldWindow(stage1 + sgn * d * DEG2RAD);
+      if (w.m >= 0) return stage1 + sgn * d * DEG2RAD;
+      if (w.m > nearest.m) nearest = { d: sgn * d, ...w };
+    }
+  console.warn(`setting traverse: no cap bearing within ±15° of the reserve-pair solve (${(stage1 / DEG2RAD).toFixed(1)}°) leaves the reserve a swing that `
+    + 'clears its station, the fold corner, this cap and the transfer arbor at once — keeping stage 1\'s bearing; the battery judges it. '
+    + `Nearest: ${nearest.d > 0 ? '+' : ''}${nearest.d}° at swing ${nearest.s}° — margins pair ${nearest.pair.toFixed(3)}, w1 ${nearest.w1.toFixed(3)}, p1 ${nearest.p1.toFixed(3)}, arbor ${nearest.arb.toFixed(3)}`);
   return stage1;
 })();
 const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(CAP_BEARING),
@@ -5222,7 +5265,6 @@ const MW_FOLD = solveSettingFold(settingB);
       console.warn(`§234 fold: ${name} L/D ${(L / (2 * r)).toFixed(2)} over TURN_LD_TARGET ${TURN_LD_TARGET} (L ${L.toFixed(3)}, r ${r.toFixed(4)})`);
 }
 
-const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5
 const settingRise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
 settingRise.name = 'settingRise';
 settingRise.rotation.x = Math.PI / 2;
@@ -13710,8 +13752,9 @@ registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 // (P.dial.x − x, P.dial.y + y) — derived from RESERVE_LOCAL so moving the
 // sub-dial moves the whole reduction train's target with it.
 const rsvPivotXY = { x: P.dial.x - RESERVE_LOCAL.x, y: P.dial.y + RESERVE_LOCAL.y };
-const Z_RSV = -4.2;         // gear plane in the plate→dial gap (plate back −2.3, dial −7)
-const RSV_Z_STEP = 1.5;     // wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
+// (Z_RSV and RSV_Z_STEP are declared beside the setting traverse's fold, far
+// above — §234's cap-bearing solve reads the reserve's z-bands before this
+// train is cut. Same numbers, one declaration.)
 
 // TOOTH COUNTS DERIVED FROM THE SCALE, not chosen. The pinion p0 is
 // slip-coupled to the barrel arbor, so it must turn what that arbor turns
