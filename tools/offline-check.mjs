@@ -327,7 +327,12 @@ try {
   // shape and would land at an odd number, which this literal would catch.
   // §211 — 39: Korean's two tables. §213 — 41: Russian's. §214 — 43: Portuguese's. §210 — 45: Italian's.
   // §212 — 47: Hindi's.
-  check('release: precache complete', counts === 47, `${counts}/47`);
+  // §236 — 48, and it is the first ODD number here on purpose: the glossary
+  // linker is ONE module for both documents (explain.html imports it; the
+  // primer has no glossary), not a per-locale table, so the "two per locale"
+  // rule above does not apply to it and the parity argument now starts from
+  // an odd base.
+  check('release: precache complete', counts === 48, `${counts}/48`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');

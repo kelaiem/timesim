@@ -50,6 +50,13 @@ export default {
   ['hand-off']: '전달 (hand-off)',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: '주장된 접촉으로, 그 운동의 양 끝에서 닫혀 있음이 측정된 것입니다. 힘의 전달이야말로 그림이 가장 그럴듯하게 거짓말할 수 있는 곳이라 — 부품이 눈에 보이는 틈을 둔 채 서로를 구동하는 듯 보일 수 있습니다 — 주장된 접촉은 모두 그려지는 대신 측정됩니다.',
   ['waiver']: '면제 (waiver)',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['↩ back to the text']: '↩ 본문으로 돌아가기',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: '실패하는 행 가운데, 그 행을 고칠 부채 항목을 인용해 문서로 수용한 행입니다. 통과가 아니며, 허용 오차를 넓혀 스스로를 사들이는 일도 결코 없습니다: 행은 계속 실패하고 보고서에 그대로 보입니다. 이 페이지가 각 메커니즘의 미해결 부채를 밝히는 것도 같은 이유입니다.',
   ['derived']: '도출됨 (derived)',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: '그 숫자는 제약 조건에서 왔고, 제약 조건은 그 옆에 적혀 있습니다. 반대는 보기에 맞아 보여서 존재하는 숫자이며, 이 프로젝트는 그런 숫자를 대기 중인 버그로 취급합니다 — 그러니 "도출됨"은 숫자가 어디서 왔는지를 말하는 주장이지, 그 숫자가 얼마나 좋은지를 말하는 주장이 아닙니다.',

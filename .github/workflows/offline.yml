@@ -52,6 +52,9 @@ on:
       # change here is a change to what this job measures.
       - 'src/page-i18n.js'
       - 'src/*-i18n*.js'
+      # §236 — the glossary linker is a static import of explain.html, so it
+      # joins the precache manifest and moves the count this job asserts.
+      - 'src/glossary-links.js'
       - 'manifest.webmanifest'
       - 'tools/offline-check.mjs'
       - 'tools/stamp-release.mjs'

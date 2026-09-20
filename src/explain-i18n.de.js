@@ -61,6 +61,20 @@ export default {
   ['hand-off']: 'Übergabe (hand-off)',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: 'Ein behaupteter Kontakt, an beiden Enden seiner Bewegung als geschlossen gemessen. Kraftübertragung ist genau dort, wo ein Bild am überzeugendsten lügen kann — Teile können einander sichtbar mit Spalt anzutreiben scheinen — also wird jeder behauptete Kontakt gemessen statt gezeichnet.',
   ['waiver']: 'Ausnahme (waiver)',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['stations']: 'Stationen, stations',
+  ['strata, lanes']: 'Schichten, Gassen, strata, lanes',
+  ['corridors']: 'Korridore, corridors',
+  ['poses, posed']: 'Posen, poses, posed',
+  ['budgets']: 'Budgets, budgets',
+  ['hand-offs']: 'Übergaben, hand-offs',
+  ['waivers']: 'Ausnahmen, waivers',
+  ['↩ back to the text']: '↩ zurück zum Text',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: 'Eine fehlschlagende Zeile, die schriftlich AKZEPTIERT ist und den Schuldposten nennt, der sie beheben wird. Sie ist kein Bestehen und erkauft sich nie selbst durch eine aufgeweitete Toleranz: die Zeile schlägt weiter fehl und bleibt im Bericht sichtbar. Aus demselben Grund nennt diese Seite die offene Schuld jedes Mechanismus.',
   ['derived']: 'abgeleitet (derived)',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'Die Zahl kam aus einer Randbedingung, und die Randbedingung steht daneben. Das Gegenteil ist eine Zahl, die existiert, weil sie gut aussah — was dieses Projekt als Fehler in Wartestellung behandelt. "Abgeleitet" ist also eine Aussage darüber, WOHER eine Zahl kommt, nicht darüber, wie gut sie ist.',

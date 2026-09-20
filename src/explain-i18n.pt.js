@@ -54,6 +54,20 @@ export default {
   ['hand-off']: 'transferência (hand-off)',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: 'Um contato declarado, medido fechado nas duas pontas do seu movimento. A transmissão de força é exatamente onde uma imagem pode mentir de forma mais convincente — peças podem parecer acionar umas às outras com um vão visível — por isso todo contato declarado é medido em vez de desenhado.',
   ['waiver']: 'isenção (waiver)',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['stations']: 'estações, stations',
+  ['strata, lanes']: 'estratos, faixas, strata, lanes',
+  ['corridors']: 'corredores, corridors',
+  ['poses, posed']: 'poses, posado, posada, posed',
+  ['budgets']: 'orçamentos, budgets',
+  ['hand-offs']: 'transferências, hand-offs',
+  ['waivers']: 'isenções, waivers',
+  ['↩ back to the text']: '↩ voltar ao texto',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: 'Uma linha que falha e que é ACEITA, por escrito, citando o item de dívida que vai corrigi-la. Não é uma aprovação e nunca se compra alargando uma tolerância: a linha continua falhando e permanece visível no relatório. Esta página declara a dívida aberta de cada mecanismo pelo mesmo motivo.',
   ['derived']: 'derivado (derived)',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'O número veio de uma restrição, e a restrição está escrita ao lado dele. O oposto é um número que existe porque pareceu certo, o que este projeto trata como um bug à espera — então "derivado" é uma afirmação sobre de onde um número VEIO, não sobre quão bom ele é.',

@@ -60,6 +60,18 @@ export default {
   ['hand-off']: 'हैंड-ऑफ़',
   ['A claimed contact, measured shut at both ends of its motion. Force transmission is exactly where a picture can lie most convincingly — parts can appear to drive each other with a visible gap — so every claimed contact is measured rather than drawn.']: 'एक दावा किया गया संपर्क, जिसे उसकी गति के दोनों सिरों पर बंद नापा गया हो। बल का संचरण ठीक वही जगह है जहाँ तस्वीर सबसे भरोसेमंद ढंग से झूठ बोल सकती है — पुर्ज़े दिखने में एक-दूसरे को चलाते लग सकते हैं जबकि बीच में दिखाई देने वाला अंतराल हो — इसलिए हर दावा किया गया संपर्क खींचा नहीं, मापा जाता है।',
   ['waiver']: 'छूट',
+
+  // §236 tier one — the glossary linker's INFLECTED FORMS. The linker matches
+  // the glossary's own rendered terms, so without these it links only the
+  // citation form. Each value lists this locale's forms AND the English ones,
+  // because a prose block this table has not translated still renders English
+  // and must still link. See src/glossary-links.js.
+  ['stations']: 'स्टेशनों, stations',
+  ['strata, lanes']: 'स्तरों, लेनों, strata, lanes',
+  ['corridors']: 'कॉरिडोरों, corridors',
+  ['budgets']: 'बजटों, budgets',
+  ['waivers']: 'छूटों, waivers',
+  ['↩ back to the text']: '↩ पाठ पर वापस',
   ['A failing row that is ACCEPTED, in writing, citing the debt item that will fix it. It is not a pass and it never buys itself by widening a tolerance: the row keeps failing and stays visible in the report. This page states the open debt of each mechanism for the same reason.']: 'एक विफल पंक्ति जिसे लिखित रूप में, उस ऋण-मद का हवाला देते हुए स्वीकार किया गया है जो उसे ठीक करेगी। यह पास होना नहीं है और यह कभी सहनशीलता चौड़ी करके अपना दाम नहीं चुकाती: पंक्ति विफल ही रहती है और रिपोर्ट में दिखती रहती है। इसी कारण यह पृष्ठ हर मैकेनिज़्म का बकाया ऋण भी बताता है।',
   ['derived']: 'व्युत्पन्न',
   ['The number came from a constraint, and the constraint is written beside it. The opposite is a number that exists because it looked right, which this project treats as a bug in waiting — so "derived" is a claim about where a number CAME FROM, not about how good it is.']: 'संख्या किसी प्रतिबंध से आई है, और वह प्रतिबंध उसके बगल में लिखा है। इसका उल्टा वह संख्या है जो इसलिए मौजूद है कि वह ठीक लगी, और जिसे यह परियोजना प्रतीक्षारत बग मानती है — यानी "व्युत्पन्न" इस बारे में दावा है कि संख्या कहाँ से आई, इस बारे में नहीं कि वह कितनी अच्छी है।',

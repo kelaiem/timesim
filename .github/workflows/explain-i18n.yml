@@ -12,6 +12,13 @@
 # millisecond check would cost more attention than it saves. What this must
 # not become is a bin — anything added here has to meet all three.
 #
+# THREE TENANTS since §236. The glossary linker's gate is the explainer's own
+# first tenant read again — a browser, a minute, and a page that is sim-code-
+# free by contract — so it joins on the ORIGINAL two reasons rather than on the
+# index's. It does not meet the index's bar (it needs a Chromium), and saying
+# so is the point: the bin rule is "the same shape as a tenant already here,"
+# not "cheap enough to slip in."
+#
 # NO § NUMBER on that second tenant, deliberately: §42's own retirement note
 # settles it — "work ON THIS REPO is not a movement capability and does not
 # take a §". The index is tooling about the repository, exactly like the
@@ -76,6 +83,10 @@ on:
       - 'src/primer-i18n*.js'
       - 'src/page-i18n.js'
       - 'src/i18n.js'
+      # §236 tier one — the glossary linker. A third tenant of the same shape:
+      # browser-based like explain-i18n, about the DOCUMENT, and the page it
+      # judges is sim-code-free, so it has no business in the battery either.
+      - 'src/glossary-links.js'
       - 'tools/explain-i18n.mjs'
       - 'tools/explain-quotes.mjs'
       # the instrument index is generated from every tools/*.mjs header, so any
@@ -131,6 +142,13 @@ jobs:
 
       - name: Check the explainer's translations
         run: node tools/explain-i18n.mjs --check
+
+      # §236 tier one. AFTER the translation gate on purpose: if a key stopped
+      # matching, the block it names fell back to English and this check's
+      # per-locale link counts move with it — reading the cause first saves
+      # diagnosing the symptom.
+      - name: Check the glossary links
+        run: node tools/glossary-links.mjs
 
       # The instrument index is GENERATED from the probes' own headers, so it
       # rots the moment someone adds a probe and forgets. It rides this

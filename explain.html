@@ -207,6 +207,41 @@
 
   footer { max-width: 840px; margin: 30px auto 0; color: var(--muted); font-size: 11px; border-top: 1px solid var(--hairline); padding-top: 12px; }
 
+  /* §236 tier one — a glossary link is an ASIDE, not a destination the prose
+     is steering you towards. It reads as the surrounding sentence (colour
+     inherited, weight unchanged) and carries a dotted underline in --muted,
+     the convention for "there is a definition here" rather than --accent's
+     "go somewhere". Anything louder turns a paragraph carrying three terms
+     into a link farm, which is the failure the first-per-section rule in
+     src/glossary-links.js is also guarding against. */
+  a.gloss {
+    color: inherit; text-decoration: underline dotted var(--muted);
+    text-underline-offset: 2px; cursor: help;
+  }
+  a.gloss:hover { text-decoration-color: var(--head-hover); color: var(--head-hover); }
+  a.gloss:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* The jump lands inside a table of 28 rows, so the row has to say which one
+     it was. A background wash rather than a scroll position: the browser puts
+     the target where it likes, and "which line" is the question the reader
+     actually has. */
+  tr.gloss-flash td { background: var(--hairline-strong); }
+  @media (prefers-reduced-motion: no-preference) {
+    tr.gloss-flash td { transition: background 220ms ease-out; }
+  }
+
+  /* Being thrown from §33's prose to the top of a 4,500-line page with no way
+     back is worse than not linking at all. Fixed, out of the reading column,
+     and it exists only while there is somewhere to go back TO. */
+  #gloss-back {
+    position: fixed; inset-block-end: 16px; inset-inline-end: 16px; z-index: 30;
+    font: 11px/1 ui-monospace, monospace; color: var(--head);
+    background: var(--panel-solid); border: 1px solid var(--hairline-strong);
+    border-radius: 4px; padding: 7px 10px; cursor: pointer;
+  }
+  #gloss-back:hover { color: var(--head-hover); border-color: var(--head-hover); }
+  #gloss-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
   @media (prefers-reduced-motion: no-preference) { .anim { transition: transform 90ms linear; } }
 </style>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
@@ -260,24 +295,24 @@
               <tr><th>Word</th><th>What it means here</th></tr>
             </thead>
             <tbody>
-              <tr><td>station</td>
+              <tr><td id="v-station" data-term="station">station</td>
                   <td>A part's chosen position ALONG something &mdash; a groove, an arm, the
                   compass. Saying a station was <em>solved</em> rather than picked means a
                   search found the one position that satisfies the constraints, and moving it
                   is the cheapest kind of change this project makes.</td></tr>
-              <tr><td>band</td>
+              <tr><td id="v-band" data-term="band">band</td>
                   <td>The interval of height a part occupies. Every member in a crowded stack
                   is built to a band, and the bands are derived downward from the plate above
                   rather than stacked upward from a guess.</td></tr>
-              <tr><td>stratum / lane</td>
+              <tr><td id="v-stratum-lane" data-term="stratum / lane">stratum / lane</td>
                   <td>A layer of height, and a run of it measured EMPTY. A lane is where a new
                   part may go; finding one is usually the hard part of adding a mechanism, and
                   it is answered by probing for emptiness before anything is cut.</td></tr>
-              <tr><td>corridor</td>
+              <tr><td id="v-corridor" data-term="corridor">corridor</td>
                   <td>The swept footprint something moving needs kept clear &mdash; a chain's
                   run, a lever's arc. Unlike a lane it is not empty space, it is space already
                   spoken for.</td></tr>
-              <tr><td>margin</td>
+              <tr><td id="v-margin" data-term="margin">margin</td>
                   <td>The ONE structural clearance, <code>CLEAR_MARGIN</code> 0.15. There is
                   deliberately no second one: a part is a margin clear of its neighbours or it
                   is a defect, and a mechanism that needs its own looser number is a mechanism
@@ -294,36 +329,36 @@
               <tr><th>Word</th><th>What it means here</th></tr>
             </thead>
             <tbody>
-              <tr><td>azimuth</td>
+              <tr><td id="v-azimuth" data-term="azimuth">azimuth</td>
                   <td>Angular position ABOUT an axis &mdash; where a part sits around a circle,
                   as distinct from how far out it sits and how high. It is usually the cheapest
                   quantity to change when a mechanism has to be packed into real space, which is
                   why entries below say an azimuth was <em>scored</em> or <em>solved</em> against
                   the corridors rather than drawn.</td></tr>
-              <tr><td>annulus</td>
+              <tr><td id="v-annulus" data-term="annulus">annulus</td>
                   <td>The flat ring between an inner and an outer radius. Most of the free room
                   in this movement is annular &mdash; between a plate's rim and the case bore,
                   between a hub and a wheel's root circle &mdash; so a part's allowance is stated
                   as the annulus it may occupy rather than as a box, and its footprint is the
                   annulus it sweeps rather than its resting silhouette.</td></tr>
-              <tr><td>chord</td>
+              <tr><td id="v-chord" data-term="chord">chord</td>
                   <td>A straight run between two points of a curve. It appears as a shape (the
                   escapement's impulse face is the chord of the tooth tip's own path) and as an
                   error term (a tessellated curve's chords lie INSIDE the metal, so a drawn
                   circle is always a little small &mdash; which is the direction a clearance
                   check can afford to be wrong in).</td></tr>
-              <tr><td>tangent</td>
+              <tr><td id="v-tangent" data-term="tangent">tangent</td>
                   <td>The direction a curve is going where something touches it, which in a train
                   is the direction force can actually be delivered. A tangent between two circles
                   has two branches, and taking the wrong one reverses a mechanism while changing
                   nothing you can see &mdash; which is why direction is declared once and
                   guarded against the metal.</td></tr>
-              <tr><td>throw</td>
+              <tr><td id="v-throw" data-term="throw">throw</td>
                   <td>A displacement stated as motion rather than as size: how far a cam, finger
                   or eccentric MOVES its follower across its working travel. A budget is sized
                   against a part's throw; its radius is a different number and sizing against
                   that is how a budget ends up larger than the stroke it polices.</td></tr>
-              <tr><td>envelope</td>
+              <tr><td id="v-envelope" data-term="envelope">envelope</td>
                   <td>The bounding surface a derived law gives, as opposed to a profile someone
                   drew: the fusee's groove is cut to the envelope its radius law hands it, and the
                   lathed core beneath is that same envelope relieved for the chain stack leaning
@@ -341,40 +376,40 @@
               <tr><th>Word</th><th>What it means here</th></tr>
             </thead>
             <tbody>
-              <tr><td>unit</td>
+              <tr><td id="v-unit" data-term="unit">unit</td>
                   <td>A labelled assembly the instruments treat as one part. The movement is
                   partitioned into them, and most checks ask questions about PAIRS of units
                   &mdash; which is why what happens INSIDE one needed instruments of its own.</td></tr>
-              <tr><td>axis</td>
+              <tr><td id="v-axis" data-term="axis">axis</td>
                   <td>One input swept end to end &mdash; the going train, the crown's pull and
                   turn, the reserve, each alarm input. A part no axis moves is a part the
                   instruments cannot judge, so shipping a mechanism means shipping the axis
                   that exercises it.</td></tr>
-              <tr><td>pose</td>
+              <tr><td id="v-pose" data-term="pose">pose</td>
                   <td>The movement forced to one exact state, so a measurement is repeatable.
                   A sweep is a run of poses along an axis; every number on this page that says
                   "measured" was taken at poses, which is also why sampling cannot BOUND
                   anything between them.</td></tr>
-              <tr><td>row</td>
+              <tr><td id="v-row" data-term="row">row</td>
                   <td>One declared claim in an instrument's table &mdash; this pair clears that
                   distance, this contact closes at that pose, this section meets that floor.
                   Rows are the unit of accounting: a check reports how many it has and how many
                   are failing, and a claim nobody wrote as a row is a claim nothing measures.</td></tr>
-              <tr><td>gate</td>
+              <tr><td id="v-gate" data-term="gate">gate</td>
                   <td>A check whose failure list must be EMPTY before work lands. The
                   distinction from a report matters: a report's rows are the product and are
                   read, a gate's rows stop the work.</td></tr>
-              <tr><td>floor / budget</td>
+              <tr><td id="v-floor-budget" data-term="floor / budget">floor / budget</td>
                   <td>A minimum and a maximum. Floors say metal may not be thinner than real
                   stock; budgets say a working contact may not bite deeper than its own stroke.
                   A budget is always sized SMALLER than the travel it polices, so touching and
                   buried read as different states.</td></tr>
-              <tr><td>hand-off</td>
+              <tr><td id="v-hand-off" data-term="hand-off">hand-off</td>
                   <td>A claimed contact, measured shut at both ends of its motion. Force
                   transmission is exactly where a picture can lie most convincingly &mdash;
                   parts can appear to drive each other with a visible gap &mdash; so every
                   claimed contact is measured rather than drawn.</td></tr>
-              <tr><td>waiver</td>
+              <tr><td id="v-waiver" data-term="waiver">waiver</td>
                   <td>A failing row that is ACCEPTED, in writing, citing the debt item that
                   will fix it. It is not a pass and it never buys itself by widening a
                   tolerance: the row keeps failing and stays visible in the report. This page
@@ -391,31 +426,31 @@
               <tr><th>Word</th><th>What it means here</th></tr>
             </thead>
             <tbody>
-              <tr><td>action group</td>
+              <tr><td id="v-action-group" data-term="action group">action group</td>
                   <td>Everything that carries ONE input to ONE output &mdash; pusher to pawl to
                   column to ring, crown through the keyless works to the hands. It is the unit of
                   design the way a unit is the unit of measurement: a group is proved from the
                   inside first &mdash; the causality arrives, the members can do the job as matter
                   &mdash; and only then made to fit the space around it.</td></tr>
-              <tr><td>the line</td>
+              <tr><td id="v-the-line" data-term="the line">the line</td>
                   <td>A new group is designed STRAIGHT first: input at one end, output at the
                   other, no packaging. In a line it is structurally impossible to pay for an
                   awkward route with a longer lever, so the quantities the line settles &mdash;
                   mesh ratios, arm lengths, displacement gains, stall forces &mdash; become the
                   reference the built version is measured back to.</td></tr>
-              <tr><td>fold</td>
+              <tr><td id="v-fold" data-term="fold">fold</td>
                   <td>Folding that line into the space the movement actually has. A fold may only
                   spend position: azimuth about a mesh point, a different stratum, a moved
                   station, an added corner or idler. It may not spend the mechanism &mdash; a
                   lever that grew because the route was tight is the defect this whole vocabulary
                   exists to name.</td></tr>
-              <tr><td>fork</td>
+              <tr><td id="v-fork" data-term="fork">fork</td>
                   <td>A departure from the line's numbers that is DECLARED, each changed quantity
                   re-derived in place from the constraint that forced it. A fold keeps the
                   mechanism and moves it; a fork changes what the mechanism is, so it is named in
                   the source &mdash; the alarm's lifting lever carries this page's one. Force and
                   section budgets are inherited and are never forkable.</td></tr>
-              <tr><td>corner</td>
+              <tr><td id="v-corner" data-term="corner">corner</td>
                   <td>A place where motion changes direction, treated as a real part with its own
                   duties rather than as a bend in a drawing. Each one states which of the seven
                   named idioms it is &mdash; a bevel pair, an idler dogleg, a crank, a rigid bent
@@ -423,7 +458,7 @@
                   arithmetic that earns it.
                   Distinct from a pallet stone's <em>locking corner</em> in the escapement below,
                   which is an edge of metal.</td></tr>
-              <tr><td>idler</td>
+              <tr><td id="v-idler" data-term="idler">idler</td>
                   <td>A wheel added for routing rather than for ratio &mdash; equal counts in and
                   out, so it shifts a drive sideways, or reverses it, without changing what
                   arrives at the far end. Idlers and corners are the two parts a fold is allowed
@@ -440,12 +475,12 @@
               <tr><th>Word</th><th>What it means here</th></tr>
             </thead>
             <tbody>
-              <tr><td>derived</td>
+              <tr><td id="v-derived" data-term="derived">derived</td>
                   <td>The number came from a constraint, and the constraint is written beside
                   it. The opposite is a number that exists because it looked right, which this
                   project treats as a bug in waiting &mdash; so "derived" is a claim about
                   where a number CAME FROM, not about how good it is.</td></tr>
-              <tr><td>modelled / simulated</td>
+              <tr><td id="v-modelled-simulated" data-term="modelled / simulated">modelled / simulated</td>
                   <td>Two different claims, kept apart on purpose. MODELLED means a thing is
                   described &mdash; geometry, constants, declared structure. SIMULATED means
                   its behaviour is DRIVEN by causality through real contacts. Most of the
@@ -456,6 +491,38 @@
           </table>
         </div>
       </figure>
+
+      <!-- §236 tier one — INFLECTION, and why it is CONTENT rather than an
+           attribute. The linker matches the glossary's own rendered terms, so
+           it links "azimuth" and not "azimuths". The forms below close that
+           gap, and they have to be translatable: German inflects by case,
+           Russian six ways. src/page-i18n.js localizes by assigning
+           el.innerHTML, and an element's own attributes are NOT part of its
+           innerHTML — so a `data-also` would render untranslated for ever,
+           whatever tier one's rule said. Content translates; the `data-term`
+           beside it is a VALUE and stays canonical English, the same class as
+           `data-cam`. Two of these are irregular (strata, annuli) and no
+           suffix rule would ever have reached them, which is the other half
+           of why the forms are declared rather than derived. A term the
+           linker refuses (AMBIGUOUS) carries no row here — the forms would be
+           a dozen translations each buying nothing. -->
+      <div class="gloss-variant-table" hidden aria-hidden="true">
+        <span class="gloss-variants" data-term="stratum / lane">strata, lanes</span>
+        <span class="gloss-variants" data-term="annulus">annuli</span>
+        <span class="gloss-variants" data-term="station">stations</span>
+        <span class="gloss-variants" data-term="pose">poses, posed</span>
+        <span class="gloss-variants" data-term="azimuth">azimuths</span>
+        <span class="gloss-variants" data-term="idler">idlers</span>
+        <span class="gloss-variants" data-term="fold">folds, folded</span>
+        <span class="gloss-variants" data-term="chord">chords</span>
+        <span class="gloss-variants" data-term="tangent">tangents</span>
+        <span class="gloss-variants" data-term="throw">throws</span>
+        <span class="gloss-variants" data-term="waiver">waivers</span>
+        <span class="gloss-variants" data-term="corridor">corridors</span>
+        <span class="gloss-variants" data-term="hand-off">hand-offs</span>
+        <span class="gloss-variants" data-term="floor / budget">budgets</span>
+        <span class="gloss-variants" data-term="action group">action groups</span>
+      </div>
     </div>
   </details>
 
@@ -3133,7 +3200,17 @@
   // shadowing it made every localized write throw. The page-error check
   // caught it; the rename is the fix.
   import { localizeExplainer, t as tr } from './src/explain-i18n.js';
+  import { linkGlossary, wireGlossaryTargets } from './src/glossary-links.js';
   localizeExplainer();
+  // §236 tier one — AFTER the localizer, never before, and the ordering is the
+  // whole design. The linker reads the glossary's first column as its term
+  // list, so run second it matches the reader's language for free; run first it
+  // would wrap words in <a> and change the innerHTML the localizer keys on,
+  // dropping every block it touched back to English. tools/glossary-links.mjs
+  // holds both halves — the page's TEXT unchanged by the injection, and every
+  // translated block still matching after it.
+  linkGlossary(document);
+  wireGlossaryTargets(document, tr('↩ back to the text'));
   {
     const sel = document.getElementById('lang-select');
     // Values are canonical codes, never display text — tier one's rule.
