@@ -26955,8 +26955,15 @@ exported from the plate builder; the corner-index and coupling probes carry a
 `mwCornerFold` row. Every written angle is what it was, and the last
 `TURN_WAIVERS` row stays, reworded to this measurement.
 
-**The bar.** Local `--report` on this head, diffed against Landing 5's
-merged report — recorded in the pull request.
+**The bar.** Local `--report` (3 shards) on this head **41/41** (1451.9 s),
+boot silent, fingerprint **3363748923** — the same hash as Landing 5's
+merged tree, which is what "reverted" should measure as. Diffed against
+Landing 5's merged report: 24 of 28 checks byte-identical with timing
+stripped, and the four that "moved" (`inspection`, `clearances`,
+`sweptOverlap`, `expectedContacts`) moved only in their `census` counters
+(AABB tests, exact-ms) — not one row. `turning` 222 bars, 1 waived, the
+same row. The run preceded the waiver's text reword by a few minutes; the
+reword changes no key and no verdict, and CI runs the final tree.
 
 ## §235 — The §45 release lifter reads the crown collar with a YOKE, not a plunger under it
 
