@@ -5120,21 +5120,33 @@ const CAP_BEARING = (() => {
       o.geometry.dispose(); });
     return rings;
   };
-  // how far a body of revolution (apex C, unit axis a, rings) reaches
-  // HORIZONTALLY into the band [lo, hi] toward a station, as its worst ring
+  // how close a body of revolution (apex C, unit axis a, rings) comes, IN
+  // PLAN, to a station while inside the band [lo, hi] — as its worst ring.
+  // A ring on a horizontal axis stands in a vertical plane: the part of it
+  // inside the band projects to a horizontal SEGMENT across the axis, of
+  // half-width √(r² − dz²) where dz is the ring centre's height over the
+  // band's edge (r where the centre is inside the band), so the station's
+  // distance is to that segment — not to the centre less a radius, which
+  // reads the ring as reaching every way in plan and cost ~0.5 u against
+  // the vertex solve here. A ring on a vertical axis is a horizontal circle,
+  // and there the radius IS its reach every way.
   const envelopeMargin = (C, a, rings, st, tip, [lo, hi]) => {
     let m = Infinity;
     const horizontal = Math.abs(a.z) < 1e-9;
+    const e1 = horizontal ? new THREE.Vector3(a.y, -a.x, 0) : null;      // horizontal, across the axis
     for (const [r, zAx] of rings) {
       const cx = C.x + a.x * zAx, cy = C.y + a.y * zAx, cz = C.z + a.z * zAx;
-      let reach;
-      if (horizontal) {                       // the ring stands in a vertical plane: it dips r below its centre
-        if (cz >= lo && cz <= hi) reach = r;
-        else { const dz = cz > hi ? cz - hi : lo - cz; if (r <= dz) continue; reach = Math.sqrt(r * r - dz * dz); }
-      } else {                                // a horizontal ring at height cz
-        if (cz < lo || cz > hi) continue; reach = r;
+      if (horizontal) {
+        let w;
+        if (cz >= lo && cz <= hi) w = r;
+        else { const dz = cz > hi ? cz - hi : lo - cz; if (r <= dz) continue; w = Math.sqrt(r * r - dz * dz); }
+        // distance from the station to the segment (c − e1·w, c + e1·w)
+        const t = Math.max(-w, Math.min(w, (st.x - cx) * e1.x + (st.y - cy) * e1.y));
+        m = Math.min(m, Math.hypot(cx + e1.x * t - st.x, cy + e1.y * t - st.y) - tip - CLEAR_MARGIN);
+      } else {
+        if (cz < lo || cz > hi) continue;
+        m = Math.min(m, Math.hypot(cx - st.x, cy - st.y) - r - tip - CLEAR_MARGIN);
       }
-      m = Math.min(m, Math.hypot(cx - st.x, cy - st.y) - reach - tip - CLEAR_MARGIN);
     }
     return m;
   };
