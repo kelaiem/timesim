@@ -228,8 +228,35 @@ on:
 
 # A force-push mid-run should kill the stale run — the battery is long enough
 # that queued duplicates would otherwise stack up behind it.
+#
+# AND THE EVENT IS PART OF THE KEY, because two runs on one ref are not always
+# the same run. Measured twice, at §237's merge and again at §238's: the
+# push-to-`main` run (917) was CANCELLED ~100 s in by the `runner: self-hosted`
+# dispatch that seeds the host's baseline (918), and the same pair appears at
+# 913/914 a merge earlier. Same ref, same group, and BOTH ARE BASELINES —
+# §152's key carries the PLATFORM, and §200's rule is that a push NEVER routes
+# self-hosted, so on the default branch the event name IS the platform seam.
+# Neither run supersedes the other and the survivor is whichever was dispatched
+# last, which is not a decision anybody made.
+#
+# The symptom is quiet and it is paid for later: a cancelled push run leaves
+# the merged tree with no ubuntu-latest verdict, so §152's "every merged tree
+# gets a full battery" quietly does not hold there, and the next GitHub-hosted
+# pull request re-runs every check instead of inheriting rows it was entitled
+# to. Nothing goes red; the bill arrives as 30 minutes on somebody else's PR.
+#
+# What must still collide, and still does: every pull-request event is
+# `pull_request` — `labeled` is one of its TYPES, not an event of its own — so
+# §200's label opt-in still supersedes the hosted run it replaces, and a
+# force-push still kills the stale run on its branch. Two dispatches on one ref
+# still cancel each other, which is right: that is the same seeding job twice.
+#
+# The event name is a PROXY for the platform and it is only as true as §200's
+# rule. Route a push self-hosted and this key stops being the seam; the fix
+# then is to key on the routing expression itself, which is not done here
+# because that expression would be written down twice.
 concurrency:
-  group: battery-${{ github.workflow }}-${{ github.ref }}
+  group: battery-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 # §200 — WHERE THIS JOB RUNS IS DECIDED HERE, BY TRUST FIRST AND BY A VARIABLE
