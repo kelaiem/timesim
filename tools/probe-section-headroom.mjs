@@ -76,9 +76,13 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
   for (const e of clock.labelEntries) walk(e.obj, e.name);
   const all = [...byMesh.values()];
 
+  // TODO 149: the same ruler as checkSlenderness — world scale per axis, so
+  // a bar cut at unit length and stretched onto its span each frame (the
+  // minute jumper's lifter link) matches its own row instead of vanishing.
   const dims = (mesh) => { mesh.geometry.computeBoundingBox();
     const b = mesh.geometry.boundingBox;
-    const d = [b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z].sort((x, y) => x - y);
+    const ws = mesh.getWorldScale(new THREE.Vector3());
+    const d = [(b.max.x - b.min.x) * Math.abs(ws.x), (b.max.y - b.min.y) * Math.abs(ws.y), (b.max.z - b.min.z) * Math.abs(ws.z)].sort((x, y) => x - y);
     return { tMin: d[0], tMid: d[1], len: d[2] }; };
 
   // The bars: §54's unwaived over-ceiling rows, matched to their meshes BY

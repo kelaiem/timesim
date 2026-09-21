@@ -13790,7 +13790,13 @@ const JMP_LIFT_ROT = (() => {
 // bar's slot absorbs the stroke surplus (the post travels ~2.9; the
 // tail arc is ~0.2 — a classic slotted setting-lever connection). Drawn
 // as a follower between its two pins each frame.
+// Cut at UNIT length and stretched onto the real span in tick() (scale.x =
+// the post-to-pin distance, 29.10 u crown in, 26.11 u out). TODO 149: that
+// construction hid the bar from §54's ruler, which read the unit box — it is
+// λ 52.9 on its 0.55 section at rest, and the slenderness report now reads
+// the posed scale and lists it under SLENDER_WAIVERS['Minute jumper'].
 const jumperLifter = new THREE.Mesh(new THREE.BoxGeometry(1, 0.55, JMP_LIFTER_T), MATS.steel);
+jumperLifter.name = 'jumperLifter'; // TODO 149: a row that reads '(unnamed)' is a row nobody triages (TODO 109's finding)
 jumperUnit.add(jumperLifter); // part of the jumper UNIT (its contact with the post is the declared lost-motion joint)
 // Star base phase, from the SOLVED tip azimuth: snapped minutes must put a
 // VALLEY under the beak, and at a snapped pose the minute wheel's angle is
