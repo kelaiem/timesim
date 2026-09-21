@@ -3312,7 +3312,7 @@ const KO = {
   'Drill-in': '세부 분해',
   'Great wheel': '그레이트 휠',
   'Winding spur': '와인딩 스퍼',
-  'Fusee cone': '퓨지 콘',
+  'Fusee cone': '퓨지 원뿔',
   'Maintaining wheel': '메인테이닝 휠',
   'Let-down square': '태엽 풀기 사각축',
   'Unit': '유닛',
