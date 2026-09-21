@@ -17,6 +17,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 149 | OPEN | Found by asking why the minute jumper's lifter link had no `SLENDER_WAIVERS` entry: it had no ROW. The bar is cut at unit length and stretched onto its 26–29 u span each frame with `scale.x`, and `checkSlenderness` read `geometry.boundingBox` (λ 1.8). The ruler now applies world scale per axis (`stockFloor`'s rule), held by a control on three synthetic meshes, and the bar reads **λ 52.9** at rest — the third-longest free length in the movement. Waived citing this item with its wall measured: wants +0.2101 u per side, the dial gap (0.1600) is the designed bind and out of plane, `caseMiddle` at 0.2953 is the first in-plane wall and is SHORT by 0.0648. The same ruler surfaced `alarmColPawlSpring` at λ 52.3 as a wheel-kind bar; kinded `spring` like its two sibling blades. Remains: a mid-span rest in the lifter plane, or a re-sited case wall, and the two remaining scaled springs are exempt by kind rather than measured |
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
@@ -20980,6 +20981,112 @@ the stud landing inside the outer coil because the solve puts it there. The
 plate's caption was rewritten and its translation in all eleven locales
 therefore falls back to English visibly, by §73's own rule; the plate's own
 labels are translated.
+
+## 149. The slenderness check read geometry-local extents and could not see a per-frame-scaled bar: the minute jumper's lifter link runs at λ 52.9 with no row
+
+Asked, in review: what is the part linking the setting lever to the minute
+jumper, and does it carry a slenderness waiver? The part is the **lifter
+link** — `jumperLifter` in `src/main.js`, the lost-motion bar from the setting
+lever's tail post to the jumper's tail pin; `MECH_GRAPH` has it as the drive
+edge `Setting lever → Minute jumper`. It carried no waiver, and the reason is
+the defect: **it had no row.** `SLENDER_WAIVERS` named two units, both TODO
+109's, and `checkSlenderness` listed 681 meshes with the Minute jumper unit in
+neither its rows nor its exempt list.
+
+### Why the ruler could not see it
+
+The bar is built as `BoxGeometry(1, 0.55, JMP_LIFTER_T)` — a UNIT-length box —
+and the tick stretches it onto the real post-to-pin span every frame with
+`jumperLifter.scale.x = llen`. §54's ruler read `mesh.geometry.boundingBox`,
+which never sees a `scale`, so the bar measured 1 u long on a 0.55 section:
+λ 1.8, under any ceiling, silently. `stockFloor` had already met this
+(§36's follow-up: "world scale is applied per axis; builders here rarely
+scale, but a ruler should not assume that") and slenderness had not.
+This is §233's class of miss — a check wrong in the safe direction is a
+check that passes — and the fix is the one §233 prescribes: a control that
+holds the ruler to the number the construction PRODUCES.
+
+Measured off the posed metal before the fix (headless, `setPose`):
+
+| crown pull | span (u) | span (mm) | λ = L / 0.55 | ceiling |
+|---|---|---|---|---|
+| 0 (in, the rest pose) | 29.10 | 11.03 | 52.9 | 30 |
+| 0.5 | 27.64 | 10.47 | 50.3 | 30 |
+| 1 (out) | 26.11 | 9.89 | 47.5 | 30 |
+
+Section 0.55 × 0.317 u (0.208 × 0.120 mm); the thin way is exactly
+`STOCK_MIN_U`, so §50 passes it by construction — the alarm link's beak tail
+all over again, thick enough to be metal and far too long to be stiff.
+
+### What landed
+
+1. **The ruler reads the posed bar.** `slenderExtents(mesh)` applies
+   `getWorldScale` per axis to the geometry-local box (walks UP, so a scaled
+   parent counts; per axis, so a scaled cylinder's axes do not mix; still the
+   local frame, so a rotated pose cannot mix them either). A row on a scaled
+   mesh carries `worldScale` so the reader knows the length is posed. A
+   `userData.bearings` declaration on a scaled mesh is MALFORMED (stations are
+   geometry-local and `supportAt` places them through `matrixWorld`, which
+   carries the scale; nothing declares one today, and a second coordinate
+   convention for a member that does not exist is worse than refusing it).
+2. **The control holds it**: a box scaled ×29.1037 on x must read 29.1037; a
+   box under a parent scaled (2, 1, 3) must read (2, 0.55, 0.9); an unscaled
+   box must read its own box and claim no scale. The first draft of that
+   control FAILED on its own tolerance — `BoxGeometry` stores float32, so
+   0.55 is 0.550000011920929 in the buffer — which is the control doing its
+   job on the author.
+3. **The mesh is named** (`jumperLifter`): TODO 109's finding that a row
+   reading `(unnamed)` is a row nobody triages.
+4. **`tools/probe-section-headroom.mjs` uses the same ruler**, so the row
+   matches its mesh by measurement instead of vanishing. Its verdict:
+
+   | bar | λ | growth needed, per side | nearest | gap | spare | verdict |
+   |---|---|---|---|---|---|---|
+   | `jumperLifter` | 52.9 | 0.2101 u | `Setting lever / (unnamed)` — the tail post | 0.0000 | — | the joint, not a wall |
+   | | | | `Dial / dialPlate` | 0.1600 | 0.0100 | the DESIGNED bind (item 10's `Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + ε`, the plane item 89 collapsed to one name), out of plane |
+   | | | | `Case / caseMiddle` | 0.2953 | 0.1453 | **SHORT** — the first in-plane wall |
+
+   The probe's arithmetic is isotropic and the section's growth is in-plane
+   (the bar's stiff dimension is its 0.55 width in the lifter plane), so the
+   dial gap is not the wall it appears to be; the case middle is. Both ends
+   are pins, so declaring bearings would not shorten anything — a
+   pinned-pinned span IS the whole bar (the model changes to 48EI/L³, the λ
+   does not).
+5. **Waived** — `SLENDER_WAIVERS['Minute jumper'] = 'TODO 149'`, with the
+   numbers above in the entry. Not to green the report: the row is triaged
+   (item 109's rule) and the fix is position-space work.
+6. **A second scaled member surfaced on the same run**: `alarmColPawlSpring`,
+   §192's closing blade, at λ 52.3 as a WHEEL-kind bar because it had no
+   `STOCK_KIND_BY_MESH` entry. It is 0.05 mm flat-spring stock stretched onto
+   its free length by `scale.x` exactly as the feeler and hammer blades are,
+   and those two are kinded `spring`; it is now kinded the same. That moves
+   one `stockFloor` row (0.05 mm against the wheel floor, waived under item
+   11's `Alarm switch` entry → passing the spring floor), which is the row
+   telling the truth about the stock it is.
+
+The survey that found it, over the whole scene at the rest pose: seven meshes
+carry a non-unit world scale — the two mainspring ribbons and the hairspring
+(tube z-scale, `oscillator`/`equalisation` read those through
+`userData.section`), three blade springs stretched along x (feeler, hammer,
+column pawl), and the lifter. The three blades are exempt by kind and the
+ribbons by their own instruments; only the lifter was a bar the ruler owed a
+row.
+
+### Remains
+
+- **The fix itself** — P3, position space: a mid-span rest in the lifter
+  plane (a stud off the dial-side face the bar rides over, which halves the
+  free length to ~14.5 u and λ to ~26, under `SLENDER_TARGET`), or a
+  re-sited case wall to admit the 0.3676 mm section. Whoever takes it re-runs
+  `probe-section-headroom.mjs` at the candidate rather than quoting the table
+  above, and deletes the waiver in the same change (§54's staleness gate
+  will insist).
+- The bar's λ varies with the crown (52.9 → 47.5); the report reads it at
+  the rest pose, which is the longest. A per-frame-scaled member is the one
+  case where "single-pose" costs something, and the row says so through
+  `worldScale`.
+- Two of the three scaled blades pass on kind, not on measurement; §54's
+  covenant exempts springs and this item does not reopen that.
 
 ## 148. The overcoil's knee runs straight in plan, so the terminal swings outside the coils it is raised to pass over — CLOSED
 

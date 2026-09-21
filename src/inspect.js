@@ -7096,6 +7096,7 @@ export const STOCK_KIND_BY_MESH = {
   alarmJumperStud: 'pivot',    // the blade's plate-top ground, sized so it is not a second spring in series (TODO 82)
   alarmJumperTip: 'pivot',     // the working diameter, ⌀ 0.56 mm — a turned step, not a section under load
   alarmLockSpring: 'spring',   // §102 — the lock's return blade, the same SPRING_FLAT_U stock and the same standing debt
+  alarmColPawlSpring: 'spring', // §192 — the column pawl's closing blade, "an in-plane cantilever blade of the movement's one flat-spring stock" (its own transfers row), stretched onto its free length by scale.x like the feeler and hammer blades above. Undeclared until TODO 149 made §54's ruler read the posed scale, at which point it surfaced at λ 52.3 as a wheel-kind bar: a blade's slenderness is its function, and its two siblings were already kinded as what they are
   alarmLockSpringStud: 'pivot', // ...and its plate-top anchor — pin stock over the pivot floor
   // The selector's three guide posts — pin stock clearing the pivot floor.
   // One entry each since they carry their own names now (they always were
@@ -7316,6 +7317,22 @@ export const SLENDER_WAIVERS = {
   // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
   // stands 0.2507 away and leaves 0.1007.
   'Alarm release lifter': 'TODO 109',
+  // TODO 149 — λ 52.9, the minute jumper's LIFTER LINK (`jumperLifter`): the
+  // lost-motion bar from the setting lever's tail post to the jumper's tail
+  // pin, 29.10 u crown in (26.11 out) on a 0.55 × 0.317 u section. It was
+  // never in this report before 149 because the bar is cut at UNIT length
+  // and stretched onto its span each frame with scale.x, and the ruler read
+  // the unit box (λ 1.8). Triaged on the same probe as the rows above: wants
+  // +0.2101 u per side; the nearest metal is the setting lever's tail post at
+  // 0.0000 (the joint, not a wall) and the dial plate at 0.1600, which is
+  // item 10's DESIGNED bind (Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + ε, the plane
+  // TODO 89 collapsed to one name) and is
+  // out of plane — the section's growth is in-plane, so the dial is not its
+  // wall. The first in-plane wall is caseMiddle at 0.2953, spare 0.1453:
+  // SHORT. Both ends are pins, so a bearing declaration would not shorten the
+  // free length either (a pinned-pinned span IS the whole bar); the fix is a
+  // mid-span rest in the lifter plane, or a section the case must move for.
+  'Minute jumper': 'TODO 149',
   // (§234 retired the Hack rod and Reset rod rows here — the two are flat
   // stamped links now, their widths cut to §54's target over their chords, so
   // no over-ceiling row remains for a waiver to name. §54's covenant again: a
@@ -7514,10 +7531,61 @@ function slendernessControl() {
   for (const [decl, why] of rejects)
     if (validateBearings(decl, ext, 'x', box).ok) fails.push(`accepted ${why}`);
 
-  return fails.length ? `FAIL — ${fails.join('; ')}` : `PASS (${rejects.length + 5} cases)`;
+  // TODO 149 — THE RULER, on three synthetic meshes that never join the scene.
+  // The whole reason the lifter link went unlisted was a ruler wrong in the
+  // safe direction, and §233 established that such a check is a check that
+  // passes: so the extents helper is held to the number the scale PRODUCES,
+  // on the exact construction the movement uses (a unit box stretched along
+  // x), on a parent's scale (getWorldScale walks up; a local read would not),
+  // and on an unscaled box, which must read its own box and say so.
+  {
+    const near3 = (a, b) => Math.abs(a - b) <= 1e-6;   // float32 positions: 0.55 is 0.550000011920929 in the buffer
+    const mk = () => new THREE.Mesh(new THREE.BoxGeometry(1, 0.55, 0.3));
+    const own = mk(); own.scale.x = 29.1037; own.updateMatrixWorld(true);
+    const e1 = slenderExtents(own);
+    if (!e1.scaled || !near3(e1.ext.x, 29.1037) || !near3(e1.ext.y, 0.55) || !near3(e1.ext.z, 0.3))
+      fails.push(`a mesh scaled ×29.1037 on x read [${e1.ext.x}, ${e1.ext.y}, ${e1.ext.z}] — the ruler is not reading the posed bar`);
+    const parent = new THREE.Group(); parent.scale.set(2, 1, 3);
+    const child = mk(); parent.add(child); parent.updateMatrixWorld(true);
+    const e2 = slenderExtents(child);
+    if (!e2.scaled || !near3(e2.ext.x, 2) || !near3(e2.ext.y, 0.55) || !near3(e2.ext.z, 0.9))
+      fails.push(`a mesh under a parent scaled (2, 1, 3) read [${e2.ext.x}, ${e2.ext.y}, ${e2.ext.z}] — world scale must walk up`);
+    const plain = mk(); plain.updateMatrixWorld(true);
+    const e3 = slenderExtents(plain);
+    if (e3.scaled || e3.worldScale !== null || !near3(e3.ext.x, 1) || !near3(e3.ext.y, 0.55) || !near3(e3.ext.z, 0.3))
+      fails.push('an unscaled box did not read its own box, or claimed a scale it does not have');
+    for (const m of [own, child, plain]) m.geometry.dispose();
+  }
+
+  return fails.length ? `FAIL — ${fails.join('; ')}` : `PASS (${rejects.length + 8} cases)`;
 }
 
-const _slBoxPt = new THREE.Vector3(), _slBox = new THREE.Box3();
+const _slBoxPt = new THREE.Vector3(), _slBox = new THREE.Box3(), _slScale = new THREE.Vector3();
+
+// TODO 149 — THE RULER READS THE POSED BAR, NOT THE UNIT BOX. A builder may cut
+// a member at unit length and stretch it onto its real span every frame with
+// `scale` (the minute jumper's lifter link: a 1 × 0.55 × 0.317 box, scale.x
+// 26–29 depending on the crown). `geometry.boundingBox` never sees that, so
+// this check read the lifter as λ 1.8 and never listed it — wrong in the
+// direction that never fails, §233's lesson again. `stockFloor` already
+// applied world scale per axis (§36's follow-up); this is the same rule,
+// reached the same way (`getWorldScale` walks up, so a scaled PARENT counts).
+// Per axis, so a scaled cylinder's axes do not mix; the geometry-local box is
+// still the frame, so a rotated pose cannot mix them either. The scale is read
+// at the check's pose, which for a per-frame-scaled member is one span of the
+// stroke — the report carries `worldScale` on such a row so the reader knows
+// the length is posed.
+function slenderExtents(mesh) {
+  mesh.geometry.computeBoundingBox();
+  const b = mesh.geometry.boundingBox;
+  const ws = mesh.getWorldScale(_slScale);
+  const scaled = Math.abs(ws.x - 1) > 1e-9 || Math.abs(ws.y - 1) > 1e-9 || Math.abs(ws.z - 1) > 1e-9;
+  return {
+    box: b,
+    ext: { x: (b.max.x - b.min.x) * Math.abs(ws.x), y: (b.max.y - b.min.y) * Math.abs(ws.y), z: (b.max.z - b.min.z) * Math.abs(ws.z) },
+    scaled, worldScale: scaled ? [+ws.x.toFixed(6), +ws.y.toFixed(6), +ws.z.toFixed(6)] : null,
+  };
+}
 
 export function checkSlenderness(clock, opts = {}) {
   const max = opts.max || SLENDER_MAX;
@@ -7609,9 +7677,7 @@ export function checkSlenderness(clock, opts = {}) {
     const name = mesh.name || '(unnamed)';
     const kind = STOCK_KIND_BY_MESH[name] || STOCK_KIND_BY_PART[unit] || 'wheel';
     if (SLENDER_EXEMPT_KINDS.has(kind)) { exempt.push({ unit, mesh: name, kind }); continue; }
-    mesh.geometry.computeBoundingBox();
-    const b = mesh.geometry.boundingBox;
-    const ext = { x: b.max.x - b.min.x, y: b.max.y - b.min.y, z: b.max.z - b.min.z };
+    const { box: b, ext, scaled, worldScale } = slenderExtents(mesh);   // TODO 149: posed extents
     const d = [ext.x, ext.y, ext.z].sort((x, y) => x - y);
     const [tMin, tMid, len] = d;
     if (!(tMid > 1e-9) || !(len > 1e-9)) continue;          // degenerate: §50's business, not this one
@@ -7635,6 +7701,28 @@ export function checkSlenderness(clock, opts = {}) {
         length_mm: +(len * UNIT_MM).toFixed(3),
         cantileverStiffness_N_per_m: kOf(len, 3),
         waived: SLENDER_WAIVERS[unit] || null,
+        ...(scaled ? { worldScale } : {}),   // TODO 149: the length is the POSED span
+      });
+      continue;
+    }
+    // TODO 149 — a declaration's stations are geometry-local numbers and
+    // supportAt places them through matrixWorld, which carries the scale; the
+    // free lengths between them would need the scale applied and the
+    // stations would not. Nothing declares bearings on a scaled mesh today,
+    // and rather than carry a second coordinate convention for a member that
+    // does not exist, such a mesh is MALFORMED: bake the span into the cut.
+    if (scaled) {
+      malformed.push({ unit, mesh: name, why: `declares bearings on a mesh under world scale [${worldScale}] — stations are geometry-local and cannot be read through a scale; bake the span into the geometry` });
+      const lambda = len / tMid;
+      if (lambda > ceiling) rows.push({
+        unit, mesh: name, kind,
+        lambda: +lambda.toFixed(1), ceiling,
+        thin_mm: +(tMin * UNIT_MM).toFixed(4),
+        section_mm: +(tMid * UNIT_MM).toFixed(4),
+        length_mm: +(len * UNIT_MM).toFixed(3),
+        cantileverStiffness_N_per_m: kOf(len, 3),
+        waived: SLENDER_WAIVERS[unit] || null,
+        worldScale, declarationRejected: 'bearings declared on a scaled mesh',
       });
       continue;
     }
