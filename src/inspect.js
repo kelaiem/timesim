@@ -7317,22 +7317,23 @@ export const SLENDER_WAIVERS = {
   // λ 71.3, the lifter's run. Wants +0.2250 u per side; alarmSleeveFlat
   // stands 0.2507 away and leaves 0.1007.
   'Alarm release lifter': 'TODO 109',
-  // TODO 149 — λ 52.9, the minute jumper's LIFTER LINK (`jumperLifter`): the
-  // lost-motion bar from the setting lever's tail post to the jumper's tail
-  // pin, 29.10 u crown in (26.11 out) on a 0.55 × 0.317 u section. It was
-  // never in this report before 149 because the bar is cut at UNIT length
-  // and stretched onto its span each frame with scale.x, and the ruler read
-  // the unit box (λ 1.8). Triaged on the same probe as the rows above: wants
-  // +0.2101 u per side; the nearest metal is the setting lever's tail post at
-  // 0.0000 (the joint, not a wall) and the dial plate at 0.1600, which is
-  // item 10's DESIGNED bind (Z_JMP_LIFTER = Z_DIAL + CLEAR_MARGIN + ε, the plane
-  // TODO 89 collapsed to one name) and is
-  // out of plane — the section's growth is in-plane, so the dial is not its
-  // wall. The first in-plane wall is caseMiddle at 0.2953, spare 0.1453:
-  // SHORT. Both ends are pins, so a bearing declaration would not shorten the
-  // free length either (a pinned-pinned span IS the whole bar); the fix is a
-  // mid-span rest in the lifter plane, or a section the case must move for.
-  'Minute jumper': 'TODO 149',
+  // TODO 149 RETIRED 'Minute jumper' (was λ 52.9, the lifter link). The bar's
+  // width is SOLVED from this ceiling now — `JMP_LIFTER_W` in main.js, its
+  // span bound over SLENDER_TARGET — so the row is gone rather than excused,
+  // and §54's own covenant is why the deletion ships WITH the fix: a waiver
+  // naming a unit with no over-ceiling row is itself a gated failure.
+  //
+  // WHAT THE WAIVER SAID, and why it was wrong to believe it. It recorded the
+  // row as SHORT on `probe-section-headroom.mjs`, which ranks each bar's
+  // nearest cross-unit metal ISOTROPICALLY — it reports growth PER SIDE as
+  // half the total because it cannot tell one side from the other. Two of the
+  // three numbers it named cannot be closed by WIDTH at all: the dial plate's
+  // 0.1600 is a Z gap (item 10's designed bind), and the case middle's 0.2953
+  // is at the bar's END, not its side. `probe-149-lifter-width.mjs` grows the
+  // two faces separately and the in-plane corridor SATURATES its search at
+  // 6 u per side, against the 0.42 the ceiling asked for. The triage was
+  // honest on the measurement it had; the measurement was the wrong SHAPE for
+  // a flat bar, which has two sides and only one of them faces the case.
   // (§234 retired the Hack rod and Reset rod rows here — the two are flat
   // stamped links now, their widths cut to §54's target over their chords, so
   // no over-ceiling row remains for a waiver to name. §54's covenant again: a

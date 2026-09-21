@@ -17,7 +17,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 149 | OPEN | Found by asking why the minute jumper's lifter link had no `SLENDER_WAIVERS` entry: it had no ROW. The bar is cut at unit length and stretched onto its 26–29 u span each frame with `scale.x`, and `checkSlenderness` read `geometry.boundingBox` (λ 1.8). The ruler now applies world scale per axis (`stockFloor`'s rule), held by a control on three synthetic meshes, and the bar reads **λ 52.9** at rest — the third-longest free length in the movement. Waived citing this item with its wall measured: wants +0.2101 u per side, the dial gap (0.1600) is the designed bind and out of plane, `caseMiddle` at 0.2953 is the first in-plane wall and is SHORT by 0.0648. The same ruler surfaced `alarmColPawlSpring` at λ 52.3 as a wheel-kind bar; kinded `spring` like its two sibling blades. Remains: a mid-span rest in the lifter plane, or a re-sited case wall, and the two remaining scaled springs are exempt by kind rather than measured |
+| 149 | CLOSED | §54's ruler could not see a per-frame-scaled bar, so the minute jumper's lifter link ran at **λ 52.9** with no row at all. The ruler reads world scale per axis now (held by a control on three synthetic meshes) and the bar's WIDTH is solved from the ceiling — `JMP_LIFTER_W` = a pose-free span bound over `SLENDER_TARGET`, 0.550 → **1.149 u** (0.436 mm), λ **25.3**. The waiver is retired, which §54's covenant makes part of the fix. The triage that had called it SHORT was isotropic; `probe-149-lifter-width.mjs` grows the two faces separately and the in-plane corridor SATURATES at 6 u per side. Also kinded `alarmColPawlSpring` as the flat spring it is |
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
 | 103 | CLOSED (§177) | Found by item 100's sweep: `alarmColDriver`'s outline crosses itself **31 times** — the only one of 176 extrudes that does. `makeColumnDriver`'s hull-of-discs emits a hub arc per arm pair and normalises `a1 < a0` with `while (a1 < a0) a1 += 2π`; but for arms closer than `th + thN` that inequality means THE HUB IS NOT EXPOSED between them, so the wrap draws it the long way and two arcs overlap over ≈164° of hub. Measured off the built mesh. The builder's existing assert guards the tangent ARITHMETIC (`hubR > tipR`), not the hull's spacing — an assert that guards the formula is not one that guards the shape |
@@ -20982,7 +20982,7 @@ plate's caption was rewritten and its translation in all eleven locales
 therefore falls back to English visibly, by §73's own rule; the plate's own
 labels are translated.
 
-## 149. The slenderness check read geometry-local extents and could not see a per-frame-scaled bar: the minute jumper's lifter link runs at λ 52.9 with no row
+## 149. The slenderness check read geometry-local extents and could not see a per-frame-scaled bar: the minute jumper's lifter link runs at λ 52.9 with no row — CLOSED
 
 Asked, in review: what is the part linking the setting lever to the minute
 jumper, and does it carry a slenderness waiver? The part is the **lifter
@@ -21072,20 +21072,76 @@ column pawl), and the lifter. The three blades are exempt by kind and the
 ribbons by their own instruments; only the lifter was a bar the ruler owed a
 row.
 
-### Remains
+### The fix, and the measurement that changed what it was
 
-- **The fix itself** — P3, position space: a mid-span rest in the lifter
-  plane (a stud off the dial-side face the bar rides over, which halves the
-  free length to ~14.5 u and λ to ~26, under `SLENDER_TARGET`), or a
-  re-sited case wall to admit the 0.3676 mm section. Whoever takes it re-runs
-  `probe-section-headroom.mjs` at the candidate rather than quoting the table
-  above, and deletes the waiver in the same change (§54's staleness gate
-  will insist).
-- The bar's λ varies with the crown (52.9 → 47.5); the report reads it at
-  the rest pose, which is the longest. A per-frame-scaled member is the one
-  case where "single-pose" costs something, and the row says so through
-  `worldScale`.
-- Two of the three scaled blades pass on kind, not on measurement; §54's
+**The waiver's own triage was wrong, and its instrument is why.** The entry
+above prescribed a mid-span rest or a re-sited case wall, because
+`probe-section-headroom.mjs` had called the section SHORT: +0.2101 u wanted
+per side against 0.1453 spare to `caseMiddle`. That probe ranks each bar's
+nearest cross-unit metal **isotropically** — it divides the wanted growth by
+two and compares against a scalar gap, because it cannot tell one side of a
+member from the other. For a round shaft that is the whole truth. For a FLAT
+bar it is not, and two of the three numbers it named cannot be closed by
+width at all:
+
+| neighbour | gap | what it actually is |
+|---|---|---|
+| `Setting lever / (unnamed)` | 0.0000 | the tail post inside the slot — the JOINT, not a wall |
+| `Dial / dialPlate` | 0.1600 | a **z** gap (item 10's designed bind). Width growth never approaches it |
+| `Case / caseMiddle` | 0.2953 | at the bar's **END**, not its side. Width growth never approaches it either |
+
+`tools/probe-149-lifter-width.mjs` asks the directional question instead: it
+grows the +y and −y faces **independently** over the pose net and
+binary-searches each one's limit. Both sides **saturate its 6 u search** —
+2.27 mm of free in-plane corridor per side, against the 0.42 u the ceiling
+asked for. The lifter plane is the movement's one empty z-slice and it is
+empty sideways too; nothing was ever in the way.
+
+So the fix is the section after all, and it costs the movement nothing.
+
+**What landed.**
+
+1. **The width is §54's ceiling solved for section**, not a number that
+   looked right: `JMP_LIFTER_W = JMP_LIFTER_SPAN_BOUND / SLENDER_TARGET`,
+   0.550 → **1.1495 u (0.4357 mm)**. Built to the TARGET rather than the bare
+   ceiling, §232's convention. Measured on the shipped tree, λ **25.32** at
+   the longest span, against a ceiling of 30.
+2. **The span is a posed quantity and boot has no pose**, so the solve takes
+   a pose-free upper BOUND: the post's farthest stand from the lever pivot
+   over the whole pull, plus the tail pin's radius about that pivot. The
+   triangle inequality makes it safe for every lever angle, and the post is
+   SWEPT rather than sampled at its ends because it travels an arc, whose far
+   point from a fixed centre need not be an endpoint. The bound comes to
+   31.04 against a true span of 29.10 — 6.6% conservative, which is the safe
+   direction and is why the achieved λ is 25.3 rather than 27.
+3. **One call crosses the two frames**, after `updateWorldMatrix(true, false)`
+   — which walks UP, where `updateMatrixWorld(true)` does not and at build
+   time would have returned a plausible wrong number (TODO 139's trap, in
+   exactly the conditions it fires in). The lever pivot is read off the two
+   groups built above it instead, as construction arithmetic.
+4. **The tripwire is the load-bearing part.** §54's rows are a REPORT, so
+   nothing would GATE a fix that silently did not work — a bound taken in the
+   wrong frame is still a number. `JMP_LIFTER_SPAN_MEASURED` holds the bound
+   against the span the movement actually reaches, and warns if the bound
+   ever falls below it, which is what "it is not a bound" looks like.
+5. **`JMP_TAIL_PIN_R` is named**, because the width solve and the tail pin's
+   own build would otherwise be the same number written twice — TODO 115's
+   recurring defect, with only one copy carrying the meaning.
+6. **The waiver is retired**, which §54's covenant makes structurally part of
+   the fix rather than a tidy-up afterwards.
+
+### Residue, named
+
+- **The bound is 6.6% loose.** Tightening it means solving the lever's
+  extreme rotations at build time, which couples the width to the beak's
+  own solve for 0.18 u of width nobody is competing for. Not worth it; the
+  looseness is recorded here so the next reader knows it is deliberate.
+- **`probe-section-headroom.mjs` is still isotropic** and still owns TODO
+  109's remaining rows. Two of those are round bars, where isotropy is
+  correct. The feeler tail run (λ 78.2) is a 9.13 × 0.26 × 0.10 BOX — a flat
+  member, judged by the same isotropic rule that was wrong here. Nobody has
+  re-measured it directionally, and this item does not.
+- **Two of the three scaled blades pass on kind, not on measurement**; §54's
   covenant exempts springs and this item does not reopen that.
 
 ## 148. The overcoil's knee runs straight in plan, so the terminal swings outside the coils it is raised to pass over — CLOSED
