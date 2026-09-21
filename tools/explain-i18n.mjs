@@ -209,6 +209,69 @@ const MARKS = {
   pt: { group: ['.'], dec: ',' },
   it: { group: ['.'], dec: ',' },        // §210 — it-IT: German's marks
 };
+
+// ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
+// README's distinction is load-bearing prose, and CLAUDE.md says so in as many
+// words: MODELLED claims a thing is described, SIMULATED claims its behaviour
+// is DRIVEN. Most of TODO.md lives in the gap. A translation that renders one
+// as the other does not read wrong — it reads fluent, and it erases the single
+// distinction this project polices hardest. Nothing else here can see that:
+// the key matches, the markup matches, the numbers match.
+//
+// THE ENGLISH MATCHER IS ITSELF A CLAIM, and the narrow form below is measured
+// rather than chosen. Widening it to a bare \bmodel\b pulls in the page's own
+// credit line — "Claude, Anthropic's AI model" — which all twelve locales
+// render with their model-word, correctly and with nothing to do with honesty
+// debt. That is the FOURTH false positive §241 has produced (after 멈춤, 크라운
+// 휠 and the chain link's crowns) and the first one on the ENGLISH side of the
+// question, so it is pinned here rather than left to the next reader.
+const EN_MODELLED  = /\bmodell?(?:ed|s)\b/i;
+const EN_SIMULATED = /\bsimulat/i;
+
+// Arabic carries the damma of مُحاكى between م and ح, so a substring of the
+// bare letters misses the word it is looking at. Diacritics and tatweel come
+// off before matching; every other locale passes through untouched.
+const AR_MARKS = /[ً-ْٰـ]/g;
+const honestyText = (s, lang) => {
+  const t = s.replace(/<code>.*?<\/code>/g, ' ').replace(/<[^>]+>/g, ' ');
+  return lang === 'ar' ? t.replace(AR_MARKS, '') : t;
+};
+
+// STEMS, not words, because every locale here inflects: 모델링됨/모델링되어,
+// modelliert/Modellierung, симулировано/симулируется. Each row is held to the
+// page's OWN glossary below, so this table cannot quietly invent a vocabulary
+// the page does not use. A locale with no row FAILS — MARKS' rule next door:
+// a locale this tool cannot read is a locale whose prose is UNGATED, and that
+// is the one outcome a gate must never reach quietly.
+const HONESTY = {
+  en:        { m: EN_MODELLED,     s: EN_SIMULATED },
+  ar:        { m: /نمذ/,           s: /حاك/ },
+  de:        { m: /modelli/i,      s: /simul/i },
+  es:        { m: /modela/i,       s: /simula/i },
+  fr:        { m: /modélis/i,      s: /simul/i },
+  hi:        { m: /मॉडल/,           s: /सिमुले|सिम्युले/ },
+  it:        { m: /modella/i,      s: /simula/i },
+  ja:        { m: /モデル/,         s: /シミュレー/ },
+  ko:        { m: /모델링/,         s: /시뮬레이/ },
+  pt:        { m: /modela/i,       s: /simula/i },
+  ru:        { m: /модел/i,        s: /симул/i },
+  zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
+  'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
+};
+
+// THE CONTROL, and it is the load-bearing part. Both pages carry the pair as a
+// glossary entry of its own — the key `modelled / simulated` — so each locale
+// has already DECLARED its two words on the page a reader sees. A row whose
+// stems do not match that declaration is a vocabulary this tool invented, and
+// the check below would then be measuring itself. The English gloss several
+// locales append in brackets is stripped first: "simuliert (modelled /
+// simulated)" would let an English stem satisfy a German row.
+const GLOSS_KEY = 'modelled / simulated';
+const glossControl = (lang, value) => {
+  const bare = honestyText(value, lang).replace(/[(（][^)）]*simulated[^)）]*[)）]/gi, ' ');
+  const row = HONESTY[lang];
+  return { m: row.m.test(bare), s: row.s.test(bare), bare: bare.trim() };
+};
 const reEsc = (c) => c.replace(/[\\\]^-]/g, '\\$&');
 const numValues = (s, lang) => {
   const marks = MARKS[lang];
@@ -228,6 +291,22 @@ const numValues = (s, lang) => {
 
 // ---- extract ----------------------------------------------------------------
 let failed = 0;
+// Which HONESTY rows a page's own glossary has verified, across every page in
+// this run. The table is one declaration shared by both pages, and only
+// explain.html carries the `modelled / simulated` entry — so the control runs
+// THERE and covers the primer's use of the same row. Asserted at the end, and
+// only on a whole-run check: --page primer alone cannot verify anything, and a
+// gate that failed for being asked a narrower question would teach the wrong
+// lesson.
+const vocabVerified = new Set();
+// Stem staleness is judged over the WHOLE RUN, not per page, and only where
+// the locale actually had rows to judge. Per page it was a false-failure
+// waiting: the primer's only term-bearing keys are two, so a locale that has
+// not translated them yet would be called stale for a stem that is perfectly
+// live on the explainer — and a locale wired in with an EMPTY table (the
+// bootstrap order --extract documents above) would fail on both stems before
+// anyone had written a word.
+const stemTally = new Map();   // lang -> { m, s, nM, nS }
 if (MODE === 'extract') {
   const { items, tables } = await readPage(TARGETS[0]);
   // §116 — the bootstrap state, stated rather than inferred. A locale with no
@@ -349,6 +428,97 @@ if (MODE === 'extract') {
       for (const c of codeBad.slice(0, 10)) console.log(`      ${c}`);
       console.log(`  plate numbers  : ${numBad.length}${numBad.length ? '  <-- FAIL' : ''}`);
       for (const n of numBad.slice(0, 10)) console.log(`      ${n}`);
+      // ---- honesty vocabulary (§241 area C) ----
+      // CROSSED gates; ABSENT reports. A crossed row is a lie: the English
+      // says one word and the translation says only the other. A row with
+      // NEITHER word is a weaker finding — a legitimate paraphrase looks the
+      // same as a dropped sentence from here — so it is printed and left to a
+      // reader, which is also how it earns its keep: every absent row measured
+      // on arrival turned out to be a block the translator stopped short of,
+      // except one Japanese idiom (造形された金属 for "modelled metal").
+      let crossed = [], absent = [];
+      if (!HONESTY[lang]) {
+        console.log(`  honesty vocab : no HONESTY row — this locale's modelled/simulated prose is UNGATED  <-- FAIL`);
+        failed++;
+      } else {
+        for (const it of items) {
+          const v = table[it.key];
+          if (!v) continue;
+          const M = EN_MODELLED.test(it.key), S = EN_SIMULATED.test(it.key);
+          if (!M && !S) continue;
+          const body = honestyText(v, lang);
+          const hm = HONESTY[lang].m.test(body), hs = HONESTY[lang].s.test(body);
+          const tal = stemTally.get(lang) || { m: 0, s: 0, nM: 0, nS: 0 };
+          if (M) tal.nM++;
+          if (S) tal.nS++;
+          if (hm) tal.m++;
+          if (hs) tal.s++;
+          stemTally.set(lang, tal);
+          // CROSSED: the English asserts a word, the translation drops it, and
+          // carries the OTHER one. Stated that way it covers all three English
+          // shapes with one rule — and the third shape is why it is stated that
+          // way. A first draft asked whether the word the English does NOT say
+          // is present, which is unanswerable for the keys that say BOTH ("the
+          // cam itself is MODELLED and not simulated"), so exactly the
+          // sentences built on the contrast were the ones it could never fail.
+          // Found by mutating a row and watching the gate report it instead.
+          const lacks = (M && !hm) ? 'modelled' : (S && !hs) ? 'simulated' : null;
+          if (!lacks) continue;
+          const other = lacks === 'modelled' ? hs : hm;
+          if (other) crossed.push(`says ${lacks}, reads only the other word: ${it.key.slice(0, 62)}`);
+          else absent.push(`no ${lacks}-word: ${it.key.slice(0, 62)}`);
+        }
+        // The row is held to the page's own glossary, not to this file's taste.
+        const gv = table[GLOSS_KEY];
+        let ctl = `not verifiable here (this page declares no "${GLOSS_KEY}" entry) — see the run's control line`;
+        if (gv) {
+          const g = glossControl(lang, gv);
+          ctl = (g.m && g.s) ? `PASS (${g.bare})` : `FAIL — the declared stems do not match the page's own "${GLOSS_KEY}": ${g.bare}`;
+          if (g.m && g.s) vocabVerified.add(lang); else failed++;
+        }
+        // A stem that never fires anywhere is a stem for a word this locale
+        // does not use — SLENDER_WAIVERS' rule, applied to a vocabulary table.
+        console.log(`  honesty vocab : ${crossed.length} crossed${crossed.length ? '  <-- FAIL' : ''} · ${absent.length} absent (report) · control ${ctl}`);
+        for (const c of crossed) console.log(`      CROSSED ${c}`);
+        for (const a of absent) console.log(`      absent  ${a}`);
+        if (crossed.length) failed++;
+      }
+      // ---- block coverage: a translation that stops early (§241, REPORT) ----
+      // This is how the honesty tier's absent rows were diagnosed, so it stays
+      // beside them. A translated block's LENGTH against its English key is
+      // mostly a fact about the script — German runs ~1.16x, Korean ~0.57,
+      // Chinese ~0.34 — so the ruler is the locale's OWN MEDIAN over long
+      // blocks, and a row is only interesting well under it.
+      //
+      // ONE-SIDED, and that is measured rather than tidy. The high side is
+      // explained: a quoted identifier survives translation intact, so in a
+      // short CJK block it dominates and lifts the ratio past 1.5 with nothing
+      // wrong. Only "much shorter than this locale normally runs" is evidence
+      // that text was dropped.
+      //
+      // A REPORT, not a gate. It cannot tell a terse translation from a
+      // truncated one — that judgement needs a reader — and a threshold tuned
+      // until today's tree is green would be a number that looked right, which
+      // rule 1 exists to refuse. What it is FOR is that nothing else can see
+      // this at all: the key matches, the markup matches, the numbers match,
+      // and the page renders a paragraph that stops at a colon.
+      {
+        const strip = (x) => x.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const rs = [];
+        for (const it of items) {
+          const v = table[it.key];
+          if (!v) continue;
+          const a = strip(it.key).length;
+          if (a < 200) continue;              // long prose only; a label's ratio is noise
+          rs.push({ q: strip(v).length / a, a, b: strip(v).length, k: it.key });
+        }
+        if (rs.length >= 8) {
+          const med = [...rs].sort((x, y) => x.q - y.q)[Math.floor(rs.length / 2)].q;
+          const short = rs.filter((r) => r.q / med < 0.75).sort((x, y) => x.q - y.q);
+          console.log(`  block coverage: ${short.length} block(s) under 0.75x this locale's median length ratio (${med.toFixed(2)}) — REPORT`);
+          for (const r of short) console.log(`      ${(r.q / med).toFixed(2)}x (${r.a}->${r.b} chars)  ${r.k.slice(0, 62)}`);
+        }
+      }
       if (missing.length && missing.length <= 40) {
         console.log(`  untranslated (falls back to English, visible):`);
         for (const m of missing) console.log(`      [${m.sect}] ${m.key.slice(0, 90)}`);
@@ -405,7 +575,27 @@ if (MODE === 'extract') {
     }
     if (errors.length) { console.log(`\nPAGE ERRORS (${doc}): ${errors.join(' | ')}`); failed++; }
   }
-  console.log(failed ? '\nFAIL' : '\nPASS — 0 unmatched, 0 markup drift, 0 code drift, 0 number drift');
+  // The table is only as good as its control, so the run says how much of it
+  // was verified rather than leaving that to be assumed.
+  const rows = Object.keys(HONESTY).filter((l) => l !== 'en');
+  const unver = rows.filter((l) => !vocabVerified.has(l));
+  const whole = !PAGE_ARG;
+  console.log(`\n══ honesty vocabulary: ${rows.length - unver.length}/${rows.length} HONESTY rows verified against a page's own "${GLOSS_KEY}" glossary`);
+  if (unver.length) {
+    console.log(`   unverified: ${unver.join(', ')}${whole ? '  <-- FAIL' : '  (single-page run — not a failure)'}`);
+    if (whole) failed++;
+  }
+  // A stem that never fired over rows it HAD to judge is a stem for a word the
+  // locale does not use — SLENDER_WAIVERS' rule, applied to a vocabulary table.
+  const stale = [];
+  for (const [lang, t] of stemTally) {
+    if (t.nM && !t.m) stale.push(`${lang}: model-stem never matched over ${t.nM} row(s)`);
+    if (t.nS && !t.s) stale.push(`${lang}: simulate-stem never matched over ${t.nS} row(s)`);
+  }
+  console.log(`   stale stems: ${stale.length}${stale.length ? '  <-- FAIL' : ''}`);
+  for (const x of stale) console.log(`      ${x}`);
+  if (stale.length) failed++;
+  console.log(failed ? '\nFAIL' : '\nPASS — 0 unmatched, 0 markup drift, 0 code drift, 0 number drift, 0 crossed honesty terms');
 }
 await browser.close();
 server.kill();
