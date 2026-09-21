@@ -715,7 +715,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 230 measuring scripts and this file names 15. The rest are named for the
+`tools/` holds 231 measuring scripts and this file names 16. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -732,7 +732,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **124 of
+The index also carries the split that decides how to read a result: **125 of
 them are ACCEPTANCE tests** that exit non-zero, and **106 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
@@ -949,7 +949,9 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
 - **BOOT IS ONE SYNCHRONOUS BLOCK, and only the compositor can cover it.**
   Every part is cut during `main.js`'s module evaluation, so between that
   module's first byte and the finished watch there is no frame, no paint and no
-  event loop — measured on the SwiftShader container, 25–27 s. §238's boot
+  event loop — measured on the SwiftShader container, 14 s (25–27 s before
+  §239's memo; `tools/probe-239-boot-profile.mjs` is what splits that block by
+  function, and the block is FLAT now — nothing in it is above 15%). §238's boot
   screen therefore lives in `index.html` (a module cannot be on the glass
   before the block it covers), the entry script yields a frame before it
   imports `main.js`, and **every animation on that screen is on `transform` or
@@ -963,7 +965,10 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   page's main thread, so it TIMES OUT during the block. The entry being a
   dynamic `import()` is also why the boot-failure surface is written by hand —
   a rejection is not a throw, and `window.__bootError` (TODO 30) is what the
-  battery reads when a build dies.
+  battery reads when a build dies. **Halving the block did not retire the
+  screen**: a 14 s block still has no frame in it, and Chrome still reports the
+  page unresponsive, because what that dialog measures is the thread not
+  servicing input — not how long the wait is.
 - **Metals are `metalness ≈ 1`** and render black without `scene.environment`
   (a procedural PMREM studio). Any new page needs the same.
 - **Camera preset tweens run ~0.9 s** and overwrite scripted camera writes
