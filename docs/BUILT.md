@@ -28184,3 +28184,101 @@ and it does not report progress — it cannot, because the build is one
 uninterruptible block and a progress bar over it would be a fiction with no
 measurement behind it. The screen covers the symptom honestly; the cause is
 filed in the private roadmap as its own entry.
+
+## §239 — PARTIAL: boot's cost is MEASURED at last, and 44% of it was a solve answering the same question twenty times
+
+> **Status.** Step one shipped (the instrument) and one landing of step two
+> (the memo). The remainder — whether the block gets broken up so the thread
+> breathes — stays filed in the private roadmap under this number, rewritten
+> against what this record establishes.
+
+§238 covered a 25–27 s wait honestly and said in its own text that it could
+not shorten it, because nobody knew where the time went. This is that
+measurement, and then the one thing it turned out to be.
+
+**The instrument.** `tools/probe-239-boot-profile.mjs` takes a V8 CPU profile
+across the whole boot through CDP and aggregates it three ways: by FILE (which
+module is the cost), by SELF time (what the CPU executes) and by TOTAL time,
+self + callees (what a BUILDER costs — the number a human wants, and the one a
+flat self-time table hides, since a solver that is 3% itself can own 40%
+through a callee). It needs no edit to the app, which is the point:
+instrumenting the source with timestamps measures a cold JIT on the first pass
+and a second run of the same page is not a second cold boot.
+
+It is a REPORT with one fatal path, and that path is its control. A profiler
+that failed to attach produces a beautifully formatted table of almost
+nothing — the exact failure `.claude/skills/instruments/SKILL.md` catalogues —
+so the sample total is held against the measured boot wall and a profile
+covering under half of it REFUSES rather than prints.
+
+**What it found, first run** (SwiftShader container, boot 27.0 s):
+
+| | share of boot |
+|---|---|
+| `geometry.js` (self) | 49.6% |
+| `gearToothSpec` → `cyPairSolve` → `mk` (total) | **42.3%** |
+| `cyEpi` alone (self) | **39.1%** |
+| `solveReserveSwing` → `clearAt` (total) | 18.6% |
+
+One function, four tenths of the build. The reason is the nesting: `mk` runs a
+60-step bisection, every step calls `cyRetreat`, which runs another 60-step
+bisection, each step evaluating `cyEpi` — about 7,300 evaluations per pair
+solve.
+
+**And then the counts, which are the actual finding.** Instrumenting the
+solver to count calls rather than time:
+
+```
+cyPairSolve:    27,298 calls over  1,381 distinct (m, Na, Nb)  → 19.8× repeat
+gearToothSpec:  13,581 calls over  1,166 distinct specs        → 11.6× repeat
+cyEpi:         199,929,310 evaluations
+```
+
+**Two hundred million evaluations, nineteen in twenty of them re-deriving a
+pair the solver had already solved** — because the layout solvers explore the
+same pairs over and over while searching, and the solve had no memory.
+
+**The fix is a memo on one pure function**, `cyPairSolve` in `geometry.js`. It
+is a pure function of three numbers, so the cache changes NO NUMBER: same key,
+same solve, returned instead of recomputed. Two properties of the key are
+load-bearing and written down beside it. It is ORDERED, because the answer is —
+`hA` belongs to `Na` and `hB` to `Nb`, so folding (m, Nb, Na) into the same key
+would double the hit rate at the price of an inversion nobody would see until a
+wheel came out with its addenda exchanged. And the stored result is FROZEN: the
+callers only read `.hA` and `.feasible`, so sharing one object is safe today,
+and frozen it cannot stop being safe — an unfrozen shared result lets one
+future caller's mutation poison every later hit, in a build that had already
+been cut right once.
+
+**The acceptance is the fingerprint, not a tolerance.** Because the cache is
+supposed to change nothing, "nothing changed" is checkable exactly:
+
+| | boot (two virgin boots) | fingerprint | boot warns |
+|---|---|---|---|
+| before | 24.2 s, 23.8 s | 236321764 (59 units, 12 poses) | 0 |
+| after | **13.3 s, 13.3 s** | **236321764** (59 units, 12 poses) | 0 |
+
+(An earlier run of the same pair, before the cache and its wrapper were moved
+BELOW the solve they wrap, read 25.2/24.3 against 13.7/14.0 — the same result
+through a different afternoon's machine load, which is what two runs of a
+timing measurement are for. And re-measured once more against `main` as it
+stood at merge, after §241 landed under this branch: base 24.3/24.0 against
+13.4/13.4, **fingerprint 236321764 on both sides again**. An identity claim is
+only worth what the tree it was measured on is worth, so it was re-established
+on the tree that actually merged rather than carried over.)
+
+**44% off the wall, and the geometry is byte-identical.** Every battery boot
+pays the same bill, so CI gets it too — the spec-boot tier alone is 36 cold
+boots.
+
+**What the re-profile says, and it is the finding that shapes the remainder.**
+After the memo, `cyEpi` is 4.1% and the top row is `clearAt` at 13.8%: the
+profile is FLAT. There is no second `cyPairSolve` waiting. That closes route
+(b) — "make it faster" — as a strategy with a big win left in it, and leaves
+the remainder to route (a): breaking the block up so the thread breathes.
+
+**Which matters because halving the block did not retire the symptom.** An
+owner report during this work: Chrome saying *"This page is unresponsive."*
+That dialog measures the thread not servicing input, not the length of the
+wait, and a 14 s block still has no frame in it. §238's screen covers the
+view — it cannot make the page answer.
