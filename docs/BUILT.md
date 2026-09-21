@@ -28261,7 +28261,11 @@ supposed to change nothing, "nothing changed" is checkable exactly:
 (An earlier run of the same pair, before the cache and its wrapper were moved
 BELOW the solve they wrap, read 25.2/24.3 against 13.7/14.0 — the same result
 through a different afternoon's machine load, which is what two runs of a
-timing measurement are for.)
+timing measurement are for. And re-measured once more against `main` as it
+stood at merge, after §241 landed under this branch: base 24.3/24.0 against
+13.4/13.4, **fingerprint 236321764 on both sides again**. An identity claim is
+only worth what the tree it was measured on is worth, so it was re-established
+on the tree that actually merged rather than carried over.)
 
 **44% off the wall, and the geometry is byte-identical.** Every battery boot
 pays the same bill, so CI gets it too — the spec-boot tier alone is 36 cold
