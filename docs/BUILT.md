@@ -23639,9 +23639,32 @@ native term every Korean watch buyer knows), 컬럼 휠, 잠금 / 드로 / 임�
 드롭 for the escapement's phases; 모델링된 and 시뮬레이션된 held apart. Ten
 translators against it, three seams reconciled by hand afterwards: the
 striking wheel is 타격 휠 everywhere (one chunk had 스트라이킹 휠), the
-fusee's cone 원뿔 (the explainer's chunks had 콘, the primer's and the
-chrome's 원뿔), the pause face ⏸ 일시정지 (one chunk chose ⏸ 멈춤 for width,
-and the fit gate then showed the longer face fits).
+fusee's cone 원뿔, the pause face ⏸ 일시정지 (one chunk chose ⏸ 멈춤 for
+width, and the fit gate then showed the longer face fits).
+
+**CORRECTED 2026-09-21 (§241) — the cone seam was NOT reconciled, and this
+paragraph said it was.** The sentence above used to read "the fusee's cone
+원뿔 (the explainer's chunks had 콘, the primer's and the chrome's 원뿔)",
+and two of those three sub-claims were false. The explainer kept **20** 콘
+for the same part it named 원뿔 15 times, and the chrome's own piece label
+was `'Fusee cone': '퓨지 콘'`; only the primer was clean. **It was not
+regression** — the tables' first commit (2026-09-12, public PR #412) carries
+counts identical to the ones measured nine days later, so the seam shipped
+half-closed and the record described it as shut. Fixed at the same time as this correction: 20
+occurrences in `src/explain-i18n.ko.js` and the one chrome label, all to
+원뿔, leaving 콘트레이트 (the contrate wheel) and 콘솔 (a browser console)
+untouched because they are different words. Korean takes the same particles
+after 원뿔 as after 콘 — both are consonant-final, and the ㄹ-final irregular
+(으로 → 로) never arises here — so the substitution is grammatical as well as
+consistent. Japanese had already made the same choice, フュゼの円錐 rather
+than a loanword.
+
+**What this costs the reader of any record here.** Nothing in the harness
+could have caught it: `explain-i18n --check` counts keys, markup, numbers and
+plate fit, and a page that names one part two ways passes every one of them.
+The seam was found by hand at §211 and lost by hand at §211; §241 owns the
+question of what else the locale says twice, and the crown (용두 against a
+standalone 크라운, beside the legitimate 크라운 휠) is still open there.
 
 **Zero plate labels shortened, and that is the compression measured.**
 Spanish (§209) shortened 37 labels against the English baseline and French
