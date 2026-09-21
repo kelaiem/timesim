@@ -4,7 +4,7 @@
 
 # The instruments
 
-229 scripts. **123 are ACCEPTANCE tests** — they decide and exit non-zero.
+230 scripts. **124 are ACCEPTANCE tests** — they decide and exit non-zero.
 **106 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -91,6 +91,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-144-set-hold.mjs` | §144 | acceptance | ACCEPTANCE — WHAT HOLDS THE ALARM RELEASE DISC WHERE THE CROWN LEFT IT? |
 | `probe-145-cross.mjs` | §145 | acceptance | §145 — THE MALTESE CROSS PLATE DRAWS THE CROSS THE BUILD CUTS. Acceptance: 1. the plate's ported spec agrees with geometry.js's genevaSpec to 1e-9 on d, a, b, slotW, lockR and the bank angle, on the same inputs — the "same relations" claim, measured rather than trusted; 2. the index chip reads 2π/8 (45.00°), not INVERTED; 3. the pin walks seven DISTINCT SLOTTED arms and banks on the BLANK one — measured off the drawn cross, not off the chip: at each turn the arm nearest the pin's bearing is read from the DOM, and at the bank it must be the arm carrying the "blank" label, with the finger short of the entry angle. The chip alone is state-derived and said BANKED all through the §145 defect in which the blank was laid out against the travel, so the pin entered it on turn 1 and banked on a slotted arm. The run starts from a WOUND-DOWN home rather than from wherever autoplay left it, so "seven winds" is seven winds; an eighth is refused (W clamps); unwinding back to zero locks it again; 4. scrubbing the slider into the engagement window reads INDEXING and the cross angle moves; outside it the cross holds; 5. under prefers-reduced-motion the plate does not autoplay and a wind snaps to its end state in one frame; 6. no page errors. cd tools && node probe-145-cross.mjs (exit 1 on any claim) |
 | `probe-146-panel.mjs` | §146 | acceptance | §146 — THE MAIN PANEL STARTS HIDDEN, AND EVERY WAY BACK TO IT STILL WORKS. Acceptance: 1. a virgin boot: #clock-ui hidden, the chrome bar's Menu toggle reads off, the control pad is ON (§57's default, unchanged) and the View panel is up — the arrival sees the watch and the two controls that drive and explain it; 2. H shows the panel; the chrome bar's Menu toggle hides it again; 3. ?panel=1 opens it on arrival; 4. hidePanelForScript's no-restore branch, against a never-opened panel: a tour started with the panel hidden ends with it still hidden; one started with the panel open hides it for the run and restores it; 5. the same on a phone viewport (375×667): the panel hidden, the pad on. cd tools && node probe-146-panel.mjs (exit 1 on any claim) |
+| `probe-149-lifter-width.mjs` | §149 | acceptance | TODO 149 — HOW WIDE CAN THE MINUTE JUMPER'S LIFTER LINK GET, AND ON WHICH SIDE? A REPORT. |
 | `probe-152-floor.mjs` | §152 | report | §152 probe two — THE IRREDUCIBLE PER-POSE FLOOR. |
 | `probe-152-fresh.mjs` | §152 | acceptance | §152 — THE FRESH/PAYLOAD BOUNDARY, MEASURED AND INDUCED. |
 | `probe-152-history.mjs` | §152 | acceptance | §152 probe four — HOW OFTEN COULD AN INCREMENTAL RUN ACTUALLY FIRE? |

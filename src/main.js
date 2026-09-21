@@ -5789,6 +5789,12 @@ const JMP_BIND_EPS = 0.01;
 // name now, and a change to the bind can no longer move two of the three.
 const Z_JMP_PIN_FACE = Z_DIAL + CLEAR_MARGIN + JMP_BIND_EPS;
 const Z_JMP_LIFTER = Z_JMP_PIN_FACE + JMP_LIFTER_T / 2;   // bar CENTRE; its dial face is the pin face
+// The tail pin's station on the jumper's tail bar — the bar is cut down in
+// the unit, but the station is named up here because the lifter's §54 width
+// solve reads it as the pin's RADIUS about the lever pivot (the
+// triangle-inequality term that makes that solve's span bound pose-free) and
+// the two sites must be one number, not two copies of it.
+const JMP_TAIL_PIN_R = 1.35;
 const settingLeverGroup = new THREE.Group();
 settingLeverGroup.position.set(settingLeverPivot.x, settingLeverPivot.y, Z_SETTING_LEVER);
 settingLeverGroup.add(settingLever);
@@ -13747,9 +13753,13 @@ const JMP_LIFT_ROT = (() => {
   // dial face, i.e. it binds at CLEAR_MARGIN above the dial's back — the
   // same constraint that planes the bar.
   const pinEnd = -(Z_JMP_PIN_FACE - Z_DIAL) - STAR_BOT; // the shared pin face, expressed lever-locally (+z is dial-ward in the flipped unit frame)
+  // Its station is JMP_TAIL_PIN_R, declared with the lifter plane above: the
+  // bar's §54 width solve reads the same number as the pin's radius about
+  // the lever pivot, and a second literal here would be TODO 115's recurring
+  // defect — one number written down twice, only one copy carrying meaning.
   const tailPin = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, pinEnd + 0.25, 8), MATS.steel);
   tailPin.rotation.x = Math.PI / 2;
-  tailPin.position.set(1.35, 0, (pinEnd - 0.25) / 2);
+  tailPin.position.set(JMP_TAIL_PIN_R, 0, (pinEnd - 0.25) / 2);
   tailPin.name = 'jumperTailPin';
   jumperLever.add(tailPin);
 }
@@ -13791,11 +13801,60 @@ const JMP_LIFT_ROT = (() => {
 // tail arc is ~0.2 — a classic slotted setting-lever connection). Drawn
 // as a follower between its two pins each frame.
 // Cut at UNIT length and stretched onto the real span in tick() (scale.x =
-// the post-to-pin distance, 29.10 u crown in, 26.11 u out). TODO 149: that
-// construction hid the bar from §54's ruler, which read the unit box — it is
-// λ 52.9 on its 0.55 section at rest, and the slenderness report now reads
-// the posed scale and lists it under SLENDER_WAIVERS['Minute jumper'].
-const jumperLifter = new THREE.Mesh(new THREE.BoxGeometry(1, 0.55, JMP_LIFTER_T), MATS.steel);
+// the post-to-pin distance, 29.10 u crown in, 26.11 u out). TODO 149 made
+// §54's ruler read that posed scale — it had been measuring the unit box and
+// calling an 11 mm bar λ 1.8 — and the row it then printed is solved here.
+//
+// THE WIDTH IS §54's CEILING SOLVED FOR SECTION, not a number that looked
+// right: λ = span / width, so width = span / SLENDER_TARGET. Built to the
+// TARGET rather than the bare ceiling, which is §232's convention for a fix
+// (a part sized at exactly SLENDER_MAX sits on the line the check refuses).
+//
+// THE SPAN IS A POSED QUANTITY and boot has no pose, so the solve takes an
+// upper BOUND on it that is pose-free by construction: the post's farthest
+// stand from the LEVER PIVOT over the whole pull, plus the tail pin's radius
+// about that pivot. By the triangle inequality no lever angle can beat it,
+// so one build-time number bounds every pose the sweep can reach. The post
+// is swept rather than sampled at its ends because it travels an ARC, and
+// the far point of an arc from a fixed centre is not always an endpoint.
+//
+// Two frames meet here and only one call crosses them. The pivot is read off
+// the two groups built above (jumperAzGroup is a pure z-rotation of JMP_AZ,
+// the lever sits at JMP_PIV_R along it), so it is exact construction
+// arithmetic; the post crosses by `jumperUnit.worldToLocal` — the same call
+// the tick makes — after `updateWorldMatrix(true, false)`, which walks UP.
+// `updateMatrixWorld(true)` does not, and at build time would have read the
+// identity every ancestor is born with and produced a plausible wrong number
+// (TODO 139's trap, in the exact conditions that trap fires in).
+//
+// THE TRIPWIRE IS THE LOAD-BEARING PART. A bound taken in the wrong frame is
+// still a number, and the §54 rows are a REPORT — nothing would GATE a fix
+// that silently did not work. So the bound is held against the span this
+// movement actually reaches, measured over the pose net by
+// `tools/probe-149-lifter-width.mjs`: if it ever falls below that, it is not
+// a bound and the frame it was taken in is wrong. Re-run the probe if the
+// jumper's station, the setting lever's stroke or the tail pin's land moves.
+const JMP_LIFTER_SPAN_MEASURED = 29.1037;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples; the max is at crownPullT 0
+const JMP_LIFTER_SPAN_BOUND = (() => {
+  jumperUnit.updateWorldMatrix(true, false);            // walks UP — see above
+  const piv = { x: Math.cos(JMP_AZ) * JMP_PIV_R, y: Math.sin(JMP_AZ) * JMP_PIV_R };
+  const v = new THREE.Vector3();
+  let far = 0;
+  for (let i = 0; i <= 200; i++) {
+    const post = tailPostWorldAt(i / 200);
+    v.set(post.x, post.y, Z_JMP_LIFTER);
+    jumperUnit.worldToLocal(v);
+    far = Math.max(far, Math.hypot(v.x - piv.x, v.y - piv.y));
+  }
+  return far + JMP_TAIL_PIN_R;
+})();
+if (JMP_LIFTER_SPAN_BOUND < JMP_LIFTER_SPAN_MEASURED)
+  console.warn(`minute quick-set: the lifter's span bound is ${JMP_LIFTER_SPAN_BOUND.toFixed(4)} against a measured span of ${JMP_LIFTER_SPAN_MEASURED} — it does not bound the span, so the frame it was taken in is wrong`);
+// §50's floor still applies to the result, as a consequence rather than a
+// target: the ceiling asks for far more width than the floor does here, so
+// the max only documents which constraint is governing.
+const JMP_LIFTER_W = Math.max(JMP_LIFTER_SPAN_BOUND / SLENDER_TARGET, STOCK_MIN_U);
+const jumperLifter = new THREE.Mesh(new THREE.BoxGeometry(1, JMP_LIFTER_W, JMP_LIFTER_T), MATS.steel);
 jumperLifter.name = 'jumperLifter'; // TODO 149: a row that reads '(unnamed)' is a row nobody triages (TODO 109's finding)
 jumperUnit.add(jumperLifter); // part of the jumper UNIT (its contact with the post is the declared lost-motion joint)
 // Star base phase, from the SOLVED tip azimuth: snapped minutes must put a
