@@ -28185,12 +28185,12 @@ uninterruptible block and a progress bar over it would be a fiction with no
 measurement behind it. The screen covers the symptom honestly; the cause is
 filed in the private roadmap as its own entry.
 
-## §239 — PARTIAL: boot's cost is MEASURED at last, and 44% of it was a solve answering the same question twenty times
+## §239 — boot's cost is MEASURED at last, 44% of it was a solve answering the same question twenty times, and then the block learned to breathe
 
-> **Status.** Step one shipped (the instrument) and one landing of step two
-> (the memo). The remainder — whether the block gets broken up so the thread
-> breathes — stays filed in the private roadmap under this number, rewritten
-> against what this record establishes.
+> **Status. SHIPPED WHOLE**, in two landings under one number: step one (the
+> instrument) with step two's memo, and then the remainder — making module
+> evaluation yield — recorded at the foot of this entry. The roadmap entry is
+> retired into it.
 
 §238 covered a 25–27 s wait honestly and said in its own text that it could
 not shorten it, because nobody knew where the time went. This is that
@@ -28282,3 +28282,129 @@ owner report during this work: Chrome saying *"This page is unresponsive."*
 That dialog measures the thread not servicing input, not the length of the
 wait, and a 14 s block still has no frame in it. §238's screen covers the
 view — it cannot make the page answer.
+
+---
+
+## §239, landing two — the build breathes
+
+**The symptom this closes.** Chrome saying *"This page is unresponsive"* is not
+a complaint about the length of the wait: it is the hang monitor reporting that
+the renderer's main thread is not servicing input. §238 covered the view and
+said so; the memo halved the block and said so. Neither could make the page
+ANSWER, because a 13 s block has no event loop in it. This one does the only
+thing that can.
+
+**One primitive, at the top of `main.js`.** `await breathe()` — returns
+`undefined` when the budget is unspent (one microtask checkpoint, a few hundred
+nanoseconds, which is what lets the seams be placed FINER than the budget) and
+otherwise yields, charging the clock after the yield rather than before, because
+what the budget bounds is the time the thread was HELD and the event loop's own
+work in between is not the build's to pay for.
+
+`BREATHE_MS = 40` is derived from the platform's own definition of a long task —
+50 ms, the threshold the Long Tasks API reports against — with the margin taken
+OFF rather than added. The check is a CLOCK, not a counter, which is the whole
+design: a slower machine crosses the budget sooner and takes more of the seams
+it is offered, so placement does not have to predict the machine.
+
+The yield is `scheduler.yield()` where it exists — the platform's continuation,
+which resumes AHEAD of freshly-posted tasks, so the build keeps its priority
+over whatever the yield let in — and an unclamped `MessageChannel` message where
+it does not. **Never `setTimeout`**: a backgrounded or automated pane clamps it
+to ~1 s, the trap CLAUDE.md already records against the sweeps' own yields, and
+~150 clamped naps would turn a 13 s build into a three-minute one.
+
+**Where the seams went, and how they were chosen.** 173 of them, placed from a
+MEASUREMENT rather than by eye. The build was instrumented at every one of the
+7,967 positions where `await` is legal, with a recorder that aggregates time per
+span and counts hits, and the seams were then chosen greedily at a 20 ms
+placement budget — half the runtime budget, so a machine up to twice as slow as
+this one still reaches a seam inside `BREATHE_MS`.
+
+Three findings came out of that measurement and each changed the landing:
+
+- **87% of the build was in 22 statements.** Scattering seams evenly would have
+  been mostly wasted diff; the work was inside those 22.
+- **Eight of the 22 were IIFEs**, whose bodies are not an async context at all.
+  Six of those were converted to `await (async () => {…})()` — `CAP_SOLVE` alone
+  was 2,516 ms, a ±60° bearing scan calling `buildSettingMetal` and
+  `solveReserveSwing` per candidate — plus a seventh found on the re-measure, the
+  gear-chain phase block. Two were left alone: the gong's two envelope walks,
+  ~175 ms each, whose cost is inside a `traverse` callback and not worth a
+  restructure at that size.
+- **`BACK_ENVELOPE`'s walk was 1,080 ms in one uninterrupted callback**, 2.5× the
+  next remainder. A `movement.traverse` callback cannot yield, so that one WAS
+  worth the restructure: the meshes are collected into a list and walked with a
+  `for`, body unchanged, one `await breathe()` per mesh.
+
+And one rule the measurement produced that is not obvious: **a seam inside a hot
+loop is a defect.** `breathe()` reads the clock on every call, so the site inside
+the back envelope's triangle walk — reached 383,847 times — would pay 383,847
+clock reads and never yield. Sites are capped by loop depth and by measured hit
+count, which is why the recorder counts hits at all.
+
+**The new failure class, and the guard for it.** A build that can be interrupted
+can be interrupted in the middle. Every listener `main.js` registers is
+registered PART WAY THROUGH it, closing over constants the lines below have not
+declared yet — so a key pressed at second four reaches a handler whose `const` is
+still in its temporal dead zone, and throws a `ReferenceError` the old build was
+structurally incapable of producing. The boot screen already blocks the POINTER
+(fixed, inset 0, above everything); a key event goes to the window regardless and
+a resize goes nowhere else at all.
+
+So `BUILD_GUARDED_EVENTS` stops the build's own events at the window, in the
+capture phase, until `releaseBuildInputGuard()` on the last line. The list is
+exactly what `window.addEventListener(` and `document.addEventListener(` name in
+this file, minus `'error'`, which is the boot-failure surface and must keep
+working. Dropping input while the screen reads "Building the movement" is the
+honest answer to it — but a resize is not input, so one that arrives during the
+build is REPLAYED at the end rather than lost.
+
+**What it measures, and the control that makes the measurement mean anything.**
+`tools/probe-239-boot-yield.mjs`, an acceptance test. Its control is not a second
+tree: the same source is served with `BREATHE_MS` rewritten to `Infinity` in
+flight, so every seam still runs and none of them yields — the pre-§239 build
+exactly, same statements, same clock reads. An instrument that reports "max long
+task 40 ms" because it attached to nothing looks identical to one that reports it
+because the build breathes, and the control is the only thing that tells them
+apart.
+
+| | control (`BREATHE_MS = Infinity`) | shipped (`BREATHE_MS = 40`) |
+|---|---|---|
+| boot wall | 13.1 s | 13.4 s |
+| **thread held, worst single stretch** | **12,474 ms** | **351 ms** |
+| hand-backs | 0 | 146 |
+| worst long task | 10,226 ms | 992 ms |
+| time in long tasks | 13,059 ms of 13,070 | 1,058 ms of 13,426 |
+| **input ack, worst / median** | **10,144 / 345 ms** | **843 / 61 ms** |
+| boot warns | 0 | 0 |
+
+(A second run of the same pair, which is what two runs of a timing measurement
+are for: control held 12,829 ms against 364 ms, worst task 10,491 against 958,
+input ack 10,415 / 350 ms against 808 / 39 ms. The shape is the same; the digits
+are an afternoon's machine load.)
+
+The two numbers are deliberately separate claims. **Thread held** is read back
+from `__clock.boot.worstHeldMs`, which `breathe()` records at every seam whether
+or not it yields: it counts nothing but this file's own work, and it is the
+build's claim. **Long task** counts the browser's work too, and on this container
+exactly one of them is not the build's — measured with `BREATHE_MS = 0` (2,958
+yields, every other one 6 ms or under), the ~950 ms is the first composited frame
+with a live WebGL canvas under software GL, work the old build simply deferred
+until after the block. The probe gates both rather than excusing a row by naming
+it: 700 ms on what the build holds (twice the largest call no statement boundary
+can split — `G.makeGenevaCross` at 334 ms, `G.makeHairspring` at 314,
+`G.weldTree` at 252) and 1,800 ms on what the page feels, because whatever is in
+it, nothing multi-second may survive.
+
+**The acceptance is the fingerprint, again.** The seams change no statement and
+no order; only the event loop gets a turn in between. So "nothing changed" is
+checkable exactly, and it is the same test the memo was accepted against:
+**fingerprint 236321764** on both sides, 41/41 gates, boot silent — and the
+whole `--report` payload byte-identical to the base's outside the timing fields
+(`sliceMs`, `exactMs`, `verdictMs`), which is the stronger form of the claim,
+since a gate reports only whether its failure list is empty.
+
+**And the boot screen does not retire.** §238's text said the screen could not
+shorten the wait; this says the same thing from the other side. The wait is the
+same 13 s — what changed is that the page is now answering for 92% of it.
