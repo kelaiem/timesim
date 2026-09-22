@@ -170,7 +170,10 @@ async function capture(r, frameDir) {
   page.on('pageerror', (e) => errors.push('pageerror: ' + String(e).slice(0, 300)));
   const tBoot = Date.now();
   try {
-    await page.goto(`http://127.0.0.1:${port}/${r.version}/index.html?schematic=0`, { waitUntil: 'load', timeout: 120000 });
+    // `load` waits for the module script on releases before §238's two-stage
+    // entry, i.e. for the whole boot; three SwiftShader boots share one GPU
+    // process, so the wait can pass three minutes under contention.
+    await page.goto(`http://127.0.0.1:${port}/${r.version}/index.html?schematic=0`, { waitUntil: 'load', timeout: 300000 });
     await page.waitForFunction(() => !!window.__clock || !!window.__bootError, null, { timeout: 300000 });
     const bootErr = await page.evaluate(() => window.__bootError ? String(window.__bootError.message || window.__bootError) : null);
     if (bootErr) throw new Error('boot failed: ' + bootErr);
