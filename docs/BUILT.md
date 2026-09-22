@@ -28522,21 +28522,25 @@ row at the foot of the View panel reading the meta §28 bakes in (`v3.4.4`) or
 because a thing that looks like a button is a thing someone presses once.
 Five presses on it within three seconds open the film in a new tab — a
 phone's build-number tap, one fewer; the window lets a slow deliberate count
-land and a double-click never fire — and reveal a `History` row above it with
-a plain `Release timelapse` link that stays (a per-viewer flag in
-localStorage, `VARIANTS_KEY`'s precedent, wrapped for blocked storage). §72's
-constraint is what shaped it: hidden is not inaccessible, so the stamp is a
-real button the keyboard reaches, and its accessible name SAYS what five
-presses do — a screen-reader user is told the secret a sighted one has to
-find. The film's address is absolute, because the app is served from the
+land and a double-click never fire. §72's constraint is what shaped it:
+hidden is not inaccessible, so the stamp is a real button the keyboard
+reaches, and its accessible name SAYS what five presses do — a screen-reader
+user is told the secret a sighted one has to find. **The first cut also left
+a labelled path behind**: once found, a `History` row with a plain
+`Release timelapse` link appeared above the stamp and stayed, on a per-viewer
+localStorage flag. The owner's report the same day was that the easter egg
+then lived under a button that said exactly what it was — a secret that
+labels itself after its first use is a menu item with extra steps — so the
+row, its flag and its two strings were cut, and the accessible name carries
+the secret alone; that name was already the whole of what §72 needed. The film's address is absolute, because the app is served from the
 Pages root, a Pages environment directory, the QA host and checkouts, and the
 film lives at none of them. Four chrome strings in all twelve tables.
-Measured on the source tree: boot silent, the row hidden by attribute (the
-`.row[hidden]` rule had to be written — `.row`'s `display: flex` outranks the
-user agent's), four presses nothing, the fifth opens the URL and shows the
-row, a second page in the same profile boots with it shown, three presses
-then a 3.2 s pause then two presses nothing, and five `Enter`s from the
-keyboard the same as five clicks.
+Measured on the source tree: boot silent, four presses nothing, the fifth
+opens the URL, three presses then a 3.2 s pause then two presses nothing, and
+five `Enter`s from the keyboard the same as five clicks. (The first cut's
+measurements also held the row hidden by attribute — which needed a
+`.row[hidden]` rule, `.row`'s `display: flex` outranking the user agent's —
+and shown on a second boot after the find; both went with the row.)
 
 **Not done here.** A fifth view: the schematic tier (§66) and x-ray are one
 `--views` flag away in the capture and a `views` entry away in the viewer.

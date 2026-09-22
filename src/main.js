@@ -30359,9 +30359,6 @@ html:lang(ko) { word-break: keep-all; }
 .hud-panel .tq i.flat { background: #58b368; }
 .hud-panel .readout { font-variant-numeric: tabular-nums; font-size: 15px; color: #f2efe6; letter-spacing: 0.03em; }
 .hud-panel .label-small { color: #8b95a1; font-size: 10.5px; }
-/* §242 — a row hidden by attribute must beat .row's display:flex, or the
-   History row shows before its door has been found. */
-.hud-panel .row[hidden] { display: none; }
 /* §242 — the version stamp is styled as a LABEL: no fill, no border, the
    muted colour, tabular figures. A button that looks like a button is a
    control someone would press once; this one is meant to be read. */
@@ -30863,23 +30860,21 @@ viewHud.innerHTML = `
     <span class="label-small">Language</span>
     <select id="lang-select"></select>
   </div>
-  <!-- §242 — the door, and the room behind it. The film of the release
-       series lives at a standalone Pages path (pages.yml's fourth path) and
-       nothing in the app named it; the owner wanted an EASTER EGG, not a
-       menu item. The version stamp below is the door: it is the one line
-       of chrome that IS the history the film shows, so five presses on it
-       within three seconds open the film. §72's constraint holds — hidden,
-       not inaccessible: the stamp is a real button (keyboard reaches it),
-       its accessible name SAYS what five presses do (a screen-reader user
-       is told the secret a sighted one has to find), and once found the
-       row above it appears and stays, a labelled link that needs no
-       gesture. The stamp reads the release meta that §28 bakes into the
+  <!-- §242 — the door. The film of the release series lives at a standalone
+       Pages path (pages.yml's fourth path) and nothing in the app named it;
+       the owner wanted an EASTER EGG, not a menu item. The version stamp
+       below is the door: it is the one line of chrome that IS the history
+       the film shows, so five presses on it within three seconds open the
+       film. §72's constraint holds — hidden, not inaccessible: the stamp is
+       a real button (keyboard reaches it) and its accessible name SAYS what
+       five presses do, so a screen-reader user is told the secret a sighted
+       one has to find. It first shipped with a labelled "History" row that
+       appeared once the door had been found and stayed; the owner's report
+       the same day was that the secret then lived under a button that said
+       exactly what it was, so the row is gone and the name carries it
+       alone. The stamp reads the release meta that §28 bakes into the
        document, so it is what the update toast compares against; a source
        tree has no meta and says so. -->
-  <div class="row" id="timelapse-row" hidden>
-    <span class="label-small">History</span>
-    <a class="ui-link" id="timelapse-link" href="https://kelaiem.github.io/timesim/timelapse/" target="_blank" rel="noopener">Release timelapse</a>
-  </div>
   <div class="row">
     <span class="label-small">Version</span>
     <button id="btn-version" class="version-stamp">…</button>
@@ -31640,21 +31635,17 @@ if (builtVersion) {
 // film lives at none of those. Five presses within three seconds is the
 // gesture (a phone's build-number tap, one fewer); the window is
 // PRESSES_WINDOW_MS so a slow deliberate press-count still lands and an
-// accidental double-click never does. The found flag is a per-viewer
-// convenience in localStorage (VARIANTS_KEY's precedent), wrapped because
-// storage can be blocked, and it only ever REVEALS: the door keeps working
-// after the row is shown.
+// accidental double-click never does. Nothing is remembered: a door that
+// left a labelled link behind once it was found put the secret under a
+// button that said what it was (the owner's report, the day it shipped), so
+// the only trace of the secret is the stamp's accessible name.
 const TIMELAPSE_URL = 'https://kelaiem.github.io/timesim/timelapse/';
-const TIMELAPSE_FOUND_KEY = 'timesim.timelapseFound';
 const TIMELAPSE_PRESSES = 5, PRESSES_WINDOW_MS = 3000;
 {
   const stamp = document.getElementById('btn-version');
-  const row = document.getElementById('timelapse-row');
   const label = builtVersion ? 'v' + builtVersion : t('source tree');
   stamp.textContent = label;
   stamp.setAttribute('aria-label', label + '. ' + t('Press five times for the release timelapse.'));
-  const found = () => { try { return localStorage.getItem(TIMELAPSE_FOUND_KEY) === '1'; } catch { return false; } };
-  if (found()) row.hidden = false;
   let presses = [];
   stamp.addEventListener('click', () => {
     const now = performance.now();
@@ -31662,8 +31653,6 @@ const TIMELAPSE_PRESSES = 5, PRESSES_WINDOW_MS = 3000;
     presses.push(now);
     if (presses.length < TIMELAPSE_PRESSES) return;
     presses = [];
-    try { localStorage.setItem(TIMELAPSE_FOUND_KEY, '1'); } catch { /* blocked storage: the row shows for this visit */ }
-    row.hidden = false;
     window.open(TIMELAPSE_URL, '_blank', 'noopener');
   });
 }
