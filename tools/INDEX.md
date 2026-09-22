@@ -4,8 +4,8 @@
 
 # The instruments
 
-232 scripts. **126 are ACCEPTANCE tests** — they decide and exit non-zero.
-**106 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+234 scripts. **126 are ACCEPTANCE tests** — they decide and exit non-zero.
+**108 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -245,3 +245,5 @@ when a question was asked; the summaries are what it answered.
 | `servers.mjs` |  | report | TODO 131 — WHO OWNS THAT SERVER? Every instrument in this directory spawns its own static server (`python3 -m http.server`, or `dev_server.py` for the battery and the i18n checker) and reaps it on its last line — so a probe that THROWS leaves the server behind, and the next run on that port reads the orphan (SKILL.md, "a crashed probe leaves its server running"). The advice used to be `pgrep -af "[h]ttp[.]server"` and a kill by hand, and that is how the full battery was killed mid-run at its final anchor: its dev server on a random port looked exactly like an orphan, because a port number says nothing about ownership. |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |
+| `timelapse-build.mjs` |  | report | Timelapse build — turns tools/timelapse-capture.mjs's frames into the scrubbable site: sprite sheets per view, a data block, and the viewer page. |
+| `timelapse-capture.mjs` |  | report | Timelapse capture — one frame per hosted release per camera preset, so the movement's evolution can be scrubbed as a film. |

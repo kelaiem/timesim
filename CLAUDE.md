@@ -135,7 +135,39 @@ DOM. **The tool takes its locale roster from the page module's own
 per-locale FACT (which characters that locale groups and points with), and a
 missing row is a hard failure rather than a skipped check. `--check` is the gate and with no `--page` it checks EVERY page (0
 unmatched keys, 0 markup/`<code>`/id drift, 0 number drift, and no label
-overrunning its plate against the English baseline). **A translated header must
+overrunning its plate against the English baseline).
+
+**And since §241 it holds the HONESTY VOCABULARY, which is the first thing
+here that reads a sentence rather than counting one.** A translation that
+renders *modelled* as *simulated* does not read wrong — it reads fluent, and
+it erases the one distinction this repo polices hardest — while the key
+matches, the markup matches and the numbers match. So a CROSSED row gates:
+the English asserts one of the two words, the translation drops it and
+carries the other. State it any other way and the sentences built on the
+CONTRAST ("the cam itself is MODELLED and not simulated") become the ones
+the rule can never fail — which is what a first draft did, found by mutating
+a row and watching the gate report it. A row with NEITHER word is ABSENT and
+only reported, because a terse paraphrase and a dropped sentence look
+identical from here. **`HONESTY`'s per-locale stems are held to the page's
+own glossary**, the `modelled / simulated` entry each locale already
+declares to its readers, so the table cannot invent a vocabulary the page
+does not use; the run ends by naming how many rows that control verified,
+and a locale with no row is UNGATED, not skipped (`MARKS`' rule next door).
+The English matcher is a claim too and is deliberately narrow: widen it to a
+bare `\bmodel\b` and it swallows the credit line's "Anthropic's AI model",
+which all twelve locales render with their model-word and correctly.
+
+Beside it, `block coverage` REPORTS a translated block far shorter than its
+locale normally runs — the ruler is that locale's own median ratio (German
+1.16, Korean 0.57, Chinese 0.34), one-sided because the high side is just a
+quoted identifier surviving translation inside a short CJK block. It is what
+found §241's truncations — fifteen (locale, block) rows over three distinct
+English blocks, each stopping at a sentence boundary, one of them short in
+ALL TWELVE locales and dropping "the cam itself is MODELLED and not
+simulated" from every non-English reading of the page while every gate
+stayed green. It does not gate — it cannot tell terse from truncated, and a
+threshold tuned until today's tree is green is rule 1's "number that looked
+right". **A translated header must
 not wrap**: both bars are `position: fixed` above a constant body padding, so a
 second line covers the first paragraph — every item is `nowrap` and the stamp
 is the one that yields (ellipsis, then hidden under 820 px). German found it;
@@ -483,7 +515,11 @@ deploy does not exist there, and that is why it is shaped that way.
 `tools/build-pages.mjs` finishes each tree: it runs the same
 `stamp-release.mjs` (the environments are stamped releases, not a
 second kind of build — do not fork the stamper) and adds the
-environment's own marks.
+environment's own marks. A fourth path, `timelapse/`, is not an
+environment: §242's film of the release series, committed built under
+`timelapse/` and copied from the checkout, cut from every payload by
+`payload.sh` and ignored by the battery — refresh it with
+`tools/timelapse-capture.mjs` then `tools/timelapse-build.mjs`.
 
 **The deployed payload is `tools/payload.sh`, and it is the ONLY
 definition** — both `release.yml` (SFTP to QA) and `pages.yml` call it,
@@ -715,7 +751,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 232 measuring scripts and this file names 17. The rest are named for the
+`tools/` holds 234 measuring scripts and this file names 19. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -733,7 +769,7 @@ vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
 The index also carries the split that decides how to read a result: **126 of
-them are ACCEPTANCE tests** that exit non-zero, and **106 are REPORTS** that
+them are ACCEPTANCE tests** that exit non-zero, and **108 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
 acceptance — those say so in their own headers. A report saying `0 violations` has not
