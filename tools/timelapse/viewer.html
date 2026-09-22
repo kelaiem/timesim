@@ -115,6 +115,11 @@
     .readout .subject { flex-basis: 100%; }
     .note .keys { display: none; }
   }
+  /* The scrolling layout (see fit()): the page flows at its natural height
+     and the body scrolls; everything else is the pinned layout unchanged. */
+  html.scroll, html.scroll body { height: auto; }
+  html.scroll body { overflow-y: auto; }
+  html.scroll .app { height: auto; grid-template-rows: auto auto auto; }
   @media (prefers-reduced-motion: reduce) { .ticks i, button { transition: none; } }
 </style>
 
@@ -353,15 +358,35 @@
 
   // Fit the stage to whatever the header and footer leave, at 4:3.
   const stage = el('stage'), main = document.querySelector('main');
+  // Two layouts. PINNED (the default): header, stage and footer share one
+  // screen and the stage takes what the other two leave. SCROLLING: when
+  // pinning would give the film less than half the screen's height, when the
+  // width would have allowed more — the
+  // controls taking more of the glass than the thing they control, which is
+  // a phone on its side (measured: a 33 px stage in a 900 x 300 window) —
+  // the page flows instead, the stage gets up to a whole screen's height,
+  // and the controls are a scroll away. The chrome's height is read as the
+  // app's height minus main's, which is the same number in either layout,
+  // so the decision cannot flip-flop on its own output.
+  const root = document.documentElement, app = document.querySelector('.app');
   function fit() {
     // The viewport is the second bound on purpose: the container's own width
     // is what the stage's last pixel width can inflate (see .app's column
     // rule), and a bound that reads only the container reads its own echo.
-    const w = Math.min(main.clientWidth, document.documentElement.clientWidth - 32), h = main.clientHeight;
-    const sw = Math.max(0, Math.min(w, h * 4 / 3));
-    stage.style.width = sw + 'px';
+    const w = Math.min(main.clientWidth, root.clientWidth - 32);
+    const vh = window.innerHeight;
+    const chrome = app.offsetHeight - main.offsetHeight;
+    // Scroll only when PINNING is what costs the picture: under half the
+    // screen AND smaller than the width alone would allow. A portrait phone's
+    // stage is bound by its width either way, and scrolling it buys nothing.
+    const pinnedH = Math.min(vh - chrome, w * 3 / 4);
+    const scroll = pinnedH < Math.min(vh / 2, w * 3 / 4);
+    root.classList.toggle('scroll', scroll);
+    const h = scroll ? vh : vh - chrome;
+    stage.style.width = Math.max(0, Math.min(w, h * 4 / 3)) + 'px';
   }
   new ResizeObserver(fit).observe(main);
+  window.addEventListener('resize', fit);
   fit();
 
   readout();
