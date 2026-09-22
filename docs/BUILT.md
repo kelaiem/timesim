@@ -28289,10 +28289,25 @@ view — it cannot make the page answer.
 > from inside the app — the easter egg the film was made for — stays filed in
 > the private roadmap under this number.
 
-Ninety-one releases went to `zincorporation.com/time-releases/<version>/`
-between 18 July and 21 September, and nothing showed them side by side: to
-see what 0.4.2 looked like you opened 0.4.2. This is the series as ONE
-document — one frame per release per camera preset, on a timeline you drag.
+Ninety-one releases went to the QA host between 18 July and 21 September, and
+nothing showed them side by side: to see what 0.4.2 looked like you opened
+0.4.2. This is the series as ONE document — one frame per release per camera
+preset, on a timeline you drag — published at
+`https://kelaiem.github.io/timesim/timelapse/`.
+
+**Where it lives, and why there.** The built film — the page and twenty
+sprite sheets, about 9 MB — is committed under `timelapse/` and served by
+`pages.yml` as a fourth path under the Pages site, beside the three
+environments and belonging to none of them: it is a fact about the SERIES, so
+it is neither versioned with a release nor carried in one. `tools/payload.sh`
+cuts the directory from every release payload (the alternative was every
+release shipping the whole history inside each of its own frames), the Pages
+build asserts the film is present at the root and absent from every
+environment, and `battery.yml` ignores the path because nothing on
+`index.html`'s module graph reaches it. Every frame links to its release on
+GitHub — the release page from 1.4.0 on, where `release.yml` has published
+one for every tag (measured against the repository's release list), and the
+tag's tree for the sixteen versions before that.
 
 **The roster is the HOST's, not git's.** `tools/timelapse-releases.json`
 carries the ninety-one directories the host lists with the mtime it reported
@@ -28358,7 +28373,7 @@ INDEX (one notch per release, ticks coloured by major version so the 1.x →
 2.x → 3.x steps read at a glance) above a calendar strip that places the same
 releases at their TRUE moment, so the summer's tempo shows — forty-four releases in July's last fortnight (eight on 19 July alone), forty in August, seven in September. Either
 scrubs; keys step, play runs at 2–12 frames a second; every frame links to its
-live release on the host and the URL hash carries view and index. The page is
+release on GitHub and the URL hash carries view and index. The page is
 a body fragment the build wraps in a skeleton, and two things it got wrong on
 the first look are worth keeping: its data marker appeared twice (once in its
 own explanatory comment, and `String.replace` took the comment), and its
@@ -28371,6 +28386,7 @@ have supplied.
 
 **And the manifest is a record of every console line each release printed at boot, which makes it an instrument by accident.** 0.4.2 and its four twins shipped WARNING at boot — `3/4 plate floor bound by measured part (10.29) above the hairspring stack (7.81)` — which is standing rule 6 broken in five deployed releases, on the record now; 0.3.0 and 0.4.0 printed three.js's `toNonIndexed` warning six times each (the §81 weld pass is what later made every mesh arrive indexed). Every other release booted silent.
 
-**Not done here.** Serving the site and opening it from the app — roadmap
-§242. A fifth view: the schematic tier (§66) and x-ray are one `--views`
+**Not done here.** Opening it from the app — the easter egg's door — is
+roadmap §242's remainder; the site is served, and nothing in the app links to
+it yet. A fifth view: the schematic tier (§66) and x-ray are one `--views`
 flag away in the capture and a `views` entry away in the viewer.

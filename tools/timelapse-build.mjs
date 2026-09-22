@@ -20,10 +20,17 @@
 //
 //   node tools/timelapse-build.mjs [--out DIR] [--site DIR] [--video] [--quality 0.82]
 //
-// DIR defaults to ../timelapse-out (the capture's default); the site lands in
-// DIR/site: index.html (standalone), artifact.html (the same page without the
-// document skeleton, for hosts that wrap one), sheets/<View>-<n>.webp, and,
-// with --video, video/<View>.webm.
+// DIR defaults to ../timelapse-out (the capture's default). The SITE defaults
+// to the repository's own `timelapse/` — index.html (standalone) and
+// sheets/<View>-<n>.webp — because that directory IS the published film:
+// pages.yml copies it from the checkout into the Pages artifact at
+// /timelapse/, and payload.sh cuts it from every release, so the sheets ride
+// in the repository once and in no release payload. artifact.html (the same
+// page without the document skeleton, for a host that wraps one) and, with
+// --video, video/<View>.webm land in DIR, not the site: the films are a
+// by-product nobody serves. Every frame links to its release on GitHub —
+// the release page from `firstGitHubRelease` in the roster on, the tag's
+// tree before it, since release.yml did not publish GitHub Releases then.
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -35,7 +42,7 @@ const repo = path.resolve(here, '..');
 const argv = process.argv.slice(2);
 const opt = (name, dflt) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : dflt; };
 const out = path.resolve(opt('--out', path.join(repo, '..', 'timelapse-out')));
-const site = path.resolve(opt('--site', path.join(out, 'site')));
+const site = path.resolve(opt('--site', path.join(repo, 'timelapse')));
 const quality = parseFloat(opt('--quality', '0.82'));
 const video = argv.includes('--video');
 
@@ -43,7 +50,11 @@ const CELL = { w: 640, h: 480 };
 const COLS = 5, ROWS = 4, PER = COLS * ROWS;
 
 const manifest = JSON.parse(fs.readFileSync(path.join(out, 'manifest.json'), 'utf8'));
+const roster = JSON.parse(fs.readFileSync(path.join(here, 'timelapse-releases.json'), 'utf8'));
 const views = manifest.views;
+const cmpVer = (a, b) => { const pa = a.split('.').map(Number), pb = b.split('.').map(Number); for (let i = 0; i < Math.max(pa.length, pb.length); i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; } return 0; };
+const linkFor = (version) => cmpVer(version, roster.firstGitHubRelease) >= 0
+  ? `${roster.github}/releases/tag/${version}` : `${roster.github}/tree/${version}`;
 // Only releases with a captured frame in EVERY view are in the film; a
 // failed boot is reported here and left out rather than shown as a blank.
 const releases = manifest.releases.filter((r) => {
@@ -94,7 +105,7 @@ for (const view of views) {
 // built for Playwright's screen recording, and this is that path fed by hand.
 if (video) {
   const ff = fs.existsSync('/opt/pw-browsers/ffmpeg-1011/ffmpeg-linux') ? '/opt/pw-browsers/ffmpeg-1011/ffmpeg-linux' : 'ffmpeg';
-  fs.mkdirSync(path.join(site, 'video'), { recursive: true });
+  fs.mkdirSync(path.join(out, 'video'), { recursive: true });
   for (const view of views) {
     const jpegs = [];
     for (const r of releases) {
@@ -110,27 +121,27 @@ if (video) {
     }
     const seq = path.join(out, `seq-${view}.mjpeg`);
     fs.writeFileSync(seq, Buffer.concat(jpegs));
-    const file = path.join(site, 'video', view + '.webm');
+    const file = path.join(out, 'video', view + '.webm');
     // 4 frames per second: 91 releases in about 23 s, slow enough to read a
     // release's frame and fast enough to read as motion.
     execFileSync(ff, ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', '4', '-i', seq, '-c:v', 'libvpx', '-b:v', '3M', '-auto-alt-ref', '0', '-pix_fmt', 'yuv420p', file]);
     fs.rmSync(seq);
-    console.log(`${path.relative(site, file)}: ${(fs.statSync(file).size / 1024 / 1024).toFixed(1)} MB`);
+    console.log(`${path.relative(out, file)}: ${(fs.statSync(file).size / 1024 / 1024).toFixed(1)} MB`);
   }
 }
 await browser.close();
 
 const data = {
-  host: manifest.host,
+  github: roster.github,
   bg,
   views,
   cell: CELL, cols: COLS, rows: ROWS, per: PER,
   sheets,
-  releases: releases.map(({ version, deployed, committed, subject, url }) => ({ version, deployed, committed, subject, url })),
+  releases: releases.map(({ version, deployed, committed, subject }) => ({ version, deployed, committed, subject, url: linkFor(version) })),
 };
 const template = fs.readFileSync(path.join(here, 'timelapse', 'viewer.html'), 'utf8');
 const body = template.replace('/*__DATA__*/', () => JSON.stringify(data));
-fs.writeFileSync(path.join(site, 'artifact.html'), body);
+fs.writeFileSync(path.join(out, 'artifact.html'), body);
 fs.writeFileSync(path.join(site, 'index.html'),
   `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n${body}\n</body>\n</html>\n`);
 console.log(`viewer: ${path.join(site, 'index.html')} (${(body.length / 1024).toFixed(0)} KB)`);

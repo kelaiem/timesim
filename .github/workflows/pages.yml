@@ -7,6 +7,17 @@
 #   testing      https://kelaiem.github.io/timesim/testing/
 #   development  https://kelaiem.github.io/timesim/development/
 #
+# and one path that is not an environment at all:
+#
+#   timelapse    https://kelaiem.github.io/timesim/timelapse/
+#
+# §242's film of the release series — a fact about the SERIES, not about any
+# one release, which is why it is neither versioned with one nor carried in
+# the payload (tools/payload.sh cuts it). It is copied from the CHECKOUT's
+# `timelapse/` directory, the same place the stamper comes from, so what the
+# site shows is what main holds. Refreshing it is a capture and a build
+# (tools/timelapse-capture.mjs, tools/timelapse-build.mjs) committed to main.
+#
 # That layout is only possible because §28 decided asset URLs stay RELATIVE and
 # carry ?v=<version> rather than being rebased onto an absolute release path —
 # see tools/stamp-release.mjs for the original reasoning. The same property that
@@ -184,6 +195,11 @@ jobs:
           build production  "$PROD_REF" "$PROD_VERSION" _site
           build testing     "$TEST_REF" "$TEST_VERSION" _site/testing
           build development "$DEV_REF"  "$DEV_VERSION"  _site/development
+          # §242 — the film, from the checkout (main), unstamped: its sheets
+          # are named by view and chunk, not by release, and it belongs to no
+          # environment. See the header.
+          echo "--- timelapse  <-  checkout"
+          cp -R timelapse _site/timelapse
 
       # Each environment must answer for itself with the version it was built
       # with — a mixed-up artifact is otherwise invisible until a viewer reports
@@ -239,6 +255,18 @@ jobs:
             for f in "$d/LICENSE" "$d/vendor/LICENSE-three.txt" "$d/vendor/LICENSE-three-mesh-bvh.txt"; do
               [ -f "$f" ] || fail "$f is missing — a published site carrying vendored three.js must carry its licences"
             done
+          done
+
+          # §242's film: the page and at least one sheet per view it names,
+          # so a build that lost the sheets cannot publish a viewer that loads
+          # nothing. The film must NOT be inside any environment — that is
+          # payload.sh's cut, asserted here like the others.
+          [ -f _site/timelapse/index.html ] || fail "_site/timelapse/index.html is missing"
+          for v in Dial Train Escapement Free; do
+            [ -f "_site/timelapse/sheets/$v-0.webp" ] || fail "_site/timelapse/sheets/$v-0.webp is missing"
+          done
+          for d in _site/testing _site/development; do
+            [ ! -e "$d/timelapse" ] || fail "$d/timelapse exists — the film leaked into an environment's payload"
           done
 
           # No check here that the three versions DIFFER, deliberately: right

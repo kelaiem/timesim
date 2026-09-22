@@ -1,6 +1,7 @@
 {
-  "_comment": "The hosted release roster for tools/timelapse-capture.mjs — every version deployed to https://zincorporation.com/time-releases/<version>, with the mtime the host reported for each directory (the deploy moment, 2026). Git tags that were never deployed (0.1–0.1.5, 1.4.0, 1.5.0, 3.4.0) are deliberately absent: the timelapse is of what shipped. The tag's own commit date is read from git at capture time and is the evolution order — 1.6.0 and 1.14.8 were deployed weeks after they were cut.",
-  "host": "https://zincorporation.com/time-releases/",
+  "_comment": "The release roster for tools/timelapse-capture.mjs — every version that was deployed, with the mtime the QA host reported for each release directory (the deploy moment, 2026). Git tags that were never deployed (0.1–0.1.5, 1.4.0, 1.5.0, 3.4.0) are deliberately absent: the timelapse is of what shipped. The tag's own commit date is read from git at capture time and is the evolution order — 1.6.0 and 1.14.8 were deployed weeks after they were cut. Each frame links to its release ON GITHUB: release.yml has published a GitHub Release for every tag from `firstGitHubRelease` on (measured against the repository's release list at filing), so those link to the release page and the sixteen earlier versions link to their tag's tree.",
+  "github": "https://github.com/kelaiem/timesim",
+  "firstGitHubRelease": "1.4.0",
   "releases": [
     { "version": "0.1.6", "deployed": "2026-07-18T13:25" },
     { "version": "0.2.0", "deployed": "2026-07-18T20:29" },

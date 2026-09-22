@@ -77,7 +77,7 @@ let releases = roster.releases.map((r) => {
   const sha = git('rev-list', '-n', '1', r.version);
   const committed = git('log', '-1', '--format=%cI', sha);
   const subject = git('log', '-1', '--format=%s', sha);
-  return { ...r, sha, committed, subject, url: roster.host + r.version + '/' };
+  return { ...r, sha, committed, subject };
 });
 releases.sort((a, b) => a.committed.localeCompare(b.committed) || cmpVer(a.version, b.version));
 function cmpVer(a, b) {
@@ -111,10 +111,9 @@ const browser = await chromium.launch(gpu
   : {});
 const manifestPath = path.join(out, 'manifest.json');
 const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : { frames: {} };
-manifest.host = roster.host;
 manifest.views = views;
 manifest.viewport = { width, height };
-manifest.releases = releases.map(({ version, deployed, sha, committed, subject, url }) => ({ version, deployed, sha, committed, subject, url }));
+manifest.releases = releases.map(({ version, deployed, sha, committed, subject }) => ({ version, deployed, sha, committed, subject }));
 
 const queue = todo.slice();
 const inProgress = new Set();
