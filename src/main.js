@@ -30359,6 +30359,14 @@ html:lang(ko) { word-break: keep-all; }
 .hud-panel .tq i.flat { background: #58b368; }
 .hud-panel .readout { font-variant-numeric: tabular-nums; font-size: 15px; color: #f2efe6; letter-spacing: 0.03em; }
 .hud-panel .label-small { color: #8b95a1; font-size: 10.5px; }
+/* §242 — a row hidden by attribute must beat .row's display:flex, or the
+   History row shows before its door has been found. */
+.hud-panel .row[hidden] { display: none; }
+/* §242 — the version stamp is styled as a LABEL: no fill, no border, the
+   muted colour, tabular figures. A button that looks like a button is a
+   control someone would press once; this one is meant to be read. */
+.hud-panel button.version-stamp { background: none; border: 1px solid transparent; color: #8b95a1; font-size: 10.5px; padding: 2px 5px; font-variant-numeric: tabular-nums; }
+.hud-panel button.version-stamp:hover { background: rgba(255,255,255,0.06); }
 #clock-labels { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
 .clock-label {
   position: absolute; transform: translate(-50%, -140%); font: 11px/1 -apple-system, sans-serif;
@@ -30854,6 +30862,27 @@ viewHud.innerHTML = `
   <div class="row">
     <span class="label-small">Language</span>
     <select id="lang-select"></select>
+  </div>
+  <!-- §242 — the door, and the room behind it. The film of the release
+       series lives at a standalone Pages path (pages.yml's fourth path) and
+       nothing in the app named it; the owner wanted an EASTER EGG, not a
+       menu item. The version stamp below is the door: it is the one line
+       of chrome that IS the history the film shows, so five presses on it
+       within three seconds open the film. §72's constraint holds — hidden,
+       not inaccessible: the stamp is a real button (keyboard reaches it),
+       its accessible name SAYS what five presses do (a screen-reader user
+       is told the secret a sighted one has to find), and once found the
+       row above it appears and stays, a labelled link that needs no
+       gesture. The stamp reads the release meta that §28 bakes into the
+       document, so it is what the update toast compares against; a source
+       tree has no meta and says so. -->
+  <div class="row" id="timelapse-row" hidden>
+    <span class="label-small">History</span>
+    <a class="ui-link" id="timelapse-link" href="https://kelaiem.github.io/timesim/timelapse/" target="_blank" rel="noopener">Release timelapse</a>
+  </div>
+  <div class="row">
+    <span class="label-small">Version</span>
+    <button id="btn-version" class="version-stamp">…</button>
   </div>
   <!-- §118 — Camera, moved WHOLE out of #clock-ui on §110 item 4's precedent
        and for its reason: this panel is where the viewer's own question is
@@ -31599,6 +31628,44 @@ if (builtVersion) {
       });
     }).catch(() => {});
   }
+}
+
+// §242 — THE VERSION STAMP, AND THE DOOR IT IS. The stamp shows what §28's
+// meta says this document is; a source tree (dev_server.py, a worktree) has
+// no meta, so the stamp says that rather than inventing a number. The film
+// of the release series is served at ONE address — pages.yml's fourth path,
+// a fact about the series and not about any release, which is why this is an
+// absolute URL and not a relative one: the app may be served from the Pages
+// root, a Pages environment directory, the QA host or a checkout, and the
+// film lives at none of those. Five presses within three seconds is the
+// gesture (a phone's build-number tap, one fewer); the window is
+// PRESSES_WINDOW_MS so a slow deliberate press-count still lands and an
+// accidental double-click never does. The found flag is a per-viewer
+// convenience in localStorage (VARIANTS_KEY's precedent), wrapped because
+// storage can be blocked, and it only ever REVEALS: the door keeps working
+// after the row is shown.
+const TIMELAPSE_URL = 'https://kelaiem.github.io/timesim/timelapse/';
+const TIMELAPSE_FOUND_KEY = 'timesim.timelapseFound';
+const TIMELAPSE_PRESSES = 5, PRESSES_WINDOW_MS = 3000;
+{
+  const stamp = document.getElementById('btn-version');
+  const row = document.getElementById('timelapse-row');
+  const label = builtVersion ? 'v' + builtVersion : t('source tree');
+  stamp.textContent = label;
+  stamp.setAttribute('aria-label', label + '. ' + t('Press five times for the release timelapse.'));
+  const found = () => { try { return localStorage.getItem(TIMELAPSE_FOUND_KEY) === '1'; } catch { return false; } };
+  if (found()) row.hidden = false;
+  let presses = [];
+  stamp.addEventListener('click', () => {
+    const now = performance.now();
+    presses = presses.filter((p) => now - p < PRESSES_WINDOW_MS);
+    presses.push(now);
+    if (presses.length < TIMELAPSE_PRESSES) return;
+    presses = [];
+    try { localStorage.setItem(TIMELAPSE_FOUND_KEY, '1'); } catch { /* blocked storage: the row shows for this visit */ }
+    row.hidden = false;
+    window.open(TIMELAPSE_URL, '_blank', 'noopener');
+  });
 }
 // No meta tag means an unstamped tree — development. Nothing is fetched at
 // all, so dev never polls a file that is not there.

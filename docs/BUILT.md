@@ -28408,11 +28408,12 @@ since a gate reports only whether its failure list is empty.
 **And the boot screen does not retire.** §238's text said the screen could not
 shorten the wait; this says the same thing from the other side. The wait is the
 same 13 s — what changed is that the page is now answering for 92% of it.
-## §242 — PARTIAL: the release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline
 
-> **Status.** The film and the tools that make it are BUILT. Publishing it
-> from inside the app — the easter egg the film was made for — stays filed in
-> the private roadmap under this number.
+## §242 — The release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline, behind a door in the chrome
+
+> **Status.** SHIPPED whole, in two landings the same day: the film, its
+> tools and its hosting first; then the door — the version stamp the chrome
+> never had, and the five presses on it that open the film.
 
 Ninety-one releases went to the QA host between 18 July and 21 September, and
 nothing showed them side by side: to see what 0.4.2 looked like you opened
@@ -28511,7 +28512,31 @@ have supplied.
 
 **And the manifest is a record of every console line each release printed at boot, which makes it an instrument by accident.** 0.4.2 and its four twins shipped WARNING at boot — `3/4 plate floor bound by measured part (10.29) above the hairspring stack (7.81)` — which is standing rule 6 broken in five deployed releases, on the record now; 0.3.0 and 0.4.0 printed three.js's `toNonIndexed` warning six times each (the §81 weld pass is what later made every mesh arrive indexed). Every other release booted silent.
 
-**Not done here.** Opening it from the app — the easter egg's door — is
-roadmap §242's remainder; the site is served, and nothing in the app links to
-it yet. A fifth view: the schematic tier (§66) and x-ray are one `--views`
-flag away in the capture and a `views` entry away in the viewer.
+**The door.** The owner wanted an easter egg, not a menu item, and the
+roadmap's candidate for the gesture was the version stamp in the chrome — the
+one line of chrome that IS the history the film shows. The chrome had no such
+line: `app-version` lived only in the document's meta and the update toast
+compared against it, nothing displayed it. So the stamp is new, a `Version`
+row at the foot of the View panel reading the meta §28 bakes in (`v3.4.4`) or
+`source tree` where there is none, styled as a label rather than a control
+because a thing that looks like a button is a thing someone presses once.
+Five presses on it within three seconds open the film in a new tab — a
+phone's build-number tap, one fewer; the window lets a slow deliberate count
+land and a double-click never fire — and reveal a `History` row above it with
+a plain `Release timelapse` link that stays (a per-viewer flag in
+localStorage, `VARIANTS_KEY`'s precedent, wrapped for blocked storage). §72's
+constraint is what shaped it: hidden is not inaccessible, so the stamp is a
+real button the keyboard reaches, and its accessible name SAYS what five
+presses do — a screen-reader user is told the secret a sighted one has to
+find. The film's address is absolute, because the app is served from the
+Pages root, a Pages environment directory, the QA host and checkouts, and the
+film lives at none of them. Four chrome strings in all twelve tables.
+Measured on the source tree: boot silent, the row hidden by attribute (the
+`.row[hidden]` rule had to be written — `.row`'s `display: flex` outranks the
+user agent's), four presses nothing, the fifth opens the URL and shows the
+row, a second page in the same profile boots with it shown, three presses
+then a 3.2 s pause then two presses nothing, and five `Enter`s from the
+keyboard the same as five clicks.
+
+**Not done here.** A fifth view: the schematic tier (§66) and x-ray are one
+`--views` flag away in the capture and a `views` entry away in the viewer.
