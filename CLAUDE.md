@@ -751,7 +751,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 231 measuring scripts and this file names 16. The rest are named for the
+`tools/` holds 234 measuring scripts and this file names 19. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -768,8 +768,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **125 of
-them are ACCEPTANCE tests** that exit non-zero, and **106 are REPORTS** that
+The index also carries the split that decides how to read a result: **126 of
+them are ACCEPTANCE tests** that exit non-zero, and **108 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
 acceptance — those say so in their own headers. A report saying `0 violations` has not
@@ -982,29 +982,60 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   a face the instruments READ**: cap every body, including the faces buried
   inside a joint, and look for cheap geometry somewhere that isn't load
   bearing for a check.
-- **BOOT IS ONE SYNCHRONOUS BLOCK, and only the compositor can cover it.**
-  Every part is cut during `main.js`'s module evaluation, so between that
-  module's first byte and the finished watch there is no frame, no paint and no
-  event loop — measured on the SwiftShader container, 14 s (25–27 s before
-  §239's memo; `tools/probe-239-boot-profile.mjs` is what splits that block by
-  function, and the block is FLAT now — nothing in it is above 15%). §238's boot
-  screen therefore lives in `index.html` (a module cannot be on the glass
-  before the block it covers), the entry script yields a frame before it
-  imports `main.js`, and **every animation on that screen is on `transform` or
-  `opacity` alone** — which Chromium ticks on the compositor thread while the
-  main thread is dead. Animate a `width` or a `left` there and the screen
-  freezes for the whole build while still looking perfectly correct in a
-  screenshot; for the same reason the delayed second line rides an
-  `animation-delay` and never a `setTimeout`, which would not fire until the
-  wait was over. `tools/probe-238-boot-screen.mjs` holds all of it, and records
-  the trap that sent it to a CDP screencast: `page.screenshot()` needs the
-  page's main thread, so it TIMES OUT during the block. The entry being a
-  dynamic `import()` is also why the boot-failure surface is written by hand —
-  a rejection is not a throw, and `window.__bootError` (TODO 30) is what the
-  battery reads when a build dies. **Halving the block did not retire the
-  screen**: a 14 s block still has no frame in it, and Chrome still reports the
-  page unresponsive, because what that dialog measures is the thread not
-  servicing input — not how long the wait is.
+- **BOOT BREATHES NOW, and each of the four rules that follow is new.** Every
+  part is still cut during `main.js`'s module evaluation, in source order, and
+  the wall is still ~13 s on the SwiftShader container (25–27 s before §239's
+  memo; `tools/probe-239-boot-profile.mjs` splits that block by function and
+  says it is FLAT — nothing above 15%, which is why the remainder was yielding
+  and not more speed). What changed is that the evaluation HANDS THE THREAD
+  BACK, at 173 seams: `await breathe()`, budget `BREATHE_MS = 40` — the
+  platform's own 50 ms long-task threshold with the margin taken OFF, because a
+  seam is chosen against the budget and lands on whatever the machine gives it.
+  Measured: the build held the thread **12,474 ms** in one stretch before and
+  **351 ms** at worst after, over 146 hand-backs; a dispatched key was answered
+  in 10,144 ms at worst before and 843 ms worst / 61 ms median after.
+  `tools/probe-239-boot-yield.mjs` gates it against a control that rewrites
+  `BREATHE_MS` to `Infinity` in flight — same statements, same clock reads, no
+  yields — and `__clock.boot` publishes what the build actually achieved.
+  **A seam must be in an ASYNC CONTEXT and at a STATEMENT HEAD.** The module
+  body and top-level bare blocks already are; an IIFE has to become
+  `await (async () => {…})()`, which six of them did. `await` mid-expression is
+  a different program, so the seams were placed off an acorn walk of the real
+  AST rather than a line regex, and every placement was parse-checked.
+  **A seam inside a hot loop is a defect, not a tuning question.** `breathe()`
+  reads the clock on every call, so a site reached 383,847 times — the back
+  envelope's triangle walk — would pay 383,847 clock reads for no yield at all.
+  The rule is a loop-depth cap plus the site's MEASURED hit count, and where a
+  callback stood in the way (`movement.traverse` in `BACK_ENVELOPE`) the walk was
+  opened out into a `for` over a collected list, which is the only shape that can
+  yield between meshes.
+  **AND A YIELDING BUILD CAN BE INTERRUPTED, which is a failure class that did
+  not exist before.** Every listener this file registers is registered PART WAY
+  THROUGH it, closing over constants the lines below have not declared yet — so a
+  key pressed at second four of the build reaches a handler whose `const` is
+  still in its temporal dead zone. `BUILD_GUARDED_EVENTS` stops the build's own
+  events at the window in the capture phase until `releaseBuildInputGuard()` on
+  the last line, and a `resize` the build swallowed is REPLAYED there rather than
+  lost. Add a `window.addEventListener` or `document.addEventListener` to
+  `main.js` and its event belongs on that list; the probe dispatches a key after
+  boot and fails if it does not arrive.
+  **And the boot screen does NOT retire.** One ~950 ms block survives on this
+  container and it is not the build: measured with `BREATHE_MS = 0` (2,958
+  yields, every one of the others 6 ms or under), it is the first composited
+  frame with a live WebGL canvas under software GL — work the old build simply
+  deferred until after the 13 s. So §238's screen still lives in `index.html` (a
+  module cannot be on the glass before the block it covers), the entry script
+  still yields a frame before it imports `main.js`, and **every animation on that
+  screen is still on `transform` or `opacity` alone** — which Chromium ticks on
+  the compositor thread whether or not the main thread is free. Animate a `width`
+  or a `left` there and the screen freezes while still looking perfectly correct
+  in a screenshot; for the same reason the delayed second line rides an
+  `animation-delay` and never a `setTimeout`. `tools/probe-238-boot-screen.mjs`
+  holds all of it, and records the trap that sent it to a CDP screencast:
+  `page.screenshot()` needs the page's main thread, so it TIMED OUT during the
+  block. The entry being a dynamic `import()` is also why the boot-failure
+  surface is written by hand — a rejection is not a throw, and
+  `window.__bootError` (TODO 30) is what the battery reads when a build dies.
 - **Metals are `metalness ≈ 1`** and render black without `scene.environment`
   (a procedural PMREM studio). Any new page needs the same.
 - **Camera preset tweens run ~0.9 s** and overwrite scripted camera writes
