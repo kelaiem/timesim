@@ -1,0 +1,352 @@
+<title>Timesim Timelapse</title>
+<!--
+  The timelapse viewer — a body fragment. tools/timelapse-build.mjs replaces
+  the DATA marker in the script below (the block comment `DATA` is assigned
+  from — it must appear exactly once in this file) with the film's data block
+  and wraps this in a document skeleton for the standalone site; hosts that
+  supply their own skeleton take the fragment as it is.
+
+  Styled to the HUD's tokens (explain.html's :root). Deliberately ONE theme:
+  every frame is a render on the sim's own ground, and a light page would
+  show ninety-one black rectangles. The ground colour is read off the
+  frames themselves at build time (DATA.bg) so the stage has no visible edge.
+-->
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: rgba(15,17,20,0.72);
+    --panel-solid: #14171c;
+    --hairline: rgba(255,255,255,0.08);
+    --hairline-strong: rgba(255,255,255,0.14);
+    --text: #d8dee6;
+    --muted: #8b95a1;
+    --head: #8fa6bf;
+    --readout: #f2efe6;
+    --accent: #3a6bd8;
+    --brass: #e0a355;
+    --steel: #8fa6bf;
+    --ruby: #e05555;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 var(--sans); overflow: hidden; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  button { font: inherit; color: inherit; background: none; border: 1px solid var(--hairline-strong); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  button:hover { background: rgba(255,255,255,0.06); }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  a { color: var(--head); }
+
+  .app { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 10px; padding-block: 10px calc(10px + env(safe-area-inset-bottom, 0px)); padding-inline: 16px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+  header h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap; }
+  header h1 small { color: var(--muted); font-weight: 400; margin-inline-start: 8px; }
+  .views { display: flex; gap: 4px; }
+  .views button { padding: 4px 12px; }
+  .views button[aria-pressed="true"] { background: var(--panel-solid); border-color: var(--head); color: var(--readout); }
+  .spacer { flex: 1; }
+  .transport { display: flex; align-items: center; gap: 6px; }
+  .transport label { color: var(--muted); font-size: 12px; }
+  .transport select { font: inherit; color: var(--text); background: var(--panel-solid); border: 1px solid var(--hairline-strong); border-radius: 4px; padding: 3px 6px; }
+  #play { min-width: 74px; }
+
+  main { display: grid; place-items: center; min-height: 0; }
+  .stage { position: relative; max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3; }
+  .stage canvas { display: block; width: 100%; height: 100%; background: var(--bg); }
+  .stamp { position: absolute; inset-inline-start: 10px; bottom: 10px; padding: 3px 8px; background: var(--panel); border-radius: 4px;
+           font: 12px/1.3 var(--mono); color: var(--readout); font-variant-numeric: tabular-nums; pointer-events: none; }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; background: var(--bg); }
+
+  footer { display: grid; gap: 6px; }
+  .readout { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; min-height: 30px; }
+  .readout .version { font: 600 24px/1 var(--mono); color: var(--readout); font-variant-numeric: tabular-nums; }
+  .readout .version::before { content: "v"; color: var(--muted); font-weight: 400; }
+  .readout .when { color: var(--text); }
+  .readout .deployed { color: var(--muted); }
+  .readout .subject { flex: 1 1 260px; min-width: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .readout .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* Release ticks: one slot per release, index-spaced like the slider under
+     them, coloured by major version so the 1.x → 2.x → 3.x steps read at a
+     glance. The current one stands taller. */
+  .ticks { display: flex; align-items: flex-end; height: 14px; gap: 1px; }
+  .ticks i { flex: 1; height: 6px; border-radius: 1px 1px 0 0; background: var(--major, var(--muted)); opacity: 0.55; cursor: pointer; }
+  .ticks i:hover { opacity: 0.9; }
+  .ticks i.cur { height: 14px; opacity: 1; background: var(--readout); }
+  .ticks i[data-major="0"] { --major: #6b7480; }
+  .ticks i[data-major="1"] { --major: var(--steel); }
+  .ticks i[data-major="2"] { --major: var(--brass); }
+  .ticks i[data-major="3"] { --major: var(--accent); }
+
+  input[type="range"] { width: 100%; margin: 0; height: 22px; -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--hairline-strong); }
+  input[type="range"]::-moz-range-track { height: 2px; background: var(--hairline-strong); }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -7px; border-radius: 50%; background: var(--readout); border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--hairline-strong); }
+  input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--readout); border: 2px solid var(--bg); box-shadow: 0 0 0 1px var(--hairline-strong); }
+
+  /* The calendar: the same releases at their TRUE moment, so the tempo of the
+     summer shows — forty releases in the last fortnight of July, six in
+     September. Click or drag to land on the nearest. */
+  .calendar { width: 100%; height: 44px; display: block; touch-action: none; cursor: pointer; }
+  .calendar text { font: 11px var(--sans); fill: var(--muted); }
+  .calendar .month { stroke: var(--hairline-strong); }
+  .calendar .rel { fill: var(--muted); opacity: 0.6; }
+  .calendar .rel.cur { fill: var(--readout); opacity: 1; }
+  .calendar .cursor { stroke: var(--readout); stroke-width: 1; }
+  .note { color: var(--muted); font-size: 12px; margin: 0; }
+  .note kbd { font: 11px var(--mono); border: 1px solid var(--hairline-strong); border-radius: 3px; padding: 0 4px; }
+
+  @media (max-width: 640px) {
+    header h1 small { display: none; }
+    .readout .version { font-size: 20px; }
+    .readout .subject { flex-basis: 100%; }
+    .note .keys { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .ticks i, button { transition: none; } }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Timesim <small>a summer of releases, from the first plate to the cased movement</small></h1>
+    <div class="views" role="group" aria-label="Camera preset" id="views"></div>
+    <div class="spacer"></div>
+    <div class="transport">
+      <button id="play" aria-pressed="false">Play</button>
+      <label for="fps">at</label>
+      <select id="fps" aria-label="Frames per second">
+        <option value="2">2 / s</option>
+        <option value="4" selected>4 / s</option>
+        <option value="8">8 / s</option>
+        <option value="12">12 / s</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div class="stage" id="stage">
+      <canvas id="frame" width="640" height="480" aria-label="Rendered frame of the selected release"></canvas>
+      <div class="stamp" id="stamp"></div>
+      <div class="loading" id="loading" hidden>Loading frames…</div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="readout">
+      <span class="version" id="r-version"></span>
+      <span class="when" id="r-when"></span>
+      <span class="deployed" id="r-deployed"></span>
+      <span class="subject" id="r-subject" title=""></span>
+      <a id="r-link" href="#" target="_blank" rel="noopener">Open this release ↗</a>
+      <span class="count" id="r-count"></span>
+    </div>
+    <div class="ticks" id="ticks" aria-hidden="true"></div>
+    <input type="range" id="scrub" min="0" max="0" value="0" step="1" aria-label="Release timeline">
+    <svg class="calendar" id="calendar" viewBox="0 0 1000 44" preserveAspectRatio="none" aria-label="Releases by date"></svg>
+    <p class="note">Each frame is that release booted from a clean slate, shot from its own camera preset with the hands at its boot pose.
+      <span class="keys"><kbd>←</kbd> <kbd>→</kbd> step · <kbd>Space</kbd> play · <kbd>1</kbd>–<kbd>4</kbd> views</span></p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const DATA = /*__DATA__*/;
+  const R = DATA.releases, N = R.length, views = DATA.views;
+  document.documentElement.style.setProperty('--bg', DATA.bg || '#0b0d10');
+
+  // --- state ---------------------------------------------------------------
+  let view = views[0], idx = 0, timer = null;
+  const hash = location.hash.replace(/^#/, '').split('/');
+  if (views.includes(hash[0])) view = hash[0];
+  if (hash[1] !== undefined && Number.isFinite(+hash[1])) idx = clamp(Math.round(+hash[1]), 0, N - 1);
+  function clamp(x, a, b) { return Math.max(a, Math.min(b, x)); }
+
+  // --- sheets --------------------------------------------------------------
+  const sheet = {}; // file → { img, ready: Promise }
+  function sheetFor(v, i) { return DATA.sheets[v][Math.floor(i / DATA.per)]; }
+  function load(file) {
+    if (sheet[file]) return sheet[file].ready;
+    const img = new Image();
+    const ready = new Promise((res, rej) => { img.onload = () => res(img); img.onerror = () => rej(new Error('failed to load ' + file)); });
+    img.src = file;
+    sheet[file] = { img, ready };
+    return ready;
+  }
+  // The current sheet first; then its neighbours; then the rest of this view,
+  // so a scrub in either direction has its frames ready.
+  function warm(v, i) {
+    const files = DATA.sheets[v], k = Math.floor(i / DATA.per);
+    const order = [k, k + 1, k - 1, ...files.map((_, j) => j)].filter((j, p, a) => j >= 0 && j < files.length && a.indexOf(j) === p);
+    return order.reduce((p, j) => p.then(() => load(files[j]).catch(() => {})), Promise.resolve());
+  }
+
+  // --- drawing -------------------------------------------------------------
+  const canvas = document.getElementById('frame');
+  const ctx = canvas.getContext('2d');
+  const loading = document.getElementById('loading');
+  let drawn = null;
+  async function draw() {
+    const file = sheetFor(view, idx), want = `${view}/${idx}`;
+    const s = sheet[file];
+    if (!s || !s.img.complete || !s.img.naturalWidth) {
+      loading.hidden = false;
+      try { await load(file); } catch (e) { loading.textContent = 'Could not load this view’s frames.'; return; }
+      if (want !== `${view}/${idx}`) return; // moved on while loading
+    }
+    loading.hidden = true;
+    const c = idx % DATA.per, sx = (c % DATA.cols) * DATA.cell.w, sy = Math.floor(c / DATA.cols) * DATA.cell.h;
+    ctx.drawImage(sheet[file].img, sx, sy, DATA.cell.w, DATA.cell.h, 0, 0, canvas.width, canvas.height);
+    drawn = want;
+  }
+
+  // --- readout -------------------------------------------------------------
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  // Wall-clock parts of an ISO stamp, as written — the cut time in the
+  // author's zone, not converted into the reader's.
+  function parts(iso) {
+    const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(iso);
+    const d = new Date(Date.UTC(+m[1], m[2] - 1, +m[3]));
+    return { y: +m[1], mo: +m[2], d: +m[3], hh: m[4], mm: m[5], dow: DAY[d.getUTCDay()], t: d.getTime() + (+m[4] * 60 + +m[5]) * 60000 };
+  }
+  const fmtDate = (p) => `${p.dow} ${p.d} ${MON[p.mo - 1]}`;
+  const el = (id) => document.getElementById(id);
+  function readout() {
+    const r = R[idx], c = parts(r.committed), d = parts(r.deployed);
+    el('r-version').textContent = r.version;
+    el('r-when').textContent = `cut ${fmtDate(c)} ${c.y}, ${c.hh}:${c.mm}`;
+    // A deploy the same day as the cut is the normal case and says nothing;
+    // one weeks later (1.6.0, 1.14.8) is a backport worth naming.
+    el('r-deployed').textContent = Math.abs(d.t - c.t) > 36e5 * 24 ? `· deployed ${fmtDate(d)}` : '';
+    el('r-subject').textContent = r.subject; el('r-subject').title = r.subject;
+    el('r-link').href = r.url;
+    el('r-count').textContent = `${idx + 1} / ${N}`;
+    el('stamp').textContent = `v${r.version} · ${c.d} ${MON[c.mo - 1]} ${c.y}`;
+    el('scrub').value = idx;
+    ticks.forEach((t, i) => t.classList.toggle('cur', i === idx));
+    marks.forEach((m, i) => m.classList.toggle('cur', i === idx));
+    cursor.setAttribute('x1', xs[idx]); cursor.setAttribute('x2', xs[idx]);
+    history.replaceState(null, '', `#${view}/${idx}`);
+  }
+
+  // --- controls ------------------------------------------------------------
+  function go(i, v = view) {
+    const moved = i !== idx || v !== view;
+    idx = clamp(i, 0, N - 1); view = v;
+    if (moved) { readout(); draw(); warm(view, idx); }
+  }
+  const viewsEl = el('views');
+  views.forEach((v, k) => {
+    const b = document.createElement('button');
+    b.textContent = v; b.dataset.view = v; b.setAttribute('aria-pressed', String(v === view));
+    b.title = `${v} preset (${k + 1})`;
+    b.addEventListener('click', () => setView(v));
+    viewsEl.appendChild(b);
+  });
+  function setView(v) {
+    viewsEl.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    go(idx, v);
+  }
+  const scrub = el('scrub');
+  scrub.max = N - 1; scrub.value = idx;
+  scrub.addEventListener('input', () => go(+scrub.value));
+
+  const ticksEl = el('ticks');
+  const ticks = R.map((r, i) => {
+    const t = document.createElement('i');
+    t.dataset.major = r.version.split('.')[0];
+    t.title = `v${r.version}`;
+    t.addEventListener('click', () => go(i));
+    ticksEl.appendChild(t);
+    return t;
+  });
+
+  // Calendar strip. x is linear in time from the first cut to the last. It is
+  // laid out in CSS pixels and re-laid on resize rather than scaled through a
+  // viewBox, so the month labels keep their shape at every width.
+  const cal = el('calendar');
+  const T0 = parts(R[0].committed).t, T1 = parts(R[N - 1].committed).t;
+  const PADX = 6;
+  let W = 1000;
+  let xs = [];
+  const svg = (tag, attrs) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); cal.appendChild(e); return e; };
+  const timeX = (t) => PADX + (t - T0) / (T1 - T0) * (W - 2 * PADX);
+  const first = parts(R[0].committed), last = parts(R[N - 1].committed);
+  const months = [];
+  for (let mo = first.mo; mo <= last.mo; mo++) {
+    const start = Date.UTC(first.y, mo - 1, 1);
+    months.push({ start, line: mo !== first.mo ? svg('line', { y1: 4, y2: 30, class: 'month' }) : null, label: svg('text', { y: 42 }) });
+    months[months.length - 1].label.textContent = `${MON[mo - 1]} ${first.y}`;
+  }
+  const marks = R.map(() => svg('rect', { y: 8, width: 3, height: 18, class: 'rel' }));
+  const cursor = svg('line', { y1: 2, y2: 32, class: 'cursor' });
+  function layoutCalendar() {
+    W = cal.clientWidth || 1000;
+    cal.setAttribute('viewBox', `0 0 ${W} 44`);
+    xs = R.map((r) => timeX(parts(r.committed).t));
+    marks.forEach((m, i) => m.setAttribute('x', xs[i] - 1.5));
+    for (const m of months) {
+      const x = timeX(m.start);
+      if (m.line) { m.line.setAttribute('x1', x); m.line.setAttribute('x2', x); }
+      m.label.setAttribute('x', Math.max(x, PADX) + 4);
+    }
+    cursor.setAttribute('x1', xs[idx]); cursor.setAttribute('x2', xs[idx]);
+  }
+  new ResizeObserver(layoutCalendar).observe(cal);
+  layoutCalendar();
+  function nearest(clientX) {
+    const b = cal.getBoundingClientRect();
+    const x = clientX - b.left;
+    let best = 0;
+    for (let i = 1; i < N; i++) if (Math.abs(xs[i] - x) < Math.abs(xs[best] - x)) best = i;
+    return best;
+  }
+  let dragging = false;
+  cal.addEventListener('pointerdown', (e) => { dragging = true; cal.setPointerCapture(e.pointerId); go(nearest(e.clientX)); });
+  cal.addEventListener('pointermove', (e) => { if (dragging) go(nearest(e.clientX)); });
+  cal.addEventListener('pointerup', () => { dragging = false; });
+  cal.addEventListener('pointercancel', () => { dragging = false; });
+
+  // Transport.
+  const play = el('play'), fps = el('fps');
+  function setPlaying(on) {
+    clearInterval(timer); timer = null;
+    if (on) {
+      if (idx >= N - 1) go(0);
+      timer = setInterval(() => { if (idx >= N - 1) setPlaying(false); else go(idx + 1); }, 1000 / +fps.value);
+    }
+    play.textContent = on ? 'Pause' : 'Play';
+    play.setAttribute('aria-pressed', String(on));
+  }
+  play.addEventListener('click', () => setPlaying(!timer));
+  fps.addEventListener('change', () => { if (timer) setPlaying(true); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'SELECT') return;
+    const step = e.shiftKey ? 5 : 1;
+    if (e.key === 'ArrowRight') { e.preventDefault(); go(idx + step); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); go(idx - step); }
+    else if (e.key === 'Home') { e.preventDefault(); go(0); }
+    else if (e.key === 'End') { e.preventDefault(); go(N - 1); }
+    else if (e.key === ' ') { e.preventDefault(); setPlaying(!timer); }
+    else if (/^[1-9]$/.test(e.key) && views[+e.key - 1]) setView(views[+e.key - 1]);
+  });
+
+  // Fit the stage to whatever the header and footer leave, at 4:3.
+  const stage = el('stage'), main = document.querySelector('main');
+  function fit() {
+    const w = main.clientWidth, h = main.clientHeight;
+    const sw = Math.min(w, h * 4 / 3);
+    stage.style.width = sw + 'px';
+  }
+  new ResizeObserver(fit).observe(main);
+  fit();
+
+  readout();
+  draw();
+  warm(view, idx);
+})();
+</script>
