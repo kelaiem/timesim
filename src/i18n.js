@@ -373,6 +373,9 @@ const DE = {
   'End': 'Beenden',
   'How they work': 'So funktionieren sie',
   'The explainer': 'Die Erklärseite',
+  // §242 — the version stamp and the door it hides
+  'History': 'Verlauf', 'Release timelapse': 'Zeitraffer der Versionen', 'source tree': 'Quellbaum',
+  'Press five times for the release timelapse.': 'Fünfmal drücken für den Zeitraffer der Versionen.',
   // -- §72 keyboard/screen-reader layer
   'Keyboard shortcuts': 'Tastaturkürzel',
   'Pause / resume': 'Pause / weiter', 'Wind the mainspring': 'Zugfeder aufziehen',
@@ -688,6 +691,9 @@ const ZH = {
   'End': '结束',
   'How they work': '工作原理',
   'The explainer': '详解页',
+  // §242 — the version stamp and the door it hides
+  'History': '历史', 'Release timelapse': '版本延时影像', 'source tree': '源码树',
+  'Press five times for the release timelapse.': '按五次打开版本延时影像。',
   'Keyboard shortcuts': '键盘快捷键',
   'Pause / resume': '暂停 / 继续', 'Wind the mainspring': '给发条上链',
   'Crown pull / push': '表冠拔出 / 推入', 'Alarm arm / disarm': '闹铃开 / 关',
@@ -1073,6 +1079,9 @@ const FR = {
   ['End']: 'Terminer',
   ['How they work']: 'Comment ça marche',
   ['The explainer']: 'La page technique',
+  // §242 — the version stamp and the door it hides
+  'History': 'Historique', 'Release timelapse': 'Accéléré des versions', 'source tree': 'arborescence source',
+  'Press five times for the release timelapse.': 'Appuyez cinq fois pour l’accéléré des versions.',
   ['Start Tour']: 'Démarrer la visite',
   ['Keyboard shortcuts']: 'Raccourcis clavier',
   ['Pause / resume']: 'Pause / reprise',
@@ -1548,6 +1557,9 @@ const JA = {
   ['End']: '終了',
   ['How they work']: '仕組みの解説',
   ['The explainer']: '技術解説ページ',
+  // §242 — the version stamp and the door it hides
+  'History': '歴史', 'Release timelapse': 'リリースのタイムラプス', 'source tree': 'ソースツリー',
+  'Press five times for the release timelapse.': '5回押すとリリースのタイムラプスが開きます。',
   ['Start Tour']: 'ツアー開始',
   ['Keyboard shortcuts']: 'キーボードショートカット',
   ['Pause / resume']: '一時停止 / 再開',
@@ -2022,6 +2034,9 @@ const ZH_HANT = {
   ['End']: '結束',
   ['How they work']: '運作原理',
   ['The explainer']: '詳解頁',
+  // §242 — the version stamp and the door it hides
+  'History': '歷史', 'Release timelapse': '版本縮時影像', 'source tree': '原始碼樹',
+  'Press five times for the release timelapse.': '按五次開啟版本縮時影像。',
   ['Start Tour']: '開始導覽',
   ['Keyboard shortcuts']: '鍵盤快速鍵',
   ['Pause / resume']: '暫停 / 繼續',
@@ -2508,6 +2523,9 @@ const AR = {
   'Keep going': 'متابعة',
   'End': 'إنهاء',
   'The explainer': 'صفحة الآليات',
+  // §242 — the version stamp and the door it hides
+  'History': 'التاريخ', 'Release timelapse': 'الفاصل الزمني للإصدارات', 'source tree': 'شجرة المصدر',
+  'Press five times for the release timelapse.': 'اضغط خمس مرات لعرض الفاصل الزمني للإصدارات.',
   'Start Tour': 'بدء الجولة',
   'Keyboard shortcuts': 'اختصارات لوحة المفاتيح',
   'Pause / resume': 'إيقاف مؤقت / استئناف',
@@ -2972,6 +2990,9 @@ const ES = {
   'Keep going': 'Continuar',
   'End': 'Terminar',
   'The explainer': 'La página explicativa',
+  // §242 — the version stamp and the door it hides
+  'History': 'Historial', 'Release timelapse': 'Timelapse de versiones', 'source tree': 'árbol de fuentes',
+  'Press five times for the release timelapse.': 'Pulse cinco veces para el timelapse de versiones.',
   'Start Tour': 'Iniciar recorrido',
   'Keyboard shortcuts': 'Atajos de teclado',
   'Pause / resume': 'Pausar / reanudar',
@@ -3433,6 +3454,9 @@ const KO = {
   'Keep going': '계속',
   'End': '종료',
   'The explainer': '메커니즘 해설',
+  // §242 — the version stamp and the door it hides
+  'History': '역사', 'Release timelapse': '릴리스 타임랩스', 'source tree': '소스 트리',
+  'Press five times for the release timelapse.': '다섯 번 누르면 릴리스 타임랩스가 열립니다.',
   'Start Tour': '투어 시작',
   'Keyboard shortcuts': '키보드 단축키',
   'Pause / resume': '일시정지 / 재개',
@@ -3896,6 +3920,9 @@ const RU = {
   'Keep going': 'Дальше',
   'End': 'Завершить',
   'The explainer': 'Подробный разбор',
+  // §242 — the version stamp and the door it hides
+  'History': 'История', 'Release timelapse': 'Таймлапс версий', 'source tree': 'исходное дерево',
+  'Press five times for the release timelapse.': 'Нажмите пять раз, чтобы открыть таймлапс версий.',
   'Start Tour': 'Начать тур',
   'Keyboard shortcuts': 'Сочетания клавиш',
   'Pause / resume': 'Пауза / продолжить',
@@ -4359,6 +4386,9 @@ const PT = {
   'Keep going': 'Continuar',
   'End': 'Encerrar',
   'The explainer': 'A página explicativa',
+  // §242 — the version stamp and the door it hides
+  'History': 'Histórico', 'Release timelapse': 'Timelapse das versões', 'source tree': 'árvore de fontes',
+  'Press five times for the release timelapse.': 'Pressione cinco vezes para o timelapse das versões.',
   'Start Tour': 'Iniciar tour',
   'Keyboard shortcuts': 'Atalhos de teclado',
   'Pause / resume': 'Pausar / retomar',
@@ -4821,6 +4851,9 @@ const IT = {
   'Keep going': 'Continua',
   'End': 'Termina',
   'The explainer': 'La pagina tecnica',
+  // §242 — the version stamp and the door it hides
+  'History': 'Cronologia', 'Release timelapse': 'Timelapse delle versioni', 'source tree': 'albero dei sorgenti',
+  'Press five times for the release timelapse.': 'Premi cinque volte per il timelapse delle versioni.',
   'Start Tour': 'Avvia il tour',
   'Keyboard shortcuts': 'Scorciatoie da tastiera',
   'Pause / resume': 'Pausa / riprendi',
@@ -5280,6 +5313,9 @@ const HI = {
   'Keep going': 'चलते रहें',
   'End': 'समाप्त',
   'The explainer': 'व्याख्याकार',
+  // §242 — the version stamp and the door it hides
+  'History': 'इतिहास', 'Release timelapse': 'रिलीज़ टाइमलैप्स', 'source tree': 'सोर्स ट्री',
+  'Press five times for the release timelapse.': 'रिलीज़ टाइमलैप्स के लिए पाँच बार दबाएँ।',
   'Start Tour': 'टूर शुरू करें',
   'Keyboard shortcuts': 'कीबोर्ड शॉर्टकट',
   'Pause / resume': 'विराम / जारी',
