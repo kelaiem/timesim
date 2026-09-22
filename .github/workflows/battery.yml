@@ -117,6 +117,11 @@
 #                      has no worker at all" (CLAUDE.md). offline.yml owns it
 #   .githooks, .gitignore, LICENSE, vendor/LICENSE-*.txt
 #                      repository, not app — none of it reaches the scene
+#   timelapse/**       §242's film of the release series — a built page and
+#                      its sprite sheets, served by pages.yml at /timelapse/
+#                      and cut from the payload. Nothing under src/ imports
+#                      it; index.html loads only src/main.js. The tools that
+#                      MAKE it are under tools/, which runs the job
 #
 # AND WHAT IS DELIBERATELY ABSENT, because four of them look ignorable:
 #
@@ -210,6 +215,7 @@ on:
       - '.gitignore'
       - 'LICENSE'
       - 'vendor/LICENSE-*.txt'
+      - 'timelapse/**'
   push:
     branches: [main]
   # The on-demand whole run. There is no `schedule:` — see the §152 note above

@@ -515,7 +515,11 @@ deploy does not exist there, and that is why it is shaped that way.
 `tools/build-pages.mjs` finishes each tree: it runs the same
 `stamp-release.mjs` (the environments are stamped releases, not a
 second kind of build — do not fork the stamper) and adds the
-environment's own marks.
+environment's own marks. A fourth path, `timelapse/`, is not an
+environment: §242's film of the release series, committed built under
+`timelapse/` and copied from the checkout, cut from every payload by
+`payload.sh` and ignored by the battery — refresh it with
+`tools/timelapse-capture.mjs` then `tools/timelapse-build.mjs`.
 
 **The deployed payload is `tools/payload.sh`, and it is the ONLY
 definition** — both `release.yml` (SFTP to QA) and `pages.yml` call it,

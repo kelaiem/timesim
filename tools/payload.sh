@@ -21,6 +21,13 @@
 #                             which is not what a deployed site is for.
 #   .githooks .gitignore      clone-time tooling, meaningless over HTTP
 #   dev_server.py             inert when served statically
+#   timelapse                 §242's film of the release SERIES — ~9 MB of
+#                             sprite sheets that change when a release is
+#                             added to the film, not when one is cut. It is a
+#                             fact about the series, so pages.yml serves it
+#                             ONCE at /timelapse/ from the checkout; shipping
+#                             it inside every release would put the whole
+#                             history in each of its own frames
 #
 # test-geometry.html SHIPS, and is a third stamped document as of the same
 # change that decided so. It had been riding along unstamped for every release
@@ -53,4 +60,5 @@ git archive --format=tar "$ref" -- . \
   ':(exclude).githooks' \
   ':(exclude).gitignore' \
   ':(exclude)dev_server.py' \
+  ':(exclude)timelapse' \
   | tar -x -C "$dest"
