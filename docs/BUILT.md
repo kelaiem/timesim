@@ -28282,3 +28282,95 @@ owner report during this work: Chrome saying *"This page is unresponsive."*
 That dialog measures the thread not servicing input, not the length of the
 wait, and a 14 s block still has no frame in it. §238's screen covers the
 view — it cannot make the page answer.
+
+## §242 — PARTIAL: the release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline
+
+> **Status.** The film and the tools that make it are BUILT. Publishing it
+> from inside the app — the easter egg the film was made for — stays filed in
+> the private roadmap under this number.
+
+Ninety-one releases went to `zincorporation.com/time-releases/<version>/`
+between 18 July and 21 September, and nothing showed them side by side: to
+see what 0.4.2 looked like you opened 0.4.2. This is the series as ONE
+document — one frame per release per camera preset, on a timeline you drag.
+
+**The roster is the HOST's, not git's.** `tools/timelapse-releases.json`
+carries the ninety-one directories the host lists with the mtime it reported
+for each (the deploy moment). Ten tags exist in git that were never deployed
+(0.1–0.1.5, 1.4.0, 1.5.0, 3.4.0) and are deliberately not in the film: it is a
+record of what shipped. Order is the tag's own COMMIT date, read from git at
+capture time, because the deploy order lies twice — 1.6.0 went up on 1 August
+and 1.14.8 on 2 September, weeks after either was cut, as backports — and the
+viewer names a deploy only when it differs from the cut by more than a day.
+Five releases were cut from a commit another release already carries
+(0.5.0–0.6.1 from 0.4.2's, 3.0.2 from 3.0.1's); their frames are copies,
+declared as such in the manifest, rather than second renders of one tree.
+
+**How a frame is made** (`tools/timelapse-capture.mjs`, a REPORT — it writes
+frames and a manifest and judges nothing). Each tag is `git archive`d into a
+scratch directory — the committed tree exactly, which is what `release.yml`
+deployed minus the `?v=` stamp — and served by one static server. Every
+release boots in its OWN browser context, because every release saves its
+state under the same localStorage key and a shared origin would hand 0.4.2's
+camera and τ to 0.5.0 (the trap CLAUDE.md files under "Running it", met at
+ninety-one-fold scale); service workers are blocked for the same reason, each
+release registering `./sw.js` under its own scope. The camera is aimed by
+CLICKING the release's own preset button — `[data-cam="Dial"]`, `Train`,
+`Escapement`, `Free`, the four names present since 0.1 (`Setting` arrived at
+1.5.3 and is not captured) — so a frame shows what that release's viewer saw
+when they pressed it. That is a choice and the honest one: the presets derive
+their distance from that release's `plateR`, and a fixed world pose would have
+cropped the movement as the plate grew and the case arrived. `?schematic=0`
+rides the URL because §69 made the line drawing the boot default and releases
+before it ignore the parameter; the chrome is hidden BY ELEMENT (everything in
+`<body>` that is neither the canvas nor an ancestor of it) because the HUD's
+ids changed across the summer and the canvas did not; τ is pinned to 0 before
+each render so the hands read each release's own boot pose.
+
+**The trap it met is the rAF loop, and the fix is in the record.** Under
+SwiftShader a 1200 × 900 render is slow enough that the page's own frame loop
+keeps the main thread saturated, and `page.screenshot` waited 15–20 s for a
+frame — the first run failed all eight shots on the default 30 s timeout with
+two releases in flight. The capture now sets `requestAnimationFrame` to a
+no-op once `__clock` exists and drives the 0.9 s preset tween itself through
+five `__clock.step(0.25)` calls (a snap under `reducedMotion: 'reduce'` on
+releases that honour §72; the steps are then no-ops for the camera), pins τ
+back, renders once, and shoots: every render is one the script asked for, and
+the pose in the frame is exactly the pose it set. Boot itself is the cost —
+12–13 s for the earliest releases on a lone context, a median of 210 s and a worst of 346 s (3.3.5) with three in flight, because the three contexts share ONE SwiftShader GPU process and the parallelism buys less than it costs — so the run partitions releases across three contexts and the whole
+series takes 2 h 35 min (one boot hit the 120 s page-load bound and was rerun alone in 83 s; that bound is 300 s now, because on releases before §238's two-stage entry the load event IS the boot). `--gpu` launches the full Chromium build with the GPU blocklist ignored for a machine that has one.
+
+**The sheets** (`tools/timelapse-build.mjs`, a REPORT). A slider that waits on
+a network round trip per notch is not a timelapse, so frames are composed
+into sprite sheets of twenty (5 × 4 cells of 640 × 480, the capture scaled by
+8/15): one request per twenty notches, about 30 MB decoded, which a phone
+tolerates where one sheet of all ninety-one (120 MB decoded) would not. WebP
+is encoded by CHROMIUM through `canvas.toDataURL`, because Playwright's ffmpeg
+carries only `png` and `libvpx` encoders and no tile filter; the same ffmpeg
+does write the film form — `--video`, one VP8 `.webm` per view at 4 frames a
+second. Measured: twenty sheets, 8.7 MB in all — Free 205–274 KB a sheet, Train 281–456, Dial 344–565, Escapement 385–699, the plate's stripes and the hairspring's coils being what WebP pays for; the PNG masters are 183 MB and stay out of the repository; the four films are 91 frames at 960 × 720, 0.8 MB (Free) to 1.7 MB (Escapement), fed to ffmpeg as Chromium-encoded JPEGs because that build decodes only MJPEG and VP8 — no PNG decoder, no `image2` demuxer, which cost two failed attempts before `-decoders` was read.
+
+**The viewer** (`tools/timelapse/viewer.html`) is styled to the HUD's tokens
+and is deliberately one theme — every frame is a render on the sim's own
+ground, read off the frames at build time, and a light page would show
+ninety-one black rectangles. Two timelines, one truth: a slider spaced by
+INDEX (one notch per release, ticks coloured by major version so the 1.x →
+2.x → 3.x steps read at a glance) above a calendar strip that places the same
+releases at their TRUE moment, so the summer's tempo shows — forty-four releases in July's last fortnight (eight on 19 July alone), forty in August, seven in September. Either
+scrubs; keys step, play runs at 2–12 frames a second; every frame links to its
+live release on the host and the URL hash carries view and index. The page is
+a body fragment the build wraps in a skeleton, and two things it got wrong on
+the first look are worth keeping: its data marker appeared twice (once in its
+own explanatory comment, and `String.replace` took the comment), and its
+`.loading { display: grid }` outranked the user-agent's `[hidden]` rule, so the
+"Loading frames…" cover never lifted — the fragment now declares
+`[hidden] { display: none !important }` itself, the rule a host skeleton would
+have supplied.
+
+**What the film shows.** 0.1.6 is a bare disc with the train, fusee and chain hanging off its near face between gilt pillars, and a dial that already carries the AB/AUF reserve register and Roman seconds, the hands at noon. By 0.4.x the three-quarter plate is on with its Geneva stripes and only the balance shows through. Through July a second crown arrives at nine o'clock (1.12.0), the gong's wire appears as an arc round the plate's edge (1.10.x), the seconds register trades its Roman figures for Arabic ones with SECONDS and POWER RESERVE lettered on (1.14.x), and from 1.5.3 the hands stand at the 1:51 boot pose. August is the alarm complex growing on the plate beside the going train's gilt wheels (2.1.x); then 3.0.0 puts the barrel under the plate behind a window and the train out of sight, and the alarm's cam star and its gilt ring arrive at 3.1.x. The case — bezel, lugs, both crowns — comes with 3.3.x, and 3.4.4 reads the dial through sapphire (§3), the keyless works and the reserve's red-and-green sector visible under the hands. The escapement view is the constant: balance, hairspring and cock are recognisably one part from 0.1.6 to 3.4.4, the jewel settings gaining their blued screws at 3.3.x.
+
+**And the manifest is a record of every console line each release printed at boot, which makes it an instrument by accident.** 0.4.2 and its four twins shipped WARNING at boot — `3/4 plate floor bound by measured part (10.29) above the hairspring stack (7.81)` — which is standing rule 6 broken in five deployed releases, on the record now; 0.3.0 and 0.4.0 printed three.js's `toNonIndexed` warning six times each (the §81 weld pass is what later made every mesh arrive indexed). Every other release booted silent.
+
+**Not done here.** Serving the site and opening it from the app — roadmap
+§242. A fifth view: the schematic tier (§66) and x-ray are one `--views`
+flag away in the capture and a `views` entry away in the viewer.

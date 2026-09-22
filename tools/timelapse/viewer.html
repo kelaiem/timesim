@@ -229,7 +229,9 @@
     ticks.forEach((t, i) => t.classList.toggle('cur', i === idx));
     marks.forEach((m, i) => m.classList.toggle('cur', i === idx));
     cursor.setAttribute('x1', xs[idx]); cursor.setAttribute('x2', xs[idx]);
-    history.replaceState(null, '', `#${view}/${idx}`);
+    // A host that sandboxes the page may refuse history writes; the hash is a
+    // convenience for sharing, never state the page needs back.
+    try { history.replaceState(null, '', `#${view}/${idx}`); } catch (e) { /* sandboxed */ }
   }
 
   // --- controls ------------------------------------------------------------

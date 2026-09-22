@@ -15,7 +15,8 @@
 // Playwright's ffmpeg carries only png and libvpx encoders and no tile filter;
 // the same browser that rendered the frames composes and encodes the sheets.
 // `--video` additionally writes one VP8 .webm per view through that ffmpeg —
-// the film form of the same frames, for anywhere a slider cannot go.
+// the film form of the same frames, for anywhere a slider cannot go — fed as
+// Chromium-encoded JPEGs, since that ffmpeg decodes only MJPEG and VP8.
 //
 //   node tools/timelapse-build.mjs [--out DIR] [--site DIR] [--video] [--quality 0.82]
 //
@@ -86,6 +87,37 @@ for (const view of views) {
     console.log(`${file}: ${batch.length} frames, ${(fs.statSync(path.join(site, file)).size / 1024).toFixed(0)} KB`);
   }
 }
+
+// Films, while the page is still open: the frames go to ffmpeg as JPEGs
+// encoded by Chromium, because the bundled ffmpeg decodes MJPEG and VP8 and
+// nothing else (no PNG decoder, no `image2` demuxer for numbered files) — it is
+// built for Playwright's screen recording, and this is that path fed by hand.
+if (video) {
+  const ff = fs.existsSync('/opt/pw-browsers/ffmpeg-1011/ffmpeg-linux') ? '/opt/pw-browsers/ffmpeg-1011/ffmpeg-linux' : 'ffmpeg';
+  fs.mkdirSync(path.join(site, 'video'), { recursive: true });
+  for (const view of views) {
+    const jpegs = [];
+    for (const r of releases) {
+      const src = 'data:image/png;base64,' + fs.readFileSync(path.join(out, 'frames', r.version, view + '.png')).toString('base64');
+      const dataUrl = await page.evaluate(async (src) => {
+        const img = new Image();
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = src; });
+        const c = document.createElement('canvas'); c.width = 960; c.height = 720;
+        const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(img, 0, 0, 960, 720);
+        return c.toDataURL('image/jpeg', 0.92);
+      }, src);
+      jpegs.push(Buffer.from(dataUrl.split(',')[1], 'base64'));
+    }
+    const seq = path.join(out, `seq-${view}.mjpeg`);
+    fs.writeFileSync(seq, Buffer.concat(jpegs));
+    const file = path.join(site, 'video', view + '.webm');
+    // 4 frames per second: 91 releases in about 23 s, slow enough to read a
+    // release's frame and fast enough to read as motion.
+    execFileSync(ff, ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', '4', '-i', seq, '-c:v', 'libvpx', '-b:v', '3M', '-auto-alt-ref', '0', '-pix_fmt', 'yuv420p', file]);
+    fs.rmSync(seq);
+    console.log(`${path.relative(site, file)}: ${(fs.statSync(file).size / 1024 / 1024).toFixed(1)} MB`);
+  }
+}
 await browser.close();
 
 const data = {
@@ -102,18 +134,3 @@ fs.writeFileSync(path.join(site, 'artifact.html'), body);
 fs.writeFileSync(path.join(site, 'index.html'),
   `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n</head>\n<body>\n${body}\n</body>\n</html>\n`);
 console.log(`viewer: ${path.join(site, 'index.html')} (${(body.length / 1024).toFixed(0)} KB)`);
-
-if (video) {
-  const ff = fs.existsSync('/opt/pw-browsers/ffmpeg-1011/ffmpeg-linux') ? '/opt/pw-browsers/ffmpeg-1011/ffmpeg-linux' : 'ffmpeg';
-  fs.mkdirSync(path.join(site, 'video'), { recursive: true });
-  for (const view of views) {
-    const seq = fs.mkdtempSync(path.join(out, 'seq-'));
-    releases.forEach((r, i) => fs.copyFileSync(path.join(out, 'frames', r.version, view + '.png'), path.join(seq, String(i).padStart(3, '0') + '.png')));
-    const file = path.join(site, 'video', view + '.webm');
-    // 4 frames per second: 91 releases in about 23 s, slow enough to read the
-    // version stamp the viewer overlays and fast enough to read as motion.
-    execFileSync(ff, ['-y', '-loglevel', 'error', '-framerate', '4', '-i', path.join(seq, '%03d.png'), '-vf', 'scale=960:720', '-c:v', 'libvpx', '-b:v', '3M', '-auto-alt-ref', '0', file]);
-    fs.rmSync(seq, { recursive: true });
-    console.log(`${path.relative(site, file)}: ${(fs.statSync(file).size / 1024 / 1024).toFixed(1)} MB`);
-  }
-}
