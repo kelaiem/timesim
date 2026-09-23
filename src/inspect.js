@@ -655,7 +655,15 @@ const EXPECTED_PAIRS = [
   ['Dial', 'Power reserve'],           // bezel + hand pivot sit on the dial face
   ['Dial', 'Small seconds'],           // bezel sits on the dial face
   ['Dial', 'Power-reserve train'],     // hand arbor passes through the dial's hole
-  ['Dial', 'Keyless works'],           // settingCap meshes the cannon pinion (a Dial child)
+  // Was documented as "settingCap meshes the cannon pinion (a Dial child)" —
+  // false: the cap meshes the motion works' minute wheel (also a Dial
+  // child), and TODO 151 measured that mesh does not close in the metal
+  // (a 2.9 u axial gap). Measured directly (TODO 150/151's pass, swept over
+  // several poses): nothing in these two units actually touches today — the
+  // closest pair is mwMinuteWheel ⇄ settingRise at 0.50 clear, over
+  // CLEAR_MARGIN. Left as a blanket exclusion rather than removed, since a
+  // real mesh here is exactly what TODO 151's fix would create.
+  ['Dial', 'Keyless works'],
   ['Power reserve', 'Power-reserve train'], // reserve hand rides the w2 output arbor
   // Alarm (§24) — the mirror of the reserve/motion-works contacts:
   ['Alarm crown', 'Alarm setting arbor'], // the 90° bevel mesh (the one declared crown⇄arbor contact)
