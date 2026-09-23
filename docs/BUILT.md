@@ -24841,6 +24841,30 @@ is also a plain BEND — the hairspring's knee is "uma dobra no plano vertical"
 other residue: no honesty row ABSENT, no block under its locale's length
 ratio.
 
+### Arabic and Hindi, completed
+
+Both closed to 100% on the explainer (Arabic 36 real keys → 0, Hindi 38 → 0;
+both primers were already complete) — the same one-landing cluster as the
+Romance locales, Hindi's two extra rows being the `poses, posed` and
+`hand-offs` variant rows its table had never carried. Each is in its table's
+own register: Arabic *الفيوزي*, *الأسطوانة*, *ساق التاج*, *القابض*, *النابض
+الشعري*, *الوتد*, *جسر الميزان*; Hindi the loanword register it already
+uses (*फ्यूज़ी*, *स्टेम*, *क्लच*, *पिनियन*, *हेयरस्प्रिंग*, *स्टड*), with the
+school-geometry words where they exist (*दिगंश*, *वलय*, *जीवा*, *स्पर्शरेखा*).
+Both are 'word'-script locales for the linker, so every inflected form it may
+meet is listed in the variant rows — Arabic's with and without the article.
+Glossary links 42 → 56 (ar) and 49 → 73 (hi).
+
+The chord/winding clash Spanish and Portuguese met does not recur: Arabic
+winds with *التعبئة*, Hindi with *वाइंडिंग*. Arabic *الوتر* is also the
+string and the hypotenuse, and every such use was read in context: the
+string is in the `gong` entry, which `SENSE_CLASH` already refuses `chord`,
+and the hypotenuse is a plate label, which the linker never reaches. Hindi
+*वलय* is also the page's word for a few RINGS (the collar ring), each of
+which is itself a flat annulus read at every azimuth, so the claim holds.
+No other residue: no honesty row ABSENT, no block under its locale's length
+ratio.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
