@@ -1975,13 +1975,19 @@ const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayo
 // external meshes so the ratio is cap/cannon. minutePinionTeeth (8) and
 // SETTING_CAP_TEETH (8) are the same count, so the substitution leaves the
 // VALUE unchanged — only what it names.
+// TODO 151 — the fold's NET sense, minute arbor → cap: −(which way the cap's
+// shaft leaves its last apex) × (which way the arbor leaves A), independent
+// of the corner count (MW_FOLD_SPIN's own law). −1 today: the cap hangs
+// below the rise corner, the arbor rises into the drop corner. ASSERTED
+// against MW_FOLD_SPIN at the fold build (KW_SET_WHEEL_SIDE's idiom).
+const MW_FOLD_NET_SENSE = -1;
 const HAND_RAD_PER_SET_RAD = KW_SET_WHEEL_SIDE
-  * -(windPinionTeeth / minuteWheelTeeth) * (SETTING_CAP_TEETH / cannonPinionTeeth);
+  * MW_FOLD_NET_SENSE * (windPinionTeeth / minuteWheelTeeth) * (SETTING_CAP_TEETH / cannonPinionTeeth);
 {
   const probe = 1; // one radian into the setting path, walked exactly as tick() walks it
   const settingWheelSpin = KW_SET_WHEEL_SIDE * -probe * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
-  const rawSetOffset = -minuteArborSpin * (SETTING_CAP_TEETH / cannonPinionTeeth);
+  const rawSetOffset = MW_FOLD_NET_SENSE * minuteArborSpin * (SETTING_CAP_TEETH / cannonPinionTeeth);
   if (Math.abs(rawSetOffset - HAND_RAD_PER_SET_RAD) > 1e-12)
     console.warn(`setting path: closed form ${HAND_RAD_PER_SET_RAD} disagrees with the forward chain ${rawSetOffset}`);
 }
@@ -5747,8 +5753,8 @@ const MW_FOLD_SPIN = (() => {
 // mount, TODO 140's precedent).
 {
   const dropZ = MW_FOLD_SPIN[0].kIn * bevelCornerAxis(cornerDrop.gearIn.parent).z;
-  if (Math.abs(dropZ + 1) > 1e-6)
-    console.warn(`TODO 150: the fold turns the minute arbor ${dropZ.toFixed(6)}× the cap's spin; HAND_RAD_PER_SET_RAD's closed form assumes −1`);
+  if (Math.abs(dropZ - MW_FOLD_NET_SENSE) > 1e-6)
+    console.warn(`TODO 150: the fold turns the minute arbor ${dropZ.toFixed(6)}× the cap's spin; MW_FOLD_NET_SENSE assumes ${MW_FOLD_NET_SENSE}`);
 }
 // The plate is bored at K as it is at A: the fold's blanks stand in the base
 // plate's z-band (Σ ≈ 150° puts their cone distance coneR nearly across the
@@ -41194,7 +41200,7 @@ function tick(t) {
   // ratio and happens to share its count, 8, so the value is unchanged).
   const settingWheelSpin = KW_SET_WHEEL_SIDE * -setPathRot * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
-  const rawSetOffset = -minuteArborSpin * (SETTING_CAP_TEETH / cannonPinionTeeth);
+  const rawSetOffset = MW_FOLD_NET_SENSE * minuteArborSpin * (SETTING_CAP_TEETH / cannonPinionTeeth);
   // MINUTE QUICK-SET, DETENTED DISPLAY: while the crown is out, the jumper
   // is in the star and the DISPLAYED offset is quantized so the minute hand
   // sits on exact minute indices — the hand steps one detent at a time

@@ -172,6 +172,10 @@ const MUTANTS = [
     find: 'const drumRotAt = (t) => MOVEMENT_SENSE * (SPRING_WIND_FULL - springWindAt(t));',
     to:   'const drumRotAt = (t) => -MOVEMENT_SENSE * (SPRING_WIND_FULL - springWindAt(t));',
     note: 'drum and cone are joined by a chain on an EXTERNAL tangent, so they must turn together — this has them unwinding each other' },
+  { kind: 'subject', name: 'the setting fold\'s net sense', file: 'src/main.js',
+    find: 'const MW_FOLD_NET_SENSE = -1;',
+    to:   'const MW_FOLD_NET_SENSE = 1;',
+    note: 'HAND_RAD_PER_SET_RAD, both rawSetOffset sites and the dropZ assert all read this one constant — flipping it alone (leaving MW_FOLD_SPIN\'s own built sense at −1) should disagree with the fold\'s own measured mount, which is exactly what the dropZ assert exists to catch' },
 ];
 
 const ROOT = process.env.ROOT || '..';
