@@ -19,7 +19,8 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 |---|---|---|
 | 152 | CLOSED | A `?trial=1` boot — §33's verdict boot — inherited the viewer's tuned aesthetics (no trial guard in `aesthetics.js`; `reconfTrialBoot` passes `location.search` through), so every trial verdict was measured on a TUNED build; and the trial's merge ARMED the §23 crash-recovery marker, which a superseded trial never confirms, so the viewer's next real boot dropped their overrides and warned. Measured by `tools/probe-240-trial-boot.mjs` (6 rows red, controls green); closed by `state.js`'s `TRIAL_BOOT` guard copied to `aesthetics.js` — the merge, the marker, both finish params and the confirm all skip under the flag. Probe green. |
 | 150 | CLOSED | The §234 setting fold's three rods counter-rotated end to end: tick flipped the sign across each ROD as well as each corner. `MW_FOLD_SPIN` is read off the mounts now. The drop corner's inboard bevel, cut on the far side of its apex from its own shaft, is re-mounted on that shaft (the minute pinion it used to stand off is retired); the cap's mate claims are corrected (it meshes the motion works' minute wheel, not the keyless one); the fold's members are named for hover. `probe-150-fold-sense.mjs` gates all four rods, all three corners and the cap ⇄ minute-wheel mesh, 0 findings. The cap not meshing that wheel IN THE METAL (a 2.9 u axial gap) is split out to [TODO 151] |
-| 151 | OPEN | The setting cap stands 3.1 u off the motion works' minute wheel's plane axially — `settingCap` z [−7.760, −6.040] against `mwMinuteWheel` z [−3.126, −2.154] — so their tooth-count mesh claim (TODO 150 item 3) is not yet true of the metal. A P3 layout re-solve (move the cap and the rise corner into the wheel's band), then a real `solveGearChain` phase and a driving law that follows the going train through a clutch state rather than `handSetOffset` alone. Also found in the same pass: the rise corner's inboard bevel is buried in the base plate at B (0.0000 clearance), unbored where A and K both are |
+| 153 | OPEN | The motion-works stack (`MW_WHEEL_T`, `MW_Z2`, `MW_TOP`, `CANNON_T`, …) is solved against `MW_PLATE_FACE_LOCAL`'s bare `-2.0` literal, 0.3 u shallower than the plate's own derived, asserted face `PLATE_BACK_FACE` (−2.3). `mwMinuteWheel` and `cannonPinion` are buried in the base plate — 0.146 and 0.21 u respectively, both `meshClearance` 0.0000 — excused wholesale by the `['Motion works', 'plate']` support edge. Found measuring [TODO 151]; re-derive the literal from `PLATE_BACK_FACE` (`MW_WHEEL_T` re-solves ≈0.84 → 0.69) or cut a relief pocket; either way moves TODO 151's target band dial-ward |
+| 151 | PART DONE | The setting cap stands 3.1 u off the motion works' minute wheel's plane axially — `settingCap` z [−7.760, −6.040] against `mwMinuteWheel` z [−3.126, −2.154] — so their tooth-count mesh claim (TODO 150 item 3) is not yet true of the metal. `probe-151-cap-plane.mjs` measured every position-space option the roadmap tried: none closes the gap within the fold's current topology (the corner and the cap collide before the cap reaches the wheel's face) — a real layout landing (option (d): a fourth corner plus a plate pocket) is needed, sequenced after [TODO 153]. DONE this landing: B's own plate recess (`MW_RISE_PLATE_HOLE`, matching A and K), gated in `probe-150-fold-sense.mjs`'s new PLATE row |
 | 149 | CLOSED | §54's ruler could not see a per-frame-scaled bar, so the minute jumper's lifter link ran at **λ 52.9** with no row at all. The ruler reads world scale per axis now (held by a control on three synthetic meshes) and the bar's WIDTH is solved from the ceiling — `JMP_LIFTER_W` = a pose-free span bound over `SLENDER_TARGET`, 0.550 → **1.149 u** (0.436 mm), λ **25.3**. The waiver is retired, which §54's covenant makes part of the fix. The triage that had called it SHORT was isotropic; `probe-149-lifter-width.mjs` grows the two faces separately and the in-plane corridor SATURATES at 6 u per side. Also kinded `alarmColPawlSpring` as the flat spring it is |
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
@@ -21397,7 +21398,7 @@ under **[TODO 151]**, filed below, rather than carried here as open items on
 a CLOSED entry. `probe-150-fold-sense.mjs` now REPORTS the z-band gap
 directly (not gated) so the number is visible without re-deriving it.
 
-## 151. The setting cap stands 3.1 u off the minute wheel's plane
+## 151. The setting cap stands 3.1 u off the minute wheel's plane — PART DONE
 
 Split out of [TODO 150] items 2 and 4 when item 1's fix made the axial gap
 easy to measure precisely, rather than carried forward as open items on a
@@ -21414,34 +21415,83 @@ and the setting cap sits where the §234 fold's cap-bearing solve put it, in a
 different z-band entirely. `probe-150-fold-sense.mjs` reports the gap on
 every run.
 
-**A second, unrelated finding from the same measurement pass.** The rise
-corner's inboard bevel (`mwCornerRiseIn`, at B) is buried in the base plate:
-`meshClearance` reads **0.0000** against `backPlate`, with the blank's own
-top at world z −0.912 against the plate's dial face at ≈ −2.0. A (the drop
-corner) and K (the fold corner) are both bored — `MW_DROP_PLATE_HOLE` and
-`MW_FOLD_PLATE_HOLE` — but B never was. Nothing gates it: B is the cap's own
-corner, and the `['Keyless works', 'plate']` support pair excuses contact
-between any keyless part and the plate wholesale, so a real collision there
-reads as a declared support relationship rather than a foul. This is filed
-here rather than as its own item because the fix path below moves B along
-with the cap, and boring it in place first would be wasted work if the move
-lands at a different z.
+### Built
 
-**The fix path.** Move the cap (and the rise corner with it, since the rise
-corner's outboard bevel is on the cap's own rod) into the motion works'
-minute wheel's z-band — a P3 layout re-solve around `Z_SETTING`, leg 2 of the
-folded traverse, and the base plate's dial face at ≈ −2.0. This is a LAYOUT
-problem under this file's design-priority rule (mechanism dimensions held
-fixed, the obstacle or the station moves), not a mechanism problem to absorb
-into the fold's own geometry — the cap's bearing, the traverse's two legs and
-the three corners are all already solved P0–P2-clean by TODO 150; nothing
-about THEM should change to close this gap. Once the cap's plane matches the
-motion works' minute wheel:
+**B's own plate recess.** The rise corner's inboard bevel (`mwCornerRiseIn`,
+at B) was buried in the base plate: `meshClearance` read **0.0000** against
+`backPlate`, with the blank's own vertex top at world z **−1.308** (not
+−0.912 — that figure was `Box3.setFromObject` inflating a rotated mesh's
+AABB past its true extent, corrected once `probe-151-cap-plane.mjs` read it
+vertex-precise) against the plate's dial-side face, itself −2.3 (see
+[TODO 153] — not the ≈−2.0 this item first estimated). A (the drop corner)
+and K (the fold corner) were both bored — `MW_DROP_PLATE_HOLE` and
+`MW_FOLD_PLATE_HOLE` — but B never was, excused wholesale by the
+`['Keyless works', 'plate']` support pair. `MW_RISE_PLATE_HOLE` bores it now,
+sized off the cut blank the same way A and K are (`cornerRise.spec.coneR +
+CLEAR_MARGIN`); `probe-150-fold-sense.mjs` gates it in a new PLATE row over
+all six motion-works corner blanks. Measured after: `mwCornerRiseIn` clears
+**0.3602**, `mwCornerRiseOut` **2.0523**, both over `CLEAR_MARGIN` 0.15.
+
+### Measured: no position-space solution in the fold's topology
+
+`probe-151-cap-plane.mjs` (a REPORT) measured every option this item's
+original fix path proposed, against the built metal rather than an estimate,
+with schematic meshes pruned and every band read vertex-precise:
+
+- `settingCap` z [−7.760, −6.040]; `mwMinuteWheel` z [−3.126, −2.154]; the
+  rise apex B at world (−10.534, 3.455, −3.000); `mwCornerRiseOut` z [−4.730,
+  −3.850]; `mwCornerRiseIn` z by vertex [−4.692, −1.308].
+- **Option (a)** — the cap alone raised to the wheel's own mid-plane (−2.64),
+  the apex left at B: the cap collides with `settingTraverse2`, `settingRise`,
+  `mwCornerRiseIn` and `mwMinuteWheel` itself, all at 0.0000; `mwCornerRiseOut`
+  clears 0.3495, `star` 0.3655. Moving the cap alone breaks the rod it shares
+  with the rise corner.
+- **Option (b)** — the outboard mount's axis flipped onto +Z (a re-cut, not a
+  translation): `mwCornerRiseOut`'s own z-band [−2.150, −1.270] lands wholly
+  inside the base plate's slab [−2.300, 0.300].
+- **The bisection.** Cap and apex share (x, y) — only z differs — so the
+  minimum axial gap between them that clears `CLEAR_MARGIN` is a pure
+  function of their shapes, independent of where on the axis the pair sits:
+  **2.7005** (matching this item's original "2.700" estimate to 3
+  significant figures). Covering the wheel's own face needs the cap's
+  mid-plane at c ∈ [−3.014, −2.266], which forces the apex to −5.714,
+  −5.340 or −4.966 respectively — all well below B's own −3.000, and below
+  every option this item's own fix path assumed the apex would stay near.
+- **Option (c)** — the implied `SETTING_ROD_R` if `Z_SETTING` moved to one of
+  those apexes (`SETTING_ROD_R = (Z_SETTING − RSV_P0_TOP_Z) − CLEAR_MARGIN`,
+  `RSV_P0_TOP_Z` measured live off `reservePinion0`'s own vertex top,
+  −3.532): **−1.5845**, **−1.9585** or **−2.3325** — a negative bore radius,
+  impossible.
+- **Option (d)** — the corner alone lowered to each implied apex, cap left in
+  place: the nearest NON-FOLD neighbour at all three depths is
+  `reservePinion1`, clearing **0.4522** — real free space, but reaching it
+  needs a fourth corner (a descending leg under the cap) plus a plate pocket,
+  a joint re-solve (`CAP_BEARING`/`solveReserveSwing`) and a sense guard —
+  more than this item's own scope.
+
+**Conclusion.** Options (a)–(c) are each geometrically impossible or
+mechanically broken; only (d) survives, and it is a LAYOUT LANDING under
+this file's design-priority rule (a new corner, a new plate pocket, a new
+joint solve), not a re-pose this item can absorb. [TODO 153]'s finding — the
+motion-works stack is solved against a plate face 0.3 u shallower than the
+plate presents — moves `mwMinuteWheel`'s own z-band dial-ward once it lands,
+which changes every number in this section; **the (d) landing is sequenced
+AFTER [TODO 153]**, and re-measures rather than reuses these figures.
+
+**The fix path — option (d), a layout landing.** A fourth corner under the
+cap (a descending leg, apex below −4.97/−5.34/−5.75 depending on where
+[TODO 153] leaves the wheel's face) plus a base-plate pocket at the new
+corner's station, `CAP_BEARING`/`solveReserveSwing` re-solved for the extra
+joint and a sense guard added the way every other direction-committed cut in
+this movement carries one. Once the cap's plane matches the motion works'
+minute wheel:
 
 - `mwMinuteWheel`'s own mates gain `SETTING_CAP_TEETH` alongside
   `cannonPinionTeeth` (one source for `STAR_R`'s downstream reach: rootR
   stays 4.38115 — the cannon-pinion mesh already governs it — but tipR moves
-  4.798 → 4.868, the cap now the narrower claimed mate);
+  4.798 → 4.868, the cap now the narrower claimed mate) — re-verify `STAR_R`
+  against the built metal as this landing's acceptance, not a re-derivation
+  taken on faith;
 - a `solveGearChain('setting fold:', [{ obj: mwPair, gauge: mwMinuteWheel,
   teeth: MW_MINUTE_TEETH, name: 'minute wheel' }, { obj: settingCap, teeth:
   SETTING_CAP_TEETH, name: 'setting cap' }], MW_MODULE_1, ['train',
@@ -21456,12 +21506,15 @@ motion works' minute wheel:
   that blends `handSetOffset` and the going-train angle by `crownPullT` would
   slide `settingBevel` half a pitch against `clutchRim` at every intermediate
   pull position, which is exactly the class of defect `axisEntry` exists to
-  catch — this needs a real engagement latch, not a lerp;
+  catch — this needs a real engagement latch, not a lerp; re-derive the
+  going-train analysis above against the built metal once the latch lands,
+  the way `STAR_R` is re-verified rather than assumed;
 - the new declared mesh gives `transmits` a MISMATCH to clear under the
   `train` axis input the moment the cap turns with a chain that is not
   `handSetOffset`'s alone — expect a red row here until the clutch state
   above resolves which input governs the cap at which pose, and file that as
-  the acceptance for closing this item rather than waiving it.
+  the acceptance for closing this item rather than waiving it. Nothing here
+  is declared or waived today.
 
 ## 152. A trial boot inherits the viewer's tuned aesthetics, and a killed trial drops them — CLOSED
 
@@ -21535,3 +21588,61 @@ store is untouched); its seventh case — a second `goto` of the booted page —
 fails identically on the unmodified tree with "Failed to resolve module
 specifier 'three'", a defect in that probe's re-navigation, not in this
 change, and not fixed here.
+
+## 153. The motion works stack is solved against a plate face 0.3 u shallower than the plate presents
+
+Found measuring [TODO 151]: `mwMinuteWheel` and `cannonPinion` both read
+**0.0000** against `backPlate` (`meshClearance`), not a hairline touch but a
+real burial — the wheel's own top vertex stands at world z −2.154, **0.146 u**
+inside the plate; the cannon's top at −2.09 is **0.21 u** inside.
+
+**Root cause.** `MW_PLATE_FACE_LOCAL = Z_DIAL - (-2.0)` (`src/main.js`, where
+the motion-works stack is built) names the base plate's dial-side face as a
+bare `-2.0` literal — dial-local, "the stack's floor" — and every stack
+constant that follows (`MW_WHEEL_T`, `MW_Z2`, `MW_SLICE`, `MW_TOP`, `CANNON_T`,
+and the two duplicate `PLATE_DIAL_FACE_LOCAL` locals that alias it) solves
+against that floor. The plate's own build (much earlier in the file)
+DERIVES the real number: `PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T *
+G.PLATE_BEVEL_T_F`, asserted against the built extrude at −2.3 (§234's own
+`_back` guard, `src/main.js` line ~7092) — "the face the plate PRESENTS (the
+extrude's bevel stands proud of the slab)". `-2.0` predates that derivation
+and was never updated to read it; the two are 0.3 u apart, and the stack was
+solved to just clear a floor 0.3 u shallower than the plate the build
+actually cuts. Two OTHER call sites in the same stack (`buildSettingMetal`'s
+stud, `src/main.js` — `plateFaceLocal = Z_DIAL - (backPlate.position.z - 1)`)
+already read the plate DYNAMICALLY rather than the stale literal — this is a
+direction-written-twice defect in this file's own sense (one CLAUDE.md
+already names for cuts; here it is a floor, not a cut, but the shape is the
+same): one copy of "where the plate's face is" tracks the built plate, the
+other is a number that looked right when it was written and was never
+re-checked against it.
+
+**Why nothing caught it.** `['Motion works', 'plate']` is a declared SUPPORT
+edge (`src/inspect.js`) — "stud riveted to the plate's dial side" — which
+excuses contact between the whole Motion works unit and the plate wholesale.
+A real 0.146–0.21 u burial reads as the declared joint rather than as a
+foul, exactly TODO 104 tier A's class of defect (a declared row buys silence
+for whatever actually lands between the two parts) on a support edge rather
+than an `INTRA_UNIT_CONTACTS` row, which is why standing rule 4's audit
+doesn't reach it either.
+
+**Fix paths.**
+- Re-derive `MW_PLATE_FACE_LOCAL` from `PLATE_BACK_FACE` rather than the bare
+  `-2.0` (one source, the plate's own build, the way the stud's two call
+  sites already do). `MW_WHEEL_T` re-solves smaller against the tighter
+  floor — roughly 0.84 → 0.69 — and the star, jumper and seat planes that are
+  derived from it (`STAR_BOT`, the jumper's pivot and lift geometry, the
+  alarm seat's sink) follow the new thickness. Re-verify `stockFloor` and
+  `oscillator`-adjacent members are not pushed under §50's floor by the
+  thinner wheel before landing it.
+- Or cut a relief pocket in the plate at the motion-works stud's footprint
+  (A/K/B's own precedent — `MW_DROP_PLATE_HOLE`/`MW_FOLD_PLATE_HOLE`/
+  `MW_RISE_PLATE_HOLE`), sized off the wheel's own burial rather than a
+  guessed literal, if re-solving the stack's thickness turns out to move
+  more than this item's own scope should carry.
+
+**Consequence for [TODO 151].** Whichever fix lands, the motion works'
+minute wheel's own z-band moves DIAL-WARD (more negative, away from the
+plate) by up to 0.146–0.21 u, which moves TODO 151's target band by the same
+amount — that item's fix path should re-measure `mwMinuteWheel`'s z-band
+after this lands, not before.

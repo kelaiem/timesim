@@ -5444,6 +5444,10 @@ function buildSettingMetal(cap, parent, { candidate = false } = {}) {
   const cornerDrop = addBevelCorner(settingA, Z_UP.clone().negate(), F.leg1U, 'mwCornerDrop', { boreIn: SETTING_ROD_R, boreOut: MW_LEG1_R, parent });
   const cornerFold = addBevelCorner(F.K, F.leg1U.clone().negate(), F.leg2U, 'mwCornerFold',
     { shaftAngleDeg: F.shaftAngleDeg, boreIn: MW_LEG1_R, boreOut: MW_LEG2_R, module, parent });
+  // TODO 151 — the rise corner's inboard blank (keyed to leg 2, a horizontal
+  // axis) also reaches into the plate's z-band, the same way the drop
+  // corner's does at A; the base plate carries its own clearance recess at
+  // exactly this axis (see the plate build, MW_RISE_PLATE_HOLE).
   const cornerRise = addBevelCorner(cap, F.leg2U.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise', { boreIn: MW_LEG2_R, parent });
   // The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
   // from the minute wheel's axis, in the minute wheel's own plane — it
@@ -5759,6 +5763,12 @@ const MW_FOLD_PLATE_HOLE = { x: MW_FOLD.K.x, y: MW_FOLD.K.y, r: cornerFold.spec.
 // the wrong way) with the cut blank's own coneR, now that the corner is
 // mounted on its actual shaft.
 const MW_DROP_PLATE_HOLE = { x: settingA.x, y: settingA.y, r: cornerDrop.spec.coneR + CLEAR_MARGIN };
+// TODO 151 — B's own recess, same rule as A and K. The rise corner's inboard
+// blank (keyed to leg 2, a horizontal axis) is a sphere of radius coneR about
+// the apex at Z_SETTING: it stood 0.99 u up in the plate (vertex top −1.308
+// against the presented face −2.3, meshClearance 0.0000), excused wholesale by
+// the Keyless works ⇄ plate support edge.
+const MW_RISE_PLATE_HOLE = { x: settingB.x, y: settingB.y, r: cornerRise.spec.coneR + CLEAR_MARGIN };
 // §137 — the corners' transfer rows: the movement's TEMPLATE idiom, declared
 // first. Rotation through an angle earns a bevel pair; the ratio is 1:1
 // because the TOOTH COUNTS are equal (the counts stand in for the arms — an
@@ -7045,6 +7055,7 @@ const backPlate = G.makeBackPlate({
     ...BACK_PLATE_HOLES,
     MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
     MW_DROP_PLATE_HOLE,   // TODO 150 item 1 — the drop corner's own recess at A, same precedent
+    MW_RISE_PLATE_HOLE,   // TODO 151 — the rise corner's blanks at B, A's precedent
     ...CASE_CLAMP_AZ.map((a) => ({
       x: Math.cos(a) * R_CLAMP, y: Math.sin(a) * R_CLAMP, r: CASE_CLAMP_BORE_R,
     })),
