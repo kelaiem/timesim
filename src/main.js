@@ -5763,6 +5763,15 @@ registerSub('Keyless works', 'Minute-wheel arbor', minuteArbor);
 registerSub('Keyless works', 'Setting drop', settingDrop);
 registerSub('Keyless works', 'Setting rise', settingRise);
 registerSub('Keyless works', 'Setting cap', settingCap);
+// TODO 150 item 5 — the fold's own members had no hover/label: a hover on any
+// bevel corner or traverse leg read only "Keyless works", a unit whose own
+// label sits out by the crown. The mounts hang off `keyless` (identity world
+// transform, TODO 140's precedent), so the drill's z write moves them along
+// world z; that is what makes registering the mount itself (not the gear
+// alone) correct here.
+for (const c of MW_CORNERS) for (const g of [c.gearIn, c.gearOut]) registerSub('Keyless works', 'Setting bevel corners', g.parent);
+registerSub('Keyless works', 'Setting traverse', SETTING_METAL.leg1);
+registerSub('Keyless works', 'Setting traverse', SETTING_METAL.leg2);
 
 // ---------------------------------------------------------------------------
 // Setting-lever linkage — the visible actuation chain behind the crown pull.
