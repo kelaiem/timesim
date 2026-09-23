@@ -14,6 +14,28 @@ import aestheticsData from './aesthetics.json' with { type: 'json' };
 export const OVERRIDES_KEY = 'aestheticsOverrides';
 export const BOOT_PENDING_KEY = 'aestheticsBootPending';
 
+// TODO 152 — A TRIAL BOOT IS VIRGIN OF AESTHETICS, the way state.js keeps it
+// virgin of the session. §33's verdict boot (`?trial=1`, a hidden iframe
+// reconfigure mode loads to read a candidate spec's build asserts) must be
+// measured on the FILE's values — "a virgin boot is the battery's own standard
+// for a verdict" — and must leave the viewer's store untouched. Without this
+// guard the merge below applied the viewer's tuned overrides to every trial
+// (a tuned hand stack re-cuts metal the build asserts read, so the verdict
+// was theirs, not the design's), the two finish params rode in off the
+// parent's `location.search`, and — the sharper half — the merge ARMED the
+// crash-recovery marker below, which a superseded trial never confirms
+// (`reconfKillTrial` removes the iframe mid-build), so the viewer's next real
+// boot dropped their overrides and blamed a crash that did not happen.
+// Measured 215 ms after commit by tools/probe-240-trial-boot.mjs, which is
+// the acceptance. ONE guard, here where the merge is: the parent's trial URL
+// is not stripped of finish params as well, because a second copy of this
+// rule is the direction-written-twice defect. state.js declares its own flag
+// the same way rather than importing this one — the two modules share no
+// import today and a shared constant would couple the session tier to this
+// file for one boolean.
+const TRIAL_BOOT = typeof location !== 'undefined'
+  && new URLSearchParams(location.search).has('trial');
+
 // Keys beginning '_' are prose (`_labels`, `_bounds`, `_comment`) — schema, not
 // parameters. One replacer, so the panel's Copy JSON and the persisted
 // overrides cannot disagree about what a tuned value IS; both used to spell
@@ -121,7 +143,10 @@ export function mergeAesthetics(dst, src, out = { applied: [], refused: [], clam
 // values boot clean. Value-agnostic — it does not need to know WHICH value
 // was lethal, only that one was.
 try {
-  if (localStorage.getItem(BOOT_PENDING_KEY)) {
+  // A trial neither reads nor clears the marker: it is the REAL session's
+  // handshake, and a throwaway boot acting on it would drop the viewer's
+  // tuning for a crash it did not witness (TODO 152).
+  if (!TRIAL_BOOT && localStorage.getItem(BOOT_PENDING_KEY)) {
     clearOverrides();
     localStorage.removeItem(BOOT_PENDING_KEY);
     console.warn('§23: the previous boot died before completing with tuned overrides active — overrides dropped, booting from aesthetics.json');
@@ -136,7 +161,7 @@ try {
 export const AESTHETICS_DEFAULTS = Object.freeze(structuredClone(aestheticsData));
 
 try {
-  const over = readOverrides();
+  const over = TRIAL_BOOT ? null : readOverrides();   // TODO 152: a trial boots the file
   if (over) {
     mergeAesthetics(aestheticsData, over);
     localStorage.setItem(BOOT_PENDING_KEY, '1');
@@ -189,7 +214,7 @@ export function parseDialCol(raw) {
   return m ? `#${m[1].toLowerCase()}` : null;
 }
 try {
-  const col = parseDialCol(new URLSearchParams(location.search).get(DIAL_COL_PARAM));
+  const col = TRIAL_BOOT ? null : parseDialCol(new URLSearchParams(location.search).get(DIAL_COL_PARAM));   // TODO 152: a trial boots the file's colour
   if (col) mergeAesthetics(aestheticsData, { dial: { face: { color: col } } });
 } catch { /* no location, or a hostile param: the file's colour stands */ }
 
@@ -210,13 +235,14 @@ export function parseMetal(raw) {
   return opts.some((o) => o.value === v) ? v : null;
 }
 try {
-  const metal = parseMetal(new URLSearchParams(location.search).get(METAL_PARAM));
+  const metal = TRIAL_BOOT ? null : parseMetal(new URLSearchParams(location.search).get(METAL_PARAM));   // TODO 152: a trial boots the file's alloy
   if (metal) mergeAesthetics(aestheticsData, { materials: { caseMetal: { alloy: metal } } });
 } catch { /* no location, or a hostile param: the file's alloy stands */ }
 
 // Called by main.js when the build has completed — the crash-recovery
 // marker's other half.
 export function confirmAestheticsBoot() {
+  if (TRIAL_BOOT) return;   // TODO 152: a trial never armed it, and must not clear the real session's
   try { localStorage.removeItem(BOOT_PENDING_KEY); } catch { }
 }
 
