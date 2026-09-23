@@ -163,4 +163,8 @@ export default {
   ['centre of mass on the axis']: 'центр масс на оси',
   ['the spring leans on the pivots']: 'волосок давит на цапфы',
   ['the lean nearly vanishes']: 'давление почти исчезает',
+
+  // §223 — the keys this table was still missing, re-priced with the
+  // checker's own isInvariant (bare constants were never gaps).
+  ['Honesty note: in this simulation the spring is real arithmetic, not a prop. The wheel\'s inertia is computed from its drawn dimensions — about 85% of it in the rim, a tenth in the screws, the rest in the arms — and the hairspring\'s cross-section is then <em>solved</em> so that the square root lands exactly on the advertised rate. The ribbon that comes out of the solve is about 0.024 mm thick, inside the 0.02–0.04 mm range real hairspring stock is drawn in. The one liberty is the drawn amplitude, above.']: 'Честное примечание: в этой симуляции спираль — настоящая арифметика, а не бутафория. Инерция колеса вычисляется по его нарисованным размерам — около 85 % её приходится на обод, десятая часть на винты, остальное на перекладины, — а сечение волоска затем <em>решается</em> так, чтобы квадратный корень попал точно на заявленный ход. Лента, которая выходит из решения, толщиной около 0,024 мм, внутри диапазона 0,02–0,04 мм, в котором тянут реальную волосковую ленту. Единственная вольность — нарисованная амплитуда, выше.',
 };
