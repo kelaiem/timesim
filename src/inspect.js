@@ -281,7 +281,10 @@ export const MECH_GRAPH = {
     // dividing the minute angle by 12.
     ['Center wheel', 'Motion works'],        // cannon pinion friction-fit on the centre arbor
     ['Motion works', 'Hour wheel'],
-    ['Keyless works', 'Motion works'],       // SETTING: the arbor's cap pinion meshes the minute wheel
+    ['Keyless works', 'Motion works'],       // SETTING: the cap meshes the minute wheel by TOOTH COUNT
+                                             // only — the two stand 2.914 u apart axially in the metal
+                                             // (TODO 151); the nearest pair today is mwMinuteWheel ⇄
+                                             // settingRise at 0.50
     ['Setting lever', 'Minute jumper'],      // the lost-motion lifter bar off the tail post drops the
                                              // jumper into the star when the crown is out
     ['Motion works', 'Minute jumper'],       // the star's teeth ride the seated beak (the detent that
@@ -588,8 +591,11 @@ const EXPECTED_PAIRS = [
                                              // the motion-works nesting (the jumper itself is a
                                              // movement child now, so this is star contact only)
   ['Minute jumper', 'Setting lever'],        // the lifter bar rides the tail post's pin
-  ['Keyless works', 'Motion works'],         // SETTING: the arbor's cap pinion meshes the minute wheel's
-                                             // real teeth — the drive edge above IS this contact
+  ['Keyless works', 'Motion works'],         // SETTING: the cap meshes the minute wheel by TOOTH COUNT
+                                             // only, standing 2.914 u off axially in the metal (TODO 151);
+                                             // the nearest pair today is mwMinuteWheel ⇄ settingRise at
+                                             // 0.50 — the drive edge above IS the claimed (not yet real)
+                                             // contact
   // 'Motion works' is a labelled child of the dialFace group, so every one of
   // its meshes also belongs to the 'Dial' unit and self-intersects across the
   // pair (the same label nesting Power reserve / Small seconds already have,
