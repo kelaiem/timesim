@@ -13524,7 +13524,14 @@ const ALARM_SEAT_SINK = 0.02;                    // the seated-contact conventio
 const ALARM_SEAT_TOP = ALARM_DISC_BOT + ALARM_SEAT_SINK;   // dial-local: the disc's underside sits this far into the plate's face
 const ALARM_SEAT_BOT = ALARM_SEAT_TOP - ALARM_SEAT_T;
 const STAR_T = STOCK_MIN_U;                      // the jumper star and its beak: §50's floor, declared (it was 0.268, the residue of a literal)
-const MW_PLATE_FACE_LOCAL = Z_DIAL - (-2.0);     // the base plate's dial-side face (world −2.0), dial-local — the stack's floor
+// TODO 153: the plate's PRESENTED dial-side face (world −2.3, PLATE_BACK_FACE
+// — the extrude's bevel stands proud of the slab, asserted at the plate
+// build), dial-local — not the bare −2.0 literal this used to carry, 0.3 u
+// shallower than the plate the build actually cuts. Dial-local z runs AWAY
+// from the plate, so a shallower (less negative) face reads as CLOSER — the
+// burial TODO 153 measured (mwMinuteWheel and cannonPinion both 0.0000
+// against backPlate, not a hairline: 0.146/0.21 u of real overlap).
+const MW_PLATE_FACE_LOCAL = Z_DIAL - PLATE_BACK_FACE;
 const MW_BEVEL = (T, m) => Math.min(T * 0.18, m * 0.22);   // the gear builder's bevel, the term every plane here spelled out by hand
 const MW_COVER = 0.1;   // a pinion's leaves overreach the wheel's bevelled face by this — TODO 21's coverage floor, one name for its uses
 const MW_PINION_BEVEL = (T, m) => Math.min(T * 0.15, m * 0.2);   // makePinion's bevel (geometry.js pinionBevel), held to gearFaceReach at the build
@@ -13535,11 +13542,14 @@ const MW_WHEEL_T = (() => {
   //                                                                        margin off a plane must never read as the margin's own edge)
   //   MW_Z1      = MW_Z2 − (T/2 + bev₂) − CM − STAR_T − CM − (T/2 + bev₁)   the minute wheel's centre
   //   CANNON_END = MW_Z1 − (T/2 + bev₁) − MW_COVER                         the pinion's coverage overreach
-  //   CANNON_END − CM = MW_PLATE_FACE_LOCAL                                 landing ON the margin
+  //   CANNON_END − bevC − CM = MW_PLATE_FACE_LOCAL                         landing ON the margin, past the
+  //                                                                        cannon's OWN bevel (bevC — TODO 153:
+  //                                                                        previously unmodelled entirely)
   // The bevel is min(0.18·T, 0.22·m); at the module bound (T ≥ 1.22·m, asserted
   // below) it is a constant and T falls out linearly:
   const bev = MW_BEVEL(Infinity, MW_MODULE_1) + MW_BEVEL(Infinity, MW_MODULE_2);
-  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - MW_PLATE_FACE_LOCAL) / 2;
+  const bevC = MW_PINION_BEVEL(Infinity, MW_MODULE_1);   // TODO 153: the cannon pinion's own bevel, standing proud of ITS far face too
+  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - bevC - MW_PLATE_FACE_LOCAL) / 2;
   if (T < 1.22 * Math.max(MW_MODULE_1, MW_MODULE_2))
     console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under the bevel's module bound ${(1.22 * Math.max(MW_MODULE_1, MW_MODULE_2)).toFixed(4)} — the linear solve does not hold`);
   if (T < STOCK_MIN_U)
@@ -13575,24 +13585,40 @@ dialFace.add(cannonPinion);
 // …and the new floor that derivation creates: the leaves now reach PAST the
 // minute wheel toward the plate, so the pinion's end is the deepest thing on
 // the centre axis. It must still stand off the plate's dial-side face.
+// TODO 153: CANNON_END itself never carried the cannon's own bevel (the
+// extrude's bevelThickness stands proud of BOTH faces, §234's own finding,
+// applied here to the part that finding never reached) — the metal's true
+// end is derived from G.gearFaceReach, the same law the T solve above now
+// consumes as bevC, and the two are cross-checked rather than assumed equal.
 {
-  const PLATE_DIAL_FACE_LOCAL = MW_PLATE_FACE_LOCAL;
-  if (CANNON_END - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL - 1e-9)   // TODO 144: the stack is SOLVED to land on this margin, so equality is the design
-    console.warn(`TODO 21: the cannon pinion's end ${CANNON_END.toFixed(2)} is inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)}, need ${CLEAR_MARGIN})`);
+  const r = G.gearFaceReach({ module: MW_MODULE_1, thickness: CANNON_T, pinion: true });
+  const metalEnd = -0.5 - CANNON_T / 2 - r.body;
+  const expect = CANNON_END - MW_PINION_BEVEL(Infinity, MW_MODULE_1);   // the bound bevC substitutes in the T solve
+  if (Math.abs(metalEnd - expect) > 1e-9)
+    console.warn(`TODO 153: cannonPinion's gearFaceReach end ${metalEnd.toFixed(6)} disagrees with the bound-bevel estimate ${expect.toFixed(6)} — the T solve's bevC substitution does not hold`);
+  if (metalEnd < MW_PLATE_FACE_LOCAL + CLEAR_MARGIN - 1e-9)   // TODO 144: the stack is SOLVED to land on this margin, so equality is the design
+    console.warn(`TODO 21: the cannon pinion's metal end ${metalEnd.toFixed(4)} is inside the plate's margin (face ${MW_PLATE_FACE_LOCAL.toFixed(4)}, need ${CLEAR_MARGIN})`);
 }
 // §34: the chain grew downward — assert the landing still clears the plate
 // by at least the one margin + the hour wheel's own bevelled band. §51: the
-// plate face is MOVEMENT-frame (world −2.0); its dial-local coordinate was
-// frozen at −5.0 when the dial sat at −7 and fired a false alarm the moment
-// the dial moved — the same stale-absolute class as the §35 keyless floor,
-// now derived the same way.
+// plate face is MOVEMENT-frame (world −2.3, TODO 153); its dial-local
+// coordinate was frozen at −5.0 when the dial sat at −7 and fired a false
+// alarm the moment the dial moved — the same stale-absolute class as the
+// §35 keyless floor, now derived the same way.
+// TODO 153: the old check compared T/2 + bev only — the HUB ring (§234's
+// GEAR_HUB_H_F, taller than the bevelled body) never entered it, so a hub
+// standing proud of the body's own face could bury silently. gearFaceReach
+// reports both; the assert takes whichever reaches further.
 {
-  const PLATE_DIAL_FACE_LOCAL = MW_PLATE_FACE_LOCAL;   // world −2.0 in dialFace-local
+  const r = G.gearFaceReach({ module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth], thickness: MW_WHEEL_T, boreR: 0.5 });
+  const expectBody = MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1);
+  if (Math.abs(r.body - expectBody) > 1e-9)
+    console.warn(`TODO 153: mwMinuteWheel's gearFaceReach body ${r.body.toFixed(6)} disagrees with MW_BEVEL's own estimate ${expectBody.toFixed(6)}`);
   // TODO 21: the plate-most wheel is the MINUTE wheel now, not the hour
   // wheel — the same assert, pointed at whichever one the re-stack put last.
-  const mwBot = MW_Z1 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_1);
-  if (mwBot - CLEAR_MARGIN < PLATE_DIAL_FACE_LOCAL - 1e-9)
-    console.warn(`§34: minute wheel's underside ${mwBot.toFixed(2)} inside the plate's margin (face ${PLATE_DIAL_FACE_LOCAL.toFixed(2)})`);
+  const mwBot = MW_Z1 - Math.max(r.body, r.hub.half);
+  if (mwBot - CLEAR_MARGIN < MW_PLATE_FACE_LOCAL - 1e-9)
+    console.warn(`§34: minute wheel's underside ${mwBot.toFixed(4)} inside the plate's margin (face ${MW_PLATE_FACE_LOCAL.toFixed(4)})`);
 }
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
 // and below the centre).

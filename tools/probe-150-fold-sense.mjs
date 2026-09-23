@@ -245,9 +245,16 @@ else {
   // containment (see the header note above for why both).
   console.log(`\nSTACK — TODO 153: motion-works members ⇄ the plate's presented face `
     + `(${out.faceZ.toFixed(3)}), CLEAR_MARGIN ${out.CLEAR_MARGIN}:`);
+  // cannonPinion's own solve lands its metal ON CLEAR_MARGIN by design (the
+  // main.js T solve's own comment: "landing ON the margin" — unlike MW_Z2,
+  // which rides ALARM_SEAT_SINK off the margin on purpose so no sweep meets
+  // an exact tie). A BVH-measured clearance of a member solved to an exact
+  // algebraic tie is float noise around that tie, not a real miss — MEASURE_EPS
+  // is that noise's scale (measured here at 6.7e-8), not a margin being widened.
+  const MEASURE_EPS = 1e-6;
   for (const [n, r] of Object.entries(out.mwStack)) {
     if (r.count === 0) { fail(`${n}: no non-schematic mesh found`); continue; }
-    const clrOk = r.clr >= out.CLEAR_MARGIN;
+    const clrOk = r.clr >= out.CLEAR_MARGIN - MEASURE_EPS;
     const bandOk = r.zTop <= out.faceZ - out.CLEAR_MARGIN + 1e-4;
     if (!clrOk || !bandOk)
       fail(`${n}: clr ${r.clr.toFixed(4)} (need ≥ ${out.CLEAR_MARGIN}), zTop ${r.zTop.toFixed(3)} `
