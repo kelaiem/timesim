@@ -17,6 +17,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 150 | PART DONE | The §234 setting fold's three rods counter-rotated end to end: tick flipped the sign across each ROD as well as each corner. `MW_FOLD_SPIN` is read off the mounts now and the cap turns at its mesh ratio with the minute wheel; `probe-150-fold-sense.mjs` gates rods, corners and the cap mesh (RED on the parent). Remains: the drop corner's inboard bevel is cut on the FAR side of its apex (z −2.15…−1.27 over −3.00, 0.85 u of air to its shaft), so it turns equal and opposite to the minute arbor, and re-cutting it on its shaft is a P3 restack against the keyless minute pinion (0.35 u); the fold ignores the going train; the cap is cut for the wrong mate count and its mesh has no phase or transmits row |
 | 149 | CLOSED | §54's ruler could not see a per-frame-scaled bar, so the minute jumper's lifter link ran at **λ 52.9** with no row at all. The ruler reads world scale per axis now (held by a control on three synthetic meshes) and the bar's WIDTH is solved from the ceiling — `JMP_LIFTER_W` = a pose-free span bound over `SLENDER_TARGET`, 0.550 → **1.149 u** (0.436 mm), λ **25.3**. The waiver is retired, which §54's covenant makes part of the fix. The triage that had called it SHORT was isotropic; `probe-149-lifter-width.mjs` grows the two faces separately and the in-plane corridor SATURATES at 6 u per side. Also kinded `alarmColPawlSpring` as the flat spring it is |
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
@@ -21234,3 +21235,95 @@ z-profile freedom, which is a bigger change than this defect justifies.
 PLATE 2 and `primer.html` PLATE 2 both re-traced from the new solve, with the ρ
 figures and both pivot-force ratios re-quoted, and the primer's caption
 re-translated in all twelve locales because its numbers moved.
+
+## 150. The setting fold's shafts counter-rotated end to end; the drop corner's inboard bevel is cut on the far side of its apex — PART DONE
+
+Reported from the running sim, looking at the dial side with the plate
+x-rayed: beside the minute wheel, a gear "coaxial with a fold, with what I
+would call a spider that inexplicably turns the opposite direction as the axle
+it's mounted in". The gear is the **setting cap** (`settingCap`), the spider is
+the §234 fold's **rise corner outboard bevel** (`mwCornerRiseOut`), and the
+axle is the rise they share. Measured (world angular velocity, a 0.3 rad step
+of `setPathRot`, crown in): the bevel −0.1, the cap +0.1. One rod, two spins.
+
+### What was wrong, and why it was every rod
+
+The corners were right: each pair's surface velocities agree at its pitch
+point to 1e-16. The RODS were wrong. tick threaded the setting spin back from
+the cap flipping the sign at every corner (`MW_FOLD_SENSE = (−1)^N`), on the
+note that "each meshing pair reverses sense". A corner does — its two gears
+spin equal and opposite about their own axes — but the flip was then applied
+again across each rod, as if a shaft were a mesh. The two mounts keyed to one
+leg face each other along it (the drop's outboard axis is +leg 1, the fold's
+inboard is −leg 1), so one rigid spin reads as OPPOSITE local values on them.
+Leg 1's two bevels, leg 2's two and the rise's bevel against the cap all
+counter-rotated, equal and opposite to the last digit. Nothing in the battery
+measures a direction, and `probe-coaxial-sense.mjs` reads azimuth about world
+z, which two of these rods lie flat against.
+
+The cap was also turning at the CANNON PINION's rate (`+handSetOffset`) while
+meshing the minute wheel beside it: 8 teeth against the cannon's 10 on the
+same 30-tooth wheel, so its pitch line slid 25% of the set offset
+(0.0040 against the wheel's 0.0050).
+
+### Built
+
+- `MW_FOLD_SPIN` (`src/main.js`, beside the corners) is READ OFF THE MOUNTS at
+  the build: threaded back from the cap, the rise's outboard bevel takes the
+  cap's spin projected on its mount axis, each corner reverses its pair, each
+  rod carries the spin across by the dot of its two facing axes — asserted ±1
+  to 1e-6, since a rod whose mounts are not coaxial has no rigid answer. The
+  mounts hang off `keyless`, whose world transform is the identity, so the
+  build-time read is valid at every pose (the TODO 139/140 caveat).
+- The cap turns at its mesh ratio with the minute wheel,
+  `handSetOffset · (MW_MINUTE_TEETH / SETTING_CAP_TEETH) · (cannonPinionTeeth /
+  MW_MINUTE_TEETH)`, and co-rotates with the cannon (two external meshes on one
+  wheel).
+- `tools/probe-150-fold-sense.mjs` (acceptance) gates the three rods (equal
+  world ω vectors, 1e-6), the three corners (rolling at the pitch point) and
+  the cap ⇄ minute wheel pitch line (equal and opposite), from two base poses.
+  RED on the parent tree — three rods and the cap's slip — GREEN here, every
+  rod |Δω| under 1e-15.
+
+### What remains (why PART DONE)
+
+1. **The drop corner's inboard bevel floats.** `addBevelCorner(settingA, Z_UP,
+   …)` puts `mwCornerDropIn` on the +Z side of its apex — measured z −2.15 to
+   −1.27 over an apex at −3.00 — while the arbor it is keyed to, the keyless
+   minute arbor's rod (`settingDrop`), comes up from BELOW and stops at −3.00.
+   0.85 u of air between the gear and its shaft. Every other mount in the fold
+   points its axis toward its own shaft; this one points away. The spin
+   consequence is exact and is the probe's reported row: with the rods now
+   rigid the bevel turns +0.125 against the minute arbor's −0.125 — equal and
+   opposite, a sign and not a rate, because a bevel on the far side of its apex
+   rolls the other way. Before this item the drop agreed with the arbor in
+   sign (and ran 20% short of its rate) only because the three rods absorbed
+   the disagreement between them. **Fix path:** mount it on
+   `Z_UP.clone().negate()`, which re-cuts it on its shaft and — by the same
+   rolling arithmetic — makes it agree with the minute arbor, with the crown's
+   setting sense unchanged (`HAND_RAD_PER_SET_RAD` needs no edit). That is a P3
+   restack, not a sign: mirrored, the bevel spans z −4.73 to −3.85 at a tip
+   radius of 2.23, and the keyless minute pinion's top is at −4.38, so they
+   overlap by 0.35 u axially on one axis. Move the minute arbor's stack
+   (`MINUTE_Z_STEP`/`SETTING_SPUR_Z`) or let the bevel replace the pinion's
+   upper face; the base-plate recess cut for the tip-up blank then has nothing
+   left to clear. The probe's residue row says NOW AGREE when it lands.
+2. **The fold ignores the going train.** The cap meshes the motion works'
+   minute wheel, and that wheel turns with `centerAngle(tau)` (once per 3 h)
+   while the cap, and the whole fold behind it, is posed from `handSetOffset`
+   alone. With the crown in, a real setting train free-wheels with the motion
+   works; this one stands still and the cap's teeth slide. Posing the fold (and
+   the keyless minute arbor and setting wheel with it) from the minute wheel's
+   own angle is the honest law. It makes the `train` axis move keyless parts,
+   so the battery will have new pairs to judge.
+3. **The cap was cut for the wrong mate.** `buildSettingMetal` generates the
+   cap with `mates: [{ teeth: minuteWheelTeeth, … }]`, the KEYLESS minute
+   wheel's 24, but it meshes the motion works' `MW_MINUTE_TEETH` 30.
+4. **Nothing judges the cap's mesh.** It has no `solveGearChain` phase and no
+   `declareMesh` row, so `meshPhase` and `transmits` cannot see it, and
+   `EXPECTED_PAIRS`' comment (`inspect.js`, the `['Dial', 'Keyless works']`
+   row) still says the cap meshes the cannon pinion.
+5. **None of the fold's members are named to a hover or label.** `Setting
+   rise` and `Setting cap` are §10 level-two subs; the three bevel corners are
+   not, so the gear the owner pointed at reads only as "Keyless works", a unit
+   whose label sits out by the crown.
