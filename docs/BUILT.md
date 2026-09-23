@@ -24819,6 +24819,28 @@ two-word form, so it cannot link a bare *corona* — which on this page is the
 crown. No residue: no honesty row ABSENT, no block under its locale's length
 ratio.
 
+### Spanish and Portuguese, completed
+
+Both closed to 100% on the explainer (36 real keys each → 0; both primers
+were already complete), each in its own table's register — Spanish *caracol*,
+*barrilete*, *tija*, *embrague*, *rueda loca*; Portuguese (Brazilian)
+*caracol*, *tambor*, *haste*, *embreagem*, *roda intermediária*. The 36 were
+the same landing's English as Italian's 37 minus one: the two newest
+Vocabulary tables with their variant rows, and the long `keyless` and
+`free-sprung` paragraphs. Glossary links 45 → 55 (es) and 53 → 73 (pt).
+
+Two terms were renamed after the first build, by reading its links rather
+than predicting them. `chord` is *cuerda* / *corda* in both languages — and
+so is WINDING (*dar cuerda*, *pinhão de corda*), so the bare word linked the
+keyless train's winding to a definition about straight runs between points of
+a curve. The term cell is *cuerda geométrica* / *corda geométrica*, which no
+winding sentence contains; the chord-sense uses lose their link, the safe
+direction `AMBIGUOUS`' header names. And Portuguese `fold` was *dobra*, which
+is also a plain BEND — the hairspring's knee is "uma dobra no plano vertical"
+— so it is *dobramento*, with its own definitions rewritten to match. No
+other residue: no honesty row ABSENT, no block under its locale's length
+ratio.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
