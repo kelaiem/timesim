@@ -24790,6 +24790,22 @@ existing German `alarm-arming` ledger paragraph renders at 0.43× its English
 length (1197 → 589 chars), which reads as a translation that dropped half the
 block. It predates this landing and is left for a German quality pass.
 
+### Japanese and French, completed
+
+French closed to 100% on both pages (explainer 81 real keys → 0, primer 8 → 0)
+in the table's Vallée de Joux register — *pignon de 7 ailes*, *entraxe*,
+*saillie*, *cliquet*, *bec*, *timbre* — with French variant rows for the
+Vocabulary terms (azimuts, anneaux, cordes, tangentes, courses, replis).
+Japanese closed to 100% on the primer and 98.0% on the explainer, the residue
+being the same 15 `.gloss-variants` rows left English for every CJK locale, in
+the table's 時計 register (カナ, 爪, くちばし, 巻真, フュジー, 中間車). Glossary
+links: French 63 → 95, Japanese 30 → 66 with every match a Japanese word. One
+Japanese plate label collided with its neighbour and was tightened to
+「想定のみ、未製作」. Residue, REPORTED and pre-existing: one Japanese block
+(`winding-arrest`'s "Open debt" paragraph) carries neither honesty word — the
+§241 check's ABSENT class, which cannot tell a terse paraphrase from a dropped
+sentence and so does not gate.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
