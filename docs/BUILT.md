@@ -24790,6 +24790,57 @@ existing German `alarm-arming` ledger paragraph renders at 0.43× its English
 length (1197 → 589 chars), which reads as a translation that dropped half the
 block. It predates this landing and is left for a German quality pass.
 
+### Japanese and French, completed
+
+French closed to 100% on both pages (explainer 81 real keys → 0, primer 8 → 0)
+in the table's Vallée de Joux register — *pignon de 7 ailes*, *entraxe*,
+*saillie*, *cliquet*, *bec*, *timbre* — with French variant rows for the
+Vocabulary terms (azimuts, anneaux, cordes, tangentes, courses, replis).
+Japanese closed to 100% on the primer and 98.0% on the explainer, the residue
+being the same 15 `.gloss-variants` rows left English for every CJK locale, in
+the table's 時計 register (カナ, 爪, くちばし, 巻真, フュジー, 中間車). Glossary
+links: French 63 → 95, Japanese 30 → 66 with every match a Japanese word. One
+Japanese plate label collided with its neighbour and was tightened to
+「想定のみ、未製作」. Residue, REPORTED and pre-existing: one Japanese block
+(`winding-arrest`'s "Open debt" paragraph) carries neither honesty word — the
+§241 check's ABSENT class, which cannot tell a terse paraphrase from a dropped
+sentence and so does not gate.
+
+### Italian, completed
+
+Italian closed to 100% on the explainer (37 real keys → 0; the primer was
+already complete) in the table's own register — *conoide*, *bariletto*,
+*albero di carica*, *innesto*, *pitone*, *ruota oziosa* — with every
+apostrophe U+2019 as that table's header requires. The 37 were one landing's
+English and nothing else: the two newest Vocabulary tables with their variant
+rows, and the long `keyless` and `free-sprung` paragraphs. Glossary links
+49 → 77. The one term needing care was `annulus`: *corona circolare*, a
+two-word form, so it cannot link a bare *corona* — which on this page is the
+crown. No residue: no honesty row ABSENT, no block under its locale's length
+ratio.
+
+### Spanish and Portuguese, completed
+
+Both closed to 100% on the explainer (36 real keys each → 0; both primers
+were already complete), each in its own table's register — Spanish *caracol*,
+*barrilete*, *tija*, *embrague*, *rueda loca*; Portuguese (Brazilian)
+*caracol*, *tambor*, *haste*, *embreagem*, *roda intermediária*. The 36 were
+the same landing's English as Italian's 37 minus one: the two newest
+Vocabulary tables with their variant rows, and the long `keyless` and
+`free-sprung` paragraphs. Glossary links 45 → 55 (es) and 53 → 73 (pt).
+
+Two terms were renamed after the first build, by reading its links rather
+than predicting them. `chord` is *cuerda* / *corda* in both languages — and
+so is WINDING (*dar cuerda*, *pinhão de corda*), so the bare word linked the
+keyless train's winding to a definition about straight runs between points of
+a curve. The term cell is *cuerda geométrica* / *corda geométrica*, which no
+winding sentence contains; the chord-sense uses lose their link, the safe
+direction `AMBIGUOUS`' header names. And Portuguese `fold` was *dobra*, which
+is also a plain BEND — the hairspring's knee is "uma dobra no plano vertical"
+— so it is *dobramento*, with its own definitions rewritten to match. No
+other residue: no honesty row ABSENT, no block under its locale's length
+ratio.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a

@@ -164,4 +164,7 @@ export default {
   ['centre of mass on the axis']: 'centro di massa sull’asse',
   ['the spring leans on the pivots']: 'la spirale preme sui perni',
   ['the lean nearly vanishes']: 'la spinta quasi svanisce',
+
+  // §223 — the keys this table was still missing, re-priced with the
+  // checker's own isInvariant (bare constants were never gaps).
 };

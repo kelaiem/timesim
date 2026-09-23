@@ -17,6 +17,7 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 152 | CLOSED | A `?trial=1` boot — §33's verdict boot — inherited the viewer's tuned aesthetics (no trial guard in `aesthetics.js`; `reconfTrialBoot` passes `location.search` through), so every trial verdict was measured on a TUNED build; and the trial's merge ARMED the §23 crash-recovery marker, which a superseded trial never confirms, so the viewer's next real boot dropped their overrides and warned. Measured by `tools/probe-240-trial-boot.mjs` (6 rows red, controls green); closed by `state.js`'s `TRIAL_BOOT` guard copied to `aesthetics.js` — the merge, the marker, both finish params and the confirm all skip under the flag. Probe green. |
 | 150 | CLOSED | The §234 setting fold's three rods counter-rotated end to end: tick flipped the sign across each ROD as well as each corner. `MW_FOLD_SPIN` is read off the mounts now. The drop corner's inboard bevel, cut on the far side of its apex from its own shaft, is re-mounted on that shaft (the minute pinion it used to stand off is retired); the cap's mate claims are corrected (it meshes the motion works' minute wheel, not the keyless one); the fold's members are named for hover. `probe-150-fold-sense.mjs` gates all four rods, all three corners and the cap ⇄ minute-wheel mesh, 0 findings. The cap not meshing that wheel IN THE METAL (a 2.9 u axial gap) is split out to [TODO 151] |
 | 151 | OPEN | The setting cap stands 3.1 u off the motion works' minute wheel's plane axially — `settingCap` z [−7.760, −6.040] against `mwMinuteWheel` z [−3.126, −2.154] — so their tooth-count mesh claim (TODO 150 item 3) is not yet true of the metal. A P3 layout re-solve (move the cap and the rise corner into the wheel's band), then a real `solveGearChain` phase and a driving law that follows the going train through a clutch state rather than `handSetOffset` alone. Also found in the same pass: the rise corner's inboard bevel is buried in the base plate at B (0.0000 clearance), unbored where A and K both are |
 | 149 | CLOSED | §54's ruler could not see a per-frame-scaled bar, so the minute jumper's lifter link ran at **λ 52.9** with no row at all. The ruler reads world scale per axis now (held by a control on three synthetic meshes) and the bar's WIDTH is solved from the ceiling — `JMP_LIFTER_W` = a pose-free span bound over `SLENDER_TARGET`, 0.550 → **1.149 u** (0.436 mm), λ **25.3**. The waiver is retired, which §54's covenant makes part of the fix. The triage that had called it SHORT was isotropic; `probe-149-lifter-width.mjs` grows the two faces separately and the in-plane corridor SATURATES at 6 u per side. Also kinded `alarmColPawlSpring` as the flat spring it is |
@@ -21461,3 +21462,76 @@ motion works' minute wheel:
   `handSetOffset`'s alone — expect a red row here until the clutch state
   above resolves which input governs the cap at which pose, and file that as
   the acceptance for closing this item rather than waiving it.
+
+## 152. A trial boot inherits the viewer's tuned aesthetics, and a killed trial drops them — CLOSED
+
+Filed 2026-09-23 as a prerequisite of roadmap §240 (the shareable aesthetics
+link), from a reading of the code the entry asked to have verified before the
+link exists. Verified: `tools/probe-240-trial-boot.mjs`, an acceptance probe
+that is RED on this tree — six rows, both controls green — and turns green
+with the fix below.
+
+**What §33 promised.** A `?trial=1` boot is a throwaway verdict boot:
+reconfigure mode loads a candidate spec in a hidden iframe purely to read its
+build asserts off `__clock.bootWarns`, and `state.js` guards the session tier
+at one choke point — `loadState` returns virgin defaults and `saveState`
+writes nothing under the flag — "a virgin boot is the battery's own standard
+for a verdict, and it keeps trials deterministic". The probe's control B holds
+that guard: a seeded `crownRotation` reads back on a plain boot and reads 0
+on the trial.
+
+**What the aesthetics tier does instead.** `aesthetics.js` has no such guard.
+At module evaluation it merges `aestheticsOverrides` from localStorage
+unconditionally, then reads `?dialcol=` (§185) and `?metal=` (§203) off
+`location.search`; and `reconfTrialBoot()` builds the iframe's URL FROM
+`location.search`, setting the candidate key and deleting the mode keys
+(`inspect`, `cycle`, `reconf`) — nothing strips a finish param. Measured:
+
+| row | plain boot | `?trial=1` |
+|---|---|---|
+| seeded `lighting.keyLight.intensity` 1.2 (shipped 2.4) | 1.2 | **1.2** |
+| `?dialcol=1b3a5c` on the URL | (n/a) | **#1b3a5c**, shipped `#e7e5dd` |
+
+So every §33 verdict is measured on the viewer's TUNED build — a
+`lighting.*` or `decoration.*` tweak moves no vertex and cannot change a
+structural assert, but `dial.hands.*` and `dial.hourMarkers.*` re-cut metal
+the base plate's clearance recess and the hand stack's asserts read, and
+`gong.*` rebuilds the torus — so the verdict a viewer with a tuned hand stack
+gets for a candidate spec is the verdict for THEIR watch, not the design. And
+a page opened from a `?dialcol=` link trials with that colour, which is what
+§240's `?aes=` would generalise to every shareable leaf.
+
+**The sharper half.** The trial's merge ARMS the §23 crash-recovery marker
+(`aestheticsBootPending`, set right after the merge, cleared by
+`confirmAestheticsBoot()` on `main.js`'s last line). A trial that COMPLETES
+clears it. A trial that is SUPERSEDED does not: `reconfKillTrial()` removes the
+iframe wherever its build stands — which is the normal path, since every drag
+past the first kills the previous trial — and the marker stays armed in the
+viewer's own localStorage. Their next real boot finds it, drops
+`aestheticsOverrides`, and warns "the previous boot died before completing
+with tuned overrides active". Measured (row 3, watched from a sibling page
+because the building page answers no `evaluate` on this container): the
+marker armed **215 ms** after the trial committed; after `page.close()` the
+next plain boot had **no overrides, one §23 warning, keyLight 2.4**. Every
+trial the viewer abandons costs them their tuning, and the warning blames a
+crash that did not happen.
+
+**Fixed the same day, one guard, copied from `state.js`:** `TRIAL_BOOT` in
+`aesthetics.js`, declared the way `state.js` declares its own rather than
+imported (the two modules share no import, and a shared constant would couple
+the session tier to this file for one boolean). Under it the crash-recovery
+block neither reads nor clears the marker, the overrides merge is skipped and
+the marker is not armed, the two finish params (`?dialcol=`, `?metal=`) are
+not read, and `confirmAestheticsBoot` is a no-op — the file's own values
+boot, which is the virgin standard the verdict wants. One source: the guard
+is where the merge is, not in `reconfTrialBoot`'s URL (a second copy would be
+the direction-written-twice defect). `probe-240-trial-boot.mjs` reads
+**12/12** on the fixed tree — the trial applies neither the override nor the
+link colour, never arms the marker (the row's 20 s watch runs out where the
+red tree armed at 215 ms), and after a killed trial the viewer's overrides,
+their silence and their key light are all still there. `probe-dial-colour-link`
+holds its first six rows (a PLAIN boot still takes the link's colour and the
+store is untouched); its seventh case — a second `goto` of the booted page —
+fails identically on the unmodified tree with "Failed to resolve module
+specifier 'three'", a defect in that probe's re-navigation, not in this
+change, and not fixed here.
