@@ -69,6 +69,7 @@ const out = await page.evaluate(async () => {
   const THREE = await import('/vendor/three.module.js');
   const I = await import('/src/inspect.js');
   const L = await import('/src/layout.js');
+  const G = await import('/src/geometry.js');
   window.requestAnimationFrame = () => 0;
   C.resetInputs();
   C.setPose({});
@@ -195,6 +196,17 @@ const out = await page.evaluate(async () => {
   let plateSlab = [Infinity, -Infinity];
   for (const pm of plateMeshes) { const b = zBand(pm); plateSlab[0] = Math.min(plateSlab[0], b[0]); plateSlab[1] = Math.max(plateSlab[1], b[1]); }
 
+  // The plate's presented face, raycast at the minute wheel's own axis —
+  // moved ahead of §4/§5 (which need it to derive targetsC live); printed
+  // under §7 below, alongside the wheel/cannon clearances that use it too.
+  const wheelXY = mesh.mwMinuteWheel.getWorldPosition(new THREE.Vector3());
+  // from BELOW, toward +Z: the works (mwMinuteWheel, the fold) sit at more
+  // negative z than the plate, on the DIAL side, so the plate's PRESENTED
+  // face (the one that matters here) is its first surface hit going up.
+  const faceRay = new THREE.Raycaster(new THREE.Vector3(wheelXY.x, wheelXY.y, -50), new THREE.Vector3(0, 0, 1), 0, 100);
+  let faceZ = null;
+  for (const pm of plateMeshes) { const hits = faceRay.intersectObject(pm, false); if (hits.length) faceZ = hits[0].point.z; }
+
   // §4 — bisect the minimum axial gap (cap mid-plane above apex) that clears
   // CLEAR_MARGIN. Cap and apex share (x, y); only z differs, so this is 1-D.
   const apexZ0 = mountIn.position.z;
@@ -219,7 +231,47 @@ const out = await page.evaluate(async () => {
   // vertex top, not re-typed from the source comment.
   const rsvP0TopZ = zBand(mesh.reservePinion0)[1];
   const settingRodR0 = (apexZ0 - rsvP0TopZ) - CLEAR_MARGIN;
-  const targetsC = [-2.266, -2.64, -3.014];
+
+  // targetsC, LIVE-DERIVED off the built metal — the old [-2.266, -2.64,
+  // -3.014] was this item's own hand-picked investigation of where the cap's
+  // mid-plane would have to sit to cover the OLD (pre-TODO 153) wheel band,
+  // and TODO 151's own update note flagged it as stale residue once TODO 153
+  // moved that band. Two live bounds instead:
+  //   rootR   — the wheel's own gearToothSpec (built with its current mate,
+  //             cannonPinionTeeth only — the fold does not mesh it yet);
+  //   rimBand — every mwMinuteWheel vertex farther than 0.9*rootR from the
+  //             wheel's own world axis (this probe's original hand-measured
+  //             "r > 3.9" threshold, now derived instead of eyeballed);
+  //   capReach — half the cap's own vertex z-band (§1);
+  //   cLo — the cap's own bottom face sitting on the rim band's dial-ward face;
+  //   cHi — the cap's own top face standing CLEAR_MARGIN off the plate's
+  //         presented face (§7's raycast, read above).
+  const mwSpec = G.gearToothSpec({ module: L.MW_MODULE_1, teeth: L.MW_MINUTE_TEETH, mates: [L.cannonPinionTeeth] });
+  const rootR = mwSpec.rootR;
+  const wheelCenter = namedGroups.mwMinuteWheel.getWorldPosition(new THREE.Vector3());
+  const rimBand = (() => {
+    let lo = Infinity, hi = -Infinity;
+    for (const o of meshesOf.mwMinuteWheel) {
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        V.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+        o.localToWorld(V);
+        const r = Math.hypot(V.x - wheelCenter.x, V.y - wheelCenter.y);
+        if (r > 0.9 * rootR) { lo = Math.min(lo, V.z); hi = Math.max(hi, V.z); }
+      }
+    }
+    return [lo, hi];
+  })();
+  const capReach = (bands.settingCap[1] - bands.settingCap[0]) / 2;
+  const cHi = faceZ === null ? null : faceZ - CLEAR_MARGIN - capReach;
+  // cLo: the cap's mid-plane low enough that its TOP face (mid + capReach)
+  // still reaches the rim band's DIAL-WARD face (rimBand[1], the less
+  // negative bound — the works sit at more negative z than the plate, so the
+  // dial-ward face of the rim is its numerically larger z) — the engagement
+  // floor, mirroring cHi's own plate-side ceiling without a clearance margin
+  // (this bound is about MESHING the wheel, not clearing it).
+  const cLo = rimBand[1] - capReach;
+  const targetsC = cHi === null ? [cLo] : [cLo, cHi];
   const impliedApex = targetsC.map((c) => c - gapNeeded);
   const impliedSettingRodR = impliedApex.map((a) => (a - rsvP0TopZ) - CLEAR_MARGIN);
 
@@ -237,16 +289,133 @@ const out = await page.evaluate(async () => {
   mountIn.position.copy(mIn0); mountOut.position.copy(mOut0);
   C.scene.updateMatrixWorld(true);
 
-  // §7 — the plate's presented face, raycast at the minute wheel's own axis.
-  const wheelXY = mesh.mwMinuteWheel.getWorldPosition(new THREE.Vector3());
-  // from BELOW, toward +Z: the works (mwMinuteWheel, the fold) sit at more
-  // negative z than the plate, on the DIAL side, so the plate's PRESENTED
-  // face (the one that matters here) is its first surface hit going up.
-  const ray = new THREE.Raycaster(new THREE.Vector3(wheelXY.x, wheelXY.y, -50), new THREE.Vector3(0, 0, 1), 0, 100);
-  let faceZ = null;
-  for (const pm of plateMeshes) { const hits = ray.intersectObject(pm, false); if (hits.length) faceZ = hits[0].point.z; }
+  // §7 — the plate's presented face (raycast above), plus mwMinuteWheel's
+  // and cannonPinion's own clearances against it.
   const mwWheelPlateClear = minClearMulti(meshesOf.mwMinuteWheel, plateMeshes);
   const cannonPlateClear = minClearMulti(meshesOf.cannonPinion, plateMeshes);
+
+  // §8 — the recommended (d) landing's own parameters, measured against
+  // freshly-cut EXPERIMENTAL blanks (never added to the live scene) rather
+  // than assumed. BEVEL_TEETH/BEVEL_MODULE match main.js's addBevelCorner
+  // literals (10, 0.3); the bore is the fold's own leg-2 radius, settingRodR0
+  // (main.js's SETTING_ROD_R, ≈0.382), so the blank is the same stock as the
+  // shipped rise corner.
+  const BEVEL_TEETH_8 = 10, BEVEL_MODULE_8 = 0.3;
+  const mkMitre = () => G.makeConicalGear({ teeth: BEVEL_TEETH_8, module: BEVEL_MODULE_8,
+    mateTeeth: BEVEL_TEETH_8, boreR: settingRodR0, mateBoreR: settingRodR0, shaftAngleDeg: 90 });
+  const mitreVerts = (() => {
+    const g = mkMitre();
+    const body = g.children.find((o) => o.isMesh) || g.children[0];
+    const posAttr = body.geometry.attributes.position;
+    let rMax = 0, zTop = -Infinity;
+    for (let i = 0; i < posAttr.count; i++) {
+      const x = posAttr.getX(i), y = posAttr.getY(i), z = posAttr.getZ(i);
+      rMax = Math.max(rMax, Math.hypot(x, y));
+      zTop = Math.max(zTop, z);
+    }
+    return { rMax, zTop };
+  })();
+  const { rMax, zTop } = mitreVerts;
+  const stubClosedForm = zTop + rMax + CLEAR_MARGIN;
+
+  // The bisection: two such blanks, apexes on one line, each pointing its
+  // body TOWARD the other apex (addBevelCorner's own convention — the body
+  // trails back along the shaft from the pitch point, so on a rod joining
+  // two corners the two blanks grow toward each other). A detached scratch
+  // group (never added to the live scene) so updateMatrixWorld only moves
+  // these two.
+  const stubBisected = (() => {
+    const scratch = new THREE.Group();
+    const grpA = new THREE.Group();
+    grpA.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0));
+    grpA.add(mkMitre());
+    const grpB = new THREE.Group();
+    grpB.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(-1, 0, 0));
+    grpB.add(mkMitre());
+    scratch.add(grpA, grpB);
+    const bodyA = grpA.children[0].children.find((o) => o.isMesh);
+    const bodyB = grpB.children[0].children.find((o) => o.isMesh);
+    const clearAt = (d) => { grpB.position.set(d, 0, 0); scratch.updateMatrixWorld(true); return I.meshClearance(bodyA, bodyB); };
+    let slo = 0, shi = 8;
+    if (clearAt(shi) < CLEAR_MARGIN) shi = 20;
+    for (let i = 0; i < 60; i++) { const mid = (slo + shi) / 2; if (clearAt(mid) >= CLEAR_MARGIN) shi = mid; else slo = mid; }
+    return shi;
+  })();
+
+  // The φ bisection — the recommended design's tilt of the rise leg B→E,
+  // built from the design's own formula rather than assumed. apexD is cHi's
+  // implied apex (§5, reusing the existing cap-above-apex bisection as the
+  // stand-in for the new cap-over-cornerCap gap, since both pairs are the
+  // same two shapes — a MW_MODULE_1/SETTING_CAP_TEETH pinion over a
+  // BEVEL_MODULE/MW_LEG2_R mitre). `t` and the new cap XY are recomputed at
+  // every trial φ, since the chord (and so the cap's site on the wheel's
+  // mesh circle) is itself a function of φ.
+  const apexD = (cHi === null || impliedApex.length < 2) ? null : impliedApex[impliedApex.length - 1];
+  const barrelXY = C.P?.barrel ? { x: C.P.barrel.x, y: C.P.barrel.y } : null;
+  const phiResult = (apexD === null || !barrelXY) ? null : (() => {
+    const Dz = apexB[2] - apexD; // Z_SETTING - apexD
+    const capMeshD8 = Math.hypot(apexB[0] - wheelCenter.x, apexB[1] - wheelCenter.y);
+    const solve = (phiDeg) => {
+      const phi = phiDeg * Math.PI / 180;
+      const chord = Dz * Math.tan(phi) + stubClosedForm;
+      // circle-circle intersection: (wheelCenter, capMeshD8) ∩ (B, chord)
+      const dx = apexB[0] - wheelCenter.x, dy = apexB[1] - wheelCenter.y;
+      const d = Math.hypot(dx, dy);
+      if (d > capMeshD8 + chord || d < Math.abs(capMeshD8 - chord) || d === 0) return null;
+      const a = (d * d + capMeshD8 * capMeshD8 - chord * chord) / (2 * d);
+      const h2 = capMeshD8 * capMeshD8 - a * a;
+      if (h2 < 0) return null;
+      const h = Math.sqrt(h2);
+      const mx = wheelCenter.x + (a * dx) / d, my = wheelCenter.y + (a * dy) / d;
+      const rx = -dy / d, ry = dx / d;
+      const p1 = { x: mx + h * rx, y: my + h * ry };
+      const p2 = { x: mx - h * rx, y: my - h * ry };
+      const far = (Math.hypot(p1.x - barrelXY.x, p1.y - barrelXY.y) >= Math.hypot(p2.x - barrelXY.x, p2.y - barrelXY.y)) ? p1 : p2;
+      const tLen = Math.hypot(far.x - apexB[0], far.y - apexB[1]);
+      const t = { x: (far.x - apexB[0]) / tLen, y: (far.y - apexB[1]) / tLen };
+      // d1 = -cosφ·Ẑ + sinφ·t (t is horizontal, in XY)
+      const d1 = new THREE.Vector3(Math.sin(phi) * t.x, Math.sin(phi) * t.y, -Math.cos(phi)).normalize();
+      const E = { x: apexB[0] + d1.x * (Dz / Math.cos(phi)), y: apexB[1] + d1.y * (Dz / Math.cos(phi)), z: apexB[2] + d1.z * (Dz / Math.cos(phi)) };
+      return { cap: far, t, d1, E };
+    };
+    const clearancesAt = (phiDeg) => {
+      const s = solve(phiDeg);
+      if (!s) return null;
+      const scratch = new THREE.Group();
+      const mkAt = (pos, axis) => {
+        const grp = new THREE.Group();
+        grp.position.set(pos.x, pos.y, pos.z);
+        grp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), axis.clone().normalize());
+        grp.add(mkMitre());
+        scratch.add(grp);
+        return grp.children[0].children.find((o) => o.isMesh);
+      };
+      const riseOut = mkAt(new THREE.Vector3(apexB[0], apexB[1], apexB[2]), s.d1);
+      const footIn = mkAt(new THREE.Vector3(s.E.x, s.E.y, s.E.z), s.d1.clone().negate());
+      const footOut = mkAt(new THREE.Vector3(s.E.x, s.E.y, s.E.z), new THREE.Vector3(s.t.x, s.t.y, 0));
+      scratch.updateMatrixWorld(true);
+      return {
+        riseInFootIn: I.meshClearance(mesh.mwCornerRiseIn, footIn),
+        riseInFootOut: I.meshClearance(mesh.mwCornerRiseIn, footOut),
+        riseOutFootOut: I.meshClearance(riseOut, footOut),
+        s,
+      };
+    };
+    const allClear = (phiDeg) => {
+      const c = clearancesAt(phiDeg);
+      if (!c) return false;
+      return c.riseInFootIn >= CLEAR_MARGIN && c.riseInFootOut >= CLEAR_MARGIN && c.riseOutFootOut >= CLEAR_MARGIN;
+    };
+    // scan coarse, then bisect to 0.01° resolution
+    let philo = 0, phihi = null;
+    for (let p = 0; p <= 60; p += 0.5) { if (allClear(p)) { phihi = p; philo = Math.max(0, p - 0.5); break; } }
+    if (phihi === null) return { phiMin: null, note: 'no φ up to 60° cleared all three pairs' };
+    while (phihi - philo > 0.01) {
+      const mid = (philo + phihi) / 2;
+      if (allClear(mid)) phihi = mid; else philo = mid;
+    }
+    return { phiMin: phihi, at: clearancesAt(phihi) };
+  })();
 
   return {
     bands, apexB, optionA,
@@ -256,6 +425,9 @@ const out = await page.evaluate(async () => {
     lowered,
     faceZ, mwWheelPlateClear, cannonPlateClear,
     CLEAR_MARGIN,
+    rootR, rimBand, capReach, cHi, cLo,
+    mitreVerts, stubClosedForm, stubBisected,
+    apexD, phiResult,
   };
 });
 
@@ -284,8 +456,11 @@ if (out.missing) {
 
   console.log('\n§4 — BISECTION: min gap (cap mid-plane above apex) clearing CLEAR_MARGIN:');
   console.log(`  gap needed = ${out.gapNeeded.toFixed(4)} (CLEAR_MARGIN ${out.CLEAR_MARGIN})`);
+  console.log(`  targetsC (LIVE) rootR ${out.rootR.toFixed(4)}, rim band ${fmtB(out.rimBand)}, capReach ${out.capReach.toFixed(4)}, plate face ${out.faceZ === null ? 'NO HIT' : out.faceZ.toFixed(4)}`);
+  console.log(`  [cLo, cHi] = [${out.cLo.toFixed(3)}, ${out.cHi === null ? '?' : out.cHi.toFixed(3)}]`);
   for (let i = 0; i < out.targetsC.length; i++)
     console.log(`  c = ${out.targetsC[i].toFixed(3)}  ->  implied apex ${out.impliedApex[i].toFixed(3)}`);
+  if (out.cHi !== null) console.log(`  apex implied by cHi (the (d) landing's target): ${(out.cHi - out.gapNeeded).toFixed(3)}`);
 
   console.log('\n§5 — OPTION (c): implied SETTING_ROD_R if Z_SETTING moved to the apex above:');
   console.log(`  RSV_P0_TOP_Z (measured, reservePinion0's own top) = ${out.rsvP0TopZ.toFixed(4)}`);
@@ -304,6 +479,23 @@ if (out.missing) {
   console.log(`  plate presented face at minute-wheel axis: z = ${out.faceZ === null ? 'NO HIT' : out.faceZ.toFixed(4)}`);
   console.log(`  mwMinuteWheel ⇄ backPlate clears ${out.mwWheelPlateClear.toFixed(4)}`);
   console.log(`  cannonPinion  ⇄ backPlate clears ${out.cannonPlateClear.toFixed(4)}`);
+
+  console.log('\n§8 — THE (d) LANDING\'S OWN PARAMETERS, measured against fresh experimental blanks:');
+  console.log(`  mitre blank (BEVEL_TEETH 10, module 0.3, bore ${out.settingRodR0.toFixed(4)}): rMax ${out.mitreVerts.rMax.toFixed(4)}, zTop ${out.mitreVerts.zTop.toFixed(4)}`);
+  console.log(`  stub length: closed form zTop+rMax+CLEAR_MARGIN = ${out.stubClosedForm.toFixed(4)}  vs  bisected min E→D offset = ${out.stubBisected.toFixed(4)}`);
+  if (out.apexD === null) {
+    console.log('  apexD (cHi\'s implied apex) unavailable — cHi did not resolve, so the φ bisection did not run');
+  } else {
+    console.log(`  apexD (cHi's implied apex, reused as Z_CAP_CORNER's stand-in) = ${out.apexD.toFixed(3)}`);
+    const pr = out.phiResult;
+    if (!pr || pr.phiMin === null) {
+      console.log(`  φ bisection: FAILED — ${pr?.note || 'no result (barrel position unavailable?)'}`);
+    } else {
+      console.log(`  φ bisection (0.01° resolution): φ_min = ${pr.phiMin.toFixed(2)}°`);
+      console.log(`    at φ_min: RiseIn⇄FootIn ${pr.at.riseInFootIn.toFixed(4)}, RiseIn⇄FootOut ${pr.at.riseInFootOut.toFixed(4)}, RiseOut⇄FootOut ${pr.at.riseOutFootOut.toFixed(4)}`);
+      console.log(`    cap's new site ≈ (${pr.at.s.cap.x.toFixed(3)}, ${pr.at.s.cap.y.toFixed(3)}, ${out.apexD.toFixed(3)})`);
+    }
+  }
 
   console.log('\n(REPORT — nothing here gates; see TODO 151 for the fix path this feeds)');
 }
