@@ -24774,6 +24774,22 @@ own thesis, restated by its own subject matter: translating the total closes
 today's gap and buys nothing about tomorrow's, because nothing yet makes a
 landing carry its locales.
 
+### German, completed
+
+German closed on both pages: explainer 78 real keys → 0 (759/759), primer 8 → 0
+(145/145), in the table's Glashütte register (Schnecke, Federhaus, Tonfeder,
+Klinke, Schnabel, Spiralklötzchen, Teilkreis). The twelve newest Vocabulary
+terms took German names with German variant rows — Azimut/Azimute,
+Kreisring, Sehne, Tangente, Hub, Wirkgruppe, Faltung, Zwischenrad — so the
+glossary linker matches German prose: 45 links, 41 of them on English words,
+became 59 on German ones. One plate label overran its plate by the checker's
+fit test (German runs long) and was tightened to "Fuß räumt die GELÖSTE
+Kopfhöhe"; the mate's addendum is what a root clears, so nothing was lost.
+Residue, REPORTED by the checker's block-coverage line and not gated: the
+existing German `alarm-arming` ledger paragraph renders at 0.43× its English
+length (1197 → 589 chars), which reads as a translation that dropped half the
+block. It predates this landing and is left for a German quality pass.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
