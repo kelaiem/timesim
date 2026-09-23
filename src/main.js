@@ -4891,7 +4891,7 @@ windSpinner.add(crown);
 const SETTING_SPUR_T = 1.1;
 let SETTING_SPUR_Z = 0;
 const settingWheel = G.makeGear({ name: 'settingWheel', module: KW_MODULE, teeth: settingWheelTeeth, mates: [
-    { teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] },
+    { teeth: minuteWheelTeeth, mates: [settingWheelTeeth] },
   ], thickness: SETTING_SPUR_T, boreR: 0.7, spokes: 0, material: MATS.steel });
 // TODO 50 — named so the clutch pair's floors row can EXCLUDE the pulled
 // setting mesh by contact selector (makeGear returns a group; the selector
@@ -4920,9 +4920,12 @@ const settingBevel = G.makeConicalGear({ name: 'settingBevel', module: KW_MODULE
 settingBevel.traverse((o) => { if (o.isMesh) o.name = 'settingBevel'; });
 settingBevelMount.add(settingBevel);
 await breathe();
+// TODO 150 item 3 — this wheel does NOT mesh the setting cap: the cap
+// stands 3.1 u off this wheel's plane (world z −7.76…−6.04 against this
+// wheel's, TODO 151) and meshes the motion works' MW_MINUTE_TEETH wheel
+// instead, in ITS own plane. The false mate entry that claimed it is gone.
 const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: minuteWheelTeeth, mates: [
     { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
-    { teeth: SETTING_CAP_TEETH, mates: [minuteWheelTeeth] },
   ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
 // THE SETTING SPUR'S PLANE, solved against the blanks rather than the nominals.
 // The bevel's web is the lowest crown-corner face; below it must come a margin,
@@ -5433,7 +5436,14 @@ function buildSettingMetal(cap, parent, { candidate = false } = {}) {
   // The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
   // from the minute wheel's axis, in the minute wheel's own plane — it
   // engages REAL teeth.
-  const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: minuteWheelTeeth, mates: [settingWheelTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
+  // TODO 150 item 3 / TODO 151 — the cap was cut for the KEYLESS minute
+  // wheel's mate list (minuteWheelTeeth, 24), but it meshes the motion
+  // works' minute wheel (MW_MINUTE_TEETH, 30) beside it, one mesh distance
+  // from the cannon pinion's own axis. The two external meshes on that one
+  // wheel — the cap and the cannon pinion — are its real mates; TODO 151
+  // is why they still stand 3.1 u apart axially rather than meshing in the
+  // metal.
+  const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
   settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
   settingCap.position.set(cap.x, cap.y, Z_CANNON_PINION);
   parent.add(settingCap);
