@@ -2521,7 +2521,13 @@ export const INTRA_UNIT_CONTACTS = [
   // rather than kept as the record of a joint that is no longer there.
   { unit: 'Keyless works', a: 'settingWheel', b: 'settingArbor', why: 'TODO 136 — the setting corner is a COMPOUND: its spur half (the minute-wheel mesh) and its bevel half (the clutch mesh) are one body on one arbor, crownWheel/transferWheel\'s own idiom' },
   { unit: 'Keyless works', a: 'settingBevel', b: 'settingArbor', why: 'TODO 136 — the bevel half on the same arbor, the other end of that stack' },
-  { unit: 'Keyless works', a: 'minutePinion', b: 'settingDrop', why: 'the minute arbor\'s pinion on the rod that rises from its plane to the motion-works traverse — one arbor, two meshes (named since TODO 136; it rode an index label the keyless fold renumbered)' },
+  // TODO 150 item 1 retired the minute pinion (it "meshed nothing" and
+  // existed only to carry a tooth count into the hand-set ratio) and re-cut
+  // settingDrop as the minute wheel's OWN arbor, straight through its bore
+  // to the fold's drop corner — one arbor, two joints, both real now that
+  // the corner is mounted on the shaft rather than off its far side.
+  { unit: 'Keyless works', a: 'minuteWheel', b: 'settingDrop', why: 'TODO 150 item 1 — the minute wheel\'s own bore, keyed to the arbor that rises from its plane to the fold\'s drop corner (settingArbor\'s idiom: boreR = SETTING_ROD_R)' },
+  { unit: 'Keyless works', a: 'mwCornerDropIn', b: 'settingDrop', why: 'TODO 150 item 1 — the drop corner\'s inboard bevel, now mounted on Z_UP negated so it is cut ON this shaft rather than floating off its far side' },
   // TODO 38 W4's wind axis lifted the fixture-vs-fixture blindness on the
   // fusee stack: the ratchet and the great wheel became MOVERS the moment an
   // axis wound them, and two standing contacts that were always there became

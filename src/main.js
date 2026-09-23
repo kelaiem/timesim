@@ -26,7 +26,7 @@ import {
   // names are retired.
   TRAIN,
   KW_MODULE, crownWheelTeeth, windPinionTeeth, settingWheelTeeth,
-  minuteWheelTeeth, minutePinionTeeth, WIND_SPUR_TEETH, SETTING_CAP_TEETH,
+  minuteWheelTeeth, WIND_SPUR_TEETH, SETTING_CAP_TEETH,
   rsvTeethP0, rsvTeethW1, rsvTeethP1, rsvModule0, rsvD0,
   cannonPinionTeeth, MW_MODULE_1, MW_MINUTE_TEETH, MW_PINION_TEETH, MW_HOUR_TEETH,
   HOUR_TUBE_INNER, HOUR_TUBE_OUTER, ALARM_TUBE_INNER, ALARM_TUBE_OUTER,
@@ -1958,8 +1958,7 @@ const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayo
 // tornado train, this floor — not the train extent — is what sizes the
 // plate).
 // (KW_MODULE, crownWheelTeeth/windPinionTeeth/settingWheelTeeth,
-// minuteWheelTeeth/minutePinionTeeth — the keyless ratios — imported from
-// layout.js.)
+// minuteWheelTeeth — the keyless ratios — imported from layout.js.)
 // The setting path collapsed to ONE coefficient: hand-offset radians per
 // radian of setting-path rotation. tick() walks this same chain forward
 // (settingWheel → minuteArbor compound → cannon) to derive the hand offset
@@ -1967,13 +1966,22 @@ const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayo
 // rotation a wanted hand movement costs. Both directions therefore come
 // from the tooth counts — the identity is asserted below rather than
 // trusted, since the two forms live 5000 lines apart.
+// TODO 150 item 1 — the chain past the minute wheel is no longer
+// minuteWheel → minutePinion → cannon (that pinion is gone, §136's "meshes
+// nothing" display form retired along with the mate it never had): it is
+// minuteWheel's ARBOR → settingDrop → the fold's three corners, 1:1 with
+// net sense −1 (MW_FOLD_SPIN's build-time solve, TODO 150's main fix) →
+// settingCap → the motion works' minute wheel → cannon pinion, two
+// external meshes so the ratio is cap/cannon. minutePinionTeeth (8) and
+// SETTING_CAP_TEETH (8) are the same count, so the substitution leaves the
+// VALUE unchanged — only what it names.
 const HAND_RAD_PER_SET_RAD = KW_SET_WHEEL_SIDE
-  * -(windPinionTeeth / minuteWheelTeeth) * (minutePinionTeeth / cannonPinionTeeth);
+  * -(windPinionTeeth / minuteWheelTeeth) * (SETTING_CAP_TEETH / cannonPinionTeeth);
 {
   const probe = 1; // one radian into the setting path, walked exactly as tick() walks it
   const settingWheelSpin = KW_SET_WHEEL_SIDE * -probe * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
-  const rawSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
+  const rawSetOffset = -minuteArborSpin * (SETTING_CAP_TEETH / cannonPinionTeeth);
   if (Math.abs(rawSetOffset - HAND_RAD_PER_SET_RAD) > 1e-12)
     console.warn(`setting path: closed form ${HAND_RAD_PER_SET_RAD} disagrees with the forward chain ${rawSetOffset}`);
 }
@@ -2541,9 +2549,11 @@ registerLabel('Hairspring', hairspringGroup);
 //    cut PIVOT_BORE_CLEAR-style clearance over the 0.7 shaft, and the bore
 //    IS that arbor's bearing, exactly like a train pivot;
 //  · a clearance recess at the motion-works corner: the setting path's
-//    drop→traverse bevel gear stands tip-up at the minute arbor's axis and
-//    its cone reaches into the plate's z-band (the corner plane sits just
-//    under the plate) — the recess is sized to the gear's tip circle;
+//    drop→traverse bevel gear stands tip-down at the minute arbor's axis
+//    (TODO 150 item 1 — mounted on its own shaft now, not floating tip-up
+//    off the far side of the apex) and its cone reaches into the plate's
+//    z-band (the corner plane sits just under the plate) — the recess is
+//    sized to the gear's cone (MW_DROP_PLATE_HOLE, A's own recess);
 //  · an arc SLOT for the setting lever's tail post, swept over the full
 //    crown stroke (chord + measured bow, same construction as the
 //    three-quarter plate's slot for this same post higher up).
@@ -2839,7 +2849,10 @@ const ALARM_LINK_ROD_PLATE_BORE_R = ALARM_LINK_ROD_BUSH_OD + 0.01;             /
 const BACK_PLATE_HOLES = [
   { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
-  { x: minuteArborXY.x, y: minuteArborXY.y, r: 1.95 },
+  // TODO 150 item 1 — the bare 1.95 that stood here is gone; the drop
+  // corner's own recess is MW_DROP_PLATE_HOLE, sized off the cut blank
+  // (cornerDrop.spec.coneR, A's precedent) and pushed into `holes` beside
+  // MW_FOLD_PLATE_HOLE, once the corner exists.
   { x: ALARM_WIND_X, y: ALARM_WIND_Y, r: 0.55 }, // §25 C: the climb arbor's lower bearing IS this bore
   { x: 34.32, y: 16.89, r: ALARM_LINK_ROD_PLATE_BORE_R },               // §35/§68 (§112: re-synced to the SOLVED rod site; band swap: the tab-zone score re-ranked the solve) — the selector rod's bore (= ALARM_LINK_ROD_XY, asserted at the link build) — re-sited with the wheel, diametrically opposite the lock beak. r 0.45 not 0.28: the plate's extrude bevel collars small holes shut (MODELING.md rule 1)
 ];
@@ -4920,13 +4933,50 @@ const settingBevel = G.makeConicalGear({ name: 'settingBevel', module: KW_MODULE
 settingBevel.traverse((o) => { if (o.isMesh) o.name = 'settingBevel'; });
 settingBevelMount.add(settingBevel);
 await breathe();
+// TRAVERSE PLANE: between the plate's back bevel (−2.3) and the reserve gear
+// plane (Z_RSV −4.2, w1 tops at −3.53 measured), −3.0 a comfortable middle.
+// TODO 136 is why the window is written down as a window: the crown wheel is a
+// cone now, and trailing UP its arbor its blank would stand right here — the
+// traverse passes 2.003 from that axis, inside its 3.518 tip circle, and the
+// 0.225 left between the wheel's tip ray and w1's top does not take a 0.7 rod.
+// The wheel went below the stem instead (see its build), which is the cheaper
+// side to spend and leaves this plane exactly where it was.
+// HOISTED above the minute wheel's build (TODO 150 item 1): the wheel now
+// takes SETTING_ROD_R as its own bore, keyed directly to settingDrop —
+// settingArbor's idiom, a bore sized to the rod actually passing through it
+// rather than a bare literal.
+const Z_SETTING = -3.0;
+// §234 Landing 2 step 3a — SETTING_ROD_R, re-derived off the actual pinch
+// (was a bare 0.35 literal). The reserve train is built far later in this
+// file (Z_RSV et al.), so — same hand-off as this block's own "w1 tops at
+// −3.53 measured" a few lines up — the governing neighbour's Z is a MEASURED
+// constant, not a live query; `RSV_P0_TOP_Z` is asserted against the built
+// mesh once it exists (see reservePinion0's own build).
+//
+// RE-MEASURED (§234 Landing 2 step 3a), because step 3b's keyless retooth
+// moved things since the step-3a finding was filed: the true governing
+// neighbour is `reservePinion0` (the reserve train's FIRST member off the
+// barrel arbor, not `rsvWheel1` as the filed finding said — its top happens
+// to read the same −3.53, which is what let the misattribution stand), top
+// z RSV_P0_TOP_Z. A second, independent obstacle sits at the SAME XY
+// (`rsvArbExt`, the visible barrel-arbor extension, r 0.55) — it crosses
+// Z_SETTING's plane on its way from the barrel down to p0 REGARDLESS of
+// Z_RSV, which is why it stays live even where reservePinion0's own Z bound
+// is pushed clear (measured: r_max saturates at 0.48 once Z_RSV is pushed
+// past about −4.7, and does not move further even at Z_RSV −6.0).
+//
+// reservePinion0 governs AT THE CURRENT Z_RSV (0.382 < the arbExt/XY
+// ceiling's 0.48), so this derives from it alone:
+//   SETTING_ROD_R = (Z_SETTING − RSV_P0_TOP_Z) − CLEAR_MARGIN
+const RSV_P0_TOP_Z = -3.532; // reservePinion0's measured world top (see above)
+const SETTING_ROD_R = (Z_SETTING - RSV_P0_TOP_Z) - CLEAR_MARGIN; // 0.382, up from the old bare 0.35
 // TODO 150 item 3 — this wheel does NOT mesh the setting cap: the cap
 // stands 3.1 u off this wheel's plane (world z −7.76…−6.04 against this
 // wheel's, TODO 151) and meshes the motion works' MW_MINUTE_TEETH wheel
 // instead, in ITS own plane. The false mate entry that claimed it is gone.
 const minuteWheel = G.makeGear({ name: 'minuteWheel', module: KW_MODULE, teeth: minuteWheelTeeth, mates: [
     { teeth: settingWheelTeeth, mates: [minuteWheelTeeth, windPinionTeeth] },
-  ], thickness: 1.0, boreR: 0.6, spokes: 4, material: MATS.brass });
+  ], thickness: 1.0, boreR: SETTING_ROD_R, spokes: 4, material: MATS.brass });
 // THE SETTING SPUR'S PLANE, solved against the blanks rather than the nominals.
 // The bevel's web is the lowest crown-corner face; below it must come a margin,
 // then whichever of the two wheels reaches further from its own plane — they are
@@ -4959,63 +5009,19 @@ const settingArbor = (() => {
 // pitch-circle sum by more than 0.05 — correctly, since phasing a pair that
 // does not reach is meaningless. They stand at the sum exactly now.)
 // TODO 132 — the setting mesh's one knob, SOLVED below. tick() writes the whole
-// compound arbor from `minuteWheelBase + minuteArborSpin`, so the phase has to
-// live in the base: a rotation left on the object is erased by the first frame.
-// Turning the arbor re-indexes the minute pinion with it, which costs nothing —
-// §136 has that pinion meshing nothing, and the hands arrive through
-// handSetOffset's tooth counts rather than through its angle.
+// arbor from `minuteWheelBase + minuteArborSpin`, so the phase has to live in
+// the base: a rotation left on the object is erased by the first frame.
 // The half-pitch seed is TODO 15's idiom; measured, it left the pair 22.222% of
 // a pitch off anti-phase over the pose net.
 let minuteWheelBase = Math.PI / minuteWheelTeeth;
-const minutePinion = G.makePinion({ name: 'minutePinion', module: 0.28, teeth: minutePinionTeeth, mates: [minutePinionTeeth], // §136: meshes NOTHING (see above) — self-Willis display form, not a mesh claim
-  thickness: 1.3, material: MATS.steel });
-// TRAVERSE PLANE: between the plate's back bevel (−2.3) and the reserve gear
-// plane (Z_RSV −4.2, w1 tops at −3.53 measured), −3.0 a comfortable middle.
-// TODO 136 is why the window is written down as a window: the crown wheel is a
-// cone now, and trailing UP its arbor its blank would stand right here — the
-// traverse passes 2.003 from that axis, inside its 3.518 tip circle, and the
-// 0.225 left between the wheel's tip ray and w1's top does not take a 0.7 rod.
-// The wheel went below the stem instead (see its build), which is the cheaper
-// side to spend and leaves this plane exactly where it was.
-const Z_SETTING = -3.0;
-// §234 Landing 2 step 3a — SETTING_ROD_R, re-derived off the actual pinch
-// (was a bare 0.35 literal). The reserve train is built far later in this
-// file (Z_RSV et al.), so — same hand-off as this block's own "w1 tops at
-// −3.53 measured" a few lines up — the governing neighbour's Z is a MEASURED
-// constant, not a live query; `RSV_P0_TOP_Z` is asserted against the built
-// mesh once it exists (see reservePinion0's own build).
-//
-// RE-MEASURED (§234 Landing 2 step 3a), because step 3b's keyless retooth
-// moved things since the step-3a finding was filed: the true governing
-// neighbour is `reservePinion0` (the reserve train's FIRST member off the
-// barrel arbor, not `rsvWheel1` as the filed finding said — its top happens
-// to read the same −3.53, which is what let the misattribution stand), top
-// z RSV_P0_TOP_Z. A second, independent obstacle sits at the SAME XY
-// (`rsvArbExt`, the visible barrel-arbor extension, r 0.55) — it crosses
-// Z_SETTING's plane on its way from the barrel down to p0 REGARDLESS of
-// Z_RSV, which is why it stays live even where reservePinion0's own Z bound
-// is pushed clear (measured: r_max saturates at 0.48 once Z_RSV is pushed
-// past about −4.7, and does not move further even at Z_RSV −6.0).
-//
-// reservePinion0 governs AT THE CURRENT Z_RSV (0.382 < the arbExt/XY
-// ceiling's 0.48), so this derives from it alone:
-//   SETTING_ROD_R = (Z_SETTING − RSV_P0_TOP_Z) − CLEAR_MARGIN
-const RSV_P0_TOP_Z = -3.532; // reservePinion0's measured world top (see above)
-const SETTING_ROD_R = (Z_SETTING - RSV_P0_TOP_Z) - CLEAR_MARGIN; // 0.382, up from the old bare 0.35
-// §234 fold — SETTING_ROD_R is now the section of the DROP and of LEG 2 of the
-// folded traverse (K→B, the leg that still passes over reservePinion0); leg 1
-// (A→K) has the plate as its only wall and takes MW_LEG1_R, declared here
-// because the minute pinion's step (MINUTE_Z_STEP, below) stands under A where
-// leg 1 begins and must clear the FATTER member. The barrel-arbor extension's
-// radius is the fold's other closed-form bound, hoisted from its build (the
-// reserve train is cut thousands of lines later) so the two sites share one
-// number rather than agreeing by coincidence.
+// (Z_SETTING, RSV_P0_TOP_Z and SETTING_ROD_R are hoisted above the minute
+// wheel's build now — TODO 150 item 1 — with their derivation comments there.)
+const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
+const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                           // 0.55
 const RSV_ARB_EXT_R = 0.55;                                                              // rsvArbExt's radius — its build reads this
 const Z_RSV = -4.2;         // the reserve train's gear plane in the plate→dial gap (plate back −2.3, dial −7) — hoisted from its build for the same reason
 const RSV_Z_STEP = 1.5;     // its wheel/pinion height split (w2's dial-ward face at −6.2 sits well clear of the dial plate's back at Z_DIAL −8.4; §153's sector floor is inside the plate beyond it)
 const Z_CANNON_PINION = Z_DIAL + 1.5; // cannonPinion & minute wheel plane: dialFace local −1.5, Y-flip maps to Z_DIAL + 1.5 (hoisted: the cap's z-band is read below)
-const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
-const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                           // 0.55
 // The Yoke's bound on leg 1, as the world HEADING of leg 1's direction from
 // A (degrees, atan2 in the movement's XY): the heading closest to the
 // barrel's side whose first 12 u at MW_LEG1_R clear the Yoke's prong post
@@ -5033,20 +5039,17 @@ const MW_FOLD_LEG1_HEADING_DEG = -46.87;   // the scan at 0.25°: this ray reads
 // CAP_BEARING, shrinking the corner and necking the rod were each tried and
 // refused; docs/BUILT.md §234 keeps the numbers. The answer was the FOLD
 // built below: two legs on two axis lines, each a bar of its own.)
-// The pinion stepped toward the DIAL below the wheel, 1.8 rather than the old
-// 2.0 so its underside held one margin over the dial face. TODO 136 REVERSED
-// THE STEP: the corner's apex is on the stem line, so the setting wheel's two
-// halves had to go below it, the minute wheel followed its spur's plane, and a
-// step DOWN from there puts the pinion through the dial sheet. Stepping UP
-// instead, the bound is the motion-works TRAVERSE rod the pinion now stands
-// under — so the step is SOLVED against it rather than kept at 1.8, which
-// measured left the pinion 0.11 into the rod. The 1.8 is still the ceiling: the
-// step that reads as one compound stack, never more than it.
-const MINUTE_Z_STEP = (() => {
-  const b = new THREE.Box3().setFromObject(minutePinion);
-  const room = (Z_SETTING - MW_LEG1_R - CLEAR_MARGIN) - SETTING_SPUR_Z - b.max.z;   // §234 fold: leg 1 (the fatter member) begins over this pinion
-  return Math.min(1.8, room);
-})();
+// TODO 150 item 1 — THE MINUTE PINION IS GONE. It "meshes nothing" (§136's
+// own words) and existed only as a self-Willis display form to carry
+// minutePinionTeeth into the hand-set ratio (HAND_RAD_PER_SET_RAD now reads
+// SETTING_CAP_TEETH instead — same count, 8, so the value did not move).
+// Its stepped mount was also what put the drop corner's inboard bevel on the
+// WRONG side of its own apex (TODO 150's residue): the corner pointed its
+// axis up, away from a shaft that actually ran down from a plane below it.
+// With the pinion gone the wheel's own arbor (SETTING_ROD_R, bored straight
+// through the wheel — settingArbor's idiom) runs directly from the wheel's
+// plane up to the corner at A, and the corner mounts on its shaft rather
+// than off the far side of it — see cornerDrop's build, below.
 // The minute wheel FOLDS perpendicularly off the stem line instead of
 // continuing outward: straight-line continuation would put it (and its own
 // radius) well past the plate rim. Folded to the side AWAY from the setting
@@ -5058,13 +5061,10 @@ const MINUTE_Z_STEP = (() => {
 // (mwFoldD / minuteArborXY are hoisted with the XY layout.)
 const minuteArbor = new THREE.Group();
 // TODO 136 — the minute wheel meshes the setting SPUR, so it rides the spur's
-// plane, wherever the corner put it. And its pinion flips to the plate side:
-// under the spur's new plane a step DOWN would put it through the dial sheet.
+// plane, wherever the corner put it.
 minuteArbor.position.set(minuteArborXY.x, minuteArborXY.y, SETTING_SPUR_Z);
-minutePinion.position.z = MINUTE_Z_STEP;
 minuteWheel.traverse((o) => { if (o.isMesh) o.name = 'minuteWheel'; });
-minutePinion.traverse((o) => { if (o.isMesh) o.name = 'minutePinion'; });
-minuteArbor.add(minuteWheel, minutePinion);
+minuteArbor.add(minuteWheel);
 keyless.add(minuteArbor);
 // Motion-works arbor toward the dial centre — the minute pinion is nowhere
 // near the cannon pinion (the keyless works sits out at the plate edge, by
@@ -5085,12 +5085,15 @@ keyless.add(minuteArbor);
 // corner pair — every rod one rigid spin, every corner a reversing pair
 // (`MW_FOLD_SPIN`, TODO 150) — not just teleported to the far end.
 const settingArborXY = { x: minuteArborXY.x, y: minuteArborXY.y };
-// The arbor's own shaft: from the minute pinion's plane UP to the corner.
+// TODO 150 item 1 — the minute ARBOR, from the wheel's own plane straight up
+// to the corner at A: the pinion (and its stepped mount) is gone, so this is
+// no longer offset below the wheel by MINUTE_Z_STEP — it starts where the
+// wheel stands.
 const settingDrop = new THREE.Mesh(
-  new THREE.CylinderGeometry(SETTING_ROD_R, SETTING_ROD_R, Z_SETTING - (SETTING_SPUR_Z + MINUTE_Z_STEP), 10), MATS.steel);
+  new THREE.CylinderGeometry(SETTING_ROD_R, SETTING_ROD_R, Z_SETTING - SETTING_SPUR_Z, 10), MATS.steel);
 settingDrop.name = 'settingDrop';
 settingDrop.rotation.x = Math.PI / 2;
-settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + SETTING_SPUR_Z + MINUTE_Z_STEP) / 2);
+settingDrop.position.set(settingArborXY.x, settingArborXY.y, (Z_SETTING + SETTING_SPUR_Z) / 2);
 keyless.add(settingDrop);
 
 function makeRodSegment(a, b, radius) {
@@ -5420,16 +5423,25 @@ function buildSettingMetal(cap, parent, { candidate = false } = {}) {
   rise.position.set(cap.x, cap.y, (Z_SETTING + Z_CANNON_PINION) / 2);
   parent.add(rise);
   // rise → traverse and traverse → drop: two corners, both exactly 90°. The
-  // first corner's vertical gear stands tip-up at the shaft's top end; its
-  // cone reaches into the plate's z-band, which is why the base plate carries
-  // a clearance recess bored at exactly this axis (see the plate build).
+  // first corner's vertical gear stands tip-DOWN at the shaft's foot (TODO
+  // 150 item 1 — it used to stand tip-up, pointing its axis AWAY from the
+  // minute arbor that is actually below it, which is what left the bevel
+  // spinning against its own shaft); its cone still reaches into the plate's
+  // z-band, which is why the base plate carries a clearance recess bored at
+  // exactly this axis (see the plate build, MW_DROP_PLATE_HOLE).
   // §234 fold — the two mitres key to the LEGS (their outboard/inboard
   // members aimed along leg 1 and leg 2, and bored for those rods), and a
   // third corner at K joins the legs at the derived shaft angle. Its blanks
   // are bored for the leg each is keyed to: leg 1's 0.55 inboard, leg 2's
   // 0.382 outboard — the face width is the pair's and `bevelToothSpec` takes
   // both.
-  const cornerDrop = addBevelCorner(settingA, Z_UP, F.leg1U, 'mwCornerDrop', { boreOut: MW_LEG1_R, parent });
+  // TODO 150 item 1 — axisIn is now Z_UP NEGATED: the gear's body trails
+  // AWAY from the corner back into its own shaft, and that shaft (the minute
+  // arbor, settingDrop) runs DOWN from A, not up. boreIn is now the arbor's
+  // own SETTING_ROD_R (settingArbor's idiom) rather than the corner's
+  // undeclared default — the gear is bored for the rod it is actually keyed
+  // to.
+  const cornerDrop = addBevelCorner(settingA, Z_UP.clone().negate(), F.leg1U, 'mwCornerDrop', { boreIn: SETTING_ROD_R, boreOut: MW_LEG1_R, parent });
   const cornerFold = addBevelCorner(F.K, F.leg1U.clone().negate(), F.leg2U, 'mwCornerFold',
     { shaftAngleDeg: F.shaftAngleDeg, boreIn: MW_LEG1_R, boreOut: MW_LEG2_R, module, parent });
   const cornerRise = addBevelCorner(cap, F.leg2U.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise', { boreIn: MW_LEG2_R, parent });
@@ -5722,6 +5734,18 @@ const MW_FOLD_SPIN = (() => {
   }
   return out;
 })();
+// TODO 150 item 1 — the closed-form hand-set ratio assumes the fold carries
+// the minute arbor's spin to the cap at net sense −1 (HAND_RAD_PER_SET_RAD's
+// "arbor → fold 1:1 with sense −1"); this reads that sense OFF THE BUILT
+// MOUNTS rather than trusting the assumption. MW_FOLD_SPIN[0].kIn is the
+// drop corner's inboard factor — the one keyed to the minute arbor itself —
+// projected onto the arbor's own axis (bevelCornerAxis walks up from the
+// mount, TODO 140's precedent).
+{
+  const dropZ = MW_FOLD_SPIN[0].kIn * bevelCornerAxis(cornerDrop.gearIn.parent).z;
+  if (Math.abs(dropZ + 1) > 1e-6)
+    console.warn(`TODO 150: the fold turns the minute arbor ${dropZ.toFixed(6)}× the cap's spin; HAND_RAD_PER_SET_RAD's closed form assumes −1`);
+}
 // The plate is bored at K as it is at A: the fold's blanks stand in the base
 // plate's z-band (Σ ≈ 150° puts their cone distance coneR nearly across the
 // axis, so they reach to Z_SETTING + coneR ≈ −1.3 against a back face at
@@ -5730,6 +5754,11 @@ const MW_FOLD_SPIN = (() => {
 // footprint is the blank's sphere of radius coneR about the apex, so the bore
 // is coneR + CLEAR_MARGIN. Consumed by the plate's `holes` at its build.
 const MW_FOLD_PLATE_HOLE = { x: MW_FOLD.K.x, y: MW_FOLD.K.y, r: cornerFold.spec.coneR + CLEAR_MARGIN };
+// A's own recess, by the same rule — TODO 150 item 1 replaced the bare 1.95
+// literal that used to stand here (sized for a blank whose corner pointed
+// the wrong way) with the cut blank's own coneR, now that the corner is
+// mounted on its actual shaft.
+const MW_DROP_PLATE_HOLE = { x: settingA.x, y: settingA.y, r: cornerDrop.spec.coneR + CLEAR_MARGIN };
 // §137 — the corners' transfer rows: the movement's TEMPLATE idiom, declared
 // first. Rotation through an angle earns a bevel pair; the ratio is 1:1
 // because the TOOTH COUNTS are equal (the counts stand in for the arms — an
@@ -7015,6 +7044,7 @@ const backPlate = G.makeBackPlate({
   holes: [
     ...BACK_PLATE_HOLES,
     MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
+    MW_DROP_PLATE_HOLE,   // TODO 150 item 1 — the drop corner's own recess at A, same precedent
     ...CASE_CLAMP_AZ.map((a) => ({
       x: Math.cos(a) * R_CLAMP, y: Math.sin(a) * R_CLAMP, r: CASE_CLAMP_BORE_R,
     })),
@@ -16536,12 +16566,12 @@ await (async () => {
     // The SETTING mesh. The setting wheel is the datum: its own teeth answer
     // to the sliding clutch, whose axis lies along the stem — a crossed-axis
     // mesh no parallel-axis solve can phase — so the one freedom here is the
-    // minute arbor, turned as one blank with the pinion riding (the motion
-    // works' own structure, gauged by the wheel that owns the silhouette).
+    // minute arbor (TODO 150 item 1: no pinion rides with it any more, the
+    // arbor turns the fold directly).
     await breathe();
     solveGearChain('keyless:', [
       { obj: settingWheel, teeth: settingWheelTeeth, name: 'setting wheel' },
-      { obj: minuteArbor, gauge: minuteWheel, teeth: minuteWheelTeeth, name: 'minute wheel (+pinion held)' },
+      { obj: minuteArbor, gauge: minuteWheel, teeth: minuteWheelTeeth, name: 'minute wheel' },
     ], KW_MODULE, ['handSet']);
     await breathe();
     minuteWheelBase = minuteArbor.rotation.z;
@@ -41093,11 +41123,15 @@ function tick(t) {
   // outer terminal holds still (precomputed keyframes; see makeHairspring).
   hairspring.userData.setWind(theta);
 
-  // Setting path: settingWheel -> minuteArbor (compound wheel+pinion) ->
-  // the RAW hand-set angle, derived forward through the real tooth counts.
+  // Setting path: settingWheel -> minuteArbor -> the fold (settingDrop,
+  // three corners, 1:1 net sense −1) -> settingCap -> the motion works'
+  // minute wheel -> cannon, to the RAW hand-set angle, derived forward
+  // through the real tooth counts (TODO 150 item 1 — minutePinionTeeth
+  // retired with the pinion it named; SETTING_CAP_TEETH is the real closing
+  // ratio and happens to share its count, 8, so the value is unchanged).
   const settingWheelSpin = KW_SET_WHEEL_SIDE * -setPathRot * (windPinionTeeth / settingWheelTeeth);
   const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
-  const rawSetOffset = -minuteArborSpin * (minutePinionTeeth / cannonPinionTeeth);
+  const rawSetOffset = -minuteArborSpin * (SETTING_CAP_TEETH / cannonPinionTeeth);
   // MINUTE QUICK-SET, DETENTED DISPLAY: while the crown is out, the jumper
   // is in the star and the DISPLAYED offset is quantized so the minute hand
   // sits on exact minute indices — the hand steps one detent at a time

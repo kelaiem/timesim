@@ -16,8 +16,10 @@
 // which is where the defect lived.
 //
 // GATES (exit non-zero):
-//   · RODS — the two members keyed to each of leg 1, leg 2 and the rise (its
-//     outboard bevel ⇄ the cap) have EQUAL vectors, to 1e-6 of their size;
+//   · RODS — the two members keyed to each of leg 1, leg 2, the rise (its
+//     outboard bevel ⇄ the cap) and the DROP (its inboard bevel ⇄ the keyless
+//     minute arbor itself — closed by TODO 150 item 1, see below) have EQUAL
+//     vectors, to 1e-6 of their size;
 //   · CORNERS — each pair's surface velocities agree at the pitch point (the
 //     unit bisector of the two gears' centres off the apex), which is rolling;
 //   · CAP ⇄ MINUTE WHEEL — pitch-line speeds equal and opposite, the external
@@ -26,11 +28,20 @@
 // anything); the cap ⇄ minute wheel check is the must-DIFFER half; the step is
 // re-run from a second base pose so one lucky pose cannot pass it.
 //
-// REPORTED, NOT GATED — TODO 150's residue: the drop corner's inboard bevel is
-// cut on the FAR side of its apex from the keyless minute arbor it is keyed to,
-// so no rigid spin can agree with both that arbor and the rods above it. It
-// reads equal and opposite (a sign, not a rate) until the gear is re-cut on its
-// shaft; the probe says so when it starts agreeing, so the item can close.
+// TODO 150 item 1 CLOSED the one thing this probe used to only REPORT: the
+// drop corner's inboard bevel used to be cut on the FAR side of its apex
+// from the keyless minute arbor it is keyed to (mounted on Z_UP, pointing
+// its axis AWAY from a shaft that ran below it), so no rigid spin could
+// agree with both that arbor and the rods above it — it read equal and
+// opposite, a sign and not a rate. Re-mounted on Z_UP negated (and re-bored
+// to the arbor's own SETTING_ROD_R), the drop is now a fourth SHAFTS row,
+// gated like the other three.
+//
+// STILL REPORTED, NOT GATED — TODO 151: the cap does not mesh the motion
+// works' minute wheel IN THE METAL, only in tooth-count arithmetic; the two
+// stand 3.1 u apart along z. The row below prints that gap directly, off the
+// built meshes' own world z-bands, so a future fix that closes it is visible
+// here without anyone re-deriving the number.
 //
 // Run from tools/ with a Playwright Chromium: `node probe-150-fold-sense.mjs`.
 import { chromium } from 'playwright';
@@ -89,7 +100,13 @@ const out = await page.evaluate(async (bases) => {
     const mwR = pivot.settingCap.distanceTo(new THREE.Vector3(pivot.mwMinuteWheel.x, pivot.mwMinuteWheel.y, pivot.settingCap.z));
     runs.push({ base, w: Object.fromEntries(NAMES.map((n) => [n, w[n].toArray()])), roll, capToWheel: mwR });
   }
-  return { runs };
+  // TODO 151 — the cap's and the motion works' minute wheel's world z-BANDS,
+  // off the built meshes directly (not a re-derivation): negative overlap is
+  // the axial gap that makes the cap's claimed mesh false in the metal.
+  const zBand = (n) => { const b = new THREE.Box3().setFromObject(mesh[n]); return [b.min.z, b.max.z]; };
+  const capZ = zBand('settingCap'), mwZ = zBand('mwMinuteWheel');
+  const overlap = Math.min(capZ[1], mwZ[1]) - Math.max(capZ[0], mwZ[0]);
+  return { runs, capZ, mwZ, overlap };
 }, [0, 7.3]);
 
 let bad = 0;
@@ -102,6 +119,7 @@ else {
   const fmt = (a) => '[' + a.map((x) => (x >= 0 ? ' ' : '') + x.toFixed(6)).join(',') + ']';
   const MOVED = 1e-5, REL = 1e-6;
   const SHAFTS = [
+    ['drop', 'minuteWheel', 'mwCornerDropIn'],
     ['leg 1', 'mwCornerDropOut', 'mwCornerFoldIn'],
     ['leg 2', 'mwCornerFoldOut', 'mwCornerRiseIn'],
     ['rise', 'mwCornerRiseOut', 'settingCap'],
@@ -135,15 +153,15 @@ else {
     else ok(`cap ⇄ minute wheel mesh: pitch-line ${(capW * rCap).toFixed(6)} against ${(mwW * rMw).toFixed(6)} (centre distance ${run.capToWheel.toFixed(4)})`);
     if (Math.sign(capW) !== Math.sign(cpW)) fail(`cap ⇄ cannon pinion counter-rotate — both mesh the minute wheel, so they must turn together`);
     else ok(`cap ⇄ cannon pinion co-rotate (${capW.toFixed(6)}, ${cpW.toFixed(6)})`);
-    // RESIDUE — reported, not gated.
-    const dW = run.w.mwCornerDropIn, kW = run.w.minuteWheel;
-    const agree = Math.hypot(...sub(dW, kW)) <= REL * Math.max(Math.hypot(...dW), Math.hypot(...kW));
-    console.log(`  REPORT drop corner inboard bevel ${fmt(dW)} vs keyless minute arbor ${fmt(kW)} — `
-      + (agree ? 'NOW AGREE: TODO 150\'s residue is closed; retire this row and the item'
-        : 'disagree (TODO 150 residue: the bevel is cut on the far side of its apex from this arbor)'));
   }
+  // TODO 151 — REPORTED, not gated: the cap's and the motion works' minute
+  // wheel's world z-bands, read off the built meshes. A positive number
+  // would mean the bands overlap; negative is the axial GAP.
+  console.log(`\n  REPORT settingCap z [${out.capZ[0].toFixed(3)}, ${out.capZ[1].toFixed(3)}] vs mwMinuteWheel z `
+    + `[${out.mwZ[0].toFixed(3)}, ${out.mwZ[1].toFixed(3)}] — band overlap ${out.overlap.toFixed(3)} `
+    + `(TODO 151: the cap meshes this wheel by tooth count only, not in the metal, until this closes)`);
 }
-console.log(bad ? `\nFAIL — ${bad} finding(s)` : '\nPASS — the setting fold turns as one train (residue reported above)');
+console.log(bad ? `\nFAIL — ${bad} finding(s)` : '\nPASS — the setting fold turns as one train (TODO 151 residue reported above)');
 await browser.close();
 srv.kill();
 process.exit(bad ? 1 : 0);

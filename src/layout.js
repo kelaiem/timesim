@@ -988,7 +988,11 @@ export const KW_MODULE = 0.34;
 // against 0.3167) — the same "the bore floors the count, never sets it" rule
 // §235 used for the alarm corner.
 export const crownWheelTeeth = 20, windPinionTeeth = 10, settingWheelTeeth = 20;
-export const minuteWheelTeeth = 24, minutePinionTeeth = 8;
+// TODO 150 item 1 — minutePinionTeeth (8) retired with the minute pinion
+// itself: it "meshed nothing" (§136) and existed only to carry its count
+// into the hand-set ratio, which now reads SETTING_CAP_TEETH (also 8, so
+// the value is unchanged) off the real closing mesh instead.
+export const minuteWheelTeeth = 24;
 // §136 — moved here from main.js, where it was declared BELOW the wheel it
 // was (wrongly) listed against. TODO 150 item 3 corrected WHICH wheel the
 // cap actually meshes: the motion works' MW_MINUTE_TEETH wheel (30 teeth,
