@@ -158,11 +158,14 @@ console.log(`§240 — is a trial boot virgin of aesthetics? (override keyLight 
   await watcher.goto(`http://127.0.0.1:${PORT}/vendor/LICENSE-three.txt`, { waitUntil: 'load', timeout: 60000 });
   const page = await ctx.newPage();
   await page.goto(BASE + '?trial=1', { waitUntil: 'commit', timeout: 120000 });
-  // wait for the trial's merge to have run — the marker armed — or for the
-  // trial to have finished, which is the one case the kill below cannot test
+  // wait for the trial's merge to have run — the marker armed. On the red
+  // tree it armed 215 ms after commit (aesthetics.js evaluates at the head of
+  // main.js's import graph); a guard that holds never arms it, so the loop's
+  // cap is the pass path's whole cost — 20 s, an order past the arming time
+  // on this container and well inside any build.
   const t0 = Date.now();
   let seen = null;
-  while (Date.now() - t0 < 60000) {
+  while (Date.now() - t0 < 20000) {
     seen = await watcher.evaluate(() => ({ pending: localStorage.getItem('aestheticsBootPending'), overrides: localStorage.getItem('aestheticsOverrides') }));
     if (seen.pending === '1') break;
     await new Promise((r) => setTimeout(r, 100));
