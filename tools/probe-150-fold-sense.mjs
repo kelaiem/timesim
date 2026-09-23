@@ -49,6 +49,21 @@
 // occluder children (§66/§71's silhouette convention) read as plate too and
 // would report ~0 clearance for a hole that is really open.
 //
+// GATED — TODO 153: does each motion-works STACK member (the wheel, the
+// cannon pinion, the minute pinion, the star, the hour wheel) actually
+// stand clear of the plate the build CUTS, not just clear the corner
+// blanks above? `meshClearance` alone can read a hairline positive
+// somewhere on a part while its own top vertex runs past the plate's face
+// — TODO 153 found exactly that for `mwMinuteWheel` and `cannonPinion`,
+// both 0.0000 by clearance while 0.146/0.21 u buried. So the row is a
+// CONJUNCTION: the measured clearance AND a z-band test (the member's own
+// max world-vertex z must not exceed the plate's presented face minus the
+// margin) — the z-band test is what catches containment a hairline-clear
+// reading can hide. `makeGear`/`makePinion` name the GROUP, not their
+// meshes, so each member is collected by walking that named object's
+// subtree for non-schematic meshes. Studs are excluded — they are the
+// riveted support edge, not a member standing clear of the plate.
+//
 // Run from tools/ with a Playwright Chromium: `node probe-150-fold-sense.mjs`.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -128,7 +143,47 @@ const out = await page.evaluate(async (bases) => {
     for (const pm of plateMeshes) min = Math.min(min, I.meshClearance(mesh[n], pm));
     plate[n] = min;
   }
-  return { runs, capZ, mwZ, overlap, plate, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN };
+  // TODO 153 — STACK: the motion-works members against the plate's own
+  // presented face, vertex-precise (Box3.setFromObject inflates a rotated
+  // mesh's AABB — §151's own correction). `makeGear`/`makePinion` name the
+  // GROUP, not the meshes, so the named object is found first and its
+  // subtree walked for non-schematic meshes.
+  const MW_NAMES = ['mwMinuteWheel', 'cannonPinion', 'mwMinutePinion', 'star', 'mwHourWheel'];
+  const collectFor = (n) => {
+    let root = null;
+    C.scene.traverse((o) => { if (!root && o.name === n) root = o; });
+    const out = [];
+    if (root) {
+      if (root.isMesh && !(root.userData && root.userData.schematic)) out.push(root);
+      root.traverse((o) => { if (o.isMesh && o !== root && !(o.userData && o.userData.schematic)) out.push(o); });
+    }
+    return out;
+  };
+  const zBandVerts = (m) => {
+    const pos = m.geometry.attributes.position;
+    let lo = Infinity, hi = -Infinity;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+      if (v.z < lo) lo = v.z;
+      if (v.z > hi) hi = v.z;
+    }
+    return [lo, hi];
+  };
+  let faceZ = Infinity;
+  for (const pm of plateMeshes) { const [lo] = zBandVerts(pm); faceZ = Math.min(faceZ, lo); }
+  const mwStack = {};
+  for (const n of MW_NAMES) {
+    const meshes = collectFor(n);
+    let clr = Infinity, zTop = -Infinity;
+    for (const m of meshes) {
+      for (const pm of plateMeshes) clr = Math.min(clr, I.meshClearance(m, pm));
+      const [, hi] = zBandVerts(m);
+      if (hi > zTop) zTop = hi;
+    }
+    mwStack[n] = { count: meshes.length, clr, zTop };
+  }
+  return { runs, capZ, mwZ, overlap, plate, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN, mwStack, faceZ };
 }, [0, 7.3]);
 
 let bad = 0;
@@ -184,6 +239,27 @@ else {
   for (const [n, c] of Object.entries(out.plate)) {
     if (c < out.CLEAR_MARGIN) fail(`${n} ⇄ backPlate clears ${c.toFixed(4)} — under CLEAR_MARGIN ${out.CLEAR_MARGIN}`);
     else ok(`${n} ⇄ backPlate clears ${c.toFixed(4)}`);
+  }
+  // TODO 153 — GATED: the motion-works stack members against the plate's own
+  // presented face (out.faceZ), on BOTH measures — clearance and z-band
+  // containment (see the header note above for why both).
+  console.log(`\nSTACK — TODO 153: motion-works members ⇄ the plate's presented face `
+    + `(${out.faceZ.toFixed(3)}), CLEAR_MARGIN ${out.CLEAR_MARGIN}:`);
+  // cannonPinion's own solve lands its metal ON CLEAR_MARGIN by design (the
+  // main.js T solve's own comment: "landing ON the margin" — unlike MW_Z2,
+  // which rides ALARM_SEAT_SINK off the margin on purpose so no sweep meets
+  // an exact tie). A BVH-measured clearance of a member solved to an exact
+  // algebraic tie is float noise around that tie, not a real miss — MEASURE_EPS
+  // is that noise's scale (measured here at 6.7e-8), not a margin being widened.
+  const MEASURE_EPS = 1e-6;
+  for (const [n, r] of Object.entries(out.mwStack)) {
+    if (r.count === 0) { fail(`${n}: no non-schematic mesh found`); continue; }
+    const clrOk = r.clr >= out.CLEAR_MARGIN - MEASURE_EPS;
+    const bandOk = r.zTop <= out.faceZ - out.CLEAR_MARGIN + 1e-4;
+    if (!clrOk || !bandOk)
+      fail(`${n}: clr ${r.clr.toFixed(4)} (need ≥ ${out.CLEAR_MARGIN}), zTop ${r.zTop.toFixed(3)} `
+        + `(need ≤ ${(out.faceZ - out.CLEAR_MARGIN).toFixed(3)})`);
+    else ok(`${n}: clr ${r.clr.toFixed(4)}, zTop ${r.zTop.toFixed(3)}`);
   }
   // TODO 151 — REPORTED, not gated: the cap's and the motion works' minute
   // wheel's world z-bands, read off the built meshes. A positive number

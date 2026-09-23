@@ -21516,6 +21516,34 @@ minute wheel:
   the acceptance for closing this item rather than waiving it. Nothing here
   is declared or waived today.
 
+### Update — [TODO 153] moved the minute wheel's own band, as predicted
+
+[TODO 153]'s fix moved `mwMinuteWheel` DIAL-WARD (away from the plate), so
+every number in "The measurement" above that reads off its old z-band is
+now stale. Re-measured, `node tools/probe-151-cap-plane.mjs`:
+`mwMinuteWheel` z now `[−3.261, −2.559]` (was `[−3.126, −2.154]`, a 0.135 u
+shift); `settingCap` z is unchanged (`[−7.760, −6.040]`, nothing in this
+station's own fold moved); the band overlap the probe reports moved
+**2.914 → 2.779** — the two wheels stand 0.135 u CLOSER now, consistent
+with the shift, but still 2.779 u apart, not touching. `mwCornerRiseIn`/
+`mwCornerRiseOut`'s own z-bands and the rise apex B `(−10.534, 3.455,
+−3.000)` are unmoved (the corner blanks are a separate, plate-side
+station this fix did not touch).
+
+The bisection result itself (**2.7005**, the minimum axial gap between
+cap and apex that clears `CLEAR_MARGIN`, a pure function of their two
+shapes) is unaffected — it does not depend on the wheel at all. But the
+probe's own `targetsC` array (`[-2.266, -2.64, -3.014]`, and the implied
+apexes `-4.966`/`-5.340`/`-5.714` it prints in §4–§6) is a HARDCODED
+constant from this item's original investigation of where the cap's
+mid-plane would have to sit to cover the OLD wheel band — it is not
+re-derived from the wheel's current position, so those specific numbers
+are now stale residue of the same kind [TODO 153] closed elsewhere in
+this file. The (d) landing's own acceptance (re-measure rather than
+reuse, stated above) already covers re-deriving `targetsC` from the
+built metal when option (d) is taken up; this note is only the update
+[TODO 153]'s own consequence promised.
+
 ## 152. A trial boot inherits the viewer's tuned aesthetics, and a killed trial drops them — CLOSED
 
 Filed 2026-09-23 as a prerequisite of roadmap §240 (the shareable aesthetics
@@ -21589,7 +21617,7 @@ fails identically on the unmodified tree with "Failed to resolve module
 specifier 'three'", a defect in that probe's re-navigation, not in this
 change, and not fixed here.
 
-## 153. The motion works stack is solved against a plate face 0.3 u shallower than the plate presents
+## 153. The motion works stack is solved against a plate face 0.3 u shallower than the plate presents — CLOSED
 
 Found measuring [TODO 151]: `mwMinuteWheel` and `cannonPinion` both read
 **0.0000** against `backPlate` (`meshClearance`), not a hairline touch but a
@@ -21646,3 +21674,125 @@ minute wheel's own z-band moves DIAL-WARD (more negative, away from the
 plate) by up to 0.146–0.21 u, which moves TODO 151's target band by the same
 amount — that item's fix path should re-measure `mwMinuteWheel`'s z-band
 after this lands, not before.
+
+### Built
+
+Path (a) landed, extended past the plan above once the real correction was
+measured against the metal. `MW_PLATE_FACE_LOCAL` is now
+`Z_DIAL − PLATE_BACK_FACE`, one source with the plate's own build, in step
+with the two stud sites that already read it dynamically
+(`src/main.js` — the minute wheel's stud and the jumper's pivot
+stud/spring post now read the same constant instead of their own
+`backPlate.position.z − 1` estimate).
+
+**The filed re-solve (`MW_WHEEL_T` 0.84 → 0.69) was itself wrong** — the
+0.3 u face correction alone does not explain the measured burial. The T
+solve was missing a SECOND term entirely: `CANNON_END`, the cannon
+pinion's plate-most reach, never carried the cannon's own bevel (the
+extrude's `bevelThickness` stands proud of BOTH faces — §234's own
+finding, never applied to the cannon pinion itself). Named
+`MW_PINION_BEVEL` (`makePinion`'s bevel law, matching `gearFaceReach`'s
+shape) and its module-bound value at `MW_MODULE_1` (0.06) closes the gap
+exactly: `(old face − new face) + CLEAR_MARGIN − 0.06 = −0.3 + 0.15 − 0.06
+= −0.21`, the precise 0.21 u burial measured on `cannonPinion`. Measured:
+
+| constant | before | after |
+|---|---|---|
+| `MW_WHEEL_T` | 0.648235 | **0.468235** |
+| `MW_Z1` (`mwMinuteWheel.position.z`) | −5.759883 | −5.489883 |
+| `MW_Z2` (`mwHourWheel.position.z`) | −4.362982 | −4.272982 |
+| `MW_TOP` | −3.972865 | unchanged (the two Δ0.09 terms cancel exactly) |
+| `STAR_BOT` (`minuteStar.position.z`) | −5.219765 | −5.039765 |
+| `CANNON_T` | 5.75 | 5.39 |
+| `CANNON_END` | −6.25 | −5.89 |
+
+**The minute pinion's own thickness was a bare `1.0` literal**, never
+re-checked against the plane it fills — TODO 21's own coverage floor
+(`0.1`, now named `MW_COVER`, one source for the two places it was spelled
+out separately) gives `MW_PINION_T`, derived the same way `MW_WHEEL_T` is:
+`0.7602` at the old floor, `0.5802` at the corrected one.
+
+**The two unmodelled terms TODO 153 found:**
+- the cannon pinion's own bevel, **0.06** at the module bound
+  (`MW_PINION_BEVEL(Infinity, MW_MODULE_1)`) — never in `CANNON_END` at all
+  before this fix;
+- the minute wheel's HUB ring (§234's `GEAR_HUB_H_F = 1.5`), which reaches
+  **0.351** past the wheel's own centre plane — farther than the bevelled
+  body's 0.300 — and governed the §34 assert's own margin once
+  `gearFaceReach`'s `hub.half` was taken into account (`Math.max(body,
+  hub.half)`); the old assert used the body term alone and never saw it.
+
+**Measured after (live, `resetInputs()`/`setPose({tau:0})`, non-schematic
+meshes, `I.meshClearance` against `backPlate`):**
+
+| pair | before | after |
+|---|---|---|
+| `mwMinuteWheel` ⇄ `backPlate` | 0.0000 (0.146 u buried) | 0.2589 |
+| `cannonPinion` ⇄ `backPlate` | 0.0000 (0.21 u buried) | **0.1500** — lands ON `CLEAR_MARGIN` by design (the T solve's own comment: "landing ON the margin"), not a hairline extra |
+| `mwMinutePinion` ⇄ `alarmSeatPlate` | 0.0142 / 0.0281 (both poses) | 0.1723 / 0.1723 |
+| `star` ⇄ `mwMinutePinion` | — | 0.0500 |
+
+**The fix-path verdict.** Path (a), re-deriving `MW_PLATE_FACE_LOCAL`, is
+what landed — the pocket path (B) was never needed once the real fix
+(the face correction plus the cannon's own bevel) closed every member's
+margin with real headroom, `cannonPinion` alone landing exactly at the
+margin by the pre-existing algebraic design ("landing ON the margin"),
+not the pocket path's guessed-literal sizing.
+
+`tools/probe-150-fold-sense.mjs`'s new STACK row gates all five stack
+members (`mwMinuteWheel`, `cannonPinion`, `mwMinutePinion`, `star`,
+`mwHourWheel`) against the plate's own built face — clearance AND a
+vertex-precise z-band containment test, so a hairline-clear reading
+elsewhere on a part can't hide a buried top vertex the way the PLATE
+row's per-mesh `meshClearance` alone did here. `cannonPinion`'s own row
+takes a `MEASURE_EPS` of `1e-6` on the clearance side (its solve's own
+exact-tie design, the same convention every algebraic boot assert here
+already applies at `1e-9`, scaled up for a BVH-measured value) — not a
+widened `CLEAR_MARGIN` or a waiver, a tolerance on this probe's own new
+gate against float noise around an intentional tie.
+
+**Out-of-scope finding, filed separately.** `cannonPinion` ⇄ `alarmHeart`
+(the `['Hour wheel', 'Dial']` EXPECTED pair, granted wholesale, with no
+`EXPECTED_CONTACT_FLOORS` row) measures 0.1466 / 0.1465 (both poses) —
+essentially unchanged by this fix (the burial this item closed was at the
+plate-ward end; this pair meets at the cannon's other, dial-ward end) and
+still under `CLEAR_MARGIN`. Filed as [TODO 154] rather than closed here —
+this item's own scope was the plate-face solve, not every pair the
+re-stacked cannon now reaches.
+
+## 154. cannonPinion clears alarmHeart under CLEAR_MARGIN, and no EXPECTED_CONTACT_FLOORS row holds the pair
+
+Found while closing [TODO 153]: `cannonPinion` (`Dial` unit) and
+`alarmHeart` (built onto `hourWheelGroup`, `src/main.js` —
+`hourWheelGroup.add(heart)`, so the `Hour wheel` unit) measure, live
+(`resetInputs()`/`setPose`, `I.meshClearance`, non-schematic meshes):
+
+- `crownPullT: 0` — 0.1466
+- `crownPullT: 1` — 0.1465
+
+Both under `CLEAR_MARGIN` (0.15). The pair `['Hour wheel', 'Dial']` **is**
+declared `EXPECTED` (`src/inspect.js`, comment: "tube runs through the
+dial's centre bore, over the cannon pinion") — granted wholesale, per
+unit pair — but carries **no `EXPECTED_CONTACT_FLOORS` row**
+(`grep -n "a: 'Hour wheel'\|b: 'Hour wheel'\|a: 'Dial'\|b: 'Dial'" src/inspect.js`
+shows floors rows for `Hour wheel` ⇄ `Motion works`, `Alarm disc` ⇄
+`Hour wheel`, and others, none naming `Dial` against `Hour wheel`). TODO 6's
+blanket excuse therefore covers this specific miss today — exactly the
+residue class CLAUDE.md's "Two blind spots" section names ("An EXPECTED
+pair without a floors row still gets the blanket excuse").
+
+**Unaffected by [TODO 153]'s fix**, measured before and after: the burial
+that item closed was at `cannonPinion`'s PLATE-ward end (its metal end,
+now landing on `CLEAR_MARGIN` against `backPlate`); this pair meets at the
+cannon's other, DIAL-ward end, near `alarmHeart` — a different span of the
+same pinion, unmoved by the re-derived `MW_PLATE_FACE_LOCAL`.
+
+**Fix path.** Add an `EXPECTED_CONTACT_FLOORS` row for `{ a: 'Hour
+wheel', b: 'Dial', min: CLEAR_MARGIN, contacts: [...] }` naming
+`cannonPinion` ⇄ `alarmHeart` as the seeded contact (TODO 6's format,
+same convention as the `Hour wheel` ⇄ `Motion works` row a few lines
+above it), and either re-route the cannon pinion's own geometry to clear
+the margin at that end, or waive the row citing this item if the two are
+close by design and the margin genuinely cannot open there without
+moving `alarmHeart`'s own station. Re-measure the pair at both
+`crownPullT` extremes before landing either.
