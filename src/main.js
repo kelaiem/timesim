@@ -5078,8 +5078,9 @@ keyless.add(minuteArbor);
 // makeBevelGear) — a plain rod meeting another rod at an angle has nothing
 // at the joint that could transmit rotation around the corner. Rotation is
 // still driven by handSetOffset in tick() (same representational-coupling
-// convention as the reserve train), threaded through each corner pair with
-// alternating sign, not just teleported to the far end.
+// convention as the reserve train), threaded back from the cap through each
+// corner pair — every rod one rigid spin, every corner a reversing pair
+// (`MW_FOLD_SPIN`, TODO 150) — not just teleported to the far end.
 const settingArborXY = { x: minuteArborXY.x, y: minuteArborXY.y };
 // The arbor's own shaft: from the minute pinion's plane UP to the corner.
 const settingDrop = new THREE.Mesh(
@@ -5675,13 +5676,42 @@ const MW_FOLD_MODULE = SETTING_METAL.module;
 const MW_FOLD_BLANK_THINNEST = foldBlankThinnest(MW_FOLD.shaftAngleDeg, MW_FOLD_MODULE);
 if (MW_FOLD_BLANK_THINNEST < STOCK_MIN_U_FOLD - 1e-9)
   console.warn(`§234 fold: the corner's blanks measure ${MW_FOLD_BLANK_THINNEST.toFixed(4)} u across at module ${MW_FOLD_MODULE.toFixed(4)}, under STOCK_MIN_U ${STOCK_MIN_U_FOLD.toFixed(4)}`);
-// The corner LIST is what tick threads the setting sign through, drop first,
-// and its length is the one source of the entry sign: the cap leaves the last
-// corner at +handSetOffset, so the drop enters at (−1)^N. Three corners now:
-// the drop's gear enters at −handSetOffset, which is the sign of the arbor it
-// is keyed to (see tick).
+// TODO 150 — THE FOLD'S SENSE IS READ OFF ITS MOUNTS, NOT COUNTED. This used
+// to be `(−1)^N` with the sign alternating corner to corner, as if every hop
+// were an external mesh. A corner IS one (the pair's local spins are equal and
+// opposite, which is the rolling condition for equal counts), but a ROD is
+// not: the two gears keyed to one leg are one rigid body, and their mounts
+// face each other along it, so one world spin reads as OPPOSITE local spins.
+// Alternating across the rods made every shared shaft counter-rotate itself —
+// leg 1's two bevels, leg 2's two, and the rise's outboard bevel against the
+// cap pinion on the same rod (issue: "a spider that turns the opposite
+// direction as the axle it's mounted in"), measured −0.1 against +0.1.
+//
+// So each gear's factor is DERIVED, threaded back from the cap — the member
+// whose sense something else fixes (it meshes the minute wheel): its rod's
+// outboard bevel spins as the cap does, projected onto that mount's axis;
+// every corner reverses its pair; every rod carries its spin across by the
+// dot of the two facing axes. `MW_FOLD_SPIN[i] = { kIn, kOut }` multiplies the
+// cap's spin. A rod whose two mounts are not coaxial has no rigid answer, so
+// the dot is asserted to be ±1 rather than rounded to it.
 const MW_CORNERS = [cornerDrop, cornerFold, cornerRise];
-const MW_FOLD_SENSE = (-1) ** MW_CORNERS.length;
+const MW_FOLD_SPIN = (() => {
+  const axes = MW_CORNERS.map((c) => ({ i: bevelCornerAxis(c.gearIn.parent), o: bevelCornerAxis(c.gearOut.parent) }));
+  const coaxial = (a, b, what) => {
+    const d = a.dot(b);
+    if (Math.abs(Math.abs(d) - 1) > 1e-6)
+      console.warn(`TODO 150: the setting fold's ${what} joins two mounts ${(Math.acos(Math.min(1, Math.abs(d))) / DEG2RAD).toFixed(4)}° off coaxial — no rigid spin carries across it`);
+    return Math.sign(d);
+  };
+  const out = MW_CORNERS.map(() => ({ kIn: 0, kOut: 0 }));
+  let k = coaxial(axes[axes.length - 1].o, Z_UP, 'rise (outboard bevel ⇄ cap)');
+  for (let i = MW_CORNERS.length - 1; i >= 0; i--) {
+    out[i].kOut = k;
+    out[i].kIn = -k;                                   // the corner: equal counts roll equal and opposite
+    if (i > 0) k = -k * coaxial(axes[i].i, axes[i - 1].o, `leg ${i}`);
+  }
+  return out;
+})();
 // The plate is bored at K as it is at A: the fold's blanks stand in the base
 // plate's z-band (Σ ≈ 150° puts their cone distance coneR nearly across the
 // axis, so they reach to Z_SETTING + coneR ≈ −1.3 against a back face at
@@ -41689,36 +41719,30 @@ function tick(t) {
   // Indexed on its own corner, so the spin is what travels, not the angle.
   settingBevel.rotation.z = settingBevelBase - settingWheelSpin;   // negated: its mount is turned through π (see the build)
   minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
-  // Motion-works bevel corners: each meshing pair reverses sense (same as
-  // any two external gears meshing), so the sign flips at every corner. The
-  // chain is threaded FROM THE CAP END, because the cap is the member whose
-  // sense something else fixes — it meshes the minute wheel, which turns with
-  // the hands — so the last corner's outboard gear leaves at +handSetOffset
-  // and the sign alternates back to the drop: with N corners the drop's gear
-  // enters at (−1)^N · handSetOffset (`MW_FOLD_SENSE`, derived from the corner
-  // list's own length where the corners are built). Two corners entered at
-  // +; §234's fold made it three and the entry sign went −, which is the
-  // right way round for the drop's own arbor (minuteArborSpin and
-  // rawSetOffset carry opposite signs through the representational hop, so a
-  // three-corner run is the one the hop's sign agrees with).
+  // Cap pinion at the dial end of the motion-works arbor. It meshes the MINUTE
+  // WHEEL, beside the cannon pinion that meshes the same wheel, so it turns
+  // with the cannon (two external meshes) at the tooth ratio cap ⇄ wheel ⇄
+  // cannon — TODO 150: it turned at the cannon's own rate, so its teeth slid
+  // 25% of the set offset against a wheel it claims to mesh. The DRIVE is
+  // still handSetOffset (MECH_GRAPH.todo's representational convention), and
+  // it still omits the going train's turn of the wheel it meshes — TODO 150's
+  // residue, with the drop corner's.
+  const settingCapSpin = handSetOffset
+    * (MW_MINUTE_TEETH / SETTING_CAP_TEETH) * (cannonPinionTeeth / MW_MINUTE_TEETH);
+  settingCap.rotation.z = SETTING_CAP_PHASE + settingCapSpin;
+  // Motion-works bevel corners, threaded FROM THE CAP by the factors read off
+  // their mounts at the build (`MW_FOLD_SPIN`, TODO 150): each rod one rigid
+  // body, each corner a pair turning equal and opposite.
   // TODO 140 — the BASE is the corner's solved index, not a bare half pitch.
   // `BEVEL_PHASE` used to be restated here, which made the build seed and this
   // line two copies of one quantity; the index is solved once in
   // `addBevelCorner` now and only the SPIN travels, exactly as the setting
   // wheel and its bevel do three lines above.
-  {
-    let s = MW_FOLD_SENSE;
-    for (const c of MW_CORNERS) {
-      c.gearIn.rotation.z = c.baseIn + s * handSetOffset;
-      c.gearOut.rotation.z = c.baseOut - s * handSetOffset;
-      s = -s;
-    }
+  for (let i = 0; i < MW_CORNERS.length; i++) {
+    const c = MW_CORNERS[i], k = MW_FOLD_SPIN[i];
+    c.gearIn.rotation.z = c.baseIn + k.kIn * settingCapSpin;
+    c.gearOut.rotation.z = c.baseOut + k.kOut * settingCapSpin;
   }
-  // Cap pinion at the dial end of the motion-works arbor: spins with the
-  // same handSetOffset that actually drives the hands, so the part sitting
-  // right beside the cannon pinion visibly turns in step with it — the
-  // connection reads as real, not just a static rod poking at the dial.
-  settingCap.rotation.z = SETTING_CAP_PHASE + handSetOffset;
 
   // Power-reserve train — DRIVEN FROM ITS INPUT (TODO 48; standing rule 2).
   // This block used to write the HAND first from `tension` and solve the

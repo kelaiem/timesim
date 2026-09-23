@@ -1,0 +1,149 @@
+// TODO 150 — DOES THE SETTING FOLD TURN AS ONE TRAIN? Every shaft rigid, every
+// bevel corner rolling, the cap pinion meshing the minute wheel at its ratio.
+//
+// Owner's report: "a spider that inexplicably turns the opposite direction as
+// the axle it's mounted in" — the rise corner's outboard bevel against the
+// setting cap on the same rod. Measured, all three of §234's rods did it: tick
+// alternated the sign corner to corner as if a ROD were an external mesh, and
+// the two mounts on one rod face each other, so one world spin reads as
+// opposite local spins. probe-coaxial-sense.mjs is the sibling and cannot see
+// this: it reads azimuth about world z, and two of these rods lie in the plane.
+//
+// HOW IT MEASURES. Each member's WORLD angular velocity VECTOR, from two poses a
+// small step of the setting input apart (setPathRot 0 → 0.01; crown in, so the
+// hand-set offset is the raw forward chain and no easing is involved) — the
+// quaternion difference as axis·angle. Nothing reasons about mount frames,
+// which is where the defect lived.
+//
+// GATES (exit non-zero):
+//   · RODS — the two members keyed to each of leg 1, leg 2 and the rise (its
+//     outboard bevel ⇄ the cap) have EQUAL vectors, to 1e-6 of their size;
+//   · CORNERS — each pair's surface velocities agree at the pitch point (the
+//     unit bisector of the two gears' centres off the apex), which is rolling;
+//   · CAP ⇄ MINUTE WHEEL — pitch-line speeds equal and opposite, the external
+//     mesh the cap claims (and cap ⇄ cannon pinion co-rotate, both meshing it).
+// CONTROLS / GUARDS: every member must MOVE (a still train agrees with
+// anything); the cap ⇄ minute wheel check is the must-DIFFER half; the step is
+// re-run from a second base pose so one lucky pose cannot pass it.
+//
+// REPORTED, NOT GATED — TODO 150's residue: the drop corner's inboard bevel is
+// cut on the FAR side of its apex from the keyless minute arbor it is keyed to,
+// so no rigid spin can agree with both that arbor and the rods above it. It
+// reads equal and opposite (a sign, not a rate) until the gear is re-cut on its
+// shaft; the probe says so when it starts agreeing, so the item can close.
+//
+// Run from tools/ with a Playwright Chromium: `node probe-150-fold-sense.mjs`.
+import { chromium } from 'playwright';
+import { spawn } from 'node:child_process';
+
+const port = process.env.PORT || '8501';
+const root = process.env.ROOT || '..';
+const srv = spawn('python3', ['-m', 'http.server', port, '--bind', '127.0.0.1'], { cwd: root, stdio: 'ignore' });
+await new Promise((r) => setTimeout(r, 900));
+const browser = await chromium.launch();
+const page = await browser.newPage();
+page.on('pageerror', (e) => console.log('PAGEERROR', String(e)));
+await page.goto(`http://127.0.0.1:${port}/index.html?schematic=0`, { waitUntil: 'load', timeout: 90000 });
+await page.waitForFunction(() => !!window.__clock, null, { timeout: 180000 });
+await page.waitForTimeout(1500);
+
+const out = await page.evaluate(async (bases) => {
+  const C = window.__clock;
+  const THREE = await import('/vendor/three.module.js');
+  window.requestAnimationFrame = () => 0;   // freeze the live loop under the poses
+  const NAMES = ['minuteWheel', 'mwCornerDropIn', 'mwCornerDropOut', 'mwCornerFoldIn', 'mwCornerFoldOut',
+    'mwCornerRiseIn', 'mwCornerRiseOut', 'settingCap', 'mwMinuteWheel', 'cannonPinion'];
+  const mesh = {};
+  // a MESH by that name where the builder named its meshes, else the named
+  // group (makeGear names the group and leaves its meshes anonymous) — either
+  // is rigid with the part, which is all a spin reading needs
+  C.scene.traverse((o) => { if (o.isMesh && NAMES.includes(o.name) && !mesh[o.name]) mesh[o.name] = o; });
+  C.scene.traverse((o) => { if (NAMES.includes(o.name) && !mesh[o.name]) mesh[o.name] = o; });
+  const missing = NAMES.filter((n) => !mesh[n]);
+  if (missing.length) return { missing };
+  const quats = () => Object.fromEntries(NAMES.map((n) => [n, mesh[n].getWorldQuaternion(new THREE.Quaternion())]));
+  const centre = (n) => new THREE.Box3().setFromObject(mesh[n]).getCenter(new THREE.Vector3());
+  const runs = [];
+  for (const base of bases) {
+    C.resetInputs();
+    C.setPose({ crownPullT: 0, setPathRot: base }); const A = quats();
+    const cen = Object.fromEntries(NAMES.map((n) => [n, centre(n)]));
+    // the corner apex is the mount's origin: the gear's parent, in world
+    const apex = Object.fromEntries(['mwCornerDrop', 'mwCornerFold', 'mwCornerRise'].map((t) =>
+      [t, mesh[t + 'In'].parent.getWorldPosition(new THREE.Vector3())]));
+    const pivot = Object.fromEntries(NAMES.map((n) => [n, mesh[n].getWorldPosition(new THREE.Vector3())]));
+    C.setPose({ crownPullT: 0, setPathRot: base + 0.01 }); const B = quats();
+    const w = {};
+    for (const n of NAMES) {
+      const d = B[n].clone().multiply(A[n].clone().invert());
+      if (d.w < 0) { d.x = -d.x; d.y = -d.y; d.z = -d.z; d.w = -d.w; }
+      const ang = 2 * Math.acos(Math.min(1, d.w));
+      const s = Math.sqrt(Math.max(0, 1 - d.w * d.w));
+      w[n] = s > 1e-12 ? new THREE.Vector3(d.x / s, d.y / s, d.z / s).multiplyScalar(ang) : new THREE.Vector3();
+    }
+    const roll = {};
+    for (const t of Object.keys(apex)) {
+      const P = cen[t + 'In'].clone().sub(apex[t]).normalize().add(cen[t + 'Out'].clone().sub(apex[t]).normalize()).normalize();
+      roll[t] = { vIn: w[t + 'In'].clone().cross(P).toArray(), vOut: w[t + 'Out'].clone().cross(P).toArray() };
+    }
+    const mwR = pivot.settingCap.distanceTo(new THREE.Vector3(pivot.mwMinuteWheel.x, pivot.mwMinuteWheel.y, pivot.settingCap.z));
+    runs.push({ base, w: Object.fromEntries(NAMES.map((n) => [n, w[n].toArray()])), roll, capToWheel: mwR });
+  }
+  return { runs };
+}, [0, 7.3]);
+
+let bad = 0;
+const fail = (s) => { bad++; console.log('  FAIL ' + s); };
+const ok = (s) => console.log('  ok   ' + s);
+if (out.missing) { fail(`no mesh named: ${out.missing.join(', ')}`); }
+else {
+  const V = (a) => ({ a, n: Math.hypot(...a) });
+  const sub = (a, b) => a.map((x, i) => x - b[i]);
+  const fmt = (a) => '[' + a.map((x) => (x >= 0 ? ' ' : '') + x.toFixed(6)).join(',') + ']';
+  const MOVED = 1e-5, REL = 1e-6;
+  const SHAFTS = [
+    ['leg 1', 'mwCornerDropOut', 'mwCornerFoldIn'],
+    ['leg 2', 'mwCornerFoldOut', 'mwCornerRiseIn'],
+    ['rise', 'mwCornerRiseOut', 'settingCap'],
+  ];
+  for (const run of out.runs) {
+    console.log(`\nbase pose setPathRot ${run.base}:`);
+    for (const [n, a] of Object.entries(run.w)) {
+      const m = Math.hypot(...a);
+      console.log(`    ${n.padEnd(16)} ω ${fmt(a)}   |ω| ${m.toFixed(6)}`);
+      if (m < MOVED) fail(`${n} did not move — nothing about it can be judged`);
+    }
+    for (const [what, a, b] of SHAFTS) {
+      const A = V(run.w[a]), B = V(run.w[b]);
+      const d = Math.hypot(...sub(A.a, B.a));
+      if (d > REL * Math.max(A.n, B.n)) fail(`${what}: ${a} ${fmt(A.a)} ≠ ${b} ${fmt(B.a)} — one rod, two spins`);
+      else ok(`${what}: ${a} ⇄ ${b} one spin (|Δω| ${d.toExponential(2)})`);
+    }
+    for (const [t, r] of Object.entries(run.roll)) {
+      const d = Math.hypot(...sub(r.vIn, r.vOut)), m = Math.max(Math.hypot(...r.vIn), Math.hypot(...r.vOut));
+      if (m < MOVED || d > 1e-4 * m) fail(`${t}: pitch-point velocities ${fmt(r.vIn)} vs ${fmt(r.vOut)} — the pair slides`);
+      else ok(`${t}: rolls (|Δv| ${d.toExponential(2)} of ${m.toExponential(2)})`);
+    }
+    // CAP ⇄ MINUTE WHEEL — parallel axes along world z: pitch-line speed ω·r
+    // equal and OPPOSITE. The radii are the pitch radii the centre distance
+    // splits in the tooth ratio (8 : 30 at module 0.3 → 1.2 + 4.5 = 5.7).
+    const capW = run.w.settingCap[2], mwW = run.w.mwMinuteWheel[2], cpW = run.w.cannonPinion[2];
+    const rCap = run.capToWheel * 8 / 38, rMw = run.capToWheel * 30 / 38;
+    const slip = Math.abs(capW * rCap + mwW * rMw);
+    if (!(Math.sign(capW) === -Math.sign(mwW))) fail(`cap ⇄ minute wheel co-rotate (${capW.toFixed(6)}, ${mwW.toFixed(6)}) — an external mesh counter-rotates`);
+    else if (slip > 1e-4 * Math.abs(capW * rCap)) fail(`cap ⇄ minute wheel pitch-line slip ${slip.toExponential(3)} (cap ${(capW * rCap).toFixed(6)}, wheel ${(mwW * rMw).toFixed(6)})`);
+    else ok(`cap ⇄ minute wheel mesh: pitch-line ${(capW * rCap).toFixed(6)} against ${(mwW * rMw).toFixed(6)} (centre distance ${run.capToWheel.toFixed(4)})`);
+    if (Math.sign(capW) !== Math.sign(cpW)) fail(`cap ⇄ cannon pinion counter-rotate — both mesh the minute wheel, so they must turn together`);
+    else ok(`cap ⇄ cannon pinion co-rotate (${capW.toFixed(6)}, ${cpW.toFixed(6)})`);
+    // RESIDUE — reported, not gated.
+    const dW = run.w.mwCornerDropIn, kW = run.w.minuteWheel;
+    const agree = Math.hypot(...sub(dW, kW)) <= REL * Math.max(Math.hypot(...dW), Math.hypot(...kW));
+    console.log(`  REPORT drop corner inboard bevel ${fmt(dW)} vs keyless minute arbor ${fmt(kW)} — `
+      + (agree ? 'NOW AGREE: TODO 150\'s residue is closed; retire this row and the item'
+        : 'disagree (TODO 150 residue: the bevel is cut on the far side of its apex from this arbor)'));
+  }
+}
+console.log(bad ? `\nFAIL — ${bad} finding(s)` : '\nPASS — the setting fold turns as one train (residue reported above)');
+await browser.close();
+srv.kill();
+process.exit(bad ? 1 : 0);
