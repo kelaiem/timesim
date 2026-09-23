@@ -24806,6 +24806,19 @@ Japanese plate label collided with its neighbour and was tightened to
 §241 check's ABSENT class, which cannot tell a terse paraphrase from a dropped
 sentence and so does not gate.
 
+### Italian, completed
+
+Italian closed to 100% on the explainer (37 real keys → 0; the primer was
+already complete) in the table's own register — *conoide*, *bariletto*,
+*albero di carica*, *innesto*, *pitone*, *ruota oziosa* — with every
+apostrophe U+2019 as that table's header requires. The 37 were one landing's
+English and nothing else: the two newest Vocabulary tables with their variant
+rows, and the long `keyless` and `free-sprung` paragraphs. Glossary links
+49 → 77. The one term needing care was `annulus`: *corona circolare*, a
+two-word form, so it cannot link a bare *corona* — which on this page is the
+crown. No residue: no honesty row ABSENT, no block under its locale's length
+ratio.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
