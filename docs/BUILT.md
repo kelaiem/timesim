@@ -24891,6 +24891,214 @@ words (*사분의 삼*), since a digit the English does not carry is number drif
 **With this §223 is complete**: all twelve locales at 100% on both pages,
 `zh`/`zh-Hant`/`ja`/`ko` at 98% on the explainer by that one design choice.
 
+### The roadmap entry, moved here whole and reconciled
+
+The private roadmap filed §223 on 2026-09-12 as 316 missing entries across
+six locales, clustered by the landing that left each gap, and carried it
+PARTIAL through the Chinese landing. It closed on 2026-09-23 in the six
+further landings above — German; Japanese and French; Italian; Spanish and
+Portuguese; Arabic and Hindi; Russian and Korean — with every locale at 100%
+on both pages and `zh`/`zh-Hant`/`ja`/`ko` at 98% on the explainer by one
+recorded design choice, their hidden variant rows kept English. The plan's
+premise was right and its count was a snapshot: the gap was re-priced twice
+(2026-09-20 and 2026-09-23) as new English kept landing (the `keyless` and `free-sprung` paragraphs
+and the two newest Vocabulary tables were in EVERY locale's final batch, none
+of them in the 316), which is the class the entry exists to name — each
+English edit invalidates its translations by design. The entry is moved here
+verbatim, links to other roadmap entries flattened to their § numbers, the
+way a plan that shipped is kept rather than one describing an abandoned
+approach. Its status line below is the one it carried while open.
+
+#### 223. Every locale complete on both pages — the 316 entries six locales are short, clustered by the landing that left them (as filed)
+
+> **Status. PARTIAL — the CHINESE half SHIPPED 2026-09-20**, the record in the
+> public `docs/BUILT.md` §223. FILED 2026-09-12; number claimed through the
+> public repo's `tools/claim-item.mjs`. Found by MEASUREMENT while
+> §212
+> fixed one instance of it.
+>
+> **It recurred exactly as filed, which is the entry's own point made twice.**
+> This entry exists because a reader said a section rendered English under
+> Traditional Chinese. It shipped because a reader said the Simplified page
+> "doesn't seem to have the term linking yet" — and every §236 link was there.
+> `gear-teeth` is the FIRST entry on the page and all five of its prose blocks
+> were English in `zh`, so a Chinese reader met English prose carrying English
+> glossary links before anything else. `explain-i18n --check` read 0 unmatched
+> before and 0 after, as this entry predicted it would.
+>
+> Shipped: `zh` 88.7% → 98.0%, `zh-Hant` 94.2% → 98.0%, both residues the same
+> 15 keys (§236's `.gloss-variants` rows, deliberately English for CJK).
+> Glossary links followed, `zh` 50 → 73 and `zh-Hant` 44 → 67, every matched
+> word now Chinese.
+>
+> **The GERMAN half SHIPPED 2026-09-23** (public PR #475), record in
+> `docs/BUILT.md` §223's "German, completed". Both pages to **100%**:
+> explainer 78 real keys → 0 (759/759), primer 8 → 0 (145/145), in the
+> table's existing Glashütte register. The same twelve Vocabulary terms
+> got German names and German variant rows (Azimut/Azimute, Sehne/Sehnen,
+> Zwischenrad/Zwischenräder…), so glossary links went 45 → 59, and the 41
+> of those 45 that had sat on English words are now on German ones. One
+> plate label overran its box (German runs longer than English) and was
+> tightened without losing the claim. **New finding, not from this
+> entry's own table**: the honesty-vocabulary control §241 later added
+> caught nothing new here, but the checker's separate block-coverage
+> REPORT flagged a *pre-existing* German defect this entry's own gap
+> table could not have found — the `alarm-arming` ledger paragraph
+> renders at 0.43× its English length, which reads as an earlier
+> translation that silently dropped half a paragraph. Filed as debt in
+> `docs/BUILT.md`, not fixed here: it is a quality defect, not a coverage
+> gap, and this entry's remit is coverage.
+>
+> **THE TABLE BELOW IS OVER-COUNTED AND ONE LOCALE IS ENTIRELY SO — read the
+> correction under it before briefing anyone from it.**
+
+**How it surfaced, which is the part worth keeping.** A reader said a section
+of `explain.html` rendered English under Traditional Chinese. It did — 46 keys
+over seven sections, two of them essentially whole. Fixing it took an hour;
+discovering it took a human being reading the page, because **nothing in the
+harness can see this**. `explain-i18n --check` gates `unmatched` keys — a
+translation whose English source has CHANGED — and it read 0 before the fix
+and 0 after. A key that was never translated at all is not drift: CLAUDE.md's
+own rule is that a missing entry falls back to English VISIBLY, and that
+behaviour is correct and deliberate. The gap is the DESIGNED fallback working
+exactly as intended, at a scale nobody measured.
+
+**Measured (2026-09-12, after §212 landed).** Distinct keys missing, per
+locale, per page:
+
+| locale | explain (663) | primer (125) | worst sections |
+|---|---|---|---|
+| `de` | 75 | 9 | gong 24, alarm-feeler 21, gear-teeth 15 |
+| `zh` | 75 | 9 | gong 24, alarm-feeler 21, gear-teeth 15 |
+| `fr` | 44 | 9 | gong 24, gear-teeth 15, column-wheel 2 |
+| `ja` | 44 | 9 | gong 24, gear-teeth 15, column-wheel 2 |
+| `ar` | 30 | 0 | alarm-feeler 21, fusee 7, escapement 3 |
+| `ru` | 11 | 1 | free-sprung 11 |
+| `es` `it` `ko` `pt` `hi` `zh-Hant` | 0 | 0 | complete |
+
+**CORRECTION (2026-09-20, from the Chinese landing).** That table counts
+INVARIANT keys as missing. `explain-i18n --check` excludes a key with no
+letters outside a `<code>` span — `0.10`, `+12°`, `<code>ALARM_PIN_R</code>` —
+because this page's contract is that a number and a quoted identifier are never
+translated. The rows above were taken without that rule, and for one locale it
+is the whole figure: `ar`'s listed 30, worst sections `alarm-feeler 21, fusee 7,
+escapement 3`, are bare constants to the last key. Measured with the checker's
+own `isInvariant` applied: `ar` 66 raw → **36 real, 30 invariant**; `de` and `zh`
+each carried 30 invariant too. A translator brief written from the filed table
+would have sent someone to translate `4.26`. The 316 is therefore not the size
+of the job, and the instrument that prices it has to be the checker's rule
+rather than a fresh count.
+
+**Re-priced 2026-09-20, after the Chinese landing** (explainer, real keys):
+`ja` 85, `fr` 81, `de` 78, `ru` 47, `ko` 43, `hi` 38, `it` 37, `ar` 36,
+`es` 36, `pt` 36, `zh` 15, `zh-Hant` 15. The primer: `de`/`fr`/`ja`/`zh` 8 each,
+`ru` 1, the rest 0. **And the largest cluster in EVERY locale is now
+`vocabulary`, 34–41, which did not exist when this was filed** — §236's two new
+Vocabulary tables and its variants rows, shipped English. Item 1's count is
+stale by construction, and that is this entry's own thesis arriving on
+schedule: closing the total buys nothing about tomorrow, because nothing yet
+makes a landing carry its locales. Item 2 is the deliverable.
+
+**Japanese and French SHIPPED 2026-09-23** (public PR #478): French 100% on
+both pages (81 → 0, 8 → 0), Japanese 100% on the primer and 98.0% on the
+explainer, the residue being the 15 CJK variant rows every CJK locale leaves
+English by design. Links: French 63 → 95, Japanese 30 → 66. Remaining
+explainer gaps: `ru` 47, `ko` 43, `hi` 38, `it` 37, `ar`/`es`/`pt` 36 —
+every one dominated by the same `vocabulary` cluster plus `keyless` and
+`free-sprung`, i.e. one landing's worth of English, not seven.
+
+**Italian SHIPPED 2026-09-23**: 100% on both pages (37 → 0; primer already
+complete). Its 37 were exactly the one-landing cluster the Japanese/French
+note predicted — vocabulary + `keyless` + `free-sprung`, nothing else — and it
+closed with no residue report at all. Remaining explainer gaps: `ru` 47,
+`ko` 43, `hi` 38, `ar`/`es`/`pt` 36.
+
+**Russian and Korean SHIPPED 2026-09-23 — §223 closes.** `ru` 47 → 0 (the
+common cluster plus eleven free-sprung plate labels, the "What the sim models"
+block and the primer's honesty note, all new English since §213), `ko` 43 →
+15, the fifteen being hidden variant rows kept English as Chinese and
+Japanese keep theirs. Two Russian words refused in drafting rather than after
+a build: `throw` is *рабочий ход*, never bare *ход* (the escapement), and
+`fold` is *складывание* without *сложенный* (also "added up"). Korean `chord`
+is *원의 현*, since a bare *현* would open every eojeol starting 현 (현재,
+"now"), and `annulus` is *환형 영역* rather than *고리*, the chain's link.
+
+**Arabic and Hindi SHIPPED 2026-09-23**: both 100% on both pages (ar 36 → 0,
+hi 38 → 0; primers already complete). The chord/winding clash does not recur
+(التعبئة, वाइंडिंग); Arabic الوتر is also string/hypotenuse, which occur only
+in the gong entry (chord already refused there) and a plate label. Remaining
+explainer gaps: `ru` 47, `ko` 43 — then §223 closes.
+
+**Spanish and Portuguese SHIPPED 2026-09-23**: both 100% on both pages (36 → 0
+each; primers already complete) — the same one-landing cluster as Italian's.
+Two terms renamed after reading the first build's links: `chord` is
+*cuerda*/*corda*, also the WINDING word in both, so the cell reads *cuerda
+geométrica*/*corda geométrica*; Portuguese `fold` is *dobramento*, since
+*dobra* is also a plain bend. Worth checking in the next locales too: a
+glossary word that is also that language's word for a mechanism's own part
+(Russian, Korean, Hindi, Arabic have not been read for it). Remaining
+explainer gaps: `ru` 47, `ko` 43, `hi` 38, `ar` 36.
+
+**Re-priced again 2026-09-23, after the German landing**: `de` drops OFF this
+table entirely — 78 → 0 on the explainer, 8 → 0 on the primer, both pages
+100%. Remaining explainer gaps: `ja` 85, `fr` 81, `ru` 47, `ko` 43, `hi` 38,
+`it` 37, `ar`/`es`/`pt` 36, `zh`/`zh-Hant` 15. Two full locales down, ten
+(explainer) / eleven (primer, `zh`/`zh-Hant` already clean there too) to go.
+
+**316 entries in total.** And they are not scattered: they cluster by the
+LANDING that introduced the English. The gong block (24 explainer + 4 primer)
+is §56/§197/§198's work; the gear-teeth block (15) is §136's; `free-sprung`
+(11, and `ru` alone) is §218 tier two, which landed while the Russian PR was
+open and was ported into `pt`/`it` but not back into `ru`. Each cluster is one
+mechanism landing that shipped its English prose and translated some locales.
+
+**So the deliverable is two things, and the rule matters more than the
+strings.** Translating 316 entries closes today's gap and buys nothing about
+tomorrow's: the next mechanism landing will do the same thing again, because
+nothing makes it not. What is missing is a statement of what "a locale is
+supported" MEANS at landing time.
+
+**The entry.**
+
+1. **Close the 316.** Six locales, both pages, against each table's existing
+   register — `de`/`zh` are the large ones at 84 each, `ru` the small one at
+   12. `zh`'s and `de`'s gaps are identical in shape, which suggests one
+   landing skipped both together. Note that the Simplified table is BEHIND
+   Traditional here, which is the reverse of the usual assumption and cost
+   §212 a wrong premise in a translator brief before it was caught.
+2. **Decide the rule, and write it in CLAUDE.md.** Three candidates, and the
+   entry should pick one rather than leave it open:
+   - *Every locale, every landing.* Honest, and makes every mechanism PR a
+     thirteen-locale translation job. Probably too expensive to hold.
+   - *A named TIER.* `en` plus a declared set are complete-or-red; the rest
+     are best-effort and their gaps are reported, never gated. This matches
+     what the project already does in practice and would make it explicit.
+   - *Gate the DELTA, not the total.* A landing may not INCREASE any locale's
+     missing count. Cheap to check, catches the recurring cause exactly, and
+     lets the existing 316 stay as declared debt rather than blocking work.
+3. **Report the gap wherever it can be seen.** `explain-i18n --check` already
+   prints `658/700 translated (94.0%)` per locale and passes. Whichever rule
+   wins, the count belongs in the run's summary as a first-class line rather
+   than one figure among many, so a drop is visible without arithmetic.
+
+**What this is NOT.** Not a quality pass — the Korean idiom work §212 did
+alongside this is a different problem with a different instrument (marker
+counts for 번역투). And not a gate on translation QUALITY, which no checker
+can judge; both remain reader-reported, and the residue every locale record
+carries ("no native review pass") stands.
+
+Feasibility: the 316 strings are a day of translator agents against existing
+tables · the rule is an afternoon and one CLAUDE.md paragraph · Battery: does
+not run (tables and pages only; `paths-ignore` covers both i18n modules and
+the two documents).
+
+**Acceptance.** The six locales read 100% on both pages, `explain-i18n
+--check` PASS with 0 unmatched and 0 new plate overflow for each; the chosen
+rule written in CLAUDE.md beside the existing i18n contract with the reason
+the other two were rejected; and whatever check the rule implies, failing
+before it is implemented and passing after — a gate nobody has seen fire is
+a comment.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
