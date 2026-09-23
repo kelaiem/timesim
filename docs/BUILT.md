@@ -24865,6 +24865,32 @@ which is itself a flat annulus read at every azimuth, so the claim holds.
 No other residue: no honesty row ABSENT, no block under its locale's length
 ratio.
 
+### Russian and Korean, completed — §223 closes
+
+The last two. Russian 47 real keys → 0 on the explainer and 1 → 0 on the
+primer; Korean 43 → 15 on the explainer, the fifteen being the hidden
+`.gloss-variants` rows, which stay English exactly as Chinese and Japanese
+keep theirs — the Hangul linker anchors a stem at a word start and grows it
+to the end of the eojeol, so it needs no listed inflections. Russian's extra
+eleven over the common cluster were all English added since §213: the
+free-sprung overcoil plate's labels, its "What the sim models" block, and the
+primer's honesty note on the solved hairspring. The labels were shortened
+where the plate needed it (plate fit 0 new overflow in both locales); the
+honesty block keeps *моделирует* and *НЕ смоделировано* against its English.
+Glossary links: ru 68, ko 61.
+
+Four words were refused in DRAFTING rather than after a build, applying what
+Spanish and Portuguese taught: Russian `throw` is *рабочий ход* and never a
+bare *ход*, which is the escapement; Russian `fold` is *складывание* with no
+*сложенный* form, which also means "added up"; Korean `chord` is *원의 현*,
+because a bare *현* would open every eojeol beginning 현 (현재, "now"); and
+Korean `annulus` is *환형 영역* rather than *고리*, which is the chain's link.
+Every new link was then read in context. Korean fractions are written in
+words (*사분의 삼*), since a digit the English does not carry is number drift.
+
+**With this §223 is complete**: all twelve locales at 100% on both pages,
+`zh`/`zh-Hant`/`ja`/`ko` at 98% on the explainer by that one design choice.
+
 ## §224 — The zone gate's forbidden band, and a lighter shipped coat below it
 
 `dial.plate.smoke` ships **0.74**. The ask was 0.75, and 0.75 boots with a
