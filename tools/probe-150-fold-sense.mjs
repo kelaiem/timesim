@@ -43,6 +43,12 @@
 // built meshes' own world z-bands, so a future fix that closes it is visible
 // here without anyone re-deriving the number.
 //
+// GATED — TODO 151 (MW_RISE_PLATE_HOLE): the six motion-works corner blanks
+// against the base plate, the same clearance A and K's holes already held.
+// Only NON-schematic backPlate meshes count — the plate's schematic
+// occluder children (§66/§71's silhouette convention) read as plate too and
+// would report ~0 clearance for a hole that is really open.
+//
 // Run from tools/ with a Playwright Chromium: `node probe-150-fold-sense.mjs`.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -106,7 +112,23 @@ const out = await page.evaluate(async (bases) => {
   const zBand = (n) => { const b = new THREE.Box3().setFromObject(mesh[n]); return [b.min.z, b.max.z]; };
   const capZ = zBand('settingCap'), mwZ = zBand('mwMinuteWheel');
   const overlap = Math.min(capZ[1], mwZ[1]) - Math.max(capZ[0], mwZ[0]);
-  return { runs, capZ, mwZ, overlap };
+  // TODO 151 — PLATE: the six motion-works corner blanks against the base
+  // plate. `meshClearance` is inspect.js's own measure, so this is the same
+  // instrument the battery gates rather than a re-derivation; schematic
+  // occluder children are pruned first (they read as plate and would report
+  // ~0 for a hole that is really open — CLAUDE.md's schematic-mode rule).
+  const I = await import('/src/inspect.js');
+  const L = await import('/src/layout.js');
+  const PLATE_NAMES = ['mwCornerDropIn', 'mwCornerDropOut', 'mwCornerFoldIn', 'mwCornerFoldOut', 'mwCornerRiseIn', 'mwCornerRiseOut'];
+  const plateMeshes = [];
+  C.scene.traverse((o) => { if (o.isMesh && o.name === 'backPlate' && !(o.userData && o.userData.schematic)) plateMeshes.push(o); });
+  const plate = {};
+  for (const n of PLATE_NAMES) {
+    let min = Infinity;
+    for (const pm of plateMeshes) min = Math.min(min, I.meshClearance(mesh[n], pm));
+    plate[n] = min;
+  }
+  return { runs, capZ, mwZ, overlap, plate, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN };
 }, [0, 7.3]);
 
 let bad = 0;
@@ -153,6 +175,15 @@ else {
     else ok(`cap ⇄ minute wheel mesh: pitch-line ${(capW * rCap).toFixed(6)} against ${(mwW * rMw).toFixed(6)} (centre distance ${run.capToWheel.toFixed(4)})`);
     if (Math.sign(capW) !== Math.sign(cpW)) fail(`cap ⇄ cannon pinion counter-rotate — both mesh the minute wheel, so they must turn together`);
     else ok(`cap ⇄ cannon pinion co-rotate (${capW.toFixed(6)}, ${cpW.toFixed(6)})`);
+  }
+  // TODO 151 — GATED: the six motion-works corner blanks against the base
+  // plate (non-schematic meshes only), held to CLEAR_MARGIN — MW_RISE_PLATE_HOLE's
+  // own acceptance, on the same instrument (inspect.js's meshClearance) the
+  // battery's clearances check runs.
+  console.log(`\nPLATE — corner blanks ⇄ backPlate (${out.plateMeshCount} plate mesh(es), CLEAR_MARGIN ${out.CLEAR_MARGIN}):`);
+  for (const [n, c] of Object.entries(out.plate)) {
+    if (c < out.CLEAR_MARGIN) fail(`${n} ⇄ backPlate clears ${c.toFixed(4)} — under CLEAR_MARGIN ${out.CLEAR_MARGIN}`);
+    else ok(`${n} ⇄ backPlate clears ${c.toFixed(4)}`);
   }
   // TODO 151 — REPORTED, not gated: the cap's and the motion works' minute
   // wheel's world z-bands, read off the built meshes. A positive number
