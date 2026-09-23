@@ -13669,10 +13669,12 @@ motionWorks.add(mwArbor);
 // The stud itself, riveted into the plate's dial-side face. Its length is
 // SOLVED so it actually reaches the plate rather than stopping in mid-air:
 // dialFace local +z runs away from the plate (the group is Y-flipped), so
-// the plate's dial-side face sits at local (Z_DIAL − backPlateBottom), and
-// the stud spans from the minute pinion's plane to just inside it.
+// the plate's dial-side face sits at local MW_PLATE_FACE_LOCAL (TODO 153:
+// the plate's own PRESENTED face, not the backPlate.position.z − 1 estimate
+// this used to carry), and the stud spans from the minute pinion's plane to
+// just inside it.
 {
-  const plateFaceLocal = Z_DIAL - (backPlate.position.z - 1); // → local z of the plate's dial-side face
+  const plateFaceLocal = MW_PLATE_FACE_LOCAL;
   const studTop = plateFaceLocal - 0.4;                       // 0.4 buried in the plate
   const studLen = MW_Z2 - studTop;
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, Math.abs(studLen), 12), MATS.steel);
@@ -14055,8 +14057,11 @@ const JMP_LIFT_ROT = (() => {
 }
 {
   // Pivot stud: from the base plate's dial-side face up to this plane
-  // (the same span the minute wheel's own stud bridges).
-  const plateFaceLocal = Z_DIAL - (backPlate.position.z - 1);
+  // (the same span the minute wheel's own stud bridges). TODO 153: reads
+  // the plate's own presented face now, the same MW_PLATE_FACE_LOCAL the
+  // minute wheel's stud reads, rather than a second backPlate.position.z − 1
+  // estimate of the same quantity.
+  const plateFaceLocal = MW_PLATE_FACE_LOCAL;
   const studLen = Math.abs(STAR_BOT - (plateFaceLocal - 0.4));
   const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, studLen, 10), MATS.steel);
   stud.rotation.x = Math.PI / 2;
