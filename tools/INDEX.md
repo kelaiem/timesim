@@ -4,8 +4,8 @@
 
 # The instruments
 
-237 scripts. **128 are ACCEPTANCE tests** — they decide and exit non-zero.
-**109 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+237 scripts. **129 are ACCEPTANCE tests** — they decide and exit non-zero.
+**108 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -93,7 +93,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-146-panel.mjs` | §146 | acceptance | §146 — THE MAIN PANEL STARTS HIDDEN, AND EVERY WAY BACK TO IT STILL WORKS. Acceptance: 1. a virgin boot: #clock-ui hidden, the chrome bar's Menu toggle reads off, the control pad is ON (§57's default, unchanged) and the View panel is up — the arrival sees the watch and the two controls that drive and explain it; 2. H shows the panel; the chrome bar's Menu toggle hides it again; 3. ?panel=1 opens it on arrival; 4. hidePanelForScript's no-restore branch, against a never-opened panel: a tour started with the panel hidden ends with it still hidden; one started with the panel open hides it for the run and restores it; 5. the same on a phone viewport (375×667): the panel hidden, the pad on. cd tools && node probe-146-panel.mjs (exit 1 on any claim) |
 | `probe-149-lifter-width.mjs` | §149 | acceptance | TODO 149 — HOW WIDE CAN THE MINUTE JUMPER'S LIFTER LINK GET, AND ON WHICH SIDE? A REPORT. |
 | `probe-150-fold-sense.mjs` | §150 | acceptance | TODO 150 — DOES THE SETTING FOLD TURN AS ONE TRAIN? Every shaft rigid, every bevel corner rolling, the cap pinion meshing the minute wheel at its ratio. |
-| `probe-151-cap-plane.mjs` | §151 | report | TODO 151 — CAN THE SETTING CAP REACH THE MINUTE WHEEL'S PLANE IN POSITION SPACE? |
+| `probe-151-cap-plane.mjs` | §151 | acceptance | TODO 151 — DOES THE SETTING CAP STAND ON THE MINUTE WHEEL'S PLANE, AND IS THE LEG THAT CARRIES IT THERE THE ONE ITS SOLVE SAYS IT CUT? |
 | `probe-152-floor.mjs` | §152 | report | §152 probe two — THE IRREDUCIBLE PER-POSE FLOOR. |
 | `probe-152-fresh.mjs` | §152 | acceptance | §152 — THE FRESH/PAYLOAD BOUNDARY, MEASURED AND INDUCED. |
 | `probe-152-history.mjs` | §152 | acceptance | §152 probe four — HOW OFTEN COULD AN INCREMENTAL RUN ACTUALLY FIRE? |

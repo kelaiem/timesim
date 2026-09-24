@@ -746,7 +746,19 @@ export function bevelToothSpec({ module: m, teeth, mateTeeth, faceWidth, shaftAn
   // is the one case the old builder's default happened to get right.
   const SIGMA = (shaftAngleDeg * Math.PI) / 180;
   const gamma = Math.atan2(Math.sin(SIGMA), mateTeeth / teeth + Math.cos(SIGMA));
-  const gammaMate = SIGMA - gamma;
+  // TODO 151 — AN EQUAL-COUNT PAIR HAS ONE PITCH ANGLE, not two that agree to
+  // an ulp. `SIGMA − gamma` is γ again only in exact arithmetic; in floats the
+  // two virtual counts z/cos γ came out a last bit apart at about one shaft
+  // angle in eleven, and `cyPairSolve` picks which member of a pair to extend
+  // first by comparing exactly those counts — so at those angles the member's
+  // own solve and its mate's disagreed about who was the larger, and the spec
+  // came out with a floor addendum (tip 0.32 low) or a 0.3-deep root that is
+  // not there at the angle either side. Measured over Σ 60°–170° in 1/32°
+  // steps: 319 of 3521 angles. The TODO 151 cap leg's tilt solve landed on
+  // one (Σ_E 101.796875°, root 2.2595 against 2.0572 either side). Every
+  // equal-count corner cut before it sat where the two already agreed (90°
+  // exactly, and the §234 fold corner), so this moves no metal that shipped.
+  const gammaMate = mateTeeth === teeth ? gamma : SIGMA - gamma;
   const pitchR = (m * teeth) / 2;
   // ONE CONE DISTANCE, and it is the pair's, not the member's: both members'
   // pitch circles lie on the same sphere about the shared apex. That is the
@@ -1070,6 +1082,253 @@ export function makeConicalGear({ teeth, module, mateTeeth, faceWidth, shaftAngl
   g.userData.cone = spec;
   if (name) g.name = name;
   return g;
+}
+
+// TODO 151 — THE BLANK'S SWEPT ENVELOPE, and a clearance between two of them
+// that is a BOUND, not an estimate. A bevel blank turns about its own axis, so
+// the metal it can ever occupy is its body of REVOLUTION: the outline taken at
+// the tip cone everywhere. That is the solid a corner-siting solve has to keep
+// clear — a clearance read off the posed teeth holds at one setting-input angle
+// and not the next — and it has a closed meridian, which is what makes the
+// distance to it exact: for a solid of revolution the nearest point lies in the
+// query point's own meridian half-plane, so the 3-D distance IS a 2-D distance
+// to one polygon.
+//
+// The polygon is built to CONTAIN every meridian the cutter leaves, never to
+// approximate it (makeConicalGear's six rings, read backwards):
+//   · bottom web  z = zWebLo, axis → the root cone at coneRi;
+//   · FRONT CAP   the straight chord to the tip at coneRi — the mesh joins R1
+//     to R2 with ONE strip, so the cut face is that chord, not the sphere, and
+//     every lower tooth's chord lies on the far side of it;
+//   · the tip ray θ = θtip, coneRi → coneR — the outline never exceeds it;
+//   · BACK CAP    the sphere coneR, drawn CIRCUMSCRIBED (tangent segments), so
+//     the chords the mesh draws there lie inside it;
+//   · top web     z = zWebHi back to the axis. The bore is FILLED: the only
+//     thing in it is the rod the blank is keyed to.
+// The one place the mesh leaves that solid is across AZIMUTH: two outline
+// vertices joined by a straight edge stand in by at most r·(1 − cos(g/2)) for
+// the outline's widest gap g, so that is carried as `eps` and added to the
+// target by the clearance below rather than hidden in the polygon.
+const _envCache = new Map();
+export function bevelBlankEnvelope(spec) {
+  const key = [spec.module, spec.teeth, spec.mateTeeth, spec.shaftAngle, spec.faceW].join('|');
+  const hit = _envCache.get(key);
+  if (hit) return hit;
+  const { coneR, coneRi, thetaRoot: tr, thetaTip: tt, zWebLo, zWebHi, tipR } = spec;
+  const poly = [[0, zWebLo], [coneRi * Math.sin(tr), zWebLo], [coneRi * Math.sin(tt), coneRi * Math.cos(tt)],
+    [coneR * Math.sin(tt), coneR * Math.cos(tt)]];
+  const nArc = 16, dA = (tt - tr) / nArc, rC = coneR / Math.cos(dA / 2);
+  for (let i = 1; i <= nArc; i++) {
+    const a = tt - (i - 0.5) * dA;
+    poly.push([rC * Math.sin(a), rC * Math.cos(a)]);
+  }
+  poly.push([coneR * Math.sin(tr), zWebHi], [0, zWebHi]);
+  const outline = bevelOutline(spec);
+  let g = 0;
+  for (let k = 0; k < outline.length; k++) {
+    let d = outline[(k + 1) % outline.length][0] - outline[k][0];
+    while (d <= -Math.PI) d += Math.PI * 2; while (d > Math.PI) d -= Math.PI * 2;
+    g = Math.max(g, Math.abs(d));
+  }
+  const eps = tipR * (1 - Math.cos(g / 2));
+  let R = 0;
+  for (const [r, z] of poly) R = Math.max(R, Math.hypot(r, z));
+  // the SURFACE, as arc length along every edge but the axis (the last one)
+  const edges = [];
+  let S = 0;
+  for (let i = 0; i + 1 < poly.length; i++) {
+    const [r0, z0] = poly[i], [r1, z1] = poly[i + 1];
+    const L = Math.hypot(r1 - r0, z1 - z0);
+    edges.push({ s0: S, L, r0, z0, r1, z1 });
+    S += L;
+  }
+  const at = (s) => {
+    s = Math.min(S, Math.max(0, s));
+    for (const e of edges) if (s <= e.s0 + e.L || e === edges[edges.length - 1]) {
+      const f = e.L > 0 ? Math.min(1, Math.max(0, (s - e.s0) / e.L)) : 0;
+      return [e.r0 + (e.r1 - e.r0) * f, e.z0 + (e.z1 - e.z0) * f];
+    }
+    return [0, 0];
+  };
+  // The exact form the distance field reads: the six straight edges with the
+  // back cap as its CHORD, plus the circular segment beyond that chord (ρ ≤
+  // coneR over θ ∈ [θroot, θtip]) whose curved side is measured as the arc it
+  // is. The circumscribed `poly` above stays the SURFACE that is sampled —
+  // it contains the arc, so sampling it can only read nearer, never farther.
+  const P0 = [0, zWebLo], P1 = poly[1], P2 = poly[2], P3 = poly[3], P4 = [coneR * Math.sin(tr), zWebHi], P5 = [0, zWebHi];
+  const lines = [P0, P1, P2, P3, P4, P5];
+  const env = { poly, eps, g, R, S, at, lines, arc: { rho: coneR, t0: tr, t1: tt, c3: P3, c4: P4 } };
+  _envCache.set(key, env);
+  return env;
+}
+// Signed distance to an envelope's meridian (negative inside), r ≥ 0: the
+// straight edges of `lines` (closed, back cap as its chord) and the back arc
+// exactly; inside is inside the chord polygon OR in the arc's segment.
+function _sdEnv(E, x, y) {
+  const P = E.lines, A = E.arc;
+  let d2 = Infinity, inside = false;
+  const n = P.length;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const ax = P[j][0], ay = P[j][1], bx = P[i][0], by = P[i][1];
+    const ex = bx - ax, ey = by - ay, wx = x - ax, wy = y - ay;
+    if ((ay > y) !== (by > y) && x < ax + ((y - ay) * ex) / ey) inside = !inside;
+    if (j === 3) continue;   // P3 → P4 is the arc's chord: not a face, the arc below is
+    const ee = ex * ex + ey * ey;
+    let t = ee > 0 ? (wx * ex + wy * ey) / ee : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const dx = wx - ex * t, dy = wy - ey * t, q = dx * dx + dy * dy;
+    if (q < d2) d2 = q;
+  }
+  const rho = Math.hypot(x, y), th = Math.atan2(x, y);   // θ off the +z axis
+  let dArc;
+  if (th >= A.t0 && th <= A.t1) {
+    dArc = Math.abs(rho - A.rho);
+    // beyond the chord and inside the sphere: the segment is metal too
+    if (!inside && rho <= A.rho) {
+      const cx = A.c4[0] - A.c3[0], cy = A.c4[1] - A.c3[1];
+      if ((x - A.c3[0]) * cy - (y - A.c3[1]) * cx <= 0 === (0 - A.c3[0]) * cy - (0 - A.c3[1]) * cx > 0) inside = true;
+    }
+  } else {
+    dArc = Math.min(Math.hypot(x - A.c3[0], y - A.c3[1]), Math.hypot(x - A.c4[0], y - A.c4[1]));
+  }
+  const d = Math.min(Math.sqrt(d2), dArc);
+  return inside ? -d : d;
+}
+// frame: { o: [x,y,z] the apex, a: [x,y,z] the unit axis the blank's +z maps to }
+function _basis(a) {
+  const h = Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  let u = [a[1] * h[2] - a[2] * h[1], a[2] * h[0] - a[0] * h[2], a[0] * h[1] - a[1] * h[0]];
+  const n = Math.hypot(...u); u = u.map((c) => c / n);
+  const v = [a[1] * u[2] - a[2] * u[1], a[2] * u[0] - a[0] * u[2], a[0] * u[1] - a[1] * u[0]];
+  return { u, v };
+}
+// Does blank A's envelope clear blank B's by `target` everywhere? A BOUND in
+// both directions it answers: `true` only when every point of A's surface is
+// proved at least target (+ both eps) from B's solid, `false` whenever a point
+// of A's surface is measured inside that, and — the one conservative choice —
+// `false` too when the answer sits inside the finest sampling's own covering
+// radius. The surface is sampled on a grid whose every point lies within δ of
+// a sample (δ/2 along the meridian's arc length, δ/2 of azimuthal arc), and a
+// distance field is 1-Lipschitz, so an unsampled point reads at most δ below
+// its sample: samples at or above target + δc are settled coarsely, the rest
+// are re-sampled at δf over exactly their own cell.
+export const ENVELOPE_DELTAS = [0.2, 0.05, 0.0125, 0.005];
+export const ENVELOPE_DELTA_FINE = ENVELOPE_DELTAS[ENVELOPE_DELTAS.length - 1];
+export function revolvedBlanksClear(A, fA, B, fB, target) {
+  return revolvedBlanksClearance(A, fA, B, fB, target).ok;
+}
+// …and the same judgement with the certified LOWER BOUND it proved on the way
+// (`lb`, meaningful when `ok`): every settled cell contributes its sample's
+// reading less its own covering radius, a culled one its sphere bound less
+// δ0, so the true clearance of the two blanks as cut is at least `lb`. A
+// caller moving one blank rigidly by less than lb − target cannot bring the
+// pair under target — the distance to a set is 1-Lipschitz — which is what
+// lets a scan step by it without skipping a window.
+export function revolvedBlanksClearance(A, fA, B, fB, target) {
+  const tgt = target + A.eps + B.eps;
+  const oA = fA.o, oB = fB.o, aB = fB.a;
+  const epsAB = A.eps + B.eps;
+  const apart = Math.hypot(oA[0] - oB[0], oA[1] - oB[1], oA[2] - oB[2]) - A.R - B.R;
+  if (apart >= tgt) return { ok: true, lb: apart - epsAB };
+  const NO = { ok: false, lb: -Infinity };
+  let lb = Infinity;
+  const { u, v } = _basis(fA.a), aA = fA.a;
+  // COAXIAL blanks — two keyed to one rod — are two solids of revolution about
+  // ONE axis, so their distance is the distance between their meridians in a
+  // single half-plane (turning a point about the shared axis into the other's
+  // meridian never lengthens the gap). The near set is then a whole ring and
+  // the 2-D sampling below would refine all of it; the meridian is 1-D and
+  // settles it exactly: A's boundary sampled at δ, so every point of it lies
+  // within δ/2 of a sample.
+  {
+    const dotA = aA[0] * aB[0] + aA[1] * aB[1] + aA[2] * aB[2];
+    const w = [oB[0] - oA[0], oB[1] - oA[1], oB[2] - oA[2]];
+    const wz = w[0] * aA[0] + w[1] * aA[1] + w[2] * aA[2];
+    const off = Math.hypot(w[0] - wz * aA[0], w[1] - wz * aA[1], w[2] - wz * aA[2]);
+    if (Math.abs(Math.abs(dotA) - 1) < 1e-9 && off < 1e-9) {
+      const sgn = Math.sign(dotA), df = ENVELOPE_DELTA_FINE;
+      const n = Math.ceil(A.S / df);
+      for (let k = 0; k <= n; k++) {
+        const [r, z] = A.at((k * A.S) / n);
+        const d = _sdEnv(B, r, sgn * (z - wz));
+        if (d < tgt + df / 2) return NO;
+        if (d - df / 2 < lb) lb = d - df / 2;
+      }
+      // B wholly inside A would never meet A's boundary: its web point is tested
+      const zm = (B.poly[0][1] + B.poly[B.poly.length - 1][1]) / 2;
+      if (_sdEnv(A, B.poly[1][0] / 2, wz + sgn * zm) < tgt) return NO;
+      return { ok: true, lb: lb - epsAB };
+    }
+  }
+  const sdB = (x, y, z) => {
+    const qx = x - oB[0], qy = y - oB[1], qz = z - oB[2];
+    const q2 = qx * qx + qy * qy + qz * qz;
+    const zb = qx * aB[0] + qy * aB[1] + qz * aB[2];
+    return _sdEnv(B, Math.sqrt(Math.max(0, q2 - zb * zb)), zb);
+  };
+  const world = (r, z, psi) => {
+    const c = Math.cos(psi) * r, s = Math.sin(psi) * r;
+    return [oA[0] + aA[0] * z + u[0] * c + v[0] * s, oA[1] + aA[1] * z + u[1] * c + v[1] * s,
+      oA[2] + aA[2] * z + u[2] * c + v[2] * s];
+  };
+  // B inside A with no surface crossing would read clear from A's side alone
+  {
+    const { u: ub } = _basis(aB);
+    const zm = (B.poly[0][1] + B.poly[B.poly.length - 1][1]) / 2, rm = B.poly[1][0] / 2;
+    const p = [oB[0] + aB[0] * zm + ub[0] * rm, oB[1] + aB[1] * zm + ub[1] * rm, oB[2] + aB[2] * zm + ub[2] * rm];
+    const qx = p[0] - oA[0], qy = p[1] - oA[1], qz = p[2] - oA[2];
+    const za = qx * aA[0] + qy * aA[1] + qz * aA[2];
+    if (_sdEnv(A, Math.sqrt(Math.max(0, qx * qx + qy * qy + qz * qz - za * za)), za) < tgt) return NO;
+  }
+  // Level 0 covers the whole surface at ENVELOPE_DELTAS[0]; each later level
+  // re-samples only the cells the previous one could not settle, over exactly
+  // those cells, at its own δ. A cell's sample reading below target fails the
+  // pair outright; one within δ of it is handed down; at the last level it
+  // fails too — the one conservative choice.
+  const d0 = ENVELOPE_DELTAS[0];
+  const rows = Math.ceil(A.S / d0);
+  const ds = A.S / rows;   // ≤ δ0: each row owns ds of arc length, so ds/2 ≤ δ0/2 to its sample
+  let cells = [];
+  for (let k = 0; k <= rows; k++) {
+    const s = k * ds, [r, z] = A.at(s);
+    const n = Math.max(1, Math.ceil((2 * Math.PI * r) / d0));
+    for (let j = 0; j < n; j++) {
+      const psi = (j * 2 * Math.PI) / n;
+      const p = world(r, z, psi);
+      // B lies inside its sphere R: a sample that far off is settled unread
+      const sph = Math.hypot(p[0] - oB[0], p[1] - oB[1], p[2] - oB[2]) - B.R;
+      if (sph >= tgt + d0) { if (sph - d0 < lb) lb = sph - d0; continue; }
+      const d = sdB(p[0], p[1], p[2]);
+      if (d < tgt) return NO;
+      if (d < tgt + d0) cells.push([s, ds / 2, psi, Math.PI / n]);
+      else if (d - d0 < lb) lb = d - d0;
+    }
+  }
+  for (let lv = 1; lv < ENVELOPE_DELTAS.length && cells.length; lv++) {
+    const dl = ENVELOPE_DELTAS[lv], last = lv === ENVELOPE_DELTAS.length - 1, next = [];
+    for (const [s0, hs, psi0, hpsi] of cells) {
+      // the cell [s0 ± hs] × [psi0 ± hpsi], split into sub-cells whose own
+      // half-widths are ≤ δ/2 along the meridian and in azimuthal arc
+      const ns = Math.max(1, Math.ceil((2 * hs) / dl)), hss = hs / ns;
+      for (let a = 0; a < ns; a++) {
+        const s = s0 - hs + (2 * a + 1) * hss;
+        if (s < 0 || s > A.S) { if (s - hss > A.S || s + hss < 0) continue; }
+        const [r, z] = A.at(s);
+        // the widest radius in this sub-row bounds its arc (r moves ≤ hss along it)
+        const np = Math.max(1, Math.ceil((2 * hpsi * (r + hss)) / dl)), hp = hpsi / np;
+        for (let c = 0; c < np; c++) {
+          const psi = psi0 - hpsi + (2 * c + 1) * hp;
+          const p = world(r, z, psi);
+          const d = sdB(p[0], p[1], p[2]);
+          if (d < tgt) return NO;
+          if (d < tgt + dl) { if (last) return NO; next.push([s, hss, psi, hp]); }
+          else if (d - dl < lb) lb = d - dl;
+        }
+      }
+    }
+    cells = next;
+  }
+  return { ok: true, lb: lb - epsAB };
 }
 
 // Punch a central bore plus `spokes` crescent (annular-sector) cutouts into a

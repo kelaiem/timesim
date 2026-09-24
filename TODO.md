@@ -17,10 +17,15 @@ refreshed 2026-08-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
+| 158 | OPEN | Only the default spec is battery-validated; URL overrides, the reconfigure panel and saved variants build geometry nobody swept, shown as sound. Tier A: a shipped validated-fingerprint set and a localized "unverified configuration" mark. Tier B: restricted `inspection` per `SPEC_POINT` |
+| 157 | OPEN | CAP_SOLVE, `solveCapLeg` and `stubSolve` take the first feasible value, so their binding pairs sit on the margin (0.1504, 0.1531). Replace with a declared objective: max-min certified clearance, then a written aesthetic tie-break; finish never spends a constraint |
+| 156 | OPEN | The jumper's real-metal siting runs at the end of the build and cannot veto the cap-bearing scan's B; movers other than the setting lever are judged as built, and the pillar seats judge the keyless works as one AABB (which moved the 135° pillar 181° → 87°). Restructure the build order (one late siting phase, or nested re-scans with the `solveReserveSwing` veto shape) |
+| 155 | OPEN | The setting fold is posed from `handSetOffset` alone while the minute wheel it now meshes turns with the going train: `setting fold minute wheel ⇄ setting cap` is waived in `meshPhase` and `transmits`. Fix path: the clutch's engagement as a pose input, the train's turn carried into the fold while the clutch is out |
 | 152 | CLOSED | A `?trial=1` boot — §33's verdict boot — inherited the viewer's tuned aesthetics (no trial guard in `aesthetics.js`; `reconfTrialBoot` passes `location.search` through), so every trial verdict was measured on a TUNED build; and the trial's merge ARMED the §23 crash-recovery marker, which a superseded trial never confirms, so the viewer's next real boot dropped their overrides and warned. Measured by `tools/probe-240-trial-boot.mjs` (6 rows red, controls green); closed by `state.js`'s `TRIAL_BOOT` guard copied to `aesthetics.js` — the merge, the marker, both finish params and the confirm all skip under the flag. Probe green. |
 | 150 | CLOSED | The §234 setting fold's three rods counter-rotated end to end: tick flipped the sign across each ROD as well as each corner. `MW_FOLD_SPIN` is read off the mounts now. The drop corner's inboard bevel, cut on the far side of its apex from its own shaft, is re-mounted on that shaft (the minute pinion it used to stand off is retired); the cap's mate claims are corrected (it meshes the motion works' minute wheel, not the keyless one); the fold's members are named for hover. `probe-150-fold-sense.mjs` gates all four rods, all three corners and the cap ⇄ minute-wheel mesh, 0 findings. The cap not meshing that wheel IN THE METAL (a 2.9 u axial gap) is split out to [TODO 151] |
 | 153 | OPEN | The motion-works stack (`MW_WHEEL_T`, `MW_Z2`, `MW_TOP`, `CANNON_T`, …) is solved against `MW_PLATE_FACE_LOCAL`'s bare `-2.0` literal, 0.3 u shallower than the plate's own derived, asserted face `PLATE_BACK_FACE` (−2.3). `mwMinuteWheel` and `cannonPinion` are buried in the base plate — 0.146 and 0.21 u respectively, both `meshClearance` 0.0000 — excused wholesale by the `['Motion works', 'plate']` support edge. Found measuring [TODO 151]; re-derive the literal from `PLATE_BACK_FACE` (`MW_WHEEL_T` re-solves ≈0.84 → 0.69) or cut a relief pocket; either way moves TODO 151's target band dial-ward |
-| 151 | PART DONE | The setting cap stands 3.1 u off the motion works' minute wheel's plane axially — `settingCap` z [−7.760, −6.040] against `mwMinuteWheel` z [−3.126, −2.154] — so their tooth-count mesh claim (TODO 150 item 3) is not yet true of the metal. `probe-151-cap-plane.mjs` measured every position-space option the roadmap tried: none closes the gap within the fold's current topology (the corner and the cap collide before the cap reaches the wheel's face) — a real layout landing (option (d): a fourth corner plus a plate pocket) is needed, sequenced after [TODO 153]. DONE this landing: B's own plate recess (`MW_RISE_PLATE_HOLE`, matching A and K), gated in `probe-150-fold-sense.mjs`'s new PLATE row |
+| 151 | CLOSED | The setting cap stood 3.1 u off the motion works' minute wheel's plane, meshing it by tooth count only. The (d) landing stood it ON that plane (top face one margin off the base plate) down a tilted rise, a foot corner, a stub and a cap corner, with φ and the stub SOLVED per candidate B on each blank's swept envelope (φ 11.484°, stub 3.321 at the unchanged 17.25° bearing). The crown now turns the other way to set the hands — the cap must stand above its last apex — accepted. Fixed on the way: `bevelToothSpec`'s equal-count pitch angles disagreeing in the last bit (319 of 3521 angles cut a wrong root). The minute jumper is sited by a late solve on the real metal (derived obstacles, revolved rotors, its own travel) and moved 326° → 129.5°; the 135° pillar moved 181° → 87° off the keyless works' widened AABB; nesting it under the cap-bearing scan is [TODO 156]. The cap still posed from `handSetOffset` alone is [TODO 155] |
 | 149 | CLOSED | §54's ruler could not see a per-frame-scaled bar, so the minute jumper's lifter link ran at **λ 52.9** with no row at all. The ruler reads world scale per axis now (held by a control on three synthetic meshes) and the bar's WIDTH is solved from the ceiling — `JMP_LIFTER_W` = a pose-free span bound over `SLENDER_TARGET`, 0.550 → **1.149 u** (0.436 mm), λ **25.3**. The waiver is retired, which §54's covenant makes part of the fix. The triage that had called it SHORT was isotropic; `probe-149-lifter-width.mjs` grows the two faces separately and the in-plane corridor SATURATES at 6 u per side. Also kinded `alarmColPawlSpring` as the flat spring it is |
 | 99 | CLOSED (§176) | `claim-item.mjs` reads `refs/heads` + `refs/remotes` and never fetches, so "every ref we can see" means every ref THIS CLONE HAS. Measured: a session with 2 of the remote's 206 branches was offered TODO 91, which `case-openings` already held; the same branch then hit an add/add on `BUILT-0174.md` at merge. The scheme caught both — the cost was two late renumbers, one after review. Three fixes in the item, cheapest first; the third (fetch behind the existing `--no-remote`) is what the tool already promises |
 | 100 | PART DONE (§178) | Measured and now GATED — `outlines` is a battery check, 36/36. What remains is step 3, the design-time constraint. Nothing asks whether a cut outline is a simple polygon. The fork's crossed itself **5 times** for as long as the part existed and every gate passed it: `slenderness` reads a whole mesh's section so a local pinch does not register, `meshIntegrity`'s inverted rows are a different class (measured: all four are Lathe/Buffer, TODO 75's), the pair sweeps compare parts to other parts, and `fingerprint` hashes bounding boxes. §175's assert and probe gate cover the FORK only; the uncovered population is 30 `ExtrudeGeometry` sites in geometry.js and 23 in main.js, and whether any of them crosses is unmeasured — measure the class first, then gate it |
@@ -21398,7 +21403,7 @@ under **[TODO 151]**, filed below, rather than carried here as open items on
 a CLOSED entry. `probe-150-fold-sense.mjs` now REPORTS the z-band gap
 directly (not gated) so the number is visible without re-deriving it.
 
-## 151. The setting cap stands 3.1 u off the minute wheel's plane — PART DONE
+## 151. The setting cap stands 3.1 u off the minute wheel's plane — CLOSED
 
 Split out of [TODO 150] items 2 and 4 when item 1's fix made the axial gap
 easy to measure precisely, rather than carried forward as open items on a
@@ -21543,6 +21548,203 @@ this file. The (d) landing's own acceptance (re-measure rather than
 reuse, stated above) already covers re-deriving `targetsC` from the
 built metal when option (d) is taken up; this note is only the update
 [TODO 153]'s own consequence promised.
+
+### Built — the (d) landing: the cap on the wheel's plane, down two more corners
+
+**The CROWN NOW TURNS THE OTHER WAY TO SET THE HANDS.** Said first because
+it is the one change a user sees. The fold's net sense, minute arbor → cap,
+is `−(which way the cap's shaft leaves its last apex) × (which way the arbor
+leaves A)` whatever the corner count (`MW_FOLD_SPIN`'s law). The cap used to
+hang BELOW its last apex (the rise corner at B, `Z_SETTING` −3.0) — net
+sense −1. On the wheel's plane it must stand ABOVE its last apex, because an
+apex above a cap whose top face is one margin off the base plate would sit
+inside the plate; so the sense is +1 (`MW_FOLD_NET_SENSE`), and
+`HAND_RAD_PER_SET_RAD` changes sign with it. Only an idler — a sixth corner
+carrying the sense back — would have kept the old direction, and that is
+metal bought for a convention. The user accepted the reversal. No page
+states the crown's setting direction (`explain.html` and `primer.html` were
+searched: the primer's "turn the crown the wrong way" is the WINDING
+one-way), so nothing published went stale. `probe-direction-guards.mjs`'s
+row for the constant is re-pointed at the new value and reads HIT.
+
+**The topology.** A, K, B, both legs and §234's bearing scan are as they
+were; what hangs off B is new. `settingRise` leaves B TILTED φ off vertical
+toward the cap, down to a FOOT corner at E (`mwCornerFoot`, Σ_E = 90° + φ);
+a horizontal STUB (`settingStub`) runs from E to a CAP corner at D
+(`mwCornerCap`, a mitre whose output shaft goes UP); the cap arbor
+(`settingCapArbor`) rises from D to the cap. The cap's plane and D's are
+DERIVED:
+
+- `Z_SETTING_CAP = PLATE_BACK_FACE − CLEAR_MARGIN − SETTING_CAP_REACH` =
+  −3.310 — the cap's top face one margin off the plate's presented face,
+  `cannonPinion`'s own idiom. Its band [−4.170, −2.450] holds the wheel's
+  whole band [−3.261, −2.559].
+- `Z_CAP_CORNER = Z_SETTING_CAP − (SETTING_CAP_REACH + tipR(D) +
+  CLEAR_MARGIN)` = −6.0159: the cap corner's inboard blank lies along the
+  stub, so its reach up is the mitre's tip radius, 1.6959.
+
+**φ and the stub are SOLVED, per candidate B, not chosen.** The previous
+attempt carried them as constants (φ 14.86°, stub 3.5605) and the bearing
+scan, judging each B on metal whose tilt was right for a different B, moved
+to 5.25° and opened at a 0.016 margin. `solveCapLeg` (`src/main.js`) now
+solves both inside `buildSettingMetal` for every B the scan builds — §234's
+one-builder rule, so the metal the scan judged is the metal that ships:
+
+- the cap stands on the wheel's mesh circle (capMeshD 5.700 about the
+  wheel's axis), a plan chord `Dz·tan φ + L` from B — B is on that circle
+  too, so the chord circle always meets it; the root farther from the
+  barrel is taken;
+- the STUB L(φ): the least L at which the foot corner's blanks clear the cap
+  corner's, stepped down from the sphere bound (every blank lies within its
+  cone distance of its apex, so R_E + R_D + margin clears by construction)
+  and bisected to the envelope's 0.005 resolution;
+- the TILT φ: the least φ at which the rise corner's blanks clear the foot
+  and cap corners', scanned up from vertical at 1.25° (half a margin of E's
+  travel, to the quarter-degree) and bisected to 0.005 u at E, each φ judged
+  on its own stub and cap site — a fixed point by construction;
+- the rule between blanks: the working margin between blanks that turn as
+  DIFFERENT bodies; two blanks keyed to ONE rod (the rise's two, the stub's
+  two) are one rigid body (§107) and are held only apart.
+
+Every judgement is made on each blank's SWEPT envelope,
+`G.bevelBlankEnvelope` — the blank's body of revolution, whose meridian is
+built to CONTAIN every one the cutter leaves — through
+`G.revolvedBlanksClearance`, which returns a certified answer: yes only when
+every surface point is proved clear, sampling on a grid whose covering radius
+is carried (a distance field is 1-Lipschitz), refined in three levels to
+0.005, and exact in 2-D for coaxial pairs. `probe-151-cap-plane.mjs` §8 holds
+it to the cut metal: over ten setting-input samples the envelope's certified
+clearance never exceeded `meshClearance` on the cut blanks, and asked for
+0.02 more than a pair measures it refused every time.
+
+The answer at the shipped bearing (17.25°, swing −5°, both unchanged — the
+scan re-ran on the new metal and landed where it was): **φ 11.4844°, stub
+3.3206, chord 3.9333, Σ_B 99.658°, Σ_E 101.484°**, every corner at the
+template module 0.3 (§50's floor holds by the spec bound `foldModuleFor` now
+checks before cutting). The binding pairs: `mwCornerRiseIn ⇄
+mwCornerFootIn` certified 0.1504 for the tilt, `mwCornerFootOut ⇄
+mwCornerCapOut` 0.1531 for the stub. The whole solve costs about 0.35 s of
+boot over the eighteen candidates the scan builds; the boot wall went 13.6 →
+14.1–15.1 s on this container (runs vary by ~1 s), the thread held at worst
+365 ms (probe-239 PASS).
+
+**A generator defect it tripped on, fixed at the source.** The first solve
+landed on Σ_E = 101.796875°, and `bevelToothSpec` cut that angle with a root
+0.20 shallower than the angles either side. An equal-count pair's two pitch
+angles are one number, but `SIGMA − gamma` equals γ only exactly; in floats
+the two virtual counts z/cos γ differed in the last bit at 319 of 3521
+angles (Σ 60°–170° in 1/32° steps), and `cyPairSolve` picks which member to
+extend first by comparing them, so the member's own solve and its mate's
+disagreed. `gammaMate` is γ itself for equal counts now. Every equal-count
+corner cut before sat where the two agreed: all 706 mesh position buffers of
+the pre-landing build hash identically with and without the fix.
+
+**B's recess, and the rule behind all three.** Re-cut at Σ_B 99.66° the
+rise corner's cone distance shrank 2.121 → 1.963 and `MW_RISE_PLATE_HOLE`
+with it (the authored bore 2.271 → 2.113). `coneR + CLEAR_MARGIN` is a bound,
+not an isotropic guess: every point `makeConicalGear` cuts lies within coneR
+of the apex, so no blank reaches further in plan than that from the apex's
+axis line, whatever its shaft angles — true at A, K and B alike. Every corner
+blank clears the plate by ≥ 0.3598; the three recesses' lands to the nearest
+other opening are 10.44, 2.53 and 6.71.
+
+**What moved with it.**
+
+- `mwMinuteWheel` is cut for both its mates (`MW_MINUTE_MATES`): root 4.38115
+  unchanged (the cannon pinion still governs it, so `STAR_R` is unchanged, as
+  this item predicted), tip 4.798 → 4.868. `cannonPinion`, cut against the
+  wheel's taller tip, roots 1.1423 → 1.0727.
+- The cap ⇄ wheel pair is a declared mesh (`solveGearChain('setting fold:')`,
+  `SETTING_CAP_PHASE` solved at the rest pose, not the half-tooth seed) and an
+  `EXPECTED_CONTACT_FLOORS` row excuses only that contact.
+- **The MINUTE JUMPER's station is now SOLVED ON THE REAL METAL** (`JMP_SITE`,
+  just before the first tick, where every unit exists) — and it moved 326° →
+  **129.5°**. Why the solve had to change, not just its answer: the cap's move
+  onto the star's plane re-ran the old bearing scan, which judged seven
+  hand-drawn circles; it sent the jumper to 82°, onto the reserve train's w1
+  rim; the battery's inspection read `Minute jumper ⇄ Power-reserve train`
+  FORBIDDEN at every pose; and the first fix was one more circle. A collision
+  found by the battery was being re-found one hand-added circle at a time. The
+  obstacle set is DERIVED now:
+  - every mesh of every other labelled unit, schematic proxies pruned, culled
+    to the region any station can reach;
+  - the declared joints excused for the one part each belongs to: the two
+    posts riveted into the base plate, and the lifter's slot on the setting
+    lever's post drop (`settingLeverPostDrop`, named for it);
+  - every ROTOR — a toothed wheel (`userData.r` AND `userData.teeth`), or
+    anything on the motion works' arbor — judged as its body of REVOLUTION,
+    each triangle's meridian image bounded by an (r, z) box, so the bound only
+    ever errs toward closer. The arbor on the jumper's own stud is
+    azimuth-invariant and left to the stack's solves for the parts on the
+    stud's frame;
+  - the setting lever posed at every pull by its own law
+    (`settingLeverAngleAt`); everything else as built.
+
+  It is judged over the jumper's own travel through the two laws tick() uses,
+  factored out for it (`jumperLeverRotAt`, `poseJumperLifter`): the lever over
+  its whole swing and the bar at every pull at both extremes of the star's
+  phase, at the crown axis's resolution (48). The measure is three-mesh-bvh's
+  exact closest-point distance on the cut meshes, one tree per obstacle, with
+  meshClearance's parity guard. The objective is the old scan's own,
+  min(clr, 2) + 0.02·capD, over stations that clear by `CLEAR_MARGIN`; branch
+  and bound in falling capD with a cheap upper-bound witness (two rays from the
+  bar) and a later candidate replacing the best only by more than the
+  clearance's resolution. What it found: the clearance term is PINNED — the
+  bar and the tail pin are planed 0.16 off the dial, and the beak rides 0.15
+  over the motion works' hour wheel — so the tie-break decides: the feasible
+  station farthest from the cap. Certified clearance 0.1500, capD 11.110; 212
+  of 720 stations tested at 0.5°; about 1.2 s of boot (wall 15.1 → 15.9 s on
+  this container, the thread held at worst 418 ms).
+  - The solve found an INSTRUMENT defect on the way, filed as [TODO 159]:
+    `meshClearance` measures in its first mesh's local frame, so the lifter —
+    whose span is its `scale.x`, ~36 — read a tab 3.4 u away at 0.119 when
+    passed first. `probe-150-fold-sense.mjs` passes a scaled mesh second;
+    `probe-149-lifter-width.mjs`'s wall distances carry the defect (its spans
+    do not: they are read off the scale).
+  - Re-verified as the tripwire asks: `probe-149-lifter-width.mjs` reads span
+    35.30–37.60 u at the new station, λ 26.5 against 30, all controls PASS;
+    `JMP_AZ_MEASURED_DEG` and `JMP_LIFTER_SPAN_MEASURED` carry the new numbers,
+    and the bar's section is re-solved at the station (1.418).
+  - Gated: `probe-150-fold-sense.mjs`'s JUMPER row holds every jumper mesh
+    against every non-contact mesh over 56 poses (the §152 digest poses plus
+    the crown axis at twelfths): tightest `jumperBeak ⇄ mwMinuteWheel` and
+    `⇄ mwHourWheel` 0.1500, `jumperTailPin`/`jumperLifter ⇄ dialPlate` 0.1600.
+  - What the solve still cannot see — movers other than the setting lever,
+    judged as built — and the nesting CAP_SOLVE would need to veto a B the
+    jumper cannot live with, are [TODO 156]'s.
+- **The 135° PILLAR moved 181° → 87°** (seat (−37.51, −0.65) → (1.96,
+  37.46)), and nothing in this landing touched the pillar solve. Its
+  `seatClearance` judges `keyless` by `boxOf` — the AABB of the WHOLE group —
+  and the new cap mitre `mwCornerCapOut` carries that box's −y face from 1.32
+  to −2.41, over the old seat. No keyless mesh stands within 4 u of that seat
+  (measured on the built tree), so the eviction is the box's conservatism, not
+  metal; the scan's own rule (nearest feasible bearing to the quadrant's ideal)
+  then found 87° at dA 48 before 181° cleared. The battery reads the move in
+  one report row: `sweptOverlap`'s refuted list swaps `Hack rod ⇄ pillars`
+  (the pillar has left the hack link's path hull) for `Chain ⇄ pillars` (it
+  now stands 0.344 into the chain run's hull), both refined at ≥ 0.55 — the
+  two movers' hulls are identical before and after. Judging the keyless works
+  as metal rather than as one box belongs with the siting-order work in
+  [TODO 156].
+- `mwMinuteWheel`'s meshes carry its name (makeGear names only the group):
+  the floors row's selector matches mesh names, and an anonymous wheel read
+  as an unmatched selector — the battery's first run on this landing said so.
+- New `INTRA_UNIT_CONTACTS` rows for the new keyed joints, `declareTransfer`
+  rows for the two new corners, `MW_CORNERS`/`MW_FOLD_SPIN` threaded through
+  five corners.
+
+**Measured** (`probe-150-fold-sense.mjs`, ten poses; `probe-151-cap-plane.mjs`):
+all six rods one spin, all five corners roll, the cap ⇄ wheel mesh
+counter-rotates at pitch-line ±0.005 with the axes 5.700000 apart and the
+wheel's band inside the cap's; the moved members against everything outside
+the fold ≥ 0.1500 (`settingCap ⇄ backPlate`, on the margin by construction),
+next `mwCornerRiseOut ⇄ star` 0.1643; cross-body blank pairs ≥ 0.1693, the
+one-rod pairs apart at 0.1256 and 0.1350.
+
+**Left open, and owned:** the setting fold is still posed from
+`handSetOffset` alone while the wheel it now really meshes turns with the
+going train. Filed as [TODO 155], which owns the two waivers this landing
+had to write for it (`meshPhase`, `transmits`).
 
 ## 152. A trial boot inherits the viewer's tuned aesthetics, and a killed trial drops them — CLOSED
 
@@ -21796,3 +21998,282 @@ the margin at that end, or waive the row citing this item if the two are
 close by design and the margin genuinely cannot open there without
 moving `alarmHeart`'s own station. Re-measure the pair at both
 `crownPullT` extremes before landing either.
+
+## 155. The setting train is posed from handSetOffset alone while the minute wheel it meshes turns with the going train
+
+Split out of [TODO 151], whose (d) landing made the problem REAL rather than
+arithmetic: until it, the setting cap stood 3.1 u off `mwMinuteWheel`'s
+plane and meshed it by tooth count only, so posing the cap from
+`handSetOffset` alone contradicted nothing in the metal. Now the cap meshes
+the wheel in its own plane, and the two are posed by different laws:
+
+- `mwMinuteWheel` rides `mwMinuteA = minuteA · MW_RATIO_1`, and `minuteA`
+  carries the going train (tau) AND the hand-set offset;
+- `settingCap` rides `SETTING_CAP_PHASE + handSetOffset · (cannon / cap)`,
+  and every bevel of the fold behind it is threaded back from that spin
+  (`MW_FOLD_SPIN`), out to the keyless minute arbor.
+
+So under `handSet` the pair turns together at the tooth ratio
+(`probe-150-fold-sense.mjs`: pitch-line ±0.005000, counter-rotating), and
+under `train` the wheel turns while the cap stands — tooth through tooth,
+wherever the pose's tau differs from the rest pose the pair was phased at.
+The declared mesh `setting fold minute wheel ⇄ setting cap` (inputs
+`train`, `handSet`) carries this item as its waiver in BOTH
+`MESH_PHASE_WAIVERS` and `TRANSMITS_WAIVERS`: the phase drifts over the net,
+and the driver moves while the chain it meshes does not. The mesh itself is
+EXPECTED (`['Keyless works', 'Motion works']`), with an
+`EXPECTED_CONTACT_FLOORS` row excusing only `settingCap ⇄ mwMinuteWheel`.
+
+**Why it is not a lerp.** [TODO 151]'s fix path said it first: a real
+setting train free-wheels with the motion works while the clutch is OUT of
+the setting wheel (crown home), and is locked to the crown while it is IN.
+A stateless law blending `handSetOffset` and the train angle by `crownPullT`
+would slide the setting bevel half a pitch against the clutch rim at every
+intermediate pull — the class of defect `axisEntry` exists to catch.
+
+**Fix path.** Lift the clutch's engagement into a pose input, as
+`setPathRot` already is: accumulate the wheel's train turn while the clutch
+is out (a session accumulator, zeroed in `resetInputs` like
+`alarmCornerIndex`), and pose the setting train downstream of the cap — the
+fold's five corners, the keyless minute arbor, the setting wheel — from that
+accumulated turn plus the hand-set chain. Then re-phase the pair at a pose
+the net actually occupies, re-derive the going-train analysis in [TODO
+151]'s old fix path against the built metal, and delete both waivers; their
+stale gates will say when.
+
+## 156. CAP_SOLVE cannot see the jumper or reserve train as metal: nesting the dependent siting solves needs a build-order restructure
+
+Found closing [TODO 151]. The minute jumper's station now comes from a solve
+on the real metal (`JMP_SITE` in `src/main.js`), but that solve runs at the
+END of the build, and the station it answers depends on the setting cap,
+which depends on B, which §234's cap-bearing scan (`CAP_SOLVE`) picked long
+before. Nothing lets the jumper veto a B. The same holds for the reserve
+train, whose swing is re-solved on the cut fold but only after the fold is
+committed.
+
+**The build order today** (line numbers as of this item; grep the names):
+
+- `CAP_SOLVE` (≈ main.js:5734) scans B's bearing. Each candidate's metal is
+  built by `buildSettingMetal`, and the scan asks `solveReserveSwing` and
+  the transfer arbor about it. That is the veto pattern to copy: a
+  downstream solve refuses an upstream candidate, and the metal the scan
+  judged IS the metal that ships.
+- `SETTING_METAL` (≈ :5886) cuts the fold at the chosen B. `MW_RISE_PLATE_HOLE`
+  and its siblings are derived from it.
+- The base plate is cut at ≈ :7351 (`G.makeBackPlate`), with the fold's three
+  recesses in its `holes`.
+- The motion works (`mwArbor` ≈ :13936), the star (≈ :14114) and the jumper's
+  parts (`jumperUnit` ≈ :14232) are built next, at a PROVISIONAL station:
+  the bearing farthest from the cap.
+- The reserve train is built at ≈ :14713–14800. `rsvSwing` confirms
+  CAP_SOLVE's swing on the cut tree.
+- Everything else follows. The late solve `JMP_SITE` (≈ :43101) runs just
+  before `tick(0)` (≈ :43671), and re-sites the jumper.
+
+**What reads the plate or the keyless meshes in between.** Several solves
+treat all of `movement`'s meshes as obstacles:
+
+- the gong block's plant (`movement.traverse` ≈ :19317 and :19364);
+- the alarm corridor solids (≈ :23693);
+- the case-part collision walk (≈ :33734);
+- the back-envelope walk (≈ :34094).
+
+Each of them therefore sees the fold's metal AND the jumper at its
+provisional station. TODO 151 checked that nothing between the jumper's
+build and `JMP_SITE` reads the jumper's azimuth (its parts hang off
+`jumperAzGroup`; the star's phase and the lifter's section are re-derived
+with it). It did NOT prove that those four walks are indifferent to where
+the jumper stood when they ran. That is residue of this item.
+
+**Two restructure options.**
+
+1. **One late siting phase.** Move `CAP_SOLVE`, `buildSettingMetal`, the
+   plate cut, the reserve train and the jumper's siting into one phase after
+   the units they must see exist. The plate is the hard part: its holes
+   depend on the fold, and several builders read the plate (their `onPlate`
+   tests, `PLATE_BACK_FACE` asserts). So either cut the plate late and
+   re-point every early reader to `PLATE_BACK_FACE`-style derived constants,
+   or cut it twice, the second cut replacing the first's geometry.
+2. **Keep the order and make the late solves nested scans.** CAP_SOLVE keeps
+   its candidates' metal, and at the late point a second pass re-runs
+   CAP_SOLVE's order. For each B, it builds the fold, re-solves the reserve
+   swing and runs `JMP_SITE` against that candidate's metal. It REFUSES a B
+   at which the jumper has no clear station. This is the same veto shape as
+   `solveReserveSwing` inside CAP_SOLVE today. It costs a jumper solve per
+   candidate B (≈ 1.2 s each today), so it wants a cheap pre-screen per
+   candidate: the jumper's candidate azimuth set can be cached per B.
+
+**Also owed here.** `JMP_SITE` judges movers other than the setting lever
+AS BUILT, because boot has no pose ("BOOT HAS NO POSE", CLAUDE.md): the
+alarm selector, the sleeve and the release levers near the dial centre. The
+gated row in `probe-150-fold-sense.mjs` holds the jumper against them over
+the pose net, but the solve cannot choose around them. A late phase with a
+pose facility — snapshot the session state, pose, restore — would let it.
+
+**And the pillar seat solve judges the keyless works as ONE BOX.**
+`seatClearance` (≈ :10950) clamps each seat against `boxOf(keyless)`, the
+AABB of the whole group, so a fold member anywhere in the group widens the
+box everywhere along that face. TODO 151's cap mitre moved the box's −y face
+from 1.32 to −2.41 and evicted the 135° pillar from 181° to 87° with no
+keyless metal within 4 u of the old seat. The same phase that re-sites the
+jumper on metal should seat the pillars on metal (the keyless meshes as
+meshes, or at least per-mesh boxes), and the move should be re-read then.
+
+**Acceptance.**
+
+- CAP_SOLVE's scan record (`__clock.settingFold.scan`) names a B refused by
+  the jumper whenever one is.
+- The four walks above see the jumper at its final station, or are shown
+  indifferent to it.
+- `probe-150-fold-sense.mjs` JUMPER stays green.
+- The battery is 41/41 with an explained diff.
+
+## 157. The fold's siting scans pick the first feasible value, not a declared objective: max-min clearance first, an aesthetic tie-break second
+
+Recorded while closing [TODO 151]; a record, not an implementation.
+
+**What the scans do now.**
+
+- `CAP_SOLVE` takes the least bearing from the short way in (0, ±step, …) that
+  the reserve swing accepts: **17.25°** today.
+- `solveCapLeg` takes the least tilt φ that clears: **11.4844°**.
+- `stubSolve` takes the least stub L that clears: **3.3206**.
+
+Every answer therefore sits ON the feasible boundary, and the pairs that
+bind it read almost exactly the margin: `mwCornerRiseIn ⇄ mwCornerFootIn`
+certified **0.1504** and `mwCornerFootOut ⇄ mwCornerCapOut` **0.1531**,
+against 0.15 (`probe-151-cap-plane.mjs` §8d). "Least" is itself an
+objective, just an implicit one: shortest route, least tilt, least metal.
+
+**Why that matters.** The answers are correct but fragile. Any upstream
+change can tip a margin-hugging pair red, where an interior point would
+absorb it.
+
+**The proposal.** Replace first-feasible with a DECLARED objective over the
+feasible set:
+
+1. Maximize the minimum certified clearance over every pair the scan judges.
+   `G.revolvedBlanksClearance` already returns a certified lower bound, so
+   the objective is cheap to evaluate.
+2. Then apply a written aesthetic tie-break among near-equally robust
+   candidates. For example: symmetry of the corners about the cap–B chord, or
+   visual balance against the reserve well. It must be declared in code as a
+   scoring rule (rule 1: a derivation, never a hand-nudged value).
+
+Precedents: `JMP_SITE`'s scored scan (a capped clearance plus a cap-distance
+tie-break, carried over from the old JMP_AZ scan and now on real metal), and
+§94's "well-maximizing station under the furniture law".
+
+**Constraints.**
+
+- P4 (finish) only chooses AMONG feasible layouts. It never spends
+  clearances, stock floors, turning or slenderness limits, or the reserve
+  veto.
+- The downstream solves move with it: the jumper's `JMP_SITE` and the
+  reserve swing.
+- Measure the boot cost. Maximizing needs more of the scan than stopping at
+  the first feasible value, so bound the search and memoize. `stubFor` is
+  already memoized per φ.
+- Which way the crown turns to set the hands does NOT change with these
+  parameters. It is fixed by topology: the cap stands above its last apex.
+
+**Acceptance.**
+
+- The binding clearances rise measurably above 0.15.
+- The objective is declared and asserted at the build, as a derivation, not
+  a pose.
+- `probe-150-fold-sense.mjs` and `probe-151-cap-plane.mjs` report the
+  achieved minimum clearance.
+- The battery is 41/41 with an explained diff.
+
+## 158. A reconfigured or deep-linked spec builds geometry no battery has swept, and nothing tells the viewer
+
+Recorded while closing [TODO 151]; a record, not an implementation.
+
+**What is validated, and how far that reaches.**
+
+- The battery validates a (code, spec) pair, and only at the DEFAULT spec.
+- The build is deterministic: the fingerprint double-boot gate and the §152
+  digests prove it. So a validated tree never needs re-sweeping at runtime.
+- Non-default specs build geometry that no battery has collision-checked.
+  That covers the URL overrides (`?d4=`, `?alarmaz=`, `?rsvr=`, `?reserveh=`,
+  `?alarmr=`, `?subdialr=`, `?dialr=`, `?studr=`, `?vph=`, `?route=`,
+  `?crownaz=`, `?stemaz=`, the step handles), the reconfigure panel, and
+  saved variants.
+- The 36 `SPEC_POINTS` in `tools/ci-battery.mjs` assert LIVENESS only ("a
+  moved station legitimately warns"). They say nothing about collisions.
+- So a viewer can load a colliding configuration and be shown it as though
+  it were sound.
+
+**The proposal: two tiers.**
+
+- **Tier A, honesty in the UI.** The build computes its fingerprint (or the
+  per-unit digests) and compares it against a shipped set of VALIDATED
+  fingerprints: at minimum the default spec's, written by the battery's
+  push-to-main run or at release stamping. Outside that set, the HUD shows a
+  visible "unverified configuration" mark.
+  - The mark is localized through `t()` and stored as state, never compared
+    as text (CLAUDE.md's chrome rules).
+  - Decide where the validated set lives so the stamped release carries it
+    (`tools/stamp-release.mjs`, `tools/payload.sh`).
+  - Mind the deterministic-fingerprint requirement, and exclude `Chain`, as
+    `fingerprint` already does.
+- **Tier B, sweep the declared spec points.** For each `SPEC_POINT`, run
+  `inspection` (and ideally `clearances`) restricted via `pairsTouching` to
+  the units that point moves, so the declared points become
+  collision-verified rather than merely live.
+  - Points that measure clean join the validated set.
+  - Points that collide are recorded as expected-red, with their pairs.
+  - Mind the battery's wall time: this is shard-able work, and §127's
+    matrix is where it would go.
+
+**Acceptance.**
+
+- Tier A: the default spec shows no mark; `?d4=16` (or any non-validated
+  point) shows it; the mark survives reload-tier locale changes. A probe
+  gates both halves.
+- Tier B: each `SPEC_POINT` row reports its restricted-inspection verdict in
+  the battery report.
+
+**Related.** [TODO 156] (nesting the dependent solves) and [TODO 157] (the
+fold's objective). With them, a guaranteed-collision-free build becomes a
+property of the solves, not only of the post-hoc battery. This item covers
+what the solves still cannot promise.
+
+## 159. meshClearance measures in its first mesh's local frame, so a non-uniformly scaled first mesh reads false distances
+
+Found by [TODO 151]'s real-metal jumper solve, whose answer the probe
+disagreed with. `_meshClearanceInner(a, b)` (src/inspect.js) builds `a`'s
+tree and queries with `inverse(a.matrixWorld) · b.matrixWorld`, so the
+distance is measured in `a`'s LOCAL units. That is exact when `a`'s world
+matrix is rigid. When `a` carries a non-uniform scale, every distance is
+read in that scale's units.
+
+**Measured.** The minute jumper's lifter bar is cut at unit length and
+stretched onto its span each frame (`scale.x` ≈ 36). With the jumper at
+129.5°, the bar's world box stands 3.4 u from an `alarmSelTab` plate, and
+`meshClearance(jumperLifter, tab)` read **0.1189**, the along-bar gap shrunk
+by the scale. Swapped, `meshClearance(tab, jumperLifter)` carries the bar's
+triangles into the tab's frame, which is exact under any affine map, and
+reads the true distance.
+
+**What it touches.**
+
+- Every consumer that passes a stretched mesh first: `unitClearance` passes
+  unit A's meshes first, so a pair's reading depends on which unit is named
+  first.
+- `probe-149-lifter-width.mjs`: its wall distances carry the defect, and its
+  identity control passes because proxy and bar are measured the same wrong
+  way. Its spans are read off the scale and are sound.
+- The error only ever reads CLOSER (a stretch divides the gap), so no green
+  row is hiding a collision because of it. Red or tight rows involving
+  stretched meshes may be false.
+
+**Fix path.**
+
+- In `_meshClearanceInner`, detect a non-uniform `a.matrixWorld` and swap
+  the arguments, or measure a world-baked copy.
+- Fail loudly when BOTH meshes are non-uniformly scaled
+  (`probe-150-fold-sense.mjs`'s JUMPER row already refuses that pair shape).
+- Re-run `--report` and diff: every moved row names a stretched mesh.
+- Re-run `probe-149-lifter-width.mjs`.

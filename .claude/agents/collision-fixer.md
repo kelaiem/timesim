@@ -38,7 +38,33 @@ extruded 2D shape placed by closed-form layout math.
    constant DERIVED from the clearance constraint plus an explicit margin (follow the
    existing style: small solver IIFEs like `HAMMER_TAIL_DELTA`, closed forms like
    `HACK_PRESS_DIST`). The fix must stay correct when someone later changes a radius or
-   arm length upstream.
+   arm length upstream. CLAUDE.md's priorities bind: a collision with an UNRELATED part
+   is solved in position space (station, azimuth, stratum), never by thinning a member,
+   opening a contact, or widening a budget or waiver.
+5a. **If the collision came out of a SITING SOLVE, fix the solve, not the answer.** Many
+   parts here are placed by a scan (a bearing, an azimuth, a swing) that judges each
+   candidate against obstacles. When the battery finds the scan's choice colliding, the
+   tempting fix is to add the part it hit to the scan's obstacle list. Don't. That
+   finds collisions one hand-added circle at a time: the next run lands on the next
+   unlisted part (TODO 151: the minute jumper's `JMP_AZ` scan went onto the reserve
+   train's w1 rim, got the reserve arbors hand-added, and still collided). Instead:
+   - **Judge on real metal.** Derive the obstacle set from the built scene: every mesh
+     of every other unit whose world z-band overlaps the candidate's, minus its declared
+     contacts. Measure with the battery's own measure (`inspect.js` `meshClearance`) or
+     a bound that can only err toward "closer". The test the search accepts on should be
+     the test the battery gates on, restricted to the candidate's unit.
+   - **Judge over motion.** Test each candidate across the travel of the part AND of its
+     moving neighbours (pose-net axes, or swept envelopes as `revolvedBlanksClearance`
+     does for bevel blanks), never one pose.
+   - **Nest dependent solves.** If B's siting depends on A's, re-solve B inside A's
+     candidate loop and let B's failure REFUSE the A candidate (§234's cap-bearing scan
+     already lets `solveReserveSwing` veto a bearing). A downstream part that gets the
+     leftovers after the upstream choice is fixed is how collisions get discovered late.
+   - **Mind boot cost.** These run during the build: cull by bounding box, memoize, keep
+     `breathe()` seams, and measure `__clock.boot` before and after.
+   - **Make it permanent.** Every collision found becomes a standing clause in the
+     solve's accept test and a gated probe row, so no later layout change can reintroduce
+     it silently.
 6. **Re-check dependents.** Grep for every use of anything you changed. Downstream
    calibration solvers (rod linkages, bridge spans, plate radius floors) may need to
    re-converge — confirm they still find feasible solutions (no console warnings) and
@@ -51,9 +77,25 @@ extruded 2D shape placed by closed-form layout math.
    so plain reloads pick up edits — no port-bumping needed) and open it with the browser
    preview via `{url}`. After editing, confirm the served tree is yours (fetch a file you
    just changed and grep it). Do not disturb tabs or servers other agents may be using.
-   If the preview pane is hidden, `requestAnimationFrame` is suspended: install
-   `window.requestAnimationFrame = (cb) => setTimeout(() => cb(performance.now()), 33)`
-   before driving inspector sweeps, and prefer `__clock.setPose`/`step` over the live loop.
+   Freeze the live loop before measuring (`window.requestAnimationFrame = () => 0`): a
+   throttled `setTimeout` shim still lets the loop nudge inputs between `setPose` calls
+   and makes readings unrepeatable (CLAUDE.md). Pose with `__clock.setPose`; `step()` is
+   very slow under SwiftShader, so use it only when an eased input must run.
+   Measurement traps that have each produced a false number here:
+   - prune `userData.schematic` meshes (the plates' occluders read as solid plate and
+     make every clearance ~0);
+   - take z-bands from world VERTICES, not `Box3.setFromObject` (it inflates rotated
+     meshes: a bevel blank read 0.4 u taller than its metal);
+   - `meshClearance` reports surface distance, so a body wholly INSIDE another reads
+     positive: check containment by z-band;
+   - an EXPECTED pair without a floors row is excused wholesale, and a declared contact
+     or support edge (e.g. `['Motion works','plate']`) can hide a real burial: measure
+     the pair yourself.
+8. **Loop cheaply, then prove it whole.** After each geometry change, run `inspection`
+   and `clearances` restricted to the changed units (`pairsTouching`, §152) before
+   spending a full ~25 min `node tools/ci-battery.mjs --report FILE`. Run the battery in
+   the background, never piped through head/tail, and diff its report against a
+   baseline taken before your edits.
 
 # Report
 
