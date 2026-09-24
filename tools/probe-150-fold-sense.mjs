@@ -96,6 +96,15 @@
 // subtree for non-schematic meshes. Studs are excluded — they are the
 // riveted support edge, not a member standing clear of the plate.
 //
+// GATED — TODO 156, WALKS: the boot-time derivation that makes the four
+// movement-wide walks (GONG_BAND_FLOOR, GONG_FOOT_OBSTACLES, the alarm
+// corridor, the case walk) plus BACK_ENVELOPE PERMANENTLY indifferent to the
+// jumper's reach, published at `__clock.jumperSite.walks`. Controlled first
+// (its `reachR`/`zHi` bound must dominate this probe's own measured
+// world-vertex reach over the jumper's travel — a bound that reads under a
+// measurement is wrong, not conservative), then every row's margin must be
+// positive and BACK_ENVELOPE must win zero bins.
+//
 // Run from tools/ with a Playwright Chromium: `node probe-150-fold-sense.mjs`.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -322,10 +331,27 @@ const out = await page.evaluate(async (bases) => {
   const jPoses = [...I.digestPoses(C)];
   for (let k = 0; k <= 12; k++) jPoses.push({ tau: 0.05, crownPullT: k / 12, leverEngage: k / 12, tension: 1 });
   const jumperRows = {}, jumperBoth = new Set();
+  // TODO 156 — WALKS control: the jumper's own MEASURED world-vertex reach
+  // (radius from the plate axis, and the z its metal actually stands at)
+  // over these same poses, vertex-precise like zBandVerts — never a rotated
+  // Box3, which inflates. This is what JMP_SITE's boot-time derivation
+  // (`walks.reachR`/`walks.zHi`) must bound, not resemble: the derivation is
+  // a closed-form BOUND over the whole travel, this is a direct measurement
+  // at a finite pose sample, and a bound that reads under a measurement is
+  // simply wrong.
+  let measR = 0, measZ = -Infinity;
+  const _mv = new THREE.Vector3();
   for (let pi = 0; pi < jPoses.length; pi++) {
     C.resetInputs(); C.setPose(jPoses[pi]); C.scene.updateMatrixWorld(true);
     const ob = jOthers.map(box);
     for (const j of jumper) {
+      const pos = j.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        _mv.fromBufferAttribute(pos, i).applyMatrix4(j.matrixWorld);
+        const r = Math.hypot(_mv.x, _mv.y);
+        if (r > measR) measR = r;
+        if (_mv.z > measZ) measZ = _mv.z;
+      }
       const jb = box(j).expandByScalar(0.5);
       for (let k = 0; k < jOthers.length; k++) {
         if (!jb.intersectsBox(ob[k]) || excused(j, jOthers[k])) continue;
@@ -362,6 +388,7 @@ const out = await page.evaluate(async (bases) => {
   }
   return { runs, capZ, mwZ, centreD, centreWant, plate, lands, foldClear, cross, poses: POSES.length,
     jumperRows, jumperBoth: [...jumperBoth], jumperPoses: jPoses.length, jumperSite: C.jumperSite, jumperParts: jumper.length, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN, mwStack, faceZ,
+    measR, measZ,
     capLeg: C.settingFold && C.settingFold.capLeg };
 }, [0, 7.3]);
 
@@ -476,6 +503,29 @@ else {
     else if (r.d < 0.4) ok(`${a} ⇄ ${b} clears ${r.d.toFixed(4)} (pose ${r.pose})`);
   }
   console.log('  (pairs clearing 0.4 or more not listed)');
+  // TODO 156 — WALKS: the boot-time derivation (JMP_SITE's `walks`, published
+  // at __clock.jumperSite.walks) that makes the movement-wide walks'
+  // indifference to the jumper PERMANENT rather than a fact only true of
+  // today's build. Control first (the bound must dominate a real
+  // measurement), then every row's margin must be positive.
+  console.log(`\nWALKS — TODO 156: the jumper's reach vs the four movement-wide walks (GONG_BAND_FLOOR, `
+    + 'GONG_FOOT_OBSTACLES, the alarm corridor, the case walk) plus BACK_ENVELOPE:');
+  const jw = js && js.walks;
+  if (!jw) fail('no jumperSite.walks published — TODO 156\'s derivation did not run');
+  else {
+    if (!(jw.reachR >= out.measR - MEASURE_EPS))
+      fail(`walks.reachR ${jw.reachR.toFixed(4)} is under the measured world-vertex reach ${out.measR.toFixed(4)} — the bound does not bound`);
+    else ok(`control: reachR ${jw.reachR.toFixed(4)} ≥ measured r ${out.measR.toFixed(4)}`);
+    if (!(jw.zHi >= out.measZ - MEASURE_EPS))
+      fail(`walks.zHi ${jw.zHi.toFixed(4)} is under the measured world-vertex z ${out.measZ.toFixed(4)} — the bound does not bound`);
+    else ok(`control: zHi ${jw.zHi.toFixed(4)} ≥ measured z ${out.measZ.toFixed(4)}`);
+    for (const r of jw.rows) {
+      if (!(r.margin > 0)) fail(`${r.walk}: margin ${r.margin.toFixed(4)} (limit ${Number.isFinite(r.limit) ? r.limit.toFixed(4) : r.limit}) — not indifferent to the jumper`);
+      else ok(`${r.walk}: margin ${r.margin.toFixed(4)}`);
+      if (r.walk === 'BACK_ENVELOPE' && r.jumperBins !== 0)
+        fail(`BACK_ENVELOPE: ${r.jumperBins} bin(s) inside the jumper's own reach are governed by 'Minute jumper'`);
+    }
+  }
   console.log(`\nSTACK — TODO 153: motion-works members ⇄ the plate's presented face `
     + `(${out.faceZ.toFixed(3)}), CLEAR_MARGIN ${out.CLEAR_MARGIN}:`);
   for (const [n, r] of Object.entries(out.mwStack)) {

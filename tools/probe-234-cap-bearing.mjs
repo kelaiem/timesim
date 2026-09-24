@@ -82,10 +82,13 @@ console.log(`  run heading ${f(F.runHeadingDeg, 2)}°, leg 1 heading ${f(F.leg1H
 console.log(`  Σ ${f(F.shaftAngleDeg, 2)}°, fold module ${f(F.module, 4)} (BEVEL_MODULE ${f(F.templateModule, 4)}; blanks' thinnest extent ${f(F.blankThinnest, 4)} u against STOCK_MIN_U ${f(F.stockMinU, 4)})`);
 console.log(`  leg 1 ${f(F.len1)} u at r ${f(F.leg1R, 4)} → L/D ${f(F.len1 / (2 * F.leg1R), 2)};  leg 2 ${f(F.len2)} u at r ${f(F.leg2R, 4)} → L/D ${f(F.len2 / (2 * F.leg2R), 2)};  target ${F.turnLdTarget}, ceiling ${F.turnLdMax}`);
 console.log('');
-console.log('  the scan (bearing → the worst clause at the best swing; ≥ 0 is open):');
+console.log('  the scan (bearing → the worst clause at the best swing; ≥ 0 is open) — the jumper column is TODO 156\'s');
+console.log('  veto, recorded rather than acted on: only the row CAP_SOLVE itself accepted is ever judged by it:');
 for (const row of F.scan) {
   const open = row.m >= 0;
-  console.log(`    ${(row.d >= 0 ? '+' : '') + f(row.d, 2)}°  ${open ? 'OPEN  ' : 'shut  '} ${row.clause.padEnd(58)} ${isFinite(row.m) ? f(row.m) : '−∞'}${row.s !== null ? `  at swing ${f(row.s, 2)}°` : ''}`);
+  const clause = open && row.jumper && row.jumper.verdict === 'refuses' ? 'REFUSED (jumper)' : row.clause;
+  const jm = row.jumper ? `  jumper: ${row.jumper.verdict}${row.jumper.azDeg !== null ? ` at ${f(row.jumper.azDeg, 2)}° clr ${f(row.jumper.clr, 4)}` : ''}` : '';
+  console.log(`    ${(row.d >= 0 ? '+' : '') + f(row.d, 2)}°  ${open ? 'OPEN  ' : 'shut  '} ${clause.padEnd(58)} ${isFinite(row.m) ? f(row.m) : '−∞'}${row.s !== null ? `  at swing ${f(row.s, 2)}°` : ''}${jm}`);
 }
 console.log('');
 let bad = 0;

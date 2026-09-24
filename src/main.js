@@ -10949,6 +10949,31 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
   // tqSlots; the low corridor emptied tqSlots (the post no longer pierces
   // the 3/4 plate), which silently dropped that cover — so the pillars
   // take the shared swept-corridor list directly.
+  //
+  // TODO 156 (C) — NOT boxOf(keyless): the maintaining detent's own obstacle
+  // scan already carries that precedent (grep "NOT boxOf(keyless)" — that box
+  // spans x [-54.6, -9.0], y [-2.0, 40.4], the whole dial-side keyless corner's
+  // reach, and would veto a pillar seat nowhere near real metal). Only the
+  // meshes actually low enough to meet a full-height pillar column matter:
+  // each keyless mesh's own world-vertex AABB, kept only where its z-band
+  // meets the pillar's own [0, TQ_BOT_Z] span (a margin either side, since a
+  // pillar full-height column reaches those ends exactly).
+  const PILLAR_KEYLESS_BOXES = [];
+  {
+    keyless.updateWorldMatrix(true, true);
+    const klWalk = [];
+    keyless.traverse((o) => klWalk.push(o));
+    const kv = new THREE.Vector3();
+    for (const o of klWalk) {
+      await breathe();
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) continue;
+      const pos = o.geometry.attributes.position;
+      const b = new THREE.Box3();
+      for (let i = 0; i < pos.count; i++) b.expandByPoint(o.localToWorld(kv.fromBufferAttribute(pos, i)));
+      if (b.max.z < -CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
+      PILLAR_KEYLESS_BOXES.push(b);
+    }
+  }
   const seatClearance = (x, y) => {
     let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
@@ -11008,8 +11033,14 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
       c = Math.min(c, Math.hypot(x - o.x, y - o.y) - o.r);
     // ...and it must not foul what is UNDER the plate either: the pillar runs
     // the full height of the movement, past the whole train.
-    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj, maintDetent, setupWork]) {
+    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, forkCock.obj, maintDetent, setupWork]) {
       const b = boxOf(o);
+      const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
+      c = Math.min(c, Math.hypot(x - cx, y - cy));
+    }
+    // TODO 156 (C) — the keyless corner, judged on the same per-mesh boxes
+    // PILLAR_KEYLESS_BOXES built above, not the whole unit's box.
+    for (const b of PILLAR_KEYLESS_BOXES) {
       const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
       c = Math.min(c, Math.hypot(x - cx, y - cy));
     }
@@ -23578,6 +23609,14 @@ const SUB_IDLER_P_Z = SUB_PIN_B_Z;
 // the battery is the acceptance; this is the cheap gate that catches the gross
 // error in milliseconds instead of half an hour.
 // ---------------------------------------------------------------------------
+// TODO 156 — the alarm corridor's own band floor, made permanent rather than
+// re-derived by the minute jumper's own late siting solve. `indexBand`, just
+// below, is called once per (lo, hi, drop) band this arrest solve queries;
+// the lowest `lo` any call ever asks for IS the corridor's own declared
+// floor, in z, because a band that starts lower than that has no obstacle
+// row to answer it. Read by JMP_SITE's derivation block at the end of the
+// build (grep it) rather than re-measured there.
+let ALARM_CORRIDOR_BAND_FLOOR = Infinity;
 const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   crossAz: ARREST_CROSS_AZ, idlerSide: SUB_IDLER_SIDE, idlerTeeth: SUB_IDLER_SOLVED,
   slack: ARREST_SLACK,
@@ -23747,6 +23786,7 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // naive form is a boot-time eternity
   const CELL = 1.0;
   const indexBand = (lo, hi, drop) => {
+    ALARM_CORRIDOR_BAND_FLOOR = Math.min(ALARM_CORRIDOR_BAND_FLOOR, lo);
     const g = new Map();
     for (const s of solids) {
       if (s.zHi < lo || s.zLo > hi) continue;
@@ -43275,6 +43315,13 @@ const JMP_SITE = await (async () => {
   settingLeverGroup.updateWorldMatrix(true, true);
   // ---- the region any station can reach, for culling
   const region = new THREE.Box3();
+  // TODO 156 — captured here rather than re-measured by the derivation block
+  // below: `rc` is the jumper's own radial reach about the stud (world
+  // vertices, already the right frame), `reachZ` is the region's world z-span
+  // BEFORE the search margin is folded in (already correct across the
+  // dialFace flip — these are world vertices, never a rotated Box3), and
+  // `postR` is the tail post's own radial reach across the whole crown pull.
+  let JMP_SITE_RC = 0, JMP_SITE_POST_R = 0, JMP_SITE_REACH_Z = [Infinity, -Infinity];
   {
     let rc = 0;
     const p = V();
@@ -43293,7 +43340,14 @@ const JMP_SITE = await (async () => {
     }
     const zs = [region.min.z, region.max.z];
     for (const z of zs) for (const sx of [-1, 1]) for (const sy of [-1, 1]) region.expandByPoint(p.set(studO.x + sx * rc, studO.y + sy * rc, z));
-    for (const t of pulls) { const q = tailPostWorldAt(t); region.expandByPoint(p.set(q.x, q.y, Z_JMP_LIFTER)); }
+    let postR = 0;
+    for (const t of pulls) {
+      const q = tailPostWorldAt(t);
+      postR = Math.max(postR, Math.hypot(q.x, q.y));
+      region.expandByPoint(p.set(q.x, q.y, Z_JMP_LIFTER));
+    }
+    JMP_SITE_RC = rc; JMP_SITE_POST_R = postR;
+    JMP_SITE_REACH_Z = [region.min.z, region.max.z];
     region.expandByScalar(JMP_SITE_SAT + jmpLifterWidthAt(az0));
   }
   // ---- the obstacles
@@ -43685,10 +43739,12 @@ const JMP_SITE = await (async () => {
   for (const b of [bvhMain, bvhPlate, bvhLever, bvhPost]) if (b) b.geometry.dispose();
   scene.updateMatrixWorld(true);
   return { best, tested, witnessed, candidates: cands.length, stepDeg: STEP / DEG2RAD, ms: performance.now() - T0,
-    rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0) };
+    rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0),
+    rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z };
 })();
 if (!JMP_SITE.best) {
-  console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`);
+  console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`
+    + ` — this REFUSES CAP_SOLVE's B at ${(CAP_BEARING / DEG2RAD >= 0 ? '+' : '')}${(CAP_BEARING / DEG2RAD).toFixed(2)}°; acting on it (re-cut) is TODO 160`);
 } else {
   // THE STATION, and everything the build derived from it: the parts' frame,
   // the star's phase (a valley under the solved tip at every snapped minute)
@@ -43717,6 +43773,67 @@ if (!JMP_SITE.best) {
   const azDeg = ((JMP_AZ / DEG2RAD) % 360 + 360) % 360;
   if (Math.abs(azDeg - JMP_AZ_MEASURED_DEG) > 1e-6)
     console.warn(`minute quick-set: the siting solve re-sited the jumper to ${azDeg.toFixed(4)}° (was ${JMP_AZ_MEASURED_DEG}°) — legal, but re-verify the lifter's run and update this number`);
+}
+// TODO 156 — the jumper's reach is INDIFFERENT to the four movement-wide
+// walks that run before it exists (the gong band floor & foot obstacles, the
+// alarm corridor, the case walk, and BACK_ENVELOPE — see TODO.md item 156).
+// Measured, not assumed: `reachR` bounds the jumper's own swept footprint —
+// the stud's own radius plus its parts' reach (JMP_SITE.rc), OR the tail
+// post's reach (JMP_SITE.postR) whichever is farther, plus half the widest
+// lifter bar anywhere on the whole circle (jmpLifterWidthAt walked at
+// JMP_SITE's own station grid, `stepDeg`) and half its thickness, both
+// corners of the bar's cross-section — a box, not a point. `[zLo, zHi]` is
+// the union of the region JMP_SITE itself measured (world z, already correct
+// across the dialFace flip) and the lifter bar's own z-band about
+// Z_JMP_LIFTER, since the region was captured BEFORE the search margin
+// (JMP_SITE_SAT) was folded in and the bar's z-band is not itself swept by
+// azimuth. This is a derivation over already-solved constants, legal at boot
+// (no pose is read — BOOT HAS NO POSE), and it does not re-run any solve.
+const JMP_SITE_WALKS = (() => {
+  const studO = jumperUnit.getWorldPosition(new THREE.Vector3());
+  let wMax = 0;
+  const nAz = Math.round(360 / JMP_SITE.stepDeg);
+  for (let k = 0; k < nAz; k++) wMax = Math.max(wMax, jmpLifterWidthAt(k * JMP_SITE.stepDeg * DEG2RAD));
+  const reachR = Math.max(Math.hypot(studO.x, studO.y) + JMP_SITE.rc, JMP_SITE.postR)
+    + Math.hypot(wMax / 2, JMP_LIFTER_T / 2);
+  const zLo = Math.min(JMP_SITE.reachZ[0], Z_JMP_LIFTER - JMP_LIFTER_T / 2);
+  const zHi = Math.max(JMP_SITE.reachZ[1], Z_JMP_LIFTER + JMP_LIFTER_T / 2);
+  const rows = [
+    { walk: 'GONG_BAND_FLOOR', limit: R_ANNULUS_IN, margin: R_ANNULUS_IN - reachR },
+    { walk: 'GONG_FOOT_OBSTACLES', limit: GONG_R - GONG_POST_R - CLEAR_MARGIN, margin: (GONG_R - GONG_POST_R - CLEAR_MARGIN) - reachR },
+    { walk: 'Case walk', limit: CASE_R_IN, margin: CASE_R_IN - reachR },
+    // the corridor's solids stand at z ≥ ALARM_CORRIDOR_BAND_FLOOR, so the
+    // jumper (which reaches UP to zHi, the less-negative end) clears it by
+    // the floor less its own reach — the jumper's zLo plays no part here.
+    { walk: 'Alarm corridor', limit: ALARM_CORRIDOR_BAND_FLOOR, margin: ALARM_CORRIDOR_BAND_FLOOR - zHi },
+  ];
+  let beMin = Infinity, jumperBins = 0;
+  for (const b of BACK_ENVELOPE.bins) {
+    if (b.r0 >= reachR) continue;
+    if (b.z !== null) beMin = Math.min(beMin, b.z);
+    if (b.owner === 'Minute jumper') jumperBins++;
+  }
+  rows.push({ walk: 'BACK_ENVELOPE', limit: zHi, margin: beMin - zHi, jumperBins });
+  for (const r of rows)
+    if (!(r.margin > 0))
+      console.warn(`TODO 156: the jumper's reach walk '${r.walk}' margin is ${r.margin.toFixed(4)} (reachR ${reachR.toFixed(4)}, limit ${Number.isFinite(r.limit) ? r.limit.toFixed(4) : r.limit}) — the movement-wide walks are no longer indifferent to the jumper`);
+  if (jumperBins !== 0)
+    console.warn(`TODO 156: BACK_ENVELOPE reads ${jumperBins} bin(s) governed by 'Minute jumper' inside its own reach (r < ${reachR.toFixed(4)}) — the walk is no longer indifferent to it`);
+  return { reachR, zLo, zHi, rows };
+})();
+// TODO 156 (A1) — RECORD CAP_SOLVE's own veto rather than acting on it (that
+// is TODO 160: re-cut the fold, plate and reserve late, continuing
+// CAP_SOLVE's order). Every row starts unjudged — `clause: 'open'` marks the
+// bearing CAP_SOLVE itself accepted BEFORE the jumper existed; every other
+// row was already refused by CAP_SOLVE's own clauses (the transfer arbor or
+// the reserve's swing) and the jumper is never even asked about them. `m`
+// and `s` are left untouched — probe-234-cap-bearing.mjs reads those.
+for (const r of CAP_SOLVE.scan) r.jumper = null;
+{
+  const row = CAP_SOLVE.scan.find((r) => r.clause === 'open' && Math.abs(r.d - CAP_BEARING / DEG2RAD) < 1e-9);
+  if (row) row.jumper = JMP_SITE.best
+    ? { verdict: 'accepts', azDeg: ((JMP_SITE.best.az / DEG2RAD) % 360 + 360) % 360, clr: JMP_SITE.best.clr, swingDeg: rsvSwing / DEG2RAD }
+    : { verdict: 'refuses', azDeg: null, clr: null, swingDeg: rsvSwing / DEG2RAD };
 }
 
 // §38 alarm hand vs the raised hour markers — see the note at the hand's
@@ -44149,6 +44266,7 @@ window.__clock = {
     tested: JMP_SITE.tested, candidates: JMP_SITE.candidates, stepDeg: JMP_SITE.stepDeg, ms: JMP_SITE.ms,
     rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris,
     lifterW: JMP_LIFTER_W,
+    walks: JMP_SITE_WALKS,
   }),
   // §10 level 2 — the sub-table, read-only, for probes: what the drill knows.
   get subEntries() { return subEntries.map((s) => ({ parentUnit: s.parentUnit, displayName: s.displayName, baseZ: s.baseZ.get(s.obj), subLayer: s.subLayer, z: s.obj.position.z, tickOwned: s.tickOwned, bodies: s.objs.length })); },

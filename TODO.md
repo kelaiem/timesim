@@ -13,14 +13,16 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-08-26 — items with work left first, with what remains:
+refreshed 2026-09-24 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 161 | OPEN | `JMP_SITE` judges the alarm selector, sleeve and release levers AS BUILT, not over their own travel (BOOT HAS NO POSE). No defect today (JUMPER row 0.1500, clean). Fix: factor their own pose laws (`settingLeverAngleAt`/`jumperLeverRotAt`/`poseJumperLifter`'s precedent), not a pose snapshot |
+| 160 | OPEN | A jumper refusal is recorded ([TODO 156], closed) but cannot act — CAP_SOLVE commits B before `JMP_SITE` exists. Fix: nest a `JMP_SITE` scan into CAP_SOLVE's own candidate loop (the `solveReserveSwing` veto shape), with a cheap per-candidate pre-screen; 452/720 stations feasible with the fold and reserve removed vs 156/720 with them present |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
 | 158 | OPEN | Only the default spec is battery-validated; URL overrides, the reconfigure panel and saved variants build geometry nobody swept, shown as sound. Tier A: a shipped validated-fingerprint set and a localized "unverified configuration" mark. Tier B: restricted `inspection` per `SPEC_POINT` |
 | 157 | OPEN | CAP_SOLVE, `solveCapLeg` and `stubSolve` take the first feasible value, so their binding pairs sit on the margin (0.1504, 0.1531). Replace with a declared objective: max-min certified clearance, then a written aesthetic tie-break; finish never spends a constraint |
-| 156 | OPEN | The jumper's real-metal siting runs at the end of the build and cannot veto the cap-bearing scan's B; movers other than the setting lever are judged as built, and the pillar seats judge the keyless works as one AABB (which moved the 135° pillar 181° → 87°). Restructure the build order (one late siting phase, or nested re-scans with the `solveReserveSwing` veto shape) |
+| 156 | CLOSED | CAP_SOLVE still cannot veto B on the jumper's siting (that restructure is [TODO 160]), but the four movement-wide walks' indifference to the jumper is now a boot-time derivation rather than a measured-once fact (`__clock.jumperSite.walks`, margins 1.36–11.20), CAP_SOLVE's own veto is recorded on its scan (`__clock.settingFold.scan[i].jumper`), and the pillars are seated against the keyless corner's real per-mesh metal (`PILLAR_KEYLESS_BOXES`) rather than `boxOf(keyless)` — only the 135° pillar moves, 87.00° → 135.00° |
 | 155 | OPEN | The setting fold is posed from `handSetOffset` alone while the minute wheel it now meshes turns with the going train: `setting fold minute wheel ⇄ setting cap` is waived in `meshPhase` and `transmits`. Fix path: the clutch's engagement as a pose input, the train's turn carried into the fold while the clutch is out |
 | 152 | CLOSED | A `?trial=1` boot — §33's verdict boot — inherited the viewer's tuned aesthetics (no trial guard in `aesthetics.js`; `reconfTrialBoot` passes `location.search` through), so every trial verdict was measured on a TUNED build; and the trial's merge ARMED the §23 crash-recovery marker, which a superseded trial never confirms, so the viewer's next real boot dropped their overrides and warned. Measured by `tools/probe-240-trial-boot.mjs` (6 rows red, controls green); closed by `state.js`'s `TRIAL_BOOT` guard copied to `aesthetics.js` — the merge, the marker, both finish params and the confirm all skip under the flag. Probe green. |
 | 150 | CLOSED | The §234 setting fold's three rods counter-rotated end to end: tick flipped the sign across each ROD as well as each corner. `MW_FOLD_SPIN` is read off the mounts now. The drop corner's inboard bevel, cut on the far side of its apex from its own shaft, is re-mounted on that shaft (the minute pinion it used to stand off is retired); the cap's mate claims are corrected (it meshes the motion works' minute wheel, not the keyless one); the fold's members are named for hover. `probe-150-fold-sense.mjs` gates all four rods, all three corners and the cap ⇄ minute-wheel mesh, 0 findings. The cap not meshing that wheel IN THE METAL (a 2.9 u axial gap) is split out to [TODO 151] |
@@ -22041,7 +22043,7 @@ the net actually occupies, re-derive the going-train analysis in [TODO
 151]'s old fix path against the built metal, and delete both waivers; their
 stale gates will say when.
 
-## 156. CAP_SOLVE cannot see the jumper or reserve train as metal: nesting the dependent siting solves needs a build-order restructure
+## 156. CAP_SOLVE cannot see the jumper or reserve train as metal: nesting the dependent siting solves needs a build-order restructure — CLOSED
 
 Found closing [TODO 151]. The minute jumper's station now comes from a solve
 on the real metal (`JMP_SITE` in `src/main.js`), but that solve runs at the
@@ -22127,6 +22129,66 @@ meshes, or at least per-mesh boxes), and the move should be re-read then.
   indifferent to it.
 - `probe-150-fold-sense.mjs` JUMPER stays green.
 - The battery is 41/41 with an explained diff.
+
+**Built.** The full restructure (one late siting phase, or nested re-scans
+with the `solveReserveSwing` veto shape) is real work and stays filed as
+[TODO 160]; this item closes on its four acceptance bullets, landed as three
+separable pieces without moving the build order:
+
+- **The four walks' indifference is now PERMANENT, not measured-once.**
+  `ALARM_CORRIDOR_BAND_FLOOR` is captured off the arrest solve's own
+  `indexBand` calls (the corridor's own declared floor). `JMP_SITE`'s
+  region-building block already computed `rc` (the jumper's own radial
+  reach about its stud), `reachZ` (the region's world z-span before the
+  search margin) and `postR` (the tail post's own radial reach) for culling;
+  they are returned now instead of discarded. A boot-time derivation walks
+  `jmpLifterWidthAt` over JMP_SITE's own 720-station grid to bound the
+  widest lifter bar anywhere on the circle, builds `reachR` (a closed-form
+  bound on the jumper's whole swept footprint from the plate axis) and
+  `[zLo, zHi]`, and asserts it against R_ANNULUS_IN, GONG_R − GONG_POST_R −
+  CLEAR_MARGIN, CASE_R_IN, ALARM_CORRIDOR_BAND_FLOOR and BACK_ENVELOPE's
+  bins inside that reach — legal at boot (BOOT HAS NO POSE: it derives from
+  already-solved constants, no pose is read, no solve re-runs). Measured
+  margins: 1.3641 (gong band), 6.0007 (gong foot obstacles), 3.8530 (case
+  walk), 1.4083 (alarm corridor — the corridor's own floor less the
+  jumper's zHi, since the corridor's solids stand at z ≥ the floor and the
+  jumper's LESS negative reach is the one that matters), 11.2037 (back
+  envelope, 0 bins governed by `Minute jumper`). Published at
+  `__clock.jumperSite.walks`. `probe-150-fold-sense.mjs` gates a WALKS row
+  with a control (the derived bound must dominate a direct vertex-precise
+  measurement over the probe's own pose net — measured 39.6330 against
+  derived 40.3021, measured −2.0583 against derived −2.0583) before the
+  margin rows.
+- **CAP_SOLVE's own veto is recorded, not silently absorbed.** Every scan
+  row starts `jumper: null`; the one row CAP_SOLVE itself accepted
+  (`clause: 'open'`, `d` matching the shipped `CAP_BEARING`) carries the
+  jumper's verdict — `accepts` with its station and clearance, or `refuses`
+  — because the jumper is never even asked about a B CAP_SOLVE already
+  shut. When `JMP_SITE` finds no station, the existing warning now also
+  names which B it refuses and that acting on it is TODO 160.
+  `probe-234-cap-bearing.mjs` prints the verdict beside its scan table and
+  marks an open-but-refused row `REFUSED (jumper)`. New
+  `tools/probe-156-jumper-veto.mjs` gates it: boot A confirms exactly one
+  scan row carries a verdict, matching CAP_SOLVE's own bearing and
+  `jumperSite`'s station; boot B is a control that rewrites `JMP_SITE`'s own
+  acceptance threshold to a demand no station meets (`JMP_SITE_SAT + HMIN`,
+  never a `CLEAR_MARGIN` rewrite, which would change the station grid) and
+  confirms the verdict flips to `refuses`, `jumperSite.clr` is null, all 720
+  candidates were tested, and a boot warning names TODO 156 or 160.
+- **The pillars are seated against the keyless corner's real metal.**
+  `PILLAR_KEYLESS_BOXES` replaces `boxOf(keyless)` with one world-vertex
+  AABB per keyless mesh (schematic meshes excluded, `NOT boxOf(keyless)`'s
+  precedent — grep it at the maintaining detent's own obstacle scan), kept
+  only where its z-band meets the pillar's own `[0, TQ_BOT_Z]` span within
+  `CLEAR_MARGIN`. Re-read: only the 135° pillar moves, 87.00° → 135.00°
+  (−26.528, 26.528) — the other three (37°, −135°, −78°) are unchanged.
+
+**Still owed** (the third acceptance bullet's other half): `JMP_SITE` still
+judges the alarm selector, sleeve and release levers AS BUILT rather than
+over their own travel, because boot has no pose to pose them at — split out
+as [TODO 161]. The restructure that would let a jumper refusal actually
+change B, the fold, the plate or the reserve — rather than only being
+recorded — is [TODO 160].
 
 ## 157. The fold's siting scans pick the first feasible value, not a declared objective: max-min clearance first, an aesthetic tie-break second
 
@@ -22277,3 +22339,104 @@ reads the true distance.
   (`probe-150-fold-sense.mjs`'s JUMPER row already refuses that pair shape).
 - Re-run `--report` and diff: every moved row names a stretched mesh.
 - Re-run `probe-149-lifter-width.mjs`.
+
+## 160. A jumper refusal cannot act: continue CAP_SOLVE's order and re-cut the fold, plate and reserve late
+
+Filed closing [TODO 156]. §234's `CAP_SOLVE` scans B and commits the fold,
+the base plate's recesses and (indirectly, via `solveReserveSwing`) the
+reserve train's swing before the minute jumper's own late siting solve
+(`JMP_SITE`) exists — so today a jumper refusal is RECORDED
+(`__clock.settingFold.scan[i].jumper`, closed by TODO 156) but cannot
+change anything: there is no second B to try.
+
+**The fix TODO 156 filed rather than built: option 2, keep the order and
+make the late solves nested scans.** CAP_SOLVE already keeps every
+candidate's metal (`buildSettingMetal`, `{ candidate: true }`); at the late
+point, a second pass re-runs CAP_SOLVE's own order — for each B it tried,
+build the fold, re-solve the reserve swing, and run `JMP_SITE` against that
+candidate's metal. A candidate at which the jumper has no station within
+`CLEAR_MARGIN` is REFUSED, exactly the veto shape `solveReserveSwing`
+already exercises inside `CAP_SOLVE` today (`window.__clock` names this the
+precedent to copy).
+
+Option 1 (one late siting phase — move `CAP_SOLVE`, `buildSettingMetal`,
+the plate cut, the reserve train and the jumper's siting into one phase
+after the units they must see exist) is out: measured at TODO 156's filing,
+114 lines between the fold's cut and `JMP_SITE` read B-dependent products
+(the plate's holes, the reserve's confirmed swing, every `onPlate` test and
+`PLATE_BACK_FACE` assert), and the plate would need cutting twice either
+way — the three-quarter plate's own `tqPlateMesh.geometry = next.geometry`
+re-cut is the precedent for how that is done without breaking every early
+reader.
+
+**Numbers, measured on the tree TODO 156 closed against (4e09498 plus its
+three commits):**
+
+- 0 of 33 declared spec-boot points refuse the shipped B — CAP_SOLVE's veto
+  pattern (the reserve's swing, the transfer arbor) already screens hard
+  before the jumper is ever asked.
+- `CAP_SOLVE` itself costs ≈ 3.4 s; one `JMP_SITE` solve costs 1.2–1.56 s.
+  Nesting a full `JMP_SITE` solve inside every candidate B multiplies the
+  cheaper number by however many candidates CAP_SOLVE tries before it opens
+  — worth a cheap PRE-SCREEN per candidate (the jumper's candidate azimuth
+  set can be cached across B, since the jumper's own geometry does not
+  change with B) rather than a full re-solve at every step.
+- With the fold and reserve train removed from the jumper's obstacle set,
+  452 of 720 stations are feasible, against 156 of 720 (in two runs,
+  [121°, 129.5°] and [264°, 332.5°]) with them present — so the fold and
+  reserve cost the jumper roughly two thirds of its open stations, which is
+  the scale of B-dependence a nested scan has to re-measure per candidate.
+- An incremental `JMP_SITE` re-solve at a NEW B (rather than the first one)
+  is expected to cost roughly its own ≈ 190 ms of that 1.2–1.56 s once the
+  candidate azimuth pre-screen is in place — filed as an estimate, not
+  measured, since no nested scan exists yet to measure.
+
+**Fix path.**
+
+- Wrap `CAP_SOLVE`'s per-candidate body (`window(dl)`, `src/main.js`) so
+  that after the existing reserve/transfer-arbor clauses accept a candidate,
+  it also builds the jumper's late obstacle set against THAT candidate's
+  metal and runs (a cheap version of) `JMP_SITE`. A candidate the jumper
+  refuses is treated as `clause: 'jumper'`, same shape as `reserve p1` or
+  `transfer arbor` today.
+- Memoise each station's B-INDEPENDENT verdict (whatever in `JMP_SITE`'s
+  obstacle set does not move with B) across candidates, so the nested cost
+  is dominated by what actually changes.
+- The fold's own r-reach against TODO 156's four walks (GONG_BAND_FLOOR,
+  GONG_FOOT_OBSTACLES, the alarm corridor, the case walk) was NOT measured
+  by that item — only the jumper's reach was. Measure it before trusting a
+  nested re-scan's candidate metal against those same walks; a re-cut fold
+  at a different B may reach where the shipped one does not.
+- Re-run the full battery; diff `--report` against the pre-restructure
+  baseline the way TODO 156 did.
+
+## 161. JMP_SITE judges the alarm selector, sleeve and release levers as built, not over their own travel
+
+Filed closing [TODO 156]. `JMP_SITE` (`src/main.js`) sites the minute
+jumper against every other unit's metal, including the alarm selector, the
+sleeve and the release levers that stand near the dial centre — but it
+poses them AS BUILT (whatever pose the boot sequence happens to be in when
+`JMP_SITE` runs), not over their own travel, because "BOOT HAS NO POSE"
+(CLAUDE.md): there is no facility to snapshot the session's pose, pose a
+mover for a query, and restore it, at build time. `probe-150-fold-sense.mjs`
+holds the jumper against those levers over the pose net (the gated JUMPER
+row), so the battery's own coverage is not blind to this — only the SOLVE
+is, meaning it cannot choose a station AROUND a lever pose it never saw.
+
+**No defect today.** Measured on the tree TODO 156 closed against: the
+JUMPER row's tightest reading against these levers is 0.1500, at the
+margin and clean. This item is filed because the solve's blindness is
+structural, not because anything is currently buried.
+
+**Fix path.** Factor the movers' own pose laws rather than snapshotting
+session state — the precedent already in the tree: `settingLeverAngleAt`,
+`jumperLeverRotAt`, `poseJumperLifter` are all closed-form functions of a
+travel parameter, callable at build time with no live pose required. Give
+the alarm selector, the sleeve and the release levers the same kind of
+law (a pure function of their own input, not a read of `crownPullT` /
+`leverEngage` / `alarmOn` state), and `JMP_SITE`'s obstacle-building pass
+can sweep them the same way it already sweeps its own travel — no pose
+snapshot/restore facility needed, and the trap that facility would walk
+into (BOOT HAS NO POSE: a claim about a POSE cannot be a boot assert,
+though a claim about a LAW derived from already-solved constants can be —
+see TODO 156's own `walks` derivation for the shape that stays legal).
