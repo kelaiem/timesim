@@ -10949,6 +10949,31 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
   // tqSlots; the low corridor emptied tqSlots (the post no longer pierces
   // the 3/4 plate), which silently dropped that cover — so the pillars
   // take the shared swept-corridor list directly.
+  //
+  // TODO 156 (C) — NOT boxOf(keyless): the maintaining detent's own obstacle
+  // scan already carries that precedent (grep "NOT boxOf(keyless)" — that box
+  // spans x [-54.6, -9.0], y [-2.0, 40.4], the whole dial-side keyless corner's
+  // reach, and would veto a pillar seat nowhere near real metal). Only the
+  // meshes actually low enough to meet a full-height pillar column matter:
+  // each keyless mesh's own world-vertex AABB, kept only where its z-band
+  // meets the pillar's own [0, TQ_BOT_Z] span (a margin either side, since a
+  // pillar full-height column reaches those ends exactly).
+  const PILLAR_KEYLESS_BOXES = [];
+  {
+    keyless.updateWorldMatrix(true, true);
+    const klWalk = [];
+    keyless.traverse((o) => klWalk.push(o));
+    const kv = new THREE.Vector3();
+    for (const o of klWalk) {
+      await breathe();
+      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) continue;
+      const pos = o.geometry.attributes.position;
+      const b = new THREE.Box3();
+      for (let i = 0; i < pos.count; i++) b.expandByPoint(o.localToWorld(kv.fromBufferAttribute(pos, i)));
+      if (b.max.z < -CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
+      PILLAR_KEYLESS_BOXES.push(b);
+    }
+  }
   const seatClearance = (x, y) => {
     let c = Math.min(inCutClearance(x, y), plateR - Math.hypot(x, y));
     for (const h of tqHoles) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
@@ -11008,8 +11033,14 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
       c = Math.min(c, Math.hypot(x - o.x, y - o.y) - o.r);
     // ...and it must not foul what is UNDER the plate either: the pillar runs
     // the full height of the movement, past the whole train.
-    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, keyless, forkCock.obj, maintDetent, setupWork]) {
+    for (const o of [barrelArbor, centerArbor, thirdArbor, fourthArbor, escapeArbor, forkGroup, drumGroup, forkCock.obj, maintDetent, setupWork]) {
       const b = boxOf(o);
+      const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
+      c = Math.min(c, Math.hypot(x - cx, y - cy));
+    }
+    // TODO 156 (C) — the keyless corner, judged on the same per-mesh boxes
+    // PILLAR_KEYLESS_BOXES built above, not the whole unit's box.
+    for (const b of PILLAR_KEYLESS_BOXES) {
       const cx = clamp(x, b.min.x, b.max.x), cy = clamp(y, b.min.y, b.max.y);
       c = Math.min(c, Math.hypot(x - cx, y - cy));
     }
