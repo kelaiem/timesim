@@ -43712,7 +43712,8 @@ const JMP_SITE = await (async () => {
     rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z };
 })();
 if (!JMP_SITE.best) {
-  console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`);
+  console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`
+    + ` — this REFUSES CAP_SOLVE's B at ${(CAP_BEARING / DEG2RAD >= 0 ? '+' : '')}${(CAP_BEARING / DEG2RAD).toFixed(2)}°; acting on it (re-cut) is TODO 160`);
 } else {
   // THE STATION, and everything the build derived from it: the parts' frame,
   // the star's phase (a valley under the solved tip at every snapped minute)
@@ -43789,6 +43790,20 @@ const JMP_SITE_WALKS = (() => {
     console.warn(`TODO 156: BACK_ENVELOPE reads ${jumperBins} bin(s) governed by 'Minute jumper' inside its own reach (r < ${reachR.toFixed(4)}) — the walk is no longer indifferent to it`);
   return { reachR, zLo, zHi, rows };
 })();
+// TODO 156 (A1) — RECORD CAP_SOLVE's own veto rather than acting on it (that
+// is TODO 160: re-cut the fold, plate and reserve late, continuing
+// CAP_SOLVE's order). Every row starts unjudged — `clause: 'open'` marks the
+// bearing CAP_SOLVE itself accepted BEFORE the jumper existed; every other
+// row was already refused by CAP_SOLVE's own clauses (the transfer arbor or
+// the reserve's swing) and the jumper is never even asked about them. `m`
+// and `s` are left untouched — probe-234-cap-bearing.mjs reads those.
+for (const r of CAP_SOLVE.scan) r.jumper = null;
+{
+  const row = CAP_SOLVE.scan.find((r) => r.clause === 'open' && Math.abs(r.d - CAP_BEARING / DEG2RAD) < 1e-9);
+  if (row) row.jumper = JMP_SITE.best
+    ? { verdict: 'accepts', azDeg: ((JMP_SITE.best.az / DEG2RAD) % 360 + 360) % 360, clr: JMP_SITE.best.clr, swingDeg: rsvSwing / DEG2RAD }
+    : { verdict: 'refuses', azDeg: null, clr: null, swingDeg: rsvSwing / DEG2RAD };
+}
 
 // §38 alarm hand vs the raised hour markers — see the note at the hand's
 // build. Runs HERE, with the whole tree assembled and matrices current,
