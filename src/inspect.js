@@ -281,10 +281,11 @@ export const MECH_GRAPH = {
     // dividing the minute angle by 12.
     ['Center wheel', 'Motion works'],        // cannon pinion friction-fit on the centre arbor
     ['Motion works', 'Hour wheel'],
-    ['Keyless works', 'Motion works'],       // SETTING: the cap meshes the minute wheel by TOOTH COUNT
-                                             // only — the two stand 2.914 u apart axially in the metal
-                                             // (TODO 151); the nearest pair today is mwMinuteWheel ⇄
-                                             // settingRise at 0.50
+    ['Keyless works', 'Motion works'],       // SETTING: TODO 151's (d) landing put the cap on the
+                                             // wheel's own plane — settingCap ⇄ mwMinuteWheel is a real
+                                             // contact now (EXPECTED_CONTACT_FLOORS). TODO 155 is what
+                                             // still poses the cap from handSetOffset alone rather than
+                                             // the going train the wheel actually turns with.
     ['Setting lever', 'Minute jumper'],      // the lost-motion lifter bar off the tail post drops the
                                              // jumper into the star when the crown is out
     ['Motion works', 'Minute jumper'],       // the star's teeth ride the seated beak (the detent that
@@ -591,11 +592,10 @@ const EXPECTED_PAIRS = [
                                              // the motion-works nesting (the jumper itself is a
                                              // movement child now, so this is star contact only)
   ['Minute jumper', 'Setting lever'],        // the lifter bar rides the tail post's pin
-  ['Keyless works', 'Motion works'],         // SETTING: the cap meshes the minute wheel by TOOTH COUNT
-                                             // only, standing 2.914 u off axially in the metal (TODO 151);
-                                             // the nearest pair today is mwMinuteWheel ⇄ settingRise at
-                                             // 0.50 — the drive edge above IS the claimed (not yet real)
-                                             // contact
+  ['Keyless works', 'Motion works'],         // SETTING: TODO 151's (d) landing put the cap on the
+                                             // wheel's own plane; the drive edge above is the real
+                                             // contact now (EXPECTED_CONTACT_FLOORS), though TODO 155
+                                             // still poses it from handSetOffset alone
   // 'Motion works' is a labelled child of the dialFace group, so every one of
   // its meshes also belongs to the 'Dial' unit and self-intersects across the
   // pair (the same label nesting Power reserve / Small seconds already have,
@@ -663,12 +663,11 @@ const EXPECTED_PAIRS = [
   ['Dial', 'Power-reserve train'],     // hand arbor passes through the dial's hole
   // Was documented as "settingCap meshes the cannon pinion (a Dial child)" —
   // false: the cap meshes the motion works' minute wheel (also a Dial
-  // child), and TODO 151 measured that mesh does not close in the metal
-  // (a 2.9 u axial gap). Measured directly (TODO 150/151's pass, swept over
-  // several poses): nothing in these two units actually touches today — the
-  // closest pair is mwMinuteWheel ⇄ settingRise at 0.50 clear, over
-  // CLEAR_MARGIN. Left as a blanket exclusion rather than removed, since a
-  // real mesh here is exactly what TODO 151's fix would create.
+  // child, 'Motion works' being a labelled child of dialFace). TODO 151's
+  // (d) landing closed that mesh in the metal, so this pair now carries a
+  // REAL contact — the same settingCap ⇄ mwMinuteWheel mesh the Keyless
+  // works ⇄ Motion works row declares, re-attributed through the label
+  // nesting.
   ['Dial', 'Keyless works'],
   ['Power reserve', 'Power-reserve train'], // reserve hand rides the w2 output arbor
   // Alarm (§24) — the mirror of the reserve/motion-works contacts:
@@ -2362,6 +2361,15 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmLiftTip', 'alarmTail'],       // the rounded tip on the tail's face — likewise
     ],
   },
+  // TODO 151's (d) landing — the setting cap now stands on the motion works'
+  // own minute-wheel plane and meshes it for real (TODO 151); everything
+  // else the two units own still keeps the margin.
+  {
+    a: 'Keyless works', b: 'Motion works', min: CLEAR_MARGIN,
+    contacts: [
+      ['settingCap', 'mwMinuteWheel'],
+    ],
+  },
 ];
 
 // TODO 6's check: sweep each row's unit pair with its declared contacts
@@ -2651,7 +2659,11 @@ export const INTRA_UNIT_CONTACTS = [
   // joints themselves are real — each corner gear is keyed to the rod it drives
   // — and §182's reach audit measures them; what was wrong was the description,
   // written from measured proximity without identifying the meshes.
-  { unit: 'Keyless works', a: 'settingCap', b: 'settingRise', why: 'the setting cap on the rod that carries the traverse down to the motion works — one arbor, two meshes (TODO 136 shortened the rise when the traverse plane dropped under the crown wheel\'s cone, which brought the two into contact)' },
+  { unit: 'Keyless works', a: 'settingCap', b: 'settingCapArbor', why: 'TODO 151\'s (d) landing / TODO 155 — the setting cap on the vertical arbor that carries it up from the cap corner (mwCornerCap) — one arbor, two meshes' },
+  { unit: 'Keyless works', a: 'mwCornerFootIn', b: 'settingRise', why: 'TODO 151\'s (d) landing / TODO 155 — the foot corner\'s inboard bevel, keyed to the tilted rise leg B→E' },
+  { unit: 'Keyless works', a: 'mwCornerFootOut', b: 'settingStub', why: 'TODO 151\'s (d) landing / TODO 155 — the foot corner\'s outboard bevel, keyed to the horizontal stub E→D' },
+  { unit: 'Keyless works', a: 'mwCornerCapIn', b: 'settingStub', why: 'TODO 151\'s (d) landing / TODO 155 — the cap corner\'s inboard bevel, the stub\'s other end' },
+  { unit: 'Keyless works', a: 'mwCornerCapOut', b: 'settingCapArbor', why: 'TODO 151\'s (d) landing / TODO 155 — the cap corner\'s outboard bevel, keyed to the vertical arbor up to the cap' },
   { unit: 'Keyless works', a: 'mwCornerRiseOut', b: 'settingRise', why: 'the rise corner\'s outboard bevel, keyed to the vertical rod it drives (measures MARGINAL \u2014 the flag flips run-to-run at the d\u22481e-4 boundary; the joint is real either way)' },
   // §99 found the other two joints of the same cluster, the same way the
   // declared row below found its first: the two wheels keyed to the long
@@ -8915,6 +8927,15 @@ export const MESH_PHASE_WAIVERS = {
   // transmits — it is the disc branch's angles being written independently,
   // which is the contradiction TODO 117 already owns and has not decided.
   'alarm setting: disc rim ⇄ idler 1b': 'TODO 117',
+  // TODO 151's (d) landing put the setting cap on the minute wheel's plane,
+  // so the tooth-count claim this pair always made is a real mesh now, phased
+  // by its own solve at the build's rest pose (tau 0, handSetOffset 0). Both
+  // members ride handSetOffset at the tooth ratio, but only the wheel rides the
+  // going train: the cap — and the whole setting fold behind it — is posed
+  // from handSetOffset alone, so wherever the net's tau differs from the solve
+  // pose's the pair reads off anti-phase. That is TODO 155's P0 gap, the item
+  // that owns this row and the transmits row beside it.
+  'setting fold minute wheel ⇄ setting cap': 'TODO 155',
 };
 const MESH_PHASE_BAR = 0.02;          // solveGearChain's own, see above
 // §135 item 2 — THE CENTRE DISTANCE, GATED. Every row already reports
@@ -9174,6 +9195,14 @@ export const TRANSMITS_WAIVERS = {
   // working as designed. The item stays OPEN on its PHASE half — see
   // MESH_PHASE_WAIVERS above, where the two rows remain over the bar for a
   // different reason.
+  // TODO 155 — the setting cap meshes the minute wheel in the metal since
+  // TODO 151, and under `train` the wheel turns while the cap stands: the
+  // setting fold is posed from handSetOffset alone. Not a phasing error and
+  // not an orphan (the wheel is the member that moves); the chain the driver
+  // turns does not follow it. TODO 155's fix — the clutch's engagement as a
+  // pose input, the train's turn carried into the fold while the clutch is
+  // out — is what deletes this row, and MESH_PHASE_WAIVERS' twin with it.
+  'setting fold minute wheel ⇄ setting cap': 'TODO 155',
 };
 const TRANSMITS_TOL = 0.02;        // 2% of the expected ratio
 const TRANSMITS_STILL = 1e-6;      // below this a driver has not moved

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
+import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM, METAL_PARAM } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
@@ -1884,6 +1885,14 @@ if (!OSCILLATOR.agrees)
 // the geometry fingerprint (2407965539) is the proof nothing moved.
 const MW_CENTER_D = (MW_MODULE_1 * (cannonPinionTeeth + MW_MINUTE_TEETH)) / 2;
 const MW_MODULE_2 = (2 * MW_CENTER_D) / (MW_PINION_TEETH + MW_HOUR_TEETH); // minute pinion ⇄ hour wheel
+// TODO 155 (the (d) landing, TODO 151) — mwMinuteWheel's REAL mates, now that
+// the setting cap reaches its plane: the cannon pinion (unchanged) and the
+// setting cap. One list, consumed by the wheel's own gearToothSpec/gearFaceReach
+// calls, STAR_R's, the cap's own mate declaration and cannonPinion's — a
+// wheel meshed by two external gears names both from a single source rather
+// than repeating [cannonPinionTeeth] at each site and hoping the cap's own
+// declaration agrees.
+const MW_MINUTE_MATES = [cannonPinionTeeth, SETTING_CAP_TEETH];
 // Reduction, derived from the tooth counts rather than asserted. Each
 // external mesh reverses sense, so the two negations cancel: the hour wheel
 // turns the same way as the cannon pinion, at 1/12 the rate.
@@ -1975,12 +1984,20 @@ const { P, BALANCE_STEP_DEG, forkBaseAngle, PIN_AIM, rotAppliedRad } = solveLayo
 // external meshes so the ratio is cap/cannon. minutePinionTeeth (8) and
 // SETTING_CAP_TEETH (8) are the same count, so the substitution leaves the
 // VALUE unchanged — only what it names.
-// TODO 151 — the fold's NET sense, minute arbor → cap: −(which way the cap's
-// shaft leaves its last apex) × (which way the arbor leaves A), independent
-// of the corner count (MW_FOLD_SPIN's own law). −1 today: the cap hangs
-// below the rise corner, the arbor rises into the drop corner. ASSERTED
-// against MW_FOLD_SPIN at the fold build (KW_SET_WHEEL_SIDE's idiom).
-const MW_FOLD_NET_SENSE = -1;
+// TODO 151's (d) landing — the fold's NET sense, minute arbor → cap:
+// −(which way the cap's shaft leaves its last apex) × (which way the arbor
+// leaves A), independent of the corner count (MW_FOLD_SPIN's own law). The
+// cap used to hang BELOW its own last apex (the old vertical rise corner's
+// apex stood at Z_SETTING, the cap below it, on the motion works' side —
+// net sense −1). The (d) landing's cap corner (mwCornerCap) points its
+// output shaft UP: the cap now stands ABOVE its last apex — an apex above
+// the cap would sit inside the base plate, which is what forces this — so
+// the net sense flips to +1. Only an idler (a sixth corner reversing it
+// back) would have preserved the old sense; none was added, so the crown
+// now turns the OPPOSITE way to set the hands (TODO 151, accepted by the
+// user). ASSERTED against MW_FOLD_SPIN at the fold build (KW_SET_WHEEL_SIDE's
+// idiom).
+const MW_FOLD_NET_SENSE = 1;
 const HAND_RAD_PER_SET_RAD = KW_SET_WHEEL_SIDE
   * MW_FOLD_NET_SENSE * (windPinionTeeth / minuteWheelTeeth) * (SETTING_CAP_TEETH / cannonPinionTeeth);
 {
@@ -5152,6 +5169,48 @@ const toKeyless = new THREE.Vector2(settingArborXY.x - MW_WORLD.x, settingArborX
 // swing is the Yoke's measured bound; leg 2's swing is the least that passes
 // the barrel-arbor column on its near side; K is where those rays meet.
 const MW_LEG2_R = SETTING_ROD_R;                                                       // 0.382 — over reservePinion0, the same pinch
+// TODO 151's (d) landing — THE CAP'S NEW PLANE AND THE FOURTH CORNER THAT
+// REACHES IT. settingCap moves onto mwMinuteWheel's own plane, the same
+// margin cannonPinion already stands off the plate by; a new corner
+// (mwCornerCap, at D) carries the traverse's last leg UP to meet it, off a
+// tilted rise leg B→E and a horizontal stub E→D — a real position-space
+// fold (P3), not a re-pose of the cap alone (TODO 151's own measured
+// options (a)-(c) are each geometrically impossible). The cap has to stand
+// ABOVE its last apex — an apex above the cap would sit inside the base
+// plate — which is what reverses the fold's net sense (MW_FOLD_NET_SENSE).
+const SETTING_CAP_T = 1.6;   // the pinion's own thickness (was a bare literal on its makePinion call; hoisted so the two z-derivations below share it)
+const SETTING_CAP_REACH = G.gearFaceReach({ module: MW_MODULE_1, thickness: SETTING_CAP_T, pinion: true }).body;   // 0.860
+// The cap's top face lands ON THE MARGIN off the plate's presented face —
+// cannonPinion's own idiom (both of mwMinuteWheel's external meshes stand
+// the one margin off the one face they can reach without entering the
+// plate's own slab).
+const Z_SETTING_CAP = PLATE_BACK_FACE - CLEAR_MARGIN - SETTING_CAP_REACH;   // -3.310
+// The fold's new shafts — the rise, the stub and the cap arbor — have no pinch
+// of their own: nothing outside the fold stands within 0.35 of any of them
+// (probe-150-fold-sense.mjs, FOLD CLEAR), so no neighbour sizes them the way
+// reservePinion0 sizes leg 2. They take leg 2's stock, the section the chain
+// already carries into B, so one bore runs from K to the cap; their L/D
+// (3.5–4.4) and §50's floor are the turning and stockFloor checks' to judge,
+// and both leave them far inside.
+const MW_RISE_R = MW_LEG2_R;
+// The cap corner D is a MITRE by construction (the stub is horizontal, the cap
+// arbor vertical), cut at the template module, bored for that stock both sides.
+// Its inboard blank lies along the stub, so its reach UP toward the cap is its
+// tip radius — the spec's own farthest reach from the axis, which the cutter
+// cuts to (makeConicalGear's tip ring) and nothing in the mesh exceeds.
+const MW_CAP_CORNER_SPEC = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH,
+  shaftAngleDeg: 90, boreR: MW_RISE_R, mateBoreR: MW_RISE_R, quiet: true });
+// The cap stands above D by its own face reach, that blank's reach and one
+// margin — the least gap at which the corner under the cap clears the cap.
+const MW_CAP_APEX_GAP = SETTING_CAP_REACH + MW_CAP_CORNER_SPEC.tipR + CLEAR_MARGIN;   // 0.860 + 1.696 + 0.15 = 2.706
+const Z_CAP_CORNER = Z_SETTING_CAP - MW_CAP_APEX_GAP;                                // −6.016
+// φ (the rise's tilt off vertical, toward the cap) and the stub's length are
+// NOT constants: both depend on where B stands (the cap's bearing from B sets
+// the rise corner's shaft angle, and the stub's length moves the cap along the
+// wheel's mesh circle, which moves that bearing), so `solveCapLeg` below
+// solves them for every candidate B the bearing scan builds, on the blanks it
+// then cuts — §234's rule, one builder, so the metal the scan judged IS the
+// metal that ships.
 // §234 fold — THE FOLD CORNER'S MODULE IS SOLVED AGAINST §50's FLOOR. At the
 // shallow shaft angle the fold gets (Σ ≈ 157°, the deflection the Yoke and
 // the barrel column leave it) a 10-tooth pair is nearly a pair of face gears:
@@ -5164,19 +5223,47 @@ const MW_LEG2_R = SETTING_ROD_R;                                                
 // by iteration on the blank the generator cuts (the extent scales with the
 // module at a fixed bore, sublinearly), for the Σ each candidate B gives.
 const STOCK_MIN_U_FOLD = STOCK_MIN_U;
-function foldBlankThinnest(shaftAngleDeg, module) {
+// TODO 151's (d) landing generalized both to a `bores` pair, so the fold's
+// two new corners (mwCornerRise's own outboard bevel and mwCornerFoot, each
+// keyed to MW_RISE_R rather than the K corner's MW_LEG1_R/MW_LEG2_R pair) can
+// solve their own module the same way — K's own call passes nothing and
+// stays byte-identical.
+function foldBlankThinnest(shaftAngleDeg, module, bores = [MW_LEG1_R, MW_LEG2_R]) {
   let thin = Infinity;
-  for (const [boreR, mateBoreR] of [[MW_LEG1_R, MW_LEG2_R], [MW_LEG2_R, MW_LEG1_R]]) {
+  for (const [boreR, mateBoreR] of [[bores[0], bores[1]], [bores[1], bores[0]]]) {
     const g = G.makeConicalGear({ teeth: BEVEL_TEETH, module, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, material: MATS.steel });
     g.traverse((o) => { if (!o.isMesh) return; o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox;
       thin = Math.min(thin, b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z); o.geometry.dispose(); });
   }
   return thin;
 }
-function foldModuleFor(shaftAngleDeg) {
+// TODO 151 — the cap leg's solve asks this for every tilt it tries, so the
+// template module's own pass is settled from the SPEC where it provably can
+// be: the box's axial side is at least the web's zWebHi − zWebLo (both rings
+// are cut), and each transverse side at least 2·r·cos(g/2) for the root ring
+// at the back cone (r = coneR·sin θroot), drawn at the outline's azimuths
+// whose widest gap is g. A floor those clear, the cut blank clears, so the
+// answer is the same BEVEL_MODULE the loop's first cut would return — only
+// without cutting it. Anything short of it goes to the loop as before.
+const _foldModuleMemo = new Map();
+function foldModuleFor(shaftAngleDeg, bores = [MW_LEG1_R, MW_LEG2_R]) {
+  const key = `${shaftAngleDeg}|${bores[0]}|${bores[1]}`;
+  if (_foldModuleMemo.has(key)) return _foldModuleMemo.get(key);
+  const m = foldModuleSolve(shaftAngleDeg, bores);
+  _foldModuleMemo.set(key, m);
+  return m;
+}
+function foldModuleSolve(shaftAngleDeg, bores) {
+  {
+    const spec = G.bevelToothSpec({ module: BEVEL_MODULE, teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg,
+      boreR: bores[0], mateBoreR: bores[1], quiet: true });
+    const { g } = G.bevelBlankEnvelope(spec);
+    const lb = Math.min(spec.zWebHi - spec.zWebLo, 2 * spec.coneR * Math.sin(spec.thetaRoot) * Math.cos(g / 2));
+    if (lb >= STOCK_MIN_U_FOLD) return BEVEL_MODULE;
+  }
   let m = BEVEL_MODULE;
   for (let it = 0; it < 8; it++) {
-    const thin = foldBlankThinnest(shaftAngleDeg, m);
+    const thin = foldBlankThinnest(shaftAngleDeg, m, bores);
     if (thin >= STOCK_MIN_U_FOLD - 1e-9) return m;
     m *= (STOCK_MIN_U_FOLD / thin) * (1 + 1e-3);   // scale toward the floor; the extent is sublinear in m, so this converges from below in a few steps
   }
@@ -5382,6 +5469,152 @@ function solveSettingFold(B) {
   return { K, leg1U, leg2U, side, phi, beta2, alpha, alphaDeg, shaftAngleDeg, needCol,
     len1: settingA.distanceTo(K), len2: K.distanceTo(B) };
 }
+// TODO 151's (d) landing — THE CAP'S LEG, B → E → D → cap, SOLVED FOR ANY B.
+//
+// The chain: the rise leaves B tilted φ off vertical toward the cap, down to
+// the cap corner's plane (E, Z_CAP_CORNER); a horizontal stub of length L runs
+// on to D; the cap arbor rises from D to the cap. So the cap stands a plan
+// CHORD Dz·tanφ + L from B — and it must stand on the minute wheel's mesh
+// circle (capMeshD about MW_WORLD), which B itself stands on. The cap's site
+// is where the circle about B of radius `chord` meets the mesh circle. B lies
+// ON that circle, so the two always meet while the chord is under the
+// circle's diameter; of the two roots the one FARTHER from the barrel is
+// taken — the nearer swings the new corners back toward the reserve train
+// (TODO 151's design measurement put the fold's metal into rsvWheel1 and
+// reservePinion1 at 0 clearance there), which the fold exists to pass.
+//
+// `capLegAt(B, F, φ, L)` is that geometry for a given φ and L: the cap's site,
+// the rise's direction d1 = (sinφ·t, −cosφ) for the plan bearing t from B to
+// the cap, the corners' apexes and shaft angles (Σ_E = 90° + φ by
+// construction; Σ_B off the axes as built), and each corner's module, solved
+// against §50's floor by the same law the fold corner K uses.
+function capLegAt(B, F, phi, L) {
+  const Dz = Z_SETTING - Z_CAP_CORNER;
+  const chord = Dz * Math.tan(phi) + L;
+  const dx = B.x - MW_WORLD.x, dy = B.y - MW_WORLD.y, d = Math.hypot(dx, dy);
+  if (!(d > 0) || d > capMeshD + chord || d < Math.abs(capMeshD - chord)) return null;
+  const a = (d * d + capMeshD * capMeshD - chord * chord) / (2 * d);
+  const h = Math.sqrt(Math.max(0, capMeshD * capMeshD - a * a));
+  const mx = MW_WORLD.x + (a * dx) / d, my = MW_WORLD.y + (a * dy) / d;
+  const p1 = { x: mx - (h * dy) / d, y: my + (h * dx) / d }, p2 = { x: mx + (h * dy) / d, y: my - (h * dx) / d };
+  const capXY = Math.hypot(p1.x - P.barrel.x, p1.y - P.barrel.y) >= Math.hypot(p2.x - P.barrel.x, p2.y - P.barrel.y) ? p1 : p2;
+  const tl = Math.hypot(capXY.x - B.x, capXY.y - B.y);
+  if (!(tl > 0)) return null;
+  const t3 = new THREE.Vector3((capXY.x - B.x) / tl, (capXY.y - B.y) / tl, 0);
+  const d1 = new THREE.Vector3(t3.x * Math.sin(phi), t3.y * Math.sin(phi), -Math.cos(phi));
+  const E = B.clone().addScaledVector(d1, Dz / Math.cos(phi));
+  const D = new THREE.Vector3(capXY.x, capXY.y, Z_CAP_CORNER);
+  const sig = (u, v) => Math.acos(Math.max(-1, Math.min(1, u.dot(v)))) / DEG2RAD;
+  const sigmaB = sig(F.leg2U.clone().negate(), d1), sigmaE = sig(d1.clone().negate(), t3);
+  const moduleRise = foldModuleFor(sigmaB, [MW_LEG2_R, MW_RISE_R]);
+  const moduleFoot = foldModuleFor(sigmaE, [MW_RISE_R, MW_RISE_R]);
+  return { phi, phiDeg: phi / DEG2RAD, stub: L, chord, capXY, t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot };
+}
+const bevelEnv = (shaftAngleDeg, module, boreR, mateBoreR) => G.bevelBlankEnvelope(G.bevelToothSpec({ module,
+  teeth: BEVEL_TEETH, mateTeeth: BEVEL_TEETH, shaftAngleDeg, boreR, mateBoreR, quiet: true }));
+const vArr = (v) => [v.x, v.y, v.z];
+// Every blank of one corner clears every blank of another corner that turns
+// as a DIFFERENT body by the one margin — the tilt's pairs (B's blanks against
+// E's) and the stub's (E's against D's). Two blanks keyed to ONE rod — the
+// rise's two, the stub's two — turn as one rigid body, which §107 holds to be
+// one connected part rather than two that must stand apart, so the rule
+// between them is only that the two cut blanks do not run into each other
+// (target 0). Each entry is [envelope, frame, body]. Judged on each blank's
+// SWEPT envelope (G.bevelBlankEnvelope), because every one of them turns.
+// Returns the certified SLACK over each pair's own target, least first.
+function cornersClearance(cA, cB) {
+  let slack = Infinity;
+  for (const [eA, fA, bA] of cA) for (const [eB, fB, bB] of cB) {
+    const target = bA === bB ? 0 : CLEAR_MARGIN;
+    const r = G.revolvedBlanksClearance(eA, fA, eB, fB, target);
+    if (!r.ok) return { ok: false, slack: -Infinity };
+    slack = Math.min(slack, r.lb - target);
+  }
+  return { ok: true, slack };
+}
+const cornersClear = (cA, cB) => cornersClearance(cA, cB).ok;
+const MW_CAP_ENV = bevelEnv(90, BEVEL_MODULE, MW_RISE_R, MW_RISE_R);
+// THE STUB, for a given tilt: the least L at which the foot corner's blanks
+// (cut at Σ_E = 90° + φ) clear the cap corner's (a mitre). The geometry lives
+// in the vertical plane of the stub and depends on φ alone, so it is solved in
+// that plane's own frame: E at the origin, the stub along +x. The sphere
+// bound is its ceiling — every blank lies within its cone distance of its
+// apex, so at L = R_E + R_D + margin every pair clears by construction — and
+// the scan steps DOWN from it to the first L that fails, then bisects to the
+// envelope's own resolution (ENVELOPE_DELTA_FINE): finer buys nothing that
+// instrument can see. Each step is what the last reading PROVED, where that is
+// longer than half a margin (the sampling law every scan in this fold uses).
+const _stubMemo = new Map();   // φ → L: a function of the tilt alone, and every candidate B's scan visits the same grid
+function stubFor(phi, moduleFoot) {
+  const key = `${phi}|${moduleFoot}`;
+  if (!_stubMemo.has(key)) _stubMemo.set(key, stubSolve(phi, moduleFoot));
+  return _stubMemo.get(key);
+}
+function stubSolve(phi, moduleFoot) {
+  const eF = bevelEnv(90 + phi / DEG2RAD, moduleFoot, MW_RISE_R, MW_RISE_R);
+  const at = (L) => cornersClearance(
+    [[eF, { o: [0, 0, 0], a: [-Math.sin(phi), 0, Math.cos(phi)] }, 'rise'], [eF, { o: [0, 0, 0], a: [1, 0, 0] }, 'stub']],
+    [[MW_CAP_ENV, { o: [L, 0, 0], a: [-1, 0, 0] }, 'stub'], [MW_CAP_ENV, { o: [L, 0, 0], a: [0, 0, 1] }, 'cap']]);
+  // Down from the sphere bound. A step no longer than what the last reading
+  // PROVED (its certified slack over each pair's target) cannot pass a failing
+  // L — D moves rigidly, and a distance moves no faster than the thing
+  // measured — so the scan takes that step where it is longer than the
+  // half-margin law's.
+  let hi = eF.R + MW_CAP_ENV.R + CLEAR_MARGIN + eF.eps + MW_CAP_ENV.eps, lo = null;
+  let r = at(hi);
+  for (;;) {
+    const L = hi - Math.max(CLEAR_MARGIN / 2, r.slack);
+    if (!(L > 0)) break;
+    const rL = at(L);
+    if (!rL.ok) { lo = L; break; }
+    hi = L; r = rL;
+  }
+  if (lo === null) return hi;
+  while (hi - lo > G.ENVELOPE_DELTA_FINE) { const m = (lo + hi) / 2; if (at(m).ok) hi = m; else lo = m; }
+  return hi;
+}
+// THE TILT: the least φ at which the rise corner's blanks clear the foot
+// corner's (and the cap corner's) — B's and E's cross-body pairs are what bind,
+// since at φ = 0 the foot's outboard blank stands straight under B's inboard
+// one.
+// Every φ is judged on its OWN stub (stubFor) and its own cap site, so the
+// answer is a fixed point by construction rather than by iteration. The scan
+// steps up from vertical by the sampling law at E (half a margin of E's travel,
+// Dz per radian, to the quarter-degree), then bisects to the envelope's
+// resolution at E. A B with no such φ inside 60° — CAP_SOLVE's own reach — is
+// refused.
+const MW_RISE_PHI_STEP = Math.floor((CLEAR_MARGIN / 2 / (Z_SETTING - Z_CAP_CORNER)) / (0.25 * DEG2RAD)) * 0.25 * DEG2RAD;   // 1.25° at Dz 3.016
+// TODO 157: the least φ and L that clear put their binding pairs ON the margin; a declared objective is filed there.
+async function solveCapLeg(B, F) {
+  const judge = (phi) => {
+    const L = stubFor(phi, foldModuleFor(90 + phi / DEG2RAD, [MW_RISE_R, MW_RISE_R]));
+    const g = capLegAt(B, F, phi, L);
+    if (!g) return null;
+    const eR = bevelEnv(g.sigmaB, g.moduleRise, MW_LEG2_R, MW_RISE_R);
+    const eF = bevelEnv(g.sigmaE, g.moduleFoot, MW_RISE_R, MW_RISE_R);
+    const rise = [[eR, { o: vArr(B), a: vArr(F.leg2U.clone().negate()) }, 'leg2'], [eR, { o: vArr(B), a: vArr(g.d1) }, 'rise']];
+    const foot = [[eF, { o: vArr(g.E), a: vArr(g.d1.clone().negate()) }, 'rise'], [eF, { o: vArr(g.E), a: vArr(g.t3) }, 'stub']];
+    const capc = [[MW_CAP_ENV, { o: vArr(g.D), a: vArr(g.t3.clone().negate()) }, 'stub'], [MW_CAP_ENV, { o: vArr(g.D), a: [0, 0, 1] }, 'cap']];
+    g.ok = cornersClear(rise, foot) && cornersClear(rise, capc);
+    return g;
+  };
+  let lo = null, hit = null;
+  for (let phi = 0; phi <= 60 * DEG2RAD + 1e-9; phi += MW_RISE_PHI_STEP) {
+    await breathe();
+    const g = judge(phi);
+    if (g && g.ok) { hit = g; break; }
+    lo = phi;
+  }
+  if (!hit) return { refused: 'no rise tilt within 60° clears the cap leg\'s corners' };
+  const tol = G.ENVELOPE_DELTA_FINE / (Z_SETTING - Z_CAP_CORNER);
+  let hi = hit.phi;
+  while (lo !== null && hi - lo > tol) {
+    await breathe();
+    const m = (lo + hi) / 2, g = judge(m);
+    if (g && g.ok) { hi = m; hit = g; } else lo = m;
+  }
+  return hit;
+}
 // §234 fold — THE SETTING METAL FROM ITS CAP CORNER, ONE BUILDER. Everything
 // between the minute arbor's corner at A and the cap pinion at B is a
 // function of B alone: the fold (solveSettingFold), the two legs, the rise,
@@ -5395,8 +5628,8 @@ function solveSettingFold(B) {
 // `candidate` true refuses a B that has no fold worth building (returns
 // { F, refused }); the shipped build warns instead and builds anyway, so a
 // solve that found no window still leaves a tree the battery can judge.
-function buildSettingMetal(cap, parent, { candidate = false } = {}) {
-  const F = solveSettingFold(cap);
+async function buildSettingMetal(B, parent, { candidate = false } = {}) {
+  const F = solveSettingFold(B);
   let refused = null;
   // A bearing that turns the run past the measured Yoke heading has no fold
   // on the barrel's side (leg 1 would swing the other way) — refused before
@@ -5413,6 +5646,12 @@ function buildSettingMetal(cap, parent, { candidate = false } = {}) {
   // bearing whose leg 1 ran 28.6 u (L/D 26) and called that a window.
   else if (F.len1 > 2 * MW_LEG1_R * TURN_LD_TARGET || F.len2 > 2 * MW_LEG2_R * TURN_LD_TARGET)
     refused = `legs ${F.len1.toFixed(1)} / ${F.len2.toFixed(1)} u over the turning target`;
+  // TODO 151's (d) landing — the cap's leg, SOLVED for this B (solveCapLeg,
+  // above): φ, the stub, the cap's site on the wheel's mesh circle and the two
+  // new corners' shaft angles and modules. A B it cannot house is refused
+  // before any metal is cut, the same shape as the F clauses above.
+  const S = refused ? null : await solveCapLeg(B, F);
+  if (S && S.refused) refused = S.refused;
   if (refused) {
     if (candidate) return { F, refused };
     console.warn(`§234 fold: the cap corner B the bearing solve settled on has no fold worth building (${refused}) — building it anyway; the battery judges it`);
@@ -5420,14 +5659,21 @@ function buildSettingMetal(cap, parent, { candidate = false } = {}) {
   const module = foldModuleFor(F.shaftAngleDeg);
   const leg1 = makeRodSegment(settingA, F.K, MW_LEG1_R);
   leg1.name = 'settingTraverse1';
-  const leg2 = makeRodSegment(F.K, cap, MW_LEG2_R);
+  const leg2 = makeRodSegment(F.K, B, MW_LEG2_R);
   leg2.name = 'settingTraverse2';
   parent.add(leg1, leg2);
-  const rise = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, Z_SETTING - Z_CANNON_PINION, 10), MATS.steel);
+  // a refused shipped B still builds (the battery judges it): the leg at the
+  // scan's least-tilt ceiling, straight down, with a nominal stub
+  const { capXY, t3, d1, E, D, sigmaB, sigmaE, moduleRise, moduleFoot } = S && !S.refused ? S
+    : capLegAt(B, F, 0, 2 * MW_CAP_ENV.R + CLEAR_MARGIN);
+  const cap = new THREE.Vector3(capXY.x, capXY.y, Z_SETTING_CAP);
+  const rise = makeRodSegment(B, E, MW_RISE_R);
   rise.name = 'settingRise';
-  rise.rotation.x = Math.PI / 2;
-  rise.position.set(cap.x, cap.y, (Z_SETTING + Z_CANNON_PINION) / 2);
-  parent.add(rise);
+  const stub = makeRodSegment(E, D, MW_RISE_R);
+  stub.name = 'settingStub';
+  const capArbor = makeRodSegment(D, cap, MW_RISE_R);
+  capArbor.name = 'settingCapArbor';
+  parent.add(rise, stub, capArbor);
   // rise → traverse and traverse → drop: two corners, both exactly 90°. The
   // first corner's vertical gear stands tip-DOWN at the shaft's foot (TODO
   // 150 item 1 — it used to stand tip-up, pointing its axis AWAY from the
@@ -5450,27 +5696,43 @@ function buildSettingMetal(cap, parent, { candidate = false } = {}) {
   const cornerDrop = addBevelCorner(settingA, Z_UP.clone().negate(), F.leg1U, 'mwCornerDrop', { boreIn: SETTING_ROD_R, boreOut: MW_LEG1_R, parent });
   const cornerFold = addBevelCorner(F.K, F.leg1U.clone().negate(), F.leg2U, 'mwCornerFold',
     { shaftAngleDeg: F.shaftAngleDeg, boreIn: MW_LEG1_R, boreOut: MW_LEG2_R, module, parent });
-  // TODO 151 — the rise corner's inboard blank (keyed to leg 2, a horizontal
-  // axis) also reaches into the plate's z-band, the same way the drop
-  // corner's does at A; the base plate carries its own clearance recess at
-  // exactly this axis (see the plate build, MW_RISE_PLATE_HOLE).
-  const cornerRise = addBevelCorner(cap, F.leg2U.clone().negate(), Z_UP.clone().negate(), 'mwCornerRise', { boreIn: MW_LEG2_R, parent });
-  // The cap pinion at the arbor's top: module MW_MODULE_1, one mesh distance
-  // from the minute wheel's axis, in the minute wheel's own plane — it
-  // engages REAL teeth.
-  // TODO 150 item 3 / TODO 151 — the cap was cut for the KEYLESS minute
-  // wheel's mate list (minuteWheelTeeth, 24), but it meshes the motion
-  // works' minute wheel (MW_MINUTE_TEETH, 30) beside it, one mesh distance
-  // from the cannon pinion's own axis. The two external meshes on that one
-  // wheel — the cap and the cannon pinion — are its real mates; TODO 151
-  // is why they still stand 3.1 u apart axially rather than meshing in the
-  // metal.
-  const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth, SETTING_CAP_TEETH] }], thickness: 1.6, material: MATS.steel });
+  // TODO 151's (d) landing — the rise corner's OUTBOARD bevel now keys to the
+  // TILTED settingRise leg (axisOut d1) rather than straight down — Σ_B is
+  // whatever that tilt leaves it (sigmaB, measured off the axes actually
+  // built, not assumed 90°). The inboard blank (keyed to leg 2, unchanged)
+  // still reaches into the plate's z-band, the same way the drop corner's
+  // does at A; the base plate carries its own clearance recess at exactly
+  // this axis (see the plate build, MW_RISE_PLATE_HOLE).
+  const cornerRise = addBevelCorner(B, F.leg2U.clone().negate(), d1, 'mwCornerRise',
+    { shaftAngleDeg: sigmaB, boreIn: MW_LEG2_R, boreOut: MW_RISE_R, module: moduleRise, parent });
+  // TODO 151's (d) landing — the FOOT corner, at E: inboard keyed back to the
+  // rise leg (axisIn −d1, mated with cornerRise's outboard across the
+  // settingRise rod), outboard keyed to the horizontal stub toward D
+  // (axisOut t3). Σ_E = 90° + φ by construction (t3 is horizontal, d1 tilts
+  // φ off vertical toward it), and addBevelCorner asserts it off the axes.
+  const cornerFoot = addBevelCorner(E, d1.clone().negate(), t3, 'mwCornerFoot',
+    { shaftAngleDeg: sigmaE, boreIn: MW_RISE_R, boreOut: MW_RISE_R, module: moduleFoot, parent });
+  // TODO 151's (d) landing — the CAP corner, at D: a mitre (Σ_D = 90°
+  // exactly — the stub is horizontal, the cap arbor vertical, so no
+  // shaftAngleDeg override is needed) whose OUTPUT shaft goes UP (+Z): the
+  // cap now stands ABOVE its last apex, which is the fold's net-sense flip
+  // (MW_FOLD_NET_SENSE, below) — an apex above the cap would sit inside the
+  // plate.
+  const cornerCap = addBevelCorner(D, t3.clone().negate(), Z_UP, 'mwCornerCap',
+    { boreIn: MW_RISE_R, boreOut: MW_RISE_R, parent });
+  // The cap pinion, now on the motion works' MINUTE WHEEL'S OWN PLANE
+  // (Z_SETTING_CAP): module MW_MODULE_1, one mesh distance from the wheel's
+  // axis — it engages REAL teeth at last (TODO 151's (d) landing; TODO 155
+  // is what still poses it from handSetOffset alone rather than the going
+  // train the wheel actually turns with).
+  const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }], thickness: SETTING_CAP_T, material: MATS.steel });
   settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
-  settingCap.position.set(cap.x, cap.y, Z_CANNON_PINION);
+  settingCap.position.set(cap.x, cap.y, Z_SETTING_CAP);
   parent.add(settingCap);
-  return { F, module, leg1, leg2, rise, cornerDrop, cornerFold, cornerRise, settingCap };
+  return { F, module, leg1, leg2, rise, stub, capArbor, cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap, settingCap, capXY,
+    leg: S && !S.refused ? S : null, E, D };
 }
+// TODO 157: first-feasible, like solveCapLeg below it — a declared objective over the feasible set is filed there.
 const CAP_SOLVE = await (async () => {
   const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -5510,9 +5772,9 @@ const CAP_SOLVE = await (async () => {
   const staticPts = meshPoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too
   const disposeTree = (g) => g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
   // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
-  const window = (dl) => {
+  const window = async (dl) => {
     const scratch = new THREE.Group();
-    const M = buildSettingMetal(capAt(dl), scratch, { candidate: true });
+    const M = await buildSettingMetal(capAt(dl), scratch, { candidate: true });
     if (M.refused) return { m: -Infinity, clause: M.refused, s: 0 };
     const cand = meshPoints(scratch);
     disposeTree(scratch);
@@ -5536,12 +5798,12 @@ const CAP_SOLVE = await (async () => {
   // the step: the same sampling law as the reserve's swing (RSV_SWING_STEP_DEG),
   // at the cap's own station — half a margin's arc at capMeshD, to the quarter-degree
   const STEP = Math.floor((CLEAR_MARGIN / 2 / capMeshD) / (0.25 * DEG2RAD)) * 0.25;   // 0.75 at capMeshD 5.7
-  let nearest = { d: 0, ...tried(0, window(0)) };
+  let nearest = { d: 0, ...tried(0, await window(0)) };
   if (nearest.m >= 0) return { bearing: 0, swing: nearest.swing, scan };   // the a+(b−a)≠b rule: no swing keeps every original expression
   for (let d = STEP; d <= 60 + 1e-9; d += STEP)
     for (const sgn of [1, -1]) {
       await breathe();
-      const w = tried(sgn * d, window(sgn * d * DEG2RAD));
+      const w = tried(sgn * d, await window(sgn * d * DEG2RAD));
       await breathe();
       if (w.m >= 0) return { bearing: sgn * d * DEG2RAD, swing: w.swing, scan };
       if (w.m > nearest.m) nearest = { d: sgn * d, ...w };
@@ -5554,8 +5816,12 @@ const CAP_BEARING = CAP_SOLVE.bearing;
 const CAP_BEARING_SWING = CAP_SOLVE.swing;   // the reserve swing the bearing was solved against — the reserve build confirms it on the cut tree
 const capU = { x: toKeyless.x * Math.cos(CAP_BEARING) - toKeyless.y * Math.sin(CAP_BEARING),
                y: toKeyless.x * Math.sin(CAP_BEARING) + toKeyless.y * Math.cos(CAP_BEARING) };
-const SETTING_CAP_XY = { x: MW_WORLD.x + capU.x * capMeshD, y: MW_WORLD.y + capU.y * capMeshD };
-const settingB = new THREE.Vector3(SETTING_CAP_XY.x, SETTING_CAP_XY.y, Z_SETTING);
+// TODO 151's (d) landing renamed this — it is B, the fold's own corner on
+// the wheel's mesh circle, not the cap any more (the cap now sits off the
+// wheel's own plane, sited by buildSettingMetal below from B and the tilt
+// solveCapLeg finds for it). SETTING_CAP_XY is read off the cut metal below.
+const SETTING_B_XY = { x: MW_WORLD.x + capU.x * capMeshD, y: MW_WORLD.y + capU.y * capMeshD };
+const settingB = new THREE.Vector3(SETTING_B_XY.x, SETTING_B_XY.y, Z_SETTING);
 const settingU = settingB.clone().sub(settingA).normalize();   // the STRAIGHT run's direction — the fold's reference line
 // §234 step 3a FOLD — the traverse is TWO legs and a third corner, and the
 // last `TURN_WAIVERS` row retires with it.
@@ -5619,8 +5885,13 @@ const settingU = settingB.clone().sub(settingA).normalize();   // the STRAIGHT r
 // The fold is solved ONCE, by `solveSettingFold` above the cap-bearing solve
 // (which has to ask it where K lands for each candidate B), and cut here from
 // the same answer.
-const SETTING_METAL = buildSettingMetal(settingB, keyless);
+const SETTING_METAL = await buildSettingMetal(settingB, keyless);
 const MW_FOLD = SETTING_METAL.F;
+// The cap's own XY, AFTER the build — sited by buildSettingMetal from B and
+// the tilt solveCapLeg solved for it, not the same point as B any more.
+// Every other user of "the cap's XY" (the dial-side jumper bearing scan, the
+// setting cap's own mesh phase) reads this, not SETTING_B_XY.
+const SETTING_CAP_XY = SETTING_METAL.capXY;
 {
   if (!(MW_FOLD.alphaDeg > 0 && MW_FOLD.alphaDeg < 30))
     console.warn(`§234 fold: leg 1's swing off the run reads ${MW_FOLD.alphaDeg.toFixed(3)}° — the measured heading `
@@ -5702,7 +5973,7 @@ function addBevelCorner(point, axisIn, axisOut, tag, { shaftAngleDeg = 90, boreI
 // The three corners are cut by `buildSettingMetal` above (the same call the
 // cap-bearing solve made for each candidate B); the fold corner's module is
 // the floor solve's, taken from the same build.
-const { cornerDrop, cornerFold, cornerRise } = SETTING_METAL;
+const { cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap } = SETTING_METAL;
 const MW_FOLD_MODULE = SETTING_METAL.module;
 // the derivation, re-read off the blanks as cut (achieved vs required — rule 6's shape)
 const MW_FOLD_BLANK_THINNEST = foldBlankThinnest(MW_FOLD.shaftAngleDeg, MW_FOLD_MODULE);
@@ -5726,7 +5997,9 @@ if (MW_FOLD_BLANK_THINNEST < STOCK_MIN_U_FOLD - 1e-9)
 // dot of the two facing axes. `MW_FOLD_SPIN[i] = { kIn, kOut }` multiplies the
 // cap's spin. A rod whose two mounts are not coaxial has no rigid answer, so
 // the dot is asserted to be ±1 rather than rounded to it.
-const MW_CORNERS = [cornerDrop, cornerFold, cornerRise];
+// TODO 151's (d) landing added the last two corners (mwCornerFoot at E,
+// mwCornerCap at D) to the chain the cap's spin threads back through.
+const MW_CORNERS = [cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap];
 const MW_FOLD_SPIN = (() => {
   const axes = MW_CORNERS.map((c) => ({ i: bevelCornerAxis(c.gearIn.parent), o: bevelCornerAxis(c.gearOut.parent) }));
   const coaxial = (a, b, what) => {
@@ -5736,7 +6009,9 @@ const MW_FOLD_SPIN = (() => {
     return Math.sign(d);
   };
   const out = MW_CORNERS.map(() => ({ kIn: 0, kOut: 0 }));
-  let k = coaxial(axes[axes.length - 1].o, Z_UP, 'rise (outboard bevel ⇄ cap)');
+  // TODO 151's (d) landing — the cap arbor (mwCornerCap ⇄ the cap) is now the
+  // last coaxial rod in the chain, not the rise corner ⇄ cap directly.
+  let k = coaxial(axes[axes.length - 1].o, Z_UP, 'cap arbor (cap corner ⇄ cap)');
   for (let i = MW_CORNERS.length - 1; i >= 0; i--) {
     out[i].kOut = k;
     out[i].kIn = -k;                                   // the corner: equal counts roll equal and opposite
@@ -5774,6 +6049,18 @@ const MW_DROP_PLATE_HOLE = { x: settingA.x, y: settingA.y, r: cornerDrop.spec.co
 // the apex at Z_SETTING: it stood 0.99 u up in the plate (vertex top −1.308
 // against the presented face −2.3, meshClearance 0.0000), excused wholesale by
 // the Keyless works ⇄ plate support edge.
+//
+// TODO 151's (d) landing re-cut this corner at Σ_B ≈ 99.7° (its outboard
+// blank keys to the tilted rise now), so coneR — the pair's cone distance —
+// shrank with it (2.121 → 1.963) and the recess with that. The rule is a
+// BOUND, not an isotropic guess, and it holds for all three recesses: every
+// point makeConicalGear cuts lies within coneR of the apex (the band is ρ ≤
+// coneR by construction; the web's outer ring sits ON that sphere, at
+// coneR·sin θroot and zWebHi = coneR·cos θroot; the bore is inside the root),
+// so no blank of the corner reaches further than coneR in plan from the apex's
+// own axis line, whatever its shaft angles — and a vertical bore of coneR +
+// CLEAR_MARGIN keeps the margin to all of it. Measured by probe-150's PLATE
+// rows: every corner blank clears the plate by ≥ 0.35.
 const MW_RISE_PLATE_HOLE = { x: settingB.x, y: settingB.y, r: cornerRise.spec.coneR + CLEAR_MARGIN };
 // §137 — the corners' transfer rows: the movement's TEMPLATE idiom, declared
 // first. Rotation through an angle earns a bevel pair; the ratio is 1:1
@@ -5787,7 +6074,9 @@ const MW_RISE_PLATE_HOLE = { x: settingB.x, y: settingB.y, r: cornerRise.spec.co
 // audit exists to catch.
 for (const [site, tag] of [['motion works: rise→traverse corner', 'mwCornerDrop'],
                            ['motion works: traverse fold corner', 'mwCornerFold'],
-                           ['motion works: traverse→drop corner', 'mwCornerRise']]) {
+                           ['motion works: traverse→drop corner', 'mwCornerRise'],
+                           ['motion works: rise foot corner', 'mwCornerFoot'],
+                           ['motion works: cap corner', 'mwCornerCap']]) {
   declareTransfer(site, {
     unit: 'Keyless works', meshes: [`${tag}In`, `${tag}Out`], idiom: 'bevelPair',
     load: { value: 0, unit: 'mN', source: 'posed — handSetOffset is assigned in tick (MECH_GRAPH.todo); no force path is modelled through the setting arbor' },
@@ -5800,7 +6089,12 @@ for (const [site, tag] of [['motion works: rise→traverse corner', 'mwCornerDro
 // wheel's own plane — it engages REAL teeth). Rest phase aims a half-tooth
 // gap at the wheel.
 const settingCap = SETTING_METAL.settingCap;
-const SETTING_CAP_PHASE =
+// TODO 151's (d) landing put the cap on the wheel's own plane, so the rest
+// phase is no longer a half-tooth-gap placeholder — it is SOLVED against the
+// real mesh below (the keyless rest-pose block, grep `keylessRest`), the same
+// way every other declared mesh in this movement is phased. `let` because
+// that solve re-derives it from a build-time seed.
+let SETTING_CAP_PHASE =
   Math.atan2(MW_WORLD.y - SETTING_CAP_XY.y, MW_WORLD.x - SETTING_CAP_XY.x) + Math.PI / SETTING_CAP_TEETH;
 // §10 level 2, the keyless table — the pieces on the winding and setting
 // paths, named for what the code builds. The winding stem is tick-written
@@ -5827,6 +6121,11 @@ registerSub('Keyless works', 'Setting cap', settingCap);
 for (const c of MW_CORNERS) for (const g of [c.gearIn, c.gearOut]) registerSub('Keyless works', 'Setting bevel corners', g.parent);
 registerSub('Keyless works', 'Setting traverse', SETTING_METAL.leg1);
 registerSub('Keyless works', 'Setting traverse', SETTING_METAL.leg2);
+// TODO 151's (d) landing — the fold's last two rods, the same sub-label the
+// rise carries (they are all "Setting rise" on the §10 table: the tilted
+// leg and the two segments that carry it the rest of the way to the cap).
+registerSub('Keyless works', 'Setting rise', SETTING_METAL.stub);
+registerSub('Keyless works', 'Setting rise', SETTING_METAL.capArbor);
 
 // ---------------------------------------------------------------------------
 // Setting-lever linkage — the visible actuation chain behind the crown pull.
@@ -6014,6 +6313,7 @@ settingLeverGroup.add(settingLever);
   // settingLever local frame: group sits at Z_SETTING_LEVER, no flip —
   // dial-ward is −z; the post rides the tail at local (0, −SL_TAIL).
   drop.position.set(0, -SL_TAIL, (topW + endW) / 2 - Z_SETTING_LEVER);
+  drop.name = 'settingLeverPostDrop';   // TODO 151: the lifter's slot rides THIS pin — the one joint the jumper's siting solve excuses the bar
   settingLever.add(drop);
 }
 movement.add(settingLeverGroup);
@@ -13585,7 +13885,7 @@ const MW_PINION_T = MW_WHEEL_T + 2 * MW_BEVEL(MW_WHEEL_T, MW_MODULE_2) + MW_COVE
 // reach, so the chain can deepen again without anyone re-counting leaves.
 const CANNON_T = -0.5 - (MW_Z1 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_1) - MW_COVER);
 const CANNON_END = -0.5 - CANNON_T;
-const cannonPinion = G.makePinion({ name: 'cannonPinion', module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [MW_MINUTE_TEETH], thickness: CANNON_T, material: MATS.steel });
+const cannonPinion = G.makePinion({ name: 'cannonPinion', module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }], thickness: CANNON_T, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
 dialFace.add(cannonPinion);
 // …and the new floor that derivation creates: the leaves now reach PAST the
@@ -13616,7 +13916,7 @@ dialFace.add(cannonPinion);
 // standing proud of the body's own face could bury silently. gearFaceReach
 // reports both; the assert takes whichever reaches further.
 {
-  const r = G.gearFaceReach({ module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth], thickness: MW_WHEEL_T, boreR: 0.5 });
+  const r = G.gearFaceReach({ module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES, thickness: MW_WHEEL_T, boreR: 0.5 });
   const expectBody = MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1);
   if (Math.abs(r.body - expectBody) > 1e-9)
     console.warn(`TODO 153: mwMinuteWheel's gearFaceReach body ${r.body.toFixed(6)} disagrees with MW_BEVEL's own estimate ${expectBody.toFixed(6)}`);
@@ -13638,8 +13938,13 @@ registerLabel('Motion works', motionWorks);
 const mwArbor = new THREE.Group();
 mwArbor.position.set(MW_STUD.x, MW_STUD.y, 0);
 const mwMinuteWheel = G.makeGear({ name: 'mwMinuteWheel',
-  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth], thickness: MW_WHEEL_T, boreR: 0.5, spokes: 4, material: MATS.brass,   // TODO 144: solved at the stack
+  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES, thickness: MW_WHEEL_T, boreR: 0.5, spokes: 4, material: MATS.brass,   // TODO 144: solved at the stack; TODO 151's (d) landing added the setting cap as the wheel's second real mate
 });
+// TODO 151 — named on its MESHES too (makeGear names only the group): the cap
+// ⇄ wheel mesh is an EXPECTED_CONTACT_FLOORS contact now, and a floors row's
+// selectors match mesh names — an anonymous wheel is a selector that matches
+// nothing, which the check reports as a hole (and did).
+mwMinuteWheel.traverse((o) => { if (o.isMesh) o.name = 'mwMinuteWheel'; });
 mwMinuteWheel.position.z = MW_Z1;
 const mwMinutePinion = G.makePinion({ name: 'mwMinutePinion',
   module: MW_MODULE_2, teeth: MW_PINION_TEETH, mates: [MW_HOUR_TEETH], thickness: MW_PINION_T, material: MATS.steel,
@@ -13794,7 +14099,7 @@ const STAR_MID = STAR_BOT + STAR_T / 2;
 // re-solve, not a rename, so it stays rowed in TODO 89 rather than being
 // quietly re-lettered here.
 const STAR_R = G.gearToothSpec({
-  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: [cannonPinionTeeth],
+  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES,
 }).rootR - 0.35;
 // Tooth depth DERIVED from the pitch, not styled. STAR_POINTS is forced to
 // 180 by the motion works (one point per minute-hand minute), so at this
@@ -13874,8 +14179,8 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // is worth saying out loud that a DIAL parameter reaches a mechanism part
 // through here, so a change that looks like finish is not confined to finish.
 //
-// AND IT IS NOT ONLY DIAL PARAMETERS (TODO 89, measured). The station is
-// 326° today, not the 320° this comment claimed for three landings: §136
+// AND IT IS NOT ONLY DIAL PARAMETERS (TODO 89, measured). The station was
+// 326° then, not the 320° this comment claimed for three landings: §136
 // re-derived STAR_R from the cut spec's own root circle, which moved
 // JMP_PIV_R (= STAR_R + 2.4), which re-ran this scan. A TOOTH-PROFILE
 // landing silently re-sited a mechanism part, and nothing said so — which
@@ -13896,28 +14201,35 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 //     candidates the clearance term has already called equivalent.
 // MEASURED, not inherited: the station the scan lands on at the shipped
 // layout and tooth spec. The tripwire below compares against it.
-const JMP_AZ_MEASURED_DEG = 326;
-const JMP_AZ = (() => {
-  const capLocal = { x: -SETTING_CAP_XY.x, y: SETTING_CAP_XY.y }; // world→dialFace: R_y(π) mirrors x
-  const obstacles = [
-    { x: capLocal.x - MW_STUD.x, y: capLocal.y - MW_STUD.y, r: 1.8 }, // setting cap + arbor head (stud-relative)
-    { x: -MW_STUD.x, y: -MW_STUD.y, r: ALARM_TUBE_OUTER + 0.6 },      // dial-centre tube stack (outermost: the §25 C alarm tube)
-    { x: RESERVE_LOCAL.x - MW_STUD.x, y: RESERVE_LOCAL.y - MW_STUD.y, r: reserveWellR + 0.5 },
-    { x: SECONDS_LOCAL.x - MW_STUD.x, y: SECONDS_LOCAL.y - MW_STUD.y, r: secondsWellR + 0.5 },
-  ];
-  let best = null;
-  for (let d = 0; d < 360; d += 2) {
-    const a = d * DEG2RAD;
-    const px = Math.cos(a) * JMP_PIV_R, py = Math.sin(a) * JMP_PIV_R;
-    let clr = Infinity;
-    for (const o of obstacles) clr = Math.min(clr, Math.hypot(px - o.x, py - o.y) - o.r - 1.2);
-    if (clr < CLEAR_MARGIN) continue;
-    const capD = Math.hypot(px - obstacles[0].x, py - obstacles[0].y);
-    const score = Math.min(clr, 2) + capD * 0.02;
-    if (!best || score > best.score) best = { a, score };
-  }
-  if (!best) { console.warn('minute jumper: no clear bearing — using +y'); best = { a: Math.PI / 2 }; }
-  return best.a;
+//
+// TODO 151 TOOK THE LIST AWAY. A hand-written obstacle list is a claim about
+// which metal can meet the jumper, and every landing that moved metal into
+// this band had to remember to add a circle: the setting cap stood onto the
+// star's plane, the scan re-sited the jumper onto the reserve train's w1 rim
+// (82°), the battery found it there at every pose, a circle was added, and
+// the next part nobody listed would have been found the same way. The
+// station is now SOLVED LATE, on the real metal of every other unit, over the
+// jumper's own travel — see `JMP_SITE`, just before the first tick, where
+// every unit exists. What stands here is only the PROVISIONAL station the
+// build cuts the parts at: the objective's first candidate (the bearing
+// farthest from the setting cap — the scan's own tie-break, below), which the
+// late solve re-sites. Nothing between here and there reads the jumper's
+// azimuth (the parts hang off `jumperAzGroup`, whose rotation the solve
+// writes; the star's phase and the lifter's section are re-derived with it).
+//
+// The tripwire stays, on the solved station: a move is legal and says so.
+// MEASURED — the station the late solve settles on at the shipped layout. The
+// real-metal solve moved it 318° → 129.5°, which is the solve doing its job:
+// the hand list had kept the jumper on the far side of the stud from a
+// setting cap it scored as a 1.8 u disc, and on the real metal the scan's own
+// objective (below) prefers the station farthest from the cap that clears.
+// Re-verified as the tripwire asks: probe-149-lifter-width.mjs re-measured the
+// lifter's run (JMP_LIFTER_SPAN_MEASURED), and probe-150-fold-sense.mjs holds
+// the jumper against every non-contact unit over the pose net.
+const JMP_AZ_MEASURED_DEG = 129.5;
+let JMP_AZ = (() => {
+  const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
+  return Math.atan2(-capLocal.y, -capLocal.x);   // stud-relative, dialFace frame: away from the cap
 })();
 const jumperUnit = new THREE.Group();
 jumperUnit.position.set(MW_STUD.x, MW_STUD.y, 0);
@@ -14061,6 +14373,7 @@ const JMP_LIFT_ROT = (() => {
   tailPin.name = 'jumperTailPin';
   jumperLever.add(tailPin);
 }
+const jumperStudMeshes = [];   // the two posts riveted into the base plate (the support edge ['Minute jumper', 'plate'])
 {
   // Pivot stud: from the base plate's dial-side face up to this plane
   // (the same span the minute wheel's own stud bridges). TODO 153: reads
@@ -14073,6 +14386,7 @@ const JMP_LIFT_ROT = (() => {
   stud.rotation.x = Math.PI / 2;
   stud.position.set(JMP_PIV_R, 0, STAR_BOT - studLen / 2 + STAR_T / 2);
   jumperAzGroup.add(stud);
+  jumperStudMeshes.push(stud);   // TODO 151: seated in the base plate — the siting solve excuses THIS pair, nothing else
   // Jumper SPRING: solved-arc blade from its own screw pressing the
   // lever's flank toward the star (the bias that seats the beak).
   const A = { x: JMP_PIV_R + 1.9 * Math.cos(0.7), y: 1.9 * Math.sin(0.7) };
@@ -14093,6 +14407,7 @@ const JMP_LIFT_ROT = (() => {
   springPost.rotation.x = Math.PI / 2;
   springPost.position.set(A.x, A.y, STAR_BOT - studLen / 2 + STAR_T / 2);
   jumperAzGroup.add(springPost);
+  jumperStudMeshes.push(springPost);
 }
 // LIFTER LINK — a lost-motion bar from the setting lever's tail post
 // (which already carries the crown's pull, dial side) to the jumper's
@@ -14135,10 +14450,14 @@ const JMP_LIFT_ROT = (() => {
 // `tools/probe-149-lifter-width.mjs`: if it ever falls below that, it is not
 // a bound and the frame it was taken in is wrong. Re-run the probe if the
 // jumper's station, the setting lever's stroke or the tail pin's land moves.
-const JMP_LIFTER_SPAN_MEASURED = 29.1037;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples; the max is at crownPullT 0
-const JMP_LIFTER_SPAN_BOUND = (() => {
+const JMP_LIFTER_SPAN_MEASURED = 37.601;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 151's real-metal solve moved the jumper to 129.5° (29.1037 at 326°, 30.0832 at 318°)
+// A FUNCTION OF THE STATION since TODO 151 moved the station's solve to the
+// end of the build: the provisional station's bound cuts the bar here, and
+// the late solve re-cuts it at the station it settles on (and holds the
+// tripwire there).
+const jmpLifterSpanBoundAt = (az) => {
   jumperUnit.updateWorldMatrix(true, false);            // walks UP — see above
-  const piv = { x: Math.cos(JMP_AZ) * JMP_PIV_R, y: Math.sin(JMP_AZ) * JMP_PIV_R };
+  const piv = { x: Math.cos(az) * JMP_PIV_R, y: Math.sin(az) * JMP_PIV_R };
   const v = new THREE.Vector3();
   let far = 0;
   for (let i = 0; i <= 200; i++) {
@@ -14148,13 +14467,12 @@ const JMP_LIFTER_SPAN_BOUND = (() => {
     far = Math.max(far, Math.hypot(v.x - piv.x, v.y - piv.y));
   }
   return far + JMP_TAIL_PIN_R;
-})();
-if (JMP_LIFTER_SPAN_BOUND < JMP_LIFTER_SPAN_MEASURED)
-  console.warn(`minute quick-set: the lifter's span bound is ${JMP_LIFTER_SPAN_BOUND.toFixed(4)} against a measured span of ${JMP_LIFTER_SPAN_MEASURED} — it does not bound the span, so the frame it was taken in is wrong`);
+};
 // §50's floor still applies to the result, as a consequence rather than a
 // target: the ceiling asks for far more width than the floor does here, so
 // the max only documents which constraint is governing.
-const JMP_LIFTER_W = Math.max(JMP_LIFTER_SPAN_BOUND / SLENDER_TARGET, STOCK_MIN_U);
+const jmpLifterWidthAt = (az) => Math.max(jmpLifterSpanBoundAt(az) / SLENDER_TARGET, STOCK_MIN_U);
+let JMP_LIFTER_W = jmpLifterWidthAt(JMP_AZ);
 const jumperLifter = new THREE.Mesh(new THREE.BoxGeometry(1, JMP_LIFTER_W, JMP_LIFTER_T), MATS.steel);
 jumperLifter.name = 'jumperLifter'; // TODO 149: a row that reads '(unnamed)' is a row nobody triages (TODO 109's finding)
 jumperUnit.add(jumperLifter); // part of the jumper UNIT (its contact with the post is the declared lost-motion joint)
@@ -14163,7 +14481,7 @@ jumperUnit.add(jumperLifter); // part of the jumper UNIT (its contact with the p
 // a multiple of the pitch — so one build-time phase aligns every snap's
 // valley (u = 0.5) under the tip. (This said the same thing twice, in two
 // paragraphs; TODO 89 collapsed them.)
-const JMP_TIP_AZ = JMP_AZ + JMP_TIP_AZ_LOCAL; // dialFace frame
+let JMP_TIP_AZ = JMP_AZ + JMP_TIP_AZ_LOCAL; // dialFace frame — re-derived by the late siting solve (JMP_SITE)
 minuteStar.rotation.z = JMP_TIP_AZ - STAR_PITCH / 2;
 // BUILT §1 step 5's promised boot checks, finally written (TODO 89), in
 // rule 6 form: achieved vs required, silent when healthy.
@@ -14193,16 +14511,7 @@ minuteStar.rotation.z = JMP_TIP_AZ - STAR_PITCH / 2;
   const clr = jmpMinRAt(JMP_LIFT_SIGN * JMP_LIFT_ROT);
   if (clr < JMP_LIFT_CLEAR_R)
     console.warn(`minute quick-set: lifted beak reaches ${clr.toFixed(4)} from the star axis, inside the required ${JMP_LIFT_CLEAR_R.toFixed(4)} — the running star would grind it`);
-
-  // 3. The bearing STATION, as a tripwire rather than a constraint. The
-  // scan is free to re-site the jumper when the layout moves — that is
-  // what it is for — but it did so silently when §136 re-derived STAR_R
-  // (320° → 326°, found by TODO 89, three comments left stale). Warn on
-  // the MOVE so the next one is noticed and re-verified, and carry the
-  // measured value rather than an inherited claim.
-  const azDeg = (JMP_AZ * 180) / Math.PI;
-  if (Math.abs(azDeg - JMP_AZ_MEASURED_DEG) > 1e-6)
-    console.warn(`minute quick-set: the bearing scan re-sited the jumper to ${azDeg.toFixed(4)}° (was ${JMP_AZ_MEASURED_DEG}°) — legal, but re-verify the lifter's run and update this number`);
+  // 3. The bearing STATION's tripwire moved with the solve: see JMP_SITE.
 }
 const JMP_WORLD_Z = Z_JMP_LIFTER; // the LIFTER BAR's plane in movement z — the dial-hugging corridor (see its derivation at the setting-lever build); the post's drop pin ends there by the same constraint
 const JMP_LIFT_LOCAL_Z = Z_DIAL - Z_JMP_LIFTER; // same plane in the unit's flipped local frame
@@ -14220,6 +14529,36 @@ movement.attach(jumperUnit);
 registerExplode(jumperUnit, Z_DIAL, 1, -1);
 const jumperTailPin = jumperLever.getObjectByName('jumperTailPin');
 const _jmpPostW = new THREE.Vector3(), _jmpPinW = new THREE.Vector3(); // tick scratch
+// ONE LAW for the lever's travel and ONE for the bar's pose: tick() calls both
+// every frame, and the late siting solve (JMP_SITE) calls the same two over the
+// jumper's whole travel, so the travel it judged is the travel the watch makes.
+//
+// The lever: one-sided, like the detent above (§48/TODO 13). The click spring
+// seats the beak PAST the valley floor (it can never get there — the star is
+// in the way), so the star obstructs a spring that is always pushing, rather
+// than the beak being placed at whatever the profile evaluates to. The seat is
+// one CLEAR_MARGIN of travel at the tip radius, expressed as the ride the beak
+// would take if the star vanished. `ride` is the star's lift at the tip's
+// phase (0 in a valley, jmpRideForSeatRadius(STAR_R) on a point); `t` is the
+// crown's pull.
+const jumperLeverRotAt = (ride, t) => JMP_LIFT_SIGN * Math.max(
+  ride * t, (1 - t) * JMP_LIFT_ROT, -CLEAR_MARGIN / JMP_TIP_SEAT_R);
+// The bar: a follower from the setting lever's tail post — at the lifter
+// plane's movement-frame z — to the jumper's tail pin as the lever now
+// stands, both carried into the jumper unit's frame. Reads the lever's
+// current rotation, so the caller poses the lever first.
+function poseJumperLifter(t) {
+  const post = tailPostWorldAt(t); // (postNow is the same expression, computed up at the reset block)
+  _jmpPostW.set(post.x, post.y, JMP_WORLD_Z);
+  jumperUnit.worldToLocal(_jmpPostW);
+  jumperTailPin.getWorldPosition(_jmpPinW);
+  jumperUnit.worldToLocal(_jmpPinW);
+  const ldx = _jmpPinW.x - _jmpPostW.x, ldy = _jmpPinW.y - _jmpPostW.y;
+  const llen = Math.hypot(ldx, ldy) || 1;
+  jumperLifter.position.set((_jmpPostW.x + _jmpPinW.x) / 2, (_jmpPostW.y + _jmpPinW.y) / 2, JMP_LIFT_LOCAL_Z);
+  jumperLifter.rotation.z = Math.atan2(ldy, ldx);
+  jumperLifter.scale.x = llen;
+}
 
 // ---------------------------------------------------------------------------
 // Power-reserve complication — sub-dial at RESERVE_LOCAL. A small blued hand
@@ -16657,6 +16996,28 @@ await (async () => {
     await breathe();
     if (windIdlerWheel) windIdlerClock = windIdlerWheel.rotation.z;   // the arbor's world angle is 0 at this pose
     transferWheelClock = transferWheel.rotation.z;
+    // TODO 151's (d) landing — THE SETTING FOLD's own mesh, cap ⇄ minute
+    // wheel, solved the same way every other declared mesh in this movement
+    // is: `mwArbor` posed to tick's own rest value at tau 0, handSetOffset 0
+    // (minuteA there is DIAL_EPOCH_ANGLE, so mwMinuteA is DIAL_EPOCH_ANGLE ×
+    // MW_RATIO_1 and mwArbor carries the NEGATED movement-frame angle — TODO
+    // 124/115's rule, applied here rather than re-derived), `settingCap` at
+    // its own seed. `mwPair` is the chain's fixed reference (already solved
+    // against cannonPinion above) — the one freedom is the cap.
+    {
+      const mwArborZ0 = mwArbor.rotation.z, settingCapZ0 = settingCap.rotation.z;
+      mwArbor.rotation.z = -(DIAL_EPOCH_ANGLE * MW_RATIO_1);
+      settingCap.rotation.z = SETTING_CAP_PHASE;
+      await breathe();
+      solveGearChain('setting fold:', [
+        { obj: mwPair, gauge: mwMinuteWheel, teeth: MW_MINUTE_TEETH, name: 'minute wheel' },
+        { obj: settingCap, teeth: SETTING_CAP_TEETH, name: 'setting cap' },
+      ], MW_MODULE_1, ['train', 'handSet']);
+      await breathe();
+      SETTING_CAP_PHASE = settingCap.rotation.z;
+      mwArbor.rotation.z = mwArborZ0;
+      settingCap.rotation.z = settingCapZ0;
+    }
     for (const [o, z] of keylessRest) o.rotation.z = z;
   }
   // tick() owns these every frame; put them back so nothing built after this
@@ -41287,28 +41648,12 @@ function tick(t) {
     // solve, not the seat-tangent line, so the tip's swept radius matches
     // the star's local profile EXACTLY through the whole point→valley arc.
     const ride = rU > JMP_TIP_SEAT_R ? jmpRideForSeatRadius(rU) : 0;
-    const lift = (1 - crownPullT) * JMP_LIFT_ROT;
-    // §48/TODO 13 — one-sided, like the detent above. The click spring seats
-    // the beak PAST the valley floor (it can never get there — the star is in
-    // the way), so the star obstructs a spring that is always pushing, rather
-    // than the beak being placed at whatever the profile evaluates to. The
-    // seat is one CLEAR_MARGIN of travel at the tip radius, expressed as the
-    // ride the beak would take if the star vanished.
-    jumperLever.rotation.z = JMP_LIFT_SIGN * Math.max(
-      ride * crownPullT, lift, -CLEAR_MARGIN / JMP_TIP_SEAT_R);
+    // §48/TODO 13 — one-sided (see jumperLeverRotAt): the click spring seats
+    // the beak past the valley floor and the star obstructs it.
+    jumperLever.rotation.z = jumperLeverRotAt(ride, crownPullT);
     // Lifter link (lost-motion bar): follower drawn from the setting
-    // lever's tail post — at this plane's movement-frame z — to the
-    // jumper's tail pin, both transformed into the dialFace frame.
-    const jmpPost = tailPostWorldAt(crownPullT); // (postNow is the same expression, computed up at the reset block)
-    _jmpPostW.set(jmpPost.x, jmpPost.y, JMP_WORLD_Z);
-    jumperUnit.worldToLocal(_jmpPostW);
-    jumperTailPin.getWorldPosition(_jmpPinW);
-    jumperUnit.worldToLocal(_jmpPinW);
-    const ldx = _jmpPinW.x - _jmpPostW.x, ldy = _jmpPinW.y - _jmpPostW.y;
-    const llen = Math.hypot(ldx, ldy) || 1;
-    jumperLifter.position.set((_jmpPostW.x + _jmpPinW.x) / 2, (_jmpPostW.y + _jmpPinW.y) / 2, JMP_LIFT_LOCAL_Z);
-    jumperLifter.rotation.z = Math.atan2(ldy, ldx);
-    jumperLifter.scale.x = llen;
+    // lever's tail post to the jumper's tail pin (poseJumperLifter).
+    poseJumperLifter(crownPullT);
   }
   // TODO 115 — dial-side: carries the negated movement-frame angle.
   hourWheelGroup.rotation.z = -mwHourA;
@@ -42688,6 +43033,570 @@ function tick(t) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// TODO 151 — THE MINUTE JUMPER'S STATION, SOLVED ON THE REAL METAL.
+//
+// The bearing scan used to judge seven hand-drawn circles, and a hand-drawn
+// obstacle list is a claim about which metal can meet the jumper that only
+// stays true while every landing remembers to extend it. TODO 151's own
+// landing did not: the setting cap moved onto the star's plane, the scan
+// re-sited the jumper onto the reserve train's w1 rim, the battery found it
+// there at every pose, and the fix that followed was one more circle. So the
+// scan runs HERE, where every unit exists, and its obstacles are DERIVED:
+//
+//   · every mesh of every other labelled unit, schematic proxies pruned, culled
+//     to the region the jumper can occupy at any station (plus the objective's
+//     saturation, below) — no list;
+//   · the declared joints excused for the one part each belongs to and
+//     nothing else: the two posts riveted into the base plate (the support
+//     edge ['Minute jumper', 'plate']), and the lifter's slot on the setting
+//     lever's post drop (`settingLeverPostDrop`). The beak's seat in the star
+//     needs no excuse: the star is on the stud's own arbor, below;
+//   · every ROTOR as its body of REVOLUTION about its own axis, because the
+//     gears turn: the station a gear's teeth clear at the build pose is not the
+//     station they clear a tooth later. A rotor is a toothed wheel (a builder
+//     that records userData.r AND userData.teeth — it meshes, so it turns) or
+//     anything on the motion works' arbor, which turns about the very stud the
+//     jumper stands on; userData.r alone is not the signal (§66 hangs it on the
+//     plates, the dial and the case for their rings). Held conservatively —
+//     each triangle's meridian image is bounded by a box in (r, z) that
+//     contains it, so the bound only ever errs toward CLOSER. The arbor on the
+//     jumper's own stud is the one thing the station cannot change — the
+//     clearance to its revolution is the same at every azimuth — so the parts
+//     on the stud's frame are not judged against it here: the stack's own
+//     solves and the battery own those pairs (the bar still is);
+//   · the setting lever moves with the pull, so it is posed at every pull the
+//     jumper's travel is judged at (settingLeverAngleAt, the tick's own law);
+//   · everything else as built: the pose net is the battery's to sweep, and
+//     `probe-150-fold-sense.mjs` holds the jumper against every non-contact
+//     unit over it.
+//
+// Judged over the jumper's OWN TRAVEL, through the same two laws tick() uses
+// (jumperLeverRotAt, poseJumperLifter): the lever over its whole swing, and the
+// lifter bar at every pull at both extremes of the star's phase, at the crown
+// axis's own resolution (AXES 'crown', n 48). The measure is three-mesh-bvh's
+// exact closest-point distance — the machinery under the battery's own
+// meshClearance — on the cut meshes, with meshClearance's parity guard for a
+// part wholly inside a solid.
+//
+// THE OBJECTIVE is the scan's, unchanged in form: the capped clearance, then
+// the distance from the setting cap as a tie-break — min(clr, 2) +
+// 0.02·capD, the saturation and the weight the hand scan carried and
+// justified (past 2 units there is nothing left to buy; the tie-break only
+// orders candidates the clearance term already calls equal). clr is now the
+// real metal's certified clearance, and a station is only a candidate at all
+// if it clears everything by CLEAR_MARGIN. Branch and bound, candidates in
+// falling capD: a candidate must beat the best score so far, so the threshold
+// each test asks for rises as the scan goes, and a failing station fails on
+// its first short pair. The azimuth step is the fold's sampling law — half a
+// margin of arc at the lever pivot's radius, to the quarter-degree.
+//
+// What it found, and it is worth knowing before reading the answer: the
+// clearance term is PINNED. The lifter bar's dial face and the tail pin's end
+// are planed one margin plus JMP_BIND_EPS off the dial's back (Z_JMP_PIN_FACE),
+// so wherever the dial is under them — everywhere a station can put them — the
+// jumper's clearance cannot exceed 0.16, and the beak rides one margin over the
+// motion works' hour wheel wherever the wheel is under it. The capped term
+// therefore ties across the feasible stations to the bisection's resolution,
+// and the tie-break decides: the feasible station farthest from the cap.
+const JMP_SITE_SAT = 2, JMP_SITE_CAPD_W = 0.02;
+const JMP_SITE = await (async () => {
+  const T0 = performance.now();
+  const CM = CLEAR_MARGIN;
+  const unschem = (o) => { for (let q = o; q; q = q.parent) if (q.userData && q.userData.schematic) return false; return true; };
+  const under = (o, root) => { for (let q = o; q; q = q.parent) if (q === root) return true; return false; };
+  const V = () => new THREE.Vector3();
+  scene.updateMatrixWorld(true);
+  // ---- the jumper, by the rigid body each mesh rides
+  const leverMeshes = [], azMeshes = [];
+  jumperAzGroup.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
+    (under(o, jumperLever) ? leverMeshes : azMeshes).push(o);
+  });
+  const onPlate = new Set(jumperStudMeshes);
+  const tailPost = settingLeverGroup.getObjectByName('settingLeverPostDrop');
+  if (!tailPost) console.warn('TODO 151: the setting lever carries no mesh named settingLeverPostDrop — the lifter\'s joint cannot be excused, so every station will read it as a collision');
+  const indexed = (g) => {
+    if (!g.index) {
+      const n = g.attributes.position.count, idx = new Uint32Array(n);
+      for (let i = 0; i < n; i++) idx[i] = i;
+      g.setIndex(new THREE.BufferAttribute(idx, 1));
+    }
+    g.computeBoundingBox();
+    return g;
+  };
+  // query copies: the BVH reads an index, and the parts' own geometries are the
+  // weld pass's to index at the end of the build, not this solve's
+  const qGeo = new Map();
+  // Each copy carries its own tree, so a query descends both hierarchies
+  // rather than walking every triangle of the part at every leaf.
+  const withTree = (g) => { indexed(g); g.boundsTree = new MeshBVH(g); return g; };
+  const qOf = (m) => { if (!qGeo.has(m)) qGeo.set(m, withTree(m.geometry.clone())); return qGeo.get(m); };
+  const studO = jumperUnit.getWorldPosition(V());
+  const studA = V().set(0, 0, 1).applyQuaternion(jumperUnit.getWorldQuaternion(new THREE.Quaternion())).normalize();
+  // ---- the travel
+  const RIDE_MAX = jmpRideForSeatRadius(STAR_R);   // the star's lift with a POINT under the tip (rU = STAR_R)
+  const NT = 48, NPSI = 48;                        // AXES 'crown': n 48
+  const psiSamples = [];
+  for (let k = 0; k <= NPSI; k++) psiSamples.push(JMP_LIFT_SIGN * Math.max(JMP_LIFT_ROT, RIDE_MAX) * k / NPSI);
+  const pulls = [];
+  for (let k = 0; k <= NT; k++) pulls.push(k / NT);
+  const leverRot0 = jumperLever.rotation.z, az0 = jumperAzGroup.rotation.z, slRot0 = settingLeverGroup.rotation.z;
+  const lifterPose0 = { p: jumperLifter.position.clone(), r: jumperLifter.rotation.z, s: jumperLifter.scale.x };
+  // the setting lever's frame at every judged pull
+  const slInv = pulls.map((t) => {
+    settingLeverGroup.rotation.z = settingLeverAngleAt(t);
+    settingLeverGroup.updateWorldMatrix(true, false);
+    return settingLeverGroup.matrixWorld.clone().invert();
+  });
+  settingLeverGroup.rotation.z = slRot0;
+  settingLeverGroup.updateWorldMatrix(true, true);
+  // ---- the region any station can reach, for culling
+  const region = new THREE.Box3();
+  {
+    let rc = 0;
+    const p = V();
+    for (const psi of [psiSamples[0], psiSamples[psiSamples.length - 1]]) {
+      jumperLever.rotation.z = psi;
+      jumperUnit.updateWorldMatrix(true, true);
+      for (const m of [...azMeshes, ...leverMeshes]) {
+        const pos = m.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          p.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).sub(studO);
+          const z = p.dot(studA);
+          rc = Math.max(rc, p.addScaledVector(studA, -z).length());
+          region.expandByPoint(p.set(studO.x, studO.y, studO.z).addScaledVector(studA, z));
+        }
+      }
+    }
+    const zs = [region.min.z, region.max.z];
+    for (const z of zs) for (const sx of [-1, 1]) for (const sy of [-1, 1]) region.expandByPoint(p.set(studO.x + sx * rc, studO.y + sy * rc, z));
+    for (const t of pulls) { const q = tailPostWorldAt(t); region.expandByPoint(p.set(q.x, q.y, Z_JMP_LIFTER)); }
+    region.expandByScalar(JMP_SITE_SAT + jmpLifterWidthAt(az0));
+  }
+  // ---- the obstacles
+  // A ROTOR is a toothed wheel (a builder that records both userData.r and
+  // userData.teeth — it meshes, so it turns about its own axis), or anything
+  // on the motion works' arbor, which turns about the very stud the jumper
+  // stands on (the star it seats in included). userData.r alone is not the
+  // signal: §66 hangs it on plates, the dial and the case too, for their rings.
+  const rotorOf = (o) => {
+    if (under(o, mwArbor)) return mwArbor;
+    for (let q = o; q; q = q.parent) {
+      if (q.userData && q.userData.r > 0 && q.userData.teeth > 0) return q;
+    }
+    return null;
+  };
+  const staticTris = [], staticList = [], plateList = [], rotorTris = new Map();
+  const box = new THREE.Box3();
+  const seen = new Set();
+  const pushTris = (m, into) => {
+    const pos = m.geometry.attributes.position, idx = m.geometry.index;
+    const n = idx ? idx.count : pos.count;
+    const a = V(), b = V(), c = V();
+    for (let i = 0; i < n; i += 3) {
+      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(m.matrixWorld);
+      b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(m.matrixWorld);
+      c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(m.matrixWorld);
+      into.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+    }
+  };
+  for (const e of labelEntries) {
+    if (e.obj === jumperUnit) continue;
+    await breathe();
+    e.obj.traverse((o) => {
+      if (!o.isMesh || seen.has(o) || !o.geometry?.attributes?.position || !unschem(o)) return;
+      if (under(o, jumperUnit) || under(o, settingLeverGroup)) return;
+      seen.add(o);
+      const rot = rotorOf(o);
+      box.setFromObject(o);
+      if (rot) {
+        // a rotor reaches what its REVOLUTION reaches: the cylinder about its
+        // axis through its farthest box corner, as an axis-aligned box
+        const ro = rot.getWorldPosition(V()), ra = V().set(0, 0, 1).applyQuaternion(rot.getWorldQuaternion(new THREE.Quaternion())).normalize();
+        let rmax = 0, zl = Infinity, zh = -Infinity;
+        const c = V();
+        for (let k = 0; k < 8; k++) {
+          c.set(k & 1 ? box.max.x : box.min.x, k & 2 ? box.max.y : box.min.y, k & 4 ? box.max.z : box.min.z).sub(ro);
+          const z = c.dot(ra);
+          zl = Math.min(zl, z); zh = Math.max(zh, z);
+          rmax = Math.max(rmax, c.addScaledVector(ra, -z).length());
+        }
+        box.makeEmpty();
+        for (const z of [zl, zh]) {
+          const cen = ro.clone().addScaledVector(ra, z);
+          const ext = V().set(rmax * Math.sqrt(Math.max(0, 1 - ra.x * ra.x)), rmax * Math.sqrt(Math.max(0, 1 - ra.y * ra.y)), rmax * Math.sqrt(Math.max(0, 1 - ra.z * ra.z)));
+          box.expandByPoint(cen.clone().add(ext)); box.expandByPoint(cen.clone().sub(ext));
+        }
+      }
+      if (!box.intersectsBox(region)) return;
+      if (rot) { if (!rotorTris.has(rot)) rotorTris.set(rot, []); pushTris(o, rotorTris.get(rot)); }
+      else { const arr = []; pushTris(o, arr); (under(o, backPlate) ? plateList : staticList).push(arr); staticTris.push(arr.length / 9); }
+    });
+  }
+  const bvhOf = (arr) => {
+    if (!arr.length) return null;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    return new MeshBVH(indexed(g));
+  };
+  await breathe();
+  // one tree per obstacle, each with its own box: a query descends only the
+  // trees its part's box (grown by the threshold) reaches — a merged tree made
+  // every query walk the crowded stack's top levels, ~0.4 ms even for nothing
+  const setOf = (lists) => {
+    const trees = lists.filter((arr) => arr.length).map((arr) => { const t = bvhOf(arr); t.geometry.computeBoundingBox(); return t; });
+    const qb = new THREE.Box3();
+    return {
+      trees,
+      closestPointToGeometry: (geo, M, a, b, lo, hi) => {
+        qb.copy(geo.boundingBox).applyMatrix4(M).expandByScalar(hi);
+        let bestR = null;
+        for (const t of trees) {
+          if (!qb.intersectsBox(t.geometry.boundingBox)) continue;
+          const r = t.closestPointToGeometry(geo, M, a, b, lo, bestR ? Math.min(hi, bestR.distance) : hi);
+          if (r && (!bestR || r.distance < bestR.distance)) bestR = { distance: r.distance };
+        }
+        return bestR;
+      },
+      raycast: (ray, side) => trees.flatMap((t) => t.raycast(ray, side)),
+      raycastFirst: (ray, side) => {
+        let h = null;
+        for (const t of trees) { const x = t.raycastFirst(ray, side); if (x && (!h || x.distance < h.distance)) h = x; }
+        return h;
+      },
+      geometry: { dispose: () => trees.forEach((t) => t.geometry.dispose()) },
+    };
+  };
+  const bvhMain = setOf(staticList), bvhPlate = setOf(plateList);
+  await breathe();
+  // the setting lever, in its own frame (the tail post apart, for the lifter)
+  const slMain = [], slPost = [];
+  {
+    const inv = settingLeverGroup.matrixWorld.clone().invert(), M = new THREE.Matrix4();
+    settingLeverGroup.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
+      const save = o.matrixWorld.clone();
+      o.matrixWorld.copy(M.multiplyMatrices(inv, save));
+      pushTris(o, o === tailPost ? slPost : slMain);
+      o.matrixWorld.copy(save);
+    });
+  }
+  const bvhLever = bvhOf(slMain), bvhPost = bvhOf(slPost);
+  // the lever's reach over the whole pull, for culling it off parts it never nears
+  const slSwept = new THREE.Box3();
+  {
+    const M = new THREE.Matrix4(), bxl = new THREE.Box3();
+    for (const g of [bvhLever, bvhPost]) if (g) {
+      g.geometry.computeBoundingBox();
+      for (const inv of slInv) slSwept.union(bxl.copy(g.geometry.boundingBox).applyMatrix4(M.copy(inv).invert()));
+    }
+  }
+  // rotors: meridian boxes in (r, z) about each axis, gridded
+  const RZ_CELL = 0.25;
+  const rzBox = (o, a, p0, p1, p2, out) => {
+    let r1 = 0, z0 = Infinity, z1 = -Infinity;
+    const cx = (p0.x + p1.x + p2.x) / 3, cy = (p0.y + p1.y + p2.y) / 3, cz = (p0.z + p1.z + p2.z) / 3;
+    let R = 0;
+    for (const p of [p0, p1, p2]) {
+      const dx = p.x - o.x, dy = p.y - o.y, dz = p.z - o.z;
+      const z = dx * a.x + dy * a.y + dz * a.z;
+      const r = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - z * z));
+      if (r > r1) r1 = r;
+      if (z < z0) z0 = z; if (z > z1) z1 = z;
+      R = Math.max(R, Math.hypot(p.x - cx, p.y - cy, p.z - cz));
+    }
+    const dx = cx - o.x, dy = cy - o.y, dz = cz - o.z;
+    const zc = dx * a.x + dy * a.y + dz * a.z;
+    const rcen = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - zc * zc));
+    // r is a convex function (a distance to a line), so its maximum over the
+    // triangle is at a vertex; its minimum is at least r(centroid) − R, R the
+    // farthest vertex from the centroid (r is 1-Lipschitz)
+    out[0] = Math.max(0, rcen - R); out[1] = r1; out[2] = z0; out[3] = z1;
+    return R;
+  };
+  const rotors = [];
+  for (const [obj, tris] of rotorTris) {
+    const o = obj.getWorldPosition(V());
+    const a = V().set(0, 0, 1).applyQuaternion(obj.getWorldQuaternion(new THREE.Quaternion())).normalize();
+    const w = V().subVectors(o, studO);
+    const coaxial = a.clone().cross(studA).length() < 1e-6 && w.clone().addScaledVector(studA, -w.dot(studA)).length() < 1e-6;
+    const n = tris.length / 9, boxes = new Float64Array(n * 4), grid = new Map();
+    const p0 = V(), p1 = V(), p2 = V(), bx = [0, 0, 0, 0];
+    let R0 = Infinity, R1 = 0, Z0 = Infinity, Z1 = -Infinity;
+    for (let i = 0; i < n; i++) {
+      p0.fromArray(tris, i * 9); p1.fromArray(tris, i * 9 + 3); p2.fromArray(tris, i * 9 + 6);
+      rzBox(o, a, p0, p1, p2, bx);
+      boxes.set(bx, i * 4);
+      R0 = Math.min(R0, bx[0]); R1 = Math.max(R1, bx[1]); Z0 = Math.min(Z0, bx[2]); Z1 = Math.max(Z1, bx[3]);
+      for (let gi = Math.floor(bx[0] / RZ_CELL); gi <= Math.floor(bx[1] / RZ_CELL); gi++)
+        for (let gj = Math.floor(bx[2] / RZ_CELL); gj <= Math.floor(bx[3] / RZ_CELL); gj++) {
+          const k = gi * 100003 + gj;
+          if (!grid.has(k)) grid.set(k, []);
+          grid.get(k).push(i);
+        }
+    }
+    rotors.push({ obj, o, a, coaxial, boxes, grid, R0, R1, Z0, Z1 });
+  }
+  await breathe();
+  // ---- the measures
+  const t1 = {}, t2 = {};
+  const bvhShort = (bvh, geo, M, tau) => {
+    if (!bvh) return false;
+    const r = bvh.closestPointToGeometry(geo, M, t1, t2, 0, tau);
+    return !!r && r.distance < tau;
+  };
+  const HMIN = G.ENVELOPE_DELTA_FINE;
+  // The revolutions are judged on BOXES: a piece of the jumper whose own box
+  // still meets a rotor's at this size is refused rather than split further.
+  // The box's own looseness is about twice the piece's radius, so a tenth of
+  // the margin keeps that error under a fifth of it — near a tie the scan
+  // refuses a station it cannot prove, which is the side to be wrong on.
+  const ROT_HMIN = CLEAR_MARGIN / 10;
+  const bb = [0, 0, 0, 0];
+  const boxGap = (A, B, j) => {
+    const dr = Math.max(0, B[j] - A[1], A[0] - B[j + 1]);
+    const dz = Math.max(0, B[j + 2] - A[3], A[2] - B[j + 3]);
+    return Math.hypot(dr, dz);
+  };
+  // does this triangle clear the rotor's revolution by tau? split until it
+  // does, or until the piece is under the envelope's resolution (then no)
+  const rotorTriClear = (rot, p0, p1, p2, tau) => {
+    const R = rzBox(rot.o, rot.a, p0, p1, p2, bb);
+    if (bb[0] - tau >= rot.R1 || bb[1] + tau <= rot.R0 || bb[2] - tau >= rot.Z1 || bb[3] + tau <= rot.Z0) return true;
+    const A = bb.slice();
+    let gap = Infinity;
+    for (let gi = Math.floor((A[0] - tau) / RZ_CELL); gi <= Math.floor((A[1] + tau) / RZ_CELL) && gap >= tau; gi++)
+      for (let gj = Math.floor((A[2] - tau) / RZ_CELL); gj <= Math.floor((A[3] + tau) / RZ_CELL) && gap >= tau; gj++) {
+        const list = rot.grid.get(gi * 100003 + gj);
+        if (list) for (const i of list) { gap = Math.min(gap, boxGap(A, rot.boxes, i * 4)); if (gap < tau) break; }
+      }
+    if (gap >= tau) return true;
+    if (R <= ROT_HMIN) return false;
+    const m01 = V().addVectors(p0, p1).multiplyScalar(0.5), m12 = V().addVectors(p1, p2).multiplyScalar(0.5), m20 = V().addVectors(p2, p0).multiplyScalar(0.5);
+    return rotorTriClear(rot, p0, m01, m20, tau) && rotorTriClear(rot, m01, p1, m12, tau)
+      && rotorTriClear(rot, m20, m12, p2, tau) && rotorTriClear(rot, m01, m12, m20, tau);
+  };
+  const _sc = V();
+  const rotorsClear = (geo, M, tau, withCoaxial) => {
+    const pos = geo.attributes.position, idx = geo.index;
+    const q0 = V(), q1 = V(), q2 = V();
+    if (!geo.boundingSphere) geo.computeBoundingSphere();
+    const sc = _sc.copy(geo.boundingSphere.center).applyMatrix4(M), sr = geo.boundingSphere.radius * M.getMaxScaleOnAxis();
+    for (const rot of rotors) {
+      if (rot.coaxial && !withCoaxial) continue;
+      {
+        // the whole part first: its bounding sphere's (r, z) box about this axis
+        const dx = sc.x - rot.o.x, dy = sc.y - rot.o.y, dz = sc.z - rot.o.z;
+        const z = dx * rot.a.x + dy * rot.a.y + dz * rot.a.z;
+        const r = Math.sqrt(Math.max(0, dx * dx + dy * dy + dz * dz - z * z));
+        if (r - sr - tau >= rot.R1 || r + sr + tau <= rot.R0 || z - sr - tau >= rot.Z1 || z + sr + tau <= rot.Z0) continue;
+      }
+      for (let i = 0; i < idx.count; i += 3) {
+        q0.fromBufferAttribute(pos, idx.getX(i)).applyMatrix4(M);
+        q1.fromBufferAttribute(pos, idx.getX(i + 1)).applyMatrix4(M);
+        q2.fromBufferAttribute(pos, idx.getX(i + 2)).applyMatrix4(M);
+        if (!rotorTriClear(rot, q0, q1, q2, tau)) return false;
+      }
+    }
+    return true;
+  };
+  // meshClearance's parity guard: a part wholly inside a solid reads its
+  // surface distance, not zero — count crossings from one of its vertices
+  const ray = new THREE.Ray();
+  const inside = (bvh, geo, M) => {
+    if (!bvh) return false;
+    ray.origin.fromBufferAttribute(geo.attributes.position, 0).applyMatrix4(M);
+    ray.direction.set(0.5773502691896258, 0.5773502691896258, 0.5773502691896258);
+    const hits = bvh.raycast(ray, THREE.DoubleSide).map((h) => h.distance).sort((x, y) => x - y);
+    let n = 0, last = -1;
+    for (const d of hits) { if (d - last > 1e-7) n++; last = d; }
+    return n % 2 === 1;
+  };
+
+  // ---- one station, one threshold: does every part clear everything by tau
+  // over the whole travel?
+  // Samples are visited COARSE TO FINE (the ends, then halving), and each is
+  // judged whole — exact distances, then the rotors' revolutions — before the
+  // next: a station that fails, fails on a sample that shows it early; one
+  // that passes has been asked everything.
+  const coarseToFine = (n) => {
+    const out = [], seen = new Set();
+    const push = (i) => { if (!seen.has(i)) { seen.add(i); out.push(i); } };
+    push(0); push(n - 1);
+    for (let st = n - 1; st >= 1; st = Math.floor(st / 2)) for (let i = 0; i < n; i += st) push(i);
+    return out;
+  };
+  const liftJobs = coarseToFine(pulls.length).flatMap((k) => [[0, k], [RIDE_MAX, k]]);
+  const psiJobs = coarseToFine(psiSamples.length);
+  const test = async (az, tau) => {
+    jumperAzGroup.rotation.z = az;
+    const W = jmpLifterWidthAt(az);
+    // NO tree on the bar's copy: its matrix carries the span as scale.x, and
+    // the two-tree descent measures in the query geometry's own frame, which a
+    // non-uniform scale distorts — it read a tab 0.119 off as clear. Without a
+    // tree each of its twelve triangles is carried into the obstacle's frame
+    // before it is measured, which is exact under any affine map.
+    const lg = indexed(new THREE.BoxGeometry(1, W, JMP_LIFTER_T));
+    try {
+      // every pose this station is judged at, posed once
+      jumperLever.rotation.z = psiSamples[0];
+      jumperUnit.updateWorldMatrix(true, true);
+      const azM = azMeshes.map((m) => m.matrixWorld.clone());
+      const levM = psiJobs.map((j) => {
+        jumperLever.rotation.z = psiSamples[j];
+        jumperUnit.updateWorldMatrix(false, true);
+        return leverMeshes.map((m) => m.matrixWorld.clone());
+      });
+      const liftM = liftJobs.map(([ride, k]) => {
+        jumperLever.rotation.z = jumperLeverRotAt(ride, pulls[k]);
+        jumperUnit.updateWorldMatrix(false, true);
+        poseJumperLifter(pulls[k]);
+        jumperLifter.updateWorldMatrix(false, false);
+        return { k, M: jumperLifter.matrixWorld.clone(), parts: [...azMeshes, ...leverMeshes].map((m) => m.matrixWorld.clone()) };
+      });
+      // PASS 1 — the exact distances, cheapest and most telling first
+      for (let i = 0; i < azMeshes.length; i++) {
+        const m = azMeshes[i], g = qOf(m);
+        if (bvhShort(bvhMain, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(bvhPlate, g, azM[i], tau))) return false;
+      }
+      for (const Ms of levM) for (let i = 0; i < leverMeshes.length; i++) {
+        const g = qOf(leverMeshes[i]);
+        if (bvhShort(bvhMain, g, Ms[i], tau) || bvhShort(bvhPlate, g, Ms[i], tau)) return false;
+      }
+      await breathe();
+      const all = [...azMeshes, ...leverMeshes];
+      for (const { k, M, parts } of liftM) {
+        if (bvhShort(bvhMain, lg, M, tau) || bvhShort(bvhPlate, lg, M, tau)) return false;
+        if (box.copy(lg.boundingBox).applyMatrix4(M).expandByScalar(tau).intersectsBox(slSwept)
+          && bvhShort(bvhLever, lg, slInv[k].clone().multiply(M), tau)) return false;
+        // the setting lever moves with the same pull, so the stud's parts and
+        // the jumper's lever meet it at THIS pose, not at every pull at once
+        for (let i = 0; i < all.length; i++) {
+          const g = qOf(all[i]);
+          if (!box.copy(g.boundingBox).applyMatrix4(parts[i]).expandByScalar(tau).intersectsBox(slSwept)) continue;
+          const L = slInv[k].clone().multiply(parts[i]);
+          if (bvhShort(bvhLever, g, L, tau) || bvhShort(bvhPost, g, L, tau)) return false;
+        }
+      }
+      await breathe();
+      // PASS 2 — the rotors' revolutions
+      for (let i = 0; i < azMeshes.length; i++) if (!rotorsClear(qOf(azMeshes[i]), azM[i], tau, false)) return false;
+      for (let j = 0; j < levM.length; j++) {
+        for (let i = 0; i < leverMeshes.length; i++) if (!rotorsClear(qOf(leverMeshes[i]), levM[j][i], tau, false)) return false;
+        if (j % 8 === 7) await breathe();
+      }
+      for (let j = 0; j < liftM.length; j++) {
+        if (!rotorsClear(lg, liftM[j].M, tau, true)) return false;
+        if (j % 16 === 15) await breathe();
+      }
+      // PASS 3 — meshClearance's parity guard, one pose of each part
+      for (let i = 0; i < azMeshes.length; i++) {
+        const m = azMeshes[i], g = qOf(m);
+        if (inside(bvhMain, g, azM[i]) || (!onPlate.has(m) && inside(bvhPlate, g, azM[i]))) return false;
+      }
+      for (let i = 0; i < leverMeshes.length; i++) {
+        const g = qOf(leverMeshes[i]);
+        if (inside(bvhMain, g, levM[0][i]) || inside(bvhPlate, g, levM[0][i])) return false;
+      }
+      if (inside(bvhMain, lg, liftM[0].M) || inside(bvhPlate, lg, liftM[0].M)) return false;
+      return true;
+    } finally { lg.dispose(); }
+  };
+  // ---- the scan
+  const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
+  const capD = (az) => Math.hypot(Math.cos(az) * JMP_PIV_R - capLocal.x, Math.sin(az) * JMP_PIV_R - capLocal.y);
+  const STEP = Math.floor((CM / 2 / JMP_PIV_R) / (0.25 * DEG2RAD)) * 0.25 * DEG2RAD;
+  const cands = [];
+  for (let k = 0; k * STEP < Math.PI * 2 - 1e-9; k++) cands.push(k * STEP);
+  cands.sort((x, y) => capD(y) - capD(x) || x - y);
+  // A WITNESS before a test: the distance between two real surface points is
+  // an upper bound on a station's clearance, and the bar gives one for the
+  // price of two rays — from the middle of its span at the first pull, along
+  // its thickness each way, to whatever metal is there (less the bar's half
+  // thickness: the ray starts inside it). A station that bound already keeps
+  // from beating the best is not tested.
+  const witnessRay = new THREE.Ray(), wDir = V(), wP = V();
+  const witness = (az) => {
+    jumperAzGroup.rotation.z = az;
+    jumperLever.rotation.z = jumperLeverRotAt(0, 0);
+    jumperUnit.updateWorldMatrix(true, true);
+    poseJumperLifter(0);
+    jumperLifter.updateWorldMatrix(false, false);
+    wP.setFromMatrixPosition(jumperLifter.matrixWorld);
+    wDir.set(0, 0, 1).transformDirection(jumperLifter.matrixWorld);
+    let ub = Infinity;
+    for (const sgn of [1, -1]) for (const bvh of [bvhMain, bvhPlate]) {
+      if (!bvh) continue;
+      witnessRay.set(wP, wDir.clone().multiplyScalar(sgn));
+      const h = bvh.raycastFirst(witnessRay, THREE.DoubleSide);
+      if (h) ub = Math.min(ub, h.distance - JMP_LIFTER_T / 2);
+    }
+    return ub;
+  };
+  let best = null, tested = 0, witnessed = 0;
+  for (const az of cands) {
+    const cd = capD(az);
+    if (best && JMP_SITE_SAT + JMP_SITE_CAPD_W * cd <= best.score) break;
+    // a later candidate replaces the best only when it is better by more than
+    // the resolution its clearance term is measured to (HMIN): the objective
+    // is flat wherever the clearance is pinned by a pair no station changes,
+    // and within that resolution the tie-break — the earlier, farther-from-
+    // the-cap candidate — decides, not the bisection's last digit
+    if (best && Math.min(witness(az), JMP_SITE_SAT) + JMP_SITE_CAPD_W * cd <= best.score + HMIN) { witnessed++; continue; }
+    const need = Math.max(CM, best ? best.score - JMP_SITE_CAPD_W * cd + HMIN : CM);
+    if (tested % 8 === 0) await breathe();
+    tested++;
+    if (!(await test(az, need))) continue;
+    // it beats the best: its capped clearance, to the envelope's resolution
+    let lo = need, hi = JMP_SITE_SAT;
+    if (await test(az, hi)) lo = hi;
+    else while (hi - lo > HMIN) { const mid = (lo + hi) / 2; if (await test(az, mid)) lo = mid; else hi = mid; }
+    best = { az, clr: lo, capD: cd, score: Math.min(lo, JMP_SITE_SAT) + JMP_SITE_CAPD_W * cd };
+  }
+  // put back what the solve posed: tick() owns all of it from the first frame
+  jumperLever.rotation.z = leverRot0;
+  settingLeverGroup.rotation.z = slRot0;
+  jumperLifter.position.copy(lifterPose0.p); jumperLifter.rotation.z = lifterPose0.r; jumperLifter.scale.x = lifterPose0.s;
+  jumperAzGroup.rotation.z = az0;
+  for (const g of qGeo.values()) { g.boundsTree = null; g.dispose(); }
+  for (const b of [bvhMain, bvhPlate, bvhLever, bvhPost]) if (b) b.geometry.dispose();
+  scene.updateMatrixWorld(true);
+  return { best, tested, witnessed, candidates: cands.length, stepDeg: STEP / DEG2RAD, ms: performance.now() - T0,
+    rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0) };
+})();
+if (!JMP_SITE.best) {
+  console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`);
+} else {
+  // THE STATION, and everything the build derived from it: the parts' frame,
+  // the star's phase (a valley under the solved tip at every snapped minute)
+  // and the lifter's section (§54's ceiling solved from the span this
+  // station gives it).
+  JMP_AZ = JMP_SITE.best.az;
+  jumperAzGroup.rotation.z = JMP_AZ;
+  JMP_TIP_AZ = JMP_AZ + JMP_TIP_AZ_LOCAL;
+  minuteStar.rotation.z = JMP_TIP_AZ - STAR_PITCH / 2;
+  JMP_LIFTER_W = jmpLifterWidthAt(JMP_AZ);
+  jumperLifter.geometry.dispose();
+  jumperLifter.geometry = new THREE.BoxGeometry(1, JMP_LIFTER_W, JMP_LIFTER_T);
+  scene.updateMatrixWorld(true);
+}
+{
+  // The span bound, re-read at the station that ships (see its declaration).
+  const bound = jmpLifterSpanBoundAt(JMP_AZ);
+  if (bound < JMP_LIFTER_SPAN_MEASURED)
+    console.warn(`minute quick-set: the lifter's span bound is ${bound.toFixed(4)} against a measured span of ${JMP_LIFTER_SPAN_MEASURED} — it does not bound the span, so the frame it was taken in is wrong`);
+  // The bearing STATION, as a tripwire rather than a constraint. The solve is
+  // free to re-site the jumper when the metal moves — that is what it is for —
+  // but it did so silently when §136 re-derived STAR_R (320° → 326°, found by
+  // TODO 89, three comments left stale). Warn on the MOVE so the next one is
+  // noticed and re-verified, and carry the measured value rather than an
+  // inherited claim.
+  const azDeg = ((JMP_AZ / DEG2RAD) % 360 + 360) % 360;
+  if (Math.abs(azDeg - JMP_AZ_MEASURED_DEG) > 1e-6)
+    console.warn(`minute quick-set: the siting solve re-sited the jumper to ${azDeg.toFixed(4)}° (was ${JMP_AZ_MEASURED_DEG}°) — legal, but re-verify the lifter's run and update this number`);
+}
+
 // §38 alarm hand vs the raised hour markers — see the note at the hand's
 // build. Runs HERE, with the whole tree assembled and matrices current,
 // because measured at the build site it read a stale matrixWorld and passed a
@@ -43099,6 +44008,25 @@ window.__clock = {
     len1: MW_FOLD.len1, len2: MW_FOLD.len2, leg1R: MW_LEG1_R, leg2R: MW_LEG2_R,
     turnLdTarget: TURN_LD_TARGET, turnLdMax: TURN_LD_MAX,
     scan: CAP_SOLVE.scan.map((r) => ({ ...r })),
+    // TODO 151's (d) landing — the cap's leg as solved for the shipped B
+    // (solveCapLeg), for tools/probe-150-fold-sense.mjs / probe-151-cap-plane.mjs
+    capLeg: SETTING_METAL.leg && {
+      phiDeg: SETTING_METAL.leg.phiDeg, stub: SETTING_METAL.leg.stub, chord: SETTING_METAL.leg.chord,
+      sigmaBDeg: SETTING_METAL.leg.sigmaB, sigmaEDeg: SETTING_METAL.leg.sigmaE,
+      moduleRise: SETTING_METAL.leg.moduleRise, moduleFoot: SETTING_METAL.leg.moduleFoot,
+      cap: { ...SETTING_METAL.leg.capXY }, E: vArr(SETTING_METAL.E), D: vArr(SETTING_METAL.D),
+      zCap: Z_SETTING_CAP, zCapCorner: Z_CAP_CORNER, phiStepDeg: MW_RISE_PHI_STEP / DEG2RAD,
+    },
+  }),
+  // TODO 151 — the minute jumper's siting solve, read-only, for
+  // tools/probe-150-fold-sense.mjs: the station it settled on and what it cost.
+  jumperSite: Object.freeze({
+    azDeg: ((JMP_AZ / DEG2RAD) % 360 + 360) % 360, measuredDeg: JMP_AZ_MEASURED_DEG,
+    clr: JMP_SITE.best ? JMP_SITE.best.clr : null, capD: JMP_SITE.best ? JMP_SITE.best.capD : null,
+    score: JMP_SITE.best ? JMP_SITE.best.score : null, sat: JMP_SITE_SAT, capDWeight: JMP_SITE_CAPD_W,
+    tested: JMP_SITE.tested, candidates: JMP_SITE.candidates, stepDeg: JMP_SITE.stepDeg, ms: JMP_SITE.ms,
+    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris,
+    lifterW: JMP_LIFTER_W,
   }),
   // §10 level 2 — the sub-table, read-only, for probes: what the drill knows.
   get subEntries() { return subEntries.map((s) => ({ parentUnit: s.parentUnit, displayName: s.displayName, baseZ: s.baseZ.get(s.obj), subLayer: s.subLayer, z: s.obj.position.z, tickOwned: s.tickOwned, bodies: s.objs.length })); },
