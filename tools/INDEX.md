@@ -4,7 +4,7 @@
 
 # The instruments
 
-237 scripts. **129 are ACCEPTANCE tests** — they decide and exit non-zero.
+238 scripts. **130 are ACCEPTANCE tests** — they decide and exit non-zero.
 **108 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -106,6 +106,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-153-boot.mjs` | §153 | report | §153 probe — symmetric reserve arc + barely-recessed sector, boot-level. Boots the sim headless, verifies boot silence, then measures the redesign's claims directly off the built scene: 1. the reserve hand's math angle at tension 0 / 0.5 / 1 lands on 90 + 75, 90, 90 − 75 (the symmetric anchor at both ends and centre); 2. the hand's world plane against the well floor and the visible face — §153 built it as a proud rider over a barely-recessed sector; §188 returned the well to SUBDIAL_RECESS depth and the hand to wellHandZ, so it now reads sunk BELOW the face like the seconds hand; 3. the arbor's front end stops 0.2 short of the hand's plane. |
 | `probe-153-fails.mjs` | §153 | report | §153 — re-run the battery's three failing gates alone and dump their failing rows (the landing run's payload dump was lost to a tail pipe). Same drive as ci-battery.mjs: dev server with a private TMPDIR, headless Chromium with throttling off, sweep hold for the run, start()/status(). Usage: node probe-153-fails.mjs [checkName ...] (default: the three) |
 | `probe-153-shot.mjs` | §153 | report | §153 probe — screenshots of the redesigned reserve sector: dial-on view at three tensions, plus an oblique close-up so the shallow recess and the proud hand are visible in profile. The canvas is read back with toDataURL IN the same evaluate as the scripted camera write + render, so OrbitControls/preset tweens (which re-aim the camera every rAF — the CLAUDE.md trap) cannot overwrite the pose between render and capture. |
+| `probe-156-jumper-veto.mjs` | §156 | acceptance | TODO 156 (A1) — DOES CAP_SOLVE's OWN B GET JUDGED, EXACTLY ONCE, BY THE JUMPER'S SITING SOLVE — AND IS A REFUSAL RECORDED RATHER THAN SILENT? |
 | `probe-161-bench.mjs` | §161 | acceptance | §161 — the bench route, and the two claims it rests on, measured in a browser. |
 | `probe-163-driver.mjs` | §163 | acceptance | §163 — CAN A DRIVER PIVOTED ON THE COLUMN WHEEL'S OWN ARBOR RETURN? |
 | `probe-163-lever.mjs` | §163 | acceptance | §163 — THE TWO-BODY CHAIN: a driving pawl carried on an operating lever. |
