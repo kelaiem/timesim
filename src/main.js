@@ -30892,6 +30892,11 @@ html:lang(ko) { word-break: keep-all; }
   background: rgba(10,12,15,0.42); border-color: rgba(255,255,255,0.06);
   padding: 1px 4px; letter-spacing: 0.02em;
 }
+/* A part callout whose anchor a unit label already occupies (a unit label is
+   lifted -140% above its own point) steps clear of it: under the point, or
+   above it when the unit label beside it is the one hanging lower. */
+.clock-label.clock-callout.clock-callout-below { transform: translate(-50%, 70%); }
+.clock-label.clock-callout.clock-callout-above { transform: translate(-50%, -170%); }
 /* §59 — the hover readout. Cursor-adjacent, and deliberately the same visual
    language as .clock-label without BEING one: §7's layer is a persistent mode
    and this is a transient answer to "what am I about to grab?". Above the
@@ -32837,6 +32842,110 @@ const calloutEntries = [];
       console.warn(`§107: callout table names "${k}", which no mesh in the scene carries — the drawing would be missing a word it thinks it says`);
   }
   void named;
+}
+
+// THE PART CALLOUTS — §107's vocabulary, shown in BOTH views whenever labels
+// are on. §107 names members only on the line tier; this names the few parts
+// whose job cannot be read off a unit label at all. The motion works is the
+// case that asked for it: "Motion works" and "Hour wheel" say nothing about
+// HOW the hour hand is driven, and the answer is a chain of four named parts —
+// the cannon pinion (on the centre arbor, turning with the minute hand) drives
+// the minute wheel out on its stud; the minute pinion, cut in the same blank,
+// drives the hour wheel, whose tube carries the hour hand. The hour wheel is
+// already a unit with its own label; its callout exists for the one selection
+// that hides that label (the motion works alone, where the chain would
+// otherwise stop one member short of the hand), and `unitLabel` says so: a
+// callout naming its own unit stands down whenever the unit label is shown.
+//
+// Same rules as §107: keyed by the mesh name the builder already set, a name
+// with no mesh warns at boot, and the values are English source strings that
+// t() resolves at the display site. `train` is the DISPLAY unit — the cannon
+// pinion's metal belongs to the Dial unit (it hangs off dialFace), but it is
+// the first member of the motion works' 12:1, so selecting the motion works
+// shows it. `anchor: 'rim'` puts the name on the part's outer edge, on the
+// side away from the dial's axis: the minute wheel and its pinion are coaxial,
+// and two names centred on one stud would print over each other. A part ON
+// the dial's axis has no outward side, so `awayFrom` names another callout
+// and the rim point is taken on the side facing away from that part. `place`
+// moves the name off its anchor where a unit label already stands there: the
+// Hour wheel's label is lifted above the dial centre, so the cannon pinion's
+// hangs BELOW it; the Minute jumper's label stands just under the minute
+// wheel's stud, so the minute pinion's is lifted ABOVE it.
+const PART_CALLOUTS = {
+  cannonPinion: { name: 'Cannon pinion', train: 'Motion works', anchor: 'centre', place: 'below' },
+  mwMinuteWheel: { name: 'Minute wheel', train: 'Motion works', anchor: 'rim' },
+  mwMinutePinion: { name: 'Minute pinion', train: 'Motion works', anchor: 'centre', place: 'above' },
+  mwHourWheel: { name: 'Hour wheel', train: 'Motion works', anchor: 'rim', awayFrom: 'mwMinuteWheel', unitLabel: true },
+};
+// Resolved once: { meshes, unit, train, anchor, el } — one entry per NAME, since
+// a gear builder may leave several meshes under one name; the anchor reads
+// their union.
+const partCalloutEntries = [];
+{
+  const unitOf = (o) => {
+    for (let p = o; p; p = p.parent) {
+      const e = labelEntries.find((x) => x.obj === p);
+      if (e) return e.name;
+    }
+    return null;
+  };
+  // A gear builder names its GROUP (makePinion) or its group and meshes alike
+  // (the minute wheel's traverse rename), so the part is the outermost object
+  // carrying the name, and its metal is every real mesh beneath it.
+  const byName = new Map();
+  movement.traverse((o) => {
+    if (o.userData.schematic || !PART_CALLOUTS[o.name] || byName.has(o.name)) return;
+    const meshes = [];
+    o.traverse((m) => { if (m.isMesh && !m.userData.schematic) meshes.push(m); });
+    if (meshes.length) byName.set(o.name, meshes);
+  });
+  for (const [key, spec] of Object.entries(PART_CALLOUTS)) {
+    const meshes = byName.get(key);
+    if (!meshes) {
+      console.warn(`part callouts: table names "${key}", which no mesh in the scene carries — the label would be missing a word it thinks it says`);
+      continue;
+    }
+    const el = document.createElement('div');
+    el.className = 'clock-label clock-callout' + (spec.place ? ` clock-callout-${spec.place}` : '');
+    el.textContent = t(spec.name);
+    labelsContainer.appendChild(el);
+    partCalloutEntries.push({ key, meshes, unit: unitOf(meshes[0]), train: spec.train, anchor: spec.anchor, awayFrom: spec.awayFrom, unitLabel: !!spec.unitLabel, el });
+  }
+  for (const c of partCalloutEntries) {
+    if (c.awayFrom) c.away = partCalloutEntries.find((x) => x.key === c.awayFrom);
+    if (c.awayFrom && !c.away) console.warn(`part callouts: "${c.key}" faces away from "${c.awayFrom}", which is not a resolved callout`);
+    if (c.unitLabel && !labelEntries.some((e) => e.name === PART_CALLOUTS[c.key].name && e.name === c.unit))
+      console.warn(`part callouts: "${c.key}" claims its unit's own label, but its unit is "${c.unit}"`);
+  }
+}
+const _pcBox = new THREE.Box3(), _pcCtr = new THREE.Vector3(), _pcSize = new THREE.Vector3();
+const _pcAxisO = new THREE.Vector3(), _pcAxisN = new THREE.Vector3(), _pcOut = new THREE.Vector3();
+function partCalloutCentre(c, out) {
+  _pcBox.makeEmpty();
+  for (const m of c.meshes) _pcBox.expandByObject(m);
+  return _pcBox.getCenter(out);
+}
+// A part callout's anchor, world space, into `out`: the centre of its meshes'
+// world bounds, or — for 'rim' — that centre pushed out to the part's radius,
+// away from the dial's axis, or from the `awayFrom` part's centre (radius read
+// off the LOCAL geometry, which is round about local z, so the wheel's own
+// rotation cannot swell it the way a world box of a turning spoked wheel would).
+function partCalloutAnchor(c, out) {
+  partCalloutCentre(c, out);
+  if (c.anchor !== 'rim') return out;
+  let r = 0;
+  for (const m of c.meshes) {
+    m.geometry.computeBoundingBox();
+    m.geometry.boundingBox.getSize(_pcSize);
+    r = Math.max(r, Math.max(_pcSize.x, _pcSize.y) / 2);
+  }
+  if (c.away) partCalloutCentre(c.away, _pcAxisO);
+  else dialFace.getWorldPosition(_pcAxisO);
+  _pcAxisN.set(0, 0, 1).transformDirection(dialFace.matrixWorld);
+  _pcOut.subVectors(out, _pcAxisO);
+  _pcOut.addScaledVector(_pcAxisN, -_pcOut.dot(_pcAxisN));
+  if (_pcOut.lengthSq() < 1e-12) return out; // on the reference axis: no outward side to choose
+  return out.addScaledVector(_pcOut.normalize(), r);
 }
 
 // --- time-scale (log slider, 0.02..1, default 1 = real time) --------------
@@ -41337,6 +41446,19 @@ function updateLabels() {
     c.mesh.geometry.computeBoundingBox();
     c.mesh.geometry.boundingBox.getCenter(projected).applyMatrix4(c.mesh.matrixWorld);
     projected.project(camera);
+    if (projected.z > 1) { c.el.style.display = 'none'; continue; }
+    c.el.style.display = 'block';
+    c.el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
+    c.el.style.top = `${(-projected.y * 0.5 + 0.5) * h}px`;
+  }
+  // The part callouts — both views. Shown under 'All', or when the selection
+  // (or its group) is the part's own unit or the train it serves.
+  for (const c of partCalloutEntries) {
+    const labelGroup = UNIT_GROUPS.get(selectedUnit);
+    const shows = (u) => u && (u === selectedUnit || (labelGroup && labelGroup.has(u)));
+    if (selectedUnit !== 'All' && !shows(c.unit) && !shows(c.train)) { c.el.style.display = 'none'; continue; }
+    if (c.unitLabel && (selectedUnit === 'All' || shows(c.unit))) { c.el.style.display = 'none'; continue; } // the unit label already says it
+    partCalloutAnchor(c, projected).project(camera);
     if (projected.z > 1) { c.el.style.display = 'none'; continue; }
     c.el.style.display = 'block';
     c.el.style.left = `${(projected.x * 0.5 + 0.5) * w}px`;
