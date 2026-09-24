@@ -261,6 +261,9 @@ const DE = {
   'Winding stem': 'Aufzugswelle',
   'Setting wheel': 'Zeigerstellrad',
   'Minute-wheel arbor': 'Minutenradwelle',
+  'Cannon pinion': 'Viertelrohr', // the motion works' part callouts
+  'Minute wheel': 'Wechselrad',
+  'Minute pinion': 'Wechselradtrieb',
   'Setting drop': 'Stellweg, Abstieg',
   'Setting rise': 'Stellweg, Anstieg',
   'Setting cap': 'Stellkappe',
@@ -596,6 +599,9 @@ const ZH = {
   'Winding stem': '上弦柄轴',
   'Setting wheel': '拨针轮',
   'Minute-wheel arbor': '分轮轴',
+  'Cannon pinion': '分轮', // the motion works' part callouts
+  'Minute wheel': '跨轮',
+  'Minute pinion': '跨轮齿轴',
   'Setting drop': '拨针连杆（降）',
   'Setting rise': '拨针连杆（升）',
   'Setting cap': '拨针端盖',
@@ -940,6 +946,9 @@ const FR = {
   ['Winding stem']: 'Tige de remontoir',
   ['Setting wheel']: 'Roue de mise à l’heure',
   ['Minute-wheel arbor']: 'Arbre de la roue des minutes',
+  ['Cannon pinion']: 'Chaussée', // the motion works' part callouts
+  ['Minute wheel']: 'Roue de minuterie',
+  ['Minute pinion']: 'Pignon de minuterie',
   ['Setting drop']: 'Descente de mise à l’heure',
   ['Setting rise']: 'Montée de mise à l’heure',
   ['Setting cap']: 'Chapeau de mise à l’heure',
@@ -1420,6 +1429,9 @@ const JA = {
   ['Winding stem']: '巻真',
   ['Setting wheel']: '針合わせ車',
   ['Minute-wheel arbor']: '二番車の軸',
+  ['Cannon pinion']: '筒カナ', // the motion works' part callouts
+  ['Minute wheel']: '日の裏車',
+  ['Minute pinion']: '日の裏カナ',
   ['Setting drop']: '針合わせロッド（下り）',
   ['Setting rise']: '針合わせロッド（上り）',
   ['Setting cap']: '針合わせキャップ',
@@ -1899,6 +1911,9 @@ const ZH_HANT = {
   ['Winding stem']: '上鍊柄軸',
   ['Setting wheel']: '撥針輪',
   ['Minute-wheel arbor']: '分輪軸',
+  ['Cannon pinion']: '分輪', // the motion works' part callouts
+  ['Minute wheel']: '跨輪',
+  ['Minute pinion']: '跨輪齒軸',
   ['Setting drop']: '撥針連桿（降）',
   ['Setting rise']: '撥針連桿（升）',
   ['Setting cap']: '撥針端蓋',
@@ -2386,6 +2401,9 @@ const AR = {
   'Winding stem': 'ساق التعبئة',
   'Setting wheel': 'عجلة الضبط',
   'Minute-wheel arbor': 'محور عجلة الدقائق',
+  'Cannon pinion': 'ترس أنبوب الدقائق', // the motion works' part callouts
+  'Minute wheel': 'عجلة الدقائق',
+  'Minute pinion': 'ترس عجلة الدقائق',
   'Setting drop': 'هبوط الضبط',
   'Setting rise': 'صعود الضبط',
   'Setting cap': 'غطاء الضبط',
@@ -2855,6 +2873,9 @@ const ES = {
   'Winding stem': 'Tija de remontuar',
   'Setting wheel': 'Rueda de puesta en hora',
   'Minute-wheel arbor': 'Eje de la rueda de minutería',
+  'Cannon pinion': 'Piñón cañón', // the motion works' part callouts
+  'Minute wheel': 'Rueda de minutería',
+  'Minute pinion': 'Piñón de minutería',
   'Setting drop': 'Bajada de puesta en hora',
   'Setting rise': 'Subida de puesta en hora',
   'Setting cap': 'Tapa de puesta en hora',
@@ -3321,6 +3342,9 @@ const KO = {
   'Winding stem': '와인딩 스템',
   'Setting wheel': '세팅 휠',
   'Minute-wheel arbor': '미닛 휠 아버',
+  'Cannon pinion': '캐논 피니언', // the motion works' part callouts
+  'Minute wheel': '미닛 휠',
+  'Minute pinion': '미닛 피니언',
   'Setting drop': '세팅 로드 (하강)',
   'Setting rise': '세팅 로드 (상승)',
   'Setting cap': '세팅 캡',
@@ -3789,6 +3813,9 @@ const RU = {
   'Winding stem': 'Заводной вал',
   'Setting wheel': 'Переводное колесо',
   'Minute-wheel arbor': 'Вал вексельного колеса',
+  'Cannon pinion': 'Минутный триб', // the motion works' part callouts
+  'Minute wheel': 'Вексельное колесо',
+  'Minute pinion': 'Вексельный триб',
   'Setting drop': 'Вал перевода, вниз',
   'Setting rise': 'Вал перевода, вверх',
   'Setting cap': 'Колпачок перевода',
@@ -4257,6 +4284,9 @@ const PT = {
   'Winding stem': 'Haste de corda',
   'Setting wheel': 'Roda de acerto',
   'Minute-wheel arbor': 'Eixo da roda de minuteria',
+  'Cannon pinion': 'Pinhão canhão', // the motion works' part callouts
+  'Minute wheel': 'Roda de minuteria',
+  'Minute pinion': 'Pinhão de minuteria',
   'Setting drop': 'Descida de acerto',
   'Setting rise': 'Subida de acerto',
   'Setting cap': 'Tampa de acerto',
@@ -4724,6 +4754,9 @@ const IT = {
   'Winding stem': 'Albero di carica',
   'Setting wheel': 'Ruota di messa all’ora',
   'Minute-wheel arbor': 'Albero della ruota della minuteria',
+  'Cannon pinion': 'Rocchetto dei minuti', // the motion works' part callouts
+  'Minute wheel': 'Ruota della minuteria',
+  'Minute pinion': 'Pignone della minuteria',
   'Setting drop': 'Discesa di messa all’ora',
   'Setting rise': 'Risalita di messa all’ora',
   'Setting cap': 'Cappello di messa all’ora',
@@ -5188,6 +5221,9 @@ const HI = {
   'Winding stem': 'वाइंडिंग स्टेम',
   'Setting wheel': 'सेटिंग व्हील',
   'Minute-wheel arbor': 'मिनट-व्हील आर्बर',
+  'Cannon pinion': 'कैनन पिनियन', // the motion works' part callouts
+  'Minute wheel': 'मिनट व्हील',
+  'Minute pinion': 'मिनट पिनियन',
   'Setting drop': 'सेटिंग ड्रॉप',
   'Setting rise': 'सेटिंग राइज़',
   'Setting cap': 'सेटिंग कैप',
