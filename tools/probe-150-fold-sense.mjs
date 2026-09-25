@@ -120,7 +120,7 @@ await page.goto(`http://127.0.0.1:${port}/index.html?schematic=0`, { waitUntil: 
 await page.waitForFunction(() => !!window.__clock, null, { timeout: 180000 });
 await page.waitForTimeout(1500);
 
-const out = await page.evaluate(async (bases) => {
+const out = await page.evaluate(async ({ bases, tauBases }) => {
   const C = window.__clock;
   const THREE = await import('/vendor/three.module.js');
   window.requestAnimationFrame = () => 0;   // freeze the live loop under the poses
@@ -137,16 +137,19 @@ const out = await page.evaluate(async (bases) => {
   if (missing.length) return { missing };
   const quats = () => Object.fromEntries(NAMES.map((n) => [n, mesh[n].getWorldQuaternion(new THREE.Quaternion())]));
   const centre = (n) => new THREE.Box3().setFromObject(mesh[n]).getCenter(new THREE.Vector3());
-  const runs = [];
-  for (const base of bases) {
+  // One step measurement, factored out so the setPathRot (handSet) sweep and
+  // TODO 155's tau (going-train) sweep share it: the fold must turn as one
+  // train under EITHER input now that the setting-train members are posed
+  // from the wheel the cap meshes, not from handSetOffset alone.
+  const measureStep = (poseA, poseB) => {
     C.resetInputs();
-    C.setPose({ crownPullT: 0, setPathRot: base }); const A = quats();
+    C.setPose(poseA); const A = quats();
     const cen = Object.fromEntries(NAMES.map((n) => [n, centre(n)]));
     // the corner apex is the mount's origin: the gear's parent, in world
     const apex = Object.fromEntries(['mwCornerDrop', 'mwCornerFold', 'mwCornerRise', 'mwCornerFoot', 'mwCornerCap'].map((t) =>
       [t, mesh[t + 'In'].parent.getWorldPosition(new THREE.Vector3())]));
     const pivot = Object.fromEntries(NAMES.map((n) => [n, mesh[n].getWorldPosition(new THREE.Vector3())]));
-    C.setPose({ crownPullT: 0, setPathRot: base + 0.01 }); const B = quats();
+    C.setPose(poseB); const B = quats();
     const w = {};
     for (const n of NAMES) {
       const d = B[n].clone().multiply(A[n].clone().invert());
@@ -161,7 +164,21 @@ const out = await page.evaluate(async (bases) => {
       roll[t] = { vIn: w[t + 'In'].clone().cross(P).toArray(), vOut: w[t + 'Out'].clone().cross(P).toArray() };
     }
     const mwR = pivot.settingCap.distanceTo(new THREE.Vector3(pivot.mwMinuteWheel.x, pivot.mwMinuteWheel.y, pivot.settingCap.z));
-    runs.push({ base, w: Object.fromEntries(NAMES.map((n) => [n, w[n].toArray()])), roll, capToWheel: mwR });
+    return { w: Object.fromEntries(NAMES.map((n) => [n, w[n].toArray()])), roll, capToWheel: mwR };
+  };
+  const runs = [];
+  for (const base of bases) {
+    runs.push({ base, ...measureStep({ crownPullT: 0, setPathRot: base }, { crownPullT: 0, setPathRot: base + 0.01 }) });
+  }
+  // TODO 155 — the SAME train, walked by moving τ instead of setPathRot (crown
+  // home throughout, so handSetOffset itself never changes): the setting
+  // train is now posed FROM THE WHEEL THE CAP MESHES, so it must turn as one
+  // rigid train under the going train's own input too, not only under
+  // hand-set. tauBases are start points and each step is +60 s of τ — small
+  // against the minute hand's own rate, so no member wraps between samples.
+  const tauRuns = [];
+  for (const T of tauBases) {
+    tauRuns.push({ tau: T, ...measureStep({ crownPullT: 0, tau: T }, { crownPullT: 0, tau: T + 60 }) });
   }
   const I = await import('/src/inspect.js');
   const L = await import('/src/layout.js');
@@ -246,7 +263,11 @@ const out = await page.evaluate(async (bases) => {
   // going train through the motion works, the reserve train by the spring's
   // state, the keyless works by the pull).
   const POSES = [{}, { setPathRot: 0.37 }, { setPathRot: 1.9 }, { setPathRot: -2.6 }, { tau: 0.13 }, { tau: 0.61 },
-    { crownPullT: 1 }, { crownPullT: 1, setPathRot: 1.1 }, { tension: 0.05 }, { tension: 1, windAccumTurns: 3 }];
+    { crownPullT: 1 }, { crownPullT: 1, setPathRot: 1.1 }, { tension: 0.05 }, { tension: 1, windAccumTurns: 3 },
+    // TODO 155 — the fold now turns with τ alone (crown home), so the net
+    // f = 0.57 and f = 0.0417 poses (the train axis's own worst-reading
+    // fractions, `mwCornerRiseOut ⇄ star` ≈0.1634) are walked here too.
+    { tau: 0.57 * 120 / 7 * 3600 }, { tau: 0.0417 * 120 / 7 * 3600 }];
   const BODY = {
     mwCornerRiseIn: 'leg2', settingTraverse2: 'leg2', mwCornerFoldOut: 'leg2',
     mwCornerRiseOut: 'rise', settingRise: 'rise', mwCornerFootIn: 'rise',
@@ -266,8 +287,21 @@ const out = await page.evaluate(async (bases) => {
   const foldClear = {}, cross = {};
   const put = (m, k, d, pi) => { if (!m[k] || d < m[k].d) m[k] = { d, pose: pi }; };
   const box = (o) => new THREE.Box3().setFromObject(o);
+  // TODO 155 — REPORT, not gated (TODO 162 files it): `mwCornerFoldOut`
+  // is part of `mwCornerFoldIn`'s rod (leg 2) and used to stand still outside
+  // the `handSet` axis; now the fold turns with τ too, it sweeps volumes
+  // against the reserve train it never used to reach. Not in `moved` (only
+  // the (d) landing's own new/relocated members are), so it is walked here
+  // as its own pair rather than folded into FOLD CLEAR's declared scope.
+  const foldOutMesh = collectFor('mwCornerFoldOut');
+  const rsvWheel1Mesh = collectFor('rsvWheel1');   // makeGear names the GROUP, not its meshes
+  let foldOutVsRsv = null;
   for (let pi = 0; pi < POSES.length; pi++) {
     C.resetInputs(); C.setPose({ crownPullT: 0, ...POSES[pi] }); C.scene.updateMatrixWorld(true);
+    for (const m of foldOutMesh) for (const r of rsvWheel1Mesh) {
+      const d = I.meshClearance(m, r);
+      if (!foldOutVsRsv || d < foldOutVsRsv.d) foldOutVsRsv = { d, pose: pi };
+    }
     const ob = others.map(box);
     for (const [n, list] of moved) for (const m of list) {
       const mb = box(m).expandByScalar(1);
@@ -386,11 +420,12 @@ const out = await page.evaluate(async (bases) => {
     }
     mwStack[n] = { count: meshes.length, clr, zTop };
   }
-  return { runs, capZ, mwZ, centreD, centreWant, plate, lands, foldClear, cross, poses: POSES.length,
+  return { runs, tauRuns, capZ, mwZ, centreD, centreWant, plate, lands, foldClear, cross, poses: POSES.length,
+    foldOutVsRsv,
     jumperRows, jumperBoth: [...jumperBoth], jumperPoses: jPoses.length, jumperSite: C.jumperSite, jumperParts: jumper.length, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN, mwStack, faceZ,
     measR, measZ,
     capLeg: C.settingFold && C.settingFold.capLeg };
-}, [0, 7.3]);
+}, { bases: [0, 7.3], tauBases: [0, 20000] });
 
 let bad = 0;
 const fail = (s) => { bad++; console.log('  FAIL ' + s); };
@@ -409,8 +444,10 @@ else {
     ['stub', 'mwCornerFootOut', 'mwCornerCapIn'],
     ['cap arbor', 'mwCornerCapOut', 'settingCap'],
   ];
-  for (const run of out.runs) {
-    console.log(`\nbase pose setPathRot ${run.base}:`);
+  // Factored so the setPathRot (handSet) sweep and TODO 155's τ (train) sweep
+  // run the identical RODS/CORNERS/cap⇄wheel gates, must-move guard included.
+  const checkRun = (run, label) => {
+    console.log(`\n${label}:`);
     for (const [n, a] of Object.entries(run.w)) {
       const m = Math.hypot(...a);
       console.log(`    ${n.padEnd(16)} ω ${fmt(a)}   |ω| ${m.toFixed(6)}`);
@@ -438,7 +475,13 @@ else {
     else ok(`cap ⇄ minute wheel mesh: pitch-line ${(capW * rCap).toFixed(6)} against ${(mwW * rMw).toFixed(6)} (centre distance ${run.capToWheel.toFixed(4)})`);
     if (Math.sign(capW) !== Math.sign(cpW)) fail(`cap ⇄ cannon pinion counter-rotate — both mesh the minute wheel, so they must turn together`);
     else ok(`cap ⇄ cannon pinion co-rotate (${capW.toFixed(6)}, ${cpW.toFixed(6)})`);
-  }
+  };
+  for (const run of out.runs) checkRun(run, `base pose setPathRot ${run.base}`);
+  // TODO 155 — the same train, driven by τ alone (crown home): before this
+  // item the setting fold stood still under `train` and this whole block
+  // would have failed on the must-move guard alone. It moving, and moving as
+  // ONE train, is the P0 claim the stateless law makes.
+  for (const run of out.tauRuns) checkRun(run, `base pose tau ${run.tau} (TODO 155, train input)`);
   // TODO 151 — GATED: the six motion-works corner blanks against the base
   // plate (non-schematic meshes only), held to CLEAR_MARGIN — MW_RISE_PLATE_HOLE's
   // own acceptance, on the same instrument (inspect.js's meshClearance) the
@@ -475,6 +518,14 @@ else {
     else if (r.d < 0.4) ok(`${a} ⇄ ${b} clears ${r.d.toFixed(4)} (pose ${r.pose})`);
   }
   console.log('  (pairs clearing 0.4 or more not listed; settingCap ⇄ mwMinuteWheel is the declared mesh and is not measured here)');
+  // TODO 155 — REPORT, not a gate (TODO 162 owns it): `mwCornerFoldOut` now
+  // turns under `train` too. Against every mesh of rsvWheel1 it already read
+  // 0.0552 on main (the reserve wheel turning past a still corner) and reads
+  // 0.0357 at its worst over the train axis since TODO 155. It was under
+  // CLEAR_MARGIN before this landing, and no battery gate holds the pair.
+  if (out.foldOutVsRsv)
+    console.log(`  REPORT mwCornerFoldOut ⇄ rsvWheel1 clears ${out.foldOutVsRsv.d.toFixed(4)} (pose ${out.foldOutVsRsv.pose}) — under CLEAR_MARGIN ${out.CLEAR_MARGIN} (0.0552 on main before TODO 155), filed as TODO 162`);
+  else console.log('  REPORT mwCornerFoldOut ⇄ rsvWheel1: no mesh pair found to measure');
   console.log(`\nCROSS-BODY — TODO 151: every blank of one new corner ⇄ every blank of another, and each member ⇄ the other rigid bodies:`);
   // two blanks keyed to ONE rod turn as one rigid body (§107: one connected
   // part), so between them the rule is that they do not run into each other,

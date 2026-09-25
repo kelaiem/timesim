@@ -13,17 +13,19 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-09-24 — items with work left first, with what remains:
+refreshed 2026-09-25 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 163 | OPEN | `clutchRim` ⇄ `settingBevel` are posed by two laws (the crown's `setPathRot` and the going train's `mwMinuteA`), so the crossed-axis mesh is buried a flat 0.2187 (29% of a tooth) at every indexing. Fix: the jumper back-drives the stem (roadmap §4 / TODO 58) |
+| 162 | OPEN | `mwCornerFoldOut` ⇄ `rsvWheel1` clears 0.0357 (was 0.0552 on main before TODO 155), against `CLEAR_MARGIN` 0.15, and no battery gate reads the pair. Fix: re-site as a P3 move judged on real metal over the train axis, and find why `clearances` and `inspection` do not see `Keyless works` ⇄ `Power-reserve train` |
 | 161 | OPEN | `JMP_SITE` judges the alarm selector, sleeve and release levers AS BUILT, not over their own travel (BOOT HAS NO POSE). No defect today (JUMPER row 0.1500, clean). Fix: factor their own pose laws (`settingLeverAngleAt`/`jumperLeverRotAt`/`poseJumperLifter`'s precedent), not a pose snapshot |
 | 160 | OPEN | A jumper refusal is recorded ([TODO 156], closed) but cannot act — CAP_SOLVE commits B before `JMP_SITE` exists. Fix: nest a `JMP_SITE` scan into CAP_SOLVE's own candidate loop (the `solveReserveSwing` veto shape), with a cheap per-candidate pre-screen; 452/720 stations feasible with the fold and reserve removed vs 156/720 with them present |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
 | 158 | OPEN | Only the default spec is battery-validated; URL overrides, the reconfigure panel and saved variants build geometry nobody swept, shown as sound. Tier A: a shipped validated-fingerprint set and a localized "unverified configuration" mark. Tier B: restricted `inspection` per `SPEC_POINT` |
 | 157 | OPEN | CAP_SOLVE, `solveCapLeg` and `stubSolve` take the first feasible value, so their binding pairs sit on the margin (0.1504, 0.1531). Replace with a declared objective: max-min certified clearance, then a written aesthetic tie-break; finish never spends a constraint |
 | 156 | CLOSED | CAP_SOLVE still cannot veto B on the jumper's siting (that restructure is [TODO 160]), but the four movement-wide walks' indifference to the jumper is now a boot-time derivation rather than a measured-once fact (`__clock.jumperSite.walks`, margins 1.36–11.20), CAP_SOLVE's own veto is recorded on its scan (`__clock.settingFold.scan[i].jumper`), and the pillars are seated against the keyless corner's real per-mesh metal (`PILLAR_KEYLESS_BOXES`) rather than `boxOf(keyless)` — only the 135° pillar moves, 87.00° → 135.00° |
-| 155 | OPEN | The setting fold is posed from `handSetOffset` alone while the minute wheel it now meshes turns with the going train: `setting fold minute wheel ⇄ setting cap` is waived in `meshPhase` and `transmits`. Fix path: the clutch's engagement as a pose input, the train's turn carried into the fold while the clutch is out |
+| 155 | CLOSED | The setting fold, setting wheel and keyless minute wheel are posed from `mwMinuteA`, the minute wheel the cap meshes, so they turn with the going train; both waivers are retired. The clutch's own two-law residue is [TODO 163] |
 | 152 | CLOSED | A `?trial=1` boot — §33's verdict boot — inherited the viewer's tuned aesthetics (no trial guard in `aesthetics.js`; `reconfTrialBoot` passes `location.search` through), so every trial verdict was measured on a TUNED build; and the trial's merge ARMED the §23 crash-recovery marker, which a superseded trial never confirms, so the viewer's next real boot dropped their overrides and warned. Measured by `tools/probe-240-trial-boot.mjs` (6 rows red, controls green); closed by `state.js`'s `TRIAL_BOOT` guard copied to `aesthetics.js` — the merge, the marker, both finish params and the confirm all skip under the flag. Probe green. |
 | 150 | CLOSED | The §234 setting fold's three rods counter-rotated end to end: tick flipped the sign across each ROD as well as each corner. `MW_FOLD_SPIN` is read off the mounts now. The drop corner's inboard bevel, cut on the far side of its apex from its own shaft, is re-mounted on that shaft (the minute pinion it used to stand off is retired); the cap's mate claims are corrected (it meshes the motion works' minute wheel, not the keyless one); the fold's members are named for hover. `probe-150-fold-sense.mjs` gates all four rods, all three corners and the cap ⇄ minute-wheel mesh, 0 findings. The cap not meshing that wheel IN THE METAL (a 2.9 u axial gap) is split out to [TODO 151] |
 | 153 | OPEN | The motion-works stack (`MW_WHEEL_T`, `MW_Z2`, `MW_TOP`, `CANNON_T`, …) is solved against `MW_PLATE_FACE_LOCAL`'s bare `-2.0` literal, 0.3 u shallower than the plate's own derived, asserted face `PLATE_BACK_FACE` (−2.3). `mwMinuteWheel` and `cannonPinion` are buried in the base plate — 0.146 and 0.21 u respectively, both `meshClearance` 0.0000 — excused wholesale by the `['Motion works', 'plate']` support edge. Found measuring [TODO 151]; re-derive the literal from `PLATE_BACK_FACE` (`MW_WHEEL_T` re-solves ≈0.84 → 0.69) or cut a relief pocket; either way moves TODO 151's target band dial-ward |
@@ -73,7 +75,7 @@ refreshed 2026-09-24 — items with work left first, with what remains:
 | 140 | CLOSED | Found by [TODO 139]'s new boot guard, on its first run, on a corner that guard was not written for. Measured at the rest pose off the metal: `alarmDiscBevel` carries its tooth **0.3750 of a pitch** off the contact ray where the convention wants 0, burial **0.2131** (39% of a tooth), and `probe-crossed-axis-mesh` floors at 0.0000 AT PHASE 0.375 — the same number from the other side, so the pair is one constant from meshing and is not on it. The 0.3750 is not the index block's arithmetic: `bevelCornerSpin` indexes both halves at BUILD where `alarmRotor.rotation.z` is 0, and the rest pose puts it at −2.90597, which is −4.625 pitches of a 10-tooth bevel and wraps to exactly the miss. **The two terms of that rotor angle are not alike**: `3 * _bd` (the hour carrying the friction-set disc) IS mirrored into the stem by `alarmCrownCreep` since §194 F, and `-alarmSetRot` — the angle the CROWN put there through this very corner — is not, so standing rule 2 is unsatisfied on one term of one sum. That much of 139's withdrawn diagnosis was right, about the term it did not name. No build constant can close it (`alarmSetRot` varies with the set time), so the fix is to what the CROWN displays, and it has a design question first: disengaged, the crown is free and the relative index is not a kinematic consequence — either the crown carries the disc's total either way (making the knob a readout of the setting) or the index is re-solved at engagement, which is what the metal does and needs an engagement event the tick has not got. Waived at the corner's build with an AUDITED waiver — the guard warns if a waived corner measures IN index, so the fix cannot leave it behind. **The two MOTION-WORKS corners are the same item and are now in its scope**: `addBevelCorner` seeds a bare `BEVEL_PHASE` and never adopted `bevelCornerSpin`, so the ABSOLUTE condition is false on all four members (−0.3479/+0.1528 and −0.3472/−0.1528 of a pitch from the ray). They mesh only because the RELATIVE condition survives — and it lands on the DIFFERENCE in one and the SUM in the other, 0.5007 and −0.5000, because the two corners have opposite handedness. Two accidents, not a solve. Both are registered with the index guard and waived to this item, so the debt is visible at boot rather than only in a probe; converting them moves the motion works' rest pose, which §137's transfer rows, the intra-unit tiers and `meshPhase` all read, so it is a re-measure and belongs with this item's decision  **LANDED (alarm half)**: the index is RE-SOLVED AT ENGAGEMENT, the owner's call and the metal's. A prerequisite went first — the corner's TWO drives disagreed about its sense (crown −1, the HOUR through the same teeth +1), so the pair was not one coupling; the ungated restatement was deleted rather than flipped and the hour now reaches the arbor once, as `alarmArborHourA`. That bought the invariant the re-solve needs: engaged, `d = rotor − spinner` does not move and the teeth interleave when d is a whole number of pitches. Engagement takes the shortest stem rotation making it so — the tip chamfers' cam, never more than half a pitch, the knob clicking in. The moment needs no second threshold, and that is DERIVED: a correctly-indexed pair never touches (its gap is the 0.00267 u of backlash the §136 cut reserves), so there is no contact instant, and d drifts only with the hour at 4.4e-4 rad/s against a 0.3 s ease — any instant in the throw freezes the same index to 2e-4 of a pitch. Six engagements land on valleys 0, 0, 0, 1, 2 and 5, each exactly in mesh, against a parted control that drifts 0.2222. MODELLED not simulated: the cam's force path is not walked, its outcome is. **AND THE MOTION-WORKS HALF LANDED**: `addBevelCorner` takes `bevelCornerSpin` at last, and the build-time solve is legitimate there — unlike the alarm corner — because both mounts hang off `keyless`, whose world transform is the identity, so their frames move with no input. The seed turned out to be written TWICE (the build's `BEVEL_PHASE` and `tick()` restating it as its own base), so either edit alone would have been silently undone; the index is solved once now and only the SPIN travels, the shape `settingWheelBase` already had beside it. All four members satisfy the ABSOLUTE condition where none did: −0.3479/+0.1528 and −0.3472/−0.1528 → **−0.0007/−0.4993** and **+0.0007/+0.4993**, the residual being the scan's resolution. Both corners are GATED now rather than reported, mutation-tested firing 4/4 on the restored seed, and `BEVEL_PHASE` plus the long-dead `ALARM_BEVEL_PHASE` are deleted |
 | 139 | WITHDRAWN — TWO LANDINGS UNDER IT | Filed from a symptom and reasoned to a cause without measuring the second member. It claimed `alarmSpinner.rotation.y` "carries `alarmCrownRotation` alone and knows nothing about the hour"; `alarmCrownCreep` had been accumulating `-3 * Δ_bd` there since §194 F, three weeks earlier. Measured over six engaged hours, rotor and spinner move −0.00654 and +0.00654 per hour and `rotor + spin` is CONSTANT — the 1:1 mitre's conjugate relation, a loop that is closed while engaged and opens when the crown is pushed in. So the conclusion fails too: the relative index does NOT vary with the hour, there IS a build-time constant, and sweeping the one index knob finds it (floor **0.0000** at phase 0.875). **A symptom consistent with a story is not evidence for it.** What the chase found instead is the item's value: `probe-crossed-axis-mesh` had been REFUSING every conical row since [TODO 136] gave the blank a flat web the solid declaration did not name, and with it measuring again — and TODO 136's two keyless corners finally added to `probe-138-coupling`, which that item cut and never put in the table — **both read +2.5 against a wanted −2.5**: right magnitude, inverted sense, because moving a wheel below the stem and negating its local angle leaves the WORLD motion right and the MESH inverted. Fixed as a named factor in both chains (`KW_WIND_WHEEL_SIDE`/`KW_SET_WHEEL_SIDE`), guarded by `assertWheelSide` and mutation-tested; the crown now winds and sets the other way round, which is the gearing's consequence and is carried, not suppressed. 6/6 corners conjugate, battery 40/40. RESIDUE, and it is a plain indexing error rather than this item: `bevelCornerSpin` misses the best index on BOTH corners (alarm 0.1108 shipped / 0.0000 at 0.875; winding 0.2653 / 0.0571 at 0.833) and not by one systematic offset. Three hypotheses were refuted before the instrument was built; the fourth, the right one, was ALSO refuted first by a control that compared a quantity with itself. `tools/probe-bevel-corner-index.mjs` settled it off the METAL — sweep the contact ray about each member's axis through one pitch, ask its solid metal-or-void at the pitch cone, the tooth is one run. **`updateMatrixWorld(true)` recomputes from `parent.matrixWorld` AS IT STANDS and never walks UP**: at build time the keyless and alarm groups still carry a fresh `Object3D`'s identity, and both STEM-side mounts hang under a group holding the stem's azimuth, so that rotation was dropped — while the PLATE-side mounts hang off `keyless`, whose world transform IS the identity and which therefore came out exact. One member of each corner wrong, by a different amount each, and the stale-frame arithmetic reproduces the shipped numbers to 1e-4 (0.49190 vs 0.49179; 0.29350 vs 0.29361). Fixed at the source: `getWorldQuaternion` walks up, `bevelCornerSpin` takes the GEAR so no caller can pass one object's frame while writing another's `rotation.z`, and `bevelCornerAxis` is the axis reader ONCE where three sites had three copies. **A boot guard now measures the metal rather than restating the solve**, with audited waivers. After: winding 0.0000/0.5000, setting 0.0000/0.4938 (the 0.0062 is the clutch's own seat clocking), burial 0.2653 → 0.0760 and both corners now FLOOR at the shipped index. Residue, both named: the alarm corner is [TODO 140], and `probe-crossed-axis-mesh`'s SETTING row had been naming `settingWheel` — the spur, 4.2 away — so it read 0.0000 at every phase and could not have failed |
 | 136 | CLOSED | Reported by eye (gears colliding while setting the time) and confirmed by `tools/probe-crossed-axis-mesh.mjs`: `crownWheel ⇄ windingPinion` buried **0.2065** (27% of a tooth) and `clutchRim ⇄ settingWheel` **0.1372** (18%), deeper than the deliberate half-pitch defect the control injects — because two flat SPUR cuts meeting at a right angle are not a mesh of any kind and no indexing could have fixed them (floors 0.1811 / 0.0971 over a whole pitch). Blocked on [TODO 138] for a conjugate crossed-axis FORM, then landed whole: both corners are Σ = 90° BEVEL pairs, cut on cones whose half-angles come from the counts (68.199°/21.801°) and sharing the apex where the axes cross, with the stations derived from it — a member's pitch plane stands coneR·cos γ from the apex, which at a right angle is the MATE's pitch radius, so `layout.js`'s two `windPinionR * 0.55` terms were wrong by 0.7480 apiece and are deleted. The index is a solve after all, just not the parallel-axis one: a tooth of the wheel and a gap of the pinion on the pair's line of contact. **The FOLD cost more than the corner** — the setting wheel became a compound below the stem (its two halves cannot straddle a stem that runs through the station), the minute pinion's step reversed and is solved against the traverse rod, the traverse plane went under the crown wheel's cone, the winding pinion gained a coupling boss at the §50 stock floor, the clutch's spine cap and hub collar got new bounds against a blank that overhangs the stem on both sides of the apex, the plate's keyless floor learned the stem bushing was now its outermost member, and D4 re-derived with the plate. Two instruments were wrong in ways only a cone could show: `meshCandidates` took its axial extents from `setFromObject` and so measured the §66 schematic proxy (at the APEX, 0.79 outside the metal), and `userData.bevel` was both a NUMBER and a cone SPEC, which produced a NaN movement depth. RESIDUE, unchanged by the repair: `meshCandidates` still cannot PROPOSE a crossed-axis pair, so both corners are declared by hand and no coverage check can find the next one — the item's opening finding, and [TODO 139] is where the same blindness is filed for the alarm corner |
-| 135 | OPEN | The `handSet` axis moves the keyless setting wheel and minute wheel through their whole travel (7.53982 and 6.28319 rad) and moves the cannon pinion, motion works and hands **not at all** — under the walk every check performs (`enterAxis` once, then `setPose` per sample). Found by `transmits` reporting both motion-works rows `driver still` on it, which since the path-length fix means never moved rather than came home. The cause is a time-eased tick law meeting a zero-dt pose: while the jumper is engaged the hands read `jumpDisp`, which approaches its target by `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))`, identically zero when `rawDt` is, and only the `jumpDisp === null` initialiser moves it — so a one-shot reading shows the axis working perfectly and a sweep sees nothing. CLAUDE.md's zero-dt trap reaching a whole sweep rather than one scripted write. Costs `inspection:handSet`, `clearances:handSet` and `expectedContacts:handSet` their entire dial-side population: a collision reachable only while setting the hands is invisible to all three and has been since the axis landed. `tools/probe-handset-reach.mjs` measures it with the control (reset-per-sample and sweep+step both move; the keyless rows are the must-move column). Filed rather than fixed — the three candidate fixes each reach past this item, and all three will surface real findings |
+| 135 | CLOSED | `setPose` clears `jumpDisp` when a pose names `setPathRot`, so a zero-dt `handSet` sweep seats the jumper and moves the hands; `probe-handset-reach.mjs` holds it |
 | 132 | CLOSED | TODO 124's residue, and **this item's own first triage was wrong** — corrected in place. It said five rows were "flat, so clock them", reasoning from 124's spread rule (large spread = does not transmit; flat = phase never solved). The rule is sound and insufficient: a flat spread has a THIRD cause, a pair NEITHER of whose members any axis moves, which reads flat because nothing happens. `transmits` records `aSpin`/`bSpin` for every row including the ones it declines to judge, and those columns were never read. Measured per declared input, the five are four different defects. `idler 2 ⇄ arbor pinion` was genuinely unsolved and transmits on both inputs — **CLOCKED**, a second stage beside the pinion's own build turning the pinion inside alarmRotor, 43.107% → **0.057%** over the net, waiver deleted by the table's own stale gate; `cage wheel ⇄ finger pinion` was ALREADY solved and transmitting yet 26.880% off across the net at 0.098 spread — [TODO 116]'s signature — because the solve was taken in a frame the movement never occupies: `fpSpin` carries the Geneva finger AND the output pinion and the tick writes it `phi + ARREST_FINGER_CLOCK`, so the arbor is never at the plain zero the solve ran at. **FIXED** by solving in the assembled frame, 26.880% → **0.073%**, clocking untouched, waiver deleted; **`leg B pinion ⇄ idler pinion` and both keyless rows were the item's SECOND wrong triage**: all three read 0|0 and none was unexercised. The keyless pair was blocked on [TODO 125] (0.1 centre miss over solveGearChain's 0.05 tripwire, which refused them aloud, correctly); 125 lifted it and each took a solve whose knob is a BASE CONSTANT rather than a rotation, since tick() writes those rotors as `base + spin` and a phase left on the object dies on the first frame — **22.222% → 0.043%** and **34.345% → 0.079%**, `minuteWheelBase` and a new `transferWheelClock` (the transfer wheel's index on the crown wheel's arbor). The winding pair's `0|0` was the CHECKER: `transmits` accumulated the NET turn and `wind` is a cycle by construction, so the spur travelled 21.99 rad, came home, and read as a still driver — fixed by keeping the PATH LENGTH beside the net, which also unblocked both reserve stages under `wind`. Leg B's `0|0` was the ROW: it reads the barrel BODY's rim (`arrestAngles` computes `idler` from bodyA alone) and the body turns on `alarmStrike`, while `alarmWind` turns the arbor — leg A's input. Re-declared and clocked by a second stage carrying the chain past the idler wheel to its pinion, **34.334% → 0.008%**. `crown` was likewise never an input to either keyless pair (that axis is the PULL), and the output stage named `alarmWind` alone where a differential's cage is reached by BOTH legs (-2.727273 under each). A sixth row was never this item's: `alarm setting setting wheel ⇄ idler 1` is [TODO 117]'s, whose table already records it driver-STILL under the hour (0 against the idler's −3.366) because the idler carries the disc's `_bd` back-drive term and the setting wheel has none; `transmits` never disagreed, a still driver simply gets a verdict that is reported and not failed. Its waiver now cites 117 |
 | 131 | CLOSED (same landing) | Reported by eye: the teeth overlapped the pallet stones instead of sliding across their inclines. Two defects, both older than the reversal that made them visible: the stones' impulse faces were cut from a slide path with the fork-swing term's radial sign WRONG (`+û` since §16 — measured in the fork frame the tip travels (−0.955, −0.347), the face was cut along (−0.44, −0.90), so the tip left the corner into free air and no tooth ever rode a stone), and the escape wheel's extrude bevel grew its metal to 4.62 against the 4.5 every consumer read, burying the tip 0.078 in the corner at rest. Fixed: the face is the chord of the tip's EXACT fork-frame path, the seat is the corner rotated back through the lock bank, the stone's width is DERIVED from a declared 1.5° drop, and the wheel's chamfer comes out of its stock (TODO 84 candidate 1). `probe-131-escapement-slide` PASSes: tip on the corner at lock (0.0000), at most 0.0012 off the face while riding, drop 1.5–1.9°. Residue: the recoil phase is posed by two constants that do not agree, there is no lock depth, and the club's own face does not share the impulse |
 | 130 | CLOSED (same landing) | Reported by eye: the lock rocker's pin standing 1.87 off its post and swinging in an arc when the lever moved. §183 built the pin and the lever's slot plate as two FLOATING bodies — `assembly` reported both (0.689 and 0.463 separation) and gated neither, the unit being outside `ASSEMBLY_SCOPE`. Fixed with the pin's arm and the lever's web, each derived from the members it joins; the unit is in scope now, so the class FAILS. Residue: the schematic tier still draws the lock as its lever line alone |
@@ -17106,7 +17108,7 @@ past the minute jumper. The family resemblance is worth the shelf space — 5, 6
 135 and this are all cases where a clean battery meant "nothing looked" rather
 than "nothing is wrong".
 
-## 135. The handSet axis is blind to everything downstream of the minute jumper
+## 135. The handSet axis is blind to everything downstream of the minute jumper — CLOSED
 
 Found while closing [TODO 132]'s last row, by the instrument that item spent its
 life being corrected by: `transmits` reports BOTH motion-works rows
@@ -17174,6 +17176,32 @@ Related: [TODO 5] and [TODO 6] are the other two named blind spots; the
 `restoring` audit's rule — a part no axis MOVES is a part an instrument cannot
 judge — is the same lesson, and this is its subtler form: the axis moves the
 part in principle and the tick law refuses it in practice.
+
+**Built** (commit 6e16d74). The third option above — the jumper's DISPLAY a
+pure function of the pose, with the ease confined to the live loop — is the
+one that landed, and it needed less than the §22 separation implied:
+`tick()`'s own `jumpDisp === null` initialiser already lands `jumpDisp` on
+the detent's target directly, a pure function of `(tau, setPathRot,
+jumpCorr)` with no ease involved, so a pose that NAMES the setting turn only
+has to reach that branch. `setPose` now clears `jumpDisp` to `null`
+whenever it assigns `setPathRot`, so every sample in a sweep re-seats the
+jumper at its own target instead of carrying the previous sample's stale
+eased value forward. `jumperEngage` deliberately keeps the carried star (it
+names no `setPathRot`), since that axis exists to sweep the live
+point-valley-point cycle rather than a sequence of hand-set poses — the
+latch this item's third option would otherwise have erased is kept by
+design, not by omission.
+
+Confirmed via `probe-handset-reach.mjs`: column B (sweep-style walk) now
+equals column A (reset-each-sample) exactly on all five parts —
+`settingWheel` 7.53982, `minuteWheel` 6.28319, `cannonPinion` 5.02655,
+`mwMinuteWheel` 1.67552, `mwHourWheel` 0.41888 — instead of reading 0 for
+the three downstream of the jumper. `probe-150-fold-sense.mjs`,
+`probe-coaxial-sense.mjs` and `probe-124-motionworks-sense.mjs` all still
+pass unchanged. What TODO 155 changed downstream of this fix (the setting
+train's own pose law, past the cap) does not touch this item: `handSetOffset`
+and the jumper's own seating are upstream of the cap and are exactly what
+this fix landed.
 
 ## 132. Six meshes are mis-phased with no `solveGearChain` call of their own — CLOSED
 
@@ -22001,7 +22029,7 @@ close by design and the margin genuinely cannot open there without
 moving `alarmHeart`'s own station. Re-measure the pair at both
 `crownPullT` extremes before landing either.
 
-## 155. The setting train is posed from handSetOffset alone while the minute wheel it meshes turns with the going train
+## 155. The setting train is posed from handSetOffset alone while the minute wheel it meshes turns with the going train — CLOSED
 
 Split out of [TODO 151], whose (d) landing made the problem REAL rather than
 arithmetic: until it, the setting cap stood 3.1 u off `mwMinuteWheel`'s
@@ -22042,6 +22070,69 @@ accumulated turn plus the hand-set chain. Then re-phase the pair at a pose
 the net actually occupies, re-derive the going-train analysis in [TODO
 151]'s old fix path against the built metal, and delete both waivers; their
 stale gates will say when.
+
+**Built.** The accumulator fix path above is REFUTED, not landed: emulated
+against `jumperEngage` (τ 0→60 s, crown pulled, not hacked), it read the
+cap ⇄ minute wheel pair 16.682% out of phase at f=1 — an accumulator zeroed
+only in `resetInputs` cannot track "the clutch went out" across a sweep
+that never re-enters the axis at the moment of disengagement, so it drifts
+exactly the way the fix path was written to avoid. Put to the user as a
+choice between that accumulator (Option B, the mechanically literal
+description of a real setting train — a free-wheel while the clutch is
+out) and a stateless law (Option A), **the user chose Option A.**
+
+Downstream of the clutch, every setting-train member is now posed as a
+function of `mwMinuteA` alone — the wheel the cap meshes — rather than of
+`handSetOffset`: `MW_MINUTE_A_REST` names the pose (τ 0, `handSetOffset`
+0) `SETTING_CAP_PHASE` is solved at, and `settingCapSpin =
+-(mwMinuteA - MW_MINUTE_A_REST) · (MW_MINUTE_TEETH / SETTING_CAP_TEETH)`
+carries both the going train and the hand-set chain, since `mwMinuteA`
+already does. `settingWheel`/`settingBevel`/`minuteArbor` are threaded
+backward from that one spin exactly as the fold's five corners already
+are — the chain walk that used to run forward from the crown at every
+tick now lives once, in the build-time identity assert beside
+`HAND_RAD_PER_SET_RAD`. At τ 0 with no jumper engaged the new law is
+bit-identical to the old handSet-only one (`mwMinuteA - MW_MINUTE_A_REST`
+is 0 there), so nothing needed re-phasing — `SETTING_CAP_PHASE`,
+`minuteWheelBase`, `settingBevelBase` and the corner indices are all
+unmoved. The keyless setting-wheel solve (`settingWheel` ⇄ `minuteWheel`)
+gained `train` as a declared input beside `handSet`, matching what it now
+actually transmits.
+
+| Check | Before | After |
+|---|---|---|
+| meshPhase `setting fold minute wheel ⇄ setting cap` | 42.951% | 0.129% |
+| meshPhase `keyless setting wheel ⇄ minute wheel` | 0.043% | 0.152% |
+| transmits fold, train | MISMATCH | ok −3.75 |
+| transmits fold, handSet | — | ok −3.75 |
+
+Both declared inputs on the keyless mesh read `ok` (train −0.833333,
+handSet −0.833333, the signed tooth-count bar). Both waivers are deleted
+(`MESH_PHASE_WAIVERS` and `TRANSMITS_WAIVERS`), their own stale-waiver
+gates confirming there is nothing left to excuse. The `Keyless ⇄ Motion
+works` `EXPECTED_CONTACT_FLOORS` row's floor moved 0.1642 → 0.1634 (still
+inside `CLEAR_MARGIN`) because the setting-train members now sweep a
+slightly larger pose net; `axisEntry` stayed 0, `inspection`/`clearances`/
+`expectedContacts` stayed 0 violations, `sweptOverlap` stayed 0 CONFIRMED.
+Battery 41/41.
+
+**What Option A leaves open.** The stateless law does not model the
+clutch's own engagement: `clutchRim` (on the sliding `windClutch`) and
+`settingBevel` are posed by two independent laws that only agree at the
+poses the fold was phased at, so the crossed-axis mesh between them slips
+while the crown is pulled (measured by `probe-crossed-axis-mesh.mjs`: up
+to 29% of a tooth buried, no re-indexing clears it). This is the
+mechanically honest residue of choosing Option A over the free-wheel
+Option B, and it is filed as [TODO 163] rather than fixed here — the
+honest fix is the minute jumper back-driving the stem, roadmap §4 /
+[TODO 58].
+
+Also newly exposed, unrelated to the clutch: `mwCornerFoldOut` — part of
+the fold's leg-2 rod — now moves under `train` too (it used to stand still
+outside `handSet`) and sweeps a volume against the reserve train's first
+wheel it never used to reach. No floor or budget row covers the pair (it
+is not `EXPECTED`), so this is exposure, not a fix, and is filed as
+[TODO 162].
 
 ## 156. CAP_SOLVE cannot see the jumper or reserve train as metal: nesting the dependent siting solves needs a build-order restructure — CLOSED
 
@@ -22440,3 +22531,111 @@ snapshot/restore facility needed, and the trap that facility would walk
 into (BOOT HAS NO POSE: a claim about a POSE cannot be a boot assert,
 though a claim about a LAW derived from already-solved constants can be —
 see TODO 156's own `walks` derivation for the shape that stays legal).
+
+## 162. The fold's leg-2 corner blank stands 0.036 off the reserve w1, and stood 0.055 off it before
+
+Found closing [TODO 155]. `mwCornerFoldOut` is the outboard bevel of the
+fold's leg-2 rod, the corner between `mwCornerFoldIn` and `mwCornerRiseIn`.
+Before TODO 155 it stood still outside the `handSet` axis, because the fold
+was posed from `handSetOffset` alone. TODO 155's stateless law poses the
+fold from `mwMinuteA`, so the corner now turns under `train` as well.
+
+**Measured** with `meshClearance`, the corner against every non-schematic
+mesh under the `rsvWheel1` group (its body and its hub), crown home, on
+this branch and on the `main` it forked from (3935145):
+
+| pose | main | TODO 155 |
+|---|---|---|
+| `{}` after `resetInputs`, and `{tension: 1, windAccumTurns: 3}` | 0.1565 | 0.1565 |
+| `{tension: 0.05}` | 0.0552 | 0.0550 |
+| `tau` over f = 0…1 of the train axis, 11 samples | 0.0552 flat | 0.0357 (f 0.6) to 0.0584 |
+
+`probe-150-fold-sense.mjs`'s REPORT row reads 0.0545 over its own pose
+net, which agrees with the table.
+
+**So this pair is not new.** On `main` it already cleared only 0.0552,
+about a third of `CLEAR_MARGIN` (0.15), and both trees pass the full battery
+41/41. No gate holds this pair. What TODO 155 changed is that the corner now
+turns, so its teeth sweep past the reserve wheel's teeth, and the worst
+reading drops by a further 0.02. An earlier reading of 0.1407–0.1565 filed
+here measured only the direct children of `rsvWheel1` found by name and
+missed the body that sets the minimum. It was wrong.
+
+**Two findings, both part of the fix:**
+
+1. **The siting is under margin.** The fold's leg-2 rod and its corners
+   were placed by §234/TODO 151's scans. Those scans judged the reserve
+   train at 0 clearance (see the `capLegAt` comment in `src/main.js`), not
+   at `CLEAR_MARGIN`. Re-site them as a P3 move in position space: the
+   corner's station or azimuth, or the reserve w1's stratum. Judge the move
+   on the real metal, over the train axis's motion, as TODO 156's
+   `JMP_SITE` does. Nothing about leg 2's mesh ratio or the corner's
+   section is in question. Under CLAUDE.md's design priorities no floor row
+   or waiver is available for a P3 finding.
+2. **The battery is blind to this pair.** Find which gate should have read
+   0.0552 against `CLEAR_MARGIN`, and why it did not: how `clearances` and
+   `inspection` scope `Keyless works` ⇄ `Power-reserve train`. Then make
+   the pair visible there. Otherwise a re-site can drift back under margin
+   without anything noticing. Until then, the probe row is the only thing
+   that reads the pair.
+
+## 163. The clutch rim and the setting bevel are posed by two laws
+
+Found closing [TODO 155], filed at the user's own direction when they
+chose that item's Option A (a stateless setting-train law) over Option B
+(a session accumulator tracking the clutch's engagement). Downstream of
+the clutch, the setting train now rides `mwMinuteA` — the going train and
+the hand-set chain together — with no memory of when the clutch went in
+or out. The clutch itself has no such law: `clutchRim` (on the sliding
+`windClutch`) is posed from `setPathRot`/`crownPullT` directly, and
+`settingBevel` is posed from the same `mwMinuteA`-derived chain as the
+rest of the setting train. The two agree only at the poses the mesh was
+phased at (`solveGearChain('keyless:', …, ['train', 'handSet'])`'s own
+rest pose); everywhere else, while the crown is pulled and the clutch
+engaged, the crossed-axis mesh between them carries the same phase drift
+TODO 155 closed on the OTHER side of the clutch.
+
+**Measured**, `probe-crossed-axis-mesh.mjs`'s tier-two phase floor for
+`clutchRim ⇄ settingBevel`: burial by phase is a FLAT 0.2187 (29% of a
+0.765 tooth height) across all 24 sampled indexings of the knob — "NO
+phase clears it", the probe's own verdict, which is exactly what a
+constant residual off a shared apex means (TODO 132's spread rule): the
+pair is not mis-phased, it does not roll at all, at any index. Separately,
+`probe-138-coupling.mjs`'s own two rows (`motion works, rise corner` and
+`motion works, fold corner`) read a swing ratio of exactly −1 (equal and
+opposite about their own axes) against a cone-geometry-demanded ratio of
+−1.18457 and −4.05974 — those two corners are RODS threaded by
+`MW_FOLD_SPIN`'s fixed ±1 convention rather than true rolling-cone
+conjugate pairs, a different (and pre-existing, unrelated to this item)
+characteristic of the fold's own design, not the clutch coupling this item
+is about.
+
+Rough figures on the clutch coupling itself, from the same probe family
+and the mesh's own tooth counts (`KW_MODULE`, 20/10 teeth): while the
+crown is live in the setting path the two rims run out of phase by roughly
+±0.25 of a rim pitch; at `jumperEngage` f=1 (the detent's own quantized
+target) the two stand about half a pitch apart; under `handSet` alone
+(`windStemSlip` never posed) the two accumulate whole extra turns against
+each other over a long crown-set session, since nothing here poses
+`windStemSlip`.
+
+**This is not a phasing bug** — no re-indexing of either bevel's build
+phase clears it (the tier-two floor IS the ceiling), because the two laws
+disagree about what "the clutch's position" means: one reads it from the
+crown's own pull/turn state, the other inherits it from wherever the
+setting train's stateless law happens to sit. **The honest fix is the
+minute jumper back-driving the stem** — roadmap §4 / [TODO 58] — which
+would give the clutch a real position derived from the same mechanism
+that derives everything else, rather than posing it from two disagreeing
+inputs. The user chose Option A for TODO 155 with this residue understood
+and accepted; this item exists so the gap has a number and a fix path
+rather than living only in a commit message.
+
+**Fix path.** [TODO 58] (roadmap §4): back-drive `windStemSlip` from the
+minute jumper so the stem — and with it `clutchRim` — has one law, the
+same one the rest of the keyless chain already has. Short of that, a
+session accumulator scoped to the clutch alone (TODO 155's rejected
+Option B, but applied only to the crossed-axis pair rather than the whole
+setting train) would at least make the two rims agree at the cost of the
+`axisEntry` risk that option carried when it was proposed for the whole
+train.

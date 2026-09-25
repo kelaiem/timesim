@@ -2309,6 +2309,13 @@ const centerAt0 = centerAngle(0);
 const MIN_HAND_RAD_PER_SEC = (centerAngle(3600) - centerAngle(0)) / 3600;
 const DIAL_EPOCH_S = 1 * 3600 + 51 * 60; // boot pose: 1:51:00
 const DIAL_EPOCH_ANGLE = DIAL_EPOCH_S * MIN_HAND_RAD_PER_SEC;
+// TODO 155 — mwMinuteA at the REST pose (tau 0, handSetOffset 0): minuteA
+// there is centerAngle(0) - centerAt0 + 0 + DIAL_EPOCH_ANGLE = DIAL_EPOCH_ANGLE,
+// so mwMinuteA = DIAL_EPOCH_ANGLE * MW_RATIO_1 — the pose SETTING_CAP_PHASE is
+// solved at and every setting-train spin is 0. Named once so the two sites
+// that need it (the solve below, tick's stateless law) read one constant
+// rather than restating the product.
+const MW_MINUTE_A_REST = DIAL_EPOCH_ANGLE * MW_RATIO_1;
 // The jumper quantizes the setting offset on the MIN_PITCH grid without the
 // epoch in hand (see tick()), so an epoch that is not a whole number of
 // minutes would leave the minute hand permanently between two indices.
@@ -5723,8 +5730,8 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   // The cap pinion, now on the motion works' MINUTE WHEEL'S OWN PLANE
   // (Z_SETTING_CAP): module MW_MODULE_1, one mesh distance from the wheel's
   // axis — it engages REAL teeth at last (TODO 151's (d) landing; TODO 155
-  // is what still poses it from handSetOffset alone rather than the going
-  // train the wheel actually turns with).
+  // closed the residue, posing it from the wheel it meshes instead of
+  // handSetOffset alone).
   const settingCap = G.makePinion({ name: 'settingCap', module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }], thickness: SETTING_CAP_T, material: MATS.steel });
   settingCap.traverse((o) => { if (o.isMesh) o.name = 'settingCap'; });
   settingCap.position.set(cap.x, cap.y, Z_SETTING_CAP);
@@ -17011,7 +17018,7 @@ await (async () => {
     solveGearChain('keyless:', [
       { obj: settingWheel, teeth: settingWheelTeeth, name: 'setting wheel' },
       { obj: minuteArbor, gauge: minuteWheel, teeth: minuteWheelTeeth, name: 'minute wheel' },
-    ], KW_MODULE, ['handSet']);
+    ], KW_MODULE, ['train', 'handSet']);
     await breathe();
     minuteWheelBase = minuteArbor.rotation.z;
     // The WINDING mesh, spur to transfer wheel — through the idler when the
@@ -17037,7 +17044,7 @@ await (async () => {
     // against cannonPinion above) — the one freedom is the cap.
     {
       const mwArborZ0 = mwArbor.rotation.z, settingCapZ0 = settingCap.rotation.z;
-      mwArbor.rotation.z = -(DIAL_EPOCH_ANGLE * MW_RATIO_1);
+      mwArbor.rotation.z = -MW_MINUTE_A_REST;
       settingCap.rotation.z = SETTING_CAP_PHASE;
       await breathe();
       solveGearChain('setting fold:', [
@@ -41721,9 +41728,13 @@ function tick(t) {
   // through the real tooth counts (TODO 150 item 1 — minutePinionTeeth
   // retired with the pinion it named; SETTING_CAP_TEETH is the real closing
   // ratio and happens to share its count, 8, so the value is unchanged).
-  const settingWheelSpin = KW_SET_WHEEL_SIDE * -setPathRot * (windPinionTeeth / settingWheelTeeth);
-  const minuteArborSpin = -settingWheelSpin * (settingWheelTeeth / minuteWheelTeeth);
-  const rawSetOffset = MW_FOLD_NET_SENSE * minuteArborSpin * (SETTING_CAP_TEETH / cannonPinionTeeth);
+  // TODO 155 — settingWheelSpin/minuteArborSpin used to be computed here,
+  // forward from the crown, and written straight to the setting-train
+  // members below; the chain walk now lives once, in the build-time
+  // identity assert beside HAND_RAD_PER_SET_RAD (which carries the crown→
+  // hands sense Sync depends on, unchanged) — this is that same coefficient
+  // applied to the live pose input.
+  const rawSetOffset = HAND_RAD_PER_SET_RAD * setPathRot;
   // MINUTE QUICK-SET, DETENTED DISPLAY: while the crown is out, the jumper
   // is in the star and the DISPLAYED offset is quantized so the minute hand
   // sits on exact minute indices — the hand steps one detent at a time
@@ -42343,21 +42354,18 @@ function tick(t) {
   // (TODO 1 — this was `rotation.z = tension · 1.4π` plus a 6% scale.)
   mainspring.setWind(mainspring.sweepFull - drumRot);
 
-  settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
-  // …and its BEVEL half turns with it: one arbor, one blank pair (TODO 136).
-  // Indexed on its own corner, so the spin is what travels, not the angle.
-  settingBevel.rotation.z = settingBevelBase - settingWheelSpin;   // negated: its mount is turned through π (see the build)
-  minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
   // Cap pinion at the dial end of the motion-works arbor. It meshes the MINUTE
   // WHEEL, beside the cannon pinion that meshes the same wheel, so it turns
   // with the cannon (two external meshes) at the tooth ratio cap ⇄ wheel ⇄
   // cannon — TODO 150: it turned at the cannon's own rate, so its teeth slid
-  // 25% of the set offset against a wheel it claims to mesh. The DRIVE is
-  // still handSetOffset (MECH_GRAPH.todo's representational convention), and
-  // it still omits the going train's turn of the wheel it meshes — TODO 150's
-  // residue, with the drop corner's.
-  const settingCapSpin = handSetOffset
-    * (MW_MINUTE_TEETH / SETTING_CAP_TEETH) * (cannonPinionTeeth / MW_MINUTE_TEETH);
+  // 25% of the set offset against a wheel it claims to mesh. TODO 155 closed
+  // the residue TODO 150 left: downstream of the clutch the setting train is
+  // posed FROM THE WHEEL THE CAP MESHES, not from handSetOffset — the cap
+  // never leaves mwMinuteWheel, so its angle is a function of the wheel's
+  // alone, going train and hand-set together (the residual clutch-rim ⇄
+  // setting-bevel slip while the crown is pulled is TODO 163, not this).
+  // External mesh → the one sign; mwMinuteA is the movement-frame angle.
+  const settingCapSpin = -(mwMinuteA - MW_MINUTE_A_REST) * (MW_MINUTE_TEETH / SETTING_CAP_TEETH);
   settingCap.rotation.z = SETTING_CAP_PHASE + settingCapSpin;
   // Motion-works bevel corners, threaded FROM THE CAP by the factors read off
   // their mounts at the build (`MW_FOLD_SPIN`, TODO 150): each rod one rigid
@@ -42372,6 +42380,13 @@ function tick(t) {
     c.gearIn.rotation.z = c.baseIn + k.kIn * settingCapSpin;
     c.gearOut.rotation.z = c.baseOut + k.kOut * settingCapSpin;
   }
+  const minuteArborSpin = MW_FOLD_NET_SENSE * settingCapSpin;   // the fold's net, asserted against MW_FOLD_SPIN at its build
+  const settingWheelSpin = -minuteArborSpin * (minuteWheelTeeth / settingWheelTeeth);   // external mesh
+  settingWheel.rotation.z = settingWheelBase + settingWheelSpin;
+  // …and its BEVEL half turns with it: one arbor, one blank pair (TODO 136).
+  // Indexed on its own corner, so the spin is what travels, not the angle.
+  settingBevel.rotation.z = settingBevelBase - settingWheelSpin;   // negated: its mount is turned through π (see the build)
+  minuteArbor.rotation.z = minuteWheelBase + minuteArborSpin;
 
   // Power-reserve train — DRIVEN FROM ITS INPUT (TODO 48; standing rule 2).
   // This block used to write the HAND first from `tension` and solve the
@@ -44583,7 +44598,11 @@ window.__clock = {
     // re-seeds so no crown delta leaks into the next tick, the
     // alarmCrownRotation convention above.
     if (p.windStemSlip !== undefined) { windStemSlip = p.windStemSlip; lastCrownRotation = crownRotation; }
-    if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
+    if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; jumpDisp = null; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
+    // TODO 135 — a pose naming the setting turn names where the jumper SEATS. tick's
+    // `jumpDisp === null` initialiser lands it on the detent's target, a pure function
+    // of (tau, setPathRot, jumpCorr); the ease is a live-loop transient. `jumperEngage`
+    // names no setPathRot and keeps the carried star by design.
     if (p.alarmCrownRotation !== undefined) { // §24 alarm axis — poses "crown wound to here in SET mode"
       alarmCrownRotation = p.alarmCrownRotation;
       // THE SAME CROSSING AS tick()'S, and it has to carry the same sense.

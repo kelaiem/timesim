@@ -1,30 +1,28 @@
 // HOW FAR DOWN THE HAND-SETTING CHAIN DOES THE `handSet` AXIS ACTUALLY REACH?
 //
-// TODO 135. The axis exists to sweep hand-setting, and it does move the keyless
-// setting wheel and minute wheel through their whole travel. It does NOT move
-// the cannon pinion, the motion works or the hands — under the walk every check
-// performs. So `inspection:handSet`, `clearances:handSet` and
-// `expectedContacts:handSet` sweep the hand-setting axis with the parts
-// hand-setting drives pinned at the f = 0 pose, and `transmits` reports both
-// motion-works rows `driver still` on it.
-//
-// The cause is a TIME-EASED tick law meeting a zero-dt pose. While the jumper
-// is engaged (`crownPullT > 0.5`, which this axis pins at 1) the hands read
-// `jumpDisp`, and `jumpDisp` approaches its target by
-// `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))` — which is identically
-// zero when `rawDt` is zero, as it is under `setPose`. Only the first engaged
-// tick after a reset moves it, via its `jumpDisp === null` initialiser. That is
-// CLAUDE.md's "setPose ticks with zero dt" trap, reaching a whole sweep rather
-// than one scripted write.
+// TODO 135, closed. The axis exists to sweep hand-setting, and it moves the
+// keyless setting wheel and minute wheel through their whole travel. It USED
+// TO leave the cannon pinion, the motion works and the hands pinned at the
+// f = 0 pose under the walk every check performs, because a TIME-EASED tick
+// law met a zero-dt pose: while the jumper is engaged (`crownPullT > 0.5`,
+// which this axis pins at 1) the hands read `jumpDisp`, and `jumpDisp`
+// approaches its target by
+// `(target − jumpDisp)·(1 − exp(−rawDt/CAM_SNAP_TAU))` — identically zero
+// when `rawDt` is zero, as it is under `setPose`. The fix seats the jumper at
+// each sample's own detent instead of easing towards it: `setPose` now clears
+// `jumpDisp` to null whenever it assigns `setPathRot`, so tick's
+// `jumpDisp === null` initialiser — a pure function of (tau, setPathRot,
+// jumpCorr), not a live-loop transient — lands it on the target every time.
 //
 // REPORT, with the control that decides it — a frozen reading looks the same
 // whether the axis is blind or the metal genuinely does not move:
 //   A  enterAxis before EVERY sample (what a one-shot reading does)
 //   B  enterAxis once, setPose per sample (what every sweep does)
 //   C  as B, plus one step(dt) per sample so the ease can run
-// B frozen while A and C move identifies the ease as the cause rather than
-// leaving it a plausible story; the keyless rows beside them are the
-// must-move control, since they read `setPathRot` directly and are unaffected.
+// B now matches A and C (small drift against C is detent quantization: B
+// samples an exact target, C approaches it by a finite step and rounds).
+// The keyless rows beside them are the must-move control, since they read
+// `setPathRot` directly and were never affected.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 const srv = spawn('python3', ['-m', 'http.server', '8506', '--bind', '127.0.0.1'], { cwd: '/home/user/timesim', stdio: 'ignore' });
