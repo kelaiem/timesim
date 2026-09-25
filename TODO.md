@@ -22532,7 +22532,7 @@ into (BOOT HAS NO POSE: a claim about a POSE cannot be a boot assert,
 though a claim about a LAW derived from already-solved constants can be —
 see TODO 156's own `walks` derivation for the shape that stays legal).
 
-## 162. CLOSED — The fold's leg-2 corner blank stood 0.036 off the reserve w1, and 0.055 off it before
+## 162. The fold's leg-2 corner blank stands 0.036 off the reserve w1, and stood 0.055 off it before — CLOSED
 
 Found closing [TODO 155]. `mwCornerFoldOut` is the outboard bevel of the
 fold's leg-2 rod, the corner between `mwCornerFoldIn` and `mwCornerRiseIn`.
