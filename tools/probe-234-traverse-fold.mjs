@@ -11,12 +11,17 @@
 // real blocker was the reserve's w1 rim against K's OUTBOARD blank plus the
 // cap pinion against p1 — both of which the reserve's w1 swing and the cap's
 // bearing, solved JOINTLY in main.js (`CAP_SOLVE` builds each candidate B's
-// metal and asks `solveReserveSwing`), now clear at bearing +17.25°, swing −5°.
+// metal and asks `solveReserveSwing`), now clear at bearing +5.25°, swing
+// +3.5° (TODO 162 moved these off +17.25°/−5° — the swing solve used to
+// judge w1's and p1's tip circles by a nominal/over-read pair that cancelled;
+// reading the cut metal instead, and the corner's own spin at every phase
+// rather than one, changed which bearing the scan accepts first).
 // "The finding is B" (the mitre at B pinned by the minute wheel's rim and the
 // star) was the same artefact read at B: at the solved bearing B's inboard
 // mitre re-aimed along leg 2 reads clear here (control below), and the star
 // is 1.7 u under it. The mirror fold (transfer arbor's side) stays refused in
-// closed form — Σ 162°, leg 2 L/D 29.6 — and is printed below the solve.
+// closed form — Σ 154.0°, leg 2 L/D 73.8 (TODO 162 moved these too) — and is
+// printed below the solve.
 // `tools/probe-234-cap-bearing.mjs` reads the bearing scan back off the tree.
 //
 // What this probe measured on the way (kept because each cost a cut):
@@ -26,7 +31,7 @@
 //   · on a folded tree the straight A→B run is the fold's reference line and
 //     crosses the barrel column (control (a) reports it rather than grading
 //     the pinch);
-//   · the fold corner's blanks at Σ ≈ 152° are nearly face gears and fall
+//   · the fold corner's blanks at Σ ≈ 162° (TODO 162, was ≈ 152°) are nearly face gears and fall
 //     under §50's floor at the template module — main.js solves the module
 //     up (`foldModuleFor`) and this probe's blank sampling reads the cut.
 //

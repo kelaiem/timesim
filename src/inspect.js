@@ -2047,6 +2047,16 @@ const CLEARANCE_BUDGETS = [
   { a: 'Minute jumper', b: 'Dial', min: 0.15, axes: ['beat', 'reserve', 'train'] },
   { a: 'Minute jumper', b: 'Hour wheel', min: 0.15 },
   { a: 'Minute jumper', b: 'Keyless works', min: 0.15 },
+  // TODO 162 — the setting fold's leg-2 corner (`mwCornerFoldOut`, keyed to
+  // `mwCornerFoldIn`/`settingTraverse1`/`settingTraverse2`/`mwCornerRiseIn` as
+  // one rod) turns under `train` too since TODO 155's stateless fold law, and
+  // stood only 0.0357–0.0552 off `rsvWheel1` with no gate reading the pair —
+  // `clearances` and `inspection` never scoped `Keyless works` ⇄
+  // `Power-reserve train` at all (this row and MECH_GRAPH/EXPECTED_PAIRS'
+  // declared touch below). No declared contact excuses any of it. See
+  // `tools/probe-150-fold-sense.mjs`'s LEG 2 ⇄ RESERVE row for the finer
+  // per-member measurement this coarse per-unit row cannot see.
+  { a: 'Keyless works', b: 'Power-reserve train', min: CLEAR_MARGIN },
 ];
 
 // ---------------------------------------------------------------------------
