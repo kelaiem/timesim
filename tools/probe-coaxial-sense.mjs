@@ -72,6 +72,12 @@ const out = await page.evaluate(() => {
     'Heart cam': unit('Heart cam (seconds reset)'),
     'Hour wheel': unit('Hour wheel'),
     'Small seconds hand': named('smallSecondsHand'),
+    // TODO 155 — the setting cap now rides the wheel it meshes (mwMinuteA),
+    // going train and hand-set together, so a τ-only sweep must move it: a
+    // must-DIFFER control on the same external mesh probe-150-fold-sense.mjs
+    // holds under `handSet`, now held here under `train`.
+    'Setting cap': named('settingCap'),
+    'MW minute wheel': named('mwMinuteWheel'),
   };
   const missing = Object.entries(PARTS).filter(([, o]) => !o).map(([k]) => k);
 
@@ -253,6 +259,11 @@ const ROWS = [
   ['claim', 'SAME', 'Fourth wheel', 'Small seconds hand', 'the hand rides the fourth arbor through the slip-coupled display arbor'],
   ['claim', 'SAME', 'Fourth wheel', 'Heart cam', 'the display arbor is friction-coupled to the fourth arbor'],
   ['claim', 'SAME', 'Centre wheel', 'Hour wheel', 'cannon pinion on the centre arbor, then the motion works two meshes'],
+  // TODO 155 — closed: the setting cap is now posed from the wheel it
+  // meshes (mwMinuteA), so a τ-only sweep (crown home, no setPathRot) must
+  // move BOTH and they must counter-rotate, the same external-mesh claim
+  // probe-150-fold-sense.mjs holds under `handSet`.
+  ['claim', 'DIFF', 'Setting cap', 'MW minute wheel', 'TODO 155 — the fold is posed from the wheel it meshes; one external mesh, must counter-rotate under train too'],
 ];
 console.log('\nPAIRS\n');
 let claimsFailed = 0, controlsFailed = 0;
