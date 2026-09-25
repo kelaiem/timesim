@@ -287,21 +287,52 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
   const foldClear = {}, cross = {};
   const put = (m, k, d, pi) => { if (!m[k] || d < m[k].d) m[k] = { d, pose: pi }; };
   const box = (o) => new THREE.Box3().setFromObject(o);
-  // TODO 155 — REPORT, not gated (TODO 162 files it): `mwCornerFoldOut`
-  // is part of `mwCornerFoldIn`'s rod (leg 2) and used to stand still outside
-  // the `handSet` axis; now the fold turns with τ too, it sweeps volumes
-  // against the reserve train it never used to reach. Not in `moved` (only
-  // the (d) landing's own new/relocated members are), so it is walked here
-  // as its own pair rather than folded into FOLD CLEAR's declared scope.
-  const foldOutMesh = collectFor('mwCornerFoldOut');
-  const rsvWheel1Mesh = collectFor('rsvWheel1');   // makeGear names the GROUP, not its meshes
-  let foldOutVsRsv = null;
+  // TODO 162 — GATED: LEG 2 ⇄ RESERVE. `mwCornerFoldOut` is part of
+  // `mwCornerFoldIn`'s rod (leg 2, with `settingTraverse1`/`settingTraverse2`
+  // the rod itself and `mwCornerRiseIn` the far apex it shares with leg 2 —
+  // one rigid body) and used to stand still outside the `handSet` axis; now
+  // the fold turns with τ too (TODO 155), it sweeps volumes against the
+  // reserve train it never used to reach. Not in `moved` (only the (d)
+  // landing's own new/relocated members are) and not folded into FOLD
+  // CLEAR's declared scope — TODO 162 found the pair cleared only
+  // 0.0357–0.0552, under CLEAR_MARGIN, with no gate anywhere reading it
+  // (`clearances`/`inspection` never see `Keyless works` ⇄ `Power-reserve
+  // train` — TODO 162's second finding). Measured against every
+  // non-schematic mesh of the WHOLE `Power-reserve train` unit (read off
+  // `labelEntries`, not by part name — the first reading of this pair found
+  // only rsvWheel1's direct children by name and missed the body that sets
+  // the minimum), over FOLD CLEAR's own POSES plus every reserve/wind/
+  // arrest/train/handSet axis at 24 samples each (the axes that move either
+  // body and the ones TODO 162 measured the worst reading on).
+  const LEG2_NAMES = ['mwCornerFoldIn', 'mwCornerFoldOut', 'settingTraverse1', 'settingTraverse2', 'mwCornerRiseIn'];
+  const leg2Meshes = LEG2_NAMES.flatMap((n) => collectFor(n).map((m) => [n, m]));
+  const rsvUnit = (C.labelEntries || []).find((e) => e.name === 'Power-reserve train');
+  const rsvMeshes = [];
+  if (rsvUnit) rsvUnit.obj.traverse((o) => { if (o.isMesh && unschem(o)) rsvMeshes.push(o); });
+  const leg2AxisPoses = [];
+  for (const axName of ['reserve', 'wind', 'arrest', 'train', 'handSet']) {
+    const ax = I.AXES.find((a) => a.name === axName);
+    if (!ax) continue;
+    const n = 24;
+    for (let i = 0; i < n; i++) leg2AxisPoses.push(ax.pose(i / (n - 1)));
+  }
+  const leg2Poses = [...POSES, ...leg2AxisPoses];
+  let leg2Rsv = null;
+  // the must-hit control: settingTraverse2's rod against reservePinion0's top
+  // face is the DESIGNED tie (SETTING_ROD_R, solved from RSV_P0_TOP_Z) — an
+  // exact 0.15 by construction, so this sweep must record it within
+  // MEASURE_EPS or its own coverage is the thing in question, not the pair.
+  let leg2Tie = null;
+  for (let pi = 0; pi < leg2Poses.length; pi++) {
+    C.resetInputs(); C.setPose({ crownPullT: 0, ...leg2Poses[pi] }); C.scene.updateMatrixWorld(true);
+    for (const [ln, lm] of leg2Meshes) for (const rm of rsvMeshes) {
+      const d = I.meshClearance(lm, rm);
+      if (!leg2Rsv || d < leg2Rsv.d) leg2Rsv = { d, pose: pi, a: ln, b: labelOf(rm) };
+      if (ln === 'settingTraverse2' && labelOf(rm) === 'reservePinion0' && (!leg2Tie || d < leg2Tie.d)) leg2Tie = { d, pose: pi };
+    }
+  }
   for (let pi = 0; pi < POSES.length; pi++) {
     C.resetInputs(); C.setPose({ crownPullT: 0, ...POSES[pi] }); C.scene.updateMatrixWorld(true);
-    for (const m of foldOutMesh) for (const r of rsvWheel1Mesh) {
-      const d = I.meshClearance(m, r);
-      if (!foldOutVsRsv || d < foldOutVsRsv.d) foldOutVsRsv = { d, pose: pi };
-    }
     const ob = others.map(box);
     for (const [n, list] of moved) for (const m of list) {
       const mb = box(m).expandByScalar(1);
@@ -421,7 +452,7 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
     mwStack[n] = { count: meshes.length, clr, zTop };
   }
   return { runs, tauRuns, capZ, mwZ, centreD, centreWant, plate, lands, foldClear, cross, poses: POSES.length,
-    foldOutVsRsv,
+    leg2Rsv, leg2Tie, leg2Poses: leg2Poses.length,
     jumperRows, jumperBoth: [...jumperBoth], jumperPoses: jPoses.length, jumperSite: C.jumperSite, jumperParts: jumper.length, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN, mwStack, faceZ,
     measR, measZ,
     capLeg: C.settingFold && C.settingFold.capLeg };
@@ -518,14 +549,20 @@ else {
     else if (r.d < 0.4) ok(`${a} ⇄ ${b} clears ${r.d.toFixed(4)} (pose ${r.pose})`);
   }
   console.log('  (pairs clearing 0.4 or more not listed; settingCap ⇄ mwMinuteWheel is the declared mesh and is not measured here)');
-  // TODO 155 — REPORT, not a gate (TODO 162 owns it): `mwCornerFoldOut` now
-  // turns under `train` too. Against every mesh of rsvWheel1 it already read
-  // 0.0552 on main (the reserve wheel turning past a still corner) and reads
-  // 0.0357 at its worst over the train axis since TODO 155. It was under
-  // CLEAR_MARGIN before this landing, and no battery gate holds the pair.
-  if (out.foldOutVsRsv)
-    console.log(`  REPORT mwCornerFoldOut ⇄ rsvWheel1 clears ${out.foldOutVsRsv.d.toFixed(4)} (pose ${out.foldOutVsRsv.pose}) — under CLEAR_MARGIN ${out.CLEAR_MARGIN} (0.0552 on main before TODO 155), filed as TODO 162`);
-  else console.log('  REPORT mwCornerFoldOut ⇄ rsvWheel1: no mesh pair found to measure');
+  // TODO 162 — GATED: LEG 2 ⇄ RESERVE. Before this landing nothing read this
+  // pair (0.0552 on main, 0.0357 at its worst here — see the item). The
+  // must-hit control comes first: if the designed tie (settingTraverse2 ⇄
+  // reservePinion0, exactly CLEAR_MARGIN by construction — SETTING_ROD_R,
+  // solved from RSV_P0_TOP_Z) is not recorded within MEASURE_EPS, this
+  // sweep's own coverage is broken and the main row below cannot be trusted.
+  console.log(`\nLEG 2 ⇄ RESERVE — TODO 162: leg 2's rod and both its bevel corners ⇄ every mesh of Power-reserve train, over ${out.leg2Poses} poses:`);
+  if (!out.leg2Tie || Math.abs(out.leg2Tie.d - out.CLEAR_MARGIN) > 1e-6)
+    fail(`control: settingTraverse2 ⇄ reservePinion0 tie not recorded within 1e-6 of CLEAR_MARGIN ${out.CLEAR_MARGIN} — ${out.leg2Tie ? `read ${out.leg2Tie.d.toFixed(7)} (pose ${out.leg2Tie.pose})` : 'never measured'}`);
+  else ok(`control: settingTraverse2 ⇄ reservePinion0 tie ${out.leg2Tie.d.toFixed(7)} — the designed SETTING_ROD_R tie, within 1e-6 of CLEAR_MARGIN`);
+  if (!out.leg2Rsv) fail('LEG 2 ⇄ RESERVE: no mesh pair found to measure');
+  else if (out.leg2Rsv.d < out.CLEAR_MARGIN - MEASURE_EPS)
+    fail(`${out.leg2Rsv.a} ⇄ ${out.leg2Rsv.b} clears ${out.leg2Rsv.d.toFixed(4)} (pose ${out.leg2Rsv.pose}) — under CLEAR_MARGIN ${out.CLEAR_MARGIN}`);
+  else ok(`${out.leg2Rsv.a} ⇄ ${out.leg2Rsv.b} clears ${out.leg2Rsv.d.toFixed(4)} (pose ${out.leg2Rsv.pose})`);
   console.log(`\nCROSS-BODY — TODO 151: every blank of one new corner ⇄ every blank of another, and each member ⇄ the other rigid bodies:`);
   // two blanks keyed to ONE rod turn as one rigid body (§107: one connected
   // part), so between them the rule is that they do not run into each other,

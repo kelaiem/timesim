@@ -5219,8 +5219,9 @@ const Z_CAP_CORNER = Z_SETTING_CAP - MW_CAP_APEX_GAP;                           
 // then cuts — §234's rule, one builder, so the metal the scan judged IS the
 // metal that ships.
 // §234 fold — THE FOLD CORNER'S MODULE IS SOLVED AGAINST §50's FLOOR. At the
-// shallow shaft angle the fold gets (Σ ≈ 157°, the deflection the Yoke and
-// the barrel column leave it) a 10-tooth pair is nearly a pair of face gears:
+// shallow shaft angle the fold gets (Σ ≈ 162°, the deflection the Yoke and
+// the barrel column leave it — TODO 162 moved it from ≈ 157°) a 10-tooth
+// pair is nearly a pair of face gears:
 // its blank is a thin flat ring, and cut at the template's BEVEL_MODULE it
 // measured 0.0911 mm across its axis — under the wheel floor (0.12 mm) the
 // battery holds every part to. The template module was sized for a mitre,
@@ -5316,8 +5317,28 @@ const rsvU = { x: (rsvPivotXY.x - P.barrel.x) / rsvSpanD, y: (rsvPivotXY.y - P.b
 // and the connecting rod) by the one margin, and stage two's module then
 // derives from the TRUE w1→station distance.
 // swing = 0 keeps every original expression verbatim (the a+(b−a)≠b rule).
-const rsvW1TipR = (rsvModule0 * (rsvTeethW1 + 2)) / 2;
 const RSV_W1_BORE_R = 0.5;   // rsvWheel1's bore (its build below reads this); the hub's radius follows it through gearFaceReach
+// TODO 162 — THE NOMINAL TIP UNDER-READS THE CUT METAL. module·(teeth+2)/2 is
+// the pitch-circle offset a smooth involute tip would reach; this repo's
+// generators cut a POLYGON, whose farthest point is a VERTEX past that
+// offset — the §115 error, fixed for p1 (gearOuterR, below) but never for
+// w1. Read w1's bound off the metal the same way: build it once with the
+// exact args its build (far below) uses, measure the farthest vertex,
+// dispose — memoized, so the swing scan's repeated candidates pay for it once.
+const _cutTipMemo = new Map();
+function cutTipR(builder, args) {
+  const key = (builder === G.makeGear ? 'gear|' : 'pinion|') + JSON.stringify(args);
+  let r = _cutTipMemo.get(key);
+  if (r !== undefined) return r;
+  const g = builder(args);
+  r = 0;
+  g.traverse((o) => { if (!o.isMesh) return; const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) r = Math.max(r, Math.hypot(p.getX(i), p.getY(i)));
+    o.geometry.dispose(); });
+  _cutTipMemo.set(key, r);
+  return r;
+}
+const rsvW1TipR = cutTipR(G.makeGear, { module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R, spokes: 4, material: MATS.brass });
 // The wall is MEASURED, not modelled: a cone-radius model of the corner
 // gears under-read the metal (the bevel bodies trail off the corner points
 // along their shafts), so the scan reads the traverse's vertices and holds
@@ -5327,21 +5348,76 @@ const RSV_W1_BORE_R = 0.5;   // rsvWheel1's bore (its build below reads this); t
 // extrudes, and a facet's midpoint sags inside its endpoints — measured, the
 // vertex-only wall under-read the nearest bevel flank by ~0.06 and accepted a
 // swing the face metric refuses.
+const _mpKv = new THREE.Vector3(), _mpKv2 = new THREE.Vector3();
+function meshPointsOne(o, pts) {
+  if (!o.isMesh || !o.geometry?.attributes?.position) return;
+  const pos = o.geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    _mpKv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+    pts.push([_mpKv.x, _mpKv.y, _mpKv.z]);
+    if (i + 1 < pos.count) {
+      _mpKv2.fromBufferAttribute(pos, i + 1).applyMatrix4(o.matrixWorld);
+      pts.push([(_mpKv.x + _mpKv2.x) / 2, (_mpKv.y + _mpKv2.y) / 2, (_mpKv.z + _mpKv2.z) / 2]);
+    }
+  }
+}
 function meshPoints(root, pts = []) {
   root.updateMatrixWorld(true);
-  const _kv = new THREE.Vector3(), _kv2 = new THREE.Vector3();
+  root.traverse((o) => meshPointsOne(o, pts));
+  return pts;
+}
+// TODO 162 — JUDGE OVER MOTION. `mwCornerFold`/`mwCornerRise`/etc.'s outboard
+// bevels (`mwCorner*In`/`mwCorner*Out`) turn under `train` since TODO 155's
+// stateless fold law, but the swing solve used to read their meshes at ONE
+// spin phase — whatever the build left them at. A gear's silhouette is not a
+// circle: the boot pose can hold the widest gap toward the obstacle rather
+// than the tooth that actually comes nearest, which is exactly how the fold
+// corner's true 0.036–0.055 clearance against rsvWheel1 (TODO 162's own
+// finding) went unmeasured by this solve while it judged the pair.
+//
+// Sample every such gear group's rotation.z over one tooth pitch (2π/
+// BEVEL_TEETH), together (so a phase step tests the whole fold at once, not
+// the cross-product of every corner's phase), and restore the original
+// rotation exactly after — the metal must come back byte-identical to how it
+// was cut. K is DERIVED, the same law as RSV_SWING_STEP_DEG/CAP_SOLVE's STEP:
+// one tooth pitch's arc at the widest corner tip present must be sampled at
+// least twice per half-margin window, or a scan can step over the margin —
+// coarser skips windows, finer buys nothing a margin can see. This is the ONE
+// point generator both CAP_SOLVE's candidate scan and the reserve build's
+// confirmation call, so the swing a candidate was accepted against is the
+// swing the shipped metal is judged against (the "not the one the cap
+// bearing was solved against" warning below polices exactly that).
+//
+// A breathe() seam is placed PER MESH, not per phase — §239's own rule
+// ("a seam inside a hot loop is a defect, not a tuning question," and the
+// `BACK_ENVELOPE` precedent it names): `root` here can be the whole `keyless`
+// unit (55 meshes, confirmation call), and ONE `meshPoints(root)` pass over
+// that whole tree is itself long enough to BE the boot's worst held stretch,
+// so no per-phase seam frequency can bound it — the seam has to sit inside
+// the traversal. Measured: no seam, K=24, one candidate held the thread
+// 1136 ms; a seam every phase (still one `meshPoints(root)` call per seam)
+// left the boot's worst held stretch ~120 ms over HEAD's own standing; per
+// mesh (this form) is back within it. The mesh list and the gears' base
+// rotations are each read once — only the per-phase rotation write and the
+// per-mesh point collection repeat.
+async function reserveObstaclePoints(root, pts = []) {
+  const gears = [];
+  const meshes = [];
   root.traverse((o) => {
-    if (!o.isMesh || !o.geometry?.attributes?.position) return;
-    const pos = o.geometry.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      _kv.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-      pts.push([_kv.x, _kv.y, _kv.z]);
-      if (i + 1 < pos.count) {
-        _kv2.fromBufferAttribute(pos, i + 1).applyMatrix4(o.matrixWorld);
-        pts.push([(_kv.x + _kv2.x) / 2, (_kv.y + _kv2.y) / 2, (_kv.z + _kv2.z) / 2]);
-      }
-    }
+    if (!o.isMesh && /^mwCorner.*(In|Out)$/.test(o.name || '')) gears.push([o, o.rotation.z]);
+    if (o.isMesh && o.geometry?.attributes?.position) meshes.push(o);
   });
+  if (!gears.length) { meshPoints(root, pts); return pts; }
+  let tipR = 0;
+  for (const [g] of gears) g.traverse((o) => { if (!o.isMesh) return; const p = o.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) tipR = Math.max(tipR, Math.hypot(p.getX(i), p.getY(i))); });
+  const K = Math.max(1, Math.ceil((2 * Math.PI * tipR / BEVEL_TEETH) / (CLEAR_MARGIN / 2)));
+  for (let k = 0; k < K; k++) {
+    for (const [g, z0] of gears) g.rotation.z = z0 + (k / K) * (2 * Math.PI / BEVEL_TEETH);
+    root.updateMatrixWorld(true);
+    for (const m of meshes) { meshPointsOne(m, pts); await breathe(); }
+  }
+  for (const [g, z0] of gears) g.rotation.z = z0;
   return pts;
 }
 // §136 — THIS SOLVE USED TO CLEAR THE WRONG WHEEL, AND ONLY ITS OWN SLICE.
@@ -5411,8 +5487,12 @@ function solveReserveSwing(pts) {
     const m1 = (2 * Math.hypot(rsvPivotXY.x - wx, rsvPivotXY.y - wy))
       / (rsvTeethP1 + rsvTeethW2);
     if (!(m1 > 0)) return { c: -Infinity, member: 'p1 (no module)' };
-    const p1TipR = G.gearOuterR({ module: m1, teeth: rsvTeethP1,
-      mates: [rsvTeethW2], thickness: 1.2 });
+    // TODO 162 — gearOuterR (TODO 86) OVER-reads the built polygon by rounding
+    // out past its own tip vertex, which used to cancel w1's under-read above
+    // and hide the pair's true clearance. Read p1's bound off the metal too,
+    // for the exact args its build (far below) uses, memoized by module —
+    // every candidate swing re-derives m1, so this caches per distinct module.
+    const p1TipR = cutTipR(G.makePinion, { module: m1, teeth: rsvTeethP1, mates: [rsvTeethW2], thickness: 1.2, material: MATS.steel });
     const p1Reach = G.gearFaceReach({ module: m1, thickness: 1.2, pinion: true }).body;
     const p1Lo = p1Z - p1Reach - CLEAR_MARGIN, p1Hi = p1Z + p1Reach + CLEAR_MARGIN;
     let c = Infinity, member = 'none';
@@ -5776,21 +5856,45 @@ const CAP_SOLVE = await (async () => {
     zLo: transferArbor.position.z - transferArbor.geometry.parameters.height / 2,
     zHi: transferArbor.position.z + transferArbor.geometry.parameters.height / 2 };
   await breathe();
-  const staticPts = meshPoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too
+  const staticPts = await reserveObstaclePoints(keyless);   // what the keyless works hold before the traverse — the reserve reads these too (no mwCorner* here yet, so this is meshPoints)
   const disposeTree = (g) => g.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+  const arbClear = (pts) => {
+    let m = Infinity;
+    for (const q of pts) {
+      const dz = q[2] < arb.zLo ? arb.zLo - q[2] : q[2] > arb.zHi ? q[2] - arb.zHi : 0;
+      const dr = Math.max(0, Math.hypot(q[0] - arb.x, q[1] - arb.y) - arb.r);
+      m = Math.min(m, Math.hypot(dr, dz) - CLEAR_MARGIN);
+    }
+    return m;
+  };
   // returns the worst clause margin at the best swing (≥ 0 = open), with the clause named
   const window = async (dl) => {
     const scratch = new THREE.Group();
     const M = await buildSettingMetal(capAt(dl), scratch, { candidate: true });
     if (M.refused) return { m: -Infinity, clause: M.refused, s: 0 };
-    const cand = meshPoints(scratch);
+    // TODO 162 — PREFILTER ON PHASE 0, EXACT NOT APPROXIMATE. The multi-phase
+    // accept test below requires the candidate clear EVERY phase the corners
+    // sweep, and phase 0 — the as-built rotation, what `meshPoints` alone
+    // reads — is ONE of those phases (phase 0 ⊆ every phase). So a candidate
+    // that already fails at phase 0 fails the multi-phase test too, exactly:
+    // rejecting it here changes no accepted answer, only how cheaply a
+    // REFUSED one is refused. This is what keeps an EXHAUSTIVE scan cheap —
+    // an off-nominal spec whose reserve station never clears at any bearing
+    // (§94 tier C's `rsvr=` band, measured: HEAD boots one in ~43 s, the
+    // K-phase test alone on every one of ~160 tried bearings pushed the same
+    // boot past the battery's 120 s ceiling) rejects almost every candidate
+    // on this cheap single-phase read, never reaching `reserveObstaclePoints`
+    // at all — same as the default spec's own early rejections (TODO 162's
+    // own build note: only 2 candidates ever pay for the K-phase sweep there).
+    const cand0 = meshPoints(scratch);
+    const arbM0 = arbClear(cand0);
+    if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
+    const r0 = solveReserveSwing(staticPts.concat(cand0));
+    if (r0.swing === null) { disposeTree(scratch); return { m: r0.bestC - CLEAR_MARGIN, clause: `reserve ${r0.bestMember}`, s: r0.bestSwing / DEG2RAD }; }
+    // Phase 0 clears — only NOW pay for the full multi-phase judgement.
+    const cand = await reserveObstaclePoints(scratch);
     disposeTree(scratch);
-    let arbM = Infinity;
-    for (const q of cand) {
-      const dz = q[2] < arb.zLo ? arb.zLo - q[2] : q[2] > arb.zHi ? q[2] - arb.zHi : 0;
-      const dr = Math.max(0, Math.hypot(q[0] - arb.x, q[1] - arb.y) - arb.r);
-      arbM = Math.min(arbM, Math.hypot(dr, dz) - CLEAR_MARGIN);
-    }
+    const arbM = arbClear(cand);
     if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
     const r = solveReserveSwing(staticPts.concat(cand));
     if (r.swing === null) return { m: r.bestC - CLEAR_MARGIN, clause: `reserve ${r.bestMember}`, s: r.bestSwing / DEG2RAD };
@@ -6039,8 +6143,9 @@ const MW_FOLD_SPIN = (() => {
     console.warn(`TODO 150: the fold turns the minute arbor ${dropZ.toFixed(6)}× the cap's spin; MW_FOLD_NET_SENSE assumes ${MW_FOLD_NET_SENSE}`);
 }
 // The plate is bored at K as it is at A: the fold's blanks stand in the base
-// plate's z-band (Σ ≈ 150° puts their cone distance coneR nearly across the
-// axis, so they reach to Z_SETTING + coneR ≈ −1.3 against a back face at
+// plate's z-band (Σ ≈ 162° since TODO 162, was ≈ 150° — still puts their cone
+// distance coneR nearly across the axis, so they reach to Z_SETTING + coneR
+// against a back face at
 // −2.3). A's precedent bores the plate to the gear's TIP circle + margin —
 // for a vertical axis that is the plan footprint; for K's horizontal axes the
 // footprint is the blank's sphere of radius coneR about the apex, so the bore
@@ -14750,8 +14855,10 @@ registerExplode(reserveTrain, 0, 2, -1); // explodes with the dial side (−z)
 // finds a different one, the candidate metal was not the shipped metal, and
 // that is a defect in the builder, not in the reserve (rule 6: warned).
 await breathe();
-const rsvSwing = (() => {
-  const r = solveReserveSwing(meshPoints(keyless));
+const rsvSwing = await (async () => {
+  // TODO 162 — the same point generator CAP_SOLVE's scan judged the bearing
+  // against, over the corners as CUT
+  const r = solveReserveSwing(await reserveObstaclePoints(keyless));
   if (r.swing === null) {
     console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse '
       + `for BOTH w1 and p1 — keeping the line; the battery judges it (closest ${r.bestMember} at ${(r.bestSwing / DEG2RAD).toFixed(0)}°, ${r.bestC.toFixed(3)} against CLEAR_MARGIN ${CLEAR_MARGIN})`);
@@ -14850,6 +14957,18 @@ const reservePinion1 = G.makePinion({ name: 'reservePinion1', module: rsvModule1
   for (const [name, got, want] of [['rsvWheel1 body', zHalf(w1Body), w1.body], ['rsvWheel1 hub height', zHalf(w1Hub), w1.hub.half], ['rsvWheel1 hub radius', rMax(w1Hub), w1.hub.r], ['reservePinion1 body', zHalf(p1Body), p1.body]])
     if (Math.abs(got - want) > 1e-5)
       console.warn(`reserve train: ${name} measures ${got.toFixed(5)} as cut, gearFaceReach says ${want.toFixed(5)} — the swing solve's band is not the metal's`);
+  // TODO 162 — the swing solve's TIP bounds, the same rule (a figure the solve
+  // uses and the shipped metal ships are two independent paths and must
+  // ASSERT against each other, not resemble). `cutTipR` is memoized by args, so
+  // these are cache hits when the solve already measured this exact spec —
+  // and a miss (a different number) means the solve judged different metal
+  // than shipped, exactly what rsvSwing's own warning above polices for the
+  // bearing.
+  const w1TipCut = cutTipR(G.makeGear, { module: rsvModule0, teeth: rsvTeethW1, mates: [rsvTeethP0], thickness: 1.0, boreR: RSV_W1_BORE_R, spokes: 4, material: MATS.brass });
+  const p1TipCut = cutTipR(G.makePinion, { module: rsvModule1, teeth: rsvTeethP1, mates: [rsvTeethW2], thickness: 1.2, material: MATS.steel });
+  for (const [name, got, want] of [['rsvWheel1 tip radius', rMax(w1Body), w1TipCut], ['reservePinion1 tip radius', rMax(p1Body), p1TipCut]])
+    if (Math.abs(got - want) > 1e-5)
+      console.warn(`reserve train: ${name} measures ${got.toFixed(5)} as cut, the swing solve's own cutTipR says ${want.toFixed(5)} — the swing solve's bound is not the metal's`);
 }
 const rsvWheel2 = G.makeGear({ name: 'rsvWheel2', module: rsvModule1, teeth: rsvTeethW2, mates: [rsvTeethP1], thickness: 1.0, boreR: 0.5, spokes: 0, material: MATS.brass });
 // (TODO 48 — the `Math.PI / teeth` half-pitch idiom that used to sit here
@@ -15170,8 +15289,9 @@ const ALARM_CORNER_SENSE = -1;
 // azimuth READ IN ITS OWN MOUNT FRAME, less half a pitch for the member that
 // must gap. The ray bisects the two axes for ANY shaft angle when the counts
 // are equal (γ = Σ/2 each, the pitch cones meeting on the bisector), which is
-// why it is simply their normalised sum — §234's fold corner at Σ ≈ 150° is
-// the first non-mitre through here and rides the same line.
+// why it is simply their normalised sum — §234's fold corner at Σ ≈ 162°
+// (TODO 162, was ≈ 150°) is the first non-mitre through here and rides the
+// same line.
 function bevelCornerRay(axisA, axisB) {
   return axisA.clone().add(axisB).normalize();
 }

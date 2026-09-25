@@ -27541,6 +27541,21 @@ inboard mitre clear, verdict BUILDABLE. The straight run's control is a report
 on a folded tree — from A to the fold's B it crosses the barrel column the fold
 exists to avoid.
 
+**Amended by TODO 162 (closed).** The numbers above are what this landing
+measured at the time and are kept as the historical record, but the accept
+test they were measured against was itself wrong: `rsvW1TipR` read w1's
+NOMINAL tip where the cut metal's polygon reaches further (a vertex past
+the offset, §115's error, never fixed for w1 here), and p1's own bound used
+`gearOuterR`'s over-read (TODO 86) — the two errors partly cancelled, and
+the scan accepted the bearing below against a wall that was not really
+there. Fixed to read the cut metal on both sides (`cutTipR`, boot-asserted
+against the shipped mesh), and to judge every candidate over the fold
+corners' own spin (`reserveObstaclePoints`, TODO 155's turning corners)
+rather than the one phase they happened to be built at. The scan now lands
+at **bearing +5.25°, swing +3.5°**, Σ 162.24°, fold module 0.5406 (was
+0.3487) — moved off the +17.25°/−5°/152.32°/0.3487 this section originally
+recorded. The jumper's own siting is unchanged (129.5°, clearance 0.15).
+
 **Retired with it.** `TURN_WAIVERS`' `Keyless works::settingTraverse` row
 (the table is empty); `SLENDER_WAIVERS`' `Keyless works` entry (λ 41.2, TODO
 109's one pure layout row — both legs are under §54's ceiling and the table's

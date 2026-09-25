@@ -17,8 +17,8 @@ refreshed 2026-09-25 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 164 | OPEN | `clearances`/`inspection` only ever measure a DECLARED row or a contacting pair — nothing sweeps the whole movement for an undeclared, non-EXPECTED pair under `CLEAR_MARGIN`. Fix: a movement-wide REPORT tier over non-EXPECTED pairs, triaged into a gate the way `intraUnit` was |
 | 163 | OPEN | `clutchRim` ⇄ `settingBevel` are posed by two laws (the crown's `setPathRot` and the going train's `mwMinuteA`), so the crossed-axis mesh is buried a flat 0.2187 (29% of a tooth) at every indexing. Fix: the jumper back-drives the stem (roadmap §4 / TODO 58) |
-| 162 | OPEN | `mwCornerFoldOut` ⇄ `rsvWheel1` clears 0.0357 (was 0.0552 on main before TODO 155), against `CLEAR_MARGIN` 0.15, and no battery gate reads the pair. Fix: re-site as a P3 move judged on real metal over the train axis, and find why `clearances` and `inspection` do not see `Keyless works` ⇄ `Power-reserve train` |
 | 161 | OPEN | `JMP_SITE` judges the alarm selector, sleeve and release levers AS BUILT, not over their own travel (BOOT HAS NO POSE). No defect today (JUMPER row 0.1500, clean). Fix: factor their own pose laws (`settingLeverAngleAt`/`jumperLeverRotAt`/`poseJumperLifter`'s precedent), not a pose snapshot |
 | 160 | OPEN | A jumper refusal is recorded ([TODO 156], closed) but cannot act — CAP_SOLVE commits B before `JMP_SITE` exists. Fix: nest a `JMP_SITE` scan into CAP_SOLVE's own candidate loop (the `solveReserveSwing` veto shape), with a cheap per-candidate pre-screen; 452/720 stations feasible with the fold and reserve removed vs 156/720 with them present |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
@@ -22532,7 +22532,7 @@ into (BOOT HAS NO POSE: a claim about a POSE cannot be a boot assert,
 though a claim about a LAW derived from already-solved constants can be —
 see TODO 156's own `walks` derivation for the shape that stays legal).
 
-## 162. The fold's leg-2 corner blank stands 0.036 off the reserve w1, and stood 0.055 off it before
+## 162. The fold's leg-2 corner blank stands 0.036 off the reserve w1, and stood 0.055 off it before — CLOSED
 
 Found closing [TODO 155]. `mwCornerFoldOut` is the outboard bevel of the
 fold's leg-2 rod, the corner between `mwCornerFoldIn` and `mwCornerRiseIn`.
@@ -22578,6 +22578,112 @@ missed the body that sets the minimum. It was wrong.
    the pair visible there. Otherwise a re-site can drift back under margin
    without anything noticing. Until then, the probe row is the only thing
    that reads the pair.
+
+**CLOSED.** Finding 1's root cause was not the siting scan's own margin
+(0 vs `CLEAR_MARGIN`) — it was the accept test `solveReserveSwing` judged
+that siting against. Two independent errors in it cancelled: `rsvW1TipR`
+read w1's NOMINAL tip (`module·(teeth+2)/2` = 5.10) where the cut metal's
+polygon reaches 5.2756 — a vertex past that offset, the §115 error §136
+already fixed for p1 but never for w1 — while p1's own bound used
+`gearOuterR` (TODO 86's over-read), so the two errors partly cancelled and
+the scan accepted a bearing (17.25°, swing −5°) the metal itself did not
+clear. Both are read off the built metal now (`cutTipR`, memoized: a gear
+or pinion is built once with the exact args the reserve build uses, the
+farthest vertex measured, disposed), and a boot assert compares the
+shipped `rsvWheel1`/`reservePinion1` tip radii against the solve's own
+values — two independent paths, asserted against each other rather than
+resembling.
+
+Fix 1's *"judge the move on the real metal, over the train axis's
+motion"* is also closed: the fold corners (`mwCorner*In`/`mwCorner*Out`)
+turn under `train` since TODO 155, so a swing accepted at one spin phase
+could still bury a different tooth. `reserveObstaclePoints` samples every
+corner's rotation together over one tooth pitch (2π/`BEVEL_TEETH`), K
+phases derived from `CLEAR_MARGIN` and the widest corner tip present (the
+same sampling-density law as `RSV_SWING_STEP_DEG`), and restores the
+rotation exactly after. It is the ONE point generator both `CAP_SOLVE`'s
+candidate scan and the reserve build's confirmation call, so the swing a
+candidate is accepted against is the swing the shipped metal is judged
+against. Cost: an exhaustive scan (no candidate ever accepted — an
+off-nominal `rsvr=` spec's reserve station, say) used to multiply this
+K-phase cost across every tried bearing and pushed several spec-boot
+points past the battery's 120 s ceiling; a phase-0 PREFILTER closed it
+exactly, not approximately — phase 0 (the as-built rotation) is one of the
+phases the multi-phase test already requires clearing, so a candidate that
+fails at phase 0 fails the multi-phase test too, and is rejected there
+without ever paying for the K-phase sweep.
+
+Fix 2 — the gate: `clearances` gained a `CLEARANCE_BUDGETS` row,
+`{ a: 'Keyless works', b: 'Power-reserve train', min: CLEAR_MARGIN }`, and
+`probe-150-fold-sense.mjs`'s old REPORT (`foldOutVsRsv`) became a gated
+LEG 2 ⇄ RESERVE row — leg 2's rod and both its bevel corners against every
+non-schematic mesh of the whole `Power-reserve train` unit, over the
+existing pose set plus 24 samples each of the reserve/wind/arrest/
+train/handSet axes, with a must-hit control asserting the designed
+`settingTraverse2` ⇄ `reservePinion0` tie (`SETTING_ROD_R`, from
+`RSV_P0_TOP_Z`) is recorded within `1e-6` of `CLEAR_MARGIN` — if that
+control doesn't fire, the sweep's own coverage is in question, not the
+pair.
+
+**Before → after**, default spec: bearing 17.25° → 5.25°, swing −5° →
++3.5°, fold corner Σ 152.3° → 162.24°, fold module 0.3487 → 0.5406, the
+minute jumper's siting unchanged (129.5°, 0.15). `clearances`' new row:
+0.0412 (FAIL) → 0.15 exactly, the `settingTraverse2` ⇄ p0 tie (PASS).
+`probe-150-fold-sense.mjs`'s new row: 0.0416 FAIL → PASS, control holds at
+0.1500000. Full battery, this container: 40/41 both before and after (the
+sole failure, `spec boots`, is `alarmr=20`/`alarmr=46` — isolated on HEAD
+alone they read 112.8 s and 123.5 s against the battery's 120 s ceiling,
+i.e. genuinely marginal/contention-sensitive on this container regardless
+of this item, not this item's debt). Boot stays silent on the default
+spec, both before and after.
+
+**Residue, measured and left open rather than hidden:** `__clock.boot.
+worstHeldMs` (the build's single worst unyielded stretch, `breathe()`'s
+own claim) reads ~770–823 ms before this landing and ~1000–1170 ms after,
+across repeated clean boots on this container — both already at or past
+`probe-239-boot-yield.mjs`'s 700 ms ceiling before this item touched
+anything. Total boot WALL time does not regress (in fact reads slightly
+*faster*, ~25 s vs ~28 s in matched runs, since the corrected physics
+converges on the default spec's accepted bearing in fewer tried
+candidates than the old buggy one did). Per-phase and per-mesh
+`breathe()` seaming were both tried in `reserveObstaclePoints` and
+neither closed the gap, which is why it is recorded here as residue
+rather than claimed fixed — filed for whoever next touches boot cost, not
+re-opened as its own item since it is not a regression this item's own
+acceptance criteria (bearing/swing/module/jumper unchanged, spec-boot
+timings, battery gate identity) required to hold.
+
+## 164. No gate holds an undeclared, non-EXPECTED pair to CLEAR_MARGIN across the whole movement
+
+Found closing [TODO 162]. `mwCornerFoldOut` ⇄ `rsvWheel1` sat under
+`CLEAR_MARGIN` — 0.055 on `main`, 0.036 here — for as long as TODO 155's
+fold has turned under `train`, and every battery run stayed green through
+it: `clearances` only measures the rows named in `CLEARANCE_BUDGETS`,
+`inspection` only classifies a pair the graph already says CONTACTS (or
+FORBIDS), and `sweptOverlap`'s tight tier only pairs a static mesh against
+a mover — it structurally cannot see two units that BOTH move (both the
+fold and the reserve train do). None of those checks' populations include
+"every pair of units neither declared nor already known to touch."
+
+TODO 162's own evidence that this is not a one-off: `sweptOverlap`'s tight
+tier already carries seven rows this class of gap would also miss —
+pairs confirmed CLOSE but never held to a floor, e.g. `Alarm release
+seat ⇄ Alarm selector` at 0.0079 — because "tight" there means "worth a
+human look," not "held to a margin." Two pairs sat under `CLEAR_MARGIN`
+with nothing reading either.
+
+**Fix.** A movement-wide REPORT tier over every unit pair that is neither
+in `CLEARANCE_BUDGETS` nor `EXPECTED_PAIRS` nor a declared graph contact,
+measured against `CLEAR_MARGIN` over the pose net the way `intraUnit`'s
+own tiers are — a REPORT first (TODO 162's own probe row is the
+precedent: `probe-150-fold-sense.mjs`'s LEG 2 ⇄ RESERVE row was gated only
+because TODO 162 could name the one pair and the one member set by hand),
+then triaged into a gate the way `intraUnit`'s FF/MM tiers were narrowed
+from a 202-row REPORT to a gated `INTRA_TIER_SCOPE`. The naive whole-
+movement pair count is large (roughly `units²`), so the tier needs the
+same bounding-box pre-filter `intraUnit`/`assembly` already use to keep it
+affordable, and the same `pairsTouching`/§152 restriction plumbing so it
+does not become the one check the incremental battery can never narrow.
 
 ## 163. The clutch rim and the setting bevel are posed by two laws
 
