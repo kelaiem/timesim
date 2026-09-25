@@ -518,14 +518,13 @@ else {
     else if (r.d < 0.4) ok(`${a} ⇄ ${b} clears ${r.d.toFixed(4)} (pose ${r.pose})`);
   }
   console.log('  (pairs clearing 0.4 or more not listed; settingCap ⇄ mwMinuteWheel is the declared mesh and is not measured here)');
-  // TODO 155 — REPORT, not a gate (files TODO 162): `mwCornerFoldOut` now
-  // moves under `train` too, and sweeps a volume against the reserve train's
-  // first wheel it never used to reach. Measured 0.1565 as built → 0.1407 at
-  // train f≈0.57, under CLEAR_MARGIN — no floor or budget row covers this
-  // pair (it is not EXPECTED), so this is exposure, not a fix, and TODO
-  // 162 owns it.
+  // TODO 155 — REPORT, not a gate (TODO 162 owns it): `mwCornerFoldOut` now
+  // turns under `train` too. Against every mesh of rsvWheel1 it already read
+  // 0.0552 on main (the reserve wheel turning past a still corner) and reads
+  // 0.0357 at its worst over the train axis since TODO 155. It was under
+  // CLEAR_MARGIN before this landing, and no battery gate holds the pair.
   if (out.foldOutVsRsv)
-    console.log(`  REPORT mwCornerFoldOut ⇄ rsvWheel1 clears ${out.foldOutVsRsv.d.toFixed(4)} (pose ${out.foldOutVsRsv.pose}) — newly exposed by TODO 155, under CLEAR_MARGIN ${out.CLEAR_MARGIN}, filed as TODO 162`);
+    console.log(`  REPORT mwCornerFoldOut ⇄ rsvWheel1 clears ${out.foldOutVsRsv.d.toFixed(4)} (pose ${out.foldOutVsRsv.pose}) — under CLEAR_MARGIN ${out.CLEAR_MARGIN} (0.0552 on main before TODO 155), filed as TODO 162`);
   else console.log('  REPORT mwCornerFoldOut ⇄ rsvWheel1: no mesh pair found to measure');
   console.log(`\nCROSS-BODY — TODO 151: every blank of one new corner ⇄ every blank of another, and each member ⇄ the other rigid bodies:`);
   // two blanks keyed to ONE rod turn as one rigid body (§107: one connected
