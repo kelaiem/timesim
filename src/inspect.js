@@ -1018,7 +1018,10 @@ export const AXES = [
     // axis writes it, so a rod standing in the minute wheel's spoke windows
     // passed every battery run. One full MINUTE-WHEEL revolution, crown
     // pulled — the setting wheel and the compound arbor sweep their whole
-    // angular range past everything static.
+    // angular range past everything static. TODO 135: each sample now seats
+    // the minute jumper at that setPathRot's own detent (setPose's
+    // `jumpDisp = null`), so the hands, motion works and cannon pinion move
+    // through detents with it rather than freezing at the reset pose.
     name: 'handSet',
     n: 120,
     pose: (f, clock) => ({

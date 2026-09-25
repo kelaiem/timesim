@@ -44583,7 +44583,11 @@ window.__clock = {
     // re-seeds so no crown delta leaks into the next tick, the
     // alarmCrownRotation convention above.
     if (p.windStemSlip !== undefined) { windStemSlip = p.windStemSlip; lastCrownRotation = crownRotation; }
-    if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
+    if (p.setPathRot !== undefined) { setPathRot = p.setPathRot; lastCrownRotation = crownRotation; jumpDisp = null; } // §35: the handSet axis poses the setting path directly (the only input that spins the keyless minute wheel)
+    // TODO 135 — a pose naming the setting turn names where the jumper SEATS. tick's
+    // `jumpDisp === null` initialiser lands it on the detent's target, a pure function
+    // of (tau, setPathRot, jumpCorr); the ease is a live-loop transient. `jumperEngage`
+    // names no setPathRot and keeps the carried star by design.
     if (p.alarmCrownRotation !== undefined) { // §24 alarm axis — poses "crown wound to here in SET mode"
       alarmCrownRotation = p.alarmCrownRotation;
       // THE SAME CROSSING AS tick()'S, and it has to carry the same sense.
