@@ -2456,6 +2456,294 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 }
 
 // ---------------------------------------------------------------------------
+// TODO 164 — NO GATE HELD AN UNDECLARED, NON-EXPECTED PAIR TO CLEAR_MARGIN
+// ACROSS THE WHOLE MOVEMENT. `clearances` only measures the rows named in
+// CLEARANCE_BUDGETS, `expectedContacts` only measures EXPECTED pairs' own
+// floors, and `inspection` only classifies a pair the graph already says
+// CONTACTS or FORBIDS — none of their populations is "every pair of units
+// neither declared nor already known to touch." This check's population is
+// exactly that complement, swept the way `intraUnit` sweeps inside a unit:
+// dense, every pose of every axis, over EVERY OPEN pair.
+//
+// MESHES ARE DEDUPED TO THEIR NEAREST LABELLED ANCESTOR (§40's hops rule, a
+// seventh copy of the idiom TODO 4 tracks consolidating — see e.g. the FF/MM
+// prep above §121's tiers). Without it, a mesh inside a nested label (the
+// whole alarm-disc stack lives under both 'Alarm release disc' and 'Dial')
+// would be attributed to TWO units and every pair through it reported twice,
+// once under a unit name that does not own it.
+//
+// THE ARRIVAL POPULATION IS TRIAGED, NOT SILENCED. Every row this check finds
+// under CLEAR_MARGIN either enters UNDECLARED_CLEARANCE_DEBT, frozen at its
+// measured arrival depth and citing a TODO with a fix path, or it is a real
+// contact that gets fixed in the same PR that adds the gate (TODO 164 R3: the
+// alarm release lifter run, re-sited off the winding contrate — see TODO 165
+// for the separate instrument gap that let it hide). The debt table is a
+// CLOSED arrival inventory: a row fails if it gets deeper than its floor
+// (regressed) or if the pair it names has cleared (stale — the fix landed,
+// so the row is dead weight hiding a future regression). No row may be ADDED
+// by a later PR; a newly undeclared pair blocks landing (not code-enforced —
+// stated here and in CLAUDE.md).
+export const UNDECLARED_CLEARANCE_DEBT = [
+  // TODO 166 — the post is sited only off the setting wheel's tips; it also
+  // passes the selector ring rim, the sleeve flat and the sensing pin orbit.
+  { a: 'Alarm release seat', b: 'Alarm selector', floor: 0.0079, todo: 'TODO 166',
+    why: 'ALARM_SEAT_POST_R is derived only from the setting wheel\'s tips; the post also passes the selector ring rim' },
+  { a: 'Alarm disc', b: 'Alarm release seat', floor: 0.0996, todo: 'TODO 166',
+    why: 'the same post, passing the disc\'s sensing pin orbit' },
+  { a: 'Alarm release seat', b: 'Alarm release sleeve', floor: 0.1079, todo: 'TODO 166',
+    why: 'the same post, passing the sleeve\'s flat' },
+  // TODO 167 — the setting lane: the arbor pinion's bevel eats the sheet gap
+  // to the dial, and the index wedge overhangs the selector ring.
+  { a: 'Alarm setting arbor', b: 'Dial', floor: 0.0025, todo: 'TODO 167',
+    why: 'ALARM_SET_Z assumes a crisp pinion face; makePinion\'s bevel eats 0.0025 of the sheet gap' },
+  { a: 'Alarm selector', b: 'Alarm setting wheel', floor: 0.0733, todo: 'TODO 167',
+    why: 'the index wedge\'s WEDGE_LEN, kept after TODO 26 pinned its tip, overhangs the selector ring' },
+  // TODO 168 — makeGear's curveSegments:3 cuts a hub-less wheel's bore as a
+  // hexagon rather than a circle.
+  { a: 'Alarm setting wheel', b: 'Hour wheel', floor: 0.1414, todo: 'TODO 168',
+    why: 'the setting wheel\'s hexagonal cap chords reach past the hour tube\'s designed bore' },
+  // TODO 169 — the winding train's idler 2 flies under the centre wheel body.
+  { a: 'Alarm winding train', b: 'Center wheel', floor: 0.0252, todo: 'TODO 169',
+    why: 'the winding dogleg\'s idler 2 (tier Z) flies under the centre wheel body' },
+  // TODO 170 — four alarm release/arming-complex pairs.
+  { a: 'Alarm release feeler', b: 'Alarm release sleeve', floor: 0.092, todo: 'TODO 170',
+    why: 'the alarm release/arming complex — see TODO 170' },
+  { a: 'Alarm release sleeve', b: 'Alarm silence rocker', floor: 0.0961, todo: 'TODO 170',
+    why: 'the alarm release/arming complex — coupled to the same tab azimuth TODO 164 R3 re-sited' },
+  { a: 'Alarm release disc', b: 'Alarm release feeler', floor: 0.1155, todo: 'TODO 170',
+    why: 'the alarm release/arming complex — see TODO 170' },
+  { a: 'Alarm release sleeve', b: 'Alarm selector', floor: 0.1183, todo: 'TODO 170',
+    why: 'the alarm release/arming complex — see TODO 170' },
+];
+
+// §40 hops rule, a seventh copy — see e.g. checkIntraUnit / checkAssembly.
+// Every mesh in the scene belongs to exactly the labelled unit closest to it
+// (fewest hops up the object graph), never to every ancestor label that
+// happens to contain it: `collectUnits` walks each unit's OWN subtree and so
+// leaves a nested label's meshes in BOTH units, which is exactly right for a
+// check that measures a unit against its own fixtures and exactly wrong for
+// one that would otherwise report the same pair twice under two names, one
+// of which does not own the part.
+function nearestUnitMeshes(clock) {
+  const unitObj = new Map(clock.labelEntries.map((e) => [e.name, e.obj]));
+  const hops = (mesh, name) => {
+    const target = unitObj.get(name);
+    let n = 0;
+    for (let o = mesh; o; o = o.parent, n++) if (o === target) return n;
+    return Infinity;
+  };
+  const byMesh = new Map();
+  const walk = (o, unitName) => {
+    if (o.userData && o.userData.schematic) return;   // §71 — display, never metal
+    if (o.isMesh && o.geometry?.attributes?.position) {
+      const prev = byMesh.get(o);
+      if (!prev || hops(o, unitName) < hops(o, prev.unit)) byMesh.set(o, { unit: unitName, mesh: o });
+    }
+    for (const c of o.children) walk(c, unitName);
+  };
+  for (const e of clock.labelEntries) walk(e.obj, e.name);
+  const units = new Map();
+  for (const { unit, mesh } of byMesh.values()) {
+    (units.get(unit) ?? units.set(unit, []).get(unit)).push(mesh);
+  }
+  return units;
+}
+
+// `pairKey` is module-scope already (declared beside IGNORED_PAIRS above) —
+// reused here rather than a second copy of the same join.
+
+// The gate's own verdict, over a payload's rows and the debt table — a pure
+// function of both, so a merged (§127) or unioned (§152) payload can re-derive
+// the SAME verdict a single run computes rather than trying to combine two
+// runs' violation lists (which a union by pair, done wrong, would double-count
+// or silently drop). This copy runs in-page; `battery-split.mjs`'s
+// `mergeUndeclared` and `battery-union.mjs`'s `unionUndeclared` each carry
+// their own twin, because neither Node module can reach across the
+// page.evaluate boundary to share this one. Edit one, the other two are the
+// second and third places to look.
+function judgeUndeclared(rows, debtTable) {
+  const byPair = new Map(rows.map((r) => [r.pair, r]));
+  const violations = rows.filter((r) => !debtTable.some((d) => pairKey(d.a, d.b) === r.pair));
+  const regressed = [];
+  const staleDebt = [];
+  for (const d of debtTable) {
+    const key = pairKey(d.a, d.b);
+    const row = byPair.get(key);
+    if (!row) { staleDebt.push({ pair: key, todo: d.todo }); continue; }
+    if (row.min < d.floor - 1e-4) regressed.push({ pair: key, min: row.min, floor: d.floor, todo: d.todo });
+  }
+  return { violations, regressed, staleDebt };
+}
+
+export async function checkUndeclaredClearance(clock, {
+  axes = AXES, yieldEvery = 16, pairsTouching, lift = [],
+  memo: memoOn = true, boxPrune: boxPruneOn = true,
+  debtTable = UNDECLARED_CLEARANCE_DEBT,
+} = {}) {
+  const bound = CLEAR_MARGIN;
+  const units = nearestUnitMeshes(clock);
+  const names = [...units.keys()];
+  const declaredExcluded = (a, b) => {
+    if (lift.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) return false;
+    return inList(EXPECTED_PAIRS, a, b) || inList(IGNORED_PAIRS, a, b)
+      || CLEARANCE_BUDGETS.some((r) => (r.a === a && r.b === b) || (r.a === b && r.b === a))
+      || EXPECTED_CONTACT_FLOORS.some((r) => (r.a === a && r.b === b) || (r.a === b && r.b === a));
+  };
+  const live = [];
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const a = names[i], b = names[j];
+      if (declaredExcluded(a, b)) continue;
+      live.push({ a, b, A: units.get(a), B: units.get(b), bound });
+    }
+  }
+  const population = live.length;   // §152 — whole-movement count, before restriction
+  const liveKeys = new Set(live.map((p) => pairKey(p.a, p.b)));
+  const malformedDebt = debtTable.filter((d) => !liveKeys.has(pairKey(d.a, d.b)));
+
+  const touching = resolvePairsTouching(clock, pairsTouching);
+  const restrictedLive = touching ? live.filter((p) => touching.touches(p.a, p.b)) : live;
+
+  // Controls, NEVER restricted — the same loop measures them, but a
+  // `pairsTouching` narrowing must not silence the classifier's own health
+  // check just because neither control unit happens to be in the changed set.
+  const byName = (unit, pred) => (units.get(unit) ?? []).filter(pred);
+  const underGroup = (m, g) => { for (let p = m; p; p = p.parent) if (p.name === g) return true; return false; };
+  const tie = {
+    a: 'Keyless works', b: 'Power-reserve train', control: 'tie', bound: 2 * bound,
+    A: byName('Keyless works', (m) => m.name === 'settingTraverse2'),
+    B: byName('Power-reserve train', (m) => underGroup(m, 'reservePinion0')),
+  };
+  const hit = {
+    a: 'Center wheel', b: 'Third wheel', control: 'hit', bound,
+    A: units.get('Center wheel') ?? [], B: units.get('Third wheel') ?? [],
+  };
+  const controlsList = [tie, hit];
+  // A control selector matching no mesh is itself a failure — the classifier
+  // would otherwise report a clean control it never actually measured. It is
+  // reported through `control`, not thrown, so the check still finishes and
+  // the report says exactly which selector went empty.
+  const selectorEmpty = !tie.A.length || !tie.B.length || !hit.A.length || !hit.B.length;
+  const pairs = [...restrictedLive, ...controlsList];
+  for (const p of pairs) { p.min = Infinity; p.at = null; p.meshes = null; }
+
+  const resolved = resolveAxes(axes);
+  const _box = new THREE.Box3();
+  const _inv = new THREE.Matrix4();
+  const triCount = (m) => (m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3;
+  const mb = new Map(), ub = new Map(), mver = new Map(), msnap = new Map();
+  let exactCalls = 0, memoHits = 0, boxPruned = 0, unitPairTests = 0, unitPairPass = 0, poses = 0;
+  let sinceYield = 0;
+
+  for (const axis of resolved) {
+    enterAxis(clock);   // TODO 54 — a slice must reproduce a whole run's poses
+    const memo = new Map();   // mesh-pair memo, reset per axis (§127 slicing)
+    for (let i = 0; i <= axis.n; i++) {
+      const f = i / axis.n;
+      clock.setPose(axis.pose(f, clock));
+      poses++;
+      for (const [name, meshes] of units) {
+        const u = ub.get(name) ?? new THREE.Box3();
+        u.makeEmpty();
+        for (const m of meshes) {
+          const g = m.geometry;
+          if (!g.boundingBox) g.computeBoundingBox();
+          const b = mb.get(m) ?? new THREE.Box3();
+          b.copy(g.boundingBox).applyMatrix4(m.matrixWorld);
+          mb.set(m, b);
+          u.union(b);
+          const e = m.matrixWorld.elements, snap = msnap.get(m), pv = g.attributes.position.version;
+          if (!snap || snap.g !== g.id || snap.v !== pv || snap.e.some((x, k) => x !== e[k])) {
+            msnap.set(m, { g: g.id, v: pv, e: e.slice() });
+            mver.set(m, (mver.get(m) ?? 0) + 1);
+          }
+        }
+        ub.set(name, u);
+      }
+      for (const p of pairs) {
+        unitPairTests++;
+        if (boxDistance(ub.get(p.a), ub.get(p.b)) >= p.bound) continue;
+        unitPairPass++;
+        let poseBest = Infinity, posePair = null;
+        for (const a of p.A) {
+          const ba = mb.get(a);
+          for (const b of p.B) {
+            if (boxDistance(ba, mb.get(b)) >= p.bound) continue;
+            let d;
+            const va = mver.get(a), vb = mver.get(b);
+            const key = memoOn ? `${a.id}:${b.id}:${p.bound}` : null;
+            const cached = memoOn ? memo.get(key) : null;
+            if (cached && cached.va === va && cached.vb === vb) { d = cached.d; memoHits++; }
+            else {
+              if (boxPruneOn) {
+                const [big, small] = triCount(a) >= triCount(b) ? [a, b] : [b, a];
+                const tree = bvhFor(big);
+                _box.copy(mb.get(small)).expandByScalar(p.bound);
+                _inv.copy(big.matrixWorld).invert();
+                if (!tree.intersectsBox(_box, _inv)) { d = Infinity; boxPruned++; }
+                else { d = meshClearance(a, b, p.bound); exactCalls++; }
+              } else { d = meshClearance(a, b, p.bound); exactCalls++; }
+              if (memoOn) memo.set(key, { va, vb, d });
+            }
+            if (d < poseBest) { poseBest = d; posePair = [a, b]; }
+          }
+        }
+        if (poseBest < p.min) {
+          p.min = poseBest;
+          p.at = { axis: axis.name, f: +f.toFixed(4) };
+          p.meshes = posePair ? posePair.map((m) => m.name || m.geometry.type) : null;
+        }
+      }
+      if (++sinceYield >= yieldEvery) { sinceYield = 0; await new Promise((r) => setTimeout(r, 0)); }
+    }
+  }
+
+  const rows = restrictedLive
+    .filter((p) => p.min < bound)
+    .map((p) => ({
+      pair: pairKey(p.a, p.b),
+      min: +p.min.toFixed(4),
+      at: `${p.at.axis} f=${p.at.f}`,
+      meshes: p.meshes ? p.meshes.join(' ⇄ ') : undefined,
+      debt: debtTable.find((d) => pairKey(d.a, d.b) === pairKey(p.a, p.b))?.todo,
+    }))
+    .sort((x, y) => x.pair.localeCompare(y.pair));
+
+  const controls = controlsList.map((p) => ({
+    control: p.control,
+    pair: pairKey(p.a, p.b),
+    bound: p.bound,
+    min: isFinite(p.min) ? +p.min.toFixed(7) : null,
+    at: p.at,
+    meshes: p.meshes,
+    ok: p.control === 'tie' ? Math.abs(p.min - bound) < 1e-6 : p.min < bound,
+  }));
+  const control = selectorEmpty
+    ? `FAIL — control selector matched no mesh (tie ${tie.A.length}×${tie.B.length}, hit ${hit.A.length}×${hit.B.length})`
+    : controls.every((c) => c.ok) ? 'PASS' : `FAIL — ${controls.filter((c) => !c.ok).map((c) => c.control).join(', ')}`;
+
+  const { violations, regressed, staleDebt } = judgeUndeclared(rows, debtTable);
+  console.table(rows);
+  const sliced = resolved.length < AXES.length;
+  return {
+    population, poses, rows, violations, regressed, staleDebt, malformedDebt,
+    debtTable, controls, control,
+    census: { unitPairTests, unitPairPass, exactCalls, memoHits, boxPruned },
+    // §127 tier 2a — a SLICE carries its raw (unrounded) minima keyed by pair,
+    // not positionally: unlike `clearances`/`expectedContacts`, a row here
+    // only EXISTS when a pair is under the bound, so the merge cannot align
+    // slices by array index. Keyed by pair, every slice can still resolve a
+    // display-precision tie between two axes' minima the way the whole run's
+    // own strict `<` would (see mergeUndeclared).
+    ...(sliced ? {
+      rawMins: Object.fromEntries(restrictedLive.map((p) => [pairKey(p.a, p.b), isFinite(p.min) ? p.min : null])),
+      controlRaw: Object.fromEntries(controlsList.map((p) => [p.control, isFinite(p.min) ? p.min : null])),
+    } : {}),
+    ...(touching ? { restriction: restrictionRecord(touching, null) } : {}),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // TODO 5 — the sweep cannot see INSIDE a unit, and units bundle a FIXED
 // mount with the thing that MOVES on it: exactly the pair most likely to
 // foul, hidden twice (the pair loop skips same-unit; the unit's own AABB
@@ -10450,6 +10738,7 @@ const CHECKS = {
   strikeHandoff: (clock, opts) => checkAlarmHandoffs(clock,
     { poses: STRIKE_HANDOFF_POSES, handoffs: STRIKE_HANDOFFS, ...opts }),
   expectedContacts: (clock, opts) => checkExpectedContacts(clock, opts), // TODO 6 — per-contact floors over EXPECTED pairs
+  undeclaredClearance: (clock, opts) => checkUndeclaredClearance(clock, opts), // TODO 164 — every OTHER unit pair, held to CLEAR_MARGIN
   intraUnit: (clock, opts) => checkIntraUnit(clock, opts),               // TODO 5 — all three intra-unit tiers: MF, FF, MM across frames (§121)
   assembly: (clock, opts) => checkAssembly(clock, opts),                 // §107 — TODO 5's other half: a rigid group must be ONE body
   lowCorridor: (clock, opts) => checkLowCorridor(clock, opts),
