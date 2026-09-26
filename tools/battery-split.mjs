@@ -316,6 +316,151 @@ export const CLEARANCE_SLICES = [
   { axis: 'alarmPress', poses: 65 },
 ];
 
+// TODO 164 — same axis roster as CLEARANCE_SLICES above (this check walks the
+// same 14 axes). Declared separately for CLEARANCE_SLICES' own reason: a
+// check's roster is a claim about THAT check's loop.
+export const UNDECLARED_CLEARANCE_SLICES = [
+  { axis: 'beat', poses: 97 },
+  { axis: 'crown', poses: 49 },
+  { axis: 'reserve', poses: 61 },
+  { axis: 'wind', poses: 721 },
+  { axis: 'arrest', poses: 97 },
+  { axis: 'train', poses: 97 },
+  { axis: 'jumperEngage', poses: 121 },
+  { axis: 'handSet', poses: 121 },
+  { axis: 'alarm', poses: 97 },
+  { axis: 'alarmStrike', poses: 110 },
+  { axis: 'alarmWind', poses: 110 },
+  { axis: 'alarmToggle', poses: 49 },
+  { axis: 'stemSlip', poses: 97 },
+  { axis: 'alarmPress', poses: 65 },
+];
+
+// The gate's verdict over a payload's rows and the debt table — a TWIN of the
+// expression `checkUndeclaredClearance` computes in src/inspect.js (that
+// function's own comment names this file as one of two places to look) and of
+// `battery-union.mjs`'s own copy. It has to be duplicated rather than
+// imported: this module runs in Node over JSON payloads a browser already
+// produced, and inspect.js's copy runs in-page — there is no single function
+// both sides could share without one of them reaching across the
+// page.evaluate boundary that isn't there at merge time; the union module's
+// copy is duplicated for that module's own reason, stated there. Edit one,
+// the other two are the second and third places to look.
+function judgeUndeclared(rows, debtTable) {
+  const key = (d) => [d.a, d.b].sort().join(' ⇄ ');
+  const byPair = new Map(rows.map((r) => [r.pair, r]));
+  const violations = rows.filter((r) => !debtTable.some((d) => key(d) === r.pair));
+  const regressed = [];
+  const staleDebt = [];
+  for (const d of debtTable) {
+    const k = key(d);
+    const row = byPair.get(k);
+    if (!row) { staleDebt.push({ pair: k, todo: d.todo }); continue; }
+    if (row.min < d.floor - 1e-4) regressed.push({ pair: k, min: row.min, floor: d.floor, todo: d.todo });
+  }
+  return { violations, regressed, staleDebt };
+}
+
+// TODO 164 — `checkUndeclaredClearance`'s merge. Unlike `mergeExtrema`'s two
+// callers, a row here only EXISTS when a pair is under CLEAR_MARGIN, so slices
+// cannot be compared by array index or unioned like `inspection`'s (a pair
+// FORBIDDEN in one axis stays FORBIDDEN whichever axis found it — there is no
+// "closer" answer to prefer). This is EXTREMA-by-KEY: for every pair that
+// appears as a row in ANY slice, the merge picks the slice whose RAW (pair-
+// keyed, unrounded) minimum is smallest — strict `<`, parts walked in AXES
+// order so a tied minimum keeps the earliest axis, the same rule
+// `mergeExtrema` applies over a fixed table's row index.
+export function mergeUndeclared(parts, axisMeta) {
+  const order = axisMeta.map((a) => a.name);
+  const at = (name) => {
+    const i = order.indexOf(name);
+    if (i < 0) throw new Error(`slice ${name} names no axis in AXES — the merge cannot order it`);
+    return i;
+  };
+  parts = [...parts].sort((x, y) => at(x.slice) - at(y.slice));
+  for (let i = 1; i < parts.length; i++) {
+    if (parts[i].slice === parts[i - 1].slice) throw new Error(`axis ${parts[i].slice} was swept by two slices`);
+  }
+  const population = parts[0].result.population;
+  const debtTable = parts[0].result.debtTable;
+  const malformedDebt = parts[0].result.malformedDebt;
+  for (const p of parts) {
+    if (p.result.population !== population) {
+      throw new Error(`slice ${p.slice} reports population ${p.result.population} against ${parts[0].slice}'s ${population}`
+        + ' — the two ran against different unit populations');
+    }
+    if (JSON.stringify(p.result.debtTable) !== JSON.stringify(debtTable)) {
+      throw new Error(`slice ${p.slice} carries a different debt table than ${parts[0].slice} — the table is module-scope and cannot vary by axis`);
+    }
+    if (JSON.stringify(p.result.malformedDebt) !== JSON.stringify(malformedDebt)) {
+      throw new Error(`slice ${p.slice} reports different malformedDebt rows than ${parts[0].slice}`);
+    }
+    if (!p.result.rawMins || !p.result.controlRaw) {
+      throw new Error(`slice ${p.slice} carries no rawMins/controlRaw — merging by rounded minima `
+        + 'would mis-attribute every display-precision tie');
+    }
+  }
+  const pairKeys = new Set();
+  for (const p of parts) for (const r of p.result.rows) pairKeys.add(r.pair);
+  const rawOf = (p, pair) => { const v = p.result.rawMins[pair]; return v === null || v === undefined ? Infinity : v; };
+  const rows = [];
+  for (const pair of pairKeys) {
+    let best = parts[0];
+    for (const p of parts.slice(1)) if (rawOf(p, pair) < rawOf(best, pair)) best = p;
+    const row = best.result.rows.find((r) => r.pair === pair);
+    if (!row) {
+      throw new Error(`${pair}: slice ${best.slice} holds the winning raw minimum but reports no row for it`
+        + ' — a row and its own rawMins entry must agree on whether the pair is under the bound');
+    }
+    rows.push(row);
+  }
+  rows.sort((x, y) => x.pair.localeCompare(y.pair));
+
+  // ORDER IS PART OF THE PAYLOAD, the same rule mergeInspection's restriction
+  // record and mergeExtrema's row order already hold. `checkUndeclaredClearance`
+  // always emits `controls` in its own fixed declaration order (tie, hit) —
+  // identical on every axis, since the controls are never restricted — so
+  // that order is read off the FIRST part rather than re-sorted by name: an
+  // alphabetical sort put 'hit' before 'tie' and produced a merged payload
+  // whose controls array was reordered against every whole run's, caught by
+  // `tools/probe-127-split.mjs`'s own byte-identity check.
+  const controlOrder = parts[0].result.controls.map((c) => c.control);
+  const controlRawOf = (p, name) => { const v = p.result.controlRaw[name]; return v === null || v === undefined ? Infinity : v; };
+  const controls = controlOrder.map((name) => {
+    let best = parts[0];
+    for (const p of parts.slice(1)) if (controlRawOf(p, name) < controlRawOf(best, name)) best = p;
+    return best.result.controls.find((c) => c.control === name);
+  });
+  // A control selector matching no mesh is a structural fact about mesh names,
+  // not about which axis ran — if it fired in one slice it fired in all of
+  // them, so any slice's own verdict string names it.
+  const emptyPart = parts.find((p) => String(p.result.control).includes('matched no mesh'));
+  const control = emptyPart
+    ? emptyPart.result.control
+    : controls.every((c) => c.ok) ? 'PASS' : `FAIL — ${controls.filter((c) => !c.ok).map((c) => c.control).join(', ')}`;
+
+  const census = { unitPairTests: 0, unitPairPass: 0, exactCalls: 0, memoHits: 0, boxPruned: 0 };
+  let poses = 0;
+  for (const p of parts) {
+    for (const k of Object.keys(census)) census[k] += p.result.census[k];
+    poses += p.result.poses;
+  }
+
+  const restriction = parts[0].result.restriction;
+  for (const p of parts) {
+    if (JSON.stringify(p.result.restriction) !== JSON.stringify(restriction)) {
+      throw new Error(`slice ${p.slice} was restricted differently than ${parts[0].slice}`);
+    }
+  }
+
+  const { violations, regressed, staleDebt } = judgeUndeclared(rows, debtTable);
+  return {
+    population, poses, rows, violations, regressed, staleDebt, malformedDebt,
+    debtTable, controls, control, census,
+    ...(restriction ? { restriction } : {}),
+  };
+}
+
 export const EXPECTED_CONTACT_SLICES = [
   { axis: 'beat', poses: 97 },
   { axis: 'crown', poses: 49 },

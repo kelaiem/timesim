@@ -4,7 +4,7 @@
 
 # The instruments
 
-238 scripts. **130 are ACCEPTANCE tests** — they decide and exit non-zero.
+239 scripts. **131 are ACCEPTANCE tests** — they decide and exit non-zero.
 **108 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -113,6 +113,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-163-pin.mjs` | §163 | report | §163 — SIZING THE PIN-IN-SLOT COUPLING AGAINST THE BUILT TREE. |
 | `probe-163-puller.mjs` | §163 | acceptance | §163 — A PULLING PAWL ON A FIXED POST OUTSIDE THE WHEEL, COPLANAR WITH THE SAW. |
 | `probe-164-return.mjs` | §164 | report | §164 — IS THERE ROOM ON THE STEM FOR A RETURN SPRING, AND WHERE. |
+| `probe-164-undeclared.mjs` | §164 | acceptance | TODO 164 — acceptance for `checkUndeclaredClearance`. |
 | `probe-169-head.mjs` | §169 | report | P3 before P0 is the wrong order, but knowing the CEILING before spending it is not: how much z is free above the alarm column wheel's castellations before something unrelated is in the way? |
 | `probe-169-numbers.mjs` | §169 | report | Every number §169's record quotes, read off the built tree in one place. |
 | `probe-169-shot.mjs` | §169 | report | (no header — this file says nothing about what it answers) |

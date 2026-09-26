@@ -141,6 +141,59 @@ export function unionSweptOverlap(base, head) {
   return out;
 }
 
+// The gate's verdict, a THIRD copy of the expression `checkUndeclaredClearance`
+// computes in src/inspect.js (and battery-split.mjs's `mergeUndeclared` a
+// second) — this module runs in Node like that one but at a different seam
+// (after a restricted run is unioned against a baseline, rather than after
+// several slices are merged), so it needs its own copy for the same reason
+// that one does. Edit one, the other two are the second and third places to
+// look.
+function judgeUndeclared(rows, debtTable) {
+  const key = (d) => [d.a, d.b].sort().join(' ⇄ ');
+  const byPair = new Map(rows.map((r) => [r.pair, r]));
+  const violations = rows.filter((r) => !debtTable.some((d) => key(d) === r.pair));
+  const regressed = [];
+  const staleDebt = [];
+  for (const d of debtTable) {
+    const k = key(d);
+    const row = byPair.get(k);
+    if (!row) { staleDebt.push({ pair: k, todo: d.todo }); continue; }
+    if (row.min < d.floor - 1e-4) regressed.push({ pair: k, min: row.min, floor: d.floor, todo: d.todo });
+  }
+  return { violations, regressed, staleDebt };
+}
+
+// TODO 164 — `undeclaredClearance`'s union. Rows are UNIONED BY PAIR like
+// `inspection`'s, for the same reason: a pair's row names the whole
+// movement's minimum over EVERY axis, not one declared table's fixed order,
+// so there is no positional slot for `unionRowTable` to place a row into.
+// `controls` and `control` are always head's — the two control pairs run
+// UNRESTRICTED in every call (checkUndeclaredClearance's own rule), so a
+// restricted run's controls already speak for the whole movement and the
+// baseline's controls answer nothing a fresh run does not.
+export function unionUndeclared(base, head, changed) {
+  if (base.population !== head.population) {
+    throw new Error('undeclaredClearance: the baseline reports a different unit-pair population — '
+      + 'its rows cannot describe this tree');
+  }
+  if (JSON.stringify(base.debtTable) !== JSON.stringify(head.debtTable)) {
+    throw new Error('undeclaredClearance: the baseline carries a different debt table — '
+      + 'UNDECLARED_CLEARANCE_DEBT is module-scope and cannot depend on which units changed');
+  }
+  const rows = [
+    ...head.rows,
+    ...base.rows.filter((r) => {
+      const [a, b] = r.pair.split(' ⇄ ');
+      return !touches(changed, a, b);
+    }),
+  ];
+  rows.sort((x, y) => x.pair.localeCompare(y.pair));
+  const { violations, regressed, staleDebt } = judgeUndeclared(rows, head.debtTable);
+  const out = { ...head, rows, violations, regressed, staleDebt };
+  delete out.restriction;
+  return out;
+}
+
 // The one entry point the harness calls: given a baseline report, a restricted
 // result and the changed set, return the payload the gates and --report see.
 //
@@ -168,6 +221,8 @@ export function unionCheck(name, baseResult, headResult, changed) {
       });
     case 'sweptOverlap':
       return unionSweptOverlap(baseResult, headResult);
+    case 'undeclaredClearance':
+      return unionUndeclared(baseResult, headResult, changed);
     default:
       throw new Error(`${name}: restricted, but nothing knows how to union it`);
   }

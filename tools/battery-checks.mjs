@@ -32,7 +32,8 @@
 // from `opts` would make two name-keyed tables someone keeps in step, which is
 // the failure tools/payload.sh's header names. A rare `note` edit voids the
 // key.
-import { INSPECTION_SLICES, CLEARANCE_SLICES, EXPECTED_CONTACT_SLICES, mergeInspection, mergeExtrema } from './battery-split.mjs';
+import { INSPECTION_SLICES, CLEARANCE_SLICES, EXPECTED_CONTACT_SLICES, UNDECLARED_CLEARANCE_SLICES,
+  mergeInspection, mergeExtrema, mergeUndeclared } from './battery-split.mjs';
 
 // Why yieldEvery 64: measured, not guessed — see CLAUDE.md's yield-throttling
 // trap. The default 16 is tuned for a human-visible tab; 384 wedged a tab.
@@ -358,6 +359,29 @@ export const BATTERY = [
     gate: '0 violations',
     fails: (r) => r.violations,
     note: (r) => `${r.results.length} budgets` },
+  // TODO 164 — the complement `clearances`/`expectedContacts`/`inspection`
+  // structurally cannot cover: every unit pair that is neither EXPECTED nor
+  // IGNORED nor under a CLEARANCE_BUDGETS or EXPECTED_CONTACT_FLOORS row, held
+  // to CLEAR_MARGIN over the whole pose net. UNDECLARED_CLEARANCE_DEBT is a
+  // CLOSED arrival inventory (the user's own ratchet-inventory decision): a
+  // row fails if its pair gets deeper than its floor (regressed) or if the
+  // pair it names has cleared (stale — the debt was paid, and the row is a
+  // standing excuse waiting for a new offender). No row may be ADDED by a
+  // later PR — a newly undeclared pair blocks landing, stated here and in
+  // CLAUDE.md rather than enforced in code, the same convention `SLENDER_WAIVERS`
+  // and `TURN_WAIVERS` already carry.
+  { name: 'undeclaredClearance', opts: { yieldEvery: YIELD_EVERY },
+    slices: UNDECLARED_CLEARANCE_SLICES, merge: mergeUndeclared,
+    gate: 'controls PASS, 0 undeclared pairs under CLEAR_MARGIN, 0 regressed/stale/malformed debt rows',
+    fails: (r) => [
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...r.violations,
+      ...r.regressed.map((x) => ({ regressedDebt: x.pair, min: x.min, floor: x.floor, todo: x.todo })),
+      ...r.staleDebt.map((x) => ({ staleDebt: x.pair, todo: x.todo })),
+      ...r.malformedDebt.map((x) => ({ malformedDebt: `${x.a} ⇄ ${x.b}`, todo: x.todo })),
+    ],
+    note: (r) => `${r.population} undeclared unit pairs, ${r.rows.length} under margin `
+      + `(${r.debtTable.length} debt rows, ${r.violations.length} unexplained)` },
   { name: 'sweptOverlap', opts: { yieldEvery: YIELD_EVERY },
     gate: '0 CONFIRMED',
     fails: (r) => r.sound.staticVsSwept.violations,
@@ -367,11 +391,15 @@ export const BATTERY = [
     } },
 ];
 
-// The four checks a changed-unit list may narrow, and the only four. Each was
-// measured separately (roadmap §152's per-check table); `sweptOverlap` leads
-// because 96.5% of it is a confirm tier over 18 candidates that 35 of the 56
-// units appear in none of.
-export const RESTRICTABLE = new Set(['sweptOverlap', 'inspection', 'clearances', 'expectedContacts']);
+// The five checks a changed-unit list may narrow, and the only five. The
+// first four were measured separately (roadmap §152's per-check table);
+// `sweptOverlap` leads because 96.5% of it is a confirm tier over 18
+// candidates that 35 of the 56 units appear in none of. `undeclaredClearance`
+// (TODO 164) joined them because its population is every unit pair the other
+// three structurally cannot cover — narrowing it the same way keeps the
+// incremental path's whole point (a docs-only PR still runs it in ~0 s of
+// restricted work) rather than paying its full dense sweep on every merge.
+export const RESTRICTABLE = new Set(['sweptOverlap', 'inspection', 'clearances', 'expectedContacts', 'undeclaredClearance']);
 
 // A local copy rather than an import: ci-battery.mjs imports from here, so
 // reaching back for a formatter would be a cycle — and the header's rule is

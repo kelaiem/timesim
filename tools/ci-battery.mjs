@@ -29,6 +29,11 @@
 //                (TODO 6's per-contact floors; waived rows reported as debt)
 //   inspection   includeExcluded: true, 0 FORBIDDEN pairs
 //   clearances   0 violations
+//   undeclaredClearance controls PASS, 0 undeclared pairs under CLEAR_MARGIN,
+//                0 regressed/stale/malformed debt rows (TODO 164 — every unit
+//                pair neither EXPECTED/IGNORED nor under a CLEARANCE_BUDGETS
+//                or EXPECTED_CONTACT_FLOORS row; UNDECLARED_CLEARANCE_DEBT is
+//                a CLOSED arrival inventory, rows only leave)
 //   sweptOverlap 0 CONFIRMED (tight / refuted rows are reports, not failures)
 //   fingerprint  the same geometry hash from two VIRGIN boots (fresh browser
 //                context, state file deleted between them) — §52's determinism
@@ -333,7 +338,31 @@ const COSTS = {
   // run's `--report` replaces every row of it with a measured one.
   'inspection': 160,
   'clearances': 273,
+  // TODO 164 — PROTOTYPE-MEASURED, not yet CI-calibrated: the planning probe
+  // (`scratchpad/164/engine.mjs`, the prototype `checkUndeclaredClearance` was
+  // ported from) measured 317 s dense over all 14 axes on a dev container,
+  // against an exhaustive reference at 1258 s. Seeded here at the prototype's
+  // total and per-axis milliseconds so the partition has something better than
+  // a pose-count guess on its first run; `--report` replaces every row of it
+  // with a measured one; the header's own rule (a stale cost costs wall clock,
+  // never a verdict).
+  'undeclaredClearance': 317,
   'sweptOverlap': 260,
+
+  'undeclaredClearance:beat': 11005,
+  'undeclaredClearance:crown': 2144,
+  'undeclaredClearance:reserve': 10488,
+  'undeclaredClearance:wind': 108850,
+  'undeclaredClearance:arrest': 15271,
+  'undeclaredClearance:train': 46320,
+  'undeclaredClearance:jumperEngage': 55845,
+  'undeclaredClearance:handSet': 7226,
+  'undeclaredClearance:alarm': 11418,
+  'undeclaredClearance:alarmStrike': 24982,
+  'undeclaredClearance:alarmWind': 16262,
+  'undeclaredClearance:alarmToggle': 1732,
+  'undeclaredClearance:stemSlip': 3094,
+  'undeclaredClearance:alarmPress': 1981,
 
   // §127 — the per-axis walls of the one split check, in MILLISECONDS
   // (`--report`'s `sliceMs`). A slice with no row here is projected from its
@@ -1682,7 +1711,7 @@ try {
   // ---- §152 PREFLIGHT: the key, and the decision it licenses ---------------
   //
   // One extra VIRGIN boot, taken only when digests were asked for. It costs
-  // 8 s here and ~26 s on CI against the four sweeps' 51 min, and it has to
+  // 8 s here and ~26 s on CI against the five sweeps' 51 min, and it has to
   // come before the partition because what a shard is asked to run depends on
   // what it establishes.
   //
@@ -1750,7 +1779,7 @@ try {
       const pairs = k * (n - k) + (k * (k - 1)) / 2;
       const all = (n * (n - 1)) / 2;
       console.log(`  ${k} unit(s) changed: ${changed.join(', ')}`);
-      console.log(`  restricting the four sweeps to ${pairs} of ${all} pairs `
+      console.log(`  restricting the five sweeps to ${pairs} of ${all} pairs `
         + `(${(100 * pairs / all).toFixed(1)}%); every other check runs whole`);
     }
   }
@@ -1760,7 +1789,7 @@ try {
   const axisFilter = selectedAxes(battery, ONLY);
   const tasks = buildTasks(battery, SPLIT, COSTS);
   // §152 — the restriction reaches the checks the way every other option does,
-  // as an opt on the task. Only the four SWEEPS take it: the cheap checks sum
+  // as an opt on the task. Only the five SWEEPS take it: the cheap checks sum
   // to ~76 s and are where a key mistake would hide, so they always run whole.
   if (restriction) {
     for (const t of tasks) {
