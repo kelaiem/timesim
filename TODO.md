@@ -13,13 +13,20 @@ closed — see *Recently closed* at the end. What remains is listed here.
 The heading convention: a bare `## N.` heading is OPEN; closed and
 part-closed items say so in the heading and keep their text, edited in
 place to record what was built. This table is the at-a-glance version,
-refreshed 2026-09-25 — items with work left first, with what remains:
+refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 171 | OPEN | `EXPECTED_CONTACT_FLOORS` carries an `Alarm link ⇄ Three-quarter plate` row but `EXPECTED_PAIRS` never declares that pair, so the two tables disagree about which pairs are designed to touch. Fix: add the `EXPECTED_PAIRS` entry citing the floors row's own contacts |
+| 170 | OPEN | Four alarm release/arming-complex pairs sit under `CLEAR_MARGIN` with no individual root cause yet — feeler⇄sleeve, sleeve⇄rocker, disc⇄feeler, sleeve⇄selector. Fix: triage each to its own siting constant the way TODO 166/167/168/169 did |
+| 169 | OPEN | The alarm winding train's idler 2 flies under the centre wheel body (0.0252 clear), a §112 station scan that never took the centre wheel as a term. Fix: add the centre wheel's clearance to the dogleg's Z-tier station solve |
+| 168 | OPEN | `makeGear`'s hub-less bore path cuts a hexagon (`curveSegments: 3`), not a circle, biting into the alarm setting wheel's designed bore. Fix: raise `curveSegments` for every hub-less bore and re-derive the margins it moves |
+| 167 | OPEN | Two under-margin pairs in the alarm setting lane: the setting arbor's pinion bevel eats the dial sheet gap (0.0025 clear), and the index wedge's kept length overhangs the selector ring (0.0733 clear). Fix: give `ALARM_SET_Z` a bevel term, and re-derive `WEDGE_LEN` from TODO 26's pinned tip |
+| 166 | CLOSED | The alarm release seat's posts were sited off the setting wheel's tips alone; re-derived from the MAXIMUM reach of all four full circles the post's span passes (tips, disc tips, sleeve flat, selector ring — the ring governs), padded by `ALARM_SEAT_SINK` for the 16-gon/rim vertex tie. `ALARM_SEAT_POST_R` 5.3617 → 5.5238 |
 | 165 | OPEN | `boundsASolid` refuses `segmentPierces`' pass-through witness on any non-manifold mesh, so `alarmWindContrate` (a hand-built `BufferGeometry`, 480 non-manifold edges) had a real crossing read as clearance by `meshClearance`/`inspection`. Fix: a tolerant manifold check (degenerate-edge aware) for the witness, and a degenerate-triangle filter for any raw triangle-triangle sweep |
-| 164 | OPEN | `clearances`/`inspection` only ever measure a DECLARED row or a contacting pair — nothing sweeps the whole movement for an undeclared, non-EXPECTED pair under `CLEAR_MARGIN`. Fix: a movement-wide REPORT tier over non-EXPECTED pairs, triaged into a gate the way `intraUnit` was |
+| 164 | CLOSED | The movement-wide `undeclaredClearance` gate shipped (TODO 164), holding every undeclared, non-EXPECTED pair to `CLEAR_MARGIN` with a closed `UNDECLARED_CLEARANCE_DEBT` ratchet; its own arrival sweep filed TODO 166–171 |
 | 163 | OPEN | `clutchRim` ⇄ `settingBevel` are posed by two laws (the crown's `setPathRot` and the going train's `mwMinuteA`), so the crossed-axis mesh is buried a flat 0.2187 (29% of a tooth) at every indexing. Fix: the jumper back-drives the stem (roadmap §4 / TODO 58) |
+| 162 | CLOSED | The fold's leg-2 corner blank's clearance to the reserve wheel 1 was not new — two errors in `solveReserveSwing`'s accept test (a nominal vs. cut tip radius on each side) partly cancelled, accepting a bearing the metal did not clear. Both radii now read off the built metal, cross-asserted, and the swing scan samples every corner phase over a tooth pitch |
 | 161 | OPEN | `JMP_SITE` judges the alarm selector, sleeve and release levers AS BUILT, not over their own travel (BOOT HAS NO POSE). No defect today (JUMPER row 0.1500, clean). Fix: factor their own pose laws (`settingLeverAngleAt`/`jumperLeverRotAt`/`poseJumperLifter`'s precedent), not a pose snapshot |
 | 160 | OPEN | A jumper refusal is recorded ([TODO 156], closed) but cannot act — CAP_SOLVE commits B before `JMP_SITE` exists. Fix: nest a `JMP_SITE` scan into CAP_SOLVE's own candidate loop (the `solveReserveSwing` veto shape), with a cheap per-candidate pre-screen; 452/720 stations feasible with the fold and reserve removed vs 156/720 with them present |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
@@ -22901,7 +22908,7 @@ setting train) would at least make the two rims agree at the cost of the
 `axisEntry` risk that option carried when it was proposed for the whole
 train.
 
-## 166. The alarm release seat's post is sited only against the setting wheel's tips, missing the selector ring, sleeve flat and sensing-pin orbit it also passes
+## 166. The alarm release seat's post is sited only against the setting wheel's tips, missing the selector ring, sleeve flat and sensing-pin orbit it also passes — CLOSED
 
 Found closing [TODO 164]'s arrival sweep. `ALARM_SEAT_POST_R` (`src/main.js`,
 the alarm release seat's builder):
@@ -22935,6 +22942,58 @@ of the other three is design-load-bearing into its own named constant the way
 `ALARM_SEAT_POST_R` already is for the setting wheel, so a future change to
 any of the four re-derives against a stated constraint instead of an
 incidental one.
+
+**Closed.** The post's z-span passes four full circles, not one: the setting
+wheel's own tips and the disc's tips (`_setTipR`/`_discTipR`, both 4.6079 —
+same module and mate, so they coincide), the sleeve's flat
+(`ALARM_SLEEVE_R_OUT`, 4.65) and the selector ring's rim (`ALARM_SEL_R_OUT`,
+4.75) — the ring governs. Every one of the four is a full circle at every
+azimuth, so the fix is the RADIUS the post stands at, never an azimuth —
+130°/270° stay `probe-144-disc-room.mjs`'s free bands, unmoved.
+`ALARM_SEAT_POST_R` now takes the MAXIMUM of the four reaches plus one margin,
+padded by `ALARM_SEAT_SINK` (0.02) because a vertex of the post's 16-gon at
+270° points straight at a vertex of the ring's own rim polygon — the same
+plane-off-a-plane tie `MW_Z2` and `ALARM_SEAT_BLADE_Z` already pad for.
+`ALARM_SEAT_POST_R` **5.3617 → 5.5238**.
+
+| pair | before | after |
+|---|---|---|
+| Alarm release seat ⇄ Alarm selector | 0.0079 | 0.17 |
+| Alarm disc ⇄ Alarm release seat | 0.0996 | 0.26075 (at the same pose; the pair's new global minimum over the full pose net is 0.5137, at a different pose) |
+| Alarm release seat ⇄ Alarm release sleeve | 0.1079 | 0.26282 (now the blade ⇄ `alarmSleeveWeb`, not the post) |
+
+The three `UNDECLARED_CLEARANCE_DEBT` rows this filed are deleted (no row may
+be added; `checkUndeclaredClearance` reads the closed 8-row inventory with 0
+violations/regressed/stale/malformed, control PASS, every remaining row at
+exactly its floor: 0.1155, 0.092, 0.1183, 0.0961, 0.0733, 0.0025, 0.1414,
+0.0252). `expectedContacts`' own seat rows read disc⇄seat 0.17 and
+seat⇄hour wheel 0.17. The reader-pin hold is unchanged (`holdTq` 1.3046e-2
+N·mm, `padF` 14.66 mN) — the post radius does not enter that arithmetic —
+but the blade that carries the pad now runs a longer, more oblique reach off
+the wider post: preload **0.0614 → 0.0767** u (TODO 144's quoted 0.0614 is
+now historical), strain 0.00175 → 0.00189 (47% of the 0.004 stock limit, still
+inside it). The one neighbour that came CLOSER for the same reason is the
+minute jumper: **0.593 → 0.469** (still clear). `probe-144-set-hold.mjs`: 10
+rows, 0 failing, unchanged (its arithmetic does not depend on the post
+radius). `probe-144-disc-room.mjs`: byte-identical before/after (a radius
+change moves no azimuth, so the free-band report is unaffected).
+
+Full battery, before and after, both CI's own headless-Chromium/SwiftShader
+path: 43/44 gates pass on both trees (the one failure, `spec boots` 34/36 at
+`alarmr=20`/`alarmr=46`, is this container's pre-existing debt, unrelated to
+this fix). `--report` diffed before → after (excluding `ms`/`sliceMs`/census
+counters) moves exactly the rows the fix predicts and nothing else:
+`undeclaredClearance` loses the 3 rows and 3 debt entries this item's own
+population (1632, unchanged) carried; `sweptOverlap`'s `tight` list loses all
+three seat pairs, which reappear in `refutedByRefinement` at their risen
+gaps (0.17, 0.2608, 0.2628); `transfers`' seat-pad row (`armIn_u`/`armOut_u`
+2.631 → 2.834, `k_N_per_m` 630.58 → 504.49, `preload_u`/`strain` as above,
+and its why-text); `expectedContacts`' disc⇄seat row 0.15 → 0.17 (its
+`meshes` selector also moves from `alarmSeatBar` to `alarmSeatBlade`, the
+same longer blade); and both fingerprints (935425887 → 2930377451, matched
+across the A/B virgin-boot double-boot both before and after).
+`stockFloor`/`slenderness` did not move (their rows are geometry-local
+extents, not radii the post's own stations feed).
 
 ## 167. The alarm setting arbor pinion's bevel eats the dial sheet gap, and the index wedge's kept length overhangs the selector ring
 
