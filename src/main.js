@@ -17663,10 +17663,13 @@ declareTransfer('alarm release: bias blade (stud → lever → the reader’s pi
 //
 // THE POSTS. One at each of two free azimuths (probe-144-disc-room.mjs, 42
 // poses: 110–150° and 260–280° are empty of every other unit from the sheet
-// down past the disc), outside the setting wheel's tips by a margin at the
-// dial end, §54-sized as the cantilevers they are from the sheet to the seat.
-// A web from each post carries the plate, so the plate is a bridge between
-// two feet and not an overhang.
+// down past the disc — a free BAND, not a fixed radius; the fix below is a
+// radius change only), clear of every full circle their span passes — the
+// setting wheel's tips, the disc's own tips, the sleeve flat and the selector
+// ring, the ring governing at 4.75 — by a margin at the dial end, §54-sized
+// as the cantilevers they are from the sheet to the seat. A web from each
+// post carries the plate, so the plate is a bridge between two feet and not
+// an overhang.
 //
 // THE PAD. A blade of the movement's flat-spring stock on a stud beside one
 // post, aimed obliquely so its line never comes within a margin of the raised
@@ -17690,7 +17693,23 @@ const ALARM_SEAT_RELIEF_HALF = Math.acos((ALARM_SEAT_R_OUT ** 2 + _i1Dist ** 2 -
 const _setTipR = G.gearOuterR({ module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, mates: [ALARM_SET_I1_TEETH], thickness: ALARM_SET_T, bevel: false });
 const ALARM_SEAT_POST_L = -0.05 - (ALARM_SEAT_BOT + ALARM_SEAT_T / 2);                        // the sheet's back face down to the webs' mid-plane: the post stands ON the web, half a plate above the hour wheel's margin
 const ALARM_SEAT_POST_RAD = 2 * SLENDER_OVERHANG_K * ALARM_SEAT_POST_L / SLENDER_MAX;        // §54: λₑ = K·L/(r/2) ≤ SLENDER_MAX, as a cantilever from the sheet
-const ALARM_SEAT_POST_R = _setTipR + CLEAR_MARGIN + ALARM_SEAT_POST_RAD;                     // centre radius: one margin outside the setting wheel's tips at the dial end
+// TODO 166 — the post's z-span runs from the sheet down to the web, and in
+// that span it passes FOUR full circles, not the one it was solved against:
+// the setting wheel's own tips (_setTipR, 4.6079), the disc's tips (_discTipR,
+// 4.6079, same module/mate so they coincide), the sleeve's flat
+// (ALARM_SLEEVE_R_OUT, 4.65) and the selector ring's rim (ALARM_SEL_R_OUT,
+// 4.75) — the ring GOVERNS. (The disc's sensing-pin orbit, alarmSelPin at
+// 4.678, sits inside the ring and is held by `undeclaredClearance`, not by
+// this radius.) Every one of the four is a full circle at every azimuth, so
+// the fix is the RADIUS the post stands at, never an azimuth — 130°/270°
+// stay probe-144-disc-room.mjs's free bands. ALARM_SEAT_SINK pads the margin
+// (not just CLEAR_MARGIN) because a vertex of the post's 16-gon at 270°
+// points straight at a vertex of the ring's own rim polygon, which without
+// the pad would be an exact tie at the margin — the same convention
+// MW_Z2 and ALARM_SEAT_BLADE_Z already use for a plane one margin off
+// another plane.
+const _seatPostReach = Math.max(_setTipR, _discTipR, ALARM_SLEEVE_R_OUT, ALARM_SEL_R_OUT);
+const ALARM_SEAT_POST_R = _seatPostReach + CLEAR_MARGIN + ALARM_SEAT_SINK + ALARM_SEAT_POST_RAD;   // centre radius: one margin (padded) outside the governing circle
 const ALARM_SEAT_WEB_W = 0.7;                                                                 // the setting cock's arm width (the bracket idiom this copies)
 const ALARM_SEAT_STUD_R = 0.0924 / Math.cos(Math.PI / 10);                                    // pin stock: a 10-gon whose flats measure the 0.07 mm pivot floor exactly (the tail pin's convention, alarmSilPivot)
 const ALARM_SEAT_STUD_T = 0.9;                                                                // tangential offset of the stud from the post, away from the blade's sweep — the post's radius + the stud's + one margin, with room
@@ -17806,7 +17825,7 @@ let ALARM_SEAT = null;   // the published hold arithmetic — filled by the buil
   say('blade strain under the stock\'s limit', strain <= SPRING_SIGMA_Y_PA / STEEL_E_PA, `${strain.toExponential(3)}`, `≤ ${(SPRING_SIGMA_Y_PA / STEEL_E_PA).toExponential(3)}`);
   say('foot inside the smooth annulus', padR_u - ALARM_SEAT_PAD_R >= ALARM_SEAT_TRACK_CLEAR - 1e-9 && padR_u + ALARM_SEAT_PAD_R <= _discRootR + 1e-9, `${(padR_u - ALARM_SEAT_PAD_R).toFixed(4)}…${(padR_u + ALARM_SEAT_PAD_R).toFixed(4)}`, `${ALARM_SEAT_TRACK_CLEAR.toFixed(4)}…${_discRootR.toFixed(4)}`);
   say('plate clears i1b\'s tips at the relief', ALARM_SEAT_R_RELIEF > ALARM_SEAT_BORE + STOCK_MIN_U, `${ALARM_SEAT_R_RELIEF.toFixed(4)}`, `> bore + a wall`);
-  say('posts stand off the setting wheel\'s tips', ALARM_SEAT_POST_R - ALARM_SEAT_POST_RAD - _setTipR >= CLEAR_MARGIN - 1e-9, `${(ALARM_SEAT_POST_R - ALARM_SEAT_POST_RAD - _setTipR).toFixed(4)}`, `≥ ${CLEAR_MARGIN}`);
+  say('posts stand off the governing reach (setting wheel/disc tips, sleeve flat, selector ring)', ALARM_SEAT_POST_R - ALARM_SEAT_POST_RAD - _seatPostReach >= CLEAR_MARGIN + ALARM_SEAT_SINK - 1e-9, `${(ALARM_SEAT_POST_R - ALARM_SEAT_POST_RAD - _seatPostReach).toFixed(4)}`, `≥ ${CLEAR_MARGIN + ALARM_SEAT_SINK}`);
   say('stud clears its post', ALARM_SEAT_STUD_T - ALARM_SEAT_POST_RAD - ALARM_SEAT_STUD_R >= CLEAR_MARGIN - 1e-9, `${(ALARM_SEAT_STUD_T - ALARM_SEAT_POST_RAD - ALARM_SEAT_STUD_R).toFixed(4)}`, `≥ ${CLEAR_MARGIN}`);
   declareTransfer('alarm release: the seat pad (bracket blade → the disc’s face)', {
     unit: 'Alarm release seat', meshes: ['alarmSeatBlade', 'alarmSeatBladeStud', 'alarmSeatPad'], idiom: 'groundedBlade',

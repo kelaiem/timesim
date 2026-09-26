@@ -2484,14 +2484,6 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 // by a later PR; a newly undeclared pair blocks landing (not code-enforced —
 // stated here and in CLAUDE.md).
 export const UNDECLARED_CLEARANCE_DEBT = [
-  // TODO 166 — the post is sited only off the setting wheel's tips; it also
-  // passes the selector ring rim, the sleeve flat and the sensing pin orbit.
-  { a: 'Alarm release seat', b: 'Alarm selector', floor: 0.0079, todo: 'TODO 166',
-    why: 'ALARM_SEAT_POST_R is derived only from the setting wheel\'s tips; the post also passes the selector ring rim' },
-  { a: 'Alarm disc', b: 'Alarm release seat', floor: 0.0996, todo: 'TODO 166',
-    why: 'the same post, passing the disc\'s sensing pin orbit' },
-  { a: 'Alarm release seat', b: 'Alarm release sleeve', floor: 0.1079, todo: 'TODO 166',
-    why: 'the same post, passing the sleeve\'s flat' },
   // TODO 167 — the setting lane: the arbor pinion's bevel eats the sheet gap
   // to the dial, and the index wedge overhangs the selector ring.
   { a: 'Alarm setting arbor', b: 'Dial', floor: 0.0025, todo: 'TODO 167',
