@@ -22654,7 +22654,7 @@ re-opened as its own item since it is not a regression this item's own
 acceptance criteria (bearing/swing/module/jumper unchanged, spec-boot
 timings, battery gate identity) required to hold.
 
-## 164. No gate holds an undeclared, non-EXPECTED pair to CLEAR_MARGIN across the whole movement
+## 164. No gate holds an undeclared, non-EXPECTED pair to CLEAR_MARGIN across the whole movement — CLOSED
 
 Found closing [TODO 162]. `mwCornerFoldOut` ⇄ `rsvWheel1` sat under
 `CLEAR_MARGIN` — 0.055 on `main`, 0.036 here — for as long as TODO 155's
@@ -22685,6 +22685,106 @@ movement pair count is large (roughly `units²`), so the tier needs the
 same bounding-box pre-filter `intraUnit`/`assembly` already use to keep it
 affordable, and the same `pairsTouching`/§152 restriction plumbing so it
 does not become the one check the incremental battery can never narrow.
+
+**Closed.** `undeclaredClearance` (in `src/inspect.js`, ported from the
+planning probe `scratchpad/164/engine.mjs`) sweeps exactly the complement
+this item names: every one of the 1,632 unit pairs among the movement's 60
+labelled units that is neither `EXPECTED_PAIRS` nor `IGNORED_PAIRS` nor under
+a `CLEARANCE_BUDGETS` or `EXPECTED_CONTACT_FLOORS` row, dense over all 1,892
+poses of every axis, meshes deduped to their nearest labelled ancestor (§40's
+hops rule). Two controls ride the same loop, never restricted: `tie`
+(`Keyless works` ⇄ `Power-reserve train`'s `settingTraverse2` ⇄
+`reservePinion0`, TODO 162's own SETTING_ROD_R pair) reads exactly
+`CLEAR_MARGIN` (0.15) on every axis against a 2·margin query bound, and `hit`
+(`Center wheel` ⇄ `Third wheel`, a declared EXPECTED gear mesh) reads 0 —
+both PASS.
+
+**Arrival: 11 rows, not 12.** The user's own decision on arrival (Option B,
+ratchet inventory) froze every row at its measured depth in
+`UNDECLARED_CLEARANCE_DEBT`, each citing a new TODO with a fix path — except
+R3, a real contact (`Alarm release lifter` ⇄ `Alarm winding train`, the
+lifter run crossing the winding contrate at `alarm` f=0), which the user
+chose to fix in this PR rather than bank as debt: `ALARM_SLEEVE_TAB_REL_AZ`
+is now derived from the pair's own clearance rather than a hand-picked 8°
+(commit `e347946`), and the pair now measures 0.1595 clear. TODO 165 files
+the separate instrument gap that let `inspection` miss the crossing on that
+non-manifold mesh in the first place — a different defect with the same
+symptom, not this item's to carry.
+
+One side effect of the R3 fix, measured rather than assumed: `Alarm release
+sleeve ⇄ Alarm silence rocker` — coupled to the same tab azimuth — moved
+0.1066 → 0.0961. Every other row's floor is UNCHANGED by the fix, confirmed
+by measuring all 11 on the current (R3-fixed) tree rather than trusting the
+plan's own pre-fix table:
+
+| pair | min | at | debt |
+|---|---|---|---|
+| Alarm release seat ⇄ Alarm selector | 0.0079 | beat f=0 | TODO 166 |
+| Alarm disc ⇄ Alarm release seat | 0.0996 | train f=0.8958 | TODO 166 |
+| Alarm release seat ⇄ Alarm release sleeve | 0.1079 | beat f=0 | TODO 166 |
+| Alarm setting arbor ⇄ Dial | 0.0025 | beat f=0 | TODO 167 |
+| Alarm selector ⇄ Alarm setting wheel | 0.0733 | beat f=0 | TODO 167 |
+| Alarm setting wheel ⇄ Hour wheel | 0.1414 | train f=0.0729 | TODO 168 |
+| Alarm winding train ⇄ Center wheel | 0.0252 | beat f=0 | TODO 169 |
+| Alarm release feeler ⇄ Alarm release sleeve | 0.092 | train f=0.5938 | TODO 170 |
+| Alarm release sleeve ⇄ Alarm silence rocker | 0.0961 | beat f=0 | TODO 170 |
+| Alarm release disc ⇄ Alarm release feeler | 0.1155 | alarm f=0.6979 | TODO 170 |
+| Alarm release sleeve ⇄ Alarm selector | 0.1183 | alarm f=0 | TODO 170 |
+
+Every `floor` in `UNDECLARED_CLEARANCE_DEBT` equals its row's measured `min`
+to `toFixed(4)` exactly — the ratchet (`min < floor − 1e-4`) has its full
+intended tolerance, not a table copied from the plan and hoped to still be
+true. Measured with `debtTable: []` (nothing excused) on the current tree,
+all 14 axes: 0 rows beyond these 11, `control: 'PASS'`. With the shipped
+table: 0 violations, 0 regressed, 0 staleDebt, 0 malformedDebt. Cost: 313.6 s
+dense (population 1,632, poses 1,892; census `unitPairTests` 3,091,528,
+`unitPairPass` 563,746, `exactCalls` 31,361, `memoHits` 1,569,563,
+`boxPruned` 212,260) against the plan's own prototype figure of 317 s and the
+exhaustive reference's 1,258 s.
+
+Plus the 7th row TODO 162's own evidence named: `Alarm link ⇄ Three-quarter
+plate` carries an `EXPECTED_CONTACT_FLOORS` row but is not in
+`EXPECTED_PAIRS` — filed as TODO 171 rather than entered as debt, since it
+is a table inconsistency, not a clearance violation (the check's own
+`declaredExcluded` treats a floors row as sufficient declaration, matching
+`EXPECTED_CONTACT_FLOORS`' own stated purpose, so this pair correctly never
+reaches `undeclaredClearance`'s population; TODO 171 is the paperwork fix).
+
+**A pre-existing, previously-unexercised probe defect, found and fixed
+verifying this item.** `probe-152-restrict.mjs`'s `canon()` never stripped
+`rawMins`/`controlRaw` before comparing a restricted run's union against a
+full run; both fields are attached whenever a check runs at fewer axes than
+`AXES.length` — which every case in that probe's `CASES` array does (its own
+`AXES` const is 2 of 14) — and `unionRowTable`/`unionInspection` never touch
+them, so a full run's full-length array and a restricted run's
+touching-only array survive into the compared payloads verbatim, at
+different shapes. Verified two ways before trusting it: (1) reproduced on
+THIS branch for `clearances` and `expectedContacts` under the OLD `canon()`;
+(2) reproduced IDENTICALLY on unmodified `origin/main` (`99865ba`) from a
+throwaway worktree running the UNMODIFIED probe file — `inspection` and
+`sweptOverlap` passed, `clearances` and `expectedContacts` failed with the
+same first-diff signature (a `rawMins` array position, `0.55`/`null` and
+`0.373779.../0.150293...`). It never reached a real battery verdict: in
+production, `clearances`/`expectedContacts` always go through §127's
+per-axis split-then-merge before any §152 restriction-union runs, and
+`mergeExtrema` (`battery-split.mjs`) deliberately drops `rawMins`/
+`controlRaw` once slices are merged — so the mismatched shape never survives
+to reach `unionRowTable` on a real CI run. It bit only this probe's own
+cheap-multi-axis-direct-call shortcut. Fixed here: `canon()` now strips both
+fields for every case, `undeclaredClearance` included.
+
+**Residue.** `meshClearance`'s near-zero arbitration (§82's own documented
+trap) can return a distance EXCEEDING the query's own bound once a spurious
+tri-tri near-zero triggers `sampledVerdict` — measured directly during this
+item's own acceptance work (`Hack rod ⇄ Third wheel` read `null`/pruned
+under the memo+box-prune path and 0.4717 raw under the exhaustive path,
+neither ever a row). Both this check and `checkClearances`/
+`checkExpectedContacts` share the one `meshClearance`, so the trap is not new
+here — but this item is the first place a `rawMins`-vs-verdict distinction
+had to be drawn explicitly to keep an acceptance probe from failing on it.
+Containment (an open mesh reading as touching, TODO 27's class) and
+between-pose transients (item 7) remain this check's blind spots too, the
+same as every other pose-sampled sweep in this file.
 
 ## 165. `inspection` misses a real crossing on a non-manifold BufferGeometry
 
@@ -22800,3 +22900,168 @@ Option B, but applied only to the crossed-axis pair rather than the whole
 setting train) would at least make the two rims agree at the cost of the
 `axisEntry` risk that option carried when it was proposed for the whole
 train.
+
+## 166. The alarm release seat's post is sited only against the setting wheel's tips, missing the selector ring, sleeve flat and sensing-pin orbit it also passes
+
+Found closing [TODO 164]'s arrival sweep. `ALARM_SEAT_POST_R` (`src/main.js`,
+the alarm release seat's builder):
+
+```
+const ALARM_SEAT_POST_R = _setTipR + CLEAR_MARGIN + ALARM_SEAT_POST_RAD;
+```
+
+is derived from exactly one clearance — `_setTipR`, the alarm setting
+wheel's tip radius — plus one margin and the post's own overhang radius. The
+post's build-time assert (`say('posts stand off the setting wheel\'s tips', …)`)
+checks only that same relation. But the post's ring of stations, swept as
+the setting wheel turns, also passes:
+
+- the alarm selector ring's rim (`alarmSelRing`, r ≈ 4.75) — measured
+  0.0079 clear at `beat` f=0;
+- the alarm disc's sensing pin orbit (`alarmSelPin`) — measured 0.0996 clear
+  at `train` f=0.8958;
+- the alarm release sleeve's flat (`alarmSleeveFlat`) — measured 0.1079
+  clear at `beat` f=0.
+
+None of these three is the relation `ALARM_SEAT_POST_R` was solved against,
+so all three ride whatever margin falls out of the setting-wheel solve by
+coincidence — which is why they sit at three different depths rather than
+all landing on `CLEAR_MARGIN`.
+
+**Fix path.** Either widen `ALARM_SEAT_POST_R`'s own derivation to take the
+MINIMUM of all four relations (setting wheel tip, selector ring, sensing pin
+orbit, sleeve flat) rather than the one it currently solves, or move whichever
+of the other three is design-load-bearing into its own named constant the way
+`ALARM_SEAT_POST_R` already is for the setting wheel, so a future change to
+any of the four re-derives against a stated constraint instead of an
+incidental one.
+
+## 167. The alarm setting arbor pinion's bevel eats the dial sheet gap, and the index wedge's kept length overhangs the selector ring
+
+Found closing [TODO 164]'s arrival sweep. Two independent under-margin
+pairs in the same lane:
+
+**`Alarm setting arbor ⇄ Dial`, 0.0025 clear** (`beat` f=0, every axis).
+`ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2` sites the setting wheel's
+plane assuming the arbor pinion presents a crisp face at that height, but
+`makePinion`'s tooth bevel eats into the nominal 0.05 sheet gap — the pinion
+body is built with `bevel: false` (per the `G.makeGear` call for
+`alarmSettingWheel`), yet the ARBOR's own pinion (the mating gear) is not,
+and its bevel geometry extends past the plane `ALARM_SET_Z` was solved for.
+
+**`Alarm selector ⇄ Alarm setting wheel`, 0.0733 clear** (`beat` f=0). The
+index wedge:
+
+```
+const WEDGE_LEN = 0.42;
+const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, WEDGE_LEN, 3), ...);
+```
+
+kept its length from before TODO 26 pinned the wedge's tip position; the base
+end (away from the pin) now overhangs 0.073 into the selector ring's own
+clearance, since the tip is what TODO 26 solved and the base was never
+re-derived after.
+
+**Fix path.** For the arbor: either give `ALARM_SET_Z` a term for the
+pinion's own bevel depth (the same `bevel:false`-vs-bevelled asymmetry
+`ALARM_SEAT_POST_R`'s siblings already work around elsewhere), or build the
+arbor pinion `bevel: false` to match its mate. For the wedge: re-derive
+`WEDGE_LEN` from the tip position TODO 26 pinned, back to whatever base
+length clears the selector ring by `CLEAR_MARGIN`, rather than keeping the
+pre-TODO-26 constant.
+
+## 168. makeGear cuts a hub-less wheel's bore as a hexagon (curveSegments: 3), not a circle
+
+Found closing [TODO 164]'s arrival sweep. `alarmSettingWheel` is built
+`hub: false` (its bore is the bare cut, not a raised hub ring):
+
+```
+const wheel = G.makeGear({ ..., boreR: ALARM_TUBE_OUTER + 0.05, hub: false, ... });
+```
+
+`makeGear`'s hub-less bore path extrudes with `curveSegments: 3`
+(`src/geometry.js`), which sampled a circle at only three points cuts a
+HEXAGON, not a circle. The cap's chords reach r ≈ 2.641 against the designed
+circular bore radius of 3.05 — 14 of the cap's triangles sit inside the
+alarm tube (r 3.0) as a result, invisible to `inspection` because the pair
+is `EXPECTED` (the wheel meshes with the alarm disc, and the tube overlap
+rides the same grant). The visible symptom `undeclaredClearance` catches is
+one row over: `Alarm setting wheel ⇄ Hour wheel`, 0.1414 clear at `train`
+f=0.0729 — the hexagon's own chord reaching past the hour tube's designed
+clearance.
+
+**Fix path.** `curveSegments: 3` is `makeGear`'s value for every hub-less
+bore, not just this wheel's — raising it (a real circle wants ≳16 segments
+at this scale, matching the bored-hub path elsewhere in the same function)
+fixes every wheel built this way, not only `alarmSettingWheel`. Re-derive
+whichever margin the fix changes (the hour-tube row above, and the hidden
+14-triangle overlap with the alarm tube) rather than re-targeting the row to
+whatever the higher segment count happens to produce.
+
+## 169. The alarm winding train's idler 2 flies under the centre wheel body
+
+Found closing [TODO 164]'s arrival sweep. `Alarm winding train ⇄ Center
+wheel`, 0.0252 clear at `beat` f=0 (every axis) — the winding dogleg's idler
+2 (`alarmWindIdler`, tier Z of the dogleg) passes under the centre wheel's
+body with only that margin, a §112-scored siting that solved the dogleg's
+own reach and clearance to its NEIGHBOURING idler stations without a term
+for the centre wheel it also flies over.
+
+**Fix path.** Add the centre wheel body's own clearance as a term in the
+dogleg's §112 station scan (the same scan that already sites idler 1 and
+idler 2 against each other and against the winding spur), so the idler's
+Z-tier height is solved against every body it passes, not only the ones the
+original scan enumerated.
+
+## 170. Four alarm release/arming-complex unit pairs sit under CLEAR_MARGIN with no gate reading them
+
+Found closing [TODO 164]'s arrival sweep. Four pairs inside the alarm
+release/arming complex — the same complex TODO 117's back-drive removal and
+TODO 144's orphan-driver fix both touched — measure under margin with no
+declared row or gate ever having read any of them:
+
+| pair | min | at |
+|---|---|---|
+| Alarm release feeler ⇄ Alarm release sleeve | 0.092 | train f=0.5938 |
+| Alarm release sleeve ⇄ Alarm silence rocker | 0.0961 | beat f=0 |
+| Alarm release disc ⇄ Alarm release feeler | 0.1155 | alarm f=0.6979 |
+| Alarm release sleeve ⇄ Alarm selector | 0.1183 | alarm f=0 |
+
+The second row is coupled to `ALARM_SLEEVE_TAB_REL_AZ` — the same tab
+azimuth TODO 164's own R3 fix (commit `e347946`) re-derived for the lifter
+run's clearance to the winding contrate — and moved from 0.1066 to 0.0961
+as a measured side effect of that fix; the other three are unaffected by it.
+None of the four has been individually triaged to a specific root cause the
+way TODO 166/167/168/169's single-pair findings have; each is filed here as
+one class of debt (the release/arming complex's own siting, done as a set of
+pairwise station placements with no term for these four cross-checks)
+pending that triage.
+
+**Fix path.** Triage each of the four to its own siting constant the way
+TODO 166–169 did for the seat post, the arbor/wedge and the winding idler —
+likely candidates are the release sleeve's own OD/flat radii and the
+feeler/rocker/selector stations around it, all sited relative to the
+sleeve's tab azimuth or its own body radius without a term for the
+neighbour each row names.
+
+## 171. Alarm link ⇄ Three-quarter plate carries a floors row on a pair EXPECTED_PAIRS never declares
+
+Found closing [TODO 164]'s arrival sweep (named in the item's own filing,
+carried over from TODO 162's evidence). `EXPECTED_CONTACT_FLOORS` has a row
+for `Alarm link ⇄ Three-quarter plate`, whose whole convention (TODO 6) is
+to re-arm `CLEAR_MARGIN` for a pair `EXPECTED_PAIRS` has already granted
+blanket contact immunity — but `EXPECTED_PAIRS` carries no `['Alarm link',
+'Three-quarter plate']` entry (in either order) at all. The row is not
+wrong — `undeclaredClearance`'s `declaredExcluded` correctly treats any
+`EXPECTED_CONTACT_FLOORS` row as sufficient declaration on its own, so the
+pair correctly never reaches the new check's population, and
+`checkExpectedContacts` is already holding it to its own floor — but the
+TWO tables now disagree about which pair `EXPECTED_PAIRS`' own convention
+says "designed to touch," which is exactly the state the comment beside
+`EXPECTED_PAIRS` warns against for a pair granted immunity without a stated
+reason.
+
+**Fix path.** Add the `['Alarm link', 'Three-quarter plate']` entry to
+`EXPECTED_PAIRS`, citing whatever contact the floors row's own `contacts`
+list already names, so the two tables agree on record rather than only in
+the check's own excusing logic.
