@@ -17,6 +17,7 @@ refreshed 2026-09-25 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 165 | OPEN | `boundsASolid` refuses `segmentPierces`' pass-through witness on any non-manifold mesh, so `alarmWindContrate` (a hand-built `BufferGeometry`, 480 non-manifold edges) had a real crossing read as clearance by `meshClearance`/`inspection`. Fix: a tolerant manifold check (degenerate-edge aware) for the witness, and a degenerate-triangle filter for any raw triangle-triangle sweep |
 | 164 | OPEN | `clearances`/`inspection` only ever measure a DECLARED row or a contacting pair — nothing sweeps the whole movement for an undeclared, non-EXPECTED pair under `CLEAR_MARGIN`. Fix: a movement-wide REPORT tier over non-EXPECTED pairs, triaged into a gate the way `intraUnit` was |
 | 163 | OPEN | `clutchRim` ⇄ `settingBevel` are posed by two laws (the crown's `setPathRot` and the going train's `mwMinuteA`), so the crossed-axis mesh is buried a flat 0.2187 (29% of a tooth) at every indexing. Fix: the jumper back-drives the stem (roadmap §4 / TODO 58) |
 | 161 | OPEN | `JMP_SITE` judges the alarm selector, sleeve and release levers AS BUILT, not over their own travel (BOOT HAS NO POSE). No defect today (JUMPER row 0.1500, clean). Fix: factor their own pose laws (`settingLeverAngleAt`/`jumperLeverRotAt`/`poseJumperLifter`'s precedent), not a pose snapshot |
@@ -22685,7 +22686,61 @@ same bounding-box pre-filter `intraUnit`/`assembly` already use to keep it
 affordable, and the same `pairsTouching`/§152 restriction plumbing so it
 does not become the one check the incremental battery can never narrow.
 
-## 163. The clutch rim and the setting bevel are posed by two laws
+## 165. `inspection` misses a real crossing on a non-manifold BufferGeometry
+
+Filed closing [TODO 164] R3, a real contact the user asked fixed in the same
+PR rather than entered into the arrival debt table. `alarmLifterRun` (the
+alarm release lifter's fork run) crossed `alarmWindContrate` (the winding
+climb arbor's bevel gear) at `alarm` f=0: an exact triangle-to-triangle test
+found 324 intersecting pairs (true minimum 0), while `meshClearance` read
+0.0165 and dense surface sampling read 0.0046 — both wrong in the unsafe
+direction, and `inspection` reported 0 FORBIDDEN for the pair on `main`.
+
+**Root cause.** `boundsASolid` (§ TODO 95's pass-through witness) gates
+`segmentPierces` on the DESTINATION mesh being manifold — every edge shared
+by exactly two faces. `alarmWindContrate` is a hand-built `BufferGeometry`
+(`makeConicalGear`'s indexed strip construction) carrying 480 non-manifold
+edges, so `boundsASolid` returns false for it and the witness never runs
+against it; `_sampledVerdictInner` falls back to point/edge-midpoint sampling
+alone, which — exactly as TODO 95 documented for thin walls — has no sample
+that lands inside a body thinner than its spacing, and reports the near-zero
+`meshClearance` distance from the nearest surface instead of a true
+containment. `inspection`'s own FORBIDDEN classification rides the same
+`meshClearance`/`sampledVerdict` path, so it inherited the same blind spot.
+
+**A second trap, found re-measuring the fix.** After re-siting the run (see
+below), the exact triangle-to-triangle test *still* reported 320 "crossing"
+pairs at the same pose. Every one of them was against a near-zero-area
+(degenerate) triangle in the contrate's own mesh — a `ExtendedTriangle`
+whose two of three vertices coincide, so it is really a line segment, not a
+face — and the vendor's `intersectsTriangle` predicate reports a spurious
+touch between the run's (real, finite) top-face triangle and the
+degenerate sliver's plane-crossing point, which lies outside both triangles'
+actual occupied area. Filtering the crossing list to non-degenerate
+triangles (area > 1e-6) leaves 0 real crossings, matching `meshClearance`
+(0.1595) and dense sampling (0.1595–0.1650) at every sampled pose of every
+axis that moves either part. The contrate's own non-manifold-ness thus
+defeats BOTH the containment witness (undercounts) and a naive exact
+triangle test (overcounts, via degenerate slivers) — two failure modes from
+one hand-built mesh.
+
+**Fix path.** Two independent, additive instrument fixes, neither of which
+should touch the contrate's geometry (it meshes correctly as a bevel gear;
+`probe-138-bevel-roll.mjs` already exercises it):
+1. Give `boundsASolid`'s caller (or a variant of `segmentPierces`) a
+   tolerant manifold check — e.g. accept a mesh whose non-manifold edges are
+   all degenerate (zero-length or from zero-area triangles) rather than
+   refusing the witness outright on any non-2-count edge, so a hand-built
+   strip mesh with a few sliver seams still gets the pass-through test.
+2. Any *acceptance* instrument that runs its own raw `intersectsTriangle`
+   sweep (rather than going through `meshClearance`/`inspection`) should
+   filter degenerate triangles (area under some small floor) before
+   counting a "crossing" — the same discipline `boundsASolid` already
+   applies when keying edges (`if (a === b) continue; // degenerate
+   sliver`), just missing from the triangle-pair path.
+
+Either fix is scoped to the measuring code; the movement's geometry is
+unchanged by this item.
 
 Found closing [TODO 155], filed at the user's own direction when they
 chose that item's Option A (a stateless setting-train law) over Option B
