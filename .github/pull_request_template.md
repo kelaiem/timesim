@@ -110,8 +110,8 @@ or a budget to green a row.
 -->
 
 - New waivers (`stockFloor`, `penetration`, `intraUnit`, `assembly`,
-  `expectedContacts`, `alarmHandoffs`, `restoring`), each with the item it
-  cites:
+  `expectedContacts`, `alarmHandoffs`, `restoring`, `undeclaredClearance`),
+  each with the item it cites:
 - Filed rather than fixed, and why the fix was not in scope:
 
 ## Record

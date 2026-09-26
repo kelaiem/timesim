@@ -56,7 +56,7 @@ const run = async (name, opts) => {
   throw new Error(`${name} never finished`);
 };
 
-// The four sweeps, at options cheap enough to run twice. `sweptOverlap` is the
+// The five sweeps, at options cheap enough to run twice. `sweptOverlap` is the
 // exception that proves the point about cost: its hull tier is whole either
 // way, so the probe runs it at `confirm: true` and the difference it measures
 // IS the confirm tier.
@@ -65,6 +65,11 @@ const CASES = [
   { name: 'clearances', opts: { yieldEvery: 64, axes: AXES } },
   { name: 'expectedContacts', opts: { yieldEvery: 64, axes: AXES } },
   { name: 'sweptOverlap', opts: { yieldEvery: 64 } },
+  // TODO 164 — census is excluded like every other case (a report of work
+  // done, not a verdict); `rawMins`/`controlRaw` are the sliced-run scaffolding
+  // `unionUndeclared` never reads and are stripped by `canon` for the same
+  // reason census is.
+  { name: 'undeclaredClearance', opts: { yieldEvery: 64, axes: AXES } },
 ];
 
 const fail = [];
@@ -101,6 +106,15 @@ function canon(r) {
   const c = JSON.parse(JSON.stringify(r));
   delete c.census;
   if (c.sound?.staticVsSwept) delete c.sound.staticVsSwept.pairsTested;
+  // TODO 164 — `rawMins`/`controlRaw` are the SLICED-run scaffolding
+  // `checkUndeclaredClearance` attaches whenever fewer axes than AXES.length
+  // ran (this probe's AXES const is 2 of 14, so every case here carries it);
+  // `unionUndeclared` never reads either field and does not carry it into its
+  // output, so a full run's copy and a restricted run's differ in COVERAGE
+  // (which pairs got a raw entry) without either being wrong — exactly the
+  // kind of difference `census`'s own exemption above exists for.
+  delete c.rawMins;
+  delete c.controlRaw;
   return c;
 }
 

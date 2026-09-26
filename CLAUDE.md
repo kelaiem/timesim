@@ -238,6 +238,14 @@ it into prose either.
    TODO — currently every row measures green with zero waivers; do not
    widen a tolerance to green a row), clearances 0 violations, full
    `inspection { includeExcluded: true }` 0 FORBIDDEN,
+   `undeclaredClearance` **controls PASS, 0 undeclared pairs under
+   CLEAR_MARGIN, 0 regressed/stale/malformed debt** (TODO 164 — every unit
+   pair neither EXPECTED nor IGNORED nor under a `CLEARANCE_BUDGETS` or
+   `EXPECTED_CONTACT_FLOORS` row, held to `CLEAR_MARGIN` over the whole pose
+   net the way `intraUnit` holds a unit's own pairs; `UNDECLARED_CLEARANCE_DEBT`
+   is the arrival inventory, CLOSED: a row fails if its pair gets deeper than
+   its floor or if the pair has cleared, and no row may be added — a newly
+   undeclared pair blocks landing),
    and `sweptOverlap` **0 CONFIRMED** (§36 job B — hull overlaps are
    pose-confirmed before they count; `tight` and `refuted` rows are
    reports, not failures), and `stockFloor` **0 degenerate and 0
@@ -650,7 +658,11 @@ winning a tie — not `inspection`'s union — and what made them sliceable at
 all is that the sweep engine's refinement decision now reads a per-axis
 minimum rather than the cross-axis one, TODO 54's rule applied to the
 engine's last cross-axis coupling; the query bound stays cumulative because
-pruning is sound). `--no-split` runs each whole and is the reference
+pruning is sound), and so is `undeclaredClearance` (TODO 164) — its own
+shape again, EXTREMA-BY-PAIR-KEY rather than by row index, because a row
+there only exists when a pair is under `CLEAR_MARGIN` and there is no fixed
+table to align slices against; the tie rule is the same strict `<` in AXES
+order. `--no-split` runs each whole and is the reference
 the split must agree with, exactly as `--shards 1` is for the grouping. Three
 things hold it up, and all three are gates rather than conventions: the
 declared slice list is asserted to BE the page's `AXES` (an axis nobody sliced
@@ -713,7 +725,7 @@ produce or reshape inheritable rows; `tools/ci-battery.mjs` is deliberately
 absent because everything left in it (spec points, gates, the partition, the
 `COSTS` map) runs fresh every run and cannot stale a stored row. Measured,
 the check-code rule voids 56% of merges, so the incremental path is
-available on ~37% of them. The changed set narrows four sweeps through one
+available on ~37% of them. The changed set narrows five sweeps through one
 `pairsTouching` opt that **throws on a unit name it does not know**
 (`resolveAxes`' precedent — a typo that matched nothing would report a green
 battery of no work), and the restricted payload is **UNIONED** with the
@@ -783,11 +795,11 @@ cast from inside a solid, vertices mistaken for the surface,
 bounding box). Read it before writing a probe; every entry cost this repo real
 time at least once.
 
-### Two blind spots, now partially instrumented
+### Three blind spots, now partially instrumented
 
-Both are written up in `TODO.md` (items 5 and 6), and both produced
-real defects that every clean run missed. Each now has an instrument in
-the battery — with known residue:
+All three are written up in `TODO.md` (items 5, 6 and 164), and all three
+produced real defects that every clean run missed. Each now has an
+instrument in the battery — with known residue:
 
 - **Inside a unit.** The pair sweep cannot see it; `intraUnit` (TODO 5,
   §121) checks all three derived pair classes over the pose net: each
@@ -815,6 +827,21 @@ the battery — with known residue:
   `EXPECTED_CONTACT_FLOORS` to `CLEAR_MARGIN` everywhere EXCEPT their
   named contact meshes. Only seeded pairs are covered — an EXPECTED
   pair without a floors row still gets the blanket excuse.
+- **Anywhere in the movement, between two units neither declared nor
+  already known to touch.** The pair sweep only classifies a pair the graph
+  already claims CONTACTS or FORBIDS (`inspection`) or that a declared table
+  names (`clearances`, `expectedContacts`); nothing swept "every OTHER unit
+  pair" until `undeclaredClearance` (TODO 164), which holds that complement
+  to `CLEAR_MARGIN` over the same dense pose net `intraUnit`'s tiers use, the
+  units deduped to their nearest label the same §40 way. Residue, named:
+  eleven pairs sat under the margin on arrival and are frozen in
+  `UNDECLARED_CLEARANCE_DEBT`, each citing a TODO with a fix path (TODO
+  166–170); a twelfth (R3, `Alarm release lifter` ⇄ `Alarm winding train`)
+  was a real contact — the alarm release lifter run crossing the winding
+  contrate — and was fixed in the same PR that added the gate rather than
+  entered as debt (TODO 165 covers the separate `inspection`/`meshClearance`
+  gap that let a crossing on that non-manifold mesh go unseen). No row may be
+  ADDED by a later PR — a newly undeclared pair blocks landing.
 
 If you are checking a residue case — two fixtures, two movers of one
 unit, or an EXPECTED pair with no floors row — measure it yourself.

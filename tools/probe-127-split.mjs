@@ -20,7 +20,7 @@
 // the union at all).
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
-import { mergeInspection } from './battery-split.mjs';
+import { mergeInspection, mergeUndeclared } from './battery-split.mjs';
 
 const [axisA = 'crown', axisB = 'alarmToggle'] = process.argv.slice(2);
 const port = process.env.PORT || '8463';
@@ -99,6 +99,40 @@ if (a === b) {
 }
 console.log(`\ncensus ms (informational): whole exact ${whole.census.exactMs} verdict ${whole.census.verdictMs}`
   + ` · merged exact ${merged.census.exactMs} verdict ${merged.census.verdictMs}`);
+
+// ---- undeclaredClearance (TODO 164) ----------------------------------------
+// Same shape, different merge: `mergeUndeclared` is EXTREMA-by-KEY rather than
+// `mergeInspection`'s union-by-pair, because a row here only exists when a
+// pair is under CLEAR_MARGIN. Every field is deterministic (counts, not wall
+// clock), so unlike `census.exactMs`/`verdictMs` above nothing here is exempt
+// from the byte comparison.
+const ucOpts = { yieldEvery: 64 };
+const ucWhole = (await run('undeclaredClearance', { ...ucOpts, axes: [axisA, axisB] })).result;
+const ucA = (await run('undeclaredClearance', { ...ucOpts, axes: [axisA] })).result;
+const ucB = (await run('undeclaredClearance', { ...ucOpts, axes: [axisB] })).result;
+const ucMerged = mergeUndeclared(
+  [{ slice: axisA, result: ucA }, { slice: axisB, result: ucB }],
+  axisMeta.filter((a) => a.name === axisA || a.name === axisB),
+);
+// rawMins/controlRaw are the sliced-run scaffolding `mergeUndeclared` consumes
+// and the merge does not carry into its output — a whole run never has them
+// either, so stripping them from BOTH sides keeps the comparison honest rather
+// than papering over a real difference.
+const stripUC = (r) => { const c = { ...r }; delete c.rawMins; delete c.controlRaw; return JSON.stringify(c, null, 1); };
+const ucWholeStr = stripUC(ucWhole), ucMergedStr = stripUC(ucMerged);
+console.log(`\nundeclaredClearance whole [${axisA},${axisB}]: ${ucWhole.rows.length} rows, control ${ucWhole.control}`);
+console.log(`undeclaredClearance merged ${axisA} + ${axisB}: ${ucMerged.rows.length} rows, control ${ucMerged.control}`);
+if (ucWholeStr === ucMergedStr) {
+  console.log('IDENTICAL — undeclaredClearance merge matches the whole run byte for byte');
+} else {
+  bad++;
+  console.log('DIFFERENT — the undeclaredClearance merge does not reproduce the whole run:');
+  const la = ucWholeStr.split('\n'), lb = ucMergedStr.split('\n');
+  let shown = 0;
+  for (let i = 0; i < Math.max(la.length, lb.length) && shown < 20; i++) {
+    if (la[i] !== lb[i]) { console.log(`  L${i}\n   whole:  ${la[i]}\n   merged: ${lb[i]}`); shown++; }
+  }
+}
 
 await browser.close();
 srv.kill();

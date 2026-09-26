@@ -15992,7 +15992,26 @@ const ALARM_SLEEVE_POST_AZ = [105, 250, 345].map((d) => d * DEG2RAD); // world a
 // the lifter's own unit is rotated onto the corner (its internals stay
 // relative), while the sleeve's tab and the rocker's paddle are built in the
 // dial's mirrored frame from absolute world azimuths.
-const ALARM_SLEEVE_TAB_REL_AZ = 8 * DEG2RAD;  // off the corner — between the arbor cluster (corner + 0) and i1 (corner + 18)
+// TODO 164 R3 — THE OLD PICK NEVER CHECKED THE CLIMB ARBOR'S OWN GEAR. "8°,
+// between the arbor cluster (corner + 0) and i1 (corner + 18)" placed the tab
+// clear of those two NAMED obstacles and said nothing about the winding
+// contrate that sits AT the arbor cluster's own station (az 0, r ALARM_CD):
+// the release lifter's fork run travels radially in from the collar to this
+// tab at this SAME azimuth (`ALARM_LIFT_RUN_AZ` below), so at 8° that run
+// passes only `ALARM_CD·sin(8°)` ≈ 2.14 from the contrate's axis — inside the
+// `CLEAR_MARGIN`-plus-half-width band around its `tipR` (≈2.0) — a real
+// near-miss (TODO 164 R3: dense sampling read 0.0046, ~30× under
+// `CLEAR_MARGIN`). The azimuth is derived instead: the
+// smallest angle off the corner whose WHOLE radial ray — not just its two
+// ends — clears the contrate's blank by one CLEAR_MARGIN plus the run's own
+// half-width (the run and the tangential chord feeding it share that
+// section). Growing the angle only ever pushes it OUTBOARD from the corner's
+// own gear, toward i1 — asserted clear of i1's own station where i1 exists.
+const ALARM_TAB_CLEAR_REQ = ALARM_BEVEL_SPEC.tipR + CLEAR_MARGIN + (STOCK_MIN_U + 0.01) / 2;
+if (ALARM_TAB_CLEAR_REQ >= ALARM_CD)
+  console.warn(`§76/TODO 164 alarm tab azimuth: required clearance ${ALARM_TAB_CLEAR_REQ.toFixed(3)} `
+    + `exceeds ALARM_CD ${ALARM_CD.toFixed(3)} — no azimuth off the corner clears the contrate at this radius`);
+const ALARM_SLEEVE_TAB_REL_AZ = Math.asin(Math.min(1, ALARM_TAB_CLEAR_REQ / ALARM_CD)); // off the corner — the contrate's clearance floor (was a hand-picked 8°)
 const ALARM_SLEEVE_TAB_AZ = ALARM_CORNER_W_AZ + ALARM_SLEEVE_TAB_REL_AZ; // world
 const ALARM_SLEEVE_Z_ENGAGED = ALARM_SLEEVE_TOP;                    // flat top, engaged (margin under the arm band)
 const ALARM_SLEEVE_Z_REST = ALARM_SLEEVE_TOP - ALARM_SLEEVE_TRAVEL; // flat top, at rest
@@ -22890,6 +22909,19 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
 })();
 if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.y) - _wd3 > 1e-6)
   console.warn('alarm winding chain: i2 failed to close on the barrel mesh distance');
+{
+  // §76/TODO 164 — i1 is the OTHER obstacle the tab's azimuth (and the
+  // lifter run riding the same azimuth) must clear — the "corner + 18" half
+  // of the old comment — checked now that i1 has a real, solved station,
+  // in the same origin-relative azimuth `ALARM_SLEEVE_TAB_REL_AZ` is
+  // measured in (both corner and idler stand off the WORLD origin's polar
+  // angle, `ALARM_CORNER_W_AZ`'s own convention).
+  const i1RelAz = Math.atan2(alarmWindI1.y, alarmWindI1.x) - ALARM_CORNER_W_AZ;
+  const i1ArcGap = (i1RelAz - ALARM_SLEEVE_TAB_REL_AZ) * ALARM_CD;
+  if (i1ArcGap < CLEAR_MARGIN)
+    console.warn(`§76/TODO 164 alarm tab azimuth ${(ALARM_SLEEVE_TAB_REL_AZ / DEG2RAD).toFixed(2)}° stands only `
+      + `${i1ArcGap.toFixed(3)} of arc from i1's own station at ${(i1RelAz / DEG2RAD).toFixed(2)}° off the corner`);
+}
 {
   // The reach the sizing above bought, reported rather than assumed. Kept as
   // its own assert because the closure test upstream can only say the chain
