@@ -1471,7 +1471,7 @@ const GEAR_HUB_H_F = 1.5;                       // the hub ring's height as a mu
 // hubR about the axis; a pinion has none). The reserve build asserts both
 // against the metal it cuts (rule 6).
 export function gearFaceReach({ module, teeth, mates, thickness, boreR = 1, pinion = false, hub = true, bevel: bevelOn = true }) {
-  if (pinion) return { body: thickness / 2 + pinionBevel(module, thickness), hub: null };
+  if (pinion) return { body: thickness / 2 + (bevelOn ? pinionBevel(module, thickness) : 0), hub: null };
   const spec = gearToothSpec({ module, teeth, mates: gearMates(mates, teeth, 'gearFaceReach') });
   return { body: thickness / 2 + gearBevel(module, thickness, bevelOn),
     hub: { half: (thickness * GEAR_HUB_H_F) / 2, r: gearHubR(spec.pitchR, boreR, hub) } };
@@ -1633,7 +1633,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
 // Pinion (small solid steel wheel with fat leaves)
 // ---------------------------------------------------------------------------
 
-export function makePinion({ module, teeth, thickness, material, boreR = null, mates, name = '' }) {
+export function makePinion({ module, teeth, thickness, material, boreR = null, mates, name = '', bevel: bevelOn = true }) {
   const mat = material || MATS.steel;
   mates = gearMates(mates, teeth, 'makePinion');
   // §136 — same generator as the wheel, and that is the point: a pinion leaf
@@ -1651,10 +1651,10 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
   bore.absarc(0, 0, boreR ?? Math.max(module * 0.35, 0.4), 0, Math.PI * 2, true);
   shape.holes.push(bore);
 
-  const bevel = pinionBevel(module, thickness);   // one law with gearFaceReach (§234)
+  const bevel = bevelOn ? pinionBevel(module, thickness) : 0;   // one law with gearFaceReach (§234)
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
-    bevelEnabled: true,
+    bevelEnabled: bevelOn,
     bevelThickness: bevel,
     bevelSize: bevel,
     bevelSegments: 1,

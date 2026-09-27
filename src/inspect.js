@@ -2484,12 +2484,16 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 // by a later PR; a newly undeclared pair blocks landing (not code-enforced —
 // stated here and in CLAUDE.md).
 export const UNDECLARED_CLEARANCE_DEBT = [
-  // TODO 167 — the setting lane: the arbor pinion's bevel eats the sheet gap
-  // to the dial, and the index wedge overhangs the selector ring.
-  { a: 'Alarm setting arbor', b: 'Dial', floor: 0.0025, todo: 'TODO 167',
-    why: 'ALARM_SET_Z assumes a crisp pinion face; makePinion\'s bevel eats 0.0025 of the sheet gap' },
-  { a: 'Alarm selector', b: 'Alarm setting wheel', floor: 0.0733, todo: 'TODO 167',
-    why: 'the index wedge\'s WEDGE_LEN, kept after TODO 26 pinned its tip, overhangs the selector ring' },
+  // TODO 167 — the setting lane's arbor pinion was bevelled like an ordinary
+  // pinion and the bevel ate into the sheet gap to the dial; made CRISP
+  // (bevel: false) in the same PR, which also derived the index wedge's
+  // length off the ring it actually has to clear rather than a frozen
+  // constant — that row is gone. What TODO 167 could not close is that the
+  // lane's own DESIGNED gap (ALARM_SET_Z's 0.05 sheet clearance) is itself
+  // under CLEAR_MARGIN, so a crisp pinion still sits on it: re-cited to
+  // TODO 172, whose fix path is re-stratifying the lane, not the pinion.
+  { a: 'Alarm setting arbor', b: 'Dial', floor: 0.05, todo: 'TODO 172',
+    why: 'ALARM_SET_Z\'s designed 0.05 sheet gap to the dial is itself under CLEAR_MARGIN; the pinion is crisp and sits on it (the wheel and idlers ride the same gap under EXPECTED rows)' },
   // TODO 168 — makeGear's curveSegments:3 cuts a hub-less wheel's bore as a
   // hexagon rather than a circle.
   { a: 'Alarm setting wheel', b: 'Hour wheel', floor: 0.1414, todo: 'TODO 168',
