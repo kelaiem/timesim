@@ -2498,9 +2498,6 @@ export const UNDECLARED_CLEARANCE_DEBT = [
   // hexagon rather than a circle.
   { a: 'Alarm setting wheel', b: 'Hour wheel', floor: 0.1414, todo: 'TODO 168',
     why: 'the setting wheel\'s hexagonal cap chords reach past the hour tube\'s designed bore' },
-  // TODO 169 — the winding train's idler 2 flies under the centre wheel body.
-  { a: 'Alarm winding train', b: 'Center wheel', floor: 0.0252, todo: 'TODO 169',
-    why: 'the winding dogleg\'s idler 2 (tier Z) flies under the centre wheel body' },
   // TODO 170 — four alarm release/arming-complex pairs.
   { a: 'Alarm release feeler', b: 'Alarm release sleeve', floor: 0.092, todo: 'TODO 170',
     why: 'the alarm release/arming complex — see TODO 170' },

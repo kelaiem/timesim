@@ -22921,7 +22921,20 @@ const _wd3 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_W) / 2;  
 // sweep, this order's first boot) — so both idlers solve jointly: sweep
 // i1's azimuth, close i2 by two-circle on each branch, score the worse
 // stud against the corridor's footprint (rule 5), take the argmax; ties
-// within 0.05 keep the smallest swing off the straight line.
+// within 0.05 keep the smallest swing off the straight line. TODO 169 added
+// the accept test the score never had — both idlers one margin off the built
+// metal (below); the corridor now only ranks what that test lets through.
+//
+// §136 — each idler's mate graph, hoisted so the solve sizes the wheels it
+// judges (gearOuterR, gearFaceReach) from the same arrays mkIdler cuts with.
+const ALARM_WIND_I1_MATES = [
+  { teeth: ALARM_WIND_PINION_TEETH, mates: [ALARM_WIND_IDLER_TEETH] },
+  { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_IDLER_TEETH, ALARM_WIND_W] },
+];
+const ALARM_WIND_I2_MATES = [
+  { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_PINION_TEETH, ALARM_WIND_IDLER_TEETH] },
+  { teeth: ALARM_WIND_W, mates: [ALARM_WIND_IDLER_TEETH, SUB_LEG_TEETH] },
+];
 await breathe();
 const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
   const studR = 0.45;                       // the idler stud stock (the build below)
@@ -22952,12 +22965,189 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
       { x: mx + (h * dy) / d, y: my - (h * dx) / d },
     ]) cands.push({ i1, i2, deg, c: Math.min(c1, lowC(i2, studR)) });
   }
-  cands.sort((p, q) => q.c - p.c);
-  const best = cands.filter((p) => p.c > cands[0].c - 0.05)
-    .sort((p, q) => Math.abs(p.deg) - Math.abs(q.deg))[0];
-  if (!best || best.c < CLEAR_MARGIN)
-    console.warn(`alarm winding dogleg: no i1 azimuth stands both studs clear of the low corridor — best ${best ? best.c.toFixed(3) : 'none'} < ${CLEAR_MARGIN}`);
-  return best || { i1: { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } };
+  // TODO 169 — THE WHEELS ARE JUDGED ON THE METAL THEY FLY OVER. The score
+  // above sees the two STUDS against the corridor's declared footprint and
+  // nothing else, so it took i2 where its disc flew 0.0252 under the centre
+  // wheel (disc top 3.0888, wheel underside 3.114, overlapping in plan — the
+  // whole clearance axial): no term of it knew the centre wheel was there.
+  // Adding that one wheel to a list would find the next unlisted part the
+  // same way (collision-fixer §5a, TODO 151), so every piece of both idlers —
+  // the disc (tip circle and bevelled faces, off the cut's own reach
+  // helpers), the hub ring, the stud column — is judged against every unit
+  // built so far whose metal enters their band, the base plate excepted (the
+  // studs' ground):
+  //   · a mesh riding a TOOTHED wheel (userData.r and .teeth — it meshes, so
+  //     it turns; §151's rotor rule) is its REVOLUTION, the annulus
+  //     [minR, maxR] × [zLo, zHi] about that wheel's own vertical axis, so the
+  //     verdict holds at every angle both wheels turn to; the idler's piece is
+  //     a revolution too, and two revolutions give the exact clearance,
+  //     hypot(plan gap, axial gap);
+  //   · anything else is judged as built, triangle by triangle, by a bound
+  //     that only errs toward closer (the plan distance from the piece's axis
+  //     to the triangle's shadow, and the triangle's z-range).
+  // i2's disc may overlap the arbor wheel it meshes (EXPECTED_CONTACT_FLOORS'
+  // winding row names that one contact) and nothing else. What this cannot
+  // see, stated rather than implied: units built after it (the click and the
+  // arrest, which site themselves against these idlers downstream; the case)
+  // and non-rotating parts at any pose but the build's — the battery's
+  // `undeclaredClearance` holds those over the pose net.
+  const CM = CLEAR_MARGIN;
+  const idlerPieces = (mates, partner) => {
+    const spec = { module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_IDLER_TEETH, mates, thickness: ALARM_WIND_WHEEL_T };
+    const face = G.gearFaceReach({ ...spec, boreR: 0.5 });   // boreR: mkIdler's own
+    return [
+      { what: 'disc', r: G.gearOuterR(spec), lo: ALARM_WIND_TIER_Z - face.body, hi: ALARM_WIND_TIER_Z + face.body, partner },
+      { what: 'hub', r: face.hub.r, lo: ALARM_WIND_TIER_Z - face.hub.half, hi: ALARM_WIND_TIER_Z + face.hub.half },
+      { what: 'stud', r: studR, lo: ALARM_U_FLOOR - 0.5, hi: ALARM_WIND_TIER_Z + 0.3 },   // mkIdler's stud column
+    ];
+  };
+  const P1 = idlerPieces(ALARM_WIND_I1_MATES, null);               // i1's partner, the climb pinion, is built below
+  const P2 = idlerPieces(ALARM_WIND_I2_MATES, 'alarmArborWheel');
+  const reach = Math.max(...P1.map((q) => q.r), ...P2.map((q) => q.r)) + CM;
+  const zLo = Math.min(...P1.map((q) => q.lo)) - CM, zHi = Math.max(...P1.map((q) => q.hi)) + CM;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of cands) for (const s of [p.i1, p.i2]) {
+    x0 = Math.min(x0, s.x - reach); y0 = Math.min(y0, s.y - reach);
+    x1 = Math.max(x1, s.x + reach); y1 = Math.max(y1, s.y + reach);
+  }
+  const region = new THREE.Box3(new THREE.Vector3(x0, y0, zLo), new THREE.Vector3(x1, y1, zHi));
+  const rings = [], tri = [], triMesh = [], triUnit = [], cells = new Map(), CELL = 1;
+  const seen = new Set(), bx = new THREE.Box3(), va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3();
+  const wq = new THREE.Quaternion(), wz = new THREE.Vector3(), wo = new THREE.Vector3();
+  movement.updateMatrixWorld(true);
+  for (const e of labelEntries) {
+    if (e.obj === alarmWindUnit) continue;
+    e.obj.updateMatrixWorld(true);
+    e.obj.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position || seen.has(o)) return;
+      seen.add(o);
+      let rot = null;
+      for (let n = o; n; n = n.parent) {
+        if ((n.userData && n.userData.schematic) || n === backPlate) return;
+        if (!rot && n.userData && n.userData.r > 0 && n.userData.teeth > 0) rot = n;
+      }
+      bx.setFromObject(o);
+      if (bx.max.z < zLo || bx.min.z > zHi) return;
+      const pos = o.geometry.attributes.position, idx = o.geometry.index;
+      if (rot) {
+        wz.set(0, 0, 1).applyQuaternion(rot.getWorldQuaternion(wq));
+        if (Math.abs(wz.z) < 1 - 1e-9) rot = null;               // a tilted rotor is judged as built
+      }
+      if (rot) {
+        rot.getWorldPosition(wo);
+        let minR = Infinity, maxR = 0, lo = Infinity, hi = -Infinity;
+        for (let i = 0; i < pos.count; i++) {
+          va.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          const r = Math.hypot(va.x - wo.x, va.y - wo.y);
+          minR = Math.min(minR, r); maxR = Math.max(maxR, r); lo = Math.min(lo, va.z); hi = Math.max(hi, va.z);
+        }
+        rings.push({ x: wo.x, y: wo.y, minR, maxR, lo, hi, name: o.name || o.geometry.type, unit: e.name });
+        return;
+      }
+      if (!bx.intersectsBox(region)) return;
+      const n = idx ? idx.count : pos.count;
+      for (let i = 0; i < n; i += 3) {
+        va.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(o.matrixWorld);
+        vb.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(o.matrixWorld);
+        vc.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(o.matrixWorld);
+        const tlo = Math.min(va.z, vb.z, vc.z), thi = Math.max(va.z, vb.z, vc.z);
+        if (thi < zLo || tlo > zHi) continue;
+        const tx0 = Math.min(va.x, vb.x, vc.x), tx1 = Math.max(va.x, vb.x, vc.x);
+        const ty0 = Math.min(va.y, vb.y, vc.y), ty1 = Math.max(va.y, vb.y, vc.y);
+        if (tx1 < x0 || tx0 > x1 || ty1 < y0 || ty0 > y1) continue;
+        const id = tri.length / 8;
+        tri.push(va.x, va.y, vb.x, vb.y, vc.x, vc.y, tlo, thi);
+        triMesh.push(o.name || o.geometry.type); triUnit.push(e.name);
+        for (let gx = Math.floor(tx0 / CELL); gx <= Math.floor(tx1 / CELL); gx++)
+          for (let gy = Math.floor(ty0 / CELL); gy <= Math.floor(ty1 / CELL); gy++) {
+            const k = gx * 100003 + gy;
+            let l = cells.get(k); if (!l) cells.set(k, l = []); l.push(id);
+          }
+      }
+    });
+  }
+  const segD = (px, py, ax, ay, bx2, by2) => {
+    const vx = bx2 - ax, vy = by2 - ay, L = vx * vx + vy * vy;
+    const t = L > 0 ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L)) : 0;
+    return Math.hypot(px - ax - t * vx, py - ay - t * vy);
+  };
+  // plan distance from a point to a triangle's shadow: 0 inside it; a shadow
+  // with no area (a vertical wall) is its three edges
+  const triD = (px, py, k) => {
+    const ax = tri[k], ay = tri[k + 1], bx2 = tri[k + 2], by2 = tri[k + 3], cx = tri[k + 4], cy = tri[k + 5];
+    const area = (bx2 - ax) * (cy - ay) - (by2 - ay) * (cx - ax);
+    if (Math.abs(area) > 1e-12) {
+      const s = Math.sign(area);
+      if (s * ((bx2 - ax) * (py - ay) - (by2 - ay) * (px - ax)) >= 0
+        && s * ((cx - bx2) * (py - by2) - (cy - by2) * (px - bx2)) >= 0
+        && s * ((ax - cx) * (py - cy) - (ay - cy) * (px - cx)) >= 0) return 0;
+    }
+    return Math.min(segD(px, py, ax, ay, bx2, by2), segD(px, py, bx2, by2, cx, cy), segD(px, py, cx, cy, ax, ay));
+  };
+  const stamp = new Uint32Array(tri.length / 8);
+  let st = 0;
+  // one idler's worst clearance at station s: exact against the revolutions,
+  // a lower bound against the solids (searched out to one margin — the test
+  // only asks whether a candidate reaches it)
+  const metalC = (s, pieces) => {
+    let c = Infinity, who = null;
+    for (const pc of pieces) {
+      for (const r of rings) {
+        if (pc.partner && r.name === pc.partner) continue;
+        const dz = Math.max(0, r.lo - pc.hi, pc.lo - r.hi);
+        if (dz >= c) continue;
+        const d = Math.hypot(s.x - r.x, s.y - r.y);
+        const dp = d >= r.maxR + pc.r ? d - r.maxR - pc.r : (d + pc.r <= r.minR ? r.minR - d - pc.r : 0);
+        const g = Math.hypot(dp, dz);
+        if (g < c) { c = g; who = `${pc.what} ⇄ ${r.name} (${r.unit}, swept)`; }
+      }
+      st++;
+      const R = pc.r + CM;
+      for (let gx = Math.floor((s.x - R) / CELL); gx <= Math.floor((s.x + R) / CELL); gx++)
+        for (let gy = Math.floor((s.y - R) / CELL); gy <= Math.floor((s.y + R) / CELL); gy++) {
+          const l = cells.get(gx * 100003 + gy);
+          if (l) for (const id of l) {
+            if (stamp[id] === st) continue;
+            stamp[id] = st;
+            if (pc.partner && triMesh[id] === pc.partner) continue;
+            const k = id * 8;
+            const dz = Math.max(0, tri[k + 6] - pc.hi, pc.lo - tri[k + 7]);
+            if (dz >= Math.min(c, CM)) continue;
+            const g = Math.hypot(Math.max(0, triD(s.x, s.y, k) - pc.r), dz);
+            if (g < c) { c = g; who = `${pc.what} ⇄ ${triMesh[id]} (${triUnit[id]}, as built)`; }
+          }
+        }
+    }
+    return { c, who };
+  };
+  for (const p of cands) {
+    const m1 = metalC(p.i1, P1), m2 = metalC(p.i2, P2);
+    p.metal = Math.min(m1.c, m2.c);
+    p.metalWho = m1.c <= m2.c ? `i1 ${m1.who}` : `i2 ${m2.who}`;
+  }
+  // THE CORRIDOR STILL RANKS; THE METAL REFUSES. The corridor's own pick is
+  // taken exactly as before (argmax, ties within 0.05 to the smallest swing).
+  // If the metal refuses it, the station is the ACCEPTED candidate that moves
+  // the idlers least from it — the smallest move the refusal forces — because
+  // the click and the arrest downstream are sited against these idlers: the
+  // mirror branch scores the same corridor number (tied to 0.001 at every
+  // swing) and clears the centre wheel, but carries i2 9.05 across the barrel
+  // into the corner those two solves use, and the arrest then finds no
+  // station (measured: short by 0.063 on the click pawl).
+  const rank = (list) => {
+    list.sort((p, q) => q.c - p.c);
+    return list.filter((p) => p.c > list[0].c - 0.05).sort((p, q) => Math.abs(p.deg) - Math.abs(q.deg))[0];
+  };
+  const pick = cands.length ? rank(cands.slice()) : null;
+  const move = (p) => Math.max(Math.hypot(p.i1.x - pick.i1.x, p.i1.y - pick.i1.y), Math.hypot(p.i2.x - pick.i2.x, p.i2.y - pick.i2.y));
+  const best = !pick ? null : pick.metal >= CM ? pick
+    : cands.filter((p) => p.metal >= CM).sort((p, q) => move(p) - move(q) || q.c - p.c)[0] || null;
+  if (!best)
+    console.warn(`alarm winding dogleg: no i1 azimuth on either branch stands both idlers ${CM} off the built metal — `
+      + `keeping the corridor's pick, ${pick ? `${pick.metal.toFixed(4)} (${pick.metalWho})` : 'none'}`);
+  else if (best.c < CM)
+    console.warn(`alarm winding dogleg: no i1 azimuth stands both studs clear of the low corridor — best ${best.c.toFixed(3)} < ${CM}`);
+  return best || pick || { i1: { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } };
 })();
 if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.y) - _wd3 > 1e-6)
   console.warn('alarm winding chain: i2 failed to close on the barrel mesh distance');
@@ -23056,14 +23246,8 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     alarmWindUnit.add(stud);
     return spin;
   };
-  alarmWindUnit.userData.i1 = mkIdler(alarmWindI1, [
-    { teeth: ALARM_WIND_PINION_TEETH, mates: [ALARM_WIND_IDLER_TEETH] },
-    { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_IDLER_TEETH, ALARM_WIND_W] },
-  ], 'alarmWindIdler1');
-  alarmWindUnit.userData.i2 = mkIdler(alarmWindI2, [
-    { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_PINION_TEETH, ALARM_WIND_IDLER_TEETH] },
-    { teeth: ALARM_WIND_W, mates: [ALARM_WIND_IDLER_TEETH, SUB_LEG_TEETH] },
-  ], 'alarmWindIdler2');
+  alarmWindUnit.userData.i1 = mkIdler(alarmWindI1, ALARM_WIND_I1_MATES, 'alarmWindIdler1');
+  alarmWindUnit.userData.i2 = mkIdler(alarmWindI2, ALARM_WIND_I2_MATES, 'alarmWindIdler2');
   // §137 — the winding dogleg's transfer row. The dogleg-idler idiom:
   // rotation crosses a lateral offset in-plane through two equal-count brass
   // idlers whose azimuth is SCORED against the corridor (§112), never
