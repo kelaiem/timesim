@@ -20,7 +20,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 172 | OPEN | The alarm setting lane's designed 0.05 dial-sheet gap (`ALARM_SET_Z`) is under `CLEAR_MARGIN`; the crisp arbor pinion sits on it (debt row at 0.05). Fix: re-stratify the lane to `CLEAR_MARGIN`, carrying the §29 centre chain |
 | 171 | OPEN | `EXPECTED_CONTACT_FLOORS` carries an `Alarm link ⇄ Three-quarter plate` row but `EXPECTED_PAIRS` never declares that pair, so the two tables disagree about which pairs are designed to touch. Fix: add the `EXPECTED_PAIRS` entry citing the floors row's own contacts |
 | 170 | OPEN | Four alarm release/arming-complex pairs sit under `CLEAR_MARGIN` with no individual root cause yet — feeler⇄sleeve, sleeve⇄rocker, disc⇄feeler, sleeve⇄selector. Fix: triage each to its own siting constant the way TODO 166/167/168/169 did |
-| 169 | OPEN | The alarm winding train's idler 2 flies under the centre wheel body (0.0252 clear), a §112 station scan that never took the centre wheel as a term. Fix: add the centre wheel's clearance to the dogleg's Z-tier station solve |
+| 169 | CLOSED | The winding dogleg's scan judged only its stud columns against the low corridor; it now also refuses any station whose idlers (disc, hub, stud) come within `CLEAR_MARGIN` of already-built metal, taking the accepted station nearest the corridor's pick (i1 −42°). Idler 2 ⇄ centre wheel 0.0252 → 0.453; the click re-sites 150° → 164° |
 | 168 | OPEN | `makeGear`'s hub-less bore path cuts a hexagon (`curveSegments: 3`), not a circle, biting into the alarm setting wheel's designed bore. Fix: raise `curveSegments` for every hub-less bore and re-derive the margins it moves |
 | 167 | CLOSED | The alarm setting arbor pinion is built crisp (`makePinion` gained a `bevel` option) and sits on the lane's designed 0.05 dial gap, whose own sub-margin depth moved to [TODO 172]; the index wedge's length is derived from the selector ring's highest reach (0.42 → 0.3433), clearing it by exactly `CLEAR_MARGIN` |
 | 166 | CLOSED | The alarm release seat's posts were sited off the setting wheel's tips alone; re-derived from the MAXIMUM reach of all four full circles the post's span passes (tips, disc tips, sleeve flat, selector ring — the ring governs), padded by `ALARM_SEAT_SINK` for the 16-gon/rim vertex tie. `ALARM_SEAT_POST_R` 5.3617 → 5.5238 |
@@ -23110,7 +23110,7 @@ whichever margin the fix changes (the hour-tube row above, and the hidden
 14-triangle overlap with the alarm tube) rather than re-targeting the row to
 whatever the higher segment count happens to produce.
 
-## 169. The alarm winding train's idler 2 flies under the centre wheel body
+## 169. The alarm winding train's idler 2 flies under the centre wheel body — CLOSED
 
 Found closing [TODO 164]'s arrival sweep. `Alarm winding train ⇄ Center
 wheel`, 0.0252 clear at `beat` f=0 (every axis) — the winding dogleg's idler
@@ -23124,6 +23124,57 @@ dogleg's §112 station scan (the same scan that already sites idler 1 and
 idler 2 against each other and against the winding spur), so the idler's
 Z-tier height is solved against every body it passes, not only the ones the
 original scan enumerated.
+
+**Closed.** Two corrections to the text above. The §112 scan never judged
+the idlers "against each other and against the winding spur": its only term
+was the two STUD columns (r 0.45) against `LOW_LINKAGE_OBSTACLES`, so the
+wheels, the hubs and every other body were invisible to it. And there is no
+"Z-tier station": both idlers share `ALARM_WIND_TIER_Z`. The clash is the
+bevelled 0.8 toothed disc (top 3.0888), not the hub. It overlaps the centre
+wheel in plan (12.715 from the arbor < 11.579 + 3.014), so the whole
+clearance was axial: 3.114 − 3.0888 = 0.0252, the same at every pose.
+
+**Why azimuth and not the tier.** Lowering the tier is floored by
+`max(LOW_CORRIDOR_Z_BAND[1] + CM, ratchet shoulder + CM)`; raising it carries
+`ALARM_BARREL_Z0` and the whole barrel stack into the under-plate ceiling.
+The corridor score is flat (6.7–9.7 across the scan against a 0.15 margin),
+so azimuth is free.
+
+**The fix: an accept test on the metal (collision-fixer §5a).** Every piece
+of both idlers (the disc off `gearOuterR`/`gearFaceReach`, the hub ring, the
+stud column) is judged against every unit already built whose metal enters
+their band, the base plate excepted. A mesh riding a toothed wheel is judged
+as its REVOLUTION about that wheel's axis (exact at every angle). Anything
+else is judged triangle by triangle with a bound that errs only toward closer.
+i2's disc may overlap only its declared mesh partner, `alarmArborWheel`. The
+corridor score still ranks. When the metal refuses the corridor's own pick,
+the station is the accepted candidate that moves the idlers LEAST from it,
+because the click and the arrest downstream site themselves against these
+idlers. The mirror branch ties the corridor score and also clears the centre
+wheel, but it carries i2 9.05 across the barrel, and the arrest then finds no
+station (measured: 2 boot warnings, short by 0.063 on the click pawl).
+Nesting the click → arrest solves inside this scan is the fuller §5a fix.
+The idlers' mate graphs are hoisted (`ALARM_WIND_I1_MATES`/`_I2_MATES`) so
+the solve sizes the wheels from the same arrays `mkIdler` cuts with.
+
+| | before | after |
+|---|---|---|
+| Alarm winding train ⇄ Center wheel | 0.0252 | 0.45295 (debt row deleted) |
+| i1 swing off the straight line | 0° | −42° |
+| i2 station (i1 after) | (10.4835, 7.1943) | (13.6102, 6.2996) (i1 at (18.2282, 3.5007)) |
+| Alarm click stud azimuth (re-sites itself) | 150° | 164° (its own solve's clearance 6.46 → 7.19) |
+| click beak ⇄ arbor ratchet (alarmHandoffs, tol ±0.03) | −0.0025 | +0.0149 |
+| winding meshPhase i1⇄i2 / i2⇄arbor wheel | 0.001% / 0.063% | 0.028% / 0.113% (bar 2%) |
+
+The arrest is byte-identical. Transmits ratios are unchanged (−0.666667,
+−1, −0.409091), and equalisation (80 clicks, 4.25 of 4.25 turns) and
+transfers are unchanged. Control: with rotors treated as static solids the
+triangle path alone reads the old pick at exactly 0.0252 (the battery's own
+number) and picks the same −42° station. With the mesh-partner exemption
+removed, every candidate is refused and the boot warning fires. The solve
+adds about 40 ms at boot. Full `undeclaredClearance` after: population 1632,
+6 rows all at their floors, 0 violations / regressed / stale / malformed,
+control PASS. Boot is silent.
 
 ## 170. Four alarm release/arming-complex unit pairs sit under CLEAR_MARGIN with no gate reading them
 
