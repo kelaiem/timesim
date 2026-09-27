@@ -15977,7 +15977,15 @@ const ALARM_WEB_RELIEF_HALF = Math.asin(
 const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03;       // flat bore: rest flank + working clear
 const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
-const ALARM_SLEEVE_POST_AZ = [105, 250, 345].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (8)
+// TODO 170 — the third post was a hand-pick made before §45 stage 2 put the
+// silence rocker's pivot bracket between the feeler and the tab: at 345° its
+// guide eye stood 0.0961 off the rocker's inboard lug (the lug rides the
+// finger→paddle chord, so TODO 164 R3's tab re-derivation moved it, 0.1066 →
+// 0.0961). Measured on the built metal the free window is ≈346°..353.5°: below
+// it the eye meets that lug, above it the post (sheet → sleeve) meets the
+// setting idler's rim (0.113 at 354°, 0 at 356°). 350° is the window's centre:
+// the pair rises to 0.4977, nearest other metal 0.2655 (the selector ring's rim).
+const ALARM_SLEEVE_POST_AZ = [105, 250, 350].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (≈8.6), the rocker's pivot lugs (≈−18), the setting idler's rim (TODO 170)
 // §76 — THE SILENCE CHAIN IS CORNER-RELATIVE. This was a world constant, and
 // its own comment gave the defect away: "between the arbor cluster (az 0) and
 // i1 (az 18)" describes positions measured OFF THE ALARM CORNER, written as
@@ -17567,11 +17575,25 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   // The jog: a post from the arm's plane down to the tip's, sitting OUTBOARD of
   // the ring. Its inboard face clears the ring's outer edge by one margin,
   // which is what FEELER_JOG_R's half-thickness term buys.
-  const jogSpan = FEELER_TIP_Z + ALARM_FEELER_T;   // arm's dial face → tip's dial face
+  //
+  // TODO 170 — AND ITS FOOT CLEARS THE TRACK. The box spanned lever-local
+  // [−T/2, TIP_Z + T/2], and −T/2 is the arm's TRACK-side face (lever +z runs
+  // toward the dial) — not its dial face, as this comment said — so the jog's
+  // inboard corner hung one ALARM_PIN_SHANK (0.04) over the track's face, and
+  // the track is wider than the ring FEELER_JOG_R clears (half-width 0.20 vs
+  // 0.1583): 0.1083 radially, 0.1155 clear. The radius is boxed — 0.0417
+  // outboard put the jog 0.124 off the pressed follower's tail pin — so the
+  // foot rises instead: one margin off the track's face in z, plus the §29 drop
+  // at the jog's inboard face (the sense §29's rim assert prices), so it holds
+  // for a rock in either sense (TODO 173). It stays inside the arm's
+  // thickness: one body.
+  const FEELER_JOG_FOOT = CLEAR_MARGIN - ALARM_PIN_SHANK - ALARM_FEELER_T / 2
+    + ALARM_PIN_DROP * (FEELER_ARM_RUN + ALARM_FEELER_T / 2) / ALARM_FEELER_ARM_LEN;   // lever-local z, 0.0391
+  const jogSpan = (FEELER_TIP_Z + ALARM_FEELER_T / 2) - FEELER_JOG_FOOT;   // foot → tip's dial face
   const jog = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_T, 2 * ALARM_PIN_R, jogSpan), MATS.steel);
   jog.name = 'alarmFeelerJog';
-  // Centred so it spans the arm's dial face to the tip's: [−T/2, TIP_Z + T/2].
-  jog.position.set(FEELER_ARM_RUN, 0, FEELER_TIP_Z / 2);
+  // Spans [FEELER_JOG_FOOT, TIP_Z + T/2].
+  jog.position.set(FEELER_ARM_RUN, 0, (FEELER_JOG_FOOT + FEELER_TIP_Z + ALARM_FEELER_T / 2) / 2);
   alarmFeelerLever.add(jog);
   // The tip: spans the ring's full radial width, so the contact's centroid is
   // ALARM_TRACK_RMID and ALARM_FEELER_ARM_LEN is genuinely inherited — the
@@ -17588,6 +17610,8 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
     console.warn(`§117 feeler: the jog's inboard face ${(FEELER_JOG_R - ALARM_FEELER_T / 2).toFixed(4)} crowds the ring's rim ${(ALARM_TRACK_RMID + READER_RING_T / 2).toFixed(4)}`);
   if (FEELER_TIP_Z <= ALARM_FEELER_T / 2)
     console.warn(`§117 feeler: the tip ${FEELER_TIP_Z.toFixed(4)} has not cleared the arm's own plane — no jog`);
+  if (!(FEELER_JOG_FOOT > -ALARM_FEELER_T / 2 && FEELER_JOG_FOOT < ALARM_FEELER_T / 2))
+    console.warn(`TODO 170 feeler: the jog's foot ${FEELER_JOG_FOOT.toFixed(4)} has left the arm's thickness ±${(ALARM_FEELER_T / 2).toFixed(4)} — the lever is no longer one body`);
   // Return spring: a blade from the outboard lug pressing the arm down —
   // force representational, flex driven in tick from the actual drop.
   // §51 strata spend: the blade at real spring stock — 0.08 u = 0.03 mm, the
@@ -28525,7 +28549,14 @@ const alarmLinkParts = {};
       // block hangs from above, carried by the bar and its two side webs.
       const upLocal = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.matrixWorld).z) < 0 ? -1 : 1;
       const azF = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
-      const brLen = Math.max(0.2, rF - ALARM_SEL_R_OUT + 0.3);
+      // TODO 170 — the bar's inboard end was cut to lap the ring's rim
+      // (ALARM_SEL_R_OUT − 0.15) in PLAN only: at this plate level it stands
+      // 0.1817 off the ring (filed, TODO 174), and armed with the crown pulled
+      // its inboard 0.047 overhung the sleeve flat's rim with 0.1183 of axial
+      // gap. It starts one margin off that rim radially, independent of the z
+      // the link solve lands the groove at; it still laps post 1.
+      const brIn = ALARM_SLEEVE_R_OUT + CLEAR_MARGIN;
+      const brLen = Math.max(0.2, (rF + 0.15) - brIn);
       // TODO 11 tranche five: the bar's WIDTH was a 0.3 literal (0.1137 mm,
       // under the floor) while its thickness was already ALARM_SEL_T. Floor
       // stock in both free dimensions — the lesson §51 paid for on the feeler
@@ -28534,7 +28565,7 @@ const alarmLinkParts = {};
       // webs, whose inner faces stand at ±webInner (derived above).
       const bar = new THREE.Mesh(new THREE.BoxGeometry(brLen, STOCK_MIN_U, ALARM_SEL_T), MATS.nickel);
       bar.name = 'alarmSelForkBracket';
-      bar.position.set(Math.cos(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), Math.sin(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), grooveMidZ + upLocal * (grooveHalfH + ALARM_SEL_T / 2));
+      bar.position.set(Math.cos(azF) * (brIn + brLen / 2), Math.sin(azF) * (brIn + brLen / 2), grooveMidZ + upLocal * (grooveHalfH + ALARM_SEL_T / 2));
       bar.rotation.z = azF;
       alarmSelRing.add(bar);
     }

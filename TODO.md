@@ -17,9 +17,11 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
+| 173 | OPEN | The alarm release feeler lever rocks about the dial's Y axis (Euler order 'XYZ' on a lever turned `_phiF`), not its pivot pin, and in the wrong sense: at full drop the tip ⇄ reader-ring read opens from 0.02 to 0.1628. No gate poses a drop. Fix: rock about the pin (`rotation.order = 'ZYX'`), take the sign from the read contact, re-derive the beak edge and the silence finger, and add a dropped-pose read row |
 | 172 | OPEN | The alarm setting lane's designed 0.05 dial-sheet gap (`ALARM_SET_Z`) is under `CLEAR_MARGIN`; the crisp arbor pinion sits on it (debt row at 0.05). Fix: re-stratify the lane to `CLEAR_MARGIN`, carrying the §29 centre chain |
 | 171 | OPEN | `EXPECTED_CONTACT_FLOORS` carries an `Alarm link ⇄ Three-quarter plate` row but `EXPECTED_PAIRS` never declares that pair, so the two tables disagree about which pairs are designed to touch. Fix: add the `EXPECTED_PAIRS` entry citing the floors row's own contacts |
-| 170 | OPEN | Four alarm release/arming-complex pairs sit under `CLEAR_MARGIN` with no individual root cause yet — feeler⇄sleeve, sleeve⇄rocker, disc⇄feeler, sleeve⇄selector. Fix: triage each to its own siting constant the way TODO 166/167/168/169 did |
+| 170 | OPEN | Three of four closed: sleeve⇄rocker (sleeve post 3 345°→350°), disc⇄feeler (the jog's foot lifted one margin off the track), sleeve⇄selector (the fork bracket starts one margin off the sleeve flat). Left: feeler⇄sleeve 0.092, where the trip rock spends §45's envelope margin at the skirt's throat; no position-space room; blocked on [TODO 173] |
 | 169 | CLOSED | The winding dogleg's scan judged only its stud columns against the low corridor; it now also refuses any station whose idlers (disc, hub, stud) come within `CLEAR_MARGIN` of already-built metal, taking the accepted station nearest the corridor's pick (i1 −42°). Idler 2 ⇄ centre wheel 0.0252 → 0.453; the click re-sites 150° → 164° |
 | 168 | OPEN | `makeGear`'s hub-less bore path cuts a hexagon (`curveSegments: 3`), not a circle, biting into the alarm setting wheel's designed bore. Fix: raise `curveSegments` for every hub-less bore and re-derive the margins it moves |
 | 167 | CLOSED | The alarm setting arbor pinion is built crisp (`makePinion` gained a `bevel` option) and sits on the lane's designed 0.05 dial gap, whose own sub-margin depth moved to [TODO 172]; the index wedge's length is derived from the selector ring's highest reach (0.42 → 0.3433), clearing it by exactly `CLEAR_MARGIN` |
@@ -23207,6 +23209,63 @@ feeler/rocker/selector stations around it, all sited relative to the
 sleeve's tab azimuth or its own body radius without a term for the
 neighbour each row names.
 
+**Progress: three of the four closed.** Each pair was triaged to its own
+cause and cleared in position space. The fourth has no room there, and
+triaging it found a P0 defect, filed as [TODO 173].
+
+- **Sleeve ⇄ silence rocker.** The sleeve's third post azimuth (345°) was a
+  hand-pick made before §45 stage 2 put the rocker's pivot bracket between the
+  feeler and the tab. Its guide eye stood 0.0961 off the rocker's inboard
+  pivot lug, which rides the finger→paddle chord and so moves with the tab's
+  azimuth (TODO 164 R3 moved it 0.1066 → 0.0961). Measured on the built metal,
+  the free window is about 346°–353.5°: below it the eye meets the lug, above
+  it the post meets the setting idler's rim (0.113 at 354°, 0 at 356°). The
+  post now sits at the window's centre, 350°. **0.0961 → 0.4977.**
+- **Release disc ⇄ feeler.** The feeler jog's box spanned lever-local
+  [−T/2, TIP_Z + T/2], and −T/2 is the arm's TRACK-side face, not its dial
+  face as the comment said (lever +z runs toward the dial). So the jog's
+  inboard corner hung one pin shank (0.04) over the release disc's track,
+  which is wider than the reader ring `FEELER_JOG_R` clears (half-width 0.20
+  against 0.1583). The radius has no room: 0.0417 outboard put the jog 0.124
+  off the pressed follower's tail pin. So the foot rises instead.
+  `FEELER_JOG_FOOT` = one margin off the track's face plus the §29 drop at
+  the jog's inboard face = 0.0391, still inside the arm's thickness (one
+  body; a boot assert holds it). **0.1155 → 0.21**, now governed by the arm
+  over the disc body. Jog ⇄ tail pin is unchanged at 0.1656.
+- **Sleeve ⇄ selector.** The fork bracket bar's inboard end was cut to lap
+  the selector ring's rim in PLAN only. At its plate level, armed with the
+  crown pulled, its inboard 0.047 overhung the sleeve flat's rim with 0.1183
+  of axial gap. It now starts one margin off that rim radially
+  (`ALARM_SLEEVE_R_OUT + CLEAR_MARGIN` = 4.80) and still laps post 1.
+  **0.1183 → 0.1932.** Measuring it showed the bar never touches the ring it
+  drives (0.1817 off it), filed as [TODO 174].
+- **Feeler ⇄ sleeve, 0.092 — KEPT.** At the trip, the rock tilts the arm's
+  inboard end 0.058 toward the dial, into the envelope margin §45 priced one
+  `CLEAR_MARGIN` above the STATIC arm, right at the sleeve skirt's throat lip.
+  §124's rock assert evaluates the spend at the web's outer rim and never
+  looks at the throat. The skirt is the working cone and cannot be relieved.
+  Between the throat lip (0.15) and the disc body (0.21) the arm has 0.36;
+  one margin each side plus the rock needs 0.358–0.361, and moving the arm's
+  plane re-stratifies the §29/§45 stack. The debt row stays at its floor,
+  its why-text now citing [TODO 173]; that fix will send the row stale.
+
+| pair | before | after |
+|---|---|---|
+| Alarm release sleeve ⇄ Alarm silence rocker | 0.0961 | 0.4977 (row deleted) |
+| Alarm release disc ⇄ Alarm release feeler | 0.1155 | 0.21 (row deleted) |
+| Alarm release sleeve ⇄ Alarm selector | 0.1183 | 0.1932 (row deleted) |
+| Alarm release feeler ⇄ Alarm release sleeve | 0.092 | 0.092 (kept, blocked on TODO 173) |
+
+Checked in-browser:
+- Boot silent.
+- `undeclaredClearance`: population 1632, 3 rows, all at their floors; 0
+  violations, regressed, stale or malformed; control PASS.
+- `alarmHandoffs`: all 13 rows identical to the base.
+- `transfers`, `intraUnit`, `restoring`, `transmits`, `slenderness`,
+  `stockFloor`, `assembly`, `meshIntegrity` and `penetration` all clean.
+- The only unit whose box moved is `Alarm release sleeve`. Fingerprint
+  3327882166 → 324374814.
+
 ## 171. Alarm link ⇄ Three-quarter plate carries a floors row on a pair EXPECTED_PAIRS never declares
 
 Found closing [TODO 164]'s arrival sweep (named in the item's own filing,
@@ -23250,3 +23309,52 @@ chain (heart-B, flange, hearts, sleeve band), so `alarmHandoffs` and
 `transfers` rows move with it and must be re-proven. Then delete the debt row
 (it fails as stale once the pair clears) and decide whether the wheel's and
 idlers' EXPECTED rows still describe a retention the new gap keeps.
+
+## 173. The alarm release feeler rocks about the dial's Y axis, not its pivot pin, and away from the collar it reads
+
+Found triaging [TODO 170]'s feeler ⇄ sleeve row. The tick law sets
+`alarmFeelerLever.rotation.y = −feelerDrop / ARM_LEN` on a lever whose
+`rotation.z` is `_phiF`, under three.js's default Euler order 'XYZ'. The rock
+therefore happens about the dial's Y axis, not about the lever's own pivot
+pin: the effective rock is cos φ ≈ 0.905 of the intended value, plus 0.022
+of sideways slip. The sense is also wrong about either axis. Measured at full
+drop (train f=0.5894):
+
+- the reader collar moves 0.100 toward the track;
+- the tip moves 0.07–0.098 toward the dial;
+- `alarmFeelerTip ⇄ alarmReaderRing` opens from its 0.02 seat to **0.1628**,
+  so the read contact the drop exists to make is not made.
+
+Derived, not measured: the tail moves toward the track, away from the
+banking stop and the silence finger, both of which assume it rises.
+
+**Why nothing caught it.** `ALARM_HANDOFF_POSES` never pose a drop, the
+penetration budget caps depth only, and TODO 117's probe read rotations
+rather than contacts.
+
+**Fix path.** Rock about the pin (`rotation.order = 'ZYX'`, or an explicit
+pivot group), and take the sign from the read contact rather than from a
+declared direction. Re-derive the §29 step-4 beak edge and the silence
+finger against the corrected tail. Add a dropped-pose `reader ring ⇄ tip`
+row to `ALARM_HANDOFFS`. Then re-price arm ⇄ disc body at the arm's INNER end:
+with the rock corrected it dips to about 0.129, and §29's assert prices only
+the rim root. The fix clears TODO 170's last row (feeler ⇄ sleeve 0.092);
+delete that debt row in the same change or it fails as stale.
+
+## 174. The alarm selector's fork block and bracket bar are not joined to the ring they drive
+
+Found triaging [TODO 170]'s sleeve ⇄ selector row. The fork bracket bar is
+cut to "lap" the selector ring's rim, but only in plan: at the plate level
+the link solve lands it at, the bar stands 0.1817 off `alarmSelRing` and
+`alarmSelBoss1`, and the fork block is at least 0.32 off the ring. The bar
+touches only the fork plates and post 1. Nothing carries the link's drive
+into the ring: there is no load path (P1).
+
+Neither `intraUnit`'s fixture-pair tier nor `assembly` can see a missing
+joint here. The selector is not in `ASSEMBLY_SCOPE`, and a gap is not an
+overlap.
+
+**Fix path.** Add a riser from the bar down to the ring, outside r 4.80 so
+it keeps TODO 170's clearance to the sleeve flat. Then gate the connection:
+bring the selector into `ASSEMBLY_SCOPE`, or add a declared-joint row that
+the §182 audit measures.
