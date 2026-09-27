@@ -74,12 +74,15 @@
     #boot .boot-note { animation-delay: 0s; }
   }
 </style>
-<!-- §238 — the entry script imports i18n.js first and main.js only after a
-     frame has been painted, which would otherwise serialize two fetches that
-     used to overlap. These preloads put the module graph on the wire at parse
-     time, so the paint barrier costs a frame and not a round trip. -->
-<link rel="modulepreload" href="./src/main.js" />
-<link rel="modulepreload" href="./vendor/three.module.js" />
+<!-- The import map comes FIRST, before anything that starts a module fetch.
+     A modulepreload resolves its target's static imports as it goes, and once
+     a module load has begun Chromium ignores any import map parsed after it
+     ("An import map is added after module script load was triggered"). With
+     the preloads above the map, a warm-cache RELOAD — Reset, a locale change,
+     §240's Import JSON — could get main.js's graph moving before the map was
+     read and die on the bare specifier "three". Measured on the SwiftShader
+     container: 3 of 3 warm reloads failed on one run and 1 of 3 on clean
+     main, 0 of 6 after this order; tools/probe-240-import.mjs holds it. -->
 <script type="importmap">
 {
   "imports": {
@@ -88,6 +91,12 @@
   }
 }
 </script>
+<!-- §238 — the entry script imports i18n.js first and main.js only after a
+     frame has been painted, which would otherwise serialize two fetches that
+     used to overlap. These preloads put the module graph on the wire at parse
+     time, so the paint barrier costs a frame and not a round trip. -->
+<link rel="modulepreload" href="./src/main.js" />
+<link rel="modulepreload" href="./vendor/three.module.js" />
 </head>
 <body>
 <div id="app"></div>

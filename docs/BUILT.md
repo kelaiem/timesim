@@ -28749,6 +28749,108 @@ since a gate reports only whether its failure list is empty.
 shorten the wait; this says the same thing from the other side. The wait is the
 same 13 s — what changed is that the page is now answering for 92% of it.
 
+## §240 — Import a tuned `aesthetics.json` (Landing 2 of 3; the shareable link is the third)
+
+> **Status. Landing 2 SHIPPED 2026-09-27.** The entry itself lives in the
+> private roadmap as §240, filed out of public issues #287 (the design) and
+> #289 (the three-step tracking issue). Step 1 — the merge lifted to
+> `mergeAesthetics()` returning `{ applied, refused, clamped }`, the storage
+> wrappers, the `aestheticsMerge` check — shipped 2026-08-24 as #290 with
+> nothing user-visible, which is why this is the first record. Landing 3, the
+> `?aes=` link over the geometry-free leaves, remains, behind one open
+> decision: whether it subsumes §185's `?dialcol=` and §203's `?metal=` or
+> adopts their one-key-per-leaf shape. The trial-boot prerequisite closed as
+> TODO 152.
+
+**The gap.** The Advanced panel (§23) could EXPORT a tuning session — Copy JSON
+puts the merged schema on the clipboard so "a good tuning session ends in a
+commit, not in localStorage" — and could not import one. Restoring a tuned look
+took a checkout: paste the JSON into `src/aesthetics.json` and reload. A second
+browser, a phone, a person you wanted to show it to had no way in.
+
+**What shipped.** An **Import JSON** button between Copy JSON and Reset, driving
+a hidden `<input type="file" accept="application/json,.json">` — no clipboard
+permission and no secure context, so unlike Copy JSON no fallback ladder. The
+logic is `importAesthetics(text)` in `aesthetics.js`, beside the merge and the
+storage keys it already owns; `main.js` owns only the picker and what gets said.
+
+- **One parser.** The file runs through `mergeAesthetics` — the same type
+  anchor, `_bounds` clamp, `_options` set and unknown-key refusal every stored
+  override meets. A file cannot carry in a value the panel would refuse.
+- **The base is the STORED tuning, not the live singleton.** `aesthetics`
+  also holds a `?dialcol=` / `?metal=` link's value, which §185 promises is
+  never written back; persisting the effective state would break that for
+  anyone importing while holding a link. So: the file's defaults
+  (`AESTHETICS_DEFAULTS`), then the overrides already in this browser — a
+  fragment ADDS to a tuning session rather than replacing it — then the
+  import.
+- **Persist, then reload.** A file may carry `dial.hourMarkers.*`, consumed at
+  build time, and §23 persists overrides at all because "a reload knob whose
+  value dies on reload is a control that never visibly works". Reloading into
+  the persisted state also puts the import behind §23's crash-recovery marker
+  with no new machinery.
+- **The receipt crosses the reload.** The merge's report rides
+  `sessionStorage` (this tab only) and the rebuilt panel opens itself to
+  Advanced with the status line saying `Imported: applied/total`, then any
+  refused and clamped paths by their canonical dot path. The key is removed
+  only by `confirmAestheticsBoot()`, so if the imported values KILL the build
+  the report survives into the self-healing boot, which then says that the
+  imported values stopped the build and were dropped — naming the cause instead
+  of only warning in the console. A trial boot neither reads nor clears it
+  (TODO 152's rule).
+- **Degrade, never throw** — `applyDeepLink()`'s standing rule for links. Not
+  JSON; JSON that is not an object; nothing applicable (the refusals named);
+  a store that refuses the write (`writeOverrides` returning `false` on a
+  blocked or full quota) — each is said on the status line, writes nothing and
+  does NOT reload. The last matters most: a reload there would discard what
+  the viewer just loaded.
+
+Eleven strings, in all twelve non-English tables. Arabic is right-to-left and
+the status line is chrome, so it rides the logical-property rule; the buttons
+moved to a row of their own, packed at the start, because a third button made
+the shared note-and-buttons row wrap into a spaced-out scatter at the panel's
+240 px (measured in en, de, ru and ar: every locale puts Reset on a second
+line, and Arabic mirrors).
+
+**A reload-breaking defect found on the way, in §238's markup.** `index.html`
+put its two `<link rel="modulepreload">` ABOVE the import map. A modulepreload
+resolves its target's static imports as it goes, and once a module load has
+begun Chromium ignores an import map parsed after it — so a warm-cache reload
+could start `main.js`'s graph before the map was read and die on the bare
+specifier `"three"`. Measured on the SwiftShader container: 3 of 3 warm reloads
+of one tab failed on this branch before the fix, 1 of 3 on a clean `main`
+worktree, 0 of 6 after moving the map above the preloads. It was invisible to
+every existing instrument because the battery and the probes boot fresh pages;
+it hit anything that reloads — Reset, a locale change — and this landing IS a
+reload, which is how it surfaced (the lethal-payload row came back with the
+wrong error). The fix is ordering only; the preloads still put the graph on the
+wire at parse time, which is all §238 asked of them.
+
+**Evidence.** `tools/probe-240-import.mjs`, 40/40:
+
+- **A** control: a seeded override is applied on a plain boot (the probe reads
+  the store the app reads).
+- **1** a fragment imports: reload, the leaf live, the refused key named, a leaf
+  tuned before the import survives it, a `?dialcol=` link's colour NOT written
+  into the store, the receipt shown with the panel opened to it and consumed
+  once the build confirms.
+- **2–4** not JSON / an array / zero applicable leaves: said, nothing written,
+  no reload.
+- **5** a store whose `setItem` throws: said, nothing stored, no reload.
+- **6** lethal, two boots. No in-bounds leaf is known to kill the build — the
+  merge exists to make that so — so the lethality is INJECTED and keyed on the
+  payload: an init script makes 2d-canvas creation throw only while the stored
+  overrides carry a sentinel value, which is exactly what §23's value-agnostic
+  recovery sees. Boot 1 dies (`__bootError`) with the marker armed; boot 2 is
+  clean, warns §23, has dropped the store, runs the file's value, says the
+  import was dropped, and the Import button is reachable.
+- **7** key parity: all eleven strings in all twelve tables.
+- **R** three consecutive warm reloads of one tab all boot — the import-map
+  order above, held.
+
+No shipped default changed, so the fingerprint must equal the base's; the
+battery's reading is in the pull request.
+
 ## §242 — The release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline, behind a door in the chrome
 
 > **Status.** SHIPPED whole, in two landings the same day: the film, its

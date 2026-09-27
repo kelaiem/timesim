@@ -41,7 +41,20 @@ The exception named above: `gong.arcDeg` and `gong.wireDiaUnits` are DIMENSIONS 
 
 ## How to Use
 
-Edit values in `src/aesthetics.json` and reload the browser. For example:
+Two ways in. **In the app**: open the panel's Appearance → Advanced section,
+tune, and the values persist in this browser; **Copy JSON** puts the tuned
+schema on the clipboard, and **Import JSON** (§240) reads one back — a whole
+`aesthetics.json` or any fragment of one, from a file. An import runs through
+the same merge a stored override meets (type-anchored, clamped to `_bounds`,
+unknown keys refused), adds to what this browser already has tuned, persists,
+and reloads; the status line under the buttons then says how many values
+applied and names any refused or clamped path. A file nothing in which
+applies, a file that is not JSON, or a browser that will not store it changes
+nothing and does not reload; a file whose values stop the build is dropped on
+the next boot by §23's crash recovery, and the status line says so. **In the
+repo**: edit values in `src/aesthetics.json` and reload the browser — the file
+stays the single source of record, and a good tuning session ends in a commit
+there. For example:
 
 ```json
 {

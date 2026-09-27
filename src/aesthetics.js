@@ -142,6 +142,7 @@ export function mergeAesthetics(dst, src, out = { applied: [], refused: [], clam
 // died mid-build: it drops the overrides and says so, and the file's own
 // values boot clean. Value-agnostic — it does not need to know WHICH value
 // was lethal, only that one was.
+let overridesDropped = false;
 try {
   // A trial neither reads nor clears the marker: it is the REAL session's
   // handshake, and a throwaway boot acting on it would drop the viewer's
@@ -149,6 +150,7 @@ try {
   if (!TRIAL_BOOT && localStorage.getItem(BOOT_PENDING_KEY)) {
     clearOverrides();
     localStorage.removeItem(BOOT_PENDING_KEY);
+    overridesDropped = true;
     console.warn('§23: the previous boot died before completing with tuned overrides active — overrides dropped, booting from aesthetics.json');
   }
 } catch { }
@@ -159,6 +161,65 @@ try {
 // that question answered ("only non-default travels", §37's rule), and it is
 // the one thing an in-place merge structurally cannot answer afterwards.
 export const AESTHETICS_DEFAULTS = Object.freeze(structuredClone(aestheticsData));
+
+// --- §240 Landing 2 — IMPORT A FILE. The panel's Copy JSON has an inbound
+// leg: a picker takes an `aesthetics.json`, whole or a fragment, and it runs
+// through THE merge above — the same type anchor, `_bounds` clamp, `_options`
+// set and unknown-key refusal every stored override meets, so a file cannot
+// smuggle in a value the panel would refuse. No second parser.
+//
+// THE BASE IS THE STORED TUNING, not the live singleton. `aestheticsData` also
+// carries a `?dialcol=` / `?metal=` link's value, which §185 promises is NEVER
+// written back; persisting the effective state would quietly break that
+// promise for whoever imports while holding a link. So: the file's own
+// defaults, then the overrides already in this browser (a fragment adds to a
+// tuning session, it does not replace it), then the import.
+//
+// PERSIST, THEN RELOAD — the caller reloads, not this. A file may carry
+// `dial.hourMarkers.*`, which is consumed at build time, and §23 persists
+// overrides at all because a reload knob whose value dies on reload is a
+// control that never visibly works. Reloading into the persisted state also
+// puts the import behind §23's crash-recovery marker with nothing new: the
+// boot that merges it arms the marker, and a build it kills self-heals on the
+// next load. That inheritance is TESTED (tools/probe-240-import.mjs), not
+// assumed.
+//
+// Degrade, never throw — `applyDeepLink()`'s rule for links. Every outcome is
+// a status the panel can say out loud, and only 'saved' may reload: 'unsaved'
+// in particular must NOT, because writeOverrides returns false on a blocked or
+// full store and a reload would discard what the viewer just loaded.
+export const IMPORT_REPORT_KEY = 'aestheticsImportReport';
+export function importAesthetics(text) {
+  let src;
+  try { src = JSON.parse(text); } catch { return { status: 'notjson' }; }
+  if (!src || typeof src !== 'object' || Array.isArray(src)) return { status: 'notobject' };
+  const next = structuredClone(AESTHETICS_DEFAULTS);
+  const stored = TRIAL_BOOT ? null : readOverrides();
+  if (stored && typeof stored === 'object') mergeAesthetics(next, stored);
+  const report = mergeAesthetics(next, src);
+  if (!report.applied.length) return { status: 'none', report };
+  if (TRIAL_BOOT || !writeOverrides(next)) return { status: 'unsaved', report };
+  // The report crosses the reload in sessionStorage (this tab only) so the
+  // panel can say what landed once the build has used it. Best-effort: a
+  // blocked sessionStorage costs the receipt, never the import.
+  try { sessionStorage.setItem(IMPORT_REPORT_KEY, JSON.stringify(report)); } catch { }
+  return { status: 'saved', report };
+}
+
+// The receipt, read back on the boot the import reloaded into — or on the one
+// AFTER it, if that boot died: the key is removed only by
+// confirmAestheticsBoot(), so a build the import killed leaves it in place and
+// the self-healing boot finds both it and the dropped marker, and can say
+// WHICH tuning was dropped instead of only that one was. `dropped` is that
+// case. A trial neither reads nor clears it (TODO 152's rule: a throwaway boot
+// must not consume the real session's handshake).
+export const IMPORT_OUTCOME = (() => {
+  if (TRIAL_BOOT) return null;
+  try {
+    const raw = sessionStorage.getItem(IMPORT_REPORT_KEY);
+    return raw ? { report: JSON.parse(raw), dropped: overridesDropped } : null;
+  } catch { return null; }
+})();
 
 try {
   const over = TRIAL_BOOT ? null : readOverrides();   // TODO 152: a trial boots the file
@@ -244,6 +305,7 @@ try {
 export function confirmAestheticsBoot() {
   if (TRIAL_BOOT) return;   // TODO 152: a trial never armed it, and must not clear the real session's
   try { localStorage.removeItem(BOOT_PENDING_KEY); } catch { }
+  try { sessionStorage.removeItem(IMPORT_REPORT_KEY); } catch { }   // §240: the build survived the import; its receipt has been read
 }
 
 export const aesthetics = aestheticsData;

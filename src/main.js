@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
-import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM, METAL_PARAM } from './aesthetics.js';
+import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, importAesthetics, IMPORT_OUTCOME, AESTHETICS_DEFAULTS, DIAL_COL_PARAM, METAL_PARAM } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
@@ -31512,9 +31512,23 @@ panel.innerHTML = `
         <div id="advanced-body"></div>
         <div class="row label-small" style="opacity:0.75;">
           <span>Tuned values persist in this browser</span>
+        </div>
+        <!-- §240 Landing 2: three buttons do not share one 240 px row with
+             the note (a third made the row wrap into a spaced-out scatter),
+             so they get their own, packed at the start and wrapping as a
+             group; at the panel's width every locale measured (en, de, ru,
+             ar) puts Reset on a second line. -->
+        <div class="label-small" style="opacity:0.75; display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;">
           <button id="btn-copy-aesthetics">Copy JSON</button>
+          <button id="btn-import-aesthetics" title="Load an aesthetics.json file — whole or a fragment. Its values persist in this browser and the page reloads">Import JSON</button>
           <button id="btn-reset-aesthetics">Reset</button>
         </div>
+        <!-- §240 Landing 2: Copy JSON's inbound leg. A plain file input —
+             no clipboard permission and no secure context, so unlike Copy
+             JSON it needs no fallback ladder. The status line is where every
+             outcome is SAID, including the receipt after the reload. -->
+        <input type="file" id="aes-import-file" accept="application/json,.json" hidden />
+        <div id="aes-import-status" class="label-small" role="status" hidden></div>
       </details>
     </div>
   </details>
@@ -32936,6 +32950,52 @@ function askTour(onProceed) {
     // source and a good tuning session ends in a commit, not in localStorage.
     navigator.clipboard.writeText(serializeOverrides(aesthetics));
   });
+
+  // §240 Landing 2 — IMPORT JSON, Copy JSON's inbound leg. importAesthetics
+  // (aesthetics.js) owns the merge and the write; this owns the picker and
+  // what gets SAID. Every outcome lands on the status line in words, and only
+  // a saved import reloads — a file the merge refused whole, or one this
+  // browser could not store, leaves the page exactly as it was.
+  {
+    const importIn = document.getElementById('aes-import-file');
+    const importStatus = document.getElementById('aes-import-status');
+    const say = (text) => { importStatus.textContent = text; importStatus.hidden = !text; };
+    // Paths are canonical dot paths (values, not display — they stay English
+    // in every locale), capped so a whole foreign file cannot fill the panel.
+    const pathList = (rows) => {
+      const shown = rows.slice(0, 6).map((r) => r.path).join(', ');
+      return rows.length > 6 ? `${shown} +${fmtInt(rows.length - 6)}` : shown;
+    };
+    const describe = (report) => {
+      const n = report.applied.length + report.refused.length;
+      let s = `${t('Imported')}: ${fmtInt(report.applied.length)}/${fmtInt(n)}`;
+      if (report.refused.length) s += ` · ${t('refused')}: ${pathList(report.refused)}`;
+      if (report.clamped.length) s += ` · ${t('clamped')}: ${pathList(report.clamped)}`;
+      return s;
+    };
+    document.getElementById('btn-import-aesthetics').addEventListener('click', () => importIn.click());
+    importIn.addEventListener('change', async () => {
+      const file = importIn.files && importIn.files[0];
+      importIn.value = '';   // choosing the same file again must fire change again
+      if (!file) return;
+      let text;
+      try { text = await file.text(); } catch { say(t('The file could not be read — nothing was changed')); return; }
+      const r = importAesthetics(text);
+      if (r.status === 'notjson') return say(t('Not a JSON file — nothing was changed'));
+      if (r.status === 'notobject') return say(t('Not an aesthetics file — nothing was changed'));
+      if (r.status === 'none') return say(`${t('No values applied — nothing was changed')} · ${t('refused')}: ${pathList(r.report.refused)}`);
+      if (r.status === 'unsaved') return say(`${t('The tuning could not be saved in this browser — not reloaded')} · ${describe(r.report)}`);
+      say(describe(r.report));
+      location.reload();
+    });
+    // The receipt, after the reload the import asked for — or, if that boot
+    // died, on the self-healing one after it, which dropped the tuning.
+    if (IMPORT_OUTCOME) {
+      say(IMPORT_OUTCOME.dropped
+        ? t('The imported values stopped the build — they were dropped and the file’s values restored')
+        : describe(IMPORT_OUTCOME.report));
+    }
+  }
 
   // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open
   // daylight, to judge how the piece reads outside. Natural is one sun
@@ -41262,6 +41322,16 @@ setHud(true);
 // panel's OWN prior state, a tour started on a never-opened panel does not
 // "restore" it afterwards — §142's closing links are the discovery path.
 setPanelHidden(true);
+// §240 Landing 2 — an import reloads the page, and the viewer was in the
+// Advanced section when they chose the file: arrive back there, with the
+// receipt on screen, rather than on a hidden panel whose status line nobody
+// will open. Before applyDeepLink, so an explicit `?panel=0` still wins.
+if (IMPORT_OUTCOME) {
+  setPanelHidden(false);
+  const adv = document.getElementById('advanced-section');
+  adv.open = true;
+  adv.parentElement.closest('details').open = true;
+}
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an
