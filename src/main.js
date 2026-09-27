@@ -16232,18 +16232,43 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   faceCam.position.z = ALARM_WHEEL_BOT_B; // seated on the wheel's plate-side face (derived — was the frozen −0.23); heights grow into pass 1's band
   faceCam.rotation.z = ALARM_NOSE_AZ; // notch (minimum height) phased to the pin's azimuth: seated ⇒ tube ≡ wheel
   alarmSetWheelGroup.add(faceCam);
-  // TODO 26 — the wedge's tip is bounded by the DIAL'S BACK FACE. It used to
-  // stand 0.175 past the dial's plane, which cost nothing while the dial was a
-  // sheet with no substance to intersect and is a real collision now that it is
-  // a plate: the same lie the sub-dial wells told, in the other direction.
-  // dialFace's flip makes local +z run toward the dial and puts this group on
-  // Z_DIAL, so a tip one margin clear of the dial's back is local −CLEAR_MARGIN.
-  const WEDGE_LEN = 0.42;
+  // TODO 26 — the wedge's WIDE end is bounded by the DIAL'S BACK FACE. It used
+  // to stand 0.175 past the dial's plane, which cost nothing while the dial
+  // was a sheet with no substance to intersect and is a real collision now
+  // that it is a plate: the same lie the sub-dial wells told, in the other
+  // direction. dialFace's flip makes local +z run toward the dial and puts
+  // this group on Z_DIAL, so the wide end one margin clear of the dial's back
+  // is local −CLEAR_MARGIN. `CylinderGeometry(0, r, L, 3)` puts the POINT
+  // (r=0) at local −z, i.e. plate-ward — so it is the POINT, not the wide
+  // end, that reaches toward the alarm selector ring. TODO 167 — the length
+  // that used to hold that fixed (WEDGE_LEN = 0.42) let the point run past
+  // the ring's highest reach (ALARM_SEL_Z_UP, disarmed) to within 0.0733 of
+  // its top face (an UNDECLARED_CLEARANCE_DEBT row). The wedge is a display index only (§34;
+  // no contact/handoff/transfer/floors row), so its length is free to derive
+  // from the two things it actually has to clear: wide end at −CLEAR_MARGIN,
+  // point one margin off the ring's highest local reach —
+  // −CLEAR_MARGIN − L = ALARM_SEL_Z_UP + CLEAR_MARGIN.
+  const WEDGE_LEN = -(ALARM_SEL_Z_UP + 2 * CLEAR_MARGIN);
   const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, WEDGE_LEN, 3), MATS.blueSteel);
   wedge.name = 'alarmIndexWedge';
   wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
   wedge.position.set(4.45, 0, -CLEAR_MARGIN - WEDGE_LEN / 2);
   wedge.rotation.x = Math.PI / 2;
+  // Rule 6 boot assert — the point (local z = −CLEAR_MARGIN − WEDGE_LEN) must
+  // (i) stand at least CLEAR_MARGIN off the selector ring's highest reach
+  // (ALARM_SEL_Z_UP, disarmed) and (ii) still stand proud of the wheel's own
+  // plate-side face (ALARM_WHEEL_BOT_B) — a mark that has run back under the
+  // wheel is no longer a readable index.
+  {
+    const wedgePointZ = -CLEAR_MARGIN - WEDGE_LEN;
+    const clearOfRing = wedgePointZ - ALARM_SEL_Z_UP;
+    if (clearOfRing < CLEAR_MARGIN - 1e-9) {
+      console.warn('alarmIndexWedge: point does not clear ALARM_SEL_Z_UP by CLEAR_MARGIN', { achieved: clearOfRing, required: CLEAR_MARGIN });
+    }
+    if (wedgePointZ >= ALARM_WHEEL_BOT_B) {
+      console.warn('alarmIndexWedge: point no longer stands proud of the wheel\'s plate-side face', { achieved: wedgePointZ, required: '< ' + ALARM_WHEEL_BOT_B });
+    }
+  }
   alarmSetWheelGroup.add(wedge);
 }
 
@@ -18194,7 +18219,15 @@ alarmRotor.add(alarmArborRod);
 // The setting pinion — overhung on the rod's end in the gear lane, meshing
 // the idler. Same module as the whole train (see ALARM_SET_MODULE).
 {
-  const pin = G.makePinion({ name: 'alarmSetArborPinion', module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, mates: [{ teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] }], thickness: ALARM_SET_T, material: MATS.steel });
+  // TODO 167 — CRISP, like the lane's wheel and idlers: ALARM_SET_Z = Z_DIAL +
+  // 0.05 + T/2 assumes crisp faces (a designed 0.05 sheet gap to the dial),
+  // and makePinion's default bevel (pinionBevel = 0.0475 here) stood proud of
+  // that assumption and ate 0.0475 of the gap, leaving 0.0025 to the dial —
+  // an UNDECLARED_CLEARANCE_DEBT row. Crisp also removes the bevel's XY
+  // growth that had reached into idler 2's mesh clearance (0 → 0.0171 at
+  // alarm f=0.9583), a TODO 84-class interference the bevel was causing, not
+  // curing.
+  const pin = G.makePinion({ name: 'alarmSetArborPinion', module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, mates: [{ teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] }], thickness: ALARM_SET_T, material: MATS.steel, bevel: false });
   pin.position.z = ALARM_SET_Z;
   alarmRotor.add(pin);
   // TODO 132 — THE SETTING CHAIN'S LAST MESH, CLOCKED. It was declared by hand

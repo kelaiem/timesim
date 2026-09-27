@@ -17,11 +17,12 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 172 | OPEN | The alarm setting lane's designed 0.05 dial-sheet gap (`ALARM_SET_Z`) is under `CLEAR_MARGIN`; the crisp arbor pinion sits on it (debt row at 0.05). Fix: re-stratify the lane to `CLEAR_MARGIN`, carrying the §29 centre chain |
 | 171 | OPEN | `EXPECTED_CONTACT_FLOORS` carries an `Alarm link ⇄ Three-quarter plate` row but `EXPECTED_PAIRS` never declares that pair, so the two tables disagree about which pairs are designed to touch. Fix: add the `EXPECTED_PAIRS` entry citing the floors row's own contacts |
 | 170 | OPEN | Four alarm release/arming-complex pairs sit under `CLEAR_MARGIN` with no individual root cause yet — feeler⇄sleeve, sleeve⇄rocker, disc⇄feeler, sleeve⇄selector. Fix: triage each to its own siting constant the way TODO 166/167/168/169 did |
 | 169 | OPEN | The alarm winding train's idler 2 flies under the centre wheel body (0.0252 clear), a §112 station scan that never took the centre wheel as a term. Fix: add the centre wheel's clearance to the dogleg's Z-tier station solve |
 | 168 | OPEN | `makeGear`'s hub-less bore path cuts a hexagon (`curveSegments: 3`), not a circle, biting into the alarm setting wheel's designed bore. Fix: raise `curveSegments` for every hub-less bore and re-derive the margins it moves |
-| 167 | OPEN | Two under-margin pairs in the alarm setting lane: the setting arbor's pinion bevel eats the dial sheet gap (0.0025 clear), and the index wedge's kept length overhangs the selector ring (0.0733 clear). Fix: give `ALARM_SET_Z` a bevel term, and re-derive `WEDGE_LEN` from TODO 26's pinned tip |
+| 167 | CLOSED | The alarm setting arbor pinion is built crisp (`makePinion` gained a `bevel` option) and sits on the lane's designed 0.05 dial gap, whose own sub-margin depth moved to [TODO 172]; the index wedge's length is derived from the selector ring's highest reach (0.42 → 0.3433), clearing it by exactly `CLEAR_MARGIN` |
 | 166 | CLOSED | The alarm release seat's posts were sited off the setting wheel's tips alone; re-derived from the MAXIMUM reach of all four full circles the post's span passes (tips, disc tips, sleeve flat, selector ring — the ring governs), padded by `ALARM_SEAT_SINK` for the 16-gon/rim vertex tie. `ALARM_SEAT_POST_R` 5.3617 → 5.5238 |
 | 165 | OPEN | `boundsASolid` refuses `segmentPierces`' pass-through witness on any non-manifold mesh, so `alarmWindContrate` (a hand-built `BufferGeometry`, 480 non-manifold edges) had a real crossing read as clearance by `meshClearance`/`inspection`. Fix: a tolerant manifold check (degenerate-edge aware) for the witness, and a degenerate-triangle filter for any raw triangle-triangle sweep |
 | 164 | CLOSED | The movement-wide `undeclaredClearance` gate shipped (TODO 164), holding every undeclared, non-EXPECTED pair to `CLEAR_MARGIN` with a closed `UNDECLARED_CLEARANCE_DEBT` ratchet; its own arrival sweep filed TODO 166–171 |
@@ -22995,7 +22996,7 @@ across the A/B virgin-boot double-boot both before and after).
 `stockFloor`/`slenderness` did not move (their rows are geometry-local
 extents, not radii the post's own stations feed).
 
-## 167. The alarm setting arbor pinion's bevel eats the dial sheet gap, and the index wedge's kept length overhangs the selector ring
+## 167. The alarm setting arbor pinion's bevel eats the dial sheet gap, and the index wedge's kept length overhangs the selector ring — CLOSED
 
 Found closing [TODO 164]'s arrival sweep. Two independent under-margin
 pairs in the same lane:
@@ -23028,6 +23029,58 @@ arbor pinion `bevel: false` to match its mate. For the wedge: re-derive
 `WEDGE_LEN` from the tip position TODO 26 pinned, back to whatever base
 length clears the selector ring by `CLEAR_MARGIN`, rather than keeping the
 pre-TODO-26 constant.
+
+**Closed.** Two corrections to the text above, found by measuring rather
+than reading. `makePinion` had no `bevel` option at all — every pinion was
+bevelled, so the lane comment's "bevel: false everywhere in this lane" was
+never true for the arbor pinion. And the wedge's POINT, not its base, is what
+reached the ring: `CylinderGeometry(0, 0.10, L, 3)`, turned `rotation.z = π`
+then `rotation.x = π/2`, puts the point (radius 0) at local −z, plate-ward, so
+TODO 26 had pinned the WIDE end one margin off the dial and the point ran
+0.2033 past the wheel's plate-side face (`ALARM_WHEEL_BOT_B`), over the ring's
+top at r 4.45 (`ALARM_SEL_R_IN`).
+
+- **Arbor pinion — made CRISP.** `makePinion` and `gearFaceReach`'s pinion
+  branch take `bevel` (default `true`, so every other pinion is byte-identical),
+  mirroring `makeGear`'s option; `alarmSetArborPinion` passes `bevel: false`
+  like the lane's wheel and idlers. Its body now spans −8.35..−8.0333 (world),
+  the lane's band exactly, 0.05 off the dial. Crisp also removed the bevel's
+  XY growth into idler 2's mesh clearance: pinion ⇄ idler 2 went from 0 to
+  0.0171 (at `alarm` f=0.9583) — conjugate-with-backlash like the lane's other
+  two meshes.
+- **The 0.05 itself is under the margin.** The lane's DESIGNED sheet gap
+  (`ALARM_SET_Z = Z_DIAL + 0.05 + T/2`) is below `CLEAR_MARGIN`, so the crisp
+  pinion sits on it at 0.05. Declaring the pair an EXPECTED contact was
+  refused — the dial neither supports nor retains the overhung pinion, so the
+  row would claim a contact that is not there — and re-stratifying the whole
+  lane cascades through the §29 centre chain. By the user's decision the debt
+  row stays, its floor TIGHTENED 0.0025 → 0.05 and re-cited to [TODO 172],
+  which owns the lane's gap.
+- **Index wedge — length derived.** The wide end stays one margin off the
+  dial (TODO 26); the point must stand one margin off the ring at its highest
+  reach: −CLEAR_MARGIN − L = `ALARM_SEL_Z_UP` + CLEAR_MARGIN, so
+  `WEDGE_LEN = −(ALARM_SEL_Z_UP + 2·CLEAR_MARGIN)` = 0.3433 (was 0.42). The new
+  cone lies wholly inside the old one; the point still stands 0.1267 proud of
+  the wheel's plate-side face, so the mark stays readable. A boot assert holds
+  both clauses. The wedge is a display index (§34) — no contact, hand-off,
+  transfer or floors row reads its length.
+- **Why `beat` and not the alarm axes.** The ring is a full annulus, so the
+  wedge's azimuth is irrelevant; only the ring's travel matters. Every axis
+  but `alarm`/`alarmStrike` runs disarmed after `resetInputs`, ring UP (top at
+  `ALARM_SEL_Z_UP`): 0.0733, and `beat` wins the tie as the first axis. Armed,
+  the ring sits `ALARM_SEL_TRAVEL` 0.19 lower: 0.2633. (The 0.40/0.64 quoted
+  when this was filed did not reproduce.)
+
+| pair | before | after |
+|---|---|---|
+| Alarm setting arbor ⇄ Dial | 0.0025 | 0.05 (debt floor tightened, re-cited to TODO 172) |
+| Alarm selector ⇄ Alarm setting wheel (wedge ⇄ ring) | 0.0733 | 0.15 (debt row deleted) |
+| arbor pinion ⇄ idler 2 | 0 | 0.0171 |
+| wedge point proud of the wheel face | 0.2033 | 0.1267 |
+
+Full `undeclaredClearance` after: population 1632, 7 rows, every row at its
+floor, 0 violations / regressed / stale / malformed, control PASS. Boot
+silent; `probe-144-branch-still` 8 rows, 0 failing.
 
 ## 168. makeGear cuts a hub-less wheel's bore as a hexagon (curveSegments: 3), not a circle
 
@@ -23124,3 +23177,25 @@ reason.
 `EXPECTED_PAIRS`, citing whatever contact the floors row's own `contacts`
 list already names, so the two tables agree on record rather than only in
 the check's own excusing logic.
+
+## 172. The alarm setting lane's 0.05 dial-sheet gap is under CLEAR_MARGIN
+
+Found closing [TODO 167]. The alarm setting lane — the setting wheel, both
+idlers and (since 167) the crisp arbor pinion — is sited by
+`ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2`: a designed 0.05 gap between
+the lane's dial-side faces and the dial's back face. That gap is itself under
+`CLEAR_MARGIN` (0.15). The wheel and idlers carry it under EXPECTED rows (the
+wheel is axially retained by the sheet); the arbor pinion has no such role —
+it is overhung on its rod and carried by the cock — so `Alarm setting arbor ⇄
+Dial` stays in `UNDECLARED_CLEARANCE_DEBT` at floor 0.05, citing this item.
+
+**Why not declare it.** An EXPECTED + floors row would claim a contact the
+dial does not make with the pinion (§182's trap, TODO 6's blanket).
+
+**Fix path.** Re-stratify the lane to `CLEAR_MARGIN` in position space: the
+0.05 term lives in `ALARM_SET_Z`, the setting wheel's `position.z`,
+`ALARM_WHEEL_BOT_B` and `ALARM_TUBE_BACK`, and cascades through the §29 centre
+chain (heart-B, flange, hearts, sleeve band), so `alarmHandoffs` and
+`transfers` rows move with it and must be re-proven. Then delete the debt row
+(it fails as stale once the pair clears) and decide whether the wheel's and
+idlers' EXPECTED rows still describe a retention the new gap keeps.
