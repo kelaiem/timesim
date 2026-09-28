@@ -10381,7 +10381,10 @@ const TQ_WEBS_MIN = 3;
 // The band is taken EXACTLY, not inflated. Inflating it by a margin would
 // enrol the fusee cone itself — its crown stands 0.167 under the plate's
 // underside — and a window cannot be blocked by the very part it frames.
-function sweepTqKeeps() {
+// TODO 184 — the visitor is shared by a synchronous sweep (the plate's own
+// cuts) and a YIELDING one (the arrest solve's window filter, inside an async
+// build seam), so the two cannot describe different keeps.
+function tqKeepVisitor() {
   const keeps = [];
   const v = new THREE.Vector3();
   movement.updateMatrixWorld(true);
@@ -10432,6 +10435,10 @@ function sweepTqKeeps() {
     if (rMin > plateR + 1e-6) return;
     keeps.push({ b, cx, cy, cr });
   };
+  return { keeps, consider };
+}
+function sweepTqKeeps() {
+  const { keeps, consider } = tqKeepVisitor();
   // THE PLATE IS NOT AN OBSTACLE TO ITS OWN OPENINGS. On the second call the
   // plate exists, and its own mesh crosses its own band over the whole disc —
   // so every window measured zero clearance against the material it was cut
@@ -10444,17 +10451,33 @@ function sweepTqKeeps() {
   }
   return keeps;
 }
+// §239's rule for a walk inside the build: open it into a list and hand the
+// thread back between meshes (the BACK_ENVELOPE precedent). Same visitor, same
+// exclusions, same answer.
+async function sweepTqKeepsYielding() {
+  const { keeps, consider } = tqKeepVisitor();
+  const walk = [];
+  for (const child of movement.children) {
+    if (child.userData?.tqPlate) continue;
+    child.traverse((o) => walk.push(o));
+  }
+  for (const o of walk) { await breathe(); consider(o); }
+  return keeps;
+}
 let TQ_KEEPS = sweepTqKeeps();
 // Distance from (x, y) to the nearest material the plate must keep.
-const tqKeepClearance = (x, y) => {
+// (TODO 184: over a keeps list the caller names, so a solve that runs before
+// the re-cut can ask the same question of the scene as it stands then.)
+const tqKeepClearanceIn = (keeps, x, y) => {
   let c = Infinity;
-  for (const k of TQ_KEEPS) {
+  for (const k of keeps) {
     const bx = clamp(x, k.b.min.x, k.b.max.x), by = clamp(y, k.b.min.y, k.b.max.y);
     c = Math.min(c, Math.max(Math.hypot(x - bx, y - by), Math.hypot(x - k.cx, y - k.cy) - k.cr));
   }
   for (const p of tqPivots) c = Math.min(c, Math.hypot(x - p.x, y - p.y) - pivotBossR(p));
   return c;
 };
+const tqKeepClearance = (x, y) => tqKeepClearanceIn(TQ_KEEPS, x, y);
 // Distance from (x, y) to the nearest EXISTING opening — the bores, the
 // slots, the balance cut and the rim. A window that came closer than
 // TQ_LAND_MIN to one of these would merge with it, and the strip between
@@ -11138,13 +11161,38 @@ function checkPlateWindows(stage) {
 // of this block. The scan itself is unchanged, and must stay this side of the
 // push: a pillar may not avoid its own screw's seat.
 const pillarSeats = []; // §20: the plate screws land over the solved seats
-const PILLAR_CAP_R = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
-// Head radius derived from the pillar's own widest land (capR·0.6, the escape
-// bridge's head-to-seat proportion — the head must bear on the land it
-// clamps, not overhang it), and the seat cut one fit larger so the head drops
-// into it.
-const PILLAR_SCREW_HEAD_R = PILLAR_CAP_R * 0.6;
+// TODO 184 — THE PILLAR IS SIZED FROM ITS SCREW, and the screw from its job.
+// This chain used to run the other way: land = TQ_BOT_Z·0.09·1.5 (a fraction
+// of the gap between the plates), head = land·0.6, thread = head/2 — a
+// 0.268 mm thread that stopped at the plate's underside. Now, in order:
+//
+//  · THREAD d = CASE_SCREW_SHAFT_D, the 1.0 mm stock the movement's case
+//    clamps are already cut from (layout.js). The plate screws do the same
+//    job at the same scale — they hold the frame together under the shock a
+//    dropped watch takes — and a 32 mm movement's pillar screws are this
+//    size; a second thread size would be a second number for one duty.
+//  · HEAD from the thread by makeScrews' own 2:1 (screwShankR), so the
+//    screw it draws has exactly this thread.
+//  · SEAT one fit over the head (the counterbore the flush head drops into).
+//  · LAND ≥ the seat: the pillar's top face carries the ring of plate the
+//    head clamps, so it must reach at least as far as the head's seat.
+//  · BODY = land / 1.5 (makePillar's profile proportion), asserted to leave
+//    STOCK_MIN_U of wall round the tapped bore.
+//  · The TAPPED BORE is the thread's own radius (screwTapR — flanks bear on
+//    the metal), ENGAGE_MIN·d deep plus one thread pitch of run-out below the
+//    screw's tip, the room a tap needs to cut full thread to that depth.
+const PILLAR_THREAD_D = CASE_SCREW_SHAFT_D;
+const PILLAR_SCREW_HEAD_R = PILLAR_THREAD_D;           // screwShankR(head) = d/2
 const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
+const PILLAR_CAP_R = PILLAR_SEAT_R;                    // makePillar's widest land
+const PILLAR_BODY_R = PILLAR_CAP_R / 1.5;
+const PILLAR_TAP_R = G.screwTapR(PILLAR_SCREW_HEAD_R);
+const PILLAR_ENGAGE = ENGAGE_MIN * PILLAR_THREAD_D;
+const PILLAR_TAP_DEPTH = PILLAR_ENGAGE + G.THREAD_PITCH_PER_DIA * PILLAR_THREAD_D;
+if (PILLAR_BODY_R - PILLAR_TAP_R < STOCK_MIN_U - 1e-9)
+  console.warn(`TODO 184: pillar wall round its tapped bore ${(PILLAR_BODY_R - PILLAR_TAP_R).toFixed(3)} — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
+if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
+  console.warn(`TODO 184: pillar tap depth ${PILLAR_TAP_DEPTH.toFixed(3)} leaves under STOCK_MIN_U of floor in a ${TQ_BOT_Z.toFixed(3)} pillar`);
 {
   const pillarR = plateR - 8;
   const capR = PILLAR_CAP_R;
@@ -11281,9 +11329,16 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
       if (best) break; // nearest feasible bearing to the quadrant's ideal wins
     }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
-    const pillar = G.makePillar({ height: TQ_BOT_Z });
+    const pillar = G.makePillar({ height: TQ_BOT_Z, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
     pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
+    // TODO 184 — the pillar's PLAN, published for the siting solves that
+    // score the built scene (§198's vocabulary, the alarm link rod's first):
+    // a turned part is a disc of its widest land, and its axis-aligned box
+    // claims corners √2 further out that the metal never fills. At the
+    // screw-sized land those corners reached into the selector rod's column
+    // and re-sited the rod off its plate bores; the disc is what stands there.
+    pillar.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
     pillarsGroup.add(pillar);
     pillarSeats.push({ x: best.x, y: best.y });
   }
@@ -11439,13 +11494,12 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   }
   const plateScrews = pillarSeats.map((p) => ({
     x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x),
-    // Through the plate and no further. TODO 184: this line used to go on
-    // "below the underside the thread takes the pillar", and nothing does —
-    // the shank ends AT the underside, so the thread engages the pillar by
-    // zero. A tapped hole under a seated screw is invisible in the real
-    // movement, but the screw's LENGTH is not something that invisibility
-    // excuses. Reported in FRAME_JOINTS until TODO 184 taps the pillar top.
-    shank: TQ_T - STOCK_MIN_U,
+    // TODO 184: through the plate's land and ON into the pillar's tapped
+    // bore by PILLAR_ENGAGE (ENGAGE_MIN·d). It used to stop AT the plate's
+    // underside — "below the underside the thread takes the pillar", said
+    // the comment, and nothing did. Drawn TAPPED: its crests are the bore's
+    // radius, the joint assembled touching, §148's rule.
+    shank: (TQ_T - STOCK_MIN_U) + PILLAR_ENGAGE, tapped: true,
   }));
   threeQuarterPlate.add(G.makeScrews({
     at: plateScrews,
@@ -24191,6 +24245,80 @@ const SUB_IDLER_P_Z = SUB_PIN_B_Z;
 // row to answer it. Read by JMP_SITE's derivation block at the end of the
 // build (grep it) rather than re-measured there.
 let ALARM_CORRIDOR_BAND_FLOOR = Infinity;
+
+// TODO 184 — HOISTED from the alarm lock and column-wheel builds below, whose
+// comments still carry the reasoning: the arrest solve that follows must
+// reject a station whose plate window cannot open, and the column wheel's
+// stud — built two thousand lines later — is the plate-crossing keep that
+// decides it when a pillar pushes the arrest inboard. Every input is a plan
+// constant, so the move changes no value; the pillar seat scan's precedent
+// (ALARM_UNDER_FOOTPRINT, "a declared list, one source, at the plan hoist").
+const ALARM_LOCK_D = 7.0;                       // pivot → striking-wheel axis
+const ALARM_LOCK_L = 5.0;                       // pivot → pad centre
+const ALARM_LOCK_PAD_R = 0.3;
+// §102 (TODO 31): DERIVED — the item's own promise, redeemable only once a
+// spring existed to give the lift a load path. The travel is what the pad's
+// clearance demands and nothing more: released, the pad must stand one
+// margin plus the float-bind centi-unit off the collar it brakes, and the
+// angle falls out over the lever's length. (The old 0.085 was "~0.4 of the
+// radial air" — a chosen fraction of the space available, the one number
+// item 28 could not fix.)
+// TODO 90 finding 4 — RE-DERIVED, and the closed form replaces the arc.
+//
+// §102's original was (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L, which buys that
+// much ARC at the pad. But the quantity that has to clear is RADIAL from the
+// striking axis, and the two stand 18.4° apart at this lever's proportions —
+// so the 0.16 intended delivered 0.1519 measured, 94.94% of it, spending 81%
+// of the float-bind centi-unit the constant added on purpose. The projection
+// is not a correction factor to carry around: the exact relation is already
+// in the lever's own triangle, so both angles are solved from it directly.
+//
+// pad-centre distance to the striking axis at arm angle α (from the axis
+// bearing) is d(α) = √(D² + L² − 2DL·cos α), so α(d) inverts in closed form.
+// ENGAGED seats the finger tip on the stop wheel's ROOT circle; LIFTED stands
+// it one margin clear of the TIP circle. The travel is the difference, and it
+// re-derives if the tooth, the pad or the lever's triangle ever move.
+const _lockArmAt = (d) => Math.acos(clamp(
+  (ALARM_LOCK_D * ALARM_LOCK_D + ALARM_LOCK_L * ALARM_LOCK_L - d * d)
+  / (2 * ALARM_LOCK_D * ALARM_LOCK_L), -1, 1));
+const ALARM_LOCK_LIFT = _lockArmAt(ALARM_STOP_TIP_R + ALARM_LOCK_PAD_R + CLEAR_MARGIN)
+                      - _lockArmAt(ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R);
+// (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
+// at the §124 seam block beside Z_STRIKE, up by the gong build: the whole
+// strike tier rides TQ_TOP_Z now instead of restating the pre-§124 plate.)
+// §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
+// tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
+// bound 36.4 — the TODO 11 measurement). Swept 0..360° at 2° with the
+// wheel's RAISED band vertex-scored against every neighbouring mesh: 24°
+// puts the centre at r 24.9 with 3.26 of worst-case clearance (the gong),
+// runners-up 22°/26° at 2.8. The pivot swings around the striking wheel;
+// pad, collar, and the engaged-angle triangle are untouched derivations.
+// §112 — the identity move (160→40) folds its −120 into this literal too:
+// the §68 sweep's clearances were module-internal (the gong bound it), so
+// they ride the rigid rotation; 24 − 120 = −96, the same bearing in the
+// module's own frame.
+const ALARM_LOCK_PIV_AZ = -96 * DEG2RAD;
+const alarmLockPivot = (() => {
+  const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
+  return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
+})();
+// Engaged arm angle: pad centre sits at collar radius + pad radius from the
+// wheel axis; law of cosines at the pivot, same construction as the follower.
+const _lockAzAxis = Math.atan2(alarmSwPos.y - alarmLockPivot.y, alarmSwPos.x - alarmLockPivot.x);
+// TODO 90 finding 4: the seat is the stop wheel's ROOT circle now, not a
+// tangent on a smooth band. That one substitution is what turns the engaged
+// pose from a kiss carrying nothing into a finger inside a tooth space.
+const _lockDon = ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R;
+const ALARM_LOCK_THETA = _lockArmAt(_lockDon);
+const ALARM_LOCK_ENGAGED = _lockAzAxis + ALARM_LOCK_THETA;
+const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scale (4–6 mm on a 30 mm movement)
+const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
+const ALARM_COL_STUD_R = ALARM_COL_BORE_R - 0.06;   // the §43 running clearance under the bore (TODO 184: one name for every reader)
+const ALARM_COL_POS = {
+  x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
+  y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
+};
+
 const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   crossAz: ARREST_CROSS_AZ, idlerSide: SUB_IDLER_SIDE, idlerTeeth: SUB_IDLER_SOLVED,
   slack: ARREST_SLACK,
@@ -24559,6 +24687,36 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
   // keeping all of them would be the product again.
   const IDLER_KEEP = 4;
 
+  // TODO 184 — THE CROSS'S PLATE WINDOW MUST BE ABLE TO OPEN. §201 frames the
+  // cross in a late window over its stud, and §115 cuts a bossless window all
+  // or nothing: every point within one land of the centre must stand a margin
+  // clear of material the plate carries and a land clear of every opening.
+  // This solve could not see that, so a station it scored clean could be one
+  // the plate then refused to open over — which is what a screw-sized pillar
+  // produced: the arrest yielded to the new pillar, landed with its stud 1.5
+  // from the column wheel's, and the window reported NOT CUT. Asked here as a
+  // FILTER, not a maximin term: it rejects stations, it does not re-rank the
+  // ones it lets through, so a movement whose windows were never in question
+  // solves exactly as before.
+  //
+  // The keeps are the plate-band keeps of the scene as built so far, plus the
+  // one plate-crossing keep the scene cannot show yet: the column wheel's
+  // stud, at the station hoisted above for this (ALARM_COL_POS). The test is
+  // sufficient rather than exact — a distance field less one land bounds
+  // every point inside that land — so a pass here is a pass there.
+  const _colStudR = ALARM_COL_STUD_R;
+  const _winKeeps = [...await sweepTqKeepsYielding(), {
+    b: new THREE.Box3(new THREE.Vector3(ALARM_COL_POS.x - _colStudR, ALARM_COL_POS.y - _colStudR, 0),
+      new THREE.Vector3(ALARM_COL_POS.x + _colStudR, ALARM_COL_POS.y + _colStudR, 0)),
+    cx: ALARM_COL_POS.x, cy: ALARM_COL_POS.y, cr: _colStudR,
+  }];
+  const windowOpen = (x, y) => {
+    const k = tqKeepClearanceIn(_winKeeps, x, y) - TQ_LAND_MIN - M;
+    const o = tqOpeningClearance(x, y) - 2 * TQ_LAND_MIN;
+    return k <= o ? { c: k, who: 'the cross\'s plate window vs material the plate must carry' }
+      : { c: o, who: 'the cross\'s plate window vs another opening' };
+  };
+
   const sweep = (grid) => {
     let local = null;
     for (const deg of grid.az) {
@@ -24656,6 +24814,8 @@ const { az: ARREST_AZ, fingerAz: ARREST_FINGER_AZ, z: ARREST_Z,
             if (cr.c < 0) { note(cr); continue; }
             const st = clear('the cross stud', PLATE_Z, z + ARREST_PLATE_T * 2, cx, cy, NEED.stud, null);
             if (st.c < 0) { note(st); continue; }
+            const win = windowOpen(cx, cy);
+            if (win.c < 0) { note(win); continue; }
             stage.cross++;
             // the cross against the rest of its own group. Its finger is the one
             // thing it is MEANT to touch, so that pair is exempt by omission —
@@ -25389,64 +25549,7 @@ function arrestAngles(arborA, bodyA) {
 // axis, the arm reaches L, and the engaged angle comes from the (pivot, axis,
 // pad) triangle — tick() lifts by LOCK_LIFT about the same pivot.
 // ---------------------------------------------------------------------------
-const ALARM_LOCK_D = 7.0;                       // pivot → striking-wheel axis
-const ALARM_LOCK_L = 5.0;                       // pivot → pad centre
-const ALARM_LOCK_PAD_R = 0.3;
-// §102 (TODO 31): DERIVED — the item's own promise, redeemable only once a
-// spring existed to give the lift a load path. The travel is what the pad's
-// clearance demands and nothing more: released, the pad must stand one
-// margin plus the float-bind centi-unit off the collar it brakes, and the
-// angle falls out over the lever's length. (The old 0.085 was "~0.4 of the
-// radial air" — a chosen fraction of the space available, the one number
-// item 28 could not fix.)
-// TODO 90 finding 4 — RE-DERIVED, and the closed form replaces the arc.
-//
-// §102's original was (CLEAR_MARGIN + 0.01) / ALARM_LOCK_L, which buys that
-// much ARC at the pad. But the quantity that has to clear is RADIAL from the
-// striking axis, and the two stand 18.4° apart at this lever's proportions —
-// so the 0.16 intended delivered 0.1519 measured, 94.94% of it, spending 81%
-// of the float-bind centi-unit the constant added on purpose. The projection
-// is not a correction factor to carry around: the exact relation is already
-// in the lever's own triangle, so both angles are solved from it directly.
-//
-// pad-centre distance to the striking axis at arm angle α (from the axis
-// bearing) is d(α) = √(D² + L² − 2DL·cos α), so α(d) inverts in closed form.
-// ENGAGED seats the finger tip on the stop wheel's ROOT circle; LIFTED stands
-// it one margin clear of the TIP circle. The travel is the difference, and it
-// re-derives if the tooth, the pad or the lever's triangle ever move.
-const _lockArmAt = (d) => Math.acos(clamp(
-  (ALARM_LOCK_D * ALARM_LOCK_D + ALARM_LOCK_L * ALARM_LOCK_L - d * d)
-  / (2 * ALARM_LOCK_D * ALARM_LOCK_L), -1, 1));
-const ALARM_LOCK_LIFT = _lockArmAt(ALARM_STOP_TIP_R + ALARM_LOCK_PAD_R + CLEAR_MARGIN)
-                      - _lockArmAt(ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R);
-// (ALARM_LOCK_Z — the lever's plane, sharing the collar's band — is derived
-// at the §124 seam block beside Z_STRIKE, up by the gong build: the whole
-// strike tier rides TQ_TOP_Z now instead of restating the pre-§124 plate.)
-// §68 — THE AZIMUTH, from the sweep, not taste. At the as-built 160° the
-// tail's ray ran outboard (min reachable centre r 41.4 vs the real-scale
-// bound 36.4 — the TODO 11 measurement). Swept 0..360° at 2° with the
-// wheel's RAISED band vertex-scored against every neighbouring mesh: 24°
-// puts the centre at r 24.9 with 3.26 of worst-case clearance (the gong),
-// runners-up 22°/26° at 2.8. The pivot swings around the striking wheel;
-// pad, collar, and the engaged-angle triangle are untouched derivations.
-// §112 — the identity move (160→40) folds its −120 into this literal too:
-// the §68 sweep's clearances were module-internal (the gong bound it), so
-// they ride the rigid rotation; 24 − 120 = −96, the same bearing in the
-// module's own frame.
-const ALARM_LOCK_PIV_AZ = -96 * DEG2RAD;
-const alarmLockPivot = (() => {
-  const a = ALARM_LOCK_PIV_AZ + ALARM_MOD_ROT;  // module-relative, as before
-  return { x: alarmSwPos.x + Math.cos(a) * ALARM_LOCK_D, y: alarmSwPos.y + Math.sin(a) * ALARM_LOCK_D };
-})();
-// Engaged arm angle: pad centre sits at collar radius + pad radius from the
-// wheel axis; law of cosines at the pivot, same construction as the follower.
-const _lockAzAxis = Math.atan2(alarmSwPos.y - alarmLockPivot.y, alarmSwPos.x - alarmLockPivot.x);
-// TODO 90 finding 4: the seat is the stop wheel's ROOT circle now, not a
-// tangent on a smooth band. That one substitution is what turns the engaged
-// pose from a kiss carrying nothing into a finger inside a tooth space.
-const _lockDon = ALARM_STOP_ROOT_R + ALARM_LOCK_PAD_R;
-const ALARM_LOCK_THETA = _lockArmAt(_lockDon);
-const ALARM_LOCK_ENGAGED = _lockAzAxis + ALARM_LOCK_THETA;
+// (ALARM_LOCK_D … ALARM_LOCK_ENGAGED are hoisted above the §129 arrest solve — TODO 184: the arrest must know where the column wheel's stud will cross the plate.)
 // TODO 90 finding 4 — WHAT THE HOLD ACTUALLY IS, as geometry rather than as a
 // flag. The finger's inner surface against the stop wheel's TIP circle, at the
 // lever pose the columns put it in: positive is clear of the teeth, zero or
@@ -25552,7 +25655,7 @@ const ALARM_COL_STEP = Math.PI / ALARM_COL_COLUMNS; // half a pitch per actuatio
 // TODO 11 (moving the station inboard is §33-machinery work). Within the
 // bound: the diameter takes all of it, and the FEATURE DEPTHS — which
 // the plate-top band leaves free — go to real proportions.
-const ALARM_COL_BASE_R = 5.7;      // §68: Ø 4.32 mm — real chronograph scale (4–6 mm on a 30 mm movement)
+// (ALARM_COL_BASE_R is hoisted above the §129 arrest solve — TODO 184.)
 // The saw's tip circle, as geometry.js cuts it. Declared HERE rather than in
 // §163's driver block below, because §171's beak riser has to be sited against
 // the same circle and is built 2000 lines earlier — one declaration, two
@@ -25603,7 +25706,7 @@ const ALARM_COL_TIP_R = 1.12 * ALARM_COL_BASE_R;
 // to meet it (the beak's pivot station, at the arm's build).
 const ALARM_COL_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;   // the lock rocker's beak: floor stock, one running margin at each column face
 const ALARM_COL_SEAT_DROP_SPEC = ALARM_COL_H - CLEAR_MARGIN;
-const ALARM_COL_BORE_R = 0.66;     // bore 0.5 mm; stud follows at bore − 0.06 running clearance
+// (ALARM_COL_BORE_R is hoisted above the §129 arrest solve — TODO 184.)
 // §68's second move — the RAISED STRATUM. Inboard of the rim the
 // three-quarter plate runs under the wheel, and the collar-bound lever z
 // hung the old skirt below the plate's top face. The whole wheel stack now
@@ -25649,7 +25752,7 @@ const ALARM_COL_SKIRT_H = STOCK_MIN_U + 2 * CLEAR_MARGIN;
 // journal L/D 1.06, so the proportion was already sized AT this constraint
 // — the fork writes the constraint down and keeps the 0.06 it was carrying
 // loose.
-const ALARM_COL_BASE_H = 2 * (ALARM_COL_BORE_R - 0.06) + 0.05 - ALARM_COL_SKIRT_H;
+const ALARM_COL_BASE_H = 2 * ALARM_COL_STUD_R + 0.05 - ALARM_COL_SKIRT_H;
 // §226 — THE DRIVER RUNS THICKER THAN ITS LOAD ASKS. That is an owner's
 // call (the §222/§224/§225 precedent: a decision recorded AS a decision, not
 // dressed as a derivation) — but the NUMBER is not chosen, and this is where
@@ -25702,10 +25805,7 @@ const ALARM_COL_RAISE = Math.max(0,
     - ((ALARM_LOCK_Z + 0.22) - ALARM_COL_BASE_H / 2 - ALARM_COL_SKIRT_H));
 const ALARM_COL_SPIN_REL = 0.22 + ALARM_COL_RAISE; // the spin plane above ALARM_LOCK_Z
 const ALARM_COL_INNER = ALARM_COL_BASE_R * (0.95 / 1.5); // the original proportion, kept
-const ALARM_COL_POS = {
-  x: alarmLockPivot.x - Math.cos(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
-  y: alarmLockPivot.y - Math.sin(ALARM_LOCK_ENGAGED) * (3.8 + ALARM_COL_BASE_R - 1.5),
-};
+// (ALARM_COL_POS is hoisted above the §129 arrest solve — TODO 184.)
 // §68's two bounds, asserted with the achieved numbers (rule 6):
 {
   const reach = Math.hypot(ALARM_COL_POS.x, ALARM_COL_POS.y) + ALARM_COL_TIP_R;
@@ -26116,7 +26216,7 @@ alarmSwitchUnit.add(alarmColSpin);
 {
   // Pivot post: seated 0.3 into the plate, tip ending INSIDE the wheel's bore
   // (under the base's top face) — a pivot, not a pole through the crown.
-  const studR = ALARM_COL_BORE_R - 0.06; // the §43 running clearance, kept through the resize
+  const studR = ALARM_COL_STUD_R; // the §43 running clearance, kept through the resize
   // §68: the stud IS the bridge — seated 0.3 into the plate, tip ending
   // inside the raised bore under the base's top face; both ends derived.
   const studBot = TQ_TOP_Z - 0.3;
@@ -30209,8 +30309,8 @@ let ALARM_PAWL_SPRING = null;   // §137/§169: {kTheta_Nm_per_rad, coils, devLe
   alarmColDriverGroup.rotation.z = ALARM_DRIVER_REST_A;
   alarmSwitchUnit.add(alarmColDriverGroup);
   const driver = G.makeColumnDriver({
-    boreR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR,          // the stud it turns on, plus the movement's running clearance
-    hubR: (ALARM_COL_BORE_R - 0.06) + PIVOT_BORE_CLEAR + STOCK_MIN_U,
+    boreR: ALARM_COL_STUD_R + PIVOT_BORE_CLEAR,          // the stud it turns on, plus the movement's running clearance
+    hubR: ALARM_COL_STUD_R + PIVOT_BORE_CLEAR + STOCK_MIN_U,
     // §226 — one width for all three, so the part reads as one part. The
     // arms are cut at the tooth's depth; the hub keeps its own rule below,
     // because it is sized by its BEARING and is already 1.54 teeth wide,

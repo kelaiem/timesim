@@ -6535,7 +6535,7 @@ export const screwTapR = (headR) => screwShankR(headR);
 // thread's diameter (a real 0.4 mm watch screw runs 0.1 mm), and the depth is
 // ISO's 0.61·pitch, so the crests come out exactly at screwShankR and the
 // tapped hole bored at that radius meets them.
-const THREAD_PITCH_PER_DIA = 0.25;
+export const THREAD_PITCH_PER_DIA = 0.25;
 const THREAD_DEPTH_PER_PITCH = 0.61;
 export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
   const heads = [], slots = [], shanks = [];
@@ -6591,8 +6591,15 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
         // coincident cylinders, which is the artefact this whole entry has
         // been chasing. Outer extent is still exactly `sr`, which is what the
         // tapped hole is bored to.
-        for (let z = pitch / 2; z < p.shank; z += pitch) {
-          shanks.push(new THREE.TorusGeometry(core + depth / 4, depth * 0.75, 6, Math.max(8, seg / 2))
+        // TODO 184: and every crest stays INSIDE the shank's length. The
+        // loop used to run while the crest's centre was above the tip, so the
+        // last ring's lower half — its tube is 0.75·depth — hung past the end
+        // of the screw: 0.04 mm of thread below a 1 mm plate screw's tip,
+        // found by probe-184-frame-joints measuring the metal against the
+        // declared shank. A thread ends where its screw does.
+        const tube = depth * 0.75;
+        for (let z = pitch / 2; z + tube <= p.shank + 1e-9; z += pitch) {
+          shanks.push(new THREE.TorusGeometry(core + depth / 4, tube, 6, Math.max(8, seg / 2))
             .translate(p.x, p.y, p.z - headT - z));
           shankNames.push(`screw#${si}`);
         }
@@ -6957,8 +6964,20 @@ export function makeJewelSetting({ r }) {
   return g;
 }
 
-export function makePillar({ height }) {
-  const rr = height * 0.09;
+// TODO 184 — the pillar is sized FROM ITS SCREW, not from its height: the
+// caller passes the body radius `bodyR` (the land is 1.5× it, the proportion
+// this profile has always had) and the TAPPED BORE the plate screw threads
+// into — `tapR` (screwTapR of the screw's head: the thread's flanks bear on
+// the metal) and `tapDepth` from the top face. It used to be `height · 0.09`,
+// so the pillar's section was a fraction of the gap between the plates and
+// its top face was solid: the screw above it had nothing to thread into.
+export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0 }) {
+  const rr = bodyR;
+  const top = tapR > 0 && tapDepth > 0
+    ? [new THREE.Vector2(tapR, height),
+       new THREE.Vector2(tapR, height - tapDepth),
+       new THREE.Vector2(0, height - tapDepth)]
+    : [new THREE.Vector2(0, height)];
   const pts = [
     new THREE.Vector2(0, 0),
     new THREE.Vector2(rr * 1.5, 0),
@@ -6970,7 +6989,7 @@ export function makePillar({ height }) {
     new THREE.Vector2(rr, height * 0.88),
     new THREE.Vector2(rr * 1.5, height * 0.93),
     new THREE.Vector2(rr * 1.5, height),
-    new THREE.Vector2(0, height),
+    ...top,
   ];
   const geo = new THREE.LatheGeometry(pts, 24);
   geo.rotateX(Math.PI / 2); // stand pillar along Z
