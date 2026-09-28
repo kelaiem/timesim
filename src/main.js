@@ -18,7 +18,7 @@ import {
   SPEC, SPEC_RATES,
   F_BALANCE, BEAT_DEG, AMPLITUDE_TRUE_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
   RECOIL_FRACTION, RECOIL_DEG,
-  CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
+  CLEAR_MARGIN, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
@@ -14374,7 +14374,12 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // Re-verified as the tripwire asks: probe-149-lifter-width.mjs re-measured the
 // lifter's run (JMP_LIFTER_SPAN_MEASURED), and probe-150-fold-sense.mjs holds
 // the jumper against every non-contact unit over the pose net.
-const JMP_AZ_MEASURED_DEG = 129.5;
+// TODO 180 — 129.5° → 233.5°, and this time the SOLVE was wrong, not the
+// hand list: its closest-point trees held zero-area slivers, three of them in
+// alarmIndexWedge, and the BVH answered 0 against them, so PASS 1 refused
+// 232–235° on a contact 3.8135 away. With slivers dropped (ZERO_AREA_MAX) the
+// scan's first clear station is 233.5°, at clearance 0.1572.
+const JMP_AZ_MEASURED_DEG = 233.5;
 let JMP_AZ = (() => {
   const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
   return Math.atan2(-capLocal.y, -capLocal.x);   // stud-relative, dialFace frame: away from the cap
@@ -14598,7 +14603,7 @@ const jumperStudMeshes = [];   // the two posts riveted into the base plate (the
 // `tools/probe-149-lifter-width.mjs`: if it ever falls below that, it is not
 // a bound and the frame it was taken in is wrong. Re-run the probe if the
 // jumper's station, the setting lever's stroke or the tail pin's land moves.
-const JMP_LIFTER_SPAN_MEASURED = 37.601;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 151's real-metal solve moved the jumper to 129.5° (29.1037 at 326°, 30.0832 at 318°)
+const JMP_LIFTER_SPAN_MEASURED = 40.0045;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 180's sliver-free solve moved the jumper to 233.5° (37.601 at 129.5°, 29.1037 at 326°, 30.0832 at 318°)
 // A FUNCTION OF THE STATION since TODO 151 moved the station's solve to the
 // end of the build: the provisional station's bound cuts the bar here, and
 // the late solve re-cuts it at the station it settles on (and holds the
@@ -15644,6 +15649,10 @@ const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger thr
 // so the top rises with the thickness and the bottom stays where the rocker
 // engagement was solved. The §35 shaft derives from this and follows.
 const ALARM_SEL_Z_UP = -0.96 + ALARM_SEL_T;     // ring's top face, DISARMED (bottom pinned at −0.96)
+// TODO 161 — the ring's pose LAW, one source: the build (s = 0), tick (the
+// eased readout alarmSelShownT) and any solve that must judge the ring over
+// its travel all read this, so no copy of the slide can drift from the metal.
+const alarmSelRingZAt = (s) => (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * s;
 const ALARM_SEL_POST_R = 5.15;    // guides OUTSIDE the setting wheel's tips (4.83 + margin; asserted)
 const ALARM_SEL_POST_AZ = [60, 220, 300].map((d) => d * DEG2RAD); // world az — each wall asserted below
 // TODO 20 (fork) — shared by the fork build here and the pin build at the
@@ -15705,7 +15714,7 @@ const alarmSelRing = new THREE.Group();
   // derives. Building it here from the legacy tab constants created a
   // feedback loop: the fork's box fed the shaft's retreat, which moved the
   // pin, which moved where the fork needed to be.)
-  alarmSelRing.position.z = ALARM_SEL_Z_UP - ALARM_SEL_T / 2;
+  alarmSelRing.position.z = alarmSelRingZAt(0);
   alarmSelectorUnit.add(alarmSelRing);
   // the posts: sheet's back face down past the ring's lowest travel
   for (const [postIx, az] of ALARM_SEL_POST_AZ.entries()) {
@@ -18923,18 +18932,30 @@ const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade
 // puts alarmSelShownT at 0/1 there, asserted at that solve), Setting through
 // the sleeve's cone cap at the collar's two plateaus. The implications alone
 // would pass a hand left permanently visible; the ⟺ does not.
+// TODO 161 — THE RELEASE RUN'S TWO LAWS, one source each. Before this the
+// head-station → lift law was written three times (this assert, the silence
+// finger's drop, and tick) and the lift → cone-cap law twice (this assert and
+// tick) — CLAUDE.md's law-written-twice defect. Every reader calls these now.
+//   alarmSleeveLiftAt(pullT): the sleeve's (and the fork-tied lifter's) lift,
+//     0 → ALARM_SLEEVE_TRAVEL, read off the collar ramp at the head's station.
+//   alarmPhiCapAt(lift): the follower angle the sleeve's 45° cone caps at the
+//     tail pin's plane, or null while the skirt's top stands below the pin.
+const alarmSleeveLiftAt = (pullT) =>
+  alarmCollarRAt((ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST) - ALARM_COLLAR_THIN_R;
+const alarmPhiCapAt = (lift) => {
+  const skirtTopZ = (ALARM_SLEEVE_Z_REST + lift) - ALARM_SLEEVE_T;
+  const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
+  const hUp = skirtTopZ - tipZ; // how far the skirt's top edge stands above the tip
+  if (hUp <= 0) return null;
+  const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R; // 45° cone at the tip's plane, minus the pin radius
+  return Math.acos(clamp(
+    (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
+    / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
+};
 {
   const freedAt = (pullT) => {
-    const s = (ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST;
-    const lift = alarmCollarRAt(s) - ALARM_COLLAR_THIN_R;
-    const hUp = ((ALARM_SLEEVE_Z_REST + lift) - ALARM_SLEEVE_T)
-      - (ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03);
-    if (hUp <= 0) return false;
-    const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R;
-    const phiCap = Math.acos(clamp(
-      (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
-      / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
-    return phiCap >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
+    const phiCap = alarmPhiCapAt(alarmSleeveLiftAt(pullT));
+    return phiCap !== null && phiCap >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
   };
   for (const armed of [0, 1]) for (const setting of [0, 1]) {
     const hidden = !(armed === 1 || freedAt(setting)); // the tube law's own OR
@@ -19016,7 +19037,23 @@ const ALARM_SIL_RATIO = ALARM_SIL_THROW / ALARM_SLEEVE_TRAVEL; // finger/paddle 
 // allows, in pin units; MIN'd with the disc's own law wherever the pin's
 // drop acts (pose, pawl, trip, re-arm). Negative = actively lifted.
 const alarmPinDropCapAt = (fingerDrop) => (ALARM_SIL_GAP - fingerDrop) * ALARM_SIL_PIN_LEVER;
-const alarmSilFingerDropAt = (pullT) => Math.max(0, (alarmCollarRAt((ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST) - ALARM_COLLAR_THIN_R)) * ALARM_SIL_RATIO;
+const alarmSilFingerDropAt = (pullT) => Math.max(0, alarmSleeveLiftAt(pullT)) * ALARM_SIL_RATIO;
+// TODO 161 — the release run's ONE pose writer: the fork-tied lifter and
+// sleeve wear the lift, the lifter's blades flex with it (§48), and the
+// silence rocker's paddle rides the run (§45 stage 2). tick poses the run
+// through it every frame (with the §10 drill offsets), and JMP_SITE through
+// it at the law's travel samples (no drill) — one copy of the pose, so the
+// solve judges the run the movement actually shows.
+function poseAlarmReleaseRun(lift, drillZ = null) {
+  alarmLifter.position.z = -lift + (drillZ ? drillZ(alarmLifter) : 0);                     // world: pressed toward the dial
+  alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + lift + (drillZ ? drillZ(alarmSleeve) : 0); // dial-local +z ≡ the same world direction
+  for (const g of alarmLifterBladeGroups)
+    g.rotation.y = Math.asin(clamp(lift / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
+  const uD = alarmSilRocker.userData;
+  const tilt = Math.asin(clamp(lift / uD.aP, -1, 1));
+  alarmSilRocker.rotation.y = -tilt;
+  if (alarmSilBladeMesh) alarmSilBladeMesh.rotation.y = -tilt * 0.35 * uD.aP / 1.0;
+}
 const alarmSilenceUnit = new THREE.Group();
 dialFace.add(alarmSilenceUnit);
 registerLabel('Alarm silence rocker', alarmSilenceUnit);
@@ -42984,29 +43021,9 @@ function tick(t) {
   // radius at the tail pin's plane caps the follower's angle from below —
   // that cap, not a flag, is what the tube law reads.
   {
-    const sHead = (ALARM_LIFT_HEAD_R - ALARM_CD) - alarmCrownPullT * CROWN_PULL_DIST;
-    alarmSleeveLiftNow = alarmCollarRAt(sHead) - ALARM_COLLAR_THIN_R; // 0 → ALARM_SLEEVE_TRAVEL
-    alarmLifter.position.z = -alarmSleeveLiftNow + subDrillZ(alarmLifter);                     // world: pressed toward the dial (+ §10 level 2's drill)
-    alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow + subDrillZ(alarmSleeve); // dial-local +z ≡ the same world direction (+ the drill)
-    for (const g of alarmLifterBladeGroups)
-      g.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
-    const skirtTopZ = (ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow) - ALARM_SLEEVE_T;
-    const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
-    const hUp = skirtTopZ - tipZ; // how far the skirt's top edge stands above the tip
-    if (hUp > 0) {
-      const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R; // 45° cone at the tip's plane, minus the pin radius
-      alarmPhiCapNow = Math.acos(clamp(
-        (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
-        / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
-    } else {
-      alarmPhiCapNow = 0;
-    }
-    // §45 stage 2 — the rocker wears the same chain: paddle up with the
-    // run, finger down onto the tail, blade tip following the bar it biases
-    const uD = alarmSilRocker.userData;
-    const tilt = Math.asin(clamp(alarmSleeveLiftNow / uD.aP, -1, 1));
-    alarmSilRocker.rotation.y = -tilt;
-    if (alarmSilBladeMesh) alarmSilBladeMesh.rotation.y = -tilt * 0.35 * uD.aP / 1.0;
+    alarmSleeveLiftNow = alarmSleeveLiftAt(alarmCrownPullT); // 0 → ALARM_SLEEVE_TRAVEL
+    poseAlarmReleaseRun(alarmSleeveLiftNow, subDrillZ);       // lifter, sleeve, blades and the §45 stage 2 rocker (+ §10 level 2's drill)
+    alarmPhiCapNow = alarmPhiCapAt(alarmSleeveLiftNow) ?? 0;
   }
   {
     const aDelta = alarmCrownRotation - lastAlarmCrownRotation;
@@ -43200,7 +43217,7 @@ function tick(t) {
       const pinNow = F.pinFit.A * Math.sin(roll + F.dPhi) + F.pinFit.B * Math.cos(roll + F.dPhi) + F.pinFit.C;
       alarmSelShownT = Math.max(0, Math.min(1, (pinNow - F.grooveMidRest) / F.travelW));
     }
-    alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT + subDrillZ(alarmSelRing); // §10 level 2: the drill composes here
+    alarmSelRing.position.z = alarmSelRingZAt(alarmSelShownT) + subDrillZ(alarmSelRing); // §10 level 2: the drill composes here
     // TODO 19 (closed) — the rocker's angle is SOLVED FROM THE CONTACT, not
     // amplitude-fitted: the sensing pin's tip must lie ON the ring's riding
     // face at every state, which is one equation in the rocker's see-saw
@@ -43910,16 +43927,55 @@ const JMP_SITE = await (async () => {
     return null;
   };
   const staticTris = [], staticList = [], plateList = [], rotorTris = new Map();
+  // TODO 160 — WHICH OBSTACLES THE CAP BEARING B CUT. CAP_SOLVE commits B long
+  // before this solve exists, and everything buildSettingMetal returned for it
+  // (the fold's legs, rise, stub, arbor, corners and cap) plus the reserve
+  // train it swung (rsvSwing, rsvModule1) is metal a different B would have
+  // put elsewhere. Flagged here so the verdict can say whether B had any say
+  // in it — the fact a late re-cut (TODO 160's filed design) would need.
+  const bDepRoots = [SETTING_METAL.leg1, SETTING_METAL.leg2, SETTING_METAL.rise, SETTING_METAL.stub, SETTING_METAL.capArbor,
+    SETTING_METAL.cornerDrop, SETTING_METAL.cornerFold, SETTING_METAL.cornerRise, SETTING_METAL.cornerFoot, SETTING_METAL.cornerCap,
+    SETTING_METAL.settingCap, reserveTrain].filter(Boolean);
+  const isBDep = (o) => bDepRoots.some((r) => under(o, r));
+  const staticBDep = [], plateBDep = [];
+  // TODO 161 — THE LAWED MOVERS are judged over their own travel, not as
+  // built. BOOT HAS NO POSE, so a pose snapshot is not available here; a LAW
+  // is — the same function tick poses the part through, called at samples of
+  // its input. Two today: the §45 release run (sleeve, the fork-tied lifter,
+  // its blades, the silence rocker and its blade) over its lift, and the §34
+  // selector ring over its slide. Samples are spaced so no point of the part
+  // moves more than CLEAR_MARGIN/2 between them: the run's fastest point is
+  // the rocker's finger at aF/aP of the lift, the ring's is its slide.
+  const lawedRoots = [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmSilRocker, alarmSilBladeMesh, alarmSelRing].filter(Boolean);
+  const LAWED = [
+    { name: 'release run', roots: [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmSilRocker, alarmSilBladeMesh].filter(Boolean),
+      stroke: ALARM_SLEEVE_TRAVEL * Math.max(1, alarmSilRocker.userData.aF / alarmSilRocker.userData.aP),
+      pose: (u) => poseAlarmReleaseRun(u * ALARM_SLEEVE_TRAVEL) },
+    { name: 'selector ring', roots: [alarmSelRing], stroke: ALARM_SEL_TRAVEL,
+      pose: (u) => { alarmSelRing.position.z = alarmSelRingZAt(u); } },
+  ];
   const box = new THREE.Box3();
   const seen = new Set();
+  // TODO 180 — A ZERO-AREA TRIANGLE IS NOT METAL, so it never enters an
+  // obstacle tree. The BVH's closest-point query trusts every triangle it
+  // holds, and on a degenerate one it answered 0: three of alarmIndexWedge's
+  // nine triangles are slivers, and PASS 1's lifter-bar check read CONTACT
+  // against the wedge at 232–235° while the true distance is 3.8135
+  // (meshClearance, and dense sampling). The scan refused that whole window
+  // on an artefact and settled on 129.5°. Dropping a sliver loses no surface a
+  // distance can reach — its points lie on the edges of the real faces beside
+  // it — and the floor is §77's derived ZERO_AREA_MAX, measured in the
+  // geometry's own frame exactly as the census measures it.
   const pushTris = (m, into) => {
     const pos = m.geometry.attributes.position, idx = m.geometry.index;
     const n = idx ? idx.count : pos.count;
-    const a = V(), b = V(), c = V();
+    const a = V(), b = V(), c = V(), e1 = V(), e2 = V();
     for (let i = 0; i < n; i += 3) {
-      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(m.matrixWorld);
-      b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(m.matrixWorld);
-      c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(m.matrixWorld);
+      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i);
+      b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1);
+      c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2);
+      if (e1.subVectors(b, a).cross(e2.subVectors(c, a)).length() / 2 <= ZERO_AREA_MAX) continue;
+      a.applyMatrix4(m.matrixWorld); b.applyMatrix4(m.matrixWorld); c.applyMatrix4(m.matrixWorld);
       into.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
     }
   };
@@ -43929,6 +43985,7 @@ const JMP_SITE = await (async () => {
     e.obj.traverse((o) => {
       if (!o.isMesh || seen.has(o) || !o.geometry?.attributes?.position || !unschem(o)) return;
       if (under(o, jumperUnit) || under(o, settingLeverGroup)) return;
+      if (lawedRoots.some((r) => under(o, r))) return;   // TODO 161: judged over their travel below, not as built
       seen.add(o);
       const rot = rotorOf(o);
       box.setFromObject(o);
@@ -43953,8 +44010,26 @@ const JMP_SITE = await (async () => {
       }
       if (!box.intersectsBox(region)) return;
       if (rot) { if (!rotorTris.has(rot)) rotorTris.set(rot, []); pushTris(o, rotorTris.get(rot)); }
-      else { const arr = []; pushTris(o, arr); (under(o, backPlate) ? plateList : staticList).push(arr); staticTris.push(arr.length / 9); }
+      else { const arr = []; pushTris(o, arr); const onBack = under(o, backPlate); (onBack ? plateList : staticList).push(arr); (onBack ? plateBDep : staticBDep).push(isBDep(o)); staticTris.push(arr.length / 9); }
     });
+  }
+  const lawedSamples = [];
+  for (const L of LAWED) {
+    const saved = L.roots.map((r) => [r.position.clone(), r.rotation.clone()]);
+    const n = Math.max(1, Math.ceil(L.stroke / (CLEAR_MARGIN / 2)));
+    for (let k = 0; k <= n; k++) {
+      L.pose(k / n);
+      for (const r of L.roots) {
+        r.updateWorldMatrix(true, true);
+        r.traverse((o) => {
+          if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
+          if (!box.setFromObject(o).intersectsBox(region)) return;
+          const arr = []; pushTris(o, arr); staticList.push(arr); staticBDep.push(false); staticTris.push(arr.length / 9);
+        });
+      }
+    }
+    L.roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.updateWorldMatrix(true, true); });
+    lawedSamples.push({ name: L.name, samples: n + 1 });
   }
   const bvhOf = (arr) => {
     if (!arr.length) return null;
@@ -44005,6 +44080,10 @@ const JMP_SITE = await (async () => {
     });
   }
   const bvhLever = bvhOf(slMain), bvhPost = bvhOf(slPost);
+  // TODO 160 — the obstacle set test() and rotorsClear() judge against. The
+  // scan always runs on FULL; the verdict's classifier (after the scan) swaps
+  // in the cap-bearing-dependent subset, or its complement, and back.
+  let OBS = null;
   // the lever's reach over the whole pull, for culling it off parts it never nears
   const slSwept = new THREE.Box3();
   {
@@ -44058,9 +44137,10 @@ const JMP_SITE = await (async () => {
           grid.get(k).push(i);
         }
     }
-    rotors.push({ obj, o, a, coaxial, boxes, grid, R0, R1, Z0, Z1 });
+    rotors.push({ obj, o, a, coaxial, boxes, grid, R0, R1, Z0, Z1, bDep: isBDep(obj) });
   }
   await breathe();
+  OBS = { main: bvhMain, plate: bvhPlate, lever: bvhLever, post: bvhPost, rotors };
   // ---- the measures
   const t1 = {}, t2 = {};
   const bvhShort = (bvh, geo, M, tau) => {
@@ -44105,7 +44185,7 @@ const JMP_SITE = await (async () => {
     const q0 = V(), q1 = V(), q2 = V();
     if (!geo.boundingSphere) geo.computeBoundingSphere();
     const sc = _sc.copy(geo.boundingSphere.center).applyMatrix4(M), sr = geo.boundingSphere.radius * M.getMaxScaleOnAxis();
-    for (const rot of rotors) {
+    for (const rot of OBS.rotors) {
       if (rot.coaxial && !withCoaxial) continue;
       {
         // the whole part first: its bounding sphere's (r, z) box about this axis
@@ -44130,10 +44210,18 @@ const JMP_SITE = await (async () => {
     if (!bvh) return false;
     ray.origin.fromBufferAttribute(geo.attributes.position, 0).applyMatrix4(M);
     ray.direction.set(0.5773502691896258, 0.5773502691896258, 0.5773502691896258);
-    const hits = bvh.raycast(ray, THREE.DoubleSide).map((h) => h.distance).sort((x, y) => x - y);
-    let n = 0, last = -1;
-    for (const d of hits) { if (d - last > 1e-7) n++; last = d; }
-    return n % 2 === 1;
+    // TODO 161 — PARITY PER TREE. Each tree is one closed body, so its own
+    // crossing count is the parity; summing over trees and deduping across
+    // them flipped it wherever two bodies shared a face at one distance — the
+    // lawed movers' swept copies do, along every face parallel to their
+    // travel — and it also missed a point inside two overlapping bodies.
+    for (const t of bvh.trees || [bvh]) {
+      const hits = t.raycast(ray, THREE.DoubleSide).map((h) => h.distance).sort((x, y) => x - y);
+      let n = 0, last = -1;
+      for (const d of hits) { if (d - last > 1e-7) n++; last = d; }
+      if (n % 2 === 1) return true;
+    }
+    return false;
   };
 
   // ---- one station, one threshold: does every part clear everything by tau
@@ -44180,25 +44268,25 @@ const JMP_SITE = await (async () => {
       // PASS 1 — the exact distances, cheapest and most telling first
       for (let i = 0; i < azMeshes.length; i++) {
         const m = azMeshes[i], g = qOf(m);
-        if (bvhShort(bvhMain, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(bvhPlate, g, azM[i], tau))) return false;
+        if (bvhShort(OBS.main, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(OBS.plate, g, azM[i], tau))) return false;
       }
       for (const Ms of levM) for (let i = 0; i < leverMeshes.length; i++) {
         const g = qOf(leverMeshes[i]);
-        if (bvhShort(bvhMain, g, Ms[i], tau) || bvhShort(bvhPlate, g, Ms[i], tau)) return false;
+        if (bvhShort(OBS.main, g, Ms[i], tau) || bvhShort(OBS.plate, g, Ms[i], tau)) return false;
       }
       await breathe();
       const all = [...azMeshes, ...leverMeshes];
       for (const { k, M, parts } of liftM) {
-        if (bvhShort(bvhMain, lg, M, tau) || bvhShort(bvhPlate, lg, M, tau)) return false;
+        if (bvhShort(OBS.main, lg, M, tau) || bvhShort(OBS.plate, lg, M, tau)) return false;
         if (box.copy(lg.boundingBox).applyMatrix4(M).expandByScalar(tau).intersectsBox(slSwept)
-          && bvhShort(bvhLever, lg, slInv[k].clone().multiply(M), tau)) return false;
+          && bvhShort(OBS.lever, lg, slInv[k].clone().multiply(M), tau)) return false;
         // the setting lever moves with the same pull, so the stud's parts and
         // the jumper's lever meet it at THIS pose, not at every pull at once
         for (let i = 0; i < all.length; i++) {
           const g = qOf(all[i]);
           if (!box.copy(g.boundingBox).applyMatrix4(parts[i]).expandByScalar(tau).intersectsBox(slSwept)) continue;
           const L = slInv[k].clone().multiply(parts[i]);
-          if (bvhShort(bvhLever, g, L, tau) || bvhShort(bvhPost, g, L, tau)) return false;
+          if (bvhShort(OBS.lever, g, L, tau) || bvhShort(OBS.post, g, L, tau)) return false;
         }
       }
       await breathe();
@@ -44215,13 +44303,13 @@ const JMP_SITE = await (async () => {
       // PASS 3 — meshClearance's parity guard, one pose of each part
       for (let i = 0; i < azMeshes.length; i++) {
         const m = azMeshes[i], g = qOf(m);
-        if (inside(bvhMain, g, azM[i]) || (!onPlate.has(m) && inside(bvhPlate, g, azM[i]))) return false;
+        if (inside(OBS.main, g, azM[i]) || (!onPlate.has(m) && inside(OBS.plate, g, azM[i]))) return false;
       }
       for (let i = 0; i < leverMeshes.length; i++) {
         const g = qOf(leverMeshes[i]);
-        if (inside(bvhMain, g, levM[0][i]) || inside(bvhPlate, g, levM[0][i])) return false;
+        if (inside(OBS.main, g, levM[0][i]) || inside(OBS.plate, g, levM[0][i])) return false;
       }
-      if (inside(bvhMain, lg, liftM[0].M) || inside(bvhPlate, lg, liftM[0].M)) return false;
+      if (inside(OBS.main, lg, liftM[0].M) || inside(OBS.plate, lg, liftM[0].M)) return false;
       return true;
     } finally { lg.dispose(); }
   };
@@ -44276,6 +44364,31 @@ const JMP_SITE = await (async () => {
     else while (hi - lo > HMIN) { const mid = (lo + hi) / 2; if (await test(az, mid)) lo = mid; else hi = mid; }
     best = { az, clr: lo, capD: cd, score: Math.min(lo, JMP_SITE_SAT) + JMP_SITE_CAPD_W * cd };
   }
+  // TODO 160 — CLASSIFY THE VERDICT by what B cut. Accepted: `bSlack`, the
+  // shipped station's clearance against the B-dependent obstacles ALONE (to
+  // the envelope's resolution, capped at the objective's saturation) — how much
+  // room B's metal leaves the jumper. Refused: re-scan against everything B
+  // did NOT cut; a station there means another B could help ('B-dependent'),
+  // none means no B could ('B-independent'), and only the first is worth the
+  // late re-cut TODO 160 files. The scan above never sees these sets.
+  const pick = (lists, flags, want) => lists.filter((_, i) => flags[i] === want);
+  const subset = (want) => ({
+    main: setOf(pick(staticList, staticBDep, want)), plate: setOf(pick(plateList, plateBDep, want)),
+    lever: want ? null : bvhLever, post: want ? null : bvhPost, rotors: rotors.filter((r) => r.bDep === want),
+  });
+  const FULL = OBS;
+  let bSlack = null, cause = null;
+  if (best) {
+    OBS = subset(true);
+    if (await test(best.az, JMP_SITE_SAT)) bSlack = JMP_SITE_SAT;
+    else { let lo = 0, hi = JMP_SITE_SAT; while (hi - lo > HMIN) { const mid = (lo + hi) / 2; if (await test(best.az, mid)) lo = mid; else hi = mid; } bSlack = lo; }
+  } else {
+    OBS = subset(false);
+    cause = 'B-independent';
+    for (const az of cands) { if (await test(az, CM)) { cause = 'B-dependent'; break; } }
+  }
+  for (const b of [OBS.main, OBS.plate]) if (b) b.geometry.dispose();
+  OBS = FULL;
   // put back what the solve posed: tick() owns all of it from the first frame
   jumperLever.rotation.z = leverRot0;
   settingLeverGroup.rotation.z = slRot0;
@@ -44286,11 +44399,14 @@ const JMP_SITE = await (async () => {
   scene.updateMatrixWorld(true);
   return { best, tested, witnessed, candidates: cands.length, stepDeg: STEP / DEG2RAD, ms: performance.now() - T0,
     rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0),
+    lawed: lawedSamples,   // TODO 161: the movers judged over their travel, and how many poses each
+    bSlack, cause, bDepMeshes: staticBDep.filter(Boolean).length + plateBDep.filter(Boolean).length, bDepRotors: rotors.filter((r) => r.bDep).length,   // TODO 160
     rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z };
 })();
 if (!JMP_SITE.best) {
   console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`
-    + ` — this REFUSES CAP_SOLVE's B at ${(CAP_BEARING / DEG2RAD >= 0 ? '+' : '')}${(CAP_BEARING / DEG2RAD).toFixed(2)}°; acting on it (re-cut) is TODO 160`);
+    + ` — this REFUSES CAP_SOLVE's B at ${(CAP_BEARING / DEG2RAD >= 0 ? '+' : '')}${(CAP_BEARING / DEG2RAD).toFixed(2)}°, and the refusal is ${JMP_SITE.cause}`
+    + (JMP_SITE.cause === 'B-dependent' ? ' (a station exists without the metal B cut: re-cutting at another B is TODO 160\'s filed design)' : ' (no station exists even without the metal B cut: no B can help)'));
 } else {
   // THE STATION, and everything the build derived from it: the parts' frame,
   // the star's phase (a valley under the solved tip at every snapped minute)
@@ -44375,11 +44491,17 @@ const JMP_SITE_WALKS = (() => {
 // the reserve's swing) and the jumper is never even asked about them. `m`
 // and `s` are left untouched — probe-234-cap-bearing.mjs reads those.
 for (const r of CAP_SOLVE.scan) r.jumper = null;
+// TODO 160 — a coherence check, not a pose claim (BOOT HAS NO POSE is kept:
+// both numbers are the solve's own derivations). The B-dependent subset is a
+// subset of what the station was certified against, so its clearance can only
+// be larger; smaller means the subset and the full set parted.
+if (JMP_SITE.best && !(JMP_SITE.bSlack >= JMP_SITE.best.clr - 1e-9))
+  console.warn(`TODO 160: the station's clearance against the cap bearing's own metal is ${JMP_SITE.bSlack}, below its certified clearance ${JMP_SITE.best.clr} — the B-dependent subset is not a subset of what the scan judged`);
 {
   const row = CAP_SOLVE.scan.find((r) => r.clause === 'open' && Math.abs(r.d - CAP_BEARING / DEG2RAD) < 1e-9);
   if (row) row.jumper = JMP_SITE.best
-    ? { verdict: 'accepts', azDeg: ((JMP_SITE.best.az / DEG2RAD) % 360 + 360) % 360, clr: JMP_SITE.best.clr, swingDeg: rsvSwing / DEG2RAD }
-    : { verdict: 'refuses', azDeg: null, clr: null, swingDeg: rsvSwing / DEG2RAD };
+    ? { verdict: 'accepts', azDeg: ((JMP_SITE.best.az / DEG2RAD) % 360 + 360) % 360, clr: JMP_SITE.best.clr, swingDeg: rsvSwing / DEG2RAD, bSlack: JMP_SITE.bSlack }
+    : { verdict: 'refuses', azDeg: null, clr: null, swingDeg: rsvSwing / DEG2RAD, cause: JMP_SITE.cause };
 }
 
 // §38 alarm hand vs the raised hour markers — see the note at the hand's
@@ -44810,7 +44932,7 @@ window.__clock = {
     clr: JMP_SITE.best ? JMP_SITE.best.clr : null, capD: JMP_SITE.best ? JMP_SITE.best.capD : null,
     score: JMP_SITE.best ? JMP_SITE.best.score : null, sat: JMP_SITE_SAT, capDWeight: JMP_SITE_CAPD_W,
     tested: JMP_SITE.tested, candidates: JMP_SITE.candidates, stepDeg: JMP_SITE.stepDeg, ms: JMP_SITE.ms,
-    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris,
+    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris, lawed: JMP_SITE.lawed, bSlack: JMP_SITE.bSlack, cause: JMP_SITE.cause, bDepMeshes: JMP_SITE.bDepMeshes, bDepRotors: JMP_SITE.bDepRotors,
     lifterW: JMP_LIFTER_W,
     walks: JMP_SITE_WALKS,
   }),
