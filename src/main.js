@@ -33560,6 +33560,39 @@ function partCalloutAnchor(c, out) {
   return out.addScaledVector(_pcOut.normalize(), r);
 }
 
+// DISPLAY ONLY — where a unit's label is DRAWN, when the unit object's own
+// origin is the wrong place to name it. `labelEntries` keeps the unit object
+// itself, because the inspector's rosters and sweeps read `obj`; only
+// updateLabels reads this map (unit obj → fn(out) writing a world point).
+//
+// The motion works is the case: its group is born at dialFace's origin, the
+// dial centre, where none of its metal is — and where the Hour wheel's group
+// is born too, so the two unit labels printed exactly on top of each other.
+// The unit's metal is the minute wheel out on its stud, so that is where it
+// is named: on the wheel's rim, a quarter turn from the side facing away
+// from the dial's axis (the Minute wheel callout's spot), on whichever of
+// the two quarter-turn sides stands higher on screen — the label is lifted
+// above its point, so up is the side with open space, and it keeps clear of
+// the minute pinion's callout above the stud and the Minute jumper's label
+// just under it.
+const LABEL_ANCHOR = new Map();
+{
+  const wheel = partCalloutEntries.find((c) => c.key === 'mwMinuteWheel');
+  if (!wheel) console.warn('LABEL_ANCHOR: the Motion works label is anchored on the minute wheel callout, which did not resolve');
+  else {
+    const C = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), side = new THREE.Vector3(), ndc = new THREE.Vector3();
+    LABEL_ANCHOR.set(motionWorks, (out) => {
+      partCalloutAnchor(wheel, out);                  // the rim point facing away from the axis
+      partCalloutCentre(wheel, C);
+      _pcOut.subVectors(out, C);                      // centre → that rim point, in the dial plane, length r
+      side.crossVectors(_pcAxisN, _pcOut);            // a quarter turn about the dial normal (set by partCalloutAnchor)
+      a.addVectors(C, side); b.subVectors(C, side);
+      const ya = ndc.copy(a).project(camera).y, yb = ndc.copy(b).project(camera).y;
+      return out.copy(ya >= yb ? a : b);
+    });
+  }
+}
+
 // --- time-scale (log slider, 0.02..1, default 1 = real time) --------------
 const SCALE_MIN = 0.02, SCALE_MAX = 1;
 let timeScale = 1;
@@ -42023,7 +42056,8 @@ function updateLabels() {
     const el = labelEls[i];
     const labelGroup = UNIT_GROUPS.get(selectedUnit);
     if (selectedUnit !== 'All' && name !== selectedUnit && !(labelGroup && labelGroup.has(name))) { el.style.display = 'none'; continue; }
-    obj.getWorldPosition(projected);
+    const anchorAt = LABEL_ANCHOR.get(obj);
+    if (anchorAt) anchorAt(projected); else obj.getWorldPosition(projected);
     projected.project(camera);
     const behind = projected.z > 1;
     if (behind) { el.style.display = 'none'; continue; }
