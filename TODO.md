@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 182 | PART DONE | Step 1 done: `JMP_SITE` drops and counts non-finite obstacle triangles (5,536 in 7 meshes at `alarmr=20`/`46`, 0 at identity), scan 19 s → 1.5 s at those points, same station. The red `main` it was filed for had already gone green at #502 (TODO 180 thinned the queries). Remaining: stop cutting the alarm setting dogleg's non-route as NaN metal (step 2), and have the spec tier report non-finite meshes per point (step 3) |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
@@ -24043,3 +24044,181 @@ A cheaper middle design is a declared `CAP_JUMPER_REFUSED_DEG` table that
 CAP_SOLVE skips, the ratchet idiom. The late pass verifies the shipped B is
 accepted and that each row is still refused. Its control is
 `probe-160-cause`'s boot C with the expected chosen B moving to 6.0°.
+
+## 184. The frame's fasteners hold nothing: plate and cock screws stop at the joint face, pillars butt the base plate, and every size is a proportion of an unrelated dimension
+
+Reported by eye ("the structural screws that hold the three-quarter plate and
+the bridges onto the base plate are too small — too short and too slim — or
+the pillars are not realistically attached to the base plate"). Both halves
+hold up when you read the code, and there is a third half the report did not
+reach: **no screw in the frame crosses the joint it exists to close.** Found
+by reading, not by any check. Every number below is DERIVED from the source
+constants at `UNIT_MM` = 0.379. `TQ_BOT_Z` ≈ 8.185 is the value
+`tools/probe-interplate-demand.mjs` quotes (the seated-stud span `[8.9845, 8.1845]` measured
+earlier in this file agrees with it). It was not re-measured by a boot for this filing, so re-read it off
+`__clock` before sizing anything.
+
+**1. The screws are too short. Every one ends exactly at the interface.**
+
+| joint | screw ends at | thread engaged in the member it should hold |
+|---|---|---|
+| 3/4 plate ⇄ pillar ×4 | the plate's underside: `shank: TQ_T − STOCK_MIN_U` below a head sunk `STOCK_MIN_U` (main.js:11356) | **0** |
+| Balance cock ⇄ base plate ×2 | the crossbar's underside: `shank: COCK_T` (main.js:10060) | **0**. Below the bar is the cock's own leg (same group), then the base plate |
+| Fork cock ⇄ base plate ×1 | the slab's underside: `shank: thickness` (geometry.js:6429) | **0**. Below is the bridge's own leg, then the base plate |
+
+The two cocks are the clearest case. Each leg is a cylinder built INSIDE the
+cock's group (main.js:10035, geometry.js:6407), with a pad resting on
+`PLATE_TOP`. So the screw clamps the slab to its own leg, and nothing crosses
+the leg ⇄ base plate face. Every cock in this frame stands on the plate,
+fastened to nothing.
+
+TODO 27 chose this on purpose ("what is deliberately still not drawn … the
+thread, and the tapped hole it takes … invisible in the real movement too").
+The choice is withdrawn here, for two reasons. (a) A tapped hole's
+INVISIBILITY argues against drawing its visible features. It does not argue
+against the screw having a LENGTH. As built, the model states that the screw
+stops at the face, which is a claim, and a false one. (b) Since §148,
+`makeScrews` draws a tapped shank (`tapped: true`, crests at `screwShankR`
+meeting a bore at `screwTapR`) and the chatons use it, so the drawing cost is
+already paid. The comments at main.js:11353–11355 and main.js:10055
+("the thread takes the pillar / the leg and then the plate") describe metal
+that the model does not contain. Fix the code or the sentence. Do not leave
+the sentence.
+
+**2. The screws are too slim. The sizes come from dimensions that have
+nothing to do with a fastener.**
+
+| site | head ⌀ | thread ⌀ | where the number comes from |
+|---|---|---|---|
+| pillar screws | 1.326 u = **0.50 mm** | 0.663 u = **0.25 mm** | `PILLAR_SCREW_HEAD_R = PILLAR_CAP_R·0.6`, `PILLAR_CAP_R = TQ_BOT_Z·0.09·1.5` (main.js:11051, 11056). So the thread is **0.081·TQ_BOT_Z**, a fraction of the inter-plate gap, which the hairspring stack and the chain's reach set |
+| balance cock screws | 2.70 u = 1.02 mm | 1.35 u = 0.51 mm | `COCK_FOOT_R·0.45`, `COCK_FOOT_R = COCK_W/2`, and `COCK_W = 6` is a bare literal (main.js:4046, 10016) |
+| fork cock screw | 1.155 u = 0.44 mm | 0.578 u = 0.22 mm | `footHeadR = n.r·0.62·0.6`, `n.r = legR·1.35`, and `legR = 1.15` is a bare literal (geometry.js:6348, main.js:4179) |
+
+In every row the thread is `screwShankR = headR/2` (geometry.js:6499), so the
+real chain is "thread ⌀ = a proportion of a proportion of a styling number."
+That is standing rule 1's failure at the frame's most load-bearing joints.
+One more copy to fix while you are there: the fork cock's leg is SCANNED at
+`legR = 1.15` (main.js:4179), but `makeEscapeBridge` DRAWS it at
+`n.r·0.62` = 0.963. The scan is conservative, but these are two copies of
+one radius.
+
+For scale, and as an order of magnitude only (write a cited reference
+calibre's measured row into the constant's comment, not this paragraph): a
+~32 mm pocket movement carries its plate on screws of about 1.0 mm thread
+(the report's M1.0–1.4 range) with heads of about 1.8–2.0 mm, and its cocks
+on screws of about 0.6–0.9 mm. The pillar screws are about **4× too slim**.
+In brass or nickel silver, engagement is usually at least 1.5·d.
+
+**3. The pillars butt the base plate and are not attached to it.**
+`makePillar` (geometry.js:6953) is one solid lathe whose body radius is
+`height·0.09` (geometry.js:6954), again a fraction of the inter-plate gap. At
+this height that is body ⌀ 1.473 u = **0.56 mm**, end lands ⌀ 2.21 u = 0.84 mm,
+3.10 mm tall. It sits at z [0, `TQ_BOT_Z`] (main.js:11194–11196), so its foot
+is coplanar with `PLATE_TOP` = 0, the base plate's top face
+(`BACK_PLATE_Z`/`BACK_PLATE_T`, main.js:2670–2671). Nothing crosses that
+face: no tenon, no rivet, no screw, no steady pin. `BACK_PLATE_HOLES` has no
+pillar entry. A real pillar is riveted into the pillar plate on a shouldered
+tenon, or screwed from the dial side, and the upper plate is located on steady
+pins as well as screwed. Here a pillar stands in position only because the
+model places it there.
+
+**Why no instrument has seen it.** `checkSupportGeometry` accepts a support
+edge when the two members come within `SUPPORT_TOL` = 0.5 (inspect.js:4072),
+so a butt joint and a fastened joint both pass. `['Three-quarter plate',
+'pillars']`, `['pillars', 'plate']`, `['Balance cock', 'plate']` and
+`['Fork cock', 'plate']` (inspect.js:101–102, 116–117) are all green
+on contact alone. The screws are meshes inside their host's unit, so they
+fall into item 5's fixture-pair residue. Their sections sit over every floor
+(0.25 mm thread against the 0.12 mm `STOCK_MIN_U`; pillar λ and L/D about 5.6).
+So `stockFloor`, `slenderness` and `turning` have nothing to report. None of
+these parts appears in `STOCK_WAIVERS`, `SLENDER_WAIVERS` or `TURN_WAIVERS`,
+and `tools/INDEX.md` has no instrument for a screw, a thread or a pillar
+joint. A stale comment rides along: inspect.js:97 and :609 still say the
+balance cock "is screwed to [the three-quarter plate's] top face", while
+inspect.js:117 declares, correctly, that its leg lands on the BASE plate.
+
+**Fix path.** Do it in P1 order: the fastener first, then the members sized
+around it, then the seats (P3).
+
+1. **Thread ⌀ from a declared screw series, not from a head.** Pick one row of
+   the Swiss horological thread series (NIHS) per joint class (plate, cock),
+   and cite the row and the reference calibre at the constant. Then derive
+   the head from the thread (invert `screwShankR`'s 2:1, or keep it as the
+   series' head column). *Fork:* the defensible alternative is a
+   shock-load sum in TODO 16's format (plate plus train mass at a stated g,
+   shared over the screws, against thread shear in the host). That is more
+   work and more honest. File the series row first and state the fork at the
+   constant.
+2. **Engagement: `ENGAGE_MIN · d` into the host, the constraint written
+   where the constant is declared.** Pillar screws continue past the plate
+   underside into a tapped bore in the pillar top (`screwTapR`, §148's
+   tapped-hole rule), drawn with `tapped: true` for the engaged length. Cock
+   screws run down through their legs into the base plate. That forces the
+   leg to become a bored sleeve (or a separate stud) and puts a tapped bore
+   in `BACK_PLATE_HOLES`.
+3. **Pillar body from the thread, not from the height:** body r ≥
+   `screwTapR` + a wall floored at `STOCK_MIN_U`, and the end land ≥ the
+   seat the new head needs. This retires `height·0.09`.
+4. **Pillar ⇄ base plate joint:** a shouldered tenon through the base plate,
+   riveted flush on the dial side (§27's chain-rivet countersink is the
+   in-repo precedent for a head that may not stand proud), or a dial-side
+   screw into the pillar foot. Either way the base plate is bored at each
+   seat. Add steady pins if the plate's location is claimed.
+5. **Re-solve the seats with the fatter pillars.** Keep the dimensions fixed
+   and solve in position space (P3). The seat scan already consumes
+   `LOW_LINKAGE_OBSTACLES`, `ALARM_UNDER_FOOTPRINT`, the train boxes and
+   `PILLAR_KEYLESS_BOXES`. A `pillar: no seat found near` warning here is a
+   LAYOUT finding to file. Do not answer it by slimming the pillar back.
+
+**Hidden costs, measured by reading, not by building.**
+- *Ordering.* The base plate is cut at main.js:7470. The pillar seats are
+  solved at main.js:11180, after the train, the cocks and the keyless works
+  they avoid have been built. So step 4 needs either the seat solve hoisted
+  above the back-plate cut, with declared footprints the way
+  `ALARM_UNDER_FOOTPRINT` got its hoist, or a second, late cut of the back
+  plate. Both are real work. The hoist is the house pattern.
+- *Host thickness.* The base plate is `BACK_PLATE_T` = 2 u = **0.758 mm** and
+  the three-quarter plate `TQ_T` = 0.8 u = 0.303 mm. Both are bare literals,
+  and both are thinner than real plates. At d ≈ 1.0 mm and 1.5·d engagement,
+  a BLIND thread does not fit in either plate. So the pillar ⇄ base plate
+  joint has to go THROUGH (a rivet, or a dial-side screw), and a cock screw
+  into the base plate engages at most 0.758 mm. That limit is [TODO 69]'s
+  class, and it is the reason this item cannot be closed by drawing longer
+  screws alone. If a step's arithmetic comes back infeasible, state the
+  window with numbers, as TODO 69 does, and leave the plate thickness to 69
+  or to its own item. Do not thin the fastener to fit.
+- *The dial side.* A riveted tenon's dial-side head sits among the motion
+  works and the keyless corner. Measure it with `undeclaredClearance`.
+
+**Instrument, and how to verify.**
+- A declared `FRAME_JOINTS` table (joint, screw site, host, thread d, required
+  engagement), with a build-time assert that warns with the achieved and the
+  required numbers (standing rule 6). The frame is static, so this is a
+  derivation and not a pose claim, which keeps it legal under "boot has no
+  pose." Its control: shorten one shank back to `TQ_T − STOCK_MIN_U` and the
+  assert must fire.
+- Extend `support` so that an edge between two separately built rigid members
+  in that table passes only if some mesh crosses the joint plane by at least
+  the declared engagement. Contact within `SUPPORT_TOL` alone must fail it.
+  The control is today's tree, which must come back RED on all four pillars
+  and all three cock screws before the fix lands.
+- Each thread is a designed contact, so the screw ⇄ tapped-bore pairs need
+  declared-joint rows that §182's audit measures (`INTRA_UNIT_CONTACTS`
+  inside a unit, `EXPECTED_CONTACT_FLOORS` contacts across
+  `Three-quarter plate ⇄ pillars`). Otherwise the new metal reads as
+  interpenetration.
+- Then run the full battery. The geometry, the pillar seats, the fingerprint
+  and the §152 digests all move. `--report` diffed against the base is the
+  acceptance.
+
+Feasibility: medium, and large if step 4's arithmetic forces [TODO 69] or a
+base-plate thickness change · Cost: about 200–350 lines across main.js,
+geometry.js and inspect.js. About 6 derived constants (thread d ×2 classes,
+`ENGAGE_MIN`, pillar body r, tenon r, cock-leg bore). One seat re-solve and
+either a hoist or a late back-plate cut. One new build assert and one new
+`support` column · Battery: full (geometry changes, and the fingerprint and
+digests move).
+
+**Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
+alone, or by scaling the existing heads up. A bigger head on a screw that
+still stops at the face is the same defect, made easier to see.
