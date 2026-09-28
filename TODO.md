@@ -27,8 +27,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
 | 178 | OPEN | `alarmFollowerSpringStud` passes `alarmHeart` at 0.1011, hidden behind the `Alarm disc ⇄ Hour wheel` row's TODO 101 waiver. Fix: re-site the stud in position space |
 | 177 | OPEN | The hour hand's body touches the alarm hand's boss (0 at beat f=0), hidden behind the same waiver. Fix: derive the two hands' stack gap from `CLEAR_MARGIN` |
-| 176 | OPEN | `makeBarrel`'s toothed wall (`curveSegments: 3`) cuts the alarm barrel's cavity as a hexagon: 4.785 across the flats against `drumInnerR` 5.595, with the mainspring ribbon reaching 5.54. Fix: `borePath(drumInnerR)` plus TODO 175's bevel term |
-| 175 | OPEN | A bevelled gear or pinion bore is cut `bevelSize` smaller than its boreR (the extrude grows holes inward), so running fits still overlap their studs (winding idlers 0.4095 on 0.45, MW minute wheel 0.4095 on 0.42, spider cage 0.2203 on 0.2361), and several "pressed" parts' bores are not their shaft. Fix: draw the bore at boreR + bevel, and make every press fit's boreR equal its shaft |
+| 176 | CLOSED | The alarm barrel's cavity is `borePath(drumInnerR, bevel)`, guarded to 5.595 at boot. The filed 4.785 was a radius, the hexagon less its bevel. The ribbon clears the true wall by 0.0536 against a designed 0.0549 |
+| 175 | CLOSED | Bevelled bores are drawn at `r + bevel/cos(π/n)`, so the band the shaft meets IS r (`boreBandGuard` warns otherwise). Every gear, pinion, heart and barrel bore is compensated. The fit census was redone: 3 "pressed" parts run; 6 bores smaller than their shaft and 3 too-loose running fits now derive from the shaft they ride |
 | 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
 | 173 | OPEN | The alarm release feeler lever rocks about the dial's Y axis (Euler order 'XYZ' on a lever turned `_phiF`), not its pivot pin, and in the wrong sense: at full drop the tip ⇄ reader-ring read opens from 0.02 to 0.1628. No gate poses a drop. Fix: rock about the pin (`rotation.order = 'ZYX'`), take the sign from the read contact, re-derive the beak edge and the silence finger, and add a dropped-pose read row |
 | 172 | OPEN | The alarm setting lane's designed 0.05 dial-sheet gap (`ALARM_SET_Z`) is under `CLEAR_MARGIN`; the crisp arbor pinion sits on it (debt row at 0.05). Fix: re-stratify the lane to `CLEAR_MARGIN`, carrying the §29 centre chain |
@@ -23220,6 +23220,11 @@ setting train) would at least make the two rims agree at the cost of the
 `axisEntry` risk that option carried when it was proposed for the whole
 train.
 
+**Deferred to roadmap §4 (owner's decision).** Reviewed in the TODO 175
+round, this item is left OPEN on purpose. Its fix is the jumper back-drive,
+which is the §4 feature rather than a debt fix, and the scoped accumulator
+was not taken. The item stays as the gap's number until §4 lands.
+
 ## 165. `inspection` misses a real crossing on a non-manifold BufferGeometry — CLOSED
 
 Filed closing [TODO 164] R3, a real contact the user asked fixed in the same
@@ -23856,7 +23861,7 @@ it keeps TODO 170's clearance to the sleeve flat. Then gate the connection:
 bring the selector into `ASSEMBLY_SCOPE`, or add a declared-joint row that
 the §182 audit measures.
 
-## 175. A bevelled gear or pinion bore is cut bevelSize smaller than its boreR, so running fits still overlap their studs
+## 175. A bevelled gear or pinion bore is cut bevelSize smaller than its boreR, so running fits still overlap their studs — CLOSED
 
 Found closing [TODO 168]. Once the bore became a true circle, the second
 error showed: on a bevelled extrude, `bevelSize` grows every HOLE inward by
@@ -23882,7 +23887,58 @@ and every running fit's equal shaft + `PIVOT_BORE_CLEAR`, declaring joint rows
 where a press fit is the intent. Re-measure `assembly`: the Striking wheel is
 in `ASSEMBLY_SCOPE`.
 
-## 176. makeBarrel's toothed wall cuts the alarm barrel's cavity as a hexagon
+**Closed.** The mechanism is a little different from the one filed.
+`ExtrudeGeometry` offsets a bevelled contour by `bevelSize` through the whole
+depth band (`getBevelVec` moves each edge along its normal and takes the
+miter point). A hole therefore moves inward by exactly `bevelSize` at each
+flat and by `bevelSize/cos(π/n)` at each vertex, while the two caps keep the
+contour as drawn. So "boreR + bevel" would have left every vertex
+`bevel·(sec(π/n) − 1)` short. `borePath(r, grow)` draws at
+`R′ = r + grow/cos(π/n)`, taking n from r. The band then lands exactly on
+`borePath(r)` (vertices on r, sag ≤ `PIVOT_BORE_CLEAR/2`), and the caps open
+into a chamfered mouth. `makeGear`, `makePinion`, `makeHeartCam` and the
+barrel's toothed wall pass their own bevel.
+
+The direction depends on the outer contour's winding. These outlines are
+counter-clockwise, and three.js forces the holes the other way. A clockwise
+outline GROWS its hole instead. The escape wheel's club outline is exact by
+its own `bevelOffset` and keeps `grow = 0`. Every builder that passes a grow
+now runs `boreBandGuard`, which holds the band's least vertex radius to r
+within 1e-5 at boot. A flipped winding, or a bevel paid twice, then shows as
+a number. The guard's first draft windowed z at 1e-9 and read an EMPTY band,
+because positions are float32 and 0.8 is stored as 0.80000001. It reported
+Infinity on 44 builds, which at least showed it firing.
+
+The census of "pressed" parts was wrong in both directions:
+
+- **Running fits, not presses.** `alarmStrikePinion`, `rsvWheel1` and
+  `rsvWheel2` all turn on studs. The first two were already bored with the
+  running fit and read as buried only through the bevel. `rsvWheel2` is now
+  `RSV_HAND_ARBOR_R + PIVOT_BORE_CLEAR`. The strike pinion's
+  `INTRA_UNIT_CONTACTS` row called it pressed and now says it runs.
+- **Missing from the filed list: bores cut smaller than their shaft.**
+  - `mwMinutePinion`: the default 0.4 bore on the 0.42 stud. It is now
+    `MW_BORE_R`, shared with the wheel.
+  - `reservePinion1`: 0.4 on the 0.45 post. It is now `RSV_W1_BORE_R`.
+  - `reservePinion0`: 0.4 on the 0.55 arbor extension. It is pressed there,
+    as the slip coupling its floors row declares, so its bore is
+    `RSV_ARB_EXT_R`.
+  - `alarmClimbPinion`: 0.4 on its 0.45 rod. It is fast there, bored
+    `ALARM_CLIMB_ROD_R`.
+  - `settingCap`: fast on its arbor, bored `MW_RISE_R`.
+  - `idlerP`: now bored for the idler body's outside, as `idlerW` already was.
+- **Missing from the filed list: running fits cut too loose.** `pinA`, `pinB`
+  and `fPin` took makePinion's default 0.4, looser than the fit the sleeves
+  beside them declare. The tower's members share `SUB_RUN_BORE_R`. `fPin`
+  shares the finger's `fingerBoreR`.
+
+`windSpur` stays at 0.7 by decision. It rides another unit's rod, and a 0.6
+bore would open a 0.026 inter-unit gap that nothing checks.
+
+`DECLARED_CONTACT_REACH` is 1.0, not the 1.2 the planning notes assumed.
+Every declared row the fix opens stays far inside it.
+
+## 176. makeBarrel's toothed wall cuts the alarm barrel's cavity as a hexagon — CLOSED
 
 Found closing [TODO 168]. `makeBarrel` with `plain: false` (geometry.js,
 about line 5633) extrudes the toothed wall at `curveSegments: 3`, so its
@@ -23893,6 +23949,15 @@ inside the wall's metal.
 **Fix path.** Cut the cavity with `borePath(drumInnerR)` (TODO 168's helper),
 plus TODO 175's bevel term. Then re-measure the ribbon ⇄ wall and the hook
 against the true cavity.
+
+**Closed** with [TODO 175]: the cavity is `borePath(drumInnerR, bevel)`, and
+`boreBandGuard` holds its band to 5.595. The filed 4.785 was a RADIUS, not a
+distance across the flats. It was the absarc's hexagon, then the bevel taken
+off that. Against the true cavity the ribbon's outer turn clears the wall by
+0.0536, measured in planning, where the design is `0.5·wallModule − ribbonR`
+= 0.0549. That is a clearance inside one unit, not a finding. The `Alarm barrel` intra-unit row
+said the coil "bears on the drum wall" and now records the designed gap.
+The barrel's arbor bore is not bevelled and needed nothing.
 
 ## 177. The hour hand's body touches the alarm hand's boss, hidden behind the Alarm disc row's TODO 101 waiver
 

@@ -2915,7 +2915,7 @@ export const INTRA_UNIT_CONTACTS = [
   // check is what caught it. Naming also let the row say what the joint is:
   // it was recorded as the collar, and the collar is the separate row below.
   { unit: 'Alarm striking wheel', a: 'alarmStrikeSleeve', b: 'CylinderGeometry#0', why: 'the sleeve is a turned step ON the strike arbor — one shaft, two meshes' },
-  { unit: 'Alarm striking wheel', a: 'alarmStrikePinion', b: 'CylinderGeometry#0', why: 'strike pinion pressed on the same arbor (named by §112\'s placement gate — the row followed the name)' },
+  { unit: 'Alarm striking wheel', a: 'alarmStrikePinion', b: 'CylinderGeometry#0', why: 'strike pinion RUNNING on the same arbor, a PIVOT_BORE_CLEAR fit (TODO 175 — this row called it pressed; it is bored the running fit, and read as buried only while the extrude bevel shrank every bore) (named by §112\'s placement gate — the row followed the name)' },
   // §89 split the alarm barrel into a fixed arbor and a body wound at its
   // teeth, so its rows changed shape the way the drum's did at TODO 1. The
   // arbor row is kept as the record of a joint that is still there and no
@@ -3231,7 +3231,7 @@ export const INTRA_UNIT_CONTACTS = [
   // Alarm hammer — §48's return:
   { unit: 'Alarm hammer', a: 'alarmTail', b: 'alarmHammerSpring', why: '§121: the return spring pressing the tail (0.5 of the spring\'s tip 0.05 into the tail\'s face band) — §48\'s sprung row; the spring law is TODO 14\'s open note' },
   // Alarm barrel — TODO 1's morphing ribbon, the tier\'s singleton-frame rule at work:
-  { unit: 'Alarm barrel', a: 'ExtrudeGeometry#1', b: 'mainspringRibbon', why: '§121: the wound coil bearing on the drum wall — where a mainspring\'s outer coil rests by design; the ribbon is a MORPH, always its own frame, which is exactly how this pair reached the MM tier' },
+  { unit: 'Alarm barrel', a: 'ExtrudeGeometry#1', b: 'mainspringRibbon', why: '§121: the wound coil beside the drum wall — its outer turn stands the designed gap 0.5·wallModule − ribbonR inside the cavity (TODO 176: 0.0536 as cut against 0.0549 designed, once TODO 175 cut the cavity true; it was recorded as BEARING while the bevel shrank the cavity into the coil); the ribbon is a MORPH, always its own frame, which is exactly how this pair reached the MM tier' },
   { unit: 'Alarm barrel', a: 'mainspringHook', b: 'mainspringRibbon', why: '§121: the hook formed on the ribbon\'s outer end — the drum\'s mirror row (mainspringHook ⇄ ExtrudeGeometry#0 above) made the same argument' },
   // Alarm winding train — TODO 15's solved chain:
   // §129 — the subtractor's own working contacts. Each is a mesh or a bearing
