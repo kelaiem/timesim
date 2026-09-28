@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
 | 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1529); raising them to `FOLD_SAT` carries the foot corner into the minute star (0.0727), because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
 | 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
@@ -44,7 +45,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 161 | CLOSED | The release run and selector ring are posed by ONE law each (`alarmSleeveLiftAt`/`alarmPhiCapAt`/`poseAlarmReleaseRun`, `alarmSelRingZAt`; three copies before), and `JMP_SITE` judges them at 4 travel samples each, with its parity guard counted per tree. The station is unchanged (233.5°). `probe-161-lawed` proves a travel sample can refuse a station. The rest of the movers are [TODO 181] |
 | 160 | CLOSED | Measured: the jumper accepts every bearing CAP_SOLVE opens (all 10 within ±60°, 6 forced), and its clearance is pinned by metal no B cuts, so a veto would change nothing today. The verdict now records `bSlack` (≥ 2 today) and, on a refusal, whether B had any say (`cause`); `probe-160-cause` plants both kinds. The late re-cut is [TODO 183] |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
-| 158 | OPEN | Only the default spec is battery-validated; URL overrides, the reconfigure panel and saved variants build geometry nobody swept, shown as sound. Tier A: a shipped validated-fingerprint set and a localized "unverified configuration" mark. Tier B: restricted `inspection` per `SPEC_POINT` |
+| 158 | CLOSED | Tier A: a build names its configuration (`configKey`: resolved SPEC, applied route, geometry-bearing tuning — the fourth source the filing missed), looks it up in the generated `validated-configs.js`, and shows a localized *Unverified configuration* pill when it is not listed; three battery gates hold the set and the mark true. Tier B (sweeping other spec points) is [TODO 186] |
 | 157 | CLOSED | `solveReserveSwing` (the unlisted fourth first-feasible solver, the one binding CAP_SOLVE) now maximizes clearance to `FOLD_SAT` = 2·margin over its open window: swing 3.5° → 5°, reserve 0.1727 → 0.2742. B stays first-feasible, with the reason written (widest cascade; already the argmax). Raising the cap leg's φ/L to `FOLD_SAT` carries the foot corner into the minute star (0.0727): [TODO 185] |
 | 156 | CLOSED | CAP_SOLVE still cannot veto B on the jumper's siting (that restructure is [TODO 160]), but the four movement-wide walks' indifference to the jumper is now a boot-time derivation rather than a measured-once fact (`__clock.jumperSite.walks`, margins 1.36–11.20), CAP_SOLVE's own veto is recorded on its scan (`__clock.settingFold.scan[i].jumper`), and the pillars are seated against the keyless corner's real per-mesh metal (`PILLAR_KEYLESS_BOXES`) rather than `boxOf(keyless)` — only the 135° pillar moves, 87.00° → 135.00° |
 | 155 | CLOSED | The setting fold, setting wheel and keyless minute wheel are posed from `mwMinuteA`, the minute wheel the cap meshes, so they turn with the going train; both waivers are retired. The clutch's own two-law residue is [TODO 163] |
@@ -22484,7 +22485,7 @@ margin, the battery's own unit of "clear", must still land legal.
   the foot corner into the minute star. That is P3 work, so it is filed rather
   than absorbed.
 
-## 158. A reconfigured or deep-linked spec builds geometry no battery has swept, and nothing tells the viewer
+## 158. A reconfigured or deep-linked spec builds geometry no battery has swept, and nothing tells the viewer — CLOSED
 
 Recorded while closing [TODO 151]; a record, not an implementation.
 
@@ -22537,6 +22538,74 @@ Recorded while closing [TODO 151]; a record, not an implementation.
 fold's objective). With them, a guaranteed-collision-free build becomes a
 property of the solves, not only of the post-hoc battery. This item covers
 what the solves still cannot promise.
+
+**Closed on Tier A. Tier B is [TODO 186].** The page now says when its
+geometry was never swept, and the battery holds that claim true.
+
+**A fourth source of unswept geometry, found while planning.** The filing
+named URL specs, the reconfigure panel and saved variants. All three reach
+the build through one choke point: the URL, via `navigateWithSpec`. The
+fourth is **aesthetics tuning** of the 28 leaves outside `SHARE_SUBTREES`
+(hands, hour markers, plate, gong). Some of those re-cut metal live
+(`recutHands`, the `dial`/`gong` appliers).
+
+**The key, not the fingerprint.** `layout.js configKey` names what a build
+was asked to cut, as `cfg1:` plus sorted JSON of three parts:
+- the resolved `SPEC`'s non-null entries (clamped and snapped, so `?vph=12345`
+  and `?reserveh=31` key as the default);
+- the route as applied (a document the solve refuses builds the identity
+  movement, so it keys null);
+- the changed non-shareable leaves (`aesthetics.js geometryOverridePaths`,
+  derived from the same `isShareable` line the link gate holds).
+
+The geometry fingerprint was measured and rejected for this job:
+- it rounds engine trigonometry at 1e-3 and is proven deterministic on one
+  Chromium host only;
+- it changes on every geometry landing;
+- reading it at runtime calls `setPose`, which would clobber a restored
+  session.
+
+The key is ECMAScript Number→String, exact on every engine, and moves only
+when a default does.
+
+**The set, the mark and the gates:**
+- **The set.** `src/validated-configs.js` is generated by
+  `node tools/validated-configs.mjs --write`, never by hand; `--check` fails
+  when stale. Tier A lists the identity only.
+- **`__clock.config`** is `{ key, verified, reasons, tuned }`, where reasons
+  are 'spec', 'route' and 'tuning'.
+- **The mark.** A non-dismissible *Unverified configuration* pill: role
+  status, `data-state`, and the explanation as its title. "As designed" is
+  offered only for a spec or route cause; clearing tuning is the Advanced
+  panel's own Reset. `placeConfigMark` puts it in the free top strip between
+  the HUD panel and the chrome bar, or one row down on a phone, re-laid on
+  resize with the rest of the chrome. The two tuning save sites re-evaluate it
+  live. The two strings are in all 12 locale tables.
+- **Three battery gates**, read off the spec-boot rows and the share boot, so
+  there are no extra boots:
+  1. the swept default calls itself verified and is listed, and a full
+     `?aes=` payload does not raise the mark;
+  2. every point's mark agrees with the set, with controls both ways
+     (`d4=16` must be unverified; `reconf=1` and `route=channel`, a refused
+     route, must be verified);
+  3. every listed key is reproduced by the run (the closed-ratchet shape).
+
+**Measured.** `tools/probe-158-unverified.mjs` PASSES:
+- the default is unmarked; `?d4=16` is marked (spec); `?reconf=1` is
+  unmarked; German renders;
+- a stored `dial.hands` override is marked (tuning, no "As designed");
+- a stored `lighting` override is unmarked;
+- the live flute slider raises and clears the mark;
+- **mutation control:** with the set served empty, the default reads
+  unverified;
+- the Node and page keys agree;
+- 2 strings × 12 tables;
+- the pill fits clear of the panel, the bar and the view panel in en, de, ru
+  and hi at 360, 412, 600, 768, 1024 and 1440 px. The first placement, simply
+  centred, overlapped the bar at 360 and at 600 px.
+
+`offline-check` is 37/37, with the precache count 48 → 49 for the new module.
+`explain-i18n --check` passes.
 
 ## 159. meshClearance measures in its first mesh's local frame, so a non-uniformly scaled first mesh reads false distances
 
@@ -24379,3 +24448,38 @@ saturates, the argmax is interior. Scan the φ range and take the best,
 declaring the tie-break. Re-measure the jumper's capD tie-break too (the
 cap's site moves). Verify with `probe-150` (FOLD CLEAR and PLATE),
 `probe-151` §8d, and a battery `--report` diff.
+
+## 186. Only the default configuration is swept: no spec point other than the identity has ever had a restricted sweep
+
+Filed closing [TODO 158]. Tier A marks every build whose configuration key is
+not in `src/validated-configs.js`, and today that set holds the identity
+alone. Every other spec point shows the mark, even the ones a cheap
+restricted sweep could prove clean.
+
+**Measured while planning 158**, on the `crown` axis only, restricted by
+§152's `pairsTouching`:
+
+| Point | Units changed | Pairs touching | Restricted `inspection` |
+|---|---|---|---|
+| `studr=4.71` | 3 | 174 | 0.9 s |
+| `subdialr=8` | 3 | 174 | 5.4 s |
+| `balstep=60` | 2 | 117 | 3.7 s |
+| 2-leg route | 2 | — | 0.6 s |
+| `d4=20` | 25 | 1175 | 13.0 s |
+
+The full default takes 18.9 s. Scaled to 14 axes, all 35 non-identity points
+come to about an hour of core time, +20–60 min on CI.
+
+**Fix path, in two parts:**
+- **B1, on every PR.** The 7 non-identity points that boot silent, each with
+  restricted `inspection`, `clearances` and `undeclaredClearance`, unioned
+  against the default's own full run (§152's entitlement: untouched pairs are
+  digest-identical). Clean points join the set with an evidence row, and gate
+  3 re-verifies them every run. `reconf=1` is free, because its key is the
+  default's.
+- **B2, push-to-main or dispatch only.** The warning points, recorded as
+  expected-red with their pairs. This depends on the §127 matrix (Landing
+  B/C) being wired into a workflow.
+
+Stop condition for both: a point that reports FORBIDDEN or a clearance
+violation does not join the set. It is a finding to file.
