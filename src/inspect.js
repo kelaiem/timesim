@@ -34,7 +34,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 // spell 0.15 inline, one per pair, because each is a per-pair statement that
 // may legitimately differ; the free-annulus probe wants the project-wide
 // default and should not add a fourth copy of the number.
-import { CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
+import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE,
@@ -8223,8 +8223,10 @@ export function checkSlenderness(clock, opts = {}) {
 // population tops out in the 1e-15 decade (absarc seam twins, earcut
 // hole-bridge slivers; 2 at 1e-22 are TODO 73's minimum) and the smallest
 // INTENDED triangles start at 1e-10, a four-decade empty band. 1e-12 sits
-// two decades from each bound; re-run the probe before moving it.
-export const ZERO_AREA_MAX = 1e-12;
+// two decades from each bound; re-run the probe before moving it. The
+// constant itself lives in layout.js now (TODO 180: the build's jumper solve
+// reads it too), re-exported here so every existing importer keeps working.
+export { ZERO_AREA_MAX };
 // Tier 0 floor: a genuinely inverted closed body measures MINUS its own
 // volume — order bboxVol/10 — while an open or sheet-like body's signed sum
 // is float noise around zero. 1e-3 of the bbox volume separates the two by
