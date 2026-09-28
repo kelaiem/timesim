@@ -11138,13 +11138,38 @@ function checkPlateWindows(stage) {
 // of this block. The scan itself is unchanged, and must stay this side of the
 // push: a pillar may not avoid its own screw's seat.
 const pillarSeats = []; // §20: the plate screws land over the solved seats
-const PILLAR_CAP_R = TQ_BOT_Z * 0.09 * 1.5; // makePillar's widest land
-// Head radius derived from the pillar's own widest land (capR·0.6, the escape
-// bridge's head-to-seat proportion — the head must bear on the land it
-// clamps, not overhang it), and the seat cut one fit larger so the head drops
-// into it.
-const PILLAR_SCREW_HEAD_R = PILLAR_CAP_R * 0.6;
+// TODO 184 — THE PILLAR IS SIZED FROM ITS SCREW, and the screw from its job.
+// This chain used to run the other way: land = TQ_BOT_Z·0.09·1.5 (a fraction
+// of the gap between the plates), head = land·0.6, thread = head/2 — a
+// 0.268 mm thread that stopped at the plate's underside. Now, in order:
+//
+//  · THREAD d = CASE_SCREW_SHAFT_D, the 1.0 mm stock the movement's case
+//    clamps are already cut from (layout.js). The plate screws do the same
+//    job at the same scale — they hold the frame together under the shock a
+//    dropped watch takes — and a 32 mm movement's pillar screws are this
+//    size; a second thread size would be a second number for one duty.
+//  · HEAD from the thread by makeScrews' own 2:1 (screwShankR), so the
+//    screw it draws has exactly this thread.
+//  · SEAT one fit over the head (the counterbore the flush head drops into).
+//  · LAND ≥ the seat: the pillar's top face carries the ring of plate the
+//    head clamps, so it must reach at least as far as the head's seat.
+//  · BODY = land / 1.5 (makePillar's profile proportion), asserted to leave
+//    STOCK_MIN_U of wall round the tapped bore.
+//  · The TAPPED BORE is the thread's own radius (screwTapR — flanks bear on
+//    the metal), ENGAGE_MIN·d deep plus one thread pitch of run-out below the
+//    screw's tip, the room a tap needs to cut full thread to that depth.
+const PILLAR_THREAD_D = CASE_SCREW_SHAFT_D;
+const PILLAR_SCREW_HEAD_R = PILLAR_THREAD_D;           // screwShankR(head) = d/2
 const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
+const PILLAR_CAP_R = PILLAR_SEAT_R;                    // makePillar's widest land
+const PILLAR_BODY_R = PILLAR_CAP_R / 1.5;
+const PILLAR_TAP_R = G.screwTapR(PILLAR_SCREW_HEAD_R);
+const PILLAR_ENGAGE = ENGAGE_MIN * PILLAR_THREAD_D;
+const PILLAR_TAP_DEPTH = PILLAR_ENGAGE + G.THREAD_PITCH_PER_DIA * PILLAR_THREAD_D;
+if (PILLAR_BODY_R - PILLAR_TAP_R < STOCK_MIN_U - 1e-9)
+  console.warn(`TODO 184: pillar wall round its tapped bore ${(PILLAR_BODY_R - PILLAR_TAP_R).toFixed(3)} — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
+if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
+  console.warn(`TODO 184: pillar tap depth ${PILLAR_TAP_DEPTH.toFixed(3)} leaves under STOCK_MIN_U of floor in a ${TQ_BOT_Z.toFixed(3)} pillar`);
 {
   const pillarR = plateR - 8;
   const capR = PILLAR_CAP_R;
@@ -11281,9 +11306,16 @@ const PILLAR_SEAT_R = PILLAR_SCREW_HEAD_R + G.SEAT_FIT;
       if (best) break; // nearest feasible bearing to the quadrant's ideal wins
     }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
-    const pillar = G.makePillar({ height: TQ_BOT_Z });
+    const pillar = G.makePillar({ height: TQ_BOT_Z, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
     pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
+    // TODO 184 — the pillar's PLAN, published for the siting solves that
+    // score the built scene (§198's vocabulary, the alarm link rod's first):
+    // a turned part is a disc of its widest land, and its axis-aligned box
+    // claims corners √2 further out that the metal never fills. At the
+    // screw-sized land those corners reached into the selector rod's column
+    // and re-sited the rod off its plate bores; the disc is what stands there.
+    pillar.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
     pillarsGroup.add(pillar);
     pillarSeats.push({ x: best.x, y: best.y });
   }
@@ -11439,13 +11471,12 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
   }
   const plateScrews = pillarSeats.map((p) => ({
     x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x),
-    // Through the plate and no further. TODO 184: this line used to go on
-    // "below the underside the thread takes the pillar", and nothing does —
-    // the shank ends AT the underside, so the thread engages the pillar by
-    // zero. A tapped hole under a seated screw is invisible in the real
-    // movement, but the screw's LENGTH is not something that invisibility
-    // excuses. Reported in FRAME_JOINTS until TODO 184 taps the pillar top.
-    shank: TQ_T - STOCK_MIN_U,
+    // TODO 184: through the plate's land and ON into the pillar's tapped
+    // bore by PILLAR_ENGAGE (ENGAGE_MIN·d). It used to stop AT the plate's
+    // underside — "below the underside the thread takes the pillar", said
+    // the comment, and nothing did. Drawn TAPPED: its crests are the bore's
+    // radius, the joint assembled touching, §148's rule.
+    shank: (TQ_T - STOCK_MIN_U) + PILLAR_ENGAGE, tapped: true,
   }));
   threeQuarterPlate.add(G.makeScrews({
     at: plateScrews,
