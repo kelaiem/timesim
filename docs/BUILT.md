@@ -28749,18 +28749,22 @@ since a gate reports only whether its failure list is empty.
 shorten the wait; this says the same thing from the other side. The wait is the
 same 13 s — what changed is that the page is now answering for 92% of it.
 
-## §240 — Import a tuned `aesthetics.json` (Landing 2 of 3; the shareable link is the third)
+## §240 — Import a tuned `aesthetics.json`, and a shareable link over the geometry-free leaves
 
-> **Status. Landing 2 SHIPPED 2026-09-27.** The entry itself lives in the
-> private roadmap as §240, filed out of public issues #287 (the design) and
-> #289 (the three-step tracking issue). Step 1 — the merge lifted to
+> **Status. SHIPPED whole 2026-09-28, in three steps under one number.** Filed
+> in the private roadmap as §240, out of public issues #287 (the design) and
+> #289 (the three-step tracking issue); the entry, as filed, is moved here
+> whole at the foot of this section. Step 1 — the merge lifted to
 > `mergeAesthetics()` returning `{ applied, refused, clamped }`, the storage
 > wrappers, the `aestheticsMerge` check — shipped 2026-08-24 as #290 with
-> nothing user-visible, which is why this is the first record. Landing 3, the
-> `?aes=` link over the geometry-free leaves, remains, behind one open
-> decision: whether it subsumes §185's `?dialcol=` and §203's `?metal=` or
-> adopts their one-key-per-leaf shape. The trial-boot prerequisite closed as
-> TODO 152.
+> nothing user-visible, so the record starts at Landing 2. Landing 2 is
+> **Import JSON**; Landing 3 is the **`?aes=` link**, which on the owner's
+> call REPLACES §185's `?dialcol=` and §203's `?metal=` rather than sitting
+> beside them (both still read, neither written). Both prerequisites the
+> entry named were closed first: the trial-boot reading as TODO 152, and
+> that decision.
+
+### Landing 2 — the import
 
 **The gap.** The Advanced panel (§23) could EXPORT a tuning session — Copy JSON
 puts the merged schema on the clipboard so "a good tuning session ends in a
@@ -28850,6 +28854,343 @@ wire at parse time, which is all §238 asked of them.
 
 No shipped default changed, so the fingerprint must equal the base's; the
 battery's reading is in the pull request.
+
+### Landing 3 — the link
+
+**The decision it waited on, and why it went this way.** §185 had already put
+the dial colour on the link as `?dialcol=rrggbb` and §203 the case metal as
+`?metal=<key>`, each with its own parser, validator and write site. A third
+mechanism carrying the same class of value is this repo's recurring defect, one
+direction written down twice — and a link could have carried the dial colour
+both ways and disagreed with itself. The owner chose **replace**: `?aes=` is the
+one mechanism; the two old keys are still READ, as pairs fed into the same
+decoder, so every link already sent keeps working; nothing writes them.
+
+**What shipped.** In `aesthetics.js`, beside the merge it feeds:
+
+- `SHARE_PARAM = 'aes'` and `SHARE_SUBTREES = ['dial.face', 'lighting',
+  'rendering', 'camera', 'decoration', 'materials']` — **36 leaves** of the
+  file's 64. Left out: `dial.hands.*` (re-cuts hand meshes),
+  `dial.hourMarkers.*` (moves relief), `gong.*` (rebuilds the torus and the
+  voice), and — a departure from the entry, which listed `dial.face` alone
+  under `dial` — `dial.plate.*`, because its smoke has §224's band (T
+  0.75–0.90) in which the reserve zones fail their legibility gate and boot
+  warns, and a link is the one way to hand a stranger a warning they cannot
+  clear.
+- **Wire format** `pair ("," pair)*`, `pair = dotpath "~" value`, diff-only
+  against the shipped file, uncompressed. `encodeShare` writes it and
+  `decodeShare` reads it, side by side, so the two halves cannot drift. The
+  decoder types each value by the FILE's value at that path and hands the
+  result to `mergeAesthetics`, so a link meets the same type anchor, clamp and
+  option set as a stored override — one set of rules. A pair outside the list
+  is refused `notshareable` before the merge sees it: that is the line that
+  keeps geometry off links whatever a sender types. Colours travel without
+  their `#` and are re-anchored on read.
+- **Read pre-build**, where §185 read the dial colour, and for §185's reason:
+  the face is a canvas painted during the build and its ink is asserted at
+  paint. **Precedence** file < this browser's overrides < the link; the link
+  is **never written back**.
+- **The bound is derived, not typed** — and the first one was typed, and
+  wrong. It said 64 pairs and 1,200 characters on the belief that the set was
+  51 leaves at ~20 characters a pair; the battery's full share payload then
+  measured **36 leaves in 1,182 characters**, a legitimate link one short step
+  from its own refusal. The constraint written in its place: a link from a
+  schema up to twice this one's shareable size must still parse (its unknown
+  leaves refused one at a time rather than the whole link turned away), each
+  pair as long as the longest shareable path plus the longest number
+  JavaScript prints. That is **72 pairs, 4,392 characters** today, recomputed
+  from the file at load. The probe tests both sides of it: 72 pairs parse, 73
+  are refused whole.
+- **The write side** is one block in `currentViewLink()` replacing the two
+  per-leaf blocks: `encodeShare(aesthetics)`, the effective values against the
+  file's, so a bare view link carries no `aes` at all.
+
+**A claim in the entry that was false: `URLSearchParams` DOES escape `~`.** The
+entry said `~` and `.` are RFC 3986 unreserved, "so URLSearchParams leaves them
+alone". They are unreserved, but `URLSearchParams` serialises form-style, and
+the first link built read `dial.face.color%7E1b3a5c`. The link worked either
+way. What it lost was the property the dot paths exist for: a person reading a
+link can see what it will do. `currentViewLink` now un-escapes `%7E` beside the
+`%2C` it already put back, and the probe asserts a link carries neither escape.
+
+**The new bricking path, closed — by naming the layers.** The entry asked for
+the link to be stripped inside the existing marker branch. Built literally,
+that has a hole: §185's link never ARMED the marker (arming it for a URL value
+"would let a stranger's link wipe the recipient's saved tuning"), so a lethal
+link with no stored overrides would never trip the recovery at all; and armed
+the old way, a death would drop the viewer's store for a stranger's link. So
+the marker now records which layers were live — `overrides`, `link`, or
+`overrides+link` — and recovery drops the MORE SPECIFIC, less trusted layer
+first. A death with a link live strips `aes` (and the two legacy keys) from
+the address with `replaceState` and keeps the store. If the store alone was
+lethal, the next death finds `overrides` and drops that. That is at most two
+dead boots, and a stranger's link can never cost a viewer their tuning. A
+marker written before this landing reads `'1'` and means overrides, which is
+all it could have meant. `probe-240-trial-boot.mjs` and `probe-240-import.mjs`
+read the marker's old value and were updated with it; the trial probe's
+"did a trial arm the marker" row now tests for any value, where it had been
+testing for `'1'` — left alone, it would have passed on any tree.
+
+**The receipt.** A link that carried values puts a bar at the foot of the page:
+`This link carries tuned values: applied/total`, then the refused and clamped
+paths, **Open without them** (strip the link's parameters, reload, the store
+untouched), and a dismiss. It is the only thing on screen telling a recipient
+their watch is not the shipped one — colours carry no `_bounds` by design and
+the contrast floor only warns — and after a lethal link it says the link's
+values were dropped and the viewer's own tuning kept. Three strings, in all
+twelve tables.
+
+**The gate — `aestheticsShareSafe`.** SHARE_SUBTREES is a claim that no leaf
+under it moves a vertex, and it is the only reason a link may carry values past
+a battery that never certified the recipient's build. It is a HARNESS gate
+beside the fingerprint anchor, not a `CHECKS` row: a check runs inside a booted
+page and this one has to boot a page. After boot B, `shareSafeBoot` derives a
+payload from the FILE — every shareable leaf moved by its type (a bounded
+number to a point inside its `_bounds`, an unbounded one by 10%, a boolean
+flipped, a colour's channels nudged, a pick to another option) and encoded
+with the page's own `encodeShare`. It then boots `?aes=` into a fresh context
+and requires two things. The first is the control: every pair APPLIED and none
+refused, because a payload the merge dropped would leave the fingerprint equal
+for the wrong reason. The second is the fingerprint equal to boot A's. It
+throws on a shareable leaf it has no way to move, so a new leaf type cannot
+slip through unmoved. `virginBoot` gained an optional `query` for it, and every
+other caller passes nothing. **A gate nobody has seen fire is a comment**, so
+`tools/probe-240-share-safe.mjs` rewrites the list in flight to add
+`dial.hands`, boots a link that moves the hands 1.5× wide, and requires the
+fingerprint to MOVE. It does, and on the shipped list the same pairs are
+refused `notshareable` with the fingerprint unmoved.
+
+**Evidence.**
+
+- `tools/probe-240-link.mjs`, all rows PASS:
+  - a virgin view link carries no `aes`, `dialcol` or `metal`;
+  - the round trip is lossless on a fresh profile over a colour, a number, a
+    boolean and a pick, read through Copy JSON's own serializer, with the link
+    readable (no `%7E`/`%2C`);
+  - the recipient's store is empty after it;
+  - geometry, unknown and mistyped pairs are refused with their reasons while
+    a valid pair beside them applies;
+  - the receipt counts and names;
+  - Open without them restores the file's value with the store untouched;
+  - the bound holds from both sides;
+  - a lethal link (injected, keyed on the address carrying a sentinel pair)
+    kills boot 1 with the marker reading `overrides+link`, and boot 2 is clean,
+    `aes` is gone from the address, the warning is §240's and not §23's, the
+    viewer's saved tuning survives and applies, and the bar says so;
+  - a `?trial=1` boot ignores `aes`;
+  - the three strings are in all twelve tables.
+- `tools/probe-dial-colour-link.mjs`, all behaviours hold through the new key:
+  it asserts `aes` where it asserted `dialcol`, and adds rows 7 (the old key
+  is read, never written) and 8 (the colour carried BOTH ways lands one value,
+  `aes` winning where they disagree) — the entry's round-trip requirement.
+- `tools/probe-240-share-safe.mjs`: the gate fires on a mutated list, and the
+  shipped list keeps geometry off.
+- `probe-240-import.mjs` and `probe-240-trial-boot.mjs` still pass with the
+  marker's new value.
+- Local battery on the SwiftShader container: **44/45**,
+  `gate PASS aestheticsShareSafe: a full share payload moves no geometry, every
+  leaf applied (36 shareable leaves, 36 applied, hash 324374814)`, fingerprint
+  **324374814** on both virgin boots. That is the same hash `main`'s own push
+  run reported after #496, which is the "no shipped default moved" claim held
+  against the base. The one failure is `spec boots` (`alarmr=20`), which `main`
+  fails identically (#492, #493 and #496's push runs). It is not this
+  landing's.
+
+### The entry, as filed
+
+Kept as it stood when Landing 3 began, prerequisites and all; the records
+above say where the build departed from it.
+
+**The gap.** The Advanced panel (§23) can EXPORT a tuning session — Copy JSON
+puts the merged schema on the clipboard so "a good tuning session ends in a
+commit, not in localStorage" — and cannot import one. A tuned look can only be
+restored by someone with a checkout: paste the JSON into `src/aesthetics.json`
+and reload. A second browser, a phone, a person you want to show it to — no
+way in. Two features, not one, and they are not the same:
+
+- **A. Import a file** (Landing 2). A picker beside Copy JSON that takes an
+  `aesthetics.json`, whole or a fragment, runs it through the existing merge,
+  persists it, and reloads. The durable half — a file is a commit candidate
+  with provenance — and the only one of the two allowed to move geometry
+  (`dial.hands.*`, `dial.hourMarkers.*`, `gong.*`), because importing a file
+  is a deliberate local act by someone who can also run the battery.
+- **B. Encode the tuned values in the URL** (Landing 3). The share case:
+  "look what I did to the dial and the plate colours", pasted into a message,
+  opening on a stranger's phone with no file and no install. The viral half,
+  and the one with a cost A does not have: a URL vocabulary is a compatibility
+  promise, and this repo knows what those cost.
+
+**What already exists, so neither landing invents machinery.** The merge is
+the choke point and is hardened (type-anchored, `_bounds`-clamped, unknown
+keys refused by construction — a payload against an older or newer schema
+drops the leaves that no longer exist and applies the rest). Crash recovery
+exists: the `aestheticsBootPending` marker, armed before the merge and
+confirmed once the build completes, value-agnostic. The URL already carries
+build-tier knobs: `index.html` reads the spec params into
+`globalThis.__WATCH_SPEC` before any module evaluates and, since §161,
+publishes `__WATCH_SPEC_KEYS` for `main.js` to consume and assert — ONE roster.
+And `currentViewLink()` already draws the line about what may travel (only
+non-defaults ride; the reserve is excluded with a written reason: it drains
+while you read).
+
+**The measurement that sizes B.** The whole tuned state fits in ~500
+characters uncompressed as an index-keyed flat map; a realistic seven-leaf
+tweak in ~60. Compression is a pessimisation at diff scale (70 chars
+compressed against 62 raw), so no `CompressionStream` path. **Indices are the
+trap**: insert a leaf and every link ever shared applies the wrong values to
+the wrong knobs, clamped and type-checked and therefore plausible. Dot paths
+(`lighting.keyLight.intensity`) are self-describing and immune, ~250 chars for
+a real tweak — still pasteable, and a human can read what a link will do
+before opening it. Diff only, against the shipped defaults, so a later default
+improvement still reaches the recipient rather than being pinned at the
+sender's base.
+
+**Which leaves may ride a link — 64 leaves as of §225 (11 colours), re-count
+before `SHARE_SUBTREES` is written.** `dial.hands.*` re-cuts hand meshes,
+`dial.hourMarkers.*` is reload-tier and moves relief, `gong.*` rebuilds the
+torus and the VOICE — none of those may travel, because `aesthetics.json` is
+on `index.html`'s module graph so a COMMITTED change runs the whole battery,
+whereas a link carrying `dial.hands.*` hands someone a build the battery never
+certified. What remains — `dial.face.color`, `lighting.*`, `decoration.*`,
+`materials.ruby.color`, `rendering.toneMappingExposure`,
+`camera.dampingFactor` — is the whole of what the sharing case wants, and none
+of it moves a vertex. That claim is GATED, not trusted: a new check
+(`aestheticsShareSafe`) boots once with every leaf under `SHARE_SUBTREES` moved
+to a non-default in-bounds value and asserts the geometry fingerprint equals
+the virgin boot's — §157's evidence for `recolourFace`, turned into a standing
+gate. It owes a `BATTERY` row and a `COSTS` entry like every check (both
+mandatory; the roster gate and `assertCosts` each fail without theirs), at a
+cost above 1 since it boots.
+
+#### Prerequisites — settled before Landing 3, none before Landing 2
+
+Added 2026-09-23, after the entry was filed without them.
+
+1. **Two aesthetics leaves already ride the link, one key each, and Landing
+   3 must not be a third mechanism for the same class of value.** §185
+   shipped `?dialcol=rrggbb` for the dial face and §203 `?metal=` for the
+   case exterior, both read in `aesthetics.js` (`DIAL_COL_PARAM`,
+   `METAL_PARAM`) — deliberately OFF the spec tier, the same reasoning this
+   entry gives for `SHARE_SUBTREES`. `?aes=` as filed above would put the
+   same leaves on the link a second way, which is the one-direction-written-
+   twice defect the direction guards exist for. The decision, made before
+   `SHARE_SUBTREES` is written: either `?aes=` subsumes the two keys — the
+   old keys still READ for links already shared, written no more — or §185's
+   shape wins and the sharing case becomes one key per shareable leaf, read
+   where those two are. The first keeps one parser; the second keeps the
+   precedent. Whichever, the round-trip acceptance must cover a link that
+   carries the dial colour BOTH ways and lands the same value.
+2. **The trial-boot reading — VERIFIED 2026-09-23 and CLOSED as public TODO
+   152.** It held, and it was worse than read: the trial's merge also ARMED
+   §23's crash-recovery marker, which a superseded trial never confirms, so
+   every abandoned trial dropped the viewer's overrides on their next real
+   boot and blamed a crash that did not happen (measured 215 ms after commit
+   by `tools/probe-240-trial-boot.mjs`, 6 rows red with both controls green).
+   Closed the way the paragraph below asked — `state.js`'s guard copied to
+   `aesthetics.js`, one source, the merge, the marker, both finish params
+   and the confirm all skipping under `?trial=1`; the probe is the
+   acceptance and reads 12/12. The reading as filed, kept: `state.js`'s `TRIAL_BOOT`
+   returns virgin defaults and never writes the session under `?trial=1`
+   ("a virgin boot is the battery's own standard for a verdict"), while
+   `aesthetics.js` merges stored overrides unconditionally and
+   `reconfTrialBoot()` builds its iframe URL from `location.search`. If that
+   reading holds, every §33 verdict today is measured on a TUNED build and a
+   link payload would ride into it too. Confirm it with an instrument — boot
+   a trial with an override that moves a visible leaf and read the merge's
+   `applied` back — and if it holds it is its own `TODO.md` item, closed by
+   the one-line guard beside what Landing 1 touched (skip the merge under
+   the trial flag, the way `loadState` does), shipped BEFORE `?aes=` exists.
+
+Adjacent and not blocking: §166 (a `?scale=` deep link is applied and then
+written over by the session restore) is a different path — `?aes=` is read
+pre-module and the restore never touches the overrides key — but it is why
+the round-trip acceptance runs on a NON-virgin profile; TODO 66.1/66.2 stay
+as recorded under "Not in this entry".
+
+#### Landing 2 — the import (as planned)
+
+- An `Import JSON` button in the Advanced panel footer beside Copy JSON and
+  Reset (`src/main.js` ~30487 at filing), driving a hidden
+  `<input type="file" accept="application/json,.json">` — no clipboard
+  permission, no secure context, so no fallback ladder.
+- Parse → `mergeAesthetics` → `writeOverrides` → report → reload. Reload, not
+  live-apply: a file can carry `dial.hourMarkers.*`, and §23's reason for
+  persisting overrides at all is that a reload knob whose value dies on reload
+  is a control that never visibly works.
+- Degrade, never throw, on `applyDeepLink()`'s rule: not JSON → say so, write
+  nothing, no reload; zero applicable leaves → "0 of N applied" naming the
+  refusals by path, no reload; lethal to the build → the next boot self-heals
+  (inherited from §23, the boot order being unchanged, but TESTED explicitly:
+  import a payload known to break the build, confirm boot 2 is clean and
+  warns, and the panel is reachable after); applicable but `writeOverrides`
+  returned `false` (blocked storage, full quota) → say the tuning could not be
+  saved and do NOT reload, since reloading discards what the panel is showing.
+- `AESTHETICS.md`'s "How to Use" gains the second way in; the strings land in
+  all twelve non-English tables (`de fr es ko ru pt it hi ja zh zh-Hant ar` —
+  Arabic is right-to-left, so the result text is chrome under CLAUDE.md's
+  logical-property rule). Fingerprint unmoved: no shipped default changes.
+
+#### Landing 3 — the link (as planned)
+
+- `export const SHARE_SUBTREES` in `src/aesthetics.js`, beside the merge and
+  the storage keys it already owns; `aestheticsShareSafe` gates the list.
+- Wire format `aes = pair ("," pair)*`, `pair = dotpath "~" value`; `~` and
+  `.` are RFC 3986 unreserved so `URLSearchParams` leaves them alone and
+  `currentViewLink()`'s existing `%2C` un-escape covers the separator. `#`
+  MUST NEVER appear (it terminates the query as a fragment): strip on write,
+  re-add on read before the merge, since colours are `'#rrggbb'` and the type
+  anchor keys off the string. Refuse over 64 pairs or ~1,200 chars before
+  parsing — a bound nobody meets.
+- Read the param in `aesthetics.js`, pre-module, like `__WATCH_SPEC`; read in
+  `applyDeepLink()` a build-consumed leaf silently does nothing, which is the
+  panel lying about its reach. Precedence file < localStorage < `?aes=` — the
+  URL is the more specific claim, §37's reasoning for `?cam` over `?preset`.
+- **Close the new bricking path.** `aestheticsBootPending` drops the stored
+  overrides, but a URL still CARRIES the lethal value, so the next boot
+  re-supplies it and recovery loops forever — reachable from a pasted link,
+  worse than the slider case §23 was written for, because the victim tuned
+  nothing. Inside the existing marker branch, still value-agnostic: strip
+  `aes` via `replaceState` (never `pushState`) and warn. Test it: share a
+  payload that kills the build, open the link, confirm boot 2 is clean AND the
+  URL no longer carries the payload.
+- Write side: one block in `currentViewLink()` under its only-non-defaults
+  rule, so a bare view link stays byte-identical. A receipt banner — "this link
+  carries N tuned values", dismissable, Reset in reach — because
+  `DIAL_INK_CONTRAST_MIN` is warn-only and colours carry no `_bounds` by
+  design, so this banner is the only guard on the leaf class most likely to be
+  shared. `sw.js` needs nothing: it keys the precache on `path + search` and
+  falls back to the bare path.
+
+#### Verification ledger
+
+Evidence each landing must produce beyond a green battery: the merge refuses
+what the panel refuses (done, the fixture table); shareable leaves cannot move
+geometry (`aestheticsShareSafe`, fingerprint identical under a full share
+payload); a lethal payload self-heals, two-boot, for localStorage AND `?aes=`;
+a bare view link is byte-identical to today's; the round trip is lossless
+(tune → link → fresh profile → Copy JSON matches on the named leaves); key
+parity across the twelve tables; fingerprint equal to the base's on each
+platform (never a constant to quote — the §152 key carries the platform).
+
+#### Not in this entry
+
+Named presets (§33's `watchSpecVariants.v1` is the pattern: never the pose,
+never the boot default); any change to which leaves exist or to
+`battery.yml`'s filter; compression. Adjacent and still open: **TODO 66.1**
+(`flute-slider` re-cuts the hands and never persists while `rib-pitch` does —
+`writeOverrides()` makes it a one-liner, but it changes persistence behaviour
+and wants its own commit citing the item) and **TODO 66.2** (six `lighting.*`
+leaves render as live and are not, because liveness is judged per top-level
+domain — a link setting one of them applies on the recipient's first boot and
+not on a live edit, so the two paths disagree about the same leaf; per-leaf
+liveness is the honest fix). And one reading of the code that nobody has
+verified or filed: `state.js`'s `TRIAL_BOOT` keeps a `?trial=1` verdict on
+virgin state deliberately, while `aesthetics.js` merges stored overrides
+unconditionally and `reconfTrialBoot()` builds its iframe URL from
+`location.search` — so a §33 verdict appears to be measured on a TUNED build
+today and would inherit `?aes=` too. Confirm it before Landing 3 ships; if it
+holds, it is its own item, and the one-line guard sits beside what Landing 1
+touched.
 
 ## §242 — The release timelapse — every hosted release rendered from its own presets, scrubbed on a timeline, behind a door in the chrome
 

@@ -187,7 +187,7 @@ for (const [row, text, re] of [
   const watcher = await ctx.newPage();
   await watcher.goto(`http://127.0.0.1:${PORT}/vendor/LICENSE-three.txt`);
   const armed = await watcher.evaluate(() => localStorage.getItem('aestheticsBootPending'));
-  check('6. boot 1 left the §23 marker armed', armed, '1');
+  check('6. boot 1 left the §23 marker armed, naming the overrides', armed, 'overrides');
   await watcher.close();
   // Boot 2 — the SAME tab (the receipt rides sessionStorage, per tab).
   const warns = [];

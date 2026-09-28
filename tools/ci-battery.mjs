@@ -90,7 +90,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, posix, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { assertCosts, buildTasks } from './battery-split.mjs';
 import { BATTERY, RESTRICTABLE, prepPage, runCheck, virginBoot } from './battery-checks.mjs';
@@ -1044,6 +1044,7 @@ function assemble({
   expectedShards,   // [{ shard, keys }] a collector expects, or null in one process (see the gate)
   axisMeta, checkRoster,
   fpA, fpB, digestsB,
+  fpShare,          // { fp, link, leaves } from the §240 share boot, or null
   spec,             // { rows, ms } from the spec-boot tier
   headDigests, restriction, baseline,
   split, specOnly,
@@ -1254,6 +1255,25 @@ function assemble({
   gate('fingerprint deterministic across virgin boots',
     fpA && fpB && fpA.hash === fpB.hash && fpA.units === fpB.units ? [] : [{ bootA: fpA, bootB: fpB }],
     `hash ${fpA ? fpA.hash : 'shard 0 never reported one'}`);
+
+  // §240 Landing 3 — a link may only carry what cannot move a vertex, and
+  // SHARE_SUBTREES is that claim; see shareSafeBoot. Two halves, and the
+  // control is the one that makes the other mean anything: every pair of the
+  // payload APPLIED (none refused — a dropped leaf leaves the fingerprint
+  // equal for the wrong reason), and the geometry fingerprint EQUAL to boot A's.
+  {
+    const l = fpShare?.link;
+    const fails = [];
+    if (!fpShare) fails.push({ shareBoot: 'never ran' });
+    else {
+      if (!l || l.applied !== fpShare.leaves || l.pairs !== fpShare.leaves || l.refused.length)
+        fails.push({ control: 'every shareable leaf applied', leaves: fpShare.leaves, link: l });
+      if (!fpA || fpShare.fp.hash !== fpA.hash || fpShare.fp.units !== fpA.units)
+        fails.push({ bootA: fpA, shareBoot: fpShare.fp });
+    }
+    gate('aestheticsShareSafe: a full share payload moves no geometry, every leaf applied',
+      fails, fpShare ? `${fpShare.leaves} shareable leaves, ${l ? l.applied : 0} applied, hash ${fpShare.fp.hash}` : 'no share boot');
+  }
 
   // §152 — THE SAME ANCHOR FOR THE KEY, and it is the property the whole
   // feature rests on: if two virgin boots of one tree do not produce the same
@@ -1503,7 +1523,64 @@ async function anchorBootB(browser, base, headDigests) {
     ? await B.page.evaluate(() => window.__I.unitDigests(window.__clock))
     : null;
   await B.context.close();
-  return { fpB, digestsB };
+  const fpShare = await shareSafeBoot(browser, base);
+  return { fpB, digestsB, fpShare };
+}
+
+// §240 Landing 3 — `aestheticsShareSafe`'s reading. SHARE_SUBTREES in
+// src/aesthetics.js is a CLAIM: that no leaf under it can move a vertex, which
+// is the only reason a `?aes=` link may carry it past a battery that never
+// certified the recipient's build. The claim is gated, not trusted: one boot
+// with EVERY shareable leaf moved to a non-default value inside its declared
+// range, whose geometry fingerprint must equal the virgin boot's. One boot,
+// not one per leaf — a fingerprint that holds with all of them moved holds
+// for any subset, since each is a finish value with no geometry to interact.
+//
+// The payload is derived from the FILE, never listed here: walk the schema's
+// shareable leaves, move each by its type (a bounded number to a point inside
+// its _bounds, an unbounded one by 10%, a boolean flipped, a colour's channels
+// nudged, a pick to another of its _options), and encode it with the page's
+// own encodeShare, so the wire format under test is the one the link writes.
+// The CONTROL is the load-bearing half: the boot must report every pair
+// APPLIED and none refused — a payload the merge dropped would leave the
+// fingerprint equal for the wrong reason, a green gate over no work.
+async function shareSafeBoot(browser, base) {
+  const A = await import(pathToFileURL(join(ROOT, 'src/aesthetics.js')).href);
+  const moved = structuredClone(A.AESTHETICS_DEFAULTS);
+  let leaves = 0;
+  const walk = (o, path) => {
+    const bounds = o._bounds || {};
+    const options = o._options || {};
+    for (const k of Object.keys(o)) {
+      if (k.startsWith('_')) continue;
+      const at = path ? `${path}.${k}` : k;
+      const v = o[k];
+      if (v && typeof v === 'object') { walk(v, at); continue; }
+      if (!A.isShareable(at)) continue;
+      leaves++;
+      if (typeof v === 'boolean') o[k] = !v;
+      else if (typeof v === 'number') {
+        const b = bounds[k];
+        o[k] = b ? (v === (b[0] + b[1]) / 2 ? b[0] + (b[1] - b[0]) / 4 : (b[0] + b[1]) / 2) : (v === 0 ? 0.1 : +(v * 0.9).toPrecision(6));
+      } else if (options[k]) o[k] = options[k].map((x) => x.value).find((x) => x !== v);
+      else if (/^#[0-9a-f]{6}$/i.test(v)) {
+        o[k] = `#${v.slice(1).match(/../g).map((h) => (parseInt(h, 16) ^ 0x18).toString(16).padStart(2, '0')).join('')}`;
+      } else throw new Error(`aestheticsShareSafe: no way to move shareable leaf ${at} (${JSON.stringify(v)}) — teach shareSafeBoot its type`);
+    }
+  };
+  walk(moved, '');
+  const aes = A.encodeShare(moved);
+  console.log(`share boot (every shareable leaf moved: ${leaves} leaves, ${aes.length} chars)…`);
+  const S = await virginBoot(browser, base, BOOT_TIMEOUT_MS, `?${A.SHARE_PARAM}=${encodeURIComponent(aes).replace(/%2C/g, ',')}`);
+  const fp = await S.page.evaluate(() => window.__I.fingerprint(window.__clock));
+  const link = await S.page.evaluate(async () => {
+    const m = await import('./src/aesthetics.js');
+    const o = m.LINK_OUTCOME;
+    return o ? { pairs: o.pairs, applied: o.applied.length, refused: o.refused, clamped: o.clamped } : null;
+  });
+  await S.context.close();
+  console.log(`  fingerprint under the share payload: ${fp.hash} · ${link ? `${link.applied}/${link.pairs} applied` : 'NO LINK OUTCOME'}`);
+  return { fp, link, leaves };
 }
 
 // TODO 36 tier one — every declared spec point must BUILD. Runs after the
@@ -1672,6 +1749,7 @@ if (COLLECT) {
     fpA: anchor.anchors.fpA,
     fpB: anchor.anchors.fpB,
     digestsB: anchor.anchors.digestsB,
+    fpShare: anchor.anchors.fpShare ?? null,
     spec: anchor.spec,
     headDigests: anchor.preflight.headDigests,
     restriction,
@@ -1821,9 +1899,9 @@ try {
   // check roster are properties of the tree, and reading them twice would only
   // create two answers to hold against each other. Under --matrix the spec-boot
   // tier rides with them until a later landing spreads it.
-  const { fpB, digestsB } = (!SPEC_ONLY && ownsAnchors)
+  const { fpB, digestsB, fpShare } = (!SPEC_ONLY && ownsAnchors)
     ? await anchorBootB(browser, base, headDigests)
-    : { fpB: null, digestsB: null };
+    : { fpB: null, digestsB: null, fpShare: null };
   // `--only` narrows this tier to its own control point: the tier stays in the
   // run (with both its gates) at one boot instead of 26.
   const spec = ownsAnchors
@@ -1846,7 +1924,7 @@ try {
       shardRows: ran.shardRows,
       preflight: { headDigests, restriction, baselineUsable: !!baseline },
       anchors: ownsAnchors
-        ? { fpA: ran.fpA, fpB, digestsB, axisMeta: ran.axisMeta, checkRoster: ran.checkRoster }
+        ? { fpA: ran.fpA, fpB, digestsB, fpShare, axisMeta: ran.axisMeta, checkRoster: ran.checkRoster }
         : null,
       spec,
     })}\n`);
@@ -1865,6 +1943,7 @@ try {
       fpA: ran.fpA,
       fpB,
       digestsB,
+      fpShare,
       spec,
       headDigests,
       restriction,
