@@ -23888,9 +23888,12 @@ on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
 `JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
 classification as its memoised, B-independent obstacle set.
 
-## 182. The build cut the alarm setting dogleg's non-route at (NaN, NaN), and the spec tier could not see it — CLOSED
+## 182. PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3) — CLOSED
 
-> **Status, 2026-09-28 — steps 2 and 3 landed; the item is closed.**
+> **Status, 2026-09-28 — steps 2 and 3 landed; the item is closed.** (The
+> heading's stem is step 1's and is frozen: the item-number gate holds a
+> permanent ID's title fixed and strips only a trailing status, so its "still
+> cuts a non-route as NaN" is history, and `CLOSED` is the current state.)
 >
 > **Step 2: a non-route omits the part that cannot exist, and only that
 > part.** The fallback threw away more than the route. When the dogleg
