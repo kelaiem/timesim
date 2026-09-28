@@ -25,6 +25,13 @@
 // either alone is easy and wrong. A probe that checked only 5 would pass an
 // implementation that clobbers the store; only 6, one that ignores the link.
 //
+// §240 Landing 3 REPLACED the key: the link now WRITES the colour as one pair
+// of `?aes=` (`dial.face.color~rrggbb`) and only READS `?dialcol=`, so links
+// already shared keep working and nothing produces a new one. Every behaviour
+// above is unchanged and is asserted through the new key; two rows are added —
+// the old key is not written any more (7), and a link carrying the colour BOTH
+// ways lands one value, `aes` winning where they disagree (8).
+//
 // Not checked here, and deliberately: whether the colour is LEGIBLE. The
 // contrast floor (DIAL_INK_CONTRAST_MIN, WCAG 2.1 SC 1.4.11) is asserted at
 // paint by geometry.js, in one copy called at build and on every live
@@ -91,27 +98,36 @@ async function shareLink(page) {
   return q;
 }
 
+// The colour a link WRITES, read out of its `aes` pairs.
+const aesColour = (q) => {
+  const pair = (q.get('aes') || '').split(',').find((x) => x.startsWith('dial.face.color~'));
+  return pair ? pair.slice('dial.face.color~'.length) : null;
+};
+
 console.log(`dial colour through the link — sent ${SENT}, recipient's own ${THEIRS}\n`);
 
 { // 1 — the shipped colour does not travel
   const { ctx, page } = await open('');
-  check('1. shipped colour: absent from the link', (await shareLink(page)).get('dialcol'), null);
+  const q = await shareLink(page);
+  check('1. shipped colour: absent from the link', aesColour(q), null);
+  check('1. and a bare view link carries no aes at all', q.get('aes'), null);
   await ctx.close();
 }
 { // 2 + 3 — it travels, and survives the hop
   const { ctx, page } = await open(`?dialcol=${SENT.slice(1)}`);
   check('2. arrived by link: applied', await effective(page), SENT);
   const q = await shareLink(page);
-  check('2. arrived by link: travels on', q.get('dialcol'), SENT.slice(1));
+  check('2. arrived by link: travels on', aesColour(q), SENT.slice(1));
+  check('7. the old key is read, never written', q.get('dialcol'), null);
   await ctx.close();
-  const hop = await open(`?dialcol=${q.get('dialcol')}`);
+  const hop = await open(`?aes=${q.get('aes')}`);
   check('3. second hop: unchanged', await effective(hop.page), SENT);
   await hop.ctx.close();
 }
 { // 4 — a panel-tuned colour travels
   const { ctx, page } = await open('', { store: THEIRS });
   check('4. tuned in the panel: applied', await effective(page), THEIRS);
-  check('4. tuned in the panel: travels', (await shareLink(page)).get('dialcol'), THEIRS.slice(1));
+  check('4. tuned in the panel: travels', aesColour(await shareLink(page)), THEIRS.slice(1));
   await ctx.close();
 }
 { // 5 + 6 — the link wins, the store is untouched
@@ -122,6 +138,15 @@ console.log(`dial colour through the link — sent ${SENT}, recipient's own ${TH
   await page.waitForFunction(() => !!window.__clock, null, { timeout: 120000 });
   check('6. without the param, theirs is back', await effective(page), THEIRS);
   await ctx.close();
+}
+{ // 8 — the colour carried BOTH ways lands one value
+  const same = await open(`?dialcol=${SENT.slice(1)}&aes=dial.face.color~${SENT.slice(1)}`);
+  check('8. both keys, same colour: that colour', await effective(same.page), SENT);
+  check('8. ...and it travels once, as aes', aesColour(await shareLink(same.page)), SENT.slice(1));
+  await same.ctx.close();
+  const differ = await open(`?dialcol=${THEIRS.slice(1)}&aes=dial.face.color~${SENT.slice(1)}`);
+  check('8. both keys disagreeing: aes wins', await effective(differ.page), SENT);
+  await differ.ctx.close();
 }
 { // and the refusals — a URL is untrusted input
   for (const bad of ['zzz', '1b3a5', '1b3a5cc', '<script>', '', 'rgb(1,2,3)']) {

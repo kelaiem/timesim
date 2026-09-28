@@ -412,7 +412,12 @@ const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 //
 // `bootTimeoutMs` is passed in rather than declared here: it is a scheduling
 // guard, and widening a guard must not void the check-code key.
-export async function virginBoot(browser, base, bootTimeoutMs) {
+//
+// `query` (§240 Landing 3) is the one way a boot may differ from virgin and
+// still be read beside one: the share boot loads `?aes=…` into the same fresh
+// context so its fingerprint is comparable with boot A's. Empty by default,
+// and every existing caller passes nothing.
+export async function virginBoot(browser, base, bootTimeoutMs, query = '') {
   await fetch(`${base}/__state`, { method: 'DELETE' });
   const context = await browser.newContext();
   const page = await context.newPage();
@@ -423,7 +428,7 @@ export async function virginBoot(browser, base, bootTimeoutMs) {
     // that resource error is the one console error a clean boot produces.
     if (m.type() === 'error' && !(m.location()?.url ?? '').endsWith('/__state')) errors.push(m.text());
   });
-  await page.goto(`${base}/index.html`, { waitUntil: 'load', timeout: bootTimeoutMs });
+  await page.goto(`${base}/index.html${query}`, { waitUntil: 'load', timeout: bootTimeoutMs });
   try {
     await page.waitForFunction(() => !!window.__clock, null, { timeout: bootTimeoutMs });
   } catch {

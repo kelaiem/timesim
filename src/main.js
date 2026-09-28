@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
-import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, AESTHETICS_DEFAULTS, DIAL_COL_PARAM, METAL_PARAM } from './aesthetics.js';
+import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, importAesthetics, IMPORT_OUTCOME, encodeShare, SHARE_PARAM, stripLinkParams, LINK_OUTCOME, LINK_DROPPED } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
 // (?lang → localStorage → navigator.language → en); t() falls back to its
@@ -31765,9 +31765,23 @@ panel.innerHTML = `
         <div id="advanced-body"></div>
         <div class="row label-small" style="opacity:0.75;">
           <span>Tuned values persist in this browser</span>
+        </div>
+        <!-- §240 Landing 2: three buttons do not share one 240 px row with
+             the note (a third made the row wrap into a spaced-out scatter),
+             so they get their own, packed at the start and wrapping as a
+             group; at the panel's width every locale measured (en, de, ru,
+             ar) puts Reset on a second line. -->
+        <div class="label-small" style="opacity:0.75; display:flex; flex-wrap:wrap; gap:4px; margin-top:2px;">
           <button id="btn-copy-aesthetics">Copy JSON</button>
+          <button id="btn-import-aesthetics" title="Load an aesthetics.json file — whole or a fragment. Its values persist in this browser and the page reloads">Import JSON</button>
           <button id="btn-reset-aesthetics">Reset</button>
         </div>
+        <!-- §240 Landing 2: Copy JSON's inbound leg. A plain file input —
+             no clipboard permission and no secure context, so unlike Copy
+             JSON it needs no fallback ladder. The status line is where every
+             outcome is SAID, including the receipt after the reload. -->
+        <input type="file" id="aes-import-file" accept="application/json,.json" hidden />
+        <div id="aes-import-status" class="label-small" role="status" hidden></div>
       </details>
     </div>
   </details>
@@ -33189,6 +33203,96 @@ function askTour(onProceed) {
     // source and a good tuning session ends in a commit, not in localStorage.
     navigator.clipboard.writeText(serializeOverrides(aesthetics));
   });
+
+  // §240 Landing 2 — IMPORT JSON, Copy JSON's inbound leg. importAesthetics
+  // (aesthetics.js) owns the merge and the write; this owns the picker and
+  // what gets SAID. Every outcome lands on the status line in words, and only
+  // a saved import reloads — a file the merge refused whole, or one this
+  // browser could not store, leaves the page exactly as it was.
+  {
+    const importIn = document.getElementById('aes-import-file');
+    const importStatus = document.getElementById('aes-import-status');
+    const say = (text) => { importStatus.textContent = text; importStatus.hidden = !text; };
+    // Paths are canonical dot paths (values, not display — they stay English
+    // in every locale), capped so a whole foreign file cannot fill the panel.
+    const pathList = (rows) => {
+      const shown = rows.slice(0, 6).map((r) => r.path).join(', ');
+      return rows.length > 6 ? `${shown} +${fmtInt(rows.length - 6)}` : shown;
+    };
+    const describe = (report) => {
+      const n = report.applied.length + report.refused.length;
+      let s = `${t('Imported')}: ${fmtInt(report.applied.length)}/${fmtInt(n)}`;
+      if (report.refused.length) s += ` · ${t('refused')}: ${pathList(report.refused)}`;
+      if (report.clamped.length) s += ` · ${t('clamped')}: ${pathList(report.clamped)}`;
+      return s;
+    };
+    document.getElementById('btn-import-aesthetics').addEventListener('click', () => importIn.click());
+    importIn.addEventListener('change', async () => {
+      const file = importIn.files && importIn.files[0];
+      importIn.value = '';   // choosing the same file again must fire change again
+      if (!file) return;
+      let text;
+      try { text = await file.text(); } catch { say(t('The file could not be read — nothing was changed')); return; }
+      const r = importAesthetics(text);
+      if (r.status === 'notjson') return say(t('Not a JSON file — nothing was changed'));
+      if (r.status === 'notobject') return say(t('Not an aesthetics file — nothing was changed'));
+      if (r.status === 'none') return say(`${t('No values applied — nothing was changed')} · ${t('refused')}: ${pathList(r.report.refused)}`);
+      if (r.status === 'unsaved') return say(`${t('The tuning could not be saved in this browser — not reloaded')} · ${describe(r.report)}`);
+      say(describe(r.report));
+      location.reload();
+    });
+    // The receipt, after the reload the import asked for — or, if that boot
+    // died, on the self-healing one after it, which dropped the tuning.
+    if (IMPORT_OUTCOME) {
+      say(IMPORT_OUTCOME.dropped
+        ? t('The imported values stopped the build — they were dropped and the file’s values restored')
+        : describe(IMPORT_OUTCOME.report));
+    }
+
+    // §240 Landing 3 — THE LINK'S RECEIPT. A `?aes=` link changes what a
+    // stranger sees before they have touched anything, and nothing else on
+    // screen says so: colours carry no `_bounds` by design and the dial's
+    // contrast floor only warns. So a link that carried tuned values says how
+    // many, names what was refused or clamped, and puts the way back one click
+    // away — "Open without them" strips the link's values (replaceState, the
+    // store untouched) and reloads. Positioned by the viewport, not the text,
+    // so `left`/`transform` are physical on purpose; the row inside is a flex
+    // row and mirrors under `dir="rtl"` by itself.
+    if (LINK_OUTCOME || LINK_DROPPED) {
+      const bar = document.createElement('div');
+      bar.id = 'aes-link-receipt';
+      bar.setAttribute('role', 'status');
+      bar.style.cssText = 'position:fixed; bottom:16px; left:50%; transform:translateX(-50%); z-index:45;'
+        + 'width:max-content; max-width:min(92vw, 520px); display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center;'
+        + 'background:rgba(15,17,20,0.92); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.14);'
+        + 'border-radius:8px; padding:8px 12px; color:#cfd6df; font:12px system-ui, sans-serif;';
+      const msg = document.createElement('span');
+      msg.style.cssText = 'flex:1 1 14em; text-align:start;';
+      if (LINK_DROPPED) {
+        msg.textContent = t('A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept');
+      } else {
+        const r = LINK_OUTCOME;
+        let text = `${t('This link carries tuned values')}: ${fmtInt(r.applied.length)}/${fmtInt(r.pairs)}`;
+        if (r.refused.length) text += ` · ${t('refused')}: ${pathList(r.refused)}`;
+        if (r.clamped.length) text += ` · ${t('clamped')}: ${pathList(r.clamped)}`;
+        msg.textContent = text;
+      }
+      bar.appendChild(msg);
+      if (!LINK_DROPPED) {
+        const without = document.createElement('button');
+        without.id = 'btn-aes-link-without';
+        without.textContent = t('Open without them');
+        without.addEventListener('click', () => { stripLinkParams(); location.reload(); });
+        bar.appendChild(without);
+      }
+      const close = document.createElement('button');
+      close.textContent = '×';
+      close.setAttribute('aria-label', t('Dismiss'));
+      close.addEventListener('click', () => bar.remove());
+      bar.appendChild(close);
+      document.body.appendChild(bar);
+    }
+  }
 
   // Light MODE: Studio (the aesthetics.json rig) vs NATURAL — open
   // daylight, to judge how the piece reads outside. Natural is one sun
@@ -40594,27 +40698,18 @@ function currentViewLink() {
   if (selectedUnit !== 'All') p.set('unit', selectedUnit);
   if (explodeAmount > 0) p.set('explode', explodeAmount.toFixed(CAM_LINK_DP));
   if (crownOut) p.set('crown', 'out');
-  // §37 tier two — the DIAL'S COLOUR travels, on the same "only non-default"
-  // rule as the toggles above. It is compared against the FILE's value rather
-  // than against a constant restated here: `aesthetics` is the effective
-  // colour after any tuned override merged over it, so the two are the same
-  // object's before and after, and a re-tone of the shipped dial cannot leave
-  // this comparing against a number that used to be true.
-  //
-  // The '#' is dropped because a URL fragment starts with one — left in, it
-  // would need percent-encoding and would read as a fragment to anything
-  // parsing the link by hand. `parseDialCol` accepts it either way.
-  //
-  // Not a spec key, so it is set here beside the toggles rather than arriving
-  // through `currentSpecParams()`: a recipient gets the sender's DIAL, and the
-  // reconfigure workbench's variants stay geometry-only.
-  if (aesthetics.dial.face.color !== AESTHETICS_DEFAULTS.dial.face.color)
-    p.set(DIAL_COL_PARAM, aesthetics.dial.face.color.replace(/^#/, ''));
-  // §203 step 3 — the CASE METAL travels on the same rule and by the same
-  // comparison: the effective alloy against the file's, so "look at it in
-  // platinum" is one link and a steel case sends nothing.
-  if (aesthetics.materials.caseMetal.alloy !== AESTHETICS_DEFAULTS.materials.caseMetal.alloy)
-    p.set(METAL_PARAM, aesthetics.materials.caseMetal.alloy);
+  // §240 Landing 3 — THE TUNED LOOK travels, one parameter for the whole
+  // shareable class (it replaced §185's `dialcol` and §203's `metal`, which
+  // are still read and never written). Same "only non-default" rule as the
+  // toggles above, and by the same kind of comparison §185 made: the
+  // EFFECTIVE value against the FILE's, so a bare view link stays byte-
+  // identical and a re-tone of a shipped default cannot leave this comparing
+  // against a number that used to be true. encodeShare owns the wire format
+  // (aesthetics.js, beside the reader), so the two halves cannot drift.
+  {
+    const aes = encodeShare(aesthetics);
+    if (aes) p.set(SHARE_PARAM, aes);
+  }
   // §161 — THE DESIGN TRAVELS, not just the view. Reconfigure mode's Apply is a
   // navigation (`location.search`, so back is undo), which means the spec a
   // viewer has DESIGNED lives in the query string and nowhere else — and a link
@@ -40633,10 +40728,12 @@ function currentViewLink() {
   for (const [k, v] of Object.entries(currentSpecParams())) p.set(k, v);
   // URLSearchParams percent-encodes the commas in cam/look (%2C). They are
   // sub-delims and perfectly legal raw in a query, and this link exists to be
-  // pasted into a message — so put them back. Nothing else is touched, so
-  // every other value keeps its proper encoding (unit names contain spaces
+  // pasted into a message — so put them back. §240: likewise `~` (%7E), which
+  // is RFC 3986 unreserved and is the aes pair separator, so a reader can see
+  // `dial.face.color~1b3a5c` rather than an escape. Nothing else is touched,
+  // so every other value keeps its proper encoding (unit names contain spaces
   // and '&': "Fusee & great wheel" must stay escaped).
-  return `${location.origin}${location.pathname}?${p.toString().replace(/%2C/g, ',')}`;
+  return `${location.origin}${location.pathname}?${p.toString().replace(/%2C/g, ',').replace(/%7E/g, '~')}`;
 }
 {
   const btn = document.getElementById('btn-copy-view');
@@ -41515,6 +41612,16 @@ setHud(true);
 // panel's OWN prior state, a tour started on a never-opened panel does not
 // "restore" it afterwards — §142's closing links are the discovery path.
 setPanelHidden(true);
+// §240 Landing 2 — an import reloads the page, and the viewer was in the
+// Advanced section when they chose the file: arrive back there, with the
+// receipt on screen, rather than on a hidden panel whose status line nobody
+// will open. Before applyDeepLink, so an explicit `?panel=0` still wins.
+if (IMPORT_OUTCOME) {
+  setPanelHidden(false);
+  const adv = document.getElementById('advanced-section');
+  adv.open = true;
+  adv.parentElement.closest('details').open = true;
+}
 applyDeepLink();
 
 // §55 — BOOT SYNCED TO THE WALL CLOCK. The movement used to start at an

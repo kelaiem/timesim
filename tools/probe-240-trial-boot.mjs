@@ -167,12 +167,12 @@ console.log(`§240 — is a trial boot virgin of aesthetics? (override keyLight 
   let seen = null;
   while (Date.now() - t0 < 20000) {
     seen = await watcher.evaluate(() => ({ pending: localStorage.getItem('aestheticsBootPending'), overrides: localStorage.getItem('aestheticsOverrides') }));
-    if (seen.pending === '1') break;
+    if (seen.pending !== null) break;
     await new Promise((r) => setTimeout(r, 100));
   }
   const armedAt = Date.now() - t0;
-  console.log(`        (trial armed the §23 marker after ${armedAt} ms: ${seen.pending === '1'})`);
-  check('3. a trial in flight arms the §23 marker? (must be false)', seen.pending === '1', false);
+  console.log(`        (trial armed the §23 marker after ${armedAt} ms: ${seen.pending !== null})`);
+  check('3. a trial in flight arms the §23 marker? (must be false)', seen.pending !== null, false);
   // kill it the way reconfKillTrial does — the frame goes away before confirm
   await page.close();
   await watcher.close();
