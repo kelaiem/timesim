@@ -18,6 +18,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | item | state | what remains |
 |---|---|---|
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
+| 182 | PART DONE | Step 1 done: `JMP_SITE` drops and counts non-finite obstacle triangles (5,536 in 7 meshes at `alarmr=20`/`46`, 0 at identity), scan 19 s → 1.5 s at those points, same station. The red `main` it was filed for had already gone green at #502 (TODO 180 thinned the queries). Remaining: stop cutting the alarm setting dogleg's non-route as NaN metal (step 2), and have the spec tier report non-finite meshes per point (step 3) |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
@@ -23886,6 +23887,133 @@ its measured distance to the jumper's region. Add a census control that FAILS
 on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
 `JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
 classification as its memoised, B-independent obstacle set.
+
+## 182. PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3)
+
+> **Status, 2026-09-28 — step 1 landed; the red it was filed for had
+> already cleared.** Between filing and fixing, #502 (TODO 180, which drops
+> zero-area slivers from the same scan) cut the scan from 254 tested
+> stations to 181 and made each query cheaper. Its push run was the first
+> green `main` since #488: the two points fell to about 35–40 s solo, under
+> the ceiling. That was relief, not a fix. The scan still cost about 12×
+> identity at those radii (19.0 s and 17.0 s against 1.5 s) for the same
+> reason, and a thinner margin was all that stood between it and the next
+> red. **Step 1 is now done**: `pushTris` drops any triangle whose world
+> coordinates are not finite, beside TODO 180's sliver drop, and counts
+> what it dropped on `JMP_SITE`'s record (`nonFiniteTris`,
+> `nonFiniteMeshes`). A rotor left with no triangles is skipped. Measured
+> on the merged tree, solo, SwiftShader container:
+>
+> | spec | scan before | scan after | boot before → after | dropped |
+> |---|---|---|---|---|
+> | identity | 1.5 s | 1.2 s | 17.8 → 13.5 s | 0 |
+> | `alarmr=20` | 19.0 s | 1.5 s | 35.4 → 18.5 s | 5,536 tris, 7 meshes |
+> | `alarmr=46` | 17.0 s | 1.3 s | 40.1 → 21.9 s | 5,536 tris, 7 meshes |
+>
+> Every spec tests the same stations (181 tested, 539 witnessed) and
+> chooses the same station, az 4.0753 (233.5°), clearance 0.1572. Identity
+> drops nothing, so the shipped build cannot move. Steps 2 and 3 remain
+> open. The narrative below is the item as filed.
+
+**The symptom is a red `main`.** Every push-to-`main` battery since #488
+(run 980, 2026-09-24) fails one gate: `spec boots: every declared spec point
+builds`, 34/36, on `alarmr=20` and `alarmr=46`. Both are reported as "never
+produced a __clock", with `fatal: null`, no page errors, and 19 and 26/27 boot
+warns before the cut-off. #486's run (975) was the last green one. [TODO 162]
+and [TODO 166] each met this failure in passing and called it "this
+container's pre-existing debt", "marginal/contention-sensitive". It is not
+the container: GitHub's own ubuntu-latest runners fail it on every run, and
+every PR since has inherited the red. It was never filed, because each
+landing that saw it had another item to close.
+
+**What it is: a timeout, not a death.** Measured solo on the SwiftShader
+container (a `?trial=1` boot, one tab, nothing else running):
+
+| tree | identity | `alarmr=20` | `alarmr=46` |
+|---|---|---|---|
+| #486 (`9b16f25`, last green) | 14.6 s | 14.6 s | 15.3 s |
+| #488 (`30178d1`, first red) | 18.1 s | **64.7 s** | **67.1 s** |
+| `main` after #499 (`4189ecb`) | 14.8–21.2 s | **102.8–104.6 s** | **102.2–103.7 s** |
+
+Both points build solo, with no error, in about 103 s: roughly seven times
+the identity spec's time. The spec tier runs four boots at once
+(`SPEC_BOOT_POOL`, set in §104's landing to keep each boot "within ~2× of
+solo" under `BOOT_TIMEOUT_MS` = 120 s), and at seven times identity there is
+no room for that factor. `reserveh=48` hit the same ceiling in run #335, and
+the pool was the fix then. It is not the fix now, because the cost is not
+contention.
+
+**Where the time goes.** A CPU profile of the `alarmr=20` boot on `main`
+puts **87 of 102 s** inside `test()` (`src/main.js`, the TODO 151 minute
+jumper siting solve, `JMP_SITE`). Almost all of it is in `bvhShort` →
+three-mesh-bvh's `closestPointToGeometry` → `distanceToTriangle`. The scan
+does IDENTICAL work at every spec: 720 candidates, 254 tested, 466
+witnessed, and it picks the same station (az 2.2602, clearance 0.15, score
+0.3614). It takes 1.6 s at identity against 88–108 s at the two alarm
+radii, so each query costs about sixty times more, not more of them.
+Timed per obstacle tree, the cost at `alarmr=20` lands on a 320-triangle
+`LatheGeometry` tree (68.4 s over 13,773 calls, about 5 ms each: a full
+320 × 352 triangle-pair sweep), then two 40-triangle `CylinderGeometry`
+trees (about 9 s each). At identity the same scan never gets past their
+boxes.
+
+**Why those trees prune nothing: their metal is NaN.** A scene walk at
+`alarmr=20` and `alarmr=46` finds seven meshes that are not finite. Identity
+has none.
+- `alarmSetIdler1`, `alarmSetIdler2`, `i1b`, and the unnamed
+  `LatheGeometry` and two `CylinderGeometry` parts beside them all have
+  **non-finite world matrices**.
+- `alarmSeatPlate` has **1,224 of its 2,172 vertex coordinates NaN**.
+
+A tree with NaN bounds reports every query box as a hit and every node as
+worth descending, so the siting scan turns into a brute-force sweep against
+it. The NaN is not new: the #486 tree carries the same seven meshes.
+**#488 did not create the NaN metal; it added the first boot-time solve
+that pays for it.**
+
+**And the NaN is deliberate.** When the alarm setting dogleg has no route,
+`alarmSetRouteAt` returns nothing, and `main.js` destructures the fallback
+`{ i1: { x: NaN, y: NaN }, i2: { x: NaN, y: NaN } }` after warning "no i2
+exists at bearing … the route below is not a route". Both declared spec
+points exist to exercise exactly that: `alarmr=20` is "§98 — past the
+dogleg reach" and `alarmr=46` is "§98 — past the stem window". Every part
+cut at the route then inherits the NaN. That includes the idlers, their
+studs, and the seat plate, whose `ALARM_SEAT_RELIEF_HALF` is a law-of-cosines
+`Math.acos` over `_i1Dist` and whose outline is built from `_i1PhiL`. The
+spec tier only asks whether the page produced a `__clock`, so a point that
+"builds" seven non-finite meshes has passed it for as long as the point has
+existed. The one gate that would see them, `meshIntegrity`, runs on the
+default spec only.
+
+**Fix path, in order.**
+1. **The scan drops non-finite obstacle triangles** where it collects them
+   (the `pushTris` walk into `staticList`/`plateList`/`rotorTris`). Count
+   them in `JMP_SITE`'s returned record. A part with no coordinates cannot
+   be collided with, and the dogleg's own warning already says the route is
+   not a route. This restores the two points to the identity's boot time
+   and turns `main` green. **Acceptance:** both points boot inside the pool
+   at about identity's solo time, and `JMP_SITE` reports the same station
+   (az 2.2602, clearance 0.15) at identity, before and after.
+2. **Stop building a non-route as NaN metal.** A route that does not exist
+   should be omitted or refused, visibly, not cut at `(NaN, NaN)` and left
+   in the scene for every later solve and instrument to trip over. The
+   next NaN-blind solve would pay the same cost. Decide which, and apply it
+   to everything cut at the route.
+3. **Let the spec tier see it.** "Every declared spec point builds" should
+   also mean "builds finite metal": count non-finite meshes per point and
+   report them beside the warn count. Report, not gate, until (2) lands,
+   since today both points would fail it by design.
+
+What NOT to do: raise `BOOT_TIMEOUT_MS` or shrink `SPEC_BOOT_POOL` to buy
+the time back. §104 set both so that "one roughly uncontended boot must
+build" keeps its meaning, and a spec point that is seven times slower than
+identity because a solve walks NaN is exactly what that ceiling is there to
+catch.
+
+The scripts that measured this were one-off (a solo `?trial=1` timer, a CDP
+profile, a per-tree timer patched into `setOf`, and a scene walk for
+non-finite positions and matrices). The scene walk is the one worth keeping,
+as step 3's instrument.
 
 ## 183. A B-dependent jumper refusal would still not act: re-cutting the setting fold, plate and reserve at another bearing is unbuilt
 
