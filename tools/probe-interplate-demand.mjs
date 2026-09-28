@@ -40,7 +40,7 @@
 //    when its whole 3×3 cell neighbourhood is plate-free — bores and
 //    small openings cannot fake a sky, so the error runs toward COUNTING
 //    demand, never toward silence.
-//  · RIDERS ARE NOT TENANTS. The pillars (makePillar({ height: TQ_BOT_Z }),
+//  · RIDERS ARE NOT TENANTS. The pillars (makePillar({ height: TQ_BOT_Z, … }),
 //    seated ON the underside) and the winding arrest (BRK_BOT = TQ_BOT_Z −
 //    BRK_T, boot-asserted flush on the underside) DESCEND WITH the plate,
 //    so their z is not a constraint on the drop — it is a consequence of
@@ -178,7 +178,7 @@ const res = await page.evaluate(async () => {
   // derives from TQ_BOT_Z and therefore descends with any drop. Each name
   // cites its coupling; the roster is asserted against the scene below.
   const RIDERS = new Map([
-    ['pillars', 'makePillar({ height: TQ_BOT_Z }), seated at TQ_BOT_Z/2 — height AND cap radius derive from the underside'],
+    ['pillars', 'makePillar({ height: TQ_BOT_Z, … }), seated at TQ_BOT_Z/2 — its height derives from the underside (its section from its plate screw, TODO 184)'],
     ['Winding arrest', 'BRK_BOT = TQ_BOT_Z − BRK_T; the bracket top is boot-asserted flush on the plate underside'],
   ]);
   const staleRiders = [...RIDERS.keys()].filter((n) => !clock.labelEntries.some((e) => e.name === n));

@@ -6591,8 +6591,15 @@ export function makeScrews({ at, headR, headT, taper = 0.92, seg = 16 }) {
         // coincident cylinders, which is the artefact this whole entry has
         // been chasing. Outer extent is still exactly `sr`, which is what the
         // tapped hole is bored to.
-        for (let z = pitch / 2; z < p.shank; z += pitch) {
-          shanks.push(new THREE.TorusGeometry(core + depth / 4, depth * 0.75, 6, Math.max(8, seg / 2))
+        // TODO 184: and every crest stays INSIDE the shank's length. The
+        // loop used to run while the crest's centre was above the tip, so the
+        // last ring's lower half — its tube is 0.75·depth — hung past the end
+        // of the screw: 0.04 mm of thread below a 1 mm plate screw's tip,
+        // found by probe-184-frame-joints measuring the metal against the
+        // declared shank. A thread ends where its screw does.
+        const tube = depth * 0.75;
+        for (let z = pitch / 2; z + tube <= p.shank + 1e-9; z += pitch) {
+          shanks.push(new THREE.TorusGeometry(core + depth / 4, tube, 6, Math.max(8, seg / 2))
             .translate(p.x, p.y, p.z - headT - z));
           shankNames.push(`screw#${si}`);
         }

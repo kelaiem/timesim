@@ -24415,6 +24415,75 @@ stays a REPORT, not a boot assert, because every row is red and rule 6
 wants a silent boot; the assert is the last step. Geometry unchanged —
 the fingerprint and §152 digests hash identically to the base.
 
+**Step 1 landed — the plate screws thread into the pillars.** The chain
+that sized them now runs from the job instead of from the gap between the
+plates:
+
+- **Thread.** `PILLAR_THREAD_D = CASE_SCREW_SHAFT_D`, the 1.0 mm stock the
+  case clamps already use. It is the same duty at the same scale, so it gets
+  one number.
+- **Head, seat and land.** The head comes from the thread (makeScrews'
+  2:1). The seat is one fit over the head, and the pillar's land reaches the
+  seat because the land carries the clamped ring.
+- **Body.** Land / 1.5, the profile's own proportion, asserted to leave
+  `STOCK_MIN_U` of wall round the bore.
+- **Tapped bore.** `screwTapR` radius, `ENGAGE_MIN·d` deep plus one pitch
+  of run-out.
+- **Shank.** The plate's land plus `ENGAGE_MIN·d`, drawn `tapped`.
+
+Measured on arrival:
+
+| Quantity | Now |
+|---|---|
+| Plate-screw thread d | 1.000 mm |
+| Engagement | 1.500 mm (required 1.500) |
+| Pillar body ⌀ | 1.37 mm |
+| Pillar land ⌀ | 2.06 mm |
+
+The pillar was body 0.56 mm and land 0.84 mm. `probe-184-frame-joints` reads
+4 of 7 rows green.
+
+What the fatter pillar cost, and how each cost was paid in position space
+(P3):
+
+- **The NE pillar re-seats from 37° to 24°.** The old seat had 0.17 u of
+  slack against `ALARM_UNDER_FOOTPRINT`, and a 1.0 mm screw's land cannot
+  fit there.
+- **The alarm link read the pillar as its AXIS-ALIGNED BOX.** The box's
+  corners reached into the selector rod's column and re-sited the rod off its
+  frozen plate bores (§112 warned, §234's hoisted lengths drifted).
+  - Fix: each pillar now publishes `userData.planStadium` as a disc of its
+    land, §198's existing vocabulary for "what stands here in plan".
+- **The winding arrest yielded to the pillar, as a vertex-scored solve
+  should.** It landed its cross stud 1.5 from the alarm column wheel's stud,
+  where §201's late window cannot open, so the window reported NOT CUT.
+  - Fix: the §129 arrest solve now filters out stations whose cross window
+    cannot open (`windowOpen`), against the scene's plate keeps plus the
+    column stud.
+  - The stud is built 2000 lines later, so its station (`ALARM_LOCK_D` …
+    `ALARM_COL_POS`) is HOISTED above the solve. All of its inputs are plan
+    constants, so no value moves.
+  - It is a filter, not a maximin term, so an unaffected movement solves as
+    before.
+  - Net change: the cross clocks to 0° instead of 288° about its finger.
+    Station, plane and slack (0.1044, bound by the spider) are unchanged.
+  - `ALARM_COL_STUD_R` names the stud radius that was written four times.
+
+Two defects found on the way:
+
+- **Thread crests overhung the screw tip.** `makeScrews`' last crest hung
+  past its screw's tip by half a tube, 0.04 mm on these screws. The probe's
+  metal-vs-declaration control caught it, and every tapped screw (the chatons
+  too) now ends its thread at its tip.
+- **An unyielding sweep.** The window filter's keep sweep yields per mesh
+  (`sweepTqKeepsYielding`, §239's rule).
+  - `probe-239-boot-yield`: worst hold 676/685 ms against a 700 ms ceiling.
+  - `origin/main` measures 694/685 ms on the same container.
+  - `probe-129-bootcost`: every moved station within 1.4× identity.
+
+Remaining: the three cock screws (step 2), the pillar ⇄ base plate joint
+(step 3), then the gate.
+
 **Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
 alone, or by scaling the existing heads up. A bigger head on a screw that
 still stops at the face is the same defect, made easier to see.
