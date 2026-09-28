@@ -110,7 +110,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 36 | TIER ONE BUILT | Higher tiers — a spec can change which PARTS EXIST, and liveness cannot see that (§87's addendum) |
 | 40 | CLOSED (§150) | All three rows. Row 3's deferred ODE built: the cone is cut from the span-aware conservation solve (wrap helix + 3-D span + coil angle with the takeoff's walk, one length), the display's 0.05-turn wrap floor stopped minting chain, and `chainLength` GATES unwaived — spread 0.5167 u = 0.633% vs the 0.95 u half-link-pitch tolerance, 43 links at every state of wind |
 | 46 | CLOSED (§124) | The chain rode the fusee base on one CORNER (1.9–2.5 u of daylight, invisible to the burial-only row). Closed by the layout: first stage re-geared 8:1 → 120/7 so the fusee runs 1.75 wraps over 2 grooves at pitch 1.389, set-up 17 → 23 clicks, level product held; links LEAN to the flank on the funded FUSEE_TILT_Z raise. Ideal torque law exact again; the new float row gates the seat at 0.202 unwaived (was 3.191 waived) |
-| 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
+| 47 | CLOSED | The zero reset's timing is the CONTACT now, not a `leverEngage` ease — the heart holds still until the roller reaches it, then rides the flank down. It REGRESSED under TODO 115, when the law kept the cam angle's old sign after the arbor's write was unnegated; it was re-closed by BUILT §244 with the angle defined once. What is left is elsewhere: the seat still has no `EXPECTED_CONTACT_FLOORS` row, which is item 6's work |
 | 48 | CLOSED | Re-measured by its own probe at 0.03–0.07% off anti-phase (was 47–49%): the gauge's threshold moved to the probe's percentile form, w1+p1 solved as one rigid blank (pair group), and the train is DRIVEN from p0's slip coupling with the hand arriving — same angles, forward |
 | 49 | OPEN (unblocked by §150) | The fusee end of the chain is hooked to nothing — the drum end has a claw, the cone end has no metal while the support edge claims the joint. Its blocker (40 row 3's length closure) is CLOSED: path (a) — pin both ends — is open, the drum end's congruence branch margin is already boot-asserted as the template, and since §150 the cone at dead reserve is honestly bare, so the anchorage is also what would keep the last link attached at all |
 | 50 | CLOSED (§149) | The going stem's one-way is metal: the dual-purpose pinion split into a fixed winding pinion and the sliding clutch, joined by a saw coupling one profile law cuts, rides and measures — the very split a parallel 2026-08-21 re-scope reached from measurement before this landed. `windStemSlip` is the coupling's relative index — persisted, with the two sub-pitch laws (forward take-up, drain pickup) and the `stemSlip` axis that lets §48 judge the clutch. The alarm instance is item 72 |
@@ -6159,6 +6159,30 @@ could not produce at all.
   it both ways, which §48's audit accepts as "driven both ways" (see
   TODO 43 on why the four reset-linkage units left the reciprocator
   population). That is a different claim from this item's.
+
+### Regressed by TODO 115, and re-closed by BUILT §244
+
+The owner reported the same symptom again: the heart turns before the hammer
+reaches it. It was real. `probe-reset-contact.mjs`, re-run on `main`, read
+`reference moved while the roller was clear: 2/6`, with the cam starting to
+turn at 1.62 and 0.85 of clearance, and `roller buried past the faceting band:
+4/6`, up to 0.63 deep.
+
+**Cause: one angle written in two places.** TODO 115 made the cam arbor's
+write positive, `(fourthA − zero) + camPhaseOffset`, because the arbor is in
+the movement frame. The contact law above still worked out where the notch was
+from the old negated expression, and its inverse (`want`) did the same. So the
+law measured contact against a mirror image of the cam. That image only agrees
+with the drawn metal where `fourthA − zero` is 0 or π. At other phases the
+heart was pushed with nothing touching it, or left in place with the roller
+inside it.
+
+Nothing else would have caught this. No battery check measures this contact,
+and the probe is an acceptance that no workflow runs. **The fix is one
+source**: `secondsCamAngle` / `secondsZeroRefFor`, declared beside
+`camPhaseOffset`, are read by the law, its inverse and the arbor write, so the
+two can no longer disagree. Re-measured afterwards: 0/6 on all four counts,
+|gap| ≤ 1e-4, and first motion inside the ±0.018 faceting band.
 
 ---
 

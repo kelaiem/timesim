@@ -3757,6 +3757,15 @@ const hammerBaseAngle = hammerAimAngle - Math.PI / 2;
 // roller landed on the full-radius lobe (θ=π), buried ~3 units deep,
 // instead of in the notch.
 const camPhaseOffset = hammerAimAngle + Math.PI;
+// §244 — the cam's angle, and its inverse, as ONE source. The reset law
+// asks where the notch is and the arbor write says where the metal is, and
+// those were two expressions. TODO 115 unnegated the write (the arbor is in
+// the movement frame) and left the law carrying the old sign, so the law
+// judged contact against the cam's mirror image: it turned the heart with
+// the roller 1.6 clear and buried the roller 0.6 deep at other phases, and
+// agreed with the metal only where the two images coincide.
+const secondsCamAngle = (fourthA, zeroRef) => (fourthA - zeroRef) + camPhaseOffset;
+const secondsZeroRefFor = (fourthA, camA) => fourthA + camPhaseOffset - camA;
 // Retracted swing angle — SOLVED, not fixed. While the watch runs, the cam
 // spins continuously under the parked hammer (one rev/min), so EVERY
 // feature of the lever — the bevel-expanded outline (taper corners, flared
@@ -42500,7 +42509,7 @@ function tick(t) {
     resetContactNow = { d, free, pushed: false, off: 0 };
     if (free < Math.PI) {
       const psi = Math.atan2(dy, dx);                             // roller, seen from the cam axis
-      const camA = -(fourthA - secondsZeroRef) + camPhaseOffset;  // the angle the cam would carry
+      const camA = secondsCamAngle(fourthA, secondsZeroRef);        // the angle the cam carries
       const off = wrapPi(psi - camA);                             // …in the heart's own frame: θ
       resetContactNow.off = off;
       if (Math.abs(off) > free) {
@@ -42510,7 +42519,7 @@ function tick(t) {
         // to every rotation.z consumer but would read as the cam jumping a
         // whole turn to anything differencing it — which is how
         // probe-reset-contact.mjs first read this law.
-        const want = fourthA + (psi - Math.sign(off) * free) - camPhaseOffset;
+        const want = secondsZeroRefFor(fourthA, psi - Math.sign(off) * free);
         secondsZeroRef = want + Math.round((secondsZeroRef - want) / (2 * Math.PI)) * 2 * Math.PI;
       }
     }
@@ -42735,7 +42744,7 @@ function tick(t) {
   // TODO 115 — the cam arbor is in the MOVEMENT frame (movement.add, 2881), so
   // it takes the angle UNNEGATED. The negation here was the same seam error
   // read from the other side: a movement-frame part written as if dial-side.
-  secondsCamArbor.rotation.z = (fourthA - secondsZeroRef) + camPhaseOffset;
+  secondsCamArbor.rotation.z = secondsCamAngle(fourthA, secondsZeroRef);
 
   // Reset-hammer rod: rigid — constant length by construction; just placed
   // between its two pins.

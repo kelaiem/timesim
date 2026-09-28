@@ -29327,3 +29327,106 @@ and shown on a second boot after the find; both went with the row.)
 
 **Not done here.** A fifth view: the schematic tier (§66) and x-ray are one
 `--views` flag away in the capture and a `views` entry away in the viewer.
+
+## §244 — The zero reset turned the heart with nothing touching it again, because the cam's angle was written twice with opposite signs
+
+The owner saw it by eye: during the zero reset, the hammer seemed to move the
+heart cam before reaching it. The guess was a drawing problem, the cam or the
+hammer drawn smaller than the contact treats it. The roadmap entry was filed on
+that guess, and it named the heart's chamfer as the lead suspect because public
+TODO 47 had already made the contact the law. **Step 1 of the entry was to
+re-run TODO 47's acceptance probe first. The probe failed, so the report was
+not a drawing problem.**
+
+### What was measured, on `main` at `4bda90a`
+
+`tools/probe-reset-contact.mjs` measures an INDEPENDENT gap: the roller's
+centre from the hammer's world matrix and the heart's outline from its mesh
+vertices, over six cam phases pulled through the shipped eased crown:
+
+| start τ | gap at first move | roller buried | |
+|---|---|---|---|
+| 3 | −0.141 | 0.154 | buried |
+| 11 | −0.617 | 0.618 | buried |
+| 19 | −0.289 | 0.616 | buried |
+| 27 | −0.645 | 0.628 | buried |
+| 41 | **1.620** | 0.000 | moved with the roller clear |
+| 53 | **0.848** | 0.000 | moved with the roller clear |
+
+```
+reference moved while the roller was clear: 2/6
+roller buried past the faceting band:       4/6
+```
+
+TODO 47 had shipped reading 0/6 on both.
+
+### Why — one angle written twice with opposite signs
+
+The reset law asks where the heart's notch is. The arbor write says where the
+metal is. Those were two expressions:
+
+```js
+const camA = -(fourthA - secondsZeroRef) + camPhaseOffset;         // the law
+secondsCamArbor.rotation.z = (fourthA - secondsZeroRef) + camPhaseOffset;  // the metal
+```
+
+TODO 115 unnegated the arbor write because the arbor is a MOVEMENT-frame part.
+It did not touch the law or the law's inverse
+(`want = fourthA + (psi − …) − camPhaseOffset`), so those kept judging contact
+against the cam's mirror image. The two images agree only where
+`fourthA − zero` is 0 or π. Everywhere else the law pushed a heart the roller
+had not reached, or left one the roller was inside. This is `CLAUDE.md`'s
+recurring defect, one direction written down twice with only one copy carrying
+the sense.
+
+Nothing caught it. No battery check measures this contact, and the probe that
+does is an acceptance no workflow runs.
+
+### The fix — one source
+
+`secondsCamAngle(fourthA, zero)` and its inverse `secondsZeroRefFor(fourthA,
+camA)` are declared beside `camPhaseOffset`. The law, the law's inverse and the
+arbor write all read them, so the metal and the contact law cannot disagree
+about the angle again. No constant moved and no geometry moved.
+
+```
+reference moved while the roller was clear: 0/6
+reference drifted after the hammer lifted:  0/6
+roller buried past the faceting band:       0/6
+seat did not zero the hand (±0.02 s):       0/6
+```
+
+|gap| ≤ 1e-4 through the ride, and first motion within 0.0062 of the metal,
+inside the probe's ±0.0176 faceting band. The roller rides tangent from first
+touch to the seat.
+
+### The chamfer — measured, and left as it is
+
+The filing's lead suspect was real, but it was never the cause.
+`tools/probe-244-shot.mjs` (new, a REPORT) stops on the frame the heart first
+moves and measures two gaps. The METAL gap runs to every vertex of the heart,
+including the bevel-dilated side wall the law measures against. The PLAN gap
+runs only to the heart's top cap, which is where a camera above the cam sees
+the flat face end. At τ 41:
+
+```
+frame before: metal 0.3069 · plan 0.4667
+that frame:   metal 0.0054 · plan 0.1641
+```
+
+The difference is the 0.16 chamfer (`makeHeartCam`'s single-segment bevel), as
+predicted. The roller touches the side wall, and the flat face ends 0.16 short
+of it. Against the 0.85 and 1.62 the owner was actually seeing, this is the
+small residue. Removing it means cutting the heart without its bevel, which
+moves metal: `hammerPivotDist` adds `bevel`, and the retracted-clearance solve,
+the free-angle table and every sweep that sees the heart all follow. The
+entry's remaining steps stay filed for that decision.
+
+### What this does NOT close
+
+- **The probe still gates nothing in CI.** Having a single source makes this
+  specific regression structurally hard, but the next edit to the reset law
+  has no automated check behind it. A battery check for the contact, the same
+  measurement the missing `EXPECTED_CONTACT_FLOORS` row would gate (TODO 47's
+  residue, item 6's work), is the durable fix.
+- The chamfer (above), which is left to the owner.
