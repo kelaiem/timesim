@@ -43927,6 +43927,17 @@ const JMP_SITE = await (async () => {
     return null;
   };
   const staticTris = [], staticList = [], plateList = [], rotorTris = new Map();
+  // TODO 160 — WHICH OBSTACLES THE CAP BEARING B CUT. CAP_SOLVE commits B long
+  // before this solve exists, and everything buildSettingMetal returned for it
+  // (the fold's legs, rise, stub, arbor, corners and cap) plus the reserve
+  // train it swung (rsvSwing, rsvModule1) is metal a different B would have
+  // put elsewhere. Flagged here so the verdict can say whether B had any say
+  // in it — the fact a late re-cut (TODO 160's filed design) would need.
+  const bDepRoots = [SETTING_METAL.leg1, SETTING_METAL.leg2, SETTING_METAL.rise, SETTING_METAL.stub, SETTING_METAL.capArbor,
+    SETTING_METAL.cornerDrop, SETTING_METAL.cornerFold, SETTING_METAL.cornerRise, SETTING_METAL.cornerFoot, SETTING_METAL.cornerCap,
+    SETTING_METAL.settingCap, reserveTrain].filter(Boolean);
+  const isBDep = (o) => bDepRoots.some((r) => under(o, r));
+  const staticBDep = [], plateBDep = [];
   // TODO 161 — THE LAWED MOVERS are judged over their own travel, not as
   // built. BOOT HAS NO POSE, so a pose snapshot is not available here; a LAW
   // is — the same function tick poses the part through, called at samples of
@@ -43999,7 +44010,7 @@ const JMP_SITE = await (async () => {
       }
       if (!box.intersectsBox(region)) return;
       if (rot) { if (!rotorTris.has(rot)) rotorTris.set(rot, []); pushTris(o, rotorTris.get(rot)); }
-      else { const arr = []; pushTris(o, arr); (under(o, backPlate) ? plateList : staticList).push(arr); staticTris.push(arr.length / 9); }
+      else { const arr = []; pushTris(o, arr); const onBack = under(o, backPlate); (onBack ? plateList : staticList).push(arr); (onBack ? plateBDep : staticBDep).push(isBDep(o)); staticTris.push(arr.length / 9); }
     });
   }
   const lawedSamples = [];
@@ -44013,7 +44024,7 @@ const JMP_SITE = await (async () => {
         r.traverse((o) => {
           if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
           if (!box.setFromObject(o).intersectsBox(region)) return;
-          const arr = []; pushTris(o, arr); staticList.push(arr); staticTris.push(arr.length / 9);
+          const arr = []; pushTris(o, arr); staticList.push(arr); staticBDep.push(false); staticTris.push(arr.length / 9);
         });
       }
     }
@@ -44069,6 +44080,10 @@ const JMP_SITE = await (async () => {
     });
   }
   const bvhLever = bvhOf(slMain), bvhPost = bvhOf(slPost);
+  // TODO 160 — the obstacle set test() and rotorsClear() judge against. The
+  // scan always runs on FULL; the verdict's classifier (after the scan) swaps
+  // in the cap-bearing-dependent subset, or its complement, and back.
+  let OBS = null;
   // the lever's reach over the whole pull, for culling it off parts it never nears
   const slSwept = new THREE.Box3();
   {
@@ -44122,9 +44137,10 @@ const JMP_SITE = await (async () => {
           grid.get(k).push(i);
         }
     }
-    rotors.push({ obj, o, a, coaxial, boxes, grid, R0, R1, Z0, Z1 });
+    rotors.push({ obj, o, a, coaxial, boxes, grid, R0, R1, Z0, Z1, bDep: isBDep(obj) });
   }
   await breathe();
+  OBS = { main: bvhMain, plate: bvhPlate, lever: bvhLever, post: bvhPost, rotors };
   // ---- the measures
   const t1 = {}, t2 = {};
   const bvhShort = (bvh, geo, M, tau) => {
@@ -44169,7 +44185,7 @@ const JMP_SITE = await (async () => {
     const q0 = V(), q1 = V(), q2 = V();
     if (!geo.boundingSphere) geo.computeBoundingSphere();
     const sc = _sc.copy(geo.boundingSphere.center).applyMatrix4(M), sr = geo.boundingSphere.radius * M.getMaxScaleOnAxis();
-    for (const rot of rotors) {
+    for (const rot of OBS.rotors) {
       if (rot.coaxial && !withCoaxial) continue;
       {
         // the whole part first: its bounding sphere's (r, z) box about this axis
@@ -44252,25 +44268,25 @@ const JMP_SITE = await (async () => {
       // PASS 1 — the exact distances, cheapest and most telling first
       for (let i = 0; i < azMeshes.length; i++) {
         const m = azMeshes[i], g = qOf(m);
-        if (bvhShort(bvhMain, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(bvhPlate, g, azM[i], tau))) return false;
+        if (bvhShort(OBS.main, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(OBS.plate, g, azM[i], tau))) return false;
       }
       for (const Ms of levM) for (let i = 0; i < leverMeshes.length; i++) {
         const g = qOf(leverMeshes[i]);
-        if (bvhShort(bvhMain, g, Ms[i], tau) || bvhShort(bvhPlate, g, Ms[i], tau)) return false;
+        if (bvhShort(OBS.main, g, Ms[i], tau) || bvhShort(OBS.plate, g, Ms[i], tau)) return false;
       }
       await breathe();
       const all = [...azMeshes, ...leverMeshes];
       for (const { k, M, parts } of liftM) {
-        if (bvhShort(bvhMain, lg, M, tau) || bvhShort(bvhPlate, lg, M, tau)) return false;
+        if (bvhShort(OBS.main, lg, M, tau) || bvhShort(OBS.plate, lg, M, tau)) return false;
         if (box.copy(lg.boundingBox).applyMatrix4(M).expandByScalar(tau).intersectsBox(slSwept)
-          && bvhShort(bvhLever, lg, slInv[k].clone().multiply(M), tau)) return false;
+          && bvhShort(OBS.lever, lg, slInv[k].clone().multiply(M), tau)) return false;
         // the setting lever moves with the same pull, so the stud's parts and
         // the jumper's lever meet it at THIS pose, not at every pull at once
         for (let i = 0; i < all.length; i++) {
           const g = qOf(all[i]);
           if (!box.copy(g.boundingBox).applyMatrix4(parts[i]).expandByScalar(tau).intersectsBox(slSwept)) continue;
           const L = slInv[k].clone().multiply(parts[i]);
-          if (bvhShort(bvhLever, g, L, tau) || bvhShort(bvhPost, g, L, tau)) return false;
+          if (bvhShort(OBS.lever, g, L, tau) || bvhShort(OBS.post, g, L, tau)) return false;
         }
       }
       await breathe();
@@ -44287,13 +44303,13 @@ const JMP_SITE = await (async () => {
       // PASS 3 — meshClearance's parity guard, one pose of each part
       for (let i = 0; i < azMeshes.length; i++) {
         const m = azMeshes[i], g = qOf(m);
-        if (inside(bvhMain, g, azM[i]) || (!onPlate.has(m) && inside(bvhPlate, g, azM[i]))) return false;
+        if (inside(OBS.main, g, azM[i]) || (!onPlate.has(m) && inside(OBS.plate, g, azM[i]))) return false;
       }
       for (let i = 0; i < leverMeshes.length; i++) {
         const g = qOf(leverMeshes[i]);
-        if (inside(bvhMain, g, levM[0][i]) || inside(bvhPlate, g, levM[0][i])) return false;
+        if (inside(OBS.main, g, levM[0][i]) || inside(OBS.plate, g, levM[0][i])) return false;
       }
-      if (inside(bvhMain, lg, liftM[0].M) || inside(bvhPlate, lg, liftM[0].M)) return false;
+      if (inside(OBS.main, lg, liftM[0].M) || inside(OBS.plate, lg, liftM[0].M)) return false;
       return true;
     } finally { lg.dispose(); }
   };
@@ -44348,6 +44364,31 @@ const JMP_SITE = await (async () => {
     else while (hi - lo > HMIN) { const mid = (lo + hi) / 2; if (await test(az, mid)) lo = mid; else hi = mid; }
     best = { az, clr: lo, capD: cd, score: Math.min(lo, JMP_SITE_SAT) + JMP_SITE_CAPD_W * cd };
   }
+  // TODO 160 — CLASSIFY THE VERDICT by what B cut. Accepted: `bSlack`, the
+  // shipped station's clearance against the B-dependent obstacles ALONE (to
+  // the envelope's resolution, capped at the objective's saturation) — how much
+  // room B's metal leaves the jumper. Refused: re-scan against everything B
+  // did NOT cut; a station there means another B could help ('B-dependent'),
+  // none means no B could ('B-independent'), and only the first is worth the
+  // late re-cut TODO 160 files. The scan above never sees these sets.
+  const pick = (lists, flags, want) => lists.filter((_, i) => flags[i] === want);
+  const subset = (want) => ({
+    main: setOf(pick(staticList, staticBDep, want)), plate: setOf(pick(plateList, plateBDep, want)),
+    lever: want ? null : bvhLever, post: want ? null : bvhPost, rotors: rotors.filter((r) => r.bDep === want),
+  });
+  const FULL = OBS;
+  let bSlack = null, cause = null;
+  if (best) {
+    OBS = subset(true);
+    if (await test(best.az, JMP_SITE_SAT)) bSlack = JMP_SITE_SAT;
+    else { let lo = 0, hi = JMP_SITE_SAT; while (hi - lo > HMIN) { const mid = (lo + hi) / 2; if (await test(best.az, mid)) lo = mid; else hi = mid; } bSlack = lo; }
+  } else {
+    OBS = subset(false);
+    cause = 'B-independent';
+    for (const az of cands) { if (await test(az, CM)) { cause = 'B-dependent'; break; } }
+  }
+  for (const b of [OBS.main, OBS.plate]) if (b) b.geometry.dispose();
+  OBS = FULL;
   // put back what the solve posed: tick() owns all of it from the first frame
   jumperLever.rotation.z = leverRot0;
   settingLeverGroup.rotation.z = slRot0;
@@ -44359,11 +44400,13 @@ const JMP_SITE = await (async () => {
   return { best, tested, witnessed, candidates: cands.length, stepDeg: STEP / DEG2RAD, ms: performance.now() - T0,
     rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0),
     lawed: lawedSamples,   // TODO 161: the movers judged over their travel, and how many poses each
+    bSlack, cause, bDepMeshes: staticBDep.filter(Boolean).length + plateBDep.filter(Boolean).length, bDepRotors: rotors.filter((r) => r.bDep).length,   // TODO 160
     rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z };
 })();
 if (!JMP_SITE.best) {
   console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`
-    + ` — this REFUSES CAP_SOLVE's B at ${(CAP_BEARING / DEG2RAD >= 0 ? '+' : '')}${(CAP_BEARING / DEG2RAD).toFixed(2)}°; acting on it (re-cut) is TODO 160`);
+    + ` — this REFUSES CAP_SOLVE's B at ${(CAP_BEARING / DEG2RAD >= 0 ? '+' : '')}${(CAP_BEARING / DEG2RAD).toFixed(2)}°, and the refusal is ${JMP_SITE.cause}`
+    + (JMP_SITE.cause === 'B-dependent' ? ' (a station exists without the metal B cut: re-cutting at another B is TODO 160\'s filed design)' : ' (no station exists even without the metal B cut: no B can help)'));
 } else {
   // THE STATION, and everything the build derived from it: the parts' frame,
   // the star's phase (a valley under the solved tip at every snapped minute)
@@ -44448,11 +44491,17 @@ const JMP_SITE_WALKS = (() => {
 // the reserve's swing) and the jumper is never even asked about them. `m`
 // and `s` are left untouched — probe-234-cap-bearing.mjs reads those.
 for (const r of CAP_SOLVE.scan) r.jumper = null;
+// TODO 160 — a coherence check, not a pose claim (BOOT HAS NO POSE is kept:
+// both numbers are the solve's own derivations). The B-dependent subset is a
+// subset of what the station was certified against, so its clearance can only
+// be larger; smaller means the subset and the full set parted.
+if (JMP_SITE.best && !(JMP_SITE.bSlack >= JMP_SITE.best.clr - 1e-9))
+  console.warn(`TODO 160: the station's clearance against the cap bearing's own metal is ${JMP_SITE.bSlack}, below its certified clearance ${JMP_SITE.best.clr} — the B-dependent subset is not a subset of what the scan judged`);
 {
   const row = CAP_SOLVE.scan.find((r) => r.clause === 'open' && Math.abs(r.d - CAP_BEARING / DEG2RAD) < 1e-9);
   if (row) row.jumper = JMP_SITE.best
-    ? { verdict: 'accepts', azDeg: ((JMP_SITE.best.az / DEG2RAD) % 360 + 360) % 360, clr: JMP_SITE.best.clr, swingDeg: rsvSwing / DEG2RAD }
-    : { verdict: 'refuses', azDeg: null, clr: null, swingDeg: rsvSwing / DEG2RAD };
+    ? { verdict: 'accepts', azDeg: ((JMP_SITE.best.az / DEG2RAD) % 360 + 360) % 360, clr: JMP_SITE.best.clr, swingDeg: rsvSwing / DEG2RAD, bSlack: JMP_SITE.bSlack }
+    : { verdict: 'refuses', azDeg: null, clr: null, swingDeg: rsvSwing / DEG2RAD, cause: JMP_SITE.cause };
 }
 
 // §38 alarm hand vs the raised hour markers — see the note at the hand's
@@ -44883,7 +44932,7 @@ window.__clock = {
     clr: JMP_SITE.best ? JMP_SITE.best.clr : null, capD: JMP_SITE.best ? JMP_SITE.best.capD : null,
     score: JMP_SITE.best ? JMP_SITE.best.score : null, sat: JMP_SITE_SAT, capDWeight: JMP_SITE_CAPD_W,
     tested: JMP_SITE.tested, candidates: JMP_SITE.candidates, stepDeg: JMP_SITE.stepDeg, ms: JMP_SITE.ms,
-    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris, lawed: JMP_SITE.lawed,
+    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris, lawed: JMP_SITE.lawed, bSlack: JMP_SITE.bSlack, cause: JMP_SITE.cause, bDepMeshes: JMP_SITE.bDepMeshes, bDepRotors: JMP_SITE.bDepRotors,
     lifterW: JMP_LIFTER_W,
     walks: JMP_SITE_WALKS,
   }),

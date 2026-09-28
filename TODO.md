@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
@@ -38,7 +39,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 163 | OPEN | `clutchRim` ⇄ `settingBevel` are posed by two laws (the crown's `setPathRot` and the going train's `mwMinuteA`), so the crossed-axis mesh is buried a flat 0.2187 (29% of a tooth) at every indexing. Fix: the jumper back-drives the stem (roadmap §4 / TODO 58) |
 | 162 | CLOSED | The fold's leg-2 corner blank's clearance to the reserve wheel 1 was not new — two errors in `solveReserveSwing`'s accept test (a nominal vs. cut tip radius on each side) partly cancelled, accepting a bearing the metal did not clear. Both radii now read off the built metal, cross-asserted, and the swing scan samples every corner phase over a tooth pitch |
 | 161 | CLOSED | The release run and selector ring are posed by ONE law each (`alarmSleeveLiftAt`/`alarmPhiCapAt`/`poseAlarmReleaseRun`, `alarmSelRingZAt`; three copies before), and `JMP_SITE` judges them at 4 travel samples each, with its parity guard counted per tree. The station is unchanged (233.5°). `probe-161-lawed` proves a travel sample can refuse a station. The rest of the movers are [TODO 181] |
-| 160 | OPEN | A jumper refusal is recorded ([TODO 156], closed) but cannot act — CAP_SOLVE commits B before `JMP_SITE` exists. Fix: nest a `JMP_SITE` scan into CAP_SOLVE's own candidate loop (the `solveReserveSwing` veto shape), with a cheap per-candidate pre-screen; 452/720 stations feasible with the fold and reserve removed vs 156/720 with them present |
+| 160 | CLOSED | Measured: the jumper accepts every bearing CAP_SOLVE opens (all 10 within ±60°, 6 forced), and its clearance is pinned by metal no B cuts, so a veto would change nothing today. The verdict now records `bSlack` (≥ 2 today) and, on a refusal, whether B had any say (`cause`); `probe-160-cause` plants both kinds. The late re-cut is [TODO 183] |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
 | 158 | OPEN | Only the default spec is battery-validated; URL overrides, the reconfigure panel and saved variants build geometry nobody swept, shown as sound. Tier A: a shipped validated-fingerprint set and a localized "unverified configuration" mark. Tier B: restricted `inspection` per `SPEC_POINT` |
 | 157 | OPEN | CAP_SOLVE, `solveCapLeg` and `stubSolve` take the first feasible value, so their binding pairs sit on the margin (0.1504, 0.1531). Replace with a declared objective: max-min certified clearance, then a written aesthetic tie-break; finish never spends a constraint |
@@ -22388,7 +22389,8 @@ Recorded while closing [TODO 151]; a record, not an implementation.
 **What the scans do now.**
 
 - `CAP_SOLVE` takes the least bearing from the short way in (0, ±step, …) that
-  the reserve swing accepts: **17.25°** today.
+  the reserve swing accepts: **17.25°** when this was filed, **5.25°** since
+  TODO 162's corrected accept test (swing 3.5°; re-measured while planning [TODO 160]).
 - `solveCapLeg` takes the least tilt φ that clears: **11.4844°**.
 - `stubSolve` takes the least stub L that clears: **3.3206**.
 
@@ -22531,7 +22533,7 @@ reads the true distance.
 - Re-run `--report` and diff: every moved row names a stretched mesh.
 - Re-run `probe-149-lifter-width.mjs`.
 
-## 160. A jumper refusal cannot act: continue CAP_SOLVE's order and re-cut the fold, plate and reserve late
+## 160. A jumper refusal cannot act: continue CAP_SOLVE's order and re-cut the fold, plate and reserve late — CLOSED
 
 Filed closing [TODO 156]. §234's `CAP_SOLVE` scans B and commits the fold,
 the base plate's recesses and (indirectly, via `solveReserveSwing`) the
@@ -22600,6 +22602,60 @@ three commits):**
   at a different B may reach where the shipped one does not.
 - Re-run the full battery; diff `--report` against the pre-restructure
   baseline the way TODO 156 did.
+
+**Closed on a measurement, with the classifier landed and the re-cut filed as
+[TODO 183].** This was measured while planning, with CAP_SOLVE rewritten in
+flight to keep scanning ±60° past its first open bearing (161 candidates).
+
+Ten bearings open: 5.25, 6, 17.25, 18, 18.75, 19.5, 48.75, 49.5, 50.25 and
+51. Forcing B to each of six of them (the shipped 5.25, plus 6, 17.25, 19.5,
+48.75 and 51) and running the jumper's solve **never refuses**:
+
+| B | swing | jumper station | clearance | feasible / 720 |
+|---|---|---|---|---|
+| 5.25 (shipped) | 3.5 | 233.5 | 0.1572 | 252 |
+| 6 | 3.5 | 233.5 | 0.1572 | 251 |
+| 17.25 | −7 | 129.5 | 0.1500 | 211 |
+| 19.5 | −10 | 129.5 | 0.1500 | 203 |
+| 48.75 | −30 | 233.5 | 0.1572 | 136 |
+| 51 | −30 | 233.5 | 0.1572 | 131 |
+
+The clearance is pinned by metal no B cuts: the dial-plane bind and the beak
+against the motion-works wheels. B moves only the capD tie-break. CAP_SOLVE
+is first-feasible and its first open bearing is accepted, so a nested veto
+would change nothing. The feasible counts in this item's index row predate
+[TODO 180]: they are **252 / 720** with the fold and reserve present and
+**512 / 720** without them (not 156 / 452). The station set without them is
+identical at B = 5.25, 17.25 and 51, which confirms it does not depend on B.
+
+A literal nesting inside CAP_SOLVE is also impossible. When CAP_SOLVE runs,
+the jumper, dial, motion works, star, reserve train and alarm levers do not
+exist yet. Acting on a refusal means TODO 156's option 2: a late re-cut of
+the fold, plate recesses and reserve. That is [TODO 183].
+
+**What landed** is the classifier that re-cut would need first:
+- **The B-dependent subset is declared.** `JMP_SITE` flags every obstacle
+  under what `buildSettingMetal` returned (legs, rise, stub, arbor, corners,
+  cap) or under `reserveTrain`. Today that is 6 static meshes and 5 rotors in
+  the solve's region.
+- **An accepting verdict records `bSlack`**: the station's clearance against
+  that subset alone. Today it is **≥ 2** (saturated), so B's metal leaves the
+  jumper at least 2 u of room.
+- **A refusing verdict records `cause`.** The solve re-scans against
+  everything B did NOT cut: 'B-dependent' if a station exists there (another B
+  could help), 'B-independent' if none does. The boot warning names the cause.
+- Both are published on `__clock.jumperSite` and on CAP_SOLVE's open scan row.
+- A coherence assert warns if `bSlack` ever falls below the certified
+  clearance.
+- The solve itself is unchanged: 233.5°, 0.1572, 181 tested, 221 static
+  meshes.
+
+`tools/probe-160-cause.mjs` is the control:
+- boot A (shipped) accepts, bSlack 2, silent;
+- boot C hangs a disc through the jumper's reach under the setting cap, and
+  the verdict refuses with cause 'B-dependent';
+- boot D hangs the same disc under the dial face, and the verdict refuses
+  with cause 'B-independent'.
 
 ## 161. JMP_SITE judges the alarm selector, sleeve and release levers as built, not over their own travel — CLOSED
 
@@ -23830,3 +23886,32 @@ its measured distance to the jumper's region. Add a census control that FAILS
 on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
 `JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
 classification as its memoised, B-independent obstacle set.
+
+## 183. A B-dependent jumper refusal would still not act: re-cutting the setting fold, plate and reserve at another bearing is unbuilt
+
+Filed closing [TODO 160]. CAP_SOLVE commits the setting cap's bearing B
+before the minute jumper's siting solve exists, and the fold, the plate's
+recesses and the reserve swing are all cut from it. [TODO 160] measured that
+no bearing CAP_SOLVE opens is refused today, and landed a classifier. A
+refusal now says whether any other B could help (`cause: 'B-dependent'`). It
+still cannot act on it.
+
+**Fix path**, only worth building once a refusal reads 'B-dependent':
+- **Continue CAP_SOLVE's order late.** Keep its `staticPts` and scan cursor.
+  For each further open B, build the candidate metal into a scratch group.
+  Pre-screen each B-dependent obstacle's world box (rotors as revolve boxes)
+  against a per-azimuth jumper swept box, memoised once, so an untouched
+  station keeps its B-independent verdict. Then run the jumper's test on the
+  remainder.
+- **Re-cut in place.** That covers `SETTING_METAL` in `keyless`, the two plate
+  recesses (the three-quarter plate's geometry-swap precedent), w1/p1/w2 with
+  a new `rsvModule1` and `solveGearChain` phases, `PILLAR_KEYLESS_BOXES`, and
+  the four walks.
+- **Re-derive per station** anything station-keyed. The forced-B runs showed
+  that a move to 129.5° fires both the `JMP_LIFTER_SPAN_MEASURED` tripwire
+  (span bound 38.2895 vs 40.0045) and the `JMP_AZ_MEASURED_DEG` tripwire.
+
+A cheaper middle design is a declared `CAP_JUMPER_REFUSED_DEG` table that
+CAP_SOLVE skips, the ratchet idiom. The late pass verifies the shipped B is
+accepted and that each row is still refused. Its control is
+`probe-160-cause`'s boot C with the expected chosen B moving to 6.0°.
