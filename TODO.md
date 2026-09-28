@@ -22,7 +22,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
 | 173 | OPEN | The alarm release feeler lever rocks about the dial's Y axis (Euler order 'XYZ' on a lever turned `_phiF`), not its pivot pin, and in the wrong sense: at full drop the tip ⇄ reader-ring read opens from 0.02 to 0.1628. No gate poses a drop. Fix: rock about the pin (`rotation.order = 'ZYX'`), take the sign from the read contact, re-derive the beak edge and the silence finger, and add a dropped-pose read row |
 | 172 | OPEN | The alarm setting lane's designed 0.05 dial-sheet gap (`ALARM_SET_Z`) is under `CLEAR_MARGIN`; the crisp arbor pinion sits on it (debt row at 0.05). Fix: re-stratify the lane to `CLEAR_MARGIN`, carrying the §29 centre chain |
-| 171 | OPEN | `EXPECTED_CONTACT_FLOORS` carries an `Alarm link ⇄ Three-quarter plate` row but `EXPECTED_PAIRS` never declares that pair, so the two tables disagree about which pairs are designed to touch. Fix: add the `EXPECTED_PAIRS` entry citing the floors row's own contacts |
+| 171 | CLOSED | `EXPECTED_PAIRS` now declares `Alarm link ⇄ Three-quarter plate`, citing the floors row's two contacts (beak post on the plate top, rod bush in its bore), so the tables agree on record. The pair seats at 0.007 and holds 0.3738 elsewhere; only `sweptOverlap`'s report-only `tight` row moves |
 | 170 | OPEN | Three of four closed: sleeve⇄rocker (sleeve post 3 345°→350°), disc⇄feeler (the jog's foot lifted one margin off the track), sleeve⇄selector (the fork bracket starts one margin off the sleeve flat). Left: feeler⇄sleeve 0.092, where the trip rock spends §45's envelope margin at the skirt's throat; no position-space room; blocked on [TODO 173] |
 | 169 | CLOSED | The winding dogleg's scan judged only its stud columns against the low corridor; it now also refuses any station whose idlers (disc, hub, stud) come within `CLEAR_MARGIN` of already-built metal, taking the accepted station nearest the corridor's pick (i1 −42°). Idler 2 ⇄ centre wheel 0.0252 → 0.453; the click re-sites 150° → 164° |
 | 168 | CLOSED | Every makeGear/makePinion bore (not only hub-less ones) was a `curveSegments` hexagon; bores are now drawn by `borePath`, an n-gon whose chord sag is at most `PIVOT_BORE_CLEAR`/2 (9 sides at 0.4, 25 at 3.05). The setting wheel clears the hour tube by 0.526 and the debt row is deleted. Bevel-shrunk bores and the barrel cavity went to [TODO 175]/[TODO 176] |
@@ -23311,7 +23311,7 @@ Checked in-browser:
 - The only unit whose box moved is `Alarm release sleeve`. Fingerprint
   3327882166 → 324374814.
 
-## 171. Alarm link ⇄ Three-quarter plate carries a floors row on a pair EXPECTED_PAIRS never declares
+## 171. Alarm link ⇄ Three-quarter plate carries a floors row on a pair EXPECTED_PAIRS never declares — CLOSED
 
 Found closing [TODO 164]'s arrival sweep (named in the item's own filing,
 carried over from TODO 162's evidence). `EXPECTED_CONTACT_FLOORS` has a row
@@ -23332,6 +23332,27 @@ reason.
 `EXPECTED_PAIRS`, citing whatever contact the floors row's own `contacts`
 list already names, so the two tables agree on record rather than only in
 the check's own excusing logic.
+
+**Closed.** `EXPECTED_PAIRS` now carries `['Alarm link', 'Three-quarter
+plate']`. It sits beside the link's other §35 grants and cites the two contacts the
+floors row already names: the beak's post seated on the plate top, and the rod's
+upper bush pressed into the plate's bore (§202). The floors row's own comment
+already said the pair "is EXPECTED", so the two tables now agree on record
+rather than only in `undeclaredClearance`'s excusing logic.
+
+Measured on the base (e9c81d7) before the change:
+- The pair touches only at its declared seat: `support` reads the
+  `Alarm link → Three-quarter plate` edge at gap 0.007.
+- `inspection` records no contact row for it.
+- `expectedContacts` holds everything else to 0.3738 against the 0.15 floor,
+  at `alarmLinkRod ⇄ threeQuarterPlate`, alarm f=0.
+
+So the grant excuses the seat that exists and nothing else. The one report
+this change moves is `sweptOverlap`'s `tight` tier: its
+`Alarm link ⇄ Three-quarter plate` row (overlap 0, refined gap 0.007 at the
+seat) leaves the report, because that check skips declared pairs. The
+tier is a report, and the floors row is the stronger hold on the same
+pair. No gate verdict moves.
 
 ## 172. The alarm setting lane's 0.05 dial-sheet gap is under CLEAR_MARGIN
 

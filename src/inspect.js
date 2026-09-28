@@ -701,7 +701,11 @@ const EXPECTED_PAIRS = [
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
-  ['Alarm link', 'Dial'],                   // the SAME tab contact re-attributed through nesting: the ring
+  ['Alarm link', 'Three-quarter plate'],    // §35/§202: the beak's post seated on the plate top and the rod's
+                                            // upper bush pressed into its bore — the two contacts the
+                                            // EXPECTED_CONTACT_FLOORS row names; everything else holds
+                                            // CLEAR_MARGIN there (TODO 171: that row stood without this grant)
+  ['Alarm link', 'Dial'],                  // the SAME tab contact re-attributed through nesting: the ring
                                             // (and its tab) is a dialFace descendant, so the Dial's traverse
                                             // carries it (the Dial ⇄ Hour wheel precedent); the link's real
                                             // corridor past Dial furniture is ray-asserted at the build
