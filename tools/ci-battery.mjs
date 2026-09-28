@@ -94,6 +94,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { assertCosts, buildTasks } from './battery-split.mjs';
 import { BATTERY, RESTRICTABLE, prepPage, runCheck, virginBoot } from './battery-checks.mjs';
+import { VALIDATED_CONFIGS } from '../src/validated-configs.js';   // TODO 158: the configuration keys this battery vouches for
 import { unionCheck } from './battery-union.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1031,7 +1032,8 @@ async function specBoot(browser, base, q) {
     await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
     const warns = await page.evaluate(() => (window.__clock.bootWarns || []).slice());
     const nonFinite = await page.evaluate(NON_FINITE_WALK);
-    return { alive: true, warns, errors, nonFinite };
+    const config = await page.evaluate(() => window.__clock.config ?? null);   // TODO 158: what the build says it is, and whether it calls itself verified
+    return { alive: true, warns, errors, nonFinite, config };
   } catch {
     // Same three-way diagnosis virginBoot makes, for the same reason: dead,
     // wedged and slow are different findings and a timeout alone says none
@@ -1354,6 +1356,43 @@ function assemble({
     spec.rows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
       .map((r) => ({ spec: r.name, warns: r.warns, note: 'the default spec is what every other gate boots — if it warns here, the trial path differs from the real one' })));
 
+  // TODO 158 — THE VALIDATED-CONFIGURATION SET, held true by the battery that
+  // vouches for it. The page marks any build whose configuration key
+  // (layout.js configKey) is not in src/validated-configs.js as UNVERIFIED; these
+  // three gates keep the set and the page honest, on the rows the spec tier
+  // already boots (no extra boots). The set is written by
+  // `node tools/validated-configs.mjs --write`, never by hand.
+  {
+    const set = new Set(VALIDATED_CONFIGS.map((r) => r.key));
+    const alive = spec.rows.filter((r) => r.alive);
+    const id = alive.find((r) => r.name === 'identity');
+    // 1 — the build every other gate swept calls itself verified, and its key is listed
+    const f1 = [];
+    if (!id || !id.config) f1.push({ identity: id ? 'no __clock.config' : 'did not build' });
+    else if (!id.config.verified || !set.has(id.config.key)) f1.push({ key: id.config.key, verified: id.config.verified, listed: set.has(id.config.key), fix: 'the default configuration key moved — node tools/validated-configs.mjs --write' });
+    if (fpShare && !(fpShare.config && fpShare.config.verified)) f1.push({ shareBoot: fpShare.config, note: 'a full ?aes= payload is geometry-free by aestheticsShareSafe — it must not raise the mark' });
+    gate('validated configs: the swept default calls itself verified', f1, id?.config ? id.config.key : 'no identity row');
+    // 2 — every point's mark agrees with the set, with controls both ways:
+    // d4=16 (a moved station) MUST read unverified, and reconf=1 (a mode) and
+    // route=channel (a route the solve refuses, so the identity is built) MUST
+    // read verified — a page that marked everything, or nothing, fails here.
+    const f2 = alive.filter((r) => r.config && r.config.verified !== set.has(r.config.key))
+      .map((r) => ({ spec: r.name, key: r.config.key, verified: r.config.verified, listed: set.has(r.config.key) }));
+    for (const [name, want] of [['d4=16', false], ['reconf=1', true], ['route=channel', true]]) {
+      const r = alive.find((x) => x.name === name);
+      if (!r || !r.config) f2.push({ control: name, missing: true });
+      else if (r.config.verified !== want) f2.push({ control: name, verified: r.config.verified, want, reasons: r.config.reasons });
+    }
+    gate('validated configs: every spec point\'s mark agrees with the set', f2,
+      `${alive.filter((r) => r.config && r.config.verified).length} verified, ${alive.filter((r) => r.config && !r.config.verified).length} marked unverified`);
+    // 3 — no entry the battery cannot reproduce (UNDECLARED_CLEARANCE_DEBT's
+    // closed-ratchet shape: a stale row fails, it does not linger as a claim)
+    const seen = new Set(alive.filter((r) => r.config).map((r) => r.config.key));
+    gate('validated configs: every listed key is one this run built and swept',
+      VALIDATED_CONFIGS.filter((e) => !seen.has(e.key)).map((e) => ({ point: e.point, key: e.key, stale: true })),
+      `${VALIDATED_CONFIGS.length} listed`);
+  }
+
   // ---- §95 tier two: the SKIP LIST is held true --------------------------
   //
   // battery.yml skips this whole job when every changed file matches its
@@ -1617,9 +1656,10 @@ async function shareSafeBoot(browser, base) {
     const o = m.LINK_OUTCOME;
     return o ? { pairs: o.pairs, applied: o.applied.length, refused: o.refused, clamped: o.clamped } : null;
   });
+  const config = await S.page.evaluate(() => window.__clock.config ?? null);   // TODO 158: a full share payload must not raise the mark
   await S.context.close();
   console.log(`  fingerprint under the share payload: ${fp.hash} · ${link ? `${link.applied}/${link.pairs} applied` : 'NO LINK OUTCOME'}`);
-  return { fp, link, leaves };
+  return { fp, link, leaves, config };
 }
 
 // TODO 36 tier one — every declared spec point must BUILD. Runs after the

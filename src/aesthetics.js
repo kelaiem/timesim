@@ -326,6 +326,28 @@ export const SHARE_MAX_CHARS = SHARE_MAX_PAIRS * (Math.max(...SHARE_LEAVES.map((
 const leafAt = (obj, path) => path.split('.').reduce((o, k) => (o && typeof o === 'object' && !k.startsWith('_') ? o[k] : undefined), obj);
 const isColourLeaf = (v) => typeof v === 'string' && v.startsWith('#');
 
+// TODO 158 — the GEOMETRY-BEARING tuning in effect: every leaf OUTSIDE
+// SHARE_SUBTREES whose value differs from the shipped file, as sorted
+// [path, value] pairs. Derived from the same isShareable line the link gate
+// holds (the share list is exactly the leaves proven to move no vertex), so
+// there is no second list to keep in step: anything a link may not carry is
+// something that can change the metal, and a build carrying it is a build the
+// battery never swept. Consumed by layout.js's configKey.
+export function geometryOverridePaths(effective, defaults = AESTHETICS_DEFAULTS) {
+  const out = [];
+  const walk = (e, d, path) => {
+    for (const k of Object.keys(d)) {
+      if (k.startsWith('_')) continue;
+      const at = path ? `${path}.${k}` : k;
+      if (d[k] && typeof d[k] === 'object') { walk(e?.[k] ?? {}, d[k], at); continue; }
+      if (isShareable(at) || e?.[k] === undefined || e[k] === d[k]) continue;
+      out.push([at, e[k]]);
+    }
+  };
+  walk(effective, defaults, '');
+  return out.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+}
+
 export function encodeShare(effective, defaults = AESTHETICS_DEFAULTS) {
   const pairs = [];
   const walk = (e, d, path) => {
