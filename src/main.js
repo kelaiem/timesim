@@ -4038,6 +4038,37 @@ const TQ_CUT_MARGIN = 0.5; // hoisted (§125 Tier B — the fork leg's corridor 
                            // so the cut's base edge (BAL_OUTER_R + this) is what physically
                            // clears them at every azimuth — the escapement stretch of the
                            // window is still sized for the eye and the bridge screws.
+// TODO 184 — THE FRAME'S JOINTS, declared where each screw is placed. A
+// screw exists to close ONE joint: its head bears on the member it clamps,
+// and its thread must continue PAST that member's underside into the member
+// that holds it. The engaged length is therefore the shank less the clamped
+// member's thickness — and each site passes the SAME `shank` value it hands
+// makeScrews, so the row cannot describe a different screw from the one cut.
+//
+// ENGAGE_MIN is the thread-engagement rule for a steel screw in a softer
+// tapped host (brass pillars, nickel-silver plates): the internal thread's
+// shear area must match the screw's own tensile area before the screw can be
+// tightened to its strength rather than strip the host, and with the host's
+// shear strength roughly half the screw's that lands at 1.5 diameters. Same
+// rule for every class here, because every host here is the soft metal.
+//
+// This is a REPORT until TODO 184 lands its fixes: every row reads 0 engaged
+// on arrival, so a boot assert would break rule 6 on the shipped tree. The
+// assert and a `support` engagement column are TODO 184's last step;
+// tools/probe-184-frame-joints.mjs reads the rows and measures the same
+// quantity off the built meshes, so the table is held to the metal meanwhile.
+const ENGAGE_MIN = 1.5;
+const FRAME_JOINTS = [];
+// frame: the Object3D the screw is built in; top: the head's top face
+// (frame-local z, the value passed to makeScrews); headT: head height;
+// clamp: the thickness of the member the head clamps, below the head.
+function declareFrameJoint({ joint, clamped, host, frame, x, y, top, headR, headT, shank, clamp }) {
+  const d = 2 * G.screwShankR(headR);
+  FRAME_JOINTS.push({
+    joint, clamped, host, frame, x, y, top, headT,
+    d, shank, clamp, engaged: shank - clamp, required: ENGAGE_MIN * d,
+  });
+}
 // BALANCE COCK section constants, hoisted (§125 Tier B) from the cock's own
 // build below so the fork cock's leg scan can size the corridor it must
 // yield. The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction
@@ -4228,6 +4259,9 @@ const forkCock = (() => {
   });
   g.position.set(0, 0, FORK_COCK_BOT + FORK_COCK_T / 2);
   movement.add(g);
+  for (const f of g.userData.footScrews)
+    declareFrameJoint({ joint: 'Fork cock ⇄ base plate', clamped: 'fork cock slab', host: 'base plate',
+      frame: g, x: f.x, y: f.y, top: f.z, headR: f.headR, headT: f.headT, shank: f.shank, clamp: f.clamp });
   registerExplode(g, FORK_COCK_BOT + FORK_COCK_T / 2, 7);
   registerLabel('Fork cock', g);
   return { obj: g, chain, legB, legR };
@@ -10097,15 +10131,26 @@ const balanceCock = G.makeCock({
   // runs through the bore cut above. It used to be placed 0.11 clear of the
   // face and then thickened to §50's floor from the middle, which put its
   // underside 0.048 INSIDE solid nickel — a screw drawn where a screw goes,
-  // in stock that was never opened for it. Below the bar the thread takes
-  // the leg and then the plate: not drawn, so not cut.
-  balanceCock.add(G.makeScrews({
-    at: [-1, 1].map((s) => ({
-      x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + STOCK_MIN_U,
-      a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T,
-    })),
-    headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
+  // in stock that was never opened for it.
+  //
+  // TODO 184: this comment used to end "below the bar the thread takes the
+  // leg and then the plate: not drawn, so not cut" — and the SHANK is what
+  // was not drawn: `shank: COCK_T` below a head seated on the bar's top face
+  // ends exactly at the bar's underside. The leg below is this cock's own
+  // (same group) and stands on the base plate with nothing crossing that
+  // face, so the cock is clamped to its own legs and fastened to nothing.
+  // Reported in FRAME_JOINTS until TODO 184 runs the thread into the plate.
+  const cockScrews = [-1, 1].map((s) => ({
+    x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + STOCK_MIN_U,
+    a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T,
   }));
+  balanceCock.add(G.makeScrews({
+    at: cockScrews, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
+  }));
+  for (const c of cockScrews)
+    declareFrameJoint({ joint: 'Balance cock ⇄ base plate', clamped: 'balance cock crossbar', host: 'base plate',
+      frame: balanceCock, x: c.x, y: c.y, top: c.z, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
+      shank: c.shank, clamp: COCK_T });
 
   // ------------------------------------------------------------------
   // FIXED OUTER TERMINAL — free-sprung dress. Everything below is
@@ -11392,19 +11437,29 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     land.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - STOCK_MIN_U) / 2);
     threeQuarterPlate.add(land);
   }
+  const plateScrews = pillarSeats.map((p) => ({
+    x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x),
+    // Through the plate and no further. TODO 184: this line used to go on
+    // "below the underside the thread takes the pillar", and nothing does —
+    // the shank ends AT the underside, so the thread engages the pillar by
+    // zero. A tapped hole under a seated screw is invisible in the real
+    // movement, but the screw's LENGTH is not something that invisibility
+    // excuses. Reported in FRAME_JOINTS until TODO 184 taps the pillar top.
+    shank: TQ_T - STOCK_MIN_U,
+  }));
   threeQuarterPlate.add(G.makeScrews({
-    at: pillarSeats.map((p) => ({
-      x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x),
-      // Through the plate and no further: below the underside the thread
-      // takes the pillar, and a tapped hole under a seated screw is invisible
-      // in the real movement too.
-      shank: TQ_T - STOCK_MIN_U,
-    })),
+    at: plateScrews,
     // headT = STOCK_MIN_U like every §20 screw head — the first cut used
     // TQ_T·0.35 (0.106 mm) and the §50 stockFloor gate refused it against
     // the 0.12 wheel floor, which is the gate doing its job.
     headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
   }));
+  // The head is sunk flush, so what it clamps below itself is the plate's
+  // land: TQ_T − STOCK_MIN_U, the same land ring cut above.
+  for (const p of plateScrews)
+    declareFrameJoint({ joint: 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: 'pillar',
+      frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
+      shank: p.shank, clamp: TQ_T - STOCK_MIN_U });
 }
 
 // ===========================================================================
@@ -45070,6 +45125,37 @@ refreshConfigMark();
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
+  // TODO 184 — the frame's screw joints, DECLARED (the shank each site passed
+  // makeScrews, less the member it clamps) and MEASURED (the lowest shank
+  // vertex actually cut at that site, in the screw's own frame, so a site
+  // whose declaration and metal part company shows it). Serializable rows for
+  // tools/probe-184-frame-joints.mjs; a report until TODO 184's gate lands.
+  frameJoints: () => FRAME_JOINTS.map((j) => {
+    j.frame.updateWorldMatrix(true, true);
+    const inv = new THREE.Matrix4().copy(j.frame.matrixWorld).invert();
+    const v = new THREE.Vector3(), m = new THREE.Matrix4();
+    let lowest = Infinity, hits = 0;
+    j.frame.traverse((o) => {
+      if (!o.isMesh || o.name !== 'screwShanks') return;
+      m.multiplyMatrices(inv, o.matrixWorld);
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m);
+        if (Math.hypot(v.x - j.x, v.y - j.y) > j.d / 2 + 1e-6) continue;
+        hits++;
+        if (v.z < lowest) lowest = v.z;
+      }
+    });
+    const plane = j.top - j.headT - j.clamp;   // the clamped member's underside
+    const w = new THREE.Vector3(j.x, j.y, plane).applyMatrix4(j.frame.matrixWorld);
+    return {
+      joint: j.joint, clamped: j.clamped, host: j.host,
+      site: { x: w.x, y: w.y, z: w.z },
+      dMM: j.d * UNIT_MM, requiredMM: j.required * UNIT_MM,
+      engagedMM: j.engaged * UNIT_MM,
+      measuredMM: hits ? (plane - lowest) * UNIT_MM : null, shankVerts: hits,
+    };
+  }),
   get config() { return configState(); },   // TODO 158: { key, verified, reasons, tuned }
   // §239 — what the build's yielding actually achieved, read back rather than
   // assumed: how many times the thread was handed back, and the longest stretch

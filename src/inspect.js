@@ -93,11 +93,12 @@ export const MECH_GRAPH = {
     // The three train bridges are GONE — a Glashutte-style three-quarter
     // plate supersedes them (see makeThreeQuarterPlate / the plate build in
     // main.js). It is the movement's upper structure: it carries the upper
-    // pivot of every train arbor and of the pallet fork, stands on the
-    // pillars, and the balance cock is screwed to its top face (the cock
-    // used to float 17.5 units above the plate it claimed to be mounted
-    // on; the old hack spring, once also on this plate's top face, later ran
-    // BELOW the plate and stands on the base plate instead).
+    // pivot of every train arbor and of the pallet fork, and stands on the
+    // pillars. (This line used to add that the balance cock is screwed to its
+    // top face; it is not — the cock stands on the BASE plate on its own legs,
+    // as the 'Balance cock' row below says. TODO 184. The old hack spring,
+    // once on this plate's top face, likewise ran BELOW the plate and stands
+    // on the base plate instead.)
     ['Three-quarter plate', 'pillars'],
     ['pillars', 'plate'],
     ['Fusee & great wheel', 'Three-quarter plate'], // upper pivots, jewelled bores
@@ -606,8 +607,9 @@ const EXPECTED_PAIRS = [
   ['Dial', 'Motion works'],
   // The three-quarter plate replaced the three train bridges. It TOUCHES
   // what it holds: each upper pivot's jewel setting closes on the staff
-  // running in its bore, the balance cock is screwed to its
-  // top face, and the reset hammer's arbor turns in it. Everything else in
+  // running in its bore, and the reset hammer's arbor turns in it. (The
+  // balance cock is NOT screwed to it, as this used to say: the cock stands
+  // on the base plate — TODO 184.) Everything else in
   // the movement must CLEAR it — which is the point of listing these
   // explicitly rather than excluding the plate from the sweep.
   ['Fusee & great wheel', 'Three-quarter plate'],

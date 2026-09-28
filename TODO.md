@@ -24390,6 +24390,31 @@ either a hoist or a late back-plate cut. One new build assert and one new
 `support` column · Battery: full (geometry changes, and the fingerprint and
 digests move).
 
+**Step 0 landed — the table, as a report.** `FRAME_JOINTS` (main.js,
+beside the cock constants) is declared at each of the seven screw sites
+from the same `shank` value the site hands `makeScrews`, with
+`ENGAGE_MIN = 1.5` and its constraint written there. `__clock.frameJoints()`
+publishes it, and `node tools/probe-184-frame-joints.mjs` prints it and
+holds it to the metal: the engagement measured off the lowest `screwShanks`
+vertex at each site must equal the declared one (mutation-checked: a
++0.5 u shank on the plate screws alone fails all four rows at 0.18947 mm),
+the roster must be 4 + 2 + 1, and boot must be silent. On arrival, at
+`UNIT_MM` 0.379:
+
+| joint | thread d | required | engaged |
+|---|---|---|---|
+| Three-quarter plate ⇄ pillar ×4 | 0.268 mm | 0.403 mm | 0.000 |
+| Balance cock ⇄ base plate ×2 | 0.512 mm | 0.767 mm | 0.000 |
+| Fork cock ⇄ base plate ×1 | 0.219 mm | 0.328 mm | 0.000 |
+
+(The pillar thread is 0.268 mm, not the 0.25 quoted above: `TQ_BOT_Z` is
+≈ 8.75 on the booted tree — the plate-screw joint plane the probe prints —
+not the 8.185 quoted in `probe-interplate-demand.mjs`'s header.) The four comments
+this entry names as describing absent metal are corrected in place. It
+stays a REPORT, not a boot assert, because every row is red and rule 6
+wants a silent boot; the assert is the last step. Geometry unchanged —
+the fingerprint and §152 digests hash identically to the base.
+
 **Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
 alone, or by scaling the existing heads up. A bigger head on a screw that
 still stops at the face is the same defect, made easier to see.
