@@ -2605,9 +2605,14 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
     else shape.lineTo(x, y);
   }
   shape.closePath();
-  const bore = new THREE.Path();
-  bore.absarc(0, 0, boreR, 0, Math.PI * 2, true);
-  shape.holes.push(bore);
+  // TODO 154 — the bore is TODO 168's derived n-gon, not an absarc: this
+  // extrude runs at curveSegments 2, so a full-circle absarc was sampled at 4
+  // points and cut a SQUARE whose flats stood at boreR·cos 45°. On the alarm
+  // heart (bore 2.5, pressed on the hour tube) that put metal at r 1.7678,
+  // 0.1404 off the cannon pinion's leaf tips at 1.6274 — under CLEAR_MARGIN
+  // — and through the hour tube's own wall. borePath's sag ≤ PIVOT_BORE_CLEAR/2
+  // gives 23 sides at 2.5 (flats 2.4767) and 11 at the seconds heart's rod.
+  shape.holes.push(borePath(boreR));
 
   // bevel: false (§29) — CRISP faces: the extrude bevel expands the band
   // ±bevel in z AND the outline +bevel in XY (MODELING.md rule 1); §29's
