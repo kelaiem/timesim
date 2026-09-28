@@ -37,16 +37,7 @@ console.log(await p.evaluate(async (PAIRS) => {
   // whole, so indices match what the battery labels.
   const meshesOf=e=>{const m=[];const w=n=>{if(n.userData&&n.userData.schematic)return;
     if(n.isMesh&&n.geometry&&n.geometry.attributes.position)m.push(n);for(const ch of n.children)w(ch);};w(e.obj);return m;};
-  const boundary=(g)=>{const pos=g.attributes.position,idx=g.index;const n=idx?idx.count:pos.count;
-    const at=t=>idx?idx.getX(t):t;
-    const q=v=>{const r=Math.round(v*1e5);return r===0?0:r;};      // -0 and +0 are ONE position
-    const key=i=>`${q(pos.getX(i))}_${q(pos.getY(i))}_${q(pos.getZ(i))}`;
-    const e=new Map();
-    for(let t=0;t+2<n;t+=3){const k=[key(at(t)),key(at(t+1)),key(at(t+2))];
-      for(let q=0;q<3;q++){const a=k[q],b2=k[(q+1)%3]; if(a===b2)continue;
-        const kk=a<b2?`${a}|${b2}`:`${b2}|${a}`; e.set(kk,(e.get(kk)||0)+1);}}
-    let bad=0; for(const v of e.values()) if(v!==2) bad++;
-    return bad;};
+  const boundary=(g)=>I.surfaceEdgeCensus(g).bad;   // TODO 165: boundsASolid's own law, never a copy
   const surf=(mesh,N)=>{const g=mesh.geometry,pos=g.attributes.position,idx=g.index;
     const n=idx?idx.count:pos.count, out=[];
     const a=new THREE.Vector3(),b2=new THREE.Vector3(),cc=new THREE.Vector3();
