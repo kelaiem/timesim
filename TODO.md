@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1529); raising them to `FOLD_SAT` carries the foot corner into the minute star (0.0727), because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
 | 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
@@ -44,7 +45,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 160 | CLOSED | Measured: the jumper accepts every bearing CAP_SOLVE opens (all 10 within ±60°, 6 forced), and its clearance is pinned by metal no B cuts, so a veto would change nothing today. The verdict now records `bSlack` (≥ 2 today) and, on a refusal, whether B had any say (`cause`); `probe-160-cause` plants both kinds. The late re-cut is [TODO 183] |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
 | 158 | OPEN | Only the default spec is battery-validated; URL overrides, the reconfigure panel and saved variants build geometry nobody swept, shown as sound. Tier A: a shipped validated-fingerprint set and a localized "unverified configuration" mark. Tier B: restricted `inspection` per `SPEC_POINT` |
-| 157 | OPEN | CAP_SOLVE, `solveCapLeg` and `stubSolve` take the first feasible value, so their binding pairs sit on the margin (0.1504, 0.1531). Replace with a declared objective: max-min certified clearance, then a written aesthetic tie-break; finish never spends a constraint |
+| 157 | CLOSED | `solveReserveSwing` (the unlisted fourth first-feasible solver, the one binding CAP_SOLVE) now maximizes clearance to `FOLD_SAT` = 2·margin over its open window: swing 3.5° → 5°, reserve 0.1727 → 0.2742. B stays first-feasible, with the reason written (widest cascade; already the argmax). Raising the cap leg's φ/L to `FOLD_SAT` carries the foot corner into the minute star (0.0727): [TODO 185] |
 | 156 | CLOSED | CAP_SOLVE still cannot veto B on the jumper's siting (that restructure is [TODO 160]), but the four movement-wide walks' indifference to the jumper is now a boot-time derivation rather than a measured-once fact (`__clock.jumperSite.walks`, margins 1.36–11.20), CAP_SOLVE's own veto is recorded on its scan (`__clock.settingFold.scan[i].jumper`), and the pillars are seated against the keyless corner's real per-mesh metal (`PILLAR_KEYLESS_BOXES`) rather than `boxOf(keyless)` — only the 135° pillar moves, 87.00° → 135.00° |
 | 155 | CLOSED | The setting fold, setting wheel and keyless minute wheel are posed from `mwMinuteA`, the minute wheel the cap meshes, so they turn with the going train; both waivers are retired. The clutch's own two-law residue is [TODO 163] |
 | 154 | CLOSED | The alarm heart's bore was a `curveSegments: 2` SQUARE (flats 1.7678), 0.1404 off the cannon pinion's leaves; `makeHeartCam` now cuts `borePath` at `HOUR_TUBE_OUTER` (the pair 0.8493), and the seconds heart bores to its rod. `Hour wheel ⇄ Dial` gains an `ownMetal` floors row (0.1500); residue filed as [TODO 177]–[TODO 179] |
@@ -22384,7 +22385,7 @@ as [TODO 161]. The restructure that would let a jumper refusal actually
 change B, the fold, the plate or the reserve — rather than only being
 recorded — is [TODO 160].
 
-## 157. The fold's siting scans pick the first feasible value, not a declared objective: max-min clearance first, an aesthetic tie-break second
+## 157. The fold's siting scans pick the first feasible value, not a declared objective: max-min clearance first, an aesthetic tie-break second — CLOSED
 
 Recorded while closing [TODO 151]; a record, not an implementation.
 
@@ -22442,6 +22443,46 @@ tie-break, carried over from the old JMP_AZ scan and now on real metal), and
 - `probe-150-fold-sense.mjs` and `probe-151-cap-plane.mjs` report the
   achieved minimum clearance.
 - The battery is 41/41 with an explained diff.
+
+**Closed: one solver changed, one kept with its reason written down, and the
+cap leg filed as [TODO 185].** Everything was re-measured while planning. The
+filed φ 11.48° / L 3.32 / 0.1504 / 0.1531 were the values at the old
+B = 17.25°. At today's B = 5.25° the answers are φ 13.05°, L 3.285, with the
+binding pairs certified at 0.1518 and 0.1529. The item also missed a fourth
+first-feasible solver, `solveReserveSwing`, which is what binds CAP_SOLVE: its
+reserve pair sat 0.0227 over the margin.
+
+**The objective.** Maximize certified clearance counted up to
+`FOLD_SAT = 2·CLEAR_MARGIN`, then apply a written tie-break. The cap is
+2·margin because a pair that an upstream change moves by up to one whole
+margin, the battery's own unit of "clear", must still land legal.
+
+**What each solver does now:**
+- **`solveReserveSwing`: changed.** It keeps finding the least clearing swing,
+  then walks the open window that swing belongs to, maximizing
+  `min(clearance, FOLD_SAT)`. A tie within `ENVELOPE_DELTA_FINE` goes to the
+  smaller |swing|, and each side stops once it saturates. It is bounded to the
+  window, because the full ±30° curve cost ~4 s of boot and a 3.4 s held
+  stretch; the first window's crest was measured to be the global one. There
+  is a `breathe()` seam per swing. The shipped swing goes **3.5° → 5°**, with
+  reserve clearance **0.1727 → 0.2742** (CAP_SOLVE's m 0.0227 → 0.124). Boot
+  is silent, `worstHeldMs` 592, the jumper is unchanged (233.5°, 0.1572), and
+  the reserve row in `probe-234` is open.
+- **CAP_SOLVE's bearing B: kept first-feasible, reason in the code.** It is the
+  choice with the widest cascade, and the full ±60° curve costs 54–67 s. It is
+  also already the argmax: with the swing on its objective, the first open
+  bearing (5.25°) reads 0.2742 against 0.2276 for the next best (6°) and at
+  most 0.2017 for the other eight open bearings.
+- **`solveCapLeg` and `stubSolve`: filed as [TODO 185], not changed.**
+  Raising their target to `FOLD_SAT` worked on the fold's own pairs:
+  - φ 15.94°, L 3.373;
+  - binding pairs certified 0.3000 / 0.3022;
+  - the jumper and B unchanged.
+
+  But `probe-150` then read `mwCornerRiseOut ⇄ star` at **0.0727**. Those
+  solvers judge only the fold's own corners, so buying their clearance pushed
+  the foot corner into the minute star. That is P3 work, so it is filed rather
+  than absorbed.
 
 ## 158. A reconfigured or deep-linked spec builds geometry no battery has swept, and nothing tells the viewer
 
@@ -24283,3 +24324,33 @@ digests move).
 **Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
 alone, or by scaling the existing heads up. A bigger head on a screw that
 still stops at the face is the same defect, made easier to see.
+
+## 185. The cap leg's tilt and stub still sit on the margin, and raising them carries the foot corner into the minute star
+
+Filed closing [TODO 157]. `solveCapLeg` (the rise's tilt φ) and `stubSolve`
+(the stub L) still take the least value that clears, so their binding pairs
+sit on the margin:
+- `mwCornerRiseIn ⇄ mwCornerFootIn` certified 0.1518
+- `mwCornerFootOut ⇄ mwCornerCapOut` certified 0.1529
+
+TODO 157's objective, raising their cross-body target to `FOLD_SAT`
+(2·`CLEAR_MARGIN`), works on the fold's own pairs:
+- φ 13.05° → 15.94°, L 3.285 → 3.373;
+- the pairs certified at 0.3000 / 0.3022;
+- boot silent, the jumper unchanged.
+
+But `probe-150`'s FOLD CLEAR row then fails: `mwCornerRiseOut ⇄ star` reads
+**0.0727** (pose 7). The foot corner E moves outward by Dz·tanφ, and these
+solvers judge only the fold's own corners against each other. Nothing outside
+the fold is judged, so buying their clearance pushed a corner into the motion
+works' minute star.
+
+**Fix path (P3, position space).** Give `solveCapLeg` the obstacles its
+corners can reach: the minute star and wheel at their swept envelopes, the
+same judgement `probe-150`'s FOLD CLEAR row makes. Then take the least φ
+(and L) certifying `FOLD_SAT` against the fold's own pairs, subject to
+`CLEAR_MARGIN` against those obstacles. If the star binds before the fold
+saturates, the argmax is interior. Scan the φ range and take the best,
+declaring the tie-break. Re-measure the jumper's capD tie-break too (the
+cap's site moves). Verify with `probe-150` (FOLD CLEAR and PLATE),
+`probe-151` §8d, and a battery `--report` diff.

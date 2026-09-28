@@ -5446,10 +5446,12 @@ async function reserveObstaclePoints(root, pts = []) {
 // gearOuterR, not the nominal (m·(N+2))/2 — §115 exists because the nominal
 // tip circle under-reads a built body.
 //
-// Returns { swing, clear } — the least swing (0 first, then ±1 step, ±2, … to
-// ±30°) at which both members clear every point by CLEAR_MARGIN — or, when
-// none does, { swing: null, bestC, bestSwing, bestMember }: the closest any
-// swing came, for the caller's warning.
+// Returns { swing, clear } — the swing that clears best (TODO 157: most
+// clearance counted to FOLD_SAT, then the least |swing|) within the open
+// window around the least swing (0 first, then ±1 step, ±2, … to ±30°) at
+// which both members clear every point by CLEAR_MARGIN — or, when none does,
+// { swing: null, bestC, bestSwing, bestMember }: the closest any swing came,
+// for the caller's warning.
 //
 // THE STEP IS DERIVED FROM THE MARGIN IT POLICES, at the station the swing
 // moves: one degree of swing carries w1's station rsvD0·(π/180) = 0.107 u, and
@@ -5462,7 +5464,16 @@ async function reserveObstaclePoints(root, pts = []) {
 // buys nothing a margin can see.
 const RSV_SWING_STEP_DEG = Math.floor((CLEAR_MARGIN / 2 / rsvD0) / (0.25 * DEG2RAD)) * 0.25;   // 0.50 at rsvD0 6.12
 const RSV_SWING_MAX_DEG = 30;
-function solveReserveSwing(pts) {
+// TODO 157 — THE FOLD'S SATURATION CAP: clearance counts up to FOLD_SAT and no
+// further, and past it a written tie-break decides (here the least swing).
+// 2·CLEAR_MARGIN because a pair an upstream change moves by up to one whole
+// margin — the battery's own unit of "clear" — must still land legal;
+// first-feasible left the reserve 0.0227 over the margin, where any such move
+// reads red. The cap leg's tilt and stub are NOT on it yet: raising them to
+// FOLD_SAT carries the foot corner into the minute star (0.0727 at the pose
+// net), because those solvers judge only the fold's own corners — TODO 185.
+const FOLD_SAT = 2 * CLEAR_MARGIN;
+async function solveReserveSwing(pts) {
   // Each member's z-band is its FACE REACH AS CUT plus one margin — not its
   // nominal half-thickness. w1 is cut 1.0 thick and p1 1.2, and both
   // generators' extrude bevels stand proud of both faces (`gearFaceReach`,
@@ -5512,14 +5523,36 @@ function solveReserveSwing(pts) {
     if (r.c > best.c) best = { c: r.c, member: r.member, swing: dl };
     return r.c >= CLEAR_MARGIN ? { swing: dl, clear: r.c } : null;
   };
-  const r0 = at(0);
-  if (r0) return r0;
-  for (let d = RSV_SWING_STEP_DEG; d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG)
-    for (const sgn of [1, -1]) {
-      const r = at(sgn * d * DEG2RAD);
-      if (r) return r;
+  // the least swing that clears (0 first, then ±1 step, ±2, …)…
+  let first = at(0);
+  for (let d = RSV_SWING_STEP_DEG; !first && d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG)
+    for (const sgn of [1, -1]) { first = at(sgn * d * DEG2RAD); if (first) break; }
+  if (!first) return { swing: null, bestC: best.c, bestSwing: best.swing, bestMember: best.member };
+  // …then TODO 157's objective over the open WINDOW that swing opens: the
+  // most clearance, counted to FOLD_SAT, the least |swing| breaking a tie
+  // within the envelope's resolution. Each side walks out until the window
+  // shuts, the range ends, or the clearance saturates (a larger |swing| then
+  // cannot win the tie). The window, not the ±30° range: the whole curve costs
+  // ~4 s of boot, and the first window's crest was measured to be the global
+  // one; a seam per swing keeps the thread handed back.
+  const score = (c) => Math.min(c, FOLD_SAT);
+  let pick = first;
+  const stepR = RSV_SWING_STEP_DEG * DEG2RAD;
+  for (const dir of [1, -1]) {
+    if (score(first.clear) >= FOLD_SAT) break;
+    for (let k = 1; ; k++) {
+      const dl = first.swing + dir * k * stepR;
+      if (Math.abs(dl) > RSV_SWING_MAX_DEG * DEG2RAD + 1e-9) break;
+      await breathe();
+      const r = at(dl);
+      if (!r) break;
+      const better = score(r.clear) > score(pick.clear) + G.ENVELOPE_DELTA_FINE
+        || (Math.abs(score(r.clear) - score(pick.clear)) <= G.ENVELOPE_DELTA_FINE && Math.abs(dl) < Math.abs(pick.swing) - 1e-12);
+      if (better) pick = r;
+      if (score(r.clear) >= FOLD_SAT) break;
     }
-  return { swing: null, bestC: best.c, bestSwing: best.swing, bestMember: best.member };
+  }
+  return pick;
 }
 const Z_UP = new THREE.Vector3(0, 0, 1);
 function solveSettingFold(B) {
@@ -5748,6 +5781,7 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
     if (candidate) return { F, refused };
     console.warn(`§234 fold: the cap corner B the bearing solve settled on has no fold worth building (${refused}) — building it anyway; the battery judges it`);
   }
+
   const module = foldModuleFor(F.shaftAngleDeg);
   const leg1 = makeRodSegment(settingA, F.K, MW_LEG1_R);
   leg1.name = 'settingTraverse1';
@@ -5824,7 +5858,16 @@ async function buildSettingMetal(B, parent, { candidate = false } = {}) {
   return { F, module, leg1, leg2, rise, stub, capArbor, cornerDrop, cornerFold, cornerRise, cornerFoot, cornerCap, settingCap, capXY,
     leg: S && !S.refused ? S : null, E, D };
 }
-// TODO 157: first-feasible, like solveCapLeg below it — a declared objective over the feasible set is filed there.
+// TODO 157 — B STAYS FIRST-FEASIBLE, on purpose, and here is why. The bearing
+// is the route choice with the widest cascade (the fold, the plate's recesses,
+// the reserve's swing and module, the pillars, the minute jumper's station and
+// both its tripwires), and the whole ±60° curve costs 54–67 s against a ~15 s
+// boot. And it is not a choice the objective would change: with the reserve
+// swing solved to FOLD_SAT (solveReserveSwing), the first open bearing, 5.25°,
+// measured 0.2742 of best reserve clearance against 0.2276 for the next best
+// (6°) and at most 0.2017 for the other eight — first-feasible IS the argmax
+// today (all ten open bearings, measured while planning TODO 157 by
+// rewriting this scan to run past its first open bearing).
 const CAP_SOLVE = await (async () => {
   const capAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
@@ -5894,14 +5937,14 @@ const CAP_SOLVE = await (async () => {
     const cand0 = meshPoints(scratch);
     const arbM0 = arbClear(cand0);
     if (arbM0 < 0) { disposeTree(scratch); return { m: arbM0, clause: 'transfer arbor', s: 0 }; }
-    const r0 = solveReserveSwing(staticPts.concat(cand0));
+    const r0 = await solveReserveSwing(staticPts.concat(cand0));
     if (r0.swing === null) { disposeTree(scratch); return { m: r0.bestC - CLEAR_MARGIN, clause: `reserve ${r0.bestMember}`, s: r0.bestSwing / DEG2RAD }; }
     // Phase 0 clears — only NOW pay for the full multi-phase judgement.
     const cand = await reserveObstaclePoints(scratch);
     disposeTree(scratch);
     const arbM = arbClear(cand);
     if (arbM < 0) return { m: arbM, clause: 'transfer arbor', s: 0 };
-    const r = solveReserveSwing(staticPts.concat(cand));
+    const r = await solveReserveSwing(staticPts.concat(cand));
     if (r.swing === null) return { m: r.bestC - CLEAR_MARGIN, clause: `reserve ${r.bestMember}`, s: r.bestSwing / DEG2RAD };
     return { m: Math.min(arbM, r.clear - CLEAR_MARGIN), clause: 'open', s: r.swing / DEG2RAD, swing: r.swing };
   };
@@ -14868,7 +14911,7 @@ await breathe();
 const rsvSwing = await (async () => {
   // TODO 162 — the same point generator CAP_SOLVE's scan judged the bearing
   // against, over the corners as CUT
-  const r = solveReserveSwing(await reserveObstaclePoints(keyless));
+  const r = await solveReserveSwing(await reserveObstaclePoints(keyless));
   if (r.swing === null) {
     console.warn('reserve train: no w1 bearing within ±30° of the line clears the setting traverse '
       + `for BOTH w1 and p1 — keeping the line; the battery judges it (closest ${r.bestMember} at ${(r.bestSwing / DEG2RAD).toFixed(0)}°, ${r.bestC.toFixed(3)} against CLEAR_MARGIN ${CLEAR_MARGIN})`);
