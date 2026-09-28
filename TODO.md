@@ -19,7 +19,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 |---|---|---|
 | 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
-| 182 | PART DONE | Step 1 done: `JMP_SITE` drops and counts non-finite obstacle triangles (5,536 in 7 meshes at `alarmr=20`/`46`, 0 at identity), scan 19 s → 1.5 s at those points, same station. The red `main` it was filed for had already gone green at #502 (TODO 180 thinned the queries). Remaining: stop cutting the alarm setting dogleg's non-route as NaN metal (step 2), and have the spec tier report non-finite meshes per point (step 3) |
+| 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
@@ -23889,7 +23889,68 @@ on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
 `JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
 classification as its memoised, B-independent obstacle set.
 
-## 182. PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3)
+## 182. PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3) — CLOSED
+
+> **Status, 2026-09-28 — steps 2 and 3 landed; the item is closed.** (The
+> heading's stem is step 1's and is frozen: the item-number gate holds a
+> permanent ID's title fixed and strips only a trailing status, so its "still
+> cuts a non-route as NaN" is history, and `CLOSED` is the current state.)
+>
+> **Step 2: a non-route omits the part that cannot exist, and only that
+> part.** The fallback threw away more than the route. When the dogleg
+> cannot close, the missing member is i2: the two-circle solve for its
+> station has no root. i1's station needs only the bearing, since it stands
+> at `ALARM_SET_DW1` on the setting wheel, which is always there. The build
+> took it from the route all the same, so i1, i1b, its sleeve and the seat
+> plate's relief were cut at NaN beside i2. i1's station is now one law,
+> `alarmSetI1At(bearing, geom)`, which replaces three verbatim copies (the
+> route solve, the interior bounds, the reach floor). When no route exists
+> the build takes i1 from that law and sets `ALARM_SET_I2` to null. The i2
+> gear and its stud are not built, the setting chain's phase solve runs
+> wheel ⇄ i1 only, the i2 ⇄ arbor-pinion mesh is neither phased nor
+> declared, and the two i2 wall rows and the pawl-tail row are skipped. The
+> warning now says the parts are omitted and the train ends at i1. The
+> identity build takes the same arithmetic in the same order, so it cannot
+> move.
+>
+> Measured solo on the SwiftShader container (`?trial=1`, base = `main` at
+> #505):
+>
+> | spec | non-finite meshes | boot warnings |
+> |---|---|---|
+> | `alarmr=20` | 7 → **0** | 19 → **5** |
+> | `alarmr=46` | 7 → **0** | 26 → **11** |
+>
+> **Every warning that went was NaN fallout, not a finding lost.** The
+> reworded "no i2" line replaces the old one. The rest are:
+> - both TODO 15 gauges reading "−1 gaps";
+> - five TODO 144 seat asserts reading `NaN`;
+> - §39's `NaN mm deep` pair;
+> - §186 finding the case annulus "occupied" by `[alarmSeatPlate,
+>   alarmSetIdler, i1b, (unnamed)]`.
+>
+> Four that read like real drift went too: §234's link body length and bush
+> OD, §137's series stall (plus its governing member at `alarmr=46`), and
+> §35's plate-bore site. Their "built" values were measured through bounds
+> the NaN metal had poisoned. The warnings that remain are the layout's
+> own.
+>
+> **Step 3: the spec tier gates finite metal.** `specBoot` walks every mesh
+> in the scene after boot, schematic tier included, for a non-finite world
+> matrix or a non-finite vertex. `spec boots: every declared spec point
+> builds finite metal` fails any point that has one, naming its meshes. It
+> GATES rather than reports because step 2 landed with it: all 36 declared
+> points measure 0. The walk on the base tree finds the seven meshes the
+> item names at both alarm radii, so it sees what it exists to see.
+> `meshIntegrity` still runs on the default spec only; this is the
+> spec-point floor, not a substitute for it.
+>
+> Step 1's drop in `JMP_SITE` stays as the scan's own guard. It now counts 0
+> at every declared spec, so a future non-finite part costs a count on the
+> record rather than a brute force.
+>
+> The step-1 status note and the item as filed follow.
+
 
 > **Status, 2026-09-28 — step 1 landed; the red it was filed for had
 > already cleared.** Between filing and fixing, #502 (TODO 180, which drops
@@ -23914,7 +23975,7 @@ classification as its memoised, B-independent obstacle set.
 > Every spec tests the same stations (181 tested, 539 witnessed) and
 > chooses the same station, az 4.0753 (233.5°), clearance 0.1572. Identity
 > drops nothing, so the shipped build cannot move. Steps 2 and 3 remain
-> open. The narrative below is the item as filed.
+> open (both have since landed, above). The narrative below is the item as filed.
 
 **The symptom is a red `main`.** Every push-to-`main` battery since #488
 (run 980, 2026-09-24) fails one gate: `spec boots: every declared spec point

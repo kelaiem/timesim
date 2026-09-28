@@ -987,6 +987,33 @@ const SPEC_POINTS = [
     why: '§36 Apply — a leg almost in the plate plane is refused, and the movement builds as designed' },
 ];
 
+// TODO 182 step 3 — "builds" must mean "builds METAL". Until this, a spec point
+// passed the tier by producing a `__clock`, and `alarmr=20` / `alarmr=46` did
+// that for as long as they existed while cutting seven meshes at (NaN, NaN):
+// the dogleg's non-route, which every later solve and instrument then walked
+// (the jumper siting scan brute-forced it at ~12× identity's cost). A mesh
+// with no position is not a part, so the walk asks the two ways a mesh can
+// lose one — a non-finite WORLD MATRIX (it was placed at NaN) and a non-finite
+// VERTEX (it was cut from NaN) — over every mesh in the scene, schematic tier
+// included, since a NaN proxy is a NaN claim. Runs in the page; a function
+// source, so it has no closure over this file.
+const NON_FINITE_WALK = () => {
+  const scene = window.__clock.scene;
+  scene.updateMatrixWorld(true);
+  const bad = [];
+  let meshes = 0;
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    meshes++;
+    const matrix = !o.matrixWorld.elements.every(Number.isFinite);
+    const pos = o.geometry && o.geometry.attributes && o.geometry.attributes.position;
+    let verts = 0;
+    if (pos) for (let i = 0; i < pos.array.length; i++) if (!Number.isFinite(pos.array[i])) verts++;
+    if (matrix || verts) bad.push({ name: o.name || null, geometry: o.geometry ? o.geometry.type : null, matrix, nanCoords: verts });
+  });
+  return { meshes, bad };
+};
+
 // A spec boot. Deliberately NOT virginBoot: that one imports inspect.js and
 // throws on any page error, which is right for a gate that will then run
 // checks, and wrong here where the page error IS the measurement. ?trial=1
@@ -1003,7 +1030,8 @@ async function specBoot(browser, base, q) {
     await page.goto(url, { waitUntil: 'load', timeout: BOOT_TIMEOUT_MS });
     await page.waitForFunction(() => !!window.__clock, null, { timeout: BOOT_TIMEOUT_MS });
     const warns = await page.evaluate(() => (window.__clock.bootWarns || []).slice());
-    return { alive: true, warns, errors };
+    const nonFinite = await page.evaluate(NON_FINITE_WALK);
+    return { alive: true, warns, errors, nonFinite };
   } catch {
     // Same three-way diagnosis virginBoot makes, for the same reason: dead,
     // wedged and slow are different findings and a timeout alone says none
@@ -1311,6 +1339,17 @@ function assemble({
     `${spec.rows.filter((r) => r.alive).length}/${spec.rows.length} build`
     + `, ${spec.rows.filter((r) => r.alive && r.warns.length).length} of them with warnings (expected — a moved station warns)`
     + ` · ${secs(spec.ms)}`);
+  // TODO 182 step 3. It GATES, because step 2 landed with it: a point whose
+  // route does not exist now omits the part rather than cutting it at NaN, so
+  // every declared point measures zero and a non-finite mesh is a regression
+  // with a name. `nonFinite` is absent only on a point that did not build,
+  // and the gate above already owns that row.
+  gate('spec boots: every declared spec point builds finite metal',
+    spec.rows.filter((r) => r.alive && r.nonFinite && r.nonFinite.bad.length).map((r) => ({
+      spec: r.name, why: r.why, nonFiniteMeshes: r.nonFinite.bad.length, of: r.nonFinite.meshes,
+      first: r.nonFinite.bad.slice(0, 8),
+    })),
+    `${spec.rows.filter((r) => r.alive && r.nonFinite && !r.nonFinite.bad.length).length}/${spec.rows.filter((r) => r.alive).length} built points finite`);
   gate('spec boots: the identity control is silent',
     spec.rows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
       .map((r) => ({ spec: r.name, warns: r.warns, note: 'the default spec is what every other gate boots — if it warns here, the trial path differs from the real one' })));
@@ -1621,6 +1660,7 @@ async function runSpecTier(browser, base, points) {
   }
   for (const r of rows) {
     const how = r.alive ? (r.warns.length ? `builds, ${r.warns.length} warn(s)` : 'builds, silent')
+      + (r.nonFinite.bad.length ? `, ${r.nonFinite.bad.length} NON-FINITE mesh(es)` : '')
       : r.wedged ? 'WEDGED' : 'DEAD';
     console.log(`  ${r.alive ? '·' : '✗'} ${r.name.padEnd(16)} ${how}`);
   }

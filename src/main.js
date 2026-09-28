@@ -16342,11 +16342,18 @@ const _setU = ALARM_CORNER_GEOM.u, _setPerp = ALARM_CORNER_GEOM.perp;
 // that was not built. It DEFAULTS to the shipped geometry, so every existing
 // call site is unchanged and the identity build cannot move — the whole point
 // of adding a parameter rather than threading one.
+// TODO 182 — i1's station is ONE law, and it needs only the bearing: it
+// stands at ALARM_SET_DW1 on the setting wheel, which is always there. It was
+// written out three times (here, the interior bounds, the reach floor), and
+// the build took it from the route — so a dogleg that could not close its
+// SECOND link threw away a first idler that had a perfectly good position,
+// and cut it, i1b, its sleeve and the seat plate's relief at (NaN, NaN).
+const alarmSetI1At = (bearing, geom = ALARM_CORNER_GEOM) => ({
+  x: (geom.u.x * Math.cos(bearing) + geom.perp.x * Math.sin(bearing)) * ALARM_SET_DW1,
+  y: (geom.u.y * Math.cos(bearing) + geom.perp.y * Math.sin(bearing)) * ALARM_SET_DW1,
+});
 const alarmSetRouteAt = (bearing, geom = ALARM_CORNER_GEOM) => {
-  const i1 = {
-    x: (geom.u.x * Math.cos(bearing) + geom.perp.x * Math.sin(bearing)) * ALARM_SET_DW1,
-    y: (geom.u.y * Math.cos(bearing) + geom.perp.y * Math.sin(bearing)) * ALARM_SET_DW1,
-  };
+  const i1 = alarmSetI1At(bearing, geom);
   const dx = geom.world.x - i1.x, dy = geom.world.y - i1.y;
   const d = Math.hypot(dx, dy);
   const a = (ALARM_SET_D12 * ALARM_SET_D12 - ALARM_SET_D2P * ALARM_SET_D2P + d * d) / (2 * d);
@@ -16489,13 +16496,14 @@ const ALARM_SET_LANE_LO = ALARM_SET_Z - ALARM_SET_T / 2, ALARM_SET_LANE_HI = ALA
 const alarmSetMembersAt = (route) => [
   { name: 'setting wheel', x: 0, y: 0, tip: ALARM_SET_MODULE * ALARM_SET_WHEEL_TEETH / 2 + ALARM_SET_MODULE, lo: ALARM_SET_LANE_LO, hi: ALARM_SET_LANE_HI },
   { name: 'i1', x: route.i1.x, y: route.i1.y, tip: ALARM_SET_MODULE * ALARM_SET_I1_TEETH / 2 + ALARM_SET_MODULE, lo: ALARM_SET_LANE_LO, hi: ALARM_SET_LANE_HI },
-  { name: 'i2', x: route.i2.x, y: route.i2.y, tip: ALARM_SET_MODULE * ALARM_SET_I2_TEETH / 2 + ALARM_SET_MODULE, lo: ALARM_SET_LANE_LO, hi: ALARM_SET_LANE_HI },
+  // TODO 182: a route whose i2 was omitted has no i2 to foul anything.
+  ...(route.i2 ? [{ name: 'i2', x: route.i2.x, y: route.i2.y, tip: ALARM_SET_MODULE * ALARM_SET_I2_TEETH / 2 + ALARM_SET_MODULE, lo: ALARM_SET_LANE_LO, hi: ALARM_SET_LANE_HI }] : []),
   { name: 'i1b (band lane)', x: route.i1.x, y: route.i1.y, tip: ALARM_BRANCH_MODULE * ALARM_SET_I1_TEETH / 2 + 1.25 * ALARM_BRANCH_MODULE,
     lo: ALARM_BAND_Z - ALARM_DISC_BODY_T / 2, hi: ALARM_BAND_Z + ALARM_DISC_BODY_T / 2 },
   // The two ARBORS, §29's radii. They stand in no gear lane — they rise
   // THROUGH both, which is why they meet walls the wheels never do.
   { name: 'i1 sleeve', x: route.i1.x, y: route.i1.y, tip: 0.62, lo: ALARM_SET_LANE_LO, hi: ALARM_BAND_Z + ALARM_DISC_BODY_T / 2 },
-  { name: 'i2 stud', x: route.i2.x, y: route.i2.y, tip: 0.45, lo: ALARM_SET_LANE_LO, hi: ALARM_BAND_Z + ALARM_DISC_BODY_T / 2 },
+  ...(route.i2 ? [{ name: 'i2 stud', x: route.i2.x, y: route.i2.y, tip: 0.45, lo: ALARM_SET_LANE_LO, hi: ALARM_BAND_Z + ALARM_DISC_BODY_T / 2 }] : []),
 ];
 // Clearance of one member against one wall, or Infinity when their lanes do
 // not meet. This is THE function — the boot assert below and the bearing
@@ -16640,11 +16648,7 @@ const alarmCornerWarnsAt = (r) => {
   // 3. …and i2 must be big enough to span i1 → arbor, which grows with the
   //    corner while D12 + D2P stays fixed. Measured at the bearing this corner
   //    would actually be built with, for the same reason as bound 2.
-  const b = bearing.rad;
-  const i1 = {
-    x: (geom.u.x * Math.cos(b) + geom.perp.x * Math.sin(b)) * ALARM_SET_DW1,
-    y: (geom.u.y * Math.cos(b) + geom.perp.y * Math.sin(b)) * ALARM_SET_DW1,
-  };
+  const i1 = alarmSetI1At(bearing.rad, geom);
   const reach = Math.hypot(geom.world.x - i1.x, geom.world.y - i1.y);
   const floor = Math.ceil((2 * reach / ALARM_SET_MODULE - ALARM_SET_I1_TEETH - ALARM_SET_PINION_TEETH) / 2);
   if (ALARM_SET_I2_TEETH < floor)
@@ -16682,10 +16686,7 @@ for (const m of alarmCornerWarnsAt(ALARM_CD))
   // Deriving I2 from reach alone would shrink it to 23 and quietly hand the
   // dogleg's routing job back to nobody.
   const arborD = Math.hypot(alarmWorld.x, alarmWorld.y);
-  const i1 = {
-    x: (_setU.x * Math.cos(ALARM_SET_BEARING_SOLVED) + _setPerp.x * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
-    y: (_setU.y * Math.cos(ALARM_SET_BEARING_SOLVED) + _setPerp.y * Math.sin(ALARM_SET_BEARING_SOLVED)) * ALARM_SET_DW1,
-  };
+  const i1 = alarmSetI1At(ALARM_SET_BEARING_SOLVED);
   const reach = Math.hypot(alarmWorld.x - i1.x, alarmWorld.y - i1.y);
   const floor = Math.ceil((2 * reach / ALARM_SET_MODULE - ALARM_SET_I1_TEETH - ALARM_SET_PINION_TEETH) / 2);
   if (ALARM_SET_I2_TEETH < floor)
@@ -16694,10 +16695,20 @@ for (const m of alarmCornerWarnsAt(ALARM_CD))
       + `arbor at ${arborD.toFixed(2)} = ALARM_CD + CROWN_PULL_DIST)`);
 }
 const _setRoute = alarmSetRouteAt(ALARM_SET_BEARING_SOLVED);
+// TODO 182 step 2 — A NON-ROUTE IS OMITTED, NOT CUT AT (NaN, NaN). When the
+// dogleg cannot close, the part that cannot exist is i2 and only i2: i1 has
+// its station from the bearing alone (`alarmSetI1At`), so i1, i1b, its sleeve
+// and the seat plate's relief are built exactly where they always stand. i2
+// and its stud are NOT built — `ALARM_SET_I2` is null and every consumer below
+// skips it — so the setting train visibly ends at i1, and the warning says
+// why. The old fallback left seven non-finite meshes in the scene for every
+// later solve and instrument to walk (TODO 182: the jumper siting scan
+// brute-forced them at ~12× identity's cost).
 if (!_setRoute)
   console.warn(`alarm setting dogleg: no i2 exists at bearing ${(ALARM_SET_BEARING_SOLVED / DEG2RAD).toFixed(1)}° `
-    + `— the arbor is outside the chain's reach entirely, so the route below is not a route`);
-const { i1: ALARM_SET_I1, i2: ALARM_SET_I2 } = _setRoute || { i1: { x: NaN, y: NaN }, i2: { x: NaN, y: NaN } };
+    + `— the arbor is outside the chain's reach entirely, so i2 and its stud are omitted and the setting train ends at i1`);
+const ALARM_SET_I1 = _setRoute ? _setRoute.i1 : alarmSetI1At(ALARM_SET_BEARING_SOLVED);
+const ALARM_SET_I2 = _setRoute ? _setRoute.i2 : null;
 // The boot assert — the same list, reporting every wall this route fouls.
 {
   const route = { i1: ALARM_SET_I1, i2: ALARM_SET_I2 };
@@ -16706,8 +16717,10 @@ const { i1: ALARM_SET_I1, i2: ALARM_SET_I2 } = _setRoute || { i1: { x: NaN, y: N
     if (clr < CLEAR_MARGIN)
       console.warn(`alarm setting ${m.name} fouls ${w.name}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`);
   }
-  const close = Math.hypot(ALARM_SET_I2.x - alarmWorld.x, ALARM_SET_I2.y - alarmWorld.y);
-  if (Math.abs(close - ALARM_SET_D2P) > 1e-6) console.warn('alarm setting dogleg failed to close on the arbor pinion');
+  if (ALARM_SET_I2) {   // no i2 has already said so, once, above
+    const close = Math.hypot(ALARM_SET_I2.x - alarmWorld.x, ALARM_SET_I2.y - alarmWorld.y);
+    if (Math.abs(close - ALARM_SET_D2P) > 1e-6) console.warn('alarm setting dogleg failed to close on the arbor pinion');
+  }
   // (§76's report-only bearing sweep used to sit here. It is now the SOLVE
   // above, which runs before the route is built rather than after it — the
   // same wall list, the same objective, applied instead of narrated. Its
@@ -16919,7 +16932,7 @@ const alarmSetI2Spin = new THREE.Group();
     { teeth: ALARM_SET_WHEEL_TEETH, mates: [ALARM_SET_I1_TEETH] },
     { teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] },
   ], 0, 'alarmSetIdler1');
-  mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, [
+  if (ALARM_SET_I2) mk(alarmSetI2Spin, ALARM_SET_I2, ALARM_SET_I2_TEETH, [   // TODO 182: omitted with its route
     { teeth: ALARM_SET_I1_TEETH, mates: [ALARM_SET_WHEEL_TEETH, ALARM_SET_I2_TEETH] },
     { teeth: ALARM_SET_PINION_TEETH, mates: [ALARM_SET_I2_TEETH] },
   ], 0, 'alarmSetIdler2');
@@ -17018,7 +17031,7 @@ await (async () => {
   solveGearChain('alarm setting:', [
     { obj: alarmSetWheelMesh, teeth: ALARM_SET_WHEEL_TEETH, name: 'setting wheel' },
     { obj: gearOf(alarmSetI1Spin), teeth: ALARM_SET_I1_TEETH, name: 'idler 1' },
-    { obj: gearOf(alarmSetI2Spin), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' },
+    ...(ALARM_SET_I2 ? [{ obj: gearOf(alarmSetI2Spin), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' }] : []),   // TODO 182
   ], ALARM_SET_MODULE, ['train', 'alarm']);
   // TODO 48 — the power-reserve train, the last un-fixed instance of TODO
   // 15's idiom (measured 47–49% of a pitch off anti-phase at three winds:
@@ -18040,7 +18053,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   };
   const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§29 pawl tail ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
   say('vs i1 sleeve', segDist(ALARM_SET_I1) - 0.62 - 0.13);
-  say('vs i2 stud', segDist(ALARM_SET_I2) - 0.45 - 0.13);
+  if (ALARM_SET_I2) say('vs i2 stud', segDist(ALARM_SET_I2) - 0.45 - 0.13);   // TODO 182: omitted with its route
   const wd = ALARM_PIN_DROP * (ALARM_PAWL_DIST + _contrateR + 0.35) / ALARM_FEELER_ARM_LEN; // beak's withdrawal travel
   if (wd - ALARM_PAWL_ENGAGE < CLEAR_MARGIN)
     console.warn(`§29 pawl: withdrawal ${wd.toFixed(2)} clears the ${ALARM_PAWL_ENGAGE} engagement by ${(wd - ALARM_PAWL_ENGAGE).toFixed(2)}, need ${CLEAR_MARGIN}`);
@@ -18294,7 +18307,7 @@ alarmRotor.add(alarmArborRod);
   // that used to sit here is gone: keeping it would be a second row for the
   // same metal, which is what TODO 124 had to unpick.
   await breathe();
-  solveGearChain('alarm setting:', [
+  if (ALARM_SET_I2) solveGearChain('alarm setting:', [   // TODO 182: no i2, no mesh to phase or declare
     { obj: alarmSetI2Spin.children.find((o) => o.isGroup || o.isMesh), teeth: ALARM_SET_I2_TEETH, name: 'idler 2' },
     { obj: pin, teeth: ALARM_SET_PINION_TEETH, name: 'arbor pinion' },
   ], ALARM_SET_MODULE, ['train', 'alarm']);
@@ -43969,15 +43982,18 @@ const JMP_SITE = await (async () => {
   //
   // TODO 182 — NOR IS A TRIANGLE WITH NO COORDINATES. Past the alarm setting
   // dogleg's reach (the `alarmr=20` / `alarmr=46` spec points) there is no
-  // route, and the build cuts the idlers, their studs and the seat plate at
-  // (NaN, NaN) by design, warning that "the route below is not a route". A
-  // tree built over NaN has NaN bounds, which prune nothing, so every query
-  // at every station brute-forced it: the scan did the identical work
-  // (same stations tested, same station chosen) at 12-60x identity's cost,
-  // and before TODO 180 thinned the queries it pushed those two spec boots
-  // past the battery's 120 s ceiling. A part with no position cannot be
-  // collided with, so dropping it changes no verdict; what was dropped is
-  // COUNTED on the record rather than lost in silence.
+  // route, and the build used to cut the idlers, their studs and the seat
+  // plate at (NaN, NaN). A tree built over NaN has NaN bounds, which prune
+  // nothing, so every query at every station brute-forced it: the scan did
+  // the identical work (same stations tested, same station chosen) at 12-60x
+  // identity's cost, and before TODO 180 thinned the queries it pushed those
+  // two spec boots past the battery's 120 s ceiling. Step 2 removed the cause
+  // (a non-route now OMITS i2 and builds the rest finite) and step 3 gates it
+  // (the spec tier fails any point with a non-finite mesh), so this drop
+  // counts 0 on every declared spec. It stays as the scan's own guard: a part
+  // with no position cannot be collided with, so dropping it changes no
+  // verdict, and what was dropped is COUNTED on the record rather than paid
+  // for in silence.
   let nonFiniteTris = 0;
   const nonFiniteMeshes = new Set();
   const pushTris = (m, into) => {
