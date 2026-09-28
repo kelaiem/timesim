@@ -701,7 +701,11 @@ const EXPECTED_PAIRS = [
   ['Alarm selector', 'Alarm disc'],         // §34: the sensing pin ON the ring's face — the selector's working contact
   ['Alarm switch', 'Alarm link'],           // §35: the beak riding the castellations' tops
   ['Alarm link', 'Alarm selector'],         // §35: the crank on the drive tab
-  ['Alarm link', 'Dial'],                   // the SAME tab contact re-attributed through nesting: the ring
+  ['Alarm link', 'Three-quarter plate'],    // §35/§202: the beak's post seated on the plate top and the rod's
+                                            // upper bush pressed into its bore — the two contacts the
+                                            // EXPECTED_CONTACT_FLOORS row names; everything else holds
+                                            // CLEAR_MARGIN there (TODO 171: that row stood without this grant)
+  ['Alarm link', 'Dial'],                  // the SAME tab contact re-attributed through nesting: the ring
                                             // (and its tab) is a dialFace descendant, so the Dial's traverse
                                             // carries it (the Dial ⇄ Hour wheel precedent); the link's real
                                             // corridor past Dial furniture is ray-asserted at the build
@@ -2494,10 +2498,6 @@ export const UNDECLARED_CLEARANCE_DEBT = [
   // TODO 172, whose fix path is re-stratifying the lane, not the pinion.
   { a: 'Alarm setting arbor', b: 'Dial', floor: 0.05, todo: 'TODO 172',
     why: 'ALARM_SET_Z\'s designed 0.05 sheet gap to the dial is itself under CLEAR_MARGIN; the pinion is crisp and sits on it (the wheel and idlers ride the same gap under EXPECTED rows)' },
-  // TODO 168 — makeGear's curveSegments:3 cuts a hub-less wheel's bore as a
-  // hexagon rather than a circle.
-  { a: 'Alarm setting wheel', b: 'Hour wheel', floor: 0.1414, todo: 'TODO 168',
-    why: 'the setting wheel\'s hexagonal cap chords reach past the hour tube\'s designed bore' },
   // TODO 170 — three of its four rows cleared and are deleted. This one has no
   // position-space room: the trip rock lifts the arm into the margin §45
   // priced over the STATIC arm, at the skirt's throat lip; the rock itself is

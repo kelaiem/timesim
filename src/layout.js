@@ -589,7 +589,7 @@ export const SLENDER_TARGET = SLENDER_MAX * 0.9;      // 27
 // ends already stood, on their pins.
 export const LINK_T_U = STOCK_MIN_U;
 export const LINK_BODY_W_U = 2 * STOCK_MIN_U;                                            // 0.633 u — the blanking floor, ≈ 2t
-export const linkEyeDiaForPin = (pinR_u, fit_u) => 2 * (pinR_u + fit_u + STOCK_MIN_U);   // fit_u: the movement's one running fit, main.js's PIVOT_BORE_CLEAR — passed, not re-declared
+export const linkEyeDiaForPin = (pinR_u, fit_u) => 2 * (pinR_u + fit_u + STOCK_MIN_U);   // fit_u: the movement's one running fit, PIVOT_BORE_CLEAR (above) — passed, not re-declared
 // An OVERHANG past the last bearing bends like a cantilever, and §54 charges
 // it a length multiplier for that — ∛(48/3), the ratio of a midspan-loaded
 // simple beam's stiffness to a tip-loaded cantilever's, taken into LAMBDA
@@ -650,6 +650,11 @@ export const STOCK_MIN_R10 = flatsR(STOCK_MIN_U, 10);  // 0.167 u — ⌀ 0.12 m
 export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the plate
                                   // z-stack and the hack solvers, and by
                                   // the balance plane derivation itself.
+// The running fit every plate bearing is cut to — a real pivot's side-shake.
+// Declared here since TODO 168 (it was main.js's): geometry.js cuts every
+// makeGear/makePinion bore against it too, spending at most HALF of it on
+// chord sag (`borePath`), so the fit and the tessellation cannot drift apart.
+export const PIVOT_BORE_CLEAR = 0.05;
 // §137 — THE ONE STEEL, and the one cantilever law, for force arithmetic.
 // Every force figure in the repo is first-order solid-steel beam arithmetic
 // (TODO 16's own caveat: the absolute numbers carry maybe a factor of two;

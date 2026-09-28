@@ -57,6 +57,7 @@ import {
   STEM_STOCK_R_U,                            // §234 Landing 2: the stem-stock floor the alarm pusher is cut to
   LINK_T_U, LINK_BODY_W_U, linkEyeDiaForPin, // §234 step 5: the stamped hack and reset links' sheet, body width and eye rule
   SPRING_INDEX_MIN, SPRING_INDEX_MAX, SPRING_INDEX_TARGET,   // §234: the coiling envelope the return coil's wire is solved in
+  PIVOT_BORE_CLEAR,                           // TODO 168: the one running fit — in layout.js so geometry.js's bores read it too
   PIVOT_MIN_U, STOCK_MIN_R10, flatsR,         // §50: the pivot floor, and a round bar's radius across its FLATS
   KW_WIND_IDLER_TEETH,
   STEM_R, KW_BEVEL, WIND_PINION_BOSS, STEM_BUSH_FOOT_HALF, STEM_SAW_SPEC, SAW_BASE_T, SAW_FIT, STEM_CLUTCH_OFF, CLUTCH_TRAVEL,
@@ -2835,10 +2836,9 @@ if (CASE_R_OUT > CASE_WIDTH_MAX + 1e-9)
 if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
   console.warn(`case: interior lug span ${(CASE_LUG_INNER * UNIT_MM).toFixed(1)} mm breaks the 20 mm owner cap (the cap IS the bar's free length, so the spec may meet it, never pass it)`);
 // The running fit every plate bearing is cut to — a real pivot's side-shake.
-// Declared here, above the back plate's hole list, because §202's rod bores
-// derive from it below; the upper-pivot block that first owned it says why
-// it is what it is.
-const PIVOT_BORE_CLEAR = 0.05;
+// Imported from layout.js since TODO 168 (geometry.js cuts its gear bores
+// against it too); §202's rod bores below derive from it, and the upper-pivot
+// block that first owned it says why it is what it is.
 // §202 — THE SELECTOR ROD'S BEARINGS, and the bores that follow from them.
 // The rod used to pass both plates through CLEARANCE holes (r 0.45 against a
 // 0.30 rod — one CLEAR_MARGIN each side) and declared no bearing: 19 u of

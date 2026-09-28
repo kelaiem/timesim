@@ -92,6 +92,13 @@ const open = async (lang, stub) => {
       r.fulfill({ status: 200, contentType: 'text/javascript; charset=utf-8', body: stub }));
   }
   await pg.goto(`${base}/explain.html?lang=${lang}`, { waitUntil: 'load', timeout: 120000 });
+  // `load` does NOT wait for a module's top-level await, and explain-i18n.js
+  // awaits its locale table at the top level — so the page could be read
+  // before localizeExplainer() and linkGlossary() ran, and one side of the
+  // comparison came back in English (CI: [ru] and [pt], each once). The
+  // picker is filled synchronously right AFTER both calls in the page's
+  // module, so a filled picker means the text under measurement is final.
+  await pg.waitForFunction(() => document.getElementById('lang-select')?.options.length > 0, null, { timeout: 120000 });
   // Every entry open: a closed <details> still has its text in the DOM, but
   // opening them keeps this measuring what a reader can reach.
   await pg.evaluate(() => { for (const d of document.querySelectorAll('details.mech')) d.setAttribute('open', ''); });
