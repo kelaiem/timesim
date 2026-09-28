@@ -655,6 +655,17 @@ export const CLEAR_MARGIN = 0.15; // ONE structural margin — shared by the pla
 // makeGear/makePinion bore against it too, spending at most HALF of it on
 // chord sag (`borePath`), so the fit and the tessellation cannot drift apart.
 export const PIVOT_BORE_CLEAR = 0.05;
+
+// §77 — the zero-area floor, DERIVED (rule 1): tools/probe-77-threshold.mjs
+// histograms every inspected triangle's geometry-local area; the defective
+// population (absarc seam twins, earcut hole-bridge slivers) tops out in the
+// 1e-15 decade and the smallest INTENDED triangles start at 1e-10, a
+// four-decade empty band. 1e-12 sits two decades from each bound; re-run the
+// probe before moving it. It lives here (not in inspect.js, which re-exports
+// it) because the build's own solves need it too — TODO 180: JMP_SITE read a
+// false contact off exactly such a sliver.
+export const ZERO_AREA_MAX = 1e-12;
+
 // §137 — THE ONE STEEL, and the one cantilever law, for force arithmetic.
 // Every force figure in the repo is first-order solid-steel beam arithmetic
 // (TODO 16's own caveat: the absolute numbers carry maybe a factor of two;

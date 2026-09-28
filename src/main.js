@@ -18,7 +18,7 @@ import {
   SPEC, SPEC_RATES,
   F_BALANCE, BEAT_DEG, AMPLITUDE_TRUE_DEG, AMPLITUDE_VISUAL_DEG, IMPULSE_WIDTH,
   RECOIL_FRACTION, RECOIL_DEG,
-  CLEAR_MARGIN, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
+  CLEAR_MARGIN, ZERO_AREA_MAX, L_BARREL, L_CENTER, L_THIRD, L_FOURTH, L_ESCAPE, FORK_T, L_FORK, FORK_HALF_Z,
   BAL_T, RIM_H, L_BALANCE, PIN_PLANE_Z, L_HAIRSPRING, HAIRSPRING_H, COCK_T,
   SPRING_TOP_Z, TRAIN_CEILING_Z, HAIRSPRING_OVERCOIL_RAISE, COCK_SLAB_BOT, COCK_SLAB_TOP, COCK_MID_Z, Z_DIAL, DIAL_T, DIAL_EDGE_BREAK, Z_KEYLESS,
   // Train ratios (§13 steps 2 + 3c): TRAIN is the ONE table — module, wheel
@@ -14374,7 +14374,12 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // Re-verified as the tripwire asks: probe-149-lifter-width.mjs re-measured the
 // lifter's run (JMP_LIFTER_SPAN_MEASURED), and probe-150-fold-sense.mjs holds
 // the jumper against every non-contact unit over the pose net.
-const JMP_AZ_MEASURED_DEG = 129.5;
+// TODO 180 — 129.5° → 233.5°, and this time the SOLVE was wrong, not the
+// hand list: its closest-point trees held zero-area slivers, three of them in
+// alarmIndexWedge, and the BVH answered 0 against them, so PASS 1 refused
+// 232–235° on a contact 3.8135 away. With slivers dropped (ZERO_AREA_MAX) the
+// scan's first clear station is 233.5°, at clearance 0.1572.
+const JMP_AZ_MEASURED_DEG = 233.5;
 let JMP_AZ = (() => {
   const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
   return Math.atan2(-capLocal.y, -capLocal.x);   // stud-relative, dialFace frame: away from the cap
@@ -14598,7 +14603,7 @@ const jumperStudMeshes = [];   // the two posts riveted into the base plate (the
 // `tools/probe-149-lifter-width.mjs`: if it ever falls below that, it is not
 // a bound and the frame it was taken in is wrong. Re-run the probe if the
 // jumper's station, the setting lever's stroke or the tail pin's land moves.
-const JMP_LIFTER_SPAN_MEASURED = 37.601;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 151's real-metal solve moved the jumper to 129.5° (29.1037 at 326°, 30.0832 at 318°)
+const JMP_LIFTER_SPAN_MEASURED = 40.0045;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 180's sliver-free solve moved the jumper to 233.5° (37.601 at 129.5°, 29.1037 at 326°, 30.0832 at 318°)
 // A FUNCTION OF THE STATION since TODO 151 moved the station's solve to the
 // end of the build: the provisional station's bound cuts the bar here, and
 // the late solve re-cuts it at the station it settles on (and holds the
@@ -43912,14 +43917,26 @@ const JMP_SITE = await (async () => {
   const staticTris = [], staticList = [], plateList = [], rotorTris = new Map();
   const box = new THREE.Box3();
   const seen = new Set();
+  // TODO 180 — A ZERO-AREA TRIANGLE IS NOT METAL, so it never enters an
+  // obstacle tree. The BVH's closest-point query trusts every triangle it
+  // holds, and on a degenerate one it answered 0: three of alarmIndexWedge's
+  // nine triangles are slivers, and PASS 1's lifter-bar check read CONTACT
+  // against the wedge at 232–235° while the true distance is 3.8135
+  // (meshClearance, and dense sampling). The scan refused that whole window
+  // on an artefact and settled on 129.5°. Dropping a sliver loses no surface a
+  // distance can reach — its points lie on the edges of the real faces beside
+  // it — and the floor is §77's derived ZERO_AREA_MAX, measured in the
+  // geometry's own frame exactly as the census measures it.
   const pushTris = (m, into) => {
     const pos = m.geometry.attributes.position, idx = m.geometry.index;
     const n = idx ? idx.count : pos.count;
-    const a = V(), b = V(), c = V();
+    const a = V(), b = V(), c = V(), e1 = V(), e2 = V();
     for (let i = 0; i < n; i += 3) {
-      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(m.matrixWorld);
-      b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(m.matrixWorld);
-      c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(m.matrixWorld);
+      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i);
+      b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1);
+      c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2);
+      if (e1.subVectors(b, a).cross(e2.subVectors(c, a)).length() / 2 <= ZERO_AREA_MAX) continue;
+      a.applyMatrix4(m.matrixWorld); b.applyMatrix4(m.matrixWorld); c.applyMatrix4(m.matrixWorld);
       into.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
     }
   };
