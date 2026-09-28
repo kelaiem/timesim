@@ -30,16 +30,7 @@ console.log(await p.evaluate(async ()=>{
   const unit=n=>c.labelEntries.find(x=>x.name===n);
   const meshesOf=e=>{const m=[];const w=n=>{if(n.userData&&n.userData.schematic)return;
     if(n.isMesh&&n.geometry&&n.geometry.attributes.position)m.push(n);for(const ch of n.children)w(ch);};w(e.obj);return m;};
-  const closed=(g)=>{const pos=g.attributes.position,idx=g.index;const n=idx?idx.count:pos.count;
-    const at=t=>idx?idx.getX(t):t;
-    const q=v=>{const r=Math.round(v*1e5);return r===0?0:r;};      // -0 and +0 are ONE position
-    const key=i=>`${q(pos.getX(i))}_${q(pos.getY(i))}_${q(pos.getZ(i))}`;
-    const e=new Map();
-    for(let t=0;t+2<n;t+=3){const k=[key(at(t)),key(at(t+1)),key(at(t+2))];
-      for(let q=0;q<3;q++){const a=k[q],b2=k[(q+1)%3]; if(a===b2)continue;
-        const kk=a<b2?`${a}|${b2}`:`${b2}|${a}`; e.set(kk,(e.get(kk)||0)+1);}}
-    let bad=0; for(const v of e.values()) if(v!==2) bad++;
-    return {closed:bad===0, bad};};
+  const closed=(g)=>{const {bad}=I.surfaceEdgeCensus(g); return {closed:bad===0, bad};};   // TODO 165: boundsASolid's own law, never a copy
   I.enterAxis(c); c.setPose(I.AXES[0].pose(0,c));
 
   const PAIR=(window.__PAIR||['Alarm disc',20,'Hour wheel','hourTube']);

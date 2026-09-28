@@ -1581,6 +1581,17 @@ const _closedCache = new WeakMap();
 function boundsASolid(geom) {
   let v = _closedCache.get(geom);
   if (v !== undefined) return v;
+  v = surfaceEdgeCensus(geom).bad === 0;   // manifold: every edge shared by exactly 2 faces
+  _closedCache.set(geom, v);
+  return v;
+}
+
+// The edge count behind boundsASolid, exported so the probes that census
+// closedness (probe-165-witness, probe-mesh-closedness-census) read THIS law
+// rather than carrying a copy of it. `bad` is the number of position-keyed
+// edges not shared by exactly two faces, `over` those shared by three or more
+// (bad − over are holes); `collapsed` the triangles skipped as segments (below).
+export function surfaceEdgeCensus(geom) {
   const pos = geom.attributes.position, idx = geom.index;
   const n = idx ? idx.count : pos.count;
   const at = (t) => (idx ? idx.getX(t) : t);
@@ -1594,19 +1605,35 @@ function boundsASolid(geom) {
   const q = (v) => { const r = Math.round(v * 1e5); return r === 0 ? 0 : r; };
   const key = (i) => `${q(pos.getX(i))}_${q(pos.getY(i))}_${q(pos.getZ(i))}`;
   const edge = new Map();
+  let collapsed = 0;
   for (let t = 0; t + 2 < n; t += 3) {
     const k = [key(at(t)), key(at(t + 1)), key(at(t + 2))];
+    // TODO 165 — A TRIANGLE WITH TWO CORNERS ON ONE KEY IS A SEGMENT, NOT A
+    // FACE, so it contributes no edges. The key above is already this function's
+    // definition of "same position"; by it such a triangle has no area, and the
+    // witness's raycast agrees (the vendored patch treats a zero-area face as no
+    // hit). Skipping only its zero-length edge, as this loop used to, still
+    // counted its other two — which are ONE key edge, twice — so every seam a
+    // collapsed strip lies on read as a 4-count edge. makeConicalGear's cap
+    // strips collapse at every tooth-gap station (ring R1 = R2, R3 = R4), and
+    // measured on alarmWindContrate that was 480 bad edges, all exactly 4-count,
+    // from 832 collapsed triangles: the whole of the reason every bevel in the
+    // movement was refused the pass-through witness. 480 → 0 with this skip.
+    // It can only ACCEPT more meshes, never fewer: dropping a collapsed triangle
+    // removes +2 from one key edge, so a 2-count edge vanishes or a 4 becomes a
+    // 2 (census: 635 → 759 of 797 accepted, 0 lost). An area floor instead
+    // (ZERO_AREA_MAX) is NOT monotone — collinear zero-area triangles close
+    // T-junctions, and dropping them opened alarmArrestCross (1916 holes).
+    if (k[0] === k[1] || k[1] === k[2] || k[0] === k[2]) { collapsed++; continue; }
     for (let e = 0; e < 3; e++) {
       const a = k[e], b = k[(e + 1) % 3];
-      if (a === b) continue;                       // degenerate sliver
       const kk = a < b ? `${a}|${b}` : `${b}|${a}`;
       edge.set(kk, (edge.get(kk) || 0) + 1);
     }
   }
-  v = true;
-  for (const c of edge.values()) if (c !== 2) { v = false; break; }  // manifold: every edge shared by exactly 2 faces
-  _closedCache.set(geom, v);
-  return v;
+  let bad = 0, over = 0;
+  for (const c of edge.values()) { if (c !== 2) bad++; if (c > 2) over++; }
+  return { edges: edge.size, bad, over, collapsed };
 }
 
 const _pierceRay = new THREE.Ray(), _pierceDir = new THREE.Vector3();
