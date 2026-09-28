@@ -1356,19 +1356,50 @@ export function revolvedBlanksClearance(A, fA, B, fB, target) {
 // (sag 0.0240); never fewer than the hexagon it replaces. Vertices sit ON r —
 // absarc's and ringExtrude's convention — so a press fit (bore = shaft) still
 // shares metal with the shaft's own vertices, and a running fit keeps at least
-// half its clearance. NOT covered: the extrude's bevel still grows a bevelled
-// bore inward by bevelSize (MODELING.md rule 1) — TODO 175; and makeBarrel's
-// toothed wall cuts its cavity the same hexagonal way — TODO 176.
+// half its clearance.
+//
+// TODO 175 — AND THE BEVEL IS PAID FOR, not suffered. ExtrudeGeometry grows a
+// bevelled shape's contour by bevelSize through the whole depth band (its
+// getBevelVec offsets each edge along its normal and takes the miter point),
+// and a hole's contour grows INWARD: every flat moves exactly bevelSize and
+// every vertex bevelSize/cos(π/n) along its bisector, while the two caps keep
+// the contour as drawn. So a bevelled bore was cut bevelSize under its boreR —
+// the winding idlers' 0.5 bore came out 0.4095 at the flats on a 0.45 stud,
+// the reserve pinion's 0.4 bore 0.1959 on a 0.45 post. `grow` is the part's
+// own bevelSize, and the contour is drawn at R′ = r + grow/cos(π/n) with n
+// taken from r: the depth band then lands EXACTLY on borePath(r) (vertices on
+// r, sag as above) and the caps open into a chamfered mouth at R′. A plain
+// r + bevelSize would leave the vertices bevelSize·(sec(π/n) − 1) short.
+// The direction holds for a counter-clockwise outer contour, which three.js
+// then forces its holes against; an outline wound the other way GROWS its hole
+// (the escape wheel's club outline, which passes grow = 0 and is exact by its
+// own bevelOffset) — so each builder that passes a grow asserts the band's
+// least vertex radius IS r (boreBandGuard), and a flipped winding warns.
 export const boreSides = (r) => Math.max(6, Math.ceil(Math.PI / Math.acos(Math.max(-1, 1 - PIVOT_BORE_CLEAR / (2 * r)))));
-export function borePath(r) {
+export function borePath(r, grow = 0) {
   const n = boreSides(r), p = new THREE.Path();
-  p.moveTo(r, 0);
-  for (let k = 1; k < n; k++) p.lineTo(r * Math.cos((-2 * Math.PI * k) / n), r * Math.sin((-2 * Math.PI * k) / n));
+  const R = r + grow / Math.cos(Math.PI / n);
+  p.moveTo(R, 0);
+  for (let k = 1; k < n; k++) p.lineTo(R * Math.cos((-2 * Math.PI * k) / n), R * Math.sin((-2 * Math.PI * k) / n));
   p.closePath();
   return p;
 }
-function addCrossingHoles(shape, spokes, innerR, outerR, boreR, armFrac = 0.15) {
-  shape.holes.push(borePath(boreR));   // TODO 168 — a true circle, not curveSegments' hexagon
+// TODO 175 — the band's least vertex radius about the bore's axis must be the
+// bore asked for: the metal a shaft meets is the depth band, and a winding that
+// grew the hole (or a bevel paid twice) reads here as a number, not a picture.
+export function boreBandGuard(geo, r, halfT, who) {
+  if (!(r > 0)) return;
+  const pos = geo.attributes.position;
+  let m = Infinity;
+  for (let i = 0; i < pos.count; i++) {
+    if (Math.abs(pos.getZ(i)) > halfT + 1e-5) continue;   // float32 positions: 0.8 is stored as 0.80000001
+    m = Math.min(m, Math.hypot(pos.getX(i), pos.getY(i)));
+  }
+  if (Math.abs(m - r) > 1e-5)
+    console.warn(`TODO 175: ${who}'s bore band reads ${m.toFixed(6)} against its bore ${r} — the bevel compensation and the contour's winding disagree`);
+}
+function addCrossingHoles(shape, spokes, innerR, outerR, boreR, armFrac = 0.15, grow = 0) {
+  shape.holes.push(borePath(boreR, grow));   // TODO 168 — a true circle; TODO 175 — drawn past the bevel it will lose
   if (spokes > 0 && outerR > innerR) {
     const seg = (Math.PI * 2) / spokes;
     for (let i = 0; i < spokes; i++) {
@@ -1614,9 +1645,8 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
   const innerR = Math.max(hubR + module * 0.35, boreR * 2.0);
   const outerR = rootR - module * 0.7;
   const useSpokes = outerR > innerR + module ? spokes : 0;
-  addCrossingHoles(shape, useSpokes, innerR, outerR, boreR);
-
   const bevel = gearBevel(module, thickness, bevelOn);
+  addCrossingHoles(shape, useSpokes, innerR, outerR, boreR, 0.15, bevel);   // TODO 175: the bore pays for the bevel
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: bevelOn,
@@ -1627,6 +1657,7 @@ export function makeGear({ module, teeth, thickness, boreR = 1, spokes = 5, name
     steps: 1,
   });
   geo.translate(0, 0, -thickness / 2);
+  boreBandGuard(geo, boreR, thickness / 2, `makeGear(${teeth}T, m ${module})`);
 
   const g = new THREE.Group();
   const body = new THREE.Mesh(geo, mat);
@@ -1676,9 +1707,11 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
   // boreR override (TODO 50): a pinion whose arbor carries a sliding square
   // must be bored past the square's half-diagonal, not to the default shaft.
   // TODO 168 — cut as a true circle (borePath), not curveSegments' hexagon.
-  shape.holes.push(borePath(boreR ?? Math.max(module * 0.35, 0.4)));
-
+  // TODO 175 — drawn past the bevel the extrude will take back, so the band
+  // the shaft meets IS the bore.
   const bevel = bevelOn ? pinionBevel(module, thickness) : 0;   // one law with gearFaceReach (§234)
+  const bore = boreR ?? Math.max(module * 0.35, 0.4);
+  shape.holes.push(borePath(bore, bevel));
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: bevelOn,
@@ -1688,6 +1721,7 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
     curveSegments: 3,
   });
   geo.translate(0, 0, -thickness / 2);
+  boreBandGuard(geo, bore, thickness / 2, `makePinion(${teeth}T, m ${module})`);
 
   const g = new THREE.Group();
   const body = new THREE.Mesh(geo, mat);
@@ -2612,14 +2646,14 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
   // 0.1404 off the cannon pinion's leaf tips at 1.6274 — under CLEAR_MARGIN
   // — and through the hour tube's own wall. borePath's sag ≤ PIVOT_BORE_CLEAR/2
   // gives 23 sides at 2.5 (flats 2.4767) and 11 at the seconds heart's rod.
-  shape.holes.push(borePath(boreR));
-
   // bevel: false (§29) — CRISP faces: the extrude bevel expands the band
   // ±bevel in z AND the outline +bevel in XY (MODELING.md rule 1); §29's
   // margin-exact centre stack budgets the AUTHORED thickness, and the
   // dropped feeler arm's clearance was eaten by exactly this expansion.
   // Default (true) preserves the seconds-reset heart bit-for-bit.
   const bevel = bevelOn ? Math.min(thickness * 0.2, radius * 0.05) : 0;
+  // TODO 175 — the bore is drawn past the bevel the extrude takes back from it.
+  shape.holes.push(borePath(boreR, bevel));
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: bevelOn,
@@ -2629,6 +2663,7 @@ export function makeHeartCam({ radius, thickness, boreR = 0.6, rMin: rMinOverrid
     curveSegments: 2,
   });
   geo.translate(0, 0, -thickness / 2);
+  boreBandGuard(geo, boreR, thickness / 2, `makeHeartCam(r ${radius})`);
   g.add(new THREE.Mesh(geo, MATS.blueSteel));
   g.userData.r = radius;
   g.userData.rMin = rMin;
@@ -5652,10 +5687,11 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
     // Toothed wall — this IS the great wheel; the drum cavity is the central hole.
     const tipR = pitchR + module * 0.95;
     const shape = gearOutlineShape(teeth, rootR, pitchR, tipR);
-    const hole = new THREE.Path();
-    hole.absarc(0, 0, drumInnerR, 0, Math.PI * 2, true);
-    shape.holes.push(hole);
+    // TODO 175 — the cavity is borePath's derived n-gon, drawn past the bevel
+    // the extrude takes back, so the ribbon's designed gap (springOuter below)
+    // is measured against the wall as cut rather than bevel·sec(π/6) inside it.
     const bevel = Math.min(height * 0.06, module * 0.2);
+    shape.holes.push(borePath(drumInnerR, bevel));
     const wallGeo = new THREE.ExtrudeGeometry(shape, {
       depth: height,
       bevelEnabled: true,
@@ -5665,6 +5701,7 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
       curveSegments: 3,
     });
     wallGeo.translate(0, 0, -height / 2);
+    boreBandGuard(wallGeo, drumInnerR, height / 2, `makeBarrel(${teeth}T) cavity`);
     g.add(new THREE.Mesh(wallGeo, MATS.brass));
   }
 
