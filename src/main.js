@@ -4,6 +4,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
 import { MeshBVH } from '../vendor/three-mesh-bvh.module.js';   // TODO 151: the jumper's siting solve measures the real metal with the battery's own closest-point machinery
 import { MATS, CRYSTAL_GLASS, xrayClearFor, applyDecorationFromAesthetics, applyBrushFromAesthetics, applyCaseMetalFromAesthetics } from './materials.js';
+import { geometryOverridePaths } from './aesthetics.js';
+import { VALIDATED_CONFIGS } from './validated-configs.js';   // TODO 158: the configuration keys the battery swept
 import { aesthetics, confirmAestheticsBoot, writeOverrides, clearOverrides, serializeOverrides, importAesthetics, IMPORT_OUTCOME, encodeShare, SHARE_PARAM, stripLinkParams, LINK_OUTCOME, LINK_DROPPED } from './aesthetics.js';
 import { loadState, saveState, clearState, hasState } from './state.js';
 // §73 tier one — the chrome's strings. UI_LANG resolves once at import
@@ -68,7 +70,7 @@ import {
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   eulerCriticalLoad_N,              // §231: the one Euler law, read by §137's bent link and the pusher's reach bar alike
-  ROUTE_SPEC, ROUTE_UNIT_NAME,                // §36 Apply: the committed route, judged once, and the one name for its unit
+  ROUTE_SPEC, ROUTE_UNIT_NAME, configKey,                // §36 Apply: the committed route, judged once, and the one name for its unit
   SLENDER_OVERHANG_K,                         // §54: an overhang's effective length — §36 sizes against what the check MEASURES
   SLENDER_MAX,                                // §54's CEILING, distinct from SLENDER_TARGET above: TODO 117's line derives the reader pin's length against the ceiling (what the check refuses), not the target (what new metal aims at)
   MOVEMENT_SENSE, ALARM_SENSE,                // TODO 115: the two trains' hands — the going train's, and the alarm's own motor's; every direction-committed cut is checked against one of them
@@ -4045,6 +4047,37 @@ const TQ_CUT_MARGIN = 0.5; // hoisted (§125 Tier B — the fork leg's corridor 
                            // so the cut's base edge (BAL_OUTER_R + this) is what physically
                            // clears them at every azimuth — the escapement stretch of the
                            // window is still sized for the eye and the bridge screws.
+// TODO 184 — THE FRAME'S JOINTS, declared where each screw is placed. A
+// screw exists to close ONE joint: its head bears on the member it clamps,
+// and its thread must continue PAST that member's underside into the member
+// that holds it. The engaged length is therefore the shank less the clamped
+// member's thickness — and each site passes the SAME `shank` value it hands
+// makeScrews, so the row cannot describe a different screw from the one cut.
+//
+// ENGAGE_MIN is the thread-engagement rule for a steel screw in a softer
+// tapped host (brass pillars, nickel-silver plates): the internal thread's
+// shear area must match the screw's own tensile area before the screw can be
+// tightened to its strength rather than strip the host, and with the host's
+// shear strength roughly half the screw's that lands at 1.5 diameters. Same
+// rule for every class here, because every host here is the soft metal.
+//
+// This is a REPORT until TODO 184 lands its fixes: every row reads 0 engaged
+// on arrival, so a boot assert would break rule 6 on the shipped tree. The
+// assert and a `support` engagement column are TODO 184's last step;
+// tools/probe-184-frame-joints.mjs reads the rows and measures the same
+// quantity off the built meshes, so the table is held to the metal meanwhile.
+const ENGAGE_MIN = 1.5;
+const FRAME_JOINTS = [];
+// frame: the Object3D the screw is built in; top: the head's top face
+// (frame-local z, the value passed to makeScrews); headT: head height;
+// clamp: the thickness of the member the head clamps, below the head.
+function declareFrameJoint({ joint, clamped, host, frame, x, y, top, headR, headT, shank, clamp }) {
+  const d = 2 * G.screwShankR(headR);
+  FRAME_JOINTS.push({
+    joint, clamped, host, frame, x, y, top, headT,
+    d, shank, clamp, engaged: shank - clamp, required: ENGAGE_MIN * d,
+  });
+}
 // BALANCE COCK section constants, hoisted (§125 Tier B) from the cock's own
 // build below so the fork cock's leg scan can size the corridor it must
 // yield. The staff jewel sits at the HEAD-ARC CENTRE of the slab (fraction
@@ -4235,6 +4268,9 @@ const forkCock = (() => {
   });
   g.position.set(0, 0, FORK_COCK_BOT + FORK_COCK_T / 2);
   movement.add(g);
+  for (const f of g.userData.footScrews)
+    declareFrameJoint({ joint: 'Fork cock ⇄ base plate', clamped: 'fork cock slab', host: 'base plate',
+      frame: g, x: f.x, y: f.y, top: f.z, headR: f.headR, headT: f.headT, shank: f.shank, clamp: f.clamp });
   registerExplode(g, FORK_COCK_BOT + FORK_COCK_T / 2, 7);
   registerLabel('Fork cock', g);
   return { obj: g, chain, legB, legR };
@@ -10104,15 +10140,26 @@ const balanceCock = G.makeCock({
   // runs through the bore cut above. It used to be placed 0.11 clear of the
   // face and then thickened to §50's floor from the middle, which put its
   // underside 0.048 INSIDE solid nickel — a screw drawn where a screw goes,
-  // in stock that was never opened for it. Below the bar the thread takes
-  // the leg and then the plate: not drawn, so not cut.
-  balanceCock.add(G.makeScrews({
-    at: [-1, 1].map((s) => ({
-      x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + STOCK_MIN_U,
-      a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T,
-    })),
-    headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
+  // in stock that was never opened for it.
+  //
+  // TODO 184: this comment used to end "below the bar the thread takes the
+  // leg and then the plate: not drawn, so not cut" — and the SHANK is what
+  // was not drawn: `shank: COCK_T` below a head seated on the bar's top face
+  // ends exactly at the bar's underside. The leg below is this cock's own
+  // (same group) and stands on the base plate with nothing crossing that
+  // face, so the cock is clamped to its own legs and fastened to nothing.
+  // Reported in FRAME_JOINTS until TODO 184 runs the thread into the plate.
+  const cockScrews = [-1, 1].map((s) => ({
+    x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + STOCK_MIN_U,
+    a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T,
   }));
+  balanceCock.add(G.makeScrews({
+    at: cockScrews, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
+  }));
+  for (const c of cockScrews)
+    declareFrameJoint({ joint: 'Balance cock ⇄ base plate', clamped: 'balance cock crossbar', host: 'base plate',
+      frame: balanceCock, x: c.x, y: c.y, top: c.z, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
+      shank: c.shank, clamp: COCK_T });
 
   // ------------------------------------------------------------------
   // FIXED OUTER TERMINAL — free-sprung dress. Everything below is
@@ -11399,19 +11446,29 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     land.position.set(p.x, p.y, -TQ_T / 2 + (TQ_T - STOCK_MIN_U) / 2);
     threeQuarterPlate.add(land);
   }
+  const plateScrews = pillarSeats.map((p) => ({
+    x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x),
+    // Through the plate and no further. TODO 184: this line used to go on
+    // "below the underside the thread takes the pillar", and nothing does —
+    // the shank ends AT the underside, so the thread engages the pillar by
+    // zero. A tapped hole under a seated screw is invisible in the real
+    // movement, but the screw's LENGTH is not something that invisibility
+    // excuses. Reported in FRAME_JOINTS until TODO 184 taps the pillar top.
+    shank: TQ_T - STOCK_MIN_U,
+  }));
   threeQuarterPlate.add(G.makeScrews({
-    at: pillarSeats.map((p) => ({
-      x: p.x, y: p.y, z: TQ_T / 2, a: Math.atan2(p.y, p.x),
-      // Through the plate and no further: below the underside the thread
-      // takes the pillar, and a tapped hole under a seated screw is invisible
-      // in the real movement too.
-      shank: TQ_T - STOCK_MIN_U,
-    })),
+    at: plateScrews,
     // headT = STOCK_MIN_U like every §20 screw head — the first cut used
     // TQ_T·0.35 (0.106 mm) and the §50 stockFloor gate refused it against
     // the 0.12 wheel floor, which is the gate doing its job.
     headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
   }));
+  // The head is sunk flush, so what it clamps below itself is the plate's
+  // land: TQ_T − STOCK_MIN_U, the same land ring cut above.
+  for (const p of plateScrews)
+    declareFrameJoint({ joint: 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: 'pillar',
+      frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
+      shank: p.shank, clamp: TQ_T - STOCK_MIN_U });
 }
 
 // ===========================================================================
@@ -32307,6 +32364,36 @@ function layoutChrome() {
   viewHud.style.maxHeight = hudBox && hudBox.height > 0
     ? `${Math.max(0, Math.round(hudBox.top - PANEL_GAP - viewTop))}px`
     : '';
+  placeConfigMark();
+}
+// TODO 158 — the unverified-configuration pill takes the TOP STRIP that is
+// free: between the HUD panel's right edge (when the panel is showing at the
+// top) and the chrome bar's left edge, centred there. Where that strip is
+// narrower than the pill — a phone, measured at 360 and 412 px — it drops one
+// row, below the bar, and keeps left of the view panel if that is open. Read
+// off the chrome's own rects like the rules above, because the bar's width is
+// a function of the locale; recomputed with them on resize.
+function placeConfigMark() {
+  const pill = document.getElementById('config-unverified');
+  if (!pill) return;
+  const vis = (el) => el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+  const bar = chromeBar.getBoundingClientRect();
+  const pr = vis(panel) ? panel.getBoundingClientRect() : null;
+  pill.style.transform = 'none';
+  pill.style.maxWidth = `${Math.max(0, window.innerWidth - 2 * PANEL_INSET)}px`;
+  const w = pill.getBoundingClientRect().width;
+  const lo = pr && pr.top < bar.bottom ? pr.right + PANEL_GAP : PANEL_INSET;
+  const hi = bar.left - PANEL_GAP;
+  if (hi - lo >= w) {
+    pill.style.top = `${PANEL_INSET}px`;
+    pill.style.left = `${Math.round(lo + (hi - lo - w) / 2)}px`;
+    return;
+  }
+  const vr = vis(viewHud) ? viewHud.getBoundingClientRect() : null;
+  const right = vr ? vr.left - PANEL_GAP : window.innerWidth - PANEL_INSET;
+  pill.style.top = `${Math.round(bar.bottom + PANEL_GAP)}px`;
+  pill.style.maxWidth = `${Math.max(0, right - PANEL_INSET)}px`;
+  pill.style.left = `${Math.round(Math.max(PANEL_INSET, PANEL_INSET + (right - PANEL_INSET - pill.getBoundingClientRect().width) / 2))}px`;
 }
 function setPanelHidden(hidden) {
   panel.style.display = hidden ? 'none' : '';
@@ -33069,6 +33156,7 @@ function askTour(onProceed) {
     aesthetics.decoration.ribbing.widthUnits = Number(ribPitch.value);
     applyDecorationFromAesthetics();
     writeOverrides(aesthetics);
+    refreshConfigMark();   // TODO 158: a live edit can make this build one the battery never swept
   });
 
   // §23 — THE GENERATED PANEL. Walk aesthetics.json, emit a control per
@@ -33249,6 +33337,7 @@ function askTour(onProceed) {
         input.type = 'checkbox';
         input.checked = r.value;
       } else continue;
+      input.dataset.path = r.path.join('.');   // TODO 158: the leaf this control edits, addressable by a probe (a value, never display text)
       input.addEventListener('input', () => {
         if (valEl) valEl.textContent = fmtNum(input.value, valDec);
         let leaf = aesthetics;
@@ -33260,6 +33349,7 @@ function askTour(onProceed) {
         // Persist so ⟳-tier knobs (consumed at build) actually take effect on
         // the reload they ask for. Comments stripped: they are prose.
         writeOverrides(aesthetics);
+        refreshConfigMark();   // TODO 158: the hands and gong re-cut LIVE, so the mark follows the edit
       });
       row.appendChild(input);
       advBody.appendChild(row);
@@ -44979,9 +45069,103 @@ function frame(now) {
 
 let WELD_CENSUS = null;   // §81 tranche A — filled by the weld pass at the end of boot
 
+// TODO 158 — IS THIS A BUILD THE BATTERY SWEPT? Only the default movement is
+// collision-swept; a URL spec, an applied route, a saved reconfigure variant
+// or a geometry-bearing tuning (the hands, markers, gong and plate re-cut the
+// metal, some of them live) builds geometry nobody checked. The build names
+// what it was asked to cut (layout.js configKey) and looks the name up in the
+// set the battery re-verifies each run (validated-configs.js). A key is exact
+// on every engine, which a geometry fingerprint is not — see configKey.
+// `reasons` says WHY it is unverified: 'spec' (a non-default SPEC), 'route'
+// (an applied route), 'tuning' (geometry-bearing overrides in effect).
+const CONFIG_VALIDATED = new Set(VALIDATED_CONFIGS.map((r) => r.key));
+function configState() {
+  const route = routeApplySolve ? { points: ROUTE_SPEC.points, bushes: ROUTE_SPEC.bushes } : null;
+  const tuned = geometryOverridePaths(aesthetics);
+  const key = configKey({ route, tuned });
+  const reasons = [];
+  if (!CONFIG_VALIDATED.has(configKey())) reasons.push('spec');
+  if (route) reasons.push('route');
+  if (tuned.length) reasons.push('tuning');
+  return { key, verified: CONFIG_VALIDATED.has(key), reasons, tuned: tuned.map(([p]) => p) };
+}
+// The mark: a status pill, NOT dismissible — it describes the whole build,
+// not one event (the §240 receipt beside it is dismissible because it is).
+// State is the data-state attribute, never the text (CLAUDE.md's UI rule), and
+// probes read __clock.config. Positioned by the viewport, so its physical
+// `left` is on purpose; the row inside is flex and mirrors under dir="rtl" by
+// itself. Placed by placeConfigMark: the free top strip between the HUD panel
+// and the chrome bar, else one row down (the caption and receipt own the
+// bottom centre). "As designed" (the reconfigure panel's own reset) is offered only
+// when a spec or route caused it; clearing TUNING is the Advanced panel's
+// Reset, and a second way to do it here would be a second copy of that.
+function refreshConfigMark() {
+  const s = configState();
+  let pill = document.getElementById('config-unverified');
+  if (s.verified) { if (pill) pill.remove(); return; }
+  if (!pill) {
+    pill = document.createElement('div');
+    pill.id = 'config-unverified';
+    pill.setAttribute('role', 'status');
+    pill.dataset.state = 'unverified';
+    pill.style.cssText = 'position:fixed; top:14px; left:50%; z-index:13;'
+      + 'width:max-content; display:flex; gap:8px; align-items:center;'
+      + 'background:rgba(60,40,10,0.9); backdrop-filter:blur(6px); border:1px solid rgba(240,190,90,0.55);'
+      + 'border-radius:999px; padding:4px 10px; color:#f3dca8; font:12px system-ui, sans-serif;';
+    const msg = document.createElement('span');
+    msg.className = 'config-unverified-text';
+    msg.style.cssText = 'text-align:start; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+    msg.textContent = t('Unverified configuration');
+    pill.title = t('No collision sweep has checked this configuration — only the as-designed movement is verified');
+    pill.appendChild(msg);
+    const reset = document.createElement('button');
+    reset.id = 'btn-config-as-designed';
+    reset.textContent = t('As designed');
+    reset.addEventListener('click', () => navigateWithSpec({}));
+    pill.appendChild(reset);
+    document.body.appendChild(pill);
+  }
+  placeConfigMark();
+  pill.dataset.reasons = s.reasons.join(' ');
+  pill.querySelector('#btn-config-as-designed').style.display = (s.reasons.includes('spec') || s.reasons.includes('route')) ? '' : 'none';
+}
+refreshConfigMark();
+
 // Debug/verification hook: step the sim and render without rAF (occluded windows
 // throttle requestAnimationFrame, which stalls automated checks).
 window.__clock = {
+  // TODO 184 — the frame's screw joints, DECLARED (the shank each site passed
+  // makeScrews, less the member it clamps) and MEASURED (the lowest shank
+  // vertex actually cut at that site, in the screw's own frame, so a site
+  // whose declaration and metal part company shows it). Serializable rows for
+  // tools/probe-184-frame-joints.mjs; a report until TODO 184's gate lands.
+  frameJoints: () => FRAME_JOINTS.map((j) => {
+    j.frame.updateWorldMatrix(true, true);
+    const inv = new THREE.Matrix4().copy(j.frame.matrixWorld).invert();
+    const v = new THREE.Vector3(), m = new THREE.Matrix4();
+    let lowest = Infinity, hits = 0;
+    j.frame.traverse((o) => {
+      if (!o.isMesh || o.name !== 'screwShanks') return;
+      m.multiplyMatrices(inv, o.matrixWorld);
+      const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m);
+        if (Math.hypot(v.x - j.x, v.y - j.y) > j.d / 2 + 1e-6) continue;
+        hits++;
+        if (v.z < lowest) lowest = v.z;
+      }
+    });
+    const plane = j.top - j.headT - j.clamp;   // the clamped member's underside
+    const w = new THREE.Vector3(j.x, j.y, plane).applyMatrix4(j.frame.matrixWorld);
+    return {
+      joint: j.joint, clamped: j.clamped, host: j.host,
+      site: { x: w.x, y: w.y, z: w.z },
+      dMM: j.d * UNIT_MM, requiredMM: j.required * UNIT_MM,
+      engagedMM: j.engaged * UNIT_MM,
+      measuredMM: hits ? (plane - lowest) * UNIT_MM : null, shankVerts: hits,
+    };
+  }),
+  get config() { return configState(); },   // TODO 158: { key, verified, reasons, tuned }
   // §239 — what the build's yielding actually achieved, read back rather than
   // assumed: how many times the thread was handed back, and the longest stretch
   // it was HELD between two seams. tools/probe-239-boot-yield.mjs gates both.

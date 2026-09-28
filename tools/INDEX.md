@@ -4,7 +4,7 @@
 
 # The instruments
 
-246 scripts. **137 are ACCEPTANCE tests** — they decide and exit non-zero.
+249 scripts. **140 are ACCEPTANCE tests** — they decide and exit non-zero.
 **109 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -107,6 +107,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-153-fails.mjs` | §153 | report | §153 — re-run the battery's three failing gates alone and dump their failing rows (the landing run's payload dump was lost to a tail pipe). Same drive as ci-battery.mjs: dev server with a private TMPDIR, headless Chromium with throttling off, sweep hold for the run, start()/status(). Usage: node probe-153-fails.mjs [checkName ...] (default: the three) |
 | `probe-153-shot.mjs` | §153 | report | §153 probe — screenshots of the redesigned reserve sector: dial-on view at three tensions, plus an oblique close-up so the shallow recess and the proud hand are visible in profile. The canvas is read back with toDataURL IN the same evaluate as the scripted camera write + render, so OrbitControls/preset tweens (which re-aim the camera every rAF — the CLAUDE.md trap) cannot overwrite the pose between render and capture. |
 | `probe-156-jumper-veto.mjs` | §156 | acceptance | TODO 156 (A1) — DOES CAP_SOLVE's OWN B GET JUDGED, EXACTLY ONCE, BY THE JUMPER'S SITING SOLVE — AND IS A REFUSAL RECORDED RATHER THAN SILENT? |
+| `probe-158-unverified.mjs` | §158 | acceptance | TODO 158 — DOES THE PAGE SAY WHEN ITS GEOMETRY WAS NEVER SWEPT? ACCEPTANCE. |
 | `probe-160-cause.mjs` | §160 | acceptance | TODO 160 — does the jumper's verdict say WHETHER THE CAP BEARING HAD ANY SAY IN IT? ACCEPTANCE. |
 | `probe-161-bench.mjs` | §161 | acceptance | §161 — the bench route, and the two claims it rests on, measured in a browser. |
 | `probe-161-lawed.mjs` | §161 | acceptance | TODO 161 — does JMP_SITE judge the lawed movers over their TRAVEL? ACCEPTANCE. |
@@ -130,6 +131,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-173-jumper.mjs` | §173 | acceptance | §173 ACCEPTANCE — THE SAUTOIR, MEASURED AGAINST WHAT THE CLICK FAILED. |
 | `probe-182-guide-station.mjs` | §182 | report | §182 (TODO 104 tier A) — WHERE IS THE PUSHER'S GUIDE BOSS, RELATIVE TO THE STEM IT IS SUPPOSED TO BEAR? |
 | `probe-182-subbody-index.mjs` | §182 | report | §182 — DOES A BVH BUILD INVALIDATE `userData.subBodies`? |
+| `probe-184-frame-joints.mjs` | §184 | acceptance | FRAME SCREW ENGAGEMENT — how far each screw that holds the frame together actually runs into the member that is supposed to hold it (TODO 184). |
 | `probe-184-triple.mjs` | §184 | acceptance | THE TIER-SPLIT TRIPLE — is a bearing that is fine ALONE fine TOGETHER? |
 | `probe-187-casing-path.mjs` | §187 | acceptance | CAN THE MOVEMENT ACTUALLY BE CASED — the back bore's insertion profile against the rim's measured reach, per z-slice. |
 | `probe-192-tier-price.mjs` | §192 | acceptance | THE STRIKE TIER, PRICED — every above-plate member's height over the three-quarter plate's top face (build and swept over the alarm axes), the tower's segment ladder measured face to face, and the §187 glass arithmetic that turns a tower drop into cased height. |
@@ -259,3 +261,4 @@ when a question was asked; the summaries are what it answered.
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |
 | `timelapse-build.mjs` |  | report | Timelapse build — turns tools/timelapse-capture.mjs's frames into the scrubbable site: sprite sheets per view, a data block, and the viewer page. |
 | `timelapse-capture.mjs` |  | report | Timelapse capture — one frame per hosted release per camera preset, so the movement's evolution can be scrubbed as a film. |
+| `validated-configs.mjs` |  | acceptance | TODO 158 — WRITE OR CHECK src/validated-configs.js, the set of configuration keys the battery has swept. ACCEPTANCE (--check exits non-zero on drift). |

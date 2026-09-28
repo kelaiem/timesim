@@ -6426,10 +6426,17 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     // (that convention belongs to the three-quarter plate, which has rods
     // sweeping over it), so the honest seat is the face itself, and the
     // opening the screw needs is the bore through the boss above.
+    //
+    // TODO 184: and the shank STOPS at the slab's underside — `shank:
+    // thickness` below a head seated on the top face. Below that is this
+    // bridge's own leg, then the base plate, and no thread enters either, so
+    // the screw clamps the slab to its own leg and the leg to nothing. The
+    // caller reads `userData.footScrews` into FRAME_JOINTS, which reports it.
     footScrews.push({ x: n.x, y: n.y, z: thickness / 2 + STOCK_MIN_U,
                       a: Math.atan2(n.y, n.x), headR: footHeadR(n), shank: thickness });
   }
   if (footScrews.length) g.add(makeScrews({ at: footScrews, headT: STOCK_MIN_U }));
+  g.userData.footScrews = footScrews.map((f) => ({ ...f, headT: STOCK_MIN_U, clamp: thickness }));
   for (const j of jewels) {
     // Rubbed-in jewel, seated in its counterbore. Every face is kept OFF
     // the surrounding boss: the outer wall a hair inside the counterbore

@@ -360,6 +360,8 @@ const DE = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "Dieser Link enthält angepasste Werte",
   "Open without them": "Ohne sie öffnen",
+  "Unverified configuration": "Ungeprüfte Konfiguration",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "Kein Kollisionsdurchlauf hat diese Konfiguration geprüft — geprüft ist nur das Uhrwerk wie entworfen",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "Die angepassten Werte eines geteilten Links haben den Aufbau abgebrochen — sie wurden verworfen, die eigenen Einstellungen dieses Browsers bleiben erhalten",
   // -- Performance
   'Frame': 'Frame', 'Ticks/frame': 'Ticks/Frame', 'Quality': 'Qualität', 'Tier': 'Stufe',
@@ -707,6 +709,8 @@ const ZH = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "此链接带有调整过的数值",
   "Open without them": "不带这些数值打开",
+  "Unverified configuration": "未经验证的配置",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "没有任何碰撞扫描检查过此配置——只有按原设计的机芯经过验证",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "共享链接中的调整数值导致构建中断 — 已将其丢弃，本浏览器自己的调整保持不变",
   'Frame': '帧耗时', 'Ticks/frame': '每帧步数', 'Quality': '画质', 'Tier': '档位',
   'Auto': '自动', 'High': '高', 'Balanced': '均衡', 'Low': '低',
@@ -1106,6 +1110,8 @@ const FR = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "Ce lien transporte des valeurs réglées",
   "Open without them": "Ouvrir sans elles",
+  "Unverified configuration": "Configuration non vérifiée",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "Aucun balayage de collisions n’a contrôlé cette configuration — seul le mouvement tel que conçu est vérifié",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "Les valeurs réglées d’un lien partagé ont interrompu la construction — elles ont été abandonnées, et le réglage propre à ce navigateur conservé",
   ['Reset']: 'Réinitialiser',
   ['Frame']: 'Image',
@@ -1605,6 +1611,8 @@ const JA = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "このリンクには調整した値が含まれています",
   "Open without them": "それらを使わずに開く",
+  "Unverified configuration": "未検証の構成",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "この構成を確認した衝突スイープはありません — 検証済みなのは設計どおりのムーブメントだけです",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "共有リンクの調整値でビルドが停止しました — それらを破棄し、このブラウザ自身の調整はそのまま残しました",
   ['Reset']: 'リセット',
   ['Frame']: 'フレーム',
@@ -2103,6 +2111,8 @@ const ZH_HANT = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "此連結帶有調整過的數值",
   "Open without them": "不帶這些數值開啟",
+  "Unverified configuration": "未經驗證的配置",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "沒有任何碰撞掃描檢查過此配置——只有照設計的機芯經過驗證",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "共享連結中的調整數值使建構中斷 — 已將其捨棄，這個瀏覽器自己的調整保持不變",
   ['Reset']: '重設',
   ['Frame']: '影格',
@@ -2614,6 +2624,8 @@ const AR = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "يحمل هذا الرابط قيمًا مضبوطة",
   "Open without them": "افتح من دونها",
+  "Unverified configuration": "تهيئة غير متحقَّق منها",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "لم يفحص أي مسح للتصادم هذه التهيئة — الحركة كما صُمِّمت هي وحدها المتحقَّق منها",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "أوقفت القيم المضبوطة في رابط مُشارَك عملية البناء — فأُسقطت، وبقي ضبط هذا المتصفح كما هو",
   'Reset': 'إعادة ضبط',
   'Frame': 'الإطار',
@@ -3102,6 +3114,8 @@ const ES = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "Este enlace lleva valores ajustados",
   "Open without them": "Abrir sin ellos",
+  "Unverified configuration": "Configuración no verificada",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "Ningún barrido de colisiones ha comprobado esta configuración: solo está verificado el movimiento como se diseñó",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "Los valores ajustados de un enlace compartido detuvieron la construcción — se descartaron y se conservó el ajuste propio de este navegador",
   'Reset': 'Restablecer',
   'Frame': 'Fotograma',
@@ -3587,6 +3601,8 @@ const KO = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "이 링크에는 조정한 값이 담겨 있습니다",
   "Open without them": "그 값 없이 열기",
+  "Unverified configuration": "검증되지 않은 구성",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "이 구성을 확인한 충돌 스윕이 없습니다 — 설계대로의 무브먼트만 검증되었습니다",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "공유 링크의 조정 값 때문에 빌드가 멈췄습니다 — 해당 값을 버렸고, 이 브라우저의 조정 값은 그대로 두었습니다",
   'Reset': '초기화',
   'Frame': '프레임',
@@ -4074,6 +4090,8 @@ const RU = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "Эта ссылка несёт настроенные значения",
   "Open without them": "Открыть без них",
+  "Unverified configuration": "Непроверенная конфигурация",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "Ни одна проверка столкновений не охватывала эту конфигурацию — проверен только механизм по проекту",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "Настроенные значения из общей ссылки прервали сборку — они отброшены, собственная настройка этого браузера сохранена",
   'Reset': 'Сбросить',
   'Frame': 'Кадр',
@@ -4561,6 +4579,8 @@ const PT = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "Este link traz valores ajustados",
   "Open without them": "Abrir sem eles",
+  "Unverified configuration": "Configuração não verificada",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "Nenhuma varredura de colisões verificou esta configuração — só o movimento como projetado está verificado",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "Os valores ajustados de um link compartilhado interromperam a construção — foram descartados, e o ajuste próprio deste navegador mantido",
   'Reset': 'Redefinir',
   'Frame': 'Quadro',
@@ -5047,6 +5067,8 @@ const IT = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "Questo link porta valori regolati",
   "Open without them": "Apri senza di essi",
+  "Unverified configuration": "Configurazione non verificata",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "Nessuna scansione delle collisioni ha controllato questa configurazione: è verificato solo il movimento come progettato",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "I valori regolati di un link condiviso hanno interrotto la costruzione — sono stati scartati, e la regolazione di questo browser conservata",
   'Reset': 'Ripristina',
   'Frame': 'Fotogramma',
@@ -5530,6 +5552,8 @@ const HI = {
   // §240 Landing 3 — the shared link's receipt.
   "This link carries tuned values": "इस लिंक में ट्यून किए गए मान हैं",
   "Open without them": "उनके बिना खोलें",
+  "Unverified configuration": "असत्यापित विन्यास",
+  "No collision sweep has checked this configuration — only the as-designed movement is verified": "किसी टक्कर-जाँच ने इस विन्यास की जाँच नहीं की है — केवल डिज़ाइन के अनुसार बना मूवमेंट सत्यापित है",
   "A shared link’s tuned values stopped the build — they were dropped, and this browser’s own tuning kept": "एक साझा लिंक के ट्यून किए गए मानों ने बिल्ड रोक दिया — उन्हें हटा दिया गया, और इस ब्राउज़र की अपनी ट्यूनिंग बनी रही",
   'Reset': 'रीसेट',
   'Frame': 'फ्रेम',
