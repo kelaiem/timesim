@@ -332,7 +332,10 @@ try {
   // primer has no glossary), not a per-locale table, so the "two per locale"
   // rule above does not apply to it and the parity argument now starts from
   // an odd base.
-  check('release: precache complete', counts === 48, `${counts}/48`);
+  // TODO 158 — 49: src/validated-configs.js, the set of configuration keys the
+  // battery swept, which main.js imports to mark an unverified build. One
+  // module for the app, not a per-locale table, so it adds one.
+  check('release: precache complete', counts === 49, `${counts}/49`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');

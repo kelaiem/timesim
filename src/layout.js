@@ -282,6 +282,29 @@ export const ROUTE_SPEC = (() => {
   }
   return Object.freeze({ points: Object.freeze(points), bushes: Object.freeze(bushes) });
 })();
+
+// TODO 158 — THE CONFIGURATION KEY: an exact name for the geometry a build
+// was asked to cut, so a page can say whether the battery ever swept it. The
+// build is a deterministic function of (code, SPEC, applied route, the
+// non-shareable aesthetics — the leaves that re-cut metal: hands, markers,
+// gong, plate), so "this key was swept at this tree" is the same claim as
+// "this geometry was". A key, not a geometry FINGERPRINT, on purpose: the
+// fingerprint rounds engine trigonometry at 1e-3 and is only proven
+// deterministic on one Chromium host, and it changes on every geometry
+// landing; this is ECMAScript Number→String, exact on every engine, and moves
+// only when a default does. Sorted keys and a version prefix, so an order or
+// format change fails loudly instead of matching nothing.
+//   spec   — the RESOLVED SPEC's non-null entries (clamped, snapped: ?vph=12345
+//            and ?reserveh=31 resolve to the default and are keyed as it)
+//   route  — the route AS APPLIED (a document the solve refused builds the
+//            identity movement and is keyed null), else null
+//   tuned  — sorted [path, value] pairs of the geometry-bearing overrides
+export function configKey({ spec = SPEC, route = null, tuned = [] } = {}) {
+  const s = {};
+  for (const k of Object.keys(spec).sort()) if (spec[k] !== null && spec[k] !== undefined) s[k] = spec[k];
+  const t = [...tuned].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return `cfg1:${JSON.stringify({ spec: s, route: route ?? null, tuned: t })}`;
+}
 export const SPEC_RATES = Object.freeze(Object.keys(RATE_TABLE).map(Number));
 
 // ---------------------------------------------------------------------------
