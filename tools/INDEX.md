@@ -4,7 +4,7 @@
 
 # The instruments
 
-243 scripts. **135 are ACCEPTANCE tests** — they decide and exit non-zero.
+244 scripts. **136 are ACCEPTANCE tests** — they decide and exit non-zero.
 **108 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -108,6 +108,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-153-shot.mjs` | §153 | report | §153 probe — screenshots of the redesigned reserve sector: dial-on view at three tensions, plus an oblique close-up so the shallow recess and the proud hand are visible in profile. The canvas is read back with toDataURL IN the same evaluate as the scripted camera write + render, so OrbitControls/preset tweens (which re-aim the camera every rAF — the CLAUDE.md trap) cannot overwrite the pose between render and capture. |
 | `probe-156-jumper-veto.mjs` | §156 | acceptance | TODO 156 (A1) — DOES CAP_SOLVE's OWN B GET JUDGED, EXACTLY ONCE, BY THE JUMPER'S SITING SOLVE — AND IS A REFUSAL RECORDED RATHER THAN SILENT? |
 | `probe-161-bench.mjs` | §161 | acceptance | §161 — the bench route, and the two claims it rests on, measured in a browser. |
+| `probe-161-lawed.mjs` | §161 | acceptance | TODO 161 — does JMP_SITE judge the lawed movers over their TRAVEL? ACCEPTANCE. |
 | `probe-163-driver.mjs` | §163 | acceptance | §163 — CAN A DRIVER PIVOTED ON THE COLUMN WHEEL'S OWN ARBOR RETURN? |
 | `probe-163-lever.mjs` | §163 | acceptance | §163 — THE TWO-BODY CHAIN: a driving pawl carried on an operating lever. |
 | `probe-163-pin.mjs` | §163 | report | §163 — SIZING THE PIN-IN-SLOT COUPLING AGAINST THE BUILT TREE. |

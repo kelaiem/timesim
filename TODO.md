@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
 | 178 | OPEN | `alarmFollowerSpringStud` passes `alarmHeart` at 0.1011, hidden behind the `Alarm disc ⇄ Hour wheel` row's TODO 101 waiver. Fix: re-site the stud in position space |
@@ -36,7 +37,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 164 | CLOSED | The movement-wide `undeclaredClearance` gate shipped (TODO 164), holding every undeclared, non-EXPECTED pair to `CLEAR_MARGIN` with a closed `UNDECLARED_CLEARANCE_DEBT` ratchet; its own arrival sweep filed TODO 166–171 |
 | 163 | OPEN | `clutchRim` ⇄ `settingBevel` are posed by two laws (the crown's `setPathRot` and the going train's `mwMinuteA`), so the crossed-axis mesh is buried a flat 0.2187 (29% of a tooth) at every indexing. Fix: the jumper back-drives the stem (roadmap §4 / TODO 58) |
 | 162 | CLOSED | The fold's leg-2 corner blank's clearance to the reserve wheel 1 was not new — two errors in `solveReserveSwing`'s accept test (a nominal vs. cut tip radius on each side) partly cancelled, accepting a bearing the metal did not clear. Both radii now read off the built metal, cross-asserted, and the swing scan samples every corner phase over a tooth pitch |
-| 161 | OPEN | `JMP_SITE` judges 81 moving meshes as built, the alarm levers among them. They never come within 0.66 of the jumper at any station today (the item's '0.1500' was the motion-works rotors, and its station was a false contact, fixed by [TODO 180]). Fix: factor the sleeve/ring pose laws (one source; three copies today), declare a `JMP_SITE_MOVERS` table, add controls. Lands before [TODO 160] |
+| 161 | CLOSED | The release run and selector ring are posed by ONE law each (`alarmSleeveLiftAt`/`alarmPhiCapAt`/`poseAlarmReleaseRun`, `alarmSelRingZAt`; three copies before), and `JMP_SITE` judges them at 4 travel samples each, with its parity guard counted per tree. The station is unchanged (233.5°). `probe-161-lawed` proves a travel sample can refuse a station. The rest of the movers are [TODO 181] |
 | 160 | OPEN | A jumper refusal is recorded ([TODO 156], closed) but cannot act — CAP_SOLVE commits B before `JMP_SITE` exists. Fix: nest a `JMP_SITE` scan into CAP_SOLVE's own candidate loop (the `solveReserveSwing` veto shape), with a cheap per-candidate pre-screen; 452/720 stations feasible with the fold and reserve removed vs 156/720 with them present |
 | 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
 | 158 | OPEN | Only the default spec is battery-validated; URL overrides, the reconfigure panel and saved variants build geometry nobody swept, shown as sound. Tier A: a shipped validated-fingerprint set and a localized "unverified configuration" mark. Tier B: restricted `inspection` per `SPEC_POINT` |
@@ -22600,7 +22601,7 @@ three commits):**
 - Re-run the full battery; diff `--report` against the pre-restructure
   baseline the way TODO 156 did.
 
-## 161. JMP_SITE judges the alarm selector, sleeve and release levers as built, not over their own travel
+## 161. JMP_SITE judges the alarm selector, sleeve and release levers as built, not over their own travel — CLOSED
 
 Filed closing [TODO 156]. `JMP_SITE` (`src/main.js`) sites the minute
 jumper against every other unit's metal, including the alarm selector, the
@@ -22671,6 +22672,47 @@ reset rods, the feeler, the link, and non-toothed train bodies.
 A trial of the full envelope cost 4–5 s of boot, almost all of it from
 revolving the large dial-centre groups. Append those to the existing coaxial
 rotor entries instead.
+
+**Closed.** The two movers the item names are now judged over their own
+travel, through ONE law each rather than a snapshot:
+- **The §45 release run** (sleeve, the fork-tied lifter, its blades, the
+  silence rocker and its blade). Its head-station → lift law was written three
+  times (this item's `freedAt` assert, the silence finger's drop, and tick)
+  and its lift → cone-cap law twice. Both are now single functions,
+  `alarmSleeveLiftAt` and `alarmPhiCapAt`, and one writer,
+  `poseAlarmReleaseRun`, poses the run for tick and for the solve alike.
+- **The §34 selector ring.** `alarmSelRingZAt(s)` serves the build, tick and
+  the solve.
+
+`JMP_SITE` takes both out of its as-built pass and re-enters them at samples
+of those laws. The spacing is derived so that no point moves more than
+`CLEAR_MARGIN/2` between samples: the run's fastest point is the rocker's
+finger, at aF/aP of the lift. That gives 4 samples each, published as
+`__clock.jumperSite.lawed`.
+
+Its parity guard now counts crossings **per tree**. The merged count deduped
+hits at one distance across trees, so swept copies sharing a face parallel
+to their travel flipped it. The merged count also missed a point inside two
+overlapping bodies.
+
+**Measured.** The station is unchanged at 233.5° (clearance 0.1572), which
+the planning scan predicted: no station has rest clear and travel under.
+Static meshes judged 131 → 221, JMP_SITE time ~1.47 s (unchanged), and
+boot is silent.
+
+Every lawed site is bit-identical: the fingerprint is unchanged (691632306)
+and `alarmHandoffs` is unchanged.
+
+`tools/probe-161-lawed.mjs` is the control. Its first boot publishes both
+movers and stays silent. The second rewrites the ring's lawed pose so that
+at u = 1 it stands on the shipped lifter bar, and the solve refuses 233.5°
+and re-sites to 121.5°. The third applies the same rewrite with the samples
+cut to u = 0, and the station stays at 233.5°. So the refusal was the sample,
+not the rewrite.
+
+The rest of the census, the other moving obstacles read as built with no
+declared reason, is [TODO 181], and [TODO 160] should consume that
+classification.
 
 ## 162. The fold's leg-2 corner blank stands 0.036 off the reserve w1, and stood 0.055 off it before — CLOSED
 
@@ -23761,3 +23803,30 @@ The probe's identity control could not catch it, because proxy and real bar
 were measured the same wrong way. All four call sites now pass the stretched
 mesh second. The durable fix is TODO 159's: `meshClearance` itself should
 refuse or swap a non-uniform first mesh.
+
+## 181. JMP_SITE still reads most of its moving obstacles as built, with no declared table saying why each is safe
+
+Found planning [TODO 161]. A census over `AXES` found that 66 of `JMP_SITE`'s
+131 as-built obstacle meshes move within an axis, and 81 are movers once
+between-axis movers are counted. [TODO 161] put two families on their laws:
+the §45 release run and the §34 selector ring. The rest are still read at the
+build pose:
+- the alarm tube and its riders (the tube rocker, the follower);
+- the setting wheel's cam and index wedge;
+- the release disc's hub and track;
+- the hour group's non-gear meshes, and the release reader;
+- the small-seconds hand;
+- the clutch, and the hack and reset rods;
+- the feeler, the alarm link, and non-toothed going-train bodies.
+
+Measured while planning 161, none comes near the jumper today. But nothing
+declares that, so a later move of any of them, or of the jumper, can land a
+station on a pose the solve never saw.
+
+**Fix path.** A declared `JMP_SITE_MOVERS` table. Each row is a lawed sweep
+(TODO 161's shape), a revolve (append it to the existing coaxial rotor entry,
+because new group rotors cost about 4–5 s of boot), or a bounded row naming
+its measured distance to the jumper's region. Add a census control that FAILS
+on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
+`JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
+classification as its memoised, B-independent obstacle set.

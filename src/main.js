@@ -15649,6 +15649,10 @@ const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger thr
 // so the top rises with the thickness and the bottom stays where the rocker
 // engagement was solved. The §35 shaft derives from this and follows.
 const ALARM_SEL_Z_UP = -0.96 + ALARM_SEL_T;     // ring's top face, DISARMED (bottom pinned at −0.96)
+// TODO 161 — the ring's pose LAW, one source: the build (s = 0), tick (the
+// eased readout alarmSelShownT) and any solve that must judge the ring over
+// its travel all read this, so no copy of the slide can drift from the metal.
+const alarmSelRingZAt = (s) => (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * s;
 const ALARM_SEL_POST_R = 5.15;    // guides OUTSIDE the setting wheel's tips (4.83 + margin; asserted)
 const ALARM_SEL_POST_AZ = [60, 220, 300].map((d) => d * DEG2RAD); // world az — each wall asserted below
 // TODO 20 (fork) — shared by the fork build here and the pin build at the
@@ -15710,7 +15714,7 @@ const alarmSelRing = new THREE.Group();
   // derives. Building it here from the legacy tab constants created a
   // feedback loop: the fork's box fed the shaft's retreat, which moved the
   // pin, which moved where the fork needed to be.)
-  alarmSelRing.position.z = ALARM_SEL_Z_UP - ALARM_SEL_T / 2;
+  alarmSelRing.position.z = alarmSelRingZAt(0);
   alarmSelectorUnit.add(alarmSelRing);
   // the posts: sheet's back face down past the ring's lowest travel
   for (const [postIx, az] of ALARM_SEL_POST_AZ.entries()) {
@@ -18928,18 +18932,30 @@ const ALARM_LIFT_BLADE_Z = ALARM_YOKE_SHOULDER_BOT - SPRING_FLAT_U / 2; // blade
 // puts alarmSelShownT at 0/1 there, asserted at that solve), Setting through
 // the sleeve's cone cap at the collar's two plateaus. The implications alone
 // would pass a hand left permanently visible; the ⟺ does not.
+// TODO 161 — THE RELEASE RUN'S TWO LAWS, one source each. Before this the
+// head-station → lift law was written three times (this assert, the silence
+// finger's drop, and tick) and the lift → cone-cap law twice (this assert and
+// tick) — CLAUDE.md's law-written-twice defect. Every reader calls these now.
+//   alarmSleeveLiftAt(pullT): the sleeve's (and the fork-tied lifter's) lift,
+//     0 → ALARM_SLEEVE_TRAVEL, read off the collar ramp at the head's station.
+//   alarmPhiCapAt(lift): the follower angle the sleeve's 45° cone caps at the
+//     tail pin's plane, or null while the skirt's top stands below the pin.
+const alarmSleeveLiftAt = (pullT) =>
+  alarmCollarRAt((ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST) - ALARM_COLLAR_THIN_R;
+const alarmPhiCapAt = (lift) => {
+  const skirtTopZ = (ALARM_SLEEVE_Z_REST + lift) - ALARM_SLEEVE_T;
+  const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
+  const hUp = skirtTopZ - tipZ; // how far the skirt's top edge stands above the tip
+  if (hUp <= 0) return null;
+  const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R; // 45° cone at the tip's plane, minus the pin radius
+  return Math.acos(clamp(
+    (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
+    / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
+};
 {
   const freedAt = (pullT) => {
-    const s = (ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST;
-    const lift = alarmCollarRAt(s) - ALARM_COLLAR_THIN_R;
-    const hUp = ((ALARM_SLEEVE_Z_REST + lift) - ALARM_SLEEVE_T)
-      - (ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03);
-    if (hUp <= 0) return false;
-    const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R;
-    const phiCap = Math.acos(clamp(
-      (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
-      / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
-    return phiCap >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
+    const phiCap = alarmPhiCapAt(alarmSleeveLiftAt(pullT));
+    return phiCap !== null && phiCap >= alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R) - 1e-9;
   };
   for (const armed of [0, 1]) for (const setting of [0, 1]) {
     const hidden = !(armed === 1 || freedAt(setting)); // the tube law's own OR
@@ -19021,7 +19037,23 @@ const ALARM_SIL_RATIO = ALARM_SIL_THROW / ALARM_SLEEVE_TRAVEL; // finger/paddle 
 // allows, in pin units; MIN'd with the disc's own law wherever the pin's
 // drop acts (pose, pawl, trip, re-arm). Negative = actively lifted.
 const alarmPinDropCapAt = (fingerDrop) => (ALARM_SIL_GAP - fingerDrop) * ALARM_SIL_PIN_LEVER;
-const alarmSilFingerDropAt = (pullT) => Math.max(0, (alarmCollarRAt((ALARM_LIFT_HEAD_R - ALARM_CD) - pullT * CROWN_PULL_DIST) - ALARM_COLLAR_THIN_R)) * ALARM_SIL_RATIO;
+const alarmSilFingerDropAt = (pullT) => Math.max(0, alarmSleeveLiftAt(pullT)) * ALARM_SIL_RATIO;
+// TODO 161 — the release run's ONE pose writer: the fork-tied lifter and
+// sleeve wear the lift, the lifter's blades flex with it (§48), and the
+// silence rocker's paddle rides the run (§45 stage 2). tick poses the run
+// through it every frame (with the §10 drill offsets), and JMP_SITE through
+// it at the law's travel samples (no drill) — one copy of the pose, so the
+// solve judges the run the movement actually shows.
+function poseAlarmReleaseRun(lift, drillZ = null) {
+  alarmLifter.position.z = -lift + (drillZ ? drillZ(alarmLifter) : 0);                     // world: pressed toward the dial
+  alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + lift + (drillZ ? drillZ(alarmSleeve) : 0); // dial-local +z ≡ the same world direction
+  for (const g of alarmLifterBladeGroups)
+    g.rotation.y = Math.asin(clamp(lift / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
+  const uD = alarmSilRocker.userData;
+  const tilt = Math.asin(clamp(lift / uD.aP, -1, 1));
+  alarmSilRocker.rotation.y = -tilt;
+  if (alarmSilBladeMesh) alarmSilBladeMesh.rotation.y = -tilt * 0.35 * uD.aP / 1.0;
+}
 const alarmSilenceUnit = new THREE.Group();
 dialFace.add(alarmSilenceUnit);
 registerLabel('Alarm silence rocker', alarmSilenceUnit);
@@ -42989,29 +43021,9 @@ function tick(t) {
   // radius at the tail pin's plane caps the follower's angle from below —
   // that cap, not a flag, is what the tube law reads.
   {
-    const sHead = (ALARM_LIFT_HEAD_R - ALARM_CD) - alarmCrownPullT * CROWN_PULL_DIST;
-    alarmSleeveLiftNow = alarmCollarRAt(sHead) - ALARM_COLLAR_THIN_R; // 0 → ALARM_SLEEVE_TRAVEL
-    alarmLifter.position.z = -alarmSleeveLiftNow + subDrillZ(alarmLifter);                     // world: pressed toward the dial (+ §10 level 2's drill)
-    alarmSleeve.position.z = ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow + subDrillZ(alarmSleeve); // dial-local +z ≡ the same world direction (+ the drill)
-    for (const g of alarmLifterBladeGroups)
-      g.rotation.y = Math.asin(clamp(alarmSleeveLiftNow / ALARM_LIFT_BLADE_LEN, -1, 1)); // flex slaved to the real travel (§48)
-    const skirtTopZ = (ALARM_SLEEVE_Z_REST + alarmSleeveLiftNow) - ALARM_SLEEVE_T;
-    const tipZ = ALARM_SLEEVE_TOP - ALARM_SLEEVE_T - ALARM_SLEEVE_SKIRT_H + 0.03; // the built pin tip (see the arm build)
-    const hUp = skirtTopZ - tipZ; // how far the skirt's top edge stands above the tip
-    if (hUp > 0) {
-      const capR = (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H) - hUp - ALARM_A_PIN_R; // 45° cone at the tip's plane, minus the pin radius
-      alarmPhiCapNow = Math.acos(clamp(
-        (capR * capR - ALARM_PIVOT_R * ALARM_PIVOT_R - ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN)
-        / (2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN), -1, 1));
-    } else {
-      alarmPhiCapNow = 0;
-    }
-    // §45 stage 2 — the rocker wears the same chain: paddle up with the
-    // run, finger down onto the tail, blade tip following the bar it biases
-    const uD = alarmSilRocker.userData;
-    const tilt = Math.asin(clamp(alarmSleeveLiftNow / uD.aP, -1, 1));
-    alarmSilRocker.rotation.y = -tilt;
-    if (alarmSilBladeMesh) alarmSilBladeMesh.rotation.y = -tilt * 0.35 * uD.aP / 1.0;
+    alarmSleeveLiftNow = alarmSleeveLiftAt(alarmCrownPullT); // 0 → ALARM_SLEEVE_TRAVEL
+    poseAlarmReleaseRun(alarmSleeveLiftNow, subDrillZ);       // lifter, sleeve, blades and the §45 stage 2 rocker (+ §10 level 2's drill)
+    alarmPhiCapNow = alarmPhiCapAt(alarmSleeveLiftNow) ?? 0;
   }
   {
     const aDelta = alarmCrownRotation - lastAlarmCrownRotation;
@@ -43205,7 +43217,7 @@ function tick(t) {
       const pinNow = F.pinFit.A * Math.sin(roll + F.dPhi) + F.pinFit.B * Math.cos(roll + F.dPhi) + F.pinFit.C;
       alarmSelShownT = Math.max(0, Math.min(1, (pinNow - F.grooveMidRest) / F.travelW));
     }
-    alarmSelRing.position.z = (ALARM_SEL_Z_UP - ALARM_SEL_T / 2) - ALARM_SEL_TRAVEL * alarmSelShownT + subDrillZ(alarmSelRing); // §10 level 2: the drill composes here
+    alarmSelRing.position.z = alarmSelRingZAt(alarmSelShownT) + subDrillZ(alarmSelRing); // §10 level 2: the drill composes here
     // TODO 19 (closed) — the rocker's angle is SOLVED FROM THE CONTACT, not
     // amplitude-fitted: the sensing pin's tip must lie ON the ring's riding
     // face at every state, which is one equation in the rocker's see-saw
@@ -43915,6 +43927,22 @@ const JMP_SITE = await (async () => {
     return null;
   };
   const staticTris = [], staticList = [], plateList = [], rotorTris = new Map();
+  // TODO 161 — THE LAWED MOVERS are judged over their own travel, not as
+  // built. BOOT HAS NO POSE, so a pose snapshot is not available here; a LAW
+  // is — the same function tick poses the part through, called at samples of
+  // its input. Two today: the §45 release run (sleeve, the fork-tied lifter,
+  // its blades, the silence rocker and its blade) over its lift, and the §34
+  // selector ring over its slide. Samples are spaced so no point of the part
+  // moves more than CLEAR_MARGIN/2 between them: the run's fastest point is
+  // the rocker's finger at aF/aP of the lift, the ring's is its slide.
+  const lawedRoots = [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmSilRocker, alarmSilBladeMesh, alarmSelRing].filter(Boolean);
+  const LAWED = [
+    { name: 'release run', roots: [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmSilRocker, alarmSilBladeMesh].filter(Boolean),
+      stroke: ALARM_SLEEVE_TRAVEL * Math.max(1, alarmSilRocker.userData.aF / alarmSilRocker.userData.aP),
+      pose: (u) => poseAlarmReleaseRun(u * ALARM_SLEEVE_TRAVEL) },
+    { name: 'selector ring', roots: [alarmSelRing], stroke: ALARM_SEL_TRAVEL,
+      pose: (u) => { alarmSelRing.position.z = alarmSelRingZAt(u); } },
+  ];
   const box = new THREE.Box3();
   const seen = new Set();
   // TODO 180 — A ZERO-AREA TRIANGLE IS NOT METAL, so it never enters an
@@ -43946,6 +43974,7 @@ const JMP_SITE = await (async () => {
     e.obj.traverse((o) => {
       if (!o.isMesh || seen.has(o) || !o.geometry?.attributes?.position || !unschem(o)) return;
       if (under(o, jumperUnit) || under(o, settingLeverGroup)) return;
+      if (lawedRoots.some((r) => under(o, r))) return;   // TODO 161: judged over their travel below, not as built
       seen.add(o);
       const rot = rotorOf(o);
       box.setFromObject(o);
@@ -43972,6 +44001,24 @@ const JMP_SITE = await (async () => {
       if (rot) { if (!rotorTris.has(rot)) rotorTris.set(rot, []); pushTris(o, rotorTris.get(rot)); }
       else { const arr = []; pushTris(o, arr); (under(o, backPlate) ? plateList : staticList).push(arr); staticTris.push(arr.length / 9); }
     });
+  }
+  const lawedSamples = [];
+  for (const L of LAWED) {
+    const saved = L.roots.map((r) => [r.position.clone(), r.rotation.clone()]);
+    const n = Math.max(1, Math.ceil(L.stroke / (CLEAR_MARGIN / 2)));
+    for (let k = 0; k <= n; k++) {
+      L.pose(k / n);
+      for (const r of L.roots) {
+        r.updateWorldMatrix(true, true);
+        r.traverse((o) => {
+          if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
+          if (!box.setFromObject(o).intersectsBox(region)) return;
+          const arr = []; pushTris(o, arr); staticList.push(arr); staticTris.push(arr.length / 9);
+        });
+      }
+    }
+    L.roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.updateWorldMatrix(true, true); });
+    lawedSamples.push({ name: L.name, samples: n + 1 });
   }
   const bvhOf = (arr) => {
     if (!arr.length) return null;
@@ -44147,10 +44194,18 @@ const JMP_SITE = await (async () => {
     if (!bvh) return false;
     ray.origin.fromBufferAttribute(geo.attributes.position, 0).applyMatrix4(M);
     ray.direction.set(0.5773502691896258, 0.5773502691896258, 0.5773502691896258);
-    const hits = bvh.raycast(ray, THREE.DoubleSide).map((h) => h.distance).sort((x, y) => x - y);
-    let n = 0, last = -1;
-    for (const d of hits) { if (d - last > 1e-7) n++; last = d; }
-    return n % 2 === 1;
+    // TODO 161 — PARITY PER TREE. Each tree is one closed body, so its own
+    // crossing count is the parity; summing over trees and deduping across
+    // them flipped it wherever two bodies shared a face at one distance — the
+    // lawed movers' swept copies do, along every face parallel to their
+    // travel — and it also missed a point inside two overlapping bodies.
+    for (const t of bvh.trees || [bvh]) {
+      const hits = t.raycast(ray, THREE.DoubleSide).map((h) => h.distance).sort((x, y) => x - y);
+      let n = 0, last = -1;
+      for (const d of hits) { if (d - last > 1e-7) n++; last = d; }
+      if (n % 2 === 1) return true;
+    }
+    return false;
   };
 
   // ---- one station, one threshold: does every part clear everything by tau
@@ -44303,6 +44358,7 @@ const JMP_SITE = await (async () => {
   scene.updateMatrixWorld(true);
   return { best, tested, witnessed, candidates: cands.length, stepDeg: STEP / DEG2RAD, ms: performance.now() - T0,
     rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0),
+    lawed: lawedSamples,   // TODO 161: the movers judged over their travel, and how many poses each
     rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z };
 })();
 if (!JMP_SITE.best) {
@@ -44827,7 +44883,7 @@ window.__clock = {
     clr: JMP_SITE.best ? JMP_SITE.best.clr : null, capD: JMP_SITE.best ? JMP_SITE.best.capD : null,
     score: JMP_SITE.best ? JMP_SITE.best.score : null, sat: JMP_SITE_SAT, capDWeight: JMP_SITE_CAPD_W,
     tested: JMP_SITE.tested, candidates: JMP_SITE.candidates, stepDeg: JMP_SITE.stepDeg, ms: JMP_SITE.ms,
-    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris,
+    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris, lawed: JMP_SITE.lawed,
     lifterW: JMP_LIFTER_W,
     walks: JMP_SITE_WALKS,
   }),
