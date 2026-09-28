@@ -183,8 +183,15 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
     const shipped = proxyAt(-W0 / 2, W0 / 2);
     const joints = [], walls = [];
     for (const c of near) {
-      const dProxy = I.meshClearance(shipped, c.mesh, SEARCH);
-      const dReal = I.meshClearance(bar, c.mesh, SEARCH);
+      // TODO 180 — THE STRETCHED BAR GOES SECOND, at every call site below.
+      // meshClearance measures in its FIRST mesh's local frame (TODO 159), and
+      // the bar carries its span in scale.x ≈ 40, so bar-first read distances
+      // shrunk by the stretch: 0.0743 to alarmSeatPost at the 233.5° station,
+      // where the post-first order and dense sampling both read 0.3935. The
+      // identity control could not see it — the proxy and the real bar were
+      // measured the same wrong way, and agreed.
+      const dProxy = I.meshClearance(c.mesh, shipped, SEARCH);
+      const dReal = I.meshClearance(c.mesh, bar, SEARCH);
       const label = `${c.unit} / ${c.mesh.name || '(unnamed)'}`;
       if (Math.abs(dProxy - dReal) > TOL)
         identity.push({ pose: `${p.axis} f=${p.f}`, neighbour: label, proxy: +dProxy.toFixed(5), real: +dReal.toFixed(5) });
@@ -197,7 +204,7 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
     if (mustHit === null && walls.length) {
       const gross = proxyAt(-W0 / 2 - MUSTHIT_G, W0 / 2 + MUSTHIT_G);
       let d = Infinity, who = null;
-      for (const w of walls) { const x = I.meshClearance(gross, w.c.mesh, SEARCH); if (x < d) { d = x; who = w.label; } }
+      for (const w of walls) { const x = I.meshClearance(w.c.mesh, gross, SEARCH); if (x < d) { d = x; who = w.label; } }
       mustHit = { ok: d <= 1e-6, measured: +d.toFixed(5), neighbour: who, grownBy: MUSTHIT_G,
         why: `a proxy grown ${MUSTHIT_G} u per side is wider than the case and must reach 0 against something` };
     }
@@ -208,7 +215,7 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
     const clearAt = (yLo, yHi) => {
       const q = proxyAt(yLo, yHi);
       let d = Infinity, who = null;
-      for (const w of walls) { const x = I.meshClearance(q, w.c.mesh, SEARCH); if (x < d) { d = x; who = w.label; } }
+      for (const w of walls) { const x = I.meshClearance(w.c.mesh, q, SEARCH); if (x < d) { d = x; who = w.label; } }
       return { d, who };
     };
     const limit = (sign) => {

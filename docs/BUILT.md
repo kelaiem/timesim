@@ -27554,7 +27554,7 @@ corners' own spin (`reserveObstaclePoints`, TODO 155's turning corners)
 rather than the one phase they happened to be built at. The scan now lands
 at **bearing +5.25°, swing +3.5°**, Σ 162.24°, fold module 0.5406 (was
 0.3487) — moved off the +17.25°/−5°/152.32°/0.3487 this section originally
-recorded. The jumper's own siting is unchanged (129.5°, clearance 0.15).
+recorded. The jumper's own siting is unchanged (129.5°, clearance 0.15). (TODO 180 later found that 129.5° was set by a false contact, a zero-area sliver the siting solve's trees trusted, and moved it to 233.5°.)
 
 **Retired with it.** `TURN_WAIVERS`' `Keyless works::settingTraverse` row
 (the table is empty); `SLENDER_WAIVERS`' `Keyless works` entry (λ 41.2, TODO

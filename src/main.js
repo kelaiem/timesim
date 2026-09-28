@@ -14374,7 +14374,12 @@ const JMP_REACH = JMP_LEVER - (JMP_W / 2) * G.JUMPER_TIP_CONE_F;
 // Re-verified as the tripwire asks: probe-149-lifter-width.mjs re-measured the
 // lifter's run (JMP_LIFTER_SPAN_MEASURED), and probe-150-fold-sense.mjs holds
 // the jumper against every non-contact unit over the pose net.
-const JMP_AZ_MEASURED_DEG = 129.5;
+// TODO 180 — 129.5° → 233.5°, and this time the SOLVE was wrong, not the
+// hand list: its closest-point trees held zero-area slivers, three of them in
+// alarmIndexWedge, and the BVH answered 0 against them, so PASS 1 refused
+// 232–235° on a contact 3.8135 away. With slivers dropped (ZERO_AREA_MAX) the
+// scan's first clear station is 233.5°, at clearance 0.1572.
+const JMP_AZ_MEASURED_DEG = 233.5;
 let JMP_AZ = (() => {
   const capLocal = { x: P.dial.x - SETTING_CAP_XY.x - MW_STUD.x, y: SETTING_CAP_XY.y - P.dial.y - MW_STUD.y };
   return Math.atan2(-capLocal.y, -capLocal.x);   // stud-relative, dialFace frame: away from the cap
@@ -14598,7 +14603,7 @@ const jumperStudMeshes = [];   // the two posts riveted into the base plate (the
 // `tools/probe-149-lifter-width.mjs`: if it ever falls below that, it is not
 // a bound and the frame it was taken in is wrong. Re-run the probe if the
 // jumper's station, the setting lever's stroke or the tail pin's land moves.
-const JMP_LIFTER_SPAN_MEASURED = 37.601;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 151's real-metal solve moved the jumper to 129.5° (29.1037 at 326°, 30.0832 at 318°)
+const JMP_LIFTER_SPAN_MEASURED = 40.0045;   // u — probe-149-lifter-width.mjs, 14 axes x 5 samples, re-measured when TODO 180's sliver-free solve moved the jumper to 233.5° (37.601 at 129.5°, 29.1037 at 326°, 30.0832 at 318°)
 // A FUNCTION OF THE STATION since TODO 151 moved the station's solve to the
 // end of the build: the provisional station's bound cuts the bar here, and
 // the late solve re-cuts it at the station it settles on (and holds the
