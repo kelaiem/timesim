@@ -3727,7 +3727,12 @@ const uFourthOut = { x: outX, y: outY };
 // there is height the compressed stack has to give back.
 const CAM_T = 0.8;
 const HAMMER_W = 2.0;
-const heartCam = G.makeHeartCam({ radius: camRadius, thickness: CAM_T });
+// TODO 154 — the seconds arbor's rod, hoisted so the heart pressed on it
+// bores to IT. The heart took makeHeartCam's default 0.6 bore, which its
+// curveSegments-2 square (flats 0.424, less the bevel) gripped only by
+// accident; cut true (borePath), a 0.6 bore would float free of a 0.4 rod.
+const SECONDS_ARBOR_ROD_R = 0.4;
+const heartCam = G.makeHeartCam({ radius: camRadius, thickness: CAM_T, boreR: SECONDS_ARBOR_ROD_R });
 const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: HAMMER_W });
 // Pivot distance solved for a TANGENT seat: at 0° swing the roller's centre
 // sits one roller radius outside the notch floor (rMin, plus the cam's
@@ -13740,7 +13745,7 @@ smallSecondsGroup.add(smallSecondsHand);
   // to floor + 0.45).
   const hubZ = Z_DIAL + SUBDIAL_RECESS - 0.15 - DIAL_T; // hub centre (world) — TODO 26: follows the well floor one plate forward; rodLen below grows to match
   const rodLen = Z_SECONDS_ARBOR - hubZ;
-  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, rodLen, 10), MATS.steel);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(SECONDS_ARBOR_ROD_R, SECONDS_ARBOR_ROD_R, rodLen, 10), MATS.steel);
   rod.name = 'secondsArborRod';   // §94: named so the sub-dial floors rows can declare their contacts
   rod.rotation.x = Math.PI / 2;
   rod.position.z = -rodLen / 2; // local: from the cam plane down/forward to the hub
@@ -15911,7 +15916,7 @@ alarmFollowerSpring.rotation.z = 1.9;
   // authored ALARM_HEART_T the §29 z-chain budgets, and the follower's
   // nose rides the TRUE authored profile (its cam budget stops absorbing a
   // phantom 0.06).
-  const heart = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_T, boreR: 2.5, rMin: ALARM_HEART_RMIN, bevel: false });
+  const heart = G.makeHeartCam({ radius: ALARM_HEART_R, thickness: ALARM_HEART_T, boreR: HOUR_TUBE_OUTER, rMin: ALARM_HEART_RMIN, bevel: false }); // TODO 154: pressed on the hour tube, so its bore IS the tube's outer radius (was a bare 2.5)
   heart.traverse((o) => { if (o.isMesh) o.name = 'alarmHeart'; }); // penetration-budget selector
   heart.position.z = ALARM_HEART_Z;
   heart.rotation.z = ALARM_NOSE_AZ;

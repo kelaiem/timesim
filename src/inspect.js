@@ -586,7 +586,9 @@ const EXPECTED_PAIRS = [
   ['Setting lever', 'Reset rod'],            // rod pinned to the post
   ['Reset rod', 'Reset hammer'],             // rod pinned to the tail
   ['Hour wheel', 'Motion works'],            // minute pinion ⇄ hour wheel — the second 12:1 mesh
-  ['Hour wheel', 'Dial'],                    // tube runs through the dial's centre bore, over the cannon pinion
+  ['Hour wheel', 'Dial'],                    // LABEL NESTING: hourWheelGroup is a dialFace child, so every hour-wheel mesh is also
+                                             // a Dial mesh. The tube does NOT touch the dial's centre bore (> 0.5 at every pose);
+                                             // what the two units' own metal owes is clearance, held by the ownMetal floors row (TODO 154)
   ['Minute jumper', 'Motion works'],         // beak seated in the minute star's teeth
   ['Minute jumper', 'Dial'],                 // same seat — the star is also a Dial-unit mesh through
                                              // the motion-works nesting (the jumper itself is a
@@ -2179,6 +2181,20 @@ export const EXPECTED_CONTACT_FLOORS = [
     // from that plane crossing nothing but coaxial bores. Measured after:
     // 0 vertices inside the wall band, from 568.
   },
+  // TODO 154 — the pair TODO 6 left on the blanket excuse. EXPECTED for "the
+  // tube through the dial's centre bore", a touch that does not exist
+  // (hourTube ⇄ dialPlate stands > 0.5 apart at every pose), so like §94's
+  // Dial ⇄ Small seconds what the pair owes is clearance: contacts: [].
+  // ownMetal, because the hour wheel nests under the dial and the plain row
+  // would re-measure the alarm and motion-works parts mounted there, each
+  // owned by its own row. Measured before the fix: 0.1404, the alarm heart's
+  // SQUARE bore flats (curveSegments 2) against the cannon pinion's leaf tips;
+  // with the heart bored by borePath the row holds 0.1500, hourBoss ⇄
+  // minuteBoss, the two hands' bosses stacked one margin apart.
+  {
+    a: 'Hour wheel', b: 'Dial', min: CLEAR_MARGIN, ownMetal: true,
+    contacts: [],
+  },
   // §94 tier A — THE SMALL-SECONDS STATION'S OWN PAIRS. `d4` became a spec
   // key, so this station MOVES, and it moves the fourth arbor, its display
   // rod and the sub-dial well through a dial-side neighbourhood none of
@@ -2427,8 +2443,19 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
     ? rows.map((r, i) => (touching.touches(r.a, r.b) ? i : -1)).filter((i) => i >= 0)
     : null;
   if (touching) rows = keptIndices.map((i) => rows[i]);
+  const own = rows.some((r) => r.ownMetal) ? nearestUnitMeshes(clock) : null;
   const pairs = rows.map((row) => {
-    const A = unitByName(clock, row.a), B = unitByName(clock, row.b);
+    let A = unitByName(clock, row.a), B = unitByName(clock, row.b);
+    // TODO 154 — `ownMetal: true` scopes a row to each unit's OWN meshes (the
+    // §40 hops rule): for a pair whose units NEST, the plain row below also
+    // measures every third unit mounted inside one of them, whose contacts are
+    // owned by that unit's own EXPECTED pair and floors row — so the row would
+    // have to repeat them and inherit their waivers, which then hide anything
+    // new behind them. Opt-in, so no existing row's payload moves.
+    if (row.ownMetal) {
+      A = { ...A, meshes: own.get(row.a) ?? [] };
+      B = { ...B, meshes: own.get(row.b) ?? [] };
+    }
     // §94 — THE NESTED PAIRS, made measurable. Several EXPECTED pairs are a
     // LABEL NESTING rather than two disjoint assemblies: 'Small seconds',
     // 'Power reserve' and 'Motion works' are labelled children of the

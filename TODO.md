@@ -17,6 +17,9 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
+| 178 | OPEN | `alarmFollowerSpringStud` passes `alarmHeart` at 0.1011, hidden behind the `Alarm disc ⇄ Hour wheel` row's TODO 101 waiver. Fix: re-site the stud in position space |
+| 177 | OPEN | The hour hand's body touches the alarm hand's boss (0 at beat f=0), hidden behind the same waiver. Fix: derive the two hands' stack gap from `CLEAR_MARGIN` |
 | 176 | OPEN | `makeBarrel`'s toothed wall (`curveSegments: 3`) cuts the alarm barrel's cavity as a hexagon: 4.785 across the flats against `drumInnerR` 5.595, with the mainspring ribbon reaching 5.54. Fix: `borePath(drumInnerR)` plus TODO 175's bevel term |
 | 175 | OPEN | A bevelled gear or pinion bore is cut `bevelSize` smaller than its boreR (the extrude grows holes inward), so running fits still overlap their studs (winding idlers 0.4095 on 0.45, MW minute wheel 0.4095 on 0.42, spider cage 0.2203 on 0.2361), and several "pressed" parts' bores are not their shaft. Fix: draw the bore at boreR + bevel, and make every press fit's boreR equal its shaft |
 | 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
@@ -39,6 +42,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 157 | OPEN | CAP_SOLVE, `solveCapLeg` and `stubSolve` take the first feasible value, so their binding pairs sit on the margin (0.1504, 0.1531). Replace with a declared objective: max-min certified clearance, then a written aesthetic tie-break; finish never spends a constraint |
 | 156 | CLOSED | CAP_SOLVE still cannot veto B on the jumper's siting (that restructure is [TODO 160]), but the four movement-wide walks' indifference to the jumper is now a boot-time derivation rather than a measured-once fact (`__clock.jumperSite.walks`, margins 1.36–11.20), CAP_SOLVE's own veto is recorded on its scan (`__clock.settingFold.scan[i].jumper`), and the pillars are seated against the keyless corner's real per-mesh metal (`PILLAR_KEYLESS_BOXES`) rather than `boxOf(keyless)` — only the 135° pillar moves, 87.00° → 135.00° |
 | 155 | CLOSED | The setting fold, setting wheel and keyless minute wheel are posed from `mwMinuteA`, the minute wheel the cap meshes, so they turn with the going train; both waivers are retired. The clutch's own two-law residue is [TODO 163] |
+| 154 | CLOSED | The alarm heart's bore was a `curveSegments: 2` SQUARE (flats 1.7678), 0.1404 off the cannon pinion's leaves; `makeHeartCam` now cuts `borePath` at `HOUR_TUBE_OUTER` (the pair 0.8493), and the seconds heart bores to its rod. `Hour wheel ⇄ Dial` gains an `ownMetal` floors row (0.1500); residue filed as [TODO 177]–[TODO 179] |
 | 152 | CLOSED | A `?trial=1` boot — §33's verdict boot — inherited the viewer's tuned aesthetics (no trial guard in `aesthetics.js`; `reconfTrialBoot` passes `location.search` through), so every trial verdict was measured on a TUNED build; and the trial's merge ARMED the §23 crash-recovery marker, which a superseded trial never confirms, so the viewer's next real boot dropped their overrides and warned. Measured by `tools/probe-240-trial-boot.mjs` (6 rows red, controls green); closed by `state.js`'s `TRIAL_BOOT` guard copied to `aesthetics.js` — the merge, the marker, both finish params and the confirm all skip under the flag. Probe green. |
 | 150 | CLOSED | The §234 setting fold's three rods counter-rotated end to end: tick flipped the sign across each ROD as well as each corner. `MW_FOLD_SPIN` is read off the mounts now. The drop corner's inboard bevel, cut on the far side of its apex from its own shaft, is re-mounted on that shaft (the minute pinion it used to stand off is retired); the cap's mate claims are corrected (it meshes the motion works' minute wheel, not the keyless one); the fold's members are named for hover. `probe-150-fold-sense.mjs` gates all four rods, all three corners and the cap ⇄ minute-wheel mesh, 0 findings. The cap not meshing that wheel IN THE METAL (a 2.9 u axial gap) is split out to [TODO 151] |
 | 153 | OPEN | The motion-works stack (`MW_WHEEL_T`, `MW_Z2`, `MW_TOP`, `CANNON_T`, …) is solved against `MW_PLATE_FACE_LOCAL`'s bare `-2.0` literal, 0.3 u shallower than the plate's own derived, asserted face `PLATE_BACK_FACE` (−2.3). `mwMinuteWheel` and `cannonPinion` are buried in the base plate — 0.146 and 0.21 u respectively, both `meshClearance` 0.0000 — excused wholesale by the `['Motion works', 'plate']` support edge. Found measuring [TODO 151]; re-derive the literal from `PLATE_BACK_FACE` (`MW_WHEEL_T` re-solves ≈0.84 → 0.69) or cut a relief pocket; either way moves TODO 151's target band dial-ward |
@@ -12742,6 +12746,13 @@ Acceptance: `expectedContacts` reports `Alarm disc ⇄ Hour wheel` at or above
 0.15 with no waiver, and `probe-95-interpenetration.mjs` finds 0 tube-surface
 points inside the leaf.
 
+**The waiver covers more than this item** (measured planning [TODO 154]).
+`hourBoss ⇄ alarmBody` also reads 0 at `beat` f=0. That is this item's leaf,
+seen from the hour hand's boss. Two misses that are NOT this leaf sit behind
+the same waiver: [TODO 177] (`hourBody ⇄ alarmBoss`, 0) and [TODO 178]
+(`alarmFollowerSpringStud ⇄ alarmHeart`, 0.1011). Retiring the waiver
+without them would turn the row red for reasons this item does not own.
+
 ## 102. The pusher's return spring is tessellated inside its own running fit — CLOSED
 
 Filed 2026-08-26, out of TODO 95 row 5. The alarm pusher's stem measures in
@@ -22012,7 +22023,7 @@ still under `CLEAR_MARGIN`. Filed as [TODO 154] rather than closed here —
 this item's own scope was the plate-face solve, not every pair the
 re-stacked cannon now reaches.
 
-## 154. cannonPinion clears alarmHeart under CLEAR_MARGIN, and no EXPECTED_CONTACT_FLOORS row holds the pair
+## 154. cannonPinion clears alarmHeart under CLEAR_MARGIN, and no EXPECTED_CONTACT_FLOORS row holds the pair — CLOSED
 
 Found while closing [TODO 153]: `cannonPinion` (`Dial` unit) and
 `alarmHeart` (built onto `hourWheelGroup`, `src/main.js` —
@@ -22048,6 +22059,73 @@ the margin at that end, or waive the row citing this item if the two are
 close by design and the margin genuinely cannot open there without
 moving `alarmHeart`'s own station. Re-measure the pair at both
 `crownPullT` extremes before landing either.
+
+**Closed. The cause was a tessellation defect, not a margin tie and not a
+layout conflict.** It is [TODO 168]'s defect class in a builder 168 never
+reached. Re-measured over all 14 axes, the true minimum was **0.1404**, at
+`handSet` f=0.2833, lower than the filed 0.1466: the flat's phase against the
+leaves turns with the hour wheel, and only `train`/`handSet` turn it far
+enough.
+
+The contact is radial, not at the cannon's dial-ward end:
+- `makeHeartCam` extrudes at `curveSegments: 2`, so its `absarc` bore
+  sampled 4 points and cut a **square**.
+- The heart's 2.5 bore had its flats at 2.5·cos 45° = 1.7678.
+- The cannon pinion's leaf tips reach 1.6274, so the gap was 1.7678 − 1.6274
+  = 0.1404.
+- The square also drove the heart's metal through the hour tube's own wall.
+
+Every z and radius constant in the stack is derived correctly and stands
+clear. `HOUR_TUBE_INNER` sits 0.42 over the real leaf tip.
+
+**The fix, in position space. Nothing is thinned, and no joint opens:**
+- `makeHeartCam` cuts its bore with `borePath` (TODO 168's derived n-gon):
+  23 sides at 2.5, flats at 2.4767.
+- The alarm heart's `boreR` is `HOUR_TUBE_OUTER`, not a bare 2.5. It is
+  pressed on that tube.
+- The seconds-reset heart's bore is `SECONDS_ARBOR_ROD_R`, now hoisted, and
+  the rod reads the same constant. That heart took the builder's default 0.6
+  bore, which its square (flats 0.424, less the bevel) gripped only by
+  accident. Cut true, a 0.6 bore would have floated free of its 0.4 rod.
+
+**The floors row.** `Hour wheel ⇄ Dial` is EXPECTED for a touch that does not
+exist: `hourTube ⇄ dialPlate` stands more than 0.5 apart at every pose. What
+the pair owes is clearance, so the row takes `contacts: []`, like §94's
+`Dial ⇄ Small seconds`.
+
+A plain row cannot be written. The hour wheel nests under the dial, so the
+row would re-measure every alarm, motion-works and reader part mounted there.
+Each of those is owned by its own EXPECTED pair and row, and among them sit
+TODO 101's leaf and three misses nobody had filed. The row would have to
+repeat those contacts and inherit TODO 101's waiver, and that waiver would
+then hide the three new misses, exactly as the Alarm disc row's waiver
+already does.
+
+`checkExpectedContacts` therefore gains an opt-in `ownMetal` flag. Each side
+is scoped to the meshes whose nearest label is that unit (§40's hops rule,
+`nearestUnitMeshes`). The flag is opt-in, so no existing row's payload moves.
+
+**The residue is filed, not waived:**
+- [TODO 177]: `hourBody ⇄ alarmBoss`, 0.
+- [TODO 178]: `alarmFollowerSpringStud ⇄ alarmHeart`, 0.1011. Both 177 and
+  178 sit behind the Alarm disc row's TODO 101 waiver.
+- [TODO 179]: the reader pin against the release disc's hub and body,
+  0.0433 / 0.0700.
+
+The EXPECTED comment that claimed a centre-bore contact is corrected.
+
+**Measured.** In the planning trial (the fix rewritten in flight, all 14
+axes), `cannonPinion ⇄ alarmHeart` went from 0.1404 to **0.8493**. Both
+presses stay shut: `alarmHeart ⇄ hourTube` reads 0, and the seconds heart
+against `secondsArborRod` reads 0. Each moved heart, swept against every other
+unit, lost only the `cannonPinion` row. On the landed tree:
+- Boot: 0 warnings.
+- `expectedContacts`: 0 violations, 0 unmatched. The new row holds
+  **0.1500** at `hourBoss ⇄ minuteBoss`, the two hands' bosses stacked one
+  margin apart, within `FLOOR_TIE_EPS`.
+- `undeclaredClearance`: unchanged, 2 rows at their floors, control PASS.
+- `assembly`: ok, with the same 36 undeclared report rows.
+- `stockFloor`, `outlines`, `intraUnit`: clean.
 
 ## 155. The setting train is posed from handSetOffset alone while the minute wheel it meshes turns with the going train — CLOSED
 
@@ -23539,3 +23617,51 @@ inside the wall's metal.
 **Fix path.** Cut the cavity with `borePath(drumInnerR)` (TODO 168's helper),
 plus TODO 175's bevel term. Then re-measure the ribbon ⇄ wall and the hook
 against the true cavity.
+
+## 177. The hour hand's body touches the alarm hand's boss, hidden behind the Alarm disc row's TODO 101 waiver
+
+Found planning [TODO 154]. The planner swept every Hour wheel mesh against the
+Dial's nested meshes over all 14 axes, measured with `I.meshClearance`.
+`hourBody` (the hour hand's body) reads **0** against `alarmBoss` (the alarm
+hand's boss) at `beat` f=0. The pair belongs to `Alarm disc ⇄ Hour wheel`,
+whose `EXPECTED_CONTACT_FLOORS` row carries a waiver for [TODO 101], the
+unbored alarm leaf over the hour tube. That row reports its single deepest
+miss, and its waiver covers the whole row, so this second, unrelated contact
+has never been visible. `hourBoss ⇄ alarmBody` also reads 0 there; that is
+TODO 101's own leaf, and it is noted there.
+
+**Fix path.** Establish which way the two hands' stack is supposed to
+clear: the boss heights and `hourBody`'s z against the alarm hand's boss
+band. Derive the missing gap from `CLEAR_MARGIN` in position space. Then
+re-measure the row with TODO 101's contact excluded, to show nothing else
+sits behind the waiver.
+
+## 178. The alarm follower's spring stud passes the alarm heart at 0.1011, hidden behind the same waiver
+
+Found planning [TODO 154]. The same sweep puts `alarmFollowerSpringStud`
+(Alarm disc) **0.1011** from `alarmHeart` (Hour wheel) at `alarm` f=0.5833.
+The pair is not in the `Alarm disc ⇄ Hour wheel` row's `contacts`, so it is
+owed `CLEAR_MARGIN`, but the row's TODO 101 waiver hides it exactly as it
+hides [TODO 177]. The stud is the follower spring's anchor, not a working
+surface of the cam.
+
+**Fix path.** Re-site the stud so it clears the heart's swept lobe by
+`CLEAR_MARGIN` over the arming run, in position space (P3). The follower's
+spring force and arm must not change. Measure over the `alarm` axis densely,
+not at the pose net's samples alone.
+
+## 179. The alarm release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700, on an EXPECTED pair with no floors row
+
+Found planning [TODO 154]. `Alarm release disc ⇄ Alarm release reader` is
+EXPECTED: the reader's pin rides the disc's raised track, which is TODO 117's
+working contact. The pair has no `EXPECTED_CONTACT_FLOORS` row, so the rest
+of it has TODO 6's blanket excuse. Measured in the same sweep:
+- `alarmReaderPin ⇄ alarmDiscHub`: **0.0433** at `handSet` f=0.4333
+- `alarmReaderPin ⇄ alarmDiscBody`: **0.0700** at `train` f=0.5938
+
+Neither is the track the pin is meant to ride.
+
+**Fix path.** Triage first: is either a designed running fit (the pin's
+shank beside the hub it orbits), or a clearance the pin's station was never
+checked against? Then add the floors row with the track as its one contact
+(TODO 6's format), and fix whatever it finds in position space.
