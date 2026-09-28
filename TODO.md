@@ -18,7 +18,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | item | state | what remains |
 |---|---|---|
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
-| 182 | OPEN | `main`'s battery has been red since #488: spec points `alarmr=20`/`alarmr=46` boot in ~103 s solo (identity ~15 s) and die against the 120 s ceiling under the 4-lane pool, because the minute jumper's siting scan (TODO 151) brute-forces alarm meshes the dogleg deliberately builds at NaN when it has no route. Fix: the scan drops non-finite obstacle triangles; then stop building a non-route as NaN metal |
+| 182 | PART DONE | Step 1 done: `JMP_SITE` drops and counts non-finite obstacle triangles (5,536 in 7 meshes at `alarmr=20`/`46`, 0 at identity), scan 19 s → 1.5 s at those points, same station. The red `main` it was filed for had already gone green at #502 (TODO 180 thinned the queries). Remaining: stop cutting the alarm setting dogleg's non-route as NaN metal (step 2), and have the spec tier report non-finite meshes per point (step 3) |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
@@ -23888,7 +23888,32 @@ on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
 `JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
 classification as its memoised, B-independent obstacle set.
 
-## 182. The jumper siting scan brute-forces non-finite alarm metal at off-design radii, so alarmr=20/46 spec boots time out
+## 182. PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3)
+
+> **Status, 2026-09-28 — step 1 landed; the red it was filed for had
+> already cleared.** Between filing and fixing, #502 (TODO 180, which drops
+> zero-area slivers from the same scan) cut the scan from 254 tested
+> stations to 181 and made each query cheaper. Its push run was the first
+> green `main` since #488: the two points fell to about 35–40 s solo, under
+> the ceiling. That was relief, not a fix. The scan still cost about 12×
+> identity at those radii (19.0 s and 17.0 s against 1.5 s) for the same
+> reason, and a thinner margin was all that stood between it and the next
+> red. **Step 1 is now done**: `pushTris` drops any triangle whose world
+> coordinates are not finite, beside TODO 180's sliver drop, and counts
+> what it dropped on `JMP_SITE`'s record (`nonFiniteTris`,
+> `nonFiniteMeshes`). A rotor left with no triangles is skipped. Measured
+> on the merged tree, solo, SwiftShader container:
+>
+> | spec | scan before | scan after | boot before → after | dropped |
+> |---|---|---|---|---|
+> | identity | 1.5 s | 1.2 s | 17.8 → 13.5 s | 0 |
+> | `alarmr=20` | 19.0 s | 1.5 s | 35.4 → 18.5 s | 5,536 tris, 7 meshes |
+> | `alarmr=46` | 17.0 s | 1.3 s | 40.1 → 21.9 s | 5,536 tris, 7 meshes |
+>
+> Every spec tests the same stations (181 tested, 539 witnessed) and
+> chooses the same station, az 4.0753 (233.5°), clearance 0.1572. Identity
+> drops nothing, so the shipped build cannot move. Steps 2 and 3 remain
+> open. The narrative below is the item as filed.
 
 **The symptom is a red `main`.** Every push-to-`main` battery since #488
 (run 980, 2026-09-24) fails one gate: `spec boots: every declared spec point

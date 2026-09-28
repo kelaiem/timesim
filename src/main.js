@@ -43966,6 +43966,20 @@ const JMP_SITE = await (async () => {
   // distance can reach — its points lie on the edges of the real faces beside
   // it — and the floor is §77's derived ZERO_AREA_MAX, measured in the
   // geometry's own frame exactly as the census measures it.
+  //
+  // TODO 182 — NOR IS A TRIANGLE WITH NO COORDINATES. Past the alarm setting
+  // dogleg's reach (the `alarmr=20` / `alarmr=46` spec points) there is no
+  // route, and the build cuts the idlers, their studs and the seat plate at
+  // (NaN, NaN) by design, warning that "the route below is not a route". A
+  // tree built over NaN has NaN bounds, which prune nothing, so every query
+  // at every station brute-forced it: the scan did the identical work
+  // (same stations tested, same station chosen) at 12-60x identity's cost,
+  // and before TODO 180 thinned the queries it pushed those two spec boots
+  // past the battery's 120 s ceiling. A part with no position cannot be
+  // collided with, so dropping it changes no verdict; what was dropped is
+  // COUNTED on the record rather than lost in silence.
+  let nonFiniteTris = 0;
+  const nonFiniteMeshes = new Set();
   const pushTris = (m, into) => {
     const pos = m.geometry.attributes.position, idx = m.geometry.index;
     const n = idx ? idx.count : pos.count;
@@ -43976,6 +43990,7 @@ const JMP_SITE = await (async () => {
       c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2);
       if (e1.subVectors(b, a).cross(e2.subVectors(c, a)).length() / 2 <= ZERO_AREA_MAX) continue;
       a.applyMatrix4(m.matrixWorld); b.applyMatrix4(m.matrixWorld); c.applyMatrix4(m.matrixWorld);
+      if (!(Number.isFinite(a.x + a.y + a.z + b.x + b.y + b.z + c.x + c.y + c.z))) { nonFiniteTris++; nonFiniteMeshes.add(m); continue; }
       into.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
     }
   };
@@ -44118,6 +44133,7 @@ const JMP_SITE = await (async () => {
   };
   const rotors = [];
   for (const [obj, tris] of rotorTris) {
+    if (!tris.length) continue;   // TODO 182: every triangle it had was non-finite — no revolution to judge
     const o = obj.getWorldPosition(V());
     const a = V().set(0, 0, 1).applyQuaternion(obj.getWorldQuaternion(new THREE.Quaternion())).normalize();
     const w = V().subVectors(o, studO);
@@ -44399,6 +44415,7 @@ const JMP_SITE = await (async () => {
   scene.updateMatrixWorld(true);
   return { best, tested, witnessed, candidates: cands.length, stepDeg: STEP / DEG2RAD, ms: performance.now() - T0,
     rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0),
+    nonFiniteTris, nonFiniteMeshes: nonFiniteMeshes.size,   // TODO 182: dropped, not measured — 0 on any spec whose metal all has a place
     lawed: lawedSamples,   // TODO 161: the movers judged over their travel, and how many poses each
     bSlack, cause, bDepMeshes: staticBDep.filter(Boolean).length + plateBDep.filter(Boolean).length, bDepRotors: rotors.filter((r) => r.bDep).length,   // TODO 160
     rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z };
