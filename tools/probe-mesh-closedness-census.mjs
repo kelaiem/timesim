@@ -25,21 +25,15 @@ p.on('pageerror',e=>console.log('PAGEERROR',String(e)));
 await p.goto(`http://127.0.0.1:${PORT}/index.html`,{waitUntil:'load',timeout:90000});
 await p.waitForFunction(()=>!!window.__clock,null,{timeout:90000});
 console.log(await p.evaluate(async ()=>{
+  const I=await import('./src/inspect.js');
   const c=window.__clock; const o=[];
   const meshesOf=e=>{const m=[];const w=n=>{if(n.userData&&n.userData.schematic)return;
     if(n.isMesh&&n.geometry&&n.geometry.attributes.position)m.push(n);for(const ch of n.children)w(ch);};w(e.obj);return m;};
   const seen=new Map();   // geometry -> bad edge count, so shared geometry is counted once
+  // TODO 165: the count is boundsASolid's own (inspect.js surfaceEdgeCensus), never a copy —
+  // a copy here kept counting collapsed strip triangles as seams after the witness stopped.
   const boundary=(g)=>{if(seen.has(g))return seen.get(g);
-    const pos=g.attributes.position,idx=g.index;const n=idx?idx.count:pos.count;
-    const at=t=>idx?idx.getX(t):t;
-    const q=v=>{const r=Math.round(v*1e5);return r===0?0:r;};      // -0 and +0 are ONE position
-    const key=i=>`${q(pos.getX(i))}_${q(pos.getY(i))}_${q(pos.getZ(i))}`;
-    const e=new Map();
-    for(let t=0;t+2<n;t+=3){const k=[key(at(t)),key(at(t+1)),key(at(t+2))];
-      for(let q=0;q<3;q++){const a=k[q],b2=k[(q+1)%3]; if(a===b2)continue;
-        const kk=a<b2?`${a}|${b2}`:`${b2}|${a}`; e.set(kk,(e.get(kk)||0)+1);}}
-    let bad=0,three=0; for(const v of e.values()){if(v!==2)bad++; if(v>2)three++;}
-    const r={bad,three,edges:e.size}; seen.set(g,r); return r;};
+    const {bad,over,edges}=I.surfaceEdgeCensus(g); const r={bad,three:over,edges}; seen.set(g,r); return r;};
   let mTot=0,mOpen=0,mHole=0,mNM=0,mBoth=0; const rows=[]; const byType=new Map();
   for(const e of c.labelEntries){
     const ms=meshesOf(e); let open=0; const worst=[];
