@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { MATS, CRYSTAL_GLASS, SAPPHIRE_IOR, DIAL_GLASS, XRAY_CLEAR } from './materials.js';
 import { aesthetics, AESTHETICS_DEFAULTS } from './aesthetics.js';
-import { STOCK_MIN_U, CLEAR_MARGIN, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
+import { STOCK_MIN_U, CLEAR_MARGIN, PIVOT_BORE_CLEAR, SLENDER_TARGET, FORK_BEVEL_FRAC, UNIT_MM,
   mmForArcmin, RESOLVE_ARCMIN, GLANCE_ARCMIN, CAP_PER_EM, MOVEMENT_SENSE,
   CASE_LUG_T, CASE_LUG_W, CASE_LUG_ROOT, CASE_LUG_Z_OFF,
   CASE_SPRING_BAR_D, CASE_BAR_REACH, CASE_LUG_REACH } from './layout.js'; // §50/TODO 12: build to the stock floor; §25 D's flat top clears the margin like everything else; §54's build-to proportion caps the fusee crest (TODO 40); §188's hand stock is a mm quantity; §190: the lug/bar stock, one declaration
@@ -1337,10 +1337,38 @@ export function revolvedBlanksClearance(A, fA, B, fB, target) {
 // is skeleton-caliber openworking — the windows dominate and the wheel
 // reads as rim + hub + slender spokes, yet 4–5 straight arms in
 // compression/tension still close the load path from hub to rim.
+// TODO 168 — A BORE IS A CIRCLE, to a DERIVED chord sag. makeGear and
+// makePinion extrude at curveSegments 3, and an absarc samples a full circle
+// at 2 × curveSegments = 6 points, so every bore they cut (hubbed wheels too)
+// was a HEXAGON whose flats stood r·(1 − cos 30°) = 13.4% of r inside the
+// circle asked for: the alarm setting wheel's 3.05 bore came out 2.641 across
+// the flats, inside the 3.0 tube it rides at +0.05 and 0.1414 off the hour
+// tube. The crossings' arcs keep curveSegments 3 (no fit rides a window); the
+// bore is drawn here with lineTo, so the extrude cannot resample it.
+//
+// The count is the constraint's, per bore (TODO 102's rule): a chord of an
+// n-gon inscribed in r sags r·(1 − cos(π/n)) inside the circle, the sag comes
+// straight off the running fit the bore carries, and tessellation may spend at
+// most HALF the movement's running fit:
+//     r·(1 − cos(π/n)) ≤ PIVOT_BORE_CLEAR / 2
+//     ⇒ n = ⌈π / acos(1 − PIVOT_BORE_CLEAR / (2r))⌉
+// 9 sides at a 0.4 pinion bore (sag 0.0241), 25 at the 3.05 setting wheel
+// (sag 0.0240); never fewer than the hexagon it replaces. Vertices sit ON r —
+// absarc's and ringExtrude's convention — so a press fit (bore = shaft) still
+// shares metal with the shaft's own vertices, and a running fit keeps at least
+// half its clearance. NOT covered: the extrude's bevel still grows a bevelled
+// bore inward by bevelSize (MODELING.md rule 1) — TODO 175; and makeBarrel's
+// toothed wall cuts its cavity the same hexagonal way — TODO 176.
+export const boreSides = (r) => Math.max(6, Math.ceil(Math.PI / Math.acos(Math.max(-1, 1 - PIVOT_BORE_CLEAR / (2 * r)))));
+export function borePath(r) {
+  const n = boreSides(r), p = new THREE.Path();
+  p.moveTo(r, 0);
+  for (let k = 1; k < n; k++) p.lineTo(r * Math.cos((-2 * Math.PI * k) / n), r * Math.sin((-2 * Math.PI * k) / n));
+  p.closePath();
+  return p;
+}
 function addCrossingHoles(shape, spokes, innerR, outerR, boreR, armFrac = 0.15) {
-  const bore = new THREE.Path();
-  bore.absarc(0, 0, boreR, 0, Math.PI * 2, true);
-  shape.holes.push(bore);
+  shape.holes.push(borePath(boreR));   // TODO 168 — a true circle, not curveSegments' hexagon
   if (spokes > 0 && outerR > innerR) {
     const seg = (Math.PI * 2) / spokes;
     for (let i = 0; i < spokes; i++) {
@@ -1645,11 +1673,10 @@ export function makePinion({ module, teeth, thickness, material, boreR = null, m
   const spec = gearToothSpec({ module, teeth, mates });
   const pitchR = spec.pitchR;
   const shape = cycloidalGearShape(spec);
-  const bore = new THREE.Path();
   // boreR override (TODO 50): a pinion whose arbor carries a sliding square
-  // must be bored past the square's half-diagonal, not to the default shaft
-  bore.absarc(0, 0, boreR ?? Math.max(module * 0.35, 0.4), 0, Math.PI * 2, true);
-  shape.holes.push(bore);
+  // must be bored past the square's half-diagonal, not to the default shaft.
+  // TODO 168 — cut as a true circle (borePath), not curveSegments' hexagon.
+  shape.holes.push(borePath(boreR ?? Math.max(module * 0.35, 0.4)));
 
   const bevel = bevelOn ? pinionBevel(module, thickness) : 0;   // one law with gearFaceReach (§234)
   const geo = new THREE.ExtrudeGeometry(shape, {

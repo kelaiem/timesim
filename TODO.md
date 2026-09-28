@@ -17,13 +17,15 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 176 | OPEN | `makeBarrel`'s toothed wall (`curveSegments: 3`) cuts the alarm barrel's cavity as a hexagon: 4.785 across the flats against `drumInnerR` 5.595, with the mainspring ribbon reaching 5.54. Fix: `borePath(drumInnerR)` plus TODO 175's bevel term |
+| 175 | OPEN | A bevelled gear or pinion bore is cut `bevelSize` smaller than its boreR (the extrude grows holes inward), so running fits still overlap their studs (winding idlers 0.4095 on 0.45, MW minute wheel 0.4095 on 0.42, spider cage 0.2203 on 0.2361), and several "pressed" parts' bores are not their shaft. Fix: draw the bore at boreR + bevel, and make every press fit's boreR equal its shaft |
 | 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
 | 173 | OPEN | The alarm release feeler lever rocks about the dial's Y axis (Euler order 'XYZ' on a lever turned `_phiF`), not its pivot pin, and in the wrong sense: at full drop the tip ⇄ reader-ring read opens from 0.02 to 0.1628. No gate poses a drop. Fix: rock about the pin (`rotation.order = 'ZYX'`), take the sign from the read contact, re-derive the beak edge and the silence finger, and add a dropped-pose read row |
 | 172 | OPEN | The alarm setting lane's designed 0.05 dial-sheet gap (`ALARM_SET_Z`) is under `CLEAR_MARGIN`; the crisp arbor pinion sits on it (debt row at 0.05). Fix: re-stratify the lane to `CLEAR_MARGIN`, carrying the §29 centre chain |
 | 171 | OPEN | `EXPECTED_CONTACT_FLOORS` carries an `Alarm link ⇄ Three-quarter plate` row but `EXPECTED_PAIRS` never declares that pair, so the two tables disagree about which pairs are designed to touch. Fix: add the `EXPECTED_PAIRS` entry citing the floors row's own contacts |
 | 170 | OPEN | Three of four closed: sleeve⇄rocker (sleeve post 3 345°→350°), disc⇄feeler (the jog's foot lifted one margin off the track), sleeve⇄selector (the fork bracket starts one margin off the sleeve flat). Left: feeler⇄sleeve 0.092, where the trip rock spends §45's envelope margin at the skirt's throat; no position-space room; blocked on [TODO 173] |
 | 169 | CLOSED | The winding dogleg's scan judged only its stud columns against the low corridor; it now also refuses any station whose idlers (disc, hub, stud) come within `CLEAR_MARGIN` of already-built metal, taking the accepted station nearest the corridor's pick (i1 −42°). Idler 2 ⇄ centre wheel 0.0252 → 0.453; the click re-sites 150° → 164° |
-| 168 | OPEN | `makeGear`'s hub-less bore path cuts a hexagon (`curveSegments: 3`), not a circle, biting into the alarm setting wheel's designed bore. Fix: raise `curveSegments` for every hub-less bore and re-derive the margins it moves |
+| 168 | CLOSED | Every makeGear/makePinion bore (not only hub-less ones) was a `curveSegments` hexagon; bores are now drawn by `borePath`, an n-gon whose chord sag is at most `PIVOT_BORE_CLEAR`/2 (9 sides at 0.4, 25 at 3.05). The setting wheel clears the hour tube by 0.526 and the debt row is deleted. Bevel-shrunk bores and the barrel cavity went to [TODO 175]/[TODO 176] |
 | 167 | CLOSED | The alarm setting arbor pinion is built crisp (`makePinion` gained a `bevel` option) and sits on the lane's designed 0.05 dial gap, whose own sub-margin depth moved to [TODO 172]; the index wedge's length is derived from the selector ring's highest reach (0.42 → 0.3433), clearing it by exactly `CLEAR_MARGIN` |
 | 166 | CLOSED | The alarm release seat's posts were sited off the setting wheel's tips alone; re-derived from the MAXIMUM reach of all four full circles the post's span passes (tips, disc tips, sleeve flat, selector ring — the ring governs), padded by `ALARM_SEAT_SINK` for the 16-gon/rim vertex tie. `ALARM_SEAT_POST_R` 5.3617 → 5.5238 |
 | 165 | OPEN | `boundsASolid` refuses `segmentPierces`' pass-through witness on any non-manifold mesh, so `alarmWindContrate` (a hand-built `BufferGeometry`, 480 non-manifold edges) had a real crossing read as clearance by `meshClearance`/`inspection`. Fix: a tolerant manifold check (degenerate-edge aware) for the witness, and a degenerate-triangle filter for any raw triangle-triangle sweep |
@@ -23084,7 +23086,7 @@ Full `undeclaredClearance` after: population 1632, 7 rows, every row at its
 floor, 0 violations / regressed / stale / malformed, control PASS. Boot
 silent; `probe-144-branch-still` 8 rows, 0 failing.
 
-## 168. makeGear cuts a hub-less wheel's bore as a hexagon (curveSegments: 3), not a circle
+## 168. makeGear cuts a hub-less wheel's bore as a hexagon (curveSegments: 3), not a circle — CLOSED
 
 Found closing [TODO 164]'s arrival sweep. `alarmSettingWheel` is built
 `hub: false` (its bore is the bare cut, not a raised hub ring):
@@ -23111,6 +23113,49 @@ fixes every wheel built this way, not only `alarmSettingWheel`. Re-derive
 whichever margin the fix changes (the hour-tube row above, and the hidden
 14-triangle overlap with the alarm tube) rather than re-targeting the row to
 whatever the higher segment count happens to produce.
+
+**Closed.** Wider than filed: EVERY `makeGear` bore, hubbed wheels
+included, and every `makePinion` bore was a hexagon. `absarc` samples a full
+circle at `2 × curveSegments` points, so `curveSegments: 3` gives 6 and an
+inscribed radius of `r·cos 30°` (0.866 r). On a hubbed wheel the body's
+hexagon flats sat inside the 24-segment hub bore. The tooth outlines are
+polylines and unaffected. Spoke windows keep 6 chords per arc (nothing rides
+a window, and the sag never reaches the hub).
+
+**The fix.** One helper, `borePath(r)`, draws every gear and pinion bore with
+`lineTo`, so the extrude cannot resample it. Its side count is derived per
+bore from the rule that tessellation may spend at most half the movement's
+running fit on chord sag (TODO 102's rule):
+`r·(1 − cos(π/n)) ≤ PIVOT_BORE_CLEAR / 2`, so
+`n = max(6, ⌈π / acos(1 − PIVOT_BORE_CLEAR / (2r))⌉)`.
+
+| r | 0.2861 | 0.382 | 0.4 | 0.5 | 0.7 | 1.4 | 2.5 | 3.05 |
+|---|---|---|---|---|---|---|---|---|
+| n | 8 | 9 | 9 | 10 | 12 | 17 | 23 | 25 |
+
+Vertices sit ON r (the `absarc`/`ringExtrude` convention), so a press fit
+still shares metal with its shaft and a running fit keeps at least half its
+clearance. `PIVOT_BORE_CLEAR` moves from main.js to layout.js so the bore
+path reads the same single declaration (rule 1).
+
+| | before | after |
+|---|---|---|
+| Alarm setting wheel ⇄ Hour wheel | 0.1414 | 0.52595 (debt row deleted) |
+| setting wheel ⇄ alarm tube body (EXPECTED) | 0 (interpenetrating) | 0.0271 |
+| release disc ⇄ hour tube (EXPECTED) | 0 | 0.0264 |
+| setting-wheel triangles inside r 3.0 | 30 | 0 |
+
+No joint opened: `assembly` membership is identical over its 36 rows, and
+`intraUnit` loses two out-of-scope rows (Dial `hourTube ⇄ alarmDiscBody`,
+Dial `alarmTubeBody ⇄` the setting wheel). Cost: +1,236 triangles (+0.29%),
+boot unchanged. 19 units' SHAPE digests move. The fingerprint, which does not
+hash vertices, is unchanged.
+
+**Left open, filed.**
+- [TODO 175]: the extrude's bevel still grows a bevelled bore inward by
+  `bevelSize`, so several running fits still overlap their studs.
+- [TODO 176]: `makeBarrel`'s toothed wall cuts the alarm barrel's cavity the
+  same hexagonal way.
 
 ## 169. The alarm winding train's idler 2 flies under the centre wheel body — CLOSED
 
@@ -23358,3 +23403,41 @@ overlap.
 it keeps TODO 170's clearance to the sleeve flat. Then gate the connection:
 bring the selector into `ASSEMBLY_SCOPE`, or add a declared-joint row that
 the §182 audit measures.
+
+## 175. A bevelled gear or pinion bore is cut bevelSize smaller than its boreR, so running fits still overlap their studs
+
+Found closing [TODO 168]. Once the bore became a true circle, the second
+error showed: on a bevelled extrude, `bevelSize` grows every HOLE inward by
+the bevel in the mid band (MODELING.md rule 1's growth, applied to a hole).
+The as-cut bore is `r·cos(π/n) − bevel`, not r. Measured after TODO 168, cut
+radius against the stud or shaft it rides:
+
+| part | cut | stud or shaft |
+|---|---|---|
+| alarmWindIdler1/2 | 0.4095 | 0.45 |
+| mwMinuteWheel | 0.4095 | 0.42 (a running fit) |
+| spiderCageWheel | 0.2203 | 0.2361 |
+| windSpur | clears 0.051 | its rod |
+
+Several parts declared "pressed" also have a designed bore that is not
+their shaft: alarmStrikePinion (0.4 on 0.35), rsvWheel1 (0.5 on 0.45),
+rsvWheel2 (0.5 on 0.4), mwMinutePinion (a 0.4 bore on the 0.42 stud it rides).
+Declared rows and out-of-scope reporting hide these overlaps today.
+
+**Fix path.** Draw the bore at `boreR + bevel` (or leave the hole unbevelled)
+so the cut equals the design. Make every press fit's `boreR` equal its shaft,
+and every running fit's equal shaft + `PIVOT_BORE_CLEAR`, declaring joint rows
+where a press fit is the intent. Re-measure `assembly`: the Striking wheel is
+in `ASSEMBLY_SCOPE`.
+
+## 176. makeBarrel's toothed wall cuts the alarm barrel's cavity as a hexagon
+
+Found closing [TODO 168]. `makeBarrel` with `plain: false` (geometry.js,
+about line 5633) extrudes the toothed wall at `curveSegments: 3`, so its
+drum cavity, `drumInnerR` 5.595, is cut as a hexagon measuring 4.785 across
+the flats. `mainspringRibbon` reaches 5.54 in that band: the ribbon sits
+inside the wall's metal.
+
+**Fix path.** Cut the cavity with `borePath(drumInnerR)` (TODO 168's helper),
+plus TODO 175's bevel term. Then re-measure the ribbon ⇄ wall and the hook
+against the true cavity.

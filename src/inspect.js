@@ -2494,10 +2494,6 @@ export const UNDECLARED_CLEARANCE_DEBT = [
   // TODO 172, whose fix path is re-stratifying the lane, not the pinion.
   { a: 'Alarm setting arbor', b: 'Dial', floor: 0.05, todo: 'TODO 172',
     why: 'ALARM_SET_Z\'s designed 0.05 sheet gap to the dial is itself under CLEAR_MARGIN; the pinion is crisp and sits on it (the wheel and idlers ride the same gap under EXPECTED rows)' },
-  // TODO 168 — makeGear's curveSegments:3 cuts a hub-less wheel's bore as a
-  // hexagon rather than a circle.
-  { a: 'Alarm setting wheel', b: 'Hour wheel', floor: 0.1414, todo: 'TODO 168',
-    why: 'the setting wheel\'s hexagonal cap chords reach past the hour tube\'s designed bore' },
   // TODO 170 — three of its four rows cleared and are deleted. This one has no
   // position-space room: the trip rock lifts the arm into the margin §45
   // priced over the STATIC arm, at the skirt's throat lip; the rock itself is
