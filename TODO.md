@@ -18,7 +18,9 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | item | state | what remains |
 |---|---|---|
 | 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1529); raising them to `FOLD_SAT` carries the foot corner into the minute star (0.0727), because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
+| 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
+| 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
@@ -23928,6 +23930,194 @@ on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
 `JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
 classification as its memoised, B-independent obstacle set.
 
+## 182. PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3) — CLOSED
+
+> **Status, 2026-09-28 — steps 2 and 3 landed; the item is closed.** (The
+> heading's stem is step 1's and is frozen: the item-number gate holds a
+> permanent ID's title fixed and strips only a trailing status, so its "still
+> cuts a non-route as NaN" is history, and `CLOSED` is the current state.)
+>
+> **Step 2: a non-route omits the part that cannot exist, and only that
+> part.** The fallback threw away more than the route. When the dogleg
+> cannot close, the missing member is i2: the two-circle solve for its
+> station has no root. i1's station needs only the bearing, since it stands
+> at `ALARM_SET_DW1` on the setting wheel, which is always there. The build
+> took it from the route all the same, so i1, i1b, its sleeve and the seat
+> plate's relief were cut at NaN beside i2. i1's station is now one law,
+> `alarmSetI1At(bearing, geom)`, which replaces three verbatim copies (the
+> route solve, the interior bounds, the reach floor). When no route exists
+> the build takes i1 from that law and sets `ALARM_SET_I2` to null. The i2
+> gear and its stud are not built, the setting chain's phase solve runs
+> wheel ⇄ i1 only, the i2 ⇄ arbor-pinion mesh is neither phased nor
+> declared, and the two i2 wall rows and the pawl-tail row are skipped. The
+> warning now says the parts are omitted and the train ends at i1. The
+> identity build takes the same arithmetic in the same order, so it cannot
+> move.
+>
+> Measured solo on the SwiftShader container (`?trial=1`, base = `main` at
+> #505):
+>
+> | spec | non-finite meshes | boot warnings |
+> |---|---|---|
+> | `alarmr=20` | 7 → **0** | 19 → **5** |
+> | `alarmr=46` | 7 → **0** | 26 → **11** |
+>
+> **Every warning that went was NaN fallout, not a finding lost.** The
+> reworded "no i2" line replaces the old one. The rest are:
+> - both TODO 15 gauges reading "−1 gaps";
+> - five TODO 144 seat asserts reading `NaN`;
+> - §39's `NaN mm deep` pair;
+> - §186 finding the case annulus "occupied" by `[alarmSeatPlate,
+>   alarmSetIdler, i1b, (unnamed)]`.
+>
+> Four that read like real drift went too: §234's link body length and bush
+> OD, §137's series stall (plus its governing member at `alarmr=46`), and
+> §35's plate-bore site. Their "built" values were measured through bounds
+> the NaN metal had poisoned. The warnings that remain are the layout's
+> own.
+>
+> **Step 3: the spec tier gates finite metal.** `specBoot` walks every mesh
+> in the scene after boot, schematic tier included, for a non-finite world
+> matrix or a non-finite vertex. `spec boots: every declared spec point
+> builds finite metal` fails any point that has one, naming its meshes. It
+> GATES rather than reports because step 2 landed with it: all 36 declared
+> points measure 0. The walk on the base tree finds the seven meshes the
+> item names at both alarm radii, so it sees what it exists to see.
+> `meshIntegrity` still runs on the default spec only; this is the
+> spec-point floor, not a substitute for it.
+>
+> Step 1's drop in `JMP_SITE` stays as the scan's own guard. It now counts 0
+> at every declared spec, so a future non-finite part costs a count on the
+> record rather than a brute force.
+>
+> The step-1 status note and the item as filed follow.
+
+
+> **Status, 2026-09-28 — step 1 landed; the red it was filed for had
+> already cleared.** Between filing and fixing, #502 (TODO 180, which drops
+> zero-area slivers from the same scan) cut the scan from 254 tested
+> stations to 181 and made each query cheaper. Its push run was the first
+> green `main` since #488: the two points fell to about 35–40 s solo, under
+> the ceiling. That was relief, not a fix. The scan still cost about 12×
+> identity at those radii (19.0 s and 17.0 s against 1.5 s) for the same
+> reason, and a thinner margin was all that stood between it and the next
+> red. **Step 1 is now done**: `pushTris` drops any triangle whose world
+> coordinates are not finite, beside TODO 180's sliver drop, and counts
+> what it dropped on `JMP_SITE`'s record (`nonFiniteTris`,
+> `nonFiniteMeshes`). A rotor left with no triangles is skipped. Measured
+> on the merged tree, solo, SwiftShader container:
+>
+> | spec | scan before | scan after | boot before → after | dropped |
+> |---|---|---|---|---|
+> | identity | 1.5 s | 1.2 s | 17.8 → 13.5 s | 0 |
+> | `alarmr=20` | 19.0 s | 1.5 s | 35.4 → 18.5 s | 5,536 tris, 7 meshes |
+> | `alarmr=46` | 17.0 s | 1.3 s | 40.1 → 21.9 s | 5,536 tris, 7 meshes |
+>
+> Every spec tests the same stations (181 tested, 539 witnessed) and
+> chooses the same station, az 4.0753 (233.5°), clearance 0.1572. Identity
+> drops nothing, so the shipped build cannot move. Steps 2 and 3 remain
+> open (both have since landed, above). The narrative below is the item as filed.
+
+**The symptom is a red `main`.** Every push-to-`main` battery since #488
+(run 980, 2026-09-24) fails one gate: `spec boots: every declared spec point
+builds`, 34/36, on `alarmr=20` and `alarmr=46`. Both are reported as "never
+produced a __clock", with `fatal: null`, no page errors, and 19 and 26/27 boot
+warns before the cut-off. #486's run (975) was the last green one. [TODO 162]
+and [TODO 166] each met this failure in passing and called it "this
+container's pre-existing debt", "marginal/contention-sensitive". It is not
+the container: GitHub's own ubuntu-latest runners fail it on every run, and
+every PR since has inherited the red. It was never filed, because each
+landing that saw it had another item to close.
+
+**What it is: a timeout, not a death.** Measured solo on the SwiftShader
+container (a `?trial=1` boot, one tab, nothing else running):
+
+| tree | identity | `alarmr=20` | `alarmr=46` |
+|---|---|---|---|
+| #486 (`9b16f25`, last green) | 14.6 s | 14.6 s | 15.3 s |
+| #488 (`30178d1`, first red) | 18.1 s | **64.7 s** | **67.1 s** |
+| `main` after #499 (`4189ecb`) | 14.8–21.2 s | **102.8–104.6 s** | **102.2–103.7 s** |
+
+Both points build solo, with no error, in about 103 s: roughly seven times
+the identity spec's time. The spec tier runs four boots at once
+(`SPEC_BOOT_POOL`, set in §104's landing to keep each boot "within ~2× of
+solo" under `BOOT_TIMEOUT_MS` = 120 s), and at seven times identity there is
+no room for that factor. `reserveh=48` hit the same ceiling in run #335, and
+the pool was the fix then. It is not the fix now, because the cost is not
+contention.
+
+**Where the time goes.** A CPU profile of the `alarmr=20` boot on `main`
+puts **87 of 102 s** inside `test()` (`src/main.js`, the TODO 151 minute
+jumper siting solve, `JMP_SITE`). Almost all of it is in `bvhShort` →
+three-mesh-bvh's `closestPointToGeometry` → `distanceToTriangle`. The scan
+does IDENTICAL work at every spec: 720 candidates, 254 tested, 466
+witnessed, and it picks the same station (az 2.2602, clearance 0.15, score
+0.3614). It takes 1.6 s at identity against 88–108 s at the two alarm
+radii, so each query costs about sixty times more, not more of them.
+Timed per obstacle tree, the cost at `alarmr=20` lands on a 320-triangle
+`LatheGeometry` tree (68.4 s over 13,773 calls, about 5 ms each: a full
+320 × 352 triangle-pair sweep), then two 40-triangle `CylinderGeometry`
+trees (about 9 s each). At identity the same scan never gets past their
+boxes.
+
+**Why those trees prune nothing: their metal is NaN.** A scene walk at
+`alarmr=20` and `alarmr=46` finds seven meshes that are not finite. Identity
+has none.
+- `alarmSetIdler1`, `alarmSetIdler2`, `i1b`, and the unnamed
+  `LatheGeometry` and two `CylinderGeometry` parts beside them all have
+  **non-finite world matrices**.
+- `alarmSeatPlate` has **1,224 of its 2,172 vertex coordinates NaN**.
+
+A tree with NaN bounds reports every query box as a hit and every node as
+worth descending, so the siting scan turns into a brute-force sweep against
+it. The NaN is not new: the #486 tree carries the same seven meshes.
+**#488 did not create the NaN metal; it added the first boot-time solve
+that pays for it.**
+
+**And the NaN is deliberate.** When the alarm setting dogleg has no route,
+`alarmSetRouteAt` returns nothing, and `main.js` destructures the fallback
+`{ i1: { x: NaN, y: NaN }, i2: { x: NaN, y: NaN } }` after warning "no i2
+exists at bearing … the route below is not a route". Both declared spec
+points exist to exercise exactly that: `alarmr=20` is "§98 — past the
+dogleg reach" and `alarmr=46` is "§98 — past the stem window". Every part
+cut at the route then inherits the NaN. That includes the idlers, their
+studs, and the seat plate, whose `ALARM_SEAT_RELIEF_HALF` is a law-of-cosines
+`Math.acos` over `_i1Dist` and whose outline is built from `_i1PhiL`. The
+spec tier only asks whether the page produced a `__clock`, so a point that
+"builds" seven non-finite meshes has passed it for as long as the point has
+existed. The one gate that would see them, `meshIntegrity`, runs on the
+default spec only.
+
+**Fix path, in order.**
+1. **The scan drops non-finite obstacle triangles** where it collects them
+   (the `pushTris` walk into `staticList`/`plateList`/`rotorTris`). Count
+   them in `JMP_SITE`'s returned record. A part with no coordinates cannot
+   be collided with, and the dogleg's own warning already says the route is
+   not a route. This restores the two points to the identity's boot time
+   and turns `main` green. **Acceptance:** both points boot inside the pool
+   at about identity's solo time, and `JMP_SITE` reports the same station
+   (az 2.2602, clearance 0.15) at identity, before and after.
+2. **Stop building a non-route as NaN metal.** A route that does not exist
+   should be omitted or refused, visibly, not cut at `(NaN, NaN)` and left
+   in the scene for every later solve and instrument to trip over. The
+   next NaN-blind solve would pay the same cost. Decide which, and apply it
+   to everything cut at the route.
+3. **Let the spec tier see it.** "Every declared spec point builds" should
+   also mean "builds finite metal": count non-finite meshes per point and
+   report them beside the warn count. Report, not gate, until (2) lands,
+   since today both points would fail it by design.
+
+What NOT to do: raise `BOOT_TIMEOUT_MS` or shrink `SPEC_BOOT_POOL` to buy
+the time back. §104 set both so that "one roughly uncontended boot must
+build" keeps its meaning, and a spec point that is seven times slower than
+identity because a solve walks NaN is exactly what that ceiling is there to
+catch.
+
+The scripts that measured this were one-off (a solo `?trial=1` timer, a CDP
+profile, a per-tree timer patched into `setOf`, and a scene walk for
+non-finite positions and matrices). The scene walk is the one worth keeping,
+as step 3's instrument.
+
 ## 183. A B-dependent jumper refusal would still not act: re-cutting the setting fold, plate and reserve at another bearing is unbuilt
 
 Filed closing [TODO 160]. CAP_SOLVE commits the setting cap's bearing B
@@ -23956,6 +24146,184 @@ A cheaper middle design is a declared `CAP_JUMPER_REFUSED_DEG` table that
 CAP_SOLVE skips, the ratchet idiom. The late pass verifies the shipped B is
 accepted and that each row is still refused. Its control is
 `probe-160-cause`'s boot C with the expected chosen B moving to 6.0°.
+
+## 184. The frame's fasteners hold nothing: plate and cock screws stop at the joint face, pillars butt the base plate, and every size is a proportion of an unrelated dimension
+
+Reported by eye ("the structural screws that hold the three-quarter plate and
+the bridges onto the base plate are too small — too short and too slim — or
+the pillars are not realistically attached to the base plate"). Both halves
+hold up when you read the code, and there is a third half the report did not
+reach: **no screw in the frame crosses the joint it exists to close.** Found
+by reading, not by any check. Every number below is DERIVED from the source
+constants at `UNIT_MM` = 0.379. `TQ_BOT_Z` ≈ 8.185 is the value
+`tools/probe-interplate-demand.mjs` quotes (the seated-stud span `[8.9845, 8.1845]` measured
+earlier in this file agrees with it). It was not re-measured by a boot for this filing, so re-read it off
+`__clock` before sizing anything.
+
+**1. The screws are too short. Every one ends exactly at the interface.**
+
+| joint | screw ends at | thread engaged in the member it should hold |
+|---|---|---|
+| 3/4 plate ⇄ pillar ×4 | the plate's underside: `shank: TQ_T − STOCK_MIN_U` below a head sunk `STOCK_MIN_U` (main.js:11356) | **0** |
+| Balance cock ⇄ base plate ×2 | the crossbar's underside: `shank: COCK_T` (main.js:10060) | **0**. Below the bar is the cock's own leg (same group), then the base plate |
+| Fork cock ⇄ base plate ×1 | the slab's underside: `shank: thickness` (geometry.js:6429) | **0**. Below is the bridge's own leg, then the base plate |
+
+The two cocks are the clearest case. Each leg is a cylinder built INSIDE the
+cock's group (main.js:10035, geometry.js:6407), with a pad resting on
+`PLATE_TOP`. So the screw clamps the slab to its own leg, and nothing crosses
+the leg ⇄ base plate face. Every cock in this frame stands on the plate,
+fastened to nothing.
+
+TODO 27 chose this on purpose ("what is deliberately still not drawn … the
+thread, and the tapped hole it takes … invisible in the real movement too").
+The choice is withdrawn here, for two reasons. (a) A tapped hole's
+INVISIBILITY argues against drawing its visible features. It does not argue
+against the screw having a LENGTH. As built, the model states that the screw
+stops at the face, which is a claim, and a false one. (b) Since §148,
+`makeScrews` draws a tapped shank (`tapped: true`, crests at `screwShankR`
+meeting a bore at `screwTapR`) and the chatons use it, so the drawing cost is
+already paid. The comments at main.js:11353–11355 and main.js:10055
+("the thread takes the pillar / the leg and then the plate") describe metal
+that the model does not contain. Fix the code or the sentence. Do not leave
+the sentence.
+
+**2. The screws are too slim. The sizes come from dimensions that have
+nothing to do with a fastener.**
+
+| site | head ⌀ | thread ⌀ | where the number comes from |
+|---|---|---|---|
+| pillar screws | 1.326 u = **0.50 mm** | 0.663 u = **0.25 mm** | `PILLAR_SCREW_HEAD_R = PILLAR_CAP_R·0.6`, `PILLAR_CAP_R = TQ_BOT_Z·0.09·1.5` (main.js:11051, 11056). So the thread is **0.081·TQ_BOT_Z**, a fraction of the inter-plate gap, which the hairspring stack and the chain's reach set |
+| balance cock screws | 2.70 u = 1.02 mm | 1.35 u = 0.51 mm | `COCK_FOOT_R·0.45`, `COCK_FOOT_R = COCK_W/2`, and `COCK_W = 6` is a bare literal (main.js:4046, 10016) |
+| fork cock screw | 1.155 u = 0.44 mm | 0.578 u = 0.22 mm | `footHeadR = n.r·0.62·0.6`, `n.r = legR·1.35`, and `legR = 1.15` is a bare literal (geometry.js:6348, main.js:4179) |
+
+In every row the thread is `screwShankR = headR/2` (geometry.js:6499), so the
+real chain is "thread ⌀ = a proportion of a proportion of a styling number."
+That is standing rule 1's failure at the frame's most load-bearing joints.
+One more copy to fix while you are there: the fork cock's leg is SCANNED at
+`legR = 1.15` (main.js:4179), but `makeEscapeBridge` DRAWS it at
+`n.r·0.62` = 0.963. The scan is conservative, but these are two copies of
+one radius.
+
+For scale, and as an order of magnitude only (write a cited reference
+calibre's measured row into the constant's comment, not this paragraph): a
+~32 mm pocket movement carries its plate on screws of about 1.0 mm thread
+(the report's M1.0–1.4 range) with heads of about 1.8–2.0 mm, and its cocks
+on screws of about 0.6–0.9 mm. The pillar screws are about **4× too slim**.
+In brass or nickel silver, engagement is usually at least 1.5·d.
+
+**3. The pillars butt the base plate and are not attached to it.**
+`makePillar` (geometry.js:6953) is one solid lathe whose body radius is
+`height·0.09` (geometry.js:6954), again a fraction of the inter-plate gap. At
+this height that is body ⌀ 1.473 u = **0.56 mm**, end lands ⌀ 2.21 u = 0.84 mm,
+3.10 mm tall. It sits at z [0, `TQ_BOT_Z`] (main.js:11194–11196), so its foot
+is coplanar with `PLATE_TOP` = 0, the base plate's top face
+(`BACK_PLATE_Z`/`BACK_PLATE_T`, main.js:2670–2671). Nothing crosses that
+face: no tenon, no rivet, no screw, no steady pin. `BACK_PLATE_HOLES` has no
+pillar entry. A real pillar is riveted into the pillar plate on a shouldered
+tenon, or screwed from the dial side, and the upper plate is located on steady
+pins as well as screwed. Here a pillar stands in position only because the
+model places it there.
+
+**Why no instrument has seen it.** `checkSupportGeometry` accepts a support
+edge when the two members come within `SUPPORT_TOL` = 0.5 (inspect.js:4072),
+so a butt joint and a fastened joint both pass. `['Three-quarter plate',
+'pillars']`, `['pillars', 'plate']`, `['Balance cock', 'plate']` and
+`['Fork cock', 'plate']` (inspect.js:101–102, 116–117) are all green
+on contact alone. The screws are meshes inside their host's unit, so they
+fall into item 5's fixture-pair residue. Their sections sit over every floor
+(0.25 mm thread against the 0.12 mm `STOCK_MIN_U`; pillar λ and L/D about 5.6).
+So `stockFloor`, `slenderness` and `turning` have nothing to report. None of
+these parts appears in `STOCK_WAIVERS`, `SLENDER_WAIVERS` or `TURN_WAIVERS`,
+and `tools/INDEX.md` has no instrument for a screw, a thread or a pillar
+joint. A stale comment rides along: inspect.js:97 and :609 still say the
+balance cock "is screwed to [the three-quarter plate's] top face", while
+inspect.js:117 declares, correctly, that its leg lands on the BASE plate.
+
+**Fix path.** Do it in P1 order: the fastener first, then the members sized
+around it, then the seats (P3).
+
+1. **Thread ⌀ from a declared screw series, not from a head.** Pick one row of
+   the Swiss horological thread series (NIHS) per joint class (plate, cock),
+   and cite the row and the reference calibre at the constant. Then derive
+   the head from the thread (invert `screwShankR`'s 2:1, or keep it as the
+   series' head column). *Fork:* the defensible alternative is a
+   shock-load sum in TODO 16's format (plate plus train mass at a stated g,
+   shared over the screws, against thread shear in the host). That is more
+   work and more honest. File the series row first and state the fork at the
+   constant.
+2. **Engagement: `ENGAGE_MIN · d` into the host, the constraint written
+   where the constant is declared.** Pillar screws continue past the plate
+   underside into a tapped bore in the pillar top (`screwTapR`, §148's
+   tapped-hole rule), drawn with `tapped: true` for the engaged length. Cock
+   screws run down through their legs into the base plate. That forces the
+   leg to become a bored sleeve (or a separate stud) and puts a tapped bore
+   in `BACK_PLATE_HOLES`.
+3. **Pillar body from the thread, not from the height:** body r ≥
+   `screwTapR` + a wall floored at `STOCK_MIN_U`, and the end land ≥ the
+   seat the new head needs. This retires `height·0.09`.
+4. **Pillar ⇄ base plate joint:** a shouldered tenon through the base plate,
+   riveted flush on the dial side (§27's chain-rivet countersink is the
+   in-repo precedent for a head that may not stand proud), or a dial-side
+   screw into the pillar foot. Either way the base plate is bored at each
+   seat. Add steady pins if the plate's location is claimed.
+5. **Re-solve the seats with the fatter pillars.** Keep the dimensions fixed
+   and solve in position space (P3). The seat scan already consumes
+   `LOW_LINKAGE_OBSTACLES`, `ALARM_UNDER_FOOTPRINT`, the train boxes and
+   `PILLAR_KEYLESS_BOXES`. A `pillar: no seat found near` warning here is a
+   LAYOUT finding to file. Do not answer it by slimming the pillar back.
+
+**Hidden costs, measured by reading, not by building.**
+- *Ordering.* The base plate is cut at main.js:7470. The pillar seats are
+  solved at main.js:11180, after the train, the cocks and the keyless works
+  they avoid have been built. So step 4 needs either the seat solve hoisted
+  above the back-plate cut, with declared footprints the way
+  `ALARM_UNDER_FOOTPRINT` got its hoist, or a second, late cut of the back
+  plate. Both are real work. The hoist is the house pattern.
+- *Host thickness.* The base plate is `BACK_PLATE_T` = 2 u = **0.758 mm** and
+  the three-quarter plate `TQ_T` = 0.8 u = 0.303 mm. Both are bare literals,
+  and both are thinner than real plates. At d ≈ 1.0 mm and 1.5·d engagement,
+  a BLIND thread does not fit in either plate. So the pillar ⇄ base plate
+  joint has to go THROUGH (a rivet, or a dial-side screw), and a cock screw
+  into the base plate engages at most 0.758 mm. That limit is [TODO 69]'s
+  class, and it is the reason this item cannot be closed by drawing longer
+  screws alone. If a step's arithmetic comes back infeasible, state the
+  window with numbers, as TODO 69 does, and leave the plate thickness to 69
+  or to its own item. Do not thin the fastener to fit.
+- *The dial side.* A riveted tenon's dial-side head sits among the motion
+  works and the keyless corner. Measure it with `undeclaredClearance`.
+
+**Instrument, and how to verify.**
+- A declared `FRAME_JOINTS` table (joint, screw site, host, thread d, required
+  engagement), with a build-time assert that warns with the achieved and the
+  required numbers (standing rule 6). The frame is static, so this is a
+  derivation and not a pose claim, which keeps it legal under "boot has no
+  pose." Its control: shorten one shank back to `TQ_T − STOCK_MIN_U` and the
+  assert must fire.
+- Extend `support` so that an edge between two separately built rigid members
+  in that table passes only if some mesh crosses the joint plane by at least
+  the declared engagement. Contact within `SUPPORT_TOL` alone must fail it.
+  The control is today's tree, which must come back RED on all four pillars
+  and all three cock screws before the fix lands.
+- Each thread is a designed contact, so the screw ⇄ tapped-bore pairs need
+  declared-joint rows that §182's audit measures (`INTRA_UNIT_CONTACTS`
+  inside a unit, `EXPECTED_CONTACT_FLOORS` contacts across
+  `Three-quarter plate ⇄ pillars`). Otherwise the new metal reads as
+  interpenetration.
+- Then run the full battery. The geometry, the pillar seats, the fingerprint
+  and the §152 digests all move. `--report` diffed against the base is the
+  acceptance.
+
+Feasibility: medium, and large if step 4's arithmetic forces [TODO 69] or a
+base-plate thickness change · Cost: about 200–350 lines across main.js,
+geometry.js and inspect.js. About 6 derived constants (thread d ×2 classes,
+`ENGAGE_MIN`, pillar body r, tenon r, cock-leg bore). One seat re-solve and
+either a hoist or a late back-plate cut. One new build assert and one new
+`support` column · Battery: full (geometry changes, and the fingerprint and
+digests move).
+
+**Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
+alone, or by scaling the existing heads up. A bigger head on a screw that
+still stops at the face is the same defect, made easier to see.
 
 ## 185. The cap leg's tilt and stub still sit on the margin, and raising them carries the foot corner into the minute star
 
