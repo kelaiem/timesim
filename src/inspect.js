@@ -204,7 +204,7 @@ export const MECH_GRAPH = {
     ['Alarm release seat', 'Dial'],          // TODO 144: the seat's two posts hang from the sheet's back face at two free azimuths (130°, 270°) — the feeler bracket's own mounting
     ['Alarm release reader', 'Hour wheel'], // TODO 117 stage 1: the orbiting collar is CARRIED by the hour wheel — being hour-borne is the topology, not an accommodation
     ['Alarm selector', 'Dial'],              // §34 pass 2b: the ring's three guide posts hang from the sheet (az 60/220/300, outside the wheel's tips)
-    ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/345, the selector's pattern one band deeper)
+    ['Alarm release sleeve', 'Dial'],        // §45: the sleeve's three guide posts hang from the sheet (az 105/250/350 — TODO 170 moved the third off the silence rocker's lug — the selector's pattern one band deeper)
     ['Alarm release lifter', 'plate'],       // §45: bracket post + mid-guide post stand on the base plate's dial-side face (the alarm arbor's cock pattern)
     ['Alarm silence rocker', 'Dial'],        // §45 stage 2: the pivot bracket's lugs hang from the sheet's back face (the feeler bracket's pattern)
     ['Alarm link', 'Three-quarter plate'],   // §35: the link beak's post on the plate top
@@ -2484,28 +2484,26 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 // by a later PR; a newly undeclared pair blocks landing (not code-enforced —
 // stated here and in CLAUDE.md).
 export const UNDECLARED_CLEARANCE_DEBT = [
-  // TODO 167 — the setting lane: the arbor pinion's bevel eats the sheet gap
-  // to the dial, and the index wedge overhangs the selector ring.
-  { a: 'Alarm setting arbor', b: 'Dial', floor: 0.0025, todo: 'TODO 167',
-    why: 'ALARM_SET_Z assumes a crisp pinion face; makePinion\'s bevel eats 0.0025 of the sheet gap' },
-  { a: 'Alarm selector', b: 'Alarm setting wheel', floor: 0.0733, todo: 'TODO 167',
-    why: 'the index wedge\'s WEDGE_LEN, kept after TODO 26 pinned its tip, overhangs the selector ring' },
+  // TODO 167 — the setting lane's arbor pinion was bevelled like an ordinary
+  // pinion and the bevel ate into the sheet gap to the dial; made CRISP
+  // (bevel: false) in the same PR, which also derived the index wedge's
+  // length off the ring it actually has to clear rather than a frozen
+  // constant — that row is gone. What TODO 167 could not close is that the
+  // lane's own DESIGNED gap (ALARM_SET_Z's 0.05 sheet clearance) is itself
+  // under CLEAR_MARGIN, so a crisp pinion still sits on it: re-cited to
+  // TODO 172, whose fix path is re-stratifying the lane, not the pinion.
+  { a: 'Alarm setting arbor', b: 'Dial', floor: 0.05, todo: 'TODO 172',
+    why: 'ALARM_SET_Z\'s designed 0.05 sheet gap to the dial is itself under CLEAR_MARGIN; the pinion is crisp and sits on it (the wheel and idlers ride the same gap under EXPECTED rows)' },
   // TODO 168 — makeGear's curveSegments:3 cuts a hub-less wheel's bore as a
   // hexagon rather than a circle.
   { a: 'Alarm setting wheel', b: 'Hour wheel', floor: 0.1414, todo: 'TODO 168',
     why: 'the setting wheel\'s hexagonal cap chords reach past the hour tube\'s designed bore' },
-  // TODO 169 — the winding train's idler 2 flies under the centre wheel body.
-  { a: 'Alarm winding train', b: 'Center wheel', floor: 0.0252, todo: 'TODO 169',
-    why: 'the winding dogleg\'s idler 2 (tier Z) flies under the centre wheel body' },
-  // TODO 170 — four alarm release/arming-complex pairs.
+  // TODO 170 — three of its four rows cleared and are deleted. This one has no
+  // position-space room: the trip rock lifts the arm into the margin §45
+  // priced over the STATIC arm, at the skirt's throat lip; the rock itself is
+  // the defect TODO 173 owns.
   { a: 'Alarm release feeler', b: 'Alarm release sleeve', floor: 0.092, todo: 'TODO 170',
-    why: 'the alarm release/arming complex — see TODO 170' },
-  { a: 'Alarm release sleeve', b: 'Alarm silence rocker', floor: 0.0961, todo: 'TODO 170',
-    why: 'the alarm release/arming complex — coupled to the same tab azimuth TODO 164 R3 re-sited' },
-  { a: 'Alarm release disc', b: 'Alarm release feeler', floor: 0.1155, todo: 'TODO 170',
-    why: 'the alarm release/arming complex — see TODO 170' },
-  { a: 'Alarm release sleeve', b: 'Alarm selector', floor: 0.1183, todo: 'TODO 170',
-    why: 'the alarm release/arming complex — see TODO 170' },
+    why: 'the trip rock spends 0.058 of the §45 envelope margin at the skirt\'s throat lip (§124 priced it at the web rim); blocked on TODO 173 — the lever rocks about the dial\'s Y axis and in the wrong sense' },
 ];
 
 // §40 hops rule, a seventh copy — see e.g. checkIntraUnit / checkAssembly.

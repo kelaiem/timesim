@@ -15977,7 +15977,15 @@ const ALARM_WEB_RELIEF_HALF = Math.asin(
 const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03;       // flat bore: rest flank + working clear
 const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
-const ALARM_SLEEVE_POST_AZ = [105, 250, 345].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (8)
+// TODO 170 — the third post was a hand-pick made before §45 stage 2 put the
+// silence rocker's pivot bracket between the feeler and the tab: at 345° its
+// guide eye stood 0.0961 off the rocker's inboard lug (the lug rides the
+// finger→paddle chord, so TODO 164 R3's tab re-derivation moved it, 0.1066 →
+// 0.0961). Measured on the built metal the free window is ≈346°..353.5°: below
+// it the eye meets that lug, above it the post (sheet → sleeve) meets the
+// setting idler's rim (0.113 at 354°, 0 at 356°). 350° is the window's centre:
+// the pair rises to 0.4977, nearest other metal 0.2655 (the selector ring's rim).
+const ALARM_SLEEVE_POST_AZ = [105, 250, 350].map((d) => d * DEG2RAD); // world az — dodges sel posts (60/220/300), feeler (−25), tab (≈8.6), the rocker's pivot lugs (≈−18), the setting idler's rim (TODO 170)
 // §76 — THE SILENCE CHAIN IS CORNER-RELATIVE. This was a world constant, and
 // its own comment gave the defect away: "between the arbor cluster (az 0) and
 // i1 (az 18)" describes positions measured OFF THE ALARM CORNER, written as
@@ -16232,18 +16240,43 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   faceCam.position.z = ALARM_WHEEL_BOT_B; // seated on the wheel's plate-side face (derived — was the frozen −0.23); heights grow into pass 1's band
   faceCam.rotation.z = ALARM_NOSE_AZ; // notch (minimum height) phased to the pin's azimuth: seated ⇒ tube ≡ wheel
   alarmSetWheelGroup.add(faceCam);
-  // TODO 26 — the wedge's tip is bounded by the DIAL'S BACK FACE. It used to
-  // stand 0.175 past the dial's plane, which cost nothing while the dial was a
-  // sheet with no substance to intersect and is a real collision now that it is
-  // a plate: the same lie the sub-dial wells told, in the other direction.
-  // dialFace's flip makes local +z run toward the dial and puts this group on
-  // Z_DIAL, so a tip one margin clear of the dial's back is local −CLEAR_MARGIN.
-  const WEDGE_LEN = 0.42;
+  // TODO 26 — the wedge's WIDE end is bounded by the DIAL'S BACK FACE. It used
+  // to stand 0.175 past the dial's plane, which cost nothing while the dial
+  // was a sheet with no substance to intersect and is a real collision now
+  // that it is a plate: the same lie the sub-dial wells told, in the other
+  // direction. dialFace's flip makes local +z run toward the dial and puts
+  // this group on Z_DIAL, so the wide end one margin clear of the dial's back
+  // is local −CLEAR_MARGIN. `CylinderGeometry(0, r, L, 3)` puts the POINT
+  // (r=0) at local −z, i.e. plate-ward — so it is the POINT, not the wide
+  // end, that reaches toward the alarm selector ring. TODO 167 — the length
+  // that used to hold that fixed (WEDGE_LEN = 0.42) let the point run past
+  // the ring's highest reach (ALARM_SEL_Z_UP, disarmed) to within 0.0733 of
+  // its top face (an UNDECLARED_CLEARANCE_DEBT row). The wedge is a display index only (§34;
+  // no contact/handoff/transfer/floors row), so its length is free to derive
+  // from the two things it actually has to clear: wide end at −CLEAR_MARGIN,
+  // point one margin off the ring's highest local reach —
+  // −CLEAR_MARGIN − L = ALARM_SEL_Z_UP + CLEAR_MARGIN.
+  const WEDGE_LEN = -(ALARM_SEL_Z_UP + 2 * CLEAR_MARGIN);
   const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, WEDGE_LEN, 3), MATS.blueSteel);
   wedge.name = 'alarmIndexWedge';
   wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
   wedge.position.set(4.45, 0, -CLEAR_MARGIN - WEDGE_LEN / 2);
   wedge.rotation.x = Math.PI / 2;
+  // Rule 6 boot assert — the point (local z = −CLEAR_MARGIN − WEDGE_LEN) must
+  // (i) stand at least CLEAR_MARGIN off the selector ring's highest reach
+  // (ALARM_SEL_Z_UP, disarmed) and (ii) still stand proud of the wheel's own
+  // plate-side face (ALARM_WHEEL_BOT_B) — a mark that has run back under the
+  // wheel is no longer a readable index.
+  {
+    const wedgePointZ = -CLEAR_MARGIN - WEDGE_LEN;
+    const clearOfRing = wedgePointZ - ALARM_SEL_Z_UP;
+    if (clearOfRing < CLEAR_MARGIN - 1e-9) {
+      console.warn('alarmIndexWedge: point does not clear ALARM_SEL_Z_UP by CLEAR_MARGIN', { achieved: clearOfRing, required: CLEAR_MARGIN });
+    }
+    if (wedgePointZ >= ALARM_WHEEL_BOT_B) {
+      console.warn('alarmIndexWedge: point no longer stands proud of the wheel\'s plate-side face', { achieved: wedgePointZ, required: '< ' + ALARM_WHEEL_BOT_B });
+    }
+  }
   alarmSetWheelGroup.add(wedge);
 }
 
@@ -17542,11 +17575,25 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   // The jog: a post from the arm's plane down to the tip's, sitting OUTBOARD of
   // the ring. Its inboard face clears the ring's outer edge by one margin,
   // which is what FEELER_JOG_R's half-thickness term buys.
-  const jogSpan = FEELER_TIP_Z + ALARM_FEELER_T;   // arm's dial face → tip's dial face
+  //
+  // TODO 170 — AND ITS FOOT CLEARS THE TRACK. The box spanned lever-local
+  // [−T/2, TIP_Z + T/2], and −T/2 is the arm's TRACK-side face (lever +z runs
+  // toward the dial) — not its dial face, as this comment said — so the jog's
+  // inboard corner hung one ALARM_PIN_SHANK (0.04) over the track's face, and
+  // the track is wider than the ring FEELER_JOG_R clears (half-width 0.20 vs
+  // 0.1583): 0.1083 radially, 0.1155 clear. The radius is boxed — 0.0417
+  // outboard put the jog 0.124 off the pressed follower's tail pin — so the
+  // foot rises instead: one margin off the track's face in z, plus the §29 drop
+  // at the jog's inboard face (the sense §29's rim assert prices), so it holds
+  // for a rock in either sense (TODO 173). It stays inside the arm's
+  // thickness: one body.
+  const FEELER_JOG_FOOT = CLEAR_MARGIN - ALARM_PIN_SHANK - ALARM_FEELER_T / 2
+    + ALARM_PIN_DROP * (FEELER_ARM_RUN + ALARM_FEELER_T / 2) / ALARM_FEELER_ARM_LEN;   // lever-local z, 0.0391
+  const jogSpan = (FEELER_TIP_Z + ALARM_FEELER_T / 2) - FEELER_JOG_FOOT;   // foot → tip's dial face
   const jog = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FEELER_T, 2 * ALARM_PIN_R, jogSpan), MATS.steel);
   jog.name = 'alarmFeelerJog';
-  // Centred so it spans the arm's dial face to the tip's: [−T/2, TIP_Z + T/2].
-  jog.position.set(FEELER_ARM_RUN, 0, FEELER_TIP_Z / 2);
+  // Spans [FEELER_JOG_FOOT, TIP_Z + T/2].
+  jog.position.set(FEELER_ARM_RUN, 0, (FEELER_JOG_FOOT + FEELER_TIP_Z + ALARM_FEELER_T / 2) / 2);
   alarmFeelerLever.add(jog);
   // The tip: spans the ring's full radial width, so the contact's centroid is
   // ALARM_TRACK_RMID and ALARM_FEELER_ARM_LEN is genuinely inherited — the
@@ -17563,6 +17610,8 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
     console.warn(`§117 feeler: the jog's inboard face ${(FEELER_JOG_R - ALARM_FEELER_T / 2).toFixed(4)} crowds the ring's rim ${(ALARM_TRACK_RMID + READER_RING_T / 2).toFixed(4)}`);
   if (FEELER_TIP_Z <= ALARM_FEELER_T / 2)
     console.warn(`§117 feeler: the tip ${FEELER_TIP_Z.toFixed(4)} has not cleared the arm's own plane — no jog`);
+  if (!(FEELER_JOG_FOOT > -ALARM_FEELER_T / 2 && FEELER_JOG_FOOT < ALARM_FEELER_T / 2))
+    console.warn(`TODO 170 feeler: the jog's foot ${FEELER_JOG_FOOT.toFixed(4)} has left the arm's thickness ±${(ALARM_FEELER_T / 2).toFixed(4)} — the lever is no longer one body`);
   // Return spring: a blade from the outboard lug pressing the arm down —
   // force representational, flex driven in tick from the actual drop.
   // §51 strata spend: the blade at real spring stock — 0.08 u = 0.03 mm, the
@@ -18194,7 +18243,15 @@ alarmRotor.add(alarmArborRod);
 // The setting pinion — overhung on the rod's end in the gear lane, meshing
 // the idler. Same module as the whole train (see ALARM_SET_MODULE).
 {
-  const pin = G.makePinion({ name: 'alarmSetArborPinion', module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, mates: [{ teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] }], thickness: ALARM_SET_T, material: MATS.steel });
+  // TODO 167 — CRISP, like the lane's wheel and idlers: ALARM_SET_Z = Z_DIAL +
+  // 0.05 + T/2 assumes crisp faces (a designed 0.05 sheet gap to the dial),
+  // and makePinion's default bevel (pinionBevel = 0.0475 here) stood proud of
+  // that assumption and ate 0.0475 of the gap, leaving 0.0025 to the dial —
+  // an UNDECLARED_CLEARANCE_DEBT row. Crisp also removes the bevel's XY
+  // growth that had reached into idler 2's mesh clearance (0 → 0.0171 at
+  // alarm f=0.9583), a TODO 84-class interference the bevel was causing, not
+  // curing.
+  const pin = G.makePinion({ name: 'alarmSetArborPinion', module: ALARM_SET_MODULE, teeth: ALARM_SET_PINION_TEETH, mates: [{ teeth: ALARM_SET_I2_TEETH, mates: [ALARM_SET_I1_TEETH, ALARM_SET_PINION_TEETH] }], thickness: ALARM_SET_T, material: MATS.steel, bevel: false });
   pin.position.z = ALARM_SET_Z;
   alarmRotor.add(pin);
   // TODO 132 — THE SETTING CHAIN'S LAST MESH, CLOCKED. It was declared by hand
@@ -22888,7 +22945,20 @@ const _wd3 = ALARM_TRAIN_MODULE * (ALARM_WIND_IDLER_TEETH + ALARM_WIND_W) / 2;  
 // sweep, this order's first boot) — so both idlers solve jointly: sweep
 // i1's azimuth, close i2 by two-circle on each branch, score the worse
 // stud against the corridor's footprint (rule 5), take the argmax; ties
-// within 0.05 keep the smallest swing off the straight line.
+// within 0.05 keep the smallest swing off the straight line. TODO 169 added
+// the accept test the score never had — both idlers one margin off the built
+// metal (below); the corridor now only ranks what that test lets through.
+//
+// §136 — each idler's mate graph, hoisted so the solve sizes the wheels it
+// judges (gearOuterR, gearFaceReach) from the same arrays mkIdler cuts with.
+const ALARM_WIND_I1_MATES = [
+  { teeth: ALARM_WIND_PINION_TEETH, mates: [ALARM_WIND_IDLER_TEETH] },
+  { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_IDLER_TEETH, ALARM_WIND_W] },
+];
+const ALARM_WIND_I2_MATES = [
+  { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_PINION_TEETH, ALARM_WIND_IDLER_TEETH] },
+  { teeth: ALARM_WIND_W, mates: [ALARM_WIND_IDLER_TEETH, SUB_LEG_TEETH] },
+];
 await breathe();
 const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
   const studR = 0.45;                       // the idler stud stock (the build below)
@@ -22919,12 +22989,189 @@ const { i1: alarmWindI1, i2: alarmWindI2 } = (() => {
       { x: mx + (h * dy) / d, y: my - (h * dx) / d },
     ]) cands.push({ i1, i2, deg, c: Math.min(c1, lowC(i2, studR)) });
   }
-  cands.sort((p, q) => q.c - p.c);
-  const best = cands.filter((p) => p.c > cands[0].c - 0.05)
-    .sort((p, q) => Math.abs(p.deg) - Math.abs(q.deg))[0];
-  if (!best || best.c < CLEAR_MARGIN)
-    console.warn(`alarm winding dogleg: no i1 azimuth stands both studs clear of the low corridor — best ${best ? best.c.toFixed(3) : 'none'} < ${CLEAR_MARGIN}`);
-  return best || { i1: { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } };
+  // TODO 169 — THE WHEELS ARE JUDGED ON THE METAL THEY FLY OVER. The score
+  // above sees the two STUDS against the corridor's declared footprint and
+  // nothing else, so it took i2 where its disc flew 0.0252 under the centre
+  // wheel (disc top 3.0888, wheel underside 3.114, overlapping in plan — the
+  // whole clearance axial): no term of it knew the centre wheel was there.
+  // Adding that one wheel to a list would find the next unlisted part the
+  // same way (collision-fixer §5a, TODO 151), so every piece of both idlers —
+  // the disc (tip circle and bevelled faces, off the cut's own reach
+  // helpers), the hub ring, the stud column — is judged against every unit
+  // built so far whose metal enters their band, the base plate excepted (the
+  // studs' ground):
+  //   · a mesh riding a TOOTHED wheel (userData.r and .teeth — it meshes, so
+  //     it turns; §151's rotor rule) is its REVOLUTION, the annulus
+  //     [minR, maxR] × [zLo, zHi] about that wheel's own vertical axis, so the
+  //     verdict holds at every angle both wheels turn to; the idler's piece is
+  //     a revolution too, and two revolutions give the exact clearance,
+  //     hypot(plan gap, axial gap);
+  //   · anything else is judged as built, triangle by triangle, by a bound
+  //     that only errs toward closer (the plan distance from the piece's axis
+  //     to the triangle's shadow, and the triangle's z-range).
+  // i2's disc may overlap the arbor wheel it meshes (EXPECTED_CONTACT_FLOORS'
+  // winding row names that one contact) and nothing else. What this cannot
+  // see, stated rather than implied: units built after it (the click and the
+  // arrest, which site themselves against these idlers downstream; the case)
+  // and non-rotating parts at any pose but the build's — the battery's
+  // `undeclaredClearance` holds those over the pose net.
+  const CM = CLEAR_MARGIN;
+  const idlerPieces = (mates, partner) => {
+    const spec = { module: ALARM_TRAIN_MODULE, teeth: ALARM_WIND_IDLER_TEETH, mates, thickness: ALARM_WIND_WHEEL_T };
+    const face = G.gearFaceReach({ ...spec, boreR: 0.5 });   // boreR: mkIdler's own
+    return [
+      { what: 'disc', r: G.gearOuterR(spec), lo: ALARM_WIND_TIER_Z - face.body, hi: ALARM_WIND_TIER_Z + face.body, partner },
+      { what: 'hub', r: face.hub.r, lo: ALARM_WIND_TIER_Z - face.hub.half, hi: ALARM_WIND_TIER_Z + face.hub.half },
+      { what: 'stud', r: studR, lo: ALARM_U_FLOOR - 0.5, hi: ALARM_WIND_TIER_Z + 0.3 },   // mkIdler's stud column
+    ];
+  };
+  const P1 = idlerPieces(ALARM_WIND_I1_MATES, null);               // i1's partner, the climb pinion, is built below
+  const P2 = idlerPieces(ALARM_WIND_I2_MATES, 'alarmArborWheel');
+  const reach = Math.max(...P1.map((q) => q.r), ...P2.map((q) => q.r)) + CM;
+  const zLo = Math.min(...P1.map((q) => q.lo)) - CM, zHi = Math.max(...P1.map((q) => q.hi)) + CM;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of cands) for (const s of [p.i1, p.i2]) {
+    x0 = Math.min(x0, s.x - reach); y0 = Math.min(y0, s.y - reach);
+    x1 = Math.max(x1, s.x + reach); y1 = Math.max(y1, s.y + reach);
+  }
+  const region = new THREE.Box3(new THREE.Vector3(x0, y0, zLo), new THREE.Vector3(x1, y1, zHi));
+  const rings = [], tri = [], triMesh = [], triUnit = [], cells = new Map(), CELL = 1;
+  const seen = new Set(), bx = new THREE.Box3(), va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3();
+  const wq = new THREE.Quaternion(), wz = new THREE.Vector3(), wo = new THREE.Vector3();
+  movement.updateMatrixWorld(true);
+  for (const e of labelEntries) {
+    if (e.obj === alarmWindUnit) continue;
+    e.obj.updateMatrixWorld(true);
+    e.obj.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position || seen.has(o)) return;
+      seen.add(o);
+      let rot = null;
+      for (let n = o; n; n = n.parent) {
+        if ((n.userData && n.userData.schematic) || n === backPlate) return;
+        if (!rot && n.userData && n.userData.r > 0 && n.userData.teeth > 0) rot = n;
+      }
+      bx.setFromObject(o);
+      if (bx.max.z < zLo || bx.min.z > zHi) return;
+      const pos = o.geometry.attributes.position, idx = o.geometry.index;
+      if (rot) {
+        wz.set(0, 0, 1).applyQuaternion(rot.getWorldQuaternion(wq));
+        if (Math.abs(wz.z) < 1 - 1e-9) rot = null;               // a tilted rotor is judged as built
+      }
+      if (rot) {
+        rot.getWorldPosition(wo);
+        let minR = Infinity, maxR = 0, lo = Infinity, hi = -Infinity;
+        for (let i = 0; i < pos.count; i++) {
+          va.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          const r = Math.hypot(va.x - wo.x, va.y - wo.y);
+          minR = Math.min(minR, r); maxR = Math.max(maxR, r); lo = Math.min(lo, va.z); hi = Math.max(hi, va.z);
+        }
+        rings.push({ x: wo.x, y: wo.y, minR, maxR, lo, hi, name: o.name || o.geometry.type, unit: e.name });
+        return;
+      }
+      if (!bx.intersectsBox(region)) return;
+      const n = idx ? idx.count : pos.count;
+      for (let i = 0; i < n; i += 3) {
+        va.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(o.matrixWorld);
+        vb.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1).applyMatrix4(o.matrixWorld);
+        vc.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2).applyMatrix4(o.matrixWorld);
+        const tlo = Math.min(va.z, vb.z, vc.z), thi = Math.max(va.z, vb.z, vc.z);
+        if (thi < zLo || tlo > zHi) continue;
+        const tx0 = Math.min(va.x, vb.x, vc.x), tx1 = Math.max(va.x, vb.x, vc.x);
+        const ty0 = Math.min(va.y, vb.y, vc.y), ty1 = Math.max(va.y, vb.y, vc.y);
+        if (tx1 < x0 || tx0 > x1 || ty1 < y0 || ty0 > y1) continue;
+        const id = tri.length / 8;
+        tri.push(va.x, va.y, vb.x, vb.y, vc.x, vc.y, tlo, thi);
+        triMesh.push(o.name || o.geometry.type); triUnit.push(e.name);
+        for (let gx = Math.floor(tx0 / CELL); gx <= Math.floor(tx1 / CELL); gx++)
+          for (let gy = Math.floor(ty0 / CELL); gy <= Math.floor(ty1 / CELL); gy++) {
+            const k = gx * 100003 + gy;
+            let l = cells.get(k); if (!l) cells.set(k, l = []); l.push(id);
+          }
+      }
+    });
+  }
+  const segD = (px, py, ax, ay, bx2, by2) => {
+    const vx = bx2 - ax, vy = by2 - ay, L = vx * vx + vy * vy;
+    const t = L > 0 ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L)) : 0;
+    return Math.hypot(px - ax - t * vx, py - ay - t * vy);
+  };
+  // plan distance from a point to a triangle's shadow: 0 inside it; a shadow
+  // with no area (a vertical wall) is its three edges
+  const triD = (px, py, k) => {
+    const ax = tri[k], ay = tri[k + 1], bx2 = tri[k + 2], by2 = tri[k + 3], cx = tri[k + 4], cy = tri[k + 5];
+    const area = (bx2 - ax) * (cy - ay) - (by2 - ay) * (cx - ax);
+    if (Math.abs(area) > 1e-12) {
+      const s = Math.sign(area);
+      if (s * ((bx2 - ax) * (py - ay) - (by2 - ay) * (px - ax)) >= 0
+        && s * ((cx - bx2) * (py - by2) - (cy - by2) * (px - bx2)) >= 0
+        && s * ((ax - cx) * (py - cy) - (ay - cy) * (px - cx)) >= 0) return 0;
+    }
+    return Math.min(segD(px, py, ax, ay, bx2, by2), segD(px, py, bx2, by2, cx, cy), segD(px, py, cx, cy, ax, ay));
+  };
+  const stamp = new Uint32Array(tri.length / 8);
+  let st = 0;
+  // one idler's worst clearance at station s: exact against the revolutions,
+  // a lower bound against the solids (searched out to one margin — the test
+  // only asks whether a candidate reaches it)
+  const metalC = (s, pieces) => {
+    let c = Infinity, who = null;
+    for (const pc of pieces) {
+      for (const r of rings) {
+        if (pc.partner && r.name === pc.partner) continue;
+        const dz = Math.max(0, r.lo - pc.hi, pc.lo - r.hi);
+        if (dz >= c) continue;
+        const d = Math.hypot(s.x - r.x, s.y - r.y);
+        const dp = d >= r.maxR + pc.r ? d - r.maxR - pc.r : (d + pc.r <= r.minR ? r.minR - d - pc.r : 0);
+        const g = Math.hypot(dp, dz);
+        if (g < c) { c = g; who = `${pc.what} ⇄ ${r.name} (${r.unit}, swept)`; }
+      }
+      st++;
+      const R = pc.r + CM;
+      for (let gx = Math.floor((s.x - R) / CELL); gx <= Math.floor((s.x + R) / CELL); gx++)
+        for (let gy = Math.floor((s.y - R) / CELL); gy <= Math.floor((s.y + R) / CELL); gy++) {
+          const l = cells.get(gx * 100003 + gy);
+          if (l) for (const id of l) {
+            if (stamp[id] === st) continue;
+            stamp[id] = st;
+            if (pc.partner && triMesh[id] === pc.partner) continue;
+            const k = id * 8;
+            const dz = Math.max(0, tri[k + 6] - pc.hi, pc.lo - tri[k + 7]);
+            if (dz >= Math.min(c, CM)) continue;
+            const g = Math.hypot(Math.max(0, triD(s.x, s.y, k) - pc.r), dz);
+            if (g < c) { c = g; who = `${pc.what} ⇄ ${triMesh[id]} (${triUnit[id]}, as built)`; }
+          }
+        }
+    }
+    return { c, who };
+  };
+  for (const p of cands) {
+    const m1 = metalC(p.i1, P1), m2 = metalC(p.i2, P2);
+    p.metal = Math.min(m1.c, m2.c);
+    p.metalWho = m1.c <= m2.c ? `i1 ${m1.who}` : `i2 ${m2.who}`;
+  }
+  // THE CORRIDOR STILL RANKS; THE METAL REFUSES. The corridor's own pick is
+  // taken exactly as before (argmax, ties within 0.05 to the smallest swing).
+  // If the metal refuses it, the station is the ACCEPTED candidate that moves
+  // the idlers least from it — the smallest move the refusal forces — because
+  // the click and the arrest downstream are sited against these idlers: the
+  // mirror branch scores the same corridor number (tied to 0.001 at every
+  // swing) and clears the centre wheel, but carries i2 9.05 across the barrel
+  // into the corner those two solves use, and the arrest then finds no
+  // station (measured: short by 0.063 on the click pawl).
+  const rank = (list) => {
+    list.sort((p, q) => q.c - p.c);
+    return list.filter((p) => p.c > list[0].c - 0.05).sort((p, q) => Math.abs(p.deg) - Math.abs(q.deg))[0];
+  };
+  const pick = cands.length ? rank(cands.slice()) : null;
+  const move = (p) => Math.max(Math.hypot(p.i1.x - pick.i1.x, p.i1.y - pick.i1.y), Math.hypot(p.i2.x - pick.i2.x, p.i2.y - pick.i2.y));
+  const best = !pick ? null : pick.metal >= CM ? pick
+    : cands.filter((p) => p.metal >= CM).sort((p, q) => move(p) - move(q) || q.c - p.c)[0] || null;
+  if (!best)
+    console.warn(`alarm winding dogleg: no i1 azimuth on either branch stands both idlers ${CM} off the built metal — `
+      + `keeping the corridor's pick, ${pick ? `${pick.metal.toFixed(4)} (${pick.metalWho})` : 'none'}`);
+  else if (best.c < CM)
+    console.warn(`alarm winding dogleg: no i1 azimuth stands both studs clear of the low corridor — best ${best.c.toFixed(3)} < ${CM}`);
+  return best || pick || { i1: { x: _wc.x + _wu.x * _wd1, y: _wc.y + _wu.y * _wd1 }, i2: { x: alarmBarrelPos.x, y: alarmBarrelPos.y } };
 })();
 if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.y) - _wd3 > 1e-6)
   console.warn('alarm winding chain: i2 failed to close on the barrel mesh distance');
@@ -23023,14 +23270,8 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
     alarmWindUnit.add(stud);
     return spin;
   };
-  alarmWindUnit.userData.i1 = mkIdler(alarmWindI1, [
-    { teeth: ALARM_WIND_PINION_TEETH, mates: [ALARM_WIND_IDLER_TEETH] },
-    { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_IDLER_TEETH, ALARM_WIND_W] },
-  ], 'alarmWindIdler1');
-  alarmWindUnit.userData.i2 = mkIdler(alarmWindI2, [
-    { teeth: ALARM_WIND_IDLER_TEETH, mates: [ALARM_WIND_PINION_TEETH, ALARM_WIND_IDLER_TEETH] },
-    { teeth: ALARM_WIND_W, mates: [ALARM_WIND_IDLER_TEETH, SUB_LEG_TEETH] },
-  ], 'alarmWindIdler2');
+  alarmWindUnit.userData.i1 = mkIdler(alarmWindI1, ALARM_WIND_I1_MATES, 'alarmWindIdler1');
+  alarmWindUnit.userData.i2 = mkIdler(alarmWindI2, ALARM_WIND_I2_MATES, 'alarmWindIdler2');
   // §137 — the winding dogleg's transfer row. The dogleg-idler idiom:
   // rotation crosses a lateral offset in-plane through two equal-count brass
   // idlers whose azimuth is SCORED against the corridor (§112), never
@@ -28308,7 +28549,14 @@ const alarmLinkParts = {};
       // block hangs from above, carried by the bar and its two side webs.
       const upLocal = Math.sign(new THREE.Vector3(0, 0, 1).transformDirection(alarmSelRing.matrixWorld).z) < 0 ? -1 : 1;
       const azF = Math.atan2(midL.y, midL.x), rF = Math.hypot(midL.x, midL.y);
-      const brLen = Math.max(0.2, rF - ALARM_SEL_R_OUT + 0.3);
+      // TODO 170 — the bar's inboard end was cut to lap the ring's rim
+      // (ALARM_SEL_R_OUT − 0.15) in PLAN only: at this plate level it stands
+      // 0.1817 off the ring (filed, TODO 174), and armed with the crown pulled
+      // its inboard 0.047 overhung the sleeve flat's rim with 0.1183 of axial
+      // gap. It starts one margin off that rim radially, independent of the z
+      // the link solve lands the groove at; it still laps post 1.
+      const brIn = ALARM_SLEEVE_R_OUT + CLEAR_MARGIN;
+      const brLen = Math.max(0.2, (rF + 0.15) - brIn);
       // TODO 11 tranche five: the bar's WIDTH was a 0.3 literal (0.1137 mm,
       // under the floor) while its thickness was already ALARM_SEL_T. Floor
       // stock in both free dimensions — the lesson §51 paid for on the feeler
@@ -28317,7 +28565,7 @@ const alarmLinkParts = {};
       // webs, whose inner faces stand at ±webInner (derived above).
       const bar = new THREE.Mesh(new THREE.BoxGeometry(brLen, STOCK_MIN_U, ALARM_SEL_T), MATS.nickel);
       bar.name = 'alarmSelForkBracket';
-      bar.position.set(Math.cos(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), Math.sin(azF) * (ALARM_SEL_R_OUT - 0.15 + brLen / 2), grooveMidZ + upLocal * (grooveHalfH + ALARM_SEL_T / 2));
+      bar.position.set(Math.cos(azF) * (brIn + brLen / 2), Math.sin(azF) * (brIn + brLen / 2), grooveMidZ + upLocal * (grooveHalfH + ALARM_SEL_T / 2));
       bar.rotation.z = azF;
       alarmSelRing.add(bar);
     }
