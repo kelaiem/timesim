@@ -75,8 +75,10 @@
 // GATED — TODO 151 (MW_RISE_PLATE_HOLE): the motion-works corner blanks
 // against the base plate, the same clearance A and K's holes already held —
 // ten of them since the (d) landing added the foot and cap corners, plus the
-// cap itself, which lands ON the margin by construction. The three recesses'
-// LANDS (§62: the metal between two openings is a member) are reported.
+// cap itself, which lands ON the margin by construction. The plate's
+// opening LANDS (§62: the metal between two openings is a member) are
+// reported off the builder's own table (TODO 172: the cap's sink and the rise
+// bore are one merged opening now).
 // Only NON-schematic backPlate meshes count — the plate's schematic
 // occluder children (§66/§71's silhouette convention) read as plate too and
 // would report ~0 clearance for a hole that is really open.
@@ -89,8 +91,9 @@
 // — TODO 153 found exactly that for `mwMinuteWheel` and `cannonPinion`,
 // both 0.0000 by clearance while 0.146/0.21 u buried. So the row is a
 // CONJUNCTION: the measured clearance AND a z-band test (the member's own
-// max world-vertex z must not exceed the plate's presented face minus the
-// margin) — the z-band test is what catches containment a hairline-clear
+// max world-vertex z must not exceed the plate's face UNDER ITS OWN
+// FOOTPRINT minus the margin — raycast, since TODO 172 sank the cannon
+// pinion into a blind pocket) — the z-band test is what catches containment a hairline-clear
 // reading can hide. `makeGear`/`makePinion` name the GROUP, not their
 // meshes, so each member is collected by walking that named object's
 // subtree for non-schematic meshes. Studs are excluded — they are the
@@ -228,36 +231,14 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
     for (const m of collectFor(n)) for (const pm of plateMeshes) min = Math.min(min, I.meshClearance(m, pm));
     plate[n] = min;
   }
-  // …and the LANDS the fold's three recesses leave (§62: the metal between two
-  // openings is a member). Read off the plate's own authored shape — the
-  // extrude keeps it — every other opening's outline sampled, against each
-  // recess's circle. A REPORT; the shape is the builder's, so is the list.
-  const lands = [];
-  {
-    const shape = plateMeshes.map((m) => m.geometry.parameters?.shapes).find(Boolean);
-    const sh = Array.isArray(shape) ? shape[0] : shape;
-    const F = C.settingFold;
-    const circles = (sh?.holes || []).map((h) => {
-      const c = h.curves?.[0];
-      return c && c.isEllipseCurve ? { x: c.aX, y: c.aY, r: c.xRadius, h } : { h };
-    });
-    const nearOf = (pt) => circles.reduce((best, c) => (c.x === undefined ? best
-      : (!best || Math.hypot(c.x - pt.x, c.y - pt.y) < Math.hypot(best.x - pt.x, best.y - pt.y) ? c : best)), null);
-    for (const [name, pt] of [['A (drop)', F.A], ['K (fold)', F.K], ['B (rise)', F.B]]) {
-      const me = nearOf(pt);
-      if (!me) continue;
-      let land = Infinity, other = null;
-      for (const c of circles) {
-        if (c === me) continue;
-        for (const q of c.h.getPoints(96)) {
-          const d = Math.hypot(q.x - me.x, q.y - me.y) - me.r;
-          if (d < land) { land = d; other = c.x === undefined ? 'slot/sector' : `(${c.x.toFixed(2)}, ${c.y.toFixed(2)}) r ${c.r.toFixed(3)}`; }
-        }
-      }
-      const outer = sh.getPoints(720).reduce((m, q) => Math.min(m, Math.hypot(q.x - me.x, q.y - me.y) - me.r), Infinity);
-      lands.push({ name, r: me.r, land, other, outer });
-    }
-  }
+  // …and the LANDS every opening leaves (§62: the metal between two openings
+  // is a member). TODO 172: read off the builder's own finished-edge table
+  // (backPlate.userData.lands — the same numbers its boot guard holds to
+  // STOCK_MIN_U), because the cap's sink and the rise bore are now ONE merged
+  // ring of line segments that no circle-sniffing of the shape can name. A
+  // REPORT; the lowest few pairs.
+  const lands = (plateMeshes.find((m) => m.userData.lands)?.userData.lands || [])
+    .slice().sort((a, b) => a.land - b.land).slice(0, 6);
   // TODO 151 — FOLD CLEAR and CROSS-BODY, over ten poses that move the fold
   // (the setting input, both ways, crown in and out) or its neighbours (the
   // going train through the motion works, the reserve train by the spring's
@@ -440,16 +421,44 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
   const MW_NAMES = ['mwMinuteWheel', 'cannonPinion', 'mwMinutePinion', 'star', 'mwHourWheel'];
   let faceZ = Infinity;
   for (const pm of plateMeshes) { const [lo] = zBandVerts(pm); faceZ = Math.min(faceZ, lo); }
+  // TODO 172 — the plate's face is not one plane any more: the cannon pinion
+  // and the setting cap stand over blind pockets. Each member's band is held to
+  // the plate face UNDER ITS OWN FOOTPRINT — the lowest plate vertex inside the
+  // disc its own vertices sweep about its axis — so a member over a pocket is
+  // judged against the pocket's floor and one straddling the rim against the
+  // unrecessed face. The face is RAYCAST (a grid over the footprint, each ray
+  // cast from the dial side toward the plate), never read off vertices: a
+  // pocket's floor is an extruded cap with no vertex inside its rim, so a
+  // vertex search under the cannon pinion finds nothing and falls back to the
+  // unrecessed face — which is how this row's first draft read the pocket.
+  const ray = new THREE.Raycaster();
+  const faceUnder = (ax, reach) => {
+    let face = Infinity;
+    const N = 24;
+    for (let i = -N; i <= N; i++) for (let j = -N; j <= N; j++) {
+      const x = ax.x + (reach * i) / N, y = ax.y + (reach * j) / N;
+      if (Math.hypot(x - ax.x, y - ax.y) > reach) continue;
+      ray.set(new THREE.Vector3(x, y, faceZ - 50), new THREE.Vector3(0, 0, 1));
+      const hit = ray.intersectObjects(plateMeshes, false)[0];
+      if (hit && hit.point.z < face) face = hit.point.z;
+    }
+    return face;
+  };
   const mwStack = {};
   for (const n of MW_NAMES) {
     const meshes = collectFor(n);
     let clr = Infinity, zTop = -Infinity;
+    const ax = meshes.length ? mesh[n]?.getWorldPosition?.(new THREE.Vector3()) || meshes[0].getWorldPosition(new THREE.Vector3()) : null;
+    let reach = 0;
     for (const m of meshes) {
       for (const pm of plateMeshes) clr = Math.min(clr, I.meshClearance(m, pm));
       const [, hi] = zBandVerts(m);
       if (hi > zTop) zTop = hi;
+      const pos = m.geometry.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); reach = Math.max(reach, Math.hypot(v.x - ax.x, v.y - ax.y)); }
     }
-    mwStack[n] = { count: meshes.length, clr, zTop };
+    const face = ax ? faceUnder(ax, reach) : Infinity;
+    mwStack[n] = { count: meshes.length, clr, zTop, face: Number.isFinite(face) ? face : faceZ, reach, ax: ax ? [ax.x, ax.y] : null };
   }
   return { runs, tauRuns, capZ, mwZ, centreD, centreWant, plate, lands, foldClear, cross, poses: POSES.length,
     leg2Rsv, leg2Tie, leg2Poses: leg2Poses.length,
@@ -529,9 +538,9 @@ else {
     if (c < out.CLEAR_MARGIN - MEASURE_EPS) fail(`${n} ⇄ backPlate clears ${c.toFixed(4)} — under CLEAR_MARGIN ${out.CLEAR_MARGIN}`);
     else ok(`${n} ⇄ backPlate clears ${c.toFixed(4)}`);
   }
-  console.log('  REPORT the fold\'s recess lands (§62 — the metal between two openings is a member):');
-  for (const l of out.lands)
-    console.log(`    ${l.name.padEnd(9)} r ${l.r.toFixed(4)}: nearest opening ${l.land.toFixed(4)} away (${l.other}), plate edge ${l.outer.toFixed(4)}`);
+  console.log('  REPORT the base plate\'s lowest opening lands (§62 — the metal between two openings is a member; the builder warns under STOCK_MIN_U):');
+  if (!out.lands.length) console.log('    (the plate publishes no lands table)');
+  for (const l of out.lands) console.log(`    ${l.land.toFixed(4)}  ${l.a} ⇄ ${l.b}`);
   // TODO 151 — PLANE: the cap meshes the wheel in the metal
   console.log(`\nPLANE — TODO 151: the setting cap on the motion works' minute wheel's plane:`);
   if (!(out.capZ[0] <= out.mwZ[0] && out.mwZ[1] <= out.capZ[1]))
@@ -614,16 +623,16 @@ else {
         fail(`BACK_ENVELOPE: ${r.jumperBins} bin(s) inside the jumper's own reach are governed by 'Minute jumper'`);
     }
   }
-  console.log(`\nSTACK — TODO 153: motion-works members ⇄ the plate's presented face `
-    + `(${out.faceZ.toFixed(3)}), CLEAR_MARGIN ${out.CLEAR_MARGIN}:`);
+  console.log(`\nSTACK — TODO 153: motion-works members ⇄ the plate's face under each one's own footprint `
+    + `(unrecessed face ${out.faceZ.toFixed(3)}; TODO 172's pockets sit deeper), CLEAR_MARGIN ${out.CLEAR_MARGIN}:`);
   for (const [n, r] of Object.entries(out.mwStack)) {
     if (r.count === 0) { fail(`${n}: no non-schematic mesh found`); continue; }
     const clrOk = r.clr >= out.CLEAR_MARGIN - MEASURE_EPS;
-    const bandOk = r.zTop <= out.faceZ - out.CLEAR_MARGIN + 1e-4;
+    const bandOk = r.zTop <= r.face - out.CLEAR_MARGIN + 1e-4;
     if (!clrOk || !bandOk)
       fail(`${n}: clr ${r.clr.toFixed(4)} (need ≥ ${out.CLEAR_MARGIN}), zTop ${r.zTop.toFixed(3)} `
-        + `(need ≤ ${(out.faceZ - out.CLEAR_MARGIN).toFixed(3)})`);
-    else ok(`${n}: clr ${r.clr.toFixed(4)}, zTop ${r.zTop.toFixed(3)}`);
+        + `(need ≤ ${(r.face - out.CLEAR_MARGIN).toFixed(3)}, face ${r.face.toFixed(3)} under its ${r.reach.toFixed(3)} reach)`);
+    else ok(`${n}: clr ${r.clr.toFixed(4)}, zTop ${r.zTop.toFixed(3)} (face ${r.face.toFixed(3)})`);
   }
 }
 console.log(bad ? `\nFAIL — ${bad} finding(s)` : '\nPASS — the setting fold turns as one train, and meshes the minute wheel in the metal');
