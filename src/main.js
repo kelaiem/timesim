@@ -217,7 +217,7 @@ const yieldToEventLoop = typeof scheduler !== 'undefined' && typeof scheduler.yi
 // nothing. It reads how long the thread has been held when a seam is reached —
 // not how long a long task lasted, which also counts the browser's own work —
 // so it is the build's own claim, separate from what the viewer feels.
-let breatheCount = 0, breatheWorstHeld = 0;
+let breatheCount = 0, breatheWorstHeld = 0, buildDone = false;
 function breathe() {
   const held = performance.now() - breatheMark;
   if (held > breatheWorstHeld) breatheWorstHeld = held;
@@ -250,6 +250,11 @@ const guardDuringBuild = (e) => {
 for (const ev of BUILD_GUARDED_EVENTS) window.addEventListener(ev, guardDuringBuild, true);
 document.addEventListener('visibilitychange', guardDuringBuild, true);
 function releaseBuildInputGuard() {
+  // The stretch from the last seam to here is held like any other, and no
+  // seam follows it to take the reading — so this is that seam (TODO 188).
+  const held = performance.now() - breatheMark;
+  if (held > breatheWorstHeld) breatheWorstHeld = held;
+  buildDone = true;
   for (const ev of BUILD_GUARDED_EVENTS) window.removeEventListener(ev, guardDuringBuild, true);
   document.removeEventListener('visibilitychange', guardDuringBuild, true);
   if (buildSwallowedResize) window.dispatchEvent(new Event('resize'));
@@ -5506,6 +5511,18 @@ function meshPoints(root, pts = []) {
 // mesh (this form) is back within it. The mesh list and the gears' base
 // rotations are each read once — only the per-phase rotation write and the
 // per-mesh point collection repeat.
+// TODO 188 step 2 — ONLY THE GEARS ARE SAMPLED PER PHASE. A mesh outside every
+// rotating group has one world matrix whatever the phase, so reading it K
+// times pushed K copies of the same points: for the confirmation call, 33,149
+// of the keyless unit's 41,909 vertices (and their midpoints), 23 times over —
+// ~1.52M of 1.93M points. Every consumer of this list takes a MINIMUM over it
+// (`clearAt`'s three band loops, CAP_SOLVE's `arbClear`), and a minimum over a
+// multiset is the minimum over its distinct members, so dropping duplicates
+// moves no answer: the accepted swing and the shipped swing are still judged
+// on the same point SET. The static meshes are read once, at the as-built
+// phase; per phase, only each gear group's own subtree is re-worlded — the
+// same arithmetic `root.updateMatrixWorld(true)` did for it, from a parent
+// matrix that the one root pass above already made current.
 async function reserveObstaclePoints(root, pts = []) {
   const gears = [];
   const meshes = [];
@@ -5514,14 +5531,19 @@ async function reserveObstaclePoints(root, pts = []) {
     if (o.isMesh && o.geometry?.attributes?.position) meshes.push(o);
   });
   if (!gears.length) { meshPoints(root, pts); return pts; }
+  const gearSet = new Set(gears.map(([g]) => g));
+  const turns = (m) => { for (let o = m.parent; o && o !== root; o = o.parent) if (gearSet.has(o)) return true; return false; };
+  const moving = meshes.filter(turns), still = meshes.filter((m) => !turns(m));
   let tipR = 0;
   for (const [g] of gears) g.traverse((o) => { if (!o.isMesh) return; const p = o.geometry.attributes.position;
     for (let i = 0; i < p.count; i++) tipR = Math.max(tipR, Math.hypot(p.getX(i), p.getY(i))); });
   const K = Math.max(1, Math.ceil((2 * Math.PI * tipR / BEVEL_TEETH) / (CLEAR_MARGIN / 2)));
+  root.updateMatrixWorld(true);
+  for (const m of still) { meshPointsOne(m, pts); await breathe(); }
   for (let k = 0; k < K; k++) {
     for (const [g, z0] of gears) g.rotation.z = z0 + (k / K) * (2 * Math.PI / BEVEL_TEETH);
-    root.updateMatrixWorld(true);
-    for (const m of meshes) { meshPointsOne(m, pts); await breathe(); }
+    for (const [g] of gears) g.updateMatrixWorld(true);
+    for (const m of moving) { meshPointsOne(m, pts); await breathe(); }
   }
   for (const [g, z0] of gears) g.rotation.z = z0;
   return pts;
@@ -5596,6 +5618,9 @@ async function solveReserveSwing(pts) {
     if (q[2] >= hubLo && q[2] <= hubHi) inHub.push(q);
     if (q[2] >= p1LoMax && q[2] <= p1HiMax) inP1.push(q);
   }
+  // TODO 188 — the sift above reads every obstacle point once (~1.9M for the
+  // confirmation call, 100–150 ms), so the thread goes back before the scan.
+  await breathe();
   const clearAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
     const ux = rsvU.x * cs - rsvU.y * sn, uy = rsvU.x * sn + rsvU.y * cs;
@@ -5624,10 +5649,14 @@ async function solveReserveSwing(pts) {
     if (r.c > best.c) best = { c: r.c, member: r.member, swing: dl };
     return r.c >= CLEAR_MARGIN ? { swing: dl, clear: r.c } : null;
   };
-  // the least swing that clears (0 first, then ±1 step, ±2, …)…
+  // the least swing that clears (0 first, then ±1 step, ±2, …)… Each `at` is
+  // one clearAt over every banded point (~40 ms for the confirmation call),
+  // and the scan runs 14 of them before the first window opens — 550 ms held
+  // in one stretch, TODO 188's worst boot hold. A seam per candidate, as the
+  // window walk below already has.
   let first = at(0);
   for (let d = RSV_SWING_STEP_DEG; !first && d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG)
-    for (const sgn of [1, -1]) { first = at(sgn * d * DEG2RAD); if (first) break; }
+    for (const sgn of [1, -1]) { await breathe(); first = at(sgn * d * DEG2RAD); if (first) break; }
   if (!first) return { swing: null, bestC: best.c, bestSwing: best.swing, bestMember: best.member };
   // …then TODO 157's objective over the open WINDOW that swing opens: the
   // most clearance, counted to FOLD_SAT, the least |swing| breaking a tie
@@ -34076,6 +34105,39 @@ function partCalloutAnchor(c, out) {
   return out.addScaledVector(_pcOut.normalize(), r);
 }
 
+// DISPLAY ONLY — where a unit's label is DRAWN, when the unit object's own
+// origin is the wrong place to name it. `labelEntries` keeps the unit object
+// itself, because the inspector's rosters and sweeps read `obj`; only
+// updateLabels reads this map (unit obj → fn(out) writing a world point).
+//
+// The motion works is the case: its group is born at dialFace's origin, the
+// dial centre, where none of its metal is — and where the Hour wheel's group
+// is born too, so the two unit labels printed exactly on top of each other.
+// The unit's metal is the minute wheel out on its stud, so that is where it
+// is named: on the wheel's rim, a quarter turn from the side facing away
+// from the dial's axis (the Minute wheel callout's spot), on whichever of
+// the two quarter-turn sides stands higher on screen — the label is lifted
+// above its point, so up is the side with open space, and it keeps clear of
+// the minute pinion's callout above the stud and the Minute jumper's label
+// just under it.
+const LABEL_ANCHOR = new Map();
+{
+  const wheel = partCalloutEntries.find((c) => c.key === 'mwMinuteWheel');
+  if (!wheel) console.warn('LABEL_ANCHOR: the Motion works label is anchored on the minute wheel callout, which did not resolve');
+  else {
+    const C = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), side = new THREE.Vector3(), ndc = new THREE.Vector3();
+    LABEL_ANCHOR.set(motionWorks, (out) => {
+      partCalloutAnchor(wheel, out);                  // the rim point facing away from the axis
+      partCalloutCentre(wheel, C);
+      _pcOut.subVectors(out, C);                      // centre → that rim point, in the dial plane, length r
+      side.crossVectors(_pcAxisN, _pcOut);            // a quarter turn about the dial normal (set by partCalloutAnchor)
+      a.addVectors(C, side); b.subVectors(C, side);
+      const ya = ndc.copy(a).project(camera).y, yb = ndc.copy(b).project(camera).y;
+      return out.copy(ya >= yb ? a : b);
+    });
+  }
+}
+
 // --- time-scale (log slider, 0.02..1, default 1 = real time) --------------
 const SCALE_MIN = 0.02, SCALE_MAX = 1;
 let timeScale = 1;
@@ -42539,7 +42601,8 @@ function updateLabels() {
     const el = labelEls[i];
     const labelGroup = UNIT_GROUPS.get(selectedUnit);
     if (selectedUnit !== 'All' && name !== selectedUnit && !(labelGroup && labelGroup.has(name))) { el.style.display = 'none'; continue; }
-    obj.getWorldPosition(projected);
+    const anchorAt = LABEL_ANCHOR.get(obj);
+    if (anchorAt) anchorAt(projected); else obj.getWorldPosition(projected);
     projected.project(camera);
     const behind = projected.z > 1;
     if (behind) { el.style.display = 'none'; continue; }
@@ -45530,7 +45593,12 @@ window.__clock = {
   // §239 — what the build's yielding actually achieved, read back rather than
   // assumed: how many times the thread was handed back, and the longest stretch
   // it was HELD between two seams. tools/probe-239-boot-yield.mjs gates both.
-  boot: Object.freeze({ breaths: breatheCount, worstHeldMs: breatheWorstHeld, budgetMs: BREATHE_MS }),
+  // TODO 188 — LIVE, not a snapshot: this literal is evaluated ~700 lines
+  // before the build ends, and a frozen copy taken here was blind to every
+  // seam after it and to the tail. `done` turns true in
+  // releaseBuildInputGuard(), which also charges the last stretch; a reader
+  // waits for it before trusting the numbers.
+  get boot() { return Object.freeze({ breaths: breatheCount, worstHeldMs: breatheWorstHeld, budgetMs: BREATHE_MS, done: buildDone }); },
   // §234 fold — the setting traverse's fold and the cap-bearing scan that
   // sited it, read-only, for tools/probe-234-cap-bearing.mjs (a derivation
   // that is silent at boot when it succeeds, read back here).

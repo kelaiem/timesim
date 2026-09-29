@@ -51,6 +51,14 @@
 // must come back with one enormous task and input latency to match, or this
 // probe refuses its own result.
 //
+// AND A SECOND CONTROL FOR THE TAIL (TODO 188). `__clock` is assigned ~700
+// lines before the build ends, and this probe used to read the boot record the
+// moment `__clock` existed — from a snapshot frozen there, so every seam after
+// it and the whole tail went unread. The record is live now and carries
+// `done`, and the probe waits for it. The TAIL control plants a busy-wait of
+// TAIL_STALL_MS immediately before `releaseBuildInputGuard();`, seams intact:
+// the yielding build must then report it, or the last stretch is still blind.
+//
 // Usage:
 //   node tools/probe-239-boot-yield.mjs                 # this checkout
 //   node tools/probe-239-boot-yield.mjs --tree <path>   # another tree
@@ -87,6 +95,9 @@ const MAX_INPUT_MS = 1500;
 // The control must fail both by a wide margin or it did not reproduce the old
 // build, and then nothing here was measuring anything.
 const CONTROL_MIN_TASK_MS = 3000;
+// The tail control's stall: above MAX_HELD_MS, so a probe that SEES it fails
+// the gate by construction, and the check below asks that it was seen whole.
+const TAIL_STALL_MS = 800;
 
 const srv = spawn('python3', ['-m', 'http.server', String(PORT), '--bind', '127.0.0.1'], { cwd: ROOT, stdio: 'ignore' });
 process.on('exit', () => srv.kill());
@@ -99,10 +110,15 @@ if (!MAIN.includes(BREATHE_DECL)) {
     + 'so it would have served the yielding build twice and called it a control.');
   process.exit(1);
 }
+const RELEASE_CALL = '\nreleaseBuildInputGuard();\n';
+if (MAIN.split(RELEASE_CALL).length !== 2) {
+  console.error('REFUSED: src/main.js must call `releaseBuildInputGuard();` at statement level exactly once — the tail control plants its stall before that line.');
+  process.exit(1);
+}
 
 const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
 
-async function boot({ stall }) {
+async function boot({ stall, tail }) {
   const ctx = await browser.newContext({ viewport: { width: 1000, height: 700 } });
   const page = await ctx.newPage();
   // Installed before ANY page script, so the build's own first task is covered.
@@ -113,9 +129,12 @@ async function boot({ stall }) {
         .observe({ type: 'longtask', buffered: true });
     } catch { window.__lt = null; }   // null means "not observed", never an empty pass
   });
-  if (stall) await page.route('**/src/main.js*', async (route) => {
+  if (stall || tail) await page.route('**/src/main.js*', async (route) => {
     const r = await route.fetch();
-    route.fulfill({ body: (await r.text()).replace(BREATHE_DECL, 'const BREATHE_MS = Infinity;'), contentType: 'text/javascript' });
+    let body = await r.text();
+    if (stall) body = body.replace(BREATHE_DECL, 'const BREATHE_MS = Infinity;');
+    if (tail) body = body.replace(RELEASE_CALL, `\n{ const t = performance.now(); while (performance.now() - t < ${TAIL_STALL_MS}); }${RELEASE_CALL}`);
+    route.fulfill({ body, contentType: 'text/javascript' });
   });
   const cdp = await ctx.newCDPSession(page);
   const lat = [];
@@ -133,7 +152,11 @@ async function boot({ stall }) {
   const t0 = Date.now();
   await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'commit', timeout: 600000 });
   let booted = true;
-  await page.waitForFunction(() => !!window.__clock, null, { timeout: 600000 }).catch(() => { booted = false; });
+  // Not merely `__clock`: the record is only whole once the build has released
+  // its input guard. A tree whose record has no `done` is read at once and
+  // refused below, rather than waited on for ten minutes.
+  await page.waitForFunction(() => !!window.__clock && window.__clock.boot && window.__clock.boot.done !== false,
+    null, { timeout: 600000 }).catch(() => { booted = false; });
   const bootMs = Date.now() - t0;
   pumping = false; await pump;
   // Claim 4: the build's input guard is gone once the build is. A listener
@@ -163,6 +186,7 @@ function summarise(name, r) {
   const maxLat = r.lat.length ? Math.max(...r.lat) : 0;
   const medLat = r.lat.length ? r.lat.slice().sort((a, b) => a - b)[r.lat.length >> 1] : 0;
   if (!r.boot) { console.error(`${name}: __clock carries no boot record — main.js is not the file this probe measures`); return null; }
+  if (r.boot.done !== true) { console.error(`${name}: the boot record carries no \`done\` — it may be a snapshot taken before the build ended, so it is not read`); return null; }
   console.log(`\n${name}`);
   console.log(`  boot wall            ${(r.bootMs / 1000).toFixed(1)} s`);
   console.log(`  thread HELD, worst   ${fmt(r.boot.worstHeldMs)} ms   over ${r.boot.breaths} hand-backs (budget ${r.boot.budgetMs} ms)`);
@@ -180,6 +204,7 @@ function summarise(name, r) {
 
 const live = summarise('YIELDING (this tree)', await boot({ stall: false }));
 const ctrl = NO_CONTROL ? null : summarise('CONTROL (same source, BREATHE_MS = Infinity)', await boot({ stall: true }));
+const tailC = NO_CONTROL ? null : summarise(`TAIL CONTROL (same source, ${TAIL_STALL_MS} ms stall before the guard's release)`, await boot({ tail: true }));
 await browser.close(); srv.kill();
 
 const fail = [];
@@ -203,8 +228,12 @@ if (!NO_CONTROL) {
     if (ctrl.breaths !== 0)
       fail.push(`CONTROL handed the thread back ${ctrl.breaths} times — the BREATHE_MS rewrite did not take, so it is not a control`);
   }
+  if (!tailC) fail.push('the tail control produced no measurement, so the build\'s last stretch is unverified');
+  else if (tailC.held < TAIL_STALL_MS)
+    fail.push(`TAIL CONTROL held only ${fmt(tailC.held)} ms with a ${TAIL_STALL_MS} ms stall planted before the guard's release — the record does not see the end of the build`);
 }
 console.log('');
 if (fail.length) { for (const f of fail) console.error(`FAIL: ${f}`); process.exit(1); }
 console.log(`PASS — build held the thread at worst ${fmt(live.held)} ms (ceiling ${MAX_HELD_MS}), worst long task ${fmt(live.maxTask)} ms (ceiling ${MAX_TASK_MS}), worst input ack ${fmt(live.maxLat)} ms (ceiling ${MAX_INPUT_MS})`
-  + (ctrl ? `; control held ${fmt(ctrl.held)} ms, task ${fmt(ctrl.maxTask)} ms, ack ${fmt(ctrl.maxLat)} ms` : ''));
+  + (ctrl ? `; control held ${fmt(ctrl.held)} ms, task ${fmt(ctrl.maxTask)} ms, ack ${fmt(ctrl.maxLat)} ms` : '')
+  + (tailC ? `; tail control held ${fmt(tailC.held)} ms` : ''));
