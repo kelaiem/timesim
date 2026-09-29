@@ -2106,6 +2106,15 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // TODO 173 — the READ contact, and nothing else. The collar's dial-side face
+  // carries the drop to the lever's tip at every azimuth; every other pair of
+  // the two units' metal keeps the margin — the jog in particular, which the
+  // corrected rock tilts toward the ring (0.1384 at its static radius; its
+  // radius now stands out by that lean, measured 0.1518).
+  {
+    a: 'Alarm release reader', b: 'Alarm release feeler', min: CLEAR_MARGIN,
+    contacts: [['alarmReaderRing', 'alarmFeelerTip']],
+  },
   // TODO 144 — the release disc's SEAT. Its underside rides the plate (hub,
   // body and teeth, one plane sunk the seated-contact 0.02) and the pad's foot
   // rides its face; everything else the two units own keeps the margin — the
@@ -2546,12 +2555,7 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 export const UNDECLARED_CLEARANCE_DEBT = [
   // (TODO 167's and TODO 172's `Alarm setting arbor ⇄ Dial` row is gone: TODO
   // 172 re-stratified the whole lane to one CLEAR_MARGIN off the dial.)
-  // TODO 170 — three of its four rows cleared and are deleted. This one has no
-  // position-space room: the trip rock lifts the arm into the margin §45
-  // priced over the STATIC arm, at the skirt's throat lip; the rock itself is
-  // the defect TODO 173 owns.
-  { a: 'Alarm release feeler', b: 'Alarm release sleeve', floor: 0.092, todo: 'TODO 170',
-    why: 'the trip rock spends 0.058 of the §45 envelope margin at the skirt\'s throat lip (§124 priced it at the web rim); blocked on TODO 173 — the lever rocks about the dial\'s Y axis and in the wrong sense' },
+  // TODO 170's last row (feeler ⇄ sleeve) went stale with TODO 173's rock.
 ];
 
 // §40 hops rule, a seventh copy — see e.g. checkIntraUnit / checkAssembly.
@@ -5350,6 +5354,7 @@ const ALARM_HANDOFF_POSES = [
   // sleeve must measure FREE of the pin at both crown-in parities — riding
   // must not feel the sleeve.
   ['setting', { tau: 0.13, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 1 }],
+  ['dropped', { tau: 36535, crownPullT: 0, leverEngage: 0, tension: 1, alarmOn: 0, alarmCrownPullT: 0 }],
 ];
 // The run as §35 states it, one row per claimed hand-off, in drive order.
 // A `missing` row is a member the claim requires that has no geometry at all
@@ -5474,7 +5479,7 @@ const ALARM_HANDOFFS = [
     label: 'sleeve cone ⇄ follower tail pin',
     unitA: 'Alarm release sleeve', meshA: 'alarmSleeveSkirt',
     unitB: 'Alarm disc', meshB: 'alarmTailPin',
-    expect: { disarmed: 'free', armed: 'free', setting: 'contact' },
+    expect: { disarmed: 'free', armed: 'free', setting: 'contact', dropped: 'free' },
   },
   // §45 stage 2 — the silence run: the paddle is blade-biased onto the
   // run's underside at every parity; the finger touches the tail only at
@@ -5489,7 +5494,18 @@ const ALARM_HANDOFFS = [
     label: 'rocker finger ⇄ feeler tail',
     unitA: 'Alarm silence rocker', meshA: 'alarmSilFinger',
     unitB: 'Alarm release feeler', meshB: 'alarmFeelerTail',
-    expect: { disarmed: 'free', armed: 'free', setting: 'contact' },
+    expect: { disarmed: 'free', armed: 'free', setting: 'contact', dropped: 'free' },
+  },
+  {
+    label: 'reader ring ⇄ feeler tip',
+    unitA: 'Alarm release reader', meshA: 'alarmReaderRing',
+    unitB: 'Alarm release feeler', meshB: 'alarmFeelerTip',
+  },
+  {
+    label: 'banking stop ⇄ feeler tail',
+    unitA: 'Alarm release feeler', meshA: 'alarmFeelerStop',
+    unitB: 'Alarm release feeler', meshB: 'alarmFeelerTail',
+    expect: { disarmed: 'free', armed: 'free', setting: 'free', dropped: 'contact' },
   },
 ];
 
