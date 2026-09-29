@@ -4061,21 +4061,46 @@ const TQ_CUT_MARGIN = 0.5; // hoisted (§125 Tier B — the fork leg's corridor 
 // shear strength roughly half the screw's that lands at 1.5 diameters. Same
 // rule for every class here, because every host here is the soft metal.
 //
-// This is a REPORT until TODO 184 lands its fixes: every row reads 0 engaged
-// on arrival, so a boot assert would break rule 6 on the shipped tree. The
-// assert and a `support` engagement column are TODO 184's last step;
-// tools/probe-184-frame-joints.mjs reads the rows and measures the same
-// quantity off the built meshes, so the table is held to the metal meanwhile.
+// It was a REPORT while the rows read red (every one read 0 engaged on
+// arrival, and a boot assert would have broken rule 6 on the shipped tree).
+// Since TODO 184 step 4 it is ASSERTED at boot, after the base plate's late
+// re-cut, and `support` reads the measured rows as its engagement column;
+// tools/probe-184-frame-joints.mjs measures the same quantity off the metal.
 const ENGAGE_MIN = 1.5;
 const FRAME_JOINTS = [];
+// TODO 184 step 2 — THE COCK SCREWS' THREAD IS SET BY THE PLATE THEY GRIP.
+// Both cocks stand on the BASE plate, and a screw can engage that plate by at
+// most its whole thickness — tapped THROUGH, the way a watchmaker taps a thin
+// plate, since a blind hole would leave less. ENGAGE_MIN·d ≤ BACK_PLATE_T
+// fixes the largest thread the plate can hold to strength:
+//
+//      d = BACK_PLATE_T / ENGAGE_MIN = 1.333 u = 0.505 mm
+//
+// A real cock screw on a 32 mm movement runs about 1 mm, and the plate that
+// takes it is thicker than 0.758 mm; that plate is TODO 69's class, not this
+// item's, and a thicker plate re-derives this line on its own. The head
+// follows by makeScrews' 2:1, the leg's clearance bore one fit over the
+// thread, and the plate's tapped hole is the thread's own radius.
+const COCK_THREAD_D = BACK_PLATE_T / ENGAGE_MIN;
+const COCK_SCREW_HEAD_R = COCK_THREAD_D;                  // screwShankR(head) = d/2
+const COCK_LEG_BORE_R = G.screwBoreR(COCK_SCREW_HEAD_R);
+const COCK_PLATE_TAP_R = G.screwTapR(COCK_SCREW_HEAD_R);
+// Openings in the base plate whose station is solved AFTER the plate is cut
+// (the balance cock's legs; the pillar tenons next). recutBackPlate() re-runs
+// the one cut with these added — see it at the balance cock's build.
+const BACK_PLATE_LATE_HOLES = [];
 // frame: the Object3D the screw is built in; top: the head's top face
 // (frame-local z, the value passed to makeScrews); headT: head height;
 // clamp: the thickness of the member the head clamps, below the head.
-function declareFrameJoint({ joint, clamped, host, frame, x, y, top, headR, headT, shank, clamp }) {
-  const d = 2 * G.screwShankR(headR);
+// A RIVETED joint (step 3's pillar tenons) passes `d` and `required` itself —
+// its requirement is the host's whole thickness, not a thread's 1.5 d — and
+// names the mesh its length is measured on (`meshName`), since the tenon is
+// turned on the pillar rather than being a screw.
+function declareFrameJoint({ joint, clamped, host, frame, x, y, top, headR, headT, shank, clamp,
+  d = 2 * G.screwShankR(headR), required = ENGAGE_MIN * d, meshName = 'screwShanks' }) {
   FRAME_JOINTS.push({
-    joint, clamped, host, frame, x, y, top, headT,
-    d, shank, clamp, engaged: shank - clamp, required: ENGAGE_MIN * d,
+    joint, clamped, host, frame, x, y, top, headT, meshName,
+    d, shank, clamp, engaged: shank - clamp, required,
   });
 }
 // BALANCE COCK section constants, hoisted (§125 Tier B) from the cock's own
@@ -4218,7 +4243,11 @@ const forkCock = (() => {
     }
     return best || { ...near, missed: true };
   };
-  const legR = 1.15;
+  // TODO 184 step 2 — the leg is a SLEEVE round its foot screw: one
+  // clearance bore plus STOCK_MIN_U of wall. It was a bare 1.15 here while
+  // makeEscapeBridge drew the leg at 0.62 of the node (0.963) — one radius
+  // written twice. The scan and the drawing now read this one.
+  const legR = COCK_LEG_BORE_R + STOCK_MIN_U;
   const legB = legFor(P.fork, P.escape, legR, bossFork);
   if (legB.missed) {
     // TODO 30 wall three — this used to be a bare warn followed by a null
@@ -4254,11 +4283,15 @@ const forkCock = (() => {
   const forkCbDepth = FORK_COCK_T * 0.65;
   const chain = [
     { x: P.fork.x, y: P.fork.y, r: bossFork, bore: forkBore, cbR: forkCbR, cbDepth: forkCbDepth },
-    { x: legB.x, y: legB.y, r: legR * 1.35, foot: true },
+    { x: legB.x, y: legB.y, r: legR * 1.35, foot: true, legR },
   ];
+  // The foot's tapped hole goes into the base plate's own list: this cock is
+  // solved before the plate is cut.
+  BACK_PLATE_HOLES.push({ x: legB.x, y: legB.y, r: COCK_PLATE_TAP_R });
   const g = G.makeEscapeBridge({
     chain,
     thickness: FORK_COCK_T,
+    foot: { headR: COCK_SCREW_HEAD_R, engage: BACK_PLATE_T },
     // The leg reaches the BASE plate's top face (it spans [z−1, z+1]) —
     // measured from the slab's underside, where makeEscapeBridge hangs it.
     footDrop: FORK_COCK_BOT - (BACK_PLATE_Z + BACK_PLATE_T / 2),
@@ -7590,7 +7623,10 @@ const MW_CANNON_POCKET = { x: P.dial.x, y: P.dial.y, depth: MW_PLATE_SINK, lap: 
 const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP,
   r: G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN,
   through: MW_RISE_PLATE_HOLE };
-const backPlate = G.makeBackPlate({
+// TODO 184 — the cut's arguments are ONE object, so the late re-cut below
+// (recutBackPlate) cuts the same plate with its late openings added rather
+// than restating this list.
+const BACK_PLATE_CUT = {
   pockets: [MW_CANNON_POCKET, MW_CAP_POCKET],
   radius: plateR, thickness: BACK_PLATE_T,
   // §186 — the MOUNTING RIM (mesh only: plateR stays the working radius
@@ -7623,7 +7659,27 @@ const backPlate = G.makeBackPlate({
     a1: Math.atan2(postEng.y - settingLeverPivot.y, postEng.x - settingLeverPivot.x),
     pad: G.SETTING_LEVER_POST_R + CLEAR_MARGIN + 0.02,   // studSlot's own dilation, minus the bow the sector no longer approximates away
   }] : [],
-});
+};
+const backPlate = G.makeBackPlate(BACK_PLATE_CUT);
+// TODO 184 — THE LATE RE-CUT. Some openings in this plate belong to parts
+// solved after it is cut (the balance cock's legs stand on it 2,500 lines
+// below, its station read off the three-quarter plate's own cut). They wait
+// in BACK_PLATE_LATE_HOLES and this re-cuts the same plate with them added,
+// swapping the geometry in place so every reference to the mesh stays good.
+// Between the two cuts nothing reads this plate's GEOMETRY (the §234 guard
+// below reads only its back face, which a hole does not move); a caller that
+// adds a late hole calls this after its push.
+const recutBackPlate = () => {
+  const cut = G.makeBackPlate({ ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES] });
+  backPlate.geometry.dispose();
+  backPlate.geometry = cut.geometry;
+  // TODO 172 — only the SLAB is swapped: the pockets' floors are children the
+  // first cut already hung here (a late hole moves no pocket), so the re-cut's
+  // own floors are discarded; the lands table follows the new cut, which is the
+  // one that holds the late holes against the pockets too.
+  backPlate.userData.lands = cut.userData.lands;
+  for (const f of cut.children) f.geometry.dispose();
+};
 await breathe();
 backPlate.name = 'backPlate';
 backPlate.position.set(0, 0, BACK_PLATE_Z);
@@ -10137,7 +10193,10 @@ const balanceCock = G.makeCock({
   // it with nothing cut for them — the opening is part of the fastener, so
   // the bar is an extruded rectangle with two clearance holes rather than a
   // primitive with a screw parked on top.
-  const COCK_SCREW_HEAD_R = COCK_FOOT_R * 0.45;
+  // (COCK_SCREW_HEAD_R is the plate-derived head, declared with ENGAGE_MIN —
+  // it was COCK_FOOT_R · 0.45, a proportion of a bare slab width.)
+  if (LEG_R - COCK_LEG_BORE_R < STOCK_MIN_U - 1e-9)
+    console.warn(`TODO 184: balance cock leg wall ${(LEG_R - COCK_LEG_BORE_R).toFixed(3)} round its screw bore — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
   {
     const bw = BAR_HSPAN * 2 + LEG_R * 2, bh = 2.4;
     const s = new THREE.Shape();
@@ -10159,12 +10218,12 @@ const balanceCock = G.makeCock({
   const legLen = legTopWorld - PLATE_TOP;
   for (const s of [-1, 1]) {
     const leg = new THREE.Mesh(
-      new THREE.CylinderGeometry(LEG_R, LEG_R * 1.15, legLen, 20), MATS.nickel);
+      G.boredLegGeometry(LEG_R, LEG_R * 1.15, COCK_LEG_BORE_R, legLen, 20), MATS.nickel);
     leg.rotation.x = Math.PI / 2;
     leg.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen / 2);
     balanceCock.add(leg);
     const pad = new THREE.Mesh(
-      new THREE.CylinderGeometry(LEG_R * 1.5, LEG_R * 1.5, 0.4, 20), MATS.nickel);
+      G.boredLegGeometry(LEG_R * 1.5, LEG_R * 1.5, COCK_LEG_BORE_R, 0.4, 20), MATS.nickel);
     pad.rotation.x = Math.PI / 2;
     pad.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen + 0.2);
     balanceCock.add(pad);
@@ -10180,22 +10239,25 @@ const balanceCock = G.makeCock({
   //
   // TODO 184: this comment used to end "below the bar the thread takes the
   // leg and then the plate: not drawn, so not cut" — and the SHANK is what
-  // was not drawn: `shank: COCK_T` below a head seated on the bar's top face
-  // ends exactly at the bar's underside. The leg below is this cock's own
-  // (same group) and stands on the base plate with nothing crossing that
-  // face, so the cock is clamped to its own legs and fastened to nothing.
-  // Reported in FRAME_JOINTS until TODO 184 runs the thread into the plate.
+  // was not drawn: `shank: COCK_T` ended at the bar's underside, so the cock
+  // was clamped to its own legs and fastened to nothing. Since step 2 the
+  // screw runs the whole stack it clamps — bar, bored leg and pad — and on
+  // through the base plate's full thickness, tapped through.
   const cockScrews = [-1, 1].map((s) => ({
     x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + STOCK_MIN_U,
-    a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T,
+    a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T + legLen + BACK_PLATE_T, tapped: true,
   }));
   balanceCock.add(G.makeScrews({
     at: cockScrews, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
   }));
-  for (const c of cockScrews)
-    declareFrameJoint({ joint: 'Balance cock ⇄ base plate', clamped: 'balance cock crossbar', host: 'base plate',
+  balanceCock.updateWorldMatrix(true, false);
+  for (const c of cockScrews) {
+    declareFrameJoint({ joint: 'Balance cock ⇄ base plate', clamped: 'balance cock crossbar and leg', host: 'base plate',
       frame: balanceCock, x: c.x, y: c.y, top: c.z, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
-      shank: c.shank, clamp: COCK_T });
+      shank: c.shank, clamp: COCK_T + legLen });
+    const w = balanceCock.localToWorld(new THREE.Vector3(c.x, c.y, 0));
+    BACK_PLATE_LATE_HOLES.push({ x: w.x, y: w.y, r: COCK_PLATE_TAP_R });
+  }
 
   // ------------------------------------------------------------------
   // FIXED OUTER TERMINAL — free-sprung dress. Everything below is
@@ -10300,6 +10362,8 @@ const balanceCock = G.makeCock({
   // stud carrier holding the spring's terminal.
 }
 movement.add(balanceCock);
+// (the legs' tapped holes wait in BACK_PLATE_LATE_HOLES for the one late
+// re-cut, run after the pillars add their tenon holes — see recutBackPlate)
 registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
 
@@ -11234,6 +11298,17 @@ const PILLAR_BODY_R = PILLAR_CAP_R / 1.5;
 const PILLAR_TAP_R = G.screwTapR(PILLAR_SCREW_HEAD_R);
 const PILLAR_ENGAGE = ENGAGE_MIN * PILLAR_THREAD_D;
 const PILLAR_TAP_DEPTH = PILLAR_ENGAGE + G.THREAD_PITCH_PER_DIA * PILLAR_THREAD_D;
+// TODO 184 step 3 — THE FOOT. A pillar is riveted into the plate it stands
+// on: a tenon turned down from the body passes the base plate and is spread
+// flush on the dial side, so the joint's length is the plate's whole
+// thickness (a flush rivet that stopped short would hold nothing, and one
+// that ran long would stand among the dial-side works). The tenon keeps as
+// much of the body as a SHOULDER allows: one STOCK_MIN_U step down, the least
+// a lathe can cut that still seats, because the tenon is the section that
+// carries the pillar's bending at the plate. The shoulder it seats with is the
+// foot land (1.5 × body), so it bears on plate from the tenon out to the land.
+const PILLAR_TENON_R = PILLAR_BODY_R - STOCK_MIN_U;
+const PILLAR_TENON_LEN = BACK_PLATE_T;
 if (PILLAR_BODY_R - PILLAR_TAP_R < STOCK_MIN_U - 1e-9)
   console.warn(`TODO 184: pillar wall round its tapped bore ${(PILLAR_BODY_R - PILLAR_TAP_R).toFixed(3)} — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
 if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
@@ -11256,7 +11331,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // reach, and would veto a pillar seat nowhere near real metal). Only the
   // meshes actually low enough to meet a full-height pillar column matter:
   // each keyless mesh's own world-vertex AABB, kept only where its z-band
-  // meets the pillar's own [0, TQ_BOT_Z] span (a margin either side, since a
+  // meets the pillar's own [−PILLAR_TENON_LEN, TQ_BOT_Z] span (a margin either side, since a
   // pillar full-height column reaches those ends exactly).
   const PILLAR_KEYLESS_BOXES = [];
   {
@@ -11270,7 +11345,12 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       const pos = o.geometry.attributes.position;
       const b = new THREE.Box3();
       for (let i = 0; i < pos.count; i++) b.expandByPoint(o.localToWorld(kv.fromBufferAttribute(pos, i)));
-      if (b.max.z < -CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
+      // TODO 184 step 3: the pillar now reaches DOWN through the base plate on
+      // its tenon, so its span is [−PILLAR_TENON_LEN, TQ_BOT_Z]. Reading the old
+      // [0, TQ_BOT_Z] left the crown stem's sleeve — standing in the plate's
+      // rim notch at z −4.10..−1.40 — out of the scan, and the first battery
+      // run of the tenon found the 148° pillar's tenon on it.
+      if (b.max.z < -PILLAR_TENON_LEN - CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
       PILLAR_KEYLESS_BOXES.push(b);
     }
   }
@@ -11323,6 +11403,16 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
+    // TODO 184 step 3 — THE PLATE A PILLAR STANDS ON. Its foot land is a
+    // shoulder bearing on the base plate and its tenon passes through it, so
+    // the land must stand on metal: every opening the base plate is cut with
+    // is an obstacle. The scan never read that plate, and the 135° pillar's
+    // land had stood half over the motion works' fold-corner recess for as
+    // long as that recess existed — nothing collides with a hole, so no sweep
+    // could say so. (The plate's late holes are the cock legs, which are
+    // already obstacles above as the cock's footprint.)
+    for (const h of BACK_PLATE_CUT.holes) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
+    for (const sl of BACK_PLATE_CUT.slots) c = Math.min(c, stadium({ ax: sl.ax, ay: sl.ay, bx: sl.bx, by: sl.by, r: sl.r }));
     // §112 — the alarm corner's DECLARED under-plate footprint: its metal
     // builds after this plate is cut, so the pillar solve cannot read it as
     // boxes the way it reads the train below; the battery's sweptOverlap
@@ -11374,7 +11464,8 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       if (best) break; // nearest feasible bearing to the quadrant's ideal wins
     }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
-    const pillar = G.makePillar({ height: TQ_BOT_Z, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH });
+    const pillar = G.makePillar({ height: TQ_BOT_Z, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
+      tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
     pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
     // TODO 184 — the pillar's PLAN, published for the siting solves that
@@ -11386,6 +11477,13 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     pillar.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
     pillarsGroup.add(pillar);
     pillarSeats.push({ x: best.x, y: best.y });
+    // The tenon's hole: the pillar is solved long after the base plate is
+    // cut, so it waits for the late re-cut below. Its radius IS the tenon's —
+    // a riveted fit is assembled touching.
+    BACK_PLATE_LATE_HOLES.push({ x: best.x, y: best.y, r: PILLAR_TENON_R });
+    declareFrameJoint({ joint: 'Pillar ⇄ base plate', clamped: 'pillar (shoulder)', host: 'base plate',
+      frame: pillar, x: 0, y: 0, top: -TQ_BOT_Z / 2, headT: 0, clamp: 0, shank: PILLAR_TENON_LEN,
+      d: 2 * PILLAR_TENON_R, required: BACK_PLATE_T, meshName: 'pillar' });
   }
   // TODO 27 — AND THE SEATS ARE BORED. §20 recorded the plate screws as
   // "head FLUSH with the face" and verified the position; flush was achieved
@@ -11399,6 +11497,26 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // back so the recess has a floor to bear on rather than being a bare hole.
   for (const p of pillarSeats) tqHoles.push({ x: p.x, y: p.y, r: PILLAR_SEAT_R });
 }
+// TODO 184 — THE BASE PLATE'S LATE RE-CUT, run once, after the last late
+// opening is known: the balance cock's tapped holes (step 2) and the pillars'
+// tenon holes (step 3). Every late hole must leave a LAND to every other
+// opening in the plate — the §62 rule that the strip between two openings is a
+// member, held here at the §50 floor since this plate has no window solver.
+await breathe();
+{
+  const all = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
+  for (const h of BACK_PLATE_LATE_HOLES) {
+    if (Math.hypot(h.x, h.y) + h.r > plateR - STOCK_MIN_U + 1e-9)
+      console.warn(`TODO 184: late base-plate hole at (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)} leaves under STOCK_MIN_U to the plate edge`);
+    for (const o of all) {
+      if (o === h) continue;
+      const land = Math.hypot(h.x - o.x, h.y - o.y) - h.r - o.r;
+      if (land < STOCK_MIN_U - 1e-9)
+        console.warn(`TODO 184: late base-plate hole at (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) leaves a ${land.toFixed(3)} land to the opening at (${o.x.toFixed(2)}, ${o.y.toFixed(2)}) — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
+    }
+  }
+}
+recutBackPlate();
 
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
@@ -11559,6 +11677,18 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     declareFrameJoint({ joint: 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: 'pillar',
       frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
       shank: p.shank, clamp: TQ_T - STOCK_MIN_U });
+}
+// TODO 184 — THE FRAME'S JOINTS, ASSERTED. Every row is declared by now — the
+// plate screws, just above, are the last (cocks and tenons come earlier), and each is a DERIVATION —
+// engaged = the shank or tenon the site cut, less the member it clamps — so it
+// is a legal build-time claim under "boot has no pose": the frame does not
+// move. It warns with the achieved and required numbers (rule 6). It was a
+// report until every row measured green; the metal it describes is held by
+// tools/probe-184-frame-joints.mjs and by `support`'s engagement column.
+for (const j of FRAME_JOINTS) {
+  if (j.engaged < j.required - 1e-9)
+    console.warn(`TODO 184: ${j.joint} at (${j.x.toFixed(2)}, ${j.y.toFixed(2)}) engages ${(j.engaged * UNIT_MM).toFixed(4)} mm `
+      + `of the ${(j.required * UNIT_MM).toFixed(4)} mm its ${j.host} must hold`);
 }
 
 // ===========================================================================
@@ -45312,7 +45442,7 @@ window.__clock = {
     const v = new THREE.Vector3(), m = new THREE.Matrix4();
     let lowest = Infinity, hits = 0;
     j.frame.traverse((o) => {
-      if (!o.isMesh || o.name !== 'screwShanks') return;
+      if (!o.isMesh || o.name !== j.meshName) return;
       m.multiplyMatrices(inv, o.matrixWorld);
       const pos = o.geometry.attributes.position;
       for (let i = 0; i < pos.count; i++) {

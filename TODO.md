@@ -20,7 +20,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 187 | OPEN | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
 | 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
 | 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1531 since TODO 172 sank the cap: φ 15.16°, L 3.241), and the star headroom is down to 0.1945; raising them to `FOLD_SAT` carries the foot corner into the minute star, because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
-| 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
+| 184 | CLOSED | Every frame joint crosses its face by its requirement. The four plate screws are 1.0 mm threads, 1.5 mm into tapped pillars. The three cock screws are tapped through the base plate, and the plate's 0.758 mm sets their 0.505 mm thread ([TODO 69]'s class). The four pillars are riveted into the base plate on flush tenons. `FRAME_JOINTS` is boot-asserted, and `support` fails a fastened edge unless the metal measures engaged |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
@@ -24359,7 +24359,7 @@ CAP_SOLVE skips, the ratchet idiom. The late pass verifies the shipped B is
 accepted and that each row is still refused. Its control is
 `probe-160-cause`'s boot C with the expected chosen B moving to 6.0°.
 
-## 184. The frame's fasteners hold nothing: plate and cock screws stop at the joint face, pillars butt the base plate, and every size is a proportion of an unrelated dimension
+## 184. The frame's fasteners hold nothing: plate and cock screws stop at the joint face, pillars butt the base plate, and every size is a proportion of an unrelated dimension — CLOSED
 
 Reported by eye ("the structural screws that hold the three-quarter plate and
 the bridges onto the base plate are too small — too short and too slim — or
@@ -24626,6 +24626,132 @@ Two defects found on the way:
 
 Remaining: the three cock screws (step 2), the pillar ⇄ base plate joint
 (step 3), then the gate.
+
+**Step 2 landed — the cock screws thread through the base plate.**
+
+- **The thread is set by the plate they grip.** Both cocks stand on the
+  base plate, and a screw can engage it by at most its whole thickness,
+  tapped through. `ENGAGE_MIN·d ≤ BACK_PLATE_T` gives
+  `COCK_THREAD_D = BACK_PLATE_T / ENGAGE_MIN`, which is 1.333 u = 0.505 mm.
+  - A real cock screw here would be about 1 mm, in a thicker plate.
+  - The 0.758 mm plate is [TODO 69]'s class. Thickening it re-derives this
+    line with no other edit.
+- **Head, bore and tap follow from the thread.** The head comes from the
+  thread (2:1). It was `COCK_FOOT_R·0.45` and the fork cock's `legR·0.6`,
+  two proportions of bare literals, and both cocks now share one head.
+- **The legs are bored sleeves.** `G.boredLegGeometry` bores the leg and
+  its pad one clearance fit over the thread.
+  - The balance cock's wall is 0.553 u, asserted ≥ `STOCK_MIN_U`.
+  - The fork cock's leg radius is now `COCK_LEG_BORE_R + STOCK_MIN_U`
+    (1.064 u), read by BOTH its seat scan and `makeEscapeBridge`. It used
+    to be scanned at the bare 1.15 and drawn at 0.963.
+  - The fork cock's foot re-seats by 0.24 u, from (19.21, −28.26) to
+    (19.01, −28.12).
+- **The screw runs the whole stack it clamps.** It goes through the slab or
+  bar, the leg and the pad, then through the plate, drawn tapped. Its row
+  clamps bar + leg and engages `BACK_PLATE_T`.
+- **The plate is tapped at each foot.**
+  - The fork cock is solved before the base plate is cut, so it pushes into
+    `BACK_PLATE_HOLES`.
+  - The balance cock is solved 2,500 lines later. It pushes into
+    `BACK_PLATE_LATE_HOLES`, and `recutBackPlate()` re-runs the ONE cut
+    (`BACK_PLATE_CUT`, now a single argument object) with those holes added,
+    swapping the geometry in place.
+  - Step 3's pillar tenons reuse the same mechanism.
+  - Checked by counting vertices: 1,512 hole-wall vertices at each of the
+    three sites, and 0 at a control point 3 u away.
+
+`probe-184-frame-joints`: **7/7 rows green**, controls PASS, boot silent.
+`probe-239-boot-yield` PASS (622/635 ms), `probe-129-bootcost` PASS.
+
+Remaining: the pillar ⇄ base plate joint (step 3), then the gate (step 4).
+
+**Step 3 landed — the pillars are riveted into the base plate.**
+
+- **The tenon.** Each pillar ends in a tenon turned down from its body by
+  one `STOCK_MIN_U` step. `PILLAR_TENON_R` = body − `STOCK_MIN_U` = 1.494 u
+  (⌀ 1.13 mm): the least shoulder a lathe cuts that still seats, which keeps
+  the tenon, the section that carries the pillar's bending at the plate, as
+  thick as it can be. The foot land is the shoulder it seats on.
+- **The length.** It passes the plate's whole thickness
+  (`PILLAR_TENON_LEN = BACK_PLATE_T`) and ends flush on the dial side.
+  - The spread rivet head in its countersink is NOT drawn. The plate is one
+    extrusion and cannot carry a stepped hole.
+  - The LENGTH is drawn, and that was the defect: a column standing on a
+    face.
+- **The plate is bored at each seat.** The holes are touching, the riveted
+  fit. They go through the late re-cut, which now runs ONCE, after the
+  pillars, and takes both steps' late holes.
+  - Every late hole is asserted to leave a `STOCK_MIN_U` land to every other
+    opening and to the plate edge.
+- **Rows.** `FRAME_JOINTS` gains four `Pillar ⇄ base plate` rows. Each is
+  measured on the pillar mesh itself, with the host's whole thickness as the
+  requirement.
+
+**Found by the land assert on its first boot.** The 135° pillar's foot land
+had stood half over the motion works' fold-corner recess in the base plate
+ever since that recess was cut.
+- The seat scan never read the base plate's openings, and nothing collides
+  with a hole, so no sweep could see it.
+- The scan now treats every `BACK_PLATE_CUT` hole and slot as an obstacle.
+- That pillar re-seats from (−25.10, 27.88) to (−32.38, 17.95), bearing
+  132° → 151°. The pillars now stand at 24°, 151°, 225° and 279°.
+- The first battery run of the tenon found a second blind spot of the same
+  kind. The seat scan filtered keyless meshes against the pillar's OLD span,
+  [0, `TQ_BOT_Z`]. The tenon reaches down to −`PILLAR_TENON_LEN`, and the
+  crown stem's sleeve sits in the plate's rim notch at z −4.10..−1.40, so
+  the scan could not see it. `inspection` and `undeclaredClearance` both
+  reported `Keyless works ⇄ pillars` at 0 for a seat at 148°. The scan now
+  reads the tenon's span, and the pillar lands 1.8 clear of the sleeve in
+  plan.
+
+`probe-184-frame-joints`: **11/11 rows green**, controls PASS, boot silent.
+`probe-129-bootcost` PASS.
+
+`probe-239-boot-yield` straddles its 700 ms ceiling on this container:
+719/602/699/739 ms, against 685–694 on the base.
+- Instrumenting `breathe()` puts the worst hold (633–667 ms) at one step of
+  the setting-fold swing solve (`main.js:5628`, TODO 157's window walk).
+- That code runs before anything this item touches, so the margin was
+  already that thin. It is reported here rather than fixed.
+
+**Step 4 landed — the gate, and this item is CLOSED.**
+
+- **The boot assert.** `FRAME_JOINTS` is asserted at boot, after the last
+  row is declared (the plate screws, at the three-quarter plate's screw
+  block).
+  - Every row is a derivation of the metal the site cut, so it is legal
+    under "boot has no pose", and it warns with the achieved and required
+    numbers.
+  - Control: halving the plate screws' engagement warns
+    `engages 0.7500 mm of the 1.5000 mm` at all four sites.
+- **The `support` column.** `support` now reads the MEASURED rows
+  (`clock.frameJoints()`) for the four fastened edges named in
+  `FASTENED_EDGES`: plate → pillars, pillars → plate, and both cocks →
+  plate.
+  - A fastened edge fails unless it HAS joints and every one reaches its
+    requirement. Contact within `SUPPORT_TOL` no longer passes it alone.
+  - A `FRAME_JOINTS` class with no `FASTENED_EDGES` row fails as well.
+  - Three mutations, each caught:
+    - The plate screws cut and declared half-length.
+    - The plate screws cut short but declared full-length. The boot is
+      silent here, because the declaration is intact, and `support` catches
+      it off the metal.
+    - The tenons removed.
+  - The clean tree returns 0 failures over 87 rows, 11 of them joints.
+- **Declared-joint rows.** None were needed. Every screw and tenon crosses
+  between two units that are already EXPECTED, `Three-quarter plate ⇄
+  pillars` and the support pairs onto `plate`, and steps 1–3 each passed the
+  full battery without a new `INTRA_UNIT_CONTACTS` or
+  `EXPECTED_CONTACT_FLOORS` row.
+
+Residue, filed elsewhere or named here:
+- **[TODO 69]'s plate thicknesses.** They cap the cock thread at 0.505 mm and
+  the plate-screw heads at `STOCK_MIN_U` tall.
+- **The riveted tenon's dial-side spread.** It is not drawn, because the base
+  plate is one extrusion and has no stepped hole. The tenon's length is
+  drawn.
+- **The boot-yield margin at the setting-fold solve** (step 3's note).
 
 **Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
 alone, or by scaling the existing heads up. A bigger head on a screw that

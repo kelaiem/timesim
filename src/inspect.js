@@ -4095,6 +4095,25 @@ function resolveNode(clock, allUnits, name) {
   return meshes.length ? { name, obj: clock.movement, meshes } : null;
 }
 
+// TODO 184 — A FASTENED EDGE IS HELD BY METAL THAT CROSSES THE JOINT, not by
+// contact. These four support edges are frame joints: a screw or a riveted
+// tenon closes each one, and `unitClearance` ≤ SUPPORT_TOL alone passed all
+// four for as long as every screw stopped at the face it clamped and every
+// pillar stood on the plate with nothing crossing it. For these edges the
+// check also reads main.js's FRAME_JOINTS (through `clock.frameJoints()`,
+// which MEASURES each joint's engagement off the built metal) and fails the
+// edge unless it has joints and every one of them reaches its requirement —
+// ENGAGE_MIN·d for a thread, the host's whole thickness for a flush rivet.
+// Keyed by the joint CLASS names FRAME_JOINTS declares; a class missing here,
+// or an edge here with no joints, is itself a failure.
+const FASTENED_EDGES = {
+  'Three-quarter plate ⇄ pillar': ['Three-quarter plate', 'pillars'],
+  'Pillar ⇄ base plate': ['pillars', 'plate'],
+  'Balance cock ⇄ base plate': ['Balance cock', 'plate'],
+  'Fork cock ⇄ base plate': ['Fork cock', 'plate'],
+};
+const ENGAGE_TIE_MM = 1e-4;   // the probe's metal-vs-declaration tolerance; a cut short by a real amount reads 0.01+
+
 export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GRAPH.support } = {}) {
   clock.setPose({ tau: 0, crownPullT: 0, leverEngage: 0, tension: 1 });
   clock.scene.updateMatrixWorld(true);
@@ -4111,6 +4130,32 @@ export function checkSupportGeometry(clock, { tol = SUPPORT_TOL, edges = MECH_GR
     const { d } = unitClearance(A, B);
     rows.push({ edge: `${aName} → ${bName}`, gap: +d.toFixed(3), ok: d <= tol,
       note: d <= tol ? '' : 'FLOATING — declared support has no geometry' });
+  }
+  // TODO 184 — the engagement column, one row per frame joint.
+  const joints = typeof clock.frameJoints === 'function' ? clock.frameJoints() : null;
+  const edgeKey = (a, b) => `${a} → ${b}`;
+  const declared = new Set(edges.map(([a, b]) => edgeKey(a, b)));
+  for (const [cls, [a, b]] of Object.entries(FASTENED_EDGES)) {
+    if (!declared.has(edgeKey(a, b))) continue;        // a narrowed call (edges option) that skips this edge
+    const mine = (joints ?? []).filter((j) => j.joint === cls);
+    if (!mine.length) {
+      rows.push({ edge: edgeKey(a, b), gap: null, ok: false,
+        note: `UNFASTENED — a frame joint with no ${cls} rows (contact is not a fastening)` });
+      continue;
+    }
+    for (const j of mine) {
+      const ok = j.measuredMM != null && j.measuredMM >= j.requiredMM - ENGAGE_TIE_MM;
+      rows.push({ edge: edgeKey(a, b), gap: 0, ok,
+        engagedMM: j.measuredMM == null ? null : +j.measuredMM.toFixed(4), requiredMM: +j.requiredMM.toFixed(4),
+        at: `${j.site.x.toFixed(2)}, ${j.site.y.toFixed(2)}`,
+        note: ok ? `${cls}: engaged` : `SHORT — ${cls} engages ${j.measuredMM == null ? 'nothing' : j.measuredMM.toFixed(4)} mm of ${j.requiredMM.toFixed(4)} mm` });
+    }
+  }
+  if (joints) {
+    const known = new Set(Object.keys(FASTENED_EDGES));
+    for (const cls of new Set(joints.map((j) => j.joint)))
+      if (!known.has(cls)) rows.push({ edge: cls, gap: null, ok: false,
+        note: 'a FRAME_JOINTS class with no FASTENED_EDGES row — declare which support edge it fastens' });
   }
   rows.sort((x, y) => (x.ok === y.ok ? (y.gap ?? 0) - (x.gap ?? 0) : x.ok ? 1 : -1));
   console.table(rows);

@@ -8,15 +8,18 @@
 // the makeScrews call that cuts it and computes engaged = shank − clamp from
 // the SAME shank value; ENGAGE_MIN · d is the requirement (1.5 diameters, a
 // steel screw in a soft tapped host — the constraint is written there).
-// TODO 184 filed every row at 0 engaged, and this prints the table so each
-// fix landing can show its rows go green.
+// TODO 184 filed every row at 0 engaged; steps 1–3 took all eleven green, and
+// step 4 made the table a boot assert and `support`'s engagement column. This
+// stays the instrument that prints the table and holds it to the metal.
 //
 // Controls, fatal:
 //  · ROSTER — exactly the declared population per joint class (4 plate
-//    screws, 2 balance-cock, 1 fork-cock). A site that stops declaring its
-//    screw would otherwise read as a clean table of fewer rows.
-//  · METAL AGREES WITH THE DECLARATION — every row's shank is found in the
-//    built `screwShanks` geometry at its site (vertices inside the thread
+//    screws, 2 balance-cock, 1 fork-cock, 4 pillar tenons). A site that
+//    stops declaring its screw would otherwise read as a clean table of
+//    fewer rows.
+//  · METAL AGREES WITH THE DECLARATION — every row's shank (or tenon) is
+//    found in the built geometry it names (`screwShanks`, or the pillar) at
+//    its site (vertices inside the thread
 //    radius, in the screw's own frame), and the engagement measured off the
 //    lowest of them equals the declared one to 1e-4 mm. This is what holds
 //    the table to the metal: rewrite a site's shank without its row and this
@@ -33,6 +36,7 @@ const ROSTER = {
   'Three-quarter plate ⇄ pillar': 4,
   'Balance cock ⇄ base plate': 2,
   'Fork cock ⇄ base plate': 1,
+  'Pillar ⇄ base plate': 4,   // step 3: riveted tenons, measured on the pillar mesh itself
 };
 const TOL_MM = 1e-4;
 
