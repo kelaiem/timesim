@@ -2873,7 +2873,7 @@ if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 19.2039; // rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it
+const ALARM_LINK_ROD_LEN_U = 19.1037; // rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
 const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5533
 const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.603 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
 const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.921 — a wall at the §50 floor
@@ -5097,6 +5097,23 @@ let minuteWheelBase = Math.PI / minuteWheelTeeth;
 // (Z_SETTING, RSV_P0_TOP_Z and SETTING_ROD_R are hoisted above the minute
 // wheel's build now — TODO 150 item 1 — with their derivation comments there.)
 const PLATE_BACK_FACE = PLATE_BACK - BACK_PLATE_T * G.PLATE_BEVEL_T_F;                    // −2.3 — the face the plate PRESENTS (the extrude's bevel stands proud of the slab), asserted at the plate build
+// TODO 172 — the alarm setting lane (wheel, both idlers, the crisp arbor pinion
+// and its rod end) stands ONE CLEAR_MARGIN off the dial's back face; it was a
+// designed 0.05, under the margin. + MEASURED_MARGIN_BAND because a plane that
+// lands exactly on the margin reads either side of it through the BVH query
+// (measured: an exact 0.15 stayed listed by undeclaredClearance's strict `<`) —
+// the part clearing by slightly more, never the gate asking for less.
+const ALARM_SHEET_GAP = CLEAR_MARGIN + MEASURED_MARGIN_BAND;
+const ALARM_SHEET_GAP_PRE172 = 0.05;   // the gap the §29 chain was solved against before TODO 172 — a datum, quoted as §45's is
+// …and the chain behind the lane is FUNDED from the base plate, not from its
+// wheels: the lane grew by MW_PLATE_SINK, so the two members that stand a
+// margin off the plate's face under the motion works — the cannon pinion and
+// the setting cap that meshes the minute wheel — sink the same amount into
+// blind pockets (the way a pillar plate is sunk under the motion works), and
+// MW_WHEEL_T keeps TODO 144's solve. Thinning both wheels 0.05 instead was the
+// measured alternative: 0.052 over their bevel-module bound rather than 0.102.
+const MW_PLATE_SINK = ALARM_SHEET_GAP - ALARM_SHEET_GAP_PRE172;
+const MW_SINK_FLOOR = PLATE_BACK_FACE + MW_PLATE_SINK;   // world: the pockets' floor, the one face both external meshes stand a margin off
 const MW_LEG1_R = (PLATE_BACK_FACE - Z_SETTING) - CLEAR_MARGIN;                           // 0.55
 const RSV_ARB_EXT_R = 0.55;                                                              // rsvArbExt's radius — its build reads this
 const Z_RSV = -4.2;         // the reserve train's gear plane in the plate→dial gap (plate back −2.3, dial −7) — hoisted from its build for the same reason
@@ -5237,11 +5254,13 @@ const MW_LEG2_R = SETTING_ROD_R;                                                
 // plate — which is what reverses the fold's net sense (MW_FOLD_NET_SENSE).
 const SETTING_CAP_T = 1.6;   // the pinion's own thickness (was a bare literal on its makePinion call; hoisted so the two z-derivations below share it)
 const SETTING_CAP_REACH = G.gearFaceReach({ module: MW_MODULE_1, thickness: SETTING_CAP_T, pinion: true }).body;   // 0.860
-// The cap's top face lands ON THE MARGIN off the plate's presented face —
+// The cap's top face lands ON THE MARGIN off the plate's pocket floor —
 // cannonPinion's own idiom (both of mwMinuteWheel's external meshes stand
-// the one margin off the one face they can reach without entering the
-// plate's own slab).
-const Z_SETTING_CAP = PLATE_BACK_FACE - CLEAR_MARGIN - SETTING_CAP_REACH;   // -3.310
+// the one margin off the one floor they can reach without entering the
+// plate's own slab). TODO 172: that floor is MW_SINK_FLOOR, so the cap follows
+// the wheel it meshes and its leaves cover the wheel's bevelled plate face by
+// MW_COVER + its own bevel — asserted at the stack, where the wheel is solved.
+const Z_SETTING_CAP = MW_SINK_FLOOR - CLEAR_MARGIN - SETTING_CAP_REACH;   // -3.210
 // The fold's new shafts — the rise, the stub and the cap arbor — have no pinch
 // of their own: nothing outside the fold stands within 0.35 of any of them
 // (probe-150-fold-sense.mjs, FOLD CLEAR), so no neighbour sizes them the way
@@ -7561,7 +7580,18 @@ if (HACK_PIN_OWN) {
 // and no second slot, which is why the shipped movement's plate is the plate
 // it always was.
 await breathe();
+// TODO 172 — the two blind pockets that fund the lane's margin (MW_PLATE_SINK
+// deep). Each is the member's tip plus the margin, the A corner's hole rule;
+// gearOuterR is §115's plan-time bound (0.21 conservative on a pinion's cusp).
+// The cap's pocket and the rise corner's bore are ONE opening: cut apart they
+// leave a 0.2148 land, under STOCK_MIN_U, and their drawn rings overlap.
+const MW_CANNON_POCKET = { x: P.dial.x, y: P.dial.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP,
+  r: G.gearOuterR({ module: MW_MODULE_1, teeth: cannonPinionTeeth, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN };
+const MW_CAP_POCKET = { x: SETTING_CAP_XY.x, y: SETTING_CAP_XY.y, depth: MW_PLATE_SINK, lap: SEAT_LAND_LAP,
+  r: G.gearOuterR({ module: MW_MODULE_1, teeth: SETTING_CAP_TEETH, thickness: 1e3, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }] }) + CLEAR_MARGIN,
+  through: MW_RISE_PLATE_HOLE };
 const backPlate = G.makeBackPlate({
+  pockets: [MW_CANNON_POCKET, MW_CAP_POCKET],
   radius: plateR, thickness: BACK_PLATE_T,
   // §186 — the MOUNTING RIM (mesh only: plateR stays the working radius
   // every station fans out from), notched for the two crown-stem sleeves,
@@ -7572,7 +7602,7 @@ const backPlate = G.makeBackPlate({
     ...BACK_PLATE_HOLES,
     MW_FOLD_PLATE_HOLE,   // §234 fold — the third motion-works corner's blanks, A's precedent
     MW_DROP_PLATE_HOLE,   // TODO 150 item 1 — the drop corner's own recess at A, same precedent
-    MW_RISE_PLATE_HOLE,   // TODO 151 — the rise corner's blanks at B, A's precedent
+    // (MW_RISE_PLATE_HOLE is cut with the cap's pocket — MW_CAP_POCKET.through)
     ...CASE_CLAMP_AZ.map((a) => ({
       x: Math.cos(a) * R_CLAMP, y: Math.sin(a) * R_CLAMP, r: CASE_CLAMP_BORE_R,
     })),
@@ -13988,7 +14018,7 @@ const ALARM_HEART_B_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.30
 // expected to trip their tripwires on first boot — that enumeration is the
 // worklist, not collateral.
 const ALARM_SET_T = STOCK_MIN_U;               // was 0.18 (§29 step 1's thinning, now unwound)
-const ALARM_TUBE_BACK = -(0.05 + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
+const ALARM_TUBE_BACK = -(ALARM_SHEET_GAP + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
 const ALARM_FLANGE_T = STOCK_MIN_U;            // was 0.08 — the 0.03 mm flange
 const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30); heart band, one CLEAR_MARGIN under the flange:
 const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // band −1.30..−1.62
@@ -14155,6 +14185,7 @@ const STAR_T = STOCK_MIN_U;                      // the jumper star and its beak
 // burial TODO 153 measured (mwMinuteWheel and cannonPinion both 0.0000
 // against backPlate, not a hairline: 0.146/0.21 u of real overlap).
 const MW_PLATE_FACE_LOCAL = Z_DIAL - PLATE_BACK_FACE;
+const MW_CANNON_FLOOR_LOCAL = Z_DIAL - MW_SINK_FLOOR;   // TODO 172: the cannon pinion lands on its pocket's floor; the wheel hub and the studs keep the face
 const MW_BEVEL = (T, m) => Math.min(T * 0.18, m * 0.22);   // the gear builder's bevel, the term every plane here spelled out by hand
 const MW_COVER = 0.1;   // a pinion's leaves overreach the wheel's bevelled face by this — TODO 21's coverage floor, one name for its uses
 const MW_PINION_BEVEL = (T, m) => Math.min(T * 0.15, m * 0.2);   // makePinion's bevel (geometry.js pinionBevel), held to gearFaceReach at the build
@@ -14172,7 +14203,7 @@ const MW_WHEEL_T = (() => {
   // below) it is a constant and T falls out linearly:
   const bev = MW_BEVEL(Infinity, MW_MODULE_1) + MW_BEVEL(Infinity, MW_MODULE_2);
   const bevC = MW_PINION_BEVEL(Infinity, MW_MODULE_1);   // TODO 153: the cannon pinion's own bevel, standing proud of ITS far face too
-  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - bevC - MW_PLATE_FACE_LOCAL) / 2;
+  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - bevC - MW_CANNON_FLOOR_LOCAL) / 2;
   if (T < 1.22 * Math.max(MW_MODULE_1, MW_MODULE_2))
     console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under the bevel's module bound ${(1.22 * Math.max(MW_MODULE_1, MW_MODULE_2)).toFixed(4)} — the linear solve does not hold`);
   if (T < STOCK_MIN_U)
@@ -14219,7 +14250,7 @@ dialFace.add(cannonPinion);
   const expect = CANNON_END - MW_PINION_BEVEL(Infinity, MW_MODULE_1);   // the bound bevC substitutes in the T solve
   if (Math.abs(metalEnd - expect) > 1e-9)
     console.warn(`TODO 153: cannonPinion's gearFaceReach end ${metalEnd.toFixed(6)} disagrees with the bound-bevel estimate ${expect.toFixed(6)} — the T solve's bevC substitution does not hold`);
-  if (metalEnd < MW_PLATE_FACE_LOCAL + CLEAR_MARGIN - 1e-9)   // TODO 144: the stack is SOLVED to land on this margin, so equality is the design
+  if (metalEnd < MW_CANNON_FLOOR_LOCAL + CLEAR_MARGIN - 1e-9)   // TODO 144: the stack is SOLVED to land on this margin, so equality is the design
     console.warn(`TODO 21: the cannon pinion's metal end ${metalEnd.toFixed(4)} is inside the plate's margin (face ${MW_PLATE_FACE_LOCAL.toFixed(4)}, need ${CLEAR_MARGIN})`);
 }
 // TODO 175 — the compound turns ON the stud, so both its bores are the stud
@@ -14248,6 +14279,17 @@ const MW_BORE_R = MW_STUD_R + PIVOT_BORE_CLEAR;
   const mwBot = MW_Z1 - Math.max(r.body, r.hub.half);
   if (mwBot - CLEAR_MARGIN < MW_PLATE_FACE_LOCAL - 1e-9)
     console.warn(`§34: minute wheel's underside ${mwBot.toFixed(4)} inside the plate's margin (face ${MW_PLATE_FACE_LOCAL.toFixed(4)})`);
+}
+// TODO 172 — the setting cap sank with the wheel it meshes: its leaves must
+// still cover the minute wheel's bevelled plate face by MW_COVER plus the
+// cap's own bevel (the cannon pinion's coverage rule). Z_SETTING_CAP is
+// derived 9,000 lines up from the pocket floor; the wheel is solved here.
+{
+  const r = G.gearFaceReach({ module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES, thickness: MW_WHEEL_T, boreR: MW_BORE_R });
+  const wheelFaceW = Z_DIAL - (MW_Z1 - r.body), capFaceW = Z_SETTING_CAP + SETTING_CAP_REACH;
+  const need = MW_COVER + MW_PINION_BEVEL(SETTING_CAP_T, MW_MODULE_1);
+  if (capFaceW - wheelFaceW < need - 1e-9)
+    console.warn(`TODO 172: the setting cap covers the minute wheel's plate face by ${(capFaceW - wheelFaceW).toFixed(4)} — need MW_COVER + its own bevel ${need.toFixed(4)}`);
 }
 // Stud direction: horizontal, away from both sub-dial wells (which sit above
 // and below the centre).
@@ -15668,7 +15710,7 @@ const ALARM_SET_RATIO = ALARM_SET_PINION_TEETH / ALARM_SET_WHEEL_TEETH;
 const ALARM_SET_DW1 = ALARM_SET_MODULE * (ALARM_SET_WHEEL_TEETH + ALARM_SET_I1_TEETH) / 2; // centre wheel ⇄ i1
 const ALARM_SET_D12 = ALARM_SET_MODULE * (ALARM_SET_I1_TEETH + ALARM_SET_I2_TEETH) / 2;     // i1 ⇄ i2
 const ALARM_SET_D2P = ALARM_SET_MODULE * (ALARM_SET_I2_TEETH + ALARM_SET_PINION_TEETH) / 2; // i2 ⇄ arbor pinion
-const ALARM_SET_Z = Z_DIAL + 0.05 + ALARM_SET_T / 2; // WORLD gear plane (≈ −8.19) — the probed-empty lane under the
+const ALARM_SET_Z = Z_DIAL + ALARM_SHEET_GAP + ALARM_SET_T / 2; // WORLD gear plane (≈ −8.09, TODO 172) — the probed-empty lane under the
                                                 // reserve band, DERIVED: sheet (Z_DIAL) + the 0.05 crisp-face gap + half
                                                 // the lane thickness. The corridor asserts below re-verify the lane.
 // (ALARM_HEART_R/RMIN, the follower triangle, alarmArmAngleAt and kin are
@@ -15734,7 +15776,7 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
 // the ring and the fingers could only stay aligned by both being absolute —
 // and why the disc-body and selector-sheet spends were blocked. Three
 // constants replace the family; everything below rides the chain.
-const ALARM_WHEEL_BOT_B = -0.05 - ALARM_SET_T;                    // the wheel's plate-side face (the old −0.23)
+const ALARM_WHEEL_BOT_B = -ALARM_SHEET_GAP - ALARM_SET_T;                    // the wheel's plate-side face (the old −0.23)
 const ALARM_BAND_FLOOR_B = ALARM_WHEEL_BOT_B - ALARM_HEART_B_T;   // heart-B/follower band floor (the old −0.53)
 const ALARM_ARMB_Z = ALARM_BAND_FLOOR_B + 0.05 / 2;               // the pin-arm's slice centre (arm 0.05 thick; the old −0.505)
 const ALARM_PINB_AZ = ALARM_NOSE_AZ;   // the pin rides at the same azimuth convention heart-A's nose does
@@ -15827,7 +15869,7 @@ const ALARM_SEL_TRAVEL = 0.19; // sized BY the bias assert below: the finger thr
 // the working face (the endstone precedent: grow off the solved contact),
 // so the top rises with the thickness and the bottom stays where the rocker
 // engagement was solved. The §35 shaft derives from this and follows.
-const ALARM_SEL_Z_UP = -0.96 + ALARM_SEL_T;     // ring's top face, DISARMED (bottom pinned at −0.96)
+const ALARM_SEL_Z_UP = -0.96 - MW_PLATE_SINK + ALARM_SEL_T;     // ring's top face, DISARMED (bottom solved at −0.96 against the pre-172 chain; TODO 172: the rocker and finger it engages ride ALARM_TUBE_BACK, so the ring rides the same MW_PLATE_SINK)
 // TODO 161 — the ring's pose LAW, one source: the build (s = 0), tick (the
 // eased readout alarmSelShownT) and any solve that must judge the ring over
 // its travel all read this, so no copy of the slide can drift from the metal.
@@ -16386,7 +16428,7 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // bevel would expand the face 0.045 toward it — the full sweep caught the
   // idler's beveled twin actually touching the sheet (MODELING.md rule 1).
   const wheel = G.makeGear({ name: 'alarmSettingWheel', module: ALARM_SET_MODULE, teeth: ALARM_SET_WHEEL_TEETH, mates: [{ teeth: ALARM_SET_I1_TEETH, mates: [ALARM_SET_WHEEL_TEETH, ALARM_SET_I2_TEETH] }], thickness: ALARM_SET_T, boreR: ALARM_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.brass, bevel: false });
-  wheel.position.z = -(0.05 + ALARM_SET_T / 2); // band −0.05..−0.23 (dialFace local; ALARM_SET_Z is this plane in world)
+  wheel.position.z = -(ALARM_SHEET_GAP + ALARM_SET_T / 2); // band −0.15..−0.33 (TODO 172) (dialFace local; ALARM_SET_Z is this plane in world)
   alarmSetWheelMesh = wheel;   // TODO 15: the chain solve's datum
   alarmSetWheelGroup.add(wheel);
   // §34 first slice: the INDEX WEDGE — a chamfered blued mark proud of the
@@ -16449,11 +16491,11 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // from the two things it actually has to clear: wide end at −CLEAR_MARGIN,
   // point one margin off the ring's highest local reach —
   // −CLEAR_MARGIN − L = ALARM_SEL_Z_UP + CLEAR_MARGIN.
-  const WEDGE_LEN = -(ALARM_SEL_Z_UP + 2 * CLEAR_MARGIN);
+  const WEDGE_LEN = -ALARM_SHEET_GAP - (ALARM_SEL_Z_UP + CLEAR_MARGIN + MEASURED_MARGIN_BAND);   // TODO 172: flush with the wheel's dial face, its point one banded margin off the ring (an exact tie read 0.149999998)
   const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0, 0.10, WEDGE_LEN, 3), MATS.blueSteel);
   wedge.name = 'alarmIndexWedge';
   wedge.rotation.z = Math.PI; // chamfered point aims inboard, at the flange's line
-  wedge.position.set(4.45, 0, -CLEAR_MARGIN - WEDGE_LEN / 2);
+  wedge.position.set(4.45, 0, -ALARM_SHEET_GAP - WEDGE_LEN / 2);
   wedge.rotation.x = Math.PI / 2;
   // Rule 6 boot assert — the point (local z = −CLEAR_MARGIN − WEDGE_LEN) must
   // (i) stand at least CLEAR_MARGIN off the selector ring's highest reach
@@ -16461,7 +16503,7 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
   // plate-side face (ALARM_WHEEL_BOT_B) — a mark that has run back under the
   // wheel is no longer a readable index.
   {
-    const wedgePointZ = -CLEAR_MARGIN - WEDGE_LEN;
+    const wedgePointZ = -ALARM_SHEET_GAP - WEDGE_LEN;
     const clearOfRing = wedgePointZ - ALARM_SEL_Z_UP;
     if (clearOfRing < CLEAR_MARGIN - 1e-9) {
       console.warn('alarmIndexWedge: point does not clear ALARM_SEL_Z_UP by CLEAR_MARGIN', { achieved: clearOfRing, required: CLEAR_MARGIN });
@@ -27022,7 +27064,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 30.9951;   // t3 − t1, measured (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+const ALARM_LINK_BODY_LEN_U = 30.9964;   // t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
 // needs the bush's own OD before that loop runs, at the SAME radius the
@@ -27048,7 +27090,7 @@ const ALARM_LINK_BUSH_OD_U = ALARM_LINK_R_TARGET_U + ALARM_LINK_BUSH_CLEAR + ALA
 // here has to change to stay honest.
 const ALARM_LINK_SHAFT_Z = Math.max(
   Z_DIAL - (ALARM_SEL_Z_UP - ALARM_SEL_T / 2),
-  (Z_DIAL + 0.05 + ALARM_SET_T) + CLEAR_MARGIN + ALARM_LINK_BUSH_OD_U,
+  (Z_DIAL + ALARM_SHEET_GAP + ALARM_SET_T) + CLEAR_MARGIN + ALARM_LINK_BUSH_OD_U,
   Z_DIAL + CLEAR_MARGIN + ALARM_LINK_BUSH_OD_U);
 // AZ 210, not 212. Moved 2 deg toward 12 o'clock so the rod stands nearer the
 // dial's vertical centreline, which is where the linkage reads as one line
@@ -28114,7 +28156,7 @@ const alarmLinkParts = {};
   // can drift, but the constraint itself (idler top + CLEAR_MARGIN + r,
   // read off the idler's own build) must hold regardless.
   {
-    const idlerTopZ = Z_DIAL + 0.05 + ALARM_SET_T;
+    const idlerTopZ = Z_DIAL + ALARM_SHEET_GAP + ALARM_SET_T;
     const bushOD = ALARM_LINK_SHAFT_R + ALARM_LINK_BUSH_CLEAR + ALARM_LINK_BUSH_WALL;
     if (ALARM_LINK_SHAFT_Z < idlerTopZ + CLEAR_MARGIN + bushOD - 1e-6)
       console.warn(`§234 Landing 5: the shaft stratum ${ALARM_LINK_SHAFT_Z.toFixed(4)} clears the idler `

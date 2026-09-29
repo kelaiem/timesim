@@ -678,11 +678,11 @@ const EXPECTED_PAIRS = [
   ['Alarm crown', 'Alarm setting arbor'], // the 90° bevel mesh (the one declared crown⇄arbor contact)
   ['Alarm disc', 'Hour wheel'],           // §25 C: alarm tube running on the hour-wheel tube (its bearing)
   ['Alarm setting wheel', 'Alarm disc'],  // §25 C stage 3: friction bore on the tube + retention against the carrier flange
-  ['Alarm setting wheel', 'Dial'],        // retained 0.05 behind the dial sheet — deliberate proximity
+  ['Alarm setting wheel', 'Dial'],        // retained behind the dial sheet — its axial stop against the flange, one CLEAR_MARGIN of endshake (TODO 172; it was 0.05) — and the nesting artifact: the wheel group is a Dial-rooted descendant
   ['Alarm setting idler', 'Alarm setting wheel'], // gear mesh
   ['Alarm setting idler', 'Dial'],        // the SAME gear mesh re-attributed: the setting wheel is a
                                           // Dial-rooted descendant (the Dial ⇄ Hour wheel precedent);
-                                          // the true Dial sheet is measured 0.05 clear of the idler
+                                          // the true Dial sheet is measured one CLEAR_MARGIN clear of the idler (TODO 172)
   ['Alarm setting idler', 'Alarm setting arbor'], // gear mesh (idler ⇄ arbor pinion)
   ['Alarm release disc', 'Hour wheel'],     // §29: the friction seat (bore +0.05 running fit on the tube)
   ['Alarm release disc', 'Alarm release seat'], // TODO 144: the disc SEATS on the plate (its whole underside, sunk ALARM_SEAT_SINK) and the pad's foot seats on its face
@@ -2544,16 +2544,8 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
 // by a later PR; a newly undeclared pair blocks landing (not code-enforced —
 // stated here and in CLAUDE.md).
 export const UNDECLARED_CLEARANCE_DEBT = [
-  // TODO 167 — the setting lane's arbor pinion was bevelled like an ordinary
-  // pinion and the bevel ate into the sheet gap to the dial; made CRISP
-  // (bevel: false) in the same PR, which also derived the index wedge's
-  // length off the ring it actually has to clear rather than a frozen
-  // constant — that row is gone. What TODO 167 could not close is that the
-  // lane's own DESIGNED gap (ALARM_SET_Z's 0.05 sheet clearance) is itself
-  // under CLEAR_MARGIN, so a crisp pinion still sits on it: re-cited to
-  // TODO 172, whose fix path is re-stratifying the lane, not the pinion.
-  { a: 'Alarm setting arbor', b: 'Dial', floor: 0.05, todo: 'TODO 172',
-    why: 'ALARM_SET_Z\'s designed 0.05 sheet gap to the dial is itself under CLEAR_MARGIN; the pinion is crisp and sits on it (the wheel and idlers ride the same gap under EXPECTED rows)' },
+  // (TODO 167's and TODO 172's `Alarm setting arbor ⇄ Dial` row is gone: TODO
+  // 172 re-stratified the whole lane to one CLEAR_MARGIN off the dial.)
   // TODO 170 — three of its four rows cleared and are deleted. This one has no
   // position-space room: the trip rock lifts the arm into the margin §45
   // priced over the STATIC arm, at the skirt's throat lip; the rock itself is
