@@ -226,7 +226,9 @@ it into prose either.
 3. **Every new part is declared in `MECH_GRAPH`** (`src/inspect.js`) — what
    supports it, what drives it.
 4. **The inspector battery is clean before anything lands**: support 0
-   failures, graph clean, `axisEntry` **0 violations** (TODO 54/§127 — every
+   failures (and since TODO 184 a FASTENED edge — the frame's screws and
+   riveted tenons, `FASTENED_EDGES` — passes only when its `FRAME_JOINTS`
+   rows MEASURE engaged on the metal; touching is not fastening), graph clean, `axisEntry` **0 violations** (TODO 54/§127 — every
    ordered pair of pose axes reproduces the entered axis exactly, which is
    what makes a sweep's findings a function of the geometry rather than of
    `AXES`' declaration order, and what lets §127 sweep one axis per browser

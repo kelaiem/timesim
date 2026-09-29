@@ -19,7 +19,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 |---|---|---|
 | 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
 | 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1529); raising them to `FOLD_SAT` carries the foot corner into the minute star (0.0727), because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
-| 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
+| 184 | CLOSED | Every frame joint crosses its face by its requirement. The four plate screws are 1.0 mm threads, 1.5 mm into tapped pillars. The three cock screws are tapped through the base plate, and the plate's 0.758 mm sets their 0.505 mm thread ([TODO 69]'s class). The four pillars are riveted into the base plate on flush tenons. `FRAME_JOINTS` is boot-asserted, and `support` fails a fastened edge unless the metal measures engaged |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
@@ -24305,7 +24305,7 @@ CAP_SOLVE skips, the ratchet idiom. The late pass verifies the shipped B is
 accepted and that each row is still refused. Its control is
 `probe-160-cause`'s boot C with the expected chosen B moving to 6.0°.
 
-## 184. The frame's fasteners hold nothing: plate and cock screws stop at the joint face, pillars butt the base plate, and every size is a proportion of an unrelated dimension
+## 184. The frame's fasteners hold nothing: plate and cock screws stop at the joint face, pillars butt the base plate, and every size is a proportion of an unrelated dimension — CLOSED
 
 Reported by eye ("the structural screws that hold the three-quarter plate and
 the bridges onto the base plate are too small — too short and too slim — or
@@ -24661,9 +24661,43 @@ ever since that recess was cut.
 - That code runs before anything this item touches, so the margin was
   already that thin. It is reported here rather than fixed.
 
-Remaining: the gate (step 4). That step turns `FRAME_JOINTS` into a boot
-assert, adds `support`'s engagement column and the declared-joint rows, and
-closes this item.
+**Step 4 landed — the gate, and this item is CLOSED.**
+
+- **The boot assert.** `FRAME_JOINTS` is asserted at boot, after the last
+  row is declared (the plate screws, at the three-quarter plate's screw
+  block).
+  - Every row is a derivation of the metal the site cut, so it is legal
+    under "boot has no pose", and it warns with the achieved and required
+    numbers.
+  - Control: halving the plate screws' engagement warns
+    `engages 0.7500 mm of the 1.5000 mm` at all four sites.
+- **The `support` column.** `support` now reads the MEASURED rows
+  (`clock.frameJoints()`) for the four fastened edges named in
+  `FASTENED_EDGES`: plate → pillars, pillars → plate, and both cocks →
+  plate.
+  - A fastened edge fails unless it HAS joints and every one reaches its
+    requirement. Contact within `SUPPORT_TOL` no longer passes it alone.
+  - A `FRAME_JOINTS` class with no `FASTENED_EDGES` row fails as well.
+  - Three mutations, each caught:
+    - The plate screws cut and declared half-length.
+    - The plate screws cut short but declared full-length. The boot is
+      silent here, because the declaration is intact, and `support` catches
+      it off the metal.
+    - The tenons removed.
+  - The clean tree returns 0 failures over 87 rows, 11 of them joints.
+- **Declared-joint rows.** None were needed. Every screw and tenon crosses
+  between two units that are already EXPECTED, `Three-quarter plate ⇄
+  pillars` and the support pairs onto `plate`, and steps 1–3 each passed the
+  full battery without a new `INTRA_UNIT_CONTACTS` or
+  `EXPECTED_CONTACT_FLOORS` row.
+
+Residue, filed elsewhere or named here:
+- **[TODO 69]'s plate thicknesses.** They cap the cock thread at 0.505 mm and
+  the plate-screw heads at `STOCK_MIN_U` tall.
+- **The riveted tenon's dial-side spread.** It is not drawn, because the base
+  plate is one extrusion and has no stepped hole. The tenon's length is
+  drawn.
+- **The boot-yield margin at the setting-fold solve** (step 3's note).
 
 **Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
 alone, or by scaling the existing heads up. A bigger head on a screw that

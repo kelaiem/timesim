@@ -4061,11 +4061,11 @@ const TQ_CUT_MARGIN = 0.5; // hoisted (§125 Tier B — the fork leg's corridor 
 // shear strength roughly half the screw's that lands at 1.5 diameters. Same
 // rule for every class here, because every host here is the soft metal.
 //
-// This is a REPORT until TODO 184 lands its fixes: every row reads 0 engaged
-// on arrival, so a boot assert would break rule 6 on the shipped tree. The
-// assert and a `support` engagement column are TODO 184's last step;
-// tools/probe-184-frame-joints.mjs reads the rows and measures the same
-// quantity off the built meshes, so the table is held to the metal meanwhile.
+// It was a REPORT while the rows read red (every one read 0 engaged on
+// arrival, and a boot assert would have broken rule 6 on the shipped tree).
+// Since TODO 184 step 4 it is ASSERTED at boot, after the base plate's late
+// re-cut, and `support` reads the measured rows as its engagement column;
+// tools/probe-184-frame-joints.mjs measures the same quantity off the metal.
 const ENGAGE_MIN = 1.5;
 const FRAME_JOINTS = [];
 // TODO 184 step 2 — THE COCK SCREWS' THREAD IS SET BY THE PLATE THEY GRIP.
@@ -11641,6 +11641,18 @@ registerLabel('Three-quarter plate', threeQuarterPlate);
     declareFrameJoint({ joint: 'Three-quarter plate ⇄ pillar', clamped: 'three-quarter plate', host: 'pillar',
       frame: threeQuarterPlate, x: p.x, y: p.y, top: p.z, headR: PILLAR_SCREW_HEAD_R, headT: STOCK_MIN_U,
       shank: p.shank, clamp: TQ_T - STOCK_MIN_U });
+}
+// TODO 184 — THE FRAME'S JOINTS, ASSERTED. Every row is declared by now — the
+// plate screws, just above, are the last (cocks and tenons come earlier), and each is a DERIVATION —
+// engaged = the shank or tenon the site cut, less the member it clamps — so it
+// is a legal build-time claim under "boot has no pose": the frame does not
+// move. It warns with the achieved and required numbers (rule 6). It was a
+// report until every row measured green; the metal it describes is held by
+// tools/probe-184-frame-joints.mjs and by `support`'s engagement column.
+for (const j of FRAME_JOINTS) {
+  if (j.engaged < j.required - 1e-9)
+    console.warn(`TODO 184: ${j.joint} at (${j.x.toFixed(2)}, ${j.y.toFixed(2)}) engages ${(j.engaged * UNIT_MM).toFixed(4)} mm `
+      + `of the ${(j.required * UNIT_MM).toFixed(4)} mm its ${j.host} must hold`);
 }
 
 // ===========================================================================
