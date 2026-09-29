@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 188 | OPEN | The reserve swing solve's first-feasible scan (`main.js:5609–5611`) runs 14 × ~40 ms `clearAt` calls over 1.93M obstacle points (static keyless metal repeated for all 23 corner phases) with no seam: boot's worst hold is 656–736 ms against `probe-239-boot-yield`'s 700 ms ceiling. Fix: a seam per candidate and after the sift (scratch-measured: 334 ms), then collect static meshes once; and publish `__clock.boot` live, because it is frozen before weldTree's seams |
 | 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
 | 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1529); raising them to `FOLD_SAT` carries the foot corner into the minute star (0.0727), because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
 | 184 | CLOSED | Every frame joint crosses its face by its requirement. The four plate screws are 1.0 mm threads, 1.5 mm into tapped pillars. The three cock screws are tapped through the base plate, and the plate's 0.758 mm sets their 0.505 mm thread ([TODO 69]'s class). The four pillars are riveted into the base plate on flush tenons. `FRAME_JOINTS` is boot-asserted, and `support` fails a fastened edge unless the metal measures engaged |
@@ -24767,3 +24768,118 @@ come to about an hour of core time, +20–60 min on CI.
 
 Stop condition for both: a point that reports FORBIDDEN or a clearance
 violation does not join the set. It is a finding to file.
+
+## 188. The reserve swing solve's first-feasible scan holds the boot thread ~550-600 ms with no seam, and __clock.boot is frozen before the last seams
+
+Filed from [TODO 184]'s step 3 note. `node tools/probe-239-boot-yield.mjs`
+gates the build's worst unyielded stretch at `MAX_HELD_MS` = 700 ms. On this
+container it straddles that ceiling: 719/602/699/739 ms on the TODO 184
+branch, and 694/685 ms on `origin/main` itself. Main is within about 1% of
+failing. [TODO 162]'s residue saw the same margin (770–1170 ms at the time)
+and tried seams per phase and per mesh in `reserveObstaclePoints`. Neither
+closed it, because the hold is not in the point generator.
+
+**Where the time goes (measured, not inferred).** A scratch copy of `main.js`
+was timed around `clearAt` and its prelude, and `breathe()` logged every hold
+over 150 ms with its caller. The worst hold, 656–736 ms over three boots, is
+reported at `main.js:5628`, the first `await breathe()` of TODO 157's window
+walk. But that seam only REPORTS the stretch. The stretch is everything
+`solveReserveSwing` (`main.js:5558`) does before its first seam:
+
+- the band sift over `pts` (`main.js:5575`): **101–151 ms**, and
+- the first-feasible scan, `at(0)` and then `±d` steps (`main.js:5609–5611`),
+  which has no seam at all: **14 `clearAt` calls, 548–581 ms**.
+
+No single `clearAt` costs 600 ms. One call costs **37–51 ms** here. The
+function is pure arithmetic: three distance loops over the sifted bands, plus
+one memoized `cutTipR(G.makePinion, …)` per new module. There is no BVH and
+no geometry rebuild except those memo misses. The cost is the POINT COUNT:
+
+| call | `pts` | bands (w1 / hub / p1) | calls | per call | solve total | hold at walk seam |
+|---|---|---|---|---|---|---|
+| CAP_SOLVE, phase-0 candidate | 83,414 | 13k / 16k / 29k | 18 (15 tip-memo misses, 46–118 ms) | 1–30 ms | 98–228 ms | under 150 |
+| CAP_SOLVE, K-phase candidate | 601,118 | 245k / 286k / 148k | 20 | ~18 ms | 375–397 ms | 380–390 ms |
+| reserve build, confirmation (`main.js:15170`) | **1,926,549** | 310k / 366k / 674k | 20 (14 first-feasible + 6 walk) | 37–51 ms | 745–799 ms | **656–736 ms** |
+
+The confirmation call is large because `reserveObstaclePoints`
+(`main.js:5490`) collects EVERY mesh under `keyless`, at every one of its
+K = 23 corner phases. The keyless unit has 55 meshes and 41,909 vertices.
+Only the 10 `mwCorner*In/Out` gear meshes (8,760 vertices) move with the
+phase. The other 33,149 static vertices are pushed 23 times, and each vertex
+adds a midpoint too. That is about 1.52M of the 1.93M points, all duplicates
+of points the scan has already seen. Duplicates cannot change a minimum.
+
+**Fix path, cheapest first:**
+
+1. **Seams where the loop already is (the gate).** Add `await breathe()` at
+   the statement head of the first-feasible scan's inner body,
+   `for (const sgn of [1, -1]) { await breathe(); first = at(…); … }`, and
+   one after the band sift. `solveReserveSwing` is already async. The scan
+   runs at most 2·60 + 1 iterations, one `clearAt` each, so this is not
+   §239's hot-loop defect. Its own comment already claims "a seam per swing
+   keeps the thread handed back", and only the walk half honoured it.
+   **Measured in a scratch copy:** worst hold 681–736 → **333.5 / 334.3 ms**
+   over two boots. The bearing (5.25°), swing (5.0°) and jumper (233.5°,
+   0.1572) were unchanged and boot was silent. The worst hold moved to the
+   residue below.
+2. **Collect static meshes once (cost, optional).** `reserveObstaclePoints`
+   collects the meshes outside the rotating gear groups once and loops only
+   the gear meshes over K. The point multiset loses only duplicates, so every
+   minimum is identical: `clearAt`'s, and `arbClear`'s in CAP_SOLVE. The
+   confirmation drops from ~1.93M to ~0.47M points, so the solve should fall
+   from ~780 ms to roughly 200 ms. CAP_SOLVE's candidate call shrinks the same
+   way, with 3,014 static vertices of 11,774. This touches TODO 162's single
+   point generator, so its comment must keep saying that the accepted swing
+   and the shipped swing are judged on the same points. They still are, as a
+   set. Step 1 alone meets the gate. Step 2 is boot wall time.
+3. **The gate must see the whole build.** `__clock.boot` is
+   `Object.freeze({ …, worstHeldMs: breatheWorstHeld, … })` inside the
+   `window.__clock = {` literal (`main.js:45421`). It is a SNAPSHOT. The seams
+   after that line bracket `G.weldTree(scene)` (`main.js:46089–46091`), and
+   they keep measuring into a variable nothing publishes. The instrumented
+   log saw that hold at 310–506 ms, which is the probe header's "weldTree
+   252" floor, and the gate can see none of it. There is a second problem:
+   the probe stops at `!!window.__clock`, which is also mid-build.
+   - Make `boot` a getter.
+   - Publish a `done` flag at `releaseBuildInputGuard()`.
+   - Have the probe wait for `done`.
+
+   Without this, step 1's 334 ms is the gate's number but not the build's.
+
+Residue after step 1, the next holds (instrumented, this container):
+- `main.js:13262`: 290–334 ms.
+- `:21763`: 297–333 ms.
+- `:1757`: 288–411 ms, after the hairspring solve.
+- `:25375`: 272–348 ms, after `makeGenevaCross`.
+- `:24631`: ~266 ms.
+- weldTree: 310–506 ms, which step 3 makes visible.
+
+Each is a single builder call. The probe's header already names them as the
+unsplittable floor (`MAX_HELD_MS` = 2× that floor). They are not this item's
+debt, but step 3 may show weldTree alone near the ceiling. If it does,
+`G.weldTree` needs a per-mesh yielding variant (`sweepTqKeepsYielding`'s
+precedent).
+
+**Do not close this** by raising `MAX_HELD_MS`, or by lowering `BREATHE_MS`.
+The hold is one unyielded stretch, and the budget cannot split it.
+
+**Verify:**
+- `node tools/probe-239-boot-yield.mjs`, with its control (not
+  `--no-control`): worst hold well under 700 ms over three boots, and the
+  control still shows its one enormous task.
+- Battery `fingerprint` byte-identical to the base. Step 1 is pure
+  scheduling, and step 2 only removes duplicate points. Any fingerprint move
+  is a defect in the change.
+- `__clock.settingFold.scan` identical to the base: same bearing, swing,
+  margins and jumper verdict.
+- `probe-234-cap-bearing` and `probe-129-bootcost` PASS.
+- Boot silent.
+- For step 3: a planted 800 ms busy-wait between `main.js:45421` and the
+  build's end must FAIL the probe. Before the fix it passes, which is the
+  defect.
+
+Feasibility: small · Cost: step 1 ~3 lines in `main.js`; step 2 ~10 lines in
+`reserveObstaclePoints`; step 3 ~5 lines in `main.js` plus the probe's wait
+condition. No new constants, scans or solvers · Battery: boot-only for steps
+1 and 3 (fingerprint must not move); step 2 changes no metal, but it feeds
+two solves, so run the full battery with a `--report` diff against the base
