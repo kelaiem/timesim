@@ -11295,7 +11295,7 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // reach, and would veto a pillar seat nowhere near real metal). Only the
   // meshes actually low enough to meet a full-height pillar column matter:
   // each keyless mesh's own world-vertex AABB, kept only where its z-band
-  // meets the pillar's own [0, TQ_BOT_Z] span (a margin either side, since a
+  // meets the pillar's own [−PILLAR_TENON_LEN, TQ_BOT_Z] span (a margin either side, since a
   // pillar full-height column reaches those ends exactly).
   const PILLAR_KEYLESS_BOXES = [];
   {
@@ -11309,7 +11309,12 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       const pos = o.geometry.attributes.position;
       const b = new THREE.Box3();
       for (let i = 0; i < pos.count; i++) b.expandByPoint(o.localToWorld(kv.fromBufferAttribute(pos, i)));
-      if (b.max.z < -CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
+      // TODO 184 step 3: the pillar now reaches DOWN through the base plate on
+      // its tenon, so its span is [−PILLAR_TENON_LEN, TQ_BOT_Z]. Reading the old
+      // [0, TQ_BOT_Z] left the crown stem's sleeve — standing in the plate's
+      // rim notch at z −4.10..−1.40 — out of the scan, and the first battery
+      // run of the tenon found the 148° pillar's tenon on it.
+      if (b.max.z < -PILLAR_TENON_LEN - CLEAR_MARGIN || b.min.z > TQ_BOT_Z + CLEAR_MARGIN) continue;
       PILLAR_KEYLESS_BOXES.push(b);
     }
   }
