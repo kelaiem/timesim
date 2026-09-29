@@ -313,6 +313,32 @@ compared the pair (both were movers in one unit — TODO 5). What closed it was 
 build-time assert that restates the constraint as a measurement, beside the cut.
 Write that assert with the member.
 
+### 11. A recess is an opening plus a floor, and two openings that crowd are ONE opening
+
+`ExtrudeGeometry` cannot cut a blind pocket. TODO 172 sank the base plate
+under the cannon pinion and the setting cap (`makeBackPlate`'s `pockets`). Each
+pocket is built from two parts:
+
+- a through-opening in the slab, drawn at `r + bevelSize` so its finished
+  edge lands on r (rule 1);
+- a FLOOR put back beneath it as its own CLOSED solid. The floor is lapped
+  radially into the stock around the opening (`SEAT_LAND_LAP`, §132's collar
+  precedent) and named like the plate (`backPlate`), because `support`
+  resolves the plate by that exact name.
+
+**Two openings whose finished edges leave less than `STOCK_MIN_U` between
+them are one opening.** The land is a member (§62). Two rings that overlap in
+one `Shape` are not a wider hole but a broken cut: the cap's pocket drawn as a
+second disc across the rise corner's bore left the slab with 76 open edges.
+The merged opening is the union of the discs, drawn as one simple ring. Any
+through part of it (the bore) is subtracted from the floor at its finished
+radius, so it stays open all the way.
+
+The builder holds every pair of openings to the land rule and warns with both
+numbers. It has to, because no battery gate reads the base plate at all
+(TODO 187). For the same reason, measure a pocket's face by RAYCAST, never by
+vertices: an extruded floor has no vertex inside its rim.
+
 ## Intended contact is not a collision
 
 Some contacts ARE the mechanism — never "fix" these to a gap:
