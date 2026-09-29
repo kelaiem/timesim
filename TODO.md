@@ -24612,6 +24612,51 @@ Remaining: the three cock screws (step 2), the pillar ⇄ base plate joint
 
 Remaining: the pillar ⇄ base plate joint (step 3), then the gate (step 4).
 
+**Step 3 landed — the pillars are riveted into the base plate.**
+
+- **The tenon.** Each pillar ends in a tenon turned down from its body by
+  one `STOCK_MIN_U` step. `PILLAR_TENON_R` = body − `STOCK_MIN_U` = 1.494 u
+  (⌀ 1.13 mm): the least shoulder a lathe cuts that still seats, which keeps
+  the tenon, the section that carries the pillar's bending at the plate, as
+  thick as it can be. The foot land is the shoulder it seats on.
+- **The length.** It passes the plate's whole thickness
+  (`PILLAR_TENON_LEN = BACK_PLATE_T`) and ends flush on the dial side.
+  - The spread rivet head in its countersink is NOT drawn. The plate is one
+    extrusion and cannot carry a stepped hole.
+  - The LENGTH is drawn, and that was the defect: a column standing on a
+    face.
+- **The plate is bored at each seat.** The holes are touching, the riveted
+  fit. They go through the late re-cut, which now runs ONCE, after the
+  pillars, and takes both steps' late holes.
+  - Every late hole is asserted to leave a `STOCK_MIN_U` land to every other
+    opening and to the plate edge.
+- **Rows.** `FRAME_JOINTS` gains four `Pillar ⇄ base plate` rows. Each is
+  measured on the pillar mesh itself, with the host's whole thickness as the
+  requirement.
+
+**Found by the land assert on its first boot.** The 135° pillar's foot land
+had stood half over the motion works' fold-corner recess in the base plate
+ever since that recess was cut.
+- The seat scan never read the base plate's openings, and nothing collides
+  with a hole, so no sweep could see it.
+- The scan now treats every `BACK_PLATE_CUT` hole and slot as an obstacle.
+- That pillar re-seats from (−25.10, 27.88) to (−31.82, 19.88), bearing
+  132° → 148°. The pillars now stand at 24°, 148°, 225° and 279°.
+
+`probe-184-frame-joints`: **11/11 rows green**, controls PASS, boot silent.
+`probe-129-bootcost` PASS.
+
+`probe-239-boot-yield` straddles its 700 ms ceiling on this container:
+719/602/699/739 ms, against 685–694 on the base.
+- Instrumenting `breathe()` puts the worst hold (633–667 ms) at one step of
+  the setting-fold swing solve (`main.js:5628`, TODO 157's window walk).
+- That code runs before anything this item touches, so the margin was
+  already that thin. It is reported here rather than fixed.
+
+Remaining: the gate (step 4). That step turns `FRAME_JOINTS` into a boot
+assert, adds `support`'s engagement column and the declared-joint rows, and
+closes this item.
+
 **Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
 alone, or by scaling the existing heads up. A bigger head on a screw that
 still stops at the face is the same defect, made easier to see.

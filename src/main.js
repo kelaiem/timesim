@@ -4092,11 +4092,15 @@ const BACK_PLATE_LATE_HOLES = [];
 // frame: the Object3D the screw is built in; top: the head's top face
 // (frame-local z, the value passed to makeScrews); headT: head height;
 // clamp: the thickness of the member the head clamps, below the head.
-function declareFrameJoint({ joint, clamped, host, frame, x, y, top, headR, headT, shank, clamp }) {
-  const d = 2 * G.screwShankR(headR);
+// A RIVETED joint (step 3's pillar tenons) passes `d` and `required` itself —
+// its requirement is the host's whole thickness, not a thread's 1.5 d — and
+// names the mesh its length is measured on (`meshName`), since the tenon is
+// turned on the pillar rather than being a screw.
+function declareFrameJoint({ joint, clamped, host, frame, x, y, top, headR, headT, shank, clamp,
+  d = 2 * G.screwShankR(headR), required = ENGAGE_MIN * d, meshName = 'screwShanks' }) {
   FRAME_JOINTS.push({
-    joint, clamped, host, frame, x, y, top, headT,
-    d, shank, clamp, engaged: shank - clamp, required: ENGAGE_MIN * d,
+    joint, clamped, host, frame, x, y, top, headT, meshName,
+    d, shank, clamp, engaged: shank - clamp, required,
   });
 }
 // BALANCE COCK section constants, hoisted (§125 Tier B) from the cock's own
@@ -10322,8 +10326,8 @@ const balanceCock = G.makeCock({
   // stud carrier holding the spring's terminal.
 }
 movement.add(balanceCock);
-await breathe();
-recutBackPlate();   // TODO 184 — the legs' tapped holes, pushed at the cock screws above
+// (the legs' tapped holes wait in BACK_PLATE_LATE_HOLES for the one late
+// re-cut, run after the pillars add their tenon holes — see recutBackPlate)
 registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
 
@@ -11258,6 +11262,17 @@ const PILLAR_BODY_R = PILLAR_CAP_R / 1.5;
 const PILLAR_TAP_R = G.screwTapR(PILLAR_SCREW_HEAD_R);
 const PILLAR_ENGAGE = ENGAGE_MIN * PILLAR_THREAD_D;
 const PILLAR_TAP_DEPTH = PILLAR_ENGAGE + G.THREAD_PITCH_PER_DIA * PILLAR_THREAD_D;
+// TODO 184 step 3 — THE FOOT. A pillar is riveted into the plate it stands
+// on: a tenon turned down from the body passes the base plate and is spread
+// flush on the dial side, so the joint's length is the plate's whole
+// thickness (a flush rivet that stopped short would hold nothing, and one
+// that ran long would stand among the dial-side works). The tenon keeps as
+// much of the body as a SHOULDER allows: one STOCK_MIN_U step down, the least
+// a lathe can cut that still seats, because the tenon is the section that
+// carries the pillar's bending at the plate. The shoulder it seats with is the
+// foot land (1.5 × body), so it bears on plate from the tenon out to the land.
+const PILLAR_TENON_R = PILLAR_BODY_R - STOCK_MIN_U;
+const PILLAR_TENON_LEN = BACK_PLATE_T;
 if (PILLAR_BODY_R - PILLAR_TAP_R < STOCK_MIN_U - 1e-9)
   console.warn(`TODO 184: pillar wall round its tapped bore ${(PILLAR_BODY_R - PILLAR_TAP_R).toFixed(3)} — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
 if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
@@ -11347,6 +11362,16 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     }
     for (const o of LOW_LINKAGE_OBSTACLES)
       c = Math.min(c, o.ax === undefined ? Math.hypot(x - o.x, y - o.y) - o.r : stadium(o));
+    // TODO 184 step 3 — THE PLATE A PILLAR STANDS ON. Its foot land is a
+    // shoulder bearing on the base plate and its tenon passes through it, so
+    // the land must stand on metal: every opening the base plate is cut with
+    // is an obstacle. The scan never read that plate, and the 135° pillar's
+    // land had stood half over the motion works' fold-corner recess for as
+    // long as that recess existed — nothing collides with a hole, so no sweep
+    // could say so. (The plate's late holes are the cock legs, which are
+    // already obstacles above as the cock's footprint.)
+    for (const h of BACK_PLATE_CUT.holes) c = Math.min(c, Math.hypot(x - h.x, y - h.y) - h.r);
+    for (const sl of BACK_PLATE_CUT.slots) c = Math.min(c, stadium({ ax: sl.ax, ay: sl.ay, bx: sl.bx, by: sl.by, r: sl.r }));
     // §112 — the alarm corner's DECLARED under-plate footprint: its metal
     // builds after this plate is cut, so the pillar solve cannot read it as
     // boxes the way it reads the train below; the battery's sweptOverlap
@@ -11398,7 +11423,8 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
       if (best) break; // nearest feasible bearing to the quadrant's ideal wins
     }
     if (!best) { console.warn('pillar: no seat found near', base); continue; }
-    const pillar = G.makePillar({ height: TQ_BOT_Z, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH });
+    const pillar = G.makePillar({ height: TQ_BOT_Z, bodyR: PILLAR_BODY_R, tapR: PILLAR_TAP_R, tapDepth: PILLAR_TAP_DEPTH,
+      tenonR: PILLAR_TENON_R, tenonLen: PILLAR_TENON_LEN });
     pillar.name = 'pillar'; // structural node — see checkSupportGeometry
     pillar.position.set(best.x, best.y, TQ_BOT_Z / 2);
     // TODO 184 — the pillar's PLAN, published for the siting solves that
@@ -11410,6 +11436,13 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
     pillar.userData.planStadium = { ax: best.x, ay: best.y, bx: best.x, by: best.y, r: PILLAR_CAP_R };
     pillarsGroup.add(pillar);
     pillarSeats.push({ x: best.x, y: best.y });
+    // The tenon's hole: the pillar is solved long after the base plate is
+    // cut, so it waits for the late re-cut below. Its radius IS the tenon's —
+    // a riveted fit is assembled touching.
+    BACK_PLATE_LATE_HOLES.push({ x: best.x, y: best.y, r: PILLAR_TENON_R });
+    declareFrameJoint({ joint: 'Pillar ⇄ base plate', clamped: 'pillar (shoulder)', host: 'base plate',
+      frame: pillar, x: 0, y: 0, top: -TQ_BOT_Z / 2, headT: 0, clamp: 0, shank: PILLAR_TENON_LEN,
+      d: 2 * PILLAR_TENON_R, required: BACK_PLATE_T, meshName: 'pillar' });
   }
   // TODO 27 — AND THE SEATS ARE BORED. §20 recorded the plate screws as
   // "head FLUSH with the face" and verified the position; flush was achieved
@@ -11423,6 +11456,26 @@ if (PILLAR_TAP_DEPTH > TQ_BOT_Z - STOCK_MIN_U + 1e-9)
   // back so the recess has a floor to bear on rather than being a bare hole.
   for (const p of pillarSeats) tqHoles.push({ x: p.x, y: p.y, r: PILLAR_SEAT_R });
 }
+// TODO 184 — THE BASE PLATE'S LATE RE-CUT, run once, after the last late
+// opening is known: the balance cock's tapped holes (step 2) and the pillars'
+// tenon holes (step 3). Every late hole must leave a LAND to every other
+// opening in the plate — the §62 rule that the strip between two openings is a
+// member, held here at the §50 floor since this plate has no window solver.
+await breathe();
+{
+  const all = [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES];
+  for (const h of BACK_PLATE_LATE_HOLES) {
+    if (Math.hypot(h.x, h.y) + h.r > plateR - STOCK_MIN_U + 1e-9)
+      console.warn(`TODO 184: late base-plate hole at (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)} leaves under STOCK_MIN_U to the plate edge`);
+    for (const o of all) {
+      if (o === h) continue;
+      const land = Math.hypot(h.x - o.x, h.y - o.y) - h.r - o.r;
+      if (land < STOCK_MIN_U - 1e-9)
+        console.warn(`TODO 184: late base-plate hole at (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) leaves a ${land.toFixed(3)} land to the opening at (${o.x.toFixed(2)}, ${o.y.toFixed(2)}) — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
+    }
+  }
+}
+recutBackPlate();
 
 // --- The plate itself.
 const threeQuarterPlate = new THREE.Group();
@@ -45324,7 +45377,7 @@ window.__clock = {
     const v = new THREE.Vector3(), m = new THREE.Matrix4();
     let lowest = Infinity, hits = 0;
     j.frame.traverse((o) => {
-      if (!o.isMesh || o.name !== 'screwShanks') return;
+      if (!o.isMesh || o.name !== j.meshName) return;
       m.multiplyMatrices(inv, o.matrixWorld);
       const pos = o.geometry.attributes.position;
       for (let i = 0; i < pos.count; i++) {

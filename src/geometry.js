@@ -7030,15 +7030,24 @@ export function makeJewelSetting({ r }) {
 // the metal) and `tapDepth` from the top face. It used to be `height · 0.09`,
 // so the pillar's section was a fraction of the gap between the plates and
 // its top face was solid: the screw above it had nothing to thread into.
-export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0 }) {
+// TODO 184 step 3 — and a TENON at the foot: `tenonR` × `tenonLen` below the
+// foot land's face, which is the shoulder the pillar seats on the base plate
+// with. The tenon's riveted end (spread into a dial-side countersink) is not
+// drawn — the plate is one extrusion and cannot carry a stepped hole — but its
+// LENGTH is: it passes the plate's whole thickness and ends flush, which is
+// what makes it a joint rather than a column standing on a face.
+export function makePillar({ height, bodyR, tapR = 0, tapDepth = 0, tenonR = 0, tenonLen = 0 }) {
   const rr = bodyR;
+  const foot = tenonR > 0 && tenonLen > 0
+    ? [new THREE.Vector2(0, -tenonLen), new THREE.Vector2(tenonR, -tenonLen), new THREE.Vector2(tenonR, 0)]
+    : [new THREE.Vector2(0, 0)];
   const top = tapR > 0 && tapDepth > 0
     ? [new THREE.Vector2(tapR, height),
        new THREE.Vector2(tapR, height - tapDepth),
        new THREE.Vector2(0, height - tapDepth)]
     : [new THREE.Vector2(0, height)];
   const pts = [
-    new THREE.Vector2(0, 0),
+    ...foot,
     new THREE.Vector2(rr * 1.5, 0),
     new THREE.Vector2(rr * 1.5, height * 0.07),
     new THREE.Vector2(rr, height * 0.12),
