@@ -24573,6 +24573,45 @@ Two defects found on the way:
 Remaining: the three cock screws (step 2), the pillar ⇄ base plate joint
 (step 3), then the gate.
 
+**Step 2 landed — the cock screws thread through the base plate.**
+
+- **The thread is set by the plate they grip.** Both cocks stand on the
+  base plate, and a screw can engage it by at most its whole thickness,
+  tapped through. `ENGAGE_MIN·d ≤ BACK_PLATE_T` gives
+  `COCK_THREAD_D = BACK_PLATE_T / ENGAGE_MIN`, which is 1.333 u = 0.505 mm.
+  - A real cock screw here would be about 1 mm, in a thicker plate.
+  - The 0.758 mm plate is [TODO 69]'s class. Thickening it re-derives this
+    line with no other edit.
+- **Head, bore and tap follow from the thread.** The head comes from the
+  thread (2:1). It was `COCK_FOOT_R·0.45` and the fork cock's `legR·0.6`,
+  two proportions of bare literals, and both cocks now share one head.
+- **The legs are bored sleeves.** `G.boredLegGeometry` bores the leg and
+  its pad one clearance fit over the thread.
+  - The balance cock's wall is 0.553 u, asserted ≥ `STOCK_MIN_U`.
+  - The fork cock's leg radius is now `COCK_LEG_BORE_R + STOCK_MIN_U`
+    (1.064 u), read by BOTH its seat scan and `makeEscapeBridge`. It used
+    to be scanned at the bare 1.15 and drawn at 0.963.
+  - The fork cock's foot re-seats by 0.24 u, from (19.21, −28.26) to
+    (19.01, −28.12).
+- **The screw runs the whole stack it clamps.** It goes through the slab or
+  bar, the leg and the pad, then through the plate, drawn tapped. Its row
+  clamps bar + leg and engages `BACK_PLATE_T`.
+- **The plate is tapped at each foot.**
+  - The fork cock is solved before the base plate is cut, so it pushes into
+    `BACK_PLATE_HOLES`.
+  - The balance cock is solved 2,500 lines later. It pushes into
+    `BACK_PLATE_LATE_HOLES`, and `recutBackPlate()` re-runs the ONE cut
+    (`BACK_PLATE_CUT`, now a single argument object) with those holes added,
+    swapping the geometry in place.
+  - Step 3's pillar tenons reuse the same mechanism.
+  - Checked by counting vertices: 1,512 hole-wall vertices at each of the
+    three sites, and 0 at a control point 3 u away.
+
+`probe-184-frame-joints`: **7/7 rows green**, controls PASS, boot silent.
+`probe-239-boot-yield` PASS (622/635 ms), `probe-129-bootcost` PASS.
+
+Remaining: the pillar ⇄ base plate joint (step 3), then the gate (step 4).
+
 **Do not close this** by widening `SUPPORT_TOL`, by rewording the comments
 alone, or by scaling the existing heads up. A bigger head on a screw that
 still stops at the face is the same defect, made easier to see.

@@ -6378,11 +6378,16 @@ export function makeCock({ length, width, thickness = width * 0.5, studHole = nu
 // dropping `footDrop` to the base plate, a spread foot pad at the bottom and
 // a screw head on top. Slab is centred on local z = 0.
 // ---------------------------------------------------------------------------
-export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
+// TODO 184 — `foot: { headR, engage }` is the foot screw, sized by the caller
+// from its joint: head radius, and the length it runs PAST the leg's foot into
+// the plate it threads (0 = it stops at the slab's underside, the old
+// behaviour, which held nothing). A foot node may carry its own `legR`.
+export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [], foot = null }) {
   const g = new THREE.Group();
   // The foot screw's head, needed twice: once by the boss that has to be
   // bored for its shank, once by the screw itself further down.
-  const footHeadR = (n) => n.r * 0.62 * 0.6;   // = legR · 0.6
+  const footHeadR = (n) => foot?.headR ?? n.r * 0.62 * 0.6;   // legacy: legR · 0.6
+  const footLegR = (n) => n.legR ?? n.r * 0.62;
   // Striped like the plate it serves under — one world-space pattern, so
   // the lines run unbroken from plate to bridge (legs/walls stay plain:
   // the shader gates the stripes to upward-facing surfaces).
@@ -6441,8 +6446,9 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
   const footScrews = [];
   for (const n of chain) {
     if (!n.foot) continue;
-    const legR = n.r * 0.62;
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(legR, legR * 1.15, footDrop, 20), slabMat);
+    const legR = footLegR(n);
+    const bore = screwBoreR(footHeadR(n));
+    const leg = new THREE.Mesh(boredLegGeometry(legR, legR * 1.15, bore, footDrop, 20), slabMat);
     leg.geometry.rotateX(Math.PI / 2);
     leg.position.set(n.x, n.y, -thickness / 2 - footDrop / 2);
     g.add(leg);
@@ -6451,7 +6457,7 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     // seated on the top face (the old version sank the whole screw inside
     // the slab, leaving the bridge visually unfastened — the same pattern
     // as the balance cock's T-foot screws).
-    const pad = new THREE.Mesh(new THREE.CylinderGeometry(legR * 1.5, legR * 1.5, thickness * 0.5, 20), slabMat);
+    const pad = new THREE.Mesh(boredLegGeometry(legR * 1.5, legR * 1.5, bore, thickness * 0.5, 20), slabMat);
     pad.geometry.rotateX(Math.PI / 2);
     pad.position.set(n.x, n.y, -thickness / 2 - footDrop + thickness * 0.25);
     g.add(pad);
@@ -6464,16 +6470,20 @@ export function makeEscapeBridge({ chain, thickness, footDrop, jewels = [] }) {
     // sweeping over it), so the honest seat is the face itself, and the
     // opening the screw needs is the bore through the boss above.
     //
-    // TODO 184: and the shank STOPS at the slab's underside — `shank:
-    // thickness` below a head seated on the top face. Below that is this
-    // bridge's own leg, then the base plate, and no thread enters either, so
-    // the screw clamps the slab to its own leg and the leg to nothing. The
-    // caller reads `userData.footScrews` into FRAME_JOINTS, which reports it.
+    // TODO 184: it used to STOP at the slab's underside — `shank: thickness`
+    // below a head seated on the top face — so it clamped the slab to its own
+    // leg and the leg to nothing. Since step 2 it runs on: through the slab, down the bored leg
+    // and pad, and `foot.engage` into the plate below, drawn threaded. With no
+    // `foot` it still stops at the slab's underside.
+    const engage = foot?.engage ?? 0;
     footScrews.push({ x: n.x, y: n.y, z: thickness / 2 + STOCK_MIN_U,
-                      a: Math.atan2(n.y, n.x), headR: footHeadR(n), shank: thickness });
+                      a: Math.atan2(n.y, n.x), headR: footHeadR(n),
+                      shank: engage > 0 ? thickness + footDrop + engage : thickness,
+                      clamp: engage > 0 ? thickness + footDrop : thickness,
+                      tapped: engage > 0 });
   }
   if (footScrews.length) g.add(makeScrews({ at: footScrews, headT: STOCK_MIN_U }));
-  g.userData.footScrews = footScrews.map((f) => ({ ...f, headT: STOCK_MIN_U, clamp: thickness }));
+  g.userData.footScrews = footScrews.map((f) => ({ ...f, headT: STOCK_MIN_U }));
   for (const j of jewels) {
     // Rubbed-in jewel, seated in its counterbore. Every face is kept OFF
     // the surrounding boss: the outer wall a hair inside the counterbore
@@ -6541,6 +6551,18 @@ export const SEAT_FIT = 0.08;
 // thread across — a cheese head on a 0.25 mm thread measures around 0.5 mm —
 // so the shank is half the head's radius, and its hole one seat fit larger.
 export const screwShankR = (headR) => headR / 2;
+// TODO 184 — a turned LEG bored for the screw that runs down through it: the
+// CylinderGeometry(rTop, rBot, h) it replaces (same axis, +Y, centred), with
+// a clearance bore of radius `bore` all the way through. The screw is what
+// holds the member above to the plate below, so the leg carries no thread.
+export function boredLegGeometry(rTop, rBot, bore, h, seg = 20) {
+  const pts = [
+    new THREE.Vector2(bore, -h / 2), new THREE.Vector2(bore, h / 2),
+    new THREE.Vector2(rTop, h / 2), new THREE.Vector2(rBot, -h / 2),
+    new THREE.Vector2(bore, -h / 2),
+  ];
+  return new THREE.LatheGeometry(pts, seg);
+}
 export const screwBoreR = (headR) => screwShankR(headR) + SEAT_FIT;
 // §148 — AND THERE ARE TWO HOLES, because there are two joints. A screw that
 // PASSES THROUGH a member wants a CLEARANCE hole: the member is not what

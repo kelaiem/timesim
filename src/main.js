@@ -4068,6 +4068,27 @@ const TQ_CUT_MARGIN = 0.5; // hoisted (§125 Tier B — the fork leg's corridor 
 // quantity off the built meshes, so the table is held to the metal meanwhile.
 const ENGAGE_MIN = 1.5;
 const FRAME_JOINTS = [];
+// TODO 184 step 2 — THE COCK SCREWS' THREAD IS SET BY THE PLATE THEY GRIP.
+// Both cocks stand on the BASE plate, and a screw can engage that plate by at
+// most its whole thickness — tapped THROUGH, the way a watchmaker taps a thin
+// plate, since a blind hole would leave less. ENGAGE_MIN·d ≤ BACK_PLATE_T
+// fixes the largest thread the plate can hold to strength:
+//
+//      d = BACK_PLATE_T / ENGAGE_MIN = 1.333 u = 0.505 mm
+//
+// A real cock screw on a 32 mm movement runs about 1 mm, and the plate that
+// takes it is thicker than 0.758 mm; that plate is TODO 69's class, not this
+// item's, and a thicker plate re-derives this line on its own. The head
+// follows by makeScrews' 2:1, the leg's clearance bore one fit over the
+// thread, and the plate's tapped hole is the thread's own radius.
+const COCK_THREAD_D = BACK_PLATE_T / ENGAGE_MIN;
+const COCK_SCREW_HEAD_R = COCK_THREAD_D;                  // screwShankR(head) = d/2
+const COCK_LEG_BORE_R = G.screwBoreR(COCK_SCREW_HEAD_R);
+const COCK_PLATE_TAP_R = G.screwTapR(COCK_SCREW_HEAD_R);
+// Openings in the base plate whose station is solved AFTER the plate is cut
+// (the balance cock's legs; the pillar tenons next). recutBackPlate() re-runs
+// the one cut with these added — see it at the balance cock's build.
+const BACK_PLATE_LATE_HOLES = [];
 // frame: the Object3D the screw is built in; top: the head's top face
 // (frame-local z, the value passed to makeScrews); headT: head height;
 // clamp: the thickness of the member the head clamps, below the head.
@@ -4218,7 +4239,11 @@ const forkCock = (() => {
     }
     return best || { ...near, missed: true };
   };
-  const legR = 1.15;
+  // TODO 184 step 2 — the leg is a SLEEVE round its foot screw: one
+  // clearance bore plus STOCK_MIN_U of wall. It was a bare 1.15 here while
+  // makeEscapeBridge drew the leg at 0.62 of the node (0.963) — one radius
+  // written twice. The scan and the drawing now read this one.
+  const legR = COCK_LEG_BORE_R + STOCK_MIN_U;
   const legB = legFor(P.fork, P.escape, legR, bossFork);
   if (legB.missed) {
     // TODO 30 wall three — this used to be a bare warn followed by a null
@@ -4254,11 +4279,15 @@ const forkCock = (() => {
   const forkCbDepth = FORK_COCK_T * 0.65;
   const chain = [
     { x: P.fork.x, y: P.fork.y, r: bossFork, bore: forkBore, cbR: forkCbR, cbDepth: forkCbDepth },
-    { x: legB.x, y: legB.y, r: legR * 1.35, foot: true },
+    { x: legB.x, y: legB.y, r: legR * 1.35, foot: true, legR },
   ];
+  // The foot's tapped hole goes into the base plate's own list: this cock is
+  // solved before the plate is cut.
+  BACK_PLATE_HOLES.push({ x: legB.x, y: legB.y, r: COCK_PLATE_TAP_R });
   const g = G.makeEscapeBridge({
     chain,
     thickness: FORK_COCK_T,
+    foot: { headR: COCK_SCREW_HEAD_R, engage: BACK_PLATE_T },
     // The leg reaches the BASE plate's top face (it spans [z−1, z+1]) —
     // measured from the slab's underside, where makeEscapeBridge hangs it.
     footDrop: FORK_COCK_BOT - (BACK_PLATE_Z + BACK_PLATE_T / 2),
@@ -7561,7 +7590,10 @@ if (HACK_PIN_OWN) {
 // and no second slot, which is why the shipped movement's plate is the plate
 // it always was.
 await breathe();
-const backPlate = G.makeBackPlate({
+// TODO 184 — the cut's arguments are ONE object, so the late re-cut below
+// (recutBackPlate) cuts the same plate with its late openings added rather
+// than restating this list.
+const BACK_PLATE_CUT = {
   radius: plateR, thickness: BACK_PLATE_T,
   // §186 — the MOUNTING RIM (mesh only: plateR stays the working radius
   // every station fans out from), notched for the two crown-stem sleeves,
@@ -7593,7 +7625,21 @@ const backPlate = G.makeBackPlate({
     a1: Math.atan2(postEng.y - settingLeverPivot.y, postEng.x - settingLeverPivot.x),
     pad: G.SETTING_LEVER_POST_R + CLEAR_MARGIN + 0.02,   // studSlot's own dilation, minus the bow the sector no longer approximates away
   }] : [],
-});
+};
+const backPlate = G.makeBackPlate(BACK_PLATE_CUT);
+// TODO 184 — THE LATE RE-CUT. Some openings in this plate belong to parts
+// solved after it is cut (the balance cock's legs stand on it 2,500 lines
+// below, its station read off the three-quarter plate's own cut). They wait
+// in BACK_PLATE_LATE_HOLES and this re-cuts the same plate with them added,
+// swapping the geometry in place so every reference to the mesh stays good.
+// Between the two cuts nothing reads this plate's GEOMETRY (the §234 guard
+// below reads only its back face, which a hole does not move); a caller that
+// adds a late hole calls this after its push.
+const recutBackPlate = () => {
+  const cut = G.makeBackPlate({ ...BACK_PLATE_CUT, holes: [...BACK_PLATE_CUT.holes, ...BACK_PLATE_LATE_HOLES] });
+  backPlate.geometry.dispose();
+  backPlate.geometry = cut.geometry;
+};
 await breathe();
 backPlate.name = 'backPlate';
 backPlate.position.set(0, 0, BACK_PLATE_Z);
@@ -10107,7 +10153,10 @@ const balanceCock = G.makeCock({
   // it with nothing cut for them — the opening is part of the fastener, so
   // the bar is an extruded rectangle with two clearance holes rather than a
   // primitive with a screw parked on top.
-  const COCK_SCREW_HEAD_R = COCK_FOOT_R * 0.45;
+  // (COCK_SCREW_HEAD_R is the plate-derived head, declared with ENGAGE_MIN —
+  // it was COCK_FOOT_R · 0.45, a proportion of a bare slab width.)
+  if (LEG_R - COCK_LEG_BORE_R < STOCK_MIN_U - 1e-9)
+    console.warn(`TODO 184: balance cock leg wall ${(LEG_R - COCK_LEG_BORE_R).toFixed(3)} round its screw bore — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(3)}`);
   {
     const bw = BAR_HSPAN * 2 + LEG_R * 2, bh = 2.4;
     const s = new THREE.Shape();
@@ -10129,12 +10178,12 @@ const balanceCock = G.makeCock({
   const legLen = legTopWorld - PLATE_TOP;
   for (const s of [-1, 1]) {
     const leg = new THREE.Mesh(
-      new THREE.CylinderGeometry(LEG_R, LEG_R * 1.15, legLen, 20), MATS.nickel);
+      G.boredLegGeometry(LEG_R, LEG_R * 1.15, COCK_LEG_BORE_R, legLen, 20), MATS.nickel);
     leg.rotation.x = Math.PI / 2;
     leg.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen / 2);
     balanceCock.add(leg);
     const pad = new THREE.Mesh(
-      new THREE.CylinderGeometry(LEG_R * 1.5, LEG_R * 1.5, 0.4, 20), MATS.nickel);
+      G.boredLegGeometry(LEG_R * 1.5, LEG_R * 1.5, COCK_LEG_BORE_R, 0.4, 20), MATS.nickel);
     pad.rotation.x = Math.PI / 2;
     pad.position.set(s * BAR_HSPAN, yBar, -COCK_T / 2 - legLen + 0.2);
     balanceCock.add(pad);
@@ -10150,22 +10199,25 @@ const balanceCock = G.makeCock({
   //
   // TODO 184: this comment used to end "below the bar the thread takes the
   // leg and then the plate: not drawn, so not cut" — and the SHANK is what
-  // was not drawn: `shank: COCK_T` below a head seated on the bar's top face
-  // ends exactly at the bar's underside. The leg below is this cock's own
-  // (same group) and stands on the base plate with nothing crossing that
-  // face, so the cock is clamped to its own legs and fastened to nothing.
-  // Reported in FRAME_JOINTS until TODO 184 runs the thread into the plate.
+  // was not drawn: `shank: COCK_T` ended at the bar's underside, so the cock
+  // was clamped to its own legs and fastened to nothing. Since step 2 the
+  // screw runs the whole stack it clamps — bar, bored leg and pad — and on
+  // through the base plate's full thickness, tapped through.
   const cockScrews = [-1, 1].map((s) => ({
     x: s * BAR_HSPAN, y: yBar, z: COCK_T / 2 + STOCK_MIN_U,
-    a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T,
+    a: Math.atan2(yBar, s * BAR_HSPAN), shank: COCK_T + legLen + BACK_PLATE_T, tapped: true,
   }));
   balanceCock.add(G.makeScrews({
     at: cockScrews, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
   }));
-  for (const c of cockScrews)
-    declareFrameJoint({ joint: 'Balance cock ⇄ base plate', clamped: 'balance cock crossbar', host: 'base plate',
+  balanceCock.updateWorldMatrix(true, false);
+  for (const c of cockScrews) {
+    declareFrameJoint({ joint: 'Balance cock ⇄ base plate', clamped: 'balance cock crossbar and leg', host: 'base plate',
       frame: balanceCock, x: c.x, y: c.y, top: c.z, headR: COCK_SCREW_HEAD_R, headT: STOCK_MIN_U,
-      shank: c.shank, clamp: COCK_T });
+      shank: c.shank, clamp: COCK_T + legLen });
+    const w = balanceCock.localToWorld(new THREE.Vector3(c.x, c.y, 0));
+    BACK_PLATE_LATE_HOLES.push({ x: w.x, y: w.y, r: COCK_PLATE_TAP_R });
+  }
 
   // ------------------------------------------------------------------
   // FIXED OUTER TERMINAL — free-sprung dress. Everything below is
@@ -10270,6 +10322,8 @@ const balanceCock = G.makeCock({
   // stud carrier holding the spring's terminal.
 }
 movement.add(balanceCock);
+await breathe();
+recutBackPlate();   // TODO 184 — the legs' tapped holes, pushed at the cock screws above
 registerExplode(balanceCock, COCK_MID_Z, 9);
 registerLabel('Balance cock', balanceCock);
 
