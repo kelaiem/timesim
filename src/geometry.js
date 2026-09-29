@@ -5940,7 +5940,42 @@ export const PLATE_BEVEL_F = 0.008;
 // figure read off one site and typed at another is the drift its boot guard
 // exists to catch.
 export const PLATE_BEVEL_T_F = 0.15;
-export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null }) {
+// pockets (TODO 172): BLIND openings {x, y, r, depth, lap, through} — a disc of
+// finished radius r sunk `depth` into the DIAL-side face (a sink for the motion
+// works, the way a pillar plate is sunk under the cannon pinion). An extrude
+// cannot cut a blind opening, so a pocket is a through-opening in the slab plus
+// its FLOOR put back beneath as its own closed solid, lapped `lap` radially into
+// the stock around it (§132's seat-land collar precedent) and named 'backPlate'
+// like the slab, because `support` resolves the plate by that exact name.
+// `through` (optional {x, y, r}) is a through-bore that OVERLAPS the pocket: the
+// two are cut as ONE opening — the union of the two discs, one simple ring,
+// because overlapping rings in one Shape are a broken cut (measured: two
+// separate rings here left the slab with 76 open edges, the sectors' lesson
+// again) — and the floor is the pocket's disc less that bore at its finished
+// radius, so the bore stays open all the way. depth ≥ the plate cuts through.
+function discUnionRing(A, B, n = 144) {   // CCW points of the union of two overlapping discs
+  const d = Math.hypot(B.x - A.x, B.y - A.y), phi = Math.atan2(B.y - A.y, B.x - A.x);
+  const t1 = Math.acos((d * d + A.r * A.r - B.r * B.r) / (2 * d * A.r));
+  const t2 = Math.acos((d * d + B.r * B.r - A.r * A.r) / (2 * d * B.r));
+  const pts = [];
+  const arc = (c, R, a0, a1) => { const k = Math.max(2, Math.ceil(Math.abs(a1 - a0) / (2 * Math.PI) * n));
+    for (let i = 0; i < k; i++) { const a = a0 + (a1 - a0) * i / k; pts.push(new THREE.Vector2(c.x + R * Math.cos(a), c.y + R * Math.sin(a))); } };
+  arc(A, A.r, phi + t1, phi + 2 * Math.PI - t1);
+  arc(B, B.r, phi + Math.PI + t2, phi + 3 * Math.PI - t2);
+  return pts;
+}
+function discLessDisc(A, B, n = 144) {   // CCW points of disc A less disc B (B crossing A's rim): a crescent
+  const d = Math.hypot(B.x - A.x, B.y - A.y), phi = Math.atan2(B.y - A.y, B.x - A.x);
+  const t1 = Math.acos((d * d + A.r * A.r - B.r * B.r) / (2 * d * A.r));
+  const t2 = Math.acos((d * d + B.r * B.r - A.r * A.r) / (2 * d * B.r));
+  const pts = [];
+  const arc = (c, R, a0, a1) => { const k = Math.max(2, Math.ceil(Math.abs(a1 - a0) / (2 * Math.PI) * n));
+    for (let i = 0; i < k; i++) { const a = a0 + (a1 - a0) * i / k; pts.push(new THREE.Vector2(c.x + R * Math.cos(a), c.y + R * Math.sin(a))); } };
+  arc(A, A.r, phi + t1, phi + 2 * Math.PI - t1);
+  arc(B, B.r, phi + Math.PI + t2, phi + Math.PI - t2);
+  return pts;
+}
+export function makeBackPlate({ radius, thickness, holes = [], slots = [], sectors = [], rim = null, pockets = [] }) {
   const bevelSize = radius * PLATE_BEVEL_F;
   const shape = new THREE.Shape();
   // §186 — the MOUNTING RIM. `rim: { r, notches: [{ az, halfW }] }` runs the
@@ -6012,6 +6047,48 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     p.closePath();
     shape.holes.push(p);
   }
+  for (const pk of pockets) {
+    const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize };
+    const B = pk.through ? { x: pk.through.x, y: pk.through.y, r: pk.through.r + bevelSize } : null;
+    const p = new THREE.Path();
+    if (B && Math.hypot(B.x - A.x, B.y - A.y) < A.r + B.r) p.setFromPoints(discUnionRing(A, B).reverse());   // CW: a hole
+    else { p.absarc(A.x, A.y, A.r, 0, Math.PI * 2, true);
+      if (B) { const q = new THREE.Path(); q.absarc(B.x, B.y, B.r, 0, Math.PI * 2, true); shape.holes.push(q); } }
+    shape.holes.push(p);
+  }
+  // §62 — the land between two openings is a MEMBER (the sectors' rule, held
+  // for every opening now): each against every other on the FINISHED edges —
+  // discs at their r, a slot or sector as its finished outline — and a land
+  // under STOCK_MIN_U warns with both numbers. A pocket and its through-bore are
+  // ONE opening and are not held against each other.
+  const lands = [];
+  {
+    const discs = [];
+    holes.forEach((h, i) => discs.push({ what: `hole ${i} (${h.x.toFixed(2)}, ${h.y.toFixed(2)}) r ${h.r.toFixed(3)}`, d: [h] }));
+    pockets.forEach((pk, i) => discs.push({ what: `pocket ${i} (${pk.x.toFixed(2)}, ${pk.y.toFixed(2)}) r ${pk.r.toFixed(3)}${pk.through ? ' + through r ' + pk.through.r.toFixed(3) : ''}`, d: [pk, ...(pk.through ? [pk.through] : [])] }));
+    const polys = [];
+    for (const sl of slots) { const q = new THREE.Path(); const dx = sl.bx - sl.ax, dy = sl.by - sl.ay, d = Math.hypot(dx, dy), ang = Math.atan2(d > 1e-9 ? dy : 0, d > 1e-9 ? dx : 1);
+      q.absarc(sl.bx, sl.by, sl.r, ang + Math.PI / 2, ang - Math.PI / 2, true); q.absarc(sl.ax, sl.ay, sl.r, ang - Math.PI / 2, ang - Math.PI * 1.5, true); polys.push({ what: 'slot', p: q.getPoints(72) }); }
+    for (const sc of sectors) { const pad = sc.pad, r1 = sc.r1 + pad, r0 = Math.max(1e-6, sc.r0 - pad), da = pad / r0; let a1u = sc.a1;
+      while (a1u - sc.a0 > Math.PI) a1u -= Math.PI * 2; while (sc.a0 - a1u > Math.PI) a1u += Math.PI * 2;
+      const q = new THREE.Path(); q.absarc(sc.cx, sc.cy, r1, Math.max(sc.a0, a1u) + da, Math.min(sc.a0, a1u) - da, true); q.absarc(sc.cx, sc.cy, r0, Math.min(sc.a0, a1u) - da, Math.max(sc.a0, a1u) + da, false); polys.push({ what: 'sector', p: q.getPoints(72) }); }
+    const segD = (x, y, a, b) => { const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy, t = L2 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0; return Math.hypot(x - a.x - t * dx, y - a.y - t * dy); };
+    for (let i = 0; i < discs.length; i++) {
+      for (let j = i + 1; j < discs.length; j++) {
+        let m = Infinity; for (const a of discs[i].d) for (const b of discs[j].d) m = Math.min(m, Math.hypot(a.x - b.x, a.y - b.y) - a.r - b.r);
+        lands.push({ a: discs[i].what, b: discs[j].what, land: m });
+      }
+      for (const pg of polys) { let m = Infinity; for (const a of discs[i].d) for (let k = 0; k < pg.p.length; k++) m = Math.min(m, segD(a.x, a.y, pg.p[k], pg.p[(k + 1) % pg.p.length]) - a.r); lands.push({ a: discs[i].what, b: pg.what, land: m }); }
+    }
+    for (const l of lands) if (l.land < STOCK_MIN_U - 1e-9)
+      console.warn(`§62: the base plate's ${l.a} and ${l.b} leave a ${l.land.toFixed(4)} land — need STOCK_MIN_U ${STOCK_MIN_U.toFixed(4)} (merge them into one opening, or move one)`);
+  }
+  // discLessDisc cuts a crescent only when the bore CROSSES the floor's rim.
+  for (const pk of pockets) if (pk.through) {
+    const R = pk.r + bevelSize + pk.lap, d = Math.hypot(pk.through.x - pk.x, pk.through.y - pk.y);
+    if (!(Math.abs(R - pk.through.r) < d && d < R + pk.through.r))
+      console.warn(`TODO 172: a pocket's through-bore (r ${pk.through.r.toFixed(3)} at ${d.toFixed(3)}) does not cross its floor's rim (r ${R.toFixed(3)}) — the floor's crescent is undefined`);
+  }
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: true,
@@ -6025,6 +6102,21 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
   // to upward-facing surfaces; the dial-side face and edge stay plain).
   const m = new THREE.Mesh(geo, MATS.perledNickel);
   m.userData.r = radius;
+  m.userData.lands = lands;   // every opening pair's finished land, for the probes
+  const faceZ = thickness / 2 + thickness * PLATE_BEVEL_T_F;   // the presented faces, local ±
+  for (const pk of pockets) {
+    const h = 2 * faceZ - pk.depth;
+    if (!(h > 0)) continue;   // cut through: no floor
+    const A = { x: pk.x, y: pk.y, r: pk.r + bevelSize + pk.lap };
+    const fs = new THREE.Shape();
+    if (pk.through) fs.setFromPoints(discLessDisc(A, pk.through));
+    else fs.absarc(A.x, A.y, A.r, 0, Math.PI * 2, false);
+    const fg = new THREE.ExtrudeGeometry(fs, { depth: h, bevelEnabled: false, curveSegments: 72 });
+    fg.translate(0, 0, faceZ - h);
+    const floor = new THREE.Mesh(fg, MATS.perledNickel);
+    floor.name = 'backPlate';   // support resolves the plate by this exact name
+    m.add(floor);
+  }
   return m;
 }
 
