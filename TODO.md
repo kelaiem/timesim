@@ -17,8 +17,9 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 187 | OPEN | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
 | 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
-| 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1529); raising them to `FOLD_SAT` carries the foot corner into the minute star (0.0727), because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
+| 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1531 since TODO 172 sank the cap: φ 15.16°, L 3.241), and the star headroom is down to 0.1945; raising them to `FOLD_SAT` carries the foot corner into the minute star, because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
 | 184 | OPEN | No frame screw crosses its joint: the four pillar screws end at the plate's underside, and the balance- and fork-cock screws at their own slab, over legs that stand on the base plate with nothing fastening them. The pillars butt `PLATE_TOP` with no tenon. Thread ⌀ is a proportion of unrelated dimensions (the pillar screw's is 0.081·`TQ_BOT_Z` = 0.25 mm, about 4× slim). Fix: thread from a declared series, `ENGAGE_MIN·d` into the host, pillar sized from its thread, a riveted tenon through the base plate, the seats re-solved in position space. A `FRAME_JOINTS` assert plus a `support` column gate it |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
@@ -31,7 +32,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 175 | CLOSED | Bevelled bores are drawn at `r + bevel/cos(π/n)`, so the band the shaft meets IS r (`boreBandGuard` warns otherwise). Every gear, pinion, heart and barrel bore is compensated. The fit census was redone: 3 "pressed" parts run; 6 bores smaller than their shaft and 3 too-loose running fits now derive from the shaft they ride |
 | 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
 | 173 | OPEN | The alarm release feeler lever rocks about the dial's Y axis (Euler order 'XYZ' on a lever turned `_phiF`), not its pivot pin, and in the wrong sense: at full drop the tip ⇄ reader-ring read opens from 0.02 to 0.1628. No gate poses a drop. Fix: rock about the pin (`rotation.order = 'ZYX'`), take the sign from the read contact, re-derive the beak edge and the silence finger, and add a dropped-pose read row |
-| 172 | OPEN | The alarm setting lane's designed 0.05 dial-sheet gap (`ALARM_SET_Z`) is under `CLEAR_MARGIN`; the crisp arbor pinion sits on it (debt row at 0.05). Fix: re-stratify the lane to `CLEAR_MARGIN`, carrying the §29 centre chain |
+| 172 | CLOSED | The lane stands `ALARM_SHEET_GAP` (one banded `CLEAR_MARGIN`) off the dial; the §29 chain behind it is funded by two blind pockets sunk `MW_PLATE_SINK` into the base plate under the cannon pinion and the setting cap (the cap's merged with the rise bore), so `MW_WHEEL_T` keeps 0.468235 and the cap's coverage holds at 0.16. Debt row deleted |
 | 171 | CLOSED | `EXPECTED_PAIRS` now declares `Alarm link ⇄ Three-quarter plate`, citing the floors row's two contacts (beak post on the plate top, rod bush in its bore), so the tables agree on record. The pair seats at 0.007 and holds 0.3738 elsewhere; only `sweptOverlap`'s report-only `tight` row moves |
 | 170 | OPEN | Three of four closed: sleeve⇄rocker (sleeve post 3 345°→350°), disc⇄feeler (the jog's foot lifted one margin off the track), sleeve⇄selector (the fork bracket starts one margin off the sleeve flat). Left: feeler⇄sleeve 0.092, where the trip rock spends §45's envelope margin at the skirt's throat; no position-space room; blocked on [TODO 173] |
 | 169 | CLOSED | The winding dogleg's scan judged only its stud columns against the low corridor; it now also refuses any station whose idlers (disc, hub, stud) come within `CLEAR_MARGIN` of already-built metal, taking the accepted station nearest the corridor's pick (i1 −42°). Idler 2 ⇄ centre wheel 0.0252 → 0.453; the click re-sites 150° → 164° |
@@ -23790,7 +23791,7 @@ seat) leaves the report, because that check skips declared pairs. The
 tier is a report, and the floors row is the stronger hold on the same
 pair. No gate verdict moves.
 
-## 172. The alarm setting lane's 0.05 dial-sheet gap is under CLEAR_MARGIN
+## 172. The alarm setting lane's 0.05 dial-sheet gap is under CLEAR_MARGIN — CLOSED
 
 Found closing [TODO 167]. The alarm setting lane — the setting wheel, both
 idlers and (since 167) the crisp arbor pinion — is sited by
@@ -23811,6 +23812,59 @@ chain (heart-B, flange, hearts, sleeve band), so `alarmHandoffs` and
 `transfers` rows move with it and must be re-proven. Then delete the debt row
 (it fails as stale once the pair clears) and decide whether the wheel's and
 idlers' EXPECTED rows still describe a retention the new gap keeps.
+
+**Closed.** The lane stands `ALARM_SHEET_GAP = CLEAR_MARGIN +
+MEASURED_MARGIN_BAND` off the dial at every site the 0.05 lived:
+`ALARM_SET_Z`, `ALARM_TUBE_BACK`, `ALARM_WHEEL_BOT_B`, the wheel's plane, the
+link shaft's floor term and the shaft-stratum assert. The band is needed:
+an exact 0.15 stayed listed by `undeclaredClearance`'s strict `<`, and the
+index wedge, whose length was also an exact tie, now carries it too.
+
+The move re-derived three things that had been absolute:
+- The §34 selector ring's `ALARM_SEL_Z_UP` now rides the chain. The rocker
+  and finger it engages ride `ALARM_TUBE_BACK`. Left absolute, boot fired
+  seven warnings (§112, §234, §137, §35).
+- Two hoisted link lengths were re-measured: `ALARM_LINK_ROD_LEN_U` 19.1037
+  and `ALARM_LINK_BODY_LEN_U` 30.9964.
+
+**Where the 0.10 came from.** The §29 centre chain is solved down to the
+base plate, so moving the lane 0.10 dial-away pushes the chain 0.10
+plate-ward. The first plan paid for that by thinning both motion-works
+wheels (`MW_WHEEL_T` 0.4682 → 0.4182, only 0.052 over the bevel-module
+bound). The plate pays instead: two blind pockets, each `MW_PLATE_SINK` =
+`ALARM_SHEET_GAP − 0.05` deep, the way a pillar plate is sunk under the
+motion works. Only the members that stand a margin off the plate's face need
+them:
+- **The cannon pinion.** A disc of the pinion's `gearOuterR` + margin (r
+  1.9915). The T solve lands on its floor, and `MW_WHEEL_T` holds at
+  0.468235.
+- **The setting cap.** It must sink with the wheel it meshes, or its leaves
+  cover the wheel's bevelled plate face by 0.06 instead of 0.16, under
+  `MW_COVER`. `Z_SETTING_CAP` is now derived from the pocket floor and
+  asserted at the stack: coverage 0.1600 against a need of 0.16. Cut
+  separately, the cap's pocket and the rise corner's bore leave a 0.2148 land
+  (under `STOCK_MIN_U`) and overlapping rings. Measured, that left the plate
+  with 76 open edges while every gate stayed green (see [TODO 187]). So they
+  are ONE opening: the union of the two discs, with a crescent floor under
+  the cap part and the rise bore still through.
+
+`makeBackPlate` gained `pockets` (an opening in the slab plus a closed floor
+solid lapped `SEAT_LAND_LAP` into the stock and named `backPlate`, since
+`support` resolves the plate by that name). It also gained a §62 land guard
+over every pair of openings; the lowest land on the plate is 1.2472, between
+two pre-existing holes.
+
+Consequences:
+- The cap leg re-solved: φ 15.16°, L 3.241, certified 0.1518 / 0.1531.
+  JMP_SITE is unchanged at 233.5°.
+- `mwCornerRiseOut ⇄ star` fell from 0.2545 to 0.1945, still over the
+  margin. That is [TODO 185]'s headroom.
+- `probe-150`'s STACK row now raycasts the plate face under each member's own
+  footprint, and its lands report reads the builder's table.
+
+The debt row is deleted. The wheel's and idlers' `EXPECTED` rows stay: the
+sheet is still the wheel's axial stop, now with one margin of endshake, and
+the rows are also the Dial-nesting artifact.
 
 ## 173. The alarm release feeler rocks about the dial's Y axis, not its pivot pin, and away from the collar it reads
 
@@ -24599,7 +24653,10 @@ works' minute star.
 
 **Fix path (P3, position space).** Give `solveCapLeg` the obstacles its
 corners can reach: the minute star and wheel at their swept envelopes, the
-same judgement `probe-150`'s FOLD CLEAR row makes. Then take the least φ
+same judgement `probe-150`'s FOLD CLEAR row makes. (Since [TODO 172] sank
+the cap 0.10, the leg sits at φ 15.16°, L 3.241, certified 0.1518 / 0.1531,
+and `mwCornerRiseOut ⇄ star` starts at 0.1945 rather than 0.2545: about 0.04
+of star room before the margin.) Then take the least φ
 (and L) certifying `FOLD_SAT` against the fold's own pairs, subject to
 `CLEAR_MARGIN` against those obstacles. If the star binds before the fold
 saturates, the argmax is interior. Scan the φ range and take the best,
@@ -24641,3 +24698,35 @@ come to about an hour of core time, +20–60 min on CI.
 
 Stop condition for both: a point that reports FORBIDDEN or a clearance
 violation does not join the set. It is a finding to file.
+
+## 187. The base plate is invisible to the battery: no gate reads its openings, lands, closure or digest
+
+Found closing [TODO 172]. `backPlate` is not a labelled unit, so
+`collectUnits` never returns it. As a result, none of these reads the plate
+the build cuts:
+- `outlines` (self-crossing rings);
+- `meshIntegrity` (open or non-manifold edges);
+- `assembly` (one connected body);
+- the pair sweeps;
+- the §152 unit digests and the fingerprint.
+
+Only `support` (which resolves `plate` by the exact mesh name), the builder's
+own §62 land guard, and `probe-150`/`probe-151` see it.
+
+This is not hypothetical. TODO 172's first draft of the setting cap's pocket
+cut it as a second ring overlapping the rise corner's bore. The main plate
+extrude came out OPEN, with 76 open edges and 2 ring-to-ring crossings. It
+passed `support`, `transfers`, `meshPhase`, `turning` and `stockFloor`. The only
+visible symptom was one unrelated row jumping from 0 to "far". A plate-only
+change also moves no digest, so an incremental PR run would skip every sweep
+on it.
+
+**Fix path.** Hold the plate the way a unit is held. Either:
+- register a label for it (checking every table that would then see new
+  pairs), or
+- add explicit plate rows to `outlines` and `meshIntegrity`, and a plate term
+  to the digest.
+
+Then prove the gate fires by re-cutting TODO 172's two-ring draft (the
+`split` control: 76 open edges, 2 crossings) and watching it go red.
+
