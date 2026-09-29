@@ -243,7 +243,7 @@ const out = await page.evaluate(async () => {
     bars: {
       ring: STOCK_MIN_U + ALARM_PIN_DROP + CLEAR_MARGIN,
       ringAndTip: STOCK_MIN_U + ALARM_PIN_DROP + CLEAR_MARGIN + STOCK_MIN_U,
-      pinShank: 0.04,      // ALARM_PIN_SHANK — arm underside to track top, by construction
+      pinShank: 0.061,     // ALARM_PIN_SHANK (TODO 173) — arm underside to track top, by construction
       trackH: 0.17,         // ALARM_TRACK_H — the raised track's height off the disc body
     },
     control: { farDiscPresent: isFinite(farBand.discMinZ), farR: CONTROL_FAR },

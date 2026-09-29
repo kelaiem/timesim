@@ -176,6 +176,17 @@ const MUTANTS = [
     find: 'const MW_FOLD_NET_SENSE = 1;',
     to:   'const MW_FOLD_NET_SENSE = -1;',
     note: 'HAND_RAD_PER_SET_RAD, the build walk plus the tick\'s cap→arbor thread, and the dropZ assert all read this one constant — flipping it alone (leaving MW_FOLD_SPIN\'s own built sense at +1, the cap standing ABOVE its last apex since TODO 151) should disagree with the fold\'s own measured mount, which is exactly what the dropZ assert exists to catch' },
+  // TODO 173 — the alarm release feeler's rock. No metal moves at the boot pose
+  // (the lever stands at rock 0), so these are caught by the build guard that
+  // reads the tip's follow through feelerRockAt and the lever's own order.
+  { kind: 'subject', name: 'the alarm release feeler\'s rock sense', file: 'src/main.js',
+    find: 'function feelerRockAt(drop) { return drop / ALARM_FEELER_ARM_LEN; }',
+    to:   'function feelerRockAt(drop) { return -drop / ALARM_FEELER_ARM_LEN; }',
+    note: 'the dropped tip lifts OFF the collar it reads, and the tail drops away from its banking stop — TODO 173\'s own defect' },
+  { kind: 'subject', name: 'the feeler\'s rock axis (about its own pin)', file: 'src/main.js',
+    find: "alarmFeelerLever.rotation.order = 'ZYX';",
+    to:   "alarmFeelerLever.rotation.order = 'XYZ';",
+    note: 'the rock turns about the dial\'s Y axis: cos φ of the angle plus a sideways slip — the other half of TODO 173' },
 ];
 
 const ROOT = process.env.ROOT || '..';

@@ -14247,7 +14247,7 @@ const ALARM_SLEEVE_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // 
 // pin riding the disc's raised notch track, the disc body, then one margin to
 // the minute wheel.
 const ALARM_FEELER_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.10 — the feeler's slices were the band's thinnest levers)
-const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - CLEAR_MARGIN; // −2.69 (§45; was −1.77)
+const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + MEASURED_MARGIN_BAND); // −2.69 (§45; was −1.77). TODO 173: + the band — the static plane lands exactly one margin off the sleeve's skirt, which a strict < reads either side of (TODO 172's precedent)
 // §45 tripwire — the fund and the spend must agree: Z_DIAL deepened from the
 // §51-era −7.5 by exactly what the chain grew (the sleeve band replaced a
 // bare margin gap, so growth = envelope + one margin). Under-funded, the
@@ -14259,7 +14259,16 @@ const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - CLEAR_MARGIN; // 
   if (fund < spend - 1e-9 || fund > spend + 0.01)
     console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
 }
-const ALARM_PIN_SHANK = 0.04;    // pin shank exposed between arm underside and track top
+// TODO 173 — no pin hangs here since TODO 117; what this stand-off buys now is
+// the dropped arm one CLEAR_MARGIN over the disc body. With the rock about the
+// pin (and TRACK-ward at the tip), the arm's underside at its inboard end —
+// FEELER_ARM_RUN from the pivot, where the jog takes over (its foot stands
+// clear of the track by its own term) — dips D·ARM_RUN/ARM_LEN, so the shank
+// must cover CLEAR_MARGIN − ALARM_TRACK_H + that dip. The terms
+// live at the feeler build, 3,700 lines down, so the number is hoisted here and
+// asserted there against its derivation (achieved vs required; it was 0.04 and
+// left the dropped arm 0.1292 over the body).
+const ALARM_PIN_SHANK = 0.061;
 // The track is TALL (0.17) and the pin's DROP is BANKED at 0.06 by a stop
 // on the feeler's bracket, NOT by bottoming in the notch: the arm crosses
 // the spinning rim, and its dropped-state clearance over the teeth is
@@ -14273,7 +14282,7 @@ const ALARM_PIN_R = 0.14;    // pin radius — its diameter equals the arm's wid
                              // build keeps the arm above the ridge until the pin is truly in the
                              // gap). Hoisted here from the feeler build: the sleeve web's relief
                              // sector consumes it (the relief spans the ARM, whose width is 2·this).
-const ALARM_PIN_DROP = 0.10; // stop-banked travel — the rim-crossing margin bounds it at 0.108
+const ALARM_PIN_DROP = 0.10; // stop-banked travel — TODO 173: the dropped-arm margin is priced at the jog's inboard face now (ALARM_PIN_SHANK), not only at the rim root
                              // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
                              // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
                              // clearing the 0.06 engagement by the one margin (measured + asserted)
@@ -16708,7 +16717,14 @@ const _pivotDial = { x: _uF.x * ALARM_FEELER_PIVOT_R, y: _uF.y * ALARM_FEELER_PI
 // the only members to check — true, but only because the run rides above the
 // gear lane and below i1b's. Stated as a band, the lane gate derives that
 // member selection instead of a reader having to know it.
-const ALARM_TAIL_RUN_Z = -6.29;   // world, run mid (empty at its radii — the flange stops at 4.05, the heart at 3.75)
+// TODO 173 — WORLD, and now it is one: the conversion below read `-7 − this`
+// against a dial plane that has been Z_DIAL (−8.4) since §51, so the run sat
+// 1.4 off the plane this constant and the lane gate named. The corrected rock
+// swings the dropped run dial-ward over the alarm setting idler (0.013 at the
+// drop at the run's old true plane), so the run's plane is the idler's: one
+// CLEAR_MARGIN over its dial-side band at the full-drop dip, measured 0.1598
+// at −7.54 (probe: the dropped pose, train f 0.5894).
+const ALARM_TAIL_RUN_Z = -7.54;   // world, run mid
 const ALARM_TAIL_RUN_T = 0.10;    // the run's z stock
 const ALARM_TAIL_RUN_HALFW = 0.13; // half of the run's 0.26 width — §29's own corridor radius
 
@@ -17932,12 +17948,25 @@ const _feelerBearW = new THREE.Vector3();   // §48/TODO 13 scratch
   const stop = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.12), MATS.nickel);
   stop.position.set(_uF.x * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL),
                     _uF.y * (ALARM_FEELER_PIVOT_R + ALARM_FEELER_TAIL),
-                    ALARM_FEELER_TOP + 0.06 + stopGap + 0.06); // face sits stopGap above the tail's rest top
+                    ALARM_FEELER_TOP + stopGap + 0.06); // face sits stopGap above the tail's rest top (TODO 173: the box's half-height was counted twice — the stop never banked)
   stop.rotation.z = _phiF;
+  stop.name = 'alarmFeelerStop';   // TODO 173: a hand-off row selects it
   alarmFeelerUnit.add(stop);
 }
+// TODO 173 — THE ROCK, one law (the tick and the build guard both call it).
+// The lever turns about its PIN (lever-local y: yaw first, then the rock — the
+// 'ZYX' order below), and its sign is read off the contact the drop exists to
+// make: about +y by θ, z' = z·cosθ − x·sinθ, so the tip at x = +ARM_LEN goes
+// TRACK-ward (−z) — with the collar — for θ = +drop/ARM_LEN. The tail (x < 0)
+// then rises dial-ward into the banking stop and toward the silence finger,
+// which is what both of them were built to meet. The old law (rotation.y =
+// −drop/ARM_LEN under 'XYZ') rocked about the dial's Y axis, cos φ = 0.905 of
+// the intended angle, in the wrong sense: the dropped tip opened 0.1628 off
+// the ring it reads.
+function feelerRockAt(drop) { return drop / ALARM_FEELER_ARM_LEN; }
 const alarmFeelerLever = new THREE.Group();
 alarmFeelerLever.position.set(_uF.x * ALARM_FEELER_PIVOT_R, _uF.y * ALARM_FEELER_PIVOT_R, _armMidZ);
+alarmFeelerLever.rotation.order = 'ZYX';   // TODO 173: rock about the lever's own pin
 alarmFeelerLever.rotation.z = _phiF; // local +x = inboard, toward the pin
 alarmFeelerUnit.add(alarmFeelerLever);
 registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 level 2
@@ -17961,7 +17990,18 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   //   arm  — pivot out to the jog, in the sleeve's own plane, unchanged
   //   jog  — the step, clear of the ring's outer edge by one margin
   //   tip  — under the ring, its track-side face ON the ring's dial-side face
-  const FEELER_JOG_R = ALARM_TRACK_RMID + READER_RING_T / 2 + CLEAR_MARGIN + ALARM_FEELER_T / 2;
+  // TODO 173 — …at the DROP too. The rock tilts the jog about the pin, so its
+  // inboard face leans toward the ring by θ·z at the height z of the ring's
+  // dial face in the dropped lever's frame: at the static radius it read 0.1384
+  // off the ring there. The jog stands out by exactly that lean. It is boxed
+  // on the other side by the Alarm disc's follower pin (a whole tip-thickness
+  // term read 0.1385 off it); this term leaves both at the margin (0.1518 /
+  // 0.1522).
+  const _jogR0 = ALARM_TRACK_RMID + READER_RING_T / 2 + CLEAR_MARGIN + ALARM_FEELER_T / 2;
+  const _jogTheta = feelerRockAt(ALARM_PIN_DROP);
+  const _ringFaceDropped = (READER_RING_Z + READER_RING_T / 2 - _armMidZ) - ALARM_PIN_DROP
+    + _jogTheta * (ALARM_FEELER_PIVOT_R - _jogR0);
+  const FEELER_JOG_R = _jogR0 + _jogTheta * _ringFaceDropped;
   const FEELER_ARM_RUN = ALARM_FEELER_PIVOT_R - FEELER_JOG_R;   // pivot → the jog's centre
   const FEELER_TIP_END = ALARM_FEELER_PIVOT_R - (ALARM_TRACK_RMID - READER_RING_T / 2); // the ring's inner edge
   // The tip's contact face is the ring's dial-side face, SEATED — the same
@@ -18002,14 +18042,36 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
   // Spans [FEELER_JOG_FOOT, TIP_Z + T/2].
   jog.position.set(FEELER_ARM_RUN, 0, (FEELER_JOG_FOOT + FEELER_TIP_Z + ALARM_FEELER_T / 2) / 2);
   alarmFeelerLever.add(jog);
-  // The tip: spans the ring's full radial width, so the contact's centroid is
-  // ALARM_TRACK_RMID and ALARM_FEELER_ARM_LEN is genuinely inherited — the
-  // line's displacement gain of exactly 1.
-  const tipLen = FEELER_TIP_END - FEELER_ARM_RUN;
+  // The tip ends AT THE READ RADIUS. A flat tip rocking onto a flat that
+  // translates touches along its LEADING edge, so that edge is the read point:
+  // ending it at ALARM_TRACK_RMID keeps ALARM_FEELER_ARM_LEN the line's read
+  // radius (displacement gain exactly 1) and lands the dropped seat on
+  // FEELER_TIP_SEAT. TODO 173: spanning the ring's full width to its inner edge
+  // (FEELER_TIP_END) over-buried that edge by x_end·θ − D = 0.0067.
+  const tipLen = ALARM_FEELER_ARM_LEN - FEELER_ARM_RUN;
   const tip = new THREE.Mesh(new THREE.BoxGeometry(tipLen, 2 * ALARM_PIN_R, ALARM_FEELER_T), MATS.ruby);
   tip.name = 'alarmFeelerTip'; // penetration-budget selector (was alarmFeelerPin)
   tip.position.set(FEELER_ARM_RUN + tipLen / 2, 0, FEELER_TIP_Z);
   alarmFeelerLever.add(tip);
+  // TODO 173 — the tip must FOLLOW the collar, gain 1, at the banked drop: read
+  // the read point through the lever's own rotation order and the rock law.
+  // A wrong order reads cos φ (0.0907); a wrong sign reads −0.0997.
+  {
+    const probe = new THREE.Object3D();
+    probe.rotation.order = alarmFeelerLever.rotation.order;
+    probe.rotation.z = alarmFeelerLever.rotation.z;
+    const faceZ = (rock) => { probe.rotation.y = rock; probe.updateMatrix(); return new THREE.Vector3(ALARM_FEELER_ARM_LEN, 0, FEELER_TIP_FACE).applyMatrix4(probe.matrix).z; };
+    const follow = faceZ(0) - faceZ(feelerRockAt(ALARM_PIN_DROP));
+    if (Math.abs(follow - ALARM_PIN_DROP) > 0.01 * ALARM_PIN_DROP)
+      console.warn(`TODO 173 feeler: the tip follows ${follow.toFixed(4)} TRACK-ward at the banked drop, the collar ${ALARM_PIN_DROP} — the rock must carry the read point with the ring (gain 1)`);
+  }
+  // …and the dropped arm stands one margin over the disc body: the stand-off
+  // hoisted as ALARM_PIN_SHANK against the dip at the jog's inboard face.
+  {
+    const need = CLEAR_MARGIN - ALARM_TRACK_H + ALARM_PIN_DROP * FEELER_ARM_RUN / ALARM_FEELER_ARM_LEN;
+    if (ALARM_PIN_SHANK < need - 1e-9)
+      console.warn(`TODO 173 feeler: ALARM_PIN_SHANK ${ALARM_PIN_SHANK} leaves the dropped arm under the margin over the disc body — need ${need.toFixed(5)}`);
+  }
   // Build asserts — the derivation, achieved and required (rule 6).
   if (Math.abs((ALARM_FEELER_PIVOT_R - (FEELER_ARM_RUN + tipLen / 2)) - ALARM_TRACK_RMID) > READER_RING_T / 2 + CLEAR_MARGIN)
     console.warn(`§117 feeler: the tip's mid radius ${(ALARM_FEELER_PIVOT_R - (FEELER_ARM_RUN + tipLen / 2)).toFixed(4)} has left the ring at ${ALARM_TRACK_RMID}`);
@@ -18348,9 +18410,11 @@ const _toClimbL = {  // lever-local (undo the lever's z-rotation)
 };
 const _contrateR = (ALARM_BEVEL_MODULE * ALARM_BEVEL_TEETH) / 2;
 // The beak engages the tooth band's PLATE-side (top) edge: the lever's
-// rock moves the tail plate-ward on the trip (measured — the pivot side
-// signs land that way through the mirror), so engaging the top edge makes
-// plate-ward motion the WITHDRAWAL, into the open span under the plate.
+// rock was taken to move the tail plate-ward on the trip. TODO 173 found that
+// rock was about the wrong axis and in the wrong sense; corrected, the tail
+// RISES dial-ward, so the withdrawal edge is the band's dial-side one — and the
+// beak does not reach the contrate at all (0.54 off at rest): the hold is in
+// the pose law only. That is TODO 189's to re-site, not this comment's.
 const _pawlBandTop = Z_ALARM_CORNER + ALARM_BEVEL_FACE / 2;
 const ALARM_PAWL_DIST = Math.hypot(_toClimbL.x, _toClimbL.y) - _contrateR - 0.35; // pivot → riser (beak stand-off outside the teeth)
 const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes position.z with the tooth profile
@@ -18362,7 +18426,7 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // 0.21 static, and the DROPPED lever's rise ate it — the sweep caught the
   // graze at exactly the notch-alignment poses. The jogged run clears i1b
   // by 0.46 even dropped, and still rides 0.43 above the gear lane.
-  const _tailRunZ = (-7 - ALARM_TAIL_RUN_Z) - _armMidZ; // world ALARM_TAIL_RUN_Z (run mid) → lever-local
+  const _tailRunZ = (Z_DIAL - ALARM_TAIL_RUN_Z) - _armMidZ; // world ALARM_TAIL_RUN_Z (run mid) → lever-local (TODO 173: the dial plane, not a stale −7)
   // Where the jog stands the run off the lever — the run's ROOT. This is an
   // INHERITED LITERAL, not a derived one: 0.35 was in place at the jog before
   // this landing and nothing here establishes why. Naming it buys one thing
@@ -43930,7 +43994,7 @@ function tick(t) {
   // nothing to cross the orbit: the tip reads the ring at the pin's own radius,
   // so ALARM_FEELER_ARM_LEN is inherited and the beak's withdrawal is unchanged
   // (probe-117-line.mjs asserts that as an equality between the two chains).
-  alarmFeelerLever.rotation.y = -feelerDrop / ALARM_FEELER_ARM_LEN; // small-angle rock about the pivot
+  alarmFeelerLever.rotation.y = feelerRockAt(feelerDrop); // TODO 173: about the pin, tip TRACK-ward — the sign derived at feelerRockAt
   // §48/TODO 13 — the blade follows the arm it presses, root fixed at the stud.
   if (alarmFeelerSpringBlade && alarmFeelerBearPoint) {
     alarmFeelerUnit.updateWorldMatrix(true, false);
