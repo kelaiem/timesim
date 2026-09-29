@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 (dedupe static points) is optional and not shipped |
+| 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
 | 187 | OPEN | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
 | 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
 | 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1531 since TODO 172 sank the cap: φ 15.16°, L 3.241), and the star headroom is down to 0.1945; raising them to `FOLD_SAT` carries the foot corner into the minute star, because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
@@ -24872,9 +24872,16 @@ could not see. This is the probe header's unsplittable floor, 170–300 ms
 under the ceiling, so its per-mesh variant stays unfiled. The setting-fold
 hold no longer appears in the top six. The fingerprint and
 `__clock.settingFold` are byte-identical to the base, boot is silent, and
-`probe-234-cap-bearing` and `probe-129-bootcost` PASS. **Step 2 was not
-shipped.** It was optional boot wall time, not gate debt, and it stays
-described below if the wall is wanted.
+`probe-234-cap-bearing` and `probe-129-bootcost` PASS.
+
+**Step 2 followed in its own PR.** `reserveObstaclePoints` reads the meshes
+outside the rotating corner groups once, and loops only the gear meshes over
+K. The confirmation call's points went from 1,926,549 to 468,983, and
+CAP_SOLVE's K-phase candidate went from 601,118 to 468,634. Measured over two
+boots, point collection went from 324–458 ms to 125–213 ms, and the solves
+from 1,795–1,988 ms to 961–1,023 ms. Every consumer takes a minimum over the
+list, so only duplicates were dropped. `fingerprintFull` and
+`__clock.settingFold` are byte-identical to the base.
 
 Filed from [TODO 184]'s step 3 note. `node tools/probe-239-boot-yield.mjs`
 gates the build's worst unyielded stretch at `MAX_HELD_MS` = 700 ms. On this

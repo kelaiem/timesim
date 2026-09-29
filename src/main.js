@@ -5511,6 +5511,18 @@ function meshPoints(root, pts = []) {
 // mesh (this form) is back within it. The mesh list and the gears' base
 // rotations are each read once — only the per-phase rotation write and the
 // per-mesh point collection repeat.
+// TODO 188 step 2 — ONLY THE GEARS ARE SAMPLED PER PHASE. A mesh outside every
+// rotating group has one world matrix whatever the phase, so reading it K
+// times pushed K copies of the same points: for the confirmation call, 33,149
+// of the keyless unit's 41,909 vertices (and their midpoints), 23 times over —
+// ~1.52M of 1.93M points. Every consumer of this list takes a MINIMUM over it
+// (`clearAt`'s three band loops, CAP_SOLVE's `arbClear`), and a minimum over a
+// multiset is the minimum over its distinct members, so dropping duplicates
+// moves no answer: the accepted swing and the shipped swing are still judged
+// on the same point SET. The static meshes are read once, at the as-built
+// phase; per phase, only each gear group's own subtree is re-worlded — the
+// same arithmetic `root.updateMatrixWorld(true)` did for it, from a parent
+// matrix that the one root pass above already made current.
 async function reserveObstaclePoints(root, pts = []) {
   const gears = [];
   const meshes = [];
@@ -5519,14 +5531,19 @@ async function reserveObstaclePoints(root, pts = []) {
     if (o.isMesh && o.geometry?.attributes?.position) meshes.push(o);
   });
   if (!gears.length) { meshPoints(root, pts); return pts; }
+  const gearSet = new Set(gears.map(([g]) => g));
+  const turns = (m) => { for (let o = m.parent; o && o !== root; o = o.parent) if (gearSet.has(o)) return true; return false; };
+  const moving = meshes.filter(turns), still = meshes.filter((m) => !turns(m));
   let tipR = 0;
   for (const [g] of gears) g.traverse((o) => { if (!o.isMesh) return; const p = o.geometry.attributes.position;
     for (let i = 0; i < p.count; i++) tipR = Math.max(tipR, Math.hypot(p.getX(i), p.getY(i))); });
   const K = Math.max(1, Math.ceil((2 * Math.PI * tipR / BEVEL_TEETH) / (CLEAR_MARGIN / 2)));
+  root.updateMatrixWorld(true);
+  for (const m of still) { meshPointsOne(m, pts); await breathe(); }
   for (let k = 0; k < K; k++) {
     for (const [g, z0] of gears) g.rotation.z = z0 + (k / K) * (2 * Math.PI / BEVEL_TEETH);
-    root.updateMatrixWorld(true);
-    for (const m of meshes) { meshPointsOne(m, pts); await breathe(); }
+    for (const [g] of gears) g.updateMatrixWorld(true);
+    for (const m of moving) { meshPointsOne(m, pts); await breathe(); }
   }
   for (const [g, z0] of gears) g.rotation.z = z0;
   return pts;
