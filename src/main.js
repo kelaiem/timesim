@@ -217,7 +217,7 @@ const yieldToEventLoop = typeof scheduler !== 'undefined' && typeof scheduler.yi
 // nothing. It reads how long the thread has been held when a seam is reached —
 // not how long a long task lasted, which also counts the browser's own work —
 // so it is the build's own claim, separate from what the viewer feels.
-let breatheCount = 0, breatheWorstHeld = 0;
+let breatheCount = 0, breatheWorstHeld = 0, buildDone = false;
 function breathe() {
   const held = performance.now() - breatheMark;
   if (held > breatheWorstHeld) breatheWorstHeld = held;
@@ -250,6 +250,11 @@ const guardDuringBuild = (e) => {
 for (const ev of BUILD_GUARDED_EVENTS) window.addEventListener(ev, guardDuringBuild, true);
 document.addEventListener('visibilitychange', guardDuringBuild, true);
 function releaseBuildInputGuard() {
+  // The stretch from the last seam to here is held like any other, and no
+  // seam follows it to take the reading — so this is that seam (TODO 188).
+  const held = performance.now() - breatheMark;
+  if (held > breatheWorstHeld) breatheWorstHeld = held;
+  buildDone = true;
   for (const ev of BUILD_GUARDED_EVENTS) window.removeEventListener(ev, guardDuringBuild, true);
   document.removeEventListener('visibilitychange', guardDuringBuild, true);
   if (buildSwallowedResize) window.dispatchEvent(new Event('resize'));
@@ -5596,6 +5601,9 @@ async function solveReserveSwing(pts) {
     if (q[2] >= hubLo && q[2] <= hubHi) inHub.push(q);
     if (q[2] >= p1LoMax && q[2] <= p1HiMax) inP1.push(q);
   }
+  // TODO 188 — the sift above reads every obstacle point once (~1.9M for the
+  // confirmation call, 100–150 ms), so the thread goes back before the scan.
+  await breathe();
   const clearAt = (dl) => {
     const cs = Math.cos(dl), sn = Math.sin(dl);
     const ux = rsvU.x * cs - rsvU.y * sn, uy = rsvU.x * sn + rsvU.y * cs;
@@ -5624,10 +5632,14 @@ async function solveReserveSwing(pts) {
     if (r.c > best.c) best = { c: r.c, member: r.member, swing: dl };
     return r.c >= CLEAR_MARGIN ? { swing: dl, clear: r.c } : null;
   };
-  // the least swing that clears (0 first, then ±1 step, ±2, …)…
+  // the least swing that clears (0 first, then ±1 step, ±2, …)… Each `at` is
+  // one clearAt over every banded point (~40 ms for the confirmation call),
+  // and the scan runs 14 of them before the first window opens — 550 ms held
+  // in one stretch, TODO 188's worst boot hold. A seam per candidate, as the
+  // window walk below already has.
   let first = at(0);
   for (let d = RSV_SWING_STEP_DEG; !first && d <= RSV_SWING_MAX_DEG + 1e-9; d += RSV_SWING_STEP_DEG)
-    for (const sgn of [1, -1]) { first = at(sgn * d * DEG2RAD); if (first) break; }
+    for (const sgn of [1, -1]) { await breathe(); first = at(sgn * d * DEG2RAD); if (first) break; }
   if (!first) return { swing: null, bestC: best.c, bestSwing: best.swing, bestMember: best.member };
   // …then TODO 157's objective over the open WINDOW that swing opens: the
   // most clearance, counted to FOLD_SAT, the least |swing| breaking a tie
@@ -45466,7 +45478,12 @@ window.__clock = {
   // §239 — what the build's yielding actually achieved, read back rather than
   // assumed: how many times the thread was handed back, and the longest stretch
   // it was HELD between two seams. tools/probe-239-boot-yield.mjs gates both.
-  boot: Object.freeze({ breaths: breatheCount, worstHeldMs: breatheWorstHeld, budgetMs: BREATHE_MS }),
+  // TODO 188 — LIVE, not a snapshot: this literal is evaluated ~700 lines
+  // before the build ends, and a frozen copy taken here was blind to every
+  // seam after it and to the tail. `done` turns true in
+  // releaseBuildInputGuard(), which also charges the last stretch; a reader
+  // waits for it before trusting the numbers.
+  get boot() { return Object.freeze({ breaths: breatheCount, worstHeldMs: breatheWorstHeld, budgetMs: BREATHE_MS, done: buildDone }); },
   // §234 fold — the setting traverse's fold and the cap-bearing scan that
   // sited it, read-only, for tools/probe-234-cap-bearing.mjs (a derivation
   // that is silent at boot when it succeeds, read back here).

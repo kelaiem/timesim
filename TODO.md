@@ -17,7 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
-| 188 | OPEN | The reserve swing solve's first-feasible scan (`main.js:5609–5611`) runs 14 × ~40 ms `clearAt` calls over 1.93M obstacle points (static keyless metal repeated for all 23 corner phases) with no seam: boot's worst hold is 656–736 ms against `probe-239-boot-yield`'s 700 ms ceiling. Fix: a seam per candidate and after the sift (scratch-measured: 334 ms), then collect static meshes once; and publish `__clock.boot` live, because it is frozen before weldTree's seams |
+| 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 (dedupe static points) is optional and not shipped |
 | 187 | OPEN | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
 | 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
 | 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1531 since TODO 172 sank the cap: φ 15.16°, L 3.241), and the star headroom is down to 0.1945; raising them to `FOLD_SAT` carries the foot corner into the minute star, because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
@@ -24857,7 +24857,24 @@ on it.
 Then prove the gate fires by re-cutting TODO 172's two-ring draft (the
 `split` control: 76 open edges, 2 crossings) and watching it go red.
 
-## 188. The reserve swing solve's first-feasible scan holds the boot thread ~550-600 ms with no seam, and __clock.boot is frozen before the last seams
+## 188. The reserve swing solve's first-feasible scan holds the boot thread ~550-600 ms with no seam, and __clock.boot is frozen before the last seams — CLOSED
+
+**Closed by steps 1 and 3.** `solveReserveSwing` now yields after the band
+sift and before every first-feasible candidate. `__clock.boot` is a getter
+with a `done` flag, which `releaseBuildInputGuard()` sets after it charges the
+last stretch. The probe waits for `done`, and it refuses a record without
+that flag. It now carries a TAIL control, run with the other control: an
+800 ms busy-wait planted before `releaseBuildInputGuard();`, seams intact,
+must read back as ≥ 800 ms. It read 801. Measured on this container over
+three boots, the worst hold is 528 / 401 / 510 ms. It was 685–736 ms. The
+worst seam is now the one after `G.weldTree(scene)`, which the old snapshot
+could not see. This is the probe header's unsplittable floor, 170–300 ms
+under the ceiling, so its per-mesh variant stays unfiled. The setting-fold
+hold no longer appears in the top six. The fingerprint and
+`__clock.settingFold` are byte-identical to the base, boot is silent, and
+`probe-234-cap-bearing` and `probe-129-bootcost` PASS. **Step 2 was not
+shipped.** It was optional boot wall time, not gate debt, and it stays
+described below if the wall is wanted.
 
 Filed from [TODO 184]'s step 3 note. `node tools/probe-239-boot-yield.mjs`
 gates the build's worst unyielded stretch at `MAX_HELD_MS` = 700 ms. On this
