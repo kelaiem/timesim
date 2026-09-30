@@ -4,7 +4,7 @@
 
 # The instruments
 
-250 scripts. **141 are ACCEPTANCE tests** — they decide and exit non-zero.
+251 scripts. **142 are ACCEPTANCE tests** — they decide and exit non-zero.
 **109 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -237,6 +237,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-hand-stack.mjs` |  | acceptance | THE HAND STACK, MEASURED — every indicator's blade/boss z, the crystal chain from live constants, the alarm lane over poses, and the section table a thinning would be judged by. |
 | `probe-handedness.mjs` |  | acceptance | IS THIS PART HANDED? — the three couplings TODO 115 named as unmeasured. |
 | `probe-handset-reach.mjs` |  | report | HOW FAR DOWN THE HAND-SETTING CHAIN DOES THE `handSet` AXIS ACTUALLY REACH? |
+| `probe-hud-orbit-roll.mjs` |  | acceptance | DOES A CANVAS DRAG STILL SPIN THE VIEW AFTER THE HUD HAS ROLLED IT? — the orbit axis after a §57 arcball roll, measured. |
 | `probe-interplate-demand.mjs` |  | acceptance | WHAT PINS THE THREE-QUARTER PLATE'S UNDERSIDE — the inter-plate z demand, per station, and the wheel-in-bore inventory. |
 | `probe-l3-shaft-ld-filter.mjs` |  | acceptance | §234 Landing 4 — CAN ANY SHAFT SECTION CLEAR TURN_LD_TARGET AND ITS OWN CORRIDOR TOGETHER? A REPORT. (INDEX.md's `kind` column says acceptance because the classifier keys on `process.exit`, and this exits only when a tree will not boot at all — `probe-234-group-c.mjs` and the other §234 probes carry the same label for the same reason.) |
 | `probe-ledge-occupancy.mjs` |  | acceptance | WHAT OCCUPIES THE RIM-LEDGE ANNULUS — §186's mounting band, scanned over the pose net. |

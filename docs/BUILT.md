@@ -4309,6 +4309,32 @@ its polar angle inside (0, π) about world +Y, so a tumble that would cross
 the pole is refused here instead of being applied and then snapped back by
 the controls on the next update. Roll is unbounded, as it must be.
 
+**That paragraph described half of a contract, and the other half was never
+true.** The roll lives in `camera.up`, which the arcball turns with the
+camera. OrbitControls reads `up` once, when it is constructed: its update
+closure builds the quaternion that carries `up` to +Y there and never again.
+So its orbit axis stayed world +Y for the life of the page, while its own
+`lookAt` used the live, rolled `up`. After one spin on the pad, a sideways
+drag or touch on the canvas turned the view about the wrong axis, and the
+watch tumbled instead of spinning. Measured, that drag moved the offset's
+polar angle from the camera's up by 29.9° after a 44° roll, where a turntable
+moves it by none. It stayed that way until a reload.
+
+The fix wraps `controls.update` in the camera's own frame (`orbitFrame`). The
+camera is rotated about the target so that its `up` is +Y. OrbitControls does
+its whole step there: the drag's deltas, the polar clamp, damping and dolly.
+Then the camera is rotated back. Three things follow:
+
+- The arrow keys orbit in the same frame.
+- The pole refusal above is gone. A tumble turns the offset and `up`
+  together, so the polar angle the controls clamp cannot change under it.
+- A pose flies back LEVEL. The saved session, a link, a script stop and a
+  preset are each only a position and a target, so they cannot carry a
+  roll.
+
+`tools/probe-hud-orbit-roll.mjs` holds all of it, with a control that
+bypasses the frame and must reproduce the defect.
+
 Off by default, toggled in **View → Control HUD**, or opened on arrival
 with `?hud=1` — for a link that wants the watch driveable the moment it
 loads, which on a phone is the difference between a demo and an

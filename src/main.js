@@ -301,6 +301,42 @@ controls.dampingFactor = aesthetics.camera.dampingFactor;
 controls.minDistance = 25;
 controls.maxDistance = 420;
 
+// THE ORBIT FOLLOWS THE CAMERA'S OWN UP. The HUD face's arcball (§57) rolls
+// the camera, and it does that by turning `camera.up` with it — the one writer
+// of that vector. OrbitControls, though, reads `up` exactly ONCE: its update()
+// closure builds the quaternion that carries `up` to +Y at construction, so
+// its orbit axis stayed world +Y for the life of the page while its own
+// `lookAt` used the live, rolled `up`. After one spin on the pad a sideways
+// drag on the canvas turned the view about an axis measured 89.7° off the
+// screen's vertical — the watch tumbled instead of spinning, until a reload.
+//
+// So every update runs INSIDE the camera's frame: the camera is rotated about
+// the target by the quaternion that carries the live `up` to +Y, OrbitControls
+// does its whole step there (the drag's azimuth and polar deltas, the polar
+// clamp, damping, dolly), and the result is rotated back. Pan needs nothing:
+// its offset is built in the pointer handler from the camera's WORLD matrix,
+// outside this bracket, and only translates. An unrolled camera takes the
+// fast path, so nothing changes for anyone who never rolls. `orbitFrame` is
+// the same quaternion for the other orbit writers (the arrow keys).
+const _orbitY = new THREE.Vector3(0, 1, 0);
+const _orbitUp = new THREE.Vector3(), _orbitQ = new THREE.Quaternion();
+function orbitFrame(out) { return out.setFromUnitVectors(camera.up, _orbitY); }   // world → the frame where `up` is +Y
+{
+  const orbitStep = controls.update.bind(controls);
+  const qi = new THREE.Quaternion();
+  const turn = (q) => camera.position.sub(controls.target).applyQuaternion(q).add(controls.target);
+  controls.update = (deltaTime) => {
+    if (camera.up.equals(_orbitY)) return orbitStep(deltaTime);
+    _orbitUp.copy(camera.up);
+    orbitFrame(_orbitQ); qi.copy(_orbitQ).invert();
+    turn(_orbitQ); camera.up.copy(_orbitY);
+    const changed = orbitStep(deltaTime);
+    turn(qi); camera.up.copy(_orbitUp);
+    camera.lookAt(controls.target);
+    return changed;
+  };
+}
+
 // Lights: hemisphere fill + 2 shadowed directional/spot lights (studio look).
 const hemiAesthetic = aesthetics.lighting.hemisphere;
 const hemi = new THREE.HemisphereLight(hemiAesthetic.skyColor, hemiAesthetic.groundColor, hemiAesthetic.intensity);
@@ -33471,9 +33507,12 @@ function askTour(onProceed) {
   };
   const orbit = (dAz, dPol) => () => {
     camTween = null;
-    const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+    // In the camera's own frame (orbitFrame, above), so the arrow keys turn
+    // the view about the screen's vertical after an arcball roll too.
+    const q = orbitFrame(new THREE.Quaternion());
+    const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target).applyQuaternion(q));
     sph.theta += dAz; sph.phi = Math.max(0.05, Math.min(Math.PI - 0.05, sph.phi + dPol));
-    camera.position.copy(new THREE.Vector3().setFromSpherical(sph).add(controls.target));
+    camera.position.copy(new THREE.Vector3().setFromSpherical(sph).applyQuaternion(q.invert()).add(controls.target));
     controls.update();
   };
   const zoom = (f) => () => {
@@ -38340,12 +38379,14 @@ const hudRoAlarm = hudEl.querySelector('#hud-ro-alarm');
 // they were — the viewer moves, which is the honest description of what is
 // happening anyway.
 //
-// The pole clamp is inherited rather than reimplemented: OrbitControls keeps
-// its polar angle inside (0, π) about world +Y, so a tumble that would cross
-// the pole is REFUSED here instead of being applied and then snapped back by
-// the controls on the next update. Roll is unbounded, as it must be.
+// NO POLE REFUSAL. This used to refuse a tumble that crossed world +Y's pole,
+// because OrbitControls clamped its polar angle about that fixed axis and
+// would have snapped the pose back. The controls now orbit about the camera's
+// own `up` (orbitFrame, at their construction), and a tumble turns the offset
+// and `up` by the SAME quaternion — so the polar angle the controls clamp
+// cannot change under it, and there is nothing to refuse. Roll is unbounded,
+// as it must be.
 const HUD_BALL_R = HUD_RIM * 0.72;   // the dial disc — the ball's silhouette
-const _hudUp = new THREE.Vector3(0, 1, 0); // OrbitControls' fixed orbit axis — the one its polar clamp is about
 const _hudQ = new THREE.Quaternion(), _hudQCam = new THREE.Quaternion();
 const _hudV0 = new THREE.Vector3(), _hudV1 = new THREE.Vector3(), _hudOff = new THREE.Vector3();
 // HUD point → a point on the virtual ball, in CAMERA space (screen space, y
@@ -38364,8 +38405,6 @@ function hudTrackball(from, to) {
   _hudQ.premultiply(_hudQCam).multiply(_hudQCam.clone().invert());            // …expressed in world space
   _hudQ.invert();                                                             // the viewer goes the other way
   _hudOff.copy(camera.position).sub(controls.target).applyQuaternion(_hudQ);
-  const phi = _hudOff.angleTo(_hudUp);
-  if (phi < 1e-3 || phi > Math.PI - 1e-3) return;  // OrbitControls would clamp this back — refuse it instead
   camera.position.copy(controls.target).add(_hudOff);
   camera.up.applyQuaternion(_hudQ).normalize();
   camera.lookAt(controls.target);
@@ -41174,7 +41213,20 @@ const camTargets = {
     target: new THREE.Vector3(0, 0, 5),
   },
 };
-let camTween = null; // { fromPos, fromTarget, toPos, toTarget, t0, dur }
+let camTween = null; // { fromPos, fromTarget, fromUp, toPos, toTarget, t, dur }
+// One step of the fly-to, for both clocks that drive it (the rAF frame and
+// __clock.step). `up` travels the shortest arc to +Y on the same ease.
+const _tweenUpQ = new THREE.Quaternion(), _tweenNoTurn = new THREE.Quaternion();
+function advanceCamTween(dt) {
+  if (!camTween) return;
+  camTween.t += dt / camTween.dur;
+  const e = smoothstep(camTween.t);
+  camera.position.lerpVectors(camTween.fromPos, camTween.toPos, e);
+  controls.target.lerpVectors(camTween.fromTarget, camTween.toTarget, e);
+  _tweenUpQ.setFromUnitVectors(camTween.fromUp, _orbitY);
+  camera.up.copy(camTween.fromUp).applyQuaternion(_tweenUpQ.slerp(_tweenNoTurn, 1 - e)).normalize();
+  if (camTween.t >= 1) { camera.up.copy(_orbitY); camTween = null; }
+}
 // §37 — the camera POSE is now a first-class primitive with three consumers:
 // a ?cam/?look deep link, a script step's `camera:` field, and the share-view
 // button. A preset is just a NAMED pose plus its reveal rule, so goToPreset
@@ -41186,18 +41238,26 @@ function goToPose(pos, target, { snap = false } = {}) {
   // §72: prefers-reduced-motion means every fly-to is a snap — the 0.9 s
   // camera sweep is exactly the class of motion the preference asks off.
   if (!snap && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) snap = true;
+  // A POSE IS LEVEL. It is a position and a target and nothing else — the
+  // saved session, a ?cam/?look link, a script stop, a preset — so it cannot
+  // say which way is up, and the answer that reproduces what its author saw is
+  // +Y, the only `up` there was before the arcball could roll. Arriving at one
+  // un-rolls the camera: without this a preset after a pad spin framed the
+  // right subject on its side.
   if (snap) {
     // Snap is for a pose that is ALREADY the answer — a restored session or a
     // shared link. Flying to it from wherever the default framing left us
     // would animate 0.9 s of travel the sharer never intended.
     camera.position.copy(pos);
     controls.target.copy(target);
+    camera.up.copy(_orbitY);
     controls.update();
     camTween = null;
   } else {
     camTween = {
       fromPos: camera.position.clone(),
       fromTarget: controls.target.clone(),
+      fromUp: camera.up.clone(),
       toPos: pos.clone(),
       toTarget: target.clone(),
       t: 0,
@@ -45502,13 +45562,7 @@ function advanceFrame(realDt) {
 
   updateExplode();
 
-  if (camTween) {
-    camTween.t += realDt / camTween.dur;
-    const e = smoothstep(camTween.t);
-    camera.position.lerpVectors(camTween.fromPos, camTween.toPos, e);
-    controls.target.lerpVectors(camTween.fromTarget, camTween.toTarget, e);
-    if (camTween.t >= 1) camTween = null;
-  }
+  advanceCamTween(realDt);
 
   controls.update();
   updateDepthLimits(); // §60 remainder: fog band and far plane ride the camera's final position for this frame
@@ -45742,13 +45796,7 @@ window.__clock = {
     simTime += dt;
     tick(simTime);
     updateChainIfMoved(); // step() paints — the chain must be current in the render (§14)
-    if (camTween) {
-      camTween.t += dt / camTween.dur;
-      const e = smoothstep(camTween.t);
-      camera.position.lerpVectors(camTween.fromPos, camTween.toPos, e);
-      controls.target.lerpVectors(camTween.fromTarget, camTween.toTarget, e);
-      if (camTween.t >= 1) camTween = null;
-    }
+    advanceCamTween(dt);
     updateExplode();
     updateExploreTethers(); // §58: step() is the unattended-verification path — tethers must be inspectable from it, not only from rAF
     resolveExploreHover();  // §59: …and so must the hover readout, for the same reason
