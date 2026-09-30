@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
@@ -30,7 +31,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
-| 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
+| 179 | CLOSED | Neither reading was a designed fit: the hub stood up to the track's top, 0.0433 inside the orbiting pin at every pose, and the notch floor was a 0.17 literal left behind when TODO 173 raised the drop to 0.10. The notch is `ALARM_PIN_DROP + CLEAR_MARGIN` = 0.25 deep, paid plate-ward (the body, the seat and the motion works 0.08 down, `MW_WHEEL_T` 0.4682 → 0.4282), and the hub stops at the body's face. A floors row with the track as its one contact reads 0.1500 (pin ⇄ body at full drop); pin ⇄ hub 0.1563 |
 | 178 | CLOSED | The stud is re-sited by two constraints: its circumradius clears the lobe's swept circle by `CLEAR_MARGIN` (centre r 3.80 → 3.85), and the blade keeps its 1.1 length to §29's bearing point (rest angle 1.9 → 1.8541 rad, gain 0.45 unchanged). Dense `alarm` sweep 0.1007 → 0.1502; the `only:` debt row is deleted and `Alarm disc ⇄ Hour wheel` holds unwaived at 0.1500 |
 | 177 | CLOSED (with TODO 120) | The lane is read off SECTIONS and binds at `CLEAR_MARGIN` + 0.0002 at the kept 1.778, on two pairs that agree by construction (blade over blade; the hour pipe's foot over the alarm collet, which moved under its blade). The row behind the waiver holds nothing else |
 | 176 | CLOSED | The alarm barrel's cavity is `borePath(drumInnerR, bevel)`, guarded to 5.595 at boot. The filed 4.785 was a radius, the hexagon less its bevel. The ribbon clears the true wall by 0.0536 against a designed 0.0549 |
@@ -24410,7 +24411,7 @@ heart derived margin (`LatheGeometry#1 ⇄ alarmHeart`, `train` f=0.2604).
 because it hashes per-unit bounding boxes and the stud moved inside the Alarm
 disc's.
 
-## 179. The alarm release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700, on an EXPECTED pair with no floors row
+## 179. The alarm release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700, on an EXPECTED pair with no floors row — CLOSED
 
 Found planning [TODO 154]. `Alarm release disc ⇄ Alarm release reader` is
 EXPECTED: the reader's pin rides the disc's raised track, which is TODO 117's
@@ -24425,6 +24426,103 @@ Neither is the track the pin is meant to ride.
 shank beside the hub it orbits), or a clearance the pin's station was never
 checked against? Then add the floors row with the track as its one contact
 (TODO 6's format), and fix whatever it finds in position space.
+
+### Closed.
+
+**Triage: neither reading was a designed fit.** Re-measured with
+`meshClearance` on every reader and disc mesh over all 14 axes at the pose
+net:
+
+| pair | where | reading | what it is |
+|---|---|---|---|
+| pin ⇄ hub | **every pose of every axis** | 0.0433 (`train`, `alarm`) – 0.0482 (the other 12; the 12-gon's faceting) | the hub stood up to `ALARM_TRACK_TOP`, the plane the pin's tip rides on, and the pin's inner edge (`ALARM_TRACK_RMID − ALARM_PIN_R` = 2.91) orbits 0.0433 outside its wall (2.8667). A pin passing a wall it never bears on, on a pair nobody measured |
+| pin ⇄ body | `train` f=0.5938 only — the notch under the pin | 0.0700 | the notch floor. `ALARM_TRACK_H` was a 0.17 literal from when the drop was 0.06 (the floor 0.11 under the dropped tip); TODO 173 raised `ALARM_PIN_DROP` to 0.10 and nothing re-read the depth. The one build assert asked only that the pin not BOTTOM |
+| ring ⇄ hub | the same notch pose | 0.1516 | inside the margin by 0.0016, and only because the hub stood proud |
+
+The drop is banked by the feeler's stop, so the floor is not a contact: it
+is a surface the tip passes, and it owes the margin. The track comment
+claimed the annulus 2.85..3.25 was "outside the hub (2.8667)", which was not
+even true of the track, and nobody had asked about the pin.
+
+**The fix, in position space.**
+
+- **The notch's depth is derived:** `ALARM_TRACK_H = ALARM_PIN_DROP +
+  CLEAR_MARGIN` = 0.25 (was 0.17). The dropped tip stands exactly one margin
+  over the floor, which is the same margin the collar's ring keeps over the
+  track at that drop (`READER_PIN_LEN = ALARM_PIN_DROP + CLEAR_MARGIN`).
+- **It is paid PLATE-ward.** `ALARM_TRACK_TOP` stays at −3.0467, so the
+  reader, the collar and the whole feeler are unmoved, and `ALARM_DISC_TOP`
+  goes −3.2167 → −3.2967. The seat, the band gears and the motion-works solve
+  hang under it and re-solve: `MW_WHEEL_T` is the stack's one undeclared
+  dimension (TODO 144's absorber) and gives 0.04 per wheel, 0.468235 →
+  0.428235, above the bevel bound and §50. The other way was tried first and
+  MEASURED red: spending the 0.08 as a shorter `ALARM_PIN_SHANK` (track grown
+  dial-ward, body left put) raised the ring, the rock's lean at the jog grew
+  by θ·0.08, and the jog — already boxed at the margin between the ring
+  (0.1518) and the Alarm disc follower's `alarmTailPin` (0.1522) — moved
+  0.0033 outboard: `undeclaredClearance` failed at `alarmTailPin ⇄
+  alarmFeelerJog` 0.1490. So the shank keeps 0.061, and its comment now says
+  the jog's boxing binds it: its body-clearance need went slack (−0.019).
+- **The hub stops at the body's face.** Its wall cannot move (bore = the
+  tube's running fit, wall = §50's floor, and the pin's radius is the
+  feeler's read radius — a lever arm). At a 0.0433 radial offset a proud hub
+  could stand only 0.0064 over the body before the dropped tip came within a
+  margin of its edge. So it is flush. Axial hold was never this fit; it is
+  TODO 144's seat.
+
+**The row.** `Alarm release disc ⇄ Alarm release reader`, `min:
+CLEAR_MARGIN`, `contacts: [['alarmDiscTrack', 'alarmReaderPin']]`: the pin
+on the track, notch walls included, which the penetration budget and the
+§29 ramp own. There is no waiver.
+
+**Boot asserts** (rule 6), achieved and required. The disc build asserts the
+dropped tip over the notch floor and over the hub's top edge. §29's
+"would bottom" assert is now the margin. Boot is silent.
+
+**Measured after** (the same probe, all 14 axes; `train` and `alarm` ×8):
+
+| pair | before | after |
+|---|---|---|
+| pin ⇄ body | 0.0700 | **0.1500** at `train` f=0.5898 (×8), the derived tie; 0.2500 wherever the pin rides |
+| pin ⇄ hub | 0.0433 | **0.1563** at `train` f=0.5924 (×8) |
+| ring ⇄ hub | 0.1516 | 0.4005 |
+| ring ⇄ track | 0.1500 | 0.1500 (`READER_PIN_LEN`'s own margin, unchanged) |
+| pin ⇄ track | 0 | 0 (the contact) |
+
+`expectedContacts` reads the new row at **0.1500** (`alarmDiscBody ⇄
+alarmReaderPin`, `train` f=0.5938), unwaived: 31 rows (30 before), 0
+violations.
+
+**Against the base tree**, whole-tree runs, each `--report`-style payload
+diffed:
+
+- identical: `support`, `graph`, `penetration`, `alarmHandoffs`, `assembly`,
+  `restoring`, `intraUnit` and `undeclaredClearance` (0 under margin);
+- `alarmHandoffs` identical in particular: reader ring ⇄ feeler tip −0.0200,
+  −0.0203 dropped; banking stop 0.0001 dropped;
+- `expectedContacts` and `clearances`: every other row's minimum is
+  unchanged. Three tie locations moved, and `Keyless works ⇄ Motion works`
+  went 0.2028 → 0.2386;
+- `transfers`: the seat pad re-solves its blade for the 0.08 longer post
+  (k 491.2 → 482.8 N/m, strain 0.00191 → 0.00192) and holds the same
+  **14.66 mN**, because the force is solved from the hold. The feeler's bias
+  blade is 18.81 mN, as before;
+- `stockFloor` and `turning`: one row each moved its station with the
+  stack. The `needRest` row is 1.9858 → 2.0009 mm, L/D 16.4 → 16.5, a report;
+- `inspection`: 0 FORBIDDEN. The disc ⇄ reader pair's boolean contact now
+  counts 93/97 poses on `alarm`, against 97/97. Dense `meshClearance` shows
+  the pin still on the track at 0.0000 at every riding pose of `alarm`,
+  `train` and `handSet` (×4), so the four were tangency flaps: the hub's top
+  had been coplanar with the tip.
+
+The fingerprint moves 2291184182 → 1745988802, in four units: the release
+disc, the seat and the motion works by 0.08, and the hour wheel by 0.04.
+`probe-117-line`, `-trip`, `-takeoff`, `-reversed-bias`, `-fork-radius`,
+`probe-144-set-hold`, `-branch-still`, `probe-handedness`: PASS.
+`probe-117-fork-room` fails two controls on the base tree and on this one
+alike (its r 2.20 sample lies inside the hour-tube bore), a pre-existing
+defect; its `trackH` mirror is updated to 0.25, and its scan shows the new
+0.25 step between the hub's plane and the track's.
 
 ## 180. JMP_SITE trusts BVH zeros, so a degenerate obstacle triangle read as contact and set the minute jumper's station — CLOSED
 
@@ -25460,3 +25558,27 @@ derive the preload from the §137 detent envelope rather than the old 0.45
 gain. Then declare the contact (`INTRA_UNIT_CONTACTS`, measured by the §182
 reach audit) and add an `alarmHandoffs`-class row that measures it shut at
 both ends of the travel.
+
+## 195. probe-117-fork-room's controls and the explainer's track annulus still describe the old hub
+
+Found closing [TODO 179]. Two stale descriptions of the release disc's hub,
+both true of an earlier cut and neither gated:
+
+- **`tools/probe-117-fork-room.mjs` fails 2 of its 4 controls on `main`,
+  independent of TODO 179.** Its r 2.20 sample finds no disc metal, so the
+  "ALARM_TRACK_H apart" step it computes between r 2.20 and r 3.05 reads
+  5.2595. The hub no longer shares the track's plane at r 2.40, so the
+  control's radii point at air. TODO 179 updated the probe's copy of the
+  track height (0.17 → 0.25); its scan shows the new step, but the probe still
+  exits 1 for this reason.
+- **`explain.html`'s constants table says the track annulus 2.85..3.25 lies
+  "outside the hub (2.85)".** The hub's wall is at 2.8667, so the annulus
+  overlaps it by 0.0167. TODO 179 corrected the same claim in the source
+  comment and left the page, because the prose change re-keys that block in
+  twelve locale tables.
+
+**Fix path.** Re-derive the probe's control radii from the built meshes (read
+the hub and track radii from the geometry, never restate them), so the
+control measures metal on both sides of the step. Correct the explainer's row
+to the real relation (the track overlaps the hub's wall; the pin rides the
+track's annulus outside it), then re-key and re-translate that block.
