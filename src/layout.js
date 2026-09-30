@@ -172,7 +172,7 @@ export const SPEC = (() => {
   // window is two physical facts that live in main.js with the metal (the
   // post clearing the carrier's own ring root, and standing inboard of the
   // outer coil), and main.js clamps against them and says so. null = as
-  // designed: HAIRSPRING_STUD_R derives from the coil pitch, bit-exact.
+  // designed: HAIRSPRING_STUD_R is the window's inboard end, bit-exact.
   const studr = Number.isFinite(Number(raw.studr)) ? Number(raw.studr) : null;
   // §98 — THE ALARM CORNER'S RADIUS, §76's missing pin. The corner's
   // DEFAULT tracks the plate (alarmCornerR = dialRadius·0.39 since §94

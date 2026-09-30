@@ -5547,6 +5547,20 @@ from the parked paddles at the closest approach of the cycle, which is the
 price of a face long enough to satisfy §50 and a swing small enough to
 poise (the trade is written at `ALARM_GOV_ENGAGE_DEBT`).
 
+**§248 addendum — two things this re-derivation shipped that were not true of
+the metal.** First, the proportions: ε = pitch/4 at the hub-room floor is a
+flipper spanning HALF a tooth, 0.12 mm paddles swinging 4.6° within 0.5 mm of
+the anchor's axis — every gate green, no watch part. Second and worse, pallet B
+was cut as A's MIRROR, which is A's drive run backwards in time: measured on the
+built metal (`tools/probe-248-governor.mjs` against this tree), B was in contact
+for 2% of the period against A's 42.5%, and 6 of its 8 contacts PULLED — the
+anchor's return swing was posed by the law with no tooth behind it, invisible to
+the cycle sweep because that sweep asks whether metal overlaps, never whether a
+contact pushes. §248 rebuilt both (20-tooth saw, 2½-tooth span, stone pallets
+whose lengths are solved from a drop equal to the bearings' shake, B its own
+solve) and retired the 0.033 grade: the stones clear the tooth fronts outright
+and the boot sweep is back at §104's 0.02. The record is `docs/BUILT.md` §248.
+
 
 ### The blade SECTION — CLOSED by §111, and its "unfixable" was wrong
 
@@ -5779,12 +5793,14 @@ anywhere. Nothing else on the list moved, because nothing jewelled landed.)
 - `penetration` — the governor row (§111) now reads **OK, 0.032 / 0.1,
   unwaived** (§113). Its `nSamples: 449` is load-bearing: one wind is 28
   strikes × 80 tooth periods = 2240, and a count sharing a factor with 2240
-  revisits the same handful of phases forever. Keep it coprime.
+  revisits the same handful of phases forever. Keep it coprime. (§248's
+  20-tooth saw made it 28 × 40 = 1120; 449 is prime, so coprime to both.)
 - the boot cycle sweep — `ALARM_GOV_ENGAGE_DEBT` in `src/main.js`, the
   polygon-depth twin of that row over one tooth period. §111 set it AT the
   measured debt (0.25) with the tighten-never-widen instruction; §113
-  tightened it to 0.033 (measured 0.0314 at the solved design point). It
-  remains the number that must not rise.
+  tightened it to 0.033 (measured 0.0314 at the solved design point). §248's
+  stones returned it to §104's working-contact 0.02 (measured 0 at the solved
+  point). It remains the number that must not rise.
 - `expectedContacts` — the governor pair's floors row was the tightest in
   the check at §107 (0.0099 of headroom), went to 0.4269 at §111, and is
   re-measured by every landing that touches the anchor. **It earned that
