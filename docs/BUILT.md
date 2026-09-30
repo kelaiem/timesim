@@ -28407,6 +28407,9 @@ from tripping a boot assert — and both ends derive from `HAIRSPRING_STUD_POST`
 The default is unchanged and stays bit-exact: `HS_OUTER_R − HS_COIL_PITCH` =
 7.1175, one full coil pitch inboard, TODO 147's own rule.
 
+*(§245 moved the default to the inboard end, 3.1751: across this window the
+free spring is most isochronous there. The one-pitch row stays on the menu.)*
+
 **Both bounds are quoted at the URL's own precision — 4 dp, rounded INWARD.**
 That is not tidiness. `?studr=` is text, so a bound carrying binary tail digits
 is a bound a reader cannot type and a clamp that lands a hair off every row of
@@ -29548,3 +29551,80 @@ control fired: yes · roller touched in some phase: yes
 
 `probe-reset-contact.mjs` still reads 0/6 on all four counts. The binding
 points are the head's corners, at the margin the construction guarantees.
+
+## §245 — Hairspring stud defaults to the window's inboard end — the most isochronous radius
+
+§237 opened a window for the overcoil's stud radius, from the post clearing the
+cock carrier's ring root (3.1751) out to the post standing wholly inside the
+outer coil (7.5950). It left the default where TODO 147 had put it, one coil
+pitch in (7.1175). That was the smallest step that made the terminal a Breguet
+one, not a radius anything had chosen *inside* the window. This section chooses
+one, and the criterion is isochronism.
+
+**Why the stud radius moves the rate at all.** The terminal's curvature law is
+solved so the centroid of the whole flexing ribbon sits on the balance axis
+(Phillips's condition, §218 tier two). That condition is exact only at small
+swing: the clamp stiffening reads ×1.000000 at every radius in the window, so
+the section, the fitted `k` and the linear rate do not move. What does move
+is the second-order residual: the stud's reaction at a real swing, and with it
+how far the elastica's torque `τ(θ)` departs from linear. A spring whose torque
+is not linear in angle has a period that depends on amplitude, and that is the
+definition of an isochronism error.
+
+**Measured, every menu row** (`tools/probe-245-stud-isochronism.mjs`). The
+balance swings freely on the elastica's own torque table. The rate is what the
+swing adds against the small-swing period, and a positive rate is a gain:
+
+```
+stud r    45°    150°   220°   270°    pivot load at 270°
+7.5950   +0.5   +3.4   +4.5   +6.0    3.941 EI/L²
+7.1175   +0.5   +3.1   +4.0   +5.3    3.742        ← the old default
+6.3150   +0.4   +2.6   +3.2   +4.2    3.433
+5.5125   +0.4   +2.2   +2.7   +3.4    3.163
+4.7100   +0.3   +1.9   +2.3   +2.8    2.941
+3.9075   +0.3   +1.6   +2.0   +2.4    2.785
+3.1751   +0.2   +1.5   +1.9   +2.3    2.720        ← the default now
+flat     +5.8  +31.6  +20.3   +2.0   20.095        (no overcoil, for reference)
+```
+
+The error shrinks steadily inward at every amplitude, so the best radius is the
+end of the window, not a point inside it. The default is therefore
+`HAIRSPRING_STUD_R_MIN`, and it is that constant rather than a copy of its
+value. Against the flat spring, pivot load falls from ×0.042 to ×0.030 at the
+drawn 45°, and from ×0.167 to ×0.122 at 270°. The flat spiral's 270° figure
+looks better than the overcoil's, but that is a crossing point, not
+isochronism: its error passes +31.6 s/day on the way up and comes back down
+through it.
+
+**What this measures and what it does not.** This is the free spring alone.
+The escapement's impulse and unlocking, pivot friction (which the lateral load
+feeds), gravity in the vertical positions, and temperature all move a real
+watch's rate with amplitude too, and none of them is modelled. The probe says
+so in its header. Two controls hold the integrator honest: a linear torque table
+reads 0 s/day at 270° (−2.8e-6), and every row reads ~0 at 5°, where the
+elastica is linear. The probe fails unless the default is the most isochronous
+menu row at 270°. That is the claim the default rests on, so it is gated rather
+than reported.
+
+**What else moved with it.**
+
+- **The terminal.** ρ 7.13 → 3.72 along the arc, tightest 3.78 against the
+  collet's 1.50 (it was 8.56 → 9.26, tightest 6.75). The ribbon can still be
+  formed to it, and the stud residual is 2.1e-11. The terminal's furthest reach
+  falls to 7.9048, inside the outer coil's 7.92 (0.998 of it).
+- **The cock's stud carrier arm** reads `termEndR`, so it now reaches 3.1751,
+  not 7.1175. It is short, which is the Breguet benefit taken all the way.
+- **The terminal-length window** at the new stud: formable from about 0.45
+  turns. The upper wall that §218/TODO 148 quoted (about 1.20, the arc leaving
+  the balance's swept circle) no longer exists here. The arc stays inside the
+  outer coil, and past about a full turn the three-condition solve stops
+  converging reliably. The shipped three quarters is well inside both.
+- **The menu** keeps all seven rows. The one-pitch row now goes through
+  `studRQ` like the others, because the default is the inboard end and that end
+  is already quantised.
+- **`SPEC_POINTS`**: `studr=3.1751` is the identity spec now, so its point
+  became `studr=7.1175` (the old default, one pitch in), declared silent.
+- **`explain.html`**: the overcoil plate is redrawn from the solved centreline,
+  its four labels carry the new numbers, and the caption states the choice and
+  its limits, in all twelve locales.
+

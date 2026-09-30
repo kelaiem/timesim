@@ -1692,9 +1692,8 @@ const HS_COIL_PITCH = (HS_OUTER_R - HS_INNER_R) / HS_COILS;
 // asserted below rather than assumed (pitch 0.8025 against the post's 0.65).
 const HAIRSPRING_STUD_POST = 0.65;         // the stud post's side, consumed again by the cock's carrier
 const HAIRSPRING_CARRIER_ROOT = 2.85;      // where the carrier's arm leaves its ring; the ring itself is 2.55–2.95, trimmed inside the shock head's half-width
-const HAIRSPRING_STUD_R_DEFAULT = HS_OUTER_R - HS_COIL_PITCH;
 if (HS_COIL_PITCH < HAIRSPRING_STUD_POST)
-  console.warn(`TODO 147: the spiral's coil pitch ${HS_COIL_PITCH.toFixed(4)} is under the stud post's ${HAIRSPRING_STUD_POST} — one coil step no longer carries the post inboard of the outer coil, so the default stud radius is not derived by the rule it cites.`);
+  console.warn(`TODO 147: the spiral's coil pitch ${HS_COIL_PITCH.toFixed(4)} is under the stud post's ${HAIRSPRING_STUD_POST} — one coil step no longer carries the post inboard of the outer coil, so the stud menu's one-pitch row is not the Breguet position it is listed as.`);
 // §237 — THE STUD'S RADIUS AS A HANDLE (?studr=), and with it the cock's
 // carrier arm: `yS` reads `termEndR`, so moving where the terminal lands IS
 // moving how far the arm reaches. TODO 147 made this a solve condition, so
@@ -1720,6 +1719,19 @@ if (HS_COIL_PITCH < HAIRSPRING_STUD_POST)
 const studRQ = (r, dir) => (dir < 0 ? Math.floor(r * 1e4) : dir > 0 ? Math.ceil(r * 1e4) : Math.round(r * 1e4)) / 1e4;
 const HAIRSPRING_STUD_R_MIN = studRQ(HAIRSPRING_CARRIER_ROOT + HAIRSPRING_STUD_POST / 2, +1);
 const HAIRSPRING_STUD_R_MAX = studRQ(HS_OUTER_R - HAIRSPRING_STUD_POST / 2, -1);
+// THE DEFAULT IS THE WINDOW'S INBOARD END. TODO 147 shipped the stud one coil
+// pitch inside the outer coil, the smallest Breguet step; the window it opened
+// runs on inward to the carrier's root, and ISOCHRONISM is what chooses inside
+// it. The overcoil's centroid condition is exact only at small swing (the clamp
+// ratio reads 1 at every radius in the window), so what varies with the stud is
+// the SECOND-order residual: the stud's reaction at a real swing, and with it
+// how far the elastica's torque departs from linear. Measured over every menu
+// row at 270° (BUILT §245, tools/probe-245-stud-isochronism.mjs, which gates
+// this choice): the rate the swing adds falls from +5.3 to +2.3 s/day and the
+// pivot load from ×0.167 to ×0.122 of the flat spring's, monotonically, from
+// one pitch in to the root. So the stud sits as far in as the post allows,
+// which is the minimum by construction; every other row is a worse spring.
+const HAIRSPRING_STUD_R_DEFAULT = HAIRSPRING_STUD_R_MIN;
 const HAIRSPRING_STUD_R = (() => {
   if (SPEC.studr === null) return HAIRSPRING_STUD_R_DEFAULT;
   const held = Math.min(HAIRSPRING_STUD_R_MAX, Math.max(HAIRSPRING_STUD_R_MIN, SPEC.studr));
@@ -10503,9 +10515,10 @@ const balanceCock = G.makeCock({
     boss.position.set(0, yS, 0.01);
     carrier.add(boss);
     const postBot = (studWorldZ - 0.25) - (COCK_MID_Z + COCK_T / 2); // cock-face-local
-    // TODO 147: the post's side is the constraint HAIRSPRING_STUD_R is derived
-    // from (one coil pitch must carry this whole footprint inboard of the outer
-    // coil), so it is that constant and not a second copy of the number.
+    // TODO 147: the post's side is the constraint HAIRSPRING_STUD_R's window is
+    // derived from (the post clearing the carrier's root at the default, and
+    // standing wholly inboard of the outer coil at the far end), so it is that
+    // constant and not a second copy of the number.
     const post = new THREE.Mesh(new THREE.BoxGeometry(HAIRSPRING_STUD_POST, HAIRSPRING_STUD_POST, 0.27 - postBot), MATS.steel);
     post.name = 'hairspringStud';
     post.position.set(0, yS, (0.27 + postBot) / 2);
@@ -34775,9 +34788,10 @@ updateCrownUI();
   // §237 — THE STUD'S RADIUS. The menu is DERIVED, not a taste: the coil pitch
   // is the spiral's own unit of radius, so the question a bench actually asks
   // of an overcoil — how many coils in does the terminal land? — is the menu.
-  // N pitches inboard of the outer coil, N = 1 being TODO 147's shipped rule
-  // and so the default, walking in until the next step would fall through the
-  // carrier's root. The two ENDS are the window itself (the post standing
+  // N pitches inboard of the outer coil, N = 1 being TODO 147's original rule,
+  // walking in until the next step would fall through the carrier's root —
+  // where the default now sits (the most isochronous row; see
+  // HAIRSPRING_STUD_R_DEFAULT). The two ENDS are the window itself (the post standing
   // wholly inside the outer coil; the post clearing the carrier's ring root),
   // which is why no entry here can trip the clamp's warning — a menu whose
   // rows boot with a console warning would be a menu of broken watches.
@@ -34796,9 +34810,9 @@ updateCrownUI();
   for (let n = 1; ; n++) {
     const r = HS_OUTER_R - n * HS_COIL_PITCH;
     if (r <= HAIRSPRING_STUD_R_MIN) break;
-    // n = 1 is TODO 147's shipped rule, so it carries the derived float
-    // VERBATIM — the identity spec has to stay bit-exact, not 4-dp-exact.
-    studRadii.push(n === 1 ? HAIRSPRING_STUD_R_DEFAULT : studRQ(r, 0));
+    // The default is the window's inboard end, already quantised and pushed
+    // below, so every pitch row goes through the URL quantiser alike.
+    studRadii.push(studRQ(r, 0));
   }
   studRadii.push(HAIRSPRING_STUD_R_MIN);
   for (const r of [...new Set(studRadii)].sort((a, b) => b - a)) {
@@ -34822,9 +34836,8 @@ updateCrownUI();
     const setOrClear = (k, v, dflt) => { if (v === dflt) p.delete(k); else p.set(k, String(v)); };
     setOrClear('vph', Number(vphSel.value), 18000);
     setOrClear('reserveh', Number(rsvSel.value), 30);
-    // The default option carries the derived float VERBATIM, so picking it
-    // clears the param rather than pinning a rounded copy of it — one digit
-    // of rounding here would be a different spiral wearing the same URL.
+    // The default option carries the window's quantised inboard end VERBATIM,
+    // so picking it clears the param rather than pinning a copy of it.
     setOrClear('studr', Number(studSel.value), HAIRSPRING_STUD_R_DEFAULT);
     location.search = p.toString(); // navigates; the identity spec keeps a clean URL
   };

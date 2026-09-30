@@ -937,16 +937,20 @@ const SPEC_POINTS = [
   // announce itself as a boot warn at exactly these ends.
   //   · 7.595 is the OUTBOARD end: the post standing wholly inside the outer
   //     coil, the Breguet condition TODO 147 landed;
+  //   · 7.1175 is one coil pitch in, TODO 147's original rule and the
+  //     default until the default moved to the inboard end (the most
+  //     isochronous row), so it stays swept as the Breguet-step spiral;
   //   · 4.71 is the interior, four coil pitches in — a genuinely different
-  //     spiral, not a nudge off the default's 7.1175;
-  //   · 3.1751 is the INBOARD end: the post clearing the carrier's ring root,
-  //     quoted at the URL's own 4 dp and rounded inward;
+  //     spiral, not a nudge off either;
+  //   · the INBOARD end, 3.1751 (the post clearing the carrier's ring root,
+  //     quoted at the URL's own 4 dp and rounded inward), is the DEFAULT now,
+  //     so the identity spec already boots it and it needs no point here;
   //   · 2 is past that end, and is the guard on the clamp: it must WARN with
   //     both bounds and BUILD (a stud inside its own carrier is nonsense, not
   //     NaN) — one warn, measured.
   { name: 'studr=7.595', q: 'studr=7.595', expect: 'silent', why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
   { name: 'studr=4.71', q: 'studr=4.71', expect: 'silent', why: '§237 — four coil pitches in, the interior of the window; measured silent' },
-  { name: 'studr=3.1751', q: 'studr=3.1751', expect: 'silent', why: "§237 — the inboard end, the post clearing the carrier's root; measured silent" },
+  { name: 'studr=7.1175', q: 'studr=7.1175', expect: 'silent', why: '§237 — one coil pitch in, TODO 147\'s original rule and the old default; measured silent' },
   { name: 'studr=2', q: 'studr=2', expect: 'any', why: '§237 — past the inboard end: must warn with both bounds and BUILD, never NaN' },
   // §36 Apply — THE CANONICAL ROUTE, and it is a spec point rather than a
   // probe's private fixture because that is what keeps it honest: every
