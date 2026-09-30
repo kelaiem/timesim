@@ -124,8 +124,8 @@ console.log(`  boot ${ctrl.up ? 'up' : 'FAILED'}, ${ctrl.warns.length} warning(s
 for (const w of ctrl.warns) console.log('  WARN ' + w.slice(0, 300));
 if (ctrl.up) {
   console.log(`  xy (${ctrl.xy.x.toFixed(3)}, ${ctrl.xy.y.toFixed(3)}) az ${ctrl.xy.az.toFixed(1)}`);
-  const d = Math.hypot(ctrl.xy.x - 34.32, ctrl.xy.y - 16.89);
-  console.log(`  |delta| from frozen (34.32, 16.89): ${d.toFixed(4)} (build's own tripwire: 0.25)`);
+  const d = Math.hypot(ctrl.xy.x - 27.88, ctrl.xy.y + 4.07);
+  console.log(`  |delta| from frozen (27.88, -4.07): ${d.toFixed(4)} (build's own tripwire: 0.25)`);
 }
 
 console.log(`\n=== SHAFT L/D FILTER, honest piecewise column (shipped), bushR = s + 0.14 per section ===`);
