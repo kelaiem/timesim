@@ -6158,6 +6158,12 @@ could not produce at all.
   hammer` is an EXPECTED pair with no `EXPECTED_CONTACT_FLOORS` row, so
   it still takes item 6's blanket excuse. The measurement above is what a
   floors row for it would gate; seeding one is item 6's work.
+  **CLOSED by BUILT §244's second landing**, and the blanket was hiding a
+  real defect: the lever's flared head, 1.4·hw wide against a 0.7 roller,
+  buried 1.03 in the heart's lobe in 21 of 24 cam phases. The head is now
+  cut inside the roller's shadow, and the pair has its row: the roller on
+  `secondsHeart` is the one declared contact, and everything else the two
+  units own keeps `CLEAR_MARGIN`.
 - The hammer is still driven **only** by the crown. Real chronograph
   reset is a spring-driven fall released by a lever; here the rod pushes
   it both ways, which §48's audit accepts as "driven both ways" (see
