@@ -2106,6 +2106,17 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // §244 — the zero reset's working contact is the ROLLER on the heart, and
+  // nothing else. This pair took TODO 6's blanket excuse (TODO 47 named it as
+  // residue), and under it the lever's flared head buried 1.03 in the heart's
+  // lobe in 21 of 24 cam phases while every gate stayed green. The head is now
+  // cut inside the roller's shadow (HAMMER_TIP_HALF_W), so everything the two
+  // units own except the roller on the heart keeps the margin: the arm, the
+  // boss, the tail bar and the arbor against the heart, the rod and the hub.
+  {
+    a: 'Heart cam (seconds reset)', b: 'Reset hammer', min: CLEAR_MARGIN,
+    contacts: [['secondsHeart', 'resetHammerRoller']],   // the roller on the cut profile — heartFreeAngleAt and probe-reset-contact.mjs own it
+  },
   // TODO 173 — the READ contact, and nothing else. The collar's dial-side face
   // carries the drop to the lever's tip at every azimuth; every other pair of
   // the two units' metal keeps the margin — the jog in particular, which the

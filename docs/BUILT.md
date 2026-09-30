@@ -29430,3 +29430,95 @@ entry's remaining steps stay filed for that decision.
   measurement the missing `EXPECTED_CONTACT_FLOORS` row would gate (TODO 47's
   residue, item 6's work), is the durable fix.
 - The chamfer (above), which is left to the owner.
+
+## §244, landing two — the hammer's head is cut inside the roller's shadow, and the pair has its floors row
+
+The owner looked again once the first landing's fix was in: **part of the hammer's
+arm passed through the heart cam when the cam was at its maximum radius.** It was
+real, and it had been there all along, hidden behind the phantom motion the first
+landing removed.
+
+### What was measured
+
+`tools/probe-244-lever-body.mjs` (new, ACCEPTANCE) steps the shipped eased crown
+pull and push at 1/60 s from 24 cam phases. At every frame it measures, in plan,
+the lever's whole bevel-dilated outline and its boss against the heart's cut
+profile less its bevel. The roller is excluded, because it is the working
+contact.
+
+```
+worst body clearance over every frame: -1.0333 (need ≥ 0.15)
+phases under the margin: 21/24
+```
+
+Every worst row was outline edge 3, the back edge of the head's flare. The head
+was `±1.4·hw` = ±1.4 wide, twice the radius of the 0.7 roller it carries. At
+first touch the arm meets the lobe about 76° off the radial, because the roller
+is out at 4.22 from the cam axis on an arm of 7.73 whose pivot stands 9.67
+away. So the flare's corner leads the roller into the lobe.
+
+Nothing gated it. The contact law holds only the roller (`heartFreeAngleAt`).
+`Heart cam ⇄ Reset hammer` is an EXPECTED pair, and it had no
+`EXPECTED_CONTACT_FLOORS` row, so TODO 6's blanket excused the whole pair.
+TODO 47 had named this as residue.
+
+### The constraint, and the number it gives
+
+**The head is cut inside the roller's shadow.** Every bevel-dilated head corner
+stands no further than `rollerR − CLEAR_MARGIN` = 0.55 from the roller's centre.
+Wherever the roller is out of the metal, the heart lies at least `rollerR` from
+that centre, so by the triangle inequality the head is then at least
+`CLEAR_MARGIN` out of it, whatever the heart's angle. `HAMMER_TIP_HALF_W` is
+bisected against that one condition on the real miter dilation and comes out at
+**0.3817**, where it was 1.4.
+
+The same dilation is now one function, `dilateOutline`. Both this solve and
+`HAMMER_SWING_RAD`'s read it, and the builder's dimensions and outline come from
+`hammerLeverDims` / `hammerLeverOutline` in `geometry.js`, so the solve and the
+cut read the same numbers.
+
+The triangle inequality covers only the head. **The arm behind it is held by a
+build assert.** After the free-angle table is built, the whole dilated outline
+and the boss are measured against every heart angle the roller permits
+(|notch offset| ≤ `heartFreeAngleAt(d)`), at 49 stroke positions from the seat
+to the retracted stand-off. It warns with the achieved and required numbers.
+Mutated back to the old flare, it warns at **−1.0334**; the probe, which steps
+frames through the shipped law rather than sweeping the reachable set, reads
+**−1.0333**. Two independent paths agree.
+
+### What moved with it
+
+- **`HAMMER_SWING_RAD` re-solved smaller.** It is the first angle at which the
+  lever clears the heart's swept disc by its 0.35 margin, and a head that no
+  longer overhangs the roller clears sooner: the offline replica of the solve read 35.5° for the old flare, and the
+  built movement now travels **27.72°** from retracted to seated.
+  The reset linkage derives from the retracted pose, including
+  `HAMMER_TAIL_DELTA`, the rod's length and route, and the low-corridor cover,
+  so all of it re-derived. Boot is silent.
+- **The low-corridor cover narrows with it.** It reads the widest outline
+  x plus the bevel, now the arm's root, 1.0 + 0.16, where it was the flare,
+  1.4 + 0.16.
+- **Mesh names.** The lever's three meshes are now `resetHammerArm`,
+  `resetHammerBoss` and `resetHammerRoller`, and the seconds heart is
+  `secondsHeart`, so the new floors row can name its contact.
+
+### The floors row
+
+`{ a: 'Heart cam (seconds reset)', b: 'Reset hammer', min: CLEAR_MARGIN,
+contacts: [['secondsHeart', 'resetHammerRoller']] }`. The roller on the cut
+profile is the pair's one declared contact. The arm, the boss, the tail bar and
+the hammer's arbor against the heart, its rod and its hub all owe the margin, on
+every pose of the battery's net. This closes TODO 47's first residue bullet, and
+it is the CI gate the first landing said was missing for everything except the
+roller's own contact.
+
+After the fix the probe reads:
+
+```
+worst body clearance over every frame: 0.1502 (need ≥ 0.15)
+phases under the margin: 0/24
+control fired: yes · roller touched in some phase: yes
+```
+
+`probe-reset-contact.mjs` still reads 0/6 on all four counts. The binding
+points are the head's corners, at the margin the construction guarantees.

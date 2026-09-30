@@ -3740,7 +3740,69 @@ const HAMMER_W = 2.0;
 // accident; cut true (borePath), a 0.6 bore would float free of a 0.4 rod.
 const SECONDS_ARBOR_ROD_R = 0.4;
 const heartCam = G.makeHeartCam({ radius: camRadius, thickness: CAM_T, boreR: SECONDS_ARBOR_ROD_R });
-const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: HAMMER_W });
+// The lever's outline as the extrude CUTS it: each vertex pushed out along its
+// miter by the bevel (three.js applies no miter limit; the degenerate guard
+// only). One function, read by the head's width solve below and by
+// HAMMER_SWING_RAD's clearance solve, so the two cannot model different metal.
+const dilateOutline = (outline, bevel) => {
+  const n = outline.length;
+  const area = outline.reduce((acc, p, i) => {
+    const q = outline[(i + 1) % n];
+    return acc + p[0] * q[1] - q[0] * p[1];
+  }, 0);
+  const ccw = area > 0 ? 1 : -1;
+  const edgeNormal = (ux, uy) => {
+    const m = Math.hypot(ux, uy) || 1;
+    return [(ccw * uy) / m, (-ccw * ux) / m];
+  };
+  return outline.map((p, i) => {
+    const a = outline[(i - 1 + n) % n], b = outline[(i + 1) % n];
+    const n1 = edgeNormal(p[0] - a[0], p[1] - a[1]);
+    const n2 = edgeNormal(b[0] - p[0], b[1] - p[1]);
+    let mx = n1[0] + n2[0], my = n1[1] + n2[1];
+    const mm = Math.hypot(mx, my) || 1;
+    mx /= mm; my /= mm;
+    const cosHalf = Math.max(mx * n1[0] + my * n1[1], 0.1);
+    return [p[0] + (mx * bevel) / cosHalf, p[1] + (my * bevel) / cosHalf];
+  });
+};
+// §244 — the head is cut INSIDE THE ROLLER'S SHADOW. The tick law holds only
+// the roller against the heart (heartFreeAngleAt), so nothing else on the lever
+// may be able to reach the metal the roller has not. The head was a flare
+// 1.4·hw wide, twice the roller's radius, and the arm meets the lobe nearly
+// side-on (~76° off the radial at first touch), so the flare's corner led the
+// roller into the lobe: measured 1.03 deep, in 21 of 24 cam phases
+// (tools/probe-244-lever-body.mjs).
+//
+// The constraint: every dilated head corner stands no further than
+// rollerR − CLEAR_MARGIN from the roller's centre. Then wherever the roller is
+// out of the metal (distance ≥ rollerR from its centre), the head is at least
+// CLEAR_MARGIN out of it, by the triangle inequality, whatever the heart's
+// angle. The two corners are mirror images, so one bisection on the half-width
+// settles both. The arm behind the head is held by the assert after the
+// free-angle table, which measures the whole outline over the ride.
+const HAMMER_DIMS = G.hammerLeverDims(HAMMER_W);
+const HAMMER_TIP_HALF_W = (() => {
+  const reach = HAMMER_DIMS.rollerR - CLEAR_MARGIN;
+  const cornerDist = (w) => {
+    const d = dilateOutline(G.hammerLeverOutline(hammerArmLen, HAMMER_W, w), HAMMER_DIMS.bevel);
+    return Math.max(Math.hypot(d[2][0], d[2][1] - hammerArmLen), Math.hypot(d[3][0], d[3][1] - hammerArmLen));
+  };
+  // Bisect over (0, hw]. At exactly 0 the two tip corners coincide and the
+  // miter is degenerate, so the lower end is never evaluated.
+  let lo = 0, hi = HAMMER_DIMS.hw;
+  for (let k = 0; k < 50; k++) {
+    const m = (lo + hi) / 2;
+    if (cornerDist(m) <= reach) lo = m; else hi = m;
+  }
+  // The head must carry the roller's pin, so a head the bevel alone overruns
+  // (no width fits) is a failed solve, not a knife edge.
+  if (lo < 1e-6 || cornerDist(lo) > reach + 1e-9)
+    console.warn(`reset hammer: no head fits inside the roller's shadow — half-width ${lo.toFixed(4)}, `
+      + `corner ${cornerDist(Math.max(lo, 1e-6)).toFixed(4)} from the roller's centre against rollerR − CLEAR_MARGIN = ${reach.toFixed(4)}`);
+  return lo;
+})();
+const hammerLever = G.makeHammerLever({ length: hammerArmLen, width: HAMMER_W, tipHalfW: HAMMER_TIP_HALF_W });
 // Pivot distance solved for a TANGENT seat: at 0° swing the roller's centre
 // sits one roller radius outside the notch floor (rMin, plus the cam's
 // bevel expansion), so the roller surface just kisses the notch instead of
@@ -3787,31 +3849,10 @@ const HAMMER_SWING_MARGIN = 0.35;
 const HAMMER_SWING_RAD = (() => {
   const sweptR = heartCam.userData.r + heartCam.userData.bevel;
   const { outline, bevel, rollerR, bossR, length: armL } = hammerLever.userData;
-  const n = outline.length;
   // Bevel-expanded outline: ExtrudeGeometry pushes each vertex out along
-  // its miter normal (intersection of the two offset edges) — replicate
-  // that so the solved angle matches the real mesh.
-  const area = outline.reduce((s, p, i) => {
-    const q = outline[(i + 1) % n];
-    return s + p[0] * q[1] - q[0] * p[1];
-  }, 0);
-  const ccw = area > 0 ? 1 : -1;
-  const edgeNormal = (ux, uy) => {
-    const m = Math.hypot(ux, uy) || 1;
-    return [(ccw * uy) / m, (-ccw * ux) / m];
-  };
-  const pts = outline.map((p, i) => {
-    const a = outline[(i - 1 + n) % n], b = outline[(i + 1) % n];
-    const n1 = edgeNormal(p[0] - a[0], p[1] - a[1]);
-    const n2 = edgeNormal(b[0] - p[0], b[1] - p[1]);
-    let mx = n1[0] + n2[0], my = n1[1] + n2[1];
-    const mm = Math.hypot(mx, my) || 1;
-    mx /= mm; my /= mm;
-    // True miter factor (three.js applies no miter limit; the flared head's
-    // corner reaches cosHalf ≈ 0.44) — only guard against degeneracy.
-    const cosHalf = Math.max(mx * n1[0] + my * n1[1], 0.1);
-    return [p[0] + (mx * bevel) / cosHalf, p[1] + (my * bevel) / cosHalf];
-  });
+  // its miter normal — the shared dilateOutline, so the solved angle matches
+  // the real mesh and the head's own width solve.
+  const pts = dilateOutline(outline, bevel);
   const distToLever = (cx, cy) => {
     let d = Infinity;
     for (let i = 0; i < pts.length; i++) {
@@ -3870,6 +3911,9 @@ const CW_UNDER_Z = L_CENTER - 1.0 / 2; // center wheel underside (thickness 1.0)
 const Z_SECONDS_ARBOR = CW_UNDER_Z - CLEAR_MARGIN - (HAMMER_W * 0.6 * 1.4) / 2;
 const secondsCamArbor = new THREE.Group();
 secondsCamArbor.position.set(P.fourth.x, P.fourth.y, Z_SECONDS_ARBOR);
+// §244: named, so the pair's EXPECTED_CONTACT_FLOORS row can declare the roller
+// on THIS mesh as the one contact and hold everything else to the margin.
+heartCam.traverse((o) => { if (o.isMesh) o.name = 'secondsHeart'; });
 secondsCamArbor.add(heartCam);
 movement.add(secondsCamArbor);
 registerExplode(secondsCamArbor, Z_SECONDS_ARBOR, 4);
@@ -4029,6 +4073,62 @@ const heartFreeAngleAt = (d) => {
         + `would have to let the heart out as it closes`);
       break;
     }
+}
+
+{
+  // §244 — the WHOLE lever against the heart, over the ride. The head's width
+  // solve (HAMMER_TIP_HALF_W) guarantees the head by the triangle inequality;
+  // this measures everything else the lever carries (the arm's flanks, the
+  // boss) against every heart angle the roller permits at every stroke
+  // position, so a change to the arm's taper cannot let a flank lead the
+  // roller the way the old flare did. The reachable set at roller distance d
+  // is |notch offset| ≤ heartFreeAngleAt(d); outside it the law has already
+  // pushed the heart. Signed distance to the heart is the CUT curve's less the
+  // bevel (the Minkowski argument above), negative inside.
+  const { outline, bevel, bossR } = hammerLever.userData;
+  const d = dilateOutline(outline, bevel);
+  const body = [];
+  for (let i = 0; i < d.length; i++) {
+    const [ax, ay] = d[i], [bx, by] = d[(i + 1) % d.length];
+    const k = Math.max(2, Math.ceil(Math.hypot(bx - ax, by - ay) / 0.05));
+    for (let j = 0; j < k; j++) body.push([ax + ((bx - ax) * j) / k, ay + ((by - ay) * j) / k]);
+  }
+  for (let j = 0; j < 48; j++) { const t = (j / 48) * 2 * Math.PI; body.push([bossR * Math.cos(t), bossR * Math.sin(t)]); }
+  const reachR = HEART_R + HEART_BEVEL + CLEAR_MARGIN;   // nothing further out can come within the margin
+  const heartSD = (x, y) => {
+    const d2 = (t) => { const r = heartRadiusAt(t); const dx = r * Math.cos(t) - x, dy = r * Math.sin(t) - y; return dx * dx + dy * dy; };
+    let m = Infinity, best = 0;
+    for (let i = 0; i < 180; i++) { const t = (i / 180) * 2 * Math.PI; const q = d2(t); if (q < m) { m = q; best = t; } }
+    let lo = best - Math.PI / 90, hi = best + Math.PI / 90;
+    for (let it = 0; it < 30; it++) { const a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3; if (d2(a) < d2(b)) hi = b; else lo = a; }
+    return (Math.hypot(x, y) < heartRadiusAt(Math.atan2(y, x)) ? -1 : 1) * Math.sqrt(d2((lo + hi) / 2)) - HEART_BEVEL;
+  };
+  let worst = Infinity, at = null;
+  for (let i = 0; i <= 48; i++) {
+    const rot = hammerBaseAngle + (HAMMER_SWING_RAD * i) / 48;
+    const roller = hammerRollerAt(rot);
+    const psi = Math.atan2(roller.y - P.fourth.y, roller.x - P.fourth.x);
+    const free = heartFreeAngleAt(Math.hypot(roller.x - P.fourth.x, roller.y - P.fourth.y));
+    const c = Math.cos(rot), sn = Math.sin(rot);
+    const near = [];
+    for (const [x, y] of body) {
+      const wx = hammerPivotPos.x + c * x - sn * y - P.fourth.x, wy = hammerPivotPos.y + sn * x + c * y - P.fourth.y;
+      if (Math.hypot(wx, wy) < reachR) near.push([Math.hypot(wx, wy), Math.atan2(wy, wx)]);
+    }
+    if (!near.length) continue;
+    for (let j = 0; j <= 60; j++) {
+      const notch = psi - free + (2 * free * j) / 60;      // the heart's notch azimuth, over the reachable band
+      for (const [rho, az] of near) {
+        const t = az - notch;
+        const v = heartSD(rho * Math.cos(t), rho * Math.sin(t));
+        if (v < worst) { worst = v; at = { i, j }; }
+      }
+    }
+  }
+  if (worst < CLEAR_MARGIN - 1e-3)
+    console.warn(`reset hammer: the lever's body comes within ${worst.toFixed(4)} of the heart over the ride `
+      + `(stroke sample ${at.i}/48, notch sample ${at.j}/60) — CLEAR_MARGIN ${CLEAR_MARGIN} required; `
+      + `only the roller may reach the metal`);
 }
 
 // ---------------------------------------------------------------------------

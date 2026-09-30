@@ -2987,52 +2987,83 @@ export function makeColumnWheel({ columns = 6, baseR = 1.5, baseH = 0.3, colH = 
 // a heart cam's flank, camming it to the zero/notch position as it closes.
 // ---------------------------------------------------------------------------
 
-export function makeHammerLever({ length, width }) {
-  const g = new THREE.Group();
+// §244 — the reset hammer's dimensions and outline, as ONE source. main.js has
+// to solve the head's width against the heart BEFORE it builds the lever, so
+// it needs the roller, the bevel and the outline without a mesh; reading them
+// here keeps the solve and the cut on the same numbers.
+export function hammerLeverDims(width) {
   const hw = width / 2;
-  // 2D outline (pre-bevel) — single source of truth for the mesh AND for
-  // clearance solvers in main.js (exported via userData below).
-  const outline = [
+  return {
+    hw,
+    depth: width * 0.6,
+    bevel: width * 0.08,   // bevelSize EXPANDS the outline in XY
+    rollerR: hw * 0.7,     // roller at (0, length) — plain cylinder, no bevel
+    bossR: hw * 1.3,       // pivot boss at the origin
+  };
+}
+// 2D outline (pre-bevel), in the lever's own frame: pivot at the origin, the
+// roller's centre at (0, length). The arm tapers from the boss to half its
+// width at 0.85·length, then runs to a head whose half-width is `tipHalfW`.
+// §244: the head was a flare 1.4·hw wide, wider than the roller it carries,
+// and it buried 1.03 in the heart's lobe. Its width is now the caller's
+// solve (main.js, HAMMER_TIP_HALF_W).
+export function hammerLeverOutline(length, width, tipHalfW) {
+  const { hw } = hammerLeverDims(width);
+  return [
     [-hw, 0],
     [-hw * 0.5, length * 0.85],
-    [-hw * 1.4, length],
-    [hw * 1.4, length],
+    [-tipHalfW, length],
+    [tipHalfW, length],
     [hw * 0.5, length * 0.85],
     [hw, 0],
   ];
+}
+
+export function makeHammerLever({ length, width, tipHalfW }) {
+  const g = new THREE.Group();
+  const { hw, depth, bevel, rollerR, bossR } = hammerLeverDims(width);
+  // 2D outline (pre-bevel) — single source of truth for the mesh AND for
+  // clearance solvers in main.js (exported via userData below).
+  const outline = hammerLeverOutline(length, width, tipHalfW);
   const s = new THREE.Shape();
   outline.forEach(([x, y], i) => (i === 0 ? s.moveTo(x, y) : s.lineTo(x, y)));
   s.closePath();
 
-  const depth = width * 0.6;
   const geo = new THREE.ExtrudeGeometry(s, {
     depth,
     bevelEnabled: true,
-    bevelThickness: width * 0.08,
-    bevelSize: width * 0.08,
+    bevelThickness: bevel,
+    bevelSize: bevel,
     bevelSegments: 1,
     curveSegments: 6,
   });
   geo.translate(0, 0, -depth / 2);
-  g.add(new THREE.Mesh(geo, MATS.steel));
+  // §244: named, so EXPECTED_CONTACT_FLOORS can declare the ROLLER as the
+  // pair's one contact and hold the arm and boss to the margin.
+  const arm = new THREE.Mesh(geo, MATS.steel);
+  arm.name = 'resetHammerArm';
+  g.add(arm);
 
-  const bossGeo = new THREE.CylinderGeometry(hw * 1.3, hw * 1.3, depth * 1.4, 16);
+  const bossGeo = new THREE.CylinderGeometry(bossR, bossR, depth * 1.4, 16);
   bossGeo.rotateX(Math.PI / 2);
-  g.add(new THREE.Mesh(bossGeo, MATS.steel));
+  const boss = new THREE.Mesh(bossGeo, MATS.steel);
+  boss.name = 'resetHammerBoss';
+  g.add(boss);
 
   // Hardened roller — sliding cam contact under spring load, not a
   // low-friction pivot jewel, so plain steel rather than ruby.
-  const rollerGeo = new THREE.CylinderGeometry(hw * 0.7, hw * 0.7, depth * 1.1, 14);
+  const rollerGeo = new THREE.CylinderGeometry(rollerR, rollerR, depth * 1.1, 14);
   rollerGeo.rotateX(Math.PI / 2);
   const roller = new THREE.Mesh(rollerGeo, MATS.steel);
+  roller.name = 'resetHammerRoller';
   roller.position.set(0, length, 0);
   g.add(roller);
 
   g.userData.length = length;
   g.userData.outline = outline;      // pre-bevel 2D profile, local frame
-  g.userData.bevel = width * 0.08;   // bevelSize EXPANDS the outline in XY
-  g.userData.rollerR = hw * 0.7;     // roller at (0, length) — plain cylinder, no bevel
-  g.userData.bossR = hw * 1.3;       // pivot boss at the origin
+  g.userData.bevel = bevel;          // bevelSize EXPANDS the outline in XY
+  g.userData.rollerR = rollerR;      // roller at (0, length) — plain cylinder, no bevel
+  g.userData.bossR = bossR;          // pivot boss at the origin
   return g;
 }
 
