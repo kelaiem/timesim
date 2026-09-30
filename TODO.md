@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
 | 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
@@ -33,7 +34,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 177 | OPEN | The hour hand's body touches the alarm hand's boss (0 at beat f=0), hidden behind the same waiver. Fix: derive the two hands' stack gap from `CLEAR_MARGIN` |
 | 176 | CLOSED | The alarm barrel's cavity is `borePath(drumInnerR, bevel)`, guarded to 5.595 at boot. The filed 4.785 was a radius, the hexagon less its bevel. The ribbon clears the true wall by 0.0536 against a designed 0.0549 |
 | 175 | CLOSED | Bevelled bores are drawn at `r + bevel/cos(π/n)`, so the band the shaft meets IS r (`boreBandGuard` warns otherwise). Every gear, pinion, heart and barrel bore is compensated. The fit census was redone: 3 "pressed" parts run; 6 bores smaller than their shaft and 3 too-loose running fits now derive from the shaft they ride |
-| 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
+| 174 | CLOSED | The fork is joined to the ring (a foot and riser of ring stock, webs at the §50 floor; 'Alarm selector' in ASSEMBLY_SCOPE, control fires at 0.1817). En route: the §112 solve's guide-post guard mixed dial-local and world azimuths, which seated the fork ON post 1 (pin 0.1285 inside); the guard is a world plan clearance now and the solve's honest site is tab 315°, rod d 9, whose beak arms are a declared FORK of §229's (3.577/0.768, ratio held) with the rod's top cut from the tail (beak row −0.0708 → 0/0.0008) |
 | 173 | CLOSED | The lever rocks about its own pin ('ZYX'), sign read off the contact (`feelerRockAt`); the dropped tip seats on the ring (−0.0202, was 0.1628 open), the banking stop banks (0.0001), and the arm, jog and tail run are re-derived for the true rock. Dropped-pose hand-off rows and a reader ⇄ feeler floors row hold it. Filed: TODO 189 (beak), TODO 190 (silence rocker) |
 | 172 | CLOSED | The lane stands `ALARM_SHEET_GAP` (one banded `CLEAR_MARGIN`) off the dial; the §29 chain behind it is funded by two blind pockets sunk `MW_PLATE_SINK` into the base plate under the cannon pinion and the setting cap (the cap's merged with the rise bore), so `MW_WHEEL_T` keeps 0.468235 and the cap's coverage holds at 0.16. Debt row deleted |
 | 171 | CLOSED | `EXPECTED_PAIRS` now declares `Alarm link ⇄ Three-quarter plate`, citing the floors row's two contacts (beak post on the plate top, rod bush in its bore), so the tables agree on record. The pair seats at 0.007 and holds 0.3738 elsewhere; only `sweptOverlap`'s report-only `tight` row moves |
@@ -23963,7 +23964,7 @@ Found and filed rather than fixed:
   and eight under-margin pairs behind the same EXPECTED pair, and no floors
   row can pass until the interface is redesigned.
 
-## 174. The alarm selector's fork block and bracket bar are not joined to the ring they drive
+## 174. The alarm selector's fork block and bracket bar are not joined to the ring they drive — CLOSED
 
 Found triaging [TODO 170]'s sleeve ⇄ selector row. The fork bracket bar is
 cut to "lap" the selector ring's rim, but only in plan: at the plate level
@@ -23980,6 +23981,84 @@ overlap.
 it keeps TODO 170's clearance to the sleeve flat. Then gate the connection:
 bring the selector into `ASSEMBLY_SCOPE`, or add a declared-joint row that
 the §182 audit measures.
+
+**Closed.** The joint was the smaller half; under it sat a guard measuring in
+two frames.
+
+1. **The joint.** `alarmSelForkFoot` and `alarmSelForkRiser`, each
+   `STOCK_MIN_U` square and lapped `ALARM_GOV_ARM_LAP` into what it joins. The
+   riser runs from the ring's face to the bar's face outside TODO 170's line
+   (`brIn`). The block's webs rise from 0.05 to `STOCK_MIN_U`, because they
+   carry the lower plate's drive (§50). The gate is the fix path's first
+   option: `ASSEMBLY_SCOPE` gains `'Alarm selector'`. Its control (riser
+   omitted) reports the split at 0.1817.
+2. **The defect under the defect: a guard in two frames.** The §112 link
+   solve's `_postOk` converted the WORLD tab azimuth to dial-local
+   (180° − az) and compared it with the guide posts' WORLD azimuths —
+   CLAUDE.md's `dialFace` Y-flip trap — with a 26° literal applied to the wrong
+   quantity (the fork lies along the chord, not at the tab's azimuth). Main's
+   site (tab 69°, rod 16 from the wheel) therefore seated the fork ON guide
+   post 1: the centre pin stood 0.1285 inside it at every armed pose, and two
+   `INTRA_UNIT_CONTACTS` rows ("lapped on the post") excused it; both are
+   deleted. The guard is now `_postClear`: the modelled fork's world plan
+   clearance to each station's sleeve (`ALARM_SEL_SLEEVE_R`) and boss
+   (`ALARM_SEL_BOSS_W`), plus `CLEAR_MARGIN`, against `ALARM_SEL_POST_XY`, the
+   stations' one source. It is held at the fork build by a rule-6 assert on
+   the BUILT block and pin (at rest and at the armed rolls), which fires
+   "0.4913 inside guide post 1" on main's site. The solve's honest best is tab
+   315°, rod distance 9, clearance 0.4592 (main's site: 0.2297, and illegal).
+   Re-hoisted: body 30.9964 → 20.5712, rod 19.1037 → 19.3894, bores →
+   (27.88, −4.07), TODO 82's stall 1006.54 → 1221.13 mN (live row 1242.62,
+   1.76% apart, under the 3% assert).
+3. **The beak arms are a declared FORK of §229's.** The line is unchanged —
+   ratio `SEAT_DROP_SPEC / ROD_TRAVEL_SPEC` = 4.6574, collinear arms, nose at
+   `landR`. The reference is §229's fold at `ALARM_BEAK_REF_WRLEN = 16`, a
+   record and not a live input; the one changed input is the rod distance,
+   forced by the corrected guard. Asserted at the build (ratio to 1e-9
+   relative, wrLen = `ALARM_LINK_ROD_DIST`), recorded on `alarmLinkParts.fork`:
+
+   | row | ref (wr 16) | fork (wr 9) | re-derived as |
+   |---|---|---|---|
+   | beakLen | 9.3396 | 3.5770 | (wr − landR)·r/(1 + r) |
+   | tailLen | 2.0054 | 0.7680 | (wr − landR)/(1 + r) |
+   | ratio | 4.6574 | 4.6574 | held |
+   | θseat | 0.04997 | 0.13046 | seatDrop/beakLen; the rod top is cut to it |
+   | bar depth | 0.3459 (§54) | 0.3167 (§50 floor governs) | max(STOCK_MIN_U, beakLen/27) |
+   | nose height | 0.5891 | 0.5852 | the swept bar lift re-derives |
+   | tail stall (§137 beak row, no envelope) | 3552 mN | 63236 mN | k·rodTravel; a shorter tail is stiffer |
+
+   Envelopes are inherited, not forked: §50 and §54 on both arms (the boot
+   asserts stay silent), and the 5–50 mN detent window, which the lay shaft's
+   §137 row still COVERS. `transfers` reads 21 rows, 0 failures.
+4. **The rod's top is cut from the tail (MODELING.md rule 9).** The tick lifts
+   the rod `tailLen·θ` while the blade tilts θ, so at θseat 0.13 a flat rod top
+   meets a tilted blade edge-first — the beak row read −0.0708 on the first
+   trial (−0.0264 on main). The tail's underside in the rod's frame, at
+   offset u toward the post, is `g(u, θ) = h(1 − secθ) + (L − u)·tanθ − L·θ`;
+   the rod's top is `min(0, g(u, θseat))`, a facet on the post side at the
+   seat's slope. At the seat the blade lies flat on it; through the travel it
+   stands on the crease (gap ≤ ~1e-4); at rest it stands
+   `h(secθ − 1) − L(tanθ − θ)` = 0.0008 over the axis, the lever law's own
+   small-angle residue, accepted rather than re-opening §229's spec loop. The
+   rod stays a `CylinderGeometry` (the §124 pad-shear precedent: baked into
+   the vertices), and a rule-6 assert walks 17 tilts through the tick's own
+   two lines (`alarmLinkParts.rodCut`: cutIn 0, cutOff 0.00078). The row
+   reads disarmed 0.0008, armed 0.0000, setting 0.0008, dropped 0.0008, with
+   `HANDOFF_TRACK_TOL` untouched.
+5. **The crank.** `ALARM_FORK_SEAT` is derived, `RETREAT − CRANK_T/2 −
+   CLEAR_MARGIN − BLOCK_L/2` = 0.59 (was the 0.65 band midpoint). A new
+   floors row, `Alarm link ⇄ Alarm selector` (contacts centre pin ⇄ tab),
+   reads 0.1500; on main it reads 0, the pin in post 1's sleeve.
+6. **Found on the way.** The lay shaft's hanger bushes stood along WORLD x,
+   20.1° off the shaft on main; they are on the chord now (shaft ⇄ bush 0 →
+   0.0184). And `turnedBars`' lap test tied at exactly `TURN_LAP_MAX_FRAC` for
+   a bush centred on its journal's end station; a SLEEVE is now concentric at
+   any lap. That changes nothing on main, and at the new site it keeps the
+   shaft at L/D 18 rather than a phantom 94.9.
+7. **Residue.** The rod stands 0.0811 from the beak post it runs parallel to
+   (intra-unit, not gated, not fouling) — TODO 191. `_FORK_HALF_W` still
+   models the block at 0.3 in the solve; the build assert on the real block
+   is the gate.
 
 ## 175. A bevelled gear or pinion bore is cut bevelSize smaller than its boreR, so running fits still overlap their studs — CLOSED
 
@@ -25123,3 +25202,19 @@ options were named, none trialled:
 
 The finger radius, the pivot fraction and `ALARM_SIL_PIN_LEVER` are held.
 Then land the floors row with only the real contacts; it is the acceptance.
+
+## 191. The alarm selector rod stands 0.0811 from the beak post it runs parallel to
+
+Found closing [TODO 174]. At the corrected rod site (tab 315°, 9 from the
+wheel) the beak arms shrank to the declared fork's 3.577 / 0.768, which brings
+the selector rod within 0.0811 of the beak post, the two running parallel
+along their length. They are members of one unit (`Alarm link`), so no pair
+sweep reads them, `intraUnit`'s fixture tier only REPORTS outside
+`INTRA_TIER_SCOPE`, and nothing moves them into each other — the rod slides
+axially and the post is still. It is under `CLEAR_MARGIN`, not fouling.
+
+**Fix path (P2 — one action group).** Solve it in position space: the beak
+post's station along the arm's line, or the rod's azimuth about the crank,
+with the lever's arm lengths and 4.66:1 held (spending the ratio to buy room
+is forbidden). The acceptance is a measured gap ≥ `CLEAR_MARGIN` over the
+link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
