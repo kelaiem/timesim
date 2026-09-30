@@ -4778,12 +4778,13 @@ const PENETRATION_BUDGETS = [
     // forkable (CLAUDE.md's fold rule).
     //
     // nSamples is 449 because of an aliasing trap this axis makes easy: one
-    // wind is 28 strikes × ALARM_GOV_TEETH_PER_STRIKE (80) = 2240 tooth
-    // periods, and the interference lives INSIDE one period. A sample count
-    // sharing a factor with 2240 revisits the same handful of phases forever
-    // — 240, the hammer row's count above, sees 15 of them. 449 is prime and
-    // coprime to 2240, so the samples visit 449 distinct phases spread across
-    // the period.
+    // wind is 28 strikes × ALARM_GOV_TEETH_PER_STRIKE tooth periods (80 per
+    // strike when this was written — 2240 — and 40 since §248's 20-tooth saw —
+    // 1120), and the interference lives INSIDE one period. A sample count
+    // sharing a factor with the period count revisits the same handful of
+    // phases forever — 240, the hammer row's count above, saw 15 of 2240's. 449
+    // is prime and so coprime to both, and the samples visit 449 distinct
+    // phases spread across the period.
     pair: ['Alarm governor', 'Alarm governor anchor'],
     maxDepth: 0.1,
     axis: 'alarmStrike',
