@@ -25,7 +25,7 @@
 //                mover pairs inside INTRA_TIER_SCOPE — and 0 unmatched
 //                declared selectors (TODO 5/§121; out-of-scope FF/MM rows
 //                and waived rows reported as debt)
-//   expectedContacts 0 unwaived floor rows and 0 unmatched contact selectors
+//   expectedContacts 0 unwaived floor rows, 0 unmatched contact selectors and 0 stale or malformed waivers
 //                (TODO 6's per-contact floors; waived rows reported as debt)
 //   inspection   includeExcluded: true, 0 FORBIDDEN pairs
 //   clearances   0 violations

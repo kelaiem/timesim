@@ -3229,12 +3229,17 @@ const CHATON_SCREW_COUNTS = [3, 2];
 const SEAT_LAND_LAP = 0.15;
 // Flat annulus, axis along +Z, centred on its own origin — the counterbore's
 // floor collar (see the plate build).
+// TODO 120 — the lathe's segment count, named: a ringGeo tube is a
+// RING_GEO_SEG-gon, vertices on its radii and facets at r·RING_GEO_FLATS, so
+// wherever something turns inside the hour tube its bore is read at the flats.
+const RING_GEO_SEG = 40;
+const RING_GEO_FLATS = Math.cos(Math.PI / RING_GEO_SEG);
 function ringGeo(innerR, outerR, h) {
   const g = new THREE.LatheGeometry([
     new THREE.Vector2(innerR, -h / 2), new THREE.Vector2(outerR, -h / 2),
     new THREE.Vector2(outerR, h / 2), new THREE.Vector2(innerR, h / 2),
     new THREE.Vector2(innerR, -h / 2),
-  ], 40);
+  ], RING_GEO_SEG);
   g.rotateX(Math.PI / 2); // LatheGeometry revolves about +Y — stand it along Z
   return g;
 }
@@ -14119,7 +14124,52 @@ const HOUR_HAND_LEN = dialRadius * G.DIAL_MARKER_INNER_F;
 // declarations couple by mesh name: STOCK_KIND_BY_MESH is the only route to
 // kind 'hand' for these three (their units — Hour wheel, Dial, Alarm disc —
 // contain non-hand metal, so a PART-level declaration cannot say it).
-const HOUR_HAND_SPEC = { length: HOUR_HAND_LEN, kind: 'hour', namePrefix: 'hour' };
+// TODO 120 — THE CENTRAL PIPES. The hour and minute hands carried SOLID
+// bosses centred on their planes, radially inside the arbors they "rode" (the
+// hour boss ended at r 1.26; its tube stands at 2.05..2.50): nothing gripped
+// and nothing could have been assembled. Each now rides a bored pipe PRESSED
+// on its arbor, hanging G.HAND_PIPE_LAND below the blade's top face as a hand
+// pipe is fitted; the blade is opened at its pivot and bridged to the pipe by
+// an eye (makeHand's `pipe`).
+//  · the hour pipe is pressed on the hour tube's OUTSIDE, so its bore IS
+//    HOUR_TUBE_OUTER (the alarm heart's press-fit convention, TODO 154);
+//  · the minute pipe is pressed on the cannon pinion's NOSE (built with the
+//    pinion below), and the hour wheel's tube RIDES that nose, as an hour
+//    wheel rides its cannon pinion in a watch: the nose is a RUNNING FIT in
+//    the tube's bore, PIVOT_BORE_CLEAR (the movement's one running fit,
+//    layout.js) inside the bore read at its FLATS — ringGeo is a
+//    RING_GEO_SEG-gon, and its facet midpoints are what a turning nose
+//    meets. The two turn 12:1 against each other, so this is a bearing, and
+//    it is DECLARED as one: a support edge and a floors-row contact
+//    (`hourTube ⇄ cannonNose`, inspect.js). The seat plate's bore rides the
+//    tube's outside by the same fit (TODO 144), so the tube runs in two
+//    coaxial journals — the nose inside it, the seat outside it — and both
+//    are declared supports;
+//  · each wall is §50's floor ACROSS THE FLATS (flatsR's rule):
+//    outer = (bore + STOCK_MIN_U) / G.HAND_RING_FLATS.
+const CANNON_NOSE_R = HOUR_TUBE_INNER * RING_GEO_FLATS - PIVOT_BORE_CLEAR;        // 1.9937
+const HOUR_PIPE_BORE = HOUR_TUBE_OUTER;                                           // 2.5
+const HOUR_PIPE_OUTER = (HOUR_PIPE_BORE + STOCK_MIN_U) / G.HAND_RING_FLATS;       // 2.8227
+const MINUTE_PIPE_BORE = CANNON_NOSE_R;                                           // pressed on the nose: bore = its outside
+const MINUTE_PIPE_OUTER = (MINUTE_PIPE_BORE + STOCK_MIN_U) / G.HAND_RING_FLATS;   // 2.3153
+// TODO 120 — ONE STACKING RULE for co-axial SECTIONS (makeHand's
+// userData.sections, plus the tubes'): two annuli whose radial gap is under
+// CLEAR_MARGIN stand CLEAR_MARGIN apart in z; radially clear ones may
+// interleave. coaxialLift is the least plane-to-plane lift clearing every
+// such pair (`below` read from the lower plane, `above` from the upper). The
+// 1e-9 is float equality, not a budget: the alarm eye is DERIVED exactly one
+// margin outside the hour pipe.
+const sectionRadialGap = (a, b) => Math.max(a.rIn - b.rOut, b.rIn - a.rOut);
+const coaxialLift = (below, above) => {
+  let lift = -Infinity;
+  for (const b of below) for (const a of above) {
+    if (sectionRadialGap(a, b) >= CLEAR_MARGIN - 1e-9) continue;
+    lift = Math.max(lift, b.zHi + CLEAR_MARGIN - a.zLo);
+  }
+  return lift;
+};
+const HOUR_HAND_SPEC = { length: HOUR_HAND_LEN, kind: 'hour', namePrefix: 'hour',
+  pipe: { boreR: HOUR_PIPE_BORE, outerR: HOUR_PIPE_OUTER, hang: 'blade' } };
 const hourHand = G.makeHand(HOUR_HAND_SPEC);
 // Minute hand length: tip ON the railroad's rungs — DERIVED from the print's
 // own frame (§125 step 5), mid-rung between the two rails. A printed fraction
@@ -14132,7 +14182,8 @@ const hourHand = G.makeHand(HOUR_HAND_SPEC);
 // hour hand's derivation closed one constant up.
 const MINUTE_HAND_LEN = dialRadius * (2 * G.DIAL_CANVAS_FILL_F)
   * ((G.DIAL_RAIL_IN_F + G.DIAL_RAIL_OUT_F) / 2);
-const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute', namePrefix: 'minute' };
+const MINUTE_HAND_SPEC = { length: MINUTE_HAND_LEN, kind: 'minute', namePrefix: 'minute',
+  pipe: { boreR: MINUTE_PIPE_BORE, outerR: MINUTE_PIPE_OUTER, hang: 'blade' } };
 const minuteHand = G.makeHand(MINUTE_HAND_SPEC);
 // TODO 118 — the minute hand's lift over the hour plane, DERIVED at last.
 // This was `2.3`, a literal sized for the pre-§125 fat cylindrical rods
@@ -14140,24 +14191,23 @@ const minuteHand = G.makeHand(MINUTE_HAND_SPEC);
 // it in silence, §188 cut both blades to 0.20 mm stock and collapsed the
 // real requirement to half of it — and the minute hand shipped floating
 // 0.67 mm of bare air above a 0.2 mm blade, which is how the owner found
-// it. The lift is the largest of the four ways the two hands can meet,
-// each cleared by the one margin, read from the built hands' own userData
-// so a future boss or blade change re-binds by itself:
-//  · boss against boss (both collets are CENTRED about their planes —
-//    ±bossH/2 — and rotate relative to each other): the governing term at
-//    stock, 1.206;
-//  · hour blade's corner plane against the minute blade's keel (makeHand's
-//    crossing note — 0.678 at stock);
-//  · each blade against the other's boss (the cross terms, smaller today
-//    but written out rather than assumed away).
+// it. The lift is the largest of the ways the two hands can meet, each
+// cleared by the one margin, read from the built hands' own userData so a
+// future pipe or blade change re-binds by itself. Since TODO 120 those ways
+// are the SECTIONS (coaxialLift, above) — the hour hand's plus the hour TUBE,
+// which reaches the hour pipe's top to give it its whole land. The governing
+// pair is the minute pipe's foot over that tube's top face (the minute pipe
+// rides the nose just inside the tube's bore):
+//   topRise_h + CLEAR_MARGIN + (HAND_PIPE_LAND − topRise_m) = 1.2056,
+// the old boss-on-boss 1.2056 exactly — both are one pipe land plus the
+// margin — so the minute plane does not move. The blades still meet at
+// 0.678 (corner plane over keel).
 // Sanity, not derivation: the resulting 0.26 mm of blade air sits inside
 // the 0.2–0.3 mm running clearance real hands are set with.
-minuteHand.position.z = Math.max(
-  hourHand.userData.bossH / 2 + CLEAR_MARGIN + minuteHand.userData.bossH / 2,
-  hourHand.userData.topRise + CLEAR_MARGIN + minuteHand.userData.floorDrop,
-  hourHand.userData.bossH / 2 + CLEAR_MARGIN + minuteHand.userData.floorDrop,
-  hourHand.userData.topRise + CLEAR_MARGIN + minuteHand.userData.bossH / 2,
-);
+minuteHand.position.z = coaxialLift(
+  [...hourHand.userData.sections,
+    { name: 'hour tube', rIn: HOUR_TUBE_INNER * RING_GEO_FLATS, rOut: HOUR_TUBE_OUTER, zLo: -Infinity, zHi: hourHand.userData.pipe.zHi }],
+  minuteHand.userData.sections);
 handsGroup.add(minuteHand);
 
 // Small-seconds display — the hand rides the fourth wheel's own axis via
@@ -14537,9 +14587,31 @@ const MW_PINION_T = MW_WHEEL_T + 2 * MW_BEVEL(MW_WHEEL_T, MW_MODULE_2) + MW_COVE
 // reach, so the chain can deepen again without anyone re-counting leaves.
 const CANNON_T = -0.5 - (MW_Z1 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_1) - MW_COVER);
 const CANNON_END = -0.5 - CANNON_T;
-const cannonPinion = G.makePinion({ name: 'cannonPinion', module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }], thickness: CANNON_T, material: MATS.steel });
+const CANNON_BORE_R = Math.max(MW_MODULE_1 * 0.35, 0.4);   // TODO 120: makePinion's default shaft bore, NAMED because the nose below is bored to it too — passed explicitly, so the leaves are cut exactly as before
+const cannonPinion = G.makePinion({ name: 'cannonPinion', module: MW_MODULE_1, teeth: cannonPinionTeeth, mates: [{ teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES }], thickness: CANNON_T, boreR: CANNON_BORE_R, material: MATS.steel });
 cannonPinion.position.z = -0.5 - CANNON_T / 2;
 dialFace.add(cannonPinion);
+// TODO 120 — THE CANNON PINION'S NOSE: the pinion's pipe, carried forward
+// through the hour tube to the minute hand, which is pressed on it (a real
+// cannon pinion's pipe; the minute hand used to cap the stack on nothing).
+// A SIBLING of the leaves, not a child: the §15 phase gauge
+// (measuredToothPhase) and §194's rotor index read every mesh under
+// `cannonPinion` for its tooth silhouette, and a ring standing wider than the
+// leaves' tips would BECOME the silhouette. It is one rigid body with the
+// pinion because tick() hands it the pinion's own rotation (starTurn's
+// one-source rule), never a second copy of −minuteA.
+//   bore   — CANNON_BORE_R, one hole through leaves and nose;
+//   radius — CANNON_NOSE_R, the running fit inside the hour tube's flats
+//            (the hour wheel's inner journal — see CANNON_NOSE_R);
+//   ends   — from the leaves' dial-side face (−0.5, the plane CANNON_T is
+//            solved to; the leaves' bevel stands past it, so the two
+//            overlap) to the minute pipe's top: the pipe's whole land.
+const CANNON_NOSE_TOP = DIAL_T + aesthetics.dial.hands.handsGroupZOffset
+  + minuteHand.position.z + minuteHand.userData.pipe.zHi;
+const cannonNose = new THREE.Mesh(ringGeo(CANNON_BORE_R, CANNON_NOSE_R, CANNON_NOSE_TOP + 0.5), MATS.steel);
+cannonNose.name = 'cannonNose';
+cannonNose.position.z = (CANNON_NOSE_TOP - 0.5) / 2;
+dialFace.add(cannonNose);
 // …and the new floor that derivation creates: the leaves now reach PAST the
 // minute wheel toward the plate, so the pinion's end is the deepest thing on
 // the centre axis. It must still stand off the plate's dial-side face.
@@ -14696,7 +14768,11 @@ hourWheelGroup.add(mwHourWheel);
   // LONGER, not shorter: the hand plane rides forward with the face (the
   // minute hand's own group already moved with dialPlateFace) while the wheel
   // stays on the works' side. tubeLen below picks the growth up for free.
-  const tubeTop = aesthetics.dial.hands.handsGroupZOffset + DIAL_T; // the hour hand's plane, one plate forward
+  const handPlane = aesthetics.dial.hands.handsGroupZOffset + DIAL_T; // the hour hand's plane, one plate forward
+  // TODO 120 — the tube reaches the TOP of the hand's pipe, not its plane:
+  // the pipe is pressed on the tube's outside over its whole land
+  // (G.HAND_PIPE_LAND), and the tube has to be there to give it.
+  const tubeTop = handPlane + hourHand.userData.pipe.zHi;
   const tubeLen = tubeTop - MW_Z2;
   const tube = new THREE.Mesh(
     ringGeo(HOUR_TUBE_INNER, HOUR_TUBE_OUTER, tubeLen), MATS.steel);
@@ -14706,7 +14782,7 @@ hourWheelGroup.add(mwHourWheel);
   // The hour hand is carried BY this wheel — mounted on the tube's front
   // end, so it inherits hourWheelGroup's rotation instead of being posed
   // from a separate expression in tick().
-  hourHand.position.z = tubeTop;
+  hourHand.position.z = handPlane;   // TODO 120: its pipe, pressed on the tube's outside, ends flush with tubeTop
   hourWheelGroup.add(hourHand);
 }
 
@@ -15944,7 +16020,14 @@ const ALARM_BEVEL_FACE = ALARM_BEVEL_SPEC.faceW;
 // lesson applied at build time.
 // The alarm hand seats at 1.1 at FULL scale since §188 (the 0.5 z-scale
 // faked a leaf from a five-times-stock section; at stock the leaf is the
-// section); its bored collet straddles the tube's front face at 1.1.
+// section). Since TODO 120 its collet hangs UNDER the blade, seated in the
+// tube's end (ALARM_TUBE_TOP), and the blade is open at its pivot over the
+// hour hand's pipe. CORRECTION to the history above: "the hour hand carries
+// NO metal there" was read off VERTICES — the hour blade was one extrusion
+// from its tail's end ring through the pivot and sat 0.074 inside the alarm
+// collet at this very offset (TODO 177). The 1.7778 survives: blade over
+// blade was a true binder, and the hour pipe's foot over the collet now binds
+// at the same value (see the lane assert at the alarm hand).
 // TODO 26 — the alarm tube is ONE part that SPANS the dial, exactly as a real
 // one does: its flange, heart and sensing pin work behind the plate (they read
 // the selector ring and must not move), while its hand is read on the front.
@@ -16031,15 +16114,28 @@ const ALARM_SET_Z = Z_DIAL + ALARM_SHEET_GAP + ALARM_SET_T / 2; // WORLD gear pl
   if (ALARM_SEAT_BOT - mwTop < CLEAR_MARGIN - 1e-9)   // TODO 144: the seat's underside is the disc-side face the hour wheel answers to now
     console.warn(`§29 stack: seat bottom ${ALARM_SEAT_BOT.toFixed(2)} inside the hour wheel's margin (mw top ${mwTop.toFixed(2)}, need ${CLEAR_MARGIN})`);
 }
+// TODO 120/177 — THE ALARM TUBE STOPS AT ITS HAND'S KEEL. The hour hand's pipe
+// hangs G.HAND_PIPE_LAND below the hour blade's top, down past the alarm
+// blade's plane, at r 2.50..2.82 — inside this tube's wall (2.60..3.00) — so
+// everything the alarm stack owns within HOUR_PIPE_OUTER + CLEAR_MARGIN must
+// end one margin under that pipe's foot:
+//   top ≤ (handsGroupZOffset + DIAL_T) + topRise_h − HAND_PIPE_LAND − CLEAR_MARGIN   (1.8039 at 1.778)
+// and the alarm hand's collet hangs UNDER its blade (TODO 120: pipes hang
+// below their blades), so the tube ends where the collet's top does — the
+// blade's keel, ALARM_HAND_Z − floorDrop_a, restated from G.HAND_RBASE_STOCK
+// because the hand is built later (ALARM_RSV_LANE's precedent; pinned to the
+// built hand at its site). The keel (1.8037) governs, by the stored offset's
+// 3-dp round-up; the lane assert at the hand holds the other bound.
+const ALARM_TUBE_TOP = ALARM_HAND_Z - G.HAND_RBASE_STOCK;
 const alarmTubeGroup = new THREE.Group();
 dialFace.add(alarmTubeGroup);
 registerLabel('Alarm disc', alarmTubeGroup);
 registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward the viewer (the handsGroup convention)
 {
   const tube = new THREE.Mesh(
-    ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_HAND_Z - ALARM_TUBE_BACK), MATS.steel);
+    ringGeo(ALARM_TUBE_INNER, ALARM_TUBE_OUTER, ALARM_TUBE_TOP - ALARM_TUBE_BACK), MATS.steel);
   tube.name = 'alarmTubeBody'; // TODO 6 contact-floor selector (the §25 C running seat)
-  tube.position.z = (ALARM_TUBE_BACK + ALARM_HAND_Z) / 2;
+  tube.position.z = (ALARM_TUBE_BACK + ALARM_TUBE_TOP) / 2;
   alarmTubeGroup.add(tube);
   // Carrier flange: retention AND the follower's mounting plate — the pivot
   // post and spring stub hang from its underside. Sits UNDER the setting
@@ -18737,16 +18833,34 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
 // completely, and STEEL rather than blued — parked it reads as a shadow of the
 // hour hand; split it reads as a distinct, quieter pointer (owner's styling:
 // subtle, steel).
-// Stacked-hand build: the collet passes the hour tube (outer 2.5) holding
-// CLEAR_MARGIN — the two stacks rotate independently, so this is clearance,
-// not a bearing — and seats on the alarm tube's annular face (2.6..3.0);
-// bossR 3.3 gives it a visible seating lip. See ALARM_HAND_Z for the z budget.
-// The bore is a 24-gon (makeHand's ringExtrude segment count): its INSCRIBED
-// radius is what faces the tube, so the vertex radius carries the 1/cos(π/24)
-// correction — at a bare 2.65 the facet midpoints dipped to 0.1443 of margin
-// (the expectedContacts floor row caught it).
+// Stacked-hand build (re-cut by TODO 120): the COLLET passes the hour tube
+// holding CLEAR_MARGIN — the two stacks rotate independently, so this is
+// clearance, not a bearing — and is seated in the alarm tube's end, which
+// stops at the collet's top (ALARM_TUBE_TOP); bossR 3.3 is the visible
+// seating lip. The bore keeps its 1/cos(π/24) correction: the ring is a
+// 48-gon (G.HAND_RING_FLATS — three doubles an arc's divisions), so that
+// reads its flats conservatively, 0.1672 of margin where a bare 2.65 dipped to
+// 0.1443 (the expectedContacts floor row caught that). It clears; not moved.
+// What moved, and why:
+//  · the collet HANGS UNDER THE BLADE ('keel'): its top is the blade's keel,
+//    because the hour hand's pipe now comes down past this blade's plane at
+//    r 2.50..2.82 — radially INSIDE this collet — and must find no alarm
+//    metal within a margin of its foot (TODO 177; see ALARM_TUBE_TOP);
+//  · its FOOT stands one margin plus the seated-contact sink (a plane one
+//    margin off a plane must never read as the margin's own edge —
+//    ALARM_SEAT_SINK) over the dial's face, because its 3.3 outside is wider
+//    than the dial's 3.2 centre bore. Its length is what lies between:
+//    0.5781 (the centred collet was 0.8 tall and lapped its tube 0.4; this
+//    laps it over the whole length);
+//  · the blade's EYE is bored over the hour hand's PIPE, not the tube —
+//    TODO 101's fix, re-aimed: a leaf must clear what passes through it, and
+//    since TODO 120 that is the pipe (vertex radius HOUR_PIPE_OUTER), held
+//    at the eye's own flats.
+const ALARM_COLLET_LEN = ALARM_TUBE_TOP - (DIAL_T + CLEAR_MARGIN + ALARM_SEAT_SINK);   // 0.5781
+const ALARM_EYE_BORE = (HOUR_PIPE_OUTER + CLEAR_MARGIN) / G.HAND_RING_FLATS;             // 2.9791
 const ALARM_HAND_SPEC = { length: HOUR_HAND_LEN - 1.2, kind: 'hour', namePrefix: 'alarm',
-  boreR: (HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24), bossR: 3.3, bossH: 0.8 };
+  pipe: { boreR: (HOUR_TUBE_OUTER + CLEAR_MARGIN) / Math.cos(Math.PI / 24), outerR: 3.3,
+    hang: 'keel', len: ALARM_COLLET_LEN, eyeBoreR: ALARM_EYE_BORE } };
 // TODO 113 CLOSED — the spec object above joins HAND_SPECS, so the panel can
 // re-cut this hand at last. Steel is FINISH law (a fresh makeHand build is
 // blued by default), so the finish is a named function the re-cut row shares
@@ -18773,58 +18887,56 @@ alarmTubeGroup.add(alarmHand);
     console.warn(`§153 lane restatement drifted: built alarm-blade keel ${builtLane.toFixed(4)} over the face `
       + `vs ALARM_RSV_LANE ${ALARM_RSV_LANE.toFixed(4)} — re-derive the reserve hand's ceiling assert from the built value`);
 }
-// §125/TODO 119 — the FREE LANE between this blade and the hour hand,
-// asserted from the two hands' own sections (TODO 41's userData exports)
-// because both GROW with their lengths. §125 grew both hands with the face
-// and the lane silently fell from 0.24 to 0.072 — the expectedContacts
-// floor row caught it after the fact; this catches it at boot, where the
-// number that moved it is still on the screen. TODO 119 split it in two,
-// because the old single z-plane comparison (hub bottom vs blade top)
-// held apart two parts that never radially meet:
-//  · BLADE ↔ BLADE — the governing pair (shared annulus measured 15 u
-//    wide): asserted TWO-SIDED. Below CLEAR_MARGIN is thin; above it by
-//    more than the stored value's 3 dp rounding (+5e-3) is the offset
-//    floating over its own derivation — the maximum-air defect TODO 118
-//    caught one lane up, watched here at build time.
-//  · HUB ↔ BLADE — real only if the alarm blade's root reaches inboard of
-//    the hub's rim. The radial gap is MEASURED off the built alarm blade
-//    (4.0 u today: root r 5.26, hub rim r 1.26); while it clears
-//    CLEAR_MARGIN the z-interleave is legal and the z clause stands down,
-//    and any change that closes the radial gap re-arms the old z
-//    comparison verbatim.
+// §125/TODO 119/TODO 177 — THE ALARM↔HOUR LANE, read off SECTIONS. The
+// §125 assert compared bare z-planes; TODO 119 guarded it with a radius read
+// off VERTICES, and a bur rod has vertices only at its two ends — the "blade
+// root at r 5.26" it measured was the TAIL's end ring while the one
+// extrusion ran straight through the pivot (TODO 177's hourBody ⇄ alarmBoss
+// sat behind exactly that). Every member is an annulus now (makeHand's
+// userData.sections, plus the two tubes as built), and the lane is the least
+// z-air over every pair within CLEAR_MARGIN of each other RADIALLY; a pair
+// radially clear by the margin may interleave. The alarm tube ⇄ hour tube
+// pair is the §25 C running seat (0.1 radial — the stack's BEARING, declared
+// on the Alarm disc ⇄ Hour wheel floors row), not a lane, and is skipped.
+// TWO-SIDED. Below CLEAR_MARGIN is thin. handsGroupZOffset is a derivation,
+//   offset = (ALARM_HAND_Z − DIAL_T) + topRise_a + floorDrop_h + CLEAR_MARGIN
+//          = (ALARM_HAND_Z − DIAL_T) − floorDrop_a + HAND_PIPE_LAND − topRise_h + CLEAR_MARGIN
+//          = 1.7778, stored 1.778
+// — blade over blade, and the hour pipe's foot over the alarm collet's top.
+// The two bind at ONE value because HAND_PIPE_MIN_MM is exactly twice
+// HAND_STOCK_MM (the pipe is two 1.5·rBase blade thicknesses long); so above
+// CLEAR_MARGIN by more than the 3-dp rounding (+5e-3) the offset FLOATS over
+// its derivation (TODO 118's maximum-air defect), and that warns too.
 {
   const off = aesthetics.dial.hands.handsGroupZOffset;
-  const bladeTop = ALARM_HAND_Z + alarmHand.userData.topRise * alarmHand.scale.z;
-  const hourKeel = (off + DIAL_T) - hourHand.userData.floorDrop;
-  const lane = hourKeel - bladeTop;
-  if (lane < CLEAR_MARGIN)
-    console.warn(`§125/TODO 119 hand stack: the hour blade's keel leaves ${lane.toFixed(4)} over the alarm blade `
-      + `(keel ${hourKeel.toFixed(3)}, blade top ${bladeTop.toFixed(3)}) — need ${CLEAR_MARGIN}; the offset regressed below its derivation`);
-  else if (lane > CLEAR_MARGIN + 5e-3)
-    console.warn(`§125/TODO 119 hand stack: the hour blade floats ${lane.toFixed(4)} over the alarm blade `
-      + `(bound ${(CLEAR_MARGIN + 5e-3).toFixed(4)}) — handsGroupZOffset has parted from its derivation `
-      + `(ALARM_HAND_Z − DIAL_T) + topRise_a + floorDrop_h + CLEAR_MARGIN; re-derive it, do not restate it`);
-  // The hub clause, radially guarded off the built metal (r is invariant
-  // under the hand's rotation, so one boot measurement stands for every pose).
-  let bladeRootR = Infinity;
-  const vv = new THREE.Vector3();
-  alarmHand.traverse((o) => {
-    if (!o.isMesh || /Boss$/.test(o.name) || !o.geometry?.attributes?.position) return;
-    const p = o.geometry.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      o.localToWorld(vv.fromBufferAttribute(p, i));
-      bladeRootR = Math.min(bladeRootR, Math.hypot(vv.x, vv.y));
-    }
-  });
-  const radialGap = bladeRootR - hourHand.userData.bossR;
-  if (radialGap < CLEAR_MARGIN) {
-    const hubBottom = (off + DIAL_T) - hourHand.userData.bossH / 2;
-    const hubLane = hubBottom - bladeTop;
-    if (hubLane < CLEAR_MARGIN)
-      console.warn(`§125/TODO 119 hand stack: the alarm blade's root (r ${bladeRootR.toFixed(3)}) reaches the hour hub `
-        + `(rim r ${hourHand.userData.bossR.toFixed(3)}, radial gap ${radialGap.toFixed(3)}) AND the hub's underside leaves `
-        + `${hubLane.toFixed(3)} over it — need ${CLEAR_MARGIN} in one direction or the other`);
+  const H = off + DIAL_T;
+  const at = (secs, z0, who) => secs.map((s) => ({ ...s, name: `${who} ${s.name}`, zLo: s.zLo + z0, zHi: s.zHi + z0 }));
+  const alarmSecs = [...at(alarmHand.userData.sections, ALARM_HAND_Z, 'alarm'),
+    { name: 'alarm tube', rIn: ALARM_TUBE_INNER * RING_GEO_FLATS, rOut: ALARM_TUBE_OUTER, zLo: ALARM_TUBE_BACK, zHi: ALARM_TUBE_TOP }];
+  const hourSecs = [...at(hourHand.userData.sections, H, 'hour'),
+    { name: 'hour tube', rIn: HOUR_TUBE_INNER * RING_GEO_FLATS, rOut: HOUR_TUBE_OUTER, zLo: MW_Z2, zHi: H + hourHand.userData.pipe.zHi }];
+  let lane = { air: Infinity, a: '?', h: '?' };
+  for (const a of alarmSecs) for (const h of hourSecs) {
+    if (a.name === 'alarm tube' && h.name === 'hour tube') continue;   // the §25 C running seat — a bearing, not a lane
+    if (sectionRadialGap(a, h) >= CLEAR_MARGIN - 1e-9) continue;      // radially clear: may interleave
+    const air = h.zLo - a.zHi;   // dial-local +z runs toward the viewer, and the hour stack stands in front
+    if (air < lane.air) lane = { air, a: a.name, h: h.name };
   }
+  if (lane.air < CLEAR_MARGIN - 1e-9)
+    console.warn(`§125/TODO 177 hand stack: the ${lane.h} leaves ${lane.air.toFixed(4)} over the ${lane.a} — need ${CLEAR_MARGIN}; `
+      + `handsGroupZOffset ${off} is below its derivation`);
+  else if (lane.air > CLEAR_MARGIN + 5e-3)
+    console.warn(`§125/TODO 177 hand stack: the hour stack floats ${lane.air.toFixed(4)} over the alarm stack (${lane.h} over the ${lane.a}; `
+      + `bound ${(CLEAR_MARGIN + 5e-3).toFixed(4)}) — handsGroupZOffset has parted from its derivation; re-derive it, do not restate it`);
+  // TODO 120 — the restatement the tube was cut to, pinned to the built
+  // collet (§39's falsifiable pin), and the collet's foot over the dial: its
+  // outside is wider than the dial's centre bore.
+  const colletTop = ALARM_HAND_Z + alarmHand.userData.pipe.zHi, colletFoot = ALARM_HAND_Z + alarmHand.userData.pipe.zLo;
+  if (Math.abs(colletTop - ALARM_TUBE_TOP) > 1e-9)
+    console.warn(`TODO 120: the alarm collet's top ${colletTop.toFixed(4)} is not the tube's top ${ALARM_TUBE_TOP.toFixed(4)} — `
+      + `ALARM_TUBE_TOP's restated keel has drifted from the built section`);
+  if (alarmHand.userData.pipe.outerR > DIAL_CENTER_BORE_R && colletFoot - DIAL_T < CLEAR_MARGIN - 1e-9)
+    console.warn(`TODO 120: the alarm collet's foot stands ${(colletFoot - DIAL_T).toFixed(4)} over the dial's face — need ${CLEAR_MARGIN}`);
 }
 // §38 — the alarm hand and the RAISED hour markers overlap in z (hand
 // −10.96..−10.16 at §188's stock section, numerals reaching well past it),
@@ -35936,7 +36048,7 @@ const CASE_DIMS = (() => {
   movement.updateMatrixWorld(true);
   const box = new THREE.Box3();
   const frontOf = (o) => box.setFromObject(o).min.z;
-  const handFront = Math.min(frontOf(hourHand), frontOf(minuteHand));
+  const handFront = Math.min(frontOf(hourHand), frontOf(minuteHand), frontOf(cannonNose));   // TODO 120: the nose ends flush with the minute pipe — counted, so a longer nose could not slip under the crystal unmeasured
   // §187 — THE THREADED RING's chain, inboard-out and bottom-up. §3's
   // flange is deleted WHOLE, and not for the window's sake alone: measured
   // (probe-187-casing-path), the movement CANNOT BE CASED past it — §3's
@@ -43384,6 +43496,7 @@ function tick(t) {
   // of one, which is what `probe-coaxial-sense.mjs` measures.
   smallSecondsHand.rotation.z = -(fourthA - secondsZeroRef);
   cannonPinion.rotation.z = -minuteA;   // TODO 115 — dial-side, as above
+  cannonNose.rotation.z = cannonPinion.rotation.z;   // TODO 120 — the pinion's own pipe: read off the pinion, one source
 
   // (The mainspring is wound further down, off the drum's own angle — it is
   // not a readout of tension any more. TODO 1.)
