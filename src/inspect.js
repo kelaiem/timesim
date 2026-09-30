@@ -2106,6 +2106,13 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // TODO 174 — the fork's DRIVE contact, and nothing else: the centre pin in
+  // the groove. Every other pair of the two units' metal keeps the margin —
+  // the centre crank's carrier above all, which the derived ALARM_FORK_SEAT
+  // stands exactly one margin off the block's root edge (0.0900 at the old
+  // band-midpoint seat), and the guide posts the corrected site guard clears
+  // (on main's site the pin stood inside post 1's sleeve: this row reads 0).
+  { a: 'Alarm link', b: 'Alarm selector', min: CLEAR_MARGIN, contacts: [['alarmLinkCentrePin', 'alarmSelTab']] },
   // §244 — the zero reset's working contact is the ROLLER on the heart, and
   // nothing else. This pair took TODO 6's blanket excuse (TODO 47 named it as
   // residue), and under it the lever's flared head buried 1.03 in the heart's
@@ -3187,7 +3194,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkHangerBush1', b: 'alarmLinkHanger1', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush2', b: 'alarmLinkHanger2', why: '§121: the second corner, same construction' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail formed on the rod (kiss under the alarm pose) — one member, two meshes' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail on the rod\'s top — TODO 174 cut that top FROM the tail\'s underside through the tick\'s own lift, so the pair kisses at every tilt (0.0008 at rest, 0 at the seat)' },
   { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rod\'s end in the crank rim\'s eye — the crank joint the arming run turns' },
   // Alarm disc — the §34/§48 follower assembly on the flange:
   { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#5', why: '§121: the follower bar lapped on its pivot rivet' },
@@ -3208,7 +3215,6 @@ export const INTRA_UNIT_CONTACTS = [
   // centre-pin handoff and the `centre pin ⇄ fork groove` floors row both want
   // it as a group. Of the four, three lap the post and the fourth clears it by
   // 0.3211 — covered by the same row, which is the fork lapping its post.
-  { unit: 'Alarm selector', a: 'alarmSelTab', b: 'alarmSelPost1', why: '§121: the fork block lapped on the selector\'s first guide post — measured 0.0000 on three of its four meshes, the fourth clear at 0.3211' },
   // The three guide stations, one row each — the ring's boss reaching its own
   // post. TODO 95/94's pass-through witness is what made these visible: the
   // boss is a solid box and the post runs THROUGH it, so no vertex or edge
@@ -3227,7 +3233,6 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm selector', a: 'alarmSelBoss1', b: 'alarmSelPost1', why: '§121: the ring\'s first guide boss on its own post — the bush is modelled (0.01 running fit), the boss box is the undrilled bore. Measured both ways with parity (both meshes closed): the post stands 0.0400 inside the boss, the boss 0.1087 inside the post' },
   { unit: 'Alarm selector', a: 'alarmSelBoss2', b: 'alarmSelPost2', why: '§121: the second guide station, same construction — 0.0400 / 0.1082' },
   { unit: 'Alarm selector', a: 'alarmSelBoss3', b: 'alarmSelPost3', why: '§121: the third guide station, same construction — 0.0400 / 0.1087' },
-  { unit: 'Alarm selector', a: 'alarmSelForkBracket', b: 'alarmSelPost1', why: '§121: the fork bracket lapped on the same post — the selector\'s two riders share their pivot' },
   // Alarm setting idler — §15's chain:
   { unit: 'Alarm setting idler', a: 'alarmSetIdler', b: 'alarmSetIdler', why: '§121: the i1⇄i2 working mesh (tooth kiss, deep 0) — TODO 15\'s phase solve owns it; both gears carry one name, which is why one row names it twice' },
   // Alarm silence rocker — §94's rocker:
@@ -3883,7 +3888,8 @@ export const ASSEMBLY_SPLITS = [
 // 0.463 separation) and gated nowhere — a pivot seen swinging off its post by
 // eye. In scope, a member of this unit that its bar does not reach fails.
 export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel', 'Alarm lock',
-  'Alarm lifting lever'];   // §198 — two bars on one pivot: they overlap at the boss, so the lever is one body or this says so
+  'Alarm lifting lever',   // §198
+  'Alarm selector'];        // TODO 174 — the fork block and its bar are joined to the ring by a foot and a riser; this holds the joint — two bars on one pivot: they overlap at the boss, so the lever is one body or this says so
 // Accepted debt, §50's convention — red in the report, cited, never silenced.
 // (TODO 44's lock-collar waiver RETIRED by §112: the tier-split re-derived
 // the strike sleeve to span from the wheel's hub to the cam's underside —
@@ -5437,6 +5443,13 @@ const ALARM_HANDOFFS = [
     // TODO 20 closed this row: the rod's top is BUILT to the tail's
     // underside and the tick derives its lift from the beak's lever —
     // measured 0 disarmed, −0.0009 armed. UNWAIVED.
+    // TODO 174: that held while the tail was long. The tail is a flat blade
+    // TILTING about the beak post, and a flat rod top agrees with it on the
+    // rod's axis alone, so §229's shorter tail read −0.0264 armed and the
+    // fork's 0.768 tail −0.0708. The top is now CUT from the tail's underside
+    // at the seat, through the tick's own lift (the link's registration
+    // solve, MODELING.md rule 9): 0.0008 disarmed — the lever law's own
+    // small-angle residue — and 0 armed.
     label: 'beak tail ⇄ rod top',
     unitA: 'Alarm link', meshA: 'alarmLinkBeakTail',
     unitB: 'Alarm link', meshB: 'alarmLinkRod',
@@ -10354,6 +10367,27 @@ export async function turnedBars(clock, opts = {}) {
         const concentric = spans.some(([lo, hi]) => {
           const ov = Math.min(hi, sb[1]) - Math.max(lo, sb[0]);
           return ov > TURN_LAP_MAX_FRAC * Math.min(hi - lo, sb[1] - sb[0]);
+        }) || cluster.some((x, k) => {
+          // TODO 174 — A SLEEVE IS CONCENTRIC AT ANY LAP. The lap fraction is a
+          // proxy for the property §233 names, and it has a tie: a bush centred
+          // on its journal's END station laps it by exactly one half, which is
+          // TURN_LAP_MAX_FRAC itself, so the lay shaft's end bushes read as
+          // consecutive stock the moment they stopped reading as discs. The
+          // property is geometric — one member's material stands wholly OUTSIDE
+          // the other's where they overlap — so it is read as geometry: the
+          // outer member's nearest point to the shared line clears the inner
+          // member's farthest, within the one-line tolerance. A turned step or a
+          // pressed stub is solid to its axis (its cap poles sit ON the line), so
+          // neither can satisfy it; only a bored part over a bar can.
+          const [lo, hi] = spans[k];
+          if (Math.min(hi, sb[1]) - Math.max(lo, sb[0]) <= TURN_AXIS_OFFSET_U) return false;
+          const rOf = (m, sel) => { let v = sel === 'min' ? Infinity : 0;
+            for (const p of m.pts) { const d = turnSub(p, x.origin), t = turnDot(d, x.axis);
+              const r = Math.hypot(d[0] - t * x.axis[0], d[1] - t * x.axis[1], d[2] - t * x.axis[2]);
+              v = sel === 'min' ? Math.min(v, r) : Math.max(v, r); }
+            return v; };
+          return rOf(b, 'min') >= rOf(x, 'max') - TURN_AXIS_OFFSET_U
+            || rOf(x, 'min') >= rOf(b, 'max') - TURN_AXIS_OFFSET_U;
         });
         if (concentric) continue;
         // §234 Landing 5 — AND CONSECUTIVE MEANS TOUCHING, OR BRIDGED BY
