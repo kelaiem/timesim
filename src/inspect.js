@@ -2203,8 +2203,9 @@ export const EXPECTED_CONTACT_FLOORS = [
     // hid three contacts besides the leaf it cited (TODO 177's hour body in
     // the alarm collet, the hour boss on the leaf, TODO 178's stud); the
     // blades are open at their pivots now and the pipes stack one margin
-    // apart, and the one pair still under the floor is carried by the `only:`
-    // row below, so this row gates everything else the two units own.
+    // apart. TODO 178 CLOSED: the follower-spring stud is re-sited to clear
+    // the lobe's swept circle by CLEAR_MARGIN, and the `only:` debt row that
+    // carried it is deleted — this row gates every pair the two units own.
     contacts: [
       ['alarmNose', 'alarmHeart'],        // §29 working contact — penetration budget + alarmHandoffs own it
       ['alarmFollowerBar', 'alarmHeart'], // §45 flank sweep owns this at the 0.03 working figure
@@ -2214,17 +2215,6 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmIndexLine', 'alarmHeart'],   // §34 first slice: the index line is DECLARED proud 0.02 into the
                                           // flange→heart margin — this check measured the declared 0.13 exactly
     ],
-  },
-  // TODO 177 — a WAIVED row measures ONLY its named pairs (`only:`), and
-  // those pairs drop out of every sibling row for the same unit pair, so the
-  // waiver excuses one contact and the row above still gates the rest. A
-  // waiver without `only` is malformed, and one whose row now meets its floor
-  // is stale — both fail (tools/battery-checks.mjs).
-  {
-    a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
-    only: [['alarmFollowerSpringStud', 'alarmHeart']],
-    waived: 'TODO 178: the follower spring\'s stud passes the alarm heart at 0.1011 (alarm f=0.5833) — re-site the stud in position space; the spring\'s force and arm must not change',
-    contacts: [],
   },
   {
     a: 'Hour wheel', b: 'Motion works', min: CLEAR_MARGIN,

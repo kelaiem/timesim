@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
@@ -30,7 +31,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
-| 178 | OPEN | `alarmFollowerSpringStud` passes `alarmHeart` at 0.1011. No longer hidden: since TODO 120 it is the one pair an `only:` debt row on `Alarm disc ⇄ Hour wheel` waives, and that row fails as STALE the moment the stud clears. Fix: re-site the stud in position space |
+| 178 | CLOSED | The stud is re-sited by two constraints: its circumradius clears the lobe's swept circle by `CLEAR_MARGIN` (centre r 3.80 → 3.85), and the blade keeps its 1.1 length to §29's bearing point (rest angle 1.9 → 1.8541 rad, gain 0.45 unchanged). Dense `alarm` sweep 0.1007 → 0.1502; the `only:` debt row is deleted and `Alarm disc ⇄ Hour wheel` holds unwaived at 0.1500 |
 | 177 | CLOSED (with TODO 120) | The lane is read off SECTIONS and binds at `CLEAR_MARGIN` + 0.0002 at the kept 1.778, on two pairs that agree by construction (blade over blade; the hour pipe's foot over the alarm collet, which moved under its blade). The row behind the waiver holds nothing else |
 | 176 | CLOSED | The alarm barrel's cavity is `borePath(drumInnerR, bevel)`, guarded to 5.595 at boot. The filed 4.785 was a radius, the hexagon less its bevel. The ribbon clears the true wall by 0.0536 against a designed 0.0549 |
 | 175 | CLOSED | Bevelled bores are drawn at `r + bevel/cos(π/n)`, so the band the shaft meets IS r (`boreBandGuard` warns otherwise). Every gear, pinion, heart and barrel bore is compensated. The fit census was redone: 3 "pressed" parts run; 6 bores smaller than their shaft and 3 too-loose running fits now derive from the shaft they ride |
@@ -24322,7 +24323,7 @@ at 1.70 and 1.80). probe-hand-stack measures it on the surface: 0.1502, `alarmTu
 The re-measured row shows nothing else behind the waiver: `Alarm disc ⇄ Hour
 wheel` is 0.1500 (the flange ⇄ heart derived margin, `LatheGeometry#1 ⇄ alarmHeart`) with no waiver, and its one remaining pair is TODO 178's.
 
-## 178. The alarm follower's spring stud passes the alarm heart at 0.1011, hidden behind the same waiver
+## 178. The alarm follower's spring stud passes the alarm heart at 0.1011, hidden behind the same waiver — CLOSED
 
 Found planning [TODO 154]. The same sweep puts `alarmFollowerSpringStud`
 (Alarm disc) **0.1011** from `alarmHeart` (Hour wheel) at `alarm` f=0.5833.
@@ -24341,6 +24342,73 @@ This pair is now the only one waived, by a row naming it in `only:`
 (measured 0.1011 at `alarm` f=0.5833, waived, not stale). A waived row must name its pairs; a waiver without
 `only` fails as malformed; a waived row that meets its floor fails as
 stale. So when the stud moves, the row goes red until it is deleted.
+
+### Closed.
+
+**Why 0.10.** §29 hung the stud at the pivot post's radius, `ALARM_PIVOT_R`
+= 3.80. That radius is priced for the POST: lobe 3.55 + post r 0.22 + working
+0.03. The stud is r 0.15, so its inner edge stood 3.80 − 0.15 − 3.55 = 0.10
+off the lobe. The `alarm` axis turns the tube a whole revolution against the
+hour wheel, so the lobe's swept envelope is the full r = 3.55 circle, and the
+stud owes `CLEAR_MARGIN` to it at every phase.
+
+**The site, solved** (`main.js`, `ALARM_FSPRING_*`). Two constraints fix it:
+
+| constraint | expression | value |
+|---|---|---|
+| (1) the 8-gon's CIRCUMradius clears the swept lobe by the margin | \|stud\| = ALARM_HEART_R + CLEAR_MARGIN + ALARM_FSPRING_STUD_R | 3.55 + 0.15 + 0.15 = 3.85 |
+| (2) the blade keeps its length to the bearing point §29 gave it | \|stud − tip\| = ALARM_FSPRING_L | 1.1 |
+
+The tip is §29's: old stud at r 3.80, az π + 0.45, blade at 1.9 rad, so tip
+(−3.7773, −0.6119). The two circles meet twice. The branch nearest the old
+site is taken: stud (−3.4699, −1.6681), 0.0505 from the old one, radially
+out by 0.05 and 0.0019 rad in azimuth. The far branch (az 3.01) would hang
+the stud on the arm's other side, past the pivot post. The blade's rest angle
+is re-derived as the direction stud → tip: 1.9 → **1.8541** rad.
+
+**The force law is unchanged.** It is representational, as the build comment
+says: the flex angle is `(armA − ALARM_FOLLOWER_A0) · 0.45`, driven from the
+arm's real lift. The gain 0.45 is untouched and so is the length 1.1, so the
+tip's deflection per unit of arm lift is 1.1 × 0.45 = 0.495, as before. The
+section (0.07 × 0.22) is untouched, so k ∝ EI/L³ is the same, and the law
+acts at the same bearing point. The stud's section (r 0.15) is untouched, so
+`stockFloor`'s row for it cannot move. The tick law reads the rest angle
+through `ALARM_FSPRING_A0` now, so the built and posed blades cannot drift
+apart.
+
+**Boot assert** (rule 6). It warns with the achieved and required numbers if
+the lobe clearance falls under `CLEAR_MARGIN`, if the blade's stud → tip
+length leaves 1.1, or if the stud's outer edge (3.85 + 0.15 = 4.00) overhangs
+the flange rim at `ALARM_FLANGE_OUT` 4.05. Boot is silent.
+
+**Measured** (`meshClearance`, every `alarmHeart` mesh, whole tree booted):
+
+| pair | before | after |
+|---|---|---|
+| stud ⇄ heart, `alarm` n=720 | 0.1007 at f=0.5861 | **0.1502** at f=0.5861 |
+| stud ⇄ heart, `alarm` n=2880 | — | **0.1501** at f=0.5858 |
+| blade ⇄ heart, `alarm` n=720 | 0.2152 | 0.2650 |
+| stud ⇄ heart, the other 13 axes (n ≤ 24) | ≥ 0.3627 | ≥ 0.4131 |
+
+The residue above 0.15 is the heart's faceting: constraint (1) is
+phase-free, so no denser sample can find less than the margin.
+
+**What else moves.** Only `alarmFollowerSpring`'s group: the stud and its
+unnamed blade. The blade clears the lobe better, because its line now lies
+further out. Analytically, over the whole flex range (0 to 0.207 rad), it
+goes from 0.187–0.215 to 0.213–0.265. The stud still seats on the flange ring:
+`intraUnit`'s declared joints `LatheGeometry#1 ⇄ alarmFollowerSpringStud` and
+`⇄ BoxGeometry#10` both measure nearestD 0, as before. Every Alarm disc row
+in `intraUnit` and the whole `undeclaredClearance` payload (restricted to
+Alarm disc) are identical to the base tree. Nothing new touches.
+
+**The debt row is deleted.** The `only:` row on `Alarm disc ⇄ Hour wheel` is
+gone. Left in place it would fail as stale. `expectedContacts` (restricted to
+Alarm disc) reads the row at **0.1500**, unwaived, governed by the flange ⇄
+heart derived margin (`LatheGeometry#1 ⇄ alarmHeart`, `train` f=0.2604).
+0 violations, 0 waived. The fingerprint is unchanged (3862697114, 59 units),
+because it hashes per-unit bounding boxes and the stud moved inside the Alarm
+disc's.
 
 ## 179. The alarm release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700, on an EXPECTED pair with no floors row
 
@@ -25370,3 +25438,25 @@ post's station along the arm's line, or the rod's azimuth about the crank,
 with the lever's arm lengths and 4.66:1 held (spending the ratio to buy room
 is forbidden). The acceptance is a measured gap ≥ `CLEAR_MARGIN` over the
 link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
+
+## 194. The alarm follower's return spring does not bear on the follower arm
+
+Found closing [TODO 178]. The follower spring (`alarmFollowerSpring`, a
+0.07 × 0.22 blade from `alarmFollowerSpringStud`) is described at its build as
+bearing on the follower arm's outer edge and returning it. Measured at the
+seated pose, its tip stands about **0.29** from the arm's flank (arm-local
+(−0.45, −0.42)). Nothing touches: the arm's return is posed by the tick law,
+not delivered by the blade. §48's `restoring` audit passes it only because the
+blade exists as a mesh; it does not ask whether the mesh reaches its lever.
+
+TODO 178 held §29's tip point exactly (it moved only the stud, and re-derived
+the blade's rest angle from stud to tip), so the gap is §29's, not new.
+
+**Fix path (P0 — the follower's return is one action group).** Re-aim the
+blade so its tip bears on the arm's flank through the arm's whole travel:
+solve the tip against the arm's cut edge (MODELING rule 9), keep the stud
+clear of the heart's swept lobe by `CLEAR_MARGIN` (TODO 178's constraint), and
+derive the preload from the §137 detent envelope rather than the old 0.45
+gain. Then declare the contact (`INTRA_UNIT_CONTACTS`, measured by the §182
+reach audit) and add an `alarmHandoffs`-class row that measures it shut at
+both ends of the travel.

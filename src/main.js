@@ -16755,15 +16755,67 @@ const alarmArmBowAt = (x) => x < 0.25 ? 0
 // Return spring — a thin blade from a stub on the flange bearing on the arm's
 // outer edge. Its FORCE is representational (like the striker's hammer
 // spring); its flex is driven in tick() from the arm's actual lift.
+//
+// TODO 178 — the STUD'S SITE is solved, in position space (P3). §29 hung it
+// at the pivot post's radius (ALARM_PIVOT_R = 3.80, az π+0.45), which is
+// priced for the POST (lobe + post r 0.22 + working 0.03) and not for a
+// 0.15 stud: its inner edge stood 0.10 off the heart's 3.55 lobe, and the
+// tube turns a whole revolution against the hour wheel (the 'alarm' axis),
+// so the lobe's swept envelope is the full circle and the stud owed
+// CLEAR_MARGIN to it at every phase. Two constraints fix the new site:
+//   (1) |stud| = ALARM_HEART_R + CLEAR_MARGIN + ALARM_FSPRING_STUD_R
+//       = 3.55 + 0.15 + 0.15 = 3.85 — the 8-gon's CIRCUMradius clears the
+//       swept lobe by the one margin, phase-free;
+//   (2) |stud − tip| = ALARM_FSPRING_L (1.1) — the blade keeps its length,
+//       and its tip keeps the bearing point §29 gave it (stud at 3.80 /
+//       az π+0.45, blade at 1.9 rad; that point, not the anchor, is what the
+//       spring acts at). Length unchanged and the flex gain unchanged
+//       (0.45 rad per rad of arm lift, in tick()) ⇒ the tip's deflection
+//       per unit lift, L·0.45, is the same 0.495, so the representational
+//       force law k·δ with k ∝ EI/L³ (section 0.07 × 0.22 untouched) is the
+//       same law at the same bearing point.
+// The two circles meet twice; the branch nearest §29's site is taken (it
+// moves the stud 0.0505, radially out by 0.05 and 0.0019 rad in azimuth)
+// and the blade's rest angle is re-derived as the direction stud → tip
+// (1.9 → 1.8541 rad). The far branch (az 3.01) would hang the stud on the
+// arm's other side, past the pivot post.
+const ALARM_FSPRING_STUD_R = 0.15;               // the stud's section (circumradius; the 8-gon's flats are 0.1386)
+const ALARM_FSPRING_L = 1.1;                     // blade length, stud centre → tip (the spring's arm)
+const ALARM_FSPRING_TIP = (() => {               // §29's bearing point, held (constraint 2)
+  const sx = -ALARM_PIVOT_R * Math.cos(0.45), sy = -ALARM_PIVOT_R * Math.sin(0.45);
+  return { x: sx + ALARM_FSPRING_L * Math.cos(1.9), y: sy + ALARM_FSPRING_L * Math.sin(1.9) };
+})();
+const ALARM_FSPRING_STUD_RR = ALARM_HEART_R + CLEAR_MARGIN + ALARM_FSPRING_STUD_R; // constraint 1: 3.85
+const ALARM_FSPRING_STUD = (() => {              // circle(0, RR) ∩ circle(tip, L), the branch nearest §29's site
+  const T = ALARM_FSPRING_TIP, d = Math.hypot(T.x, T.y), R = ALARM_FSPRING_STUD_RR, L = ALARM_FSPRING_L;
+  const a = (R * R - L * L + d * d) / (2 * d), h = Math.sqrt(R * R - a * a);
+  const ex = T.x / d, ey = T.y / d;
+  return { x: a * ex - h * ey, y: a * ey + h * ex };
+})();
+const ALARM_FSPRING_A0 = Math.atan2(ALARM_FSPRING_TIP.y - ALARM_FSPRING_STUD.y, ALARM_FSPRING_TIP.x - ALARM_FSPRING_STUD.x); // blade rest angle, stud → tip
+{
+  // Boot assert (rule 6): both constraints, and the stud still seats on the
+  // flange ring (its outer edge inside ALARM_FLANGE_OUT).
+  const S = ALARM_FSPRING_STUD, T = ALARM_FSPRING_TIP;
+  const lobe = Math.hypot(S.x, S.y) - ALARM_FSPRING_STUD_R - ALARM_HEART_R;
+  const len = Math.hypot(T.x - S.x, T.y - S.y);
+  const rim = ALARM_FLANGE_OUT - (Math.hypot(S.x, S.y) + ALARM_FSPRING_STUD_R);
+  if (lobe < CLEAR_MARGIN - 1e-9)
+    console.warn(`TODO 178: follower-spring stud clears the swept lobe by ${lobe.toFixed(4)}, need CLEAR_MARGIN ${CLEAR_MARGIN}`);
+  if (Math.abs(len - ALARM_FSPRING_L) > 1e-9)
+    console.warn(`TODO 178: follower-spring blade stud→tip ${len.toFixed(6)}, need its length ${ALARM_FSPRING_L} (the spring's arm must not change)`);
+  if (rim < 0)
+    console.warn(`TODO 178: follower-spring stud overhangs the flange rim by ${(-rim).toFixed(4)} (stud outer edge vs ALARM_FLANGE_OUT ${ALARM_FLANGE_OUT})`);
+}
 const alarmFollowerSpring = new THREE.Group();
-alarmFollowerSpring.position.set(-ALARM_PIVOT_R * Math.cos(0.45), ALARM_PIVOT_R * Math.sin(-0.45), ALARM_HEART_Z); // §29 step 1: centred with the arm it bears on
+alarmFollowerSpring.position.set(ALARM_FSPRING_STUD.x, ALARM_FSPRING_STUD.y, ALARM_HEART_Z); // §29 step 1: centred with the arm it bears on; TODO 178: sited by the two constraints above
 alarmTubeGroup.add(alarmFollowerSpring);
 {
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.07, 0.22), MATS.blueSteel);
-  blade.position.x = 0.55;
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FSPRING_L, 0.07, 0.22), MATS.blueSteel);
+  blade.position.x = ALARM_FSPRING_L / 2;
   alarmFollowerSpring.add(blade);
   const stubH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - ALARM_HEART_Z; // spring plane up to the flange underside — its anchor (derived, §29 step 1)
-  const stub = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, stubH, 8), MATS.steel);
+  const stub = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_FSPRING_STUD_R, ALARM_FSPRING_STUD_R, stubH, 8), MATS.steel);
   // TODO 11 tranche five: the blade's grounded STUD — pin stock at ⌀ 0.1137 mm,
   // over the 0.07 pivot floor. Declared, not thickened: the
   // alarmHammerSpringStud precedent, and the same measurement.
@@ -16773,8 +16825,9 @@ alarmTubeGroup.add(alarmFollowerSpring);
   alarmFollowerSpring.add(stub);
 }
 // Blade angled INWARD from the stub toward the arm's flank — tip lands at
-// r ≈ 4.0, inside the measured r-4.5 obstacle bound like everything else here.
-alarmFollowerSpring.rotation.z = 1.9;
+// r ≈ 3.83 (was quoted 4.0; measured, TODO 178), inside the measured r-4.5
+// obstacle bound like everything else here.
+alarmFollowerSpring.rotation.z = ALARM_FSPRING_A0; // TODO 178: was 1.9 — re-derived as stud → §29's tip
 // The heart itself — pressed on the HOUR tube (co-rotating with the hour
 // hand), notch phased to the seated nose azimuth so "seated" IS "hands
 // coincident". Blued like the seconds-reset heart.
@@ -44446,7 +44499,7 @@ function tick(t) {
     alarmFollowerArm.rotation.z = armA;
     // The blade flexes with the pump (its force is representational; its
     // MOTION is the arm's real lift).
-    alarmFollowerSpring.rotation.z = 1.9 + (armA - ALARM_FOLLOWER_A0) * 0.45;
+    alarmFollowerSpring.rotation.z = ALARM_FSPRING_A0 + (armA - ALARM_FOLLOWER_A0) * 0.45;
     // §34 (groove redesign): the pin-arm rides the FACE CAM — its lift is
     // the cam's height at the relative angle (tube vs wheel), stateless
     // like §29's pin; the fork's press overrides it to the full lift when
