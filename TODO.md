@@ -25223,7 +25223,8 @@ link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
 
 ## 192. The going spring cannot drive the balance: the power budget does not close
 
-Found by `tools/probe-power-budget.mjs` (a REPORT). Every published figure about
+Found by `tools/probe-power-budget.mjs` (a REPORT); tracked with the other
+failure points in issue #531. Every published figure about
 the going train's power is FRICTIONLESS. `equalisation` holds the fusee's level
 product to float noise, and `oscillator` solves the hairspring to the balance's
 inertia. Nothing asks whether the one can DRIVE the other. `AMPLITUDE_TRUE_DEG =
@@ -25306,7 +25307,7 @@ SIMULATED — no force path reaches the balance, and none says it would.
 
 ## 193. The mainspring ribbon works at 1756 MPa, over the 800 MPa SPRING_SIGMA_Y_PA the movement cites
 
-Found beside [TODO 192] by the same probe. A spiral spring wound off its free
+Found beside [TODO 192] by the same probe (issue #531). A spiral spring wound off its free
 coil carries a UNIFORM moment M = k·θ along its length, so the outer fibre sees
 σ = M·a/I everywhere. The inputs are on the equalisation record: the rhombus's
 radial half-diagonal a = 0.1349 u and I = a³c/3 = 1.442e-3 u⁴. Over the
