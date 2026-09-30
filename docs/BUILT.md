@@ -29548,3 +29548,179 @@ control fired: yes · roller touched in some phase: yes
 
 `probe-reset-contact.mjs` still reads 0/6 on all four counts. The binding
 points are the head's corners, at the margin the construction guarantees.
+
+## §245 — The governor anchor gets real proportions: a 20-tooth saw, a 2.5-tooth span, stone pallets solved from the drop, and pallet B driven by its own tooth
+
+Asked for by the owner as a re-survey of the alarm's cadence governor, and
+sharpened by an observation from looking at it: *the anchor seems too small to
+be realistic*. It was. In real millimetres (`UNIT_MM` 0.379) §113's anchor was a
+flipper spanning **half a tooth** of a 0.36 mm-pitch saw: two paddles 0.12 mm
+long, landing 0.18 mm apart, swinging 4.6° with the pivot 0.40 mm off the tooth
+tips, and 0.028 mm of drop — about one pivot's side-shake (0.019 mm). The poising
+ring, wider than the saw it governs, was doing all of the work. Every gate was
+green. The owner took option 3 of the survey below: keep the recoil anchor, give
+it an anchor's proportions.
+
+### The survey, revisited — one refutation that does not survive
+
+§104 kept its survey "so nobody re-proposes them". Two of its three rows stand;
+the third was arithmetic at the wrong arbor, and this is the correction.
+
+- **Fly (air vane) — NOT refuted; it costs the same train as the centrifugal
+  governor.** §104 put the fly on the ×32 governor arbor (~290 rpm), where
+  balancing ~7.9e-6 N·m does need 40–70 mm vanes and the plate law expires at
+  Re ~10. But a fly's drag constant falls as the CUBE of any further step-up
+  (C = Γ/ω², Γ ∝ 1/n, ω ∝ n): two more stages (×32) put it at ~9,000 rpm with
+  **4–5 mm vanes** at Re 300–500 — music-box scale, and the plate law holds
+  there. Its cadence goes as 1/√M, the anchor's own law. It remains unbuilt for
+  the reason the centrifugal governor is: two new wheel/pinion stages.
+- **Centrifugal friction — §104's numbers stand** (two stages; ~5 mg of bobs at
+  ×16, ~0.6 mg at ×32; the only candidate with a flat cadence).
+- **A fourth, not in §104's list: the hammer ON the anchor.** In the Memovox
+  §25 names as this alarm's reference — and in the Cricket, and in the alarm
+  clocks §104 cited — there is no separate governor: the hammer rides the
+  escapement's anchor and its own inertia regulates it, which is why those
+  anchors look big. It would retire the cam, the ×8 stage, the governor unit
+  and the 0.42 s bell cadence for a buzz; recorded here as the reference's own
+  answer, not taken.
+
+### Phase 1 — a model first, and what it found before anything was built
+
+A standalone model of the escapement (validated by reproducing §113's pallet A:
+ψ 11.6° → φ 4.60°, drive 42.2% of the pitch) generalised the closure to two
+INDEPENDENT pallets, each built by the same rule — the face runs along its own
+tooth's motion, inclined ψ into the wheel — with the unilateral press check on
+both. Three findings shaped everything after:
+
+1. **§113's pallet B was posed.** B had been cut as A's mirror across the
+   anchor–wheel line, which is A's drive run backwards in time. With B built
+   facing its own tooth, NO incline closes at span ½ at all; and the mirrored B,
+   followed through the shipped law, needs its contact point to travel AGAINST
+   the wheel (−92.25° → −95.0° as the anchor swings −h → +h). On the built metal
+   (`tools/probe-245-governor.mjs` run against the base tree) B is touched for
+   **2%** of the period against A's 42.5%, and 6 of those 8 contacts pull. The
+   anchor's return swing had no tooth behind it; the cycle sweep could not say
+   so, because it asks whether metal overlaps and never whether a contact
+   pushes.
+2. **At a fixed drop and ring, the swing is a function of the tooth count
+   alone.** I_a ∝ driveArc/φ², the ring's ceiling fixes I_a, and the drop fixes
+   driveArc — so φ is set by the count, and the span changes the anchor's
+   reach, not its swing (measured equal at spans 1½, 2½, 3½).
+3. **A coarser saw buys a real anchor until the face digs into the next
+   tooth.** Solved at the ring ceiling: 17 teeth buries the stone 0.199 in a
+   tooth front, 18 buries 0.058, 19 is the first clean count, 20 is clean with
+   a tooth of margin. Undercutting the teeth (tip leading) made it worse, so the
+   saw keeps §99's ratchet form.
+
+### The design point — what is chosen, what is solved
+
+| quantity | value | derivation |
+|---|---|---|
+| saw count `ALARM_GOV_SAW_TEETH` | **20** (was 40) | stated, bounded by measurement: the coarsest clean count is 19; 20 keeps one tooth of margin |
+| saw tip circle | 6.0 (2.27 mm), unchanged | §104's; the station, the §184 triple and the footprint are solved on it, and a saw meshes with nothing |
+| span `ALARM_GOV_SPAN` | **2½ teeth** (ε 22.5°) | stated — the lever's and recoil anchor's embrace; any m + ½ satisfies §113's landing rule |
+| station D | 7.051, unchanged | the hub-room floor, as §113 |
+| drop `ALARM_GOV_DROP` | **0.1 u = 0.038 mm** at the tips, both pallets | 2·`PIVOT_BORE_CLEAR`: each arbor's radial shake, summed — smaller can close to nothing on a shaken movement, larger is lost motion |
+| face lengths | **0.40 / 0.43 mm** | SOLVED — the length at which each drive ends exactly one drop short of half a pitch |
+| incline ψA | **54.9°** | SOLVED at boot, §113's convention: the poising ring lands a centi-mm inside the top of its stock |
+| incline ψB | **24.9°** | SOLVED — the incline whose drive lands the anchor back on +h |
+| stone run-outs | 0.11 / 0.17 mm | SOLVED — the shortest run-out past the landing point whose arm clears the tip circle by `CLEAR_MARGIN` + 0.01 over the whole swing |
+| swing φ | **13.4°** (was 4.6°) | output of the closure |
+| impulse / drop | **44.7% / 5.3%** of the pitch (was 42.2 / 7.8) | outputs |
+| ρ | **0.598** (was 0.822) | driveArc/φ, one ratio for both drives, so the tick law's form is unchanged |
+| I_a, ring | 2.78e-10 kg·m², **0.789 mm** on the same 2 mm ring | the ring and its footprint row are unchanged; what it poises is a real anchor |
+| teeth per strike | **40** (was 80) | 20 × 8 / 4 |
+
+The cadence is invariant by construction: the law is still ∝ 1/√M pinned at
+the design point, so `gapFull`/`gapEmpty` read 0.37428/0.48800 s on both trees.
+
+### What moved in the code
+
+- **The geometry solve is hoisted** (`_govEscapement`, the plan block): it needs
+  no torque, and the §62 window must size the fork's frame five thousand lines
+  before the anchor is cut. Only ψA waits for the spring, at the governor block,
+  which calls the same function.
+- **The fork's disc is the construction's own reach**, taken over ψ's whole
+  bracket (`ALARM_GOV_PSI_BRACKET`, 35–65°): §201's triangle-inequality bound
+  only worked while the face length was a constant. It reads ≈3.86 where it read
+  1.82, so the governor window frames a larger disc; the rule did not move. The
+  seven solves yield between them (§239's seam rule): unyielded they held the
+  thread ~340 ms.
+- **The §107 joint tripwire probes the joint, not a vertex.** The arm's far
+  corners sit ON the stone's long edges, so no vertex of either outline is
+  strictly inside the other; the probe is half a lap from the arm's far edge
+  toward its root. (A's arm meets its stone from the outer end, B's along its
+  back; the probe is the same point either way.)
+- **The cycle sweep's grade is back to 0.02** (§104's working-contact grade;
+  §113 had it at 0.033, the price of the one-floor paddle), and the equalisation
+  record publishes an `escapement` sub-record (a report).
+
+### The instrument
+
+`tools/probe-245-governor.mjs` — acceptance, on the cut meshes over two tooth
+periods: boot silent; a tip rides each stone for its published drive fraction
+and never both at once; every contact PUSHES into its stone; no saw point deeper
+than the grade; and two controls — the time-reversed wheel must push nowhere,
+and the anchor 0.02 rad off its law must bury a tooth.
+
+| claim | this tree | base (§113) |
+|---|---|---|
+| A / B ridden (of the period) | 0.450 / 0.450 (published 0.447) | 0.425 / **0.020** |
+| pulls | 0/180, 0/180 | 0/170, **6/8** |
+| deepest saw point in a stone | 0.0000 | 0.0314 |
+| control: reversed wheel pushes | 0 / 0 | — |
+| control: anchor off its law | buries 0.0582 | 0.0168 |
+
+### The battery, and what the report diff says
+
+Both runs local (4-vCPU dev container, `--shards 2 --no-incremental`, run
+concurrently, so the walls are contention-inflated), base a pristine worktree
+of `main` at `6625ea9`:
+
+| | gates | wall |
+|---|---|---|
+| base (`main` 6625ea9) | 47/49 | 3930.5 s |
+| this branch | **49/49** | 3840.6 s |
+
+The base's two failures are one event: spec point `d4=16` WEDGED before
+`main.js` reached its first lines (and `validated configs` then missed its
+mark). It happened while both batteries and the §245 probes shared four
+cores; the branch's spec tier ran after the base had finished and built all
+36 points. Recorded as contention, not claimed as a pass.
+
+Diffed by row, nine checks moved and every movement is the governor's own or
+a timing/census counter:
+
+- **`penetration`** — the headline. `Alarm governor ⇄ Alarm governor anchor`
+  reads **worstDepth 0.031 → 0** against the inherited 0.1.
+- **`expectedContacts`** — the governor pair's floors row: min 0.168 → **0.1603**
+  against 0.15, nearest mesh now the ARM (solved to `CLEAR_MARGIN` + 0.01 off the
+  tip circle), where it was the hub.
+- **`inspection`** — the same pair's EXPECTED row, its per-axis contact poses
+  (the class and the verdict do not move).
+- **`equalisation`** — I_a identical to 1e-18, the ring 0.7900 → **0.7895 mm**
+  (the stones' steel counted instead of the paddles'); the cadence rows
+  byte-identical.
+- **`restoring`** — the anchor's two-way row: its arbor is swept `annular:arc`
+  instead of `covered:arc`; the anchor is still two-way.
+- **`meshIntegrity`** — 160 fewer triangles, all of them the saw's (336 → 176);
+  every other difference is the census re-sorting around it.
+- **`undeclaredClearance`** — 5 more unit pairs reach the box stage (the fork
+  grew), still 0 under the margin. `clearances`, `sweptOverlap`: timing only.
+- **fingerprint** `2673818689 → 628432455` — the geometry moved, so it must.
+
+Also run: `probe-245-governor` (above), `explain-quotes`,
+`explain-i18n --check` (every locale re-keyed, 0 drift), `glossary-links`,
+`index-instruments --check`, `check-item-numbers`. `probe-239-boot-yield`
+FAILS on this container on both trees alike (held 1480 ms on base, 1459 ms
+here, against 700 ms); the block is module evaluation at t+0.4 s, before the
+build, and the branch has one long task fewer than the base.
+
+### Residue, named
+
+- Drop is still GEOMETRIC, not temporal (the roadmap's §114): the wheel is
+  quasi-static, so the anchor dwells through the drop arc rather than
+  overswinging; and the saw carries no recoil, as before.
+- ψA 54.9° is a steep face — honest for a recoil anchor, whose faces are steep —
+  but friction at the contact is not modelled, so the push is judged by
+  geometry alone.
