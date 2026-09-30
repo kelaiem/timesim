@@ -2153,6 +2153,18 @@ export const EXPECTED_CONTACT_FLOORS = [
     a: 'Alarm release reader', b: 'Alarm release feeler', min: CLEAR_MARGIN,
     contacts: [['alarmReaderRing', 'alarmFeelerTip']],
   },
+  // TODO 179 — the reader's other half: its pin RIDES the raised track (the
+  // alarmHandoffs rows and the penetration budget own that contact, notch
+  // walls included), and nothing else of the two units may come within the
+  // margin. Under the blanket the pin's shank passed the hub at 0.0433 at every
+  // pose and the dropped tip stood 0.0700 over the notch floor; the hub now
+  // stops at the body's face and the notch is ALARM_PIN_DROP + CLEAR_MARGIN
+  // deep, so the floor and the collar's ring over the track both land ON the
+  // margin at full drop.
+  {
+    a: 'Alarm release disc', b: 'Alarm release reader', min: CLEAR_MARGIN,
+    contacts: [['alarmDiscTrack', 'alarmReaderPin']],
+  },
   // TODO 144 — the release disc's SEAT. Its underside rides the plate (hub,
   // body and teeth, one plane sunk the seated-contact 0.02) and the pad's foot
   // rides its face; everything else the two units own keeps the margin — the

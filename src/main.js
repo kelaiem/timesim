@@ -14663,14 +14663,24 @@ const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + M
 // live at the feeler build, 3,700 lines down, so the number is hoisted here and
 // asserted there against its derivation (achieved vs required; it was 0.04 and
 // left the dropped arm 0.1292 over the body).
+//
+// TODO 179 — the deeper notch below (ALARM_TRACK_H = drop + margin) puts that
+// need at −0.019, so the body no longer binds the shank. What binds it now is
+// the jog's radial BOXING: the shank sets how far dial-ward of the arm the
+// collar's ring rides, the ring's height sets the rock's lean at the jog, and
+// the jog already stands at the margin from the ring on one side and from the
+// Alarm disc follower's tail pin on the other (0.1518 / 0.1522). Measured,
+// spending the 0.08 as a SHORTER shank (the track grown dial-ward, the body
+// left where it was) leaned the jog 0.0033 outboard onto that pin at 0.1490.
+// So the shank keeps its value and the notch deepens plate-ward: the disc
+// body and everything the motion-works solve hangs under it pay the 0.08.
 const ALARM_PIN_SHANK = 0.061;
-// The track is TALL (0.17) and the pin's DROP is BANKED at 0.06 by a stop
-// on the feeler's bracket, NOT by bottoming in the notch: the arm crosses
+// The track is TALL (ALARM_TRACK_H, derived below) and the pin's DROP is BANKED
+// (0.10 since TODO 173) by a stop on the feeler's bracket, NOT by bottoming in the notch: the arm crosses
 // the spinning rim, and its dropped-state clearance over the teeth is
 // (static gap − drop·leverFraction) — the stop is what keeps that ≥ the
 // margin. Derivation at the feeler build; the two numbers live here
 // because the whole chain hangs off them.
-const ALARM_TRACK_H = 0.17;
 const ALARM_PIN_R = 0.14;    // pin radius — its diameter equals the arm's width, so the arm fits the
                              // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
                              // 0.092 rad pin arc at the track radius; the edge ramp at the feeler
@@ -14681,6 +14691,14 @@ const ALARM_PIN_DROP = 0.10; // stop-banked travel — TODO 173: the dropped-arm
                              // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
                              // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
                              // clearing the 0.06 engagement by the one margin (measured + asserted)
+// TODO 179 — THE NOTCH'S DEPTH, derived. It was 0.17 by literal while the drop
+// was 0.06 (the floor 0.11 under the dropped pin), and TODO 173 raised the
+// drop to 0.10 without re-reading it: the dropped pin stood 0.0700 off the
+// body in the notch, and the build assert only asked that it not BOTTOM. The
+// stop banks the drop, so the floor is not a contact; it is a surface the
+// pin's tip passes, and it owes the one margin like any other — the same
+// margin the collar's ring keeps over the track at that drop (READER_PIN_LEN).
+const ALARM_TRACK_H = ALARM_PIN_DROP + CLEAR_MARGIN;
 // §51 final spend, retried with the whole band DERIVED (the first attempt's
 // collision was measured against planes that hung off frozen literals).
 const ALARM_DISC_BODY_T = STOCK_MIN_U; // disc body at floor stock (the rim's teeth share this plane)
@@ -14693,8 +14711,8 @@ const ALARM_DISC_BODY_T = STOCK_MIN_U; // disc body at floor stock (the rim's te
 // probe-117-fork-room.mjs, which reproduces ALARM_TRACK_H between the disc's
 // two dial-most planes. Re-quote a plane when you move the stock under it.
 const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −3.0467
-const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.2167 (body top)
-const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.5333
+const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.2967 (body top; −3.2167 while the track was 0.17 — TODO 179)
+const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.6133
 // Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
 // plane to mesh it; the minute pinion and hour wheel share a second plane.
 // Both stay clear of the sub-dial well floors (each well's own recess since
@@ -18210,7 +18228,7 @@ await (async () => {
 // (ALARM_RELEASE_AZ itself stays — the LEVER is still at that azimuth, and its
 // bracket, its tail run and its beak are all sited from it.)
 const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
-const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25: outside the hub (2.8667); the rim's root circle is 4.125 (30 T at module 0.3), so the body's face runs smooth from 3.25 out to it — TODO 144's candidate pad annulus
+const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25, its inner edge 0.0167 INSIDE the hub's wall (2.8667 — one piece of the disc, so that is a joint, not a fit; this comment used to say "outside", and nothing checked it); the rim's root circle is 4.125 (30 T at module 0.3), so the body's face runs smooth from 3.25 out to it — TODO 144's candidate pad annulus
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
 // invariants (disc tracks hour when idle; setting re-phases it equal and
 // opposite to the tube; the notch az at trip is setting-independent) —
@@ -18254,10 +18272,39 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
   // TODO 11 tranche five: the WALL is stock, and 0.35 − 0.05 = 0.30 made it
   // 0.1137 mm — under the floor. Written as bore + STOCK_MIN_U so the wall
   // reads as the thing being sized, not as the gap between two radii.
-  const hub = new THREE.Mesh(ringGeo(HOUR_TUBE_OUTER + 0.05, HOUR_TUBE_OUTER + 0.05 + STOCK_MIN_U, ALARM_TRACK_TOP - ALARM_DISC_BOT), MATS.steel);
+  //
+  // TODO 179 — AND IT STOPS AT THE BODY'S FACE. It stood up to the track's
+  // top, and the reader's pin orbits 0.0433 outside its wall (pin inner edge
+  // RMID − PIN_R = 2.91 against 2.8667) with its tip on that same plane: the
+  // hub passed the pin's shank at 0.0433 at every pose of every axis, and
+  // dropped into the notch the tip went 0.10 further down beside it. The wall
+  // cannot move out of the way (bore = the tube's running fit, wall = §50's
+  // floor, and the pin's radius is the feeler's read radius — a lever arm).
+  // So the hub may stand proud of the body only where the pin cannot come
+  // within a margin, and the dropped tip is ALARM_TRACK_H − ALARM_PIN_DROP =
+  // CLEAR_MARGIN over the body's face by construction: at a 0.0433 offset a
+  // proud hub would buy 0.0064, which is no bearing at all. Flush it is; the
+  // bore's running seat is the body's own thickness, and what holds the disc
+  // axially was never this fit (TODO 144's seat).
+  const hub = new THREE.Mesh(ringGeo(HOUR_TUBE_OUTER + 0.05, HOUR_TUBE_OUTER + 0.05 + STOCK_MIN_U, ALARM_DISC_TOP - ALARM_DISC_BOT), MATS.steel);
   hub.name = 'alarmDiscHub';
-  hub.position.z = (ALARM_TRACK_TOP + ALARM_DISC_BOT) / 2;
+  hub.position.z = (ALARM_DISC_TOP + ALARM_DISC_BOT) / 2;
   alarmDiscGroup.add(hub);
+  // Rule 6 — TODO 179's two clearances, achieved and required: the dropped
+  // tip over the notch floor (the body's face), and over the hub's top edge
+  // (the radial offset only adds, so the hub can never govern while it is
+  // flush — the assert says so rather than assuming it).
+  {
+    const tipDropped = ALARM_TRACK_TOP - ALARM_PIN_DROP;
+    const floorGap = tipDropped - ALARM_DISC_TOP;
+    if (floorGap < CLEAR_MARGIN - 1e-9)
+      console.warn(`TODO 179 disc: the dropped reader pin stands ${floorGap.toFixed(4)} over the notch floor, need ${CLEAR_MARGIN} — the track is shallower than drop + margin`);
+    const hubTop = hub.position.z + (ALARM_DISC_TOP - ALARM_DISC_BOT) / 2;
+    const radial = (ALARM_TRACK_RMID - ALARM_PIN_R) - (HOUR_TUBE_OUTER + 0.05 + STOCK_MIN_U);
+    const hubGap = Math.hypot(Math.max(0, radial), Math.max(0, tipDropped - hubTop));
+    if (radial < CLEAR_MARGIN && hubGap < CLEAR_MARGIN - 1e-9)
+      console.warn(`TODO 179 disc: the dropped reader pin passes the hub's top edge at ${hubGap.toFixed(4)} (radial ${radial.toFixed(4)}, axial ${(tipDropped - hubTop).toFixed(4)}), need ${CLEAR_MARGIN}`);
+  }
   // Body + rim teeth in one crisp gear (bevel: false — the band budget is
   // margin-exact on both faces, same rule as the setting lane).
   const body = G.makeGear({ name: 'alarmDiscBody', module: ALARM_BRANCH_MODULE, teeth: ALARM_DISC_TEETH, mates: [ALARM_SET_I1_TEETH], thickness: ALARM_DISC_BODY_T, boreR: HOUR_TUBE_OUTER + 0.05, hub: false, spokes: 0, material: MATS.steel, bevel: false });
@@ -18266,7 +18313,8 @@ registerExplode(alarmDiscGroup, 0, 2, 1); // dialFace child: children carry loca
   alarmDiscGroup.add(body);
   // The RAISED TRACK with the notch as its one gap (no CSG: the notch is
   // the ABSENCE of track). The pin rides the track's top; at coincidence
-  // the gap arrives under it and it drops ALARM_TRACK_H onto the body.
+  // the gap arrives under it and it drops ALARM_PIN_DROP — banked by the
+  // feeler's stop, one CLEAR_MARGIN short of the body (TODO 179).
   const a0 = ALARM_NOTCH_W / 2, a1 = Math.PI * 2 - ALARM_NOTCH_W / 2;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, ALARM_TRACK_RMID + ALARM_TRACK_HALFW, a0, a1, false);
@@ -18591,7 +18639,8 @@ registerSub('Alarm release feeler', 'Feeler lever', alarmFeelerLever); // §10 l
       console.warn(`TODO 173 feeler: the tip follows ${follow.toFixed(4)} TRACK-ward at the banked drop, the collar ${ALARM_PIN_DROP} — the rock must carry the read point with the ring (gain 1)`);
   }
   // …and the dropped arm stands one margin over the disc body: the stand-off
-  // hoisted as ALARM_PIN_SHANK against the dip at the jog's inboard face.
+  // hoisted as ALARM_PIN_SHANK against the dip at the jog's inboard face
+  // (slack since TODO 179 deepened the notch — see the shank's own comment).
   {
     const need = CLEAR_MARGIN - ALARM_TRACK_H + ALARM_PIN_DROP * FEELER_ARM_RUN / ALARM_FEELER_ARM_LEN;
     if (ALARM_PIN_SHANK < need - 1e-9)
@@ -19042,8 +19091,11 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   const dropAtRim = ALARM_PIN_DROP * (ALARM_FEELER_PIVOT_R - rimRoot) / ALARM_FEELER_ARM_LEN;
   if (staticGap - dropAtRim < CLEAR_MARGIN)
     console.warn(`§29 feeler: dropped arm ${(staticGap - dropAtRim).toFixed(3)} over the rim teeth, need ${CLEAR_MARGIN} — the banking stop's travel is too generous`);
-  if (ALARM_TRACK_TOP - ALARM_PIN_DROP <= ALARM_DISC_TOP)
-    console.warn('§29 feeler: the dropped pin would bottom in the notch — the stop, not the disc, must take the landing');
+  // TODO 179: not bottoming was never enough — the floor is a surface the
+  // tip passes, so it owes the margin (the disc build holds the same relation
+  // beside the hub's; this one guards the stop's side of it).
+  if ((ALARM_TRACK_TOP - ALARM_PIN_DROP) - ALARM_DISC_TOP < CLEAR_MARGIN - 1e-9)
+    console.warn(`§29 feeler: the dropped pin stands ${((ALARM_TRACK_TOP - ALARM_PIN_DROP) - ALARM_DISC_TOP).toFixed(4)} over the notch floor, need ${CLEAR_MARGIN} — the stop, not the disc, must take the landing, a margin short of it`);
 }
 
 // §29 step 2 corridor — every wall the branch threads, asserted with the
