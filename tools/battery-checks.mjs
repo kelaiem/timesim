@@ -241,8 +241,15 @@ export const BATTERY = [
       + `${r.outOfScope.length} out of scope (reported), ${r.waived.length} waived (accepted debt)` },
   { name: 'expectedContacts', opts: { yieldEvery: YIELD_EVERY },
     slices: EXPECTED_CONTACT_SLICES, merge: mergeExtrema,   // §127 tier 2a — same axis loop, rows merged as extrema
-    gate: '0 unwaived floor rows, 0 unmatched contact selectors',
-    fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u }))],
+    gate: '0 unwaived floor rows, 0 unmatched contact selectors, 0 stale or malformed waivers',
+    // TODO 177 — a waiver is judged from the ROW (rows travel verbatim through
+    // mergeExtrema and unionRowTable): declared on a row that now meets its
+    // floor it is stale — the fix landed and the row hides the next
+    // regression; declared without `only:` it is malformed — it excuses every
+    // pair of the two units, which is how TODO 101's waiver hid TODO 177 and 178.
+    fails: (r) => [...r.violations, ...r.unmatched.map((u) => ({ unmatchedContactSelector: u })),
+      ...r.results.filter((x) => x.waiver && x.ok).map((x) => ({ staleWaiver: x.pair, waiver: x.waiver })),
+      ...r.results.filter((x) => x.waiver && !x.only).map((x) => ({ malformedWaiver: x.pair, why: 'a waiver must name its pairs in only: — a whole-row waiver excuses every pair of the two units' }))],
     note: (r) => `${r.results.length} pairs, ${r.waivedCount} waived (accepted debt)` },
   { name: 'oscillator', opts: {},
     gate: 'the spring is cut to the beat as clamped, in real hairspring stock; every wind frame one length of steel, the frames\' torque the k, the control silent (§218)',

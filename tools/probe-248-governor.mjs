@@ -1,4 +1,4 @@
-// §245 — IS THE GOVERNOR ANCHOR DRIVEN BOTH WAYS, ON THE BUILT METAL?
+// §248 — IS THE GOVERNOR ANCHOR DRIVEN BOTH WAYS, ON THE BUILT METAL?
 // Acceptance: exits non-zero on any failed claim. §113's exit pallet was A's
 // MIRROR, which is A's drive run backwards in time: over B's half-swing the
 // contact would have had to travel against the wheel, so the anchor was POSED
@@ -20,7 +20,7 @@
 //      time-reversed wheel (tip velocity negated) must FAIL on both stones —
 //      that is exactly what §113's mirrored B was; (b) the anchor turned 0.02 rad
 //      off its law must read a tip BURIED past the grade.
-// cd tools && node probe-245-governor.mjs (exit 1 on any claim)
+// cd tools && node probe-248-governor.mjs (exit 1 on any claim)
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 

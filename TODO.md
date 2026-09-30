@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
 | 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
@@ -29,11 +30,11 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | OPEN | The release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700 on an EXPECTED pair with no floors row. Fix: triage, then a floors row with the track as its one contact |
-| 178 | OPEN | `alarmFollowerSpringStud` passes `alarmHeart` at 0.1011, hidden behind the `Alarm disc ⇄ Hour wheel` row's TODO 101 waiver. Fix: re-site the stud in position space |
-| 177 | OPEN | The hour hand's body touches the alarm hand's boss (0 at beat f=0), hidden behind the same waiver. Fix: derive the two hands' stack gap from `CLEAR_MARGIN` |
+| 178 | OPEN | `alarmFollowerSpringStud` passes `alarmHeart` at 0.1011. No longer hidden: since TODO 120 it is the one pair an `only:` debt row on `Alarm disc ⇄ Hour wheel` waives, and that row fails as STALE the moment the stud clears. Fix: re-site the stud in position space |
+| 177 | CLOSED (with TODO 120) | The lane is read off SECTIONS and binds at `CLEAR_MARGIN` + 0.0002 at the kept 1.778, on two pairs that agree by construction (blade over blade; the hour pipe's foot over the alarm collet, which moved under its blade). The row behind the waiver holds nothing else |
 | 176 | CLOSED | The alarm barrel's cavity is `borePath(drumInnerR, bevel)`, guarded to 5.595 at boot. The filed 4.785 was a radius, the hexagon less its bevel. The ribbon clears the true wall by 0.0536 against a designed 0.0549 |
 | 175 | CLOSED | Bevelled bores are drawn at `r + bevel/cos(π/n)`, so the band the shaft meets IS r (`boreBandGuard` warns otherwise). Every gear, pinion, heart and barrel bore is compensated. The fit census was redone: 3 "pressed" parts run; 6 bores smaller than their shaft and 3 too-loose running fits now derive from the shaft they ride |
-| 174 | OPEN | The alarm selector's fork block and bracket bar are not joined to the ring they drive (bar 0.1817 off the ring and boss 1, block ≥0.32 off): no load path from the link to the ring. Fix: a riser from the bar to the ring outside r 4.80, plus a connectivity gate |
+| 174 | CLOSED | The fork is joined to the ring (a foot and riser of ring stock, webs at the §50 floor; 'Alarm selector' in ASSEMBLY_SCOPE, control fires at 0.1817). En route: the §112 solve's guide-post guard mixed dial-local and world azimuths, which seated the fork ON post 1 (pin 0.1285 inside); the guard is a world plan clearance now and the solve's honest site is tab 315°, rod d 9, whose beak arms are a declared FORK of §229's (3.577/0.768, ratio held) with the rod's top cut from the tail (beak row −0.0708 → 0/0.0008) |
 | 173 | CLOSED | The lever rocks about its own pin ('ZYX'), sign read off the contact (`feelerRockAt`); the dropped tip seats on the ring (−0.0202, was 0.1628 open), the banking stop banks (0.0001), and the arm, jog and tail run are re-derived for the true rock. Dropped-pose hand-off rows and a reader ⇄ feeler floors row hold it. Filed: TODO 189 (beak), TODO 190 (silence rocker) |
 | 172 | CLOSED | The lane stands `ALARM_SHEET_GAP` (one banded `CLEAR_MARGIN`) off the dial; the §29 chain behind it is funded by two blind pockets sunk `MW_PLATE_SINK` into the base plate under the cannon pinion and the setting cap (the cap's merged with the rise bore), so `MW_WHEEL_T` keeps 0.468235 and the cap's coverage holds at 0.16. Debt row deleted |
 | 171 | CLOSED | `EXPECTED_PAIRS` now declares `Alarm link ⇄ Three-quarter plate`, citing the floors row's two contacts (beak post on the plate top, rod bush in its bore), so the tables agree on record. The pair seats at 0.007 and holds 0.3738 elsewhere; only `sweptOverlap`'s report-only `tight` row moves |
@@ -73,7 +74,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 117 | PART DONE | Found by item 116's instrument: the alarm setting wheel ⇄ i1 mesh reads **37.44% of a pitch** off anti-phase — and it is not a phase defect. `probe-mesh-transmission.mjs` asks the prior question, does each declared mesh TURN its neighbour by what the metal says, and walks each input separately because the chain has two (crown, and the hour's back-drive). Three of four meshes are exact under one input and inverted or silent under the other. **FIXED**: the arbor pinion's back-drive sign (`-3*_bd` → `+3*_bd`; −3.700 measured under both inputs now, and nothing reads that angle back). **OPEN, and not a sign**: the gearing makes the setting wheel and the disc one 1:1 pair, so the wheel must follow the hour; the disc's law is PINNED by the trip (measured at three settings — the pin bottoms when the hour hand meets the alarm hand, constant offset); and the armed pin-B coupling needs the wheel to equal the TUBE, which holds. Three laws, any two compatible — and the root cause is one fact: a FIXED reader forces the disc to encode `hour − set`, that needs a differential, and the branch doing the summing is a plain gear train, which back-drives. So the hour flows back up the whole setting train and no member carries the set term alone. **DECIDED 2026-08-29 (owner): the moving reader rides the HOUR** — the real Memovox topology. The disc carries SET only and holds still, the hour carries the reader, the branch and the differential both disappear. **The travel is now MEASURED and the topology is feasible** (`probe-feeler-travel.mjs`, 42-pose net, both controls passing): the band is not full, the ARM is long — a reader inside **r 3.6 orbits the whole 360° with 0.4153 of clearance** (~2.8× CLEAR_MARGIN), where today's r 14.261 arm gets 45° in scattered fragments, blocked mostly by the alarm release sleeve (130°). So the reader must be a SHORT member at the track radius, which moves the real problem to the OUTPUT: today's arm reaches a lifter at r 16.942 and that run spans **2.682 → 31.203 across the orbit**, so no simple link does it. Also found: the bar is the shipped station's own **0.0458** to the alarm winding train, not CLEAR_MARGIN — a real sub-margin proximity the movement accepts and nothing gates. Open at implementation: what holds the disc once its hour-tube friction hub goes, and the output path for a short orbiting reader |
 | 118 | CLOSED (same landing) | The minute hand's 2.3 lift over the hour plane was a fat-rod literal (pre-§125), not a derivation — after §188's 0.2 mm blades it left 0.67 mm of bare air between the hands, found by the owner's eye. Derived from the built hands' own userData now; the alarm collet's "stands 0.8 proud" record error found and corrected in the same audit |
 | 119 | CLOSED (same landing) | `handsGroupZOffset` carried 0.82 u of dead air: §188's binder (≥ 2.402) and item 118's correction (≥ 2.002) both held apart planes that never radially meet — the real governing pair is alarm blade top ↔ hour blade keel, and the offset now derives at 1.778 from it (owner-directed respend, 0.31 mm off the cased depth); §125's lane assert rewritten two-sided with a measured radial guard |
-| 120 | OPEN | The central hand collets are display fictions: the hour boss is solid at r ≤ 1.26 against a tube spanning r 2.05..2.50 (inside its own arbor's bore), the minute boss is solid over the cannon pinion, and both blades detach radially from their own bosses (roots at r 5.5/7.9 vs rims at 1.26/1.25) — each hand turns by parenting, not by any surface. Fix: bore the bosses to their arbors, bridge blade roots to bosses, declare the joints |
+| 120 | CLOSED | The central hands ride bored PIPES pressed on their arbors (hour on the tube's outside, minute on the cannon pinion's new NOSE), full 0.4 mm land, §50 walls across the flats; the blades open at the pivot and join their pipes through an eye. The hour tube RIDES the nose at a `PIVOT_BORE_CLEAR` running fit, declared as a support edge and a floors-row contact; 'Hour wheel' is in `ASSEMBLY_SCOPE`. Residue: the display is still posed by parenting (TODO 115's half) |
+| 101 | CLOSED (with TODO 120) | The alarm leaf is open at its pivot (eye bore 2.9791, clearing the hour hand's pipe); the `Alarm disc ⇄ Hour wheel` row is unwaived; `probe-95-interpenetration` finds 0 tube-surface points inside either run |
 | 121 | PART DONE | The strike tier's stale self-descriptions, found by §191/§192's audit. FIXED: the §163 skirt assert read a plane 0.30 above the real underside AND omitted the §169 pawl coil from its band need — 1.14 of phantom headroom against a real 0.000, blind to exactly the downward re-station §192 prices (both sides now read the raise solve's own inventory, sitting at equality); the λ "= 30" comment vs the code's SLENDER_TARGET 27; EXPECTED_PAIRS' claim of a Stop lever ⇄ plate budget row that did not exist (the row exists now). OPEN: main.js's `TQ_TOP_Z + 2.5` strike-band literal understates the built tier by ~2.4 (real ceiling Δ4.89, probe-192-tier-price) — re-authoring it can move the solved link-rod site, so it is priced in §192 rather than patched; and BUILT.md §183's arm/chamfer table disagrees with main.js's §183 comment (3.1400/0.3047 vs ~3.62/0.3516) — annotated in both places, the live derivation is the authority |
 | 124 | CLOSED | Reported by eye through §220's sapphire dial, and TWO defects wearing one symptom — the movement's headline 12:1, standing rule 2's own worked example. First, the pair CO-ROTATED: `mwArbor` was the only one of the movement's six dial-side rotation writes without TODO 115's negation, sitting between two members (`cannonPinion`, `hourWheelGroup`) that both carry it, so the minute wheel turned WITH the cannon pinion driving it (+0.333333 against a bar of −0.333333). The item's first diagnosis — "the angles are computed from the ratio rather than arriving through the teeth" — was WRONG and is retracted in place: `MW_RATIO_1/2` are already SIGNED tooth-count quotients, so 12:1 always arrived through the counts and the sign was dropped after it arrived. Second, underneath that, the teeth had never been CLOCKED — no `solveGearChain` call covered the chain — and fixing the sense alone left a CONSTANT 50.00% of a pitch, tooth on tooth at every pose rather than at the worst of them. The spread column is what tells the two apart (42.871 → 0.049, 37.305 → 0.781: a residual sweeps only while a pair does not transmit), and it is why the ORDER is the transferable part — clocking a pair that does not transmit is true at the build pose and false everywhere else. Solved in TODO 48's two-stage form with a new `mwPair` rigid group; `minuteStar` stays OUTSIDE it (clocked to the jumper, not the mesh — beak reads u = 0.500000 at all 13 detents sampled) and stage two turns `mwHourWheel`, never `hourWheelGroup` (which carries the hand, tube and alarm heart). Measured 50.00% → **0.049%** and **0.781%** against a 2% bar; both `MESH_PHASE_WAIVERS` and both `TRANSMITS_WAIVERS` entries deleted by their own stale gates. Gated by `probe-124-motionworks-sense.mjs`. Residue rehomed to [TODO 132] |
 | 105 | OPEN | The lever's safety action, split out of item 98. The GEOMETRY is right and item 98's scope note was wrong about it — the crescent exists and is phased to the impulse pin (both at azimuth 0), and the guard pin rides at **0.2356–0.7455** over a beat, never touching, which is correct for a failsafe. What is wrong: none of those clearances is DERIVED (every one is a chosen number, so nothing can say whether 0.2356 is right), **no axis displaces the fork** so the failsafe is never exercised — §48's population argument again — and no horn-to-pin contact is measured, only pin-to-body at 0.0000 |
@@ -5544,19 +5546,19 @@ from the parked paddles at the closest approach of the cycle, which is the
 price of a face long enough to satisfy §50 and a swing small enough to
 poise (the trade is written at `ALARM_GOV_ENGAGE_DEBT`).
 
-**§245 addendum — two things this re-derivation shipped that were not true of
+**§248 addendum — two things this re-derivation shipped that were not true of
 the metal.** First, the proportions: ε = pitch/4 at the hub-room floor is a
 flipper spanning HALF a tooth, 0.12 mm paddles swinging 4.6° within 0.5 mm of
 the anchor's axis — every gate green, no watch part. Second and worse, pallet B
 was cut as A's MIRROR, which is A's drive run backwards in time: measured on the
-built metal (`tools/probe-245-governor.mjs` against this tree), B was in contact
+built metal (`tools/probe-248-governor.mjs` against this tree), B was in contact
 for 2% of the period against A's 42.5%, and 6 of its 8 contacts PULLED — the
 anchor's return swing was posed by the law with no tooth behind it, invisible to
 the cycle sweep because that sweep asks whether metal overlaps, never whether a
-contact pushes. §245 rebuilt both (20-tooth saw, 2½-tooth span, stone pallets
+contact pushes. §248 rebuilt both (20-tooth saw, 2½-tooth span, stone pallets
 whose lengths are solved from a drop equal to the bearings' shake, B its own
 solve) and retired the 0.033 grade: the stones clear the tooth fronts outright
-and the boot sweep is back at §104's 0.02. The record is `docs/BUILT.md` §245.
+and the boot sweep is back at §104's 0.02. The record is `docs/BUILT.md` §248.
 
 
 ### The blade SECTION — CLOSED by §111, and its "unfixable" was wrong
@@ -5790,12 +5792,12 @@ anywhere. Nothing else on the list moved, because nothing jewelled landed.)
 - `penetration` — the governor row (§111) now reads **OK, 0.032 / 0.1,
   unwaived** (§113). Its `nSamples: 449` is load-bearing: one wind is 28
   strikes × 80 tooth periods = 2240, and a count sharing a factor with 2240
-  revisits the same handful of phases forever. Keep it coprime. (§245's
+  revisits the same handful of phases forever. Keep it coprime. (§248's
   20-tooth saw made it 28 × 40 = 1120; 449 is prime, so coprime to both.)
 - the boot cycle sweep — `ALARM_GOV_ENGAGE_DEBT` in `src/main.js`, the
   polygon-depth twin of that row over one tooth period. §111 set it AT the
   measured debt (0.25) with the tighten-never-widen instruction; §113
-  tightened it to 0.033 (measured 0.0314 at the solved design point). §245's
+  tightened it to 0.033 (measured 0.0314 at the solved design point). §248's
   stones returned it to §104's working-contact 0.02 (measured 0 at the solved
   point). It remains the number that must not rise.
 - `expectedContacts` — the governor pair's floors row was the tightest in
@@ -12716,7 +12718,7 @@ reads the bore as correctly sized because **the bore's VERTICES are all at
 against the arbor, which is the one witness that reads faces rather than
 points.
 
-## 101. The alarm disc's arm runs through the hour tube — 0.29 u of steel, against a 0.15 floor
+## 101. The alarm disc's arm runs through the hour tube — 0.29 u of steel, against a 0.15 floor — CLOSED
 
 Filed 2026-08-26, out of TODO 95 row 6. Found by the pass-through witness, and
 findable by nothing else in the bar: the `expectedContacts` row for
@@ -12809,6 +12811,34 @@ seen from the hour hand's boss. Two misses that are NOT this leaf sit behind
 the same waiver: [TODO 177] (`hourBody ⇄ alarmBoss`, 0) and [TODO 178]
 (`alarmFollowerSpringStud ⇄ alarmHeart`, 0.1011). Retiring the waiver
 without them would turn the row red for reasons this item does not own.
+
+### Closed.
+
+Closed by [TODO 120], which rebuilt the pivot the leaf sits in. The fix is
+repair 1, re-aimed: since TODO 120 the member passing through the alarm
+blade's plane is the hour hand's PIPE, not the tube, so the leaf is opened
+round the pipe.
+
+- **The leaf is open at its pivot.** The blade is cut as two runs
+  (`alarmBody`, `alarmRear`) meeting a flat EYE, and no blade metal lies
+  inside the eye's bore. The bore is
+  `(HOUR_PIPE_OUTER + CLEAR_MARGIN) / cos(π/48)` = **2.9791**: the pipe's
+  vertex radius plus the margin, read at the eye's own flats (the ring is a
+  48-gon, because three.js doubles an arc's divisions).
+- **"Not yet established" is settled.** The parity walk was right. The leaf
+  was ONE extrusion straight through the pivot, so its surface came in to
+  r 0.13; the 1.216 was a vertex reading.
+
+**Acceptance, measured on the applied tree:**
+
+| measurement | value |
+|---|---|
+| `Alarm disc ⇄ Hour wheel` floors row | **unwaived**, min 0.1500 (the flange ⇄ heart derived margin, `LatheGeometry#1 ⇄ alarmHeart`) |
+| leaf (`alarmBody`/`alarmRear`) ⇄ `hourTube` | 0.4791 (both runs) |
+| `probe-95-interpenetration`, tube-surface points inside either run | **0** of 4800 (and 0 of 780 leaf points inside the tube) |
+
+The waiver is deleted. The one contact it still covered is TODO 178's, and it
+moved to its own `only:` row, which waives that pair alone.
 
 ## 102. The pusher's return spring is tessellated inside its own running fit — CLOSED
 
@@ -16325,6 +16355,13 @@ landing later: the owner directed the respend, and item 119's measurement
 found even the ≈ 2.002 binder radially fictional — the offset now derives
 at 1.778 from the blade↔blade pair; see item 119.)*
 
+**Correction (TODO 120).** The bosses are gone, so the "four ways" are now
+the two hands' SECTIONS plus the hour tube, stacked by `coaxialLift`. The
+governing term is now the minute pipe's foot over the hour tube's top face.
+It is still **1.2056**, because both it and the old boss-on-boss term are one
+pipe land plus the margin, so the minute plane did not move.
+`probe-hand-stack` re-derives the lift from the same sections.
+
 ## 119. handsGroupZOffset carried 0.82 u of dead air: both recorded binders were radially fictional, the real one is blade to blade — CLOSED
 
 **Owner-directed respend after item 118**, and the measurement that sized
@@ -16363,7 +16400,16 @@ pose-independent; rotation is about the common axis). Transients between
 pose samples remain item 7's. The hour-blade-root-to-boss radial void the
 scan exposed is item 120's.
 
-## 120. The central hand collets are display fictions: solid bosses that could not grip, or even reach, the arbors they ride — OPEN
+**Correction (TODO 120/177).** "The hour hand carries NO metal between its
+boss rim (r 1.26) and its blade root (r 5.52)" was read off VERTICES, and a bur
+rod has vertices only at its two ends: 5.52 was the tail's end ring, while the
+one extrusion ran straight through the pivot. At the shipped 1.778 the hour
+blade sat 0.074 inside the alarm collet ([TODO 177]). The 1.7778 derivation
+stands, but blade over blade was never the only binder: the hour pipe's foot
+over the alarm collet now binds at the same value. The radial guard is
+replaced by an assert over sections.
+
+## 120. The central hand collets are display fictions: solid bosses that could not grip, or even reach, the arbors they ride — CLOSED
 
 Found by item 119's per-mesh scan, filed unfixed. Three defects in the
 central hands' mounts, all invisible to every clearance gate because they
@@ -16394,6 +16440,68 @@ and declare the two display joints in `INTRA_UNIT_CONTACTS` /
 `EXPECTED_CONTACT_FLOORS` so the fits are measured, not assumed. The
 rotation-by-parenting half (a display posed rather than driven) is item
 115's train-sense work and stays there.
+
+### Closed.
+
+Each central hand now rides a bored PIPE pressed on its arbor, hanging the
+full `HAND_PIPE_LAND` (0.4 mm, §188's friction land) below its blade's top
+face. The blade is opened at its pivot and joined to the pipe by an eye, so
+each hand is one body (`makeHand`'s `pipe` option). A press fit follows the
+repo's convention: the bore equals the shaft's outside (the alarm heart on
+the hour tube, TODO 154). Every wall is §50's floor ACROSS THE FLATS.
+
+| member | derivation | value |
+|---|---|---|
+| cannon NOSE (new, `cannonNose`) | `HOUR_TUBE_INNER·cos(π/40) − PIVOT_BORE_CLEAR` — a running fit in the tube's bore, read at its flats (`ringGeo` is a 40-gon) | r **1.9937**, bore 0.4, z −0.5 … 4.2150 |
+| minute pipe | bore = nose OD (press); OD = (bore + `STOCK_MIN_U`)/cos(π/48) | r 1.9937 … **2.3153** |
+| minute plane | `coaxialLift` over the sections; minute pipe's foot over the hour tube's top governs | lift **1.2056** (unchanged) |
+| hour pipe | bore = `HOUR_TUBE_OUTER` (press); OD across the flats | r 2.50 … **2.8227** |
+| hour tube | top raised to the hour pipe's top, so the pipe grips its whole land | lands measured 0.0000 on both pipes |
+| alarm collet | hangs UNDER its blade (`hang: 'keel'`), foot one margin + `ALARM_SEAT_SINK` over the dial | length **0.5781** (was 0.8) |
+| alarm tube | stops at the alarm blade's keel | top **1.8037** (was 2.1556) |
+| alarm eye | clears the hour pipe (TODO 101) | bore **2.9791** |
+
+The front metal is now the minute pipe and the flush nose top, 4.2150 (was
+the minute boss at 4.5669). `handFront` pulls the crystal back 0.352 u
+(0.133 mm), so the case is thinner by that much. This is a derived
+consequence, not a choice.
+
+**The running fit (owner's decision).** The hour wheel's tube RIDES the
+cannon nose, as in a watch, instead of clearing it by a margin. It is
+declared the way this repo declares every bearing:
+
+- a SUPPORT edge, `Hour wheel → Dial` (the pinion is a `dialFace` child);
+- the `EXPECTED_PAIRS` entry that already existed for the label nesting;
+- one CONTACT on the `Hour wheel ⇄ Dial` floors row, `hourTube ⇄
+  cannonNose`. The minute pipe on the same nose still owes the margin.
+
+The old support edge `Hour wheel → Motion works` ("tube runs in the
+motion-works stud plate") named a plate that does not exist, and it is
+replaced. The seat plate's bore rides the tube's outside by the same 0.05
+fit (TODO 144), so it is declared too, as `Hour wheel → Alarm release seat`.
+The tube runs in two coaxial journals, the nose inside and the seat outside,
+and both bear. The geometry half of `support` cannot tell the nose edge from
+the label nesting, so `probe-hand-stack` measures the fit itself.
+
+**Acceptance, measured on the applied tree:**
+
+| instrument | result |
+|---|---|
+| running fit `hourTube ⇄ cannonNose` (probe-hand-stack, 71 poses) | 0.0500 … 0.0556 (`PIVOT_BORE_CLEAR` 0.05; 40-gon sag 0.0063) |
+| nose ⇄ every other mesh, 14 axes × 5 | ≥ 0.50 (hour pipe/eye 0.5010, hour blade 0.5063) |
+| `assembly` | 0 violations; 'Hour wheel' in `ASSEMBLY_SCOPE`, no split; the Dial's `minuteBody+minuteBoss+minuteTip ⇄ cannon pinion` split (3.9513) is gone |
+| `Hour wheel ⇄ Dial` floors row | 0.1500, `hourTube ⇄ minutePipe` (the derived stack margin), with the fit as its one contact |
+| probe-hand-stack | all 8 controls and acceptances PASS |
+| fingerprint | 93504544 → **3862697114**; only Dial, Hour wheel, Alarm disc and Case move |
+
+**Residue.** Two parts. The display is still posed by parenting (TODO 115's
+half, unchanged). And a same-frame joint (a pipe on its arbor) is measured
+only by `assembly`, which gates only inside `ASSEMBLY_SCOPE`: the minute
+fit's unit, the Dial, cannot be scoped (its dial furniture is a 35-body
+split), so that fit is held by probe-hand-stack's land clause. No
+`INTRA_UNIT_CONTACTS` rows were added: trialled, both came back
+`declaredNeverCompared` (a pipe and its arbor turn as one), so they would
+have measured nothing.
 
 ## 121. The strike tier's stale self-descriptions: a blind skirt assert, a frozen tier-height literal, a λ comment — PART DONE
 
@@ -23979,7 +24087,7 @@ Found and filed rather than fixed:
   and eight under-margin pairs behind the same EXPECTED pair, and no floors
   row can pass until the interface is redesigned.
 
-## 174. The alarm selector's fork block and bracket bar are not joined to the ring they drive
+## 174. The alarm selector's fork block and bracket bar are not joined to the ring they drive — CLOSED
 
 Found triaging [TODO 170]'s sleeve ⇄ selector row. The fork bracket bar is
 cut to "lap" the selector ring's rim, but only in plan: at the plate level
@@ -23996,6 +24104,84 @@ overlap.
 it keeps TODO 170's clearance to the sleeve flat. Then gate the connection:
 bring the selector into `ASSEMBLY_SCOPE`, or add a declared-joint row that
 the §182 audit measures.
+
+**Closed.** The joint was the smaller half; under it sat a guard measuring in
+two frames.
+
+1. **The joint.** `alarmSelForkFoot` and `alarmSelForkRiser`, each
+   `STOCK_MIN_U` square and lapped `ALARM_GOV_ARM_LAP` into what it joins. The
+   riser runs from the ring's face to the bar's face outside TODO 170's line
+   (`brIn`). The block's webs rise from 0.05 to `STOCK_MIN_U`, because they
+   carry the lower plate's drive (§50). The gate is the fix path's first
+   option: `ASSEMBLY_SCOPE` gains `'Alarm selector'`. Its control (riser
+   omitted) reports the split at 0.1817.
+2. **The defect under the defect: a guard in two frames.** The §112 link
+   solve's `_postOk` converted the WORLD tab azimuth to dial-local
+   (180° − az) and compared it with the guide posts' WORLD azimuths —
+   CLAUDE.md's `dialFace` Y-flip trap — with a 26° literal applied to the wrong
+   quantity (the fork lies along the chord, not at the tab's azimuth). Main's
+   site (tab 69°, rod 16 from the wheel) therefore seated the fork ON guide
+   post 1: the centre pin stood 0.1285 inside it at every armed pose, and two
+   `INTRA_UNIT_CONTACTS` rows ("lapped on the post") excused it; both are
+   deleted. The guard is now `_postClear`: the modelled fork's world plan
+   clearance to each station's sleeve (`ALARM_SEL_SLEEVE_R`) and boss
+   (`ALARM_SEL_BOSS_W`), plus `CLEAR_MARGIN`, against `ALARM_SEL_POST_XY`, the
+   stations' one source. It is held at the fork build by a rule-6 assert on
+   the BUILT block and pin (at rest and at the armed rolls), which fires
+   "0.4913 inside guide post 1" on main's site. The solve's honest best is tab
+   315°, rod distance 9, clearance 0.4592 (main's site: 0.2297, and illegal).
+   Re-hoisted: body 30.9964 → 20.5712, rod 19.1037 → 19.3894, bores →
+   (27.88, −4.07), TODO 82's stall 1006.54 → 1221.13 mN (live row 1242.62,
+   1.76% apart, under the 3% assert).
+3. **The beak arms are a declared FORK of §229's.** The line is unchanged —
+   ratio `SEAT_DROP_SPEC / ROD_TRAVEL_SPEC` = 4.6574, collinear arms, nose at
+   `landR`. The reference is §229's fold at `ALARM_BEAK_REF_WRLEN = 16`, a
+   record and not a live input; the one changed input is the rod distance,
+   forced by the corrected guard. Asserted at the build (ratio to 1e-9
+   relative, wrLen = `ALARM_LINK_ROD_DIST`), recorded on `alarmLinkParts.fork`:
+
+   | row | ref (wr 16) | fork (wr 9) | re-derived as |
+   |---|---|---|---|
+   | beakLen | 9.3396 | 3.5770 | (wr − landR)·r/(1 + r) |
+   | tailLen | 2.0054 | 0.7680 | (wr − landR)/(1 + r) |
+   | ratio | 4.6574 | 4.6574 | held |
+   | θseat | 0.04997 | 0.13046 | seatDrop/beakLen; the rod top is cut to it |
+   | bar depth | 0.3459 (§54) | 0.3167 (§50 floor governs) | max(STOCK_MIN_U, beakLen/27) |
+   | nose height | 0.5891 | 0.5852 | the swept bar lift re-derives |
+   | tail stall (§137 beak row, no envelope) | 3552 mN | 63236 mN | k·rodTravel; a shorter tail is stiffer |
+
+   Envelopes are inherited, not forked: §50 and §54 on both arms (the boot
+   asserts stay silent), and the 5–50 mN detent window, which the lay shaft's
+   §137 row still COVERS. `transfers` reads 21 rows, 0 failures.
+4. **The rod's top is cut from the tail (MODELING.md rule 9).** The tick lifts
+   the rod `tailLen·θ` while the blade tilts θ, so at θseat 0.13 a flat rod top
+   meets a tilted blade edge-first — the beak row read −0.0708 on the first
+   trial (−0.0264 on main). The tail's underside in the rod's frame, at
+   offset u toward the post, is `g(u, θ) = h(1 − secθ) + (L − u)·tanθ − L·θ`;
+   the rod's top is `min(0, g(u, θseat))`, a facet on the post side at the
+   seat's slope. At the seat the blade lies flat on it; through the travel it
+   stands on the crease (gap ≤ ~1e-4); at rest it stands
+   `h(secθ − 1) − L(tanθ − θ)` = 0.0008 over the axis, the lever law's own
+   small-angle residue, accepted rather than re-opening §229's spec loop. The
+   rod stays a `CylinderGeometry` (the §124 pad-shear precedent: baked into
+   the vertices), and a rule-6 assert walks 17 tilts through the tick's own
+   two lines (`alarmLinkParts.rodCut`: cutIn 0, cutOff 0.00078). The row
+   reads disarmed 0.0008, armed 0.0000, setting 0.0008, dropped 0.0008, with
+   `HANDOFF_TRACK_TOL` untouched.
+5. **The crank.** `ALARM_FORK_SEAT` is derived, `RETREAT − CRANK_T/2 −
+   CLEAR_MARGIN − BLOCK_L/2` = 0.59 (was the 0.65 band midpoint). A new
+   floors row, `Alarm link ⇄ Alarm selector` (contacts centre pin ⇄ tab),
+   reads 0.1500; on main it reads 0, the pin in post 1's sleeve.
+6. **Found on the way.** The lay shaft's hanger bushes stood along WORLD x,
+   20.1° off the shaft on main; they are on the chord now (shaft ⇄ bush 0 →
+   0.0184). And `turnedBars`' lap test tied at exactly `TURN_LAP_MAX_FRAC` for
+   a bush centred on its journal's end station; a SLEEVE is now concentric at
+   any lap. That changes nothing on main, and at the new site it keeps the
+   shaft at L/D 18 rather than a phantom 94.9.
+7. **Residue.** The rod stands 0.0811 from the beak post it runs parallel to
+   (intra-unit, not gated, not fouling) — TODO 191. `_FORK_HALF_W` still
+   models the block at 0.3 in the solve; the build assert on the real block
+   is the gate.
 
 ## 175. A bevelled gear or pinion bore is cut bevelSize smaller than its boreR, so running fits still overlap their studs — CLOSED
 
@@ -24095,7 +24281,7 @@ off that. Against the true cavity the ribbon's outer turn clears the wall by
 said the coil "bears on the drum wall" and now records the designed gap.
 The barrel's arbor bore is not bevelled and needed nothing.
 
-## 177. The hour hand's body touches the alarm hand's boss, hidden behind the Alarm disc row's TODO 101 waiver
+## 177. The hour hand's body touches the alarm hand's boss, hidden behind the Alarm disc row's TODO 101 waiver — CLOSED
 
 Found planning [TODO 154]. The planner swept every Hour wheel mesh against the
 Dial's nested meshes over all 14 axes, measured with `I.meshClearance`.
@@ -24113,6 +24299,29 @@ band. Derive the missing gap from `CLEAR_MARGIN` in position space. Then
 re-measure the row with TODO 101's contact excluded, to show nothing else
 sits behind the waiver.
 
+### Closed.
+
+Closed with [TODO 120], at the kept `handsGroupZOffset` 1.778. The hour
+blade was one extrusion through its own pivot, so it sat 0.074 inside the
+alarm collet. It is open at the pivot now, and the lane is derived as
+
+| lane | derivation | value |
+|---|---|---|
+| blade over blade (TODO 119) | (ALARM_HAND_Z − DIAL_T) + topRise_a + floorDrop_h + CM | 1.7778 |
+| hour pipe foot over the alarm collet/tube top | (ALARM_HAND_Z − DIAL_T) − floorDrop_a + HAND_PIPE_LAND − topRise_h + CM | 1.7778 |
+
+The two agree because `HAND_PIPE_MIN_MM` (0.4 mm) is exactly twice
+`HAND_STOCK_MM`: the pipe is two blade thicknesses long. To make the second
+lane fit, the alarm collet moved under its blade (length 0.5781) and the alarm
+tube stops at the blade's keel. That is position space, not a P1 spend.
+
+At 1.778 the lane measures **0.150222**, the 0.0002 being the 3-dp
+round-up. The boot assert now reads SECTIONS (annuli, rIn at the flats), never
+vertices, and warns thin below the margin and float above it by 5e-3 (proven
+at 1.70 and 1.80). probe-hand-stack measures it on the surface: 0.1502, `alarmTubeBody ⇄ hourPipe`.
+The re-measured row shows nothing else behind the waiver: `Alarm disc ⇄ Hour
+wheel` is 0.1500 (the flange ⇄ heart derived margin, `LatheGeometry#1 ⇄ alarmHeart`) with no waiver, and its one remaining pair is TODO 178's.
+
 ## 178. The alarm follower's spring stud passes the alarm heart at 0.1011, hidden behind the same waiver
 
 Found planning [TODO 154]. The same sweep puts `alarmFollowerSpringStud`
@@ -24126,6 +24335,12 @@ surface of the cam.
 `CLEAR_MARGIN` over the arming run, in position space (P3). The follower's
 spring force and arm must not change. Measure over the `alarm` axis densely,
 not at the pose net's samples alone.
+
+**Debt row (TODO 120's landing).** TODO 101's whole-row waiver is deleted.
+This pair is now the only one waived, by a row naming it in `only:`
+(measured 0.1011 at `alarm` f=0.5833, waived, not stale). A waived row must name its pairs; a waiver without
+`only` fails as malformed; a waived row that meets its floor fails as
+stale. So when the stud moves, the row goes red until it is deleted.
 
 ## 179. The alarm release reader's pin passes the release disc's hub at 0.0433 and body at 0.0700, on an EXPECTED pair with no floors row
 
@@ -25139,3 +25354,19 @@ options were named, none trialled:
 
 The finger radius, the pivot fraction and `ALARM_SIL_PIN_LEVER` are held.
 Then land the floors row with only the real contacts; it is the acceptance.
+
+## 191. The alarm selector rod stands 0.0811 from the beak post it runs parallel to
+
+Found closing [TODO 174]. At the corrected rod site (tab 315°, 9 from the
+wheel) the beak arms shrank to the declared fork's 3.577 / 0.768, which brings
+the selector rod within 0.0811 of the beak post, the two running parallel
+along their length. They are members of one unit (`Alarm link`), so no pair
+sweep reads them, `intraUnit`'s fixture tier only REPORTS outside
+`INTRA_TIER_SCOPE`, and nothing moves them into each other — the rod slides
+axially and the post is still. It is under `CLEAR_MARGIN`, not fouling.
+
+**Fix path (P2 — one action group).** Solve it in position space: the beak
+post's station along the arm's line, or the rod's azimuth about the crank,
+with the lever's arm lengths and 4.66:1 held (spending the ratio to buy room
+is forbidden). The acceptance is a measured gap ≥ `CLEAR_MARGIN` over the
+link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.

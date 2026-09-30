@@ -188,7 +188,25 @@ export const MECH_GRAPH = {
     // hand's support and drive visible to the checks — it was previously
     // folded anonymously into 'Dial' and so exempt from both.
     ['Motion works', 'plate'],               // stud riveted to the plate's dial side
-    ['Hour wheel', 'Motion works'],          // tube runs in the motion-works stud plate
+    // TODO 120 — the hour wheel's BEARINGS, as built. This row used to read
+    // ['Hour wheel', 'Motion works'] "tube runs in the motion-works stud
+    // plate": there is no such plate, and the only metal the two units share
+    // is the 12:1's second mesh, which is the DRIVE edge below, not a
+    // bearing. The tube runs in two coaxial journals, each PIVOT_BORE_CLEAR:
+    //  · INSIDE it, the cannon pinion's NOSE (a Dial-unit mesh — the pinion
+    //    is a dialFace child), the way an hour wheel rides its cannon pinion
+    //    in a watch; `hourTube ⇄ cannonNose` on the Hour wheel ⇄ Dial floors
+    //    row is the declared contact, and tools/probe-hand-stack.mjs measures
+    //    the fit itself;
+    //  · OUTSIDE it, the release seat's bore (TODO 144), whose running
+    //    clearance was already the declared `alarmSeatPlate ⇄ hourTube`
+    //    contact but was never named as what it is — a journal.
+    // Both bear, and neither is a fiction: two journals on one pipe, coaxial
+    // by construction. (The geometry half of `support` cannot tell them from
+    // the label nesting — every hour-wheel mesh is also a Dial mesh — so the
+    // measurement of record is the probe's and the floors rows'.)
+    ['Hour wheel', 'Dial'],                  // TODO 120: the tube rides the cannon pinion's nose
+    ['Hour wheel', 'Alarm release seat'],    // TODO 144/120: …and the seat plate's bore rides its outside
     // Alarm (§24): a second crown (a force source, like the winding 'crown')
     // sets a small disc through a 90° bevel pair. The crown's stem runs in a
     // rim bushing on the plate; the setting arbor pivots in the plate and
@@ -590,6 +608,8 @@ const EXPECTED_PAIRS = [
   ['Hour wheel', 'Dial'],                    // LABEL NESTING: hourWheelGroup is a dialFace child, so every hour-wheel mesh is also
                                              // a Dial mesh. The tube does NOT touch the dial's centre bore (> 0.5 at every pose);
                                              // what the two units' own metal owes is clearance, held by the ownMetal floors row (TODO 154)
+                                             // — except ONE real contact since TODO 120: the tube RIDES the cannon pinion's nose
+                                             // (a PIVOT_BORE_CLEAR running fit, the hour wheel's inner journal), declared on that row
   ['Minute jumper', 'Motion works'],         // beak seated in the minute star's teeth
   ['Minute jumper', 'Dial'],                 // same seat — the star is also a Dial-unit mesh through
                                              // the motion-works nesting (the jumper itself is a
@@ -2106,6 +2126,13 @@ const CLEARANCE_BUDGETS = [
 // two units owes `min`. Mesh matching is by `.name` (string-coupled, like
 // every other table here); name a mesh rather than widening a row.
 export const EXPECTED_CONTACT_FLOORS = [
+  // TODO 174 — the fork's DRIVE contact, and nothing else: the centre pin in
+  // the groove. Every other pair of the two units' metal keeps the margin —
+  // the centre crank's carrier above all, which the derived ALARM_FORK_SEAT
+  // stands exactly one margin off the block's root edge (0.0900 at the old
+  // band-midpoint seat), and the guide posts the corrected site guard clears
+  // (on main's site the pin stood inside post 1's sleeve: this row reads 0).
+  { a: 'Alarm link', b: 'Alarm selector', min: CLEAR_MARGIN, contacts: [['alarmLinkCentrePin', 'alarmSelTab']] },
   // §244 — the zero reset's working contact is the ROLLER on the heart, and
   // nothing else. This pair took TODO 6's blanket excuse (TODO 47 named it as
   // residue), and under it the lever's flared head buried 1.03 in the heart's
@@ -2172,14 +2199,12 @@ export const EXPECTED_CONTACT_FLOORS = [
   },
   {
     a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
-    // TODO 101: the alarm hand's LEAF carries metal where the hour tube runs —
-    // 0.0188 deep since §188 cut the leaf to 0.20 mm stock (0.2885 before;
-    // the debt shrank fifteen-fold but the leaf is still unbored). The BOSS
-    // beside it holds 2.667 (the derived 24-gon inscribed-radius correction
-    // at main.js:13354); the leaf sits in the same z band and inherited none
-    // of it. Long-standing, and invisible until TODO 95's witness: the raw
-    // intersection was being published as clearance.
-    waived: 'TODO 101: the alarm hand BODY (alarmBody — §188 named it, the §236 prerequisite took it off `shaft`) carries metal where the tube runs — 0.0188 deep over 150 of 4800 tube-surface samples (0.2885 before §188 cut the leaf to stock); the BOSS beside it holds the derived 2.667',
+    // TODO 101 CLOSED by TODO 120 — the row is UNWAIVED. Its whole-row waiver
+    // hid three contacts besides the leaf it cited (TODO 177's hour body in
+    // the alarm collet, the hour boss on the leaf, TODO 178's stud); the
+    // blades are open at their pivots now and the pipes stack one margin
+    // apart, and the one pair still under the floor is carried by the `only:`
+    // row below, so this row gates everything else the two units own.
     contacts: [
       ['alarmNose', 'alarmHeart'],        // §29 working contact — penetration budget + alarmHandoffs own it
       ['alarmFollowerBar', 'alarmHeart'], // §45 flank sweep owns this at the 0.03 working figure
@@ -2189,6 +2214,17 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmIndexLine', 'alarmHeart'],   // §34 first slice: the index line is DECLARED proud 0.02 into the
                                           // flange→heart margin — this check measured the declared 0.13 exactly
     ],
+  },
+  // TODO 177 — a WAIVED row measures ONLY its named pairs (`only:`), and
+  // those pairs drop out of every sibling row for the same unit pair, so the
+  // waiver excuses one contact and the row above still gates the rest. A
+  // waiver without `only` is malformed, and one whose row now meets its floor
+  // is stale — both fail (tools/battery-checks.mjs).
+  {
+    a: 'Alarm disc', b: 'Hour wheel', min: CLEAR_MARGIN,
+    only: [['alarmFollowerSpringStud', 'alarmHeart']],
+    waived: 'TODO 178: the follower spring\'s stud passes the alarm heart at 0.1011 (alarm f=0.5833) — re-site the stud in position space; the spring\'s force and arm must not change',
+    contacts: [],
   },
   {
     a: 'Hour wheel', b: 'Motion works', min: CLEAR_MARGIN,
@@ -2211,11 +2247,19 @@ export const EXPECTED_CONTACT_FLOORS = [
   // would re-measure the alarm and motion-works parts mounted there, each
   // owned by its own row. Measured before the fix: 0.1404, the alarm heart's
   // SQUARE bore flats (curveSegments 2) against the cannon pinion's leaf tips;
-  // with the heart bored by borePath the row holds 0.1500, hourBoss ⇄
-  // minuteBoss, the two hands' bosses stacked one margin apart.
+  // with the heart bored by borePath the row held 0.1500, hourBoss ⇄
+  // minuteBoss, the two hands' bosses stacked one margin apart. Since TODO
+  // 120 it binds at 0.1500 on a DERIVED margin, the minute pipe's foot over
+  // the hour tube's top, and it carries the pair's one real contact: the
+  // tube RIDES the cannon pinion's nose, a running fit (PIVOT_BORE_CLEAR
+  // inside the tube's flats) — the hour wheel's inner journal, as in a watch.
+  // Only that mesh pair is excused; the minute pipe pressed on the same nose,
+  // one margin above the tube's top face, still owes the margin.
   {
     a: 'Hour wheel', b: 'Dial', min: CLEAR_MARGIN, ownMetal: true,
-    contacts: [],
+    contacts: [
+      ['hourTube', 'cannonNose'],   // TODO 120: the running fit — the support edge's metal; probe-hand-stack.mjs holds the gap at PIVOT_BORE_CLEAR
+    ],
   },
   // §94 tier A — THE SMALL-SECONDS STATION'S OWN PAIRS. `d4` became a spec
   // key, so this station MOVES, and it moves the fourth arbor, its display
@@ -2464,8 +2508,17 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   const keptIndices = touching
     ? rows.map((r, i) => (touching.touches(r.a, r.b) ? i : -1)).filter((i) => i >= 0)
     : null;
+  const table = rows;   // TODO 177: `only:` siblings are found in the table as declared
   if (touching) rows = keptIndices.map((i) => rows[i]);
   const own = rows.some((r) => r.ownMetal) ? nearestUnitMeshes(clock) : null;
+  // TODO 177 — `only:` rows. A row naming `only` measures JUST those mesh
+  // pairs, and every other row for the same unit pair skips them, so a waiver
+  // on it excuses one contact rather than the whole pair (TODO 101's waiver
+  // hid TODO 177 and TODO 178 for as long as it stood). A §152 restriction
+  // filters by unit pair, so it keeps or drops a pair's rows together.
+  const sameNames = (na, nb) => ([x, y]) => (na === x && nb === y) || (na === y && nb === x);
+  const onlyPairsFor = (row) => table.filter((r) => r !== row && r.only
+    && ((r.a === row.a && r.b === row.b) || (r.a === row.b && r.b === row.a))).flatMap((r) => r.only);
   const pairs = rows.map((row) => {
     let A = unitByName(clock, row.a), B = unitByName(clock, row.b);
     // TODO 154 — `ownMetal: true` scopes a row to each unit's OWN meshes (the
@@ -2492,12 +2545,14 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
     // other before it could ask the real question, which is what those
     // meshes clear in the parts the OTHER unit does not share.
     const shared = new Set(A.meshes.filter((m) => B.meshes.includes(m)));
+    const siblingOnly = onlyPairsFor(row);
     return {
       A, B,
       axes: row.axes,
       refineFloor: row.min,
       exclude: (ma, mb) => (shared.has(ma) && shared.has(mb)) || row.contacts.some(([na, nb]) =>
-        (ma.name === na && mb.name === nb) || (ma.name === nb && mb.name === na)),
+        (ma.name === na && mb.name === nb) || (ma.name === nb && mb.name === na))
+        || (row.only ? !row.only.some(sameNames(ma.name, mb.name)) : siblingOnly.some(sameNames(ma.name, mb.name))),
     };
   });
   // a contact name that matches NOTHING is a silent hole — report it, the
@@ -2505,7 +2560,7 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
   const unmatched = [];
   rows.forEach((row, i) => {
     const names = new Set([...pairs[i].A.meshes, ...pairs[i].B.meshes].map((m) => m.name).filter(Boolean));
-    for (const c of row.contacts) for (const n of c) if (!names.has(n)) unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
+    for (const c of [...row.contacts, ...(row.only ?? [])]) for (const n of c) if (!names.has(n)) unmatched.push({ pair: `${row.a} ⇄ ${row.b}`, name: n });
   });
   censusStart();   // §108's experiment — report-only, see the census block
   const { state } = await sweepClearances(clock, pairs, { axes: resolveAxes(axes), coarse, refineBand, yieldEvery });  // §152 — see checkClearances
@@ -2522,6 +2577,12 @@ export async function checkExpectedContacts(clock, { rows = EXPECTED_CONTACT_FLO
       contactsExcluded: row.contacts.length,
       waived: !meets && row.waived ? row.waived : undefined, // §50's convention: visible debt, cited
       ok: meets,
+      // TODO 177 — the DECLARATION travels with the row, so the gate can judge
+      // it from any merged or unioned payload (both carry rows verbatim): a
+      // declared waiver on a row that now meets its floor is stale, and one
+      // with no `only` is malformed.
+      waiver: row.waived,
+      only: row.only ? row.only.map((p) => p.join(' ⇄ ')) : undefined,
     };
   });
   console.table(results);
@@ -3187,7 +3248,7 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkHangerBush1', b: 'alarmLinkHanger1', why: '§121: corner post socketed in its turned foot — §45\'s bevel-corner station, the motion-works arbor\'s template' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush2', b: 'alarmLinkHanger2', why: '§121: the second corner, same construction' },
   { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
-  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail formed on the rod (kiss under the alarm pose) — one member, two meshes' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail on the rod\'s top — TODO 174 cut that top FROM the tail\'s underside through the tick\'s own lift, so the pair kisses at every tilt (0.0008 at rest, 0 at the seat)' },
   { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rod\'s end in the crank rim\'s eye — the crank joint the arming run turns' },
   // Alarm disc — the §34/§48 follower assembly on the flange:
   { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#5', why: '§121: the follower bar lapped on its pivot rivet' },
@@ -3208,7 +3269,6 @@ export const INTRA_UNIT_CONTACTS = [
   // centre-pin handoff and the `centre pin ⇄ fork groove` floors row both want
   // it as a group. Of the four, three lap the post and the fourth clears it by
   // 0.3211 — covered by the same row, which is the fork lapping its post.
-  { unit: 'Alarm selector', a: 'alarmSelTab', b: 'alarmSelPost1', why: '§121: the fork block lapped on the selector\'s first guide post — measured 0.0000 on three of its four meshes, the fourth clear at 0.3211' },
   // The three guide stations, one row each — the ring's boss reaching its own
   // post. TODO 95/94's pass-through witness is what made these visible: the
   // boss is a solid box and the post runs THROUGH it, so no vertex or edge
@@ -3227,7 +3287,6 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm selector', a: 'alarmSelBoss1', b: 'alarmSelPost1', why: '§121: the ring\'s first guide boss on its own post — the bush is modelled (0.01 running fit), the boss box is the undrilled bore. Measured both ways with parity (both meshes closed): the post stands 0.0400 inside the boss, the boss 0.1087 inside the post' },
   { unit: 'Alarm selector', a: 'alarmSelBoss2', b: 'alarmSelPost2', why: '§121: the second guide station, same construction — 0.0400 / 0.1082' },
   { unit: 'Alarm selector', a: 'alarmSelBoss3', b: 'alarmSelPost3', why: '§121: the third guide station, same construction — 0.0400 / 0.1087' },
-  { unit: 'Alarm selector', a: 'alarmSelForkBracket', b: 'alarmSelPost1', why: '§121: the fork bracket lapped on the same post — the selector\'s two riders share their pivot' },
   // Alarm setting idler — §15's chain:
   { unit: 'Alarm setting idler', a: 'alarmSetIdler', b: 'alarmSetIdler', why: '§121: the i1⇄i2 working mesh (tooth kiss, deep 0) — TODO 15\'s phase solve owns it; both gears carry one name, which is why one row names it twice' },
   // Alarm silence rocker — §94's rocker:
@@ -3883,7 +3942,9 @@ export const ASSEMBLY_SPLITS = [
 // 0.463 separation) and gated nowhere — a pivot seen swinging off its post by
 // eye. In scope, a member of this unit that its bar does not reach fails.
 export const ASSEMBLY_SCOPE = ['Alarm governor', 'Alarm governor anchor', 'Alarm striking wheel', 'Alarm lock',
-  'Alarm lifting lever'];   // §198 — two bars on one pivot: they overlap at the boss, so the lever is one body or this says so
+  'Alarm lifting lever',   // §198
+  'Alarm selector',         // TODO 174 — the fork block and its bar are joined to the ring by a foot and a riser; this holds the joint — two bars on one pivot: they overlap at the boss, so the lever is one body or this says so
+  'Hour wheel'];            // TODO 120 — the hour hand PRESSED on its tube (pipe bore = the tube's outside): wheel, tube and hand are one body, or this says so
 // Accepted debt, §50's convention — red in the report, cited, never silenced.
 // (TODO 44's lock-collar waiver RETIRED by §112: the tier-split re-derived
 // the strike sleeve to span from the wheel's hub to the cam's underside —
@@ -4718,7 +4779,7 @@ const PENETRATION_BUDGETS = [
     //
     // nSamples is 449 because of an aliasing trap this axis makes easy: one
     // wind is 28 strikes × ALARM_GOV_TEETH_PER_STRIKE tooth periods (80 per
-    // strike when this was written — 2240 — and 40 since §245's 20-tooth saw —
+    // strike when this was written — 2240 — and 40 since §248's 20-tooth saw —
     // 1120), and the interference lives INSIDE one period. A sample count
     // sharing a factor with the period count revisits the same handful of
     // phases forever — 240, the hammer row's count above, saw 15 of 2240's. 449
@@ -5438,6 +5499,13 @@ const ALARM_HANDOFFS = [
     // TODO 20 closed this row: the rod's top is BUILT to the tail's
     // underside and the tick derives its lift from the beak's lever —
     // measured 0 disarmed, −0.0009 armed. UNWAIVED.
+    // TODO 174: that held while the tail was long. The tail is a flat blade
+    // TILTING about the beak post, and a flat rod top agrees with it on the
+    // rod's axis alone, so §229's shorter tail read −0.0264 armed and the
+    // fork's 0.768 tail −0.0708. The top is now CUT from the tail's underside
+    // at the seat, through the tick's own lift (the link's registration
+    // solve, MODELING.md rule 9): 0.0008 disarmed — the lever law's own
+    // small-angle residue — and 0 armed.
     label: 'beak tail ⇄ rod top',
     unitA: 'Alarm link', meshA: 'alarmLinkBeakTail',
     unitB: 'Alarm link', meshB: 'alarmLinkRod',
@@ -7468,9 +7536,13 @@ export const STOCK_KIND_BY_MESH = {
   // moves their λ ceiling to hand's 50 — and the width-governed λ the check
   // actually measures is ≈ 13 (see HAND_STOCK_MM's comment for why the
   // thickness-direction λ 48 lives in prose, not in a gate).
-  hourBody: 'hand', hourTip: 'hand', hourBoss: 'hand',
-  minuteBody: 'hand', minuteTip: 'hand', minuteBoss: 'hand',
-  alarmBody: 'hand', alarmTip: 'hand', alarmBoss: 'hand',
+  // TODO 120 — the solid bosses are gone: each central hand is blade (two
+  // runs, open at the pivot), eye and pipe, all hand stock.
+  // (The run behind the pivot is `…Rear`: `alarmTail` is the alarm HAMMER's
+  // tail, and a name here is a key across every unit.)
+  hourBody: 'hand', hourRear: 'hand', hourTip: 'hand', hourEye: 'hand', hourPipe: 'hand',
+  minuteBody: 'hand', minuteRear: 'hand', minuteTip: 'hand', minuteEye: 'hand', minutePipe: 'hand',
+  alarmBody: 'hand', alarmRear: 'hand', alarmTip: 'hand', alarmEye: 'hand', alarmPipe: 'hand',
   alarmIndexLine: 'marking',       // §34 registration line, cited above
   alarmFeelerSpring: 'spring',     // §40\'s first honesty nominee — a real blade
   alarmDiscTrack: 'marking',       // printed track on the disc face
@@ -10355,6 +10427,27 @@ export async function turnedBars(clock, opts = {}) {
         const concentric = spans.some(([lo, hi]) => {
           const ov = Math.min(hi, sb[1]) - Math.max(lo, sb[0]);
           return ov > TURN_LAP_MAX_FRAC * Math.min(hi - lo, sb[1] - sb[0]);
+        }) || cluster.some((x, k) => {
+          // TODO 174 — A SLEEVE IS CONCENTRIC AT ANY LAP. The lap fraction is a
+          // proxy for the property §233 names, and it has a tie: a bush centred
+          // on its journal's END station laps it by exactly one half, which is
+          // TURN_LAP_MAX_FRAC itself, so the lay shaft's end bushes read as
+          // consecutive stock the moment they stopped reading as discs. The
+          // property is geometric — one member's material stands wholly OUTSIDE
+          // the other's where they overlap — so it is read as geometry: the
+          // outer member's nearest point to the shared line clears the inner
+          // member's farthest, within the one-line tolerance. A turned step or a
+          // pressed stub is solid to its axis (its cap poles sit ON the line), so
+          // neither can satisfy it; only a bored part over a bar can.
+          const [lo, hi] = spans[k];
+          if (Math.min(hi, sb[1]) - Math.max(lo, sb[0]) <= TURN_AXIS_OFFSET_U) return false;
+          const rOf = (m, sel) => { let v = sel === 'min' ? Infinity : 0;
+            for (const p of m.pts) { const d = turnSub(p, x.origin), t = turnDot(d, x.axis);
+              const r = Math.hypot(d[0] - t * x.axis[0], d[1] - t * x.axis[1], d[2] - t * x.axis[2]);
+              v = sel === 'min' ? Math.min(v, r) : Math.max(v, r); }
+            return v; };
+          return rOf(b, 'min') >= rOf(x, 'max') - TURN_AXIS_OFFSET_U
+            || rOf(x, 'min') >= rOf(b, 'max') - TURN_AXIS_OFFSET_U;
         });
         if (concentric) continue;
         // §234 Landing 5 — AND CONSECUTIVE MEANS TOUCHING, OR BRIDGED BY

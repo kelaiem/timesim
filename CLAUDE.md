@@ -274,9 +274,11 @@ it into prose either.
    fails), and `assembly` **0 undeclared unwaived splits among
    `ASSEMBLY_SCOPE`** (§107 — a rigid group is one connected body;
    out-of-scope rows reported),
-   and `expectedContacts` **0 unwaived and 0 unmatched selectors**
-   (TODO 6 — per-contact clearance floors across EXPECTED pairs, the
-   declared meshes excluded; same waiver convention), and `oscillator`
+   and `expectedContacts` **0 unwaived, 0 unmatched selectors, 0 stale or
+   malformed waivers** (TODO 6 — per-contact floors across EXPECTED pairs,
+   the declared meshes excluded; since TODO 177 a waived row names its pairs
+   in `only:`, measures nothing else, and drops them from its siblings — it
+   fails when it meets its floor (stale) or has no `only` (malformed)), and `oscillator`
    **0 failures** (TODO 25 tier two — the hairspring's section is SOLVED
    from the balance's inertia so `√(k/I)` lands on `F_BALANCE`; the gate
    holds that solve true and holds the ribbon inside real hairspring
@@ -765,7 +767,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 252 measuring scripts and this file names 19. The rest are named for the
+`tools/` holds 253 measuring scripts and this file names 19. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -782,7 +784,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **143 of
+The index also carries the split that decides how to read a result: **144 of
 them are ACCEPTANCE tests** that exit non-zero, and **109 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as

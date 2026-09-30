@@ -1246,7 +1246,7 @@
         stud that does not, so the coils tighten on the wind and dilate on the run-back at
         constant length, and the sideways load the stud's reaction would put on the pivots —
         the flat spiral's known vice — is measured rather than assumed: 0.0047 mN at the
-        drawn swing for a flat spring of this section, and 0.0002 mN with the Breguet
+        drawn swing for a flat spring of this section, and 0.0001 mN with the Breguet
         overcoil the next plate draws.
         <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and
         <code>checkOscillator</code> gates that solve every battery run, holds every frame
@@ -1264,11 +1264,11 @@
             <path d="M 200 105 m 8 0 a 8 8 0 1 1 -16 1 a 17 17 0 1 1 34 -2 a 26 26 0 1 1 -52 3 a 35 35 0 1 1 70 -4 a 44 44 0 1 1 -88 5 a 53 53 0 1 1 106 -6 a 62 62 0 0 1 -62 62" fill="none" stroke="var(--steel)" stroke-width="1.4" opacity="0.8"/>
             <!-- the knee: it CURVES in plan (TODO 148) — the S is a bend in the
                  vertical plane, so the ribbon keeps following its coil while it rises -->
-            <path d="M 200.0 173.0 L 204.3 172.9 L 208.5 172.6 L 212.7 172.1 L 216.9 171.3" fill="none" stroke="var(--ruby)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M 200.0 173.0 L 204.3 172.9 L 208.5 172.5 L 212.7 171.9 L 216.9 170.9" fill="none" stroke="var(--ruby)" stroke-width="3" stroke-linecap="round"/>
             <!-- the overcoil, raised: the SOLVED centreline, sampled from hairspringRest
                  at the plate's scale (the drawn spiral's outer coil is 68 px) -->
-            <path d="M 216.9 171.3 L 233.7 165.4 L 248.4 155.4 L 259.9 141.9 L 267.2 125.7 L 269.6 108.1 L 266.8 90.6 L 258.9 74.7 L 246.5 61.9 L 230.9 53.5 L 213.5 50.1 L 195.9 52.2 L 179.6 59.4 L 166.2 71.0 L 156.6 85.9 L 151.5 102.9 L 151.1 120.7 L 155.1 138.0 L 163.2 153.8" fill="none" stroke="var(--ruby)" stroke-width="2.6"/>
-            <rect x="158.7" y="149.3" width="9" height="9" fill="var(--brass)"/>
+            <path d="M 216.9 170.9 L 233.2 163.9 L 246.8 152.6 L 256.8 137.9 L 262.4 121.0 L 263.0 103.3 L 258.6 86.1 L 249.5 70.9 L 236.2 59.0 L 220.0 51.8 L 202.4 50.2 L 185.2 54.6 L 170.6 64.7 L 160.9 79.5 L 157.8 96.9 L 162.2 114.0 L 173.7 127.4 L 190.2 133.8 L 207.6 131.2" fill="none" stroke="var(--ruby)" stroke-width="2.6"/>
+            <rect x="203.1" y="126.7" width="9" height="9" fill="var(--brass)"/>
             <!-- axis mark -->
             <circle cx="200" cy="105" r="2" fill="var(--ruby)"/>
             <line x1="192" y1="105" x2="208" y2="105" stroke="var(--ruby)" stroke-width="0.8"/>
@@ -1276,12 +1276,12 @@
             <text class="lbl lbl-strong" x="320" y="42">knee: raised one ribbon height plus the margin</text>
             <text class="val" x="320" y="58">HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75</text>
             <text class="lbl lbl-strong" x="320" y="86">terminal: three quarters of a turn, curvature solved along it</text>
-            <text class="val" x="320" y="102">ρ 8.56 → 9.26 down the arc, tightest 6.75 against R 7.92</text>
-            <text class="val" x="320" y="118">stud one coil pitch inside the outer coil: r 7.1175</text>
+            <text class="val" x="320" y="102">ρ 7.13 → 3.72 down the arc, tightest 3.78 against R 7.92</text>
+            <text class="val" x="320" y="118">stud as far in as its post allows: r 3.1751</text>
             <text class="lbl lbl-strong" x="320" y="146">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="162">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="190">measured: pivot load ×0.042 at 45°, ×0.167 at 270°</text>
-            <text class="val" x="320" y="206">flat spring 0.0047 mN → overcoil 0.0002 mN at the drawn swing</text>
+            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.122 at 270°</text>
+            <text class="val" x="320" y="206">flat spring 0.0047 mN → overcoil 0.0001 mN at the drawn swing</text>
           </svg>
         </div>
         <figcaption>The last three quarters of a turn are raised through a knee to a second
@@ -1292,25 +1292,33 @@
         the centroid of the whole flexing length sits on the balance axis. That is Phillips's
         condition, derived rather than quoted, and the elastica verifies it: the clamp
         stiffening the flat spring showed (1.0040) reads 1.000000 with the overcoil, and the
-        pivot load at the drawn swing falls to a twenty-fourth of the flat spring's. At a real
+        pivot load at the drawn swing falls to a thirty-third of the flat spring's. At a real
         270° a residual survives — the theorem is a small-amplitude statement — and it is
         reported, not hidden. Phillips's condition alone does not say where the curve should
         END, and for a while this one ended outboard of the spring it rises over — the whole
         benefit of raising it, unclaimed. So the stud is a third condition now, not an output:
-        the terminal is solved to finish one coil pitch inside the outer coil, over the body
-        of the spring, which is where a Breguet terminal goes and what lets the cock's stud
-        carrier stop short of the balance's timing screws. Three unknowns, three conditions.
-        The terminal's length is still the classical three-quarter turn and it now sits inside
-        a window with a physical wall at each end: shorter than about 0.40 of a turn and the
-        ribbon would have to be bent tighter than the collet it is already formed round;
-        longer than about 1.20 and the terminal's own arc swings outside the balance's swept
-        circle. The KNEE is what sets those walls, and it used to run straight in plan — a
+        the terminal is solved to finish inside the outer coil, over the body of the spring,
+        which is where a Breguet terminal goes and what lets the cock's stud carrier stop
+        short of the balance's timing screws. Three unknowns, three conditions. HOW FAR inside
+        is isochronism's choice (§245): Phillips's condition is exact only at small swing, so
+        the stud's radius moves the second-order residual, and that shrinks steadily inward —
+        at 270° the rate the swing itself adds falls from 5.3 to 2.3 s/day between one coil
+        pitch in and the root of the cock's stud carrier. So the stud stands at that root, as
+        far in as its post allows. That is the free spring's isochronism alone: the
+        escapement, the pivots and gravity each add their own, and none is modelled. The
+        terminal's length is still the classical three-quarter turn, and it has a physical
+        wall below it: shorter than about 0.45 of a turn and the ribbon would have to be bent
+        tighter than the collet it is already formed round. With the stud one pitch in there
+        was a wall above too, at about 1.20 turns, where the terminal's arc swung outside the
+        balance's swept circle; at the root the arc stays inside the outer coil, and past
+        about a full turn it is the three-condition solve that stops converging reliably. The
+        KNEE is what set those walls, and it used to run straight in plan — a
         bend in the vertical plane that forgot to keep turning in the horizontal one, which
         left the ribbon 15° pointed outward and cost the terminal its first third undoing
         that. It carries the terminal's own starting curvature now, so the plan curvature is
-        one continuous law from the spiral's end to the stud; the window widened from
-        0.50–0.92 to 0.40–1.20 as a consequence, and the terminal's furthest reach fell from
-        1.117 to 1.035 of the outer coil. What the overcoil costs is metal in the stack — the balance cock rides
+        one continuous law from the spiral's end to the stud; with the stud one pitch in, the
+        window widened from 0.50–0.92 to 0.40–1.20 as a consequence, and the terminal's
+        furthest reach fell from 1.117 to 1.035 of the outer coil (0.998 at the root). What the overcoil costs is metal in the stack — the balance cock rides
         0.63 u higher — and what it does not touch is the going train, whose drum, fusee band
         and chain keep their own ceiling (<code>TRAIN_CEILING_Z</code>).</figcaption>
       </figure>
@@ -1901,9 +1909,11 @@
       alarm lives at the centre — a span no lever should cross. The real-watch answer is a
       <b>lay shaft</b>: the §35 link beak reads the castellations (same parity as the lock
       beak — §68 re-sited the rod diametrically opposite it, three whole pitches, so
-      parity holds by construction), and its tail (≈7:1 to the beak — the built arms
-      measure 9.95/1.395, TODO 63's re-take; the 26.79
-      tail §35 grew to reach a corridor-fixed rod is retired) drives a vertical <b>rod</b>
+      parity holds by construction), and its tail — a lever that REDUCES, 4.66:1, the beak arm (3.58) reading the
+      castellations whole and the tail (0.77) driving the rod; §229's ratio, at arm lengths
+      declared as a fork of it when TODO 174 moved the rod to the site the corrected
+      guide-post guard allows (the 26.79 tail §35 grew to reach a corridor-fixed rod is
+      long retired) — drives a vertical <b>rod</b>
       down through bores in both plates, then a rim <b>crank</b>, the radial <b>shaft</b>,
       and a centre <b>crank</b> pressing the ring's drive tab. Rod down = ring down =
       armed; <code>alarmOn</code> is a readout of the geometry, not a flag.</p>
@@ -1914,7 +1924,7 @@
             <circle cx="70" cy="60" r="30" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
             <text class="lbl" x="42" y="112">column wheel</text>
             <rect x="104" y="52" width="120" height="12" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
-            <text class="lbl lbl-strong" x="104" y="40">beak + tail (≈7:1, §68)</text>
+            <text class="lbl lbl-strong" x="104" y="40">beak + tail (4.66:1, reducing)</text>
             <circle cx="104" cy="58" r="4" fill="var(--ruby)"/>
             <rect x="224" y="58" width="10" height="70" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
             <text class="lbl lbl-strong" x="244" y="80">rod ↓ through both plates</text>
@@ -1937,14 +1947,18 @@
         still must not imply is DYNAMICS: no force, friction or spring rate appears
         anywhere in the run, so it is a kinematic chain whose contacts are real, not an
         integrated one. The rod's site itself is a
-        story in two acts: five §35 corridor routes died to probe blindnesses before a
+        story in three acts: five §35 corridor routes died to probe blindnesses before a
         surviving az-212 column was swept across eleven poses — and the beak's tail grew to
         26.79 to reach it (the origin of the P0–P3 priority ladder). §68 closed that act:
         the rod now derives its site FROM the mechanism — diametrically opposite the lock
-        beak at a derived offset, three whole pitches so parity holds by construction — and
-        the tail collapsed to ≈7:1 (the built arms measure 9.95/1.395 — §68's own prose
-        guessed ~3:1 and TODO 63's re-take corrected it), with the lay shaft's bush
-        stations re-solved around the power-reserve train's swept web.</figcaption>
+        beak at a derived offset, three whole pitches so parity holds by construction. A
+        third act closed TODO 174: the solve's guide-post guard had compared azimuths in two
+        frames and parked the fork on a guide post; measured in one frame, the honest site
+        brings the rod to 9 from the wheel, the lever keeps §229's 4.66:1 on shorter arms (a
+        declared fork, envelopes inherited), and the rod's top is cut from the tail's own
+        underside so that hand-off measures shut through the whole travel. The fork is joined
+        to the ring by a riser, and the lay shaft's bush stations re-solve along the new
+        chord.</figcaption>
       </figure>
       <p><b>What holds it there is a SAUTOIR on the saw</b>, and §173 moved it off the
       castellations for reasons that are structural rather than stylistic. A part rode
@@ -2836,7 +2850,7 @@
 
   <!-- ===================== ALARM GOVERNOR ===================== -->
   <details class="mech" id="alarm-governor">
-    <summary>Alarm governor &mdash; the anchor that turns torque into a cadence<span class="where">alarm &middot; src/main.js &sect;104 &sect;113 &sect;245</span></summary>
+    <summary>Alarm governor &mdash; the anchor that turns torque into a cadence<span class="where">alarm &middot; src/main.js &sect;104 &sect;113 &sect;248</span></summary>
     <div class="mech-body">
       <p>A wound spring does not know how fast to ring: ungoverned, a striking train
       accelerates until something velocity-dependent eats the surplus, so every real striking
@@ -2854,7 +2868,7 @@
       time &mdash; the torque REFERRED through the contact's lever ratio
       <code>ALARM_GOV_RHO</code> = driveArc/&phi; &asymp; 0.60; per strike the governor wheel
       turns two revolutions &mdash; 40 teeth &mdash; and the gap between strikes comes out
-      proportional to 1/&radic;M. Since &sect;245 the anchor has a real anchor's
+      proportional to 1/&radic;M. Since &sect;248 the anchor has a real anchor's
       proportions: its two pallets are STONES embracing 2&frac12; teeth, each gripped by an
       arm outside the tip circle, and none of their dimensions is authored. The DROP is the
       bearings' own shake &mdash; each arbor runs <code>PIVOT_BORE_CLEAR</code> of
@@ -2883,7 +2897,7 @@
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The landing, the drop, and the cadence the pair produces</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 780 300" width="780" height="300" role="img" aria-label="Left: the saw wheel's lower arc at the landing instant, a tooth tip meeting pallet A's stone on the tip circle, pallet B's stone embracing two and a half teeth away, both arms and the anchor's hub below, and an inset magnifying the drop between pallet B's face and the tooth that just left it. Right: the strike gap rising from 0.374 s at full wind to 0.488 s at the set-up floor, with the designed 0.42 s at mid travel">
-            <!-- §245 detail view, canonical frame at 36 px/u (wheel centre
+            <!-- §248 detail view, canonical frame at 36 px/u (wheel centre
                  230,12): teeth from the builder's tooth law (root 0.8R, tip at
                  +0.72 pitch, a tip AT pallet A's landing point), both stones
                  and arms from the shipped solve (psiA 54.87°, psiB 24.91°,
@@ -2931,7 +2945,7 @@
         &mdash; the solve places the face there), and the tooth that drove pallet B has run
         the drop clear of it. The anchor still stands at the hub-room floor
         <code>ALARM_GOV_ANCHOR_D</code> 7.051 &mdash; tip circle + hub + the one clearance
-        margin &mdash; so &sect;245 moved no station. What it changed is the span, 2&frac12;
+        margin &mdash; so &sect;248 moved no station. What it changed is the span, 2&frac12;
         teeth, with the landing points 22.5&deg; either side of the centre-line (the
         half-integer rule 2&epsilon; &equiv; pitch/2 (mod pitch) at the lever's own span
         rather than its smallest); the saw, 20 teeth, coarse enough for a real face (at 18 the
@@ -2978,7 +2992,7 @@
       GEOMETRIC, not temporal &mdash; the wheel is quasi-static, so it crosses the drop arc
       in zero time and the anchor dwells rather than overswings (the roadmap files
       drop-time-with-wheel-inertia, the same accepted class as the absent wheel recoil
-      above). A second stood beside it until &sect;245 &mdash; the parked paddles graded
+      above). A second stood beside it until &sect;248 &mdash; the parked paddles graded
       0.033 u against the passing teeth, the price of a face one stock floor long &mdash;
       and retired with the paddles: the stones clear the tooth fronts outright, and the boot
       sweep holds the whole cycle to &sect;104's own working-contact grade
@@ -3001,13 +3015,13 @@
       distance and the whole closure above. <b>And the ruby was refused, twice.</b> The
       anchor's pivot reverses 1120 times per ring against the balance staff's 432000
       a day &mdash; the same 386&times; the pallet faces measure, because it is the same
-      count, and twice &sect;120's figure since &sect;245 halved the saw &mdash; and the
+      count, and twice &sect;120's figure since &sect;248 halved the saw &mdash; and the
       governor arbor turns inside its own 8-leaf pinion, whose
       root circle stands at 0.671 against an arbor of 0.585: the thinnest real hole
       jewel's wall would put that arbor at 1.245 and leave no pinion at all. A
       striking-train governor is plain steel because its RATE is the movement's highest
       and its DUTY is 11.8 seconds a day, and wear is the product of the two.</p>
-      <p class="note"><b>&sect;245 gave the anchor a real one's proportions, and found its
+      <p class="note"><b>&sect;248 gave the anchor a real one's proportions, and found its
       exit pallet posed.</b> &sect;113's closure had stood both pallets a quarter pitch off
       the centre-line &mdash; a flipper spanning HALF a tooth, paddles 0.12 mm long swinging
       4.6&deg; beside the hub, the whole action inside 0.5 mm of the anchor's axis. Every
