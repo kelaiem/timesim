@@ -27,7 +27,11 @@ const PAIRS = [
   ['Alarm selector', 5, 'Alarm selector', 14, 'TODO 95 row 3'],
   ['Alarm winding arrest', 19, 'Alarm winding arrest', 21, 'TODO 95 row 4 — declaration under review'],
   ['Alarm switch', 'alarmPusherStem', 'Alarm switch', 'alarmPusherReturnSpring', 'TODO 95 row 5 — the real graze'],
-  ['Alarm disc', 20, 'Hour wheel', 'hourTube', 'TODO 95 row 6 — the row the handover retracted'],
+  // Row 6 by NAME since TODO 120: the leaf was index 20 until the blade was
+  // cut in two runs (alarmBody + alarmRear) with an eye, which renumbers the
+  // unit — an index would silently point this row at some other mesh.
+  ['Alarm disc', 'alarmBody', 'Hour wheel', 'hourTube', 'TODO 95 row 6 — the row the handover retracted (TODO 101)'],
+  ['Alarm disc', 'alarmRear', 'Hour wheel', 'hourTube', 'TODO 101 — the leaf\'s other run, since TODO 120 opened the pivot'],
 ];
 console.log(await p.evaluate(async (PAIRS) => {
   const THREE=await import('three'); const I=await import('./src/inspect.js');

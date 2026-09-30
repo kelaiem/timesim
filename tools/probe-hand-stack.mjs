@@ -17,7 +17,7 @@
 // boot asserts hold two specific lanes. Neither prints the whole stack with
 // its slacks, which is this file's one question.
 //
-// Controls: the minute hand's boss must BE the front-most metal (the crystal
+// Controls: the minute hand's pipe (or the nose flush with it) must BE the front-most metal (the crystal
 // chain's own premise — if a blade or another part beats it, the chain's
 // derivation target is wrong and the scope must know); the alarm lane's
 // boot-asserted floor (CLEAR_MARGIN) must measure as slack >= 0 at every
@@ -38,6 +38,15 @@
 // measured face-pair airs must BIND at CLEAR_MARGIN: below it is a
 // clearance defect, above it is exactly the maximum-air defect the owner
 // saw from across the room and no clearance gate can ever see.
+//
+// TODO 120/177 — the central hands ride real bored PIPES now (the minute
+// pipe pressed on the cannon pinion's nose, the hour pipe on the hour tube),
+// and every lane is I.meshClearance on the SURFACE over the pose net, never
+// vertex extents (a bur rod has vertices only at its ends — TODO 177 hid
+// behind that). Three acceptances join the two above: each arbor reaches its
+// pipe's top (the whole land), and the hour tube RIDES the nose at the
+// running fit, PIVOT_BORE_CLEAR at the flats — the support edge's metal,
+// which the floors row excuses by name and nothing else measures.
 //
 // Run: node tools/probe-hand-stack.mjs   (ROOT= for another worktree)
 import { chromium } from 'playwright';
@@ -96,57 +105,38 @@ const res = await page.evaluate(async () => {
   const hands = {};
   for (const [n, h] of Object.entries(roots)) hands[n] = { ...ext(h), len: h.userData.length, rBase: h.userData.rBase, halfW: h.userData.halfW, bossH: h.userData.bossH };
 
-  // TODO 118 — the hour→minute product, measured AS BOOTED (before the lane
-  // loop poses the scene: explode translates handsGroup in z, and this pair's
-  // relative z is pose-independent — both ride the dial axis, and rotation
-  // about z moves no z extent).
+  // TODO 120/177 — THE HOUR→MINUTE product and the ALARM↔HOUR lane, both
+  // measured ON THE SURFACE. Until TODO 120 this block read per-mesh VERTEX z
+  // extents and the lane read vertex RADII — and a bur rod has vertices only
+  // at its two ends, so the hour blade's one extrusion, which ran through its
+  // own pivot into the alarm collet (TODO 177), read as "no metal between
+  // r 1.26 and 5.52". Each stack is its hand's meshes plus the arbor it is
+  // pressed on (hour tube; cannon nose; alarm tube), and every cross-stack
+  // pair is I.meshClearance at every pose of every axis at f ∈ {0,¼,½,¾,1}.
+  // Skipped: the alarm tube on the hour tube — the §25 C running seat, the
+  // alarm stack's BEARING, declared on its floors row — not a lane.
   const L = await import('./src/layout.js');
   const CM = L.CLEAR_MARGIN;
-  const split = (root) => {
-    // boss vs blade by the §188 names: the collet is `${prefix}Boss`, every
-    // other mesh (shaft, tip, counterweight) is blade metal for this purpose —
-    // exactly the partition the userData terms describe (floorDrop/topRise
-    // are defined "boss excluded" and already fold the counterweight in).
-    const boss = { zMin: Infinity, zMax: -Infinity }, blade = { zMin: Infinity, zMax: -Infinity };
-    root.updateWorldMatrix(true, true);
-    root.traverse((o) => {
-      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
-      const tgt = /Boss$/.test(o.name) ? boss : blade;
-      const p = o.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) {
-        o.localToWorld(v.fromBufferAttribute(p, i));
-        tgt.zMin = Math.min(tgt.zMin, v.z); tgt.zMax = Math.max(tgt.zMax, v.z);
-      }
-    });
-    return { boss, blade };
+  const hu = roots.hourHand.userData, mu = roots.minuteHand.userData;
+  if (!hu.pipe || !mu.pipe || !roots.alarmHand.userData.pipe)
+    return { error: 'a central hand carries no TODO 120 pipe — this probe measures the piped stack' };
+  // The derived lift, re-derived from the same SECTIONS main.js stacks with
+  // coaxialLift — the rule as an expression, not its result copied.
+  const TUBE_FLATS = Math.cos(Math.PI / 40);   // ringGeo's RING_GEO_SEG
+  const below = [...hu.sections, { rIn: L.HOUR_TUBE_INNER * TUBE_FLATS, rOut: L.HOUR_TUBE_OUTER, zHi: hu.pipe.zHi }];
+  let expectedLift = -Infinity;
+  for (const b of below) for (const a of mu.sections)
+    if (Math.max(a.rIn - b.rOut, b.rIn - a.rOut) < CM - 1e-9) expectedLift = Math.max(expectedLift, b.zHi + CM - a.zLo);
+  // …and measured OFF THE METAL: a pipe's front face is its plane + pipe.zHi,
+  // and world z runs against dial-local z.
+  clock.scene.updateMatrixWorld(true);
+  const frontZ = (o) => new THREE.Box3().setFromObject(o).min.z;
+  const measuredLift = (frontZ(find('hourPipe')) - frontZ(find('minutePipe'))) + hu.pipe.zHi - mu.pipe.zHi;
+  // The two lands: each arbor must reach its pipe's top face (0 = the whole land).
+  const lands = {
+    'hour tube / hour pipe': frontZ(find('hourTube')) - frontZ(find('hourPipe')),
+    'cannon nose / minute pipe': frontZ(find('cannonNose')) - frontZ(find('minutePipe')),
   };
-  const hm = (() => {
-    const h = split(roots.hourHand), m = split(roots.minuteHand);
-    // dial side is −z and the minute hand is in front: each air is the hour
-    // side's front face against the minute side's rear face.
-    const airs = {
-      'boss ↔ boss  ': h.boss.zMin - m.boss.zMax,
-      'blade ↔ blade': h.blade.zMin - m.blade.zMax,
-      'boss ↔ blade ': h.boss.zMin - m.blade.zMax,
-      'blade ↔ boss ': h.blade.zMin - m.boss.zMax,
-    };
-    const hu = roots.hourHand.userData, mu = roots.minuteHand.userData;
-    // The SAME four-term expression main.js derives the lift from (TODO 118,
-    // main.js at minuteHand.position.z) — re-derived from the same userData,
-    // not copied as a number, so a boss or blade change moves both sides.
-    const expectedLift = Math.max(
-      hu.bossH / 2 + CM + mu.bossH / 2,
-      hu.topRise + CM + mu.floorDrop,
-      hu.bossH / 2 + CM + mu.floorDrop,
-      hu.topRise + CM + mu.bossH / 2,
-    );
-    // Both collets are CENTRED about their hand planes (ringExtrude translates
-    // −thickness/2; CylinderGeometry centres), so the plane-to-plane lift IS
-    // the boss z-centres' separation — measured off the metal, not read back
-    // from the position the build assigned.
-    const measuredLift = (h.boss.zMin + h.boss.zMax) / 2 - (m.boss.zMin + m.boss.zMax) / 2;
-    return { airs, expectedLift, measuredLift, CM };
-  })();
   // Which mesh is the true front (min z) of the MOVEMENT — walked through
   // labelEntries, not the scene: the scene carries a backdrop plane at z −90
   // that is neither schematic nor casePart, and the first cut of this scan
@@ -163,62 +153,39 @@ const res = await page.evaluate(async () => {
   });
   // Crystal chain, from the case's built meshes (the constants' consequences):
   const cryst = find('caseCrystal') ? ext(find('caseCrystal')) : null;
-
-  // Alarm lane over the pose net — RADIALLY AWARE since TODO 119. The old
-  // measure was the signed z-separation of the two whole subtrees, and the
-  // respend made that measure wrong on purpose: the hour hub now legally
-  // interleaves the alarm collet's z-band, because the collet is a ring at
-  // r 2.67..3.30 and the hub ends at r 1.26 — they never radially meet, so
-  // their z overlap is nesting, not contact. The lane is now the minimum
-  // signed z-gap over MESH pairs that actually share radius (rOverlap > 0);
-  // r is invariant under the hands' rotation about the common axis, so the
-  // radial ranges are measured once and only z is re-read per pose.
-  const hour = roots.hourHand, alarm = roots.alarmHand;
-  const meshList = (root) => {
-    const out = [];
-    root.traverse((o) => {
-      if (!o.isMesh || o.userData.schematic || !o.geometry?.attributes?.position) return;
-      let rMin = Infinity, rMax = 0;
-      const p = o.geometry.attributes.position;
-      for (let i = 0; i < p.count; i++) {
-        o.localToWorld(v.fromBufferAttribute(p, i));
-        const r = Math.hypot(v.x, v.y);
-        rMin = Math.min(rMin, r); rMax = Math.max(rMax, r);
-      }
-      out.push({ o, rMin, rMax });
-    });
-    return out;
-  };
-  clock.scene.updateMatrixWorld(true);
-  const alarmMeshes = meshList(alarm), hourMeshes = meshList(hour);
-  const zExt = (o) => {
-    let zMin = Infinity, zMax = -Infinity;
-    const p = o.geometry.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      o.localToWorld(v.fromBufferAttribute(p, i));
-      zMin = Math.min(zMin, v.z); zMax = Math.max(zMax, v.z);
-    }
-    return { zMin, zMax };
-  };
-  let lane = { min: Infinity, pose: '' };
+  const meshesOf = (root, extra) => { const out = []; root.traverse((o) => { if (o.isMesh && !o.userData.schematic && o.geometry?.attributes?.position) out.push(o); }); const e = find(extra); if (e) out.push(e); return out; };
+  const alarmStack = meshesOf(roots.alarmHand, 'alarmTubeBody');
+  const hourStack = meshesOf(roots.hourHand, 'hourTube');
+  const minuteStack = meshesOf(roots.minuteHand, 'cannonNose');
+  const bearing = (a, h) => a.name === 'alarmTubeBody' && h.name === 'hourTube';
+  let lane = { min: Infinity }, hm = { min: Infinity };
+  // TODO 120 — THE RUNNING FIT, measured: the hour tube rides the cannon
+  // nose (the support edge's metal, excused by name on the Hour wheel ⇄ Dial
+  // floors row, so nothing else measures it). Every pose's gap must lie
+  // between the flats reading (PIVOT_BORE_CLEAR — a nose vertex facing a bore
+  // facet) and the vertex reading (+ the bore's vertex-to-flat sag): below it
+  // the nose binds, above it the tube does not journal on the nose at all.
+  const fit = { min: Infinity, max: -Infinity, P: L.PIVOT_BORE_CLEAR, sag: L.HOUR_TUBE_INNER * (1 - TUBE_FLATS) };
+  const nose = find('cannonNose'), tube = find('hourTube');
   const poses = [{ name: 'as booted', enter: () => {} }];
-  for (const ax of I.AXES) for (const f of [0, 0.5, 1])
+  for (const ax of I.AXES) for (const f of [0, 0.25, 0.5, 0.75, 1])
     poses.push({ name: `${ax.name} f=${f}`, enter: () => { I.enterAxis(clock); clock.setPose(ax.pose(f, clock)); } });
   for (const p of poses) {
     p.enter();
     clock.scene.updateMatrixWorld(true);
-    const az = alarmMeshes.map((m) => ({ ...m, ...zExt(m.o) }));
-    const hz = hourMeshes.map((m) => ({ ...m, ...zExt(m.o) }));
-    for (const a of az) for (const h of hz) {
-      if (Math.min(a.rMax, h.rMax) - Math.max(a.rMin, h.rMin) <= 0) continue;
-      // dial side is −z: the alarm hand sits nearer the dial (larger z) than
-      // the hour hand; measure the signed separation whichever way this pair
-      // stacks at this pose.
-      const gap = (a.zMin >= h.zMax) ? a.zMin - h.zMax : h.zMin - a.zMax;
-      if (gap < lane.min) lane = { min: gap, pose: p.name };
+    for (const a of alarmStack) for (const h of hourStack) {
+      if (bearing(a, h)) continue;
+      const d = I.meshClearance(a, h, 1.0);
+      if (d < lane.min) lane = { min: d, pair: `${a.name} ⇄ ${h.name}`, pose: p.name };
+    }
+    { const d = I.meshClearance(tube, nose, 1.0); if (d < fit.min) fit.min = d; if (d > fit.max) fit.max = d; }
+    for (const h of hourStack) for (const m of minuteStack) {
+      if (h === tube && m === nose) continue;   // the running fit — the bearing, measured above, not a lane
+      const d = I.meshClearance(h, m, 1.0);
+      if (d < hm.min) hm = { min: d, pair: `${h.name} ⇄ ${m.name}`, pose: p.name };
     }
   }
-  return { hands, front, cryst, lane, hm, poses: poses.length };
+  return { hands, front, cryst, lane, hm: { ...hm, expectedLift, measuredLift, CM }, lands, fit, poses: poses.length, minuteFrontZ: frontZ(roots.minuteHand) };
 });
 
 const MM = 0.378947;
@@ -228,17 +195,16 @@ for (const [n, e] of Object.entries(res.hands))
   console.log(`  ${n.padEnd(12)} z ${e.zMin.toFixed(3)} .. ${e.zMax.toFixed(3)}   span ${((e.zMax - e.zMin) * MM).toFixed(3)} mm   len ${e.len.toFixed(2)}  rBase ${e.rBase.toFixed(3)} (thick ${(1.5 * e.rBase * MM).toFixed(3)} mm)  halfW ${e.halfW.toFixed(3)} (wide ${(2 * e.halfW * MM).toFixed(3)} mm)  bossH ${e.bossH.toFixed(3)}`);
 console.log(`\nFRONT-MOST movement metal: ${res.front.unit} / ${res.front.name} at z ${res.front.z.toFixed(3)}`);
 if (res.cryst) console.log(`caseCrystal z ${res.cryst.zMin.toFixed(3)} .. ${res.cryst.zMax.toFixed(3)} → clearance to front metal ${((res.front.z - res.cryst.zMax) * MM).toFixed(3)} mm`);
-console.log(`\nALARM↔HOUR lane over ${res.poses} poses (radially-real mesh pairs only — TODO 119): min separation ${res.lane.min.toFixed(4)} u = ${(res.lane.min * MM).toFixed(3)} mm  @ ${res.lane.pose}  (CLEAR_MARGIN = 0.15 u)`);
-
-console.log(`\nHOUR→MINUTE stack (TODO 118; as booted — pose-independent for this pair):`);
-for (const [n, a] of Object.entries(res.hm.airs))
-  console.log(`  ${n}  air ${a.toFixed(4)} u = ${(a * MM).toFixed(3)} mm`);
-console.log(`  lift measured off the boss metal ${res.hm.measuredLift.toFixed(4)} u; derived from userData ${res.hm.expectedLift.toFixed(4)} u  (CLEAR_MARGIN = ${res.hm.CM} u)`);
+console.log(`\nALARM↔HOUR lane over ${res.poses} poses (I.meshClearance, every alarm-stack × hour-stack mesh pair; the running seat skipped — TODO 177): min ${res.lane.min.toFixed(4)} u = ${(res.lane.min * MM).toFixed(3)} mm — ${res.lane.pair} @ ${res.lane.pose}  (CLEAR_MARGIN = 0.15 u)`);
+console.log(`\nHOUR→MINUTE stack (TODO 118/120): tightest air ${res.hm.min.toFixed(4)} u = ${(res.hm.min * MM).toFixed(3)} mm — ${res.hm.pair} @ ${res.hm.pose}`);
+console.log(`  lift measured off the pipes' metal ${res.hm.measuredLift.toFixed(4)} u; derived from the sections ${res.hm.expectedLift.toFixed(4)} u  (CLEAR_MARGIN = ${res.hm.CM} u)`);
+for (const [n, d] of Object.entries(res.lands)) console.log(`  land ${n}: the arbor's front face stands ${d.toFixed(4)} u from the pipe's (0 = the whole land)`);
+console.log(`  running fit hour tube / cannon nose (TODO 120): gap ${res.fit.min.toFixed(4)} .. ${res.fit.max.toFixed(4)} u over the net  (PIVOT_BORE_CLEAR = ${res.fit.P} u, bore sag ${res.fit.sag.toFixed(4)} u)`);
 
 // The section table (pure arithmetic from the read law — printed so the entry
 // quotes a table someone can re-derive, not loose numbers).
 console.log('\nSECTION LAW: thickness = 1.5·rBase, and §188 flipped the coupling — central rBase = HAND_RBASE_STOCK');
-console.log('(plan width rides planBase = length·widthFactor·0.35, so it no longer follows thickness; bossH = max(2.6·rBase, pipe floor 0.4 mm))');
+console.log('(plan width rides planBase = length·widthFactor·0.35, so it no longer follows thickness; central pipes: HAND_PIPE_LAND 0.4 mm, pressed on the arbor (TODO 120))');
 console.log('CANDIDATES, kept as the scoping record (thickness → rBase → the OLD one-knob consequences):');
 for (const tmm of [0.20, 0.15, 0.10]) {
   const rb = tmm / MM / 1.5;
@@ -247,8 +213,9 @@ for (const tmm of [0.20, 0.15, 0.10]) {
 
 // CONTROLS.
 let ok = true;
-const isMinuteBoss = /minute/i.test(res.front.name) || (res.front.unit === 'Dial' && Math.abs(res.front.z - res.hands.minuteHand.zMin) < 1e-6);
-if (!isMinuteBoss) { ok = false; console.log(`\nCONTROL FAIL: front-most metal is '${res.front.name}', not the minute hand — the crystal chain's premise does not hold; re-derive before scoping`); }
+const flush = Math.abs(res.front.z - res.minuteFrontZ) < 1e-6;   // TODO 120: the nose ends flush with the minute pipe by design
+const isMinute = flush && (/minute/i.test(res.front.name) || res.front.name === 'cannonNose');
+if (!isMinute) { ok = false; console.log(`\nCONTROL FAIL: front-most metal is '${res.front.name}', not the minute hand — the crystal chain's premise does not hold; re-derive before scoping`); }
 else console.log(`\nCONTROL PASS: front-most metal is the minute hand (${res.front.name}) — the crystal chain's premise holds`);
 if (res.lane.min < 0) { ok = false; console.log(`CONTROL FAIL: alarm↔hour lane measured NEGATIVE (${res.lane.min.toFixed(4)}) while the boot assert passes — this probe measures a different quantity than the assert; distrust both until reconciled`); }
 else console.log(`CONTROL PASS: alarm↔hour lane non-negative at every pose`);
@@ -264,10 +231,19 @@ else console.log(`ACCEPT PASS: alarm↔hour lane binds at CLEAR_MARGIN (${res.la
 // TODO 118 ACCEPTANCE — both directions.
 const liftErr = Math.abs(res.hm.measuredLift - res.hm.expectedLift);
 if (liftErr > 1e-3) { ok = false; console.log(`ACCEPT FAIL: hour→minute lift measured ${res.hm.measuredLift.toFixed(4)} vs derived ${res.hm.expectedLift.toFixed(4)} (Δ ${liftErr.toFixed(4)}) — the build's lift and this expression have parted; one of them is not reading the hands' userData`); }
-else console.log(`ACCEPT PASS: hour→minute lift = the four-term userData derivation (Δ ${liftErr.toExponential(1)})`);
-const minAir = Math.min(...Object.values(res.hm.airs));
+else console.log(`ACCEPT PASS: hour→minute lift = the coaxialLift section derivation (Δ ${liftErr.toExponential(1)})`);
+const minAir = res.hm.min;
 if (minAir < res.hm.CM - 1e-3) { ok = false; console.log(`ACCEPT FAIL: tightest hour→minute air ${minAir.toFixed(4)} u < CLEAR_MARGIN — a clearance defect between the central hands`); }
 else if (minAir > res.hm.CM + 5e-3) { ok = false; console.log(`ACCEPT FAIL: tightest hour→minute air ${minAir.toFixed(4)} u does not BIND at CLEAR_MARGIN — the minute hand is floating again (the 2.3-era literal measured 1.244 here); the governing pair must sit AT the margin, not above it`); }
 else console.log(`ACCEPT PASS: tightest hour→minute air binds at CLEAR_MARGIN (${minAir.toFixed(4)} u)`);
+// TODO 120 ACCEPTANCE — the lands: each arbor reaches its pipe's top face.
+for (const [n, d] of Object.entries(res.lands)) {
+  if (Math.abs(d) > 1e-4) { ok = false; console.log(`ACCEPT FAIL: land ${n} ${d.toFixed(4)} — the arbor does not reach its pipe's top, so the pipe grips less than HAND_PIPE_LAND`); }
+  else console.log(`ACCEPT PASS: land ${n} — the arbor reaches the pipe's top (${d.toExponential(1)})`);
+}
+// TODO 120 ACCEPTANCE — the running fit journals: never tighter than
+// PIVOT_BORE_CLEAR at the flats, never looser than that plus the bore's sag.
+if (res.fit.min < res.fit.P - 1e-4 || res.fit.max > res.fit.P + res.fit.sag + 1e-4) { ok = false; console.log(`ACCEPT FAIL: the hour tube on the cannon nose reads ${res.fit.min.toFixed(4)} .. ${res.fit.max.toFixed(4)} — not the ${res.fit.P} running fit (+ sag ${res.fit.sag.toFixed(4)})`); }
+else console.log(`ACCEPT PASS: the hour tube rides the cannon nose at the running fit (${res.fit.min.toFixed(4)} .. ${res.fit.max.toFixed(4)} u)`);
 await browser.close(); srv.kill();
 process.exit(ok ? 0 : 2);

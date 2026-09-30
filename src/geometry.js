@@ -9046,9 +9046,35 @@ export const HAND_RBASE_STOCK = (HAND_STOCK_MM / UNIT_MM) / 1.5; // exported: AL
 // sub-dial hands press on Ø0.8 arbors whose joints §153 derived and asserts
 // from 2.6·rBase, and re-flooring those would silently deepen the wells.
 const HAND_PIPE_MIN_MM = 0.4;
+// TODO 120 — the land in units, exported so the placement site derives the
+// stack from the number the pipe is cut to (rule 1: one source, two readers).
+export const HAND_PIPE_LAND = HAND_PIPE_MIN_MM / UNIT_MM;   // 1.0556 u
+// TODO 120 — every central ring (pipe, eye, collet) is cut by ringExtrude at
+// HAND_RING_SEG curve segments, and three resolves a full absarc at TWICE its
+// divisions (Path.getPoints: `curve.isEllipseCurve ? divisions * 2`), so the
+// ring is a 2·HAND_RING_SEG-gon: vertices ON the nominal radius, facet
+// midpoints at r·HAND_RING_FLATS. A bore's clearance is read at its flats and
+// a wall's thickness across the flats (flatsR's rule, layout.js).
+export const HAND_RING_SEG = 24;
+export const HAND_RING_FLATS = Math.cos(Math.PI / (2 * HAND_RING_SEG));
 
+// pipe — TODO 120: a CENTRAL hand rides a real bored pipe instead of the
+// solid centred boss. { boreR, outerR, hang, len, eyeBoreR }:
+//   hang 'blade' — the pipe's top is flush with the blade's top face and it
+//     hangs its land (len, default bossH = the HAND_PIPE_MIN_MM law) below:
+//     a hand pressed on the arbor it is bored to;
+//   hang 'keel'  — a collet wholly UNDER the blade (its top at the keel),
+//     len given by the caller: the alarm hand, whose mount may not rise into
+//     the hour hand's pipe lane (TODO 177).
+// The blade is OPEN at its pivot: the bur rod is cut in two runs meeting at
+// ±eyeBoreR (default boreR) and joined by an EYE — a flat ring through the
+// blade's whole section, bore eyeBoreR, outside the larger of the pipe's and a
+// §50 wall over its own bore — so no blade metal crosses what passes through
+// the pivot (TODO 101: the alarm leaf ran through the hour tube), and the
+// blade root is bridged to its pipe by real metal (TODO 120: each central
+// hand was two bodies posing as one).
 export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null, bossH: bossHOverride = null,
-  namePrefix = null, subdial = false, halfWidth = null }) {
+  namePrefix = null, subdial = false, halfWidth = null, pipe = null }) {
   // §94 — namePrefix NAMES this hand's four meshes. inspect.js couples by
   // `.name`, and an unnamed mesh only has an index label, which no
   // EXPECTED_CONTACT_FLOORS row can select — so a hand whose contacts a
@@ -9093,7 +9119,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     if (flat !== geo) geo.dispose();
     return flat;
   };
-  const burRod = (rBase, planBase) => {
+  const burRod = (rBase, planBase, openR = 0) => {
     const grp = new THREE.Group();
     const tipLen = planBase * 2.6; // curved taper is a PLAN feature (§188): it eases the width out, so its length follows the plan base, not the stock
     const bodyLen = tail + length - tipLen;
@@ -9119,15 +9145,29 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     sec.lineTo(halfW, apothem);
     sec.quadraticCurveTo(0, apothem + 2 * crown, -halfW, apothem);
     sec.closePath();
-    const bodyGeo = new THREE.ExtrudeGeometry(sec, {
-      depth: bodyLen, bevelEnabled: false, curveSegments: 12,
-    });
-    // extrusion axis → local +Y (hand length), section +y → local +Z (viewer)
-    bodyGeo.rotateX(Math.PI / 2);
-    bodyGeo.rotateZ(Math.PI);
-    bodyGeo.translate(0, -tail, 0);
-    const body = new THREE.Mesh(facetFlat(bodyGeo), MATS.bluedHand);
-    if (namePrefix) body.name = `${namePrefix}Body`;
+    // One extrusion per RUN of blade, from y0 along the hand for `depth`. A
+    // hand with no pipe is ONE run, −tail … length − tipLen, straight through
+    // its own pivot — the boss swallows the crossing, bit for bit as before.
+    // TODO 120: a piped hand is OPEN at the pivot — two runs meeting the eye
+    // at ±openR, so the blade carries no metal inside the bore (each run's end
+    // face is nearest the axis at (0, ±openR): on the bore polygon's vertex
+    // circle, outside its flats).
+    const run = (y0, depth, suffix) => {
+      const geo = new THREE.ExtrudeGeometry(sec, {
+        depth, bevelEnabled: false, curveSegments: 12,
+      });
+      // extrusion axis → local +Y (hand length), section +y → local +Z (viewer)
+      geo.rotateX(Math.PI / 2);
+      geo.rotateZ(Math.PI);
+      geo.translate(0, y0, 0);
+      const m = new THREE.Mesh(facetFlat(geo), MATS.bluedHand);
+      if (namePrefix) m.name = `${namePrefix}${suffix}`;
+      return m;
+    };
+    const body = openR > 0 ? run(openR, length - tipLen - openR, 'Body') : run(-tail, bodyLen, 'Body');
+    // 'Rear', not 'Tail': mesh names are GLOBAL keys (STOCK_KIND_BY_MESH), and
+    // the alarm HAMMER already owns `alarmTail`.
+    if (openR > 0) grp.add(run(-tail, tail - openR, 'Rear'));
     // Tip: a LOFT scaled about the TOP-FACE PLANE (y = apothem), not the
     // axis — so the fluted upper surface runs dead STRAIGHT through to
     // the tip while the width and the keel sweep up to meet it (the
@@ -9191,7 +9231,7 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
     // A sub-dial hand's two bases coincide at the floor, as before.
     planBase = subdial ? HAND_RBASE_FLOOR : length * config.widthFactor * 0.35;
     rBase = subdial ? HAND_RBASE_FLOOR : HAND_RBASE_STOCK;
-    g.add(burRod(rBase, planBase));
+    g.add(burRod(rBase, planBase, pipe ? (pipe.eyeBoreR ?? pipe.boreR) : 0));
     // The boss must swallow the rod's full circumscribed diameter (2·rBase,
     // ×1.3 land) — and, for the CENTRAL stack, stand at least a real pipe's
     // height (HAND_PIPE_MIN_MM: the friction land the press grips by). The
@@ -9226,11 +9266,39 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
 
   const bossR = bossROverride ?? length * config.bossSizeFactor;
   if (bossHOverride !== null) bossH = bossHOverride;
-  const boss = boreR > 0
-    ? new THREE.Mesh(ringExtrude(bossR, boreR, bossH, 24), MATS.bluedHand) // bored collet (already axis-z)
-    : (() => { const m = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 18), MATS.bluedHand); m.rotateX(Math.PI / 2); return m; })();
-  if (namePrefix) boss.name = `${namePrefix}Boss`;
-  g.add(boss);
+  // The section's z facts (documented at the userData exports below) — read
+  // here now, because a pipe is placed against them.
+  const crown = rBase * (handAesthetics.fluteFactor ?? -0.3);
+  const floorDrop = Math.max(rBase, cwHalf);
+  const topRise = Math.max(rBase * 0.5 + Math.max(0, crown), cwHalf);
+  let pipeFacts = null;
+  if (pipe) {
+    if (!(kind === 'hour' || kind === 'minute') || subdial)
+      throw new Error(`makeHand: a TODO 120 pipe is a CENTRAL hand's mount (kind ${kind}${subdial ? ', sub-dial' : ''})`);
+    const len = pipe.len ?? bossH;
+    const zHi = pipe.hang === 'keel' ? -floorDrop : topRise;
+    const zLo = zHi - len;
+    const eyeBoreR = pipe.eyeBoreR ?? pipe.boreR;
+    // The eye's outside: at least the pipe it caps, and at least §50's floor
+    // across the flats over its own bore.
+    const eyeOuterR = Math.max(pipe.outerR, (eyeBoreR * HAND_RING_FLATS + STOCK_MIN_U) / HAND_RING_FLATS);
+    // A 'keel' collet sits wholly under the blade, so the eye steps down its
+    // whole length to join it: the two rings read as one stepped collet.
+    const eyeZLo = pipe.hang === 'keel' ? zLo : -floorDrop;
+    const pipeMesh = new THREE.Mesh(ringExtrude(pipe.outerR, pipe.boreR, len, HAND_RING_SEG), MATS.bluedHand);
+    pipeMesh.position.z = (zLo + zHi) / 2;
+    const eyeMesh = new THREE.Mesh(ringExtrude(eyeOuterR, eyeBoreR, topRise - eyeZLo, HAND_RING_SEG), MATS.bluedHand);
+    eyeMesh.position.z = (eyeZLo + topRise) / 2;
+    if (namePrefix) { pipeMesh.name = `${namePrefix}Pipe`; eyeMesh.name = `${namePrefix}Eye`; }
+    g.add(pipeMesh, eyeMesh);
+    pipeFacts = { boreR: pipe.boreR, outerR: pipe.outerR, zLo, zHi, eyeBoreR, eyeOuterR, eyeZLo, eyeZHi: topRise, openR: eyeBoreR };
+  } else {
+    const boss = boreR > 0
+      ? new THREE.Mesh(ringExtrude(bossR, boreR, bossH, 24), MATS.bluedHand) // bored collet (already axis-z)
+      : (() => { const m = new THREE.Mesh(new THREE.CylinderGeometry(bossR, bossR, bossH, 18), MATS.bluedHand); m.rotateX(Math.PI / 2); return m; })();
+    if (namePrefix) boss.name = `${namePrefix}Boss`;
+    g.add(boss);
+  }
 
   g.userData.length = length;
   g.userData.kind = kind;
@@ -9254,13 +9322,32 @@ export function makeHand({ length, kind, boreR = 0, bossR: bossROverride = null,
   //     caught it against the mesh). Where the collet dips or stands is
   //     the placement site's question — over a bore, on a hub — not the
   //     open section's.
-  const crown = rBase * (handAesthetics.fluteFactor ?? -0.3);
   g.userData.rBase = rBase;
   g.userData.halfW = halfWidth ?? planBase * (Math.sqrt(3) / 2);   // §158/§188 — the built half-width, for the placement site's asserts
-  g.userData.floorDrop = Math.max(rBase, cwHalf);
-  g.userData.topRise = Math.max(rBase * 0.5 + Math.max(0, crown), cwHalf);
-  g.userData.bossR = bossR;
-  g.userData.bossH = bossH;
+  g.userData.floorDrop = floorDrop;
+  g.userData.topRise = topRise;
+  // TODO 120 — a piped hand has no boss: bossR/bossH then describe the mount
+  // it does have (the eye's outside, the pipe's length), so no reader of the
+  // old names is handed a fiction.
+  g.userData.bossR = pipeFacts ? pipeFacts.eyeOuterR : bossR;
+  g.userData.bossH = pipeFacts ? pipeFacts.zHi - pipeFacts.zLo : bossH;
+  g.userData.pipe = pipeFacts;
+  // TODO 120 — THE SECTIONS, hand-local (mounting plane at z 0): every member
+  // as an annulus, rIn read at a bore's FLATS and rOut at a wall's VERTICES,
+  // so two annuli whose radial gap is at least CLEAR_MARGIN are clear at
+  // every relative rotation and may interleave in z. This is what a
+  // placement site stacks against — never the vertices, which a run carries
+  // only at its two ends (TODO 119 read the tail's end ring as the blade's
+  // root while the one extrusion ran through the pivot).
+  const bladeROut = Math.max(length + rBase, Math.hypot(g.userData.halfW, tail));
+  g.userData.sections = pipeFacts ? [
+    { name: 'pipe', rIn: pipeFacts.boreR * HAND_RING_FLATS, rOut: pipeFacts.outerR, zLo: pipeFacts.zLo, zHi: pipeFacts.zHi },
+    { name: 'eye', rIn: pipeFacts.eyeBoreR * HAND_RING_FLATS, rOut: pipeFacts.eyeOuterR, zLo: pipeFacts.eyeZLo, zHi: topRise },
+    { name: 'blade', rIn: pipeFacts.openR, rOut: bladeROut, zLo: -floorDrop, zHi: topRise },
+  ] : [
+    { name: 'boss', rIn: boreR > 0 ? boreR * HAND_RING_FLATS : 0, rOut: bossR, zLo: -bossH / 2, zHi: bossH / 2 },
+    { name: 'blade', rIn: 0, rOut: bladeROut, zLo: -floorDrop, zHi: topRise },
+  ];
   return g;
 }
 

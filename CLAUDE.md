@@ -274,9 +274,11 @@ it into prose either.
    fails), and `assembly` **0 undeclared unwaived splits among
    `ASSEMBLY_SCOPE`** (§107 — a rigid group is one connected body;
    out-of-scope rows reported),
-   and `expectedContacts` **0 unwaived and 0 unmatched selectors**
-   (TODO 6 — per-contact clearance floors across EXPECTED pairs, the
-   declared meshes excluded; same waiver convention), and `oscillator`
+   and `expectedContacts` **0 unwaived, 0 unmatched selectors, 0 stale or
+   malformed waivers** (TODO 6 — per-contact floors across EXPECTED pairs,
+   the declared meshes excluded; since TODO 177 a waived row names its pairs
+   in `only:`, measures nothing else, and drops them from its siblings — it
+   fails when it meets its floor (stale) or has no `only` (malformed)), and `oscillator`
    **0 failures** (TODO 25 tier two — the hairspring's section is SOLVED
    from the balance's inertia so `√(k/I)` lands on `F_BALANCE`; the gate
    holds that solve true and holds the ribbon inside real hairspring
