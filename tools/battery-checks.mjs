@@ -134,6 +134,22 @@ export const BATTERY = [
       ...r.violations, ...r.staleWaivers],
     note: (r) => `${r.barsChecked} bars, ${r.waivedCount} waived (accepted debt), `
       + `${r.needRestCount} want a follower rest, ${r.ambiguousCount} refused as axis-ambiguous` },
+  // TODO 181 — the minute jumper's siting solve reads the metal at the BUILD
+  // pose, so every obstacle that moves carries a JMP_SITE_MOVERS row saying why
+  // that is safe (lawed / revolve / bounded). The census walks the dense pose
+  // net and GATES both directions of the table — a moving obstacle no row
+  // names, a row that names no mesh — and every row's own answer. Rows over
+  // still metal are a REPORT: conservative, not wrong. The control fires the
+  // classifier both ways on this run's own measurements and holds the must-
+  // hits (every lawed row seen moving, the jumper inside its own region).
+  { name: 'jumperMovers', opts: { yieldEvery: YIELD_EVERY },
+    gate: 'control PASS, 0 undeclared moving obstacles, 0 rows naming no mesh, 0 malformed rows, 0 rows whose answer fails (lawed off-sample, revolve over slack, bounded under bound)',
+    fails: (r) => [
+      ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
+      ...r.undeclared, ...r.unmatched, ...r.malformed, ...r.violations],
+    note: (r) => `${r.population} meshes over ${r.poses} poses: ${r.movers} move, ${r.obstacleMovers} of them obstacles — `
+      + `${r.covered.lawed} lawed, ${r.covered.revolve} revolved, ${r.covered.bounded} bounded, ${r.covered.rotor} turning on their own axis; `
+      + `${r.rows.length} rows${r.stillRows.length ? `, ${r.stillRows.length} over still metal (reported)` : ''}` },
   // §54 / TODO 78 — §50's floor and this ceiling are one pair, and this half
   // had never run in CI: `checkSlenderness` was exported and never registered
   // in inspect.js's CHECKS, so every λ in the source was a hand number and

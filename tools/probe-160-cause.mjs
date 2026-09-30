@@ -29,7 +29,7 @@ process.on('exit', () => srv.kill());
 await new Promise((r) => setTimeout(r, 900));
 
 const MAIN = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-const ANCHOR = '  const lawedRoots = [alarmSleeve';
+const ANCHOR = '  const lawedRoots = LAWED.flatMap(';   // TODO 181: the lawed roots are read off JMP_SITE_MOVERS now
 if (MAIN.split(ANCHOR).length !== 2) {
   console.error(`REFUSED: src/main.js no longer contains exactly one \`${ANCHOR.trim()}\` — the plant goes there.`);
   process.exit(1);

@@ -20,6 +20,9 @@
 //   turning      0 unwaived bars over L/D 20 AND 0 stale waivers (§233 —
 //                the turning ceiling; waived rows reported as debt, and the
 //                follower-rest and axis-ambiguous tiers are reports)
+//   jumperMovers control PASS, 0 undeclared moving obstacles, 0 rows naming
+//                no mesh, 0 malformed rows and every JMP_SITE_MOVERS row's
+//                answer holding over the pose net (TODO 181)
 //   intraUnit    0 unwaived intersections inside a unit — movers vs
 //                fixtures over every unit, fixture pairs and cross-frame
 //                mover pairs inside INTRA_TIER_SCOPE — and 0 unmatched
@@ -265,6 +268,12 @@ const COSTS = {
   // 272 revolves. No pose sweep and no BVH. Measured 6.6 s on the first full
   // local run, which is the number here; refresh it like every row.
   'turning': 7,
+  // TODO 181 — the census walks the dense pose net (1892 poses) over the 687
+  // meshes JMP_SITE visits, corner bounds per pose and the exact walk only
+  // where they cannot decide; the bounded rows' meshClearance to the region
+  // box is Lipschitz-pruned against each row's running minimum. Measured
+  // 14.6 s on the dev container.
+  'jumperMovers': 15,
   // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
   // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no
   // pose sweep. TODO 78's bearing walk adds a handful of Box3.setFromObject

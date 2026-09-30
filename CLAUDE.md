@@ -373,6 +373,14 @@ it into prose either.
    `stockFloor`'s convention rather than §54's report covenant: a thirteenth
    bar fails the build, where a report would have left it silent. `needRest`
    (L/D 10–20, wanting a follower rest) and `ambiguous` are REPORTS),
+   and `jumperMovers` **control PASS, 0 undeclared moving obstacles, 0 rows
+   naming no mesh, 0 failing rows** (TODO 181 — `JMP_SITE` can only read the
+   metal at the BUILD pose, so every obstacle that moves in the pose net
+   carries a `JMP_SITE_MOVERS` row saying why that is safe: lawed at its law's
+   samples, revolved into an EXISTING rotor entry with a measured slack, or
+   bounded by its measured distance to the jumper's region, never under
+   `CLEAR_MARGIN`. The table's structure warns at boot; whether a mesh moves
+   needs a posed movement and is the battery's),
    and `slenderness` **0 stale waivers** (§54's report, reachable at last —
    its rows stay a REPORT by §54's own covenant and the unwaived residue is
    TODO 78's catalogue; what gates is a `SLENDER_WAIVERS` entry naming a

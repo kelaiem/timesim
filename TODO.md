@@ -29,7 +29,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 184 | CLOSED | Every frame joint crosses its face by its requirement. The four plate screws are 1.0 mm threads, 1.5 mm into tapped pillars. The three cock screws are tapped through the base plate, and the plate's 0.758 mm sets their 0.505 mm thread ([TODO 69]'s class). The four pillars are riveted into the base plate on flush tenons. `FRAME_JOINTS` is boot-asserted, and `support` fails a fastened edge unless the metal measures engaged |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
-| 181 | OPEN | `JMP_SITE` still reads most of its moving obstacles (the tube and its riders, the setting wheel's cam and wedge, the disc's hub and track, the reader, the rods, the clutch, the link, …) at the build pose, with no declared reason. Fix: a `JMP_SITE_MOVERS` table (lawed / revolve / bounded) and a census control; [TODO 160] consumes it |
+| 181 | CLOSED | `JMP_SITE_MOVERS` declares every moving obstacle `JMP_SITE` reads: 3 lawed, 9 revolved into existing rotor entries (the follower sampled over its swing), 7 bounded by measured distance to the jumper's region. The `jumperMovers` battery gate walks 1892 poses over 687 meshes (415 move, 134 obstacles, all declared). It fails an undeclared mover or a row naming no mesh, and both were proved by rewriting the table. The clutch and reset rod were phantoms as built. Station unchanged (233.5°), fingerprint unchanged |
 | 180 | CLOSED | `JMP_SITE`'s closest-point trees held zero-area slivers (3 of `alarmIndexWedge`'s 9) and read CONTACT against one 3.8135 away, so the scan refused 232–235° and settled on 129.5°. Slivers are dropped at §77's `ZERO_AREA_MAX`, and the jumper now sites at 233.5° (clearance 0.1572) |
 | 179 | CLOSED | Neither reading was a designed fit: the hub stood up to the track's top, 0.0433 inside the orbiting pin at every pose, and the notch floor was a 0.17 literal left behind when TODO 173 raised the drop to 0.10. The notch is `ALARM_PIN_DROP + CLEAR_MARGIN` = 0.25 deep, paid plate-ward (the body, the seat and the motion works 0.08 down, `MW_WHEEL_T` 0.4682 → 0.4282), and the hub stops at the body's face. A floors row with the track as its one contact reads 0.1500 (pin ⇄ body at full drop); pin ⇄ hub 0.1563 |
 | 178 | CLOSED | The stud is re-sited by two constraints: its circumradius clears the lobe's swept circle by `CLEAR_MARGIN` (centre r 3.80 → 3.85), and the blade keeps its 1.1 length to §29's bearing point (rest angle 1.9 → 1.8541 rad, gain 0.45 unchanged). Dense `alarm` sweep 0.1007 → 0.1502; the `only:` debt row is deleted and `Alarm disc ⇄ Hour wheel` holds unwaived at 0.1500 |
@@ -24578,7 +24578,7 @@ were measured the same wrong way. All four call sites now pass the stretched
 mesh second. The durable fix is TODO 159's: `meshClearance` itself should
 refuse or swap a non-uniform first mesh.
 
-## 181. JMP_SITE still reads most of its moving obstacles as built, with no declared table saying why each is safe
+## 181. JMP_SITE still reads most of its moving obstacles as built, with no declared table saying why each is safe — CLOSED
 
 Found planning [TODO 161]. A census over `AXES` found that 66 of `JMP_SITE`'s
 131 as-built obstacle meshes move within an axis, and 81 are movers once
@@ -24604,6 +24604,84 @@ its measured distance to the jumper's region. Add a census control that FAILS
 on a moving mesh with no row, and on a row naming no mesh. [TODO 160] nests
 `JMP_SITE` into CAP_SOLVE's candidate loop and should consume this
 classification as its memoised, B-independent obstacle set.
+
+**Closed.** `JMP_SITE_MOVERS` (`src/main.js`, just above `JMP_SITE`) declares
+19 rows, and the solve reads every row the way it says:
+- **3 lawed** — the release run and selector ring (TODO 161's rows, moved
+  into the table) and the setting lever on the solve's own pull grid.
+- **9 revolve** — the hour group, the release reader, the cannon nose, the
+  alarm tube and three of its riders, the alarm disc and the alarm setting
+  wheel's cam and wedge. Each appends its triangles to an EXISTING rotor
+  entry on its axis (`mwHourWheel`, `cannonPinion`, `alarmSettingWheel`,
+  `alarmDiscBody`), so no group rotor is added. A rider that strays off its
+  circle carries a slack the solve widens its meridian boxes by: the reader's
+  is `ALARM_PIN_DROP`, and pin arm B's and the selector rocker's are the
+  census's measured 0.0647 and 0.3229, rounded up. The follower arm and its
+  blade swing too far for that (2.17 as one pose), so their revolution is
+  sampled over the arm's swing law instead: from A0 to the higher of the
+  heart's crest and the sleeve cone's cap, 14 samples, slack `CLEAR_MARGIN/2`.
+  The blade's law, written in tick before, is now `alarmFollowerSpringAngleAt`.
+- **7 bounded** — the going-train bodies (0.99), the winding clutch (5.96),
+  the reset rod (2.38), the hack rod (2.72), the hands (0.81), the alarm
+  feeler (0.33) and the alarm link (1.46). Each is the measured minimum
+  exact distance to the jumper's region, rounded down. The region is every
+  place any station, lever swing and lifter pull can put the jumper's metal,
+  as one box built by `JMP_SITE`'s `reach()`.
+
+**The split, and why.** Whether a mesh MOVES needs a posed movement, and boot
+has none. So the census is a battery check, `jumperMovers`, and a gate in
+rule 4. What needs no pose warns at boot: a row that names no mesh, a mesh
+claimed twice at one depth, a bound under `CLEAR_MARGIN`, and a revolve onto
+something that is not a rotor or that has no revolution of its own there.
+
+**The census.** It walks the dense pose net (1892 poses) over the 687 meshes
+`JMP_SITE` visits, comparing each world matrix with the one the solve read:
+- **415 move, 134 of them obstacles** (inside the solve's culling region, or
+  entering it).
+- By row: 52 lawed, 29 revolved and 76 bounded. 26 more are toothed wheels
+  turning on their own axis, which the solve's rotor rule already revolves.
+- Every row's answer holds: lawed poses within one sample step (worst
+  0.0304), revolve slack under its declaration (follower 0.028 against
+  0.075), bounded distances at or over their bounds.
+- Control PASS. Dropping the release run's row leaves 18 movers undeclared,
+  a row naming nothing is caught, every lawed row is seen moving, and the
+  jumper lies inside its own region.
+- About 15 s.
+
+The two proofs of the table itself, by rewriting `src/main.js` in flight:
+- Deleting the `hands` row fails the gate with 5 undeclared movers (the
+  minute pipe, the small-seconds and reserve hands).
+- Adding a row with no roots fails it as `rowNamesNoMesh`, and warns at boot.
+
+**What the census found.**
+- **Two obstacles are phantoms as built.** Tick places the winding clutch and
+  the reset rod, so the solve read the clutch 32.8 off its stem and the rod at
+  the movement's origin. Both stay far from every station (bounded, 5.96 and
+  2.38), so neither refused anything. But neither was ever where the solve
+  looked.
+- **A whole-pose slack is not a safe shortcut.** Declaring the follower's
+  one-pose 2.63 as its slack re-sited the jumper to 257.5°, because the
+  widened revolution refused a station the metal never threatens. Sampling
+  the swing kept 233.5°.
+- **The station is unchanged**: 233.5°, clearance 0.1572, 183 tested. The
+  fingerprint is 1745988802 before and after, and boot is silent.
+
+**Cost.** Moving the dial-centre groups from the exact trees into the
+revolutions made a refused station fail late: at first `JMP_SITE` went
+1.97 s → 8.1 s. The stud's own parts are now judged against the revolutions
+in PASS 1, before the swept lever and lifter passes. The verdict is a
+conjunction, so order cannot change it, and a refusal is paid for early. With
+that, `JMP_SITE` runs about 2.7 s (static meshes 231 → 202) and the boot wall
+is unchanged within the container's noise.
+
+**For [TODO 183]** (which took over TODO 160's late re-cut): everything the
+rows produce is a function of the metal and the laws, not of the station or of
+B — the revolve triangles, the swing and law samples, the bounded parts as
+built. No row's metal is under `bDepRoots`. So a nested or late re-scan can
+build that obstacle set once, memoise it, and re-cut only the B-dependent
+subset `JMP_SITE` already flags. A later landing that re-sites the jumper will
+fail a bounded row whose distance drops under its bound, or a revolve whose
+slack grows. That is the table working, not debt.
 
 ## 182. PART DONE — the jumper siting scan no longer brute-forces the non-finite alarm metal (step 1); the build still cuts a non-route as NaN (steps 2–3) — CLOSED
 
