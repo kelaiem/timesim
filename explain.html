@@ -1246,7 +1246,7 @@
         stud that does not, so the coils tighten on the wind and dilate on the run-back at
         constant length, and the sideways load the stud's reaction would put on the pivots —
         the flat spiral's known vice — is measured rather than assumed: 0.0047 mN at the
-        drawn swing for a flat spring of this section, and 0.0002 mN with the Breguet
+        drawn swing for a flat spring of this section, and 0.0001 mN with the Breguet
         overcoil the next plate draws.
         <em>√(k/I)</em> lands on the spec as arithmetic rather than assertion, and
         <code>checkOscillator</code> gates that solve every battery run, holds every frame
@@ -1264,11 +1264,11 @@
             <path d="M 200 105 m 8 0 a 8 8 0 1 1 -16 1 a 17 17 0 1 1 34 -2 a 26 26 0 1 1 -52 3 a 35 35 0 1 1 70 -4 a 44 44 0 1 1 -88 5 a 53 53 0 1 1 106 -6 a 62 62 0 0 1 -62 62" fill="none" stroke="var(--steel)" stroke-width="1.4" opacity="0.8"/>
             <!-- the knee: it CURVES in plan (TODO 148) — the S is a bend in the
                  vertical plane, so the ribbon keeps following its coil while it rises -->
-            <path d="M 200.0 173.0 L 204.3 172.9 L 208.5 172.6 L 212.7 172.1 L 216.9 171.3" fill="none" stroke="var(--ruby)" stroke-width="3" stroke-linecap="round"/>
+            <path d="M 200.0 173.0 L 204.3 172.9 L 208.5 172.5 L 212.7 171.9 L 216.9 170.9" fill="none" stroke="var(--ruby)" stroke-width="3" stroke-linecap="round"/>
             <!-- the overcoil, raised: the SOLVED centreline, sampled from hairspringRest
                  at the plate's scale (the drawn spiral's outer coil is 68 px) -->
-            <path d="M 216.9 171.3 L 233.7 165.4 L 248.4 155.4 L 259.9 141.9 L 267.2 125.7 L 269.6 108.1 L 266.8 90.6 L 258.9 74.7 L 246.5 61.9 L 230.9 53.5 L 213.5 50.1 L 195.9 52.2 L 179.6 59.4 L 166.2 71.0 L 156.6 85.9 L 151.5 102.9 L 151.1 120.7 L 155.1 138.0 L 163.2 153.8" fill="none" stroke="var(--ruby)" stroke-width="2.6"/>
-            <rect x="158.7" y="149.3" width="9" height="9" fill="var(--brass)"/>
+            <path d="M 216.9 170.9 L 233.2 163.9 L 246.8 152.6 L 256.8 137.9 L 262.4 121.0 L 263.0 103.3 L 258.6 86.1 L 249.5 70.9 L 236.2 59.0 L 220.0 51.8 L 202.4 50.2 L 185.2 54.6 L 170.6 64.7 L 160.9 79.5 L 157.8 96.9 L 162.2 114.0 L 173.7 127.4 L 190.2 133.8 L 207.6 131.2" fill="none" stroke="var(--ruby)" stroke-width="2.6"/>
+            <rect x="203.1" y="126.7" width="9" height="9" fill="var(--brass)"/>
             <!-- axis mark -->
             <circle cx="200" cy="105" r="2" fill="var(--ruby)"/>
             <line x1="192" y1="105" x2="208" y2="105" stroke="var(--ruby)" stroke-width="0.8"/>
@@ -1276,12 +1276,12 @@
             <text class="lbl lbl-strong" x="320" y="42">knee: raised one ribbon height plus the margin</text>
             <text class="val" x="320" y="58">HAIRSPRING_OVERCOIL_RAISE = HAIRSPRING_H + CLEAR_MARGIN = 0.75</text>
             <text class="lbl lbl-strong" x="320" y="86">terminal: three quarters of a turn, curvature solved along it</text>
-            <text class="val" x="320" y="102">ρ 8.56 → 9.26 down the arc, tightest 6.75 against R 7.92</text>
-            <text class="val" x="320" y="118">stud one coil pitch inside the outer coil: r 7.1175</text>
+            <text class="val" x="320" y="102">ρ 7.13 → 3.72 down the arc, tightest 3.78 against R 7.92</text>
+            <text class="val" x="320" y="118">stud as far in as its post allows: r 3.1751</text>
             <text class="lbl lbl-strong" x="320" y="146">centroid of the whole ribbon on the axis</text>
             <text class="val" x="320" y="162">so the stud exerts no force at small swing — Phillips, 1861</text>
-            <text class="lbl" x="320" y="190">measured: pivot load ×0.042 at 45°, ×0.167 at 270°</text>
-            <text class="val" x="320" y="206">flat spring 0.0047 mN → overcoil 0.0002 mN at the drawn swing</text>
+            <text class="lbl" x="320" y="190">measured: pivot load ×0.030 at 45°, ×0.122 at 270°</text>
+            <text class="val" x="320" y="206">flat spring 0.0047 mN → overcoil 0.0001 mN at the drawn swing</text>
           </svg>
         </div>
         <figcaption>The last three quarters of a turn are raised through a knee to a second
@@ -1292,25 +1292,33 @@
         the centroid of the whole flexing length sits on the balance axis. That is Phillips's
         condition, derived rather than quoted, and the elastica verifies it: the clamp
         stiffening the flat spring showed (1.0040) reads 1.000000 with the overcoil, and the
-        pivot load at the drawn swing falls to a twenty-fourth of the flat spring's. At a real
+        pivot load at the drawn swing falls to a thirty-third of the flat spring's. At a real
         270° a residual survives — the theorem is a small-amplitude statement — and it is
         reported, not hidden. Phillips's condition alone does not say where the curve should
         END, and for a while this one ended outboard of the spring it rises over — the whole
         benefit of raising it, unclaimed. So the stud is a third condition now, not an output:
-        the terminal is solved to finish one coil pitch inside the outer coil, over the body
-        of the spring, which is where a Breguet terminal goes and what lets the cock's stud
-        carrier stop short of the balance's timing screws. Three unknowns, three conditions.
-        The terminal's length is still the classical three-quarter turn and it now sits inside
-        a window with a physical wall at each end: shorter than about 0.40 of a turn and the
-        ribbon would have to be bent tighter than the collet it is already formed round;
-        longer than about 1.20 and the terminal's own arc swings outside the balance's swept
-        circle. The KNEE is what sets those walls, and it used to run straight in plan — a
+        the terminal is solved to finish inside the outer coil, over the body of the spring,
+        which is where a Breguet terminal goes and what lets the cock's stud carrier stop
+        short of the balance's timing screws. Three unknowns, three conditions. HOW FAR inside
+        is isochronism's choice (§245): Phillips's condition is exact only at small swing, so
+        the stud's radius moves the second-order residual, and that shrinks steadily inward —
+        at 270° the rate the swing itself adds falls from 5.3 to 2.3 s/day between one coil
+        pitch in and the root of the cock's stud carrier. So the stud stands at that root, as
+        far in as its post allows. That is the free spring's isochronism alone: the
+        escapement, the pivots and gravity each add their own, and none is modelled. The
+        terminal's length is still the classical three-quarter turn, and it has a physical
+        wall below it: shorter than about 0.45 of a turn and the ribbon would have to be bent
+        tighter than the collet it is already formed round. With the stud one pitch in there
+        was a wall above too, at about 1.20 turns, where the terminal's arc swung outside the
+        balance's swept circle; at the root the arc stays inside the outer coil, and past
+        about a full turn it is the three-condition solve that stops converging reliably. The
+        KNEE is what set those walls, and it used to run straight in plan — a
         bend in the vertical plane that forgot to keep turning in the horizontal one, which
         left the ribbon 15° pointed outward and cost the terminal its first third undoing
         that. It carries the terminal's own starting curvature now, so the plan curvature is
-        one continuous law from the spiral's end to the stud; the window widened from
-        0.50–0.92 to 0.40–1.20 as a consequence, and the terminal's furthest reach fell from
-        1.117 to 1.035 of the outer coil. What the overcoil costs is metal in the stack — the balance cock rides
+        one continuous law from the spiral's end to the stud; with the stud one pitch in, the
+        window widened from 0.50–0.92 to 0.40–1.20 as a consequence, and the terminal's
+        furthest reach fell from 1.117 to 1.035 of the outer coil (0.998 at the root). What the overcoil costs is metal in the stack — the balance cock rides
         0.63 u higher — and what it does not touch is the going train, whose drum, fusee band
         and chain keep their own ceiling (<code>TRAIN_CEILING_Z</code>).</figcaption>
       </figure>
@@ -2115,7 +2123,7 @@
             <text class="val val-brass" x="96" y="86">carries the set time alone — holds still</text>
 
             <text class="lbl lbl-strong" x="428" y="94">raised track</text>
-            <text class="val val-brass" x="428" y="108">r 2.85..3.25 · +0.17 proud</text>
+            <text class="val val-brass" x="428" y="108">r 2.85..3.25 · +0.25 proud</text>
             <path class="leader" d="M 425 98 L 315 128"/>
 
             <text class="lbl lbl-strong" x="480" y="330">notch</text>
@@ -2179,7 +2187,7 @@
               <rect x="292" y="220" width="408" height="52" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1.2"/>
               <path d="M 208 220 L 224 236 L 224 272 L 208 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
               <path d="M 292 220 L 276 236 L 276 272 L 292 272 Z" fill="var(--brass-fill)" stroke="var(--brass)" stroke-width="1"/>
-              <text class="lbl" x="60" y="250">track ridge · h 0.17</text>
+              <text class="lbl" x="60" y="250">track ridge · h 0.25</text>
               <text class="lbl" x="330" y="296">disc body — turning →</text>
               <text class="lbl" x="216" y="212" text-anchor="middle">notch 0.14 rad</text>
             </g>
@@ -2232,7 +2240,7 @@
               <line class="dim" x1="194" y1="250" x2="206" y2="250" id="dropDimEnd"/>
               <text class="val val-ruby" x="120" y="236" id="dropDimText">drop ≤ 0.10</text>
             </g>
-            <text class="val" x="96" y="330">banked at 0.10 — the notch floor is 0.17 down; the pin never touches it,</text>
+            <text class="val" x="96" y="330">banked at 0.10 — the notch floor is 0.25 down; the pin never touches it,</text>
             <text class="val" x="96" y="344">because the dropped arm still owes the rim CLEAR_MARGIN (bound: 0.108)</text>
             <text class="lbl" x="560" y="344">vertical travel exaggerated</text>
           </svg>
@@ -2842,41 +2850,43 @@
 
   <!-- ===================== ALARM GOVERNOR ===================== -->
   <details class="mech" id="alarm-governor">
-    <summary>Alarm governor &mdash; the anchor that turns torque into a cadence<span class="where">alarm &middot; src/main.js &sect;104 &sect;113</span></summary>
+    <summary>Alarm governor &mdash; the anchor that turns torque into a cadence<span class="where">alarm &middot; src/main.js &sect;104 &sect;113 &sect;248</span></summary>
     <div class="mech-body">
       <p>A wound spring does not know how fast to ring: ungoverned, a striking train
       accelerates until something velocity-dependent eats the surplus, so every real striking
       work carries a speed limiter chosen on purpose. This movement's is the alarm-clock
-      answer, picked by arithmetic over its rivals &mdash; a fly (air vane) is refuted at
-      watch scale (balancing the working torque at these speeds demands 40&ndash;50 mm vanes,
-      clock metal an order past the whole movement), and the repeater's centrifugal friction
-      governor is real but costs an ~800:1 train whirring at ~125 rev/s. The unsprung
-      <em>recoil anchor</em> meets the same numbers at one modest &times;8 stage: the strike
-      arbor gains a 64-tooth wheel, its 8-leaf pinion carries a 40-tooth saw wheel, and a
-      two-pallet anchor with no hairspring flutters on the teeth &mdash; driven BOTH ways by
+      answer, picked by arithmetic over its rivals &mdash; a fly (air vane) on the
+      governor's own arbor would need 40&ndash;50 mm vanes, clock metal an order past the
+      whole movement, and only shrinks to music-box size two gear stages further up, the same
+      train the repeater's centrifugal friction governor needs to whirr at ~125 rev/s. The
+      unsprung <em>recoil anchor</em> meets the same numbers at one modest &times;8 stage: the
+      strike arbor gains a 64-tooth wheel, its 8-leaf pinion carries a 20-tooth saw wheel, and
+      a two-pallet anchor with no hairspring flutters on the teeth &mdash; driven BOTH ways by
       the tooth faces, a runaway by design.</p>
       <p>Per tooth the anchor is driven through its swing both ways from rest, so each tooth
       costs <code>2&middot;&radic;(2&phi;&middot;I&#8336;/(&Gamma;&middot;&rho;))</code> of
-      time &mdash; since &sect;113 the torque is REFERRED through the contact's lever ratio
-      <code>ALARM_GOV_RHO</code> = driveArc/&phi; &asymp; 0.82; per strike the governor wheel
-      turns two revolutions &mdash; 80 teeth &mdash; and the gap between strikes comes out
-      proportional to 1/&radic;M. The pallet faces are short FLAT strips, and neither of
-      their numbers is authored: the face is exactly one stock floor long
-      (<code>ALARM_GOV_FACE_LEN</code>, the &sect;50 wheel floor's 0.12 mm), and its incline
-      is SOLVED at boot &mdash; bisected until the poising ring's section lands a centi-mm
-      inside the top of real ring stock. The swing itself is an output, not a spec row:
-      <code>ALARM_GOV_PHI</code> = 2h &asymp; 4.6&deg; comes from a closure bisection &mdash;
-      pallet A must land exactly as the march from pallet B's landing releases &mdash; with a
-      unilateral press check at every step (steel pushes, it never pulls). So contact is
-      closed during IMPULSE, 42% of each tooth pitch, and OPEN during DROP, the 8% the wheel
-      free-runs before landing on the other pallet &mdash; the clearance a real escapement
-      keeps, and the movement's newest. The one solved part is still the brass POISING RING
-      on the anchor's arbor: its inertia is chosen so the designed
-      <code>ALARM_STRIKE_GAP</code> 0.42 s lands exactly at mid strike travel (solve the
-      part, never re-target the beat &mdash; the hairspring's own convention), and the solved
-      section, 0.790 mm on a 2 mm ring, sits inside drawn-ring stock at a designed centi-mm
-      under its ceiling &mdash; anything that inflates the inertia demand pushes it out of
-      stock and the gate fires.</p>
+      time &mdash; the torque REFERRED through the contact's lever ratio
+      <code>ALARM_GOV_RHO</code> = driveArc/&phi; &asymp; 0.60; per strike the governor wheel
+      turns two revolutions &mdash; 40 teeth &mdash; and the gap between strikes comes out
+      proportional to 1/&radic;M. Since &sect;248 the anchor has a real anchor's
+      proportions: its two pallets are STONES embracing 2&frac12; teeth, each gripped by an
+      arm outside the tip circle, and none of their dimensions is authored. The DROP is the
+      bearings' own shake &mdash; each arbor runs <code>PIVOT_BORE_CLEAR</code> of
+      side-shake, so both drops are <code>ALARM_GOV_DROP</code>, 0.038 mm at the tips &mdash;
+      and the two face lengths, 0.40 and 0.43 mm, are SOLVED from it. Pallet A's incline is
+      bisected at boot until the poising ring's section lands a centi-mm inside the top of
+      real ring stock, and pallet B's is whatever lands the anchor back where A found it:
+      B is its own solve, driven by its own tooth, not A's mirror. The swing itself is an
+      output, not a spec row: <code>ALARM_GOV_PHI</code> = 2h &asymp; 13.4&deg; comes from
+      that closure, with a unilateral press check at every step (steel pushes, it never
+      pulls). So contact is closed during IMPULSE, 45% of each tooth pitch, and OPEN during
+      DROP, the 5% the wheel free-runs before landing on the other pallet. The one solved
+      part is still the brass POISING RING on the anchor's arbor: its inertia is chosen so
+      the designed <code>ALARM_STRIKE_GAP</code> 0.42 s lands exactly at mid strike travel
+      (solve the part, never re-target the beat &mdash; the hairspring's own convention), and
+      the solved section, 0.789 mm on a 2 mm ring, sits inside drawn-ring stock at a designed
+      centi-mm under its ceiling &mdash; anything that inflates the inertia demand pushes it
+      out of stock and the gate fires.</p>
       <p>The spring this governs gained a SET-UP to govern against: 80 integer clicks on the
       &sect;99 arbor ratchet &mdash; 2.5 turns wound in at the bench, held under the ribbon's
       tested 4.3-turn ceiling with the builder's own solver standing behind it &mdash; so the
@@ -2886,40 +2896,42 @@
       <figure>
         <div class="fig-head"><span class="fig-no">PLATE 1</span><span class="fig-title">The landing, the drop, and the cadence the pair produces</span></div>
         <div class="fig-body">
-          <svg viewBox="0 0 780 300" width="780" height="300" role="img" aria-label="Left: detail of the saw wheel's lower arc with the two flat pallets at the landing instant, anchor and arms below, and an inset magnifying the parked pallet standing clear of the tip circle. Right: the strike gap rising from 0.374 s at full wind to 0.488 s at the set-up floor, with the designed 0.42 s at mid travel">
-            <!-- §113 detail view, canonical frame at 36 px/u (wheel centre
-                 230,30): teeth from the builder's tooth law (root 0.8R, tip at
-                 +0.72 pitch, a tip AT the landing corner), pallet quads and the
-                 anchor from the shipped closure solve (psi 11.67°, phi 4.62°,
-                 D = 7.051). -->
-            <path d="M 99.1 142.8 L 83.4 188.6 L 118.4 161.9 L 110 209.6 L 140.4 177.8 L 139.6 226.2 L 164.6 190 L 171.4 237.9 L 190.5 198.2 L 204.6 244.5 L 217.3 202.3 L 238.5 245.8 L 244.4 202.2 L 272.1 241.8 L 271.1 197.8 L 304.8 232.6 L 296.9 189.3 L 335.5 218.5 L 321 176.9 L 363.7 199.6 L 342.8 160.9 L 388.6 176.6 L 361.9 141.6" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
-            <circle cx="230" cy="30" r="216" fill="none" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="4 4"/>
-            <path d="M 238.5 245.8 L 249.5 243.1 L 253.2 257.6 L 242.1 260.4 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
-            <path d="M 218.5 246.6 L 207.2 244.8 L 204.8 259.6 L 216.1 261.4 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
-            <line x1="230" y1="283.8" x2="246.8" y2="255.5" stroke="var(--steel)" stroke-width="4" stroke-linecap="round"/>
-            <line x1="230" y1="283.8" x2="211" y2="257" stroke="var(--steel)" stroke-width="4" stroke-linecap="round"/>
-            <circle cx="230" cy="283.8" r="5" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
-            <circle cx="238.5" cy="245.8" r="4.5" fill="none" stroke="var(--ruby)" stroke-width="1.4"/>
-            <line x1="238.5" y1="245.8" x2="300" y2="272" stroke="var(--ruby)" stroke-width="0.8"/>
-            <!-- inset: the parked pallet vs the tip circle, 220 px/u -->
-            <clipPath id="g112inset"><circle cx="85" cy="68" r="64"/></clipPath>
+          <svg viewBox="0 0 780 300" width="780" height="300" role="img" aria-label="Left: the saw wheel's lower arc at the landing instant, a tooth tip meeting pallet A's stone on the tip circle, pallet B's stone embracing two and a half teeth away, both arms and the anchor's hub below, and an inset magnifying the drop between pallet B's face and the tooth that just left it. Right: the strike gap rising from 0.374 s at full wind to 0.488 s at the set-up floor, with the designed 0.42 s at mid travel">
+            <!-- §248 detail view, canonical frame at 36 px/u (wheel centre
+                 230,12): teeth from the builder's tooth law (root 0.8R, tip at
+                 +0.72 pitch, a tip AT pallet A's landing point), both stones
+                 and arms from the shipped solve (psiA 54.87°, psiB 24.91°,
+                 phi 13.45°, D = 7.051, drop 0.1 u), anchor posed at +h. -->
+            <path d="M 76.8 91.9 L 65.8 152.3 L 109.0 135.3 L 117.1 196.2 L 153.0 166.7 L 179.6 222.0 L 204.6 182.9 L 246.9 227.3 L 258.6 182.4 L 312.7 211.6 L 309.9 165.2 L 370.3 176.2 L 353.3 133.0 L 414.2 124.9 L 384.7 89.0" fill="none" stroke="var(--brass)" stroke-width="1.4"/>
+            <circle cx="230" cy="12" r="216" fill="none" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="4 4"/>
+            <path d="M 244.5 248.2 L 311.1 218.4 L 325.8 221.7 L 252.8 264.2 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <path d="M 211.4 252.5 L 124.5 235.8 L 128.6 250.2 L 207.5 270.1 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <path d="M 310.3 221.9 L 321.0 174.4 L 335.6 177.6 L 325.0 225.2 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+            <path d="M 121.0 236.8 L 176.1 221.2 L 180.2 235.6 L 125.1 251.2 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+            <circle cx="230" cy="265.8" r="32.4" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.2"/>
+            <circle cx="230" cy="265.8" r="21.1" fill="none" stroke="var(--steel)" stroke-width="1"/>
+            <circle cx="312.7" cy="211.6" r="4.5" fill="none" stroke="var(--ruby)" stroke-width="1.4"/>
+            <line x1="312.7" y1="211.6" x2="326" y2="285" stroke="var(--ruby)" stroke-width="0.8"/>
+            <!-- inset: the drop at pallet B, 360 px/u about B's face end -->
+            <clipPath id="g245inset"><circle cx="85" cy="68" r="64"/></clipPath>
             <circle cx="85" cy="68" r="64" fill="none" stroke="var(--line)" stroke-width="1"/>
-            <line x1="128" y1="115" x2="213" y2="243" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="3 3"/>
-            <g clip-path="url(#g112inset)">
-              <path d="M -161.1 20.6 L -145.1 25 L -129.1 29.2 L -113 33.2 L -96.8 37 L -80.6 40.6 L -64.4 44 L -48.1 47.2 L -31.8 50.2 L -15.4 53 L 1 55.5 L 17.4 57.9 L 33.8 60 L 50.3 62 L 66.8 63.7 L 83.3 65.3 L 99.8 66.6 L 116.4 67.7 L 132.9 68.6 L 149.5 69.3" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
-              <path d="M -44.5 -221.8 L 42.1 61.1 L 119.3 -196.7" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
-              <path d="M 126.8 74.1 L 58.1 62.9 L 43.3 153.3 L 112 164.6 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
-              <line x1="126.8" y1="74.1" x2="127.1" y2="68.3" stroke="var(--ruby)" stroke-width="1.4"/>
+            <line x1="112" y1="126" x2="173.1" y2="215.2" stroke="var(--line)" stroke-width="0.8" stroke-dasharray="3 3"/>
+            <g clip-path="url(#g245inset)">
+              <path d="M 12.2 47.9 L 21.7 50.6 L 31.2 53.4 L 40.7 56.1 L 50.2 58.7 L 59.8 61.3 L 69.4 63.9 L 78.9 66.4 L 88.5 68.9 L 98.1 71.3 L 107.7 73.7 L 117.3 76.1 L 126.9 78.4 L 136.6 80.6 L 146.2 82.8 L 155.9 85.0 L 165.5 87.1 L 175.2 89.2 L 184.9 91.2 L 194.6 93.2 L 204.3 95.2 L 214.0 97.1 L 223.7 98.9 L 233.5 100.7 L 243.2 102.5" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+              <path d="M -586.1 -790.3 L -504.4 -181.9 L -145.8 -476.6 L 119.9 76.7 L 370.0 -314.4 L 793.6 129.7 L 910.6 -319.5" fill="none" stroke="var(--brass)" stroke-width="1.6"/>
+              <path d="M -465.8 224.4 L 85.0 68.0 L 126.0 212.3 L -424.8 368.7 Z" fill="var(--steel-fill)" stroke="var(--steel)" stroke-width="1.6"/>
+              <line x1="85.0" y1="68.0" x2="119.9" y2="76.7" stroke="var(--ruby)" stroke-width="1.4"/>
             </g>
             <path d="M 480 250 L 740 250 M 480 250 L 480 60" stroke="var(--line)" stroke-width="1" fill="none"/>
             <path d="M 740.0 76.3 L 733.5 82.0 L 727.0 87.6 L 720.5 93.0 L 714.0 98.3 L 707.5 103.5 L 701.0 108.6 L 694.5 113.5 L 688.0 118.3 L 681.5 123.0 L 675.0 127.6 L 668.5 132.1 L 662.0 136.5 L 655.5 140.8 L 649.0 145.0 L 642.5 149.2 L 636.0 153.2 L 629.5 157.2 L 623.0 161.0 L 616.5 164.8 L 610.0 168.6 L 603.5 172.2 L 597.0 175.8 L 590.5 179.4 L 584.0 182.8 L 577.5 186.2 L 571.0 189.5 L 564.5 192.8 L 558.0 196.0 L 551.5 199.2 L 545.0 202.3 L 538.5 205.3 L 532.0 208.3 L 525.5 211.3 L 519.0 214.2 L 512.5 217.0 L 506.0 219.8 L 499.5 222.6 L 493.0 225.3 L 486.5 228.0 L 480.0 230.6" fill="none" stroke="var(--ruby)" stroke-width="1.6"/>
             <circle cx="610" cy="168.6" r="3.4" fill="var(--steel)"/>
-            <text class="val val-brass" x="228" y="86">40-tooth saw wheel &mdash; 2 revolutions</text>
-            <text class="val val-brass" x="228" y="100">per strike, a tip AT the landing corner</text>
-            <text class="val val-steel" x="158" y="30">the drop, magnified: the parked pallet</text>
-            <text class="val val-steel" x="158" y="44">stands 0.026 u outside the tip circle</text>
-            <text class="val val-ruby" x="304" y="276">landing &mdash; impulse 42% of the pitch</text>
-            <text class="val val-steel" x="30" y="290">anchor &mdash; swing &phi; 4.62&deg;, an OUTPUT of the closure solve</text>
+            <text class="val val-brass" x="206" y="86">20-tooth saw wheel &mdash; 2 revolutions</text>
+            <text class="val val-brass" x="206" y="100">per strike, a tip AT pallet A's landing</text>
+            <text class="val val-steel" x="158" y="30">the drop, magnified: the tooth that left</text>
+            <text class="val val-steel" x="158" y="44">pallet B stands 0.1 u past its face</text>
+            <text class="val val-ruby" x="300" y="296">landing &mdash; impulse 45% of the pitch</text>
+            <text class="val val-steel" x="12" y="282">anchor &mdash; swing &phi; 13.4&deg;,</text>
+            <text class="val val-steel" x="12" y="296">an OUTPUT of the closure</text>
             <text class="lbl" x="480" y="42">STRIKE GAP OVER THE RING, s</text>
             <text class="val val-ruby" x="676" y="66">0.488 at the set-up floor</text>
             <text class="val val-ruby" x="484" y="244">0.374 at full wind</text>
@@ -2929,20 +2941,19 @@
           </svg>
         </div>
         <figcaption>The left panel is the landing instant, drawn from the shipped solve:
-        pallet A's corner meets the arriving tip ON the tip circle (which is what landing
-        MEANS &mdash; the solve places the corner there), pallet B has just released, and the
-        anchor stands at the hub-room floor <code>ALARM_GOV_ANCHOR_D</code> 7.051 &mdash;
-        tip circle + hub + the one clearance margin, measured to be the interference optimum
-        as well as the closest station. The landing corners sit &plusmn;pitch/4 off the
-        anchor's bearing &mdash; the smallest azimuths satisfying the half-integer landing
-        rule 2&epsilon; &equiv; pitch/2 (mod pitch); at multiples of pitch/2 the pallets park
-        anti-phase and the second one never lands. The inset magnifies the parked pallet:
-        its corner stands 0.026 u OUTSIDE the circle every tip rides &mdash; the drop, 8% of
-        the pitch, small and real. The right-hand curve is the shipped law, and &sect;113
-        left it alone by construction: referring the torque through &rho; re-solved the
-        inertia (&times;3.06) and the ring (0.455 &rarr; 0.790 mm) while the gap curve stays
-        pinned at the design point &mdash; the battery's measured endpoints did not
-        move.</figcaption>
+        a tooth tip meets pallet A's face ON the tip circle (which is what landing MEANS
+        &mdash; the solve places the face there), and the tooth that drove pallet B has run
+        the drop clear of it. The anchor still stands at the hub-room floor
+        <code>ALARM_GOV_ANCHOR_D</code> 7.051 &mdash; tip circle + hub + the one clearance
+        margin &mdash; so &sect;248 moved no station. What it changed is the span, 2&frac12;
+        teeth, with the landing points 22.5&deg; either side of the centre-line (the
+        half-integer rule 2&epsilon; &equiv; pitch/2 (mod pitch) at the lever's own span
+        rather than its smallest); the saw, 20 teeth, coarse enough for a real face (at 18 the
+        solved face buries in the next tooth's front); and pallet B, its own solve rather than
+        A's mirror. The inset magnifies the drop: the tooth that left B stands 0.1 u past its
+        face &mdash; 0.038 mm, the bearings' combined shake. The right-hand curve is the
+        shipped law; re-proportioning the anchor re-solved it at the same design point, so the
+        measured endpoints did not move.</figcaption>
       </figure>
       <p class="note">Honesty ledger, opened on day one: the saw wheel advances uniformly
       with the train &mdash; the anchor's recoil is not kicked back through the wheel, the
@@ -2977,14 +2988,15 @@
       both governor arbors a bore</b>: they had been solid, and wider than the studs they
       turned on. <b>&sect;113 retired the waiver.</b> The engagement above &mdash; flat
       faces, solved swing, real drop &mdash; is that re-derivation, and the row now measures
-      0.032 against the 0.1 budget, unwaived. Two entries stay open in its place: the drop is
+      0.032 against the 0.1 budget, unwaived. One entry stays open in its place: the drop is
       GEOMETRIC, not temporal &mdash; the wheel is quasi-static, so it crosses the drop arc
       in zero time and the anchor dwells rather than overswings (the roadmap files
-      drop-time-with-wheel-inertia, the same accepted class as the absent wheel recoil above)
-      &mdash; and the parked pallets grade 0.033 u against the passing teeth
-      (<code>ALARM_GOV_ENGAGE_DEBT</code>), the price of a face long enough for the stock
-      floor and a swing small enough to poise, held by the boot sweep and never to
-      rise.</p>
+      drop-time-with-wheel-inertia, the same accepted class as the absent wheel recoil
+      above). A second stood beside it until &sect;248 &mdash; the parked paddles graded
+      0.033 u against the passing teeth, the price of a face one stock floor long &mdash;
+      and retired with the paddles: the stones clear the tooth fronts outright, and the boot
+      sweep holds the whole cycle to &sect;104's own working-contact grade
+      (<code>ALARM_GOV_ENGAGE_DEBT</code>, 0.02 u).</p>
       <p class="note"><b>&sect;120 closed the item, and it closed on the bearings rather
       than on the escapement.</b> &sect;111 had bored both governor arbors and given them
       a real side-shake; nothing set their AXIAL play, so each was a tube standing on a
@@ -3001,13 +3013,28 @@
       derived that wall exactly ON the 0.07 mm pivot floor: countersinking the bore
       would take it under, and widening the arbor would re-open the hub, the centre
       distance and the whole closure above. <b>And the ruby was refused, twice.</b> The
-      anchor's pivot reverses 2240 times per ring against the balance staff's 432000
-      a day &mdash; the same 193&times; the pallet faces measure, because it is the same
-      count &mdash; and the governor arbor turns inside its own 8-leaf pinion, whose
+      anchor's pivot reverses 1120 times per ring against the balance staff's 432000
+      a day &mdash; the same 386&times; the pallet faces measure, because it is the same
+      count, and twice &sect;120's figure since &sect;248 halved the saw &mdash; and the
+      governor arbor turns inside its own 8-leaf pinion, whose
       root circle stands at 0.671 against an arbor of 0.585: the thinnest real hole
       jewel's wall would put that arbor at 1.245 and leave no pinion at all. A
       striking-train governor is plain steel because its RATE is the movement's highest
       and its DUTY is 11.8 seconds a day, and wear is the product of the two.</p>
+      <p class="note"><b>&sect;248 gave the anchor a real one's proportions, and found its
+      exit pallet posed.</b> &sect;113's closure had stood both pallets a quarter pitch off
+      the centre-line &mdash; a flipper spanning HALF a tooth, paddles 0.12 mm long swinging
+      4.6&deg; beside the hub, the whole action inside 0.5 mm of the anchor's axis. Every
+      gate was green, and it did not look like a watch part. Making it one found the deeper
+      debt: pallet B had been cut as A's MIRROR across the anchor&ndash;wheel line, which is
+      A's drive run backwards in time, and measured, B's contact point would have had to
+      travel AGAINST the wheel's rotation for the anchor to swing back. That half-swing was
+      <em>posed</em> from the law, not driven by any tooth &mdash; a lie the cycle sweep
+      could not see, because it asks whether metal overlaps and never whether a contact
+      pushes. B is its own solve now, built by A's rule at its own azimuth and held by the
+      same unilateral press check, and the new instrument holds the claim on the built
+      metal: through both drives a tooth tip rides the driving stone, and the anchor
+      turns the way that tooth pushes it.</p>
     </div>
   </details>
 
