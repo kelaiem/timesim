@@ -27,7 +27,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
 | 187 | OPEN | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
 | 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
-| 185 | OPEN | The cap leg's φ/L still bind on the margin (0.1518 / 0.1531 since TODO 172 sank the cap: φ 15.16°, L 3.241), and the star headroom is down to 0.1945; raising them to `FOLD_SAT` carries the foot corner into the minute star, because those solvers judge only the fold's own corners. Fix: give `solveCapLeg` the star and wheel as obstacles, then maximize to `FOLD_SAT` |
+| 185 | CLOSED | The cap leg's tilt judges the minute star and wheel at their swept discs (`MW_FOLD_OBSTACLES`, `G.revolvedBlankDiscClearance`), and the stub is certified to `FOLD_SAT`. The tilt maximizes its least judged pair, the star's included, counted to `FOLD_SAT`. The fold cannot saturate before the star binds, so the optimum is interior: φ 15.16° → 15.87°, L 3.241 → 3.374, the pairs 0.1518 / 0.1531 → 0.1921 / 0.3017, and the star certified 0.1969 (measured 0.2085). The reserve swing went 5.0° → 3.5° by its own tie-break; the jumper is unchanged at 233.5° |
 | 184 | CLOSED | Every frame joint crosses its face by its requirement. The four plate screws are 1.0 mm threads, 1.5 mm into tapped pillars. The three cock screws are tapped through the base plate, and the plate's 0.758 mm sets their 0.505 mm thread ([TODO 69]'s class). The four pillars are riveted into the base plate on flush tenons. `FRAME_JOINTS` is boot-asserted, and `support` fails a fastened edge unless the metal measures engaged |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
 | 182 | CLOSED | A non-route is no longer cut at (NaN, NaN): past the alarm setting dogleg's reach the build keeps i1 (its station needs only the bearing, now one law, `alarmSetI1At`) and OMITS i2 and its stud, so `alarmr=20`/`46` build 0 non-finite meshes (7 before) and shed 14 and 15 boot warnings that were NaN fallout. The spec tier now GATES finite metal at every declared point (36/36). Step 1's `JMP_SITE` drop stays as the scan's own guard and counts 0 everywhere |
@@ -25300,7 +25300,7 @@ Residue, filed elsewhere or named here:
 alone, or by scaling the existing heads up. A bigger head on a screw that
 still stops at the face is the same defect, made easier to see.
 
-## 185. The cap leg's tilt and stub still sit on the margin, and raising them carries the foot corner into the minute star
+## 185. The cap leg's tilt and stub still sit on the margin, and raising them carries the foot corner into the minute star — CLOSED
 
 Filed closing [TODO 157]. `solveCapLeg` (the rise's tilt φ) and `stubSolve`
 (the stub L) still take the least value that clears, so their binding pairs
@@ -25332,6 +25332,101 @@ saturates, the argmax is interior. Scan the φ range and take the best,
 declaring the tie-break. Re-measure the jumper's capD tie-break too (the
 cap's site moves). Verify with `probe-150` (FOLD CLEAR and PLATE),
 `probe-151` §8d, and a battery `--report` diff.
+
+**Closed.** The tilt now judges the star and the minute wheel. The stub is on
+`FOLD_SAT`, and the tilt takes TODO 157's objective with those two in view.
+
+**What changed.**
+- **`MW_FOLD_OBSTACLES`.** The star and the minute wheel, each at its SWEPT
+  DISC (its tip radius over its axial band, about the motion works' stud). Each
+  is read off the one source it is cut from:
+  - the star: `STAR_R` over `[STAR_BOT, STAR_BOT + STAR_T]`;
+  - the wheel: `G.gearOuterR` over `MW_Z1` ± the taller of
+    `G.gearFaceReach`'s hub and body.
+- **`G.revolvedBlankDiscClearance`.** A certified bound from a bevel blank's
+  envelope to a disc. It uses the same sampler as `revolvedBlanksClearance`:
+  the sampler was split out unchanged, and the fingerprint held byte-identical
+  across the split.
+- **The hoist.** The §29 centre z-chain and the motion-works planes it lands on,
+  through `MW_Z1`, plus the star's slice and `STAR_R`, were MOVED above the cap
+  leg. They were defined 9,000 lines later than the solve that needs them. This
+  follows the MW_* constants' own hoisting precedent. Nothing was restated, and
+  the move alone left fingerprint 1745988802 unchanged.
+- **`stubSolve`** certifies its cross-body pairs to `FOLD_SAT`, and the least L
+  breaks the tie. It does not judge the discs. It is solved in its own frame and
+  cannot know B, and where its L carries the corners is the tilt's judgement.
+  It stays first on measurement: 0.1 of stub moves the star pair by about 0.006
+  and its own pair by about 0.09.
+- **`solveCapLeg`.** A φ is feasible when the tilt's pairs AND every corner
+  blank ⇄ disc pair certify `CLEAR_MARGIN`.
+  - **Objective.** Among feasible φ, it maximizes the least certified pair over
+    BOTH sets, counted to `FOLD_SAT`. A tie at the certification's resolution
+    goes to the least φ.
+  - **Scan.** It covers the whole 0–60° grid (stopping at a saturated φ), then
+    refines: down to the least saturated φ, or by golden section over the steps
+    either side of an interior best.
+  - **Why the disc pairs are in the objective, not only the constraint.** A
+    solve that maximized the tilt pair subject only to the star's margin would
+    park the star ON the margin. On the envelopes that is φ ≈ 17.2° with the
+    tilt pair ≈ 0.258 and the star 0.150, a least pair below today's 0.1518.
+    That is TODO 157's fragility moved onto an unrelated part.
+- **The fold cannot saturate at this B.** On the envelopes, the tilt pair
+  reaches `FOLD_SAT` only near φ 18°, and the star pair crosses the margin near
+  17.2°. So the optimum is INTERIOR, where the rising tilt pair meets the
+  falling star pair.
+- **Rule 6.** `MW_FOLD_OBSTACLE_CLEAR` certifies every shipped corner blank ⇄
+  disc pair at the build and warns with the achieved and required numbers. It
+  is envelope-only, so it holds at every pose.
+- **Published.** `__clock.settingFold.capLeg` now carries `score`, `grid`,
+  `obstacles` and `obstacleClear`.
+
+**Measured** (before → after):
+
+| | Before | After |
+|---|---|---|
+| φ | 15.1562° | 15.8688° |
+| L | 3.2408 | 3.3742 |
+| chord | 4.0306 | 4.2031 |
+| Σ_B | 98.847° | 99.463° |
+| Σ_E | 105.156° | 105.869° |
+| `probe-151` §8d tilt, `mwCornerRiseIn ⇄ mwCornerFootIn` | 0.1518 | 0.1921 |
+| `probe-151` §8d stub, `mwCornerFootOut ⇄ mwCornerCapOut` | 0.1531 | 0.3017 |
+| Solve's published score | — | 0.1922 |
+| `mwCornerRiseOut ⇄ star`, disc-certified | — | 0.1969 |
+| `mwCornerRiseOut ⇄ star`, cut meshes (§8e) | — | 0.2094 |
+| `mwCornerRiseOut ⇄ star`, `probe-150` FOLD CLEAR (12 poses) | 0.2391 | 0.2085 |
+| `mwCornerRiseOut ⇄ mwMinuteWheel`, disc-certified | — | 0.2695 |
+
+`probe-151` gains §8e (gated):
+- CONTAIN: every cut vertex of both parts lies inside its published disc;
+- BOUND: the disc never certifies more than `meshClearance` measures;
+- MUST-FAIL: +0.02 is refused.
+
+**Two consequences, both honest and both reported.**
+- **The reserve swing went 5.0° → 3.5°.** The reserve's own TODO 157 solve
+  bounds p1 by the foot corner's inboard blank. With the new leg, that bound
+  reads 0.3001 at 3.5° (it was 0.2591), which saturates `FOLD_SAT`, so its
+  declared tie-break (the least |swing|) takes 3.5°. CAP_SOLVE's margin at
+  B 5.25° reads 0.1501 (it was 0.1559). B is unchanged.
+- **The jumper did not move.** It stays at 233.5°, certified 0.1572. Its capD
+  tie-break re-measured 11.1867 → 11.1092 as the cap slid 0.18 along the mesh
+  circle.
+
+Other results:
+- The plate's merged cap pocket moved with the cap; its lowest land against
+  the cannon pocket is 6.5269.
+- Fingerprint 1745988802 → 1887996767. The §152 unit digests changed only for
+  Keyless works and Power-reserve train (plus Chain, which always changes).
+- Boot is silent.
+- **Focused battery**, in-page via `battery-checks.mjs`, yieldEvery 64, run
+  locally (not CI). The pair sweeps were restricted to the digest-changed units
+  plus Motion works and Dial. All 15 PASS:
+  - support, graph;
+  - expectedContacts, intraUnit, assembly;
+  - clearances, undeclaredClearance;
+  - inspection (includeExcluded), sweptOverlap;
+  - stockFloor, turning, outlines;
+  - transfers, penetration, jumperMovers.
 
 ## 186. Only the default configuration is swept: no spec point other than the identity has ever had a restricted sweep
 

@@ -41,10 +41,22 @@
 //            and the must-fail half: asked for more than it measured, the
 //            envelope must say no;
 //         d. LEAST (a report) — the binding pair's CERTIFIED clearance at the
-//            solved φ and L (the largest target the envelope signs for), which
-//            the solve's bisection leaves within its resolution of the margin.
+//            solved φ and L (the largest target the envelope signs for). Since
+//            TODO 185 both solves take TODO 157's objective — the stub's pairs
+//            certified to FOLD_SAT, the tilt maximizing its least judged pair
+//            counted to FOLD_SAT — so these read over the margin by design;
+//         e. OBSTACLES (TODO 185) — the motion works' star and minute wheel,
+//            which the tilt now judges at their SWEPT DISCS
+//            (`settingFold.capLeg.obstacles`, G.revolvedBlankDiscClearance).
+//            CONTAIN, gated: every vertex of each cut part, at every sample,
+//            lies inside its published disc — a disc that misses metal is not
+//            the part's envelope. BOUND, gated: the disc's certified clearance
+//            to each corner blank never exceeds `meshClearance` on the cut
+//            meshes, and asked for 0.02 more than that it refuses. And each
+//            pair measures ≥ CLEAR_MARGIN. The certified rows and the solve's
+//            own published score are reported beside them.
 //
-// Gates exit non-zero (b, c, and §1/§7's plane and plate rows); §8d reports.
+// Gates exit non-zero (b, c, e and §1/§7's plane and plate rows); §8d reports.
 // Run from tools/ with a Playwright Chromium: `node probe-151-cap-plane.mjs`.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -167,9 +179,47 @@ const out = await page.evaluate(async () => {
         mustFailBad.push(`${k} at setPathRot ${sp}: certified ${(meas + 0.02).toFixed(4)} against a measured ${meas.toFixed(4)}`);
     }
   }
+  // §8e — the motion works' swept discs the tilt judges (TODO 185)
+  const obs = { rows: {}, containBad: [], boundBad: [], mustFailBad: [], missing: [] };
+  const discs = leg.obstacles || [];
+  if (!discs.length) obs.missing.push('__clock.settingFold.capLeg.obstacles');
+  for (const d of discs) if (!meshesOf(d.name).length) obs.missing.push(d.name);
+  if (!obs.missing.length) for (const sp of SET) {
+    C.resetInputs(); C.setPose({ crownPullT: 0, setPathRot: sp }); C.scene.updateMatrixWorld(true);
+    for (const d of discs) {
+      // CONTAIN: the part's cut vertices inside its disc (axial band and radius)
+      let worstR = -Infinity, worstZ = -Infinity;
+      for (const o of meshesOf(d.name)) {
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          V.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          const q = [V.x - d.o[0], V.y - d.o[1], V.z - d.o[2]];
+          const zb = q[0] * d.a[0] + q[1] * d.a[1] + q[2] * d.a[2];
+          const rho = Math.sqrt(Math.max(0, q[0] * q[0] + q[1] * q[1] + q[2] * q[2] - zb * zb));
+          worstR = Math.max(worstR, rho - d.r); worstZ = Math.max(worstZ, d.zLo - zb, zb - d.zHi);
+        }
+      }
+      if (worstR > 1e-6 || worstZ > 1e-6)
+        obs.containBad.push(`${d.name} at setPathRot ${sp}: metal ${worstR.toFixed(5)} past r, ${worstZ.toFixed(5)} past the band`);
+      for (const b of blanks) {
+        let meas = Infinity;
+        for (const x of meshesOf(b)) for (const y of meshesOf(d.name)) meas = Math.min(meas, I.meshClearance(x, y));
+        const fb = frameOf(b);
+        const certifies = (t) => G.revolvedBlankDiscClearance(envOf(b), fb, d, t).ok;
+        let cLo = 0, cHi = meas + 0.05;
+        if (!certifies(cLo)) cHi = cLo = -Infinity;
+        else while (cHi - cLo > G.ENVELOPE_DELTA_FINE / 10) { const m = (cLo + cHi) / 2; if (certifies(m)) cLo = m; else cHi = m; }
+        const k = `${b}|${d.name}`;
+        const r = obs.rows[k] || (obs.rows[k] = { meas: Infinity, lb: Infinity });
+        r.meas = Math.min(r.meas, meas); r.lb = Math.min(r.lb, cLo);
+        if (cLo > meas + 1e-9) obs.boundBad.push(`${k} at setPathRot ${sp}: certified ${cLo.toFixed(5)} > measured ${meas.toFixed(5)}`);
+        if (isFinite(meas) && certifies(meas + 0.02)) obs.mustFailBad.push(`${k} at setPathRot ${sp}: certified ${(meas + 0.02).toFixed(4)} against a measured ${meas.toFixed(4)}`);
+      }
+    }
+  }
   C.resetInputs(); C.setPose({}); C.scene.updateMatrixWorld(true);
   return { CM, bands, centreD, centreWant, faceZ, plate, leg, ident, rows, controlBad, mustFailBad, samples: SET.length,
-    deltaFine: G.ENVELOPE_DELTA_FINE };
+    deltaFine: G.ENVELOPE_DELTA_FINE, obs };
 });
 
 let bad = 0;
@@ -219,6 +269,28 @@ if (out.missing) {
   for (const [what, re] of [['the tilt φ (B\'s blanks ⇄ E\'s and D\'s)', /^mwCornerRise/], ['the stub L (E\'s blanks ⇄ D\'s)', /^mwCornerFoot.*\|mwCornerCap/]]) {
     const [k, r] = least(re);
     console.log(`     ${what}: ${k.replace('|', ' ⇄ ')} certified ${r.lb.toFixed(4)} — ${(r.lb - out.CM).toFixed(4)} over the margin (resolution ${out.deltaFine})`);
+  }
+  if (l.score !== undefined) console.log(`     the tilt's own published score (its least judged pair, counted to FOLD_SAT ${l.foldSat}): ${l.score.toFixed(4)}`);
+  const o = out.obs;
+  console.log(`  e. OBSTACLES — corner blanks ⇄ the motion works' swept discs, ${out.samples} setting-input samples:`);
+  if (o.missing.length) fail('not found: ' + o.missing.join(', ') + ' (nothing measured)');
+  else {
+    for (const d of l.obstacles) console.log(`     disc ${d.name}: r ${d.r.toFixed(4)}, z [${d.zLo.toFixed(4)}, ${d.zHi.toFixed(4)}] about (${d.o[0].toFixed(3)}, ${d.o[1].toFixed(3)})`);
+    for (const s of o.containBad) fail(`CONTAIN: ${s}`);
+    if (!o.containBad.length) ok('CONTAIN: every cut vertex of the star and the minute wheel lies inside its published disc');
+    const sortedO = Object.entries(o.rows).sort((a, b) => a[1].meas - b[1].meas);
+    for (const [k, r] of sortedO.slice(0, 6)) {
+      const [a, b] = k.split('|');
+      const line = `${a} ⇄ ${b}: measured ${r.meas.toFixed(4)}, disc certifies ${r.lb.toFixed(4)}`;
+      if (r.meas < out.CM) fail(line); else ok(line);
+    }
+    const under = sortedO.slice(6).filter(([, r]) => r.meas < out.CM);
+    for (const [k, r] of under) fail(`${k.replace('|', ' ⇄ ')}: measured ${r.meas.toFixed(4)}`);
+    console.log(`     (${sortedO.length - Math.min(6, sortedO.length)} more pairs, every one measured ≥ the margin unless listed)`);
+    for (const s of o.boundBad) fail(`BOUND: the disc overshot — ${s}`);
+    if (!o.boundBad.length) ok('BOUND: the disc bound never exceeded the cut meshes\' measured clearance');
+    for (const s of o.mustFailBad) fail(`MUST-FAIL: ${s}`);
+    if (!o.mustFailBad.length) ok('MUST-FAIL: asked for 0.02 more than each pair measures, the disc refused every time');
   }
 }
 console.log(bad ? `\nFAIL — ${bad} finding(s)` : '\nPASS — the cap stands on the wheel\'s plane, down the leg its solve says it cut');
