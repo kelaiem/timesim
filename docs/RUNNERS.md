@@ -27,11 +27,16 @@ The job's `runs-on` is one expression, and it reads in this order:
    side.
 3. **The host is never the default.** A run goes there only when the event
    itself asks: a pull request carrying the label `self-hosted-battery` or
-   `[self-hosted]` in its title, or a manual dispatch whose `runner` input
-   says `self-hosted`. A push to `main` never asks, so merges always run
+   `[self-hosted]` in its title, a manual dispatch whose `runner` input
+   says `self-hosted`, or the nightly `schedule`, which asks for nothing
+   else. A push to `main` never asks, so merges always run
    GitHub-hosted, which also keeps main's baseline on the platform ordinary
    PRs inherit from — and is why the host's own baseline has to be seeded by
-   a dispatch (see the last section).
+   a dispatch, which the nightly now fires for you (see the last section).
+   The nightly is the one event with no hosted arm: variable unset, or the
+   workflow file last committed by someone other than the owner (who
+   `github.actor` names on a schedule), and the job is *skipped* — a hosted
+   verdict of main's tip already exists, so a second one would seed nothing.
 4. **And only while the variable permits.** `BATTERY_RUNS_ON` names the
    label and is the availability switch, not the router: unset it and every
    opt-in lands on `ubuntu-latest` in silence.
@@ -395,10 +400,16 @@ queued or running `timesim-battery` jobs first.
 
 ## What stays the same on any host
 
-- **The job cap (50 min) and the per-check guard (35 min).** Both are sized by
-  the slow tail of the runner they were measured on, and both files say to
-  re-derive them together from several runs. A faster host makes them loose,
-  which costs nothing; do not tighten them from one run.
+- **The job cap (50 min; 90 for a push) and the per-check guard (35 min).**
+  Both are sized by the slow tail of the runner they were measured on, and
+  both files say to re-derive them together from several runs. A faster host
+  makes them loose, which costs nothing; do not tighten them from one run. The
+  push's extra room exists because a push is the run that *writes* the hosted
+  baseline: three consecutive push runs (1097, 1100, 1101) were cancelled at
+  50 min on `ubuntu-latest`, each inside `clearances`, and a cancelled push
+  leaves that tree with no baseline — the quiet failure the concurrency note
+  describes — so every following hosted PR ran whole into the same cap. A PR
+  inherits rather than writes and keeps 50.
 - **The baseline cache key carries the platform, and seeding the host's is a
   DISPATCH.** A §152 baseline's rows are inherited verbatim into a PR's report,
   so they must come from the same browser build on the same architecture; a
@@ -448,6 +459,15 @@ queued or running `timesim-battery` jobs first.
   that looks skippable. There is no way to have both at once on one ref.
   Budget for it: the push run is a full battery on `ubuntu-latest`, roughly
   30–38 min, and the dispatch is another ~17.5 min on the host after that.
+
+  **The nightly `schedule` is that dispatch, automated.** At 08:00 UTC (04:00
+  in New York, summer) `battery.yml` runs the tip of `main` whole on the host
+  and seeds the self-hosted baseline for it, so the waiting above is no longer
+  anyone's job: by then the day's push runs are long finished. It is a
+  `schedule` event, so it never shares a concurrency group with a push, and
+  it is skipped — not routed hosted — when `BATTERY_RUNS_ON` is unset. A
+  self-hosted PR whose base is newer than the last nightly still runs whole;
+  the manual dispatch remains for the day you want the seed sooner.
 
   Worth knowing what the dispatch buys, so the cost is a choice rather than a
   habit: a seeded host makes a self-hosted PR run incremental (~12 min against

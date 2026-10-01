@@ -643,9 +643,11 @@ NOT READY verdict to read BEFORE opting a PR in — a queued opt-in with no
 runner waits a day in silence. Two consequences to know: the §152
 baseline key carries the platform, and since a push NEVER routes self-hosted
 the host's baseline is seeded by DISPATCHING the workflow on the default branch
-with `runner: self-hosted` — one dispatch per merge, or every self-hosted PR
-runs the whole battery (this line used to say the next merge re-seeded it, and
-no merge ever did); and a host's shard count is written on
+with `runner: self-hosted` — or, since the nightly, by the `schedule` trigger that
+fires that dispatch for you at 08:00 UTC on the host and is SKIPPED, never
+routed to `ubuntu-latest`, when `BATTERY_RUNS_ON` is unset (this line used to
+say the next merge re-seeded it, and no merge ever did; then that one dispatch
+per merge was owed by hand, and nobody fired it); and a host's shard count is written on
 the host (`--shards K` → the runner's `.env`), never in the workflow, because K
 is a measured property of a machine. `docs/RUNNERS.md` has the rest.
 
@@ -752,9 +754,14 @@ trigger is deliberately unfiltered and never incremental — a baseline must be
 a whole verdict or errors would chain through the cache — so every merged tree
 still gets a full battery, and `battery.yml` now keeps its `--report` and
 digests under the commit SHA for the next PR to read. **That is also why there
-is no nightly**: §152 was scoped with one as mandatory, and building it
-established that the push run bounds a key error to minutes rather than a day
-and fires per merge rather than per date. Every uncertainty — no cache hit, an
+is no nightly on the hosted platform**: §152 was scoped with one as mandatory,
+and building it established that the push run bounds a key error to minutes
+rather than a day and fires per merge rather than per date. The `schedule:`
+that exists is §200's, not §152's — it seeds the SELF-HOSTED baseline, the
+platform a push can never write, and is skipped when no host is available.
+A push's job cap is 90 min where every other run keeps 50: the push is the
+run that writes the hosted baseline, and three in a row were cancelled at 50
+inside their last sweep, which left the tree with no baseline at all. Every uncertainty — no cache hit, an
 unreadable file, a moved check-code digest, a union that cannot be justified —
 resolves towards MORE work and says so in the log. `--no-incremental` is the
 reference an incremental run must agree with, and `tools/probe-152-restrict.mjs`
