@@ -405,10 +405,19 @@ jobs:
     # baseline for that tree, every following hosted PR forced whole. Three
     # consecutive push runs (1097, 1100, 1101) were cancelled at 50 min on
     # ubuntu-latest, each inside `clearances` with the sweeps nearly done, so
-    # the cap was costing exactly the verdict it existed to bound. A PR run
-    # keeps 50: it inherits rather than writes, and a runaway PR battery
-    # should still fail fast.
-    timeout-minutes: ${{ github.event_name == 'push' && 90 || 50 }}
+    # the cap was costing exactly the verdict it existed to bound.
+    #
+    # TODO 186 B1 moved both numbers. Every run that may WRITE a baseline —
+    # push, and the dispatch and nightly that seed one — now also sweeps the
+    # six silent spec points whole, with no ceiling. The point tier measured
+    # 1,906 s of wall on a 4-vCPU container whose checks took 6,308 s; scaled
+    # by §127's last CI measurement (3,628 s of checks for the same column)
+    # that is about +18 min on ubuntu-latest, so all three take the push's 90.
+    # Re-measure on the first push run that carries it. A PR's point tier is held to POINT_PR_BUDGET_MS (10 min of
+    # wall, ci-battery.mjs) on top of a battery that can itself be WHOLE when
+    # no baseline exists, so a PR keeps fail-fast at 60 rather than 50 — the
+    # old cap plus the ceiling.
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 60 || 90 }}
     steps:
       # §200 — the pointer is read off the run, never remembered. Values go
       # through env, not inline: a head repo name is untrusted text.
@@ -508,8 +517,12 @@ jobs:
         run: |
           args=""
           why=""
+          # TODO 186 — every PR's points run under the ceiling; they inherit
+          # only where the default would (same cache entry, no full-battery
+          # ask), and the harness decides FULL or INCREMENTAL per point.
+          if [ "$EVENT" = "pull_request" ]; then args="--points-pr"; fi
           if [ "$EVENT" != "pull_request" ]; then
-            why="not a pull request — this run IS the baseline, so it is always whole"
+            why="not a pull request — this run IS the baseline, so it is always whole (and every spec point is swept full)"
           elif [ "$HIT" != "true" ]; then
             why="no cached baseline for the merge base (${{ github.event.pull_request.base.sha }}) on ${{ runner.os }}/${{ runner.arch }} — running everything"
           elif printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'full-battery'; then
@@ -517,7 +530,7 @@ jobs:
           elif printf '%s' "$TITLE" | grep -qF '[full battery]'; then
             why="[full battery] in the PR title — running everything"
           else
-            args="--baseline .battery-baseline/report.json --digests-base .battery-baseline/digests.json"
+            args="$args --baseline .battery-baseline/report.json --digests-base .battery-baseline/digests.json --points-base .battery-baseline/points.json"
             why="incremental if the check-code digest also matches; the harness decides and logs which"
           fi
           echo "args=$args" >> "$GITHUB_OUTPUT"
@@ -611,6 +624,7 @@ jobs:
           node tools/ci-battery.mjs \
             --report .battery-out/report.json \
             --digests .battery-out/digests.json \
+            --points-out .battery-out/points.json \
             ${{ steps.mode.outputs.args }}
 
       # ---- §186 / TODO 111: the analytic case sectors, held over the pose net
@@ -820,6 +834,14 @@ jobs:
           fi
           mkdir -p .battery-baseline
           cp .battery-out/report.json .battery-out/digests.json .battery-baseline/
+          # TODO 186 — the points' whole payloads ride the same entry. A run
+          # that wrote none (a dead tier) still seeds the default's baseline;
+          # the next PR's points then sweep FULL, under the ceiling, and say so.
+          if [ -f .battery-out/points.json ]; then
+            cp .battery-out/points.json .battery-baseline/
+          else
+            echo "§186: no points file from this run — the next PR's points sweep full" >> "$GITHUB_STEP_SUMMARY"
+          fi
           ls -l .battery-baseline | sed 's/^/§152 baseline: /' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Cache it under this commit

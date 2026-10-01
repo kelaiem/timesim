@@ -6,18 +6,24 @@
 // the page calls, so the committed file cannot disagree with the build about
 // what a key looks like. The explain-i18n --extract precedent.
 //
-//   node tools/validated-configs.mjs --write   regenerate the file
-//   node tools/validated-configs.mjs --check   fail if the file is stale
-//
-// Tier A sweeps ONE configuration, the identity (default spec, no route, no
-// geometry-bearing tuning). Tier B (TODO 186) would add the spec points a
-// restricted sweep proves clean; each would then carry its own evidence row.
+// Tier A swept ONE configuration, the identity (default spec, no route, no
+// geometry-bearing tuning). TODO 186 B1 adds the silent spec points a full
+// point sweep proved clean: `--write --points FILE` takes them from a battery
+// run's --points-out (a WHOLE run's — a PR's file is refused), keeping only
+// points whose FULL sweep was clean, each with its own evidence row. A point
+// that is no longer clean in the file LEAVES the set; `--write` without
+// --points re-renders the identity and keeps the listed points as they are.
 // The battery re-verifies every entry each run (tools/ci-battery.mjs's
-// validated-configs gates), so an entry naming a key no run reproduces fails
-// as stale — the closed-ratchet shape of UNDECLARED_CLEARANCE_DEBT.
+// validated-configs gates — a listed point must sweep clean, full or
+// incremental), so an entry naming a key no run reproduces fails as stale:
+// the closed-ratchet shape of UNDECLARED_CLEARANCE_DEBT.
+//
+//   node tools/validated-configs.mjs --write [--points FILE]
+//   node tools/validated-configs.mjs --check   identity key current, file canonical
 import { writeFileSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
+import { POINTS_FORMAT_VERSION, evidenceOf } from './battery-points.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'src/validated-configs.js');
@@ -38,18 +44,42 @@ ${rows.map((r) => `  Object.freeze({ point: ${JSON.stringify(r.point)}, key: ${J
 `;
 }
 
+// The listed points as the file holds them now (missing file: none).
+async function listedPoints() {
+  try {
+    const { VALIDATED_CONFIGS } = await import(`${pathToFileURL(FILE).href}?t=${Date.now()}`);
+    return VALIDATED_CONFIGS.filter((r) => r.point !== 'identity').map((r) => ({ point: r.point, key: r.key, evidence: r.evidence }));
+  } catch {
+    return [];
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const want = render();
+  const at = process.argv.indexOf('--points');
   if (process.argv.includes('--write')) {
-    writeFileSync(FILE, want);
-    console.log(`wrote src/validated-configs.js — ${EXPECTED.length} key(s): ${EXPECTED.map((r) => r.point).join(', ')}`);
+    let pts = await listedPoints();
+    if (at !== -1) {
+      const file = JSON.parse(readFileSync(process.argv[at + 1], 'utf8'));
+      if (file.formatVersion !== POINTS_FORMAT_VERSION) throw new Error(`${process.argv[at + 1]}: points file v${file.formatVersion}, this tool reads v${POINTS_FORMAT_VERSION}`);
+      if (file.whole !== true) throw new Error(`${process.argv[at + 1]}: not a whole run's points file (a PR's, or unioned against a restricted default) — a validated row needs a FULL sweep`);
+      pts = Object.entries(file.points)
+        .filter(([, e]) => e.verdict === 'clean' && e.mode === 'full' && e.key)
+        .map(([point, e]) => ({ point, key: e.key, evidence: evidenceOf(e) }))
+        .sort((a, b) => (a.point < b.point ? -1 : a.point > b.point ? 1 : 0));
+      const dropped = Object.entries(file.points).filter(([, e]) => !(e.verdict === 'clean' && e.mode === 'full')).map(([n, e]) => `${n} (${e.verdict}, ${e.mode})`);
+      if (dropped.length) console.log(`not listed: ${dropped.join(', ')}`);
+    }
+    const rows = [...EXPECTED, ...pts];
+    writeFileSync(FILE, render(rows));
+    console.log(`wrote src/validated-configs.js — ${rows.length} key(s): ${rows.map((r) => r.point).join(', ')}`);
   } else {
+    const want = render([...EXPECTED, ...await listedPoints()]);
     let have = '';
     try { have = readFileSync(FILE, 'utf8'); } catch { /* missing reads as stale */ }
     if (have !== want) {
-      console.error('src/validated-configs.js is STALE — the default configuration key moved. Run: node tools/validated-configs.mjs --write');
+      console.error('src/validated-configs.js is STALE — the default configuration key moved, or the file was edited by hand. Run: node tools/validated-configs.mjs --write');
       process.exit(1);
     }
-    console.log(`validated-configs OK — ${EXPECTED.length} key(s)`);
+    console.log(`validated-configs OK — ${EXPECTED.length + (await listedPoints()).length} key(s)`);
   }
 }

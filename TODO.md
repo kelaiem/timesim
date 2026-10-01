@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 193 | OPEN | The mainspring ribbons are never held to their material: going 1032 → 1756 MPa, alarm 3096 → 5264 MPa (uniform moment, σ = M·a/I on the as-cut `rhombus4`, whose modulus is ¼ of a flat strip's), against the 800 MPa `SPRING_SIGMA_Y_PA` every other spring answers to. Fix: decide the section (strip vs rhombus) and re-solve k, cite a mainspring-alloy limit, gate σ at full wind for both ribbons |
@@ -26,7 +27,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
 | 188 | CLOSED | The reserve swing solve yields after its band sift and before each first-feasible candidate. `__clock.boot` is live, with a `done` flag, and `probe-239-boot-yield` waits for it. A new TAIL control (800 ms planted before the guard's release, read back as 801) proves the build's last stretch is measured. The worst hold went from 685–736 ms to 401–528 ms, now at weldTree. The fingerprint is unchanged. Step 2 reads the static keyless meshes once rather than once per corner phase: 1.93M obstacle points become 0.47M, and the solves take ~1.0 s instead of ~1.9 s, with byte-identical results |
 | 187 | OPEN | The base plate is not a labelled unit, so `outlines`, `meshIntegrity`, the pair sweeps and the §152 digests never read it; only `support`, the builder's own §62 land guard and probes 150/151 do. TODO 172's first cap-pocket draft left it with 76 open edges while every gate stayed green. Fix: label the plate (or gate its meshes explicitly) so its closure, outlines and digest are held like any unit's |
-| 186 | OPEN | Only the identity configuration is in the validated set, so every other spec point shows the unverified mark. Fix: B1, a restricted sweep of the 7 silent points on every PR, unioned against the default's (clean ones join the set); B2, the warning points on push/dispatch once the §127 matrix is wired |
+| 186 | PART DONE | B1 built: the 6 silent non-identity points (`reconf=1` is the default's key) are swept FULL on push/dispatch/local runs (restricted to their changed units, unioned with the default; 0.06–0.56× the default's three sweeps each, +1,906 s of tier wall locally, ~+18 min projected on CI) and INCREMENTALLY on PRs against the cached `points.json` (Chain-only, 449 s for all six in a same-tree simulation) under a 10-min ceiling that SKIPS, never passes. All six clean and listed in `validated-configs.js`. Open: B2, the warning points as expected-red, once the §127 matrix is wired |
 | 185 | CLOSED | The cap leg's tilt judges the minute star and wheel at their swept discs (`MW_FOLD_OBSTACLES`, `G.revolvedBlankDiscClearance`), and the stub is certified to `FOLD_SAT`. The tilt maximizes its least judged pair, the star's included, counted to `FOLD_SAT`. The fold cannot saturate before the star binds, so the optimum is interior: φ 15.16° → 15.87°, L 3.241 → 3.374, the pairs 0.1518 / 0.1531 → 0.1921 / 0.3017, and the star certified 0.1969 (measured 0.2085). The reserve swing went 5.0° → 3.5° by its own tie-break; the jumper is unchanged at 233.5° |
 | 184 | CLOSED | Every frame joint crosses its face by its requirement. The four plate screws are 1.0 mm threads, 1.5 mm into tapped pillars. The three cock screws are tapped through the base plate, and the plate's 0.758 mm sets their 0.505 mm thread ([TODO 69]'s class). The four pillars are riveted into the base plate on flush tenons. `FRAME_JOINTS` is boot-asserted, and `support` fails a fastened edge unless the metal measures engaged |
 | 183 | OPEN | A 'B-dependent' jumper refusal still cannot act: the late re-cut of the fold, plate recesses and reserve at another bearing is unbuilt (TODO 160 measured none is needed today). Fix: continue CAP_SOLVE's order late with a box pre-screen, or a declared refused-bearing table |
@@ -25428,7 +25429,80 @@ Other results:
   - stockFloor, turning, outlines;
   - transfers, penetration, jumperMovers.
 
-## 186. Only the default configuration is swept: no spec point other than the identity has ever had a restricted sweep
+## 186. Only the default configuration is swept: no spec point other than the identity has ever had a restricted sweep — PART DONE
+
+**B1 is built, by the owner's option (d): incremental per PR, full on the
+push. B2 (the warning points) stays open.** Six of the seven silent
+non-identity points are swept (`balstep=60`, `subdialr=8`, `studr=7.595`,
+`studr=4.71`, `studr=7.1175`, the 2-leg route); `reconf=1` needs no sweep
+because its key is the default's. All six measured CLEAN, and all six are now
+in `src/validated-configs.js`, each with an evidence row.
+
+- **The sweep.** `inspection`, `clearances` and `undeclaredClearance` run
+  restricted with `pairsTouching` to the units the point changes. They are
+  unioned by §152's rule (`tools/battery-points.mjs`; `battery-union.mjs`'s
+  `point: true` relaxes only the unit-list identities, because the route adds
+  a unit).
+- **Push, dispatch and local runs** sweep each point FULL against that run's
+  default. `--points-out` writes the whole payloads, and `battery.yml` caches
+  them as `points.json` beside the report and digests.
+- **A PR (`--points-pr`)** sweeps each point INCREMENTALLY against its stored
+  payload. Every doubt sends a point FULL and says so: no file, an older
+  format, a file that was not a whole run's, moved code (the CHECK_CODE files
+  plus `battery-points.mjs`), no entry, or an entry with no whole payload.
+  The PR's point tier is held to `POINT_PR_BUDGET_MS` = 10 min of wall. A
+  point that cannot finish is SKIPPED: named UNVERIFIED THIS RUN, never
+  clean, and never stored.
+- **Two gates.** `point sweeps` fails a point that died or could not be
+  unioned. The validated-configs gate fails a LISTED point that does not
+  sweep clean.
+
+**Measured, full run, 4-vCPU dev container: 52/52 gates, 4,808 s.** The
+default's own three sweeps took 3,353 s. Per point (full, seconds, and the
+fraction of the default's three sweeps):
+
+| point | changed units | s | × default |
+|---|---|---|---|
+| balstep=60 | Chain, Three-quarter plate | 1882 | 0.56 |
+| studr=7.595 | Balance cock, Chain, Hairspring | 917 | 0.27 |
+| studr=4.71 | same | 898 | 0.27 |
+| studr=7.1175 | same | 872 | 0.26 |
+| subdialr=8 | Chain, Dial, Small seconds | 528 | 0.16 |
+| route=2-leg | Applied route, Chain | 192 | 0.06 |
+
+- **Push run.** The point tier added 1,906 s of wall at three lanes;
+  `balstep=60` alone is the floor. Projected on ubuntu-latest that is about
+  +18 min, so push, dispatch and nightly now share the 90-min cap and a PR
+  goes 50 → 60.
+- **Typical PR.** A same-tree simulation against that baseline ran with one
+  point's stored entry deleted: 53/53 gates, 1,092 s in total. Five points
+  went incremental (changed set = Chain alone, 181–231 s each, boot
+  included). The route went FULL ("no stored entry for this point", 194 s).
+  The tier took 449 s, inside the ceiling. Each incremental payload is
+  byte-identical to the full run's.
+
+**No quantum.** Option (a) — hash the shape half at the place quantum — was
+tried because `balstep=60` re-solves the balance onto the default station
+(2e-14 off) and looked like noise. It is not. 88 coordinates of the plate's
+168,117 vertices move, by up to 0.0065 at the rim (x ≈ 41). So the raw key is
+right, and the shape half stays unquantised. Why a step-angle TARGET re-cuts
+the plate rim when the solved station does not move is unexplained, and is
+not this item's.
+
+**Controls:** `tools/probe-186-points.mjs` PASSES. It shows:
+- full and incremental unions byte-identical to whole sweeps (studr and the
+  route);
+- a hairspring blown up ×6 judged FINDING (40 rows);
+- every unqualified stored file sent FULL, with the INCREMENTAL control;
+- a spent ceiling judged SKIPPED with nothing stored.
+
+**Open:**
+- **B2**, the warning points as expected-red, which needs the §127 matrix.
+- §227's promotion is shadow-only. If it ever flips, a promoted push would
+  skip the point tier and write no points file, and the next PR's points
+  would go FULL under the ceiling. That is the direction every doubt takes,
+  but it should be priced when §227 flips.
+
 
 Filed closing [TODO 158]. Tier A marks every build whose configuration key is
 not in `src/validated-configs.js`, and today that set holds the identity
@@ -25891,3 +25965,22 @@ the hub and track radii from the geometry, never restate them), so the
 control measures metal on both sides of the step. Correct the explainer's row
 to the real relation (the track overlaps the hub's wall; the pin rides the
 track's annulus outside it), then re-key and re-translate that block.
+
+## 196. balstep=60 re-cuts the three-quarter plate's rim although the solved balance station is unchanged
+
+Found closing [TODO 186] B1. Swept as a spec point, `balstep=60` reports
+`Three-quarter plate` as changed against the default. Measured properly, the
+change is real metal: 88 of 168,117 vertex coordinates move, by up to
+**0.0065** at the rim (x ≈ 41). But the balance station the point solves sits
+2e-14 from the default's. So something in the plate's cut reads the
+REQUESTED step rather than the SOLVED station: a second source for one
+quantity, which is the defect class CLAUDE.md's direction-guard trap names.
+
+The cost is not cosmetic. It makes `balstep=60` the most expensive point in
+the §186 tier (1,882 s locally, 0.56× the default's three sweeps), sweeping a
+plate that should be digest-identical.
+
+**Fix path.** Find what the plate's rim cut reads (grep the three-quarter
+plate's outline and its recesses for the balance-step input) and derive it
+from the solved station instead. Acceptance: `balstep=60`'s changed set drops
+to {Chain}, and the point's full sweep stays clean.
