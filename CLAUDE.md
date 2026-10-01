@@ -399,7 +399,10 @@ it into prose either.
    with no readable shape fails rather than being skipped; a cylinder never
    had a shape and is counted instead. It works at all because
    `ExtrudeGeometry` keeps `parameters.shapes` and `weldGeometry` now carries
-   that reference through the weld).
+   that reference through the weld), and `point sweeps` **0 broken, every
+   LISTED point clean** (TODO 186 — the silent spec points swept and unioned
+   by §152's rule; a finding keeps a point out of the validated set, a PR's
+   ceiling may skip one but never passes it; see Inspecting).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
@@ -765,7 +768,8 @@ and building it established that the push run bounds a key error to minutes
 rather than a day and fires per merge rather than per date. The `schedule:`
 that exists is §200's, not §152's — it seeds the SELF-HOSTED baseline, the
 platform a push can never write, and is skipped when no host is available.
-A push's job cap is 90 min where every other run keeps 50: the push is the
+A push's job cap is 90 min (the dispatch and nightly that seed a baseline
+share it since TODO 186; a PR keeps 60): the push is the
 run that writes the hosted baseline, and three in a row were cancelled at 50
 inside their last sweep, which left the tree with no baseline at all. Every uncertainty — no cache hit, an
 unreadable file, a moved check-code digest, a union that cannot be justified —
@@ -773,6 +777,27 @@ resolves towards MORE work and says so in the log. `--no-incremental` is the
 reference an incremental run must agree with, and `tools/probe-152-restrict.mjs`
 proves on two cheap axes that a restricted run unions back to a full one byte
 for byte.
+
+**Since TODO 186 the silent spec points are swept too, and that is what lets
+one join `src/validated-configs.js`.** Each `SPEC_POINTS` row marked `sweep:
+true` (the non-identity points that boot silent; `reconf=1` needs none, its
+key is the default's) gets `inspection`, `clearances` and
+`undeclaredClearance` restricted with `pairsTouching` to the units its build
+changes, unioned by §152's own rule (`battery-points.mjs`). A push, dispatch
+or local run sweeps every point FULL — against that run's default — and
+`--points-out` writes the whole payloads into the cached baseline beside the
+report. A PR (`--points-pr`) sweeps each point INCREMENTALLY against its own
+stored payload, re-measuring only the units the PR moved in that point's
+build; every doubt sends a point FULL and says so, and the PR's point tier is
+held to `POINT_PR_BUDGET_MS` of wall — a point that cannot finish is SKIPPED,
+named UNVERIFIED THIS RUN, never clean. Two gates: `point sweeps` fails a
+point that died or could not be unioned (a FINDING does not fail it — an
+unlisted point claims nothing), and the validated-configs gate fails a LISTED
+point that does not sweep clean. Rows join only by `node
+tools/validated-configs.mjs --write --points FILE` from a whole run's points
+file. `tools/probe-186-points.mjs` proves both unions byte for byte, a broken
+point judged a finding, every unqualified stored file sent FULL, and the
+ceiling never reading clean.
 
 `--report FILE` writes every check's FULL payload as JSON. **That, not the
 PASS/FAIL column, is what a performance change is accepted against**: a
@@ -789,7 +814,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 255 measuring scripts and this file names 19. The rest are named for the
+`tools/` holds 258 measuring scripts and this file names 19. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -806,8 +831,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **145 of
-them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
+The index also carries the split that decides how to read a result: **147 of
+them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
 acceptance — those say so in their own headers. A report saying `0 violations` has not

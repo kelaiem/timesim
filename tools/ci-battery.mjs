@@ -99,6 +99,7 @@ import { assertCosts, buildTasks } from './battery-split.mjs';
 import { BATTERY, RESTRICTABLE, prepPage, runCheck, virginBoot } from './battery-checks.mjs';
 import { VALIDATED_CONFIGS } from '../src/validated-configs.js';   // TODO 158: the configuration keys this battery vouches for
 import { unionCheck } from './battery-union.mjs';
+import { POINTS_FORMAT_VERSION, decidePointMode, defaultPointDigests, judgePoint, sweepPoint } from './battery-points.mjs';   // TODO 186 B1
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // Per check. This is a WEDGED-TAB GUARD, not a budget: no check is supposed
@@ -621,9 +622,10 @@ if ((MATRIX || COLLECT) && SPEC_ONLY) throw new Error('--spec-only is one proces
 // disagrees with its workers about the task list is the one thing that must
 // never be resolved silently.
 if (COLLECT) {
-  for (const flag of ['--digests', '--digests-base']) {
+  for (const flag of ['--digests', '--digests-base', '--points-base']) {
     if (argOf(flag) !== null) throw new Error(`${flag} is the §152 preflight's, which runs in each worker`);
   }
+  if (argv.includes('--points-pr')) throw new Error('--points-pr describes what worker 0 swept; --collect reads it from its file');
   for (const flag of ['--shards', '--only']) {
     if (argOf(flag) !== null) throw new Error(`${flag} describes what the WORKERS ran; --collect reads it from their files`);
   }
@@ -687,6 +689,24 @@ const DIGESTS_OUT = argOf('--digests');
 const DIGESTS_BASE = argOf('--digests-base');
 const BASELINE_PATH = argOf('--baseline');
 const NO_INCREMENTAL = argv.includes('--no-incremental');
+// TODO 186 B1 — THE SPEC-POINT SWEEPS' INPUTS AND OUTPUT (battery-points.mjs).
+//
+//   --points-out FILE   every swept point's per-unit key and WHOLE merged
+//                       payloads — what the push run caches beside its report
+//                       and digests, and what the next PR's points inherit
+//   --points-pr         this is a pull request: points may go INCREMENTAL
+//                       against --points-base, and the point tier runs under
+//                       the POINT_PR_BUDGET_MS ceiling. Without it every point
+//                       is swept FULL with no ceiling — the run a baseline is
+//                       written from, and the local reference
+//   --points-base FILE  the stored points file a PR's points union against
+//
+// --no-incremental makes a PR's points full as well (still under the ceiling,
+// which is about the PR's wall and not about trust).
+const POINTS_OUT = argOf('--points-out');
+const POINTS_PR = argv.includes('--points-pr');
+const POINTS_BASE = argOf('--points-base');
+if (POINTS_BASE && !POINTS_PR) throw new Error('--points-base is what a --points-pr run inherits from; a run without --points-pr sweeps every point full');
 
 // The third argument of the verdict, and the one the scene cannot carry.
 //
@@ -736,6 +756,16 @@ function checkCodeDigest() {
   return out;
 }
 
+// TODO 186 — the code a STORED POINT was produced by: the four files above,
+// plus battery-points.mjs, which composes a point's sweep options and picks
+// its union base. It is digested for points only — it cannot reach a default
+// row, so it stays off CHECK_CODE_FILES and an edit to it voids no default
+// verdict, only every stored point's (decidePointMode sends them FULL).
+function pointsCodeDigest() {
+  return { ...checkCodeDigest(),
+    'tools/battery-points.mjs': createHash('sha256').update(readFileSync(join(ROOT, 'tools/battery-points.mjs'))).digest('hex') };
+}
+
 // §152 — THE SHAPE OF WHAT IS WRITTEN, stamped on both artifacts this harness
 // produces and checked on both it reads.
 //
@@ -776,6 +806,19 @@ function atReportFormat(obj, what) {
   if (obj.formatVersion !== REPORT_FORMAT_VERSION) {
     console.log(`  ${what}: format v${obj.formatVersion ?? 'unversioned'} against this harness's `
       + `v${REPORT_FORMAT_VERSION} — falling back to a FULL run`);
+    return null;
+  }
+  return obj;
+}
+
+// The same rule for the stored points file, against its own version: a file
+// this harness cannot read as the shape it writes is not one a point may
+// inherit from, and every point then sweeps FULL (decidePointMode says so).
+function atPointsFormat(obj) {
+  if (!obj) return null;
+  if (obj.formatVersion !== POINTS_FORMAT_VERSION) {
+    console.log(`  stored points baseline: format v${obj.formatVersion ?? 'unversioned'} against this harness's `
+      + `v${POINTS_FORMAT_VERSION} — every point sweeps FULL`);
     return null;
   }
   return obj;
@@ -836,7 +879,7 @@ const SPEC_POINTS = [
   // §33 step 3 — solveLayout's own arrangement angles.
   { name: 'barrelstep=-20', q: 'barrelstep=-20', expect: 'any', why: '§33 step 3 — the barrel step off its default -35' },
   { name: 'escstep=-70', q: 'escstep=-70', expect: 'any', why: '§33 step 3 — the escape step off its default -57.9' },
-  { name: 'balstep=60', q: 'balstep=60', expect: 'any', why: '§33 step 3 — a balance TARGET the solver must move off' },
+  { name: 'balstep=60', q: 'balstep=60', expect: 'any', sweep: true, why: '§33 step 3 — a balance TARGET the solver must move off' },
   // The alarm corner, including the band that did not build. 175 is TODO 35's
   // own regression case and is here so it can never come back unnoticed.
   { name: 'alarmaz=90', q: 'alarmaz=90', expect: 'any', why: '§33 — the alarm corner at 90°' },
@@ -911,7 +954,7 @@ const SPEC_POINTS = [
   //   · 1 is under the derived floor (1.40): the solver clamps to the
   //     floor and warns — one warn now, measured: the reserve train's tip
   //     check left this row when the key stopped reaching its well.
-  { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', why: '§97 — the seconds well resized inward; measured silent on this tree' },
+  { name: 'subdialr=8', q: 'subdialr=8', expect: 'any', sweep: true, why: '§97 — the seconds well resized inward; measured silent on this tree' },
   { name: 'subdialr=21', q: 'subdialr=21', expect: 'any', why: '§97/§125 Tier B — over the per-station ceiling: clamps to it and warns (TODO 33\'s degeneracy stays closed)' },
   { name: 'subdialr=1', q: 'subdialr=1', expect: 'any', why: '§97 — under the floor: clamps to it and warns (1, measured — the train\'s tip check left with the shared radius)' },
   // §125 — the dial's own radius, re-measured for Tier B: the wells' outer
@@ -957,9 +1000,9 @@ const SPEC_POINTS = [
   //   · 2 is past that end, and is the guard on the clamp: it must WARN with
   //     both bounds and BUILD (a stud inside its own carrier is nonsense, not
   //     NaN) — one warn, measured.
-  { name: 'studr=7.595', q: 'studr=7.595', expect: 'silent', why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
-  { name: 'studr=4.71', q: 'studr=4.71', expect: 'silent', why: '§237 — four coil pitches in, the interior of the window; measured silent' },
-  { name: 'studr=7.1175', q: 'studr=7.1175', expect: 'silent', why: '§237 — one coil pitch in, TODO 147\'s original rule and the old default; measured silent' },
+  { name: 'studr=7.595', q: 'studr=7.595', expect: 'silent', sweep: true, why: '§237 — the outboard end of the window: the terminal re-solves, measured silent' },
+  { name: 'studr=4.71', q: 'studr=4.71', expect: 'silent', sweep: true, why: '§237 — four coil pitches in, the interior of the window; measured silent' },
+  { name: 'studr=7.1175', q: 'studr=7.1175', expect: 'silent', sweep: true, why: '§237 — one coil pitch in, TODO 147\'s original rule and the old default; measured silent' },
   { name: 'studr=2', q: 'studr=2', expect: 'any', why: '§237 — past the inboard end: must warn with both bounds and BUILD, never NaN' },
   // §36 Apply — THE CANONICAL ROUTE, and it is a spec point rather than a
   // probe's private fixture because that is what keeps it honest: every
@@ -992,7 +1035,7 @@ const SPEC_POINTS = [
   // alarm stem by nothing at all. The lesson for Apply's own verdict is that
   // checkRoute's legality and a route's fitness as METAL are two questions,
   // and only the second one is answered by measuring boxes.
-  { name: 'route=2-leg', q: 'route=-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3&routebush=0,0.33', expect: 'silent',
+  { name: 'route=2-leg', q: 'route=-16,-27.71,-6;-16,-27.71,3;-18.5,-32.04,3&routebush=0,0.33', expect: 'silent', sweep: true,
     why: '§36 Apply — a committed route becomes metal: one back-plate bore, one knuckle, one footed bush' },
   // The refusal, asserted as a WARNING rather than a silence: a route that
   // meets a plate edge-on is a channel through it, and Apply must say so and
@@ -1000,6 +1043,48 @@ const SPEC_POINTS = [
   { name: 'route=channel', q: 'route=10,20,-1;30,20,-0.9', expect: 'any',
     why: '§36 Apply — a leg almost in the plate plane is refused, and the movement builds as designed' },
 ];
+
+// TODO 186 B1 — THE POINTS THE BATTERY SWEEPS, and what each costs.
+//
+// `sweep: true` above marks the non-identity points that boot SILENT (seven
+// of them on the tree that landed this; `reconf=1` is the seventh and is not
+// marked, because its configuration key IS the default's — the default's own
+// full run already covers it). battery-points.mjs holds the why of the rest.
+const SWEEP_POINTS = SPEC_POINTS.filter((p) => p.sweep);
+// The tier's cost column, for ordering its lanes — the COSTS rule exactly: a
+// wrong number costs wall clock, never a verdict, and `--report`'s
+// `points[name].ms` refreshes it. Measured FULL on a 4-vCPU dev container
+// (2026-10-01, the run that landed this; seconds of that container's wall,
+// against which the default's own three sweeps took 3,353 s), so only the
+// ratios between these rows mean anything. Kept apart from COSTS because a
+// point is not a BATTERY row, and assertCosts would rightly refuse it there;
+// held both ways against SWEEP_POINTS for assertCosts' reason.
+const POINT_COSTS = {
+  'balstep=60': 1882,     // the three-quarter plate is genuinely re-cut (see battery-points.mjs) — the tier's floor
+  'subdialr=8': 528,
+  'studr=7.595': 917,
+  'studr=4.71': 898,
+  'studr=7.1175': 872,
+  'route=2-leg': 192,
+};
+{
+  const named = new Set(SWEEP_POINTS.map((p) => p.name));
+  const missing = [...named].filter((n) => POINT_COSTS[n] === undefined);
+  const orphan = Object.keys(POINT_COSTS).filter((n) => !named.has(n));
+  if (missing.length || orphan.length) {
+    throw new Error(`POINT_COSTS disagrees with the swept points: no row for [${missing}], rows naming no swept point [${orphan}]`);
+  }
+}
+// THE PR CEILING. A pull request's point tier may add at most this much WALL,
+// measured from the tier's start: a point still sweeping when it runs out is
+// abandoned and SKIPPED — unverified this run, named in the log, never clean.
+// A wall clock rather than a predicted cost because the prediction would be
+// this file's cost column, which the header above records being 2.4× wrong
+// between two machines; the ceiling is the owner's (TODO 186: "the PR's added
+// wall stays at or under about 10 min") and a wall is what it bounds. Push and
+// dispatch runs have no ceiling — they write the baseline, so they sweep
+// every point whole.
+const POINT_PR_BUDGET_MS = 10 * 60 * 1000;
 
 // TODO 182 step 3 — "builds" must mean "builds METAL". Until this, a spec point
 // passed the tier by producing a `__clock`, and `alarmr=20` / `alarmr=46` did
@@ -1089,6 +1174,7 @@ function assemble({
   fpA, fpB, digestsB,
   fpShare,          // { fp, link, leaves } from the §240 share boot, or null
   spec,             // { rows, ms } from the spec-boot tier
+  points,           // TODO 186 — the point tier's measurement, or null where it did not run
   headDigests, restriction, baseline,
   split, specOnly,
   t0,
@@ -1369,6 +1455,37 @@ function assemble({
     spec.rows.filter((r) => r.expect === 'silent' && (!r.alive || r.warns.length))
       .map((r) => ({ spec: r.name, warns: r.warns, note: 'the default spec is what every other gate boots — if it warns here, the trial path differs from the real one' })));
 
+  // TODO 186 B1 — THE POINT SWEEPS, JUDGED. Each point's restricted payloads
+  // are unioned with their base — this run's default (FULL) or the point's
+  // stored whole payload (INCREMENTAL) — and read by the battery's own gate
+  // predicates (battery-points.mjs judgePoint). A FINDING is not a failure of
+  // this run: the battery gates the default build, and an unlisted point
+  // claims nothing. What gates here is work that did not happen — a point
+  // that died, or could not be unioned — because that is a smaller run that
+  // would otherwise read like a clean one. A SKIPPED point (the PR ceiling)
+  // is neither: it is unverified this run, and gate 3 below says so.
+  const pointRows = new Map();
+  const pointWhole = new Map();
+  if (points) {
+    const defaults = {};
+    for (const name of ['inspection', 'clearances', 'undeclaredClearance']) defaults[name] = results.get(name)?.result;
+    for (const pt of SWEEP_POINTS) {
+      const j = judgePoint(pt, points.got[pt.name], { defaults, entry: points.entries[pt.name] });
+      pointRows.set(pt.name, j.row);
+      if (j.merged) pointWhole.set(pt.name, j);
+      const r = j.row;
+      const counts = r.perCheck ? Object.entries(r.perCheck).map(([n, c]) => `${n} ${c.failCount}`).join(', ') : '';
+      console.log(`  point ${pt.name.padEnd(16)} ${String(r.verdict).toUpperCase().padEnd(8)} ${r.mode ?? ''}`
+        + (r.changed ? ` · ${r.changed.length} changed` : '') + (counts ? ` · ${counts}` : '') + (r.why ? ` — ${r.why}` : ''));
+      if (r.verdict === 'finding') console.log(JSON.stringify(r.perCheck, null, 2));
+    }
+    const by = (v) => [...pointRows.values()].filter((r) => r.verdict === v).length;
+    gate('point sweeps: every swept point was measured and judged (TODO 186)',
+      [...pointRows.values()].filter((r) => r.verdict === 'broken').map((r) => ({ point: r.name, mode: r.mode, why: r.why })),
+      `${pointRows.size} points: ${by('clean')} clean, ${by('finding')} finding(s), ${by('skipped')} skipped by the PR ceiling, `
+      + `${by('warns')} warning · ${[...pointRows.values()].filter((r) => r.mode === 'incremental').length} incremental · ${secs(points.ms)}`);
+  }
+
   // TODO 158 — THE VALIDATED-CONFIGURATION SET, held true by the battery that
   // vouches for it. The page marks any build whose configuration key
   // (layout.js configKey) is not in src/validated-configs.js as UNVERIFIED; these
@@ -1391,19 +1508,54 @@ function assemble({
     // read verified — a page that marked everything, or nothing, fails here.
     const f2 = alive.filter((r) => r.config && r.config.verified !== set.has(r.config.key))
       .map((r) => ({ spec: r.name, key: r.config.key, verified: r.config.verified, listed: set.has(r.config.key) }));
+    // A control the spec tier was not asked to boot (--only narrows it to the
+    // identity) is not missing — it was not run, and the note says so. Before
+    // TODO 186 this failed every --only run, probe-127-matrix's included.
+    const skippedControls = [];
     for (const [name, want] of [['d4=16', false], ['reconf=1', true], ['route=channel', true]]) {
       const r = alive.find((x) => x.name === name);
-      if (!r || !r.config) f2.push({ control: name, missing: true });
+      if (!spec.rows.some((x) => x.name === name)) skippedControls.push(name);
+      else if (!r || !r.config) f2.push({ control: name, missing: true });
       else if (r.config.verified !== want) f2.push({ control: name, verified: r.config.verified, want, reasons: r.config.reasons });
     }
     gate('validated configs: every spec point\'s mark agrees with the set', f2,
-      `${alive.filter((r) => r.config && r.config.verified).length} verified, ${alive.filter((r) => r.config && !r.config.verified).length} marked unverified`);
+      `${alive.filter((r) => r.config && r.config.verified).length} verified, ${alive.filter((r) => r.config && !r.config.verified).length} marked unverified`
+      + (skippedControls.length ? ` · controls not booted this run: ${skippedControls.join(', ')}` : ''));
     // 3 — no entry the battery cannot reproduce (UNDECLARED_CLEARANCE_DEBT's
-    // closed-ratchet shape: a stale row fails, it does not linger as a claim)
+    // closed-ratchet shape: a stale row fails, it does not linger as a claim).
+    // TODO 186: and every listed POINT must have swept clean THIS run — full or
+    // incremental, both whole-movement verdicts. A point the PR ceiling skipped
+    // is not failed and is not verified: the note names it UNVERIFIED THIS RUN,
+    // and the next push run sweeps it whole with no ceiling. Where the tier
+    // did not run at all (--only, --spec-only) the note says that instead.
+    // A listed point the spec tier did not boot THIS run (--only narrows it to
+    // the identity) cannot be stale or verified here — the note says so. A
+    // listed point no SPEC_POINTS row declares is a typo or a deleted row, and
+    // fails whatever the tier ran.
     const seen = new Set(alive.filter((r) => r.config).map((r) => r.config.key));
+    const booted = new Set(spec.rows.map((r) => r.name));
+    const declared = new Set(SPEC_POINTS.map((p) => p.name));
+    const unverified = [];
+    const f3 = [];
+    for (const e of VALIDATED_CONFIGS) {
+      if (!declared.has(e.point)) f3.push({ point: e.point, key: e.key, why: 'listed under a name no SPEC_POINTS row declares' });
+      else if (!booted.has(e.point)) unverified.push(`${e.point} (not booted this run)`);
+      else if (!seen.has(e.key)) f3.push({ point: e.point, key: e.key, stale: true });
+    }
+    const idKey = id?.config?.key;
+    for (const e of VALIDATED_CONFIGS) {
+      if (e.key === idKey || !seen.has(e.key)) continue;
+      if (!points) { unverified.push(`${e.point} (no point tier this run)`); continue; }
+      const r = [...pointRows.values()].find((x) => x.key === e.key) ?? pointRows.get(e.point);
+      if (!r) f3.push({ point: e.point, key: e.key, why: 'listed, but no swept point builds this key' });
+      else if (r.verdict === 'skipped') unverified.push(`${e.point} (skipped: ${r.why})`);
+      else if (r.verdict !== 'clean' || r.key !== e.key) {
+        f3.push({ point: e.point, key: e.key, verdict: r.verdict, sweptKey: r.key, why: r.why ?? 'a listed point must sweep clean every run' });
+      }
+    }
     gate('validated configs: every listed key is one this run built and swept',
-      VALIDATED_CONFIGS.filter((e) => !seen.has(e.key)).map((e) => ({ point: e.point, key: e.key, stale: true })),
-      `${VALIDATED_CONFIGS.length} listed`);
+      f3, `${VALIDATED_CONFIGS.length} listed`
+      + (unverified.length ? ` · UNVERIFIED THIS RUN: ${unverified.join('; ')}` : ''));
   }
 
   // ---- §95 tier two: the SKIP LIST is held true --------------------------
@@ -1507,6 +1659,9 @@ function assemble({
       // whole verdict from an inherited one without reading the log.
       ...(headDigests ? { digests: headDigests } : {}),
       ...(restriction ? { restrictedTo: restriction } : {}),
+      // TODO 186 — each point's verdict and per-check failures. The WHOLE
+      // payloads go to --points-out, which is what a baseline stores.
+      ...(points ? { points: Object.fromEntries(pointRows) } : {}),
       // The WHOLE table, never `--only`'s selection: a row this run did not
       // run reads `neverRan`, which is what a narrowed run's report should say
       // about the rest of the battery rather than omitting it.
@@ -1522,6 +1677,29 @@ function assemble({
     };
     writeFileSync(resolve(REPORT_PATH), `${JSON.stringify(report, null, 2)}\n`);
     console.log(`report written to ${resolve(REPORT_PATH)}`);
+  }
+
+  // TODO 186 — THE POINTS BASELINE. Only WHOLE verdicts are written (clean or
+  // finding: both carry a merged whole-movement payload a later union may
+  // stand on); a skipped, warning or broken point has none, and its absence
+  // sends the next PR's point FULL, which is the direction every doubt takes.
+  // Written on every run that swept points; whether it BECOMES a baseline is
+  // the workflow's decision (a push, or a dispatch on the default branch),
+  // exactly as for the report beside it.
+  if (POINTS_OUT && points) {
+    const out = {
+      formatVersion: POINTS_FORMAT_VERSION,
+      checkCode: pointsCodeDigest(),
+      // A baseline only if WHOLE: not a PR's (its points may be incremental) and
+      // not unioned against a restricted default (§152's chaining rule).
+      whole: !points.pr && !restriction,
+      points: Object.fromEntries([...pointWhole].map(([name, j]) => [name, {
+        q: j.row.q, key: j.row.key, verdict: j.row.verdict, mode: j.row.mode, changed: j.row.changed,
+        digests: j.digests, result: j.merged,
+      }])),
+    };
+    writeFileSync(resolve(POINTS_OUT), `${JSON.stringify(out)}\n`);
+    console.log(`points written to ${resolve(POINTS_OUT)} (${pointWhole.size} whole point payload(s))`);
   }
 
   if (failed.length) {
@@ -1720,6 +1898,59 @@ async function runSpecTier(browser, base, points) {
   return { rows, ms: Date.now() - specT0 };
 }
 
+// TODO 186 B1 — THE POINT TIER. Runs after the spec tier, on the worker that
+// owns the anchors (the spec tier's rule, for the same reason: it boots its
+// own pages and competes with nothing once the shards have closed), in a pool
+// of SHARDS lanes. What it returns is measurement only — the unions and the
+// verdicts are the assembly's (judgePoint), so a collector judges a worker's
+// points exactly as one process judges its own.
+//
+// The stored entries an incremental point unions against travel WITH the
+// result, so the assembly half needs no second copy of --points-base and a
+// collector cannot be handed a different one than its worker used.
+async function runPointTier(browser, base, { stored, incremental }) {
+  const tierT0 = Date.now();
+  const deadline = POINTS_PR ? tierT0 + POINT_PR_BUDGET_MS : null;
+  const checkCode = pointsCodeDigest();
+  const plan = SWEEP_POINTS.map((point) => ({ point, ...decidePointMode({ name: point.name, stored, checkCode, incremental }) }));
+  console.log(`point sweeps (${plan.length} silent spec points${POINTS_PR ? `, PR ceiling ${secs(POINT_PR_BUDGET_MS)} of wall` : ', full, no ceiling'})…`);
+  for (const p of plan) console.log(`  ${p.point.name.padEnd(16)} ${p.mode.toUpperCase()} — ${p.why}`);
+  const bootInTurn = serialiser();
+  let againstDefault = null;
+  if (plan.some((p) => p.mode === 'full')) {
+    try {
+      againstDefault = await defaultPointDigests({ browser, base, bootInTurn, bootTimeoutMs: BOOT_TIMEOUT_MS });
+    } catch (err) {
+      console.log(`  the default's point digests could not be read: ${err.message}`);
+    }
+  }
+  // Order: on a PR the cheap incremental points first and then the full ones
+  // cheapest first, so the ceiling buys the most verified points; otherwise
+  // longest first (LPT), which is the wall-minimising order for the pool.
+  const cost = (p) => (p.mode === 'incremental' ? 0 : POINT_COSTS[p.point.name]);
+  const order = [...plan].sort((a, b) => (POINTS_PR ? cost(a) - cost(b) : cost(b) - cost(a)));
+  const got = {};
+  const entries = {};
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(SHARDS, order.length) }, async () => {
+    for (;;) {
+      const p = order[next++];
+      if (!p) return;
+      if (p.mode === 'incremental') entries[p.point.name] = p.entry;
+      const against = p.mode === 'incremental' ? p.entry.digests : againstDefault;
+      got[p.point.name] = against
+        ? await sweepPoint({ browser, base, point: p.point, mode: p.mode, against, bootInTurn,
+          bootTimeoutMs: BOOT_TIMEOUT_MS, checkTimeoutMs: CHECK_TIMEOUT_MS, deadline })
+        : { q: p.point.q, mode: p.mode, error: 'no default digests to compare a full point against', ms: 0 };
+      const g = got[p.point.name];
+      console.log(`  ${g.skipped ? '…' : g.error ? '✗' : '·'} ${p.point.name.padEnd(16)} ${p.mode} `
+        + (g.skipped ? `SKIPPED (${g.skipped})` : g.error ? `ERROR ${g.error.split('\n')[0]}`
+          : `${g.changed.length} changed [${g.changed.join(', ')}] · ${secs(g.ms)}`));
+    }
+  }));
+  return { got, entries, plan: plan.map((p) => ({ name: p.point.name, mode: p.mode, why: p.why })), pr: POINTS_PR, ms: Date.now() - tierT0 };
+}
+
 // ---- §127 tier 3: THE COLLECTOR -----------------------------------------
 //
 // No browser, no dev server: every payload it needs was measured by a worker.
@@ -1844,6 +2075,7 @@ if (COLLECT) {
     digestsB: anchor.anchors.digestsB,
     fpShare: anchor.anchors.fpShare ?? null,
     spec: anchor.spec,
+    points: anchor.points ?? null,
     headDigests: anchor.preflight.headDigests,
     restriction,
     baseline,
@@ -2000,6 +2232,14 @@ try {
   const spec = ownsAnchors
     ? await runSpecTier(browser, base, ONLY ? SPEC_POINTS.filter((p) => p.name === 'identity') : SPEC_POINTS)
     : null;
+  // TODO 186 B1 — the point tier, on the anchors' worker. Not under --only or
+  // --spec-only: a narrowed default payload is not a whole movement, so there
+  // would be nothing sound to union a point against.
+  let points = null;
+  if (ownsAnchors && !ONLY && !SPEC_ONLY) {
+    const stored = POINTS_PR ? atPointsFormat(readJsonOr(POINTS_BASE, 'stored points baseline')) : null;
+    points = await runPointTier(browser, base, { stored, incremental: POINTS_PR && !NO_INCREMENTAL });
+  }
 
   if (MATRIX) {
     // A worker evaluates NOTHING. It writes what it measured — its task
@@ -2020,6 +2260,7 @@ try {
         ? { fpA: ran.fpA, fpB, digestsB, fpShare, axisMeta: ran.axisMeta, checkRoster: ran.checkRoster }
         : null,
       spec,
+      points,
     })}\n`);
     console.log(`worker ${MATRIX.i}/${MATRIX.n}: ${ran.results.size} task payload(s) from shard(s) `
       + `[${group.map((g) => g.index).join(', ')}]${ownsAnchors ? ' + the anchors' : ''} `
@@ -2038,6 +2279,7 @@ try {
       digestsB,
       fpShare,
       spec,
+      points,
       headDigests,
       restriction,
       baseline,

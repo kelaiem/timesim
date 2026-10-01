@@ -32,8 +32,14 @@ const touches = (changed, a, b) => changed.has(a) || changed.has(b);
 // pairs must be DROPPED rather than merged: head is authoritative wherever it
 // looked). `units` and `axes` come from head; `census` is a report of work
 // this run did and is head's too.
-export function unionInspection(base, head, changed) {
-  if (JSON.stringify(base.units) !== JSON.stringify(head.units)) {
+export function unionInspection(base, head, changed, { point = false } = {}) {
+  // TODO 186 — a SPEC POINT may add or drop a unit (an applied route is one),
+  // and such a unit is in the changed set by construction (digestChangedUnits
+  // counts a unit missing from either side). So a point's lists need only
+  // agree OUTSIDE the changed set: those are the units the default's rows are
+  // entitled to speak for. Everywhere else the full identity is required.
+  const outside = (u) => (point ? u.filter((n) => !changed.has(n)) : u);
+  if (JSON.stringify(outside(base.units)) !== JSON.stringify(outside(head.units))) {
     throw new Error('inspection: the baseline collected a different unit list — its rows cannot describe this tree');
   }
   if (JSON.stringify(base.axes) !== JSON.stringify(head.axes)) {
@@ -171,8 +177,11 @@ function judgeUndeclared(rows, debtTable) {
 // UNRESTRICTED in every call (checkUndeclaredClearance's own rule), so a
 // restricted run's controls already speak for the whole movement and the
 // baseline's controls answer nothing a fresh run does not.
-export function unionUndeclared(base, head, changed) {
-  if (base.population !== head.population) {
+export function unionUndeclared(base, head, changed, { point = false } = {}) {
+  // TODO 186 — a spec point that adds or drops a unit changes the population
+  // by exactly that unit's pairs, all of which touch the changed set and are
+  // head's; the entitlement is the untouched pairs, so a point skips this.
+  if (!point && base.population !== head.population) {
     throw new Error('undeclaredClearance: the baseline reports a different unit-pair population — '
       + 'its rows cannot describe this tree');
   }
@@ -200,12 +209,24 @@ export function unionUndeclared(base, head, changed) {
 // A check with no restriction record ran WHOLE and is returned untouched —
 // which is every cheap check, deliberately (they sum to ~76 s and they are
 // where a key mistake would hide, so nothing skips them).
-export function unionCheck(name, baseResult, headResult, changed) {
+//
+// `point` (TODO 186) is the one other caller: a SPEC POINT's restricted sweep,
+// unioned either against the DEFAULT build's whole payload from the same run
+// (a full point sweep: the changed set is point-vs-default) or against the
+// point's OWN stored whole payload from the baseline (an incremental one: the
+// changed set is point-vs-stored-point). The entitlement is §152's in both —
+// an untouched pair's two units are digest-identical between the two builds —
+// and only the two unit-list identities above relax, to "identical outside
+// the changed set", because a point may add or drop a unit (an applied route).
+export function unionCheck(name, baseResult, headResult, changed, { point = false } = {}) {
   if (!headResult || !headResult.restriction) return headResult;
   if (!baseResult) throw new Error(`${name}: restricted, but the baseline has no payload for it`);
+  if (point && !['inspection', 'clearances', 'undeclaredClearance'].includes(name)) {
+    throw new Error(`${name}: a spec point's sweep is inspection, clearances and undeclaredClearance only`);
+  }
   switch (name) {
     case 'inspection':
-      return unionInspection(baseResult, headResult, changed);
+      return unionInspection(baseResult, headResult, changed, { point });
     case 'clearances':
       return unionRowTable(baseResult, headResult, {
         rowsKey: 'results',
@@ -222,7 +243,7 @@ export function unionCheck(name, baseResult, headResult, changed) {
     case 'sweptOverlap':
       return unionSweptOverlap(baseResult, headResult);
     case 'undeclaredClearance':
-      return unionUndeclared(baseResult, headResult, changed);
+      return unionUndeclared(baseResult, headResult, changed, { point });
     default:
       throw new Error(`${name}: restricted, but nothing knows how to union it`);
   }
