@@ -1232,7 +1232,7 @@ export function revolvedBlanksClearance(A, fA, B, fB, target) {
   if (apart >= tgt) return { ok: true, lb: apart - epsAB };
   const NO = { ok: false, lb: -Infinity };
   let lb = Infinity;
-  const { u, v } = _basis(fA.a), aA = fA.a;
+  const aA = fA.a;
   // COAXIAL blanks — two keyed to one rod — are two solids of revolution about
   // ONE axis, so their distance is the distance between their meridians in a
   // single half-plane (turning a point about the shared axis into the other's
@@ -1266,17 +1266,29 @@ export function revolvedBlanksClearance(A, fA, B, fB, target) {
     const zb = qx * aB[0] + qy * aB[1] + qz * aB[2];
     return _sdEnv(B, Math.sqrt(Math.max(0, q2 - zb * zb)), zb);
   };
+  // B inside A with no surface crossing would read clear from A's side alone:
+  // a point of B's web is tested against A's solid
+  const { u: ub } = _basis(aB);
+  const zm = (B.poly[0][1] + B.poly[B.poly.length - 1][1]) / 2, rm = B.poly[1][0] / 2;
+  const pB = [oB[0] + aB[0] * zm + ub[0] * rm, oB[1] + aB[1] * zm + ub[1] * rm, oB[2] + aB[2] * zm + ub[2] * rm];
+  return _sampledClearance(A, fA, sdB, oB, B.R, pB, tgt, epsAB);
+}
+// THE SAMPLER both judgements share (TODO 185 split it out of the pair
+// judgement above, unchanged): A's envelope surface against any solid given
+// as a signed distance `sdB`, culled by that solid's bounding sphere (centre
+// cB, radius RB), with `pB` a point inside it for the containment test.
+function _sampledClearance(A, fA, sdB, cB, RB, pB, tgt, epsAB) {
+  const NO = { ok: false, lb: -Infinity };
+  let lb = Infinity;
+  const oA = fA.o, aA = fA.a;
+  const { u, v } = _basis(aA);
   const world = (r, z, psi) => {
     const c = Math.cos(psi) * r, s = Math.sin(psi) * r;
     return [oA[0] + aA[0] * z + u[0] * c + v[0] * s, oA[1] + aA[1] * z + u[1] * c + v[1] * s,
       oA[2] + aA[2] * z + u[2] * c + v[2] * s];
   };
-  // B inside A with no surface crossing would read clear from A's side alone
   {
-    const { u: ub } = _basis(aB);
-    const zm = (B.poly[0][1] + B.poly[B.poly.length - 1][1]) / 2, rm = B.poly[1][0] / 2;
-    const p = [oB[0] + aB[0] * zm + ub[0] * rm, oB[1] + aB[1] * zm + ub[1] * rm, oB[2] + aB[2] * zm + ub[2] * rm];
-    const qx = p[0] - oA[0], qy = p[1] - oA[1], qz = p[2] - oA[2];
+    const qx = pB[0] - oA[0], qy = pB[1] - oA[1], qz = pB[2] - oA[2];
     const za = qx * aA[0] + qy * aA[1] + qz * aA[2];
     if (_sdEnv(A, Math.sqrt(Math.max(0, qx * qx + qy * qy + qz * qz - za * za)), za) < tgt) return NO;
   }
@@ -1296,7 +1308,7 @@ export function revolvedBlanksClearance(A, fA, B, fB, target) {
       const psi = (j * 2 * Math.PI) / n;
       const p = world(r, z, psi);
       // B lies inside its sphere R: a sample that far off is settled unread
-      const sph = Math.hypot(p[0] - oB[0], p[1] - oB[1], p[2] - oB[2]) - B.R;
+      const sph = Math.hypot(p[0] - cB[0], p[1] - cB[1], p[2] - cB[2]) - RB;
       if (sph >= tgt + d0) { if (sph - d0 < lb) lb = sph - d0; continue; }
       const d = sdB(p[0], p[1], p[2]);
       if (d < tgt) return NO;
@@ -1329,6 +1341,32 @@ export function revolvedBlanksClearance(A, fA, B, fB, target) {
     cells = next;
   }
   return { ok: true, lb: lb - epsAB };
+}
+// TODO 185 — A BLANK AGAINST A SWEPT DISC. A wheel or star turning about its
+// own axis can occupy, over a revolution, exactly the solid cylinder of its
+// tip radius over its axial band — so that cylinder is its swept envelope, and
+// unlike a bevel blank's it needs no azimuthal allowance (eps 0): every tooth
+// lies inside its own tip circle. `D` is { o, a, r, zLo, zHi }: the axis
+// through o along the unit a, the tip radius r, and the band [zLo, zHi]
+// measured along a from o. The distance to a cylinder is exact in its own
+// meridian (ρ, z), so this is the pair judgement above with that one solid in
+// place of B's envelope — the same sampler, the same certified lower bound.
+export function revolvedBlankDiscClearance(A, fA, D, target) {
+  const tgt = target + A.eps;
+  const a = D.a, zm = (D.zLo + D.zHi) / 2, hz = (D.zHi - D.zLo) / 2;
+  const c = [D.o[0] + a[0] * zm, D.o[1] + a[1] * zm, D.o[2] + a[2] * zm];
+  const R = Math.hypot(D.r, hz);
+  const oA = fA.o;
+  const apart = Math.hypot(oA[0] - c[0], oA[1] - c[1], oA[2] - c[2]) - A.R - R;
+  if (apart >= tgt) return { ok: true, lb: apart - A.eps };
+  const sd = (x, y, z) => {
+    const qx = x - D.o[0], qy = y - D.o[1], qz = z - D.o[2];
+    const zb = qx * a[0] + qy * a[1] + qz * a[2];
+    const rho = Math.sqrt(Math.max(0, qx * qx + qy * qy + qz * qz - zb * zb));
+    const dr = rho - D.r, dz = Math.max(D.zLo - zb, zb - D.zHi);
+    return dr <= 0 && dz <= 0 ? Math.max(dr, dz) : Math.hypot(Math.max(dr, 0), Math.max(dz, 0));
+  };
+  return _sampledClearance(A, fA, sd, c, R, c, tgt, A.eps);
 }
 
 // Punch a central bore plus `spokes` crescent (annular-sector) cutouts into a

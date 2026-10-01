@@ -5934,9 +5934,10 @@ const RSV_SWING_MAX_DEG = 30;
 // 2·CLEAR_MARGIN because a pair an upstream change moves by up to one whole
 // margin — the battery's own unit of "clear" — must still land legal;
 // first-feasible left the reserve 0.0227 over the margin, where any such move
-// reads red. The cap leg's tilt and stub are NOT on it yet: raising them to
-// FOLD_SAT carries the foot corner into the minute star (0.0727 at the pose
-// net), because those solvers judge only the fold's own corners — TODO 185.
+// reads red. The cap leg's tilt and stub are on it since TODO 185, which gave
+// the tilt the motion works' star and minute wheel to judge as well: raised
+// without them, the leg carried the rise corner into the star (0.0727 at the
+// pose net), because those solvers judged only the fold's own corners.
 const FOLD_SAT = 2 * CLEAR_MARGIN;
 async function solveReserveSwing(pts) {
   // Each member's z-band is its FACE REACH AS CUT plus one margin — not its
@@ -6066,6 +6067,300 @@ function solveSettingFold(B) {
   return { K, leg1U, leg2U, side, phi, beta2, alpha, alphaDeg, shaftAngleDeg, needCol,
     len1: settingA.distanceTo(K), len2: K.distanceTo(B) };
 }
+// TODO 185 — HOISTED from the motion works' build: the §29 centre z-chain, the
+// motion-works planes it lands on, and the star's slice and tip radius. The
+// cap leg below holds its corners off the minute wheel's and the star's
+// SWEPT DISCS, and both discs are these numbers, so they must exist before the
+// leg is solved — the precedent the MW_* layout constants already set ("the
+// setting arbor terminates at the minute wheel and needs them long before the
+// dial is built"). Nothing here is restated: each line is the one source, moved
+// whole, and every consumer downstream reads the same names.
+// ---------------------------------------------------------------------------
+// §29 CENTRE Z-CHAIN (steps 1–2) — the whole stack behind the dial sheet,
+// derived TOP-DOWN in one place (dialFace-local; world = −7 − local). Each
+// member's plane is the previous member's far face plus exactly the margin
+// or working contact the mechanism needs; the motion-works planes at the
+// bottom are WHERE THE CHAIN LANDS, not chosen numbers. (§25 C's block
+// below consumes these; they are hoisted here because the motion works
+// builds first.)
+// ---------------------------------------------------------------------------
+// §34: HEART-B's band — the second heart, FIXED to the setting wheel's
+// plate-side face (one member: no margin between them), its follower
+// sharing the band the way heart-A's arm shares its own. The flange and
+// everything below it re-derive 0.45 deeper; total stack height is
+// UNCHANGED (the slack below the hour wheel absorbs it — the plate gap
+// closes 1.08 → 0.62, both asserted).
+const ALARM_HEART_B_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.30); mirror of heart-A's crisp band
+// §51 phase A — the two worst §50 debts in this chain, funded from the
+// plate-side end gap (measured 0.62; §34's own note). The setting wheel and
+// lane share ONE thickness (hoisted here from the lane block so the chain
+// can consume it), raised 0.18 → floor stock; the carrier flange — 0.08 u =
+// 0.03 mm, the census's thinnest structural sheet — likewise. Everything
+// below re-derives deeper by the +0.38 total, the §34 precedent in reverse,
+// and the end gap absorbs it leaving ≥ the margin. The literals that USED to
+// mirror this chain's numbers (the arm band slice, the corridor asserts) are
+// expected to trip their tripwires on first boot — that enumeration is the
+// worklist, not collateral.
+const ALARM_SET_T = STOCK_MIN_U;               // was 0.18 (§29 step 1's thinning, now unwound)
+const ALARM_TUBE_BACK = -(ALARM_SHEET_GAP + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
+const ALARM_FLANGE_T = STOCK_MIN_U;            // was 0.08 — the 0.03 mm flange
+const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30); heart band, one CLEAR_MARGIN under the flange:
+const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // band −1.30..−1.62
+// ---------------------------------------------------------------------------
+// §45 stage 0 — the CAM SLEEVE's band. Letting the alarm hand be SET visibly
+// needs follower-A lifted clear of its heart at any relative phase, and the
+// one interface in the selector chain with any compliance is the follower
+// itself (the roadmap entry's build correction). The lifter is a static
+// full-circle ring below the heart/arm band — a coned bore pressing an axial
+// TAIL PIN on the arm at any tube azimuth — and this block buys its band the
+// §51 way: every neighbour below re-derives deeper, and Z_DIAL deepens by the
+// same amount, so the chain's landing at the plate is untouched and every
+// member below the insertion keeps its solved WORLD plane. The geometry is
+// stage 1; the spend is made ALONE first so the tripwire list measures the
+// real blast radius (§51 phase B's own discipline).
+//
+// The lift, from the same triangle tick() solves (the follower kinematics are
+// hoisted here from the arm build — the chain must price the swing):
+//   seated:   nose orbit at RMIN + noseR
+//   released: nose clear of the heart's MAX radius by the 0.05 lift
+//             clearance follower-B's ALARM_PINB_LIFT already uses
+// The tail is the SHORTEST that physically exists past the pivot (post radius
+// + pin boss + web) — the pin's radial stroke GROWS with tail length, so
+// short is cheap. The cone is 45°: axial travel ≡ radial stroke, no invented
+// ratio. The band prices the whole ENGAGEMENT, not just the stroke: at rest
+// the skirt sits wholly BELOW the pin's tip with the same 0.05 gap (riding
+// must not feel the sleeve — a rest interference would hold the nose off its
+// heart and break the hour coupling), so the travel is stroke + gap; the
+// skirt's face covers the stroke plus first-touch at the instrument's ±0.03.
+const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75; // profile radii (thickness/z live above in this chain)
+const ALARM_NOSE_R = 0.2;                       // follower roller
+// §45: 3.68 → 3.80. Priced against the LOBE, not the flange: at 3.68 the
+// heart's max radius (3.55) swept INSIDE the post's inner edge (3.46) —
+// a 0.09 collision at every lobe-under-post pose whenever the tube and the
+// hour move relative (armed, and §45's released setting), invisible to the
+// sweep behind the pair's EXPECTED blanket (TODO item 6's class, measured
+// here). Inner edge now clears the lobe by the working 0.03; the outer edge
+// (4.02) still seats fully on the 4.05 flange, 0.03 inside its rim.
+const ALARM_PIVOT_R = 3.55 + 0.22 + 0.03;       // pivot post radius (tube frame, az π) = lobe + post r + working
+const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
+// Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
+// seated nose) — the same constants tick() solves against, so the built arm
+// and the posed arm cannot drift apart.
+const _alarmSeatD = ALARM_HEART_RMIN + ALARM_NOSE_R;
+const _alarmSeatT = { x: _alarmSeatD * Math.cos(ALARM_NOSE_AZ), y: _alarmSeatD * Math.sin(ALARM_NOSE_AZ) };
+const ALARM_FOLLOWER_LEN = Math.hypot(_alarmSeatT.x + ALARM_PIVOT_R, _alarmSeatT.y);
+const alarmArmAngleAt = (d) => Math.acos(clamp(
+  (ALARM_PIVOT_R * ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * ALARM_FOLLOWER_LEN - d * d)
+  / (2 * ALARM_PIVOT_R * ALARM_FOLLOWER_LEN), -1, 1));
+const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
+const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
+const ALARM_A_RELEASE_D = ALARM_HEART_R + ALARM_NOSE_R + 0.05; // nose orbit, released (3.80)
+const ALARM_A_RELEASE_PHI = alarmArmAngleAt(ALARM_A_RELEASE_D);
+const ALARM_A_PIN_R = flatsR(PIVOT_MIN_U, 10); // tail pin radius — the 10-gon's FLATS measure ⌀ 0.07 mm exactly (§50's census reads the tessellated stock, so the floor is built into the flats, not the circumradius). TODO 11 tranche five named this derivation `flatsR`; the 0.0924 it used to spell out is PIVOT_MIN_U / 2.
+const ALARM_A_TAIL_LEN = 0.22 + STOCK_MIN_R10 + 0.07; // post radius + pin boss (pin + wall) + web
+const alarmTailRAt = (phi) => Math.sqrt(ALARM_PIVOT_R * ALARM_PIVOT_R
+  + 2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN * Math.cos(phi) + ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN);
+const ALARM_SLEEVE_DR = alarmTailRAt(ALARM_FOLLOWER_A0) - alarmTailRAt(ALARM_A_RELEASE_PHI); // 0.186 — the pin's radial stroke
+const ALARM_SLEEVE_T = STOCK_MIN_U;                       // ring at sheet floor stock
+const ALARM_SLEEVE_GAP = 0.05;                            // rest gap, skirt top → pin tip (the B-side lift-clearance figure)
+const ALARM_SLEEVE_TRAVEL = ALARM_SLEEVE_DR + ALARM_SLEEVE_GAP;  // rise: close the gap, then press the stroke (45°: axial ≡ radial)
+const ALARM_SLEEVE_SKIRT_H = ALARM_SLEEVE_DR + 0.03;      // cone face: the stroke + first-touch cover at the instrument's tol
+const ALARM_SLEEVE_ENV = ALARM_SLEEVE_SKIRT_H + ALARM_SLEEVE_T + ALARM_SLEEVE_TRAVEL; // 0.770 — the swept band
+const ALARM_SLEEVE_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // envelope ceiling: one margin under the heart band
+// §29 step 2/3 stack under the heart: fixed feeler (§45: one margin below the
+// sleeve's swept band now, was one margin below the co-rotating heart), its
+// pin riding the disc's raised notch track, the disc body, then one margin to
+// the minute wheel.
+const ALARM_FEELER_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.10 — the feeler's slices were the band's thinnest levers)
+const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + MEASURED_MARGIN_BAND); // −2.69 (§45; was −1.77). TODO 173: + the band — the static plane lands exactly one margin off the sleeve's skirt, which a strict < reads either side of (TODO 172's precedent)
+// §45 tripwire — the fund and the spend must agree: Z_DIAL deepened from the
+// §51-era −7.5 by exactly what the chain grew (the sleeve band replaced a
+// bare margin gap, so growth = envelope + one margin). Under-funded, the
+// landing eats the difference at the plate; over-funded past the rounding
+// grid, the dial carries slush no constraint asked for.
+{
+  const spend = ALARM_SLEEVE_ENV + CLEAR_MARGIN;  // chain growth vs the pre-§45 stack
+  const fund = -7.5 - Z_DIAL;                     // −7.5: the §51 phase-B dial plane, §45's datum
+  if (fund < spend - 1e-9 || fund > spend + 0.01)
+    console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
+}
+// TODO 173 — no pin hangs here since TODO 117; what this stand-off buys now is
+// the dropped arm one CLEAR_MARGIN over the disc body. With the rock about the
+// pin (and TRACK-ward at the tip), the arm's underside at its inboard end —
+// FEELER_ARM_RUN from the pivot, where the jog takes over (its foot stands
+// clear of the track by its own term) — dips D·ARM_RUN/ARM_LEN, so the shank
+// must cover CLEAR_MARGIN − ALARM_TRACK_H + that dip. The terms
+// live at the feeler build, 3,700 lines down, so the number is hoisted here and
+// asserted there against its derivation (achieved vs required; it was 0.04 and
+// left the dropped arm 0.1292 over the body).
+//
+// TODO 179 — the deeper notch below (ALARM_TRACK_H = drop + margin) puts that
+// need at −0.019, so the body no longer binds the shank. What binds it now is
+// the jog's radial BOXING: the shank sets how far dial-ward of the arm the
+// collar's ring rides, the ring's height sets the rock's lean at the jog, and
+// the jog already stands at the margin from the ring on one side and from the
+// Alarm disc follower's tail pin on the other (0.1518 / 0.1522). Measured,
+// spending the 0.08 as a SHORTER shank (the track grown dial-ward, the body
+// left where it was) leaned the jog 0.0033 outboard onto that pin at 0.1490.
+// So the shank keeps its value and the notch deepens plate-ward: the disc
+// body and everything the motion-works solve hangs under it pay the 0.08.
+const ALARM_PIN_SHANK = 0.061;
+// The track is TALL (ALARM_TRACK_H, derived below) and the pin's DROP is BANKED
+// (0.10 since TODO 173) by a stop on the feeler's bracket, NOT by bottoming in the notch: the arm crosses
+// the spinning rim, and its dropped-state clearance over the teeth is
+// (static gap − drop·leverFraction) — the stop is what keeps that ≥ the
+// margin. Derivation at the feeler build; the two numbers live here
+// because the whole chain hangs off them.
+const ALARM_PIN_R = 0.14;    // pin radius — its diameter equals the arm's width, so the arm fits the
+                             // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
+                             // 0.092 rad pin arc at the track radius; the edge ramp at the feeler
+                             // build keeps the arm above the ridge until the pin is truly in the
+                             // gap). Hoisted here from the feeler build: the sleeve web's relief
+                             // sector consumes it (the relief spans the ARM, whose width is 2·this).
+const ALARM_PIN_DROP = 0.10; // stop-banked travel — TODO 173: the dropped-arm margin is priced at the jog's inboard face now (ALARM_PIN_SHANK), not only at the rim root
+                             // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
+                             // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
+                             // clearing the 0.06 engagement by the one margin (measured + asserted)
+// TODO 179 — THE NOTCH'S DEPTH, derived. It was 0.17 by literal while the drop
+// was 0.06 (the floor 0.11 under the dropped pin), and TODO 173 raised the
+// drop to 0.10 without re-reading it: the dropped pin stood 0.0700 off the
+// body in the notch, and the build assert only asked that it not BOTTOM. The
+// stop banks the drop, so the floor is not a contact; it is a surface the
+// pin's tip passes, and it owes the one margin like any other — the same
+// margin the collar's ring keeps over the track at that drop (READER_PIN_LEN).
+const ALARM_TRACK_H = ALARM_PIN_DROP + CLEAR_MARGIN;
+// §51 final spend, retried with the whole band DERIVED (the first attempt's
+// collision was measured against planes that hung off frozen literals).
+const ALARM_DISC_BODY_T = STOCK_MIN_U; // disc body at floor stock (the rim's teeth share this plane)
+// The three quoted planes were STALE — they were written when ALARM_FEELER_T was
+// 0.10 and never re-quoted when §51 put the feeler on floor stock, so the
+// expressions and their comments described different stacks. TODO 117's
+// retraction read the comments rather than the expressions and concluded the
+// arm stands 0.0133 off the track; it stands one ALARM_PIN_SHANK off it, 0.04,
+// which is what the constant is FOR. Measured back off the built tree by
+// probe-117-fork-room.mjs, which reproduces ALARM_TRACK_H between the disc's
+// two dial-most planes. Re-quote a plane when you move the stock under it.
+const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −3.0467
+const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.2967 (body top; −3.2167 while the track was 0.17 — TODO 179)
+const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.6133
+// Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
+// plane to mesh it; the minute pinion and hour wheel share a second plane.
+// Both stay clear of the sub-dial well floors (each well's own recess since
+// §153; the seconds' −SUBDIAL_RECESS is the deep one).
+//
+// TODO 21 — THE HOUR WHEEL IS DIAL-MOST, WHICH IS THE ONLY ARRANGEMENT THAT
+// EXISTS. These two planes used to be the other way up: the chain landed on
+// the MINUTE wheel and hung the hour wheel 1.5 behind it, so the hour tube
+// had to climb from the plate-most plane to the hands THROUGH the minute
+// wheel's band and the star's. It did exactly that — 568 vertices of the two
+// stud parts standing inside the tube's wall (r 2.05..2.50), 0.225 deep, at
+// rest, at every pose, with the 12:1's first mesh happening through the wall.
+// No radius threads that crossing: the wheel's teeth reach within r 1.20 of
+// the dial axis and any tube is fatter. The defect was the stacking ORDER,
+// so the fix is the order and not a dimension.
+//
+// In a watch the hour wheel sits dial-ward of the minute wheel and its tube
+// rises from there, crossing nothing that is not coaxial with it. The alarm
+// stack above IS coaxial — every bore ≥ ALARM_TUBE_INNER = HOUR_TUBE_OUTER
+// + 0.1 — which is exactly why the tube may pass through that z band and may
+// not pass through the two parts on the offset stud.
+//
+// So the chain lands on the HOUR wheel — since TODO 144 with the release
+// disc's SEAT between them — and the minute wheel hangs one star slice behind
+// it. Every star/lever/stud z derives from the pair and follows.
+//
+// TODO 144 — THE SEAT'S STRATUM, and the wheels' thickness SOLVED from it.
+// The release disc holds still against its reader's pin only if something
+// grounded holds it, and a pad alone reacts on the turning hour wheel (priced
+// in probe-144-set-hold.mjs: 158–726 mN against a 5–50 mN envelope). So a fixed
+// THRUST PLATE goes between the disc's underside and the hour wheel: the disc
+// seats on it, the pad presses the disc onto it, and both reactions become
+// holds. The plate is §50 floor stock, the disc's underside sinks the seated-
+// contact convention into its face, and the hour wheel's top clears its
+// underside by one margin. What that costs is stratum, and the stack pays for
+// it in the one dimension that was never derived: both motion-works wheels
+// were 0.8 thick by literal. Their thickness is now the thickest the stack
+// can afford — solved so the cannon pinion's end lands exactly one margin off
+// the base plate's dial-side face — with the star slice declared at §50's
+// floor rather than left as whatever a 1.5 literal happened to leave.
+const ALARM_SEAT_T = STOCK_MIN_U;               // the plate: a fixed annulus carrying 34 mN
+const ALARM_SEAT_SINK = 0.02;                    // the seated-contact convention (FEELER_TIP_SEAT): two coincident planes are ambiguous to the instruments
+const ALARM_SEAT_TOP = ALARM_DISC_BOT + ALARM_SEAT_SINK;   // dial-local: the disc's underside sits this far into the plate's face
+const ALARM_SEAT_BOT = ALARM_SEAT_TOP - ALARM_SEAT_T;
+const STAR_T = STOCK_MIN_U;                      // the jumper star and its beak: §50's floor, declared (it was 0.268, the residue of a literal)
+// TODO 153: the plate's PRESENTED dial-side face (world −2.3, PLATE_BACK_FACE
+// — the extrude's bevel stands proud of the slab, asserted at the plate
+// build), dial-local — not the bare −2.0 literal this used to carry, 0.3 u
+// shallower than the plate the build actually cuts. Dial-local z runs AWAY
+// from the plate, so a shallower (less negative) face reads as CLOSER — the
+// burial TODO 153 measured (mwMinuteWheel and cannonPinion both 0.0000
+// against backPlate, not a hairline: 0.146/0.21 u of real overlap).
+const MW_PLATE_FACE_LOCAL = Z_DIAL - PLATE_BACK_FACE;
+const MW_CANNON_FLOOR_LOCAL = Z_DIAL - MW_SINK_FLOOR;   // TODO 172: the cannon pinion lands on its pocket's floor; the wheel hub and the studs keep the face
+const MW_BEVEL = (T, m) => Math.min(T * 0.18, m * 0.22);   // the gear builder's bevel, the term every plane here spelled out by hand
+const MW_COVER = 0.1;   // a pinion's leaves overreach the wheel's bevelled face by this — TODO 21's coverage floor, one name for its uses
+const MW_PINION_BEVEL = (T, m) => Math.min(T * 0.15, m * 0.2);   // makePinion's bevel (geometry.js pinionBevel), held to gearFaceReach at the build
+const MW_WHEEL_T = (() => {
+  // From the seat's underside down to the plate's margin, every term a margin,
+  // a thickness or a bevelled half-thickness:
+  //   MW_Z2      = ALARM_SEAT_BOT − CM − SINK − (T/2 + bev₂)                the hour wheel's centre (the sink: a plane one
+  //                                                                        margin off a plane must never read as the margin's own edge)
+  //   MW_Z1      = MW_Z2 − (T/2 + bev₂) − CM − STAR_T − CM − (T/2 + bev₁)   the minute wheel's centre
+  //   CANNON_END = MW_Z1 − (T/2 + bev₁) − MW_COVER                         the pinion's coverage overreach
+  //   CANNON_END − bevC − CM = MW_PLATE_FACE_LOCAL                         landing ON the margin, past the
+  //                                                                        cannon's OWN bevel (bevC — TODO 153:
+  //                                                                        previously unmodelled entirely)
+  // The bevel is min(0.18·T, 0.22·m); at the module bound (T ≥ 1.22·m, asserted
+  // below) it is a constant and T falls out linearly:
+  const bev = MW_BEVEL(Infinity, MW_MODULE_1) + MW_BEVEL(Infinity, MW_MODULE_2);
+  const bevC = MW_PINION_BEVEL(Infinity, MW_MODULE_1);   // TODO 153: the cannon pinion's own bevel, standing proud of ITS far face too
+  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - bevC - MW_CANNON_FLOOR_LOCAL) / 2;
+  if (T < 1.22 * Math.max(MW_MODULE_1, MW_MODULE_2))
+    console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under the bevel's module bound ${(1.22 * Math.max(MW_MODULE_1, MW_MODULE_2)).toFixed(4)} — the linear solve does not hold`);
+  if (T < STOCK_MIN_U)
+    console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under §50's floor ${STOCK_MIN_U.toFixed(4)} — the seat's stratum cannot be paid for here`);
+  return T;
+})();
+const MW_Z2 = ALARM_SEAT_BOT - CLEAR_MARGIN - ALARM_SEAT_SINK - (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)); // hour wheel + minute pinion — DIAL-most; the seat's sink rides on the margin so the sweep never meets it at an exact tie
+// The star slice is DERIVED between the two wheels' faces — its thickness plus
+// one margin each side — rather than the 1.5 the stack carried by literal.
+const MW_SLICE = (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)) + CLEAR_MARGIN + STAR_T + CLEAR_MARGIN + (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1));
+const MW_Z1 = MW_Z2 - MW_SLICE;   // minute wheel, in the cannon pinion's plane
+// z slice DERIVED between the two motion-works planes, one margin each way.
+// TODO 21: the slice is the same 1.5 gap it always was, but it changed
+// SIDES with the re-stack — it used to run from the hour wheel's top face up
+// to the minute wheel's underside, and now runs from the minute wheel's top
+// face up to the hour wheel's underside. Named for the faces that bound it
+// rather than for the parts, so the next re-order cannot leave this reading
+// backwards while still computing a positive thickness.
+const _mwSliceBot = MW_Z1 + MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1);   // minute wheel's top face
+const _mwSliceTop = MW_Z2 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_2);   // hour wheel's underside
+// TODO 144 — STAR_T is DECLARED at the stack (§50's floor) and the spacing is
+// derived from it, so the slice is VERIFIED here rather than computed: the two
+// faces must stand exactly STAR_T + 2·CLEAR_MARGIN apart.
+if (Math.abs((_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN - STAR_T) > 1e-9)
+  console.warn(`minute quick-set: the star slice between the motion-works planes is ${((_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN).toFixed(4)}, not the declared STAR_T ${STAR_T.toFixed(4)}`);
+const STAR_BOT = _mwSliceBot + CLEAR_MARGIN;        // 0-based extrude sits here
+const STAR_MID = STAR_BOT + STAR_T / 2;
+// §136 — the star must stay inside the minute wheel's ROOT circle so it never
+// becomes the mesh, and that root is no longer `pitchR − 1.15·m`: it is the
+// cut spec's own, which follows the mate graph. This line re-stated the old
+// factor by hand and would have gone silently stale — it never called
+// gearOuterR, so nothing downstream would have caught it.
+// TODO 89 — the trailing 0.35 is NOT derived, and saying so is the point.
+// `rootR` already subtracts the mate's own addendum plus cycloidal
+// clearance (`ded = mateH + cyClear`), so the root circle is where the
+// cannon pinion's teeth actually reach; the 0.35 is EXTRA daylight below
+// that, and no constraint in this file reproduces its size. It is not
+// CLEAR_MARGIN (0.15) — it is 2.3× it. Measured at the shipped spec:
+// rootR 4.381150, so the star's tips sit at 4.031150. Retiring it means
+// deriving the gap (CLEAR_MARGIN is the principled candidate) and that
+// MOVES the star, the pivot ring, the bearing scan and the aim — a
+// re-solve, not a rename, so it stays rowed in TODO 89 rather than being
+// quietly re-lettered here.
+const STAR_R = G.gearToothSpec({
+  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES,
+}).rootR - 0.35;
 // TODO 151's (d) landing — THE CAP'S LEG, B → E → D → cap, SOLVED FOR ANY B.
 //
 // The chain: the rise leaves B tilted φ off vertical toward the cap, down to
@@ -6116,31 +6411,95 @@ const vArr = (v) => [v.x, v.y, v.z];
 // rise's two, the stub's two — turn as one rigid body, which §107 holds to be
 // one connected part rather than two that must stand apart, so the rule
 // between them is only that the two cut blanks do not run into each other
-// (target 0). Each entry is [envelope, frame, body]. Judged on each blank's
-// SWEPT envelope (G.bevelBlankEnvelope), because every one of them turns.
-// Returns the certified SLACK over each pair's own target, least first.
-function cornersClearance(cA, cB) {
+// (target 0). Each entry is [envelope, frame, body, name]. Judged on each
+// blank's SWEPT envelope (G.bevelBlankEnvelope), because every one of them
+// turns. Returns the certified SLACK over each pair's own target, least first.
+// TODO 185: `target` is the cross-body target — the margin by default, FOLD_SAT
+// or anything between when a solve below asks how far a pair is certified.
+function cornersClearance(cA, cB, target = CLEAR_MARGIN) {
   let slack = Infinity;
   for (const [eA, fA, bA] of cA) for (const [eB, fB, bB] of cB) {
-    const target = bA === bB ? 0 : CLEAR_MARGIN;
-    const r = G.revolvedBlanksClearance(eA, fA, eB, fB, target);
+    const t = bA === bB ? 0 : target;
+    const r = G.revolvedBlanksClearance(eA, fA, eB, fB, t);
     if (!r.ok) return { ok: false, slack: -Infinity };
-    slack = Math.min(slack, r.lb - target);
+    slack = Math.min(slack, r.lb - t);
   }
   return { ok: true, slack };
 }
-const cornersClear = (cA, cB) => cornersClearance(cA, cB).ok;
+const cornersClear = (cA, cB, target) => cornersClearance(cA, cB, target).ok;
 const MW_CAP_ENV = bevelEnv(90, BEVEL_MODULE, MW_RISE_R, MW_RISE_R);
+// TODO 185 — WHAT THE LEG'S CORNERS CAN REACH OUTSIDE THE FOLD. B stands on
+// the minute wheel's mesh circle at the setting plane, and the rise leaves it
+// tilted φ toward the cap: the rise corner's outboard blank hangs down from B
+// and leans in toward the motion works' axis, under the wheel and through the
+// STAR's slice. TODO 157 raised the leg's target to FOLD_SAT judging only the
+// fold's own corners, and probe-150's FOLD CLEAR row read mwCornerRiseOut ⇄
+// star 0.0727 — the solve could not see what it was spending. These are that
+// row's two neighbours, brought into the solve. Both turn about the motion
+// works' stud (MW_WORLD), so each is judged at its SWEPT DISC — the solid it
+// can occupy over a revolution, its tip radius over its axial band — read off
+// the one source each is cut from:
+//   · the star — STAR_R, makeStarWheel's tip radius (it cuts no bevel), over
+//     its declared slice [STAR_BOT, STAR_BOT + STAR_T];
+//   · the minute wheel — G.gearOuterR, the bound the cut wheel is held to
+//     (§115), over MW_Z1 ± its face reach, the hub's half-height or the
+//     bevelled body's, whichever stands taller (G.gearFaceReach; the hub's
+//     height does not depend on the bore, so none is passed).
+// Both planes are dialFace-local, and the dial frame is turned 180° about Y:
+// world z = Z_DIAL − local, so each band flips. Nothing else outside the fold
+// reaches the leg's corners: probe-150's FOLD CLEAR lists every mesh, and the
+// cap itself stands on the mesh circle at every φ (concentric with both discs,
+// so its own clearance to them does not move with the tilt).
+const MW_FOLD_OBSTACLES = (() => {
+  const reach = G.gearFaceReach({ module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES, thickness: MW_WHEEL_T });
+  const half = Math.max(reach.body, reach.hub.half);
+  const o = [MW_WORLD.x, MW_WORLD.y, 0], a = [0, 0, 1];
+  return [
+    { name: 'star', o, a, r: STAR_R, zLo: Z_DIAL - (STAR_BOT + STAR_T), zHi: Z_DIAL - STAR_BOT },
+    { name: 'mwMinuteWheel', o, a,
+      r: G.gearOuterR({ module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES, thickness: MW_WHEEL_T }),
+      zLo: Z_DIAL - (MW_Z1 + half), zHi: Z_DIAL - (MW_Z1 - half) },
+  ];
+})();
+// Does every blank of these corners clear every obstacle by `target`? A
+// certified bound (G.revolvedBlankDiscClearance) — false names the first pair.
+function obstaclesClearance(corners, target) {
+  for (const c of corners) for (const [e, f, , name] of c) for (const d of MW_FOLD_OBSTACLES)
+    if (!G.revolvedBlankDiscClearance(e, f, d, target).ok) return { ok: false, pair: `${name} ⇄ ${d.name}` };
+  return { ok: true };
+}
+// The leg's three corners as the judgements read them — [envelope, frame,
+// body, name] per blank, on the mounts buildSettingMetal cuts (one source for
+// the solve and the boot assert after the build).
+function capLegCorners(B, F, g) {
+  const eR = bevelEnv(g.sigmaB, g.moduleRise, MW_LEG2_R, MW_RISE_R);
+  const eF = bevelEnv(g.sigmaE, g.moduleFoot, MW_RISE_R, MW_RISE_R);
+  return {
+    rise: [[eR, { o: vArr(B), a: vArr(F.leg2U.clone().negate()) }, 'leg2', 'mwCornerRiseIn'], [eR, { o: vArr(B), a: vArr(g.d1) }, 'rise', 'mwCornerRiseOut']],
+    foot: [[eF, { o: vArr(g.E), a: vArr(g.d1.clone().negate()) }, 'rise', 'mwCornerFootIn'], [eF, { o: vArr(g.E), a: vArr(g.t3) }, 'stub', 'mwCornerFootOut']],
+    capc: [[MW_CAP_ENV, { o: vArr(g.D), a: vArr(g.t3.clone().negate()) }, 'stub', 'mwCornerCapIn'], [MW_CAP_ENV, { o: vArr(g.D), a: [0, 0, 1] }, 'cap', 'mwCornerCapOut']],
+  };
+}
 // THE STUB, for a given tilt: the least L at which the foot corner's blanks
-// (cut at Σ_E = 90° + φ) clear the cap corner's (a mitre). The geometry lives
+// (cut at Σ_E = 90° + φ) clear the cap corner's (a mitre) by FOLD_SAT — TODO
+// 185 raised it from the margin, the stub's half of TODO 157's objective: its
+// own pairs are certified to the saturation cap, then the least L (the least
+// metal, the shortest chord) breaks the tie. The geometry lives
 // in the vertical plane of the stub and depends on φ alone, so it is solved in
 // that plane's own frame: E at the origin, the stub along +x. The sphere
 // bound is its ceiling — every blank lies within its cone distance of its
-// apex, so at L = R_E + R_D + margin every pair clears by construction — and
+// apex, so at L = R_E + R_D + target every pair clears by construction — and
 // the scan steps DOWN from it to the first L that fails, then bisects to the
 // envelope's own resolution (ENVELOPE_DELTA_FINE): finer buys nothing that
 // instrument can see. Each step is what the last reading PROVED, where that is
 // longer than half a margin (the sampling law every scan in this fold uses).
+// The stub does not judge the motion works' discs, and need not: solved in its
+// own frame it cannot know where B is, and where the L it picks carries the
+// cap — and so the corners — is judged by the tilt below on the whole leg. It
+// stays first in the order on measurement (envelopes, φ 16–17.5°): 0.1 of stub
+// moves the binding disc pair (mwCornerRiseOut ⇄ star) by about 0.006 and the
+// stub's own pair by about 0.09, so a stub held under FOLD_SAT to lend the
+// tilt room gives up some fifteen times what it buys.
 const _stubMemo = new Map();   // φ → L: a function of the tilt alone, and every candidate B's scan visits the same grid
 function stubFor(phi, moduleFoot) {
   const key = `${phi}|${moduleFoot}`;
@@ -6151,13 +6510,13 @@ function stubSolve(phi, moduleFoot) {
   const eF = bevelEnv(90 + phi / DEG2RAD, moduleFoot, MW_RISE_R, MW_RISE_R);
   const at = (L) => cornersClearance(
     [[eF, { o: [0, 0, 0], a: [-Math.sin(phi), 0, Math.cos(phi)] }, 'rise'], [eF, { o: [0, 0, 0], a: [1, 0, 0] }, 'stub']],
-    [[MW_CAP_ENV, { o: [L, 0, 0], a: [-1, 0, 0] }, 'stub'], [MW_CAP_ENV, { o: [L, 0, 0], a: [0, 0, 1] }, 'cap']]);
+    [[MW_CAP_ENV, { o: [L, 0, 0], a: [-1, 0, 0] }, 'stub'], [MW_CAP_ENV, { o: [L, 0, 0], a: [0, 0, 1] }, 'cap']], FOLD_SAT);
   // Down from the sphere bound. A step no longer than what the last reading
   // PROVED (its certified slack over each pair's target) cannot pass a failing
   // L — D moves rigidly, and a distance moves no faster than the thing
   // measured — so the scan takes that step where it is longer than the
   // half-margin law's.
-  let hi = eF.R + MW_CAP_ENV.R + CLEAR_MARGIN + eF.eps + MW_CAP_ENV.eps, lo = null;
+  let hi = eF.R + MW_CAP_ENV.R + FOLD_SAT + eF.eps + MW_CAP_ENV.eps, lo = null;
   let r = at(hi);
   for (;;) {
     const L = hi - Math.max(CLEAR_MARGIN / 2, r.slack);
@@ -6170,47 +6529,100 @@ function stubSolve(phi, moduleFoot) {
   while (hi - lo > G.ENVELOPE_DELTA_FINE) { const m = (lo + hi) / 2; if (at(m).ok) hi = m; else lo = m; }
   return hi;
 }
-// THE TILT: the least φ at which the rise corner's blanks clear the foot
-// corner's (and the cap corner's) — B's and E's cross-body pairs are what bind,
-// since at φ = 0 the foot's outboard blank stands straight under B's inboard
-// one.
+// THE TILT — TODO 185, TODO 157's objective with the motion works in view. A
+// φ is FEASIBLE when the rise corner's blanks clear the foot corner's and the
+// cap corner's (the tilt's own cross-body pairs — at φ = 0 the foot's outboard
+// blank stands straight under B's inboard one) AND every blank of all three
+// corners clears both swept discs above, each by CLEAR_MARGIN. Among feasible
+// tilts the solve MAXIMIZES the least certified clearance over every pair it
+// judges — the tilt's pairs and the disc pairs together — counted to FOLD_SAT,
+// and breaks a tie (equal to the certification's resolution,
+// ENVELOPE_DELTA_FINE) toward the LEAST φ: the least lean, the least metal,
+// the shortest chord. The disc pairs are in the objective, not only in the
+// constraint, because the constraint alone moves the problem rather than
+// solving it: the tilt pairs rise with φ and the star pair falls, and a solve
+// that maximized the tilt pairs subject only to the star's margin would park
+// the star ON the margin — the fragility TODO 157 exists to remove, now on an
+// unrelated part. Measured on the envelopes while planning: the tilt pair
+// reaches FOLD_SAT only near φ 18°, and the star pair crosses the margin near
+// 17.2°, so with this B the fold cannot saturate — the optimum is INTERIOR,
+// where the rising tilt pair meets the falling star pair.
+//
 // Every φ is judged on its OWN stub (stubFor) and its own cap site, so the
 // answer is a fixed point by construction rather than by iteration. The scan
-// steps up from vertical by the sampling law at E (half a margin of E's travel,
-// Dz per radian, to the quarter-degree), then bisects to the envelope's
-// resolution at E. A B with no such φ inside 60° — CAP_SOLVE's own reach — is
-// refused.
+// covers 0–60° (CAP_SOLVE's own reach) by the sampling law at E (half a margin
+// of E's travel, Dz per radian, to the quarter-degree), stopping only at a
+// saturated φ (nothing past it can beat FOLD_SAT, and the tie goes to the
+// least). The best grid φ is then refined to the envelope's resolution at E:
+// a saturated best by bisecting down to the least saturated φ (the step
+// below it was not); an interior one by golden-section search over the two
+// steps either side, the score being the least of a rising and a falling
+// curve and so unimodal there. A B with no feasible φ is refused.
 const MW_RISE_PHI_STEP = Math.floor((CLEAR_MARGIN / 2 / (Z_SETTING - Z_CAP_CORNER)) / (0.25 * DEG2RAD)) * 0.25 * DEG2RAD;   // 1.25° at Dz 3.016
-// TODO 157: the least φ and L that clear put their binding pairs ON the margin; a declared objective is filed there.
 async function solveCapLeg(B, F) {
-  const judge = (phi) => {
+  // the joint predicate: every pair this solve judges certifies `t`
+  const clears = (C, t) => cornersClear(C.rise, C.foot, t) && cornersClear(C.rise, C.capc, t)
+    && obstaclesClearance([C.rise, C.foot, C.capc], t).ok;
+  const judge = async (phi) => {
     const L = stubFor(phi, foldModuleFor(90 + phi / DEG2RAD, [MW_RISE_R, MW_RISE_R]));
     const g = capLegAt(B, F, phi, L);
-    if (!g) return null;
-    const eR = bevelEnv(g.sigmaB, g.moduleRise, MW_LEG2_R, MW_RISE_R);
-    const eF = bevelEnv(g.sigmaE, g.moduleFoot, MW_RISE_R, MW_RISE_R);
-    const rise = [[eR, { o: vArr(B), a: vArr(F.leg2U.clone().negate()) }, 'leg2'], [eR, { o: vArr(B), a: vArr(g.d1) }, 'rise']];
-    const foot = [[eF, { o: vArr(g.E), a: vArr(g.d1.clone().negate()) }, 'rise'], [eF, { o: vArr(g.E), a: vArr(g.t3) }, 'stub']];
-    const capc = [[MW_CAP_ENV, { o: vArr(g.D), a: vArr(g.t3.clone().negate()) }, 'stub'], [MW_CAP_ENV, { o: vArr(g.D), a: [0, 0, 1] }, 'cap']];
-    g.ok = cornersClear(rise, foot) && cornersClear(rise, capc);
+    if (!g) return { phi, ok: false, score: -Infinity };
+    const C = capLegCorners(B, F, g);
+    g.ok = clears(C, CLEAR_MARGIN);
+    g.score = -Infinity;
+    if (!g.ok) return g;
+    // the least pair's certified clearance, counted to FOLD_SAT: the largest
+    // target in [CLEAR_MARGIN, FOLD_SAT] every judged pair signs for, bisected
+    // to the certification's own resolution
+    if (clears(C, FOLD_SAT)) { g.score = FOLD_SAT; return g; }
+    let lo = CLEAR_MARGIN, hi = FOLD_SAT;
+    while (hi - lo > G.ENVELOPE_DELTA_FINE) {
+      await breathe();
+      const m = (lo + hi) / 2;
+      if (clears(C, m)) lo = m; else hi = m;
+    }
+    g.score = lo;
     return g;
   };
-  let lo = null, hit = null;
+  const better = (a, b) => a.ok && (!b || a.score > b.score + 1e-12 || (Math.abs(a.score - b.score) <= 1e-12 && a.phi < b.phi));
+  const grid = [];
+  let best = null;
   for (let phi = 0; phi <= 60 * DEG2RAD + 1e-9; phi += MW_RISE_PHI_STEP) {
     await breathe();
-    const g = judge(phi);
-    if (g && g.ok) { hit = g; break; }
-    lo = phi;
+    const g = await judge(phi);
+    grid.push(g);
+    if (better(g, best)) best = g;
+    if (g.ok && g.score >= FOLD_SAT) break;
   }
-  if (!hit) return { refused: 'no rise tilt within 60° clears the cap leg\'s corners' };
+  if (!best) return { refused: 'no rise tilt within 60° clears the cap leg\'s corners and the motion works\' discs' };
   const tol = G.ENVELOPE_DELTA_FINE / (Z_SETTING - Z_CAP_CORNER);
-  let hi = hit.phi;
-  while (lo !== null && hi - lo > tol) {
-    await breathe();
-    const m = (lo + hi) / 2, g = judge(m);
-    if (g && g.ok) { hi = m; hit = g; } else lo = m;
+  const i = grid.indexOf(best);
+  if (best.score >= FOLD_SAT) {
+    // saturated: the least φ that still saturates, above the step below (which did not)
+    let lo = i > 0 ? grid[i - 1].phi : null, hi = best.phi;
+    while (lo !== null && hi - lo > tol) {
+      await breathe();
+      const m = (lo + hi) / 2, g = await judge(m);
+      if (g.ok && g.score >= FOLD_SAT) { hi = m; best = g; } else lo = m;
+    }
+  } else {
+    // interior: golden-section over the steps either side, ties to the least φ
+    const R = (Math.sqrt(5) - 1) / 2;
+    let a = i > 0 ? grid[i - 1].phi : best.phi, b = i + 1 < grid.length ? grid[i + 1].phi : best.phi;
+    let c = b - R * (b - a), d = a + R * (b - a);
+    let gc = await judge(c), gd = await judge(d);
+    while (b - a > tol) {
+      await breathe();
+      if (better(gc, best)) best = gc;
+      if (better(gd, best)) best = gd;
+      if (gc.score >= gd.score) { b = d; d = c; gd = gc; c = b - R * (b - a); gc = await judge(c); }
+      else { a = c; c = d; gc = gd; d = a + R * (b - a); gd = await judge(d); }
+    }
+    if (better(gc, best)) best = gc;
+    if (better(gd, best)) best = gd;
   }
-  return hit;
+  best.gridScores = grid.map((g) => ({ phiDeg: g.phi / DEG2RAD, ok: g.ok, score: g.score }));
+  return best;
 }
 // §234 fold — THE SETTING METAL FROM ITS CAP CORNER, ONE BUILDER. Everything
 // between the minute arbor's corner at A and the cap pinion at B is a
@@ -6525,6 +6937,30 @@ const MW_FOLD = SETTING_METAL.F;
 // Every other user of "the cap's XY" (the dial-side jumper bearing scan, the
 // setting cap's own mesh phase) reads this, not SETTING_B_XY.
 const SETTING_CAP_XY = SETTING_METAL.capXY;
+// TODO 185 — rule 6: the SHIPPED leg's corners stand off the motion works'
+// swept discs by the margin. The solve only accepts a tilt that does, so this
+// fires when a B the bearing solve refused was built anyway (the fallback leg),
+// or when a later edit moves a disc's plane or radius under the solved leg.
+// Judged on the swept envelopes, so it holds at every pose and needs none
+// (BOOT HAS NO POSE). The achieved number is the certified clearance, bisected
+// to the certification's resolution.
+const MW_FOLD_OBSTACLE_CLEAR = (() => {
+  const leg = SETTING_METAL.leg || capLegAt(settingB, MW_FOLD, 0, 2 * MW_CAP_ENV.R + CLEAR_MARGIN);
+  if (!leg) return null;
+  const C = capLegCorners(settingB, MW_FOLD, leg);
+  const rows = [];
+  for (const c of [C.rise, C.foot, C.capc]) for (const [e, f, , name] of c) for (const d of MW_FOLD_OBSTACLES) {
+    if (!G.revolvedBlankDiscClearance(e, f, d, 0).ok) { rows.push({ pair: `${name} ⇄ ${d.name}`, certified: -Infinity }); continue; }
+    let lo = 0, hi = FOLD_SAT;
+    if (G.revolvedBlankDiscClearance(e, f, d, hi).ok) { rows.push({ pair: `${name} ⇄ ${d.name}`, certified: hi, capped: true }); continue; }
+    while (hi - lo > G.ENVELOPE_DELTA_FINE) { const m = (lo + hi) / 2; if (G.revolvedBlankDiscClearance(e, f, d, m).ok) lo = m; else hi = m; }
+    rows.push({ pair: `${name} ⇄ ${d.name}`, certified: lo });
+  }
+  rows.sort((a, b) => a.certified - b.certified);
+  for (const r of rows) if (!(r.certified >= CLEAR_MARGIN))
+    console.warn(`TODO 185: the cap leg's ${r.pair} certifies ${isFinite(r.certified) ? r.certified.toFixed(4) : 'no clearance (the swept envelopes overlap)'} — required CLEAR_MARGIN ${CLEAR_MARGIN} (φ ${(leg.phi / DEG2RAD).toFixed(4)}°, stub ${leg.stub.toFixed(4)})`);
+  return rows;
+})();
 {
   if (!(MW_FOLD.alphaDeg > 0 && MW_FOLD.alphaDeg < 30))
     console.warn(`§234 fold: leg 1's swing off the run reads ${MW_FOLD.alphaDeg.toFixed(3)}° — the measured heading `
@@ -14558,257 +14994,11 @@ smallSecondsGroup.add(smallSecondsHand);
 // it chased the chain by hand five times (2.0 → 2.1 → 2.5 → 2.9 → 3.35 →
 // 4.25) and the re-stack would have been the sixth. See CANNON_T there.
 
-// ---------------------------------------------------------------------------
-// §29 CENTRE Z-CHAIN (steps 1–2) — the whole stack behind the dial sheet,
-// derived TOP-DOWN in one place (dialFace-local; world = −7 − local). Each
-// member's plane is the previous member's far face plus exactly the margin
-// or working contact the mechanism needs; the motion-works planes at the
-// bottom are WHERE THE CHAIN LANDS, not chosen numbers. (§25 C's block
-// below consumes these; they are hoisted here because the motion works
-// builds first.)
-// ---------------------------------------------------------------------------
-// §34: HEART-B's band — the second heart, FIXED to the setting wheel's
-// plate-side face (one member: no margin between them), its follower
-// sharing the band the way heart-A's arm shares its own. The flange and
-// everything below it re-derive 0.45 deeper; total stack height is
-// UNCHANGED (the slack below the hour wheel absorbs it — the plate gap
-// closes 1.08 → 0.62, both asserted).
-const ALARM_HEART_B_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.30); mirror of heart-A's crisp band
-// §51 phase A — the two worst §50 debts in this chain, funded from the
-// plate-side end gap (measured 0.62; §34's own note). The setting wheel and
-// lane share ONE thickness (hoisted here from the lane block so the chain
-// can consume it), raised 0.18 → floor stock; the carrier flange — 0.08 u =
-// 0.03 mm, the census's thinnest structural sheet — likewise. Everything
-// below re-derives deeper by the +0.38 total, the §34 precedent in reverse,
-// and the end gap absorbs it leaving ≥ the margin. The literals that USED to
-// mirror this chain's numbers (the arm band slice, the corridor asserts) are
-// expected to trip their tripwires on first boot — that enumeration is the
-// worklist, not collateral.
-const ALARM_SET_T = STOCK_MIN_U;               // was 0.18 (§29 step 1's thinning, now unwound)
-const ALARM_TUBE_BACK = -(ALARM_SHEET_GAP + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
-const ALARM_FLANGE_T = STOCK_MIN_U;            // was 0.08 — the 0.03 mm flange
-const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30); heart band, one CLEAR_MARGIN under the flange:
-const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // band −1.30..−1.62
-// ---------------------------------------------------------------------------
-// §45 stage 0 — the CAM SLEEVE's band. Letting the alarm hand be SET visibly
-// needs follower-A lifted clear of its heart at any relative phase, and the
-// one interface in the selector chain with any compliance is the follower
-// itself (the roadmap entry's build correction). The lifter is a static
-// full-circle ring below the heart/arm band — a coned bore pressing an axial
-// TAIL PIN on the arm at any tube azimuth — and this block buys its band the
-// §51 way: every neighbour below re-derives deeper, and Z_DIAL deepens by the
-// same amount, so the chain's landing at the plate is untouched and every
-// member below the insertion keeps its solved WORLD plane. The geometry is
-// stage 1; the spend is made ALONE first so the tripwire list measures the
-// real blast radius (§51 phase B's own discipline).
-//
-// The lift, from the same triangle tick() solves (the follower kinematics are
-// hoisted here from the arm build — the chain must price the swing):
-//   seated:   nose orbit at RMIN + noseR
-//   released: nose clear of the heart's MAX radius by the 0.05 lift
-//             clearance follower-B's ALARM_PINB_LIFT already uses
-// The tail is the SHORTEST that physically exists past the pivot (post radius
-// + pin boss + web) — the pin's radial stroke GROWS with tail length, so
-// short is cheap. The cone is 45°: axial travel ≡ radial stroke, no invented
-// ratio. The band prices the whole ENGAGEMENT, not just the stroke: at rest
-// the skirt sits wholly BELOW the pin's tip with the same 0.05 gap (riding
-// must not feel the sleeve — a rest interference would hold the nose off its
-// heart and break the hour coupling), so the travel is stroke + gap; the
-// skirt's face covers the stroke plus first-touch at the instrument's ±0.03.
-const ALARM_HEART_R = 3.55, ALARM_HEART_RMIN = 2.75; // profile radii (thickness/z live above in this chain)
-const ALARM_NOSE_R = 0.2;                       // follower roller
-// §45: 3.68 → 3.80. Priced against the LOBE, not the flange: at 3.68 the
-// heart's max radius (3.55) swept INSIDE the post's inner edge (3.46) —
-// a 0.09 collision at every lobe-under-post pose whenever the tube and the
-// hour move relative (armed, and §45's released setting), invisible to the
-// sweep behind the pair's EXPECTED blanket (TODO item 6's class, measured
-// here). Inner edge now clears the lobe by the working 0.03; the outer edge
-// (4.02) still seats fully on the 4.05 flange, 0.03 inside its rim.
-const ALARM_PIVOT_R = 3.55 + 0.22 + 0.03;       // pivot post radius (tube frame, az π) = lobe + post r + working
-const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
-// Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
-// seated nose) — the same constants tick() solves against, so the built arm
-// and the posed arm cannot drift apart.
-const _alarmSeatD = ALARM_HEART_RMIN + ALARM_NOSE_R;
-const _alarmSeatT = { x: _alarmSeatD * Math.cos(ALARM_NOSE_AZ), y: _alarmSeatD * Math.sin(ALARM_NOSE_AZ) };
-const ALARM_FOLLOWER_LEN = Math.hypot(_alarmSeatT.x + ALARM_PIVOT_R, _alarmSeatT.y);
-const alarmArmAngleAt = (d) => Math.acos(clamp(
-  (ALARM_PIVOT_R * ALARM_PIVOT_R + ALARM_FOLLOWER_LEN * ALARM_FOLLOWER_LEN - d * d)
-  / (2 * ALARM_PIVOT_R * ALARM_FOLLOWER_LEN), -1, 1));
-const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
-const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
-const ALARM_A_RELEASE_D = ALARM_HEART_R + ALARM_NOSE_R + 0.05; // nose orbit, released (3.80)
-const ALARM_A_RELEASE_PHI = alarmArmAngleAt(ALARM_A_RELEASE_D);
-const ALARM_A_PIN_R = flatsR(PIVOT_MIN_U, 10); // tail pin radius — the 10-gon's FLATS measure ⌀ 0.07 mm exactly (§50's census reads the tessellated stock, so the floor is built into the flats, not the circumradius). TODO 11 tranche five named this derivation `flatsR`; the 0.0924 it used to spell out is PIVOT_MIN_U / 2.
-const ALARM_A_TAIL_LEN = 0.22 + STOCK_MIN_R10 + 0.07; // post radius + pin boss (pin + wall) + web
-const alarmTailRAt = (phi) => Math.sqrt(ALARM_PIVOT_R * ALARM_PIVOT_R
-  + 2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN * Math.cos(phi) + ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN);
-const ALARM_SLEEVE_DR = alarmTailRAt(ALARM_FOLLOWER_A0) - alarmTailRAt(ALARM_A_RELEASE_PHI); // 0.186 — the pin's radial stroke
-const ALARM_SLEEVE_T = STOCK_MIN_U;                       // ring at sheet floor stock
-const ALARM_SLEEVE_GAP = 0.05;                            // rest gap, skirt top → pin tip (the B-side lift-clearance figure)
-const ALARM_SLEEVE_TRAVEL = ALARM_SLEEVE_DR + ALARM_SLEEVE_GAP;  // rise: close the gap, then press the stroke (45°: axial ≡ radial)
-const ALARM_SLEEVE_SKIRT_H = ALARM_SLEEVE_DR + 0.03;      // cone face: the stroke + first-touch cover at the instrument's tol
-const ALARM_SLEEVE_ENV = ALARM_SLEEVE_SKIRT_H + ALARM_SLEEVE_T + ALARM_SLEEVE_TRAVEL; // 0.770 — the swept band
-const ALARM_SLEEVE_TOP = (ALARM_HEART_Z - ALARM_HEART_T / 2) - CLEAR_MARGIN; // envelope ceiling: one margin under the heart band
-// §29 step 2/3 stack under the heart: fixed feeler (§45: one margin below the
-// sleeve's swept band now, was one margin below the co-rotating heart), its
-// pin riding the disc's raised notch track, the disc body, then one margin to
-// the minute wheel.
-const ALARM_FEELER_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.10 — the feeler's slices were the band's thinnest levers)
-const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + MEASURED_MARGIN_BAND); // −2.69 (§45; was −1.77). TODO 173: + the band — the static plane lands exactly one margin off the sleeve's skirt, which a strict < reads either side of (TODO 172's precedent)
-// §45 tripwire — the fund and the spend must agree: Z_DIAL deepened from the
-// §51-era −7.5 by exactly what the chain grew (the sleeve band replaced a
-// bare margin gap, so growth = envelope + one margin). Under-funded, the
-// landing eats the difference at the plate; over-funded past the rounding
-// grid, the dial carries slush no constraint asked for.
-{
-  const spend = ALARM_SLEEVE_ENV + CLEAR_MARGIN;  // chain growth vs the pre-§45 stack
-  const fund = -7.5 - Z_DIAL;                     // −7.5: the §51 phase-B dial plane, §45's datum
-  if (fund < spend - 1e-9 || fund > spend + 0.01)
-    console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
-}
-// TODO 173 — no pin hangs here since TODO 117; what this stand-off buys now is
-// the dropped arm one CLEAR_MARGIN over the disc body. With the rock about the
-// pin (and TRACK-ward at the tip), the arm's underside at its inboard end —
-// FEELER_ARM_RUN from the pivot, where the jog takes over (its foot stands
-// clear of the track by its own term) — dips D·ARM_RUN/ARM_LEN, so the shank
-// must cover CLEAR_MARGIN − ALARM_TRACK_H + that dip. The terms
-// live at the feeler build, 3,700 lines down, so the number is hoisted here and
-// asserted there against its derivation (achieved vs required; it was 0.04 and
-// left the dropped arm 0.1292 over the body).
-//
-// TODO 179 — the deeper notch below (ALARM_TRACK_H = drop + margin) puts that
-// need at −0.019, so the body no longer binds the shank. What binds it now is
-// the jog's radial BOXING: the shank sets how far dial-ward of the arm the
-// collar's ring rides, the ring's height sets the rock's lean at the jog, and
-// the jog already stands at the margin from the ring on one side and from the
-// Alarm disc follower's tail pin on the other (0.1518 / 0.1522). Measured,
-// spending the 0.08 as a SHORTER shank (the track grown dial-ward, the body
-// left where it was) leaned the jog 0.0033 outboard onto that pin at 0.1490.
-// So the shank keeps its value and the notch deepens plate-ward: the disc
-// body and everything the motion-works solve hangs under it pay the 0.08.
-const ALARM_PIN_SHANK = 0.061;
-// The track is TALL (ALARM_TRACK_H, derived below) and the pin's DROP is BANKED
-// (0.10 since TODO 173) by a stop on the feeler's bracket, NOT by bottoming in the notch: the arm crosses
-// the spinning rim, and its dropped-state clearance over the teeth is
-// (static gap − drop·leverFraction) — the stop is what keeps that ≥ the
-// margin. Derivation at the feeler build; the two numbers live here
-// because the whole chain hangs off them.
-const ALARM_PIN_R = 0.14;    // pin radius — its diameter equals the arm's width, so the arm fits the
-                             // notch's sector exactly when the pin is fully dropped (0.14 rad gap vs
-                             // 0.092 rad pin arc at the track radius; the edge ramp at the feeler
-                             // build keeps the arm above the ridge until the pin is truly in the
-                             // gap). Hoisted here from the feeler build: the sleeve web's relief
-                             // sector consumes it (the relief spans the ARM, whose width is 2·this).
-const ALARM_PIN_DROP = 0.10; // stop-banked travel — TODO 173: the dropped-arm margin is priced at the jog's inboard face now (ALARM_PIN_SHANK), not only at the rim root
-                             // (staticGap 0.21 − D·leverFraction ≥ CLEAR_MARGIN), and the pawl's
-                             // withdrawal needs all of it: 0.18·(D/0.06-scale) ≈ 0.22 at the beak,
-                             // clearing the 0.06 engagement by the one margin (measured + asserted)
-// TODO 179 — THE NOTCH'S DEPTH, derived. It was 0.17 by literal while the drop
-// was 0.06 (the floor 0.11 under the dropped pin), and TODO 173 raised the
-// drop to 0.10 without re-reading it: the dropped pin stood 0.0700 off the
-// body in the notch, and the build assert only asked that it not BOTTOM. The
-// stop banks the drop, so the floor is not a contact; it is a surface the
-// pin's tip passes, and it owes the one margin like any other — the same
-// margin the collar's ring keeps over the track at that drop (READER_PIN_LEN).
-const ALARM_TRACK_H = ALARM_PIN_DROP + CLEAR_MARGIN;
-// §51 final spend, retried with the whole band DERIVED (the first attempt's
-// collision was measured against planes that hung off frozen literals).
-const ALARM_DISC_BODY_T = STOCK_MIN_U; // disc body at floor stock (the rim's teeth share this plane)
-// The three quoted planes were STALE — they were written when ALARM_FEELER_T was
-// 0.10 and never re-quoted when §51 put the feeler on floor stock, so the
-// expressions and their comments described different stacks. TODO 117's
-// retraction read the comments rather than the expressions and concluded the
-// arm stands 0.0133 off the track; it stands one ALARM_PIN_SHANK off it, 0.04,
-// which is what the constant is FOR. Measured back off the built tree by
-// probe-117-fork-room.mjs, which reproduces ALARM_TRACK_H between the disc's
-// two dial-most planes. Re-quote a plane when you move the stock under it.
-const ALARM_TRACK_TOP = ALARM_FEELER_TOP - ALARM_FEELER_T - ALARM_PIN_SHANK; // −3.0467
-const ALARM_DISC_TOP = ALARM_TRACK_TOP - ALARM_TRACK_H;                       // −3.2967 (body top; −3.2167 while the track was 0.17 — TODO 179)
-const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    // −3.6133
-// Planes (dialFace-local): the minute wheel must sit in the cannon pinion's
-// plane to mesh it; the minute pinion and hour wheel share a second plane.
-// Both stay clear of the sub-dial well floors (each well's own recess since
-// §153; the seconds' −SUBDIAL_RECESS is the deep one).
-//
-// TODO 21 — THE HOUR WHEEL IS DIAL-MOST, WHICH IS THE ONLY ARRANGEMENT THAT
-// EXISTS. These two planes used to be the other way up: the chain landed on
-// the MINUTE wheel and hung the hour wheel 1.5 behind it, so the hour tube
-// had to climb from the plate-most plane to the hands THROUGH the minute
-// wheel's band and the star's. It did exactly that — 568 vertices of the two
-// stud parts standing inside the tube's wall (r 2.05..2.50), 0.225 deep, at
-// rest, at every pose, with the 12:1's first mesh happening through the wall.
-// No radius threads that crossing: the wheel's teeth reach within r 1.20 of
-// the dial axis and any tube is fatter. The defect was the stacking ORDER,
-// so the fix is the order and not a dimension.
-//
-// In a watch the hour wheel sits dial-ward of the minute wheel and its tube
-// rises from there, crossing nothing that is not coaxial with it. The alarm
-// stack above IS coaxial — every bore ≥ ALARM_TUBE_INNER = HOUR_TUBE_OUTER
-// + 0.1 — which is exactly why the tube may pass through that z band and may
-// not pass through the two parts on the offset stud.
-//
-// So the chain lands on the HOUR wheel — since TODO 144 with the release
-// disc's SEAT between them — and the minute wheel hangs one star slice behind
-// it. Every star/lever/stud z derives from the pair and follows.
-//
-// TODO 144 — THE SEAT'S STRATUM, and the wheels' thickness SOLVED from it.
-// The release disc holds still against its reader's pin only if something
-// grounded holds it, and a pad alone reacts on the turning hour wheel (priced
-// in probe-144-set-hold.mjs: 158–726 mN against a 5–50 mN envelope). So a fixed
-// THRUST PLATE goes between the disc's underside and the hour wheel: the disc
-// seats on it, the pad presses the disc onto it, and both reactions become
-// holds. The plate is §50 floor stock, the disc's underside sinks the seated-
-// contact convention into its face, and the hour wheel's top clears its
-// underside by one margin. What that costs is stratum, and the stack pays for
-// it in the one dimension that was never derived: both motion-works wheels
-// were 0.8 thick by literal. Their thickness is now the thickest the stack
-// can afford — solved so the cannon pinion's end lands exactly one margin off
-// the base plate's dial-side face — with the star slice declared at §50's
-// floor rather than left as whatever a 1.5 literal happened to leave.
-const ALARM_SEAT_T = STOCK_MIN_U;               // the plate: a fixed annulus carrying 34 mN
-const ALARM_SEAT_SINK = 0.02;                    // the seated-contact convention (FEELER_TIP_SEAT): two coincident planes are ambiguous to the instruments
-const ALARM_SEAT_TOP = ALARM_DISC_BOT + ALARM_SEAT_SINK;   // dial-local: the disc's underside sits this far into the plate's face
-const ALARM_SEAT_BOT = ALARM_SEAT_TOP - ALARM_SEAT_T;
-const STAR_T = STOCK_MIN_U;                      // the jumper star and its beak: §50's floor, declared (it was 0.268, the residue of a literal)
-// TODO 153: the plate's PRESENTED dial-side face (world −2.3, PLATE_BACK_FACE
-// — the extrude's bevel stands proud of the slab, asserted at the plate
-// build), dial-local — not the bare −2.0 literal this used to carry, 0.3 u
-// shallower than the plate the build actually cuts. Dial-local z runs AWAY
-// from the plate, so a shallower (less negative) face reads as CLOSER — the
-// burial TODO 153 measured (mwMinuteWheel and cannonPinion both 0.0000
-// against backPlate, not a hairline: 0.146/0.21 u of real overlap).
-const MW_PLATE_FACE_LOCAL = Z_DIAL - PLATE_BACK_FACE;
-const MW_CANNON_FLOOR_LOCAL = Z_DIAL - MW_SINK_FLOOR;   // TODO 172: the cannon pinion lands on its pocket's floor; the wheel hub and the studs keep the face
-const MW_BEVEL = (T, m) => Math.min(T * 0.18, m * 0.22);   // the gear builder's bevel, the term every plane here spelled out by hand
-const MW_COVER = 0.1;   // a pinion's leaves overreach the wheel's bevelled face by this — TODO 21's coverage floor, one name for its uses
-const MW_PINION_BEVEL = (T, m) => Math.min(T * 0.15, m * 0.2);   // makePinion's bevel (geometry.js pinionBevel), held to gearFaceReach at the build
-const MW_WHEEL_T = (() => {
-  // From the seat's underside down to the plate's margin, every term a margin,
-  // a thickness or a bevelled half-thickness:
-  //   MW_Z2      = ALARM_SEAT_BOT − CM − SINK − (T/2 + bev₂)                the hour wheel's centre (the sink: a plane one
-  //                                                                        margin off a plane must never read as the margin's own edge)
-  //   MW_Z1      = MW_Z2 − (T/2 + bev₂) − CM − STAR_T − CM − (T/2 + bev₁)   the minute wheel's centre
-  //   CANNON_END = MW_Z1 − (T/2 + bev₁) − MW_COVER                         the pinion's coverage overreach
-  //   CANNON_END − bevC − CM = MW_PLATE_FACE_LOCAL                         landing ON the margin, past the
-  //                                                                        cannon's OWN bevel (bevC — TODO 153:
-  //                                                                        previously unmodelled entirely)
-  // The bevel is min(0.18·T, 0.22·m); at the module bound (T ≥ 1.22·m, asserted
-  // below) it is a constant and T falls out linearly:
-  const bev = MW_BEVEL(Infinity, MW_MODULE_1) + MW_BEVEL(Infinity, MW_MODULE_2);
-  const bevC = MW_PINION_BEVEL(Infinity, MW_MODULE_1);   // TODO 153: the cannon pinion's own bevel, standing proud of ITS far face too
-  const T = (ALARM_SEAT_BOT - 4 * CLEAR_MARGIN - ALARM_SEAT_SINK - STAR_T - MW_COVER - 2 * bev - bevC - MW_CANNON_FLOOR_LOCAL) / 2;
-  if (T < 1.22 * Math.max(MW_MODULE_1, MW_MODULE_2))
-    console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under the bevel's module bound ${(1.22 * Math.max(MW_MODULE_1, MW_MODULE_2)).toFixed(4)} — the linear solve does not hold`);
-  if (T < STOCK_MIN_U)
-    console.warn(`TODO 144: motion-works wheel thickness ${T.toFixed(4)} is under §50's floor ${STOCK_MIN_U.toFixed(4)} — the seat's stratum cannot be paid for here`);
-  return T;
-})();
-const MW_Z2 = ALARM_SEAT_BOT - CLEAR_MARGIN - ALARM_SEAT_SINK - (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)); // hour wheel + minute pinion — DIAL-most; the seat's sink rides on the margin so the sweep never meets it at an exact tie
-// The star slice is DERIVED between the two wheels' faces — its thickness plus
-// one margin each side — rather than the 1.5 the stack carried by literal.
-const MW_SLICE = (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2)) + CLEAR_MARGIN + STAR_T + CLEAR_MARGIN + (MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1));
-const MW_Z1 = MW_Z2 - MW_SLICE;   // minute wheel, in the cannon pinion's plane
+// The §29 CENTRE Z-CHAIN and the motion-works planes it lands on (MW_WHEEL_T,
+// MW_Z2, MW_SLICE, MW_Z1) are hoisted above the setting fold's cap leg —
+// TODO 185: that solve holds its corners off the minute wheel's and the
+// star's swept discs, so it needs their planes before either is cut. The
+// derivation reads exactly as it did here; only its line moved.
 // The motion works' dial-most face — what the seat above must clear.
 // One expression, consumed by every band assert that used to re-spell it.
 const MW_TOP = MW_Z2 + MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_2);
@@ -15051,41 +15241,10 @@ const STAR_POINTS = Math.round(60 / Math.abs(MW_RATIO_1));
 if (Math.abs(60 / Math.abs(MW_RATIO_1) - STAR_POINTS) > 1e-9)
   console.warn('minute quick-set: motion-works ratio gives a NON-INTEGER star count', 60 / Math.abs(MW_RATIO_1));
 const STAR_PITCH = (Math.PI * 2) / STAR_POINTS;
-// z slice DERIVED between the two motion-works planes, one margin each way.
-// TODO 21: the slice is the same 1.5 gap it always was, but it changed
-// SIDES with the re-stack — it used to run from the hour wheel's top face up
-// to the minute wheel's underside, and now runs from the minute wheel's top
-// face up to the hour wheel's underside. Named for the faces that bound it
-// rather than for the parts, so the next re-order cannot leave this reading
-// backwards while still computing a positive thickness.
-const _mwSliceBot = MW_Z1 + MW_WHEEL_T / 2 + MW_BEVEL(MW_WHEEL_T, MW_MODULE_1);   // minute wheel's top face
-const _mwSliceTop = MW_Z2 - MW_WHEEL_T / 2 - MW_BEVEL(MW_WHEEL_T, MW_MODULE_2);   // hour wheel's underside
-// TODO 144 — STAR_T is DECLARED at the stack (§50's floor) and the spacing is
-// derived from it, so the slice is VERIFIED here rather than computed: the two
-// faces must stand exactly STAR_T + 2·CLEAR_MARGIN apart.
-if (Math.abs((_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN - STAR_T) > 1e-9)
-  console.warn(`minute quick-set: the star slice between the motion-works planes is ${((_mwSliceTop - _mwSliceBot) - 2 * CLEAR_MARGIN).toFixed(4)}, not the declared STAR_T ${STAR_T.toFixed(4)}`);
-const STAR_BOT = _mwSliceBot + CLEAR_MARGIN;        // 0-based extrude sits here
-const STAR_MID = STAR_BOT + STAR_T / 2;
-// §136 — the star must stay inside the minute wheel's ROOT circle so it never
-// becomes the mesh, and that root is no longer `pitchR − 1.15·m`: it is the
-// cut spec's own, which follows the mate graph. This line re-stated the old
-// factor by hand and would have gone silently stale — it never called
-// gearOuterR, so nothing downstream would have caught it.
-// TODO 89 — the trailing 0.35 is NOT derived, and saying so is the point.
-// `rootR` already subtracts the mate's own addendum plus cycloidal
-// clearance (`ded = mateH + cyClear`), so the root circle is where the
-// cannon pinion's teeth actually reach; the 0.35 is EXTRA daylight below
-// that, and no constraint in this file reproduces its size. It is not
-// CLEAR_MARGIN (0.15) — it is 2.3× it. Measured at the shipped spec:
-// rootR 4.381150, so the star's tips sit at 4.031150. Retiring it means
-// deriving the gap (CLEAR_MARGIN is the principled candidate) and that
-// MOVES the star, the pivot ring, the bearing scan and the aim — a
-// re-solve, not a rename, so it stays rowed in TODO 89 rather than being
-// quietly re-lettered here.
-const STAR_R = G.gearToothSpec({
-  module: MW_MODULE_1, teeth: MW_MINUTE_TEETH, mates: MW_MINUTE_MATES,
-}).rootR - 0.35;
+// The star's slice (_mwSliceBot … STAR_MID) and its tip radius STAR_R are
+// hoisted with the §29 centre z-chain above the setting fold's cap leg —
+// TODO 185: that solve holds its corners off the star's swept disc, so it
+// needs the star's plane and radius 9,000 lines before the star is cut.
 // Tooth depth DERIVED from the pitch, not styled. STAR_POINTS is forced to
 // 180 by the motion works (one point per minute-hand minute), so at this
 // radius the pitch arc is only ~0.13 — a depth styled for "slender visible
@@ -46530,6 +46689,14 @@ window.__clock = {
       moduleRise: SETTING_METAL.leg.moduleRise, moduleFoot: SETTING_METAL.leg.moduleFoot,
       cap: { ...SETTING_METAL.leg.capXY }, E: vArr(SETTING_METAL.E), D: vArr(SETTING_METAL.D),
       zCap: Z_SETTING_CAP, zCapCorner: Z_CAP_CORNER, phiStepDeg: MW_RISE_PHI_STEP / DEG2RAD,
+      // TODO 185 — the declared objective's record: the least judged pair's
+      // certified clearance counted to FOLD_SAT (score), the grid it was taken
+      // from, the motion works' swept discs it judged, and every corner blank's
+      // certified clearance to each (the boot assert's rows, least first)
+      score: SETTING_METAL.leg.score, foldSat: FOLD_SAT,
+      grid: (SETTING_METAL.leg.gridScores || []).map((r) => ({ ...r })),
+      obstacles: MW_FOLD_OBSTACLES.map((d) => ({ name: d.name, o: [...d.o], a: [...d.a], r: d.r, zLo: d.zLo, zHi: d.zHi })),
+      obstacleClear: (MW_FOLD_OBSTACLE_CLEAR || []).map((r) => ({ ...r })),
     },
   }),
   // TODO 151 — the minute jumper's siting solve, read-only, for
