@@ -303,7 +303,22 @@ it into prose either.
    the oscillator's 0.5% — solve the part, never re-target the beat —
    the poising ring's section inside real ring stock, the hammer's fall
    window at the fastest gap, and the cadence endpoints MEASURED by
-   stepping the shipped tick law against the record),
+   stepping the shipped tick law against the record. **And since §247 tier
+   two the ENERGY COLUMN** — `going.energy`, the first rows on any record
+   here that price friction: the released ½k(θ_full² − θ_setup²), the escape
+   torque and the per-beat gross as identities at float noise, every stage's
+   η in (0, 1] at each of `FRICTION`'s three corners, the corners ORDERED
+   (favourable ≥ nominal ≥ adverse, which is what makes "holds at all three"
+   a statement about a band), and the sustained-amplitude solve plugging back
+   into the balance's spend. The VERDICT — 2–7° vertical sustained against a
+   claimed 270°, TODO 192 — is a REPORT, deliberately: an amplitude gate on
+   today's metal would be red on arrival, and a red that cannot go green is a
+   number nobody reads. `FRICTION` is the one place a coefficient the movement
+   cannot measure may live, always as a band with its source, never a single
+   number, and `MU_STEEL` is the adverse corner of every steel row by
+   reference; `tools/probe-power-budget.mjs` computes the same column from the
+   source TEXT and asserts the record against it, so the two readers of the
+   same constants cannot drift apart in silence),
    and `restoring` **0 unwaived, 0 malformed, 0 stale, control PASS**
    (§48's no-spring audit, gated by TODO 29 — every part that RECIPROCATES
    either has a restoring element that exists as a mesh, is driven both ways,
@@ -789,7 +804,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 255 measuring scripts and this file names 19. The rest are named for the
+`tools/` holds 256 measuring scripts and this file names 19. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -806,8 +821,8 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **145 of
-them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
+The index also carries the split that decides how to read a result: **147 of
+them are ACCEPTANCE tests** that exit non-zero, and **109 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
 acceptance — those say so in their own headers. A report saying `0 violations` has not

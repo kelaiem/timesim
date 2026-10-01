@@ -1,31 +1,37 @@
-// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors, escapement. It then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping. REPORT — the judgement is the reader's.
+// Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors, escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. The verdict itself is a REPORT; the agreement is the acceptance.
 //
-// Why it exists. Every number the movement publishes about its power is
-// FRICTIONLESS. EQUALISATION holds the fusee's level product to float noise and
-// the spring's k to its ribbon, and OSCILLATOR solves the hairspring to the
-// balance's inertia. Nothing asks whether one can DRIVE the other.
+// Why it exists. Until TODO 192 every number the movement published about its
+// power was FRICTIONLESS. EQUALISATION holds the fusee's level product to float
+// noise and the spring's k to its ribbon, and OSCILLATOR solves the hairspring
+// to the balance's inertia; nothing asked whether one could DRIVE the other.
 // AMPLITUDE_TRUE_DEG = 270 is called a "physical reference", and two sites price
 // loads against it: the hack brake's 1.3 mN (main.js, the priceRigidBentLink
-// block) and §218's physical breathing peaks. The only efficiency anywhere in
-// the source is the alarm governor's ALARM_GOV_MESH_EFF.
+// block) and §218's physical breathing peaks. This probe asked first; the
+// record now carries the same arithmetic, and this is the second path.
 //
 // Where the numbers come from. The live figures are read off a booted tree:
 // the equalisation record (k, set-up and full-wind angles, the fusee's radii),
 // the oscillator record (k, I) and the balance's published dimensions (mass).
-// The train counts and chain stock come from layout.js. Numbers that live only
-// in main.js or geometry.js (pivot staffs, drum radius, drop) are QUOTED:
-// read out of the source text by regex, and the probe throws if any quote stops
-// matching, so it cannot silently price a stale constant.
+// The train counts, chain stock and the FRICTION bands come from layout.js.
+// Numbers that live only in main.js or geometry.js (pivot staffs, drum radius,
+// drop) are QUOTED: read out of the source text by regex, and the probe throws
+// if any quote stops matching, so it cannot silently price a stale constant.
+// That is what makes the assert worth having — the record reads the same
+// constants by NAME inside main.js; this reads them by TEXT from outside.
 //
 // The friction coefficients, the escapement efficiency and the balance's
-// non-pivot Q are ASSUMPTIONS, not measurements. The ASSUME table declares
-// each as a [low, nominal, high] band with its source. The probe runs all three
-// corners, and a conclusion that flips between corners is not a conclusion.
+// non-pivot Q are declared bands, not measurements (layout.js FRICTION, each
+// row with its source). The probe runs all three corners, and a conclusion
+// that flips between corners is not a conclusion.
 //
-// What it is NOT. It is not `equalisation` (a gate on the frictionless torque
-// identity). It is not `transfers` (static force budgets at sprung corners).
-// It is not probe-218-breathing (the hairspring's own mechanics). It reads
-// their records and asks the question none of them ask.
+// What it is NOT. It is not `equalisation` (the gate — rows 9–11 of which hold
+// the record's arithmetic; this holds the record against an independent
+// computation). It is not `transfers` (static force budgets at sprung
+// corners). It is not probe-218-breathing (the hairspring's own mechanics).
+//
+// Filed as ACCEPTANCE (it can exit non-zero) though its verdict is a report:
+// the non-zero exit is reserved for the record disagreeing with this
+// computation, never for the watch failing to run.
 //
 // Run from tools/: `node probe-power-budget.mjs [--json FILE]`.
 import { chromium } from 'playwright';
@@ -50,10 +56,9 @@ function quote(file, re, what) {
   return Number(m[1]);
 }
 const Q = {
-  upperStaffR: quote('main', /function addUpperPivot\(arbor, \{ staffR = ([\d.]+)/, 'addUpperPivot default staffR'),
-  lowerStaffR: quote('main', /function addLowerPivot\([^)]*?staffR = ([\d.]+)/s, 'addLowerPivot default staffR'),
+  upperStaffR: quote('main', /^const TRAIN_STAFF_R = ([\d.]+);/m, 'TRAIN_STAFF_R'),
   forkStaffR: quote('main', /addLowerPivot\(forkGroup, \{ staffR: ([\d.]+)/, 'pallet fork lower staffR'),
-  balStaffR: quote('main', /addLowerPivot\(balanceGroup, \{ staffR: ([\d.]+)/, 'balance lower staffR'),
+  balStaffR: quote('main', /^const BALANCE_STAFF_R = ([\d.]+);/m, 'BALANCE_STAFF_R'),
   drumR: quote('main', /const DRUM_R_ACTUAL = ([\d.]+);/, 'DRUM_R_ACTUAL'),
   arborK: quote('geom', /export const barrelArborR = \(radius\) => radius \* ([\d.]+);/, 'barrelArborR factor'),
   escR: quote('main', /makeEscapeWheel\(\{[^}]*?radius: ([\d.]+)/s, 'escape wheel radius'),
@@ -61,21 +66,11 @@ const Q = {
   dropDeg: quote('geom', /const DROP_DEG = ([\d.]+);/, 'DROP_DEG'),
 };
 
-// ---- ASSUME: [low-loss, nominal, high-loss] and where each band comes from ----
-// "low-loss" means the corner FAVOURABLE to the movement. Every row is a
-// literature band, not a fit. None of them is tuned against this movement.
-const ASSUME = {
-  muTooth:   { band: [0.12, 0.15, L.MU_STEEL], src: 'brass wheel on hardened steel pinion, running DRY (train teeth are never oiled); the high corner is layout.js MU_STEEL' },
-  muJewel:   { band: [0.10, 0.12, 0.15],        src: 'polished steel pivot in an oiled ruby (watch oil, e.g. a 9010-class)' },
-  muPlain:   { band: [0.12, 0.15, L.MU_STEEL], src: 'steel pivot in an oiled brass/steel bush (the fusee top, the drum on its arbor)' },
-  muChain:   { band: [0.10, 0.15, L.MU_STEEL], src: 'lightly oiled steel rivet in steel link' },
-  springInt: { band: [0.95, 0.90, 0.85],        src: 'efficiency against coil-on-coil friction in a lubricated ribbon (let-down vs wind-up hysteresis); this ribbon runs within 0.8% of coil bind at full wind (TODO 40), which argues for the lower half' },
-  escEff:    { band: [0.40, 0.35, 0.30],        src: 'Swiss lever, escape-wheel energy to balance energy, drop + draw + impulse-face friction + unlocking; classical measured range' },
-  qOther:    { band: [500, 350, 250],           src: 'balance Q with pivot friction REMOVED (air, hairspring hysteresis, pin/fork); the pivot term is computed separately below' },
-  endContactMm: { band: [0.01, 0.02, 0.03],     src: 'radius of the rounded pivot end\'s contact on the endstone, dial-flat' },
-};
-const corner = (i) => Object.fromEntries(Object.entries(ASSUME).map(([k, v]) => [k, v.band[i]]));
-const CORNERS = { favourable: corner(0), nominal: corner(1), adverse: corner(2) };
+// ---- THE BANDS: layout.js's FRICTION table, one corner at a time ----
+// "favourable" is the corner kind to the movement. Every row is a literature
+// band, not a fit, and its source is on the table.
+const ASSUME = Object.fromEntries(Object.entries(L.FRICTION).map(([k, v]) => [k, { band: L.FRICTION_CORNERS.map((c) => v[c]), src: v.why }]));
+const CORNERS = Object.fromEntries(L.FRICTION_CORNERS.map((c) => [c, Object.fromEntries(Object.entries(L.FRICTION).map(([k, v]) => [k, v[c]]))]));
 
 // ---- BOOT ----
 const port = process.env.PORT || '8493';
@@ -95,7 +90,7 @@ try {
     let bal = null;
     C.scene.traverse((o) => { if (!bal && o.userData && o.userData.rim && o.userData.screws && o.userData.arm) bal = o.userData; });
     return {
-      eq: JSON.parse(JSON.stringify(C.equalisation.going)),
+      eq: JSON.parse(JSON.stringify(C.equalisation.going)),   // carries .energy, the record this probe asserts against
       eqAlarm: JSON.parse(JSON.stringify(C.equalisation.alarm)),
       osc: { I: C.oscillator.I_kgm2, k: C.oscillator.k_Nm_per_rad, f: C.oscillator.fSpecHz },
       bal: bal && { rim: bal.rim, arm: bal.arm, screws: bal.screws },
@@ -249,8 +244,41 @@ for (const [n, R] of Object.entries(realPivots))
 console.log(`\n--- the ribbon's own stress (uniform moment, σ = M·a/I) ---`);
 console.log(`  going  σ ${f(ribbon.sigmaEmpty_MPa, 0)} → ${f(ribbon.sigmaFull_MPa, 0)} MPa over the reserve, against SPRING_SIGMA_Y_PA ${f(ribbon.repoLimit_MPa, 0)} MPa; ribbon volume ${f(ribbon.volume_mm3, 2)} mm³`);
 console.log(`  alarm  σ ${f(alarmRibbon.sigmaEmpty_MPa, 0)} → ${f(alarmRibbon.sigmaFull_MPa, 0)} MPa over its strike travel (both sections ${sec.shape}: modulus a²c/3, a quarter of the bounding strip's)`);
+// ---- THE ASSERT: the record's energy column against this computation -------
+// Same constants, two readers — the record by name inside main.js, this by
+// text from outside — and two writers of the arithmetic. 1e-9 relative is
+// float noise over a dozen multiplications; a stage renamed, a radius quoted
+// from the wrong constant, a corner swapped, all land far outside it.
+const REC = eq.energy;
+const disagreements = [];
+const same = (what, mine, theirs, tol = 1e-9) => {
+  const d = Math.abs(mine - theirs) / Math.max(Math.abs(theirs), 1e-300);
+  if (!(d <= tol)) disagreements.push({ what, probe: mine, record: theirs, rel: d });
+};
+if (!REC || !REC.corners) {
+  disagreements.push({ what: 'record', probe: 'computed', record: 'EQUALISATION.going.energy is missing' });
+} else {
+  same('released_J', E_spring, REC.released_J);
+  same('escapeTorque_Nm', tauEsc, REC.escapeTorque_Nm);
+  same('perBeat_J', grossPerBeat, REC.perBeat_J);
+  same('balance mass_kg', balMass, REC.balance.mass_kg);
+  for (const [n, R] of Object.entries(results)) {
+    const C = REC.corners[n];
+    if (!C) { disagreements.push({ what: `corner ${n}`, probe: 'present', record: 'absent' }); continue; }
+    same(`${n}: etaTotal`, R.etaTotal, C.etaTotal);
+    same(`${n}: etaTrain`, R.etaTrain, C.etaTrain);
+    same(`${n}: sustained vertical (deg)`, R.balance.ampVertDeg, C.sustainedDeg.vertical);
+    same(`${n}: sustained flat (deg)`, R.balance.ampFlatDeg, C.sustainedDeg.flat);
+    same(`${n}: claim factor`, R.at270.shortfall, C.claim.factorOverSupply);
+  }
+}
+console.log('\n--- the record (EQUALISATION.going.energy) against this computation ---');
+if (disagreements.length) { for (const d of disagreements) console.log(`  DISAGREE ${d.what}: probe ${d.probe} vs record ${d.record}${d.rel !== undefined ? ` (rel ${d.rel.toExponential(2)})` : ''}`); }
+else console.log(`  AGREES — ${4 + 5 * Object.keys(results).length} figures within 1e-9 relative`);
+
 console.log('\nAssumption bands (favourable / nominal / adverse):');
 for (const [k, v] of Object.entries(ASSUME)) console.log(`  ${k.padEnd(13)} ${v.band.join(' / ').padEnd(20)} ${v.src}`);
-console.log('\nREPORT only — no gate. Every row above that is not a quote or a live read is an assumption named in ASSUME.\n');
+console.log('\nThe verdict above is a REPORT. The only acceptance here is the record agreeing with this computation.\n');
 
-if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, ribbon, alarmRibbon }, null, 1));
+if (argJson) writeFileSync(argJson, JSON.stringify({ quotes: Q, assume: ASSUME, live, derived: { E_spring, tauFusee, tauEsc, ratio, grossPerBeat, balMass, rWrap, rFuseeSmall, rFuseeLarge }, results, realPivots, realPivotSizes_u: REAL_PIV, ribbon, alarmRibbon, disagreements }, null, 1));
+if (disagreements.length) { console.log(`FAIL — ${disagreements.length} disagreement(s) between the record and this computation`); process.exit(1); }
