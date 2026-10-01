@@ -29803,3 +29803,177 @@ build, and the branch has one long task fewer than the base.
 - ψA 54.9° is a steep face — honest for a recoil anchor, whose faces are steep —
   but friction at the contact is not modelled, so the push is judged by
   geometry alone.
+
+## §249 — Vietnamese — stacked tone marks, and the first locale whose glossary links had to be read for sense
+
+§249 is the entry for "the next locale wave, scoped as shippable chunks". This
+is its first landing, the Vietnamese half of chunk D. The entry stays PARTIAL in
+the private roadmap for the rest.
+
+**Shipped whole.** The chrome (`src/i18n.js`, 478 keys), `explain.html`
+(761/761) and `primer.html` (145/145) read Vietnamese at 100% in one landing,
+§209's recipe item for item. Fourteen locales now. Every site the recipe names
+was real:
+- the `LOCALES` row and its ladder rows
+- both `LOADERS` entries, extract first and wire second
+- `MARKS.vi` and `HONESTY.vi`
+- the precache count, 49 → 51
+- the three hand-kept loops: `offline-check`, the fit probe's roster, the bench probe's
+- the two measured width comments in `src/main.js`
+
+**Why Vietnamese, in the §73 idiom.** German is the layout stress, Chinese the
+typography, Arabic the direction, Spanish the region, Korean the line break,
+Hindi the vertical. Vietnamese is Latin script carrying the most diacritics in
+the roster, and the entry predicted its cost would land on the plates' vertical
+rows. It landed one level up, on the boxes the pages size with `font: Npx/1`.
+
+**The numbers are German's, and that is measured.** Chromium 141 formats `vi-VN`
+as `30,0 · 0,024 · 1.000 · 18.000` with Latin digits and one plural category;
+Node's ICU 78 agrees. `MARKS.vi` is German's row and the chrome's `fmtNum`
+reads the same in the page. The matcher is anchored, §211's rule: three-letter
+codes begin `vi` too, so the ladder assert carries `vic` and `vic-VI` → `null`
+beside `vi`, `vi-VN` and `vi_VN`.
+
+### The vertical measurement, and the rule derived from it
+
+A vowel can carry two marks stacked above the cap height (Ế, Ữ, Ặ) and a third
+below the line (ạ, ệ). Vietnamese cannot be reworded around that the way
+§208's two Arabic labels were: a word without its tone is a different word.
+`tools/probe-249-vietnamese-vert.mjs` is §212's probe asked of a second script.
+At each `/1` site, Latin inks 8 px above the baseline and 2 below, filling a
+10 px box exactly; Vietnamese inks 11 above and 2 below.
+
+| site | box | Vietnamese ink | needs |
+|---|---|---|---|
+| `summary .where`, `.fig-no` | 10 | 13 | 1.300 |
+| `header .stamp`, `.chip` | 10.5 | 13 | 1.238 |
+| `.readout`, `#gloss-back` | 11 | 13 | 1.182 |
+| chrome `.clock-label` | 11 | 12 | inside its 2 px padding |
+
+So both pages declare `html:lang(vi)` with `line-height: 1.3` at the same five
+selectors Hindi's rule covers. That is **more than Devanagari's 1.238**, so
+Hindi's 1.25 is not shared. Lowercase alone would need 1.20. Uppercase reaches
+these boxes because English's CAPITALS emphasis is kept as capitals, which the
+brief required. The chrome needs no rule: `.hud-rock-end` holds only "+" and
+"−", and the part labels' overrun stays on their own pill.
+
+**The probe needed a fourth control, and §212's form of the third had the trap
+in it.** Naming the face by elimination compared each family against a family
+that does not exist. The first draft fell back to the same generic the run
+uses, so an absent family and the serving one measured identically and either
+would have read as "serves". The fallback is now `cursive`, unlike both
+generics, and a control asserts the absent family measures differently. The new
+control asks whether the face carries Vietnamese at all: a monospace face that
+does gives `ế` the advance of `e`, while per-glyph fallback would not. The
+numbers are DejaVu Sans Mono's and Liberation Sans's, the faces this container
+resolves.
+
+### The tables, and how keys were kept out of human hands
+
+Ten translators worked in parallel against one glossary, §208's shape. This time
+the chunks were numbered: each translator returned `{id: string}` JSON, and the
+assembler wrote every key from the extractor's own literal. No key was typed by
+anyone. A validator mirroring the page gate ran on every chunk, and it was first
+shown to fail on a planted code-span edit, a swapped tag, a moved decimal, a
+primer quantity read in the wrong marks, and a dropped honesty term.
+
+**The glossary** is described rather than coined where Vietnamese has no trade
+word. It uses:
+- bộ thoát neo Thụy Sĩ, bánh xe thoát, càng neo with đá vào / đá ra, bánh lắc, dây tóc
+- dây cót in its hộp cót, **fusee** (the loanword) on its côn fusee, xích
+- nhông for a pinion, bộ truyền kim, núm vặn, bánh xe cột
+- khóa / hút / xung / rơi for the four phases
+- cóc hãm for a click against cóc đẩy for a driving pawl
+
+*Mô hình hóa* and *mô phỏng* are held apart, and `HONESTY.vi` gates them as
+words rather than stems, since Vietnamese does not inflect. The bare noun
+*mô hình* is deliberately not enough to count: the credit line's "AI model"
+renders with it. Tone marks follow the modern placement (*hóa*, *thủy*) in every
+table, and every string is NFC.
+
+**Reconciliation found the six seams §208 predicts**: ribbon, ledger, cadence,
+shipped, lug and the Geneva index had two to four names each across chunks. Each
+is one word now:
+
+| English | Vietnamese |
+|---|---|
+| ribbon | băng thép |
+| ledger | sổ trung thực |
+| cadence | nhịp gõ |
+| shipped | phát hành |
+| lug | mấu |
+| Geneva index | phân độ |
+
+Fifteen English keys appear twice, as a plate label and in a plate's script, and
+a JS table keeps one value. Each was chosen deliberately, §209's lesson.
+
+### §236's rule, applied to a language that does not inflect
+
+**The first build linked 107 times against English's 86, and that was the
+finding.** A link is a claim, and reading every Vietnamese link in context found
+the vocabulary's own short words used in other senses:
+
+| word | glossary term | other sense it carried |
+|---|---|---|
+| *hành trình* | throw | travel, stroke and run, in 16 blocks |
+| *gấp* | fold | "times", as in *gấp đôi* |
+| *tầng* | stratum | a gear stage, a tier, a stack |
+
+Those blocks were reworded rather than the terms refused, because each word is
+the right word in its glossary sense. The audit is a table of the fifteen live
+terms: blocks whose Vietnamese carries the term's word while their English lacks
+the term. It now reads 0 for all but `derived`, whose two hits are genuinely
+derivations.
+
+The nine links Vietnamese still makes beyond English are all true. One
+uninflected word reaches "derivation", "tangentially" and "unwaived", which
+English's inflected variants list misses. The fifteen variants rows are
+translated rather than left English as Chinese's are. Vietnamese does not
+inflect either, so each row lists the base word the prose actually uses, and the
+page stays at 100% instead of carrying fifteen English rows.
+
+### Fit, every fix in the label
+
+The page gate's first Vietnamese pass found six overruns or collisions on the
+explainer and one on the primer. Among them:
+- the fusee's tip label collided with its torque neighbour
+- the impulse-face label collided with the exit stone's
+- *POWER FLOW* quoted inside a caption overran, and now carries the chrome's own words
+- the fusee's "level" became *đều*
+
+All are fixed in the label, never the tolerance. The **chrome bar measured
+202.2, wider than German's 192.4** — the second locale to beat it, after Arabic's
+first pass. It now reads 180.1 since "View" took the menu word *Xem*, with the
+two tooltips that name the panel matching it.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages; honesty control PASS (*mô hình hóa / mô phỏng*), 13/13 rows verified — PASS |
+| `explain-quotes` | PASS (0 disagreements; the primer still quotes 0 identifiers) |
+| `glossary-links` | text identical with and without the linker in every locale; vi **95** links (en 86) — PASS |
+| `probe-249-vietnamese-vert` | every control PASS; worst overrun 3 px; derived line-height 1.300 |
+| page headers | **56 px in Vietnamese**, both pages, at all eight widths — one line, matching English |
+| `#chrome-bar` | vi **180.1** against en 170.2 (first pass 202.2) |
+| `.hud-ro-label` | *Thời gian* 42.1, *Reo lúc* 33.9 against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| `offline-check` | **38/38**, precache **51/51**, the Vietnamese primer served from cache |
+| boot | `?lang=vi` on all three documents console-silent apart from the dev server's own `/__state` 404, which English shows too; `fmtNum` reads `30,0 · 0,024 · 18.000`; the ladder assert silent |
+| fingerprint | **1745988802** (59 units, 12 poses) at `?lang=vi` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it — the tables cannot move geometry |
+| battery | PENDING — the local run is in progress; this row is replaced with its gate count and wall before the PR is opened |
+
+### Residue, recorded
+
+- **No native review pass** — the IOU every locale carries. The glossary was
+  built by translators reading English, not by a Vietnamese watchmaker. The
+  terms most likely to differ in a workshop are *càng neo* (where *càng cua* is
+  heard) and *bánh lắc* (beside *bánh xe cân bằng*). It is also unsettled
+  whether *fusee* wants a native word at all.
+- **The chrome is not held by the honesty gate.** One chrome string ("no models",
+  meaning model FILES) was first rendered with *mô hình hóa* to satisfy this
+  landing's own stricter validator. That added a claim the English does not
+  make, and it was reverted. Only the two pages are gated.
+- **`Version`** has no entry in any locale's table and renders English in all
+  fourteen. That predates this landing.
+- **`index.html`'s `<title>` is not localized in any locale** — still true.
