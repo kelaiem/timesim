@@ -208,6 +208,9 @@ const MARKS = {
   // table must read as the chrome does.
   pt: { group: ['.'], dec: ',' },
   it: { group: ['.'], dec: ',' },        // §210 — it-IT: German's marks
+  // §249 — vi-VN: German's marks, measured in Chromium 141 (30,0 · 0,024 ·
+  // 1.000 · 18.000, Latin digits); Node's ICU 78 gives the same four.
+  vi: { group: ['.'], dec: ',' },
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -255,6 +258,12 @@ const HONESTY = {
   ko:        { m: /모델링/,         s: /시뮬레이/ },
   pt:        { m: /modela/i,       s: /simula/i },
   ru:        { m: /модел/i,        s: /симул/i },
+  // §249 — Vietnamese does not inflect, so these are words rather than stems,
+  // and both tone placements are accepted for 'hóa' (the tables are held to
+  // the modern one; the matcher need not be the place that enforces it). The
+  // noun 'mô hình' (a model) is deliberately NOT enough: the credit line's
+  // "AI model" is 'mô hình AI', and §241's narrow-matcher rule applies.
+  vi:        { m: /mô hình h(?:óa|oá)/i, s: /mô phỏng/i },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };

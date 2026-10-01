@@ -86,8 +86,9 @@ three-quarter plate and the dial). The base plate's fills live in
 line drawing's only partition between the dial-side works and the
 train. Both halves are boot-asserted.
 
-The chrome is LOCALIZED (§73 tier one, §116, §208 — English, German, French,
-Japanese, Chinese in both scripts, and Arabic):
+The chrome is LOCALIZED (§73 tier one, §116, §208, then one landing per
+locale; `LOCALES` in `src/i18n.js` is the roster, so this sentence does not
+restate it — a list or a count here is one more copy to fall behind):
 `src/i18n.js` holds one table keyed by the English source string, so the
 app keeps authoring its UI in English and `t()` / `localizeTree()`
 resolve at the display site; a missing entry falls back to English

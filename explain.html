@@ -42,6 +42,20 @@
   html:lang(hi) .fig-no,
   html:lang(hi) .readout,
   html:lang(hi) .chip { line-height: 1.25; }
+  /* §249 — Vietnamese stacks a tone mark on a circumflex or breve, above the
+     CAP height when the run is uppercase (Ế Ữ Ặ), and puts the dot-below
+     tone under the line (ạ ệ). MEASURED at the same five sites
+     (tools/probe-249-vietnamese-vert.mjs, DejaVu Sans Mono — the face this
+     container resolves, and the number is that face's): 11 px of ink above
+     the baseline and 2 below at 10 px, 13 px in a 10 px box — 1.30 em at the
+     tightest site, more than Devanagari's 1.238, so the Hindi rule above is
+     NOT shared. Lowercase alone needs 1.20; uppercase reaches these boxes
+     because English's CAPITALS emphasis is kept as capitals in Vietnamese. */
+  html:lang(vi) header .stamp,
+  html:lang(vi) details.mech > summary .where,
+  html:lang(vi) .fig-no,
+  html:lang(vi) .readout,
+  html:lang(vi) .chip { line-height: 1.3; }
   :root {
     --bg: #0b0d10;
     --panel: rgba(15,17,20,0.72);
