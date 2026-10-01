@@ -22,7 +22,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 193 | OPEN | The mainspring ribbons are never held to their material: going 1032 → 1756 MPa, alarm 3096 → 5264 MPa (uniform moment, σ = M·a/I on the as-cut `rhombus4`, whose modulus is ¼ of a flat strip's), against the 800 MPa `SPRING_SIGMA_Y_PA` every other spring answers to. Fix: decide the section (strip vs rhombus) and re-solve k, cite a mainspring-alloy limit, gate σ at full wind for both ribbons |
-| 192 | OPEN | The going spring cannot drive the balance: 3.43 mJ over 30 h (31.7 nW) against a 270° balance that needs 43–134× that after friction; sustained amplitude 2–7° vertical, 13–72° dial-flat (`probe-power-budget.mjs`, three assumption corners). Causes: 0.673 working turns of the drum, and pivots 3–5× §50's real band (balance Q_pivot 62). Fix: energy column on `equalisation`, pivots cut to the real band, the working band re-solved against a declared amplitude target |
+| 192 | PART DONE | Step 1 LANDED (§247 tier two): `FRICTION` bands in `layout.js`, `EQUALISATION.going.energy`, `checkEqualisation` rows 9–11 gating the arithmetic and reporting the verdict, the probe asserting against the record. OPEN: the going spring cannot drive the balance: 3.43 mJ over 30 h (31.7 nW) against a 270° balance that needs 43–134× that after friction; sustained amplitude 2–7° vertical, 13–72° dial-flat (`probe-power-budget.mjs`, three assumption corners). Causes: 0.673 working turns of the drum, and pivots 3–5× §50's real band (balance Q_pivot 62). Fix: energy column on `equalisation`, pivots cut to the real band, the working band re-solved against a declared amplitude target |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
@@ -26032,16 +26032,25 @@ literal.
 
 **Fix path.** P1 for the going train as an action group — this is a structural
 truth failure, not packaging.
-1. Promote the probe's arithmetic to an `energy` column on the `equalisation`
+1. ~~Promote the probe's arithmetic to an `energy` column on the `equalisation`
    record: E_released, the escape torque, and a declared friction table with
-   its bands.
+   its bands.~~ **LANDED (§247 tier two).** `FRICTION` in `layout.js` holds the
+   eight bands at three named corners with `MU_STEEL` as the adverse corner of
+   every steel row; `EQUALISATION.going.energy` carries the released energy,
+   the escape torque, the per-beat gross, every stage's η at every corner and
+   the sustained amplitude against the claimed 270°; `checkEqualisation` rows
+   9–11 GATE the arithmetic (identities, corners ordered, the solve plugging
+   back — seven mutations fire, the control is silent) and REPORT the verdict;
+   `probe-power-budget.mjs` asserts the record against its own independent
+   computation (19 figures at 1e-9). The staffs are named (`TRAIN_STAFF_R`,
+   `BALANCE_STAFF_R`), so step 2 moves them in one place.
 2. Cut the pivots to §50's band, as P1 sections whose stock floor is already
    `PIVOT_MIN_U`.
 3. Re-solve the drum's working band against a declared amplitude target at
    the adverse corner, with the ribbon inside TODO 193's stress limit.
 4. Gate the amplitude the solve achieves.
 
-Items 1 and 2 are independent and can land first. Until then,
+Items 1 and 2 are independent and can land first; 1 has. Until the rest do,
 `AMPLITUDE_TRUE_DEG`, the hack brake's 1.3 mN and §218's physical peaks
 describe a balance this spring cannot keep swinging. That is MODELLED, not
 SIMULATED — no force path reaches the balance, and none says it would.

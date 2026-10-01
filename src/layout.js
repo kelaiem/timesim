@@ -797,6 +797,60 @@ export const CASE_PUSHER_INPUT_N = Object.freeze([1, 5]);
 // caveat to a ratio, and it costs a real blade: 10× wants 5.49 u of free
 // length against 3.67, with the anchor half again as far out.)
 export const ALARM_SPRING_HEADROOM = 3;
+
+// TODO 192 / §247 tier two — THE FRICTION TABLE: every coefficient the power
+// budget needs and the movement cannot measure, declared ONCE, as a BAND.
+//
+// A watch is a chain of sliding contacts between a ribbon and a balance, and
+// nothing in this file knew the price of one. The budget (main.js's
+// EQUALISATION.going.energy) walks the going spring's energy through the drum,
+// the chain, the fusee, four meshes, four pivoted arbors and the escapement,
+// and asks what amplitude is left for the balance. Each row here is a
+// literature figure for ONE kind of contact — not a fit, not tuned against
+// this movement, and never a single number: a `favourable` corner (the
+// kindest value a reference will support), a `nominal` one, and an `adverse`
+// one. The budget runs all three and a conclusion that flips between corners
+// is not a conclusion. The ordering IS the claim and inspect.js holds it:
+// favourable must cost the least at every row, adverse the most.
+//
+// `MU_STEEL` above is the adverse corner of every steel-on-steel row, by
+// reference — the one steel, named once (§137's rule). A dry, unpolished pair
+// is the worst a watch contact gets, and it is exactly what MU_STEEL was
+// sized for; the kinder corners are what oil and polish buy.
+export const FRICTION_CORNERS = Object.freeze(['favourable', 'nominal', 'adverse']);
+export const FRICTION = Object.freeze({
+  // Brass wheel on hardened steel pinion, running DRY — train teeth are never
+  // oiled (oil there collects abrasive).
+  muTooth:  Object.freeze({ favourable: 0.12, nominal: 0.15, adverse: MU_STEEL,
+    why: 'brass on hardened steel, dry; the adverse corner is MU_STEEL' }),
+  // Polished steel pivot in an oiled ruby hole (a 9010-class oil).
+  muJewel:  Object.freeze({ favourable: 0.10, nominal: 0.12, adverse: 0.15,
+    why: 'polished steel in oiled ruby; the adverse corner is a thinned or aged oil' }),
+  // Steel pivot in an oiled brass or steel bush — the fusee's plain top
+  // bearing, the drum on its fixed arbor.
+  muPlain:  Object.freeze({ favourable: 0.12, nominal: 0.15, adverse: MU_STEEL,
+    why: 'steel in an oiled plain bush; the adverse corner is MU_STEEL' }),
+  // The chain's rivets articulating in their links, lightly oiled.
+  muChain:  Object.freeze({ favourable: 0.10, nominal: 0.15, adverse: MU_STEEL,
+    why: 'steel rivet in steel link, lightly oiled; the adverse corner is MU_STEEL' }),
+  // The ribbon's own coil-on-coil friction, as an efficiency (let-down vs
+  // wind-up hysteresis of a greased mainspring). This ribbon runs within 0.8%
+  // of coil bind at full wind (TODO 40), which argues for the lower half.
+  springInt: Object.freeze({ favourable: 0.95, nominal: 0.90, adverse: 0.85,
+    why: 'greased ribbon hysteresis; this one runs near coil bind' }),
+  // Swiss lever escapement, escape-wheel work to balance work: drop, draw,
+  // impulse-face sliding and unlocking — the classical measured range.
+  escEff:   Object.freeze({ favourable: 0.40, nominal: 0.35, adverse: 0.30,
+    why: 'Swiss lever, escape-wheel energy delivered to the balance' }),
+  // The balance's Q with PIVOT friction removed (air, hairspring hysteresis,
+  // the pin and fork): the pivot term is computed from the staff, not assumed.
+  qOther:   Object.freeze({ favourable: 500, nominal: 350, adverse: 250,
+    why: 'balance Q from everything but the pivots' }),
+  // Dial-flat, the rounded pivot END bears on the endstone; the friction
+  // radius is that contact's, not the staff's. In mm.
+  endContactMm: Object.freeze({ favourable: 0.01, nominal: 0.02, adverse: 0.03,
+    why: 'contact radius of a rounded pivot end on its endstone' }),
+});
 // RESTRIDDEN STACK — solved BOTTOM-UP from the low-escapement layout: the
 // oscillator hangs under the open plate cutaway, and the plate's own floor
 // binds on the hairspring stack (the fusee was dropped to make that true —

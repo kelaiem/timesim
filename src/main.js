@@ -68,6 +68,7 @@ import {
   sawCouplingLiftAt, sawSeatOffset,           // TODO 50: the stem clutch's dimensions and ride law (one arithmetic with the cut metal); TODO 115: and the mirrored pair's seat, shared by the metal and the law
   STEEL_E_PA, STEEL_G_PA, SPRING_SIGMA_Y_PA, SPRING_TAU_Y_PA, cantileverK_N_per_m,  // §137: the one steel, the one cantilever law; §164 names its other properties beside it
   MU_STEEL, ALARM_SPRING_HEADROOM,            // TODO 144: the one steel-on-steel friction coefficient, and the drag-against-hold margin — the disc's drag and its seat are priced on both
+  FRICTION, FRICTION_CORNERS,                  // TODO 192 / §247 tier two: the friction bands the power budget is priced at — three corners, never one number
   SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N, // §137: the declared envelopes force rows sit inside
   eulerCriticalLoad_N,              // §231: the one Euler law, read by §137's bent link and the pusher's reach bar alike
   ROUTE_SPEC, ROUTE_UNIT_NAME, configKey,                // §36 Apply: the committed route, judged once, and the one name for its unit
@@ -1643,7 +1644,11 @@ const OSC_I = (() => {
   // (0.10% of the above), safety roller (0.18%, over-counted as a full disc),
   // staff (0.10%) and the ruby impulse pin (0.06%) — 0.38% together, so 0.19%
   // in frequency, and still under 2% at five times their size.
-  return { total: rim + arm + screw, rim, arm, screw };
+  // TODO 192 — the MASS of the same three terms, for the pivot-friction
+  // torque (μ·m·g·r_piv) the energy column prices. Same decomposition, same
+  // neglect, same bound: the uncounted staff and rollers are under 1%.
+  const mass = (OSC_BRASS_RHO * rimVol + OSC_STEEL_RHO * (B.arm.x * B.arm.y * B.arm.z) + OSC_STEEL_RHO * B.screws.n * screwVol) * OSC_U ** 3;
+  return { total: rim + arm + screw, rim, arm, screw, mass };
 })();
 // THE SOLVE. k = I·ω² is the rate the spec demands of this wheel; the spiral's
 // own length (a function of the coil plan alone, so no circularity) then fixes
@@ -3764,7 +3769,15 @@ const tqPivots = []; // { x, y, staffR, jewelR } — consumed by the plate build
 // worth jewelling: the strike arbor carries the striking wheel, the fastest
 // intermittent load on this plate.
 tqPivots.push({ x: alarmSwPos.x, y: alarmSwPos.y, staffR: 0.75, jewelR: 1.3, boreR: 0.75 + PIVOT_BORE_CLEAR, chaton: true });
-function addUpperPivot(arbor, { staffR = 0.5, jewelR = 1.3, boreR = null, chaton = false } = {}) {
+// TODO 192 — THE STAFFS ARE NAMED, because the power budget prices them. A
+// pivot's friction torque is μ·F·r, linear in this radius, and 0.5 u is
+// 0.379 mm ⌀ — 3–5× the 0.07–0.12 mm §50's own basis for PIVOT_MIN_U calls
+// a real train pivot. These are the SHIPPED numbers, unmoved; naming them is
+// what lets the energy column quote the metal rather than restate it, and
+// what TODO 192's step 2 (cut them to the real band) will move in one place.
+const TRAIN_STAFF_R = 0.5;     // every going-train arbor, both ends, and the fusee's plain top bush
+const BALANCE_STAFF_R = 0.3;   // the balance's lower pivot (the upper rides the §120 shock setting)
+function addUpperPivot(arbor, { staffR = TRAIN_STAFF_R, jewelR = 1.3, boreR = null, chaton = false } = {}) {
   const worldTop = boxOf(arbor).max.z;
   const len = TQ_MID_Z - worldTop;
   let shaft = null;
@@ -3814,7 +3827,7 @@ addUpperPivot(escapeArbor, { chaton: true });
   // the plate's mid-plane, and the joint is declared in
   // INTRA_UNIT_CONTACTS — see the windTop build for why it stopped being a
   // coincidence and became a joint.
-  const staff = addUpperPivot(barrelArbor, { staffR: 0.5, jewelR: 0, boreR: 0.5 + PIVOT_BORE_CLEAR });
+  const staff = addUpperPivot(barrelArbor, { staffR: TRAIN_STAFF_R, jewelR: 0, boreR: TRAIN_STAFF_R + PIVOT_BORE_CLEAR });
   if (staff) staff.name = 'fuseeUpperPivot';
 }
 // Square across-corners = staff diameter (0.5·2), so the filed square
@@ -4831,7 +4844,7 @@ function clampCutToKeeps(keeps) {
 const PLATE_TOP = BACK_PLATE_Z + BACK_PLATE_T / 2;   // back plate spans [z−1, z+1]
 const PIVOT_SEAT_Z = BACK_PLATE_Z;    // pivot bottoms out mid-plate
 const _pivotBox = new THREE.Box3();
-function addLowerPivot(arbor, { staffR = 0.5, jewelR = 1.3 } = {}) {
+function addLowerPivot(arbor, { staffR = TRAIN_STAFF_R, jewelR = 1.3 } = {}) {
   arbor.updateMatrixWorld(true);
   _pivotBox.setFromObject(arbor);
   const worldBottom = _pivotBox.min.z;
@@ -4879,7 +4892,7 @@ addLowerPivot(forkGroup, { staffR: 0.35, jewelR: 1.0 });
 // group's box-min is the staff tip, on-axis) down to mid-plate, running
 // into a rubbed-in jewel in the plate's top face. Nothing else occupies
 // the axis below (the stop crank works at radius ≈ 8.5+).
-addLowerPivot(balanceGroup, { staffR: 0.3, jewelR: 1.0 });
+addLowerPivot(balanceGroup, { staffR: BALANCE_STAFF_R, jewelR: 1.0 });
 // (The spring drum gets its lower pivot where it is built, further down —
 // declaring it here would read drumGroup before its `const`.)
 
@@ -23826,9 +23839,99 @@ const EQUALISATION = (() => {
   const kAlarm = ALARM_GOV_K;
   const alarmTravel = alarmSpring.sweepFull - alarmSpring.sweepDown; // rad — the 1.75-turn strike travel
   const alarmSetup = alarmSpring.sweepDown - alarmSpring.sweepFree;  // rad — §104's 80-click set-up, as BUILT into the frames
+  // TODO 192 / §247 tier two — THE ENERGY COLUMN. Everything above this line
+  // is frictionless: the level product is an identity, k is the ribbon's,
+  // and nothing asks whether the spring can DRIVE the balance it is geared
+  // to. This block asks. It is the arithmetic of tools/probe-power-budget.mjs
+  // promoted onto the record so the battery holds it and the probe asserts
+  // against it (CLAUDE.md: a row whose figure an instrument also computes
+  // must ASSERT against it, not resemble it).
+  //
+  //  · What the ribbon RELEASES over the reserve is ½k(θ_full² − θ_setup²),
+  //    the set-up being energy the fusee never sees. Level by construction,
+  //    that is a constant torque at the fusee, E/(wrap turns · 2π), and
+  //    E/beats at the escape wheel per beat, before any loss.
+  //  · Each LOSS is a first-order efficiency of one contact, priced at
+  //    layout.js's FRICTION bands: a pivot costs μ·r_piv·(1/r_in + 1/r_out)
+  //    (the loads at the pinion and the wheel ADD — an upper bound, the two
+  //    reactions being treated as collinear), a mesh costs πμ(1/z₁ + 1/z₂)
+  //    (the classical sliding loss of involute teeth), the chain costs
+  //    μ·r_rivet·(1/r_fusee + 1/R_wrap) per link articulated on and off, and
+  //    the ribbon and the escapement are bands outright.
+  //  · The BALANCE spends, per beat, (π/Q_other)·½kθ² on everything but its
+  //    pivots and 2θ·T_f on them, T_f = μ·m·g·r: the staff's radius with the
+  //    watch vertical, the pivot END's contact radius dial-flat. The
+  //    sustained amplitude is the θ at which that spend equals what arrives
+  //    — a quadratic in θ, solved in closed form — and the record carries
+  //    it at every corner beside the amplitude the movement CLAIMS
+  //    (AMPLITUDE_TRUE_DEG), with the factor by which the claim exceeds the
+  //    supply. Measured at the shipped metal: the claim exceeds it by 43–134×
+  //    and the sustained swing is 2–7° vertical. TODO 192 is OPEN on that
+  //    number; this block is its step 1, the instrument, not its fix. The
+  //    gate holds the arithmetic (the identities, the corners' ordering, the
+  //    amplitude solve plugging back) and REPORTS the verdict, because an
+  //    amplitude gate on today's tree would be red on arrival and a red that
+  //    cannot go green is a number nobody reads.
+  const energy = (() => {
+    const released_J = 0.5 * k * (SPRING_WIND_FULL ** 2 - SETUP_SWEEP ** 2);
+    const reserve_s = SPEC.reserveHours * 3600;
+    const beats = SPEC.vph * SPEC.reserveHours;
+    const rW = (m) => m.module * m.teeth / 2, rP = (m) => m.module * m.pinion / 2;
+    const meshes = [
+      { name: 'great wheel → centre pinion', z1: TRAIN.barrel.teeth, z2: TRAIN.barrel.pinion, arbor: 'centre', rIn: rP(TRAIN.barrel), rOut: rW(TRAIN.center) },
+      { name: 'centre → third pinion',       z1: TRAIN.center.teeth, z2: TRAIN.center.pinion, arbor: 'third',  rIn: rP(TRAIN.center), rOut: rW(TRAIN.third) },
+      { name: 'third → fourth pinion',       z1: TRAIN.third.teeth,  z2: TRAIN.third.pinion,  arbor: 'fourth', rIn: rP(TRAIN.third),  rOut: rW(TRAIN.fourth) },
+      { name: 'fourth → escape pinion',      z1: TRAIN.fourth.teeth, z2: TRAIN.fourth.pinion, arbor: 'escape', rIn: rP(TRAIN.fourth), rOut: escapeWheelR },
+    ];
+    const trainRatio = meshes.reduce((p, m) => p * m.z1 / m.z2, 1);
+    const fuseeTorque_Nm = released_J / (FUSEE_WRAP_TURNS * 2 * Math.PI);
+    const escapeTorque_Nm = fuseeTorque_Nm / trainRatio;
+    const perBeat_J = released_J / beats;
+    const rArbor = G.barrelArborR(DRUM_R_ACTUAL), rWrap = DRUM_WRAP_R;
+    const rFuseeMean = (FUSEE_R_LARGE + FUSEE_TORQUE_K) / 2, rGreat = rW(TRAIN.barrel);
+    const kB = OSCILLATOR.k_Nm_per_rad, mB = OSC_I.mass, g = 9.81;
+    const thetaClaim = AMPLITUDE_TRUE_DEG * DEG2RAD;
+    const corner = (cname) => {
+      const A = Object.fromEntries(Object.keys(FRICTION).map((key) => [key, FRICTION[key][cname]]));
+      const stages = [];
+      const push = (name, eta, law) => stages.push({ name, eta, law });
+      push('mainspring coil friction', A.springInt, 'FRICTION.springInt');
+      push('drum on its fixed arbor', 1 - A.muPlain * rArbor / rWrap, 'μ_plain·r_arbor/R_wrap');
+      push('chain articulation', 1 - A.muChain * CHAIN_PIN_R * (1 / rFuseeMean + 1 / rWrap), 'μ_chain·r_rivet·(1/r_fusee + 1/R_wrap)');
+      push('fusee arbor pivots', 1 - A.muPlain * TRAIN_STAFF_R * (1 / rFuseeMean + 1 / rGreat), 'μ_plain·r_staff·(1/r_fusee + 1/r_great)');
+      for (const m of meshes) {
+        push(`mesh ${m.name}`, 1 - Math.PI * A.muTooth * (1 / m.z1 + 1 / m.z2), 'πμ_tooth(1/z₁ + 1/z₂)');
+        push(`${m.arbor} arbor pivots`, 1 - A.muJewel * TRAIN_STAFF_R * (1 / m.rIn + 1 / m.rOut), 'μ_jewel·r_staff·(1/r_pinion + 1/r_wheel)');
+      }
+      push('lever escapement', A.escEff, 'FRICTION.escEff');
+      const etaTrain = stages.filter((s) => s.name !== 'mainspring coil friction' && s.name !== 'lever escapement').reduce((p, s) => p * s.eta, 1);
+      const etaTotal = stages.reduce((p, s) => p * s.eta, 1);
+      const delivered_J = etaTotal * perBeat_J;
+      const tfVertical_Nm = A.muJewel * mB * g * BALANCE_STAFF_R * OSC_U;
+      const tfFlat_Nm = A.muJewel * mB * g * (2 / 3) * (A.endContactMm / 1000);
+      // loss(θ) = (π k_B / 2Q) θ² + 2 T_f θ = delivered  ⇒  the positive root.
+      const sustained = (tf) => { const a = Math.PI * kB / (2 * A.qOther), b = 2 * tf; return (-b + Math.sqrt(b * b + 4 * a * delivered_J)) / (2 * a); };
+      const needAtClaim_J = Math.PI * kB / (2 * A.qOther) * thetaClaim ** 2 + 2 * thetaClaim * tfVertical_Nm;
+      return {
+        stages, etaTrain, etaTotal, delivered_J, qOther: A.qOther,
+        pivot: { vertical_Nm: tfVertical_Nm, flat_Nm: tfFlat_Nm },
+        sustainedDeg: { vertical: sustained(tfVertical_Nm) / DEG2RAD, flat: sustained(tfFlat_Nm) / DEG2RAD },
+        claim: { needPerBeat_J: needAtClaim_J, factorOverSupply: needAtClaim_J / delivered_J,
+                 springEnergyNeeded_J: needAtClaim_J / etaTotal * beats },
+      };
+    };
+    return {
+      released_J, meanPower_W: released_J / reserve_s, reserve_s, beats,
+      fuseeTurns: FUSEE_WRAP_TURNS, fuseeTorque_Nm, trainRatio, escapeTorque_Nm, perBeat_J,
+      pivots: { trainStaffR_u: TRAIN_STAFF_R, balanceStaffR_u: BALANCE_STAFF_R },
+      balance: { mass_kg: mB, k_Nm_per_rad: kB, claimedDeg: AMPLITUDE_TRUE_DEG },
+      corners: Object.fromEntries(FRICTION_CORNERS.map((c) => [c, corner(c)])),
+    };
+  })();
   return Object.freeze({
     going: {
       k_Nm_per_rad: k,
+      energy,
       section: { ...mainspring.section }, devLen_u: mainspring.devLen,
       setup: {
         clicks: SETUP_CLICKS, teeth: SETUP_RATCHET_TEETH, sweepRad: SETUP_SWEEP,

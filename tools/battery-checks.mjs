@@ -289,10 +289,17 @@ export const BATTERY = [
   // the derivation: set-up quantised to the ratchet, the fusee's level
   // product an identity at float noise, and both ribbons' published sections
   // still describing the metal the records' k was computed from.
+  // TODO 192 / §247 tier two — and the ENERGY COLUMN's arithmetic: the
+  // released/escape-torque/per-beat identities, every stage η in (0, 1],
+  // the three friction corners ordered, the amplitude solve plugging back.
+  // The verdict it reaches (sustained amplitude against the claimed 270°)
+  // is a REPORT in the note; gating it is TODO 192's step 4.
   { name: 'equalisation', opts: {},
-    gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut',
+    gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut, energy column arithmetic held (identities, corners ordered, amplitude solve plugs back)',
     fails: (r) => r.failures,
-    note: (r) => r.summary },
+    note: (r) => r.summary + (r.going && r.going.energy
+      ? `; energy ${r.going.energy.released_mJ} mJ over the reserve, sustains ${r.going.energy.corners.nominal.sustainedDeg.vertical}° vertical / ${r.going.energy.corners.nominal.sustainedDeg.flat}° flat at the nominal corner against a claimed ${r.going.energy.claimedDeg}° (TODO 192 OPEN, ×${r.going.energy.corners.nominal.claimFactorOverSupply} short)`
+      : '; energy column ABSENT') },
   // TODO 40 row 3's missing instrument. The row named the hole and left it:
   // nothing in the battery ever stated that a chain is a fixed length of
   // steel, so the run's closure error was invisible to every green run. The

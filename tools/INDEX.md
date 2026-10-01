@@ -4,8 +4,8 @@
 
 # The instruments
 
-260 scripts. **149 are ACCEPTANCE tests** — they decide and exit non-zero.
-**111 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+260 scripts. **150 are ACCEPTANCE tests** — they decide and exit non-zero.
+**110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -254,7 +254,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-mesh-transmission.mjs` |  | acceptance | DOES EVERY DECLARED MESH ACTUALLY TRANSMIT AT ITS TOOTH RATIO? |
 | `probe-outline-moves.mjs` |  | acceptance | WHICH AUTHORED OUTLINES DID A CHANGE MOVE, and what do they sit on? |
 | `probe-outline-simple.mjs` |  | acceptance | TODO 100 — is every extruded outline a SIMPLE polygon? |
-| `probe-power-budget.mjs` |  | report | Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors, escapement. It then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping. REPORT — the judgement is the reader's. |
+| `probe-power-budget.mjs` |  | acceptance | Does the going spring deliver enough energy, after friction, to keep the balance at the amplitude the movement claims? It walks the power from the ribbon to the balance, loss by loss: mainspring, drum, chain, fusee, four meshes, four pivoted arbors, escapement, then solves the amplitude the delivered energy can sustain against the balance's own pivot friction and damping — and ASSERTS its answer against the record main.js publishes (EQUALISATION.going.energy, TODO 192 step 1), exiting non-zero if the two disagree. The verdict itself is a REPORT; the agreement is the acceptance. |
 | `probe-radial-pusher.mjs` |  | report | §170 — IS THE PRESS LINE RADIAL? Measured, not asserted. |
 | `probe-reserve-mesh-overlap.mjs` |  | report | TODO 77 — HOW DEEPLY DO THE RESERVE TRAIN'S TWO MESHES INTERPENETRATE? |
 | `probe-reserve-mesh.mjs` |  | report | Do the power-reserve train's two meshes actually engage? |

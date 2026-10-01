@@ -9445,6 +9445,30 @@ export function checkOscillator(clock) {
 //     solve alone cannot see.
 //  8. THE HAMMER'S WINDOW — the fall (a time law, TODO 14) fits the cam's
 //     free fraction at the FASTEST governed gap.
+//
+// TODO 192 / §247 tier two — THE ENERGY COLUMN (`going.energy`) is held too,
+// as ARITHMETIC: the first rows on this record that price friction, and the
+// gate holds that they are the arithmetic they claim rather than the verdict
+// they reach, because the verdict is red on today's metal by 43–134× and a
+// gate that cannot go green is a number nobody reads. So:
+//
+//  9. THE IDENTITIES — released energy is ½k(θ_full² − θ_setup²) from the
+//     record's own k and angles; the escape torque is that energy over the
+//     fusee's wrap, through the train ratio; the per-beat gross is it over the
+//     reserve's beats. Each at float noise, each re-derived here from the
+//     numbers the record also carries, so a column that stops being computed
+//     from its neighbours fails rather than drifting.
+// 10. THE CORNERS ARE WHAT THEY CLAIM — every stage η in (0, 1]; each
+//     corner's total is the product of its stages; and the three corners are
+//     ORDERED, favourable ≥ nominal ≥ adverse in efficiency and in sustained
+//     amplitude, which is what makes "holds at all three" a statement about a
+//     band rather than three unrelated numbers.
+// 11. THE AMPLITUDE SOLVE PLUGS BACK — at the sustained θ the balance's spend,
+//     (πk/2Q)θ² + 2θT_f, equals what the train delivers, to 1e-9; and flat
+//     sustains at least vertical (the pivot END's contact radius is smaller
+//     than the staff's).
+// The verdict — sustained amplitude against the claimed AMPLITUDE_TRUE_DEG —
+// is REPORTED in the payload and the note. Gating it is TODO 192's step 4.
 export function checkEqualisation(clock) {
   const E = clock.equalisation;
   if (!E) return { ok: true, error: 'no equalisation payload on __clock (main.js TODO 32 block missing)' };
@@ -9478,6 +9502,50 @@ export function checkEqualisation(clock) {
   crossCheck('Mainspring drum', E.going);
   crossCheck('Alarm barrel', E.alarm);
   const g = E.going, a = E.alarm;
+  // Rows 9–11 — the energy column, held as arithmetic.
+  const en = g.energy;
+  const rel = (x, y) => Math.abs(x - y) / Math.max(Math.abs(y), 1e-300);
+  if (!en || typeof en !== 'object' || !en.corners) {
+    failures.push({ what: 'energy column', note: 'going.energy is missing — TODO 192 step 1 regressed to a frictionless record' });
+  } else {
+    const released = 0.5 * g.k_Nm_per_rad * (g.windFullRad ** 2 - g.setup.sweepRad ** 2);
+    if (!(rel(en.released_J, released) <= 1e-12))
+      failures.push({ what: 'energy identity: released', record: en.released_J, fromKAndAngles: released });
+    const esc = en.released_J / (en.fuseeTurns * 2 * Math.PI) / en.trainRatio;
+    if (!(rel(en.escapeTorque_Nm, esc) <= 1e-12))
+      failures.push({ what: 'energy identity: escape torque', record: en.escapeTorque_Nm, fromReleased: esc });
+    if (!(rel(en.perBeat_J, en.released_J / en.beats) <= 1e-12))
+      failures.push({ what: 'energy identity: per beat', record: en.perBeat_J, fromReleased: en.released_J / en.beats });
+    const order = ['favourable', 'nominal', 'adverse'];
+    if (order.some((c) => !en.corners[c]))
+      failures.push({ what: 'energy corners', have: Object.keys(en.corners), want: order });
+    else {
+      for (const c of order) {
+        const C = en.corners[c];
+        const bad = C.stages.filter((s) => !(s.eta > 0 && s.eta <= 1));
+        if (bad.length) failures.push({ what: 'energy stage efficiency out of (0, 1]', corner: c, stages: bad });
+        const prod = C.stages.reduce((p, s) => p * s.eta, 1);
+        if (!(rel(C.etaTotal, prod) <= 1e-12))
+          failures.push({ what: 'energy total is not the product of its stages', corner: c, etaTotal: C.etaTotal, product: prod });
+        if (!(rel(C.delivered_J, C.etaTotal * en.perBeat_J) <= 1e-12))
+          failures.push({ what: 'energy delivered is not η·gross', corner: c, delivered: C.delivered_J, etaGross: C.etaTotal * en.perBeat_J });
+        const kB = en.balance.k_Nm_per_rad;
+        const spend = (thetaDeg, tf) => { const th = thetaDeg * Math.PI / 180; return Math.PI * kB / (2 * C.qOther) * th * th + 2 * th * tf; };
+        if (!(rel(spend(C.sustainedDeg.vertical, C.pivot.vertical_Nm), C.delivered_J) <= 1e-9))
+          failures.push({ what: 'amplitude solve does not plug back (vertical)', corner: c, spend: spend(C.sustainedDeg.vertical, C.pivot.vertical_Nm), delivered: C.delivered_J });
+        if (!(rel(spend(C.sustainedDeg.flat, C.pivot.flat_Nm), C.delivered_J) <= 1e-9))
+          failures.push({ what: 'amplitude solve does not plug back (flat)', corner: c, spend: spend(C.sustainedDeg.flat, C.pivot.flat_Nm), delivered: C.delivered_J });
+        if (!(C.sustainedDeg.flat >= C.sustainedDeg.vertical))
+          failures.push({ what: 'flat sustains less than vertical', corner: c, sustainedDeg: C.sustainedDeg });
+      }
+      for (let i = 1; i < order.length; i++) {
+        const hi = en.corners[order[i - 1]], lo = en.corners[order[i]];
+        if (!(hi.etaTotal >= lo.etaTotal && hi.sustainedDeg.vertical >= lo.sustainedDeg.vertical && hi.sustainedDeg.flat >= lo.sustainedDeg.flat))
+          failures.push({ what: 'energy corners out of order', kinder: order[i - 1], harsher: order[i],
+            etaTotal: [hi.etaTotal, lo.etaTotal], vertical: [hi.sustainedDeg.vertical, lo.sustainedDeg.vertical] });
+      }
+    }
+  }
   // §104 rows 4–6, 8 — held from the record:
   if (!a.setup || !a.setup.quantised)
     failures.push({ what: 'alarm set-up quantisation', setup: a.setup });
@@ -9540,6 +9608,17 @@ export function checkEqualisation(clock) {
       tqEmpty: +g.tqEmpty.toFixed(5), fuseeK: +g.fuseeK.toFixed(4),
       momentRange_Nmm: g.momentRange_Nmm.map((x) => +x.toFixed(4)),
       levelMaxDev: g.levelMaxDev,
+      // TODO 192 — the energy column's verdict, REPORTED (rows 9–11 gate its arithmetic).
+      energy: en && en.corners ? {
+        released_mJ: +(en.released_J * 1e3).toFixed(4), meanPower_nW: +(en.meanPower_W * 1e9).toFixed(2),
+        escapeTorque_nNm: +(en.escapeTorque_Nm * 1e9).toFixed(3), perBeat_nJ: +(en.perBeat_J * 1e9).toFixed(4),
+        claimedDeg: en.balance.claimedDeg,
+        corners: Object.fromEntries(Object.entries(en.corners).map(([c, C]) => [c, {
+          etaTrain: +C.etaTrain.toFixed(4), etaTotal: +C.etaTotal.toFixed(4), delivered_nJ: +(C.delivered_J * 1e9).toFixed(4),
+          sustainedDeg: { vertical: +C.sustainedDeg.vertical.toFixed(2), flat: +C.sustainedDeg.flat.toFixed(2) },
+          claimFactorOverSupply: +C.claim.factorOverSupply.toFixed(2),
+        }])),
+      } : null,
     },
     alarm: {
       k_Nm_per_rad: a.k_Nm_per_rad,

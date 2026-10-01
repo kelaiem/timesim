@@ -30116,3 +30116,81 @@ that died without GitHub noticing still reads online until GitHub misses its
 heartbeats, normally a few minutes; the host loop's 60 s poll recycles such a
 VM on its own side. The other two witnesses (a job VM is running, the VM has a
 listener process) remain visible only on the host.
+
+## §247 — Friction and lubrication, tier two: the power budget becomes a column, and the movement's first friction table
+
+Filed from an owner request to analyse friction's effect on the spring's
+efficiency and the power reserve, find the likely points of failure, and scope
+where oil and grease belong. The analysis itself landed first as an
+instrument and two items of debt (`tools/probe-power-budget.mjs`; TODO 192,
+the power budget does not close; TODO 193, the ribbons are never held to
+their material; issue #531 ranks the nine failure points). This section is
+the entry's **tier two**, TODO 192's step 1: the probe's arithmetic promoted
+onto the record so the battery holds it. Tiers one (the per-joint
+`LUBRICATION` table, audited like `restoring`) and three (oil points in the
+schematic, an explainer plate) remain in the roadmap under the same number.
+
+### What shipped
+
+- **`FRICTION` in `layout.js`** — eight coefficients the movement cannot
+  measure, each a band at three NAMED corners (`FRICTION_CORNERS`:
+  favourable, nominal, adverse) with its source on the row: μ for teeth
+  (brass on dry steel), jewelled pivots, plain bushes and the chain's rivets;
+  the ribbon's coil-friction efficiency; the lever escapement's efficiency;
+  the balance's non-pivot Q; and the pivot end's contact radius dial-flat.
+  `MU_STEEL` is the adverse corner of every steel row BY REFERENCE — §137's
+  rule, the one steel named once; the kinder corners are what oil and polish
+  buy. Never a single number: a conclusion that flips between corners is not
+  a conclusion.
+- **`EQUALISATION.going.energy`** — the released ½k(θ_full² − θ_setup²) over
+  the reserve (3.428 mJ, 31.7 nW mean), the level torque at the fusee and its
+  10,285.7:1 descent to the escape wheel (30.3 nN·m), the per-beat gross
+  (6.35 nJ), and per corner: every stage's η with the law it was priced by
+  (a pivot costs μ·r_piv·(1/r_in + 1/r_out), a mesh πμ(1/z₁ + 1/z₂), the
+  chain μ·r_rivet·(1/r_fusee + 1/R_wrap)), the train's and the whole path's
+  product, the balance's two pivot torques (staff radius vertical, end
+  contact flat, from `OSC_I`'s mass — published beside the inertia now), and
+  the SUSTAINED amplitude, the positive root of (πk/2Q)θ² + 2θT_f = delivered,
+  against the claimed `AMPLITUDE_TRUE_DEG`.
+- **`checkEqualisation` rows 9–11** hold the column as ARITHMETIC: the three
+  identities at float noise, every η in (0, 1], each total the product of its
+  stages, the corners ordered in η and in amplitude, the amplitude solve
+  plugging back to 1e-9, flat ≥ vertical. Mutation-tested: seven ways of
+  breaking the record fire (a released energy nudged 1e-6, a halved escape
+  torque, a stage at 1.01, a product off by 0.1%, a sustained angle moved
+  0.01°, two corners swapped, the column deleted) and the untouched control
+  is silent. The VERDICT is reported, not gated — see below.
+- **The staffs are named.** `TRAIN_STAFF_R` (0.5 u, every going-train arbor
+  and the fusee's plain bush) and `BALANCE_STAFF_R` (0.3 u) replace the
+  literals in `addUpperPivot`/`addLowerPivot`'s defaults and the three call
+  sites, unmoved; the energy column quotes them by name, and TODO 192's step
+  2 will move them in one place.
+- **The probe asserts against the record.** `probe-power-budget.mjs` reads
+  the same constants by TEXT from outside `main.js` (regex quotes that throw
+  when stale) and compares its own computation to `going.energy`: 19 figures
+  at 1e-9 relative, and a non-zero exit on disagreement — which moves it from
+  REPORT to ACCEPTANCE in the index, as its header says. Its verdict stays a
+  report; only the agreement is the acceptance.
+
+### Why the verdict is a report
+
+At the shipped metal the record reads **2.4–7.1° sustained vertical and
+13–72° dial-flat** across the corners, against a claimed 270°: the claim
+exceeds the supply by 43–134×. An amplitude gate written today would be red
+on arrival, and a red that cannot go green is a number nobody reads. The
+gate therefore holds what can be held — that the column is the arithmetic it
+claims to be — and `battery-checks.mjs`'s note carries the nominal corner's
+verdict on every run beside "TODO 192 OPEN", so the shortfall is on the
+summary line rather than in a payload. Gating the amplitude is TODO 192's
+step 4, after the ribbon's working band (step 3) and the pivots (step 2)
+move.
+
+### Residue, named
+
+- TODO 192 steps 2–4 and TODO 193 — the physics is unchanged by this
+  landing; it is now measured on every run.
+- The alarm half has no energy column. Its ribbon's stress (3096–5264 MPa on
+  the as-cut rhombus) is TODO 193's, and its cadence already carries the one
+  efficiency the source had (`ALARM_GOV_MESH_EFF`), which `FRICTION` does not
+  yet subsume.
+- Tiers one and three of this entry, in the roadmap.
