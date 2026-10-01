@@ -82,6 +82,21 @@ const out = await page.evaluate(async () => {
     ray.far = 1e4;
     const dir = new THREE.Vector3(0, 0, 1);
     const v = new THREE.Vector3();
+    // three.js' Triangle.getInterpolation returns null on a zero-area triangle,
+    // and Mesh.raycast then dereferences it — so ONE degenerate face anywhere a
+    // ray can reach kills the whole probe. Intersect per object when the batch
+    // throws, and NAME every mesh that threw rather than counting it as clear:
+    // a skipped occluder would read as a reveal.
+    const threw = new Set();
+    const hitsOf = (list) => {
+      try { return ray.intersectObjects(list, false); } catch {
+        const out = [];
+        for (const o of list) {
+          try { out.push(...ray.intersectObject(o, false)); } catch { threw.add(o.name || o.uuid); }
+        }
+        return out;
+      }
+    };
     const MESHES = [
       // [unit, mesh, the window whose centre bearings are taken about]
       ['Alarm governor anchor', 'alarmGovAnchor', 'governor'],
@@ -111,9 +126,9 @@ const out = await page.evaluate(async () => {
           v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
           total++;
           ray.set(v, dir);
-          if (ray.intersectObjects(targets, false).length === 0) {
+          if (hitsOf(targets).length === 0) {
             seen++;
-            const hits = ray.intersectObjects(everything, false).filter((h) => h.object !== o && h.distance > 1e-3);
+            const hits = hitsOf(everything).filter((h) => h.object !== o && h.distance > 1e-3);
             if (!hits.length) seenAll++;
           } else {
             covered.n++;
@@ -129,6 +144,7 @@ const out = await page.evaluate(async () => {
             pctAll: total ? +(100 * seenAll / total).toFixed(1) : null, covered: covered.n ? covered : null }
         : { missing: 'mesh' };
     }
+    if (threw.size) reveal['(raycast skipped: degenerate triangles)'] = [...threw];
   }
   // The pillar stations, because ALARM_UNDER_FOOTPRINT's corrected ring disc
   // is a bound the pillar scan consumes — a seat that moved is the thing that
@@ -184,6 +200,7 @@ for (const r of out.rows) {
 console.log('\n=== reveal (vertices with a clear path out through +z: past the PLATE / past EVERYTHING) ===');
 for (const [k, v] of Object.entries(out.reveal)) {
   if (v.missing) { console.log(`  ${k.padEnd(44)} MISSING ${v.missing} — a rename; this row measures nothing`); continue; }
+  if (Array.isArray(v)) { console.log(`  ${k}: ${v.join(', ')} — these meshes were left out of the ray test, so a vertex they cover reads as revealed`); continue; }
   console.log(`  ${k.padEnd(44)} plate ${v.seen}/${v.total} = ${v.pct}%   everything ${v.seenAll}/${v.total} = ${v.pctAll}%`);
   if (v.covered)
     console.log(`      still under plate: ×${v.covered.n}  at bearings ${v.covered.minAz.toFixed(0)}–${v.covered.maxAz.toFixed(0)}° off the window's centre`);
