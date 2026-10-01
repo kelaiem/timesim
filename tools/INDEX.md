@@ -4,8 +4,8 @@
 
 # The instruments
 
-256 scripts. **147 are ACCEPTANCE tests** — they decide and exit non-zero.
-**109 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
+258 scripts. **148 are ACCEPTANCE tests** — they decide and exit non-zero.
+**110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
 **Grep this file by what you want to know, not by section number.** The names encode
@@ -14,6 +14,7 @@ when a question was asked; the summaries are what it answered.
 | instrument | § | kind | what it answers, in its own words |
 |---|---|---|---|
 | `battery-checks.mjs` |  | report | §152 — WHAT A CHECK COMPUTES, split from the harness that schedules it. |
+| `battery-points.mjs` |  | report | TODO 186 B1 — THE SILENT SPEC POINTS, SWEPT, and kept swept incrementally. |
 | `battery-promote.mjs` |  | acceptance | §227 — MAY THIS PUSH PROMOTE A PULL REQUEST'S BATTERY INSTEAD OF RE-RUNNING? |
 | `battery-split.mjs` |  | report | §127 — the battery's partition atom, and the reassembly that makes it legal. |
 | `battery-union.mjs` |  | report | §152 — REASSEMBLING A RESTRICTED RUN INTO A WHOLE-MOVEMENT VERDICT. |
@@ -133,6 +134,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-182-subbody-index.mjs` | §182 | report | §182 — DOES A BVH BUILD INVALIDATE `userData.subBodies`? |
 | `probe-184-frame-joints.mjs` | §184 | acceptance | FRAME SCREW ENGAGEMENT — how far each screw that holds the frame together actually runs into the member that is supposed to hold it (TODO 184). |
 | `probe-184-triple.mjs` | §184 | acceptance | THE TIER-SPLIT TRIPLE — is a bearing that is fine ALONE fine TOGETHER? |
+| `probe-186-points.mjs` | §186 | acceptance | TODO 186 B1 — THE ACCEPTANCE FOR THE SPEC-POINT SWEEPS, at a scale a person can iterate at. Exits non-zero on any failed control. |
 | `probe-187-casing-path.mjs` | §187 | acceptance | CAN THE MOVEMENT ACTUALLY BE CASED — the back bore's insertion profile against the rim's measured reach, per z-slice. |
 | `probe-192-tier-price.mjs` | §192 | acceptance | THE STRIKE TIER, PRICED — every above-plate member's height over the three-quarter plate's top face (build and swept over the alarm axes), the tower's segment ladder measured face to face, and the §187 glass arithmetic that turns a tower drop into cased height. |
 | `probe-194-mesh-population.mjs` | §194 | report | WHAT MESHES ARE IN THE METAL, AND WHICH OF THEM DOES A ROW DECLARE? |
