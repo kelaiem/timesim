@@ -310,8 +310,11 @@ it into prose either.
    η in (0, 1] at each of `FRICTION`'s three corners, the corners ORDERED
    (favourable ≥ nominal ≥ adverse, which is what makes "holds at all three"
    a statement about a band), and the sustained-amplitude solve plugging back
-   into the balance's spend. The VERDICT — 2–7° vertical sustained against a
-   claimed 270°, TODO 192 — is a REPORT, deliberately: an amplitude gate on
+   into the balance's spend, and since TODO 192 step 2 every pivot's bending
+   stress at its service load re-derived and held under `SPRING_SIGMA_Y_PA` —
+   the record's proof that the LOAD did not size the pivots cut at §50's floor
+   (the centre arbor's comes closest, ×2.4). The VERDICT — 10–26° vertical
+   sustained against a claimed 270°, TODO 192 — is a REPORT, deliberately: an amplitude gate on
    today's metal would be red on arrival, and a red that cannot go green is a
    number nobody reads. `FRICTION` is the one place a coefficient the movement
    cannot measure may live, always as a band with its source, never a single

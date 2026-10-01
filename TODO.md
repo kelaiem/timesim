@@ -22,7 +22,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 193 | OPEN | The mainspring ribbons are never held to their material: going 1032 → 1756 MPa, alarm 3096 → 5264 MPa (uniform moment, σ = M·a/I on the as-cut `rhombus4`, whose modulus is ¼ of a flat strip's), against the 800 MPa `SPRING_SIGMA_Y_PA` every other spring answers to. Fix: decide the section (strip vs rhombus) and re-solve k, cite a mainspring-alloy limit, gate σ at full wind for both ribbons |
-| 192 | PART DONE | Step 1 LANDED (§247 tier two): `FRICTION` bands in `layout.js`, `EQUALISATION.going.energy`, `checkEqualisation` rows 9–11 gating the arithmetic and reporting the verdict, the probe asserting against the record. OPEN: the going spring cannot drive the balance: 3.43 mJ over 30 h (31.7 nW) against a 270° balance that needs 43–134× that after friction; sustained amplitude 2–7° vertical, 13–72° dial-flat (`probe-power-budget.mjs`, three assumption corners). Causes: 0.673 working turns of the drum, and pivots 3–5× §50's real band (balance Q_pivot 62). Fix: energy column on `equalisation`, pivots cut to the real band, the working band re-solved against a declared amplitude target |
+| 192 | PART DONE | Steps 1 and 2 LANDED. Step 1 (§247 tier two): `FRICTION` bands in `layout.js`, `EQUALISATION.going.energy`, `checkEqualisation` rows 9–11 gating the arithmetic and reporting the verdict, the probe asserting against the record. Step 2: the jewelled train arbors and the balance shouldered onto pivots at §50's floor (⌀ 0.07 mm), the stones turned for them, row 12 holding each pivot's service stress under yield (centre arbor tightest, ×2.4). OPEN: the going spring still cannot drive the balance: 3.43 mJ over 30 h (31.7 nW) against a 270° balance that needs 15–44× that after friction; sustained amplitude 10–26° vertical, 17–82° dial-flat. Remaining cause: 0.673 working turns of the drum. Fix: the working band re-solved against a declared amplitude target (after TODO 193), then gated |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
@@ -25964,6 +25964,8 @@ link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
 
 ## 192. The going spring cannot drive the balance: the power budget does not close
 
+**PART DONE** — steps 1 (the energy column, §247 tier two) and 2 (the pivots cut) landed; steps 3 and 4 remain, with TODO 193 ahead of step 3.
+
 Found by `tools/probe-power-budget.mjs` (a REPORT); tracked with the other
 failure points in issue #531. Every published figure about
 the going train's power is FRICTIONLESS. `equalisation` holds the fusee's level
@@ -26044,13 +26046,44 @@ truth failure, not packaging.
    `probe-power-budget.mjs` asserts the record against its own independent
    computation (19 figures at 1e-9). The staffs are named (`TRAIN_STAFF_R`,
    `BALANCE_STAFF_R`), so step 2 moves them in one place.
-2. Cut the pivots to §50's band, as P1 sections whose stock floor is already
-   `PIVOT_MIN_U`.
+2. ~~Cut the pivots to §50's band, as P1 sections whose stock floor is already
+   `PIVOT_MIN_U`.~~ **LANDED.** Every jewelled going-train arbor (centre,
+   third, fourth, escape) and the balance staff is SHOULDERED: the staff stops
+   `CLEAR_MARGIN` off its stone and a pivot at `TRAIN_PIVOT_R` =
+   `flatsR(PIVOT_MIN_U, 12)` (⌀ 0.07 mm across the flats, kinded `pivot` for
+   §50's census) runs through the stone's hole, which is now turned for it
+   (pivot + `PIVOT_BORE_CLEAR`; the chaton's setting dimensions stay on the
+   staff's bore, so §148's family and the plate's counterbores do not move).
+   The upper staff's plate collar opens one running clearance more, so the
+   stone is the bearing and the plate is not. Two things that were wrong
+   before and are no longer: the upper staffs stopped at the plate's
+   mid-plane and so bore in the nickel collar, never reaching the chaton's
+   stone; and the balance's upper end was the makeBalanceWheel staff at
+   r 0.875 running through the cock's 0.48 stone hole. The radius is the
+   floor because friction is linear in it, and the record shows the LOAD
+   does not bind: `going.energy.pivots.strength` prices each pivot's bending
+   stress at an upper-bound service load and `checkEqualisation` row 12
+   holds it under `SPRING_SIGMA_Y_PA`. The centre arbor comes closest at
+   **336 MPa, ×2.4** — real centre pivots are the train's thickest for this
+   reason, and with no shock specification for the movement the floor is
+   the honest answer only at service load. The fusee keeps its staff-size
+   plain bushes (it carries the chain's pull and passes the let-down square)
+   and the pallet fork its 0.35 staff (the escapement's η is a band that
+   covers it). Verdict after the cut:
+
+   | corner | ribbon → balance η | sustained, vertical / dial-flat | claim over supply |
+   |---|---|---|---|
+   | favourable | 0.288 | **25.8° / 82.3°** | 14.7× |
+   | nominal | 0.222 | **16.8° / 38.7°** | 24.3× |
+   | adverse | 0.160 | **9.8° / 16.9°** | 44.0× |
+
+   Still below a lever escapement's lift angle at the adverse corner, so
+   the rest of the fix (step 3) is unchanged in kind.
 3. Re-solve the drum's working band against a declared amplitude target at
    the adverse corner, with the ribbon inside TODO 193's stress limit.
 4. Gate the amplitude the solve achieves.
 
-Items 1 and 2 are independent and can land first; 1 has. Until the rest do,
+Items 1 and 2 are independent and could land first; both have. Until the rest do,
 `AMPLITUDE_TRUE_DEG`, the hack brake's 1.3 mN and §218's physical peaks
 describe a balance this spring cannot keep swinging. That is MODELLED, not
 SIMULATED — no force path reaches the balance, and none says it would.
