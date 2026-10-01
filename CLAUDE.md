@@ -86,8 +86,9 @@ three-quarter plate and the dial). The base plate's fills live in
 line drawing's only partition between the dial-side works and the
 train. Both halves are boot-asserted.
 
-The chrome is LOCALIZED (§73 tier one, §116, §208 — English, German, French,
-Japanese, Chinese in both scripts, and Arabic):
+The chrome is LOCALIZED (§73 tier one, §116, §208, then one landing per
+locale; `LOCALES` in `src/i18n.js` is the roster, so this sentence does not
+restate it — a list or a count here is one more copy to fall behind):
 `src/i18n.js` holds one table keyed by the English source string, so the
 app keeps authoring its UI in English and `t()` / `localizeTree()`
 resolve at the display site; a missing entry falls back to English
@@ -775,7 +776,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 254 measuring scripts and this file names 19. The rest are named for the
+`tools/` holds 255 measuring scripts and this file names 19. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -792,7 +793,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **144 of
+The index also carries the split that decides how to read a result: **145 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
