@@ -25649,7 +25649,71 @@ come to about an hour of core time, +20–60 min on CI.
 Stop condition for both: a point that reports FORBIDDEN or a clearance
 violation does not join the set. It is a finding to file.
 
-## 187. The base plate is invisible to the battery: no gate reads its openings, lands, closure or digest
+## 187. The base plate is invisible to the battery: no gate reads its openings, lands, closure or digest — CLOSED
+
+**Closed by the second fix path: explicit plate rows, not a label.** Measured
+first, a label was the wrong tool: at rest 39 of the 60 labelled units stand
+within `CLEAR_MARGIN` of the plate. 36 of them carry a `[…, 'plate']` support
+edge, which is the plate's job and not a finding. The other three (Heart cam,
+Winding clutch, Reset rod) would arrive as undeclared pairs under the margin,
+and `UNDECLARED_CLEARANCE_DEBT` is closed to new rows. Landing a label would
+have meant 39 new EXPECTED/floors rows written to turn gates green.
+
+What was built (`src/inspect.js`):
+- `HELD_FIXTURES` names structure that no label claims, resolved through
+  `STRUCTURE_NODES` (the one place a structural node names its mesh). Its one
+  row is `Base plate` → the meshes named `backPlate`: the slab and the two
+  pocket floors, with the §71 occluders pruned by their schematic flag.
+- `outlines` reads the plate (3 of 3 meshes carry a shape) and gains a
+  CROSS-RING tier: two rings of one shape crossing each other. Each of TODO
+  172's two circles was a simple ring, so the self-crossing test could never
+  have seen that draft. The tier GATES held fixtures and REPORTS labelled
+  units, because its first run found two units cut the same way: see
+  [TODO 198]. Its control is TODO 172's draft in miniature: two overlapping
+  bores must cross at exactly 2 points, and the same bores set apart at 0.
+- `meshIntegrity` reads the plate through every tier, and gains CLOSURE for
+  held fixtures (`surfaceEdgeCensus`: 0 open, 0 non-manifold), gated. Its
+  control is a closed `BoxGeometry` reading 0, and the same box less one
+  triangle reading exactly 3.
+- `unitDigests` carries a `Base plate` row, and `held` names it. The
+  determinism gate therefore holds it, and a plate-only change lands in the
+  changed set by name. `resolvePairsTouching` accepts held names, which touch
+  no pair. That is sound because no restrictable sweep reads the plate, while
+  `support`, `outlines` and `meshIntegrity`, which do, always run whole. So
+  the item's "an incremental run would skip every sweep on it" is correct
+  behaviour once the plate-reading checks hold it. The plate change was never
+  invisible to the sweeps; it was invisible to every check.
+- The fingerprint boxes the plate at every pose. Baseline 1887996767 →
+  **1112714209**, 60 rows over 12 poses, no unit's box moved, three virgin
+  boots. The §192 record above it was already stale: the tree this landed
+  on measured 1887996767, not 1015408335.
+- A held name that resolves to no mesh, that reads no shape, or that is also
+  a label's name fails both gates (`outlines`' noShape rule).
+
+**The gate fires.** `node tools/probe-187-plate-gates.mjs` (acceptance, 9
+claims) re-cuts TODO 172's draft in a temp copy by forcing `makeBackPlate`'s
+pocket-and-bore union down its two-ring branch, then drives both trees
+through the battery's own `virginBoot`/`runCheck` and BATTERY's `fails`:
+- **Control:** 0 fails in either gate. The plate is closed: slab 41,264 tris,
+  floors 576 each, 0 open edges. The boot is silent.
+- **Mutant:** `outlines` fails on `backPlate hole 17 × hole 18`, 2 crossings
+  at (−10.1264, 1.9086). `meshIntegrity` fails on the slab at **56 open
+  edges** (TODO 172 measured 76 on the tree of its day; TODO 184's late
+  re-cut has moved the slab since). Only the `Base plate` digest moves, so
+  the changed set is `["Base plate", "Chain"]` and `resolvePairsTouching`
+  accepts it.
+- **Reported:** the mutant still boots SILENT, which is the defect this item
+  was filed for, now caught by the battery instead. The fingerprint does not
+  move, because a box cannot see a hole.
+
+Residue, named:
+- The spec points (`SPEC_POINTS`) sweep only `inspection`, `clearances` and
+  `undeclaredClearance`. A non-identity point re-cuts the plate, because its
+  holes follow the stations, and that point's plate is held only by boot
+  silence and the builder's §62 land guard. `outlines` and `meshIntegrity`
+  run on the default build alone.
+- `pillars` resolves by mesh name for `support` too, but it is a labelled
+  unit as well, so it was never invisible.
 
 Found closing [TODO 172]. `backPlate` is not a labelled unit, so
 `collectUnits` never returns it. As a result, none of these reads the plate
@@ -26123,3 +26187,34 @@ decide only that (a parity verdict of inside → 0) and never replace the
 library's exact distance with a larger one. Control: the probe's seeded
 trials report 0 over-reads, and a battery `--report` diff names every moved
 row (each should be under 0.05 before).
+
+## 198. Two units carry rings that cross each other: the three-quarter plate and the geneva finger disc are cut open
+
+Found closing [TODO 187]. The new cross-ring tier of `outlines` (two rings of
+one authored shape crossing each other) gates only the held fixtures. Its
+first movement-wide run reports two labelled units, and both meshes are OPEN
+by `surfaceEdgeCensus`. That is the TODO 172 failure: earcut resolves
+overlapping rings however it likes, and the extrude comes out open.
+
+| unit / mesh | rings | crossings | open edges |
+|---|---|---|---|
+| Three-quarter plate / `threeQuarterPlate` | outline × hole 16 | 2 | 56 (whole mesh) |
+| | outline × hole 17 | 4 | |
+| Alarm winding arrest / `genevaFingerDisc` | outline × hole 0 (the bore) | 36 | 129 (19 non-manifold) |
+
+- **Three-quarter plate.** Holes 16 and 17 (boxes x −3.85…3.74, y
+  −22.43…−15.47 and x 2.52…7.30, y −30.13…−21.95) straddle the plate's
+  outline. They are openings drawn as holes where the outline already runs,
+  so each one should either be part of the outline or stand a land inside
+  it (§62's rule).
+- **Geneva finger disc.** The 1440-point outline crosses the 64-gon bore at
+  r ≈ 0.235. That is very likely the real mechanism behind [TODO 107]'s
+  15.1% blocked bore, which that item attributes to the triangulator.
+  Crossings come in coincident pairs, so the outline probably runs inside
+  the bore and back.
+
+**Fix path.** Cut each part so no two rings cross: merge an opening into the
+outline, or keep its land. Then move the cross-ring tier's gate from
+`HELD_NAMES` to every unit, so the REPORT becomes a gate (§40's arc). The
+acceptance is `outlines`' `crossRing.reported` empty, both meshes reading
+0 open edges, and for the disc `probe-bore-cut.mjs`'s TODO 107 acceptance.

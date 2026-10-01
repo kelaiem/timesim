@@ -206,20 +206,33 @@ export const BATTERY = [
   // — a clean result for a question it was not asking — because `weldGeometry`
   // dropped the source shape. An EXTRUDE with no readable shape therefore
   // fails; a cylinder or a box never had one and is counted instead.
+  // TODO 187 adds the held fixtures (the base plate, which no label claims)
+  // to the roster, and a CROSS-RING tier: two rings of one shape crossing each
+  // other, which is how TODO 172's first pocket draft opened the plate. It
+  // gates the held fixtures and REPORTS the labelled units — its first run
+  // found two of them (TODO 198), and §54's banner is why they are not gated
+  // on arrival. A held row that reads no shape fails, the noShape rule.
   { name: 'outlines', opts: { yieldEvery: YIELD_EVERY },
-    gate: 'controls PASS, 0 self-crossing rings, and every extrude\'s authored shape is readable',
+    gate: 'controls PASS, 0 self-crossing rings, every extrude\'s authored shape is readable, every held fixture read, 0 cross-ring crossings on a held fixture — unit cross-ring rows are a REPORT (TODO 198)',
     fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
       ...r.violations,
-      ...r.noShape.map((n) => ({ extrudeWithNoReadableShape: `${n.unit} / ${n.mesh}` }))],
+      ...r.noShape.map((n) => ({ extrudeWithNoReadableShape: `${n.unit} / ${n.mesh}` })),
+      ...r.heldProblems,
+      ...r.crossRing.gated],
     note: (r) => `${r.read} of ${r.geometries} geometries carry an authored shape, ${r.rings} rings tested; `
-      + `${r.withoutShape.map((w) => `${w.count} ${w.type}`).join(', ')} never had one` },
+      + `${r.withoutShape.map((w) => `${w.count} ${w.type}`).join(', ')} never had one; `
+      + `held ${r.held.map((h) => `${h.name} (${h.read} of ${h.meshes} read)`).join(', ')}; `
+      + `cross-ring ${r.crossRing.gated.length} held / ${r.crossRing.reported.length} unit rows (reported)` },
   { name: 'meshIntegrity', opts: { yieldEvery: YIELD_EVERY },
-    gate: 'controls PASS, 0 malformed sub-body declarations, 0 unwaived inverted bodies, 0 stale inverted waivers — zeroArea rows are a REPORT (§40)',
+    gate: 'controls PASS, 0 malformed sub-body declarations, 0 unwaived inverted bodies, 0 stale inverted waivers, every held fixture resolved and CLOSED (TODO 187) — zeroArea rows are a REPORT (§40)',
     fails: (r) => [...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
       ...r.subBodies.malformed,
       ...(r.inverted.unwaived || []),
-      ...(r.inverted.staleWaivers || [])],
+      ...(r.inverted.staleWaivers || []),
+      ...r.closure.heldProblems,
+      ...r.closure.open],
     note: (r) => `${r.geometries} geometries / ${r.triangles} tris: zeroArea ${r.zeroArea.total} in ${r.zeroArea.geometries} geometries (${r.zeroArea.exactZero} exact), `
+      + `held closure ${r.closure.rows.length} meshes / ${r.closure.open.length} open, `
       + `inverted ${r.inverted.rows.length} (${r.inverted.waivedCount ?? 0} waived — accepted debt), subBodies ${r.subBodies.bodies} in ${r.subBodies.declaredGeometries} geometries; `
       + `pairs ${r.subBodies.pairs.tested} tested / ${r.subBodies.pairs.skippedDeclaredOverlap} declared / ${r.subBodies.pairs.rows.length} interior` },
   // TODO 104 tier A rides this row's gate rather than a row of its own: the

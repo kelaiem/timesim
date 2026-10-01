@@ -1423,7 +1423,7 @@ function assemble({
     const drift = Object.keys(headDigests.units).filter((n) => headDigests.units[n].key !== digestsB?.units[n]?.key);
     gate('unit digests deterministic across virgin boots',
       drift.map((n) => ({ unit: n, bootA: headDigests.units[n], bootB: digestsB?.units[n] ?? null })),
-      `${headDigests.unitCount} units, ${headDigests.poseCount} poses, place quantum ${headDigests.placeQ}`);
+      `${headDigests.unitCount} units${headDigests.held?.length ? ` + ${headDigests.held.length} held` : ''}, ${headDigests.poseCount} poses, place quantum ${headDigests.placeQ}`);
   }
   }
 
@@ -2152,7 +2152,7 @@ try {
       ? await P.page.evaluate(([b, h]) => window.__I.digestChangedUnits(b, h), [baseDigests, headDigests])
       : null;
     await P.context.close();
-    console.log(`  digests: ${headDigests.unitCount} units over ${headDigests.poseCount} poses`);
+    console.log(`  digests: ${headDigests.unitCount} units${headDigests.held?.length ? ` + ${headDigests.held.length} held (${headDigests.held.join(', ')})` : ''} over ${headDigests.poseCount} poses`);
     if (DIGESTS_OUT) {
       writeFileSync(resolve(DIGESTS_OUT), `${JSON.stringify(headDigests, null, 2)}\n`);
       console.log(`  digests written to ${resolve(DIGESTS_OUT)}`);
@@ -2177,8 +2177,10 @@ try {
       restriction = changed;
     } else {
       restriction = changed;
+      // TODO 187 — a held fixture (the base plate) is in the changed set by
+      // name and in no sweep's pairs, so it counts in neither n nor k.
       const n = headDigests.unitCount;
-      const k = changed.length;
+      const k = changed.filter((u) => !(headDigests.held || []).includes(u)).length;
       const pairs = k * (n - k) + (k * (k - 1)) / 2;
       const all = (n * (n - 1)) / 2;
       console.log(`  ${k} unit(s) changed: ${changed.join(', ')}`);
