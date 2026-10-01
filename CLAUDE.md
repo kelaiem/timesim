@@ -814,7 +814,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 258 measuring scripts and this file names 19. The rest are named for the
+`tools/` holds 259 measuring scripts and this file names 20. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -831,7 +831,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **147 of
+The index also carries the split that decides how to read a result: **148 of
 them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
@@ -1049,6 +1049,16 @@ an exact pose, `step(dt)` advances deterministically, plus `render()`,
   that finds a boundary, so the LINEARITY control is the load-bearing part, not
   the reading: pre-rotate by 0.02 and 0.05 and the answer must move by exactly
   0.02 and 0.05 (`probe-50-clutch.mjs`, its own tier).
+- **A BVH distance is exact only in a RIGID frame.** A closest-point query
+  reads in the queried tree's local frame, so a mesh carrying a scale (the
+  jumper's lifter bar, the spring blades, the ribbons' `scale.z`) read its gaps
+  in its own unscaled units; and three-mesh-bvh's pruning bounds are unsound
+  under a non-rigid map even when the units come out right (TODO 159 measured
+  a 2.35 over-read from putting the rigid tree first). Every distance path in
+  `inspect.js` goes through `rigidFrame`, which bakes a non-rigid linear part
+  into a cached geometry copy — use it for any new distance query, in a probe
+  too. An incidence test (`intersectsGeometry`, a parity ray) is affine
+  invariant and does not need it. `probe-159-frame-scale.mjs` holds it.
 - **An OPEN mesh reads as a colliding one.** `meshClearance` guards its BVH
   near-zeros with `sampledVerdict`, which is a PARITY RAYCAST — it counts
   crossings, so it assumes the solid is closed. Build a body open-ended and

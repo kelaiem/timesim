@@ -63,8 +63,9 @@
 // unit, over the §152 digest poses plus the crown axis at twelfths (its own
 // travel), the declared joints excused for their one part each (the beak in
 // the star, the two posts in the base plate, the lifter's slot on the setting
-// lever's post drop). A stretched mesh is passed to meshClearance SECOND:
-// measured first, its distances read in its unscaled units (TODO 159).
+// lever's post drop). Argument order no longer matters: until TODO 159 a
+// stretched mesh measured FIRST read distances in its unscaled units, and since
+// that fix meshClearance measures every mesh through a rigid frame.
 //
 // THE CRANK REVERSED WITH IT, AND THAT IS THE CAP'S NEW PLANE, NOT A SIGN
 // SLIP: the cap has to stand ABOVE its last apex — an apex above the cap
@@ -376,7 +377,7 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
   const scaled = (m) => { m.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), _sv); return Math.max(_sv.x, _sv.y, _sv.z) - Math.min(_sv.x, _sv.y, _sv.z) > 1e-6 * Math.max(_sv.x, _sv.y, _sv.z); };
   const jPoses = [...I.digestPoses(C)];
   for (let k = 0; k <= 12; k++) jPoses.push({ tau: 0.05, crownPullT: k / 12, leverEngage: k / 12, tension: 1 });
-  const jumperRows = {}, jumperBoth = new Set();
+  const jumperRows = {};
   // TODO 156 — WALKS control: the jumper's own MEASURED world-vertex reach
   // (radius from the plate axis, and the z its metal actually stands at)
   // over these same poses, vertex-precise like zBandVerts — never a rotated
@@ -401,13 +402,13 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
       const jb = box(j).expandByScalar(0.5);
       for (let k = 0; k < jOthers.length; k++) {
         if (!jb.intersectsBox(ob[k]) || excused(j, jOthers[k])) continue;
-        // meshClearance measures in its FIRST mesh's local frame, so a first
-        // mesh with a non-uniform scale reads distances in its unscaled units:
-        // the lifter carries its span as scale.x (~36) and read a tab 3.4 u
-        // away at 0.119. The scaled mesh goes second, where its triangles are
-        // carried into the other's frame — exact under any affine map.
+        // TODO 159, closed: meshClearance used to measure in its FIRST mesh's
+        // local frame, so the lifter (span carried as scale.x ~36) read a tab
+        // 3.4 u away at 0.119, and this row passed the scaled mesh second. It
+        // now measures through rigid frames (src/inspect.js `rigidFrame`), in
+        // either order and with both meshes stretched; the order below is kept
+        // only so this row's history reads the same.
         const o = jOthers[k];
-        if (scaled(j) && scaled(o)) jumperBoth.add(`${j.name} ⇄ ${labelOf(o)}`);
         put(jumperRows, `${j.name || j.geometry.type}|${labelOf(o)}`, scaled(j) ? I.meshClearance(o, j) : I.meshClearance(j, o), pi);
       }
     }
@@ -462,7 +463,7 @@ const out = await page.evaluate(async ({ bases, tauBases }) => {
   }
   return { runs, tauRuns, capZ, mwZ, centreD, centreWant, plate, lands, foldClear, cross, poses: POSES.length,
     leg2Rsv, leg2Tie, leg2Poses: leg2Poses.length,
-    jumperRows, jumperBoth: [...jumperBoth], jumperPoses: jPoses.length, jumperSite: C.jumperSite, jumperParts: jumper.length, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN, mwStack, faceZ,
+    jumperRows, jumperPoses: jPoses.length, jumperSite: C.jumperSite, jumperParts: jumper.length, plateMeshCount: plateMeshes.length, CLEAR_MARGIN: L.CLEAR_MARGIN, mwStack, faceZ,
     measR, measZ,
     capLeg: C.settingFold && C.settingFold.capLeg };
 }, { bases: [0, 7.3], tauBases: [0, 20000] });
@@ -592,7 +593,6 @@ else {
     + `capD ${js.capD === null ? '-' : js.capD.toFixed(3)}, ${js.tested} of ${js.candidates} stations tested at ${js.stepDeg}°, ${js.ms.toFixed(0)} ms `
     + `(${js.staticMeshes} static meshes, ${js.rotors} rotors revolved, ${js.coaxialRotors} on the jumper's own stud)`);
   if (!out.jumperParts) fail('no jumper meshes found (jumperLifter\'s unit)');
-  for (const p of out.jumperBoth) fail(`${p}: both meshes non-uniformly scaled — meshClearance cannot measure the pair`);
   if (!js || js.clr === null) fail('the siting solve settled on no station that clears by the margin');
   for (const [k, r] of sorted(out.jumperRows)) {
     const [a, b] = k.split('|');
