@@ -10675,6 +10675,307 @@ export const TURN_WAIVERS = {
   // the solve's own footprint was. L/D 33.2 → 18.0.
 };
 
+// ---------------------------------------------------------------------------
+// TODO 181 — jumperMovers: THE MINUTE JUMPER'S SITING SOLVE, AUDITED FOR MOTION.
+//
+// JMP_SITE (main.js) sites the jumper against every other unit's metal, and it
+// can only read that metal at the BUILD pose — BOOT HAS NO POSE. So every
+// obstacle that moves is a claim about a pose, and `JMP_SITE_MOVERS` is where
+// each claim is declared: lawed (judged over its own law's samples), revolve
+// (joined to an existing rotor's revolution, with a measured slack), or
+// bounded (read as built, because its whole travel stays `bound` from the
+// jumper's region). This is the half of that contract that needs a posed
+// movement, which is why it is a battery check and not a boot assert: the
+// declaration's STRUCTURE is pose-free and warns at boot; whether a mesh MOVES,
+// and whether each row's answer holds where it goes, is only measurable here.
+//
+// THE CENSUS walks the dense pose net (every axis, i = 0…n, the net
+// `undeclaredClearance` and `intraUnit` use) and, for every mesh the solve
+// visited, compares its world matrix with the one the solve read. A mesh is a
+// MOVER if any pose displaces its bounding-box corners by more than 1e-6
+// (the §36 registry's eps — for an affine map the box's corners bound every
+// vertex's displacement) or if its geometry changes inside the net (a morph;
+// the weld pass swaps geometry once after the solve, so build-vs-net identity
+// is not the test). A mover that is an obstacle — inside the solve's culling
+// region at the build pose, or entering it at any pose — needs a row, unless
+// it is a toothed wheel turning purely about its own axis, which the solve's
+// rotor rule already revolves. Then each row is held to its own answer:
+//
+//   · lawed   — at every pose, the part stands within one sample step
+//               (CLEAR_MARGIN/2, the step the law's samples are spaced by) of
+//               a pose the solve judged;
+//   · revolve — every pose is the build pose turned about the entry's axis,
+//               to within the row's declared slack: no vertex and no
+//               triangle centroid leaves its own circle about the axis by
+//               more than the slack in r or in z — exactly the two points per
+//               triangle the solve's meridian box is drawn from, so the
+//               widened box contains the pose. (A cheap corner bound — the
+//               box corners' distance from the best-aligned turn of the build
+//               pose — decides first, and only a pose it cannot clear pays for
+//               the exact walk. A row with a SWING was read at every sample of
+//               its swing's law, so it is measured against the nearest one);
+//   · bounded — the part's exact distance (meshClearance, the battery's own
+//               measure) to the jumper's region box never falls under the
+//               row's bound, and the bound is at least CLEAR_MARGIN.
+//
+// It FAILS on a moving obstacle no row names and on a row that names no mesh,
+// on a malformed row, and on any row whose answer does not hold. Rows whose
+// meshes never move are REPORTED — a revolve or bounded row over still metal
+// is conservative, not wrong. The CONTROL is the classifier fired both ways
+// over this run's own measurements (one declared row removed must leave its
+// movers undeclared; a row naming nothing must be caught), plus the must-hits
+// that make the measurements mean something: every lawed row's metal is SEEN
+// moving, and the jumper's own metal lies inside the region its distances
+// are taken to.
+const JMP_MOVE_EPS = 1e-6;
+export async function checkJumperMovers(clock, { yieldEvery = 16 } = {}) {
+  if (typeof clock.jumperSiteCensus !== 'function')
+    return { ok: true, error: 'no jumperSiteCensus on __clock (main.js TODO 181 block missing)', control: 'FAIL — nothing to census' };
+  clock.resetInputs();
+  const S = clock.jumperSiteCensus();
+  const reach = S.reach();
+  const R = reach.box;
+  clock.resetInputs();
+  const regionMesh = new THREE.Mesh(new THREE.BoxGeometry(R.max.x - R.min.x, R.max.y - R.min.y, R.max.z - R.min.z));
+  regionMesh.position.set((R.min.x + R.max.x) / 2, (R.min.y + R.max.y) / 2, (R.min.z + R.max.z) / 2);
+  regionMesh.updateMatrixWorld(true);
+  const rowByName = new Map(S.rows.map((r) => [r.name, r]));
+  const label = (rec) => `${rec.unit} / ${rec.mesh.name || `${rec.mesh.geometry.type}#${rec.mesh.parent ? rec.mesh.parent.children.indexOf(rec.mesh) : 0}`}`;
+  const cornersOf = (m) => {
+    const g = m.geometry;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const b = g.boundingBox, cs = [];
+    for (let k = 0; k < 8; k++) cs.push(new THREE.Vector3(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z));
+    return cs;
+  };
+  const P = [0, 1, 2, 3, 4, 5, 6, 7].map(() => new THREE.Vector3()), Q = P.map(() => new THREE.Vector3());
+  const place = (out, cs, M) => { for (let k = 0; k < 8; k++) out[k].copy(cs[k]).applyMatrix4(M); };
+  const disp = () => { let d = 0; for (let k = 0; k < 8; k++) d = Math.max(d, P[k].distanceTo(Q[k])); return d; };
+  const _u = new THREE.Vector3(), _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _w = new THREE.Vector3();
+  // the distance from this pose (P) to the build pose (Q) turned about (o, a)
+  // by the angle that best aligns their farthest-out corner — any angle gives
+  // an upper bound on how far a vertex strays from its own revolution
+  const turnSlack = (ax) => {
+    let k0 = 0, r0 = -1;
+    for (let k = 0; k < 8; k++) {
+      _u.subVectors(Q[k], ax.o); _u.addScaledVector(ax.a, -_u.dot(ax.a));
+      if (_u.length() > r0) { r0 = _u.length(); k0 = k; }
+    }
+    _u.subVectors(Q[k0], ax.o); _u.addScaledVector(ax.a, -_u.dot(ax.a));
+    _v.subVectors(P[k0], ax.o); _v.addScaledVector(ax.a, -_v.dot(ax.a));
+    const th = (_u.lengthSq() > 1e-18 && _v.lengthSq() > 1e-18) ? Math.atan2(_w.crossVectors(_u, _v).dot(ax.a), _u.dot(_v)) : 0;
+    _q.setFromAxisAngle(ax.a, th);
+    let d = 0;
+    for (let k = 0; k < 8; k++) {
+      _w.subVectors(Q[k], ax.o).applyQuaternion(_q).add(ax.o);
+      d = Math.max(d, _w.distanceTo(P[k]));
+    }
+    return d;
+  };
+  // THE EXACT DRIFT, when the corner bound above is not already small enough:
+  // how far each point of the part leaves its own circle about the axis, in
+  // the two meridian coordinates the solve's boxes are drawn in. Taken over
+  // every vertex AND every triangle's centroid, because the solve's box for a
+  // triangle reads exactly those (its r floor is the centroid's r less the
+  // triangle's radius) — so a slack that covers them covers the solve's box.
+  const meridianPts = (m) => {
+    const pos = m.geometry.attributes.position, idx = m.geometry.index;
+    const n = idx ? idx.count : pos.count, pts = [];
+    for (let i = 0; i < pos.count; i++) pts.push(new THREE.Vector3().fromBufferAttribute(pos, i));
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    for (let i = 0; i + 2 < n; i += 3) {
+      a.fromBufferAttribute(pos, idx ? idx.getX(i) : i); b.fromBufferAttribute(pos, idx ? idx.getX(i + 1) : i + 1); c.fromBufferAttribute(pos, idx ? idx.getX(i + 2) : i + 2);
+      pts.push(new THREE.Vector3().addVectors(a, b).add(c).multiplyScalar(1 / 3));
+    }
+    return pts;
+  };
+  const rzOf = (p, ax) => { _u.subVectors(p, ax.o); const z = _u.dot(ax.a); return [Math.sqrt(Math.max(0, _u.lengthSq() - z * z)), z]; };
+  const cost = { exactCalls: 0, exactMs: 0, driftCalls: 0, driftMs: 0 };
+  const pointDrift = (x, M, ax, ref) => {
+    const t0 = performance.now();
+    try { return pointDrift1(x, M, ax, ref); } finally { cost.driftCalls++; cost.driftMs += performance.now() - t0; }
+  };
+  // `ref` is the pose the solve read the part at: the build pose, or the
+  // swing sample nearest this one
+  const pointDrift1 = (x, M, ax, ref) => {
+    if (!x.pts) { x.pts = meridianPts(x.rec.mesh); x.rzRef = new Map(); }
+    if (!x.rzRef.has(ref)) x.rzRef.set(ref, x.pts.map((p) => rzOf(_w.copy(p).applyMatrix4(ref), ax)));
+    const rz0 = x.rzRef.get(ref);
+    let d = 0;
+    for (let k = 0; k < x.pts.length; k++) {
+      const [r, z] = rzOf(_w.copy(x.pts[k]).applyMatrix4(M), ax);
+      d = Math.max(d, Math.abs(r - rz0[k][0]), Math.abs(z - rz0[k][1]));
+    }
+    return d;
+  };
+  const _aabb = new THREE.Box3();
+  const recs = S.census.map((rec) => ({
+    rec, row: rec.row ? rowByName.get(rec.row) || null : null, cs: cornersOf(rec.mesh), label: label(rec),
+    last: null, gids: new Set(), moved: 0, axesMoved: new Set(), entered: false,
+    ownSlack: 0, lawGap: 0, revSlack: 0, anchor: null,
+  }));
+  const rotorAxisOf = (rot) => S.rotorAxis.get(rot) || null;
+  // a bounded row's claim is its NEAREST mesh's, so the running minimum the
+  // exact measure is pruned against is the row's
+  const rowMin = new Map();
+  let poses = 0;
+  for (const axis of AXES) {
+    enterAxis(clock);
+    for (let i = 0; i <= axis.n; i++) {
+      clock.setPose(axis.pose(i / axis.n, clock));
+      poses++;
+      for (const x of recs) {
+        const m = x.rec.mesh, e = m.matrixWorld.elements;
+        x.gids.add(m.geometry.id);
+        if (x.last && x.last.gid === m.geometry.id) {
+          let same = true;
+          for (let k = 0; k < 16; k++) if (x.last.e[k] !== e[k]) { same = false; break; }
+          if (same) { if (x.last.moved) x.axesMoved.add(axis.name); continue; }
+        }
+        place(P, x.cs, m.matrixWorld);
+        place(Q, x.cs, x.rec.build);
+        const d = disp();
+        const moved = d > JMP_MOVE_EPS;
+        x.last = { gid: m.geometry.id, e: e.slice(), moved };
+        if (moved) { x.moved = Math.max(x.moved, d); x.axesMoved.add(axis.name); }
+        _aabb.makeEmpty(); for (const p of P) _aabb.expandByPoint(p);
+        if (_aabb.intersectsBox(S.region)) x.entered = true;
+        const row = x.row;
+        const rb = row && row.kind === 'bounded' ? (rowMin.get(row) || rowMin.set(row, { d: Infinity, at: null, label: null }).get(row)) : null;
+        if (rb && boxDistance(_aabb, R) < rb.d) {
+          // Lipschitz first: every point of the part is within `step` of where
+          // it stood at the last exact reading (the corner bound again), so
+          // that reading less the step is a floor under this pose's distance,
+          // and a floor at or over the running minimum cannot lower it
+          let step = Infinity;
+          if (x.anchor) { place(Q, x.cs, x.anchor.M); step = disp(); place(Q, x.cs, x.rec.build); }
+          if (!(x.anchor && x.anchor.d - step >= rb.d)) {
+            const t0 = performance.now();
+            // bounded a little past the row's running minimum: a reading
+            // farther than that only has to be a floor, and a floor is what
+            // it keeps
+            const ub = rb.d + 2 * CLEAR_MARGIN;
+            const dd = meshClearance(regionMesh, m, ub);
+            cost.exactCalls++; cost.exactMs += performance.now() - t0;
+            x.anchor = { M: m.matrixWorld.clone(), d: Math.min(dd, ub) };
+            if (dd < rb.d) { rb.d = dd; rb.at = `${axis.name} ${i}/${axis.n}`; rb.label = x.label; }
+          }
+        }
+        if (!moved) continue;
+        if (!row) {
+          if (x.rec.rotor) {
+            const ax = rotorAxisOf(x.rec.rotor);
+            if (ax) { let d = turnSlack(ax); if (d > JMP_MOVE_EPS) d = pointDrift(x, m.matrixWorld, ax, x.rec.build); x.ownSlack = Math.max(x.ownSlack, d); }
+          }
+        } else if (row.kind === 'lawed') {
+          let g = Infinity;
+          for (const Sm of x.rec.samples || []) { place(Q, x.cs, Sm); g = Math.min(g, disp()); }
+          x.lawGap = Math.max(x.lawGap, g);
+        } else if (row.kind === 'revolve') {
+          const ax = rotorAxisOf(row.onto);
+          let d = Infinity, ref = x.rec.build;
+          if (ax && x.rec.samples) {
+            // a swing: the sample whose turned corners stand nearest this pose
+            for (const Sm of x.rec.samples) { place(Q, x.cs, Sm); const c = turnSlack(ax); if (c < d) { d = c; ref = Sm; } }
+          } else if (ax) d = turnSlack(ax);
+          if (ax && d > Math.max(x.revSlack, JMP_MOVE_EPS)) d = pointDrift(x, m.matrixWorld, ax, ref);
+          x.revSlack = Math.max(x.revSlack, d);
+        }
+      }
+      if (poses % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+  // the must-hit beside it: the jumper's own metal is INSIDE its region
+  const jumperEntry = (clock.labelEntries || []).find((e) => e.name === 'Minute jumper');
+  const jumperOutside = [];
+  clock.resetInputs();
+  if (jumperEntry) jumperEntry.obj.traverse((o) => {
+    if (!o.isMesh || o.userData?.schematic) return;
+    _aabb.setFromObject(o);
+    if (!R.containsBox(_aabb)) jumperOutside.push(o.name || o.geometry.type);
+  });
+  clock.resetInputs();
+  regionMesh.geometry.dispose();
+
+  // THE CLASSIFIER — a pure function of the measurements and the table, so
+  // the control can fire it on a table it was not measured against.
+  const classify = (rows, rowOf) => {
+    const undeclared = [], covered = { lawed: 0, revolve: 0, bounded: 0, rotor: 0 }, violations = [];
+    for (const x of recs) {
+      const mover = x.moved > 0 || x.gids.size > 1;
+      if (!mover) continue;
+      const obstacle = x.rec.inRegion || x.entered;
+      const row = rowOf(x);
+      if (!row) {
+        if (!obstacle) continue;
+        if (x.rec.rotor && x.rec.cls === 'rotor' && x.ownSlack <= JMP_MOVE_EPS && x.gids.size === 1) { covered.rotor++; continue; }
+        undeclared.push({ undeclaredMover: x.label, moved: +x.moved.toFixed(4), axes: [...x.axesMoved], inRegion: x.rec.inRegion,
+          why: x.rec.rotor ? `a toothed wheel straying ${x.ownSlack.toFixed(4)} off its own revolution` : 'read as built by JMP_SITE, and no JMP_SITE_MOVERS row says why that is safe' });
+        continue;
+      }
+      covered[row.kind]++;
+      if (row.kind === 'lawed' && !(x.lawGap <= CLEAR_MARGIN / 2))
+        violations.push({ lawedOffSample: `${row.name}: ${x.label}`, gap: +x.lawGap.toFixed(4), step: CLEAR_MARGIN / 2 });
+      if (row.kind === 'revolve' && !(x.revSlack <= row.slack + JMP_MOVE_EPS))
+        violations.push({ revolveOverSlack: `${row.name}: ${x.label}`, slack: +x.revSlack.toFixed(4), declared: row.slack });
+    }
+    for (const row of rows) {
+      if (row.kind !== 'bounded' || !row.meshes.length) continue;
+      const rb = rowMin.get(row);
+      if (!(rb && rb.d >= row.bound))
+        violations.push({ boundedUnderBound: row.name, nearest: rb ? rb.label : null, measured: rb ? +rb.d.toFixed(4) : null, bound: row.bound, at: rb ? rb.at : null });
+    }
+    const unmatched = rows.filter((r) => !r.meshes.length).map((r) => ({ rowNamesNoMesh: r.name, kind: r.kind }));
+    return { undeclared, covered, violations, unmatched };
+  };
+  const rowOfDeclared = (x) => x.row;
+  const got = classify(S.rows, rowOfDeclared);
+  const malformed = [];
+  for (const r of S.rows) {
+    if (!['lawed', 'revolve', 'bounded'].includes(r.kind)) malformed.push({ malformedRow: r.name, why: `kind '${r.kind}'` });
+    if (r.kind === 'bounded' && !(r.bound >= CLEAR_MARGIN)) malformed.push({ malformedRow: r.name, why: `bound ${r.bound} is under CLEAR_MARGIN ${CLEAR_MARGIN}` });
+    if (r.kind === 'revolve' && !(r.slack >= 0 && r.onto && S.rotorAxis.has(r.onto))) malformed.push({ malformedRow: r.name, why: 'a revolve must join a rotor the solve revolves, with a slack ≥ 0' });
+    if (r.kind === 'lawed' && !r.pose && r.grid !== 'pull') malformed.push({ malformedRow: r.name, why: 'a lawed row needs a pose law or the pull grid' });
+  }
+  // THE CONTROL — both failure modes fired on this run's own measurements
+  const dropRow = S.rows.find((r) => recs.some((x) => x.row === r && (x.moved > 0) && (x.rec.inRegion || x.entered)));
+  const dropped = dropRow ? classify(S.rows, (x) => (x.row === dropRow ? null : x.row)) : null;
+  const phantom = { name: '(control) a row naming nothing', kind: 'bounded', bound: CLEAR_MARGIN, meshes: [] };
+  const withPhantom = classify([...S.rows, phantom], rowOfDeclared);
+  const lawedSeen = S.rows.filter((r) => r.kind === 'lawed').map((r) => ({ row: r.name, moving: recs.filter((x) => x.row === r && x.moved > 0).length }));
+  const controlFails = [];
+  if (!dropRow || !(dropped.undeclared.length > got.undeclared.length)) controlFails.push(`dropping a declared row left no mover undeclared${dropRow ? ` (${dropRow.name})` : ' (no row covers a moving obstacle)'}`);
+  if (!withPhantom.unmatched.some((u) => u.rowNamesNoMesh === phantom.name)) controlFails.push('a row naming no mesh was not caught');
+  for (const l of lawedSeen) if (!(l.moving > 0)) controlFails.push(`the census saw no motion in lawed row '${l.row}'`);
+  if (!jumperEntry) controlFails.push('no Minute jumper unit to hold inside its region');
+  if (jumperOutside.length) controlFails.push(`the jumper's own metal is outside its region: ${jumperOutside.join(', ')}`);
+  const control = controlFails.length ? `FAIL — ${controlFails.join('; ')}`
+    : `PASS — dropping '${dropRow.name}' leaves ${dropped.undeclared.length - got.undeclared.length} mover(s) undeclared; a row naming nothing is caught; every lawed row is seen moving; the jumper lies inside its region`;
+
+  const rows = S.rows.map((r) => {
+    const mine = recs.filter((x) => x.row === r);
+    const moving = mine.filter((x) => x.moved > 0 || x.gids.size > 1);
+    const out = { name: r.name, kind: r.kind, meshes: mine.length, moving: moving.length };
+    if (r.kind === 'lawed') out.worstGap = +Math.max(0, ...moving.map((x) => x.lawGap)).toFixed(4);
+    if (r.kind === 'revolve') { out.onto = r.onto ? r.onto.name : null; out.slack = r.slack; out.worstSlack = +Math.max(0, ...moving.map((x) => x.revSlack)).toFixed(4); }
+    if (r.kind === 'bounded') {
+      const rb = rowMin.get(r);
+      out.bound = r.bound; out.measured = rb ? +rb.d.toFixed(4) : null; out.nearest = rb ? rb.label : null; out.at = rb ? rb.at : null;
+    }
+    return out;
+  });
+  const stillRows = rows.filter((r) => r.meshes && !r.moving).map((r) => r.name);
+  const movers = recs.filter((x) => x.moved > 0 || x.gids.size > 1);
+  return {
+    ok: true, poses, population: recs.length, movers: movers.length,
+    obstacleMovers: movers.filter((x) => x.rec.inRegion || x.entered).length,
+    covered: got.covered, rows, undeclared: got.undeclared, unmatched: got.unmatched, malformed, violations: got.violations, stillRows,
+    cost: { exactCalls: cost.exactCalls, exactMs: Math.round(cost.exactMs), driftCalls: cost.driftCalls, driftMs: Math.round(cost.driftMs) },
+    region: { min: R.min.toArray().map((v) => +v.toFixed(4)), max: R.max.toArray().map((v) => +v.toFixed(4)), studReach: +reach.studReach.toFixed(4), stationStep: +reach.stationStep.toFixed(4) },
+    control,
+  };
+}
+
 export async function checkTurning(clock, opts = {}) {
   const census = await turnedBars(clock, opts);
   const violations = [], waived = [], needRest = [];
@@ -10958,6 +11259,7 @@ const CHECKS = {
   // `restoring` were both exported and never registered and each spent a
   // section answering "unknown check".
   turning: (clock, opts) => checkTurning(clock, opts),
+  jumperMovers: (clock, opts) => checkJumperMovers(clock, opts),   // TODO 181 — every moving obstacle JMP_SITE reads is declared, and each row's answer holds over the pose net
   // §54's slenderness ceiling. It was EXPORTED AND NEVER REGISTERED HERE, so
   // `start(clock, 'slenderness')` answered "unknown check", every λ quoted in
   // the source was a hand-run number nothing reproduced, and SLENDER_WAIVERS

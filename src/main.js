@@ -16846,6 +16846,10 @@ alarmTubeGroup.add(alarmFollowerSpring);
 // r ≈ 3.83 (was quoted 4.0; measured, TODO 178), inside the measured r-4.5
 // obstacle bound like everything else here.
 alarmFollowerSpring.rotation.z = ALARM_FSPRING_A0; // TODO 178: was 1.9 — re-derived as stud → §29's tip
+// The blade follows the arm's lift at 0.45 of its angle — ONE law, read by
+// tick and by the jumper's siting solve (TODO 181), which samples the arm's
+// swing and must pose the blade the way tick does.
+const alarmFollowerSpringAngleAt = (armA) => ALARM_FSPRING_A0 + (armA - ALARM_FOLLOWER_A0) * 0.45;
 // The heart itself — pressed on the HOUR tube (co-rotating with the hour
 // hand), notch phased to the seated nose azimuth so "seated" IS "hands
 // coincident". Blued like the seconds-reset heart.
@@ -44551,7 +44555,7 @@ function tick(t) {
     alarmFollowerArm.rotation.z = armA;
     // The blade flexes with the pump (its force is representational; its
     // MOTION is the arm's real lift).
-    alarmFollowerSpring.rotation.z = ALARM_FSPRING_A0 + (armA - ALARM_FOLLOWER_A0) * 0.45;
+    alarmFollowerSpring.rotation.z = alarmFollowerSpringAngleAt(armA);
     // §34 (groove redesign): the pin-arm rides the FACE CAM — its lift is
     // the cam's height at the relative angle (tube vs wheel), stateless
     // like §29's pin; the fork's press overrides it to the full lift when
@@ -45008,9 +45012,13 @@ function tick(t) {
 //     solves and the battery own those pairs (the bar still is);
 //   · the setting lever moves with the pull, so it is posed at every pull the
 //     jumper's travel is judged at (settingLeverAngleAt, the tick's own law);
-//   · everything else as built: the pose net is the battery's to sweep, and
-//     `probe-150-fold-sense.mjs` holds the jumper against every non-contact
-//     unit over it.
+//   · everything else as built — and since TODO 181 nothing that MOVES is read
+//     that way without a row in JMP_SITE_MOVERS (above) saying why: lawed parts
+//     at their laws' samples, revolving parts folded into the revolution they
+//     turn in, bounded parts as built because their whole travel stays clear
+//     of the jumper's region. `jumperMovers` holds the table to the pose net,
+//     and `probe-150-fold-sense.mjs` still holds the jumper against every
+//     non-contact unit over it.
 //
 // Judged over the jumper's OWN TRAVEL, through the same two laws tick() uses
 // (jumperLeverRotAt, poseJumperLifter): the lever over its whole swing, and the
@@ -45040,6 +45048,102 @@ function tick(t) {
 // motion works' hour wheel wherever the wheel is under it. The capped term
 // therefore ties across the feasible stations to the bisection's resolution,
 // and the tie-break decides: the feasible station farthest from the cap.
+// TODO 181 — JMP_SITE_MOVERS: EVERY OBSTACLE THAT MOVES IS DECLARED, with the
+// reason the solve may read it the way it does. The solve below reads the metal
+// at the BUILD pose, and BOOT HAS NO POSE: most of the movement stands somewhere
+// else by the first tick (the hour group, the alarm tube and its riders at the
+// dial's hour, the hands, the clutch on its stem), so an obstacle that moves is
+// a claim about a pose the watch may never take. Each row is one of three
+// answers, and `jumperMovers` (src/inspect.js) holds every row to its answer
+// over the whole pose net and FAILS a moving obstacle no row names:
+//
+//   · lawed   — judged over its own travel, through the function tick poses it
+//               with (TODO 161's shape: `pose(u)` over u ∈ [0, 1], sampled so
+//               no point moves more than CLEAR_MARGIN/2 between samples; the
+//               setting lever is sampled on the solve's own pull grid instead).
+//               The census holds every pose the net reaches within one sample
+//               step of a sample.
+//   · revolve — it turns about an axis an EXISTING rotor entry already turns
+//               about (`onto`), so its triangles join that entry's revolution
+//               rather than opening a group rotor of their own (a trial of new
+//               group rotors cost 4–5 s of boot, TODO 161). `slack` is how far
+//               the part strays from that revolution on its own lever — a
+//               rider swinging on the tube — as MEASURED by the census and
+//               rounded up; the solve widens those triangles' meridian boxes by
+//               it, so the revolution still contains every pose. 0 for a rigid
+//               passenger. The census fails a pose outside it.
+//   · bounded — read as built, and that is safe because its whole travel stays
+//               at least `bound` from the jumper's REGION: the box every
+//               station, lever swing and lifter pull can reach (JMP_SITE's own
+//               `reach()`, the search's culling region before its saturation
+//               is folded in). `bound` is the census's MEASURED minimum,
+//               rounded down, and may not be under CLEAR_MARGIN: nothing in a
+//               bounded row can refuse a station at the margin, wherever the
+//               solve looks. The census fails a pose under it.
+//
+// A row claims every mesh under its roots, the NEAREST root winning (a rider's
+// row beats its carrier's); a revolve row leaves a toothed wheel under its
+// roots to that wheel's own revolution. The structural half — a row that names
+// no mesh, two rows claiming one mesh at the same depth, a bound under the
+// margin, a revolve onto something that is not a rotor — is a fact about the
+// declaration and warns at boot; the motion half needs a posed movement and is
+// the census's.
+const jmpRotorNamed = (root, name) => {
+  let hit = null;
+  root.traverse((o) => { if (!hit && o.name === name && o.userData && o.userData.r > 0 && o.userData.teeth > 0) hit = o; });
+  return hit;
+};
+const JMP_SITE_MOVERS = [
+  // ---- lawed (TODO 161): the laws tick itself poses them through
+  { name: 'release run', kind: 'lawed', roots: [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmSilRocker, alarmSilBladeMesh].filter(Boolean),
+    // the run's fastest point is the rocker's finger, at aF/aP of the lift
+    stroke: ALARM_SLEEVE_TRAVEL * Math.max(1, alarmSilRocker.userData.aF / alarmSilRocker.userData.aP),
+    pose: (u) => poseAlarmReleaseRun(u * ALARM_SLEEVE_TRAVEL) },
+  { name: 'selector ring', kind: 'lawed', roots: [alarmSelRing], stroke: ALARM_SEL_TRAVEL,
+    pose: (u) => { alarmSelRing.position.z = alarmSelRingZAt(u); } },
+  // judged at every pull of the solve's own crown grid (settingLeverAngleAt)
+  { name: 'setting lever', kind: 'lawed', roots: [settingLeverGroup], grid: 'pull' },
+  // ---- revolve: the dial-centre groups, onto the entries already turning there
+  { name: 'hour group', kind: 'revolve', roots: [hourWheelGroup], onto: mwHourWheel, slack: 0 },
+  // the reader drops on its lift by at most ALARM_PIN_DROP (tick's clamp)
+  { name: 'release reader', kind: 'revolve', roots: [alarmReaderUnit], onto: mwHourWheel, slack: ALARM_PIN_DROP },
+  { name: 'cannon nose', kind: 'revolve', roots: [cannonNose], onto: cannonPinion, slack: 0 },
+  { name: 'alarm tube', kind: 'revolve', roots: [alarmTubeGroup], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0 },
+  // the pin arm rocks on its face cam and the selector rocker see-saws: slack
+  // MEASURED by the census (0.0647, 0.3229) and rounded up
+  { name: 'pin arm B', kind: 'revolve', roots: [alarmPinArmB], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0.07 },
+  { name: 'selector rocker', kind: 'revolve', roots: [alarmRocker], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: 0.33 },
+  // The follower swings on the tube far past any slack worth widening a
+  // revolution by (measured 2.17 as one pose), so its revolution is SAMPLED
+  // over its swing instead: tick's own bounds on the arm — seated on the
+  // heart's hollow (A0), up to the higher of the heart's crest and the sleeve
+  // cone's cap at full lift — with the blade posed by its own law. Spaced so
+  // no point moves more than CLEAR_MARGIN/2 between samples (the nose is the
+  // fastest point), which is then the slack: every pose is within one step of
+  // a sample, on its own circle.
+  { name: 'follower', kind: 'revolve', roots: [alarmFollowerArm, alarmFollowerSpring], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: CLEAR_MARGIN / 2,
+    swing: (() => {
+      const a0 = ALARM_FOLLOWER_A0, a1 = Math.max(alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R), alarmPhiCapAt(ALARM_SLEEVE_TRAVEL) ?? -Infinity);
+      return {
+        stroke: (ALARM_FOLLOWER_LEN + ALARM_NOSE_R) * (a1 - a0),
+        pose: (u) => { const a = a0 + (a1 - a0) * u; alarmFollowerArm.rotation.z = a; alarmFollowerSpring.rotation.z = alarmFollowerSpringAngleAt(a); },
+      };
+    })() },
+  { name: 'alarm disc', kind: 'revolve', roots: [alarmDiscGroup], onto: jmpRotorNamed(alarmDiscGroup, 'alarmDiscBody'), slack: 0 },
+  { name: 'alarm setting wheel', kind: 'revolve', roots: [alarmSetWheelGroup], onto: jmpRotorNamed(alarmSetWheelGroup, 'alarmSettingWheel'), slack: 0 },
+  // ---- bounded: each bound is the census's measured minimum over the pose
+  // net, rounded down to 0.01 (trailing: the reading and the mesh that sets it)
+  { name: 'going-train bodies', kind: 'bounded', units: ['Fusee & great wheel', 'Center wheel', 'Third wheel'], bound: 0.99 },   // 0.9901, the centre wheel's arbor body
+  // the clutch and the reset rod are PHANTOMS as built — tick places both, so
+  // the solve reads the clutch 32.8 off its stem and the rod at the origin;
+  // both stay this far from any station the whole net over
+  { name: 'winding clutch', kind: 'bounded', units: ['Winding clutch'], bound: 5.96 },   // 5.9672, clutchSaw
+  { name: 'reset rod', kind: 'bounded', roots: [resetRod], bound: 2.38 },               // 2.3818
+  { name: 'hack rod', kind: 'bounded', roots: [hackRod], bound: 2.72 },                 // 2.7278
+  { name: 'hands', kind: 'bounded', roots: [hourHand, minuteHand, smallSecondsHand, reserveHand, alarmHand], bound: 0.81 },   // 0.8124, the small-seconds body
+  { name: 'alarm feeler', kind: 'bounded', roots: [alarmFeelerUnit], bound: 0.33 },     // 0.3344, alarmFeelerTip
+  { name: 'alarm link', kind: 'bounded', roots: [alarmLinkUnit], bound: 1.46 },         // 1.4671, alarmLinkCentrePin
+];
 const JMP_SITE_SAT = 2, JMP_SITE_CAPD_W = 0.02;
 const JMP_SITE = await (async () => {
   const T0 = performance.now();
@@ -45101,6 +45205,7 @@ const JMP_SITE = await (async () => {
   // dialFace flip — these are world vertices, never a rotated Box3), and
   // `postR` is the tail post's own radial reach across the whole crown pull.
   let JMP_SITE_RC = 0, JMP_SITE_POST_R = 0, JMP_SITE_REACH_Z = [Infinity, -Infinity];
+  const census = [], rotorAxis = new Map();   // TODO 181: what the solve read, and how, for the census
   {
     let rc = 0;
     const p = V();
@@ -45142,7 +45247,7 @@ const JMP_SITE = await (async () => {
     }
     return null;
   };
-  const staticTris = [], staticList = [], plateList = [], rotorTris = new Map();
+  const staticTris = [], staticList = [], plateList = [], rotorTris = new Map(), rotorSlack = new Map(), rotorNative = new Map();
   // TODO 160 — WHICH OBSTACLES THE CAP BEARING B CUT. CAP_SOLVE commits B long
   // before this solve exists, and everything buildSettingMetal returned for it
   // (the fold's legs, rise, stub, arbor, corners and cap) plus the reserve
@@ -45162,14 +45267,27 @@ const JMP_SITE = await (async () => {
   // selector ring over its slide. Samples are spaced so no point of the part
   // moves more than CLEAR_MARGIN/2 between them: the run's fastest point is
   // the rocker's finger at aF/aP of the lift, the ring's is its slide.
-  const lawedRoots = [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmSilRocker, alarmSilBladeMesh, alarmSelRing].filter(Boolean);
-  const LAWED = [
-    { name: 'release run', roots: [alarmSleeve, alarmLifter, ...alarmLifterBladeGroups, alarmSilRocker, alarmSilBladeMesh].filter(Boolean),
-      stroke: ALARM_SLEEVE_TRAVEL * Math.max(1, alarmSilRocker.userData.aF / alarmSilRocker.userData.aP),
-      pose: (u) => poseAlarmReleaseRun(u * ALARM_SLEEVE_TRAVEL) },
-    { name: 'selector ring', roots: [alarmSelRing], stroke: ALARM_SEL_TRAVEL,
-      pose: (u) => { alarmSelRing.position.z = alarmSelRingZAt(u); } },
-  ];
+  // (TODO 181: the rows themselves live in JMP_SITE_MOVERS, beside every other
+  // mover's; the setting lever's is sampled on the pull grid above instead.)
+  const LAWED = JMP_SITE_MOVERS.filter((r) => r.kind === 'lawed' && r.pose);
+  const lawedRoots = LAWED.flatMap((r) => r.roots);
+  // TODO 181 — resolve every row to the meshes it claims: the nearest root
+  // wins, and a revolve row leaves a toothed wheel to its own revolution.
+  const moverRowOf = new Map(), moverDepth = new Map(), moverDup = [];
+  for (const row of JMP_SITE_MOVERS) {
+    const roots = row.units ? labelEntries.filter((e) => row.units.includes(e.name)).map((e) => e.obj) : row.roots;
+    row.rootCount = roots.filter(Boolean).length;
+    for (const root of roots) if (root) root.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
+      if (row.kind === 'revolve' && rotorOf(o)) return;
+      let d = 0; for (let q = o; q && q !== root; q = q.parent) d++;
+      const prev = moverRowOf.get(o);
+      if (!prev || d < moverDepth.get(o)) { moverRowOf.set(o, row); moverDepth.set(o, d); }
+      else if (d === moverDepth.get(o) && prev !== row) moverDup.push(`${prev.name} / ${row.name}: ${o.name || o.geometry.type}`);
+    });
+  }
+  for (const row of JMP_SITE_MOVERS) row.meshes = [];
+  for (const [m, row] of moverRowOf) row.meshes.push(m);
   const box = new THREE.Box3();
   const seen = new Set();
   // TODO 180 — A ZERO-AREA TRIANGLE IS NOT METAL, so it never enters an
@@ -45221,7 +45339,9 @@ const JMP_SITE = await (async () => {
       if (under(o, jumperUnit) || under(o, settingLeverGroup)) return;
       if (lawedRoots.some((r) => under(o, r))) return;   // TODO 161: judged over their travel below, not as built
       seen.add(o);
-      const rot = rotorOf(o);
+      const mrow = moverRowOf.get(o) || null;
+      const rev = mrow && mrow.kind === 'revolve' ? mrow : null;   // TODO 181: joins an existing revolution
+      const rot = rev ? rev.onto : rotorOf(o);
       box.setFromObject(o);
       if (rot) {
         // a rotor reaches what its REVOLUTION reaches: the cylinder about its
@@ -45241,15 +45361,35 @@ const JMP_SITE = await (async () => {
           const ext = V().set(rmax * Math.sqrt(Math.max(0, 1 - ra.x * ra.x)), rmax * Math.sqrt(Math.max(0, 1 - ra.y * ra.y)), rmax * Math.sqrt(Math.max(0, 1 - ra.z * ra.z)));
           box.expandByPoint(cen.clone().add(ext)); box.expandByPoint(cen.clone().sub(ext));
         }
+        if (rev && rev.slack > 0) box.expandByScalar(rev.slack);
       }
-      if (!box.intersectsBox(region)) return;
-      if (rot) { if (!rotorTris.has(rot)) rotorTris.set(rot, []); pushTris(o, rotorTris.get(rot)); }
+      const hit = box.intersectsBox(region);
+      if (rot && !rotorAxis.has(rot)) rotorAxis.set(rot, { o: rot.getWorldPosition(V()), a: V().set(0, 0, 1).applyQuaternion(rot.getWorldQuaternion(new THREE.Quaternion())).normalize() });
+      census.push({ mesh: o, unit: e.name, rotor: rot, cls: rev ? 'revolve' : rot ? 'rotor' : (under(o, backPlate) ? 'plate' : 'static'), row: mrow ? mrow.name : null,
+        inRegion: hit, build: o.matrixWorld.clone(), gid: o.geometry.id });
+      if (!hit) return;
+      if (rev && rev.swing) return;   // TODO 181: pushed at its swing's samples, below
+      if (rot) {
+        if (!rotorTris.has(rot)) { rotorTris.set(rot, []); rotorSlack.set(rot, []); rotorNative.set(rot, 0); }
+        const arr = rotorTris.get(rot), n0 = arr.length;
+        pushTris(o, arr);
+        const sl = rotorSlack.get(rot), s = rev ? rev.slack : 0;
+        for (let k = n0; k < arr.length; k += 9) sl.push(s);
+        if (!rev) rotorNative.set(rot, rotorNative.get(rot) + 1);
+      }
       else { const arr = []; pushTris(o, arr); const onBack = under(o, backPlate); (onBack ? plateList : staticList).push(arr); (onBack ? plateBDep : staticBDep).push(isBDep(o)); staticTris.push(arr.length / 9); }
     });
   }
   const lawedSamples = [];
+  const unitOf = (o) => (labelEntries.find((e) => under(o, e.obj)) || {}).name || null;
   for (const L of LAWED) {
     const saved = L.roots.map((r) => [r.position.clone(), r.rotation.clone()]);
+    const recs = new Map();
+    for (const r of L.roots) r.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o) || recs.has(o)) return;
+      const rec = { mesh: o, unit: unitOf(o), rotor: null, cls: 'lawed', row: L.name, inRegion: false, build: o.matrixWorld.clone(), gid: o.geometry.id, samples: [] };
+      recs.set(o, rec); census.push(rec);
+    });
     const n = Math.max(1, Math.ceil(L.stroke / (CLEAR_MARGIN / 2)));
     for (let k = 0; k <= n; k++) {
       L.pose(k / n);
@@ -45257,13 +45397,53 @@ const JMP_SITE = await (async () => {
         r.updateWorldMatrix(true, true);
         r.traverse((o) => {
           if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
+          if (recs.has(o)) recs.get(o).samples.push(o.matrixWorld.clone());
           if (!box.setFromObject(o).intersectsBox(region)) return;
+          if (recs.has(o)) recs.get(o).inRegion = true;
           const arr = []; pushTris(o, arr); staticList.push(arr); staticBDep.push(false); staticTris.push(arr.length / 9);
         });
       }
     }
     L.roots.forEach((r, i) => { r.position.copy(saved[i][0]); r.rotation.copy(saved[i][1]); r.updateWorldMatrix(true, true); });
     lawedSamples.push({ name: L.name, samples: n + 1 });
+  }
+  const swungSamples = [];
+  // TODO 181 — a revolve row with a SWING: its triangles join the entry's
+  // revolution at every sample of the swing's law (TODO 161's spacing), so
+  // the revolution holds the part at every lift as well as every turn.
+  for (const row of JMP_SITE_MOVERS) {
+    if (row.kind !== 'revolve' || !row.swing) continue;
+    const recs = new Map(census.filter((r) => r.row === row.name).map((r) => [r.mesh, r]));
+    const live = row.meshes.filter((m) => recs.has(m) && recs.get(m).inRegion);
+    const saved = row.roots.map((r) => r.rotation.clone());
+    const nSw = Math.max(1, Math.ceil(row.swing.stroke / (CLEAR_MARGIN / 2)));
+    if (!rotorTris.has(row.onto)) { rotorTris.set(row.onto, []); rotorSlack.set(row.onto, []); rotorNative.set(row.onto, 0); }
+    const arr = rotorTris.get(row.onto), sl = rotorSlack.get(row.onto);
+    for (let k = 0; k <= nSw; k++) {
+      row.swing.pose(k / nSw);
+      for (const r of row.roots) r.updateWorldMatrix(true, true);
+      for (const m of row.meshes) {
+        const rec = recs.get(m);
+        if (!rec) continue;
+        (rec.samples ||= []).push(m.matrixWorld.clone());
+        if (!live.includes(m)) continue;
+        const n0 = arr.length;
+        pushTris(m, arr);
+        for (let q = n0; q < arr.length; q += 9) sl.push(row.slack);
+      }
+    }
+    row.roots.forEach((r, i) => { r.rotation.copy(saved[i]); r.updateWorldMatrix(true, true); });
+    swungSamples.push({ name: row.name, samples: nSw + 1 });
+  }
+  {
+    settingLeverGroup.updateWorldMatrix(true, true);
+    const g0 = settingLeverGroup.matrixWorld.clone().invert();
+    settingLeverGroup.traverse((o) => {
+      if (!o.isMesh || !o.geometry?.attributes?.position || !unschem(o)) return;
+      const rel = g0.clone().multiply(o.matrixWorld);
+      census.push({ mesh: o, unit: unitOf(o), rotor: null, cls: 'lawed', row: 'setting lever', inRegion: true, build: o.matrixWorld.clone(), gid: o.geometry.id,
+        samples: slInv.map((inv) => inv.clone().invert().multiply(rel)) });
+    });
   }
   const bvhOf = (arr) => {
     if (!arr.length) return null;
@@ -45359,10 +45539,15 @@ const JMP_SITE = await (async () => {
     const coaxial = a.clone().cross(studA).length() < 1e-6 && w.clone().addScaledVector(studA, -w.dot(studA)).length() < 1e-6;
     const n = tris.length / 9, boxes = new Float64Array(n * 4), grid = new Map();
     const p0 = V(), p1 = V(), p2 = V(), bx = [0, 0, 0, 0];
+    const slack = rotorSlack.get(obj);
     let R0 = Infinity, R1 = 0, Z0 = Infinity, Z1 = -Infinity;
     for (let i = 0; i < n; i++) {
       p0.fromArray(tris, i * 9); p1.fromArray(tris, i * 9 + 3); p2.fromArray(tris, i * 9 + 6);
       rzBox(o, a, p0, p1, p2, bx);
+      // TODO 181: a revolve row's rider strays off the revolution by at most
+      // its measured slack, in both meridian coordinates
+      const sk = slack[i];
+      if (sk > 0) { bx[0] = Math.max(0, bx[0] - sk); bx[1] += sk; bx[2] -= sk; bx[3] += sk; }
       boxes.set(bx, i * 4);
       R0 = Math.min(R0, bx[0]); R1 = Math.max(R1, bx[1]); Z0 = Math.min(Z0, bx[2]); Z1 = Math.max(Z1, bx[3]);
       for (let gi = Math.floor(bx[0] / RZ_CELL); gi <= Math.floor(bx[1] / RZ_CELL); gi++)
@@ -45505,6 +45690,13 @@ const JMP_SITE = await (async () => {
         const m = azMeshes[i], g = qOf(m);
         if (bvhShort(OBS.main, g, azM[i], tau) || (!onPlate.has(m) && bvhShort(OBS.plate, g, azM[i], tau))) return false;
       }
+      // …and the same parts against the revolutions, before the swept passes
+      // (TODO 181): the dial-centre groups revolve now rather than standing
+      // as built, so a station they refuse is refused HERE, by the stud's own
+      // parts at their one pose, instead of after every lever and lifter pose
+      // has been measured first. The verdict is a conjunction and does not
+      // depend on the order; only the cost of a refusal does.
+      for (let i = 0; i < azMeshes.length; i++) if (!rotorsClear(qOf(azMeshes[i]), azM[i], tau, false)) return false;
       for (const Ms of levM) for (let i = 0; i < leverMeshes.length; i++) {
         const g = qOf(leverMeshes[i]);
         if (bvhShort(OBS.main, g, Ms[i], tau) || bvhShort(OBS.plate, g, Ms[i], tau)) return false;
@@ -45525,8 +45717,8 @@ const JMP_SITE = await (async () => {
         }
       }
       await breathe();
-      // PASS 2 — the rotors' revolutions
-      for (let i = 0; i < azMeshes.length; i++) if (!rotorsClear(qOf(azMeshes[i]), azM[i], tau, false)) return false;
+      // PASS 2 — the rotors' revolutions (the stud's own parts were judged
+      // against them in PASS 1, above)
       for (let j = 0; j < levM.length; j++) {
         for (let i = 0; i < leverMeshes.length; i++) if (!rotorsClear(qOf(leverMeshes[i]), levM[j][i], tau, false)) return false;
         if (j % 8 === 7) await breathe();
@@ -45632,12 +45824,85 @@ const JMP_SITE = await (async () => {
   for (const g of qGeo.values()) { g.boundsTree = null; g.dispose(); }
   for (const b of [bvhMain, bvhPlate, bvhLever, bvhPost]) if (b) b.geometry.dispose();
   scene.updateMatrixWorld(true);
+  // TODO 181 — THE DECLARATION'S STRUCTURE, which needs no pose: every row
+  // names metal, no mesh is claimed twice at one depth, a bound is at least
+  // the margin, and a revolve joins a revolution that already exists.
+  for (const row of JMP_SITE_MOVERS) {
+    if (!row.meshes.length)
+      console.warn(`TODO 181: JMP_SITE_MOVERS row '${row.name}' names no mesh (${row.rootCount} root(s) resolved) — a declaration pointing at absent metal reads as an answer and is not one`);
+    if (row.kind === 'bounded' && !(row.bound >= CLEAR_MARGIN))
+      console.warn(`TODO 181: JMP_SITE_MOVERS row '${row.name}' is bounded at ${row.bound}, under CLEAR_MARGIN ${CLEAR_MARGIN} — a part that close to the jumper's region must be lawed or revolved, not read as built`);
+    if (row.kind === 'revolve' && !(row.onto && ((row.onto.userData && row.onto.userData.r > 0 && row.onto.userData.teeth > 0) || row.onto === mwArbor) && row.slack >= 0))
+      console.warn(`TODO 181: JMP_SITE_MOVERS row '${row.name}' revolves onto ${row.onto ? row.onto.name || row.onto.type : 'nothing'} with slack ${row.slack} — a revolve joins an existing ROTOR's revolution with a slack ≥ 0`);
+    if (row.kind === 'revolve' && row.onto && rotorTris.has(row.onto) && !(rotorNative.get(row.onto) > 0))
+      console.warn(`TODO 181: JMP_SITE_MOVERS row '${row.name}' revolves onto ${row.onto.name}, which has no revolution of its own in the jumper's region — that opens a new rotor entry (TODO 161 measured 4–5 s of boot for those), not an append`);
+  }
+  if (moverDup.length) console.warn(`TODO 181: JMP_SITE_MOVERS claims ${moverDup.length} mesh(es) twice at one depth: ${moverDup.slice(0, 4).join('; ')}`);
+  // TODO 181 — THE JUMPER'S REGION, for the census's bounded rows: every place
+  // any station, lever swing and lifter pull can put the jumper's metal, as
+  // one world box. Built on demand (a battery check asks; boot does not pay),
+  // posing the jumper through the solve's own laws and restoring it:
+  //   · the stud's parts over the lever's whole swing (every psi sample, not
+  //     the two extremes the culling region reads — an arm swinging about its
+  //     pivot can reach farther from the stud mid-swing), as the square their
+  //     radial reach about the stud sweeps at every azimuth;
+  //   · the lifter bar at EVERY scanned station, pull and ride, its own width
+  //     at that station (jmpLifterWidthAt), padded by the most any corner
+  //     moved between neighbouring stations — so a station between two on the
+  //     grid is inside too.
+  const reach = () => {
+    const lr = jumperLever.rotation.z, azr = jumperAzGroup.rotation.z;
+    const lp = { p: jumperLifter.position.clone(), r: jumperLifter.rotation.z, s: jumperLifter.scale.x };
+    const R = new THREE.Box3(), p = V();
+    let rAll = 0, zl = Infinity, zh = -Infinity;
+    for (const psi of psiSamples) {
+      jumperLever.rotation.z = psi;
+      jumperUnit.updateWorldMatrix(true, true);
+      for (const m of [...azMeshes, ...leverMeshes]) {
+        const pos = m.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          p.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).sub(studO);
+          const z = p.dot(studA);
+          rAll = Math.max(rAll, p.addScaledVector(studA, -z).length());
+          zl = Math.min(zl, studO.z + z * studA.z); zh = Math.max(zh, studO.z + z * studA.z);
+        }
+      }
+    }
+    for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const z of [zl, zh]) R.expandByPoint(p.set(studO.x + sx * rAll, studO.y + sy * rAll, z));
+    const prev = liftJobs.map(() => null), cs = [V(), V(), V(), V(), V(), V(), V(), V()];
+    let step = 0;
+    for (let k = 0; k * STEP < Math.PI * 2 - 1e-9; k++) {
+      const az = k * STEP, W = jmpLifterWidthAt(az);
+      jumperAzGroup.rotation.z = az;
+      liftJobs.forEach(([ride, j], ji) => {
+        jumperLever.rotation.z = jumperLeverRotAt(ride, pulls[j]);
+        jumperUnit.updateWorldMatrix(true, true);
+        poseJumperLifter(pulls[j]);
+        jumperLifter.updateWorldMatrix(false, false);
+        // the bar is test()'s own box: 1 × W × T in geometry space under the
+        // lifter's matrix (scale.x carries the span), at this station's W
+        for (let c = 0; c < 8; c++) {
+          cs[c].set(c & 1 ? 0.5 : -0.5, c & 2 ? W / 2 : -W / 2, c & 4 ? JMP_LIFTER_T / 2 : -JMP_LIFTER_T / 2).applyMatrix4(jumperLifter.matrixWorld);
+          R.expandByPoint(cs[c]);
+        }
+        if (prev[ji]) for (let c = 0; c < 8; c++) step = Math.max(step, cs[c].distanceTo(prev[ji][c]));
+        prev[ji] = cs.map((q) => q.clone());
+      });
+    }
+    jumperLever.rotation.z = lr; jumperAzGroup.rotation.z = azr;
+    jumperLifter.position.copy(lp.p); jumperLifter.rotation.z = lp.r; jumperLifter.scale.x = lp.s;
+    scene.updateMatrixWorld(true);
+    R.expandByScalar(step);
+    return { box: R, studReach: rAll, stationStep: step };
+  };
   return { best, tested, witnessed, candidates: cands.length, stepDeg: STEP / DEG2RAD, ms: performance.now() - T0,
     rotors: rotors.length, coaxialRotors: rotors.filter((r) => r.coaxial).length, staticMeshes: staticTris.length, staticTris: staticTris.reduce((a, b) => a + b, 0),
     nonFiniteTris, nonFiniteMeshes: nonFiniteMeshes.size,   // TODO 182: dropped, not measured — 0 on any spec whose metal all has a place
     lawed: lawedSamples,   // TODO 161: the movers judged over their travel, and how many poses each
+    swung: swungSamples,   // TODO 181: the revolve rows sampled over a swing, and how many poses each
     bSlack, cause, bDepMeshes: staticBDep.filter(Boolean).length + plateBDep.filter(Boolean).length, bDepRotors: rotors.filter((r) => r.bDep).length,   // TODO 160
-    rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z };
+    rc: JMP_SITE_RC, postR: JMP_SITE_POST_R, reachZ: JMP_SITE_REACH_Z,
+    census, rotorAxis, region: region.clone(), reach };
 })();
 if (!JMP_SITE.best) {
   console.warn(`minute quick-set: no station clears every unit by ${CLEAR_MARGIN} over the jumper's travel — keeping the provisional station (the bearing farthest from the setting cap); the battery judges it`
@@ -46261,10 +46526,13 @@ window.__clock = {
     clr: JMP_SITE.best ? JMP_SITE.best.clr : null, capD: JMP_SITE.best ? JMP_SITE.best.capD : null,
     score: JMP_SITE.best ? JMP_SITE.best.score : null, sat: JMP_SITE_SAT, capDWeight: JMP_SITE_CAPD_W,
     tested: JMP_SITE.tested, candidates: JMP_SITE.candidates, stepDeg: JMP_SITE.stepDeg, ms: JMP_SITE.ms,
-    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris, lawed: JMP_SITE.lawed, bSlack: JMP_SITE.bSlack, cause: JMP_SITE.cause, bDepMeshes: JMP_SITE.bDepMeshes, bDepRotors: JMP_SITE.bDepRotors,
+    rotors: JMP_SITE.rotors, coaxialRotors: JMP_SITE.coaxialRotors, staticMeshes: JMP_SITE.staticMeshes, staticTris: JMP_SITE.staticTris, lawed: JMP_SITE.lawed, swung: JMP_SITE.swung, bSlack: JMP_SITE.bSlack, cause: JMP_SITE.cause, bDepMeshes: JMP_SITE.bDepMeshes, bDepRotors: JMP_SITE.bDepRotors,
     lifterW: JMP_LIFTER_W,
     walks: JMP_SITE_WALKS,
   }),
+  jumperSiteCensus() {
+    return { rows: JMP_SITE_MOVERS, census: JMP_SITE.census, rotorAxis: JMP_SITE.rotorAxis, region: JMP_SITE.region, reach: JMP_SITE.reach };
+  },
   // §10 level 2 — the sub-table, read-only, for probes: what the drill knows.
   get subEntries() { return subEntries.map((s) => ({ parentUnit: s.parentUnit, displayName: s.displayName, baseZ: s.baseZ.get(s.obj), subLayer: s.subLayer, z: s.obj.position.z, tickOwned: s.tickOwned, bodies: s.objs.length })); },
   setDrill(amount) { drillAmount = amount; drillSlider.value = String(Math.round(amount * 100)); },
