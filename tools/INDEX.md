@@ -4,7 +4,7 @@
 
 # The instruments
 
-254 scripts. **144 are ACCEPTANCE tests** — they decide and exit non-zero.
+255 scripts. **145 are ACCEPTANCE tests** — they decide and exit non-zero.
 **110 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -261,6 +261,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-train-mesh-phase.mjs` |  | acceptance | DOES THE GOING TRAIN STAY IN MESH PHASE WHILE IT RUNS? |
 | `probe-wind.mjs` |  | report | TODO 38 W4 probe: registry reversal verdicts and the restoring audit under the new `wind` axis. Usage: node probe-wind.mjs out.json |
 | `probe-wound-sense.mjs` |  | acceptance | WHICH WAY DOES EACH WOUND PART WIND? — TODO 115's unmeasured half. |
+| `runner-ready.mjs` |  | acceptance | §251 — IS THE SELF-HOSTED BATTERY HOST READY, ASKED FROM OFF THE HOST? Acceptance: exit 0 READY, 1 NOT READY, 2 CANNOT TELL (no token, API error). |
 | `servers.mjs` |  | report | TODO 131 — WHO OWNS THAT SERVER? Every instrument in this directory spawns its own static server (`python3 -m http.server`, or `dev_server.py` for the battery and the i18n checker) and reaps it on its last line — so a probe that THROWS leaves the server behind, and the next run on that port reads the orphan (SKILL.md, "a crashed probe leaves its server running"). The advice used to be `pgrep -af "[h]ttp[.]server"` and a kill by hand, and that is how the full battery was killed mid-run at its final anchor: its dev server on a random port looked exactly like an orphan, because a port number says nothing about ownership. |
 | `stamp-release.mjs` |  | acceptance | §28 layer 1 — give every asset a per-release URL, so a browser CANNOT serve a stale one, and emit the version.json layer 2 polls. |
 | `three-node-loader.mjs` |  | report | §88 — resolve the app's bare `three` specifiers when a tool imports src/ modules under Node. |

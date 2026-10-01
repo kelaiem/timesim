@@ -380,23 +380,132 @@ permissions:
   actions: read
 
 jobs:
-  battery:
-    # A `labeled` event runs the job only for the two labels that change what
-    # a run is; every other label is skipped, not run.
+  # §251 — WHETHER THE HOST IS THERE IS ASKED BEFORE THE JOB IS QUEUED ON IT.
+  #
+  # §200's routing sends an opt-in to `vars.BATTERY_RUNS_ON` whether or not any
+  # runner under that label is online, and GitHub holds a job queued for a
+  # label nobody serves for 24 hours before cancelling it — silently. The only
+  # guard was `tart-battery-runner.sh status`, which has to be run ON the host,
+  # by someone who remembered to; the 09-06 opt-in queued into a runner that
+  # had been dead for thirty-two hours.
+  #
+  # So this job runs first, on ubuntu-latest, and owns the routing decision:
+  # the expression below is the same one §200 wrote on the battery job's
+  # `runs-on`, MOVED here rather than copied, and the battery job reads
+  # `host` back. When that expression asks for the host, tools/runner-ready.mjs
+  # lists the repository's runners (the host script's own first witness —
+  # online, carrying the label — read off the host) and retries across the
+  # seconds the loop spends between registrations. Then:
+  #
+  #   · READY      → the host, as before.
+  #   · NOT READY  → ubuntu-latest, and the summary says why. The opt-in is
+  #                  a preference for speed; a hosted verdict in 40 minutes
+  #                  beats a queued one in 24 hours. The nightly is the
+  #                  exception, as everywhere else: it exists only to seed the
+  #                  host's baseline, so with no host it is SKIPPED, not run
+  #                  hosted (a hosted verdict of main's tip already exists).
+  #   · UNKNOWN    → the host, as before, with "readiness unchecked" in the
+  #                  summary. No token or a failed API read is not a verdict
+  #                  either way, and until RUNNER_READ_TOKEN exists this job
+  #                  must change nothing.
+  #
+  # The token is the one secret this workflow reads, and it is read-only:
+  # `Administration: read` on this repository, because GITHUB_TOKEN cannot
+  # list self-hosted runners. It never reaches the battery job, it is only
+  # read when the run already routes to the host — so never on a fork's pull
+  # request (pinned hosted above everything else) — and GitHub does not hand
+  # secrets to fork PRs in any case.
+  route:
+    # A `labeled` event runs only for the two labels that change what a run
+    # is; every other label is skipped, not run — and the battery job, which
+    # needs this one, is skipped with it.
     if: >-
       ${{ (github.event.action != 'labeled' || contains(fromJSON('["self-hosted-battery","full-battery"]'), github.event.label.name))
       && (github.event_name != 'schedule' || (vars.BATTERY_RUNS_ON != '' && github.actor == github.repository_owner)) }}
-    # Read as: (asked for by a same-repo PR) or (asked for by a dispatch),
-    # and owner-triggered, and the host is available — else GitHub-hosted.
-    runs-on: >-
-      ${{ (
-      (github.event_name == 'pull_request'
-      && github.event.pull_request.head.repo.full_name == github.repository
-      && (contains(github.event.pull_request.labels.*.name, 'self-hosted-battery')
-      || contains(github.event.pull_request.title, '[self-hosted]')))
-      || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted')
-      || github.event_name == 'schedule'
-      ) && github.actor == github.repository_owner && vars.BATTERY_RUNS_ON || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      host: ${{ steps.decide.outputs.host }}
+      run: ${{ steps.decide.outputs.run }}
+      verdict: ${{ steps.decide.outputs.verdict }}
+    env:
+      # §200's routing expression, read as: (asked for by a same-repo PR) or
+      # (asked for by a dispatch) or (the nightly), and owner-triggered, and
+      # the host is switched on — else GitHub-hosted. WANT is what it asks
+      # for; `host` below is what the run gets once readiness has answered.
+      WANT: >-
+        ${{ (
+        (github.event_name == 'pull_request'
+        && github.event.pull_request.head.repo.full_name == github.repository
+        && (contains(github.event.pull_request.labels.*.name, 'self-hosted-battery')
+        || contains(github.event.pull_request.title, '[self-hosted]')))
+        || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted')
+        || github.event_name == 'schedule'
+        ) && github.actor == github.repository_owner && vars.BATTERY_RUNS_ON || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.WANT != 'ubuntu-latest'
+        with:
+          sparse-checkout: tools/runner-ready.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Is a runner online under the label? (§251)
+        id: ready
+        if: env.WANT != 'ubuntu-latest'
+        env:
+          RUNNER_READ_TOKEN: ${{ secrets.RUNNER_READ_TOKEN }}
+          BATTERY_RUNS_ON: ${{ vars.BATTERY_RUNS_ON }}
+        # The verdict travels as an output; the exit code is for a human at a
+        # terminal, so it must not fail this job.
+        run: node tools/runner-ready.mjs || true
+
+      # §200 — the verdict is written once, here, and read off the run. Values
+      # go through env, not inline: a head repo name is untrusted text.
+      - name: Decide where the battery runs (§200, §251)
+        id: decide
+        env:
+          ROUTE_VAR: ${{ vars.BATTERY_RUNS_ON }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          EVENT: ${{ github.event_name }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          TITLE: ${{ github.event.pull_request.title }}
+          DISPATCH_RUNNER: ${{ inputs.runner }}
+          READY: ${{ steps.ready.outputs.verdict }}
+        run: |
+          asked=no
+          if [ "$EVENT" = pull_request ]; then
+            printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'self-hosted-battery' && asked="label"
+            printf '%s' "$TITLE" | grep -qF '[self-hosted]' && asked="title"
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$DISPATCH_RUNNER" = self-hosted ]; then asked="dispatch input"
+          elif [ "$EVENT" = schedule ]; then asked="the nightly seeding schedule"
+          fi
+          # The HOST comes from WANT, the expression; the shell only explains
+          # it and applies readiness, so the decision exists in one place.
+          host="$WANT"; run=true
+          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then verdict="FORK — pinned to ubuntu-latest"
+          elif [ "$ACTOR" != "$OWNER" ]; then verdict="triggered by a non-owner — pinned to ubuntu-latest"
+          elif [ "$asked" = no ]; then verdict="host not asked for — ubuntu-latest by default"
+          elif [ -z "$ROUTE_VAR" ]; then verdict="host asked for ($asked) but vars.BATTERY_RUNS_ON is unset — ubuntu-latest"
+          elif [ "$READY" = READY ]; then verdict="host asked for ($asked), a runner is online — routed to '$ROUTE_VAR'"
+          elif [ "$READY" = NOT_READY ] && [ "$EVENT" = schedule ]; then
+            run=false
+            verdict="host asked for ($asked) but no runner is online under '$ROUTE_VAR' — nightly SKIPPED (it seeds the host's baseline; a hosted verdict of main already exists)"
+          elif [ "$READY" = NOT_READY ]; then
+            host=ubuntu-latest
+            verdict="host asked for ($asked) but no runner is online under '$ROUTE_VAR' — ubuntu-latest instead of queueing for up to 24 h"
+          else verdict="host asked for ($asked) — routed to '$ROUTE_VAR', readiness UNCHECKED (RUNNER_READ_TOKEN unset, or the API read failed)"
+          fi
+          { echo "host=$host"; echo "run=$run"; echo "verdict=$verdict"; } >> "$GITHUB_OUTPUT"
+          echo "§200/§251: $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  battery:
+    needs: route
+    if: needs.route.outputs.run == 'true'
+    # §251 — the route job decides; see it for the trust tiers (§200) and the
+    # readiness check that can turn an opt-in back to ubuntu-latest.
+    runs-on: ${{ needs.route.outputs.host }}
     # The cap must stay ABOVE ci-battery.mjs's per-check guard (35; TODO 38's
     # wind axis re-derived both — guard + the ~15 min this pair has always kept
     # above it). A PUSH gets more room than the rest: it is the whole, never
@@ -410,36 +519,17 @@ jobs:
     # should still fail fast.
     timeout-minutes: ${{ github.event_name == 'push' && 90 || 50 }}
     steps:
-      # §200 — the pointer is read off the run, never remembered. Values go
-      # through env, not inline: a head repo name is untrusted text.
+      # §200 — the pointer is read off the run, never remembered. The routing
+      # verdict was written by the route job (§251); this step names the
+      # runner that actually took the job beside it.
       - name: Record which runner took this job (§200)
         env:
           RUNNER_NAME: ${{ runner.name }}
           RUNNER_OS: ${{ runner.os }}
           RUNNER_ARCH: ${{ runner.arch }}
-          ROUTE_VAR: ${{ vars.BATTERY_RUNS_ON }}
-          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          EVENT: ${{ github.event_name }}
-          ACTOR: ${{ github.actor }}
-          OWNER: ${{ github.repository_owner }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
-          TITLE: ${{ github.event.pull_request.title }}
-          DISPATCH_RUNNER: ${{ inputs.runner }}
+          VERDICT: ${{ needs.route.outputs.verdict }}
         run: |
-          asked=no
-          if [ "$EVENT" = pull_request ]; then
-            printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'self-hosted-battery' && asked="label"
-            printf '%s' "$TITLE" | grep -qF '[self-hosted]' && asked="title"
-          elif [ "$EVENT" = workflow_dispatch ] && [ "$DISPATCH_RUNNER" = self-hosted ]; then asked="dispatch input"
-          elif [ "$EVENT" = schedule ]; then asked="the nightly seeding schedule"
-          fi
-          if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then verdict="FORK — pinned to ubuntu-latest"
-          elif [ "$ACTOR" != "$OWNER" ]; then verdict="triggered by a non-owner — pinned to ubuntu-latest"
-          elif [ "$asked" = no ]; then verdict="host not asked for — ubuntu-latest by default"
-          elif [ -z "$ROUTE_VAR" ]; then verdict="host asked for ($asked) but vars.BATTERY_RUNS_ON is unset — ubuntu-latest"
-          else verdict="host asked for ($asked) and available — routed to '$ROUTE_VAR'"
-          fi
-          echo "§200: ran on runner '$RUNNER_NAME' ($RUNNER_OS/$RUNNER_ARCH); $EVENT from $HEAD_REPO by $ACTOR — $verdict" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "§200: ran on runner '$RUNNER_NAME' ($RUNNER_OS/$RUNNER_ARCH) — $VERDICT" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/checkout@v4
 
@@ -720,8 +810,9 @@ jobs:
       #
       # The rule was `push` only. That is right about main and had a consequence
       # nobody had written down: the baseline key carries the platform (see the
-      # restore above), and a push can NEVER route self-hosted — the `runs-on`
-      # expression reads the host only for a pull_request or a dispatch. So
+      # restore above), and a push can NEVER route self-hosted — the routing
+      # expression (the route job's WANT since §251) reads the host only for a
+      # pull_request, a dispatch or the nightly. So
       # nothing in this file could write a baseline under a self-hosted
       # os/arch, and a self-hosted PR battery was not "whole until the next
       # merge re-seeds it". It was whole PERMANENTLY, because no re-seed

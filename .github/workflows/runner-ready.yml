@@ -1,0 +1,50 @@
+# §251 — IS THE SELF-HOSTED BATTERY HOST READY? Asked from anywhere, on demand.
+#
+# The battery's own route job asks this before every run that wants the host,
+# and turns an opt-in back to ubuntu-latest when the answer is no. This
+# workflow asks the SAME question with nothing queued behind it, so it can be
+# run before labelling a pull request — from the Actions tab, from
+# `gh workflow run runner-ready.yml`, or by an agent that cannot reach the host
+# and so cannot run `tart-battery-runner.sh status`. Both callers run
+# tools/runner-ready.mjs; the criterion is written once, there.
+#
+# It goes RED on anything but READY, so the answer is on the run's face and in
+# a notification rather than in a log nobody opens. UNKNOWN (no token, or the
+# API refused) is red too: a check that cannot see is not a pass.
+#
+# Deliberately no `schedule:`. A laptop host is asleep on purpose for hours at a
+# time, and a cron that fails red every night it is would teach everyone to
+# ignore the colour. Ask when you are about to need the host.
+name: Runner readiness
+
+on:
+  workflow_dispatch:
+    inputs:
+      attempts:
+        description: 'Reads before NOT READY (15 s apart) — the default rides out the gap between registrations'
+        type: string
+        default: '6'
+
+permissions:
+  contents: read
+
+jobs:
+  ready:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/runner-ready.mjs
+          sparse-checkout-cone-mode: false
+      - name: Is a runner online under the label? (§251)
+        env:
+          RUNNER_READ_TOKEN: ${{ secrets.RUNNER_READ_TOKEN }}
+          BATTERY_RUNS_ON: ${{ vars.BATTERY_RUNS_ON }}
+          ATTEMPTS: ${{ inputs.attempts }}
+        run: |
+          if [ -z "$BATTERY_RUNS_ON" ]; then
+            echo "§251 runner readiness: OFF — vars.BATTERY_RUNS_ON is unset, so no run routes to a host whatever this says" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          node tools/runner-ready.mjs --attempts "$ATTEMPTS"
