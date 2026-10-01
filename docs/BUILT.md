@@ -29961,7 +29961,7 @@ two tooltips that name the panel matching it.
 | `offline-check` | **38/38**, precache **51/51**, the Vietnamese primer served from cache |
 | boot | `?lang=vi` on all three documents console-silent apart from the dev server's own `/__state` 404, which English shows too; `fmtNum` reads `30,0 · 0,024 · 18.000`; the ladder assert silent |
 | fingerprint | **1745988802** (59 units, 12 poses) at `?lang=vi` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it — the tables cannot move geometry |
-| battery | PENDING — the local run is in progress; this row is replaced with its gate count and wall before the PR is opened |
+| battery | **50/50 gates**, local (dev container, 3 shards, 3596 s wall, 8096 s of checks); fingerprint **1745988802** across virgin boots A and B and under the share payload (36/36 applied) — identical to `origin/main`, §73's form of "no geometry moved". CI's Battery job on the PR is the merge gate |
 
 ### Residue, recorded
 
