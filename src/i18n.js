@@ -114,6 +114,20 @@ try { _stored = localStorage.getItem('uiLang'); } catch { /* storage may be bloc
 // worth knowing: Chromium 141 writes a four-digit figure as 1.000 where
 // Node's ICU 78 writes 1000 — the second instance of "a bare tag answers
 // differently per ICU", and why MARKS rows are measured in the browser.
+// §249 — Vietnamese is Latin script with the most diacritics in the roster,
+// and its numbers are German's: measured in Chromium 141, 'vi-VN' formats
+// 30,0 · 0,024 · 1.000 · 18.000 with LATIN digits (and Node's ICU 78 agrees),
+// so the tag decides only the marks and MARKS.vi is German's row. Its plural
+// rule has ONE category, so no count string can ever need a second form.
+// The matcher is anchored, §211's rule: three-letter codes begin 'vi' too
+// ('vic', Virgin Islands Creole English, is the one the ladder assert names),
+// and startsWith would hand any of them a legible Vietnamese page. The
+// locale's real rule is VERTICAL, not a mark: a vowel can carry two marks
+// stacked above the cap height (Ế, Ữ, Ặ) and a third sits below the line
+// (ạ, ệ), so explain.html and primer.html declare html:lang(vi) line-height
+// 1.30 at their five `/1` sites — tools/probe-249-vietnamese-vert.mjs derives
+// the number. Tone marks follow the MODERN placement (hóa, thủy) in every
+// table; one page must not carry both styles.
 export const LOCALES = [
   { code: 'en', face: 'English', tag: 'en-US', match: (v) => v.startsWith('en') },
   { code: 'de', face: 'Deutsch', tag: 'de-DE', match: (v) => v.startsWith('de') },
@@ -123,6 +137,7 @@ export const LOCALES = [
   { code: 'ru', face: 'Русский', tag: 'ru-RU', match: (v) => v.startsWith('ru') },
   { code: 'pt', face: 'Português', tag: 'pt-BR', match: (v) => v.startsWith('pt') },
   { code: 'it', face: 'Italiano', tag: 'it-IT', match: (v) => v.startsWith('it') },
+  { code: 'vi', face: 'Tiếng Việt', tag: 'vi-VN', match: (v) => /^vi(-|$)/.test(v) },
   { code: 'hi', face: 'हिन्दी', tag: 'hi-IN', match: (v) => /^hi(-|$)/.test(v) },
   { code: 'ja', face: '日本語', tag: 'ja-JP', match: (v) => v.startsWith('ja') },
   { code: 'zh-Hant', face: '繁體中文', tag: 'zh-Hant', match: (v) => /^zh-(hant|tw|hk|mo)\b/.test(v) },
@@ -168,6 +183,9 @@ for (const [input, want] of [
   // included; the row's tag, not the reader's region, decides the group mark.
   ['pt', 'pt'], ['pt-BR', 'pt'], ['pt-PT', 'pt'], ['pt_PT', 'pt'], ['pt-AO', 'pt'],
   ['it', 'it'], ['it-IT', 'it'], ['it-CH', 'it'], ['it_CH', 'it'],
+  // §249 — the negative row is the decision, as Korean's and Hindi's are:
+  // 'vic' is its own language and gets English, not this table.
+  ['vi', 'vi'], ['vi-VN', 'vi'], ['vi_VN', 'vi'], ['vic', null], ['vic-VI', null],
   // §212 — the negative row is the decision: 'hif' (Fiji Hindi) is its own
   // language and gets English, not this table.
   ['hi', 'hi'], ['hi-IN', 'hi'], ['hi_IN', 'hi'], ['hif', null], ['hif-FJ', null],
