@@ -183,6 +183,19 @@
 # at all. `workflow_dispatch` with `full: true` is the on-demand whole run,
 # for the day someone wants one without waiting for a merge.
 #
+# THERE IS A `schedule:` NOW, AND IT IS NOT THAT NIGHTLY. It exists for the
+# other platform. A push never routes self-hosted (§200), so the host's §152
+# baseline could only ever be written by a dispatch on main — one per merge,
+# by hand, after waiting for the push run — and docs/RUNNERS.md records that
+# nobody fires it, so a self-hosted PR has paid a whole battery every time.
+# The scheduled run is that dispatch, automated: once a night, on the host
+# only, whole by construction, seeding the self-hosted baseline for whatever
+# the tip of main is. It re-tests a tree the push run already cleared, which
+# is exactly the duplication the paragraph above refuses — but on a DIFFERENT
+# PLATFORM, whose rows no other run can produce. It is skipped outright (not
+# routed to ubuntu-latest) when `vars.BATTERY_RUNS_ON` is unset: the hosted
+# platform has its push run and needs no second verdict of the same tree.
+#
 # EVERY WAY THIS CAN GO WRONG RESOLVES TOWARDS MORE WORK. No cache hit, an
 # unreadable file, a moved check-code digest, a union that cannot be justified
 # — each one runs (or fails) rather than skipping, and each one says so in the
@@ -218,8 +231,15 @@ on:
       - 'timelapse/**'
   push:
     branches: [main]
-  # The on-demand whole run. There is no `schedule:` — see the §152 note above
-  # for why the unfiltered push trigger already does the job a nightly would.
+  # The nightly SEEDING run for the self-hosted host — see the §152 note above
+  # for what it is and is not. 08:00 UTC is 04:00 in America/New_York during
+  # daylight time and 03:00 in winter; GitHub's cron has no time zone, and an
+  # hour's drift is not worth a second entry. It runs on the default branch
+  # only (a schedule has no other ref), which is the only ref a PR restores
+  # a baseline from.
+  schedule:
+    - cron: '0 8 * * *'
+  # The on-demand whole run — the same seeding by hand, on any platform.
   workflow_dispatch:
     inputs:
       full:
@@ -272,7 +292,10 @@ on:
 # the default branch the event IS the platform seam. It is a proxy, true only
 # while that rule holds. Route a push self-hosted and this has to be re-derived
 # from the routing expression — not done now, because that expression would
-# then be written down twice.
+# then be written down twice. The nightly keeps the proxy true: a `schedule`
+# is its own event name, so it never shares a group with a push, and it ALWAYS
+# routes self-hosted or is skipped (see the job's `if`), so its group is one
+# platform's as surely as a push's is.
 concurrency:
   group: battery-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name != 'push' }}
@@ -298,12 +321,18 @@ concurrency:
 #     side.
 #   · THE HOST IS NEVER THE DEFAULT. A run goes there only when the event
 #     itself asks: a pull request carrying the `self-hosted-battery` label or
-#     `[self-hosted]` in its title (§152's escape-hatch idiom, inverted), or
-#     a workflow_dispatch whose `runner` input says so. A push to main never
-#     asks, so merges always run GitHub-hosted — which also keeps main's
-#     baseline on the platform ordinary PRs inherit from. A dispatch on the
-#     default branch is how the OTHER platform gets one; see the seeding steps
-#     at the bottom of the job for why that path had to exist.
+#     `[self-hosted]` in its title (§152's escape-hatch idiom, inverted), a
+#     workflow_dispatch whose `runner` input says so, or the nightly
+#     `schedule`, which exists for nothing else. A push to main never asks,
+#     so merges always run GitHub-hosted — which also keeps main's baseline
+#     on the platform ordinary PRs inherit from. The nightly (or a dispatch
+#     on the default branch) is how the OTHER platform gets one; see the
+#     seeding steps at the bottom of the job for why that path had to exist.
+#     The nightly is the one event that never falls back: with the variable
+#     unset, or the workflow file last touched by someone other than the
+#     owner (which is who `github.actor` names on a schedule), the job is
+#     SKIPPED rather than run on ubuntu-latest, because a hosted verdict of
+#     main's tip already exists and a second one would seed nothing.
 #   · And only when `vars.BATTERY_RUNS_ON` is set. It is the AVAILABILITY
 #     switch, not the router: unset it and every opt-in lands on
 #     `ubuntu-latest` in silence, which is the outage remedy — a queued
@@ -354,7 +383,9 @@ jobs:
   battery:
     # A `labeled` event runs the job only for the two labels that change what
     # a run is; every other label is skipped, not run.
-    if: github.event.action != 'labeled' || contains(fromJSON('["self-hosted-battery","full-battery"]'), github.event.label.name)
+    if: >-
+      ${{ (github.event.action != 'labeled' || contains(fromJSON('["self-hosted-battery","full-battery"]'), github.event.label.name))
+      && (github.event_name != 'schedule' || (vars.BATTERY_RUNS_ON != '' && github.actor == github.repository_owner)) }}
     # Read as: (asked for by a same-repo PR) or (asked for by a dispatch),
     # and owner-triggered, and the host is available — else GitHub-hosted.
     runs-on: >-
@@ -364,8 +395,20 @@ jobs:
       && (contains(github.event.pull_request.labels.*.name, 'self-hosted-battery')
       || contains(github.event.pull_request.title, '[self-hosted]')))
       || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted')
+      || github.event_name == 'schedule'
       ) && github.actor == github.repository_owner && vars.BATTERY_RUNS_ON || 'ubuntu-latest' }}
-    timeout-minutes: 50   # must stay ABOVE ci-battery.mjs's per-check guard (35; TODO 38's wind axis re-derived both — guard + the ~15 min this pair has always kept above it)
+    # The cap must stay ABOVE ci-battery.mjs's per-check guard (35; TODO 38's
+    # wind axis re-derived both — guard + the ~15 min this pair has always kept
+    # above it). A PUSH gets more room than the rest: it is the whole, never
+    # incremental run that writes the hosted baseline, and a cancelled push
+    # run is the quiet failure the concurrency note above describes — no
+    # baseline for that tree, every following hosted PR forced whole. Three
+    # consecutive push runs (1097, 1100, 1101) were cancelled at 50 min on
+    # ubuntu-latest, each inside `clearances` with the sweeps nearly done, so
+    # the cap was costing exactly the verdict it existed to bound. A PR run
+    # keeps 50: it inherits rather than writes, and a runaway PR battery
+    # should still fail fast.
+    timeout-minutes: ${{ github.event_name == 'push' && 90 || 50 }}
     steps:
       # §200 — the pointer is read off the run, never remembered. Values go
       # through env, not inline: a head repo name is untrusted text.
@@ -388,6 +431,7 @@ jobs:
             printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'self-hosted-battery' && asked="label"
             printf '%s' "$TITLE" | grep -qF '[self-hosted]' && asked="title"
           elif [ "$EVENT" = workflow_dispatch ] && [ "$DISPATCH_RUNNER" = self-hosted ]; then asked="dispatch input"
+          elif [ "$EVENT" = schedule ]; then asked="the nightly seeding schedule"
           fi
           if [ "$EVENT" = pull_request ] && [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then verdict="FORK — pinned to ubuntu-latest"
           elif [ "$ACTOR" != "$OWNER" ]; then verdict="triggered by a non-owner — pinned to ubuntu-latest"
@@ -694,6 +738,16 @@ jobs:
       # The default branch, not any ref: a PR restores by `base.sha`, so an
       # entry for a branch tip is one nothing reads.
       #
+      # THE NIGHTLY `schedule` IS THAT DISPATCH, FIRED FOR YOU. Same ref (a
+      # schedule only ever runs the default branch), same host (its routing
+      # has no hosted arm — see the job's `if`), same whole run, so it takes
+      # the same seat here. What it changes is who remembers: the manual
+      # dispatch had to be timed after the push run finished and nobody fired
+      # it, so the host's baseline was stale at whatever commit last survived.
+      # A nightly seeds the tip main had at 08:00 UTC, which is at most a
+      # day's merges behind — and a self-hosted PR whose base is newer than
+      # that still runs whole, exactly as before.
+      #
       # WHAT STILL GUARDS IT is unchanged, and it is the half that matters: only
       # a run that measured the WHOLE movement may become a baseline. A report
       # carrying `restrictedTo` inherited rows from a previous baseline, and
@@ -727,6 +781,8 @@ jobs:
             may=true; why="a push to $REF — this run IS the baseline"
           elif [ "$EVENT" = workflow_dispatch ] && [ "$REF" = "$DEFAULT_BRANCH" ]; then
             may=true; why="a dispatch on the default branch — seeding $PLATFORM"
+          elif [ "$EVENT" = schedule ] && [ "$REF" = "$DEFAULT_BRANCH" ]; then
+            may=true; why="the nightly on the default branch — seeding $PLATFORM"
           elif [ "$EVENT" = workflow_dispatch ]; then
             why="a dispatch on '$REF', not the default branch — a PR restores by base.sha, so nothing would read it"
           fi
