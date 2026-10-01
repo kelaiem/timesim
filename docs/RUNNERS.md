@@ -215,6 +215,47 @@ GitHub lists an online runner under the label, a job VM is running, and that
 VM has a listener process. **Run it before you label a PR.** A job that opts
 in while the verdict is NOT READY queues for up to a day and nothing tells you.
 
+**Since §251 the battery asks the first witness itself.** A `route` job runs
+on `ubuntu-latest` before every battery run, and owns §200's routing
+expression (moved there, not copied). When that expression asks for the host,
+`tools/runner-ready.mjs` lists the repository's runners and looks for one that
+is online under the label. It retries for 75 s to ride out the gap between the
+loop's registrations. Then:
+
+- **READY:** the run goes to the host, as before.
+- **NOT READY:** the run goes to `ubuntu-latest`, and the job summary says why.
+  The nightly is SKIPPED instead, because it only exists to seed the host.
+- **UNKNOWN** (no token, or the API refused): the run goes to the host as
+  before, marked "readiness unchecked".
+
+So an opt-in can no longer queue for a day into a host that is not there.
+`status` is still the fuller answer, because only the host can see its own VM
+and listener.
+
+**Asking without queueing anything.** The `Runner readiness` workflow
+(`runner-ready.yml`, dispatch only) runs the same script and goes red on
+anything but READY:
+
+```bash
+gh workflow run runner-ready.yml && gh run watch "$(gh run list -w runner-ready.yml -L1 --json databaseId -q '.[0].databaseId')"
+RUNNER_READ_TOKEN=… node tools/runner-ready.mjs     # or locally; exit 0/1/2 = READY / NOT READY / UNKNOWN
+```
+
+It has no `schedule:` on purpose. A laptop host is asleep for hours by design,
+and a nightly red would teach everyone to ignore the colour.
+
+**The one setting it needs** is a repository secret, `RUNNER_READ_TOKEN`. It
+holds a fine-grained token scoped to this repository with **Administration:
+read** and nothing else. `GITHUB_TOKEN` cannot list self-hosted runners, which
+is the whole reason for the secret. Until it exists, the route job reports
+UNKNOWN and routes exactly as §200 did, so landing §251 changed nothing until
+the secret was set.
+
+The secret never reaches the battery job. It is read only when a run already
+routes to the host, so never on a fork's pull request: those are pinned to
+`ubuntu-latest` before anything else is read, and GitHub withholds secrets
+from them regardless.
+
 ### The first week, and the three rules it wrote into the loop
 
 The host ran for six days before an opt-in landed on it, and the trail of

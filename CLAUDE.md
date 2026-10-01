@@ -86,8 +86,9 @@ three-quarter plate and the dial). The base plate's fills live in
 line drawing's only partition between the dial-side works and the
 train. Both halves are boot-asserted.
 
-The chrome is LOCALIZED (§73 tier one, §116, §208 — English, German, French,
-Japanese, Chinese in both scripts, and Arabic):
+The chrome is LOCALIZED (§73 tier one, §116, §208, then one landing per
+locale; `LOCALES` in `src/i18n.js` is the roster, so this sentence does not
+restate it — a list or a count here is one more copy to fall behind):
 `src/i18n.js` holds one table keyed by the English source string, so the
 app keeps authoring its UI in English and `t()` / `localizeTree()`
 resolve at the display site; a missing entry falls back to English
@@ -642,7 +643,13 @@ on Apple Virtualization, so the public logs name the guest, not the Mac) or
 prints the variable flip it deliberately does not perform; the job
 summary names the runner that took each run, and `status` ends in a READY /
 NOT READY verdict to read BEFORE opting a PR in — a queued opt-in with no
-runner waits a day in silence. Two consequences to know: the §152
+runner waits a day in silence. **Since §251 the battery asks too**: a `route`
+job owns the routing expression and, when it asks for the host, reads
+GitHub's runner list (`tools/runner-ready.mjs`) — no runner online under the
+label turns the run to `ubuntu-latest` (the nightly is skipped), and no
+`RUNNER_READ_TOKEN` secret (Administration: read) means UNCHECKED and §200's
+routing unchanged. `runner-ready.yml` asks the same question on demand,
+with nothing queued behind it. Two consequences to know: the §152
 baseline key carries the platform, and since a push NEVER routes self-hosted
 the host's baseline is seeded by DISPATCHING the workflow on the default branch
 with `runner: self-hosted` — or, since the nightly, by the `schedule` trigger that
@@ -807,7 +814,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 256 measuring scripts and this file names 19. The rest are named for the
+`tools/` holds 258 measuring scripts and this file names 19. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -824,7 +831,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **145 of
+The index also carries the split that decides how to read a result: **147 of
 them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
