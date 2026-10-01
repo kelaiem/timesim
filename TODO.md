@@ -19,6 +19,8 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 |---|---|---|
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
+| 193 | OPEN | The mainspring ribbons are never held to their material: going 1032 → 1756 MPa, alarm 3096 → 5264 MPa (uniform moment, σ = M·a/I on the as-cut `rhombus4`, whose modulus is ¼ of a flat strip's), against the 800 MPa `SPRING_SIGMA_Y_PA` every other spring answers to. Fix: decide the section (strip vs rhombus) and re-solve k, cite a mainspring-alloy limit, gate σ at full wind for both ribbons |
+| 192 | OPEN | The going spring cannot drive the balance: 3.43 mJ over 30 h (31.7 nW) against a 270° balance that needs 43–134× that after friction; sustained amplitude 2–7° vertical, 13–72° dial-flat (`probe-power-budget.mjs`, three assumption corners). Causes: 0.673 working turns of the drum, and pivots 3–5× §50's real band (balance Q_pivot 62). Fix: energy column on `equalisation`, pivots cut to the real band, the working band re-solved against a declared amplitude target |
 | 191 | OPEN | The alarm selector rod stands 0.0811 from the beak post it runs parallel to, since TODO 174 brought the rod to 9 from the wheel. Intra-unit, not gated, not fouling; moving it would spend the lever's ratio |
 | 190 | OPEN | The silence rocker's bar, finger and bracket overlie the feeler's tail-run jog, tail run and return spring. There are four crossings at every pose (jog ⇄ bar 0.268, run ⇄ lug 0.212, spring ⇄ finger 0.124 — the finger presses the SPRING, not the tail — and jog ⇄ dropper 0.068) plus eight under-margin pairs, all hidden by the EXPECTED rocker ⇄ feeler pair with no floors row. Fix: redesign the finger/spring/jog/bracket interface in position space, then land the floors row |
 | 189 | OPEN | The release pawl's beak never reaches the alarm winding contrate (0.54 off at rest, 0.33 dropped; riser ⇄ contrate 0.128), hidden by the EXPECTED feeler ⇄ winding-train pair. The strike hold exists only in the pose law. Fix: re-site the beak on the contrate's dial-side (large-end) tooth edge, now that the corrected rock withdraws it dial-ward, and hold it with a floors row |
@@ -25536,6 +25538,140 @@ post's station along the arm's line, or the rod's azimuth about the crank,
 with the lever's arm lengths and 4.66:1 held (spending the ratio to buy room
 is forbidden). The acceptance is a measured gap ≥ `CLEAR_MARGIN` over the
 link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
+
+## 192. The going spring cannot drive the balance: the power budget does not close
+
+Found by `tools/probe-power-budget.mjs` (a REPORT); tracked with the other
+failure points in issue #531. Every published figure about
+the going train's power is FRICTIONLESS. `equalisation` holds the fusee's level
+product to float noise, and `oscillator` solves the hairspring to the balance's
+inertia. Nothing asks whether the one can DRIVE the other. `AMPLITUDE_TRUE_DEG =
+270` is called a "physical reference", and two sites price real loads against
+it: the hack brake's 1.3 mN and §218's physical breathing peaks. The only
+efficiency anywhere in the source is the alarm governor's `ALARM_GOV_MESH_EFF`.
+
+**What the ribbon delivers.** Going k is 9.967e-5 N·m/rad, wound from
+6.021 → 10.249 rad: **0.673 working turns** of the drum over the whole 30 h.
+Released ½k(θ_f² − θ_s²) = **3.43 mJ**. That is **31.7 nW mean**, 0.312 N·mm
+level at the fusee, **30.3 nN·m** at the escape wheel through the 10,285.7:1
+train, and **6.35 nJ per beat** before any loss. For scale, a mechanical watch
+is commonly quoted at around 1 µW, about 30× this.
+
+**What the balance asks.** I is 5.001e-10 kg·m² and k is 1.234e-7 N·m/rad.
+At 270° the balance holds 1.370 µJ. Two terms per beat:
+- Its non-pivot damping costs (π/Q)·½kθ².
+- Its pivot friction costs 2θ·μ·m·g·r_piv. The mass is 54.7 mg off the
+  published rim, arm and screws (`OSC_I`'s own decomposition).
+
+Every assumption is a band: μ, escapement η 0.30–0.40, non-pivot Q 250–500.
+The probe runs all three corners, and the conclusion holds in every one.
+
+| corner | ribbon → balance η | sustained amplitude, vertical / dial-flat | to hold 270° vertical |
+|---|---|---|---|
+| favourable | 0.240 | **7.1° / 72.4°** | 148.7 mJ, 43× today |
+| nominal | 0.178 | **4.4° / 32.0°** | 246.0 mJ, 72× today |
+| adverse | 0.121 | **2.4° / 13.0°** | 460.3 mJ, 134× today |
+
+Even a frictionless train with the favourable escapement sustains only 11.9°
+vertical. That is below any lever escapement's lift angle, so the watch as
+modelled would not run in the vertical positions. In the flat positions it
+would run at an amplitude no régleur would accept.
+
+**Two causes, both measured.**
+1. **The ribbon works 0.673 turns of a 1.70:1 band.** The fusee has almost
+   nothing to equalise, and the energy is ½k(θ_f² − θ_s²) over a sliver of
+   wind. §124 chose the set-up for CHAIN-CARRYABILITY: 23 clicks, the minimum
+   whose seat residual clears the §61 float budget. Nobody priced that choice
+   in energy. Real fusee movements work their spring over several turns, at
+   the 3–5:1 band the fusee exists to flatten.
+2. **Every pivot is 3–5× a real one.** `addUpperPivot`/`addLowerPivot` default
+   `staffR` 0.5 u = **0.379 mm ⌀** across the train. §50's own basis for
+   `PIVOT_MIN_U` says "real train pivots run 0.07–0.12 mm". The balance staff
+   is 0.227 mm ⌀. Pivot friction is linear in radius. The balance's own
+   vertical pivot Q comes out at **62**, where a real balance's is in the
+   hundreds. Cutting the pivots to §50's real band alone moves the nominal
+   corner from 4.4° to 16.8° vertical. It is necessary but nowhere near
+   sufficient.
+
+**Why the ribbon cannot simply be made stronger.** 270° at the nominal corner
+with real pivots still needs 84 mJ, about 25× today. The ribbon already works
+past its cited yield (TODO 193), so the energy cannot come from stress. It has
+to come from VOLUME, and a 25× ribbon does not fit a drum of R 10 u. The
+closing solution spends on all three terms at once:
+- Pivots cut to the real band.
+- A spring with more working turns: re-solve the set-up and the fusee against
+  energy as well as chain seating.
+- A balance with a larger radius of gyration per unit mass. Q_pivot ∝ r_g²/r_piv
+  at a fixed rate, and today's is 3.0 mm on a 54.7 mg balance.
+
+What amplitude the movement then claims should be a SOLVE output, not the 270
+literal.
+
+**Fix path.** P1 for the going train as an action group — this is a structural
+truth failure, not packaging.
+1. Promote the probe's arithmetic to an `energy` column on the `equalisation`
+   record: E_released, the escape torque, and a declared friction table with
+   its bands.
+2. Cut the pivots to §50's band, as P1 sections whose stock floor is already
+   `PIVOT_MIN_U`.
+3. Re-solve the drum's working band against a declared amplitude target at
+   the adverse corner, with the ribbon inside TODO 193's stress limit.
+4. Gate the amplitude the solve achieves.
+
+Items 1 and 2 are independent and can land first. Until then,
+`AMPLITUDE_TRUE_DEG`, the hack brake's 1.3 mN and §218's physical peaks
+describe a balance this spring cannot keep swinging. That is MODELLED, not
+SIMULATED — no force path reaches the balance, and none says it would.
+
+## 193. The mainspring ribbon works at 1756 MPa, over the 800 MPa SPRING_SIGMA_Y_PA the movement cites
+
+Found beside [TODO 192] by the same probe (issue #531). A spiral spring wound off its free
+coil carries a UNIFORM moment M = k·θ along its length, so the outer fibre sees
+σ = M·a/I everywhere. The inputs are on the equalisation record: the rhombus's
+radial half-diagonal a = 0.1349 u and I = a³c/3 = 1.442e-3 u⁴. Over the
+reserve the ribbon runs at **1032 → 1756 MPa**.
+
+`SPRING_SIGMA_Y_PA` is 800 MPa. It is the "hardened carbon spring band" every
+other spring in the movement is solved or gated against (TODO 63, §173,
+§234's elbow, the feeler blade's strain row). The one spring that powers the
+watch is the one that nothing asks. `equalisation` holds its section inside
+real STOCK and its k to its ribbon. It never holds the ribbon inside its
+MATERIAL.
+
+Real mainspring alloys (Co-Ni-Cr, the Nivaflex class) do work in the 1.5–2.5 GPa
+range. So the honest fix is not necessarily a softer spring. It is to name the
+alloy:
+- Either a second, CITED limit for mainspring alloy beside
+  `SPRING_SIGMA_Y_PA`, stating why the going and alarm ribbons answer to it
+  and the flat springs do not.
+- Or keep one limit and re-section the ribbon under it. That lowers k and
+  makes TODO 192 worse.
+
+Either way the gate grows one row: σ at full wind under the declared limit,
+for BOTH ribbons.
+
+**The alarm ribbon is worse, and no alloy rescues it.** Its section is
+a = 0.0951 u, c = 0.455 u, I = 1.305e-4 u⁴, and its moment runs 0.231 → 0.393
+N·mm. That puts it at **3096 → 5264 MPa**, past the tensile strength of any
+spring alloy.
+
+Part of that is the SECTION rather than the load. Both ribbons are cut as a
+`rhombus4`: a diamond whose section modulus a²c/3 is a QUARTER of its bounding
+rectangle's. A real mainspring is a flat strip. Read as the bounding rectangle,
+the alarm ribbon would sit near 1.3 GPa and the going one near 440 MPa. So the
+first question is whether the rhombus is a real section or a tessellation
+convenience that §104's k and this stress both inherited. The equalisation
+comment already notes that "the entry's own b·h³/12 sketch is the bounding
+rectangle, 4× this".
+
+Fix order:
+1. Decide the section, and re-solve k from it. That moves §104's I_a solve and
+   the fusee's level product, so both have to be re-measured.
+2. Then cite the limit.
+3. Then gate σ.
+
+`probe-power-budget.mjs` prints the going ribbon's σ. The alarm figure above
+is the same arithmetic on the alarm half of the record.
 
 ## 194. The alarm follower's return spring does not bear on the follower arm
 
