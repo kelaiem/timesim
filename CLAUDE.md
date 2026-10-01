@@ -399,7 +399,16 @@ it into prose either.
    with no readable shape fails rather than being skipped; a cylinder never
    had a shape and is counted instead. It works at all because
    `ExtrudeGeometry` keeps `parameters.shapes` and `weldGeometry` now carries
-   that reference through the weld), and `point sweeps` **0 broken, every
+   that reference through the weld. **Since TODO 187 it also reads the base
+   plate**, which no label claims: `HELD_FIXTURES` in `inspect.js` holds it by
+   its mesh name in `outlines`, `meshIntegrity`, the §152 digests and the
+   fingerprint, and gates two things on it — 0 CROSS-RING crossings (two rings
+   of one shape crossing each other, which is how TODO 172's first pocket
+   draft opened the slab through every gate) and, in `meshIntegrity`, 0 open
+   or non-manifold edges. The cross-ring tier REPORTS the labelled units:
+   its first run found the three-quarter plate and the geneva finger disc
+   both cut that way, TODO 198. `probe-187-plate-gates.mjs` re-cuts the
+   draft and watches both go red), and `point sweeps` **0 broken, every
    LISTED point clean** (TODO 186 — the silent spec points swept and unioned
    by §152's rule; a finding keeps a point out of the validated set, a PR's
    ceiling may skip one but never passes it; see Inspecting).
@@ -741,7 +750,11 @@ f ∈ {0, 0.5, 1}, unioned with the 12 canonical poses for the combined states,
 set left 61% of moving (unit, axis) pairs blind to a pose-law change, and
 `tools/probe-152-pose-coverage.mjs` demonstrates the miss and the catch. Four
 units install a different geometry at a different pose, which is why every
-pose is walked. The pose net and the check code ride
+pose is walked. The digest also carries the HELD fixtures' rows (TODO 187 —
+the base plate), so the determinism gate holds them and a plate-only change
+lands in the changed set by name; they are in no sweep's pairs, so
+`pairsTouching` accepts the name and restricts to nothing of theirs, and the
+checks that do read the plate always run whole. The pose net and the check code ride
 file digests (`AXES` lives in `inspect.js`), and **any difference in
 `src/inspect.js`, `tools/battery-checks.mjs`, `tools/battery-split.mjs` or
 `tools/battery-union.mjs` runs the whole battery** — the four files that
@@ -814,7 +827,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 259 measuring scripts and this file names 20. The rest are named for the
+`tools/` holds 260 measuring scripts and this file names 21. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -831,7 +844,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **148 of
+The index also carries the split that decides how to read a result: **149 of
 them are ACCEPTANCE tests** that exit non-zero, and **111 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
