@@ -36908,7 +36908,10 @@ const SCHEMATIC = { proxies: [], on: false };
   // OUT of SCHEMATIC.proxies and parented to backPlate, which no labelled
   // unit contains: the sweeps collect unit subtrees, the support path
   // collects by the exact mesh name 'backPlate', and the fingerprint boxes
-  // per unit — no instrument ever sees them. (The no-mesh-proxies warn
+  // per unit. TODO 187 holds the plate itself by that name (HELD_FIXTURES:
+  // outlines, meshIntegrity, the digest, the fingerprint), and every one of
+  // those walks prunes the schematic flag set below — so still no instrument
+  // ever sees them. (The no-mesh-proxies warn
   // above polices tier parts that live INSIDE units, which these do not.)
   {
     const PAGE = 0x0b0d10; // the page background the line tier draws on

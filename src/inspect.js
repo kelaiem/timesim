@@ -37,7 +37,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
-  SLENDER_OVERHANG_K, MOVEMENT_SENSE,
+  SLENDER_OVERHANG_K, MOVEMENT_SENSE, CASE_WIDTH_MAX,
   TURN_LD_MAX, TURN_LD_UNSUPPORTED } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -826,13 +826,124 @@ function collectUnits(clock, { includeExcluded = false } = {}) {
 
 const bvhCache = new WeakMap();
 function bvhFor(mesh) {
-  let bvh = bvhCache.get(mesh.geometry);
+  return bvhForGeometry(mesh.geometry);
+}
+
+// TODO 159 — A BVH DISTANCE QUERY IS EXACT ONLY IN A RIGID FRAME.
+// Every distance below is read in the frame of the tree being queried: the
+// other mesh's triangles (or sample points) are carried into it by
+// inverse(dst.matrixWorld) · src.matrixWorld. When dst's world matrix carries a
+// scale, the answer comes back in dst's LOCAL units — the minute jumper's
+// lifter bar, cut at unit length and stretched onto its span (scale.x ≈ 37–40),
+// read 0.1189 to a tab 3.4 u away. Swapping the arguments fixes the UNITS but
+// not the search: three-mesh-bvh prunes `closestPointToGeometry` with an
+// oriented box built from that same matrix (a sheared box once a stretch
+// meets a rotation, whose clamp-in-local "closest point" is not the closest)
+// and scores the second tree's nodes in the OTHER mesh's local units, so a
+// non-rigid map can over-estimate a pruning bound and skip the leaf that holds
+// the true minimum — and both meshes may be stretched, where no order works.
+//
+// So the measuring frame is made rigid instead. A mesh whose world matrix is
+// rigid is used as it stands (no copy, no cost). Otherwise its linear part is
+// BAKED into a cached copy of its geometry and the mesh is measured through
+// the rigid remainder: with orthogonal columns (scale applied innermost, which
+// is every stretched mesh in the movement) L = Q·diag(n), so the copy carries
+// diag(n) and the frame is Q plus the translation; a sheared L is baked whole
+// and the frame is the translation alone. Both are exact: the copy's triangles
+// are the world triangles up to a rigid motion, and every matrix the library
+// then sees is rigid, so its distances are world distances and its pruning
+// bounds are sound. Both meshes non-rigid needs no special case — each is
+// baked, and the pair is measured rigid-to-rigid.
+//
+// Cost: the copy is keyed by (source geometry, its position version, the nine
+// baked numbers), so a constant stretch — the two mainspring ribbons and the
+// hairspring, whose wind frames are swapped geometries with a fixed scale.z —
+// is baked once per frame geometry, and a per-pose stretch (the lifter bar and
+// three 12-triangle spring blades) re-bakes a box.
+//
+// RIGID_EPS, derived: a frame whose column norms are within ε of 1 and whose
+// columns are within ε of orthogonal misreads a distance d by at most ~ε·d.
+// No two points of the movement are farther apart than the case's diameter,
+// 2 · CASE_WIDTH_MAX = 105.5 u, and every report prints four decimals, so
+// ε = 1e-4 / 105.5 ≈ 9.5e-7 keeps the worst misreading below what any report
+// can show. (Measured: rigid frames sit within 3e-16 of 1; the smallest real
+// stretch in the movement is 1.42 — the bound is not near either.) This is a
+// frame tolerance, not a clearance margin: CLEAR_MARGIN stays the only one.
+//
+// Not every BVH query has the defect. An INCIDENCE predicate —
+// `intersectsGeometry`, the parity raycast, `segmentPierces`, `intersectsBox`
+// — is invariant under any invertible affine map, and the library prunes it
+// by separating axes, which are sound under any affine map; so
+// `meshesIntersect`'s boolean, `mtvDepth` / `stoneIntersectsWheel` (whose
+// bisected depth is a WORLD translation) and `sawRideDepth` (a world rotation)
+// were already exact and are left alone. The distance paths are what read a
+// frame's units: `meshClearance`, `sampledVerdict`, `sampledClearance`, the
+// anchor checks' `closestPointToPoint`, and the hand-off rulers.
+const RIGID_EPS = 1e-4 / (2 * CASE_WIDTH_MAX);
+const _frameCache = new WeakMap();   // mesh → its reused view
+const _bakeCache = new WeakMap();    // source geometry → { key, ver, geometry }
+const _bakeL = new THREE.Matrix4(), _unbakeS = new THREE.Matrix4();
+function bakedGeometry(src, L) {
+  const e = L.elements;
+  const key = [e[0], e[1], e[2], e[4], e[5], e[6], e[8], e[9], e[10]];
+  const ver = src.attributes.position.version;
+  const hit = _bakeCache.get(src);
+  if (hit && hit.ver === ver && hit.key.every((x, k) => x === key[k])) return hit.geometry;
+  const g = new THREE.BufferGeometry();
+  const pos = src.attributes.position.clone();
+  pos.applyMatrix4(L);
+  g.setAttribute('position', pos);
+  // A COPY of the index: computeBoundsTree reorders its geometry's index in
+  // place, and sharing the source's would reorder the source under its own tree.
+  if (src.index) g.setIndex(src.index.clone());
+  bvhForGeometry(g);
+  _bakeCache.set(src, { key, ver, geometry: g });
+  return g;
+}
+function bvhForGeometry(geometry) {
+  let bvh = bvhCache.get(geometry);
   if (!bvh) {
-    bvh = mesh.geometry.computeBoundsTree();
-    bvh = mesh.geometry.boundsTree;
-    bvhCache.set(mesh.geometry, bvh);
+    geometry.computeBoundsTree();
+    bvh = geometry.boundsTree;
+    bvhCache.set(geometry, bvh);
   }
   return bvh;
+}
+// The mesh as a distance query must see it: `geometry` (the mesh's own, or a
+// baked copy), its tree, and a RIGID `frame` placing that geometry in the
+// world. `src` is the mesh's own geometry, for questions that are affine
+// invariant (closedness). The returned object is reused per mesh — read it
+// before asking again for the same mesh.
+export function rigidFrame(mesh) {
+  let v = _frameCache.get(mesh);
+  if (!v) { v = { geometry: null, src: null, frame: null, own: new THREE.Matrix4(), rigid: true, baked: null }; _frameCache.set(mesh, v); }
+  const e = mesh.matrixWorld.elements;
+  const n0 = Math.hypot(e[0], e[1], e[2]), n1 = Math.hypot(e[4], e[5], e[6]), n2 = Math.hypot(e[8], e[9], e[10]);
+  const c01 = Math.abs(e[0] * e[4] + e[1] * e[5] + e[2] * e[6]) / (n0 * n1);
+  const c12 = Math.abs(e[4] * e[8] + e[5] * e[9] + e[6] * e[10]) / (n1 * n2);
+  const c02 = Math.abs(e[0] * e[8] + e[1] * e[9] + e[2] * e[10]) / (n0 * n2);
+  const orthogonal = c01 <= RIGID_EPS && c12 <= RIGID_EPS && c02 <= RIGID_EPS;
+  v.src = mesh.geometry;
+  if (orthogonal && Math.abs(n0 - 1) <= RIGID_EPS && Math.abs(n1 - 1) <= RIGID_EPS && Math.abs(n2 - 1) <= RIGID_EPS) {
+    v.geometry = mesh.geometry; v.frame = mesh.matrixWorld; v.rigid = true; v.baked = null;
+    return v;
+  }
+  if (orthogonal) {
+    // L = Q·diag(n): bake diag(n), keep Q (and the translation) as the frame.
+    _bakeL.makeScale(n0, n1, n2);
+    v.own.copy(mesh.matrixWorld).multiply(_unbakeS.makeScale(1 / n0, 1 / n1, 1 / n2));
+    v.baked = 'scale';
+  } else {
+    // A shear: bake the whole linear part, keep only the translation.
+    _bakeL.copy(mesh.matrixWorld).setPosition(0, 0, 0);
+    v.own.makeTranslation(e[12], e[13], e[14]);
+    v.baked = 'linear';
+  }
+  bvhFor(mesh);   // the source's index side effect, which edge extraction and intersectsGeometry rely on
+  v.geometry = bakedGeometry(mesh.geometry, _bakeL);
+  v.frame = v.own;
+  v.rigid = false;
+  return v;
 }
 
 const _mat = new THREE.Matrix4();
@@ -1293,7 +1404,9 @@ export function resolveAxes(arg = AXES) {
 export function resolvePairsTouching(clock, names) {
   if (names === undefined || names === null) return null;
   const list = Array.isArray(names) ? names : [names];
-  const known = new Set(clock.labelEntries.map((e) => e.name));
+  // TODO 187 — a held fixture's name is KNOWN (unitDigests reports it) and
+  // touches no pair: no sweep's population contains it.
+  const known = new Set([...clock.labelEntries.map((e) => e.name), ...HELD_NAMES]);
   const missing = list.filter((n) => !known.has(n));
   if (missing.length) {
     throw new Error(`pairsTouching: unknown unit name(s): ${missing.join(', ')} `
@@ -1444,9 +1557,11 @@ const _sampleV = new THREE.Vector3();
 function sampledClearance(a, b, upperBound = Infinity) {
   let best = upperBound;
   for (const [src, dst] of [[b, a], [a, b]]) {
-    const tree = bvhFor(dst);
-    _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
-    const pos = src.geometry.attributes.position;
+    // TODO 159 — measured between RIGID frames (rigidFrame), so in world units.
+    const vs = rigidFrame(src), vd = rigidFrame(dst);
+    const tree = bvhForGeometry(vd.geometry);
+    _mat.copy(vd.frame).invert().multiply(vs.frame);
+    const pos = vs.geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       _sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat);
       const hit = tree.closestPointToPoint(_sampleV, {}, 0, best);
@@ -1696,11 +1811,16 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
   let best = upperBound, inside = false;
   const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
   for (const [src, dst] of [[b, a], [a, b]]) {
-    const tree = bvhFor(dst);
-    bvhFor(src); // indexing side effect — edge extraction below reads the index
+    // TODO 159 — both sides through their RIGID frames: the distance half of
+    // this verdict is read in dst's frame, so a stretched dst read it in its
+    // own local units. Containment (parity, pierce) never cared — it is affine
+    // invariant — and is unchanged by measuring on the baked copy.
+    const vs = rigidFrame(src), vd = rigidFrame(dst);
+    const tree = bvhForGeometry(vd.geometry);
+    bvhForGeometry(vs.geometry); // indexing side effect — edge extraction below reads the index
     const box = bvhBox(tree); // dst-local, same frame as the transformed samples
-    _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
-    const pos = src.geometry.attributes.position;
+    _mat.copy(vd.frame).invert().multiply(vs.frame);
+    const pos = vs.geometry.attributes.position;
     const test = (v) => {
       const boxD = box.distanceToPoint(v); // 0 inside/on the box
       if (boxD < best) {
@@ -1710,7 +1830,7 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
       if (!inside && boxD === 0 && pointInsideTree(tree, v)) inside = true;
     };
     for (let i = 0; i < pos.count; i++) test(_sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat));
-    const idx = src.geometry.index;
+    const idx = vs.geometry.index;
     if (idx) {
       for (let t = 0; t < idx.count; t += 3) {
         for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
@@ -1725,7 +1845,7 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
     // failed to find anything, so the common case pays nothing for it.
     // Gated on the DST surface bounding a solid — see boundsASolid. src may be
     // open; what the argument needs is that the thing being crossed is closed.
-    if (idx && boundsASolid(dst.geometry)) {
+    if (idx && boundsASolid(vd.src)) {   // closedness is affine invariant: asked of the mesh's own geometry
       for (let t = 0; t < idx.count && !inside; t += 3) {
         for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
           _pe0.fromBufferAttribute(pos, idx.getX(t + i0)).applyMatrix4(_mat);
@@ -1807,10 +1927,14 @@ function _meshClearanceInner(a, b, upperBound = Infinity) {
   // max[f3] belongs, missing edge-edge minima) is patched alongside. This
   // comment is the record of why the vendor is no longer verbatim; every
   // meshClearance consumer inherits the corrections.
-  const bvh = bvhFor(a);
-  bvhFor(b);
-  _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  const hit = bvh.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, upperBound);
+  // TODO 159 — measured between RIGID frames: a stretched `a` used to put the
+  // whole query in its local units (see rigidFrame). Rigid meshes pass through
+  // untouched, so every rigid pair's answer is the one it always was.
+  const va = rigidFrame(a), vb = rigidFrame(b);
+  const bvh = bvhForGeometry(va.geometry);
+  bvhForGeometry(vb.geometry);
+  _mat.copy(va.frame).invert().multiply(vb.frame);
+  const hit = bvh.closestPointToGeometry(vb.geometry, _mat, {}, {}, 0, upperBound);
   let d = hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
   // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
   // short-circuits to 0 through its own triangle-intersection test, and
@@ -4137,6 +4261,65 @@ const STRUCTURE_NODES = {
   // structural-node path working if that label is ever dropped.
   'Three-quarter plate': 'threeQuarterPlate',
 };
+// TODO 187 — HELD FIXTURES: structure the battery reads by NAME although no
+// label claims it. `support` was the only reader of the base plate, so the
+// plate the build cuts — its openings, lands, closure — was invisible to
+// `outlines`, `meshIntegrity`, the §152 digests and the fingerprint, and TODO
+// 172's first pocket draft shipped through every gate with the slab OPEN (76
+// open edges, two overlapping rings).
+//
+// Why a held row and not a label. A label would put the plate in every PAIR
+// sweep, and measured at rest 39 of the 60 labelled units stand within
+// CLEAR_MARGIN of it: 36 carry a ['…', 'plate'] support edge — every bridge
+// foot, stud and pivot it carries, which is the plate's job, not a finding —
+// and three do not (Heart cam, Winding clutch, Reset rod), which would arrive
+// as undeclared pairs under the margin and UNDECLARED_CLEARANCE_DEBT is
+// closed to new rows. Classifying all 39 would be a table of new EXPECTED and
+// floors rows written to make gates green. The plate's defects are the
+// kind a cut can have on its own (a ring crossing a ring, an edge left open,
+// a slab wound inside out), so it is held by exactly the checks that judge a
+// cut: `outlines` (and its cross-ring tier, which is gated here and only here
+// — see checkOutlines), `meshIntegrity` (its tiers, plus closure, gated here),
+// the per-unit digest and the fingerprint. A name here is a key in all four,
+// so it must never collide with a `registerLabel` name, and it resolves
+// through STRUCTURE_NODES — the one place a structural node names its mesh.
+export const HELD_FIXTURES = [
+  { name: 'Base plate', node: 'plate' },
+];
+
+// Every held fixture as { name, roots, meshes }: `meshes` are the non-schematic
+// meshes carrying the node's mesh name (the slab and the pockets' floors, which
+// TODO 172 named 'backPlate' for `support`), in traversal order, so a digest
+// over them is order-stable; `roots` are those whose parent is not one of them
+// (a walk from a root reaches the floors). An entry resolving to nothing is
+// returned with empty lists, so a caller can FAIL on it rather than skip it —
+// a held row that reads no metal is a coverage hole, `outlines`' noShape rule.
+export function heldFixtureEntries(clock) {
+  return HELD_FIXTURES.map(({ name, node }) => {
+    const meshName = STRUCTURE_NODES[node];
+    const meshes = [];
+    const walk = (o) => {
+      if (o.userData && o.userData.schematic) return;
+      if (o.isMesh && o.geometry && o.geometry.attributes.position && o.name === meshName) meshes.push(o);
+      for (const c of o.children) walk(c);
+    };
+    if (meshName) walk(clock.movement);
+    const set = new Set(meshes);
+    return { name, node, meshName: meshName ?? null, meshes, roots: meshes.filter((m) => !set.has(m.parent)),
+      collides: clock.labelEntries.some((e) => e.name === name) };
+  });
+}
+const HELD_NAMES = new Set(HELD_FIXTURES.map((h) => h.name));
+// The two ways a held row can read nothing while looking held, as failure rows
+// for the checks that carry it: it resolved to no mesh, or its name is also a
+// label's (two populations answering to one key in the digest and the boxes).
+function heldFixtureProblems(held) {
+  return held.flatMap((h) => [
+    ...(h.meshes.length ? [] : [{ heldFixture: h.name, problem: `resolves to no mesh named '${h.meshName}' — the row reads nothing` }]),
+    ...(h.collides ? [{ heldFixture: h.name, problem: 'the name is also a registerLabel name — a held row must be its own key' }] : []),
+  ]);
+}
+
 // Nodes that ARE the ground, for the direct-mount rule below: a cock screwed
 // to the three-quarter plate is mounted on the movement's structure, not
 // stacked on another bridge.
@@ -4422,8 +4605,10 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
     const p = spec.point(unit, target);
     let best = Infinity;
     for (const m of target.meshes) {
-      const bvh = bvhFor(m);
-      const local = m.worldToLocal(p.clone());
+      // TODO 159 — in the target's RIGID frame, so the distance is in world units
+      const vm = rigidFrame(m);
+      const bvh = bvhForGeometry(vm.geometry);
+      const local = p.clone().applyMatrix4(_mat.copy(vm.frame).invert());
       const hit = bvh.closestPointToPoint(local);
       if (hit && hit.distance < best) best = hit.distance;
     }
@@ -5713,9 +5898,11 @@ export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = 
   const _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _tmp = new THREE.Vector3();
   const _toB = new THREE.Matrix4();
   const closestPair = (a, b) => {
-    bvhFor(a); const tree = bvhFor(b);
-    _toB.copy(b.matrixWorld).invert().multiply(a.matrixWorld);
-    const pos = a.geometry.attributes.position;
+    // TODO 159 — between RIGID frames, so the gap is in world units
+    const va = rigidFrame(a), vb = rigidFrame(b);
+    bvhForGeometry(va.geometry); const tree = bvhForGeometry(vb.geometry);
+    _toB.copy(vb.frame).invert().multiply(va.frame);
+    const pos = va.geometry.attributes.position;
     const stride = Math.max(1, Math.floor(pos.count / 400));
     let d = Infinity; const target = { point: new THREE.Vector3() };
     const bestA = new THREE.Vector3(), bestB = new THREE.Vector3();
@@ -5727,8 +5914,8 @@ export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = 
         bestA.copy(_tmp); bestB.copy(target.point);
       }
     }
-    _pa.copy(bestA).applyMatrix4(b.matrixWorld);
-    _pb.copy(bestB).applyMatrix4(b.matrixWorld);
+    _pa.copy(bestA).applyMatrix4(vb.frame);
+    _pb.copy(bestB).applyMatrix4(vb.frame);
     return { d, p: _pa.clone().add(_pb).multiplyScalar(0.5) };
   };
   const out = [];
@@ -5791,10 +5978,15 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
             // intersect — that offset IS the axial separation. Falls back
             // to the exact/sampled arbitration only when no nudge within
             // 2·tol connects (the meshes genuinely stand apart).
-            const bvhA = bvhFor(a); bvhFor(b);
-            _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-            const hit = bvhA.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, gap);
+            // TODO 159 — the distance between RIGID frames (world units);
+            // the z-nudge below is a boolean on the meshes as they stand,
+            // which an affine map cannot change, so it keeps its own tree.
+            const va = rigidFrame(a), vb = rigidFrame(b);
+            const bvhV = bvhForGeometry(va.geometry); bvhForGeometry(vb.geometry);
+            _mat.copy(va.frame).invert().multiply(vb.frame);
+            const hit = bvhV.closestPointToGeometry(vb.geometry, _mat, {}, {}, 0, gap);
             let d = hit ? hit.distance : Infinity;
+            const bvhA = bvhFor(a); bvhFor(b);
             const tryDz = (dz) => stoneIntersectsWheel(bvhA, a.matrixWorld, b, b.geometry, new THREE.Vector3(0, 0, dz));
             let zSep = Infinity;
             for (const sgn of [1, -1]) {
@@ -8515,6 +8707,22 @@ export async function checkMeshIntegrity(clock, opts = {}) {
     for (const c of o.children) walk(c, unitName);
   };
   for (const e of clock.labelEntries) walk(e.obj, e.name);
+  // TODO 187 — the held fixtures join every tier below by their meshes, and
+  // carry one more: CLOSURE. A held fixture is a cut, and the defect TODO 172
+  // caught on the base plate was an extrude that came out OPEN (76 open
+  // edges) from two rings crossing — which no other tier here sees, since
+  // every triangle of an open slab is a healthy triangle. Gated for the held
+  // fixtures only: across the labelled units 38 of 812 meshes read open
+  // today (probe-mesh-closedness-census, 2026-10-01), so there closure stays
+  // a parity witness's precondition rather than a gate.
+  const held = heldFixtureEntries(clock);
+  for (const h of held) for (const m of h.meshes) if (!byMesh.has(m)) byMesh.set(m, h.name);
+  const closureRows = [];
+  for (const h of held) for (const m of h.meshes) {
+    const c = surfaceEdgeCensus(m.geometry);
+    closureRows.push({ unit: h.name, mesh: m.name || '(unnamed)', tris: Math.floor((m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count) / 3),
+      edges: c.edges, open: c.bad - c.over, nonManifold: c.over });
+  }
 
   // Then dedupe by GEOMETRY: shared geometries (every screw head is one
   // lathe, every knurl ridge one cylinder) would otherwise repeat identical
@@ -8771,7 +8979,18 @@ export async function checkMeshIntegrity(clock, opts = {}) {
     const clear = rangeInteriorTest(posB, idxB, bodies[1], bodies[0]);
     if (clear.insidePoints) return `BROKEN — the BORED replica fired (${clear.insidePoints} points): the engine cannot tell a bore from a burial`;
 
-    return 'PASS — sliver and collapsed edge fire, a healthy triangle is silent, the box measures +8 upright and −8 inverted, the un-bored leaf replica fires at the plate\'s half-thickness and the bored one is silent';
+    // TODO 187 — closure's control, through the census the tier calls: a
+    // BoxGeometry (24 vertices, every corner duplicated per face) must read
+    // closed, which is the position-keying the census exists for; the same
+    // box less one triangle must read exactly three open edges.
+    const boxG = new THREE.BoxGeometry(2, 2, 2);
+    const closedBox = surfaceEdgeCensus(boxG);
+    const cut = boxG.clone(); cut.setIndex([...boxG.index.array].slice(3));
+    const openBox = surfaceEdgeCensus(cut);
+    if (closedBox.bad !== 0) return `BROKEN — a closed BoxGeometry read ${closedBox.bad} bad edges`;
+    if (openBox.bad - openBox.over !== 3) return `BROKEN — a box less one triangle read ${openBox.bad - openBox.over} open edges, expected 3`;
+
+    return 'PASS — sliver and collapsed edge fire, a healthy triangle is silent, the box measures +8 upright and −8 inverted, the un-bored leaf replica fires at the plate\'s half-thickness and the bored one is silent, a closed box reads 0 open edges and one less a triangle 3';
   })();
 
   return {
@@ -8783,6 +9002,13 @@ export async function checkMeshIntegrity(clock, opts = {}) {
       invertedVolFrac: INVERTED_VOL_FRAC,
     },
     geometries: byGeo.size, meshes: byMesh.size, triangles,
+    // TODO 187 — the held fixtures' closure, gated; problems (a held row that
+    // resolves to nothing, or shares a label's name) fail with it.
+    closure: {
+      rows: closureRows,
+      open: closureRows.filter((r) => r.open || r.nonManifold),
+      heldProblems: heldFixtureProblems(held),
+    },
     zeroArea: { threshold: ZERO_AREA_MAX, total: zeroTotal, exactZero, geometries: zeroRows.length, rows: zeroRows },
     // TODO 123 — the inverted tier gates (see INVERTED_WAIVERS' covenant):
     // rows carry their waiver, `unwaived` is what fails, and a waiver whose
@@ -8858,6 +9084,30 @@ export async function checkOutlines(clock, opts = {}) {
     }
     return hits;
   };
+  // TODO 187 — every pair of segments drawn from two DIFFERENT rings of one
+  // shape. A ring can be simple and still cross its neighbour: TODO 172's
+  // first pocket draft cut the setting cap's pocket as a second disc across
+  // the rise corner's bore — two perfect circles, 0 self-crossings, and an
+  // extrude that came out with 76 open edges. Box-rejected per ring pair, so
+  // the movement-wide pass costs ~0.2 s.
+  const crossRingHits = (A, B) => {
+    const box = (q) => q.reduce((b, p) => [Math.min(b[0], p.x), Math.min(b[1], p.y), Math.max(b[2], p.x), Math.max(b[3], p.y)],
+      [Infinity, Infinity, -Infinity, -Infinity]);
+    const a = box(A.pts), b = box(B.pts);
+    if (a[0] > b[2] || b[0] > a[2] || a[1] > b[3] || b[1] > a[3]) return [];
+    const hits = [];
+    for (let i = 0; i < A.pts.length; i++) for (let j = 0; j < B.pts.length; j++) {
+      const p1 = A.pts[i], p2 = A.pts[(i + 1) % A.pts.length], q1 = B.pts[j], q2 = B.pts[(j + 1) % B.pts.length];
+      const d1x = p2.x - p1.x, d1y = p2.y - p1.y, d2x = q2.x - q1.x, d2y = q2.y - q1.y;
+      const den = d1x * d2y - d1y * d2x;
+      if (Math.abs(den) < 1e-14) continue;
+      const t = ((q1.x - p1.x) * d2y - (q1.y - p1.y) * d2x) / den;
+      const u = ((q1.x - p1.x) * d1y - (q1.y - p1.y) * d1x) / den;
+      if (t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9)
+        hits.push({ at: [+(p1.x + t * d1x).toFixed(4), +(p1.y + t * d1y).toFixed(4)] });
+    }
+    return hits;
+  };
   // Sampled the way the extrude sampled it; a repeated last point closes the
   // loop by definition and is a zero-length edge, not a crossing.
   const ringsOf = (shape, segs) => {
@@ -8877,15 +9127,21 @@ export async function checkOutlines(clock, opts = {}) {
     const shapes = Array.isArray(par.shapes) ? par.shapes : [par.shapes];
     const segs = par.options?.curveSegments ?? 12;
     let rings = 0, pts = 0;
-    const hits = [];
+    const hits = [], cross = [];
     for (const sh of shapes) {
       if (!sh || typeof sh.getPoints !== 'function') continue;
-      for (const r of ringsOf(sh, segs)) {
+      const rs = ringsOf(sh, segs);
+      rs.forEach((r, k) => { r.id = k ? `hole ${k - 1}` : 'outline'; });
+      for (const r of rs) {
         rings++; pts += r.pts.length;
         for (const h of ringCrossings(r.pts)) hits.push({ ring: r.kind, ...h });
       }
+      for (let a = 0; a < rs.length; a++) for (let b = a + 1; b < rs.length; b++) {
+        const hh = crossRingHits(rs[a], rs[b]);
+        if (hh.length) cross.push({ rings: `${rs[a].id} \u00d7 ${rs[b].id}`, crossings: hh.length, first: hh[0].at });
+      }
     }
-    return rings ? { rings, pts, hits } : null;
+    return rings ? { rings, pts, hits, cross } : null;
   };
 
   // CONTROL. A check that cannot demonstrate it would catch the defect is not
@@ -8906,13 +9162,29 @@ export async function checkOutlines(clock, opts = {}) {
   holed.holes.push(hole);
   const bowtie = mkShape([[0, 0], [4, 4], [4, 0], [0, 4]]);
   const ctlGeo = (sh) => new THREE.ExtrudeGeometry(sh, { depth: 1, bevelEnabled: false, curveSegments: 4 });
+  // TODO 187's pair: TODO 172's draft in miniature — a disc with two circular
+  // holes, each a simple ring. Overlapping, the cross-ring tier must see the
+  // two points where the circles meet (and the self-crossing tier must not,
+  // since neither ring folds); set apart, both tiers must be silent.
+  const twoBores = (dx) => {
+    const sh = new THREE.Shape(); sh.absarc(0, 0, 10, 0, Math.PI * 2, false);
+    for (const x of [-dx / 2, dx / 2]) { const h = new THREE.Path(); h.absarc(x, 0, 2, 0, Math.PI * 2, true); sh.holes.push(h); }
+    return new THREE.ExtrudeGeometry(sh, { depth: 1, bevelEnabled: false, curveSegments: 72 });
+  };
   const cSquare = verdict(ctlGeo(square)), cHoled = verdict(ctlGeo(holed)), cBow = verdict(ctlGeo(bowtie));
+  const cLap = verdict(twoBores(3)), cApart = verdict(twoBores(6));
+  const crossCount = (v) => (v ? v.cross.reduce((n, c) => n + c.crossings, 0) : 'unreadable');
   const control = (cSquare && cSquare.hits.length === 0 && cHoled && cHoled.hits.length === 0
-    && cBow && cBow.hits.length > 0)
-    ? `PASS — bowtie caught (${cBow.hits.length}), square and holed clean`
+    && cBow && cBow.hits.length > 0
+    && cLap && cLap.hits.length === 0 && crossCount(cLap) === 2
+    && cApart && cApart.hits.length === 0 && crossCount(cApart) === 0
+    && cHoled.cross.length === 0)
+    ? `PASS — bowtie caught (${cBow.hits.length}), square and holed clean; two overlapping bores cross at ${crossCount(cLap)} points, set apart at 0`
     : `FAIL — square ${cSquare ? cSquare.hits.length : 'unreadable'}, `
       + `holed ${cHoled ? cHoled.hits.length : 'unreadable'}, `
-      + `bowtie ${cBow ? cBow.hits.length : 'unreadable'}`;
+      + `bowtie ${cBow ? cBow.hits.length : 'unreadable'}, `
+      + `overlapping bores ${crossCount(cLap)} cross / ${cLap ? cLap.hits.length : 'unreadable'} self (want 2 / 0), `
+      + `apart ${crossCount(cApart)} (want 0)`;
 
   // Roster: nearest-ancestor dedupe and the schematic prune, as checkSlenderness
   // and checkMeshIntegrity do (the third copy is noted in TODO 4).
@@ -8933,10 +9205,16 @@ export async function checkOutlines(clock, opts = {}) {
     for (const c of o.children) walk(c, unitName);
   };
   for (const e of clock.labelEntries) walk(e.obj, e.name);
+  // TODO 187 — the held fixtures join the roster by their meshes. No label
+  // claims them, so nothing above reached them; a mesh a label DID reach keeps
+  // that label (the label is the nearer owner).
+  const held = heldFixtureEntries(clock);
+  for (const h of held) for (const m of h.meshes) if (!byMesh.has(m)) byMesh.set(m, h.name);
   const byGeo = new Map();
   for (const [mesh, unit] of byMesh) if (!byGeo.has(mesh.geometry)) byGeo.set(mesh.geometry, { unit, mesh });
 
-  const violations = [], noShape = [], byKind = {};
+  const violations = [], noShape = [], byKind = {}, crossRows = [];
+  const heldRead = new Map(held.map((h) => [h.name, 0]));
   let read = 0, rings = 0, i = 0;
   for (const [geo, rec] of byGeo) {
     const v = verdict(geo);
@@ -8948,19 +9226,39 @@ export async function checkOutlines(clock, opts = {}) {
         noShape.push({ unit: rec.unit, mesh: rec.mesh.name || '(unnamed)', type: t });
     } else {
       read++; rings += v.rings;
+      if (heldRead.has(rec.unit)) heldRead.set(rec.unit, heldRead.get(rec.unit) + 1);
       if (v.hits.length)
         violations.push({ unit: rec.unit, mesh: rec.mesh.name || '(unnamed)',
           type: geo.type, crossings: v.hits.length, first: v.hits[0] });
+      for (const c of v.cross)
+        crossRows.push({ unit: rec.unit, mesh: rec.mesh.name || '(unnamed)', type: geo.type, ...c });
     }
     if (++i % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
   }
 
+  // TODO 187 — the cross-ring tier GATES the held fixtures and REPORTS every
+  // labelled unit (§40's report → triage → gate arc). Its first movement-wide
+  // run found two units already carrying the defect TODO 172 caught on the
+  // plate, both open meshes: the three-quarter plate (its outline crosses holes
+  // 16 and 17, 6 points, 56 open edges) and the geneva finger disc (its outline
+  // crosses its own bore, 36 points — TODO 107's wedge). Gating those on
+  // arrival would land CI red; they are filed in TODO 198 instead.
+  const crossGated = crossRows.filter((r) => HELD_NAMES.has(r.unit));
+  const crossReported = crossRows.filter((r) => !HELD_NAMES.has(r.unit));
+  const heldProblems = heldFixtureProblems(held);
+  for (const h of held) if (h.meshes.length && !heldRead.get(h.name))
+    heldProblems.push({ heldFixture: h.name, problem: 'no mesh of it carries a readable authored shape — the row reads nothing' });
+
   return {
-    ok: violations.length === 0 && noShape.length === 0 && control.startsWith('PASS'),
+    ok: violations.length === 0 && noShape.length === 0 && crossGated.length === 0 && heldProblems.length === 0
+      && control.startsWith('PASS'),
     control,
     read, rings, geometries: byGeo.size,
     violations,
     noShape,
+    held: held.map((h) => ({ name: h.name, meshes: h.meshes.length, read: heldRead.get(h.name) })),
+    heldProblems,
+    crossRing: { gated: crossGated, reported: crossReported },
     withoutShape: Object.entries(byKind).sort((a, b) => b[1] - a[1])
       .map(([type, count]) => ({ type, count })),
   };
@@ -11437,7 +11735,16 @@ export function startAll(clock, opts = {}) {
 // refactor that quietly changes how any ONE of them threads through is caught,
 // not just the rest pose. Keep this list in sync with the AXES above: a new
 // force input wants a pose here too, or the refactor of its path is unguarded.
-// Baseline (§192 — the strike tower descends toward the flat back; 56 units,
+// Baseline (TODO 187 — the base plate is held; 59 units + the 'Base plate'
+// row, 12 poses):
+// 1112714209
+//   moved from 1887996767 deliberately: the base plate joins the box rows as
+//   a held fixture (HELD_FIXTURES), so the hash gains its box at every pose
+//   and the entry count reads 60. No unit's box moves. 1887996767 is what the
+//   tree this landed on measured — the §192 record below had already been
+//   moved past by later landings without a new record. Measured on three
+//   virgin boots of this tree (probe-187-plate-gates' two and one alone).
+// Previous baseline (§192 — the strike tower descends toward the flat back; 56 units,
 // 12 poses):
 // 1015408335
 //   moved from 2853250929 deliberately: the whole strike tower re-boxes.
@@ -11766,7 +12073,7 @@ function unitBoxRows(clock, entries = boxEntries(clock)) {
     // tier's circles inflated unit boxes and moved the hash — the same
     // geometry the instruments (isMesh collections) never see.
     _fpBox.makeEmpty();
-    (function walk(o) {
+    const walk = (o) => {
       if (o.userData && o.userData.schematic) return;
       if (o.geometry) {
         if (o.geometry.boundingBox === null) o.geometry.computeBoundingBox();
@@ -11774,7 +12081,8 @@ function unitBoxRows(clock, entries = boxEntries(clock)) {
         _fpBox.union(_fpb);
       }
       for (const c of o.children) walk(c);
-    })(e.obj);
+    };
+    for (const r of e.roots ?? [e.obj]) walk(r);   // a held fixture (TODO 187) has roots, not one obj
     rows[e.name] =
       [_fpBox.min.x, _fpBox.min.y, _fpBox.min.z, _fpBox.max.x, _fpBox.max.y, _fpBox.max.z].map(q);
   }
@@ -11783,7 +12091,11 @@ function unitBoxRows(clock, entries = boxEntries(clock)) {
 
 function fingerprintBoxes(clock, poses = FINGERPRINT_POSES) {
   const rows = {};
-  const entries = boxEntries(clock);
+  // TODO 187 — the held fixtures ride in beside the labelled units. A box
+  // cannot see a hole (TODO 172's open slab kept its box), so what this buys
+  // is the plate's EXTENT and PLACE — its rim, its thickness, its station;
+  // the digest below is what reads its cut. checkAxisEntry keeps boxEntries.
+  const entries = [...boxEntries(clock), ...heldFixtureEntries(clock)];
   const units = entries.map((e) => e.name).sort();
   poses.forEach((pose, pi) => {
     // Canonical inputs first, so a part the pose does not drive sits where a
@@ -11979,7 +12291,7 @@ export function unitDigests(clock, { poses } = {}) {
     clock.resetInputs();
     clock.setPose(pose);
     clock.scene.updateMatrixWorld(true);
-    for (const u of collectUnits(clock, { includeExcluded: true })) {
+    for (const u of [...collectUnits(clock, { includeExcluded: true }), ...heldFixtureEntries(clock)]) {
       let hs = shape.get(u.name) ?? 0x811c9dc5;
       let hp = place.get(u.name) ?? 0x811c9dc5;
       for (const m of u.meshes) {
@@ -12007,9 +12319,17 @@ export function unitDigests(clock, { poses } = {}) {
     const s = shape.get(name), p = place.get(name);
     units[name] = { shape: s, place: p, key: strHash(`${s}:${p}`) };
   }
+  // TODO 187 — `units` carries the held fixtures' rows too, so the
+  // determinism gate holds them and a change to one lands in the changed set
+  // by name. `held` names them: they are in no sweep's pair population, so
+  // resolvePairsTouching accepts them and restricts to no pair of theirs —
+  // sound, because no restrictable sweep reads a held fixture, and every check
+  // that does (support, outlines, meshIntegrity) always runs whole.
+  const held = HELD_FIXTURES.map((h) => h.name).filter((n) => n in units);
   return {
     units,
-    unitCount: Object.keys(units).length,
+    unitCount: Object.keys(units).length - held.length,
+    held,
     poseCount: poses.length,
     placeQ: DIGEST_PLACE_Q,
     alwaysChanged: [...DIGEST_ALWAYS_CHANGED],
