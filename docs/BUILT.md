@@ -29862,3 +29862,83 @@ an occluder, and the probe says so.
 The degenerate face itself is not fixed here. Re-cutting the ring would move
 the fingerprint for a defect no gate reads: `outlines` measures authored shapes,
 not tessellation.
+
+## §251 — The battery checks the self-hosted runner is online before routing to it, and the check can be run on demand
+
+§200 routes a battery run to the self-hosted host when the event asks (a label,
+a title marker, a dispatch input, or the nightly) and `vars.BATTERY_RUNS_ON` is
+set. It never asked whether any runner under that label was ONLINE. GitHub
+holds a job queued for an unserved label for 24 hours before cancelling it, and
+says nothing in between. The only guard was `tart-battery-runner.sh status`,
+which runs on the host. The 09-06 opt-in queued into a runner that had been
+dead for thirty-two hours (docs/RUNNERS.md, "The first week"). And an agent in
+a cloud session cannot reach the host at all.
+
+**What changed.**
+
+- **A `route` job runs first** in `battery.yml`, on `ubuntu-latest`. It owns
+  §200's routing expression, which was MOVED there from the battery job's
+  `runs-on`, so it is still written once. The battery job `needs: route` and
+  runs on `needs.route.outputs.host`. The routing verdict is also written once,
+  in the route job; the battery job's summary line prints it beside the runner
+  that took the job.
+- **When the expression asks for the host, `tools/runner-ready.mjs` reads
+  GitHub's runner list.** The criterion is the host script's own first witness
+  verbatim: `status == "online"` and the label among the runner's labels. Busy
+  counts as ready, since a busy runner takes the next job.
+- **Three outcomes:**
+  - READY → the host.
+  - NOT READY → `ubuntu-latest`, with the reason in the summary. The nightly
+    is skipped instead, because it exists only to seed the host's baseline and
+    a hosted verdict of main's tip already exists.
+  - UNKNOWN (no token, or an API error) → the host, as §200 did, marked
+    UNCHECKED. A silent API is not a verdict, which is the host script's own
+    rule.
+- **`runner-ready.yml`** is a dispatch-only workflow that runs the same script
+  with nothing queued behind it, and goes red on anything but READY. It is how
+  someone (or an agent) checks before labelling a pull request. It has no
+  `schedule:`: a laptop host sleeps by design, and a nightly red would teach
+  everyone to ignore the colour.
+
+**Where each number comes from.**
+
+- **6 reads, 15 s apart (75 s of window).** The host's loop is between
+  registrations for the seconds a clone boots and a just-in-time runner is
+  minted. A single read in that gap would turn a healthy host away, so the
+  window is sized past one such gap with room for a slow boot.
+- **The route job's 5-minute cap** bounds that window plus checkout. The job
+  does no other work.
+
+**Why a secret, and why it is safe.** `GITHUB_TOKEN` cannot list self-hosted
+runners; that needs the repository's "Administration: read" permission. So a
+fine-grained token with that permission alone is stored as
+`RUNNER_READ_TOKEN`.
+
+- **It is read-only**, and it is read only when the run already routes to the
+  host. Fork pull requests are pinned to `ubuntu-latest` before anything else
+  is read, and GitHub withholds secrets from them anyway.
+- **It never reaches the battery job.**
+- **Until it is set, every run reports UNKNOWN and routes exactly as before**,
+  so landing this changed nothing on its own.
+
+**Verified before landing.**
+
+- **The script, against a stubbed `fetch`:** READY with a busy online runner;
+  READY on the third read of four, as a late registration; NOT READY on a wrong
+  label and on an offline runner; UNKNOWN on HTTP 403 and with no token; a
+  non-numeric `--attempts` falling back to 6; and the `GITHUB_OUTPUT` keys.
+- **The route job's decision step, run as shell over seven cases:**
+  - opt-in with READY → host
+  - opt-in with NOT READY → `ubuntu-latest`
+  - opt-in with UNKNOWN → host, unchecked
+  - nightly with NOT READY → skipped
+  - plain PR → `ubuntu-latest`
+  - fork with a label → pinned `ubuntu-latest`
+  - push → `ubuntu-latest`
+- **actionlint** is clean on both workflows.
+
+**Residue, named.** This reads one of `status`'s three witnesses. A listener
+that died without GitHub noticing still reads online until GitHub misses its
+heartbeats, normally a few minutes; the host loop's 60 s poll recycles such a
+VM on its own side. The other two witnesses (a job VM is running, the VM has a
+listener process) remain visible only on the host.
