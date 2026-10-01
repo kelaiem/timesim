@@ -37,7 +37,7 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from '../ven
 import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MAX_U, CHAIN_PITCH,
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
-  SLENDER_OVERHANG_K, MOVEMENT_SENSE,
+  SLENDER_OVERHANG_K, MOVEMENT_SENSE, CASE_WIDTH_MAX,
   TURN_LD_MAX, TURN_LD_UNSUPPORTED } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
@@ -826,13 +826,124 @@ function collectUnits(clock, { includeExcluded = false } = {}) {
 
 const bvhCache = new WeakMap();
 function bvhFor(mesh) {
-  let bvh = bvhCache.get(mesh.geometry);
+  return bvhForGeometry(mesh.geometry);
+}
+
+// TODO 159 — A BVH DISTANCE QUERY IS EXACT ONLY IN A RIGID FRAME.
+// Every distance below is read in the frame of the tree being queried: the
+// other mesh's triangles (or sample points) are carried into it by
+// inverse(dst.matrixWorld) · src.matrixWorld. When dst's world matrix carries a
+// scale, the answer comes back in dst's LOCAL units — the minute jumper's
+// lifter bar, cut at unit length and stretched onto its span (scale.x ≈ 37–40),
+// read 0.1189 to a tab 3.4 u away. Swapping the arguments fixes the UNITS but
+// not the search: three-mesh-bvh prunes `closestPointToGeometry` with an
+// oriented box built from that same matrix (a sheared box once a stretch
+// meets a rotation, whose clamp-in-local "closest point" is not the closest)
+// and scores the second tree's nodes in the OTHER mesh's local units, so a
+// non-rigid map can over-estimate a pruning bound and skip the leaf that holds
+// the true minimum — and both meshes may be stretched, where no order works.
+//
+// So the measuring frame is made rigid instead. A mesh whose world matrix is
+// rigid is used as it stands (no copy, no cost). Otherwise its linear part is
+// BAKED into a cached copy of its geometry and the mesh is measured through
+// the rigid remainder: with orthogonal columns (scale applied innermost, which
+// is every stretched mesh in the movement) L = Q·diag(n), so the copy carries
+// diag(n) and the frame is Q plus the translation; a sheared L is baked whole
+// and the frame is the translation alone. Both are exact: the copy's triangles
+// are the world triangles up to a rigid motion, and every matrix the library
+// then sees is rigid, so its distances are world distances and its pruning
+// bounds are sound. Both meshes non-rigid needs no special case — each is
+// baked, and the pair is measured rigid-to-rigid.
+//
+// Cost: the copy is keyed by (source geometry, its position version, the nine
+// baked numbers), so a constant stretch — the two mainspring ribbons and the
+// hairspring, whose wind frames are swapped geometries with a fixed scale.z —
+// is baked once per frame geometry, and a per-pose stretch (the lifter bar and
+// three 12-triangle spring blades) re-bakes a box.
+//
+// RIGID_EPS, derived: a frame whose column norms are within ε of 1 and whose
+// columns are within ε of orthogonal misreads a distance d by at most ~ε·d.
+// No two points of the movement are farther apart than the case's diameter,
+// 2 · CASE_WIDTH_MAX = 105.5 u, and every report prints four decimals, so
+// ε = 1e-4 / 105.5 ≈ 9.5e-7 keeps the worst misreading below what any report
+// can show. (Measured: rigid frames sit within 3e-16 of 1; the smallest real
+// stretch in the movement is 1.42 — the bound is not near either.) This is a
+// frame tolerance, not a clearance margin: CLEAR_MARGIN stays the only one.
+//
+// Not every BVH query has the defect. An INCIDENCE predicate —
+// `intersectsGeometry`, the parity raycast, `segmentPierces`, `intersectsBox`
+// — is invariant under any invertible affine map, and the library prunes it
+// by separating axes, which are sound under any affine map; so
+// `meshesIntersect`'s boolean, `mtvDepth` / `stoneIntersectsWheel` (whose
+// bisected depth is a WORLD translation) and `sawRideDepth` (a world rotation)
+// were already exact and are left alone. The distance paths are what read a
+// frame's units: `meshClearance`, `sampledVerdict`, `sampledClearance`, the
+// anchor checks' `closestPointToPoint`, and the hand-off rulers.
+const RIGID_EPS = 1e-4 / (2 * CASE_WIDTH_MAX);
+const _frameCache = new WeakMap();   // mesh → its reused view
+const _bakeCache = new WeakMap();    // source geometry → { key, ver, geometry }
+const _bakeL = new THREE.Matrix4(), _unbakeS = new THREE.Matrix4();
+function bakedGeometry(src, L) {
+  const e = L.elements;
+  const key = [e[0], e[1], e[2], e[4], e[5], e[6], e[8], e[9], e[10]];
+  const ver = src.attributes.position.version;
+  const hit = _bakeCache.get(src);
+  if (hit && hit.ver === ver && hit.key.every((x, k) => x === key[k])) return hit.geometry;
+  const g = new THREE.BufferGeometry();
+  const pos = src.attributes.position.clone();
+  pos.applyMatrix4(L);
+  g.setAttribute('position', pos);
+  // A COPY of the index: computeBoundsTree reorders its geometry's index in
+  // place, and sharing the source's would reorder the source under its own tree.
+  if (src.index) g.setIndex(src.index.clone());
+  bvhForGeometry(g);
+  _bakeCache.set(src, { key, ver, geometry: g });
+  return g;
+}
+function bvhForGeometry(geometry) {
+  let bvh = bvhCache.get(geometry);
   if (!bvh) {
-    bvh = mesh.geometry.computeBoundsTree();
-    bvh = mesh.geometry.boundsTree;
-    bvhCache.set(mesh.geometry, bvh);
+    geometry.computeBoundsTree();
+    bvh = geometry.boundsTree;
+    bvhCache.set(geometry, bvh);
   }
   return bvh;
+}
+// The mesh as a distance query must see it: `geometry` (the mesh's own, or a
+// baked copy), its tree, and a RIGID `frame` placing that geometry in the
+// world. `src` is the mesh's own geometry, for questions that are affine
+// invariant (closedness). The returned object is reused per mesh — read it
+// before asking again for the same mesh.
+export function rigidFrame(mesh) {
+  let v = _frameCache.get(mesh);
+  if (!v) { v = { geometry: null, src: null, frame: null, own: new THREE.Matrix4(), rigid: true, baked: null }; _frameCache.set(mesh, v); }
+  const e = mesh.matrixWorld.elements;
+  const n0 = Math.hypot(e[0], e[1], e[2]), n1 = Math.hypot(e[4], e[5], e[6]), n2 = Math.hypot(e[8], e[9], e[10]);
+  const c01 = Math.abs(e[0] * e[4] + e[1] * e[5] + e[2] * e[6]) / (n0 * n1);
+  const c12 = Math.abs(e[4] * e[8] + e[5] * e[9] + e[6] * e[10]) / (n1 * n2);
+  const c02 = Math.abs(e[0] * e[8] + e[1] * e[9] + e[2] * e[10]) / (n0 * n2);
+  const orthogonal = c01 <= RIGID_EPS && c12 <= RIGID_EPS && c02 <= RIGID_EPS;
+  v.src = mesh.geometry;
+  if (orthogonal && Math.abs(n0 - 1) <= RIGID_EPS && Math.abs(n1 - 1) <= RIGID_EPS && Math.abs(n2 - 1) <= RIGID_EPS) {
+    v.geometry = mesh.geometry; v.frame = mesh.matrixWorld; v.rigid = true; v.baked = null;
+    return v;
+  }
+  if (orthogonal) {
+    // L = Q·diag(n): bake diag(n), keep Q (and the translation) as the frame.
+    _bakeL.makeScale(n0, n1, n2);
+    v.own.copy(mesh.matrixWorld).multiply(_unbakeS.makeScale(1 / n0, 1 / n1, 1 / n2));
+    v.baked = 'scale';
+  } else {
+    // A shear: bake the whole linear part, keep only the translation.
+    _bakeL.copy(mesh.matrixWorld).setPosition(0, 0, 0);
+    v.own.makeTranslation(e[12], e[13], e[14]);
+    v.baked = 'linear';
+  }
+  bvhFor(mesh);   // the source's index side effect, which edge extraction and intersectsGeometry rely on
+  v.geometry = bakedGeometry(mesh.geometry, _bakeL);
+  v.frame = v.own;
+  v.rigid = false;
+  return v;
 }
 
 const _mat = new THREE.Matrix4();
@@ -1444,9 +1555,11 @@ const _sampleV = new THREE.Vector3();
 function sampledClearance(a, b, upperBound = Infinity) {
   let best = upperBound;
   for (const [src, dst] of [[b, a], [a, b]]) {
-    const tree = bvhFor(dst);
-    _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
-    const pos = src.geometry.attributes.position;
+    // TODO 159 — measured between RIGID frames (rigidFrame), so in world units.
+    const vs = rigidFrame(src), vd = rigidFrame(dst);
+    const tree = bvhForGeometry(vd.geometry);
+    _mat.copy(vd.frame).invert().multiply(vs.frame);
+    const pos = vs.geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       _sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat);
       const hit = tree.closestPointToPoint(_sampleV, {}, 0, best);
@@ -1696,11 +1809,16 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
   let best = upperBound, inside = false;
   const e0 = new THREE.Vector3(), e1 = new THREE.Vector3();
   for (const [src, dst] of [[b, a], [a, b]]) {
-    const tree = bvhFor(dst);
-    bvhFor(src); // indexing side effect — edge extraction below reads the index
+    // TODO 159 — both sides through their RIGID frames: the distance half of
+    // this verdict is read in dst's frame, so a stretched dst read it in its
+    // own local units. Containment (parity, pierce) never cared — it is affine
+    // invariant — and is unchanged by measuring on the baked copy.
+    const vs = rigidFrame(src), vd = rigidFrame(dst);
+    const tree = bvhForGeometry(vd.geometry);
+    bvhForGeometry(vs.geometry); // indexing side effect — edge extraction below reads the index
     const box = bvhBox(tree); // dst-local, same frame as the transformed samples
-    _mat.copy(dst.matrixWorld).invert().multiply(src.matrixWorld);
-    const pos = src.geometry.attributes.position;
+    _mat.copy(vd.frame).invert().multiply(vs.frame);
+    const pos = vs.geometry.attributes.position;
     const test = (v) => {
       const boxD = box.distanceToPoint(v); // 0 inside/on the box
       if (boxD < best) {
@@ -1710,7 +1828,7 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
       if (!inside && boxD === 0 && pointInsideTree(tree, v)) inside = true;
     };
     for (let i = 0; i < pos.count; i++) test(_sampleV.fromBufferAttribute(pos, i).applyMatrix4(_mat));
-    const idx = src.geometry.index;
+    const idx = vs.geometry.index;
     if (idx) {
       for (let t = 0; t < idx.count; t += 3) {
         for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
@@ -1725,7 +1843,7 @@ function _sampledVerdictInner(a, b, upperBound = Infinity) {
     // failed to find anything, so the common case pays nothing for it.
     // Gated on the DST surface bounding a solid — see boundsASolid. src may be
     // open; what the argument needs is that the thing being crossed is closed.
-    if (idx && boundsASolid(dst.geometry)) {
+    if (idx && boundsASolid(vd.src)) {   // closedness is affine invariant: asked of the mesh's own geometry
       for (let t = 0; t < idx.count && !inside; t += 3) {
         for (const [i0, i1] of [[0, 1], [1, 2], [2, 0]]) {
           _pe0.fromBufferAttribute(pos, idx.getX(t + i0)).applyMatrix4(_mat);
@@ -1807,10 +1925,14 @@ function _meshClearanceInner(a, b, upperBound = Infinity) {
   // max[f3] belongs, missing edge-edge minima) is patched alongside. This
   // comment is the record of why the vendor is no longer verbatim; every
   // meshClearance consumer inherits the corrections.
-  const bvh = bvhFor(a);
-  bvhFor(b);
-  _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-  const hit = bvh.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, upperBound);
+  // TODO 159 — measured between RIGID frames: a stretched `a` used to put the
+  // whole query in its local units (see rigidFrame). Rigid meshes pass through
+  // untouched, so every rigid pair's answer is the one it always was.
+  const va = rigidFrame(a), vb = rigidFrame(b);
+  const bvh = bvhForGeometry(va.geometry);
+  bvhForGeometry(vb.geometry);
+  _mat.copy(va.frame).invert().multiply(vb.frame);
+  const hit = bvh.closestPointToGeometry(vb.geometry, _mat, {}, {}, 0, upperBound);
   let d = hit ? hit.distance : Infinity; // Infinity ⇒ nothing within upperBound
   // Cross-check near-zeros. closestPointToGeometry's tri-to-tri distance
   // short-circuits to 0 through its own triangle-intersection test, and
@@ -4422,8 +4544,10 @@ export function checkMechanicalGraph(clock, { axes = AXES } = {}) {
     const p = spec.point(unit, target);
     let best = Infinity;
     for (const m of target.meshes) {
-      const bvh = bvhFor(m);
-      const local = m.worldToLocal(p.clone());
+      // TODO 159 — in the target's RIGID frame, so the distance is in world units
+      const vm = rigidFrame(m);
+      const bvh = bvhForGeometry(vm.geometry);
+      const local = p.clone().applyMatrix4(_mat.copy(vm.frame).invert());
       const hit = bvh.closestPointToPoint(local);
       if (hit && hit.distance < best) best = hit.distance;
     }
@@ -5713,9 +5837,11 @@ export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = 
   const _pa = new THREE.Vector3(), _pb = new THREE.Vector3(), _tmp = new THREE.Vector3();
   const _toB = new THREE.Matrix4();
   const closestPair = (a, b) => {
-    bvhFor(a); const tree = bvhFor(b);
-    _toB.copy(b.matrixWorld).invert().multiply(a.matrixWorld);
-    const pos = a.geometry.attributes.position;
+    // TODO 159 — between RIGID frames, so the gap is in world units
+    const va = rigidFrame(a), vb = rigidFrame(b);
+    bvhForGeometry(va.geometry); const tree = bvhForGeometry(vb.geometry);
+    _toB.copy(vb.frame).invert().multiply(va.frame);
+    const pos = va.geometry.attributes.position;
     const stride = Math.max(1, Math.floor(pos.count / 400));
     let d = Infinity; const target = { point: new THREE.Vector3() };
     const bestA = new THREE.Vector3(), bestB = new THREE.Vector3();
@@ -5727,8 +5853,8 @@ export function measureHandoffsNow(clock, { tol = HANDOFF_TRACK_TOL, handoffs = 
         bestA.copy(_tmp); bestB.copy(target.point);
       }
     }
-    _pa.copy(bestA).applyMatrix4(b.matrixWorld);
-    _pb.copy(bestB).applyMatrix4(b.matrixWorld);
+    _pa.copy(bestA).applyMatrix4(vb.frame);
+    _pb.copy(bestB).applyMatrix4(vb.frame);
     return { d, p: _pa.clone().add(_pb).multiplyScalar(0.5) };
   };
   const out = [];
@@ -5791,10 +5917,15 @@ export function checkAlarmHandoffs(clock, { tol = HANDOFF_TRACK_TOL, poses = ALA
             // intersect — that offset IS the axial separation. Falls back
             // to the exact/sampled arbitration only when no nudge within
             // 2·tol connects (the meshes genuinely stand apart).
-            const bvhA = bvhFor(a); bvhFor(b);
-            _mat.copy(a.matrixWorld).invert().multiply(b.matrixWorld);
-            const hit = bvhA.closestPointToGeometry(b.geometry, _mat, {}, {}, 0, gap);
+            // TODO 159 — the distance between RIGID frames (world units);
+            // the z-nudge below is a boolean on the meshes as they stand,
+            // which an affine map cannot change, so it keeps its own tree.
+            const va = rigidFrame(a), vb = rigidFrame(b);
+            const bvhV = bvhForGeometry(va.geometry); bvhForGeometry(vb.geometry);
+            _mat.copy(va.frame).invert().multiply(vb.frame);
+            const hit = bvhV.closestPointToGeometry(vb.geometry, _mat, {}, {}, 0, gap);
             let d = hit ? hit.distance : Infinity;
+            const bvhA = bvhFor(a); bvhFor(b);
             const tryDz = (dz) => stoneIntersectsWheel(bvhA, a.matrixWorld, b, b.geometry, new THREE.Vector3(0, 0, dz));
             let zSep = Infinity;
             for (const sgn of [1, -1]) {

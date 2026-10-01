@@ -184,12 +184,14 @@ const V = await page.evaluate(async ({ SAMPLES }) => {
     const joints = [], walls = [];
     for (const c of near) {
       // TODO 180 — THE STRETCHED BAR GOES SECOND, at every call site below.
-      // meshClearance measures in its FIRST mesh's local frame (TODO 159), and
+      // meshClearance measured in its FIRST mesh's local frame (TODO 159), and
       // the bar carries its span in scale.x ≈ 40, so bar-first read distances
       // shrunk by the stretch: 0.0743 to alarmSeatPost at the 233.5° station,
       // where the post-first order and dense sampling both read 0.3935. The
       // identity control could not see it — the proxy and the real bar were
-      // measured the same wrong way, and agreed.
+      // measured the same wrong way, and agreed. TODO 159 closed the defect at
+      // its source (rigid frames, `probe-159-frame-scale.mjs` holds it), so
+      // the order is now immaterial; it is kept so the history reads true.
       const dProxy = I.meshClearance(c.mesh, shipped, SEARCH);
       const dReal = I.meshClearance(c.mesh, bar, SEARCH);
       const label = `${c.unit} / ${c.mesh.name || '(unnamed)'}`;

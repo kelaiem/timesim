@@ -4,7 +4,7 @@
 
 # The instruments
 
-258 scripts. **147 are ACCEPTANCE tests** — they decide and exit non-zero.
+259 scripts. **148 are ACCEPTANCE tests** — they decide and exit non-zero.
 **111 are REPORTS** — they print and leave the judgement to you. Choosing the wrong kind is how
 a measurement gets mistaken for a verdict.
 
@@ -109,6 +109,7 @@ when a question was asked; the summaries are what it answered.
 | `probe-153-shot.mjs` | §153 | report | §153 probe — screenshots of the redesigned reserve sector: dial-on view at three tensions, plus an oblique close-up so the shallow recess and the proud hand are visible in profile. The canvas is read back with toDataURL IN the same evaluate as the scripted camera write + render, so OrbitControls/preset tweens (which re-aim the camera every rAF — the CLAUDE.md trap) cannot overwrite the pose between render and capture. |
 | `probe-156-jumper-veto.mjs` | §156 | acceptance | TODO 156 (A1) — DOES CAP_SOLVE's OWN B GET JUDGED, EXACTLY ONCE, BY THE JUMPER'S SITING SOLVE — AND IS A REFUSAL RECORDED RATHER THAN SILENT? |
 | `probe-158-unverified.mjs` | §158 | acceptance | TODO 158 — DOES THE PAGE SAY WHEN ITS GEOMETRY WAS NEVER SWEPT? ACCEPTANCE. |
+| `probe-159-frame-scale.mjs` | §159 | acceptance | TODO 159 — DOES A DISTANCE COME BACK IN WORLD UNITS WHEN A MESH IS SCALED? An ACCEPTANCE test, browser-free: controls with exact answers, in both argument orders, for `meshClearance` (and through it `sampledVerdict`, which arbitrates its near-zeros). |
 | `probe-160-cause.mjs` | §160 | acceptance | TODO 160 — does the jumper's verdict say WHETHER THE CAP BEARING HAD ANY SAY IN IT? ACCEPTANCE. |
 | `probe-161-bench.mjs` | §161 | acceptance | §161 — the bench route, and the two claims it rests on, measured in a browser. |
 | `probe-161-lawed.mjs` | §161 | acceptance | TODO 161 — does JMP_SITE judge the lawed movers over their TRAVEL? ACCEPTANCE. |

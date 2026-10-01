@@ -17,6 +17,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
@@ -54,7 +55,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 162 | CLOSED | The fold's leg-2 corner blank's clearance to the reserve wheel 1 was not new — two errors in `solveReserveSwing`'s accept test (a nominal vs. cut tip radius on each side) partly cancelled, accepting a bearing the metal did not clear. Both radii now read off the built metal, cross-asserted, and the swing scan samples every corner phase over a tooth pitch |
 | 161 | CLOSED | The release run and selector ring are posed by ONE law each (`alarmSleeveLiftAt`/`alarmPhiCapAt`/`poseAlarmReleaseRun`, `alarmSelRingZAt`; three copies before), and `JMP_SITE` judges them at 4 travel samples each, with its parity guard counted per tree. The station is unchanged (233.5°). `probe-161-lawed` proves a travel sample can refuse a station. The rest of the movers are [TODO 181] |
 | 160 | CLOSED | Measured: the jumper accepts every bearing CAP_SOLVE opens (all 10 within ±60°, 6 forced), and its clearance is pinned by metal no B cuts, so a veto would change nothing today. The verdict now records `bSlack` (≥ 2 today) and, on a refusal, whether B had any say (`cause`); `probe-160-cause` plants both kinds. The late re-cut is [TODO 183] |
-| 159 | OPEN | `meshClearance` measures in its first mesh's local frame, so a non-uniformly scaled first mesh (the minute jumper's lifter, `scale.x` ≈ 36) reads distances in unscaled units: 0.1189 for a tab 3.4 u away. Errs only toward closer. Fix: swap or world-bake when `a` is non-uniform; re-diff `--report` |
+| 159 | CLOSED | Every BVH distance in `inspect.js` is measured between RIGID frames (`rigidFrame`: a non-rigid linear part is baked into a cached geometry copy), exact in either order and with both meshes scaled. The swap the item proposed fixes the units but not the library's pruning, which over-read by up to 2.35 under a shrinking map. `probe-159-frame-scale` holds it; the full `--report` moves no row |
 | 158 | CLOSED | Tier A: a build names its configuration (`configKey`: resolved SPEC, applied route, geometry-bearing tuning — the fourth source the filing missed), looks it up in the generated `validated-configs.js`, and shows a localized *Unverified configuration* pill when it is not listed; three battery gates hold the set and the mark true. Tier B (sweeping other spec points) is [TODO 186] |
 | 157 | CLOSED | `solveReserveSwing` (the unlisted fourth first-feasible solver, the one binding CAP_SOLVE) now maximizes clearance to `FOLD_SAT` = 2·margin over its open window: swing 3.5° → 5°, reserve 0.1727 → 0.2742. B stays first-feasible, with the reason written (widest cascade; already the argmax). Raising the cap leg's φ/L to `FOLD_SAT` carries the foot corner into the minute star (0.0727): [TODO 185] |
 | 156 | CLOSED | CAP_SOLVE still cannot veto B on the jumper's siting (that restructure is [TODO 160]), but the four movement-wide walks' indifference to the jumper is now a boot-time derivation rather than a measured-once fact (`__clock.jumperSite.walks`, margins 1.36–11.20), CAP_SOLVE's own veto is recorded on its scan (`__clock.settingFold.scan[i].jumper`), and the pillars are seated against the keyless corner's real per-mesh metal (`PILLAR_KEYLESS_BOXES`) rather than `boxOf(keyless)` — only the 135° pillar moves, 87.00° → 135.00° |
@@ -22770,7 +22771,7 @@ when a default does.
 `offline-check` is 37/37, with the precache count 48 → 49 for the new module.
 `explain-i18n --check` passes.
 
-## 159. meshClearance measures in its first mesh's local frame, so a non-uniformly scaled first mesh reads false distances
+## 159. meshClearance measures in its first mesh's local frame, so a non-uniformly scaled first mesh reads false distances — CLOSED
 
 Found by [TODO 151]'s real-metal jumper solve, whose answer the probe
 disagreed with. `_meshClearanceInner(a, b)` (src/inspect.js) builds `a`'s
@@ -22807,6 +22808,117 @@ reads the true distance.
   (`probe-150-fold-sense.mjs`'s JUMPER row already refuses that pair shape).
 - Re-run `--report` and diff: every moved row names a stretched mesh.
 - Re-run `probe-149-lifter-width.mjs`.
+
+**Closed.** The fix is the second one the item named, generalised: every
+distance query measures through a RIGID frame.
+
+- **`rigidFrame(mesh)`** (`src/inspect.js`, beside `bvhFor`) returns the
+  geometry and frame a distance query must use. A rigid mesh passes through
+  untouched, with no copy and the same answer it always gave. Otherwise the
+  linear part is baked into a cached copy of the geometry. With orthogonal
+  columns, `L = Q·diag(n)`: the copy carries `diag(n)` and the frame keeps `Q`.
+  With a shear, the copy carries all of `L` and the frame is only the
+  translation. The copy is keyed by source geometry, position version and the
+  nine baked numbers. A constant stretch (the two mainspring ribbons and the
+  hairspring, whose wind frames are swapped geometries) is baked once per
+  frame, and a per-pose stretch (the lifter and three spring blades, 12
+  triangles each) re-bakes a box. Both meshes non-rigid needs no special case
+  and no throw: each is baked and the pair is measured rigid to rigid.
+- **The tolerance comes from the report resolution.** `RIGID_EPS` is
+  `1e-4 / (2·CASE_WIDTH_MAX)` ≈ 9.5e-7, applied to column norms and column
+  orthogonality. A frame inside it misreads a distance by at most ε·d. No two
+  points in the case are farther apart than 105.5 u, so the error stays below
+  the four decimals every report prints. Measured, rigid frames sit within
+  3e-16 of 1, and the smallest real stretch is 1.42. This is a frame
+  tolerance, not a second clearance margin.
+- **Why not swap.** Swapping fixes the units, but three-mesh-bvh prunes
+  `closestPointToGeometry` with an oriented box built from the same matrix,
+  and it scores the second tree in the other mesh's local units. A non-rigid
+  map can therefore over-estimate a pruning bound. `probe-159`'s SWAP rows
+  emulate that design with the raw library call. With a 12-triangle box
+  (one leaf, never pruned) it read 0 of 2978 poses wrong. With a 160-triangle
+  ellipsoid it read 10 of 120 wrong, by up to **2.35 over** (11.25 for 8.91).
+  Every miss had a stretch below 1. The movement's stretches are all ≥ 1 today,
+  so the swap would have passed by luck. Baking passes every case.
+- **Sites changed:** `meshClearance`, `sampledVerdict`, `sampledClearance`,
+  the anchor checks' `closestPointToPoint`, and both hand-off rulers
+  (`measureHandoffsNow`, and `checkAlarmHandoffs`' exact distance).
+  `unitClearance` and the extrema sweeps inherit the fix through
+  `meshClearance`.
+- **Sites left alone, and why.** These are incidence predicates, which are
+  invariant under any affine map, and the library prunes them by separating
+  axes, which stay sound under any affine map:
+  - `meshesIntersect`'s boolean;
+  - `mtvDepth` and `stoneIntersectsWheel`, whose depth is a world translation;
+  - `sawRideDepth` (a world rotation);
+  - the `undeclaredClearance` box prune;
+  - the parity raycast and `segmentPierces`.
+
+**Measured.**
+
+- **`tools/probe-159-frame-scale.mjs` (new, ACCEPTANCE, browser-free, ~30 s)**
+  checks analytic gaps in both orders:
+  - stretch ×36 along the gap: 3.4;
+  - stretch turned 90°: 0.3;
+  - uniform ×2 and ×0.25: 0.6;
+  - both stretched, corner to corner: 0.5;
+  - a turned child in a stretched parent: 0.7;
+  - a true shear: 0.25.
+
+  It also runs a must-hit control, a rigid control, and 120 seeded
+  stretched, shrunk and sheared bodies against a 960-triangle sphere, judged
+  by an independent world-space brute force. After the fix: PASS, every row
+  to 1e-6. On main: 6 failures. Bar-first read 0.094444 for 3.4, uniform ×2
+  read 0.3, ×0.25 read 2.4, the both-stretched pair read 0.401123 / 0.300206
+  for 0.5, and 120 of 120 brute rows were off.
+- **The real stretched meshes at the rest pose, nearest neighbours, both
+  orders.** Before the fix the scaled-first order read short everywhere:
+  - lifter ⇄ `alarmSeatPost`: 0.1105 against 0.3668;
+  - `alarmColPawlSpring` ⇄ `alarmColPawlBoss`: 0.1864 against 0.6980;
+  - `alarmHammerSpring` ⇄ `threeQuarterPlate`: 1.9874 against 2.1258;
+  - hairspring ⇄ its nearest extrude: 0.0306 against 0.1500;
+  - going ribbon ⇄ its extrude: 0.0120 against 0.1511.
+
+  After the fix both orders agree, at the old other-first values.
+- **`probe-149-lifter-width.mjs`: identical before and after.** Since TODO 180
+  it passes the bar second, so it was already measuring correctly:
+  - −y face 0.0261 (binding `alarmSleevePost`);
+  - +y face 6.0000 (saturated);
+  - `dialPlate` 0.1600, `alarmSleevePost` 0.1761, `alarmSeatPost` 0.3668;
+  - all three controls PASS.
+- **Full battery, local** (3 shards, SwiftShader container, same machine, run
+  one after the other):
+  - base `a7e9efb`: 51/51, 4495.8 s;
+  - after the fix: **51/51, 4498.2 s**;
+  - boot silent.
+
+  The `--report` diff moves **no row in any check, the fingerprint, or any
+  spec point**. One leaf moved, the `clearances` census counter `verdictCalls`
+  12142 → 11887, with the outcome buckets unchanged. That is 255 near-zero
+  arbitrations no longer triggered, because a stretched mesh's raw library
+  answer had read under 0.05 in its local units. No row moved because, at
+  every row's minimum, the stretched mesh was the second argument or the
+  minimum was set by a rigid pair. The defect only ever read closer, so no
+  green row was hiding behind it.
+
+**Residue, named.**
+
+- Inside the 0.05 arbitration band, `meshClearance` can still read OVER the
+  truth. `Math.max(d, v.d)` lets `sampledVerdict`'s vertex-and-midpoint
+  sampler, which cannot see an edge–edge minimum, raise the library's exact
+  figure. `probe-159` reports it at 0.0137 over on one trial (0.0358 for
+  0.0221). That is a property of the arbitration, rigid frames included, and
+  is not filed here.
+- `JMP_SITE` (`src/main.js`) queries world-baked obstacle trees with the
+  lifter's stretched matrix. The units are right, but the map is non-rigid.
+  It should be safe today, because the lifter is a 12-triangle single-leaf box
+  with orthogonal columns, and the SWAP rows above show that a failure needs a
+  many-leaf body and a shrink. That is argued, not measured on `JMP_SITE`
+  itself. Route it through the same bake before it
+  carries anything larger.
+- `probe-150`'s JUMPER row no longer refuses a pair with both meshes scaled,
+  because nothing is left to refuse. Its argument order is kept so its
+  history reads the same.
 
 ## 160. A jumper refusal cannot act: continue CAP_SOLVE's order and re-cut the fold, plate and reserve late — CLOSED
 
@@ -25984,3 +26096,30 @@ plate that should be digest-identical.
 plate's outline and its recesses for the balance-step input) and derive it
 from the solved station instead. Acceptance: `balstep=60`'s changed set drops
 to {Chain}, and the point's full sweep stays clean.
+
+## 197. meshClearance can read OVER the true distance below 0.05, because sampledVerdict's vertex sampler raises the exact figure
+
+Found closing [TODO 159]. `meshClearance` guards its BVH near-zeros with
+`sampledVerdict` (the parity raycast plus a vertex-and-midpoint distance
+sample) and combines the two as `Math.max(d, v.d)`. The sampler cannot see an
+edge-to-edge minimum, so whenever its own figure exceeds the library's exact
+one the reading is RAISED. That is the unsafe direction: a clearance can read
+over the margin while the metal stands under it. Measured in
+`tools/probe-159-frame-scale.mjs`'s seeded trials, rigid meshes included:
+**0.0358** read for a true **0.0221** (0.0137 over) on one trial.
+
+Only readings under 0.05 pass through the sampler, so every row whose
+minimum sits that low is suspect, and the margin itself (0.15) is untouched.
+Which battery rows read under 0.05 today is the first measurement to make.
+
+Related, unmeasured: `JMP_SITE` (src/main.js) queries world-baked trees
+with the jumper lifter's stretched matrix. The units are right since TODO
+159's argument (single-leaf 12-triangle box, orthogonal columns, stretch ≥ 1),
+but the map is not rigid and `JMP_SITE` itself was not measured; route it
+through `rigidFrame` while here.
+
+**Fix path.** The sampler exists to tell contact from a near miss, so let it
+decide only that (a parity verdict of inside → 0) and never replace the
+library's exact distance with a larger one. Control: the probe's seeded
+trials report 0 over-reads, and a battery `--report` diff names every moved
+row (each should be under 0.05 before).
