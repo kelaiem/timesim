@@ -29803,3 +29803,62 @@ build, and the branch has one long task fewer than the base.
 - ψA 54.9° is a steep face — honest for a recoil anchor, whose faces are steep —
   but friction at the contact is not modelled, so the push is judged by
   geometry alone.
+
+## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
+
+§201 narrowed the governor's window in the three-quarter plate from the poising
+ring's disc to the fork's: its argument was that the ring is the anchor's
+INERTIA and the pallets are its ACTION, and that a window should frame the
+action. §248 then grew the fork to a real anchor's size, which made that frame
+≈4.0 in radius with the ring standing just outside it, hidden under the plate.
+
+That argument was right about which member is the action and wrong about what
+the window is for. The poising ring is the one part of the governor whose SIZE
+is the cadence: `I_a`, and through it the strike gap, is a solve over the ring's
+radius and stock (§104, §113). A frame that shows the stones swinging while
+hiding the hoop they swing shows the escapement and hides the governor.
+
+**What changed.** The `governor` row of `TQ_WINDOW_INTENTS` now declares two
+discs: `ALARM_GOV_FORK_DISC` (kept, because it is the action, and the §115
+declared-vs-cut assert at the build still holds the cut fork inside it) and the
+ring's own `ALARM_UNDER_FOOTPRINT` row, `alarmUnderDisc('governor ring')`. Both
+get one `CLEAR_MARGIN` of reveal. They are concentric on the anchor's axis, so
+the window is the ring's disc.
+
+**Where each number comes from.**
+
+- The ring disc is the footprint row at the ring's stock CEILING, 0.8 mm
+  (`ALARM_GOV_RING_STOCK_MM[1]`), not at the solved 0.789 mm. That row is what
+  the pillar solve already keeps clear of, so the reveal cannot outgrow space
+  the plan has not already reserved.
+- The window's wanted radius is 6.483 = `ALARM_GOV_RING_R` + 0.8/2 mm +
+  `CLEAR_MARGIN`. That is §120's figure exactly, since the ring has not moved
+  since §120.
+
+**Measured** with `tools/probe-115-window.mjs` on a real boot:
+
+- **The cut.** The window cuts open all 360° (it stays bossless — neither
+  governor unit pivots in this plate). 354 bearings are at full reach. The
+  other six are bitten at most 0.007 by a keep, at 62°.
+- **Area.** ½∮r²dθ is 132.0 cut against 132.1 wanted.
+- **Ring reveal.** 324/324 of `alarmGovRing`'s vertices have a clear path past
+  the plate (97.8% past everything). Before this change the ring was under the
+  plate.
+- **Pallets.** Still 100% past everything.
+- **Pillars.** All four stations are unmoved.
+- **Boot.** Silent.
+
+**Instrument fix, same landing.** The wider opening let the probe's rays reach
+`alarmGovRing` for the first time. That mesh carries a zero-area triangle,
+three.js' `Triangle.getInterpolation` returns null on it, and `Mesh.raycast`
+dereferences the null — so the whole probe died.
+
+`probe-115-window` now intersects per object when the batch throws. It NAMES
+every mesh it had to skip, because a silently skipped occluder reads as a
+reveal. The ring's own rows are unaffected (a mesh never occludes itself in
+this probe). The fork rows' "past everything" percentages exclude the ring as
+an occluder, and the probe says so.
+
+The degenerate face itself is not fixed here. Re-cutting the ring would move
+the fingerprint for a defect no gate reads: `outlines` measures authored shapes,
+not tessellation.

@@ -11522,8 +11522,21 @@ const TQ_WINDOW_INTENTS = [
     // say which member is framed. A single disc concentric with its own
     // centre short-circuits to `d.r` by name in the solve, so the reveal is
     // exact rather than routed through arithmetic.
+    //
+    // §250 — AND IT FRAMES THE INERTIA AGAIN. §201's split was right about
+    // which member is the ACTION and wrong about what the window is for: the
+    // poising ring is the one part of the governor whose size IS the cadence
+    // (I_a, and so the gap, is a solve over its radius and its stock), and a
+    // frame that shows the stones swinging while hiding the hoop they swing is
+    // a frame that shows the escapement and hides the governor. So the window
+    // frames both discs — the fork's and the ring's footprint row, the ring at
+    // its stock CEILING (the row the pillar solve already keeps clear of, so
+    // the reveal cannot outgrow anything the plan has not already reserved).
+    // They are concentric on the anchor's axis, so the union is the ring's
+    // disc; the fork's is kept in the list because it is the action and the
+    // §115 assert at the build still holds the cut fork inside it.
     at: () => alarmGovAnchorPos,
-    discs: () => [ALARM_GOV_FORK_DISC]
+    discs: () => [ALARM_GOV_FORK_DISC, alarmUnderDisc('governor ring')]
       .map((d) => ({ x: d.x, y: d.y, r: d.r + CLEAR_MARGIN })),   // one margin of visual reveal, as the fusee window above
   },
   // §201 — THE MALTESE CROSS, and the first LATE intent. The alarm's Geneva
