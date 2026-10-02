@@ -6115,12 +6115,11 @@ export function makeBarrel({ radius, height, teeth, module, plain = false, arbor
 // same expression the builder swells the metal with, rather than copying
 // 0.008 and letting the two drift.
 export const PLATE_BEVEL_F = 0.008;
-// The plate extrude's bevel THICKNESS as a fraction of the plate's thickness —
-// the face the metal actually presents stands this far outside the authored
-// slab on both sides. Exported (§234) because the setting traverse's leg 1
-// derives its section from the base plate's presented back face, and a
-// figure read off one site and typed at another is the drift its boot guard
-// exists to catch.
+// The plate extrude's bevel THICKNESS as a fraction of the plate's thickness.
+// Until TODO 202 the face the metal presented stood this far OUTSIDE the
+// authored slab on both sides; the builder now cuts the blank short by it, so
+// the finished plate measures its `thickness` and the bevel is taken out of
+// the stock (the chamfer's own convention, TODO 98).
 export const PLATE_BEVEL_T_F = 0.15;
 // pockets (TODO 172): BLIND openings {x, y, r, depth, lap, through} — a disc of
 // finished radius r sunk `depth` into the DIAL-side face (a sink for the motion
@@ -6271,21 +6270,28 @@ export function makeBackPlate({ radius, thickness, holes = [], slots = [], secto
     if (!(Math.abs(R - pk.through.r) < d && d < R + pk.through.r))
       console.warn(`TODO 172: a pocket's through-bore (r ${pk.through.r.toFixed(3)} at ${d.toFixed(3)}) does not cross its floor's rim (r ${R.toFixed(3)}) — the floor's crescent is undefined`);
   }
+  // TODO 202 — `thickness` is the FINISHED plate, face to face. ExtrudeGeometry
+  // stands its bevelThickness proud of BOTH faces, so the extrude was 2·bt
+  // thicker than the parameter (TODO 98's finding for the pallet fork): the
+  // plate presented [−1.3, 1.3] about its centre, and every part seated off
+  // PLATE_TOP stood 0.3 inside the metal. The blank is cut 2·bt short, so the
+  // chamfered plate measures exactly `thickness`.
+  const bevelT = thickness * PLATE_BEVEL_T_F;
   const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: thickness,
+    depth: thickness - 2 * bevelT,
     bevelEnabled: true,
-    bevelThickness: thickness * PLATE_BEVEL_T_F,
+    bevelThickness: bevelT,
     bevelSize,
     bevelSegments: 2,
     curveSegments: 72,
   });
-  geo.translate(0, 0, -thickness / 2);
+  geo.translate(0, 0, -(thickness - 2 * bevelT) / 2);
   // Perled: circular graining on the movement-side face (the shader gates
   // to upward-facing surfaces; the dial-side face and edge stay plain).
   const m = new THREE.Mesh(geo, MATS.perledNickel);
   m.userData.r = radius;
   m.userData.lands = lands;   // every opening pair's finished land, for the probes
-  const faceZ = thickness / 2 + thickness * PLATE_BEVEL_T_F;   // the presented faces, local ±
+  const faceZ = thickness / 2;   // the presented faces, local ± (TODO 202: the finished plate)
   for (const pk of pockets) {
     const h = 2 * faceZ - pk.depth;
     if (!(h > 0)) continue;   // cut through: no floor
@@ -6550,9 +6556,9 @@ export function makeThreeQuarterPlate({ radius, thickness, cut: cutIn, holes = [
 
   // `thickness` is the plate's TOTAL depth, bevel included — the caller's
   // z-budget is measured against its real faces, and ExtrudeGeometry adds the
-  // bevel OUTSIDE the extrusion depth (the back plate's bevel quietly does
-  // the same; here it would have put the plate's underside 0.16 into the
-  // pallet fork).
+  // bevel OUTSIDE the extrusion depth (here it would have put the plate's
+  // underside 0.16 into the pallet fork; the back plate did the same, quietly,
+  // until TODO 202 gave it this rule).
   const bevelT = thickness * 0.15;
   const depth = thickness - 2 * bevelT;
   const geo = new THREE.ExtrudeGeometry(s, {

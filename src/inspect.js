@@ -38,7 +38,7 @@ import { ZERO_AREA_MAX, CLEAR_MARGIN, UNIT_MM, Z_DIAL, SLENDER_MAX as SLENDER_MA
   STEEL_E_PA, SELECTOR_DETENT_WINDOW_MN, CASE_PUSHER_INPUT_N,  // §137: the one steel + the declared envelopes
   ROUTE_SPEC, ROUTE_UNIT_NAME,                                    // §36 Apply: the same predicate that builds the unit, and the same name
   SLENDER_OVERHANG_K, MOVEMENT_SENSE, CASE_WIDTH_MAX,
-  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
+  TURN_LD_MAX, TURN_LD_UNSUPPORTED, SPRING_SIGMA_Y_PA, PIVOT_MIN_U, MAINSPRING_SIGMA_Y_PA, MAINSPRING_E_PA, AMPLITUDE_CLAIM_DEG, AMPLITUDE_PEAK_DEG } from './layout.js';   // §233's turning ceiling — the other slenderness        // §54's overhang multiplier — shared, because §36 sizes against it; TODO 115's sense, because a pose that says "backward crown" has to know which way that is
 // §161 — the override merge, for the fixture check at the foot of this file.
 // Same class of import as layout.js above: a pure function and the schema it
 // merges into, not the app — this file still reads the RUNNING scene rather
@@ -9540,8 +9540,16 @@ export function checkOscillator(clock) {
 //     step 2) — every row of `pivots.strength` re-derives σ = 32·F·L/(π·d³)
 //     from its own load and length at the pivot floor, and sits under
 //     SPRING_SIGMA_Y_PA. A pivot over yield must be sized to its load.
-// The verdict — sustained amplitude against the claimed AMPLITUDE_TRUE_DEG —
-// is REPORTED in the payload and the note. Gating it is TODO 192's step 4.
+// 14. THE AMPLITUDE IS WHAT THE SOLVE SUSTAINS (TODO 192 step 4) — re-read
+//     the extremes of `sustainedDeg` over every corner and both positions off
+//     the record's own corners, and hold layout.js's two declarations to them
+//     on both sides: AMPLITUDE_CLAIM_DEG at or under the minimum and within a
+//     degree of it (the claim is kept up everywhere, and is not a stale
+//     under-statement); AMPLITUDE_PEAK_DEG at or over the maximum and within
+//     a degree (every load priced at it bounds the real swing, and is not a
+//     stale over-pricing). The record's own `amplitude` block must name the
+//     same extremes. The size of the swing against what a lever watch
+//     normally runs at stays a REPORT, in the payload and the note.
 // TODO 193 — the ribbons over their alloy, by name. A row cites the TODO whose
 // fix path brings it under, and FAILS when its ribbon already is (stale).
 export const RIBBON_STRESS_WAIVERS = {
@@ -9639,6 +9647,21 @@ export function checkEqualisation(clock) {
           failures.push({ what: 'energy corners out of order', kinder: order[i - 1], harsher: order[i],
             etaTotal: [hi.etaTotal, lo.etaTotal], vertical: [hi.sustainedDeg.vertical, lo.sustainedDeg.vertical] });
       }
+    }
+    // Row 14 (TODO 192 step 4) — the two declared amplitudes against the solve.
+    if (en.corners && order.every((c) => en.corners[c])) {
+      const all = order.flatMap((c) => ['vertical', 'flat'].map((pos) => ({ corner: c, position: pos, deg: en.corners[c].sustainedDeg[pos] })));
+      const min = all.reduce((x, y) => (y.deg < x.deg ? y : x)), max = all.reduce((x, y) => (y.deg > x.deg ? y : x));
+      const claim = en.balance.claimedDeg, peak = en.balance.peakDeg;
+      if (!(claim === AMPLITUDE_CLAIM_DEG && peak === AMPLITUDE_PEAK_DEG))
+        failures.push({ what: 'amplitude record is not layout.js', record: { claim, peak }, declared: { claim: AMPLITUDE_CLAIM_DEG, peak: AMPLITUDE_PEAK_DEG } });
+      if (!(claim <= min.deg && min.deg - claim < 1))
+        failures.push({ what: 'claimed amplitude is not the sustained minimum rounded down', claimDeg: claim, min });
+      if (!(peak >= max.deg && peak - max.deg < 1))
+        failures.push({ what: 'peak amplitude is not the sustained maximum rounded up', peakDeg: peak, max });
+      const A = en.amplitude;
+      if (!A || A.min.deg !== min.deg || A.max.deg !== max.deg || !A.claimHolds || !A.peakBounds)
+        failures.push({ what: 'amplitude block disagrees with the corners', record: A || null, fromCorners: { min, max } });
     }
     // Row 12 (TODO 192 step 2) — the pivots were cut to §50's floor on the claim
     // that the LOAD does not bind them. Held: every pivot's bending stress
@@ -9767,7 +9790,8 @@ export function checkEqualisation(clock) {
       energy: en && en.corners ? {
         released_mJ: +(en.released_J * 1e3).toFixed(4), meanPower_nW: +(en.meanPower_W * 1e9).toFixed(2),
         escapeTorque_nNm: +(en.escapeTorque_Nm * 1e9).toFixed(3), perBeat_nJ: +(en.perBeat_J * 1e9).toFixed(4),
-        claimedDeg: en.balance.claimedDeg,
+        claimedDeg: en.balance.claimedDeg, peakDeg: en.balance.peakDeg,
+        sustainedRangeDeg: en.amplitude ? [+en.amplitude.min.deg.toFixed(2), +en.amplitude.max.deg.toFixed(2)] : null,
         ribbons: Object.fromEntries([['going', g], ['alarm', a]].filter(([, R]) => R.stress).map(([h, R]) => [h, {
           shape: R.section.shape, sigma_MPa: R.stress.sigma_Pa.map((x) => +(x / 1e6).toFixed(1)),
           limit_MPa: R.stress.limit_Pa / 1e6, waived: RIBBON_STRESS_WAIVERS[h] ? RIBBON_STRESS_WAIVERS[h].split(' — ')[0] : null,

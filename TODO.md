@@ -17,10 +17,11 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
 | 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
 | 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.931) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
-| 202 | OPEN | The base plate's extrude carries its `bevelThickness` PROUD of both faces, so it presents [−2.3, 0.3] against `PLATE_TOP` 0 / `PLATE_BACK` −2. The dial side was re-derived (TODO 153's `PLATE_BACK_FACE`); the movement side never was, and the parts seated off `PLATE_TOP` sit up to 0.225 inside the metal over solid plate: the transfer wheel, ratchet, click, governor wheel/pinion/arbor, geneva finger disc and pin, alarm arrest cross, the cock legs and pivot bosses. The plate is a held fixture, so no sweep sees it. Fix: cut the extrude at `BACK_PLATE_T − 2·bevel` (the pallet fork's precedent), then re-solve the TODO 153 stack against the moved dial face. |
+| 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 (a plate clearance tier) is not built. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
 | 199 | OPEN | The strike hold between arming and the trip is the `alarmReleased` flag; the lock answers the column wheel alone. A feeler → lock line fails P1 as drawn (the drop delivers ~1.1–1.5 mN·u, a lock withdrawal costs ~5.5): stage 2 picks an energy source (b1 let-off / b2 two-stage / b3 blades), stage 3 makes the flag a readout, stage 4 folds it through both plates |
@@ -29,7 +30,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
 | 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
 | 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
-| 192 | PART DONE | Steps 1–3 LANDED (with TODO 193 between them): the energy column and `FRICTION` (§247 tier two); the pivots shouldered and sized floor-or-load; the going ribbon a strip of the cited alloy, then PROPORTIONED to it — the half-thickness that puts full wind on `MAINSPRING_SIGMA_Y_PA` and the most coils the barrel holds at half fill (8, was 5): 31.6 mJ over 30 h sustains 77–186° vertical, 112–327° dial-flat. OPEN: step 4, gating the amplitude — which first needs `AMPLITUDE_TRUE_DEG` split into the claim (the solve's minimum) and the swing loads are priced at (its maximum); 270° vertical at the adverse corner needs the balance or a larger barrel |
+| 192 | DONE | Steps 1–4 LANDED (with TODO 193 between 2 and 3): the energy column and `FRICTION` (§247 tier two); the pivots shouldered and sized floor-or-load; the going ribbon a strip of the cited alloy, PROPORTIONED to it (8 coils, 31.6 mJ over 30 h); and the amplitude split and gated — `AMPLITUDE_CLAIM_DEG` 76 (the sustained minimum, adverse vertical 76.96°, rounded down) and `AMPLITUDE_PEAK_DEG` 327 (the maximum, favourable dial-flat 326.70°, rounded up), `equalisation` row 14. What the swing still is against a real lever watch is TODO 207 |
 | 191 | CLOSED | The beak's post stands on the lever's FULCRUM AXIS, 0.4557 to the arm's −y, not on the arm's line: arms 3.577 / 0.768 and the 4.657 ratio untouched. Rod ⇄ post 0.0409 (it had shrunk from 0.0811 when TODO 190 thickened the rod) → 0.1643, held by the new `INTRA_UNIT_FLOORS` row in `intraUnit` (control: the old station reads 0.0409 and fails) |
 | 190 | CLOSED | The silence finger bears on the feeler's TAIL (the return blade swung 30.8° off its line); the tail run and jog are retired and the Alarm link re-solved at (18.96, −2.83) with every dependent constant re-derived; the rocker bar is cranked 0.0749 along its pivot axis, and an `EXPECTED_CONTACT_FLOORS` row holds finger ⇄ tail as the pair's only contact (#555). Residue: TODO 203 (the tab filter's box-centre test). |
 | 189 | CLOSED (re-scoped) | The §29 beak held nothing: it never reached the contrate, and the contrate does not turn during a ring (parked on the arbor side since §99). Riser, beak, flex group and law retired with every row naming them; the tail run kept (retiring it re-sites the Alarm link). The hold is the `alarmReleased` flag, declared in `MECH_GRAPH.todo`; the residual is [TODO 199] |
@@ -26493,7 +26494,7 @@ link's travel, then an `INTRA_TIER_SCOPE` or floors row that holds it.
 
 ## 192. The going spring cannot drive the balance: the power budget does not close
 
-**PART DONE** — steps 1 (the energy column, §247 tier two) and 2 (the pivots cut) landed; steps 3 and 4 remain, with TODO 193 ahead of step 3.
+**DONE** — steps 1 (the energy column, §247 tier two), 2 (the pivots cut), 3 (the ribbon proportioned, after TODO 193) and 4 (the amplitude split and gated) have all landed. What the sustained swing IS, against what a lever watch needs, is filed as TODO 207.
 
 Found by `tools/probe-power-budget.mjs` (a REPORT); tracked with the other
 failure points in issue #531. Every published figure about
@@ -26657,19 +26658,45 @@ truth failure, not packaging.
    1931 MPa at full wind. It is waived by name citing this step, and the gate
    fails the waiver once the ribbon is under. σ = E·a·θ/L, so the levers are
    the half-thickness, the length and the wind.
-4. Gate the amplitude the solve achieves. **OPEN, and it needs one decision
-   first:** what `AMPLITUDE_TRUE_DEG` means once it is not 270. Today it
-   is three things at once. It is the CLAIM the energy column reports
-   against. It is the swing §218's hairspring stress and pivot-force peaks
-   are evaluated to. And it is the swing the hack brake is priced to hold.
-   The first wants the solve's MINIMUM (adverse, vertical: 77°), the other
-   two its MAXIMUM (favourable, dial-flat: 327°). One literal cannot be
-   both honestly.
+4. Gate the amplitude the solve achieves. **LANDED.** `AMPLITUDE_TRUE_DEG`
+   was three things at once: the CLAIM the energy column reported against,
+   the swing §218's hairspring stress and pivot-force peaks were evaluated
+   to, and the swing the hack brake was priced to hold. The first wants the
+   solve's MINIMUM and the other two its MAXIMUM, so one literal could not be
+   both. It is now two, in `layout.js`, each the solve read in the safe
+   direction for its use:
 
-Items 1 and 2 are independent and could land first; both have. Until the rest do,
-`AMPLITUDE_TRUE_DEG`, the hack brake's 1.3 mN and §218's physical peaks
-describe a balance this spring cannot keep swinging. That is MODELLED, not
-SIMULATED — no force path reaches the balance, and none says it would.
+   | constant | value | from the solve | rounded |
+   |---|---|---|---|
+   | `AMPLITUDE_CLAIM_DEG` | 76 | minimum: adverse, vertical, 76.96° | DOWN — 77 would over-claim |
+   | `AMPLITUDE_PEAK_DEG` | 327 | maximum: favourable, dial-flat, 326.70° | UP — a load priced under the reachable swing is not a bound |
+
+   Neither can be computed in `layout.js`, because the solve reads the cut
+   ribbon, the pivots and the balance. So `equalisation` row 14 holds each
+   one to the record's own corners on two sides: claim ≤ minimum and
+   peak ≥ maximum, each within one degree. The second clause catches the
+   stale case, a claim left far under a solve that has since improved.
+   `main.js` publishes the extremes as `going.energy.amplitude` with a boot
+   warning on either clause, and `probe-power-budget.mjs` asserts both
+   constants are ⌊minimum⌋ and ⌈maximum⌉ of its independent computation.
+   Mutated to 77 and 326, both boot warnings fire and the probe reports
+   both disagreements.
+
+   What moved with the peak:
+   - **§218** evaluates the breathing out to 327°: outer-fibre stress
+     132.2 MPa against the 700 MPa endurance figure, a minimum coil gap of
+     0.169 mm, and the overcoil's pivot load ×0.110 of the flat spring's
+     (it was ×0.122 at 270°, and the explainer's Plate 2 now quotes the new
+     figure in all fifteen tables).
+   - **The hack brake** (the comment-priced row in `main.js`, §137 Gate A)
+     now holds 7.04e-7 N·m: 1.53 mN of normal force at the pad and 0.22 mN
+     in the rod, up from 1.3 and 0.18. Every Gate A hack figure scales by
+     1.21, and the 7.2 mN deflection ceiling is 33× the new load.
+
+   The amplitude claim is now honest. The ENERGY is still a published moment,
+   not a force driving the train, so the sustained swing is MODELLED, not
+   SIMULATED. No force path reaches the balance, and none of this says it
+   would.
 
 ## 193. The mainspring ribbon works at 1756 MPa, over the 800 MPa SPRING_SIGMA_Y_PA the movement cites
 
@@ -27119,7 +27146,7 @@ Feasibility: medium · Cost: about 100–200 lines in `main.js` (§104's
 governor block) and `geometry.js` · Battery: moves the alarm barrel's
 geometry and the governor's ring. The full battery runs.
 
-## 202. The base plate's movement-side face stands 0.3 above PLATE_TOP, and the parts seated on PLATE_TOP sit inside it
+## 202. The base plate's movement-side face stands 0.3 above PLATE_TOP, and the parts seated on PLATE_TOP sit inside it — CLOSED
 
 Found by TODO 200. `G.makeBackPlate` extrudes `thickness` with a
 `bevelThickness` of `thickness · PLATE_BEVEL_T_F` (0.3). `ExtrudeGeometry`
@@ -27177,6 +27204,60 @@ never against the cut one.
 
 Feasibility: medium · Battery: moves the fingerprint, every digest touching
 the plate and the motion-works stack; full battery.
+
+**Closed — what was built, and why the fix path above was not taken.** Step 1
+was right and is done: `makeBackPlate` now extrudes `thickness − 2·bevelT`,
+so the finished, chamfered plate measures exactly `thickness` face to face
+(TODO 98's rule; the three-quarter plate's builder already did this). Step 2
+was tried and is the wrong datum. Holding the slab at [−2, 0] moves the
+dial face 0.3 toward the dial, and the TODO 153 stack re-solves off it. The
+first boot of that tree re-sited the motion works' rise corner, from cone r
+2.116 at 4.203 to r 2.062 at 4.274. The rise bore then no longer crossed
+the cap pocket's rim, and the build died in `discLessDisc`. Every dial-side
+solve — TODO 153's stack, §234's leg, TODO 172's pockets, the reserve
+traverse — stands on the face the metal actually presented, −2.3. So that
+face is the datum, not the slab constant that was never cut.
+
+So the slab is DECLARED as the metal both sides already stand on. The
+movement face is z 0 (`PLATE_TOP`, unchanged, so nothing seated off it
+moves). The dial face is −2.3 (unchanged, so nothing on the dial side
+moves). Between them, `BACK_PLATE_T` = 2.3 u = 0.872 mm and `BACK_PLATE_Z` =
+−1.15. `PLATE_BACK_FACE` and `PLATE_TOP_FACE` are now the slab's own faces;
+the names stay because their consumers mean "the face the metal presents".
+The only metal removed is the 0.3 the parts were buried in.
+
+What the new thickness moves, by derivation:
+- `COCK_THREAD_D` = `BACK_PLATE_T / ENGAGE_MIN` is now 1.533 u (0.581 mm,
+  was 0.505). Both cocks re-sited their screws by under 0.5 u.
+- `PIVOT_SEAT_Z` (mid-plate) is −1.15.
+- The dial-side jewels sit at `PLATE_BACK` −2.3, which is ON the face the
+  plate presents. At −2.0 they had been 0.3 inside it.
+- The pillar tenons (TODO 200) are 2.3 long.
+- The fusee's lower pivot runs to `PIVOT_SEAT_Z`, 0.15 deeper. That moves
+  `jumperMovers`' "going-train bodies" bound, which is the census's own
+  measured minimum. The fusee pivot now sets it at 0.8554, against 0.9901
+  for the centre arbor before, so the bound is re-recorded at 0.85. That is
+  still far over `CLEAR_MARGIN`.
+- The alarm hammer spring's stud stands from the rim's back face, so it grew
+  by the 0.3 and read L/D 20.3 against `turning`'s ceiling of 20. Its radius
+  was a 0.3 literal. It is now derived from its length at
+  `TURN_LD_TARGET`, the arrest columns' rule: 0.338.
+- `probe-184-frame-joints` reads all seven base-plate joints at 0.872 mm
+  engaged against 0.872 required, 11/11, controls PASS.
+- Boot is silent.
+
+Measured on the built meshes, the slab and both pocket floors now span
+[−2.3, 0.000]. So nothing seated off `PLATE_TOP` is inside the metal any
+more. The same scratch probe, re-run on the band (−0.3, 0) with a downward
+ray confirming plate metal, finds only designed sinks:
+- the balance pivot and its two rubbed-in collars at −0.297
+  (`makeJewelSetting`'s sunk collar);
+- the alarm barrel arbor at −0.2, which runs in its bored boss (§99);
+- the case clamp heads, sunk `SEAT_EMBED` into the rim.
+
+Step 4 (a clearance tier between the plate and the parts seated on it) is
+not built. It remains the way to make the next face error a red row rather
+than a probe's finding.
 
 ## 203. The link search's tab zone scores no fixed off-centre metal centred inside r 7 (feeler and rocker brackets, seat and sleeve posts)
 
@@ -27380,3 +27461,36 @@ plate land), its transfers row, a hand-off row, and the audit rule (≈ 40
 lines in `inspect.js` + the check) · Battery: full; moves the alarm switch's
 force arithmetic and possibly the stall record.
 
+## 207. The balance sustains 76–327°: a lever watch runs 200° and up in every position
+
+Found closing [TODO 192]. The amplitude claim is honest now
+(`AMPLITUDE_CLAIM_DEG` 76, gated against the energy column's solve), and it is
+honestly LOW. A serviced Swiss lever watch typically holds 200–220° or more
+in the vertical positions and 270–310° dial-flat. Under about 180° vertical a
+watchmaker reads it as a fault: rate errors between positions grow, and
+little margin is left over the escapement's lift. This movement sustains
+**77–186° vertical and 112–327° dial-flat** over `FRICTION`'s three corners.
+At the nominal corner it is 125° / 201°.
+
+The spring side is spent. The going ribbon is at its alloy's limit at full
+wind and fills half its barrel (TODO 192 step 3, the classical rule). More
+energy from this drum would mean over-stressing the ribbon or over-filling
+the drum.
+
+**Fix paths, in the order they spend the least:**
+1. **The balance.** The vertical loss is pivot friction, 2θ·μ·m·g·r, which
+   scales with the balance's MASS. The spend that keeps the rate is k = I·ω²,
+   which scales with its INERTIA. A balance with more of its mass at the rim
+   (a larger radius of gyration at the same I) carries less weight on the
+   same pivots. Re-solve the hairspring with it, under TODO 25's rule:
+   solve the part, never re-target the beat.
+2. **The barrel.** Energy at a fixed peak stress goes as the ribbon's
+   volume, so a taller or wider drum. That is a LAYOUT change (the
+   design-priority section's P3) and needs a re-solved fusee, because the
+   fusee is cut against the torque law.
+3. **The beat.** A lower `SPEC.vph` spends less per second. That changes
+   the spec, not the movement, so it is the user's call and not this item's.
+
+The acceptance is the energy column's adverse vertical minimum at or above a
+declared target. Raise `AMPLITUDE_CLAIM_DEG` with it, since row 14 holds the
+claim within a degree of the solve and so will refuse to leave it behind.

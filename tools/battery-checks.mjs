@@ -302,7 +302,7 @@ export const BATTERY = [
   // The verdict it reaches (sustained amplitude against the claimed 270°)
   // is a REPORT in the note; gating it is TODO 192's step 4.
   { name: 'equalisation', opts: {},
-    gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut, energy column arithmetic held (identities, corners ordered, amplitude solve plugs back)',
+    gate: 'set-up on a ratchet click, level product at float noise, sections declared = cut, energy column arithmetic held (identities, corners ordered, amplitude solve plugs back, claim and peak held to its extremes)',
     fails: (r) => r.failures,
     note: (r) => r.summary + (r.going && r.going.energy
       ? `; energy ${r.going.energy.released_mJ} mJ over the reserve, sustains ${r.going.energy.corners.nominal.sustainedDeg.vertical}° vertical / ${r.going.energy.corners.nominal.sustainedDeg.flat}° flat at the nominal corner against a claimed ${r.going.energy.claimedDeg}° (TODO 192 OPEN, ×${r.going.energy.corners.nominal.claimFactorOverSupply} short)${r.going.energy.pivots ? `; pivots sized floor-or-load, the ${r.going.energy.pivots.worst} tightest at ×${r.going.energy.pivots.worstMargin} under yield` : ''}${r.going.energy.ribbons ? `; ribbons at full wind ${Object.entries(r.going.energy.ribbons).map(([h, x]) => `${h} ${x.sigma_MPa[1]} MPa${x.waived ? ` (waived, ${x.waived})` : ''}`).join(', ')} against the alloy's ${r.going.energy.ribbons.going.limit_MPa} MPa` : ''}`
