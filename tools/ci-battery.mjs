@@ -23,6 +23,9 @@
 //   jumperMovers control PASS, 0 undeclared moving obstacles, 0 rows naming
 //                no mesh, 0 malformed rows and every JMP_SITE_MOVERS row's
 //                answer holding over the pose net (TODO 181)
+//   plateSeats   control PASS, 0 undeclared parts within CLEAR_MARGIN of the
+//                base plate, 0 malformed/stale seats, 0 regressed/stale debt
+//                (TODO 202 step 4 — PLATE_SEATS and the closed TODO 209 inventory)
 //   intraUnit    0 unwaived intersections inside a unit — movers vs
 //                fixtures over every unit, fixture pairs and cross-frame
 //                mover pairs inside INTRA_TIER_SCOPE — and 0 unmatched
@@ -275,6 +278,11 @@ const COSTS = {
   // where they cannot decide; the bounded rows' meshClearance to the region
   // box is Lipschitz-pruned against each row's running minimum. Measured
   // 14.6 s on the dev container.
+  // TODO 202 step 4 — every labelled mesh against the base plate over the 43
+  // digest poses, memoised on (geometry, world matrix) because most of the
+  // population is fixed metal; measured 22.7 s on the dev container (203 s
+  // before the memo).
+  'plateSeats': 23,
   'jumperMovers': 15,
   // §54's own record in docs/BUILT.md measured this check at 4 ms over 454
   // meshes — one computeBoundingBox per mesh, no swept registry, no BVH, no

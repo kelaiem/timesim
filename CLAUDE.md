@@ -449,7 +449,16 @@ it into prose either.
    draft and watches both go red), and `point sweeps` **0 broken, every
    LISTED point clean** (TODO 186 — the silent spec points swept and unioned
    by §152's rule; a finding keeps a point out of the validated set, a PR's
-   ceiling may skip one but never passes it; see Inspecting).
+   ceiling may skip one but never passes it; see Inspecting), and `plateSeats`
+   **control PASS, 0 undeclared parts within CLEAR_MARGIN of the base plate, 0
+   malformed or stale seats, 0 regressed or stale debt** (TODO 202 step 4 — the
+   plate is a HELD fixture in no sweep's pairs, which is how a dozen parts sat
+   inside its proud bevel under a green board. Every labelled mesh is measured
+   against the plate's own metal over §152's pose net: within the margin it is a
+   `PLATE_SEATS` row — pivot, planted, fastened, housed — or a row of
+   `PLATE_CLEARANCE_DEBT`, the CLOSED arrival inventory TODO 209 pays down on
+   `UNDECLARED_CLEARANCE_DEBT`'s rule; both tables are judged both ways.
+   `probe-202-plate-tier.mjs` restores the proud plate and watches it fire).
 5. **Parts near the low corridor consume `LOW_LINKAGE_OBSTACLES`** — the
    single source for that band's swept footprint.
 6. **Boot is silent.** Build-time asserts `console.warn` with the achieved
@@ -865,7 +874,7 @@ sweep that way.
 
 ### Finding the instrument before writing one
 
-`tools/` holds 262 measuring scripts and this file names 21. The rest are named for the
+`tools/` holds 263 measuring scripts and this file names 21. The rest are named for the
 SECTION that produced them — `probe-106-stud.mjs` records WHEN a question was
 asked, not WHAT it answers — so the one you need is usually there and
 unfindable. That is a correctness problem, not a tidiness one: §173 rebuilt
@@ -882,7 +891,7 @@ document). Grep it by **what you want to know**, never by section number — the
 vocabulary drifts, so `stud` / `post` / `anchor` / `pillar` are the same part
 in four sections.
 
-The index also carries the split that decides how to read a result: **152 of
+The index also carries the split that decides how to read a result: **153 of
 them are ACCEPTANCE tests** that exit non-zero, and **110 are REPORTS** that
 print and leave the judgement to you. The column is derived from whether a
 file can `process.exit` non-zero, so a report with a fatal path is filed as
