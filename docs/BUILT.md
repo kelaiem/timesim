@@ -30483,7 +30483,7 @@ Hebrew overflow.
 | `offline-check` | **41/41**, precache **57/57** |
 | boot | `?lang=he` and `?lang=iw-IL` on all three documents console-silent apart from software-GL driver notices and the static server's own 404, which English shows too; `lang="he"`, `dir="rtl"`; the ladder assert silent |
 | fingerprint | **492646093** (60 units, 12 poses) at `?lang=he` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it |
-BATTERY_LINE
+| battery | **51/51 gates**, local (dev container, 3 shards, 4520 s wall, 6109 s of checks); fingerprint **492646093** across virgin boots A and B and under the share payload (36/36 applied) — identical to `origin/main`, §73's form of "no geometry moved". CI's Battery job on the PR, opted in to the self-hosted runner, is the merge gate |
 
 ### Residue, recorded
 
