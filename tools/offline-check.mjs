@@ -335,8 +335,8 @@ try {
   // TODO 158 — 49: src/validated-configs.js, the set of configuration keys the
   // battery swept, which main.js imports to mark an unverified build. One
   // module for the app, not a per-locale table, so it adds one.
-  // §249 — 51: Vietnamese's two tables, the two-per-locale rule again.
-  check('release: precache complete', counts === 51, `${counts}/51`);
+  // §249 — 51: Vietnamese's two tables, the two-per-locale rule again. 53: Dutch's.
+  check('release: precache complete', counts === 53, `${counts}/53`);
 
   // ---- offline: the whole point ----
   mark('offline: booting the documents');
@@ -374,7 +374,7 @@ try {
   // missing table from another, and a per-locale dynamic import is exactly the
   // kind of thing that gets added to a LOADERS map and forgotten in a file
   // name; this loop is what makes each one prove itself from cache.
-  for (const code of ['de', 'fr', 'es', 'pt', 'it', 'vi', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'ar']) {
+  for (const code of ['de', 'fr', 'es', 'pt', 'it', 'vi', 'nl', 'hi', 'ko', 'ru', 'ja', 'zh', 'zh-Hant', 'ar']) {
     await page.goto(`http://127.0.0.1:${relPort}/primer.html?lang=${code}`, NAV);
     const ok = await page.evaluate((c) =>
       document.documentElement.lang === c

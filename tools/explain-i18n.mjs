@@ -211,6 +211,7 @@ const MARKS = {
   // §249 — vi-VN: German's marks, measured in Chromium 141 (30,0 · 0,024 ·
   // 1.000 · 18.000, Latin digits); Node's ICU 78 gives the same four.
   vi: { group: ['.'], dec: ',' },
+  nl: { group: ['.'], dec: ',' },        // §249 — nl-NL and nl-BE alike: German's marks (Chromium 141)
 };
 
 // ---- honesty vocabulary: modelled vs simulated (§241 area C) ----------------
@@ -264,6 +265,10 @@ const HONESTY = {
   // noun 'mô hình' (a model) is deliberately NOT enough: the credit line's
   // "AI model" is 'mô hình AI', and §241's narrow-matcher rule applies.
   vi:        { m: /mô hình h(?:óa|oá)/i, s: /mô phỏng/i },
+  // §249 — the verb and its participle (modelleren, gemodelleerd, modellering),
+  // never the noun: 'modellen' is plural 'models' and the credit line reads
+  // 'AI-model', neither of which is the honesty word.
+  nl:        { m: /modelle(?:er|r)/i, s: /simul/i },
   zh:        { m: /建模|模型化/,    s: /仿真|模拟/ },
   'zh-Hant': { m: /建模|模型化/,    s: /模擬|擬真/ },
 };
