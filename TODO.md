@@ -17,12 +17,14 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 
 | item | state | what remains |
 |---|---|---|
+| 211 | OPEN | The yoke's prong stands at best 0.137 off the clutch's groove collars over the whole pose net, so the return `declareRestoring('Winding clutch', …, 'yokeSpring')` describes ("re-seats it through the fork") passes through a fork that touches nothing; found by TODO 194's reach control, waived to this item |
+| 210 | OPEN | The maintaining detent's restoring row names `maintSpring` — the maintaining-POWER torus under the maintaining wheel, another unit, 1.0+ from the click at every pose; the detent has no spring of its own in the metal. Found by TODO 194's reach control, waived to this item |
 | 209 | OPEN | Twelve parts stand under `CLEAR_MARGIN` off the base plate without touching it, frozen in `PLATE_CLEARANCE_DEBT` when the `plateSeats` tier arrived. The winding clutch's rim and the winding pinion are at 0.046, the transfer arbor 0.050, the great wheel and transfer wheel 0.075, the case lugs 0.091, and an alarm winding-train arbor and five parts at a flat 0.1 (set-up box, wind-pinion saw, geneva finger disc and pin, arrest cross). Fix: re-seat each at `PLATE_TOP`/`PLATE_BACK` ± `CLEAR_MARGIN`, derived; a part that bears on the plate by design moves to `PLATE_SEATS` with its reason instead. |
 | 208 | OPEN | The fusee cone is too steep for an upright chain: §124 leans the wrap links up to 63° to seat them, and a chain bent about an axis that far from its pins must twist 16–35° per joint against a 4.5° joint-play allowance. A layout problem: a gentler cone, a coarser groove pitch against the chain's stack, or more fusee height |
 | 207 | OPEN | The balance sustains 77–186° vertical and 112–327° dial-flat, where a lever watch runs 200° and up; the spring side is spent (alloy limit, half fill), so the levers are the balance's radius of gyration, then a larger barrel |
 | 206 | OPEN | Nothing presses the alarm link's beak onto the castellations: every joint in the beak → tail → rod → cranks → ring-tab chain is two-way, but no spring sits anywhere in it, so the column can push the nose UP and nothing pushes it DOWN into a gap — that direction is posed by the tick law. The restoring audit passes the unit on a `two-way` declaration that describes the pin-in-groove, not a force source. Fix: a real return element (a blade on the beak lever or the selector ring) sized in TODO 16's format, and a `two-way` declaration that must name where its second direction comes from. |
 | 205 | OPEN | The lay shaft's rod-end neck (`alarmLinkNeckRod`) stands 0.1091 from the selector rod at `beat f=0` — two members of one unit, under `CLEAR_MARGIN`, held by nothing. Measure over the roll; fix in position space and add an `INTRA_UNIT_FLOORS` row |
-| 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.931) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
+| 204 | OPEN | The link beak's post stands 0.6183 ABOVE the three-quarter plate that a floors row and `EXPECTED_PAIRS` declare it seated on, and the plate's selector-rod bore (r 0.973 since TODO 194 thickened the rod; 0.931 when filed) lies under its foot at either station. Seat it on plate land, or carry it from something it really stands on |
 | 202 | CLOSED | The base plate is cut to its FINISHED thickness (`makeBackPlate` extrudes `thickness − 2·bevelT`, TODO 98's rule), and the slab is declared as the metal both sides already stood on: top face z 0 (`PLATE_TOP`), dial face −2.3 (the face every dial-side solve was built against), so `BACK_PLATE_T` = 2.3 u (0.872 mm). Only the 0.3 the parts were buried in is removed. The cock thread re-derives to 0.581 mm. Re-siting the slab to [−2, 0] instead broke the TODO 153 stack's rise corner, so that fix path was not taken. Step 4 is built as the `plateSeats` gate: 62 declared seats, 12 frozen debt rows (TODO 209), and a mutation probe that restores the proud plate and watches it fire. |
 | 201 | OPEN | The alarm ribbon works at 3096 → 5264 MPa, past its alloy's tensile strength, and is still cut as the four-segment rhombus at carbon steel's modulus because its k IS §104's governor constant: the strip at the alloy asks for a 1.5 mm poising ring. Fix: re-proportion the ribbon (σ = E·a·θ/L) and re-cut it as a strip together with the governor's I_a solve. |
 | 200 | CLOSED | The pillar tenons are riveted. Each one passes the plate's PRESENTED thickness (2.6, face to face, not `BACK_PLATE_T`'s 2.0: the shoulder had sat 0.3 inside the movement face and the tenon ended 0.3 short of the dial face). Its last `STOCK_MIN_U` is spread 45° into a dial-side countersink of that depth, so the plate is captured between two equal lips. The hole is cut through at the mouth (= the body radius, held by the late-hole land check) and the bore put back as a turned land (`makeRivetLand`, on the pillar's segment count). Found and filed TODO 202. |
@@ -30,7 +32,7 @@ refreshed 2026-09-26 — items with work left first, with what remains:
 | 197 | OPEN | Below 0.05, `meshClearance` can read OVER the true distance — `Math.max(d, v.d)` lets `sampledVerdict`'s vertex/midpoint sampler raise the library's exact figure (0.0358 read for a true 0.0221). Fix: let the sampler only VETO a near-zero (contact or not), never raise a distance |
 | 196 | OPEN | Under `balstep=60` the three-quarter plate's rim moves by up to 0.0065 (88 of 168,117 vertex coordinates) although the solved balance station differs from the default by 2e-14 — the plate appears keyed to the requested target, not the solved station. Fix: cut the plate from the solved station, then re-measure the point |
 | 195 | OPEN | `probe-117-fork-room.mjs` fails 2 of its 4 controls on main (its r 2.20 sample finds no disc metal since the hub left the track's plane), and `explain.html`'s constants table still says the track annulus lies "outside the hub" when it overlaps the 2.8667 wall by 0.0167. Fix: re-aim the probe's control radii at the metal and correct the table's claim |
-| 194 | OPEN | The alarm follower's return spring blade stops about 0.29 short of the follower arm's flank at the seated pose, so it restores nothing it touches; the build comment claims it bears. Fix: re-aim the blade's tip at the arm in position space, then give the contact a declared joint and measure it |
+| 194 | CLOSED | No blade can return the follower (the energy floor is ≈ 6.68 µJ, and a straight blade in the free ring falls 2–5× short), so a COAXIAL SPIRAL does it: the inner end is clamped in a fixed collet on the post and the outer end against a riser the arm carries. This was forced, because the lobe passes 0.03 from the post. 0.033 mm × 0.5768 u, 2.5 coils, solved on the hairspring's elastica: 7.86 → 31.79 mN at the nose, equal-margin in the 5–50 window, strain at 0.9 of yield, coils one running fit apart. Its band is a §51 strata spend: `Z_DIAL` −8.40 → −9.13. The dial move lengthened the selector rod, whose thicker section forked the alarm link's fulcrum (a lug, arms and ratio held). Both ends are measured seated at every parity. A new reach control in `restoring` fires on §29's blade (0.0826) and found TODO 210 and 211 |
 | 193 | DONE | Decided, cited, gated. The going ribbon is cut as the flat STRIP a mainspring is (`stripSweepGeometry`, capped), k = E·I/L of the strip at the cited alloy's modulus (4.4× the rhombus at steel); `MAINSPRING_SIGMA_Y_BAND` (Nivaflex 45/18, Rp0.2 1800–2550 MPa) beside `SPRING_SIGMA_Y_PA`; `checkEqualisation` row 13 holds both ribbons' σ = M·a/I to the band's low end. Both over it and WAIVED by name: going 1931 MPa at full wind (TODO 192 step 3), alarm 5264 MPa (TODO 201). The centre pivot is now sized to its load (0.086 mm). |
 | 192 | DONE | Steps 1–4 LANDED (with TODO 193 between 2 and 3): the energy column and `FRICTION` (§247 tier two); the pivots shouldered and sized floor-or-load; the going ribbon a strip of the cited alloy, PROPORTIONED to it (8 coils, 31.6 mJ over 30 h); and the amplitude split and gated — `AMPLITUDE_CLAIM_DEG` 76 (the sustained minimum, adverse vertical 76.96°, rounded down) and `AMPLITUDE_PEAK_DEG` 327 (the maximum, favourable dial-flat 326.70°, rounded up), `equalisation` row 14. What the swing still is against a real lever watch is TODO 207 |
 | 191 | CLOSED | The beak's post stands on the lever's FULCRUM AXIS, 0.4557 to the arm's −y, not on the arm's line: arms 3.577 / 0.768 and the 4.657 ratio untouched. Rod ⇄ post 0.0409 (it had shrunk from 0.0811 when TODO 190 thickened the rod) → 0.1643, held by the new `INTRA_UNIT_FLOORS` row in `intraUnit` (control: the old station reads 0.0409 and fails) |
@@ -26882,7 +26884,7 @@ is the same arithmetic on the alarm half of the record.
   together, in TODO 201.
 
 
-## 194. The alarm follower's return spring does not bear on the follower arm
+## 194. The alarm follower's return spring does not bear on the follower arm — CLOSED
 
 Found closing [TODO 178]. The follower spring (`alarmFollowerSpring`, a
 0.07 × 0.22 blade from `alarmFollowerSpringStud`) is described at its build as
@@ -26903,6 +26905,101 @@ derive the preload from the §137 detent envelope rather than the old 0.45
 gain. Then declare the contact (`INTRA_UNIT_CONTACTS`, measured by the §182
 reach audit) and add an `alarmHandoffs`-class row that measures it shut at
 both ends of the travel.
+
+### Closed — not by re-aiming the blade: no blade can do the job.
+
+**Why the fix path changed.** The return has an energy floor that does not
+depend on layout. Any linear spring through any lever, with force ratio
+R = Fmax/Fmin over the follower's travel (Δa = 0.4606 rad, seated
+`ALARM_FOLLOWER_A0` 0.8626 → released `ALARM_A_RELEASE_PHI` 1.3233), stores
+U = ½·Fmax·LF·Δa·R/(R−1). With the detent window's equal-margin placement
+(Fmin·Fmax = 5·50 mN²) that is least at R = 3: **≈ 6.68 µJ** over the nose arm
+`ALARM_FOLLOWER_LEN` (1.862 u, 0.706 mm). A tip-loaded blade stores σ²V/(18E):
+in the free ring (r 3.70–4.50) it falls 2–5× short of that in steel volume, or
+it overstrains past `SPRING_SIGMA_Y_PA`. A spiral works under a uniform moment
+and stores σ²V/(6E). The owner chose a COAXIAL SPIRAL on the follower's own
+post. A helical torsion form would need about 0.38 u³ of round wire and stand
+about 1.0 u tall, against the spiral's 0.58, so it was not used.
+
+**Which end is grounded was forced, not chosen.** The heart's lobe passes
+0.03 from the post at the arm's plane (`ALARM_PIVOT_R`'s own derivation). So
+the arm has no metal around the post that could carry a collet, and no collet
+can come down through the 0.15 gap onto the arm without standing over the
+lobe's swept circle. The arm can reach the spring's band only on its OUTBOARD
+side. So the INNER end is clamped in a FIXED collet pressed on the post, and the
+OUTER end against a RISER the arm carries on a lug off its tail boss. That is
+the mainspring's arrangement.
+
+**The design in a line** (main.js `ALARM_FSPIRAL`, solved at boot on the
+hairspring's own clamped–clamped elastica, `G.spiralElastica`):
+
+| quantity | value | constraint |
+|---|---|---|
+| strip t | 0.0871 u (0.033 mm) | §50's spring floor (`SPRING_MIN_U`, new in layout.js) + the 10% TARGET headroom |
+| collet r | 0.4047 | post (`ALARM_POST_R` 0.22) + `PIVOT_MIN_U` wall, `ALARM_GOV_ARBOR_R`'s rule |
+| inner r | 0.4283 | collet + t/2 − `ALARM_SEAT_SINK` (the seated-contact convention) |
+| worn outer face | ≤ 0.85 over every frame | `ALARM_SLEEVE_R_OUT` − `ALARM_PIVOT_R`: the selector's fork bracket starts one margin outside the sleeve rim (TODO 170), in this band |
+| coils | 2.5 (outer r 0.8065, L 9.698) | the most sixteenths of a turn that keep adjacent coils `PIVOT_BORE_CLEAR` apart face to face over the working frames. Coils slide past each other as the spring breathes, so they are running surfaces. "Merely clear" names no figure, and would have bought b ≈ 0.37 by building to the limit. |
+| θmax | 0.6110 rad | peak strain from the elastica's curvature change = 0.9·`SPRING_SIGMA_Y_PA`/E |
+| θ0 (set-up) | 0.1504 rad | θmax − Δa: all the strain the steel allows goes to preload, which lowers R |
+| b (height) | 0.5768 u | equal margin: Fmin·Fmax = 5·50 mN² |
+| sense | lift dilates | measured: 0.02–0.04 more coil gap than tightening. The follower lifts the same way whichever way the hour turns, so no train sense is involved |
+
+The nose force is **7.86 mN seated → 31.79 mN released** (Fmin/5 = 50/Fmax =
+1.5727; R = 4.04). 24 morph frames are spaced so the riser moves at most
+`ALARM_SEAT_SINK` along the strip between frames. Their gap, worn radius, strain
+and convergence are boot-asserted over every built frame. The riser's azimuth
+on the arm (π + 0.284) is solved to equalise its two walls: one margin outside
+the lobe's swept circle (TODO 178's rule) and one margin inside the sleeve
+rim, where the lifter's fork closes on the tab.
+
+**The fold: a §51 strata spend, the fifth on this chain.** The flange→heart gap
+was one margin. The spiral's band adds b + `CLEAR_MARGIN` = 0.7268, and
+`Z_DIAL` −8.40 → **−9.13** funds it as §45 funded the sleeve: the total spend
+of 1.6230 is rounded up to the 0.01 grid, and the 0.0070 residue rides
+`MW_WHEEL_T`. The fund tripwire holds both spends. Every member below the
+insertion keeps its world plane. What the move reached, each re-derived:
+- `ALARM_SEAT_STUD_T` was a 0.9 literal "with room". The room was the seat post's. That post is §54-sized from its length, which the move grew, so the stud stood 0.0453 off it. Now `POST_RAD + STUD_R + CLEAR_MARGIN + ALARM_SEAT_SINK`.
+- The silence rocker's bar plane (`barZ`, a −2.28 literal) now rides the spend that moved both of its cranked ends. The midpoint of those two ends was measured and refused: it cut the finger riser to 0.0596 mm.
+- The selector rod is exactly the dial move longer (`ALARM_LINK_ROD_LEN_U` 20.7535 → 21.4835). Its turned section, L/(2·`TURN_LD_TARGET`), grows 0.5765 → 0.5968, and its bush and plate bore follow (0.931 → 0.973). The link body is re-measured (`ALARM_LINK_BODY_LEN_U` 11.0631 → 11.0429).
+- **The declared FORK of the alarm link.** TODO 191's least post offset now puts the post's flank 0.6606 off the arm's line, past the bar's 0.6270 half-width. One spec row changes, and only at the post: the lever gets a **fulcrum lug** (`alarmLinkBeakFulcrum`) reaching to the post's flank. It is built only while the post's flank leaves the bar, so it retires itself. The arms 3.577 / 0.768, the ratio 4.657, the bar's one-tooth width, the post's section and station are all held. `alarmLinkRod ⇄ alarmLinkBeakPost` measures **0.1679** (floor 0.15). Two alternatives were rejected. Necking the rod beside the post would fail §233's narrowest-step rule. Widening the whole bar spends metal over 4.3 u to buy 0.034 at one point.
+
+**Retired.** §29's blade and `alarmFollowerSpringStud`, their tick flex law
+(the 0.45 gain), the stud's INTRA_UNIT_CONTACTS row and its stockFloor kind,
+the jumper row's blade root, and the index line's contacts entry on `Alarm
+disc ⇄ Hour wheel` (the line and the heart are now a margin + band apart). The
+three Type#index rows on that unit had whys naming a "follower bar", a "nose
+bar" and a "follower-spring stud block". They are follower-B's post and pin
+arm and the rocker's arm, and the whys now say so.
+
+**Added.**
+- §137: two `crank` rows, seated (7.86 mN) and released (31.79 mN). A coaxial spiral delivers a couple, so the rows carry no input arm or ratio, only the nose arm.
+- `declareRestoring('Alarm disc', 'alarmFollowerBar', 'spring', …, 'alarmFollowerSpiral')`, and `'two-way'` for the spiral's own morph frame. The unit's old `'*'` row is narrowed to `alarmTubeBody`, the body it described. Follower-B's pin arm and the selector rocker now report as undeclared frames: they always were, and the unit is outside `RESTORING_MEMBER_SCOPE`, so this is a report.
+- INTRA_UNIT_CONTACTS: collet ⇄ spiral, riser ⇄ spiral, and the fork's `alarmLinkBeakFulcrum ⇄ alarmLinkBeakPost`.
+- ALARM_HANDOFFS: both ends seated at all four parities. Inner end −0.0202/−0.0205/−0.0205/−0.0205; outer end −0.0165/−0.0148/−0.0170/−0.0164.
+- stockFloor: `alarmFollowerSpiral: 'spring'` with a declared `stockSection`.
+- The schematic draws the spiral breathing (`spiralFrames`). The §78 floor is now 4.
+
+**The reach control** (`restoring`'s new tier, `measureSpringReach`). A
+member-named `spring` must touch its member's rigid frame within
+`HANDOFF_TRACK_TOL` at some pose of the net, directly or through a named
+`through` body (a new optional `declareRestoring` argument). Measured on the
+pre-194 tree through the same function, §29's blade reads **0.0826**: the
+control fires. The follower spiral reads 0, via its riser. Its first run found
+two more defects of this item's class, waived:
+- **TODO 210**: the maintaining detent's row names the maintaining-POWER spring.
+- **TODO 211**: the yoke's prong never bears on the clutch collar.
+
+`tools/probe-194-spring-reach.mjs` holds both sides.
+
+**The 'alarm' axis comment was stale.** The crown is pulled there, so the
+cone holds the arm at its released cap at every sample and the nose rides
+nothing. No axis poses the RIDING cycle (armed, crown in, the hour turning
+under a held tube). The jumper solve samples that swing and the spiral's
+frames are build-asserted, but a sweep needs its own axis. **Proposed, not
+added:** an `alarmRide` axis, armed, `alarmCrownPullT: 0`, τ over twelve
+hours, which would also give `restoring` a reversal of the follower that is
+the riding pump rather than the release.
 
 ## 195. probe-117-fork-room's controls and the explainer's track annulus still describe the old hub
 
@@ -27439,7 +27536,9 @@ which really is pressed into the plate (its gap is 0.007). Nothing holds the
 post up. The lever's fulcrum stands on a post that stands on air.
 
 Lowering the post is not enough. The plate's selector-rod bore
-(`ALARM_LINK_ROD_PLATE_BORE_R` 0.931 about the rod) lies under the post's
+(`ALARM_LINK_ROD_PLATE_BORE_R` 0.931 about the rod — 0.973 since TODO 194,
+whose dial move lengthened the rod and thickened its turned section, and the
+post's axis 0.914 from the rod at the re-derived offset) lies under the post's
 foot at both stations: on the arm's line the post's axis was 0.768 from the
 rod, and at TODO 191's fulcrum-axis station it is 0.893. A post seated on
 the plate needs plate land, so its axis must be at least 0.931 + its radius
@@ -27698,3 +27797,48 @@ against a face 0.3 higher, so they stand 0.075 above the real one.
 Feasibility: small per row · Battery: each fix moves its part's digest; the
 `plateSeats`, `undeclaredClearance` and `clearances` gates judge the moved
 station.
+
+## 210. The maintaining detent's restoring declaration names the maintaining-power spring, which never touches the detent
+
+Found by [TODO 194]'s reach control on its first run.
+`declareRestoring('Maintaining detent', 'click', 'spring', …, 'maintSpring')`
+says that "the detent spring seats the beak one CLEAR_MARGIN past the ring
+root". But `maintSpring` is the maintaining-POWER spring. It is the torus
+coiled flat under the maintaining wheel (main.js, the maintaining wheel's
+block) and belongs to 'Fusee & great wheel', not to the detent. Measured over
+three samples of every axis, it comes no nearer than 1.0 to the click. The
+'Maintaining detent' unit itself is four meshes: the arm, the post, the click
+and the stud. None of them is a spring. §48's geometry-only guard passed the
+row because a mesh with that name exists somewhere in the scene.
+
+So the detent's return is the tick's, and nothing delivers it: TODO 194's
+class.
+
+**Fix path (P0/P1, the detent is its own action group).** Model the detent's
+spring as metal: a blade grounded on the detent's post bearing on the arm,
+sized like the other detent blades in this file. That means a §137 `crank` or
+`groundedBlade` row, with the preload landing the beak's force inside
+`SELECTOR_DETENT_WINDOW_MN` (or whatever window a maintaining click answers
+to — state it). Then re-point the declaration at it and retire
+`RESTORING_REACH_WAIVERS['Maintaining detent\u0000click']`. The waiver goes
+stale and fails the moment the row reaches.
+
+## 211. The yoke's prong never bears on the clutch collar it is declared to return the clutch through
+
+Found by [TODO 194]'s reach control. `declareRestoring('Winding clutch',
+'clutchSleeve', 'spring', …, 'yokeSpring', 'yokeProng')` says that "the yoke
+spring re-seats it through the fork". Measured, the first hop holds: the yoke's
+blade touches the yoke (0, the `Yoke` row). The second does not. The prong
+(`YOKE_PRONG_R` 0.4) rides the clutch's groove between collars at
+±`GROOVE_HALF` 0.95 with thickness `GROOVE_COLLAR_T` 0.5, so there is 0.3 of
+play a side. Over three samples of every axis, the prong comes no nearer than
+**0.137** to any clutch mesh (`clutchHubCollarIn`). The clutch's position is
+the tick's. The fork that is meant to drive it is never in contact with it in
+the pose net.
+
+**Fix path (P0).** Either the yoke's angle must be solved from the collar it
+pushes, so that the prong bears on a collar face at both crown parities (the
+spring's preload holding it there), or the tick's clutch position must be
+derived from the prong's. Either way, add an `ALARM_HANDOFFS`-class row (the
+stem-clutch table is the sibling) measuring prong ⇄ collar shut. Then retire
+`RESTORING_REACH_WAIVERS['Winding clutch\u0000clutchSleeve']`.

@@ -670,6 +670,12 @@ export const TURN_LD_TARGET = TURN_LD_MAX * 0.9;       // 18
 // hairspring, so it is sized at 0.05 mm — the low end of real flat-spring
 // stock, clearing the floor on merit rather than grazing it.
 export const SPRING_FLAT_U = 0.05 / UNIT_MM;          // 0.132 u
+// §50's SPRING floor itself, in units, beside the wheel and pivot floors for
+// the same reason: a ribbon should be CUT against it, not measured against it
+// afterwards. Flat blades take SPRING_FLAT_U above; a SPIRAL is the other form
+// the floor's own basis names ("real hairsprings run 0.02-0.04 mm"), and TODO
+// 194's follower return spiral is the first one outside the oscillator.
+export const SPRING_MIN_U = 0.03 / UNIT_MM;           // 0.079 u
 // §50's PIVOT floor, in units, beside the wheel floor for the same reason:
 // pin and post stock should be CUT to it, not measured against it afterwards.
 // Basis is the check's own — "real train pivots run 0.07-0.12 mm".
@@ -1040,7 +1046,18 @@ export const COCK_MID_Z = COCK_SLAB_BOT + COCK_T / 2;
 // dial feet). It kept that job when the dial gained thickness, which is why
 // giving the dial substance moved nothing behind it: the plate grows FORWARD,
 // toward the viewer, out of z the movement did not previously spend.
-export const Z_DIAL = -8.4;
+// TODO 194: −8.40 → −9.13. The alarm follower's return SPIRAL needs its own
+// band under the carrier flange (b = 0.5768, solved in main.js's §29 chain
+// from the detent window, the spring steel's strain target and the coils'
+// running-fit gap), and the flange→heart gap was one bare margin — so the
+// chain grows b + CLEAR_MARGIN = 0.7268, funded here exactly as §45 funded the
+// sleeve: every member below the insertion keeps its solved world plane, the
+// total spend 1.6230 rounded up to the 0.01 grid (the 0.0070 residue rides MW_WHEEL_T, the
+// stack's absorber). The fund-vs-spend tripwire in main.js holds both spends.
+// The cross-frame members that span the dial move paid in their own
+// currencies: the selector rod is 0.73 longer (ALARM_LINK_ROD_LEN_U) and its
+// section with it, which forked the alarm link's fulcrum (the lug, main.js).
+export const Z_DIAL = -9.13;
 // The dial as MATTER. Real watch dials are brass sheet ~0.35–0.5 mm; 0.4 mm is
 // mid-stock and the figure §50's own citations use for plate-like sheet. In
 // §39's pin that is 0.4 / 0.379 = 1.06 units. The floor under it: a dial must

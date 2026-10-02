@@ -6010,6 +6010,21 @@ stale-absolute anchor tol (now riding `Z_DIAL`) were the whole blast
 radius — measured by making the spend ALONE first, §51 phase B's own
 discipline.
 
+**Postscript — the same fund, a second spend (TODO 194).** The alarm
+follower's return spiral needed its own band under the carrier flange. The
+flange→heart gap was again one bare margin, so the chain grew by b +
+`CLEAR_MARGIN` = 0.7268 (b = 0.5768, solved from the detent window, the spring
+steel's strain target and the coils' running-fit gap). `Z_DIAL` −8.40 → −9.13
+funds it the way it funded the sleeve: the total spend of 1.6230 is rounded up
+to the 0.01 grid, the 0.0070 residue rides `MW_WHEEL_T`, and the tripwire now
+holds both spends. The blast radius was larger this time, because more now
+crosses between the dial frame and the movement frame:
+- two literals became derivations: the seat stud's offset, and the silence rocker's bar plane;
+- the selector rod, which spans the two frames, is exactly the dial move longer. Its turned section thickened with it, and that **forked** the alarm link at one row: a fulcrum lug where the post stands. Arms, ratio and bar width are held;
+- the link body was re-measured.
+
+TODO 194 has the numbers.
+
 **Two latent defects found by the arithmetic, fixed in the same build.**
 Both invisible to the battery behind the Alarm disc ⇄ Hour wheel
 EXPECTED blanket (TODO item 6's class):

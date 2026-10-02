@@ -359,7 +359,7 @@ export const BATTERY = [
   // (INTRA_UNIT_CONTACTS' rule — a declaration pointing at absent metal reads
   // as an answer and is not one), and a waiver naming a body that IS answered.
   { name: 'restoring', opts: { yieldEvery: YIELD_EVERY },
-    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS; member tier: 0 unwaived in scope, 0 unmatched selectors, 0 stale waivers',
+    gate: '0 unwaived restored-by-nothing, 0 malformed, 0 stale, control PASS; member tier: 0 unwaived in scope, 0 unmatched selectors, 0 stale waivers; every member-named spring reaches its body (TODO 194)',
     fails: (r) => [
       ...r.unwaived,
       ...r.malformedDeclarations,
@@ -367,6 +367,7 @@ export const BATTERY = [
       ...(r.memberUnwaived || []),
       ...(r.unmatchedMemberSelectors || []),
       ...(r.memberStaleWaivers || []).map((k) => ({ staleMemberWaiver: k })),
+      ...(r.springUnreached || []),   // TODO 194: a member-named spring that touches its body at no pose
       ...(String(r.control).startsWith('PASS') ? [] : [{ control: r.control }]),
     ],
     note: (r) => `${r.population} reversing units, ${r.twoWayDriven.length} two-way, `
