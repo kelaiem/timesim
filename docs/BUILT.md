@@ -30146,6 +30146,184 @@ one was fixed in the label. Among them:
 - **`Version`** still has no entry in any locale's table, and
   **`index.html`'s `<title>`** is still not localized in any locale.
 
+### Persian — chunk F, the second right-to-left row
+
+The chrome (477 keys), `explain.html` (761/761) and `primer.html` (145/145)
+read Persian at 100%, using the Vietnamese and Dutch landings' pipeline item
+for item. That makes sixteen locales. The sites it touched:
+- the `LOCALES` row (`fa`, `tag: 'fa-IR-u-nu-latn'`, `dir: 'rtl'`, anchored
+  matcher) and seven ladder rows
+- both `LOADERS` entries
+- `MARKS.fa` and `HONESTY.fa`
+- the precache count, 53 → 55
+- the three hand-kept loops
+- the two measured width comments in `src/main.js`
+
+**The digit override is the chunk's one measured decision, and it is
+Arabic's.** In Chromium 141 and Node's ICU, `fa`, `fa-IR` and `fa-AF` all
+default to `arabext` (`۳۰٫۰ · ۰٫۰۲۴ · ۱۸٬۰۰۰`). With `-u-nu-latn` every one of
+them formats `30.0 · 0.024 · 18,000`, so the tag pins Western digits for
+§208's reason, and `MARKS.fa` is Arabic's row.
+
+Dari (`fa-AF`) lands on the one table. The written standard is shared, and
+once the digits are pinned the numbers are identical. The negative ladder row
+is `fat` (Fanti). The validator held every string to Western digits, because
+the page gate's `\d` token class reads a ۱ as a DROPPED quantity rather than a
+different one.
+
+**`HONESTY.fa` reads the `-سازی` compound, never the bare noun.** The credit
+line's "AI model" is مدل هوش مصنوعی, so a matcher on مدل would count it.
+Persian also writes the compound's joint three ways — a zero-width non-joiner,
+a space, or nothing — and the page uses all three, so the stem takes all three.
+The tool's diacritic strip, written for Arabic's مُحاكى, now runs for Persian
+too.
+
+### Orthography, and what the zero-width non-joiner did to the linker
+
+The validator enforced Persian's own spelling:
+- **ی and ک only.** Arabic ي, ك and ى are failures.
+- **No ezafe hamza (ـٔ).** It is a combining mark, and §236's `word` rule
+  refuses a match followed by `\p{M}`, so «ایستگاهٔ» would never link.
+- **No direction marks and no tatweel.**
+
+**The non-joiner turned out to be free for the linker.** U+200C is a format
+character (Cf), not a letter, so §236's whole-word rule treats it as a
+boundary. A plural or ezafe joined with a ZWNJ («ایستگاه‌ها», «وضعیت‌دهی‌شده»)
+therefore links its base with no variants row at all. A suffix written WITHOUT
+one is a different string: «وترها» does not match «وتر», because ر does not
+join leftward and Persian writes no ZWNJ after it. Those forms are the ones
+the `.gloss-variants` rows list.
+
+The variants rows also use the ASCII comma. `glossary-links.js` splits only
+on `[,、]`, so Persian's «،» would have fused every form into one.
+
+**The result: Persian links 79 times against English's 86, Arabic's 56.** The
+sense audit, rebuilt for the sixteen live terms, reads 0 for every one. The
+brief steered the vocabulary's ordinary words off the glossary's:
+- a state is «حالت», not the pose term
+- a lever's stroke is «کورس», not a cam's throw
+- a spring's strip is «تسمه», not the height band
+- a coincidence is «انطباق», not isochronism's «هم‌زمانی»
+
+### Arrows, measured rather than copied
+
+Arabic set the link-arrow rule: a back link points right in a right-to-left
+header. Persian kept that, and then measured the two places where it differs.
+
+**A plate label is bidi text, even inside an `ltr` drawing.** The plates keep
+`direction: ltr` so their anchors stay put (§208). But a neutral arrow between
+two right-to-left runs still resolves right-to-left. That includes a number
+whose nearest strong neighbour is Persian, by UAX #9's N1 rule.
+
+So «تاج → چرخ ساده‌ی کوک», kept as drawn, RENDERS with its arrow pointing back
+at the crown — the opposite of the flow it labels. That was seen in the
+fusee's torque-path plate before anything was changed.
+
+**The rule that came out of the render:**
+- **Fifteen flow labels were re-pointed to ←**, and re-rendered reading
+  correctly: «تاج ← چرخ ساده‌ی کوک», «0.587 ← 1».
+- **Arrows that point at something physical in the figure stay as drawn.**
+  Examples: «→ چرخ می‌چرخد», «خالی →».
+- **Arrows that open a continuation line stay as drawn**, because a leading
+  neutral takes the drawing's direction.
+- **Arrows in runs anchored by a Latin symbol stay as drawn**, because those
+  runs stay left-to-right. The symbols are `r`, `ρ`, `Ø`, `μ` and `mN`.
+- **Running prose** follows the same logic: flow arrows there read «←».
+
+**The sliders were measured too, and both measurements found the same defect
+in Arabic.** All 58 `input[type=range]` elements compute `direction: rtl`
+under both `ar` and `fa`, so a slider's maximum end is on the LEFT.
+- Persian's legends are right: «(راه کمتر ←)», «صیقلی ← برس‌خورده».
+- Arabic's «(أضلاع أقل →)» and «ملمَّع → مصقول بالفرشاة» point at the wrong end.
+- So do at least sixteen Arabic plate labels with an arrow between two Arabic
+  runs, «التاج → ترس التعبئة المستقيم» among them.
+
+That is a defect in a shipped table, found by this landing and recorded below
+rather than fixed inside a Persian PR.
+
+### The tables
+
+Ten translators worked against one glossary. Persian horology borrows from
+French, so the trade's loanwords stand where they are the trade's words:
+- loanwords: انکر, بالانس, پینیون, فوزه
+- Persian words: گریز اهرمی سوئیسی, چرخ گریز, فنر مویی, فنر اصلی, بشکه, زنجیر, تاج, چرخ ستونی
+
+**Reconciliation was smaller than Dutch's.** The brief named the senses that
+collide, so the seams were mostly parts it did not name:
+
+| English | seam | now |
+|---|---|---|
+| timing screws | three names across the escapement, hacking and primer chunks | «پیچ‌های زمان‌بندی» |
+| winding spur | three names, one of them the arbor's winding WHEEL | «چرخ ساده‌ی کوک» |
+| equalisation | two names | «هم‌ترازسازی» |
+| posed | one chunk used an unlinked «چیده‌شده» | «وضعیت‌دهی‌شده», the pose term's own form |
+| the gong's partials, overtones, soundboard | the primer's three words against the explainer's three | the explainer's |
+| two `.where` tags | left as English `alarm` | «زنگ» |
+
+Ten English keys appear twice with disagreeing Persian, and a JS table keeps
+one value, so each was chosen. Two verbatim build comments quoted in the
+explainer keep their English inside «», as quoted source rather than prose.
+
+### Fit
+
+**The page gate's first Persian pass found zero overruns and zero collisions
+on both pages** — against Vietnamese's seven and Dutch's fourteen.
+
+- **Headers:** 56 px at all eight widths, one line.
+- **Chrome bar:** 156.0 on «منو / نما / کنترل‌ها», 14.2 under English and 11.0
+  under Arabic's 167.0. The second right-to-left locale needed no word chosen
+  against the bar.
+- **HUD labels:** «زنگ در» 28.8 is the shortest alarm label yet.
+
+**The monospace tags look spaced, and are not broken.** At 2× the
+`.where` tags render joined in DejaVu Sans Mono, as Arabic's do; the even
+spacing is a fixed-width face drawing a cursive script, not a shaping failure.
+
+### Measured
+
+| | measured |
+|---|---|
+| `explain-i18n --check` | explainer **761/761**, primer **145/145**; 0 unmatched, 0 markup drift, 0 `<code>` drift, 0 number drift, 0 crossed honesty terms, **0 new plate overflow** on both pages; honesty control PASS (*مدل‌سازی‌شده / شبیه‌سازی‌شده*), **15/15** rows verified — PASS |
+| `explain-quotes` | PASS |
+| `glossary-links` | text identical with and without the linker in every locale; fa **79** links (en 86, ar 56) — PASS |
+| sense audit | 0 false links over the sixteen live terms |
+| page headers | **56 px in Persian**, both pages, at all eight widths |
+| `#chrome-bar` | fa **156.0** against en 170.2, ar 167.0 and de 192.4 |
+| `.hud-ro-label` | *زنگ در* 28.8, *زمان* 20.0 against 150 px — one line |
+| §53's 240 px column | no content wider than its box |
+| sliders | 58/58 `input[type=range]` compute `direction: rtl` under `fa` and `ar` |
+| `offline-check` | **40/40**, precache **55/55**, the Persian primer served from cache |
+| boot | `?lang=fa` on all three documents console-silent apart from the static server's own 404, which English shows too; `lang="fa"`, `dir="rtl"`; `fmtNum` reads `30.0 · 0.024 · 18,000`; the ladder assert silent |
+| fingerprint | **492646093** (60 units, 12 poses) at `?lang=fa` and in English on the branch merged with `main` at `cccea9d`, IDENTICAL to a virgin boot of that `main` measured beside it (3297321040 against the earlier base, likewise identical) |
+| battery | **51/51 gates**, local (dev container, 3 shards, 4839 s wall, 6475 s of checks); fingerprint **3297321040** across virgin boots A and B and under the share payload (36/36 applied) — identical to its base. Run before `main`'s TODO 190/192/200 merges were brought in; CI's Battery job on the merged head is the merge gate |
+
+### Residue, recorded
+
+- **No native review pass**, the IOU every locale carries. The terms most
+  likely to differ in an Iranian workshop are:
+  - «موتور» for the movement, where «کالیبر» is also heard
+  - «فوزه», a transliteration for a part with no Persian word
+  - «گریز» for the escapement, where the loanword «اسکپمنت» is also used
+- **Arabic's arrows read backwards wherever a flow arrow sits between two
+  Arabic runs.** That covers two slider legends in the chrome and at least
+  sixteen plate labels on the explainer, measured above with the same cause
+  and the same fix Persian applied to its own labels. The fix is owed to an
+  Arabic landing of its own.
+- **«پلاتین» names both the plate and the case metal platinum.** The chrome
+  marks the metal «پلاتین (فلز)».
+- **«تیک» is the beat, and in two blocks the program's per-frame update.**
+  One chunk separated them with «به‌روزرسانی»; the other did not.
+- **Persian is today the ONLY table at 100% on both pages.** It was extracted
+  after `main`'s TODO 189/190/199 landings rewrote eight explainer blocks
+  and two primer blocks; the two TODO 190 rewrote after extraction were
+  carried into the Persian table when `main` was merged. The other fourteen
+  render those ten blocks in English until they are re-translated, which is
+  §73's rule working as designed. It is still owed.
+- **The chrome is not held by the honesty gate.** "No models" (model FILES)
+  is «بدون فایل مدل».
+- **`Version`** still has no entry in any locale's table, and
+  **`index.html`'s `<title>`** is still not localized in any locale.
+
 ## §250 — The governor window frames the poising ring again: the inertia the cadence is solved over, not only the action
 
 §201 narrowed the governor's window in the three-quarter plate from the poising
