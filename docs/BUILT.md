@@ -30092,7 +30092,7 @@ one was fixed in the label. Among them:
 | `offline-check` | **39/39**, precache **53/53**, the Dutch primer served from cache |
 | boot | `?lang=nl` on all three documents console-silent apart from the static server's own 404, which English shows too; `lang="nl"`, `dir="ltr"`; `fmtNum` reads `30,0 · 0,024 · 18.000`; the ladder assert silent |
 | fingerprint | **1112714209** (60 units, 12 poses) at `?lang=nl` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it — the tables cannot move geometry |
-| battery | a local run (dev container, 3 shards) was in flight when this was written; CI's Battery job on the PR, opted in to the self-hosted runner, is the merge gate |
+| battery | **51/51 gates**, local (dev container, 3 shards, 4601 s wall, 6138 s of checks); fingerprint **1112714209** across virgin boots A and B and under the share payload (36/36 applied) — identical to `origin/main`, §73's form of "no geometry moved". CI's Battery job on the PR, opted in to the self-hosted runner, is the merge gate |
 
 ### Residue, recorded
 
