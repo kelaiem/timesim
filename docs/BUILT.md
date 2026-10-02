@@ -1769,6 +1769,19 @@ heart's extrude-bevel expansion — authored 0.30, rendered 0.42 —
 `makeHeartCam` gained the `bevel:false` opt-out (the `makeGear`
 precedent) and §29's heart is crisp.
 
+> **Corrected by TODO 189 — this hold never existed.** The beak never
+> reached the contrate (0.5378 off at rest, its flex group aimed ~76° off the
+> climb axis by a sign error, no one-way saw cut on the symmetric bevel
+> teeth), and since §99 the contrate does not turn during a ring anyway: it
+> is on the ARBOR side, parked by the click, while the barrel BODY runs. The
+> riser, beak and flex law are retired; the tail run stays as metal with no
+> job (retiring it re-sites the Alarm link's frozen rod site). Between
+> arming and the trip the striking train is held by the `alarmReleased`
+> flag — modelled, not simulated — and the lock answers the column wheel
+> alone. The feeler → lock release is [TODO 199], declared in
+> `MECH_GRAPH.todo`. The "verified end-to-end" line below verified the flag's
+> sequence, not a detent.
+
 **Step 5 — the trip IS the pin.** `alarmReleased` fires when the physical
 chain bottoms the pin (one-shot per drop; FF/catch-up latches honestly),
 and the §25 angle-crossing survives as the AGREEMENT ASSERT in target
@@ -6055,6 +6068,13 @@ ratchets, and a ring runs down, which is the shipped run-down story.
 Held, the pawl is seated through the lever's LOCATED geometry; a ramp
 cannot cam out a located member, and the train is caught on the next
 tooth: arrested, not paused.
+
+> **Corrected by TODO 189 — the paragraph above is false.** No saw was cut,
+> the pawl never reached the contrate, and the contrate does not run during a
+> ring (it is parked on the arbor side by the click since §99). Mid-ring, the
+> finger's press lifts the pin out of the notch in the metal; what stops the
+> train is tick() clearing the `alarmReleased` flag. The arrest is modelled,
+> not simulated — [TODO 199] stage 3, gated on [TODO 190].
 
 **The laws read members.** `alarmPinDropPhys` = min(the disc's law, the
 rocker's cap), computed in the strike section from the same pure chain

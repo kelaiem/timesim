@@ -500,7 +500,7 @@ function registerExplode(obj, baseZ, layer, dir = 1) {
 const subEntries = []; // { obj, parentUnit, displayName, baseZ, subLayer, tickOwned }
 // `tickOwned` — §10 level 2's remainder: a piece whose position tick() writes
 // every frame (the winding stem, the alarm's pusher, selector ring, sleeve,
-// lifter, link rod and pawl tip) cannot take the generic write below — the
+// lifter and link rod) cannot take the generic write below — the
 // two would fight, and the generic write's rest value would be the wrong
 // one whenever tick has moved the piece for a real reason. Such a piece is
 // registered tickOwned and its tick write ADDS subDrillZ(obj) to the z it
@@ -16742,8 +16742,9 @@ const alarmPinArmB = new THREE.Group();
 // blade-A off, ring UP (disarmed) flexes blade-B off. The tube's law reads
 // the SELECTOR's state — alarmOn turns the column wheel, and the
 // column→ring run is DRIVEN, pawl to ring (TODO 20 closed §35's filed
-// debt; TODO 63 caught this line still describing it — the only
-// remaining MECH_GRAPH.todo entry is the keyless-works one).
+// debt; TODO 63 caught this line still describing it. MECH_GRAPH.todo holds
+// the keyless-works entry and, since TODO 189, the strike hold — the flag
+// between arming and the trip, TODO 199 — neither of them this run).
 // (ALARM_LINK_AZ_DEG — the ring's drive-tab azimuth — is SOLVED at the link
 // build since §112, jointly with the rod site: §35's 146° was itself a
 // corridor answer for the old module corner, and the identity move made
@@ -18509,14 +18510,15 @@ await (async () => {
 // 5.5, and on the az-0 line that distance is only 3.9 — the offset swings
 // it clear (6.0 achieved, asserted at the feeler). The release azimuth is
 // a free phase (Φ absorbs it); only the TAIL's corridor cares, and it
-// dog-legs back to the climb one band above the gear lane (step 4).
+// dog-legs back toward the climb one band above the gear lane (step 4 — the
+// run stays, the riser and beak it once carried were retired by TODO 189).
 // TODO 117 retired this constant's LAST READER. It put the notch at the lever's
 // own azimuth, which was the fixed reader's whole requirement; the reader
 // orbits now and finds the notch wherever it stands, so a phase here would
 // only move the alarm away from its own hand. Deleting it rather than leaving
 // it unread: a constant nothing derives from is rule 1 in reverse.
 // (ALARM_RELEASE_AZ itself stays — the LEVER is still at that azimuth, and its
-// bracket, its tail run and its beak are all sited from it.)
+// bracket and its tail run are sited from it.)
 const ALARM_NOTCH_W = 0.14;      // rad — the track gap: pin dia 0.28 + slop over the track's mid radius
 const ALARM_TRACK_RMID = 3.05, ALARM_TRACK_HALFW = 0.20; // annulus 2.85..3.25, its inner edge 0.0167 INSIDE the hub's wall (2.8667 — one piece of the disc, so that is a joint, not a fit; this comment used to say "outside", and nothing checked it); the rim's root circle is 4.125 (30 T at module 0.3), so the body's face runs smooth from 3.25 out to it — TODO 144's candidate pad annulus
 // Sign pins (§29 step 2): fixed EMPIRICALLY against the three physical
@@ -18751,7 +18753,8 @@ alarmReaderUnit.add(alarmReaderLift);
 // --- '(§29 step 3) Alarm release feeler' — the FIXED reader ---------------
 // A rocking lever on a dial-hung bracket at the release azimuth: pin down
 // onto the disc's raised track, arm crossing the spinning rim with one
-// margin, tail stub outboard for step 4's run to the climb. The pin's drop
+// margin, tail stub outboard (the silence finger's seat; step 4's run toward
+// the climb takes off past it). The pin's drop
 // is BANKED at ALARM_PIN_DROP by a stop on the bracket — NOT by bottoming
 // in the notch — because the dropped arm still owes the rim its margin
 // (asserted below with the lever fraction written out).
@@ -18777,7 +18780,7 @@ const ALARM_FEELER_ARM_LEN = ALARM_FEELER_PIVOT_R - ALARM_TRACK_RMID; // pivot �
   if (CLEAR_MARGIN - rise < 0.001)
     console.warn(`§124 feeler rock: spends ${rise.toFixed(4)} of the ${CLEAR_MARGIN} static margin at the web rim — residual ${(CLEAR_MARGIN - rise).toFixed(4)}`);
 }
-const ALARM_FEELER_TAIL = 0.9;   // outboard stub — step 4 extends it to the climb pawl
+const ALARM_FEELER_TAIL = 0.9;   // outboard stub — the silence finger's seat and the banking stop's; step 4's run extends past it (its climb pawl retired by TODO 189)
 // §48/TODO 13 — where the return blade would drive the pin if nothing stopped
 // it. The travel is BANKED at ALARM_PIN_DROP by the stop over the tail, so the
 // seat sits one CLEAR_MARGIN beyond that bank: the blade is still pushing when
@@ -19253,35 +19256,51 @@ function alarmSetHoldRecord() {
   }
   return _alarmSetHold;
 }
-// --- §29 step 4: the TAIL and the CONTRATE PAWL ---------------------------
-// The tail runs STRAIGHT from the pivot to the climb (the probe cleared the
-// line: it passes 4.3 from i1's sleeve, far over the gear lane), one band
-// above the lane at the feeler's plane; at its end a RISER climbs to the
-// winding contrate at Z_ALARM_CORNER and a beak enters the tooth band's
-// LOWER edge from beside. Pin riding (no trip) ⇒ beak seated ⇒ the climb —
-// and through the 12/44 mesh the whole striking barrel — is HELD. Pin drops
-// ⇒ the tail swings dial-ward and the beak withdraws clear of the band:
-// the RELEASE, as a real detent. Winding clicks over it: the beak's tip is
-// SPRING STEEL and follows the tooth profile under it (kinematically, like
-// the pin on the track) — the lever itself cannot bob, because the pin's
-// track contact fixes its other end; the compliance is the pawl's own.
-const ALARM_PAWL_ENGAGE = 0.06;  // beak's z reach into the contrate band's top edge — sized so the
-                                 // pin's stop-banked drop withdraws it a full margin clear
+// --- §29 step 4: the TAIL RUN — its pawl RETIRED by TODO 189 -------------
+// Step 4 ran a tail from this lever's pivot toward the alarm winding climb,
+// one band above the gear lane, and at its end a riser up to the winding
+// contrate and a spring-steel beak meant to seat in the contrate's teeth and
+// hold the striking train until the pin dropped. The riser, the beak, their
+// flex group and its tick law are GONE, because they held nothing — for two
+// reasons, either of which is enough:
+//   1. THE CONTRATE NEVER TURNS DURING A RING. Since §99 the winding train is
+//      posed off the ARBOR, parked and held by the click; the ring runs the
+//      barrel BODY (on the alarmStrike axis the climb and arbor stand at 0
+//      while the body runs 0 → 10.9956 rad). A detent on a still wheel
+//      arrests nothing — and the contrate's symmetric bevel teeth would have
+//      locked WINDING both ways had the beak ever seated.
+//   2. IT NEVER SEATED: 0.5378 off the contrate at rest (TODO 189's first
+//      finding), its flex group aimed ~76° off the climb axis by a sign error
+//      (`rotation.z = -dirL`), and the "one-way saw" it rode was never cut.
+// What holds the striking train between arming and the trip is
+// `alarmReleased === false` in tick() — a FLAG, modelled and not simulated.
+// The metal stop (the lock finger in the stop wheel) answers the column wheel
+// alone. TODO 199 files the release line that would carry the feeler's drop
+// to the lock, with its P1 arithmetic and three energy options;
+// MECH_GRAPH.todo carries the gap meanwhile.
+//
+// THE RUN AND ITS JOG STAY, and not because they have a mechanical job — they
+// have none now. Two measured reasons:
+//   - Retiring the run moves an UNRELATED group. The Alarm link's rod-site
+//     search (§112/TODO 174) scores every labelled mesh's box, and the run's
+//     box is what holds the frozen site: with the run gone the search walks
+//     from (27.88, −4.07) to (18.66, −3.23) and boot warns five times (the
+//     plate bores, both hoisted link constants, TODO 82's series stall). That
+//     is a P3 re-siting with its own battery, not this landing's to spend.
+//   - Its far end stands at the free column (12–13, −2..1) TODO 199 stage 4
+//     names for the release line's rise, so the run is the natural first
+//     member of that line — or the thing stage 4 retires along with the
+//     link's re-site. Either way that is TODO 199's decision.
+// The run's length is therefore INHERITED from the retired beak's stand-off
+// (pivot → climb, less the contrate's radius, less 0.35) — a §86-class number
+// with no constraint behind it now; TODO 199 re-derives or retires it.
 const _toClimb = { x: _climbDial.x - _pivotDial.x, y: _climbDial.y - _pivotDial.y };
 const _toClimbL = {  // lever-local (undo the lever's z-rotation)
   x: Math.cos(-_phiF) * _toClimb.x - Math.sin(-_phiF) * _toClimb.y,
   y: Math.sin(-_phiF) * _toClimb.x + Math.cos(-_phiF) * _toClimb.y,
 };
 const _contrateR = (ALARM_BEVEL_MODULE * ALARM_BEVEL_TEETH) / 2;
-// The beak engages the tooth band's PLATE-side (top) edge: the lever's
-// rock was taken to move the tail plate-ward on the trip. TODO 173 found that
-// rock was about the wrong axis and in the wrong sense; corrected, the tail
-// RISES dial-ward, so the withdrawal edge is the band's dial-side one — and the
-// beak does not reach the contrate at all (0.54 off at rest): the hold is in
-// the pose law only. That is TODO 189's to re-site, not this comment's.
-const _pawlBandTop = Z_ALARM_CORNER + ALARM_BEVEL_FACE / 2;
-const ALARM_PAWL_DIST = Math.hypot(_toClimbL.x, _toClimbL.y) - _contrateR - 0.35; // pivot → riser (beak stand-off outside the teeth)
-const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes position.z with the tooth profile
+const ALARM_TAIL_RUN_LEN = Math.hypot(_toClimbL.x, _toClimbL.y) - _contrateR - 0.35; // pivot → the run's far end (inherited: the retired beak's stand-off outside the teeth)
 {
   const dirL = Math.atan2(_toClimbL.y, _toClimbL.x);
   // The tail's RUN is z-JOGGED off the arm's plane, dial-ward to local
@@ -19298,14 +19317,13 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // apart — and it is a §86-class number for whoever derives it.
   const TAIL_RUN_ROOT_X = 0.35;
   const jog = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, Math.abs(_tailRunZ) + ALARM_FEELER_T), MATS.steel);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_PAWL_DIST, 2 * ALARM_TAIL_RUN_HALFW, ALARM_TAIL_RUN_T), MATS.steel);
-  // NAMED because an INTRA_UNIT_CONTACTS row points at this joint, and an
-  // unnamed mesh is addressed by its INDEX in the unit's mesh list. TODO 117
-  // added one member to the lever ahead of it and every index behind shifted
-  // by one, so the row slid off its joint onto the neighbouring pair — the
-  // run⇄riser corner went unexcused and the battery caught it as a fresh MM
-  // intersection in metal nobody had touched. TODO 50's fix, applied again:
-  // name the mesh and the declaration cannot drift.
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(ALARM_TAIL_RUN_LEN, 2 * ALARM_TAIL_RUN_HALFW, ALARM_TAIL_RUN_T), MATS.steel);
+  // NAMED because an INTRA_UNIT_CONTACTS row pointed at its joint with the
+  // riser, and an unnamed mesh is addressed by its INDEX in the unit's mesh
+  // list (TODO 117 shifted every index behind one inserted member and the row
+  // slid onto the neighbouring pair — TODO 50's fix, applied again). The row
+  // went with the riser (TODO 189); the name stays, because instruments and
+  // TODO 190's crossings address the run by it.
   tail.name = 'alarmTailRun';
   // §54 / TODO 78, asked by TODO 109 — WHERE THIS RUN IS HELD. Geometry-local
   // x about the run's centre, so the jog's station (tailG-local
@@ -19315,42 +19333,26 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
   // A BUILT-IN ROOT, NOT A BUSH, and the word is exact rather than stretched:
   // the check's overhang model is 3EI/L³ — a cantilever loaded at its tip —
   // which is precisely this bar. The jog is where the run is held; the riser
-  // and beak hang off its far tip; nothing supports it in between. TODO 109
+  // and beak hung off its far tip until TODO 189; nothing supports it in between. TODO 109
   // went looking for the mid-guide an INTRA_UNIT_CONTACTS row claims here and
-  // measured that pair at run-local x +4.5673, the far END: it is the riser,
+  // measured that pair at run-local x +4.5673, the far END: it was the riser,
   // a rigid corner of the same lever, so there is no second station to
   // declare. (Filed against TODO 104, which owns a row describing the wrong
-  // KIND of joint.)
+  // KIND of joint.) Since TODO 189 nothing hangs off the tip at all.
   //
   // Measured 35.1 → 85.1. Whole-stock λ was calling a tip-loaded cantilever
   // a span, which flatters it by K = ∛16; the larger number is the true one.
-  tail.position.set(ALARM_PAWL_DIST / 2, 0, _tailRunZ);
-  tail.userData.bearings = { axis: 'x', stations: [TAIL_RUN_ROOT_X - ALARM_PAWL_DIST / 2] };
+  tail.position.set(ALARM_TAIL_RUN_LEN / 2, 0, _tailRunZ);
+  tail.userData.bearings = { axis: 'x', stations: [TAIL_RUN_ROOT_X - ALARM_TAIL_RUN_LEN / 2] };
   const tailG = new THREE.Group();
   tailG.rotation.z = dirL;
   jog.position.set(TAIL_RUN_ROOT_X, 0, _tailRunZ / 2);
   tailG.add(jog);
   tailG.add(tail);
   alarmFeelerLever.add(tailG);
-  // riser + beak ride the flex group at the tail's end
-  const beakTopL = (-7 - (_pawlBandTop - ALARM_PAWL_ENGAGE / 2)) - _armMidZ; // beak CENTRE, so its span is [bandTop − engage, bandTop] (world → dial-local → lever-local)
-  const riser = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.24, Math.abs(beakTopL - _tailRunZ)), MATS.steel);
-  riser.name = 'alarmPawlRiser';  // named for the same reason as alarmTailRun — see there
-  riser.position.z = (beakTopL + _tailRunZ) / 2; // spans the jogged run's plane down to the beak
-  alarmPawlFlex.add(riser);
-  const beak = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, ALARM_PAWL_ENGAGE), MATS.steel);
-  beak.name = 'alarmPawlBeak'; // penetration-budget selector; its leading face is square to the
-                               // DELIVERY flank (wedges, self-holding) and the winding sense cams
-                               // it out axially — the one-way approach-angle convention
-  beak.position.set(0.35, 0, beakTopL - ALARM_PAWL_ENGAGE / 2 + ALARM_PAWL_ENGAGE / 2);
-  beak.position.z = beakTopL;
-  alarmPawlFlex.add(beak);
-  alarmPawlFlex.position.set(Math.cos(dirL) * ALARM_PAWL_DIST, Math.sin(dirL) * ALARM_PAWL_DIST, 0);
-  alarmPawlFlex.rotation.z = -dirL; // beak's +x aims at the climb axis
-  alarmFeelerLever.add(alarmPawlFlex);
-  registerSub('Alarm release feeler', 'Pawl tip', alarmPawlFlex, { tickOwned: true }); // §10 level 2 — tick flexes it with the tooth profile
 }
-// §29 step 4 asserts — the tail's corridor and the travel arithmetic:
+// §29 step 4 asserts — the tail run's corridor (the beak's withdrawal-travel
+// assert retired with the beak, TODO 189):
 {
   const worldPt = (dl) => ({ x: -dl.x, y: dl.y });
   const pv = worldPt(_pivotDial), cl = { x: ALARM_WIND_X, y: ALARM_WIND_Y };
@@ -19359,12 +19361,9 @@ const alarmPawlFlex = new THREE.Group(); // the spring-steel tip — tick flexes
     const t = Math.max(0, Math.min(1, ((p2.x - pv.x) * dx + (p2.y - pv.y) * dy) / L2));
     return Math.hypot(p2.x - (pv.x + t * dx), p2.y - (pv.y + t * dy));
   };
-  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§29 pawl tail ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
+  const say = (nm, clr) => { if (clr < CLEAR_MARGIN) console.warn(`§29 tail run ${nm}: clearance ${clr.toFixed(2)}, need ${CLEAR_MARGIN}`); };
   say('vs i1 sleeve', segDist(ALARM_SET_I1) - 0.62 - 0.13);
   if (ALARM_SET_I2) say('vs i2 stud', segDist(ALARM_SET_I2) - 0.45 - 0.13);   // TODO 182: omitted with its route
-  const wd = ALARM_PIN_DROP * (ALARM_PAWL_DIST + _contrateR + 0.35) / ALARM_FEELER_ARM_LEN; // beak's withdrawal travel
-  if (wd - ALARM_PAWL_ENGAGE < CLEAR_MARGIN)
-    console.warn(`§29 pawl: withdrawal ${wd.toFixed(2)} clears the ${ALARM_PAWL_ENGAGE} engagement by ${(wd - ALARM_PAWL_ENGAGE).toFixed(2)}, need ${CLEAR_MARGIN}`);
 }
 // §29 step 3 corridor + travel asserts:
 {
@@ -20316,13 +20315,18 @@ const alarmPhiCapAt = (lift) => {
 // pin CANNOT drop — no drop, no trip, no ring — and pressing a risen tail
 // back down lifts the pin out of the notch mid-ring.
 //
-// Why the hold arrests a RUNNING train when the natural pin-return does
-// not: the release pawl is one-way (the §29 climb's long-ramp/steep-bank
-// saw). Spring-seated, the running contrate CAMS it out ramp by ramp — it
-// ratchets, and the ring runs down, which is the shipped model's story.
-// Held, the pawl is seated through the LEVER's located geometry (the same
-// authority that banks the drop), the ramp cannot cam a located member,
-// and the train is caught on the next tooth: arrested, not paused.
+// What this does NOT do (TODO 189): arrest a RUNNING train through metal.
+// This used to say the §29 release pawl was one-way, that the running
+// contrate cammed a spring-seated pawl out ramp by ramp, and that a pawl
+// seated through the lever's located geometry caught the train on the next
+// tooth. None of it held: the beak never reached the contrate, no saw was cut
+// on its symmetric bevel teeth, and the contrate does not turn during a ring
+// at all — it is on the ARBOR side, parked by the click, while the barrel
+// BODY runs. The pawl is retired. Mid-ring, the finger's press lifts the pin
+// out of the notch (metal), and tick() then clears `alarmReleased` (a flag):
+// the arrest is MODELLED, not simulated. Making it metal is TODO 199 stage 3
+// — the lock re-engaging on the pin's lift — gated on TODO 190's re-design of
+// this finger's interface.
 //
 // The finger's radius is the ONE free slot on the tail: mid-window between
 // the bracket lugs' outer reach and the spring stud's inner face, both
@@ -21414,9 +21418,15 @@ const ALARM_CAM_APPROACH_FRAC = 0.06;  // base circle → the radius that first 
 // preloaded seat it can never reach, and the cam obstructs. Naming the mesh is
 // required — §48 rejects a spring that is only geometry, which is exactly what
 // all three were when the audit first ran.
-declareRestoring('Alarm release feeler', 'alarmPawlBeak', 'spring',
-  'the blade is grounded on its own stud and drives the arm to a seat one CLEAR_MARGIN past the banking stop; the pin obstructs',
-  'alarmFeelerSpring');
+// (TODO 189 RETIRED the feeler's row: `declareRestoring('Alarm release
+// feeler', 'alarmPawlBeak', 'spring', …, 'alarmFeelerSpring')`. Measured, the
+// audit's population for this unit was the riser and beak ALONE — their flex
+// group's posed saw wobble (the registry swept them as `track`) — and the lever itself
+// reverses on no axis in AXES. So the row was answering for a posed wobble,
+// not for the blade returning the lever, and with the beak gone it is a stale
+// claim the gate refuses. The blade is real and still returns the lever; what
+// is missing is an axis that drops the pin and lifts it again. TODO 199 stage
+// 3 ships that axis and re-declares this row against the lever body.)
 declareRestoring('Minute jumper', 'jumperBeak', 'spring',
   'the click spring seats the beak past the valley floor and the star obstructs — the ride is a limit, not a placement',
   'jumperClickSpring');
@@ -24559,7 +24569,7 @@ if (Math.hypot(alarmWindI2.x - alarmBarrelPos.x, alarmWindI2.y - alarmBarrelPos.
   rod.position.z = (rodTop + Z_ALARM_CORNER) / 2;
   climb.add(rod);
   const contrate = G.makeConicalGear({ name: 'contrate', teeth: ALARM_BEVEL_TEETH, module: ALARM_BEVEL_MODULE, mateTeeth: ALARM_BEVEL_TEETH, faceWidth: ALARM_BEVEL_FACE });
-  contrate.traverse((o) => { if (o.isMesh) o.name = 'alarmWindContrate'; }); // §29 step 4: the pawl budget selects this by name
+  contrate.traverse((o) => { if (o.isMesh) o.name = 'alarmWindContrate'; }); // named for instruments (§29 step 4's pawl budget selected it until TODO 189 retired the pawl)
   const cMount = new THREE.Group();
   cMount.position.z = Z_ALARM_CORNER;
   cMount.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1));
@@ -26669,6 +26679,14 @@ function arrestAngles(arborA, bodyA) {
 // holds the brake pressed regardless of the feeler, ON it backs away and the
 // lock answers to the release. btn-alarm drives the slide; the slide is the
 // visible on/off.
+//
+// TODO 189/199 — READ THE PARAGRAPHS ABOVE AS HISTORY where they speak of the
+// release. The lock lever is posed by `alarmLockArmAt(alarmColShownA)`, a
+// function of the column wheel ALONE: its finger reads 0.3167 into the stop
+// wheel's teeth disarmed and 0.1500 clear armed, released, dropped or
+// silenced. Nothing carries the feeler's drop to it, so between arming and the
+// trip the striking train is held by `alarmReleased === false` in tick() — a
+// flag — and MECH_GRAPH.todo says so. TODO 199 files the release line.
 //
 // Geometry derived like the follower's: the pivot stands d from the wheel
 // axis, the arm reaches L, and the engaged angle comes from the (pivot, axis,
@@ -32621,7 +32639,7 @@ alarmEmitter = alarmStrikePt;     // the strike-point empty built with the gong 
 let alarmBarrelWind = 0;          // alarm-spring energy, in turns — §25 C: ships EMPTY; the alarm must be WOUND to ring (drains while ringing)
 let alarmStrikePhase = ALARM_PHASE_REST; // striking-train phase, in strikes (each whole strike = one pin releasing the hammer)
 let alarmStrikeIdx = Math.floor(ALARM_PHASE_REST - alarmStrikeUNow()); // last strike SOUNDED — the ding's edge source (§104: the wire-meeting fraction rides the governed gap; wind is 0 here)
-let alarmReleased = false;        // the lock is lifted: the striking train is free to run (set at the trip)
+let alarmReleased = false;        // the trip has fired: the striking train is free to run (set at the trip). Until then THIS FLAG is the hold — no metal holds an armed train (TODO 189/199)
 let restoredAlarmOn = false;      // persisted toggle, applied once the UI exists
 let restoredQualityMode = 'Auto'; // §14 quality select, applied once the tier plumbing exists
 
@@ -44394,9 +44412,11 @@ function tick(t) {
         alarmPinDropCapAt(alarmSilFingerDropAt(alarmCrownPullT)));
     }
     // §29 step 5: the trip IS the pin's drop. The physical chain — disc's
-    // notch arriving under the pin, the lever bottoming on its stop, the
-    // pawl withdrawing clear of the contrate — is what frees the train;
-    // the §25 B angle-crossing survives as the AGREEMENT ASSERT: a pin
+    // notch arriving under the pin, the lever bottoming on its stop — is
+    // metal up to the lever; what frees the train is the flag this sets
+    // (TODO 189 retired the pawl said to withdraw from the contrate; the
+    // feeler → lock release line is TODO 199). The
+    // §25 B angle-crossing survives as the AGREEMENT ASSERT: a pin
     // that bottoms outside the coincidence window means the differential's
     // encoding has drifted from the tube's, and that is a defect, not a
     // ring. One-shot per drop (alarmDropSpent re-arms when the pin lifts),
@@ -44480,7 +44500,12 @@ function tick(t) {
       const relTarget = wrapPi(alarmNotchA() - hourDialA);
       if (Math.abs(relTarget) > ALARM_NOTCH_W)
         console.warn(`§29: pin bottomed ${Math.abs(relTarget).toFixed(3)} rad outside the notch's arc (window ${ALARM_NOTCH_W})`);
-      alarmReleased = true;              // both holds now off: the brake lifted at arming, the pawl just withdrew
+      // TODO 189/199: THIS FLAG IS THE HOLD. Between arming and here nothing in
+      // the metal stands in the striking train's way — the lock finger answers
+      // the column wheel alone and is clear once armed — so `!alarmReleased`
+      // below is what keeps the train still (modelled, not simulated). The
+      // §29 step-4 pawl that was said to withdraw here never reached the teeth.
+      alarmReleased = true;
       alarmDropSpent = true;
       // Fast-forward exists to REACH this moment, so hand the moment back at
       // real speed: a ring that plays out in three FF ticks is over before it
@@ -44500,16 +44525,19 @@ function tick(t) {
     // apart (barrel angle and pin angle are one mesh). One ding per strike,
     // fired when the head actually reaches the wire (alarmStrikeUNow() into the
     // cycle), not at some abstract whole number. When the barrel empties the
-    // train stops and the lock re-seats — the ring ends because it RAN DOWN —
-    // and it is re-armed for the next crossing. Turning the alarm OFF re-seats
-    // it too, parking the hammer on its check.
+    // train stops — the ring ends because it RAN DOWN — and the flag clears,
+    // re-armed for the next crossing (the lock does NOT re-seat while armed:
+    // it answers the column wheel alone, TODO 199). Turning the alarm OFF
+    // re-seats the lock, parking the hammer on its check — that one IS metal.
     // §45 stage 2 — pull while ringing STOPS it: the finger takes the tail
-    // below its free-rise point, the pin lifts out of the notch, and the
-    // pawl is re-seated through the lever's LOCATED geometry — the saw ramp
-    // cannot cam out a located member (unlike its own spring seat, which
-    // ratchets — why a ring otherwise runs down). Arrested, not paused: the
-    // re-armed drop above decides whether it re-fires when the crown goes
-    // home. The gate reads the rocker's finger, not the crown flag.
+    // below its free-rise point and the pin lifts out of the notch — that much
+    // is metal. What then stops the train is this line clearing the flag:
+    // TODO 189 retired the §29 pawl this used to say was "re-seated through
+    // the lever's located geometry", which never reached the contrate, and the
+    // contrate does not turn during a ring anyway. Arrested by the FLAG, not
+    // by metal (TODO 199 stage 3, gated on TODO 190): the re-armed drop above
+    // decides whether it re-fires when the crown goes home. The gate reads
+    // the rocker's finger, not the crown flag.
     if (alarmReleased && alarmSilFingerDropAt(alarmCrownPullT) >= ALARM_SIL_GAP - 1e-9) {
       alarmReleased = false;
     }
@@ -45089,17 +45117,6 @@ function tick(t) {
     alarmWindUnit.userData.i2.rotation.z = -wA * (ALARM_WIND_W / ALARM_WIND_IDLER_TEETH);
     alarmWindUnit.userData.i1.rotation.z = wA * (ALARM_WIND_W / ALARM_WIND_IDLER_TEETH);
     alarmWindUnit.userData.climb.rotation.z = -wA * (ALARM_WIND_W / ALARM_WIND_PINION_TEETH);
-    // §29 step 4: the pawl's spring-steel tip follows the contrate tooth
-    // profile under it while seated — stateless, like the pin on the track
-    // (winding visibly clicks it; the long-ramp/steep-bank saw shape is the
-    // one-way convention). The trip's withdrawal comes from the LEVER (the
-    // pin side owns that); this flex is only the click's compliance.
-    {
-      const seatedT = 1 - clamp(alarmPinDropPhys / ALARM_PIN_DROP, 0, 1); // §45 stage 2: a held pin seats the pawl
-      const ph = ((alarmWindUnit.userData.climb.rotation.z * ALARM_BEVEL_TEETH / (2 * Math.PI)) % 1 + 1) % 1;
-      const saw = ph < 0.85 ? ph / 0.85 : (1 - ph) / 0.15;
-      alarmPawlFlex.position.z = -seatedT * ALARM_PAWL_ENGAGE * 0.9 * saw + subDrillZ(alarmPawlFlex); // cam-out is plate-ward (−local z), the withdrawal's own direction (+ the drill)
-    }
     // §99 — the CLICK rides the arbor ratchet: the maintaining detent's
     // one-sided constraint (seek the seat, stop at the cam — the spring
     // produces the return, the saw only ever obstructs; the seat is
@@ -47437,7 +47454,7 @@ window.__clock = {
   get alarmDiscAngle() { return alarmDiscAngle(); },
   get alarmTarget() { return alarmTargetSeconds(); },
   get alarmBarrelWind() { return alarmBarrelWind; }, // alarm-spring energy (turns); 0 = run down (§24)
-  get alarmReleased() { return alarmReleased; },     // lock lifted / ringing (§24)
+  get alarmReleased() { return alarmReleased; },     // tripped / ringing (§24) — the flag that holds an armed train, TODO 199
   get alarmStrikePhase() { return alarmStrikePhase; }, // striking-train phase in strikes (§24)
   get alarmHammerAngle() { return alarmHammerAngle(); }, // the derived hammer swing (§25: read off the pin holding the tail)
   // Striking-train constants the inspector's 'alarmStrike' axis needs to sweep

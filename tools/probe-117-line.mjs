@@ -1,5 +1,16 @@
 // §117 — THE RELEASE TAKE-OFF, AS A STRAIGHT LINE.
 //
+// TODO 189 — READ ITS BEAK ROWS AS HISTORY. Member 4 below, the pawl beak in
+// the contrate band, was retired: it never reached the teeth, and the contrate
+// does not turn during a ring. `ALARM_PAWL_ENGAGE` and `ALARM_PAWL_DIST` no
+// longer exist in main.js, so the rows that price the beak's withdrawal and
+// the false-release read budget (ALARM_PAWL_ENGAGE / gain) verify this file's
+// own restated constants — a line spec for an output that is not built — and
+// say nothing about the shipped movement. The rows about the ring, the pin and
+// the lever's arms still describe metal. The release's real output stage is
+// TODO 199's to design, and its read budget is re-derived against that
+// output's engagement, not this one's.
+//
 // CLAUDE.md's "design in a line, fold to fit": the chain is laid out
 // input-to-output with no corridors, and the quantities it establishes are the
 // LINE SPEC the folded build must measure back to. In the line it is

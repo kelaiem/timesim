@@ -164,8 +164,6 @@ export default {
   // ---- alarm ----
   ['This movement carries a complete second power system for its alarm, with its own crown, its own barrel-spring, and its own release. The alarm crown does for the alarm what the main crown does for the time: turned one way it sets a disc under the dial to the chosen alarm time (a central alarm hand shows it, riding beneath the hour hand); pushed home it winds the alarm\'s own spring.']:
     '这枚机芯为闹响配了一整套第二动力系统，有自己的表冠、自己的条盒发条和自己的释放机构。闹响表冠之于闹铃，正如主表冠之于时间：朝一个方向转动，把表盘下的一只圆盘拨到所选的闹响时刻（一根中央闹针指示它，藏在时针之下）；推回到底，则给闹铃自己的发条上弦。',
-  ['The release is a mechanical comparison, made by touch. A spring-loaded finger — the <b>feeler</b> — rests against the edge of the rotating alarm disc, which turns with the hours. The disc\'s edge carries a notch at the set time; everywhere else the feeler rides the high rim and the alarm stays blocked. When the dial\'s time reaches the set time, the notch arrives under the feeler, the feeler drops in, and the block is withdrawn: the alarm spring is free to run. It spins a small train that swings a hammer against a gong, and rings until the spring is spent — or until a pull of the alarm crown lifts the feeler out and parks it.']:
-    '释放是一次机械式的比对，靠触觉完成。一枚受簧力压着的手指——<b>触杆</b>——抵在随小时转动的闹响圆盘边缘上。圆盘边缘在设定时刻处开有一道缺口；其余各处触杆都骑在高起的边沿上，闹铃保持锁止。当表盘的时间走到设定时刻，缺口转到触杆之下，触杆落入其中，锁止随之撤去：闹铃发条得以奔跑。它带动一列小轮系，把音锤挥向音簧，一直响到发条耗尽——或者直到有人拉出闹响表冠，把触杆抬出并停放好。',
   ['Arming is its own little machine: pressing the pusher ratchets a star-shaped column wheel round one tooth per press, alternately enabling and disabling the release — the same switch-by-column that chronograph buttons use.']:
     '启动闹响本身是一台小机器：按下按钮，棘爪就把一只星形柱轮推过一齿，于是释放机构被交替地开启和关闭——与计时码表按钮所用的柱轮切换是同一套办法。',
   // ---- §104: the ringing is driven now ----
