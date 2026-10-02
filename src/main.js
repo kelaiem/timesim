@@ -28635,7 +28635,7 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
         if (rMin > plateR + 1e-6) return;
       }
       let axis = null;
-      for (let par = o; par; par = par.parent) if (par.userData && Number.isFinite(par.userData.r)) { axis = par.getWorldPosition(_tmpV3a); break; }
+      for (let par = o; par; par = par.parent) if (par.userData && Number.isFinite(par.userData.r)) { axis = par.getWorldPosition(new THREE.Vector3()); break; }
       const _cx = (b.min.x + b.max.x) / 2, _cy = (b.min.y + b.max.y) / 2;
       const _half = Math.max(b.max.x - b.min.x, b.max.y - b.min.y) / 2;
       // §198 — a BAR enters as the stadium its builder publishes
@@ -28654,7 +28654,22 @@ const { xy: ALARM_LINK_ROD_XY, dist: ALARM_LINK_ROD_DIST, tabAzDeg: ALARM_LINK_A
       // an off-axis member (an idler on a spanning rotor group) drawn as a
       // disc about the axis claims its whole orbit
       if (axis && Math.hypot(_cx - axis.x, _cy - axis.y) < _half * 0.5) {
-        const r = Math.hypot(_cx - axis.x, _cy - axis.y) + _half;
+        // TODO 190 — the disc's radius is the metal's own farthest reach from
+        // the axis, which is exactly what turning the mesh about that axis
+        // sweeps. It was the box centre's offset plus HALF THE BOX'S LONGER
+        // SIDE — no bound at all: it under-claims a square footprint's corners
+        // (the half-diagonal is √2 longer), and over-claims a box whose centre
+        // stands off the axis (the whole offset is added to a half-width that
+        // may lie in another direction). Over: the
+        // hairspring's coil reaches 8.40 from the balance staff at
+        // `?studr=7.595` and was claimed as a disc of 11.3, which put it in
+        // the rod's column at the re-solved site (true distance 3.47) and
+        // sent that spec boot — and studr 4.71 / 7.1175 — back to the old
+        // site while the default build kept the new one. One search, two
+        // answers, decided by box inflation.
+        const ax = axis.x, ay = axis.y, pp = o.geometry.attributes.position;
+        let r = 0;
+        for (let i = 0; i < pp.count; i++) { _tmpV3a.fromBufferAttribute(pp, i); o.localToWorld(_tmpV3a); r = Math.max(r, Math.hypot(_tmpV3a.x - ax, _tmpV3a.y - ay)); }
         obs.push({ disc: { x: axis.x, y: axis.y, r }, min: { z: b.min.z }, max: { z: b.max.z }, _who: `${e.name}/${o.name || o.geometry.type}(disc r ${r.toFixed(1)} at ${axis.x.toFixed(1)},${axis.y.toFixed(1)} z ${b.min.z.toFixed(2)}..${b.max.z.toFixed(2)})` });
       } else {
         b._who = `${e.name}/${o.name || o.geometry.type}`;

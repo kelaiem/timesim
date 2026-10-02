@@ -26325,9 +26325,24 @@ lands. §50's floor and not §62's `TQ_LAND_MIN` (1.9 at today's plate): that is
 the window rule, the old site left only 0.786 to its nearest opening, and the chaton seats
 overlap their own bores by design — at 1.9 no candidate survives (best −0.260).
 The search then lands on **(18.9643, −2.8347)**, d **9** on parity ray k −1,
-tab **324°**, clearing **0.6099** (bound by the column against the alarm
+tab **324°**, clearing **0.6033** (bound by the column against the alarm
 setting arbor's wheel), with lands 0.389 (three-quarter plate) and 3.050
-(base plate). It was (27.8789, −4.0720), d 9, k 0, tab 315°, 0.4592 (tab: the
+(base plate).
+
+**And every spec boot has to reach the same answer.** The first commit of
+this landing read 0.6099 there, and the battery's spec tier then caught
+`studr=7.595`, `4.71` and `7.1175` (all listed in `validated-configs.js`)
+re-solving to the OLD site with six boot warns. The cause was the search's
+rotor DISC: an obstacle centred near its rotor's axis was claimed as a disc of
+radius (box-centre offset + half the box's longer side), which is not a bound
+on the metal. At `?studr=7.595` the hairspring's coil reaches 8.40 from the
+balance staff, but its box claimed a disc of 11.3, which reached the rod's
+column at (18.96, −2.83) — true distance 3.47 — and scored that site −0.576.
+The disc's radius is now the metal's own farthest vertex from the axis, which
+is exactly what turning about that axis sweeps. Default, identity, `reconf=1`,
+the three `studr` points and `route=2-leg` all solve to the same site, tab and
+clearance (0.6033 — the arbor wheel's honest disc is a little larger than the
+old formula's under-claim) and boot silent. It was (27.8789, −4.0720), d 9, k 0, tab 315°, 0.4592 (tab: the
 run's root corner).
 
 Re-derived from the move, each against the assert that holds it (no assert was
