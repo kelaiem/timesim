@@ -30286,7 +30286,7 @@ spacing is a fixed-width face drawing a cursive script, not a shaping failure.
 | `offline-check` | **40/40**, precache **55/55**, the Persian primer served from cache |
 | boot | `?lang=fa` on all three documents console-silent apart from the static server's own 404, which English shows too; `lang="fa"`, `dir="rtl"`; `fmtNum` reads `30.0 · 0.024 · 18,000`; the ladder assert silent |
 | fingerprint | **3297321040** (60 units, 12 poses) at `?lang=fa` and in English, IDENTICAL to a virgin boot of `origin/main` measured beside it |
-| battery | a local run (dev container, 3 shards) was in flight when this was written; CI's Battery job on the PR is the merge gate |
+| battery | **51/51 gates**, local (dev container, 3 shards, 4839 s wall, 6475 s of checks); fingerprint **3297321040** across virgin boots A and B and under the share payload (36/36 applied) — identical to `origin/main`. CI's Battery job on the PR is the merge gate |
 
 ### Residue, recorded
 
