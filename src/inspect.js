@@ -8584,21 +8584,16 @@ export const INVERTED_VOL_FRAC = 1e-3;
 // The SLENDER_WAIVERS covenant, verbatim: a waived row is accepted debt
 // citing its TODO item, visible in the report; a waiver naming a body with
 // no inverted row is STALE and fails, so deleting a fix's waiver is
-// structurally part of the fix. Keys are `unit/mesh`, and one key may cover
-// several meshes sharing a name — the Fork cock carries two unnamed
-// inverted lathes under its one `(unnamed)` key, both the same debt.
+// structurally part of the fix. Keys are `unit/mesh`, and one key covers
+// EVERY mesh sharing that name — which is the trap TODO 75 found: a
+// `unit/(unnamed)` key filed for two lathes went on to waive eight more.
+// Name the mesh, or a waiver here is a hole the size of a unit.
 export const INVERTED_WAIVERS = {
-  // Two jewel-setting lathes on the fork cock and one on the balance cock —
-  // cosmetic turnings whose profiles run the caseBack's old way. They render
-  // today only because nothing ever views them from the culled side; the fix
-  // is TODO 123's (reverse the profile travel; the makeCase lathe helper's
-  // signed-volume warn is the pattern to port to their builder).
-  'Fork cock/(unnamed)': 'TODO 123',
-  'Balance cock/(unnamed)': 'TODO 123',
-  // The alarm face cam — a custom BufferGeometry whose index winds inward
-  // (signed volume −0.27 against a 6.08 bbox). Dial-side, viewed from its
-  // lucky side only. Same item, same fix path at its builder.
-  'Alarm setting wheel/alarmFaceCam': 'TODO 123',
+  // Empty since TODO 75. The three keys here covered TEN bodies, not the four
+  // TODO 75 filed: a blanket `unit/(unnamed)` key waives every unnamed mesh of
+  // its unit, so TODO 184's bored cock legs (six of them, wound inside out)
+  // arrived under it in silence. All ten are wound outward at their builders
+  // now, each lathe behind `assertLatheOutward`. A new row fails.
 };
 
 // Classify one triangle given its nine coords. Exported for the probe.

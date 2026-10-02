@@ -17457,9 +17457,13 @@ registerExplode(alarmSetWheelGroup, 0, 2, 1); // dialFace child, like the alarm 
     }
     for (let i = 0; i < N; i++) {
       const a = i * 4, b = (i + 1) * 4;
-      idx.push(a + 2, b + 2, a + 3,  b + 2, b + 3, a + 3); // top (cam face)
-      idx.push(a, a + 2, b,  b, a + 2, b + 2);             // inner wall
-      idx.push(a + 1, b + 1, a + 3,  b + 1, b + 3, a + 3); // outer wall
+      // TODO 75 — every face wound OUTWARD (the walls ran inward, −0.27 of
+      // signed volume), and the base ring is a face now: without it the cam
+      // was an open shell, the parity raycast's hazard (TODO 27).
+      idx.push(a + 2, b + 2, a + 3,  b + 2, b + 3, a + 3); // top (cam face), normal −z
+      idx.push(a, b, a + 2,  b, b + 2, a + 2);             // inner wall, toward the axis
+      idx.push(a + 1, a + 3, b + 1,  b + 1, a + 3, b + 3); // outer wall, away from it
+      idx.push(a, a + 1, b,  b, a + 1, b + 1);             // base ring (z 0), normal +z
     }
     const g2 = new THREE.BufferGeometry();
     g2.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
