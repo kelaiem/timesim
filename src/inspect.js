@@ -10542,6 +10542,11 @@ const TURN_LAP_MAX_FRAC = 0.5;
 // the least slender thing this needs to speak about — widens by 15%, so the
 // test has seven times the margin it needs on the shortest member it judges,
 // and a disc (which widens by well under 1%) cannot pass it.
+// TODO 192 step 2 — the members that ARE pivots: a short reduced step at the
+// end of an arbor, turned last against its own shoulder. Named, because
+// "a pin-kind member at the end of a bar" also describes a screw's shank and
+// a stud's head, and those are judged as the bar they are.
+const TURN_END_PIVOTS = new Set(['trainPivot', 'balancePivot']);
 const TURN_AMBIG_TILT = 0.15;
 const TURN_AMBIG_WIDEN = 1.02;
 
@@ -10885,12 +10890,42 @@ export async function turnedBars(clock, opts = {}) {
         if (!bridge) continue;
         cluster.push(b); spans.push(sb); used.add(j);
       }
-      const mm = turnMeasure(a.axis, a.origin, cluster.map((x) => x.pts));
+      // TODO 192 step 2 — A PIVOT AT THE END OF A BAR is judged on its own
+      // length. The narrowest-step rule assumes the thin step is cut last
+      // "with the whole length already standing out", which is true of a neck
+      // in the middle of a bar and false of one at its END: a pivot is turned
+      // with the bar gripped up to its shoulder and finished in a pivot runner
+      // that carries it right under the tool, so what bends is the pivot. Read
+      // the old way every pivoted arbor in a real watch is unturnable — the
+      // centre arbor at L/D 51 on a 0.07 mm pivot 0.19 mm long. The rule is
+      // applied by MEMBER, not inferred from the outline: a member named in
+      // TURN_END_PIVOTS whose span reaches an end of the bar is split out and
+      // measured alone, and the rest of the bar keeps the old rule. Inferring
+      // it from the outline was tried and moved 46 of 224 bars (hollow stones,
+      // tapered screw heads); by member it moves exactly the shouldered staffs.
+      let lo = Infinity, hi = -Infinity;
+      const endSpanOf = (x) => { let a0 = Infinity, a1 = -Infinity; for (const p of x.pts) { const t = (p[0] - a.origin[0]) * a.axis[0] + (p[1] - a.origin[1]) * a.axis[1] + (p[2] - a.origin[2]) * a.axis[2]; if (t < a0) a0 = t; if (t > a1) a1 = t; } return [a0, a1]; };
+      const spansC = cluster.map(endSpanOf);
+      for (const [x0, x1] of spansC) { if (x0 < lo) lo = x0; if (x1 > hi) hi = x1; }
+      const isEnd = (i) => TURN_END_PIVOTS.has(cluster[i].mesh)
+        && (Math.abs(spansC[i][0] - lo) < TURN_AXIS_OFFSET_U || Math.abs(spansC[i][1] - hi) < TURN_AXIS_OFFSET_U);
+      const ends = cluster.map((_, i) => i).filter(isEnd);
+      const body = cluster.filter((_, i) => !ends.includes(i));
+      let mm = turnMeasure(a.axis, a.origin, (body.length ? body : cluster).map((x) => x.pts));
+      if (mm && body.length && ends.length) {
+        // the body is still read over the WHOLE span: it stands out of the chuck that far
+        mm = { lenU: hi - lo, diaU: mm.diaU };
+        for (const i of ends) {
+          const pm = turnMeasure(a.axis, a.origin, [cluster[i].pts]);
+          if (pm && pm.lenU / pm.diaU > mm.lenU / mm.diaU) mm = pm;
+        }
+      }
       if (!mm) continue;
       bars.push({ part: unit, meshes: cluster.map((x) => x.mesh),
         kind: cluster[0].kind,
         lenMM: +(mm.lenU * UNIT_MM).toFixed(4), diaMM: +(mm.diaU * UNIT_MM).toFixed(4),
         LD: +(mm.lenU / mm.diaU).toFixed(1),
+        ...(ends.length && body.length ? { endPivots: ends.length } : {}),
         where: cluster.map((x) => x.where) });
     }
   }

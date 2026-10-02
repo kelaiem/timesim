@@ -26069,7 +26069,11 @@ truth failure, not packaging.
    the honest answer only at service load. The fusee keeps its staff-size
    plain bushes (it carries the chain's pull and passes the let-down square)
    and the pallet fork its 0.35 staff (the escapement's η is a band that
-   covers it). Verdict after the cut:
+   covers it). `turning` read each shouldered arbor as one bar at its
+   pivot's diameter (L/D 51); a pivot is turned last against its own
+   shoulder, so `TURN_END_PIVOTS` now measures an END pivot alone and the
+   body on the old rule, which moves those five bars and no other. Verdict
+   after the cut:
 
    | corner | ribbon → balance η | sustained, vertical / dial-flat | claim over supply |
    |---|---|---|---|

@@ -390,7 +390,12 @@ it into prose either.
    in the safe direction is a check that passes. It GATES on arrival with all
    twelve failing bars declared in `TURN_WAIVERS` against TODO 145, on
    `stockFloor`'s convention rather than §54's report covenant: a thirteenth
-   bar fails the build, where a report would have left it silent. `needRest`
+   bar fails the build, where a report would have left it silent. **A pivot
+   at the END of a bar is judged on its own length** (TODO 192 step 2): it is
+   turned last against its own shoulder, so a member named in `TURN_END_PIVOTS`
+   that reaches an end is measured alone and the body keeps the narrowest-step
+   rule — by member, because inferring it from the outline moved 46 of 224
+   bars, and by name it moves exactly the shouldered staffs. `needRest`
    (L/D 10–20, wanting a follower rest) and `ambiguous` are REPORTS),
    and `jumperMovers` **control PASS, 0 undeclared moving obstacles, 0 rows
    naming no mesh, 0 failing rows** (TODO 181 — `JMP_SITE` can only read the
