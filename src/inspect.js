@@ -1201,7 +1201,15 @@ export const AXES = [
     n: 96,
     // alarmOn: 1 — §25 C: ARMED, so the crown sweep actually swings the tube
     // (disarmed it would follow the fixed hour wheel and the axis would probe
-    // nothing), and the follower nose rides the whole heart once per rev.
+    // nothing). TODO 194 CORRECTED what this said next ("the follower nose
+    // rides the whole heart once per rev"): the crown is PULLED, so the release
+    // sleeve's cone holds the arm at its released cap (ALARM_A_RELEASE_PHI) at
+    // every sample — the nose clears the heart by the lift clearance and rides
+    // nothing. No axis poses the RIDING cycle (armed, crown in, the hour
+    // turning under a held tube); the jumper solve samples that swing itself
+    // and the return spiral's frames are held by its build asserts, but a
+    // sweep of it would be a new axis — proposed in TODO 194's record, not
+    // added here.
     // alarmCrownPullT: 1 — crown-sense swap: SET is the pulled-out path now.
     // (setPose(alarmCrownRotation) writes the set path directly, so the sweep
     // itself is clutch-independent; the pose records the honest state.)
@@ -2384,8 +2392,10 @@ export const EXPECTED_CONTACT_FLOORS = [
       ['alarmTailPin', 'alarmHeart'],     // same lever, same band — the flank sweep's geometry bounds it
       ['alarmTubeBody', 'hourTube'],      // the §25 C running seat: bore 3.05 on the 3.0 tube IS the coupling
       ['alarmPivotPost', 'alarmHeart'],   // §45: post inner edge DERIVED as lobe + working 0.03
-      ['alarmIndexLine', 'alarmHeart'],   // §34 first slice: the index line is DECLARED proud 0.02 into the
-                                          // flange→heart margin — this check measured the declared 0.13 exactly
+      // (§34's ['alarmIndexLine', 'alarmHeart'] row is RETIRED by TODO 194:
+      // the line still stands proud 0.02 under the flange, but the return
+      // spiral's band now lies between the flange and the heart, so the pair
+      // is a margin plus the band apart and owes the margin like any other.)
     ],
   },
   {
@@ -3215,6 +3225,7 @@ export const INTRA_UNIT_CONTACTS = [
   // (see the strike sleeve above for why that stales a row).
   { unit: 'Alarm link', a: 'alarmLinkBeakBar', b: 'alarmLinkBeakPost', why: 'beak lever on its pivot post' },
   { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkBeakPost', why: 'beak tail on the same post' },
+  { unit: 'Alarm link', a: 'alarmLinkBeakFulcrum', b: 'alarmLinkBeakPost', why: 'TODO 194 fork: the fulcrum lug over the post — the lever widened only where its post stands, once the selector rod the post clears thickened with the dial move' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush1', why: 'lay shaft in hanger bush 1 — the running bearing (TODO 16 owns the stations; §202 named the bushes, since a third station renumbers every positional selector)' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush2', why: 'lay shaft in hanger bush 2' },
   { unit: 'Alarm link', a: 'alarmLinkShaft', b: 'alarmLinkHangerBush3', why: '§202: lay shaft in hanger bush 3 — the rod-end station, ALARM_LINK_ROD_END_OVERHANG inboard of the metal\'s end, the fix TODO 79 named' },
@@ -3412,12 +3423,23 @@ export const INTRA_UNIT_CONTACTS = [
   { unit: 'Alarm link', a: 'alarmLinkHangerBush3', b: 'alarmLinkHanger3', why: '§202: the third hanger, same construction — bush socketed on its column from the back plate\'s underside' },
   { unit: 'Alarm link', a: 'alarmLinkBeakTail', b: 'alarmLinkRod', why: '§121: the beak\'s tail on the rod\'s top — TODO 174 cut that top FROM the tail\'s underside through the tick\'s own lift, so the pair kisses at every tilt (0.0008 at rest, 0 at the seat)' },
   { unit: 'Alarm link', a: 'alarmLinkCrankRim', b: 'alarmLinkRod', why: '§121: the rod\'s end in the crank rim\'s eye — the crank joint the arming run turns' },
-  // Alarm disc — the §34/§48 follower assembly on the flange:
-  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#5', why: '§121: the follower bar lapped on its pivot rivet' },
-  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#7', why: '§121: the follower\'s nose bar lapped on the same rivet — the bar\'s two pieces share it' },
-  { unit: 'Alarm disc', a: 'LatheGeometry#1', b: 'BoxGeometry#10', why: '§121: the follower-spring stud block seated on the flange ring' },
+  // Alarm disc — the §34/§48 follower assemblies on the flange. TODO 194
+  // re-read the three Type#index rows against the metal they resolve to: the
+  // whys named a "follower bar", a "nose bar" and a "follower-spring stud
+  // block", none of which those labels have been since §34/§45 rebuilt the
+  // follower — they are follower-B's post and pin arm and the rocker's arm.
+  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#5', why: '§121: follower-B\'s pin arm (§34) lapped on its post above the flange — the arm\'s tangential pivot' },
+  { unit: 'Alarm disc', a: 'CylinderGeometry#4', b: 'BoxGeometry#7', why: '§121: follower-B\'s tail on the same post — the arm\'s two pieces share it' },
+  { unit: 'Alarm disc', a: 'LatheGeometry#1', b: 'BoxGeometry#10', why: '§121: the selector rocker\'s outboard arm (§34) where its lug rides the flange ring' },
   { unit: 'Alarm disc', a: 'alarmPivotPost', b: 'alarmFollowerBar', why: '§121: the follower bar turning ON its post — the §48 follower\'s bearing (0.16 of the post in the bar\'s eye)' },
-  { unit: 'Alarm disc', a: 'LatheGeometry#1', b: 'alarmFollowerSpringStud', why: '§121: the stud flush on the flange ring (deep 0 — a planted foot)' },
+  // TODO 194 — the return spiral's two working joints (the blade and its
+  // stud, which reached nothing, are retired with their row). The collet's
+  // own seats — pressed on the post, planted on the flange — are fixture to
+  // fixture in ONE frame, which no tier compares (`assembly` holds that
+  // connectivity), so they carry no row: a row nothing measures is the
+  // reported "never compared" class, not a declaration.
+  { unit: 'Alarm disc', a: 'alarmFollowerCollet', b: 'alarmFollowerSpiral', why: 'TODO 194: the spiral\'s INNER end clamped in the collet — sunk ALARM_SEAT_SINK into its face (the seated-contact convention); ALARM_HANDOFFS measures it seated at every parity' },
+  { unit: 'Alarm disc', a: 'alarmFollowerRiser', b: 'alarmFollowerSpiral', why: 'TODO 194: the spiral\'s OUTER end clamped against the arm\'s riser, sunk ALARM_SEAT_SINK — the joint the follower\'s return passes through; ALARM_HANDOFFS measures it seated at every parity' },
   // Alarm selector — §34's fork on its post:
   // These two rows named `alarmSelPost`, and THREE meshes answered to that
   // name — so between them they excused 15 mesh pairs (4 tabs × 3 posts, plus
@@ -6050,6 +6072,24 @@ const ALARM_HANDOFFS = [
     unitB: 'Alarm release feeler', meshB: 'alarmFeelerTail',
     expect: { disarmed: 'free', armed: 'free', setting: 'free', dropped: 'contact' },
   },
+  // TODO 194 — the follower's return, at BOTH of its ends, at every parity.
+  // The spiral is a morph wound on the arm's angle (seated at disarmed and
+  // dropped, riding at armed, held at the released cap while setting), so
+  // these two rows are the measurement that the frame it wears actually ends
+  // in the metal it is clamped to: the inner end in the post's collet, the
+  // outer end against the arm's riser — the follower's return delivered
+  // through a closed joint rather than posed beside it. The blade these
+  // replace stood 0.08–0.28 off the arm at every parity and nothing asked.
+  {
+    label: 'collet ⇄ return spiral (inner end)',
+    unitA: 'Alarm disc', meshA: 'alarmFollowerCollet',
+    unitB: 'Alarm disc', meshB: 'alarmFollowerSpiral',
+  },
+  {
+    label: 'arm riser ⇄ return spiral (outer end)',
+    unitA: 'Alarm disc', meshA: 'alarmFollowerRiser',
+    unitB: 'Alarm disc', meshB: 'alarmFollowerSpiral',
+  },
 ];
 
 // §66 part two — the schematic tier's contact dots light from THESE rows,
@@ -8103,7 +8143,12 @@ export const STOCK_KIND_BY_MESH = {
   // judgement: r 0.4 on a 10-gon reads ⌀ 0.2882 mm across the flats, four times
   // the pivot floor — the same class as the two posts above it.
   alarmLockPivotPost: 'pivot',
-  alarmFollowerSpringStud: 'pivot',  // the follower blade's grounded stud — ⌀ 0.1137 mm (alarmHammerSpringStud's twin)
+  // TODO 194 — the follower's return spiral, which retired the blade and its
+  // stud (alarmFollowerSpringStud, kinded here as pivot stock until then): a
+  // swept ribbon declares its own section (stockSection, the 0.033 mm strip),
+  // so the kind is what answers; the collet, lug and riser are wheel stock
+  // at §50's floor and need no entry.
+  alarmFollowerSpiral: 'spring',
   // The striking arbor's turned step between cam and pinion. Its row is the
   // STEP's length (0.3 u), not a section: the census does not subdivide an
   // arbor, so a shaft drawn in three meshes reports each one's extent. The
@@ -13123,6 +13168,171 @@ function driveFanout(name) {
   return seen.size;
 }
 
+// TODO 194 — THE REACH CONTROL. §48's geometry-only guard asks whether a
+// declared spring's mesh EXISTS; it never asked whether that mesh reaches the
+// body it is declared to return. TODO 194 is what that gap cost: §29's
+// follower blade existed, was named in no declaration only because the unit
+// answered '*', and stood 0.08–0.28 off the arm at every parity — and the
+// sautoir's predecessor (§173) passed a member declaration while 2.0963 of
+// air stood between its blade and the arm it was said to press.
+//
+// So a 'spring' declaration that names its MEMBER is measured: over three
+// samples of every axis (the member tier's own walk), the least distance from
+// the spring's mesh to any mesh of the member's RIGID FRAME — clustered by the
+// same world-motion signature the member tier uses, so a spring bearing on the
+// lever's tail answers for a member declared by its beak. Within
+// HANDOFF_TRACK_TOL somewhere is REACHED: a spring that touches its body at no
+// pose of the net returns nothing. A spring that IS its member (the sautoir,
+// a ribbon) reads 0 by construction, which is the honest answer. '*' rows
+// name no body and are not measured (they are §162's own reported residue).
+//
+// `rows` override the declarations: the control measures a row the build no
+// longer declares (§29's blade on the base tree) through the same function.
+// Accepted debt, keyed `unit\u0000member`, each citing its TODO — §50's convention.
+export const RESTORING_REACH_WAIVERS = {
+  // Found by this control on its first run. The maintaining detent's row
+  // names `maintSpring` — the maintaining-POWER spring, a torus coiled under
+  // the maintaining wheel in 'Fusee & great wheel' — which shares the word and
+  // never touches the detent's click (1.0+ at every pose). The detent has no
+  // spring of its own in the metal: §48's guard passed it because a mesh of
+  // that name exists.
+  'Maintaining detent\u0000click': 'TODO 210',
+  // Also found on the first run, through the `through` hop: the yoke's blade
+  // reaches the yoke (0 — the 'Yoke' row), but the yoke's prong stands at
+  // best 0.137 off the clutch's groove collars over the whole net, so the
+  // return the row describes ("the yoke spring re-seats it through the fork")
+  // passes through a fork that touches nothing — TODO 194's class, again.
+  'Winding clutch\u0000clutchSleeve': 'TODO 211',
+};
+export async function measureSpringReach(clock, rows = null) {
+  const unitObj = new Map((clock.labelEntries || []).map((e) => [e.name, e.obj]));
+  const unitMeshes = (root) => {
+    const out = [];
+    const walk = (o) => {
+      if (o.userData && o.userData.schematic) return;
+      if (o.isMesh && o.geometry && o.geometry.attributes.position) out.push(o);
+      for (const ch of o.children) walk(ch);
+    };
+    walk(root);
+    return out;
+  };
+  const decls = rows || [...(clock.declaredRestoring || new Map()).values()]
+    .filter((d) => d.kind === 'spring' && d.member && d.member !== '*' && d.mesh);
+  const work = [], unresolved = [];
+  for (const d of decls) {
+    const root = unitObj.get(d.unit);
+    if (!root) { unresolved.push({ ...d, problem: 'unit not in the scene' }); continue; }
+    const meshes = unitMeshes(root);
+    const byLabel = (lbl) => meshes.find((m, i) => (m.name || `${m.geometry.type}#${i}`) === lbl) || null;
+    // a spring may belong to ANOTHER unit than the body it returns (the yoke's
+    // blade returns the clutch, the hammer's the lifting lever): its own unit
+    // first, then the scene by name — a declaration names its mesh, not where
+    const member = byLabel(d.member);
+    let spring = byLabel(d.mesh);
+    if (!spring && clock.scene) clock.scene.traverse((o) => { if (!spring && o.isMesh && o.name === d.mesh && !(o.userData && o.userData.schematic)) spring = o; });
+    if (!member || !spring) { unresolved.push({ unit: d.unit, member: d.member, mesh: d.mesh, problem: `${member ? 'spring' : 'member'} mesh not found` }); continue; }
+    let through = null;
+    if (d.through) {
+      if (clock.scene) clock.scene.traverse((o) => { if (!through && o.isMesh && o.name === d.through && !(o.userData && o.userData.schematic)) through = o; });
+      if (!through) { unresolved.push({ unit: d.unit, member: d.member, mesh: d.mesh, through: d.through, problem: 'through mesh not found' }); continue; }
+    }
+    // the first hop lands anywhere on the THROUGH body's rigid frame (a blade
+    // bears on the lever's arm, not necessarily on the mesh that touches the
+    // member); the second hop is held from the named contact mesh itself
+    let tMeshes = null;
+    if (through) {
+      const labelled = new Map((clock.labelEntries || []).map((e) => [e.obj, e.name]));
+      let r = through; while (r && !labelled.has(r)) r = r.parent;
+      tMeshes = r ? unitMeshes(r) : [through];
+    }
+    work.push({ d, meshes, member, spring, through, tMeshes, tBest: new Map(), best: new Map() });
+  }
+  const all = new Set();
+  for (const w of work) { for (const m of w.meshes) all.add(m); all.add(w.spring); if (w.tMeshes) for (const m of w.tMeshes) all.add(m); }
+  const trace = new Map(), base = new Map(), baseGeo = new Map(), morphed = new Set();
+  const _mm = new THREE.Matrix4(), _ba = new THREE.Box3(), _bb = new THREE.Box3();
+  const CAP = 1.0;   // nothing past DECLARED_CONTACT_REACH is worth an exact distance
+  enterAxis(clock);
+  clock.setPose(AXES[0].pose(0, clock));
+  for (const m of all) { base.set(m, m.matrixWorld.clone().invert()); baseGeo.set(m, m.geometry.id); trace.set(m, []); }
+  let n = 0;
+  for (const axis of AXES) {
+    enterAxis(clock);
+    for (const f of [0, 0.5, 1]) {
+      clock.setPose(axis.pose(f, clock));
+      for (const m of all) {
+        _mm.copy(m.matrixWorld).multiply(base.get(m));
+        const acc = trace.get(m);
+        for (let i = 0; i < 16; i++) acc.push(_mm.elements[i]);
+        if (m.geometry.id !== baseGeo.get(m)) morphed.add(m);
+      }
+      for (const w of work) {
+        // the first hop of a `through` row: spring onto the body it bears on
+        if (w.tMeshes) {
+          _ba.setFromObject(w.spring);
+          for (const m of w.tMeshes) {
+            if (m === w.spring) { w.tBest.set(m, 0); continue; }
+            const prevH = w.tBest.has(m) ? w.tBest.get(m) : CAP;
+            if (prevH === 0) continue;
+            _bb.setFromObject(m);
+            if (boxDistance(_ba, _bb) >= prevH) continue;
+            const dh = meshClearance(w.spring, m, prevH);
+            if (dh < prevH) w.tBest.set(m, dh);
+          }
+        }
+        const src = w.through || w.spring;   // the body that must reach the member's frame
+        _ba.setFromObject(src);
+        for (const m of w.meshes) {
+          if (w.through) {
+            if (m === w.through) { w.best.set(m, 0); continue; }
+            const prevT = w.best.has(m) ? w.best.get(m) : CAP;
+            if (prevT === 0) continue;
+            _bb.setFromObject(m);
+            if (boxDistance(_ba, _bb) >= prevT) continue;
+            const dt = meshClearance(src, m, prevT);
+            if (dt < prevT) w.best.set(m, dt);
+            continue;
+          }
+          if (m === w.spring) { w.best.set(m, 0); continue; }
+          const prev = w.best.has(m) ? w.best.get(m) : CAP;
+          if (prev === 0) continue;
+          _bb.setFromObject(m);
+          if (boxDistance(_ba, _bb) >= prev) continue;
+          const dd = meshClearance(w.spring, m, prev);
+          if (dd < prev) w.best.set(m, dd);
+        }
+      }
+      if (++n % 4 === 0) await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+  const out = work.map((w) => {
+    const groups = clusterByFrame(w.meshes, trace, morphed);
+    const body = (groups.find((g) => g.meshes.includes(w.member)) || { meshes: [w.member] }).meshes;
+    let reach = Infinity, via = null;
+    for (const m of body) {
+      const v = w.best.has(m) ? w.best.get(m) : Infinity;
+      if (v < reach) { reach = v; via = m.name || `${m.geometry.type}#${w.meshes.indexOf(m)}`; }
+    }
+    let hop1v = Infinity;
+    if (w.tMeshes) {
+      const tg = clusterByFrame(w.tMeshes, trace, morphed);
+      for (const m of (tg.find((g) => g.meshes.includes(w.through)) || { meshes: [w.through] }).meshes)
+        hop1v = Math.min(hop1v, w.tBest.has(m) ? w.tBest.get(m) : CAP);
+    }
+    const hop1 = w.through ? +(hop1v === Infinity ? CAP : hop1v).toFixed(4) : undefined;
+    const reached = reach <= HANDOFF_TRACK_TOL && (!w.through || hop1v <= HANDOFF_TRACK_TOL);
+    const key = `${w.d.unit}\u0000${w.d.member}`;
+    return { unit: w.d.unit, member: w.d.member, spring: w.d.mesh, through: w.d.through || undefined, hop1,
+      reach: +(reach === Infinity ? CAP : reach).toFixed(4), via, reached, bodyMeshes: body.length,
+      key, waiver: RESTORING_REACH_WAIVERS[key] };
+  });
+  // A waiver naming a row that REACHES (or no row at all) is stale — the
+  // covenant every waiver table here keeps.
+  const staleWaivers = Object.keys(RESTORING_REACH_WAIVERS)
+    .filter((k) => !out.some((r) => r.key === k && !r.reached));
+  return { rows: out, unresolved, staleWaivers, tol: HANDOFF_TRACK_TOL };
+}
+
 export async function auditOscillators(clock, opts = {}) {
   const reg = opts.registry || await buildSweptRegistry(clock, opts);
 
@@ -13326,6 +13536,11 @@ export async function auditOscillators(clock, opts = {}) {
   const memberStaleWaivers = Object.keys(RESTORING_MEMBER_WAIVERS)
     .filter((k) => !memberRows.some((r) => r.key === k && r.inScope && r.state !== 'declared'));
 
+  // TODO 194 — the reach control (measureSpringReach, above). Its own walk:
+  // it needs the traces of every mesh in a spring's unit, not only the
+  // reversing ones the member tier traced.
+  const reach = await measureSpringReach(clock);
+
   // The control case, asserted rather than hoped for.
   const control = twoWay.some((r) => r.unit === 'Pallet fork')
     ? 'PASS — the pallet fork is classified two-way driven'
@@ -13364,6 +13579,12 @@ export async function auditOscillators(clock, opts = {}) {
     memberWaived,
     memberStaleWaivers,
     unmatchedMemberSelectors: unmatchedMembers,
+    // TODO 194 — the reach control: every member-named spring measured
+    // against the body it answers for. `springUnreached` GATES.
+    springReach: reach.rows,
+    springUnreached: [...reach.rows.filter((r) => !r.reached && !r.waiver), ...reach.unresolved,
+      ...reach.staleWaivers.map((k) => ({ staleReachWaiver: k }))],
+    springReachWaived: reach.rows.filter((r) => !r.reached && r.waiver),
   };
 }
 

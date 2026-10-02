@@ -54,7 +54,7 @@ import {
   CHAIN_PIN_R, CHAIN_COIL_PITCH,              // §39: chain stock (the cone consumes it before the chain builds)
   FUSEE_TILT_Z,                               // §124 (TODO 46): the base tilt's funded down-reach — Z0_MIN and the base inset consume it
   CHAIN_RIVET_FIT, CHAIN_RIVET_HEAD_R, CHAIN_RIVET_HEAD_T,  // TODO 27: the joint's bores and its formed head
-  STOCK_MIN_U, SPRING_FLAT_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; §54 target
+  STOCK_MIN_U, SPRING_FLAT_U, SPRING_MIN_U, SLENDER_TARGET, // §50: build to the floor; flat-spring stock; the spring floor a spiral is cut against (TODO 194); §54 target
   TURN_LD_TARGET, TURN_LD_MAX,               // §233/§234: the turning ceiling's build-to figure (and the ceiling, published with the fold for its probe) — the arrest columns are cut to it
   STEM_STOCK_R_U,                            // §234 Landing 2: the stem-stock floor the alarm pusher is cut to
   LINK_T_U, LINK_BODY_W_U, linkEyeDiaForPin, // §234 step 5: the stamped hack and reset links' sheet, body width and eye rule
@@ -626,7 +626,13 @@ function declareTravel(name, rad, why) {
 // RESTORING_MEMBER_SCOPE, §121's convention for a tier landing on a movement
 // that has not been triaged for it.
 const declaredRestoring = new Map();   // `unit\u0000member` -> { unit, member, kind, why, mesh }
-function declareRestoring(name, member, kind, why, mesh) {
+// TODO 194 — `through`: when the spring returns the member THROUGH another
+// body it bears on (the yoke's blade returns the clutch through the fork's
+// prong; the hammer's blade returns the lifting lever through the hammer's
+// tail), name that body's contact mesh. The reach control (inspect.js
+// measureSpringReach) then holds BOTH hops to touch at some pose of the net,
+// instead of reading a spring that never touches the member as unreached.
+function declareRestoring(name, member, kind, why, mesh, through = null) {
   const key = `${name}\u0000${member}`;
   if (declaredRestoring.has(key)) console.warn(`§48: '${name}' restoring element for member '${member}' declared twice`);
   if (typeof member !== 'string' || !member)
@@ -635,7 +641,7 @@ function declareRestoring(name, member, kind, why, mesh) {
     console.warn(`§48: '${name}' restoring kind '${kind}' is not two-way, spring or gravity`);
   if (kind === 'spring' && !mesh)
     console.warn(`§48: '${name}' declares a spring but does not name its mesh — a spring that is only geometry does not count`);
-  declaredRestoring.set(key, { unit: name, member, kind, why, mesh });
+  declaredRestoring.set(key, { unit: name, member, kind, why, mesh, through });
 }
 
 // §137 — CORNERS AS REAL PARTS: the transfer audit's declaration surface.
@@ -2948,11 +2954,11 @@ if (CASE_LUG_INNER > CASE_LUG_SPAN_MAX + 1e-9)
 // substitute derivation for THIS row (at 19.92 u the turning term already
 // clears the stock floor by 0.75, so the floor is inert here and honest to
 // keep rather than to strip, the same way `ALARM_STEM_R`'s does).
-const ALARM_LINK_ROD_LEN_U = 20.7535; // TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
-const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5533
-const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.603 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
-const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.921 — a wall at the §50 floor
-const ALARM_LINK_ROD_PLATE_BORE_R = ALARM_LINK_ROD_BUSH_OD + 0.01;             // 0.931 — the hole both plates carry
+const ALARM_LINK_ROD_LEN_U = 21.4835; // TODO 194: re-measured after the follower's return spiral bought its band — Z_DIAL deepened by that spend (+0.73) and the rod's foot rides the dial-side selector, so the rod is exactly the spend longer — was 20.7535. TODO 190: re-measured at the re-solved site — its shorter body (ALARM_LINK_BODY_LEN_U 11.0631) cuts the bush OD 0.2631 smaller, the shaft stratum sits that much nearer the dial, and the rod's foot rides the stratum, so the rod is 0.2641 longer — was 20.4894. TODO 69: re-measured after the thicker plate (+1.1000 = ΔT: the rod's top end stands on the plate) — was 19.3894. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 19.1037. rodLen's measured built value (guarded below, at the rod build) — §234 Landing 5, course-corrected: the rim crank's height rides the raised stratum, so the rod's foot moved with it; TODO 172: the selector ring the foot rides now rides the §29 chain, MW_PLATE_SINK plate-ward
+const ALARM_LINK_ROD_R_SECTION = Math.max(STOCK_MIN_U, ALARM_LINK_ROD_LEN_U / (2 * TURN_LD_TARGET)); // 0.5968 (TODO 194; 0.5765 before the dial move)
+const ALARM_LINK_ROD_BUSH_BORE = ALARM_LINK_ROD_R_SECTION + PIVOT_BORE_CLEAR;   // 0.647 — the running fit (was 0.35 at the bare 0.30 rod, §234 Landing 4)
+const ALARM_LINK_ROD_BUSH_OD = ALARM_LINK_ROD_BUSH_BORE + STOCK_MIN_U;         // 0.963 — a wall at the §50 floor
+const ALARM_LINK_ROD_PLATE_BORE_R = ALARM_LINK_ROD_BUSH_OD + 0.01;             // 0.973 — the hole both plates carry
 const BACK_PLATE_HOLES = [
   { x: uWind.x * cwDist, y: uWind.y * cwDist, r: 0.7 + 0.05 },
   ...(windIdler ? [{ x: windIdler.x, y: windIdler.y, r: 0.7 + 0.05 }] : []), // §33 step 2 — the winding idler's arbor bore, only when the spec parks one
@@ -6247,8 +6253,8 @@ const ALARM_HEART_B_T = STOCK_MIN_U; // §51 strata spend: floor stock (was 0.30
 const ALARM_SET_T = STOCK_MIN_U;               // was 0.18 (§29 step 1's thinning, now unwound)
 const ALARM_TUBE_BACK = -(ALARM_SHEET_GAP + ALARM_SET_T + ALARM_HEART_B_T + CLEAR_MARGIN); // wheel · heart-B/follower-B · margin · flange top
 const ALARM_FLANGE_T = STOCK_MIN_U;            // was 0.08 — the 0.03 mm flange
-const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30); heart band, one CLEAR_MARGIN under the flange:
-const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_HEART_T / 2; // band −1.30..−1.62
+const ALARM_HEART_T = STOCK_MIN_U;   // §51 strata spend: floor stock (was 0.30); heart band — its plane, ALARM_HEART_Z, is derived
+// below the follower kinematics since TODO 194: the band hangs under the follower's return SPIRAL now, whose height is solved there
 // ---------------------------------------------------------------------------
 // §45 stage 0 — the CAM SLEEVE's band. Letting the alarm hand be SET visibly
 // needs follower-A lifted clear of its heart at any relative phase, and the
@@ -6284,7 +6290,8 @@ const ALARM_NOSE_R = 0.2;                       // follower roller
 // sweep behind the pair's EXPECTED blanket (TODO item 6's class, measured
 // here). Inner edge now clears the lobe by the working 0.03; the outer edge
 // (4.02) still seats fully on the 4.05 flange, 0.03 inside its rim.
-const ALARM_PIVOT_R = 3.55 + 0.22 + 0.03;       // pivot post radius (tube frame, az π) = lobe + post r + working
+const ALARM_POST_R = 0.22;                      // the pivot post's own radius (TODO 194 named it: the return spiral's collet is bored to it)
+const ALARM_PIVOT_R = 3.55 + ALARM_POST_R + 0.03; // pivot post radius (tube frame, az π) = lobe + post r + working
 const ALARM_NOSE_AZ = Math.PI - 0.5;            // seated contact azimuth (tube frame)
 // Arm length and seated angle DERIVED from the triangle (pivot, dial centre,
 // seated nose) — the same constants tick() solves against, so the built arm
@@ -6299,8 +6306,206 @@ const ALARM_FOLLOWER_A0 = alarmArmAngleAt(_alarmSeatD);
 const alarmHeartRAt = (a) => ALARM_HEART_RMIN + (ALARM_HEART_R - ALARM_HEART_RMIN) * (1 - Math.cos(a)) / 2;
 const ALARM_A_RELEASE_D = ALARM_HEART_R + ALARM_NOSE_R + 0.05; // nose orbit, released (3.80)
 const ALARM_A_RELEASE_PHI = alarmArmAngleAt(ALARM_A_RELEASE_D);
+// The seated-contact convention (FEELER_TIP_SEAT): two coincident planes are
+// ambiguous to the instruments, so a seated face sinks this far into the face
+// it seats on. Hoisted here from the release seat's block by TODO 194 — the
+// return spiral below seats both of its ends with it, and it is ONE number.
+const ALARM_SEAT_SINK = 0.02;
+// The release sleeve's flat rim — the flat width carries the tab and bosses;
+// statics allow to 5.17 (feeler lugs 5.32 − margin). Hoisted here from the
+// sleeve's build by TODO 194: the selector's fork bracket starts one
+// CLEAR_MARGIN outside this radius (TODO 170's line, at the bracket's build),
+// in the band the follower's return spiral occupies, so the spiral is sized
+// inside it.
+const ALARM_SLEEVE_R_OUT = 4.65;
+// ---------------------------------------------------------------------------
+// TODO 194 — THE FOLLOWER'S RETURN SPIRAL, designed IN A LINE (CLAUDE.md:
+// "design in a line, fold to fit") and solved here, in the chain, because its
+// HEIGHT is the stratum the chain has to buy for it (the fold, below).
+//
+// What it replaces. §29's return was a 1.1 × 0.07 × 0.22 blade from a stud on
+// the flange that never reached the arm — 0.08–0.28 clear of it at every
+// parity (the TODO's own measurement) — so the arm's return was posed by the
+// tick and delivered by nothing. And no straight blade in the free ring can do
+// the job: the energy floor is independent of layout. A linear spring through
+// any lever with force ratio R = Fmax/Fmin over the follower's travel Δa
+// stores U = ½·Fmax·LF·Δa·R/(R−1); with the detent window's equal-margin
+// placement (Fmin·Fmax = 5·50 mN²) that is least at R = 3, ≈ 6.68 µJ, and a
+// blade stores σ²V/(18E) under a tip load — 2–5× short in steel volume in the
+// r 3.70–4.50 ring, or overstrained past SPRING_SIGMA_Y_PA. A SPIRAL works
+// under a uniform moment and stores σ²V/(6E), three times a blade's; the
+// owner's call (TODO 194) is a coaxial spiral on the follower's own post.
+//
+// WHICH END IS GROUNDED is forced by the heart, not chosen. The heart's lobe
+// passes 0.03 from the post at the arm's plane (ALARM_PIVOT_R's own
+// derivation), so the arm has no metal around its post that could carry a
+// collet, and no collet can come down through the 0.15 gap onto the arm's
+// face without standing over the lobe's swept circle. The arm can reach the
+// spring's band only on its OUTBOARD side, where the tube radius is ≥ 3.70.
+// So the INNER end is clamped in a collet pressed on the FIXED post, and the
+// OUTER end in a riser carried by the arm — the mainspring's arrangement (the
+// arbor holds the inner end, the barrel the outer), with a mainspring's
+// geometry for the same reason: the inner end is where nothing moves.
+//
+// The line spec, every term a constraint:
+//   t      the strip, radially: §50's spring floor (SPRING_MIN_U, the 0.02–
+//          0.04 mm hairspring band its basis cites) with the 10% headroom every
+//          TARGET in layout.js takes, so stockFloor never reads it at the
+//          boundary. Thinner is refused by §50; thicker loses coils to the
+//          coil-gap floor faster than it gains section — b·t² = 6·Mmax/σ, and
+//          no 0.04 mm strip in this planform keeps its coils apart at all
+//          (tools/probe-194-return-spiral.mjs prints the table).
+//   rc     the collet: bored to the post (ALARM_POST_R) with a wall at §50's
+//          PIVOT floor — ALARM_GOV_ARBOR_R's rule for a turned collar.
+//   innerR the strip's inner end lies on the collet, sunk ALARM_SEAT_SINK into
+//          it (the seated-contact convention): rc + t/2 − sink.
+//   face   the coils' outer face over every WORKING frame stays inside
+//          ALARM_SLEEVE_R_OUT − ALARM_PIVOT_R: the tube turns a whole
+//          revolution against the dial, and the selector's fork bracket stands
+//          in this band one CLEAR_MARGIN outside the sleeve rim (TODO 170).
+//          Solved by bisection on the outer radius, because the coils DILATE
+//          as the arm lifts (below) and the as-cut radius is not the worn one.
+//   N      coils, in sixteenths of a turn (hairspringSegs samples 48 per turn,
+//          so the rest polyline ends exactly ON the outer radius): the MOST
+//          for which every working frame keeps the coils one PIVOT_BORE_CLEAR
+//          apart face to face — the movement's one running fit, the clearance
+//          two surfaces sliding on each other are cut with — and the first
+//          coil the same off the collet. More coils is a longer strip, and a
+//          longer strip is a lower R and so a lower band (b falls with N here).
+//          WHY A RUNNING FIT AND NOT "MERELY CLEAR": adjacent coils move
+//          relative to each other as the spring breathes (each turn shifts
+//          radially by a different amount — the clamped elastica is not a
+//          uniform dilation), so two coil faces are two surfaces moving past
+//          each other, which is exactly what PIVOT_BORE_CLEAR is cut for.
+//          "Clear" alone (gap > 0) names no figure at all, and the band it
+//          buys (b ≈ 0.37 at 3¼ turns against 0.58 here) would be built
+//          exactly at the limit the coils are not allowed to cross.
+//   θmax   the wind at full lift (the released pose, ALARM_A_RELEASE_PHI):
+//          the clamped–clamped elastica's peak curvature change, read off the
+//          SAME solver the hairspring's frames are (geometry.js
+//          spiralElastica), puts σ = E·(t/2)·Δκ at 0.9·SPRING_SIGMA_Y_PA —
+//          SLENDER_TARGET's 10% headroom, never the yield itself.
+//   θ0     the set-up at the seated pose: θmax − Δa. All the strain the steel
+//          allows is spent on preload, because preload is what lowers R.
+//   b      the strip's height, the one quantity left: the detent window's
+//          EQUAL-MARGIN placement, Fmin·Fmax = 5·50 mN² (the jumper's own
+//          placement), with F the moment the elastica returns over the nose
+//          arm ALARM_FOLLOWER_LEN. k ∝ b, so b is that one square root.
+// The torque law is the elastica's own: k ≈ E·b·t³/(12·L) times the clamp's
+// small stiffening (§218's clampRatio), read at both ends of the travel
+// rather than linearised.
+//
+// SENSE. The arm lifting DILATES the coils (the mirror of hairspringRest's
+// counter-clockwise plan): measured, dilating keeps the coils 0.02–0.04 further
+// apart than tightening at every N, because tightening crowds the inner coil
+// onto the collet. It is a fact about the follower, not about a train: the
+// arm lifts the same way whichever way the hour turns, so neither
+// MOVEMENT_SENSE nor ALARM_SENSE is involved.
+const ALARM_FSPIRAL_T = SPRING_MIN_U * 1.1;
+const ALARM_FSPIRAL_COLLET_R = ALARM_POST_R + PIVOT_MIN_U;
+const ALARM_FSPIRAL_INNER_R = ALARM_FSPIRAL_COLLET_R + ALARM_FSPIRAL_T / 2 - ALARM_SEAT_SINK;
+const ALARM_FSPIRAL_FACE_MAX = ALARM_SLEEVE_R_OUT - ALARM_PIVOT_R - MEASURED_MARGIN_BAND;
+const ALARM_FSPIRAL_STRAIN = 0.9 * SPRING_SIGMA_Y_PA / STEEL_E_PA;
+const ALARM_FSPIRAL_TRAVEL = ALARM_A_RELEASE_PHI - ALARM_FOLLOWER_A0;   // Δa, seated → released
+await breathe();
+const ALARM_FSPIRAL = await (async () => {
+  const t = ALARM_FSPIRAL_T, DA = ALARM_FSPIRAL_TRAVEL, m = UNIT_MM / 1000;
+  const [W_LO, W_HI] = SELECTOR_DETENT_WINDOW_MN;
+  // the nose force per unit strip HEIGHT (b = 1 u), newtons, from an elastica
+  // torque (EI = 1, model units — the caller multiplies EI back in)
+  const I1 = m * (t * m) ** 3 / 12;
+  const noseF1 = (sol) => STEEL_E_PA * I1 * Math.abs(sol.torque) / m / (ALARM_FOLLOWER_LEN * m);
+  const strainOf = (sol) => (t / 2) * sol.dkMax;
+  const evalAt = (n, face) => {
+    const plan = { innerR: ALARM_FSPIRAL_INNER_R, outerR: face - t / 2, coils: n / 16 };
+    const rest = G.hairspringRest(plan), el = G.spiralElastica(rest);
+    // θmax by secant on the strain target (smooth and monotone in θ here)
+    let a = 0.3, sa = el.solve(a), b = 1.2, sb = el.solve(b, sa);
+    for (let k = 0; k < 40 && Math.abs(strainOf(sb) - ALARM_FSPIRAL_STRAIN) > 1e-12; k++) {
+      const fa = strainOf(sa) - ALARM_FSPIRAL_STRAIN, fb = strainOf(sb) - ALARM_FSPIRAL_STRAIN;
+      const c = b - fb * (b - a) / (fb - fa);
+      a = b; sa = sb; b = c; sb = el.solve(b, sa);
+    }
+    const thMax = b, th0 = thMax - DA;
+    if (!(th0 > 0) || !sb.converged) return null;
+    // the WORKING frames — gap, collet gap and worn radius over the travel
+    const perTurn = (rest.pts.length - 1) / plan.coils, half = Math.floor(perTurn / 2);
+    let gap = Infinity, colletGap = Infinity, rMax = 0, prev = null;
+    const ends = [];
+    for (let k = 0; k <= 8; k++) {   // eight steps: the coil gap's minimum can fall BETWEEN quarter-travel samples (measured: 0.0497 against 0.0500 at the built frames)
+      const sol = el.solve(th0 + (k / 8) * DA, prev); prev = sol;
+      if (k === 0 || k === 8) ends.push(sol);
+      const P = sol.pts;
+      for (let i = 0; i < P.length; i++) {
+        const r = Math.hypot(P[i][0], P[i][1]);
+        rMax = Math.max(rMax, r);
+        if (i > perTurn) colletGap = Math.min(colletGap, r - t / 2 - ALARM_FSPIRAL_COLLET_R);
+        for (let j = i + half; j < P.length; j++) gap = Math.min(gap, Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]));
+      }
+    }
+    return { n, face, plan, rest, el, th0, thMax, faceGap: gap - t, colletGap, rMaxFace: rMax + t / 2, s0: ends[0], s1: ends[1] };
+  };
+  // the outer radius whose WORN face lands on the ceiling, for n sixteenths
+  const fit = (n) => {
+    let lo = ALARM_FSPIRAL_INNER_R + 2 * t, hi = ALARM_FSPIRAL_FACE_MAX, best = null;
+    for (let k = 0; k < 16; k++) {
+      const mid = (lo + hi) / 2, r = evalAt(n, mid);
+      if (r && r.rMaxFace <= ALARM_FSPIRAL_FACE_MAX) { lo = mid; best = r; } else hi = mid;
+    }
+    return best;
+  };
+  const passes = (r) => r && r.faceGap >= PIVOT_BORE_CLEAR && r.colletGap >= PIVOT_BORE_CLEAR;
+  let pick = null;
+  for (let n = 32; n <= 64; n++) {        // 2 turns up; the gap falls monotonically with n
+    const r = fit(n);
+    await breathe();
+    if (!passes(r)) break;
+    pick = r;
+  }
+  if (!pick) { console.warn('TODO 194: no coil count from 2 turns keeps the return spiral\'s coils one PIVOT_BORE_CLEAR apart inside the ceiling'); return null; }
+  const F0 = noseF1(pick.s0), F1 = noseF1(pick.s1);
+  const b = Math.sqrt(W_LO * W_HI * 1e-6 / (F0 * F1));       // m·N² ↔ mN²: the window is in mN
+  const L = pick.el.L;
+  return Object.freeze({
+    t, coils: pick.plan.coils, plan: pick.plan, rest: pick.rest, el: pick.el, devLen_u: L,
+    innerR: pick.plan.innerR, outerR: pick.plan.outerR, faceR: pick.face, colletR: ALARM_FSPIRAL_COLLET_R,
+    theta0: pick.th0, thetaMax: pick.thMax, travel: DA, b,
+    Fmin_mN: 1000 * F0 * b, Fmax_mN: 1000 * F1 * b,
+    Mmin_Nmm: F0 * b * ALARM_FOLLOWER_LEN * UNIT_MM, Mmax_Nmm: F1 * b * ALARM_FOLLOWER_LEN * UNIT_MM,
+    // the pure-moment rate E·b·t³/(12·L), and the elastica's own secant over the travel
+    kPure_Nm_per_rad: STEEL_E_PA * (b * m) * (t * m) ** 3 / 12 / (L * m),
+    kSecant_Nm_per_rad: (F1 - F0) * b * ALARM_FOLLOWER_LEN * m / DA,
+    strainMax: strainOf(pick.s1), strainTarget: ALARM_FSPIRAL_STRAIN,
+    faceGap: pick.faceGap, colletGap: pick.colletGap, rMaxFace: pick.rMaxFace,
+  });
+})();
+await breathe();
+const ALARM_FSPIRAL_B = ALARM_FSPIRAL.b;
+// THE FOLD — §51's currency, a STRATUM. The flange→heart gap was exactly one
+// CLEAR_MARGIN (§29 step 1), so the spiral gets its own band under the flange
+// with a margin each face, and everything below re-derives deeper by
+// b + CLEAR_MARGIN; Z_DIAL deepens by the same amount (the §45 fund below), so
+// every member below the insertion keeps its solved WORLD plane and the
+// chain's landing at the plate does not move. The follower's arms, its nose
+// and every contact it makes are held: the heart band is still one band, only
+// lower in the dial frame.
+const ALARM_FSPIRAL_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_FSPIRAL_B / 2;
+const ALARM_HEART_Z = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - CLEAR_MARGIN - ALARM_FSPIRAL_B - CLEAR_MARGIN - ALARM_HEART_T / 2; // flange · margin · spiral · margin · heart band
+{
+  // Boot asserts (rule 6) — the line spec's own terms, achieved vs required.
+  const S = ALARM_FSPIRAL, [W_LO, W_HI] = SELECTOR_DETENT_WINDOW_MN;
+  const say = (what, ok, got, need) => { if (!ok) console.warn(`TODO 194 return spiral: ${what} — ${got}, need ${need}`); };
+  say('the nose force at the seat', S.Fmin_mN >= W_LO, `${S.Fmin_mN.toFixed(3)} mN`, `≥ ${W_LO} mN (SELECTOR_DETENT_WINDOW_MN)`);
+  say('the nose force at full lift', S.Fmax_mN <= W_HI, `${S.Fmax_mN.toFixed(3)} mN`, `≤ ${W_HI} mN (SELECTOR_DETENT_WINDOW_MN)`);
+  say('the equal-margin placement', Math.abs(S.Fmin_mN / W_LO - W_HI / S.Fmax_mN) < 1e-9, `${(S.Fmin_mN / W_LO).toFixed(6)} vs ${(W_HI / S.Fmax_mN).toFixed(6)}`, 'Fmin/5 = 50/Fmax');
+  say('the strain at full lift', S.strainMax <= S.strainTarget * (1 + 1e-9), S.strainMax.toExponential(4), `≤ ${S.strainTarget.toExponential(4)} (0.9·SPRING_SIGMA_Y_PA/E)`);
+  say('the coils\' face gap over the travel', S.faceGap >= PIVOT_BORE_CLEAR, S.faceGap.toFixed(4), `≥ PIVOT_BORE_CLEAR ${PIVOT_BORE_CLEAR}`);
+  say('the first coil off the collet', S.colletGap >= PIVOT_BORE_CLEAR, S.colletGap.toFixed(4), `≥ PIVOT_BORE_CLEAR ${PIVOT_BORE_CLEAR}`);
+  say('the worn outer face', S.rMaxFace <= ALARM_FSPIRAL_FACE_MAX, S.rMaxFace.toFixed(4), `≤ ${ALARM_FSPIRAL_FACE_MAX.toFixed(4)} (inside ALARM_SLEEVE_R_OUT)`);
+  say('the strip against §50\'s spring floor', S.t > SPRING_MIN_U, `${(S.t * UNIT_MM).toFixed(4)} mm`, `> ${(SPRING_MIN_U * UNIT_MM).toFixed(3)} mm`);
+}
 const ALARM_A_PIN_R = flatsR(PIVOT_MIN_U, 10); // tail pin radius — the 10-gon's FLATS measure ⌀ 0.07 mm exactly (§50's census reads the tessellated stock, so the floor is built into the flats, not the circumradius). TODO 11 tranche five named this derivation `flatsR`; the 0.0924 it used to spell out is PIVOT_MIN_U / 2.
-const ALARM_A_TAIL_LEN = 0.22 + STOCK_MIN_R10 + 0.07; // post radius + pin boss (pin + wall) + web
+const ALARM_A_TAIL_LEN = ALARM_POST_R + STOCK_MIN_R10 + 0.07; // post radius + pin boss (pin + wall) + web
 const alarmTailRAt = (phi) => Math.sqrt(ALARM_PIVOT_R * ALARM_PIVOT_R
   + 2 * ALARM_PIVOT_R * ALARM_A_TAIL_LEN * Math.cos(phi) + ALARM_A_TAIL_LEN * ALARM_A_TAIL_LEN);
 const ALARM_SLEEVE_DR = alarmTailRAt(ALARM_FOLLOWER_A0) - alarmTailRAt(ALARM_A_RELEASE_PHI); // 0.186 — the pin's radial stroke
@@ -6321,11 +6526,15 @@ const ALARM_FEELER_TOP = ALARM_SLEEVE_TOP - ALARM_SLEEVE_ENV - (CLEAR_MARGIN + M
 // bare margin gap, so growth = envelope + one margin). Under-funded, the
 // landing eats the difference at the plate; over-funded past the rounding
 // grid, the dial carries slush no constraint asked for.
+// TODO 194 — the second spend in the same chain, the same way: the follower's
+// return spiral took the flange→heart gap from one margin to spiral + two, so
+// the chain grew ALARM_FSPIRAL_B + CLEAR_MARGIN more and Z_DIAL carries both.
 {
-  const spend = ALARM_SLEEVE_ENV + CLEAR_MARGIN;  // chain growth vs the pre-§45 stack
+  const spend = (ALARM_SLEEVE_ENV + CLEAR_MARGIN)     // §45: chain growth vs the pre-§45 stack
+    + (ALARM_FSPIRAL_B + CLEAR_MARGIN);               // TODO 194: the return spiral's band
   const fund = -7.5 - Z_DIAL;                     // −7.5: the §51 phase-B dial plane, §45's datum
   if (fund < spend - 1e-9 || fund > spend + 0.01)
-    console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
+    console.warn(`§45 strata: Z_DIAL fund ${fund.toFixed(4)} vs sleeve + spiral spend ${spend.toFixed(4)} — fund the spend exactly, rounded up to the 0.01 grid`);
 }
 // TODO 173 — no pin hangs here since TODO 117; what this stand-off buys now is
 // the dropped arm one CLEAR_MARGIN over the disc body. With the rock about the
@@ -6427,7 +6636,7 @@ const ALARM_DISC_BOT = ALARM_DISC_TOP - ALARM_DISC_BODY_T;                    //
 // the base plate's dial-side face — with the star slice declared at §50's
 // floor rather than left as whatever a 1.5 literal happened to leave.
 const ALARM_SEAT_T = STOCK_MIN_U;               // the plate: a fixed annulus carrying 34 mN
-const ALARM_SEAT_SINK = 0.02;                    // the seated-contact convention (FEELER_TIP_SEAT): two coincident planes are ambiguous to the instruments
+// (ALARM_SEAT_SINK — hoisted into the §29 chain above by TODO 194: the follower's return spiral seats its two ends with it.)
 const ALARM_SEAT_TOP = ALARM_DISC_BOT + ALARM_SEAT_SINK;   // dial-local: the disc's underside sits this far into the plate's face
 const ALARM_SEAT_BOT = ALARM_SEAT_TOP - ALARM_SEAT_T;
 const STAR_T = STOCK_MIN_U;                      // the jumper star and its beak: §50's floor, declared (it was 0.268, the residue of a literal)
@@ -7782,7 +7991,7 @@ if (!(STEM_SAW_SPEC.toothH + CLEAR_MARGIN <= CLUTCH_TRAVEL))
 // judges units and both units genuinely reverse under the stemSlip axis.
 declareRestoring('Winding clutch', 'clutchSleeve', 'spring',
   'a backward crown cams the clutch out over the pinion\'s saw ring, one snap per leaf; the yoke spring re-seats it through the fork — the blade is real metal on its own post, and the drive faces need no spring (the crown and the run-down close them from either side)',
-  'yokeSpring');
+  'yokeSpring', 'yokeProng');
 declareRestoring('Yoke', 'yokeProng', 'spring',
   'the pull drives the fork both ways through the setting lever, but a cam-over lifts it with no crown motion at all — the blade about its own pivot is what brings that stroke home',
   'yokeSpring');
@@ -16919,7 +17128,7 @@ registerExplode(alarmTubeGroup, 0, 2, 1); // dialFace child: dir +1 lifts toward
   // Pivot post: flange underside down through the heart/arm band's bottom —
   // both ends DERIVED so the post tracks the §29 step 1 re-stratification.
   const postH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - (ALARM_HEART_Z - ALARM_HEART_T / 2);
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, postH, 10), MATS.steel);
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_POST_R, ALARM_POST_R, postH, 10), MATS.steel);
   post.name = 'alarmPivotPost'; // TODO 6 contact-floor selector (§45: inner edge = lobe + working)
   post.rotation.x = Math.PI / 2;
   post.position.set(-ALARM_PIVOT_R, 0, ALARM_TUBE_BACK - ALARM_FLANGE_T - postH / 2);
@@ -17309,86 +17518,218 @@ const alarmArmBowAt = (x) => x < 0.25 ? 0
   pin.position.set(-ALARM_A_TAIL_LEN, 0, (tipZ + (-0.15 + 0.1)) / 2);
   alarmFollowerArm.add(pin);
 }
-// Return spring — a thin blade from a stub on the flange bearing on the arm's
-// outer edge. Its FORCE is representational (like the striker's hammer
-// spring); its flex is driven in tick() from the arm's actual lift.
+// TODO 194 — THE RETURN SPIRAL, cut from the line spec the §29 chain solved
+// (ALARM_FSPIRAL, at the chain, which also bought its band). It replaces §29's
+// blade and its stud: measured, that blade stood 0.08–0.28 clear of the arm at
+// every parity, so the arm's return was the tick's and nothing's.
 //
-// TODO 178 — the STUD'S SITE is solved, in position space (P3). §29 hung it
-// at the pivot post's radius (ALARM_PIVOT_R = 3.80, az π+0.45), which is
-// priced for the POST (lobe + post r 0.22 + working 0.03) and not for a
-// 0.15 stud: its inner edge stood 0.10 off the heart's 3.55 lobe, and the
-// tube turns a whole revolution against the hour wheel (the 'alarm' axis),
-// so the lobe's swept envelope is the full circle and the stud owed
-// CLEAR_MARGIN to it at every phase. Two constraints fix the new site:
-//   (1) |stud| = ALARM_HEART_R + CLEAR_MARGIN + ALARM_FSPRING_STUD_R
-//       = 3.55 + 0.15 + 0.15 = 3.85 — the 8-gon's CIRCUMradius clears the
-//       swept lobe by the one margin, phase-free;
-//   (2) |stud − tip| = ALARM_FSPRING_L (1.1) — the blade keeps its length,
-//       and its tip keeps the bearing point §29 gave it (stud at 3.80 /
-//       az π+0.45, blade at 1.9 rad; that point, not the anchor, is what the
-//       spring acts at). Length unchanged and the flex gain unchanged
-//       (0.45 rad per rad of arm lift, in tick()) ⇒ the tip's deflection
-//       per unit lift, L·0.45, is the same 0.495, so the representational
-//       force law k·δ with k ∝ EI/L³ (section 0.07 × 0.22 untouched) is the
-//       same law at the same bearing point.
-// The two circles meet twice; the branch nearest §29's site is taken (it
-// moves the stud 0.0505, radially out by 0.05 and 0.0019 rad in azimuth)
-// and the blade's rest angle is re-derived as the direction stud → tip
-// (1.9 → 1.8541 rad). The far branch (az 3.01) would hang the stud on the
-// arm's other side, past the pivot post.
-const ALARM_FSPRING_STUD_R = 0.15;               // the stud's section (circumradius; the 8-gon's flats are 0.1386)
-const ALARM_FSPRING_L = 1.1;                     // blade length, stud centre → tip (the spring's arm)
-const ALARM_FSPRING_TIP = (() => {               // §29's bearing point, held (constraint 2)
-  const sx = -ALARM_PIVOT_R * Math.cos(0.45), sy = -ALARM_PIVOT_R * Math.sin(0.45);
-  return { x: sx + ALARM_FSPRING_L * Math.cos(1.9), y: sy + ALARM_FSPRING_L * Math.sin(1.9) };
+// Three parts, each the spring's anatomy and nothing else:
+//   · the COLLET (fixed): pressed on the post, bored to ALARM_POST_R, its wall
+//     §50's pivot floor; it hangs from the flange's underside, where it is
+//     planted, down to the spiral band's floor. The inner end is clamped in it.
+//   · the SPIRAL (morph): the clamped–clamped elastica of ONE length of steel at
+//     every arm angle — the solver the hairspring's frames come from — swapped
+//     frame by frame on the arm's angle, exactly as the hairspring and the
+//     ribbons swap theirs (MODELING.md rule 6: distinct geometry objects, the
+//     frames published for the schematic).
+//   · the RISER (on the arm): a pin carried by a LUG off the tail boss, rising
+//     through the 0.15 gap into the spiral band, the outer end clamped against
+//     it. The lug is new metal on the follower, NOT a new lever arm: the nose,
+//     the tail pin and the pivot are untouched (P0), and the couple the riser
+//     takes in is about the arm's own pivot whatever its radius.
+//
+// THE RISER'S AZIMUTH on the arm is the fold's one free choice, and it is
+// solved. The riser rides the arm round the post, so its tube radius sweeps a
+// window as the arm lifts — largest seated (A0), smallest released — and both
+// ends of that window are walls: outboard, the lifter's fork closes on the
+// sleeve tab just plate-ward of the arm's band, so the lug end stays one
+// CLEAR_MARGIN inside ALARM_SLEEVE_R_OUT; inboard, the heart's lobe sweeps its
+// whole r = ALARM_HEART_R circle as the tube turns, and the riser crosses the
+// heart's band, so it stays one CLEAR_MARGIN outside it (TODO 178's constraint
+// on the old stud, applied to the part that replaced it). Straight outboard
+// (ψ = π) puts the seated end over the first wall; the azimuth is turned
+// AWAY from the dial axis until the two margins are equal.
+const ALARM_FSPIRAL_RISER_R = STOCK_MIN_R10;   // ⌀ 0.12 mm across the 10-gon's flats — §50's wheel floor: it carries the spring's whole couple in torsion (asserted below)
+const ALARM_FSPIRAL_RISER_RHO = ALARM_FSPIRAL.faceR + ALARM_FSPIRAL_RISER_R - ALARM_SEAT_SINK;   // outside the outer end, the strip seated into it
+const alarmTubeRAt = (phi, rho, psi) => Math.hypot(-ALARM_PIVOT_R + rho * Math.cos(phi + psi), rho * Math.sin(phi + psi));
+const ALARM_FSPIRAL_RISER_WINDOW = [ALARM_HEART_R + CLEAR_MARGIN, ALARM_SLEEVE_R_OUT - CLEAR_MARGIN];
+const ALARM_FSPIRAL_RISER_PSI = (() => {
+  const rho = ALARM_FSPIRAL_RISER_RHO, rr = ALARM_FSPIRAL_RISER_R, [inW, outW] = ALARM_FSPIRAL_RISER_WINDOW;
+  const mOut = (d) => outW - (alarmTubeRAt(ALARM_FOLLOWER_A0, rho, Math.PI + d) + rr);
+  const mIn = (d) => (alarmTubeRAt(ALARM_A_RELEASE_PHI, rho, Math.PI + d) - rr) - inW;
+  let lo = 0, hi = Math.PI / 2;
+  for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (mOut(mid) < mIn(mid)) lo = mid; else hi = mid; }
+  return Math.PI + (lo + hi) / 2;
 })();
-const ALARM_FSPRING_STUD_RR = ALARM_HEART_R + CLEAR_MARGIN + ALARM_FSPRING_STUD_R; // constraint 1: 3.85
-const ALARM_FSPRING_STUD = (() => {              // circle(0, RR) ∩ circle(tip, L), the branch nearest §29's site
-  const T = ALARM_FSPRING_TIP, d = Math.hypot(T.x, T.y), R = ALARM_FSPRING_STUD_RR, L = ALARM_FSPRING_L;
-  const a = (R * R - L * L + d * d) / (2 * d), h = Math.sqrt(R * R - a * a);
-  const ex = T.x / d, ey = T.y / d;
-  return { x: a * ex - h * ey, y: a * ey + h * ex };
+// The rest spiral's ends: inner at angle 0, outer at S0 = coils·2π, counter-
+// clockwise. MIRRORED (y → −y) so the arm's lift dilates it (the chain's SENSE
+// note), then turned by β so the outer end lands on the riser at every frame:
+// a frame at wind w is mirror(elastica(w)) turned by β + w — the elastica turns
+// the INNER clamp by w with the outer held, the turn by w puts the inner end
+// back where the collet holds it and carries the outer one round with the arm.
+// The arm at φ winds it w = θ0 + (φ − A0), so the outer end sits at
+// −S0 + β + w = φ + ψ exactly when β = ψ + S0 + A0 − θ0.
+const ALARM_FSPIRAL_BETA = ALARM_FSPIRAL_RISER_PSI + ALARM_FSPIRAL.rest.S0 + ALARM_FOLLOWER_A0 - ALARM_FSPIRAL.theta0;
+const alarmFollowerSpiralWindAt = (armA) => ALARM_FSPIRAL.theta0 + (armA - ALARM_FOLLOWER_A0);
+// The frames: spaced so the riser moves at most ALARM_SEAT_SINK along the
+// strip's outer face between two of them — half that, at most, between the arm
+// and the nearest frame, so the end stays seated in the riser at every angle.
+const ALARM_FSPIRAL_FRAMES = Math.ceil(ALARM_FSPIRAL_RISER_RHO * ALARM_FSPIRAL.travel / ALARM_SEAT_SINK) + 1;
+const alarmFollowerSpiral = await (async () => {
+  const S = ALARM_FSPIRAL, el = S.el, n = ALARM_FSPIRAL_FRAMES, dW = S.travel / (n - 1);
+  // warm-start from the free spiral out to the set-up, then frame to frame
+  let warm = null;
+  for (let k = 1; k <= 8; k++) warm = el.solve((k / 8) * S.theta0, warm);
+  const polys = [], geos = [], rows = [];
+  for (let k = 0; k < n; k++) {
+    const w = S.theta0 + k * dW;
+    const sol = el.solve(w, warm); warm = sol;
+    const g = ALARM_FSPIRAL_BETA + w, c = Math.cos(g), s = Math.sin(g);
+    const pts = sol.pts.map(([x, y]) => [x * c + y * s, x * s - y * c]);   // mirror(x, −y), then turn by g
+    polys.push(pts);
+    rows.push({ w, torque: sol.torque, dkMax: sol.dkMax, converged: sol.converged });
+    const geo = G.stripSweepGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0))), pts.length - 1, S.t / 2);
+    // the strip is wound OUTWARD for a counter-clockwise curve; the mirror
+    // reverses the Frenet frame's sense, so re-wind it (meshIntegrity's
+    // inverted tier holds a closed body's signed volume positive)
+    {
+      const pos = geo.attributes.position, idx = geo.index.array;
+      let vol = 0;
+      for (let i = 0; i < idx.length; i += 3) {
+        const a = idx[i], b = idx[i + 1], d = idx[i + 2];
+        vol += pos.getX(a) * (pos.getY(b) * pos.getZ(d) - pos.getZ(b) * pos.getY(d))
+             - pos.getY(a) * (pos.getX(b) * pos.getZ(d) - pos.getZ(b) * pos.getX(d))
+             + pos.getZ(a) * (pos.getX(b) * pos.getY(d) - pos.getY(b) * pos.getX(d));
+      }
+      if (vol < 0) { for (let i = 0; i < idx.length; i += 3) { const tmp = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = tmp; } geo.computeVertexNormals(); }
+    }
+    geos.push(geo);
+    if (k % 6 === 5) await breathe();
+  }
+  const mesh = new THREE.Mesh(geos[0], MATS.blueSteel);
+  mesh.name = 'alarmFollowerSpiral';
+  mesh.position.set(-ALARM_PIVOT_R, 0, ALARM_FSPIRAL_Z);
+  mesh.scale.z = ALARM_FSPIRAL_B / S.t;   // stand the strip on edge: t radially, b axially
+  // §50 — a swept ribbon has no local box to measure (MODELING.md rule 7)
+  mesh.userData.stockSection = S.t;
+  // §78/§83 — its own glyph, breathing: the plan is the FREE spiral as cut
+  // (mirrored into the frame the frames are drawn in), the frames what it wears
+  mesh.userData.spiral = { innerR: S.innerR, outerR: S.outerR, coils: S.coils };
+  mesh.userData.spiralFrames = polys;
+  mesh.userData.spiralFrame = 0;
+  let cur = 0;
+  mesh.userData.setWind = (armA) => {
+    const w = Math.max(S.theta0, Math.min(S.thetaMax, alarmFollowerSpiralWindAt(armA)));
+    const k = Math.round((w - S.theta0) / dW);
+    if (k === cur) return;
+    cur = k;
+    mesh.geometry = geos[k];
+    mesh.userData.spiralFrame = k;
+    G.writeSpiralLine(mesh.userData.spiralLine, polys[k]);
+  };
+  // what the build solved, for the instruments and the probe (read-only)
+  mesh.userData.returnSpiral = Object.freeze({
+    t_u: S.t, b_u: ALARM_FSPIRAL_B, coils: S.coils, innerR: S.innerR, outerR: S.outerR, colletR: S.colletR,
+    devLen_u: S.devLen_u, theta0: S.theta0, thetaMax: S.thetaMax, travel: S.travel,
+    Fmin_mN: S.Fmin_mN, Fmax_mN: S.Fmax_mN, frames: n, frameStep: dW, frameRows: rows,
+    kPure_Nm_per_rad: S.kPure_Nm_per_rad, kSecant_Nm_per_rad: S.kSecant_Nm_per_rad,
+    strainMax: S.strainMax, strainTarget: S.strainTarget, faceGap: S.faceGap, colletGap: S.colletGap, rMaxFace: S.rMaxFace,
+    riserRho: ALARM_FSPIRAL_RISER_RHO, riserPsi: ALARM_FSPIRAL_RISER_PSI, beta: ALARM_FSPIRAL_BETA,
+  });
+  // Boot asserts (rule 6) over EVERY built frame, not the solve's five samples.
+  {
+    const perTurn = (S.rest.pts.length - 1) / S.coils, half = Math.floor(perTurn / 2);
+    let gap = Infinity, rMax = 0, strain = 0, unconv = 0;
+    for (let k = 0; k < n; k++) {
+      const P = polys[k];
+      strain = Math.max(strain, (S.t / 2) * rows[k].dkMax);
+      if (!rows[k].converged) unconv++;
+      for (let i = 0; i < P.length; i++) {
+        rMax = Math.max(rMax, Math.hypot(P[i][0], P[i][1]));
+        for (let j = i + half; j < P.length; j++) gap = Math.min(gap, Math.hypot(P[i][0] - P[j][0], P[i][1] - P[j][1]));
+      }
+    }
+    if (unconv) console.warn(`TODO 194 return spiral: ${unconv} of ${n} frames did not converge`);
+    if (gap - S.t < PIVOT_BORE_CLEAR - 1e-9) console.warn(`TODO 194 return spiral: coil face gap ${(gap - S.t).toFixed(4)} over the built frames, need PIVOT_BORE_CLEAR ${PIVOT_BORE_CLEAR}`);
+    if (rMax + S.t / 2 > ALARM_FSPIRAL_FACE_MAX + 1e-9) console.warn(`TODO 194 return spiral: worn face ${(rMax + S.t / 2).toFixed(4)} over the built frames, ceiling ${ALARM_FSPIRAL_FACE_MAX.toFixed(4)}`);
+    if (strain > S.strainTarget * (1 + 1e-6)) console.warn(`TODO 194 return spiral: strain ${strain.toExponential(4)} over the built frames, target ${S.strainTarget.toExponential(4)}`);
+  }
+  return mesh;
 })();
-const ALARM_FSPRING_A0 = Math.atan2(ALARM_FSPRING_TIP.y - ALARM_FSPRING_STUD.y, ALARM_FSPRING_TIP.x - ALARM_FSPRING_STUD.x); // blade rest angle, stud → tip
+alarmTubeGroup.add(alarmFollowerSpiral);
+alarmFollowerSpiral.userData.setWind(ALARM_FOLLOWER_A0);   // the seated frame until tick poses it
 {
-  // Boot assert (rule 6): both constraints, and the stud still seats on the
-  // flange ring (its outer edge inside ALARM_FLANGE_OUT).
-  const S = ALARM_FSPRING_STUD, T = ALARM_FSPRING_TIP;
-  const lobe = Math.hypot(S.x, S.y) - ALARM_FSPRING_STUD_R - ALARM_HEART_R;
-  const len = Math.hypot(T.x - S.x, T.y - S.y);
-  const rim = ALARM_FLANGE_OUT - (Math.hypot(S.x, S.y) + ALARM_FSPRING_STUD_R);
-  if (lobe < CLEAR_MARGIN - 1e-9)
-    console.warn(`TODO 178: follower-spring stud clears the swept lobe by ${lobe.toFixed(4)}, need CLEAR_MARGIN ${CLEAR_MARGIN}`);
-  if (Math.abs(len - ALARM_FSPRING_L) > 1e-9)
-    console.warn(`TODO 178: follower-spring blade stud→tip ${len.toFixed(6)}, need its length ${ALARM_FSPRING_L} (the spring's arm must not change)`);
-  if (rim < 0)
-    console.warn(`TODO 178: follower-spring stud overhangs the flange rim by ${(-rim).toFixed(4)} (stud outer edge vs ALARM_FLANGE_OUT ${ALARM_FLANGE_OUT})`);
+  // The COLLET — fixed, pressed on the post, planted on the flange's underside.
+  const top = ALARM_TUBE_BACK - ALARM_FLANGE_T, bot = ALARM_FSPIRAL_Z - ALARM_FSPIRAL_B / 2;
+  const collet = new THREE.Mesh(ringGeo(ALARM_POST_R, ALARM_FSPIRAL_COLLET_R, top - bot), MATS.steel);
+  collet.name = 'alarmFollowerCollet';
+  collet.position.set(-ALARM_PIVOT_R, 0, (top + bot) / 2);
+  alarmTubeGroup.add(collet);
 }
-const alarmFollowerSpring = new THREE.Group();
-alarmFollowerSpring.position.set(ALARM_FSPRING_STUD.x, ALARM_FSPRING_STUD.y, ALARM_HEART_Z); // §29 step 1: centred with the arm it bears on; TODO 178: sited by the two constraints above
-alarmTubeGroup.add(alarmFollowerSpring);
 {
-  const blade = new THREE.Mesh(new THREE.BoxGeometry(ALARM_FSPRING_L, 0.07, 0.22), MATS.blueSteel);
-  blade.position.x = ALARM_FSPRING_L / 2;
-  alarmFollowerSpring.add(blade);
-  const stubH = (ALARM_TUBE_BACK - ALARM_FLANGE_T) - ALARM_HEART_Z; // spring plane up to the flange underside — its anchor (derived, §29 step 1)
-  const stub = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_FSPRING_STUD_R, ALARM_FSPRING_STUD_R, stubH, 8), MATS.steel);
-  // TODO 11 tranche five: the blade's grounded STUD — pin stock at ⌀ 0.1137 mm,
-  // over the 0.07 pivot floor. Declared, not thickened: the
-  // alarmHammerSpringStud precedent, and the same measurement.
-  stub.name = 'alarmFollowerSpringStud';
-  stub.rotation.x = Math.PI / 2;
-  stub.position.z = stubH / 2;
-  alarmFollowerSpring.add(stub);
+  // The LUG and RISER — on the arm, so they ride its angle exactly. The lug
+  // runs in the arm's own band from the tail boss to the riser, at the boss's
+  // section (the pin boss's floor stock in both free dimensions); the riser is
+  // a pin through its end up to the spiral band's top.
+  const bx = -ALARM_A_TAIL_LEN, by = 0;
+  const rx = ALARM_FSPIRAL_RISER_RHO * Math.cos(ALARM_FSPIRAL_RISER_PSI), ry = ALARM_FSPIRAL_RISER_RHO * Math.sin(ALARM_FSPIRAL_RISER_PSI);
+  const len = Math.hypot(rx - bx, ry - by);
+  const lug = new THREE.Mesh(new THREE.BoxGeometry(len, 2 * ALARM_FSPIRAL_RISER_R, STOCK_MIN_U), MATS.steel);
+  lug.name = 'alarmFollowerLug';
+  lug.position.set((bx + rx) / 2, (by + ry) / 2, 0);
+  lug.rotation.z = Math.atan2(ry - by, rx - bx);
+  alarmFollowerArm.add(lug);
+  const zLo = -STOCK_MIN_U / 2, zHi = (ALARM_FSPIRAL_Z + ALARM_FSPIRAL_B / 2) - ALARM_HEART_Z;   // arm-local: the arm band's floor up to the spiral band's top
+  const riser = new THREE.Mesh(new THREE.CylinderGeometry(ALARM_FSPIRAL_RISER_R, ALARM_FSPIRAL_RISER_R, zHi - zLo, 10), MATS.steel);
+  riser.name = 'alarmFollowerRiser';
+  riser.rotation.x = Math.PI / 2;
+  riser.position.set(rx, ry, (zLo + zHi) / 2);
+  alarmFollowerArm.add(riser);
+  // Boot asserts (rule 6): the riser's window over the travel, the lug's body
+  // inside the same window, and the riser's torsion under the spring steel.
+  const [inW, outW] = ALARM_FSPIRAL_RISER_WINDOW;
+  for (const phi of [ALARM_FOLLOWER_A0, ALARM_A_RELEASE_PHI]) {
+    for (let i = 0; i <= 20; i++) {
+      const u = i / 20, px = bx + u * (rx - bx), py = by + u * (ry - by);
+      const rho = Math.hypot(px, py), psi = Math.atan2(py, px);
+      const r = alarmTubeRAt(phi, rho, psi), hw = ALARM_FSPIRAL_RISER_R;   // the lug's half-width IS the riser's radius
+      if (r - hw < inW - 1e-9 || r + hw > outW + 1e-9)
+        console.warn(`TODO 194 lug/riser at arm ${phi.toFixed(4)}, u ${u}: tube radius ${(r - hw).toFixed(4)}..${(r + hw).toFixed(4)}, window ${inW.toFixed(4)}..${outW.toFixed(4)}`);
+    }
+  }
+  const d_m = 2 * ALARM_FSPIRAL_RISER_R * UNIT_MM / 1000, tau = 16 * (ALARM_FSPIRAL.Mmax_Nmm / 1000) / (Math.PI * d_m ** 3);
+  if (tau > 0.9 * SPRING_TAU_Y_PA)
+    console.warn(`TODO 194 riser: torsion ${(tau / 1e6).toFixed(1)} MPa carrying the spiral's ${ALARM_FSPIRAL.Mmax_Nmm.toFixed(4)} N·mm, need ≤ ${(0.9 * SPRING_TAU_Y_PA / 1e6).toFixed(1)} MPa`);
 }
-// Blade angled INWARD from the stub toward the arm's flank — tip lands at
-// r ≈ 3.83 (was quoted 4.0; measured, TODO 178), inside the measured r-4.5
-// obstacle bound like everything else here.
-alarmFollowerSpring.rotation.z = ALARM_FSPRING_A0; // TODO 178: was 1.9 — re-derived as stud → §29's tip
-// The blade follows the arm's lift at 0.45 of its angle — ONE law, read by
-// tick and by the jumper's siting solve (TODO 181), which samples the arm's
-// swing and must pose the blade the way tick does.
-const alarmFollowerSpringAngleAt = (armA) => ALARM_FSPRING_A0 + (armA - ALARM_FOLLOWER_A0) * 0.45;
+// §137 — the return's force arithmetic, beside its metal, at BOTH ends of the
+// travel (the window is judged at each: an equal-margin placement is a claim
+// about the pair). The idiom is `crank` — a spring biasing a SEPARATE pivoted
+// arm whose bearing takes the side load — with the one difference stated: a
+// spiral coaxial with that pivot hands the arm a COUPLE, so there is no input
+// arm and no ratio to check, only the nose arm the couple is read over. (Not
+// `groundedBlade`: the spring and the follower are two parts here.)
+for (const [end, F, M, w] of [
+  ['seated', ALARM_FSPIRAL.Fmin_mN, ALARM_FSPIRAL.Mmin_Nmm, ALARM_FSPIRAL.theta0],
+  ['released', ALARM_FSPIRAL.Fmax_mN, ALARM_FSPIRAL.Mmax_Nmm, ALARM_FSPIRAL.thetaMax],
+]) {
+  declareTransfer(`alarm follower: return spiral (post collet → arm riser → nose on the heart), ${end}`, {
+    unit: 'Alarm disc', meshes: ['alarmFollowerSpiral', 'alarmFollowerCollet', 'alarmFollowerRiser', 'alarmFollowerLug', 'alarmFollowerBar', 'alarmNose'], idiom: 'crank',
+    load: { value: F, unit: 'mN',
+      source: 'the clamped–clamped elastica\'s moment (geometry.js spiralElastica, EI scaled back in over the built t × b section) at this end\'s wind, over the nose arm ALARM_FOLLOWER_LEN' },
+    quantities: {
+      t_u: ALARM_FSPIRAL.t, b_u: ALARM_FSPIRAL_B, coils: ALARM_FSPIRAL.coils, devLen_u: ALARM_FSPIRAL.devLen_u,
+      wind_rad: w, setup_rad: ALARM_FSPIRAL.theta0, travel_rad: ALARM_FSPIRAL.travel,
+      couple_Nmm: M, kPure_Nm_per_rad: ALARM_FSPIRAL.kPure_Nm_per_rad, kSecant_Nm_per_rad: ALARM_FSPIRAL.kSecant_Nm_per_rad,
+      armOut_u: ALARM_FOLLOWER_LEN, strainMax: ALARM_FSPIRAL.strainMax,
+    },
+    envelope: { name: 'SELECTOR_DETENT_WINDOW_MN', value: F },
+    why: `a spiral coaxial with the follower's post delivers a couple to the arm, read at the nose over ALARM_FOLLOWER_LEN: `
+      + `${ALARM_FSPIRAL.Fmin_mN.toFixed(2)} mN seated (set-up ${ALARM_FSPIRAL.theta0.toFixed(4)} rad) rising to `
+      + `${ALARM_FSPIRAL.Fmax_mN.toFixed(2)} mN released (${ALARM_FSPIRAL.thetaMax.toFixed(4)} rad, the strain at 0.9 of SPRING_SIGMA_Y_PA) — `
+      + `the window's equal-margin placement, Fmin/5 = 50/Fmax = ${(ALARM_FSPIRAL.Fmin_mN / 5).toFixed(3)}, with the strip's height b `
+      + `= ${ALARM_FSPIRAL_B.toFixed(4)} u solved for it. §29's blade this replaces delivered nothing: it never reached the arm`,
+  });
+}
 // The heart itself — pressed on the HOUR tube (co-rotating with the hour
 // hand), notch phased to the seated nose azimuth so "seated" IS "hands
 // coincident". Blued like the seconds-reset heart.
@@ -17464,7 +17805,7 @@ const ALARM_WEB_RELIEF_AZ = Math.PI - ALARM_RELEASE_AZ;
 const ALARM_WEB_RELIEF_HALF = Math.asin(
   (ALARM_PIN_R + CLEAR_MARGIN) / (ALARM_SLEEVE_THROAT_R + ALARM_SLEEVE_SKIRT_H));
 const ALARM_SLEEVE_R_IN = alarmTailRAt(ALARM_FOLLOWER_A0) + ALARM_A_PIN_R + 0.03;       // flat bore: rest flank + working clear
-const ALARM_SLEEVE_R_OUT = 4.65;      // flat width carries the tab and bosses; statics allow to 5.17 (feeler lugs 5.32 − margin)
+// (ALARM_SLEEVE_R_OUT — hoisted into the §29 chain by TODO 194: the selector's fork bracket starts one margin outside it, and the follower's return spiral is sized inside it.)
 const ALARM_SLEEVE_POST_R = 5.15;     // same derivation as ALARM_SEL_POST_R: outside the setting wheel's tips + margin
 // TODO 170 — the third post was a hand-pick made before §45 stage 2 put the
 // silence rocker's pivot bracket between the feeler and the tab: at 345° its
@@ -19391,7 +19732,14 @@ const _seatPostReach = Math.max(_setTipR, _discTipR, ALARM_SLEEVE_R_OUT, ALARM_S
 const ALARM_SEAT_POST_R = _seatPostReach + CLEAR_MARGIN + ALARM_SEAT_SINK + ALARM_SEAT_POST_RAD;   // centre radius: one margin (padded) outside the governing circle
 const ALARM_SEAT_WEB_W = 0.7;                                                                 // the setting cock's arm width (the bracket idiom this copies)
 const ALARM_SEAT_STUD_R = 0.0924 / Math.cos(Math.PI / 10);                                    // pin stock: a 10-gon whose flats measure the 0.07 mm pivot floor exactly (the tail pin's convention, alarmSilPivot)
-const ALARM_SEAT_STUD_T = 0.9;                                                                // tangential offset of the stud from the post, away from the blade's sweep — the post's radius + the stud's + one margin, with room
+// tangential offset of the stud from the post, away from the blade's sweep —
+// the post's radius + the stud's + one margin, padded by the sink like the
+// post's own radius above. DERIVED since TODO 194: it was 0.9 "with room",
+// and the room was the post's — the post is §54-sized from its LENGTH, the
+// sheet down to the seat, so when the return spiral's band lengthened the
+// chain under the dial the post fattened and the literal stud stood 0.0453
+// off it.
+const ALARM_SEAT_STUD_T = ALARM_SEAT_POST_RAD + ALARM_SEAT_STUD_R + CLEAR_MARGIN + ALARM_SEAT_SINK;
 const ALARM_SEAT_BLADE_W = 2 * SPRING_FLAT_U;                                                 // flat stock, two widths: the feeler blade's section doubled so the preload lands mid-window
 const ALARM_SEAT_PAD_R = ALARM_PIN_R;                                                          // the foot: the reader pin's own radius
 const ALARM_SEAT_BLADE_Z = ALARM_DISC_TOP + CLEAR_MARGIN + ALARM_SEAT_SINK;                   // the blade's underside: one margin over the rim's teeth, plus the sink so a plane one margin off a plane never reads as the margin's own edge
@@ -20637,7 +20985,16 @@ let alarmSilPivotFrac = 0; // pivot's fraction along the chord from the finger e
   const paddleBotL = (Z_DIAL - ALARM_LIFT_RUN_Z) + STOCK_MIN_U / 2 + 0.01; // pad's contact face: 0.01 above the run's local-top face (running fit → reads contact)
   const tailTopL = ALARM_FEELER_TOP;
   const fingerBotL = tailTopL + ALARM_SIL_GAP;
-  const barZ = -2.28; // bar plane between the two cranked ends (asserted against both below)
+  // bar plane between the two cranked ends (asserted against both below).
+  // TODO 194: both ends hang in the §29 chain below the follower's return
+  // spiral, so when the spiral's band (ALARM_FSPIRAL_B + CLEAR_MARGIN) was
+  // inserted above them they moved plate-ward by exactly that spend while the
+  // −2.28 literal stayed put (−0.515 under the paddle against the 0.1 the
+  // crank needs). The bar rides the same spend, so the rocker keeps the
+  // geometry §45 stage 2 solved — the paddle crank 0.19 and the finger riser
+  // 0.28, over §50's pivot floor. (Measured and REFUSED first: the midpoint of
+  // the two ends cut the finger riser to 0.157, 0.0596 mm.)
+  const barZ = -2.28 - (ALARM_FSPIRAL_B + CLEAR_MARGIN);
   alarmSilRocker.position.set(piv.x, piv.y, barZ);
   alarmSilRocker.rotation.order = 'ZYX';
   alarmSilRocker.rotation.z = Math.atan2(pd.y - fg.y, pd.x - fg.x); // local +x = finger → paddle direction
@@ -21781,8 +22138,30 @@ declareRestoring('Maintaining detent', 'click', 'spring',
 // still turns both of them either way — mechanism truth the pose net never
 // performs (both spin monotone under every axis) — so the stale rule
 // retires the declarations until an axis turns them out-and-back.
-declareRestoring('Alarm disc', '*', 'two-way',
+// TODO 194 narrowed this row from '*' to the body it describes. As '*' it
+// answered every reversing frame in the unit with a sentence about the TUBE —
+// the follower among them, which is how §29's blade went unasked. The tube is
+// what the setting train drives both ways; follower-B's pin arm and the
+// selector rocker now report as UNDECLARED frames in the member tier (the unit
+// is outside RESTORING_MEMBER_SCOPE, so that is a report, not a gate), which
+// is what they were all along.
+declareRestoring('Alarm disc', 'alarmTubeBody', 'two-way',
   'geared to the alarm setting arbor, so the crown drives it both ways');
+// TODO 194 — the FOLLOWER's own answer. The row above is the tube's: it was the
+// only declaration this unit had, so the follower's reversing frame (bar, nose,
+// tail boss, tail pin) was "answered" unit-wide by a sentence about the setting
+// train, while the blade that was meant to return it stood 0.08–0.28 off it.
+// The spiral's outer end is clamped in the arm's own riser, so the spring and
+// the frame it answers for are joined metal, and its inner end in the post's
+// collet; ALARM_HANDOFFS measures both ends seated at every parity.
+declareRestoring('Alarm disc', 'alarmFollowerBar', 'spring',
+  `the return spiral (ALARM_FSPIRAL): inner end clamped in the post's collet, outer end in the arm's riser, preloaded ${ALARM_FSPIRAL.theta0.toFixed(4)} rad at the seat so the nose bears on the heart with ${ALARM_FSPIRAL.Fmin_mN.toFixed(2)}–${ALARM_FSPIRAL.Fmax_mN.toFixed(2)} mN across the whole lift — the heart obstructs, so the seat is a limit, not a placement`,
+  'alarmFollowerSpiral');
+// …and the spiral itself, which the member tier sees as its own reversing
+// frame (a morph is always its own frame): its wind is the arm's angle, so the
+// arm drives its shape both ways — it is a consequence, never a pose.
+declareRestoring('Alarm disc', 'alarmFollowerSpiral', 'two-way',
+  'the spiral\'s outer end is clamped in the arm\'s riser and its frame is the elastica at the arm\'s angle (setWind), so the arm winds and unwinds it — both directions driven');
 // §48 — THE CASE THAT PROMPTED THE ENTRY, and it does not resolve the way
 // §25 implied. The lift is the cam profile, but the FALL is not: the free
 // swing is cos(ALARM_HAMMER_W * t) with an exponential decay, which is a
@@ -22153,7 +22532,7 @@ const ALARM_TAIL_BAR_LEN = ALARM_LIFT_CONTACT_SPAN.hi + ALARM_LIFT_TIP_R;
 // declaration is exactly as true as the hammer's own.
 declareRestoring('Alarm lifting lever', 'alarmLiftNose', 'spring',
   'returned through the hammer tail it bears on: the hammer blade preloads the tail onto the lever\'s tip (strikeHandoff holds the contact shut at every pose), so one spring returns both members; the spring law is TODO 128\'s open note',
-  'alarmHammerSpring');
+  'alarmHammerSpring', 'alarmTail');
 declareTravel('Alarm lifting lever', 2 * ALARM_DRAW_RAD, 'follows the hammer through the tip⇄tail contact: ±the hammer\'s draw, a ratio of 1');
 
 // --- §48 / TODO 14 — THE HAMMER SPRING, which the pose law always assumed ---
@@ -28484,7 +28863,7 @@ declareTransfer('alarm switch: the wheel’s index (sautoir blade → saw tooth)
 // convention ("quote it where it is needed, re-derive it live where it is
 // produced, warn if the two part") — the built value the shaft's own
 // section block re-measures and asserts against, next to `ALARM_LINK_SHAFT_R`.
-const ALARM_LINK_BODY_LEN_U = 11.0631;   // TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
+const ALARM_LINK_BODY_LEN_U = 11.0429;   // TODO 194: re-measured after the return spiral's band moved the dial (+0.73) — the selector rod lengthened by that much, its turned section with it (0.5765 → 0.5968), and the bush OD that sets the shaft stratum grew, so the body between its stations is 0.0203 shorter — was 11.0631; rounded UP from the built 11.0428x. TODO 190: re-measured at the re-solved site (18.96, −2.83: d 9 on the next parity ray, tab 324°) once the retired tail run stopped binding the tab zone — was 20.5327. Rounded UP from the built 11.06309: the stratum assert holds the hoisted bush OD against the built one at 1e-6, so the hoist may not round below the build. TODO 69: re-measured after the selector rod's section grew with its length (ALARM_LINK_ROD_LEN_U) — was 20.5712. TODO 174: re-measured at the corrected site (tab 315°, d 9) — was 30.9964. t3 − t1, measured (TODO 172: the shaft stratum rose with the lane) (see the assert beside ALARM_LINK_SHAFT_R) — §234 Landing 5, course-corrected: the honest rod-end overhang and the dial-clearance stratum term both move this
 // §137 Landing 2's shipped bearing values, hoisted (were local to the
 // hanger-bush build loop, far below) — the stratum's dial-clearance term
 // needs the bush's own OD before that loop runs, at the SAME radius the
@@ -29643,8 +30022,35 @@ const alarmLinkParts = {};
       - ALARM_LINK_ROD_R_SECTION - STOCK_MIN_R10;
     if (gap < CLEAR_MARGIN - 1e-9)
       console.warn(`TODO 191: the beak post stands ${gap.toFixed(4)} from the selector rod in plan, under CLEAR_MARGIN ${CLEAR_MARGIN} (circumradii; the two run parallel)`);
-    if (Math.abs(ALARM_BEAK_POST_SIDE) + STOCK_MIN_R10 > ALARM_LINK_ARM_W / 2 + 1e-9)
-      console.warn(`TODO 191: the beak post's flank reaches ${(Math.abs(ALARM_BEAK_POST_SIDE) + STOCK_MIN_R10).toFixed(4)} off the arm's line, past the bar's half-width ${(ALARM_LINK_ARM_W / 2).toFixed(4)} — the post no longer stands under the lever it carries`);
+  }
+  // TODO 194 — THE FULCRUM LUG, a declared FORK of this group's line spec.
+  // The follower's return spiral bought its band from Z_DIAL (+0.73), the
+  // selector rod's foot rides the dial-side ring, so the rod is exactly that
+  // much longer; its turned section is L/(2·TURN_LD_TARGET) (§233), so it
+  // thickened 0.5765 → 0.5968, and the post's least offset above, which no
+  // one may shorten, carries its outer flank 0.6606 off the arm's line —
+  // past the bar's 0.6270 half-width. One row of the spec changes, and only
+  // where the post is: the lever's WIDTH AT THE FULCRUM, re-derived as the
+  // post's outer flank (it must stand under the lever it carries — TODO 191's
+  // second half). Everything else is held: the bar and tail keep one ratchet
+  // tooth (§226's feature width, the owner's legibility call), the arms keep
+  // 3.577 / 0.768 and the ratio 4.657, the post keeps its §50 section and its
+  // TODO 191 station. The rejected alternatives, measured against the same
+  // constraint: necking the rod's top beside the post would put a narrower
+  // step on a bar §233 judges by its narrowest step (its L/D would go over
+  // TURN_LD_TARGET), and widening the whole bar spends metal over 4.3 units of
+  // arm to buy 0.034 at one point. The lug is a pad on the bar's underside
+  // plane, the post's own diameter long, at the fulcrum where the tilt moves
+  // nothing; it is built only while the post's flank leaves the bar, so the
+  // fork retires itself (and its INTRA_UNIT_CONTACTS row goes stale) the day
+  // the rod is short enough again.
+  const _postFlank = Math.abs(ALARM_BEAK_POST_SIDE) + STOCK_MIN_R10;
+  if (_postFlank > ALARM_LINK_ARM_W / 2 + 1e-9) {
+    const reach = _postFlank;                                  // flush with the post's outer flank, the lever's own allowance before the fork
+    const lug = new THREE.Mesh(new THREE.BoxGeometry(2 * STOCK_MIN_R10, reach, STOCK_MIN_U), MATS.steel);
+    lug.name = 'alarmLinkBeakFulcrum';
+    lug.position.set(0, Math.sign(ALARM_BEAK_POST_SIDE) * reach / 2, 0);   // from the arm's line out to the flank, in the bar's own plane
+    beakArm.add(lug);
   }
   const beakPost = new THREE.Mesh(new THREE.CylinderGeometry(STOCK_MIN_R10, STOCK_MIN_R10, postLen, 10), MATS.steel);
   beakPost.name = 'alarmLinkBeakPost';
@@ -38304,11 +38710,11 @@ document.getElementById('btn-case').addEventListener('click', () => setCaseLines
           // spring that stops exporting one does not go undrawn — it silently
           // falls back to the very glyph this part exists to retire, which is
           // the regression worth a tripwire. A FLOOR, not an equality (§66's
-          // rotor-site assert, same shape): the movement's three wound springs
-          // are the hairspring and the going and alarm barrels' ribbons, and a
-          // fourth spring would simply draw.
-          if (wound.length < 3)
-            console.warn(`§78: only ${wound.length} spiral springs export a plan — the movement has 3 (hairspring, going-barrel ribbon, alarm-barrel ribbon); the rest have fallen back to the gear or blade glyph`);
+          // rotor-site assert, same shape): the movement's four wound springs
+          // are the hairspring, the going and alarm barrels' ribbons and (TODO
+          // 194) the alarm follower's return spiral, and a fifth would simply draw.
+          if (wound.length < 4)
+            console.warn(`§78: only ${wound.length} spiral springs export a plan — the movement has 4 (hairspring, going-barrel ribbon, alarm-barrel ribbon, alarm follower's return spiral); the rest have fallen back to the gear or blade glyph`);
         }
 
         // PART THREE — THE DIAL IS A SLAB. §71's hidden-line convention gives
@@ -45556,9 +45962,11 @@ function tick(t) {
     // back to the cam — re-engagement EVALUATES, nothing is replayed.
     armA = Math.max(armA, alarmPhiCapNow);
     alarmFollowerArm.rotation.z = armA;
-    // The blade flexes with the pump (its force is representational; its
-    // MOTION is the arm's real lift).
-    alarmFollowerSpring.rotation.z = alarmFollowerSpringAngleAt(armA);
+    // TODO 194 — the return spiral winds with the arm: its outer end rides the
+    // arm's riser, its inner end is held by the post's collet, and the frame it
+    // wears is the elastica at THIS angle (the arm is the input, the spring the
+    // consequence — never the other way round).
+    alarmFollowerSpiral.userData.setWind(armA);
     // §34 (groove redesign): the pin-arm rides the FACE CAM — its lift is
     // the cam's height at the relative angle (tube vs wheel), stateless
     // like §29's pin; the fork's press overrides it to the full lift when
@@ -46109,16 +46517,16 @@ const JMP_SITE_MOVERS = [
   // revolution by (measured 2.17 as one pose), so its revolution is SAMPLED
   // over its swing instead: tick's own bounds on the arm — seated on the
   // heart's hollow (A0), up to the higher of the heart's crest and the sleeve
-  // cone's cap at full lift — with the blade posed by its own law. Spaced so
+  // cone's cap at full lift — with the return spiral wound by its own law (setWind, TODO 194). Spaced so
   // no point moves more than CLEAR_MARGIN/2 between samples (the nose is the
   // fastest point), which is then the slack: every pose is within one step of
   // a sample, on its own circle.
-  { name: 'follower', kind: 'revolve', roots: [alarmFollowerArm, alarmFollowerSpring], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: CLEAR_MARGIN / 2,
+  { name: 'follower', kind: 'revolve', roots: [alarmFollowerArm, alarmFollowerSpiral], onto: jmpRotorNamed(dialFace, 'alarmSettingWheel'), slack: CLEAR_MARGIN / 2,
     swing: (() => {
       const a0 = ALARM_FOLLOWER_A0, a1 = Math.max(alarmArmAngleAt(ALARM_HEART_R + ALARM_NOSE_R), alarmPhiCapAt(ALARM_SLEEVE_TRAVEL) ?? -Infinity);
       return {
         stroke: (ALARM_FOLLOWER_LEN + ALARM_NOSE_R) * (a1 - a0),
-        pose: (u) => { const a = a0 + (a1 - a0) * u; alarmFollowerArm.rotation.z = a; alarmFollowerSpring.rotation.z = alarmFollowerSpringAngleAt(a); },
+        pose: (u) => { const a = a0 + (a1 - a0) * u; alarmFollowerArm.rotation.z = a; alarmFollowerSpiral.userData.setWind(a); },
       };
     })() },
   { name: 'alarm disc', kind: 'revolve', roots: [alarmDiscGroup], onto: jmpRotorNamed(alarmDiscGroup, 'alarmDiscBody'), slack: 0 },
